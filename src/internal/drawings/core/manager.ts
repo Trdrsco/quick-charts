@@ -26,12 +26,23 @@ export class DrawingManager {
   private _chart: IChartApi | null = null
   private _series: ISeriesApi<SeriesType> | null = null
   private _intervalContext: IntervalContext = null
+  private _allHidden = false
   private readonly _listeners = new Map<DrawingEventType, Set<DrawingEventCallback>>()
 
   /** Broadcast the chart's interval so per-interval visibility rules apply. */
   setIntervalContext(context: IntervalContext): void {
     this._intervalContext = context
     for (const drawing of this._drawings.values()) drawing.setIntervalContext(context)
+  }
+
+  /** Chart-wide hide-all: every drawing (and its axis pills) disappears until toggled back. */
+  setAllHidden(hidden: boolean): void {
+    this._allHidden = hidden
+    for (const drawing of this._drawings.values()) drawing.setGlobalHidden(hidden)
+  }
+
+  allHidden(): boolean {
+    return this._allHidden
   }
 
   attach(chart: IChartApi, series: ISeriesApi<SeriesType>): void {
@@ -70,6 +81,7 @@ export class DrawingManager {
     // class type because attaching requires the series-primitive surface.
     const concrete = drawing as AnyDrawing
     concrete.setIntervalContext(this._intervalContext)
+    concrete.setGlobalHidden(this._allHidden)
     this._drawings.set(concrete.id, concrete)
     this._order.push(concrete.id)
     this._series?.attachPrimitive(concrete)

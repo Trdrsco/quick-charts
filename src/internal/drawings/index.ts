@@ -20,6 +20,8 @@ export { Drawing, viewportOf } from './core/drawing'
 export { DrawingManager } from './core/manager'
 export type { IntervalBucket, IntervalContext, IntervalVisibility, VisibilityRange } from './core/visibility'
 export { DEFAULT_VISIBILITY, normalizeVisibility, parseIntervalContext, visibleAt } from './core/visibility'
+export type { MagnetMode, OhlcBar } from './core/magnet'
+export { magnetSnap, snapToBar } from './core/magnet'
 export {
   distanceToLine,
   distanceToSegment,

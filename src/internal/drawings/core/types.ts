@@ -127,7 +127,9 @@ export interface IDrawing {
 
   /** The chart's current interval (the manager broadcasts it on timeframe changes). */
   setIntervalContext(context: IntervalContext): void
-  /** Manual `visible` switch AND the per-interval visibility rule, combined. */
+  /** Chart-wide hide-all switch (transient view state — never serialized). */
+  setGlobalHidden(hidden: boolean): void
+  /** Manual `visible` switch AND hide-all AND the per-interval rule, combined. */
   isVisibleNow(): boolean
 
   testHit(point: Point, viewport: Viewport): boolean

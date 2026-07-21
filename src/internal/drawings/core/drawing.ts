@@ -91,6 +91,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   protected _props: P
   protected _state: DrawingState = 'normal'
   private _intervalContext: IntervalContext = null
+  private _globalHidden = false
 
   private _chart: IChartApi | null = null
   private _series: ISeriesApi<SeriesType> | null = null
@@ -224,8 +225,14 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this.requestUpdate()
   }
 
+  /** Chart-wide hide-all switch (transient view state — never serialized). */
+  setGlobalHidden(hidden: boolean): void {
+    this._globalHidden = hidden
+    this.requestUpdate()
+  }
+
   isVisibleNow(): boolean {
-    return this._options.visible && visibleAt(this._options.visibility, this._intervalContext)
+    return !this._globalHidden && this._options.visible && visibleAt(this._options.visibility, this._intervalContext)
   }
 
   applyProps(patch: Partial<P>): void {
