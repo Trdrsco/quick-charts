@@ -34,6 +34,21 @@ import {
   TextLabel,
 } from './tools/annotations'
 import { DatePriceRange, DateRange, PriceRange } from './tools/measurement'
+import { DisjointChannel, FlatTopBottom, ParallelChannel } from './tools/channels'
+import { InsidePitchfork, ModifiedSchiffPitchfork, Pitchfork, SchiffPitchfork } from './tools/pitchforks'
+import {
+  FibArcs,
+  FibChannel,
+  FibCircles,
+  FibExtension,
+  FibRetracement,
+  FibSpeedFan,
+  FibSpiral,
+  FibTimeExtension,
+  FibTimeZone,
+  FibWedge,
+  Pitchfan,
+} from './tools/fibonacci'
 
 export interface ToolDefinition {
   type: string
@@ -119,6 +134,30 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(Arc, { type: 'arc', name: 'Arc', category: 'shapes', anchors: 3 }),
   tool(Curve, { type: 'curve', name: 'Curve', category: 'shapes', anchors: 3 }),
   tool(DoubleCurve, { type: 'double_curve', name: 'Double curve', category: 'shapes', anchors: 4 }),
+
+  // Channels
+  tool(ParallelChannel, { type: 'parallel_channel', name: 'Parallel channel', category: 'channels', anchors: 3, style: { fillOpacity: 0.08 } }),
+  tool(FlatTopBottom, { type: 'flat_top_bottom', name: 'Flat top/bottom', category: 'channels', anchors: 3, style: { fillOpacity: 0.08 } }),
+  tool(DisjointChannel, { type: 'disjoint_channel', name: 'Disjoint channel', category: 'channels', anchors: 4, style: { fillOpacity: 0.08 } }),
+
+  // Fibonacci
+  tool(FibRetracement, { type: 'fib_retracement', name: 'Fib retracement', category: 'fibonacci', anchors: 2 }),
+  tool(FibExtension, { type: 'fib_trend_ext', name: 'Trend-based fib extension', category: 'fibonacci', anchors: 3 }),
+  tool(FibChannel, { type: 'fib_channel', name: 'Fib channel', category: 'fibonacci', anchors: 3 }),
+  tool(FibTimeZone, { type: 'fib_timezone', name: 'Fib time zone', category: 'fibonacci', anchors: 2 }),
+  tool(FibSpeedFan, { type: 'fib_speed_resist_fan', name: 'Fib speed resistance fan', category: 'fibonacci', anchors: 2 }),
+  tool(FibTimeExtension, { type: 'fib_trend_time', name: 'Trend-based fib time', category: 'fibonacci', anchors: 3 }),
+  tool(FibCircles, { type: 'fib_circles', name: 'Fib circles', category: 'fibonacci', anchors: 2 }),
+  tool(FibSpiral, { type: 'fib_spiral', name: 'Fib spiral', category: 'fibonacci', anchors: 2 }),
+  tool(FibArcs, { type: 'fib_speed_resist_arcs', name: 'Fib speed resistance arcs', category: 'fibonacci', anchors: 2 }),
+  tool(FibWedge, { type: 'fib_wedge', name: 'Fib wedge', category: 'fibonacci', anchors: 3 }),
+  tool(Pitchfan, { type: 'pitchfan', name: 'Pitchfan', category: 'fibonacci', anchors: 3 }),
+
+  // Pitchforks
+  tool(Pitchfork, { type: 'pitchfork', name: 'Pitchfork', category: 'pitchforks', anchors: 3 }),
+  tool(SchiffPitchfork, { type: 'schiff_pitchfork', name: 'Schiff pitchfork', category: 'pitchforks', anchors: 3 }),
+  tool(ModifiedSchiffPitchfork, { type: 'schiff_pitchfork_modified', name: 'Modified Schiff pitchfork', category: 'pitchforks', anchors: 3 }),
+  tool(InsidePitchfork, { type: 'inside_pitchfork', name: 'Inside pitchfork', category: 'pitchforks', anchors: 3 }),
 
   // Annotation
   tool(TextLabel, { type: 'text', name: 'Text', category: 'annotation', anchors: 1, hasText: true }),
