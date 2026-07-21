@@ -107,6 +107,8 @@ export interface IDrawing {
 
   setAnchors(anchors: Anchor[]): void
   updateAnchor(index: number, anchor: Anchor): void
+  appendAnchor(anchor: Anchor): void
+  removeAnchor(index: number): void
   updateStyle(patch: Partial<DrawingStyle>): void
   updateOptions(patch: Partial<DrawingOptions>): void
   setState(state: DrawingState): void

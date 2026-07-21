@@ -118,7 +118,7 @@ export class Comment extends TextLabel {
  * where the box sits — both stay draggable.
  */
 export class Callout extends Drawing<TextProps> {
-  readonly type = 'callout'
+  readonly type: string = 'callout'
 
   protected override defaultProps(): TextProps {
     return { text: '' }
@@ -128,12 +128,17 @@ export class Callout extends Drawing<TextProps> {
     return 2
   }
 
+  /** What the box displays; variants prepend computed lines (e.g. the target price). */
+  protected bodyText(): string {
+    return this.props.text
+  }
+
   protected boxAt(viewport: Viewport): { x: number; y: number; width: number; height: number } | null {
     const boxAnchor = this.anchors[1]
     if (!boxAnchor) return null
     const p = this.anchorToPixel(boxAnchor, viewport)
     if (!p) return null
-    const { width, height } = measureTextBlock(this.props.text || ' ', this.style)
+    const { width, height } = measureTextBlock(this.bodyText() || ' ', this.style)
     return { x: p.x, y: p.y, width: width + 12, height: height + 12 }
   }
 
@@ -151,7 +156,7 @@ export class Callout extends Drawing<TextProps> {
     ctx.moveTo(target.x, target.y)
     ctx.lineTo(edge.x, edge.y)
     ctx.stroke()
-    paintTextBlock(ctx, this.props.text || ' ', { x: box.x, y: box.y }, this.style, {
+    paintTextBlock(ctx, this.bodyText() || ' ', { x: box.x, y: box.y }, this.style, {
       background: withAlpha('#1b1f27', 0.95),
       borderColor: this.style.lineColor,
     })
@@ -296,6 +301,176 @@ export class ArrowMarkDown extends ArrowMark {
 
   protected direction(): MarkDirection {
     return 'down'
+  }
+}
+
+/** Callout variant whose body leads with the target's exact price. */
+export class PriceNote extends Callout {
+  override readonly type = 'price_note'
+
+  protected override bodyText(): string {
+    const target = this.anchors[0]
+    const price = target ? formatPrice(target.price) : ''
+    return this.props.text ? `${price}\n${this.props.text}` : price
+  }
+}
+
+/** Map pin at a chart point, with its note text beneath when present. */
+export class Pin extends Drawing<TextProps> {
+  readonly type = 'pin'
+
+  protected override defaultProps(): TextProps {
+    return { text: '' }
+  }
+
+  requiredAnchors(): number {
+    return 1
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const anchor = this.anchors[0]
+    if (!anchor) return
+    const p = this.anchorToPixel(anchor, viewport)
+    if (!p) return
+    const r = 7
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.fillStyle = this.style.lineColor
+    // Teardrop: circle head + tapered stem down to the anchor point.
+    ctx.beginPath()
+    ctx.arc(p.x, p.y - r * 2, r, Math.PI * 0.85, Math.PI * 0.15)
+    ctx.lineTo(p.x, p.y)
+    ctx.closePath()
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    ctx.beginPath()
+    ctx.arc(p.x, p.y - r * 2, r / 2.6, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+    if (this.props.text) {
+      const { width } = measureTextBlock(this.props.text, this.style)
+      paintTextBlock(ctx, this.props.text, { x: p.x - (width + 12) / 2, y: p.y + 6 }, this.style, {
+        background: withAlpha('#1b1f27', 0.95),
+      })
+    }
+  }
+
+  testHit(point: Point, viewport: Viewport): boolean {
+    const anchor = this.anchors[0]
+    if (!anchor) return false
+    const p = this.anchorToPixel(anchor, viewport)
+    if (!p) return false
+    return inBox(point, { x: p.x - 9, y: p.y - 24, width: 18, height: 26 }, 3)
+  }
+}
+
+/** Signpost: a label on a stem planted at the anchor. */
+export class Signpost extends Drawing<TextProps> {
+  readonly type = 'signpost'
+
+  protected override defaultProps(): TextProps {
+    return { text: '' }
+  }
+
+  requiredAnchors(): number {
+    return 1
+  }
+
+  protected box(viewport: Viewport): { x: number; y: number; width: number; height: number } | null {
+    const anchor = this.anchors[0]
+    if (!anchor) return null
+    const p = this.anchorToPixel(anchor, viewport)
+    if (!p) return null
+    const { width, height } = measureTextBlock(this.props.text || ' ', this.style)
+    return { x: p.x - (width + 12) / 2, y: p.y - 34 - height, width: width + 12, height: height + 12 }
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const anchor = this.anchors[0]
+    if (!anchor) return
+    const p = this.anchorToPixel(anchor, viewport)
+    const box = this.box(viewport)
+    if (!p || !box) return
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.strokeStyle = this.style.lineColor
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(p.x, p.y)
+    ctx.lineTo(p.x, box.y + box.height)
+    ctx.stroke()
+    ctx.fillStyle = this.style.lineColor
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+    paintTextBlock(ctx, this.props.text || ' ', { x: box.x, y: box.y }, this.style, {
+      background: withAlpha('#1b1f27', 0.95),
+      borderColor: this.style.lineColor,
+    })
+  }
+
+  testHit(point: Point, viewport: Viewport): boolean {
+    const box = this.box(viewport)
+    return !!box && inBox(point, box)
+  }
+}
+
+/** Large labeled arrow glyph; direction is part of its props. */
+export class ArrowMarker extends Drawing<TextProps & { direction: 'up' | 'down' }> {
+  readonly type = 'arrow_marker'
+
+  protected override defaultProps(): TextProps & { direction: 'up' | 'down' } {
+    return { text: '', direction: 'down' }
+  }
+
+  requiredAnchors(): number {
+    return 1
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const anchor = this.anchors[0]
+    if (!anchor) return
+    const p = this.anchorToPixel(anchor, viewport)
+    if (!p) return
+    const down = this.props.direction === 'down'
+    const sign = down ? -1 : 1
+    const w = 9 + this.style.lineWidth * 2
+    const len = w * 2.6
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.fillStyle = this.style.lineColor
+    ctx.beginPath()
+    // Fat arrow: tip at the anchor, shaft extending away.
+    ctx.moveTo(p.x, p.y)
+    ctx.lineTo(p.x - w, p.y + sign * w)
+    ctx.lineTo(p.x - w / 2, p.y + sign * w)
+    ctx.lineTo(p.x - w / 2, p.y + sign * len)
+    ctx.lineTo(p.x + w / 2, p.y + sign * len)
+    ctx.lineTo(p.x + w / 2, p.y + sign * w)
+    ctx.lineTo(p.x + w, p.y + sign * w)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+    if (this.props.text) {
+      const { width, height } = measureTextBlock(this.props.text, this.style)
+      const y = down ? p.y - len - height - 18 : p.y + len + 6
+      paintTextBlock(ctx, this.props.text, { x: p.x - (width + 12) / 2, y }, this.style)
+    }
+  }
+
+  testHit(point: Point, viewport: Viewport): boolean {
+    const anchor = this.anchors[0]
+    if (!anchor) return false
+    const p = this.anchorToPixel(anchor, viewport)
+    if (!p) return false
+    const down = this.props.direction === 'down'
+    const w = 9 + this.style.lineWidth * 2
+    const len = w * 2.6
+    const box = down
+      ? { x: p.x - w, y: p.y - len, width: w * 2, height: len }
+      : { x: p.x - w, y: p.y, width: w * 2, height: len }
+    return inBox(point, box, 4)
   }
 }
 

@@ -176,6 +176,18 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this.requestUpdate()
   }
 
+  /** Grow the anchor set (freehand strokes, multi-point paths). */
+  appendAnchor(anchor: Anchor): void {
+    this._anchors.push({ ...anchor })
+    this.requestUpdate()
+  }
+
+  removeAnchor(index: number): void {
+    if (index < 0 || index >= this._anchors.length) return
+    this._anchors.splice(index, 1)
+    this.requestUpdate()
+  }
+
   updateStyle(patch: Partial<DrawingStyle>): void {
     this._style = { ...this._style, ...patch }
     this.requestUpdate()

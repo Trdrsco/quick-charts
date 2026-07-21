@@ -49,6 +49,10 @@ import {
   FibWedge,
   Pitchfan,
 } from './tools/fibonacci'
+import { GannBox, GannFan, GannSquare, GannSquareFixed } from './tools/gann'
+import { Forecast, LongPosition, Projection, ShortPosition } from './tools/forecasting'
+import { Brush, Highlighter, PathLine, Polyline } from './tools/freehand'
+import { ArrowMarker, Pin, PriceNote, Signpost } from './tools/annotations'
 
 export interface ToolDefinition {
   type: string
@@ -60,6 +64,9 @@ export interface ToolDefinition {
   style?: Partial<DrawingStyle>
   /** Tool renders user text — the host opens its text editor right after placement. */
   hasText?: boolean
+  /** How anchors are gathered: drag-captured stroke, or click-to-add points (double-click ends).
+   *  Omitted = the fixed `anchors` count. */
+  placement?: 'freehand' | 'multipoint'
   create(
     id: string,
     anchors?: Anchor[],
@@ -76,6 +83,7 @@ interface ToolMeta {
   anchors: number
   style?: Partial<DrawingStyle>
   hasText?: boolean
+  placement?: 'freehand' | 'multipoint'
 }
 
 /** Bind a tool class to its metadata (typed props cast happens exactly once, here). */
@@ -159,6 +167,18 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(ModifiedSchiffPitchfork, { type: 'schiff_pitchfork_modified', name: 'Modified Schiff pitchfork', category: 'pitchforks', anchors: 3 }),
   tool(InsidePitchfork, { type: 'inside_pitchfork', name: 'Inside pitchfork', category: 'pitchforks', anchors: 3 }),
 
+  // Gann
+  tool(GannBox, { type: 'gannbox', name: 'Gann box', category: 'gann', anchors: 2 }),
+  tool(GannSquare, { type: 'gannbox_square', name: 'Gann square', category: 'gann', anchors: 2 }),
+  tool(GannSquareFixed, { type: 'gannbox_fixed', name: 'Gann square fixed', category: 'gann', anchors: 2 }),
+  tool(GannFan, { type: 'gannbox_fan', name: 'Gann fan', category: 'gann', anchors: 2 }),
+
+  // Forecasting & positions
+  tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3 }),
+  tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3 }),
+  tool(Projection, { type: 'projection', name: 'Projection', category: 'forecasting', anchors: 3 }),
+  tool(Forecast, { type: 'forecast', name: 'Forecast', category: 'forecasting', anchors: 2 }),
+
   // Annotation
   tool(TextLabel, { type: 'text', name: 'Text', category: 'annotation', anchors: 1, hasText: true }),
   tool(Note, { type: 'note', name: 'Note', category: 'annotation', anchors: 1, hasText: true }),
@@ -167,7 +187,17 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(PriceLabel, { type: 'price_label', name: 'Price label', category: 'annotation', anchors: 1 }),
   tool(ArrowMarkUp, { type: 'arrow_up', name: 'Arrow mark up', category: 'annotation', anchors: 1 }),
   tool(ArrowMarkDown, { type: 'arrow_down', name: 'Arrow mark down', category: 'annotation', anchors: 1 }),
+  tool(ArrowMarker, { type: 'arrow_marker', name: 'Arrow marker', category: 'annotation', anchors: 1, hasText: true }),
   tool(FlagMark, { type: 'flag', name: 'Flag mark', category: 'annotation', anchors: 1 }),
+  tool(PriceNote, { type: 'price_note', name: 'Price note', category: 'annotation', anchors: 2, hasText: true }),
+  tool(Pin, { type: 'pin', name: 'Pin', category: 'annotation', anchors: 1, hasText: true }),
+  tool(Signpost, { type: 'signpost', name: 'Signpost', category: 'annotation', anchors: 1, hasText: true }),
+
+  // Brushes & multi-point shapes
+  tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand' }),
+  tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: '#f5a623' } }),
+  tool(PathLine, { type: 'path', name: 'Path', category: 'shapes', anchors: 2, placement: 'multipoint' }),
+  tool(Polyline, { type: 'polyline', name: 'Polyline', category: 'shapes', anchors: 2, placement: 'multipoint', style: { fillOpacity: 0.1 } }),
 
   // Measurement
   tool(PriceRange, { type: 'price_range', name: 'Price range', category: 'measurement', anchors: 2 }),
