@@ -13,6 +13,11 @@ export type TextProps = {
   text: string
 }
 
+/** Free text blocks additionally carry their alignment. */
+export type TextBlockProps = TextProps & {
+  align: 'left' | 'center'
+}
+
 function inBox(p: Point, box: { x: number; y: number; width: number; height: number }, pad = 2): boolean {
   return (
     p.x >= box.x - pad && p.x <= box.x + box.width + pad && p.y >= box.y - pad && p.y <= box.y + box.height + pad
@@ -20,11 +25,11 @@ function inBox(p: Point, box: { x: number; y: number; width: number; height: num
 }
 
 /** Free-floating text pinned to a chart point. */
-export class TextLabel extends Drawing<TextProps> {
+export class TextLabel extends Drawing<TextBlockProps> {
   readonly type: string = 'text'
 
-  protected override defaultProps(): TextProps {
-    return { text: '' }
+  protected override defaultProps(): TextBlockProps {
+    return { text: '', align: 'left' }
   }
 
   requiredAnchors(): number {
@@ -46,7 +51,7 @@ export class TextLabel extends Drawing<TextProps> {
     if (!anchor) return
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return
-    paintTextBlock(ctx, this.props.text || ' ', p, this.style)
+    paintTextBlock(ctx, this.props.text || ' ', p, this.style, { align: this.props.align })
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -67,6 +72,7 @@ export class Note extends TextLabel {
     paintTextBlock(ctx, this.props.text || ' ', p, this.style, {
       background: withAlpha('#1b1f27', 0.95),
       borderColor: this.style.lineColor,
+      align: this.props.align,
     })
   }
 }

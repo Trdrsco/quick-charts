@@ -1,4 +1,6 @@
 import type { Time } from 'lightweight-charts'
+import type { IntervalContext, IntervalVisibility } from './visibility'
+import { DEFAULT_VISIBILITY } from './visibility'
 
 /** A point the drawing is pinned to, in chart coordinates. */
 export interface Anchor {
@@ -51,12 +53,15 @@ export interface DrawingOptions {
   visible: boolean
   locked: boolean
   zIndex: number
+  /** Which chart intervals the drawing shows on (independent of the manual `visible` switch). */
+  visibility: IntervalVisibility
 }
 
 export const DEFAULT_OPTIONS: DrawingOptions = {
   visible: true,
   locked: false,
   zIndex: 0,
+  visibility: DEFAULT_VISIBILITY,
 }
 
 /**
@@ -119,6 +124,11 @@ export interface IDrawing {
 
   /** True once the drawing has its full anchor set (placement complete, all values finite). */
   isValid(): boolean
+
+  /** The chart's current interval (the manager broadcasts it on timeframe changes). */
+  setIntervalContext(context: IntervalContext): void
+  /** Manual `visible` switch AND the per-interval visibility rule, combined. */
+  isVisibleNow(): boolean
 
   testHit(point: Point, viewport: Viewport): boolean
   getControlPoints(viewport: Viewport): ControlPoint[]

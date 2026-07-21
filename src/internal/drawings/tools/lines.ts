@@ -1,16 +1,35 @@
+import type { ISeriesPrimitiveAxisView } from 'lightweight-charts'
+
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { angleOf, distanceToSegment, extendSegment, midpoint } from '../core/geometry'
-import { applyStroke, formatPrice, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import {
+  applyStroke,
+  formatPrice,
+  paintArrowHead,
+  paintLabel,
+  strokeSegment,
+  withAlpha,
+} from '../render/canvas'
+import { AxisLabel } from '../render/axis-view'
 
 export type LineEnd = 'normal' | 'arrow'
 
-/** Props shared by the two-point line family. Tool identity = these defaults. */
+/** The two-point line family's full option set. Tool identity = these defaults. */
 export type TrendLineProps = {
   extendLeft: boolean
   extendRight: boolean
   leftEnd: LineEnd
   rightEnd: LineEnd
+  /** Marker at the segment's midpoint. */
+  middlePoint: boolean
+  /** Price pill beside each end point. */
+  showPriceLabels: boolean
+  /** Stats readout items (price delta + %, bar count, slope angle). */
+  showPriceRange: boolean
+  showBarsRange: boolean
+  showAngle: boolean
+  statsPosition: 'left' | 'center' | 'right'
 }
 
 const LINE_PROPS: TrendLineProps = {
@@ -18,6 +37,12 @@ const LINE_PROPS: TrendLineProps = {
   extendRight: false,
   leftEnd: 'normal',
   rightEnd: 'normal',
+  middlePoint: false,
+  showPriceLabels: false,
+  showPriceRange: false,
+  showBarsRange: false,
+  showAngle: false,
+  statsPosition: 'center',
 }
 
 function hitTolerance(lineWidth: number): number {
@@ -55,10 +80,66 @@ export class TrendLine extends Drawing<TrendLineProps> {
     strokeSegment(ctx, seg.a, seg.b)
     if (this.props.leftEnd === 'arrow') paintArrowHead(ctx, seg.b, seg.a, this.style)
     if (this.props.rightEnd === 'arrow') paintArrowHead(ctx, seg.a, seg.b, this.style)
+    this.paintProps(ctx, viewport)
     this.paintDecorations(ctx, viewport)
   }
 
-  /** Extra ink beyond the segment (stats, angle marks) — the family variants override. */
+  /** Prop-driven ink shared by the family: midpoint marker, end price pills, the stats block. */
+  private paintProps(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const [pa, pb] = this.anchorPixels(viewport)
+    if (!pa || !pb) return
+
+    if (this.props.middlePoint) {
+      const mid = midpoint(pa, pb)
+      ctx.save()
+      ctx.setLineDash([])
+      ctx.fillStyle = this.style.lineColor
+      ctx.beginPath()
+      ctx.arc(mid.x, mid.y, Math.max(2.5, this.style.lineWidth), 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
+
+    if (this.props.showPriceLabels) {
+      const [a, b] = this.anchors
+      paintLabel(ctx, formatPrice(a.price), { x: pa.x - 8, y: pa.y }, this.style, {
+        align: 'right',
+        background: withAlpha(this.style.lineColor, 0.2),
+      })
+      paintLabel(ctx, formatPrice(b.price), { x: pb.x + 8, y: pb.y }, this.style, {
+        background: withAlpha(this.style.lineColor, 0.2),
+      })
+    }
+
+    const stats = this.statsText(viewport)
+    if (stats) {
+      const t = this.props.statsPosition === 'left' ? 0.12 : this.props.statsPosition === 'right' ? 0.88 : 0.5
+      const at = { x: pa.x + (pb.x - pa.x) * t, y: pa.y + (pb.y - pa.y) * t - 14 }
+      paintLabel(ctx, stats, at, this.style, { align: 'center', background: withAlpha('#1b1f27', 0.92) })
+    }
+  }
+
+  protected statsText(viewport: Viewport): string | null {
+    const [a, b] = this.anchors
+    if (!a || !b) return null
+    const parts: string[] = []
+    if (this.props.showPriceRange) {
+      const dPrice = b.price - a.price
+      const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
+      parts.push(`${dPrice >= 0 ? '+' : ''}${formatPrice(dPrice)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`)
+    }
+    if (this.props.showBarsRange) {
+      const bars = viewport.barsBetween(a.time, b.time)
+      if (bars !== null) parts.push(`${Math.round(bars)} bars`)
+    }
+    if (this.props.showAngle) {
+      const [pa, pb] = this.anchorPixels(viewport)
+      if (pa && pb) parts.push(`${(-angleOf(pa, pb) * (180 / Math.PI)).toFixed(0)}°`)
+    }
+    return parts.length ? parts.join('  ·  ') : null
+  }
+
+  /** Extra ink beyond the shared prop set — the family variants override. */
   protected paintDecorations(_ctx: CanvasRenderingContext2D, _viewport: Viewport): void {}
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -92,36 +173,16 @@ export class Arrow extends TrendLine {
   }
 }
 
-/** Trend line that always reports its measurements (price delta, %, bars, angle). */
+/** Trend line whose identity is the full measurement readout. */
 export class InfoLine extends TrendLine {
   override readonly type = 'info_line'
 
-  protected override paintDecorations(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const [a, b] = this.anchors
-    if (!a || !b) return
-    const [pa, pb] = this.anchorPixels(viewport)
-    if (!pa || !pb) return
-
-    const dPrice = b.price - a.price
-    const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
-    const bars = viewport.barsBetween(a.time, b.time)
-    const angleDeg = -angleOf(pa, pb) * (180 / Math.PI) // y-down screen → trader's y-up angle
-
-    const parts = [
-      `${dPrice >= 0 ? '+' : ''}${formatPrice(dPrice)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`,
-      bars === null ? null : `${Math.round(bars)} bars`,
-      `${angleDeg.toFixed(0)}°`,
-    ].filter((s): s is string => s !== null)
-
-    const mid = midpoint(pa, pb)
-    paintLabel(ctx, parts.join('  ·  '), { x: mid.x, y: mid.y - 14 }, this.style, {
-      align: 'center',
-      background: withAlpha('#1b1f27', 0.92),
-    })
+  protected override defaultProps(): TrendLineProps {
+    return { ...LINE_PROPS, showPriceRange: true, showBarsRange: true, showAngle: true }
   }
 }
 
-/** Trend line that reports its slope as an angle, with a horizontal reference arc. */
+/** Trend line that reports its slope, with a horizontal reference arc at the origin. */
 export class TrendAngle extends TrendLine {
   override readonly type = 'trend_angle'
 
@@ -136,7 +197,7 @@ export class TrendAngle extends TrendLine {
       applyStroke(ctx, this.style)
       ctx.lineWidth = 1
       ctx.setLineDash([2, 3])
-      // Reference horizontal from the first anchor, then the sweep down/up to the line's angle.
+      // Reference horizontal from the first anchor, then the sweep up/down to the line's angle.
       ctx.beginPath()
       ctx.moveTo(pa.x, pa.y)
       ctx.lineTo(pa.x + radius + 12, pa.y)
@@ -153,9 +214,36 @@ export class TrendAngle extends TrendLine {
   }
 }
 
+export type HorizontalLineProps = {
+  /** Price pill on the axis at the line's level. */
+  showPrice: boolean
+}
+
 /** Full-width horizontal line at one price. */
-export class HorizontalLine extends Drawing {
-  readonly type = 'horizontal_line'
+export class HorizontalLine extends Drawing<HorizontalLineProps> {
+  readonly type: string = 'horizontal_line'
+
+  private readonly _axisViews = [
+    new AxisLabel({
+      coordinate: () => {
+        const anchor = this.anchors[0]
+        const viewport = this.getViewport()
+        if (!anchor || !viewport) return null
+        return viewport.yOf(anchor.price)
+      },
+      text: () => formatPrice(this.anchors[0]?.price ?? 0),
+      color: () => this.style.lineColor,
+      visible: () => this.props.showPrice && this.isVisibleNow(),
+    }),
+  ]
+
+  protected override defaultProps(): HorizontalLineProps {
+    return { showPrice: true }
+  }
+
+  protected override axisViews(): readonly ISeriesPrimitiveAxisView[] {
+    return this._axisViews
+  }
 
   requiredAnchors(): number {
     return 1
@@ -165,39 +253,30 @@ export class HorizontalLine extends Drawing {
     const y = viewport.yOf(this.anchors[0]?.price ?? NaN)
     if (y === null || !Number.isFinite(y)) return
     applyStroke(ctx, this.style)
-    strokeSegment(ctx, { x: 0, y }, { x: viewport.width, y })
+    strokeSegment(ctx, { x: this.leftEdge(viewport), y }, { x: viewport.width, y })
+  }
+
+  /** Where the line starts; the ray variant starts at its anchor. */
+  protected leftEdge(_viewport: Viewport): number {
+    return 0
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
     const y = viewport.yOf(this.anchors[0]?.price ?? NaN)
     if (y === null) return false
-    return Math.abs(point.y - y) <= hitTolerance(this.style.lineWidth)
+    return point.x >= this.leftEdge(viewport) - 4 && Math.abs(point.y - y) <= hitTolerance(this.style.lineWidth)
   }
 }
 
 /** Horizontal line from its anchor rightward. */
-export class HorizontalRay extends Drawing {
-  readonly type = 'horizontal_ray'
+export class HorizontalRay extends HorizontalLine {
+  override readonly type = 'horizontal_ray'
 
-  requiredAnchors(): number {
-    return 1
-  }
-
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+  protected override leftEdge(viewport: Viewport): number {
     const anchor = this.anchors[0]
-    if (!anchor) return
+    if (!anchor) return 0
     const p = this.anchorToPixel(anchor, viewport)
-    if (!p) return
-    applyStroke(ctx, this.style)
-    strokeSegment(ctx, p, { x: viewport.width, y: p.y })
-  }
-
-  testHit(point: Point, viewport: Viewport): boolean {
-    const anchor = this.anchors[0]
-    if (!anchor) return false
-    const p = this.anchorToPixel(anchor, viewport)
-    if (!p) return false
-    return distanceToSegment(point, p, { x: viewport.width, y: p.y }) <= hitTolerance(this.style.lineWidth)
+    return p ? p.x : 0
   }
 }
 
@@ -228,8 +307,30 @@ export class VerticalLine extends Drawing {
 }
 
 /** Crosshair pinned to one point: a horizontal and a vertical line through the anchor. */
-export class CrossLine extends Drawing {
+export class CrossLine extends Drawing<HorizontalLineProps> {
   readonly type = 'cross_line'
+
+  private readonly _axisViews = [
+    new AxisLabel({
+      coordinate: () => {
+        const anchor = this.anchors[0]
+        const viewport = this.getViewport()
+        if (!anchor || !viewport) return null
+        return viewport.yOf(anchor.price)
+      },
+      text: () => formatPrice(this.anchors[0]?.price ?? 0),
+      color: () => this.style.lineColor,
+      visible: () => this.props.showPrice && this.isVisibleNow(),
+    }),
+  ]
+
+  protected override defaultProps(): HorizontalLineProps {
+    return { showPrice: true }
+  }
+
+  protected override axisViews(): readonly ISeriesPrimitiveAxisView[] {
+    return this._axisViews
+  }
 
   requiredAnchors(): number {
     return 1

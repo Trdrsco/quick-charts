@@ -7,8 +7,11 @@ const PROFIT = '#089981'
 const LOSS = '#f23645'
 
 export type PositionProps = {
-  /** Traded quantity used for the money figures. */
-  quantity: number
+  /** Account equity the risk figure is taken from. */
+  accountSize: number
+  /** Risk per trade, as a percent of the account or a money amount (per `riskDisplay`). */
+  risk: number
+  riskDisplay: 'percent' | 'money'
   showPrices: boolean
 }
 
@@ -21,7 +24,7 @@ export class LongPosition extends Drawing<PositionProps> {
   readonly type: string = 'long_position'
 
   protected override defaultProps(): PositionProps {
-    return { quantity: 1, showPrices: true }
+    return { accountSize: 10000, risk: 1, riskDisplay: 'percent', showPrices: true }
   }
 
   requiredAnchors(): number {
@@ -64,14 +67,16 @@ export class LongPosition extends Drawing<PositionProps> {
     strokeSegment(ctx, { x: z.left, y: z.entryY }, { x: z.right, y: z.entryY })
     ctx.restore()
 
-    const qty = this.props.quantity
+    // Quantity derives from the risk budget over the stop distance (the trade-plan convention).
+    const riskMoney = this.props.riskDisplay === 'percent' ? (this.props.accountSize * this.props.risk) / 100 : this.props.risk
+    const stopDistance = Math.abs(entry.price - stop.price)
+    const qty = stopDistance > 0 ? riskMoney / stopDistance : 0
     const reward = Math.abs(target.price - entry.price) * qty
-    const risk = Math.abs(entry.price - stop.price) * qty
-    const ratio = risk > 0 ? reward / risk : 0
+    const ratio = stopDistance > 0 ? Math.abs(target.price - entry.price) / stopDistance : 0
     const mid = (z.left + z.right) / 2
     paintLabel(
       ctx,
-      `RR ${ratio.toFixed(2)}  ·  +${formatPrice(reward)} / -${formatPrice(risk)}`,
+      `RR ${ratio.toFixed(2)}  ·  Qty ${qty.toFixed(qty >= 100 ? 0 : 2)}  ·  +${formatPrice(reward)} / -${formatPrice(riskMoney)}`,
       { x: mid, y: z.entryY },
       this.style,
       { align: 'center', background: withAlpha('#1b1f27', 0.92) },

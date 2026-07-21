@@ -3,6 +3,7 @@ import type {
   ISeriesApi,
   IPrimitivePaneView,
   ISeriesPrimitive,
+  ISeriesPrimitiveAxisView,
   PrimitiveHoveredItem,
   SeriesAttachedParameter,
   SeriesType,
@@ -21,7 +22,13 @@ import type {
   Viewport,
 } from './types'
 import { DEFAULT_OPTIONS, DEFAULT_STYLE } from './types'
+import type { IntervalContext } from './visibility'
+import { normalizeVisibility, visibleAt } from './visibility'
 import { DrawingPaneView } from '../render/pane-view'
+
+function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
+  return { ...DEFAULT_OPTIONS, ...patch, visibility: normalizeVisibility(patch.visibility) }
+}
 
 /** Any concrete drawing, prop shape erased — the store/registry currency. */
 export type AnyDrawing = Drawing<Record<string, unknown>>
@@ -83,6 +90,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   protected _options: DrawingOptions
   protected _props: P
   protected _state: DrawingState = 'normal'
+  private _intervalContext: IntervalContext = null
 
   private _chart: IChartApi | null = null
   private _series: ISeriesApi<SeriesType> | null = null
@@ -99,7 +107,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this.id = id
     this._anchors = anchors.map((a) => ({ ...a }))
     this._style = { ...DEFAULT_STYLE, ...style }
-    this._options = { ...DEFAULT_OPTIONS, ...options }
+    this._options = normalizeOptions(options)
     this._props = { ...this.defaultProps(), ...props }
     this._paneViews = [new DrawingPaneView(this)]
   }
@@ -127,8 +135,17 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     return this._paneViews
   }
 
+  priceAxisViews(): readonly ISeriesPrimitiveAxisView[] {
+    return this.axisViews()
+  }
+
+  /** Axis pills this drawing contributes (a horizontal line's price marker); default none. */
+  protected axisViews(): readonly ISeriesPrimitiveAxisView[] {
+    return []
+  }
+
   hitTest(x: number, y: number): PrimitiveHoveredItem | null {
-    if (!this._options.visible) return null
+    if (!this.isVisibleNow()) return null
     const viewport = this.getViewport()
     if (!viewport) return null
     if (!this.testHit({ x, y }, viewport)) return null
@@ -194,8 +211,21 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   }
 
   updateOptions(patch: Partial<DrawingOptions>): void {
-    this._options = { ...this._options, ...patch }
+    this._options = {
+      ...this._options,
+      ...patch,
+      visibility: patch.visibility ? normalizeVisibility(patch.visibility) : this._options.visibility,
+    }
     this.requestUpdate()
+  }
+
+  setIntervalContext(context: IntervalContext): void {
+    this._intervalContext = context
+    this.requestUpdate()
+  }
+
+  isVisibleNow(): boolean {
+    return this._options.visible && visibleAt(this._options.visibility, this._intervalContext)
   }
 
   applyProps(patch: Partial<P>): void {
@@ -274,7 +304,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   fromJSON(data: SerializedDrawing): void {
     this._anchors = data.anchors.map((a) => ({ ...a }))
     this._style = { ...DEFAULT_STYLE, ...data.style }
-    this._options = { ...DEFAULT_OPTIONS, ...data.options }
+    this._options = normalizeOptions(data.options)
     this._props = { ...this.defaultProps(), ...(data.props as Partial<P> | undefined) }
     this.requestUpdate()
   }

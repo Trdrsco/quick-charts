@@ -11,6 +11,7 @@ import type {
 } from './types'
 import type { AnyDrawing } from './drawing'
 import { viewportOf } from './drawing'
+import type { IntervalContext } from './visibility'
 
 /**
  * The drawing model for one chart: an ordered store of drawings attached to a series, with
@@ -24,7 +25,14 @@ export class DrawingManager {
   private _selectedId: string | null = null
   private _chart: IChartApi | null = null
   private _series: ISeriesApi<SeriesType> | null = null
+  private _intervalContext: IntervalContext = null
   private readonly _listeners = new Map<DrawingEventType, Set<DrawingEventCallback>>()
+
+  /** Broadcast the chart's interval so per-interval visibility rules apply. */
+  setIntervalContext(context: IntervalContext): void {
+    this._intervalContext = context
+    for (const drawing of this._drawings.values()) drawing.setIntervalContext(context)
+  }
 
   attach(chart: IChartApi, series: ISeriesApi<SeriesType>): void {
     if (this._chart) this.detach()
@@ -61,6 +69,7 @@ export class DrawingManager {
     // Every IDrawing is a Drawing subclass (the registry only makes those); the store needs the
     // class type because attaching requires the series-primitive surface.
     const concrete = drawing as AnyDrawing
+    concrete.setIntervalContext(this._intervalContext)
     this._drawings.set(concrete.id, concrete)
     this._order.push(concrete.id)
     this._series?.attachPrimitive(concrete)
@@ -148,11 +157,11 @@ export class DrawingManager {
     const viewport = this.getViewport()
     if (!viewport) return null
     const sel = this.selected()
-    if (sel && sel.options.visible && sel.testHit(point, viewport)) return sel
+    if (sel && sel.isVisibleNow() && sel.testHit(point, viewport)) return sel
     const byTopmost = [...this._order].reverse().map((id) => this._drawings.get(id))
     byTopmost.sort((a, b) => (b?.options.zIndex ?? 0) - (a?.options.zIndex ?? 0))
     for (const drawing of byTopmost) {
-      if (!drawing || !drawing.options.visible) continue
+      if (!drawing || !drawing.isVisibleNow()) continue
       if (drawing.testHit(point, viewport)) return drawing
     }
     return null

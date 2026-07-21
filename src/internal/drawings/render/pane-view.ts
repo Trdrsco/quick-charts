@@ -25,7 +25,7 @@ export class DrawingPaneView implements IPrimitivePaneView, IPrimitivePaneRender
 
   draw(target: CanvasRenderingTarget2D): void {
     const drawing = this._drawing
-    if (!drawing.options.visible) return
+    if (!drawing.isVisibleNow()) return
     const viewport = drawing.getViewport()
     if (!viewport) return
 
