@@ -12,6 +12,7 @@ import type {
 import type { AnyDrawing } from './drawing'
 import { viewportOf } from './drawing'
 import type { IntervalContext } from './visibility'
+import type { BarSource } from './bars'
 
 /**
  * The drawing model for one chart: an ordered store of drawings attached to a series, with
@@ -27,7 +28,14 @@ export class DrawingManager {
   private _series: ISeriesApi<SeriesType> | null = null
   private _intervalContext: IntervalContext = null
   private _allHidden = false
+  private _barSource: BarSource | null = null
   private readonly _listeners = new Map<DrawingEventType, Set<DrawingEventCallback>>()
+
+  /** Host bar feed, broadcast to every drawing (data-driven tools read it at paint time). */
+  setBarSource(source: BarSource | null): void {
+    this._barSource = source
+    for (const drawing of this._drawings.values()) drawing.setBarSource(source)
+  }
 
   /** Broadcast the chart's interval so per-interval visibility rules apply. */
   setIntervalContext(context: IntervalContext): void {
@@ -82,6 +90,7 @@ export class DrawingManager {
     const concrete = drawing as AnyDrawing
     concrete.setIntervalContext(this._intervalContext)
     concrete.setGlobalHidden(this._allHidden)
+    concrete.setBarSource(this._barSource)
     this._drawings.set(concrete.id, concrete)
     this._order.push(concrete.id)
     this._series?.attachPrimitive(concrete)

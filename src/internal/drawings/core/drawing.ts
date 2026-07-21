@@ -24,6 +24,7 @@ import type {
 import { DEFAULT_OPTIONS, DEFAULT_STYLE } from './types'
 import type { IntervalContext } from './visibility'
 import { normalizeVisibility, visibleAt } from './visibility'
+import type { BarSource, SourceBar } from './bars'
 import { DrawingPaneView } from '../render/pane-view'
 
 function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
@@ -92,6 +93,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   protected _state: DrawingState = 'normal'
   private _intervalContext: IntervalContext = null
   private _globalHidden = false
+  private _barSource: BarSource | null = null
 
   private _chart: IChartApi | null = null
   private _series: ISeriesApi<SeriesType> | null = null
@@ -229,6 +231,16 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   setGlobalHidden(hidden: boolean): void {
     this._globalHidden = hidden
     this.requestUpdate()
+  }
+
+  /** Host bar feed for data-driven tools (regression, profiles, VWAP, bar patterns). */
+  setBarSource(source: BarSource | null): void {
+    this._barSource = source
+    this.requestUpdate()
+  }
+
+  protected bars(): readonly SourceBar[] {
+    return this._barSource?.() ?? []
   }
 
   isVisibleNow(): boolean {

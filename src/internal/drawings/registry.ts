@@ -54,6 +54,18 @@ import { Forecast, LongPosition, Projection, ShortPosition } from './tools/forec
 import { Brush, Highlighter, PathLine, Polyline } from './tools/freehand'
 import { ArrowMarker, Pin, PriceNote, Signpost } from './tools/annotations'
 import { TableNote } from './tools/table'
+import { AbcdPattern, CypherPattern, HeadAndShoulders, TrianglePattern, XabcdPattern } from './tools/patterns'
+import {
+  ElliottCorrection,
+  ElliottDoubleCombo,
+  ElliottImpulse,
+  ElliottTriangle,
+  ElliottTripleCombo,
+} from './tools/elliott'
+import { CyclicLines, SineLine, TimeCycles } from './tools/cycles'
+import { BarsPattern, GhostFeed, RegressionTrend } from './tools/bars'
+import { AnchoredVolumeProfile, AnchoredVwap, FixedRangeVolumeProfile } from './tools/volume'
+import { ContentCard, GlyphMark, IconMark, ImageNote, StickerMark } from './tools/content'
 
 export interface ToolDefinition {
   type: string
@@ -68,6 +80,9 @@ export interface ToolDefinition {
   /** How anchors are gathered: drag-captured stroke, or click-to-add points (double-click ends).
    *  Omitted = the fixed `anchors` count. */
   placement?: 'freehand' | 'multipoint'
+  /** Tool snapshots the bars between its anchors when placement completes (the host triggers
+   *  the drawing's `capture()`). */
+  capturesBars?: boolean
   create(
     id: string,
     anchors?: Anchor[],
@@ -85,6 +100,7 @@ interface ToolMeta {
   style?: Partial<DrawingStyle>
   hasText?: boolean
   placement?: 'freehand' | 'multipoint'
+  capturesBars?: boolean
 }
 
 /** Bind a tool class to its metadata (typed props cast happens exactly once, here). */
@@ -114,7 +130,9 @@ export const TOOL_CATEGORIES: readonly ToolCategory[] = [
   'gann',
   'patterns',
   'elliott',
+  'cycles',
   'forecasting',
+  'volume',
   'measurement',
   'shapes',
   'annotation',
@@ -145,6 +163,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(DoubleCurve, { type: 'double_curve', name: 'Double curve', category: 'shapes', anchors: 4 }),
 
   // Channels
+  tool(RegressionTrend, { type: 'regression_trend', name: 'Regression trend', category: 'channels', anchors: 2 }),
   tool(ParallelChannel, { type: 'parallel_channel', name: 'Parallel channel', category: 'channels', anchors: 3, style: { fillOpacity: 0.08 } }),
   tool(FlatTopBottom, { type: 'flat_top_bottom', name: 'Flat top/bottom', category: 'channels', anchors: 3, style: { fillOpacity: 0.08 } }),
   tool(DisjointChannel, { type: 'disjoint_channel', name: 'Disjoint channel', category: 'channels', anchors: 4, style: { fillOpacity: 0.08 } }),
@@ -174,11 +193,44 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(GannSquareFixed, { type: 'gannbox_fixed', name: 'Gann square fixed', category: 'gann', anchors: 2 }),
   tool(GannFan, { type: 'gannbox_fan', name: 'Gann fan', category: 'gann', anchors: 2 }),
 
+  // Patterns
+  tool(XabcdPattern, { type: 'xabcd_pattern', name: 'XABCD pattern', category: 'patterns', anchors: 5 }),
+  tool(CypherPattern, { type: 'cypher_pattern', name: 'Cypher pattern', category: 'patterns', anchors: 5 }),
+  tool(AbcdPattern, { type: 'abcd_pattern', name: 'ABCD pattern', category: 'patterns', anchors: 4 }),
+  tool(TrianglePattern, { type: 'triangle_pattern', name: 'Triangle pattern', category: 'patterns', anchors: 4 }),
+  tool(HeadAndShoulders, { type: 'head_and_shoulders', name: 'Head and shoulders', category: 'patterns', anchors: 7 }),
+
+  // Elliott waves
+  tool(ElliottImpulse, { type: 'elliott_impulse_wave', name: 'Elliott impulse (12345)', category: 'elliott', anchors: 6 }),
+  tool(ElliottCorrection, { type: 'elliott_correction', name: 'Elliott correction (ABC)', category: 'elliott', anchors: 4 }),
+  tool(ElliottTriangle, { type: 'elliott_triangle_wave', name: 'Elliott triangle (ABCDE)', category: 'elliott', anchors: 6 }),
+  tool(ElliottDoubleCombo, { type: 'elliott_double_combo', name: 'Elliott double combo (WXY)', category: 'elliott', anchors: 4 }),
+  tool(ElliottTripleCombo, { type: 'elliott_triple_combo', name: 'Elliott triple combo (WXYXZ)', category: 'elliott', anchors: 6 }),
+
+  // Cycles
+  tool(CyclicLines, { type: 'cyclic_lines', name: 'Cyclic lines', category: 'cycles', anchors: 2 }),
+  tool(TimeCycles, { type: 'time_cycles', name: 'Time cycles', category: 'cycles', anchors: 2 }),
+  tool(SineLine, { type: 'sine_line', name: 'Sine line', category: 'cycles', anchors: 2 }),
+
   // Forecasting & positions
   tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3 }),
   tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3 }),
   tool(Projection, { type: 'projection', name: 'Projection', category: 'forecasting', anchors: 3 }),
   tool(Forecast, { type: 'forecast', name: 'Forecast', category: 'forecasting', anchors: 2 }),
+  tool(BarsPattern, { type: 'bars_pattern', name: 'Bars pattern', category: 'forecasting', anchors: 2, capturesBars: true }),
+  tool(GhostFeed, { type: 'ghost_feed', name: 'Ghost feed', category: 'forecasting', anchors: 2, capturesBars: true }),
+
+  // Volume
+  tool(AnchoredVwap, { type: 'anchored_vwap', name: 'Anchored VWAP', category: 'volume', anchors: 1 }),
+  tool(FixedRangeVolumeProfile, { type: 'fixed_range_volume_profile', name: 'Fixed range volume profile', category: 'volume', anchors: 2 }),
+  tool(AnchoredVolumeProfile, { type: 'anchored_volume_profile', name: 'Anchored volume profile', category: 'volume', anchors: 1 }),
+
+  // Content
+  tool(ImageNote, { type: 'image', name: 'Image', category: 'content', anchors: 1 }),
+  tool(ContentCard, { type: 'content_card', name: 'Content card', category: 'content', anchors: 1, hasText: true }),
+  tool(GlyphMark, { type: 'emoji', name: 'Emoji', category: 'content', anchors: 1 }),
+  tool(StickerMark, { type: 'sticker', name: 'Sticker', category: 'content', anchors: 1 }),
+  tool(IconMark, { type: 'icon', name: 'Icon', category: 'content', anchors: 1 }),
 
   // Annotation
   tool(TextLabel, { type: 'text', name: 'Text', category: 'annotation', anchors: 1, hasText: true }),
