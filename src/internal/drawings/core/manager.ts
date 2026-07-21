@@ -142,6 +142,43 @@ export class DrawingManager {
     return (this._selectedId && this._drawings.get(this._selectedId)) || null
   }
 
+  // ============ Stacking ============
+
+  /** Paint above everything else (and hit-test first, since hit order follows zIndex). */
+  bringToFront(id: string): void {
+    const drawing = this._drawings.get(id)
+    if (!drawing) return
+    const top = Math.max(0, ...this.all().map((d) => d.options.zIndex))
+    drawing.updateOptions({ zIndex: top + 1 })
+    this.restack()
+  }
+
+  sendToBack(id: string): void {
+    const drawing = this._drawings.get(id)
+    if (!drawing) return
+    const bottom = Math.min(0, ...this.all().map((d) => d.options.zIndex))
+    drawing.updateOptions({ zIndex: bottom - 1 })
+    this.restack()
+  }
+
+  /** Re-attach primitives so PAINT order follows (zIndex, insertion) — the chart paints
+   *  primitives in attach order, so stacking changes must re-key that order. */
+  private restack(): void {
+    if (!this._series) return
+    const sorted = this._order
+      .map((id) => this._drawings.get(id))
+      .filter((d): d is AnyDrawing => !!d)
+      .sort((a, b) => a.options.zIndex - b.options.zIndex)
+    for (const drawing of sorted) {
+      try {
+        this._series.detachPrimitive(drawing)
+        this._series.attachPrimitive(drawing)
+      } catch {
+        /* series disposed mid-restack */
+      }
+    }
+  }
+
   // ============ Hit testing ============
 
   getViewport(): Viewport | null {

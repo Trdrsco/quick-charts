@@ -53,6 +53,7 @@ import { GannBox, GannFan, GannSquare, GannSquareFixed } from './tools/gann'
 import { Forecast, LongPosition, Projection, ShortPosition } from './tools/forecasting'
 import { Brush, Highlighter, PathLine, Polyline } from './tools/freehand'
 import { ArrowMarker, Pin, PriceNote, Signpost } from './tools/annotations'
+import { TableNote } from './tools/table'
 
 export interface ToolDefinition {
   type: string
@@ -192,6 +193,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(PriceNote, { type: 'price_note', name: 'Price note', category: 'annotation', anchors: 2, hasText: true }),
   tool(Pin, { type: 'pin', name: 'Pin', category: 'annotation', anchors: 1, hasText: true }),
   tool(Signpost, { type: 'signpost', name: 'Signpost', category: 'annotation', anchors: 1, hasText: true }),
+  tool(TableNote, { type: 'table', name: 'Table', category: 'annotation', anchors: 1 }),
 
   // Brushes & multi-point shapes
   tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand' }),
