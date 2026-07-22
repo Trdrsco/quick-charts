@@ -205,10 +205,15 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     if (!viewport) return null
     if (!this.testHit({ x, y }, viewport)) return null
     return {
-      cursorStyle: this._options.locked ? 'default' : 'pointer',
+      cursorStyle: this._options.locked ? 'default' : (this.cursorAt({ x, y }, viewport) ?? 'pointer'),
       externalId: this.id,
       zOrder: 'normal',
     }
+  }
+
+  /** Position-specific hover cursor (a table divider's col-resize); null = the default pointer. */
+  protected cursorAt(_point: Point, _viewport: Viewport): string | null {
+    return null
   }
 
   // ============ State ============

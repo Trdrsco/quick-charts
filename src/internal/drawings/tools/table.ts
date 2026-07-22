@@ -149,20 +149,72 @@ export class TableNote extends Drawing<TableProps> {
     ctx.restore()
   }
 
-  /** Corners first (whole-grid scale), then the internal column/row dividers. */
+  /** Corner grips only — the internal dividers drag as LINES (see `dividerHandleIndex`), so no
+   *  stray squares float mid-table. */
   override resizeHandles(viewport: Viewport): Point[] {
     const f = this.frame(viewport)
     if (!f) return []
-    const { xs, ys } = this.offsets()
-    const handles: Point[] = [
+    return [
       { x: f.x, y: f.y },
       { x: f.x + f.width, y: f.y },
       { x: f.x + f.width, y: f.y + f.height },
       { x: f.x, y: f.y + f.height },
     ]
-    for (let c = 1; c < xs.length - 1; c++) handles.push({ x: f.x + xs[c], y: f.y + f.height / 2 })
-    for (let r = 1; r < ys.length - 1; r++) handles.push({ x: f.x + f.width / 2, y: f.y + ys[r] })
-    return handles
+  }
+
+  /** Handle indices: 0-3 corners, then column dividers, row dividers, and the four outer edges
+   *  (left, right, top, bottom). */
+  private edgeBase(): number {
+    const rows = this.props.cells.length
+    const cols = this.props.cells[0]?.length ?? 0
+    return 4 + Math.max(0, cols - 1) + Math.max(0, rows - 1)
+  }
+
+  /**
+   * The divider or outer edge under a point — grabbable ANYWHERE along the line (±4px). Returns
+   * the `resizeTo`-compatible handle index; corners win first (the host checks grips before
+   * calling this).
+   */
+  dividerHandleIndex(point: Point, viewport: Viewport): number | null {
+    const f = this.frame(viewport)
+    if (!f) return null
+    const { xs, ys } = this.offsets()
+    const inY = point.y >= f.y - 4 && point.y <= f.y + f.height + 4
+    const inX = point.x >= f.x - 4 && point.x <= f.x + f.width + 4
+    if (inY) {
+      for (let c = 1; c < xs.length - 1; c++) {
+        if (Math.abs(point.x - (f.x + xs[c])) <= 4) return 4 + (c - 1)
+      }
+    }
+    if (inX) {
+      for (let r = 1; r < ys.length - 1; r++) {
+        if (Math.abs(point.y - (f.y + ys[r])) <= 4) return 4 + (xs.length - 2) + (r - 1)
+      }
+    }
+    const edge = this.edgeBase()
+    if (inY && Math.abs(point.x - f.x) <= 4) return edge
+    if (inY && Math.abs(point.x - (f.x + f.width)) <= 4) return edge + 1
+    if (inX && Math.abs(point.y - f.y) <= 4) return edge + 2
+    if (inX && Math.abs(point.y - (f.y + f.height)) <= 4) return edge + 3
+    return null
+  }
+
+  /** Hover feedback: resize cursors over the corners and divider lines. */
+  protected override cursorAt(point: Point, viewport: Viewport): string | null {
+    const f = this.frame(viewport)
+    if (!f) return null
+    const corners = this.resizeHandles(viewport)
+    for (let i = 0; i < corners.length; i++) {
+      if (Math.hypot(point.x - corners[i].x, point.y - corners[i].y) <= 8) {
+        return i % 2 === 0 ? 'nwse-resize' : 'nesw-resize'
+      }
+    }
+    const divider = this.dividerHandleIndex(point, viewport)
+    if (divider === null) return null
+    const cols = this.props.cells[0]?.length ?? 0
+    const edge = this.edgeBase()
+    if (divider >= edge) return divider - edge < 2 ? 'col-resize' : 'row-resize'
+    return divider - 4 < cols - 1 ? 'col-resize' : 'row-resize'
   }
 
   override resizeTo(handleIndex: number, point: Point, viewport: Viewport): void {
@@ -196,8 +248,37 @@ export class TableNote extends Drawing<TableProps> {
       return
     }
 
-    const divider = handleIndex - 4
     const { xs, ys } = this.offsets()
+    const edge = this.edgeBase()
+    if (handleIndex >= edge) {
+      const which = handleIndex - edge
+      const colWidths = Array.from({ length: cols }, (_, c) => this.colWidth(c))
+      const rowHeights = Array.from({ length: rows }, (_, r) => this.rowHeight(r))
+      if (which === 0) {
+        // Left edge: the first column grows toward the pointer, the right side stays pinned.
+        colWidths[0] = Math.min(MAX_COL, Math.max(MIN_COL, f.x + xs[1] - point.x))
+        this.applyProps({ colWidths } as Partial<TableProps>)
+        const time = viewport.timeAt(f.x + xs[1] - colWidths[0])
+        const price = viewport.priceAt(f.y)
+        if (time !== null && price !== null) this.updateAnchor(0, { time, price })
+      } else if (which === 1) {
+        colWidths[cols - 1] = Math.min(MAX_COL, Math.max(MIN_COL, point.x - (f.x + xs[cols - 1])))
+        this.applyProps({ colWidths } as Partial<TableProps>)
+      } else if (which === 2) {
+        // Top edge: the first row grows toward the pointer, the bottom stays pinned.
+        rowHeights[0] = Math.min(MAX_ROW, Math.max(MIN_ROW, f.y + ys[1] - point.y))
+        this.applyProps({ rowHeights } as Partial<TableProps>)
+        const time = viewport.timeAt(f.x)
+        const price = viewport.priceAt(f.y + ys[1] - rowHeights[0])
+        if (time !== null && price !== null) this.updateAnchor(0, { time, price })
+      } else {
+        rowHeights[rows - 1] = Math.min(MAX_ROW, Math.max(MIN_ROW, point.y - (f.y + ys[rows - 1])))
+        this.applyProps({ rowHeights } as Partial<TableProps>)
+      }
+      return
+    }
+
+    const divider = handleIndex - 4
     if (divider < cols - 1) {
       const colWidths = Array.from({ length: cols }, (_, c) => this.colWidth(c))
       colWidths[divider] = Math.min(MAX_COL, Math.max(MIN_COL, point.x - (f.x + xs[divider])))

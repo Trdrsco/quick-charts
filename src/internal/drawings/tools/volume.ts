@@ -2,7 +2,7 @@ import type { Time } from 'lightweight-charts'
 
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
-import { barsInRange, volumeProfile } from '../core/bars'
+import { barsInRange, impliedTick, volumeProfile } from '../core/bars'
 import type { SourceBar } from '../core/bars'
 import { distanceToSegment } from '../core/geometry'
 import { alphaOf, applyStroke, dashPattern, paintLabel, withAlpha } from '../render/canvas'
@@ -204,18 +204,6 @@ function developingLevels(
     }
   }
   return out
-}
-
-/** Smallest price increment implied by the data — decimal places of the recent closes. The
- *  feed carries no instrument metadata, so tick-based row sizing infers a tick from precision. */
-function impliedTick(bars: readonly SourceBar[]): number {
-  let decimals = 0
-  for (const bar of bars.slice(-50)) {
-    const text = String(bar.close)
-    const dot = text.indexOf('.')
-    if (dot !== -1) decimals = Math.max(decimals, text.length - dot - 1)
-  }
-  return Math.pow(10, -Math.min(decimals, 8))
 }
 
 /** Shared volume-by-price histogram body; subclasses define the bar range and the x-span. */

@@ -33,7 +33,7 @@ import {
   PriceLabel,
   TextLabel,
 } from './tools/annotations'
-import { DatePriceRange, DateRange, PriceRange } from './tools/measurement'
+import { DatePriceRange, DateRange, Measure, PriceRange } from './tools/measurement'
 import { DisjointChannel, FlatTopBottom, ParallelChannel } from './tools/channels'
 import { InsidePitchfork, ModifiedSchiffPitchfork, Pitchfork, SchiffPitchfork } from './tools/pitchforks'
 import {
@@ -258,6 +258,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(PriceRange, { type: 'price_range', name: 'Price range', category: 'measurement', anchors: 2 }),
   tool(DateRange, { type: 'date_range', name: 'Date range', category: 'measurement', anchors: 2 }),
   tool(DatePriceRange, { type: 'date_and_price_range', name: 'Date and price range', category: 'measurement', anchors: 2 }),
+  tool(Measure, { type: 'measure', name: 'Measure', category: 'measurement', anchors: 2 }),
 ]
 
 /**

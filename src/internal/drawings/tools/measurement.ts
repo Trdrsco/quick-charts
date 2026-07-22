@@ -1,6 +1,6 @@
-import type { Point, Viewport } from '../core/types'
+import type { DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
-import { barsInRange } from '../core/bars'
+import { barsInRange, impliedTick } from '../core/bars'
 import { applyStroke, formatPrice, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
 /** Compact volume readout (12.4M style). */
@@ -175,6 +175,97 @@ export class DatePriceRange extends RangeMeter {
 
   protected measuresTime(): boolean {
     return true
+  }
+}
+
+const MEASURE_UP = '#2962ff'
+const MEASURE_DOWN = '#f23645'
+
+/**
+ * The measure action's readout: a direction-colored zone (blue measuring up, red down) with a
+ * vertical arrow spanning it, a horizontal arrow at mid-height, and a solid pill above/below
+ * carrying `Δprice (Δ%) Δticks` over `bars, duration`.
+ */
+export class Measure extends Drawing {
+  readonly type = 'measure'
+
+  requiredAnchors(): number {
+    return 2
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const [pa, pb] = this.anchorPixels(viewport)
+    const [a, b] = this.anchors
+    if (!pa || !pb || !a || !b) return
+    const up = b.price >= a.price
+    const color = up ? MEASURE_UP : MEASURE_DOWN
+    const r = box(pa, pb)
+    if (r.width < 1 && r.height < 1) return
+    const arrowStyle: DrawingStyle = { ...this.style, lineColor: color, lineWidth: 1.5 }
+
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.fillStyle = withAlpha(color, 0.18)
+    ctx.fillRect(r.x, r.y, r.width, r.height)
+
+    // The cross: price arrow spanning the zone toward the move's direction, time arrow at
+    // mid-height toward the drag's direction.
+    const cx = r.x + r.width / 2
+    const cy = r.y + r.height / 2
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1.5
+    if (r.height >= 8) {
+      const from = { x: cx, y: up ? r.y + r.height : r.y }
+      const to = { x: cx, y: up ? r.y : r.y + r.height }
+      strokeSegment(ctx, from, to)
+      paintArrowHead(ctx, from, to, arrowStyle)
+    }
+    if (r.width >= 8) {
+      const rightward = pb.x >= pa.x
+      const from = { x: rightward ? r.x : r.x + r.width, y: cy }
+      const to = { x: rightward ? r.x + r.width : r.x, y: cy }
+      strokeSegment(ctx, from, to)
+      paintArrowHead(ctx, from, to, arrowStyle)
+    }
+
+    // The data pill: solid direction color, white text, two centered lines.
+    const dPrice = b.price - a.price
+    const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
+    const tick = impliedTick(this.bars())
+    const ticks = tick > 0 ? Math.round(Math.abs(dPrice) / tick) : 0
+    const parts = [`${formatPrice(dPrice)} (${pct.toFixed(2)}%)`]
+    if (ticks > 0 && Number.isFinite(ticks)) parts[0] += ` ${ticks}`
+    const bars = viewport.barsBetween(a.time, b.time)
+    const secs = Math.abs(Number(b.time) - Number(a.time))
+    const line2: string[] = []
+    if (bars !== null) line2.push(`${Math.abs(Math.round(bars))} bars`)
+    if (Number.isFinite(secs) && secs > 0) line2.push(spanText(secs))
+    const lines = line2.length ? [parts[0], line2.join(', ')] : [parts[0]]
+
+    ctx.font = `600 ${this.style.fontSize}px ui-sans-serif, system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const lineH = Math.round(this.style.fontSize * 1.35)
+    const textW = Math.max(...lines.map((l) => ctx.measureText(l).width))
+    const pillW = textW + 20
+    const pillH = lines.length * lineH + 10
+    const pillX = Math.max(4, Math.min(cx - pillW / 2, viewport.width - pillW - 4))
+    const pillY = up ? Math.max(4, r.y - pillH - 10) : Math.min(viewport.height - pillH - 4, r.y + r.height + 10)
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.roundRect(pillX, pillY, pillW, pillH, 4)
+    ctx.fill()
+    ctx.fillStyle = '#ffffff'
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], pillX + pillW / 2, pillY + 5 + lineH * i + lineH / 2)
+    }
+    ctx.restore()
+  }
+
+  testHit(point: Point, viewport: Viewport): boolean {
+    const [pa, pb] = this.anchorPixels(viewport)
+    if (!pa || !pb) return false
+    return inBox(point, box(pa, pb))
   }
 }
 
