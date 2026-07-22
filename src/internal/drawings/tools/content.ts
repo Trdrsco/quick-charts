@@ -143,6 +143,20 @@ export type GlyphProps = {
   size: number
 }
 
+let glyphImageUrl: ((glyph: string) => string | null) | null = null
+const glyphImages = new Map<string, HTMLImageElement | 'loading' | 'failed'>()
+
+/**
+ * Host-registered emoji artwork source (a vendored image set): platform emoji fonts can't be
+ * trusted on canvas (Windows draws no flag glyphs at all), so emoji/sticker marks draw the
+ * host's images when a source is registered. Icon marks always stay text — the stroke tint
+ * must carry over.
+ */
+export function setGlyphImageSource(resolve: ((glyph: string) => string | null) | null): void {
+  glyphImageUrl = resolve
+  glyphImages.clear()
+}
+
 /** Shared body of the emoji/sticker/icon tools: one glyph rendered at a point. */
 export class GlyphMark extends Drawing<GlyphProps> {
   readonly type: string = 'emoji'
@@ -159,13 +173,43 @@ export class GlyphMark extends Drawing<GlyphProps> {
     return Math.max(10, this.props.size) / 2 + 4
   }
 
+  /** Icon marks tint with the stroke color; emoji/sticker marks carry their own artwork. */
+  protected tintsWithStroke(): boolean {
+    return false
+  }
+
+  private glyphImage(): HTMLImageElement | null {
+    if (this.tintsWithStroke() || !glyphImageUrl || typeof Image === 'undefined') return null
+    const url = glyphImageUrl(this.props.glyph)
+    if (!url) return null
+    const cached = glyphImages.get(url)
+    if (cached instanceof HTMLImageElement) return cached
+    if (cached === undefined) {
+      glyphImages.set(url, 'loading')
+      const image = new Image()
+      image.onload = () => {
+        glyphImages.set(url, image)
+        this.requestUpdate()
+      }
+      image.onerror = () => glyphImages.set(url, 'failed')
+      image.src = url
+    }
+    return null
+  }
+
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const anchor = this.anchors[0]
     if (!anchor) return
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return
+    const size = Math.max(10, this.props.size)
+    const image = this.glyphImage()
+    if (image) {
+      ctx.drawImage(image, p.x - size / 2, p.y - size / 2, size, size)
+      return
+    }
     ctx.save()
-    ctx.font = `${Math.max(10, this.props.size)}px ui-sans-serif, system-ui, sans-serif`
+    ctx.font = `${size}px ui-sans-serif, system-ui, sans-serif`
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     // Icons render in the drawing hue; emoji/stickers carry their own colors.
@@ -221,5 +265,9 @@ export class IconMark extends GlyphMark {
 
   protected override defaultProps(): GlyphProps {
     return { glyph: '★', size: 24 }
+  }
+
+  protected override tintsWithStroke(): boolean {
+    return true
   }
 }
