@@ -5,7 +5,7 @@ import { Drawing } from '../core/drawing'
 import { barsInRange, volumeProfile } from '../core/bars'
 import type { SourceBar } from '../core/bars'
 import { distanceToSegment } from '../core/geometry'
-import { applyStroke, paintLabel, withAlpha } from '../render/canvas'
+import { alphaOf, applyStroke, paintLabel, withAlpha } from '../render/canvas'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -205,8 +205,12 @@ abstract class VolumeProfileBase<P extends ProfileProps & Record<string, unknown
       const top = Math.min(y1, y2)
       const rowH = Math.max(1, Math.abs(y2 - y1) - 1)
       const inValueArea = vaShare > 0 && i >= low && i <= high
-      const upPaint = withAlpha(inValueArea ? this.props.valueAreaUpColor : this.props.upColor, inValueArea ? 0.8 : 0.3)
-      const downPaint = withAlpha(inValueArea ? this.props.valueAreaDownColor : this.props.downColor, inValueArea ? 0.8 : 0.3)
+      // Structural dim outside the value area, multiplied by any alpha the color itself carries.
+      const dim = inValueArea ? 0.8 : 0.3
+      const upBase = inValueArea ? this.props.valueAreaUpColor : this.props.upColor
+      const downBase = inValueArea ? this.props.valueAreaDownColor : this.props.downColor
+      const upPaint = withAlpha(upBase, dim * alphaOf(upBase))
+      const downPaint = withAlpha(downBase, dim * alphaOf(downBase))
       if (this.props.volume === 'updown') {
         const upW = (bin.upVolume / maxVolume) * maxWidth
         const downW = (bin.downVolume / maxVolume) * maxWidth

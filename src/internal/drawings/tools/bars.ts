@@ -2,7 +2,7 @@ import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { barsInRange, linearRegression } from '../core/bars'
 import { distanceToSegment } from '../core/geometry'
-import { applyStroke, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { alphaOf, applyStroke, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -361,8 +361,10 @@ export class GhostFeed extends Drawing<GhostFeedProps> {
       const ys = { o: viewport.yOf(open), h: viewport.yOf(high), l: viewport.yOf(low), c: viewport.yOf(close) }
       if (ys.o !== null && ys.h !== null && ys.l !== null && ys.c !== null) {
         const up = close >= open
+        // The tool-wide opacity multiplies any alpha a color value carries of its own.
+        const paint = (c: string) => withAlpha(c, alpha * alphaOf(c))
         if (this.props.drawWick) {
-          ctx.strokeStyle = withAlpha(this.props.wickColor, alpha)
+          ctx.strokeStyle = paint(this.props.wickColor)
           ctx.beginPath()
           ctx.moveTo(cx, ys.h)
           ctx.lineTo(cx, ys.l)
@@ -370,10 +372,10 @@ export class GhostFeed extends Drawing<GhostFeedProps> {
         }
         const top = Math.min(ys.o, ys.c)
         const bodyH = Math.max(1, Math.abs(ys.c - ys.o))
-        ctx.fillStyle = withAlpha(up ? this.props.upColor : this.props.downColor, alpha)
+        ctx.fillStyle = paint(up ? this.props.upColor : this.props.downColor)
         ctx.fillRect(cx - bodyW / 2, top, bodyW, bodyH)
         if (this.props.drawBorder) {
-          ctx.strokeStyle = withAlpha(up ? this.props.borderUpColor : this.props.borderDownColor, alpha)
+          ctx.strokeStyle = paint(up ? this.props.borderUpColor : this.props.borderDownColor)
           ctx.strokeRect(cx - bodyW / 2, top, bodyW, bodyH)
         }
       }
