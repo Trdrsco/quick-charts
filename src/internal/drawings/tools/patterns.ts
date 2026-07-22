@@ -58,7 +58,8 @@ export abstract class LabeledPolyline extends Drawing {
       ctx.strokeStyle = this.style.lineColor
       ctx.lineWidth = 1
       ctx.stroke()
-      ctx.fillStyle = this.style.lineColor
+      // The letters render through the text channel — label color/font edit independently.
+      ctx.fillStyle = this.style.textColor
       ctx.fillText(labels[i], p.x, cy + 0.5)
     }
     ctx.restore()

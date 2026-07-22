@@ -231,7 +231,7 @@ export class Measure extends Drawing {
     // The data pill: solid direction color, white text, two centered lines.
     const dPrice = b.price - a.price
     const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
-    const tick = impliedTick(this.bars())
+    const tick = this.tickSize() ?? impliedTick(this.bars())
     const ticks = tick > 0 ? Math.round(Math.abs(dPrice) / tick) : 0
     const parts = [`${formatPrice(dPrice)} (${pct.toFixed(2)}%)`]
     if (ticks > 0 && Number.isFinite(ticks)) parts[0] += ` ${ticks}`

@@ -221,7 +221,8 @@ abstract class VolumeProfileBase<P extends ProfileProps & Record<string, unknown
         max = Math.max(max, bar.high)
       }
       if (!(max > min)) return 24
-      const rows = Math.ceil((max - min) / (impliedTick(range) * size))
+      const tick = this.tickSize() ?? impliedTick(range)
+      const rows = Math.ceil((max - min) / (tick * size))
       return Math.max(1, Math.min(400, rows))
     }
     return Math.max(1, Math.min(400, Math.round(size)))

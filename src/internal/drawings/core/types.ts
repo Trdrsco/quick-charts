@@ -133,6 +133,8 @@ export interface IDrawing {
   setIntervalContext(context: IntervalContext): void
   /** Chart-wide hide-all switch (transient view state — never serialized). */
   setGlobalHidden(hidden: boolean): void
+  /** The instrument's real tick size (tick-denominated readouts); null falls back to inference. */
+  setTickSize(tick: number | null): void
   /** Manual `visible` switch AND hide-all AND the per-interval rule, combined. */
   isVisibleNow(): boolean
 

@@ -300,6 +300,18 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     return this._barSource?.() ?? []
   }
 
+  private _tickSize: number | null = null
+
+  /** The instrument's real tick size; tick-denominated readouts fall back to inference without it. */
+  setTickSize(tick: number | null): void {
+    this._tickSize = tick && tick > 0 ? tick : null
+    this.requestUpdate()
+  }
+
+  protected tickSize(): number | null {
+    return this._tickSize
+  }
+
   isVisibleNow(): boolean {
     return !this._globalHidden && this._options.visible && visibleAt(this._options.visibility, this._intervalContext)
   }

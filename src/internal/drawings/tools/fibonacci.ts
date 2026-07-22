@@ -458,11 +458,16 @@ export class FibTimeExtension extends Drawing<FibProps> {
 }
 
 /** Concentric circles at ratio multiples of the anchor distance. */
-export class FibCircles extends Drawing<FibProps> {
+export type FibCirclesProps = FibProps & {
+  /** Label the ratios as percentages (0.618 → 62%). */
+  coeffsAsPercents: boolean
+}
+
+export class FibCircles extends Drawing<FibCirclesProps> {
   readonly type = 'fib_circles'
 
-  protected override defaultProps(): FibProps {
-    return fibDefaults(RATIO_FRACTIONS.concat([{ value: 1.618, visible: true }]))
+  protected override defaultProps(): FibCirclesProps {
+    return { ...fibDefaults(RATIO_FRACTIONS.concat([{ value: 1.618, visible: true }])), coeffsAsPercents: false }
   }
 
   requiredAnchors(): number {
@@ -485,7 +490,8 @@ export class FibCircles extends Drawing<FibProps> {
       ctx.stroke()
       ctx.restore()
       if (this.props.showLevels) {
-        paintLabel(ctx, String(level.value), { x: p1.x + base * level.value + 4, y: p1.y }, { ...this.style, textColor: color })
+        const label = this.props.coeffsAsPercents ? `${Math.round(level.value * 100)}%` : String(level.value)
+        paintLabel(ctx, label, { x: p1.x + base * level.value + 4, y: p1.y }, { ...this.style, textColor: color })
       }
     }
   }
@@ -502,16 +508,24 @@ export class FibCircles extends Drawing<FibProps> {
 }
 
 /** Half-circle arcs at ratio radii, centered on the trend line's end and facing its origin. */
-export class FibArcs extends Drawing<FibProps> {
+export type FibArcsProps = FibProps & {
+  /** Complete each arc into a full circle. */
+  fullCircles: boolean
+}
+
+export class FibArcs extends Drawing<FibArcsProps> {
   readonly type = 'fib_speed_resist_arcs'
 
-  protected override defaultProps(): FibProps {
-    return fibDefaults([
-      { value: 0.382, visible: true },
-      { value: 0.5, visible: true },
-      { value: 0.618, visible: true },
-      { value: 1, visible: true },
-    ])
+  protected override defaultProps(): FibArcsProps {
+    return {
+      ...fibDefaults([
+        { value: 0.382, visible: true },
+        { value: 0.5, visible: true },
+        { value: 0.618, visible: true },
+        { value: 1, visible: true },
+      ]),
+      fullCircles: false,
+    }
   }
 
   requiredAnchors(): number {
@@ -538,7 +552,8 @@ export class FibArcs extends Drawing<FibProps> {
       applyStroke(ctx, this.style)
       ctx.strokeStyle = color
       ctx.beginPath()
-      ctx.arc(p2.x, p2.y, base * level.value, back - Math.PI / 2, back + Math.PI / 2)
+      if (this.props.fullCircles) ctx.arc(p2.x, p2.y, base * level.value, 0, Math.PI * 2)
+      else ctx.arc(p2.x, p2.y, base * level.value, back - Math.PI / 2, back + Math.PI / 2)
       ctx.stroke()
       ctx.restore()
       if (this.props.showLevels) {

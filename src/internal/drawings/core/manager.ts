@@ -29,12 +29,19 @@ export class DrawingManager {
   private _intervalContext: IntervalContext = null
   private _allHidden = false
   private _barSource: BarSource | null = null
+  private _tickSize: number | null = null
   private readonly _listeners = new Map<DrawingEventType, Set<DrawingEventCallback>>()
 
   /** Host bar feed, broadcast to every drawing (data-driven tools read it at paint time). */
   setBarSource(source: BarSource | null): void {
     this._barSource = source
     for (const drawing of this._drawings.values()) drawing.setBarSource(source)
+  }
+
+  /** The instrument's tick size, broadcast to every drawing (tick-denominated readouts). */
+  setTickSize(tick: number | null): void {
+    this._tickSize = tick
+    for (const drawing of this._drawings.values()) drawing.setTickSize(tick)
   }
 
   /** Broadcast the chart's interval so per-interval visibility rules apply. */
@@ -91,6 +98,7 @@ export class DrawingManager {
     concrete.setIntervalContext(this._intervalContext)
     concrete.setGlobalHidden(this._allHidden)
     concrete.setBarSource(this._barSource)
+    concrete.setTickSize(this._tickSize)
     this._drawings.set(concrete.id, concrete)
     this._order.push(concrete.id)
     this._series?.attachPrimitive(concrete)
