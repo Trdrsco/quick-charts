@@ -643,6 +643,17 @@ export class Pitchfan extends Drawing<FibProps> {
       ctx.strokeStyle = ray.color
       strokeSegment(ctx, ray.a, ray.b)
       ctx.restore()
+      if (this.props.showLevels) {
+        // Label near the ray's far end, pulled slightly back inside the pane.
+        const t = 0.92
+        paintLabel(
+          ctx,
+          String(ray.level.value),
+          { x: ray.a.x + (ray.b.x - ray.a.x) * t, y: ray.a.y + (ray.b.y - ray.a.y) * t - 8 },
+          { ...this.style, textColor: ray.color },
+          { align: 'center' },
+        )
+      }
     }
   }
 
@@ -683,17 +694,31 @@ export class FibWedge extends Drawing<FibProps> {
     applyStroke(ctx, this.style)
     strokeSegment(ctx, geo.apex, { x: geo.apex.x + Math.cos(geo.a1) * geo.radius, y: geo.apex.y + Math.sin(geo.a1) * geo.radius })
     strokeSegment(ctx, geo.apex, { x: geo.apex.x + Math.cos(geo.a2) * geo.radius, y: geo.apex.y + Math.sin(geo.a2) * geo.radius })
+    // Labels sit along the wedge's bisector, just past each arc.
+    const cross = Math.sin(geo.a2 - geo.a1)
+    const sweep = cross < 0 ? geo.a1 - geo.a2 : geo.a2 - geo.a1
+    const bisector = geo.a1 + (cross < 0 ? -1 : 1) * (Math.abs(sweep) / 2)
     for (const [i, level] of this.props.levels.entries()) {
       if (!level.visible) continue
+      const color = fibLevelColor(level, i)
       ctx.save()
       applyStroke(ctx, this.style)
-      ctx.strokeStyle = fibLevelColor(level, i)
+      ctx.strokeStyle = color
       ctx.beginPath()
       // Sweep the short way between the two rays.
-      const cross = Math.sin(geo.a2 - geo.a1)
       ctx.arc(geo.apex.x, geo.apex.y, geo.radius * level.value, geo.a1, geo.a2, cross < 0)
       ctx.stroke()
       ctx.restore()
+      if (this.props.showLevels) {
+        const r = geo.radius * level.value + 9
+        paintLabel(
+          ctx,
+          String(level.value),
+          { x: geo.apex.x + Math.cos(bisector) * r, y: geo.apex.y + Math.sin(bisector) * r },
+          { ...this.style, textColor: color },
+          { align: 'center' },
+        )
+      }
     }
   }
 

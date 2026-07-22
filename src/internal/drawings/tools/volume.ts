@@ -95,6 +95,8 @@ export class AnchoredVwap extends Drawing {
 
 export type ProfileProps = {
   rows: number
+  /** Share of total volume the value area covers (VAH/VAL bounds); 0 hides it. */
+  valueArea: number
 }
 
 /** Volume-by-price histogram over the two anchors' time range, drawn inside the range box. */
@@ -102,7 +104,7 @@ export class FixedRangeVolumeProfile extends Drawing<ProfileProps> {
   readonly type: string = 'fixed_range_volume_profile'
 
   protected override defaultProps(): ProfileProps {
-    return { rows: 24 }
+    return { rows: 24, valueArea: 0.7 }
   }
 
   requiredAnchors(): number {
@@ -142,18 +144,40 @@ export class FixedRangeVolumeProfile extends Drawing<ProfileProps> {
     const maxVolume = Math.max(...bins.map((b) => b.volume))
     if (maxVolume <= 0) return
     const maxWidth = (span.x2 - span.x1) * 0.85
-    const poc = bins.reduce((best, bin) => (bin.volume > best.volume ? bin : best), bins[0])
+    const pocIndex = bins.reduce((best, bin, i) => (bin.volume > bins[best].volume ? i : best), 0)
+    const poc = bins[pocIndex]
+
+    // Value area: expand from the POC toward the heavier neighbor until it holds the target
+    // share of total volume — the trading-profile convention.
+    const vaShare = Math.max(0, Math.min(0.95, this.props.valueArea))
+    const total = bins.reduce((s, b) => s + b.volume, 0)
+    let low = pocIndex
+    let high = pocIndex
+    let covered = poc.volume
+    while (vaShare > 0 && covered < total * vaShare && (low > 0 || high < bins.length - 1)) {
+      const below = low > 0 ? bins[low - 1].volume : -1
+      const above = high < bins.length - 1 ? bins[high + 1].volume : -1
+      if (above >= below) {
+        high++
+        covered += bins[high].volume
+      } else {
+        low--
+        covered += bins[low].volume
+      }
+    }
+
     ctx.save()
     ctx.setLineDash([])
-    for (const bin of bins) {
+    for (const [i, bin] of bins.entries()) {
       const y1 = viewport.yOf(bin.priceHigh)
       const y2 = viewport.yOf(bin.priceLow)
       if (y1 === null || y2 === null) continue
       const width = (bin.volume / maxVolume) * maxWidth
-      ctx.fillStyle = withAlpha(this.style.lineColor, bin === poc ? 0.55 : 0.28)
+      const inValueArea = vaShare > 0 && i >= low && i <= high
+      ctx.fillStyle = withAlpha(this.style.lineColor, bin === poc ? 0.55 : inValueArea ? 0.38 : 0.2)
       ctx.fillRect(span.x1, Math.min(y1, y2), width, Math.max(1, Math.abs(y2 - y1) - 1))
     }
-    // Point of control across the whole range.
+    // Point of control across the whole range, plus the value-area bounds.
     const pocY = viewport.yOf((poc.priceLow + poc.priceHigh) / 2)
     if (pocY !== null) {
       ctx.strokeStyle = withAlpha(this.style.lineColor, 0.9)
@@ -162,6 +186,20 @@ export class FixedRangeVolumeProfile extends Drawing<ProfileProps> {
       ctx.moveTo(span.x1, pocY)
       ctx.lineTo(span.x2, pocY)
       ctx.stroke()
+    }
+    if (vaShare > 0) {
+      const vahY = viewport.yOf(bins[high].priceHigh)
+      const valY = viewport.yOf(bins[low].priceLow)
+      ctx.strokeStyle = withAlpha(this.style.lineColor, 0.6)
+      ctx.lineWidth = 1
+      ctx.setLineDash([3, 3])
+      for (const y of [vahY, valY]) {
+        if (y === null) continue
+        ctx.beginPath()
+        ctx.moveTo(span.x1, y)
+        ctx.lineTo(span.x2, y)
+        ctx.stroke()
+      }
     }
     ctx.restore()
   }

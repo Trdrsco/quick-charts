@@ -24,8 +24,27 @@ export function barsInRange(bars: readonly SourceBar[], a: Time, b: Time): Sourc
   })
 }
 
-/** Least-squares line over the bars' closes: y = intercept + slope·index, plus the residual σ. */
-export function linearRegression(bars: readonly SourceBar[]): { slope: number; intercept: number; sigma: number } | null {
+/** Price sources a data-driven tool can compute over. */
+export type BarPriceSource = 'close' | 'open' | 'hl2' | 'hlc3'
+
+export function barPrice(bar: SourceBar, source: BarPriceSource): number {
+  switch (source) {
+    case 'open':
+      return bar.open
+    case 'hl2':
+      return (bar.high + bar.low) / 2
+    case 'hlc3':
+      return (bar.high + bar.low + bar.close) / 3
+    default:
+      return bar.close
+  }
+}
+
+/** Least-squares line over the bars' chosen price source, plus the residual σ. */
+export function linearRegression(
+  bars: readonly SourceBar[],
+  source: BarPriceSource = 'close',
+): { slope: number; intercept: number; sigma: number } | null {
   const n = bars.length
   if (n < 2) return null
   let sumX = 0
@@ -33,9 +52,10 @@ export function linearRegression(bars: readonly SourceBar[]): { slope: number; i
   let sumXY = 0
   let sumXX = 0
   for (let i = 0; i < n; i++) {
+    const y = barPrice(bars[i], source)
     sumX += i
-    sumY += bars[i].close
-    sumXY += i * bars[i].close
+    sumY += y
+    sumXY += i * y
     sumXX += i * i
   }
   const denominator = n * sumXX - sumX * sumX
@@ -44,7 +64,7 @@ export function linearRegression(bars: readonly SourceBar[]): { slope: number; i
   const intercept = (sumY - slope * sumX) / n
   let variance = 0
   for (let i = 0; i < n; i++) {
-    const residual = bars[i].close - (intercept + slope * i)
+    const residual = barPrice(bars[i], source) - (intercept + slope * i)
     variance += residual * residual
   }
   return { slope, intercept, sigma: Math.sqrt(variance / n) }

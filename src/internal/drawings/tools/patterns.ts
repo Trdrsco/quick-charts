@@ -73,10 +73,17 @@ export abstract class LabeledPolyline extends Drawing {
   }
 }
 
-/** Fill the triangle spanned by three points with the drawing's hue at low alpha. */
-function fillTriangle(ctx: CanvasRenderingContext2D, color: string, a: Point, b: Point, c: Point): void {
+/** Fill the triangle spanned by three points with the drawing's background channel. */
+function fillTriangle(
+  ctx: CanvasRenderingContext2D,
+  style: { fillColor: string; fillOpacity: number },
+  a: Point,
+  b: Point,
+  c: Point,
+): void {
+  if (style.fillOpacity <= 0) return
   ctx.save()
-  ctx.fillStyle = withAlpha(color, 0.12)
+  ctx.fillStyle = withAlpha(style.fillColor, style.fillOpacity)
   ctx.beginPath()
   ctx.moveTo(a.x, a.y)
   ctx.lineTo(b.x, b.y)
@@ -99,8 +106,8 @@ export class XabcdPattern extends LabeledPolyline {
   }
 
   protected override paintExtras(ctx: CanvasRenderingContext2D, points: Point[]): void {
-    if (points.length >= 3) fillTriangle(ctx, this.style.lineColor, points[0], points[1], points[2])
-    if (points.length >= 5) fillTriangle(ctx, this.style.lineColor, points[2], points[3], points[4])
+    if (points.length >= 3) fillTriangle(ctx, this.style, points[0], points[1], points[2])
+    if (points.length >= 5) fillTriangle(ctx, this.style, points[2], points[3], points[4])
   }
 }
 
@@ -164,7 +171,7 @@ export class TrianglePattern extends LabeledPolyline {
     ctx.lineTo(points[3].x, points[3].y)
     ctx.stroke()
     ctx.restore()
-    fillTriangle(ctx, this.style.lineColor, points[0], points[1], points[2])
+    fillTriangle(ctx, this.style, points[0], points[1], points[2])
   }
 }
 
@@ -192,8 +199,8 @@ export class HeadAndShoulders extends LabeledPolyline {
     ctx.lineTo(points[6].x, points[2].y + (points[6].x - points[2].x) * ((points[4].y - points[2].y) / ((points[4].x - points[2].x) || 1)))
     ctx.stroke()
     ctx.restore()
-    fillTriangle(ctx, this.style.lineColor, points[0], points[1], points[2])
-    fillTriangle(ctx, this.style.lineColor, points[2], points[3], points[4])
-    fillTriangle(ctx, this.style.lineColor, points[4], points[5], points[6])
+    fillTriangle(ctx, this.style, points[0], points[1], points[2])
+    fillTriangle(ctx, this.style, points[2], points[3], points[4])
+    fillTriangle(ctx, this.style, points[4], points[5], points[6])
   }
 }

@@ -13,6 +13,7 @@ export type RegressionProps = {
   lowerDeviation: number
   useUpper: boolean
   useLower: boolean
+  source: 'close' | 'open' | 'hl2' | 'hlc3'
 }
 
 /**
@@ -23,7 +24,7 @@ export class RegressionTrend extends Drawing<RegressionProps> {
   readonly type = 'regression_trend'
 
   protected override defaultProps(): RegressionProps {
-    return { upperDeviation: 2, lowerDeviation: 2, useUpper: true, useLower: true }
+    return { upperDeviation: 2, lowerDeviation: 2, useUpper: true, useLower: true, source: 'close' }
   }
 
   requiredAnchors(): number {
@@ -34,7 +35,7 @@ export class RegressionTrend extends Drawing<RegressionProps> {
     const [a, b] = this.anchors
     if (!a || !b) return null
     const range = barsInRange(this.bars(), a.time, b.time)
-    const fit = linearRegression(range)
+    const fit = linearRegression(range, this.props.source)
     if (!fit) return null
     const first = range[0]
     const last = range[range.length - 1]

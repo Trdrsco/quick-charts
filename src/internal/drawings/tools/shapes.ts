@@ -1,7 +1,7 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing, type AnyDrawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
-import { applyStroke, fillPaint } from '../render/canvas'
+import { applyStroke, fillPaint, paintLabel } from '../render/canvas'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -47,9 +47,18 @@ function paintPolygon(
   ctx.stroke()
 }
 
+export type RectangleProps = {
+  /** Free label rendered centered inside the rectangle. */
+  text: string
+}
+
 /** Axis-aligned rectangle spanned by two corner anchors. */
-export class Rectangle extends Drawing {
+export class Rectangle extends Drawing<RectangleProps> {
   readonly type = 'rectangle'
+
+  protected override defaultProps(): RectangleProps {
+    return { text: '' }
+  }
 
   requiredAnchors(): number {
     return 2
@@ -68,7 +77,17 @@ export class Rectangle extends Drawing {
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const corners = this.corners(viewport)
-    if (corners) paintPolygon(ctx, corners, this)
+    if (!corners) return
+    paintPolygon(ctx, corners, this)
+    if (this.props.text) {
+      paintLabel(
+        ctx,
+        this.props.text,
+        { x: (corners[0].x + corners[2].x) / 2, y: (corners[0].y + corners[2].y) / 2 },
+        this.style,
+        { align: 'center' },
+      )
+    }
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
