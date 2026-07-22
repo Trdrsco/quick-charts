@@ -11,7 +11,11 @@ export type ForkLevel = {
   color?: string
 }
 
+export type ForkVariant = 'original' | 'schiff' | 'modified_schiff' | 'inside'
+
 export type PitchforkProps = {
+  /** Which fork construction the median uses — switchable in place. */
+  variant: ForkVariant
   /** Extend all lines left as well as right. */
   extendLines: boolean
   levels: ForkLevel[]
@@ -47,25 +51,39 @@ interface ForkGeometry {
 export class Pitchfork extends Drawing<PitchforkProps> {
   readonly type: string = 'pitchfork'
 
+  /** The construction seeded at creation; the prop switches it in place afterwards. */
+  protected defaultVariant(): ForkVariant {
+    return 'original'
+  }
+
   protected override defaultProps(): PitchforkProps {
-    return { extendLines: false, levels: DEFAULT_LEVELS.map((l) => ({ ...l })), background: true }
+    return {
+      variant: this.defaultVariant(),
+      extendLines: false,
+      levels: DEFAULT_LEVELS.map((l) => ({ ...l })),
+      background: true,
+    }
   }
 
   requiredAnchors(): number {
     return 3
   }
 
-  /** The median's start point; variants override. */
-  protected origin(p1: Point, _p2: Point, _p3: Point): Point {
-    return p1
-  }
-
   protected fork(viewport: Viewport): ForkGeometry | null {
     const [p1, p2, p3] = this.anchorPixels(viewport)
     if (!p1 || !p2 || !p3) return null
     const mid = midpoint(p2, p3)
-    const origin = this.origin(p1, p2, p3)
-    const dir = { x: mid.x - origin.x, y: mid.y - origin.y }
+    const variant = this.props.variant
+    const origin =
+      variant === 'schiff'
+        ? midpoint(p1, p2)
+        : variant === 'modified_schiff'
+          ? { x: p1.x, y: (p1.y + p2.y) / 2 }
+          : variant === 'inside'
+            ? mid
+            : p1
+    // The inside fork has no handle: it emanates from the tine segment, aimed away from p1.
+    const dir = variant === 'inside' ? { x: mid.x - p1.x, y: mid.y - p1.y } : { x: mid.x - origin.x, y: mid.y - origin.y }
     if (dir.x === 0 && dir.y === 0) return null
     return { origin, mid, dir, halfWidth: { x: p3.x - mid.x, y: p3.y - mid.y } }
   }
@@ -155,8 +173,8 @@ export class Pitchfork extends Drawing<PitchforkProps> {
 export class SchiffPitchfork extends Pitchfork {
   override readonly type = 'schiff_pitchfork'
 
-  protected override origin(p1: Point, p2: Point): Point {
-    return midpoint(p1, p2)
+  protected override defaultVariant(): ForkVariant {
+    return 'schiff'
   }
 }
 
@@ -164,8 +182,8 @@ export class SchiffPitchfork extends Pitchfork {
 export class ModifiedSchiffPitchfork extends Pitchfork {
   override readonly type = 'schiff_pitchfork_modified'
 
-  protected override origin(p1: Point, p2: Point): Point {
-    return { x: p1.x, y: (p1.y + p2.y) / 2 }
+  protected override defaultVariant(): ForkVariant {
+    return 'modified_schiff'
   }
 }
 
@@ -173,12 +191,7 @@ export class ModifiedSchiffPitchfork extends Pitchfork {
 export class InsidePitchfork extends Pitchfork {
   override readonly type = 'inside_pitchfork'
 
-  protected override fork(viewport: Viewport): ForkGeometry | null {
-    const [p1, p2, p3] = this.anchorPixels(viewport)
-    if (!p1 || !p2 || !p3) return null
-    const mid = midpoint(p2, p3)
-    const dir = { x: mid.x - p1.x, y: mid.y - p1.y }
-    if (dir.x === 0 && dir.y === 0) return null
-    return { origin: mid, mid, dir, halfWidth: { x: p3.x - mid.x, y: p3.y - mid.y } }
+  protected override defaultVariant(): ForkVariant {
+    return 'inside'
   }
 }

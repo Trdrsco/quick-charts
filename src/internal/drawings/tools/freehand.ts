@@ -55,6 +55,15 @@ export class Brush extends StrokeDrawing {
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const points = this.points(viewport)
     if (points.length < 2) return
+    // The background channel fills the stroke's enclosed area (path closed back to the start).
+    if (this.style.fillOpacity > 0) {
+      ctx.save()
+      ctx.fillStyle = withAlpha(this.style.fillColor, this.style.fillOpacity)
+      this.tracePath(ctx, points, true)
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
+    }
     applyStroke(ctx, this.style)
     this.tracePath(ctx, points, true)
     ctx.stroke()

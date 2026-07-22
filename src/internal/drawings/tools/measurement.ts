@@ -1,6 +1,15 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
+import { barsInRange } from '../core/bars'
 import { applyStroke, formatPrice, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+
+/** Compact volume readout (12.4M style). */
+function volumeText(volume: number): string {
+  if (volume >= 1e9) return `${(volume / 1e9).toFixed(2)}B`
+  if (volume >= 1e6) return `${(volume / 1e6).toFixed(2)}M`
+  if (volume >= 1e3) return `${(volume / 1e3).toFixed(1)}K`
+  return String(Math.round(volume))
+}
 
 function box(a: Point, b: Point): { x: number; y: number; width: number; height: number } {
   return {
@@ -15,8 +24,19 @@ function inBox(p: Point, r: { x: number; y: number; width: number; height: numbe
   return p.x >= r.x - pad && p.x <= r.x + r.width + pad && p.y >= r.y - pad && p.y <= r.y + r.height + pad
 }
 
+export type RangeMeterProps = {
+  /** Stats readout toggles; a meter only surfaces the ones its axes measure. */
+  showPriceDelta: boolean
+  showPercent: boolean
+  showBars: boolean
+  showTimeSpan: boolean
+  showVolume: boolean
+  /** Stretch the shaded span across the axis the meter doesn't measure. */
+  extend: boolean
+}
+
 /** Shared skeleton for the range meters: shaded span + measuring arrow + stats pill. */
-abstract class RangeMeter extends Drawing {
+abstract class RangeMeter extends Drawing<RangeMeterProps> {
   requiredAnchors(): number {
     return 2
   }
@@ -27,8 +47,14 @@ abstract class RangeMeter extends Drawing {
     return { a, b }
   }
 
-  protected paintSpan(ctx: CanvasRenderingContext2D, a: Point, b: Point): void {
-    const r = box(a, b)
+  protected paintSpan(ctx: CanvasRenderingContext2D, a: Point, b: Point, viewport: Viewport): void {
+    let r = box(a, b)
+    if (this.props.extend) {
+      // A price meter extends across time; a time meter extends across price.
+      r = this.measuresPrice()
+        ? { x: 0, y: r.y, width: viewport.width, height: r.height }
+        : { x: r.x, y: 0, width: r.width, height: viewport.height }
+    }
     ctx.save()
     ctx.fillStyle = withAlpha(this.style.lineColor, Math.max(0.08, this.style.fillOpacity))
     ctx.fillRect(r.x, r.y, r.width, r.height)
@@ -42,13 +68,25 @@ abstract class RangeMeter extends Drawing {
     if (this.measuresPrice()) {
       const dPrice = b.price - a.price
       const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
-      out.push(`${dPrice >= 0 ? '+' : ''}${formatPrice(dPrice)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`)
+      const parts: string[] = []
+      if (this.props.showPriceDelta) parts.push(`${dPrice >= 0 ? '+' : ''}${formatPrice(dPrice)}`)
+      if (this.props.showPercent) parts.push(`(${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`)
+      if (parts.length) out.push(parts.join(' '))
     }
     if (this.measuresTime()) {
-      const bars = viewport.barsBetween(a.time, b.time)
-      if (bars !== null) out.push(`${Math.round(bars)} bars`)
-      const secs = Number(b.time) - Number(a.time)
-      if (Number.isFinite(secs) && secs !== 0) out.push(spanText(Math.abs(secs)))
+      if (this.props.showBars) {
+        const bars = viewport.barsBetween(a.time, b.time)
+        if (bars !== null) out.push(`${Math.round(bars)} bars`)
+      }
+      if (this.props.showTimeSpan) {
+        const secs = Number(b.time) - Number(a.time)
+        if (Number.isFinite(secs) && secs !== 0) out.push(spanText(Math.abs(secs)))
+      }
+      if (this.props.showVolume) {
+        const range = barsInRange(this.bars(), a.time, b.time)
+        const total = range.reduce((sum, bar) => sum + (bar.volume ?? 0), 0)
+        if (total > 0) out.push(`Vol ${volumeText(total)}`)
+      }
     }
     return out
   }
@@ -60,7 +98,7 @@ abstract class RangeMeter extends Drawing {
     const px = this.pixels(viewport)
     if (!px) return
     const { a, b } = px
-    this.paintSpan(ctx, a, b)
+    this.paintSpan(ctx, a, b, viewport)
     applyStroke(ctx, this.style)
     if (this.measuresPrice()) {
       const x = (a.x + b.x) / 2
@@ -93,6 +131,10 @@ abstract class RangeMeter extends Drawing {
 export class PriceRange extends RangeMeter {
   readonly type = 'price_range'
 
+  protected override defaultProps(): RangeMeterProps {
+    return { showPriceDelta: true, showPercent: true, showBars: false, showTimeSpan: false, showVolume: false, extend: false }
+  }
+
   protected measuresPrice(): boolean {
     return true
   }
@@ -106,6 +148,10 @@ export class PriceRange extends RangeMeter {
 export class DateRange extends RangeMeter {
   readonly type = 'date_range'
 
+  protected override defaultProps(): RangeMeterProps {
+    return { showPriceDelta: false, showPercent: false, showBars: true, showTimeSpan: true, showVolume: true, extend: false }
+  }
+
   protected measuresPrice(): boolean {
     return false
   }
@@ -118,6 +164,10 @@ export class DateRange extends RangeMeter {
 /** Combined meter: price and time deltas of the spanned box. */
 export class DatePriceRange extends RangeMeter {
   readonly type = 'date_and_price_range'
+
+  protected override defaultProps(): RangeMeterProps {
+    return { showPriceDelta: true, showPercent: true, showBars: true, showTimeSpan: true, showVolume: true, extend: false }
+  }
 
   protected measuresPrice(): boolean {
     return true

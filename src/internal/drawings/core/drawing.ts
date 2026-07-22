@@ -25,7 +25,6 @@ import { DEFAULT_OPTIONS, DEFAULT_STYLE } from './types'
 import type { IntervalContext } from './visibility'
 import { normalizeVisibility, visibleAt } from './visibility'
 import type { BarSource, SourceBar } from './bars'
-import { segmentTextAngle } from './geometry'
 import { DrawingPaneView } from '../render/pane-view'
 
 function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
@@ -186,8 +185,17 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     return this.axisViews()
   }
 
+  timeAxisViews(): readonly ISeriesPrimitiveAxisView[] {
+    return this.timeViews()
+  }
+
   /** Axis pills this drawing contributes (a horizontal line's price marker); default none. */
   protected axisViews(): readonly ISeriesPrimitiveAxisView[] {
+    return []
+  }
+
+  /** Time-axis pills (a vertical line's timestamp marker); default none. */
+  protected timeViews(): readonly ISeriesPrimitiveAxisView[] {
     return []
   }
 
@@ -387,19 +395,14 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
    * (the hint sits along a sloped trend line); everything else sits level above the bounds.
    * Painted as UI chrome (fixed muted paint), not with the drawing's own text style.
    */
-  /** Where the hint sits: two-point drawings ride the segment; otherwise level above the bounds.
-   *  Tools whose text lives away from the anchors (the arrow marker's butt end) override this. */
+  /** The hint label's CENTER: level above the drawing's bounds by default. Tools whose text
+   *  rides their own geometry override — a trend line's hint slopes with the segment, a
+   *  rectangle's sits dead-center in the box, an arrow marker's at the butt end. Two corner
+   *  anchors are NOT a segment (a box tool's hint must stay level). */
   protected textHintPlacement(points: Point[]): { x: number; y: number; angle: number } {
-    if (points.length === 2) {
-      return {
-        x: (points[0].x + points[1].x) / 2,
-        y: (points[0].y + points[1].y) / 2,
-        angle: segmentTextAngle(points[0], points[1]),
-      }
-    }
     return {
       x: points.reduce((sum, p) => sum + p.x, 0) / points.length,
-      y: Math.max(28, Math.min(...points.map((p) => p.y))),
+      y: Math.max(12, Math.min(...points.map((p) => p.y)) - 16),
       angle: 0,
     }
   }
@@ -421,12 +424,12 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     ctx.textBaseline = 'middle'
     ctx.setLineDash([])
     ctx.fillStyle = 'rgba(178, 181, 190, 0.95)'
-    ctx.fillText(label, 0, -16)
+    ctx.fillText(label, 0, 0)
     const width = ctx.measureText(label).width
     ctx.restore()
     this._textHint = {
-      cx: mx + 16 * Math.sin(angle),
-      cy: my - 16 * Math.cos(angle),
+      cx: mx,
+      cy: my,
       angle,
       halfW: width / 2 + 6,
       halfH: 10,

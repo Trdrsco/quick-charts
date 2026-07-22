@@ -8,6 +8,8 @@ export type FibLevel = {
   value: number
   visible: boolean
   color?: string
+  /** Custom per-level caption, prefixed to the ratio in the level's label. */
+  text?: string
 }
 
 export type FibProps = {
@@ -171,6 +173,7 @@ export class FibRetracement extends Drawing<FibProps> {
       strokeSegment(ctx, { x: span.minX, y: entry.y }, { x: span.maxX, y: entry.y })
       ctx.restore()
       const parts: string[] = []
+      if (entry.level.text) parts.push(entry.level.text)
       if (this.props.showLevels) parts.push(String(entry.level.value))
       if (this.props.showPrices) parts.push(`(${formatPrice(this.priceAt(entry.level.value))})`)
       if (parts.length) {
@@ -292,9 +295,10 @@ export class FibChannel extends Drawing<FibProps> {
       ctx.strokeStyle = line.color
       strokeSegment(ctx, line.a, line.b)
       ctx.restore()
-      if (this.props.showLevels || this.props.showPrices) {
+      if (this.props.showLevels || this.props.showPrices || line.level.text) {
         const price = viewport.priceAt(line.a.y)
         const parts = [
+          line.level.text || null,
           this.props.showLevels ? String(line.level.value) : null,
           this.props.showPrices && price !== null ? `(${formatPrice(price)})` : null,
         ].filter((s): s is string => s !== null)
@@ -393,10 +397,11 @@ export class FibSpeedFan extends Drawing<FibProps> {
       ctx.strokeStyle = ray.color
       strokeSegment(ctx, ray.a, ray.b)
       ctx.restore()
-      if (this.props.showLevels || this.props.showPrices) {
+      if (this.props.showLevels || this.props.showPrices || ray.level.text) {
         const y = p1.y + (p2.y - p1.y) * ray.level.value
         const price = viewport.priceAt(y)
         const parts = [
+          ray.level.text || null,
           this.props.showLevels ? String(ray.level.value) : null,
           this.props.showPrices && price !== null ? `(${formatPrice(price)})` : null,
         ].filter((s): s is string => s !== null)

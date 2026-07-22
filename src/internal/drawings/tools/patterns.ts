@@ -45,6 +45,7 @@ export abstract class LabeledPolyline extends Drawing {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
     for (let i = 0; i < points.length && i < labels.length; i++) {
+      if (!labels[i]) continue // an unlabeled vertex (a pattern's starting point)
       const p = points[i]
       // Place the pill away from the line: above when the vertex is a local high, below otherwise.
       const prev = points[i - 1] ?? points[i + 1]
@@ -114,6 +115,23 @@ export class XabcdPattern extends LabeledPolyline {
 /** Cypher: same five-point construction, its own identity for defaults/recognition. */
 export class CypherPattern extends XabcdPattern {
   override readonly type = 'cypher_pattern'
+}
+
+/**
+ * Three drives: a start point, then three with-trend drives (1, 2, 3) separated by two
+ * retracements (A, C). Symmetry of the drives/retracements is the pattern's whole premise —
+ * the tool just labels the six swing points.
+ */
+export class ThreeDrivesPattern extends LabeledPolyline {
+  readonly type = 'three_drives'
+
+  requiredAnchors(): number {
+    return 6
+  }
+
+  protected labels(): readonly string[] {
+    return ['', '1', 'A', '2', 'C', '3']
+  }
 }
 
 /** Four-point AB=CD pattern with the two legs shaded. */

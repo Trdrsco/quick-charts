@@ -3,6 +3,7 @@ import { Drawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
 import {
   applyStroke,
+  fillPaint,
   formatPrice,
   measureTextBlock,
   paintTextBlock,
@@ -51,7 +52,10 @@ export class TextLabel extends Drawing<TextBlockProps> {
     if (!anchor) return
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return
-    paintTextBlock(ctx, this.props.text || ' ', p, this.style, { align: this.props.align })
+    paintTextBlock(ctx, this.props.text || ' ', p, this.style, {
+      background: fillPaint(this.style) ?? undefined,
+      align: this.props.align,
+    })
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -70,7 +74,7 @@ export class Note extends TextLabel {
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return
     paintTextBlock(ctx, this.props.text || ' ', p, this.style, {
-      background: withAlpha('#1b1f27', 0.95),
+      background: fillPaint(this.style) ?? undefined,
       borderColor: this.style.lineColor,
       align: this.props.align,
     })
@@ -88,12 +92,13 @@ export class Comment extends TextLabel {
     if (!p) return
     // Bubble sits above-right of the anchor; the tail drops back to the anchor point.
     const top = { x: p.x + 10, y: p.y - 14 - measureTextBlock(this.props.text || ' ', this.style).height - 12 }
+    const bubble = fillPaint(this.style) ?? 'transparent'
     const box = paintTextBlock(ctx, this.props.text || ' ', top, this.style, {
-      background: withAlpha('#1b1f27', 0.95),
+      background: bubble,
       borderColor: this.style.lineColor,
     })
     ctx.save()
-    ctx.fillStyle = withAlpha('#1b1f27', 0.95)
+    ctx.fillStyle = bubble
     ctx.strokeStyle = this.style.lineColor
     ctx.lineWidth = 1
     ctx.setLineDash([])
@@ -163,7 +168,7 @@ export class Callout extends Drawing<TextProps> {
     ctx.lineTo(edge.x, edge.y)
     ctx.stroke()
     paintTextBlock(ctx, this.bodyText() || ' ', { x: box.x, y: box.y }, this.style, {
-      background: withAlpha('#1b1f27', 0.95),
+      background: fillPaint(this.style) ?? undefined,
       borderColor: this.style.lineColor,
     })
   }

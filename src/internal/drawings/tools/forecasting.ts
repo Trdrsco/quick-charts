@@ -12,6 +12,10 @@ export type PositionProps = {
   /** Risk per trade, as a percent of the account or a money amount (per `riskDisplay`). */
   risk: number
   riskDisplay: 'percent' | 'money'
+  /** Quantity rounds down to a multiple of this (contract/lot granularity). */
+  lotSize: number
+  /** Margin readout divisor — notional / leverage. */
+  leverage: number
   showPrices: boolean
 }
 
@@ -24,7 +28,7 @@ export class LongPosition extends Drawing<PositionProps> {
   readonly type: string = 'long_position'
 
   protected override defaultProps(): PositionProps {
-    return { accountSize: 10000, risk: 1, riskDisplay: 'percent', showPrices: true }
+    return { accountSize: 10000, risk: 1, riskDisplay: 'percent', lotSize: 0, leverage: 1, showPrices: true }
   }
 
   requiredAnchors(): number {
@@ -67,20 +71,27 @@ export class LongPosition extends Drawing<PositionProps> {
     strokeSegment(ctx, { x: z.left, y: z.entryY }, { x: z.right, y: z.entryY })
     ctx.restore()
 
-    // Quantity derives from the risk budget over the stop distance (the trade-plan convention).
+    // Quantity derives from the risk budget over the stop distance (the trade-plan convention);
+    // a lot size floors it to tradable granularity, leverage sets the margin readout.
     const riskMoney = this.props.riskDisplay === 'percent' ? (this.props.accountSize * this.props.risk) / 100 : this.props.risk
     const stopDistance = Math.abs(entry.price - stop.price)
-    const qty = stopDistance > 0 ? riskMoney / stopDistance : 0
+    let qty = stopDistance > 0 ? riskMoney / stopDistance : 0
+    if (this.props.lotSize > 0 && qty > 0) qty = Math.floor(qty / this.props.lotSize) * this.props.lotSize
     const reward = Math.abs(target.price - entry.price) * qty
+    const risked = qty * stopDistance
     const ratio = stopDistance > 0 ? Math.abs(target.price - entry.price) / stopDistance : 0
+    const margin = this.props.leverage > 0 ? (qty * entry.price) / this.props.leverage : 0
     const mid = (z.left + z.right) / 2
-    paintLabel(
-      ctx,
-      `RR ${ratio.toFixed(2)}  ·  Qty ${qty.toFixed(qty >= 100 ? 0 : 2)}  ·  +${formatPrice(reward)} / -${formatPrice(riskMoney)}`,
-      { x: mid, y: z.entryY },
-      this.style,
-      { align: 'center', background: withAlpha('#1b1f27', 0.92) },
-    )
+    const parts = [
+      `RR ${ratio.toFixed(2)}`,
+      `Qty ${qty.toFixed(qty >= 100 ? 0 : 2)}`,
+      `+${formatPrice(reward)} / -${formatPrice(risked)}`,
+    ]
+    if (this.props.leverage > 1 && margin > 0) parts.push(`Margin ${formatPrice(margin)}`)
+    paintLabel(ctx, parts.join('  ·  '), { x: mid, y: z.entryY }, this.style, {
+      align: 'center',
+      background: withAlpha('#1b1f27', 0.92),
+    })
     if (this.props.showPrices) {
       paintLabel(ctx, formatPrice(target.price), { x: z.right + 6, y: z.targetY }, { ...this.style, textColor: PROFIT })
       paintLabel(ctx, formatPrice(stop.price), { x: z.right + 6, y: z.stopY }, { ...this.style, textColor: LOSS })

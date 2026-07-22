@@ -27,9 +27,11 @@ export type TrendLineProps = {
   middlePoint: boolean
   /** Price pill beside each end point. */
   showPriceLabels: boolean
-  /** Stats readout items (price delta + %, bar count, slope angle). */
+  /** Stats readout items (price delta, percent change, bar count, span, slope angle). */
   showPriceRange: boolean
+  showPercentChange: boolean
   showBarsRange: boolean
+  showDateTimeRange: boolean
   showAngle: boolean
   statsPosition: 'left' | 'center' | 'right'
 }
@@ -43,7 +45,9 @@ const LINE_PROPS: TrendLineProps = {
   middlePoint: false,
   showPriceLabels: false,
   showPriceRange: false,
+  showPercentChange: false,
   showBarsRange: false,
+  showDateTimeRange: false,
   showAngle: false,
   statsPosition: 'center',
 }
@@ -65,6 +69,17 @@ export class TrendLine extends Drawing<TrendLineProps> {
 
   requiredAnchors(): number {
     return 2
+  }
+
+  /** The hint rides the segment's slope, lifted off the line where the text itself paints. */
+  protected override textHintPlacement(points: Point[]): { x: number; y: number; angle: number } {
+    if (points.length < 2) return super.textHintPlacement(points)
+    const angle = segmentTextAngle(points[0], points[1])
+    return {
+      x: (points[0].x + points[1].x) / 2 + 16 * Math.sin(angle),
+      y: (points[0].y + points[1].y) / 2 - 16 * Math.cos(angle),
+      angle,
+    }
   }
 
   /** The on-screen segment after extension — the shared basis for painting and hit-testing. */
@@ -143,14 +158,26 @@ export class TrendLine extends Drawing<TrendLineProps> {
     const [a, b] = this.anchors
     if (!a || !b) return null
     const parts: string[] = []
+    const dPrice = b.price - a.price
     if (this.props.showPriceRange) {
-      const dPrice = b.price - a.price
+      parts.push(`${dPrice >= 0 ? '+' : ''}${formatPrice(dPrice)}`)
+    }
+    if (this.props.showPercentChange) {
       const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
-      parts.push(`${dPrice >= 0 ? '+' : ''}${formatPrice(dPrice)} (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`)
+      parts.push(`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`)
     }
     if (this.props.showBarsRange) {
       const bars = viewport.barsBetween(a.time, b.time)
       if (bars !== null) parts.push(`${Math.round(bars)} bars`)
+    }
+    if (this.props.showDateTimeRange) {
+      const secs = Math.abs(Number(b.time) - Number(a.time))
+      if (Number.isFinite(secs) && secs > 0) {
+        const d = Math.floor(secs / 86400)
+        const h = Math.floor((secs % 86400) / 3600)
+        const m = Math.floor((secs % 3600) / 60)
+        parts.push(d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`)
+      }
     }
     if (this.props.showAngle) {
       const [pa, pb] = this.anchorPixels(viewport)
@@ -305,17 +332,46 @@ export class HorizontalRay extends HorizontalLine {
   }
 }
 
+/** Time-axis pill text for a numeric (unix-seconds) anchor time. */
+function timeText(time: unknown): string {
+  const t = Number(time)
+  if (!Number.isFinite(t)) return String(time)
+  const d = new Date(t * 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
+}
+
 export type VerticalLineProps = {
   /** Free label rendered beside the line's top. */
   text: string
+  /** Timestamp pill on the time axis. */
+  showTime: boolean
 }
 
 /** Full-height vertical line at one time. */
 export class VerticalLine extends Drawing<VerticalLineProps> {
   readonly type = 'vertical_line'
 
+  private readonly _timeViews = [
+    new AxisLabel({
+      coordinate: () => {
+        const anchor = this.anchors[0]
+        const viewport = this.getViewport()
+        if (!anchor || !viewport) return null
+        return viewport.xOf(anchor.time)
+      },
+      text: () => timeText(this.anchors[0]?.time),
+      color: () => this.style.lineColor,
+      visible: () => this.props.showTime && this.isVisibleNow(),
+    }),
+  ]
+
   protected override defaultProps(): VerticalLineProps {
-    return { text: '' }
+    return { text: '', showTime: true }
+  }
+
+  protected override timeViews(): readonly ISeriesPrimitiveAxisView[] {
+    return this._timeViews
   }
 
   requiredAnchors(): number {
@@ -346,6 +402,8 @@ export class VerticalLine extends Drawing<VerticalLineProps> {
 export type CrossLineProps = {
   /** Price pill on the axis at the cross's level. */
   showPrice: boolean
+  /** Timestamp pill on the time axis at the cross's time. */
+  showTime: boolean
 }
 
 /** Crosshair pinned to one point: a horizontal and a vertical line through the anchor. */
@@ -366,12 +424,30 @@ export class CrossLine extends Drawing<CrossLineProps> {
     }),
   ]
 
+  private readonly _timeViews = [
+    new AxisLabel({
+      coordinate: () => {
+        const anchor = this.anchors[0]
+        const viewport = this.getViewport()
+        if (!anchor || !viewport) return null
+        return viewport.xOf(anchor.time)
+      },
+      text: () => timeText(this.anchors[0]?.time),
+      color: () => this.style.lineColor,
+      visible: () => this.props.showTime && this.isVisibleNow(),
+    }),
+  ]
+
   protected override defaultProps(): CrossLineProps {
-    return { showPrice: true }
+    return { showPrice: true, showTime: true }
   }
 
   protected override axisViews(): readonly ISeriesPrimitiveAxisView[] {
     return this._axisViews
+  }
+
+  protected override timeViews(): readonly ISeriesPrimitiveAxisView[] {
+    return this._timeViews
   }
 
   requiredAnchors(): number {

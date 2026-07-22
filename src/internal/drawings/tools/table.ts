@@ -1,6 +1,6 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
-import { fontOf, withAlpha } from '../render/canvas'
+import { fillPaint, fontOf, withAlpha } from '../render/canvas'
 
 export type TableProps = {
   /** Row-major cell text. The grid's shape IS this array's shape. */
@@ -48,11 +48,14 @@ export class TableNote extends Drawing<TableProps> {
     const cols = this.props.cells[0]?.length ?? 0
     ctx.save()
     ctx.setLineDash([])
-    // Card base + optional header band.
-    ctx.fillStyle = withAlpha('#1b1f27', 0.95)
-    ctx.beginPath()
-    ctx.roundRect(f.x, f.y, f.width, f.height, 4)
-    ctx.fill()
+    // Card base + optional header band — the base paints from the background channel.
+    const base = fillPaint(this.style)
+    if (base) {
+      ctx.fillStyle = base
+      ctx.beginPath()
+      ctx.roundRect(f.x, f.y, f.width, f.height, 4)
+      ctx.fill()
+    }
     if (this.props.headerRow) {
       ctx.fillStyle = withAlpha(this.style.lineColor, 0.16)
       ctx.beginPath()

@@ -54,7 +54,7 @@ import { Forecast, LongPosition, Sector, ShortPosition } from './tools/forecasti
 import { Brush, Highlighter, PathLine, Polyline } from './tools/freehand'
 import { ArrowMarker, Pin, PriceNote, Signpost } from './tools/annotations'
 import { TableNote } from './tools/table'
-import { AbcdPattern, CypherPattern, HeadAndShoulders, TrianglePattern, XabcdPattern } from './tools/patterns'
+import { AbcdPattern, CypherPattern, HeadAndShoulders, ThreeDrivesPattern, TrianglePattern, XabcdPattern } from './tools/patterns'
 import {
   ElliottCorrection,
   ElliottDoubleCombo,
@@ -197,6 +197,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(XabcdPattern, { type: 'xabcd_pattern', name: 'XABCD pattern', category: 'patterns', anchors: 5, style: { fillOpacity: 0.12 } }),
   tool(CypherPattern, { type: 'cypher_pattern', name: 'Cypher pattern', category: 'patterns', anchors: 5, style: { fillOpacity: 0.12 } }),
   tool(AbcdPattern, { type: 'abcd_pattern', name: 'ABCD pattern', category: 'patterns', anchors: 4 }),
+  tool(ThreeDrivesPattern, { type: 'three_drives', name: 'Three drives pattern', category: 'patterns', anchors: 6 }),
   tool(TrianglePattern, { type: 'triangle_pattern', name: 'Triangle pattern', category: 'patterns', anchors: 4, style: { fillOpacity: 0.12 } }),
   tool(HeadAndShoulders, { type: 'head_and_shoulders', name: 'Head and shoulders', category: 'patterns', anchors: 7, style: { fillOpacity: 0.12 } }),
 
@@ -234,9 +235,9 @@ const DEFINITIONS: ToolDefinition[] = [
 
   // Annotation
   tool(TextLabel, { type: 'text', name: 'Text', category: 'annotation', anchors: 1, hasText: true }),
-  tool(Note, { type: 'note', name: 'Note', category: 'annotation', anchors: 1, hasText: true }),
-  tool(Comment, { type: 'comment', name: 'Comment', category: 'annotation', anchors: 1, hasText: true }),
-  tool(Callout, { type: 'callout', name: 'Callout', category: 'annotation', anchors: 2, hasText: true }),
+  tool(Note, { type: 'note', name: 'Note', category: 'annotation', anchors: 1, hasText: true, style: { fillColor: '#1b1f27', fillOpacity: 0.95 } }),
+  tool(Comment, { type: 'comment', name: 'Comment', category: 'annotation', anchors: 1, hasText: true, style: { fillColor: '#1b1f27', fillOpacity: 0.95 } }),
+  tool(Callout, { type: 'callout', name: 'Callout', category: 'annotation', anchors: 2, hasText: true, style: { fillColor: '#1b1f27', fillOpacity: 0.95 } }),
   tool(PriceLabel, { type: 'price_label', name: 'Price label', category: 'annotation', anchors: 1 }),
   tool(ArrowMarkUp, { type: 'arrow_up', name: 'Arrow mark up', category: 'annotation', anchors: 1 }),
   tool(ArrowMarkDown, { type: 'arrow_down', name: 'Arrow mark down', category: 'annotation', anchors: 1 }),
@@ -245,7 +246,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(PriceNote, { type: 'price_note', name: 'Price note', category: 'annotation', anchors: 2, hasText: true }),
   tool(Pin, { type: 'pin', name: 'Pin', category: 'annotation', anchors: 1, hasText: true }),
   tool(Signpost, { type: 'signpost', name: 'Signpost', category: 'annotation', anchors: 1, hasText: true }),
-  tool(TableNote, { type: 'table', name: 'Table', category: 'annotation', anchors: 1 }),
+  tool(TableNote, { type: 'table', name: 'Table', category: 'annotation', anchors: 1, style: { fillColor: '#1b1f27', fillOpacity: 0.95 } }),
 
   // Brushes & multi-point shapes
   tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand' }),

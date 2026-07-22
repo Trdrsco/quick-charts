@@ -12,6 +12,8 @@ export type ImageProps = {
   /** Data-URL payload (kept small by the host's picker); empty = placeholder frame. */
   dataUrl: string
   width: number
+  /** 0..1 paint opacity. */
+  opacity: number
 }
 
 /** User image pinned to a chart point (anchor = top-left). */
@@ -22,7 +24,7 @@ export class ImageNote extends Drawing<ImageProps> {
   private _loadedFrom = ''
 
   protected override defaultProps(): ImageProps {
-    return { dataUrl: '', width: 160 }
+    return { dataUrl: '', width: 160, opacity: 1 }
   }
 
   requiredAnchors(): number {
@@ -56,7 +58,10 @@ export class ImageNote extends Drawing<ImageProps> {
     const f = this.frame(viewport)
     if (!f) return
     if (this._bitmap && this.props.dataUrl) {
+      ctx.save()
+      ctx.globalAlpha = Math.max(0, Math.min(1, this.props.opacity))
       ctx.drawImage(this._bitmap, f.x, f.y, f.width, f.height)
+      ctx.restore()
       if (this.state === 'selected' || this.state === 'editing') {
         ctx.save()
         ctx.strokeStyle = this.style.lineColor

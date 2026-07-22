@@ -50,6 +50,10 @@ function paintPolygon(
 export type RectangleProps = {
   /** Free label rendered centered inside the rectangle. */
   text: string
+  /** Dashed horizontal midline across the box. */
+  middleLine: boolean
+  extendLeft: boolean
+  extendRight: boolean
 }
 
 /** Axis-aligned rectangle spanned by two corner anchors. */
@@ -57,21 +61,33 @@ export class Rectangle extends Drawing<RectangleProps> {
   readonly type = 'rectangle'
 
   protected override defaultProps(): RectangleProps {
-    return { text: '' }
+    return { text: '', middleLine: false, extendLeft: false, extendRight: false }
   }
 
   requiredAnchors(): number {
     return 2
   }
 
+  /** The hint sits level at the box center — exactly where the text itself renders. */
+  protected override textHintPlacement(points: Point[]): { x: number; y: number; angle: number } {
+    return {
+      x: points.reduce((sum, p) => sum + p.x, 0) / points.length,
+      y: points.reduce((sum, p) => sum + p.y, 0) / points.length,
+      angle: 0,
+    }
+  }
+
   protected corners(viewport: Viewport): Point[] | null {
     const [a, b] = this.anchorPixels(viewport)
     if (!a || !b) return null
+    // Extension stretches the box horizontally to the pane edge(s).
+    const left = this.props.extendLeft ? 0 : Math.min(a.x, b.x)
+    const right = this.props.extendRight ? viewport.width : Math.max(a.x, b.x)
     return [
-      { x: a.x, y: a.y },
-      { x: b.x, y: a.y },
-      { x: b.x, y: b.y },
-      { x: a.x, y: b.y },
+      { x: left, y: a.y },
+      { x: right, y: a.y },
+      { x: right, y: b.y },
+      { x: left, y: b.y },
     ]
   }
 
@@ -79,6 +95,17 @@ export class Rectangle extends Drawing<RectangleProps> {
     const corners = this.corners(viewport)
     if (!corners) return
     paintPolygon(ctx, corners, this)
+    if (this.props.middleLine) {
+      const midY = (corners[0].y + corners[2].y) / 2
+      ctx.save()
+      applyStroke(ctx, this.style)
+      ctx.setLineDash([4, 4])
+      ctx.beginPath()
+      ctx.moveTo(corners[0].x, midY)
+      ctx.lineTo(corners[1].x, midY)
+      ctx.stroke()
+      ctx.restore()
+    }
     if (this.props.text) {
       paintLabel(
         ctx,
@@ -271,6 +298,18 @@ function sampleBezier(controls: readonly Point[], samples = 32): Point[] {
 
 function paintSampled(ctx: CanvasRenderingContext2D, drawing: AnyDrawing, samples: Point[]): void {
   if (samples.length < 2) return
+  // The background channel fills the area the curve closes over (chord back to the start).
+  const fill = fillPaint(drawing.style)
+  if (fill) {
+    ctx.save()
+    ctx.fillStyle = fill
+    ctx.beginPath()
+    ctx.moveTo(samples[0].x, samples[0].y)
+    for (let i = 1; i < samples.length; i++) ctx.lineTo(samples[i].x, samples[i].y)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+  }
   applyStroke(ctx, drawing.style)
   ctx.beginPath()
   ctx.moveTo(samples[0].x, samples[0].y)
