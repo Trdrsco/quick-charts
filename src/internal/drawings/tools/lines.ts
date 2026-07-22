@@ -2,7 +2,7 @@ import type { ISeriesPrimitiveAxisView } from 'lightweight-charts'
 
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
-import { angleOf, distanceToSegment, extendSegment, midpoint } from '../core/geometry'
+import { angleOf, distanceToSegment, extendSegment, midpoint, segmentTextAngle } from '../core/geometry'
 import {
   applyStroke,
   formatPrice,
@@ -114,9 +114,16 @@ export class TrendLine extends Drawing<TrendLineProps> {
       })
     }
 
+    // Text and stats ride the segment's angle — a label on a rising line slopes with it.
+    const textAngle = segmentTextAngle(pa, pb)
+
     if (this.props.text) {
       const mid = midpoint(pa, pb)
-      paintLabel(ctx, this.props.text, { x: mid.x, y: mid.y - 14 }, this.style, { align: 'center' })
+      ctx.save()
+      ctx.translate(mid.x, mid.y)
+      ctx.rotate(textAngle)
+      paintLabel(ctx, this.props.text, { x: 0, y: -14 }, this.style, { align: 'center' })
+      ctx.restore()
     }
 
     const stats = this.statsText(viewport)
@@ -124,8 +131,11 @@ export class TrendLine extends Drawing<TrendLineProps> {
       const t = this.props.statsPosition === 'left' ? 0.12 : this.props.statsPosition === 'right' ? 0.88 : 0.5
       // The stats pill drops below its usual perch when a text label already sits above the line.
       const lift = this.props.text && this.props.statsPosition === 'center' ? -32 : -14
-      const at = { x: pa.x + (pb.x - pa.x) * t, y: pa.y + (pb.y - pa.y) * t + lift }
-      paintLabel(ctx, stats, at, this.style, { align: 'center', background: withAlpha('#1b1f27', 0.92) })
+      ctx.save()
+      ctx.translate(pa.x + (pb.x - pa.x) * t, pa.y + (pb.y - pa.y) * t)
+      ctx.rotate(textAngle)
+      paintLabel(ctx, stats, { x: 0, y: lift }, this.style, { align: 'center', background: withAlpha('#1b1f27', 0.92) })
+      ctx.restore()
     }
   }
 

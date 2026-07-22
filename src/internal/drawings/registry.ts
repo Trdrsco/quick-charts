@@ -50,7 +50,7 @@ import {
   Pitchfan,
 } from './tools/fibonacci'
 import { GannBox, GannFan, GannSquare, GannSquareFixed } from './tools/gann'
-import { Forecast, LongPosition, Projection, ShortPosition } from './tools/forecasting'
+import { Forecast, LongPosition, Sector, ShortPosition } from './tools/forecasting'
 import { Brush, Highlighter, PathLine, Polyline } from './tools/freehand'
 import { ArrowMarker, Pin, PriceNote, Signpost } from './tools/annotations'
 import { TableNote } from './tools/table'
@@ -209,14 +209,14 @@ const DEFINITIONS: ToolDefinition[] = [
 
   // Cycles
   tool(CyclicLines, { type: 'cyclic_lines', name: 'Cyclic lines', category: 'cycles', anchors: 2 }),
-  tool(TimeCycles, { type: 'time_cycles', name: 'Time cycles', category: 'cycles', anchors: 2 }),
+  tool(TimeCycles, { type: 'time_cycles', name: 'Time cycles', category: 'cycles', anchors: 2, style: { fillOpacity: 0.12 } }),
   tool(SineLine, { type: 'sine_line', name: 'Sine line', category: 'cycles', anchors: 2 }),
 
   // Forecasting & positions
   tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3 }),
   tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3 }),
-  tool(Projection, { type: 'projection', name: 'Projection', category: 'forecasting', anchors: 3 }),
-  tool(Forecast, { type: 'forecast', name: 'Forecast', category: 'forecasting', anchors: 2 }),
+  tool(Forecast, { type: 'forecast', name: 'Position forecast', category: 'forecasting', anchors: 2 }),
+  tool(Sector, { type: 'sector', name: 'Sector', category: 'forecasting', anchors: 3, style: { fillOpacity: 0.2 } }),
   tool(BarsPattern, { type: 'bars_pattern', name: 'Bars pattern', category: 'forecasting', anchors: 2, capturesBars: true }),
   tool(GhostFeed, { type: 'ghost_feed', name: 'Ghost feed', category: 'forecasting', anchors: 2, capturesBars: true }),
 
@@ -240,7 +240,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(PriceLabel, { type: 'price_label', name: 'Price label', category: 'annotation', anchors: 1 }),
   tool(ArrowMarkUp, { type: 'arrow_up', name: 'Arrow mark up', category: 'annotation', anchors: 1 }),
   tool(ArrowMarkDown, { type: 'arrow_down', name: 'Arrow mark down', category: 'annotation', anchors: 1 }),
-  tool(ArrowMarker, { type: 'arrow_marker', name: 'Arrow marker', category: 'annotation', anchors: 1, hasText: true }),
+  tool(ArrowMarker, { type: 'arrow_marker', name: 'Arrow marker', category: 'annotation', anchors: 2 }),
   tool(FlagMark, { type: 'flag', name: 'Flag mark', category: 'annotation', anchors: 1 }),
   tool(PriceNote, { type: 'price_note', name: 'Price note', category: 'annotation', anchors: 2, hasText: true }),
   tool(Pin, { type: 'pin', name: 'Pin', category: 'annotation', anchors: 1, hasText: true }),
@@ -249,7 +249,7 @@ const DEFINITIONS: ToolDefinition[] = [
 
   // Brushes & multi-point shapes
   tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand' }),
-  tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: '#f5a623' } }),
+  tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: 'rgba(245, 166, 35, 0.35)' } }),
   tool(PathLine, { type: 'path', name: 'Path', category: 'shapes', anchors: 2, placement: 'multipoint' }),
   tool(Polyline, { type: 'polyline', name: 'Polyline', category: 'shapes', anchors: 2, placement: 'multipoint', style: { fillOpacity: 0.1 } }),
 

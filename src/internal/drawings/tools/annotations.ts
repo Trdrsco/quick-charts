@@ -422,61 +422,78 @@ export class Signpost extends Drawing<TextProps> {
   }
 }
 
-/** Large labeled arrow glyph; direction is part of its props. */
-export class ArrowMarker extends Drawing<TextProps & { direction: 'up' | 'down' }> {
+/**
+ * Fat arrow between two anchors: the tip sits at the first, the tail sizes and aims it — drag
+ * the tail to grow the arrow or flip it to point the other way. Text sits at the butt end,
+ * clear of the arrow body.
+ */
+export class ArrowMarker extends Drawing<TextProps> {
   readonly type = 'arrow_marker'
 
-  protected override defaultProps(): TextProps & { direction: 'up' | 'down' } {
-    return { text: '', direction: 'down' }
+  protected override defaultProps(): TextProps {
+    return { text: '' }
   }
 
   requiredAnchors(): number {
-    return 1
+    return 2
+  }
+
+  private geometry(viewport: Viewport): { tip: Point; tail: Point; len: number; w: number; angle: number } | null {
+    const [tip, tail] = this.anchorPixels(viewport)
+    if (!tip || !tail) return null
+    const len = Math.max(18, Math.hypot(tail.x - tip.x, tail.y - tip.y))
+    const w = Math.max(8, Math.min(46, len * 0.34))
+    return { tip, tail, len, w, angle: Math.atan2(tail.y - tip.y, tail.x - tip.x) }
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const anchor = this.anchors[0]
-    if (!anchor) return
-    const p = this.anchorToPixel(anchor, viewport)
-    if (!p) return
-    const down = this.props.direction === 'down'
-    const sign = down ? -1 : 1
-    const w = 9 + this.style.lineWidth * 2
-    const len = w * 2.6
+    const g = this.geometry(viewport)
+    if (!g) return
     ctx.save()
     ctx.setLineDash([])
+    ctx.translate(g.tip.x, g.tip.y)
+    ctx.rotate(g.angle)
     ctx.fillStyle = this.style.lineColor
     ctx.beginPath()
-    // Fat arrow: tip at the anchor, shaft extending away.
-    ctx.moveTo(p.x, p.y)
-    ctx.lineTo(p.x - w, p.y + sign * w)
-    ctx.lineTo(p.x - w / 2, p.y + sign * w)
-    ctx.lineTo(p.x - w / 2, p.y + sign * len)
-    ctx.lineTo(p.x + w / 2, p.y + sign * len)
-    ctx.lineTo(p.x + w / 2, p.y + sign * w)
-    ctx.lineTo(p.x + w, p.y + sign * w)
+    // Tip at the origin; head then shaft running toward the tail along +x.
+    ctx.moveTo(0, 0)
+    ctx.lineTo(g.w, -g.w)
+    ctx.lineTo(g.w, -g.w / 2)
+    ctx.lineTo(g.len, -g.w / 2)
+    ctx.lineTo(g.len, g.w / 2)
+    ctx.lineTo(g.w, g.w / 2)
+    ctx.lineTo(g.w, g.w)
     ctx.closePath()
     ctx.fill()
     ctx.restore()
     if (this.props.text) {
       const { width, height } = measureTextBlock(this.props.text, this.style)
-      const y = down ? p.y - len - height - 18 : p.y + len + 6
-      paintTextBlock(ctx, this.props.text, { x: p.x - (width + 12) / 2, y }, this.style)
+      const boxW = width + 12
+      const boxH = height + 12
+      const above = g.tail.y <= g.tip.y
+      const y = above ? g.tail.y - boxH - 8 : g.tail.y + 8
+      paintTextBlock(ctx, this.props.text, { x: g.tail.x - boxW / 2, y }, this.style)
     }
   }
 
+  /** The hint sits at the butt end where the text will render — never over the arrow body. */
+  protected override textHintPlacement(points: Point[]): { x: number; y: number; angle: number } {
+    const tip = points[0]
+    const tail = points[1] ?? tip
+    const above = tail.y <= tip.y
+    return { x: tail.x, y: above ? tail.y - 18 : tail.y + 18, angle: 0 }
+  }
+
   testHit(point: Point, viewport: Viewport): boolean {
-    const anchor = this.anchors[0]
-    if (!anchor) return false
-    const p = this.anchorToPixel(anchor, viewport)
-    if (!p) return false
-    const down = this.props.direction === 'down'
-    const w = 9 + this.style.lineWidth * 2
-    const len = w * 2.6
-    const box = down
-      ? { x: p.x - w, y: p.y - len, width: w * 2, height: len }
-      : { x: p.x - w, y: p.y, width: w * 2, height: len }
-    return inBox(point, box, 4)
+    const g = this.geometry(viewport)
+    if (!g) return false
+    const dx = point.x - g.tip.x
+    const dy = point.y - g.tip.y
+    const cos = Math.cos(-g.angle)
+    const sin = Math.sin(-g.angle)
+    const rx = dx * cos - dy * sin
+    const ry = dx * sin + dy * cos
+    return rx >= -4 && rx <= g.len + 4 && Math.abs(ry) <= g.w + 4
   }
 }
 

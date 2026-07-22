@@ -43,6 +43,7 @@ export class DrawingPaneView implements IPrimitivePaneView, IPrimitivePaneRender
           if (points.length > 0) paintHandles(ctx, points, drawing.style.lineColor)
           const grips = drawing.resizeHandles(viewport)
           if (grips.length > 0) paintResizeGrips(ctx, grips, drawing.style.lineColor)
+          if (drawing.isValid()) drawing.paintTextHint(ctx, viewport)
         }
       } finally {
         ctx.restore()

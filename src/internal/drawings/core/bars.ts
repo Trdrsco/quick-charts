@@ -74,11 +74,14 @@ export interface VolumeBin {
   priceLow: number
   priceHigh: number
   volume: number
+  upVolume: number
+  downVolume: number
 }
 
 /**
  * Volume-by-price histogram: each bar's volume spreads uniformly over the bins its high–low
- * range covers. Null when the range has no volume data at all.
+ * range covers, attributed up/down by close vs open (close > open counts as up volume).
+ * Null when the range has no volume data at all.
  */
 export function volumeProfile(bars: readonly SourceBar[], rows: number): VolumeBin[] | null {
   const withVolume = bars.filter((b) => typeof b.volume === 'number' && b.volume > 0)
@@ -95,13 +98,20 @@ export function volumeProfile(bars: readonly SourceBar[], rows: number): VolumeB
     priceLow: min + i * height,
     priceHigh: min + (i + 1) * height,
     volume: 0,
+    upVolume: 0,
+    downVolume: 0,
   }))
   for (const bar of withVolume) {
     const lowBin = Math.max(0, Math.min(rows - 1, Math.floor((bar.low - min) / height)))
     const highBin = Math.max(0, Math.min(rows - 1, Math.floor((bar.high - min) / height)))
     const span = highBin - lowBin + 1
     const share = (bar.volume as number) / span
-    for (let i = lowBin; i <= highBin; i++) bins[i].volume += share
+    const up = bar.close > bar.open
+    for (let i = lowBin; i <= highBin; i++) {
+      bins[i].volume += share
+      if (up) bins[i].upVolume += share
+      else bins[i].downVolume += share
+    }
   }
   return bins
 }

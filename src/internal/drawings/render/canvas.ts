@@ -233,6 +233,14 @@ export function fillPaint(style: DrawingStyle): string | null {
   return withAlpha(style.fillColor, style.fillOpacity)
 }
 
+/** The alpha carried by a color value (rgba's 4th component); opaque formats report 1. */
+export function alphaOf(color: string): number {
+  const m = color.trim().match(/^rgba\([^,]+,[^,]+,[^,]+,\s*([0-9.]+)\s*\)$/i)
+  if (!m) return 1
+  const a = Number(m[1])
+  return Number.isFinite(a) ? Math.max(0, Math.min(1, a)) : 1
+}
+
 /** Apply an alpha to a #rgb/#rrggbb/rgb()/rgba() color. Unknown formats pass through. */
 export function withAlpha(color: string, alpha: number): string {
   const a = Math.max(0, Math.min(1, alpha))

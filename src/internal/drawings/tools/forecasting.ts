@@ -1,7 +1,7 @@
-import type { Point, Viewport } from '../core/types'
+import type { DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
-import { applyStroke, formatPrice, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { applyStroke, fillPaint, fontOf, formatPrice, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
 const PROFIT = '#089981'
 const LOSS = '#f23645'
@@ -102,55 +102,92 @@ export class ShortPosition extends LongPosition {
   override readonly type = 'short_position'
 }
 
-/** Projected move: the first swing (anchors 1–2) mirrored onto anchor 3, drawn as a band. */
-export class Projection extends Drawing {
-  readonly type = 'projection'
-
-  requiredAnchors(): number {
-    return 3
+/** Bordered label pill (source/target/verdict boxes); returns its painted bounds. */
+function paintPill(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  at: Point,
+  style: DrawingStyle,
+  colors: { text: string; back: string; border?: string },
+): { x: number; y: number; width: number; height: number } {
+  ctx.save()
+  ctx.font = fontOf(style)
+  ctx.setLineDash([])
+  const width = ctx.measureText(text).width + 12
+  const height = style.fontSize + 10
+  const box = { x: at.x - width / 2, y: at.y - height / 2, width, height }
+  ctx.beginPath()
+  ctx.roundRect(box.x, box.y, box.width, box.height, 4)
+  ctx.fillStyle = colors.back
+  ctx.fill()
+  if (colors.border) {
+    ctx.strokeStyle = colors.border
+    ctx.lineWidth = 1
+    ctx.stroke()
   }
-
-  protected quad(viewport: Viewport): { p1: Point; p2: Point; p3: Point; p4: Point } | null {
-    const [p1, p2, p3] = this.anchorPixels(viewport)
-    if (!p1 || !p2 || !p3) return null
-    return { p1, p2, p3, p4: { x: p3.x + (p2.x - p1.x), y: p3.y + (p2.y - p1.y) } }
-  }
-
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const q = this.quad(viewport)
-    if (!q) return
-    ctx.save()
-    ctx.fillStyle = withAlpha(this.style.lineColor, 0.1)
-    ctx.beginPath()
-    ctx.moveTo(q.p1.x, q.p1.y)
-    ctx.lineTo(q.p2.x, q.p2.y)
-    ctx.lineTo(q.p4.x, q.p4.y)
-    ctx.lineTo(q.p3.x, q.p3.y)
-    ctx.closePath()
-    ctx.fill()
-    ctx.restore()
-    applyStroke(ctx, this.style)
-    strokeSegment(ctx, q.p1, q.p2)
-    strokeSegment(ctx, q.p3, q.p4)
-    paintArrowHead(ctx, q.p3, q.p4, this.style)
-  }
-
-  testHit(point: Point, viewport: Viewport): boolean {
-    const q = this.quad(viewport)
-    if (!q) return false
-    const tolerance = Math.max(6, this.style.lineWidth / 2 + 4)
-    return (
-      distanceToSegment(point, q.p1, q.p2) <= tolerance || distanceToSegment(point, q.p3, q.p4) <= tolerance
-    )
-  }
+  ctx.fillStyle = colors.text
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, at.x, at.y)
+  ctx.restore()
+  return box
 }
 
-/** Forecast arrow: a projected path from now into the future with its delta readout. */
-export class Forecast extends Drawing {
+export type ForecastProps = {
+  sourceTextColor: string
+  sourceBackColor: string
+  sourceBorderColor: string
+  targetTextColor: string
+  targetBackColor: string
+  targetBorderColor: string
+  successTextColor: string
+  successBackColor: string
+  failureTextColor: string
+  failureBackColor: string
+}
+
+/**
+ * Position forecast: entry (source) and exit (target) anchors set a projected move and its
+ * duration. As bars arrive the idea resolves itself — Success when price touches the target
+ * before the target time, Failure once that time passes untouched.
+ */
+export class Forecast extends Drawing<ForecastProps> {
   readonly type = 'forecast'
+
+  protected override defaultProps(): ForecastProps {
+    return {
+      sourceTextColor: '#ffffff',
+      sourceBackColor: '#2962ff',
+      sourceBorderColor: '#2962ff',
+      targetTextColor: '#ffffff',
+      targetBackColor: PROFIT,
+      targetBorderColor: PROFIT,
+      successTextColor: '#ffffff',
+      successBackColor: PROFIT,
+      failureTextColor: '#ffffff',
+      failureBackColor: LOSS,
+    }
+  }
 
   requiredAnchors(): number {
     return 2
+  }
+
+  /** Success once a bar inside the window touches the target; Failure when time runs out. */
+  private verdict(): 'Success' | 'Failure' | null {
+    const [a, b] = this.anchors
+    if (!a || !b) return null
+    const start = Math.min(Number(a.time), Number(b.time))
+    const end = Math.max(Number(a.time), Number(b.time))
+    const up = b.price >= a.price
+    let latest = -Infinity
+    for (const bar of this.bars()) {
+      const t = Number(bar.time)
+      latest = Math.max(latest, t)
+      if (t <= start || t > end) continue
+      if (up ? bar.high >= b.price : bar.low <= b.price) return 'Success'
+    }
+    return latest > end ? 'Failure' : null
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -160,22 +197,95 @@ export class Forecast extends Drawing {
     applyStroke(ctx, this.style)
     strokeSegment(ctx, p1, p2)
     paintArrowHead(ctx, p1, p2, this.style)
-    const dPrice = b.price - a.price
-    const bars = viewport.barsBetween(a.time, b.time)
-    const up = dPrice >= 0
-    const parts = [
-      `${up ? '+' : ''}${formatPrice(dPrice)}`,
-      bars === null ? null : `${Math.round(bars)} bars`,
-    ].filter((s): s is string => s !== null)
-    paintLabel(ctx, parts.join('  ·  '), { x: p2.x, y: p2.y + (up ? -16 : 16) }, { ...this.style, textColor: up ? PROFIT : LOSS }, {
-      align: 'center',
-      background: withAlpha('#1b1f27', 0.92),
+    const p = this.props
+    const up = b.price >= a.price
+    paintPill(ctx, formatPrice(a.price), { x: p1.x, y: p1.y + (up ? 16 : -16) }, this.style, {
+      text: p.sourceTextColor,
+      back: p.sourceBackColor,
+      border: p.sourceBorderColor,
     })
+    paintPill(ctx, formatPrice(b.price), { x: p2.x, y: p2.y + (up ? -16 : 16) }, this.style, {
+      text: p.targetTextColor,
+      back: p.targetBackColor,
+      border: p.targetBorderColor,
+    })
+    const verdict = this.verdict()
+    if (verdict) {
+      const win = verdict === 'Success'
+      paintPill(ctx, verdict, { x: p2.x, y: p2.y + (up ? -40 : 40) }, this.style, {
+        text: win ? p.successTextColor : p.failureTextColor,
+        back: win ? p.successBackColor : p.failureBackColor,
+      })
+    }
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
     const [p1, p2] = this.anchorPixels(viewport)
     if (!p1 || !p2) return false
     return distanceToSegment(point, p1, p2) <= Math.max(6, this.style.lineWidth / 2 + 4)
+  }
+}
+
+/**
+ * Sector: a wedge projecting price forward — origin, a horizontal point in the future, and a
+ * third point at the estimated price. The arc between the two far points closes the slice.
+ */
+export class Sector extends Drawing {
+  readonly type = 'sector'
+
+  requiredAnchors(): number {
+    return 3
+  }
+
+  /** Arc samples from anchor 2 to anchor 3, radius blending between the two legs. */
+  private arc(viewport: Viewport): { origin: Point; p2: Point; p3: Point; samples: Point[] } | null {
+    const [origin, p2, p3] = this.anchorPixels(viewport)
+    if (!origin || !p2 || !p3) return null
+    const r2 = Math.hypot(p2.x - origin.x, p2.y - origin.y)
+    const r3 = Math.hypot(p3.x - origin.x, p3.y - origin.y)
+    const a2 = Math.atan2(p2.y - origin.y, p2.x - origin.x)
+    const a3 = Math.atan2(p3.y - origin.y, p3.x - origin.x)
+    let sweep = a3 - a2
+    if (sweep > Math.PI) sweep -= Math.PI * 2
+    if (sweep < -Math.PI) sweep += Math.PI * 2
+    const steps = 32
+    const samples: Point[] = []
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps
+      const angle = a2 + sweep * t
+      const radius = r2 + (r3 - r2) * t
+      samples.push({ x: origin.x + Math.cos(angle) * radius, y: origin.y + Math.sin(angle) * radius })
+    }
+    return { origin, p2, p3, samples }
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const arc = this.arc(viewport)
+    if (!arc) return
+    ctx.save()
+    ctx.beginPath()
+    ctx.moveTo(arc.origin.x, arc.origin.y)
+    for (const s of arc.samples) ctx.lineTo(s.x, s.y)
+    ctx.closePath()
+    const fill = fillPaint(this.style)
+    if (fill) {
+      ctx.fillStyle = fill
+      ctx.fill()
+    }
+    applyStroke(ctx, this.style)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  testHit(point: Point, viewport: Viewport): boolean {
+    const arc = this.arc(viewport)
+    if (!arc) return false
+    const tolerance = Math.max(6, this.style.lineWidth / 2 + 4)
+    if (distanceToSegment(point, arc.origin, arc.samples[0]) <= tolerance) return true
+    if (distanceToSegment(point, arc.origin, arc.samples[arc.samples.length - 1]) <= tolerance) return true
+    for (let i = 0; i < arc.samples.length - 1; i++) {
+      if (distanceToSegment(point, arc.samples[i], arc.samples[i + 1]) <= tolerance) return true
+    }
+    return false
   }
 }

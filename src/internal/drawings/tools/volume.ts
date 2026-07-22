@@ -94,43 +94,73 @@ export class AnchoredVwap extends Drawing {
 }
 
 export type ProfileProps = {
-  rows: number
-  /** Share of total volume the value area covers (VAH/VAL bounds); 0 hides it. */
-  valueArea: number
+  /** 'number' sizes the histogram by total row count; 'ticks' by price ticks per row. */
+  rowsLayout: 'number' | 'ticks'
+  rowSize: number
+  /** 'updown' splits each row by up/down bars, 'total' paints one bar, 'delta' their difference. */
+  volume: 'updown' | 'total' | 'delta'
+  /** Percentage of total volume the value area highlights (0 hides it). */
+  valueAreaVolume: number
+  upColor: string
+  downColor: string
+  valueAreaUpColor: string
+  valueAreaDownColor: string
 }
 
-/** Volume-by-price histogram over the two anchors' time range, drawn inside the range box. */
-export class FixedRangeVolumeProfile extends Drawing<ProfileProps> {
-  readonly type: string = 'fixed_range_volume_profile'
+const PROFILE_PROPS: ProfileProps = {
+  rowsLayout: 'number',
+  rowSize: 24,
+  volume: 'updown',
+  valueAreaVolume: 70,
+  upColor: '#089981',
+  downColor: '#f23645',
+  valueAreaUpColor: '#089981',
+  valueAreaDownColor: '#f23645',
+}
 
-  protected override defaultProps(): ProfileProps {
-    return { rows: 24, valueArea: 0.7 }
+/** Smallest price increment implied by the data — decimal places of the recent closes. The
+ *  feed carries no instrument metadata, so tick-based row sizing infers a tick from precision. */
+function impliedTick(bars: readonly SourceBar[]): number {
+  let decimals = 0
+  for (const bar of bars.slice(-50)) {
+    const text = String(bar.close)
+    const dot = text.indexOf('.')
+    if (dot !== -1) decimals = Math.max(decimals, text.length - dot - 1)
   }
+  return Math.pow(10, -Math.min(decimals, 8))
+}
 
-  requiredAnchors(): number {
-    return 2
-  }
+/** Shared volume-by-price histogram body; subclasses define the bar range and the x-span. */
+abstract class VolumeProfileBase<P extends ProfileProps & Record<string, unknown>> extends Drawing<P> {
+  protected abstract range(): SourceBar[]
+  protected abstract span(viewport: Viewport): { x1: number; x2: number } | null
 
-  protected range(): SourceBar[] {
-    const [a, b] = this.anchors
-    if (!a || !b) return []
-    return barsInRange(this.bars(), a.time, b.time)
-  }
-
-  protected span(viewport: Viewport): { x1: number; x2: number } | null {
-    const [pa, pb] = this.anchorPixels(viewport)
-    if (!pa || !pb) return null
-    return { x1: Math.min(pa.x, pb.x), x2: Math.max(pa.x, pb.x) }
+  protected rowCount(range: readonly SourceBar[]): number {
+    const size = Math.max(1, this.props.rowSize)
+    if (this.props.rowsLayout === 'ticks') {
+      let min = Infinity
+      let max = -Infinity
+      for (const bar of range) {
+        min = Math.min(min, bar.low)
+        max = Math.max(max, bar.high)
+      }
+      if (!(max > min)) return 24
+      const rows = Math.ceil((max - min) / (impliedTick(range) * size))
+      return Math.max(1, Math.min(400, rows))
+    }
+    return Math.max(1, Math.min(400, Math.round(size)))
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const span = this.span(viewport)
     if (!span) return
-    const bins = volumeProfile(this.range(), Math.max(4, Math.min(80, this.props.rows)))
-    // The range frame.
+    const range = this.range()
+    const bins = volumeProfile(range, this.rowCount(range))
+    // The range frame. The profile has no generic stroke channel — frame, POC, and value-area
+    // bounds paint in fixed chrome colors; the histogram colors are the tool's own props.
     ctx.save()
-    applyStroke(ctx, this.style)
-    ctx.globalAlpha = 0.5
+    ctx.strokeStyle = withAlpha('#787b86', 0.5)
+    ctx.lineWidth = 1
     ctx.setLineDash([4, 4])
     ctx.strokeRect(span.x1, 0, span.x2 - span.x1, viewport.height)
     ctx.restore()
@@ -149,7 +179,7 @@ export class FixedRangeVolumeProfile extends Drawing<ProfileProps> {
 
     // Value area: expand from the POC toward the heavier neighbor until it holds the target
     // share of total volume — the trading-profile convention.
-    const vaShare = Math.max(0, Math.min(0.95, this.props.valueArea))
+    const vaShare = Math.max(0, Math.min(95, this.props.valueAreaVolume)) / 100
     const total = bins.reduce((s, b) => s + b.volume, 0)
     let low = pocIndex
     let high = pocIndex
@@ -172,15 +202,31 @@ export class FixedRangeVolumeProfile extends Drawing<ProfileProps> {
       const y1 = viewport.yOf(bin.priceHigh)
       const y2 = viewport.yOf(bin.priceLow)
       if (y1 === null || y2 === null) continue
-      const width = (bin.volume / maxVolume) * maxWidth
+      const top = Math.min(y1, y2)
+      const rowH = Math.max(1, Math.abs(y2 - y1) - 1)
       const inValueArea = vaShare > 0 && i >= low && i <= high
-      ctx.fillStyle = withAlpha(this.style.lineColor, bin === poc ? 0.55 : inValueArea ? 0.38 : 0.2)
-      ctx.fillRect(span.x1, Math.min(y1, y2), width, Math.max(1, Math.abs(y2 - y1) - 1))
+      const upPaint = withAlpha(inValueArea ? this.props.valueAreaUpColor : this.props.upColor, inValueArea ? 0.8 : 0.3)
+      const downPaint = withAlpha(inValueArea ? this.props.valueAreaDownColor : this.props.downColor, inValueArea ? 0.8 : 0.3)
+      if (this.props.volume === 'updown') {
+        const upW = (bin.upVolume / maxVolume) * maxWidth
+        const downW = (bin.downVolume / maxVolume) * maxWidth
+        ctx.fillStyle = upPaint
+        ctx.fillRect(span.x1, top, upW, rowH)
+        ctx.fillStyle = downPaint
+        ctx.fillRect(span.x1 + upW, top, downW, rowH)
+      } else if (this.props.volume === 'delta') {
+        const delta = bin.upVolume - bin.downVolume
+        ctx.fillStyle = delta >= 0 ? upPaint : downPaint
+        ctx.fillRect(span.x1, top, (Math.abs(delta) / maxVolume) * maxWidth, rowH)
+      } else {
+        ctx.fillStyle = upPaint
+        ctx.fillRect(span.x1, top, (bin.volume / maxVolume) * maxWidth, rowH)
+      }
     }
     // Point of control across the whole range, plus the value-area bounds.
     const pocY = viewport.yOf((poc.priceLow + poc.priceHigh) / 2)
     if (pocY !== null) {
-      ctx.strokeStyle = withAlpha(this.style.lineColor, 0.9)
+      ctx.strokeStyle = withAlpha('#f23645', 0.9)
       ctx.lineWidth = 1.5
       ctx.beginPath()
       ctx.moveTo(span.x1, pocY)
@@ -190,7 +236,7 @@ export class FixedRangeVolumeProfile extends Drawing<ProfileProps> {
     if (vaShare > 0) {
       const vahY = viewport.yOf(bins[high].priceHigh)
       const valY = viewport.yOf(bins[low].priceLow)
-      ctx.strokeStyle = withAlpha(this.style.lineColor, 0.6)
+      ctx.strokeStyle = withAlpha('#787b86', 0.6)
       ctx.lineWidth = 1
       ctx.setLineDash([3, 3])
       for (const y of [vahY, valY]) {
@@ -211,21 +257,59 @@ export class FixedRangeVolumeProfile extends Drawing<ProfileProps> {
   }
 }
 
-/** Volume profile from the anchor's time to the newest bar. */
-export class AnchoredVolumeProfile extends FixedRangeVolumeProfile {
-  override readonly type = 'anchored_volume_profile'
+export type FixedProfileProps = ProfileProps & {
+  /** Keep building through every bar right of the range — new bars join the profile live. */
+  extendRight: boolean
+}
 
-  override requiredAnchors(): number {
+/** Volume-by-price histogram over the two anchors' time range, drawn inside the range box. */
+export class FixedRangeVolumeProfile extends VolumeProfileBase<FixedProfileProps> {
+  readonly type = 'fixed_range_volume_profile'
+
+  protected override defaultProps(): FixedProfileProps {
+    return { ...PROFILE_PROPS, extendRight: false }
+  }
+
+  requiredAnchors(): number {
+    return 2
+  }
+
+  protected range(): SourceBar[] {
+    const [a, b] = this.anchors
+    if (!a || !b) return []
+    if (this.props.extendRight) {
+      return barsFrom(this.bars(), Number(a.time) <= Number(b.time) ? a.time : b.time)
+    }
+    return barsInRange(this.bars(), a.time, b.time)
+  }
+
+  protected span(viewport: Viewport): { x1: number; x2: number } | null {
+    const [pa, pb] = this.anchorPixels(viewport)
+    if (!pa || !pb) return null
+    const x1 = Math.min(pa.x, pb.x)
+    return { x1, x2: this.props.extendRight ? viewport.width : Math.max(pa.x, pb.x) }
+  }
+}
+
+/** Volume profile from the anchor's time to the newest bar. */
+export class AnchoredVolumeProfile extends VolumeProfileBase<ProfileProps> {
+  readonly type = 'anchored_volume_profile'
+
+  protected override defaultProps(): ProfileProps {
+    return { ...PROFILE_PROPS }
+  }
+
+  requiredAnchors(): number {
     return 1
   }
 
-  protected override range(): SourceBar[] {
+  protected range(): SourceBar[] {
     const anchor = this.anchors[0]
     if (!anchor) return []
     return barsFrom(this.bars(), anchor.time)
   }
 
-  protected override span(viewport: Viewport): { x1: number; x2: number } | null {
+  protected span(viewport: Viewport): { x1: number; x2: number } | null {
     const anchor = this.anchors[0]
     if (!anchor) return null
     const x = viewport.xOf(anchor.time)

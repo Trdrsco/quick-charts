@@ -1,7 +1,7 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
-import { applyStroke, strokeSegment } from '../render/canvas'
+import { applyStroke, fillPaint, strokeSegment } from '../render/canvas'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -58,6 +58,20 @@ export class TimeCycles extends Drawing {
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const geo = this.geometry(viewport)
     if (!geo) return
+    const fill = fillPaint(this.style)
+    if (fill) {
+      ctx.save()
+      ctx.fillStyle = fill
+      ctx.setLineDash([])
+      let filled = 0
+      for (let x = geo.startX; x <= viewport.width && filled < 200; x += geo.step, filled++) {
+        ctx.beginPath()
+        ctx.arc(x + geo.step / 2, geo.y, geo.step / 2, 0, Math.PI, true)
+        ctx.closePath()
+        ctx.fill()
+      }
+      ctx.restore()
+    }
     applyStroke(ctx, this.style)
     ctx.beginPath()
     let count = 0

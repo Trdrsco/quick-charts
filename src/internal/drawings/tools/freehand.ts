@@ -61,7 +61,11 @@ export class Brush extends StrokeDrawing {
   }
 }
 
-/** Brush variant: a wide, translucent stroke that reads as marker ink. */
+/**
+ * Brush variant: a wide stroke that reads as marker ink. Always solid — the translucency lives
+ * in the color value itself (the default seeds ~35% alpha), so the opacity control is the whole
+ * style surface.
+ */
 export class Highlighter extends StrokeDrawing {
   override readonly type = 'highlighter'
 
@@ -69,8 +73,10 @@ export class Highlighter extends StrokeDrawing {
     const points = this.points(viewport)
     if (points.length < 2) return
     ctx.save()
-    applyStroke(ctx, this.style)
-    ctx.strokeStyle = withAlpha(this.style.lineColor, 0.35)
+    ctx.setLineDash([])
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    ctx.strokeStyle = this.style.lineColor
     ctx.lineWidth = Math.max(this.style.lineWidth * 8, 12)
     this.tracePath(ctx, points, true)
     ctx.stroke()

@@ -129,19 +129,35 @@ export type CapturedBar = {
 export type BarsPatternProps = {
   /** OHLC snapshot captured at placement — the pattern stays as drawn while it moves. */
   bars: CapturedBar[]
+  /** Reflect the pattern vertically (price axis). */
+  mirrored: boolean
+  /** Reflect the pattern horizontally (time axis). */
+  flipped: boolean
+  /** 'bars' paints candle sticks; a price source paints the pattern as a line through it. */
+  mode: 'bars' | 'open' | 'high' | 'low' | 'close' | 'hl2'
+}
+
+export type GhostFeedProps = {
+  /** Average candle high-low span in price units; 0 = auto-seed from recent bars at placement. */
+  averageHL: number
+  /** Wobble amplitude as a percentage of the average span (0..100). */
+  variance: number
+  upColor: string
+  downColor: string
+  borderUpColor: string
+  borderDownColor: string
+  wickColor: string
+  drawBorder: boolean
+  drawWick: boolean
+  /** 0..100; candles paint at (100 − transparency)% opacity. */
+  transparency: number
 }
 
 /**
- * Bars pattern: a snapshot of the bars between the anchors at placement, repainted as candles
- * wherever the drawing is dragged (prices shift with the first anchor).
+ * Shared base for tools that snapshot the OHLC run between their anchors at placement and
+ * repaint it wherever the drawing is dragged (prices shift with the first anchor).
  */
-export class BarsPattern extends Drawing<BarsPatternProps> {
-  readonly type: string = 'bars_pattern'
-
-  protected override defaultProps(): BarsPatternProps {
-    return { bars: [] }
-  }
-
+export abstract class CapturedBarsDrawing<P extends { bars: CapturedBar[] } & Record<string, unknown>> extends Drawing<P> {
   requiredAnchors(): number {
     return 2
   }
@@ -154,53 +170,18 @@ export class BarsPattern extends Drawing<BarsPatternProps> {
     if (!range.length) return
     this.applyProps({
       bars: range.map((bar) => ({ o: bar.open, h: bar.high, l: bar.low, c: bar.close })),
-    } as Partial<BarsPatternProps>)
+    } as unknown as Partial<P>)
   }
 
   protected frame(viewport: Viewport): { x1: number; x2: number; baseY: number; scale: number } | null {
     const [pa, pb] = this.anchorPixels(viewport)
-    const captured = this.props.bars
-    if (!pa || !pb || captured.length === 0) return null
+    if (!pa || !pb || this.props.bars.length === 0) return null
     // Price-to-pixel scale from the viewport at the first anchor's price.
     const yAtBase = viewport.yOf(this.anchors[0].price)
     const yAtBasePlus = viewport.yOf(this.anchors[0].price + 1)
     if (yAtBase === null || yAtBasePlus === null) return null
     const scale = yAtBasePlus - yAtBase // px per +1 price (negative in screen space)
     return { x1: Math.min(pa.x, pb.x), x2: Math.max(pa.x, pb.x), baseY: pa.y, scale }
-  }
-
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const f = this.frame(viewport)
-    const captured = this.props.bars
-    if (!f) {
-      this.paintPlaceholder(ctx, viewport)
-      return
-    }
-    const base = captured[0].c
-    const width = (f.x2 - f.x1) / captured.length
-    const bodyW = Math.max(1.5, Math.min(9, width * 0.6))
-    ctx.save()
-    ctx.setLineDash([])
-    for (let i = 0; i < captured.length; i++) {
-      const bar = captured[i]
-      const cx = f.x1 + width * (i + 0.5)
-      const yO = f.baseY + (bar.o - base) * f.scale
-      const yH = f.baseY + (bar.h - base) * f.scale
-      const yL = f.baseY + (bar.l - base) * f.scale
-      const yC = f.baseY + (bar.c - base) * f.scale
-      const up = bar.c >= bar.o
-      const color = withAlpha(up ? '#4c98fb' : '#f23645', 0.75)
-      ctx.strokeStyle = color
-      ctx.fillStyle = color
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.moveTo(cx, yH)
-      ctx.lineTo(cx, yL)
-      ctx.stroke()
-      const top = Math.min(yO, yC)
-      ctx.fillRect(cx - bodyW / 2, top, bodyW, Math.max(1, Math.abs(yC - yO)))
-    }
-    ctx.restore()
   }
 
   protected paintPlaceholder(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -213,6 +194,81 @@ export class BarsPattern extends Drawing<BarsPatternProps> {
     ctx.strokeRect(Math.min(pa.x, pb.x), Math.min(pa.y, pb.y), Math.abs(pb.x - pa.x), Math.max(12, Math.abs(pb.y - pa.y)))
     ctx.restore()
   }
+}
+
+/** Bars pattern: the captured run repainted as sticks (or a source line), in the stroke color. */
+export class BarsPattern extends CapturedBarsDrawing<BarsPatternProps> {
+  readonly type: string = 'bars_pattern'
+
+  protected override defaultProps(): BarsPatternProps {
+    return { bars: [], mirrored: false, flipped: false, mode: 'bars' }
+  }
+
+  private priceOf(bar: CapturedBar): number {
+    const { mode } = this.props
+    if (mode === 'open') return bar.o
+    if (mode === 'high') return bar.h
+    if (mode === 'low') return bar.l
+    if (mode === 'hl2') return (bar.h + bar.l) / 2
+    return bar.c
+  }
+
+  /** Bars in paint order (flip reverses time) with the y mapper (mirror negates price offsets). */
+  private sequence(f: { baseY: number; scale: number }): { seq: CapturedBar[]; yAt: (v: number) => number } {
+    const seq = this.props.flipped ? [...this.props.bars].reverse() : this.props.bars
+    const base = seq[0].c
+    const sign = this.props.mirrored ? -1 : 1
+    return { seq, yAt: (v: number) => f.baseY + (v - base) * f.scale * sign }
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const f = this.frame(viewport)
+    if (!f) {
+      this.paintPlaceholder(ctx, viewport)
+      return
+    }
+    const { seq, yAt } = this.sequence(f)
+    const width = (f.x2 - f.x1) / seq.length
+
+    // The whole style surface is the one color (opacity riding in it) — no width/dash channel.
+    if (this.props.mode !== 'bars') {
+      ctx.save()
+      ctx.setLineDash([])
+      ctx.strokeStyle = this.style.lineColor
+      ctx.lineWidth = 2
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.beginPath()
+      for (let i = 0; i < seq.length; i++) {
+        const x = f.x1 + width * (i + 0.5)
+        const y = yAt(this.priceOf(seq[i]))
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+      ctx.restore()
+      return
+    }
+
+    const bodyW = Math.max(1.5, Math.min(9, width * 0.6))
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.strokeStyle = this.style.lineColor
+    ctx.fillStyle = this.style.lineColor
+    ctx.lineWidth = 1
+    for (let i = 0; i < seq.length; i++) {
+      const bar = seq[i]
+      const cx = f.x1 + width * (i + 0.5)
+      const yO = yAt(bar.o)
+      const yC = yAt(bar.c)
+      ctx.beginPath()
+      ctx.moveTo(cx, yAt(bar.h))
+      ctx.lineTo(cx, yAt(bar.l))
+      ctx.stroke()
+      ctx.fillRect(cx - bodyW / 2, Math.min(yO, yC), bodyW, Math.max(1, Math.abs(yC - yO)))
+    }
+    ctx.restore()
+  }
 
   testHit(point: Point, viewport: Viewport): boolean {
     const f = this.frame(viewport)
@@ -221,73 +277,112 @@ export class BarsPattern extends Drawing<BarsPatternProps> {
       if (!pa || !pb) return false
       return point.x >= Math.min(pa.x, pb.x) && point.x <= Math.max(pa.x, pb.x) && Math.abs(point.y - pa.y) <= 24
     }
-    const captured = this.props.bars
-    const base = captured[0].c
+    const { seq, yAt } = this.sequence(f)
     let minY = Infinity
     let maxY = -Infinity
-    for (const bar of captured) {
-      minY = Math.min(minY, f.baseY + (bar.h - base) * f.scale, f.baseY + (bar.l - base) * f.scale)
-      maxY = Math.max(maxY, f.baseY + (bar.h - base) * f.scale, f.baseY + (bar.l - base) * f.scale)
+    for (const bar of seq) {
+      minY = Math.min(minY, yAt(bar.h), yAt(bar.l))
+      maxY = Math.max(maxY, yAt(bar.h), yAt(bar.l))
     }
     return point.x >= f.x1 - 4 && point.x <= f.x2 + 4 && point.y >= minY - 4 && point.y <= maxY + 4
   }
 }
 
 /**
- * Ghost feed: sketched future bars. The captured run seeds the bar sizes; the projection walks
- * deterministically from the first anchor toward the second (same seed → same sketch).
+ * Ghost feed: projected candles sketched from the first anchor toward the second — any
+ * direction, including empty future space. One candle per bar slot; sizes come from the
+ * average-span and variance inputs (auto-seeded from the trailing bars at placement); the
+ * wobble is deterministic, so the same drawing always sketches the same candles.
  */
-export class GhostFeed extends BarsPattern {
-  override readonly type = 'ghost_feed'
+export class GhostFeed extends Drawing<GhostFeedProps> {
+  readonly type = 'ghost_feed'
 
-  override paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const [a, b] = this.anchors
-    const captured = this.props.bars
-    if (!a || !b || captured.length === 0) {
-      this.paintPlaceholder(ctx, viewport)
-      return
+  protected override defaultProps(): GhostFeedProps {
+    return {
+      averageHL: 0,
+      variance: 50,
+      upColor: '#ACE5DC',
+      downColor: '#FAA1A4',
+      borderUpColor: '#089981',
+      borderDownColor: '#F23645',
+      wickColor: '#808080',
+      drawBorder: true,
+      drawWick: true,
+      transparency: 50,
     }
+  }
+
+  requiredAnchors(): number {
+    return 2
+  }
+
+  /** Placement hook: seed the average candle span from the trailing bars (only while auto). */
+  capture(): void {
+    if (this.props.averageHL > 0) return
+    const recent = this.bars().slice(-20)
+    if (!recent.length) return
+    const avg = recent.reduce((sum, bar) => sum + Math.abs(bar.high - bar.low), 0) / recent.length
+    if (avg > 0) this.applyProps({ averageHL: avg } as Partial<GhostFeedProps>)
+  }
+
+  /** Candle span in price units — the auto fallback keys off the anchor price. */
+  private span(): number {
+    if (this.props.averageHL > 0) return this.props.averageHL
+    const price = Math.abs(this.anchors[0]?.price ?? 0)
+    return price > 0 ? price * 0.005 : 1
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const [a, b] = this.anchors
     const [pa, pb] = this.anchorPixels(viewport)
-    if (!pa || !pb) return
-    const count = Math.max(4, Math.min(120, captured.length))
+    if (!a || !b || !pa || !pb) return
+    const rawCount = viewport.barsBetween(a.time, b.time)
+    const count = Math.max(1, Math.min(500, Math.round(Math.abs(rawCount ?? (pb.x - pa.x) / 8))))
     const width = (pb.x - pa.x) / count
     if (!Number.isFinite(width) || Math.abs(width) < 0.5) return
-    // Average captured bar span sets the sketch volatility.
-    const avgSpan = captured.reduce((s, bar) => s + Math.abs(bar.h - bar.l), 0) / captured.length
-    const yOf = (price: number) => viewport.yOf(price)
+    const avg = this.span()
+    const wobbleAmp = avg * (Math.max(0, this.props.variance) / 100)
+    const alpha = Math.max(0, Math.min(1, 1 - this.props.transparency / 100))
     const drift = (b.price - a.price) / count
+    const bodyW = Math.max(1.5, Math.min(9, Math.abs(width) * 0.6))
     let price = a.price
     ctx.save()
     ctx.setLineDash([])
-    ctx.globalAlpha = 0.55
+    ctx.lineWidth = 1
     for (let i = 0; i < count; i++) {
       // Deterministic wobble seeded by the index (stable across repaints).
-      const wobble = Math.sin(i * 2.399963) * avgSpan * 0.6
+      const w1 = Math.sin(i * 2.399963)
+      const w2 = Math.sin(i * 2.399963 + 1.7)
       const open = price
-      const close = price + drift + wobble * 0.4
-      const high = Math.max(open, close) + Math.abs(wobble) * 0.5
-      const low = Math.min(open, close) - Math.abs(wobble) * 0.5
+      const close = open + drift + w1 * wobbleAmp * 0.6
+      const high = Math.max(open, close) + Math.abs(w2) * avg * 0.35
+      const low = Math.min(open, close) - Math.abs(w1) * avg * 0.35
       const cx = pa.x + width * (i + 0.5)
-      const ys = { o: yOf(open), h: yOf(high), l: yOf(low), c: yOf(close) }
+      const ys = { o: viewport.yOf(open), h: viewport.yOf(high), l: viewport.yOf(low), c: viewport.yOf(close) }
       if (ys.o !== null && ys.h !== null && ys.l !== null && ys.c !== null) {
         const up = close >= open
-        const color = withAlpha(up ? '#4c98fb' : '#f23645', 0.8)
-        ctx.strokeStyle = color
-        ctx.fillStyle = color
-        ctx.lineWidth = 1
-        ctx.beginPath()
-        ctx.moveTo(cx, ys.h)
-        ctx.lineTo(cx, ys.l)
-        ctx.stroke()
-        const bodyW = Math.max(1.5, Math.min(9, Math.abs(width) * 0.6))
-        ctx.fillRect(cx - bodyW / 2, Math.min(ys.o, ys.c), bodyW, Math.max(1, Math.abs(ys.c - ys.o)))
+        if (this.props.drawWick) {
+          ctx.strokeStyle = withAlpha(this.props.wickColor, alpha)
+          ctx.beginPath()
+          ctx.moveTo(cx, ys.h)
+          ctx.lineTo(cx, ys.l)
+          ctx.stroke()
+        }
+        const top = Math.min(ys.o, ys.c)
+        const bodyH = Math.max(1, Math.abs(ys.c - ys.o))
+        ctx.fillStyle = withAlpha(up ? this.props.upColor : this.props.downColor, alpha)
+        ctx.fillRect(cx - bodyW / 2, top, bodyW, bodyH)
+        if (this.props.drawBorder) {
+          ctx.strokeStyle = withAlpha(up ? this.props.borderUpColor : this.props.borderDownColor, alpha)
+          ctx.strokeRect(cx - bodyW / 2, top, bodyW, bodyH)
+        }
       }
       price = close
     }
     ctx.restore()
   }
 
-  override testHit(point: Point, viewport: Viewport): boolean {
+  testHit(point: Point, viewport: Viewport): boolean {
     const [pa, pb] = this.anchorPixels(viewport)
     if (!pa || !pb) return false
     const minX = Math.min(pa.x, pb.x)

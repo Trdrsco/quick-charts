@@ -142,6 +142,13 @@ export interface IDrawing {
   /** Scale grips beyond the anchors (emoji/image corners); dragging one calls `resizeTo`. */
   resizeHandles(viewport: Viewport): Point[]
   resizeTo(handleIndex: number, point: Point, viewport: Viewport): void
+  /** "+ Add text" hint above a selected text-capable drawing that has no text yet. */
+  paintTextHint(ctx: CanvasRenderingContext2D, viewport: Viewport): void
+  hitTextHint(point: Point): boolean
+  /** Where the hint last painted — the inline editor opens exactly there (the hint becomes it). */
+  textHintAnchor(): { x: number; y: number; angle: number } | null
+  /** An inline text editor is open on this drawing — the hint stays hidden underneath it. */
+  textEditing: boolean
 
   getViewport(): Viewport | null
   requestUpdate(): void

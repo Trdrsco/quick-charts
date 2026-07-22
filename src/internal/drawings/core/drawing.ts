@@ -25,6 +25,7 @@ import { DEFAULT_OPTIONS, DEFAULT_STYLE } from './types'
 import type { IntervalContext } from './visibility'
 import { normalizeVisibility, visibleAt } from './visibility'
 import type { BarSource, SourceBar } from './bars'
+import { segmentTextAngle } from './geometry'
 import { DrawingPaneView } from '../render/pane-view'
 
 function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
@@ -47,30 +48,65 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
   }
   if (width <= 0 || height <= 0) return null
   const ts = chart.timeScale()
+
+  // The time scale can't address whitespace outside the data (timeToCoordinate/coordinateToTime
+  // go null there), but logical coordinates can. Anchors beyond the last bar — a projection into
+  // empty future space — extrapolate through logical index space using the trailing bar interval.
+  // Numeric (unix-seconds) times only; other time shapes keep the strict mapping.
+  const data = series.data()
+  const last = data.length > 0 ? data[data.length - 1] : null
+  const prev = data.length > 1 ? data[data.length - 2] : null
+  const lastTime = last && typeof last.time === 'number' ? last.time : null
+  const interval =
+    lastTime !== null && prev && typeof prev.time === 'number' && lastTime > prev.time ? lastTime - prev.time : null
+  const lastIndex = data.length - 1
+
+  const logicalOfTime = (time: Time): number | null => {
+    const x = ts.timeToCoordinate(time)
+    if (x !== null) {
+      const logical = ts.coordinateToLogical(x)
+      if (logical !== null) return logical
+    }
+    if (lastTime === null || interval === null || typeof time !== 'number') return null
+    return lastIndex + (time - lastTime) / interval
+  }
+  const timeOfLogicalIndex = (logical: number): Time | null => {
+    const x = ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
+    if (x !== null) {
+      const time = ts.coordinateToTime(x)
+      if (time !== null) return time
+    }
+    if (lastTime === null || interval === null) return null
+    return (lastTime + (logical - lastIndex) * interval) as Time
+  }
+
   return {
     width,
     height,
-    xOf: (time) => ts.timeToCoordinate(time),
+    xOf: (time) => {
+      const direct = ts.timeToCoordinate(time)
+      if (direct !== null) return direct
+      const logical = logicalOfTime(time)
+      if (logical === null) return null
+      return ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
+    },
     yOf: (price) => series.priceToCoordinate(price),
-    timeAt: (x) => ts.coordinateToTime(x),
+    timeAt: (x) => {
+      const direct = ts.coordinateToTime(x)
+      if (direct !== null) return direct
+      const logical = ts.coordinateToLogical(x)
+      if (logical === null) return null
+      return timeOfLogicalIndex(logical)
+    },
     priceAt: (y) => series.coordinateToPrice(y),
     barsBetween: (a, b) => {
-      const xa = ts.timeToCoordinate(a)
-      const xb = ts.timeToCoordinate(b)
-      if (xa === null || xb === null) return null
-      const la = ts.coordinateToLogical(xa)
-      const lb = ts.coordinateToLogical(xb)
+      const la = logicalOfTime(a)
+      const lb = logicalOfTime(b)
       if (la === null || lb === null) return null
       return lb - la
     },
-    logicalOf: (time) => {
-      const x = ts.timeToCoordinate(time)
-      return x === null ? null : ts.coordinateToLogical(x)
-    },
-    timeOfLogical: (logical) => {
-      const x = ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
-      return x === null ? null : ts.coordinateToTime(x)
-    },
+    logicalOf: logicalOfTime,
+    timeOfLogical: timeOfLogicalIndex,
   }
 }
 
@@ -339,6 +375,80 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   }
 
   resizeTo(_handleIndex: number, _point: Point, _viewport: Viewport): void {}
+
+  private _textHint: { cx: number; cy: number; angle: number; halfW: number; halfH: number } | null = null
+
+  /** An inline text editor is open on this drawing (transient view state — never serialized). */
+  textEditing = false
+
+  /**
+   * "+ Add text" hint above a selected text-capable drawing that has no text yet. Pressing the
+   * painted region routes to the inline text editor. Two-point drawings ride the segment's angle
+   * (the hint sits along a sloped trend line); everything else sits level above the bounds.
+   * Painted as UI chrome (fixed muted paint), not with the drawing's own text style.
+   */
+  /** Where the hint sits: two-point drawings ride the segment; otherwise level above the bounds.
+   *  Tools whose text lives away from the anchors (the arrow marker's butt end) override this. */
+  protected textHintPlacement(points: Point[]): { x: number; y: number; angle: number } {
+    if (points.length === 2) {
+      return {
+        x: (points[0].x + points[1].x) / 2,
+        y: (points[0].y + points[1].y) / 2,
+        angle: segmentTextAngle(points[0], points[1]),
+      }
+    }
+    return {
+      x: points.reduce((sum, p) => sum + p.x, 0) / points.length,
+      y: Math.max(28, Math.min(...points.map((p) => p.y))),
+      angle: 0,
+    }
+  }
+
+  paintTextHint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    this._textHint = null
+    if (this.textEditing) return
+    const text = (this._props as Record<string, unknown>).text
+    if (typeof text !== 'string' || text !== '') return
+    const points = this.anchorPixels(viewport).filter((p): p is Point => !!p)
+    if (points.length === 0) return
+    const { x: mx, y: my, angle } = this.textHintPlacement(points)
+    const label = '+ Add text'
+    ctx.save()
+    ctx.translate(mx, my)
+    ctx.rotate(angle)
+    ctx.font = '12px ui-sans-serif, system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.setLineDash([])
+    ctx.fillStyle = 'rgba(178, 181, 190, 0.95)'
+    ctx.fillText(label, 0, -16)
+    const width = ctx.measureText(label).width
+    ctx.restore()
+    this._textHint = {
+      cx: mx + 16 * Math.sin(angle),
+      cy: my - 16 * Math.cos(angle),
+      angle,
+      halfW: width / 2 + 6,
+      halfH: 10,
+    }
+  }
+
+  hitTextHint(point: Point): boolean {
+    const r = this._textHint
+    if (!r) return false
+    const dx = point.x - r.cx
+    const dy = point.y - r.cy
+    const cos = Math.cos(-r.angle)
+    const sin = Math.sin(-r.angle)
+    const rx = dx * cos - dy * sin
+    const ry = dx * sin + dy * cos
+    return Math.abs(rx) <= r.halfW && Math.abs(ry) <= r.halfH
+  }
+
+  textHintAnchor(): { x: number; y: number; angle: number } | null {
+    const r = this._textHint
+    return r ? { x: r.cx, y: r.cy, angle: r.angle } : null
+  }
 
   abstract testHit(point: Point, viewport: Viewport): boolean
 

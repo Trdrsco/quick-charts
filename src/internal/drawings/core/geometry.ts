@@ -28,6 +28,14 @@ export function angleOf(a: Point, b: Point): number {
   return Math.atan2(b.y - a.y, b.x - a.x)
 }
 
+/** Angle of a→b folded into (-90°, 90°] so text painted along the segment always reads upright. */
+export function segmentTextAngle(a: Point, b: Point): number {
+  let angle = angleOf(a, b)
+  if (angle > Math.PI / 2) angle -= Math.PI
+  if (angle < -Math.PI / 2) angle += Math.PI
+  return angle
+}
+
 /**
  * Extend the segment a→b along its own direction to the pane bounds. `left` extends behind `a`
  * (opposite the a→b direction), `right` extends beyond `b`. A zero-length segment is returned
