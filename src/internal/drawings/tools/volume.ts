@@ -5,7 +5,7 @@ import { Drawing } from '../core/drawing'
 import { barsInRange, volumeProfile } from '../core/bars'
 import type { SourceBar } from '../core/bars'
 import { distanceToSegment } from '../core/geometry'
-import { alphaOf, applyStroke, paintLabel, withAlpha } from '../render/canvas'
+import { alphaOf, applyStroke, dashPattern, paintLabel, withAlpha } from '../render/canvas'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -105,6 +105,25 @@ export type ProfileProps = {
   downColor: string
   valueAreaUpColor: string
   valueAreaDownColor: string
+  /** Histogram width as a percentage of the range box. */
+  widthPercent: number
+  /** Which edge the histogram grows from. */
+  placement: 'left' | 'right'
+  pocVisible: boolean
+  pocColor: string
+  pocWidth: number
+  pocStyle: 'solid' | 'dashed' | 'dotted'
+  vahVisible: boolean
+  vahColor: string
+  vahWidth: number
+  vahStyle: 'solid' | 'dashed' | 'dotted'
+  valVisible: boolean
+  valColor: string
+  valWidth: number
+  valStyle: 'solid' | 'dashed' | 'dotted'
+  /** Running point-of-control / value-area polylines, computed bar by bar across the range. */
+  developingPoc: boolean
+  developingVa: boolean
 }
 
 const PROFILE_PROPS: ProfileProps = {
@@ -116,6 +135,75 @@ const PROFILE_PROPS: ProfileProps = {
   downColor: '#f23645',
   valueAreaUpColor: '#089981',
   valueAreaDownColor: '#f23645',
+  widthPercent: 30,
+  placement: 'left',
+  pocVisible: true,
+  pocColor: '#f23645',
+  pocWidth: 2,
+  pocStyle: 'solid',
+  vahVisible: true,
+  vahColor: '#787b86',
+  vahWidth: 1,
+  vahStyle: 'dashed',
+  valVisible: true,
+  valColor: '#787b86',
+  valWidth: 1,
+  valStyle: 'dashed',
+  developingPoc: false,
+  developingVa: false,
+}
+
+/**
+ * Running POC/VAH/VAL per bar, computed incrementally over the range's fixed price extent —
+ * one pass over the bars, O(rows) work per bar, so a 5k-bar range stays cheap. Sampled points
+ * come back in price space; the caller maps them to pixels per paint.
+ */
+function developingLevels(
+  range: readonly SourceBar[],
+  rows: number,
+  vaShare: number,
+): { poc: { time: SourceBar['time']; price: number }[]; vah: { time: SourceBar['time']; price: number }[]; val: { time: SourceBar['time']; price: number }[] } | null {
+  const withVolume = range.filter((b) => typeof b.volume === 'number' && b.volume > 0)
+  if (withVolume.length < 2 || rows < 1) return null
+  let min = Infinity
+  let max = -Infinity
+  for (const bar of withVolume) {
+    min = Math.min(min, bar.low)
+    max = Math.max(max, bar.high)
+  }
+  if (!(max > min)) return null
+  const height = (max - min) / rows
+  const bins = new Array<number>(rows).fill(0)
+  const out = {
+    poc: [] as { time: SourceBar['time']; price: number }[],
+    vah: [] as { time: SourceBar['time']; price: number }[],
+    val: [] as { time: SourceBar['time']; price: number }[],
+  }
+  let total = 0
+  for (const bar of withVolume) {
+    const lowBin = Math.max(0, Math.min(rows - 1, Math.floor((bar.low - min) / height)))
+    const highBin = Math.max(0, Math.min(rows - 1, Math.floor((bar.high - min) / height)))
+    const share = (bar.volume as number) / (highBin - lowBin + 1)
+    for (let i = lowBin; i <= highBin; i++) bins[i] += share
+    total += bar.volume as number
+    let pocIndex = 0
+    for (let i = 1; i < rows; i++) if (bins[i] > bins[pocIndex]) pocIndex = i
+    out.poc.push({ time: bar.time, price: min + (pocIndex + 0.5) * height })
+    if (vaShare > 0) {
+      let low = pocIndex
+      let high = pocIndex
+      let covered = bins[pocIndex]
+      while (covered < total * vaShare && (low > 0 || high < rows - 1)) {
+        const below = low > 0 ? bins[low - 1] : -1
+        const above = high < rows - 1 ? bins[high + 1] : -1
+        if (above >= below) covered += bins[++high]
+        else covered += bins[--low]
+      }
+      out.vah.push({ time: bar.time, price: min + (high + 1) * height })
+      out.val.push({ time: bar.time, price: min + low * height })
+    }
+  }
+  return out
 }
 
 /** Smallest price increment implied by the data — decimal places of the recent closes. The
@@ -173,7 +261,8 @@ abstract class VolumeProfileBase<P extends ProfileProps & Record<string, unknown
     }
     const maxVolume = Math.max(...bins.map((b) => b.volume))
     if (maxVolume <= 0) return
-    const maxWidth = (span.x2 - span.x1) * 0.85
+    const maxWidth = ((span.x2 - span.x1) * Math.max(5, Math.min(100, this.props.widthPercent))) / 100
+    const fromRight = this.props.placement === 'right'
     const pocIndex = bins.reduce((best, bin, i) => (bin.volume > bins[best].volume ? i : best), 0)
     const poc = bins[pocIndex]
 
@@ -211,44 +300,69 @@ abstract class VolumeProfileBase<P extends ProfileProps & Record<string, unknown
       const downBase = inValueArea ? this.props.valueAreaDownColor : this.props.downColor
       const upPaint = withAlpha(upBase, dim * alphaOf(upBase))
       const downPaint = withAlpha(downBase, dim * alphaOf(downBase))
+      // Rows grow from the chosen edge; a right placement mirrors every rect.
+      const rect = (offset: number, w: number) => {
+        if (fromRight) ctx.fillRect(span.x2 - offset - w, top, w, rowH)
+        else ctx.fillRect(span.x1 + offset, top, w, rowH)
+      }
       if (this.props.volume === 'updown') {
         const upW = (bin.upVolume / maxVolume) * maxWidth
         const downW = (bin.downVolume / maxVolume) * maxWidth
         ctx.fillStyle = upPaint
-        ctx.fillRect(span.x1, top, upW, rowH)
+        rect(0, upW)
         ctx.fillStyle = downPaint
-        ctx.fillRect(span.x1 + upW, top, downW, rowH)
+        rect(upW, downW)
       } else if (this.props.volume === 'delta') {
         const delta = bin.upVolume - bin.downVolume
         ctx.fillStyle = delta >= 0 ? upPaint : downPaint
-        ctx.fillRect(span.x1, top, (Math.abs(delta) / maxVolume) * maxWidth, rowH)
+        rect(0, (Math.abs(delta) / maxVolume) * maxWidth)
       } else {
         ctx.fillStyle = upPaint
-        ctx.fillRect(span.x1, top, (bin.volume / maxVolume) * maxWidth, rowH)
+        rect(0, (bin.volume / maxVolume) * maxWidth)
       }
     }
-    // Point of control across the whole range, plus the value-area bounds.
-    const pocY = viewport.yOf((poc.priceLow + poc.priceHigh) / 2)
-    if (pocY !== null) {
-      ctx.strokeStyle = withAlpha('#f23645', 0.9)
-      ctx.lineWidth = 1.5
+    // Point of control across the whole range, plus the value-area bounds — each its own channel.
+    const boundary = (y: number | null, visible: boolean, color: string, width: number, dash: 'solid' | 'dashed' | 'dotted') => {
+      if (y === null || !visible) return
+      ctx.strokeStyle = withAlpha(color, 0.9 * alphaOf(color))
+      ctx.lineWidth = width
+      ctx.setLineDash(dashPattern(dash, width))
       ctx.beginPath()
-      ctx.moveTo(span.x1, pocY)
-      ctx.lineTo(span.x2, pocY)
+      ctx.moveTo(span.x1, y)
+      ctx.lineTo(span.x2, y)
       ctx.stroke()
     }
+    const p = this.props
+    boundary(viewport.yOf((poc.priceLow + poc.priceHigh) / 2), p.pocVisible, p.pocColor, p.pocWidth, p.pocStyle)
     if (vaShare > 0) {
-      const vahY = viewport.yOf(bins[high].priceHigh)
-      const valY = viewport.yOf(bins[low].priceLow)
-      ctx.strokeStyle = withAlpha('#787b86', 0.6)
-      ctx.lineWidth = 1
-      ctx.setLineDash([3, 3])
-      for (const y of [vahY, valY]) {
-        if (y === null) continue
-        ctx.beginPath()
-        ctx.moveTo(span.x1, y)
-        ctx.lineTo(span.x2, y)
-        ctx.stroke()
+      boundary(viewport.yOf(bins[high].priceHigh), p.vahVisible, p.vahColor, p.vahWidth, p.vahStyle)
+      boundary(viewport.yOf(bins[low].priceLow), p.valVisible, p.valColor, p.valWidth, p.valStyle)
+    }
+    // Developing lines: the running POC/VA walked bar by bar across the range.
+    if (p.developingPoc || p.developingVa) {
+      const levels = developingLevels(range, this.rowCount(range), vaShare)
+      if (levels) {
+        const polyline = (points: { time: SourceBar['time']; price: number }[], color: string) => {
+          ctx.strokeStyle = withAlpha(color, 0.7 * alphaOf(color))
+          ctx.lineWidth = 1
+          ctx.setLineDash([2, 2])
+          ctx.beginPath()
+          let started = false
+          for (const point of points) {
+            const x = viewport.xOf(point.time)
+            const y = viewport.yOf(point.price)
+            if (x === null || y === null) continue
+            if (started) ctx.lineTo(x, y)
+            else ctx.moveTo(x, y)
+            started = true
+          }
+          if (started) ctx.stroke()
+        }
+        if (p.developingPoc) polyline(levels.poc, p.pocColor)
+        if (p.developingVa) {
+          polyline(levels.vah, p.vahColor)
+          polyline(levels.val, p.valColor)
+        }
       }
     }
     ctx.restore()
