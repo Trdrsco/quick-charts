@@ -155,6 +155,10 @@ export class GlyphMark extends Drawing<GlyphProps> {
     return 1
   }
 
+  protected radius(): number {
+    return Math.max(10, this.props.size) / 2 + 4
+  }
+
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const anchor = this.anchors[0]
     if (!anchor) return
@@ -170,12 +174,36 @@ export class GlyphMark extends Drawing<GlyphProps> {
     ctx.restore()
   }
 
+  /** Scale grips at the glyph's bounding-box corners. */
+  override resizeHandles(viewport: Viewport): Point[] {
+    const anchor = this.anchors[0]
+    if (!anchor) return []
+    const p = this.anchorToPixel(anchor, viewport)
+    if (!p) return []
+    const r = this.radius()
+    return [
+      { x: p.x - r, y: p.y - r },
+      { x: p.x + r, y: p.y - r },
+      { x: p.x + r, y: p.y + r },
+      { x: p.x - r, y: p.y + r },
+    ]
+  }
+
+  override resizeTo(_handleIndex: number, point: Point, viewport: Viewport): void {
+    const anchor = this.anchors[0]
+    if (!anchor) return
+    const p = this.anchorToPixel(anchor, viewport)
+    if (!p) return
+    const r = Math.max(Math.abs(point.x - p.x), Math.abs(point.y - p.y))
+    this.applyProps({ size: Math.max(10, Math.min(160, Math.round((r - 4) * 2))) } as Partial<GlyphProps>)
+  }
+
   testHit(point: Point, viewport: Viewport): boolean {
     const anchor = this.anchors[0]
     if (!anchor) return false
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return false
-    const r = Math.max(10, this.props.size) / 2 + 4
+    const r = this.radius()
     return Math.abs(point.x - p.x) <= r && Math.abs(point.y - p.y) <= r
   }
 }

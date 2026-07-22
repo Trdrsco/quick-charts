@@ -30,6 +30,11 @@ export abstract class LabeledPolyline extends Drawing {
     this.paintLabels(ctx, points)
   }
 
+  /** Placement preview IS the progressive pattern — the zigzag grows labeled leg by leg. */
+  override paintConstruction(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    this.paint(ctx, viewport)
+  }
+
   protected paintExtras(_ctx: CanvasRenderingContext2D, _points: Point[], _viewport: Viewport): void {}
 
   protected paintLabels(ctx: CanvasRenderingContext2D, points: Point[]): void {

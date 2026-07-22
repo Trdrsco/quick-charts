@@ -2,7 +2,7 @@ import type { IPrimitivePaneRenderer, IPrimitivePaneView, PrimitivePaneViewZOrde
 import type { CanvasRenderingTarget2D } from 'fancy-canvas'
 
 import type { AnyDrawing } from '../core/drawing'
-import { paintHandles } from './canvas'
+import { paintHandles, paintResizeGrips } from './canvas'
 
 /**
  * The one pane view every drawing uses. It owns the canvas plumbing (coordinate space,
@@ -32,11 +32,17 @@ export class DrawingPaneView implements IPrimitivePaneView, IPrimitivePaneRender
     target.useMediaCoordinateSpace(({ context: ctx }) => {
       ctx.save()
       try {
-        drawing.paint(ctx, viewport)
+        if (drawing.isValid()) {
+          drawing.paint(ctx, viewport)
+        } else {
+          drawing.paintConstruction(ctx, viewport)
+        }
         const state = drawing.state
         if (state === 'selected' || state === 'editing') {
           const points = drawing.getControlPoints(viewport)
           if (points.length > 0) paintHandles(ctx, points, drawing.style.lineColor)
+          const grips = drawing.resizeHandles(viewport)
+          if (grips.length > 0) paintResizeGrips(ctx, grips, drawing.style.lineColor)
         }
       } finally {
         ctx.restore()

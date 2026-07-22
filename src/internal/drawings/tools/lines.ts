@@ -17,6 +17,8 @@ export type LineEnd = 'normal' | 'arrow'
 
 /** The two-point line family's full option set. Tool identity = these defaults. */
 export type TrendLineProps = {
+  /** Free label rendered along the line (edited in the settings dialog's Text tab). */
+  text: string
   extendLeft: boolean
   extendRight: boolean
   leftEnd: LineEnd
@@ -33,6 +35,7 @@ export type TrendLineProps = {
 }
 
 const LINE_PROPS: TrendLineProps = {
+  text: '',
   extendLeft: false,
   extendRight: false,
   leftEnd: 'normal',
@@ -111,10 +114,17 @@ export class TrendLine extends Drawing<TrendLineProps> {
       })
     }
 
+    if (this.props.text) {
+      const mid = midpoint(pa, pb)
+      paintLabel(ctx, this.props.text, { x: mid.x, y: mid.y - 14 }, this.style, { align: 'center' })
+    }
+
     const stats = this.statsText(viewport)
     if (stats) {
       const t = this.props.statsPosition === 'left' ? 0.12 : this.props.statsPosition === 'right' ? 0.88 : 0.5
-      const at = { x: pa.x + (pb.x - pa.x) * t, y: pa.y + (pb.y - pa.y) * t - 14 }
+      // The stats pill drops below its usual perch when a text label already sits above the line.
+      const lift = this.props.text && this.props.statsPosition === 'center' ? -32 : -14
+      const at = { x: pa.x + (pb.x - pa.x) * t, y: pa.y + (pb.y - pa.y) * t + lift }
       paintLabel(ctx, stats, at, this.style, { align: 'center', background: withAlpha('#1b1f27', 0.92) })
     }
   }
@@ -215,6 +225,8 @@ export class TrendAngle extends TrendLine {
 }
 
 export type HorizontalLineProps = {
+  /** Free label rendered above the line's left side. */
+  text: string
   /** Price pill on the axis at the line's level. */
   showPrice: boolean
 }
@@ -238,7 +250,7 @@ export class HorizontalLine extends Drawing<HorizontalLineProps> {
   ]
 
   protected override defaultProps(): HorizontalLineProps {
-    return { showPrice: true }
+    return { text: '', showPrice: true }
   }
 
   protected override axisViews(): readonly ISeriesPrimitiveAxisView[] {
@@ -254,6 +266,9 @@ export class HorizontalLine extends Drawing<HorizontalLineProps> {
     if (y === null || !Number.isFinite(y)) return
     applyStroke(ctx, this.style)
     strokeSegment(ctx, { x: this.leftEdge(viewport), y }, { x: viewport.width, y })
+    if (this.props.text) {
+      paintLabel(ctx, this.props.text, { x: this.leftEdge(viewport) + 8, y: y - 12 }, this.style)
+    }
   }
 
   /** Where the line starts; the ray variant starts at its anchor. */
@@ -280,9 +295,18 @@ export class HorizontalRay extends HorizontalLine {
   }
 }
 
+export type VerticalLineProps = {
+  /** Free label rendered beside the line's top. */
+  text: string
+}
+
 /** Full-height vertical line at one time. */
-export class VerticalLine extends Drawing {
+export class VerticalLine extends Drawing<VerticalLineProps> {
   readonly type = 'vertical_line'
+
+  protected override defaultProps(): VerticalLineProps {
+    return { text: '' }
+  }
 
   requiredAnchors(): number {
     return 1
@@ -295,6 +319,9 @@ export class VerticalLine extends Drawing {
     if (x === null) return
     applyStroke(ctx, this.style)
     strokeSegment(ctx, { x, y: 0 }, { x, y: viewport.height })
+    if (this.props.text) {
+      paintLabel(ctx, this.props.text, { x: x + 6, y: 14 }, this.style)
+    }
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -306,8 +333,13 @@ export class VerticalLine extends Drawing {
   }
 }
 
+export type CrossLineProps = {
+  /** Price pill on the axis at the cross's level. */
+  showPrice: boolean
+}
+
 /** Crosshair pinned to one point: a horizontal and a vertical line through the anchor. */
-export class CrossLine extends Drawing<HorizontalLineProps> {
+export class CrossLine extends Drawing<CrossLineProps> {
   readonly type = 'cross_line'
 
   private readonly _axisViews = [
@@ -324,7 +356,7 @@ export class CrossLine extends Drawing<HorizontalLineProps> {
     }),
   ]
 
-  protected override defaultProps(): HorizontalLineProps {
+  protected override defaultProps(): CrossLineProps {
     return { showPrice: true }
   }
 

@@ -93,6 +93,10 @@ export interface Viewport {
   priceAt(y: number): number | null
   /** Bar-index distance between two times (fractional; null when either falls outside data). */
   barsBetween(a: Time, b: Time): number | null
+  /** The bar index a time sits at (fractional; null outside the loaded range). */
+  logicalOf(time: Time): number | null
+  /** The time at a bar index (null in whitespace beyond the loaded range). */
+  timeOfLogical(logical: number): Time | null
 }
 
 /** A draggable handle over an anchor, in pane-local CSS pixels. */
@@ -135,6 +139,9 @@ export interface IDrawing {
   testHit(point: Point, viewport: Viewport): boolean
   getControlPoints(viewport: Viewport): ControlPoint[]
   anchorToPixel(anchor: Anchor, viewport: Viewport): Point | null
+  /** Scale grips beyond the anchors (emoji/image corners); dragging one calls `resizeTo`. */
+  resizeHandles(viewport: Viewport): Point[]
+  resizeTo(handleIndex: number, point: Point, viewport: Viewport): void
 
   getViewport(): Viewport | null
   requestUpdate(): void

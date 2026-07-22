@@ -292,8 +292,13 @@ export class FibChannel extends Drawing<FibProps> {
       ctx.strokeStyle = line.color
       strokeSegment(ctx, line.a, line.b)
       ctx.restore()
-      if (this.props.showLevels) {
-        paintLabel(ctx, String(line.level.value), { x: line.a.x - 6, y: line.a.y }, { ...this.style, textColor: line.color }, { align: 'right' })
+      if (this.props.showLevels || this.props.showPrices) {
+        const price = viewport.priceAt(line.a.y)
+        const parts = [
+          this.props.showLevels ? String(line.level.value) : null,
+          this.props.showPrices && price !== null ? `(${formatPrice(price)})` : null,
+        ].filter((s): s is string => s !== null)
+        paintLabel(ctx, parts.join(' '), { x: line.a.x - 6, y: line.a.y }, { ...this.style, textColor: line.color }, { align: 'right' })
       }
     }
   }
@@ -388,8 +393,14 @@ export class FibSpeedFan extends Drawing<FibProps> {
       ctx.strokeStyle = ray.color
       strokeSegment(ctx, ray.a, ray.b)
       ctx.restore()
-      if (this.props.showLevels) {
-        paintLabel(ctx, String(ray.level.value), { x: p2.x + 6, y: p1.y + (p2.y - p1.y) * ray.level.value }, { ...this.style, textColor: ray.color })
+      if (this.props.showLevels || this.props.showPrices) {
+        const y = p1.y + (p2.y - p1.y) * ray.level.value
+        const price = viewport.priceAt(y)
+        const parts = [
+          this.props.showLevels ? String(ray.level.value) : null,
+          this.props.showPrices && price !== null ? `(${formatPrice(price)})` : null,
+        ].filter((s): s is string => s !== null)
+        paintLabel(ctx, parts.join(' '), { x: p2.x + 6, y }, { ...this.style, textColor: ray.color })
       }
     }
   }

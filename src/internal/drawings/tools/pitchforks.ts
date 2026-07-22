@@ -7,6 +7,8 @@ import { applyStroke, strokeSegment, withAlpha } from '../render/canvas'
 export type ForkLevel = {
   value: number
   visible: boolean
+  /** Per-set line color; the drawing's stroke color when omitted. */
+  color?: string
 }
 
 export type PitchforkProps = {
@@ -119,12 +121,16 @@ export class Pitchfork extends Drawing<PitchforkProps> {
     // Median: handle from the origin to mid, then onward along the fork.
     const median = this.lineThrough(fork, fork.mid, viewport)
     strokeSegment(ctx, this.props.extendLines ? median.a : fork.origin, median.b)
-    // Level lines above and below.
+    // Level lines above and below, each set in its own color when one is chosen.
     for (const level of visible) {
+      ctx.save()
+      applyStroke(ctx, this.style)
+      if (level.color) ctx.strokeStyle = level.color
       for (const sign of [1, -1]) {
         const line = this.lineThrough(fork, this.levelPoint(fork, level.value * sign), viewport)
         strokeSegment(ctx, line.a, line.b)
       }
+      ctx.restore()
     }
   }
 

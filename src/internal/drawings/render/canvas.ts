@@ -207,6 +207,26 @@ export function paintHandles(
   ctx.restore()
 }
 
+/** Square scale grips (emoji/image corners) for a selected drawing. */
+export function paintResizeGrips(
+  ctx: CanvasRenderingContext2D,
+  points: readonly Point[],
+  accent: string,
+): void {
+  ctx.save()
+  ctx.setLineDash([])
+  ctx.lineWidth = 1.5
+  for (const p of points) {
+    ctx.fillStyle = '#ffffff'
+    ctx.strokeStyle = accent
+    ctx.beginPath()
+    ctx.rect(p.x - 3.5, p.y - 3.5, 7, 7)
+    ctx.fill()
+    ctx.stroke()
+  }
+  ctx.restore()
+}
+
 /** Fill color string with the style's fill opacity applied. */
 export function fillPaint(style: DrawingStyle): string | null {
   if (style.fillOpacity <= 0) return null

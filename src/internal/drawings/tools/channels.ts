@@ -1,14 +1,18 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment, extendSegment } from '../core/geometry'
-import { applyStroke, dashPattern, fillPaint, strokeSegment } from '../render/canvas'
+import { applyStroke, dashPattern, fillPaint, paintLabel, strokeSegment } from '../render/canvas'
 
 export type ChannelProps = {
+  /** Free label rendered above the baseline's start. */
+  text: string
   extendLeft: boolean
   extendRight: boolean
   /** Dashed midline halfway between the channel boundaries. */
   showMiddle: boolean
 }
+
+const CHANNEL_PROPS: ChannelProps = { text: '', extendLeft: false, extendRight: false, showMiddle: false }
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -22,7 +26,7 @@ export class ParallelChannel extends Drawing<ChannelProps> {
   readonly type = 'parallel_channel'
 
   protected override defaultProps(): ChannelProps {
-    return { extendLeft: false, extendRight: false, showMiddle: false }
+    return { ...CHANNEL_PROPS }
   }
 
   requiredAnchors(): number {
@@ -73,6 +77,7 @@ export class ParallelChannel extends Drawing<ChannelProps> {
     applyStroke(ctx, this.style)
     strokeSegment(ctx, b.base.a, b.base.b)
     strokeSegment(ctx, b.offset.a, b.offset.b)
+    if (this.props.text) paintLabel(ctx, this.props.text, { x: b.base.a.x + 6, y: b.base.a.y - 12 }, this.style)
     if (this.props.showMiddle) {
       ctx.save()
       ctx.setLineDash(dashPattern('dashed', this.style.lineWidth))
@@ -110,7 +115,7 @@ export class FlatTopBottom extends Drawing<ChannelProps> {
   readonly type = 'flat_top_bottom'
 
   protected override defaultProps(): ChannelProps {
-    return { extendLeft: false, extendRight: false, showMiddle: false }
+    return { ...CHANNEL_PROPS }
   }
 
   requiredAnchors(): number {
@@ -149,6 +154,7 @@ export class FlatTopBottom extends Drawing<ChannelProps> {
     applyStroke(ctx, this.style)
     strokeSegment(ctx, b.slope.a, b.slope.b)
     strokeSegment(ctx, b.flat.a, b.flat.b)
+    if (this.props.text) paintLabel(ctx, this.props.text, { x: b.slope.a.x + 6, y: b.slope.a.y - 12 }, this.style)
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -171,7 +177,7 @@ export class DisjointChannel extends Drawing<ChannelProps> {
   readonly type = 'disjoint_channel'
 
   protected override defaultProps(): ChannelProps {
-    return { extendLeft: false, extendRight: false, showMiddle: false }
+    return { ...CHANNEL_PROPS }
   }
 
   requiredAnchors(): number {
@@ -206,6 +212,7 @@ export class DisjointChannel extends Drawing<ChannelProps> {
     applyStroke(ctx, this.style)
     strokeSegment(ctx, b.top.a, b.top.b)
     strokeSegment(ctx, b.bottom.a, b.bottom.b)
+    if (this.props.text) paintLabel(ctx, this.props.text, { x: b.top.a.x + 6, y: b.top.a.y - 12 }, this.style)
   }
 
   testHit(point: Point, viewport: Viewport): boolean {

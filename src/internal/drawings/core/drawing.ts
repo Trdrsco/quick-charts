@@ -63,6 +63,14 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
       if (la === null || lb === null) return null
       return lb - la
     },
+    logicalOf: (time) => {
+      const x = ts.timeToCoordinate(time)
+      return x === null ? null : ts.coordinateToLogical(x)
+    },
+    timeOfLogical: (logical) => {
+      const x = ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
+      return x === null ? null : ts.coordinateToTime(x)
+    },
   }
 }
 
@@ -302,6 +310,35 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
 
   /** Paint the drawing. CSS-pixel coordinate space; the shared pane view sets the transform. */
   abstract paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void
+
+  /**
+   * Mid-placement preview, painted while the anchor set is still short of `requiredAnchors`.
+   * Default: a dashed construction polyline through the anchors placed so far — the finished
+   * geometry only appears once every point exists (a fib projection draws its trend leg first).
+   */
+  paintConstruction(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const points = this.anchorPixels(viewport).filter((p): p is Point => !!p)
+    if (points.length < 2) return
+    ctx.save()
+    ctx.strokeStyle = this._style.lineColor
+    ctx.lineWidth = Math.max(1, this._style.lineWidth - 0.5)
+    ctx.setLineDash([4, 4])
+    ctx.beginPath()
+    ctx.moveTo(points[0].x, points[0].y)
+    for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y)
+    ctx.stroke()
+    ctx.restore()
+  }
+
+  /**
+   * Extra grab points beyond the anchors (an emoji's scale corners). Dragging one routes to
+   * `resizeTo`. Default: none.
+   */
+  resizeHandles(_viewport: Viewport): Point[] {
+    return []
+  }
+
+  resizeTo(_handleIndex: number, _point: Point, _viewport: Viewport): void {}
 
   abstract testHit(point: Point, viewport: Viewport): boolean
 
