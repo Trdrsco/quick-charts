@@ -6,13 +6,25 @@ export type TableProps = {
   /** Row-major cell text. The grid's shape IS this array's shape. */
   cells: string[][]
   headerRow: boolean
+  /** Per-column widths / per-row heights in px; entries beyond the arrays use the defaults, so
+   *  row/column appends never have to touch them. */
+  colWidths: number[]
+  rowHeights: number[]
 }
 
 const CELL_WIDTH = 96
 const CELL_HEIGHT = 26
 const CELL_PAD = 8
+const MIN_COL = 28
+const MAX_COL = 600
+const MIN_ROW = 16
+const MAX_ROW = 200
 
-/** Floating table pinned to a chart point (anchor = top-left). Cells edit in the settings modal. */
+/**
+ * Floating table pinned to a chart point (anchor = top-left). Corners scale the whole grid,
+ * grips on the internal dividers resize single columns/rows, and the host edits cells inline
+ * through `cellAt`.
+ */
 export class TableNote extends Drawing<TableProps> {
   readonly type = 'table'
 
@@ -23,6 +35,8 @@ export class TableNote extends Drawing<TableProps> {
         ['', ''],
       ],
       headerRow: true,
+      colWidths: [],
+      rowHeights: [],
     }
   }
 
@@ -30,15 +44,52 @@ export class TableNote extends Drawing<TableProps> {
     return 1
   }
 
+  private colWidth(i: number): number {
+    return Math.max(MIN_COL, this.props.colWidths[i] ?? CELL_WIDTH)
+  }
+
+  private rowHeight(r: number): number {
+    return Math.max(MIN_ROW, this.props.rowHeights[r] ?? CELL_HEIGHT)
+  }
+
+  /** Left offsets per column boundary (0..cols) and top offsets per row boundary (0..rows). */
+  private offsets(): { xs: number[]; ys: number[] } {
+    const rows = this.props.cells.length
+    const cols = this.props.cells[0]?.length ?? 0
+    const xs = [0]
+    for (let c = 0; c < cols; c++) xs.push(xs[c] + this.colWidth(c))
+    const ys = [0]
+    for (let r = 0; r < rows; r++) ys.push(ys[r] + this.rowHeight(r))
+    return { xs, ys }
+  }
+
   protected frame(viewport: Viewport): { x: number; y: number; width: number; height: number } | null {
     const anchor = this.anchors[0]
     if (!anchor) return null
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return null
-    const rows = this.props.cells.length
-    const cols = this.props.cells[0]?.length ?? 0
-    if (!rows || !cols) return null
-    return { x: p.x, y: p.y, width: cols * CELL_WIDTH, height: rows * CELL_HEIGHT }
+    const { xs, ys } = this.offsets()
+    if (xs.length < 2 || ys.length < 2) return null
+    return { x: p.x, y: p.y, width: xs[xs.length - 1], height: ys[ys.length - 1] }
+  }
+
+  /** The cell under a pane point, with its rect — the host's inline editor opens there. */
+  cellAt(point: Point, viewport: Viewport): { row: number; col: number; rect: { x: number; y: number; width: number; height: number } } | null {
+    const f = this.frame(viewport)
+    if (!f) return null
+    const { xs, ys } = this.offsets()
+    const dx = point.x - f.x
+    const dy = point.y - f.y
+    if (dx < 0 || dy < 0 || dx > f.width || dy > f.height) return null
+    let col = 0
+    while (col < xs.length - 2 && dx >= xs[col + 1]) col++
+    let row = 0
+    while (row < ys.length - 2 && dy >= ys[row + 1]) row++
+    return {
+      row,
+      col,
+      rect: { x: f.x + xs[col], y: f.y + ys[row], width: xs[col + 1] - xs[col], height: ys[row + 1] - ys[row] },
+    }
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -46,6 +97,7 @@ export class TableNote extends Drawing<TableProps> {
     if (!f) return
     const rows = this.props.cells.length
     const cols = this.props.cells[0]?.length ?? 0
+    const { xs, ys } = this.offsets()
     ctx.save()
     ctx.setLineDash([])
     // Card base + optional header band — the base paints from the background channel.
@@ -59,7 +111,7 @@ export class TableNote extends Drawing<TableProps> {
     if (this.props.headerRow) {
       ctx.fillStyle = withAlpha(this.style.lineColor, 0.16)
       ctx.beginPath()
-      ctx.roundRect(f.x, f.y, f.width, CELL_HEIGHT, 4)
+      ctx.roundRect(f.x, f.y, f.width, ys[1], 4)
       ctx.fill()
     }
     // Grid lines.
@@ -70,12 +122,12 @@ export class TableNote extends Drawing<TableProps> {
     ctx.stroke()
     ctx.beginPath()
     for (let r = 1; r < rows; r++) {
-      ctx.moveTo(f.x, f.y + r * CELL_HEIGHT)
-      ctx.lineTo(f.x + f.width, f.y + r * CELL_HEIGHT)
+      ctx.moveTo(f.x, f.y + ys[r])
+      ctx.lineTo(f.x + f.width, f.y + ys[r])
     }
     for (let c = 1; c < cols; c++) {
-      ctx.moveTo(f.x + c * CELL_WIDTH, f.y)
-      ctx.lineTo(f.x + c * CELL_WIDTH, f.y + f.height)
+      ctx.moveTo(f.x + xs[c], f.y)
+      ctx.lineTo(f.x + xs[c], f.y + f.height)
     }
     ctx.stroke()
     // Cell text, clipped per cell.
@@ -87,14 +139,77 @@ export class TableNote extends Drawing<TableProps> {
         if (!text) continue
         ctx.save()
         ctx.beginPath()
-        ctx.rect(f.x + c * CELL_WIDTH + 1, f.y + r * CELL_HEIGHT + 1, CELL_WIDTH - 2, CELL_HEIGHT - 2)
+        ctx.rect(f.x + xs[c] + 1, f.y + ys[r] + 1, xs[c + 1] - xs[c] - 2, ys[r + 1] - ys[r] - 2)
         ctx.clip()
         ctx.fillStyle = this.style.textColor
-        ctx.fillText(text, f.x + c * CELL_WIDTH + CELL_PAD, f.y + r * CELL_HEIGHT + CELL_HEIGHT / 2)
+        ctx.fillText(text, f.x + xs[c] + CELL_PAD, f.y + (ys[r] + ys[r + 1]) / 2)
         ctx.restore()
       }
     }
     ctx.restore()
+  }
+
+  /** Corners first (whole-grid scale), then the internal column/row dividers. */
+  override resizeHandles(viewport: Viewport): Point[] {
+    const f = this.frame(viewport)
+    if (!f) return []
+    const { xs, ys } = this.offsets()
+    const handles: Point[] = [
+      { x: f.x, y: f.y },
+      { x: f.x + f.width, y: f.y },
+      { x: f.x + f.width, y: f.y + f.height },
+      { x: f.x, y: f.y + f.height },
+    ]
+    for (let c = 1; c < xs.length - 1; c++) handles.push({ x: f.x + xs[c], y: f.y + f.height / 2 })
+    for (let r = 1; r < ys.length - 1; r++) handles.push({ x: f.x + f.width / 2, y: f.y + ys[r] })
+    return handles
+  }
+
+  override resizeTo(handleIndex: number, point: Point, viewport: Viewport): void {
+    const f = this.frame(viewport)
+    if (!f) return
+    const rows = this.props.cells.length
+    const cols = this.props.cells[0]?.length ?? 0
+    if (!rows || !cols) return
+
+    if (handleIndex < 4) {
+      // Corner drag: the opposite corner pins, every column/row scales proportionally.
+      const pin = [
+        { x: f.x + f.width, y: f.y + f.height },
+        { x: f.x, y: f.y + f.height },
+        { x: f.x, y: f.y },
+        { x: f.x + f.width, y: f.y },
+      ][handleIndex]
+      const newW = Math.max(cols * MIN_COL, Math.abs(point.x - pin.x))
+      const newH = Math.max(rows * MIN_ROW, Math.abs(point.y - pin.y))
+      const scaleX = newW / f.width
+      const scaleY = newH / f.height
+      const colWidths = Array.from({ length: cols }, (_, c) => Math.min(MAX_COL, Math.max(MIN_COL, this.colWidth(c) * scaleX)))
+      const rowHeights = Array.from({ length: rows }, (_, r) => Math.min(MAX_ROW, Math.max(MIN_ROW, this.rowHeight(r) * scaleY)))
+      this.applyProps({ colWidths, rowHeights } as Partial<TableProps>)
+      // Keep the pinned corner where it was: the anchor is the box's top-left.
+      const left = Math.min(pin.x, point.x)
+      const top = Math.min(pin.y, point.y)
+      const time = viewport.timeAt(left)
+      const price = viewport.priceAt(top)
+      if (time !== null && price !== null) this.updateAnchor(0, { time, price })
+      return
+    }
+
+    const divider = handleIndex - 4
+    const { xs, ys } = this.offsets()
+    if (divider < cols - 1) {
+      const colWidths = Array.from({ length: cols }, (_, c) => this.colWidth(c))
+      colWidths[divider] = Math.min(MAX_COL, Math.max(MIN_COL, point.x - (f.x + xs[divider])))
+      this.applyProps({ colWidths } as Partial<TableProps>)
+      return
+    }
+    const rowIndex = divider - (cols - 1)
+    if (rowIndex < rows - 1) {
+      const rowHeights = Array.from({ length: rows }, (_, r) => this.rowHeight(r))
+      rowHeights[rowIndex] = Math.min(MAX_ROW, Math.max(MIN_ROW, point.y - (f.y + ys[rowIndex])))
+      this.applyProps({ rowHeights } as Partial<TableProps>)
+    }
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
