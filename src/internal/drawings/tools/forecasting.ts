@@ -12,27 +12,50 @@ export type PositionProps = {
   /** Risk per trade, as a percent of the account or a money amount (per `riskDisplay`). */
   risk: number
   riskDisplay: 'percent' | 'money'
-  /** Quantity rounds down to a multiple of this (contract/lot granularity). */
+  /** Contract/lot granularity — quantity is expressed in lots of this size. */
   lotSize: number
-  /** Margin readout divisor — notional / leverage. */
+  /** Caps the position at the account's buying power: qty ≤ account × leverage / entry. */
   leverage: number
   showPrices: boolean
+  /** Compact stats mode — the tags shrink to their essentials. */
+  compact: boolean
+}
+
+/** Everything the three tags read, derived once per paint. */
+type PositionStats = {
+  qty: number
+  ratio: number
+  tpOffset: number
+  tpPercent: number
+  slOffset: number
+  slPercent: number
+  amountAtTp: number
+  amountAtSl: number
+  /** Money PnL at the box's state (open tracks price, closed locks to the touched level). */
+  pnl: number
+  closed: boolean
 }
 
 /**
  * Trade plan visual: anchor 1 = entry (its time is the box's left edge), anchor 2 = target
- * (its time sets the right edge), anchor 3 = stop. Profit zone paints green, risk zone red,
- * with the risk/reward stats at the entry line.
+ * (its time sets the right edge), anchor 3 = stop. The profit zone paints green with its
+ * target/amount tag, the risk zone red with its stop/amount tag, and the entry line carries
+ * PnL · quantity · risk/reward. Quantity is the lesser of the risk budget over the stop
+ * distance and the leveraged account's buying power.
  */
 export class LongPosition extends Drawing<PositionProps> {
   readonly type: string = 'long_position'
 
   protected override defaultProps(): PositionProps {
-    return { accountSize: 10000, risk: 1, riskDisplay: 'percent', lotSize: 0, leverage: 1, showPrices: true }
+    return { accountSize: 1000, risk: 25, riskDisplay: 'percent', lotSize: 1, leverage: 1, showPrices: true, compact: false }
   }
 
   requiredAnchors(): number {
     return 3
+  }
+
+  protected isShort(): boolean {
+    return false
   }
 
   protected zones(viewport: Viewport): {
@@ -50,14 +73,88 @@ export class LongPosition extends Drawing<PositionProps> {
     return { left, right, entryY: entry.y, targetY: target.y, stopY: stop.y }
   }
 
+  protected stats(): PositionStats | null {
+    const [entry, target, stop] = this.anchors
+    if (!entry || !target || !stop) return null
+    const { accountSize, risk, riskDisplay, leverage } = this.props
+    const lot = this.props.lotSize > 0 ? this.props.lotSize : 1
+    const short = this.isShort()
+
+    const tpOffset = Math.abs(target.price - entry.price)
+    const slOffset = Math.abs(entry.price - stop.price)
+    const riskSize = riskDisplay === 'percent' ? (accountSize * risk) / 100 : risk
+    // Qty = min(QtyRisk, QtyLvg): the risk budget over the stop distance, capped by what the
+    // leveraged account can carry at the entry price. Point value is 1 (prices are per unit).
+    const qtyRisk = slOffset > 0 ? riskSize / slOffset / lot : 0
+    const qtyLvg = entry.price > 0 ? (accountSize * Math.max(1, leverage)) / entry.price / lot : 0
+    const qty = Math.max(0, Math.min(qtyRisk, qtyLvg))
+
+    const amountAtTp = accountSize + tpOffset * qty * lot
+    const amountAtSl = accountSize - slOffset * qty * lot
+    const ratio = slOffset > 0 ? tpOffset / slOffset : 0
+
+    // PnL over the box's span: closed at ±offset once the target/stop is touched by a bar inside
+    // the box, else open against the latest close at (or after) the right edge.
+    const sign = short ? -1 : 1
+    const bars = this.bars()
+    const from = Math.min(Number(entry.time), Number(target.time))
+    const to = Math.max(Number(entry.time), Number(target.time))
+    let pnl = 0
+    let closed = false
+    let lastClose: number | null = null
+    for (const bar of bars) {
+      const t = Number(bar.time)
+      if (t < from) continue
+      if (t > to) break
+      lastClose = bar.close
+      const hitTp = short ? bar.low <= target.price : bar.high >= target.price
+      const hitSl = short ? bar.high >= stop.price : bar.low <= stop.price
+      if (hitSl) {
+        pnl = -slOffset * qty * lot
+        closed = true
+        break
+      }
+      if (hitTp) {
+        pnl = tpOffset * qty * lot
+        closed = true
+        break
+      }
+    }
+    if (!closed) {
+      // The box may sit in the future (no bars inside): open PnL tracks the last known close.
+      const reference = lastClose ?? (bars.length ? bars[bars.length - 1].close : null)
+      pnl = reference == null ? 0 : sign * (reference - entry.price) * qty * lot
+    }
+
+    return {
+      qty,
+      ratio,
+      tpOffset,
+      tpPercent: entry.price !== 0 ? (tpOffset / entry.price) * 100 : 0,
+      slOffset,
+      slPercent: entry.price !== 0 ? (slOffset / entry.price) * 100 : 0,
+      amountAtTp,
+      amountAtSl,
+      pnl,
+      closed,
+    }
+  }
+
+  /** "offset (pct%) ticks" — the level readout shared by the target and stop tags. */
+  private levelText(offset: number, percent: number): string {
+    const tick = this.tickSize()
+    const ticks = tick && tick > 0 ? `, ${Math.round(offset / tick)}` : ''
+    return `${formatPrice(offset)} (${percent.toFixed(2)}%)${ticks}`
+  }
+
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const z = this.zones(viewport)
     if (!z) return
     const [entry, target, stop] = this.anchors
     ctx.save()
-    ctx.fillStyle = withAlpha(PROFIT, 0.12)
+    ctx.fillStyle = withAlpha(PROFIT, 0.2)
     ctx.fillRect(z.left, Math.min(z.entryY, z.targetY), z.right - z.left, Math.abs(z.targetY - z.entryY))
-    ctx.fillStyle = withAlpha(LOSS, 0.12)
+    ctx.fillStyle = withAlpha(LOSS, 0.2)
     ctx.fillRect(z.left, Math.min(z.entryY, z.stopY), z.right - z.left, Math.abs(z.stopY - z.entryY))
     ctx.restore()
 
@@ -71,27 +168,26 @@ export class LongPosition extends Drawing<PositionProps> {
     strokeSegment(ctx, { x: z.left, y: z.entryY }, { x: z.right, y: z.entryY })
     ctx.restore()
 
-    // Quantity derives from the risk budget over the stop distance (the trade-plan convention);
-    // a lot size floors it to tradable granularity, leverage sets the margin readout.
-    const riskMoney = this.props.riskDisplay === 'percent' ? (this.props.accountSize * this.props.risk) / 100 : this.props.risk
-    const stopDistance = Math.abs(entry.price - stop.price)
-    let qty = stopDistance > 0 ? riskMoney / stopDistance : 0
-    if (this.props.lotSize > 0 && qty > 0) qty = Math.floor(qty / this.props.lotSize) * this.props.lotSize
-    const reward = Math.abs(target.price - entry.price) * qty
-    const risked = qty * stopDistance
-    const ratio = stopDistance > 0 ? Math.abs(target.price - entry.price) / stopDistance : 0
-    const margin = this.props.leverage > 0 ? (qty * entry.price) / this.props.leverage : 0
+    const s = this.stats()
+    if (!s) return
     const mid = (z.left + z.right) / 2
-    const parts = [
-      `RR ${ratio.toFixed(2)}`,
-      `Qty ${qty.toFixed(qty >= 100 ? 0 : 2)}`,
-      `+${formatPrice(reward)} / -${formatPrice(risked)}`,
-    ]
-    if (this.props.leverage > 1 && margin > 0) parts.push(`Margin ${formatPrice(margin)}`)
-    paintLabel(ctx, parts.join('  ·  '), { x: mid, y: z.entryY }, this.style, {
-      align: 'center',
-      background: withAlpha('#1b1f27', 0.92),
-    })
+    const white = { ...this.style, textColor: '#ffffff' }
+    const qtyText = s.qty >= 100 ? s.qty.toFixed(0) : s.qty.toFixed(2)
+    const pnlLabel = s.closed ? 'Closed PnL' : 'Open PnL'
+    const entryText = this.props.compact
+      ? `${formatPrice(s.pnl)} · ${qtyText} · ${s.ratio.toFixed(2)}`
+      : `${pnlLabel}: ${formatPrice(s.pnl)}, Qty: ${qtyText}, Risk/Reward Ratio: ${s.ratio.toFixed(2)}`
+    const targetText = this.props.compact
+      ? this.levelText(s.tpOffset, s.tpPercent)
+      : `Target: ${this.levelText(s.tpOffset, s.tpPercent)}, Amount: ${formatPrice(s.amountAtTp)}`
+    const stopText = this.props.compact
+      ? this.levelText(s.slOffset, s.slPercent)
+      : `Stop: ${this.levelText(s.slOffset, s.slPercent)}, Amount: ${formatPrice(s.amountAtSl)}`
+
+    paintLabel(ctx, targetText, { x: mid, y: z.targetY }, white, { align: 'center', background: PROFIT })
+    paintLabel(ctx, stopText, { x: mid, y: z.stopY }, white, { align: 'center', background: LOSS })
+    paintLabel(ctx, entryText, { x: mid, y: z.entryY }, white, { align: 'center', background: '#585858' })
+
     if (this.props.showPrices) {
       paintLabel(ctx, formatPrice(target.price), { x: z.right + 6, y: z.targetY }, { ...this.style, textColor: PROFIT })
       paintLabel(ctx, formatPrice(stop.price), { x: z.right + 6, y: z.stopY }, { ...this.style, textColor: LOSS })
@@ -108,9 +204,13 @@ export class LongPosition extends Drawing<PositionProps> {
   }
 }
 
-/** Identical structure to the long position; the label semantics flip with the anchors. */
+/** Identical structure to the long position; the PnL direction flips with the side. */
 export class ShortPosition extends LongPosition {
   override readonly type = 'short_position'
+
+  protected override isShort(): boolean {
+    return true
+  }
 }
 
 /** Bordered label pill (source/target/verdict boxes); returns its painted bounds. */

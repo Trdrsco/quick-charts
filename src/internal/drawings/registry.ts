@@ -79,7 +79,7 @@ export interface ToolDefinition {
   hasText?: boolean
   /** How anchors are gathered: drag-captured stroke, or click-to-add points (double-click ends).
    *  Omitted = the fixed `anchors` count. */
-  placement?: 'freehand' | 'multipoint'
+  placement?: 'freehand' | 'multipoint' | 'instant'
   /** Tool snapshots the bars between its anchors when placement completes (the host triggers
    *  the drawing's `capture()`). */
   capturesBars?: boolean
@@ -99,7 +99,7 @@ interface ToolMeta {
   anchors: number
   style?: Partial<DrawingStyle>
   hasText?: boolean
-  placement?: 'freehand' | 'multipoint'
+  placement?: 'freehand' | 'multipoint' | 'instant'
   capturesBars?: boolean
 }
 
@@ -214,8 +214,8 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(SineLine, { type: 'sine_line', name: 'Sine line', category: 'cycles', anchors: 2 }),
 
   // Forecasting & positions
-  tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3 }),
-  tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3 }),
+  tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3, placement: 'instant' }),
+  tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3, placement: 'instant' }),
   tool(Forecast, { type: 'forecast', name: 'Position forecast', category: 'forecasting', anchors: 2 }),
   tool(Sector, { type: 'sector', name: 'Sector', category: 'forecasting', anchors: 3, style: { fillOpacity: 0.2 } }),
   tool(BarsPattern, { type: 'bars_pattern', name: 'Bars pattern', category: 'forecasting', anchors: 2, capturesBars: true }),
