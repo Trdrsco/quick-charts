@@ -26,5 +26,7 @@ export { createUdfDatafeed, tfToUdfResolution } from './udfDatafeed'
 export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorPlugin, IndicatorPlot } from './widget'
 
 export type { ChartWidgetApi, ResolvedTheme } from './host'
+export * from './broker'
+export { attachTradeLines, normalizeRoot, type PreviewLine, type PreviewSet, type TradeLineAttachment, type TradeLineHost, type TradeLineOptions } from './tradeLines'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export { createChart, resolveTheme, applyBar } from './host'

@@ -91,3 +91,65 @@ The widget paints candles + volume, applies live updates by the bar rules above,
 the viewer scrolls left (stopping at the feed's `noData`), persists the sticky symbol/timeframe through
 `ChartStorage`, and runs registered `IndicatorPlugin`s over the live series. The trdrs app's own chart
 panel is a richer host over the same seams (trading, drawings UI, replay) and layers those on top.
+
+## The broker contract (chart trading)
+
+Chart trading is the second seam, the exact analog of the datafeed: the package owns the types, the
+renderer, the gestures, and the pure decision layer; **you** supply the account data (pushed in), the
+actions (a `ChartBroker`), and your own price rules (an injected `PricePolicy`).
+
+```ts
+import { attachTradeLines, type ChartBroker, type PricePolicy } from '@trdrs/chart'
+
+const broker: ChartBroker = {
+  async moveOrder({ brokerOrderId, price, intentKey }) { /* atomic amend on YOUR backend */ },
+  async setProtectiveStop({ instrument, price, intentKey }) { /* the managed protective stop */ },
+  async flatten(instrument) { /* close at market */ },
+  async cancelOrder(brokerOrderId) { /* cancel one working order */ },
+  async reversePosition({ instrument, intentKey }) { /* optional: ONE backend flip op */ return { cancelledOrders: 0 } },
+}
+
+const lines = attachTradeLines({ chart, series, container }, broker, {
+  symbol: 'ES',
+  snapshot: { positions: [], orders: [] }, // you push updates via lines.update(...)
+  scope: 'my-broker|ACC-1',                // the selection identity (null = display-only)
+  tick: 0.25,
+  mark: () => lastTradePrice,              // null when your feed is not live
+  policy: myPricePolicy,                   // the SAME rules your backend enforces
+  onAction: (text, undo) => toast(text, undo),
+  onError: (msg) => note(msg),
+})
+lines.update({ snapshot: nextSnapshot })   // on every account update
+lines.detach()                             // teardown
+```
+
+### The broker rules (non-negotiable — the surface relies on them)
+
+1. **Snapshots are FULL and CONSISTENT.** Every `update({ snapshot })` carries the account's complete
+   positions + working orders as one atomic read — never a partial patch. The renderer reconciles by
+   identity (`instrument` for positions, `brokerOrderId` for orders); a row that disappears from the
+   snapshot is a closed/cancelled row, so a partial push would erase live lines.
+2. **Identity is stable.** `brokerOrderId` names the SAME order across updates. If your backend
+   replaces-under-the-hood on amend (a new id per move), report the new id in the next snapshot and
+   resolve `moveOrder` only once the new order is live — the package re-keys from the snapshot.
+3. **`moveOrder` is atomic or honest.** Resolve only when the order rests at the new price; reject
+   with a human-readable message for ANY other outcome (filled meanwhile, replaced-but-lost,
+   unconfirmed transport). The message is shown verbatim — never resolve on a maybe.
+4. **Money numbers are real or null.** `unrealizedPnl` is your backend's own figure or `null` — the
+   line then simply omits the P&L suffix. Never synthesize one client-side.
+5. **Your policy is your server's policy.** The injected `PricePolicy` should run the same band /
+   tick-alignment / protective-side rules your backend enforces, so a drag the chart accepts is
+   never rejected server-side (and vice versa). Omitted ⇒ the package only tick-snaps.
+6. **`intentKey` is the retry key.** It is stable across retries of one gesture and changes when the
+   intent changes (the price is baked in). Map it to your backend's idempotency claim so a dropped
+   response + retry cannot double-execute.
+7. **Reverse is ONE backend operation.** Implement `reversePosition` only if your backend clears the
+   instrument's working orders and flips in one call (a client-side cancel+place pair can crash in
+   between). Omit it and the ⇄ affordance never renders.
+
+### Preview lines (pre-money decoration)
+
+A host can draw its own **preview** levels (an order ticket's pending entry/stop/target) through
+`update({ preview })`. Preview gestures are structurally money-free: a drag or ✕ on a preview line
+only ever calls your `onPreviewEdit` / `onPreviewCancel` callbacks — no `ChartBroker` method is in
+scope on that path.
