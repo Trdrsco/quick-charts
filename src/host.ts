@@ -17,6 +17,7 @@ import {
 import { FeedUnavailableError, type ChartDatafeed, type FeedBar } from './datafeed'
 import { localStorageChartStorage, type ChartStorage } from './storage'
 import type { ChartTheme, ChartWidgetOptions, IndicatorPlugin } from './widget'
+import { BRAND_DOWN, BRAND_UP } from './overrides'
 
 /** The running widget a host holds — change what's displayed, or tear it down. */
 export interface ChartWidgetApi {
@@ -44,8 +45,8 @@ export function resolveTheme(theme?: ChartTheme): ResolvedTheme {
     background: theme?.background ?? (dark ? '#141414' : '#ffffff'),
     gridColor: theme?.gridColor ?? (dark ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.06)'),
     textColor: theme?.textColor ?? (dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.55)'),
-    upColor: theme?.upColor ?? '#4c98fb',
-    downColor: theme?.downColor ?? '#f23645',
+    upColor: theme?.upColor ?? BRAND_UP,
+    downColor: theme?.downColor ?? BRAND_DOWN,
   }
 }
 

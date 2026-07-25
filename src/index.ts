@@ -26,4 +26,5 @@ export { createUdfDatafeed, tfToUdfResolution } from './udfDatafeed'
 export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorPlugin, IndicatorPlot } from './widget'
 
 export type { ChartWidgetApi, ResolvedTheme } from './host'
+export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export { createChart, resolveTheme, applyBar } from './host'
