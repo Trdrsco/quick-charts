@@ -68,8 +68,26 @@ import { localStorageChartStorage, memoryChartStorage, type ChartStorage } from 
 Register third-party indicators through `ChartWidgetOptions.indicators` — each `IndicatorPlugin` computes
 plot lines from the bar series with no access to chart internals.
 
-## Status
+## The widget
 
-The datafeed contract, the UDF adapter, the storage seam, and the widget/indicator-plugin type surface are
-published here. The host component that mounts `ChartWidgetOptions` is provided by the trdrs app today and
-is the remaining extraction step before a fully standalone `createChart(options)` ships from this package.
+`createChart(options)` mounts a complete datafeed-driven chart into a DOM element — no framework required:
+
+```ts
+import { createChart, createUdfDatafeed } from '@trdrs/chart'
+
+const widget = createChart({
+  container: document.getElementById('chart')!,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  symbol: 'ES',
+  timeframe: '1m',
+  theme: { mode: 'dark', upColor: '#4c98fb' },
+  events: { onReady: () => console.log('painted') },
+})
+widget.setSymbol('NQ') // later
+widget.remove() // teardown
+```
+
+The widget paints candles + volume, applies live updates by the bar rules above, pages older history in as
+the viewer scrolls left (stopping at the feed's `noData`), persists the sticky symbol/timeframe through
+`ChartStorage`, and runs registered `IndicatorPlugin`s over the live series. The trdrs app's own chart
+panel is a richer host over the same seams (trading, drawings UI, replay) and layers those on top.

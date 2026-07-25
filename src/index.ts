@@ -24,3 +24,6 @@ export type { FetchLike, UdfDatafeedOptions } from './udfDatafeed'
 export { createUdfDatafeed, tfToUdfResolution } from './udfDatafeed'
 
 export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorPlugin, IndicatorPlot } from './widget'
+
+export type { ChartWidgetApi, ResolvedTheme } from './host'
+export { createChart, resolveTheme, applyBar } from './host'
