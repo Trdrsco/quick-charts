@@ -11,6 +11,7 @@
 // is the pure planBrokerDrop in broker.ts, gated by the HOST's injected price policy.
 import type { IChartApi, IPriceLine, ISeriesApi } from 'lightweight-charts'
 import {
+  boundBracketPrice,
   boundStopPrice,
   dispatchPreviewDrop,
   isMeaningfulMove,
@@ -218,6 +219,23 @@ interface PendingPreviewX {
   downY: number
 }
 
+/** A TP/SL handle dragged off the position line. The level does not exist until the drop, so the
+ *  gesture carries a ghost line of its own rather than moving an existing one. */
+interface BracketDragState {
+  kind: 'tp' | 'sl'
+  instrument: string
+  positionSide: 'long' | 'short'
+  qty: number
+  /** The average entry the level is validated against. */
+  anchor: number
+  lastValidPrice: number
+  moved: boolean
+  pointerId: number
+  capturedScope: string
+  capturedSymbol: string
+  ghost: IPriceLine | null
+}
+
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : 'Chart action failed')
 
 export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initial: TradeLineOptions): TradeLineAttachment {
@@ -231,6 +249,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   let previewDrag: PreviewDragState | null = null
   let pendingX: PendingX | null = null
   let pendingPreviewX: PendingPreviewX | null = null
+  let bracketDrag: BracketDragState | null = null
   let raf: number | null = null
   let latestClientY: number | null = null
   let detached = false
@@ -396,9 +415,10 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             currency: opts.currency ?? '',
             supportReverse: armed() && canReverse,
             supportClose: armed(),
-            // A bracket drag needs a broker action of its own; the TP/SL handles stay off until it
-            // exists rather than painting controls that cannot fire.
-            supportBrackets: false,
+            // A handle renders only where the broker can act and the tick is known — a drag with no
+            // tick cannot snap, so the control would take a gesture it must then refuse.
+            supportTakeProfit: armed() && typeof broker.setTakeProfit === 'function' && !!opts.tick,
+            supportStopLoss: armed() && !!opts.tick,
             priceText: formatLinePrice(p.avgPrice),
           }),
         })
@@ -627,6 +647,44 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
 
     // LIVE lines (position avg / working order) — only when trading isn't locked.
     if (!opts.locked) {
+      // A TP/SL handle: the gesture IS the price entry, so a bare tap does nothing and only a drag
+      // off the line commits a level.
+      const handle = partAt(e.clientX, e.clientY)
+      if (handle && (handle.hit.role === 'tp' || handle.hit.role === 'sl') && handle.entry.kind === 'position') {
+        const pos = opts.snapshot.positions.find((q) => q && q.qty !== 0 && q.instrument === handle.entry.instrument)
+        if (pos && typeof pos.avgPrice === 'number' && pos.avgPrice > 0 && opts.tick && opts.tick > 0) {
+          e.preventDefault()
+          try {
+            container.setPointerCapture(e.pointerId)
+          } catch {
+            /* capture is best-effort */
+          }
+          chart.applyOptions({ handleScroll: false, handleScale: false })
+          container.style.touchAction = 'none'
+          const kind = handle.hit.role === 'tp' ? 'tp' : 'sl'
+          bracketDrag = {
+            kind,
+            instrument: pos.instrument,
+            positionSide: pos.qty > 0 ? 'long' : 'short',
+            qty: Math.abs(pos.qty),
+            anchor: pos.avgPrice,
+            lastValidPrice: pos.avgPrice,
+            moved: false,
+            pointerId: e.pointerId,
+            capturedScope,
+            capturedSymbol,
+            ghost: series.createPriceLine({
+              price: pos.avgPrice,
+              color: kind === 'tp' ? PREVIEW_TP : PREVIEW_SL,
+              lineWidth: 1,
+              lineStyle: 3,
+              axisLabelVisible: true,
+              title: kind === 'tp' ? 'TP' : 'SL',
+            }),
+          }
+          return
+        }
+      }
       const res = hitTest(e.clientX, e.clientY)
       if (res) {
         const { hit, entry } = res
@@ -710,6 +768,23 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   }
 
   const onPointerMove = (e: PointerEvent) => {
+    if (bracketDrag) {
+      if (e.pointerId !== bracketDrag.pointerId) return
+      latestClientY = e.clientY
+      if (raf != null) return // coalesce: one applyOptions per frame
+      raf = requestAnimationFrame(() => {
+        raf = null
+        const b = bracketDrag
+        if (!b) return
+        const rect = container.getBoundingClientRect()
+        const price = series.coordinateToPrice((latestClientY ?? 0) - rect.top)
+        if (price == null) return
+        b.lastValidPrice = price
+        b.moved = isMeaningfulMove(price, b.anchor, opts.tick)
+        b.ghost?.applyOptions({ price }) // UNSNAPPED — follow the cursor; snap at drop
+      })
+      return
+    }
     const drag = dragging ?? previewDrag
     if (!drag) {
       if (pendingX || pendingPreviewX) return
@@ -815,7 +890,64 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     return true
   }
 
+  /** Settle a TP/SL handle drag: snap, reject a level dropped on the wrong side of the entry, then
+   *  place it. A drag that never left the line commits nothing. */
+  const finishBracket = (e: PointerEvent): boolean => {
+    const b = bracketDrag
+    if (!b || e.pointerId !== b.pointerId) return false
+    cancelRaf()
+    try {
+      container.releasePointerCapture(b.pointerId)
+    } catch {
+      /* capture may already be released */
+    }
+    restoreChart()
+    container.style.cursor = ''
+    bracketDrag = null
+    if (b.ghost) {
+      try {
+        series.removePriceLine(b.ghost)
+      } catch {
+        /* the series may already be torn down */
+      }
+    }
+    if (!b.moved) return true
+    if (opts.scope !== b.capturedScope || opts.symbol !== b.capturedSymbol) {
+      opts.onError?.('Selection changed — bracket cancelled')
+      return true
+    }
+    const bounded = boundBracketPrice(b.lastValidPrice, {
+      tick: opts.tick,
+      anchor: b.anchor,
+      positionSide: b.positionSide,
+      kind: b.kind,
+      mark: markNow() ?? undefined,
+      policy: opts.policy,
+    })
+    if ('error' in bounded) {
+      opts.onError?.(bounded.error)
+      return true
+    }
+    const price = bounded.price
+    const label = b.kind === 'tp' ? 'Take Profit' : 'Stop Loss'
+    const exitSide = b.positionSide === 'long' ? 'Sell' : 'Buy'
+    const intentKey = `${b.kind}|${b.capturedScope}|${b.instrument}|${price}`
+    const call =
+      b.kind === 'tp'
+        ? broker.setTakeProfit?.({ instrument: b.instrument, price, intentKey })
+        : broker.setProtectiveStop({ instrument: b.instrument, price, intentKey })
+    if (!call) {
+      opts.onError?.('Take profit is not supported for this account')
+      return true
+    }
+    void call
+      .then(() => opts.onAction?.(`${label} order placed · ${exitSide} ${b.qty} at ${formatLinePrice(price)}`))
+      .catch((err) => opts.onError?.(errMsg(err)))
+    return true
+  }
+
   const onPointerUp = (e: PointerEvent) => {
+    if (finishBracket(e)) return
     // A preview ✕ — handled first + in its OWN block. STRUCTURAL: on a clean tap it ONLY calls
     // onPreviewCancel(id); there is NO runTarget / execPlan / broker call anywhere on this path.
     const ppx = pendingPreviewX
@@ -874,6 +1006,21 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
 
   const cancelGesture = () => {
     cancelRaf()
+    if (bracketDrag) {
+      try {
+        container.releasePointerCapture(bracketDrag.pointerId)
+      } catch {
+        /* best-effort */
+      }
+      if (bracketDrag.ghost) {
+        try {
+          series.removePriceLine(bracketDrag.ghost)
+        } catch {
+          /* the series may already be torn down */
+        }
+      }
+      bracketDrag = null
+    }
     const drag = dragging ?? previewDrag
     if (drag) {
       try {

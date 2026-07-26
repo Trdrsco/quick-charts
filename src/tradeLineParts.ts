@@ -135,7 +135,10 @@ export interface PositionPartsInput {
   currency: string
   supportReverse: boolean
   supportClose: boolean
-  supportBrackets: boolean
+  /** Each handle renders only when the broker can actually act on it — a venue may offer one and
+   *  not the other. */
+  supportTakeProfit: boolean
+  supportStopLoss: boolean
   /** Formats the average price for the P&L cell's tooltip. */
   priceText?: string | null
 }
@@ -162,11 +165,17 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
     children.push({ id: 'gap-reverse', role: 'spacer', width: TRADE_THEME.gap })
   }
 
-  if (input.supportBrackets) {
-    children.push(bracketButton('tp', 'TP', TRADE_THEME.tp, 'Drag to add Take profit'))
-    children.push({ id: 'seam-tp-sl', role: 'spacer', width: -1 })
-    children.push(bracketButton('sl', 'SL', TRADE_THEME.sl, 'Drag to add Stop loss'))
-    children.push({ id: 'gap-sl', role: 'spacer', width: TRADE_THEME.gap })
+  const handles: PartSpec[] = []
+  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, 'Drag to add Take profit'))
+  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, 'Drag to add Stop loss'))
+  if (handles.length) {
+    children.push(handles[0]!)
+    // Adjacent handles overlap by a pixel so their borders form one seam rather than two strokes.
+    for (const h of handles.slice(1)) {
+      children.push({ id: `seam-${h.id}`, role: 'spacer', width: -1 })
+      children.push(h)
+    }
+    children.push({ id: 'gap-handles', role: 'spacer', width: TRADE_THEME.gap })
   }
 
   const pill: PartSpec[] = [

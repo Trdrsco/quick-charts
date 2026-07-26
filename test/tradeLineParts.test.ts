@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { boundBracketPrice } from '../src/broker'
 import {
   buildOrderParts,
   buildPositionParts,
@@ -31,7 +32,8 @@ const POSITION = {
   currency: 'USD',
   supportReverse: true,
   supportClose: true,
-  supportBrackets: true,
+  supportTakeProfit: true,
+  supportStopLoss: true,
   priceText: '75.39',
 }
 
@@ -92,13 +94,27 @@ describe('position line layout', () => {
 
   it('drops the controls a position does not support', () => {
     const root = layoutParts(
-      buildPositionParts({ ...POSITION, supportReverse: false, supportBrackets: false }),
+      buildPositionParts({ ...POSITION, supportReverse: false, supportTakeProfit: false, supportStopLoss: false }),
       { rightEdge: RIGHT_EDGE, centerY: CENTER_Y, measure },
     )
     expect(find(root, 'reverse')).toBeUndefined()
     expect(find(root, 'tp')).toBeUndefined()
     expect(find(root, 'close').w).toBe(23)
     expect(root.w).toBe(130)
+  })
+
+  it('renders a lone handle without the overlap seam', () => {
+    const root = layoutParts(
+      buildPositionParts({ ...POSITION, supportTakeProfit: false }),
+      { rightEdge: RIGHT_EDGE, centerY: CENTER_Y, measure },
+    )
+    expect(find(root, 'tp')).toBeUndefined()
+    // Reverse 29 + gap 10 + SL 29 + gap 10 + pill 130 — no seam, because nothing abuts the handle.
+    expect(root.w).toBe(208)
+    // Right-aligned, so dropping a handle moves the whole tree right rather than leaving a hole.
+    expect(root.x).toBe(RIGHT_EDGE - 208)
+    expect(find(root, 'sl').x).toBe(1102)
+    expect(find(root, 'pill').x + find(root, 'pill').w).toBe(RIGHT_EDGE)
   })
 })
 
@@ -186,5 +202,39 @@ describe('P&L formatting', () => {
     expect(formatPnlTicks(-3.25)).toBe('− 3.3 ticks')
     expect(formatPnlTicks(42)).toBe('+ 42 ticks')
     expect(formatPnlPercent(-0.05305743467303356)).toBe('− 0.05%')
+  })
+})
+
+describe('bracket level side rule', () => {
+  const base = { tick: 0.01, anchor: 75.39, mark: 75.35 } as const
+
+  const priceOf = (r: { price: number } | { error: string }) => ('price' in r ? r.price : NaN)
+
+  it('takes a profit above a long and below a short', () => {
+    expect(priceOf(boundBracketPrice(75.4567, { ...base, positionSide: 'long', kind: 'tp' }))).toBeCloseTo(75.46, 6)
+    expect(priceOf(boundBracketPrice(75.31, { ...base, positionSide: 'short', kind: 'tp' }))).toBeCloseTo(75.31, 6)
+  })
+
+  it('REJECTS a target dropped on the losing side rather than flipping it', () => {
+    const long = boundBracketPrice(75.2, { ...base, positionSide: 'long', kind: 'tp' })
+    expect(long).toEqual({ error: 'Take profit must be above the entry' })
+    const short = boundBracketPrice(75.5, { ...base, positionSide: 'short', kind: 'tp' })
+    expect(short).toEqual({ error: 'Take profit must be below the entry' })
+  })
+
+  it('treats the entry itself as the wrong side — a zero-gain target is not a target', () => {
+    expect(boundBracketPrice(75.39, { ...base, positionSide: 'long', kind: 'tp' })).toEqual({
+      error: 'Take profit must be above the entry',
+    })
+  })
+
+  it('refuses to snap without a tick', () => {
+    expect(boundBracketPrice(75.46, { anchor: 75.39, positionSide: 'long', kind: 'tp' })).toEqual({
+      error: 'Tick size unknown',
+    })
+  })
+
+  it('routes a stop through the protective-stop gate', () => {
+    expect(priceOf(boundBracketPrice(75.2233, { ...base, positionSide: 'long', kind: 'sl' }))).toBeCloseTo(75.22, 6)
   })
 })

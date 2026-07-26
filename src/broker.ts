@@ -76,6 +76,9 @@ export interface ChartBroker {
    *  then a qty×2 opposite market order). Omitted ⇒ the ⇄ affordance never renders. Resolve with
    *  how many orders were cleared (for the toast). */
   reversePosition?(args: { instrument: string; intentKey: string }): Promise<{ cancelledOrders: number }>
+  /** OPTIONAL: place/move the position's take-profit level — a resting exit on the opposite side,
+   *  above a long and below a short. Omitted ⇒ the TP handle never renders. */
+  setTakeProfit?(args: { instrument: string; price: number; intentKey: string }): Promise<void>
 }
 
 // ── Pure helpers ────────────────────────────────────────────────────────────────
@@ -322,6 +325,27 @@ export function boundStopPrice(
     mark: typeof opts.mark === 'number' && opts.mark > 0 ? opts.mark : undefined,
   })
   return errs.length ? { error: errs[0]! } : { price: snapped }
+}
+
+/** Bound a dragged bracket level to the side its kind requires: a stop PROTECTS (below a long,
+ *  above a short), a target PROFITS (above a long, below a short). Snap first, then REJECT a level
+ *  dropped on the wrong side — silently flipping it to the legal side would place an exit the
+ *  trader never aimed at. */
+export function boundBracketPrice(
+  price: number,
+  opts: { tick?: number; anchor: number | null; positionSide: 'long' | 'short'; kind: 'tp' | 'sl'; mark?: number; policy?: PricePolicy },
+): { price: number } | { error: string } {
+  if (opts.kind === 'sl') {
+    return boundStopPrice(price, { tick: opts.tick, anchor: opts.anchor, protectiveSide: opts.positionSide, mark: opts.mark, policy: opts.policy })
+  }
+  if (!(typeof opts.tick === 'number' && opts.tick > 0)) return { error: 'Tick size unknown' }
+  if (opts.anchor == null) return { error: 'No anchor' }
+  const snapped = snapPrice(price, opts.tick)
+  const above = opts.positionSide === 'long'
+  if (above ? snapped <= opts.anchor : snapped >= opts.anchor) {
+    return { error: `Take profit must be ${above ? 'above' : 'below'} the entry` }
+  }
+  return { price: snapped }
 }
 
 // ── Preview (host-decorated) line drop (pure; NEVER reaches the broker) ─────────
