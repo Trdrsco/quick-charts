@@ -28,5 +28,27 @@ export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorPlugin
 export type { ChartWidgetApi, ResolvedTheme } from './host'
 export * from './broker'
 export { attachTradeLines, normalizeRoot, type PreviewLine, type PreviewSet, type TradeLineAttachment, type TradeLineHost, type TradeLineOptions } from './tradeLines'
+export {
+  buildOrderParts,
+  buildPositionParts,
+  drawParts,
+  formatPnlMoney,
+  formatPnlPercent,
+  formatPnlTicks,
+  hitTestParts,
+  layoutParts,
+  unionRect,
+  PART_H,
+  TRADE_FONT,
+  TRADE_THEME,
+  type DragRole,
+  type LayoutCtx,
+  type LayoutNode,
+  type OrderPartsInput,
+  type PartHit,
+  type PartRole,
+  type PartSpec,
+  type PositionPartsInput,
+} from './tradeLineParts'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export { createChart, resolveTheme, applyBar } from './host'

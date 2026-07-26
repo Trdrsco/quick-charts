@@ -27,6 +27,20 @@ import {
   type PricePolicy,
 } from './broker'
 import { DEFAULT_OVERRIDES, type ChartOverrides } from './overrides'
+import {
+  buildOrderParts,
+  buildPositionParts,
+  drawParts,
+  formatPnlMoney,
+  formatPnlPercent,
+  formatPnlTicks,
+  hitTestParts,
+  layoutParts,
+  PART_H,
+  type LayoutNode,
+  type PartHit,
+  type PartSpec,
+} from './tradeLineParts'
 
 // Broker instrument / charted ticker -> tradeable root: strip an exchange prefix, separators, a
 // continuous-contract "1!" suffix, and a trailing month code. Micros stay DISTINCT (MES ≠ ES) so a
@@ -49,24 +63,27 @@ const PREVIEW_ENTRY = 'rgba(245, 158, 11, 0.9)'
 const PREVIEW_SL = 'rgba(255, 82, 82, 0.55)'
 const PREVIEW_TP = 'rgba(52, 210, 75, 0.6)'
 
-/** The position line's P&L suffix, honest per unit: money = the broker's OWN unrealizedPnl (null →
- *  no suffix, never a locally-faked number); ticks/percent derive from the live mark vs avg entry
+/** The position pill's P&L cell, honest per unit: money = the broker's OWN unrealizedPnl (null → no
+ *  cell at all, never a locally-faked number); ticks/percent derive from the live mark vs avg entry
  *  and vanish without a live mark or a known tick. */
-function positionPnlSuffix(p: { qty: number; avgPrice: number | null; unrealizedPnl: number | null }, mode: 'money' | 'ticks' | 'percent', tick: number | undefined, mark: number | null): string {
-  if (mode === 'money') {
-    if (p.unrealizedPnl == null) return ''
-    const v = p.unrealizedPnl
-    return ` · ${v >= 0 ? '+' : '−'}$${Math.abs(v).toFixed(2)}`
-  }
-  if (mark == null || mark <= 0 || p.avgPrice == null || p.avgPrice <= 0) return ''
-  const sign = p.qty > 0 ? 1 : -1
+function positionPnlDisplay(
+  p: { qty: number; avgPrice: number | null; unrealizedPnl: number | null },
+  mode: 'money' | 'ticks' | 'percent',
+  tick: number | undefined,
+  mark: number | null,
+  currency: string | null,
+): { text: string | null; sign: 'profit' | 'loss' | null } {
+  const signOf = (v: number | null): 'profit' | 'loss' | null => (v == null ? null : v < 0 ? 'loss' : 'profit')
+  if (mode === 'money') return { text: formatPnlMoney(p.unrealizedPnl, currency), sign: signOf(p.unrealizedPnl) }
+  if (mark == null || mark <= 0 || p.avgPrice == null || p.avgPrice <= 0) return { text: null, sign: null }
+  const dir = p.qty > 0 ? 1 : -1
   if (mode === 'ticks') {
-    if (!tick || tick <= 0) return ''
-    const t = ((mark - p.avgPrice) * sign) / tick
-    return ` · ${t >= 0 ? '+' : '−'}${Math.abs(t).toFixed(Math.abs(t) < 10 ? 1 : 0)}t`
+    if (!tick || tick <= 0) return { text: null, sign: null }
+    const t = ((mark - p.avgPrice) * dir) / tick
+    return { text: formatPnlTicks(t), sign: signOf(t) }
   }
-  const pct = ((mark - p.avgPrice) / p.avgPrice) * 100 * sign
-  return ` · ${pct >= 0 ? '+' : '−'}${Math.abs(pct).toFixed(2)}%`
+  const pct = ((mark - p.avgPrice) / p.avgPrice) * 100 * dir
+  return { text: formatPnlPercent(pct), sign: signOf(pct) }
 }
 
 // Drag tuning. A grab registers within GRAB_PX of a line; the ✕ (close/cancel) hot-zone is the
@@ -113,6 +130,9 @@ export interface TradeLineOptions {
   scope: string | null
   /** Contract tick — reprice drags stay disabled until known (snap-before-validate). */
   tick?: number
+  /** The account's currency, shown beside a money P&L. Omitted ⇒ the number renders bare rather
+   *  than wearing a guessed currency. */
+  currency?: string
   /** The live-trusted mark, or null (feed down / not live). Read at gesture/draw time. */
   mark?: () => number | null
   /** Trading lock — live actions disarm (display-only); PREVIEW gestures stay allowed (pre-money). */
@@ -149,6 +169,8 @@ interface LineEntry {
   brokerOrderId?: string
   previewId?: string
   editable?: boolean
+  /** The overlay control tree for this line (absent ⇒ the line draws no controls). */
+  spec?: PartSpec
 }
 
 interface DragState {
@@ -221,6 +243,114 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   const armed = () => !!opts.scope && !opts.locked
   const interactive = () => !!opts.scope
 
+  const formatLinePrice = (price: number | null): string | null => {
+    if (price == null || !isFinite(price)) return null
+    const tk = opts.tick && opts.tick > 0 ? opts.tick : null
+    const decimals = tk ? Math.max(0, Math.min(8, Math.ceil(-Math.log10(tk)))) : 2
+    return price.toFixed(decimals)
+  }
+
+  // ── Control overlay ────────────────────────────────────────────────────────────
+  // Controls are painted on our own canvas above the chart, and a control's hit box IS the rect it
+  // was painted at. A native price-line title is text with no addressable geometry, so a control
+  // drawn as a title glyph can only be tapped by guessing where the text landed — a guess that
+  // silently drifts with the label's content.
+  if (getComputedStyle(container).position === 'static') container.style.position = 'relative'
+  const overlay = document.createElement('canvas')
+  overlay.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:3'
+  container.appendChild(overlay)
+  const octx = overlay.getContext('2d')
+  const layouts = new Map<string, LayoutNode>()
+  let hoveredPart: string | null = null
+  let lastSig = ''
+
+  const measureText = (text: string, font: string): number => {
+    if (!octx) return text.length * 7
+    octx.font = font
+    return Math.ceil(octx.measureText(text).width)
+  }
+
+  const plotRightEdge = (): number => container.clientWidth - chart.priceScale('right').width()
+
+  const paintOverlay = () => {
+    if (detached || !octx) return
+    const dpr = window.devicePixelRatio || 1
+    const w = container.clientWidth
+    const h = container.clientHeight
+    if (overlay.width !== Math.round(w * dpr) || overlay.height !== Math.round(h * dpr)) {
+      overlay.width = Math.round(w * dpr)
+      overlay.height = Math.round(h * dpr)
+    }
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    octx.clearRect(0, 0, w, h)
+    layouts.clear()
+    const rightEdge = plotRightEdge()
+    for (const [key, entry] of lines) {
+      if (!entry.spec) continue
+      const y = series.priceToCoordinate(entry.price)
+      if (y == null || y < PART_H / 2 || y > h - PART_H / 2) continue
+      const node = layoutParts(entry.spec, { rightEdge, centerY: y, measure: measureText })
+      layouts.set(key, node)
+      const localHover = hoveredPart && hoveredPart.startsWith(`${key}:`) ? hoveredPart.slice(key.length + 1) : null
+      drawParts(octx, node, localHover)
+    }
+  }
+
+  /** A cheap signature of everything that moves a control box. Panning, zooming and autoscaling all
+   *  move a line without any snapshot change, and a stale box would accept taps where nothing is
+   *  painted — the exact failure this overlay exists to remove. */
+  const overlaySignature = (): string => {
+    let s = `${container.clientWidth}x${container.clientHeight}|${plotRightEdge()}|${hoveredPart ?? ''}`
+    for (const [key, entry] of lines) {
+      if (!entry.spec) continue
+      const y = series.priceToCoordinate(entry.price)
+      s += `|${key}@${y == null ? 'x' : Math.round(y)}`
+    }
+    return s
+  }
+
+  const syncOverlay = () => {
+    if (detached) {
+      overlay.remove()
+      return
+    }
+    const sig = overlaySignature()
+    if (sig !== lastSig) {
+      lastSig = sig
+      paintOverlay()
+    }
+    requestAnimationFrame(syncOverlay)
+  }
+  requestAnimationFrame(syncOverlay)
+
+  /** The control under the pointer, resolved against the painted rectangles. */
+  const partAt = (clientX: number, clientY: number): { key: string; entry: LineEntry; hit: PartHit } | null => {
+    const rect = container.getBoundingClientRect()
+    const x = clientX - rect.left
+    const y = clientY - rect.top
+    let best: { key: string; entry: LineEntry; hit: PartHit } | null = null
+    for (const [key, node] of layouts) {
+      const hit = hitTestParts(node, x, y)
+      if (!hit) continue
+      const entry = lines.get(key)
+      if (entry) best = { key, entry, hit }
+    }
+    return best
+  }
+
+  const onHoverMove = (e: PointerEvent) => {
+    if (dragging || previewDrag || pendingX || pendingPreviewX) return
+    const part = partAt(e.clientX, e.clientY)
+    const id = part ? `${part.key}:${part.hit.id}` : null
+    if (id !== hoveredPart) {
+      hoveredPart = id
+      paintOverlay()
+    }
+    const tip = part?.hit.tooltip ?? ''
+    if (container.title !== tip) container.title = tip
+  }
+  container.addEventListener('pointermove', onHoverMove)
+
   // ── Draw / reconcile BY IDENTITY (update/create/remove only what changed — a teardown-per-tick
   //    both flickers and would destroy the line the user is mid-drag holding) ──
   const draw = () => {
@@ -238,6 +368,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       brokerOrderId?: string
       previewId?: string
       editable?: boolean
+      spec?: PartSpec
     }
     const desired = new Map<string, Desired>()
     if (root) {
@@ -246,15 +377,30 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         if (!p || p.qty === 0 || typeof p.avgPrice !== 'number' || !isFinite(p.avgPrice) || p.avgPrice <= 0) continue
         if (normalizeRoot(p.instrument) !== root) continue
         const long = p.qty > 0
-        const glyphs = armed() ? `${canReverse ? '  ⇄' : ''}  ✕` : ''
+        const pnl = positionPnlDisplay(p, t.pnlMode, opts.tick, markNow(), opts.currency ?? null)
+        // Identity, P&L and the controls all live in the overlay pill — the native line carries no
+        // title, so nothing that looks like a button is painted anywhere it can't be tapped.
         desired.set(`pos:${p.instrument}`, {
           price: p.avgPrice,
           color: long ? t.buyColor : t.sellColor,
           lineWidth: t.positionLineWidth,
           lineStyle: 0,
-          title: `${long ? 'LONG' : 'SHORT'} ${Math.abs(p.qty)}${positionPnlSuffix(p, t.pnlMode, opts.tick, markNow())}${glyphs}`,
+          title: '',
           kind: 'position',
           instrument: p.instrument,
+          spec: buildPositionParts({
+            qty: p.qty,
+            avgPrice: p.avgPrice,
+            pnlText: pnl.text,
+            pnlSign: pnl.sign,
+            currency: opts.currency ?? '',
+            supportReverse: armed() && canReverse,
+            supportClose: armed(),
+            // A bracket drag needs a broker action of its own; the TP/SL handles stay off until it
+            // exists rather than painting controls that cannot fire.
+            supportBrackets: false,
+            priceText: formatLinePrice(p.avgPrice),
+          }),
         })
       }
       for (const o of t.showOrders ? opts.snapshot.orders : []) {
@@ -268,10 +414,17 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           color: buy ? t.buyColor : t.sellColor,
           lineWidth: t.orderLineWidth,
           lineStyle: o.orderType === 'stop' ? 2 : 1,
-          title: `${buy ? 'BUY' : 'SELL'} ${o.orderType.toUpperCase()} ${Math.abs(o.qty)}${armed() ? '  ✕' : ''}`,
+          title: '',
           kind: o.orderType,
           instrument: o.instrument,
           brokerOrderId: o.brokerOrderId,
+          spec: buildOrderParts({
+            qty: o.qty,
+            label: `${buy ? 'BUY' : 'SELL'} ${o.orderType.toUpperCase()}`,
+            color: buy ? t.buyColor : t.sellColor,
+            supportCancel: armed(),
+            supportModifyQty: false,
+          }),
         })
       }
 
@@ -323,11 +476,13 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         existing.brokerOrderId = d.brokerOrderId
         existing.previewId = d.previewId
         existing.editable = d.editable
+        existing.spec = d.spec
       } else {
         const line = series.createPriceLine({ price: d.price, color: d.color, lineWidth: d.lineWidth as 1 | 2 | 3, lineStyle: d.lineStyle, axisLabelVisible: true, title: d.title })
-        lines.set(key, { line, kind: d.kind, price: d.price, instrument: d.instrument, brokerOrderId: d.brokerOrderId, previewId: d.previewId, editable: d.editable })
+        lines.set(key, { line, kind: d.kind, price: d.price, instrument: d.instrument, brokerOrderId: d.brokerOrderId, previewId: d.previewId, editable: d.editable, spec: d.spec })
       }
     }
+    paintOverlay()
   }
 
   // ── Gesture layer ──────────────────────────────────────────────────────────────
@@ -351,10 +506,22 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   })
 
   const hitTest = (clientX: number, clientY: number): { hit: Hit; entry: LineEntry } | null => {
+    // A tap resolves against the CONTROL it landed on. Only when no control is under the pointer
+    // does it fall through to the line body, where a grab means "reprice".
+    const part = partAt(clientX, clientY)
+    if (part && part.entry.kind !== 'preview' && (part.hit.role === 'close' || part.hit.role === 'reverse')) {
+      return {
+        hit: {
+          key: part.key,
+          kind: part.entry.kind as LineKind,
+          isXZone: part.hit.role === 'close',
+          isRevZone: part.hit.role === 'reverse',
+        },
+        entry: part.entry,
+      }
+    }
     const rect = container.getBoundingClientRect()
-    const x = clientX - rect.left
     const y = clientY - rect.top
-    const plotRight = rect.width - chart.priceScale('right').width()
     const cands: HitCandidate[] = []
     for (const [key, entry] of lines) {
       if (entry.kind === 'preview') continue
@@ -362,13 +529,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       if (ly == null || ly < 0 || ly > rect.height) continue
       const dist = Math.abs(y - ly)
       if (dist > GRAB_PX) continue
-      cands.push({
-        key,
-        kind: entry.kind,
-        dist,
-        isXZone: x >= plotRight - X_ZONE_W && x <= plotRight + 2,
-        isRevZone: x >= plotRight - 2 * X_ZONE_W && x < plotRight - X_ZONE_W,
-      })
+      cands.push({ key, kind: entry.kind, dist, isXZone: false, isRevZone: false })
     }
     const hit = pickHit(cands)
     if (!hit) return null
@@ -794,7 +955,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       container.removeEventListener('pointermove', onPointerMove)
       container.removeEventListener('pointerup', onPointerUp)
       container.removeEventListener('pointercancel', onPointerCancel)
+      container.removeEventListener('pointermove', onHoverMove)
       window.removeEventListener('blur', onWindowBlur)
+      container.title = ''
+      overlay.remove()
+      layouts.clear()
       for (const entry of lines.values()) {
         try {
           series.removePriceLine(entry.line)
