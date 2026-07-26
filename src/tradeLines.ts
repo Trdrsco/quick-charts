@@ -131,6 +131,9 @@ export interface TradeLineOptions {
   scope: string | null
   /** Contract tick — reprice drags stay disabled until known (snap-before-validate). */
   tick?: number
+  /** The account's served `capabilities.exits` — whether the backend can rest a cancel-linked
+   *  protective pair. `false` hides the TP/SL handles; omitted defaults to supported. */
+  exits?: boolean
   /** The account's currency, shown beside a money P&L. Omitted ⇒ the number renders bare rather
    *  than wearing a guessed currency. */
   currency?: string
@@ -417,8 +420,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             supportClose: armed(),
             // A handle renders only where the broker can act and the tick is known — a drag with no
             // tick cannot snap, so the control would take a gesture it must then refuse.
-            supportTakeProfit: armed() && typeof broker.setTakeProfit === 'function' && !!opts.tick,
-            supportStopLoss: armed() && !!opts.tick,
+            supportTakeProfit: armed() && opts.exits !== false && !!opts.tick,
+            supportStopLoss: armed() && opts.exits !== false && !!opts.tick,
             priceText: formatLinePrice(p.avgPrice),
           }),
         })
@@ -604,7 +607,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     // THEN-current snapshot — no-ops if the selection changed or the position is gone / flipped /
     // now off-band.
     let undo: (() => void) | undefined
-    if (plan.method === 'setProtectiveStop' && typeof plan.undoPrevStop === 'number') {
+    if (plan.method === 'setExits' && typeof plan.undoPrevStop === 'number') {
       const prev = plan.undoPrevStop
       const inst = plan.instrument
       undo = () => {
@@ -616,13 +619,13 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         const r = boundStopPrice(prev, { tick: opts.tick, anchor, protectiveSide: pos.qty > 0 ? 'long' : 'short', mark: mk, policy: opts.policy })
         if ('error' in r) return
         void broker
-          .setProtectiveStop({ instrument: inst, price: r.price, intentKey: `stop|${scope}|${inst}|${r.price}` })
+          .setExits({ instrument: inst, stopLoss: r.price, intentKey: `stop|${scope}|${inst}|${r.price}` })
           .catch((err) => opts.onError?.(errMsg(err)))
       }
     }
     const run = async (): Promise<void> => {
-      if (plan.method === 'setProtectiveStop') {
-        await broker.setProtectiveStop({ instrument: plan.instrument, price: plan.price!, intentKey: plan.intentKey! })
+      if (plan.method === 'setExits') {
+        await broker.setExits({ instrument: plan.instrument, stopLoss: plan.price!, intentKey: plan.intentKey! })
       } else if (plan.method === 'moveOrder') {
         await broker.moveOrder({ brokerOrderId: plan.brokerOrderId!, instrument: plan.instrument, side: plan.side!, qty: plan.qty!, orderType: plan.orderType!, price: plan.price!, intentKey: plan.intentKey! })
       } else if (plan.method === 'flatten') {
@@ -934,8 +937,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     const intentKey = `${b.kind}|${b.capturedScope}|${b.instrument}|${price}`
     const call =
       b.kind === 'tp'
-        ? broker.setTakeProfit?.({ instrument: b.instrument, price, intentKey })
-        : broker.setProtectiveStop({ instrument: b.instrument, price, intentKey })
+        ? broker.setExits({ instrument: b.instrument, takeProfit: price, intentKey })
+        : broker.setExits({ instrument: b.instrument, stopLoss: price, intentKey })
     if (!call) {
       opts.onError?.('Take profit is not supported for this account')
       return true

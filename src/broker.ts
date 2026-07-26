@@ -66,8 +66,11 @@ export interface ChartBroker {
   /** Reprice a working order IN PLACE (atomic on the backend — never client cancel+place). MUST
    *  reject (throw) when the backend reports anything but a live amend/replace. */
   moveOrder(args: { brokerOrderId: string; instrument: string; side: 'buy' | 'sell'; qty: number; orderType: 'stop' | 'limit'; price: number; intentKey: string }): Promise<void>
-  /** Move the position's single managed protective stop. */
-  setProtectiveStop(args: { instrument: string; price: number; intentKey: string }): Promise<void>
+  /** Set/replace the position's protective exits as ONE unit. The pair is the primitive because the
+   *  two levels are cancel-linked siblings at the venue — set independently, a survivor outlives its
+   *  position as an OPENING order. Three-state per level: a number sets it, `null` removes it, and
+   *  OMITTING it leaves the resting leg untouched. */
+  setExits(args: { instrument: string; takeProfit?: number | null; stopLoss?: number | null; intentKey: string }): Promise<void>
   /** Close the position at market. */
   flatten(instrument: string): Promise<void>
   /** Cancel one working order. */
@@ -76,9 +79,6 @@ export interface ChartBroker {
    *  then a qty×2 opposite market order). Omitted ⇒ the ⇄ affordance never renders. Resolve with
    *  how many orders were cleared (for the toast). */
   reversePosition?(args: { instrument: string; intentKey: string }): Promise<{ cancelledOrders: number }>
-  /** OPTIONAL: place/move the position's take-profit level — a resting exit on the opposite side,
-   *  above a long and below a short. Omitted ⇒ the TP handle never renders. */
-  setTakeProfit?(args: { instrument: string; price: number; intentKey: string }): Promise<void>
 }
 
 // ── Pure helpers ────────────────────────────────────────────────────────────────
@@ -191,7 +191,7 @@ export interface PlanCtx {
  *  (undefined ⇒ no claim: flatten/cancel). */
 export interface BrokerExec {
   drop: false
-  method: 'setProtectiveStop' | 'moveOrder' | 'flatten' | 'cancel'
+  method: 'setExits' | 'moveOrder' | 'flatten' | 'cancel'
   instrument: string
   price?: number
   brokerOrderId?: string
@@ -255,7 +255,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
   }
 
   // reprice-stop: classify AT DROP. A protective stop (open position + exactly one working stop)
-  // goes through setProtectiveStop (the single managed protective stop); anything else (scale-in
+  // goes through setExits (the position-level protective pair); anything else (scale-in
   // with >1 stop, or no position) is a plain working-order reprice banded against its own trigger.
   const ord = orders.find((o) => o.brokerOrderId === target.brokerOrderId && o.status === 'working' && o.orderType === 'stop')
   if (!ord) return drop('Order no longer working')
@@ -277,7 +277,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
     const prevStop = typeof ord.triggerPrice === 'number' && ord.triggerPrice > 0 ? ord.triggerPrice : null
     return {
       drop: false,
-      method: 'setProtectiveStop',
+      method: 'setExits',
       instrument: ord.instrument,
       price: snapped,
       intentKey: `stop|${scope}|${ord.instrument}|${snapped}`,
