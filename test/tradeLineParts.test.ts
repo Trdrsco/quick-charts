@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { boundBracketPrice } from '../src/broker'
 import {
+  buildPreviewParts,
   buildOrderParts,
   buildPositionParts,
   formatPnlMoney,
@@ -182,6 +183,38 @@ describe('working order line', () => {
       { rightEdge: RIGHT_EDGE, centerY: CENTER_Y, measure },
     )
     expect(find(root, 'close')).toBeUndefined()
+  })
+})
+
+describe('preview (pre-money) line', () => {
+  const build = (cancellable: boolean) =>
+    layoutParts(buildPreviewParts({ label: 'SL', qty: 2, color: '#ff9800', cancellable }), {
+      rightEdge: RIGHT_EDGE,
+      centerY: CENTER_Y,
+      measure,
+    })
+
+  it('hit-tests through the same part tree as a live line', () => {
+    const root = build(true)
+    const close = find(root, 'close')
+    expect(hitTestParts(root, close.x + close.w / 2, CENTER_Y)?.role).toBe('close')
+    expect(hitTestParts(root, close.x + close.w / 2, CENTER_Y)?.tooltip).toBe('Discard this level')
+  })
+
+  it('marks itself as not yet sent', () => {
+    expect(find(build(true), 'label').spec.tooltip).toBe('Pending — not yet sent')
+    expect(find(build(true), 'label').spec.text).toBe('SL 2')
+  })
+
+  it('gives a grouped leg no ✕ of its own', () => {
+    const root = build(false)
+    expect(find(root, 'close')).toBeUndefined()
+    expect(hitTestParts(root, RIGHT_EDGE - 4, CENTER_Y)?.role).not.toBe('close')
+  })
+
+  it('draws dotted so a ghost never reads as resting at the venue', () => {
+    expect(find(build(true), 'pill').spec.borderDotted).toBe(true)
+    expect(find(layout(), 'pill').spec.borderDotted).toBeUndefined()
   })
 })
 

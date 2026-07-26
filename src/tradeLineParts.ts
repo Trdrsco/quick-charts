@@ -316,6 +316,64 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
   }
 }
 
+export interface PreviewPartsInput {
+  /** The level's own wording (e.g. "SL", "TP", "Entry") plus its planned quantity. */
+  label: string
+  qty: number | string
+  color: string
+  /** A grouped leg draws but cannot be dismissed on its own. */
+  cancellable: boolean
+}
+
+/** A PRE-MONEY preview level's controls: `[label qty │ ✕]`. Deliberately the same part machinery as a
+ *  live line — a ghost that hit-tested differently from the thing it previews would teach the wrong
+ *  gesture — but drawn with a dotted border so it never reads as resting at the venue. */
+export function buildPreviewParts(input: PreviewPartsInput): PartSpec {
+  const pill: PartSpec[] = [
+    { id: 'pill-inset', role: 'spacer', width: 1 },
+    {
+      id: 'label',
+      role: 'pnl',
+      text: `${input.label} ${input.qty}`,
+      textColor: input.color,
+      fill: TRADE_THEME.surface,
+      paddingX: TRADE_THEME.paddingX,
+      font: TRADE_FONT,
+      tooltip: 'Pending — not yet sent',
+    },
+  ]
+  if (input.cancellable) {
+    pill.push({ id: 'div-close', role: 'divider', width: 1, fill: input.color })
+    pill.push({
+      id: 'close',
+      role: 'close',
+      width: 23,
+      icon: 'close',
+      iconColor: input.color,
+      fill: TRADE_THEME.surface,
+      fillHover: TRADE_THEME.closeHover,
+      borderRadius: 2,
+      tooltip: 'Discard this level',
+    })
+  }
+  pill.push({ id: 'pill-inset-r', role: 'spacer', width: 1 })
+  return {
+    id: 'root',
+    role: 'group',
+    children: [
+      {
+        id: 'pill',
+        role: 'group',
+        border: input.color,
+        borderWidth: 1,
+        borderRadius: TRADE_THEME.radius,
+        borderDotted: true,
+        children: pill,
+      },
+    ],
+  }
+}
+
 function bracketButton(id: 'tp' | 'sl', text: string, color: string, tooltip: string): PartSpec {
   return {
     id,

@@ -31,6 +31,7 @@ import { DEFAULT_OVERRIDES, type ChartOverrides } from './overrides'
 import {
   buildOrderParts,
   buildPositionParts,
+  buildPreviewParts,
   drawParts,
   formatPnlMoney,
   formatPnlPercent,
@@ -91,7 +92,6 @@ function positionPnlDisplay(
 // right band of the plot area (just left of the price axis), the ⇄ (reverse) band sits immediately
 // left of it; a tap that strays more than CLICK_SLOP px isn't treated as a click.
 const GRAB_PX = 6
-const X_ZONE_W = 28
 const CLICK_SLOP = 4
 
 /** A host-drawn PREVIEW level (the decoration point): a pre-money ghost line whose drag/✕ gestures
@@ -468,11 +468,18 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             color: ln.kind === 'sl' ? PREVIEW_SL : ln.kind === 'tp' ? PREVIEW_TP : PREVIEW_ENTRY,
             lineWidth: 1,
             lineStyle: 3, // LargeDashed
-            title: `${ln.label} ${ln.qty} · pending`,
+            title: '',
             kind: 'preview',
             instrument: pv.instrument,
             previewId: ln.id,
             editable: ln.editable,
+            spec: buildPreviewParts({
+              label: ln.label,
+              qty: ln.qty,
+              color: ln.kind === 'sl' ? PREVIEW_SL : ln.kind === 'tp' ? PREVIEW_TP : PREVIEW_ENTRY,
+              // A grouped leg draws but is not individually dismissable.
+              cancellable: ln.editable,
+            }),
           })
         }
       }
@@ -561,13 +568,17 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   }
 
   // Nearest PREVIEW line within the grab radius — editable or not (the caller decides the cursor +
-  // whether to start a drag vs a cancel). `isXZone` flags the right-edge ✕ band: a tap there
-  // CANCELS the line (works for non-editable leg groups too), elsewhere a drag reprices an editable one.
+  // whether to start a drag vs a cancel). `isXZone` marks a tap that landed on the level's own ✕
+  // (which cancels, and works for non-editable leg groups too); elsewhere a drag reprices an editable one.
   const previewHitTest = (clientX: number, clientY: number): { key: string; entry: LineEntry; isXZone: boolean } | null => {
     const rect = container.getBoundingClientRect()
-    const x = clientX - rect.left
     const yy = clientY - rect.top
-    const plotRight = rect.width - chart.priceScale('right').width()
+    // A preview's ✕ resolves against its PAINTED rect, exactly like a live line's — a ghost that
+    // hit-tested differently from the thing it previews would teach the wrong gesture.
+    const part = partAt(clientX, clientY)
+    if (part && part.entry.kind === 'preview' && part.hit.role === 'close') {
+      return { key: part.key, entry: part.entry, isXZone: true }
+    }
     let best: { key: string; entry: LineEntry; dist: number } | null = null
     for (const [key, entry] of lines) {
       if (entry.kind !== 'preview') continue
@@ -578,7 +589,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       if (!best || dist < best.dist) best = { key, entry, dist }
     }
     if (!best) return null
-    return { key: best.key, entry: best.entry, isXZone: x >= plotRight - X_ZONE_W && x <= plotRight + 2 }
+    return { key: best.key, entry: best.entry, isXZone: false }
   }
 
   /** The preview band anchor: a drawn entry line's price (a resting Limit/Stop plan), else the
