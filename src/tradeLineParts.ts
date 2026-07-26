@@ -339,7 +339,7 @@ export function buildPreviewParts(input: PreviewPartsInput): PartSpec {
       fill: TRADE_THEME.surface,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
-      tooltip: 'Pending — not yet sent',
+      tooltip: 'Pending, not yet sent',
     },
   ]
   if (input.cancellable) {

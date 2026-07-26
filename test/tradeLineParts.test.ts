@@ -202,7 +202,7 @@ describe('preview (pre-money) line', () => {
   })
 
   it('marks itself as not yet sent', () => {
-    expect(find(build(true), 'label').spec.tooltip).toBe('Pending — not yet sent')
+    expect(find(build(true), 'label').spec.tooltip).toBe('Pending, not yet sent')
     expect(find(build(true), 'label').spec.text).toBe('SL 2')
   })
 

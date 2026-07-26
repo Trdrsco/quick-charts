@@ -83,7 +83,7 @@ export class ImageNote extends Drawing<ImageProps> {
     ctx.fillStyle = this.style.lineColor
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText('image — pick in settings', f.x + f.width / 2, f.y + f.height / 2)
+    ctx.fillText('image: pick in settings', f.x + f.width / 2, f.y + f.height / 2)
     ctx.restore()
   }
 

@@ -114,9 +114,9 @@ export function isMeaningfulMove(finalPrice: number, originalPrice: number, tick
 // The gesture layer builds one candidate per on-screen line within the grab radius (computing each
 // line's y itself via the series); this decides which one a pointer at that y resolves to.
 // Deterministic priority:
-//   (1) an X hot-zone on ANY line wins (close a position / cancel an order),
-//   (1b) then a REVERSE hot-zone on a POSITION line (the band just left of the X band; the glyph
-//        only renders on position lines, so only positions honor it),
+//   (1) a ✕ control on ANY line wins (close a position / cancel an order),
+//   (1b) then the ⇄ control on a POSITION line (a separate painted button, so only positions ever
+//        report it),
 //   (2) otherwise prefer an ORDER line (stop/limit) to reprice,
 //   (3) the position-average line is NEVER a reprice target — only its X flattens (a stray avg grab
 //       must not become a market flatten),
@@ -127,9 +127,9 @@ export interface HitCandidate {
   kind: LineKind
   /** |pointerY − lineY| in px. */
   dist: number
-  /** The pointer is inside this line's right-edge X (close/cancel) hot-zone. */
+  /** The pointer landed on this line's painted ✕ (close/cancel) control. */
   isXZone: boolean
-  /** The pointer is inside the reverse hot-zone (the band left of the X band). Position lines only. */
+  /** The pointer landed on the painted ⇄ (reverse) control. Position lines only. */
   isRevZone?: boolean
 }
 
@@ -230,7 +230,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
   }
 
   // Reprice (stop or limit): require a known tick, then snap BEFORE validating + calling the broker.
-  if (!(typeof tick === 'number' && tick > 0)) return drop('Tick size unknown — cannot reprice')
+  if (!(typeof tick === 'number' && tick > 0)) return drop('Tick size unknown, cannot reprice')
   const snapped = snapPrice(finalPrice, tick)
 
   if (target.type === 'reprice-limit') {
@@ -283,7 +283,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
       intentKey: `stop|${scope}|${ord.instrument}|${snapped}`,
       toast: `Stop moved to ${fmtPrice(snapped, tick)}`,
       undoPrevStop: prevStop,
-      note: typeof mark === 'number' && mark > 0 ? undefined : 'No live price — stop side unverified',
+      note: typeof mark === 'number' && mark > 0 ? undefined : 'No live price, stop side unverified',
     }
   }
 

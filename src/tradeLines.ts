@@ -88,9 +88,9 @@ function positionPnlDisplay(
   return { text: formatPnlPercent(pct), sign: signOf(pct) }
 }
 
-// Drag tuning. A grab registers within GRAB_PX of a line; the ✕ (close/cancel) hot-zone is the
-// right band of the plot area (just left of the price axis), the ⇄ (reverse) band sits immediately
-// left of it; a tap that strays more than CLICK_SLOP px isn't treated as a click.
+// Drag tuning. A grab registers within GRAB_PX of a line; every CONTROL (✕, ⇄, TP/SL) is hit-tested
+// against its painted rect in the overlay part tree, never a band measured off the plot edge. A tap
+// that strays more than CLICK_SLOP px isn't treated as a click.
 const GRAB_PX = 6
 const CLICK_SLOP = 4
 
@@ -851,7 +851,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     if (opts.scope !== drag.capturedScope || opts.symbol !== drag.capturedSymbol) {
       snapBack()
-      opts.onError?.('Selection changed — move cancelled')
+      opts.onError?.('Selection changed, move cancelled')
       return true
     }
     const target: DropTarget = drag.kind === 'stop' ? { type: 'reprice-stop', brokerOrderId: drag.brokerOrderId } : { type: 'reprice-limit', brokerOrderId: drag.brokerOrderId }
@@ -891,14 +891,14 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     if (opts.scope !== drag.capturedScope || opts.symbol !== drag.capturedSymbol) {
       snapBack()
-      opts.onError?.('Selection changed — edit cancelled')
+      opts.onError?.('Selection changed, edit cancelled')
       return true
     }
     const ctx = { tick: opts.tick, entryRef: previewEntryRef(), policy: opts.policy }
     const emitted = dispatchPreviewDrop(drag.previewId, drag.lastValidPrice, ctx, (id, price) => opts.onPreviewEdit?.(id, price))
     if (!emitted) {
       snapBack()
-      opts.onError?.('Outside the allowed range — reverted')
+      opts.onError?.('Outside the allowed range, reverted')
     }
     // Emitted → leave the line where dropped; the host's next preview push reconciles it.
     return true
@@ -927,7 +927,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     if (!b.moved) return true
     if (opts.scope !== b.capturedScope || opts.symbol !== b.capturedSymbol) {
-      opts.onError?.('Selection changed — bracket cancelled')
+      opts.onError?.('Selection changed, bracket cancelled')
       return true
     }
     const bounded = boundBracketPrice(b.lastValidPrice, {
@@ -992,7 +992,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       const res = hitTest(e.clientX, e.clientY)
       if (!res || res.hit.key !== px.key || (px.action === 'close' ? !res.hit.isXZone : !res.hit.isRevZone)) return
       if (opts.scope !== px.capturedScope || opts.symbol !== px.capturedSymbol) {
-        opts.onError?.('Selection changed — action cancelled')
+        opts.onError?.('Selection changed, action cancelled')
         return
       }
       if (px.action === 'reverse') {

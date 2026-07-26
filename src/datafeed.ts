@@ -59,7 +59,7 @@ export interface HistoryPage {
 
 /** A batch quote snapshot for ONE symbol — the scalar last/session/change values a quote board renders
  *  (the analog of the reference datafeed's quote API). Every price field is `number | null`: null (render
- *  '—') when the feed has no data for the symbol, NEVER synthesized. `spark` is a recent-closes series for
+ *  '-') when the feed has no data for the symbol, NEVER synthesized. `spark` is a recent-closes series for
  *  a mini sparkline — a convenience an implementation may leave empty. */
 export interface QuoteSnapshot {
   symbol: string
@@ -82,7 +82,7 @@ export type BarsEvent = { kind: 'snapshot'; bars: FeedBar[] } | { kind: 'bar'; b
 export interface SubscribeHandlers {
   onBars(e: BarsEvent): void
   /** REAL top-of-book bid/ask only — a feed with no L1 for the symbol never calls this (the UI
-   *  shows '—'); prices are never synthesized. */
+   *  shows '-'); prices are never synthesized. */
   onQuote?(bid: number, ask: number): void
   /** Feed status codes: 'live' | 'no-data' | server codes ('not_entitled', 'feed_down', …). */
   onStatus?(status: string): void
@@ -116,7 +116,7 @@ export interface ChartDatafeed {
    *  the chart on the client clock. */
   serverTime?(): Promise<number>
   /** Batch quote board: one {@link QuoteSnapshot} per requested symbol, in request order. Optional — a
-   *  feed with no quote surface omits it (a board then shows '—'). The analog of the reference datafeed's
+   *  feed with no quote surface omits it (a board then shows '-'). The analog of the reference datafeed's
    *  quote API; drives a watchlist without per-symbol history polling. */
   getQuotes?(symbols: string[]): Promise<QuoteSnapshot[]>
 }
