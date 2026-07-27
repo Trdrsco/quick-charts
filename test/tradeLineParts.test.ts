@@ -121,6 +121,30 @@ describe('position line layout', () => {
   })
 })
 
+describe('readouts vs controls', () => {
+  it('gives a hover wash ONLY to the ✕ — the qty chip and P&L cell are readouts', () => {
+    const root = layout()
+    expect(find(root, 'qty').spec.fillHover).toBeUndefined()
+    expect(find(root, 'pnl').spec.fillHover).toBeUndefined()
+    expect(find(root, 'close').spec.fillHover).toBe(TRADE_THEME.closeHover)
+  })
+
+  it('keeps readouts free of a hover wash on order and exit lines too', () => {
+    const order = layoutParts(buildOrderParts({ qty: 1, label: 'LMT', color: '#2962FF', supportCancel: true, supportModifyQty: false }), {
+      rightEdge: RIGHT_EDGE,
+      centerY: CENTER_Y,
+      measure,
+    })
+    expect(find(order, 'qty').spec.fillHover).toBeUndefined()
+    const ex = layoutParts(buildExitParts({ kind: 'sl', qty: 1, pnlText: null, pnlSign: null, supportCancel: true }), {
+      rightEdge: RIGHT_EDGE,
+      centerY: CENTER_Y,
+      measure,
+    })
+    expect(find(ex, 'qty').spec.fillHover).toBeUndefined()
+  })
+})
+
 describe('hit testing', () => {
   const y = CENTER_Y
 

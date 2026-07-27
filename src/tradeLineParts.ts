@@ -119,11 +119,10 @@ export function withAlpha(color: string, alpha: number): string {
   return color
 }
 
-/** Opacity of the band drawn between a position's entry and a bracket level being dragged, and of the
- *  wider hint area behind it. Measured off the reference mid-drag: it paints the leg colour at 0.15
- *  over the whole zone the level closes into, and 0.25 between the level and the entry. */
-export const DRAG_BAND_ALPHA = 0.25
-export const DRAG_HINT_ALPHA = 0.15
+/** Opacity of the shaded zone an exit level closes into — ONE value for both the hovered zone and the
+ *  dragged band. A second treatment for the drag would read as a different thing appearing, when it is
+ *  the same zone being narrowed to where the cursor now is. */
+export const EXIT_ZONE_ALPHA = 0.15
 
 /** A position's P&L rendered the way the reference does: a true minus sign, the absolute value, and
  *  the account currency as a word. `null` P&L renders nothing rather than a fabricated zero, and an
@@ -211,7 +210,6 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
       text: String(Math.abs(input.qty)),
       textColor: TRADE_THEME.onAccent,
       fill: TRADE_THEME.accent,
-      fillHover: TRADE_THEME.accentPressed,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
       tooltip: '',
@@ -231,7 +229,6 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
             ? TRADE_THEME.profit
             : TRADE_THEME.onAccent,
       fill: TRADE_THEME.surface,
-      fillHover: TRADE_THEME.accentPressed,
       paddingX: TRADE_THEME.paddingX,
       // Pinned so a live number can't resize the pill and walk the ✕ out from under the pointer.
       minWidth: 82,
@@ -289,7 +286,6 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
       text: String(Math.abs(input.qty)),
       textColor: TRADE_THEME.onAccent,
       fill: input.color,
-      fillHover: TRADE_THEME.accentPressed,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
       tooltip: input.supportModifyQty ? 'Modify order quantity…' : '',
@@ -370,7 +366,6 @@ export function buildExitParts(input: ExitPartsInput): PartSpec {
       text: String(Math.abs(input.qty)),
       textColor: TRADE_THEME.onAccent,
       fill: color,
-      fillHover: color,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
       tooltip: '',

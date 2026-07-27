@@ -40,8 +40,7 @@ import {
   hitTestParts,
   layoutParts,
   withAlpha,
-  DRAG_BAND_ALPHA,
-  DRAG_HINT_ALPHA,
+  EXIT_ZONE_ALPHA,
   PART_H,
   type LayoutNode,
   type PartHit,
@@ -319,6 +318,36 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
 
   const plotRightEdge = (): number => container.clientWidth - chart.priceScale('right').width()
 
+  /** Which side of the entry a leg occupies: a target sits in profit, a stop in loss, so the side
+   *  follows the POSITION's direction and flips with it. */
+  const legSitsAbove = (kind: 'tp' | 'sl', longPosition: boolean): boolean => (kind === 'tp') === longPosition
+
+  /** The shaded exit zone — entry→cursor while a handle is being dragged, otherwise the whole side a
+   *  HOVERED handle would occupy. Null when neither is in play. */
+  const exitZone = (paneH: number): { color: string; top: number; height: number } | null => {
+    const t = T()
+    const colorOf = (kind: 'tp' | 'sl') => (kind === 'tp' ? t.tpColor : t.slColor)
+    if (bracketDrag) {
+      const anchorY = series.priceToCoordinate(bracketDrag.anchor)
+      const levelY = series.priceToCoordinate(bracketDrag.lastValidPrice)
+      if (anchorY == null || levelY == null) return null
+      return { color: colorOf(bracketDrag.kind), top: Math.min(anchorY, levelY), height: Math.abs(levelY - anchorY) }
+    }
+    if (!hoveredPart) return null
+    // The key can itself contain ':' (instruments are exchange-qualified), so split at the LAST one.
+    const cut = hoveredPart.lastIndexOf(':')
+    const id = hoveredPart.slice(cut + 1)
+    if (id !== 'tp' && id !== 'sl') return null
+    const entry = lines.get(hoveredPart.slice(0, cut))
+    if (!entry) return null
+    const anchorY = series.priceToCoordinate(entry.price)
+    if (anchorY == null) return null
+    const pos = opts.snapshot.positions.find((p) => p && p.qty !== 0 && normalizeRoot(p.instrument) === normalizeRoot(entry.instrument))
+    if (!pos) return null
+    const above = legSitsAbove(id, pos.qty > 0)
+    return { color: colorOf(id), top: above ? 0 : anchorY, height: above ? anchorY : paneH - anchorY }
+  }
+
   const paintOverlay = () => {
     if (detached || !octx) return
     const dpr = window.devicePixelRatio || 1
@@ -333,26 +362,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     layouts.clear()
     const rightEdge = plotRightEdge()
 
-    // A bracket drag shades the zone the level would close into — the leg's own colour at low opacity,
-    // denser between the level and the entry. It answers "how much of the move am I giving up / taking"
-    // spatially, which a number alone does not, and it is why the drop point reads as a decision rather
-    // than a coordinate.
-    if (bracketDrag) {
-      const t = T()
-      const anchorY = series.priceToCoordinate(bracketDrag.anchor)
-      const levelY = series.priceToCoordinate(bracketDrag.lastValidPrice)
-      if (anchorY != null && levelY != null) {
-        const color = bracketDrag.kind === 'tp' ? t.tpColor : t.slColor
-        const top = Math.min(anchorY, levelY)
-        const height = Math.abs(levelY - anchorY)
-        octx.save()
-        // The hint area runs to the pane edge the level sits on; the band is the entry-to-level span.
-        octx.fillStyle = withAlpha(color, DRAG_HINT_ALPHA)
-        octx.fillRect(0, levelY < anchorY ? 0 : anchorY, rightEdge, levelY < anchorY ? anchorY : h - anchorY)
-        octx.fillStyle = withAlpha(color, DRAG_BAND_ALPHA)
-        octx.fillRect(0, top, rightEdge, height)
-        octx.restore()
-      }
+    // The zone an exit level closes into, in the leg's own colour. HOVERING a handle shades the whole
+    // side of the entry that leg can occupy — that is the affordance, shown before any commitment.
+    // DRAGGING narrows it to entry→cursor, so the shape itself reports where the level now sits. One
+    // colour and one opacity across both: the drag is the same zone being resolved, not a new thing.
+    const zone = exitZone(h)
+    if (zone) {
+      octx.save()
+      octx.fillStyle = withAlpha(zone.color, EXIT_ZONE_ALPHA)
+      octx.fillRect(0, zone.top, rightEdge, zone.height)
+      octx.restore()
     }
     for (const [key, entry] of lines) {
       if (!entry.spec) continue
@@ -369,7 +388,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
    *  move a line without any snapshot change, and a stale box would accept taps where nothing is
    *  painted — the exact failure this overlay exists to remove. */
   const overlaySignature = (): string => {
-    let s = `${container.clientWidth}x${container.clientHeight}|${plotRightEdge()}|${hoveredPart ?? ''}`
+    let s = `${container.clientWidth}x${container.clientHeight}|${plotRightEdge()}|${hoveredPart ?? ''}|${bracketDrag ? `${bracketDrag.kind}@${bracketDrag.lastValidPrice}` : ''}`
     for (const [key, entry] of lines) {
       if (!entry.spec) continue
       const y = series.priceToCoordinate(entry.price)
@@ -417,6 +436,15 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     const tip = part?.hit.tooltip ?? ''
     if (container.title !== tip) container.title = tip
+    // A control has to answer the pointer BEFORE it is pressed, or nothing marks it as one. A tpsl
+    // handle is dragged vertically so it takes the resize cursor and the tap targets take a pointer —
+    // but the qty chip and the P&L cell are READOUTS: they keep the chart's own cursor, because
+    // offering a pointer over something that does nothing is a promise the line cannot keep.
+    if (part) {
+      const role = part.hit.role
+      container.style.cursor =
+        part.hit.dragRole === 'tpsl' ? 'ns-resize' : role === 'close' || role === 'reverse' ? 'pointer' : ''
+    }
   }
   container.addEventListener('pointermove', onHoverMove)
 
@@ -746,13 +774,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             pointerId: e.pointerId,
             capturedScope,
             capturedSymbol,
+            // The dragged level looks EXACTLY like the line it is about to become — same colour, width
+            // and style as the resting exit (a target is a limit, a stop is a stop). A distinct ghost
+            // treatment would imply a different kind of thing is being placed.
             ghost: series.createPriceLine({
               price: pos.avgPrice,
-              color: kind === 'tp' ? PREVIEW_TP : PREVIEW_SL,
-              lineWidth: 1,
-              lineStyle: 3,
+              color: kind === 'tp' ? T().tpColor : T().slColor,
+              lineWidth: T().orderLineWidth,
+              lineStyle: kind === 'tp' ? 1 : 2,
               axisLabelVisible: true,
-              title: kind === 'tp' ? 'TP' : 'SL',
+              title: '',
             }),
           }
           return
@@ -855,6 +886,9 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         b.lastValidPrice = price
         b.moved = isMeaningfulMove(price, b.anchor, opts.tick)
         b.ghost?.applyOptions({ price }) // UNSNAPPED — follow the cursor; snap at drop
+        // Repaint the zone in the SAME frame as the line. Leaving it to the overlay's own sync loop
+        // costs a frame and the band visibly lags the cursor it is supposed to be reporting.
+        paintOverlay()
       })
       return
     }
