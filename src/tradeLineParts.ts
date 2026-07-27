@@ -463,64 +463,102 @@ export function buildExitParts(input: ExitPartsInput): PartSpec {
   }
 }
 
-export interface PreviewPartsInput {
-  /** The chart's own background — the pill paints on it, so it reads as part of the chart rather
-   *  than a patch stamped over it, while still occluding the price line beneath. */
+export interface DraftPartsInput {
   surface: string
-  /** The level's own wording (e.g. "SL", "TP", "Entry") plus its planned quantity. */
-  label: string
+  /** The SIDE's colour — the order is not live, but which way it goes is already decided. */
+  accent: string
+  sideLabel: string
   qty: number | string
-  color: string
-  /** A grouped leg draws but cannot be dismissed on its own. */
-  cancellable: boolean
+  /** 'Market' | 'Limit' | 'Stop' — whatever the ticket calls it. */
+  orderType: string
+  supportTakeProfit: boolean
+  supportStopLoss: boolean
+  supportCancel: boolean
 }
 
-/** A PRE-MONEY preview level's controls: `[label qty │ ✕]`. Deliberately the same part machinery as a
- *  live line — a ghost that hit-tested differently from the thing it previews would teach the wrong
- *  gesture — but drawn with a dotted border so it never reads as resting at the venue. */
-export function buildPreviewParts(input: PreviewPartsInput): PartSpec {
+/** The order ticket's PENDING order, drawn with the same machinery as a live position: the side takes
+ *  the standalone button, TP/SL are the same drag handles, and the pill carries `[qty | type | ✕]`.
+ *
+ *  The order TYPE sits exactly where a live line shows money, because a pending order has no P&L to
+ *  report — what it has is a kind. Everything else is deliberately identical, so the ticket's order and
+ *  the position it becomes are visibly the same object at two moments in its life. */
+export function buildDraftParts(input: DraftPartsInput): PartSpec {
+  const children: PartSpec[] = [
+    {
+      id: 'side',
+      role: 'pnl', // a readout: it states the side, it does not change it
+      text: input.sideLabel,
+      textColor: TRADE_THEME.onAccent,
+      fill: input.accent,
+      paddingX: TRADE_THEME.paddingX,
+      font: TRADE_FONT,
+      borderRadius: TRADE_THEME.radius,
+      tooltip: '',
+    },
+    { id: 'gap-side', role: 'spacer', width: TRADE_THEME.gap },
+  ]
+
+  const handles: PartSpec[] = []
+  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, 'Drag to add Take profit', input.surface))
+  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, 'Drag to add Stop loss', input.surface))
+  if (handles.length) {
+    children.push(handles[0]!)
+    for (const h of handles.slice(1)) {
+      children.push({ id: `seam-${h.id}`, role: 'spacer', width: -1 })
+      children.push(h)
+    }
+    children.push({ id: 'gap-handles', role: 'spacer', width: TRADE_THEME.gap })
+  }
+
   const pill: PartSpec[] = [
     { id: 'pill-inset', role: 'spacer', width: 1 },
     {
-      id: 'label',
-      role: 'pnl',
-      text: `${input.label} ${input.qty}`,
-      textColor: input.color,
-      fill: input.surface,
+      id: 'qty',
+      role: 'qty',
+      text: String(input.qty),
+      textColor: TRADE_THEME.onAccent,
+      fill: input.accent,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
-      tooltip: 'Pending, not yet sent',
+      tooltip: '',
+    },
+    { id: 'div-qty', role: 'divider', width: 1, fill: input.accent },
+    {
+      id: 'pnl',
+      role: 'pnl',
+      text: input.orderType,
+      textColor: input.accent,
+      fill: input.surface,
+      paddingX: TRADE_THEME.paddingX,
+      minWidth: 82,
+      font: TRADE_FONT,
+      tooltip: 'Not yet sent',
     },
   ]
-  if (input.cancellable) {
-    pill.push({ id: 'div-close', role: 'divider', width: 1, fill: input.color })
+  if (input.supportCancel) {
+    pill.push({ id: 'div-close', role: 'divider', width: 1, fill: withAlpha(input.accent, 0.45) })
     pill.push({
       id: 'close',
       role: 'close',
       width: 23,
       icon: 'close',
-      iconColor: input.color,
+      iconColor: input.accent,
       fill: input.surface,
-      fillHover: TRADE_THEME.closeHover,
-      tooltip: 'Discard this level',
+      fillHover: withAlpha(input.accent, 0.15),
+      tooltip: 'Discard this order',
     })
   }
   pill.push({ id: 'pill-inset-r', role: 'spacer', width: 1 })
-  return {
-    id: 'root',
+
+  children.push({
+    id: 'pill',
     role: 'group',
-    children: [
-      {
-        id: 'pill',
-        role: 'group',
-        border: input.color,
-        borderWidth: 1,
-        borderRadius: TRADE_THEME.radius,
-        borderDotted: true,
-        children: pill,
-      },
-    ],
-  }
+    border: input.accent,
+    borderWidth: 1,
+    borderRadius: TRADE_THEME.radius,
+    children: pill,
+  })
+  return { id: 'root', role: 'group', children }
 }
 
 function bracketButton(id: 'tp' | 'sl', text: string, color: string, tooltip: string, surface: string): PartSpec {

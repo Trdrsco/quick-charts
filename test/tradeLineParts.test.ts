@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { boundBracketPrice } from '../src/broker'
 import {
   buildExitParts,
-  buildPreviewParts,
+  buildDraftParts,
   buildOrderParts,
   buildPositionParts,
   formatPnlMoney,
@@ -285,35 +285,47 @@ describe('withAlpha', () => {
   })
 })
 
-describe('preview (pre-money) line', () => {
-  const build = (cancellable: boolean) =>
-    layoutParts(buildPreviewParts({ surface: SURFACE, label: 'SL', qty: 2, color: '#ff9800', cancellable }), {
-      rightEdge: RIGHT_EDGE,
-      centerY: CENTER_Y,
-      measure,
-    })
+describe('draft (order ticket) line', () => {
+  const draft = (over: Partial<Parameters<typeof buildDraftParts>[0]> = {}) =>
+    layoutParts(
+      buildDraftParts({
+        surface: SURFACE,
+        accent: TRADE_THEME.accent,
+        sideLabel: 'Buy',
+        qty: 1,
+        orderType: 'Market',
+        supportTakeProfit: true,
+        supportStopLoss: true,
+        supportCancel: true,
+        ...over,
+      }),
+      { rightEdge: RIGHT_EDGE, centerY: CENTER_Y, measure },
+    )
 
-  it('hit-tests through the same part tree as a live line', () => {
-    const root = build(true)
-    const close = find(root, 'close')
-    expect(hitTestParts(root, close.x + close.w / 2, CENTER_Y)?.role).toBe('close')
-    expect(hitTestParts(root, close.x + close.w / 2, CENTER_Y)?.tooltip).toBe('Discard this level')
+  it('states the side and the ORDER TYPE where a live line shows money', () => {
+    const root = draft()
+    expect(find(root, 'side').spec.text).toBe('Buy')
+    expect(find(root, 'pnl').spec.text).toBe('Market')
+    expect(find(root, 'qty').spec.text).toBe('1')
   })
 
-  it('marks itself as not yet sent', () => {
-    expect(find(build(true), 'label').spec.tooltip).toBe('Pending, not yet sent')
-    expect(find(build(true), 'label').spec.text).toBe('SL 2')
+  it('carries the same TP/SL handles as a live position', () => {
+    const root = draft()
+    expect(find(root, 'tp').spec.dragRole).toBe('tpsl')
+    expect(find(root, 'sl').spec.dragRole).toBe('tpsl')
+    expect(hitTestParts(root, find(root, 'tp').x + 4, CENTER_Y)?.role).toBe('tp')
   })
 
-  it('gives a grouped leg no ✕ of its own', () => {
-    const root = build(false)
-    expect(find(root, 'close')).toBeUndefined()
-    expect(hitTestParts(root, RIGHT_EDGE - 4, CENTER_Y)?.role).not.toBe('close')
+  it('retires a handle once that leg is already drafted', () => {
+    const root = draft({ supportTakeProfit: false })
+    expect(find(root, 'tp')).toBeUndefined()
+    expect(find(root, 'sl')).toBeDefined()
   })
 
-  it('draws dotted so a ghost never reads as resting at the venue', () => {
-    expect(find(build(true), 'pill').spec.borderDotted).toBe(true)
-    expect(find(layout(), 'pill').spec.borderDotted).toBeUndefined()
+  it('works for every order type the ticket can send', () => {
+    for (const type of ['Market', 'Limit', 'Stop']) {
+      expect(find(draft({ orderType: type }), 'pnl').spec.text).toBe(type)
+    }
   })
 })
 

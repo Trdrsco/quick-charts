@@ -33,7 +33,7 @@ import {
   buildExitParts,
   buildOrderParts,
   buildPositionParts,
-  buildPreviewParts,
+  buildDraftParts,
   drawParts,
   formatPnlMoney,
   formatPnlPercent,
@@ -68,9 +68,6 @@ export function normalizeRoot(raw: string | null | undefined): string | null {
 // provisional next to the solid lines of everything that has. Entry is a neutral amber; a planned stop
 // is translucent red and a planned target translucent green. A level being DRAGGED is not a preview:
 // it wears the resting exit's own colour and style, because it is about to become exactly that.
-const PREVIEW_ENTRY = 'rgba(245, 158, 11, 0.9)'
-const PREVIEW_SL = 'rgba(255, 82, 82, 0.55)'
-const PREVIEW_TP = 'rgba(52, 210, 75, 0.6)'
 
 /** The position pill's P&L cell, honest per unit: money = the broker's OWN unrealizedPnl (null → no
  *  cell at all, never a locally-faked number); ticks/percent derive from the live mark vs avg entry
@@ -138,6 +135,11 @@ export interface PreviewSet {
   tick: number
   lines: readonly PreviewLine[]
   entryRef?: number | null
+  /** The ticket's side — the draft control states which way the order goes. */
+  side?: 'buy' | 'sell'
+  /** The ticket's order type ('Market' | 'Limit' | 'Stop'). It sits where a live line shows money,
+   *  because a pending order has no P&L to report — what it has is a kind. */
+  orderType?: string
 }
 
 export interface TradeLineHost {
@@ -256,6 +258,9 @@ interface PendingPreviewX {
  *  gesture carries a ghost line of its own rather than moving an existing one. */
 interface BracketDragState {
   kind: 'tp' | 'sl'
+  /** PRE-MONEY: the level belongs to the TICKET's draft, so the drop routes to onPreviewEdit and no
+   *  broker call exists anywhere on that path — the never-execute guarantee stays structural. */
+  preview: boolean
   instrument: string
   positionSide: 'long' | 'short'
   qty: number
@@ -655,27 +660,83 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       if (pv && normalizeRoot(pv.instrument) === root) {
         const livePrices = [...desired.values()].map((d) => d.price)
         const tol = pv.tick > 0 ? pv.tick / 2 : 1e-9
+        const long = pv.side !== 'sell'
+        const sideAccent = long ? t.buyColor : t.sellColor
+        const entryLine = pv.lines.find((l) => l.id === 'entry')
+        // A MARKET order has no resting level, so the ticket sends no entry line — but the order still
+        // has a side, a size and a type to state, so the control rides the live mark. Without it a
+        // market ticket is the one order type with no presence on the chart at all.
+        const anchor = entryLine && entryLine.price > 0 ? entryLine.price : markNow()
+        const hasLeg = (id: 'tp' | 'sl') => pv.lines.some((l) => l.id === id && l.price > 0)
+        const draftQty = entryLine?.qty ?? pv.lines[0]?.qty ?? ''
+
+        if (!entryLine && anchor != null && pv.orderType) {
+          desired.set('preview:entry', {
+            price: anchor,
+            color: sideAccent,
+            lineWidth: t.lineWidth,
+            lineStyle: 3, // LargeDashed — nothing is resting yet
+            title: '',
+            kind: 'preview',
+            instrument: pv.instrument,
+            previewId: 'entry',
+            editable: false,
+            spec: buildDraftParts({
+              surface: chartBackground(),
+              accent: sideAccent,
+              sideLabel: long ? 'Buy' : 'Sell',
+              qty: draftQty,
+              orderType: pv.orderType,
+              supportTakeProfit: !hasLeg('tp') && !!opts.tick,
+              supportStopLoss: !hasLeg('sl') && !!opts.tick,
+              supportCancel: false, // a market ticket is dismissed from the ticket, not the chart
+            }),
+          })
+        }
+
         for (const ln of pv.lines) {
           if (typeof ln.price !== 'number' || !isFinite(ln.price) || ln.price <= 0) continue
           if (livePrices.some((p) => Math.abs(p - ln.price) <= tol)) continue
+          const isEntry = ln.kind === 'entry'
+          const legKind = ln.kind === 'tp' ? 'tp' : 'sl'
+          const color = isEntry ? sideAccent : legKind === 'tp' ? t.tpColor : t.slColor
+          // A draft leg reports what it WOULD realise against the draft entry, exactly as a resting
+          // exit reports it against the position — the number is the reason for choosing the level,
+          // and it should not appear only after the order is live.
+          const pnl =
+            !isEntry && anchor != null
+              ? potentialPnl({ qty: long ? 1 : -1, avgPrice: anchor }, ln.price, Math.abs(Number(ln.qty) || 0), opts.pointValue, opts.currency ?? null)
+              : null
           desired.set(`preview:${ln.id}`, {
             price: ln.price,
-            color: ln.kind === 'sl' ? PREVIEW_SL : ln.kind === 'tp' ? PREVIEW_TP : PREVIEW_ENTRY,
-            lineWidth: 1,
-            lineStyle: 3, // LargeDashed
+            color,
+            lineWidth: t.lineWidth,
+            lineStyle: 3, // LargeDashed — nothing is resting yet
             title: '',
             kind: 'preview',
             instrument: pv.instrument,
             previewId: ln.id,
             editable: ln.editable,
-            spec: buildPreviewParts({
-              surface: chartBackground(),
-              label: ln.label,
-              qty: ln.qty,
-              color: ln.kind === 'sl' ? PREVIEW_SL : ln.kind === 'tp' ? PREVIEW_TP : PREVIEW_ENTRY,
-              // A grouped leg draws but is not individually dismissable.
-              cancellable: ln.editable,
-            }),
+            spec: isEntry
+              ? buildDraftParts({
+                  surface: chartBackground(),
+                  accent: sideAccent,
+                  sideLabel: long ? 'Buy' : 'Sell',
+                  qty: ln.qty,
+                  orderType: pv.orderType ?? ln.label,
+                  supportTakeProfit: !hasLeg('tp') && !!opts.tick,
+                  supportStopLoss: !hasLeg('sl') && !!opts.tick,
+                  supportCancel: ln.editable,
+                })
+              : buildExitParts({
+                  surface: chartBackground(),
+                  kind: legKind,
+                  qty: Number(ln.qty) || 0,
+                  pnlText: pnl?.text ?? null,
+                  pnlSign: pnl?.sign ?? null,
+                  // A grouped leg draws but is not individually dismissable.
+                  supportCancel: ln.editable,
+                }),
           })
         }
       }
@@ -882,9 +943,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       // A TP/SL handle: the gesture IS the price entry, so a bare tap does nothing and only a drag
       // off the line commits a level.
       const handle = partAt(e.clientX, e.clientY)
-      if (handle && (handle.hit.role === 'tp' || handle.hit.role === 'sl') && handle.entry.kind === 'position') {
-        const pos = opts.snapshot.positions.find((q) => q && q.qty !== 0 && q.instrument === handle.entry.instrument)
-        if (pos && typeof pos.avgPrice === 'number' && pos.avgPrice > 0 && opts.tick && opts.tick > 0) {
+      if (handle && (handle.hit.role === 'tp' || handle.hit.role === 'sl')) {
+        // The handle sits on either a LIVE position or the ticket's DRAFT. The draft variant is
+        // pre-money — it is allowed while trading is locked, and its drop routes to the host's own
+        // callback with no broker in scope.
+        const onDraft = handle.entry.kind === 'preview'
+        const pos = onDraft ? null : opts.snapshot.positions.find((q) => q && q.qty !== 0 && q.instrument === handle.entry.instrument)
+        const draftLong = opts.preview?.side !== 'sell'
+        const anchor = onDraft ? handle.entry.price : (pos?.avgPrice ?? 0)
+        const usable = onDraft ? !!opts.preview : !!pos && typeof pos.avgPrice === 'number' && pos.avgPrice > 0
+        if (usable && anchor > 0 && opts.tick && opts.tick > 0) {
           e.preventDefault()
           try {
             container.setPointerCapture(e.pointerId)
@@ -896,11 +964,12 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           const kind = handle.hit.role === 'tp' ? 'tp' : 'sl'
           bracketDrag = {
             kind,
-            instrument: pos.instrument,
-            positionSide: pos.qty > 0 ? 'long' : 'short',
-            qty: Math.abs(pos.qty),
-            anchor: pos.avgPrice,
-            lastValidPrice: pos.avgPrice,
+            preview: onDraft,
+            instrument: onDraft ? (opts.preview?.instrument ?? handle.entry.instrument) : pos!.instrument,
+            positionSide: onDraft ? (draftLong ? 'long' : 'short') : pos!.qty > 0 ? 'long' : 'short',
+            qty: onDraft ? Math.abs(Number(opts.preview?.lines.find((l) => l.id === 'entry')?.qty) || 1) : Math.abs(pos!.qty),
+            anchor,
+            lastValidPrice: anchor,
             moved: false,
             pointerId: e.pointerId,
             capturedScope,
@@ -910,7 +979,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             // live order earns; a level still under the cursor has not earned it. The axis label is
             // drawn by the overlay so it tracks the drag with the pill.
             ghost: series.createPriceLine({
-              price: pos.avgPrice,
+              price: anchor,
               color: kind === 'tp' ? T().tpColor : T().slColor,
               lineWidth: T().lineWidth,
               lineStyle: 2,
@@ -1195,6 +1264,13 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       return true
     }
     const price = bounded.price
+    // PRE-MONEY: a level dragged off the TICKET's draft belongs to the ticket. It routes to the host's
+    // own callback and returns — there is no broker call below this point on that path, so the
+    // never-execute guarantee holds structurally rather than by inspection.
+    if (b.preview) {
+      opts.onPreviewEdit?.(b.kind, price)
+      return true
+    }
     const label = b.kind === 'tp' ? 'Take Profit' : 'Stop Loss'
     const exitSide = b.positionSide === 'long' ? 'Sell' : 'Buy'
     const intentKey = `${b.kind}|${b.capturedScope}|${b.instrument}|${price}`
