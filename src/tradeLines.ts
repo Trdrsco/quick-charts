@@ -14,6 +14,7 @@ import {
   boundBracketPrice,
   boundStopPrice,
   dispatchPreviewDrop,
+  fmtPrice,
   isMeaningfulMove,
   pickHit,
   planBrokerDrop,
@@ -40,7 +41,9 @@ import {
   hitTestParts,
   layoutParts,
   withAlpha,
+  drawAxisLabel,
   EXIT_ZONE_ALPHA,
+  PILL_RIGHT_MARGIN,
   PART_H,
   type LayoutNode,
   type PartHit,
@@ -61,9 +64,10 @@ export function normalizeRoot(raw: string | null | undefined): string | null {
   return s || null
 }
 
-// Ghost (preview) palette — translucent + LargeDashed, visually distinct from the SOLID position /
-// DASHED stop / DOTTED limit live lines. Entry is a neutral amber; a stop is translucent red, a
-// target translucent green.
+// Ghost (PREVIEW) palette — translucent and large-dashed, so a level that has not been sent reads as
+// provisional next to the solid lines of everything that has. Entry is a neutral amber; a planned stop
+// is translucent red and a planned target translucent green. A level being DRAGGED is not a preview:
+// it wears the resting exit's own colour and style, because it is about to become exactly that.
 const PREVIEW_ENTRY = 'rgba(245, 158, 11, 0.9)'
 const PREVIEW_SL = 'rgba(255, 82, 82, 0.55)'
 const PREVIEW_TP = 'rgba(52, 210, 75, 0.6)'
@@ -197,6 +201,8 @@ interface LineEntry {
   brokerOrderId?: string
   previewId?: string
   editable?: boolean
+  /** The line colour, mirrored so the overlay can paint the axis label to match. */
+  color?: string
   /** The overlay control tree for this line (absent ⇒ the line draws no controls). */
   spec?: PartSpec
 }
@@ -377,10 +383,22 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       if (!entry.spec) continue
       const y = series.priceToCoordinate(entry.price)
       if (y == null || y < PART_H / 2 || y > h - PART_H / 2) continue
-      const node = layoutParts(entry.spec, { rightEdge, centerY: y, measure: measureText })
+      const node = layoutParts(entry.spec, { rightEdge: rightEdge - PILL_RIGHT_MARGIN, centerY: y, measure: measureText })
       layouts.set(key, node)
       const localHover = hoveredPart && hoveredPart.startsWith(`${key}:`) ? hoveredPart.slice(key.length + 1) : null
       drawParts(octx, node, localHover)
+
+      // The axis label is ours to draw because a TRIGGER is outlined and lightweight-charts can only
+      // fill. `axisLabelVisible` stays off for these lines so the two never double up.
+      if (entry.color)
+        drawAxisLabel(octx, {
+          x: rightEdge,
+          y,
+          width: Math.max(0, w - rightEdge),
+          color: entry.color,
+          text: fmtPrice(entry.price, opts.tick),
+          outlined: entry.kind === 'stop',
+        })
     }
   }
 
@@ -519,7 +537,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           price,
           color,
           lineWidth: t.orderLineWidth,
-          lineStyle: o.orderType === 'stop' ? 2 : 1,
+          lineStyle: exitKind ? 0 : o.orderType === 'stop' ? 2 : 1,
           title: '',
           kind: o.orderType,
           instrument: o.instrument,
@@ -592,9 +610,10 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         existing.previewId = d.previewId
         existing.editable = d.editable
         existing.spec = d.spec
+        existing.color = d.color
       } else {
-        const line = series.createPriceLine({ price: d.price, color: d.color, lineWidth: d.lineWidth as 1 | 2 | 3, lineStyle: d.lineStyle, axisLabelVisible: true, title: d.title })
-        lines.set(key, { line, kind: d.kind, price: d.price, instrument: d.instrument, brokerOrderId: d.brokerOrderId, previewId: d.previewId, editable: d.editable, spec: d.spec })
+        const line = series.createPriceLine({ price: d.price, color: d.color, lineWidth: d.lineWidth as 1 | 2 | 3, lineStyle: d.lineStyle, axisLabelVisible: !d.spec, title: d.title })
+        lines.set(key, { line, kind: d.kind, price: d.price, instrument: d.instrument, brokerOrderId: d.brokerOrderId, previewId: d.previewId, editable: d.editable, spec: d.spec, color: d.color })
       }
     }
     paintOverlay()
@@ -779,7 +798,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
               price: pos.avgPrice,
               color: kind === 'tp' ? T().tpColor : T().slColor,
               lineWidth: T().orderLineWidth,
-              lineStyle: kind === 'tp' ? 1 : 2,
+              lineStyle: 0,
               axisLabelVisible: true,
               title: '',
             }),

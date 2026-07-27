@@ -124,6 +124,52 @@ export function withAlpha(color: string, alpha: number): string {
  *  the same zone being narrowed to where the cursor now is. */
 export const EXIT_ZONE_ALPHA = 0.15
 
+/** Distance the control pill stops SHORT of the plot's right edge. The reference leaves this gap and
+ *  runs the line on through it to the price axis, so the line reads as continuous and the pill never
+ *  collides with the scale. Measured at 64px against the reference's own resolved layout. */
+export const PILL_RIGHT_MARGIN = 64
+
+/** The price-axis label for a trade line. A TRIGGER (stop) is drawn outlined — dark interior, coloured
+ *  border — while a limit or the position average is a solid colour chip. That is the reference's own
+ *  distinction, and it is the one glance that separates "this fires at a price" from "this rests at
+ *  a price". */
+export function drawAxisLabel(
+  ctx: CanvasRenderingContext2D,
+  o: { x: number; y: number; width: number; color: string; text: string; outlined: boolean },
+): void {
+  const h = PART_H
+  const top = Math.round(o.y - h / 2)
+  ctx.save()
+  const r = 2
+  const path = () => {
+    ctx.beginPath()
+    ctx.moveTo(o.x + r, top)
+    ctx.lineTo(o.x + o.width - r, top)
+    ctx.arcTo(o.x + o.width, top, o.x + o.width, top + r, r)
+    ctx.lineTo(o.x + o.width, top + h - r)
+    ctx.arcTo(o.x + o.width, top + h, o.x + o.width - r, top + h, r)
+    ctx.lineTo(o.x + r, top + h)
+    ctx.arcTo(o.x, top + h, o.x, top + h - r, r)
+    ctx.lineTo(o.x, top + r)
+    ctx.arcTo(o.x, top, o.x + r, top, r)
+    ctx.closePath()
+  }
+  path()
+  ctx.fillStyle = o.outlined ? TRADE_THEME.surface : o.color
+  ctx.fill()
+  if (o.outlined) {
+    ctx.strokeStyle = o.color
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
+  ctx.fillStyle = o.outlined ? o.color : TRADE_THEME.onAccent
+  ctx.font = '12px -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(o.text, o.x + o.width / 2, o.y)
+  ctx.restore()
+}
+
 /** A position's P&L rendered the way the reference does: a true minus sign, the absolute value, and
  *  the account currency as a word. `null` P&L renders nothing rather than a fabricated zero, and an
  *  unknown currency renders the number bare rather than labelling it with a guessed one. */
@@ -245,9 +291,7 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
       width: 23,
       icon: 'close',
       iconColor: TRADE_THEME.accent,
-      fill: TRADE_THEME.surface,
       fillHover: TRADE_THEME.closeHover,
-      borderRadius: 2,
       tooltip: 'Close Position',
     })
   }
@@ -311,9 +355,7 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
       width: 23,
       icon: 'close',
       iconColor: input.color,
-      fill: TRADE_THEME.surface,
       fillHover: TRADE_THEME.closeHover,
-      borderRadius: 2,
       tooltip: 'Cancel order',
     })
   }
@@ -393,9 +435,7 @@ export function buildExitParts(input: ExitPartsInput): PartSpec {
       width: 23,
       icon: 'close',
       iconColor: color,
-      fill: TRADE_THEME.surface,
       fillHover: TRADE_THEME.closeHover,
-      borderRadius: 2,
       tooltip: 'Cancel order',
     })
   }
@@ -441,9 +481,7 @@ export function buildPreviewParts(input: PreviewPartsInput): PartSpec {
       width: 23,
       icon: 'close',
       iconColor: input.color,
-      fill: TRADE_THEME.surface,
       fillHover: TRADE_THEME.closeHover,
-      borderRadius: 2,
       tooltip: 'Discard this level',
     })
   }

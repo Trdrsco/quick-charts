@@ -60,7 +60,7 @@ export const DEFAULT_OVERRIDES: ChartOverrides = {
     slColor: '#ff9800',
     showPositions: true,
     showOrders: true,
-    positionLineWidth: 2,
+    positionLineWidth: 1,
     orderLineWidth: 1,
     executionMarks: true,
     pnlMode: 'money',
