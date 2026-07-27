@@ -642,25 +642,23 @@ export function drawParts(
   const s = node.spec
   const hovered = hoveredId === node.id
 
-  if (s.fill || s.border) {
-    const fill = hovered && s.fillHover ? s.fillHover : s.fill
-    const r = s.borderRadius ?? 0
-    if (fill) {
-      ctx.save()
-      roundRectPath(ctx, node.x, node.y, node.w, node.h, r)
-      ctx.fillStyle = fill
-      ctx.fill()
-      ctx.restore()
-    }
-    if (s.border && (s.borderWidth ?? 0) > 0) {
-      ctx.save()
-      roundRectPath(ctx, node.x + 0.5, node.y + 0.5, node.w - 1, node.h - 1, Math.max(0, r - 0.5))
-      ctx.strokeStyle = s.border
-      ctx.lineWidth = s.borderWidth ?? 1
-      if (s.borderDotted) dottedBorder(ctx, node.w, node.h, r)
-      ctx.stroke()
-      ctx.restore()
-    }
+  const r = s.borderRadius ?? 0
+  // Base fill first, and the hover wash LAYERED ON TOP rather than swapping for it. The wash is
+  // translucent, so replacing the opaque base would let the price line show straight through the
+  // control the moment a pointer touched it.
+  if (s.fill) {
+    ctx.save()
+    roundRectPath(ctx, node.x, node.y, node.w, node.h, r)
+    ctx.fillStyle = s.fill
+    ctx.fill()
+    ctx.restore()
+  }
+  if (hovered && s.fillHover) {
+    ctx.save()
+    roundRectPath(ctx, node.x, node.y, node.w, node.h, r)
+    ctx.fillStyle = s.fillHover
+    ctx.fill()
+    ctx.restore()
   }
 
   if (s.text) {
@@ -709,4 +707,18 @@ export function drawParts(
   }
 
   for (const c of node.children) drawParts(ctx, c, hoveredId)
+
+  // The border is a FOREGROUND pass, drawn after this part's own children. Children fill their full
+  // 19px height, so a border painted before them is immediately overpainted along the top and bottom
+  // edges — which is exactly why the pill looked open on those sides. The reference splits its draw
+  // the same way, with a separate drawForeground for the surrounding frame.
+  if (s.border && (s.borderWidth ?? 0) > 0) {
+    ctx.save()
+    roundRectPath(ctx, node.x + 0.5, node.y + 0.5, node.w - 1, node.h - 1, Math.max(0, r - 0.5))
+    ctx.strokeStyle = s.border
+    ctx.lineWidth = s.borderWidth ?? 1
+    if (s.borderDotted) dottedBorder(ctx, node.w, node.h, r)
+    ctx.stroke()
+    ctx.restore()
+  }
 }
