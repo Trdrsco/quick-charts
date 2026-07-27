@@ -18,6 +18,12 @@ export interface ChartOverrides {
     buyColor: string
     /** Sell-side line/marker color. */
     sellColor: string
+    /** A resting TAKE PROFIT's line + pill. Coloured by the LEG, not the side: a target is green on a
+     *  long and on a short alike, because the pair reads as "my target" and "my risk". */
+    tpColor: string
+    /** A resting STOP LOSS's line + pill — amber for the same reason, and deliberately NOT the
+     *  sell-side red, which would collide with a short's own entry lines. */
+    slColor: string
     /** Draw the position average line (with P&L + ⇄/✕ affordances when armed). */
     showPositions: boolean
     /** Draw working-order lines (draggable to reprice when armed). */
@@ -50,6 +56,8 @@ export const DEFAULT_OVERRIDES: ChartOverrides = {
   trading: {
     buyColor: BRAND_UP,
     sellColor: BRAND_DOWN,
+    tpColor: '#089981',
+    slColor: '#ff9800',
     showPositions: true,
     showOrders: true,
     positionLineWidth: 2,

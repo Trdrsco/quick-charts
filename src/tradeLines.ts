@@ -29,6 +29,7 @@ import {
 } from './broker'
 import { DEFAULT_OVERRIDES, type ChartOverrides } from './overrides'
 import {
+  buildExitParts,
   buildOrderParts,
   buildPositionParts,
   buildPreviewParts,
@@ -38,6 +39,9 @@ import {
   formatPnlTicks,
   hitTestParts,
   layoutParts,
+  withAlpha,
+  DRAG_BAND_ALPHA,
+  DRAG_HINT_ALPHA,
   PART_H,
   type LayoutNode,
   type PartHit,
@@ -86,6 +90,24 @@ function positionPnlDisplay(
   }
   const pct = ((mark - p.avgPrice) / p.avgPrice) * 100 * dir
   return { text: formatPnlPercent(pct), sign: signOf(pct) }
+}
+
+/** What a resting exit would realise if it filled — the number a trader is deciding on when they set
+ *  a target or a stop. It needs the contract's point value: without one there is no honest money
+ *  figure, so the cell is OMITTED rather than showing a bare price difference dressed as currency. */
+function potentialPnl(
+  pos: { qty: number; avgPrice: number | null },
+  level: number,
+  qty: number,
+  pointValue: number | undefined,
+  currency: string | null,
+): { text: string; sign: 'profit' | 'loss' } | null {
+  if (pos.avgPrice == null || pos.avgPrice <= 0) return null
+  if (!pointValue || !isFinite(pointValue) || pointValue <= 0) return null
+  const dir = pos.qty > 0 ? 1 : -1
+  const value = (level - pos.avgPrice) * dir * qty * pointValue
+  const text = formatPnlMoney(value, currency)
+  return text ? { text, sign: value < 0 ? 'loss' : 'profit' } : null
 }
 
 // Drag tuning. A grab registers within GRAB_PX of a line; every CONTROL (✕, ⇄, TP/SL) is hit-tested
@@ -137,6 +159,9 @@ export interface TradeLineOptions {
   /** The account's currency, shown beside a money P&L. Omitted ⇒ the number renders bare rather
    *  than wearing a guessed currency. */
   currency?: string
+  /** Contract point value (money per 1.0 of price per unit) — what turns an exit level into the
+   *  amount it would realise. Omitted ⇒ exit lines show no P&L cell rather than a fabricated one. */
+  pointValue?: number
   /** The live-trusted mark, or null (feed down / not live). Read at gesture/draw time. */
   mark?: () => number | null
   /** Trading lock — live actions disarm (display-only); PREVIEW gestures stay allowed (pre-money). */
@@ -307,6 +332,28 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     octx.clearRect(0, 0, w, h)
     layouts.clear()
     const rightEdge = plotRightEdge()
+
+    // A bracket drag shades the zone the level would close into — the leg's own colour at low opacity,
+    // denser between the level and the entry. It answers "how much of the move am I giving up / taking"
+    // spatially, which a number alone does not, and it is why the drop point reads as a decision rather
+    // than a coordinate.
+    if (bracketDrag) {
+      const t = T()
+      const anchorY = series.priceToCoordinate(bracketDrag.anchor)
+      const levelY = series.priceToCoordinate(bracketDrag.lastValidPrice)
+      if (anchorY != null && levelY != null) {
+        const color = bracketDrag.kind === 'tp' ? t.tpColor : t.slColor
+        const top = Math.min(anchorY, levelY)
+        const height = Math.abs(levelY - anchorY)
+        octx.save()
+        // The hint area runs to the pane edge the level sits on; the band is the entry-to-level span.
+        octx.fillStyle = withAlpha(color, DRAG_HINT_ALPHA)
+        octx.fillRect(0, levelY < anchorY ? 0 : anchorY, rightEdge, levelY < anchorY ? anchorY : h - anchorY)
+        octx.fillStyle = withAlpha(color, DRAG_BAND_ALPHA)
+        octx.fillRect(0, top, rightEdge, height)
+        octx.restore()
+      }
+    }
     for (const [key, entry] of lines) {
       if (!entry.spec) continue
       const y = series.priceToCoordinate(entry.price)
@@ -432,22 +479,34 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         if (typeof price !== 'number' || !isFinite(price) || price <= 0) continue
         if (normalizeRoot(o.instrument) !== root) continue
         const buy = o.side === 'buy'
+        // An order that CLOSES the open position is a protective exit, not an entry: it sits on the
+        // opposite side, and its type then says which leg it is (a limit takes profit, a stop caps
+        // risk). Read that way it earns the leg's colour and shows the POTENTIAL result at the level
+        // — the number the trader is deciding on — instead of restating an order type the line's
+        // colour and side already convey.
+        const held = opts.snapshot.positions.find((p) => p && p.qty !== 0 && normalizeRoot(p.instrument) === root)
+        const closes = !!held && (held.qty > 0 ? !buy : buy)
+        const exitKind: 'tp' | 'sl' | null = closes ? (o.orderType === 'limit' ? 'tp' : 'sl') : null
+        const exitPnl = exitKind ? potentialPnl(held!, price, Math.abs(o.qty), opts.pointValue, opts.currency ?? null) : null
+        const color = exitKind ? (exitKind === 'tp' ? t.tpColor : t.slColor) : buy ? t.buyColor : t.sellColor
         desired.set(`ord:${o.brokerOrderId}`, {
           price,
-          color: buy ? t.buyColor : t.sellColor,
+          color,
           lineWidth: t.orderLineWidth,
           lineStyle: o.orderType === 'stop' ? 2 : 1,
           title: '',
           kind: o.orderType,
           instrument: o.instrument,
           brokerOrderId: o.brokerOrderId,
-          spec: buildOrderParts({
-            qty: o.qty,
-            label: `${buy ? 'BUY' : 'SELL'} ${o.orderType.toUpperCase()}`,
-            color: buy ? t.buyColor : t.sellColor,
-            supportCancel: armed(),
-            supportModifyQty: false,
-          }),
+          spec: exitKind
+            ? buildExitParts({ kind: exitKind, qty: o.qty, pnlText: exitPnl?.text ?? null, pnlSign: exitPnl?.sign ?? null, supportCancel: armed() })
+            : buildOrderParts({
+                qty: o.qty,
+                label: `${buy ? 'BUY' : 'SELL'} ${o.orderType.toUpperCase()}`,
+                color,
+                supportCancel: armed(),
+                supportModifyQty: false,
+              }),
         })
       }
 

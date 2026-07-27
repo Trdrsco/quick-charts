@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { boundBracketPrice } from '../src/broker'
 import {
+  buildExitParts,
   buildPreviewParts,
   buildOrderParts,
   buildPositionParts,
@@ -11,6 +12,7 @@ import {
   layoutParts,
   PART_H,
   TRADE_THEME,
+  withAlpha,
   type LayoutNode,
 } from '../src/tradeLineParts'
 
@@ -183,6 +185,51 @@ describe('working order line', () => {
       { rightEdge: RIGHT_EDGE, centerY: CENTER_Y, measure },
     )
     expect(find(root, 'close')).toBeUndefined()
+  })
+})
+
+describe('resting exit line (TP / SL)', () => {
+  const exit = (kind: 'tp' | 'sl', pnlText: string | null, pnlSign: 'profit' | 'loss' | null = 'profit') =>
+    layoutParts(buildExitParts({ kind, qty: 1, pnlText, pnlSign, supportCancel: true }), {
+      rightEdge: RIGHT_EDGE,
+      centerY: CENTER_Y,
+      measure: (t) => (t === '+ 0.89 USD' ? 68 : measure(t)),
+    })
+
+  it('shows the POTENTIAL result, never the order type', () => {
+    const root = exit('tp', '+ 0.89 USD')
+    expect(find(root, 'pnl').spec.text).toBe('+ 0.89 USD')
+    // Nothing anywhere restates "SELL LIMIT" — the colour and side already say it.
+    const texts: string[] = []
+    const walk = (n: LayoutNode) => { if (n.spec.text) texts.push(n.spec.text); n.children.forEach(walk) }
+    walk(root)
+    expect(texts.join(' ')).not.toMatch(/LIMIT|STOP|SELL|BUY/i)
+  })
+
+  it('colours by the LEG, not the side — green target, amber stop', () => {
+    expect(find(exit('tp', '+ 0.89 USD'), 'pill').spec.border).toBe(TRADE_THEME.tp)
+    expect(find(exit('sl', '− 0.49 USD', 'loss'), 'pill').spec.border).toBe(TRADE_THEME.sl)
+    expect(find(exit('tp', '+ 0.89 USD'), 'qty').spec.fill).toBe(TRADE_THEME.tp)
+  })
+
+  it('colours the amount by its SIGN, independently of the leg', () => {
+    expect(find(exit('sl', '− 0.49 USD', 'loss'), 'pnl').spec.textColor).toBe(TRADE_THEME.loss)
+    expect(find(exit('tp', '+ 0.89 USD', 'profit'), 'pnl').spec.textColor).toBe(TRADE_THEME.profit)
+  })
+
+  it('omits the cell entirely when the point value is unknown', () => {
+    const root = exit('tp', null)
+    expect(find(root, 'pnl')).toBeUndefined()
+    expect(find(root, 'qty').w).toBe(21)
+  })
+})
+
+describe('withAlpha', () => {
+  it('re-alphas hex and rgb forms so a band tracks its line colour', () => {
+    expect(withAlpha('#089981', 0.25)).toBe('rgba(8, 153, 129, 0.25)')
+    expect(withAlpha('#ff9800', 0.15)).toBe('rgba(255, 152, 0, 0.15)')
+    expect(withAlpha('#fff', 0.5)).toBe('rgba(255, 255, 255, 0.5)')
+    expect(withAlpha('rgba(41, 98, 255, 0.9)', 0.3)).toBe('rgba(41, 98, 255, 0.3)')
   })
 })
 

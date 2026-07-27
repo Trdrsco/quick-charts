@@ -101,6 +101,30 @@ export const TRADE_THEME = {
   gap: 10,
 } as const
 
+/** Re-alpha a `#rgb` / `#rrggbb` / `rgb()` / `rgba()` colour. Used for the drag bands, which are the
+ *  LEG's own colour at low opacity — deriving them keeps a re-themed TP/SL line and its band in step,
+ *  where a second hard-coded constant would silently drift. */
+export function withAlpha(color: string, alpha: number): string {
+  const hex = color.trim().replace(/^#/, '')
+  if (/^[0-9a-f]{3}$/i.test(hex)) {
+    const [r, g, b] = [...hex].map((c) => parseInt(c + c, 16))
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+  if (/^[0-9a-f]{6}$/i.test(hex)) {
+    const n = parseInt(hex, 16)
+    return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+  }
+  const m = color.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/i)
+  if (m) return `rgba(${m[1]}, ${m[2]}, ${m[3]}, ${alpha})`
+  return color
+}
+
+/** Opacity of the band drawn between a position's entry and a bracket level being dragged, and of the
+ *  wider hint area behind it. Measured off the reference mid-drag: it paints the leg colour at 0.15
+ *  over the whole zone the level closes into, and 0.25 between the level and the entry. */
+export const DRAG_BAND_ALPHA = 0.25
+export const DRAG_HINT_ALPHA = 0.15
+
 /** A position's P&L rendered the way the reference does: a true minus sign, the absolute value, and
  *  the account currency as a word. `null` P&L renders nothing rather than a fabricated zero, and an
  *  unknown currency renders the number bare rather than labelling it with a guessed one. */
@@ -313,6 +337,78 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
         children: pill,
       },
     ],
+  }
+}
+
+export interface ExitPartsInput {
+  /** Which protective leg this is — it picks the whole line's colour. */
+  kind: 'tp' | 'sl'
+  qty: number
+  /** The POTENTIAL result if this level fills, pre-formatted; null omits the cell rather than
+   *  inventing a number the multiplier is not known for. */
+  pnlText: string | null
+  pnlSign: 'profit' | 'loss' | null
+  supportCancel: boolean
+}
+
+/** A resting protective exit's controls: `[qty │ P&L │ ✕]`.
+ *
+ *  An exit is NOT labelled with its order type. The reference carries `positivePlColor` /
+ *  `negativePlColor` on both `takeProfit.*` and `stopLoss.*`, and shows the POTENTIAL result at that
+ *  level — which is the number a trader is actually deciding on. The order type is already implicit
+ *  in the line's colour and position, so spending the cell on "SELL LIMIT" says nothing new.
+ *
+ *  Colour comes from the LEG, not the side: take profits are green and stops orange on both a long
+ *  and a short, because the two lines are read as "my target" and "my risk", never as buy vs sell. */
+export function buildExitParts(input: ExitPartsInput): PartSpec {
+  const color = input.kind === 'tp' ? TRADE_THEME.tp : TRADE_THEME.sl
+  const pill: PartSpec[] = [
+    { id: 'pill-inset', role: 'spacer', width: 1 },
+    {
+      id: 'qty',
+      role: 'qty',
+      text: String(Math.abs(input.qty)),
+      textColor: TRADE_THEME.onAccent,
+      fill: color,
+      fillHover: color,
+      paddingX: TRADE_THEME.paddingX,
+      font: TRADE_FONT,
+      tooltip: '',
+    },
+  ]
+  if (input.pnlText) {
+    pill.push({ id: 'div-qty', role: 'divider', width: 1, fill: color })
+    pill.push({
+      id: 'pnl',
+      role: 'pnl',
+      text: input.pnlText,
+      textColor: input.pnlSign === 'loss' ? TRADE_THEME.loss : input.pnlSign === 'profit' ? TRADE_THEME.profit : color,
+      fill: TRADE_THEME.surface,
+      paddingX: TRADE_THEME.paddingX,
+      minWidth: 82,
+      font: TRADE_FONT,
+      tooltip: input.kind === 'tp' ? 'Take profit' : 'Stop loss',
+    })
+  }
+  if (input.supportCancel) {
+    pill.push({ id: 'div-close', role: 'divider', width: 1, fill: color })
+    pill.push({
+      id: 'close',
+      role: 'close',
+      width: 23,
+      icon: 'close',
+      iconColor: color,
+      fill: TRADE_THEME.surface,
+      fillHover: TRADE_THEME.closeHover,
+      borderRadius: 2,
+      tooltip: 'Cancel order',
+    })
+  }
+  pill.push({ id: 'pill-inset-r', role: 'spacer', width: 1 })
+  return {
+    id: 'root',
+    role: 'group',
+    children: [{ id: 'pill', role: 'group', border: color, borderWidth: 1, borderRadius: TRADE_THEME.radius, children: pill }],
   }
 }
 
