@@ -409,6 +409,37 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       octx.fillRect(0, zone.top, rightEdge, zone.height)
       octx.restore()
     }
+
+    // A level being dragged carries the SAME readout it will have once placed — the quantity and what
+    // it would realise — because that is the number the drop is being decided on. Without it the
+    // gesture is a bare line and the trader is choosing a price with no idea what it is worth. No ✕:
+    // there is nothing resting to cancel, and releasing outside is how the drag is abandoned.
+    if (bracketDrag) {
+      const dragY = series.priceToCoordinate(bracketDrag.lastValidPrice)
+      if (dragY != null) {
+        const held = opts.snapshot.positions.find((p) => p && p.qty !== 0 && p.instrument === bracketDrag!.instrument)
+        const pnl = held ? potentialPnl(held, bracketDrag.lastValidPrice, bracketDrag.qty, opts.pointValue, opts.currency ?? null) : null
+        const legColor = bracketDrag.kind === 'tp' ? T().tpColor : T().slColor
+        const spec = buildExitParts({
+          surface: chartBackground(),
+          kind: bracketDrag.kind,
+          qty: bracketDrag.qty,
+          pnlText: pnl?.text ?? null,
+          pnlSign: pnl?.sign ?? null,
+          supportCancel: false,
+        })
+        drawParts(octx, layoutParts(spec, { rightEdge: rightEdge - PILL_RIGHT_MARGIN, centerY: dragY, measure: measureText }), null)
+        drawAxisLabel(octx, {
+          x: rightEdge,
+          y: dragY,
+          width: Math.max(0, w - rightEdge),
+          color: legColor,
+          surface: chartBackground(),
+          text: fmtPrice(bracketDrag.lastValidPrice, opts.tick),
+          outlined: bracketDrag.kind === 'sl',
+        })
+      }
+    }
     for (const [key, entry] of lines) {
       if (!entry.spec) continue
       const y = series.priceToCoordinate(entry.price)
@@ -841,15 +872,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             pointerId: e.pointerId,
             capturedScope,
             capturedSymbol,
-            // The dragged level looks EXACTLY like the line it is about to become — same colour, width
-            // and style as the resting exit (a target is a limit, a stop is a stop). A distinct ghost
-            // treatment would imply a different kind of thing is being placed.
+            // The level takes the LEG's colour and width, so it is unmistakably the target or the stop
+            // being placed — but it is DASHED, because nothing rests at the venue yet. Solid is what a
+            // live order earns; a level still under the cursor has not earned it. The axis label is
+            // drawn by the overlay so it tracks the drag with the pill.
             ghost: series.createPriceLine({
               price: pos.avgPrice,
               color: kind === 'tp' ? T().tpColor : T().slColor,
               lineWidth: T().lineWidth,
-              lineStyle: 0,
-              axisLabelVisible: true,
+              lineStyle: 2,
+              axisLabelVisible: false,
               title: '',
             }),
           }
