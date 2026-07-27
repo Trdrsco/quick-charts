@@ -140,6 +140,8 @@ export interface PreviewSet {
   /** The ticket's order type ('Market' | 'Limit' | 'Stop'). It sits where a live line shows money,
    *  because a pending order has no P&L to report — what it has is a kind. */
   orderType?: string
+  /** The ORDER quantity — a bare Market order has no lines, so the size cannot come from one. */
+  qty?: number
 }
 
 export interface TradeLineHost {
@@ -432,8 +434,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     if (bracketDrag) {
       const dragY = series.priceToCoordinate(bracketDrag.lastValidPrice)
       if (dragY != null) {
-        const held = opts.snapshot.positions.find((p) => p && p.qty !== 0 && p.instrument === bracketDrag!.instrument)
-        const pnl = held ? potentialPnl(held, bracketDrag.lastValidPrice, bracketDrag.qty, opts.pointValue, opts.currency ?? null) : null
+        // The basis is the DRAG's own anchor and size, not a position lookup: a level dragged off the
+        // ticket's draft has no position behind it yet, and for a live one the anchor already IS the
+        // average entry. One basis serves both, and the draft stops being the case with no number.
+        const pnl = potentialPnl(
+          { qty: bracketDrag.positionSide === 'long' ? 1 : -1, avgPrice: bracketDrag.anchor },
+          bracketDrag.lastValidPrice,
+          bracketDrag.qty,
+          opts.pointValue,
+          opts.currency ?? null,
+        )
         const legColor = bracketDrag.kind === 'tp' ? T().tpColor : T().slColor
         const spec = buildExitParts({
           surface: chartBackground(),
@@ -668,7 +678,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         // market ticket is the one order type with no presence on the chart at all.
         const anchor = entryLine && entryLine.price > 0 ? entryLine.price : markNow()
         const hasLeg = (id: 'tp' | 'sl') => pv.lines.some((l) => l.id === id && l.price > 0)
-        const draftQty = entryLine?.qty ?? pv.lines[0]?.qty ?? ''
+        const draftQty = pv.qty ?? entryLine?.qty ?? ''
 
         if (!entryLine && anchor != null && pv.orderType) {
           desired.set('preview:entry', {
