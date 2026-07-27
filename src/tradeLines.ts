@@ -278,6 +278,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
    *  package just forwards the key from the plan. */
 
   const lines = new Map<string, LineEntry>()
+  /** Levels whose move has been SENT but is not yet reflected in the broker's own snapshot.
+   *
+   *  Without this the line visibly snaps back and then forward again on release: the drag clears, the
+   *  reconcile stops skipping the line, and the engine's post-mutation re-read can still carry
+   *  PRE-mutation state — so the next draw rewrites the line to where it was before, and the read
+   *  after that moves it to where it was dropped. Holding the dropped price until the snapshot AGREES
+   *  (or the wait times out, so a rejected move cannot pin a lie on the chart) removes the round trip
+   *  from view entirely, which is smoother than animating the correction would be. */
+  const pendingMoves = new Map<string, { price: number; until: number }>()
+  const PENDING_MOVE_MS = 8000
   let dragging: DragState | null = null
   let previewDrag: PreviewDragState | null = null
   let pendingX: PendingX | null = null
@@ -598,9 +608,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       }
       for (const o of t.showOrders ? opts.snapshot.orders : []) {
         if (!o || o.status !== 'working' || (o.orderType !== 'stop' && o.orderType !== 'limit')) continue
-        const price = o.orderType === 'stop' ? o.triggerPrice : o.limitPrice
-        if (typeof price !== 'number' || !isFinite(price) || price <= 0) continue
+        const reported = o.orderType === 'stop' ? o.triggerPrice : o.limitPrice
+        if (typeof reported !== 'number' || !isFinite(reported) || reported <= 0) continue
         if (normalizeRoot(o.instrument) !== root) continue
+        // Hold a just-dropped level where it was dropped until the broker's own snapshot echoes it.
+        const price = heldPrice(`ord:${o.brokerOrderId}`, reported)
         const buy = o.side === 'buy'
         // An order that CLOSES the open position is a protective exit, not an entry: it sits on the
         // opposite side, and its type then says which leg it is (a limit takes profit, a stop caps
@@ -710,6 +722,20 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   const restoreChart = () => {
     chart.applyOptions({ handleScroll: true, handleScale: true })
     container.style.touchAction = ''
+  }
+
+  /** The price to DRAW for a level: the broker's own value once it agrees with a move we sent, and
+   *  until then the value we sent. Agreement is measured to half a tick, since the plan sends the
+   *  SNAPPED price and the venue echoes back the same grid. */
+  const heldPrice = (key: string, reported: number): number => {
+    const pending = pendingMoves.get(key)
+    if (!pending) return reported
+    const tol = opts.tick && opts.tick > 0 ? opts.tick / 2 : 1e-9
+    if (Math.abs(reported - pending.price) <= tol || Date.now() > pending.until) {
+      pendingMoves.delete(key)
+      return reported
+    }
+    return pending.price
   }
 
   const buildCtx = (scope: string): PlanCtx => ({
@@ -835,7 +861,14 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         opts.onAction?.(plan.toast, undo)
         if (plan.note) opts.onError?.(plan.note)
       })
-      .catch((err) => opts.onError?.(errMsg(err)))
+      .catch((err) => {
+        // A REFUSED move must stop being shown immediately. The optimistic hold exists to cover the
+        // round trip, not to outlive it — leaving it would keep a level on the chart at a price the
+        // venue rejected, which is the one thing worse than the flicker it removes.
+        pendingMoves.clear()
+        paintOverlay()
+        opts.onError?.(errMsg(err))
+      })
   }
 
   const onPointerDown = (e: PointerEvent) => {
@@ -1074,8 +1107,10 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       opts.onError?.(plan.reason)
       return true
     }
-    // Valid → execute; leave the optimistic line where dropped (the next snapshot reconciles it to
-    // the broker-confirmed price now that the drag has cleared).
+    // Valid → execute, holding the line at the SNAPPED price the plan is sending. The snapshot is
+    // reconciled against that exact value, so when the broker echoes it back the hold releases with
+    // nothing to move.
+    if (plan.price != null) pendingMoves.set(drag.key, { price: plan.price, until: Date.now() + PENDING_MOVE_MS })
     execPlan(plan, drag.capturedScope)
     return true
   }
@@ -1352,6 +1387,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         }
       }
       lines.clear()
+      pendingMoves.clear()
     },
   }
 }
