@@ -436,16 +436,14 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     const tip = part?.hit.tooltip ?? ''
     if (container.title !== tip) container.title = tip
-    // A control has to answer the pointer BEFORE it is pressed, or nothing marks it as one. A tpsl
-    // handle is dragged vertically so it takes the resize cursor and the tap targets take a pointer —
-    // but the qty chip and the P&L cell are READOUTS: they keep the chart's own cursor, because
-    // offering a pointer over something that does nothing is a promise the line cannot keep.
-    if (part) {
-      const role = part.hit.role
-      container.style.cursor =
-        part.hit.dragRole === 'tpsl' ? 'ns-resize' : role === 'close' || role === 'reverse' ? 'pointer' : ''
-    }
+    // The CURSOR is deliberately not set here. This listener is registered before the gesture layer's
+    // pointermove, which owns the cursor and would overwrite anything set here on the very same event.
   }
+
+  /** Roles that actually do something when pressed — the set that earns a pointer cursor. The qty chip
+   *  and P&L cell are readouts and keep the chart's own cursor: offering a pressed affordance over
+   *  something inert is a promise the line cannot keep. */
+  const isControlRole = (role: PartHit['role']): boolean => role === 'reverse' || role === 'tp' || role === 'sl' || role === 'close'
   container.addEventListener('pointermove', onHoverMove)
 
   // ── Draw / reconcile BY IDENTITY (update/create/remove only what changed — a teardown-per-tick
@@ -898,6 +896,14 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       if (!interactive()) return
       // Live hover (only when not locked) wins; otherwise reflect a preview line: the ✕ band →
       // pointer (cancellable), an editable body → ns-resize, a non-editable body → not-allowed.
+      // Overlay CONTROLS first, and they all take the same pointer: ⇄, TP, SL and ✕ are one family of
+      // things you press, and giving the drag handles a different cursor made them read as a different
+      // kind of control than the button beside them.
+      const part = opts.locked ? null : partAt(e.clientX, e.clientY)
+      if (part && isControlRole(part.hit.role)) {
+        container.style.cursor = 'pointer'
+        return
+      }
       const res = opts.locked ? null : hitTest(e.clientX, e.clientY)
       if (res) {
         container.style.cursor = res.hit.isXZone || res.hit.isRevZone ? 'pointer' : 'ns-resize'
