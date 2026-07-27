@@ -194,6 +194,10 @@ export function formatPnlPercent(pct: number | null): string | null {
 }
 
 export interface PositionPartsInput {
+  /** The position LINE's colour. Every accent on the pill — the reverse button, the qty chip, the
+   *  dividers, the pill frame, the ✕ — takes it, so a short reads red end to end rather than wearing
+   *  a blue that matches nothing else on the chart. */
+  accent: string
   /** The chart's own background — the pill paints on it, so it reads as part of the chart rather
    *  than a patch stamped over it, while still occluding the price line beneath. */
   surface: string
@@ -226,9 +230,9 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
       role: 'reverse',
       width: 29,
       icon: 'reverse',
-      iconColor: TRADE_THEME.accent,
+      iconColor: input.accent,
       fill: input.surface,
-      border: TRADE_THEME.accent,
+      border: input.accent,
       borderWidth: 1,
       borderRadius: TRADE_THEME.radius,
       hitPad: TRADE_THEME.reverseHitPad,
@@ -258,7 +262,7 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
       role: 'qty',
       text: String(Math.abs(input.qty)),
       textColor: TRADE_THEME.onAccent,
-      fill: TRADE_THEME.accent,
+      fill: input.accent,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
       tooltip: '',
@@ -266,7 +270,7 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
   ]
 
   if (input.pnlText) {
-    pill.push({ id: 'div-qty', role: 'divider', width: 1, fill: TRADE_THEME.accent })
+    pill.push({ id: 'div-qty', role: 'divider', width: 1, fill: input.accent })
     pill.push({
       id: 'pnl',
       role: 'pnl',
@@ -287,15 +291,15 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
   }
 
   if (input.supportClose) {
-    pill.push({ id: 'div-close', role: 'divider', width: 1, fill: TRADE_THEME.dividerDim })
+    pill.push({ id: 'div-close', role: 'divider', width: 1, fill: withAlpha(input.accent, 0.45) })
     pill.push({
       id: 'close',
       role: 'close',
       width: 23,
       icon: 'close',
-      iconColor: TRADE_THEME.accent,
+      iconColor: input.accent,
       fill: input.surface,
-      fillHover: TRADE_THEME.closeHover,
+      fillHover: withAlpha(input.accent, 0.15),
       tooltip: 'Close Position',
     })
   }
@@ -305,7 +309,7 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
   children.push({
     id: 'pill',
     role: 'group',
-    border: TRADE_THEME.accent,
+    border: input.accent,
     borderWidth: 1,
     borderRadius: TRADE_THEME.radius,
     children: pill,

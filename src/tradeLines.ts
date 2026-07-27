@@ -332,6 +332,28 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
 
   const plotRightEdge = (): number => container.clientWidth - chart.priceScale('right').width()
 
+  /** Recompute a resting exit's amount for a new level while it is being dragged. The number is a
+   *  function of the LEVEL, so a pill that travels with the line but keeps a stale figure is worse
+   *  than one that lagged — it looks authoritative and is wrong. No-op for anything that is not an
+   *  exit of the open position. */
+  const refreshExitSpec = (entry: LineEntry, price: number): void => {
+    if (entry.kind !== 'stop' && entry.kind !== 'limit') return
+    const root = normalizeRoot(opts.symbol)
+    const pos = opts.snapshot.positions.find((p) => p && p.qty !== 0 && normalizeRoot(p.instrument) === root)
+    const order = opts.snapshot.orders.find((o) => o && o.brokerOrderId === entry.brokerOrderId)
+    if (!pos || !order) return
+    if (pos.qty > 0 ? order.side !== 'sell' : order.side !== 'buy') return // an entry order, not an exit
+    const pnl = potentialPnl(pos, price, Math.abs(order.qty), opts.pointValue, opts.currency ?? null)
+    entry.spec = buildExitParts({
+      surface: chartBackground(),
+      kind: entry.kind === 'limit' ? 'tp' : 'sl',
+      qty: order.qty,
+      pnlText: pnl?.text ?? null,
+      pnlSign: pnl?.sign ?? null,
+      supportCancel: armed(),
+    })
+  }
+
   /** Which side of the entry a leg occupies: a target sits in profit, a stop in loss, so the side
    *  follows the POSITION's direction and flips with it. */
   const legSitsAbove = (kind: 'tp' | 'sl', longPosition: boolean): boolean => (kind === 'tp') === longPosition
@@ -526,6 +548,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           instrument: p.instrument,
           spec: buildPositionParts({
             surface: chartBackground(),
+            // The pill wears the LINE's colour, so a short reads red end to end.
+            accent: long ? t.buyColor : t.sellColor,
             qty: p.qty,
             avgPrice: p.avgPrice,
             pnlText: pnl.text,
@@ -970,7 +994,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       if (price == null) return
       d.lastValidPrice = price
       d.moved = isMeaningfulMove(price, d.originalPrice, opts.tick)
-      lines.get(d.key)?.line.applyOptions({ price }) // UNSNAPPED — follow the cursor; snap at drop
+      const entry = lines.get(d.key)
+      entry?.line.applyOptions({ price }) // UNSNAPPED — follow the cursor; snap at drop
+      // The overlay positions a pill from its entry's price, so the entry has to move WITH the line or
+      // the controls visibly detach from the level they belong to. Safe to mutate mid-gesture: the
+      // reconcile loop skips a line that is being dragged, and re-reads it once the drag settles.
+      if (entry) {
+        entry.price = price
+        refreshExitSpec(entry, price)
+      }
+      paintOverlay()
     })
   }
 
@@ -987,7 +1020,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     container.style.cursor = ''
     dragging = null
     const entry = lines.get(drag.key)
-    const snapBack = () => entry?.line.applyOptions({ price: drag.originalPrice })
+    const snapBack = () => {
+      if (entry) entry.price = drag.originalPrice
+      entry?.line.applyOptions({ price: drag.originalPrice })
+      paintOverlay()
+    }
 
     if (!drag.moved) {
       snapBack() // a tap, not a move → no order
@@ -1027,7 +1064,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     container.style.cursor = ''
     previewDrag = null
     const entry = lines.get(drag.key)
-    const snapBack = () => entry?.line.applyOptions({ price: drag.originalPrice })
+    const snapBack = () => {
+      if (entry) entry.price = drag.originalPrice
+      entry?.line.applyOptions({ price: drag.originalPrice })
+      paintOverlay()
+    }
 
     if (!drag.moved) {
       snapBack()
@@ -1186,7 +1227,10 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       } catch {
         /* best-effort */
       }
-      lines.get(drag.key)?.line.applyOptions({ price: drag.originalPrice })
+      const reverted = lines.get(drag.key)
+      if (reverted) reverted.price = drag.originalPrice
+      reverted?.line.applyOptions({ price: drag.originalPrice })
+      paintOverlay()
       dragging = null
       previewDrag = null
     }
@@ -1224,7 +1268,10 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       }
       restoreChart()
       container.style.cursor = ''
-      lines.get(drag.key)?.line.applyOptions({ price: drag.originalPrice })
+      const reverted = lines.get(drag.key)
+      if (reverted) reverted.price = drag.originalPrice
+      reverted?.line.applyOptions({ price: drag.originalPrice })
+      paintOverlay()
       dragging = null
       previewDrag = null
     }

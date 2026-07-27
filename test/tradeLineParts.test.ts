@@ -30,6 +30,7 @@ const measure = (text: string) => WIDTHS[text] ?? text.length * 7
 const SURFACE = '#141414' // the chart's own background — what the pill paints on
 const POSITION = {
   surface: SURFACE,
+  accent: TRADE_THEME.accent,
   qty: 1,
   avgPrice: 75.39,
   pnlText: '− 0.04 USD',
@@ -120,6 +121,31 @@ describe('position line layout', () => {
     expect(root.x).toBe(RIGHT_EDGE - 208)
     expect(find(root, 'sl').x).toBe(1102)
     expect(find(root, 'pill').x + find(root, 'pill').w).toBe(RIGHT_EDGE)
+  })
+})
+
+describe('the pill wears the line colour', () => {
+  const short = layoutParts(buildPositionParts({ ...POSITION, qty: -1, accent: TRADE_THEME.loss }), {
+    rightEdge: RIGHT_EDGE,
+    centerY: CENTER_Y,
+    measure,
+  })
+
+  it('accents a short in the line colour, not a fixed blue', () => {
+    expect(find(short, 'qty').spec.fill).toBe(TRADE_THEME.loss)
+    expect(find(short, 'pill').spec.border).toBe(TRADE_THEME.loss)
+    expect(find(short, 'reverse').spec.border).toBe(TRADE_THEME.loss)
+    expect(find(short, 'close').spec.iconColor).toBe(TRADE_THEME.loss)
+  })
+
+  it('derives the dividers and the ✕ hover from that same colour', () => {
+    expect(find(short, 'div-qty').spec.fill).toBe(TRADE_THEME.loss)
+    expect(find(short, 'div-close').spec.fill).toBe(withAlpha(TRADE_THEME.loss, 0.45))
+    expect(find(short, 'close').spec.fillHover).toBe(withAlpha(TRADE_THEME.loss, 0.15))
+  })
+
+  it('still shows the bare magnitude for a short', () => {
+    expect(find(short, 'qty').spec.text).toBe('1')
   })
 })
 
