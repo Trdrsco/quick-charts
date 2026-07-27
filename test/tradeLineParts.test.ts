@@ -27,7 +27,9 @@ const CENTER_Y = 79.5866
 const WIDTHS: Record<string, number> = { TP: 17, SL: 15, '1': 7, '− 0.04 USD': 68 }
 const measure = (text: string) => WIDTHS[text] ?? text.length * 7
 
+const SURFACE = '#141414' // the chart's own background — what the pill paints on
 const POSITION = {
+  surface: SURFACE,
   qty: 1,
   avgPrice: 75.39,
   pnlText: '− 0.04 USD',
@@ -130,13 +132,13 @@ describe('readouts vs controls', () => {
   })
 
   it('keeps readouts free of a hover wash on order and exit lines too', () => {
-    const order = layoutParts(buildOrderParts({ qty: 1, label: 'LMT', color: '#2962FF', supportCancel: true, supportModifyQty: false }), {
+    const order = layoutParts(buildOrderParts({ surface: SURFACE, qty: 1, label: 'LMT', color: '#2962FF', supportCancel: true, supportModifyQty: false }), {
       rightEdge: RIGHT_EDGE,
       centerY: CENTER_Y,
       measure,
     })
     expect(find(order, 'qty').spec.fillHover).toBeUndefined()
-    const ex = layoutParts(buildExitParts({ kind: 'sl', qty: 1, pnlText: null, pnlSign: null, supportCancel: true }), {
+    const ex = layoutParts(buildExitParts({ surface: SURFACE, kind: 'sl', qty: 1, pnlText: null, pnlSign: null, supportCancel: true }), {
       rightEdge: RIGHT_EDGE,
       centerY: CENTER_Y,
       measure,
@@ -195,7 +197,7 @@ describe('hit testing', () => {
 describe('working order line', () => {
   it('cancels rather than closes, and offers a quantity edit', () => {
     const root = layoutParts(
-      buildOrderParts({ qty: 2, label: 'LMT', color: '#2962FF', supportCancel: true, supportModifyQty: true }),
+      buildOrderParts({ surface: SURFACE, qty: 2, label: 'LMT', color: '#2962FF', supportCancel: true, supportModifyQty: true }),
       { rightEdge: RIGHT_EDGE, centerY: CENTER_Y, measure },
     )
     expect(find(root, 'close').spec.tooltip).toBe('Cancel order')
@@ -205,7 +207,7 @@ describe('working order line', () => {
 
   it('omits the ✕ when the order cannot be cancelled', () => {
     const root = layoutParts(
-      buildOrderParts({ qty: 1, label: 'STP', color: '#ff9800', supportCancel: false, supportModifyQty: false }),
+      buildOrderParts({ surface: SURFACE, qty: 1, label: 'STP', color: '#ff9800', supportCancel: false, supportModifyQty: false }),
       { rightEdge: RIGHT_EDGE, centerY: CENTER_Y, measure },
     )
     expect(find(root, 'close')).toBeUndefined()
@@ -214,7 +216,7 @@ describe('working order line', () => {
 
 describe('resting exit line (TP / SL)', () => {
   const exit = (kind: 'tp' | 'sl', pnlText: string | null, pnlSign: 'profit' | 'loss' | null = 'profit') =>
-    layoutParts(buildExitParts({ kind, qty: 1, pnlText, pnlSign, supportCancel: true }), {
+    layoutParts(buildExitParts({ surface: SURFACE, kind, qty: 1, pnlText, pnlSign, supportCancel: true }), {
       rightEdge: RIGHT_EDGE,
       centerY: CENTER_Y,
       measure: (t) => (t === '+ 0.89 USD' ? 68 : measure(t)),
@@ -259,7 +261,7 @@ describe('withAlpha', () => {
 
 describe('preview (pre-money) line', () => {
   const build = (cancellable: boolean) =>
-    layoutParts(buildPreviewParts({ label: 'SL', qty: 2, color: '#ff9800', cancellable }), {
+    layoutParts(buildPreviewParts({ surface: SURFACE, label: 'SL', qty: 2, color: '#ff9800', cancellable }), {
       rightEdge: RIGHT_EDGE,
       centerY: CENTER_Y,
       measure,

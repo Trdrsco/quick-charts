@@ -135,7 +135,7 @@ export const PILL_RIGHT_MARGIN = 64
  *  a price". */
 export function drawAxisLabel(
   ctx: CanvasRenderingContext2D,
-  o: { x: number; y: number; width: number; color: string; text: string; outlined: boolean },
+  o: { x: number; y: number; width: number; color: string; surface: string; text: string; outlined: boolean },
 ): void {
   const h = PART_H
   const top = Math.round(o.y - h / 2)
@@ -155,7 +155,7 @@ export function drawAxisLabel(
     ctx.closePath()
   }
   path()
-  ctx.fillStyle = o.outlined ? TRADE_THEME.surface : o.color
+  ctx.fillStyle = o.outlined ? o.surface : o.color
   ctx.fill()
   if (o.outlined) {
     ctx.strokeStyle = o.color
@@ -194,6 +194,9 @@ export function formatPnlPercent(pct: number | null): string | null {
 }
 
 export interface PositionPartsInput {
+  /** The chart's own background — the pill paints on it, so it reads as part of the chart rather
+   *  than a patch stamped over it, while still occluding the price line beneath. */
+  surface: string
   /** Signed quantity — the badge shows its magnitude, the sign only picks the P&L basis. */
   qty: number
   avgPrice: number | null
@@ -224,7 +227,7 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
       width: 29,
       icon: 'reverse',
       iconColor: TRADE_THEME.accent,
-      fill: TRADE_THEME.surface,
+      fill: input.surface,
       border: TRADE_THEME.accent,
       borderWidth: 1,
       borderRadius: TRADE_THEME.radius,
@@ -235,8 +238,8 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
   }
 
   const handles: PartSpec[] = []
-  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, 'Drag to add Take profit'))
-  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, 'Drag to add Stop loss'))
+  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, 'Drag to add Take profit', input.surface))
+  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, 'Drag to add Stop loss', input.surface))
   if (handles.length) {
     children.push(handles[0]!)
     // Adjacent handles overlap by a pixel so their borders form one seam rather than two strokes.
@@ -274,7 +277,7 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
           : input.pnlSign === 'profit'
             ? TRADE_THEME.profit
             : TRADE_THEME.onAccent,
-      fill: TRADE_THEME.surface,
+      fill: input.surface,
       paddingX: TRADE_THEME.paddingX,
       // Pinned so a live number can't resize the pill and walk the ✕ out from under the pointer.
       minWidth: 82,
@@ -291,6 +294,7 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
       width: 23,
       icon: 'close',
       iconColor: TRADE_THEME.accent,
+      fill: input.surface,
       fillHover: TRADE_THEME.closeHover,
       tooltip: 'Close Position',
     })
@@ -311,6 +315,9 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
 }
 
 export interface OrderPartsInput {
+  /** The chart's own background — the pill paints on it, so it reads as part of the chart rather
+   *  than a patch stamped over it, while still occluding the price line beneath. */
+  surface: string
   qty: number
   /** Shown in the pill next to the quantity (order type / side wording is the host's call). */
   label: string
@@ -340,7 +347,7 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
       role: 'pnl',
       text: input.label,
       textColor: input.color,
-      fill: TRADE_THEME.surface,
+      fill: input.surface,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
       tooltip: '',
@@ -355,6 +362,7 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
       width: 23,
       icon: 'close',
       iconColor: input.color,
+      fill: input.surface,
       fillHover: TRADE_THEME.closeHover,
       tooltip: 'Cancel order',
     })
@@ -379,6 +387,9 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
 }
 
 export interface ExitPartsInput {
+  /** The chart's own background — the pill paints on it, so it reads as part of the chart rather
+   *  than a patch stamped over it, while still occluding the price line beneath. */
+  surface: string
   /** Which protective leg this is — it picks the whole line's colour. */
   kind: 'tp' | 'sl'
   qty: number
@@ -420,7 +431,7 @@ export function buildExitParts(input: ExitPartsInput): PartSpec {
       role: 'pnl',
       text: input.pnlText,
       textColor: input.pnlSign === 'loss' ? TRADE_THEME.loss : input.pnlSign === 'profit' ? TRADE_THEME.profit : color,
-      fill: TRADE_THEME.surface,
+      fill: input.surface,
       paddingX: TRADE_THEME.paddingX,
       minWidth: 82,
       font: TRADE_FONT,
@@ -435,6 +446,7 @@ export function buildExitParts(input: ExitPartsInput): PartSpec {
       width: 23,
       icon: 'close',
       iconColor: color,
+      fill: input.surface,
       fillHover: TRADE_THEME.closeHover,
       tooltip: 'Cancel order',
     })
@@ -448,6 +460,9 @@ export function buildExitParts(input: ExitPartsInput): PartSpec {
 }
 
 export interface PreviewPartsInput {
+  /** The chart's own background — the pill paints on it, so it reads as part of the chart rather
+   *  than a patch stamped over it, while still occluding the price line beneath. */
+  surface: string
   /** The level's own wording (e.g. "SL", "TP", "Entry") plus its planned quantity. */
   label: string
   qty: number | string
@@ -467,7 +482,7 @@ export function buildPreviewParts(input: PreviewPartsInput): PartSpec {
       role: 'pnl',
       text: `${input.label} ${input.qty}`,
       textColor: input.color,
-      fill: TRADE_THEME.surface,
+      fill: input.surface,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
       tooltip: 'Pending, not yet sent',
@@ -481,6 +496,7 @@ export function buildPreviewParts(input: PreviewPartsInput): PartSpec {
       width: 23,
       icon: 'close',
       iconColor: input.color,
+      fill: input.surface,
       fillHover: TRADE_THEME.closeHover,
       tooltip: 'Discard this level',
     })
@@ -503,13 +519,13 @@ export function buildPreviewParts(input: PreviewPartsInput): PartSpec {
   }
 }
 
-function bracketButton(id: 'tp' | 'sl', text: string, color: string, tooltip: string): PartSpec {
+function bracketButton(id: 'tp' | 'sl', text: string, color: string, tooltip: string, surface: string): PartSpec {
   return {
     id,
     role: id,
     text,
     textColor: color,
-    fill: TRADE_THEME.surface,
+    fill: surface,
     border: color,
     borderWidth: 1,
     borderRadius: TRADE_THEME.radius,

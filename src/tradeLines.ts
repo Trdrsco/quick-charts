@@ -322,6 +322,14 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     return Math.ceil(octx.measureText(text).width)
   }
 
+  /** The chart's OWN background. The pill paints on it so it reads as part of the chart rather than a
+   *  dark patch stamped over it — and being opaque is also what stops the price line running through
+   *  the text and the icons. Read live, so a theme switch cannot leave the pills behind. */
+  const chartBackground = (): string => {
+    const bg = chart.options().layout?.background as { color?: string; topColor?: string } | undefined
+    return bg?.color ?? bg?.topColor ?? DEFAULT_OVERRIDES.appearance.background
+  }
+
   const plotRightEdge = (): number => container.clientWidth - chart.priceScale('right').width()
 
   /** Which side of the entry a leg occupies: a target sits in profit, a stop in loss, so the side
@@ -396,6 +404,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           y,
           width: Math.max(0, w - rightEdge),
           color: entry.color,
+          surface: chartBackground(),
           text: fmtPrice(entry.price, opts.tick),
           outlined: entry.kind === 'stop',
         })
@@ -491,17 +500,32 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         if (normalizeRoot(p.instrument) !== root) continue
         const long = p.qty > 0
         const pnl = positionPnlDisplay(p, t.pnlMode, opts.tick, markNow(), opts.currency ?? null)
+        // A handle is an ADD affordance. Once that leg is resting it has its own line, with its own
+        // price, P&L and ✕ — so the handle would offer to create a second one, and the line it belongs
+        // to already says everything about it. The exit's own line is where it is edited from there.
+        const restingExit = (type: 'limit' | 'stop') =>
+          opts.snapshot.orders.some(
+            (o) =>
+              o &&
+              o.status === 'working' &&
+              o.orderType === type &&
+              normalizeRoot(o.instrument) === root &&
+              (p.qty > 0 ? o.side === 'sell' : o.side === 'buy'),
+          )
+        const hasTp = restingExit('limit')
+        const hasSl = restingExit('stop')
         // Identity, P&L and the controls all live in the overlay pill — the native line carries no
         // title, so nothing that looks like a button is painted anywhere it can't be tapped.
         desired.set(`pos:${p.instrument}`, {
           price: p.avgPrice,
           color: long ? t.buyColor : t.sellColor,
-          lineWidth: t.positionLineWidth,
+          lineWidth: t.lineWidth,
           lineStyle: 0,
           title: '',
           kind: 'position',
           instrument: p.instrument,
           spec: buildPositionParts({
+            surface: chartBackground(),
             qty: p.qty,
             avgPrice: p.avgPrice,
             pnlText: pnl.text,
@@ -511,8 +535,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             supportClose: armed(),
             // A handle renders only where the broker can act and the tick is known — a drag with no
             // tick cannot snap, so the control would take a gesture it must then refuse.
-            supportTakeProfit: armed() && opts.exits !== false && !!opts.tick,
-            supportStopLoss: armed() && opts.exits !== false && !!opts.tick,
+            supportTakeProfit: armed() && opts.exits !== false && !!opts.tick && !hasTp,
+            supportStopLoss: armed() && opts.exits !== false && !!opts.tick && !hasSl,
             priceText: formatLinePrice(p.avgPrice),
           }),
         })
@@ -536,15 +560,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         desired.set(`ord:${o.brokerOrderId}`, {
           price,
           color,
-          lineWidth: t.orderLineWidth,
+          lineWidth: t.lineWidth,
           lineStyle: exitKind ? 0 : o.orderType === 'stop' ? 2 : 1,
           title: '',
           kind: o.orderType,
           instrument: o.instrument,
           brokerOrderId: o.brokerOrderId,
           spec: exitKind
-            ? buildExitParts({ kind: exitKind, qty: o.qty, pnlText: exitPnl?.text ?? null, pnlSign: exitPnl?.sign ?? null, supportCancel: armed() })
+            ? buildExitParts({ surface: chartBackground(), kind: exitKind, qty: o.qty, pnlText: exitPnl?.text ?? null, pnlSign: exitPnl?.sign ?? null, supportCancel: armed() })
             : buildOrderParts({
+                surface: chartBackground(),
                 qty: o.qty,
                 label: `${buy ? 'BUY' : 'SELL'} ${o.orderType.toUpperCase()}`,
                 color,
@@ -577,6 +602,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             previewId: ln.id,
             editable: ln.editable,
             spec: buildPreviewParts({
+              surface: chartBackground(),
               label: ln.label,
               qty: ln.qty,
               color: ln.kind === 'sl' ? PREVIEW_SL : ln.kind === 'tp' ? PREVIEW_TP : PREVIEW_ENTRY,
@@ -797,7 +823,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             ghost: series.createPriceLine({
               price: pos.avgPrice,
               color: kind === 'tp' ? T().tpColor : T().slColor,
-              lineWidth: T().orderLineWidth,
+              lineWidth: T().lineWidth,
               lineStyle: 0,
               axisLabelVisible: true,
               title: '',

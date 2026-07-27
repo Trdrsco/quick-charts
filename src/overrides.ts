@@ -28,10 +28,9 @@ export interface ChartOverrides {
     showPositions: boolean
     /** Draw working-order lines (draggable to reprice when armed). */
     showOrders: boolean
-    /** Line width for the position average line. */
-    positionLineWidth: 1 | 2 | 3
-    /** Line width for working-order lines. */
-    orderLineWidth: 1 | 2 | 3
+    /** One width for EVERY trade line. A position and its exits are the same class of object, and a
+     *  separate width per class only ever produced an accidental hierarchy. */
+    lineWidth: 1 | 2 | 3
     /** Buy/sell execution arrows from the fill ledger. */
     executionMarks: boolean
     /** Position-line P&L unit: broker money, tick distance, or percent from entry. */
@@ -60,8 +59,7 @@ export const DEFAULT_OVERRIDES: ChartOverrides = {
     slColor: '#ff9800',
     showPositions: true,
     showOrders: true,
-    positionLineWidth: 1,
-    orderLineWidth: 1,
+    lineWidth: 1,
     executionMarks: true,
     pnlMode: 'money',
   },
