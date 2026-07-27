@@ -8,6 +8,7 @@ import {
   formatPnlMoney,
   formatPnlPercent,
   formatPnlTicks,
+  findPart,
   hitTestParts,
   layoutParts,
   PART_H,
@@ -326,6 +327,42 @@ describe('draft (order ticket) line', () => {
     for (const type of ['Market', 'Limit', 'Stop']) {
       expect(find(draft({ orderType: type }), 'pnl').spec.text).toBe(type)
     }
+  })
+
+  it('makes the side chip a submit button, not a readout', () => {
+    const root = draft()
+    const side = find(root, 'side')
+    expect(side.role).toBe('submit')
+    expect(hitTestParts(root, side.x + 4, CENTER_Y)?.role).toBe('submit')
+    // It is filled solid with the accent, so its hover has to lift from above rather than tint.
+    expect(side.spec.fillHover).toBe(TRADE_THEME.onAccentHover)
+  })
+
+  it('keeps the size chip and the send chip apart', () => {
+    const root = draft()
+    const qty = find(root, 'qty')
+    const side = find(root, 'side')
+    expect(hitTestParts(root, qty.x + 4, CENTER_Y)?.role).toBe('qty')
+    expect(hitTestParts(root, side.x + 4, CENTER_Y)?.role).toBe('submit')
+    expect(side.x + side.w).toBeLessThan(qty.x)
+  })
+
+  it('says why the chip cannot send when it cannot', () => {
+    expect(find(draft({ submitTooltip: 'Trading is locked for this account' }), 'side').spec.tooltip).toBe('Trading is locked for this account')
+  })
+
+  it('carries the ✕ that stands the ticket down', () => {
+    expect(hitTestParts(draft(), find(draft(), 'close').x + 4, CENTER_Y)?.role).toBe('close')
+    expect(find(draft({ supportCancel: false }), 'close')).toBeUndefined()
+  })
+
+  it('locates a chip by role on a line that has moved', () => {
+    const root = draft()
+    // findPart answers "where is that part now" — the release path uses it because a market draft
+    // rides the mark, so the chip is rarely on the pixel it was pressed on.
+    expect(findPart(root, 'qty')).toBe(find(root, 'qty'))
+    expect(findPart(root, 'submit')).toBe(find(root, 'side'))
+    expect(findPart(root, 'reverse')).toBeNull()
   })
 })
 

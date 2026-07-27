@@ -38,6 +38,7 @@ import {
   formatPnlMoney,
   formatPnlPercent,
   formatPnlTicks,
+  findPart,
   hitTestParts,
   layoutParts,
   withAlpha,
@@ -142,6 +143,8 @@ export interface PreviewSet {
   orderType?: string
   /** The ORDER quantity — a bare Market order has no lines, so the size cannot come from one. */
   qty?: number
+  /** The quantity grid the host's editor should step by. */
+  qtyStep?: number
 }
 
 export interface TradeLineHost {
@@ -182,6 +185,17 @@ export interface TradeLineOptions {
   preview?: PreviewSet | null
   /** A dragged preview line's new (snapped, banded) price. The ONLY thing a preview drag calls. */
   onPreviewEdit?: (id: string, price: number) => void
+  /** The QUANTITY chip on the ticket's draft line was tapped. The package owns no editor — it reports
+   *  where the chip is (viewport coords, for anchoring) and what it currently reads, and the new value
+   *  comes back through the host's own draft relay. PRE-MONEY: nothing here reaches a broker. */
+  onQtyEdit?: (args: { qty: number; step: number; rect: { x: number; y: number; w: number; h: number } }) => void
+  /** The SIDE chip on the ticket's draft line was tapped — send the composed ticket, now.
+   *
+   *  This is the one callback on the draft path that SPENDS MONEY, so it is deliberately its own
+   *  channel and carries no order in it: the host submits through the ticket's existing path against
+   *  the ticket's own state, and the chart never assembles a second order. Fires only with an account
+   *  armed and trading unlocked. */
+  onDraftSubmit?: () => void
   /** A preview line's ✕. The ONLY thing a preview ✕-tap calls. */
   onPreviewCancel?: (id: string) => void
   /** A confirmed action's feedback (with an optional Undo for a protective stop move). */
@@ -295,10 +309,19 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
    *  from view entirely, which is smoother than animating the correction would be. */
   const pendingMoves = new Map<string, { price: number; until: number }>()
   const PENDING_MOVE_MS = 8000
+  /** The same hold for a DRAFT level, whose round trip is a few React renders rather than a network
+   *  call — so the window that bounds an unanswered drop is correspondingly short. */
+  const PENDING_DRAFT_MS = 2000
   let dragging: DragState | null = null
   let previewDrag: PreviewDragState | null = null
   let pendingX: PendingX | null = null
   let pendingPreviewX: PendingPreviewX | null = null
+  /** A tap in progress on the draft's quantity chip — committed on release if it stayed a tap. */
+  let pendingQty: { key: string; pointerId: number; downX: number; downY: number } | null = null
+  /** A tap in progress on the draft's side chip — SENDS on release if it stayed a tap. The press and
+   *  the send are split for the same reason every other money control here splits them: a press that
+   *  slides off the chip is a change of mind, and must not spend. */
+  let pendingSubmit: { key: string; pointerId: number; downX: number; downY: number } | null = null
   let bracketDrag: BracketDragState | null = null
   let raf: number | null = null
   let latestClientY: number | null = null
@@ -548,7 +571,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   /** Roles that actually do something when pressed — the set that earns a pointer cursor. The qty chip
    *  and P&L cell are readouts and keep the chart's own cursor: offering a pressed affordance over
    *  something inert is a promise the line cannot keep. */
-  const isControlRole = (role: PartHit['role']): boolean => role === 'reverse' || role === 'tp' || role === 'sl' || role === 'close'
+  const isControlRole = (role: PartHit['role']): boolean => role === 'reverse' || role === 'tp' || role === 'sl' || role === 'close' || role === 'submit'
   container.addEventListener('pointermove', onHoverMove)
 
   // ── Draw / reconcile BY IDENTITY (update/create/remove only what changed — a teardown-per-tick
@@ -679,10 +702,23 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         const anchor = entryLine && entryLine.price > 0 ? entryLine.price : markNow()
         const hasLeg = (id: 'tp' | 'sl') => pv.lines.some((l) => l.id === id && l.price > 0)
         const draftQty = pv.qty ?? entryLine?.qty ?? ''
+        // A RESTING type gets a draggable entry line even before a price is typed: dragging it off the
+        // mark IS how that price gets set, and the drop writes it into the ticket's own field. A market
+        // order has no price to set, so its line only ever reports where it would fill.
+        const entryDraggable = pv.orderType === 'Limit' || pv.orderType === 'Stop'
+        // The side chip's tooltip states the action, or the reason there isn't one — a money control
+        // that silently ignores a press is worse than one that says why.
+        const submitTooltip = !interactive()
+          ? 'Select an account to trade'
+          : opts.locked
+            ? 'Trading is locked for this account'
+            : `Send this ${String(pv.orderType).toLowerCase()} order`
 
         if (!entryLine && anchor != null && pv.orderType) {
           desired.set('preview:entry', {
-            price: anchor,
+            // Held after a drop, so a resting entry dragged off the mark stays where it was dropped
+            // while the ticket takes the price — the mark it rides would otherwise pull it straight back.
+            price: heldPrice('preview:entry', anchor),
             color: sideAccent,
             lineWidth: t.lineWidth,
             lineStyle: 3, // LargeDashed — nothing is resting yet
@@ -690,7 +726,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             kind: 'preview',
             instrument: pv.instrument,
             previewId: 'entry',
-            editable: false,
+            editable: entryDraggable,
             spec: buildDraftParts({
               surface: chartBackground(),
               accent: sideAccent,
@@ -699,7 +735,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
               orderType: pv.orderType,
               supportTakeProfit: !hasLeg('tp') && !!opts.tick,
               supportStopLoss: !hasLeg('sl') && !!opts.tick,
-              supportCancel: false, // a market ticket is dismissed from the ticket, not the chart
+              supportCancel: true, // the ✕ stands the ticket down — the same gesture on every order type
+              submitTooltip,
             }),
           })
         }
@@ -718,7 +755,9 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
               ? potentialPnl({ qty: long ? 1 : -1, avgPrice: anchor }, ln.price, Math.abs(Number(ln.qty) || 0), opts.pointValue, opts.currency ?? null)
               : null
           desired.set(`preview:${ln.id}`, {
-            price: ln.price,
+            // Held until the ticket's own re-derived draft carries the dropped price back — the hold
+            // releases the moment the two agree, so the line never bounces through the round trip.
+            price: heldPrice(`preview:${ln.id}`, ln.price),
             color,
             lineWidth: t.lineWidth,
             lineStyle: 3, // LargeDashed — nothing is resting yet
@@ -737,6 +776,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
                   supportTakeProfit: !hasLeg('tp') && !!opts.tick,
                   supportStopLoss: !hasLeg('sl') && !!opts.tick,
                   supportCancel: ln.editable,
+                  submitTooltip,
                 })
               : buildExitParts({
                   surface: chartBackground(),
@@ -943,16 +983,44 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   }
 
   const onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0 || dragging || previewDrag || pendingX || pendingPreviewX) return
+    if (e.button !== 0 || dragging || previewDrag || pendingX || pendingPreviewX || pendingQty || pendingSubmit) return
     if (!interactive()) return
     const capturedScope = opts.scope!
     const capturedSymbol = opts.symbol
 
+    const handle = partAt(e.clientX, e.clientY)
+
+    // The DRAFT's quantity chip is a control, not a readout: it opens the host's editor. Only the
+    // draft's — a resting order's size is changed at the venue, which is a different action. It sits
+    // ahead of the lock guard on purpose: sizing a ticket that has not been sent is not trading, and
+    // the cursor promises the chip answers, so the tap has to answer too.
+    if (handle && handle.hit.role === 'qty' && handle.entry.kind === 'preview' && handle.entry.previewId === 'entry') {
+      e.preventDefault()
+      try {
+        container.setPointerCapture(e.pointerId)
+      } catch {
+        /* capture is best-effort */
+      }
+      pendingQty = { key: handle.key, pointerId: e.pointerId, downX: e.clientX, downY: e.clientY }
+      return
+    }
+
     // LIVE lines (position avg / working order) — only when trading isn't locked.
     if (!opts.locked) {
+      // The draft's side chip SENDS the ticket. It sits under the lock guard with every other money
+      // control — unlike the quantity chip above it, which only sizes something not yet sent.
+      if (handle && handle.hit.role === 'submit' && handle.entry.kind === 'preview' && handle.entry.previewId === 'entry') {
+        e.preventDefault()
+        try {
+          container.setPointerCapture(e.pointerId)
+        } catch {
+          /* capture is best-effort */
+        }
+        pendingSubmit = { key: handle.key, pointerId: e.pointerId, downX: e.clientX, downY: e.clientY }
+        return
+      }
       // A TP/SL handle: the gesture IS the price entry, so a bare tap does nothing and only a drag
       // off the line commits a level.
-      const handle = partAt(e.clientX, e.clientY)
       if (handle && (handle.hit.role === 'tp' || handle.hit.role === 'sl')) {
         // The handle sits on either a LIVE position or the ticket's DRAFT. The draft variant is
         // pre-money — it is allowed while trading is locked, and its drop routes to the host's own
@@ -1112,8 +1180,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       // Overlay CONTROLS first, and they all take the same pointer: ⇄, TP, SL and ✕ are one family of
       // things you press, and giving the drag handles a different cursor made them read as a different
       // kind of control than the button beside them.
-      const part = opts.locked ? null : partAt(e.clientX, e.clientY)
-      if (part && isControlRole(part.hit.role)) {
+      const part = partAt(e.clientX, e.clientY)
+      // The draft's quantity chip answers the pointer even while trading is LOCKED — editing a ticket
+      // that has not been sent is not trading. Every other control needs the account armed.
+      const draftQtyChip = !!part && part.hit.role === 'qty' && part.entry.kind === 'preview' && part.entry.previewId === 'entry'
+      if (draftQtyChip || (part && !opts.locked && isControlRole(part.hit.role))) {
         container.style.cursor = 'pointer'
         return
       }
@@ -1188,8 +1259,15 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     // Valid → execute, holding the line at the SNAPPED price the plan is sending. The snapshot is
     // reconciled against that exact value, so when the broker echoes it back the hold releases with
-    // nothing to move.
-    if (plan.price != null) pendingMoves.set(drag.key, { price: plan.price, until: Date.now() + PENDING_MOVE_MS })
+    // nothing to move. The line and its pill land on that price NOW rather than waiting for the next
+    // reconcile: the drag left them on the unsnapped cursor price and `entry.price` on the original,
+    // and any paint in between would show the drop bouncing back before it settles.
+    if (plan.price != null) {
+      pendingMoves.set(drag.key, { price: plan.price, until: Date.now() + PENDING_MOVE_MS })
+      if (entry) entry.price = plan.price
+      entry?.line.applyOptions({ price: plan.price })
+      paintOverlay()
+    }
     execPlan(plan, drag.capturedScope)
     return true
   }
@@ -1226,12 +1304,27 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       return true
     }
     const ctx = { tick: opts.tick, entryRef: previewEntryRef(), policy: opts.policy }
-    const emitted = dispatchPreviewDrop(drag.previewId, drag.lastValidPrice, ctx, (id, price) => opts.onPreviewEdit?.(id, price))
+    let landed: number | null = null
+    const emitted = dispatchPreviewDrop(drag.previewId, drag.lastValidPrice, ctx, (id, price) => {
+      landed = price
+      opts.onPreviewEdit?.(id, price)
+    })
     if (!emitted) {
       snapBack()
       opts.onError?.('Outside the allowed range, reverted')
+      return true
     }
-    // Emitted → leave the line where dropped; the host's next preview push reconciles it.
+    // Land the line on the SNAPPED price and hold it there. The drag left it unsnapped under the
+    // cursor and left `entry.price` at the original, so without this the very next reconcile — which
+    // runs long before the host's re-derived draft comes back through React — repaints the line and
+    // its pill at the OLD price, and the drop visibly bounces. Same hold the live path uses, with a
+    // shorter fuse: what it waits on is a couple of renders, not a broker.
+    if (landed != null) {
+      if (entry) entry.price = landed
+      entry?.line.applyOptions({ price: landed })
+      pendingMoves.set(drag.key, { price: landed, until: Date.now() + PENDING_DRAFT_MS })
+      paintOverlay()
+    }
     return true
   }
 
@@ -1299,6 +1392,51 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   }
 
   const onPointerUp = (e: PointerEvent) => {
+    // The draft's side chip — the ONE money tap on a draft line. A tap commits against the LINE it
+    // pressed, not the pixels: a market draft rides the live mark, so the chip can slide out from
+    // under a perfectly still finger, and re-hit-testing the release would drop the send exactly when
+    // the market is moving fastest. What still has to hold is that the pointer didn't wander off (a
+    // change of mind) and that the line is still there (it reconciled away mid-press).
+    const ps = pendingSubmit
+    if (ps && e.pointerId === ps.pointerId) {
+      pendingSubmit = null
+      try {
+        container.releasePointerCapture(e.pointerId)
+      } catch {
+        /* capture may already be released */
+      }
+      if (Math.abs(e.clientX - ps.downX) > CLICK_SLOP || Math.abs(e.clientY - ps.downY) > CLICK_SLOP) return
+      if (!lines.has(ps.key)) return
+      if (opts.locked || !interactive()) return // the lock can land between the press and the release
+      opts.onDraftSubmit?.()
+      return
+    }
+    const pq = pendingQty
+    if (pq && e.pointerId === pq.pointerId) {
+      pendingQty = null
+      try {
+        container.releasePointerCapture(e.pointerId)
+      } catch {
+        /* capture may already be released */
+      }
+      if (Math.abs(e.clientX - pq.downX) > CLICK_SLOP || Math.abs(e.clientY - pq.downY) > CLICK_SLOP) return
+      // Resolved from the LINE, not from the pointer: a market draft rides the live mark, so by the
+      // time the finger lifts the chip has often slid off the pixel it was pressed on — and the editor
+      // has to open where the chip is NOW, not where it was.
+      const laid = layouts.get(pq.key)
+      const n = laid ? findPart(laid, 'qty') : null
+      if (!n) return
+      // Every part rect is CONTAINER-local (that is the space the overlay paints and hit-tests in);
+      // the host hangs a viewport-positioned popover off it, so the container origin goes back on here
+      // rather than the host having to know how the chart lays its canvas out.
+      const box = container.getBoundingClientRect()
+      opts.onQtyEdit?.({
+        qty: Number(opts.preview?.qty ?? 0),
+        step: Number(opts.preview?.qtyStep ?? 1),
+        rect: { x: box.left + n.x, y: box.top + n.y, w: n.w, h: n.h },
+      })
+      return
+    }
     if (finishBracket(e)) return
     // A preview ✕ — handled first + in its OWN block. STRUCTURAL: on a clean tap it ONLY calls
     // onPreviewCancel(id); there is NO runTarget / execPlan / broker call anywhere on this path.
@@ -1389,6 +1527,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     pendingX = null
     pendingPreviewX = null
+    pendingQty = null
+    pendingSubmit = null
     restoreChart()
     container.style.cursor = ''
   }
@@ -1410,6 +1550,17 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         /* best-effort */
       }
       pendingPreviewX = null
+    }
+    // A pending chip tap has no ghost to unwind, but it MUST be released: pointerdown refuses to arm
+    // anything while one is outstanding, so a cancelled tap left behind would deaden the whole surface.
+    if (pendingQty?.pointerId === e.pointerId || pendingSubmit?.pointerId === e.pointerId) {
+      try {
+        container.releasePointerCapture(e.pointerId)
+      } catch {
+        /* best-effort */
+      }
+      pendingQty = null
+      pendingSubmit = null
     }
     const drag = dragging ?? previewDrag
     if (drag && e.pointerId === drag.pointerId) {

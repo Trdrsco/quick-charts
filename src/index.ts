@@ -37,6 +37,7 @@ export {
   formatPnlMoney,
   formatPnlPercent,
   formatPnlTicks,
+  findPart,
   hitTestParts,
   layoutParts,
   unionRect,

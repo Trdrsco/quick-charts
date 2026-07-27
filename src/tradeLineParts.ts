@@ -16,6 +16,8 @@ export type PartRole =
   | 'sl'
   | 'qty'
   | 'pnl'
+  /** The draft's side chip. The ONE part on a line that spends money: it sends the composed ticket. */
+  | 'submit'
   | 'close'
   | 'divider'
   | 'spacer'
@@ -89,6 +91,9 @@ export const TRADE_THEME = {
   dividerDim: '#142E61',
   closeHover: 'rgba(41, 98, 255, 0.15)',
   onAccent: '#ffffff',
+  /** Hover wash for a chip that is ALREADY filled solid with an accent — a tint of the accent would
+   *  vanish into it, so the lift has to come from above in white. */
+  onAccentHover: 'rgba(255, 255, 255, 0.18)',
   profit: '#089981',
   loss: '#F23645',
   tp: '#089981',
@@ -474,6 +479,9 @@ export interface DraftPartsInput {
   supportTakeProfit: boolean
   supportStopLoss: boolean
   supportCancel: boolean
+  /** Tooltip on the side chip. Empty when the chip cannot send (no account, or trading locked) — the
+   *  caller says WHY there, so the chip explains itself rather than looking inert. */
+  submitTooltip?: string
 }
 
 /** The order ticket's PENDING order, drawn with the same machinery as a live position: the side takes
@@ -486,14 +494,17 @@ export function buildDraftParts(input: DraftPartsInput): PartSpec {
   const children: PartSpec[] = [
     {
       id: 'side',
-      role: 'pnl', // a readout: it states the side, it does not change it
+      // The chip both STATES the side and sends the ticket at it. It is the only money control on a
+      // draft line, so it is the only part here that is gated by the account lock.
+      role: 'submit',
       text: input.sideLabel,
       textColor: TRADE_THEME.onAccent,
       fill: input.accent,
+      fillHover: TRADE_THEME.onAccentHover,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
       borderRadius: TRADE_THEME.radius,
-      tooltip: '',
+      tooltip: input.submitTooltip ?? '',
     },
     { id: 'gap-side', role: 'spacer', width: TRADE_THEME.gap },
   ]
@@ -642,7 +653,19 @@ export function hitTestParts(root: LayoutNode, x: number, y: number): PartHit | 
 }
 
 function isInteractive(role: PartRole): boolean {
-  return role === 'reverse' || role === 'tp' || role === 'sl' || role === 'close' || role === 'qty' || role === 'pnl'
+  return role === 'reverse' || role === 'tp' || role === 'sl' || role === 'close' || role === 'qty' || role === 'pnl' || role === 'submit'
+}
+
+/** The first node with this role, in paint order. Where `hitTestParts` answers "what is under the
+ *  pointer", this answers "where is that part now" — which is what a line that MOVES needs at the end
+ *  of a gesture, since the part it started on may no longer be under the pointer. */
+export function findPart(root: LayoutNode, role: PartRole): LayoutNode | null {
+  if (root.role === role) return root
+  for (const child of root.children) {
+    const hit = findPart(child, role)
+    if (hit) return hit
+  }
+  return null
 }
 
 /** The union box of a laid-out tree — the region to repaint and the bound a pan gesture must clear. */
