@@ -13,6 +13,10 @@ export interface ChartTheme {
   textColor?: string
   upColor?: string
   downColor?: string
+  /** Axis-label size in px. Injected rather than hardcoded because this text is drawn into a canvas,
+   *  where a stylesheet cannot reach it — an embedder passes the size its own type scale uses so the
+   *  chart's labels stay in step with the surface around them. */
+  fontSize?: number
   /** 'dark' | 'light' base the other defaults derive from when a specific color is not given. */
   mode?: 'dark' | 'light'
 }

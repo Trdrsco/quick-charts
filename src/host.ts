@@ -36,6 +36,7 @@ export interface ResolvedTheme {
   textColor: string
   upColor: string
   downColor: string
+  fontSize: number
 }
 
 /** Resolve theme overrides over the mode's defaults — a partial theme tints only what it names. */
@@ -47,6 +48,7 @@ export function resolveTheme(theme?: ChartTheme): ResolvedTheme {
     textColor: theme?.textColor ?? (dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.55)'),
     upColor: theme?.upColor ?? BRAND_UP,
     downColor: theme?.downColor ?? BRAND_DOWN,
+    fontSize: theme?.fontSize ?? 13,
   }
 }
 
@@ -86,7 +88,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     layout: {
       background: { type: ColorType.Solid, color: theme.background },
       textColor: theme.textColor,
-      fontSize: 11,
+      // From the shared scale — canvas text is outside Tailwind and would otherwise drift alone.
+      fontSize: theme.fontSize,
       attributionLogo: false,
     },
     grid: {
