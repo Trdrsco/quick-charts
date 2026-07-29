@@ -211,6 +211,10 @@ export interface BrokerExec {
   drop: false
   method: 'setExits' | 'moveOrder' | 'flatten' | 'cancel'
   instrument: string
+  /** `setExits` only — WHICH half of the protective pair this drop moves. Required on that method
+   *  because the two legs share one call: sending a target's price as a stop would move the wrong
+   *  level (and through the market). */
+  exitLeg?: 'stop' | 'target'
   price?: number
   /** stop_limit only — the conversion limit, sent alongside `price` (the trigger) in one modify. */
   stopLimitPrice?: number
@@ -260,6 +264,27 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
     if (typeof cur !== 'number' || cur <= 0) return drop('No current limit price to band against')
     const errs = validate(snapped, { tick, ref: cur })
     if (errs.length) return drop(errs[0]!)
+    // Classify AT DROP, exactly as the stop branch below does. A limit that CLOSES an open position is
+    // the position's TARGET, and a target is half of a cancel-linked pair — venues express that as a
+    // close-only flag or an OCO group, and both are properties of the ORDER, not of its price. Moving
+    // it by cancel-and-re-place would hand back an ordinary opening order in its place, so a protective
+    // target moves through the exits primitive, which re-places the pair and keeps the link. Ambiguous
+    // books (a scale-in with more than one closing limit) can't say WHICH leg was grabbed, so they stay
+    // on the plain reprice — the same rule, and the same limit, as the protective stop.
+    const pos = positions.find((p) => p.instrument === ord.instrument && p.qty !== 0)
+    const closesPosition = (o: BrokerOrder): boolean => !!pos && (pos.qty > 0 ? o.side === 'sell' : o.side === 'buy')
+    const closingLimits = orders.filter((o) => o.orderType === 'limit' && o.instrument === ord.instrument && o.status === 'working' && closesPosition(o))
+    if (closesPosition(ord) && closingLimits.length === 1) {
+      return {
+        drop: false,
+        method: 'setExits',
+        exitLeg: 'target',
+        instrument: ord.instrument,
+        price: snapped,
+        intentKey: `target|${scope}|${ord.instrument}|${snapped}`,
+        toast: `Target moved to ${fmtPrice(snapped, tick)}`,
+      }
+    }
     return {
       drop: false,
       method: 'moveOrder',
@@ -328,6 +353,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
     return {
       drop: false,
       method: 'setExits',
+      exitLeg: 'stop',
       instrument: ord.instrument,
       price: snapped,
       intentKey: `stop|${scope}|${ord.instrument}|${snapped}`,

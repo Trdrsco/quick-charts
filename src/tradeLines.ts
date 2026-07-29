@@ -989,7 +989,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     const run = async (): Promise<void> => {
       if (plan.method === 'setExits') {
-        await broker.setExits({ instrument: plan.instrument, stopLoss: plan.price!, intentKey: plan.intentKey! })
+        // The leg the plan named, and ONLY that leg: the omitted one stays exactly as it rests (the
+        // pair's three-state contract), so moving a target never disturbs the stop protecting the same
+        // position — and a target is never sent as a stop, which would place it through the market.
+        const level = plan.exitLeg === 'target' ? { takeProfit: plan.price! } : { stopLoss: plan.price! }
+        await broker.setExits({ instrument: plan.instrument, ...level, intentKey: plan.intentKey! })
       } else if (plan.method === 'moveOrder') {
         await broker.moveOrder({ brokerOrderId: plan.brokerOrderId!, instrument: plan.instrument, side: plan.side!, qty: plan.qty!, orderType: plan.orderType!, price: plan.price!, stopLimitPrice: plan.stopLimitPrice, intentKey: plan.intentKey! })
       } else if (plan.method === 'flatten') {
