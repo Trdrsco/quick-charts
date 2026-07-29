@@ -733,10 +733,13 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         const anchor = entryLine && entryLine.price > 0 ? entryLine.price : markNow()
         const hasLeg = (id: 'tp' | 'sl') => pv.lines.some((l) => l.id === id && l.price > 0)
         const draftQty = pv.qty ?? entryLine?.qty ?? ''
-        // A RESTING type gets a draggable entry line even before a price is typed: dragging it off the
-        // mark IS how that price gets set, and the drop writes it into the ticket's own field. A market
-        // order has no price to set, so its line only ever reports where it would fill.
-        const entryDraggable = pv.orderType === 'Limit' || pv.orderType === 'Stop'
+        // EVERY resting type gets a draggable entry line, even before a price is typed: dragging it off
+        // the mark IS how that price gets set, and the drop writes it into the ticket's own field. Only
+        // a market order is excluded — it has no price to set, so its line only reports where it would
+        // fill. A stop-limit drags its TRIGGER: that is the level this line is drawn at and the field
+        // the panel writes back, so the gesture always means one unambiguous price (the conversion
+        // limit is typed). Naming the resting types individually is what silently dropped stop-limit.
+        const entryDraggable = pv.orderType !== 'Market'
         // The side chip's tooltip states the action, or the reason there isn't one — a money control
         // that silently ignores a press is worse than one that says why.
         const submitTooltip = !interactive()
