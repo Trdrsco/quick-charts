@@ -9,11 +9,12 @@
 // functions WHAT to do. A host's policy is the same gate its server runs, so the chart drag and the
 // backend can never disagree on a valid price.
 
-/** What a live trade line represents. `stop_limit` renders (visibility is truth: a resting stop-limit
- *  must appear on the chart like any working order) but is NEVER draggable — one line cannot express
- *  its two prices, so a drag would have to guess which one moved; the second price is typed in the
- *  ticket. Its ✕ cancel works like any order line's. */
-export type LineKind = 'position' | 'stop' | 'limit' | 'stop_limit'
+/** What a live trade line represents. A stop-limit order renders as TWO lines, one per price — the
+ *  reference behavior (docs/chart-trading-corpus/stop-limit-order-lines.md): `stop_limit` is the
+ *  TRIGGER line (it carries the order's ✕ — cancelling cancels the whole order), `stop_limit_limit`
+ *  is its conversion-limit line (no second ✕ — one order cancels once). Each line drags its OWN
+ *  price; the un-dragged price rides along unchanged in the same atomic replace. */
+export type LineKind = 'position' | 'stop' | 'limit' | 'stop_limit' | 'stop_limit_limit'
 
 /** An open position, as the broker layer needs it. `unrealizedPnl` is the BROKER's own number or
  *  null — the package renders null as no suffix, never a locally-computed fake. */
@@ -25,8 +26,8 @@ export interface BrokerPosition {
   unrealizedPnl: number | null
 }
 
-/** A working order, as the broker layer needs it. Exactly one of trigger/limit is the line's price
- *  (stop → triggerPrice, limit → limitPrice). */
+/** A working order, as the broker layer needs it. A stop draws at triggerPrice, a limit at
+ *  limitPrice; a stop_limit uses BOTH (trigger line + conversion-limit line). */
 export interface BrokerOrder {
   brokerOrderId: string
   instrument: string
@@ -68,8 +69,19 @@ export type PricePolicy = (price: number, ctx: PriceValidationCtx) => string[]
  *  price is part of it) — map it to your backend's dedup key, or ignore it. */
 export interface ChartBroker {
   /** Reprice a working order IN PLACE (atomic on the backend — never client cancel+place). MUST
-   *  reject (throw) when the backend reports anything but a live amend/replace. */
-  moveOrder(args: { brokerOrderId: string; instrument: string; side: 'buy' | 'sell'; qty: number; orderType: 'stop' | 'limit'; price: number; intentKey: string }): Promise<void>
+   *  reject (throw) when the backend reports anything but a live amend/replace. For a stop_limit,
+   *  `price` is the TRIGGER and `stopLimitPrice` the conversion limit — BOTH are always sent (one
+   *  changed by the drag, the other passed through as last reported), one atomic modify. */
+  moveOrder(args: {
+    brokerOrderId: string
+    instrument: string
+    side: 'buy' | 'sell'
+    qty: number
+    orderType: 'stop' | 'limit' | 'stop_limit'
+    price: number
+    stopLimitPrice?: number
+    intentKey: string
+  }): Promise<void>
   /** Set/replace the position's protective exits as ONE unit. The pair is the primitive because the
    *  two levels are cancel-linked siblings at the venue — set independently, a survivor outlives its
    *  position as an OPENING order. Three-state per level: a number sets it, `null` removes it, and
@@ -173,6 +185,8 @@ export function pickHit(cands: HitCandidate[]): Hit | null {
 export type DropTarget =
   | { type: 'reprice-stop'; brokerOrderId: string }
   | { type: 'reprice-limit'; brokerOrderId: string }
+  /** One leg of a stop_limit's two lines — the drag moves THAT price; the other passes through. */
+  | { type: 'reprice-stop-limit'; brokerOrderId: string; leg: 'trigger' | 'limit' }
   | { type: 'flatten'; instrument: string }
   | { type: 'cancel'; brokerOrderId: string }
 
@@ -198,10 +212,12 @@ export interface BrokerExec {
   method: 'setExits' | 'moveOrder' | 'flatten' | 'cancel'
   instrument: string
   price?: number
+  /** stop_limit only — the conversion limit, sent alongside `price` (the trigger) in one modify. */
+  stopLimitPrice?: number
   brokerOrderId?: string
   side?: 'buy' | 'sell'
   qty?: number
-  orderType?: 'stop' | 'limit'
+  orderType?: 'stop' | 'limit' | 'stop_limit'
   intentKey?: string
   toast: string
   /** A protective stop's previous trigger to restore on Undo (null ⇒ no undo offered for this move). */
@@ -255,6 +271,36 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
       orderType: 'limit',
       intentKey: `replace|${scope}|${ord.brokerOrderId}|${snapped}`,
       toast: `Order moved to ${fmtPrice(snapped, tick)}`,
+    }
+  }
+
+  // reprice-stop-limit: one leg of the order's two lines. The dragged leg bands against ITS OWN
+  // current price (the same convention as any order reprice); the other leg passes through exactly
+  // as the broker last reported it. The reference validates no relation between the two prices
+  // (docs/chart-trading-corpus/stop-limit-order-lines.md §3) — the venue is the authority there.
+  if (target.type === 'reprice-stop-limit') {
+    const ord = orders.find((o) => o.brokerOrderId === target.brokerOrderId && o.status === 'working' && o.orderType === 'stop_limit')
+    if (!ord) return drop('Order no longer working')
+    const trigger = ord.triggerPrice
+    const limit = ord.limitPrice
+    if (typeof trigger !== 'number' || trigger <= 0 || typeof limit !== 'number' || limit <= 0) return drop('Order prices unknown, cannot reprice')
+    const cur = target.leg === 'trigger' ? trigger : limit
+    const errs = validate(snapped, { tick, ref: cur })
+    if (errs.length) return drop(errs[0]!)
+    const nextTrigger = target.leg === 'trigger' ? snapped : trigger
+    const nextLimit = target.leg === 'limit' ? snapped : limit
+    return {
+      drop: false,
+      method: 'moveOrder',
+      instrument: ord.instrument,
+      price: nextTrigger,
+      stopLimitPrice: nextLimit,
+      brokerOrderId: ord.brokerOrderId,
+      side: ord.side,
+      qty: ord.qty,
+      orderType: 'stop_limit',
+      intentKey: `replace|${scope}|${ord.brokerOrderId}|${nextTrigger}|${nextLimit}`,
+      toast: `${target.leg === 'trigger' ? 'Trigger' : 'Limit'} moved to ${fmtPrice(snapped, tick)}`,
     }
   }
 

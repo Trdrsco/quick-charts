@@ -227,7 +227,8 @@ interface LineEntry {
 
 interface DragState {
   key: string
-  kind: 'stop' | 'limit'
+  /** The grabbed line's kind — for a stop-limit it also says WHICH leg the drop reprices. */
+  kind: 'stop' | 'limit' | 'stop_limit' | 'stop_limit_limit'
   brokerOrderId: string
   instrument: string
   originalPrice: number
@@ -645,9 +646,10 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         })
       }
       for (const o of t.showOrders ? opts.snapshot.orders : []) {
-        // Both stop shapes draw at their TRIGGER — the level at which something happens; a stop-limit's
-        // conversion limit is ticket-typed detail, not a chart line. market/trailing rows draw nothing
-        // (no resting level to draw).
+        // A stop/limit draws ONE line at its resting level. A stop-limit draws TWO — trigger AND
+        // conversion limit — the reference behavior (docs/chart-trading-corpus/
+        // stop-limit-order-lines.md); the second line is added after this entry. market/trailing
+        // rows draw nothing (no resting level to draw).
         if (!o || o.status !== 'working' || (o.orderType !== 'stop' && o.orderType !== 'limit' && o.orderType !== 'stop_limit')) continue
         const reported = o.orderType === 'limit' ? o.limitPrice : o.triggerPrice
         if (typeof reported !== 'number' || !isFinite(reported) || reported <= 0) continue
@@ -685,6 +687,32 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
                 supportModifyQty: false,
               }),
         })
+        // A stop-limit's SECOND line — the conversion limit, at its own price, dragging its own
+        // leg. No ✕ here: one order cancels once, from the trigger line (the reference's model).
+        if (o.orderType === 'stop_limit') {
+          const lim = o.limitPrice
+          if (typeof lim === 'number' && isFinite(lim) && lim > 0) {
+            const limPrice = heldPrice(`ordlim:${o.brokerOrderId}`, lim)
+            desired.set(`ordlim:${o.brokerOrderId}`, {
+              price: limPrice,
+              color: buy ? t.buyColor : t.sellColor,
+              lineWidth: t.lineWidth,
+              lineStyle: 1,
+              title: '',
+              kind: 'stop_limit_limit',
+              instrument: o.instrument,
+              brokerOrderId: o.brokerOrderId,
+              spec: buildOrderParts({
+                surface: chartBackground(),
+                qty: o.qty,
+                label: `${buy ? 'BUY' : 'SELL'} ${o.orderType.replace(/_/g, ' ').toUpperCase()}`,
+                color: buy ? t.buyColor : t.sellColor,
+                supportCancel: false,
+                supportModifyQty: false,
+              }),
+            })
+          }
+        }
       }
 
       // Host PREVIEW ghost lines — drawn whenever the preview's instrument matches the charted
@@ -963,7 +991,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       if (plan.method === 'setExits') {
         await broker.setExits({ instrument: plan.instrument, stopLoss: plan.price!, intentKey: plan.intentKey! })
       } else if (plan.method === 'moveOrder') {
-        await broker.moveOrder({ brokerOrderId: plan.brokerOrderId!, instrument: plan.instrument, side: plan.side!, qty: plan.qty!, orderType: plan.orderType!, price: plan.price!, intentKey: plan.intentKey! })
+        await broker.moveOrder({ brokerOrderId: plan.brokerOrderId!, instrument: plan.instrument, side: plan.side!, qty: plan.qty!, orderType: plan.orderType!, price: plan.price!, stopLimitPrice: plan.stopLimitPrice, intentKey: plan.intentKey! })
       } else if (plan.method === 'flatten') {
         await broker.flatten(plan.instrument)
       } else {
@@ -1086,11 +1114,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           pendingX = { key: hit.key, kind: hit.kind, action: hit.isRevZone ? 'reverse' : 'close', instrument: entry.instrument, brokerOrderId: entry.brokerOrderId, pointerId: e.pointerId, downX: e.clientX, downY: e.clientY, capturedScope, capturedSymbol }
           return
         }
-        // Reprice grab — stop/limit only (pickHit never returns a non-X position). Disabled until
-        // the tick is known. A stop_limit line never starts a drag: one line cannot say which of its
-        // TWO prices moved, so the gesture falls through to a chart pan (its ✕ cancel above still works;
-        // repricing one is the ticket's job, where both prices are explicit).
-        if (hit.kind !== 'position' && hit.kind !== 'stop_limit' && entry.brokerOrderId && opts.tick && opts.tick > 0) {
+        // Reprice grab — order lines only (pickHit never returns a non-X position). Disabled until
+        // the tick is known. A stop-limit's TWO lines each drag their own price — the grabbed line's
+        // kind says which leg moved, so the ambiguity that once made stop_limit non-draggable is
+        // structural, not guessed.
+        if (hit.kind !== 'position' && entry.brokerOrderId && opts.tick && opts.tick > 0) {
           e.preventDefault()
           try {
             container.setPointerCapture(e.pointerId)
@@ -1255,7 +1283,14 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       opts.onError?.('Selection changed, move cancelled')
       return true
     }
-    const target: DropTarget = drag.kind === 'stop' ? { type: 'reprice-stop', brokerOrderId: drag.brokerOrderId } : { type: 'reprice-limit', brokerOrderId: drag.brokerOrderId }
+    const target: DropTarget =
+      drag.kind === 'stop'
+        ? { type: 'reprice-stop', brokerOrderId: drag.brokerOrderId }
+        : drag.kind === 'stop_limit'
+          ? { type: 'reprice-stop-limit', brokerOrderId: drag.brokerOrderId, leg: 'trigger' }
+          : drag.kind === 'stop_limit_limit'
+            ? { type: 'reprice-stop-limit', brokerOrderId: drag.brokerOrderId, leg: 'limit' }
+            : { type: 'reprice-limit', brokerOrderId: drag.brokerOrderId }
     const plan = planBrokerDrop(target, drag.lastValidPrice, buildCtx(drag.capturedScope))
     if (plan.drop) {
       snapBack()
@@ -1267,10 +1302,13 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     // nothing to move. The line and its pill land on that price NOW rather than waiting for the next
     // reconcile: the drag left them on the unsnapped cursor price and `entry.price` on the original,
     // and any paint in between would show the drop bouncing back before it settles.
-    if (plan.price != null) {
-      pendingMoves.set(drag.key, { price: plan.price, until: Date.now() + PENDING_MOVE_MS })
-      if (entry) entry.price = plan.price
-      entry?.line.applyOptions({ price: plan.price })
+    // A stop-limit plan carries BOTH prices — the DRAGGED line holds at ITS leg's value (the limit
+    // line pinned to plan.price would jump to the trigger).
+    const heldAt = drag.kind === 'stop_limit_limit' ? plan.stopLimitPrice : plan.price
+    if (heldAt != null) {
+      pendingMoves.set(drag.key, { price: heldAt, until: Date.now() + PENDING_MOVE_MS })
+      if (entry) entry.price = heldAt
+      entry?.line.applyOptions({ price: heldAt })
       paintOverlay()
     }
     execPlan(plan, drag.capturedScope)
