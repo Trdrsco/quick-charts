@@ -474,7 +474,7 @@ export interface DraftPartsInput {
   accent: string
   sideLabel: string
   qty: number | string
-  /** 'Market' | 'Limit' | 'Stop' — whatever the ticket calls it. */
+  /** The ticket's tab label ('Market' | 'Limit' | 'Stop Limit' | 'Stop') — rendered verbatim. */
   orderType: string
   supportTakeProfit: boolean
   supportStopLoss: boolean

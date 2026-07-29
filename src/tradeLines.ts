@@ -138,8 +138,8 @@ export interface PreviewSet {
   entryRef?: number | null
   /** The ticket's side — the draft control states which way the order goes. */
   side?: 'buy' | 'sell'
-  /** The ticket's order type ('Market' | 'Limit' | 'Stop'). It sits where a live line shows money,
-   *  because a pending order has no P&L to report — what it has is a kind. */
+  /** The ticket's tab label ('Market' | 'Limit' | 'Stop Limit' | 'Stop'). It sits where a live line
+   *  shows money, because a pending order has no P&L to report — what it has is a kind. */
   orderType?: string
   /** The ORDER quantity — a bare Market order has no lines, so the size cannot come from one. */
   qty?: number
@@ -645,8 +645,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         })
       }
       for (const o of t.showOrders ? opts.snapshot.orders : []) {
-        if (!o || o.status !== 'working' || (o.orderType !== 'stop' && o.orderType !== 'limit')) continue
-        const reported = o.orderType === 'stop' ? o.triggerPrice : o.limitPrice
+        // Both stop shapes draw at their TRIGGER — the level at which something happens; a stop-limit's
+        // conversion limit is ticket-typed detail, not a chart line. market/trailing rows draw nothing
+        // (no resting level to draw).
+        if (!o || o.status !== 'working' || (o.orderType !== 'stop' && o.orderType !== 'limit' && o.orderType !== 'stop_limit')) continue
+        const reported = o.orderType === 'limit' ? o.limitPrice : o.triggerPrice
         if (typeof reported !== 'number' || !isFinite(reported) || reported <= 0) continue
         if (normalizeRoot(o.instrument) !== root) continue
         // Hold a just-dropped level where it was dropped until the broker's own snapshot echoes it.
@@ -666,7 +669,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           price,
           color,
           lineWidth: t.lineWidth,
-          lineStyle: exitKind ? 0 : o.orderType === 'stop' ? 2 : 1,
+          lineStyle: exitKind ? 0 : o.orderType === 'limit' ? 1 : 2,
           title: '',
           kind: o.orderType,
           instrument: o.instrument,
@@ -676,7 +679,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             : buildOrderParts({
                 surface: chartBackground(),
                 qty: o.qty,
-                label: `${buy ? 'BUY' : 'SELL'} ${o.orderType.toUpperCase()}`,
+                label: `${buy ? 'BUY' : 'SELL'} ${o.orderType.replace(/_/g, ' ').toUpperCase()}`,
                 color,
                 supportCancel: armed(),
                 supportModifyQty: false,
@@ -1084,8 +1087,10 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           return
         }
         // Reprice grab — stop/limit only (pickHit never returns a non-X position). Disabled until
-        // the tick is known.
-        if (hit.kind !== 'position' && entry.brokerOrderId && opts.tick && opts.tick > 0) {
+        // the tick is known. A stop_limit line never starts a drag: one line cannot say which of its
+        // TWO prices moved, so the gesture falls through to a chart pan (its ✕ cancel above still works;
+        // repricing one is the ticket's job, where both prices are explicit).
+        if (hit.kind !== 'position' && hit.kind !== 'stop_limit' && entry.brokerOrderId && opts.tick && opts.tick > 0) {
           e.preventDefault()
           try {
             container.setPointerCapture(e.pointerId)

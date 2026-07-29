@@ -9,7 +9,11 @@
 // functions WHAT to do. A host's policy is the same gate its server runs, so the chart drag and the
 // backend can never disagree on a valid price.
 
-export type LineKind = 'position' | 'stop' | 'limit'
+/** What a live trade line represents. `stop_limit` renders (visibility is truth: a resting stop-limit
+ *  must appear on the chart like any working order) but is NEVER draggable — one line cannot express
+ *  its two prices, so a drag would have to guess which one moved; the second price is typed in the
+ *  ticket. Its ✕ cancel works like any order line's. */
+export type LineKind = 'position' | 'stop' | 'limit' | 'stop_limit'
 
 /** An open position, as the broker layer needs it. `unrealizedPnl` is the BROKER's own number or
  *  null — the package renders null as no suffix, never a locally-computed fake. */
