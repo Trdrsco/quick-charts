@@ -32,6 +32,7 @@ export {
 } from './core/geometry'
 
 export { alphaOf, withAlpha } from './render/canvas'
+export { cachedImageBitmap, primeImageBitmap } from './render/imageCache'
 
 export { ToolRegistry, toolRegistry, TOOL_CATEGORIES } from './registry'
 export type { ToolDefinition } from './registry'

@@ -1,6 +1,7 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { measureTextBlock, paintTextBlock, withAlpha } from '../render/canvas'
+import { cachedImageBitmap, primeImageBitmap } from '../render/imageCache'
 
 function inBox(p: Point, box: { x: number; y: number; width: number; height: number }, pad = 3): boolean {
   return (
@@ -44,13 +45,49 @@ export class ImageNote extends Drawing<ImageProps> {
   private ensureBitmap(): void {
     const source = this.props.dataUrl
     if (!source || source === this._loadedFrom || typeof Image === 'undefined') return
+    // Whoever chose this picture already decoded this exact payload to preview it, so the bitmap is
+    // usually sitting in the cache and the first frame can paint it. Decoding it a second time here
+    // is what made a placed image arrive a beat after the click that placed it.
+    const warm = cachedImageBitmap(source)
+    if (warm) {
+      this._loadedFrom = source
+      this._bitmap = warm
+      return
+    }
     this._loadedFrom = source
     const image = new Image()
     image.onload = () => {
+      primeImageBitmap(source, image) // so a second drawing on the same picture pays nothing
       this._bitmap = image
       this.requestUpdate()
     }
     image.src = source
+  }
+
+  /** Four corners, so any of them can be grabbed the way the reference describes. */
+  override resizeHandles(viewport: Viewport): Point[] {
+    if (!this.props.dataUrl) return []
+    const f = this.frame(viewport)
+    if (!f) return []
+    return [
+      { x: f.x, y: f.y },
+      { x: f.x + f.width, y: f.y },
+      { x: f.x, y: f.y + f.height },
+      { x: f.x + f.width, y: f.y + f.height },
+    ]
+  }
+
+  /** A corner drag scales the picture about its anchor, which is the top-left. Only WIDTH is stored —
+   *  height follows the bitmap's own ratio, so an image cannot be dragged out of proportion into
+   *  something that just looks broken. */
+  override resizeTo(handleIndex: number, point: Point, viewport: Viewport): void {
+    const anchor = this.anchors[0]
+    if (!anchor) return
+    const origin = this.anchorToPixel(anchor, viewport)
+    if (!origin) return
+    // Left-side handles are mirrored so dragging outward grows the image whichever corner is held.
+    const dx = handleIndex === 0 || handleIndex === 2 ? origin.x - point.x : point.x - origin.x
+    this.applyProps({ width: Math.max(24, Math.round(dx)) })
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
