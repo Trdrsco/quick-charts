@@ -306,7 +306,7 @@ describe('draft (order ticket) line', () => {
   it('states the side and the ORDER TYPE where a live line shows money', () => {
     const root = draft()
     expect(find(root, 'side').spec.text).toBe('Buy')
-    expect(find(root, 'pnl').spec.text).toBe('Market')
+    expect(find(root, 'orderType').spec.text).toBe('Market')
     expect(find(root, 'qty').spec.text).toBe('1')
   })
 
@@ -324,8 +324,8 @@ describe('draft (order ticket) line', () => {
   })
 
   it('works for every order type the ticket can send', () => {
-    for (const type of ['Market', 'Limit', 'Stop']) {
-      expect(find(draft({ orderType: type }), 'pnl').spec.text).toBe(type)
+    for (const type of ['Market', 'Limit', 'Stop', 'Stop Limit']) {
+      expect(find(draft({ orderType: type }), 'orderType').spec.text).toBe(type)
     }
   })
 
@@ -349,6 +349,15 @@ describe('draft (order ticket) line', () => {
 
   it('says why the chip cannot send when it cannot', () => {
     expect(find(draft({ submitTooltip: 'Trading is locked for this account' }), 'side').spec.tooltip).toBe('Trading is locked for this account')
+  })
+
+  it('makes the order-type cell a control, not the readout a live line puts there', () => {
+    const root = draft()
+    const cell = find(root, 'orderType')
+    expect(cell.role).toBe('orderType')
+    expect(hitTestParts(root, cell.x + 4, CENTER_Y)?.role).toBe('orderType')
+    // Separate hit targets, so tapping the size never opens the type menu.
+    expect(hitTestParts(root, find(root, 'qty').x + 4, CENTER_Y)?.role).toBe('qty')
   })
 
   it('carries the ✕ that stands the ticket down', () => {

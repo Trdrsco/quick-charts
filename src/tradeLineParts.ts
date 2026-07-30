@@ -18,6 +18,8 @@ export type PartRole =
   | 'pnl'
   /** The draft's side chip. The ONE part on a line that spends money: it sends the composed ticket. */
   | 'submit'
+  /** The draft's order-type cell — opens the host's type menu. PRE-MONEY, like the quantity chip. */
+  | 'orderType'
   | 'close'
   | 'divider'
   | 'spacer'
@@ -535,15 +537,18 @@ export function buildDraftParts(input: DraftPartsInput): PartSpec {
     },
     { id: 'div-qty', role: 'divider', width: 1, fill: input.accent },
     {
-      id: 'pnl',
-      role: 'pnl',
+      // Where a live line reports money, a draft states its KIND — and that kind is editable, so this
+      // cell is a control rather than the readout the position line puts here.
+      id: 'orderType',
+      role: 'orderType',
       text: input.orderType,
       textColor: input.accent,
       fill: input.surface,
+      fillHover: withAlpha(input.accent, 0.15),
       paddingX: TRADE_THEME.paddingX,
       minWidth: 82,
       font: TRADE_FONT,
-      tooltip: 'Not yet sent',
+      tooltip: 'Change order type',
     },
   ]
   if (input.supportCancel) {
@@ -653,7 +658,9 @@ export function hitTestParts(root: LayoutNode, x: number, y: number): PartHit | 
 }
 
 function isInteractive(role: PartRole): boolean {
-  return role === 'reverse' || role === 'tp' || role === 'sl' || role === 'close' || role === 'qty' || role === 'pnl' || role === 'submit'
+  return (
+    role === 'reverse' || role === 'tp' || role === 'sl' || role === 'close' || role === 'qty' || role === 'pnl' || role === 'submit' || role === 'orderType'
+  )
 }
 
 /** The first node with this role, in paint order. Where `hitTestParts` answers "what is under the

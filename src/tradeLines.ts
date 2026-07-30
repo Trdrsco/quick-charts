@@ -189,6 +189,9 @@ export interface TradeLineOptions {
    *  where the chip is (viewport coords, for anchoring) and what it currently reads, and the new value
    *  comes back through the host's own draft relay. PRE-MONEY: nothing here reaches a broker. */
   onQtyEdit?: (args: { qty: number; step: number; rect: { x: number; y: number; w: number; h: number } }) => void
+  /** The ORDER TYPE cell on the draft line was tapped — open the host's type menu at this viewport
+   *  rect, told which type is current. PRE-MONEY: changing an unsent ticket's kind is not trading. */
+  onOrderTypeEdit?: (args: { current: string; rect: { x: number; y: number; w: number; h: number } }) => void
   /** The SIDE chip on the ticket's draft line was tapped — send the composed ticket, now.
    *
    *  This is the one callback on the draft path that SPENDS MONEY, so it is deliberately its own
@@ -319,6 +322,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   let pendingPreviewX: PendingPreviewX | null = null
   /** A tap in progress on the draft's quantity chip — committed on release if it stayed a tap. */
   let pendingQty: { key: string; pointerId: number; downX: number; downY: number } | null = null
+  /** A tap in progress on the draft's order-type cell — opens the menu on release. */
+  let pendingOrderType: { key: string; pointerId: number; downX: number; downY: number } | null = null
   /** A tap in progress on the draft's side chip — SENDS on release if it stayed a tap. The press and
    *  the send are split for the same reason every other money control here splits them: a press that
    *  slides off the chip is a change of mind, and must not spend. */
@@ -1021,7 +1026,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   }
 
   const onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0 || dragging || previewDrag || pendingX || pendingPreviewX || pendingQty || pendingSubmit) return
+    if (e.button !== 0 || dragging || previewDrag || pendingX || pendingPreviewX || pendingQty || pendingSubmit || pendingOrderType) return
     if (!interactive()) return
     const capturedScope = opts.scope!
     const capturedSymbol = opts.symbol
@@ -1040,6 +1045,18 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         /* capture is best-effort */
       }
       pendingQty = { key: handle.key, pointerId: e.pointerId, downX: e.clientX, downY: e.clientY }
+      return
+    }
+    // The order-type cell, on the same pre-money footing as the quantity chip beside it: changing an
+    // unsent ticket's kind is not trading, so it also answers while the account is risk-locked.
+    if (handle && handle.hit.role === 'orderType' && handle.entry.kind === 'preview' && handle.entry.previewId === 'entry') {
+      e.preventDefault()
+      try {
+        container.setPointerCapture(e.pointerId)
+      } catch {
+        /* capture is best-effort */
+      }
+      pendingOrderType = { key: handle.key, pointerId: e.pointerId, downX: e.clientX, downY: e.clientY }
       return
     }
 
@@ -1223,7 +1240,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       const part = partAt(e.clientX, e.clientY)
       // The draft's quantity chip answers the pointer even while trading is LOCKED — editing a ticket
       // that has not been sent is not trading. Every other control needs the account armed.
-      const draftQtyChip = !!part && part.hit.role === 'qty' && part.entry.kind === 'preview' && part.entry.previewId === 'entry'
+      const draftQtyChip =
+        !!part &&
+        (part.hit.role === 'qty' || part.hit.role === 'orderType') &&
+        part.entry.kind === 'preview' &&
+        part.entry.previewId === 'entry'
       if (draftQtyChip || (part && !opts.locked && isControlRole(part.hit.role))) {
         container.style.cursor = 'pointer'
         return
@@ -1461,6 +1482,27 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       opts.onDraftSubmit?.()
       return
     }
+    // The order-type cell. Resolved from the LINE like the quantity chip, since a market draft rides
+    // the live mark and the cell is rarely on the pixel it was pressed on by the time the finger lifts.
+    const pot = pendingOrderType
+    if (pot && e.pointerId === pot.pointerId) {
+      pendingOrderType = null
+      try {
+        container.releasePointerCapture(e.pointerId)
+      } catch {
+        /* capture may already be released */
+      }
+      if (Math.abs(e.clientX - pot.downX) > CLICK_SLOP || Math.abs(e.clientY - pot.downY) > CLICK_SLOP) return
+      const laid = layouts.get(pot.key)
+      const cell = laid ? findPart(laid, 'orderType') : null
+      if (!cell) return
+      const box = container.getBoundingClientRect()
+      opts.onOrderTypeEdit?.({
+        current: String(opts.preview?.orderType ?? ''),
+        rect: { x: box.left + cell.x, y: box.top + cell.y, w: cell.w, h: cell.h },
+      })
+      return
+    }
     const pq = pendingQty
     if (pq && e.pointerId === pq.pointerId) {
       pendingQty = null
@@ -1579,6 +1621,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     pendingPreviewX = null
     pendingQty = null
     pendingSubmit = null
+    pendingOrderType = null
     restoreChart()
     container.style.cursor = ''
   }
@@ -1603,7 +1646,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     // A pending chip tap has no ghost to unwind, but it MUST be released: pointerdown refuses to arm
     // anything while one is outstanding, so a cancelled tap left behind would deaden the whole surface.
-    if (pendingQty?.pointerId === e.pointerId || pendingSubmit?.pointerId === e.pointerId) {
+    if (pendingQty?.pointerId === e.pointerId || pendingSubmit?.pointerId === e.pointerId || pendingOrderType?.pointerId === e.pointerId) {
       try {
         container.releasePointerCapture(e.pointerId)
       } catch {
@@ -1611,6 +1654,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       }
       pendingQty = null
       pendingSubmit = null
+      pendingOrderType = null
     }
     const drag = dragging ?? previewDrag
     if (drag && e.pointerId === drag.pointerId) {
