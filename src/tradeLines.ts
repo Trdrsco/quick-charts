@@ -54,6 +54,14 @@ import {
 // Broker instrument / charted ticker -> tradeable root: strip an exchange prefix, separators, a
 // continuous-contract "1!" suffix, and a trailing month code. Micros stay DISTINCT (MES ≠ ES) so a
 // micro's line never lands on a full-size chart.
+/** A resting order's label: side plus type, in the same title case the ticket's own type tabs use.
+ *  Capitalising it made a working order read as a warning rather than as one more control in the same
+ *  interface — and the wire's `stop_limit` needs the underscore turned into a space either way. */
+function orderLabel(buy: boolean, orderType: string): string {
+  const type = orderType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  return `${buy ? 'Buy' : 'Sell'} ${type}`
+}
+
 const MONTH_CODE = 'FGHJKMNQUVXZ'
 export function normalizeRoot(raw: string | null | undefined): string | null {
   if (!raw) return null
@@ -686,7 +694,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             : buildOrderParts({
                 surface: chartBackground(),
                 qty: o.qty,
-                label: `${buy ? 'BUY' : 'SELL'} ${o.orderType.replace(/_/g, ' ').toUpperCase()}`,
+                label: orderLabel(buy, o.orderType),
                 color,
                 supportCancel: armed(),
                 supportModifyQty: false,
@@ -710,7 +718,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
               spec: buildOrderParts({
                 surface: chartBackground(),
                 qty: o.qty,
-                label: `${buy ? 'BUY' : 'SELL'} ${o.orderType.replace(/_/g, ' ').toUpperCase()}`,
+                label: orderLabel(buy, o.orderType),
                 color: buy ? t.buyColor : t.sellColor,
                 supportCancel: false,
                 supportModifyQty: false,
