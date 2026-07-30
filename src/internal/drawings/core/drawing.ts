@@ -79,6 +79,29 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
     return (lastTime + (logical - lastIndex) * interval) as Time
   }
 
+  // logical → x WITHOUT trusting the library outside its own window. The logical scale is linear by
+  // construction, but `logicalToCoordinate` for an index far outside the addressable range returns 0 —
+  // the pane's left edge — rather than null (measured live: a logical of 14398 on a 956-row series came
+  // back 0). Trusting that collapsed both ends of any drawing anchored beyond loaded history onto x=0,
+  // painting it as a vertical sliver at the edge instead of a line running off-pane. So the linear map
+  // is calibrated from two in-range logicals, where the library IS trustworthy, and extrapolated from
+  // there: an off-history anchor then gets its true off-screen x, and the canvas clips the segment
+  // through the pane exactly as the reference platform draws a partially-loaded drawing.
+  const visible = ts.getVisibleLogicalRange()
+  let xAtLogical: (logical: number) => number | null
+  if (visible && visible.to > visible.from) {
+    const x1 = ts.logicalToCoordinate(visible.from as Parameters<typeof ts.logicalToCoordinate>[0])
+    const x2 = ts.logicalToCoordinate(visible.to as Parameters<typeof ts.logicalToCoordinate>[0])
+    if (x1 !== null && x2 !== null && x2 > x1) {
+      const pxPerBar = (x2 - x1) / (visible.to - visible.from)
+      xAtLogical = (logical) => x1 + (logical - visible.from) * pxPerBar
+    } else {
+      xAtLogical = (logical) => ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
+    }
+  } else {
+    xAtLogical = (logical) => ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
+  }
+
   return {
     width,
     height,
@@ -87,7 +110,7 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
       if (direct !== null) return direct
       const logical = logicalOfTime(time)
       if (logical === null) return null
-      return ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
+      return xAtLogical(logical)
     },
     yOf: (price) => series.priceToCoordinate(price),
     timeAt: (x) => {
