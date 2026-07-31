@@ -78,4 +78,15 @@ describe('viewport time→x beyond loaded history', () => {
     const vp = viewportOf(chart, empty)!
     expect(vp.xOf((T0 + 12345 * BAR + 1) as Time)).toBeNull()
   })
+
+  it('declines rather than trust the library when calibration is impossible', () => {
+    // No visible logical range — a frame with nothing on screen. The old code handed the conversion
+    // back to the library here, which is the exact call that answers 0 and collapses drawings onto
+    // the pane edge. There is no backward-compatible path: decline outright.
+    const { chart, series } = stubPair()
+    const ts = (chart as unknown as { timeScale: () => Record<string, unknown> }).timeScale()
+    ts.getVisibleLogicalRange = () => null
+    const vp = viewportOf(chart, series)!
+    expect(vp.xOf((T0 + 12345 * BAR + 1) as Time)).toBeNull()
+  })
 })

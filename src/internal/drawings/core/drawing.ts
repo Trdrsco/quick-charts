@@ -87,19 +87,19 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
   // is calibrated from two in-range logicals, where the library IS trustworthy, and extrapolated from
   // there: an off-history anchor then gets its true off-screen x, and the canvas clips the segment
   // through the pane exactly as the reference platform draws a partially-loaded drawing.
+  // No fallback to the library when calibration is impossible: the raw conversion is exactly the
+  // untrustworthy path (it answered 0 — the pane edge — for far logicals, measured live), and a paint
+  // frame with no visible range is a frame where nothing is on screen anyway. Declining is honest;
+  // trusting would resurrect the left-edge collapse on precisely the frames least able to show it.
   const visible = ts.getVisibleLogicalRange()
-  let xAtLogical: (logical: number) => number | null
+  let xAtLogical: (logical: number) => number | null = () => null
   if (visible && visible.to > visible.from) {
     const x1 = ts.logicalToCoordinate(visible.from as Parameters<typeof ts.logicalToCoordinate>[0])
     const x2 = ts.logicalToCoordinate(visible.to as Parameters<typeof ts.logicalToCoordinate>[0])
     if (x1 !== null && x2 !== null && x2 > x1) {
       const pxPerBar = (x2 - x1) / (visible.to - visible.from)
       xAtLogical = (logical) => x1 + (logical - visible.from) * pxPerBar
-    } else {
-      xAtLogical = (logical) => ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
     }
-  } else {
-    xAtLogical = (logical) => ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
   }
 
   return {
