@@ -19,6 +19,7 @@ import {
   pickHit,
   planBrokerDrop,
   type BrokerExec,
+  type BrokerOrder,
   type BrokerSnapshot,
   type ChartBroker,
   type DropTarget,
@@ -189,6 +190,21 @@ export interface TradeLineOptions {
   overrides?: ChartOverrides['trading']
   /** The host's price gate (see PricePolicy). Omitted ⇒ snap-only. */
   policy?: PricePolicy
+  /** PRE-ARM TP/SL levels attached to UNFILLED entry orders, keyed by brokerOrderId. The backend
+   *  holds these OCO-pending until the entry fills, so they are not working orders and only the
+   *  HOST knows them — it pushes the map, the package draws them dashed in the leg colours (the
+   *  draft language: a level that exists but does not rest yet). Editable/removable when the
+   *  broker implements setOrderBracket. */
+  orderBrackets?: Record<string, { stopLoss?: number; takeProfit?: number }>
+  /** Working-order ids whose lifecycle belongs to an engine-side manager (an ATM strategy). Bracket
+   *  handles and quantity editing are suppressed on them — a second bracket or a cancel+re-place
+   *  size change would fight the manager that owns the order. */
+  managedOrderIds?: readonly string[]
+  /** The QUANTITY chip on a WORKING ORDER line was tapped. The host opens its own editor (the same
+   *  one the draft uses) and calls `commit` with the new size — commit routes through the same
+   *  atomic replace a reprice drag uses (same prices, new quantity), so there is still exactly one
+   *  order-mutating path. */
+  onOrderQtyEdit?: (args: { qty: number; step: number; rect: { x: number; y: number; w: number; h: number }; commit: (qty: number) => void }) => void
   /** Host preview levels (pre-money). Omitted ⇒ no ghost lines. */
   preview?: PreviewSet | null
   /** A dragged preview line's new (snapped, banded) price. The ONLY thing a preview drag calls. */
@@ -224,11 +240,13 @@ export interface TradeLineAttachment {
 
 interface LineEntry {
   line: IPriceLine
-  kind: LineKind | 'preview'
+  kind: LineKind | 'preview' | 'obracket'
   price: number
   instrument: string
   brokerOrderId?: string
   previewId?: string
+  /** An obracket line's leg — which half of the pre-arm pair this level is. */
+  legKind?: 'tp' | 'sl'
   editable?: boolean
   /** The line colour, mirrored so the overlay can paint the axis label to match. */
   color?: string
@@ -238,8 +256,9 @@ interface LineEntry {
 
 interface DragState {
   key: string
-  /** The grabbed line's kind — for a stop-limit it also says WHICH leg the drop reprices. */
-  kind: 'stop' | 'limit' | 'stop_limit' | 'stop_limit_limit'
+  /** The grabbed line's kind — for a stop-limit it also says WHICH leg the drop reprices; the
+   *  `obr_*` kinds move a PRE-ARM bracket level, whose drop routes to setOrderBracket. */
+  kind: 'stop' | 'limit' | 'stop_limit' | 'stop_limit_limit' | 'obr_tp' | 'obr_sl'
   brokerOrderId: string
   instrument: string
   originalPrice: number
@@ -282,13 +301,17 @@ interface PendingPreviewX {
   downY: number
 }
 
-/** A TP/SL handle dragged off the position line. The level does not exist until the drop, so the
- *  gesture carries a ghost line of its own rather than moving an existing one. */
+/** A TP/SL handle dragged off the position line, the ticket's draft line, or a resting ENTRY order
+ *  line. The level does not exist until the drop, so the gesture carries a ghost line of its own
+ *  rather than moving an existing one. */
 interface BracketDragState {
   kind: 'tp' | 'sl'
   /** PRE-MONEY: the level belongs to the TICKET's draft, so the drop routes to onPreviewEdit and no
    *  broker call exists anywhere on that path — the never-execute guarantee stays structural. */
   preview: boolean
+  /** Set when the handle lives on a RESTING ENTRY order line: the drop attaches a pre-arm leg to
+   *  THIS order (setOrderBracket), anchored at the price the entry would fill. */
+  order?: { brokerOrderId: string; instrument: string; side: 'buy' | 'sell'; qty: number; orderType: 'stop' | 'limit' | 'stop_limit'; price: number; stopLimitPrice?: number }
   instrument: string
   positionSide: 'long' | 'short'
   qty: number
@@ -328,6 +351,10 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   let previewDrag: PreviewDragState | null = null
   let pendingX: PendingX | null = null
   let pendingPreviewX: PendingPreviewX | null = null
+  /** A tap in progress on a PRE-ARM bracket level's ✕ — removes that leg on release. */
+  let pendingObrX: { key: string; brokerOrderId: string; legKind: 'tp' | 'sl'; pointerId: number; downX: number; downY: number; capturedScope: string; capturedSymbol: string } | null = null
+  /** A tap in progress on a WORKING ORDER's quantity chip — opens the host's size editor on release. */
+  let pendingOrderQty: { key: string; brokerOrderId: string; pointerId: number; downX: number; downY: number } | null = null
   /** A tap in progress on the draft's quantity chip — committed on release if it stayed a tap. */
   let pendingQty: { key: string; pointerId: number; downX: number; downY: number } | null = null
   /** A tap in progress on the draft's order-type cell — opens the menu on release. */
@@ -432,6 +459,14 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     if (!entry) return null
     const anchorY = series.priceToCoordinate(entry.price)
     if (anchorY == null) return null
+    // A handle hovered on a RESTING ENTRY line shades against the ORDER: the anchor is the entry's
+    // own level and the direction follows the order's side, exactly as the drag it previews will.
+    if (entry.kind === 'stop' || entry.kind === 'limit' || entry.kind === 'stop_limit') {
+      const ord = opts.snapshot.orders.find((o) => o && o.brokerOrderId === entry.brokerOrderId && o.status === 'working')
+      if (!ord) return null
+      const above = legSitsAbove(id, ord.side === 'buy')
+      return { color: colorOf(id), top: above ? 0 : anchorY, height: above ? anchorY : paneH - anchorY }
+    }
     const pos = opts.snapshot.positions.find((p) => p && p.qty !== 0 && normalizeRoot(p.instrument) === normalizeRoot(entry.instrument))
     if (!pos) return null
     const above = legSitsAbove(id, pos.qty > 0)
@@ -600,10 +635,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       lineWidth: 1 | 2 | 3
       lineStyle: number
       title: string
-      kind: LineKind | 'preview'
+      kind: LineKind | 'preview' | 'obracket'
       instrument: string
       brokerOrderId?: string
       previewId?: string
+      legKind?: 'tp' | 'sl'
       editable?: boolean
       spec?: PartSpec
     }
@@ -680,6 +716,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         const exitKind: 'tp' | 'sl' | null = closes ? (o.orderType === 'limit' ? 'tp' : 'sl') : null
         const exitPnl = exitKind ? potentialPnl(held!, price, Math.abs(o.qty), opts.pointValue, opts.currency ?? null) : null
         const color = exitKind ? (exitKind === 'tp' ? t.tpColor : t.slColor) : buy ? t.buyColor : t.sellColor
+        // A resting ENTRY (an order that would OPEN or add) is editable in two more ways: its
+        // quantity chip opens the size editor, and TP/SL handles drag out PRE-ARM bracket levels
+        // that arm when it fills. Neither renders on an order an engine-side manager owns (ATM),
+        // and the handles need the backend's setOrderBracket + a known tick + the venue's blessing
+        // for this entry shape (the host gates that via which orders it puts in orderBrackets'
+        // world at all — the broker refuses fail-closed regardless).
+        const managed = !!opts.managedOrderIds?.includes(o.brokerOrderId)
+        const preArm = opts.orderBrackets?.[o.brokerOrderId]
+        const entryEditable = !exitKind && !managed && armed()
+        const canBracket = entryEditable && typeof broker.setOrderBracket === 'function' && !!opts.tick && opts.tick > 0
         desired.set(`ord:${o.brokerOrderId}`, {
           price,
           color,
@@ -689,6 +735,9 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           kind: o.orderType,
           instrument: o.instrument,
           brokerOrderId: o.brokerOrderId,
+          // Editability of the SIZE chip — true only for an unmanaged entry with the account armed,
+          // so a tap on an exit line's (read-only) qty cell can never open the editor.
+          editable: entryEditable,
           spec: exitKind
             ? buildExitParts({ surface: chartBackground(), kind: exitKind, qty: o.qty, pnlText: exitPnl?.text ?? null, pnlSign: exitPnl?.sign ?? null, supportCancel: armed() })
             : buildOrderParts({
@@ -697,9 +746,47 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
                 label: orderLabel(buy, o.orderType),
                 color,
                 supportCancel: armed(),
-                supportModifyQty: false,
+                supportModifyQty: entryEditable,
+                supportTakeProfit: canBracket && !preArm?.takeProfit,
+                supportStopLoss: canBracket && !preArm?.stopLoss,
               }),
         })
+        // The entry's PRE-ARM bracket levels — host-known legs that arm when this order fills.
+        // Dashed in the leg colours (the draft language: real intent, nothing resting yet), each
+        // with the exit pill it will earn once live: the qty, what the level would realise against
+        // the entry's own fill price, and a ✕ that removes just that leg.
+        if (!exitKind && preArm && !managed) {
+          const fillPrice = o.orderType === 'stop' ? o.triggerPrice : o.limitPrice
+          if (typeof fillPrice === 'number' && fillPrice > 0) {
+            for (const legKind of ['tp', 'sl'] as const) {
+              const legPrice = legKind === 'tp' ? preArm.takeProfit : preArm.stopLoss
+              if (typeof legPrice !== 'number' || legPrice <= 0) continue
+              const key = `obr:${o.brokerOrderId}:${legKind}`
+              const heldLeg = heldPrice(key, legPrice)
+              const legPnl = potentialPnl({ qty: buy ? 1 : -1, avgPrice: fillPrice }, heldLeg, Math.abs(o.qty), opts.pointValue, opts.currency ?? null)
+              desired.set(key, {
+                price: heldLeg,
+                color: legKind === 'tp' ? t.tpColor : t.slColor,
+                lineWidth: t.lineWidth,
+                lineStyle: 3, // LargeDashed — arms on fill, nothing rests yet
+                title: '',
+                kind: 'obracket',
+                instrument: o.instrument,
+                brokerOrderId: o.brokerOrderId,
+                legKind,
+                editable: canBracket,
+                spec: buildExitParts({
+                  surface: chartBackground(),
+                  kind: legKind,
+                  qty: o.qty,
+                  pnlText: legPnl?.text ?? null,
+                  pnlSign: legPnl?.sign ?? null,
+                  supportCancel: canBracket,
+                }),
+              })
+            }
+          }
+        }
         // A stop-limit's SECOND line — the conversion limit, at its own price, dragging its own
         // leg. No ✕ here: one order cancels once, from the trigger line (the reference's model).
         if (o.orderType === 'stop_limit') {
@@ -859,12 +946,13 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         existing.instrument = d.instrument
         existing.brokerOrderId = d.brokerOrderId
         existing.previewId = d.previewId
+        existing.legKind = d.legKind
         existing.editable = d.editable
         existing.spec = d.spec
         existing.color = d.color
       } else {
         const line = series.createPriceLine({ price: d.price, color: d.color, lineWidth: d.lineWidth as 1 | 2 | 3, lineStyle: d.lineStyle, axisLabelVisible: !d.spec, title: d.title })
-        lines.set(key, { line, kind: d.kind, price: d.price, instrument: d.instrument, brokerOrderId: d.brokerOrderId, previewId: d.previewId, editable: d.editable, spec: d.spec, color: d.color })
+        lines.set(key, { line, kind: d.kind, price: d.price, instrument: d.instrument, brokerOrderId: d.brokerOrderId, previewId: d.previewId, legKind: d.legKind, editable: d.editable, spec: d.spec, color: d.color })
       }
     }
     paintOverlay()
@@ -906,9 +994,10 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
 
   const hitTest = (clientX: number, clientY: number): { hit: Hit; entry: LineEntry } | null => {
     // A tap resolves against the CONTROL it landed on. Only when no control is under the pointer
-    // does it fall through to the line body, where a grab means "reprice".
+    // does it fall through to the line body, where a grab means "reprice". Preview and pre-arm
+    // bracket lines resolve through their own paths, never here.
     const part = partAt(clientX, clientY)
-    if (part && part.entry.kind !== 'preview' && (part.hit.role === 'close' || part.hit.role === 'reverse')) {
+    if (part && part.entry.kind !== 'preview' && part.entry.kind !== 'obracket' && (part.hit.role === 'close' || part.hit.role === 'reverse')) {
       return {
         hit: {
           key: part.key,
@@ -923,7 +1012,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     const y = clientY - rect.top
     const cands: HitCandidate[] = []
     for (const [key, entry] of lines) {
-      if (entry.kind === 'preview') continue
+      if (entry.kind === 'preview' || entry.kind === 'obracket') continue
       const ly = series.priceToCoordinate(entry.price)
       if (ly == null || ly < 0 || ly > rect.height) continue
       const dist = Math.abs(y - ly)
@@ -1011,7 +1100,24 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         const level = plan.exitLeg === 'target' ? { takeProfit: plan.price! } : { stopLoss: plan.price! }
         await broker.setExits({ instrument: plan.instrument, ...level, intentKey: plan.intentKey! })
       } else if (plan.method === 'moveOrder') {
-        await broker.moveOrder({ brokerOrderId: plan.brokerOrderId!, instrument: plan.instrument, side: plan.side!, qty: plan.qty!, orderType: plan.orderType!, price: plan.price!, stopLimitPrice: plan.stopLimitPrice, intentKey: plan.intentKey! })
+        // A bracketed entry's reprice/resize must CARRY its pre-arm legs: on a cancel+re-place
+        // backend a bare re-place would silently shed them. The order's current (pre-move) prices
+        // ride along so a rejected re-place can restore the original shape faithfully.
+        const row = opts.snapshot.orders.find((o) => o && o.brokerOrderId === plan.brokerOrderId && o.status === 'working')
+        const curPrice = row ? (row.orderType === 'limit' ? row.limitPrice : row.triggerPrice) : null
+        await broker.moveOrder({
+          brokerOrderId: plan.brokerOrderId!,
+          instrument: plan.instrument,
+          side: plan.side!,
+          qty: plan.qty!,
+          orderType: plan.orderType!,
+          price: plan.price!,
+          stopLimitPrice: plan.stopLimitPrice,
+          currentBracket: opts.orderBrackets?.[plan.brokerOrderId!],
+          current: typeof curPrice === 'number' && curPrice > 0 ? { price: curPrice, stopLimitPrice: row?.orderType === 'stop_limit' ? (row.limitPrice ?? undefined) : undefined } : undefined,
+          tick: opts.tick && opts.tick > 0 ? opts.tick : undefined,
+          intentKey: plan.intentKey!,
+        })
       } else if (plan.method === 'flatten') {
         await broker.flatten(plan.instrument)
       } else {
@@ -1033,8 +1139,73 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       })
   }
 
+  /** The setOrderBracket call context for one working entry order, prices per the seam's contract
+   *  (price = a limit's level or a stop's TRIGGER; stopLimitPrice = the conversion limit). */
+  const orderCtx = (o: BrokerOrder) => ({
+    brokerOrderId: o.brokerOrderId,
+    instrument: o.instrument,
+    side: o.side,
+    qty: Math.abs(o.qty),
+    orderType: o.orderType as 'stop' | 'limit' | 'stop_limit',
+    price: (o.orderType === 'limit' ? o.limitPrice : o.triggerPrice) ?? 0,
+    stopLimitPrice: o.orderType === 'stop_limit' ? (o.limitPrice ?? undefined) : undefined,
+  })
+
+  /** The price a resting entry would FILL at — the anchor every pre-arm leg is validated against.
+   *  A limit fills at its level, a stop at its trigger, a stop_limit at its conversion limit. */
+  const entryFillPrice = (o: BrokerOrder): number | null => {
+    const p = o.orderType === 'stop' ? o.triggerPrice : o.limitPrice
+    return typeof p === 'number' && p > 0 ? p : null
+  }
+
+  /** Set/move/remove ONE pre-arm bracket leg on a resting entry. The other leg rides through
+   *  currentBracket untouched; `holdKey` pins the dropped level until the host's map echoes it. */
+  const execOrderBracket = (
+    o: { brokerOrderId: string; instrument: string; side: 'buy' | 'sell'; qty: number; orderType: 'stop' | 'limit' | 'stop_limit'; price: number; stopLimitPrice?: number },
+    legKind: 'tp' | 'sl',
+    level: number | null,
+    scope: string,
+    toast: string,
+    holdKey?: string,
+  ): void => {
+    if (typeof broker.setOrderBracket !== 'function' || !(opts.tick && opts.tick > 0) || !(o.price > 0)) return
+    if (holdKey && level != null) pendingMoves.set(holdKey, { price: level, until: Date.now() + PENDING_MOVE_MS })
+    void broker
+      .setOrderBracket({
+        ...o,
+        tick: opts.tick,
+        ...(legKind === 'tp' ? { takeProfit: level } : { stopLoss: level }),
+        currentBracket: opts.orderBrackets?.[o.brokerOrderId],
+        intentKey: `obracket|${scope}|${o.brokerOrderId}|${legKind}|${level ?? 'off'}`,
+      })
+      .then(() => opts.onAction?.(toast))
+      .catch((err) => {
+        // Same rule as a refused reprice: a rejected edit must stop being shown immediately.
+        pendingMoves.clear()
+        paintOverlay()
+        opts.onError?.(errMsg(err))
+      })
+  }
+
+  // Nearest PRE-ARM bracket line within the grab radius (its ✕ resolves through partAt like every
+  // painted control; this answers only the draggable BODY).
+  const obracketHitTest = (_clientX: number, clientY: number): { key: string; entry: LineEntry } | null => {
+    const rect = container.getBoundingClientRect()
+    const yy = clientY - rect.top
+    let best: { key: string; entry: LineEntry; dist: number } | null = null
+    for (const [key, entry] of lines) {
+      if (entry.kind !== 'obracket') continue
+      const ly = series.priceToCoordinate(entry.price)
+      if (ly == null || ly < 0 || ly > rect.height) continue
+      const dist = Math.abs(yy - ly)
+      if (dist > GRAB_PX) continue
+      if (!best || dist < best.dist) best = { key, entry, dist }
+    }
+    return best ? { key: best.key, entry: best.entry } : null
+  }
+
   const onPointerDown = (e: PointerEvent) => {
-    if (e.button !== 0 || dragging || previewDrag || pendingX || pendingPreviewX || pendingQty || pendingSubmit || pendingOrderType) return
+    if (e.button !== 0 || dragging || previewDrag || pendingX || pendingPreviewX || pendingQty || pendingSubmit || pendingOrderType || pendingObrX || pendingOrderQty) return
     if (!interactive()) return
     const capturedScope = opts.scope!
     const capturedSymbol = opts.symbol
@@ -1085,6 +1256,48 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       // A TP/SL handle: the gesture IS the price entry, so a bare tap does nothing and only a drag
       // off the line commits a level.
       if (handle && (handle.hit.role === 'tp' || handle.hit.role === 'sl')) {
+        // The handle on a RESTING ENTRY order line: the drop attaches a PRE-ARM leg to that order
+        // (setOrderBracket), anchored at the price the entry would fill — the level is validated
+        // against the ENTRY, never today's mark, because nothing exists until the fill.
+        const onOrderLine = handle.entry.kind === 'stop' || handle.entry.kind === 'limit' || handle.entry.kind === 'stop_limit'
+        if (onOrderLine && handle.entry.brokerOrderId) {
+          const ord = opts.snapshot.orders.find((q) => q && q.brokerOrderId === handle.entry.brokerOrderId && q.status === 'working')
+          const fill = ord ? entryFillPrice(ord) : null
+          if (ord && fill != null && opts.tick && opts.tick > 0 && typeof broker.setOrderBracket === 'function') {
+            e.preventDefault()
+            try {
+              container.setPointerCapture(e.pointerId)
+            } catch {
+              /* capture is best-effort */
+            }
+            chart.applyOptions({ handleScroll: false, handleScale: false })
+            container.style.touchAction = 'none'
+            const kind = handle.hit.role === 'tp' ? 'tp' : 'sl'
+            bracketDrag = {
+              kind,
+              preview: false,
+              order: orderCtx(ord),
+              instrument: ord.instrument,
+              positionSide: ord.side === 'buy' ? 'long' : 'short',
+              qty: Math.abs(ord.qty),
+              anchor: fill,
+              lastValidPrice: fill,
+              moved: false,
+              pointerId: e.pointerId,
+              capturedScope,
+              capturedSymbol,
+              ghost: series.createPriceLine({
+                price: fill,
+                color: kind === 'tp' ? T().tpColor : T().slColor,
+                lineWidth: T().lineWidth,
+                lineStyle: 2,
+                axisLabelVisible: false,
+                title: '',
+              }),
+            }
+            return
+          }
+        }
         // The handle sits on either a LIVE position or the ticket's DRAFT. The draft variant is
         // pre-money — it is allowed while trading is locked, and its drop routes to the host's own
         // callback with no broker in scope.
@@ -1130,6 +1343,37 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           }
           return
         }
+      }
+      // A PRE-ARM bracket level's ✕ — removes that leg from the entry's bracket on a clean tap.
+      if (handle && handle.hit.role === 'close' && handle.entry.kind === 'obracket' && handle.entry.brokerOrderId && handle.entry.legKind) {
+        e.preventDefault()
+        try {
+          container.setPointerCapture(e.pointerId)
+        } catch {
+          /* capture is best-effort */
+        }
+        pendingObrX = { key: handle.key, brokerOrderId: handle.entry.brokerOrderId, legKind: handle.entry.legKind, pointerId: e.pointerId, downX: e.clientX, downY: e.clientY, capturedScope, capturedSymbol }
+        return
+      }
+      // A WORKING ORDER's quantity chip — opens the host's size editor (the same editor the draft
+      // uses); the committed size goes through the SAME atomic replace a reprice drag uses. Only
+      // where the chip was drawn editable (an entry, unmanaged, armed).
+      if (
+        handle &&
+        handle.hit.role === 'qty' &&
+        (handle.entry.kind === 'stop' || handle.entry.kind === 'limit' || handle.entry.kind === 'stop_limit') &&
+        handle.entry.brokerOrderId &&
+        handle.entry.editable === true &&
+        opts.onOrderQtyEdit
+      ) {
+        e.preventDefault()
+        try {
+          container.setPointerCapture(e.pointerId)
+        } catch {
+          /* capture is best-effort */
+        }
+        pendingOrderQty = { key: handle.key, brokerOrderId: handle.entry.brokerOrderId, pointerId: e.pointerId, downX: e.clientX, downY: e.clientY }
+        return
       }
       const res = hitTest(e.clientX, e.clientY)
       if (res) {
@@ -1177,6 +1421,32 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         }
         // A non-grabbable live hit (position avg, or no tick yet) — fall through to try a
         // coincident preview grab.
+      }
+      // A PRE-ARM bracket level's BODY — drag to move that leg. Live lines resolved first above:
+      // a real resting order under the pointer always outranks the ghost of a leg not yet armed.
+      const obr = obracketHitTest(e.clientX, e.clientY)
+      if (obr && obr.entry.editable && obr.entry.brokerOrderId && obr.entry.legKind && opts.tick && opts.tick > 0) {
+        e.preventDefault()
+        try {
+          container.setPointerCapture(e.pointerId)
+        } catch {
+          /* capture is best-effort */
+        }
+        chart.applyOptions({ handleScroll: false, handleScale: false })
+        container.style.touchAction = 'none'
+        dragging = {
+          key: obr.key,
+          kind: obr.entry.legKind === 'tp' ? 'obr_tp' : 'obr_sl',
+          brokerOrderId: obr.entry.brokerOrderId,
+          instrument: obr.entry.instrument,
+          originalPrice: obr.entry.price,
+          lastValidPrice: obr.entry.price,
+          moved: false,
+          pointerId: e.pointerId,
+          capturedScope,
+          capturedSymbol,
+        }
+        return
       }
     }
 
@@ -1238,7 +1508,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     const drag = dragging ?? previewDrag
     if (!drag) {
-      if (pendingX || pendingPreviewX) return
+      if (pendingX || pendingPreviewX || pendingObrX || pendingOrderQty) return
       if (!interactive()) return
       // Live hover (only when not locked) wins; otherwise reflect a preview line: the ✕ band →
       // pointer (cancellable), an editable body → ns-resize, a non-editable body → not-allowed.
@@ -1257,9 +1527,20 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         container.style.cursor = 'pointer'
         return
       }
+      // A pre-arm bracket line's ✕ resolves through partAt above (isControlRole covers 'close');
+      // its body earns the same drag cursor a live order line does when it can actually move.
+      if (part && part.entry.kind === 'obracket' && part.hit.role === 'close' && !opts.locked) {
+        container.style.cursor = 'pointer'
+        return
+      }
       const res = opts.locked ? null : hitTest(e.clientX, e.clientY)
       if (res) {
         container.style.cursor = res.hit.isXZone || res.hit.isRevZone ? 'pointer' : 'ns-resize'
+        return
+      }
+      const obr = opts.locked ? null : obracketHitTest(e.clientX, e.clientY)
+      if (obr) {
+        container.style.cursor = obr.entry.editable ? 'ns-resize' : 'not-allowed'
         return
       }
       const phit = previewHitTest(e.clientX, e.clientY)
@@ -1317,6 +1598,42 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     if (opts.scope !== drag.capturedScope || opts.symbol !== drag.capturedSymbol) {
       snapBack()
       opts.onError?.('Selection changed, move cancelled')
+      return true
+    }
+    // A PRE-ARM bracket leg's move: snap + reject the wrong side of the ENTRY's fill price (never
+    // today's mark — nothing exists until the fill), then the leg's end state goes to the backend.
+    if (drag.kind === 'obr_tp' || drag.kind === 'obr_sl') {
+      const legKind = drag.kind === 'obr_tp' ? 'tp' : 'sl'
+      const ord = opts.snapshot.orders.find((o) => o && o.brokerOrderId === drag.brokerOrderId && o.status === 'working')
+      const fill = ord ? entryFillPrice(ord) : null
+      if (!ord || fill == null) {
+        snapBack()
+        opts.onError?.('Order no longer working')
+        return true
+      }
+      const bounded = boundBracketPrice(drag.lastValidPrice, {
+        tick: opts.tick,
+        anchor: fill,
+        positionSide: ord.side === 'buy' ? 'long' : 'short',
+        kind: legKind,
+        policy: opts.policy,
+      })
+      if ('error' in bounded) {
+        snapBack()
+        opts.onError?.(bounded.error)
+        return true
+      }
+      if (entry) entry.price = bounded.price
+      entry?.line.applyOptions({ price: bounded.price })
+      paintOverlay()
+      execOrderBracket(
+        orderCtx(ord),
+        legKind,
+        bounded.price,
+        drag.capturedScope,
+        `${legKind === 'tp' ? 'Take profit' : 'Stop loss'} moved to ${fmtPrice(bounded.price, opts.tick)}`,
+        drag.key,
+      )
       return true
     }
     const target: DropTarget =
@@ -1438,7 +1755,9 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       anchor: b.anchor,
       positionSide: b.positionSide,
       kind: b.kind,
-      mark: markNow() ?? undefined,
+      // A pre-arm leg validates against the ENTRY's fill price alone — the mark-side check belongs
+      // to protection on a LIVE position, and nothing here exists until the entry fills.
+      mark: b.order ? undefined : (markNow() ?? undefined),
       policy: opts.policy,
     })
     if ('error' in bounded) {
@@ -1451,6 +1770,18 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     // never-execute guarantee holds structurally rather than by inspection.
     if (b.preview) {
       opts.onPreviewEdit?.(b.kind, price)
+      return true
+    }
+    // A handle dragged off a RESTING ENTRY line: the leg attaches to THAT order and arms on fill.
+    if (b.order) {
+      execOrderBracket(
+        b.order,
+        b.kind,
+        price,
+        b.capturedScope,
+        `${b.kind === 'tp' ? 'Take profit' : 'Stop loss'} set at ${fmtPrice(price, opts.tick)} · arms when the entry fills`,
+        `obr:${b.order.brokerOrderId}:${b.kind}`,
+      )
       return true
     }
     const label = b.kind === 'tp' ? 'Take Profit' : 'Stop Loss'
@@ -1534,6 +1865,82 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         qty: Number(opts.preview?.qty ?? 0),
         step: Number(opts.preview?.qtyStep ?? 1),
         rect: { x: box.left + n.x, y: box.top + n.y, w: n.w, h: n.h },
+      })
+      return
+    }
+    // A PRE-ARM bracket level's ✕ — a clean tap removes that leg (the sibling rides through).
+    const pox = pendingObrX
+    if (pox && e.pointerId === pox.pointerId) {
+      pendingObrX = null
+      try {
+        container.releasePointerCapture(e.pointerId)
+      } catch {
+        /* capture may already be released */
+      }
+      if (Math.abs(e.clientX - pox.downX) > CLICK_SLOP || Math.abs(e.clientY - pox.downY) > CLICK_SLOP) return
+      const part = partAt(e.clientX, e.clientY)
+      if (!part || part.key !== pox.key || part.hit.role !== 'close') return // slid off the ✕ — no accidental removal
+      if (opts.scope !== pox.capturedScope || opts.symbol !== pox.capturedSymbol) {
+        opts.onError?.('Selection changed, action cancelled')
+        return
+      }
+      const ord = opts.snapshot.orders.find((o) => o && o.brokerOrderId === pox.brokerOrderId && o.status === 'working')
+      if (!ord) return
+      execOrderBracket(orderCtx(ord), pox.legKind, null, pox.capturedScope, `${pox.legKind === 'tp' ? 'Take profit' : 'Stop loss'} removed`)
+      return
+    }
+    // A WORKING ORDER's quantity chip — resolved from the LINE (the chip may have slid under a
+    // moving market), then the host's editor opens with a commit that runs the atomic replace.
+    const poq = pendingOrderQty
+    if (poq && e.pointerId === poq.pointerId) {
+      pendingOrderQty = null
+      try {
+        container.releasePointerCapture(e.pointerId)
+      } catch {
+        /* capture may already be released */
+      }
+      if (Math.abs(e.clientX - poq.downX) > CLICK_SLOP || Math.abs(e.clientY - poq.downY) > CLICK_SLOP) return
+      const laid = layouts.get(poq.key)
+      const cell = laid ? findPart(laid, 'qty') : null
+      const ord = opts.snapshot.orders.find((o) => o && o.brokerOrderId === poq.brokerOrderId && o.status === 'working')
+      if (!cell || !ord) return
+      const scope = opts.scope
+      if (!scope) return
+      const qtyNow = Math.abs(ord.qty)
+      // The stepper follows the size's own grid: whole sizes step by 1, a fractional (crypto) size
+      // by its finest shown decimal. Typed values on any finer grid still commit — the venue is the
+      // authority on the step, and it refuses an off-grid size typed either way.
+      const decs = (String(qtyNow).split('.')[1] ?? '').length
+      const step = decs > 0 ? Number((10 ** -decs).toFixed(decs)) : 1
+      const box = container.getBoundingClientRect()
+      opts.onOrderQtyEdit?.({
+        qty: qtyNow,
+        step,
+        rect: { x: box.left + cell.x, y: box.top + cell.y, w: cell.w, h: cell.h },
+        commit: (newQty) => {
+          if (opts.scope !== scope || opts.locked) return
+          const row = opts.snapshot.orders.find((o) => o && o.brokerOrderId === poq.brokerOrderId && o.status === 'working')
+          if (!row || !Number.isFinite(newQty) || newQty <= 0 || newQty === Math.abs(row.qty)) return
+          if (row.orderType !== 'limit' && row.orderType !== 'stop' && row.orderType !== 'stop_limit') return
+          const price = row.orderType === 'limit' ? row.limitPrice : row.triggerPrice
+          if (typeof price !== 'number' || price <= 0) return
+          execPlan(
+            {
+              drop: false,
+              method: 'moveOrder',
+              instrument: row.instrument,
+              price,
+              stopLimitPrice: row.orderType === 'stop_limit' ? (row.limitPrice ?? undefined) : undefined,
+              brokerOrderId: row.brokerOrderId,
+              side: row.side,
+              qty: newQty,
+              orderType: row.orderType,
+              intentKey: `resize|${scope}|${row.brokerOrderId}|${newQty}`,
+              toast: `Order size set to ${newQty}`,
+            },
+            scope,
+          )
+        },
       })
       return
     }
@@ -1630,6 +2037,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     pendingQty = null
     pendingSubmit = null
     pendingOrderType = null
+    pendingObrX = null
+    pendingOrderQty = null
     restoreChart()
     container.style.cursor = ''
   }
@@ -1654,7 +2063,13 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     // A pending chip tap has no ghost to unwind, but it MUST be released: pointerdown refuses to arm
     // anything while one is outstanding, so a cancelled tap left behind would deaden the whole surface.
-    if (pendingQty?.pointerId === e.pointerId || pendingSubmit?.pointerId === e.pointerId || pendingOrderType?.pointerId === e.pointerId) {
+    if (
+      pendingQty?.pointerId === e.pointerId ||
+      pendingSubmit?.pointerId === e.pointerId ||
+      pendingOrderType?.pointerId === e.pointerId ||
+      pendingObrX?.pointerId === e.pointerId ||
+      pendingOrderQty?.pointerId === e.pointerId
+    ) {
       try {
         container.releasePointerCapture(e.pointerId)
       } catch {
@@ -1663,6 +2078,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       pendingQty = null
       pendingSubmit = null
       pendingOrderType = null
+      pendingObrX = null
+      pendingOrderQty = null
     }
     const drag = dragging ?? previewDrag
     if (drag && e.pointerId === drag.pointerId) {

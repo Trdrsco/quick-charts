@@ -80,6 +80,15 @@ export interface ChartBroker {
     orderType: 'stop' | 'limit' | 'stop_limit'
     price: number
     stopLimitPrice?: number
+    /** The order's attached PRE-ARM bracket as the host knows it (legs that arm when the entry
+     *  fills). A backend whose reprice is a cancel+re-place MUST recreate these legs — without them
+     *  the re-placed entry silently loses its protection. Absent = the order carries no bracket. */
+    currentBracket?: { stopLoss?: number; takeProfit?: number }
+    /** The order's CURRENT resting prices (pre-move), for backends that must restore the original
+     *  shape when the re-place is rejected. */
+    current?: { price: number; stopLimitPrice?: number }
+    /** Contract tick — for backends that express bracket legs as tick offsets. */
+    tick?: number
     intentKey: string
   }): Promise<void>
   /** Set/replace the position's protective exits as ONE unit. The pair is the primitive because the
@@ -95,6 +104,28 @@ export interface ChartBroker {
    *  then a qty×2 opposite market order). Omitted ⇒ the ⇄ affordance never renders. Resolve with
    *  how many orders were cleared (for the toast). */
   reversePosition?(args: { instrument: string; intentKey: string }): Promise<{ cancelledOrders: number }>
+  /** OPTIONAL: set/edit/remove the TP/SL bracket attached to an UNFILLED entry order. The legs are
+   *  PRE-ARM — OCO-pending at the backend, arming only when the entry fills — so they are not
+   *  working orders yet and cannot be moved through setExits. A leg field PRESENT states that leg's
+   *  END STATE (a price sets it, null removes it); an ABSENT field leaves the leg as it currently
+   *  rests, which the adapter resolves from `currentBracket` (the order's full bracket as the host
+   *  knows it — cancel+re-place backends need it to carry the untouched leg through). Omitted ⇒
+   *  resting entry lines draw no bracket handles. */
+  setOrderBracket?(args: {
+    brokerOrderId: string
+    instrument: string
+    side: 'buy' | 'sell'
+    qty: number
+    orderType: 'stop' | 'limit' | 'stop_limit'
+    /** The entry's resting price — a limit's level, a stop's trigger (stop_limit: the TRIGGER). */
+    price: number
+    stopLimitPrice?: number
+    tick: number
+    stopLoss?: number | null
+    takeProfit?: number | null
+    currentBracket?: { stopLoss?: number; takeProfit?: number }
+    intentKey: string
+  }): Promise<void>
 }
 
 // ── Pure helpers ────────────────────────────────────────────────────────────────

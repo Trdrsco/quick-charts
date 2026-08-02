@@ -335,11 +335,29 @@ export interface OrderPartsInput {
   color: string
   supportCancel: boolean
   supportModifyQty: boolean
+  /** Bracket handles on a resting ENTRY: drag out a TP/SL that ARMS when this order fills. Each
+   *  renders only where the backend can attach that leg to this order shape. */
+  supportTakeProfit?: boolean
+  supportStopLoss?: boolean
 }
 
-/** A working order's controls: `[qty|label|✕]`. An order's ✕ CANCELS (it does not close a position),
- *  and its quantity badge opens a quantity edit rather than doing nothing. */
+/** A working order's controls: `[TP][SL] [qty|label|✕]`. An order's ✕ CANCELS (it does not close a
+ *  position), and its quantity badge opens a quantity edit rather than doing nothing. The TP/SL
+ *  handles are the position line's own affordance re-used — here the level they drag out arms when
+ *  the ENTRY fills instead of resting immediately. */
 export function buildOrderParts(input: OrderPartsInput): PartSpec {
+  const children: PartSpec[] = []
+  const handles: PartSpec[] = []
+  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, 'Drag to add Take profit (arms on fill)', input.surface))
+  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, 'Drag to add Stop loss (arms on fill)', input.surface))
+  if (handles.length) {
+    children.push(handles[0]!)
+    for (const h of handles.slice(1)) {
+      children.push({ id: `seam-${h.id}`, role: 'spacer', width: -1 })
+      children.push(h)
+    }
+    children.push({ id: 'gap-handles', role: 'spacer', width: TRADE_THEME.gap })
+  }
   const pill: PartSpec[] = [
     { id: 'pill-inset', role: 'spacer', width: 1 },
     {
@@ -348,6 +366,7 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
       text: String(Math.abs(input.qty)),
       textColor: TRADE_THEME.onAccent,
       fill: input.color,
+      fillHover: input.supportModifyQty ? TRADE_THEME.onAccentHover : undefined,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
       tooltip: input.supportModifyQty ? 'Modify order quantity…' : '',
@@ -381,20 +400,15 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
 
   pill.push({ id: 'pill-inset-r', role: 'spacer', width: 1 })
 
-  return {
-    id: 'root',
+  children.push({
+    id: 'pill',
     role: 'group',
-    children: [
-      {
-        id: 'pill',
-        role: 'group',
-        border: input.color,
-        borderWidth: 1,
-        borderRadius: TRADE_THEME.radius,
-        children: pill,
-      },
-    ],
-  }
+    border: input.color,
+    borderWidth: 1,
+    borderRadius: TRADE_THEME.radius,
+    children: pill,
+  })
+  return { id: 'root', role: 'group', children }
 }
 
 export interface ExitPartsInput {
