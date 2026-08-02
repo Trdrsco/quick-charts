@@ -1533,7 +1533,18 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         (part.hit.role === 'qty' || part.hit.role === 'orderType') &&
         part.entry.kind === 'preview' &&
         part.entry.previewId === 'entry'
-      if (draftQtyChip || (part && !opts.locked && isControlRole(part.hit.role))) {
+      // A WORKING ORDER's quantity chip is a pressed control (it opens the size editor), so it takes
+      // the pointer like every other button — without this it fell through to the line body's
+      // ns-resize, promising a drag where a tap is the gesture. Only where the chip was drawn
+      // editable (an entry, unmanaged, armed) — an exit pill's qty cell stays a readout.
+      const orderQtyChip =
+        !!part &&
+        part.hit.role === 'qty' &&
+        (part.entry.kind === 'stop' || part.entry.kind === 'limit' || part.entry.kind === 'stop_limit') &&
+        part.entry.editable === true &&
+        !!opts.onOrderQtyEdit &&
+        !opts.locked
+      if (draftQtyChip || orderQtyChip || (part && !opts.locked && isControlRole(part.hit.role))) {
         container.style.cursor = 'pointer'
         return
       }
