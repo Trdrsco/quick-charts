@@ -196,6 +196,11 @@ export interface TradeLineOptions {
    *  draft language: a level that exists but does not rest yet). Editable/removable when the
    *  broker implements setOrderBracket. */
   orderBrackets?: Record<string, { stopLoss?: number; takeProfit?: number }>
+  /** The ENTRY order types the backend can attach a bracket to (served capability — e.g. a venue
+   *  that brackets a limit entry but not a stop entry). Absent = every type; an empty array = no
+   *  bracket editing at all. Handles and pre-arm editability never render outside this set — the
+   *  backend refuses fail-closed regardless, this keeps the chart from offering what it refuses. */
+  orderBracketTypes?: readonly string[]
   /** Working-order ids whose lifecycle belongs to an engine-side manager (an ATM strategy). Bracket
    *  handles and quantity editing are suppressed on them — a second bracket or a cancel+re-place
    *  size change would fight the manager that owns the order. */
@@ -725,7 +730,12 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         const managed = !!opts.managedOrderIds?.includes(o.brokerOrderId)
         const preArm = opts.orderBrackets?.[o.brokerOrderId]
         const entryEditable = !exitKind && !managed && armed()
-        const canBracket = entryEditable && typeof broker.setOrderBracket === 'function' && !!opts.tick && opts.tick > 0
+        const canBracket =
+          entryEditable &&
+          typeof broker.setOrderBracket === 'function' &&
+          !!opts.tick &&
+          opts.tick > 0 &&
+          (!opts.orderBracketTypes || opts.orderBracketTypes.includes(o.orderType))
         desired.set(`ord:${o.brokerOrderId}`, {
           price,
           color,
