@@ -37,6 +37,7 @@ const SURFACE: Record<string, string> = {
   buildPositionParts: 'function',
   coerceScaleMode: 'function',
   createChart: 'function',
+  createOrderTicket: 'function',
   createSessionBands: 'function',
   createUdfDatafeed: 'function',
   decimalsOfTick: 'function',

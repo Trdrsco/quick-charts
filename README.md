@@ -396,8 +396,29 @@ const tradingWidget = createChart({
 ```
 
 The widget contributes what it owns — the live-trusted mark (null while the feed is not live), the
-resolved tick, the charted symbol — and the adapter owns everything else. A richer host can skip
-the widget and drive `attachTradeLines` directly:
+resolved tick, the charted symbol — and the adapter owns everything else.
+
+**The order ticket** exists exactly when the adapter's broker implements `placeOrder`
+(presence-driven, like every affordance): the widget then owns the draft's state and renders it as
+the chart-native draft line — drag to reprice, tap the qty chip or type cell to edit (the package's
+own micro-editors), tap the side chip to send. `widget.ticket` drives it programmatically:
+
+```ts
+declare const tradingWidget: import('@trdrs/chart').ChartWidgetApi
+
+tradingWidget.ticket?.open({ side: 'sell', qty: 2, orderType: 'limit' })
+tradingWidget.ticket?.setPrice(5001.25)
+void tradingWidget.ticket?.submit() // policy-gated, confirm-gated, idempotent via intentKey
+```
+
+The money rules the ticket enforces: every edit only recomposes the PREVIEW (nothing on the edit
+path can spend); `submit()` refuses without an armed scope, runs your `policy` over the composed
+entry exactly like a drag, passes the exact payload to `TradingAdapter.confirmOrder` when declared
+(resolve `false` to veto — the draft stays editable), and mints `intentKey` per composed intent —
+stable across retries of the same order, fresh the moment any field changes. A rejected placement
+surfaces the broker's message verbatim and keeps the draft for editing.
+
+A richer host can skip the widget and drive `attachTradeLines` directly:
 
 ```ts
 import { attachTradeLines, type PricePolicy } from '@trdrs/chart'
