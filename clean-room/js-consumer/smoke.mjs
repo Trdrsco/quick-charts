@@ -1,6 +1,6 @@
 // Plain-JS ESM consumer: the tarball must RESOLVE and EXECUTE (not just typecheck) in a project
 // with no TypeScript at all. Pure exports run for real; DOM-needing exports only need to exist.
-import { attachDrawings, createChart, createUdfDatafeed, mergeOverrides, olderPageVerdict, tfToUdfResolution } from '@trdrs/chart'
+import { attachDrawings, attachIndicators, buildManifestPlots, createChart, createUdfDatafeed, mergeOverrides, olderPageVerdict, tfToUdfResolution } from '@trdrs/chart'
 import { parseDrawingsStore, serializeDrawingsStore, toolRegistry } from '@trdrs/chart-drawings'
 
 const fail = (msg) => {
@@ -30,5 +30,18 @@ const restored = loaded.ES && loaded.ES[0] ? toolRegistry.restore(loaded.ES[0]) 
 if (!restored) fail('drawing did not restore from the persisted store')
 if (JSON.stringify(restored.toJSON()) !== JSON.stringify(line.toJSON())) fail('draw/persist/reload round-trip drifted')
 if (parseDrawingsStore('garbage {{{').constructor !== Object) fail('parseDrawingsStore not total')
+
+// The indicator pipeline executes for real: a manifest + computed channels walk into the render
+// spec with warmup gaps as whitespace and histogram sign-coloring applied.
+if (typeof attachIndicators !== 'function') fail('attachIndicators missing')
+const spec = buildManifestPlots(
+  { manifest: { pane: 'pane', plots: { v: { kind: 'histogram', up: '#0f0', down: '#f00' } } }, plots: { v: [1, -1, null] } },
+  [60, 120, 180],
+  'T',
+  '#abc',
+)
+if (spec.placement !== 'pane') fail('walker placement wrong')
+if (spec.plots[0].data.length !== 2) fail('histogram should drop the null, not bridge it')
+if (spec.plots[0].data[1].color !== '#f00') fail('histogram sign-coloring wrong')
 
 console.log('clean-room js (esm): ok')

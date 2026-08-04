@@ -2,8 +2,9 @@
 // supplies" (a datafeed, a store, a symbol, a theme, event hooks) from the chart's internal React
 // props/state. A host constructs the chart with these options; the running host component reads them. The
 // options are stable public API; the component that mounts them is the remaining packaging step.
-import type { ChartDatafeed } from './datafeed'
+import type { ChartDatafeed, FeedBar } from './datafeed'
 import type { ChartStorage } from './storage'
+import type { IndicatorManifest, IndicatorOverrides } from './indicatorModel'
 
 /** Theme overrides — a host tints the chart to its own palette. Every field optional; omitted values keep
  *  the built-in default. Colors are any CSS color string. */
@@ -50,8 +51,10 @@ export interface ChartWidgetOptions {
   timeframe?: string
   /** Palette overrides. */
   theme?: ChartTheme
-  /** Extra indicator plugins to register beyond the built-ins. */
-  indicators?: IndicatorPlugin[]
+  /** Indicator instances on the chart. Each pairs a host-supplied definition (manifest + compute)
+   *  with instance inputs/overrides; the widget renders them through the same manifest pipeline
+   *  richer hosts use — panes, histograms, areas, markers, levels, band fills. */
+  indicators?: IndicatorInstance[]
   /** The drawing layer (on by default): tools, selection, per-symbol persistence, and a small
    *  built-in rail. `false` removes the layer entirely; `{ rail: false }` keeps the layer but
    *  hides the rail for a host that drives `ChartWidgetApi.drawings` from its own UI;
@@ -60,26 +63,26 @@ export interface ChartWidgetOptions {
   events?: ChartWidgetEvents
 }
 
-/** A third-party indicator, registered through {@link ChartWidgetOptions.indicators}. `compute` runs over
- *  the visible bar series and returns one or more plot lines the chart overlays; the host never reaches
- *  into chart internals. Kept intentionally small — richer plot kinds (histograms, bands, marks) extend
- *  this contract additively rather than by exposing the renderer. */
-export interface IndicatorPlugin {
-  /** Stable id (namespaced to avoid colliding with built-ins), e.g. 'acme:supertrend'. */
-  id: string
-  /** Display name in the indicator picker. */
-  name: string
-  /** Numeric inputs the settings UI renders (period, multiplier, …), with their defaults. */
-  inputs?: Record<string, number>
-  /** Compute plot series from the bar closes/OHLCV and the resolved inputs. Pure — no side effects, no
-   *  chart access. Returns one array of `{ time, value }` points per plotted line. */
-  compute(bars: ReadonlyArray<{ t: number; o: number; h: number; l: number; c: number; v: number }>, inputs: Record<string, number>): IndicatorPlot[]
+/** An indicator DEFINITION a host supplies: the declarative manifest plus a pure compute over the
+ *  widget's bars. Compute stays outside the package on purpose — the widget owns the rendering
+ *  pipeline (panes, histograms, levels, fills), never the math — and returns per-plot value
+ *  channels aligned 1:1 to `bars`, NaN/null through the warmup (the walker maps those to clean
+ *  whitespace gaps). No side effects, no chart access. */
+export interface IndicatorDefinition {
+  manifest: IndicatorManifest
+  compute(bars: readonly FeedBar[], inputs: Record<string, number>): Readonly<Record<string, readonly (number | null)[]>>
 }
 
-export interface IndicatorPlot {
-  /** Line label (shown in the legend). */
-  label: string
-  /** CSS color for the line. */
+/** One configured indicator on the chart: a definition + this instance's inputs and styling. */
+export interface IndicatorInstance {
+  /** Stable id — keys the instance's series across recomputes. */
+  id: string
+  definition: IndicatorDefinition
+  /** Input values over the manifest defaults (absent keys fall back to the defaults). */
+  inputs?: Record<string, number>
+  /** The instance's color — any plot channel without a declared color takes it. */
   color?: string
-  points: Array<{ time: number; value: number }>
+  /** Display title; defaults to the manifest name, then the id. */
+  title?: string
+  overrides?: IndicatorOverrides
 }
