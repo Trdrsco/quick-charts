@@ -36,10 +36,10 @@ export function mountDrawingsRail(container: HTMLElement, drawings: DrawingsHand
   if (getComputedStyle(container).position === 'static') container.style.position = 'relative'
 
   const rail = document.createElement('div')
-  rail.style.cssText = 'position:absolute;left:8px;top:8px;z-index:3;display:flex;flex-direction:column;gap:4px;'
-  // The rail floats INSIDE the chart mount, so its presses must never reach the drawing layer's
-  // pointer handlers (container pointerdown, window pointerup): a tool click would otherwise also
-  // hit-test the chart — or place an anchor under the button while a tool is armed.
+  // pointer-events:auto opts this strip back in over an inert chrome layer; the layer being a
+  // SEPARATE subtree from the chart box is what keeps a tool click out of the gesture layers'
+  // capture-phase handlers (a bubble-phase stopPropagation cannot unwind those).
+  rail.style.cssText = 'position:absolute;left:8px;top:8px;z-index:3;display:flex;flex-direction:column;gap:4px;pointer-events:auto;'
   for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) {
     rail.addEventListener(type, (e) => e.stopPropagation())
   }

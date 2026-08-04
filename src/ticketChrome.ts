@@ -20,7 +20,7 @@ function surface(container: HTMLElement, rect: { x: number; y: number; w: number
   el.style.cssText =
     `position:absolute;left:${Math.max(4, rect.x - host.left)}px;top:${Math.max(4, rect.y - host.top + rect.h + 4)}px;z-index:6;` +
     `background:${theme.background};border:1px solid ${theme.gridColor};border-radius:6px;padding:4px;` +
-    `display:flex;gap:4px;align-items:center;font-size:11px;color:${theme.textColor};`
+    `display:flex;gap:4px;align-items:center;font-size:11px;color:${theme.textColor};pointer-events:auto;`
   for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) el.addEventListener(type, (e) => e.stopPropagation())
   container.appendChild(el)
   return el

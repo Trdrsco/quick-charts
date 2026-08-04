@@ -78,6 +78,10 @@ export interface ChartWidgetOptions {
    *  acting through its ChartBroker, price-gated by its policy. Capability is presence-driven:
    *  an adapter whose broker omits a method never renders that affordance. */
   trading?: TradingAdapter
+  /** The account panel below the chart (on by default WHEN `trading` is supplied): Positions and
+   *  Orders pages from the same snapshot plane the lines consume, actions through the same broker
+   *  seam. `false` removes it; `height` sizes the strip (default 148px). */
+  accountPanel?: false | { height?: number }
   events?: ChartWidgetEvents
 }
 

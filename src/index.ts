@@ -74,6 +74,7 @@ export {
 export type { ChartWidgetApi, ChartDrawingsApi, ChartTicketApi, ResolvedTheme } from './host'
 export type { AccountSnapshot, TradingAdapter, TradingAdapterHandlers, TradingCapabilities } from './tradingAdapter'
 export { createOrderTicket, type OrderTicket, type OrderTicketDeps, type TicketOrderType, type TicketState, type TicketSubmit } from './orderTicket'
+export { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
 export * from './broker'
 export { attachTradeLines, normalizeRoot, type PreviewLine, type PreviewSet, type TradeLineAttachment, type TradeLineHost, type TradeLineOptions } from './tradeLines'
