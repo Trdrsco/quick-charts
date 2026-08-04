@@ -27,6 +27,7 @@ import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLege
 import { attachTradeLines, type TradeLineAttachment } from './tradeLines'
 import { createOrderTicket, type OrderTicket } from './orderTicket'
 import { openQtyPopover, openTypeMenu } from './ticketChrome'
+import { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
@@ -146,7 +147,38 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   /** Increments on every symbol/timeframe switch and on remove() — stale async work checks it and bails. */
   let epoch = 0
 
-  const chart: IChartApi = createLwChart(options.container, {
+  // The widget owns its container's inner layout: a chart host (the chart + every overlay —
+  // rail, legend, trade-line canvas, ticket editors) above an optional account panel. The
+  // overlays MUST parent on the chart box, never the outer container: the trade-line overlay
+  // canvas sizes to its parent, and a panel-tall parent would misalign every drawn control.
+  const container = options.container
+  const prevContainerStyle = { display: container.style.display, flexDirection: container.style.flexDirection }
+  container.style.display = 'flex'
+  container.style.flexDirection = 'column'
+  const chartHost = document.createElement('div')
+  chartHost.style.cssText = 'position:relative;flex:1 1 auto;min-height:0;'
+  container.appendChild(chartHost)
+  // Two SIBLING boxes, and the split is load-bearing rather than cosmetic. The chart box belongs
+  // to the gesture layers: the trade-line surface binds a CAPTURE-phase pointer handler there and
+  // takes pointer capture to track drags, which no bubble-phase stopPropagation in a descendant
+  // could ever prevent — so widget chrome mounted inside that box has its clicks swallowed (the
+  // press retargets to the capturing element and the browser emits no click on the button). The
+  // chrome box is therefore a SEPARATE subtree overlaying it: presses on the rail, the legend, or
+  // a ticket editor never traverse the chart box at all. It is inert by default; each interactive
+  // piece opts back in with pointer-events:auto, so the chart stays fully draggable underneath.
+  const chartBox = document.createElement('div')
+  chartBox.style.cssText = 'position:absolute;inset:0;'
+  const chromeBox = document.createElement('div')
+  chromeBox.style.cssText = 'position:absolute;inset:0;z-index:5;pointer-events:none;'
+  chartHost.append(chartBox, chromeBox)
+  let panelHost: HTMLDivElement | null = null
+  if (options.trading && options.accountPanel !== false) {
+    panelHost = document.createElement('div')
+    panelHost.style.cssText = `flex:0 0 ${typeof options.accountPanel === 'object' ? (options.accountPanel.height ?? 148) : 148}px;min-height:0;`
+    container.appendChild(panelHost)
+  }
+
+  const chart: IChartApi = createLwChart(chartBox, {
     autoSize: true,
     layout: {
       background: { type: ColorType.Solid, color: theme.background },
@@ -199,7 +231,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     drawingsHandle = attachDrawings({
       chart,
       series: candles,
-      container: options.container,
+      container: chartBox,
       symbol,
       timeframe: tf,
       storage,
@@ -208,14 +240,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       events: drawingsEvents,
     })
     if (options.drawings?.rail !== false) {
-      drawingsRail = mountDrawingsRail(options.container, drawingsHandle, theme)
+      drawingsRail = mountDrawingsRail(chromeBox, drawingsHandle, theme)
       drawingsEvents.onToolChange = drawingsRail.syncTool
       drawingsEvents.onSelectionChange = drawingsRail.syncSelection
     }
   }
 
   if (options.legend !== false) {
-    legend = mountChartLegend(options.container, theme, (id) => {
+    legend = mountChartLegend(chromeBox, theme, (id) => {
       if (hiddenIndicators.has(id)) hiddenIndicators.delete(id)
       else hiddenIndicators.add(id)
       storage.set(HIDDEN_KEY, JSON.stringify([...hiddenIndicators]))
@@ -231,6 +263,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   let tradeLines: TradeLineAttachment | null = null
   let tradingUnsub: (() => void) | null = null
   let ticket: OrderTicket | null = null
+  let accountPanel: AccountPanelHandle | null = null
   if (options.trading) {
     const adapter = options.trading
     const markNow = () => (feedLive && bars.length ? bars[bars.length - 1]!.c : null)
@@ -250,7 +283,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         onError: (msg) => events.onTradingError?.(msg),
       })
     }
-    tradeLines = attachTradeLines({ chart, series: candles, container: options.container }, adapter.broker, {
+    tradeLines = attachTradeLines({ chart, series: candles, container: chartBox }, adapter.broker, {
       symbol,
       snapshot: { positions: [], orders: [] },
       scope: null,
@@ -266,15 +299,24 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
             onPreviewCancel: () => ticket?.close(),
             onDraftSubmit: () => void ticket?.submit(),
             onQtyEdit: (args: { qty: number; step: number; rect: { x: number; y: number; w: number; h: number } }) =>
-              openQtyPopover(options.container, args.rect, args.qty, args.step, theme, (qty) => ticket?.setQty(qty)),
+              openQtyPopover(chromeBox, args.rect, args.qty, args.step, theme, (qty) => ticket?.setQty(qty)),
             onOrderTypeEdit: (args: { current: string; rect: { x: number; y: number; w: number; h: number } }) =>
-              openTypeMenu(options.container, args.rect, args.current, theme, (orderType) => ticket?.setOrderType(orderType)),
+              openTypeMenu(chromeBox, args.rect, args.current, theme, (orderType) => ticket?.setOrderType(orderType)),
           }
         : {}),
     })
+    // The account panel: the SAME snapshot plane as the lines, the SAME broker seam for its
+    // actions — one data plane, one write path, two views.
+    if (panelHost) {
+      accountPanel = mountAccountPanel(panelHost, adapter.broker, theme, {
+        onAction: (text) => events.onTradingAction?.(text),
+        onError: (msg) => events.onTradingError?.(msg),
+      })
+    }
     tradingUnsub = adapter.subscribeAccount({
       onSnapshot: (s) => {
         currentScope = s.scope
+        accountPanel?.update(s)
         tradeLines?.update({
           snapshot: { positions: s.positions, orders: s.orders },
           scope: s.scope,
@@ -582,12 +624,18 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       unsubscribe = null
       ticket?.destroy()
       tradingUnsub?.()
+      accountPanel?.destroy()
       tradeLines?.detach()
       drawingsRail?.destroy()
       drawingsHandle?.destroy()
       legend?.destroy()
       indicatorsRenderer.destroy()
       chart.remove()
+      // Leave the host element exactly as found: our wrapper rows go, its layout styles restore.
+      chartHost.remove()
+      panelHost?.remove()
+      container.style.display = prevContainerStyle.display
+      container.style.flexDirection = prevContainerStyle.flexDirection
     },
   }
 }

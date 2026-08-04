@@ -62,6 +62,7 @@ const SURFACE: Record<string, string> = {
   marketKindOf: 'function',
   memoryChartStorage: 'function',
   mergeOverrides: 'function',
+  mountAccountPanel: 'function',
   nextSessionChange: 'function',
   normalizeRoot: 'function',
   olderPageVerdict: 'function',

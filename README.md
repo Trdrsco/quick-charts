@@ -418,6 +418,13 @@ entry exactly like a drag, passes the exact payload to `TradingAdapter.confirmOr
 stable across retries of the same order, fresh the moment any field changes. A rejected placement
 surfaces the broker's message verbatim and keeps the draft for editing.
 
+**The account panel** mounts below the chart whenever `trading` is supplied (`accountPanel: false`
+opts out, `{ height }` sizes it): Positions and Orders pages rendered from the SAME snapshot the
+lines consume, with Close / Cancel / Reverse routing through the SAME broker seam — one data plane,
+one write path, two views. Presence rules again: `Reverse` renders only when the broker implements
+`reversePosition`, and every money control disables while no account is armed or trading is locked.
+Money figures are the venue's own or '—'; the panel computes none.
+
 A richer host can skip the widget and drive `attachTradeLines` directly:
 
 ```ts
