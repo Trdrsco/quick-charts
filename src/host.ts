@@ -18,6 +18,12 @@ import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type Datafe
 import { localStorageChartStorage, type ChartStorage } from './storage'
 import type { ChartTheme, ChartWidgetOptions, IndicatorPlugin } from './widget'
 import { BRAND_DOWN, BRAND_UP } from './overrides'
+import { attachDrawings, type DrawingsEvents, type DrawingsHandle } from './drawings'
+import { mountDrawingsRail, type DrawingsRail } from './drawingsRail'
+
+/** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe flow and
+ *  teardown stay widget-owned, so a host cannot desync the layer from the chart). */
+export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe' | 'destroy'>
 
 /** The running widget a host holds — change what's displayed, or tear it down. */
 export interface ChartWidgetApi {
@@ -25,6 +31,8 @@ export interface ChartWidgetApi {
   timeframe(): string
   setSymbol(symbol: string): void
   setTimeframe(tf: string): void
+  /** The drawing layer, or null when the widget was created with `drawings: false`. */
+  drawings: ChartDrawingsApi | null
   /** Tear down the chart, the live subscription, and every DOM/timer resource. Idempotent. */
   remove(): void
 }
@@ -128,6 +136,31 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   let unsubscribe: (() => void) | null = null
   let noMoreHistory = false
   let paging = false
+
+  // The drawing layer (on unless the host opted out). The rail wires to the layer's events
+  // through a mutable events object: the layer needs the events at construction, the rail needs
+  // the layer's handle — filling the object after both exist resolves the cycle without state.
+  let drawingsHandle: DrawingsHandle | null = null
+  let drawingsRail: DrawingsRail | null = null
+  if (options.drawings !== false) {
+    const drawingsEvents: DrawingsEvents = {}
+    drawingsHandle = attachDrawings({
+      chart,
+      series: candles,
+      container: options.container,
+      symbol,
+      timeframe: tf,
+      storage,
+      storageKey: options.drawings?.storageKey,
+      bars: () => bars,
+      events: drawingsEvents,
+    })
+    if (options.drawings?.rail !== false) {
+      drawingsRail = mountDrawingsRail(options.container, drawingsHandle, theme)
+      drawingsEvents.onToolChange = drawingsRail.syncTool
+      drawingsEvents.onSelectionChange = drawingsRail.syncSelection
+    }
+  }
 
   const plotSeries: Array<ISeriesApi<'Line'>> = []
 
@@ -281,11 +314,29 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       .then((cfg) => {
         if (removed || epoch !== 0) return
         tf = resolveInitialTf(tf, cfg.resolutions)
+        drawingsHandle?.setTimeframe(tf)
         load()
       })
   } else {
     load()
   }
+
+  // The public drawings surface is a REAL subset (not a type-level narrowing of the full handle):
+  // symbol/timeframe flow and teardown stay widget-owned, and an untyped consumer must not find
+  // them either.
+  const dh = drawingsHandle
+  const drawingsApi: ChartDrawingsApi | null = dh
+    ? {
+        armTool: (type) => dh.armTool(type),
+        activeTool: () => dh.activeTool(),
+        hasSelection: () => dh.hasSelection(),
+        deleteSelected: () => dh.deleteSelected(),
+        clearAll: () => dh.clearAll(),
+        count: () => dh.count(),
+        export: () => dh.export(),
+        restore: (list) => dh.restore(list),
+      }
+    : null
 
   return {
     symbol: () => symbol,
@@ -294,6 +345,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       if (removed || next === symbol) return
       symbol = next
       storage.set(SYMBOL_KEY, next)
+      drawingsHandle?.setSymbol(next)
       events.onSymbolChange?.(next)
       load()
     },
@@ -301,15 +353,19 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       if (removed || next === tf) return
       tf = next
       storage.set(TF_KEY, next)
+      drawingsHandle?.setTimeframe(next)
       events.onTimeframeChange?.(next)
       load()
     },
+    drawings: drawingsApi,
     remove() {
       if (removed) return
       removed = true
       epoch++
       unsubscribe?.()
       unsubscribe = null
+      drawingsRail?.destroy()
+      drawingsHandle?.destroy()
       chart.remove()
     },
   }
