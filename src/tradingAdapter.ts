@@ -61,4 +61,7 @@ export interface TradingAdapter {
   /** The SAME price rules the backend enforces — a drag the chart accepts must never be rejected
    *  server-side. Omitted ⇒ only tick-snapping applies. */
   policy?: PricePolicy
+  /** The order-ticket confirm gate: shown the exact placeOrder payload before it is sent; resolve
+   *  false to veto (the draft stays for editing). Absent = orders place without a confirm step. */
+  confirmOrder?(order: { instrument: string; side: 'buy' | 'sell'; qty: number; orderType: string; price?: number; stopLimitPrice?: number }): Promise<boolean>
 }

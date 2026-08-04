@@ -25,10 +25,15 @@ import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from './scaleMode'
 import { createSessionBands, isIntradayTf, marketKindOf, sessionOf, SESSION_DOT, type MarketKind } from './sessions'
 import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
 import { attachTradeLines, type TradeLineAttachment } from './tradeLines'
+import { createOrderTicket, type OrderTicket } from './orderTicket'
+import { openQtyPopover, openTypeMenu } from './ticketChrome'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
 export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe' | 'setTick' | 'destroy'>
+
+/** The ticket surface a host drives (teardown stays widget-owned). */
+export type ChartTicketApi = Omit<OrderTicket, 'destroy'>
 
 /** The running widget a host holds — change what's displayed, or tear it down. */
 export interface ChartWidgetApi {
@@ -44,6 +49,9 @@ export interface ChartWidgetApi {
   setIndicators(instances: IndicatorInstance[]): void
   /** The drawing layer, or null when the widget was created with `drawings: false`. */
   drawings: ChartDrawingsApi | null
+  /** The order ticket, or null when no `trading` adapter was supplied OR its broker omits
+   *  `placeOrder` (a mutation-only integration has no placement surface, by contract). */
+  ticket: ChartTicketApi | null
   /** Tear down the chart, the live subscription, and every DOM/timer resource. Idempotent. */
   remove(): void
 }
@@ -131,6 +139,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   /** Live-trust for the mark the trade surface reads: true only while the feed reports 'live' —
    *  a stale last close must not price a P&L readout or anchor a protective-stop band. */
   let feedLive = false
+  /** The resolved symbol's tick and the armed selection from the latest account snapshot — the
+   *  two instrument/account truths the order ticket composes with. */
+  let symbolTick: number | null = null
+  let currentScope: string | null = null
   /** Increments on every symbol/timeframe switch and on remove() — stale async work checks it and bails. */
   let epoch = 0
 
@@ -218,19 +230,51 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   // tick, the charted symbol — and nothing else; the package still holds no trading state.
   let tradeLines: TradeLineAttachment | null = null
   let tradingUnsub: (() => void) | null = null
+  let ticket: OrderTicket | null = null
   if (options.trading) {
     const adapter = options.trading
+    const markNow = () => (feedLive && bars.length ? bars[bars.length - 1]!.c : null)
+    // The ticket exists ONLY when the broker can place (presence-driven, like every affordance):
+    // without placeOrder the draft chrome never appears and the ticket api is null.
+    if (adapter.broker.placeOrder) {
+      ticket = createOrderTicket({
+        broker: adapter.broker,
+        instrument: () => symbol,
+        tick: () => symbolTick,
+        mark: markNow,
+        scope: () => currentScope,
+        policy: adapter.policy,
+        confirm: adapter.confirmOrder ? (order) => adapter.confirmOrder!(order) : undefined,
+        onChange: (preview) => tradeLines?.update({ preview }),
+        onAction: (text) => events.onTradingAction?.(text),
+        onError: (msg) => events.onTradingError?.(msg),
+      })
+    }
     tradeLines = attachTradeLines({ chart, series: candles, container: options.container }, adapter.broker, {
       symbol,
       snapshot: { positions: [], orders: [] },
       scope: null,
-      mark: () => (feedLive && bars.length ? bars[bars.length - 1]!.c : null),
+      mark: markNow,
       policy: adapter.policy,
       onAction: (text, undo) => events.onTradingAction?.(text, undo),
       onError: (msg) => events.onTradingError?.(msg),
+      // The draft path routes to the ticket controller; the micro-editors are the package's own
+      // chrome (pre-money: they only hand values back).
+      ...(ticket
+        ? {
+            onPreviewEdit: (id: string, price: number) => ticket?.setPrice(price, id === 'ticket-limit' ? 'limit' : 'trigger'),
+            onPreviewCancel: () => ticket?.close(),
+            onDraftSubmit: () => void ticket?.submit(),
+            onQtyEdit: (args: { qty: number; step: number; rect: { x: number; y: number; w: number; h: number } }) =>
+              openQtyPopover(options.container, args.rect, args.qty, args.step, theme, (qty) => ticket?.setQty(qty)),
+            onOrderTypeEdit: (args: { current: string; rect: { x: number; y: number; w: number; h: number } }) =>
+              openTypeMenu(options.container, args.rect, args.current, theme, (orderType) => ticket?.setOrderType(orderType)),
+          }
+        : {}),
     })
     tradingUnsub = adapter.subscribeAccount({
       onSnapshot: (s) => {
+        currentScope = s.scope
         tradeLines?.update({
           snapshot: { positions: s.positions, orders: s.orders },
           scope: s.scope,
@@ -367,6 +411,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     noMoreHistory = false
     feedLive = false // the new subscription reports its own liveness; a stale mark must not carry over
     sessionKind = null // the next resolve states the new symbol's model; unresolved never bands
+    symbolTick = null
+    ticket?.close() // a draft composed against the old symbol must not survive onto the new one
     drawingsHandle?.setTick(null)
     paintAll()
     if (!symbol) return
@@ -377,6 +423,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       .resolve(symbol)
       .then((info) => {
         if (removed || myEpoch !== epoch || !info) return
+        symbolTick = info.tick
         drawingsHandle?.setTick(info.tick)
         tradeLines?.update({ tick: info.tick ?? undefined })
         sessionKind = marketKindOf(info.type, info.sessionClass ?? null)
@@ -474,6 +521,22 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       }
     : null
 
+  // The public ticket surface is a REAL subset (the drawings-api discipline): teardown stays
+  // widget-owned, and an untyped consumer must not find it either.
+  const tk = ticket
+  const ticketApi: ChartTicketApi | null = tk
+    ? {
+        open: (seed) => tk.open(seed),
+        close: () => tk.close(),
+        state: () => tk.state(),
+        setSide: (side) => tk.setSide(side),
+        setQty: (qty) => tk.setQty(qty),
+        setOrderType: (orderType) => tk.setOrderType(orderType),
+        setPrice: (price, leg) => tk.setPrice(price, leg),
+        submit: () => tk.submit(),
+      }
+    : null
+
   return {
     symbol: () => symbol,
     timeframe: () => tf,
@@ -510,12 +573,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       storage.set(SCALE_KEY, next)
     },
     drawings: drawingsApi,
+    ticket: ticketApi,
     remove() {
       if (removed) return
       removed = true
       epoch++
       unsubscribe?.()
       unsubscribe = null
+      ticket?.destroy()
       tradingUnsub?.()
       tradeLines?.detach()
       drawingsRail?.destroy()
