@@ -4,10 +4,37 @@ The charting library's public surface. Build a platform on the chart by supplyin
 single seam the whole design turns on. The chart consumes the `ChartDatafeed` interface and never a
 concrete backend, so your feed drives it with zero changes to the chart.
 
+## Install
+
+```bash
+npm install @trdrs/chart lightweight-charts
+```
+
+`lightweight-charts` (^5.0.0) is a **peer dependency**: your app owns the renderer version and the
+chart layers on top of it. Both packages ship **ESM-only** — lightweight-charts v5 itself exports no
+`require` entry, so a `require`-able build here would advertise a path that breaks the moment the
+renderer loads. From a CommonJS host, load via dynamic `import()`.
+
+Licensing: this package requires a commercial license (see `LICENSE`). Because the renderer is *your*
+dependency, its Apache-2.0 NOTICE obligations attach to **your** bundle — `THIRD-PARTY-NOTICES.md` in
+this package spells out exactly what to carry and how.
+
+Quickstart — the smallest working chart (see [The widget](#the-widget) for the full options):
+
+```ts
+import { createChart, createUdfDatafeed } from '@trdrs/chart'
+
+const widget = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+})
+```
+
 ## The datafeed contract
 
 Implement `ChartDatafeed` (see `datafeed.ts`). Required methods: `search`, `resolve`, `history`,
-`subscribeBars`. Optional: `serverTime` (countdown skew correction) and `getQuotes` (a quote board).
+`subscribeBars`. Optional: `serverTime` (countdown skew correction), `getQuotes` (a quote board), and
+`config` (a feed-level capability declaration — [below](#capability-declaration-config-optional)).
 
 ```ts
 import type { ChartDatafeed, FeedBar } from '@trdrs/chart'
@@ -58,6 +85,32 @@ export const myFeed: ChartDatafeed = {
 7. **Never synthesize prices.** `onQuote` carries real top-of-book bid/ask only; a feed with no L1 for a
    symbol simply never calls it (the UI shows '—').
 
+### Capability declaration (`config`, optional)
+
+A feed with a **fixed** capability set may declare it; the widget reads the declaration once at mount
+and constrains itself — in particular, its opening timeframe must be servable: a sticky/default tf the
+feed did not declare falls to your **first** declared resolution instead of dead-ending the first paint
+on a refusal. The viewer's stored preference is *not* overwritten (capability is the feed's property,
+preference is the viewer's — a later feed that serves the preferred tf gets it back).
+
+```ts
+import type { ChartDatafeed, DatafeedConfig } from '@trdrs/chart'
+
+declare const baseFeed: ChartDatafeed // your feed from the section above
+
+export const feed: ChartDatafeed = {
+  ...baseFeed,
+  async config(): Promise<DatafeedConfig> {
+    return { resolutions: ['1m', '5m', '1h', '1d'], quotes: false }
+  },
+}
+```
+
+Declare only what is **true**. Absent method / absent field / empty list = unconstrained — a feed that
+serves any interval must not declare a finite `resolutions` list, because the widget then enforces it.
+The UDF adapter declares automatically from the server's own `/config` (and only ever declares
+timeframes it would actually serve).
+
 ## The UDF on-ramp
 
 Already have a [UDF](https://www.tradingview.com/charting-library-docs/latest/connecting_data/UDF) server?
@@ -76,8 +129,10 @@ does over SSE). UDF is the low-effort on-ramp, not the endpoint.
 What the adapter honors of the protocol:
 
 - **`/config` is fetched once and drives the rest.** `supported_resolutions` is validated against —
-  asking for a resolution the server didn't declare is `FeedUnavailableError`, not a silent guess. A
-  server without `/config` gets the protocol's defaults (search on, no groups).
+  asking for a resolution the server didn't declare is `FeedUnavailableError`, not a silent guess
+  (`'D'` and `'1D'` are recognized as the same declaration). A server without `/config` gets the
+  protocol's defaults (search on, no groups). The adapter also republishes the declaration through
+  the seam's `config()`, so the widget opens on a timeframe the server actually serves.
 - **Group-catalog symbol search.** When `/config` declares `supports_group_request`, search is served
   from the columnar `/symbol_info?group=` catalog instead of `/search`.
 - **`no_data` + `nextTime` is a gap, not the end.** The chart re-asks once at `nextTime` (a session
@@ -232,3 +287,21 @@ A host can draw its own **preview** levels (an order ticket's pending entry/stop
 `update({ preview })`. Preview gestures are structurally money-free: a drag or ✕ on a preview line
 only ever calls your `onPreviewEdit` / `onPreviewCancel` callbacks — no `ChartBroker` method is in
 scope on that path.
+
+## Versioning & deprecation
+
+- **SemVer, enforced at the gate.** The public surface is pinned by an API-surface test (every
+  exported name and its runtime kind), the shipped type declarations are compiled against by a
+  clean-room consumer with `skipLibCheck: false`, and this README's own `ts` examples type-check
+  against the real exports. A change that trips any of those is decided as a version event — a
+  removed/renamed export or a changed contract is **major**; new surface is **minor**; fixes are
+  **patch** — never shipped as silent drift.
+- **Optionality is the compatibility mechanism.** New seam capabilities arrive as *optional* methods
+  and fields (`config`, `serverTime`, `getQuotes`, `reversePosition` are the pattern): an existing
+  implementation keeps compiling, and the widget treats absence as "unconstrained / not supported".
+  Your integration never breaks by standing still within a major.
+- **Deprecation runs a full major.** A deprecated export keeps working for the remainder of the
+  current major, is marked `@deprecated` in the types with its replacement named in the note (your
+  editor flags every call site), and is removed only in the next major — never silently.
+- **The wire timeframe grammar is stable vocabulary.** `<N><unit>` with units `t s m h d w mo`.
+  Extensions may add units; an existing token never changes meaning.

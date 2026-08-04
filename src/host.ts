@@ -14,7 +14,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from 'lightweight-charts'
-import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type FeedBar } from './datafeed'
+import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type DatafeedConfig, type FeedBar } from './datafeed'
 import { localStorageChartStorage, type ChartStorage } from './storage'
 import type { ChartTheme, ChartWidgetOptions, IndicatorPlugin } from './widget'
 import { BRAND_DOWN, BRAND_UP } from './overrides'
@@ -60,6 +60,16 @@ export function applyBar(bars: FeedBar[], bar: FeedBar): FeedBar[] | null {
   if (!last || bar.t > last.t) return [...bars, bar]
   if (bar.t === last.t) return [...bars.slice(0, -1), bar]
   return null
+}
+
+/** The initial-timeframe rule for a capability-declaring feed: the sticky/default tf when the feed
+ *  declares nothing (or declares that tf), else the feed's FIRST declared resolution — the widget
+ *  must never open with an ask the feed already said it can't serve. The sticky PREFERENCE is not
+ *  overwritten: capability is the feed's property, preference is the viewer's, so a later feed that
+ *  serves the preferred tf gets it back. Exported for tests. */
+export function resolveInitialTf(sticky: string, declared: readonly string[] | undefined): string {
+  if (!declared || declared.length === 0) return sticky
+  return declared.includes(sticky) ? sticky : (declared[0] ?? sticky)
 }
 
 const SYMBOL_KEY = 'trdrs.chart.widget.symbol.v1'
@@ -259,7 +269,23 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     })
   }
 
-  load()
+  // The initial load waits on the feed's OPTIONAL capability declaration: opening with a sticky tf the
+  // feed already declared unservable would dead-end the first paint on a refusal. A declaring feed
+  // resolves the initial tf first (a failed/empty declaration constrains nothing); a feed without
+  // config() starts immediately — exactly today's behavior. epoch 0 = "no host-driven load happened
+  // yet": a setSymbol/setTimeframe that beats a slow config() is the host's explicit choice and wins.
+  if (datafeed.config) {
+    void datafeed
+      .config()
+      .catch((): DatafeedConfig => ({}))
+      .then((cfg) => {
+        if (removed || epoch !== 0) return
+        tf = resolveInitialTf(tf, cfg.resolutions)
+        load()
+      })
+  } else {
+    load()
+  }
 
   return {
     symbol: () => symbol,

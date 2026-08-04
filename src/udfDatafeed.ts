@@ -22,7 +22,7 @@
 // as the stop-scrolling-back signal. Live polling only ever emits the newest bar, which the chart applies
 // as mutate-last-or-append by bucket time.
 import { FeedUnavailableError } from './datafeed'
-import type { BarsEvent, ChartDatafeed, FeedBar, HistoryPage, QuoteSnapshot, SearchPage, SubscribeHandlers, SymbolInfo, SymbolRow } from './datafeed'
+import type { BarsEvent, ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, QuoteSnapshot, SearchPage, SubscribeHandlers, SymbolInfo, SymbolRow } from './datafeed'
 
 /** The subset of `fetch` this adapter uses — kept minimal so the package stays DOM-independent and a
  *  test can drive it with a plain fake. The global `fetch` satisfies it. */
@@ -63,6 +63,42 @@ export function tfToUdfResolution(tf: string): string {
       return `${n}M`
     default:
       return tf
+  }
+}
+
+/** Canonical spelling of a UDF resolution for EQUALITY: real servers spell one-day as either 'D' or
+ *  '1D' (same for W/M/S/T — a bare letter is an implicit count of 1), so both forms normalize to the
+ *  digit-prefixed one. Anything else passes through unchanged — this canonicalizes spelling only,
+ *  it never reinterprets an unknown token. */
+const canonicalResolution = (r: string): string => {
+  const t = r.trim()
+  return /^[TSDWM]$/.test(t) ? `1${t}` : t
+}
+
+/** The inverse of {@link tfToUdfResolution}: a UDF resolution string back to a wire tf token.
+ *  Bare numbers are minutes; whole-hour counts ≥ 60 normalize to `<N>h` (the forward map emits hours
+ *  AS minutes, so '1h' → '60' → '1h' round-trips); bare 'D'/'W'/'M'/'S'/'T' mean a count of 1. Null
+ *  for a resolution the wire tf grammar cannot express — a caller building a capability declaration
+ *  OMITS that resolution rather than mis-declaring it (the widget can't do bucket arithmetic on a
+ *  token outside the grammar, so it isn't widget-servable even if the server serves it). */
+export function udfResolutionToTf(resolution: string): string | null {
+  const m = /^(\d+)(T|S|D|W|M)?$/.exec(canonicalResolution(resolution))
+  if (!m) return null
+  const n = Number(m[1])
+  if (!(n > 0)) return null
+  switch (m[2]) {
+    case 'T':
+      return `${n}t`
+    case 'S':
+      return `${n}s`
+    case 'D':
+      return `${n}d`
+    case 'W':
+      return `${n}w`
+    case 'M':
+      return `${n}mo`
+    default:
+      return n % 60 === 0 && n >= 60 ? `${n / 60}h` : `${n}m`
   }
 }
 
@@ -125,7 +161,7 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
   /** /config, fetched once and cached (a failed fetch = the protocol's config-less defaults; the promise
    *  is NOT cached on failure so a transient blip retries on the next call). */
   let configPromise: Promise<UdfConfig> | null = null
-  function config(): Promise<UdfConfig> {
+  function udfConfig(): Promise<UdfConfig> {
     configPromise ??= getJson('/config')
       .then((raw) => {
         const r = raw as {
@@ -153,8 +189,12 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
    *  silently-wrong bar is worse than no bar. An empty declaration = no restriction declared. */
   async function resolutionFor(tf: string): Promise<string> {
     const resolution = tfToUdfResolution(tf)
-    const cfg = await config()
-    if (cfg.supportedResolutions.length > 0 && !cfg.supportedResolutions.includes(resolution)) {
+    const cfg = await udfConfig()
+    // Membership is checked on CANONICAL spellings: a server declaring 'D' serves the same resolution
+    // as one declaring '1D', and refusing '1D' against a ['D'] declaration would refuse a bar size the
+    // server actually serves.
+    const declared = cfg.supportedResolutions.map(canonicalResolution)
+    if (declared.length > 0 && !declared.includes(canonicalResolution(resolution))) {
       throw new FeedUnavailableError(`udf: resolution ${resolution} (${tf}) is not served by this server (supported: ${cfg.supportedResolutions.join(', ')})`)
     }
     return resolution
@@ -199,7 +239,7 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
   let groupCatalogPromise: Promise<SymbolRow[]> | null = null
   function groupCatalog(): Promise<SymbolRow[]> {
     groupCatalogPromise ??= (async () => {
-      const cfg = await config()
+      const cfg = await udfConfig()
       if (cfg.groups.length === 0) {
         throw new Error('udf: this server requires group requests (supports_search: false) but /config lists no exchanges to enumerate')
       }
@@ -230,8 +270,20 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
   }
 
   return {
+    /** Feed-level capability declaration: the server's /config resolutions mapped back to wire tf
+     *  tokens (a config-less server declares the protocol's defaults, because {@link resolutionFor}
+     *  enforces exactly those). The guarantee a consumer leans on is one-directional — every token
+     *  DECLARED here is one resolutionFor will accept — so a widget opening on a declared token can
+     *  never be refused. A resolution the tf grammar can't express is omitted rather than
+     *  mis-declared, and an empty (or entirely unmappable) declaration constrains nothing (`{}`). */
+    async config(): Promise<DatafeedConfig> {
+      const cfg = await udfConfig()
+      const resolutions = cfg.supportedResolutions.map(udfResolutionToTf).filter((tf): tf is string => tf !== null)
+      return resolutions.length > 0 ? { resolutions } : {}
+    },
+
     async search(q, opts): Promise<SearchPage> {
-      const cfg = await config()
+      const cfg = await udfConfig()
       const limit = opts?.limit ?? 50
       const offset = opts?.offset ?? 0
       if (!cfg.supportsSearch) {

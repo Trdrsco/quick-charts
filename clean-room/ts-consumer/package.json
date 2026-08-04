@@ -1,0 +1,11 @@
+{
+  "name": "clean-room-ts-consumer",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@trdrs/chart": "file:../.artifacts/trdrs-chart-0.1.0.tgz",
+    "@trdrs/chart-drawings": "file:../.artifacts/trdrs-chart-drawings-0.1.0.tgz",
+    "lightweight-charts": "^5.0.0"
+  }
+}

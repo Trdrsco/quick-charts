@@ -1,12 +1,32 @@
 {
   "name": "@trdrs/chart",
-  "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "trdrs charting library: a datafeed-driven trading chart widget with broker, storage and override seams. Commercial license required.",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "THIRD-PARTY-NOTICES.md"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "restricted",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
   "scripts": {
+    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --external lightweight-charts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {
@@ -14,6 +34,7 @@
   },
   "devDependencies": {
     "lightweight-charts": "^5.0.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.7.2"
   }
 }
