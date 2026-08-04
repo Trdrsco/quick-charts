@@ -52,6 +52,11 @@ export interface ChartWidgetOptions {
   theme?: ChartTheme
   /** Extra indicator plugins to register beyond the built-ins. */
   indicators?: IndicatorPlugin[]
+  /** The drawing layer (on by default): tools, selection, per-symbol persistence, and a small
+   *  built-in rail. `false` removes the layer entirely; `{ rail: false }` keeps the layer but
+   *  hides the rail for a host that drives `ChartWidgetApi.drawings` from its own UI;
+   *  `storageKey` names the persisted store document (one key = one drawings surface). */
+  drawings?: false | { rail?: false; storageKey?: string }
   events?: ChartWidgetEvents
 }
 

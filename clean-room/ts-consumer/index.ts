@@ -2,11 +2,13 @@
 // source) must be able to implement the seams and drive the widget with full types. This file IS
 // the gate — `skipLibCheck: false`, so the shipped .d.ts must stand on its own.
 import {
+  attachDrawings,
   createChart,
   createUdfDatafeed,
   mergeOverrides,
   memoryChartStorage,
   olderPageVerdict,
+  placeableByWidget,
   resolveInitialTf,
   tfToUdfResolution,
   udfResolutionToTf,
@@ -14,11 +16,13 @@ import {
   type ChartDatafeed,
   type ChartWidgetApi,
   type DatafeedConfig,
+  type DrawingsHandle,
   type FeedBar,
   type HistoryPage,
   type SessionClass,
 } from '@trdrs/chart'
-import { toolRegistry, type SerializedDrawing } from '@trdrs/chart-drawings'
+import type { IChartApi, ISeriesApi } from 'lightweight-charts'
+import { parseDrawingsStore, serializeDrawingsStore, toolRegistry, type SerializedDrawing } from '@trdrs/chart-drawings'
 
 // A complete typed datafeed — the seam a licensee actually implements.
 const feed: ChartDatafeed = {
@@ -67,6 +71,15 @@ void udf
 if (tfToUdfResolution('1h') !== '60') throw new Error('unexpected resolution mapping')
 if (udfResolutionToTf('D') !== '1d') throw new Error('unexpected inverse resolution mapping')
 if (resolveInitialTf('3m', ['1m', '4h']) !== '1m') throw new Error('unexpected initial-tf resolution')
+if (!placeableByWidget('trend_line') || placeableByWidget('brush')) throw new Error('unexpected widget placeability')
+
+// The drawing layer types against a real chart/series pair (construction is DOM-bound; the render
+// smoke executes it) and the persisted store document round-trips through the shared codec.
+export function mountDrawingLayer(el: HTMLElement, chartApi: IChartApi, series: ISeriesApi<'Candlestick'>): DrawingsHandle {
+  return attachDrawings({ chart: chartApi, series, container: el, symbol: 'BTC', storage: memoryChartStorage() })
+}
+const storeDoc: Record<string, SerializedDrawing[]> = parseDrawingsStore(serializeDrawingsStore({}))
+if (Object.keys(storeDoc).length !== 0) throw new Error('unexpected store round-trip')
 if (!toolRegistry.get('trend_line')) throw new Error('registry missing trend_line')
 const drawing: SerializedDrawing | undefined = undefined
 void drawing

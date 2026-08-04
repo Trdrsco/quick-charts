@@ -29,6 +29,9 @@
     "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --external lightweight-charts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
+  "dependencies": {
+    "@trdrs/chart-drawings": "workspace:^"
+  },
   "peerDependencies": {
     "lightweight-charts": "^5.0.0"
   },

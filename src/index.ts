@@ -28,7 +28,8 @@ export { createUdfDatafeed, tfToUdfResolution, udfResolutionToTf } from './udfDa
 
 export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorPlugin, IndicatorPlot } from './widget'
 
-export type { ChartWidgetApi, ResolvedTheme } from './host'
+export type { ChartWidgetApi, ChartDrawingsApi, ResolvedTheme } from './host'
+export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
 export * from './broker'
 export { attachTradeLines, normalizeRoot, type PreviewLine, type PreviewSet, type TradeLineAttachment, type TradeLineHost, type TradeLineOptions } from './tradeLines'
 export {

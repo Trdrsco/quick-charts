@@ -150,8 +150,9 @@ import { localStorageChartStorage, memoryChartStorage, type ChartStorage } from 
 ```
 
 Scope honestly stated: `ChartStorage` redirects the persistence of **this package's widget** — the
-trdrs app's own richer chart panel manages its drawings/indicators/appearance persistence outside
-this seam.
+sticky symbol/timeframe and the drawing layer's store document both live behind it. The trdrs
+app's own richer chart panel manages its persistence outside this seam (its drawings speak the
+same store *codec*, so the documents stay interchangeable).
 
 ## Indicator plugins
 
@@ -179,8 +180,55 @@ widget.remove() // teardown
 
 The widget paints candles + volume, applies live updates by the bar rules above, pages older history in as
 the viewer scrolls left (stopping at the feed's `noData`), persists the sticky symbol/timeframe through
-`ChartStorage`, and runs registered `IndicatorPlugin`s over the live series. The trdrs app's own chart
-panel is a richer host over the same seams (trading, drawings UI, replay) and layers those on top.
+`ChartStorage`, runs registered `IndicatorPlugin`s over the live series, and mounts the drawing layer
+below. The trdrs app's own chart panel is a richer host over the same seams (trading, drawings UI,
+replay) and layers those on top.
+
+## Drawings
+
+The widget ships with a drawing layer (on by default): placement, selection, drag-to-move and
+anchor-resize, per-symbol persistence, and a small built-in tool rail. Turn the layer off with
+`drawings: false`, or keep it and hide the rail to drive it from your own UI:
+
+```ts
+import { createChart, createUdfDatafeed } from '@trdrs/chart'
+
+const widget = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  drawings: { rail: false, storageKey: 'acme.chart.drawings' },
+})
+widget.drawings?.armTool('trend_line')
+const saved = widget.drawings?.export() // the persistence wire format (SerializedDrawing[])
+```
+
+The layer is also mountable on its own lightweight-charts pair, without the widget:
+
+```ts
+import { attachDrawings } from '@trdrs/chart'
+
+const layer = attachDrawings({ chart, series, container, symbol: 'ES' })
+layer.armTool('rectangle')
+layer.destroy()
+```
+
+What to know:
+
+- **Scope is deliberate.** This host places *fixed-anchor tools without text* — trend lines,
+  rays, shapes, fibs, patterns, and so on. `armTool` **throws** for tools needing chrome it does
+  not have (freehand strokes, multipoint runs, instant position tools, text-bearing tools);
+  `placeableByWidget(type)` answers in advance, so a custom rail can filter honestly.
+- **Persistence speaks a shared codec.** The store document (`{ [symbol]: SerializedDrawing[] }`,
+  via `parseDrawingsStore`/`serializeDrawingsStore` from `@trdrs/chart-drawings`) is the SAME
+  document every host of the codec reads and writes — drawings survive moving between hosts, and
+  restored documents may contain tools beyond this host's placement scope: they render, select,
+  move and persist fine; only their *creation* needs richer chrome.
+- **Keys are widget-scoped.** Delete removes the selection, Escape cancels a placement/disarms —
+  bound to the chart element (focused on interaction), never the page, so an embedded chart cannot
+  swallow the host page's keys.
+- **Gestures follow the standard grammar.** Press-drag-release or click…click to place; drag a
+  drawing to move it (rigid whole-bar translation — anchors never drift apart); grab an anchor
+  handle to reshape; locked drawings select but refuse edits.
 
 ## The broker contract (chart trading)
 

@@ -36,6 +36,7 @@ export { cachedImageBitmap, primeImageBitmap } from './render/imageCache'
 
 export { ToolRegistry, toolRegistry, TOOL_CATEGORIES } from './registry'
 export type { ToolDefinition } from './registry'
+export { parseDrawingsStore, serializeDrawingsStore, restoreDrawings } from './store'
 
 export * from './tools/lines'
 export * from './tools/shapes'
