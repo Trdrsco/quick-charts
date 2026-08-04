@@ -10,12 +10,13 @@ export type {
   SearchPage,
   SymbolInfo,
   HistoryPage,
+  OlderPageVerdict,
   QuoteSnapshot,
   BarsEvent,
   SubscribeHandlers,
   ChartDatafeed,
 } from './datafeed'
-export { FeedUnavailableError } from './datafeed'
+export { FeedUnavailableError, olderPageVerdict } from './datafeed'
 
 export type { ChartStorage } from './storage'
 export { localStorageChartStorage, memoryChartStorage } from './storage'

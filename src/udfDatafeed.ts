@@ -1,13 +1,27 @@
 // A ChartDatafeed over a UDF (Universal Data Feed) HTTP server — the trivial-onboarding adapter. UDF is a
-// plain REST protocol (/config, /search, /symbols, /history, /quotes, /time); anyone with a UDF endpoint
-// gets a working chart by pointing this adapter at it, with zero custom code. UDF is POLL-based (no push),
-// so live updates poll /history for the newest bar — for true real-time a backend implements ChartDatafeed
-// directly (as the engine reference implementation does over SSE). This adapter is the low-effort on-ramp.
+// plain REST protocol (/config, /symbol_info, /search, /symbols, /history, /quotes, /time); anyone with a
+// UDF endpoint gets a working chart by pointing this adapter at it, with zero custom code. UDF is
+// POLL-based (no push), so live updates poll /history for the newest bar — for true real-time a backend
+// implements ChartDatafeed directly (as the engine reference implementation does over SSE). This adapter
+// is the low-effort on-ramp.
 //
-// The bar rules the chart relies on are the UDF server's responsibility (ascending unique bars, [from,to)
-// right-exclusivity, countBack outranking from); this adapter forwards countback and surfaces the server's
-// `s: "no_data"` as the stop-scrolling-back signal. Live polling only ever emits the newest bar, which the
-// chart applies as mutate-last-or-append by bucket time.
+// Conformance posture (the adapter's obligations, not the server's):
+//   - /config is fetched ONCE and drives behaviour — search mode (supports_search vs group requests) and
+//     the served resolution set. A server without /config gets the protocol's own documented defaults.
+//   - A resolution the server does not list is REFUSED with a clear terminal error — never requested
+//     anyway (a server may answer a wrong-size bar rather than an error; fail closed beats silently-wrong).
+//   - supports_search: false is honoured: the group catalogs (/symbol_info?group=) are fetched once and
+//     searched locally, so group-request-only servers work instead of 404ing forever.
+//   - `nextTime` on a no_data answer is surfaced (seconds) so scroll-back can jump a gap instead of
+//     dead-ending at a market holiday.
+//   - The ChartDatafeed window is INCLUSIVE [from, to] while UDF's `to` is EXCLUSIVE — the adapter
+//     bridges with `to + 1` so the chart's `to = oldest − 1` paging never silently drops one bar per page.
+//
+// The bar rules the chart relies on remain the UDF server's responsibility (ascending unique bars,
+// countback outranking from); this adapter forwards countback and surfaces the server's `s: "no_data"`
+// as the stop-scrolling-back signal. Live polling only ever emits the newest bar, which the chart applies
+// as mutate-last-or-append by bucket time.
+import { FeedUnavailableError } from './datafeed'
 import type { BarsEvent, ChartDatafeed, FeedBar, HistoryPage, QuoteSnapshot, SearchPage, SubscribeHandlers, SymbolInfo, SymbolRow } from './datafeed'
 
 /** The subset of `fetch` this adapter uses — kept minimal so the package stays DOM-independent and a
@@ -62,6 +76,39 @@ function decimalsOfPriceScale(pricescale: number): number | null {
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
+/** The /config surface this adapter consumes. */
+interface UdfConfig {
+  supportsSearch: boolean
+  supportsGroupRequest: boolean
+  /** The server's served resolution strings; empty = the server declared no restriction. */
+  supportedResolutions: readonly string[]
+  /** Group names for /symbol_info?group= (UDF reuses the exchange list as the group vocabulary). */
+  groups: readonly string[]
+}
+
+/** Defaults for a server WITHOUT /config. Resolutions are the protocol's own documented defaults.
+ *  Search deliberately deviates from the spec's default (`supports_group_request: true`): group mode
+ *  needs a group vocabulary, and with no /config there are no exchanges to enumerate — /search is
+ *  the only workable path for a config-less server, and it was this adapter's historical behaviour. */
+const CONFIGLESS_DEFAULTS: UdfConfig = {
+  supportsSearch: true,
+  supportsGroupRequest: false,
+  supportedResolutions: ['1', '5', '15', '30', '60', '1D', '1W', '1M'],
+  groups: [],
+}
+
+/** A UDF `nextTime` in seconds. The protocol's own example is milliseconds while its request params are
+ *  seconds; real servers ship both. Same magnitude heuristic the rest of the codebase uses. */
+const nextTimeSecs = (v: unknown): number | undefined => {
+  const n = num(v)
+  if (n === null || n <= 0) return undefined
+  return n > 1e12 ? Math.floor(n / 1000) : Math.floor(n)
+}
+
+/** One column of a columnar (response-as-a-table) UDF payload: arrays index per row, scalars apply to
+ *  every row. */
+const col = (v: unknown, i: number): unknown => (Array.isArray(v) ? v[i] : v)
+
 /** A ChartDatafeed backed by a UDF server. */
 export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
   const base = options.baseUrl.replace(/\/$/, '')
@@ -75,11 +122,53 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
     return res.json()
   }
 
-  /** Parse a UDF /history payload into a page. `s: "no_data"` → the stop-scrolling-back signal; `s: "error"`
-   *  throws (a retryable transport-level failure); `s: "ok"` zips the parallel OHLCV arrays into bars. */
+  /** /config, fetched once and cached (a failed fetch = the protocol's config-less defaults; the promise
+   *  is NOT cached on failure so a transient blip retries on the next call). */
+  let configPromise: Promise<UdfConfig> | null = null
+  function config(): Promise<UdfConfig> {
+    configPromise ??= getJson('/config')
+      .then((raw) => {
+        const r = raw as {
+          supports_search?: boolean
+          supports_group_request?: boolean
+          supported_resolutions?: string[]
+          exchanges?: Array<{ value?: string }>
+        }
+        return {
+          supportsSearch: r.supports_search === true,
+          supportsGroupRequest: r.supports_group_request === true,
+          supportedResolutions: Array.isArray(r.supported_resolutions) ? r.supported_resolutions : [],
+          groups: (r.exchanges ?? []).map((e) => e.value ?? '').filter((v) => v !== ''),
+        } satisfies UdfConfig
+      })
+      .catch(() => {
+        configPromise = null
+        return CONFIGLESS_DEFAULTS
+      })
+    return configPromise
+  }
+
+  /** Refuse a resolution the server did not declare — terminal and precise, because a UDF server asked
+   *  for an unlisted resolution may answer a DIFFERENT bar size rather than an error, and a
+   *  silently-wrong bar is worse than no bar. An empty declaration = no restriction declared. */
+  async function resolutionFor(tf: string): Promise<string> {
+    const resolution = tfToUdfResolution(tf)
+    const cfg = await config()
+    if (cfg.supportedResolutions.length > 0 && !cfg.supportedResolutions.includes(resolution)) {
+      throw new FeedUnavailableError(`udf: resolution ${resolution} (${tf}) is not served by this server (supported: ${cfg.supportedResolutions.join(', ')})`)
+    }
+    return resolution
+  }
+
+  /** Parse a UDF /history payload into a page. `s: "no_data"` → the stop-scrolling-back signal (with the
+   *  optional `nextTime` gap hint, normalized to seconds); `s: "error"` throws (a retryable
+   *  transport-level failure); `s: "ok"` zips the parallel OHLCV arrays into bars. */
   function parseHistory(raw: unknown): HistoryPage {
-    const r = raw as { s?: string; t?: number[]; o?: number[]; h?: number[]; l?: number[]; c?: number[]; v?: number[]; errmsg?: string }
-    if (r.s === 'no_data') return { bars: [], noData: true }
+    const r = raw as { s?: string; t?: number[]; o?: number[]; h?: number[]; l?: number[]; c?: number[]; v?: number[]; errmsg?: string; nextTime?: number }
+    if (r.s === 'no_data') {
+      const nextTime = nextTimeSecs(r.nextTime)
+      return nextTime === undefined ? { bars: [], noData: true } : { bars: [], noData: false, nextTime }
+    }
     if (r.s !== 'ok') throw new Error(`udf history: ${r.errmsg ?? r.s ?? 'malformed'}`)
     const t = r.t ?? []
     const bars: FeedBar[] = t.map((time, i) => ({
@@ -94,19 +183,71 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
   }
 
   async function history(symbol: string, tf: string, range?: { from?: number; to?: number; countBack?: number }): Promise<HistoryPage> {
-    const resolution = tfToUdfResolution(tf)
+    const resolution = await resolutionFor(tf)
     const to = range?.to ?? Math.floor(Date.now() / 1000)
-    const params = new URLSearchParams({ symbol, resolution, to: String(to) })
+    // The ChartDatafeed window is INCLUSIVE of `to`; UDF's `to` is EXCLUSIVE ("rightmost, not
+    // inclusive"). Bridge with +1 so the chart's `to = oldest − 1` paging never drops the boundary
+    // bar — without this, every scroll-back page silently loses one bar at the seam.
+    const params = new URLSearchParams({ symbol, resolution, to: String(to + 1) })
     if (range?.countBack != null) params.set('countback', String(range.countBack))
     else params.set('from', String(range?.from ?? to - 86_400))
     return parseHistory(await getJson(`/history?${params.toString()}`))
   }
 
+  /** The group catalogs (/symbol_info?group=) fetched once and flattened — the search source for a
+   *  supports_search: false server. Columnar payloads: array fields index per row, scalars broadcast. */
+  let groupCatalogPromise: Promise<SymbolRow[]> | null = null
+  function groupCatalog(): Promise<SymbolRow[]> {
+    groupCatalogPromise ??= (async () => {
+      const cfg = await config()
+      if (cfg.groups.length === 0) {
+        throw new Error('udf: this server requires group requests (supports_search: false) but /config lists no exchanges to enumerate')
+      }
+      const rows: SymbolRow[] = []
+      for (const group of cfg.groups) {
+        const raw = (await getJson(`/symbol_info?group=${encodeURIComponent(group)}`)) as Record<string, unknown>
+        const symbols = Array.isArray(raw.symbol) ? (raw.symbol as unknown[]) : []
+        for (let i = 0; i < symbols.length; i++) {
+          const symbol = String(col(raw.ticker, i) ?? col(raw.symbol, i) ?? '')
+          if (!symbol) continue
+          rows.push({
+            symbol,
+            name: String(col(raw.description, i) ?? symbol),
+            exchange: String(col(raw['exchange-listed'], i) ?? group),
+            type: String(col(raw.type, i) ?? ''),
+            provider: null,
+            via: null,
+          })
+        }
+      }
+      return rows
+    })()
+    // A failed catalog fetch retries on the next search rather than pinning the failure.
+    void groupCatalogPromise.catch(() => {
+      groupCatalogPromise = null
+    })
+    return groupCatalogPromise
+  }
+
   return {
     async search(q, opts): Promise<SearchPage> {
-      // UDF /search returns a flat capped list with no cursor; page 2+ (offset > 0) is empty, hasMore false.
-      if (opts?.offset && opts.offset > 0) return { hits: [], hasMore: false }
-      const params = new URLSearchParams({ query: q, limit: String(opts?.limit ?? 50) })
+      const cfg = await config()
+      const limit = opts?.limit ?? 50
+      const offset = opts?.offset ?? 0
+      if (!cfg.supportsSearch) {
+        // Group-request mode: search the flattened catalogs locally — with REAL paging and an exact
+        // hasMore, which /search itself could never give.
+        const needle = q.trim().toUpperCase()
+        const all = (await groupCatalog()).filter(
+          (r) =>
+            (needle === '' || r.symbol.toUpperCase().includes(needle) || r.name.toUpperCase().includes(needle)) &&
+            (!opts?.cls || r.type === opts.cls),
+        )
+        return { hits: all.slice(offset, offset + limit), hasMore: all.length > offset + limit }
+      }
+      // /search returns a flat capped list with no cursor; page 2+ (offset > 0) is empty, hasMore false.
+      if (offset > 0) return { hits: [], hasMore: false }
+      const params = new URLSearchParams({ query: q, limit: String(limit) })
       if (opts?.cls) params.set('type', opts.cls)
       const raw = (await getJson(`/search?${params.toString()}`)) as Array<{ symbol?: string; full_name?: string; description?: string; exchange?: string; type?: string }>
       const hits: SymbolRow[] = (Array.isArray(raw) ? raw : []).map((r) => ({

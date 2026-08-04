@@ -55,6 +55,28 @@ export interface HistoryPage {
   /** True when a countBack ask found NOTHING — the "no more history, stop scrolling back" signal.
    *  Plain from/to asks never set it (an empty window can be a mid-history gap). */
   noData: boolean
+  /** OPTIONAL gap hint on an EMPTY page that is not the end of history: the epoch-seconds time of
+   *  the closest bar older than the asked window (a market holiday between `to` and the data).
+   *  A consumer may retry ONCE with `to = nextTime` to jump the gap instead of dead-ending —
+   *  {@link olderPageVerdict} is that rule. Feeds without the concept simply never set it. */
+  nextTime?: number
+}
+
+export type OlderPageVerdict = { kind: 'bars' } | { kind: 'hop'; to: number } | { kind: 'end' } | { kind: 'stop' }
+
+/** The one scroll-back rule for an older-history page, shared by every paging consumer so the gap
+ *  semantics can't drift between them:
+ *  - `bars` — the page has data; prepend it (bars are never discarded, whatever flags ride along).
+ *  - `hop` — empty but `nextTime` points strictly older and this ask wasn't already a hop: re-ask
+ *    once anchored there (the session-gap answer). One hop per gap keeps a lying feed bounded —
+ *    an honest hint names a real bar, so the hop can't come back empty.
+ *  - `end` — empty, `noData`, and no hint: feed inception, the one verdict that seals scroll-back.
+ *  - `stop` — every other empty page (a transient, or an unusable hint): end this flight WITHOUT
+ *    sealing; the next gesture asks again. */
+export function olderPageVerdict(page: HistoryPage, askedTo: number, alreadyHopped: boolean): OlderPageVerdict {
+  if (page.bars.length > 0) return { kind: 'bars' }
+  if (page.nextTime !== undefined && page.nextTime < askedTo && !alreadyHopped) return { kind: 'hop', to: page.nextTime }
+  return page.noData && page.nextTime === undefined ? { kind: 'end' } : { kind: 'stop' }
 }
 
 /** A batch quote snapshot for ONE symbol — the scalar last/session/change values a quote board renders
@@ -105,9 +127,11 @@ export interface ChartDatafeed {
   search(q: string, opts?: { cls?: string; limit?: number; offset?: number }): Promise<SearchPage>
   /** Resolve one symbol's metadata; null when the symbol is unknown to the feed's catalogs. */
   resolve(symbol: string): Promise<SymbolInfo | null>
-  /** Historical sealed bars: a [from,to] window (epoch seconds), or `countBack` = the LAST N bars
-   *  at/before `to` (outranks `from` — the scroll-back page). No range = the feed's default recent
-   *  window. Throws {@link FeedUnavailableError} when no feed serves the symbol. */
+  /** Historical sealed bars: a [from,to] window (epoch seconds, INCLUSIVE of both ends — the chart
+   *  pages with `to = oldest − 1` and never re-requests a bar it holds), or `countBack` = the LAST
+   *  N bars at/before `to` (outranks `from`; the count is an obligation — reach across closures).
+   *  No range = the feed's default recent window. Throws {@link FeedUnavailableError} when no feed
+   *  serves the symbol. */
   history(symbol: string, tf: string, range?: { from?: number; to?: number; countBack?: number }): Promise<HistoryPage>
   /** Live bar/quote push for one (symbol, timeframe). Returns the unsubscribe. The transport owns
    *  reconnection and re-syncs by emitting a fresh `snapshot`. */

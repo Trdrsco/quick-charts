@@ -14,7 +14,7 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from 'lightweight-charts'
-import { FeedUnavailableError, type ChartDatafeed, type FeedBar } from './datafeed'
+import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type FeedBar } from './datafeed'
 import { localStorageChartStorage, type ChartStorage } from './storage'
 import type { ChartTheme, ChartWidgetOptions, IndicatorPlugin } from './widget'
 import { BRAND_DOWN, BRAND_UP } from './overrides'
@@ -157,8 +157,18 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     })
   }
 
+  /** One older-history fetch with the gap hop (olderPageVerdict's rule): an empty page carrying
+   *  nextTime re-asks once anchored there; only the `end` verdict is the true end of history. */
+  async function fetchOlder(to: number): Promise<{ olderBars: FeedBar[]; end: boolean }> {
+    const page = await datafeed.history(symbol, tf, { to, countBack: PAGE_BARS })
+    const verdict = olderPageVerdict(page, to, false)
+    if (verdict.kind !== 'hop') return { olderBars: page.bars, end: verdict.kind === 'end' }
+    const hop = await datafeed.history(symbol, tf, { to: verdict.to, countBack: PAGE_BARS })
+    return { olderBars: hop.bars, end: olderPageVerdict(hop, verdict.to, true).kind === 'end' }
+  }
+
   /** Fetch the page of bars older than the current left edge; prepend while HOLDING the visible window
-   *  in place (the standard scroll-back experience). Stops for good at the feed's noData. */
+   *  in place (the standard scroll-back experience). Stops for good at the feed's true end of history. */
   function maybePageBack(): void {
     if (paging || noMoreHistory || bars.length === 0) return
     const range = chart.timeScale().getVisibleLogicalRange()
@@ -166,12 +176,11 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     paging = true
     const myEpoch = epoch
     const oldest = bars[0]!.t
-    void datafeed
-      .history(symbol, tf, { to: oldest - 1, countBack: PAGE_BARS })
-      .then((page) => {
+    void fetchOlder(oldest - 1)
+      .then(({ olderBars, end }) => {
         if (removed || myEpoch !== epoch) return
-        if (page.noData) noMoreHistory = true
-        const older = page.bars.filter((b) => b.t < oldest)
+        if (end) noMoreHistory = true
+        const older = olderBars.filter((b) => b.t < oldest)
         if (older.length === 0) return
         const keep = chart.timeScale().getVisibleRange()
         bars = [...older, ...bars]

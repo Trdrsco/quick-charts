@@ -63,7 +63,7 @@ describe('UdfDatafeed.history', () => {
   it('forwards countBack as the UDF countback param and omits from', async () => {
     const { df, calls } = feed({ '/history': { s: 'ok', t: [], o: [], h: [], l: [], c: [], v: [] } })
     await df.history('ES', '1h', { to: 500, countBack: 42 })
-    const url = calls[0]!
+    const url = calls.find((u) => u.includes('/history'))! // calls[0] is the one-time /config probe
     expect(url).toContain('resolution=60')
     expect(url).toContain('countback=42')
     expect(url).not.toContain('from=')
@@ -97,6 +97,101 @@ describe('UdfDatafeed.getQuotes', () => {
     const { df } = feed({ '/quotes': { s: 'ok', d: [{ n: 'ES', v: { lp: 100, prev_close_price: 90 } }] } })
     const [es] = await df.getQuotes!(['ES'])
     expect(es!.change).toBe(10)
+  })
+})
+
+describe('UdfDatafeed — /config conformance (AF-4)', () => {
+  it('fetches /config ONCE and refuses a resolution the server does not list (fail closed, terminal)', async () => {
+    const { df, calls } = feed({
+      '/config': { supports_search: true, supported_resolutions: ['1', '60', '1D'] },
+      '/history': { s: 'ok', t: [100], o: [1], h: [1], l: [1], c: [1], v: [1] },
+    })
+    await df.history('ES', '1m') // '1' — listed
+    await df.history('ES', '1h') // '60' — listed
+    await expect(df.history('ES', '3m')).rejects.toMatchObject({ name: 'FeedUnavailableError' })
+    await expect(df.history('ES', '3m')).rejects.toThrow(/resolution 3 \(3m\) is not served/)
+    expect(calls.filter((u) => u.includes('/config')).length).toBe(1) // cached, not re-fetched
+  })
+
+  it('an empty supported_resolutions declaration means "no restriction declared"', async () => {
+    const { df } = feed({
+      '/config': { supports_search: true },
+      '/history': { s: 'ok', t: [100], o: [1], h: [1], l: [1], c: [1], v: [1] },
+    })
+    await expect(df.history('ES', '3m')).resolves.toBeTruthy()
+  })
+
+  it('a config-less server gets the documented resolution defaults and the /search path', async () => {
+    const { df, calls } = feed({
+      '/history': { s: 'ok', t: [100], o: [1], h: [1], l: [1], c: [1], v: [1] },
+      '/search': [{ symbol: 'ES', description: 'E-mini', exchange: 'CME', type: 'futures' }],
+    })
+    await expect(df.history('ES', '3m')).rejects.toThrow(/not served/) // '3' is outside the spec defaults
+    await expect(df.history('ES', '5m')).resolves.toBeTruthy() // '5' is a spec default
+    const page = await df.search('es')
+    expect(page.hits[0]).toMatchObject({ symbol: 'ES', exchange: 'CME' })
+    expect(calls.some((u) => u.includes('/search'))).toBe(true)
+  })
+
+  it('bridges the inclusive ChartDatafeed window onto UDF’s exclusive `to` with +1 (the paging seam)', async () => {
+    const { df, calls } = feed({
+      '/config': { supports_search: true },
+      '/history': { s: 'ok', t: [], o: [], h: [], l: [], c: [], v: [] },
+    })
+    await df.history('ES', '1m', { to: 999, countBack: 10 })
+    // The chart pages with to = oldest − 1 expecting the boundary bar INCLUDED; UDF's `to` is
+    // exclusive, so the adapter must ask for to + 1 or every page silently drops one bar.
+    expect(calls.find((u) => u.includes('/history'))).toContain('to=1000')
+  })
+})
+
+describe('UdfDatafeed — the nextTime gap hint (AF-4)', () => {
+  it('surfaces no_data + nextTime as a NON-terminal page with the hint in seconds (ms normalized)', async () => {
+    const { df } = feed({ '/config': { supports_search: true }, '/history': { s: 'no_data', nextTime: 1_428_001_140_000 } })
+    const page = await df.history('ES', '1m', { countBack: 300 })
+    expect(page.noData).toBe(false) // a gap redirect is NOT end-of-history
+    expect(page.nextTime).toBe(1_428_001_140)
+    expect(page.bars).toEqual([])
+  })
+
+  it('accepts a seconds-form nextTime unchanged, and a hintless no_data stays terminal', async () => {
+    const secs = feed({ '/config': { supports_search: true }, '/history': { s: 'no_data', nextTime: 1_428_001_140 } })
+    expect((await secs.df.history('ES', '1m', { countBack: 5 })).nextTime).toBe(1_428_001_140)
+    const bare = feed({ '/config': { supports_search: true }, '/history': { s: 'no_data' } })
+    const page = await bare.df.history('ES', '1m', { countBack: 5 })
+    expect(page).toEqual({ bars: [], noData: true })
+  })
+})
+
+describe('UdfDatafeed — group-request search (AF-4)', () => {
+  const GROUPS = {
+    '/config': { supports_search: false, supports_group_request: true, exchanges: [{ value: 'CME' }, { value: 'NYSE' }, { value: '' }] },
+    '/symbol_info?group=CME': { symbol: ['ES', 'NQ'], description: ['E-mini S&P', 'E-mini Nasdaq'], type: 'futures' },
+    '/symbol_info?group=NYSE': { symbol: ['IBM'], description: ['IBM Corp'], type: ['stock'], 'exchange-listed': ['NYSE'] },
+  }
+
+  it('fetches every group ONCE and searches the flattened catalog locally with exact paging', async () => {
+    const { df, calls } = feed(GROUPS)
+    const all = await df.search('')
+    expect(all.hits.map((h) => h.symbol)).toEqual(['ES', 'NQ', 'IBM'])
+    expect(all.hasMore).toBe(false)
+    // Columnar broadcast: the scalar `type` applies to every CME row; the array form indexes per row.
+    expect(all.hits[0]).toMatchObject({ type: 'futures', exchange: 'CME' })
+    expect(all.hits[2]).toMatchObject({ type: 'stock', exchange: 'NYSE' })
+    const page1 = await df.search('', { limit: 2 })
+    expect(page1.hits).toHaveLength(2)
+    expect(page1.hasMore).toBe(true) // exact — one more row exists
+    const page2 = await df.search('', { limit: 2, offset: 2 })
+    expect(page2.hits.map((h) => h.symbol)).toEqual(['IBM'])
+    expect(page2.hasMore).toBe(false)
+    expect(calls.filter((u) => u.includes('/symbol_info')).length).toBe(2) // one fetch per group, cached across searches
+    const filtered = await df.search('nas')
+    expect(filtered.hits.map((h) => h.symbol)).toEqual(['NQ']) // name substring match
+  })
+
+  it('a group-request server that lists no exchanges fails search with a clear error', async () => {
+    const { df } = feed({ '/config': { supports_search: false, supports_group_request: true } })
+    await expect(df.search('es')).rejects.toThrow(/lists no exchanges/)
   })
 })
 

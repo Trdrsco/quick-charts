@@ -1,9 +1,11 @@
-// Where the chart persists a viewer's own state — drawings, indicators, appearance, templates, favorites.
+// Where THIS PACKAGE'S WIDGET persists a viewer's state (today: the sticky symbol + timeframe).
 // A pluggable seam so a host chooses the backing store: the browser's localStorage (the default, and how
 // a self-hosted deployment keeps state per device), an in-memory store (SSR, tests, an ephemeral embed),
 // or a host-supplied adapter that writes to the host's own per-user backend (the cross-device story — a
-// host maps these keys to its account store). The chart only ever calls this narrow surface; it never
-// reaches for `localStorage` directly, so every persistence path is redirectable.
+// host maps these keys to its account store). The WIDGET only ever calls this narrow surface — it never
+// reaches for `localStorage` directly, so the widget's persistence is fully redirectable. Scope stated
+// honestly: the trdrs app's own richer chart panel persists its drawings/indicators/appearance through
+// its own storage + sync machinery, OUTSIDE this seam.
 //
 // Keys are opaque `trdrs.chart.*` strings; values are opaque strings (JSON the chart owns). An adapter
 // must treat both as opaque — no parsing, no per-key logic — so the chart can evolve its formats freely.

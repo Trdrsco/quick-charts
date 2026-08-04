@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyBar, resolveTheme } from '../src/host'
 import type { FeedBar } from '../src/datafeed'
+import hostSrc from '../src/host.ts?raw'
 
 const bar = (t: number, c = 1): FeedBar => ({ t, o: 1, h: 2, l: 0.5, c, v: 10 })
 
@@ -38,5 +39,14 @@ describe('applyBar', () => {
 
   it('seeds an empty series', () => {
     expect(applyBar([], bar(100))!.map((b) => b.t)).toEqual([100])
+  })
+})
+
+describe('attribution', () => {
+  it('the widget disables the on-chart logo (attribution ships on the licenses page instead)', () => {
+    // The Apache-2.0 attribution for lightweight-charts lives on the product's licenses page, not
+    // the chart canvas — an owner decision this pins, because turning the logo back on (or losing
+    // the page) is invisible at runtime.
+    expect(hostSrc).toContain('attributionLogo: false')
   })
 })

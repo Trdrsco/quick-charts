@@ -10,6 +10,7 @@
 // into a planned broker call. Everything money-deciding (snap, band, protective-side, classify)
 // is the pure planBrokerDrop in broker.ts, gated by the HOST's injected price policy.
 import type { IChartApi, IPriceLine, ISeriesApi } from 'lightweight-charts'
+import { CLICK_SLOP, createPendingHolds, tapReleaseVerdict } from './gestureRules'
 import {
   boundBracketPrice,
   boundStopPrice,
@@ -122,9 +123,8 @@ function potentialPnl(
 
 // Drag tuning. A grab registers within GRAB_PX of a line; every CONTROL (✕, ⇄, TP/SL) is hit-tested
 // against its painted rect in the overlay part tree, never a band measured off the plot edge. A tap
-// that strays more than CLICK_SLOP px isn't treated as a click.
+// that strays more than CLICK_SLOP px isn't treated as a click (the rule lives in gestureRules).
 const GRAB_PX = 6
-const CLICK_SLOP = 4
 
 /** A host-drawn PREVIEW level (the decoration point): a pre-money ghost line whose drag/✕ gestures
  *  only ever reach the host's own callbacks. `kind` picks the ghost tint; `editable: false` draws
@@ -339,15 +339,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
    *  package just forwards the key from the plan. */
 
   const lines = new Map<string, LineEntry>()
-  /** Levels whose move has been SENT but is not yet reflected in the broker's own snapshot.
-   *
-   *  Without this the line visibly snaps back and then forward again on release: the drag clears, the
-   *  reconcile stops skipping the line, and the engine's post-mutation re-read can still carry
-   *  PRE-mutation state — so the next draw rewrites the line to where it was before, and the read
-   *  after that moves it to where it was dropped. Holding the dropped price until the snapshot AGREES
-   *  (or the wait times out, so a rejected move cannot pin a lie on the chart) removes the round trip
-   *  from view entirely, which is smoother than animating the correction would be. */
-  const pendingMoves = new Map<string, { price: number; until: number }>()
+  /** Levels whose move has been SENT but is not yet reflected in the broker's own snapshot —
+   *  holding the dropped price until the snapshot agrees (or the hold expires) removes the
+   *  snap-back-and-forward round trip from view. The hold/agree/expire/reject semantics live in
+   *  gestureRules' createPendingHolds. */
+  const pendingMoves = createPendingHolds()
   const PENDING_MOVE_MS = 8000
   /** The same hold for a DRAFT level, whose round trip is a few React renders rather than a network
    *  call — so the window that bounds an unanswered drop is correspondingly short. */
@@ -983,16 +979,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   /** The price to DRAW for a level: the broker's own value once it agrees with a move we sent, and
    *  until then the value we sent. Agreement is measured to half a tick, since the plan sends the
    *  SNAPPED price and the venue echoes back the same grid. */
-  const heldPrice = (key: string, reported: number): number => {
-    const pending = pendingMoves.get(key)
-    if (!pending) return reported
-    const tol = opts.tick && opts.tick > 0 ? opts.tick / 2 : 1e-9
-    if (Math.abs(reported - pending.price) <= tol || Date.now() > pending.until) {
-      pendingMoves.delete(key)
-      return reported
-    }
-    return pending.price
-  }
+  const heldPrice = (key: string, reported: number): number =>
+    pendingMoves.shown(key, reported, opts.tick && opts.tick > 0 ? opts.tick / 2 : 1e-9)
 
   const buildCtx = (scope: string): PlanCtx => ({
     snapshot: opts.snapshot,
@@ -1179,7 +1167,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     holdKey?: string,
   ): void => {
     if (typeof broker.setOrderBracket !== 'function' || !(opts.tick && opts.tick > 0) || !(o.price > 0)) return
-    if (holdKey && level != null) pendingMoves.set(holdKey, { price: level, until: Date.now() + PENDING_MOVE_MS })
+    if (holdKey && level != null) pendingMoves.hold(holdKey, level, PENDING_MOVE_MS)
     void broker
       .setOrderBracket({
         ...o,
@@ -1680,7 +1668,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     // line pinned to plan.price would jump to the trigger).
     const heldAt = drag.kind === 'stop_limit_limit' ? plan.stopLimitPrice : plan.price
     if (heldAt != null) {
-      pendingMoves.set(drag.key, { price: heldAt, until: Date.now() + PENDING_MOVE_MS })
+      pendingMoves.hold(drag.key, heldAt, PENDING_MOVE_MS)
       if (entry) entry.price = heldAt
       entry?.line.applyOptions({ price: heldAt })
       paintOverlay()
@@ -1739,7 +1727,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     if (landed != null) {
       if (entry) entry.price = landed
       entry?.line.applyOptions({ price: landed })
-      pendingMoves.set(drag.key, { price: landed, until: Date.now() + PENDING_DRAFT_MS })
+      pendingMoves.hold(drag.key, landed, PENDING_DRAFT_MS)
       paintOverlay()
     }
     return true
@@ -1898,11 +1886,20 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       } catch {
         /* capture may already be released */
       }
-      if (Math.abs(e.clientX - pox.downX) > CLICK_SLOP || Math.abs(e.clientY - pox.downY) > CLICK_SLOP) return
-      const part = partAt(e.clientX, e.clientY)
-      if (!part || part.key !== pox.key || part.hit.role !== 'close') return // slid off the ✕ — no accidental removal
-      if (opts.scope !== pox.capturedScope || opts.symbol !== pox.capturedSymbol) {
-        opts.onError?.('Selection changed, action cancelled')
+      // A leg's ✕ is money too: same tap-on-same-control-same-selection rule as the line's ✕/⇄.
+      const verdict = tapReleaseVerdict({
+        downX: pox.downX,
+        downY: pox.downY,
+        upX: e.clientX,
+        upY: e.clientY,
+        onSameControl: () => {
+          const part = partAt(e.clientX, e.clientY)
+          return !!part && part.key === pox.key && part.hit.role === 'close'
+        },
+        scopes: { captured: { scope: pox.capturedScope, symbol: pox.capturedSymbol }, current: { scope: opts.scope, symbol: opts.symbol } },
+      })
+      if (verdict !== 'commit') {
+        if (verdict === 'scope_changed') opts.onError?.('Selection changed, action cancelled')
         return
       }
       const ord = opts.snapshot.orders.find((o) => o && o.brokerOrderId === pox.brokerOrderId && o.status === 'working')
@@ -1976,10 +1973,18 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       } catch {
         /* capture may already be released */
       }
-      const strayed = Math.abs(e.clientX - ppx.downX) > CLICK_SLOP || Math.abs(e.clientY - ppx.downY) > CLICK_SLOP
-      if (strayed) return // dragged off the ✕ → no accidental cancel
-      const res = previewHitTest(e.clientX, e.clientY)
-      if (!res || res.key !== ppx.key || !res.isXZone) return // pointer left the line/✕ band, or it reconciled away
+      // Commits only as a TAP still resting on the same ✕ — dragged-off or reconciled-away is a no-op.
+      const verdict = tapReleaseVerdict({
+        downX: ppx.downX,
+        downY: ppx.downY,
+        upX: e.clientX,
+        upY: e.clientY,
+        onSameControl: () => {
+          const res = previewHitTest(e.clientX, e.clientY)
+          return !!res && res.key === ppx.key && res.isXZone
+        },
+      })
+      if (verdict !== 'commit') return
       opts.onPreviewCancel?.(ppx.previewId)
       return
     }
@@ -1991,12 +1996,21 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       } catch {
         /* capture may already be released */
       }
-      const strayed = Math.abs(e.clientX - px.downX) > CLICK_SLOP || Math.abs(e.clientY - px.downY) > CLICK_SLOP
-      if (strayed) return // dragged off the ✕/⇄ → no accidental action
-      const res = hitTest(e.clientX, e.clientY)
-      if (!res || res.hit.key !== px.key || (px.action === 'close' ? !res.hit.isXZone : !res.hit.isRevZone)) return
-      if (opts.scope !== px.capturedScope || opts.symbol !== px.capturedSymbol) {
-        opts.onError?.('Selection changed, action cancelled')
+      // Money commits only as a TAP still resting on the same ✕/⇄ under the SAME selection —
+      // a mid-gesture scope/symbol switch surfaces, everything else drops silently.
+      const verdict = tapReleaseVerdict({
+        downX: px.downX,
+        downY: px.downY,
+        upX: e.clientX,
+        upY: e.clientY,
+        onSameControl: () => {
+          const res = hitTest(e.clientX, e.clientY)
+          return !!res && res.hit.key === px.key && (px.action === 'close' ? res.hit.isXZone : res.hit.isRevZone)
+        },
+        scopes: { captured: { scope: px.capturedScope, symbol: px.capturedSymbol }, current: { scope: opts.scope, symbol: opts.symbol } },
+      })
+      if (verdict !== 'commit') {
+        if (verdict === 'scope_changed') opts.onError?.('Selection changed, action cancelled')
         return
       }
       if (px.action === 'reverse') {
