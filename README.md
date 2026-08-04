@@ -154,10 +154,63 @@ sticky symbol/timeframe and the drawing layer's store document both live behind 
 app's own richer chart panel manages its persistence outside this seam (its drawings speak the
 same store *codec*, so the documents stay interchangeable).
 
-## Indicator plugins
+## Indicators
 
-Register third-party indicators through `ChartWidgetOptions.indicators` — each `IndicatorPlugin` computes
-plot lines from the bar series with no access to chart internals.
+Indicators are **definitions**: a declarative manifest (typed inputs + declared plots/levels/fills,
+placement, volume needs) paired with a pure compute the host supplies — the package owns the whole
+rendering pipeline (overlay and per-indicator panes, lines/areas/histograms/markers, static levels,
+band fills, per-instance style overrides), never the math. One definition renders identically in
+this widget and in any richer host built on the same pipeline.
+
+```ts
+import type { IndicatorDefinition } from '@trdrs/chart'
+
+export const smaDefinition: IndicatorDefinition = {
+  manifest: {
+    name: 'SMA',
+    pane: 'overlay',
+    inputs: { period: { kind: 'int', default: 20, min: 1 } },
+    plots: { sma: { kind: 'line', lineWidth: 2 } },
+  },
+  compute(bars, inputs) {
+    const period = inputs.period ?? 20
+    const out: (number | null)[] = bars.map((_, i) => {
+      if (i + 1 < period) return null // warmup → whitespace, never a fake value
+      let sum = 0
+      for (let k = i + 1 - period; k <= i; k++) sum += bars[k]!.c
+      return sum / period
+    })
+    return { sma: out }
+  },
+}
+```
+
+Wire instances through `ChartWidgetOptions.indicators`:
+
+```ts
+import { createChart, createUdfDatafeed } from '@trdrs/chart'
+
+const widget = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  indicators: [{ id: 'sma-20', definition: smaDefinition, color: '#4c98fb' }],
+})
+```
+
+Rules the pipeline enforces:
+
+- **Channels align 1:1 to bars.** `compute` returns one value array per declared plot key;
+  null/NaN entries become clean whitespace gaps (warmups break, never bridge).
+- **Placement is the manifest's.** `pane: 'pane'` gives the instance its own bottom pane
+  (created and swept automatically); `'overlay'` rides the main price scale.
+- **`needsVolume` is honest.** On a feed whose bars carry no volume, the instance draws nothing
+  and reports "No volume from this feed" instead of painting a flat lie.
+- **Overrides layer, never fork.** Per-instance styling (`IndicatorOverrides`) folds into the
+  manifest before the walk and gates visibility after — the same layering every host applies.
+
+The lower-level pieces are exported for hosts that orchestrate their own compute:
+`buildManifestPlots` (the walker), `attachIndicators` (the renderer), `overriddenManifest` /
+`applyPlotOverrides` (the override fold), and the fill/shade canvas painters.
 
 ## The widget
 

@@ -3,8 +3,10 @@
 // the gate — `skipLibCheck: false`, so the shipped .d.ts must stand on its own.
 import {
   attachDrawings,
+  buildManifestPlots,
   createChart,
   createUdfDatafeed,
+  manifestInputDefaults,
   mergeOverrides,
   memoryChartStorage,
   olderPageVerdict,
@@ -19,9 +21,10 @@ import {
   type DrawingsHandle,
   type FeedBar,
   type HistoryPage,
+  type IndicatorDefinition,
   type SessionClass,
 } from '@trdrs/chart'
-import type { IChartApi, ISeriesApi } from 'lightweight-charts'
+import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 import { parseDrawingsStore, serializeDrawingsStore, toolRegistry, type SerializedDrawing } from '@trdrs/chart-drawings'
 
 // A complete typed datafeed — the seam a licensee actually implements.
@@ -80,6 +83,20 @@ export function mountDrawingLayer(el: HTMLElement, chartApi: IChartApi, series: 
 }
 const storeDoc: Record<string, SerializedDrawing[]> = parseDrawingsStore(serializeDrawingsStore({}))
 if (Object.keys(storeDoc).length !== 0) throw new Error('unexpected store round-trip')
+
+// An indicator definition types against the shipped manifest model and walks through the shipped
+// pipeline — the exact shape a licensee registers via ChartWidgetOptions.indicators.
+const closeLine: IndicatorDefinition = {
+  manifest: { name: 'Close', pane: 'overlay', plots: { close: { kind: 'line' } } },
+  compute: (feedBars) => ({ close: feedBars.map((b) => b.c) }),
+}
+const builtSpec = buildManifestPlots(
+  { manifest: closeLine.manifest, plots: closeLine.compute([{ t: 60, o: 1, h: 2, l: 0.5, c: 1.5, v: 10 }], manifestInputDefaults(closeLine.manifest)) },
+  [60 as UTCTimestamp],
+  'Close',
+  '#4c98fb',
+)
+if (builtSpec.plots[0]?.type !== 'line') throw new Error('unexpected walked plot kind')
 if (!toolRegistry.get('trend_line')) throw new Error('registry missing trend_line')
 const drawing: SerializedDrawing | undefined = undefined
 void drawing

@@ -9,17 +9,18 @@ import {
   createChart as createLwChart,
   CrosshairMode,
   HistogramSeries,
-  LineSeries,
   type IChartApi,
   type ISeriesApi,
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type DatafeedConfig, type FeedBar } from './datafeed'
 import { localStorageChartStorage, type ChartStorage } from './storage'
-import type { ChartTheme, ChartWidgetOptions, IndicatorPlugin } from './widget'
+import type { ChartTheme, ChartWidgetOptions, IndicatorInstance } from './widget'
 import { BRAND_DOWN, BRAND_UP } from './overrides'
 import { attachDrawings, type DrawingsEvents, type DrawingsHandle } from './drawings'
 import { mountDrawingsRail, type DrawingsRail } from './drawingsRail'
+import { applyPlotOverrides, buildManifestPlots, indicatorHidden, manifestInputDefaults, overriddenManifest } from './indicatorModel'
+import { attachIndicators } from './indicatorRenderer'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe flow and
  *  teardown stay widget-owned, so a host cannot desync the layer from the chart). */
@@ -92,7 +93,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   const storage: ChartStorage = options.storage ?? localStorageChartStorage
   const theme = resolveTheme(options.theme)
   const events = options.events ?? {}
-  const plugins: IndicatorPlugin[] = options.indicators ?? []
+  const indicatorInstances: IndicatorInstance[] = options.indicators ?? []
 
   let symbol = options.symbol ?? storage.get(SYMBOL_KEY) ?? ''
   let tf = options.timeframe ?? storage.get(TF_KEY) ?? '1m'
@@ -162,42 +163,60 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     }
   }
 
-  const plotSeries: Array<ISeriesApi<'Line'>> = []
+  // The indicator pipeline: instance → compute (host-supplied) → the shared manifest walker → the
+  // shared renderer. Identical to what a richer host runs, so a definition renders the same
+  // everywhere — panes, histograms, areas, markers, levels, band fills, volume-scale plots.
+  const indicatorsRenderer = attachIndicators(chart, { candles: () => candles })
+
+  /** Recompute every configured instance over the current bars. A compute that throws is skipped
+   *  this round rather than sinking the chart; a hidden instance renders nothing (its series come
+   *  down) but stays configured. */
+  function recomputeIndicators(): void {
+    if (indicatorInstances.length === 0) return
+    if (bars.length === 0) {
+      // A blanked buffer (mid symbol/timeframe switch): clear plot data without teardown, or the
+      // previous window's lines paint stale garbage over the empty chart.
+      indicatorsRenderer.blank()
+      return
+    }
+    const times = bars.map((b) => b.t as UTCTimestamp)
+    const hasVolume = bars.some((b) => b.v > 0)
+    for (const inst of indicatorInstances) {
+      const def = inst.definition
+      const title = inst.title ?? def.manifest.name ?? inst.id
+      const placement = def.manifest.pane === 'pane' ? ('pane' as const) : ('overlay' as const)
+      if (indicatorHidden(inst.overrides)) {
+        indicatorsRenderer.remove(inst.id)
+        continue
+      }
+      // Honest gate: a volume-based definition on a feed that carries no volume draws nothing
+      // (an all-zero flat line would be a lie), and the unavailable note says why.
+      if (def.manifest.needsVolume && !hasVolume) {
+        indicatorsRenderer.render(inst.id, { placement, title, plots: [], unavailable: 'No volume from this feed' })
+        continue
+      }
+      let channels: Readonly<Record<string, readonly (number | null)[]>>
+      try {
+        channels = def.compute(bars, { ...manifestInputDefaults(def.manifest), ...(inst.inputs ?? {}) })
+      } catch {
+        continue
+      }
+      const manifest = overriddenManifest(def.manifest, inst.overrides)
+      const built = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? theme.upColor), inst.overrides)
+      indicatorsRenderer.render(inst.id, built)
+    }
+  }
 
   function paintAll(): void {
     candles.setData(bars.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c })))
     volume.setData(bars.map((b) => ({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? theme.upColor : theme.downColor })))
-    recomputePlugins()
+    recomputeIndicators()
   }
 
   function paintLast(b: FeedBar): void {
     candles.update({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c })
     volume.update({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? theme.upColor : theme.downColor })
-    recomputePlugins()
-  }
-
-  /** Recompute every registered plugin over the current bars and repaint its plot lines. Plugins are
-   *  pure; a plugin that throws is skipped this round (its stale plots clear) rather than sinking the
-   *  chart. Series are created once per plot slot and reused across recomputes. */
-  function recomputePlugins(): void {
-    if (plugins.length === 0) return
-    const plots = plugins.flatMap((p) => {
-      try {
-        return p.compute(bars, { ...p.inputs })
-      } catch {
-        return []
-      }
-    })
-    while (plotSeries.length < plots.length) plotSeries.push(chart.addSeries(LineSeries, { lineWidth: 1, priceLineVisible: false, lastValueVisible: false }))
-    plotSeries.forEach((series, i) => {
-      const plot = plots[i]
-      if (!plot) {
-        series.setData([])
-        return
-      }
-      series.applyOptions({ color: plot.color ?? theme.textColor, title: plot.label })
-      series.setData(plot.points.map((pt) => ({ time: pt.time as UTCTimestamp, value: pt.value })))
-    })
+    recomputeIndicators()
   }
 
   /** One older-history fetch with the gap hop (olderPageVerdict's rule): an empty page carrying
@@ -366,6 +385,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       unsubscribe = null
       drawingsRail?.destroy()
       drawingsHandle?.destroy()
+      indicatorsRenderer.destroy()
       chart.remove()
     },
   }

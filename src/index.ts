@@ -26,7 +26,33 @@ export { localStorageChartStorage, memoryChartStorage } from './storage'
 export type { FetchLike, UdfDatafeedOptions } from './udfDatafeed'
 export { createUdfDatafeed, tfToUdfResolution, udfResolutionToTf } from './udfDatafeed'
 
-export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorPlugin, IndicatorPlot } from './widget'
+export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorDefinition, IndicatorInstance } from './widget'
+
+export type {
+  ManifestInput,
+  ManifestPlot,
+  ManifestLevel,
+  ManifestFill,
+  IndicatorManifest,
+  PlotPoint,
+  IndicatorPlot,
+  IndicatorLevel,
+  IndicatorFill,
+  IndicatorPlots,
+  IndicatorOverrides,
+  ManifestRun,
+} from './indicatorModel'
+export {
+  applyPlotOverrides,
+  buildManifestPlots,
+  effectivePlotColor,
+  indicatorHidden,
+  latestPlotValue,
+  manifestInputDefaults,
+  overriddenManifest,
+} from './indicatorModel'
+export { FillBetweenPrimitive, ShadePrimitive } from './indicatorPrimitives'
+export { attachIndicators, type IndicatorsRenderer } from './indicatorRenderer'
 
 export type { ChartWidgetApi, ChartDrawingsApi, ResolvedTheme } from './host'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
