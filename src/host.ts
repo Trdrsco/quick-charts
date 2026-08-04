@@ -19,12 +19,15 @@ import type { ChartTheme, ChartWidgetOptions, IndicatorInstance } from './widget
 import { BRAND_DOWN, BRAND_UP } from './overrides'
 import { attachDrawings, type DrawingsEvents, type DrawingsHandle } from './drawings'
 import { mountDrawingsRail, type DrawingsRail } from './drawingsRail'
-import { applyPlotOverrides, buildManifestPlots, indicatorHidden, manifestInputDefaults, overriddenManifest } from './indicatorModel'
+import { applyPlotOverrides, buildManifestPlots, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest } from './indicatorModel'
 import { attachIndicators } from './indicatorRenderer'
+import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from './scaleMode'
+import { createSessionBands, isIntradayTf, marketKindOf, sessionOf, SESSION_DOT, type MarketKind } from './sessions'
+import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
 
-/** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe flow and
- *  teardown stay widget-owned, so a host cannot desync the layer from the chart). */
-export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe' | 'destroy'>
+/** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
+ *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
+export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe' | 'setTick' | 'destroy'>
 
 /** The running widget a host holds — change what's displayed, or tear it down. */
 export interface ChartWidgetApi {
@@ -32,6 +35,12 @@ export interface ChartWidgetApi {
   timeframe(): string
   setSymbol(symbol: string): void
   setTimeframe(tf: string): void
+  /** The price scale's mode (regular/log/percent/indexed). Persisted through ChartStorage. */
+  scaleMode(): ScaleMode
+  setScaleMode(mode: ScaleMode): void
+  /** Replace the configured indicator list (removed ids tear down, panes sweep, the legend
+   *  follows). The initial list comes from `ChartWidgetOptions.indicators`. */
+  setIndicators(instances: IndicatorInstance[]): void
   /** The drawing layer, or null when the widget was created with `drawings: false`. */
   drawings: ChartDrawingsApi | null
   /** Tear down the chart, the live subscription, and every DOM/timer resource. Idempotent. */
@@ -83,6 +92,7 @@ export function resolveInitialTf(sticky: string, declared: readonly string[] | u
 
 const SYMBOL_KEY = 'trdrs.chart.widget.symbol.v1'
 const TF_KEY = 'trdrs.chart.widget.tf.v1'
+const SCALE_KEY = 'trdrs.chart.widget.scale.v1'
 const SNAPSHOT_BARS = 300
 const PAGE_BARS = 500
 /** How close to the left edge (in bars) the visible range must get before the next page is fetched. */
@@ -93,10 +103,28 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   const storage: ChartStorage = options.storage ?? localStorageChartStorage
   const theme = resolveTheme(options.theme)
   const events = options.events ?? {}
-  const indicatorInstances: IndicatorInstance[] = options.indicators ?? []
+  let indicatorInstances: IndicatorInstance[] = options.indicators ?? []
 
   let symbol = options.symbol ?? storage.get(SYMBOL_KEY) ?? ''
   let tf = options.timeframe ?? storage.get(TF_KEY) ?? '1m'
+  let scaleMode: ScaleMode = coerceScaleMode(storage.get(SCALE_KEY))
+  /** The resolved symbol's session model — null until resolve() states one, and the null reads as
+   *  'crypto' downstream (crypto never bands), so an unresolved symbol is never mis-shaded. */
+  let sessionKind: MarketKind | null = null
+  let legend: ChartLegend | null = null
+  // The legend's per-chip eye state, persisted so a hide survives reloads. The widget merges it
+  // with any host-supplied display.hidden so indicatorHidden stays the ONE render-or-not read.
+  const HIDDEN_KEY = 'trdrs.chart.widget.indHidden.v1'
+  const hiddenIndicators = new Set<string>(
+    (() => {
+      try {
+        const parsed: unknown = JSON.parse(storage.get(HIDDEN_KEY) ?? '[]')
+        return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === 'string') : []
+      } catch {
+        return []
+      }
+    })(),
+  )
   let removed = false
   let ready = false
   /** Increments on every symbol/timeframe switch and on remove() — stale async work checks it and bails. */
@@ -131,6 +159,13 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     priceScaleId: 'volume',
   })
   chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
+  if (scaleMode !== 'normal') chart.priceScale('right').applyOptions({ mode: PRICE_SCALE_MODE[scaleMode] })
+
+  // Session bands (on unless the host opted out): non-regular-hours stretches shade under the
+  // candles once resolve() states the symbol's session model. Intraday only, crypto never.
+  if (options.sessions !== false) {
+    candles.attachPrimitive(createSessionBands(chart, candles, () => true, () => sessionKind ?? 'crypto', () => isIntradayTf(tf)) as never)
+  }
 
   /** The full ascending bar series currently painted (snapshot + prepended pages + live updates). */
   let bars: FeedBar[] = []
@@ -163,48 +198,67 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     }
   }
 
+  if (options.legend !== false) {
+    legend = mountChartLegend(options.container, theme, (id) => {
+      if (hiddenIndicators.has(id)) hiddenIndicators.delete(id)
+      else hiddenIndicators.add(id)
+      storage.set(HIDDEN_KEY, JSON.stringify([...hiddenIndicators]))
+      recomputeIndicators()
+    })
+    legend.setHeader(symbol, tf)
+  }
+
   // The indicator pipeline: instance → compute (host-supplied) → the shared manifest walker → the
   // shared renderer. Identical to what a richer host runs, so a definition renders the same
   // everywhere — panes, histograms, areas, markers, levels, band fills, volume-scale plots.
   const indicatorsRenderer = attachIndicators(chart, { candles: () => candles })
 
-  /** Recompute every configured instance over the current bars. A compute that throws is skipped
-   *  this round rather than sinking the chart; a hidden instance renders nothing (its series come
-   *  down) but stays configured. */
+  /** Recompute every configured instance over the current bars and refresh the legend chips. A
+   *  compute that throws is skipped this round rather than sinking the chart; a hidden instance
+   *  renders nothing (its series come down) but keeps its chip, so the eye can bring it back. */
   function recomputeIndicators(): void {
-    if (indicatorInstances.length === 0) return
-    if (bars.length === 0) {
-      // A blanked buffer (mid symbol/timeframe switch): clear plot data without teardown, or the
-      // previous window's lines paint stale garbage over the empty chart.
-      indicatorsRenderer.blank()
-      return
-    }
+    const chips: LegendChip[] = []
     const times = bars.map((b) => b.t as UTCTimestamp)
     const hasVolume = bars.some((b) => b.v > 0)
+    // A blanked buffer (mid symbol/timeframe switch): clear plot data without teardown, or the
+    // previous window's lines paint stale garbage over the empty chart.
+    if (bars.length === 0 && indicatorInstances.length > 0) indicatorsRenderer.blank()
     for (const inst of indicatorInstances) {
       const def = inst.definition
       const title = inst.title ?? def.manifest.name ?? inst.id
       const placement = def.manifest.pane === 'pane' ? ('pane' as const) : ('overlay' as const)
-      if (indicatorHidden(inst.overrides)) {
+      const hidden = hiddenIndicators.has(inst.id) || indicatorHidden(inst.overrides)
+      if (hidden) {
         indicatorsRenderer.remove(inst.id)
+        chips.push({ id: inst.id, title, value: null, hidden: true })
+        continue
+      }
+      if (bars.length === 0) {
+        chips.push({ id: inst.id, title, value: null, hidden: false })
         continue
       }
       // Honest gate: a volume-based definition on a feed that carries no volume draws nothing
       // (an all-zero flat line would be a lie), and the unavailable note says why.
       if (def.manifest.needsVolume && !hasVolume) {
         indicatorsRenderer.render(inst.id, { placement, title, plots: [], unavailable: 'No volume from this feed' })
+        chips.push({ id: inst.id, title, value: null, note: 'No volume from this feed', hidden: false })
         continue
       }
       let channels: Readonly<Record<string, readonly (number | null)[]>>
       try {
         channels = def.compute(bars, { ...manifestInputDefaults(def.manifest), ...(inst.inputs ?? {}) })
       } catch {
+        chips.push({ id: inst.id, title, value: null, hidden: false })
         continue
       }
       const manifest = overriddenManifest(def.manifest, inst.overrides)
       const built = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? theme.upColor), inst.overrides)
       indicatorsRenderer.render(inst.id, built)
+      const value = latestPlotValue(built.plots[0]?.data)
+      chips.push({ id: inst.id, title, value: value == null ? null : value.toFixed(built.precision ?? 2), hidden: false })
     }
+    legend?.setChips(chips)
+    legend?.setDot(sessionKind ? SESSION_DOT[sessionOf(Date.now(), sessionKind)] : null)
   }
 
   function paintAll(): void {
@@ -268,8 +322,24 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     unsubscribe = null
     bars = []
     noMoreHistory = false
+    sessionKind = null // the next resolve states the new symbol's model; unresolved never bands
+    drawingsHandle?.setTick(null)
     paintAll()
     if (!symbol) return
+    // Symbol metadata rides ALONGSIDE the first history ask (never blocking it): tick size feeds
+    // the drawing readouts, sessionClass feeds the session bands. A failed resolve leaves both at
+    // their honest unknowns.
+    void datafeed
+      .resolve(symbol)
+      .then((info) => {
+        if (removed || myEpoch !== epoch || !info) return
+        drawingsHandle?.setTick(info.tick)
+        sessionKind = marketKindOf(info.type, info.sessionClass ?? null)
+        legend?.setDot(SESSION_DOT[sessionOf(Date.now(), sessionKind)])
+      })
+      .catch(() => {
+        /* metadata is an enhancement — the chart works without it */
+      })
     void datafeed
       .history(symbol, tf, { countBack: SNAPSHOT_BARS })
       .then((page) => {
@@ -365,6 +435,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       symbol = next
       storage.set(SYMBOL_KEY, next)
       drawingsHandle?.setSymbol(next)
+      legend?.setHeader(symbol, tf)
       events.onSymbolChange?.(next)
       load()
     },
@@ -373,8 +444,22 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       tf = next
       storage.set(TF_KEY, next)
       drawingsHandle?.setTimeframe(next)
+      legend?.setHeader(symbol, tf)
       events.onTimeframeChange?.(next)
       load()
+    },
+    setIndicators(next: IndicatorInstance[]) {
+      if (removed) return
+      indicatorInstances = [...next]
+      indicatorsRenderer.prune(new Set(next.map((i) => i.id)))
+      recomputeIndicators()
+    },
+    scaleMode: () => scaleMode,
+    setScaleMode(next: ScaleMode) {
+      if (removed || next === scaleMode) return
+      scaleMode = next
+      chart.priceScale('right').applyOptions({ mode: PRICE_SCALE_MODE[next] })
+      storage.set(SCALE_KEY, next)
     },
     drawings: drawingsApi,
     remove() {
@@ -385,6 +470,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       unsubscribe = null
       drawingsRail?.destroy()
       drawingsHandle?.destroy()
+      legend?.destroy()
       indicatorsRenderer.destroy()
       chart.remove()
     },

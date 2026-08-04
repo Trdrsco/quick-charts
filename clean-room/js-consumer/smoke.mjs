@@ -1,6 +1,6 @@
 // Plain-JS ESM consumer: the tarball must RESOLVE and EXECUTE (not just typecheck) in a project
 // with no TypeScript at all. Pure exports run for real; DOM-needing exports only need to exist.
-import { attachDrawings, attachIndicators, buildManifestPlots, createChart, createUdfDatafeed, mergeOverrides, olderPageVerdict, tfToUdfResolution } from '@trdrs/chart'
+import { attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTf, mergeOverrides, olderPageVerdict, planPaneOp, sessionOf, tfToUdfResolution } from '@trdrs/chart'
 import { parseDrawingsStore, serializeDrawingsStore, toolRegistry } from '@trdrs/chart-drawings'
 
 const fail = (msg) => {
@@ -43,5 +43,13 @@ const spec = buildManifestPlots(
 if (spec.placement !== 'pane') fail('walker placement wrong')
 if (spec.plots[0].data.length !== 2) fail('histogram should drop the null, not bridge it')
 if (spec.plots[0].data[1].color !== '#f00') fail('histogram sign-coloring wrong')
+
+// The parity modules execute from the shipped artifact: pane planning conserves height, the
+// session classifier answers, and the scale-mode coercion fails closed.
+const plan = planPaneOp({ heights: { 0: 300, 1: 100 }, remembered: {} }, { kind: 'collapse', pane: 1 })
+if (plan.apply[1] === undefined || plan.apply[0] + plan.apply[1] !== 400) fail('pane plan does not conserve height')
+if (sessionOf(1_700_000_000, 'crypto') !== 'open') fail('crypto must always be open')
+if (coerceScaleMode('banana') !== 'normal') fail('scale-mode coercion not failing closed')
+if (isIntradayTf('1d') || !isIntradayTf('5m')) fail('intraday predicate wrong')
 
 console.log('clean-room js (esm): ok')

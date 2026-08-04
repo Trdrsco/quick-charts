@@ -231,11 +231,32 @@ widget.setSymbol('NQ') // later
 widget.remove() // teardown
 ```
 
-The widget paints candles + volume, applies live updates by the bar rules above, pages older history in as
-the viewer scrolls left (stopping at the feed's `noData`), persists the sticky symbol/timeframe through
-`ChartStorage`, runs registered `IndicatorPlugin`s over the live series, and mounts the drawing layer
-below. The trdrs app's own chart panel is a richer host over the same seams (trading, drawings UI,
-replay) and layers those on top.
+The widget paints candles + volume, applies live updates by the bar rules above, pages older history in
+as the viewer scrolls left (stopping at the feed's `noData`), persists its sticky state through
+`ChartStorage`, runs configured indicator instances through the manifest pipeline, and mounts the
+drawing layer and legend below. The trdrs app's own chart panel is a richer host over the same seams
+(trading, drawings UI, replay) and layers those on top.
+
+Beyond the basics, the widget carries:
+
+- **Scale modes** — `setScaleMode('log' | 'percent' | 'indexed' | 'normal')` on the price scale,
+  persisted through `ChartStorage`.
+- **Session bands** (on by default; `sessions: false` opts out) — non-regular-hours stretches shade
+  under the candles, driven by the session model the feed serves via `resolve()`'s `sessionClass`
+  (exchange-timezone session tables live in the package; crypto never bands; intraday only; an
+  UNRESOLVED symbol never bands — the honest default).
+- **A legend** (on by default; `legend: false` removes it) — the symbol/timeframe header with a
+  market-status dot, plus one chip per indicator instance: title, latest value, and a per-chip eye
+  whose hidden state persists. `setIndicators(instances)` swaps the configured list at runtime
+  (removed ids tear down, panes sweep, the legend follows).
+
+```ts
+import { createChart, createUdfDatafeed, SCALE_MODES } from '@trdrs/chart'
+
+const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }) })
+w.setScaleMode(SCALE_MODES.includes('log') ? 'log' : 'normal')
+w.setIndicators([{ id: 'sma-20', definition: smaDefinition }])
+```
 
 ## Drawings
 
