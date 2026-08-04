@@ -310,7 +310,9 @@ Chart trading is the second seam, the exact analog of the datafeed: the package 
 renderer, the gestures, and the pure decision layer; **you** supply the account data (pushed in), the
 actions (a `ChartBroker`), and your own price rules (an injected `PricePolicy`).
 
-The interface is four required methods + two optional ones (`broker.ts` is the authority):
+The interface is four required methods + three optional ones (`broker.ts` is the authority) —
+capability is presence-driven throughout: an omitted optional hides its affordance, including
+`placeOrder`, whose absence means a mutation-only integration where no placement surface renders:
 
 ```ts
 import type { ChartBroker } from '@trdrs/chart'
@@ -353,8 +355,49 @@ export const broker: ChartBroker = {
   async setOrderBracket(args) {
     await myBackend.setPreArmBracket(args.brokerOrderId, args.takeProfit, args.stopLoss, args.intentKey)
   },
+  // OPTIONAL — the ticket's submit path. Omit it and no placement affordance renders anywhere.
+  // MUST reject (throw) unless the backend reports the order accepted.
+  async placeOrder(args) {
+    await myBackend.place(args.instrument, args.side, args.qty, args.orderType, args.price, args.bracket, args.intentKey)
+  },
 }
 ```
+
+### The widget mounts trading through one adapter
+
+For the widget, the whole trading plane arrives as a single `TradingAdapter`: your `ChartBroker`
+(actions), a full-snapshot account subscription (state), an optional capability declaration, and
+your price policy. **Snapshots are FULL and consistent by contract** — every push carries the
+account's complete positions and working orders, so there is no per-operation update to match and
+nothing to time out waiting for; the package holds no trading state of its own.
+
+```ts
+import { createChart, createUdfDatafeed, type AccountSnapshot, type TradingAdapter } from '@trdrs/chart'
+
+const trading: TradingAdapter = {
+  broker,
+  subscribeAccount(handlers) {
+    const stream = myBackend.accountStream()
+    stream.onSnapshot((s: AccountSnapshot) => handlers.onSnapshot({ ...s, scope: 'my-broker|ACC-1', currency: 'USD' }))
+    return () => stream.close()
+  },
+  async capabilities() {
+    return { exits: true } // declare only what is true; capability that IS a method is derived, never declared twice
+  },
+  policy: myPricePolicy,
+}
+
+const tradingWidget = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  trading,
+  events: { onTradingAction: (text, undo) => toast(text, undo), onTradingError: (msg) => note(msg) },
+})
+```
+
+The widget contributes what it owns — the live-trusted mark (null while the feed is not live), the
+resolved tick, the charted symbol — and the adapter owns everything else. A richer host can skip
+the widget and drive `attachTradeLines` directly:
 
 ```ts
 import { attachTradeLines, type PricePolicy } from '@trdrs/chart'
