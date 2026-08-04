@@ -5,6 +5,7 @@
 import type { ChartDatafeed, FeedBar } from './datafeed'
 import type { ChartStorage } from './storage'
 import type { IndicatorManifest, IndicatorOverrides } from './indicatorModel'
+import type { TradingAdapter } from './tradingAdapter'
 
 /** Theme overrides — a host tints the chart to its own palette. Every field optional; omitted values keep
  *  the built-in default. Colors are any CSS color string. */
@@ -33,6 +34,12 @@ export interface ChartWidgetEvents {
   onTimeframeChange?: (tf: string) => void
   /** The feed reported a terminal or status condition ('live' | 'no-data' | 'not_entitled' | …). */
   onFeedStatus?: (status: string) => void
+  /** A confirmed trading action's feedback line ("Stop moved to 5001.25"), with an optional Undo
+   *  for a protective-stop move. Wire it to a toast — silence loses the trader's receipt. */
+  onTradingAction?: (text: string, undo?: () => void) => void
+  /** A dropped/failed/informational trading message (a rejected reprice, a policy refusal). The
+   *  broker's rejection text arrives verbatim. */
+  onTradingError?: (msg: string) => void
 }
 
 /** Everything needed to construct a chart. `datafeed` is the only hard requirement — the rest have
@@ -66,6 +73,11 @@ export interface ChartWidgetOptions {
   /** The legend (on by default): the symbol/timeframe header with a market-status dot, plus one
    *  chip per indicator instance (title, latest value, per-chip eye). `false` removes it. */
   legend?: false
+  /** The trading plane (off unless supplied): mounts the trade-line surface — position pill,
+   *  draggable working-order lines, pre-arm brackets — fed by the adapter's account snapshots,
+   *  acting through its ChartBroker, price-gated by its policy. Capability is presence-driven:
+   *  an adapter whose broker omits a method never renders that affordance. */
+  trading?: TradingAdapter
   events?: ChartWidgetEvents
 }
 

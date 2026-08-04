@@ -104,6 +104,24 @@ export interface ChartBroker {
    *  then a qty×2 opposite market order). Omitted ⇒ the ⇄ affordance never renders. Resolve with
    *  how many orders were cleared (for the toast). */
   reversePosition?(args: { instrument: string; intentKey: string }): Promise<{ cancelledOrders: number }>
+  /** OPTIONAL: place a NEW order — the ticket's submit path. Present ⇒ a ticket surface may render;
+   *  omitted ⇒ the integration is mutation-only (lines still drag/cancel/close) and no placement
+   *  affordance appears anywhere. `price` is a limit's level or a stop's trigger (stop_limit: the
+   *  TRIGGER, with `stopLimitPrice` the conversion limit); market orders carry no price. `bracket`
+   *  legs are PRE-ARM (OCO-pending until the entry fills). MUST reject (throw) unless the backend
+   *  reports the order accepted — the message is surfaced verbatim. */
+  placeOrder?(args: {
+    instrument: string
+    side: 'buy' | 'sell'
+    qty: number
+    orderType: 'market' | 'limit' | 'stop' | 'stop_limit'
+    price?: number
+    stopLimitPrice?: number
+    bracket?: { stopLoss?: number; takeProfit?: number }
+    /** Contract tick — for backends that express bracket legs as tick offsets. */
+    tick?: number
+    intentKey: string
+  }): Promise<void>
   /** OPTIONAL: set/edit/remove the TP/SL bracket attached to an UNFILLED entry order. The legs are
    *  PRE-ARM — OCO-pending at the backend, arming only when the entry fills — so they are not
    *  working orders yet and cannot be moved through setExits. A leg field PRESENT states that leg's

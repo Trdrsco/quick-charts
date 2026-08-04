@@ -24,6 +24,7 @@ import { attachIndicators } from './indicatorRenderer'
 import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from './scaleMode'
 import { createSessionBands, isIntradayTf, marketKindOf, sessionOf, SESSION_DOT, type MarketKind } from './sessions'
 import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
+import { attachTradeLines, type TradeLineAttachment } from './tradeLines'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
@@ -127,6 +128,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   )
   let removed = false
   let ready = false
+  /** Live-trust for the mark the trade surface reads: true only while the feed reports 'live' —
+   *  a stale last close must not price a P&L readout or anchor a protective-stop band. */
+  let feedLive = false
   /** Increments on every symbol/timeframe switch and on remove() — stale async work checks it and bails. */
   let epoch = 0
 
@@ -206,6 +210,45 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       recomputeIndicators()
     })
     legend.setHeader(symbol, tf)
+  }
+
+  // The trading plane (mounted only when the host supplies an adapter): the package's trade-line
+  // surface fed by the adapter's FULL account snapshots, actions through its ChartBroker, prices
+  // gated by its policy. The widget contributes what it owns — the live-trusted mark, the resolved
+  // tick, the charted symbol — and nothing else; the package still holds no trading state.
+  let tradeLines: TradeLineAttachment | null = null
+  let tradingUnsub: (() => void) | null = null
+  if (options.trading) {
+    const adapter = options.trading
+    tradeLines = attachTradeLines({ chart, series: candles, container: options.container }, adapter.broker, {
+      symbol,
+      snapshot: { positions: [], orders: [] },
+      scope: null,
+      mark: () => (feedLive && bars.length ? bars[bars.length - 1]!.c : null),
+      policy: adapter.policy,
+      onAction: (text, undo) => events.onTradingAction?.(text, undo),
+      onError: (msg) => events.onTradingError?.(msg),
+    })
+    tradingUnsub = adapter.subscribeAccount({
+      onSnapshot: (s) => {
+        tradeLines?.update({
+          snapshot: { positions: s.positions, orders: s.orders },
+          scope: s.scope,
+          currency: s.currency,
+          pointValue: s.pointValue,
+          locked: s.locked,
+          orderBrackets: s.orderBrackets,
+          managedOrderIds: s.managedOrderIds,
+        })
+      },
+    })
+    // Declared capabilities, read once (declare-only-truth): what presence can't express.
+    void adapter
+      .capabilities?.()
+      .then((caps) => tradeLines?.update({ exits: caps.exits, orderBracketTypes: caps.orderBracketTypes }))
+      .catch(() => {
+        /* an undeclared capability set constrains nothing */
+      })
   }
 
   // The indicator pipeline: instance → compute (host-supplied) → the shared manifest walker → the
@@ -322,6 +365,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     unsubscribe = null
     bars = []
     noMoreHistory = false
+    feedLive = false // the new subscription reports its own liveness; a stale mark must not carry over
     sessionKind = null // the next resolve states the new symbol's model; unresolved never bands
     drawingsHandle?.setTick(null)
     paintAll()
@@ -334,6 +378,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       .then((info) => {
         if (removed || myEpoch !== epoch || !info) return
         drawingsHandle?.setTick(info.tick)
+        tradeLines?.update({ tick: info.tick ?? undefined })
         sessionKind = marketKindOf(info.type, info.sessionClass ?? null)
         legend?.setDot(SESSION_DOT[sessionOf(Date.now(), sessionKind)])
       })
@@ -386,7 +431,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         }
       },
       onStatus: (status) => {
-        if (!removed && myEpoch === epoch) events.onFeedStatus?.(status)
+        if (removed || myEpoch !== epoch) return
+        feedLive = status === 'live'
+        events.onFeedStatus?.(status)
       },
     })
   }
@@ -435,6 +482,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       symbol = next
       storage.set(SYMBOL_KEY, next)
       drawingsHandle?.setSymbol(next)
+      tradeLines?.update({ symbol: next })
       legend?.setHeader(symbol, tf)
       events.onSymbolChange?.(next)
       load()
@@ -468,6 +516,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       epoch++
       unsubscribe?.()
       unsubscribe = null
+      tradingUnsub?.()
+      tradeLines?.detach()
       drawingsRail?.destroy()
       drawingsHandle?.destroy()
       legend?.destroy()

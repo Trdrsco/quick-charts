@@ -14,6 +14,7 @@ import {
   resolveInitialTf,
   tfToUdfResolution,
   udfResolutionToTf,
+  type AccountSnapshot,
   type ChartBroker,
   type ChartDatafeed,
   type ChartWidgetApi,
@@ -23,6 +24,8 @@ import {
   type HistoryPage,
   type IndicatorDefinition,
   type SessionClass,
+  type TradingAdapter,
+  type TradingCapabilities,
 } from '@trdrs/chart'
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 import { parseDrawingsStore, serializeDrawingsStore, toolRegistry, type SerializedDrawing } from '@trdrs/chart-drawings'
@@ -48,7 +51,7 @@ const feed: ChartDatafeed = {
   },
 }
 
-// The broker seam type-checks against the real six methods.
+// The broker seam type-checks against the real seven methods (four required, three optional).
 const broker: ChartBroker = {
   async moveOrder() {},
   async setExits() {},
@@ -58,8 +61,23 @@ const broker: ChartBroker = {
     return { cancelledOrders: 0 }
   },
   async setOrderBracket() {},
+  async placeOrder() {},
 }
 void broker
+
+// The trading plane types end-to-end: adapter + full account snapshot + declared capabilities.
+const trading: TradingAdapter = {
+  broker,
+  subscribeAccount(handlers) {
+    const snapshot: AccountSnapshot = { scope: 'x|1', positions: [], orders: [], currency: 'USD' }
+    handlers.onSnapshot(snapshot)
+    return () => undefined
+  },
+  async capabilities(): Promise<TradingCapabilities> {
+    return { exits: true, orderBracketTypes: ['limit'] }
+  },
+}
+void trading
 
 // Widget construction types (not executed here — node has no DOM; the render smoke covers that).
 export function mount(el: HTMLElement): ChartWidgetApi {

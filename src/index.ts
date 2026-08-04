@@ -72,6 +72,7 @@ export {
 } from './sessions'
 
 export type { ChartWidgetApi, ChartDrawingsApi, ResolvedTheme } from './host'
+export type { AccountSnapshot, TradingAdapter, TradingAdapterHandlers, TradingCapabilities } from './tradingAdapter'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
 export * from './broker'
 export { attachTradeLines, normalizeRoot, type PreviewLine, type PreviewSet, type TradeLineAttachment, type TradeLineHost, type TradeLineOptions } from './tradeLines'
