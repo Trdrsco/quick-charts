@@ -15,6 +15,7 @@ export type {
   QuoteSnapshot,
   BarsEvent,
   SubscribeHandlers,
+  DatafeedConfig,
   ChartDatafeed,
 } from './datafeed'
 export { FeedUnavailableError, olderPageVerdict } from './datafeed'
@@ -23,7 +24,7 @@ export type { ChartStorage } from './storage'
 export { localStorageChartStorage, memoryChartStorage } from './storage'
 
 export type { FetchLike, UdfDatafeedOptions } from './udfDatafeed'
-export { createUdfDatafeed, tfToUdfResolution } from './udfDatafeed'
+export { createUdfDatafeed, tfToUdfResolution, udfResolutionToTf } from './udfDatafeed'
 
 export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorPlugin, IndicatorPlot } from './widget'
 
@@ -58,4 +59,4 @@ export {
   type DraftPartsInput,
 } from './tradeLineParts'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
-export { createChart, resolveTheme, applyBar } from './host'
+export { createChart, resolveTheme, applyBar, resolveInitialTf } from './host'

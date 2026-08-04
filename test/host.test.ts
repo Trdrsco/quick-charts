@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyBar, resolveTheme } from '../src/host'
+import { applyBar, resolveInitialTf, resolveTheme } from '../src/host'
 import type { FeedBar } from '../src/datafeed'
 import hostSrc from '../src/host.ts?raw'
 
@@ -39,6 +39,30 @@ describe('applyBar', () => {
 
   it('seeds an empty series', () => {
     expect(applyBar([], bar(100))!.map((b) => b.t)).toEqual([100])
+  })
+})
+
+describe('resolveInitialTf — the capability-declaring feed’s initial-timeframe rule (B2B-5)', () => {
+  it('keeps the sticky tf when the feed declares nothing', () => {
+    expect(resolveInitialTf('1m', undefined)).toBe('1m')
+    expect(resolveInitialTf('1m', [])).toBe('1m')
+  })
+
+  it('keeps the sticky tf when the feed declares it', () => {
+    expect(resolveInitialTf('4h', ['1m', '4h', '1d'])).toBe('4h')
+  })
+
+  it('falls to the feed’s FIRST declared resolution when the sticky tf is unservable', () => {
+    expect(resolveInitialTf('3m', ['1m', '4h', '1d'])).toBe('1m')
+  })
+
+  it('the widget never adjusts the stored preference, only the opening ask', () => {
+    // The initial load resolves tf via this rule WITHOUT writing storage or firing
+    // onTimeframeChange — capability is the feed's property, preference is the viewer's, so a
+    // later feed that serves the preferred tf gets it back. Pinned in source because losing it
+    // (a well-meaning storage.set next to the resolution) is invisible at runtime.
+    expect(hostSrc).toContain('tf = resolveInitialTf(tf, cfg.resolutions)')
+    expect(hostSrc).not.toMatch(/resolveInitialTf[\s\S]{0,120}storage\.set/)
   })
 })
 

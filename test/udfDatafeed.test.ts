@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createUdfDatafeed, tfToUdfResolution, type FetchLike } from '../src/udfDatafeed'
+import { createUdfDatafeed, tfToUdfResolution, udfResolutionToTf, type FetchLike } from '../src/udfDatafeed'
 
 /** A fake UDF server: a route table of path → JSON (or text). Records the URLs it was asked for. */
 function fakeUdf(routes: Record<string, unknown>, opts?: { status?: number }) {
@@ -35,6 +35,30 @@ describe('tfToUdfResolution', () => {
     expect(tfToUdfResolution('1mo')).toBe('1M')
     expect(tfToUdfResolution('30s')).toBe('30S')
     expect(tfToUdfResolution('100t')).toBe('100T')
+  })
+})
+
+describe('udfResolutionToTf', () => {
+  it('inverts tfToUdfResolution (whole-hour minute counts fold back to hours)', () => {
+    for (const tf of ['1m', '5m', '1h', '4h', '1d', '1w', '1mo', '30s', '100t']) {
+      expect(udfResolutionToTf(tfToUdfResolution(tf))).toBe(tf)
+    }
+    expect(udfResolutionToTf('90')).toBe('90m') // not a whole hour — stays minutes
+  })
+
+  it('reads a bare D/W/M/S/T as an implicit count of 1 (both spellings are the same resolution)', () => {
+    expect(udfResolutionToTf('D')).toBe('1d')
+    expect(udfResolutionToTf('W')).toBe('1w')
+    expect(udfResolutionToTf('M')).toBe('1mo')
+    expect(udfResolutionToTf('S')).toBe('1s')
+    expect(udfResolutionToTf('T')).toBe('1t')
+  })
+
+  it('returns null for a resolution outside the wire tf grammar (omit, never mis-declare)', () => {
+    expect(udfResolutionToTf('X')).toBeNull()
+    expect(udfResolutionToTf('2H')).toBeNull() // 'H' is not UDF vocabulary; hours ride as minutes
+    expect(udfResolutionToTf('0')).toBeNull()
+    expect(udfResolutionToTf('')).toBeNull()
   })
 })
 
@@ -133,6 +157,16 @@ describe('UdfDatafeed — /config conformance (AF-4)', () => {
     expect(calls.some((u) => u.includes('/search'))).toBe(true)
   })
 
+  it('accepts a bar-size ask against either spelling of the declaration (a bare D declares 1D)', async () => {
+    const { df } = feed({
+      '/config': { supports_search: true, supported_resolutions: ['5', 'D', 'W'] },
+      '/history': { s: 'ok', t: [100], o: [1], h: [1], l: [1], c: [1], v: [1] },
+    })
+    await expect(df.history('ES', '1d')).resolves.toBeTruthy() // '1D' vs declared 'D' — same resolution
+    await expect(df.history('ES', '1w')).resolves.toBeTruthy()
+    await expect(df.history('ES', '1m')).rejects.toThrow(/not served/)
+  })
+
   it('bridges the inclusive ChartDatafeed window onto UDF’s exclusive `to` with +1 (the paging seam)', async () => {
     const { df, calls } = feed({
       '/config': { supports_search: true },
@@ -142,6 +176,25 @@ describe('UdfDatafeed — /config conformance (AF-4)', () => {
     // The chart pages with to = oldest − 1 expecting the boundary bar INCLUDED; UDF's `to` is
     // exclusive, so the adapter must ask for to + 1 or every page silently drops one bar.
     expect(calls.find((u) => u.includes('/history'))).toContain('to=1000')
+  })
+})
+
+describe('UdfDatafeed.config — the seam-level capability declaration (B2B-5)', () => {
+  it('declares the server’s resolutions as wire tf tokens, omitting what the grammar can’t express', async () => {
+    const { df } = feed({ '/config': { supports_search: true, supported_resolutions: ['1', '60', 'D', '2H', 'X'] } })
+    expect(await df.config!()).toEqual({ resolutions: ['1m', '1h', '1d'] })
+  })
+
+  it('declares exactly what resolutionFor enforces: the protocol defaults for a config-less server', async () => {
+    const { df } = feed({})
+    expect(await df.config!()).toEqual({ resolutions: ['1m', '5m', '15m', '30m', '1h', '1d', '1w', '1mo'] })
+  })
+
+  it('an empty or entirely unmappable declaration constrains nothing', async () => {
+    const empty = feed({ '/config': { supports_search: true } })
+    expect(await empty.df.config!()).toEqual({})
+    const junk = feed({ '/config': { supports_search: true, supported_resolutions: ['X', 'Y'] } })
+    expect(await junk.df.config!()).toEqual({})
   })
 })
 

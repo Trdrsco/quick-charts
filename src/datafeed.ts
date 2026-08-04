@@ -129,9 +129,27 @@ export class FeedUnavailableError extends Error {
   }
 }
 
+/** A feed's coarse, feed-LEVEL capability declaration. Everything optional and the method itself
+ *  optional: an ABSENT declaration means unconstrained (today's behavior), and a feed must only
+ *  declare what is true — a finite `resolutions` list from a feed that serves any interval would
+ *  be a lie the chart then enforces. Symbol-level truth (tick, quotes, session) stays on
+ *  {@link SymbolInfo}. */
+export interface DatafeedConfig {
+  /** The wire timeframe tokens this feed can serve ('1m', '4h', '1d', …). Absent = any. */
+  resolutions?: readonly string[]
+  /** Asset-class tokens the catalog carries. Absent = unspecified. */
+  classes?: readonly string[]
+  /** Whether the feed has ANY L1 quote surface. Absent = unspecified. */
+  quotes?: boolean
+}
+
 /** The datafeed a chart consumes. Implementations must follow the bar rules on {@link FeedBar} and
  *  {@link BarsEvent}; everything else (transport, caching, auth) is the implementation's business. */
 export interface ChartDatafeed {
+  /** OPTIONAL capability negotiation, read once at mount: the widget constrains itself to what the
+   *  feed declares (e.g. its initial timeframe must be servable). Omit it entirely when the feed
+   *  has no fixed capability set. */
+  config?(): Promise<DatafeedConfig>
   /** Server-side symbol search, paged. `cls` narrows to one asset class ('' / absent = all). */
   search(q: string, opts?: { cls?: string; limit?: number; offset?: number }): Promise<SearchPage>
   /** Resolve one symbol's metadata; null when the symbol is unknown to the feed's catalogs. */
