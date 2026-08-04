@@ -60,6 +60,12 @@ export interface ChartWidgetOptions {
    *  hides the rail for a host that drives `ChartWidgetApi.drawings` from its own UI;
    *  `storageKey` names the persisted store document (one key = one drawings surface). */
   drawings?: false | { rail?: false; storageKey?: string }
+  /** Session bands (on by default): non-regular-hours stretches shade under the candles, driven
+   *  by the session model the feed serves via `resolve()`. `false` turns the shading off. */
+  sessions?: false
+  /** The legend (on by default): the symbol/timeframe header with a market-status dot, plus one
+   *  chip per indicator instance (title, latest value, per-chip eye). `false` removes it. */
+  legend?: false
   events?: ChartWidgetEvents
 }
 

@@ -72,6 +72,9 @@ export interface DrawingsHandle {
   count(): number
   setSymbol(symbol: string): void
   setTimeframe(tf: string): void
+  /** The instrument's tick size (tick-denominated readouts on measure-style drawings); null when
+   *  the feed doesn't know it. */
+  setTick(tick: number | null): void
   /** Serialize the current symbol's drawings (the persistence wire format). */
   export(): SerializedDrawing[]
   /** Replace the current symbol's drawings from serialized form. */
@@ -430,6 +433,9 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     },
     setTimeframe(tf: string) {
       manager.setIntervalContext(parseIntervalContext(tf))
+    },
+    setTick(tick: number | null) {
+      manager.setTickSize(tick)
     },
     export: () => manager.export().filter((d) => d.id !== draft?.drawing.id),
     restore(list: readonly SerializedDrawing[]) {

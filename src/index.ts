@@ -54,6 +54,23 @@ export {
 export { FillBetweenPrimitive, ShadePrimitive } from './indicatorPrimitives'
 export { attachIndicators, type IndicatorsRenderer } from './indicatorRenderer'
 
+export { COLLAPSED_H, MAIN_MIN_H, isCollapsed, planPaneOp, type PaneOp, type PanePlan, type PaneState } from './panePlan'
+export { coerceScaleMode, PRICE_SCALE_MODE, SCALE_MODES, SCALE_MODE_OPTIONS, type ScaleMode } from './scaleMode'
+export {
+  createSessionBands,
+  exchangeZoneOf,
+  isIntradayTf,
+  marketKindOf,
+  nextSessionChange,
+  sessionOf,
+  sessionTimeline,
+  SESSION_DOT,
+  SESSION_LABEL,
+  type MarketKind,
+  type MarketSession,
+  type SessionTimeline,
+} from './sessions'
+
 export type { ChartWidgetApi, ChartDrawingsApi, ResolvedTheme } from './host'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
 export * from './broker'
