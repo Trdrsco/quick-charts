@@ -9,6 +9,7 @@ export type {
   SymbolRow,
   SearchPage,
   SymbolInfo,
+  SessionClass,
   HistoryPage,
   OlderPageVerdict,
   QuoteSnapshot,

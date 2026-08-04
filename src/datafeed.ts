@@ -33,6 +33,12 @@ export interface SearchPage {
   hasMore: boolean
 }
 
+/** The trading-session model a symbol follows — SERVED by the feed rather than guessed from the
+ *  display type, because session rendering (bands, market status, the regular-hours filter,
+ *  holidays) must follow what the venue actually trades. A feed that omits it leaves the chart on
+ *  its own per-class defaults. */
+export type SessionClass = 'equity' | 'futures' | 'fx' | 'crypto'
+
 /** Resolved metadata for ONE symbol — display identity + price format + feed capability. */
 export interface SymbolInfo {
   symbol: string
@@ -41,6 +47,9 @@ export interface SymbolInfo {
   type: string
   provider: string | null
   via: string | null
+  /** The session model this symbol trades on. Optional: a feed that doesn't know leaves the chart
+   *  to its per-class defaults (never a wrong session claim). */
+  sessionClass?: SessionClass
   /** Minimum price increment, or null when the feed doesn't know it (the chart then derives
    *  display precision from price magnitude). */
   tick: number | null
