@@ -144,6 +144,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
    *  two instrument/account truths the order ticket composes with. */
   let symbolTick: number | null = null
   let currentScope: string | null = null
+  let currentLocked = false
   /** Increments on every symbol/timeframe switch and on remove() — stale async work checks it and bails. */
   let epoch = 0
 
@@ -276,6 +277,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         tick: () => symbolTick,
         mark: markNow,
         scope: () => currentScope,
+        locked: () => currentLocked,
         policy: adapter.policy,
         confirm: adapter.confirmOrder ? (order) => adapter.confirmOrder!(order) : undefined,
         onChange: (preview) => tradeLines?.update({ preview }),
@@ -316,6 +318,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     tradingUnsub = adapter.subscribeAccount({
       onSnapshot: (s) => {
         currentScope = s.scope
+        currentLocked = s.locked === true
         accountPanel?.update(s)
         tradeLines?.update({
           snapshot: { positions: s.positions, orders: s.orders },

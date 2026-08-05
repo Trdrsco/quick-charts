@@ -42,6 +42,9 @@ export interface OrderTicketDeps {
   mark: () => number | null
   /** The armed selection ('broker|account'), or null — submit refuses without one. */
   scope: () => string | null
+  /** The account's trading lock (a risk lockout, an end-of-day close) — submit refuses while
+   *  true. Edits stay allowed: composing a draft is not trading. */
+  locked?: () => boolean
   /** The host's price gate — run over the composed entry before submit, same as a drag. */
   policy?: PricePolicy
   /** The confirm gate: shown the EXACT submit payload; resolve false to veto. Absent = no gate. */
@@ -161,6 +164,10 @@ export function createOrderTicket(deps: OrderTicketDeps): OrderTicket {
       const scope = deps.scope()
       if (!scope) {
         deps.onError?.('No account armed — connect an account to place orders.')
+        return
+      }
+      if (deps.locked?.()) {
+        deps.onError?.('Trading is locked for this account.')
         return
       }
       if (draft.orderType !== 'market' && draft.price == null) {
