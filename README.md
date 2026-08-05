@@ -422,6 +422,14 @@ entry exactly like a drag, passes the exact payload to `TradingAdapter.confirmOr
 stable across retries of the same order, fresh the moment any field changes. A rejected placement
 surfaces the broker's message verbatim and keeps the draft for editing.
 
+**Bar replay** is always available through `widget.replay`: a cursor over the widget's own loaded
+window — `start(atSec?)`, step forward/back, play at the standard speed table, `goLive()`, `exit()`
+— with a transport strip appearing while replay is on. Live updates keep accumulating off-screen
+and the exit catches up. The money rule: **live trading from the chart disarms during replay**
+(the trade lines go display-only and the ticket refuses — a money gesture priced off a historical
+view is a foot-gun), while the account panel stays live because its actions are table-explicit; a
+host that wants replay *trading* swaps in a replay `TradingAdapter` at the seam.
+
 **The account panel** mounts below the chart whenever `trading` is supplied (`accountPanel: false`
 opts out, `{ height }` sizes it): Positions and Orders pages rendered from the SAME snapshot the
 lines consume, with Close / Cancel / Reverse routing through the SAME broker seam — one data plane,

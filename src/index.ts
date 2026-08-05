@@ -71,10 +71,11 @@ export {
   type SessionTimeline,
 } from './sessions'
 
-export type { ChartWidgetApi, ChartDrawingsApi, ChartTicketApi, ResolvedTheme } from './host'
+export type { ChartWidgetApi, ChartDrawingsApi, ChartReplayApi, ChartTicketApi, ResolvedTheme } from './host'
 export type { AccountSnapshot, TradingAdapter, TradingAdapterHandlers, TradingCapabilities } from './tradingAdapter'
 export { createOrderTicket, type OrderTicket, type OrderTicketDeps, type TicketOrderType, type TicketState, type TicketSubmit } from './orderTicket'
 export { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
+export { autoIntervalFor, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
 export * from './broker'
 export { attachTradeLines, normalizeRoot, type PreviewLine, type PreviewSet, type TradeLineAttachment, type TradeLineHost, type TradeLineOptions } from './tradeLines'
