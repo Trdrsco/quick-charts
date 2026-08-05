@@ -8,5 +8,5 @@
     "skipLibCheck": false,
     "lib": ["ES2022", "DOM"]
   },
-  "include": ["index.ts"]
+  "include": ["index.ts", "mode-b.ts"]
 }

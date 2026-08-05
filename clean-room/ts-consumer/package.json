@@ -6,6 +6,8 @@
   "dependencies": {
     "@trdrs/chart": "file:../.artifacts/trdrs-chart-0.1.0.tgz",
     "@trdrs/chart-drawings": "file:../.artifacts/trdrs-chart-drawings-0.1.0.tgz",
+    "@trdrs/chart-engine": "file:../.artifacts/trdrs-chart-engine-0.1.0.tgz",
+    "@trdrs/engine-wire": "file:../.artifacts/trdrs-engine-wire-0.1.0.tgz",
     "lightweight-charts": "^5.0.0"
   }
 }

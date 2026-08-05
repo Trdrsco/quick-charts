@@ -30,8 +30,12 @@ mkdirSync(artifacts, { recursive: true })
 //    dist while the workspace keeps source linking — the pack IS the artifact under test.
 run('pnpm build', join(repo, 'packages/chart'))
 run('pnpm build', join(repo, 'packages/chart-drawings'))
+run('pnpm build', join(repo, 'packages/engine-wire'))
+run('pnpm build', join(repo, 'packages/chart-engine'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-chart-0.1.0.tgz'))}`, join(repo, 'packages/chart'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-chart-drawings-0.1.0.tgz'))}`, join(repo, 'packages/chart-drawings'))
+run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-engine-wire-0.1.0.tgz'))}`, join(repo, 'packages/engine-wire'))
+run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-chart-engine-0.1.0.tgz'))}`, join(repo, 'packages/chart-engine'))
 
 // 2. Fresh installs. --install-links copies file: deps instead of symlinking (closer to a real
 //    registry install); lockfiles are disposable here — the point is a cold resolve every run.
