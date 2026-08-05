@@ -43,3 +43,32 @@ export function autoIntervalFor(chartTf: string): { tf: string; sec: number } | 
   const candidates = subIntervalsFor(chartTf).filter((s) => parent / s.sec >= 4)
   return candidates.length ? candidates[candidates.length - 1]! : null
 }
+
+/** A bar shape shared with the datafeed contract ({t,o,h,l,c,v} — kept structural here so this
+ *  module stays dependency-free). */
+interface ReplayBarShape {
+  t: number
+  o: number
+  h: number
+  l: number
+  c: number
+  v: number
+}
+
+/** The FORMING parent bar after k of its sub-bars have played: open from the first sub, high/low
+ *  cumulative, close from the latest, volume summed — real finer bars, never synthesized ticks.
+ *  With k at (or past) the full sub count the REAL parent is returned verbatim, so a fully-formed
+ *  bar is exact rather than a reconstruction (sub-bar sets can be lossy at session edges). */
+export function composeFormingBar<B extends ReplayBarShape>(parent: B, subs: readonly ReplayBarShape[], k: number): B {
+  const used = subs.slice(0, Math.max(1, k))
+  if (k >= subs.length || used.length === 0) return parent
+  let h = used[0]!.h
+  let l = used[0]!.l
+  let v = 0
+  for (const s of used) {
+    if (s.h > h) h = s.h
+    if (s.l < l) l = s.l
+    v += s.v
+  }
+  return { ...parent, o: used[0]!.o, h, l, c: used[used.length - 1]!.c, v }
+}

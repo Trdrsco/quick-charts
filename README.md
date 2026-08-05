@@ -250,9 +250,14 @@ Beyond the basics, the widget carries:
   (exchange-timezone session tables live in the package; crypto never bands; intraday only; an
   UNRESOLVED symbol never bands — the honest default).
 - **A legend** (on by default; `legend: false` removes it) — the symbol/timeframe header with a
-  market-status dot, plus one chip per indicator instance: title, latest value, and a per-chip eye
-  whose hidden state persists. `setIndicators(instances)` swaps the configured list at runtime
-  (removed ids tear down, panes sweep, the legend follows).
+  market-status dot and four price-scale chips (normal / log / percent / indexed — the SAME
+  application path as `setScaleMode`, so the api and the chips can never disagree), plus one chip
+  per indicator instance: title, latest value, and per-chip controls that render by presence — a
+  settings gear only when the definition declares inputs (it opens the package's inputs editor;
+  Apply patches the instance and recomputes in place), pane collapse / maximize / restore buttons
+  only on pane-placed instances, and the eye whose hidden state persists.
+  `setIndicators(instances)` swaps the configured list at runtime (removed ids tear down, panes
+  sweep, the legend follows).
 
 ```ts
 import { createChart, createUdfDatafeed, SCALE_MODES } from '@trdrs/chart'
@@ -424,8 +429,14 @@ surfaces the broker's message verbatim and keeps the draft for editing.
 
 **Bar replay** is always available through `widget.replay`: a cursor over the widget's own loaded
 window — `start(atSec?)`, step forward/back, play at the standard speed table, `goLive()`, `exit()`
-— with a transport strip appearing while replay is on. Live updates keep accumulating off-screen
-and the exit catches up. The money rule: **live trading from the chart disarms during replay**
+— with a transport strip appearing while replay is on. Stepping forward FORMS each bar from real
+finer bars when the feed can serve them: the strip's interval select (Auto by default, the choice
+persists) picks the sub-resolution, each step extends the forming bar by one sub-bar (open
+anchored, high/low cumulative, close latest, volume summed), and the fully-formed bar is the
+sealed bar verbatim; stepping back rewinds a forming bar to its sealed boundary first. On a feed
+with no finer history the step falls back to whole bars — honest, never synthesized. Live updates
+keep accumulating off-screen and the exit catches up. The money rule: **live trading from the
+chart disarms during replay**
 (the trade lines go display-only and the ticket refuses — a money gesture priced off a historical
 view is a foot-gun), while the account panel stays live because its actions are table-explicit; a
 host that wants replay *trading* swaps in a replay `TradingAdapter` at the seam.

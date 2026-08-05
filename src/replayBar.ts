@@ -7,14 +7,27 @@ import type { ResolvedTheme } from './host'
 import { REPLAY_SPEEDS, type ReplaySpeed } from './replay'
 
 export interface ReplayBarHandle {
-  sync(state: { playing: boolean; cursor: number; total: number; speed: ReplaySpeed }): void
+  sync(state: { playing: boolean; cursor: number; total: number; speed: ReplaySpeed; interval: string }): void
   destroy(): void
 }
 
 export function mountReplayBar(
   container: HTMLElement,
-  controls: { play(): void; pause(): void; stepForward(): void; stepBack(): void; setSpeed(s: ReplaySpeed): void; goLive(): void; exit(): void },
+  controls: {
+    play(): void
+    pause(): void
+    stepForward(): void
+    stepBack(): void
+    setSpeed(s: ReplaySpeed): void
+    /** The update interval: 'auto' or a wire tf token from the offered sub-intervals. */
+    setInterval(token: string): void
+    goLive(): void
+    exit(): void
+  },
   theme: ResolvedTheme,
+  /** The chart timeframe's formable sub-intervals (wire tf tokens); empty = whole-bar only, and
+   *  the interval select is omitted entirely rather than offering a one-entry menu. */
+  subIntervals: readonly string[] = [],
 ): ReplayBarHandle {
   const bar = document.createElement('div')
   bar.style.cssText =
@@ -50,6 +63,23 @@ export function mountReplayBar(
   speed.addEventListener('change', () => controls.setSpeed(Number(speed.value) as ReplaySpeed))
   bar.appendChild(speed)
 
+  // The update interval: 'Auto' (the largest sub-interval giving ≥4 updates per bar) or an
+  // explicit finer token; only offered when the chart timeframe is formable at all.
+  let interval: HTMLSelectElement | null = null
+  if (subIntervals.length > 0) {
+    interval = document.createElement('select')
+    interval.title = 'Update interval (bars form from finer real bars)'
+    interval.style.cssText = speed.style.cssText
+    for (const token of ['auto', ...subIntervals]) {
+      const o = document.createElement('option')
+      o.value = token
+      o.textContent = token === 'auto' ? 'Auto' : token
+      interval.appendChild(o)
+    }
+    interval.addEventListener('change', () => controls.setInterval(interval!.value))
+    bar.appendChild(interval)
+  }
+
   const position = document.createElement('span')
   position.style.cssText = 'opacity:0.7;padding:0 4px;font-variant-numeric:tabular-nums;'
   bar.appendChild(position)
@@ -65,6 +95,7 @@ export function mountReplayBar(
       playPause.textContent = playing ? '⏸' : '▶'
       playPause.title = playing ? 'Pause' : 'Play'
       speed.value = String(state.speed)
+      if (interval) interval.value = state.interval
       position.textContent = `${state.cursor} / ${state.total}`
       back.disabled = state.cursor <= 2
       back.style.opacity = back.disabled ? '0.45' : '1'
