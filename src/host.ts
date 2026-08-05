@@ -24,11 +24,13 @@ import { attachIndicators } from './indicatorRenderer'
 import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from './scaleMode'
 import { createSessionBands, isIntradayTf, marketKindOf, sessionOf, SESSION_DOT, type MarketKind } from './sessions'
 import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
+import { isCollapsed, planPaneOp } from './panePlan'
+import { openInputsEditor } from './inputsEditor'
 import { attachTradeLines, type TradeLineAttachment } from './tradeLines'
 import { createOrderTicket, type OrderTicket } from './orderTicket'
 import { openQtyPopover, openTypeMenu } from './ticketChrome'
 import { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
-import { REPLAY_SPEEDS, type ReplaySpeed } from './replay'
+import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
@@ -284,14 +286,48 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     }
   }
 
+  /** Remembered pane heights for the legend's collapse/maximize/restore (planPaneOp state). */
+  let paneRemembered: Record<number, number> = {}
+  /** ONE scale-mode application shared by the api and the legend chips. */
+  const applyScaleMode = (next: ScaleMode): void => {
+    if (removed || next === scaleMode) return
+    scaleMode = next
+    chart.priceScale('right').applyOptions({ mode: PRICE_SCALE_MODE[next] })
+    storage.set(SCALE_KEY, next)
+    legend?.syncScale(next)
+  }
   if (options.legend !== false) {
-    legend = mountChartLegend(chromeBox, theme, (id) => {
-      if (hiddenIndicators.has(id)) hiddenIndicators.delete(id)
-      else hiddenIndicators.add(id)
-      storage.set(HIDDEN_KEY, JSON.stringify([...hiddenIndicators]))
-      recomputeIndicators()
+    legend = mountChartLegend(chromeBox, theme, {
+      onToggleEye: (id) => {
+        if (hiddenIndicators.has(id)) hiddenIndicators.delete(id)
+        else hiddenIndicators.add(id)
+        storage.set(HIDDEN_KEY, JSON.stringify([...hiddenIndicators]))
+        recomputeIndicators()
+      },
+      onScaleMode: (mode) => applyScaleMode(mode),
+      onSettings: (id, rect) => {
+        const inst = indicatorInstances.find((i) => i.id === id)
+        if (!inst) return
+        const declared = inst.definition.manifest.inputs ?? {}
+        openInputsEditor(chromeBox, rect, declared, { ...manifestInputDefaults(inst.definition.manifest), ...inst.inputs }, theme, (patch) => {
+          indicatorInstances = indicatorInstances.map((i) => (i.id === id ? { ...i, inputs: { ...i.inputs, ...patch } } : i))
+          recomputeIndicators()
+        })
+      },
+      onPaneOp: (id, op) => {
+        const paneIdx = indicatorsRenderer.paneOf()[id]
+        if (paneIdx === undefined || paneIdx === 0) return
+        const panes = chart.panes()
+        const heights: Record<number, number> = {}
+        panes.forEach((p, i) => (heights[i] = p.getHeight()))
+        const plan = planPaneOp({ heights, remembered: paneRemembered }, { kind: op, pane: paneIdx })
+        paneRemembered = plan.remembered
+        for (const [i, h] of Object.entries(plan.apply)) panes[Number(i)]?.setHeight(h)
+        recomputeIndicators() // the chip's collapsed state follows the new heights
+      },
     })
     legend.setHeader(symbol, tf)
+    legend.syncScale(scaleMode)
   }
 
   // The trading plane (mounted only when the host supplies an adapter): the package's trade-line
@@ -389,48 +425,80 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
    *  compute that throws is skipped this round rather than sinking the chart; a hidden instance
    *  renders nothing (its series come down) but keeps its chip, so the eye can bring it back. */
   function recomputeIndicators(): void {
+    lastIndicatorRecompute = Date.now() // every direct (structural) run resets the tick cap
     const chips: LegendChip[] = []
     const times = bars.map((b) => b.t as UTCTimestamp)
     const hasVolume = bars.some((b) => b.v > 0)
     // A blanked buffer (mid symbol/timeframe switch): clear plot data without teardown, or the
     // previous window's lines paint stale garbage over the empty chart.
     if (bars.length === 0 && indicatorInstances.length > 0) indicatorsRenderer.blank()
+    const paneOfMap = indicatorsRenderer.paneOf()
+    const paneHeights = chart.panes().map((p) => p.getHeight())
     for (const inst of indicatorInstances) {
       const def = inst.definition
       const title = inst.title ?? def.manifest.name ?? inst.id
       const placement = def.manifest.pane === 'pane' ? ('pane' as const) : ('overlay' as const)
+      const paneIdx = placement === 'pane' ? paneOfMap[inst.id] : undefined
+      const chipBase = {
+        id: inst.id,
+        title,
+        hasInputs: Object.keys(def.manifest.inputs ?? {}).length > 0,
+        pane: placement === 'pane',
+        collapsed: paneIdx !== undefined && paneIdx > 0 ? isCollapsed(paneHeights[paneIdx]) : false,
+      }
       const hidden = hiddenIndicators.has(inst.id) || indicatorHidden(inst.overrides)
       if (hidden) {
         indicatorsRenderer.remove(inst.id)
-        chips.push({ id: inst.id, title, value: null, hidden: true })
+        chips.push({ ...chipBase, value: null, hidden: true })
         continue
       }
       if (bars.length === 0) {
-        chips.push({ id: inst.id, title, value: null, hidden: false })
+        chips.push({ ...chipBase, value: null, hidden: false })
         continue
       }
       // Honest gate: a volume-based definition on a feed that carries no volume draws nothing
       // (an all-zero flat line would be a lie), and the unavailable note says why.
       if (def.manifest.needsVolume && !hasVolume) {
         indicatorsRenderer.render(inst.id, { placement, title, plots: [], unavailable: 'No volume from this feed' })
-        chips.push({ id: inst.id, title, value: null, note: 'No volume from this feed', hidden: false })
+        chips.push({ ...chipBase, value: null, note: 'No volume from this feed', hidden: false })
         continue
       }
       let channels: Readonly<Record<string, readonly (number | null)[]>>
       try {
         channels = def.compute(bars, { ...manifestInputDefaults(def.manifest), ...(inst.inputs ?? {}) })
       } catch {
-        chips.push({ id: inst.id, title, value: null, hidden: false })
+        chips.push({ ...chipBase, value: null, hidden: false })
         continue
       }
       const manifest = overriddenManifest(def.manifest, inst.overrides)
       const built = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? theme.upColor), inst.overrides)
       indicatorsRenderer.render(inst.id, built)
       const value = latestPlotValue(built.plots[0]?.data)
-      chips.push({ id: inst.id, title, value: value == null ? null : value.toFixed(built.precision ?? 2), hidden: false })
+      chips.push({ ...chipBase, value: value == null ? null : value.toFixed(built.precision ?? 2), hidden: false })
     }
     legend?.setChips(chips)
     legend?.setDot(sessionKind ? SESSION_DOT[sessionOf(Date.now(), sessionKind)] : null)
+    // Pane heights settle a frame AFTER a pane is created/resized — a chip built in the same
+    // frame can misread a fresh pane as collapsed. Converge on layout truth: re-check next frame
+    // and re-render the chips only if a collapsed reading actually changed.
+    if (chips.some((c) => c.pane) && typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        if (removed) return
+        const freshPaneOf = indicatorsRenderer.paneOf()
+        const freshHeights = chart.panes().map((p) => p.getHeight())
+        let changed = false
+        for (const c of chips) {
+          if (!c.pane) continue
+          const idx = freshPaneOf[c.id]
+          const collapsed = idx !== undefined && idx > 0 ? isCollapsed(freshHeights[idx]) : false
+          if (collapsed !== c.collapsed) {
+            c.collapsed = collapsed
+            changed = true
+          }
+        }
+        if (changed) legend?.setChips(chips)
+      })
+    }
   }
 
   function paintAll(): void {
@@ -439,10 +507,30 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     recomputeIndicators()
   }
 
+  // Live ticks arrive many times a second, and a full indicator recompute per tick multiplies by
+  // every configured instance — the classic cost cliff. Structural paints (paintAll) recompute
+  // immediately; the MID-BAR tick path is capped at ~1/s: the trailing timer guarantees the final
+  // tick of a burst still lands, so the legend value is never stale for more than the cap.
+  const INDICATOR_TICK_MS = 1000
+  let lastIndicatorRecompute = 0
+  let indicatorTrailer: ReturnType<typeof setTimeout> | null = null
+  function recomputeIndicatorsThrottled(): void {
+    const since = Date.now() - lastIndicatorRecompute
+    if (since >= INDICATOR_TICK_MS) {
+      recomputeIndicators()
+      return
+    }
+    if (indicatorTrailer) return // a trailing run is already scheduled — this burst is covered
+    indicatorTrailer = setTimeout(() => {
+      indicatorTrailer = null
+      if (!removed) recomputeIndicators()
+    }, INDICATOR_TICK_MS - since)
+  }
+
   function paintLast(b: FeedBar): void {
     candles.update({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c })
     volume.update({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? theme.upColor : theme.downColor })
-    recomputeIndicators()
+    recomputeIndicatorsThrottled()
   }
 
   /** One older-history fetch with the gap hop (olderPageVerdict's rule): an empty page carrying
@@ -560,7 +648,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
             const next = applyBar(replayAll, e.bar)
             if (next) replayAll = next
           }
-          replayBar?.sync({ playing: replayPlaying, cursor: replayCursor, total: replayAll.length, speed: replaySpeed })
+          replaySync()
           return
         }
         if (e.kind === 'snapshot') {
@@ -607,12 +695,43 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   // ── Bar replay: a cursor over the widget's OWN loaded bars. `bars` becomes the painted slice
   // while `replayAll` holds the master set; every consumer of `bars` (indicators, legend values,
   // session bands, the drawings' bar source) rides the replayed view for free. ──
-  const replaySync = () => replayBar?.sync({ playing: replayPlaying, cursor: replayCursor, total: replayAll?.length ?? 0, speed: replaySpeed })
+  // Sub-bar FORMING: with an update interval finer than the chart's timeframe, the current bar
+  // forms progressively from REAL finer bars fetched over the parent's window through the SAME
+  // datafeed seam as every other read — never synthesized ticks. 'Auto' picks the largest
+  // sub-interval giving at least four updates per bar; a fetch the feed can't answer falls back
+  // to a whole-bar advance, gracefully.
+  const REPLAY_AUTO_KEY = 'trdrs.chart.widget.replayAutoIv.v1'
+  let replayAutoInterval = storage.get(REPLAY_AUTO_KEY) !== '0'
+  let replayManualInterval: string | null = null
+  let replaySubs: FeedBar[] | null = null
+  let replayFormK = 0
+  let replayStepping = false
+  const replayEffectiveInterval = (): { tf: string; sec: number } | null => {
+    if (replayAutoInterval) return autoIntervalFor(tf)
+    return subIntervalsFor(tf).find((s) => s.tf === replayManualInterval) ?? null
+  }
+
+  const replaySync = () =>
+    replayBar?.sync({
+      playing: replayPlaying,
+      cursor: replayCursor,
+      total: replayAll?.length ?? 0,
+      speed: replaySpeed,
+      interval: replayAutoInterval ? 'auto' : (replayManualInterval ?? 'auto'),
+    })
   const replayPaint = () => {
     if (!replayAll) return
     bars = replayAll.slice(0, replayCursor)
     paintAll()
     chart.timeScale().scrollToRealTime() // keep the forming edge in view as the cursor advances
+  }
+  /** Repaint with the cursor's LAST bar partially formed from its played sub-bars. */
+  const replayPaintForming = () => {
+    if (!replayAll || !replaySubs) return
+    const parent = replayAll[replayCursor - 1]!
+    bars = [...replayAll.slice(0, replayCursor - 1), composeFormingBar(parent, replaySubs, replayFormK)]
+    paintAll()
+    chart.timeScale().scrollToRealTime()
   }
   const stopReplayTimer = () => {
     if (replayTimer) {
@@ -627,15 +746,59 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     stopReplayTimer()
     replaySync()
   }
-  const replayStepForward = () => {
-    if (!replayAll) return
-    if (replayCursor >= replayAll.length) {
-      replayPause() // the live edge: playback stops, replay stays on
-      return
+  /** The forming parent's sub-bars over its window, or null when the feed can't provide at least
+   *  two (one sub-bar has no forming value) — the caller then advances whole-bar. */
+  const fetchReplaySubs = async (parentIdx: number): Promise<FeedBar[] | null> => {
+    const interval = replayEffectiveInterval()
+    if (!replayAll || !interval) return null
+    const parent = replayAll[parentIdx]
+    if (!parent) return null
+    const from = parent.t
+    const to = parent.t + tfSeconds(tf) - 1
+    try {
+      const page = await datafeed.history(symbol, interval.tf, { from, to })
+      const subs = page.bars.filter((b) => b.t >= from && b.t <= to)
+      return subs.length >= 2 ? subs : null
+    } catch {
+      return null
     }
-    replayCursor += 1
-    replayPaint()
-    replaySync()
+  }
+  /** One replay UPDATE: the next sub-step of a forming bar, or the next whole bar (starting its
+   *  forming when the interval and the feed allow). Async because forming fetches; re-entrancy
+   *  guarded so a fast timer never double-advances over one fetch. */
+  const replayStepForward = (): void => {
+    void (async () => {
+      if (!replayAll || replayStepping) return
+      replayStepping = true
+      try {
+        if (replaySubs && replayFormK < replaySubs.length) {
+          replayFormK += 1
+          replayPaintForming()
+          if (replayFormK >= replaySubs.length) {
+            replaySubs = null // the parent sealed exactly (composeFormingBar returned it verbatim)
+            replayFormK = 0
+          }
+          replaySync()
+          return
+        }
+        if (replayCursor >= replayAll.length) {
+          replayPause() // the live edge: playback stops, replay stays on
+          return
+        }
+        replayCursor += 1
+        const subs = await fetchReplaySubs(replayCursor - 1)
+        if (subs && replayAll) {
+          replaySubs = subs
+          replayFormK = 1
+          replayPaintForming()
+        } else {
+          replayPaint()
+        }
+        replaySync()
+      } finally {
+        replayStepping = false
+      }
+    })()
   }
   /** Tear replay state down WITHOUT repainting — load() blanks and repaints on its own. */
   const abandonReplay = () => {
@@ -643,6 +806,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     stopReplayTimer()
     replayPlaying = false
     replayAll = null
+    replaySubs = null
+    replayFormK = 0
     replayBar?.destroy()
     replayBar = null
     replayLockRefresh()
@@ -662,10 +827,22 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
           stepForward: () => replayApi.stepForward(),
           stepBack: () => replayApi.stepBack(),
           setSpeed: (s) => replayApi.setSpeed(s),
+          setInterval: (token) => {
+            if (token === 'auto') replayAutoInterval = true
+            else {
+              replayAutoInterval = false
+              replayManualInterval = token
+            }
+            storage.set(REPLAY_AUTO_KEY, replayAutoInterval ? '1' : '0')
+            replaySubs = null // the next update re-fetches at the new grain
+            replayFormK = 0
+            replaySync()
+          },
           goLive: () => replayApi.goLive(),
           exit: () => replayApi.exit(),
         },
         theme,
+        subIntervalsFor(tf).map((s) => s.tf),
       )
       legend?.setHeader(symbol, `${tf} · replay`)
       replayLockRefresh()
@@ -691,6 +868,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     stepBack() {
       if (!replayAll || replayCursor <= 2) return
       replayPause() // retreating while playing is a scrub, not playback
+      if (replaySubs) {
+        // A forming bar rewinds to its sealed boundary first: the partial disappears and the
+        // view ends on the last fully-sealed bar.
+        replaySubs = null
+        replayFormK = 0
+      }
       replayCursor -= 1
       replayPaint()
       replaySync()
@@ -708,6 +891,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     goLive() {
       if (!replayAll) return
       replayPause()
+      replaySubs = null
+      replayFormK = 0
       replayCursor = replayAll.length
       replayPaint()
       replaySync()
@@ -777,12 +962,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       recomputeIndicators()
     },
     scaleMode: () => scaleMode,
-    setScaleMode(next: ScaleMode) {
-      if (removed || next === scaleMode) return
-      scaleMode = next
-      chart.priceScale('right').applyOptions({ mode: PRICE_SCALE_MODE[next] })
-      storage.set(SCALE_KEY, next)
-    },
+    setScaleMode: (next: ScaleMode) => applyScaleMode(next),
     drawings: drawingsApi,
     ticket: ticketApi,
     replay: replayApi,
@@ -793,6 +973,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       unsubscribe?.()
       unsubscribe = null
       abandonReplay()
+      if (indicatorTrailer) clearTimeout(indicatorTrailer)
       ticket?.destroy()
       tradingUnsub?.()
       accountPanel?.destroy()

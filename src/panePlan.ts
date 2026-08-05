@@ -5,8 +5,11 @@
 // exact) are testable without a chart.
 
 /** The collapsed height in px — a pane keeps its legend row visible so it can be restored from the
- *  same place it collapsed from. Zero would make the pane unreachable. */
-export const COLLAPSED_H = 26
+ *  same place it collapsed from. Zero would make the pane unreachable. This MUST equal the chart
+ *  renderer's own minimum pane height (it clamps every setHeight to 30): a smaller target would be
+ *  silently clamped upward, the applied height would read above the collapsed threshold, and
+ *  isCollapsed would deny the restore affordance forever. */
+export const COLLAPSED_H = 30
 
 /** The main pane never shrinks below this, whatever a maximize asks for: an unreadable price pane
  *  is worse than an unmaximized study. */

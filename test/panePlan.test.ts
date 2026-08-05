@@ -53,7 +53,7 @@ describe('planPaneOp — restore', () => {
     const plan = planPaneOp(state, { kind: 'restore', pane: 1 })
     const after = applied(state, plan.apply)
     expect(after[1]).toBe(100)
-    expect(sum(after)).toBe(480)
+    expect(sum(after)).toBe(374 + COLLAPSED_H + 80) // conservation: restore hands back exactly what it takes
     expect(plan.remembered[1]).toBeUndefined() // the memory is spent
   })
 
