@@ -8,6 +8,7 @@ import type { PreviewSet } from '../src/tradeLines'
 
 function harness(overrides?: {
   scope?: string | null
+  locked?: boolean
   confirm?: (o: TicketSubmit) => Promise<boolean>
   placeOrder?: (o: TicketSubmit) => Promise<void>
   noPlace?: boolean
@@ -37,6 +38,7 @@ function harness(overrides?: {
     tick: () => 0.25,
     mark: () => 5000.13,
     scope: () => (overrides && 'scope' in overrides ? (overrides.scope ?? null) : 'stub|A1'),
+    locked: () => overrides?.locked === true,
     policy: overrides?.policy ? (price) => overrides.policy!(price) : undefined,
     confirm: overrides?.confirm,
     onChange: (preview) => previews.push(preview),
@@ -107,6 +109,15 @@ describe('submit — the one spending path', () => {
     h.ticket.setQty(5) // the order changed — the old intent must not cover it
     await h.ticket.submit()
     expect(h.placed[2]!.intentKey).not.toBe(h.placed[0]!.intentKey)
+  })
+
+  it('refuses while trading is LOCKED — a risk lockout gates the ticket like every money path', async () => {
+    const h = harness({ locked: true })
+    h.ticket.open()
+    await h.ticket.submit()
+    expect(h.placed).toHaveLength(0)
+    expect(h.errors[0]).toMatch(/Trading is locked/)
+    expect(h.ticket.state()).not.toBeNull() // the draft stays — composing is not trading
   })
 
   it('refuses without an armed scope, and never calls a broker that cannot place', async () => {
