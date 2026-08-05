@@ -15,9 +15,13 @@ chart layers on top of it. Both packages ship **ESM-only** — lightweight-chart
 `require` entry, so a `require`-able build here would advertise a path that breaks the moment the
 renderer loads. From a CommonJS host, load via dynamic `import()`.
 
-Licensing: this package requires a commercial license (see `LICENSE`). Because the renderer is *your*
-dependency, its Apache-2.0 NOTICE obligations attach to **your** bundle — `THIRD-PARTY-NOTICES.md` in
-this package spells out exactly what to carry and how.
+Licensing: this package requires a commercial license (see `LICENSE`). Licensing is TIERED as a
+matter of license terms, not packaging: the charting tier covers the datafeed-driven widget
+(drawings, indicators, panes, sessions), and the trading tier additionally covers the trading
+plane (trade lines, the order ticket, the account panel, the `TradingAdapter` seam). One artifact
+serves both — an unlicensed tier is simply unused code your bundler drops. Because the renderer is
+*your* dependency, its Apache-2.0 NOTICE obligations attach to **your** bundle —
+`THIRD-PARTY-NOTICES.md` in this package spells out exactly what to carry and how.
 
 Quickstart — the smallest working chart (see [The widget](#the-widget) for the full options):
 
