@@ -28,6 +28,8 @@ import { attachTradeLines, type TradeLineAttachment } from './tradeLines'
 import { createOrderTicket, type OrderTicket } from './orderTicket'
 import { openQtyPopover, openTypeMenu } from './ticketChrome'
 import { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
+import { REPLAY_SPEEDS, type ReplaySpeed } from './replay'
+import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
@@ -35,6 +37,27 @@ export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe'
 
 /** The ticket surface a host drives (teardown stays widget-owned). */
 export type ChartTicketApi = Omit<OrderTicket, 'destroy'>
+
+/** The bar-replay surface: a cursor over the widget's OWN loaded bars — whole-bar updates, played
+ *  at a chosen speed or stepped. While replay is on, live updates keep accumulating off-screen
+ *  (Go live / exit catches up) and LIVE TRADING FROM THE CHART DISARMS: a money gesture priced
+ *  off a historical view is a foot-gun, so the trade lines go display-only and the ticket refuses
+ *  — the account panel stays live (its actions are table-explicit, not chart-price-coupled). A
+ *  host that wants replay TRADING swaps in a replay TradingAdapter at the seam. */
+export interface ChartReplayApi {
+  /** Enter replay with the cursor at the bar at/after `atSec` (default: three quarters through
+   *  the loaded window). No-op with fewer than 3 loaded bars. */
+  start(atSec?: number): void
+  exit(): void
+  play(): void
+  pause(): void
+  stepForward(): void
+  stepBack(): void
+  setSpeed(speed: ReplaySpeed): void
+  /** Jump the cursor to the live edge (playback pauses; replay stays on). */
+  goLive(): void
+  state(): { on: boolean; playing: boolean; cursor: number; total: number; speed: ReplaySpeed }
+}
 
 /** The running widget a host holds — change what's displayed, or tear it down. */
 export interface ChartWidgetApi {
@@ -53,6 +76,8 @@ export interface ChartWidgetApi {
   /** The order ticket, or null when no `trading` adapter was supplied OR its broker omits
    *  `placeOrder` (a mutation-only integration has no placement surface, by contract). */
   ticket: ChartTicketApi | null
+  /** Bar replay over the loaded window. */
+  replay: ChartReplayApi
   /** Tear down the chart, the live subscription, and every DOM/timer resource. Idempotent. */
   remove(): void
 }
@@ -145,6 +170,18 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   let symbolTick: number | null = null
   let currentScope: string | null = null
   let currentLocked = false
+  /** Replay: the MASTER bar set while replaying (null = replay off; `bars` is then the painted
+   *  cursor slice). Live updates land here off-screen; Go live / exit catches the paint up. */
+  let replayAll: FeedBar[] | null = null
+  let replayCursor = 0
+  let replayPlaying = false
+  let replayTimer: ReturnType<typeof setInterval> | null = null
+  const REPLAY_SPEED_KEY = 'trdrs.chart.widget.replaySpeed.v1'
+  let replaySpeed: ReplaySpeed = (() => {
+    const raw = Number(storage.get(REPLAY_SPEED_KEY))
+    return (REPLAY_SPEEDS as readonly number[]).includes(raw) ? (raw as ReplaySpeed) : 10
+  })()
+  let replayBar: ReplayBarHandle | null = null
   /** Increments on every symbol/timeframe switch and on remove() — stale async work checks it and bails. */
   let epoch = 0
 
@@ -267,7 +304,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   let accountPanel: AccountPanelHandle | null = null
   if (options.trading) {
     const adapter = options.trading
-    const markNow = () => (feedLive && bars.length ? bars[bars.length - 1]!.c : null)
+    // The mark is live-trusted AND not-replaying: a replayed close pricing a live P&L readout or
+    // anchoring a protective band would be trading against history.
+    const markNow = () => (feedLive && replayAll === null && bars.length ? bars[bars.length - 1]!.c : null)
     // The ticket exists ONLY when the broker can place (presence-driven, like every affordance):
     // without placeOrder the draft chrome never appears and the ticket api is null.
     if (adapter.broker.placeOrder) {
@@ -277,7 +316,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         tick: () => symbolTick,
         mark: markNow,
         scope: () => currentScope,
-        locked: () => currentLocked,
+        locked: () => currentLocked || replayAll !== null,
         policy: adapter.policy,
         confirm: adapter.confirmOrder ? (order) => adapter.confirmOrder!(order) : undefined,
         onChange: (preview) => tradeLines?.update({ preview }),
@@ -325,7 +364,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
           scope: s.scope,
           currency: s.currency,
           pointValue: s.pointValue,
-          locked: s.locked,
+          // Replay folds into the lock: a historical view must not carry live money gestures.
+          locked: s.locked === true || replayAll !== null,
           orderBrackets: s.orderBrackets,
           managedOrderIds: s.managedOrderIds,
         })
@@ -418,6 +458,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   /** Fetch the page of bars older than the current left edge; prepend while HOLDING the visible window
    *  in place (the standard scroll-back experience). Stops for good at the feed's true end of history. */
   function maybePageBack(): void {
+    if (replayAll !== null) return // the replay window is fixed; paging would desync the master set
     if (paging || noMoreHistory || bars.length === 0) return
     const range = chart.timeScale().getVisibleLogicalRange()
     if (!range || range.from > PAGE_TRIGGER_BARS) return
@@ -458,6 +499,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     sessionKind = null // the next resolve states the new symbol's model; unresolved never bands
     symbolTick = null
     ticket?.close() // a draft composed against the old symbol must not survive onto the new one
+    abandonReplay() // a replay window is symbol+timeframe-bound; the switch invalidates it
     drawingsHandle?.setTick(null)
     paintAll()
     if (!symbol) return
@@ -508,6 +550,19 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     unsubscribe = datafeed.subscribeBars(symbol, tf, {
       onBars: (e) => {
         if (removed || myEpoch !== epoch) return
+        // While replaying, live updates land in the MASTER set off-screen — the painted slice
+        // stays put; Go live / exit catches up. Nothing is dropped, nothing repaints history.
+        if (replayAll !== null) {
+          if (e.kind === 'snapshot') {
+            const first = e.bars[0]?.t
+            replayAll = first === undefined ? [...e.bars] : [...replayAll.filter((b) => b.t < first), ...e.bars]
+          } else {
+            const next = applyBar(replayAll, e.bar)
+            if (next) replayAll = next
+          }
+          replayBar?.sync({ playing: replayPlaying, cursor: replayCursor, total: replayAll.length, speed: replaySpeed })
+          return
+        }
         if (e.kind === 'snapshot') {
           // The transport's self-healing re-sync: the snapshot replaces the RECENT window; bars we paged
           // in further back stay (they're older than the snapshot's first bar).
@@ -547,6 +602,117 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       })
   } else {
     load()
+  }
+
+  // ── Bar replay: a cursor over the widget's OWN loaded bars. `bars` becomes the painted slice
+  // while `replayAll` holds the master set; every consumer of `bars` (indicators, legend values,
+  // session bands, the drawings' bar source) rides the replayed view for free. ──
+  const replaySync = () => replayBar?.sync({ playing: replayPlaying, cursor: replayCursor, total: replayAll?.length ?? 0, speed: replaySpeed })
+  const replayPaint = () => {
+    if (!replayAll) return
+    bars = replayAll.slice(0, replayCursor)
+    paintAll()
+    chart.timeScale().scrollToRealTime() // keep the forming edge in view as the cursor advances
+  }
+  const stopReplayTimer = () => {
+    if (replayTimer) {
+      clearInterval(replayTimer)
+      replayTimer = null
+    }
+  }
+  /** Re-push the effective lock so the trade lines disarm/re-arm the moment replay flips. */
+  const replayLockRefresh = () => tradeLines?.update({ locked: currentLocked || replayAll !== null })
+  const replayPause = () => {
+    replayPlaying = false
+    stopReplayTimer()
+    replaySync()
+  }
+  const replayStepForward = () => {
+    if (!replayAll) return
+    if (replayCursor >= replayAll.length) {
+      replayPause() // the live edge: playback stops, replay stays on
+      return
+    }
+    replayCursor += 1
+    replayPaint()
+    replaySync()
+  }
+  /** Tear replay state down WITHOUT repainting — load() blanks and repaints on its own. */
+  const abandonReplay = () => {
+    if (!replayAll) return
+    stopReplayTimer()
+    replayPlaying = false
+    replayAll = null
+    replayBar?.destroy()
+    replayBar = null
+    replayLockRefresh()
+  }
+  const replayApi: ChartReplayApi = {
+    start(atSec) {
+      if (removed || replayAll !== null || bars.length < 3) return
+      replayAll = bars
+      const at = atSec ?? replayAll[Math.floor(replayAll.length * 0.75)]!.t
+      const idx = replayAll.findIndex((b) => b.t >= at)
+      replayCursor = Math.max(2, (idx === -1 ? replayAll.length - 1 : idx) + 1)
+      replayBar = mountReplayBar(
+        chromeBox,
+        {
+          play: () => replayApi.play(),
+          pause: () => replayApi.pause(),
+          stepForward: () => replayApi.stepForward(),
+          stepBack: () => replayApi.stepBack(),
+          setSpeed: (s) => replayApi.setSpeed(s),
+          goLive: () => replayApi.goLive(),
+          exit: () => replayApi.exit(),
+        },
+        theme,
+      )
+      legend?.setHeader(symbol, `${tf} · replay`)
+      replayLockRefresh()
+      replayPaint()
+      replaySync()
+    },
+    exit() {
+      if (!replayAll) return
+      const master = replayAll
+      abandonReplay()
+      bars = master // the live edge, with everything that accumulated off-screen
+      paintAll()
+      legend?.setHeader(symbol, tf)
+    },
+    play() {
+      if (!replayAll || replayPlaying) return
+      replayPlaying = true
+      replayTimer = setInterval(replayStepForward, 1000 / replaySpeed)
+      replaySync()
+    },
+    pause: () => replayPause(),
+    stepForward: () => replayStepForward(),
+    stepBack() {
+      if (!replayAll || replayCursor <= 2) return
+      replayPause() // retreating while playing is a scrub, not playback
+      replayCursor -= 1
+      replayPaint()
+      replaySync()
+    },
+    setSpeed(speed) {
+      if (!(REPLAY_SPEEDS as readonly number[]).includes(speed)) return
+      replaySpeed = speed
+      storage.set(REPLAY_SPEED_KEY, String(speed))
+      if (replayPlaying) {
+        stopReplayTimer()
+        replayTimer = setInterval(replayStepForward, 1000 / replaySpeed)
+      }
+      replaySync()
+    },
+    goLive() {
+      if (!replayAll) return
+      replayPause()
+      replayCursor = replayAll.length
+      replayPaint()
+      replaySync()
+    },
+    state: () => ({ on: replayAll !== null, playing: replayPlaying, cursor: replayCursor, total: replayAll?.length ?? bars.length, speed: replaySpeed }),
   }
 
   // The public drawings surface is a REAL subset (not a type-level narrowing of the full handle):
@@ -619,12 +785,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     },
     drawings: drawingsApi,
     ticket: ticketApi,
+    replay: replayApi,
     remove() {
       if (removed) return
       removed = true
       epoch++
       unsubscribe?.()
       unsubscribe = null
+      abandonReplay()
       ticket?.destroy()
       tradingUnsub?.()
       accountPanel?.destroy()
