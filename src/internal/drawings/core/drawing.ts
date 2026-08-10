@@ -48,58 +48,87 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
   if (width <= 0 || height <= 0) return null
   const ts = chart.timeScale()
 
-  // The time scale can't address whitespace outside the data (timeToCoordinate/coordinateToTime
-  // go null there), but logical coordinates can. Anchors beyond the last bar — a projection into
-  // empty future space — extrapolate through logical index space using the trailing bar interval.
-  // Numeric (unix-seconds) times only; other time shapes keep the strict mapping.
+  // ── time ⇄ logical ⇄ x, grounded in the library's MEASURED contract ──
+  // Two live measurements define what the time scale can be trusted with:
+  //   (1) `timeToCoordinate` resolves only times that exist as bars of the CURRENT grid. An anchor
+  //       placed on a finer timeframe (17:30 on an hourly chart) answers null.
+  //   (2) `logicalToCoordinate` is exact for INTEGER indices inside the data — even thousands of
+  //       pixels off-screen (index 0 answered -11448.34px while scrolled far right, and the slope
+  //       between any two in-range integers equals the live barSpacing to full precision) — but
+  //       answers 0, the pane's left edge, for EVERY fractional logical and for any integer outside
+  //       the data. The visible logical range's endpoints are continuous scroll positions,
+  //       fractional in every real frame, so calibrating a linear map from them reads two poisoned
+  //       zeros and disables the map — which made every between-bars anchor (i.e. every drawing
+  //       after a timeframe switch) paint nothing.
+  // So the library is consulted only where it is exact — bar times, integer in-range indices, the
+  // live barSpacing — and every fractional mapping is computed from the series data directly.
   const data = series.data()
-  const last = data.length > 0 ? data[data.length - 1] : null
-  const prev = data.length > 1 ? data[data.length - 2] : null
-  const lastTime = last && typeof last.time === 'number' ? last.time : null
-  const interval =
-    lastTime !== null && prev && typeof prev.time === 'number' && lastTime > prev.time ? lastTime - prev.time : null
   const lastIndex = data.length - 1
+  const numTime = (i: number): number | null => {
+    const t = data[i]?.time
+    return typeof t === 'number' ? t : null
+  }
+  const firstTime = data.length > 0 ? numTime(0) : null
+  const lastTime = data.length > 0 ? numTime(lastIndex) : null
+  // Leading/trailing bar intervals extrapolate beyond the loaded range: past the last bar is a
+  // projection into empty future space, before the first is unloaded history.
+  const prevTime = numTime(lastIndex - 1)
+  const trailInterval = lastTime !== null && prevTime !== null && lastTime > prevTime ? lastTime - prevTime : null
+  const secondTime = numTime(1)
+  const leadInterval = firstTime !== null && secondTime !== null && secondTime > firstTime ? secondTime - firstTime : null
 
   const logicalOfTime = (time: Time): number | null => {
+    // A time that IS a bar of the current grid takes the library's exact mapping. This also covers
+    // non-numeric Time shapes, which the data math below cannot address.
     const x = ts.timeToCoordinate(time)
     if (x !== null) {
       const logical = ts.coordinateToLogical(x)
       if (logical !== null) return logical
     }
-    if (lastTime === null || interval === null || typeof time !== 'number') return null
-    return lastIndex + (time - lastTime) / interval
-  }
-  const timeOfLogicalIndex = (logical: number): Time | null => {
-    const x = ts.logicalToCoordinate(logical as Parameters<typeof ts.logicalToCoordinate>[0])
-    if (x !== null) {
-      const time = ts.coordinateToTime(x)
-      if (time !== null) return time
+    if (typeof time !== 'number' || firstTime === null || lastTime === null) return null
+    if (time >= lastTime) return trailInterval === null ? lastIndex : lastIndex + (time - lastTime) / trailInterval
+    if (time <= firstTime) return leadInterval === null ? 0 : (time - firstTime) / leadInterval
+    // Between bars: binary-search the straddling pair and interpolate inside it. Bar intervals are
+    // NOT uniform (session gaps), so proportional placement within the one straddling pair is the
+    // only mapping that keeps a finer-grid anchor in place — counting bars at a fixed interval from
+    // either end would shift it by every gap in between.
+    let lo = 0
+    let hi = lastIndex
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1
+      const tm = numTime(mid)
+      if (tm === null) return null
+      if (tm <= time) lo = mid
+      else hi = mid
     }
-    if (lastTime === null || interval === null) return null
-    return (lastTime + (logical - lastIndex) * interval) as Time
+    const tLo = numTime(lo)
+    const tHi = numTime(hi)
+    if (tLo === null || tHi === null || tHi <= tLo) return null
+    return lo + (time - tLo) / (tHi - tLo)
   }
 
-  // logical → x WITHOUT trusting the library outside its own window. The logical scale is linear by
-  // construction, but `logicalToCoordinate` for an index far outside the addressable range returns 0 —
-  // the pane's left edge — rather than null (measured live: a logical of 14398 on a 956-row series came
-  // back 0). Trusting that collapsed both ends of any drawing anchored beyond loaded history onto x=0,
-  // painting it as a vertical sliver at the edge instead of a line running off-pane. So the linear map
-  // is calibrated from two in-range logicals, where the library IS trustworthy, and extrapolated from
-  // there: an off-history anchor then gets its true off-screen x, and the canvas clips the segment
-  // through the pane exactly as the reference platform draws a partially-loaded drawing.
-  // No fallback to the library when calibration is impossible: the raw conversion is exactly the
-  // untrustworthy path (it answered 0 — the pane edge — for far logicals, measured live), and a paint
-  // frame with no visible range is a frame where nothing is on screen anyway. Declining is honest;
-  // trusting would resurrect the left-edge collapse on precisely the frames least able to show it.
-  const visible = ts.getVisibleLogicalRange()
+  // The inverse, from the same data: fractional logicals interpolate between their neighbouring
+  // bars' times, out-of-range logicals extrapolate on the edge interval. Never routed through
+  // `logicalToCoordinate` — a fractional input there answers 0, and `coordinateToTime(0)` then
+  // returns the LEFT EDGE bar's time: a silently wrong answer rather than a null.
+  const timeOfLogicalIndex = (logical: number): Time | null => {
+    if (firstTime === null || lastTime === null) return null
+    if (logical >= lastIndex) return trailInterval === null ? (lastTime as Time) : ((lastTime + (logical - lastIndex) * trailInterval) as Time)
+    if (logical <= 0) return leadInterval === null ? (firstTime as Time) : ((firstTime + logical * leadInterval) as Time)
+    const i = Math.floor(logical)
+    const tLo = numTime(i)
+    const tHi = numTime(i + 1)
+    if (tLo === null || tHi === null) return null
+    return (tLo + (logical - i) * (tHi - tLo)) as Time
+  }
+
+  // logical → x: ONE trustworthy point (integer index 0, exact at any scroll position) plus the
+  // live barSpacing; the x axis is linear by construction. Declines only when the chart is empty.
   let xAtLogical: (logical: number) => number | null = () => null
-  if (visible && visible.to > visible.from) {
-    const x1 = ts.logicalToCoordinate(visible.from as Parameters<typeof ts.logicalToCoordinate>[0])
-    const x2 = ts.logicalToCoordinate(visible.to as Parameters<typeof ts.logicalToCoordinate>[0])
-    if (x1 !== null && x2 !== null && x2 > x1) {
-      const pxPerBar = (x2 - x1) / (visible.to - visible.from)
-      xAtLogical = (logical) => x1 + (logical - visible.from) * pxPerBar
-    }
+  if (data.length > 0) {
+    const x0 = ts.logicalToCoordinate(0 as Parameters<typeof ts.logicalToCoordinate>[0])
+    const barSpacing = ts.options().barSpacing
+    if (x0 !== null && barSpacing > 0) xAtLogical = (logical) => x0 + logical * barSpacing
   }
 
   return {
