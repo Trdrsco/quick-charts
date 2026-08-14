@@ -1,5 +1,14 @@
-import { describe, expect, it } from 'vitest'
-import { marketKindOf, nextSessionChange, sessionOf, sessionTimeline } from '../src/sessions'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  createSessionBands,
+  exchangeZoneOf,
+  HOLIDAY_COVERAGE_THROUGH,
+  knownMarketKind,
+  marketKindOf,
+  nextSessionChange,
+  sessionOf,
+  sessionTimeline,
+} from '../src/sessions'
 
 // All expectations pin concrete UTC epochs against exchange-local wall times, in BOTH DST regimes
 // (July = EDT/CDT, January = EST/CST), so a session bug or a broken tz conversion fails loudly.
@@ -214,5 +223,82 @@ describe('sessionTimeline — the exchange-local day, gaps included', () => {
     const tl = sessionTimeline(utc(2026, 6, 18, 3, 0), 'crypto')
     expect(tl.segments).toEqual([{ start: 0, end: 1440, session: 'open' }])
     expect(tl.tzCity).toBe('UTC')
+  })
+})
+
+describe('knownMarketKind — the honest sibling: null when the model is not actually known', () => {
+  it('classifies enumerated display types without a served class', () => {
+    expect(knownMarketKind('future', null)).toBe('futures')
+    expect(knownMarketKind('crypto', null)).toBe('crypto')
+    expect(knownMarketKind('metal', null)).toBe('fx')
+  })
+  it('returns null for an absent or unrecognized display type', () => {
+    expect(knownMarketKind(null, null)).toBeNull()
+    expect(knownMarketKind(undefined, null)).toBeNull()
+    expect(knownMarketKind('index-thing', null)).toBeNull()
+  })
+  it("a served 'futures' on an unrecognized type reads as unknown — indistinguishable from the wire's catch-all default", () => {
+    expect(knownMarketKind('index-thing', 'futures')).toBeNull()
+    expect(knownMarketKind('future', 'futures')).toBe('futures') // enumerated type: the served value is a real claim
+  })
+  it('any served class OTHER than futures is always a real claim', () => {
+    expect(knownMarketKind('index-thing', 'crypto')).toBe('crypto')
+    expect(knownMarketKind(null, 'fx')).toBe('fx')
+  })
+})
+
+describe('session math survives a kind from outside the union (decoded storage, a newer wire)', () => {
+  const bogus = 'nonsense' as never
+  it('classifies closed instead of throwing, everywhere', () => {
+    expect(sessionOf(Date.UTC(2026, 6, 15, 12) / 1000, bogus)).toBe('closed')
+    expect(nextSessionChange(Date.UTC(2026, 6, 15, 12) / 1000, bogus)).toBeNull()
+    expect(sessionTimeline(Date.UTC(2026, 6, 15, 12) / 1000, bogus).tzCity).toBe('UTC')
+    expect(exchangeZoneOf(bogus)).toEqual({ tz: 'Etc/UTC', city: 'UTC' })
+  })
+})
+
+describe('createSessionBands — an unknown model draws NOTHING (the promise the README makes)', () => {
+  const fakeChart = { timeScale: () => ({ getVisibleRange: () => ({ from: 0, to: 10_000 }), options: () => ({ barSpacing: 6 }), timeToCoordinate: () => 10 }) }
+  const bars = [
+    { time: Date.UTC(2026, 6, 15, 2) / 1000, close: 1 }, // 21:00 CT prior day — eth
+    { time: Date.UTC(2026, 6, 15, 15) / 1000, close: 1 }, // 10:00 CT — open
+  ]
+  const fakeSeries = { data: () => bars }
+  const draw = (kind: ReturnType<typeof knownMarketKind>) => {
+    const prim = createSessionBands(fakeChart as never, fakeSeries as never, () => true, () => kind, () => true)
+    const view = prim.paneViews()[0] as { renderer: () => { draw: (t: unknown) => void } }
+    const useBitmap = vi.fn()
+    view.renderer().draw({ useBitmapCoordinateSpace: useBitmap })
+    return useBitmap
+  }
+  it('null: the renderer never enters the canvas', () => {
+    expect(draw(null)).not.toHaveBeenCalled()
+  })
+  it('crypto: never bands', () => {
+    expect(draw('crypto')).not.toHaveBeenCalled()
+  })
+  it('futures with bars: paints', () => {
+    expect(draw('futures')).toHaveBeenCalledTimes(1)
+  })
+  it('refresh() is safe detached and forwards to requestUpdate once attached', () => {
+    const prim = createSessionBands(fakeChart as never, fakeSeries as never, () => true, () => 'futures', () => true)
+    expect(() => prim.refresh()).not.toThrow()
+    const requestUpdate = vi.fn()
+    prim.attached({ requestUpdate })
+    prim.refresh()
+    expect(requestUpdate).toHaveBeenCalledTimes(1)
+    prim.detached()
+    prim.refresh()
+    expect(requestUpdate).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('holiday table coverage', () => {
+  it('the holiday tables still cover the next 90 days', () => {
+    const horizon = Date.parse(`${HOLIDAY_COVERAGE_THROUGH}T23:59:59Z`)
+    expect(
+      horizon,
+      'Extend EQUITY_HOLIDAYS/FUTURES_HOLIDAYS from the exchange calendars and move HOLIDAY_COVERAGE_THROUGH with them — past the horizon every holiday renders as a normal session',
+    ).toBeGreaterThan(Date.now() + 90 * 86_400_000)
   })
 })

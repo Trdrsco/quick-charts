@@ -60,6 +60,7 @@ export {
   createSessionBands,
   exchangeZoneOf,
   isIntradayTf,
+  knownMarketKind,
   marketKindOf,
   nextSessionChange,
   sessionOf,
@@ -68,6 +69,8 @@ export {
   SESSION_LABEL,
   type MarketKind,
   type MarketSession,
+  type MaybeMarketKind,
+  type SessionBandsPrimitive,
   type SessionTimeline,
 } from './sessions'
 

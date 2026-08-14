@@ -22,7 +22,7 @@ import { mountDrawingsRail, type DrawingsRail } from './drawingsRail'
 import { applyPlotOverrides, buildManifestPlots, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest } from './indicatorModel'
 import { attachIndicators } from './indicatorRenderer'
 import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from './scaleMode'
-import { createSessionBands, isIntradayTf, marketKindOf, sessionOf, SESSION_DOT, type MarketKind } from './sessions'
+import { createSessionBands, isIntradayTf, knownMarketKind, sessionOf, SESSION_DOT, type MaybeMarketKind, type SessionBandsPrimitive } from './sessions'
 import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
 import { isCollapsed, planPaneOp } from './panePlan'
 import { openInputsEditor } from './inputsEditor'
@@ -145,9 +145,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   let symbol = options.symbol ?? storage.get(SYMBOL_KEY) ?? ''
   let tf = options.timeframe ?? storage.get(TF_KEY) ?? '1m'
   let scaleMode: ScaleMode = coerceScaleMode(storage.get(SCALE_KEY))
-  /** The resolved symbol's session model — null until resolve() states one, and the null reads as
-   *  'crypto' downstream (crypto never bands), so an unresolved symbol is never mis-shaded. */
-  let sessionKind: MarketKind | null = null
+  /** The resolved symbol's session model — null until resolve() states one. Null draws NOTHING
+   *  (the bands primitive admits it), never a coerced stand-in class: an unknown symbol is not a
+   *  24/7 claim any more than it is a CME one. */
+  let sessionKind: MaybeMarketKind = null
   let legend: ChartLegend | null = null
   // The legend's per-chip eye state, persisted so a hide survives reloads. The widget merges it
   // with any host-supplied display.hidden so indicatorHidden stays the ONE render-or-not read.
@@ -251,8 +252,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
 
   // Session bands (on unless the host opted out): non-regular-hours stretches shade under the
   // candles once resolve() states the symbol's session model. Intraday only, crypto never.
+  let sessionBands: SessionBandsPrimitive | null = null
   if (options.sessions !== false) {
-    candles.attachPrimitive(createSessionBands(chart, candles, () => true, () => sessionKind ?? 'crypto', () => isIntradayTf(tf)) as never)
+    sessionBands = createSessionBands(chart, candles, () => true, () => sessionKind, () => isIntradayTf(tf))
+    candles.attachPrimitive(sessionBands as never)
   }
 
   /** The full ascending bar series currently painted (snapshot + prepended pages + live updates). */
@@ -585,6 +588,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     noMoreHistory = false
     feedLive = false // the new subscription reports its own liveness; a stale mark must not carry over
     sessionKind = null // the next resolve states the new symbol's model; unresolved never bands
+    sessionBands?.refresh() // the old symbol's bands must not survive the switch
     symbolTick = null
     ticket?.close() // a draft composed against the old symbol must not survive onto the new one
     abandonReplay() // a replay window is symbol+timeframe-bound; the switch invalidates it
@@ -601,8 +605,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         symbolTick = info.tick
         drawingsHandle?.setTick(info.tick)
         tradeLines?.update({ tick: info.tick ?? undefined })
-        sessionKind = marketKindOf(info.type, info.sessionClass ?? null)
-        legend?.setDot(SESSION_DOT[sessionOf(Date.now(), sessionKind)])
+        sessionKind = knownMarketKind(info.type, info.sessionClass ?? null)
+        sessionBands?.refresh() // nothing else invalidates the pane when the model resolves
+        legend?.setDot(sessionKind ? SESSION_DOT[sessionOf(Date.now(), sessionKind)] : null)
       })
       .catch(() => {
         /* metadata is an enhancement — the chart works without it */

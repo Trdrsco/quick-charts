@@ -248,7 +248,10 @@ Beyond the basics, the widget carries:
 - **Session bands** (on by default; `sessions: false` opts out) — non-regular-hours stretches shade
   under the candles, driven by the session model the feed serves via `resolve()`'s `sessionClass`
   (exchange-timezone session tables live in the package; crypto never bands; intraday only; an
-  UNRESOLVED symbol never bands — the honest default).
+  UNRESOLVED symbol never bands — the honest default, enforced: the primitive's `kind` getter
+  admits `null` and a null draws nothing). A host that changes the model outside a `resolve()` —
+  or supplies its own — must call the primitive's `refresh()` when it does: the chart does not
+  invalidate the pane on a getter's value changing.
 - **A legend** (on by default; `legend: false` removes it) — the symbol/timeframe header with a
   market-status dot and four price-scale chips (normal / log / percent / indexed — the SAME
   application path as `setScaleMode`, so the api and the chips can never disagree), plus one chip
