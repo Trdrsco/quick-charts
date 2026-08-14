@@ -62,6 +62,7 @@ const SURFACE: Record<string, string> = {
   layoutParts: 'function',
   localStorageChartStorage: 'object',
   manifestInputDefaults: 'function',
+  knownMarketKind: 'function',
   marketKindOf: 'function',
   memoryChartStorage: 'function',
   mergeOverrides: 'function',
