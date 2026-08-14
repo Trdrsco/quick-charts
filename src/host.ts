@@ -22,7 +22,7 @@ import { mountDrawingsRail, type DrawingsRail } from './drawingsRail'
 import { applyPlotOverrides, buildManifestPlots, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest } from './indicatorModel'
 import { attachIndicators } from './indicatorRenderer'
 import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from './scaleMode'
-import { createSessionBands, isIntradayTf, knownMarketKind, sessionOf, SESSION_DOT, type MaybeMarketKind, type SessionBandsPrimitive } from './sessions'
+import { createSessionBands, isIntradayTf, knownMarketKind, sessionOf, setHolidayCalendar, SESSION_DOT, type MaybeMarketKind, type SessionBandsPrimitive } from './sessions'
 import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
 import { isCollapsed, planPaneOp } from './panePlan'
 import { openInputsEditor } from './inputsEditor'
@@ -606,6 +606,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         drawingsHandle?.setTick(info.tick)
         tradeLines?.update({ tick: info.tick ?? undefined })
         sessionKind = knownMarketKind(info.type, info.sessionClass ?? null)
+        if (info.sessionCalendar && sessionKind) setHolidayCalendar(sessionKind, info.sessionCalendar)
         sessionBands?.refresh() // nothing else invalidates the pane when the model resolves
         legend?.setDot(sessionKind ? SESSION_DOT[sessionOf(Date.now(), sessionKind)] : null)
       })

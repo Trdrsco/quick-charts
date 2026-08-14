@@ -13,15 +13,11 @@
 //             17:00, continuous.
 //   crypto  — 24/7; always open, no bands, no timeline transitions.
 //
-// Holidays: exchange-local dates whose sessions differ from the weekday rules carry explicit
-// per-date overrides below — full closures, early closes, AND the neighbor-day effects (the
-// evening before a dark Friday never opens, because that evening belongs to the dark trade date).
-// Coverage is exactly what the exchanges have published: equity 2026–2027 (NYSE's holiday
-// calendar), futures 2026 plus the invariant Jan 1 closure (CME's schedule; CME finalizes exact
-// halt times ~2 weeks before each holiday, so forward half-day times mirror the published
-// pattern). A date outside the tables falls back to the weekday rules — honestly uncorrected,
-// never a guessed calendar. Extend the tables each year from the exchange calendars; fx stays
-// holiday-less by decision (venue-dependent, and the class is already an approximation).
+// Holidays: SERVED, never bundled (see the registry below). The weekday rules here are stable
+// exchange law; the annually-churning holiday dates ride the datafeed's symbol metadata and are
+// registered per session class at resolve time. A date outside a served calendar (or a class with
+// none registered) follows the weekday rules — honestly uncorrected, never a guessed calendar.
+// fx stays holiday-less by decision (venue-dependent, and the class is already an approximation).
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
 import type { SessionClass } from './datafeed'
 
@@ -134,115 +130,34 @@ export function exchangeZoneOf(kind: MarketKind): { tz: string; city: string } {
   return { tz: spec.tz, city: spec.tzCity }
 }
 
-/* ── Holiday overrides (exchange-local dates) ────────────────────────────── */
+/* ── Holiday overrides (exchange-local dates) ────────────────────────────────
+   The calendar is SERVED, never bundled: holiday dates churn annually, and a client-shipped table
+   is a silently-expiring copy of server truth (the reference platform serves the same knowledge as
+   session_holidays/corrections on its symbol metadata). A datafeed that resolves a symbol with a
+   `sessionCalendar` registers it here per session class; a class with no registered calendar
+   follows its weekday rules uncorrected — the feed owns holiday truth or there is none. */
 
-const DARK: readonly SessionSegment[] = []
-
-/** NYSE early close: the 13:00 ET close; late sessions still end 17:00 ET. */
-const EQUITY_EARLY_CLOSE: readonly SessionSegment[] = [
-  { start: 4 * 60, end: 9 * 60 + 30, session: 'pre' },
-  { start: 9 * 60 + 30, end: 13 * 60, session: 'open' },
-  { start: 13 * 60, end: 17 * 60, session: 'after' },
-]
-
-/** CME equity-index holiday halt at 12:00 CT with the same-evening 17:00 reopen (a Monday or
- *  Thanksgiving-Thursday holiday: the next calendar day trades). */
-const FUT_HALT_NOON_REOPEN: readonly SessionSegment[] = [
-  { start: 0, end: 8 * 60 + 30, session: 'eth' },
-  { start: 8 * 60 + 30, end: 12 * 60, session: 'open' },
-  { start: 17 * 60, end: 1440, session: 'eth' },
-]
-
-/** The 12:00 CT halt with NO evening reopen (a Friday holiday — the next open is Sunday's). */
-const FUT_HALT_NOON: readonly SessionSegment[] = [
-  { start: 0, end: 8 * 60 + 30, session: 'eth' },
-  { start: 8 * 60 + 30, end: 12 * 60, session: 'open' },
-]
-
-/** The 12:15 CT early close (Black Friday, Christmas Eve), never followed by an evening session. */
-const FUT_EARLY_1215: readonly SessionSegment[] = [
-  { start: 0, end: 8 * 60 + 30, session: 'eth' },
-  { start: 8 * 60 + 30, end: 12 * 60 + 15, session: 'open' },
-]
-
-/** A full regular day whose 17:00 evening reopen never happens — the day BEFORE a dark date (the
- *  evening session belongs to the next trade date, and that date is closed). */
-const FUT_DAY_NO_EVENING: readonly SessionSegment[] = [
-  { start: 0, end: 8 * 60 + 30, session: 'eth' },
-  { start: 8 * 60 + 30, end: 15 * 60 + 15, session: 'open' },
-  { start: 15 * 60 + 15, end: 16 * 60, session: 'eth' },
-]
-
-/** A dark day session with the 17:00 evening reopen (a Thursday New Year's Day: Friday trades). */
-const FUT_EVENING_ONLY: readonly SessionSegment[] = [{ start: 17 * 60, end: 1440, session: 'eth' }]
-
-/** NYSE 2026–2027, from the exchange's published holiday calendar. Full closures are DARK;
- *  Nov 27 2026, Dec 24 2026, and Nov 26 2027 close early at 13:00 ET. Both years observe
- *  Independence Day as a FULL closure (Jul 4 falls on a weekend both years). */
-const EQUITY_HOLIDAYS: Record<string, readonly SessionSegment[]> = {
-  '2026-01-01': DARK,
-  '2026-01-19': DARK,
-  '2026-02-16': DARK,
-  '2026-04-03': DARK,
-  '2026-05-25': DARK,
-  '2026-06-19': DARK,
-  '2026-07-03': DARK,
-  '2026-09-07': DARK,
-  '2026-11-26': DARK,
-  '2026-11-27': EQUITY_EARLY_CLOSE,
-  '2026-12-24': EQUITY_EARLY_CLOSE,
-  '2026-12-25': DARK,
-  '2027-01-01': DARK,
-  '2027-01-18': DARK,
-  '2027-02-15': DARK,
-  '2027-03-26': DARK,
-  '2027-05-31': DARK,
-  '2027-06-18': DARK,
-  '2027-07-05': DARK,
-  '2027-09-06': DARK,
-  '2027-11-25': DARK,
-  '2027-11-26': EQUITY_EARLY_CLOSE,
-  '2027-12-24': DARK,
+/** One served holiday calendar: exchange-local 'YYYY-MM-DD' → the day's trading segments (empty =
+ *  a full closure); a date absent from the map follows the weekday rules. */
+export interface HolidayCalendar {
+  readonly holidays: Readonly<Record<string, readonly { start: number; end: number; session: Exclude<MarketSession, 'closed'> }[]>>
+  readonly coverageThrough: string
 }
 
-/** CME equity-index 2026 (the exchange's published schedule): US-holiday halts at 12:00 CT,
- *  Good Friday/Christmas/New Year's fully dark, 12:15 CT early closes on Black Friday and
- *  Christmas Eve, and the dark-Friday neighbor days (Apr 2, Dec 24, Dec 31) losing their evening
- *  session. 2027 is unpublished except the invariant New Year's closure. */
-const FUTURES_HOLIDAYS: Record<string, readonly SessionSegment[]> = {
-  '2026-01-01': FUT_EVENING_ONLY,
-  '2026-01-19': FUT_HALT_NOON_REOPEN,
-  '2026-02-16': FUT_HALT_NOON_REOPEN,
-  '2026-04-02': FUT_DAY_NO_EVENING,
-  '2026-04-03': DARK,
-  '2026-05-25': FUT_HALT_NOON_REOPEN,
-  '2026-06-19': FUT_HALT_NOON,
-  '2026-07-03': FUT_HALT_NOON,
-  '2026-09-07': FUT_HALT_NOON_REOPEN,
-  '2026-11-26': FUT_HALT_NOON_REOPEN,
-  '2026-11-27': FUT_EARLY_1215,
-  '2026-12-24': FUT_EARLY_1215,
-  '2026-12-25': DARK,
-  '2026-12-31': FUT_DAY_NO_EVENING,
-  '2027-01-01': DARK,
+const servedCalendars = new Map<MarketKind, HolidayCalendar>()
+
+/** Register (or clear, with null) the served holiday calendar for a session class. Idempotent and
+ *  class-level: every symbol of the class shares one exchange calendar, so last-write-wins is
+ *  correct. Called by the datafeed layer when a resolve carries `sessionCalendar`. */
+export function setHolidayCalendar(kind: MarketKind, calendar: HolidayCalendar | null): void {
+  if (calendar === null) servedCalendars.delete(kind)
+  else servedCalendars.set(kind, calendar)
 }
 
-/** The last exchange-local date the holiday tables above actually cover. Past it the weekday rules
- *  apply uncorrected, so a holiday renders as a normal session — wrong bands, a regular-hours
- *  filter that admits bars from a closed market, and a wrong market-status readout. Extend the
- *  tables from the exchange calendars and move this date with them; the sessions test turns the
- *  gate red 90 days before it lapses. */
-export const HOLIDAY_COVERAGE_THROUGH = '2027-01-01'
-
-const HOLIDAY_OVERRIDES: Partial<Record<MarketKind, Record<string, readonly SessionSegment[]>>> = {
-  equity: EQUITY_HOLIDAYS,
-  futures: FUTURES_HOLIDAYS,
-}
-
-/** The trading segments for one exchange-local calendar day: the holiday override when the date
- *  has one, the weekday rules otherwise. */
+/** The trading segments for one exchange-local calendar day: the SERVED holiday override when the
+ *  class has a registered calendar carrying the date, the weekday rules otherwise. */
 function daySegments(kind: MarketKind, dateKey: string, weekday: number): readonly SessionSegment[] {
-  return HOLIDAY_OVERRIDES[kind]?.[dateKey] ?? specOf(kind).day(weekday)
+  return servedCalendars.get(kind)?.holidays[dateKey] ?? specOf(kind).day(weekday)
 }
 
 const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }

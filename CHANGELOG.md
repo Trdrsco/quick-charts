@@ -2,6 +2,16 @@
 
 ## 0.2.0 — 2026-08-14
 
+- **Holiday calendars are SERVED, never bundled.** `SymbolInfo` gains optional
+  **`sessionCalendar`** (exchange-local `'YYYY-MM-DD'` → that day's trading segments; empty = a
+  full closure; absent dates follow the weekday rules) and the package exports
+  **`setHolidayCalendar(kind, calendar | null)`** — the widget registers a served calendar per
+  session class automatically on `resolve()`. The previously bundled NYSE/CME tables are REMOVED:
+  holiday truth churns annually and belongs to the datafeed (the reference platform serves the
+  same knowledge as `session_holidays`/`corrections`); a feed that serves none gets weekday rules,
+  honestly uncorrected. Session math still runs entirely in the exchange timezone — the viewer's
+  display timezone never enters it.
+
 - **`knownMarketKind(catalogType, served?)`** added — the honest sibling of `marketKindOf`: returns
   `null` (new exported alias `MaybeMarketKind`) when the session model is not actually known,
   including the case a served `'futures'` rides an unrecognized display type (indistinguishable

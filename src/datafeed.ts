@@ -50,6 +50,11 @@ export interface SymbolInfo {
   /** The session model this symbol trades on. Optional: a feed that doesn't know leaves the chart
    *  to its per-class defaults (never a wrong session claim). */
   sessionClass?: SessionClass
+  /** The session model's holiday calendar — exchange-local 'YYYY-MM-DD' dates mapped to that day's
+   *  trading segments (empty = a full closure; absent dates follow the weekday rules). Optional:
+   *  the feed owns holiday truth (the calendar churns annually and must never be client-bundled);
+   *  without it, holidays render as normal sessions. The host registers it per session class. */
+  sessionCalendar?: import('./sessions').HolidayCalendar
   /** Minimum price increment, or null when the feed doesn't know it (the chart then derives
    *  display precision from price magnitude). */
   tick: number | null

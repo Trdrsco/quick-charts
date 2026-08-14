@@ -1,13 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   createSessionBands,
   exchangeZoneOf,
-  HOLIDAY_COVERAGE_THROUGH,
   knownMarketKind,
   marketKindOf,
   nextSessionChange,
   sessionOf,
   sessionTimeline,
+  setHolidayCalendar,
 } from '../src/sessions'
 
 // All expectations pin concrete UTC epochs against exchange-local wall times, in BOTH DST regimes
@@ -113,7 +113,76 @@ describe('nextSessionChange — exact to the minute across day rolls', () => {
   })
 })
 
-describe('holiday overrides — futures (CME equity-index 2026, exchange-published)', () => {
+// The holiday behavior tests drive the SAME exchange-published dates the engine now serves, through
+// the registry a datafeed resolve populates — the session MATH is this package's contract; the DATA
+// truth is tested engine-side where the calendar lives. Fixtures mirror the served shapes exactly.
+const FUT_FIXTURE = {
+  holidays: {
+    '2026-01-01': [{ start: 17 * 60, end: 1440, session: 'eth' as const }],
+    '2026-01-19': [
+      { start: 0, end: 510, session: 'eth' as const },
+      { start: 510, end: 720, session: 'open' as const },
+      { start: 1020, end: 1440, session: 'eth' as const },
+    ],
+    '2026-04-02': [
+      { start: 0, end: 510, session: 'eth' as const },
+      { start: 510, end: 915, session: 'open' as const },
+      { start: 915, end: 960, session: 'eth' as const },
+    ],
+    '2026-04-03': [],
+    '2026-07-03': [
+      { start: 0, end: 510, session: 'eth' as const },
+      { start: 510, end: 720, session: 'open' as const },
+    ],
+    '2026-11-26': [
+      { start: 0, end: 510, session: 'eth' as const },
+      { start: 510, end: 720, session: 'open' as const },
+      { start: 1020, end: 1440, session: 'eth' as const },
+    ],
+    '2026-11-27': [
+      { start: 0, end: 510, session: 'eth' as const },
+      { start: 510, end: 735, session: 'open' as const },
+    ],
+    '2026-12-25': [],
+    '2026-12-31': [
+      { start: 0, end: 510, session: 'eth' as const },
+      { start: 510, end: 915, session: 'open' as const },
+      { start: 915, end: 960, session: 'eth' as const },
+    ],
+    '2027-01-01': [],
+  },
+  coverageThrough: '2027-01-01',
+}
+const EQ_FIXTURE = {
+  holidays: {
+    '2026-06-19': [],
+    '2026-07-03': [],
+    '2026-11-26': [],
+    '2026-11-27': [
+      { start: 240, end: 570, session: 'pre' as const },
+      { start: 570, end: 780, session: 'open' as const },
+      { start: 780, end: 1020, session: 'after' as const },
+    ],
+    '2026-12-24': [
+      { start: 240, end: 570, session: 'pre' as const },
+      { start: 570, end: 780, session: 'open' as const },
+      { start: 780, end: 1020, session: 'after' as const },
+    ],
+    '2026-12-25': [],
+    '2027-03-26': [],
+  },
+  coverageThrough: '2027-12-31',
+}
+beforeAll(() => {
+  setHolidayCalendar('futures', FUT_FIXTURE)
+  setHolidayCalendar('equity', EQ_FIXTURE)
+})
+afterAll(() => {
+  setHolidayCalendar('futures', null)
+  setHolidayCalendar('equity', null)
+})
+
+describe('holiday overrides — futures (CME equity-index 2026, served-calendar shapes)', () => {
   it('Good Friday 2026-04-03 is dark all day (a weekday rule alone would trade it)', () => {
     // Fri, CDT = UTC-5
     expect(sessionOf(utc(2026, 3, 3, 15, 0), 'futures')).toBe('closed') // 10:00 CT
@@ -293,12 +362,18 @@ describe('createSessionBands — an unknown model draws NOTHING (the promise the
   })
 })
 
-describe('holiday table coverage', () => {
-  it('the holiday tables still cover the next 90 days', () => {
-    const horizon = Date.parse(`${HOLIDAY_COVERAGE_THROUGH}T23:59:59Z`)
-    expect(
-      horizon,
-      'Extend EQUITY_HOLIDAYS/FUTURES_HOLIDAYS from the exchange calendars and move HOLIDAY_COVERAGE_THROUGH with them — past the horizon every holiday renders as a normal session',
-    ).toBeGreaterThan(Date.now() + 90 * 86_400_000)
+describe('the served-calendar registry', () => {
+  it('an unregistered class follows the weekday rules — no bundled calendar exists to go stale', () => {
+    // fx never registers; Christmas 2026 (a Friday) trades by fx weekday rules, uncorrected.
+    expect(sessionOf(utc(2026, 11, 25, 15, 0), 'fx')).toBe('open')
   })
+  it('clearing a calendar returns the class to its weekday rules', () => {
+    setHolidayCalendar('futures', null)
+    expect(sessionOf(utc(2026, 11, 25, 16, 0), 'futures')).toBe('open') // Christmas Friday, weekday rules
+    setHolidayCalendar('futures', FUT_FIXTURE)
+    expect(sessionOf(utc(2026, 11, 25, 16, 0), 'futures')).toBe('closed')
+  })
+  // The 90-day coverage tripwire lives ENGINE-SIDE (packages/instruments session-calendar.test.ts),
+  // where the calendar data lives and where the annual fix is a data edit + deploy — deliberately
+  // not here: a client gate would re-create the client-release obligation the served model removes.
 })
