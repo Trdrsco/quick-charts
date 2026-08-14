@@ -63,6 +63,7 @@ const SURFACE: Record<string, string> = {
   localStorageChartStorage: 'object',
   manifestInputDefaults: 'function',
   knownMarketKind: 'function',
+  setHolidayCalendar: 'function',
   marketKindOf: 'function',
   memoryChartStorage: 'function',
   mergeOverrides: 'function',
