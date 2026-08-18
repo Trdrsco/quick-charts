@@ -82,6 +82,12 @@ export interface ChartWidgetOptions {
    *  Orders pages from the same snapshot plane the lines consume, actions through the same broker
    *  seam. `false` removes it; `height` sizes the strip (default 148px). */
   accountPanel?: false | { height?: number }
+  /** Execution marks (on by default): grouped arrows on the bars where orders filled, with a
+   *  click card of the trades. Fed automatically when the trading adapter declares
+   *  `executions()`, or pushed by the host through `ChartWidgetApi.executions`. Live and replay
+   *  fills are SEPARATE histories — entering bar replay switches which one draws. `false`
+   *  removes the surface entirely. */
+  executionMarks?: false
   events?: ChartWidgetEvents
 }
 

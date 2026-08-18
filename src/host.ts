@@ -32,6 +32,8 @@ import { openQtyPopover, openTypeMenu } from './ticketChrome'
 import { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
 import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
+import { attachExecutionMarks, type ChartExecution, type ExecutionMarksHandle, type ExecutionScope } from './executionMarks'
+import { decimalsOfTick } from './broker'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
@@ -61,6 +63,17 @@ export interface ChartReplayApi {
   state(): { on: boolean; playing: boolean; cursor: number; total: number; speed: ReplaySpeed }
 }
 
+/** The execution-marks surface a host drives: push fills into a history, read/flip which one
+ *  draws. Live and replay are ISOLATED histories — replay fills never paint in live mode and
+ *  vice versa. The widget flips the scope itself on replay start/exit; `set` is how a host that
+ *  runs replay TRADING pushes its session's fills, and how a non-trading host overlays any fill
+ *  history it holds. */
+export interface ChartExecutionsApi {
+  set(scope: ExecutionScope, executions: readonly ChartExecution[]): void
+  setScope(scope: ExecutionScope): void
+  scope(): ExecutionScope
+}
+
 /** The running widget a host holds — change what's displayed, or tear it down. */
 export interface ChartWidgetApi {
   symbol(): string
@@ -80,6 +93,8 @@ export interface ChartWidgetApi {
   ticket: ChartTicketApi | null
   /** Bar replay over the loaded window. */
   replay: ChartReplayApi
+  /** Execution marks, or null when the widget was created with `executionMarks: false`. */
+  executions: ChartExecutionsApi | null
   /** Tear down the chart, the live subscription, and every DOM/timer resource. Idempotent. */
   remove(): void
 }
@@ -258,6 +273,35 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     candles.attachPrimitive(sessionBands as never)
   }
 
+  // Execution marks (on unless the host opted out): grouped arrows on the bars where orders
+  // filled, with the click card of the trades. The card mounts in the chrome overlay — the chart
+  // box's capture-phase trade-line handler would swallow its clicks. Data arrives from the
+  // trading adapter's executions() (refetchExecutions below) or a host push through the api.
+  let execMarks: ExecutionMarksHandle | null = null
+  if (options.executionMarks !== false) {
+    execMarks = attachExecutionMarks(chart, candles, chromeBox, {
+      buyColor: () => theme.upColor,
+      sellColor: () => theme.downColor,
+      precision: () => (symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : null),
+    })
+  }
+  /** Refetch the LIVE scope's fills for the charted symbol (adapters that declare executions()
+   *  only). A hoisted declaration on purpose: a config-less feed runs load() synchronously at
+   *  mount, before any later const initializes. */
+  function refetchExecutions(): void {
+    const fetchExecutions = options.trading?.executions
+    if (!execMarks || !fetchExecutions || !symbol) return
+    const myEpoch = epoch
+    void fetchExecutions(symbol)
+      .then((list) => {
+        if (removed || myEpoch !== epoch) return
+        execMarks?.set('live', list)
+      })
+      .catch(() => {
+        /* marks are advisory — a failed read keeps the previous set */
+      })
+  }
+
   /** The full ascending bar series currently painted (snapshot + prepended pages + live updates). */
   let bars: FeedBar[] = []
   let unsubscribe: (() => void) | null = null
@@ -393,6 +437,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         onError: (msg) => events.onTradingError?.(msg),
       })
     }
+    /** The last snapshot's position-quantity signature — the honest executions-refetch trigger:
+     *  a fill is the only event that moves a quantity, while P&L churns with every price tick
+     *  (refetching on the raw snapshot would hammer the backend once a second). */
+    let lastFillSig: string | null = null
     tradingUnsub = adapter.subscribeAccount({
       onSnapshot: (s) => {
         currentScope = s.scope
@@ -408,6 +456,11 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
           orderBrackets: s.orderBrackets,
           managedOrderIds: s.managedOrderIds,
         })
+        const fillSig = s.positions.map((p) => `${p.instrument}:${p.qty}`).sort().join('|')
+        if (fillSig !== lastFillSig) {
+          lastFillSig = fillSig
+          refetchExecutions()
+        }
       },
     })
     // Declared capabilities, read once (declare-only-truth): what presence can't express.
@@ -592,9 +645,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     symbolTick = null
     ticket?.close() // a draft composed against the old symbol must not survive onto the new one
     abandonReplay() // a replay window is symbol+timeframe-bound; the switch invalidates it
+    // Both fill histories clear: grouping is by containing bar, so the old symbol's fills would
+    // otherwise land on the new symbol's bars as if money moved there.
+    execMarks?.set('live', [])
+    execMarks?.set('replay', [])
     drawingsHandle?.setTick(null)
     paintAll()
     if (!symbol) return
+    refetchExecutions()
     // Symbol metadata rides ALONGSIDE the first history ask (never blocking it): tick size feeds
     // the drawing readouts, sessionClass feeds the session bands. A failed resolve leaves both at
     // their honest unknowns.
@@ -806,8 +864,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       }
     })()
   }
-  /** Tear replay state down WITHOUT repainting — load() blanks and repaints on its own. */
-  const abandonReplay = () => {
+  /** Tear replay state down WITHOUT repainting — load() blanks and repaints on its own. A hoisted
+   *  declaration on purpose: a config-less feed runs load() synchronously at mount, before the
+   *  replay consts around here initialize — the early return below is all that executes then. */
+  function abandonReplay(): void {
     if (!replayAll) return
     stopReplayTimer()
     replayPlaying = false
@@ -817,6 +877,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     replayBar?.destroy()
     replayBar = null
     replayLockRefresh()
+    execMarks?.setScope('live') // the replay history stays held, but only live fills may draw now
   }
   const replayApi: ChartReplayApi = {
     start(atSec) {
@@ -852,6 +913,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       )
       legend?.setHeader(symbol, `${tf} · replay`)
       replayLockRefresh()
+      // Replay is a SEPARATE fill timeline: live marks hide for the whole session; whatever the
+      // host pushes into the 'replay' scope (a replay-trading sim's fills) draws instead.
+      execMarks?.setScope('replay')
       replayPaint()
       replaySync()
     },
@@ -939,6 +1003,17 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       }
     : null
 
+  // The public executions surface is a REAL subset (the drawings-api discipline): teardown stays
+  // widget-owned, and an untyped consumer must not find it either.
+  const em = execMarks
+  const executionsApi: ChartExecutionsApi | null = em
+    ? {
+        set: (scope, executions) => em.set(scope, executions),
+        setScope: (scope) => em.setScope(scope),
+        scope: () => em.scope(),
+      }
+    : null
+
   return {
     symbol: () => symbol,
     timeframe: () => tf,
@@ -972,6 +1047,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     drawings: drawingsApi,
     ticket: ticketApi,
     replay: replayApi,
+    executions: executionsApi,
     remove() {
       if (removed) return
       removed = true
@@ -983,6 +1059,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       ticket?.destroy()
       tradingUnsub?.()
       accountPanel?.destroy()
+      execMarks?.destroy()
       tradeLines?.detach()
       drawingsRail?.destroy()
       drawingsHandle?.destroy()

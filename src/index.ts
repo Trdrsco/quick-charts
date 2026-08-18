@@ -76,7 +76,17 @@ export {
   type SessionTimeline,
 } from './sessions'
 
-export type { ChartWidgetApi, ChartDrawingsApi, ChartReplayApi, ChartTicketApi, ResolvedTheme } from './host'
+export type { ChartWidgetApi, ChartDrawingsApi, ChartExecutionsApi, ChartReplayApi, ChartTicketApi, ResolvedTheme } from './host'
+export {
+  attachExecutionMarks,
+  groupExecutionsByBar,
+  type ArrowHit,
+  type ChartExecution,
+  type ExecutionGroup,
+  type ExecutionMarksHandle,
+  type ExecutionMarksOptions,
+  type ExecutionScope,
+} from './executionMarks'
 export type { AccountSnapshot, TradingAdapter, TradingAdapterHandlers, TradingCapabilities } from './tradingAdapter'
 export { createOrderTicket, type OrderTicket, type OrderTicketDeps, type TicketOrderType, type TicketState, type TicketSubmit } from './orderTicket'
 export { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
