@@ -179,6 +179,7 @@ function harness(over?: { labels?: () => boolean }) {
   let primitive: { paneViews(): { renderer(): { draw(t: unknown): void } }[]; attached(p: { requestUpdate?: () => void }): void } | null = null
   let updates = 0
   const subs = { click: 0, move: 0 }
+  let moveHandler: ((p: { point?: { x: number; y: number } }) => void) | null = null
   const chart = {
     timeScale: () => ({ timeToCoordinate: (t: number) => (t === 60 ? 100 : t === 120 ? 110 : null) }),
     subscribeClick: () => {
@@ -187,8 +188,9 @@ function harness(over?: { labels?: () => boolean }) {
     unsubscribeClick: () => {
       subs.click--
     },
-    subscribeCrosshairMove: () => {
+    subscribeCrosshairMove: (fn: never) => {
       subs.move++
+      moveHandler = fn
     },
     unsubscribeCrosshairMove: () => {
       subs.move--
@@ -214,9 +216,10 @@ function harness(over?: { labels?: () => boolean }) {
   primitive!.attached({ requestUpdate: () => updates++ })
   /** One paint through a fake bitmap target. `marksDrawn` = the side color per composite mark
    *  (recorded at each run's SHAFT rect — the first fillRect after the run's fillStyle set). */
-  const drawn = (): { marksDrawn: string[]; texts: string[] } => {
+  const drawn = (): { marksDrawn: string[]; texts: string[]; highlights: string[] } => {
     const marksDrawn: string[] = []
     const texts: string[] = []
+    const highlights: string[] = []
     let cur = ''
     let rectsSinceStyle = 0
     const ctx = {
@@ -228,6 +231,11 @@ function harness(over?: { labels?: () => boolean }) {
         texts.push(s)
       },
       measureText: () => ({ width: 40 }),
+      beginPath() {},
+      roundRect() {},
+      fill() {
+        highlights.push(cur) // the hover tint is the only path-fill in the renderer
+      },
       font: '',
       textAlign: '',
       textBaseline: '',
@@ -243,9 +251,10 @@ function harness(over?: { labels?: () => boolean }) {
       .paneViews()[0]!
       .renderer()
       .draw({ useBitmapCoordinateSpace: (fn: (s: unknown) => void) => fn({ context: ctx, horizontalPixelRatio: 1, verticalPixelRatio: 1 }) })
-    return { marksDrawn, texts }
+    return { marksDrawn, texts, highlights }
   }
-  return { marks, drawn, updatesCount: () => updates, subs }
+  const hover = (point: { x: number; y: number } | undefined) => moveHandler!({ point })
+  return { marks, drawn, hover, updatesCount: () => updates, subs, chrome: chrome as { style: { cursor: string } } }
 }
 
 describe('attachExecutionMarks scope isolation + composite marks', () => {
@@ -254,10 +263,10 @@ describe('attachExecutionMarks scope isolation + composite marks', () => {
     h.marks.set('live', [fill({ id: 'L', side: 'buy', timeSecs: 61 })])
     h.marks.set('replay', [fill({ id: 'R1', side: 'sell', timeSecs: 61 }), fill({ id: 'R2', side: 'sell', timeSecs: 121 })])
     expect(h.marks.scope()).toBe('live')
-    expect(h.drawn()).toEqual({ marksDrawn: ['#0f0'], texts: ['1 @ 100.00'] }) // the two replay fills invisible
+    expect(h.drawn()).toEqual({ marksDrawn: ['#0f0'], texts: ['1 @ 100.00'], highlights: [] }) // the two replay fills invisible
 
     h.marks.setScope('replay')
-    expect(h.drawn()).toEqual({ marksDrawn: ['#f00', '#f00'], texts: ['1 @ 100.00', '1 @ 100.00'] }) // the live fill invisible
+    expect(h.drawn()).toEqual({ marksDrawn: ['#f00', '#f00'], texts: ['1 @ 100.00', '1 @ 100.00'], highlights: [] }) // the live fill invisible
 
     h.marks.setScope('live')
     expect(h.drawn().marksDrawn).toEqual(['#0f0'])
@@ -278,7 +287,23 @@ describe('attachExecutionMarks scope isolation + composite marks', () => {
   it('labels are OFF unless the getter says true — arrows alone by default', () => {
     const h = harness({ labels: () => false })
     h.marks.set('live', [fill({ side: 'buy', timeSecs: 61 })])
-    expect(h.drawn()).toEqual({ marksDrawn: ['#0f0'], texts: [] })
+    expect(h.drawn()).toEqual({ marksDrawn: ['#0f0'], texts: [], highlights: [] })
+  })
+
+  it('hovering a mark tints its box in the SIDE color at low alpha, repainting once per hover change', () => {
+    const h = harness()
+    h.marks.set('live', [fill({ side: 'buy', timeSecs: 61 })])
+    expect(h.drawn().highlights).toEqual([]) // no hover, no tint — and this paint builds the hit boxes
+    const before = h.updatesCount()
+    h.hover({ x: 100, y: 60 }) // inside the mark's box (bar 60 → x 100; tip 53 … label edge 85)
+    expect(h.chrome.style.cursor).toBe('pointer')
+    expect(h.updatesCount()).toBe(before + 1) // one poke on the change…
+    h.hover({ x: 100, y: 61 })
+    expect(h.updatesCount()).toBe(before + 1) // …and none while the hovered group is unchanged
+    expect(h.drawn().highlights).toEqual(['rgba(0, 255, 0, 0.14)']) // the side's own color, quiet alpha
+    h.hover({ x: 5, y: 5 }) // off the mark
+    expect(h.chrome.style.cursor).toBe('')
+    expect(h.drawn().highlights).toEqual([])
   })
 
   it('pokes requestUpdate on set/setScope (nothing else invalidates the pane)', () => {

@@ -11,7 +11,9 @@
   OFF by default — `labels()` on the attachment, `{ labels: true }` on the widget). Clicking a
   mark opens the card that aggregates the bar's side group — the reference's anatomy (4px side
   stripe, circle count chip, Buy/Sell title, "N @ avg price" subtitle when grouped, the individual
-  trades) in the HOST's card tokens via the `card()` palette getter. Fill-to-bar
+  trades) in the HOST's card tokens via the `card()` palette getter. Hovering a mark tints its
+  box with the side's own color at low alpha (the quiet-highlight treatment, never neutral grey)
+  and shows the pointer cursor. Fill-to-bar
   placement is by CONTAINING BAR read from the series itself — correct on every interval; a fill
   whose bar is not loaded draws nothing. **Live and replay fills are ISOLATED scopes** — only the
   active one draws, and the live scope is per armed account. The widget wires it end to end:
