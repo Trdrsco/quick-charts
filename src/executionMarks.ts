@@ -29,6 +29,7 @@
 // no framework. Arrows are canvas (they must track pan/zoom per paint, like the reference); the
 // card is DOM in the host's chrome overlay.
 import type { IChartApi, ISeriesApi, MouseEventParams, SeriesType, Time } from 'lightweight-charts'
+import { withAlpha } from './tradeLineParts'
 
 /** One execution (a fill), in the host's vocabulary. `timeSecs` is the FILL time — the attachment
  *  finds its containing bar itself, so hosts pass raw fill times. */
@@ -133,6 +134,10 @@ const LABEL_GAP = 4
 const LABEL_FONT_PX = 13
 const LABEL_FONT_FAMILY = "'Inter Variable', -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif"
 const HIT_PAD = 3
+/** The hover tint: the host's quiet-highlight treatment in the mark's OWN side color (never the
+ *  neutral grey) — same alpha tier as the app's translucent control fills. */
+const HOVER_ALPHA = 0.14
+const HOVER_RADIUS = 4
 
 /** One composite mark: chevron tips (one per fill, 4px pitch when stacked), the group's shaft
  *  after the last head, and the run's label content. */
@@ -270,6 +275,8 @@ export function attachExecutionMarks(
   const sets: Record<ExecutionScope, readonly ChartExecution[]> = { live: [], replay: [] }
   let activeScope: ExecutionScope = 'live'
   let hits: ArrowHit[] = []
+  /** The hovered group's `barTime|side` key — the next paint tints that group's box. */
+  let hoveredKey: string | null = null
   let requestUpdate: (() => void) | null = null
   let card: HTMLElement | null = null
   let destroyed = false
@@ -335,9 +342,44 @@ export function attachExecutionMarks(
           const runs = planExecutionRuns(anchors, g.side)
           if (runs.length === 0) continue
           const labelsOn = opts.labels?.() === true
+          const sideColor = up ? opts.buyColor() : opts.sellColor()
+          // GEOMETRY PASS (no drawing): the group's extent — marks plus labels — feeds the hover
+          // tint (painted UNDER the arrows), the hit box, and the label baselines.
           let yMin = Number.POSITIVE_INFINITY
           let yMax = Number.NEGATIVE_INFINITY
           let widest = ARROW_W
+          const labels: { text: string; shaftEndY: number }[] = []
+          if (labelsOn) ctx.font = `${LABEL_FONT_PX * vr}px ${LABEL_FONT_FAMILY}`
+          for (const run of runs) {
+            const tip0 = run.tips[0]!
+            const shaftEndY = run.tips[run.tips.length - 1]! + ARROW_LEN * dir
+            yMin = Math.min(yMin, tip0, shaftEndY)
+            yMax = Math.max(yMax, tip0, shaftEndY)
+            if (labelsOn) {
+              const text = `${fmtQty(run.qty)} @ ${run.avgPrice.toFixed(decimalsFor(run.avgPrice))}`
+              labels.push({ text, shaftEndY })
+              widest = Math.max(widest, ctx.measureText(text).width / hr)
+              const labelEdge = shaftEndY + (LABEL_GAP + LABEL_FONT_PX + 2) * dir
+              yMin = Math.min(yMin, labelEdge)
+              yMax = Math.max(yMax, labelEdge)
+            }
+          }
+          // One box per GROUP — marks plus labels; the click card, the hover tint, and the
+          // pointer cursor all agree on this exact region, like the reference.
+          const box = {
+            x: x - widest / 2 - HIT_PAD,
+            y: yMin - HIT_PAD,
+            w: widest + HIT_PAD * 2,
+            h: yMax - yMin + HIT_PAD * 2,
+          }
+          // The hover tint: the app's quiet-highlight treatment in the SIDE's own color (never
+          // the neutral grey) — the mark's color at low alpha, under the arrows.
+          if (hoveredKey === `${g.barTime}|${g.side}`) {
+            ctx.fillStyle = withAlpha(sideColor, HOVER_ALPHA)
+            ctx.beginPath()
+            ctx.roundRect(box.x * hr, box.y * vr, box.w * hr, box.h * vr, HOVER_RADIUS * hr)
+            ctx.fill()
+          }
           // Integral device-pixel placement: the glyph's left edge sits at the snapped bar center
           // minus half its width, and every cell is a whole-pixel rect — the raster is the
           // measured reference mask exactly, never an antialiased approximation.
@@ -351,7 +393,7 @@ export function attachExecutionMarks(
             const tip0 = run.tips[0]!
             const lastTip = run.tips[run.tips.length - 1]!
             const shaftEndY = lastTip + ARROW_LEN * dir
-            ctx.fillStyle = up ? opts.buyColor() : opts.sellColor()
+            ctx.fillStyle = sideColor
             // One shaft from the nearest tip through 13 rows past the farthest (the reference's
             // stack shares a single shaft)…
             const tip0Dev = Math.round(tip0 * vr)
@@ -365,32 +407,17 @@ export function attachExecutionMarks(
                 for (const [c0, c1] of ARROW_HEAD_ROWS[r]!) cell(tipDev, r, c0, c1)
               }
             }
-            yMin = Math.min(yMin, tip0, shaftEndY)
-            yMax = Math.max(yMax, tip0, shaftEndY)
-            if (labelsOn) {
-              // The run's label: "qty @ price" beyond the shaft (total @ volume-weighted average
-              // for a stack), in the chart's text color — the reference's default-on labels.
-              const label = `${fmtQty(run.qty)} @ ${run.avgPrice.toFixed(decimalsFor(run.avgPrice))}`
-              ctx.fillStyle = opts.textColor?.() ?? CARD_TEXT
-              ctx.font = `${LABEL_FONT_PX * vr}px ${LABEL_FONT_FAMILY}`
-              ctx.textAlign = 'center'
-              ctx.textBaseline = up ? 'top' : 'bottom'
-              ctx.fillText(label, xDev, (shaftEndY + LABEL_GAP * dir) * vr)
-              widest = Math.max(widest, ctx.measureText(label).width / hr)
-              const labelEdge = shaftEndY + (LABEL_GAP + LABEL_FONT_PX + 2) * dir
-              yMin = Math.min(yMin, labelEdge)
-              yMax = Math.max(yMax, labelEdge)
-            }
           }
-          // One hit box per GROUP — marks plus labels; a click anywhere on it opens the
-          // aggregated card, like the reference.
-          hits.push({
-            group: g,
-            x: x - widest / 2 - HIT_PAD,
-            y: yMin - HIT_PAD,
-            w: widest + HIT_PAD * 2,
-            h: yMax - yMin + HIT_PAD * 2,
-          })
+          if (labelsOn) {
+            // "qty @ price" beyond each shaft (total @ volume-weighted average for a stack), in
+            // the chart's text color.
+            ctx.fillStyle = opts.textColor?.() ?? CARD_TEXT
+            ctx.font = `${LABEL_FONT_PX * vr}px ${LABEL_FONT_FAMILY}`
+            ctx.textAlign = 'center'
+            ctx.textBaseline = up ? 'top' : 'bottom'
+            for (const l of labels) ctx.fillText(l.text, xDev, (l.shaftEndY + LABEL_GAP * dir) * vr)
+          }
+          hits.push({ group: g, ...box })
         }
       })
     },
@@ -484,8 +511,15 @@ export function attachExecutionMarks(
   }
   const onMove = (param: MouseEventParams) => {
     if (destroyed) return
-    const over = param.point ? executionHitAt(hits, param.point.x, param.point.y) !== null : false
-    chrome.style.cursor = over ? 'pointer' : ''
+    const hit = param.point ? executionHitAt(hits, param.point.x, param.point.y) : null
+    chrome.style.cursor = hit ? 'pointer' : ''
+    // The hover tint follows the hit — repaint only when the hovered group actually changes
+    // (crosshair moves arrive per pixel; an unconditional poke would repaint continuously).
+    const key = hit ? `${hit.group.barTime}|${hit.group.side}` : null
+    if (key !== hoveredKey) {
+      hoveredKey = key
+      requestUpdate?.()
+    }
   }
   chart.subscribeClick(onClick)
   chart.subscribeCrosshairMove(onMove)
