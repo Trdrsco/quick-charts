@@ -444,12 +444,14 @@ chart disarms during replay**
 view is a foot-gun), while the account panel stays live because its actions are table-explicit; a
 host that wants replay *trading* swaps in a replay `TradingAdapter` at the seam.
 
-**Execution marks** draw where the account actually traded: one chevron head per execution,
-anchored at the fill's own price (a buy hangs below its price pointing up at it, a sell sits above
-pointing down), overlapping same-bar same-side heads stacking at a fixed pitch behind one shaft,
-with a "qty @ price" label beyond the shaft — total quantity at volume-weighted average when
-stacked. Clicking a mark opens a card that aggregates the bar's side group: the fill count, the
-summed quantity at average price, and the individual trades. Fill-to-bar placement is by
+**Execution marks** draw where the account actually traded: one arrow per execution, anchored at
+the fill's own price (a buy hangs below its price pointing up at it, a sell sits above pointing
+down), overlapping same-bar same-side arrows stacking at a fixed pitch behind one shaft, with an
+optional "qty @ price" label beyond the shaft (off by default; `executionMarks: { labels: true }`
+on the widget, the `labels()` getter on the attachment). Clicking a mark opens a card that
+aggregates the bar's side group — the fill count, the summed quantity at average price, and the
+individual trades — styled through the `card()` palette getter so it sits beside the host's own
+popovers as one family. Fill-to-bar placement is by
 CONTAINING BAR, read from the loaded series itself — correct on every interval, and a fill whose
 bar is not loaded draws nothing rather than landing on the wrong bar. The widget feeds the surface
 automatically when the adapter declares `executions(symbol)` (refetched on symbol change, on an

@@ -3,12 +3,15 @@
 ## 0.2.0 — 2026-08-14
 
 - **Execution marks.** New **`attachExecutionMarks(chart, series, chrome, opts)`**, reproducing
-  the reference platform's measured rendering: one chevron head PER EXECUTION anchored at the fill
-  price (a buy hangs below its price pointing up at it, a sell sits above pointing down),
-  overlapping same-bar same-side heads stacked at a 4px pitch sharing one shaft, and a
-  "qty @ price" label beyond the shaft (total qty @ volume-weighted average for a stack). Clicking
-  a mark opens the card that aggregates the bar's side group: 4px side stripe, circle count chip,
-  Buy/Sell title, "N @ avg price" subtitle when grouped, and the individual trades. Fill-to-bar
+  the reference platform's rendering, reproduced literally from its measured raster: one arrow
+  PER EXECUTION anchored at the fill price and clamped clear of its bar (a buy hangs below the
+  low pointing up at its price, a sell sits above the high pointing down),
+  overlapping same-bar same-side barb pairs stacked at a 4px pitch sharing one shaft, and an
+  optional "qty @ price" label beyond the shaft (total qty @ volume-weighted average for a stack;
+  OFF by default — `labels()` on the attachment, `{ labels: true }` on the widget). Clicking a
+  mark opens the card that aggregates the bar's side group — the reference's anatomy (4px side
+  stripe, circle count chip, Buy/Sell title, "N @ avg price" subtitle when grouped, the individual
+  trades) in the HOST's card tokens via the `card()` palette getter. Fill-to-bar
   placement is by CONTAINING BAR read from the series itself — correct on every interval; a fill
   whose bar is not loaded draws nothing. **Live and replay fills are ISOLATED scopes** — only the
   active one draws, and the live scope is per armed account. The widget wires it end to end:

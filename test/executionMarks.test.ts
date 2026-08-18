@@ -112,7 +112,7 @@ describe('planExecutionRuns — the reference composite mark', () => {
     expect(runs[0]!.tips).toEqual([49, 45])
   })
 
-  it('anchors clear of the previous mark (head+shaft = 13px) start their OWN run with its own label', () => {
+  it('anchors clear of the previous mark (tip through shaft end = 13px) start their OWN run with its own label', () => {
     const runs = planExecutionRuns(
       [
         { tipY: 51, qty: 1, price: 100 },
@@ -169,9 +169,9 @@ describe('executionPriceDecimals', () => {
 
 // ── The attachment's scope isolation + composite drawing, proven through a faked chart/series/
 // bitmap target — the owner-level requirement: replay fills NEVER draw in live mode, live fills
-// NEVER draw in replay, and a (bar, side) stack draws one head per fill with ONE label. ──
+// NEVER draw in replay, and a (bar, side) stack strokes ONE composite mark with ONE label. ──
 
-function harness() {
+function harness(over?: { labels?: () => boolean }) {
   const bars = [
     { time: 60, open: 1, high: 2, low: 0.5, close: 1.5 },
     { time: 120, open: 1.5, high: 2.5, low: 1, close: 2 },
@@ -205,19 +205,24 @@ function harness() {
     },
   } as unknown as ISeriesApi<SeriesType>
   const chrome = { style: { cursor: '' } } as unknown as HTMLElement
-  const marks = attachExecutionMarks(chart, series, chrome, { buyColor: () => '#0f0', sellColor: () => '#f00', textColor: () => '#ccc' })
+  const marks = attachExecutionMarks(chart, series, chrome, {
+    buyColor: () => '#0f0',
+    sellColor: () => '#f00',
+    textColor: () => '#ccc',
+    labels: over?.labels ?? (() => true),
+  })
   primitive!.attached({ requestUpdate: () => updates++ })
-  const drawn = (): { fills: string[]; texts: string[] } => {
-    const fills: string[] = []
+  /** One paint through a fake bitmap target. `marksDrawn` = the side color per composite mark
+   *  (recorded at each run's SHAFT rect — the first fillRect after the run's fillStyle set). */
+  const drawn = (): { marksDrawn: string[]; texts: string[] } => {
+    const marksDrawn: string[] = []
     const texts: string[] = []
     let cur = ''
+    let rectsSinceStyle = 0
     const ctx = {
-      beginPath() {},
-      moveTo() {},
-      lineTo() {},
-      closePath() {},
-      fill() {
-        fills.push(cur)
+      fillRect() {
+        if (rectsSinceStyle === 0) marksDrawn.push(cur)
+        rectsSinceStyle++
       },
       fillText(s: string) {
         texts.push(s)
@@ -228,6 +233,7 @@ function harness() {
       textBaseline: '',
       set fillStyle(c: string) {
         cur = c
+        rectsSinceStyle = 0
       },
       get fillStyle() {
         return cur
@@ -237,7 +243,7 @@ function harness() {
       .paneViews()[0]!
       .renderer()
       .draw({ useBitmapCoordinateSpace: (fn: (s: unknown) => void) => fn({ context: ctx, horizontalPixelRatio: 1, verticalPixelRatio: 1 }) })
-    return { fills, texts }
+    return { marksDrawn, texts }
   }
   return { marks, drawn, updatesCount: () => updates, subs }
 }
@@ -248,16 +254,16 @@ describe('attachExecutionMarks scope isolation + composite marks', () => {
     h.marks.set('live', [fill({ id: 'L', side: 'buy', timeSecs: 61 })])
     h.marks.set('replay', [fill({ id: 'R1', side: 'sell', timeSecs: 61 }), fill({ id: 'R2', side: 'sell', timeSecs: 121 })])
     expect(h.marks.scope()).toBe('live')
-    expect(h.drawn()).toEqual({ fills: ['#0f0'], texts: ['1 @ 100.00'] }) // the two replay fills invisible
+    expect(h.drawn()).toEqual({ marksDrawn: ['#0f0'], texts: ['1 @ 100.00'] }) // the two replay fills invisible
 
     h.marks.setScope('replay')
-    expect(h.drawn()).toEqual({ fills: ['#f00', '#f00'], texts: ['1 @ 100.00', '1 @ 100.00'] }) // the live fill invisible
+    expect(h.drawn()).toEqual({ marksDrawn: ['#f00', '#f00'], texts: ['1 @ 100.00', '1 @ 100.00'] }) // the live fill invisible
 
     h.marks.setScope('live')
-    expect(h.drawn().fills).toEqual(['#0f0'])
+    expect(h.drawn().marksDrawn).toEqual(['#0f0'])
   })
 
-  it('a same-bar same-side stack draws one chevron per fill and ONE label; the opposite side is its own mark', () => {
+  it('a same-bar same-side stack strokes ONE composite mark with ONE label; the opposite side is its own mark', () => {
     const h = harness()
     h.marks.set('live', [
       fill({ id: 'a', side: 'buy', timeSecs: 61, qty: 1 }),
@@ -265,8 +271,14 @@ describe('attachExecutionMarks scope isolation + composite marks', () => {
       fill({ id: 'c', side: 'sell', timeSecs: 100, qty: 1 }),
     ])
     const d = h.drawn()
-    expect(d.fills).toEqual(['#0f0', '#0f0', '#f00']) // 2 stacked buy heads + 1 sell arrow
+    expect(d.marksDrawn).toEqual(['#0f0', '#f00']) // one composite buy mark (2 barb pairs, 1 shaft) + 1 sell arrow
     expect(d.texts).toEqual(['3 @ 100.00', '1 @ 100.00']) // one label per run: total qty @ avg
+  })
+
+  it('labels are OFF unless the getter says true — arrows alone by default', () => {
+    const h = harness({ labels: () => false })
+    h.marks.set('live', [fill({ side: 'buy', timeSecs: 61 })])
+    expect(h.drawn()).toEqual({ marksDrawn: ['#0f0'], texts: [] })
   })
 
   it('pokes requestUpdate on set/setScope (nothing else invalidates the pane)', () => {

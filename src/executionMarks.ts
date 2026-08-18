@@ -106,20 +106,32 @@ export function groupExecutionsByBar(executions: readonly ChartExecution[], barT
   return groups.sort((a, b) => a.barTime - b.barTime)
 }
 
-/** The reference glyph, measured from its canvas at 1× dpr. All CSS px. */
-const ARROW_W = 10 // full head base width
-const ARROW_TIP_W = 4 // the flat tip
-const ARROW_HEAD_H = 5 // tip row through the full-width base rows
-const ARROW_SHAFT_W = 2
-const ARROW_SHAFT_H = 8
+/** The reference glyph, reproduced LITERALLY from its measured 1× raster: a 10×13 up-arrow — a
+ *  2px shaft the full height, and a barb pair whose per-row cells are the head rows below. Drawn
+ *  as row rects so the raster is exact by construction and scales integrally with dpr. */
+const ARROW_W = 10
+const ARROW_LEN = 13 // tip row through shaft end
+/** The head's per-row cells (col spans within the 10-wide glyph), tip row first — the measured
+ *  runs: [3,6] / [2,7] / [1,8] / [0,1]+[8,9] / [0]+[9], with the 2px shaft at cols [4,5]. */
+const ARROW_HEAD_ROWS: readonly (readonly [number, number])[][] = [
+  [[3, 6]],
+  [[2, 7]],
+  [[1, 8]],
+  [[0, 1], [8, 9]],
+  [[0, 0], [9, 9]],
+]
+const ARROW_SHAFT_COLS: readonly [number, number] = [4, 5]
 /** Tip-to-price gap: the arrow points essentially AT the level. */
 const ARROW_GAP = 1
-/** Stacked chevron pitch (apex to apex) — the measured union of two same-price fills. */
+/** A mark never overlaps its bar: the tip clamps at least this far beyond the bar's extreme
+ *  (below the low for buys, above the high for sells). */
+const BAR_CLEAR = 3
+/** Stacked barb-pair pitch (tip to tip) — the measured union of two same-price fills. */
 const ARROW_STACK_PITCH = 4
 /** Label offset past the shaft end, and its type scale (the reference's body text). */
 const LABEL_GAP = 4
 const LABEL_FONT_PX = 13
-const LABEL_FONT_FAMILY = "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif"
+const LABEL_FONT_FAMILY = "'Inter Variable', -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif"
 const HIT_PAD = 3
 
 /** One composite mark: chevron tips (one per fill, 4px pitch when stacked), the group's shaft
@@ -131,10 +143,10 @@ export interface ArrowRun {
 }
 
 /** Plan a (bar, side) group's composite marks: each fill anchors at its own price coordinate;
- *  a fill whose natural anchor would land inside the run being built stacks 4px past the previous
- *  head (away from the price), while a fill anchored clear of the run starts a NEW run with its
- *  own shaft and label. Anchors arrive as tip-y values (price coordinate + gap); buys extend
- *  downward, sells upward. Exported for tests. */
+ *  a fill whose natural anchor would land inside the run being built stacks its barb pair 4px
+ *  past the previous one (away from the price) on the shared shaft, while a fill anchored clear
+ *  of the run starts a NEW run with its own shaft and label. Anchors arrive as tip-y values
+ *  (price coordinate + gap); buys extend downward, sells upward. Exported for tests. */
 export function planExecutionRuns(anchors: readonly { tipY: number; qty: number; price: number }[], side: 'buy' | 'sell'): ArrowRun[] {
   if (anchors.length === 0) return []
   const dir = side === 'buy' ? 1 : -1
@@ -144,8 +156,8 @@ export function planExecutionRuns(anchors: readonly { tipY: number; qty: number;
   for (const a of sorted) {
     const run = runs[runs.length - 1]
     const lastTip = run?.tips[run.tips.length - 1]
-    // Inside the previous mark's extent (its last head plus shaft) ⇒ stack onto it.
-    if (run && lastTip !== undefined && (a.tipY - lastTip) * dir < ARROW_HEAD_H + ARROW_SHAFT_H) {
+    // Inside the previous mark's extent (tip through shaft end) ⇒ stack onto it.
+    if (run && lastTip !== undefined && (a.tipY - lastTip) * dir < ARROW_LEN) {
       run.tips.push(lastTip + ARROW_STACK_PITCH * dir)
       run.fills.push({ qty: a.qty, price: a.price })
     } else {
@@ -186,6 +198,19 @@ export function executionPriceDecimals(price: number): number {
   return 6
 }
 
+/** The click card's palette — a host passes its own design system's tokens; the defaults are a
+ *  neutral dark. The stripe and count chip always take the SIDE color. */
+export interface ExecutionCardPalette {
+  background: string
+  /** The 1px outline (elevation-by-outline hosts pass their ring token; shadow may be 'none'). */
+  ring: string
+  shadow: string
+  /** Title ink / row ink / de-emphasized ink (section header, dates). */
+  text: string
+  secondaryText: string
+  mutedText: string
+}
+
 export interface ExecutionMarksOptions {
   /** Side colors, read per paint so a theme change needs no re-attach. */
   buyColor(): string
@@ -193,9 +218,14 @@ export interface ExecutionMarksOptions {
   /** The "qty @ price" label color (the chart's text color). Defaults to the reference's
    *  dark-theme text. */
   textColor?(): string
+  /** Draw the "qty @ price" labels beside the arrows. Read per paint; absent = OFF (arrows
+   *  alone — the product default). */
+  labels?(): boolean
   /** Card/label price decimals (the resolved symbol's tick decimals). Null falls back to a
    *  magnitude heuristic — the price scale formats the axis. */
   precision?(): number | null
+  /** Card palette override (read when a card opens). */
+  card?(): ExecutionCardPalette
 }
 
 export interface ExecutionMarksHandle {
@@ -205,6 +235,10 @@ export interface ExecutionMarksHandle {
   /** Flip which history draws — the host calls this on replay start/exit. Closes any open card. */
   setScope(scope: ExecutionScope): void
   scope(): ExecutionScope
+  /** Repaint now — the option getters (colors, labels, precision) are read per paint and NOTHING
+   *  in the chart invalidates the pane when one changes; the host pokes this on a settings flip
+   *  (the session-bands contract). */
+  refresh(): void
   destroy(): void
 }
 
@@ -213,11 +247,16 @@ const fmtQty = (n: number): string => String(Number(n.toFixed(9)))
 const fmtWhen = (secs: number): string =>
   new Date(secs * 1000).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
 
-/** The reference card's measured palette. The stripe/chip take the side color. */
-const CARD_BG = '#131722'
+/** The default card palette (a neutral dark); hosts pass their own via `card()`. */
+const DEFAULT_CARD: ExecutionCardPalette = {
+  background: '#131722',
+  ring: 'rgba(148,163,184,0.14)',
+  shadow: '0 2px 4px rgba(0,0,0,0.4)',
+  text: '#fafafa',
+  secondaryText: 'rgb(209,212,220)',
+  mutedText: 'rgb(134,137,147)',
+}
 const CARD_TEXT = 'rgb(209,212,220)'
-const CARD_MUTED = 'rgb(134,137,147)'
-const CARD_DATE = 'rgb(106,109,120)'
 
 /** Attach execution marks to a chart's main series. `chrome` hosts the click card — the host's
  *  overlay subtree (pointer-events opt-in), NOT the chart's own gesture box, where a capturing
@@ -254,11 +293,15 @@ export function attachExecutionMarks(
       const executions = sets[activeScope]
       if (executions.length === 0) return
       // REAL bars only, numeric times only — whitespace points must not become containing bars.
-      const barTimes: number[] = []
-      for (const b of series.data() as { time: Time; close?: number; value?: number }[]) {
-        if (typeof b.time === 'number' && (typeof b.close === 'number' || typeof b.value === 'number')) barTimes.push(b.time)
+      const bars: { time: number; high?: number; low?: number; close?: number; value?: number }[] = []
+      for (const b of series.data() as { time: Time; high?: number; low?: number; close?: number; value?: number }[]) {
+        if (typeof b.time === 'number' && (typeof b.close === 'number' || typeof b.value === 'number'))
+          bars.push({ time: b.time, high: b.high, low: b.low, close: b.close, value: b.value })
       }
-      if (barTimes.length === 0) return
+      if (bars.length === 0) return
+      const barTimes = bars.map((b) => b.time)
+      const byTime = new Map<number, (typeof bars)[number]>()
+      for (const b of bars) byTime.set(b.time, b)
       const groups = groupExecutionsByBar(executions, barTimes)
       if (groups.length === 0) return
       const ts = chart.timeScale()
@@ -276,57 +319,68 @@ export function attachExecutionMarks(
           if (x == null) continue // off-screen
           const up = g.side === 'buy' // a buy hangs BELOW its price pointing up at it
           const dir = up ? 1 : -1
+          // A mark never overlaps its candle: the tip anchors at the fill price but clamps to at
+          // least BAR_CLEAR beyond the bar's extreme (below the low / above the high).
+          const bar = byTime.get(g.barTime)
+          const extreme = bar ? (up ? (bar.low ?? bar.value ?? bar.close) : (bar.high ?? bar.value ?? bar.close)) : undefined
+          const extremeY = extreme != null ? series.priceToCoordinate(extreme) : null
           const anchors: { tipY: number; qty: number; price: number }[] = []
           for (const f of g.fills) {
             const py = series.priceToCoordinate(f.price)
             if (py == null) continue // price outside the visible scale — that fill's mark clips
-            anchors.push({ tipY: py + ARROW_GAP * dir, qty: f.qty, price: f.price })
+            const natural = py + ARROW_GAP * dir
+            const cleared = extremeY == null ? natural : up ? Math.max(natural, extremeY + BAR_CLEAR) : Math.min(natural, extremeY - BAR_CLEAR)
+            anchors.push({ tipY: cleared, qty: f.qty, price: f.price })
           }
           const runs = planExecutionRuns(anchors, g.side)
           if (runs.length === 0) continue
+          const labelsOn = opts.labels?.() === true
           let yMin = Number.POSITIVE_INFINITY
           let yMax = Number.NEGATIVE_INFINITY
           let widest = ARROW_W
+          // Integral device-pixel placement: the glyph's left edge sits at the snapped bar center
+          // minus half its width, and every cell is a whole-pixel rect — the raster is the
+          // measured reference mask exactly, never an antialiased approximation.
+          const xDev = Math.round(x * hr)
+          const leftDev = xDev - Math.round((ARROW_W / 2) * hr)
+          const cell = (tipDev: number, row: number, c0: number, c1: number) => {
+            const yTop = dir === 1 ? tipDev + row * vr : tipDev - (row + 1) * vr
+            ctx.fillRect(leftDev + c0 * hr, yTop, (c1 - c0 + 1) * hr, vr)
+          }
           for (const run of runs) {
+            const tip0 = run.tips[0]!
+            const lastTip = run.tips[run.tips.length - 1]!
+            const shaftEndY = lastTip + ARROW_LEN * dir
             ctx.fillStyle = up ? opts.buyColor() : opts.sellColor()
-            // Chevron head per fill; the LAST head carries the shaft (one path — the full arrow).
-            for (let i = 0; i < run.tips.length; i++) {
-              const tipY = run.tips[i]!
-              const headBaseY = tipY + ARROW_HEAD_H * dir
-              const last = i === run.tips.length - 1
-              ctx.beginPath()
-              ctx.moveTo((x - ARROW_TIP_W / 2) * hr, tipY * vr)
-              ctx.lineTo((x + ARROW_TIP_W / 2) * hr, tipY * vr)
-              ctx.lineTo((x + ARROW_W / 2) * hr, headBaseY * vr)
-              if (last) {
-                const shaftEndY = headBaseY + ARROW_SHAFT_H * dir
-                ctx.lineTo((x + ARROW_SHAFT_W / 2) * hr, headBaseY * vr)
-                ctx.lineTo((x + ARROW_SHAFT_W / 2) * hr, shaftEndY * vr)
-                ctx.lineTo((x - ARROW_SHAFT_W / 2) * hr, shaftEndY * vr)
-                ctx.lineTo((x - ARROW_SHAFT_W / 2) * hr, headBaseY * vr)
+            // One shaft from the nearest tip through 13 rows past the farthest (the reference's
+            // stack shares a single shaft)…
+            const tip0Dev = Math.round(tip0 * vr)
+            const shaftRows = Math.round(Math.abs(shaftEndY - tip0))
+            const shaftTop = dir === 1 ? tip0Dev : tip0Dev - shaftRows * vr
+            ctx.fillRect(leftDev + ARROW_SHAFT_COLS[0] * hr, shaftTop, (ARROW_SHAFT_COLS[1] - ARROW_SHAFT_COLS[0] + 1) * hr, shaftRows * vr)
+            // …and a barb pair at every tip (4px pitch when stacked).
+            for (const tipY of run.tips) {
+              const tipDev = Math.round(tipY * vr)
+              for (let r = 0; r < ARROW_HEAD_ROWS.length; r++) {
+                for (const [c0, c1] of ARROW_HEAD_ROWS[r]!) cell(tipDev, r, c0, c1)
               }
-              ctx.lineTo((x - ARROW_W / 2) * hr, headBaseY * vr)
-              ctx.closePath()
-              ctx.fill()
-              yMin = Math.min(yMin, tipY, headBaseY)
-              yMax = Math.max(yMax, tipY, headBaseY)
             }
-            const shaftEndY = run.tips[run.tips.length - 1]! + (ARROW_HEAD_H + ARROW_SHAFT_H) * dir
-            yMin = Math.min(yMin, shaftEndY)
-            yMax = Math.max(yMax, shaftEndY)
-            // The run's label: "qty @ price" beyond the shaft (total @ volume-weighted average
-            // for a stack), in the chart's text color — the reference's default-on labels.
-            const label = `${fmtQty(run.qty)} @ ${run.avgPrice.toFixed(decimalsFor(run.avgPrice))}`
-            ctx.fillStyle = opts.textColor?.() ?? CARD_TEXT
-            ctx.font = `${LABEL_FONT_PX * vr}px ${LABEL_FONT_FAMILY}`
-            ctx.textAlign = 'center'
-            ctx.textBaseline = up ? 'top' : 'bottom'
-            ctx.fillText(label, x * hr, (shaftEndY + LABEL_GAP * dir) * vr)
-            const labelW = ctx.measureText(label).width / hr
-            widest = Math.max(widest, labelW)
-            const labelEdge = shaftEndY + (LABEL_GAP + LABEL_FONT_PX + 2) * dir
-            yMin = Math.min(yMin, labelEdge)
-            yMax = Math.max(yMax, labelEdge)
+            yMin = Math.min(yMin, tip0, shaftEndY)
+            yMax = Math.max(yMax, tip0, shaftEndY)
+            if (labelsOn) {
+              // The run's label: "qty @ price" beyond the shaft (total @ volume-weighted average
+              // for a stack), in the chart's text color — the reference's default-on labels.
+              const label = `${fmtQty(run.qty)} @ ${run.avgPrice.toFixed(decimalsFor(run.avgPrice))}`
+              ctx.fillStyle = opts.textColor?.() ?? CARD_TEXT
+              ctx.font = `${LABEL_FONT_PX * vr}px ${LABEL_FONT_FAMILY}`
+              ctx.textAlign = 'center'
+              ctx.textBaseline = up ? 'top' : 'bottom'
+              ctx.fillText(label, xDev, (shaftEndY + LABEL_GAP * dir) * vr)
+              widest = Math.max(widest, ctx.measureText(label).width / hr)
+              const labelEdge = shaftEndY + (LABEL_GAP + LABEL_FONT_PX + 2) * dir
+              yMin = Math.min(yMin, labelEdge)
+              yMax = Math.max(yMax, labelEdge)
+            }
           }
           // One hit box per GROUP — marks plus labels; a click anywhere on it opens the
           // aggregated card, like the reference.
@@ -346,46 +400,49 @@ export function attachExecutionMarks(
     closeCard()
     const g = hit.group
     const sideColor = g.side === 'buy' ? opts.buyColor() : opts.sellColor()
+    const pal = opts.card?.() ?? DEFAULT_CARD
     const el = document.createElement('div')
     el.setAttribute('data-role', 'execution-card')
-    // The reference card, measured: #131722, 6px radius, 4px side stripe, 0 2px 4px shadow,
-    // 14px left pad (8 container + 6 content), 6px right/top, 16px bottom.
+    // The reference's anatomy (side stripe, chip+title, subtitle, TRADES rows) in the HOST's card
+    // tokens: its sheet surface, ring outline, type scale — so the card sits beside the host's
+    // other popovers as one family.
     el.style.cssText = [
       'position:absolute',
       'z-index:12',
       'min-width:200px',
       'max-width:320px',
-      `background:${CARD_BG}`,
+      `background:${pal.background}`,
+      `border:1px solid ${pal.ring}`,
       `border-left:4px solid ${sideColor}`,
       'border-radius:6px',
-      'box-shadow:0 2px 4px rgba(0,0,0,0.4)',
-      'padding:6px 10px 16px 14px',
+      `box-shadow:${pal.shadow}`,
+      'padding:10px 12px 14px 14px',
       'font-size:13px',
-      `color:${CARD_TEXT}`,
+      `color:${pal.secondaryText}`,
       'pointer-events:auto',
       'cursor:default',
       'user-select:none',
     ].join(';')
     const title = document.createElement('div')
-    title.style.cssText = 'display:inline-flex;align-items:center;margin:10px 0 12px;padding:4px 0'
+    title.style.cssText = 'display:inline-flex;align-items:center;margin:2px 0 10px'
     const chip = document.createElement('span')
     chip.setAttribute('data-role', 'execution-count')
     chip.textContent = String(g.fills.length)
-    chip.style.cssText = `display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;border-radius:50px;background:${sideColor};color:#fff;font-size:12px;font-weight:700;padding:0 2px;margin-right:8px`
+    chip.style.cssText = `display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:50px;background:${sideColor};color:#fff;font-size:10px;font-weight:500;padding:0 2px;margin-right:8px`
     const label = document.createElement('span')
     label.textContent = g.side === 'buy' ? 'Buy' : 'Sell'
-    label.style.cssText = `font-size:18px;font-weight:600;color:${CARD_TEXT}`
+    label.style.cssText = `font-size:15px;font-weight:500;color:${pal.text}`
     title.append(chip, label)
     el.append(title)
     if (g.fills.length > 1) {
       const sub = document.createElement('div')
       sub.setAttribute('data-role', 'execution-subtitle')
       sub.textContent = `${fmtQty(g.qty)} @ ${g.avgPrice.toFixed(decimalsFor(g.avgPrice))} avg price`
-      sub.style.cssText = `font-size:13px;color:${CARD_TEXT};margin-bottom:12px`
+      sub.style.cssText = `font-size:13px;color:${pal.secondaryText};margin-bottom:10px`
       el.append(sub)
       const head = document.createElement('div')
       head.textContent = 'TRADES'
-      head.style.cssText = `font-size:11px;letter-spacing:0.4px;color:${CARD_MUTED};margin-bottom:6px`
+      head.style.cssText = `font-size:10px;letter-spacing:0.4px;color:${pal.mutedText};margin-bottom:6px`
       el.append(head)
     }
     const table = document.createElement('div')
@@ -393,7 +450,7 @@ export function attachExecutionMarks(
     for (const f of g.fills) {
       const row = document.createElement('div')
       row.setAttribute('data-role', 'execution-trade')
-      row.style.cssText = 'display:flex;align-items:baseline;white-space:nowrap;height:18px'
+      row.style.cssText = 'display:flex;align-items:baseline;white-space:nowrap;height:18px;font-variant-numeric:tabular-nums'
       const qty = document.createElement('span')
       qty.textContent = fmtQty(f.qty)
       qty.style.cssText = 'padding-right:8px;text-align:right'
@@ -404,7 +461,7 @@ export function attachExecutionMarks(
       price.textContent = f.price.toFixed(decimalsFor(f.price))
       const when = document.createElement('span')
       when.textContent = fmtWhen(f.timeSecs)
-      when.style.cssText = `margin-left:auto;padding-left:16px;color:${CARD_DATE};font-size:14px`
+      when.style.cssText = `margin-left:auto;padding-left:16px;color:${pal.mutedText};font-size:13px`
       row.append(qty, at, price, when)
       table.append(row)
     }
@@ -464,6 +521,9 @@ export function attachExecutionMarks(
       requestUpdate?.()
     },
     scope: () => activeScope,
+    refresh() {
+      if (!destroyed) requestUpdate?.()
+    },
     destroy() {
       if (destroyed) return
       destroyed = true
