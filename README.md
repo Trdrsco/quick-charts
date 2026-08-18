@@ -444,18 +444,21 @@ chart disarms during replay**
 view is a foot-gun), while the account panel stays live because its actions are table-explicit; a
 host that wants replay *trading* swaps in a replay `TradingAdapter` at the seam.
 
-**Execution marks** draw where the account actually traded: an arrow on each bar that contains
-fills (a buy points up beneath the bar's low, a sell points down above its high), fills on the
-same bar and side grouped into ONE arrow, and a click card showing the side, the fill count, the
-summed quantity at volume-weighted average price, and the individual trades. Placement is by
+**Execution marks** draw where the account actually traded: one chevron head per execution,
+anchored at the fill's own price (a buy hangs below its price pointing up at it, a sell sits above
+pointing down), overlapping same-bar same-side heads stacking at a fixed pitch behind one shaft,
+with a "qty @ price" label beyond the shaft — total quantity at volume-weighted average when
+stacked. Clicking a mark opens a card that aggregates the bar's side group: the fill count, the
+summed quantity at average price, and the individual trades. Fill-to-bar placement is by
 CONTAINING BAR, read from the loaded series itself — correct on every interval, and a fill whose
 bar is not loaded draws nothing rather than landing on the wrong bar. The widget feeds the surface
-automatically when the adapter declares `executions(symbol)` (refetched on symbol change and
-whenever a snapshot's position quantities move — a fill is the only event that changes a
-quantity); `executionMarks: false` removes it. Live and replay fills are SEPARATE histories:
-entering bar replay switches the drawn history to `'replay'` (live marks hide for the whole
-session), exiting switches back, and a host that runs replay trading pushes that session's fills
-into the replay history through `widget.executions`:
+automatically when the adapter declares `executions(symbol)` (refetched on symbol change, on an
+account switch — which clears the previous account's fills first, because fills belong to the
+account that made them — and whenever a snapshot's position quantities move; a fill is the only
+event that changes a quantity); `executionMarks: false` removes it. Live and replay fills are
+SEPARATE histories: entering bar replay switches the drawn history to `'replay'` (live marks hide
+for the whole session), exiting switches back, and a host that runs replay trading pushes that
+session's fills into the replay history through `widget.executions`:
 
 ```ts
 import { attachExecutionMarks, type ChartExecution } from '@trdrs/chart'

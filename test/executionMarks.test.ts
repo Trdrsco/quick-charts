@@ -4,6 +4,7 @@ import {
   executionHitAt,
   executionPriceDecimals,
   groupExecutionsByBar,
+  planExecutionRuns,
   type ArrowHit,
   type ChartExecution,
 } from '../src/executionMarks'
@@ -26,7 +27,7 @@ describe('groupExecutionsByBar', () => {
     expect(groups.map((g) => g.barTime)).toEqual([60, 120])
   })
 
-  it('groups same-bar same-side fills into one arrow with summed qty and volume-weighted avg', () => {
+  it('groups same-bar same-side fills with summed qty and volume-weighted avg (the card aggregation)', () => {
     const groups = groupExecutionsByBar(
       [
         fill({ id: 'a', timeSecs: 121, qty: 2, price: 100 }),
@@ -41,7 +42,7 @@ describe('groupExecutionsByBar', () => {
     expect(groups[0]!.fills.map((f) => f.id)).toEqual(['a', 'b', 'c']) // oldest first
   })
 
-  it('keeps buy and sell on the same bar as SEPARATE groups (two arrows)', () => {
+  it('keeps buy and sell on the same bar as SEPARATE groups', () => {
     const groups = groupExecutionsByBar(
       [fill({ id: 'a', timeSecs: 121, side: 'buy' }), fill({ id: 'b', timeSecs: 122, side: 'sell' })],
       barTimes,
@@ -56,16 +57,12 @@ describe('groupExecutionsByBar', () => {
 
   it('drops fills past the forming edge (last bar + last span) instead of clamping to the last bar', () => {
     expect(groupExecutionsByBar([fill({ timeSecs: 300 })], barTimes)).toEqual([])
-    // Inside the forming last bar is fine:
     expect(groupExecutionsByBar([fill({ timeSecs: 299 })], barTimes).map((g) => g.barTime)).toEqual([240])
   })
 
   it('handles irregular spacing (session gaps): the pre-gap bar contains the gap span', () => {
-    // A Friday close → Sunday reopen gap: fills can only exist inside real sessions, but the
-    // containment rule itself must not misfile across the gap boundary.
     const gapped = [60, 120, 100_000, 100_060]
-    const groups = groupExecutionsByBar([fill({ timeSecs: 100_030 })], gapped)
-    expect(groups.map((g) => g.barTime)).toEqual([100_000])
+    expect(groupExecutionsByBar([fill({ timeSecs: 100_030 })], gapped).map((g) => g.barTime)).toEqual([100_000])
   })
 
   it('returns nothing with no bars, and ignores non-finite or non-positive fills', () => {
@@ -81,6 +78,65 @@ describe('groupExecutionsByBar', () => {
   it('sorts groups by bar time', () => {
     const groups = groupExecutionsByBar([fill({ timeSecs: 241 }), fill({ timeSecs: 61 })], barTimes)
     expect(groups.map((g) => g.barTime)).toEqual([60, 240])
+  })
+})
+
+describe('planExecutionRuns — the reference composite mark', () => {
+  it('one fill = one run at its natural anchor with its exact price', () => {
+    const runs = planExecutionRuns([{ tipY: 51, qty: 2, price: 77.24 }], 'buy')
+    expect(runs).toEqual([{ tips: [51], qty: 2, avgPrice: 77.24 }])
+  })
+
+  it('overlapping buy anchors stack chevrons at the measured 4px pitch, extending DOWN (away from price)', () => {
+    const runs = planExecutionRuns(
+      [
+        { tipY: 51, qty: 1, price: 100 },
+        { tipY: 51, qty: 1, price: 100 },
+        { tipY: 52, qty: 1, price: 100.01 },
+      ],
+      'buy',
+    )
+    expect(runs).toHaveLength(1)
+    expect(runs[0]!.tips).toEqual([51, 55, 59])
+    expect(runs[0]!.qty).toBe(3)
+  })
+
+  it('overlapping sell anchors stack UPWARD (away from the price they point down at)', () => {
+    const runs = planExecutionRuns(
+      [
+        { tipY: 49, qty: 1, price: 100 },
+        { tipY: 49, qty: 1, price: 100 },
+      ],
+      'sell',
+    )
+    expect(runs[0]!.tips).toEqual([49, 45])
+  })
+
+  it('anchors clear of the previous mark (head+shaft = 13px) start their OWN run with its own label', () => {
+    const runs = planExecutionRuns(
+      [
+        { tipY: 51, qty: 1, price: 100 },
+        { tipY: 51 + 13, qty: 2, price: 90 },
+      ],
+      'buy',
+    )
+    expect(runs).toHaveLength(2)
+    expect(runs[1]!).toEqual({ tips: [64], qty: 2, avgPrice: 90 })
+    // 12.9px away still overlaps ⇒ stacks:
+    expect(planExecutionRuns([{ tipY: 51, qty: 1, price: 100 }, { tipY: 63.9, qty: 1, price: 90 }], 'buy')).toHaveLength(1)
+  })
+
+  it('sorts nearest-to-price first regardless of input order, and volume-weights the run avg', () => {
+    const runs = planExecutionRuns(
+      [
+        { tipY: 55, qty: 1, price: 99 },
+        { tipY: 51, qty: 3, price: 100 },
+      ],
+      'buy',
+    )
+    expect(runs).toHaveLength(1)
+    expect(runs[0]!.tips).toEqual([51, 55])
+    expect(runs[0]!.avgPrice).toBeCloseTo((3 * 100 + 99) / 4, 10)
   })
 })
 
@@ -111,8 +167,9 @@ describe('executionPriceDecimals', () => {
   })
 })
 
-// ── The attachment's scope isolation, proven through a faked chart/series/bitmap target — the
-// owner-level requirement: replay fills NEVER draw in live mode, live fills NEVER draw in replay. ──
+// ── The attachment's scope isolation + composite drawing, proven through a faked chart/series/
+// bitmap target — the owner-level requirement: replay fills NEVER draw in live mode, live fills
+// NEVER draw in replay, and a (bar, side) stack draws one head per fill with ONE label. ──
 
 function harness() {
   const bars = [
@@ -148,42 +205,68 @@ function harness() {
     },
   } as unknown as ISeriesApi<SeriesType>
   const chrome = { style: { cursor: '' } } as unknown as HTMLElement
-  const marks = attachExecutionMarks(chart, series, chrome, { buyColor: () => '#0f0', sellColor: () => '#f00' })
+  const marks = attachExecutionMarks(chart, series, chrome, { buyColor: () => '#0f0', sellColor: () => '#f00', textColor: () => '#ccc' })
   primitive!.attached({ requestUpdate: () => updates++ })
-  const drawnColors = (): string[] => {
-    const colors: string[] = []
+  const drawn = (): { fills: string[]; texts: string[] } => {
+    const fills: string[] = []
+    const texts: string[] = []
+    let cur = ''
     const ctx = {
       beginPath() {},
       moveTo() {},
       lineTo() {},
       closePath() {},
-      fill() {},
+      fill() {
+        fills.push(cur)
+      },
+      fillText(s: string) {
+        texts.push(s)
+      },
+      measureText: () => ({ width: 40 }),
+      font: '',
+      textAlign: '',
+      textBaseline: '',
       set fillStyle(c: string) {
-        colors.push(c)
+        cur = c
+      },
+      get fillStyle() {
+        return cur
       },
     }
     primitive!
       .paneViews()[0]!
       .renderer()
       .draw({ useBitmapCoordinateSpace: (fn: (s: unknown) => void) => fn({ context: ctx, horizontalPixelRatio: 1, verticalPixelRatio: 1 }) })
-    return colors
+    return { fills, texts }
   }
-  return { marks, drawnColors, updatesCount: () => updates, subs }
+  return { marks, drawn, updatesCount: () => updates, subs }
 }
 
-describe('attachExecutionMarks scope isolation', () => {
+describe('attachExecutionMarks scope isolation + composite marks', () => {
   it('draws ONLY the active scope: live by default, replay after the flip, live again after', () => {
     const h = harness()
     h.marks.set('live', [fill({ id: 'L', side: 'buy', timeSecs: 61 })])
     h.marks.set('replay', [fill({ id: 'R1', side: 'sell', timeSecs: 61 }), fill({ id: 'R2', side: 'sell', timeSecs: 121 })])
     expect(h.marks.scope()).toBe('live')
-    expect(h.drawnColors()).toEqual(['#0f0']) // one live buy arrow — the two replay fills invisible
+    expect(h.drawn()).toEqual({ fills: ['#0f0'], texts: ['1 @ 100.00'] }) // the two replay fills invisible
 
     h.marks.setScope('replay')
-    expect(h.drawnColors()).toEqual(['#f00', '#f00']) // the replay sells — the live fill invisible
+    expect(h.drawn()).toEqual({ fills: ['#f00', '#f00'], texts: ['1 @ 100.00', '1 @ 100.00'] }) // the live fill invisible
 
     h.marks.setScope('live')
-    expect(h.drawnColors()).toEqual(['#0f0'])
+    expect(h.drawn().fills).toEqual(['#0f0'])
+  })
+
+  it('a same-bar same-side stack draws one chevron per fill and ONE label; the opposite side is its own mark', () => {
+    const h = harness()
+    h.marks.set('live', [
+      fill({ id: 'a', side: 'buy', timeSecs: 61, qty: 1 }),
+      fill({ id: 'b', side: 'buy', timeSecs: 90, qty: 2 }),
+      fill({ id: 'c', side: 'sell', timeSecs: 100, qty: 1 }),
+    ])
+    const d = h.drawn()
+    expect(d.fills).toEqual(['#0f0', '#0f0', '#f00']) // 2 stacked buy heads + 1 sell arrow
+    expect(d.texts).toEqual(['3 @ 100.00', '1 @ 100.00']) // one label per run: total qty @ avg
   })
 
   it('pokes requestUpdate on set/setScope (nothing else invalidates the pane)', () => {
@@ -210,15 +293,5 @@ describe('attachExecutionMarks scope isolation', () => {
     h.marks.destroy() // idempotent
     h.marks.set('live', [fill({ timeSecs: 61 })])
     expect(h.marks.scope()).toBe('live')
-  })
-
-  it('same-bar fills draw as ONE arrow per side (the grouping is what paints)', () => {
-    const h = harness()
-    h.marks.set('live', [
-      fill({ id: 'a', side: 'buy', timeSecs: 61 }),
-      fill({ id: 'b', side: 'buy', timeSecs: 90 }),
-      fill({ id: 'c', side: 'sell', timeSecs: 100 }),
-    ])
-    expect(h.drawnColors()).toEqual(['#0f0', '#f00']) // 3 fills → 2 arrows
   })
 })

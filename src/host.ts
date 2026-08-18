@@ -282,23 +282,27 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     execMarks = attachExecutionMarks(chart, candles, chromeBox, {
       buyColor: () => theme.upColor,
       sellColor: () => theme.downColor,
+      textColor: () => theme.textColor,
       precision: () => (symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : null),
     })
   }
   /** Refetch the LIVE scope's fills for the charted symbol (adapters that declare executions()
-   *  only). A hoisted declaration on purpose: a config-less feed runs load() synchronously at
-   *  mount, before any later const initializes. */
+   *  only). Only the NEWEST in-flight read may land: a slow response issued before an account or
+   *  symbol switch must never repopulate the cleared scope with the old identity's fills. Hoisted
+   *  declarations on purpose: a config-less feed runs load() synchronously at mount, before any
+   *  later const initializes. */
+  let execFetchGen = 0
   function refetchExecutions(): void {
     const fetchExecutions = options.trading?.executions
     if (!execMarks || !fetchExecutions || !symbol) return
-    const myEpoch = epoch
+    const myGen = ++execFetchGen
     void fetchExecutions(symbol)
       .then((list) => {
-        if (removed || myEpoch !== epoch) return
+        if (removed || myGen !== execFetchGen) return
         execMarks?.set('live', list)
       })
       .catch(() => {
-        /* marks are advisory — a failed read keeps the previous set */
+        /* marks are advisory — a failed read keeps the cleared/previous set */
       })
   }
 
@@ -441,6 +445,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
      *  a fill is the only event that moves a quantity, while P&L churns with every price tick
      *  (refetching on the raw snapshot would hammer the backend once a second). */
     let lastFillSig: string | null = null
+    /** The armed selection the current live fill set belongs to — fills are scoped to the account
+     *  that made them, so a selection switch CLEARS before it refetches (a failed refetch must
+     *  leave an empty chart, never another account's arrows). */
+    let lastExecScope: string | null = null
     tradingUnsub = adapter.subscribeAccount({
       onSnapshot: (s) => {
         currentScope = s.scope
@@ -456,8 +464,13 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
           orderBrackets: s.orderBrackets,
           managedOrderIds: s.managedOrderIds,
         })
+        const scopeChanged = s.scope !== lastExecScope
+        if (scopeChanged) {
+          lastExecScope = s.scope
+          execMarks?.set('live', [])
+        }
         const fillSig = s.positions.map((p) => `${p.instrument}:${p.qty}`).sort().join('|')
-        if (fillSig !== lastFillSig) {
+        if (scopeChanged || fillSig !== lastFillSig) {
           lastFillSig = fillSig
           refetchExecutions()
         }

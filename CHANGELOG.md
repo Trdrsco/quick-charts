@@ -2,17 +2,21 @@
 
 ## 0.2.0 — 2026-08-14
 
-- **Execution marks.** New **`attachExecutionMarks(chart, series, chrome, opts)`**: canvas arrows
-  on the bars where orders filled (buys up beneath the low, sells down above the high), same-bar
-  same-side fills grouped into one arrow, and a click card (side stripe, fill-count chip, Buy/Sell
-  title, "N @ avg price" subtitle when grouped, and the individual trades). Placement is by
-  CONTAINING BAR read from the series itself — correct on every interval; a fill whose bar is not
-  loaded draws nothing. **Live and replay fills are ISOLATED scopes** — only the active one draws.
-  The widget wires it end to end: `TradingAdapter` gains optional **`executions(symbol)`** (fetched
-  on symbol change and when a snapshot's position quantities move), `ChartWidgetApi` gains
-  **`executions`** (`set`/`setScope`/`scope`), bar replay flips the scope to `'replay'` on start
-  and back on exit, and `ChartWidgetOptions.executionMarks: false` opts out. `groupExecutionsByBar`
-  is exported for hosts that need the grouping alone.
+- **Execution marks.** New **`attachExecutionMarks(chart, series, chrome, opts)`**, reproducing
+  the reference platform's measured rendering: one chevron head PER EXECUTION anchored at the fill
+  price (a buy hangs below its price pointing up at it, a sell sits above pointing down),
+  overlapping same-bar same-side heads stacked at a 4px pitch sharing one shaft, and a
+  "qty @ price" label beyond the shaft (total qty @ volume-weighted average for a stack). Clicking
+  a mark opens the card that aggregates the bar's side group: 4px side stripe, circle count chip,
+  Buy/Sell title, "N @ avg price" subtitle when grouped, and the individual trades. Fill-to-bar
+  placement is by CONTAINING BAR read from the series itself — correct on every interval; a fill
+  whose bar is not loaded draws nothing. **Live and replay fills are ISOLATED scopes** — only the
+  active one draws, and the live scope is per armed account. The widget wires it end to end:
+  `TradingAdapter` gains optional **`executions(symbol)`** (fetched on symbol change, on account
+  switch — which first CLEARS the old account's fills — and when a snapshot's position quantities
+  move), `ChartWidgetApi` gains **`executions`** (`set`/`setScope`/`scope`), bar replay flips the
+  scope to `'replay'` on start and back on exit, and `ChartWidgetOptions.executionMarks: false`
+  opts out. `groupExecutionsByBar` is exported for hosts that need the grouping alone.
 - **Fix:** `createChart` no longer crashes at mount when the datafeed declares no `config()` (the
   synchronous first load reached a replay helper before its initializer ran).
 
