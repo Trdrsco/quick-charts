@@ -279,10 +279,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   // trading adapter's executions() (refetchExecutions below) or a host push through the api.
   let execMarks: ExecutionMarksHandle | null = null
   if (options.executionMarks !== false) {
+    const execLabels = options.executionMarks?.labels === true
     execMarks = attachExecutionMarks(chart, candles, chromeBox, {
       buyColor: () => theme.upColor,
       sellColor: () => theme.downColor,
       textColor: () => theme.textColor,
+      labels: () => execLabels,
       precision: () => (symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : null),
     })
   }

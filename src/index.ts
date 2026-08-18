@@ -82,6 +82,7 @@ export {
   groupExecutionsByBar,
   type ArrowHit,
   type ChartExecution,
+  type ExecutionCardPalette,
   type ExecutionGroup,
   type ExecutionMarksHandle,
   type ExecutionMarksOptions,
