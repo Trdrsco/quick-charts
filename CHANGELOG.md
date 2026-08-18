@@ -2,6 +2,20 @@
 
 ## 0.2.0 — 2026-08-14
 
+- **Execution marks.** New **`attachExecutionMarks(chart, series, chrome, opts)`**: canvas arrows
+  on the bars where orders filled (buys up beneath the low, sells down above the high), same-bar
+  same-side fills grouped into one arrow, and a click card (side stripe, fill-count chip, Buy/Sell
+  title, "N @ avg price" subtitle when grouped, and the individual trades). Placement is by
+  CONTAINING BAR read from the series itself — correct on every interval; a fill whose bar is not
+  loaded draws nothing. **Live and replay fills are ISOLATED scopes** — only the active one draws.
+  The widget wires it end to end: `TradingAdapter` gains optional **`executions(symbol)`** (fetched
+  on symbol change and when a snapshot's position quantities move), `ChartWidgetApi` gains
+  **`executions`** (`set`/`setScope`/`scope`), bar replay flips the scope to `'replay'` on start
+  and back on exit, and `ChartWidgetOptions.executionMarks: false` opts out. `groupExecutionsByBar`
+  is exported for hosts that need the grouping alone.
+- **Fix:** `createChart` no longer crashes at mount when the datafeed declares no `config()` (the
+  synchronous first load reached a replay helper before its initializer ran).
+
 - **Holiday calendars are SERVED, never bundled.** `SymbolInfo` gains optional
   **`sessionCalendar`** (exchange-local `'YYYY-MM-DD'` → that day's trading segments; empty = a
   full closure; absent dates follow the weekday rules) and the package exports
