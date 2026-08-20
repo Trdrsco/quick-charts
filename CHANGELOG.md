@@ -2,6 +2,29 @@
 
 ## 0.2.0 — 2026-08-14
 
+- **Execution marks.** New **`attachExecutionMarks(chart, series, chrome, opts)`**, reproducing
+  the reference platform's rendering, reproduced literally from its measured raster: one arrow
+  PER EXECUTION anchored at the fill price and clamped clear of its bar (a buy hangs below the
+  low pointing up at its price, a sell sits above the high pointing down),
+  overlapping same-bar same-side barb pairs stacked at a 4px pitch sharing one shaft, and an
+  optional "qty @ price" label beyond the shaft (total qty @ volume-weighted average for a stack;
+  OFF by default — `labels()` on the attachment, `{ labels: true }` on the widget). Clicking a
+  mark opens the card that aggregates the bar's side group — the reference's anatomy (4px side
+  stripe, circle count chip, Buy/Sell title, "N @ avg price" subtitle when grouped, the individual
+  trades) in the HOST's card tokens via the `card()` palette getter. Hovering a mark tints its
+  box with the side's own color at low alpha (the quiet-highlight treatment, never neutral grey)
+  and shows the pointer cursor. Fill-to-bar
+  placement is by CONTAINING BAR read from the series itself — correct on every interval; a fill
+  whose bar is not loaded draws nothing. **Live and replay fills are ISOLATED scopes** — only the
+  active one draws, and the live scope is per armed account. The widget wires it end to end:
+  `TradingAdapter` gains optional **`executions(symbol)`** (fetched on symbol change, on account
+  switch — which first CLEARS the old account's fills — and when a snapshot's position quantities
+  move), `ChartWidgetApi` gains **`executions`** (`set`/`setScope`/`scope`), bar replay flips the
+  scope to `'replay'` on start and back on exit, and `ChartWidgetOptions.executionMarks: false`
+  opts out. `groupExecutionsByBar` is exported for hosts that need the grouping alone.
+- **Fix:** `createChart` no longer crashes at mount when the datafeed declares no `config()` (the
+  synchronous first load reached a replay helper before its initializer ran).
+
 - **Holiday calendars are SERVED, never bundled.** `SymbolInfo` gains optional
   **`sessionCalendar`** (exchange-local `'YYYY-MM-DD'` → that day's trading segments; empty = a
   full closure; absent dates follow the weekday rules) and the package exports

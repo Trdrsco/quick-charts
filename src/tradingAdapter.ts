@@ -6,6 +6,7 @@
 // id, and a row that disappears IS a closed/cancelled row. The package holds no trading state of
 // its own — it only ever reflects the latest snapshot.
 import type { BrokerSnapshot, ChartBroker, PricePolicy } from './broker'
+import type { ChartExecution } from './executionMarks'
 
 /** One full account snapshot plus the account-level truths the trade surface renders with. Every
  *  optional field follows the honesty rule: absent = unknown, and the surface omits the readout
@@ -64,4 +65,10 @@ export interface TradingAdapter {
   /** The order-ticket confirm gate: shown the exact placeOrder payload before it is sent; resolve
    *  false to veto (the draft stays for editing). Absent = orders place without a confirm step. */
   confirmOrder?(order: { instrument: string; side: 'buy' | 'sell'; qty: number; orderType: string; price?: number; stopLimitPrice?: number }): Promise<boolean>
+  /** OPTIONAL execution history for one symbol (the account's fills) — when present, the widget
+   *  draws execution marks: grouped arrows on the filled bars with a click card of the trades.
+   *  Called on symbol change and again whenever a snapshot's position quantities move (a fill is
+   *  the only event that changes a quantity). Return every known fill for the symbol; the widget
+   *  replaces its set wholesale, so the adapter needs no diffing. */
+  executions?(symbol: string): Promise<readonly ChartExecution[]>
 }
