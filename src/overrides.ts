@@ -39,6 +39,8 @@ export interface ChartOverrides {
     lineWidth: 1 | 2 | 3
     /** Buy/sell execution arrows from the fill ledger. */
     executionMarks: boolean
+    /** The "qty @ price" labels beside execution arrows (off by default — arrows alone). */
+    executionLabels: boolean
     /** Position-line P&L unit: broker money, tick distance, or percent from entry. */
     pnlMode: 'money' | 'ticks' | 'percent'
   }
@@ -89,6 +91,7 @@ export const DEFAULT_OVERRIDES: ChartOverrides = {
     showOrders: true,
     lineWidth: 1,
     executionMarks: true,
+    executionLabels: false,
     pnlMode: 'money',
   },
 }

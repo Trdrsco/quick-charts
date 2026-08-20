@@ -72,6 +72,8 @@ describe('the shipped default chart is the owner-approved one', () => {
       showOrders: true,
       lineWidth: 1,
       executionMarks: true,
+      // Arrows on, their price labels off — the arrow already says side and level.
+      executionLabels: false,
       pnlMode: 'money',
     })
   })

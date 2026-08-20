@@ -444,6 +444,44 @@ chart disarms during replay**
 view is a foot-gun), while the account panel stays live because its actions are table-explicit; a
 host that wants replay *trading* swaps in a replay `TradingAdapter` at the seam.
 
+**Execution marks** draw where the account actually traded: one arrow per execution, anchored at
+the fill's own price (a buy hangs below its price pointing up at it, a sell sits above pointing
+down), overlapping same-bar same-side arrows stacking at a fixed pitch behind one shaft, with an
+optional "qty @ price" label beyond the shaft (off by default; `executionMarks: { labels: true }`
+on the widget, the `labels()` getter on the attachment). Clicking a mark opens a card that
+aggregates the bar's side group — the fill count, the summed quantity at average price, and the
+individual trades — styled through the `card()` palette getter so it sits beside the host's own
+popovers as one family. Fill-to-bar placement is by
+CONTAINING BAR, read from the loaded series itself — correct on every interval, and a fill whose
+bar is not loaded draws nothing rather than landing on the wrong bar. The widget feeds the surface
+automatically when the adapter declares `executions(symbol)` (refetched on symbol change, on an
+account switch — which clears the previous account's fills first, because fills belong to the
+account that made them — and whenever a snapshot's position quantities move; a fill is the only
+event that changes a quantity); `executionMarks: false` removes it. Live and replay fills are
+SEPARATE histories: entering bar replay switches the drawn history to `'replay'` (live marks hide
+for the whole session), exiting switches back, and a host that runs replay trading pushes that
+session's fills into the replay history through `widget.executions`:
+
+```ts
+import { attachExecutionMarks, type ChartExecution } from '@trdrs/chart'
+
+declare const tradingWidget: import('@trdrs/chart').ChartWidgetApi
+declare function fillsFor(symbol: string): Promise<readonly ChartExecution[]>
+
+// The widget feeds itself when the adapter declares executions(); a host can also push a history:
+tradingWidget.executions?.set('replay', [{ id: 'r-1', side: 'buy', qty: 2, price: 77.23, timeSecs: 1_755_000_000 }])
+
+// A richer host attaches the surface to its own chart (the third argument hosts the click card —
+// an overlay element ABOVE the chart's gesture surface, so card clicks are not swallowed):
+const marks = attachExecutionMarks(chart, series, container, {
+  buyColor: () => '#2962ff',
+  sellColor: () => '#f23645',
+})
+void fillsFor('ES').then((fills) => marks.set('live', fills))
+marks.setScope('replay') // entering replay: live fills hide, the replay history draws
+marks.destroy()
+```
+
 **The account panel** mounts below the chart whenever `trading` is supplied (`accountPanel: false`
 opts out, `{ height }` sizes it): Positions and Orders pages rendered from the SAME snapshot the
 lines consume, with Close / Cancel / Reverse routing through the SAME broker seam — one data plane,
