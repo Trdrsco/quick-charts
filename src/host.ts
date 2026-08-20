@@ -98,7 +98,7 @@ export interface ResolvedTheme {
 export function resolveTheme(theme?: ChartTheme): ResolvedTheme {
   const dark = (theme?.mode ?? 'dark') === 'dark'
   return {
-    background: theme?.background ?? (dark ? '#141414' : '#ffffff'),
+    background: theme?.background ?? (dark ? '#0f0f0f' : '#ffffff'),
     gridColor: theme?.gridColor ?? (dark ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.06)'),
     textColor: theme?.textColor ?? (dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.55)'),
     upColor: theme?.upColor ?? BRAND_UP,

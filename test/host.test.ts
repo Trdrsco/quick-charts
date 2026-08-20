@@ -8,7 +8,7 @@ const bar = (t: number, c = 1): FeedBar => ({ t, o: 1, h: 2, l: 0.5, c, v: 10 })
 describe('resolveTheme', () => {
   it('defaults to the dark palette and lets a partial override tint only what it names', () => {
     const dark = resolveTheme()
-    expect(dark.background).toBe('#141414')
+    expect(dark.background).toBe('#0f0f0f')
     const tinted = resolveTheme({ upColor: '#0f0' })
     expect(tinted.upColor).toBe('#0f0')
     expect(tinted.background).toBe(dark.background)

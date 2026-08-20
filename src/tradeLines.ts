@@ -75,6 +75,19 @@ export function normalizeRoot(raw: string | null | undefined): string | null {
   return s || null
 }
 
+/** True when an instrument's normalized root COUNTS AS the charted symbol. A PAIR feed symbol
+ *  ("BTC/USD") admits its BASE segment too: the ticket resolves a pair chart to its tradable
+ *  product root (chart the spot feed, trade the root — trading-core's tvRoot), so rows and drafts
+ *  keyed to the bare root ARE this chart's own trading and must draw here — the strict equality
+ *  alone made every line invisible on a pair chart, which is the only symbol form a spot feed has. */
+function matchesChartedRoot(instrument: string, symbol: string): boolean {
+  const r = normalizeRoot(instrument)
+  if (r == null) return false
+  if (r === normalizeRoot(symbol)) return true
+  const slash = symbol.indexOf('/')
+  return slash > 0 && r === normalizeRoot(symbol.slice(0, slash))
+}
+
 // Ghost (PREVIEW) palette — translucent and large-dashed, so a level that has not been sent reads as
 // provisional next to the solid lines of everything that has. Entry is a neutral amber; a planned stop
 // is translucent red and a planned target translucent green. A level being DRAGGED is not a preview:
@@ -420,8 +433,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
    *  exit of the open position. */
   const refreshExitSpec = (entry: LineEntry, price: number): void => {
     if (entry.kind !== 'stop' && entry.kind !== 'limit') return
-    const root = normalizeRoot(opts.symbol)
-    const pos = opts.snapshot.positions.find((p) => p && p.qty !== 0 && normalizeRoot(p.instrument) === root)
+    const pos = opts.snapshot.positions.find((p) => p && p.qty !== 0 && matchesChartedRoot(p.instrument, opts.symbol))
     const order = opts.snapshot.orders.find((o) => o && o.brokerOrderId === entry.brokerOrderId)
     if (!pos || !order) return
     if (pos.qty > 0 ? order.side !== 'sell' : order.side !== 'buy') return // an entry order, not an exit
@@ -629,6 +641,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   const draw = () => {
     if (detached) return
     const root = normalizeRoot(opts.symbol)
+    const charted = (instrument: string) => matchesChartedRoot(instrument, opts.symbol)
     const t = T()
     interface Desired {
       price: number
@@ -649,7 +662,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       const canReverse = typeof broker.reversePosition === 'function'
       for (const p of t.showPositions ? opts.snapshot.positions : []) {
         if (!p || p.qty === 0 || typeof p.avgPrice !== 'number' || !isFinite(p.avgPrice) || p.avgPrice <= 0) continue
-        if (normalizeRoot(p.instrument) !== root) continue
+        if (!charted(p.instrument)) continue
         const long = p.qty > 0
         const pnl = positionPnlDisplay(p, t.pnlMode, opts.tick, markNow(), opts.currency ?? null)
         // A handle is an ADD affordance. Once that leg is resting it has its own line, with its own
@@ -661,7 +674,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
               o &&
               o.status === 'working' &&
               o.orderType === type &&
-              normalizeRoot(o.instrument) === root &&
+              charted(o.instrument) &&
               (p.qty > 0 ? o.side === 'sell' : o.side === 'buy'),
           )
         const hasTp = restingExit('limit')
@@ -703,7 +716,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         if (!o || o.status !== 'working' || (o.orderType !== 'stop' && o.orderType !== 'limit' && o.orderType !== 'stop_limit')) continue
         const reported = o.orderType === 'limit' ? o.limitPrice : o.triggerPrice
         if (typeof reported !== 'number' || !isFinite(reported) || reported <= 0) continue
-        if (normalizeRoot(o.instrument) !== root) continue
+        if (!charted(o.instrument)) continue
         // Hold a just-dropped level where it was dropped until the broker's own snapshot echoes it.
         const price = heldPrice(`ord:${o.brokerOrderId}`, reported)
         const buy = o.side === 'buy'
@@ -712,7 +725,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         // risk). Read that way it earns the leg's colour and shows the POTENTIAL result at the level
         // — the number the trader is deciding on — instead of restating an order type the line's
         // colour and side already convey.
-        const held = opts.snapshot.positions.find((p) => p && p.qty !== 0 && normalizeRoot(p.instrument) === root)
+        const held = opts.snapshot.positions.find((p) => p && p.qty !== 0 && charted(p.instrument))
         const closes = !!held && (held.qty > 0 ? !buy : buy)
         const exitKind: 'tp' | 'sl' | null = closes ? (o.orderType === 'limit' ? 'tp' : 'sl') : null
         const exitPnl = exitKind ? potentialPnl(held!, price, Math.abs(o.qty), opts.pointValue, opts.currency ?? null) : null
@@ -827,7 +840,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       // tick) with an already-drawn LIVE line — once a level becomes a live working order the
       // ghost would otherwise double it.
       const pv = opts.preview
-      if (pv && normalizeRoot(pv.instrument) === root) {
+      if (pv && charted(pv.instrument)) {
         const livePrices = [...desired.values()].map((d) => d.price)
         const tol = pv.tick > 0 ? pv.tick / 2 : 1e-9
         const long = pv.side !== 'sell'

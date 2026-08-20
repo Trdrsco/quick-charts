@@ -7,6 +7,12 @@ export interface ChartOverrides {
     background: string
     upColor: string
     downColor: string
+    /** Candle anatomy, TradingView-style: the border ring and the wick are their OWN colors per
+     *  direction — they do NOT follow upColor/downColor; each is set independently. */
+    borderUpColor: string
+    borderDownColor: string
+    wickUpColor: string
+    wickDownColor: string
     grid: boolean
     /** Shade pre-market / after-hours / overnight stretches. */
     sessions: boolean
@@ -38,23 +44,45 @@ export interface ChartOverrides {
   }
 }
 
-/** The brand palette, single-sourced: theme defaults and override defaults reference these — a
- *  rebrand edits two strings, and every surface (candles, trade lines, marks) follows. */
+/** The brand palette, single-sourced: `resolveTheme()` and the TRADE-LINE defaults reference these —
+ *  a rebrand edits two strings and every surface that speaks for trdrs follows. It no longer reaches
+ *  the candle bodies; see the note on DEFAULT_OVERRIDES for why that split is deliberate. */
 export const BRAND_UP = '#4c98fb'
 export const BRAND_DOWN = '#f23645'
 
+// The shipped default IS the owner's own chart, copied leaf for leaf off his account (owner call
+// 2026-08-20): a warm paper canvas with teal/orange candles ringed and wicked in solid black.
+//
+// So the CANVAS stops tracking BRAND_UP/BRAND_DOWN while the TRADE LINES keep them, and that split
+// is the point rather than a miss: candles are the market, trade lines are your money sitting on it,
+// and the brand pair now marks only the second. `buyColor` staying BRAND_UP is that rule, not a
+// leftover.
+//
+// `background` is LIGHT, and it is the one leaf here that changes what the rest of the chart must
+// cope with. Everything downstream already does — ChartPanel sets `data-chart-ink` off
+// isLightBackground(), which inverts the on-canvas DOM (legend, countdown, trade pills) — so verify
+// that attribute still resolves if this value ever moves back across the light/dark line.
 export const DEFAULT_OVERRIDES: ChartOverrides = {
   appearance: {
-    background: '#141414',
-    upColor: BRAND_UP,
-    downColor: BRAND_DOWN,
+    background: '#ece7c0',
+    upColor: '#26a69a',
+    downColor: '#ffa726',
+    // Candle anatomy: solid black ring and wick, the SAME ink both directions — not a shade of the
+    // body color the way the old brand-pair defaults were. On a paper canvas the black is what
+    // separates a candle from the background, and that job does not change with direction.
+    borderUpColor: '#000000',
+    borderDownColor: '#000000',
+    wickUpColor: '#000000',
+    wickDownColor: '#000000',
     grid: true,
     sessions: true,
     countdown: true,
   },
   trading: {
     buyColor: BRAND_UP,
-    sellColor: BRAND_DOWN,
+    // Amber rather than BRAND_DOWN: the canvas already spends orange-red on down candles, so a sell
+    // line in the brand red would read as one more candle instead of as an order of yours.
+    sellColor: '#f5a623',
     tpColor: '#089981',
     slColor: '#ff9800',
     showPositions: true,
