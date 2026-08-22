@@ -3,6 +3,7 @@ import {
   DEFAULT_VISIBILITY,
   normalizeVisibility,
   parseIntervalContext,
+  visibilityPreset,
   visibleAt,
 } from '../src/core/visibility'
 
@@ -70,5 +71,42 @@ describe('normalizeVisibility — deep copies with defaults', () => {
     const v = normalizeVisibility({ hours: { on: false, from: 2, to: 12 } })
     expect(v.hours).toEqual({ on: false, from: 2, to: 12 })
     expect(v.days).toEqual(DEFAULT_VISIBILITY.days)
+  })
+})
+
+describe('visibilityPreset — the quick rules against the current interval', () => {
+  it('"current and above" keeps the current bucket from its value up, coarser buckets whole, finer off', () => {
+    const v = visibilityPreset('current-and-above', { bucket: 'minutes', value: 30 })
+    expect(v.minutes).toEqual({ on: true, from: 30, to: 59 })
+    expect(v.seconds.on).toBe(false)
+    expect(v.ticks).toBe(false)
+    expect(v.hours).toEqual({ on: true, from: 1, to: 24 })
+    expect(v.days.on).toBe(true)
+    expect(v.months.on).toBe(true)
+  })
+
+  it('"current and below" mirrors toward the finer buckets (ticks included)', () => {
+    const v = visibilityPreset('current-and-below', { bucket: 'hours', value: 4 })
+    expect(v.hours).toEqual({ on: true, from: 1, to: 4 })
+    expect(v.minutes).toEqual({ on: true, from: 1, to: 59 })
+    expect(v.seconds.on).toBe(true)
+    expect(v.ticks).toBe(true)
+    expect(v.days.on).toBe(false)
+    expect(v.months.on).toBe(false)
+  })
+
+  it('"current only" pins the bucket value; a fractional context rounds OUTWARD so the chart satisfies its own rule', () => {
+    const v = visibilityPreset('current-only', parseIntervalContext('90m')) // → hours 1.5
+    expect(v.hours).toEqual({ on: true, from: 1, to: 2 })
+    expect(v.minutes.on).toBe(false)
+    expect(v.days.on).toBe(false)
+    expect(visibleAt(v, parseIntervalContext('90m'))).toBe(true)
+  })
+
+  it('ticks as the current bucket stays on under every rule; "all" and a null context degrade to everything', () => {
+    expect(visibilityPreset('current-and-above', { bucket: 'ticks', value: 100 }).ticks).toBe(true)
+    expect(visibilityPreset('current-only', { bucket: 'ticks', value: 100 }).ticks).toBe(true)
+    expect(visibilityPreset('all', { bucket: 'hours', value: 1 })).toEqual(DEFAULT_VISIBILITY)
+    expect(visibilityPreset('current-only', null)).toEqual(DEFAULT_VISIBILITY)
   })
 })

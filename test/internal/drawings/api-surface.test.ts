@@ -130,6 +130,8 @@ const SURFACE: Record<string, string> = {
   snapToBar: 'function',
   toolRegistry: 'object',
   viewportOf: 'function',
+  // Additive (minor): the reference's quick per-interval visibility rules, 2026-08-22.
+  visibilityPreset: 'function',
   visibleAt: 'function',
   volumeProfile: 'function',
   withAlpha: 'function',

@@ -190,14 +190,53 @@ export class DrawingManager {
     this.restack()
   }
 
+  /** One step up in the paint order — swap with the neighbour directly above (no-op at the
+   *  front). Every step RENUMBERS the whole stack to a dense 0..n-1 sequence: repeated
+   *  to-front/to-back extremes otherwise drift zIndexes apart until "one step" and "adjacent
+   *  number" stop meaning the same thing. */
+  bringForward(id: string): void {
+    this.stepStack(id, +1)
+  }
+
+  /** One step down in the paint order — swap with the neighbour directly below (no-op at the back). */
+  sendBackward(id: string): void {
+    this.stepStack(id, -1)
+  }
+
+  private stepStack(id: string, dir: 1 | -1): void {
+    const sorted = this.visualOrder()
+    const at = sorted.findIndex((d) => d.id === id)
+    if (at < 0 || at + dir < 0 || at + dir >= sorted.length) return
+    const other = sorted[at + dir]!
+    sorted[at + dir] = sorted[at]!
+    sorted[at] = other
+    sorted.forEach((d, i) => {
+      if (d.options.zIndex !== i) d.updateOptions({ zIndex: i })
+    })
+    this.restack()
+  }
+
+  /** Where a drawing sits in the paint order — menus disable the moves that cannot apply
+   *  (a drawing already at the back has nothing below it to step behind). */
+  stackPosition(id: string): { atFront: boolean; atBack: boolean } {
+    const sorted = this.visualOrder()
+    const at = sorted.findIndex((d) => d.id === id)
+    return { atFront: at < 0 || at === sorted.length - 1, atBack: at <= 0 }
+  }
+
+  /** The paint order, bottom first: (zIndex, insertion) — the ONE sort restack keys off too. */
+  private visualOrder(): AnyDrawing[] {
+    return this._order
+      .map((oid) => this._drawings.get(oid))
+      .filter((d): d is AnyDrawing => !!d)
+      .sort((a, b) => a.options.zIndex - b.options.zIndex)
+  }
+
   /** Re-attach primitives so PAINT order follows (zIndex, insertion) — the chart paints
    *  primitives in attach order, so stacking changes must re-key that order. */
   private restack(): void {
     if (!this._series) return
-    const sorted = this._order
-      .map((id) => this._drawings.get(id))
-      .filter((d): d is AnyDrawing => !!d)
-      .sort((a, b) => a.options.zIndex - b.options.zIndex)
+    const sorted = this.visualOrder()
     for (const drawing of sorted) {
       try {
         this._series.detachPrimitive(drawing)
