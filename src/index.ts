@@ -86,7 +86,9 @@ export {
   type SessionTimeline,
 } from './sessions'
 
-export type { ChartWidgetApi, ChartDrawingsApi, ChartExecutionsApi, ChartReplayApi, ChartSaveLoadApi, ChartTicketApi, ResolvedTheme } from './host'
+export type { ChartWidgetApi, ChartDrawingsApi, ChartExecutionsApi, ChartPaneSyncApi, ChartReplayApi, ChartSaveLoadApi, ChartTicketApi, ResolvedTheme } from './host'
+export { ARRANGEMENTS, LAYOUT_MENU_ROWS, arrangementOf, type Arrangement, type PaneRect } from './layoutGrid'
+export { createChartLayout, type ChartLayoutApi, type ChartLayoutOptions, type LayoutSyncFlags } from './layout'
 export {
   attachExecutionMarks,
   groupExecutionsByBar,

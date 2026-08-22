@@ -90,6 +90,27 @@ export interface ChartSaveLoadApi {
   restore(content: string): void
 }
 
+/** Pane-composition primitives — the raw mirrors a multi-chart layout host syncs panes with.
+ *  Subscriptions report USER-driven changes only: a pane being driven through the setters never
+ *  re-reports the change, so two mirrored panes cannot echo each other into a feedback loop.
+ *  Times are the feed's unix seconds. */
+export interface ChartPaneSyncApi {
+  /** The crosshair moved (null = left the chart). */
+  onCrosshair(cb: (time: number | null) => void): () => void
+  /** Mirror another pane's crosshair by TIME — anchored at this pane's own bar for that moment
+   *  (nearest earlier bar when feeds tick on different clocks); null or no bar clears it. */
+  setCrosshair(time: number | null): void
+  /** The chart was clicked at a moment in time. */
+  onTimeClick(cb: (time: number) => void): () => void
+  /** Center the visible range on a moment, keeping the current span. */
+  centerOn(time: number): void
+  /** The visible time range changed (pan, zoom, scroll-back). */
+  onVisibleRange(cb: (range: { from: number; to: number }) => void): () => void
+  setVisibleRange(range: { from: number; to: number }): void
+  /** The current visible time range (null before first data). */
+  visibleRange(): { from: number; to: number } | null
+}
+
 /** The running widget a host holds — change what's displayed, or tear it down. */
 export interface ChartWidgetApi {
   symbol(): string
@@ -117,6 +138,8 @@ export interface ChartWidgetApi {
   ticket: ChartTicketApi | null
   /** Bar replay over the loaded window. */
   replay: ChartReplayApi
+  /** Pane-composition sync primitives (crosshair / time-click / visible range). */
+  sync: ChartPaneSyncApi
   /** Execution marks, or null when the widget was created with `executionMarks: false`. */
   executions: ChartExecutionsApi | null
   /** Tear down the chart, the live subscription, and every DOM/timer resource. Idempotent. */
@@ -1143,6 +1166,77 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     tradeLines?.update({ overrides: eff.trading })
   }
 
+  // Pane-composition sync. Driving a pane through the setters MUTES its own subscriptions for the
+  // duration, so a layout host mirroring pane A onto pane B never hears B echo the change back.
+  // lightweight-charts fires these subscriptions synchronously, which is what makes the flag work.
+  let syncMuted = false
+  const crosshairSubs = new Set<(time: number | null) => void>()
+  const timeClickSubs = new Set<(time: number) => void>()
+  const rangeSubs = new Set<(range: { from: number; to: number }) => void>()
+  chart.subscribeCrosshairMove((param) => {
+    if (syncMuted || crosshairSubs.size === 0) return
+    const t = typeof param.time === 'number' ? param.time : null
+    for (const cb of crosshairSubs) cb(t)
+  })
+  chart.subscribeClick((param) => {
+    if (syncMuted || timeClickSubs.size === 0 || typeof param.time !== 'number') return
+    for (const cb of timeClickSubs) cb(param.time)
+  })
+  chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
+    if (syncMuted || rangeSubs.size === 0 || !range) return
+    for (const cb of rangeSubs) cb({ from: range.from as number, to: range.to as number })
+  })
+  const paneSync: ChartPaneSyncApi = {
+    onCrosshair(cb) {
+      crosshairSubs.add(cb)
+      return () => crosshairSubs.delete(cb)
+    },
+    setCrosshair(time) {
+      if (removed) return
+      syncMuted = true
+      try {
+        // Anchor at this pane's own bar for the moment (its close) — the nearest earlier bar when
+        // feeds tick on different clocks. No bar for that moment clears instead of guessing.
+        let bar: FeedBar | undefined
+        if (time !== null) for (let i = bars.length - 1; i >= 0; i--) { const b = bars[i]!; if (b.t <= time) { bar = b; break } }
+        if (bar) chart.setCrosshairPosition(bar.c, bar.t as UTCTimestamp, candles)
+        else chart.clearCrosshairPosition()
+      } finally {
+        syncMuted = false
+      }
+    },
+    onTimeClick(cb) {
+      timeClickSubs.add(cb)
+      return () => timeClickSubs.delete(cb)
+    },
+    centerOn(time) {
+      if (removed) return
+      const cur = chart.timeScale().getVisibleRange()
+      if (!cur) return
+      const span = (cur.to as number) - (cur.from as number)
+      paneSync.setVisibleRange({ from: time - span / 2, to: time + span / 2 })
+    },
+    onVisibleRange(cb) {
+      rangeSubs.add(cb)
+      return () => rangeSubs.delete(cb)
+    },
+    setVisibleRange(range) {
+      if (removed) return
+      syncMuted = true
+      try {
+        chart.timeScale().setVisibleRange({ from: range.from as UTCTimestamp, to: range.to as UTCTimestamp })
+      } catch {
+        /* a range entirely outside the data is the scale's refusal to honor — stay put */
+      } finally {
+        syncMuted = false
+      }
+    },
+    visibleRange() {
+      const r = chart.timeScale().getVisibleRange()
+      return r ? { from: r.from as number, to: r.to as number } : null
+    },
+  }
+
   /** The widget's saved-chart CONTENT format. Versioned because the blob is contractually opaque
    *  to every backend — the reader here is the only place an upgrade path can ever live. */
   const CONTENT_V = 1
@@ -1213,6 +1307,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     drawings: drawingsApi,
     ticket: ticketApi,
     replay: replayApi,
+    sync: paneSync,
     executions: executionsApi,
     remove() {
       if (removed) return

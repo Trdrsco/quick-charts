@@ -8,6 +8,11 @@ import { describe, expect, it } from 'vitest'
 import * as api from '../src/index'
 
 const SURFACE: Record<string, string> = {
+  // Additive (minor): the multi-chart layout plane — arrangement catalog + layout host, 2026-08-22.
+  ARRANGEMENTS: 'object',
+  LAYOUT_MENU_ROWS: 'object',
+  arrangementOf: 'function',
+  createChartLayout: 'function',
   BRAND_DOWN: 'string',
   BRAND_UP: 'string',
   COLLAPSED_H: 'number',
