@@ -21,6 +21,16 @@ export type {
 export { FeedUnavailableError, olderPageVerdict } from './datafeed'
 
 export type { ChartStorage } from './storage'
+export {
+  storageSaveLoadAdapter,
+  type ChartMeta,
+  type ChartSaveData,
+  type ChartSaveLoadAdapter,
+  type DrawingScope,
+  type TemplateKind,
+  type TemplateMeta,
+  type TemplateStore,
+} from './saveLoad'
 export { localStorageChartStorage, memoryChartStorage } from './storage'
 
 export type { FetchLike, UdfDatafeedOptions } from './udfDatafeed'
@@ -76,7 +86,7 @@ export {
   type SessionTimeline,
 } from './sessions'
 
-export type { ChartWidgetApi, ChartDrawingsApi, ChartExecutionsApi, ChartReplayApi, ChartTicketApi, ResolvedTheme } from './host'
+export type { ChartWidgetApi, ChartDrawingsApi, ChartExecutionsApi, ChartReplayApi, ChartSaveLoadApi, ChartTicketApi, ResolvedTheme } from './host'
 export {
   attachExecutionMarks,
   groupExecutionsByBar,
@@ -123,5 +133,5 @@ export {
   type PositionPartsInput,
   type DraftPartsInput,
 } from './tradeLineParts'
-export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
+export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export { createChart, resolveTheme, applyBar, resolveInitialTf } from './host'

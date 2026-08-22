@@ -61,6 +61,8 @@ const SURFACE: Record<string, string> = {
   isIntradayTf: 'function',
   isMeaningfulMove: 'function',
   latestPlotValue: 'function',
+  // Additive (minor): the save/load seam's precedence composer + default adapter, 2026-08-22.
+  layerOverrides: 'function',
   layoutParts: 'function',
   localStorageChartStorage: 'object',
   manifestInputDefaults: 'function',
@@ -85,6 +87,7 @@ const SURFACE: Record<string, string> = {
   sessionOf: 'function',
   sessionTimeline: 'function',
   snapPrice: 'function',
+  storageSaveLoadAdapter: 'function',
   subIntervalsFor: 'function',
   tfSeconds: 'function',
   tfToUdfResolution: 'function',

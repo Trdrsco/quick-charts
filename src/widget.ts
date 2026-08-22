@@ -4,6 +4,8 @@
 // options are stable public API; the component that mounts them is the remaining packaging step.
 import type { ChartDatafeed, FeedBar } from './datafeed'
 import type { ChartStorage } from './storage'
+import type { ChartSaveLoadAdapter } from './saveLoad'
+import type { PartialOverrides } from './overrides'
 import type { IndicatorManifest, IndicatorOverrides } from './indicatorModel'
 import type { TradingAdapter } from './tradingAdapter'
 
@@ -40,6 +42,12 @@ export interface ChartWidgetEvents {
   /** A dropped/failed/informational trading message (a rejected reprice, a policy refusal). The
    *  broker's rejection text arrives verbatim. */
   onTradingError?: (msg: string) => void
+  /** Viewer state changed (a drawing edit, a symbol/timeframe/scale switch, a legend eye…) —
+   *  debounced ~1s so a drag emits once, not per frame. TradingView's onAutoSaveNeeded shape: a
+   *  host that snapshots widget state through `api.saveLoad.serialize()` calls it here. The widget
+   *  already persists its own sticky state through the adapter's `settings` either way — this
+   *  event exists for hosts saving NAMED charts on top of that. */
+  onSaveNeeded?: () => void
 }
 
 /** Everything needed to construct a chart. `datafeed` is the only hard requirement — the rest have
@@ -50,14 +58,26 @@ export interface ChartWidgetOptions {
   /** The market-data backend. Required — this is the seam the whole design turns on. */
   datafeed: ChartDatafeed
   /** Where the chart persists viewer state (drawings, indicators, appearance). Defaults to the browser's
-   *  localStorage; a host supplies its own to sync state to a user account. */
+   *  localStorage; a host supplies its own to sync state to a user account. When `saveLoad` is
+   *  also given, its `settings` store takes over this role — one adapter, one place state lives. */
   storage?: ChartStorage
+  /** The entity-aware persistence adapter (named charts, symbol-scoped drawings, named templates,
+   *  plus the flat `settings` KV) — the save_load_adapter-shaped seam a host plugs its own backend
+   *  into. Absent, the widget wraps `storage` in the default adapter, so local behavior is
+   *  unchanged; the host-facing surface is `api.saveLoad`. */
+  saveLoad?: ChartSaveLoadAdapter
   /** The symbol to open on. */
   symbol?: string
   /** The timeframe token to open on (e.g. '1m', '1h', '1d'). */
   timeframe?: string
   /** Palette overrides. */
   theme?: ChartTheme
+  /** The full override tree, partial over the theme-derived defaults — the richer sibling of
+   *  `theme` (candle anatomy, grid/sessions switches, every trade-line color and visibility).
+   *  Precedence is TradingView's ladder: runtime `applyOverrides` beats this, this beats `theme`,
+   *  `theme` beats the built-ins. A loaded saved chart's appearance snapshot applies as a runtime
+   *  layer, so a viewer's saved look beats the host's constructor values. */
+  overrides?: PartialOverrides
   /** Indicator instances on the chart. Each pairs a host-supplied definition (manifest + compute)
    *  with instance inputs/overrides; the widget renders them through the same manifest pipeline
    *  richer hosts use — panes, histograms, areas, markers, levels, band fills. */

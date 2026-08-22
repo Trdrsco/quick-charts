@@ -16,7 +16,8 @@ import {
 import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type DatafeedConfig, type FeedBar } from './datafeed'
 import { localStorageChartStorage, type ChartStorage } from './storage'
 import type { ChartTheme, ChartWidgetOptions, IndicatorInstance } from './widget'
-import { BRAND_DOWN, BRAND_UP } from './overrides'
+import { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
+import { storageSaveLoadAdapter, type ChartSaveLoadAdapter } from './saveLoad'
 import { attachDrawings, type DrawingsEvents, type DrawingsHandle } from './drawings'
 import { mountDrawingsRail, type DrawingsRail } from './drawingsRail'
 import { applyPlotOverrides, buildManifestPlots, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest } from './indicatorModel'
@@ -74,6 +75,21 @@ export interface ChartExecutionsApi {
   scope(): ExecutionScope
 }
 
+/** The save/load surface a host drives: the active adapter (the default storage-backed one, or
+ *  whatever the host plugged in) plus the widget's own content (de)serialization — the two halves
+ *  a "saved charts" UI composes: `serialize()` + `adapter.saveChart()` to save,
+ *  `adapter.loadChart()` + `restore()` to load. */
+export interface ChartSaveLoadApi {
+  adapter: ChartSaveLoadAdapter
+  /** Snapshot the widget's state as a name-less save: symbol/timeframe for the listing row, and
+   *  the opaque, versioned content blob (symbol, timeframe, scale, hidden indicators, and the
+   *  effective appearance — a loaded chart restores its LOOK, TradingView's layout behavior). */
+  serialize(): { symbol: string; timeframe: string; content: string }
+  /** Apply a saved chart's content blob. Throws on an unrecognized content version — content is
+   *  opaque to every backend, so the reader is the only place an upgrade path can live. */
+  restore(content: string): void
+}
+
 /** The running widget a host holds — change what's displayed, or tear it down. */
 export interface ChartWidgetApi {
   symbol(): string
@@ -83,6 +99,14 @@ export interface ChartWidgetApi {
   /** The price scale's mode (regular/log/percent/indexed). Persisted through ChartStorage. */
   scaleMode(): ScaleMode
   setScaleMode(mode: ScaleMode): void
+  /** The EFFECTIVE override tree: theme floor, then the constructor partial, then every runtime
+   *  applyOverrides layer — the resolved look every surface reads. */
+  overrides(): ChartOverrides
+  /** Apply a partial at RUNTIME — the top of the precedence ladder; restyles the live chart
+   *  without a re-mount. Later calls layer over earlier ones leaf by leaf. */
+  applyOverrides(partial: PartialOverrides): void
+  /** Save/load: the adapter plus the widget's content (de)serialization. */
+  saveLoad: ChartSaveLoadApi
   /** Replace the configured indicator list (removed ids tear down, panes sweep, the legend
    *  follows). The initial list comes from `ChartWidgetOptions.indicators`. */
   setIndicators(instances: IndicatorInstance[]): void
@@ -152,9 +176,62 @@ const PAGE_TRIGGER_BARS = 60
 
 export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   const datafeed: ChartDatafeed = options.datafeed
-  const storage: ChartStorage = options.storage ?? localStorageChartStorage
-  const theme = resolveTheme(options.theme)
   const events = options.events ?? {}
+  let removed = false
+  // The save/load adapter — the host's, or the default layering the same entities on the plain
+  // KV (options.storage, else localStorage), so an adapter-less widget behaves exactly as before.
+  const saveLoad: ChartSaveLoadAdapter = options.saveLoad ?? storageSaveLoadAdapter(options.storage ?? localStorageChartStorage)
+  // Every widget key flows through the adapter's settings store, wrapped so each state-dirtying
+  // write funnels ONE debounced onSaveNeeded (~1s, TradingView's auto-save shape) — no per-site
+  // wiring, and a drawing drag emits once rather than per frame.
+  let saveNeededTimer: ReturnType<typeof setTimeout> | null = null
+  const pingSaveNeeded = (): void => {
+    if (!events.onSaveNeeded || removed) return
+    if (saveNeededTimer) clearTimeout(saveNeededTimer)
+    saveNeededTimer = setTimeout(() => {
+      saveNeededTimer = null
+      if (!removed) events.onSaveNeeded?.()
+    }, 1_000)
+  }
+  const storage: ChartStorage = {
+    get: (key) => saveLoad.settings.get(key),
+    set: (key, value) => {
+      saveLoad.settings.set(key, value)
+      pingSaveNeeded()
+    },
+    remove: (key) => {
+      saveLoad.settings.remove(key)
+      pingSaveNeeded()
+    },
+    keys: () => saveLoad.settings.keys(),
+  }
+  const theme = resolveTheme(options.theme)
+  // The override LADDER. Floor: the resolved theme lifted into the full tree (candle bodies and
+  // wicks take the theme pair; borders stay INVISIBLE until some layer names a border color —
+  // the widget never drew borders, and a floor that silently switched them on would repaint every
+  // existing embed). Above it: the host's constructor partial, then runtime applyOverrides layers.
+  const themeFloor: ChartOverrides = layerOverrides(DEFAULT_OVERRIDES, {
+    appearance: {
+      background: theme.background,
+      upColor: theme.upColor,
+      downColor: theme.downColor,
+      borderUpColor: theme.upColor,
+      borderDownColor: theme.downColor,
+      wickUpColor: theme.upColor,
+      wickDownColor: theme.downColor,
+    },
+  })
+  let runtimePartial: PartialOverrides = {}
+  let eff: ChartOverrides = layerOverrides(themeFloor, options.overrides, runtimePartial)
+  /** True when a HOST-STATED layer (constructor or runtime) names the leaf — the explicitness
+   *  signal for looks that only engage once someone asks: candle borders, and the trading colors
+   *  whose per-surface defaults otherwise stay theme-derived. */
+  const overrideNamed = (section: 'appearance' | 'trading', leaf: string): boolean =>
+    [options.overrides, runtimePartial].some((p) => {
+      const sec = p?.[section] as Record<string, unknown> | undefined
+      return !!sec && leaf in sec
+    })
+  const candleBordersOn = (): boolean => overrideNamed('appearance', 'borderUpColor') || overrideNamed('appearance', 'borderDownColor')
   let indicatorInstances: IndicatorInstance[] = options.indicators ?? []
 
   let symbol = options.symbol ?? storage.get(SYMBOL_KEY) ?? ''
@@ -178,7 +255,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       }
     })(),
   )
-  let removed = false
   let ready = false
   /** Live-trust for the mark the trade surface reads: true only while the feed reports 'live' —
    *  a stale last close must not price a P&L readout or anchor a protective-stop band. */
@@ -237,26 +313,30 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   const chart: IChartApi = createLwChart(chartBox, {
     autoSize: true,
     layout: {
-      background: { type: ColorType.Solid, color: theme.background },
+      // The look reads the resolved override ladder (`eff`), never the theme directly — with no
+      // host layers the two are identical, so an override-less widget renders exactly as before.
+      background: { type: ColorType.Solid, color: eff.appearance.background },
       textColor: theme.textColor,
       // From the shared scale — canvas text is outside Tailwind and would otherwise drift alone.
       fontSize: theme.fontSize,
       attributionLogo: false,
     },
     grid: {
-      vertLines: { color: theme.gridColor },
-      horzLines: { color: theme.gridColor },
+      vertLines: { color: theme.gridColor, visible: eff.appearance.grid },
+      horzLines: { color: theme.gridColor, visible: eff.appearance.grid },
     },
     crosshair: { mode: CrosshairMode.Normal },
     rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.08 } },
     timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 8, minBarSpacing: 0.5 },
   })
   const candles: ISeriesApi<'Candlestick'> = chart.addSeries(CandlestickSeries, {
-    upColor: theme.upColor,
-    downColor: theme.downColor,
-    borderVisible: false,
-    wickUpColor: theme.upColor,
-    wickDownColor: theme.downColor,
+    upColor: eff.appearance.upColor,
+    downColor: eff.appearance.downColor,
+    borderVisible: candleBordersOn(),
+    borderUpColor: eff.appearance.borderUpColor,
+    borderDownColor: eff.appearance.borderDownColor,
+    wickUpColor: eff.appearance.wickUpColor,
+    wickDownColor: eff.appearance.wickDownColor,
   })
   const volume: ISeriesApi<'Histogram'> = chart.addSeries(HistogramSeries, {
     priceFormat: { type: 'volume' },
@@ -269,7 +349,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   // candles once resolve() states the symbol's session model. Intraday only, crypto never.
   let sessionBands: SessionBandsPrimitive | null = null
   if (options.sessions !== false) {
-    sessionBands = createSessionBands(chart, candles, () => true, () => sessionKind, () => isIntradayTf(tf))
+    // The enabled getter reads the ladder live, so `appearance.sessions: false` (constructor or
+    // runtime) blanks the shading without tearing the layer down.
+    sessionBands = createSessionBands(chart, candles, () => eff.appearance.sessions, () => sessionKind, () => isIntradayTf(tf))
     candles.attachPrimitive(sessionBands as never)
   }
 
@@ -281,10 +363,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   if (options.executionMarks !== false) {
     const execLabels = options.executionMarks?.labels === true
     execMarks = attachExecutionMarks(chart, candles, chromeBox, {
-      buyColor: () => theme.upColor,
-      sellColor: () => theme.downColor,
+      // Theme-derived until a host layer NAMES the trading color — the arrows' default follows
+      // the candles (as it always has), while a stated trading.buyColor/sellColor wins.
+      buyColor: () => (overrideNamed('trading', 'buyColor') ? eff.trading.buyColor : theme.upColor),
+      sellColor: () => (overrideNamed('trading', 'sellColor') ? eff.trading.sellColor : theme.downColor),
       textColor: () => theme.textColor,
-      labels: () => execLabels,
+      labels: () => execLabels || eff.trading.executionLabels,
       precision: () => (symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : null),
     })
   }
@@ -419,6 +503,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       scope: null,
       mark: markNow,
       policy: adapter.policy,
+      // The trading section of the resolved ladder — colors, widths, visibility, pnlMode. With no
+      // host layers this IS the package default the surface always used; applyOverrides refreshes
+      // it through update().
+      overrides: eff.trading,
       onAction: (text, undo) => events.onTradingAction?.(text, undo),
       onError: (msg) => events.onTradingError?.(msg),
       // The draft path routes to the ticket controller; the micro-editors are the package's own
@@ -1029,7 +1117,39 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       }
     : null
 
-  return {
+  /** Re-resolve the ladder and restyle every surface that reads it — the runtime half of the
+   *  precedence contract. Everything here is a repaint, never a rebuild: series options, chart
+   *  layout, the trade-line styles; the getter-driven surfaces (session bands, execution-mark
+   *  colors) pick the new values up on their next draw. */
+  const applyLook = (): void => {
+    eff = layerOverrides(themeFloor, options.overrides, runtimePartial)
+    const A = eff.appearance
+    chart.applyOptions({
+      layout: { background: { type: ColorType.Solid, color: A.background } },
+      grid: {
+        vertLines: { color: theme.gridColor, visible: A.grid },
+        horzLines: { color: theme.gridColor, visible: A.grid },
+      },
+    })
+    candles.applyOptions({
+      upColor: A.upColor,
+      downColor: A.downColor,
+      borderVisible: candleBordersOn(),
+      borderUpColor: A.borderUpColor,
+      borderDownColor: A.borderDownColor,
+      wickUpColor: A.wickUpColor,
+      wickDownColor: A.wickDownColor,
+    })
+    tradeLines?.update({ overrides: eff.trading })
+  }
+
+  /** The widget's saved-chart CONTENT format. Versioned because the blob is contractually opaque
+   *  to every backend — the reader here is the only place an upgrade path can ever live. */
+  const CONTENT_V = 1
+  const serializeContent = (): string =>
+    JSON.stringify({ v: CONTENT_V, symbol, tf, scale: scaleMode, hidden: [...hiddenIndicators], appearance: eff.appearance })
+
+  const api: ChartWidgetApi = {
     symbol: () => symbol,
     timeframe: () => tf,
     setSymbol(next: string) {
@@ -1059,6 +1179,37 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     },
     scaleMode: () => scaleMode,
     setScaleMode: (next: ScaleMode) => applyScaleMode(next),
+    overrides: () => eff,
+    applyOverrides(partial: PartialOverrides) {
+      if (removed) return
+      // Runtime layers ACCUMULATE leaf by leaf — a later call restyles what it names and leaves
+      // the rest of the runtime layer standing, so two hosts' calls compose instead of clobbering.
+      runtimePartial = {
+        appearance: { ...runtimePartial.appearance, ...(partial.appearance ?? {}) },
+        trading: { ...runtimePartial.trading, ...(partial.trading ?? {}) },
+      }
+      applyLook()
+      pingSaveNeeded()
+    },
+    saveLoad: {
+      adapter: saveLoad,
+      serialize: () => ({ symbol, timeframe: tf, content: serializeContent() }),
+      restore(content: string) {
+        if (removed) return
+        const c = JSON.parse(content) as { v?: unknown; symbol?: unknown; tf?: unknown; scale?: unknown; hidden?: unknown; appearance?: unknown }
+        if (c.v !== CONTENT_V) throw new Error(`unsupported chart content version ${String(c.v)}`)
+        if (typeof c.symbol === 'string' && c.symbol) api.setSymbol(c.symbol)
+        if (typeof c.tf === 'string' && c.tf) api.setTimeframe(c.tf)
+        applyScaleMode(coerceScaleMode(typeof c.scale === 'string' ? c.scale : null))
+        hiddenIndicators.clear()
+        if (Array.isArray(c.hidden)) for (const id of c.hidden) if (typeof id === 'string') hiddenIndicators.add(id)
+        storage.set(HIDDEN_KEY, JSON.stringify([...hiddenIndicators]))
+        recomputeIndicators()
+        // The saved appearance applies as a RUNTIME layer — a viewer's saved look beats the
+        // host's constructor values, exactly the precedence the option contract states.
+        if (c.appearance && typeof c.appearance === 'object') api.applyOverrides({ appearance: c.appearance as Partial<ChartOverrides['appearance']> })
+      },
+    },
     drawings: drawingsApi,
     ticket: ticketApi,
     replay: replayApi,
@@ -1070,6 +1221,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       unsubscribe?.()
       unsubscribe = null
       abandonReplay()
+      if (saveNeededTimer) clearTimeout(saveNeededTimer)
       if (indicatorTrailer) clearTimeout(indicatorTrailer)
       ticket?.destroy()
       tradingUnsub?.()
@@ -1088,4 +1240,5 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       container.style.flexDirection = prevContainerStyle.flexDirection
     },
   }
+  return api
 }

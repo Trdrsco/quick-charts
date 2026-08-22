@@ -104,8 +104,19 @@ export type PartialOverrides = {
 /** Deep-fill a partial over the defaults. One level of nesting by design — the tree is two levels
  *  (section → leaf) and stays that way; new leaves are additive. */
 export function mergeOverrides(partial?: PartialOverrides | null): ChartOverrides {
-  return {
-    appearance: { ...DEFAULT_OVERRIDES.appearance, ...(partial?.appearance ?? {}) },
-    trading: { ...DEFAULT_OVERRIDES.trading, ...(partial?.trading ?? {}) },
+  return layerOverrides(DEFAULT_OVERRIDES, partial)
+}
+
+/** The precedence composer: deep-fill any number of partials over an explicit BASE, later layers
+ *  winning leaf by leaf. The widget's look resolves through this — its theme-derived floor, then
+ *  the host's constructor partial, then runtime applyOverrides calls — which is TradingView's own
+ *  override ladder (runtime beats constructor beats theme) expressed as one pure function. */
+export function layerOverrides(base: ChartOverrides, ...partials: (PartialOverrides | null | undefined)[]): ChartOverrides {
+  const out: ChartOverrides = { appearance: { ...base.appearance }, trading: { ...base.trading } }
+  for (const p of partials) {
+    if (!p) continue
+    Object.assign(out.appearance, p.appearance ?? {})
+    Object.assign(out.trading, p.trading ?? {})
   }
+  return out
 }
