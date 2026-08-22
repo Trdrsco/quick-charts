@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, mergeOverrides } from '../src/overrides'
+import { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides } from '../src/overrides'
 import { resolveTheme } from '../src/host'
 
 describe('mergeOverrides', () => {
@@ -76,5 +76,31 @@ describe('the shipped default chart is the owner-approved one', () => {
       executionLabels: false,
       pnlMode: 'money',
     })
+  })
+})
+
+describe('layerOverrides — the precedence composer', () => {
+  it('later layers win leaf by leaf; unnamed leaves fall through to the base', () => {
+    const constructorPartial = { appearance: { background: '#111111', upColor: '#00ff00' } }
+    const runtimePartial = { appearance: { upColor: '#ff00ff' }, trading: { lineWidth: 3 as const } }
+    const out = layerOverrides(DEFAULT_OVERRIDES, constructorPartial, runtimePartial)
+    expect(out.appearance.upColor).toBe('#ff00ff') // runtime beats constructor
+    expect(out.appearance.background).toBe('#111111') // constructor beats base where runtime is silent
+    expect(out.appearance.downColor).toBe(DEFAULT_OVERRIDES.appearance.downColor) // base where all are silent
+    expect(out.trading.lineWidth).toBe(3)
+    expect(out.trading.buyColor).toBe(DEFAULT_OVERRIDES.trading.buyColor)
+  })
+
+  it('null/undefined layers are inert, and the base is never mutated', () => {
+    const base = { appearance: { ...DEFAULT_OVERRIDES.appearance }, trading: { ...DEFAULT_OVERRIDES.trading } }
+    const out = layerOverrides(base, undefined, null, { appearance: { grid: false } })
+    expect(out.appearance.grid).toBe(false)
+    expect(base.appearance.grid).toBe(true)
+    expect(layerOverrides(base)).toEqual(base)
+  })
+
+  it('mergeOverrides is layerOverrides over the shipped defaults', () => {
+    const partial = { trading: { buyColor: '#e5e7eb' } }
+    expect(mergeOverrides(partial)).toEqual(layerOverrides(DEFAULT_OVERRIDES, partial))
   })
 })
