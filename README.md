@@ -270,6 +270,41 @@ w.setScaleMode(SCALE_MODES.includes('log') ? 'log' : 'normal')
 w.setIndicators([{ id: 'sma-20', definition: smaDefinition }])
 ```
 
+## Multi-chart layouts
+
+`createChartLayout(options)` tiles N widget panes over one container by an arrangement code and
+keeps them in step. The catalog (`ARRANGEMENTS`, grouped for a picker as `LAYOUT_MENU_ROWS`) carries
+55 arrangements from a single full-bleed chart to an 8×2 grid; `setArrangement` re-tiles live —
+surviving panes keep their charts, new panes clone the active pane's symbol and timeframe. One pane
+is ACTIVE (it follows pointerdown; `onActivePane` reports it) — point your own toolbar and order
+entry at it. Five sync toggles fan changes across the panes: `symbol`, `interval`, and `dateRange`
+replay a change onto every pane, `crosshair` mirrors continuously by time, and `time` centers every
+pane on a clicked moment. The whole layout serializes as ONE opaque content blob (arrangement, sync
+flags, active pane, every pane's own content), so a saved multi-chart layout is one row in the same
+save/load backend a single chart uses.
+
+```ts
+import { createChartLayout, createUdfDatafeed, LAYOUT_MENU_ROWS } from '@trdrs/chart'
+
+const layout = createChartLayout({
+  container: document.getElementById('charts')!,
+  base: { datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }) },
+  arrangement: '2h',
+  panes: [{ symbol: 'ES', timeframe: '1m' }, { symbol: 'NQ', timeframe: '5m' }],
+  sync: { crosshair: true },
+})
+layout.setSync({ symbol: true })
+layout.setArrangement(LAYOUT_MENU_ROWS[3]!.codes[0]!) // '4' — the 2×2 grid
+const saved = layout.serialize().content // ONE blob for the whole layout
+layout.restore(saved)
+layout.remove()
+```
+
+Per-pane widget apis stay reachable through `layout.panes()` — each is the full `ChartWidgetApi`,
+including the `sync` pane-composition primitives (`onCrosshair`/`setCrosshair`, `onTimeClick`/
+`centerOn`, `onVisibleRange`/`setVisibleRange`/`visibleRange`) the layout itself is built on, so a
+host can compose panes its own way without the layout host.
+
 ## Drawings
 
 The widget ships with a drawing layer (on by default): placement, selection, drag-to-move and
