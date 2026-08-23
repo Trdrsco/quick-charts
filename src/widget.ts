@@ -109,6 +109,9 @@ export interface ChartWidgetOptions {
    *  removes the surface entirely; `{ labels: true }` adds "qty @ price" labels beside the
    *  arrows (off by default). */
   executionMarks?: false | { labels?: boolean }
+  /** The right-click LEVEL menu (reset view, copy price, the orders a level can hold, remove
+   *  indicators/drawings). `false` removes it and leaves the browser's own menu in place. */
+  contextMenu?: false
   events?: ChartWidgetEvents
 }
 

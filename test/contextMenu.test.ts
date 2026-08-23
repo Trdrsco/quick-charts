@@ -112,6 +112,32 @@ describe('counts and state', () => {
   })
 })
 
+// The WIDGET serves a subset: no clipboard, no settings dialog, and its execution marks switch
+// live/replay rather than shown/hidden. A row it cannot serve must not appear at all.
+describe('a host that cannot serve a row does not show it', () => {
+  const widget = { ...base, canAlert: false, canPaste: false, canSettings: false, marksHidden: null }
+  it('omits paste, settings and the marks switch', () => {
+    const rows = labels(widget)
+    expect(rows).not.toContain('Paste')
+    expect(rows).not.toContain('Settings…')
+    expect(rows).not.toContain('Hide marks on bars')
+    expect(rows).not.toContain('Add alert on ESU6 at 4,512.25…')
+  })
+
+  it('still offers what it CAN serve, with no dangling separator', () => {
+    const rows = chartContextMenu(widget)
+    expect(labels(widget)).toContain('Reset chart view')
+    expect(labels(widget)).toContain('Copy price 4,512.25')
+    expect(rows[0].kind).toBe('item')
+    expect(rows[rows.length - 1].kind).toBe('item')
+  })
+
+  it('the defaults keep every existing caller unchanged', () => {
+    expect(labels()).toContain('Paste')
+    expect(labels()).toContain('Settings…')
+  })
+})
+
 describe('separators', () => {
   it('never opens, closes, or doubles on an empty group', () => {
     for (const c of [{}, { tradable: false }, { canTrade: false, canAlert: false }, { indicatorCount: 3 }]) {

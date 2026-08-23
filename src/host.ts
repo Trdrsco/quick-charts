@@ -33,6 +33,7 @@ import { openQtyPopover, openTypeMenu } from './ticketChrome'
 import { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
 import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
+import { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
 import { attachExecutionMarks, type ChartExecution, type ExecutionMarksHandle, type ExecutionScope } from './executionMarks'
 import { decimalsOfTick } from './broker'
 
@@ -1129,6 +1130,81 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       }
     : null
 
+  // The level menu, on the widget's own right-click. Its ROWS come from chartContextMenu, so an
+  // embedder's chart offers what the app's does minus what this widget cannot serve: no clipboard
+  // and no settings dialog here, and the marks row only where execution marks are drawn.
+  let contextMenu: ContextMenuHandle | null = null
+  /** The level the open menu was raised at — its rows act on this, not on wherever the pointer
+   *  wandered to while the menu was up. */
+  let lastMenuPrice: number | null = null
+  if (options.contextMenu !== false) {
+    const priceAt = (clientY: number): number | null => {
+      const box = chartBox.getBoundingClientRect()
+      const p = candles.coordinateToPrice(clientY - box.top)
+      return p != null && p > 0 ? p : null
+    }
+    contextMenu = mountContextMenu(
+      chromeBox,
+      (id) => {
+        const at = lastMenuPrice
+        switch (id) {
+          case 'reset-view':
+            chart.timeScale().fitContent()
+            break
+          case 'copy-price':
+            if (at != null) void navigator.clipboard?.writeText(String(at)).catch(() => undefined)
+            break
+          case 'trade-sell-limit':
+          case 'trade-sell-stop':
+            if (at != null) ticket?.open({ side: 'sell', orderType: id.endsWith('stop') ? 'stop' : 'limit', price: at })
+            break
+          case 'trade-buy-limit':
+          case 'trade-buy-stop':
+            if (at != null) ticket?.open({ side: 'buy', orderType: id.endsWith('stop') ? 'stop' : 'limit', price: at })
+            break
+          case 'trade-new-order':
+            if (at != null) ticket?.open({ price: at })
+            break
+          case 'remove-indicators':
+            indicatorInstances = []
+            indicatorsRenderer.prune(new Set())
+            recomputeIndicators()
+            break
+          case 'remove-drawings':
+            drawingsHandle?.clearAll()
+            break
+          default:
+            break
+        }
+      },
+      theme,
+    )
+    chartBox.addEventListener('contextmenu', (e) => {
+      const price = priceAt(e.clientY)
+      if (price == null) return
+      e.preventDefault()
+      lastMenuPrice = price
+      const last = bars.length ? bars[bars.length - 1] : null
+      const mark = last ? last.c : null
+      contextMenu?.open(
+        { clientX: e.clientX, clientY: e.clientY },
+        {
+          priceText: price.toLocaleString('en-US', { maximumFractionDigits: 8 }),
+          symbol,
+          aboveMarket: mark != null && mark > 0 ? price >= mark : null,
+          tradable: true,
+          canTrade: ticket !== null,
+          canAlert: false, // no alerts surface in the widget
+          canPaste: false, // the widget's drawing layer has no clipboard
+          canSettings: false, // …and no settings dialog to open
+          indicatorCount: indicatorInstances.length,
+          drawingCount: drawingsHandle?.count() ?? 0,
+          marksHidden: null, // the widget's marks switch live/replay, not shown/hidden
+        },
+      )
+    })
+  }
+
   // The public executions surface is a REAL subset (the drawings-api discipline): teardown stays
   // widget-owned, and an untyped consumer must not find it either.
   const em = execMarks
@@ -1323,6 +1399,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       accountPanel?.destroy()
       execMarks?.destroy()
       tradeLines?.detach()
+      contextMenu?.destroy()
       drawingsRail?.destroy()
       drawingsHandle?.destroy()
       legend?.destroy()

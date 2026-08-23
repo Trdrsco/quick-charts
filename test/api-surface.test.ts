@@ -78,6 +78,7 @@ const SURFACE: Record<string, string> = {
   memoryChartStorage: 'function',
   mergeOverrides: 'function',
   mountAccountPanel: 'function',
+  mountContextMenu: 'function',
   openInputsEditor: 'function',
   nextSessionChange: 'function',
   normalizeRoot: 'function',
