@@ -9,9 +9,10 @@
 // The glyph is the reference's exact raster (1× dpr): a trapezoid head — 4px flat tip widening
 // 6→8→10 over 5 rows — and a 2px shaft for 8 rows after the last head. Two same-price fills
 // reproduce its measured 17-row union exactly (head rows 0–4 and 4–8, one shaft). The card is the
-// measured anatomy: #131722 surface, 6px radius, 4px side-color stripe, 0 2px 4px shadow, 20px
-// circle chip (12px/700), 18px/600 title, 13px body cells, 11px 'TRADES' header at 0.4px
-// tracking, muted dates.
+// measured anatomy minus the reference's 4px side-color stripe (owner call — the side reads from
+// the chip and title alone): #131722 surface, 6px radius, 0 2px 4px shadow, 20px circle chip
+// (12px/700), 18px/600 title, 13px body cells, 11px 'TRADES' header at 0.4px tracking, muted
+// dates.
 //
 // Two ISOLATED scopes carry two histories: 'live' (the armed account's fills) and 'replay' (a
 // replay session's simulated fills). Only the active scope draws — replay fills never appear on a
@@ -430,9 +431,9 @@ export function attachExecutionMarks(
     const pal = opts.card?.() ?? DEFAULT_CARD
     const el = document.createElement('div')
     el.setAttribute('data-role', 'execution-card')
-    // The reference's anatomy (side stripe, chip+title, subtitle, TRADES rows) in the HOST's card
-    // tokens: its sheet surface, ring outline, type scale — so the card sits beside the host's
-    // other popovers as one family.
+    // The reference's anatomy (chip+title, subtitle, TRADES rows) in the HOST's card tokens: its
+    // sheet surface, ring outline, type scale — so the card sits beside the host's other popovers
+    // as one family. The side speaks through the chip and title color, not an accent edge.
     el.style.cssText = [
       'position:absolute',
       'z-index:12',
@@ -440,10 +441,9 @@ export function attachExecutionMarks(
       'max-width:320px',
       `background:${pal.background}`,
       `border:1px solid ${pal.ring}`,
-      `border-left:4px solid ${sideColor}`,
       'border-radius:6px',
       `box-shadow:${pal.shadow}`,
-      'padding:10px 12px 14px 14px',
+      'padding:10px 12px 14px',
       'font-size:13px',
       `color:${pal.secondaryText}`,
       'pointer-events:auto',
