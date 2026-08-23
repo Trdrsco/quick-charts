@@ -76,6 +76,11 @@ export interface SerializedDrawing {
   style: DrawingStyle
   options: DrawingOptions
   props?: Record<string, unknown>
+  /** The chart surface this drawing is LOCAL to, when it is local to one. Absent — the case for
+   *  every drawing made while sync is on, and for every drawing made before scoping existed —
+   *  means the drawing is shared by every surface showing this symbol. The host owns the shape of
+   *  the token; the drawing layer only ever compares it for equality. */
+  scope?: string
 }
 
 export type DrawingState = 'normal' | 'hovered' | 'selected' | 'editing'
