@@ -9,7 +9,7 @@
 // The glyph is the reference's exact raster (1× dpr): a trapezoid head — 4px flat tip widening
 // 6→8→10 over 5 rows — and a 2px shaft for 8 rows after the last head. Two same-price fills
 // reproduce its measured 17-row union exactly (head rows 0–4 and 4–8, one shaft). The card is the
-// measured anatomy minus the reference's 4px side-color stripe (owner call — the side reads from
+// measured anatomy minus the reference's 4px side-color stripe (the side reads from
 // the chip and title alone): #131722 surface, 6px radius, 0 2px 4px shadow, 20px circle chip
 // (12px/700), 18px/600 title, 13px body cells, 11px 'TRADES' header at 0.4px tracking, muted
 // dates.

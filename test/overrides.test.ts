@@ -26,8 +26,7 @@ describe('mergeOverrides', () => {
 
 describe('brand colors are single-sourced', () => {
   // The brand pair drives the package THEME and the buy line. It deliberately no longer drives the
-  // candle bodies: the shipped default canvas is the owner's own paper/teal/orange chart (owner call
-  // 2026-08-20), and the pair marks trdrs' own ink — your orders — not the market's.
+  // candle bodies: the shipped default canvas is the owner's own paper/teal/orange chart (// 2026-08-20), and the pair marks trdrs' own ink — your orders — not the market's.
   it('the theme still resolves to the brand pair', () => {
     const theme = resolveTheme()
     expect(theme.upColor).toBe(BRAND_UP)
