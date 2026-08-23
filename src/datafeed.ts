@@ -128,7 +128,12 @@ export interface SubscribeHandlers {
  *  (the chart shows "market data unavailable" and closes the live subscription), unlike a transient
  *  fetch failure which is retried. */
 export class FeedUnavailableError extends Error {
-  constructor(message = 'market data unavailable') {
+  constructor(
+    message = 'market data unavailable',
+    /** The server's typed refusal (e.g. feed_requires_connection / feed_capacity / feed_displaced),
+     *  when it sent one — lets the host name the actual cause instead of a generic "unavailable". */
+    readonly code: string | null = null,
+  ) {
     super(message)
     this.name = 'FeedUnavailableError'
   }
