@@ -32,6 +32,7 @@ declare const nextSnapshot: import('@trdrs/chart').BrokerSnapshot
 declare const myPricePolicy: import('@trdrs/chart').PricePolicy
 declare const broker: import('@trdrs/chart').ChartBroker
 declare const smaDefinition: import('@trdrs/chart').IndicatorDefinition
+declare const ticket: { setInstrument(symbol: string): void }
 declare function toast(text: string, undo?: () => void): void
 declare function note(msg: string): void
 `
