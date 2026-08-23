@@ -276,8 +276,11 @@ w.setIndicators([{ id: 'sma-20', definition: smaDefinition }])
 keeps them in step. The catalog (`ARRANGEMENTS`, grouped for a picker as `LAYOUT_MENU_ROWS`) carries
 55 arrangements from a single full-bleed chart to an 8×2 grid; `setArrangement` re-tiles live —
 surviving panes keep their charts, new panes clone the active pane's symbol and timeframe. One pane
-is ACTIVE (it follows pointerdown; `onActivePane` reports it) — point your own toolbar and order
-entry at it. Five sync toggles fan changes across the panes: `symbol`, `interval`, and `dateRange`
+is ACTIVE (it follows pointerdown; `onActivePane` reports it) — point your own toolbar at it. For
+order entry, ask the layout what it trades: `tradingSymbol()` is the active pane's market, and
+`onTradingSymbol` reports it every time it moves — another pane activated, the active pane's symbol
+changed, a re-tile, a restore. Pointing a ticket at a chart moves no chart's symbol, so the two
+concepts stay separate: each chart keeps charting what it charts, and one of them is being traded. Five sync toggles fan changes across the panes: `symbol`, `interval`, and `dateRange`
 replay a change onto every pane, `crosshair` mirrors continuously by time, and `time` centers every
 pane on a clicked moment. The whole layout serializes as ONE opaque content blob (arrangement, sync
 flags, active pane, every pane's own content), so a saved multi-chart layout is one row in the same
@@ -292,7 +295,9 @@ const layout = createChartLayout({
   arrangement: '2h',
   panes: [{ symbol: 'ES', timeframe: '1m' }, { symbol: 'NQ', timeframe: '5m' }],
   sync: { crosshair: true },
+  events: { onTradingSymbol: (symbol) => ticket.setInstrument(symbol) },
 })
+ticket.setInstrument(layout.tradingSymbol() ?? 'ES') // the value on mount; the event carries changes
 layout.setSync({ symbol: true })
 layout.setArrangement(LAYOUT_MENU_ROWS[3]!.codes[0]!) // '4' — the 2×2 grid
 const saved = layout.serialize().content // ONE blob for the whole layout
