@@ -60,7 +60,14 @@ export interface ChartMenuContext {
   /** Counts drive both the wording and whether the row appears at all. */
   indicatorCount: number
   drawingCount: number
-  marksHidden: boolean
+  /** Whether trade marks are hidden, or NULL where the host draws none — the row then never
+   *  appears, because a switch for something that is not on the chart is noise. */
+  marksHidden: boolean | null
+  /** A drawing clipboard exists. Default true: the reference offers Paste whether or not anything
+   *  is copied, and pasting nothing is a no-op — but a host with no clipboard at all omits it. */
+  canPaste?: boolean
+  /** A settings surface exists to open. Default true; a host without one omits the row. */
+  canSettings?: boolean
 }
 
 /** The two orders a level can HOLD, and only those: above the market that is a sell limit and a buy
@@ -103,10 +110,9 @@ export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
 
   // Paste rides whether or not the clipboard holds anything, as the reference's does — pasting
   // nothing is a no-op, and a row that comes and goes with an invisible buffer reads as a glitch.
-  groups.push([
-    { kind: 'item', id: 'copy-price', label: `Copy price ${c.priceText}` },
-    { kind: 'item', id: 'paste', label: 'Paste', shortcut: 'Ctrl + V' },
-  ])
+  const clip: ChartMenuRow[] = [{ kind: 'item', id: 'copy-price', label: `Copy price ${c.priceText}` }]
+  if (c.canPaste !== false) clip.push({ kind: 'item', id: 'paste', label: 'Paste', shortcut: 'Ctrl + V' })
+  groups.push(clip)
 
   const market: ChartMenuRow[] = []
   if (c.canAlert) {
@@ -120,9 +126,9 @@ export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
   if (c.drawingCount > 0) remove.push({ kind: 'item', id: 'remove-drawings', label: `Remove ${plural(c.drawingCount, 'drawing')}` })
   groups.push(remove)
 
-  groups.push([{ kind: 'item', id: 'hide-marks', label: 'Hide marks on bars', checked: c.marksHidden }])
+  if (c.marksHidden !== null) groups.push([{ kind: 'item', id: 'hide-marks', label: 'Hide marks on bars', checked: c.marksHidden }])
 
-  groups.push([{ kind: 'item', id: 'settings', label: 'Settings…', icon: 'settings' }])
+  if (c.canSettings !== false) groups.push([{ kind: 'item', id: 'settings', label: 'Settings…', icon: 'settings' }])
 
   const rows: ChartMenuRow[] = []
   for (const g of groups.filter((g) => g.length > 0)) {
