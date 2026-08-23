@@ -52,8 +52,7 @@ export interface ChartOverrides {
 export const BRAND_UP = '#4c98fb'
 export const BRAND_DOWN = '#f23645'
 
-// The shipped default IS the owner's own chart, copied leaf for leaf off his account (owner call
-// 2026-08-20): a warm paper canvas with teal/orange candles ringed and wicked in solid black.
+// The shipped default IS the owner's own chart, copied leaf for leaf off his account (// 2026-08-20): a warm paper canvas with teal/orange candles ringed and wicked in solid black.
 //
 // So the CANVAS stops tracking BRAND_UP/BRAND_DOWN while the TRADE LINES keep them, and that split
 // is the point rather than a miss: candles are the market, trade lines are your money sitting on it,
