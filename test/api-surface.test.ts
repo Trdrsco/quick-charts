@@ -43,6 +43,7 @@ const SURFACE: Record<string, string> = {
   boundStopPrice: 'function',
   buildOrderParts: 'function',
   buildPositionParts: 'function',
+  chartContextMenu: 'function',
   coerceScaleMode: 'function',
   composeFormingBar: 'function',
   createChart: 'function',
