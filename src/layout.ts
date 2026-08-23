@@ -1,5 +1,5 @@
 // The multi-chart LAYOUT host: N widget panes tiled by an arrangement code, one ACTIVE pane, and
-// the five reference sync contracts (docs/corpus/chart-layouts.md §2.2, verbatim):
+// the five reference sync contracts (the reference's own wording, verbatim):
 //   symbol     "Symbol changes on all charts within the layout"
 //   interval   "Interval changes on all charts within the layout"
 //   crosshair  "Crosshair is synced across all charts within the layout"

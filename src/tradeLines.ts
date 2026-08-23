@@ -710,8 +710,8 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       }
       for (const o of t.showOrders ? opts.snapshot.orders : []) {
         // A stop/limit draws ONE line at its resting level. A stop-limit draws TWO — trigger AND
-        // conversion limit — the reference behavior (docs/corpus/chart-trading/
-        // stop-limit-order-lines.md); the second line is added after this entry. market/trailing
+        // conversion limit — the reference behavior; the second line is added after this entry.
+        // market/trailing
         // rows draw nothing (no resting level to draw).
         if (!o || o.status !== 'working' || (o.orderType !== 'stop' && o.orderType !== 'limit' && o.orderType !== 'stop_limit')) continue
         const reported = o.orderType === 'limit' ? o.limitPrice : o.triggerPrice

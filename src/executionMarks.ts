@@ -524,7 +524,7 @@ export function attachExecutionMarks(
   chart.subscribeClick(onClick)
   chart.subscribeCrosshairMove(onMove)
 
-  // The v5 pane-view law (see sessions.ts): zOrder is a METHOD, and nothing invalidates the pane
+  // The v5 pane-view law: zOrder is a METHOD, and nothing invalidates the pane
   // when our data changes — set()/setScope() poke requestUpdate themselves.
   const primitive = {
     paneViews() {
