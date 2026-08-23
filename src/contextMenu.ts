@@ -21,7 +21,6 @@ export type ChartMenuAction =
   | 'remove-indicators'
   | 'remove-drawings'
   | 'hide-marks'
-  | 'instant-placement'
   | 'settings'
 
 /** The glyph a row wears, named rather than drawn — the host owns the artwork. */
@@ -62,9 +61,6 @@ export interface ChartMenuContext {
   indicatorCount: number
   drawingCount: number
   marksHidden: boolean
-  /** The instant-placement switch is OURS, not the reference's: chart trades submit with no ticket
-   *  confirm, so the menu that arms them is where its state belongs. Null = no account selected. */
-  instantOn: boolean | null
 }
 
 /** The two orders a level can HOLD, and only those: above the market that is a sell limit and a buy
@@ -125,10 +121,6 @@ export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
   groups.push(remove)
 
   groups.push([{ kind: 'item', id: 'hide-marks', label: 'Hide marks on bars', checked: c.marksHidden }])
-
-  if (c.instantOn !== null && c.canTrade && c.tradable) {
-    groups.push([{ kind: 'item', id: 'instant-placement', label: 'Instant placement', checked: c.instantOn }])
-  }
 
   groups.push([{ kind: 'item', id: 'settings', label: 'Settings…', icon: 'settings' }])
 

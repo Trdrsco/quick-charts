@@ -14,7 +14,6 @@ const base: ChartMenuContext = {
   indicatorCount: 0,
   drawingCount: 0,
   marksHidden: false,
-  instantOn: null,
 }
 
 const labels = (c: Partial<ChartMenuContext> = {}) =>
@@ -104,18 +103,18 @@ describe('counts and state', () => {
     expect(on).toMatchObject({ label: 'Hide marks on bars', checked: true })
   })
 
-  // Instant placement is OURS, not the reference's: it submits with no ticket confirm, so it rides
-  // only where an account is selected AND this pane charts the armed instrument.
-  it('offers instant placement only with an account on the armed pane', () => {
-    expect(labels({ instantOn: false })).toContain('Instant placement')
-    expect(labels({ instantOn: null })).not.toContain('Instant placement')
-    expect(labels({ instantOn: false, tradable: false })).not.toContain('Instant placement')
+  // Nothing in this menu sends an order. A pick composes the ticket and the trader submits there —
+  // the reference has no such switch either.
+  it('offers no way to place an order straight from the menu', () => {
+    for (const c of [{}, { tradable: true, canTrade: true }, { indicatorCount: 2 }]) {
+      expect(labels(c as Partial<ChartMenuContext>).some((l) => /instant/i.test(l))).toBe(false)
+    }
   })
 })
 
 describe('separators', () => {
   it('never opens, closes, or doubles on an empty group', () => {
-    for (const c of [{}, { tradable: false }, { canTrade: false, canAlert: false }, { indicatorCount: 3, instantOn: true }]) {
+    for (const c of [{}, { tradable: false }, { canTrade: false, canAlert: false }, { indicatorCount: 3 }]) {
       const rows = chartContextMenu({ ...base, ...(c as Partial<ChartMenuContext>) })
       expect(rows[0]!.kind).toBe('item')
       expect(rows[rows.length - 1]!.kind).toBe('item')
