@@ -179,6 +179,9 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   implements IDrawing, ISeriesPrimitive<Time>
 {
   readonly id: string
+  /** Set when this drawing belongs to ONE surface; undefined when every surface showing the symbol
+   *  shares it. Opaque here — the host assigns and compares it. */
+  scope?: string
   abstract readonly type: string
 
   protected _anchors: Anchor[]
@@ -536,6 +539,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
       style: { ...this._style },
       options: { ...this._options },
       ...(Object.keys(props).length > 0 ? { props: { ...props } } : {}),
+      ...(this.scope === undefined ? {} : { scope: this.scope }),
     }
   }
 
@@ -544,6 +548,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this._style = { ...DEFAULT_STYLE, ...data.style }
     this._options = normalizeOptions(data.options)
     this._props = { ...this.defaultProps(), ...(data.props as Partial<P> | undefined) }
+    this.scope = data.scope
     this.requestUpdate()
   }
 }
