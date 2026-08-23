@@ -10,7 +10,7 @@
 // backend can never disagree on a valid price.
 
 /** What a live trade line represents. A stop-limit order renders as TWO lines, one per price — the
- *  reference behavior (docs/corpus/chart-trading/stop-limit-order-lines.md): `stop_limit` is the
+ *  reference behavior: `stop_limit` is the
  *  TRIGGER line (it carries the order's ✕ — cancelling cancels the whole order), `stop_limit_limit`
  *  is its conversion-limit line (no second ✕ — one order cancels once). Each line drags its OWN
  *  price; the un-dragged price rides along unchanged in the same atomic replace. */
@@ -350,8 +350,8 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
 
   // reprice-stop-limit: one leg of the order's two lines. The dragged leg bands against ITS OWN
   // current price (the same convention as any order reprice); the other leg passes through exactly
-  // as the broker last reported it. The reference validates no relation between the two prices
-  // (docs/corpus/chart-trading/stop-limit-order-lines.md §3) — the venue is the authority there.
+  // as the broker last reported it. The reference validates no relation between the two prices —
+  // the venue is the authority there.
   if (target.type === 'reprice-stop-limit') {
     const ord = orders.find((o) => o.brokerOrderId === target.brokerOrderId && o.status === 'working' && o.orderType === 'stop_limit')
     if (!ord) return drop('Order no longer working')
