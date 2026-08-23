@@ -1,5 +1,5 @@
 // The multi-chart arrangement catalog — the reference's 13-row / 55-code split grid, decoded from
-// its own menu icons (docs/chart-layouts-corpus.md §2.1/§5) into unit-square pane rectangles.
+// its own menu icons (docs/corpus/chart-layouts.md §2.1/§5) into unit-square pane rectangles.
 // Geometry only: no DOM, no chart. The layout host turns a code into positioned pane elements;
 // a menu turns the rows into its picker. Splits are EVEN fractions — the reference's icons draw
 // stylized proportions, but its product opens every arrangement at equal splits.
