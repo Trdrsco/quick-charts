@@ -11,7 +11,6 @@ const base: ChartMenuContext = {
   tradable: true,
   canTrade: true,
   canAlert: true,
-  canPaste: false,
   indicatorCount: 0,
   drawingCount: 0,
   marksHidden: false,
@@ -27,6 +26,7 @@ describe('the level menu, in the reference order', () => {
       'Reset chart view',
       '—',
       'Copy price 4,512.25',
+      'Paste',
       '—',
       'Add alert on ESU6 at 4,512.25…',
       'Sell ESU6 @ 4,512.25 limit',
@@ -82,9 +82,10 @@ describe('what a level does NOT offer', () => {
     expect(labels({ canAlert: false }).some((l) => l.startsWith('Add alert'))).toBe(false)
   })
 
-  it('no Paste row with an empty clipboard, and no remove row at zero', () => {
-    expect(labels()).not.toContain('Paste')
-    expect(labels({ canPaste: true })).toContain('Paste')
+  // The reference offers Paste whether or not anything is copied — pasting nothing is a no-op, and
+  // a row that comes and goes with an invisible buffer reads as a glitch.
+  it('always offers Paste, and offers no remove row at zero', () => {
+    expect(labels()).toContain('Paste')
     expect(labels().some((l) => l.startsWith('Remove'))).toBe(false)
   })
 })
@@ -114,7 +115,7 @@ describe('counts and state', () => {
 
 describe('separators', () => {
   it('never opens, closes, or doubles on an empty group', () => {
-    for (const c of [{}, { tradable: false }, { canTrade: false, canAlert: false }, { indicatorCount: 3, canPaste: true, instantOn: true }]) {
+    for (const c of [{}, { tradable: false }, { canTrade: false, canAlert: false }, { indicatorCount: 3, instantOn: true }]) {
       const rows = chartContextMenu({ ...base, ...(c as Partial<ChartMenuContext>) })
       expect(rows[0]!.kind).toBe('item')
       expect(rows[rows.length - 1]!.kind).toBe('item')

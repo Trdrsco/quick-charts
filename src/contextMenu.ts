@@ -38,8 +38,6 @@ export type ChartMenuRow =
       /** A CHECKABLE row: the reference marks state with a checkmark in the icon cell and never by
        *  rewording the label, so "Lock vertical cursor line by time" reads the same either way. */
       checked?: boolean
-      /** Buy/sell rows are the only coloured text in the menu. */
-      tone?: 'buy' | 'sell'
     }
 
 export interface ChartMenuContext {
@@ -60,9 +58,6 @@ export interface ChartMenuContext {
   canTrade: boolean
   /** Alerts need no account, so this rides for every viewer the host allows. */
   canAlert: boolean
-  /** Something is on the drawing clipboard — the reference offers Paste regardless, but a row that
-   *  cannot do anything is noise. */
-  canPaste: boolean
   /** Counts drive both the wording and whether the row appears at all. */
   indicatorCount: number
   drawingCount: number
@@ -87,14 +82,12 @@ function tradeRows(c: ChartMenuContext): ChartMenuRow[] {
     label: `Sell ${at} ${below ? 'stop' : 'limit'}`,
     shortcut: 'Alt + Shift + S',
     icon: 'sell',
-    tone: 'sell',
   }
   const buy: ChartMenuRow = {
     kind: 'item',
     id: below ? 'trade-buy-limit' : 'trade-buy-stop',
     label: `Buy ${at} ${below ? 'limit' : 'stop'}`,
     icon: 'buy',
-    tone: 'buy',
   }
   return [
     ...(below ? [buy, sell] : [sell, buy]),
@@ -112,9 +105,12 @@ export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
 
   groups.push([{ kind: 'item', id: 'reset-view', label: 'Reset chart view', shortcut: 'Alt + R', icon: 'reset' }])
 
-  const clip: ChartMenuRow[] = [{ kind: 'item', id: 'copy-price', label: `Copy price ${c.priceText}` }]
-  if (c.canPaste) clip.push({ kind: 'item', id: 'paste', label: 'Paste', shortcut: 'Ctrl + V' })
-  groups.push(clip)
+  // Paste rides whether or not the clipboard holds anything, as the reference's does — pasting
+  // nothing is a no-op, and a row that comes and goes with an invisible buffer reads as a glitch.
+  groups.push([
+    { kind: 'item', id: 'copy-price', label: `Copy price ${c.priceText}` },
+    { kind: 'item', id: 'paste', label: 'Paste', shortcut: 'Ctrl + V' },
+  ])
 
   const market: ChartMenuRow[] = []
   if (c.canAlert) {
