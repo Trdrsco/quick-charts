@@ -185,11 +185,20 @@ describe('a menu row highlights as a ROW', () => {
     expect(menuUiSrc).not.toContain('border:0;border-radius:4px')
   })
 
-  it('the surface keeps its own radius, so only the row changed', () => {
+  it('the surface keeps its radius and CLIPS to it', () => {
+    // Without the clip a square fill paints over the corners and out across the border.
     expect(menuUiSrc).toContain('border-radius:6px')
+    expect(menuUiSrc).toContain('overflow:hidden')
   })
 
-  it('and the surface pads vertically only, so a row reaches both edges', () => {
-    expect(menuUiSrc).toContain('padding:4px 0')
+  it('wears the same box model the app paints, read off the reference itself', () => {
+    // Two paintings of one menu; the numbers come from the reference's live DOM, not from either
+    // painter's taste. 6px inside the box, 6px on each side of a separator, a 36px glyph cell
+    // flush left, 6px to the label, 20px of right padding.
+    expect(menuUiSrc).toContain('padding:6px 0')
+    expect(menuUiSrc).toContain('margin:6px 0')
+    expect(menuUiSrc).toContain('width:36px;flex:0 0 36px')
+    expect(menuUiSrc).toContain('gap:6px')
+    expect(menuUiSrc).toContain('padding:0 20px 0 0')
   })
 })
