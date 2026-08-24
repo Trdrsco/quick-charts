@@ -150,3 +150,26 @@ describe('separators', () => {
     }
   })
 })
+
+describe('with no market, the menu names no side', () => {
+  // Which orders a level can HOLD is a fact about the market, so with no mark there is no answer.
+  // The pair was guessed once — a null mark fell through the above-market branch and offered a sell
+  // LIMIT below the market, an order the venue would fill on arrival at a price the trader did not
+  // mean. It is withheld now, and "Add order" carries the intent to the ticket instead.
+  it('withholds the directional pair and keeps the way into the ticket', () => {
+    const rows = labels({ aboveMarket: null })
+    expect(rows.filter((l) => /^(Buy|Sell) /.test(l))).toEqual([])
+    expect(rows).toContain('Add order on ESU6 at 4,512.25…')
+  })
+
+  it('still names both sides once a market is known, in the reference order', () => {
+    expect(labels({ aboveMarket: true }).filter((l) => /^(Buy|Sell) /.test(l))).toEqual([
+      'Sell ESU6 @ 4,512.25 limit',
+      'Buy ESU6 @ 4,512.25 stop',
+    ])
+    expect(labels({ aboveMarket: false }).filter((l) => /^(Buy|Sell) /.test(l))).toEqual([
+      'Buy ESU6 @ 4,512.25 limit',
+      'Sell ESU6 @ 4,512.25 stop',
+    ])
+  })
+})
