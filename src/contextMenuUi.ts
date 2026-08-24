@@ -48,7 +48,11 @@ export function mountContextMenu(
 
   const box = document.createElement('div')
   box.style.cssText =
-    `position:fixed;z-index:2147483001;display:none;width:${MENU_W}px;padding:4px 0;` +
+    // overflow:hidden is load-bearing — a row's highlight fills its slot squarely, so the surface
+    // is what rounds it off; without the clip it paints over the corners and out across the border.
+    // The 6px is the reference's own, measured off its live menu, and pairs with the 6px a
+    // separator carries on each side.
+    `position:fixed;z-index:2147483001;display:none;width:${MENU_W}px;overflow:hidden;padding:6px 0;` +
     `background:${theme.background};border:1px solid ${theme.gridColor};border-radius:6px;` +
     `color:${theme.textColor};font-size:13px;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.45);`
   box.addEventListener('contextmenu', (e) => e.preventDefault())
@@ -73,21 +77,21 @@ export function mountContextMenu(
       for (const row of chartContextMenu(ctx)) {
         if (row.kind === 'separator') {
           const sep = document.createElement('div')
-          sep.style.cssText = `height:1px;margin:4px 0;background:${theme.gridColor};`
+          sep.style.cssText = `height:1px;margin:6px 0;background:${theme.gridColor};`
           box.append(sep)
           continue
         }
         const b = document.createElement('button')
         b.type = 'button'
         b.style.cssText =
-          `display:flex;align-items:center;gap:4px;width:100%;height:${ROW_H}px;padding:0 8px;` +
+          `display:flex;align-items:center;gap:6px;width:100%;height:${ROW_H}px;padding:0 20px 0 0;` +
           `background:none;border:0;color:${theme.textColor};font:inherit;text-align:left;cursor:pointer;`
         b.addEventListener('mouseenter', () => (b.style.background = theme.gridColor))
         b.addEventListener('mouseleave', () => (b.style.background = 'none'))
 
         // Every row reserves the glyph cell, so labels line up whether or not one is drawn.
         const cell = document.createElement('span')
-        cell.style.cssText = 'display:flex;width:28px;flex:0 0 28px;align-items:center;justify-content:center;'
+        cell.style.cssText = 'display:flex;width:36px;flex:0 0 36px;align-items:center;justify-content:center;'
         const glyph = row.checked ? 'check' : row.icon
         if (glyph) cell.innerHTML = svg(glyph)
 
@@ -99,7 +103,7 @@ export function mountContextMenu(
         if (row.shortcut) {
           const sc = document.createElement('span')
           sc.textContent = row.shortcut
-          sc.style.cssText = `flex:0 0 auto;padding-left:12px;font-size:11px;opacity:.55;`
+          sc.style.cssText = `flex:0 0 auto;padding-left:10px;padding-top:2px;font-size:11px;opacity:.55;`
           b.append(sc)
         }
         const id = row.id
