@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { chartContextMenu, type ChartMenuContext } from '../src/contextMenu'
+import menuUiSrc from '../src/contextMenuUi.ts?raw'
 
 // The reference's own menu is the shape — order, verbatim wording, and which rows exist at all.
 // Captured live from both the Trading Platform library and tradingview.com; see the layouts corpus.
@@ -171,5 +172,24 @@ describe('with no market, the menu names no side', () => {
       'Buy ESU6 @ 4,512.25 limit',
       'Sell ESU6 @ 4,512.25 stop',
     ])
+  })
+})
+
+describe('a menu row highlights as a ROW', () => {
+  // The hover is a selection: it fills the row edge to edge and squarely. A radius on the row makes
+  // it read as a floating pill inside the menu instead — the SURFACE is the thing that is rounded.
+  // Pinned because the app paints this same menu from its own painter, and two paintings of one
+  // menu are two things that can drift.
+  it('the row spans the full width and carries no radius', () => {
+    expect(menuUiSrc).toContain('width:100%')
+    expect(menuUiSrc).not.toContain('border:0;border-radius:4px')
+  })
+
+  it('the surface keeps its own radius, so only the row changed', () => {
+    expect(menuUiSrc).toContain('border-radius:6px')
+  })
+
+  it('and the surface pads vertically only, so a row reaches both edges', () => {
+    expect(menuUiSrc).toContain('padding:4px 0')
   })
 })
