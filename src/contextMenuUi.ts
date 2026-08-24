@@ -81,7 +81,7 @@ export function mountContextMenu(
         b.type = 'button'
         b.style.cssText =
           `display:flex;align-items:center;gap:4px;width:100%;height:${ROW_H}px;padding:0 8px;` +
-          `background:none;border:0;border-radius:4px;color:${theme.textColor};font:inherit;text-align:left;cursor:pointer;`
+          `background:none;border:0;color:${theme.textColor};font:inherit;text-align:left;cursor:pointer;`
         b.addEventListener('mouseenter', () => (b.style.background = theme.gridColor))
         b.addEventListener('mouseleave', () => (b.style.background = 'none'))
 
