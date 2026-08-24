@@ -47,7 +47,8 @@ export interface ChartMenuContext {
   /** Order size the trade rows quote ("Sell 1 ESU6 @ …"). Omitted when the host cannot say what the
    *  ticket will send — a quoted "1" that the ticket then overrides would be a lie about an order. */
   qty?: number
-  /** true above the pane's live mark, false below, null with no mark (both directions offered). */
+  /** true above the pane's live mark, false below, null with no mark — where the directional pair
+   *  is WITHHELD, because which orders a level can hold is a fact about the market. */
   aboveMarket: boolean | null
   /** This pane charts the instrument the ticket is armed on. False elsewhere, and the trade rows
    *  vanish: a seed carries a price and no symbol, so an entry taken from another market's chart
@@ -77,6 +78,12 @@ export interface ChartMenuContext {
  *  The LIMIT row leads in both directions, which is the reference's own ordering: above the market
  *  it lists Sell then Buy, below it Buy then Sell. Measured, not assumed. */
 function tradeRows(c: ChartMenuContext): ChartMenuRow[] {
+  // With NO market there is no answer: which orders a level can hold is a fact ABOUT the market,
+  // so the pair is withheld rather than guessed. "Add order" survives — it opens the ticket, where
+  // the trader names the side themselves. Guessing here once shipped a sell limit BELOW the market.
+  if (c.aboveMarket === null) {
+    return [{ kind: 'item', id: 'trade-new-order', label: `Add order on ${c.symbol} at ${c.priceText}…`, shortcut: 'Shift + T', icon: 'order' }]
+  }
   const below = c.aboveMarket === false
   const at = `${c.qty === undefined ? '' : `${c.qty} `}${c.symbol} @ ${c.priceText}`
   const sell: ChartMenuRow = {
