@@ -32,6 +32,26 @@ describe('tapReleaseVerdict — a pressed money control commits only as a clean 
     expect(tapReleaseVerdict({ ...tap, upX: 100 + CLICK_SLOP, upY: 100 - CLICK_SLOP, onSameControl: () => true })).toBe('commit')
   })
 
+  it('gives a FINGER the wander a finger actually has', () => {
+    // A thumb lands on a soft contact patch and rolls as it presses: 8px between down and up is a
+    // tap the person experienced as still. Judged by the mouse's 4 it reads as an abandoned drag,
+    // and the control it gets dropped on is the send button.
+    const drifted = { ...tap, upX: 108, upY: 106, onSameControl: () => true }
+    expect(tapReleaseVerdict(drifted)).toBe('strayed')
+    expect(tapReleaseVerdict({ ...drifted, pointerType: 'touch' })).toBe('commit')
+  })
+
+  it('holds every other pointer to the strict number, and an unstated one reads as a mouse', () => {
+    const past = { ...tap, upX: 100 + CLICK_SLOP + 1, onSameControl: () => true }
+    expect(tapReleaseVerdict({ ...past, pointerType: 'mouse' })).toBe('strayed')
+    expect(tapReleaseVerdict({ ...past, pointerType: 'pen' })).toBe('strayed')
+    expect(tapReleaseVerdict(past)).toBe('strayed')
+  })
+
+  it('a finger still has a limit — a real drag is not a tap on any pointer', () => {
+    expect(tapReleaseVerdict({ ...tap, upY: 160, pointerType: 'touch', onSameControl: () => true })).toBe('strayed')
+  })
+
   it('a release no longer resting on the pressed control never commits (the line moved or reconciled away)', () => {
     expect(tapReleaseVerdict({ ...tap, onSameControl: () => false, scopes: { captured: same, current: same } })).toBe('missed')
   })

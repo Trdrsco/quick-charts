@@ -84,6 +84,13 @@ export const PART_H = 19
 export const TRADE_FONT =
   "normal 13px -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif"
 
+/** How far past its painted rect a control answers a FINGER. A part is 19px tall because that is
+ *  what the reference draws and what a mouse needs; a thumb needs about 44. Padding the hit box
+ *  rather than the paint keeps the line looking identical on every device and makes only the
+ *  touching different, which is the honest split: the drawing is a reading, the hit box is a
+ *  gesture. 13 each way puts a 19px part on a 45px target. */
+export const TOUCH_SLOP_PX = 13
+
 export const TRADE_THEME = {
   line: '#2962FF',
   surface: '#0F0F0F',
@@ -648,15 +655,32 @@ export interface PartHit {
 }
 
 /** Deepest interactive part containing the point, honouring each part's `hitPad`. Spacers, dividers
- *  and groups never answer — a tap that lands on structure falls through to the chart. */
-export function hitTestParts(root: LayoutNode, x: number, y: number): PartHit | null {
+ *  and groups never answer — a tap that lands on structure falls through to the chart.
+ *
+ *  `slop` grows every interactive box on both axes for a coarse pointer (see TOUCH_SLOP_PX). It
+ *  changes how the WINNER is chosen, not just how wide the boxes are: at slop 0 the last interactive
+ *  node in paint order wins, which is right for a mouse, because the deepest control drawn over a
+ *  spot owns that spot exactly. Once the boxes are grown they overlap their neighbours, and
+ *  last-wins would quietly hand every near miss to whichever control happens to paint last — the ✕
+ *  swallowing the size chip beside it. So with slop the winner is the control the finger is
+ *  NEAREST, measured against painted rects. A direct hit is distance zero, so it still beats every
+ *  control the finger merely came close to, and a mouse's behaviour is untouched. */
+export function hitTestParts(root: LayoutNode, x: number, y: number, slop = 0): PartHit | null {
   let found: LayoutNode | null = null
+  let bestDist = Infinity
   // Descend unconditionally: a control's `hitPad` can push its hit box outside its parent's bounds,
   // so pruning on the parent would swallow exactly the overhang the pad exists to provide.
   const walk = (n: LayoutNode) => {
-    const pad = n.spec.hitPad ?? 0
-    const inside = x >= n.x - pad && x <= n.x + n.w + pad && y >= n.y && y <= n.y + n.h
-    if (inside && isInteractive(n.role)) found = n
+    const padX = (n.spec.hitPad ?? 0) + slop
+    const inside = x >= n.x - padX && x <= n.x + n.w + padX && y >= n.y - slop && y <= n.y + n.h + slop
+    if (inside && isInteractive(n.role)) {
+      // `<=` keeps the tie going to the later node, which is the slop-0 rule stated as a distance.
+      const d = slop === 0 ? 0 : rectDist(n, x, y)
+      if (d <= bestDist) {
+        bestDist = d
+        found = n
+      }
+    }
     for (const c of n.children) walk(c)
   }
   walk(root)
@@ -669,6 +693,14 @@ export function hitTestParts(root: LayoutNode, x: number, y: number): PartHit | 
     dragRole: n.spec.dragRole ?? null,
     tooltip: n.spec.tooltip || null,
   }
+}
+
+/** Distance from a point to a node's PAINTED rect — zero anywhere inside it. Squared, because only
+ *  the ordering is ever read and the square root would be arithmetic nobody looks at. */
+function rectDist(n: LayoutNode, x: number, y: number): number {
+  const dx = x < n.x ? n.x - x : x > n.x + n.w ? x - (n.x + n.w) : 0
+  const dy = y < n.y ? n.y - y : y > n.y + n.h ? y - (n.y + n.h) : 0
+  return dx * dx + dy * dy
 }
 
 function isInteractive(role: PartRole): boolean {

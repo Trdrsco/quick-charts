@@ -10,7 +10,7 @@
 // into a planned broker call. Everything money-deciding (snap, band, protective-side, classify)
 // is the pure planBrokerDrop in broker.ts, gated by the HOST's injected price policy.
 import type { IChartApi, IPriceLine, ISeriesApi } from 'lightweight-charts'
-import { CLICK_SLOP, createPendingHolds, tapReleaseVerdict } from './gestureRules'
+import { clickSlopFor, createPendingHolds, tapReleaseVerdict } from './gestureRules'
 import {
   boundBracketPrice,
   boundStopPrice,
@@ -48,6 +48,7 @@ import {
   EXIT_ZONE_ALPHA,
   PILL_RIGHT_MARGIN,
   PART_H,
+  TOUCH_SLOP_PX,
   type LayoutNode,
   type PartHit,
   type PartSpec,
@@ -136,8 +137,24 @@ function potentialPnl(
 
 // Drag tuning. A grab registers within GRAB_PX of a line; every CONTROL (✕, ⇄, TP/SL) is hit-tested
 // against its painted rect in the overlay part tree, never a band measured off the plot edge. A tap
-// that strays more than CLICK_SLOP px isn't treated as a click (the rule lives in gestureRules).
+// that strays too far isn't treated as a click — how far is the pointer's own allowance, and the
+// rule lives in gestureRules.
 const GRAB_PX = 6
+// The same reach for a FINGER. Deliberately not the controls' TOUCH_SLOP_PX: a control's box grows
+// into empty chart and costs nothing, but the line BODY competes with the pan, and every pixel of
+// band here is a pixel where a one-finger drag reprices an order instead of scrolling the chart. A
+// position with a target and a stop already puts three lines on the glass; at 22 they would blanket
+// the middle of a phone screen. 14 is a 28px band — findable with a thumb, and still mostly chart.
+const GRAB_TOUCH_PX = 14
+
+/** Whether a press-and-release wandered too far to still be the tap it looked like, judged by the
+ *  allowance the pressing pointer earns. Four call sites read it (send, order type, draft size,
+ *  working-order size) and each used to spell the comparison out, which is four places for a
+ *  finger's allowance to be forgotten. */
+const strayedFromTap = (e: PointerEvent, down: { downX: number; downY: number }): boolean => {
+  const slop = clickSlopFor(e.pointerType)
+  return Math.abs(e.clientX - down.downX) > slop || Math.abs(e.clientY - down.downY) > slop
+}
 
 /** A host-drawn PREVIEW level (the decoration point): a pre-money ghost line whose drag/✕ gestures
  *  only ever reach the host's own callbacks. `kind` picks the ghost tint; `editable: false` draws
@@ -253,6 +270,12 @@ export interface TradeLineAttachment {
   /** Apply changed inputs (snapshot, symbol, selection, lock, overrides, preview…) and redraw. A
    *  scope or symbol change cancels any in-flight gesture (the drop-time guard also re-checks). */
   update(patch: Partial<TradeLineOptions>): void
+  /** Would a FINGER pressing here land on one of the lines' controls? A touch host asks before it
+   *  spends the press on a gesture of its own (a press-and-hold that raises a menu, say) — a menu
+   *  rising out of the send button you were aiming at takes the trade away from the tap that was
+   *  about to make it. Answers in the finger's reach whatever pointer is in use, because the host
+   *  asks on `touchstart`, before this layer has seen a pointer event at all. */
+  controlAt(clientX: number, clientY: number): boolean
   detach(): void
 }
 
@@ -362,6 +385,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
    *  call — so the window that bounds an unanswered drop is correspondingly short. */
   const PENDING_DRAFT_MS = 2000
   let dragging: DragState | null = null
+  /** Whether the pointer working the chart right now is a FINGER. Read off each event rather than
+   *  off a media query, because the device answers a query and the event answers the question: a
+   *  phone driven by a trackpad and a laptop with a touchscreen both get the reach they earn, on
+   *  the gesture, and a mouse never widens because a touchscreen exists somewhere on the machine. */
+  let coarse = false
+  const notePointer = (e: PointerEvent) => {
+    coarse = e.pointerType === 'touch'
+  }
+  /** How far from a line's body a grab still registers, for whichever pointer is being used. */
+  const grabPx = () => (coarse ? GRAB_TOUCH_PX : GRAB_PX)
   let previewDrag: PreviewDragState | null = null
   let pendingX: PendingX | null = null
   let pendingPreviewX: PendingPreviewX | null = null
@@ -601,22 +634,37 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   }
   requestAnimationFrame(syncOverlay)
 
-  /** The control under the pointer, resolved against the painted rectangles. */
-  const partAt = (clientX: number, clientY: number): { key: string; entry: LineEntry; hit: PartHit } | null => {
+  /** The control under the pointer, resolved against the painted rectangles — widened to a thumb
+   *  when the pointer is one. */
+  const partAt = (clientX: number, clientY: number, slopOverride?: number): { key: string; entry: LineEntry; hit: PartHit } | null => {
     const rect = container.getBoundingClientRect()
     const x = clientX - rect.left
     const y = clientY - rect.top
+    const slop = slopOverride ?? (coarse ? TOUCH_SLOP_PX : 0)
     let best: { key: string; entry: LineEntry; hit: PartHit } | null = null
+    let bestDist = Infinity
     for (const [key, node] of layouts) {
-      const hit = hitTestParts(node, x, y)
+      const hit = hitTestParts(node, x, y, slop)
       if (!hit) continue
       const entry = lines.get(key)
-      if (entry) best = { key, entry, hit }
+      if (!entry) continue
+      // hitTestParts settles ties WITHIN one line's control tree; this settles them BETWEEN lines,
+      // by the same rule and for the same reason. Two levels 20px apart on a phone both answer a
+      // widened tap, and the one the finger is on should win rather than the one drawn last.
+      const b = hit.node
+      const dx = x < b.x ? b.x - x : x > b.x + b.w ? x - (b.x + b.w) : 0
+      const dy = y < b.y ? b.y - y : y > b.y + b.h ? y - (b.y + b.h) : 0
+      const d = slop === 0 ? 0 : dx * dx + dy * dy
+      if (d <= bestDist) {
+        bestDist = d
+        best = { key, entry, hit }
+      }
     }
     return best
   }
 
   const onHoverMove = (e: PointerEvent) => {
+    notePointer(e)
     if (dragging || previewDrag || pendingX || pendingPreviewX) return
     const part = partAt(e.clientX, e.clientY)
     const id = part ? `${part.key}:${part.hit.id}` : null
@@ -1027,7 +1075,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       const ly = series.priceToCoordinate(entry.price)
       if (ly == null || ly < 0 || ly > rect.height) continue
       const dist = Math.abs(y - ly)
-      if (dist > GRAB_PX) continue
+      if (dist > grabPx()) continue
       cands.push({ key, kind: entry.kind, dist, isXZone: false, isRevZone: false })
     }
     const hit = pickHit(cands)
@@ -1054,7 +1102,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       const ly = series.priceToCoordinate(entry.price)
       if (ly == null || ly < 0 || ly > rect.height) continue
       const dist = Math.abs(yy - ly)
-      if (dist > GRAB_PX) continue
+      if (dist > grabPx()) continue
       if (!best || dist < best.dist) best = { key, entry, dist }
     }
     if (!best) return null
@@ -1209,13 +1257,16 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       const ly = series.priceToCoordinate(entry.price)
       if (ly == null || ly < 0 || ly > rect.height) continue
       const dist = Math.abs(yy - ly)
-      if (dist > GRAB_PX) continue
+      if (dist > grabPx()) continue
       if (!best || dist < best.dist) best = { key, entry, dist }
     }
     return best ? { key: best.key, entry: best.entry } : null
   }
 
   const onPointerDown = (e: PointerEvent) => {
+    // Ahead of every guard: the reach this gesture gets is decided by the pointer that opens it,
+    // and every hit test below reads that decision.
+    notePointer(e)
     if (e.button !== 0 || dragging || previewDrag || pendingX || pendingPreviewX || pendingQty || pendingSubmit || pendingOrderType || pendingObrX || pendingOrderQty) return
     if (!interactive()) return
     const capturedScope = opts.scope!
@@ -1837,7 +1888,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       } catch {
         /* capture may already be released */
       }
-      if (Math.abs(e.clientX - ps.downX) > CLICK_SLOP || Math.abs(e.clientY - ps.downY) > CLICK_SLOP) return
+      if (strayedFromTap(e, ps)) return
       if (!lines.has(ps.key)) return
       if (opts.locked || !interactive()) return // the lock can land between the press and the release
       opts.onDraftSubmit?.()
@@ -1853,7 +1904,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       } catch {
         /* capture may already be released */
       }
-      if (Math.abs(e.clientX - pot.downX) > CLICK_SLOP || Math.abs(e.clientY - pot.downY) > CLICK_SLOP) return
+      if (strayedFromTap(e, pot)) return
       const laid = layouts.get(pot.key)
       const cell = laid ? findPart(laid, 'orderType') : null
       if (!cell) return
@@ -1872,7 +1923,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       } catch {
         /* capture may already be released */
       }
-      if (Math.abs(e.clientX - pq.downX) > CLICK_SLOP || Math.abs(e.clientY - pq.downY) > CLICK_SLOP) return
+      if (strayedFromTap(e, pq)) return
       // Resolved from the LINE, not from the pointer: a market draft rides the live mark, so by the
       // time the finger lifts the chip has often slid off the pixel it was pressed on — and the editor
       // has to open where the chip is NOW, not where it was.
@@ -1901,6 +1952,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       }
       // A leg's ✕ is money too: same tap-on-same-control-same-selection rule as the line's ✕/⇄.
       const verdict = tapReleaseVerdict({
+        pointerType: e.pointerType,
         downX: pox.downX,
         downY: pox.downY,
         upX: e.clientX,
@@ -1930,7 +1982,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       } catch {
         /* capture may already be released */
       }
-      if (Math.abs(e.clientX - poq.downX) > CLICK_SLOP || Math.abs(e.clientY - poq.downY) > CLICK_SLOP) return
+      if (strayedFromTap(e, poq)) return
       const laid = layouts.get(poq.key)
       const cell = laid ? findPart(laid, 'qty') : null
       const ord = opts.snapshot.orders.find((o) => o && o.brokerOrderId === poq.brokerOrderId && o.status === 'working')
@@ -1988,6 +2040,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       }
       // Commits only as a TAP still resting on the same ✕ — dragged-off or reconciled-away is a no-op.
       const verdict = tapReleaseVerdict({
+        pointerType: e.pointerType,
         downX: ppx.downX,
         downY: ppx.downY,
         upX: e.clientX,
@@ -2012,6 +2065,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       // Money commits only as a TAP still resting on the same ✕/⇄ under the SAME selection —
       // a mid-gesture scope/symbol switch surfaces, everything else drops silently.
       const verdict = tapReleaseVerdict({
+        pointerType: e.pointerType,
         downX: px.downX,
         downY: px.downY,
         upX: e.clientX,
@@ -2170,6 +2224,12 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       // at drop is the backstop; this is the eager teardown the React host used to do).
       if (scopeChanged || symbolChanged) cancelGesture()
       draw()
+    },
+    controlAt(clientX, clientY) {
+      // Always the finger's reach, never the pointer's: the only caller is a touch host asking
+      // whether a press belongs to a control before it spends that press on something else, and it
+      // asks on `touchstart`, which can precede the pointerdown that would have set `coarse`.
+      return partAt(clientX, clientY, TOUCH_SLOP_PX) != null
     },
     detach() {
       detached = true
