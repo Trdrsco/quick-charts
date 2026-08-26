@@ -12,6 +12,7 @@ import {
   hitTestParts,
   layoutParts,
   PART_H,
+  TOUCH_SLOP_PX,
   TRADE_THEME,
   withAlpha,
   type LayoutNode,
@@ -372,6 +373,71 @@ describe('draft (order ticket) line', () => {
     expect(findPart(root, 'qty')).toBe(find(root, 'qty'))
     expect(findPart(root, 'submit')).toBe(find(root, 'side'))
     expect(findPart(root, 'reverse')).toBeNull()
+  })
+})
+
+// A part is PART_H tall because that is what the reference draws and what a MOUSE needs. A thumb
+// needs about 44, and on a phone these chips are the money path: the send button, the size, the ✕
+// that stands a ticket down. So the hit box takes the slop and the paint keeps its 19px.
+describe('a control under a thumb', () => {
+  const draft = () =>
+    layoutParts(
+      buildDraftParts({
+        surface: SURFACE,
+        accent: TRADE_THEME.accent,
+        sideLabel: 'Buy',
+        qty: 1,
+        orderType: 'Market',
+        supportTakeProfit: true,
+        supportStopLoss: true,
+        supportCancel: true,
+      }),
+      { rightEdge: RIGHT_EDGE, centerY: CENTER_Y, measure },
+    )
+  const CHIPS: readonly [string, string][] = [
+    ['side', 'submit'],
+    ['qty', 'qty'],
+    ['orderType', 'orderType'],
+    ['close', 'close'],
+    ['tp', 'tp'],
+    ['sl', 'sl'],
+  ]
+
+  it('puts a 19px part on a target a thumb can hit', () => {
+    expect(PART_H + TOUCH_SLOP_PX * 2).toBeGreaterThanOrEqual(44)
+  })
+
+  it('answers a press that lands past an edge the finger is covering', () => {
+    const root = draft()
+    const side = find(root, 'side')
+    const belowTheRow = side.y + PART_H + 8
+    expect(hitTestParts(root, side.x + 4, belowTheRow)).toBeNull()
+    expect(hitTestParts(root, side.x + 4, belowTheRow, TOUCH_SLOP_PX)?.role).toBe('submit')
+  })
+
+  it('never lets a widened control swallow the one beside it', () => {
+    const root = draft()
+    // Every chip sits within a slop of its neighbours once the boxes grow, so each of these points
+    // is inside SEVERAL hit boxes. The one the finger is actually on has to win, or widening the ✕
+    // would quietly turn a tap on the size chip into standing the ticket down.
+    for (const [id, role] of CHIPS) {
+      const n = find(root, id)
+      expect(hitTestParts(root, n.x + n.w / 2, CENTER_Y, TOUCH_SLOP_PX)?.role, id).toBe(role)
+    }
+  })
+
+  it('changes nothing about a press that already landed on its control', () => {
+    const root = draft()
+    for (const [id] of CHIPS) {
+      const n = find(root, id)
+      const x = n.x + n.w / 2
+      expect(hitTestParts(root, x, CENTER_Y, TOUCH_SLOP_PX)?.id, id).toBe(hitTestParts(root, x, CENTER_Y)?.id)
+    }
+  })
+
+  it('still falls through to the chart well clear of the row', () => {
+    const root = draft()
+    expect(hitTestParts(root, find(root, 'side').x + 4, CENTER_Y + 120, TOUCH_SLOP_PX)).toBeNull()
   })
 })
 

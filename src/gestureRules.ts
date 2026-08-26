@@ -5,6 +5,18 @@
 
 /** How far (px) a press may wander before release and still count as a tap. */
 export const CLICK_SLOP = 4
+/** The same allowance for a FINGER. A mouse releases within a pixel or two of where it pressed, so
+ *  4 separates a click from an abandoned drag cleanly. A thumb does not: it lands on a soft contact
+ *  patch, rolls slightly as it presses, and routinely reports 8 to 10px between down and up on a
+ *  tap the person experienced as perfectly still. Judging that by the mouse's number drops real
+ *  taps, and the control it drops them on is the send button, which makes the app look like it
+ *  ignored an order rather than like it measured a gesture strictly. */
+export const CLICK_SLOP_TOUCH = 12
+
+/** The tap allowance for the pointer in use. */
+export function clickSlopFor(pointerType: string | undefined): number {
+  return pointerType === 'touch' ? CLICK_SLOP_TOUCH : CLICK_SLOP
+}
 
 export type TapVerdict = 'commit' | 'strayed' | 'missed' | 'scope_changed'
 
@@ -23,8 +35,12 @@ export function tapReleaseVerdict(a: {
   /** Omitted for pre-money controls (a draft's ✕): nothing brokered, nothing to guard. The
    *  current side may be null (deselected mid-gesture) — that IS a selection change. */
   scopes?: { captured: { scope: string; symbol: string }; current: { scope: string | null; symbol: string | null } }
+  /** The pointer that made the gesture. Sets the wander allowance (see clickSlopFor); absent reads
+   *  as a mouse, which keeps every existing caller on the strict number. */
+  pointerType?: string
 }): TapVerdict {
-  if (Math.abs(a.upX - a.downX) > CLICK_SLOP || Math.abs(a.upY - a.downY) > CLICK_SLOP) return 'strayed'
+  const slop = clickSlopFor(a.pointerType)
+  if (Math.abs(a.upX - a.downX) > slop || Math.abs(a.upY - a.downY) > slop) return 'strayed'
   if (!a.onSameControl()) return 'missed'
   if (a.scopes && (a.scopes.captured.scope !== a.scopes.current.scope || a.scopes.captured.symbol !== a.scopes.current.symbol)) return 'scope_changed'
   return 'commit'
