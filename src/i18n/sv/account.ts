@@ -14,10 +14,7 @@ export const account: Translation<typeof source> = {
   'account.closeTitle': 'Stäng {instrument} till marknadspris',
   'account.reverse': 'Vänd',
   'account.reverseTitle': 'Vänd {instrument}',
-  'account.reversed': {
-    one: 'Vände {instrument} ({count} order avbruten)',
-    other: 'Vände {instrument} ({count} ordrar avbrutna)',
-  },
+  'account.reversed': { one: 'Vände {instrument} ({count} order avbruten)', other: 'Vände {instrument} ({count} ordrar avbrutna)' },
   'account.buy': 'Köp {qty} {type}',
   'account.sell': 'Sälj {qty} {type}',
   'account.cancel': 'Avbryt',
