@@ -46,6 +46,15 @@ export interface ChartLegend {
 
 const EYE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></svg>'
 const EYE_OFF = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 12s3.5-6 10-6c1.8 0 3.4.5 4.8 1.2M22 12s-3.5 6-10 6c-1.8 0-3.4-.5-4.8-1.2"/><path d="M4 20 20 4"/></svg>'
+/** The chips' own words, by scale mode — SCALE_MODE_OPTIONS carries the English of each as its
+ *  `label`, which is what a host rendering its own settings control shows. */
+const SCALE_MODE_KEY: Record<ScaleMode, 'legend.scaleNormal' | 'legend.scaleLog' | 'legend.scalePercent' | 'legend.scaleIndexed'> = {
+  normal: 'legend.scaleNormal',
+  log: 'legend.scaleLog',
+  percent: 'legend.scalePercent',
+  indexed: 'legend.scaleIndexed',
+}
+
 const GEAR = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>'
 
 /** `strings` is the widget's language: every visible label reads through `strings.t` at render time,
@@ -74,7 +83,10 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, s
   // The scale-mode chips ride the header (present only when the host handles them).
   const scaleButtons = new Map<ScaleMode, HTMLButtonElement>()
   const titleScaleButtons = () => {
-    for (const [id, b] of scaleButtons) b.title = strings.t('legend.priceScale', { mode: id })
+    for (const [id, b] of scaleButtons) {
+      b.title = strings.t('legend.priceScale', { mode: id })
+      b.textContent = strings.t(SCALE_MODE_KEY[id])
+    }
   }
   if (controls.onScaleMode) {
     const row = document.createElement('span')
@@ -82,7 +94,7 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, s
     for (const opt of SCALE_MODE_OPTIONS) {
       const b = document.createElement('button')
       b.type = 'button'
-      b.textContent = opt.label
+      b.textContent = strings.t(SCALE_MODE_KEY[opt.id])
       b.style.cssText = `background:none;border:1px solid ${theme.gridColor};border-radius:4px;color:${theme.textColor};cursor:pointer;padding:0 5px;font-size:10px;line-height:14px;`
       b.addEventListener('click', () => controls.onScaleMode?.(opt.id))
       scaleButtons.set(opt.id, b)

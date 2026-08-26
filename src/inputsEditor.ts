@@ -4,6 +4,7 @@
 // events stopped. Pre-render: it only hands a validated input patch back; the host owns the
 // recompute.
 import type { ResolvedTheme } from './host'
+import { createChartI18n, type ChartI18n } from './i18n'
 import type { ManifestInput } from './indicatorModel'
 
 export function openInputsEditor(
@@ -13,6 +14,9 @@ export function openInputsEditor(
   current: Readonly<Record<string, number>>,
   theme: ResolvedTheme,
   onApply: (patch: Record<string, number>) => void,
+  /** The widget's language — the two actions re-label if it changes while the editor is open. A
+   *  field's name and an enum's options are the manifest's own vocabulary and are not translated. */
+  strings: ChartI18n = createChartI18n(),
 ): void {
   const host = container.getBoundingClientRect()
   const el = document.createElement('div')
@@ -22,7 +26,10 @@ export function openInputsEditor(
     `display:flex;flex-direction:column;gap:4px;font-size:11px;color:${theme.textColor};pointer-events:auto;min-width:150px;`
   for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) el.addEventListener(type, (e) => e.stopPropagation())
 
-  const dismiss = () => el.remove()
+  const dismiss = () => {
+    unsubscribe()
+    el.remove()
+  }
   const fields = new Map<string, HTMLInputElement | HTMLSelectElement>()
 
   for (const [key, spec] of Object.entries(inputs)) {
@@ -76,7 +83,7 @@ export function openInputsEditor(
 
   const buttons = document.createElement('div')
   buttons.style.cssText = 'display:flex;justify-content:flex-end;gap:6px;margin-top:2px;'
-  const mkButton = (label: string, onClick: () => void, accent = false) => {
+  const mkButton = (label: string, onClick: () => void, accent = false): HTMLButtonElement => {
     const b = document.createElement('button')
     b.type = 'button'
     b.textContent = label
@@ -85,10 +92,16 @@ export function openInputsEditor(
       `color:${accent ? theme.upColor : theme.textColor};cursor:pointer;padding:1px 8px;font-size:11px;`
     b.addEventListener('click', onClick)
     buttons.appendChild(b)
+    return b
   }
-  mkButton('Cancel', dismiss)
-  mkButton('Apply', apply, true)
+  const cancelButton = mkButton(strings.t('inputs.cancel'), () => dismiss())
+  const applyButton = mkButton(strings.t('inputs.apply'), apply, true)
   el.appendChild(buttons)
+
+  const unsubscribe = strings.onChange(() => {
+    cancelButton.textContent = strings.t('inputs.cancel')
+    applyButton.textContent = strings.t('inputs.apply')
+  })
 
   el.addEventListener('keydown', (e) => {
     e.stopPropagation()

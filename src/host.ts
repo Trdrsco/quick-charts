@@ -407,6 +407,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       textColor: () => theme.textColor,
       labels: () => execLabels || eff.trading.executionLabels,
       precision: () => (symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : null),
+      strings: i18n,
     })
   }
   /** Refetch the LIVE scope's fills for the charted symbol (adapters that declare executions()
@@ -454,7 +455,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       events: drawingsEvents,
     })
     if (options.drawings?.rail !== false) {
-      drawingsRail = mountDrawingsRail(chromeBox, drawingsHandle, theme)
+      drawingsRail = mountDrawingsRail(chromeBox, drawingsHandle, theme, i18n)
       drawingsEvents.onToolChange = drawingsRail.syncTool
       drawingsEvents.onSelectionChange = drawingsRail.syncSelection
     }
@@ -483,10 +484,18 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         const inst = indicatorInstances.find((i) => i.id === id)
         if (!inst) return
         const declared = inst.definition.manifest.inputs ?? {}
-        openInputsEditor(chromeBox, rect, declared, { ...manifestInputDefaults(inst.definition.manifest), ...inst.inputs }, theme, (patch) => {
-          indicatorInstances = indicatorInstances.map((i) => (i.id === id ? { ...i, inputs: { ...i.inputs, ...patch } } : i))
-          recomputeIndicators()
-        })
+        openInputsEditor(
+          chromeBox,
+          rect,
+          declared,
+          { ...manifestInputDefaults(inst.definition.manifest), ...inst.inputs },
+          theme,
+          (patch) => {
+            indicatorInstances = indicatorInstances.map((i) => (i.id === id ? { ...i, inputs: { ...i.inputs, ...patch } } : i))
+            recomputeIndicators()
+          },
+          i18n,
+        )
       },
       onPaneOp: (id, op) => {
         const paneIdx = indicatorsRenderer.paneOf()[id]
@@ -532,6 +541,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         onChange: (preview) => tradeLines?.update({ preview }),
         onAction: (text) => events.onTradingAction?.(text),
         onError: (msg) => events.onTradingError?.(msg),
+        strings: i18n,
       })
     }
     tradeLines = attachTradeLines({ chart, series: candles, container: chartBox }, adapter.broker, {
@@ -544,6 +554,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       // host layers this IS the package default the surface always used; applyOverrides refreshes
       // it through update().
       overrides: eff.trading,
+      strings: i18n,
       onAction: (text, undo) => events.onTradingAction?.(text, undo),
       onError: (msg) => events.onTradingError?.(msg),
       // The draft path routes to the ticket controller; the micro-editors are the package's own
@@ -556,17 +567,23 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
             onQtyEdit: (args: { qty: number; step: number; rect: { x: number; y: number; w: number; h: number } }) =>
               openQtyPopover(chromeBox, args.rect, args.qty, args.step, theme, (qty) => ticket?.setQty(qty)),
             onOrderTypeEdit: (args: { current: string; rect: { x: number; y: number; w: number; h: number } }) =>
-              openTypeMenu(chromeBox, args.rect, args.current, theme, (orderType) => ticket?.setOrderType(orderType)),
+              openTypeMenu(chromeBox, args.rect, args.current, theme, (orderType) => ticket?.setOrderType(orderType), i18n),
           }
         : {}),
     })
     // The account panel: the SAME snapshot plane as the lines, the SAME broker seam for its
     // actions — one data plane, one write path, two views.
     if (panelHost) {
-      accountPanel = mountAccountPanel(panelHost, adapter.broker, theme, {
-        onAction: (text) => events.onTradingAction?.(text),
-        onError: (msg) => events.onTradingError?.(msg),
-      })
+      accountPanel = mountAccountPanel(
+        panelHost,
+        adapter.broker,
+        theme,
+        {
+          onAction: (text) => events.onTradingAction?.(text),
+          onError: (msg) => events.onTradingError?.(msg),
+        },
+        i18n,
+      )
     }
     /** The last snapshot's position-quantity signature — the honest executions-refetch trigger:
      *  a fill is the only event that moves a quantity, while P&L churns with every price tick
@@ -655,8 +672,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       // Honest gate: a volume-based definition on a feed that carries no volume draws nothing
       // (an all-zero flat line would be a lie), and the unavailable note says why.
       if (def.manifest.needsVolume && !hasVolume) {
-        indicatorsRenderer.render(inst.id, { placement, title, plots: [], unavailable: 'No volume from this feed' })
-        chips.push({ ...chipBase, value: null, note: 'No volume from this feed', hidden: false })
+        const note = i18n.t('host.noVolume')
+        indicatorsRenderer.render(inst.id, { placement, title, plots: [], unavailable: note })
+        chips.push({ ...chipBase, value: null, note, hidden: false })
         continue
       }
       let channels: Readonly<Record<string, readonly (number | null)[]>>
@@ -1050,8 +1068,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         },
         theme,
         subIntervalsFor(tf).map((s) => s.tf),
+        i18n,
       )
-      legend?.setHeader(symbol, `${tf} · replay`)
+      legend?.setHeader(symbol, i18n.t('host.replayHeader', { tf }))
       replayLockRefresh()
       // Replay is a SEPARATE fill timeline: live marks hide for the whole session; whatever the
       // host pushes into the 'replay' scope (a replay-trading sim's fills) draws instead.
@@ -1191,6 +1210,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         }
       },
       theme,
+      i18n,
     )
     chartBox.addEventListener('contextmenu', (e) => {
       const price = priceAt(e.clientY)
@@ -1202,7 +1222,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       contextMenu?.open(
         { clientX: e.clientX, clientY: e.clientY },
         {
-          priceText: price.toLocaleString('en-US', { maximumFractionDigits: 8 }),
+          priceText: price.toLocaleString(i18n.tag(), { maximumFractionDigits: 8 }),
           symbol,
           aboveMarket: mark != null && mark > 0 ? price >= mark : null,
           tradable: true,
@@ -1326,6 +1346,13 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     },
   }
 
+  // The legend header carries a WORD while replay is on, so the language has to reach it: every
+  // other piece of chrome re-labels itself, but the header's text is the host's to set.
+  const unsubscribeStrings = i18n.onChange(() => {
+    if (removed) return
+    legend?.setHeader(symbol, replayAll === null ? tf : i18n.t('host.replayHeader', { tf }))
+  })
+
   /** The widget's saved-chart CONTENT format. Versioned because the blob is contractually opaque
    *  to every backend — the reader here is the only place an upgrade path can ever live. */
   const CONTENT_V = 1
@@ -1410,6 +1437,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       epoch++
       unsubscribe?.()
       unsubscribe = null
+      unsubscribeStrings()
       abandonReplay()
       if (saveNeededTimer) clearTimeout(saveNeededTimer)
       if (indicatorTrailer) clearTimeout(indicatorTrailer)

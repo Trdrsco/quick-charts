@@ -8,6 +8,11 @@
 // gesture layer only turns pointer coordinates into a price and a resolved hit, then asks these
 // functions WHAT to do. A host's policy is the same gate its server runs, so the chart drag and the
 // backend can never disagree on a valid price.
+//
+// The refusals and confirmations these functions RETURN are the widget's own words, so each takes
+// the language optionally (`t`) and speaks English without one. A refusal that comes from the host's
+// policy — or from the backend — is that system's own text and passes through untranslated.
+import { englishChartStrings, type ChartTranslate } from './i18n'
 
 /** What a live trade line represents. A stop-limit order renders as TWO lines, one per price — the
  *  reference behavior: `stop_limit` is the
@@ -252,6 +257,8 @@ export interface PlanCtx {
   mark?: number
   /** The host's price gate. Omitted ⇒ snap-only. */
   policy?: PricePolicy
+  /** The widget's language for the plan's own toast, note and refusal. Omitted ⇒ English. */
+  t?: ChartTranslate
 }
 
 /** What the gesture layer should execute. `intentKey` is the idempotency hint handed to the broker
@@ -286,31 +293,32 @@ const noErrors: PricePolicy = () => []
 
 export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: PlanCtx): BrokerPlan {
   const { snapshot, scope, tick, mark } = ctx
+  const t = ctx.t ?? englishChartStrings()
   const validate = ctx.policy ?? noErrors
   const positions = snapshot.positions
   const orders = snapshot.orders
 
   if (target.type === 'flatten') {
     const pos = positions.find((p) => p.instrument === target.instrument && p.qty !== 0)
-    if (!pos) return drop('Position already closed')
-    return { drop: false, method: 'flatten', instrument: pos.instrument, toast: 'Position closed' }
+    if (!pos) return drop(t('broker.positionAlreadyClosed'))
+    return { drop: false, method: 'flatten', instrument: pos.instrument, toast: t('broker.positionClosed') }
   }
 
   if (target.type === 'cancel') {
     const ord = orders.find((o) => o.brokerOrderId === target.brokerOrderId && o.status === 'working')
-    if (!ord) return drop('Order no longer working')
-    return { drop: false, method: 'cancel', instrument: ord.instrument, brokerOrderId: ord.brokerOrderId, toast: 'Order cancelled' }
+    if (!ord) return drop(t('broker.orderNotWorking'))
+    return { drop: false, method: 'cancel', instrument: ord.instrument, brokerOrderId: ord.brokerOrderId, toast: t('broker.orderCancelled') }
   }
 
   // Reprice (stop or limit): require a known tick, then snap BEFORE validating + calling the broker.
-  if (!(typeof tick === 'number' && tick > 0)) return drop('Tick size unknown, cannot reprice')
+  if (!(typeof tick === 'number' && tick > 0)) return drop(t('broker.tickUnknownReprice'))
   const snapped = snapPrice(finalPrice, tick)
 
   if (target.type === 'reprice-limit') {
     const ord = orders.find((o) => o.brokerOrderId === target.brokerOrderId && o.status === 'working' && o.orderType === 'limit')
-    if (!ord) return drop('Order no longer working')
+    if (!ord) return drop(t('broker.orderNotWorking'))
     const cur = ord.limitPrice
-    if (typeof cur !== 'number' || cur <= 0) return drop('No current limit price to band against')
+    if (typeof cur !== 'number' || cur <= 0) return drop(t('broker.noLimitBand'))
     const errs = validate(snapped, { tick, ref: cur })
     if (errs.length) return drop(errs[0]!)
     // Classify AT DROP, exactly as the stop branch below does. A limit that CLOSES an open position is
@@ -331,7 +339,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
         instrument: ord.instrument,
         price: snapped,
         intentKey: `target|${scope}|${ord.instrument}|${snapped}`,
-        toast: `Target moved to ${fmtPrice(snapped, tick)}`,
+        toast: t('broker.targetMoved', { price: fmtPrice(snapped, tick) }),
       }
     }
     return {
@@ -344,7 +352,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
       qty: ord.qty,
       orderType: 'limit',
       intentKey: `replace|${scope}|${ord.brokerOrderId}|${snapped}`,
-      toast: `Order moved to ${fmtPrice(snapped, tick)}`,
+      toast: t('broker.orderMoved', { price: fmtPrice(snapped, tick) }),
     }
   }
 
@@ -354,10 +362,10 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
   // the venue is the authority there.
   if (target.type === 'reprice-stop-limit') {
     const ord = orders.find((o) => o.brokerOrderId === target.brokerOrderId && o.status === 'working' && o.orderType === 'stop_limit')
-    if (!ord) return drop('Order no longer working')
+    if (!ord) return drop(t('broker.orderNotWorking'))
     const trigger = ord.triggerPrice
     const limit = ord.limitPrice
-    if (typeof trigger !== 'number' || trigger <= 0 || typeof limit !== 'number' || limit <= 0) return drop('Order prices unknown, cannot reprice')
+    if (typeof trigger !== 'number' || trigger <= 0 || typeof limit !== 'number' || limit <= 0) return drop(t('broker.pricesUnknownReprice'))
     const cur = target.leg === 'trigger' ? trigger : limit
     const errs = validate(snapped, { tick, ref: cur })
     if (errs.length) return drop(errs[0]!)
@@ -374,7 +382,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
       qty: ord.qty,
       orderType: 'stop_limit',
       intentKey: `replace|${scope}|${ord.brokerOrderId}|${nextTrigger}|${nextLimit}`,
-      toast: `${target.leg === 'trigger' ? 'Trigger' : 'Limit'} moved to ${fmtPrice(snapped, tick)}`,
+      toast: t(target.leg === 'trigger' ? 'broker.triggerMoved' : 'broker.limitMoved', { price: fmtPrice(snapped, tick) }),
     }
   }
 
@@ -382,7 +390,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
   // goes through setExits (the position-level protective pair); anything else (scale-in
   // with >1 stop, or no position) is a plain working-order reprice banded against its own trigger.
   const ord = orders.find((o) => o.brokerOrderId === target.brokerOrderId && o.status === 'working' && o.orderType === 'stop')
-  if (!ord) return drop('Order no longer working')
+  if (!ord) return drop(t('broker.orderNotWorking'))
   const pos = positions.find((p) => p.instrument === ord.instrument && p.qty !== 0)
   const workingStops = orders.filter((o) => o.orderType === 'stop' && o.instrument === ord.instrument && o.status === 'working')
   const protective = !!pos && workingStops.length === 1
@@ -390,7 +398,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
   if (protective) {
     const avg = typeof pos!.avgPrice === 'number' && pos!.avgPrice > 0 ? pos!.avgPrice : null
     const anchor = avg ?? (typeof mark === 'number' && mark > 0 ? mark : null)
-    if (anchor == null) return drop('No price to anchor the stop against')
+    if (anchor == null) return drop(t('broker.noStopAnchor'))
     const errs = validate(snapped, {
       tick,
       ref: anchor,
@@ -406,15 +414,15 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
       instrument: ord.instrument,
       price: snapped,
       intentKey: `stop|${scope}|${ord.instrument}|${snapped}`,
-      toast: `Stop moved to ${fmtPrice(snapped, tick)}`,
+      toast: t('broker.stopMoved', { price: fmtPrice(snapped, tick) }),
       undoPrevStop: prevStop,
-      note: typeof mark === 'number' && mark > 0 ? undefined : 'No live price, stop side unverified',
+      note: typeof mark === 'number' && mark > 0 ? undefined : t('broker.stopSideUnverified'),
     }
   }
 
   // Non-protective stop reprice (scale-in / orphaned working stop): band vs its CURRENT trigger, no undo.
   const cur = ord.triggerPrice
-  if (typeof cur !== 'number' || cur <= 0) return drop('No current stop price to band against')
+  if (typeof cur !== 'number' || cur <= 0) return drop(t('broker.noStopBand'))
   const errs = validate(snapped, { tick, ref: cur })
   if (errs.length) return drop(errs[0]!)
   return {
@@ -427,7 +435,7 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
     qty: ord.qty,
     orderType: 'stop',
     intentKey: `replace|${scope}|${ord.brokerOrderId}|${snapped}`,
-    toast: `Stop moved to ${fmtPrice(snapped, tick)}`,
+    toast: t('broker.stopMoved', { price: fmtPrice(snapped, tick) }),
     undoPrevStop: null,
   }
 }
@@ -438,10 +446,11 @@ export function planBrokerDrop(target: DropTarget, finalPrice: number, ctx: Plan
  *  the position changed. */
 export function boundStopPrice(
   price: number,
-  opts: { tick?: number; anchor: number | null; protectiveSide: 'long' | 'short'; mark?: number; policy?: PricePolicy },
+  opts: { tick?: number; anchor: number | null; protectiveSide: 'long' | 'short'; mark?: number; policy?: PricePolicy; t?: ChartTranslate },
 ): { price: number } | { error: string } {
-  if (!(typeof opts.tick === 'number' && opts.tick > 0)) return { error: 'Tick size unknown' }
-  if (opts.anchor == null) return { error: 'No anchor' }
+  const t = opts.t ?? englishChartStrings()
+  if (!(typeof opts.tick === 'number' && opts.tick > 0)) return { error: t('broker.tickUnknown') }
+  if (opts.anchor == null) return { error: t('broker.noAnchor') }
   const snapped = snapPrice(price, opts.tick)
   const errs = (opts.policy ?? noErrors)(snapped, {
     tick: opts.tick,
@@ -458,17 +467,18 @@ export function boundStopPrice(
  *  trader never aimed at. */
 export function boundBracketPrice(
   price: number,
-  opts: { tick?: number; anchor: number | null; positionSide: 'long' | 'short'; kind: 'tp' | 'sl'; mark?: number; policy?: PricePolicy },
+  opts: { tick?: number; anchor: number | null; positionSide: 'long' | 'short'; kind: 'tp' | 'sl'; mark?: number; policy?: PricePolicy; t?: ChartTranslate },
 ): { price: number } | { error: string } {
+  const t = opts.t ?? englishChartStrings()
   if (opts.kind === 'sl') {
-    return boundStopPrice(price, { tick: opts.tick, anchor: opts.anchor, protectiveSide: opts.positionSide, mark: opts.mark, policy: opts.policy })
+    return boundStopPrice(price, { tick: opts.tick, anchor: opts.anchor, protectiveSide: opts.positionSide, mark: opts.mark, policy: opts.policy, t: opts.t })
   }
-  if (!(typeof opts.tick === 'number' && opts.tick > 0)) return { error: 'Tick size unknown' }
-  if (opts.anchor == null) return { error: 'No anchor' }
+  if (!(typeof opts.tick === 'number' && opts.tick > 0)) return { error: t('broker.tickUnknown') }
+  if (opts.anchor == null) return { error: t('broker.noAnchor') }
   const snapped = snapPrice(price, opts.tick)
   const above = opts.positionSide === 'long'
   if (above ? snapped <= opts.anchor : snapped >= opts.anchor) {
-    return { error: `Take profit must be ${above ? 'above' : 'below'} the entry` }
+    return { error: t(above ? 'broker.takeProfitAbove' : 'broker.takeProfitBelow') }
   }
   return { price: snapped }
 }

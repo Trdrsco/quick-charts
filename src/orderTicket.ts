@@ -6,6 +6,7 @@
 // structural, as everywhere on the draft path: every edit only recomposes the preview; the ONLY
 // call that can spend is submit(), and it refuses without an armed scope.
 import { snapPrice, type ChartBroker, type PricePolicy } from './broker'
+import { createChartI18n, type ChartI18n } from './i18n'
 import type { PreviewLine, PreviewSet } from './tradeLines'
 
 export type TicketOrderType = 'market' | 'limit' | 'stop' | 'stop_limit'
@@ -54,6 +55,9 @@ export interface OrderTicketDeps {
   onChange: (preview: PreviewSet | null, state: TicketState | null) => void
   onAction?: (text: string) => void
   onError?: (msg: string) => void
+  /** The widget's language — what the ticket says about a refusal or a placement. The draft it
+   *  publishes stays in canonical English (see TYPE_LABEL); only the words it speaks are translated. */
+  strings?: ChartI18n
 }
 
 export interface OrderTicket {
@@ -72,9 +76,29 @@ export interface OrderTicket {
   destroy(): void
 }
 
+/** The order type's CANONICAL label — the token the PreviewSet carries to the trade-line layer and
+ *  to a host, matched against rather than shown as-is, so it stays English in every language. The
+ *  layer that PAINTS it translates it through TICKET_TYPE_KEY. */
 const TYPE_LABEL: Record<TicketOrderType, string> = { market: 'Market', limit: 'Limit', stop: 'Stop', stop_limit: 'Stop Limit' }
 
+/** The catalog key for each order type — the widget's one order-type vocabulary, shared by the type
+ *  menu, the draft line's type cell and a resting order's label. */
+export const TICKET_TYPE_KEY: Record<TicketOrderType, 'ticket.typeMarket' | 'ticket.typeLimit' | 'ticket.typeStop' | 'ticket.typeStopLimit'> = {
+  market: 'ticket.typeMarket',
+  limit: 'ticket.typeLimit',
+  stop: 'ticket.typeStop',
+  stop_limit: 'ticket.typeStopLimit',
+}
+
+/** The type id a canonical label names, for a caller holding the label alone (a PreviewSet from a
+ *  host says 'Stop Limit', not 'stop_limit'). Unknown text is a host's own wording and stays. */
+export function ticketTypeOfLabel(label: string | undefined): TicketOrderType | null {
+  const found = (Object.keys(TYPE_LABEL) as TicketOrderType[]).find((id) => TYPE_LABEL[id] === label)
+  return found ?? null
+}
+
 export function createOrderTicket(deps: OrderTicketDeps): OrderTicket {
+  const strings = deps.strings ?? createChartI18n()
   let draft: TicketState | null = null
   /** Mints per composed intent: stable across RETRIES of the same order, fresh the moment any
    *  field of the order changes — the idempotency contract every money path here follows. */
@@ -163,15 +187,15 @@ export function createOrderTicket(deps: OrderTicketDeps): OrderTicket {
       if (!draft || !intentKey) return
       const scope = deps.scope()
       if (!scope) {
-        deps.onError?.('No account armed — connect an account to place orders.')
+        deps.onError?.(strings.t('ticket.noAccount'))
         return
       }
       if (deps.locked?.()) {
-        deps.onError?.('Trading is locked for this account.')
+        deps.onError?.(strings.t('ticket.locked'))
         return
       }
       if (draft.orderType !== 'market' && draft.price == null) {
-        deps.onError?.('The order needs a price.')
+        deps.onError?.(strings.t('ticket.needsPrice'))
         return
       }
       // The same gate a drag runs: the host's rules, over the composed entry.
@@ -195,7 +219,7 @@ export function createOrderTicket(deps: OrderTicketDeps): OrderTicket {
       }
       if (deps.confirm && !(await deps.confirm(order))) return // vetoed — the draft stays for editing
       if (!deps.broker.placeOrder) {
-        deps.onError?.('This integration does not place orders.')
+        deps.onError?.(strings.t('ticket.cannotPlace'))
         return
       }
       try {
@@ -204,7 +228,12 @@ export function createOrderTicket(deps: OrderTicketDeps): OrderTicket {
         deps.onError?.(e instanceof Error ? e.message : String(e)) // the broker's words, verbatim
         return // the draft stays — the trader edits and retries (same intent → same key)
       }
-      deps.onAction?.(`${order.side === 'buy' ? 'Buy' : 'Sell'} ${order.qty} ${TYPE_LABEL[order.orderType]} placed`)
+      deps.onAction?.(
+        strings.t(order.side === 'buy' ? 'ticket.placedBuy' : 'ticket.placedSell', {
+          qty: order.qty,
+          type: strings.t(TICKET_TYPE_KEY[order.orderType]),
+        }),
+      )
       draft = null
       publish()
     },

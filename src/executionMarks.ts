@@ -30,6 +30,7 @@
 // no framework. Arrows are canvas (they must track pan/zoom per paint, like the reference); the
 // card is DOM in the host's chrome overlay.
 import type { IChartApi, ISeriesApi, MouseEventParams, SeriesType, Time } from 'lightweight-charts'
+import { createChartI18n, type ChartI18n } from './i18n'
 import { withAlpha } from './tradeLineParts'
 
 /** One execution (a fill), in the host's vocabulary. `timeSecs` is the FILL time — the attachment
@@ -232,6 +233,10 @@ export interface ExecutionMarksOptions {
   precision?(): number | null
   /** Card palette override (read when a card opens). */
   card?(): ExecutionCardPalette
+  /** The widget's language — the card's own words and its row dates. A card is a click-transient
+   *  popover, so it is written in the language of the moment it opens. Omitted ⇒ English words and
+   *  the viewer's own locale for the dates. */
+  strings?: ChartI18n
 }
 
 export interface ExecutionMarksHandle {
@@ -249,9 +254,10 @@ export interface ExecutionMarksHandle {
 }
 
 const fmtQty = (n: number): string => String(Number(n.toFixed(9)))
-/** The reference's row date: "Tue, Aug 18, 15:41". */
-const fmtWhen = (secs: number): string =>
-  new Date(secs * 1000).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+/** The reference's row date: "Tue, Aug 18, 15:41". A date, so the widget's language writes it
+ *  through `Intl` rather than a catalog; without one the viewer's own locale does, as it always has. */
+const fmtWhen = (secs: number, tag?: string): string =>
+  new Date(secs * 1000).toLocaleString(tag, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
 
 /** The default card palette (a neutral dark); hosts pass their own via `card()`. */
 const DEFAULT_CARD: ExecutionCardPalette = {
@@ -274,6 +280,9 @@ export function attachExecutionMarks(
   opts: ExecutionMarksOptions,
 ): ExecutionMarksHandle {
   const sets: Record<ExecutionScope, readonly ChartExecution[]> = { live: [], replay: [] }
+  /** The card's words, read as it is built. `opts.strings` stays the authority for the row DATES:
+   *  with no language named they follow the viewer's own locale, which a default would override. */
+  const strings = opts.strings ?? createChartI18n()
   let activeScope: ExecutionScope = 'live'
   let hits: ArrowHit[] = []
   /** The hovered group's `barTime|side` key — the next paint tints that group's box. */
@@ -457,18 +466,18 @@ export function attachExecutionMarks(
     chip.textContent = String(g.fills.length)
     chip.style.cssText = `display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:50px;background:${sideColor};color:#fff;font-size:10px;font-weight:500;padding:0 2px;margin-right:8px`
     const label = document.createElement('span')
-    label.textContent = g.side === 'buy' ? 'Buy' : 'Sell'
+    label.textContent = strings.t(g.side === 'buy' ? 'marks.buy' : 'marks.sell')
     label.style.cssText = `font-size:15px;font-weight:500;color:${pal.text}`
     title.append(chip, label)
     el.append(title)
     if (g.fills.length > 1) {
       const sub = document.createElement('div')
       sub.setAttribute('data-role', 'execution-subtitle')
-      sub.textContent = `${fmtQty(g.qty)} @ ${g.avgPrice.toFixed(decimalsFor(g.avgPrice))} avg price`
+      sub.textContent = strings.t('marks.avgPrice', { qty: fmtQty(g.qty), price: g.avgPrice.toFixed(decimalsFor(g.avgPrice)) })
       sub.style.cssText = `font-size:13px;color:${pal.secondaryText};margin-bottom:10px`
       el.append(sub)
       const head = document.createElement('div')
-      head.textContent = 'TRADES'
+      head.textContent = strings.t('marks.trades')
       head.style.cssText = `font-size:10px;letter-spacing:0.4px;color:${pal.mutedText};margin-bottom:6px`
       el.append(head)
     }
@@ -487,7 +496,7 @@ export function attachExecutionMarks(
       const price = document.createElement('span')
       price.textContent = f.price.toFixed(decimalsFor(f.price))
       const when = document.createElement('span')
-      when.textContent = fmtWhen(f.timeSecs)
+      when.textContent = fmtWhen(f.timeSecs, opts.strings?.tag())
       when.style.cssText = `margin-left:auto;padding-left:16px;color:${pal.mutedText};font-size:13px`
       row.append(qty, at, price, when)
       table.append(row)

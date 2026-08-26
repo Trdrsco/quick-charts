@@ -11,6 +11,11 @@
 //   (`2-2` is the exception its icon draws: two panes atop two FULL-WIDTH rows) · `A-B-l/-r`
 //   are column forms: A full-height columns with a B-stack on the right (-l) or left (-r).
 // Pane order is deterministic for serialization: primaries left-to-right, stacks top-to-bottom.
+//
+// Each arrangement also carries its NAME in English, read from the widget's own catalog so the
+// fallback and the translated source are one text: `arrangementName(t, code, label)` says it in the
+// widget's language, and this says it without one.
+import { layouts } from './i18n/en/layouts'
 
 export interface PaneRect {
   x: number
@@ -22,6 +27,9 @@ export interface PaneRect {
 export interface Arrangement {
   code: string
   count: number
+  /** The arrangement's name in English — what a picker shows when it names one, and the fallback
+   *  `arrangementName` reads when the widget's catalog has not met the code. */
+  label: string
   rects: readonly PaneRect[]
 }
 
@@ -67,7 +75,11 @@ const columnsWithStack = (nCols: number, nStack: number, stackSide: 'left' | 'ri
   return stackSide === 'right' ? [...columns, ...stack] : [...stack, ...columns]
 }
 
-const A = (code: string, rects: PaneRect[]): Arrangement => ({ code, count: rects.length, rects })
+/** The catalog key an arrangement code carries its name under: a key separates its parts with
+ *  underscores where a code uses hyphens. `arrangementName` does the same conversion. */
+const nameOf = (code: string): string => (layouts as Record<string, string>)[`layout.${code.replace(/-/g, '_')}`] ?? code
+
+const A = (code: string, rects: PaneRect[]): Arrangement => ({ code, count: rects.length, label: nameOf(code), rects })
 
 /** Every arrangement, in the reference menu's own order. */
 export const ARRANGEMENTS: readonly Arrangement[] = [
