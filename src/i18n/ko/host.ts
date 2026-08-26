@@ -2,6 +2,6 @@ import type { Translation } from '@trdrs/i18n'
 import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
-  'host.noVolume': 'No volume from this feed',
-  'host.replayHeader': '{tf} · replay',
+  'host.noVolume': '이 피드는 거래량을 제공하지 않습니다',
+  'host.replayHeader': '{tf} · 리플레이',
 }

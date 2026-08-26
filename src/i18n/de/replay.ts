@@ -2,14 +2,14 @@ import type { Translation } from '@trdrs/i18n'
 import type { replay as source } from '../en/replay'
 
 export const replay: Translation<typeof source> = {
-  'replay.stepBack': 'Step back one bar',
-  'replay.play': 'Play',
+  'replay.stepBack': 'Einen Balken zurück',
+  'replay.play': 'Abspielen',
   'replay.pause': 'Pause',
-  'replay.stepForward': 'Step forward one bar',
-  'replay.speed': 'Replay speed (updates per second)',
-  'replay.interval': 'Update interval (bars form from finer real bars)',
+  'replay.stepForward': 'Einen Balken vor',
+  'replay.speed': 'Wiedergabegeschwindigkeit (Updates pro Sekunde)',
+  'replay.interval': 'Update-Intervall (Balken entstehen aus feineren echten Balken)',
   'replay.auto': 'Auto',
-  'replay.goLive': 'Go live',
-  'replay.goLiveTitle': 'Jump to the live edge',
-  'replay.exit': 'Exit replay',
+  'replay.goLive': 'Live gehen',
+  'replay.goLiveTitle': 'Zum Live-Rand springen',
+  'replay.exit': 'Wiedergabe beenden',
 }

@@ -2,15 +2,15 @@ import type { Translation } from '@trdrs/i18n'
 import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
-  'legend.indicatorSettings': 'Indicator settings',
-  'legend.restorePane': 'Restore pane',
-  'legend.collapsePane': 'Collapse pane',
-  'legend.maximizePane': 'Maximize pane',
-  'legend.showIndicator': 'Show indicator',
-  'legend.hideIndicator': 'Hide indicator',
-  'legend.priceScale': 'Price scale: {mode}',
-  'legend.scaleNormal': 'Reg',
-  'legend.scaleLog': 'Log',
+  'legend.indicatorSettings': 'インジケーター設定',
+  'legend.restorePane': 'ペインを元に戻す',
+  'legend.collapsePane': 'ペインを折りたたむ',
+  'legend.maximizePane': 'ペインを最大化',
+  'legend.showIndicator': 'インジケーターを表示',
+  'legend.hideIndicator': 'インジケーターを非表示',
+  'legend.priceScale': '価格スケール：{mode}',
+  'legend.scaleNormal': '通常',
+  'legend.scaleLog': '対数',
   'legend.scalePercent': '%',
   'legend.scaleIndexed': '100',
 }
