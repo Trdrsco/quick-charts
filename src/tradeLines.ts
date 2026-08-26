@@ -30,6 +30,8 @@ import {
   type PlanCtx,
   type PricePolicy,
 } from './broker'
+import { createChartI18n, type ChartI18n, type ChartTranslate } from './i18n'
+import { TICKET_TYPE_KEY, ticketTypeOfLabel, type TicketOrderType } from './orderTicket'
 import { DEFAULT_OVERRIDES, type ChartOverrides } from './overrides'
 import {
   buildExitParts,
@@ -59,10 +61,22 @@ import {
 // micro's line never lands on a full-size chart.
 /** A resting order's label: side plus type, in the same title case the ticket's own type tabs use.
  *  Capitalising it made a working order read as a warning rather than as one more control in the same
- *  interface — and the wire's `stop_limit` needs the underscore turned into a space either way. */
-function orderLabel(buy: boolean, orderType: string): string {
-  const type = orderType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-  return `${buy ? 'Buy' : 'Sell'} ${type}`
+ *  interface — and the wire's `stop_limit` needs the underscore turned into a space either way.
+ *
+ *  The four types the widget knows are named from its own order-type vocabulary, so a line and the
+ *  ticket that placed it agree; a type the wire grew beyond them is the venue's word, title-cased. */
+function orderLabel(t: ChartTranslate, buy: boolean, orderType: string): string {
+  const known = orderType in TICKET_TYPE_KEY ? (orderType as TicketOrderType) : null
+  const type = known ? t(TICKET_TYPE_KEY[known]) : orderType.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+  return t(buy ? 'lines.orderBuy' : 'lines.orderSell', { type })
+}
+
+/** The draft chip's order-type text. A PreviewSet carries the CANONICAL English label (a host reads
+ *  and writes it), so it is translated here, at the one place it is painted; wording a host invented
+ *  is its own and passes through. */
+function draftTypeText(t: ChartTranslate, label: string): string {
+  const id = ticketTypeOfLabel(label)
+  return id ? t(TICKET_TYPE_KEY[id]) : label
 }
 
 const MONTH_CODE = 'FGHJKMNQUVXZ'
@@ -103,6 +117,7 @@ function positionPnlDisplay(
   tick: number | undefined,
   mark: number | null,
   currency: string | null,
+  t: ChartTranslate,
 ): { text: string | null; sign: 'profit' | 'loss' | null } {
   const signOf = (v: number | null): 'profit' | 'loss' | null => (v == null ? null : v < 0 ? 'loss' : 'profit')
   if (mode === 'money') return { text: formatPnlMoney(p.unrealizedPnl, currency), sign: signOf(p.unrealizedPnl) }
@@ -110,8 +125,8 @@ function positionPnlDisplay(
   const dir = p.qty > 0 ? 1 : -1
   if (mode === 'ticks') {
     if (!tick || tick <= 0) return { text: null, sign: null }
-    const t = ((mark - p.avgPrice) * dir) / tick
-    return { text: formatPnlTicks(t), sign: signOf(t) }
+    const ticks = ((mark - p.avgPrice) * dir) / tick
+    return { text: formatPnlTicks(ticks, t), sign: signOf(ticks) }
   }
   const pct = ((mark - p.avgPrice) / p.avgPrice) * 100 * dir
   return { text: formatPnlPercent(pct), sign: signOf(pct) }
@@ -264,6 +279,10 @@ export interface TradeLineOptions {
   onAction?: (text: string, undo?: () => void) => void
   /** A dropped / failed / informational message. */
   onError?: (msg: string) => void
+  /** The widget's language for the pills' own words and the messages the gestures raise. Read when
+   *  the layer attaches — the object itself carries later switches, and the lines repaint on each
+   *  one. Omitted ⇒ English. Prices, sizes, symbols and the broker's own text are untouched. */
+  strings?: ChartI18n
 }
 
 export interface TradeLineAttachment {
@@ -366,11 +385,16 @@ interface BracketDragState {
   ghost: IPriceLine | null
 }
 
-const errMsg = (e: unknown): string => (e instanceof Error ? e.message : 'Chart action failed')
+/** A failed action's message: the broker's OWN words when it threw an Error (they reach the trader
+ *  unedited), and the widget's own line when the rejection carried no message to show. */
+const errMsg = (e: unknown, t: ChartTranslate): string => (e instanceof Error ? e.message : t('lines.actionFailed'))
 
 export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initial: TradeLineOptions): TradeLineAttachment {
   const { chart, series, container } = host
   let opts: TradeLineOptions = { ...initial }
+  /** The widget's language. Held for the layer's life: it is a live object, so a switch arrives
+   *  through it rather than through a new one, and every label is read from it at paint time. */
+  const strings = initial.strings ?? createChartI18n()
   /** intentKey → the host's own idempotency lifecycle happens in the ChartBroker adapter; the
    *  package just forwards the key from the plan. */
 
@@ -478,6 +502,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       pnlText: pnl?.text ?? null,
       pnlSign: pnl?.sign ?? null,
       supportCancel: armed(),
+      t: strings.t,
     })
   }
 
@@ -570,6 +595,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           pnlText: pnl?.text ?? null,
           pnlSign: pnl?.sign ?? null,
           supportCancel: false,
+          t: strings.t,
         })
         drawParts(octx, layoutParts(spec, { rightEdge: rightEdge - PILL_RIGHT_MARGIN, centerY: dragY, measure: measureText }), null)
         drawAxisLabel(octx, {
@@ -712,7 +738,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         if (!p || p.qty === 0 || typeof p.avgPrice !== 'number' || !isFinite(p.avgPrice) || p.avgPrice <= 0) continue
         if (!charted(p.instrument)) continue
         const long = p.qty > 0
-        const pnl = positionPnlDisplay(p, t.pnlMode, opts.tick, markNow(), opts.currency ?? null)
+        const pnl = positionPnlDisplay(p, t.pnlMode, opts.tick, markNow(), opts.currency ?? null, strings.t)
         // A handle is an ADD affordance. Once that leg is resting it has its own line, with its own
         // price, P&L and ✕ — so the handle would offer to create a second one, and the line it belongs
         // to already says everything about it. The exit's own line is where it is edited from there.
@@ -753,6 +779,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             supportTakeProfit: armed() && opts.exits !== false && !!opts.tick && !hasTp,
             supportStopLoss: armed() && opts.exits !== false && !!opts.tick && !hasSl,
             priceText: formatLinePrice(p.avgPrice),
+            t: strings.t,
           }),
         })
       }
@@ -806,16 +833,25 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           // so a tap on an exit line's (read-only) qty cell can never open the editor.
           editable: entryEditable,
           spec: exitKind
-            ? buildExitParts({ surface: chartBackground(), kind: exitKind, qty: o.qty, pnlText: exitPnl?.text ?? null, pnlSign: exitPnl?.sign ?? null, supportCancel: armed() })
+            ? buildExitParts({
+                surface: chartBackground(),
+                kind: exitKind,
+                qty: o.qty,
+                pnlText: exitPnl?.text ?? null,
+                pnlSign: exitPnl?.sign ?? null,
+                supportCancel: armed(),
+                t: strings.t,
+              })
             : buildOrderParts({
                 surface: chartBackground(),
                 qty: o.qty,
-                label: orderLabel(buy, o.orderType),
+                label: orderLabel(strings.t, buy, o.orderType),
                 color,
                 supportCancel: armed(),
                 supportModifyQty: entryEditable,
                 supportTakeProfit: canBracket && !preArm?.takeProfit,
                 supportStopLoss: canBracket && !preArm?.stopLoss,
+                t: strings.t,
               }),
         })
         // The entry's PRE-ARM bracket levels — host-known legs that arm when this order fills.
@@ -849,6 +885,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
                   pnlText: legPnl?.text ?? null,
                   pnlSign: legPnl?.sign ?? null,
                   supportCancel: canBracket,
+                  t: strings.t,
                 }),
               })
             }
@@ -872,10 +909,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
               spec: buildOrderParts({
                 surface: chartBackground(),
                 qty: o.qty,
-                label: orderLabel(buy, o.orderType),
+                label: orderLabel(strings.t, buy, o.orderType),
                 color: buy ? t.buyColor : t.sellColor,
                 supportCancel: false,
                 supportModifyQty: false,
+                t: strings.t,
               }),
             })
           }
@@ -909,11 +947,23 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         const entryDraggable = pv.orderType !== 'Market'
         // The side chip's tooltip states the action, or the reason there isn't one — a money control
         // that silently ignores a press is worse than one that says why.
+        // One message per order type rather than the type dropped into a sentence: a language that
+        // inflects the noun needs the whole line to agree with it.
+        const SUBMIT_KEY = {
+          market: 'lines.submitMarket',
+          limit: 'lines.submitLimit',
+          stop: 'lines.submitStop',
+          stop_limit: 'lines.submitStopLimit',
+        } as const
+        const draftType = ticketTypeOfLabel(pv.orderType)
         const submitTooltip = !interactive()
-          ? 'Select an account to trade'
+          ? strings.t('lines.selectAccount')
           : opts.locked
-            ? 'Trading is locked for this account'
-            : `Send this ${String(pv.orderType).toLowerCase()} order`
+            ? strings.t('lines.locked')
+            : draftType
+              ? strings.t(SUBMIT_KEY[draftType])
+              : // A type of the host's own naming: its word, as the tooltip has always said it.
+                strings.t('lines.submitOrder', { type: String(pv.orderType).toLowerCase() })
 
         if (!entryLine && anchor != null && pv.orderType) {
           desired.set('preview:entry', {
@@ -931,13 +981,14 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
             spec: buildDraftParts({
               surface: chartBackground(),
               accent: sideAccent,
-              sideLabel: long ? 'Buy' : 'Sell',
+              sideLabel: strings.t(long ? 'lines.buy' : 'lines.sell'),
               qty: draftQty,
-              orderType: pv.orderType,
+              orderType: draftTypeText(strings.t, pv.orderType),
               supportTakeProfit: !hasLeg('tp') && !!opts.tick,
               supportStopLoss: !hasLeg('sl') && !!opts.tick,
               supportCancel: true, // the ✕ stands the ticket down — the same gesture on every order type
               submitTooltip,
+              t: strings.t,
             }),
           })
         }
@@ -971,13 +1022,14 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
               ? buildDraftParts({
                   surface: chartBackground(),
                   accent: sideAccent,
-                  sideLabel: long ? 'Buy' : 'Sell',
+                  sideLabel: strings.t(long ? 'lines.buy' : 'lines.sell'),
                   qty: ln.qty,
-                  orderType: pv.orderType ?? ln.label,
+                  orderType: draftTypeText(strings.t, pv.orderType ?? ln.label),
                   supportTakeProfit: !hasLeg('tp') && !!opts.tick,
                   supportStopLoss: !hasLeg('sl') && !!opts.tick,
                   supportCancel: ln.editable,
                   submitTooltip,
+                  t: strings.t,
                 })
               : buildExitParts({
                   surface: chartBackground(),
@@ -987,6 +1039,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
                   pnlSign: pnl?.sign ?? null,
                   // A grouped leg draws but is not individually dismissable.
                   supportCancel: ln.editable,
+                  t: strings.t,
                 }),
           })
         }
@@ -1049,6 +1102,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     tick: opts.tick && opts.tick > 0 ? opts.tick : undefined,
     mark: markNow() ?? undefined,
     policy: opts.policy,
+    t: strings.t,
   })
 
   const hitTest = (clientX: number, clientY: number): { hit: Hit; entry: LineEntry } | null => {
@@ -1144,11 +1198,11 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         if (!pos) return
         const mk = markNow() ?? undefined
         const anchor = typeof pos.avgPrice === 'number' && pos.avgPrice > 0 ? pos.avgPrice : (mk ?? null)
-        const r = boundStopPrice(prev, { tick: opts.tick, anchor, protectiveSide: pos.qty > 0 ? 'long' : 'short', mark: mk, policy: opts.policy })
+        const r = boundStopPrice(prev, { tick: opts.tick, anchor, protectiveSide: pos.qty > 0 ? 'long' : 'short', mark: mk, policy: opts.policy, t: strings.t })
         if ('error' in r) return
         void broker
           .setExits({ instrument: inst, stopLoss: r.price, intentKey: `stop|${scope}|${inst}|${r.price}` })
-          .catch((err) => opts.onError?.(errMsg(err)))
+          .catch((err) => opts.onError?.(errMsg(err, strings.t)))
       }
     }
     const run = async (): Promise<void> => {
@@ -1194,7 +1248,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         // venue rejected, which is the one thing worse than the flicker it removes.
         pendingMoves.clear()
         paintOverlay()
-        opts.onError?.(errMsg(err))
+        opts.onError?.(errMsg(err, strings.t))
       })
   }
 
@@ -1242,7 +1296,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         // Same rule as a refused reprice: a rejected edit must stop being shown immediately.
         pendingMoves.clear()
         paintOverlay()
-        opts.onError?.(errMsg(err))
+        opts.onError?.(errMsg(err, strings.t))
       })
   }
 
@@ -1670,7 +1724,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     if (opts.scope !== drag.capturedScope || opts.symbol !== drag.capturedSymbol) {
       snapBack()
-      opts.onError?.('Selection changed, move cancelled')
+      opts.onError?.(strings.t('lines.moveCancelled'))
       return true
     }
     // A PRE-ARM bracket leg's move: snap + reject the wrong side of the ENTRY's fill price (never
@@ -1681,7 +1735,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       const fill = ord ? entryFillPrice(ord) : null
       if (!ord || fill == null) {
         snapBack()
-        opts.onError?.('Order no longer working')
+        opts.onError?.(strings.t('broker.orderNotWorking'))
         return true
       }
       const bounded = boundBracketPrice(drag.lastValidPrice, {
@@ -1690,6 +1744,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         positionSide: ord.side === 'buy' ? 'long' : 'short',
         kind: legKind,
         policy: opts.policy,
+        t: strings.t,
       })
       if ('error' in bounded) {
         snapBack()
@@ -1704,7 +1759,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         legKind,
         bounded.price,
         drag.capturedScope,
-        `${legKind === 'tp' ? 'Take profit' : 'Stop loss'} moved to ${fmtPrice(bounded.price, opts.tick)}`,
+        strings.t(legKind === 'tp' ? 'lines.takeProfitMoved' : 'lines.stopLossMoved', { price: fmtPrice(bounded.price, opts.tick) }),
         drag.key,
       )
       return true
@@ -1769,7 +1824,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     if (opts.scope !== drag.capturedScope || opts.symbol !== drag.capturedSymbol) {
       snapBack()
-      opts.onError?.('Selection changed, edit cancelled')
+      opts.onError?.(strings.t('lines.editCancelled'))
       return true
     }
     const ctx = { tick: opts.tick, entryRef: previewEntryRef(), policy: opts.policy }
@@ -1780,7 +1835,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     })
     if (!emitted) {
       snapBack()
-      opts.onError?.('Outside the allowed range, reverted')
+      opts.onError?.(strings.t('lines.outsideRange'))
       return true
     }
     // Land the line on the SNAPPED price and hold it there. The drag left it unsnapped under the
@@ -1820,7 +1875,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
     if (!b.moved) return true
     if (opts.scope !== b.capturedScope || opts.symbol !== b.capturedSymbol) {
-      opts.onError?.('Selection changed, bracket cancelled')
+      opts.onError?.(strings.t('lines.bracketCancelled'))
       return true
     }
     const bounded = boundBracketPrice(b.lastValidPrice, {
@@ -1832,6 +1887,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       // to protection on a LIVE position, and nothing here exists until the entry fills.
       mark: b.order ? undefined : (markNow() ?? undefined),
       policy: opts.policy,
+      t: strings.t,
     })
     if ('error' in bounded) {
       opts.onError?.(bounded.error)
@@ -1852,25 +1908,33 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         b.kind,
         price,
         b.capturedScope,
-        `${b.kind === 'tp' ? 'Take profit' : 'Stop loss'} set at ${fmtPrice(price, opts.tick)} · arms when the entry fills`,
+        strings.t(b.kind === 'tp' ? 'lines.takeProfitArms' : 'lines.stopLossArms', { price: fmtPrice(price, opts.tick) }),
         `obr:${b.order.brokerOrderId}:${b.kind}`,
       )
       return true
     }
-    const label = b.kind === 'tp' ? 'Take Profit' : 'Stop Loss'
-    const exitSide = b.positionSide === 'long' ? 'Sell' : 'Buy'
+    // An exit CLOSES the position, so its side is the opposite of the position's — one message per
+    // leg and side, because a sentence that names both has to agree with both.
+    const placedKey =
+      b.kind === 'tp'
+        ? b.positionSide === 'long'
+          ? 'lines.takeProfitPlacedSell'
+          : 'lines.takeProfitPlacedBuy'
+        : b.positionSide === 'long'
+          ? 'lines.stopLossPlacedSell'
+          : 'lines.stopLossPlacedBuy'
     const intentKey = `${b.kind}|${b.capturedScope}|${b.instrument}|${price}`
     const call =
       b.kind === 'tp'
         ? broker.setExits({ instrument: b.instrument, takeProfit: price, intentKey })
         : broker.setExits({ instrument: b.instrument, stopLoss: price, intentKey })
     if (!call) {
-      opts.onError?.('Take profit is not supported for this account')
+      opts.onError?.(strings.t('lines.takeProfitUnsupported'))
       return true
     }
     void call
-      .then(() => opts.onAction?.(`${label} order placed · ${exitSide} ${b.qty} at ${formatLinePrice(price)}`))
-      .catch((err) => opts.onError?.(errMsg(err)))
+      .then(() => opts.onAction?.(strings.t(placedKey, { qty: b.qty, price: formatLinePrice(price) ?? String(price) })))
+      .catch((err) => opts.onError?.(errMsg(err, strings.t)))
     return true
   }
 
@@ -1964,12 +2028,12 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         scopes: { captured: { scope: pox.capturedScope, symbol: pox.capturedSymbol }, current: { scope: opts.scope, symbol: opts.symbol } },
       })
       if (verdict !== 'commit') {
-        if (verdict === 'scope_changed') opts.onError?.('Selection changed, action cancelled')
+        if (verdict === 'scope_changed') opts.onError?.(strings.t('lines.actionCancelled'))
         return
       }
       const ord = opts.snapshot.orders.find((o) => o && o.brokerOrderId === pox.brokerOrderId && o.status === 'working')
       if (!ord) return
-      execOrderBracket(orderCtx(ord), pox.legKind, null, pox.capturedScope, `${pox.legKind === 'tp' ? 'Take profit' : 'Stop loss'} removed`)
+      execOrderBracket(orderCtx(ord), pox.legKind, null, pox.capturedScope, strings.t(pox.legKind === 'tp' ? 'lines.takeProfitRemoved' : 'lines.stopLossRemoved'))
       return
     }
     // A WORKING ORDER's quantity chip — resolved from the LINE (the chip may have slid under a
@@ -2019,7 +2083,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
               qty: newQty,
               orderType: row.orderType,
               intentKey: `resize|${scope}|${row.brokerOrderId}|${newQty}`,
-              toast: `Order size set to ${newQty}`,
+              toast: strings.t('lines.qtySet', { qty: newQty }),
             },
             scope,
           )
@@ -2077,7 +2141,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         scopes: { captured: { scope: px.capturedScope, symbol: px.capturedSymbol }, current: { scope: opts.scope, symbol: opts.symbol } },
       })
       if (verdict !== 'commit') {
-        if (verdict === 'scope_changed') opts.onError?.('Selection changed, action cancelled')
+        if (verdict === 'scope_changed') opts.onError?.(strings.t('lines.actionCancelled'))
         return
       }
       if (px.action === 'reverse') {
@@ -2088,9 +2152,13 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
         void broker
           .reversePosition({ instrument: px.instrument, intentKey: `reverse|${px.capturedScope}|${px.instrument}` })
           .then((r) => {
-            opts.onAction?.(`Position reversed${r.cancelledOrders > 0 ? ` · ${r.cancelledOrders} order${r.cancelledOrders === 1 ? '' : 's'} cancelled` : ''}`)
+            opts.onAction?.(
+              r.cancelledOrders > 0
+                ? strings.t('lines.positionReversedOrders', { count: r.cancelledOrders })
+                : strings.t('lines.positionReversed'),
+            )
           })
-          .catch((err) => opts.onError?.(errMsg(err)))
+          .catch((err) => opts.onError?.(errMsg(err, strings.t)))
         return
       }
       const target: DropTarget = px.kind === 'position' ? { type: 'flatten', instrument: px.instrument } : { type: 'cancel', brokerOrderId: px.brokerOrderId! }
@@ -2212,6 +2280,9 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   container.addEventListener('pointerup', onPointerUp)
   container.addEventListener('pointercancel', onPointerCancel)
   window.addEventListener('blur', onWindowBlur)
+  // A language switch rebuilds every pill: the specs hold resolved text, so a pill drawn before the
+  // switch would keep its old words until the next snapshot arrived.
+  const unsubscribeStrings = strings.onChange(() => draw())
 
   draw()
 
@@ -2233,6 +2304,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     },
     detach() {
       detached = true
+      unsubscribeStrings()
       cancelGesture()
       container.removeEventListener('pointerdown', onPointerDown, true)
       container.removeEventListener('pointermove', onPointerMove)

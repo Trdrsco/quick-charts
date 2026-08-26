@@ -4,8 +4,11 @@
 // stopped so an open editor never leaks gestures into the chart. Both are PRE-MONEY: they only
 // hand a value back to the ticket controller.
 import type { ResolvedTheme } from './host'
-import type { TicketOrderType } from './orderTicket'
+import { createChartI18n, type ChartI18n } from './i18n'
+import { TICKET_TYPE_KEY, type TicketOrderType } from './orderTicket'
 
+/** `label` is the type's CANONICAL English — what the draft line reports as the current type and
+ *  what this menu matches it against, so which row reads as active never depends on the language. */
 const TYPES: ReadonlyArray<{ id: TicketOrderType; label: string }> = [
   { id: 'market', label: 'Market' },
   { id: 'limit', label: 'Limit' },
@@ -73,19 +76,27 @@ export function openTypeMenu(
   current: string,
   theme: ResolvedTheme,
   onPick: (orderType: TicketOrderType) => void,
+  /** The widget's language — the rows re-label if it changes while the menu is open. */
+  strings: ChartI18n = createChartI18n(),
 ): void {
   const el = surface(container, rect, theme)
   el.style.flexDirection = 'column'
   el.style.alignItems = 'stretch'
   const dismiss = () => {
+    unsubscribe()
     el.remove()
     if (OPEN.get(container) === dismiss) OPEN.delete(container)
   }
   claim(container, dismiss)
+  const rows = new Map<TicketOrderType, HTMLButtonElement>()
+  const unsubscribe = strings.onChange(() => {
+    for (const [id, b] of rows) b.textContent = strings.t(TICKET_TYPE_KEY[id])
+  })
   for (const t of TYPES) {
     const b = document.createElement('button')
     b.type = 'button'
-    b.textContent = t.label
+    b.textContent = strings.t(TICKET_TYPE_KEY[t.id])
+    rows.set(t.id, b)
     const active = t.label === current
     b.style.cssText =
       `text-align:left;background:none;border:none;cursor:pointer;padding:3px 8px;border-radius:4px;font-size:11px;` +

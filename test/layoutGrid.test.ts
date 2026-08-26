@@ -53,6 +53,14 @@ describe('the arrangement catalog', () => {
     expect(arrangementOf('7s')?.count).toBe(7)
   })
 
+  it('every arrangement carries a name, and never falls back to its own code', () => {
+    for (const a of ARRANGEMENTS) {
+      expect(a.label, a.code).not.toBe(a.code)
+      expect(a.label.trim(), a.code).not.toBe('')
+    }
+    expect(new Set(ARRANGEMENTS.map((a) => a.label)).size).toBe(55)
+  })
+
   it('unknown codes return null instead of throwing', () => {
     expect(arrangementOf('nope')).toBeNull()
   })

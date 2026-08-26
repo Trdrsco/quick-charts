@@ -1,0 +1,16 @@
+import type { Translation } from '@trdrs/i18n'
+import type { legend as source } from '../en/legend'
+
+export const legend: Translation<typeof source> = {
+  'legend.indicatorSettings': 'إعدادات المؤشر',
+  'legend.restorePane': 'استعادة اللوحة',
+  'legend.collapsePane': 'طي اللوحة',
+  'legend.maximizePane': 'تكبير اللوحة',
+  'legend.showIndicator': 'إظهار المؤشر',
+  'legend.hideIndicator': 'إخفاء المؤشر',
+  'legend.priceScale': 'مقياس السعر: {mode}',
+  'legend.scaleNormal': 'عادي',
+  'legend.scaleLog': 'لوغ',
+  'legend.scalePercent': '%',
+  'legend.scaleIndexed': '100',
+}

@@ -17,9 +17,11 @@ describe('the widget catalog', () => {
     expect(catalogProblems(en, en, 'en')).toEqual([])
   })
 
-  it('every language the widget ships conforms', async () => {
+  // Loads and checks 21 catalogs; on a busy machine that outlasts the default 5s per-test budget.
+  it('ships every registry language, and every one conforms', { timeout: 60_000 }, async () => {
     for (const { code, tag } of LOCALES) {
-      if (code === 'en' || !chartDictionaries.has(code)) continue
+      if (code === 'en') continue
+      expect(chartDictionaries.has(code), code).toBe(true)
       expect(catalogProblems(en, await chartDictionaries.load(code), tag), code).toEqual([])
     }
   })
