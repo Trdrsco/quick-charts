@@ -5,6 +5,7 @@
 // rail stays self-contained in the packed artifact.
 import type { DrawingsHandle } from './drawings'
 import type { ResolvedTheme } from './host'
+import { createChartI18n, toolName, type ChartI18n } from './i18n'
 
 /** 24-grid stroke glyphs, keyed by rail button id. */
 const RAIL_ICONS: Record<string, string> = {
@@ -16,12 +17,18 @@ const RAIL_ICONS: Record<string, string> = {
   clear: '<path d="M6 7h12M9 7V5h6v2M8 7l1 13h6l1-13"/><path d="M10.5 10.5l3 6M13.5 10.5l-3 6"/>',
 }
 
+/** The rail's tool buttons. `title` is the English a tool is known by if the catalog has not met its
+ *  type — a placement button is NAMED by the shared tool vocabulary, so the rail and a host's own
+ *  toolbar call the same drawing the same thing. */
 const TOOLS: ReadonlyArray<{ id: string; tool: string | null; title: string }> = [
   { id: 'cursor', tool: null, title: 'Cursor' },
   { id: 'trend_line', tool: 'trend_line', title: 'Trend line' },
   { id: 'horizontal_line', tool: 'horizontal_line', title: 'Horizontal line' },
   { id: 'rectangle', tool: 'rectangle', title: 'Rectangle' },
 ]
+
+const toolTitle = (strings: ChartI18n, entry: (typeof TOOLS)[number]): string =>
+  entry.tool === null ? strings.t('rail.cursor') : toolName(strings.t, entry.tool, entry.title)
 
 export interface DrawingsRail {
   /** Repaint the armed-tool highlight (wire to DrawingsEvents.onToolChange). */
@@ -31,7 +38,14 @@ export interface DrawingsRail {
   destroy(): void
 }
 
-export function mountDrawingsRail(container: HTMLElement, drawings: DrawingsHandle, theme: ResolvedTheme): DrawingsRail {
+/** `strings` is the widget's language: every button's accessible name is read through it when the rail
+ *  draws and again whenever the language changes, so a switch never leaves a stale title behind. */
+export function mountDrawingsRail(
+  container: HTMLElement,
+  drawings: DrawingsHandle,
+  theme: ResolvedTheme,
+  strings: ChartI18n = createChartI18n(),
+): DrawingsRail {
   // The rail floats over the chart canvases; the container anchors it.
   if (getComputedStyle(container).position === 'static') container.style.position = 'relative'
 
@@ -64,9 +78,19 @@ export function mountDrawingsRail(container: HTMLElement, drawings: DrawingsHand
     return el
   }
 
-  for (const t of TOOLS) button(t.id, t.title, () => drawings.armTool(t.tool))
-  const removeBtn = button('remove', 'Delete selected drawing', () => drawings.deleteSelected())
-  button('clear', 'Clear all drawings', () => drawings.clearAll())
+  for (const t of TOOLS) button(t.id, toolTitle(strings, t), () => drawings.armTool(t.tool))
+  const removeBtn = button('remove', strings.t('rail.deleteSelected'), () => drawings.deleteSelected())
+  const clearBtn = button('clear', strings.t('rail.clearAll'), () => drawings.clearAll())
+
+  const retitle = () => {
+    for (const t of TOOLS) {
+      const el = buttons.get(t.id)
+      if (el) el.title = toolTitle(strings, t)
+    }
+    removeBtn.title = strings.t('rail.deleteSelected')
+    clearBtn.title = strings.t('rail.clearAll')
+  }
+  const unsubscribe = strings.onChange(retitle)
 
   const syncTool = (type: string | null) => {
     for (const t of TOOLS) {
@@ -89,6 +113,7 @@ export function mountDrawingsRail(container: HTMLElement, drawings: DrawingsHand
     syncTool,
     syncSelection,
     destroy() {
+      unsubscribe()
       rail.remove()
     },
   }

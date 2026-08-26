@@ -4,6 +4,7 @@
 // the gesture layers can never steal its presses. Appears only while replay is ON; every control
 // drives the widget's replay api and nothing else.
 import type { ResolvedTheme } from './host'
+import { createChartI18n, type ChartI18n } from './i18n'
 import { REPLAY_SPEEDS, type ReplaySpeed } from './replay'
 
 export interface ReplayBarHandle {
@@ -28,6 +29,9 @@ export function mountReplayBar(
   /** The chart timeframe's formable sub-intervals (wire tf tokens); empty = whole-bar only, and
    *  the interval select is omitted entirely rather than offering a one-entry menu. */
   subIntervals: readonly string[] = [],
+  /** The widget's language: every control reads its label through this when the bar draws and again
+   *  whenever the language changes, so a switch never leaves a stale word on the transport. */
+  strings: ChartI18n = createChartI18n(),
 ): ReplayBarHandle {
   const bar = document.createElement('div')
   bar.style.cssText =
@@ -47,12 +51,12 @@ export function mountReplayBar(
     return b
   }
 
-  const back = button('⏮', 'Step back one bar', controls.stepBack)
-  const playPause = button('▶', 'Play', () => (playing ? controls.pause() : controls.play()))
-  button('⏭', 'Step forward one bar', controls.stepForward)
+  const back = button('⏮', strings.t('replay.stepBack'), controls.stepBack)
+  const playPause = button('▶', strings.t('replay.play'), () => (playing ? controls.pause() : controls.play()))
+  const forward = button('⏭', strings.t('replay.stepForward'), controls.stepForward)
 
   const speed = document.createElement('select')
-  speed.title = 'Replay speed (updates per second)'
+  speed.title = strings.t('replay.speed')
   speed.style.cssText = `background:${theme.background};border:1px solid ${theme.gridColor};border-radius:5px;color:${theme.textColor};font-size:11px;padding:1px 2px;`
   for (const s of REPLAY_SPEEDS) {
     const o = document.createElement('option')
@@ -68,12 +72,12 @@ export function mountReplayBar(
   let interval: HTMLSelectElement | null = null
   if (subIntervals.length > 0) {
     interval = document.createElement('select')
-    interval.title = 'Update interval (bars form from finer real bars)'
+    interval.title = strings.t('replay.interval')
     interval.style.cssText = speed.style.cssText
     for (const token of ['auto', ...subIntervals]) {
       const o = document.createElement('option')
       o.value = token
-      o.textContent = token === 'auto' ? 'Auto' : token
+      o.textContent = token === 'auto' ? strings.t('replay.auto') : token
       interval.appendChild(o)
     }
     interval.addEventListener('change', () => controls.setInterval(interval!.value))
@@ -84,16 +88,32 @@ export function mountReplayBar(
   position.style.cssText = 'opacity:0.7;padding:0 4px;font-variant-numeric:tabular-nums;'
   bar.appendChild(position)
 
-  button('Go live', 'Jump to the live edge', controls.goLive)
-  button('✕', 'Exit replay', controls.exit)
+  const goLive = button(strings.t('replay.goLive'), strings.t('replay.goLiveTitle'), controls.goLive)
+  const exit = button('✕', strings.t('replay.exit'), controls.exit)
 
   let playing = false
+  const relabel = () => {
+    back.title = strings.t('replay.stepBack')
+    forward.title = strings.t('replay.stepForward')
+    playPause.title = strings.t(playing ? 'replay.pause' : 'replay.play')
+    speed.title = strings.t('replay.speed')
+    if (interval) {
+      interval.title = strings.t('replay.interval')
+      const auto = interval.options[0]
+      if (auto) auto.textContent = strings.t('replay.auto')
+    }
+    goLive.textContent = strings.t('replay.goLive')
+    goLive.title = strings.t('replay.goLiveTitle')
+    exit.title = strings.t('replay.exit')
+  }
+  const unsubscribe = strings.onChange(relabel)
+
   container.appendChild(bar)
   return {
     sync(state) {
       playing = state.playing
       playPause.textContent = playing ? '⏸' : '▶'
-      playPause.title = playing ? 'Pause' : 'Play'
+      playPause.title = strings.t(playing ? 'replay.pause' : 'replay.play')
       speed.value = String(state.speed)
       if (interval) interval.value = state.interval
       position.textContent = `${state.cursor} / ${state.total}`
@@ -101,6 +121,7 @@ export function mountReplayBar(
       back.style.opacity = back.disabled ? '0.45' : '1'
     },
     destroy() {
+      unsubscribe()
       bar.remove()
     },
   }

@@ -7,6 +7,7 @@
 // 28 grid with the label at 40, and 1px separators between the groups that survived.
 import { chartContextMenu, type ChartMenuAction, type ChartMenuContext, type ChartMenuIcon } from './contextMenu'
 import type { ResolvedTheme } from './host'
+import { createChartI18n, type ChartI18n } from './i18n'
 
 export interface ContextMenuHandle {
   /** Raise the menu at a viewport point, for the level the caller resolved. */
@@ -35,10 +36,13 @@ const ICONS: Record<ChartMenuIcon, string> = {
 const svg = (icon: ChartMenuIcon): string =>
   `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">${ICONS[icon]}</svg>`
 
+/** `strings` is the widget's language: the rows are built through it every time the menu is raised,
+ *  and an open menu re-labels in place if the language changes under it. */
 export function mountContextMenu(
   container: HTMLElement,
   run: (id: ChartMenuAction) => void,
   theme: ResolvedTheme,
+  strings: ChartI18n = createChartI18n(),
 ): ContextMenuHandle {
   // A full-viewport backdrop closes the menu on any press elsewhere, and swallows the browser's own
   // menu so a second right-click re-aims ours rather than stacking the native one on top.
@@ -58,10 +62,14 @@ export function mountContextMenu(
   box.addEventListener('contextmenu', (e) => e.preventDefault())
   for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) box.addEventListener(type, (e) => e.stopPropagation())
 
+  /** The level the open menu is showing rows for — kept so the rows can be rebuilt in place. */
+  let openCtx: ChartMenuContext | null = null
+
   const close = (): void => {
     box.style.display = 'none'
     backdrop.style.display = 'none'
     box.replaceChildren()
+    openCtx = null
   }
   backdrop.addEventListener('pointerdown', close)
   const onKey = (e: KeyboardEvent): void => {
@@ -71,48 +79,59 @@ export function mountContextMenu(
 
   container.append(backdrop, box)
 
+  const fill = (ctx: ChartMenuContext): void => {
+    box.replaceChildren()
+    for (const row of chartContextMenu({ ...ctx, t: ctx.t ?? strings.t })) {
+      if (row.kind === 'separator') {
+        const sep = document.createElement('div')
+        sep.style.cssText = `height:1px;margin:6px 0;background:${theme.gridColor};`
+        box.append(sep)
+        continue
+      }
+      const b = document.createElement('button')
+      b.type = 'button'
+      b.style.cssText =
+        `display:flex;align-items:center;gap:6px;width:100%;height:${ROW_H}px;padding:0 20px 0 0;` +
+        `background:none;border:0;color:${theme.textColor};font:inherit;text-align:left;cursor:pointer;`
+      b.addEventListener('mouseenter', () => (b.style.background = theme.gridColor))
+      b.addEventListener('mouseleave', () => (b.style.background = 'none'))
+
+      // Every row reserves the glyph cell, so labels line up whether or not one is drawn.
+      const cell = document.createElement('span')
+      cell.style.cssText = 'display:flex;width:36px;flex:0 0 36px;align-items:center;justify-content:center;'
+      const glyph = row.checked ? 'check' : row.icon
+      if (glyph) cell.innerHTML = svg(glyph)
+
+      const label = document.createElement('span')
+      label.textContent = row.label
+      label.style.cssText = 'flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+
+      b.append(cell, label)
+      if (row.shortcut) {
+        const sc = document.createElement('span')
+        sc.textContent = row.shortcut
+        sc.style.cssText = `flex:0 0 auto;padding-left:10px;padding-top:2px;font-size:11px;opacity:.55;`
+        b.append(sc)
+      }
+      const id = row.id
+      b.addEventListener('click', () => {
+        close()
+        run(id)
+      })
+      box.append(b)
+    }
+  }
+
+  // A language switch under an OPEN menu rebuilds its rows where they stand: the labels were
+  // resolved when it was raised, so nothing else would replace them until the next right-click.
+  const unsubscribe = strings.onChange(() => {
+    if (openCtx) fill(openCtx)
+  })
+
   return {
     open(at, ctx) {
-      box.replaceChildren()
-      for (const row of chartContextMenu(ctx)) {
-        if (row.kind === 'separator') {
-          const sep = document.createElement('div')
-          sep.style.cssText = `height:1px;margin:6px 0;background:${theme.gridColor};`
-          box.append(sep)
-          continue
-        }
-        const b = document.createElement('button')
-        b.type = 'button'
-        b.style.cssText =
-          `display:flex;align-items:center;gap:6px;width:100%;height:${ROW_H}px;padding:0 20px 0 0;` +
-          `background:none;border:0;color:${theme.textColor};font:inherit;text-align:left;cursor:pointer;`
-        b.addEventListener('mouseenter', () => (b.style.background = theme.gridColor))
-        b.addEventListener('mouseleave', () => (b.style.background = 'none'))
-
-        // Every row reserves the glyph cell, so labels line up whether or not one is drawn.
-        const cell = document.createElement('span')
-        cell.style.cssText = 'display:flex;width:36px;flex:0 0 36px;align-items:center;justify-content:center;'
-        const glyph = row.checked ? 'check' : row.icon
-        if (glyph) cell.innerHTML = svg(glyph)
-
-        const label = document.createElement('span')
-        label.textContent = row.label
-        label.style.cssText = 'flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
-
-        b.append(cell, label)
-        if (row.shortcut) {
-          const sc = document.createElement('span')
-          sc.textContent = row.shortcut
-          sc.style.cssText = `flex:0 0 auto;padding-left:10px;padding-top:2px;font-size:11px;opacity:.55;`
-          b.append(sc)
-        }
-        const id = row.id
-        b.addEventListener('click', () => {
-          close()
-          run(id)
-        })
-        box.append(b)
-      }
+      openCtx = ctx
+      fill(ctx)
 
       // Clamp into the viewport: a chart at the window's edge would otherwise raise a menu that
       // runs off it. Measured after filling, because the height depends on which rows survived.
@@ -126,6 +145,7 @@ export function mountContextMenu(
     },
     close,
     destroy() {
+      unsubscribe()
       window.removeEventListener('keydown', onKey)
       backdrop.remove()
       box.remove()
