@@ -225,14 +225,18 @@ export interface SessionTimeline {
   readonly segments: readonly { start: number; end: number; session: MarketSession }[]
   /** Now, in exchange-local minutes from midnight. */
   readonly nowMins: number
-  /** Exchange-local weekday label ("MON"). */
+  /** Exchange-local weekday label ("MON"), in the language the caller asked for. */
   readonly dayLabel: string
   readonly tz: string
   readonly tzCity: string
 }
 
-/** The current exchange-local day's session timeline for the Market Status pop-up. */
-export function sessionTimeline(epochSecs: number, kind: MarketKind): SessionTimeline {
+const weekdayFmtCache = new Map<string, Intl.DateTimeFormat>()
+
+/** The current exchange-local day's session timeline for the Market Status pop-up. `tag` is the BCP
+ *  47 tag the day's name is written in — a date part, so it comes from `Intl` rather than a catalog,
+ *  and English is what it reads without one. */
+export function sessionTimeline(epochSecs: number, kind: MarketKind, tag = 'en-US'): SessionTimeline {
   const spec = specOf(kind)
   const { weekday, mins, dateKey } = localParts(epochSecs * 1000, spec.tz)
   const open = daySegments(kind, dateKey, weekday)
@@ -244,7 +248,13 @@ export function sessionTimeline(epochSecs: number, kind: MarketKind): SessionTim
     cursor = s.end
   }
   if (cursor < 1440) segments.push({ start: cursor, end: 1440, session: 'closed' })
-  const dayLabel = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][weekday] ?? ''
+  const cacheKey = `${tag}|${spec.tz}`
+  let weekdayFmt = weekdayFmtCache.get(cacheKey)
+  if (!weekdayFmt) {
+    weekdayFmt = new Intl.DateTimeFormat(tag, { timeZone: spec.tz, weekday: 'short' })
+    weekdayFmtCache.set(cacheKey, weekdayFmt)
+  }
+  const dayLabel = weekdayFmt.format(new Date(epochSecs * 1000)).toUpperCase()
   return { segments, nowMins: mins, dayLabel, tz: spec.tz, tzCity: spec.tzCity }
 }
 
@@ -257,6 +267,9 @@ export function isIntradayTf(tf: string): boolean {
   return /^\d+(t|s|m|h)$/.test(tf)
 }
 
+/** The session's name in English — what a host renders when it shows status text of its own. The
+ *  widget's catalog carries the same five under `session.<name>`, keyed by these very names, so a
+ *  host reading the catalog and a host reading this table always say the same thing. */
 export const SESSION_LABEL: Record<MarketSession, string> = {
   pre: 'Pre-market',
   open: 'Market open',

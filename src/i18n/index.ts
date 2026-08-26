@@ -18,11 +18,39 @@ export interface ChartI18n {
   onChange(listener: () => void): () => void
 }
 
-/** One chunk per language the widget ships, fetched the first time it is chosen. A language absent
- *  here reads English. */
-export const chartDictionaries = createDictionaryLoader(en, {})
+/** One chunk per language the widget ships — every language the runtime lists — fetched the first
+ *  time it is chosen. */
+export const chartDictionaries = createDictionaryLoader(en, {
+  de: () => import('./de'),
+  fr: () => import('./fr'),
+  es: () => import('./es'),
+  it: () => import('./it'),
+  ca_ES: () => import('./ca_ES'),
+  pl: () => import('./pl'),
+  sv: () => import('./sv'),
+  tr: () => import('./tr'),
+  ru: () => import('./ru'),
+  pt: () => import('./pt'),
+  id_ID: () => import('./id_ID'),
+  ms_MY: () => import('./ms_MY'),
+  th: () => import('./th'),
+  vi: () => import('./vi'),
+  ja: () => import('./ja'),
+  ko: () => import('./ko'),
+  zh: () => import('./zh'),
+  zh_TW: () => import('./zh_TW'),
+  ar: () => import('./ar'),
+  he_IL: () => import('./he_IL'),
+})
 
 const dynamic = (t: ChartTranslate) => t as unknown as (key: string) => string
+
+/** The English source translator, for a pure helper called WITHOUT a language: every function here
+ *  that returns trader-visible text takes `t` optionally and falls back to this, so a host that has
+ *  not passed one reads exactly the English it always did. Built once and shared — the trade-line
+ *  render path composes its labels on every paint. */
+let source: ChartTranslate | null = null
+export const englishChartStrings = (): ChartTranslate => (source ??= createTranslator(en, null, 'en'))
 
 /** A drawing tool's display name for a registry `type`: the catalog's when it knows the type, else
  *  the registry's own English `name`, so a tool the catalog has not met still has a name. */
@@ -31,9 +59,11 @@ export function toolName(t: ChartTranslate, type: string, fallback: string): str
   return key in en ? dynamic(t)(key) : fallback
 }
 
-/** A multi-chart arrangement's display name for its code, else the arrangement catalog's English label. */
+/** A multi-chart arrangement's display name for its code, else the arrangement catalog's English
+ *  label. An arrangement code separates its parts with hyphens (`2-2-l`) where a catalog key uses
+ *  underscores, so the code is converted rather than asking every caller to. */
 export function arrangementName(t: ChartTranslate, code: string, fallback: string): string {
-  const key = `layout.${code}`
+  const key = `layout.${code.replace(/-/g, '_')}`
   return key in en ? dynamic(t)(key) : fallback
 }
 

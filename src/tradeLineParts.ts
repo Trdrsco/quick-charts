@@ -8,6 +8,12 @@
 //
 // Everything here is pure apart from `drawParts`: layout takes an injected text-measure function so
 // the geometry can be computed (and tested) without a canvas.
+//
+// Every builder here takes the language optionally and speaks English without one: the pills' own
+// words (a tooltip, a side, a unit) are the widget's, while sizes, prices and a P&L figure are the
+// venue's own numbers and read the same in every language. The TP/SL handles keep their two-character
+// marks everywhere — they are marks on a 29px button, and the tooltip is what says the words.
+import { englishChartStrings, type ChartTranslate } from './i18n'
 
 /** What a part does when tapped or dragged. `tpsl` parts are dragged OFF the line to set a level. */
 export type PartRole =
@@ -194,11 +200,14 @@ export function formatPnlMoney(pnl: number | null, currency: string | null): str
   return currency ? `${amount} ${currency}` : amount
 }
 
-export function formatPnlTicks(ticks: number | null): string | null {
+/** The same P&L in ticks. `t` is the widget's language — the FIGURE keeps the precision the readout
+ *  has always shown (a decimal under ten ticks, whole numbers above it) and only the unit word is
+ *  translated, so a language switch never rescales the number. */
+export function formatPnlTicks(ticks: number | null, t: ChartTranslate = englishChartStrings()): string | null {
   if (ticks == null || !Number.isFinite(ticks)) return null
   const sign = ticks < 0 ? '−' : '+'
   const a = Math.abs(ticks)
-  return `${sign} ${a.toFixed(a < 10 ? 1 : 0)} ticks`
+  return t('lines.ticks', { count: a, sign, value: a.toFixed(a < 10 ? 1 : 0) })
 }
 
 export function formatPnlPercent(pct: number | null): string | null {
@@ -231,11 +240,14 @@ export interface PositionPartsInput {
   supportStopLoss: boolean
   /** Formats the average price for the P&L cell's tooltip. */
   priceText?: string | null
+  /** The widget's language for the pill's own words. Omitted ⇒ English. */
+  t?: ChartTranslate
 }
 
 /** The position line's controls: `[⇄] [TP][SL] [qty|P&L|✕]`.
  *  Reverse sits outside the pill; TP/SL are drag handles; the pill carries identity and the close. */
 export function buildPositionParts(input: PositionPartsInput): PartSpec {
+  const t = input.t ?? englishChartStrings()
   const children: PartSpec[] = []
 
   if (input.supportReverse) {
@@ -250,14 +262,14 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
       borderWidth: 1,
       borderRadius: TRADE_THEME.radius,
       hitPad: TRADE_THEME.reverseHitPad,
-      tooltip: 'Reverse Position',
+      tooltip: t('lines.reversePosition'),
     })
     children.push({ id: 'gap-reverse', role: 'spacer', width: TRADE_THEME.gap })
   }
 
   const handles: PartSpec[] = []
-  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, 'Drag to add Take profit', input.surface))
-  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, 'Drag to add Stop loss', input.surface))
+  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, t('lines.dragTakeProfit'), input.surface))
+  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, t('lines.dragStopLoss'), input.surface))
   if (handles.length) {
     children.push(handles[0]!)
     // Adjacent handles overlap by a pixel so their borders form one seam rather than two strokes.
@@ -300,7 +312,7 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
       // Pinned so a live number can't resize the pill and walk the ✕ out from under the pointer.
       minWidth: 82,
       font: TRADE_FONT,
-      tooltip: input.priceText ? `Price ${input.priceText}` : '',
+      tooltip: input.priceText ? t('lines.price', { price: input.priceText }) : '',
     })
   }
 
@@ -314,7 +326,7 @@ export function buildPositionParts(input: PositionPartsInput): PartSpec {
       iconColor: input.accent,
       fill: input.surface,
       fillHover: withAlpha(input.accent, 0.15),
-      tooltip: 'Close Position',
+      tooltip: t('lines.closePosition'),
     })
   }
 
@@ -346,6 +358,8 @@ export interface OrderPartsInput {
    *  renders only where the backend can attach that leg to this order shape. */
   supportTakeProfit?: boolean
   supportStopLoss?: boolean
+  /** The widget's language for the pill's own words. Omitted ⇒ English. */
+  t?: ChartTranslate
 }
 
 /** A working order's controls: `[TP][SL] [qty|label|✕]`. An order's ✕ CANCELS (it does not close a
@@ -353,10 +367,11 @@ export interface OrderPartsInput {
  *  handles are the position line's own affordance re-used — here the level they drag out arms when
  *  the ENTRY fills instead of resting immediately. */
 export function buildOrderParts(input: OrderPartsInput): PartSpec {
+  const t = input.t ?? englishChartStrings()
   const children: PartSpec[] = []
   const handles: PartSpec[] = []
-  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, 'Drag to add Take profit (arms on fill)', input.surface))
-  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, 'Drag to add Stop loss (arms on fill)', input.surface))
+  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, t('lines.dragTakeProfitOnFill'), input.surface))
+  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, t('lines.dragStopLossOnFill'), input.surface))
   if (handles.length) {
     children.push(handles[0]!)
     for (const h of handles.slice(1)) {
@@ -376,7 +391,7 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
       fillHover: input.supportModifyQty ? TRADE_THEME.onAccentHover : undefined,
       paddingX: TRADE_THEME.paddingX,
       font: TRADE_FONT,
-      tooltip: input.supportModifyQty ? 'Modify order quantity…' : '',
+      tooltip: input.supportModifyQty ? t('lines.modifyQty') : '',
     },
     { id: 'div-qty', role: 'divider', width: 1, fill: input.color },
     {
@@ -401,7 +416,7 @@ export function buildOrderParts(input: OrderPartsInput): PartSpec {
       iconColor: input.color,
       fill: input.surface,
       fillHover: TRADE_THEME.closeHover,
-      tooltip: 'Cancel order',
+      tooltip: t('lines.cancelOrder'),
     })
   }
 
@@ -430,6 +445,8 @@ export interface ExitPartsInput {
   pnlText: string | null
   pnlSign: 'profit' | 'loss' | null
   supportCancel: boolean
+  /** The widget's language for the pill's own words. Omitted ⇒ English. */
+  t?: ChartTranslate
 }
 
 /** A resting protective exit's controls: `[qty │ P&L │ ✕]`.
@@ -442,6 +459,7 @@ export interface ExitPartsInput {
  *  Colour comes from the LEG, not the side: take profits are green and stops orange on both a long
  *  and a short, because the two lines are read as "my target" and "my risk", never as buy vs sell. */
 export function buildExitParts(input: ExitPartsInput): PartSpec {
+  const t = input.t ?? englishChartStrings()
   const color = input.kind === 'tp' ? TRADE_THEME.tp : TRADE_THEME.sl
   const pill: PartSpec[] = [
     { id: 'pill-inset', role: 'spacer', width: 1 },
@@ -467,7 +485,7 @@ export function buildExitParts(input: ExitPartsInput): PartSpec {
       paddingX: TRADE_THEME.paddingX,
       minWidth: 82,
       font: TRADE_FONT,
-      tooltip: input.kind === 'tp' ? 'Take profit' : 'Stop loss',
+      tooltip: t(input.kind === 'tp' ? 'lines.takeProfit' : 'lines.stopLoss'),
     })
   }
   if (input.supportCancel) {
@@ -480,7 +498,7 @@ export function buildExitParts(input: ExitPartsInput): PartSpec {
       iconColor: color,
       fill: input.surface,
       fillHover: TRADE_THEME.closeHover,
-      tooltip: 'Cancel order',
+      tooltip: t('lines.cancelOrder'),
     })
   }
   pill.push({ id: 'pill-inset-r', role: 'spacer', width: 1 })
@@ -497,7 +515,9 @@ export interface DraftPartsInput {
   accent: string
   sideLabel: string
   qty: number | string
-  /** The ticket's tab label ('Market' | 'Limit' | 'Stop Limit' | 'Stop') — rendered verbatim. */
+  /** The ticket's tab label, in the language the chip shows it in — the CALLER resolves it, because
+   *  the canonical token a PreviewSet carries ('Market' | 'Limit' | 'Stop Limit' | 'Stop') is what a
+   *  host reads and writes, and this is the one place it is rendered. */
   orderType: string
   supportTakeProfit: boolean
   supportStopLoss: boolean
@@ -505,6 +525,8 @@ export interface DraftPartsInput {
   /** Tooltip on the side chip. Empty when the chip cannot send (no account, or trading locked) — the
    *  caller says WHY there, so the chip explains itself rather than looking inert. */
   submitTooltip?: string
+  /** The widget's language for the pill's own words. Omitted ⇒ English. */
+  t?: ChartTranslate
 }
 
 /** The order ticket's PENDING order, drawn with the same machinery as a live position: the side takes
@@ -514,6 +536,7 @@ export interface DraftPartsInput {
  *  report — what it has is a kind. Everything else is deliberately identical, so the ticket's order and
  *  the position it becomes are visibly the same object at two moments in its life. */
 export function buildDraftParts(input: DraftPartsInput): PartSpec {
+  const t = input.t ?? englishChartStrings()
   const children: PartSpec[] = [
     {
       id: 'side',
@@ -533,8 +556,8 @@ export function buildDraftParts(input: DraftPartsInput): PartSpec {
   ]
 
   const handles: PartSpec[] = []
-  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, 'Drag to add Take profit', input.surface))
-  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, 'Drag to add Stop loss', input.surface))
+  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, t('lines.dragTakeProfit'), input.surface))
+  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, t('lines.dragStopLoss'), input.surface))
   if (handles.length) {
     children.push(handles[0]!)
     for (const h of handles.slice(1)) {
@@ -569,7 +592,7 @@ export function buildDraftParts(input: DraftPartsInput): PartSpec {
       paddingX: TRADE_THEME.paddingX,
       minWidth: 82,
       font: TRADE_FONT,
-      tooltip: 'Change order type',
+      tooltip: t('lines.changeOrderType'),
     },
   ]
   if (input.supportCancel) {
@@ -582,7 +605,7 @@ export function buildDraftParts(input: DraftPartsInput): PartSpec {
       iconColor: input.accent,
       fill: input.surface,
       fillHover: withAlpha(input.accent, 0.15),
-      tooltip: 'Discard this order',
+      tooltip: t('lines.discardOrder'),
     })
   }
   pill.push({ id: 'pill-inset-r', role: 'spacer', width: 1 })

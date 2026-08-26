@@ -6,9 +6,22 @@
   of the 21 codes in the `@trdrs/i18n` registry (a new dependency of this package), English by
   default. The widget's own chrome reads it and the chart's axis and crosshair dates are formatted
   in it. **`setLocale(code)`** on a widget and on a layout switches at runtime; **`locale()`**
-  reports the current code. A language the widget has no translation for yet reads English.
-  Exports `createChartI18n` and `chartDictionaries` for hosts composing the chrome modules
-  themselves.
+  reports the current code. Every chrome module speaks it: the legend, the drawing rail (the 90
+  tool names by registry `type`), the order ticket and its type menu, the account panel, the
+  context menu (an open menu relabels in place), the replay bar, trade-line pills and their
+  actions, the inputs editor, execution-mark cards, the broker's own confirmation and refusal
+  lines, and the session status words. What the datafeed or broker says, and every symbol, price
+  and id, passes through untranslated. The catalog ships a directory for every registry language;
+  a key without a translation reads English.
+  Hosts composing the chrome modules themselves pass a `ChartI18n` (from `createChartI18n(code)`)
+  as a new OPTIONAL trailing parameter or option — `mountDrawingsRail`, `mountReplayBar`,
+  `mountContextMenu`, `mountAccountPanel`, `openTypeMenu`, `openInputsEditor`; `strings` on
+  `TradeLineOptions`, `OrderTicketDeps` and `ExecutionMarksOptions`; `t` on `ChartMenuContext`
+  and the trade-line part builders; a BCP 47 `tag` on `sessionTimeline` — every existing call
+  compiles unchanged and reads English. New exports `toolName(t, type, fallback)` and
+  `arrangementName(t, code, fallback)` give a host the widget's word for a drawing tool or a
+  multi-chart arrangement; `Arrangement` gains `label` (the English fallback). Exports
+  `createChartI18n` and `chartDictionaries`.
 
 ## 0.2.0 — 2026-08-14
 

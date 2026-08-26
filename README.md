@@ -264,8 +264,11 @@ Beyond the basics, the widget carries:
 - **An interface language** (`locale`, English by default) drawn from the 21-language registry in
   `@trdrs/i18n`: the widget's own chrome reads it, and the chart's axis and crosshair dates are
   formatted in it. `setLocale(code)` switches at runtime; `locale()` reports the current one.
-  Symbols, prices and anything the datafeed or broker says are data and pass through untranslated.
-  A language the widget has no translation for yet reads English.
+  Every piece of the widget's own chrome speaks it; symbols, prices and anything the datafeed or
+  broker says are data and pass through untranslated. A host composing the chrome modules itself
+  hands them a `ChartI18n` from `createChartI18n(code)` (an optional trailing parameter or `strings`
+  option on each) and reads the widget's words for drawing tools and arrangements through
+  `toolName` and `arrangementName`.
 
 ```ts
 import { createChart, createUdfDatafeed, SCALE_MODES } from '@trdrs/chart'
