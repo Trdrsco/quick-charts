@@ -2,14 +2,14 @@ import type { Translation } from '@trdrs/i18n'
 import type { ticket as source } from '../en/ticket'
 
 export const ticket: Translation<typeof source> = {
-  'ticket.typeMarket': 'Market',
-  'ticket.typeLimit': 'Limit',
-  'ticket.typeStop': 'Stop',
-  'ticket.typeStopLimit': 'Stop Limit',
-  'ticket.noAccount': 'No account armed — connect an account to place orders.',
-  'ticket.locked': 'Trading is locked for this account.',
-  'ticket.needsPrice': 'The order needs a price.',
-  'ticket.cannotPlace': 'This integration does not place orders.',
-  'ticket.placedBuy': 'Buy {qty} {type} placed',
-  'ticket.placedSell': 'Sell {qty} {type} placed',
+  'ticket.typeMarket': 'Thị trường',
+  'ticket.typeLimit': 'Giới hạn',
+  'ticket.typeStop': 'Dừng',
+  'ticket.typeStopLimit': 'Dừng giới hạn',
+  'ticket.noAccount': 'Chưa chọn tài khoản — kết nối một tài khoản để đặt lệnh.',
+  'ticket.locked': 'Tài khoản này đang bị khóa giao dịch.',
+  'ticket.needsPrice': 'Lệnh cần có giá.',
+  'ticket.cannotPlace': 'Tích hợp này không đặt được lệnh.',
+  'ticket.placedBuy': 'Đã đặt lệnh mua {qty} {type}',
+  'ticket.placedSell': 'Đã đặt lệnh bán {qty} {type}',
 }

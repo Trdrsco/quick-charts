@@ -2,14 +2,14 @@ import type { Translation } from '@trdrs/i18n'
 import type { ticket as source } from '../en/ticket'
 
 export const ticket: Translation<typeof source> = {
-  'ticket.typeMarket': 'Market',
+  'ticket.typeMarket': 'Rynkowe',
   'ticket.typeLimit': 'Limit',
   'ticket.typeStop': 'Stop',
-  'ticket.typeStopLimit': 'Stop Limit',
-  'ticket.noAccount': 'No account armed — connect an account to place orders.',
-  'ticket.locked': 'Trading is locked for this account.',
-  'ticket.needsPrice': 'The order needs a price.',
-  'ticket.cannotPlace': 'This integration does not place orders.',
-  'ticket.placedBuy': 'Buy {qty} {type} placed',
-  'ticket.placedSell': 'Sell {qty} {type} placed',
+  'ticket.typeStopLimit': 'Stop limit',
+  'ticket.noAccount': 'Brak uzbrojonego konta — połącz konto, aby składać zlecenia.',
+  'ticket.locked': 'Handel na tym koncie jest zablokowany.',
+  'ticket.needsPrice': 'Zlecenie wymaga ceny.',
+  'ticket.cannotPlace': 'Ta integracja nie składa zleceń.',
+  'ticket.placedBuy': 'Złożono kupno {qty} {type}',
+  'ticket.placedSell': 'Złożono sprzedaż {qty} {type}',
 }

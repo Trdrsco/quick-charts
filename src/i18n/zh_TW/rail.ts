@@ -2,7 +2,7 @@ import type { Translation } from '@trdrs/i18n'
 import type { rail as source } from '../en/rail'
 
 export const rail: Translation<typeof source> = {
-  'rail.cursor': 'Cursor',
-  'rail.deleteSelected': 'Delete selected drawing',
-  'rail.clearAll': 'Clear all drawings',
+  'rail.cursor': '游標',
+  'rail.deleteSelected': '刪除選取的繪圖',
+  'rail.clearAll': '清除所有繪圖',
 }

@@ -2,14 +2,14 @@ import type { Translation } from '@trdrs/i18n'
 import type { replay as source } from '../en/replay'
 
 export const replay: Translation<typeof source> = {
-  'replay.stepBack': 'Step back one bar',
-  'replay.play': 'Play',
-  'replay.pause': 'Pause',
-  'replay.stepForward': 'Step forward one bar',
-  'replay.speed': 'Replay speed (updates per second)',
-  'replay.interval': 'Update interval (bars form from finer real bars)',
-  'replay.auto': 'Auto',
-  'replay.goLive': 'Go live',
-  'replay.goLiveTitle': 'Jump to the live edge',
-  'replay.exit': 'Exit replay',
+  'replay.stepBack': '1バー戻る',
+  'replay.play': '再生',
+  'replay.pause': '一時停止',
+  'replay.stepForward': '1バー進む',
+  'replay.speed': 'リプレイ速度（1秒あたりの更新回数）',
+  'replay.interval': '更新間隔（より細かい実バーからバーを形成）',
+  'replay.auto': '自動',
+  'replay.goLive': 'ライブへ',
+  'replay.goLiveTitle': '最新のバーへ移動',
+  'replay.exit': 'リプレイを終了',
 }
