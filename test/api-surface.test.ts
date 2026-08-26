@@ -16,6 +16,8 @@ const SURFACE: Record<string, string> = {
   // Additive (minor): the interface language — the widget's own catalog bound to the @trdrs/i18n runtime, 2026-08-25.
   createChartI18n: 'function',
   chartDictionaries: 'object',
+  toolName: 'function',
+  arrangementName: 'function',
   BRAND_DOWN: 'string',
   BRAND_UP: 'string',
   COLLAPSED_H: 'number',
