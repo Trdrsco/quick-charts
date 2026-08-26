@@ -22,6 +22,21 @@ export interface ChartI18n {
  *  here reads English. */
 export const chartDictionaries = createDictionaryLoader(en, {})
 
+const dynamic = (t: ChartTranslate) => t as unknown as (key: string) => string
+
+/** A drawing tool's display name for a registry `type`: the catalog's when it knows the type, else
+ *  the registry's own English `name`, so a tool the catalog has not met still has a name. */
+export function toolName(t: ChartTranslate, type: string, fallback: string): string {
+  const key = `tool.${type}`
+  return key in en ? dynamic(t)(key) : fallback
+}
+
+/** A multi-chart arrangement's display name for its code, else the arrangement catalog's English label. */
+export function arrangementName(t: ChartTranslate, code: string, fallback: string): string {
+  const key = `layout.${code}`
+  return key in en ? dynamic(t)(key) : fallback
+}
+
 export function createChartI18n(initial: LanguageCode = DEFAULT_LOCALE): ChartI18n {
   let locale: LanguageCode = initial
   let dict = chartDictionaries.ifLoaded(locale)
