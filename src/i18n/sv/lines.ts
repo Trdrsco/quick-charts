@@ -35,10 +35,7 @@ export const lines: Translation<typeof source> = {
   'lines.takeProfitUnsupported': 'Take profit stöds inte för detta konto',
   'lines.qtySet': 'Orderstorlek satt till {qty}',
   'lines.positionReversed': 'Positionen vänd',
-  'lines.positionReversedOrders': {
-    one: 'Positionen vänd · {count} order avbruten',
-    other: 'Positionen vänd · {count} ordrar avbrutna',
-  },
+  'lines.positionReversedOrders': { one: 'Positionen vänd · {count} order avbruten', other: 'Positionen vänd · {count} ordrar avbrutna' },
   'lines.takeProfitPlacedSell': 'Take profit-order lagd · Sälj {qty} vid {price}',
   'lines.takeProfitPlacedBuy': 'Take profit-order lagd · Köp {qty} vid {price}',
   'lines.stopLossPlacedSell': 'Stop loss-order lagd · Sälj {qty} vid {price}',
