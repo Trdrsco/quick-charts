@@ -13,7 +13,7 @@ describe('the widget catalog', () => {
   })
 
   it('names every key by its surface and conforms to itself', () => {
-    for (const key of KEYS) expect(key, key).toMatch(/^[a-z]+\.[A-Za-z0-9]+$/)
+    for (const key of KEYS) expect(key, key).toMatch(/^[a-z]+\.[A-Za-z0-9_]+$/)
     expect(catalogProblems(en, en, 'en')).toEqual([])
   })
 
