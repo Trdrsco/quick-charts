@@ -36,6 +36,8 @@ import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 import { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
 import { attachExecutionMarks, type ChartExecution, type ExecutionMarksHandle, type ExecutionScope } from './executionMarks'
 import { decimalsOfTick } from './broker'
+import { localeInfo, type LanguageCode } from '@trdrs/i18n'
+import { createChartI18n } from './i18n'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
@@ -143,6 +145,11 @@ export interface ChartWidgetApi {
   sync: ChartPaneSyncApi
   /** Execution marks, or null when the widget was created with `executionMarks: false`. */
   executions: ChartExecutionsApi | null
+  /** The interface language the widget is showing. */
+  locale(): LanguageCode
+  /** Switch the interface language at runtime: the chrome re-labels as the translation lands, and
+   *  the axis and crosshair formatting follow at once. */
+  setLocale(code: LanguageCode): void
   /** Tear down the chart, the live subscription, and every DOM/timer resource. Idempotent. */
   remove(): void
 }
@@ -334,8 +341,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     container.appendChild(panelHost)
   }
 
+  // Every string the chrome shows comes through here, in the host's language; the tag also drives
+  // the library's own axis and crosshair formatting, so a canvas label and a menu row never disagree
+  // about what language the screen is in.
+  const i18n = createChartI18n(options.locale)
+
   const chart: IChartApi = createLwChart(chartBox, {
     autoSize: true,
+    localization: { locale: i18n.tag() },
     layout: {
       // The look reads the resolved override ladder (`eff`), never the theme directly — with no
       // host layers the two are identical, so an override-less widget renders exactly as before.
@@ -458,7 +471,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     legend?.syncScale(next)
   }
   if (options.legend !== false) {
-    legend = mountChartLegend(chromeBox, theme, {
+    legend = mountChartLegend(chromeBox, theme, i18n, {
       onToggleEye: (id) => {
         if (hiddenIndicators.has(id)) hiddenIndicators.delete(id)
         else hiddenIndicators.add(id)
@@ -1322,6 +1335,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   const api: ChartWidgetApi = {
     symbol: () => symbol,
     timeframe: () => tf,
+    locale: () => i18n.locale(),
+    setLocale(code: LanguageCode) {
+      if (removed || code === i18n.locale()) return
+      void i18n.setLocale(code)
+      chart.applyOptions({ localization: { locale: localeInfo(code).tag } })
+    },
     setSymbol(next: string) {
       if (removed || next === symbol) return
       symbol = next

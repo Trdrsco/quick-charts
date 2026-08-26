@@ -1,5 +1,15 @@
 # @trdrs/chart
 
+## Unreleased
+
+- **Interface language.** New **`locale`** option on `createChart` and on a layout's `base`, one
+  of the 21 codes in the `@trdrs/i18n` registry (a new dependency of this package), English by
+  default. The widget's own chrome reads it and the chart's axis and crosshair dates are formatted
+  in it. **`setLocale(code)`** on a widget and on a layout switches at runtime; **`locale()`**
+  reports the current code. A language the widget has no translation for yet reads English.
+  Exports `createChartI18n` and `chartDictionaries` for hosts composing the chrome modules
+  themselves.
+
 ## 0.2.0 — 2026-08-14
 
 - **Execution marks.** New **`attachExecutionMarks(chart, series, chrome, opts)`**, reproducing
