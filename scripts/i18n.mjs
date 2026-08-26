@@ -169,12 +169,15 @@ async function sync(check) {
         }
       }
     }
+    // The lock is compared and written like every other generated file: by content, in the line
+    // ending the checkout uses, so a CRLF working copy and a LF one agree on what is in step.
     const lockText = renderLock(next)
-    if (!existsSync(lockPath(cat)) || readFileSync(lockPath(cat), 'utf8') !== lockText) {
+    const lockOnDisk = existsSync(lockPath(cat)) ? readFileSync(lockPath(cat), 'utf8').replace(/\r\n/g, '\n') : null
+    if (lockOnDisk !== lockText) {
       if (check) {
         problems++
         console.log(`${name}: source.lock.json is out of date — an en/ value changed without \`pnpm i18n sync\``)
-      } else writeFileSync(lockPath(cat), lockText)
+      } else writeFileSync(lockPath(cat), lockText.replace(/\n/g, fileEol(lockPath(cat), cat.eol)))
     }
     if (!check) {
       const byKey = new Map()
