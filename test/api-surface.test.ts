@@ -13,6 +13,9 @@ const SURFACE: Record<string, string> = {
   LAYOUT_MENU_ROWS: 'object',
   arrangementOf: 'function',
   createChartLayout: 'function',
+  // Additive (minor): the interface language — the widget's own catalog bound to the @trdrs/i18n runtime, 2026-08-25.
+  createChartI18n: 'function',
+  chartDictionaries: 'object',
   BRAND_DOWN: 'string',
   BRAND_UP: 'string',
   COLLAPSED_H: 'number',

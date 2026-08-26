@@ -31,7 +31,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@trdrs/chart-drawings": "workspace:^"
+    "@trdrs/chart-drawings": "workspace:^",
+    "@trdrs/i18n": "workspace:^"
   },
   "peerDependencies": {
     "lightweight-charts": "^5.0.0"

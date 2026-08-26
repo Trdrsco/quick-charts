@@ -261,13 +261,19 @@ Beyond the basics, the widget carries:
   only on pane-placed instances, and the eye whose hidden state persists.
   `setIndicators(instances)` swaps the configured list at runtime (removed ids tear down, panes
   sweep, the legend follows).
+- **An interface language** (`locale`, English by default) drawn from the 21-language registry in
+  `@trdrs/i18n`: the widget's own chrome reads it, and the chart's axis and crosshair dates are
+  formatted in it. `setLocale(code)` switches at runtime; `locale()` reports the current one.
+  Symbols, prices and anything the datafeed or broker says are data and pass through untranslated.
+  A language the widget has no translation for yet reads English.
 
 ```ts
 import { createChart, createUdfDatafeed, SCALE_MODES } from '@trdrs/chart'
 
-const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }) })
+const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }), locale: 'de' })
 w.setScaleMode(SCALE_MODES.includes('log') ? 'log' : 'normal')
 w.setIndicators([{ id: 'sma-20', definition: smaDefinition }])
+w.setLocale('ja')
 ```
 
 ## Multi-chart layouts
@@ -308,7 +314,9 @@ layout.remove()
 Per-pane widget apis stay reachable through `layout.panes()` — each is the full `ChartWidgetApi`,
 including the `sync` pane-composition primitives (`onCrosshair`/`setCrosshair`, `onTimeClick`/
 `centerOn`, `onVisibleRange`/`setVisibleRange`/`visibleRange`) the layout itself is built on, so a
-host can compose panes its own way without the layout host.
+host can compose panes its own way without the layout host. `base.locale` sets every pane's
+interface language and `layout.setLocale(code)` switches them together; a pane created by a later
+re-tile opens in the current one.
 
 ## Drawings
 

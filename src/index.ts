@@ -139,3 +139,4 @@ export {
 } from './tradeLineParts'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export { createChart, resolveTheme, applyBar, resolveInitialTf } from './host'
+export { createChartI18n, chartDictionaries, type ChartI18n, type ChartMessageKey, type ChartTranslate } from './i18n'

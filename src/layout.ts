@@ -11,6 +11,7 @@
 import { arrangementOf, type Arrangement } from './layoutGrid'
 import { createChart, type ChartWidgetApi } from './host'
 import type { ChartWidgetOptions } from './widget'
+import type { LanguageCode } from '@trdrs/i18n'
 
 export interface LayoutSyncFlags {
   symbol: boolean
@@ -69,6 +70,8 @@ export interface ChartLayoutApi {
   /** The whole layout as ONE opaque content blob (arrangement + sync + every pane's content). */
   serialize(): { content: string }
   restore(content: string): void
+  /** Switch every pane's interface language; panes created later open in it too. */
+  setLocale(code: LanguageCode): void
   remove(): void
 }
 
@@ -78,6 +81,8 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
   const container = options.container
   const accent = options.accent ?? '#2962ff'
   let removed = false
+  // The language every pane shows; `setLocale` moves it so a pane created later opens in it too.
+  let locale: LanguageCode | undefined = options.base.locale
   let flags: LayoutSyncFlags = { ...SYNC_OFF, ...(options.sync ?? {}) }
   let active = 0
   /** True while the bus replays a change onto sibling panes — their event echoes are dropped, so
@@ -180,6 +185,7 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
     const baseEvents = options.base.events ?? {}
     pane.api = createChart({
       ...options.base,
+      ...(locale ? { locale } : {}),
       container: el,
       ...(init?.symbol ? { symbol: init.symbol } : {}),
       ...(init?.timeframe ? { timeframe: init.timeframe } : {}),
@@ -245,6 +251,10 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
       notifyChange()
     },
     panes: () => panes.map((p) => p.api),
+    setLocale(code) {
+      locale = code
+      for (const p of panes) p.api.setLocale(code)
+    },
     activePane: () => active,
     setActivePane: (i) => setActive(i),
     tradingSymbol: () => tradedSymbol(),

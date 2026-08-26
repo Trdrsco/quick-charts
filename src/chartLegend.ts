@@ -5,6 +5,7 @@
 // owns end to end, no framework. Every control reports INTENT to the host (the widget owns state
 // and re-renders); the legend never mutates chart state itself.
 import type { ResolvedTheme } from './host'
+import type { ChartI18n } from './i18n'
 import { SCALE_MODE_OPTIONS, type ScaleMode } from './scaleMode'
 
 /** One legend row. `value` arrives pre-formatted (the host owns precision); `note` is the
@@ -47,7 +48,10 @@ const EYE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke=
 const EYE_OFF = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 12s3.5-6 10-6c1.8 0 3.4.5 4.8 1.2M22 12s-3.5 6-10 6c-1.8 0-3.4-.5-4.8-1.2"/><path d="M4 20 20 4"/></svg>'
 const GEAR = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>'
 
-export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, controls: LegendControls): ChartLegend {
+/** `strings` is the widget's language: every visible label reads through `strings.t` at render time,
+ *  and the legend re-renders itself when the language changes, so a switch never leaves a stale
+ *  title on a button that was drawn before it. */
+export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, strings: ChartI18n, controls: LegendControls): ChartLegend {
   if (getComputedStyle(container).position === 'static') container.style.position = 'relative'
 
   const root = document.createElement('div')
@@ -69,6 +73,9 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, c
 
   // The scale-mode chips ride the header (present only when the host handles them).
   const scaleButtons = new Map<ScaleMode, HTMLButtonElement>()
+  const titleScaleButtons = () => {
+    for (const [id, b] of scaleButtons) b.title = strings.t('legend.priceScale', { mode: id })
+  }
   if (controls.onScaleMode) {
     const row = document.createElement('span')
     row.style.cssText = 'display:inline-flex;gap:2px;margin-left:4px;pointer-events:auto;'
@@ -76,12 +83,12 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, c
       const b = document.createElement('button')
       b.type = 'button'
       b.textContent = opt.label
-      b.title = `Price scale: ${opt.id}`
       b.style.cssText = `background:none;border:1px solid ${theme.gridColor};border-radius:4px;color:${theme.textColor};cursor:pointer;padding:0 5px;font-size:10px;line-height:14px;`
       b.addEventListener('click', () => controls.onScaleMode?.(opt.id))
       scaleButtons.set(opt.id, b)
       row.appendChild(b)
     }
+    titleScaleButtons()
     header.appendChild(row)
   }
 
@@ -101,6 +108,46 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, c
     return b
   }
 
+  let lastChips: readonly LegendChip[] = []
+  const render = (chips: readonly LegendChip[]) => {
+    chipRows.replaceChildren()
+    for (const chip of chips) {
+      const row = document.createElement('div')
+      row.style.cssText = `display:flex;align-items:center;gap:6px;pointer-events:auto;opacity:${chip.hidden ? 0.5 : 1};`
+      const label = document.createElement('span')
+      label.textContent = chip.note ? `${chip.title} — ${chip.note}` : chip.hidden || chip.value == null ? chip.title : `${chip.title}  ${chip.value}`
+      row.appendChild(label)
+      if (chip.hasInputs && controls.onSettings) {
+        const gear = chipButton(GEAR, strings.t('legend.indicatorSettings'), () => {
+          const r = gear.getBoundingClientRect()
+          controls.onSettings!(chip.id, { x: r.x, y: r.y, w: r.width, h: r.height })
+        }, true)
+        row.appendChild(gear)
+      }
+      if (chip.pane && controls.onPaneOp && !chip.hidden) {
+        row.appendChild(
+          chip.collapsed
+            ? chipButton('▴', strings.t('legend.restorePane'), () => controls.onPaneOp!(chip.id, 'restore'))
+            : chipButton('▾', strings.t('legend.collapsePane'), () => controls.onPaneOp!(chip.id, 'collapse')),
+        )
+        if (!chip.collapsed) row.appendChild(chipButton('⤢', strings.t('legend.maximizePane'), () => controls.onPaneOp!(chip.id, 'maximize')))
+      }
+      const eye = chipButton(
+        chip.hidden ? EYE_OFF : EYE,
+        chip.hidden ? strings.t('legend.showIndicator') : strings.t('legend.hideIndicator'),
+        () => controls.onToggleEye(chip.id),
+        true,
+      )
+      row.appendChild(eye)
+      chipRows.appendChild(row)
+    }
+  }
+
+  const unsubscribe = strings.onChange(() => {
+    titleScaleButtons()
+    render(lastChips)
+  })
+
   return {
     setHeader(symbol, tf) {
       title.textContent = symbol ? `${symbol} · ${tf}` : ''
@@ -117,34 +164,11 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, c
       }
     },
     setChips(chips) {
-      chipRows.replaceChildren()
-      for (const chip of chips) {
-        const row = document.createElement('div')
-        row.style.cssText = `display:flex;align-items:center;gap:6px;pointer-events:auto;opacity:${chip.hidden ? 0.5 : 1};`
-        const label = document.createElement('span')
-        label.textContent = chip.note ? `${chip.title} — ${chip.note}` : chip.hidden || chip.value == null ? chip.title : `${chip.title}  ${chip.value}`
-        row.appendChild(label)
-        if (chip.hasInputs && controls.onSettings) {
-          const gear = chipButton(GEAR, 'Indicator settings', () => {
-            const r = gear.getBoundingClientRect()
-            controls.onSettings!(chip.id, { x: r.x, y: r.y, w: r.width, h: r.height })
-          }, true)
-          row.appendChild(gear)
-        }
-        if (chip.pane && controls.onPaneOp && !chip.hidden) {
-          row.appendChild(
-            chip.collapsed
-              ? chipButton('▴', 'Restore pane', () => controls.onPaneOp!(chip.id, 'restore'))
-              : chipButton('▾', 'Collapse pane', () => controls.onPaneOp!(chip.id, 'collapse')),
-          )
-          if (!chip.collapsed) row.appendChild(chipButton('⤢', 'Maximize pane', () => controls.onPaneOp!(chip.id, 'maximize')))
-        }
-        const eye = chipButton(chip.hidden ? EYE_OFF : EYE, chip.hidden ? 'Show indicator' : 'Hide indicator', () => controls.onToggleEye(chip.id), true)
-        row.appendChild(eye)
-        chipRows.appendChild(row)
-      }
+      lastChips = chips
+      render(chips)
     },
     destroy() {
+      unsubscribe()
       root.remove()
     },
   }
