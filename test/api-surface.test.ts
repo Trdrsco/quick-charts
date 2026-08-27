@@ -56,6 +56,7 @@ const SURFACE: Record<string, string> = {
   createSessionBands: 'function',
   createUdfDatafeed: 'function',
   decimalsOfTick: 'function',
+  displayDecimals: 'function',
   dispatchPreviewDrop: 'function',
   drawParts: 'function',
   exchangeZoneOf: 'function',

@@ -374,6 +374,53 @@ describe('draft (order ticket) line', () => {
     expect(findPart(root, 'submit')).toBe(find(root, 'side'))
     expect(findPart(root, 'reverse')).toBeNull()
   })
+
+  // PHONE. The desktop line is drawn for a chart a few times wider than a phone's, and it was
+  // right-aligned, so what ran off the screen was its LEADING part — the side chip. Owner report
+  // 2026-08-27: "I can't see the buy/sell thing either".
+  describe('on a phone', () => {
+    it('drops the side chip, which the phone already carries twice', () => {
+      const root = draft({ compact: true })
+      // Gone from the tree, not merely hidden: a submit target painted nowhere is worse than none.
+      expect(find(root, 'side')).toBeUndefined()
+      expect(findPart(root, 'submit')).toBeNull()
+    })
+
+    it('keeps every control the phone chrome does NOT already carry', () => {
+      const root = draft({ compact: true })
+      for (const id of ['qty', 'orderType', 'close', 'tp', 'sl']) expect(find(root, id)).toBeDefined()
+    })
+
+    it('stops holding the type cell open at its desktop width', () => {
+      // The 82px floor keeps the four types from jostling as you cycle them. On a phone that fixed
+      // width is most of the pill, and the jostle is the cheaper of the two costs.
+      expect(find(draft({ compact: true }), 'orderType').w).toBeLessThan(find(draft(), 'orderType').w)
+    })
+
+    it('fits a 390px phone with room to spare, where the desktop line does not', () => {
+      // The real geometry: a 390px screen less a ~56px price scale, less the compact right margin.
+      const phone = (over: Partial<Parameters<typeof buildDraftParts>[0]>) =>
+        layoutParts(buildDraftParts({ surface: SURFACE, accent: TRADE_THEME.accent, sideLabel: 'Buy', qty: 1, orderType: 'Stop Limit', supportTakeProfit: true, supportStopLoss: true, supportCancel: true, ...over }), {
+          rightEdge: 390 - 56 - 12,
+          centerY: CENTER_Y,
+          measure,
+        })
+      // The widest type on the narrowest screen — the worst case, and the one that used to hang off.
+      expect(phone({ compact: true }).x).toBeGreaterThan(40)
+      expect(phone({}).x).toBeLessThan(phone({ compact: true }).x)
+    })
+
+    it('never lays a line out off the left edge, however wide it gets', () => {
+      // The clamp is the backstop behind the tightening: a tree that outgrows its chart touches the
+      // left edge instead of hanging past it, so its first control stays on screen and tappable.
+      const squeezed = layoutParts(
+        buildDraftParts({ surface: SURFACE, accent: TRADE_THEME.accent, sideLabel: 'Buy', qty: 1, orderType: 'Stop Limit', supportTakeProfit: true, supportStopLoss: true, supportCancel: true }),
+        { rightEdge: 80, centerY: CENTER_Y, measure },
+      )
+      expect(squeezed.x).toBeGreaterThanOrEqual(0)
+      expect(find(squeezed, 'qty').x).toBeGreaterThanOrEqual(0)
+    })
+  })
 })
 
 // A part is PART_H tall because that is what the reference draws and what a MOUSE needs. A thumb

@@ -167,9 +167,36 @@ export function decimalsOfTick(tick?: number): number {
   return dot < 0 ? 0 : s.length - dot - 1
 }
 
-/** Render a price at the tick's own precision for a toast/label. */
+/** How many significant figures a READ price is worth. Six is where a number stops being a level and
+ *  starts being a serial: 111234.56789 has eleven, and nobody has ever traded on the last five. */
+const READ_SIG_FIGS = 6
+
+/** Decimals a price is SHOWN with — which is NOT always the decimals its tick implies (owner call
+ *  2026-08-27).
+ *
+ *  A venue's tick is a trading grid, not a reading. BTC/USDT ticks at 0.00001, so tick precision
+ *  writes six-figure prices as 111234.56789 and every label on the chart grows five digits nobody
+ *  reads. Two flat would be wrong everywhere else, though — EURUSD lives at 1.0850 and 2dp erases
+ *  the instrument — so the cap is on SIGNIFICANT figures rather than decimals: keep six of them,
+ *  never fewer than two decimals, and never more than the tick actually resolves.
+ *
+ *  BTC at 111,234 → 2. ES at 5000.25 → 2. EURUSD → its 5. A price UNDER 1 is exempt outright: a coin
+ *  at 0.00004321 is all decimals, and capping it would round the instrument away to nothing.
+ *
+ *  `refPrice` is the price being shown (or the market it sits at). Unknown ⇒ the tick's own answer,
+ *  since a cap without a magnitude to measure against is a guess. */
+export function displayDecimals(tick: number | undefined, refPrice: number | null | undefined): number {
+  const tickDp = decimalsOfTick(tick)
+  const p = refPrice == null ? NaN : Math.abs(refPrice)
+  if (!Number.isFinite(p) || p < 1) return tickDp
+  const intDigits = Math.floor(Math.log10(p)) + 1
+  return Math.min(tickDp, Math.max(2, READ_SIG_FIGS - intDigits))
+}
+
+/** Render a price for a toast/label — at the precision it is READ at (see displayDecimals), which
+ *  the price itself supplies the magnitude for. */
 export function fmtPrice(n: number, tick?: number): string {
-  return Number.isFinite(n) ? n.toFixed(decimalsOfTick(tick)) : ''
+  return Number.isFinite(n) ? n.toFixed(displayDecimals(tick, n)) : ''
 }
 
 /** True when a drop is a genuine MOVE rather than a tap: after snapping to the tick, the price
