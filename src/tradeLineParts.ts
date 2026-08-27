@@ -149,6 +149,17 @@ export const EXIT_ZONE_ALPHA = 0.15
  *  collides with the scale. Measured at 64px against the reference's own resolved layout. */
 export const PILL_RIGHT_MARGIN = 64
 
+/** The same gap on a PHONE. 64px of held-open chart is a sixth of a 390px screen, and it was being
+ *  spent at the end the pill has room at while the pill's own left end ran off the display. 12 keeps
+ *  the line visibly continuing past the controls without paying for the view. */
+export const PILL_RIGHT_MARGIN_COMPACT = 12
+
+/** Nothing is ever laid out further left than this. A right-aligned tree that outgrows its chart
+ *  used to hang off the left edge, and the part it hung off by was the FIRST one — so a draft too
+ *  wide for a phone lost its leading control entirely rather than looking cramped. Clamping turns
+ *  that into a pill that touches the left edge, which is legible and, more to the point, tappable. */
+const PILL_LEFT_MIN = 2
+
 /** The price-axis label for a trade line. A TRIGGER (stop) is drawn outlined — dark interior, coloured
  *  border — while a limit or the position average is a solid colour chip. That is the reference's own
  *  distinction, and it is the one glance that separates "this fires at a price" from "this rests at
@@ -525,9 +536,27 @@ export interface DraftPartsInput {
   /** Tooltip on the side chip. Empty when the chip cannot send (no account, or trading locked) — the
    *  caller says WHY there, so the chip explains itself rather than looking inert. */
   submitTooltip?: string
+  /** PHONE. The line is drawn for a screen about 390px wide, where the desktop draft ran off the
+   *  left edge — the side chip is the leftmost part, so the side was the first thing to leave the
+   *  screen (owner report 2026-08-27: "I can't see the buy/sell thing either").
+   *
+   *  Two changes, and both are subtractions rather than a second layout:
+   *    • NO side chip. The phone already carries the side twice — the order pill's lower half names
+   *      it, and the bar along the bottom IS the swipe that sends at it. A third copy cost the one
+   *      thing the line was short of, which is width (owner call 2026-08-27).
+   *    • The words breathe less. `Market` / `Limit` / `Stop` sat in a cell held open to 82px so the
+   *      four types would not jostle each other as you cycled them; on a phone that fixed width is
+   *      most of the pill, so the cell shrinks to its text and the padding halves.
+   *
+   *  What SURVIVES is the part that does something the phone chrome cannot: the size chip, the type
+   *  cell, the ✕, and the TP/SL handles. Those are the reasons to touch the chart at all. */
+  compact?: boolean
   /** The widget's language for the pill's own words. Omitted ⇒ English. */
   t?: ChartTranslate
 }
+
+/** Horizontal breathing room inside a draft cell. Compact halves it — see DraftPartsInput.compact. */
+const draftPadX = (compact: boolean | undefined): number => (compact ? 4 : TRADE_THEME.paddingX)
 
 /** The order ticket's PENDING order, drawn with the same machinery as a live position: the side takes
  *  the standalone button, TP/SL are the same drag handles, and the pill carries `[qty | type | ✕]`.
@@ -537,34 +566,38 @@ export interface DraftPartsInput {
  *  the position it becomes are visibly the same object at two moments in its life. */
 export function buildDraftParts(input: DraftPartsInput): PartSpec {
   const t = input.t ?? englishChartStrings()
-  const children: PartSpec[] = [
-    {
-      id: 'side',
-      // The chip both STATES the side and sends the ticket at it. It is the only money control on a
-      // draft line, so it is the only part here that is gated by the account lock.
-      role: 'submit',
-      text: input.sideLabel,
-      textColor: TRADE_THEME.onAccent,
-      fill: input.accent,
-      fillHover: TRADE_THEME.onAccentHover,
-      paddingX: TRADE_THEME.paddingX,
-      font: TRADE_FONT,
-      borderRadius: TRADE_THEME.radius,
-      tooltip: input.submitTooltip ?? '',
-    },
-    { id: 'gap-side', role: 'spacer', width: TRADE_THEME.gap },
-  ]
+  const padX = draftPadX(input.compact)
+  // The side chip both STATES the side and sends the ticket at it — the only money control on a
+  // draft line, and so the only part here gated by the account lock. It stands down on a phone,
+  // where the order pill names the side and the bar along the bottom sends it; see `compact`.
+  const children: PartSpec[] = input.compact
+    ? []
+    : [
+        {
+          id: 'side',
+          role: 'submit',
+          text: input.sideLabel,
+          textColor: TRADE_THEME.onAccent,
+          fill: input.accent,
+          fillHover: TRADE_THEME.onAccentHover,
+          paddingX: TRADE_THEME.paddingX,
+          font: TRADE_FONT,
+          borderRadius: TRADE_THEME.radius,
+          tooltip: input.submitTooltip ?? '',
+        },
+        { id: 'gap-side', role: 'spacer', width: TRADE_THEME.gap },
+      ]
 
   const handles: PartSpec[] = []
-  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, t('lines.dragTakeProfit'), input.surface))
-  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, t('lines.dragStopLoss'), input.surface))
+  if (input.supportTakeProfit) handles.push(bracketButton('tp', 'TP', TRADE_THEME.tp, t('lines.dragTakeProfit'), input.surface, padX))
+  if (input.supportStopLoss) handles.push(bracketButton('sl', 'SL', TRADE_THEME.sl, t('lines.dragStopLoss'), input.surface, padX))
   if (handles.length) {
     children.push(handles[0]!)
     for (const h of handles.slice(1)) {
       children.push({ id: `seam-${h.id}`, role: 'spacer', width: -1 })
       children.push(h)
     }
-    children.push({ id: 'gap-handles', role: 'spacer', width: TRADE_THEME.gap })
+    children.push({ id: 'gap-handles', role: 'spacer', width: input.compact ? 6 : TRADE_THEME.gap })
   }
 
   const pill: PartSpec[] = [
@@ -575,7 +608,7 @@ export function buildDraftParts(input: DraftPartsInput): PartSpec {
       text: String(input.qty),
       textColor: TRADE_THEME.onAccent,
       fill: input.accent,
-      paddingX: TRADE_THEME.paddingX,
+      paddingX: padX,
       font: TRADE_FONT,
       tooltip: '',
     },
@@ -583,14 +616,18 @@ export function buildDraftParts(input: DraftPartsInput): PartSpec {
     {
       // Where a live line reports money, a draft states its KIND — and that kind is editable, so this
       // cell is a control rather than the readout the position line puts here.
+      //
+      // The 82px floor holds the cell STILL as the four types cycle through it, so pressing it does
+      // not shuffle the pill under the finger that pressed. It is dropped on a phone, where a fixed
+      // 82px is most of the pill's width and holding it costs more than the shuffle does.
       id: 'orderType',
       role: 'orderType',
       text: input.orderType,
       textColor: input.accent,
       fill: input.surface,
       fillHover: withAlpha(input.accent, 0.15),
-      paddingX: TRADE_THEME.paddingX,
-      minWidth: 82,
+      paddingX: padX,
+      ...(input.compact ? {} : { minWidth: 82 }),
       font: TRADE_FONT,
       tooltip: t('lines.changeOrderType'),
     },
@@ -621,7 +658,7 @@ export function buildDraftParts(input: DraftPartsInput): PartSpec {
   return { id: 'root', role: 'group', children }
 }
 
-function bracketButton(id: 'tp' | 'sl', text: string, color: string, tooltip: string, surface: string): PartSpec {
+function bracketButton(id: 'tp' | 'sl', text: string, color: string, tooltip: string, surface: string, paddingX: number = TRADE_THEME.paddingX): PartSpec {
   return {
     id,
     role: id,
@@ -632,7 +669,7 @@ function bracketButton(id: 'tp' | 'sl', text: string, color: string, tooltip: st
     borderWidth: 1,
     borderRadius: TRADE_THEME.radius,
     borderDotted: true,
-    paddingX: TRADE_THEME.paddingX,
+    paddingX,
     font: TRADE_FONT,
     dragRole: 'tpsl',
     tooltip,
@@ -642,7 +679,7 @@ function bracketButton(id: 'tp' | 'sl', text: string, color: string, tooltip: st
 /** Resolve a spec tree to absolute rects, right-aligned so the tree ends at `rightEdge`. */
 export function layoutParts(root: PartSpec, ctx: LayoutCtx): LayoutNode {
   const width = measureSpec(root, ctx)
-  const x = ctx.rightEdge - width
+  const x = Math.max(PILL_LEFT_MIN, ctx.rightEdge - width)
   const y = Math.round(ctx.centerY - PART_H / 2)
   return place(root, x, y, width, ctx)
 }

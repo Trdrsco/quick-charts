@@ -15,6 +15,7 @@ import {
   boundBracketPrice,
   boundStopPrice,
   dispatchPreviewDrop,
+  displayDecimals,
   fmtPrice,
   isMeaningfulMove,
   pickHit,
@@ -49,6 +50,7 @@ import {
   drawAxisLabel,
   EXIT_ZONE_ALPHA,
   PILL_RIGHT_MARGIN,
+  PILL_RIGHT_MARGIN_COMPACT,
   PART_H,
   TOUCH_SLOP_PX,
   type LayoutNode,
@@ -283,6 +285,15 @@ export interface TradeLineOptions {
    *  the layer attaches — the object itself carries later switches, and the lines repaint on each
    *  one. Omitted ⇒ English. Prices, sizes, symbols and the broker's own text are untouched. */
   strings?: ChartI18n
+  /** PHONE. The chart is a few hundred pixels wide and the host carries its own order chrome, so the
+   *  draft line sheds what that chrome already says and tightens what is left — no side chip, no
+   *  held-open type cell, half the padding, and the whole tree pulled in close to the price scale.
+   *  See DraftPartsInput.compact for what goes and why.
+   *
+   *  STATED by the host, never sniffed off the container: the layer runs inside embeds whose narrow
+   *  pane has no bottom bar to inherit the side from, and guessing would take away their only way to
+   *  send. Omitted ⇒ the full desktop line. */
+  compact?: boolean
 }
 
 export interface TradeLineAttachment {
@@ -447,11 +458,15 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
   const armed = () => !!opts.scope && !opts.locked
   const interactive = () => !!opts.scope
 
+  /** Every pill on this layer is laid out against the same right edge, so the gap to the price scale
+   *  is decided in one place. Read live rather than captured — `compact` arrives through update(). */
+  const pillRightMargin = (): number => (opts.compact ? PILL_RIGHT_MARGIN_COMPACT : PILL_RIGHT_MARGIN)
+
   const formatLinePrice = (price: number | null): string | null => {
     if (price == null || !isFinite(price)) return null
-    const tk = opts.tick && opts.tick > 0 ? opts.tick : null
-    const decimals = tk ? Math.max(0, Math.min(8, Math.ceil(-Math.log10(tk)))) : 2
-    return price.toFixed(decimals)
+    // The precision a price is READ at, not the one its tick trades on — see displayDecimals. A
+    // six-figure coin ticking at 0.00001 wrote 111234.56789 on every line here.
+    return price.toFixed(displayDecimals(opts.tick && opts.tick > 0 ? opts.tick : undefined, price))
   }
 
   // ── Control overlay ────────────────────────────────────────────────────────────
@@ -597,7 +612,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
           supportCancel: false,
           t: strings.t,
         })
-        drawParts(octx, layoutParts(spec, { rightEdge: rightEdge - PILL_RIGHT_MARGIN, centerY: dragY, measure: measureText }), null)
+        drawParts(octx, layoutParts(spec, { rightEdge: rightEdge - pillRightMargin(), centerY: dragY, measure: measureText }), null)
         drawAxisLabel(octx, {
           x: rightEdge,
           y: dragY,
@@ -613,7 +628,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
       if (!entry.spec) continue
       const y = series.priceToCoordinate(entry.price)
       if (y == null || y < PART_H / 2 || y > h - PART_H / 2) continue
-      const node = layoutParts(entry.spec, { rightEdge: rightEdge - PILL_RIGHT_MARGIN, centerY: y, measure: measureText })
+      const node = layoutParts(entry.spec, { rightEdge: rightEdge - pillRightMargin(), centerY: y, measure: measureText })
       layouts.set(key, node)
       const localHover = hoveredPart && hoveredPart.startsWith(`${key}:`) ? hoveredPart.slice(key.length + 1) : null
       drawParts(octx, node, localHover)
@@ -988,6 +1003,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
               supportStopLoss: !hasLeg('sl') && !!opts.tick,
               supportCancel: true, // the ✕ stands the ticket down — the same gesture on every order type
               submitTooltip,
+              compact: !!opts.compact,
               t: strings.t,
             }),
           })
@@ -1029,6 +1045,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
                   supportStopLoss: !hasLeg('sl') && !!opts.tick,
                   supportCancel: ln.editable,
                   submitTooltip,
+                  compact: !!opts.compact,
                   t: strings.t,
                 })
               : buildExitParts({
@@ -1601,7 +1618,49 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     }
   }
 
+  /** A press that STARTED on one of the draft pill's controls and has since travelled up or down
+   *  becomes a drag of the line those controls sit on.
+   *
+   *  The pill was a dead zone for the one gesture the draft line exists for. Its controls are
+   *  hit-tested with a finger's reach — 45px tall against the line body's 28px band, and directly on
+   *  top of it — so on a phone, where the pill is most of the line's width, a thumb aiming at the
+   *  LINE landed on a control far more often than not. The press then cancelled itself on release
+   *  for having strayed, and the order stayed exactly where it was. (Owner report 2026-08-27: "why
+   *  can't I drag limit to where I want it".)
+   *
+   *  A tap is untouched: this only fires once the pointer has passed the same allowance every other
+   *  press here is judged by, and only VERTICALLY — a sideways slide is not a reprice, and reading it
+   *  as one would turn a mis-swipe into a moved order.
+   *
+   *  It resolves in the safe direction, too: a press that began on the SIDE chip becomes a
+   *  pre-money drag rather than a send. Straying off a money control has always meant "don't spend",
+   *  and this keeps that promise while giving the gesture somewhere to go. */
+  const promoteToPreviewDrag = (e: PointerEvent): void => {
+    const press = pendingQty ?? pendingOrderType ?? pendingSubmit
+    if (!press || e.pointerId !== press.pointerId) return
+    if (Math.abs(e.clientY - press.downY) <= clickSlopFor(e.pointerType)) return
+    const entry = lines.get(press.key)
+    const scope = opts.scope
+    if (!scope || entry?.kind !== 'preview' || !entry.previewId || !entry.editable) return
+    pendingQty = null
+    pendingOrderType = null
+    pendingSubmit = null
+    chart.applyOptions({ handleScroll: false, handleScale: false })
+    container.style.touchAction = 'none'
+    previewDrag = {
+      key: press.key,
+      previewId: entry.previewId,
+      originalPrice: entry.price,
+      lastValidPrice: entry.price,
+      moved: false,
+      pointerId: e.pointerId,
+      capturedScope: scope,
+      capturedSymbol: opts.symbol,
+    }
+  }
+
   const onPointerMove = (e: PointerEvent) => {
+    promoteToPreviewDrag(e)
     if (bracketDrag) {
       if (e.pointerId !== bracketDrag.pointerId) return
       latestClientY = e.clientY
