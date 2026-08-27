@@ -1636,7 +1636,9 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
    *  pre-money drag rather than a send. Straying off a money control has always meant "don't spend",
    *  and this keeps that promise while giving the gesture somewhere to go. */
   const promoteToPreviewDrag = (e: PointerEvent): void => {
-    const press = pendingQty ?? pendingOrderType ?? pendingSubmit
+    // Every press the DRAFT line can be holding: its size, its type, its side chip and its ✕. All
+    // four sit on top of the line body, so all four can be the thing a thumb aiming at the line hit.
+    const press = pendingQty ?? pendingOrderType ?? pendingSubmit ?? pendingPreviewX
     if (!press || e.pointerId !== press.pointerId) return
     if (Math.abs(e.clientY - press.downY) <= clickSlopFor(e.pointerType)) return
     const entry = lines.get(press.key)
@@ -1645,6 +1647,7 @@ export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initi
     pendingQty = null
     pendingOrderType = null
     pendingSubmit = null
+    pendingPreviewX = null
     chart.applyOptions({ handleScroll: false, handleScale: false })
     container.style.touchAction = 'none'
     previewDrag = {
