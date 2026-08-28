@@ -44,6 +44,7 @@ interface FakeSeries {
   options: Record<string, unknown>
   setData(d: unknown[]): void
   applyOptions(o: Record<string, unknown>): void
+  getPane(): { paneIndex(): number }
 }
 
 function fakeChart() {
@@ -60,6 +61,7 @@ function fakeChart() {
         applyOptions(o: Record<string, unknown>) {
           Object.assign(this.options, o)
         },
+        getPane: () => ({ paneIndex: () => paneIndex }),
       }
       series.push({ s, paneIndex })
       return s
@@ -141,6 +143,23 @@ describe('adding a compare', () => {
     expect(h.series[0]!.s.options.priceScaleId).toBe('left')
     expect((h.series[0]!.s.data as unknown[]).length).toBe(2)
     expect(h.calls.length).toBe(fetches)
+  })
+
+  it('reports percent change over the clipped window, the same-percent legend value', async () => {
+    const h = harness({ NQ: [bar(10, 100), bar(20, 105), bar(50, 999)] }) // 50 is outside [10,40]
+    h.handle.add('NQ', { placement: 'same-percent' })
+    await flush()
+    expect(h.handle.changePct('NQ')).toBeCloseTo(5)
+    expect(h.handle.changePct('GC')).toBeNull()
+  })
+
+  it('reports each compare’s live pane index, and null for an unknown symbol', async () => {
+    const h = harness({ NQ: [bar(20)], ES: [bar(20)] })
+    h.handle.add('NQ', { placement: 'same-percent' })
+    h.handle.add('ES', { placement: 'new-pane' })
+    expect(h.handle.paneIndexOf('NQ')).toBe(0)
+    expect(h.handle.paneIndexOf('ES')).toBe(2) // added past the fake's two existing panes
+    expect(h.handle.paneIndexOf('GC')).toBeNull()
   })
 
   it('colors assign from the palette and free on removal', async () => {
