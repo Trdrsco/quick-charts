@@ -679,7 +679,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       const last = e.placement === 'same-percent' ? null : compareHandle!.latest(e.symbol)
       return {
         id: `cmp:${e.symbol}`,
-        title: e.symbol,
+        // A plain pair wears the reference's spaced form ("XRP / USDC"); anything else verbatim.
+        title: /^[A-Za-z][A-Za-z0-9.]*\/[A-Za-z][A-Za-z0-9.]*$/.test(e.symbol) ? e.symbol.replace('/', ' / ') : e.symbol,
         value: pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : last != null ? last.toFixed(2) : null,
         hidden: !e.visible,
         titleButton: true,
