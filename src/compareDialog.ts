@@ -220,11 +220,13 @@ export function openCompareDialog(deps: CompareDialogDeps): CompareDialogHandle 
       return
     }
     for (const h of hits) list.appendChild(rowEl({ symbol: h.symbol, name: h.name }, addedSet.has(h.symbol)))
-    // A query reading as an expression offers itself as a row — the server is the parser and
-    // evaluator; catalog identity outranks arithmetic there, so an exact catalog match (already a
-    // hit above) never doubles up.
+    // A query reading as an expression offers itself as a row — but ONLY when the search found NO
+    // catalog hits. Catalog identity outranks arithmetic on the search surface exactly as it does
+    // in the server's resolver ('ETH/USDC' names a listed market, so it lists the market — the
+    // reference's measured behaviour), and an expression row beside real hits would offer a spread
+    // the server deliberately refuses to evaluate.
     const expr = q.toUpperCase().replace(/\s+/g, '')
-    if (/[+\-*/^]/.test(expr) && /[A-Za-z]/.test(q) && /^[A-Za-z0-9:._+\-*/^()]+$/.test(expr) && !hits.some((h) => h.symbol === expr)) {
+    if (hits.length === 0 && /[+\-*/^]/.test(expr) && /[A-Za-z]/.test(q) && /^[A-Za-z0-9:._+\-*/^()]+$/.test(expr)) {
       list.appendChild(rowEl({ symbol: expr }, addedSet.has(expr)))
     }
   }
