@@ -19,7 +19,7 @@
 // re-clipped as that window grows (scroll-back). Missing buckets stay missing — gaps are truth,
 // never interpolated.
 import type { IChartApi, ISeriesApi, LineData, UTCTimestamp } from 'lightweight-charts'
-import { LineSeries } from 'lightweight-charts'
+import { LineSeries, LineStyle } from 'lightweight-charts'
 import type { ChartDatafeed, FeedBar } from './datafeed'
 
 export type ComparePlacement = 'same-percent' | 'new-scale' | 'new-pane'
@@ -36,6 +36,10 @@ export interface CompareEntry {
   placement: ComparePlacement
   color: string
   visible: boolean
+  /** Style beyond the palette color, absent until a settings edit sets it (2 / solid are the
+   *  series defaults). Carried here so a styled compare round-trips through the snapshot. */
+  lineWidth?: number
+  lineStyle?: 'solid' | 'dashed' | 'dotted'
 }
 
 /** The serialized form carried inside the chart content blob — identical to CompareEntry today,
@@ -87,6 +91,13 @@ export interface CompareHandle {
   add(symbol: string, opts: { placement: ComparePlacement; color?: string; visible?: boolean }): void
   remove(symbol: string): void
   setVisible(symbol: string, visible: boolean): void
+  /** A host-side hide ANDed with the eye (interval visibility, a plot-visibility override) —
+   *  never serialized and never touching `visible`, so a timeframe switch that suppresses a
+   *  compare cannot flip the trader's eye state. */
+  suppress(symbol: string, on: boolean): void
+  /** Restyle one compare's line (a settings edit). Omitted fields keep their current value;
+   *  `priceLabel` is the price-scale label+line pair. Identical values are a no-op (no notify). */
+  restyle(symbol: string, style: { color?: string; lineWidth?: number; lineStyle?: 'solid' | 'dashed' | 'dotted'; priceLabel?: boolean }): void
   list(): CompareEntry[]
   /** The latest clipped close for one compare, or null (no bars in window / unknown symbol). */
   latest(symbol: string): number | null
@@ -113,6 +124,9 @@ export interface CompareHandle {
 
 interface Slot {
   entry: CompareEntry
+  /** The host-side hide (see `suppress`) and the price-label pair — runtime state, not snapshot. */
+  suppressed: boolean
+  priceLabel: boolean
   series: ISeriesApi<'Line'>
   /** Full fetched history (unclipped) — the clip re-runs cheaply as the main window grows. */
   bars: FeedBar[]
@@ -124,6 +138,8 @@ interface Slot {
 }
 
 const toLine = (b: FeedBar): LineData<UTCTimestamp> => ({ time: b.t as UTCTimestamp, value: b.c })
+
+const LINE_STYLE = { solid: LineStyle.Solid, dashed: LineStyle.Dashed, dotted: LineStyle.Dotted } as const
 
 const PLACEMENTS: readonly ComparePlacement[] = ['same-percent', 'new-scale', 'new-pane']
 
@@ -207,13 +223,21 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
     }
   }
 
+  /** The series' effective visibility: the eye AND the host-side suppression; the price-scale
+   *  label pair shows only while the line does. */
+  const applyVisible = (slot: Slot): void => {
+    const shown = slot.entry.visible && !slot.suppressed
+    slot.series.applyOptions({ visible: shown, lastValueVisible: shown && slot.priceLabel })
+  }
+
   const makeSeries = (entry: CompareEntry): ISeriesApi<'Line'> => {
     const target = seriesTargetOf(entry.placement, chart.panes().length)
     return chart.addSeries(
       LineSeries,
       {
         color: entry.color,
-        lineWidth: 2,
+        lineWidth: (entry.lineWidth ?? 2) as 1 | 2 | 3 | 4,
+        lineStyle: LINE_STYLE[entry.lineStyle ?? 'solid'],
         priceLineVisible: false,
         lastValueVisible: entry.visible,
         visible: entry.visible,
@@ -233,7 +257,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
         const bars = existing.bars
         dispose(existing)
         const entry: CompareEntry = { ...existing.entry, placement: opts.placement }
-        const slot: Slot = { entry, series: makeSeries(entry), bars, oldest: bars[0]?.t ?? null, unsubscribe: null, fetchSeq: 0 }
+        const slot: Slot = { entry, suppressed: existing.suppressed, priceLabel: existing.priceLabel, series: makeSeries(entry), bars, oldest: bars[0]?.t ?? null, unsubscribe: null, fetchSeq: 0 }
         slots.set(symbol, slot)
         paint(slot)
         subscribe(slot)
@@ -243,7 +267,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
       }
       const color = opts.color ?? pickCompareColor([...slots.values()].map((s) => s.entry.color))
       const entry: CompareEntry = { symbol, placement: opts.placement, color, visible: opts.visible ?? true }
-      const slot: Slot = { entry, series: makeSeries(entry), bars: [], oldest: null, unsubscribe: null, fetchSeq: 0 }
+      const slot: Slot = { entry, suppressed: false, priceLabel: true, series: makeSeries(entry), bars: [], oldest: null, unsubscribe: null, fetchSeq: 0 }
       slots.set(symbol, slot)
       seed(slot)
       syncLeftScale()
@@ -261,7 +285,35 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
       const slot = slots.get(symbol)
       if (!slot || slot.entry.visible === visible) return
       slot.entry.visible = visible
-      slot.series.applyOptions({ visible, lastValueVisible: visible })
+      applyVisible(slot)
+      notify()
+    },
+    suppress(symbol, on) {
+      const slot = slots.get(symbol)
+      if (!slot || slot.suppressed === on) return
+      slot.suppressed = on
+      applyVisible(slot)
+      notify()
+    },
+    restyle(symbol, style) {
+      const slot = slots.get(symbol)
+      if (!slot) return
+      const same =
+        (style.color === undefined || style.color === slot.entry.color) &&
+        (style.lineWidth === undefined || style.lineWidth === (slot.entry.lineWidth ?? 2)) &&
+        (style.lineStyle === undefined || style.lineStyle === (slot.entry.lineStyle ?? 'solid')) &&
+        (style.priceLabel === undefined || style.priceLabel === slot.priceLabel)
+      if (same) return
+      if (style.color !== undefined) slot.entry.color = style.color
+      if (style.lineWidth !== undefined) slot.entry.lineWidth = style.lineWidth
+      if (style.lineStyle !== undefined) slot.entry.lineStyle = style.lineStyle
+      if (style.priceLabel !== undefined) slot.priceLabel = style.priceLabel
+      slot.series.applyOptions({
+        color: slot.entry.color,
+        lineWidth: (slot.entry.lineWidth ?? 2) as 1 | 2 | 3 | 4,
+        lineStyle: LINE_STYLE[slot.entry.lineStyle ?? 'solid'],
+      })
+      applyVisible(slot)
       notify()
     },
     list: () => [...slots.values()].map((s) => ({ ...s.entry })),
@@ -321,6 +373,12 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
           color: typeof r.color === 'string' ? r.color : undefined,
           visible: r.visible !== false,
         })
+        if (typeof r.lineWidth === 'number' || (typeof r.lineStyle === 'string' && r.lineStyle in LINE_STYLE)) {
+          handle.restyle(r.symbol, {
+            lineWidth: typeof r.lineWidth === 'number' ? r.lineWidth : undefined,
+            lineStyle: typeof r.lineStyle === 'string' && r.lineStyle in LINE_STYLE ? r.lineStyle : undefined,
+          })
+        }
       }
       syncLeftScale()
       notify()

@@ -242,6 +242,38 @@ describe('timeframe re-key', () => {
   })
 })
 
+describe('suppress', () => {
+  it('hides the series without touching the eye, and the snapshot never carries it', async () => {
+    const h = harness({ NQ: [bar(20)] })
+    h.handle.add('NQ', { placement: 'same-percent' })
+    await flush()
+    h.handle.suppress('NQ', true)
+    expect(h.series[0]!.s.options.visible).toBe(false)
+    expect(h.handle.list()[0]!.visible).toBe(true) // the eye is untouched
+    expect(h.handle.serialize()[0]!.visible).toBe(true)
+    h.handle.suppress('NQ', false)
+    expect(h.series[0]!.s.options.visible).toBe(true)
+  })
+})
+
+describe('restyle', () => {
+  it('applies color/width/style to the live series and round-trips through the snapshot', async () => {
+    const h = harness({ NQ: [bar(20)] })
+    h.handle.add('NQ', { placement: 'same-percent' })
+    await flush()
+    h.handle.restyle('NQ', { color: '#123456', lineWidth: 3, lineStyle: 'dashed' })
+    expect(h.series[0]!.s.options.color).toBe('#123456')
+    expect(h.series[0]!.s.options.lineWidth).toBe(3)
+    const snap = h.handle.serialize()
+    const h2 = harness({ NQ: [bar(20)] })
+    h2.handle.restore(snap)
+    await flush()
+    const e = h2.handle.list()[0]!
+    expect([e.color, e.lineWidth, e.lineStyle]).toEqual(['#123456', 3, 'dashed'])
+    h.handle.restyle('GC', { color: '#fff' }) // unknown symbol: a no-op, never a throw
+  })
+})
+
 describe('snapshot round-trip', () => {
   it('serializes the whole entry and restores it, dropping junk', async () => {
     const h = harness({ NQ: [bar(20)], ES: [bar(30)] })
