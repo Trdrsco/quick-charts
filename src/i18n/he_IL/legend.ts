@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': 'סימבולים שנוספו',
   'legend.removeCompare': 'הסרת ההשוואה',
   'legend.searchPlaceholder': 'סימבול',
+  'legend.opDivision': 'חילוק',
+  'legend.opSubtraction': 'חיסור',
+  'legend.opAddition': 'חיבור',
+  'legend.opMultiplication': 'כפל',
+  'legend.opExponentiation': 'חזקה',
+  'legend.opReciprocal': 'הופכי',
 }

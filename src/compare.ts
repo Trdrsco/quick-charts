@@ -151,10 +151,21 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
   const notify = () => deps.onChange?.()
 
   /** The left scale exists only while a 'new-scale' compare does — an empty left axis is chrome
-   *  with nothing to say. */
+   *  with nothing to say. When it shows, it MIRRORS the right scale's border treatment: the
+   *  renderer's own left-scale default paints a purple-gray divider the right axis never wears,
+   *  and the two scales must read as one chart. */
   const syncLeftScale = () => {
     const wanted = [...slots.values()].some((s) => s.entry.placement === 'new-scale')
-    chart.applyOptions({ leftPriceScale: { visible: wanted } })
+    if (!wanted) {
+      chart.applyOptions({ leftPriceScale: { visible: false } })
+      return
+    }
+    try {
+      const right = chart.priceScale('right').options()
+      chart.applyOptions({ leftPriceScale: { visible: true, borderVisible: right.borderVisible, borderColor: right.borderColor } })
+    } catch {
+      chart.applyOptions({ leftPriceScale: { visible: true } })
+    }
   }
 
   const paint = (slot: Slot) => {

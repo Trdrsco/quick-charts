@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': 'Mã đã thêm',
   'legend.removeCompare': 'Xóa so sánh',
   'legend.searchPlaceholder': 'Mã',
+  'legend.opDivision': 'Phép chia',
+  'legend.opSubtraction': 'Phép trừ',
+  'legend.opAddition': 'Phép cộng',
+  'legend.opMultiplication': 'Phép nhân',
+  'legend.opExponentiation': 'Lũy thừa',
+  'legend.opReciprocal': 'Nghịch đảo',
 }

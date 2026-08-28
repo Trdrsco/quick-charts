@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': 'الرموز المضافة',
   'legend.removeCompare': 'إزالة المقارنة',
   'legend.searchPlaceholder': 'رمز',
+  'legend.opDivision': 'قسمة',
+  'legend.opSubtraction': 'طرح',
+  'legend.opAddition': 'جمع',
+  'legend.opMultiplication': 'ضرب',
+  'legend.opExponentiation': 'أس',
+  'legend.opReciprocal': 'مقلوب',
 }

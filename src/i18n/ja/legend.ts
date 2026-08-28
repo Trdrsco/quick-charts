@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': '追加した銘柄',
   'legend.removeCompare': '比較を削除',
   'legend.searchPlaceholder': '銘柄',
+  'legend.opDivision': '除算',
+  'legend.opSubtraction': '減算',
+  'legend.opAddition': '加算',
+  'legend.opMultiplication': '乗算',
+  'legend.opExponentiation': 'べき乗',
+  'legend.opReciprocal': '逆数',
 }
