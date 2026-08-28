@@ -686,7 +686,15 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         removable: true,
       }
     })
-  const pushChips = (): void => legend?.setChips([...lastIndicatorChips, ...compareChips()])
+  const pushChips = (): void => {
+    legend?.setChips([...lastIndicatorChips, ...compareChips()])
+    // The strip anchors past the LEFT axis while a new-scale compare holds it up.
+    try {
+      legend?.setLeftInset(chart.priceScale('left').width())
+    } catch {
+      /* chart mid-teardown */
+    }
+  }
 
   /** Recompute every configured instance over the current bars and refresh the legend chips. A
    *  compute that throws is skipped this round rather than sinking the chart; a hidden instance

@@ -46,6 +46,9 @@ export interface LegendControls {
 
 export interface ChartLegend {
   setHeader(symbol: string, tf: string): void
+  /** Extra left offset (px) past the strip's 44px rail column — the LEFT price scale's width
+   *  while a new-scale compare holds it up, so the strip never overlays the axis numbers. */
+  setLeftInset(px: number): void
   /** The market-status dot color (SESSION_DOT[...]), or null to hide the dot. */
   setDot(color: string | null): void
   /** Highlight the active scale-mode chip. */
@@ -201,6 +204,9 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, s
   return {
     setHeader(symbol, tf) {
       title.textContent = symbol ? `${symbol} · ${tf}` : ''
+    },
+    setLeftInset(px) {
+      root.style.left = `${44 + Math.max(0, px)}px`
     },
     setDot(color) {
       dot.style.display = color ? 'inline-block' : 'none'

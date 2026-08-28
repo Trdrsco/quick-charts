@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': 'Símbols afegits',
   'legend.removeCompare': 'Elimina la comparació',
   'legend.searchPlaceholder': 'Símbol',
+  'legend.opDivision': 'Divisió',
+  'legend.opSubtraction': 'Resta',
+  'legend.opAddition': 'Suma',
+  'legend.opMultiplication': 'Multiplicació',
+  'legend.opExponentiation': 'Exponenciació',
+  'legend.opReciprocal': 'Recíproc',
 }

@@ -58,14 +58,44 @@ export function openCompareDialog(deps: CompareDialogDeps): CompareDialogHandle 
   title.style.cssText = 'padding:12px 14px;font-size:14px;font-weight:600;'
   box.appendChild(title)
 
+  const inputRow = document.createElement('div')
+  inputRow.style.cssText =
+    `margin:0 14px 8px;display:flex;align-items:center;gap:2px;padding:0 6px 0 0;border:1px solid ${theme.gridColor};border-radius:6px;`
   const input = document.createElement('input')
   input.type = 'text'
   input.placeholder = t('legend.searchPlaceholder')
   input.value = deps.initialQuery ?? ''
-  input.style.cssText =
-    `margin:0 14px 8px;padding:6px 10px;background:none;border:1px solid ${theme.gridColor};border-radius:6px;` +
-    `color:${theme.textColor};font-size:12px;outline:none;text-transform:uppercase;`
-  box.appendChild(input)
+  input.style.cssText = `flex:1;min-width:0;padding:6px 10px;background:none;border:none;color:${theme.textColor};font-size:12px;outline:none;text-transform:uppercase;`
+  inputRow.appendChild(input)
+  // The spread operators — the reference's own 13-grid glyphs (verbatim) on 24×24 buttons. They
+  // TYPE into the query; the server parses and evaluates the expression (the whole expression is
+  // the instrument).
+  const OPS: readonly { svg: string; key: 'legend.opDivision' | 'legend.opSubtraction' | 'legend.opAddition' | 'legend.opMultiplication' | 'legend.opExponentiation' | 'legend.opReciprocal'; insert: string; prefix?: boolean }[] = [
+    { svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 13" width="13" height="13"><path fill="none" stroke="currentColor" stroke-linecap="square" d="M2.5 6.5h9"></path><circle fill="currentColor" cx="7" cy="3" r="1"></circle><circle fill="currentColor" cx="7" cy="10" r="1"></circle></svg>', key: 'legend.opDivision', insert: '/' },
+    { svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 13" width="13" height="13"><path fill="none" stroke="currentColor" stroke-linecap="square" d="M2.5 6.5h8"></path></svg>', key: 'legend.opSubtraction', insert: '-' },
+    { svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 13" width="13" height="13"><path fill="none" stroke="currentColor" stroke-linecap="square" d="M2.5 6.5h8m-4-4v8"></path></svg>', key: 'legend.opAddition', insert: '+' },
+    { svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 13" width="13" height="13"><path fill="none" stroke="currentColor" stroke-linecap="square" d="M3 10l7-7M3 3l7 7"></path></svg>', key: 'legend.opMultiplication', insert: '*' },
+    { svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 13" width="13" height="13"><path fill="none" stroke="currentColor" stroke-linecap="square" d="M3 7l3.5-3.5L10 7"></path></svg>', key: 'legend.opExponentiation', insert: '^' },
+    { svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 13 13" width="13" height="13"><g fill="none" fill-rule="evenodd" stroke="currentColor"><path stroke-linecap="square" stroke-linejoin="round" d="M3.5 10V2.5L1 5"></path><path stroke-linecap="square" d="M1.5 10.5h4"></path><path d="M8 12l3-11"></path></g></svg>', key: 'legend.opReciprocal', insert: '1/', prefix: true },
+  ]
+  // Compare mode carries NO operator chrome — the reference's compare dialog ships
+  // `showSpreadActions: false` (captured); the buttons belong to the search family, which in the
+  // widget is change-symbol mode. Expressions still type and still offer their row either way.
+  for (const op of deps.mode === 'change-symbol' ? OPS : []) {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.title = t(op.key)
+    b.setAttribute('aria-label', t(op.key))
+    b.innerHTML = op.svg
+    b.style.cssText = `display:flex;align-items:center;justify-content:center;width:24px;height:24px;background:none;border:none;border-radius:4px;color:${theme.textColor};opacity:0.55;cursor:pointer;padding:0;`
+    b.addEventListener('click', () => {
+      input.value = op.prefix ? `${op.insert}${input.value}` : `${input.value}${op.insert}`
+      input.focus()
+      input.dispatchEvent(new Event('input'))
+    })
+    inputRow.appendChild(b)
+  }
+  box.appendChild(inputRow)
 
   const list = document.createElement('div')
   list.style.cssText = 'min-height:0;flex:1;overflow-y:auto;padding-bottom:6px;'
@@ -190,6 +220,13 @@ export function openCompareDialog(deps: CompareDialogDeps): CompareDialogHandle 
       return
     }
     for (const h of hits) list.appendChild(rowEl({ symbol: h.symbol, name: h.name }, addedSet.has(h.symbol)))
+    // A query reading as an expression offers itself as a row — the server is the parser and
+    // evaluator; catalog identity outranks arithmetic there, so an exact catalog match (already a
+    // hit above) never doubles up.
+    const expr = q.toUpperCase().replace(/\s+/g, '')
+    if (/[+\-*/^]/.test(expr) && /[A-Za-z]/.test(q) && /^[A-Za-z0-9:._+\-*/^()]+$/.test(expr) && !hits.some((h) => h.symbol === expr)) {
+      list.appendChild(rowEl({ symbol: expr }, addedSet.has(expr)))
+    }
   }
 
   const search = () => {

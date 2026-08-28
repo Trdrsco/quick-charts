@@ -25,4 +25,11 @@ export const legend = {
   'legend.added': 'Added symbols',
   'legend.removeCompare': 'Remove compare',
   'legend.searchPlaceholder': 'Symbol',
+  // The spread operators' tooltips (the reference's own names).
+  'legend.opDivision': 'Division',
+  'legend.opSubtraction': 'Subtraction',
+  'legend.opAddition': 'Addition',
+  'legend.opMultiplication': 'Multiplication',
+  'legend.opExponentiation': 'Exponentiation',
+  'legend.opReciprocal': 'Reciprocal',
 } as const

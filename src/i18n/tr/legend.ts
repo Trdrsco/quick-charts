@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': 'Eklenen semboller',
   'legend.removeCompare': 'Karşılaştırmayı kaldır',
   'legend.searchPlaceholder': 'Sembol',
+  'legend.opDivision': 'Bölme',
+  'legend.opSubtraction': 'Çıkarma',
+  'legend.opAddition': 'Toplama',
+  'legend.opMultiplication': 'Çarpma',
+  'legend.opExponentiation': 'Üs alma',
+  'legend.opReciprocal': 'Ters çevirme',
 }

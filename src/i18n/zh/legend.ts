@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': '已添加代码',
   'legend.removeCompare': '移除比较',
   'legend.searchPlaceholder': '代码',
+  'legend.opDivision': '除法',
+  'legend.opSubtraction': '减法',
+  'legend.opAddition': '加法',
+  'legend.opMultiplication': '乘法',
+  'legend.opExponentiation': '幂运算',
+  'legend.opReciprocal': '倒数',
 }

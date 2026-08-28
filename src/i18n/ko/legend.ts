@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': '추가된 심볼',
   'legend.removeCompare': '비교 제거',
   'legend.searchPlaceholder': '심볼',
+  'legend.opDivision': '나눗셈',
+  'legend.opSubtraction': '뺄셈',
+  'legend.opAddition': '덧셈',
+  'legend.opMultiplication': '곱셈',
+  'legend.opExponentiation': '거듭제곱',
+  'legend.opReciprocal': '역수',
 }

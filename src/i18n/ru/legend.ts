@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': 'Добавленные инструменты',
   'legend.removeCompare': 'Удалить сравнение',
   'legend.searchPlaceholder': 'Инструмент',
+  'legend.opDivision': 'Деление',
+  'legend.opSubtraction': 'Вычитание',
+  'legend.opAddition': 'Сложение',
+  'legend.opMultiplication': 'Умножение',
+  'legend.opExponentiation': 'Возведение в степень',
+  'legend.opReciprocal': 'Обратная величина',
 }

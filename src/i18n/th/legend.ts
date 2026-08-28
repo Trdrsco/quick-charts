@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': 'สัญลักษณ์ที่เพิ่ม',
   'legend.removeCompare': 'นำการเปรียบเทียบออก',
   'legend.searchPlaceholder': 'สัญลักษณ์',
+  'legend.opDivision': 'การหาร',
+  'legend.opSubtraction': 'การลบ',
+  'legend.opAddition': 'การบวก',
+  'legend.opMultiplication': 'การคูณ',
+  'legend.opExponentiation': 'การยกกำลัง',
+  'legend.opReciprocal': 'ส่วนกลับ',
 }

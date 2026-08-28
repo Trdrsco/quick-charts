@@ -22,4 +22,10 @@ export const legend: Translation<typeof source> = {
   'legend.added': 'Simbol yang ditambahkan',
   'legend.removeCompare': 'Hapus perbandingan',
   'legend.searchPlaceholder': 'Simbol',
+  'legend.opDivision': 'Pembagian',
+  'legend.opSubtraction': 'Pengurangan',
+  'legend.opAddition': 'Penjumlahan',
+  'legend.opMultiplication': 'Perkalian',
+  'legend.opExponentiation': 'Perpangkatan',
+  'legend.opReciprocal': 'Kebalikan',
 }
