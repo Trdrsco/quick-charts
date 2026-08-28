@@ -54,6 +54,9 @@ export interface ChartWidgetEvents {
 /** Everything needed to construct a chart. `datafeed` is the only hard requirement — the rest have
  *  defaults (browser storage, a starting symbol/timeframe, the built-in dark theme). */
 export interface ChartWidgetOptions {
+  /** Curated quick-add rows for the compare dialog (the reference's compare_symbols shape) —
+   *  rendered above search results in compare mode. Absent ⇒ the dialog is search-only. */
+  compareSymbols?: import('./compare').CompareSymbol[]
   /** The DOM element the chart mounts into. */
   container: HTMLElement
   /** The market-data backend. Required — this is the seam the whole design turns on. */

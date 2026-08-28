@@ -279,6 +279,32 @@ w.setIndicators([{ id: 'sma-20', definition: smaDefinition }])
 w.setLocale('ja')
 ```
 
+## Compare
+
+Every chart can draw OTHER symbols beside its own, the reference model: a compare is study-like —
+legend-managed, three placements, persisted in the chart content blob. `same-percent` shares the
+main price scale and flips it to percent while any such compare lives (the prior scale mode comes
+back when the last one leaves); `new-scale` binds the LEFT scale with absolute prices (the left
+axis exists only while such a compare does); `new-pane` takes a pane of its own. Compared bars
+clip to the main series window — a compare never extends the time axis. `compareSymbols` supplies
+a curated quick-add list for a compare dialog; `compare.symbols()` reads it back.
+
+```ts
+import { createChart, createUdfDatafeed } from '@trdrs/chart'
+
+const wc = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  compareSymbols: [{ symbol: 'ES', title: 'S&P 500 futures' }],
+})
+wc.compare.add('NQ', { placement: 'same-percent' }) // shares the scale; the axis flips to %
+wc.compare.add('CL', { placement: 'new-pane' })
+wc.compare.setVisible('CL', false)
+const active = wc.compare.list() // [{ symbol, placement, color, visible }]
+note(`NQ last: ${wc.compare.latest('NQ') ?? '-'}`)
+wc.compare.remove('NQ') // the scale mode the trader held comes back
+```
+
 ## Multi-chart layouts
 
 `createChartLayout(options)` tiles N widget panes over one container by an arrangement code and

@@ -13,6 +13,12 @@ const SURFACE: Record<string, string> = {
   LAYOUT_MENU_ROWS: 'object',
   arrangementOf: 'function',
   createChartLayout: 'function',
+  // Additive (minor): COMPARE — other symbols beside the charted one, 2026-08-28.
+  attachCompare: 'function',
+  clipToWindow: 'function',
+  COMPARE_COLORS: 'object',
+  pickCompareColor: 'function',
+  seriesTargetOf: 'function',
   // Additive (minor): the interface language — the widget's own catalog bound to the @trdrs/i18n runtime, 2026-08-25.
   createChartI18n: 'function',
   chartDictionaries: 'object',
