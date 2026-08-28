@@ -90,6 +90,14 @@ export interface CompareHandle {
   list(): CompareEntry[]
   /** The latest clipped close for one compare, or null (no bars in window / unknown symbol). */
   latest(symbol: string): number | null
+  /** The pane the compare's series currently lives on (0 = the main pane), or null for an unknown
+   *  symbol — how a host places the compare's legend row in the right pane's group. Read live from
+   *  the series, because 'new-pane' indices shift as other panes come and go. */
+  paneIndexOf(symbol: string): number | null
+  /** Percent change across the clipped window (last close vs the window's FIRST in-window close —
+   *  the loaded-window approximation of the percent scale's first-visible-bar base), or null with
+   *  fewer than one bar in window. What a same-percent legend row displays. */
+  changePct(symbol: string): number | null
   /** True while any 'same-percent' compare lives — the host's cue to hold the percent scale. */
   hasSamePercent(): boolean
   /** The main window moved (older history paged in, live bars appended): re-clip, and fetch older
@@ -262,6 +270,24 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
       if (!slot) return null
       const clipped = clipToWindow(slot.bars, deps.mainWindow())
       return clipped[clipped.length - 1]?.c ?? null
+    },
+    paneIndexOf(symbol) {
+      const slot = slots.get(symbol)
+      if (!slot) return null
+      try {
+        return slot.series.getPane().paneIndex()
+      } catch {
+        return null // chart mid-teardown
+      }
+    },
+    changePct(symbol) {
+      const slot = slots.get(symbol)
+      if (!slot) return null
+      const clipped = clipToWindow(slot.bars, deps.mainWindow())
+      const first = clipped[0]?.c
+      const last = clipped[clipped.length - 1]?.c
+      if (first === undefined || last === undefined || first === 0) return null
+      return (last / first - 1) * 100
     },
     hasSamePercent: () => [...slots.values()].some((s) => s.entry.placement === 'same-percent'),
     sync() {
