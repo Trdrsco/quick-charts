@@ -42,9 +42,19 @@ export interface CompareEntry {
   lineStyle?: 'solid' | 'dashed' | 'dotted'
 }
 
-/** The serialized form carried inside the chart content blob — identical to CompareEntry today,
- *  named separately so the blob's shape is a declared contract rather than a coincidence. */
-export type CompareSnapshot = CompareEntry
+/** The serialized form carried inside the chart content blob — and the shape host STATE holds.
+ *  Only the identity is required: color and visibility are the ORGAN's to deal (the palette pick,
+ *  the eye's default), so a host can state membership — "compare MSFT on a new scale" — before
+ *  the organ has dealt them, and the organ's report back fills them in. `serialize` always emits
+ *  the dealt fields; `restore`/`apply` accept either form. */
+export interface CompareSnapshot {
+  symbol: string
+  placement: ComparePlacement
+  color?: string
+  visible?: boolean
+  lineWidth?: number
+  lineStyle?: 'solid' | 'dashed' | 'dotted'
+}
 
 /** The reference's compare line palette order (first compare is its blue). Assigned by first
  *  unused slot, so removing a compare frees its color for the next one. */
