@@ -68,6 +68,7 @@ export { COLLAPSED_H, MAIN_MIN_H, isCollapsed, planPaneOp, type PaneOp, type Pan
 export { chartContextMenu, type ChartMenuAction, type ChartMenuContext, type ChartMenuIcon, type ChartMenuRow } from './contextMenu'
 export { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
 export { coerceScaleMode, PRICE_SCALE_MODE, SCALE_MODES, SCALE_MODE_OPTIONS, type ScaleMode } from './scaleMode'
+export { attachCompare, clipToWindow, COMPARE_COLORS, pickCompareColor, seriesTargetOf, type CompareDeps, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSnapshot, type CompareSymbol } from './compare'
 export {
   createSessionBands,
   exchangeZoneOf,

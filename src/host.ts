@@ -23,6 +23,7 @@ import { mountDrawingsRail, type DrawingsRail } from './drawingsRail'
 import { applyPlotOverrides, buildManifestPlots, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest } from './indicatorModel'
 import { attachIndicators } from './indicatorRenderer'
 import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from './scaleMode'
+import { attachCompare, type CompareEntry, type ComparePlacement, type CompareSymbol } from './compare'
 import { createSessionBands, isIntradayTf, knownMarketKind, sessionOf, setHolidayCalendar, SESSION_DOT, type MaybeMarketKind, type SessionBandsPrimitive } from './sessions'
 import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
 import { isCollapsed, planPaneOp } from './panePlan'
@@ -123,6 +124,12 @@ export interface ChartWidgetApi {
   /** The price scale's mode (regular/log/percent/indexed). Persisted through ChartStorage. */
   scaleMode(): ScaleMode
   setScaleMode(mode: ScaleMode): void
+  /** COMPARE — other symbols beside the charted one (corpus: docs/corpus/chart-compare/). The
+   *  placement vocabulary is the reference dialog's own: 'same-percent' shares the main scale and
+   *  flips it to percent while any such compare lives; 'new-scale' binds the LEFT scale;
+   *  'new-pane' takes a pane of its own. Compares persist in the content blob beside the rest of
+   *  the chart's state. */
+  compare: ChartCompareApi
   /** The EFFECTIVE override tree: theme floor, then the constructor partial, then every runtime
    *  applyOverrides layer — the resolved look every surface reads. */
   overrides(): ChartOverrides
@@ -204,6 +211,18 @@ const SNAPSHOT_BARS = 300
 const PAGE_BARS = 500
 /** How close to the left edge (in bars) the visible range must get before the next page is fetched. */
 const PAGE_TRIGGER_BARS = 60
+
+/** The widget's compare surface — the organ's handle plus the widget-owned scale policy. */
+export interface ChartCompareApi {
+  add(symbol: string, opts: { placement: ComparePlacement }): void
+  remove(symbol: string): void
+  setVisible(symbol: string, visible: boolean): void
+  list(): CompareEntry[]
+  /** Latest in-window close for one compare, or null. */
+  latest(symbol: string): number | null
+  /** The host-supplied curated quick-add list, for the compare dialog. */
+  symbols(): CompareSymbol[]
+}
 
 export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   const datafeed: ChartDatafeed = options.datafeed
@@ -719,6 +738,31 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     candles.setData(bars.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c })))
     volume.setData(bars.map((b) => ({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? theme.upColor : theme.downColor })))
     recomputeIndicators()
+    // Compares clip to the main window, so every reshape of the bar model re-clips them here —
+    // paintAll is the one choke point every load / scroll-back / snapshot / replay path exits by.
+    compareHandle.sync()
+  }
+
+  // ── COMPARE: the data-bearing organ, clipped to the main bar model (compare.ts owns the why).
+  const compareHandle = attachCompare(chart, {
+    datafeed,
+    tf: () => tf,
+    mainWindow: () => (bars.length ? { from: bars[0]!.t, to: bars[bars.length - 1]!.t } : null),
+  })
+  /** The scale the trader held before same-percent forced percent — restored when the last
+   *  same-percent compare leaves. Null while no flip is on loan. */
+  let scaleBeforeCompare: ScaleMode | null = null
+  const compareScalePolicy = () => {
+    if (compareHandle.hasSamePercent()) {
+      if (scaleMode !== 'percent') {
+        scaleBeforeCompare = scaleMode
+        applyScaleMode('percent')
+      }
+    } else if (scaleBeforeCompare !== null) {
+      const prior = scaleBeforeCompare
+      scaleBeforeCompare = null
+      applyScaleMode(prior)
+    }
   }
 
   // Live ticks arrive many times a second, and a full indicator recompute per tick multiplies by
@@ -1357,7 +1401,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
    *  to every backend — the reader here is the only place an upgrade path can ever live. */
   const CONTENT_V = 1
   const serializeContent = (): string =>
-    JSON.stringify({ v: CONTENT_V, symbol, tf, scale: scaleMode, hidden: [...hiddenIndicators], appearance: eff.appearance })
+    JSON.stringify({ v: CONTENT_V, symbol, tf, scale: scaleMode, hidden: [...hiddenIndicators], appearance: eff.appearance, compares: compareHandle.serialize() })
 
   const api: ChartWidgetApi = {
     symbol: () => symbol,
@@ -1386,6 +1430,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       legend?.setHeader(symbol, tf)
       events.onTimeframeChange?.(next)
       load()
+      compareHandle.setTimeframe()
     },
     setIndicators(next: IndicatorInstance[]) {
       if (removed) return
@@ -1394,7 +1439,27 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       recomputeIndicators()
     },
     scaleMode: () => scaleMode,
-    setScaleMode: (next: ScaleMode) => applyScaleMode(next),
+    setScaleMode: (next: ScaleMode) => {
+      applyScaleMode(next)
+      // An explicit pick is the trader overriding the loan — nothing to give back later.
+      scaleBeforeCompare = null
+    },
+    compare: {
+      add(sym: string, opts: { placement: ComparePlacement }) {
+        if (removed || !sym || sym === symbol) return // the charted symbol compared to itself is a no-op
+        compareHandle.add(sym, { placement: opts.placement })
+        compareScalePolicy()
+      },
+      remove(sym: string) {
+        if (removed) return
+        compareHandle.remove(sym)
+        compareScalePolicy()
+      },
+      setVisible: (sym: string, visible: boolean) => compareHandle.setVisible(sym, visible),
+      list: () => compareHandle.list(),
+      latest: (sym: string) => compareHandle.latest(sym),
+      symbols: () => [...(options.compareSymbols ?? [])],
+    },
     overrides: () => eff,
     applyOverrides(partial: PartialOverrides) {
       if (removed) return
@@ -1412,7 +1477,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       serialize: () => ({ symbol, timeframe: tf, content: serializeContent() }),
       restore(content: string) {
         if (removed) return
-        const c = JSON.parse(content) as { v?: unknown; symbol?: unknown; tf?: unknown; scale?: unknown; hidden?: unknown; appearance?: unknown }
+        const c = JSON.parse(content) as { v?: unknown; symbol?: unknown; tf?: unknown; scale?: unknown; hidden?: unknown; appearance?: unknown; compares?: unknown }
         if (c.v !== CONTENT_V) throw new Error(`unsupported chart content version ${String(c.v)}`)
         if (typeof c.symbol === 'string' && c.symbol) api.setSymbol(c.symbol)
         if (typeof c.tf === 'string' && c.tf) api.setTimeframe(c.tf)
@@ -1424,6 +1489,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         // The saved appearance applies as a RUNTIME layer — a viewer's saved look beats the
         // host's constructor values, exactly the precedence the option contract states.
         if (c.appearance && typeof c.appearance === 'object') api.applyOverrides({ appearance: c.appearance as Partial<ChartOverrides['appearance']> })
+        // Compares restore AFTER the scale: the blob's own scale is the truth of how it was saved,
+        // so the policy only re-arms the flip-back for compares the restore brings in.
+        compareHandle.restore(Array.isArray(c.compares) ? c.compares : [])
+        compareScalePolicy()
       },
     },
     drawings: drawingsApi,
@@ -1448,6 +1517,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       tradeLines?.detach()
       contextMenu?.destroy()
       drawingsRail?.destroy()
+      compareHandle.destroy()
       drawingsHandle?.destroy()
       legend?.destroy()
       indicatorsRenderer.destroy()
