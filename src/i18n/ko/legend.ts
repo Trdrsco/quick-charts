@@ -13,4 +13,13 @@ export const legend: Translation<typeof source> = {
   'legend.scaleLog': '로그',
   'legend.scalePercent': '%',
   'legend.scaleIndexed': '100',
+  'legend.compare': '심볼 비교 또는 추가',
+  'legend.compareTitle': '심볼 비교',
+  'legend.changeSymbol': '심볼 변경',
+  'legend.samePercent': '같은 % 스케일',
+  'legend.newScale': '새 가격 스케일',
+  'legend.newPane': '새 패널',
+  'legend.added': '추가된 심볼',
+  'legend.removeCompare': '비교 제거',
+  'legend.searchPlaceholder': '심볼',
 }

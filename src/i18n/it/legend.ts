@@ -13,4 +13,13 @@ export const legend: Translation<typeof source> = {
   'legend.scaleLog': 'Log',
   'legend.scalePercent': '%',
   'legend.scaleIndexed': '100',
+  'legend.compare': 'Confronta o aggiungi simbolo',
+  'legend.compareTitle': 'Confronta simboli',
+  'legend.changeSymbol': 'Cambia simbolo',
+  'legend.samePercent': 'Stessa scala %',
+  'legend.newScale': 'Nuova scala dei prezzi',
+  'legend.newPane': 'Nuovo riquadro',
+  'legend.added': 'Simboli aggiunti',
+  'legend.removeCompare': 'Rimuovi confronto',
+  'legend.searchPlaceholder': 'Simbolo',
 }

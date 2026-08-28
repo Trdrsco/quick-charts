@@ -13,4 +13,13 @@ export const legend: Translation<typeof source> = {
   'legend.scaleLog': '対数',
   'legend.scalePercent': '%',
   'legend.scaleIndexed': '100',
+  'legend.compare': '銘柄の比較または追加',
+  'legend.compareTitle': '銘柄を比較',
+  'legend.changeSymbol': '銘柄の変更',
+  'legend.samePercent': '同じ％スケール',
+  'legend.newScale': '新しい価格スケール',
+  'legend.newPane': '新規ペイン',
+  'legend.added': '追加した銘柄',
+  'legend.removeCompare': '比較を削除',
+  'legend.searchPlaceholder': '銘柄',
 }

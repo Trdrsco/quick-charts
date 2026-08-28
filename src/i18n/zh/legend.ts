@@ -13,4 +13,13 @@ export const legend: Translation<typeof source> = {
   'legend.scaleLog': '对数',
   'legend.scalePercent': '%',
   'legend.scaleIndexed': '100',
+  'legend.compare': '比较或添加代码',
+  'legend.compareTitle': '比较代码',
+  'legend.changeSymbol': '更改代码',
+  'legend.samePercent': '相同%刻度',
+  'legend.newScale': '新价格刻度',
+  'legend.newPane': '新窗格',
+  'legend.added': '已添加代码',
+  'legend.removeCompare': '移除比较',
+  'legend.searchPlaceholder': '代码',
 }

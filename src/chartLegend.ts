@@ -22,6 +22,10 @@ export interface LegendChip {
   pane?: boolean
   /** The instance's pane currently reads as collapsed (drives which control shows). */
   collapsed?: boolean
+  /** The TITLE is a button (a compare chip's change-symbol door) — needs `onTitle`. */
+  titleButton?: boolean
+  /** The chip carries a remove control (compares are legend-removable, the reference's model). */
+  removable?: boolean
 }
 
 export interface LegendControls {
@@ -32,6 +36,12 @@ export interface LegendControls {
   onPaneOp?(id: string, op: 'collapse' | 'maximize' | 'restore'): void
   /** A scale-mode chip on the header. */
   onScaleMode?(mode: ScaleMode): void
+  /** A `titleButton` chip's title was tapped (a compare's change-symbol). */
+  onTitle?(id: string): void
+  /** A `removable` chip's remove control was tapped. */
+  onRemove?(id: string): void
+  /** The header's compare door was tapped — present only when the host serves the compare dialog. */
+  onCompare?(): void
 }
 
 export interface ChartLegend {
@@ -103,6 +113,18 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, s
     titleScaleButtons()
     header.appendChild(row)
   }
+  // The compare door — the reference's own header compare button, riding the widget's header row.
+  let compareBtn: HTMLButtonElement | null = null
+  if (controls.onCompare) {
+    compareBtn = document.createElement('button')
+    compareBtn.type = 'button'
+    compareBtn.dataset.role = 'legend-compare'
+    compareBtn.textContent = '+'
+    compareBtn.title = strings.t('legend.compare')
+    compareBtn.style.cssText = `pointer-events:auto;background:none;border:1px solid ${theme.gridColor};border-radius:4px;color:${theme.textColor};cursor:pointer;padding:0 5px;font-size:11px;line-height:14px;margin-left:2px;`
+    compareBtn.addEventListener('click', () => controls.onCompare?.())
+    header.appendChild(compareBtn)
+  }
 
   const chipRows = document.createElement('div')
   chipRows.style.cssText = 'display:flex;flex-direction:column;gap:1px;'
@@ -126,9 +148,21 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, s
     for (const chip of chips) {
       const row = document.createElement('div')
       row.style.cssText = `display:flex;align-items:center;gap:6px;pointer-events:auto;opacity:${chip.hidden ? 0.5 : 1};`
-      const label = document.createElement('span')
-      label.textContent = chip.note ? `${chip.title} — ${chip.note}` : chip.hidden || chip.value == null ? chip.title : `${chip.title}  ${chip.value}`
-      row.appendChild(label)
+      // A titleButton chip splits title from value: the title is the change-symbol door, and the
+      // value stays plain text beside it.
+      if (chip.titleButton && controls.onTitle) {
+        const titleBtn = chipButton(chip.title, strings.t('legend.changeSymbol'), () => controls.onTitle!(chip.id))
+        titleBtn.style.fontSize = '11px'
+        titleBtn.style.textDecoration = 'underline dotted'
+        row.appendChild(titleBtn)
+        const rest = document.createElement('span')
+        rest.textContent = chip.note ?? (chip.hidden || chip.value == null ? '' : chip.value)
+        if (rest.textContent) row.appendChild(rest)
+      } else {
+        const label = document.createElement('span')
+        label.textContent = chip.note ? `${chip.title} — ${chip.note}` : chip.hidden || chip.value == null ? chip.title : `${chip.title}  ${chip.value}`
+        row.appendChild(label)
+      }
       if (chip.hasInputs && controls.onSettings) {
         const gear = chipButton(GEAR, strings.t('legend.indicatorSettings'), () => {
           const r = gear.getBoundingClientRect()
@@ -151,12 +185,16 @@ export function mountChartLegend(container: HTMLElement, theme: ResolvedTheme, s
         true,
       )
       row.appendChild(eye)
+      if (chip.removable && controls.onRemove) {
+        row.appendChild(chipButton('×', strings.t('legend.removeCompare'), () => controls.onRemove!(chip.id)))
+      }
       chipRows.appendChild(row)
     }
   }
 
   const unsubscribe = strings.onChange(() => {
     titleScaleButtons()
+    if (compareBtn) compareBtn.title = strings.t('legend.compare')
     render(lastChips)
   })
 

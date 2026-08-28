@@ -23,7 +23,8 @@ import { mountDrawingsRail, type DrawingsRail } from './drawingsRail'
 import { applyPlotOverrides, buildManifestPlots, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest } from './indicatorModel'
 import { attachIndicators } from './indicatorRenderer'
 import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from './scaleMode'
-import { attachCompare, type CompareEntry, type ComparePlacement, type CompareSymbol } from './compare'
+import { attachCompare, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSymbol } from './compare'
+import { openCompareDialog, type CompareDialogHandle } from './compareDialog'
 import { createSessionBands, isIntradayTf, knownMarketKind, sessionOf, setHolidayCalendar, SESSION_DOT, type MaybeMarketKind, type SessionBandsPrimitive } from './sessions'
 import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
 import { isCollapsed, planPaneOp } from './panePlan'
@@ -493,11 +494,25 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   if (options.legend !== false) {
     legend = mountChartLegend(chromeBox, theme, i18n, {
       onToggleEye: (id) => {
+        // Compare chips carry the `cmp:` prefix — their eye toggles the organ's visibility.
+        if (id.startsWith('cmp:')) {
+          const sym = id.slice(4)
+          const entry = compareHandle?.list().find((e) => e.symbol === sym)
+          if (entry) compareHandle!.setVisible(sym, !entry.visible)
+          return
+        }
         if (hiddenIndicators.has(id)) hiddenIndicators.delete(id)
         else hiddenIndicators.add(id)
         storage.set(HIDDEN_KEY, JSON.stringify([...hiddenIndicators]))
         recomputeIndicators()
       },
+      onTitle: (id) => {
+        if (id.startsWith('cmp:')) openCompareUi('change-symbol', id.slice(4))
+      },
+      onRemove: (id) => {
+        if (id.startsWith('cmp:')) compareRemove(id.slice(4))
+      },
+      onCompare: () => openCompareUi('compare'),
       onScaleMode: (mode) => applyScaleMode(mode),
       onSettings: (id, rect) => {
         const inst = indicatorInstances.find((i) => i.id === id)
@@ -653,6 +668,26 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   // everywhere — panes, histograms, areas, markers, levels, band fills, volume-scale plots.
   const indicatorsRenderer = attachIndicators(chart, { candles: () => candles })
 
+  // The legend strip is ONE chip list: indicator chips (rebuilt by recomputeIndicators) followed
+  // by compare chips (rebuilt on every organ notification). `compareHandle` is assigned after the
+  // chart's data plumbing below; chips built before that simply carry no compares yet.
+  let compareHandle: CompareHandle | null = null
+  let lastIndicatorChips: LegendChip[] = []
+  const compareChips = (): LegendChip[] =>
+    (compareHandle?.list() ?? []).map((e) => {
+      const pct = e.placement === 'same-percent' ? compareHandle!.changePct(e.symbol) : null
+      const last = e.placement === 'same-percent' ? null : compareHandle!.latest(e.symbol)
+      return {
+        id: `cmp:${e.symbol}`,
+        title: e.symbol,
+        value: pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : last != null ? last.toFixed(2) : null,
+        hidden: !e.visible,
+        titleButton: true,
+        removable: true,
+      }
+    })
+  const pushChips = (): void => legend?.setChips([...lastIndicatorChips, ...compareChips()])
+
   /** Recompute every configured instance over the current bars and refresh the legend chips. A
    *  compute that throws is skipped this round rather than sinking the chart; a hidden instance
    *  renders nothing (its series come down) but keeps its chip, so the eye can bring it back. */
@@ -709,7 +744,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       const value = latestPlotValue(built.plots[0]?.data)
       chips.push({ ...chipBase, value: value == null ? null : value.toFixed(built.precision ?? 2), hidden: false })
     }
-    legend?.setChips(chips)
+    lastIndicatorChips = chips
+    pushChips()
     legend?.setDot(sessionKind ? SESSION_DOT[sessionOf(Date.now(), sessionKind)] : null)
     // Pane heights settle a frame AFTER a pane is created/resized — a chip built in the same
     // frame can misread a fresh pane as collapsed. Converge on layout truth: re-check next frame
@@ -729,7 +765,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
             changed = true
           }
         }
-        if (changed) legend?.setChips(chips)
+        if (changed) pushChips()
       })
     }
   }
@@ -740,20 +776,30 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     recomputeIndicators()
     // Compares clip to the main window, so every reshape of the bar model re-clips them here —
     // paintAll is the one choke point every load / scroll-back / snapshot / replay path exits by.
-    compareHandle.sync()
+    compareHandle?.sync()
   }
 
   // ── COMPARE: the data-bearing organ, clipped to the main bar model (compare.ts owns the why).
-  const compareHandle = attachCompare(chart, {
+  // Chip pushes throttle to a trailing tick — every compare's live bar notifies, and the legend
+  // re-rendering its DOM per tick would be churn for a value the eye cannot follow anyway.
+  let compareChipTimer: ReturnType<typeof setTimeout> | null = null
+  compareHandle = attachCompare(chart, {
     datafeed,
     tf: () => tf,
     mainWindow: () => (bars.length ? { from: bars[0]!.t, to: bars[bars.length - 1]!.t } : null),
+    onChange: () => {
+      if (compareChipTimer !== null) return
+      compareChipTimer = setTimeout(() => {
+        compareChipTimer = null
+        if (!removed) pushChips()
+      }, 250)
+    },
   })
   /** The scale the trader held before same-percent forced percent — restored when the last
    *  same-percent compare leaves. Null while no flip is on loan. */
   let scaleBeforeCompare: ScaleMode | null = null
   const compareScalePolicy = () => {
-    if (compareHandle.hasSamePercent()) {
+    if (compareHandle!.hasSamePercent()) {
       if (scaleMode !== 'percent') {
         scaleBeforeCompare = scaleMode
         applyScaleMode('percent')
@@ -763,6 +809,47 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       scaleBeforeCompare = null
       applyScaleMode(prior)
     }
+  }
+  /** ONE add/remove pair for every door — the api, the dialog, the legend's remove — so the scale
+   *  loan can never depend on which door was used. */
+  const compareAdd = (sym: string, placement: ComparePlacement): void => {
+    if (removed || !sym || sym === symbol) return // the charted symbol compared to itself is a no-op
+    compareHandle!.add(sym, { placement })
+    compareScalePolicy()
+  }
+  const compareRemove = (sym: string): void => {
+    if (removed) return
+    compareHandle!.remove(sym)
+    compareScalePolicy()
+  }
+  /** The widget's own dialog (the legend's compare door and a compare chip's title). One at a
+   *  time; a change-symbol pick re-keys in place, keeping the compare's placement and color. */
+  let compareDialog: CompareDialogHandle | null = null
+  const openCompareUi = (mode: 'compare' | 'change-symbol', changeFrom?: string): void => {
+    if (removed) return
+    compareDialog?.close()
+    compareDialog = openCompareDialog({
+      theme,
+      strings: i18n,
+      datafeed,
+      mode,
+      curated: options.compareSymbols,
+      added: () => compareHandle!.list(),
+      onAdd: compareAdd,
+      onRemove: compareRemove,
+      initialQuery: changeFrom,
+      onPick: (next) => {
+        if (!changeFrom || next === changeFrom || next === symbol) return
+        const cur = compareHandle!.list().find((e) => e.symbol === changeFrom)
+        if (!cur || compareHandle!.list().some((e) => e.symbol === next)) return
+        compareHandle!.remove(changeFrom)
+        compareHandle!.add(next, { placement: cur.placement, color: cur.color, visible: cur.visible })
+        compareScalePolicy()
+      },
+      onClose: () => {
+        compareDialog = null
+      },
+    })
   }
 
   // Live ticks arrive many times a second, and a full indicator recompute per tick multiplies by
@@ -1401,7 +1488,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
    *  to every backend — the reader here is the only place an upgrade path can ever live. */
   const CONTENT_V = 1
   const serializeContent = (): string =>
-    JSON.stringify({ v: CONTENT_V, symbol, tf, scale: scaleMode, hidden: [...hiddenIndicators], appearance: eff.appearance, compares: compareHandle.serialize() })
+    JSON.stringify({ v: CONTENT_V, symbol, tf, scale: scaleMode, hidden: [...hiddenIndicators], appearance: eff.appearance, compares: compareHandle!.serialize() })
 
   const api: ChartWidgetApi = {
     symbol: () => symbol,
@@ -1430,7 +1517,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       legend?.setHeader(symbol, tf)
       events.onTimeframeChange?.(next)
       load()
-      compareHandle.setTimeframe()
+      compareHandle!.setTimeframe()
     },
     setIndicators(next: IndicatorInstance[]) {
       if (removed) return
@@ -1445,19 +1532,11 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       scaleBeforeCompare = null
     },
     compare: {
-      add(sym: string, opts: { placement: ComparePlacement }) {
-        if (removed || !sym || sym === symbol) return // the charted symbol compared to itself is a no-op
-        compareHandle.add(sym, { placement: opts.placement })
-        compareScalePolicy()
-      },
-      remove(sym: string) {
-        if (removed) return
-        compareHandle.remove(sym)
-        compareScalePolicy()
-      },
-      setVisible: (sym: string, visible: boolean) => compareHandle.setVisible(sym, visible),
-      list: () => compareHandle.list(),
-      latest: (sym: string) => compareHandle.latest(sym),
+      add: (sym: string, opts: { placement: ComparePlacement }) => compareAdd(sym, opts.placement),
+      remove: compareRemove,
+      setVisible: (sym: string, visible: boolean) => compareHandle!.setVisible(sym, visible),
+      list: () => compareHandle!.list(),
+      latest: (sym: string) => compareHandle!.latest(sym),
       symbols: () => [...(options.compareSymbols ?? [])],
     },
     overrides: () => eff,
@@ -1491,7 +1570,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         if (c.appearance && typeof c.appearance === 'object') api.applyOverrides({ appearance: c.appearance as Partial<ChartOverrides['appearance']> })
         // Compares restore AFTER the scale: the blob's own scale is the truth of how it was saved,
         // so the policy only re-arms the flip-back for compares the restore brings in.
-        compareHandle.restore(Array.isArray(c.compares) ? c.compares : [])
+        compareHandle!.restore(Array.isArray(c.compares) ? c.compares : [])
         compareScalePolicy()
       },
     },
@@ -1517,7 +1596,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       tradeLines?.detach()
       contextMenu?.destroy()
       drawingsRail?.destroy()
-      compareHandle.destroy()
+      compareDialog?.close()
+      compareHandle!.destroy()
       drawingsHandle?.destroy()
       legend?.destroy()
       indicatorsRenderer.destroy()

@@ -289,6 +289,14 @@ axis exists only while such a compare does); `new-pane` takes a pane of its own.
 clip to the main series window — a compare never extends the time axis. `compareSymbols` supplies
 a curated quick-add list for a compare dialog; `compare.symbols()` reads it back.
 
+The widget ships its own compare chrome: the legend header carries a compare door (`+`) opening a
+built-in dialog — search rows add at any of the three placements, curated `compareSymbols` rows sit
+above results, and the ADDED section removes. Each compare takes a legend chip whose title reopens
+the dialog in change-symbol mode (the pick re-keys the compare in place), with an eye and a remove
+beside the value (% under `same-percent`, the last close otherwise). In a layout, compares belong
+to each pane's own chart (`layout.panes()[layout.activePane()].compare`) and ride the layout blob
+with the rest of that pane's content.
+
 ```ts
 import { createChart, createUdfDatafeed } from '@trdrs/chart'
 

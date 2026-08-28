@@ -15,4 +15,14 @@ export const legend = {
   'legend.scaleLog': 'Log',
   'legend.scalePercent': '%',
   'legend.scaleIndexed': '100',
+  // The compare surface: the header door, the dialog (both modes), and the compare chips' verbs.
+  'legend.compare': 'Compare or add symbol',
+  'legend.compareTitle': 'Compare symbols',
+  'legend.changeSymbol': 'Change symbol',
+  'legend.samePercent': 'Same % scale',
+  'legend.newScale': 'New price scale',
+  'legend.newPane': 'New pane',
+  'legend.added': 'Added symbols',
+  'legend.removeCompare': 'Remove compare',
+  'legend.searchPlaceholder': 'Symbol',
 } as const
