@@ -29,4 +29,46 @@ export const account = {
   'account.sell': 'Sell {qty} {type}',
   'account.cancel': 'Cancel',
   'account.cancelTitle': 'Cancel {id}',
+
+  // The account manager's further pages (the widget composes @trdrs/account-manager below the
+  // chart and passes this catalog through; a key it misses reads the manager's built-in English,
+  // so these values match that table word for word).
+  'account.history': 'Order history',
+  'account.accounts': 'Accounts',
+  'account.noHistory': 'No orders in this bucket yet',
+  'account.noAccounts': 'No connected accounts',
+  'account.historyUnavailable': 'Order history is unavailable right now',
+  'account.loading': 'Loading…',
+  'account.loadMore': 'Load more',
+  'account.bucketAll': 'All',
+  'account.bucketFilled': 'Filled',
+  'account.bucketCancelled': 'Cancelled',
+  'account.bucketRejected': 'Rejected',
+  'account.sideBuy': 'Buy',
+  'account.sideSell': 'Sell',
+
+  // Column headers.
+  'account.colSymbol': 'Symbol',
+  'account.colSide': 'Side',
+  'account.colType': 'Type',
+  'account.colQuantity': 'Quantity',
+  'account.colAvgPrice': 'Avg price',
+  'account.colFillQty': 'Fill qty',
+  'account.colAvgFillPrice': 'Avg fill price',
+  'account.colLimitPrice': 'Limit price',
+  'account.colStopPrice': 'Stop price',
+  'account.colUnrealizedPnl': 'Unrealized PnL',
+  'account.colStatus': 'Status',
+  'account.colTime': 'Time',
+  'account.colActions': 'Actions',
+  'account.colAccount': 'Account',
+  'account.colName': 'Name',
+  'account.colBroker': 'Broker',
+
+  // The money summary strip.
+  'account.sumBalance': 'Account balance',
+  'account.sumEquity': 'Equity',
+  'account.sumRealized': 'Realized PnL',
+  'account.sumUnrealized': 'Unrealized PnL',
+  'account.sumAvailable': 'Available funds',
 } as const

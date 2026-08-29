@@ -14,8 +14,6 @@ import {
   resolveInitialTf,
   tfToUdfResolution,
   udfResolutionToTf,
-  type AccountSnapshot,
-  type ChartBroker,
   type ChartDatafeed,
   type ChartWidgetApi,
   type DatafeedConfig,
@@ -24,9 +22,8 @@ import {
   type HistoryPage,
   type IndicatorDefinition,
   type SessionClass,
-  type TradingAdapter,
-  type TradingCapabilities,
 } from '@trdrs/chart'
+import type { AccountSnapshot, BrokerAdapter, TradingAdapter, TradingCapabilities } from '@trdrs/broker'
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 import { parseDrawingsStore, serializeDrawingsStore, toolRegistry, type SerializedDrawing } from '@trdrs/chart-drawings'
 
@@ -52,7 +49,7 @@ const feed: ChartDatafeed = {
 }
 
 // The broker seam type-checks against the real seven methods (four required, three optional).
-const broker: ChartBroker = {
+const broker: BrokerAdapter = {
   async moveOrder() {},
   async setExits() {},
   async flatten() {},

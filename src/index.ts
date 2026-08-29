@@ -117,7 +117,7 @@ export {
 export { openInputsEditor } from './inputsEditor'
 export { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
-export * from './broker'
+export * from './gesturePlan'
 export { attachTradeLines, normalizeRoot, type PreviewLine, type PreviewSet, type TradeLineAttachment, type TradeLineHost, type TradeLineOptions } from './tradeLines'
 export {
   buildOrderParts,
