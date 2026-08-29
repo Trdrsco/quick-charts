@@ -37,8 +37,19 @@ const widget = createChart({
 ## The datafeed contract
 
 Implement `ChartDatafeed` (see `datafeed.ts`). Required methods: `search`, `resolve`, `history`,
-`subscribeBars`. Optional: `serverTime` (countdown skew correction), `getQuotes` (a quote board), and
-`config` (a feed-level capability declaration — [below](#capability-declaration-config-optional)).
+`subscribeBars`. Optional: `serverTime` (countdown skew correction), the quote surface — `getQuotes`
+(a batch board read) and `subscribeQuotes` (the push half: one `QuoteSnapshot` per update, initial
+state included, every update a REPLACEMENT; returns the unsubscribe; transport and cadence are
+yours — a stream pushes on tick, a poller on its board cadence) — and `config` (a feed-level
+capability declaration — [below](#capability-declaration-config-optional)).
+
+```ts
+import type { ChartDatafeed } from '@trdrs/chart'
+
+declare const feed: ChartDatafeed
+const unsubscribe = feed.subscribeQuotes?.(['ES', 'NQ'], (q) => console.log(q.symbol, q.last))
+unsubscribe?.()
+```
 
 ```ts
 import type { ChartDatafeed, FeedBar } from '@trdrs/chart'
