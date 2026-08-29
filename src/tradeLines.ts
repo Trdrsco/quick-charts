@@ -24,7 +24,7 @@ import {
   type HitCandidate,
   type LineKind,
   type PlanCtx,
-} from './broker'
+} from './gesturePlan'
 import { createChartI18n, type ChartI18n, type ChartTranslate } from './i18n'
 import { TICKET_TYPE_KEY, ticketTypeOfLabel, type TicketOrderType } from './orderTicket'
 import { DEFAULT_OVERRIDES, type ChartOverrides } from './overrides'

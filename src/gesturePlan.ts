@@ -1,6 +1,6 @@
-// The chart's GESTURE side of trading — what remains chart-owned now that the contracts, the
-// snapshots and the pure price math live in @trdrs/broker (the seam every trading surface
-// consumes). This file turns pointer geometry into broker intents: hit-testing overlapping lines,
+// The chart's GESTURE side of trading. The contracts, the snapshots and the pure price math are
+// @trdrs/broker's (the seam every trading surface consumes); this file turns pointer geometry
+// into broker intents: hit-testing overlapping lines,
 // planning a drop into ONE executable action against the LIVE snapshot, and bounding dragged
 // levels. Money-deciding logic stays pure so it unit-tests without a chart, a feed, or a broker;
 // the refusals it returns are the widget's own words, so each function takes the language
