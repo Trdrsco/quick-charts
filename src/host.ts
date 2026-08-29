@@ -32,7 +32,7 @@ import { openInputsEditor } from './inputsEditor'
 import { attachTradeLines, type TradeLineAttachment } from './tradeLines'
 import { createOrderTicket, type OrderTicket } from './orderTicket'
 import { openQtyPopover, openTypeMenu } from './ticketChrome'
-import { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
+import { mountAccountManager, type AccountManagerHandle } from '@trdrs/account-manager'
 import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 import { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
@@ -555,7 +555,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   let tradeLines: TradeLineAttachment | null = null
   let tradingUnsub: (() => void) | null = null
   let ticket: OrderTicket | null = null
-  let accountPanel: AccountPanelHandle | null = null
+  let accountPanel: AccountManagerHandle | null = null
   if (options.trading) {
     const adapter = options.trading
     // The mark is live-trusted AND not-replaying: a replayed close pricing a live P&L readout or
@@ -606,19 +606,25 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
           }
         : {}),
     })
-    // The account panel: the SAME snapshot plane as the lines, the SAME broker seam for its
-    // actions — one data plane, one write path, two views.
+    // The account manager below the chart is the SDK's own manager package, handed the SAME
+    // adapter as the lines — one data plane, one write path, two views. It owns its subscription
+    // (the adapter multiplexes), so the widget forwards nothing to it.
     if (panelHost) {
-      accountPanel = mountAccountPanel(
-        panelHost,
-        adapter.broker,
+      accountPanel = mountAccountManager(panelHost, {
+        adapter,
         theme,
-        {
+        strings: {
+          // The chart catalog is typed to ITS keys; the manager reads dynamically, and any key
+          // the catalog echoes back falls through to the manager's built-in English.
+          t: i18n.t as unknown as (key: string, vars?: Record<string, string | number>) => string,
+          onChange: (fn: () => void) => i18n.onChange(fn),
+        },
+        locale: () => i18n.tag(),
+        events: {
           onAction: (text) => events.onTradingAction?.(text),
           onError: (msg) => events.onTradingError?.(msg),
         },
-        i18n,
-      )
+      })
     }
     /** The last snapshot's position-quantity signature — the honest executions-refetch trigger:
      *  a fill is the only event that moves a quantity, while P&L churns with every price tick
@@ -632,7 +638,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       onSnapshot: (s) => {
         currentScope = s.scope
         currentLocked = s.locked === true
-        accountPanel?.update(s)
         tradeLines?.update({
           snapshot: { positions: s.positions, orders: s.orders },
           scope: s.scope,
