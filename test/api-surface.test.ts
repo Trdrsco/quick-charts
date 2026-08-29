@@ -8,6 +8,8 @@ import { describe, expect, it } from 'vitest'
 import * as api from '../src/index'
 
 const SURFACE: Record<string, string> = {
+  // Breaking (major, 2026-08-29): the pure price math and the trading contracts moved to the
+  // seam package @trdrs/broker — its own surface pin owns them now.
   // Additive (minor): the multi-chart layout plane — arrangement catalog + layout host, 2026-08-22.
   ARRANGEMENTS: 'object',
   LAYOUT_MENU_ROWS: 'object',
@@ -61,14 +63,11 @@ const SURFACE: Record<string, string> = {
   createOrderTicket: 'function',
   createSessionBands: 'function',
   createUdfDatafeed: 'function',
-  decimalsOfTick: 'function',
-  displayDecimals: 'function',
   dispatchPreviewDrop: 'function',
   drawParts: 'function',
   exchangeZoneOf: 'function',
   effectivePlotColor: 'function',
   findPart: 'function',
-  fmtPrice: 'function',
   formatPnlMoney: 'function',
   formatPnlPercent: 'function',
   formatPnlTicks: 'function',
@@ -77,7 +76,6 @@ const SURFACE: Record<string, string> = {
   indicatorHidden: 'function',
   isCollapsed: 'function',
   isIntradayTf: 'function',
-  isMeaningfulMove: 'function',
   latestPlotValue: 'function',
   // Additive (minor): the save/load seam's precedence composer + default adapter, 2026-08-22.
   layerOverrides: 'function',
@@ -105,7 +103,6 @@ const SURFACE: Record<string, string> = {
   resolveTheme: 'function',
   sessionOf: 'function',
   sessionTimeline: 'function',
-  snapPrice: 'function',
   storageSaveLoadAdapter: 'function',
   subIntervalsFor: 'function',
   tfSeconds: 'function',

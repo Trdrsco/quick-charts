@@ -18,7 +18,7 @@ renderer loads. From a CommonJS host, load via dynamic `import()`.
 Licensing: this package requires a commercial license (see `LICENSE`). Licensing is TIERED as a
 matter of license terms, not packaging: the charting tier covers the datafeed-driven widget
 (drawings, indicators, panes, sessions), and the trading tier additionally covers the trading
-plane (trade lines, the order ticket, the account panel, the `TradingAdapter` seam). One artifact
+plane (trade lines, the order ticket, the account panel) over the `@trdrs/broker` trading seam. One artifact
 serves both — an unlicensed tier is simply unused code your bundler drops. Because the renderer is
 *your* dependency, its Apache-2.0 NOTICE obligations attach to **your** bundle —
 `THIRD-PARTY-NOTICES.md` in this package spells out exactly what to carry and how.
@@ -401,75 +401,28 @@ What to know:
   drawing to move it (rigid whole-bar translation — anchors never drift apart); grab an anchor
   handle to reshape; locked drawings select but refuse edits.
 
-## The broker contract (chart trading)
+## Chart trading over the broker seam
 
-Chart trading is the second seam, the exact analog of the datafeed: the package owns the types, the
-renderer, the gestures, and the pure decision layer; **you** supply the account data (pushed in), the
-actions (a `ChartBroker`), and your own price rules (an injected `PricePolicy`).
-
-The interface is four required methods + three optional ones (`broker.ts` is the authority) —
-capability is presence-driven throughout: an omitted optional hides its affordance, including
-`placeOrder`, whose absence means a mutation-only integration where no placement surface renders:
-
-```ts
-import type { ChartBroker } from '@trdrs/chart'
-
-export const broker: ChartBroker = {
-  // Reprice a working order IN PLACE — atomic on YOUR backend, never client cancel+place.
-  // For a stop_limit, `price` is the trigger and `stopLimitPrice` the conversion limit (both
-  // always sent, one atomic modify). `currentBracket` carries the entry's pre-arm TP/SL legs so
-  // a cancel+re-place backend can recreate them; `current` carries the pre-move prices for a
-  // faithful restore on rejection. Reject (throw) for anything but a live amend/replace.
-  async moveOrder(args) {
-    await myBackend.replaceOrder(args.brokerOrderId, args.price, args.stopLimitPrice, args.intentKey)
-  },
-  // The protective PAIR is the primitive — the two levels are cancel-linked siblings at the
-  // venue. THREE-STATE per leg: a number SETS it, `null` REMOVES it, and OMITTING the field
-  // leaves the resting leg untouched ("move the stop, don't touch the target" is expressible).
-  async setExits(args) {
-    await myBackend.setProtectivePair(args.instrument, args.takeProfit, args.stopLoss, args.intentKey)
-  },
-  // Close the position at market.
-  async flatten(instrument) {
-    await myBackend.flatten(instrument)
-  },
-  // Cancel one working order.
-  async cancelOrder(brokerOrderId) {
-    await myBackend.cancel(brokerOrderId)
-  },
-  // OPTIONAL — omit it and the ⇄ affordance never renders. ONE backend operation (clear the
-  // instrument's working orders + a qty×2 opposite market order); a client-side cancel+place
-  // pair can crash in between.
-  async reversePosition(args) {
-    const receipt = await myBackend.reverse(args.instrument, args.intentKey)
-    return { cancelledOrders: receipt.cancelled }
-  },
-  // OPTIONAL — omit it and resting entry lines draw no bracket handles. Sets/edits/removes the
-  // TP/SL bracket on an UNFILLED entry: the legs are PRE-ARM (OCO-pending, arming when the entry
-  // fills), so they are not working orders yet and cannot be moved through setExits. Same
-  // three-state legs as setExits; `currentBracket` carries the untouched leg through for
-  // cancel+re-place backends.
-  async setOrderBracket(args) {
-    await myBackend.setPreArmBracket(args.brokerOrderId, args.takeProfit, args.stopLoss, args.intentKey)
-  },
-  // OPTIONAL — the ticket's submit path. Omit it and no placement affordance renders anywhere.
-  // MUST reject (throw) unless the backend reports the order accepted.
-  async placeOrder(args) {
-    await myBackend.place(args.instrument, args.side, args.qty, args.orderType, args.price, args.bracket, args.intentKey)
-  },
-}
-```
+Chart trading is the second seam, the exact analog of the datafeed — and the CONTRACT lives in its
+own package: `@trdrs/broker` owns `BrokerAdapter` (the actions), `BrokerSnapshot` /
+`AccountSnapshot` (the pushed account state), `TradingAdapter` (the whole trading plane),
+`PricePolicy`, and the pure price math. **The `@trdrs/broker` README is the doctested authority
+for every one of those types**; this document covers what the CHART does with them — the renderer,
+the gestures, the drop planners, and the surfaces below. Capability is presence-driven throughout:
+an omitted optional method hides its affordance, including `placeOrder`, whose absence means a
+mutation-only integration where no placement surface renders.
 
 ### The widget mounts trading through one adapter
 
-For the widget, the whole trading plane arrives as a single `TradingAdapter`: your `ChartBroker`
+For the widget, the whole trading plane arrives as a single `TradingAdapter`: your `BrokerAdapter`
 (actions), a full-snapshot account subscription (state), an optional capability declaration, and
 your price policy. **Snapshots are FULL and consistent by contract** — every push carries the
 account's complete positions and working orders, so there is no per-operation update to match and
 nothing to time out waiting for; the package holds no trading state of its own.
 
 ```ts
-import { createChart, createUdfDatafeed, type AccountSnapshot, type TradingAdapter } from '@trdrs/chart'
+import type { AccountSnapshot, TradingAdapter } from '@trdrs/broker'
+import { createChart, createUdfDatafeed } from '@trdrs/chart'
 
 const trading: TradingAdapter = {
   broker,
@@ -548,10 +501,11 @@ for the whole session), exiting switches back, and a host that runs replay tradi
 session's fills into the replay history through `widget.executions`:
 
 ```ts
-import { attachExecutionMarks, type ChartExecution } from '@trdrs/chart'
+import type { BrokerExecution } from '@trdrs/broker'
+import { attachExecutionMarks } from '@trdrs/chart'
 
 declare const tradingWidget: import('@trdrs/chart').ChartWidgetApi
-declare function fillsFor(symbol: string): Promise<readonly ChartExecution[]>
+declare function fillsFor(symbol: string): Promise<readonly BrokerExecution[]>
 
 // The widget feeds itself when the adapter declares executions(); a host can also push a history:
 tradingWidget.executions?.set('replay', [{ id: 'r-1', side: 'buy', qty: 2, price: 77.23, timeSecs: 1_755_000_000 }])
@@ -577,7 +531,8 @@ Money figures are the venue's own or '—'; the panel computes none.
 A richer host can skip the widget and drive `attachTradeLines` directly:
 
 ```ts
-import { attachTradeLines, type PricePolicy } from '@trdrs/chart'
+import type { PricePolicy } from '@trdrs/broker'
+import { attachTradeLines } from '@trdrs/chart'
 
 const lines = attachTradeLines({ chart, series, container }, broker, {
   symbol: 'ES',
@@ -627,7 +582,7 @@ lines.detach()                             // teardown
 
 A host can draw its own **preview** levels (an order ticket's pending entry/stop/target) through
 `update({ preview })`. Preview gestures are structurally money-free: a drag or ✕ on a preview line
-only ever calls your `onPreviewEdit` / `onPreviewCancel` callbacks — no `ChartBroker` method is in
+only ever calls your `onPreviewEdit` / `onPreviewCancel` callbacks — no `BrokerAdapter` method is in
 scope on that path.
 
 ## Versioning & deprecation

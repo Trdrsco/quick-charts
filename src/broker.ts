@@ -1,17 +1,17 @@
-// The chart-trading contract — the broker seam of @trdrs/chart, the exact analog of the datafeed
-// seam: the package owns the TYPES and the pure DECISION layer; a host supplies the data (it pushes
-// account snapshots into the attachment) and the ACTIONS (a ChartBroker implementation), and injects
-// its own price-validation POLICY. Nothing in this file (or tradeLines.ts) imports an engine, an
-// HTTP client, or app code — a third party wires their backend by implementing ChartBroker alone.
-//
-// Money-deciding logic lives HERE, pure, so it unit-tests without a chart, a feed, or a broker: the
-// gesture layer only turns pointer coordinates into a price and a resolved hit, then asks these
-// functions WHAT to do. A host's policy is the same gate its server runs, so the chart drag and the
-// backend can never disagree on a valid price.
-//
-// The refusals and confirmations these functions RETURN are the widget's own words, so each takes
-// the language optionally (`t`) and speaks English without one. A refusal that comes from the host's
-// policy — or from the backend — is that system's own text and passes through untranslated.
+// The chart's GESTURE side of trading — what remains chart-owned now that the contracts, the
+// snapshots and the pure price math live in @trdrs/broker (the seam every trading surface
+// consumes). This file turns pointer geometry into broker intents: hit-testing overlapping lines,
+// planning a drop into ONE executable action against the LIVE snapshot, and bounding dragged
+// levels. Money-deciding logic stays pure so it unit-tests without a chart, a feed, or a broker;
+// the refusals it returns are the widget's own words, so each function takes the language
+// optionally (`t`) and speaks English without one.
+import {
+  fmtPrice,
+  snapPrice,
+  type BrokerOrder,
+  type BrokerSnapshot,
+  type PricePolicy,
+} from '@trdrs/broker'
 import { englishChartStrings, type ChartTranslate } from './i18n'
 
 /** What a live trade line represents. A stop-limit order renders as TWO lines, one per price — the
@@ -20,192 +20,6 @@ import { englishChartStrings, type ChartTranslate } from './i18n'
  *  is its conversion-limit line (no second ✕ — one order cancels once). Each line drags its OWN
  *  price; the un-dragged price rides along unchanged in the same atomic replace. */
 export type LineKind = 'position' | 'stop' | 'limit' | 'stop_limit' | 'stop_limit_limit'
-
-/** An open position, as the broker layer needs it. `unrealizedPnl` is the BROKER's own number or
- *  null — the package renders null as no suffix, never a locally-computed fake. */
-export interface BrokerPosition {
-  instrument: string
-  /** Signed: long > 0, short < 0. */
-  qty: number
-  avgPrice: number | null
-  unrealizedPnl: number | null
-}
-
-/** A working order, as the broker layer needs it. A stop draws at triggerPrice, a limit at
- *  limitPrice; a stop_limit uses BOTH (trigger line + conversion-limit line). */
-export interface BrokerOrder {
-  brokerOrderId: string
-  instrument: string
-  side: 'buy' | 'sell'
-  qty: number
-  orderType: string
-  triggerPrice: number | null
-  limitPrice: number | null
-  /** Only 'working' rows draw/act; anything else is ignored. */
-  status: string
-}
-
-/** The account state the HOST pushes into the attachment (it owns the transport — stream, poll,
- *  whatever). The package never fetches. */
-export interface BrokerSnapshot {
-  positions: readonly BrokerPosition[]
-  orders: readonly BrokerOrder[]
-}
-
-/** The context a price validation runs in. `ref` is the band anchor (the level's current price, or
- *  the position anchor for a protective stop); `protectiveSide`/`mark` are present only on the
- *  protective-stop path. */
-export interface PriceValidationCtx {
-  tick: number
-  ref: number
-  protectiveSide?: 'long' | 'short'
-  mark?: number
-}
-
-/** The host's price gate — run over every repriced level BEFORE an action fires (and again on an
- *  Undo restore). Return [] for valid, else human-readable errors (the first is shown). Supply the
- *  SAME rules your backend enforces; omitted ⇒ only tick-snapping applies (the package never
- *  invents a band of its own). */
-export type PricePolicy = (price: number, ctx: PriceValidationCtx) => string[]
-
-/** The ACTIONS a host's backend exposes — the whole write surface of chart trading. Every method
- *  returns a Promise; a rejection's message is surfaced verbatim through onError. `intentKey` is an
- *  idempotency HINT: stable across retries of one gesture, different once the intent changes (the
- *  price is part of it) — map it to your backend's dedup key, or ignore it. */
-export interface ChartBroker {
-  /** Reprice a working order IN PLACE (atomic on the backend — never client cancel+place). MUST
-   *  reject (throw) when the backend reports anything but a live amend/replace. For a stop_limit,
-   *  `price` is the TRIGGER and `stopLimitPrice` the conversion limit — BOTH are always sent (one
-   *  changed by the drag, the other passed through as last reported), one atomic modify. */
-  moveOrder(args: {
-    brokerOrderId: string
-    instrument: string
-    side: 'buy' | 'sell'
-    qty: number
-    orderType: 'stop' | 'limit' | 'stop_limit'
-    price: number
-    stopLimitPrice?: number
-    /** The order's attached PRE-ARM bracket as the host knows it (legs that arm when the entry
-     *  fills). A backend whose reprice is a cancel+re-place MUST recreate these legs — without them
-     *  the re-placed entry silently loses its protection. Absent = the order carries no bracket. */
-    currentBracket?: { stopLoss?: number; takeProfit?: number }
-    /** The order's CURRENT resting prices (pre-move), for backends that must restore the original
-     *  shape when the re-place is rejected. */
-    current?: { price: number; stopLimitPrice?: number }
-    /** Contract tick — for backends that express bracket legs as tick offsets. */
-    tick?: number
-    intentKey: string
-  }): Promise<void>
-  /** Set/replace the position's protective exits as ONE unit. The pair is the primitive because the
-   *  two levels are cancel-linked siblings at the venue — set independently, a survivor outlives its
-   *  position as an OPENING order. Three-state per level: a number sets it, `null` removes it, and
-   *  OMITTING it leaves the resting leg untouched. */
-  setExits(args: { instrument: string; takeProfit?: number | null; stopLoss?: number | null; intentKey: string }): Promise<void>
-  /** Close the position at market. */
-  flatten(instrument: string): Promise<void>
-  /** Cancel one working order. */
-  cancelOrder(brokerOrderId: string): Promise<void>
-  /** OPTIONAL: flip the position in ONE backend operation (clear the instrument's working orders,
-   *  then a qty×2 opposite market order). Omitted ⇒ the ⇄ affordance never renders. Resolve with
-   *  how many orders were cleared (for the toast). */
-  reversePosition?(args: { instrument: string; intentKey: string }): Promise<{ cancelledOrders: number }>
-  /** OPTIONAL: place a NEW order — the ticket's submit path. Present ⇒ a ticket surface may render;
-   *  omitted ⇒ the integration is mutation-only (lines still drag/cancel/close) and no placement
-   *  affordance appears anywhere. `price` is a limit's level or a stop's trigger (stop_limit: the
-   *  TRIGGER, with `stopLimitPrice` the conversion limit); market orders carry no price. `bracket`
-   *  legs are PRE-ARM (OCO-pending until the entry fills). MUST reject (throw) unless the backend
-   *  reports the order accepted — the message is surfaced verbatim. */
-  placeOrder?(args: {
-    instrument: string
-    side: 'buy' | 'sell'
-    qty: number
-    orderType: 'market' | 'limit' | 'stop' | 'stop_limit'
-    price?: number
-    stopLimitPrice?: number
-    bracket?: { stopLoss?: number; takeProfit?: number }
-    /** Contract tick — for backends that express bracket legs as tick offsets. */
-    tick?: number
-    intentKey: string
-  }): Promise<void>
-  /** OPTIONAL: set/edit/remove the TP/SL bracket attached to an UNFILLED entry order. The legs are
-   *  PRE-ARM — OCO-pending at the backend, arming only when the entry fills — so they are not
-   *  working orders yet and cannot be moved through setExits. A leg field PRESENT states that leg's
-   *  END STATE (a price sets it, null removes it); an ABSENT field leaves the leg as it currently
-   *  rests, which the adapter resolves from `currentBracket` (the order's full bracket as the host
-   *  knows it — cancel+re-place backends need it to carry the untouched leg through). Omitted ⇒
-   *  resting entry lines draw no bracket handles. */
-  setOrderBracket?(args: {
-    brokerOrderId: string
-    instrument: string
-    side: 'buy' | 'sell'
-    qty: number
-    orderType: 'stop' | 'limit' | 'stop_limit'
-    /** The entry's resting price — a limit's level, a stop's trigger (stop_limit: the TRIGGER). */
-    price: number
-    stopLimitPrice?: number
-    tick: number
-    stopLoss?: number | null
-    takeProfit?: number | null
-    currentBracket?: { stopLoss?: number; takeProfit?: number }
-    intentKey: string
-  }): Promise<void>
-}
-
-// ── Pure helpers ────────────────────────────────────────────────────────────────
-
-/** Snap a raw price to the instrument tick. Identity when the tick is unknown (≤ 0) — callers that
- *  REQUIRE a tick check for it first; this never invents alignment. */
-export const snapPrice = (n: number, tick: number): number => (tick > 0 ? Math.round(n / tick) * tick : n)
-
-/** Decimal places implied by a tick (0.25 → 2, 0.0001 → 4); falls back to 2 when the tick is unknown. */
-export function decimalsOfTick(tick?: number): number {
-  if (tick == null || !Number.isFinite(tick) || tick <= 0) return 2
-  const s = tick.toString()
-  const sci = s.match(/e-(\d+)$/i)
-  if (sci) return Number(sci[1]) + (s.split('e')[0].split('.')[1]?.length ?? 0)
-  const dot = s.indexOf('.')
-  return dot < 0 ? 0 : s.length - dot - 1
-}
-
-/** How many significant figures a READ price is worth. Six is where a number stops being a level and
- *  starts being a serial: 111234.56789 has eleven, and nobody has ever traded on the last five. */
-const READ_SIG_FIGS = 6
-
-/** Decimals a price is SHOWN with — which is NOT always the decimals its tick implies (owner call
- *  2026-08-27).
- *
- *  A venue's tick is a trading grid, not a reading. BTC/USDT ticks at 0.00001, so tick precision
- *  writes six-figure prices as 111234.56789 and every label on the chart grows five digits nobody
- *  reads. Two flat would be wrong everywhere else, though — EURUSD lives at 1.0850 and 2dp erases
- *  the instrument — so the cap is on SIGNIFICANT figures rather than decimals: keep six of them,
- *  never fewer than two decimals, and never more than the tick actually resolves.
- *
- *  BTC at 111,234 → 2. ES at 5000.25 → 2. EURUSD → its 5. A price UNDER 1 is exempt outright: a coin
- *  at 0.00004321 is all decimals, and capping it would round the instrument away to nothing.
- *
- *  `refPrice` is the price being shown (or the market it sits at). Unknown ⇒ the tick's own answer,
- *  since a cap without a magnitude to measure against is a guess. */
-export function displayDecimals(tick: number | undefined, refPrice: number | null | undefined): number {
-  const tickDp = decimalsOfTick(tick)
-  const p = refPrice == null ? NaN : Math.abs(refPrice)
-  if (!Number.isFinite(p) || p < 1) return tickDp
-  const intDigits = Math.floor(Math.log10(p)) + 1
-  return Math.min(tickDp, Math.max(2, READ_SIG_FIGS - intDigits))
-}
-
-/** Render a price for a toast/label — at the precision it is READ at (see displayDecimals), which
- *  the price itself supplies the magnitude for. */
-export function fmtPrice(n: number, tick?: number): string {
-  return Number.isFinite(n) ? n.toFixed(displayDecimals(tick, n)) : ''
-}
-
-/** True when a drop is a genuine MOVE rather than a tap: after snapping to the tick, the price
- *  actually changed. A sub-tick wiggle snaps back to the same tick and is treated as a click (no
- *  order). With no tick, a tiny epsilon guards a pure-pixel tap. */
-export function isMeaningfulMove(finalPrice: number, originalPrice: number, tick?: number): boolean {
-  if (typeof tick === 'number' && tick > 0) return snapPrice(finalPrice, tick) !== snapPrice(originalPrice, tick)
-  return Math.abs(finalPrice - originalPrice) > 1e-9
-}
 
 // ── Hit-test priority (pure) ────────────────────────────────────────────────────
 // The gesture layer builds one candidate per on-screen line within the grab radius (computing each

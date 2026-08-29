@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createOrderTicket, type TicketSubmit } from '../src/orderTicket'
-import type { ChartBroker } from '../src/broker'
+import type { BrokerAdapter } from '@trdrs/broker'
 import type { PreviewSet } from '../src/tradeLines'
 
 // The ticket controller is the draft's state owner and the ONE submit path — its idempotency,
@@ -18,7 +18,7 @@ function harness(overrides?: {
   const previews: (PreviewSet | null)[] = []
   const errors: string[] = []
   const actions: string[] = []
-  const broker: ChartBroker = {
+  const broker: BrokerAdapter = {
     async moveOrder() {},
     async setExits() {},
     async flatten() {},
