@@ -1,12 +1,12 @@
 // The account panel — the widget's positions/orders manager, fed by the SAME AccountSnapshot the
-// trade lines consume (one data plane, two views) and acting through the SAME ChartBroker seam
+// trade lines consume (one data plane, two views) and acting through the SAME BrokerAdapter seam
 // (one write path, still). Vanilla DOM by the measured chrome policy, quiet by the product's
 // taste. Presence-driven throughout: the Reverse control renders only when the broker implements
 // reversePosition; a mutation-only integration still closes and cancels. Numbers are the venue's
 // own or '—' — the panel computes no money figure of its own.
-import type { ChartBroker } from './broker'
+import type { BrokerAdapter } from '@trdrs/broker'
 import { createChartI18n, type ChartI18n } from './i18n'
-import type { AccountSnapshot } from './tradingAdapter'
+import type { AccountSnapshot } from '@trdrs/broker'
 import type { ResolvedTheme } from './host'
 
 /** The pages, as ids: which page is showing is state, so it never depends on the language the tab is
@@ -29,7 +29,7 @@ export interface AccountPanelHandle {
  *  status are data and render as they arrive. */
 export function mountAccountPanel(
   host: HTMLElement,
-  broker: ChartBroker,
+  broker: BrokerAdapter,
   theme: ResolvedTheme,
   events: { onAction?: (text: string) => void; onError?: (msg: string) => void },
   strings: ChartI18n = createChartI18n(),

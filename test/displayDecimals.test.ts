@@ -8,7 +8,7 @@
 // and wrong for the next one. So the rule caps SIGNIFICANT figures rather than decimals, and this
 // file is the pin: the cases below are the ones a flat cap would have broken.
 import { describe, expect, it } from 'vitest'
-import { decimalsOfTick, displayDecimals, fmtPrice } from '../src/broker'
+import { decimalsOfTick, displayDecimals, fmtPrice } from '@trdrs/broker'
 
 describe('the precision a price is read at', () => {
   it('cuts a six-figure coin down to two, which is the whole point', () => {

@@ -28,9 +28,9 @@ declare const chart: any
 declare const series: any
 declare const container: HTMLElement
 declare const lastTradePrice: number
-declare const nextSnapshot: import('@trdrs/chart').BrokerSnapshot
-declare const myPricePolicy: import('@trdrs/chart').PricePolicy
-declare const broker: import('@trdrs/chart').ChartBroker
+declare const nextSnapshot: import('@trdrs/broker').BrokerSnapshot
+declare const myPricePolicy: import('@trdrs/broker').PricePolicy
+declare const broker: import('@trdrs/broker').BrokerAdapter
 declare const smaDefinition: import('@trdrs/chart').IndicatorDefinition
 declare const ticket: { setInstrument(symbol: string): void }
 declare function toast(text: string, undo?: () => void): void
@@ -49,7 +49,7 @@ const compilerOptions: ts.CompilerOptions = {
   noUnusedLocals: false,
   noUnusedParameters: false,
   baseUrl: pkgRoot,
-  paths: { '@trdrs/chart': ['src/index.ts'] },
+  paths: { '@trdrs/chart': ['src/index.ts'], '@trdrs/broker': ['../broker/src/index.ts'] },
 }
 
 const VIRTUAL = `${pkgRoot}/test/__readme_block__.ts`
@@ -85,8 +85,8 @@ describe('README contract doctests', () => {
 
   it('the doctest harness itself catches a drifted example (negative control)', () => {
     const drifted = `
-      import type { ChartBroker } from '@trdrs/chart'
-      export const broker: ChartBroker = {
+      import type { BrokerAdapter } from '@trdrs/broker'
+      export const broker: BrokerAdapter = {
         async setProtectiveStop() {}, // the method the README once documented — it does not exist
       }
     `
