@@ -4,7 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
+    "@trdrs/account-manager": "file:../.artifacts/trdrs-account-manager-0.1.0.tgz",
+    "@trdrs/broker": "file:../.artifacts/trdrs-broker-0.1.0.tgz",
+    "@trdrs/account-manager": "file:../.artifacts/trdrs-account-manager-0.1.0.tgz",
+    "@trdrs/broker": "file:../.artifacts/trdrs-broker-0.1.0.tgz",
     "@trdrs/chart": "file:../.artifacts/trdrs-chart-0.1.0.tgz",
+    "@trdrs/i18n": "file:../.artifacts/trdrs-i18n-0.1.0.tgz",
+    "@trdrs/i18n": "file:../.artifacts/trdrs-i18n-0.1.0.tgz",
     "@trdrs/chart-drawings": "file:../.artifacts/trdrs-chart-drawings-0.1.0.tgz",
     "@trdrs/chart-engine": "file:../.artifacts/trdrs-chart-engine-0.1.0.tgz",
     "@trdrs/engine-wire": "file:../.artifacts/trdrs-engine-wire-0.1.0.tgz",
