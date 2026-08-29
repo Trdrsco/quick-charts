@@ -537,8 +537,10 @@ opts out, `{ height }` sizes it). It is `@trdrs/account-manager`'s own surface �
 the SAME adapter the lines consume (the manager owns its subscription; the reference engine adapter
 multiplexes both over one stream), so it is one data plane and one write path, two views. Pages are
 presence-driven: Positions and Orders always; Order history only when the adapter implements
-`ordersHistory`; Accounts only with `accounts()`; the money summary strip only when snapshots carry
-`summary`. `Reverse` renders only when the broker implements `reversePosition`, and every money
+`ordersHistory`; Accounts only with `accounts()`; Risk — the account's loss limits, profit targets
+and end-of-day close, with the lock banner and the manual unlock — only with `riskControls()`; the
+money summary strip only when snapshots carry `summary`. `Reverse` renders only when the broker
+implements `reversePosition`, and every money
 control disables while no account is armed or trading is locked. Money figures are the venue's own
 or '—'; the manager computes none. A standalone host mounts it without a chart —
 `mountAccountManager(el, { adapter })` from `@trdrs/account-manager`, whose README carries the
