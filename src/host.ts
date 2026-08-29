@@ -33,6 +33,16 @@ import { attachTradeLines, type TradeLineAttachment } from './tradeLines'
 import { createOrderTicket, type OrderTicket } from './orderTicket'
 import { openQtyPopover, openTypeMenu } from './ticketChrome'
 import { mountAccountManager, type AccountManagerHandle } from '@trdrs/account-manager'
+import {
+  attachChartPrimitives,
+  type ChartPrimitivesHandle,
+  type ExecutionShapeApi,
+  type ExecutionShapeOptions,
+  type OrderLineApi,
+  type OrderLineOptions,
+  type PositionLineApi,
+  type PositionLineOptions,
+} from './chartPrimitives'
 import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 import { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
@@ -154,6 +164,14 @@ export interface ChartWidgetApi {
   sync: ChartPaneSyncApi
   /** Execution marks, or null when the widget was created with `executionMarks: false`. */
   executions: ChartExecutionsApi | null
+  /** TRADING PRIMITIVES — the imperative surface for a host with its own trading logic: draw an
+   *  order line, a position line, or an execution mark directly, no `trading` adapter involved
+   *  (they compose freely with one). A primitive is CHART-scoped: it draws until removed, across
+   *  symbol switches. Controls follow the callbacks registered on the handle — a ✕ or ⇄ with no
+   *  handler behind it never renders. */
+  createOrderLine(opts?: OrderLineOptions): OrderLineApi
+  createPositionLine(opts?: PositionLineOptions): PositionLineApi
+  createExecutionShape(opts?: ExecutionShapeOptions): ExecutionShapeApi
   /** The interface language the widget is showing. */
   locale(): LanguageCode
   /** Switch the interface language at runtime: the chrome re-labels as the translation lands, and
@@ -967,6 +985,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         symbolTick = info.tick
         drawingsHandle?.setTick(info.tick)
         tradeLines?.update({ tick: info.tick ?? undefined })
+        primitives?.setTick(info.tick ?? undefined)
         sessionKind = knownMarketKind(info.type, info.sessionClass ?? null)
         if (info.sessionCalendar && sessionKind) setHolidayCalendar(sessionKind, info.sessionCalendar)
         sessionBands?.refresh() // nothing else invalidates the pane when the model resolves
@@ -1419,6 +1438,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       wickDownColor: A.wickDownColor,
     })
     tradeLines?.update({ overrides: eff.trading })
+    primitives?.syncLook()
   }
 
   // Pane-composition sync. Driving a pane through the setters MUTES its own subscriptions for the
@@ -1498,6 +1518,36 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     if (removed) return
     legend?.setHeader(symbol, replayAll === null ? tf : i18n.t('host.replayHeader', { tf }))
   })
+
+  // TRADING PRIMITIVES — attached lazily on the first factory call, so a widget that never
+  // creates one pays nothing. The layer rides the same renderers as the trading plane (they
+  // compose: two attachments, each hit-testing only its own lines) and draws regardless of the
+  // charted symbol; only the tick and the resolved look need keeping in sync.
+  let primitives: ChartPrimitivesHandle | null = null
+  const primitivesLayer = (): ChartPrimitivesHandle => {
+    if (removed) throw new Error('the widget was removed')
+    if (!primitives) {
+      primitives = attachChartPrimitives({
+        chart,
+        series: candles,
+        container: chartBox,
+        chromeBox,
+        overrides: () => eff.trading,
+        mark: () => (feedLive && replayAll === null && bars.length ? bars[bars.length - 1]!.c : null),
+        execColors: {
+          buyColor: () => (overrideNamed('trading', 'buyColor') ? eff.trading.buyColor : theme.upColor),
+          sellColor: () => (overrideNamed('trading', 'sellColor') ? eff.trading.sellColor : theme.downColor),
+          textColor: () => theme.textColor,
+          labels: () => eff.trading.executionLabels,
+          precision: () => (symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : null),
+        },
+        strings: i18n,
+        onError: (msg) => events.onTradingError?.(msg),
+      })
+      primitives.setTick(symbolTick ?? undefined)
+    }
+    return primitives
+  }
 
   /** The widget's saved-chart CONTENT format. Versioned because the blob is contractually opaque
    *  to every backend — the reader here is the only place an upgrade path can ever live. */
@@ -1594,6 +1644,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     replay: replayApi,
     sync: paneSync,
     executions: executionsApi,
+    createOrderLine: (opts?: OrderLineOptions) => primitivesLayer().createOrderLine(opts),
+    createPositionLine: (opts?: PositionLineOptions) => primitivesLayer().createPositionLine(opts),
+    createExecutionShape: (opts?: ExecutionShapeOptions) => primitivesLayer().createExecutionShape(opts),
     remove() {
       if (removed) return
       removed = true
@@ -1609,6 +1662,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       accountPanel?.destroy()
       execMarks?.destroy()
       tradeLines?.detach()
+      primitives?.detach()
       contextMenu?.destroy()
       drawingsRail?.destroy()
       compareDialog?.close()
