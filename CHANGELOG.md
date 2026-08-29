@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **The account panel is the account-manager package.** `mountAccountPanel` and
+  `AccountPanelHandle` are REMOVED (major): the surface below the chart is now
+  `@trdrs/account-manager`'s `mountAccountManager` (a new dependency of this package), which the
+  widget composes internally — handing it the widget's full `TradingAdapter`, theme and strings,
+  so the manager's presence-driven pages (Order history via `ordersHistory`, Accounts via
+  `accounts()`, the summary strip via `summary`) light up under the chart as an adapter provides
+  them. The manager owns its own account subscription. A host that mounted the panel standalone
+  imports the manager package instead.
 - **Interface language.** New **`locale`** option on `createChart` and on a layout's `base`, one
   of the 21 codes in the `@trdrs/i18n` registry (a new dependency of this package), English by
   default. The widget's own chrome reads it and the chart's axis and crosshair dates are formatted
@@ -15,7 +23,7 @@
   a key without a translation reads English.
   Hosts composing the chrome modules themselves pass a `ChartI18n` (from `createChartI18n(code)`)
   as a new OPTIONAL trailing parameter or option — `mountDrawingsRail`, `mountReplayBar`,
-  `mountContextMenu`, `mountAccountPanel`, `openTypeMenu`, `openInputsEditor`; `strings` on
+  `mountContextMenu`, `openTypeMenu`, `openInputsEditor`; `strings` on
   `TradeLineOptions`, `OrderTicketDeps` and `ExecutionMarksOptions`; `t` on `ChartMenuContext`
   and the trade-line part builders; a BCP 47 `tag` on `sessionTimeline` — every existing call
   compiles unchanged and reads English. New exports `toolName(t, type, fallback)` and

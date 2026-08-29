@@ -31,6 +31,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@trdrs/account-manager": "workspace:^",
     "@trdrs/broker": "workspace:^",
     "@trdrs/chart-drawings": "workspace:^",
     "@trdrs/i18n": "workspace:^"
