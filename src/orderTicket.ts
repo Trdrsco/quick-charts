@@ -2,10 +2,10 @@
 // design (the trade-line layer renders the draft's qty/type/side controls but owns no draft state
 // and no submit path). This module is that owner, DOM-free and framework-free: it composes ONE
 // draft order, publishes it as the attachment's PreviewSet (ghost lines + the draft control), and
-// submits through ChartBroker.placeOrder behind an optional confirm gate. Pre-money discipline is
+// submits through BrokerAdapter.placeOrder behind an optional confirm gate. Pre-money discipline is
 // structural, as everywhere on the draft path: every edit only recomposes the preview; the ONLY
 // call that can spend is submit(), and it refuses without an armed scope.
-import { snapPrice, type ChartBroker, type PricePolicy } from './broker'
+import { snapPrice, type BrokerAdapter, type PricePolicy } from '@trdrs/broker'
 import { createChartI18n, type ChartI18n } from './i18n'
 import type { PreviewLine, PreviewSet } from './tradeLines'
 
@@ -35,7 +35,7 @@ export interface TicketSubmit {
 }
 
 export interface OrderTicketDeps {
-  broker: ChartBroker
+  broker: BrokerAdapter
   instrument: () => string
   /** Contract tick, or null while unknown — opening prices snap to it when present. */
   tick: () => number | null

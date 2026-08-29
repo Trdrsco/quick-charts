@@ -1,6 +1,6 @@
 // The trade-line renderer + gesture layer — chart trading's interactive surface, package-owned and
 // framework-free (no React, no engine, no HTTP: the host pushes BrokerSnapshots in and a
-// ChartBroker implementation carries the actions out). Draws the position average line (P&L suffix,
+// BrokerAdapter implementation carries the actions out). Draws the position average line (P&L suffix,
 // ⇄ reverse and ✕ close hot-zones), working stop/limit lines (draggable to reprice, ✕ to cancel),
 // and host-supplied PREVIEW lines (pre-money ghost levels whose gestures only ever call back to the
 // host — the never-execute guarantee is structural: preview paths have no broker call in scope).
@@ -11,25 +11,19 @@
 // is the pure planBrokerDrop in broker.ts, gated by the HOST's injected price policy.
 import type { IChartApi, IPriceLine, ISeriesApi } from 'lightweight-charts'
 import { clickSlopFor, createPendingHolds, tapReleaseVerdict } from './gestureRules'
+import { displayDecimals, fmtPrice, isMeaningfulMove, type BrokerAdapter, type BrokerOrder, type BrokerSnapshot, type PricePolicy } from '@trdrs/broker'
 import {
   boundBracketPrice,
   boundStopPrice,
   dispatchPreviewDrop,
-  displayDecimals,
-  fmtPrice,
-  isMeaningfulMove,
   pickHit,
   planBrokerDrop,
   type BrokerExec,
-  type BrokerOrder,
-  type BrokerSnapshot,
-  type ChartBroker,
   type DropTarget,
   type Hit,
   type HitCandidate,
   type LineKind,
   type PlanCtx,
-  type PricePolicy,
 } from './broker'
 import { createChartI18n, type ChartI18n, type ChartTranslate } from './i18n'
 import { TICKET_TYPE_KEY, ticketTypeOfLabel, type TicketOrderType } from './orderTicket'
@@ -400,13 +394,13 @@ interface BracketDragState {
  *  unedited), and the widget's own line when the rejection carried no message to show. */
 const errMsg = (e: unknown, t: ChartTranslate): string => (e instanceof Error ? e.message : t('lines.actionFailed'))
 
-export function attachTradeLines(host: TradeLineHost, broker: ChartBroker, initial: TradeLineOptions): TradeLineAttachment {
+export function attachTradeLines(host: TradeLineHost, broker: BrokerAdapter, initial: TradeLineOptions): TradeLineAttachment {
   const { chart, series, container } = host
   let opts: TradeLineOptions = { ...initial }
   /** The widget's language. Held for the layer's life: it is a live object, so a switch arrives
    *  through it rather than through a new one, and every label is read from it at paint time. */
   const strings = initial.strings ?? createChartI18n()
-  /** intentKey → the host's own idempotency lifecycle happens in the ChartBroker adapter; the
+  /** intentKey → the host's own idempotency lifecycle happens in the BrokerAdapter adapter; the
    *  package just forwards the key from the plan. */
 
   const lines = new Map<string, LineEntry>()

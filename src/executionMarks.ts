@@ -29,20 +29,10 @@
 // Same chrome discipline as the legend/drawings rail: theme-tinted DOM + canvas the package owns,
 // no framework. Arrows are canvas (they must track pan/zoom per paint, like the reference); the
 // card is DOM in the host's chrome overlay.
+import type { BrokerExecution } from '@trdrs/broker'
 import type { IChartApi, ISeriesApi, MouseEventParams, SeriesType, Time } from 'lightweight-charts'
 import { createChartI18n, type ChartI18n } from './i18n'
 import { withAlpha } from './tradeLineParts'
-
-/** One execution (a fill), in the host's vocabulary. `timeSecs` is the FILL time — the attachment
- *  finds its containing bar itself, so hosts pass raw fill times. */
-export interface ChartExecution {
-  /** Stable identity (the broker's execution/fill id) — keys the TRADES rows. */
-  readonly id: string
-  readonly side: 'buy' | 'sell'
-  readonly qty: number
-  readonly price: number
-  readonly timeSecs: number
-}
 
 export type ExecutionScope = 'live' | 'replay'
 
@@ -52,7 +42,7 @@ export interface ExecutionGroup {
   readonly barTime: number
   readonly side: 'buy' | 'sell'
   /** The grouped fills, oldest first. */
-  readonly fills: readonly ChartExecution[]
+  readonly fills: readonly BrokerExecution[]
   readonly qty: number
   readonly avgPrice: number
 }
@@ -78,12 +68,12 @@ function containingBarIndex(barTimes: readonly number[], t: number): number {
  *  before the first loaded bar are dropped (their bar is not on the chart), and fills past the
  *  window's forming edge (beyond the last bar plus the last bar-to-bar span) are dropped rather
  *  than clamped to the wrong bar. Exported for tests. */
-export function groupExecutionsByBar(executions: readonly ChartExecution[], barTimes: readonly number[]): ExecutionGroup[] {
+export function groupExecutionsByBar(executions: readonly BrokerExecution[], barTimes: readonly number[]): ExecutionGroup[] {
   if (barTimes.length === 0) return []
   const lastBar = barTimes[barTimes.length - 1]!
   const span = barTimes.length >= 2 ? lastBar - barTimes[barTimes.length - 2]! : Number.POSITIVE_INFINITY
   const horizon = lastBar + span
-  const byKey = new Map<string, ChartExecution[]>()
+  const byKey = new Map<string, BrokerExecution[]>()
   for (const x of executions) {
     if (!Number.isFinite(x.timeSecs) || !Number.isFinite(x.price) || !Number.isFinite(x.qty) || x.qty <= 0) continue
     if (x.timeSecs >= horizon) continue
@@ -242,7 +232,7 @@ export interface ExecutionMarksOptions {
 export interface ExecutionMarksHandle {
   /** Replace one scope's executions. Painting is by the ACTIVE scope only; replacing the active
    *  scope closes any open card (its group may no longer exist). */
-  set(scope: ExecutionScope, executions: readonly ChartExecution[]): void
+  set(scope: ExecutionScope, executions: readonly BrokerExecution[]): void
   /** Flip which history draws — the host calls this on replay start/exit. Closes any open card. */
   setScope(scope: ExecutionScope): void
   scope(): ExecutionScope
@@ -279,7 +269,7 @@ export function attachExecutionMarks(
   chrome: HTMLElement,
   opts: ExecutionMarksOptions,
 ): ExecutionMarksHandle {
-  const sets: Record<ExecutionScope, readonly ChartExecution[]> = { live: [], replay: [] }
+  const sets: Record<ExecutionScope, readonly BrokerExecution[]> = { live: [], replay: [] }
   /** The card's words, read as it is built. `opts.strings` stays the authority for the row DATES:
    *  with no language named they follow the viewer's own locale, which a default would override. */
   const strings = opts.strings ?? createChartI18n()

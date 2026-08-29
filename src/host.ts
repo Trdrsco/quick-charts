@@ -36,8 +36,9 @@ import { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
 import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 import { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
-import { attachExecutionMarks, type ChartExecution, type ExecutionMarksHandle, type ExecutionScope } from './executionMarks'
-import { decimalsOfTick } from './broker'
+import type { BrokerExecution } from '@trdrs/broker'
+import { attachExecutionMarks, type ExecutionMarksHandle, type ExecutionScope } from './executionMarks'
+import { decimalsOfTick } from '@trdrs/broker'
 import { localeInfo, type LanguageCode } from '@trdrs/i18n'
 import { createChartI18n } from './i18n'
 
@@ -75,7 +76,7 @@ export interface ChartReplayApi {
  *  runs replay TRADING pushes its session's fills, and how a non-trading host overlays any fill
  *  history it holds. */
 export interface ChartExecutionsApi {
-  set(scope: ExecutionScope, executions: readonly ChartExecution[]): void
+  set(scope: ExecutionScope, executions: readonly BrokerExecution[]): void
   setScope(scope: ExecutionScope): void
   scope(): ExecutionScope
 }
@@ -548,7 +549,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   }
 
   // The trading plane (mounted only when the host supplies an adapter): the package's trade-line
-  // surface fed by the adapter's FULL account snapshots, actions through its ChartBroker, prices
+  // surface fed by the adapter's FULL account snapshots, actions through its BrokerAdapter, prices
   // gated by its policy. The widget contributes what it owns — the live-trusted mark, the resolved
   // tick, the charted symbol — and nothing else; the package still holds no trading state.
   let tradeLines: TradeLineAttachment | null = null
