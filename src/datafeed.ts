@@ -180,4 +180,11 @@ export interface ChartDatafeed {
    *  feed with no quote surface omits it (a board then shows '-'). The analog of the reference datafeed's
    *  quote API; drives a watchlist without per-symbol history polling. */
   getQuotes?(symbols: string[]): Promise<QuoteSnapshot[]>
+  /** Live quote PUSH for a set of symbols — the subscribe half of the quote surface (the analog of
+   *  the reference's subscribe/unsubscribeQuotes pair). `onQuote` receives one {@link QuoteSnapshot}
+   *  per update, initial state included, and every update is a REPLACEMENT (never a delta). Returns
+   *  the unsubscribe. The transport and cadence are the adapter's own — a stream pushes on tick, a
+   *  polling adapter on its board cadence — and a consumer that goes invisible unsubscribes rather
+   *  than asking the feed to guess. Optional independently of `getQuotes`. */
+  subscribeQuotes?(symbols: readonly string[], onQuote: (quote: QuoteSnapshot) => void): () => void
 }
