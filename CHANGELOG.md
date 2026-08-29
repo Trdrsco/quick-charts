@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The account manager below the chart gains its Risk page** when the trading adapter implements
+  the seam's `riskControls` (the account's loss limits, profit targets and end-of-day close, the
+  lock banner off `snapshot.riskLock`, the manual unlock). Composition only — the page is
+  `@trdrs/account-manager`'s; the widget's catalog carries its strings in every language.
 - **The quote surface gains its push half.** `ChartDatafeed` gains optional
   **`subscribeQuotes(symbols, onQuote)`** beside `getQuotes`: one `QuoteSnapshot` per update,
   initial state included, every update a replacement; returns the unsubscribe; transport and
