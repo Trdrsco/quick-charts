@@ -103,7 +103,6 @@ export {
   type ExecutionScope,
 } from './executionMarks'
 export { createOrderTicket, type OrderTicket, type OrderTicketDeps, type TicketOrderType, type TicketState, type TicketSubmit } from './orderTicket'
-export { mountAccountPanel, type AccountPanelHandle } from './accountPanel'
 export { openInputsEditor } from './inputsEditor'
 export { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
