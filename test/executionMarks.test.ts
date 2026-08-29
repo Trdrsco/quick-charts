@@ -1,16 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import {
-  attachExecutionMarks,
-  executionHitAt,
-  executionPriceDecimals,
-  groupExecutionsByBar,
-  planExecutionRuns,
-  type ArrowHit,
-  type ChartExecution,
-} from '../src/executionMarks'
+import type { BrokerExecution } from '@trdrs/broker'
+import { attachExecutionMarks, executionHitAt, executionPriceDecimals, groupExecutionsByBar, planExecutionRuns, type ArrowHit } from '../src/executionMarks'
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
 
-const fill = (over: Partial<ChartExecution>): ChartExecution => ({
+const fill = (over: Partial<BrokerExecution>): BrokerExecution => ({
   id: over.id ?? 'f',
   side: over.side ?? 'buy',
   qty: over.qty ?? 1,

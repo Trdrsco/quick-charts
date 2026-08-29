@@ -7,7 +7,7 @@ import type { ChartStorage } from './storage'
 import type { ChartSaveLoadAdapter } from './saveLoad'
 import type { PartialOverrides } from './overrides'
 import type { IndicatorManifest, IndicatorOverrides } from './indicatorModel'
-import type { TradingAdapter } from './tradingAdapter'
+import type { TradingAdapter } from '@trdrs/broker'
 import type { LanguageCode } from '@trdrs/i18n'
 
 /** Theme overrides — a host tints the chart to its own palette. Every field optional; omitted values keep
@@ -99,7 +99,7 @@ export interface ChartWidgetOptions {
   legend?: false
   /** The trading plane (off unless supplied): mounts the trade-line surface — position pill,
    *  draggable working-order lines, pre-arm brackets — fed by the adapter's account snapshots,
-   *  acting through its ChartBroker, price-gated by its policy. Capability is presence-driven:
+   *  acting through its BrokerAdapter, price-gated by its policy. Capability is presence-driven:
    *  an adapter whose broker omits a method never renders that affordance. */
   trading?: TradingAdapter
   /** The account panel below the chart (on by default WHEN `trading` is supplied): Positions and
