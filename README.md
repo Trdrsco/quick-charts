@@ -521,12 +521,17 @@ marks.setScope('replay') // entering replay: live fills hide, the replay history
 marks.destroy()
 ```
 
-**The account panel** mounts below the chart whenever `trading` is supplied (`accountPanel: false`
-opts out, `{ height }` sizes it): Positions and Orders pages rendered from the SAME snapshot the
-lines consume, with Close / Cancel / Reverse routing through the SAME broker seam — one data plane,
-one write path, two views. Presence rules again: `Reverse` renders only when the broker implements
-`reversePosition`, and every money control disables while no account is armed or trading is locked.
-Money figures are the venue's own or '—'; the panel computes none.
+**The account manager** mounts below the chart whenever `trading` is supplied (`accountPanel: false`
+opts out, `{ height }` sizes it). It is `@trdrs/account-manager`'s own surface — the widget hands it
+the SAME adapter the lines consume (the manager owns its subscription; the reference engine adapter
+multiplexes both over one stream), so it is one data plane and one write path, two views. Pages are
+presence-driven: Positions and Orders always; Order history only when the adapter implements
+`ordersHistory`; Accounts only with `accounts()`; the money summary strip only when snapshots carry
+`summary`. `Reverse` renders only when the broker implements `reversePosition`, and every money
+control disables while no account is armed or trading is locked. Money figures are the venue's own
+or '—'; the manager computes none. A standalone host mounts it without a chart —
+`mountAccountManager(el, { adapter })` from `@trdrs/account-manager`, whose README carries the
+column model and formatter registry.
 
 A richer host can skip the widget and drive `attachTradeLines` directly:
 

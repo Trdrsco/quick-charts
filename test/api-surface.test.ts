@@ -87,7 +87,8 @@ const SURFACE: Record<string, string> = {
   marketKindOf: 'function',
   memoryChartStorage: 'function',
   mergeOverrides: 'function',
-  mountAccountPanel: 'function',
+  // Removal (major): mountAccountPanel moved to @trdrs/account-manager as mountAccountManager —
+  // the widget composes it internally and standalone hosts import the manager package, 2026-08-29.
   mountContextMenu: 'function',
   openInputsEditor: 'function',
   nextSessionChange: 'function',
