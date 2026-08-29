@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- **The quote surface gains its push half.** `ChartDatafeed` gains optional
+  **`subscribeQuotes(symbols, onQuote)`** beside `getQuotes`: one `QuoteSnapshot` per update,
+  initial state included, every update a replacement; returns the unsubscribe; transport and
+  cadence are the adapter's own. Additive — existing feeds compile unchanged.
 - **Trading primitives.** `ChartWidgetApi` gains **`createOrderLine`** / **`createPositionLine`** /
   **`createExecutionShape`** — the imperative chart-trading surface for a host with its own
   trading logic, over the same renderers the `trading` adapter's lines and marks use (the two
