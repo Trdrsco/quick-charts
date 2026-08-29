@@ -103,6 +103,17 @@ export {
   type ExecutionScope,
 } from './executionMarks'
 export { createOrderTicket, type OrderTicket, type OrderTicketDeps, type TicketOrderType, type TicketState, type TicketSubmit } from './orderTicket'
+export {
+  attachChartPrimitives,
+  type ChartPrimitivesDeps,
+  type ChartPrimitivesHandle,
+  type ExecutionShapeApi,
+  type ExecutionShapeOptions,
+  type OrderLineApi,
+  type OrderLineOptions,
+  type PositionLineApi,
+  type PositionLineOptions,
+} from './chartPrimitives'
 export { openInputsEditor } from './inputsEditor'
 export { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
