@@ -250,7 +250,13 @@ export interface TradeLineOptions {
    *  one the draft uses) and calls `commit` with the new size — commit routes through the same
    *  atomic replace a reprice drag uses (same prices, new quantity), so there is still exactly one
    *  order-mutating path. */
-  onOrderQtyEdit?: (args: { qty: number; step: number; rect: { x: number; y: number; w: number; h: number }; commit: (qty: number) => void }) => void
+  onOrderQtyEdit?: (args: {
+    brokerOrderId: string
+    qty: number
+    step: number
+    rect: { x: number; y: number; w: number; h: number }
+    commit: (qty: number) => void
+  }) => void
   /** Host preview levels (pre-money). Omitted ⇒ no ghost lines. */
   preview?: PreviewSet | null
   /** A dragged preview line's new (snapped, banded) price. The ONLY thing a preview drag calls. */
@@ -288,6 +294,19 @@ export interface TradeLineOptions {
    *  pane has no bottom bar to inherit the side from, and guessing would take away their only way to
    *  send. Omitted ⇒ the full desktop line. */
   compact?: boolean
+  /** Per-row control presence — SUPPRESS-ONLY: naming a row (orders by brokerOrderId, positions by
+   *  instrument) and setting a control `false` removes that control — its button, its hit zone,
+   *  its gesture — from that row alone; anything else keeps the layer's own presence rules, and a
+   *  lock still disarms everything. The primitives surface feeds this from which callbacks a host
+   *  registered, so a button never renders without a handler behind it. */
+  controls?: {
+    orders?: Record<string, { cancel?: boolean; move?: boolean; modifyQty?: boolean }>
+    positions?: Record<string, { close?: boolean; reverse?: boolean }>
+  }
+  /** Draw every snapshot row regardless of the charted symbol — for a host-driven layer whose rows
+   *  are CHART-scoped rather than symbol-scoped (the primitives surface: a line lives until the
+   *  host removes it). Default: only rows whose normalized root matches the charted symbol draw. */
+  allInstruments?: boolean
 }
 
 export interface TradeLineAttachment {
@@ -724,7 +743,7 @@ export function attachTradeLines(host: TradeLineHost, broker: BrokerAdapter, ini
   const draw = () => {
     if (detached) return
     const root = normalizeRoot(opts.symbol)
-    const charted = (instrument: string) => matchesChartedRoot(instrument, opts.symbol)
+    const charted = (instrument: string) => opts.allInstruments === true || matchesChartedRoot(instrument, opts.symbol)
     const t = T()
     interface Desired {
       price: number
@@ -781,8 +800,8 @@ export function attachTradeLines(host: TradeLineHost, broker: BrokerAdapter, ini
             pnlText: pnl.text,
             pnlSign: pnl.sign,
             currency: opts.currency ?? '',
-            supportReverse: armed() && canReverse,
-            supportClose: armed(),
+            supportReverse: armed() && canReverse && opts.controls?.positions?.[p.instrument]?.reverse !== false,
+            supportClose: armed() && opts.controls?.positions?.[p.instrument]?.close !== false,
             // A handle renders only where the broker can act and the tick is known — a drag with no
             // tick cannot snap, so the control would take a gesture it must then refuse.
             supportTakeProfit: armed() && opts.exits !== false && !!opts.tick && !hasTp,
@@ -822,7 +841,8 @@ export function attachTradeLines(host: TradeLineHost, broker: BrokerAdapter, ini
         // world at all — the broker refuses fail-closed regardless).
         const managed = !!opts.managedOrderIds?.includes(o.brokerOrderId)
         const preArm = opts.orderBrackets?.[o.brokerOrderId]
-        const entryEditable = !exitKind && !managed && armed()
+        const octrl = opts.controls?.orders?.[o.brokerOrderId]
+        const entryEditable = !exitKind && !managed && armed() && octrl?.modifyQty !== false
         const canBracket =
           entryEditable &&
           typeof broker.setOrderBracket === 'function' &&
@@ -848,7 +868,7 @@ export function attachTradeLines(host: TradeLineHost, broker: BrokerAdapter, ini
                 qty: o.qty,
                 pnlText: exitPnl?.text ?? null,
                 pnlSign: exitPnl?.sign ?? null,
-                supportCancel: armed(),
+                supportCancel: armed() && octrl?.cancel !== false,
                 t: strings.t,
               })
             : buildOrderParts({
@@ -856,7 +876,7 @@ export function attachTradeLines(host: TradeLineHost, broker: BrokerAdapter, ini
                 qty: o.qty,
                 label: orderLabel(strings.t, buy, o.orderType),
                 color,
-                supportCancel: armed(),
+                supportCancel: armed() && octrl?.cancel !== false,
                 supportModifyQty: entryEditable,
                 supportTakeProfit: canBracket && !preArm?.takeProfit,
                 supportStopLoss: canBracket && !preArm?.stopLoss,
@@ -1518,10 +1538,16 @@ export function attachTradeLines(host: TradeLineHost, broker: BrokerAdapter, ini
           return
         }
         // Reprice grab — order lines only (pickHit never returns a non-X position). Disabled until
-        // the tick is known. A stop-limit's TWO lines each drag their own price — the grabbed line's
-        // kind says which leg moved, so the ambiguity that once made stop_limit non-draggable is
-        // structural, not guessed.
-        if (hit.kind !== 'position' && entry.brokerOrderId && opts.tick && opts.tick > 0) {
+        // the tick is known, and refused where the row's controls suppress the move. A stop-limit's
+        // TWO lines each drag their own price — the grabbed line's kind says which leg moved, so
+        // the ambiguity that once made stop_limit non-draggable is structural, not guessed.
+        if (
+          hit.kind !== 'position' &&
+          entry.brokerOrderId &&
+          opts.tick &&
+          opts.tick > 0 &&
+          opts.controls?.orders?.[entry.brokerOrderId]?.move !== false
+        ) {
           e.preventDefault()
           try {
             container.setPointerCapture(e.pointerId)
@@ -2117,6 +2143,7 @@ export function attachTradeLines(host: TradeLineHost, broker: BrokerAdapter, ini
       const step = decs > 0 ? Number((10 ** -decs).toFixed(decs)) : 1
       const box = container.getBoundingClientRect()
       opts.onOrderQtyEdit?.({
+        brokerOrderId: poq.brokerOrderId,
         qty: qtyNow,
         step,
         rect: { x: box.left + cell.x, y: box.top + cell.y, w: cell.w, h: cell.h },

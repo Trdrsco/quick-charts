@@ -57,6 +57,9 @@ const SURFACE: Record<string, string> = {
   buildOrderParts: 'function',
   buildPositionParts: 'function',
   chartContextMenu: 'function',
+  // Additive (minor): the trading-primitives surface (imperative order/position/execution
+  // handles), 2026-08-29.
+  attachChartPrimitives: 'function',
   coerceScaleMode: 'function',
   composeFormingBar: 'function',
   createChart: 'function',

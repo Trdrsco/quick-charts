@@ -553,6 +553,48 @@ lines.update({ snapshot: nextSnapshot })   // on every account update
 lines.detach()                             // teardown
 ```
 
+**Trading primitives** are the imperative alternative for a host with its OWN trading logic — no
+`trading` adapter, no snapshots: draw an order line, a position line, or an execution mark directly
+on any widget (they compose freely with a `trading` adapter's lines; each layer hit-tests only its
+own). The factories live on `ChartWidgetApi` — on a multi-chart layout, on whichever pane you
+target via `layout.panes()`. A primitive is CHART-scoped, not symbol-scoped: it draws until you
+`remove()` it, across symbol switches — remove and redraw on symbol change when a line is
+symbol-bound. Controls follow the callbacks: a ✕ renders only with `onCancel`/`onClose`, ⇄ only
+with `onReverse`, drag-to-reprice only with `onMove` (and only once the contract tick is known —
+a drag that cannot snap is refused), a tappable quantity chip only with `onModify`. Setters chain.
+Inside `onMove` the handle already reads the dropped price; throw to refuse the move and the line
+snaps back. The mark and card of `createExecutionShape` are the same measured rendering the
+account plane's fills use — the label derives from the fill's facts, and a time outside the loaded
+bars draws nothing rather than an arrow on the wrong bar.
+
+```ts
+declare const widget: import('@trdrs/chart').ChartWidgetApi
+
+const order = widget
+  .createOrderLine({ side: 'buy', orderType: 'limit', qty: 2 })
+  .setPrice(5000.25)
+  .onMove((price) => myBackend.replace('ord-1', price)) // throw to refuse; the line snaps back
+  .onCancel(() => {
+    void myBackend.cancel('ord-1')
+    order.remove() // the host owns the lifecycle
+  })
+
+const position = widget
+  .createPositionLine({ qty: -3 })
+  .setPrice(4980.5)
+  .setUnrealizedPnl(-125.5) // your backend's number or null — the pill never fabricates one
+  .onClose(() => myBackend.flatten('ES'))
+
+const fill = widget.createExecutionShape({ direction: 'sell', qty: 3 }).setPrice(4980.5).setTime(1_755_000_000)
+
+position.remove()
+fill.remove()
+```
+
+A host composing the chrome itself uses the same layer through `attachChartPrimitives(deps)`
+(chart, series, the container, the chrome overlay, look/mark thunks) — the widget's factories are
+that attachment applied to its own chart.
+
 ### The broker rules (non-negotiable — the surface relies on them)
 
 1. **Snapshots are FULL and CONSISTENT.** Every `update({ snapshot })` carries the account's complete

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **Trading primitives.** `ChartWidgetApi` gains **`createOrderLine`** / **`createPositionLine`** /
+  **`createExecutionShape`** — the imperative chart-trading surface for a host with its own
+  trading logic, over the same renderers the `trading` adapter's lines and marks use (the two
+  compose). Chainable setters; controls follow the callbacks (`onMove`/`onCancel`/`onModify`,
+  `onClose`/`onReverse`) — a button with no handler never renders; `remove()` per handle; a
+  primitive is chart-scoped and survives symbol switches. New export
+  **`attachChartPrimitives`** for hosts composing the chrome themselves. `TradeLineOptions`
+  gains additive `controls` (suppress-only per-row control presence) and `allInstruments`
+  (draw rows regardless of the charted symbol); `onOrderQtyEdit` args now carry
+  `brokerOrderId`.
 - **The account panel is the account-manager package.** `mountAccountPanel` and
   `AccountPanelHandle` are REMOVED (major): the surface below the chart is now
   `@trdrs/account-manager`'s `mountAccountManager` (a new dependency of this package), which the
