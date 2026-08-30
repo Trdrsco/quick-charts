@@ -29,6 +29,8 @@ function harness(overrides?: {
           placeOrder: async (o: TicketSubmit) => {
             placed.push(o)
             await overrides?.placeOrder?.(o)
+            // The seam answers with the placement; the draft ticket only needs acceptance.
+            return { brokerOrderId: `t-${placed.length}`, filledQty: 0, avgFillPrice: null }
           },
         }),
   }

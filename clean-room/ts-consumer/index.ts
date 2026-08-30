@@ -58,7 +58,10 @@ const broker: BrokerAdapter = {
     return { cancelledOrders: 0 }
   },
   async setOrderBracket() {},
-  async placeOrder() {},
+  // A placement answers with what the venue accepted — the ticket reports the id and the fill.
+  async placeOrder(args) {
+    return { brokerOrderId: `stub-${args.intentKey}`, filledQty: 0, avgFillPrice: null }
+  },
 }
 void broker
 
