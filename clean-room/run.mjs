@@ -5,7 +5,7 @@
 //
 //   node clean-room/run.mjs
 //
-// Steps: pack both packages → .artifacts/ → npm-install each consumer (npm, not pnpm: a customer
+// Steps: pack every publishable package → .artifacts/ → npm-install each consumer (npm, not pnpm: a customer
 // won't have our workspace, and npm exercises the packed manifest exactly as published) → tsc
 // --noEmit for the TS consumer (skipLibCheck OFF — the shipped d.ts must stand alone) → execute
 // the JS smokes under BOTH module systems (import + require).
@@ -31,23 +31,23 @@ mkdirSync(artifacts, { recursive: true })
 run('pnpm build', join(repo, 'packages/broker'))
 run('pnpm build', join(repo, 'packages/i18n'))
 run('pnpm build', join(repo, 'packages/account-manager'))
-run('pnpm build', join(repo, 'packages/broker'))
-run('pnpm build', join(repo, 'packages/i18n'))
-run('pnpm build', join(repo, 'packages/account-manager'))
 run('pnpm build', join(repo, 'packages/chart'))
 run('pnpm build', join(repo, 'packages/chart-drawings'))
+run('pnpm build', join(repo, 'packages/news'))
+run('pnpm build', join(repo, 'packages/watchlist'))
 run('pnpm build', join(repo, 'packages/engine-wire'))
 run('pnpm build', join(repo, 'packages/chart-engine'))
-run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-broker-0.1.0.tgz'))}`, join(repo, 'packages/broker'))
-run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-i18n-0.1.0.tgz'))}`, join(repo, 'packages/i18n'))
-run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-account-manager-0.1.0.tgz'))}`, join(repo, 'packages/account-manager'))
+run('pnpm build', join(repo, 'packages/order-ticket'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-broker-0.1.0.tgz'))}`, join(repo, 'packages/broker'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-i18n-0.1.0.tgz'))}`, join(repo, 'packages/i18n'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-account-manager-0.1.0.tgz'))}`, join(repo, 'packages/account-manager'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-chart-0.1.0.tgz'))}`, join(repo, 'packages/chart'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-chart-drawings-0.1.0.tgz'))}`, join(repo, 'packages/chart-drawings'))
+run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-news-0.1.0.tgz'))}`, join(repo, 'packages/news'))
+run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-watchlist-0.1.0.tgz'))}`, join(repo, 'packages/watchlist'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-engine-wire-0.1.0.tgz'))}`, join(repo, 'packages/engine-wire'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-chart-engine-0.1.0.tgz'))}`, join(repo, 'packages/chart-engine'))
+run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-order-ticket-0.2.0.tgz'))}`, join(repo, 'packages/order-ticket'))
 
 // 2. Fresh installs. --install-links copies file: deps instead of symlinking (closer to a real
 //    registry install); lockfiles are disposable here — the point is a cold resolve every run.

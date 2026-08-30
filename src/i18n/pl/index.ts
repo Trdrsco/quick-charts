@@ -14,6 +14,7 @@ import { session } from './session'
 import { layouts } from './layouts'
 import { marks } from './marks'
 import { host } from './host'
+import { panel } from './panel'
 
-const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...ticket, ...account, ...menu, ...lines, ...replay, ...inputs, ...broker, ...session, ...layouts, ...marks, ...host }
+const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...ticket, ...account, ...menu, ...lines, ...replay, ...inputs, ...broker, ...session, ...layouts, ...marks, ...host, ...panel }
 export default dict

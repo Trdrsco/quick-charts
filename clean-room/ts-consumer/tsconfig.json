@@ -6,7 +6,15 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": false,
-    "lib": ["ES2022", "DOM"]
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "jsx": "react-jsx"
   },
-  "include": ["index.ts", "mode-b.ts"]
+  "include": [
+    "index.ts",
+    "mode-b.ts",
+    "ticket.ts"
+  ]
 }

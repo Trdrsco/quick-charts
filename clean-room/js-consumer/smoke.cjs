@@ -17,3 +17,15 @@ Promise.all([import('@trdrs/chart'), import('@trdrs/chart-drawings')])
     console.log('clean-room js (cjs dynamic-import): ok')
   })
   .catch((e) => fail(String(e)))
+
+// The order ticket under require(): an ESM-only tarball must still be reachable from CommonJS.
+import('@trdrs/order-ticket')
+  .then((ticket) => {
+    if (typeof ticket.createOrderTicket !== 'function') throw new Error('createOrderTicket missing')
+    if (ticket.ticketStrings().t('panel.sell') !== 'Sell') throw new Error('built-in English missing')
+    console.log('clean-room js (cjs): order ticket OK')
+  })
+  .catch((e) => {
+    console.error(`clean-room js (cjs): ${e.message}`)
+    process.exit(1)
+  })
