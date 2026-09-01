@@ -11,7 +11,7 @@
 import { arrangementOf, type Arrangement } from './layoutGrid'
 import { createChart, type ChartWidgetApi } from './host'
 import type { ChartWidgetOptions } from './widget'
-import type { LanguageCode } from '@trdrs/i18n'
+import type { BuiltInLocaleCode } from '@trdrs/i18n'
 
 export interface LayoutSyncFlags {
   symbol: boolean
@@ -71,7 +71,7 @@ export interface ChartLayoutApi {
   serialize(): { content: string }
   restore(content: string): void
   /** Switch every pane's interface language; panes created later open in it too. */
-  setLocale(code: LanguageCode): void
+  setLocale(code: string): Promise<void>
   remove(): void
 }
 
@@ -82,7 +82,7 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
   const accent = options.accent ?? '#2962ff'
   let removed = false
   // The language every pane shows; `setLocale` moves it so a pane created later opens in it too.
-  let locale: LanguageCode | undefined = options.base.locale
+  let locale: string | undefined = options.base.i18n?.locale() ?? options.base.locale
   let flags: LayoutSyncFlags = { ...SYNC_OFF, ...(options.sync ?? {}) }
   let active = 0
   /** True while the bus replays a change onto sibling panes — their event echoes are dropped, so
@@ -185,7 +185,7 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
     const baseEvents = options.base.events ?? {}
     pane.api = createChart({
       ...options.base,
-      ...(locale ? { locale } : {}),
+      ...(locale && !options.base.i18n ? { locale: locale as BuiltInLocaleCode } : {}),
       container: el,
       ...(init?.symbol ? { symbol: init.symbol } : {}),
       ...(init?.timeframe ? { timeframe: init.timeframe } : {}),
@@ -251,9 +251,13 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
       notifyChange()
     },
     panes: () => panes.map((p) => p.api),
-    setLocale(code) {
+    async setLocale(code) {
       locale = code
-      for (const p of panes) p.api.setLocale(code)
+      if (options.base.i18n) {
+        if (code !== options.base.i18n.locale()) await options.base.i18n.setLocale(code)
+        return
+      }
+      await Promise.all(panes.map((p) => p.api.setLocale(code)))
     },
     activePane: () => active,
     setActivePane: (i) => setActive(i),

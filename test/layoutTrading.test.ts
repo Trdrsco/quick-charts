@@ -180,4 +180,29 @@ describe('the layout trades its active pane', () => {
     expect(api.tradingSymbol()).toBe('MSFT')
     expect(traded).toEqual(['MSFT'])
   })
+
+  it('switches one shared host localization adapter once for the whole layout', async () => {
+    let locale = 'source'
+    const setLocale = vi.fn(async (next: string) => {
+      locale = next
+    })
+    const api = createChartLayout({
+      container: el() as unknown as HTMLElement,
+      base: {
+        i18n: {
+          locale: () => locale,
+          tag: () => (locale === 'source' ? 'en-US' : 'fr-CA'),
+          t: (() => '') as never,
+          setLocale,
+          onChange: () => () => {},
+        },
+      } as never,
+      arrangement: '2h',
+      panes: [{ symbol: 'AAPL' }, { symbol: 'MSFT' }],
+    })
+
+    await api.setLocale('canada')
+    expect(setLocale).toHaveBeenCalledTimes(1)
+    expect(setLocale).toHaveBeenCalledWith('canada')
+  })
 })

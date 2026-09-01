@@ -1,19 +1,28 @@
 // The widget's strings, in the language the host asked for. Framework-free like the rest of the
 // chrome: modules receive a `ChartI18n`, read `t` when they render, and re-render on `onChange`.
-import { DEFAULT_LOCALE, createDictionaryLoader, createTranslator, localeInfo, type LanguageCode, type Translate } from '@trdrs/i18n'
+import {
+  DEFAULT_LOCALE,
+  builtInLocaleInfo,
+  createDictionaryLoader,
+  createTranslator,
+  isBuiltInLocaleCode,
+  type BuiltInLocaleCode,
+  type Translate,
+} from '@trdrs/i18n'
 import { en } from './en'
 
 export type { ChartMessageKey } from './en'
 export type ChartTranslate = Translate<typeof en>
 
 export interface ChartI18n {
-  locale(): LanguageCode
+  /** The host-owned stable locale code. It does not need to use the trdrs built-in vocabulary. */
+  locale(): string
   /** The BCP 47 tag for `Intl` and for the chart library's own axis and crosshair formatting. */
   tag(): string
   t: ChartTranslate
   /** Switch language. The translation loads once; until it lands `t` reads English. Resolves when
    *  the switch is complete (or has settled on English because the chunk failed). */
-  setLocale(code: LanguageCode): Promise<void>
+  setLocale(code: string): Promise<void>
   /** Hear every change of `t` — a module re-renders its text in the handler. */
   onChange(listener: () => void): () => void
 }
@@ -67,17 +76,18 @@ export function arrangementName(t: ChartTranslate, code: string, fallback: strin
   return key in en ? dynamic(t)(key) : fallback
 }
 
-export function createChartI18n(initial: LanguageCode = DEFAULT_LOCALE): ChartI18n {
-  let locale: LanguageCode = initial
+export function createChartI18n(initial: BuiltInLocaleCode = DEFAULT_LOCALE): ChartI18n {
+  let locale: BuiltInLocaleCode = initial
   let dict = chartDictionaries.ifLoaded(locale)
   let epoch = 0
   const listeners = new Set<() => void>()
   const api: ChartI18n = {
     locale: () => locale,
-    tag: () => localeInfo(locale).tag,
-    t: createTranslator(en, dict, localeInfo(initial).tag),
+    tag: () => builtInLocaleInfo(locale).tag,
+    t: createTranslator(en, dict, builtInLocaleInfo(initial).tag),
     async setLocale(code) {
       if (code === locale) return
+      if (!isBuiltInLocaleCode(code)) throw new Error(`unsupported built-in chart locale "${code}"`)
       locale = code
       const mine = ++epoch
       dict = chartDictionaries.ifLoaded(code)
@@ -96,7 +106,7 @@ export function createChartI18n(initial: LanguageCode = DEFAULT_LOCALE): ChartI1
     },
   }
   const rebuild = () => {
-    api.t = createTranslator(en, dict, localeInfo(locale).tag)
+    api.t = createTranslator(en, dict, builtInLocaleInfo(locale).tag)
     for (const listener of listeners) listener()
   }
   return api

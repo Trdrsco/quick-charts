@@ -1,7 +1,7 @@
 // The widget's own catalog held to the runtime's standard, and the language object the chrome
 // modules read: English by default, switchable, re-rendering its listeners as a translation lands.
 import { describe, expect, it, vi } from 'vitest'
-import { LOCALES, catalogProblems } from '@trdrs/i18n'
+import { BUILT_IN_LOCALES, catalogProblems } from '@trdrs/i18n'
 import { chartDictionaries, createChartI18n } from '../src/i18n'
 import { catalogs, en } from '../src/i18n/en'
 
@@ -17,12 +17,16 @@ describe('the widget catalog', () => {
     expect(catalogProblems(en, en, 'en')).toEqual([])
   })
 
-  // Loads and checks 21 catalogs; on a busy machine that outlasts the default 5s per-test budget.
+  // Vite transforms each locale chunk on first load. Start them together so this contract checks
+  // the complete catalog inventory without turning transform scheduling into a serial bottleneck.
   it('ships every registry language, and every one conforms', { timeout: 60_000 }, async () => {
-    for (const { code, tag } of LOCALES) {
-      if (code === 'en') continue
+    const locales = BUILT_IN_LOCALES.filter(({ code }) => code !== 'en')
+    for (const { code } of locales) {
       expect(chartDictionaries.has(code), code).toBe(true)
-      expect(catalogProblems(en, await chartDictionaries.load(code), tag), code).toEqual([])
+    }
+    const dictionaries = await Promise.all(locales.map(({ code }) => chartDictionaries.load(code)))
+    for (const [index, { code, tag }] of locales.entries()) {
+      expect(catalogProblems(en, dictionaries[index]!, tag), code).toEqual([])
     }
   })
 })
@@ -54,5 +58,11 @@ describe('createChartI18n', () => {
     off()
     await i18n.setLocale('fr')
     expect(listener).toHaveBeenCalledTimes(calls)
+  })
+
+  it('rejects a custom locale when no host localization adapter owns it', async () => {
+    const i18n = createChartI18n()
+    await expect(i18n.setLocale('fr-CA')).rejects.toThrow('unsupported built-in chart locale')
+    expect(i18n.locale()).toBe('en')
   })
 })

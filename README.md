@@ -272,9 +272,11 @@ Beyond the basics, the widget carries:
   only on pane-placed instances, and the eye whose hidden state persists.
   `setIndicators(instances)` swaps the configured list at runtime (removed ids tear down, panes
   sweep, the legend follows).
-- **An interface language** (`locale`, English by default) drawn from the 21-language registry in
-  `@trdrs/i18n`: the widget's own chrome reads it, and the chart's axis and crosshair dates are
-  formatted in it. `setLocale(code)` switches at runtime; `locale()` reports the current one.
+- **An interface language** (`locale`, English by default) drawn from the built-in trdrs inventory
+  in `@trdrs/i18n`: the widget's own chrome reads it, and the chart's axis and crosshair dates are
+  formatted in it. `setLocale(code)` switches at runtime and resolves after the dictionary settles;
+  `locale()` reports the current one. A host can supply `i18n: ChartI18n` instead to own different
+  stable codes, BCP 47 tags, dictionaries, loading, and fallback.
   Every piece of the widget's own chrome speaks it; symbols, prices and anything the datafeed or
   broker says are data and pass through untranslated. A host composing the chrome modules itself
   hands them a `ChartI18n` from `createChartI18n(code)` (an optional trailing parameter or `strings`
@@ -287,7 +289,7 @@ import { createChart, createUdfDatafeed, SCALE_MODES } from '@trdrs/chart'
 const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }), locale: 'de' })
 w.setScaleMode(SCALE_MODES.includes('log') ? 'log' : 'normal')
 w.setIndicators([{ id: 'sma-20', definition: smaDefinition }])
-w.setLocale('ja')
+await w.setLocale('ja')
 ```
 
 ## Compare
