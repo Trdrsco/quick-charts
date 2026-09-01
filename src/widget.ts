@@ -8,7 +8,8 @@ import type { ChartSaveLoadAdapter } from './saveLoad'
 import type { PartialOverrides } from './overrides'
 import type { IndicatorManifest, IndicatorOverrides } from './indicatorModel'
 import type { TradingAdapter } from '@trdrs/broker'
-import type { LanguageCode } from '@trdrs/i18n'
+import type { BuiltInLocaleCode } from '@trdrs/i18n'
+import type { ChartI18n } from './i18n'
 
 /** Theme overrides — a host tints the chart to its own palette. Every field optional; omitted values keep
  *  the built-in default. Colors are any CSS color string. */
@@ -116,11 +117,13 @@ export interface ChartWidgetOptions {
   /** The right-click LEVEL menu (reset view, copy price, the orders a level can hold, remove
    *  indicators/drawings). `false` removes it and leaves the browser's own menu in place. */
   contextMenu?: false
-  /** The interface language: the widget's own chrome (legend, ticket, account panel, menus, the
-   *  drawing rail) and the chart's axis and crosshair date formatting. One of the registry's codes
-   *  (`LOCALES` in @trdrs/i18n); English when omitted. `setLocale` switches at runtime. Symbols,
+  /** A built-in interface language for the widget chrome and chart date formatting. English when
+   *  omitted. `setLocale` switches at runtime. Symbols,
    *  prices and anything the datafeed or broker says are data and pass through untranslated. */
-  locale?: LanguageCode
+  locale?: BuiltInLocaleCode
+  /** A host-owned localization adapter. When supplied, it replaces `locale` and may use any stable
+   *  locale codes and BCP 47 tags. The host owns its dictionaries, loading policy, and fallback. */
+  i18n?: ChartI18n
   events?: ChartWidgetEvents
 }
 
