@@ -33,6 +33,22 @@
   the compare dialog runs on the controller. The chart catalog carries every word these need
   under `timeframe.*`, `timezone.*`, `status.*`, `range.*` and `search.*` in every built-in
   locale.
+- **The drawing API is its own entrypoint.** **`quickcharts/drawings`** publishes the drawing
+  catalog as a read-only view (`drawingTools`, `TOOL_CATEGORIES`: 90 tools in 14 categories), the
+  persistence codec (`parseDrawingsStore`, `serializeDrawingsStore`, `restoreDrawings`), the
+  per-interval visibility rules, the magnet, and the models a drawing toolbar is built from. The
+  rail's structure is data (`buildRailGroups`, `RAIL_PLAN`, `railFaceOf`, `rememberRailTool`); so
+  are what the eye blanks (`HideMode`, which reaches chart-owned drawings and indicators and
+  nothing else, with `blanks`, `toggleHide`, `chooseHideMode`), the cursor modes and the two
+  transient tools, the magnet policy, the lock policy and the remove menu (`editRefused`,
+  `removableDrawings`, `removeRows`), favorites over a `FavoritesPort`, the clone and text-edit
+  rules, and each tool's settings capabilities. `DrawingPreferences` is the one record of standing
+  choices, persisted through the chart's storage port; `DrawingTemplates` puts per-tool defaults
+  and named templates on the revisioned `templates('drawing')` resource store. `DrawingAssetPort`
+  is how image-backed and glyph tools reach a host: the library owns the rules (JPG or PNG, 2 MB, a
+  2000 px longest edge, downscaled rather than refused) and names each refusal with a catalog code,
+  and the host owns the bytes. The drawing classes, the model store and the mutable registry are
+  not on the subpath, and a host-authored tool has no registration door.
 - **Light and dark modes over a semantic theme.** `THEME_ROLES` publishes the semantic role
   inventory the chart is painted from, and both built-in palettes give every role a value.
   **`createThemeController`** owns one chart's mode and its custom palettes: `setMode`,

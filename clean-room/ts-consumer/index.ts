@@ -28,7 +28,7 @@ import {
 } from 'quickcharts'
 import type { AccountSnapshot, BrokerAdapter, TradingAdapter, TradingCapabilities } from '@trdrs/broker'
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
-import { parseDrawingsStore, serializeDrawingsStore, toolRegistry, type SerializedDrawing } from '@trdrs/chart-drawings'
+import { parseDrawingsStore, serializeDrawingsStore, drawingTools, type SerializedDrawing } from 'quickcharts/drawings'
 import { memoryDatafeed } from './fakes/memoryDatafeed'
 import { memorySaveLoad, memoryStorage } from './fakes/memorySaveLoad'
 
@@ -215,6 +215,6 @@ const builtInSpec = buildManifestPlots(
   '#f5a623',
 )
 if (builtInSpec.placement !== 'pane' || builtInSpec.plots[0]?.key !== 'rsi') throw new Error('the built-in RSI must walk into its own pane')
-if (!toolRegistry.get('trend_line')) throw new Error('registry missing trend_line')
+if (!drawingTools.get('trend_line')) throw new Error('registry missing trend_line')
 const drawing: SerializedDrawing | undefined = undefined
 void drawing

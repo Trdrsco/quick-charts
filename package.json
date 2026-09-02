@@ -6,6 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./drawings": "./src/drawings/index.ts",
     "./styles.css": "./dist/quickcharts.css"
   },
   "files": [
@@ -27,6 +28,10 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
+      },
+      "./drawings": {
+        "types": "./dist/drawings.d.ts",
+        "import": "./dist/drawings.js"
       },
       "./styles.css": "./dist/quickcharts.css"
     }
