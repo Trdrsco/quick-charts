@@ -301,10 +301,47 @@ same store *codec*, so the documents stay interchangeable).
 ## Indicators
 
 Indicators are **definitions**: a declarative manifest (typed inputs + declared plots/levels/fills,
-placement, volume needs) paired with a pure compute the host supplies — the package owns the whole
-rendering pipeline (overlay and per-indicator panes, lines/areas/histograms/markers, static levels,
-band fills, per-instance style overrides), never the math. One definition renders identically in
-this widget and in any richer host built on the same pipeline.
+placement, volume needs) paired with a pure compute over the chart's bars. The package owns the
+whole rendering pipeline (overlay and per-indicator panes, lines/areas/histograms/markers, static
+levels, band fills, per-instance style overrides) and treats every definition alike, so a
+definition renders identically in this widget and in any richer host built on the same pipeline.
+
+### The built-in indicators
+
+The package ships 23 built-in definitions as `BUILT_IN_INDICATORS`, in picker order: SMA, EMA,
+HMA, VWMA, Bollinger Bands, Donchian Channels, Keltner Channels, Supertrend, Parabolic SAR, RSI,
+MACD, Stochastic, Stochastic RSI, ADX, ATR, CCI, Williams %R, Rate of Change, Momentum, Volume,
+VWAP, On-Balance Volume, and Money Flow Index. Each is a plain `IndicatorDefinition` with its
+catalog identity beside it: `id` (the stable key you persist), `tag` (the short mark a legend chip
+shows), `category`, and `nameKey` and `descriptionKey`, which resolve through the chart's own
+language object in every built-in locale.
+
+```ts
+import { BUILT_IN_INDICATORS, createChart, createChartI18n, createUdfDatafeed } from 'quickcharts'
+
+const i18n = createChartI18n('en')
+const rsi = BUILT_IN_INDICATORS.find((definition) => definition.id === 'rsi')!
+const widget = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  i18n,
+  indicators: [{ id: 'rsi-14', definition: rsi, title: i18n.t(rsi.nameKey), color: '#f5a623' }],
+})
+
+const picker = BUILT_IN_INDICATORS.map((definition) => ({
+  id: definition.id,
+  name: i18n.t(definition.nameKey),
+  description: i18n.t(definition.descriptionKey),
+}))
+```
+
+An instance's `inputs` override the manifest defaults by key (`{ period: 21, source: 5 }` for an
+RSI over HLC3). A built-in's `plotTitles` and `inputTitles` label its plots and inputs in a
+settings surface.
+
+### Your own definitions
+
+A host definition is the same shape. The math is yours; the manifest declares what to draw.
 
 ```ts
 import type { IndicatorDefinition } from 'quickcharts'
@@ -347,6 +384,10 @@ Rules the pipeline enforces:
   null/NaN entries become clean whitespace gaps (warmups break, never bridge).
 - **Placement is the manifest's.** `pane: 'pane'` gives the instance its own bottom pane
   (created and swept automatically); `'overlay'` rides the main price scale.
+- **A plot can ride the volume band.** `scale: 'volume'` on a plot pins it to the chart's volume
+  histogram instead of the pane's price scale.
+- **A fill can shade between levels.** A fill whose `between` names two levels rather than two
+  plots shades between those limit lines wherever the bars are.
 - **`needsVolume` is honest.** On a feed whose bars carry no volume, the instance draws nothing
   and reports "No volume from this feed" instead of painting a flat lie.
 - **Overrides layer, never fork.** Per-instance styling (`IndicatorOverrides`) folds into the
