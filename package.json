@@ -32,18 +32,16 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --external lightweight-charts",
+    "build": "tsup",
     "build:theme": "node scripts/build-theme.mjs",
     "postbuild": "node scripts/build-theme.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
-  },
-  "dependencies": {
-    "@trdrs/chart-drawings": "workspace:^"
   },
   "peerDependencies": {
     "lightweight-charts": "^5.0.0"
   },
   "devDependencies": {
+    "@trdrs/chart-drawings": "workspace:^",
     "@trdrs/chart-indicators": "workspace:^",
     "lightweight-charts": "^5.0.0",
     "tsup": "^8.5.1",

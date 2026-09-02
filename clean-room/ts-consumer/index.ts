@@ -2,9 +2,11 @@
 // source) must be able to implement the seams and drive the widget with full types. This file IS
 // the gate — `skipLibCheck: false`, so the shipped .d.ts must stand on its own.
 import {
+  BUILT_IN_INDICATORS,
   attachDrawings,
   buildManifestPlots,
   createChart,
+  createChartI18n,
   createUdfDatafeed,
   manifestInputDefaults,
   mergeOverrides,
@@ -14,6 +16,7 @@ import {
   resolveInitialTf,
   tfToUdfResolution,
   udfResolutionToTf,
+  type BuiltInIndicator,
   type ChartDatafeed,
   type ChartWidgetApi,
   type DatafeedConfig,
@@ -168,6 +171,23 @@ const builtSpec = buildManifestPlots(
   '#4c98fb',
 )
 if (builtSpec.plots[0]?.type !== 'line') throw new Error('unexpected walked plot kind')
+
+// The built-in indicators ship in the tarball as plain definitions: a consumer mounts one through
+// the same option a host definition takes, walks it through the same pipeline, and reads its name
+// through the chart's own language object. Nothing of ours beyond quickcharts is installed for it.
+const rsi: BuiltInIndicator | undefined = BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')
+if (!rsi || BUILT_IN_INDICATORS.length !== 23) throw new Error('the 23 built-ins must ship')
+export function mountWithBuiltIn(el: HTMLElement): ChartWidgetApi {
+  return createChart({ container: el, datafeed: feed, indicators: [{ id: 'rsi-14', definition: rsi!, color: '#f5a623' }] })
+}
+const builtInBars: FeedBar[] = Array.from({ length: 40 }, (_, i) => ({ t: 60 * (i + 1), o: 100 + i, h: 101 + i, l: 99 + i, c: 100.5 + i, v: 10 }))
+const builtInSpec = buildManifestPlots(
+  { manifest: rsi.manifest, plots: rsi.compute(builtInBars, manifestInputDefaults(rsi.manifest)) },
+  builtInBars.map((b) => b.t as UTCTimestamp),
+  createChartI18n().t(rsi.nameKey),
+  '#f5a623',
+)
+if (builtInSpec.placement !== 'pane' || builtInSpec.plots[0]?.key !== 'rsi') throw new Error('the built-in RSI must walk into its own pane')
 if (!toolRegistry.get('trend_line')) throw new Error('registry missing trend_line')
 const drawing: SerializedDrawing | undefined = undefined
 void drawing

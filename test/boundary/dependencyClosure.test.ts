@@ -33,20 +33,18 @@ const FORBIDDEN: readonly string[] = [
 
 describe('the direct dependency set, as built', () => {
   it('pins the manifest edges by name', () => {
+    // The two internal seams are devDependencies on purpose: tsup bundles them into the artifact
+    // (tsup.config.ts `noExternal`), so a consumer installs quickcharts and nothing else of ours.
     expect(directDependencies()).toEqual({
-      dependencies: ['@trdrs/chart-drawings'],
+      dependencies: [],
       peerDependencies: ['lightweight-charts'],
-      devDependencies: ['@trdrs/chart-indicators', 'lightweight-charts', 'tsup', 'typescript'],
+      devDependencies: ['@trdrs/chart-drawings', '@trdrs/chart-indicators', 'lightweight-charts', 'tsup', 'typescript'],
       optionalDependencies: [],
     })
   })
 
-  it('pins the shipped lockfile closure, workspace links walked', () => {
-    const closure = shippedClosure('packages/chart')
-    expect(closure.map((e) => `${e.id} <- ${e.via}`)).toEqual([
-      '@trdrs/chart-drawings <- packages/chart',
-      'fancy-canvas@2.1.0 <- @trdrs/chart-drawings',
-    ])
+  it('pins the shipped lockfile closure, workspace links walked: nothing', () => {
+    expect(shippedClosure('packages/chart')).toEqual([])
   })
 
   it('names the forbidden edges present today, so the target blocks track a real removal', () => {
@@ -82,8 +80,8 @@ describe('the free chart dependency boundary (target)', () => {
   it('ships no private workspace package and no forbidden name', () => {
     const closure = shippedClosure('packages/chart')
     expect(closure.map((e) => e.id).filter((id) => FORBIDDEN.includes(id))).toEqual([])
-    // chart-drawings is packed into the artifact under its drawing subpath, so once bundled it is
-    // not a shipped edge either; until then it is the one workspace link a consumer may see.
-    expect(closure.filter((e) => e.workspace && e.id !== '@trdrs/chart-drawings').map((e) => e.id)).toEqual([])
+    // The drawing and indicator seams are bundled into the artifact, so no workspace link of any
+    // kind is a shipped edge.
+    expect(closure.filter((e) => e.workspace).map((e) => e.id)).toEqual([])
   })
 })
