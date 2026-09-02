@@ -1,4 +1,4 @@
-import type { Translation } from '@trdrs/i18n'
+import type { Translation } from '../runtime'
 import type { tools as source } from '../en/tools'
 
 export const tools: Translation<typeof source> = {

@@ -1,4 +1,4 @@
-import type { Translation } from '@trdrs/i18n'
+import type { Translation } from '../runtime'
 import type { replay as source } from '../en/replay'
 
 export const replay: Translation<typeof source> = {

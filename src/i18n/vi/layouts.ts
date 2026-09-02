@@ -1,4 +1,4 @@
-import type { Translation } from '@trdrs/i18n'
+import type { Translation } from '../runtime'
 import type { layouts as source } from '../en/layouts'
 
 export const layouts: Translation<typeof source> = {

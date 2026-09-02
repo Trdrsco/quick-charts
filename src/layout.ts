@@ -11,7 +11,7 @@
 import { arrangementOf, type Arrangement } from './layoutGrid'
 import { createChart, type ChartWidgetApi } from './host'
 import type { ChartWidgetOptions } from './widget'
-import type { BuiltInLocaleCode } from '@trdrs/i18n'
+import type { ChartLocaleCode } from './i18n'
 
 export interface LayoutSyncFlags {
   symbol: boolean
@@ -185,7 +185,7 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
     const baseEvents = options.base.events ?? {}
     pane.api = createChart({
       ...options.base,
-      ...(locale && !options.base.i18n ? { locale: locale as BuiltInLocaleCode } : {}),
+      ...(locale && !options.base.i18n ? { locale: locale as ChartLocaleCode } : {}),
       container: el,
       ...(init?.symbol ? { symbol: init.symbol } : {}),
       ...(init?.timeframe ? { timeframe: init.timeframe } : {}),

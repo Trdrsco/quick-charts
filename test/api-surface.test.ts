@@ -26,7 +26,8 @@ const SURFACE: Record<string, string> = {
   COMPARE_COLORS: 'object',
   pickCompareColor: 'function',
   seriesTargetOf: 'function',
-  // Additive (minor): the interface language — the widget's own catalog bound to the @trdrs/i18n runtime, 2026-08-25.
+  // Additive (minor): the interface language — the widget's own catalog over its own localization runtime, 2026-08-25.
+  BUILT_IN_LOCALES: 'object',
   createChartI18n: 'function',
   chartDictionaries: 'object',
   toolName: 'function',

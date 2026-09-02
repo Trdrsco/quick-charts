@@ -1,4 +1,4 @@
-import type { Translation } from '@trdrs/i18n'
+import type { Translation } from '../runtime'
 import type { marks as source } from '../en/marks'
 
 export const marks: Translation<typeof source> = {

@@ -1,4 +1,4 @@
-import type { Translation } from '@trdrs/i18n'
+import type { Translation } from '../runtime'
 import type { panel as source } from '../en/panel'
 
 export const panel: Translation<typeof source> = {

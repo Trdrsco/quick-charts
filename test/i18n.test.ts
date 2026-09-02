@@ -1,9 +1,13 @@
 // The widget's own catalog held to the runtime's standard, and the language object the chrome
 // modules read: English by default, switchable, re-rendering its listeners as a translation lands.
+// The PCL-4 proofs live here too (public-chart-library-boundary-plan.md): a server can import the
+// runtime, reading direction is metadata, concurrent loads coalesce, every shipped language
+// conforms, and the packed declarations name no private workspace package.
 import { describe, expect, it, vi } from 'vitest'
-import { BUILT_IN_LOCALES, catalogProblems } from '@trdrs/i18n'
+import { BUILT_IN_LOCALES, builtInLocaleInfo, catalogProblems } from '../src/i18n/runtime'
 import { chartDictionaries, createChartI18n } from '../src/i18n'
 import { catalogs, en } from '../src/i18n/en'
+import { packedFileList, packedText } from './boundary/scan'
 
 const KEYS = Object.keys(en)
 
@@ -19,7 +23,8 @@ describe('the widget catalog', () => {
 
   // Vite transforms each locale chunk on first load. Start them together so this contract checks
   // the complete catalog inventory without turning transform scheduling into a serial bottleneck.
-  it('ships every registry language, and every one conforms', { timeout: 60_000 }, async () => {
+  it('ships every built-in language, and every one conforms', { timeout: 60_000 }, async () => {
+    expect(BUILT_IN_LOCALES).toHaveLength(21)
     const locales = BUILT_IN_LOCALES.filter(({ code }) => code !== 'en')
     for (const { code } of locales) {
       expect(chartDictionaries.has(code), code).toBe(true)
@@ -28,6 +33,36 @@ describe('the widget catalog', () => {
     for (const [index, { code, tag }] of locales.entries()) {
       expect(catalogProblems(en, dictionaries[index]!, tag), code).toEqual([])
     }
+  })
+
+  it('carries reading direction as locale metadata: Arabic and Hebrew read right to left', () => {
+    expect(BUILT_IN_LOCALES.filter((l) => l.dir === 'rtl').map((l) => l.code)).toEqual(['ar', 'he_IL'])
+    expect(builtInLocaleInfo('ar')).toEqual({ code: 'ar', endonym: 'العربية', tag: 'ar', dir: 'rtl' })
+    expect(builtInLocaleInfo('he_IL')).toEqual({ code: 'he_IL', endonym: 'עברית', tag: 'he-IL', dir: 'rtl' })
+    expect(builtInLocaleInfo('en').dir).toBe('ltr')
+  })
+
+  it('coalesces concurrent loads of one language into one dictionary', async () => {
+    // The runtime test proves two in-flight calls share one promise; this proves the chart's own
+    // chunks land as one object, whether or not another test already fetched the language.
+    const first = chartDictionaries.load('th')
+    const second = chartDictionaries.load('th')
+    const [a, b] = await Promise.all([first, second])
+    expect(a).toBe(b)
+    expect(chartDictionaries.ifLoaded('th')).toBe(a)
+    await expect(chartDictionaries.load('th')).resolves.toBe(a)
+  })
+})
+
+describe('the runtime under a server render', () => {
+  it('is imported here with no window and no document, and builds a translator without either', async () => {
+    expect(typeof window).toBe('undefined')
+    expect(typeof document).toBe('undefined')
+    const runtime = await import('../src/i18n/runtime')
+    expect(runtime.BUILT_IN_LOCALES).toHaveLength(21)
+    const { createChartI18n: create } = await import('../src/i18n')
+    expect(create('ja').tag()).toBe('ja')
+    expect(create().t('legend.hideIndicator')).toBe('Hide indicator')
   })
 })
 
@@ -40,7 +75,7 @@ describe('createChartI18n', () => {
     expect(createChartI18n().t('legend.priceScale', { mode: 'log' })).toBe('Price scale: log')
   })
 
-  it('switches language, tells its listeners, and always has text — English until a translation lands', async () => {
+  it('switches language, tells its listeners, and always has text: English until a translation lands', async () => {
     const i18n = createChartI18n()
     const listener = vi.fn()
     const off = i18n.onChange(listener)
@@ -60,9 +95,21 @@ describe('createChartI18n', () => {
     expect(listener).toHaveBeenCalledTimes(calls)
   })
 
-  it('rejects a custom locale when no host localization adapter owns it', async () => {
+  it('refuses a locale the inventory does not hold, at construction and on switch', async () => {
     const i18n = createChartI18n()
-    await expect(i18n.setLocale('fr-CA')).rejects.toThrow('unsupported built-in chart locale')
+    await expect(i18n.setLocale('fr-CA')).rejects.toThrow('unsupported chart locale "fr-CA"')
     expect(i18n.locale()).toBe('en')
+    expect(() => createChartI18n('fr-CA' as never)).toThrow('unsupported chart locale "fr-CA"')
+  })
+})
+
+describe('the packed declarations', () => {
+  it('name no private workspace package in any packed declaration file', () => {
+    const declarations = packedFileList().filter((path) => /\.d\.ts$/.test(path))
+    for (const path of declarations) {
+      const text = packedText(path)
+      expect(text, `${path} is packed but unreadable`).not.toBeNull()
+      expect(text, path).not.toMatch(/@trdrs\/i18n/)
+    }
   })
 })

@@ -1,21 +1,16 @@
 // The widget's strings, in the language the host asked for. Framework-free like the rest of the
 // chrome: modules receive a `ChartI18n`, read `t` when they render, and re-render on `onChange`.
-import {
-  DEFAULT_LOCALE,
-  builtInLocaleInfo,
-  createDictionaryLoader,
-  createTranslator,
-  isBuiltInLocaleCode,
-  type BuiltInLocaleCode,
-  type Translate,
-} from '@trdrs/i18n'
+// The runtime underneath (`./runtime`) is the chart's own and ships inside this package.
+import { BUILT_IN_LOCALE_REGISTRY, DEFAULT_LOCALE, createDictionaryLoader, createTranslator, type ChartLocaleCode, type Translate } from './runtime'
 import { en } from './en'
 
+export { BUILT_IN_LOCALES } from './runtime'
+export type { ChartLocale, ChartLocaleCode } from './runtime'
 export type { ChartMessageKey } from './en'
 export type ChartTranslate = Translate<typeof en>
 
 export interface ChartI18n {
-  /** The host-owned stable locale code. It does not need to use the trdrs built-in vocabulary. */
+  /** The host-owned stable locale code. It does not need to use the built-in vocabulary. */
   locale(): string
   /** The BCP 47 tag for `Intl` and for the chart library's own axis and crosshair formatting. */
   tag(): string
@@ -23,12 +18,12 @@ export interface ChartI18n {
   /** Switch language. The translation loads once; until it lands `t` reads English. Resolves when
    *  the switch is complete (or has settled on English because the chunk failed). */
   setLocale(code: string): Promise<void>
-  /** Hear every change of `t` — a module re-renders its text in the handler. */
+  /** Hear every change of `t`; a module re-renders its text in the handler. */
   onChange(listener: () => void): () => void
 }
 
-/** One chunk per language the widget ships — every language the runtime lists — fetched the first
- *  time it is chosen. */
+/** One chunk per language the widget ships, every language in `BUILT_IN_LOCALES`, fetched the
+ *  first time it is chosen. */
 export const chartDictionaries = createDictionaryLoader(en, {
   de: () => import('./de'),
   fr: () => import('./fr'),
@@ -56,7 +51,7 @@ const dynamic = (t: ChartTranslate) => t as unknown as (key: string) => string
 
 /** The English source translator, for a pure helper called WITHOUT a language: every function here
  *  that returns trader-visible text takes `t` optionally and falls back to this, so a host that has
- *  not passed one reads exactly the English it always did. Built once and shared — the trade-line
+ *  not passed one reads exactly the English it always did. Built once and shared; the trade-line
  *  render path composes its labels on every paint. */
 let source: ChartTranslate | null = null
 export const englishChartStrings = (): ChartTranslate => (source ??= createTranslator(en, null, 'en'))
@@ -76,18 +71,23 @@ export function arrangementName(t: ChartTranslate, code: string, fallback: strin
   return key in en ? dynamic(t)(key) : fallback
 }
 
-export function createChartI18n(initial: BuiltInLocaleCode = DEFAULT_LOCALE): ChartI18n {
-  let locale: BuiltInLocaleCode = initial
+/** A `ChartI18n` over the widget's own catalog, starting in `initial` (English when omitted), one
+ *  of the built-in codes. */
+export function createChartI18n(initial: ChartLocaleCode = DEFAULT_LOCALE): ChartI18n {
+  const registry = BUILT_IN_LOCALE_REGISTRY
+  if (!registry.is(initial)) throw new Error(`unsupported chart locale "${String(initial)}"`)
+  let locale: ChartLocaleCode = initial
   let dict = chartDictionaries.ifLoaded(locale)
   let epoch = 0
   const listeners = new Set<() => void>()
+  const translator = () => createTranslator(en, dict, registry.info(locale).tag)
   const api: ChartI18n = {
     locale: () => locale,
-    tag: () => builtInLocaleInfo(locale).tag,
-    t: createTranslator(en, dict, builtInLocaleInfo(initial).tag),
+    tag: () => registry.info(locale).tag,
+    t: translator(),
     async setLocale(code) {
       if (code === locale) return
-      if (!isBuiltInLocaleCode(code)) throw new Error(`unsupported built-in chart locale "${code}"`)
+      if (!registry.is(code)) throw new Error(`unsupported chart locale "${code}"`)
       locale = code
       const mine = ++epoch
       dict = chartDictionaries.ifLoaded(code)
@@ -106,7 +106,7 @@ export function createChartI18n(initial: BuiltInLocaleCode = DEFAULT_LOCALE): Ch
     },
   }
   const rebuild = () => {
-    api.t = createTranslator(en, dict, builtInLocaleInfo(locale).tag)
+    api.t = translator()
     for (const listener of listeners) listener()
   }
   return api

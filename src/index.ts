@@ -169,4 +169,15 @@ export {
 } from './tradeLineParts'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export { createChart, resolveTheme, applyBar, resolveInitialTf } from './host'
-export { arrangementName, chartDictionaries, createChartI18n, toolName, type ChartI18n, type ChartMessageKey, type ChartTranslate } from './i18n'
+export {
+  BUILT_IN_LOCALES,
+  arrangementName,
+  chartDictionaries,
+  createChartI18n,
+  toolName,
+  type ChartI18n,
+  type ChartLocale,
+  type ChartLocaleCode,
+  type ChartMessageKey,
+  type ChartTranslate,
+} from './i18n'
