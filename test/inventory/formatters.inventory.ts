@@ -239,10 +239,9 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   {
     file: 'packages/watchlist/src/widget.ts',
-    symbols: ["toLocaleString('en-US'", 'String(q.last)'],
+    symbols: ['options.formatter.last(', 'options.formatter.change(', 'options.formatter.changePct('],
     kind: 'quote',
     surface: 'the framework-free Watchlist rows: Last, Chg, Chg%',
-    finding: 'Last renders as a raw number string; Chg and Chg% are hard-coded en-US with two decimals.',
   },
   {
     file: 'apps/web/src/widgets/WatchlistWidget.tsx',
