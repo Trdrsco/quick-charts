@@ -6,7 +6,10 @@
 // to-do list.
 //
 //   node scripts/i18n-dead-keys.mjs app     keys under apps/web/src/i18n/messages/en, searched in apps/web/src
-//   node scripts/i18n-dead-keys.mjs sdk     keys under packages/chart/src/i18n/en, searched across the packages that consume the catalog (chart, chart-trading, account-manager, order-ticket) AND apps/web/src
+//   node scripts/i18n-dead-keys.mjs sdk     keys under packages/chart/src/i18n/en, searched in packages/chart/src AND apps/web/src
+//   node scripts/i18n-dead-keys.mjs trading keys under packages/chart-trading/src/i18n/en, searched in packages/chart-trading/src AND apps/web/src
+//   node scripts/i18n-dead-keys.mjs ticket  keys under packages/order-ticket/src/i18n/en, searched in packages/order-ticket/src AND apps/web/src
+//   node scripts/i18n-dead-keys.mjs manager keys under packages/account-manager/src/i18n/en, searched in packages/account-manager/src AND apps/web/src
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,10 +19,13 @@ const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const target = process.argv[2]
 const CFG = {
   app: { catalog: 'apps/web/src/i18n/messages/en', search: ['apps/web/src'], dynamic: [] },
-  sdk: { catalog: 'packages/chart/src/i18n/en', search: ['packages/chart/src', 'packages/chart-trading/src', 'packages/account-manager/src', 'packages/order-ticket/src', 'apps/web/src'], dynamic: ['tool.', 'layout.', 'session.'] },
+  sdk: { catalog: 'packages/chart/src/i18n/en', search: ['packages/chart/src', 'apps/web/src'], dynamic: ['tool.', 'layout.', 'session.'] },
+  trading: { catalog: 'packages/chart-trading/src/i18n/en', search: ['packages/chart-trading/src', 'apps/web/src'], dynamic: [] },
+  ticket: { catalog: 'packages/order-ticket/src/i18n/en', search: ['packages/order-ticket/src', 'apps/web/src'], dynamic: [] },
+  manager: { catalog: 'packages/account-manager/src/i18n/en', search: ['packages/account-manager/src', 'apps/web/src'], dynamic: [] },
 }[target]
 if (!CFG) {
-  console.error('usage: i18n-dead-keys.mjs <app|sdk>')
+  console.error('usage: i18n-dead-keys.mjs <app|sdk|trading|ticket|manager>')
   process.exit(2)
 }
 
