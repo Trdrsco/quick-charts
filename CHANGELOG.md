@@ -2,6 +2,50 @@
 
 ## Unreleased
 
+- **`createChart` answers a `ChartWidget`.** A widget hosts one or many charts under one root, one
+  theme, one language and one command registry. `ready()` settles when the first data has painted,
+  `activeChart()` is the chart the viewer last pointed at, `charts()` lists them all, `chart(id)`
+  finds one, and `dispose()` takes everything down and leaves every handle and subscription inert.
+  A widget always HAS a layout, reached as **`widget.layout`** (`arrangement`, `setArrangement`,
+  `active`, `setActive`, `sync`, `setSync`, `serialize`, `restore`, `saveLoad`), which is what lets
+  `charts()` and `activeChart()` mean the same thing at every arrangement.
+- **One chart is a `ChartHandle`.** `symbol`, `timeframe`, `style`, `scaleMode` and `timezone` with
+  their setters; `visibleRange`, `logicalRange`, `scroll`, `zoom`, `reset` and `goLive` for where it
+  is looking; `indicators` (`get`, `set`, `add`, `remove`, `hide`, `show`, `hidden`), `drawings`,
+  `compare`, `replay`, `saveLoad` and `sync`; `appearance()` and `applyAppearance()` for the
+  per-chart look; `formatter()` for the one price formatter every surface writes through.
+- **Seven main-series styles.** `candles`, `hollow`, `bars`, `line`, `area`, `baseline` and
+  `stepline`, listed in picker order as **`CHART_STYLES`**, with **`valueShaped`**, **`isChartStyle`**
+  and **`coerceChartStyle`** beside them. A style switch is presentation: nothing refetches, and the
+  loaded bars, indicators, drawings, comparisons, scale and visible range all survive it.
+- **One command registry.** **`CommandRegistry`** on the widget is the only place a chart verb
+  exists: `register`, `list`, `available`, `execute`, `setShortcut`, `onChange`. Every built-in verb
+  is registered with a catalog label and a live availability read, and an extension's
+  `contributeCommands` registers through the same door with `scope: 'chart'`. A command your feature
+  configuration hides or your access policy refuses answers `denied` from every surface, because
+  there is no second path to reach it. A refusal is a `CommandResult` value (`ok`, `unavailable`,
+  `denied`, `unknown`, `failed`), never a throw.
+- **Typed event maps.** **`WidgetEvents`** (`ready`, `activeChart`, `theme`, `locale`, `saveNeeded`,
+  `saveConflict`, `fullscreen`, `dispose`) and **`ChartEvents`** (`symbol`, `timeframe`, `style`,
+  `visibleRange`, `logicalRange`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`,
+  `drawing`, `replay`, `compare`), subscribed with `on(name, callback)`. Every subscription answers
+  its own unsubscribe and is inert after `dispose()`.
+- **Four configuration planes.** **`Capabilities`** is derived from the ports, the resolved symbol
+  and the browser and is never set. **`FeatureConfig`** says which built-in UI and behavior is
+  present, every flag defaulting on. **`AccessPolicy`** says which commands, drawing tools and
+  indicators are permitted, asked live. **`ChartPreferences`** seeds what the storage port persists
+  for the viewer. A hidden control is not authorization, and an absent port is not a preference.
+- **Chart-root fullscreen and client image capture.** `widget.fullscreen` is `enter`, `exit`,
+  `toggle` and `active` over the widget's own element, reported by the `fullscreen` event; it never
+  takes over the host application's shell. `widget.image` is `capture`, `download` and `copy`,
+  composing the chart or every chart of a layout into one PNG under a header carrying the identity
+  and the attribution `ChartWidgetOptions.image` configures. **`composeImage`**, **`canvasToBlob`**,
+  **`imageFileName`**, **`imageHeaderRuns`**, **`imageLayoutHeaderRuns`**, **`imageTileRuns`** and
+  **`IMAGE_HEADER_H`** are exported for a host composing its own bitmaps.
+- **Neutral marks.** `ChartDatafeed.marks` and `ChartDatafeed.timescaleMarks` are two optional
+  readers over a window. A **`BarMark`** or **`TimescaleMark`** names a moment, a **`MarkColorRole`**
+  the mode resolves, and the host's own words; the chart draws it and neither interprets nor acts on
+  it. `marks: false` draws none.
 - **Timeframes, timezones, sessions, ranges and search as chart models.** The timeframe grammar is
   root API: `parseTimeframe`, `formatTimeframe`, `timeframeSeconds`, `isIntradayTimeframe`,
   `compareTimeframes` and `timeframeOrder` over the seven units, with `TIMEFRAME_MAX` and
@@ -110,20 +154,24 @@
   and rejects with an error named `AbortError` when that signal is already aborted.
   **`memorySaveLoadAdapter`** is the in-memory implementation of the whole adapter, for tests,
   server rendering and ephemeral embeds. The widget runs over it: `ChartWidgetOptions.saveLoad`
-  takes the adapter, **`widget.saveLoad`** holds the open saved chart (`current`, `save`,
+  takes the adapter, **`chart.saveLoad`** holds the open saved chart (`current`, `save`,
   `load`, `remove`, `detach`; `serialize` and `restore` stay), a save updates at the revision
   the chart was opened at or creates for a copy, and a refusal is a `ResourceSaveOutcome` carrying
   the catalog's sentence. The drawing layer persists each symbol's drawings through the drawings
-  family and reports a refused write through **`events.onSaveConflict`**. A layout saves itself
-  through **`layout.saveLoad`** over the layouts family. `ChartStorage` is the separate flat
-  preferences port, in memory by default; a host that wants a device-local store writes one.
+  family and reports a refused write through the widget's **`saveConflict`** event. A layout saves
+  itself through **`widget.layout.saveLoad`** over the layouts family. `ChartStorage` is the separate
+  flat preferences port, in memory by default; a host that wants a device-local store writes one.
 - **The extension seam.** `ChartWidgetOptions.extensions` attaches host code that draws on the
   chart through capability handles (price lines, a primitive mount, coordinate conversions, the
   pan and zoom lock), hears symbol, timeframe, bar, replay, theme and pane changes, reads the
   feed status, contributes level-menu rows and commands, and stores viewer state under its own id
-  in the chart's save blob. The chart takes back everything an extension drew at detach.
-- **The layout names its active symbol.** `ChartLayoutApi.activeSymbol()` and the
-  `onActiveSymbol` event report the active pane's symbol every time it moves.
+  in the chart's save blob. Its `theme()` answers a **`CanvasTheme`**, the projection of the
+  resolved semantic theme onto the values a canvas draws with; **`canvasTheme`** is exported for a
+  host that composes the same projection itself. The chart takes back everything an extension drew
+  at detach.
+- **The layout names the chart it is pointed at.** The `activeChart` event reports the active
+  chart every time it moves: another chart activated, the active chart's symbol changed, a re-tile,
+  a restore.
 - **Interface language.** New **`locale`** option on `createChart` and on a layout's `base`, one
   of the 21 codes in the package's own `BUILT_IN_LOCALES` inventory, English by
   default. The widget's own chrome reads it and the chart's axis and crosshair dates are formatted
