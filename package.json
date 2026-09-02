@@ -5,7 +5,8 @@
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./styles.css": "./dist/quickcharts.css"
   },
   "files": [
     "dist",
@@ -14,7 +15,10 @@
     "LICENSE",
     "THIRD-PARTY-NOTICES.md"
   ],
-  "sideEffects": false,
+  "sideEffects": [
+    "dist/quickcharts.css",
+    "src/styles/*.css"
+  ],
   "publishConfig": {
     "access": "restricted",
     "module": "./dist/index.js",
@@ -23,11 +27,14 @@
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js"
-      }
+      },
+      "./styles.css": "./dist/quickcharts.css"
     }
   },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --sourcemap --clean --external lightweight-charts",
+    "build:theme": "node scripts/build-theme.mjs",
+    "postbuild": "node scripts/build-theme.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

@@ -1,0 +1,255 @@
+/* Quick Charts component recipes.
+ *
+ * Every rule is scoped to the widget's own root element, which carries `data-qc-theme`. Nothing
+ * here styles the host document: there is no reset, no element selector at the top level, no font
+ * import, and no remote asset. Two charts in one page can therefore run different modes, and a host
+ * page keeps its own styling untouched.
+ *
+ * Values come from the custom properties the theme generates. Class names and property names are
+ * private implementation. A host themes Quick Charts through role ids and the theme controller.
+ *
+ * The build script prepends the generated built-in mode blocks to this file and writes the result
+ * as `dist/quickcharts.css`, which is what `quickcharts/styles.css` resolves to.
+ */
+
+[data-qc-theme] {
+  position: relative;
+  box-sizing: border-box;
+  color: var(--qc-text-primary);
+  font-family: var(--qc-text-fontFamily);
+  font-size: var(--qc-text-fontSizeBase);
+  background: var(--qc-canvas-background);
+}
+
+[data-qc-theme] *,
+[data-qc-theme] *::before,
+[data-qc-theme] *::after {
+  box-sizing: inherit;
+}
+
+/* Surfaces ------------------------------------------------------------------------------------ */
+
+[data-qc-theme] .qc-surface {
+  color: var(--qc-text-primary);
+  background: var(--qc-chrome-surface);
+  border: 1px solid var(--qc-chrome-border);
+  border-radius: var(--qc-chrome-radiusLarge);
+}
+
+[data-qc-theme] .qc-overlay {
+  color: var(--qc-text-primary);
+  background: var(--qc-overlay-surface);
+  border: 1px solid var(--qc-overlay-border);
+  border-radius: var(--qc-chrome-radiusLarge);
+  box-shadow: var(--qc-overlay-shadow);
+}
+
+[data-qc-theme] .qc-scrim {
+  background: var(--qc-overlay-scrim);
+}
+
+[data-qc-theme] .qc-separator {
+  height: 1px;
+  background: var(--qc-overlay-separator);
+}
+
+/* Controls ------------------------------------------------------------------------------------ */
+
+[data-qc-theme] .qc-button {
+  color: var(--qc-text-primary);
+  font: inherit;
+  background: none;
+  border: 1px solid var(--qc-chrome-border);
+  border-radius: var(--qc-chrome-radius);
+  cursor: pointer;
+  transition: background-color var(--qc-motion-durationFast) linear, border-color var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] .qc-button:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-button:active {
+  background: var(--qc-state-pressed);
+}
+
+[data-qc-theme] .qc-button[aria-pressed='true'],
+[data-qc-theme] .qc-button[data-qc-active='true'] {
+  color: var(--qc-state-accent);
+  background: var(--qc-state-selected);
+  border-color: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-button[disabled],
+[data-qc-theme] .qc-button[aria-disabled='true'] {
+  color: var(--qc-text-disabled);
+  background: none;
+  cursor: default;
+}
+
+[data-qc-theme] .qc-button--primary {
+  color: var(--qc-text-inverse);
+  background: var(--qc-state-accent);
+  border-color: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-field {
+  color: var(--qc-text-primary);
+  font: inherit;
+  background: var(--qc-chrome-surfaceRaised);
+  border: 1px solid var(--qc-chrome-border);
+  border-radius: var(--qc-chrome-radius);
+}
+
+[data-qc-theme] .qc-field::placeholder {
+  color: var(--qc-text-muted);
+}
+
+[data-qc-theme] :focus-visible {
+  outline: 2px solid var(--qc-state-focusRing);
+  outline-offset: 1px;
+}
+
+[data-qc-theme] ::selection {
+  background: var(--qc-state-selection);
+}
+
+/* Menus --------------------------------------------------------------------------------------- */
+
+[data-qc-theme] .qc-menu-row {
+  color: var(--qc-text-primary);
+  font: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  transition: background-color var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] .qc-menu-row:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-menu-row[aria-selected='true'] {
+  background: var(--qc-state-selected);
+}
+
+[data-qc-theme] .qc-menu-hint {
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+/* Text ---------------------------------------------------------------------------------------- */
+
+[data-qc-theme] .qc-title {
+  font-size: var(--qc-text-fontSizeTitle);
+  font-weight: 600;
+}
+
+[data-qc-theme] .qc-secondary {
+  color: var(--qc-text-secondary);
+}
+
+[data-qc-theme] .qc-muted {
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeMicro);
+}
+
+[data-qc-theme] .qc-link {
+  color: var(--qc-text-link);
+}
+
+[data-qc-theme] .qc-positive {
+  color: var(--qc-status-positive);
+}
+
+[data-qc-theme] .qc-negative {
+  color: var(--qc-status-negative);
+}
+
+[data-qc-theme] .qc-warning {
+  color: var(--qc-status-warning);
+}
+
+[data-qc-theme] .qc-info {
+  color: var(--qc-status-info);
+}
+
+/* Chart surfaces -------------------------------------------------------------------------------- */
+
+[data-qc-theme] .qc-legend {
+  color: var(--qc-text-onCanvas);
+  font-size: var(--qc-text-fontSizeSmall);
+  line-height: 16px;
+}
+
+[data-qc-theme] .qc-legend-row[data-qc-hidden='true'] {
+  color: var(--qc-text-disabled);
+}
+
+[data-qc-theme] .qc-session-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+[data-qc-theme] .qc-session-dot[data-qc-session='pre'] {
+  background: var(--qc-status-sessionPreMarket);
+}
+
+[data-qc-theme] .qc-session-dot[data-qc-session='open'] {
+  background: var(--qc-status-sessionOpen);
+}
+
+[data-qc-theme] .qc-session-dot[data-qc-session='eth'] {
+  background: var(--qc-status-sessionExtended);
+}
+
+[data-qc-theme] .qc-session-dot[data-qc-session='after'] {
+  background: var(--qc-status-sessionAfterHours);
+}
+
+[data-qc-theme] .qc-session-dot[data-qc-session='closed'] {
+  background: var(--qc-status-sessionClosed);
+}
+
+[data-qc-theme] .qc-pane {
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+}
+
+[data-qc-theme] .qc-pane[data-qc-active='true'] {
+  outline-color: var(--qc-state-focusRing);
+}
+
+/* Accessibility --------------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  [data-qc-theme] * {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (forced-colors: active) {
+  [data-qc-theme] .qc-surface,
+  [data-qc-theme] .qc-overlay,
+  [data-qc-theme] .qc-button,
+  [data-qc-theme] .qc-field {
+    border-color: ButtonBorder;
+    forced-color-adjust: none;
+    color: ButtonText;
+    background: ButtonFace;
+  }
+
+  [data-qc-theme] .qc-button[aria-pressed='true'],
+  [data-qc-theme] .qc-button[data-qc-active='true'],
+  [data-qc-theme] .qc-menu-row[aria-selected='true'] {
+    color: HighlightText;
+    background: Highlight;
+  }
+
+  [data-qc-theme] :focus-visible {
+    outline-color: Highlight;
+  }
+}
