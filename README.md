@@ -35,7 +35,7 @@ const widget = createChart({
 
 Implement `ChartDatafeed` (see `datafeed.ts`). Required methods: `search`, `resolve`, `history`,
 `subscribeBars`. Optional: `serverTime` (countdown skew correction) and `config` (a feed-level
-capability declaration — [below](#capability-declaration-config-optional)). The datafeed serves
+capability declaration, described [below](#capability-declaration-config-optional)). The datafeed serves
 symbol metadata, bars and bar updates and nothing else: a quote board (last, change, volume) or a
 top-of-book is not a chart concern, and your host fans quotes to its own consumers from its own
 source.
