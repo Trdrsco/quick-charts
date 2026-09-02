@@ -77,9 +77,9 @@ describe('the free chart dependency boundary (target)', () => {
     expect(directDependencies().dependencies).not.toContain('@trdrs/i18n')
   })
 
-  // Whoever lands the last removal above also unskips the whole-set gate: no private workspace
-  // package of any kind reaches the tarball, and the closure holds no forbidden name.
-  it.skip('[W1-A unskips, after both blocks above] ships no private workspace package and no forbidden name', () => {
+  // The whole-set gate, live since both removals above landed: no private workspace package of any
+  // kind reaches the tarball, and the closure holds no forbidden name.
+  it('ships no private workspace package and no forbidden name', () => {
     const closure = shippedClosure('packages/chart')
     expect(closure.map((e) => e.id).filter((id) => FORBIDDEN.includes(id))).toEqual([])
     // chart-drawings is packed into the artifact under its drawing subpath, so once bundled it is
