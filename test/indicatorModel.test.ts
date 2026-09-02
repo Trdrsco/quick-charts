@@ -69,6 +69,43 @@ describe('buildManifestPlots — the one walker', () => {
     const overlay = buildManifestPlots({ ...paneRun, manifest: { ...MANIFEST, pane: 'overlay' } }, times, 't', '#abc')
     expect(overlay.barColors).toEqual([{ time: 60, color: '#222' }])
   })
+
+  it('pins a plot to the volume band when its spec declares scale: volume, and leaves the rest on the price scale', () => {
+    const manifest: IndicatorManifest = {
+      pane: 'overlay',
+      plots: { volumeMa: { kind: 'line', scale: 'volume' }, price: { kind: 'line' } },
+    }
+    const built = buildManifestPlots({ manifest, plots: { volumeMa: [1, 2, 3], price: [4, 5, 6] } }, times, 't', '#abc')
+    expect(built.plots.map((p) => [p.key, p.scale])).toEqual([
+      ['volumeMa', 'volume'],
+      ['price', undefined],
+    ])
+  })
+
+  it('carries constant edges for a fill between two LEVELS, and none for a fill between two plots', () => {
+    const built = buildManifestPlots({ manifest: MANIFEST, plots: { main: [1, 2, 3] } }, times, 't', '#abc')
+    const background = built.fills?.find((f) => f.key === 'background')
+    expect(background?.upperData).toEqual([
+      { time: 60, value: 70 },
+      { time: 120, value: 70 },
+      { time: 180, value: 70 },
+    ])
+    expect(background?.lowerData?.map((p) => (p as { value: number }).value)).toEqual([30, 30, 30])
+
+    // A plot-edged fill resolves through the plot lookup at render time, so it carries no edges.
+    const band: IndicatorManifest = {
+      pane: 'overlay',
+      plots: { upper: { kind: 'line' }, lower: { kind: 'line' } },
+      fills: { channel: { between: ['upper', 'lower'] } },
+    }
+    const channel = buildManifestPlots({ manifest: band, plots: { upper: [3, 3, 3], lower: [1, 1, 1] } }, times, 't', '#abc')
+    expect(channel.fills?.[0]?.upperData).toBeUndefined()
+    expect(channel.fills?.[0]?.lowerData).toBeUndefined()
+
+    // An overridden level price moves the fill edge with it, because the fold runs before the walk.
+    const moved = buildManifestPlots({ manifest: overriddenManifest(MANIFEST, { levels: { upper: { price: 80 } } }), plots: { main: [1, 2, 3] } }, times, 't', '#abc')
+    expect((moved.fills?.[0]?.upperData?.[0] as { value: number }).value).toBe(80)
+  })
 })
 
 describe('override layering', () => {
