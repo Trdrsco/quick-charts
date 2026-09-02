@@ -1,4 +1,4 @@
-# Third-party notices — @trdrs/chart
+# Third-party notices for quickcharts
 
 This package does not bundle any third-party code. It declares ONE peer
 dependency that your application installs and bundles itself:

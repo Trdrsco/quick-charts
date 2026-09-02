@@ -8,7 +8,7 @@ const fail = (msg) => {
   process.exit(1)
 }
 
-Promise.all([import('@trdrs/chart'), import('@trdrs/chart-drawings')])
+Promise.all([import('quickcharts'), import('@trdrs/chart-drawings')])
   .then(([chart, drawings]) => {
     if (typeof chart.createChart !== 'function') fail('createChart missing')
     if (chart.olderPageVerdict({ bars: [], noData: true }, 100, false).kind !== 'end') fail('olderPageVerdict wrong')

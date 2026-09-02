@@ -31,7 +31,7 @@ declare const lastTradePrice: number
 declare const nextSnapshot: import('@trdrs/broker').BrokerSnapshot
 declare const myPricePolicy: import('@trdrs/broker').PricePolicy
 declare const broker: import('@trdrs/broker').BrokerAdapter
-declare const smaDefinition: import('@trdrs/chart').IndicatorDefinition
+declare const smaDefinition: import('quickcharts').IndicatorDefinition
 declare const ticket: { setInstrument(symbol: string): void }
 declare function toast(text: string, undo?: () => void): void
 declare function note(msg: string): void
@@ -49,7 +49,7 @@ const compilerOptions: ts.CompilerOptions = {
   noUnusedLocals: false,
   noUnusedParameters: false,
   baseUrl: pkgRoot,
-  paths: { '@trdrs/chart': ['src/index.ts'], '@trdrs/broker': ['../broker/src/index.ts'] },
+  paths: { 'quickcharts': ['src/index.ts'], '@trdrs/broker': ['../broker/src/index.ts'] },
 }
 
 const VIRTUAL = `${pkgRoot}/test/__readme_block__.ts`

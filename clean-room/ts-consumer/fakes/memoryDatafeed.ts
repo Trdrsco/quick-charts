@@ -4,7 +4,7 @@
 // PCL-1: the clean-room consumer supplies its own fake datafeed and storage, never an engine
 // adapter). Bars are a pure function of symbol and bucket, so any window asked twice answers the
 // same twice and a snapshot never disagrees with history.
-import type { ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, SearchPage, SessionClass, SubscribeHandlers, SymbolInfo } from '@trdrs/chart'
+import type { ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, SearchPage, SessionClass, SubscribeHandlers, SymbolInfo } from 'quickcharts'
 
 interface CatalogRow {
   symbol: string

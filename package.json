@@ -1,7 +1,7 @@
 {
-  "name": "@trdrs/chart",
-  "version": "0.2.0",
-  "description": "trdrs charting library: a datafeed-driven trading chart widget with broker, storage and override seams. Commercial license required.",
+  "name": "quickcharts",
+  "version": "0.0.0-staging",
+  "description": "Quick Charts: a datafeed-driven charting library with drawings, indicators, layouts and replay over host-supplied data and storage ports.",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "exports": {

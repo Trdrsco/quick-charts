@@ -1,4 +1,4 @@
-// @trdrs/chart — the charting library's public surface. A host builds a chart by supplying a ChartDatafeed
+// quickcharts — the charting library's public surface. A host builds a chart by supplying a ChartDatafeed
 // (implement it directly for real-time, or point createUdfDatafeed at a UDF server for the trivial on-ramp),
 // optionally a ChartStorage for where viewer state lives, and the widget options/theme/event hooks. The
 // engine reference implementation of ChartDatafeed lives in the trdrs app; this package is what a third
