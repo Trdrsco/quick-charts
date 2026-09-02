@@ -17,6 +17,7 @@ import type { SymbolInfo } from '../symbology'
 import { paintThemeRoot } from './theme'
 import { createCommandRegistry, type CommandRegistry } from './commands'
 import { createEmitter, type WidgetEvents } from './events'
+import { createSearchController, memoryRecents, type RecentsPort, type SearchController } from '../search'
 import { deriveCapabilities, resolveFeatures } from './planes'
 import type { Capabilities, ChartWidgetOptions } from './options'
 import { createChartInstance, type ChartHandle, type ChartInstance } from './chart'
@@ -48,6 +49,12 @@ export interface ChartWidget {
   commands: CommandRegistry
   /** What the ports, the resolved symbol and the browser can do, derived at the moment it is read. */
   capabilities(): Capabilities
+  /** A fresh symbol-search controller over the widget's datafeed: its debounce, cache and
+   *  cancellation are the chart's, so every picker a host builds behaves the same. Dispose it when
+   *  the surface that opened it closes. */
+  search(): SearchController
+  /** The viewer's recent symbols, as the host stores them. */
+  recents: RecentsPort
   image: ImageApi
   fullscreen: FullscreenApi
   on<K extends keyof WidgetEvents>(name: K, callback: WidgetEvents[K]): () => void
@@ -159,6 +166,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
         extensions: options.extensions ?? [],
         marks: options.marks !== false,
         commands,
+        assets: options.assets,
         preferences: options.preferences ?? {},
         symbol: init?.symbol ?? options.symbol,
         timeframe: init?.timeframe ?? options.timeframe,
@@ -200,6 +208,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     for (const instance of instances.values()) instance.relabel()
     events.emit('locale', i18n.locale())
   })
+
+  // The symbol picker's controller is the chart's: one debounce, one cache, one cancellation rule
+  // for every search surface. A host supplies only what it alone knows, which is where the viewer's
+  // recent symbols live; without one they last the page.
+  const recents: RecentsPort = options.search?.recents ?? memoryRecents()
+  const search = (): SearchController => createSearchController(options.datafeed)
 
   const fullscreen = createFullscreen(root, options.fullscreen, (active) => events.emit('fullscreen', active))
 
@@ -249,6 +263,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     },
     commands,
     capabilities,
+    search,
+    recents,
     image,
     fullscreen: fullscreen.api,
     on: (name, callback) => events.on(name, callback),

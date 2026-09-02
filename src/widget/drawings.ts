@@ -4,7 +4,8 @@
 // and timeframe flow, the tick grid, the price formatter and teardown stay chart-owned, so a host
 // cannot desync the layer from the bars under it. An untyped consumer must not find them either,
 // which is why the object below is built by hand rather than spread.
-import { attachDrawings, type DrawingsEvents, type DrawingsHandle } from '../drawings'
+import { attachDrawings, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow } from '../drawings'
+import type { GlyphSourcePort } from '../drawings/index'
 import { mountDrawingsRail, type DrawingsRail } from '../drawingsRail'
 import type { ISeriesApi, IChartApi, SeriesType } from 'lightweight-charts'
 import type { FeedBar } from '../datafeed'
@@ -44,6 +45,11 @@ export interface DrawingsDeps {
   enabled: boolean
   rail: boolean
   access?: AccessPolicy
+  /** The standing workflow choices, read LIVE. The layer consults them and owns none of them, so
+   *  the chart's preference record stays the one copy. */
+  workflow?: () => DrawingsWorkflow
+  /** Where the image and glyph tools get their artwork. Absent, a glyph draws as text. */
+  glyphSource?: GlyphSourcePort
   /** A refused write the layer made on its own. */
   onSaveConflict(info: { symbol: string; current: ResourceRef | null; message: string }): void
   /** The armed tool or the selection changed. */
@@ -74,6 +80,8 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     timeframe: deps.timeframe,
     resources: deps.resources ? (scope) => deps.resources!.drawings(scope) : undefined,
     bars: deps.bars,
+    ...(deps.workflow ? { workflow: deps.workflow } : {}),
+    ...(deps.glyphSource ? { glyphSource: deps.glyphSource } : {}),
     events,
   })
   events.onSaveConflict = ({ symbol, current }) =>

@@ -210,7 +210,7 @@
   background: var(--qc-status-sessionOpen);
 }
 
-[data-qc-theme] .qc-session-dot[data-qc-session='eth'] {
+[data-qc-theme] .qc-session-dot[data-qc-session='extended'] {
   background: var(--qc-status-sessionExtended);
 }
 

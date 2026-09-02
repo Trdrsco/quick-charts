@@ -11,7 +11,7 @@ import { openInputsEditor } from '../inputsEditor'
 import { manifestInputDefaults } from '../indicatorModel'
 import { planPaneOp } from '../panePlan'
 import type { ScaleMode } from '../scaleMode'
-import type { MarketSession } from '../sessions'
+import type { SessionState } from '../sessionModel'
 import type { IndicatorsPlane } from './indicators'
 import type { ComparePlane } from './compare'
 
@@ -23,7 +23,7 @@ export interface LegendPlane {
   /** Push the current rows: indicator rows, then compare rows. */
   push(): void
   setHeader(symbol: string, tf: string): void
-  setDot(session: MarketSession | null): void
+  setDot(state: SessionState | null): void
   syncScale(mode: ScaleMode): void
   destroy(): void
 }
@@ -111,7 +111,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       }
     },
     setHeader: (symbol, tf) => legend?.setHeader(symbol, tf),
-    setDot: (session) => legend?.setDot(session),
+    setDot: (state) => legend?.setDot(state),
     syncScale: (mode) => legend?.syncScale(mode),
     destroy() {
       legend?.destroy()

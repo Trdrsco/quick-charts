@@ -48,7 +48,7 @@ describe('createSessionBands — an unknown model draws NOTHING (the promise the
     expect(draw(CME)).toHaveBeenCalledTimes(1)
   })
   it('shades every run outside regular hours and leaves regular hours clear', () => {
-    const prim = createSessionBands(fakeChart as never, fakeSeries as never, () => true, () => CME, () => true)
+    const prim = createSessionBands(fakeChart as never, fakeSeries as never, () => true, () => CME, () => true, () => DARK_THEME)
     const view = prim.paneViews()[0] as { renderer: () => { draw: (t: unknown) => void } }
     const fillRect = vi.fn()
     const scope = { context: { fillRect, fillStyle: '' }, bitmapSize: { width: 800, height: 400 }, horizontalPixelRatio: 1 }

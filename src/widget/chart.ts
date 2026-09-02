@@ -41,6 +41,7 @@ import type { AccessPolicy, Capabilities, ChartPreferences, IndicatorInstance } 
 import type { ResolvedFeatures } from './planes'
 import { addStyleSeries, coerceChartStyle, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
 import { createRangeApi, type LogicalRange, type RangeApi, type TimeRange } from './ranges'
+import { frameRange, scrolledPosition, zoomedBarSpacing } from '../ranges'
 import { attachSession } from './session'
 import { attachDrawingsPlane, type ChartDrawingsApi } from './drawings'
 import { attachIndicatorsPlane, type IndicatorsPlane } from './indicators'
@@ -53,6 +54,23 @@ import { attachPointerPlane } from './pointer'
 import { attachMarks } from './marks'
 import { createSaveLoadApi, type ChartSaveLoadApi, type ParsedChartContent } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
+import {
+  DEFAULT_TIMEZONE,
+  isTimezoneChoice,
+  makeCrosshairTimeFormatter,
+  makeTickMarkFormatter,
+  resolveDisplayTimezone,
+} from '../timezones'
+import { isIntradayTimeframe } from '../timeframe'
+import { DEFAULT_SUBSESSION, type ActiveSubsession, type MarketStatus } from '../sessionModel'
+import {
+  DEFAULT_DRAWING_PREFERENCES,
+  DRAWING_PREFERENCES_KEY,
+  parseDrawingPreferences,
+  serializeDrawingPreferences,
+  type DrawingAssetPort,
+  type DrawingPreferences,
+} from '../drawings/index'
 
 /** The price format the chart writes with while the symbol is unresolved: cents. A DECLARED
  *  stand-in for the moment between mount and the resolve landing (and for a feed that answers
@@ -140,9 +158,24 @@ export interface ChartHandle {
   goLive(): void
   scaleMode(): ScaleMode
   setScaleMode(mode: ScaleMode): void
-  /** The exchange timezone the chart writes its time axis in, or null while unknown. */
-  timezone(): string | null
-  setTimezone(zone: string | null): void
+  /** The viewer's display-timezone CHOICE: an IANA id from the chart's registry, or `exchange` to
+   *  follow whatever venue the symbol resolves to. */
+  timezone(): string
+  /** Set the choice. A value the chart's registry does not carry is refused, because the axis
+   *  formatters could not label a tick with it. */
+  setTimezone(choice: string): void
+  /** The market's status right now: its session state, what transition is next, and how live the
+   *  feed says its data is. Null until the symbol resolves. */
+  marketStatus(nowSecs?: number): MarketStatus | null
+  /** Which subsession intraday bars are shown for. */
+  subsession(): ActiveSubsession
+  setSubsession(active: ActiveSubsession): void
+  /** Whether this symbol trades outside regular hours at all: what a subsession control asks
+   *  before it offers the choice. */
+  hasExtendedHours(): boolean
+  /** The standing drawing choices the layer consults. ONE record: replace it whole. */
+  drawingPreferences(): DrawingPreferences
+  setDrawingPreferences(next: DrawingPreferences): void
   indicators: IndicatorsApi
   /** The drawing layer, or null when the drawings feature is off. */
   drawings: ChartDrawingsApi | null
@@ -182,6 +215,8 @@ export interface ChartInstanceDeps {
   extensions: readonly ChartExtension[]
   marks: boolean
   commands: CommandRegistry
+  /** Where the image and glyph drawing tools get their artwork. */
+  assets?: DrawingAssetPort
   preferences: Partial<ChartPreferences>
   symbol?: string
   timeframe?: string
@@ -216,6 +251,8 @@ const SCALE_KEY = 'trdrs.chart.widget.scale.v1'
 const HIDDEN_KEY = 'trdrs.chart.widget.indHidden.v1'
 const REPLAY_SPEED_KEY = 'trdrs.chart.widget.replaySpeed.v1'
 const REPLAY_INTERVAL_KEY = 'trdrs.chart.widget.replayIv.v1'
+const TIMEZONE_KEY = 'trdrs.chart.widget.timezone.v1'
+const SUBSESSION_KEY = 'trdrs.chart.widget.subsession.v1'
 
 export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const { datafeed, storage, i18n } = deps
@@ -228,7 +265,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let tf = deps.timeframe ?? storage.get(TF_KEY) ?? deps.preferences.timeframe ?? '1m'
   let style: ChartStyleId = deps.style ?? coerceChartStyle(storage.get(STYLE_KEY) ?? deps.preferences.style)
   let scaleMode: ScaleMode = coerceScaleMode(storage.get(SCALE_KEY) ?? deps.preferences.scaleMode)
-  let timezone: string | null = null
+  /** The viewer's timezone CHOICE: an IANA id, or `exchange` to follow the symbol's own venue. It
+   *  is what persists, because a resolved zone would go stale the moment the symbol changed. */
+  let timezoneChoice: string = readTimezoneChoice()
+  /** The zone that choice resolves to for the symbol on screen; null while it cannot be resolved. */
+  let displayZone: string | null = null
   /** The full ascending bar series currently painted (snapshot, prepended pages, live updates). */
   let bars: FeedBar[] = []
   let unsubscribe: (() => void) | null = null
@@ -237,6 +278,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let ready = false
   /** The feed's last reported status for this subscription; null until it has spoken. */
   let feedStatus: string | null = null
+  /** The resolved symbol, held because the session status, the display timezone and the capability
+   *  plane all read facts off it after the resolve lands. */
+  let symbolInfo: SymbolInfo | null = null
   /** The resolved symbol's price format, null until resolve() states one. */
   let symbolFormat: PriceFormat | null = null
   /** THE price formatter: one per symbol, in the chart's language. The price scale, the crosshair
@@ -248,6 +292,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   /** The level the open menu was raised at, so a copy runs on that and not on wherever the pointer
    *  wandered to while the menu was up. */
   let menuLevel: number | null = null
+  /** The standing drawing choices. ONE copy: the layer consults it through a getter, and a rail or
+   *  a host control changes it through `setDrawingPreferences`, so nothing can drift out of step. */
+  let drawingPrefs: DrawingPreferences = readDrawingPreferences()
 
   // ── The appearance ladder. Floor: the built-in defaults, tinted by the mode's series pair, with
   // candle borders left INVISIBLE until some layer names a border color. Above it: the host's
@@ -353,6 +400,21 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   const ranges: RangeApi = createRangeApi({ chart, disposed: disposedFn, muted })
 
+  /** Resolve the viewer's timezone CHOICE against the symbol on screen and re-label the axis and
+   *  the crosshair through it. Both formatters carry the widget's locale tag, so the month a tick
+   *  writes and the language a menu reads are never two different answers. */
+  function applyTimezone(): void {
+    if (disposed) return
+    const zone = resolveDisplayTimezone(timezoneChoice, symbolInfo) ?? DEFAULT_TIMEZONE
+    const changed = zone !== displayZone
+    displayZone = zone
+    chart.applyOptions({
+      localization: { locale: i18n.tag(), timeFormatter: makeCrosshairTimeFormatter(i18n.tag(), zone, isIntradayTimeframe(tf)) },
+      timeScale: { tickMarkFormatter: makeTickMarkFormatter(i18n.tag(), zone) },
+    })
+    if (changed) events.emit('timezone', timezoneChoice)
+  }
+
   function applyScaleMode(next: ScaleMode): void {
     if (disposed || next === scaleMode) return
     scaleMode = next
@@ -367,7 +429,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const indicators: IndicatorsPlane = attachIndicatorsPlane({
     chart,
     candleSeries,
-    bars: () => bars,
+    // A study drawn over bars the active subsession hides would not line up with the series beside
+    // it, so it computes over the painted model rather than the loaded one.
+    bars: () => shownBars(),
     i18n,
     formatter: () => symbolFormatter,
     formatKey,
@@ -385,6 +449,14 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     enabled: () => deps.features.sessions && eff.appearance.sessions,
     timeframe: () => tf,
     theme: () => deps.theme.get(),
+    dataStatus: () => symbolInfo?.dataStatus ?? null,
+    initialSubsession: readSubsession(),
+    onSubsession: (active) => {
+      storage.set(SUBSESSION_KEY, active)
+      // The filter decides which intraday bars are shown, so the painted model changes with it.
+      paintAll()
+      events.emit('subsession', active)
+    },
   })
 
   const compare = deps.features.compare
@@ -433,6 +505,16 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     enabled: deps.features.drawings,
     rail: deps.features.drawingsRail,
     access: deps.access,
+    // The layer CONSULTS the standing choices and owns none of them: the chart holds the record and
+    // the drawing models decide what each control means, so a rail and the layer cannot disagree
+    // about what "weak magnet" or "lock all" does.
+    workflow: () => ({
+      magnet: drawingPrefs.magnet,
+      allLocked: drawingPrefs.removeLocked,
+      stayInDrawingMode: drawingPrefs.stayInDrawingMode,
+      cursor: drawingPrefs.cursor,
+    }),
+    glyphSource: deps.assets ? (glyph: string) => deps.assets!.glyphSource(glyph) : undefined,
     onSaveConflict: (info) => deps.onSaveConflict({ family: 'drawings', ...info }),
     onChange: (kind, id) => events.emit('drawing', { kind, id }),
   })
@@ -536,22 +618,32 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   // ── Painting ─────────────────────────────────────────────────────────────────────────────────
+  /** The bars actually PAINTED: the loaded model, filtered to the active subsession on an intraday
+   *  timeframe. A daily or larger bar spans whole sessions, so it is never filtered. */
+  function shownBars(): FeedBar[] {
+    const filter = session.barFilter(tf)
+    return filter ? bars.filter((b) => filter(b.t)) : bars
+  }
+
   function paintAll(): void {
     const shaped = valueShaped(style)
-    const values = bars.map((b) => ({ time: b.t as UTCTimestamp, value: b.c }))
+    const painted = shownBars()
+    const values = painted.map((b) => ({ time: b.t as UTCTimestamp, value: b.c }))
     anchor.setData(values)
     series.setData(
-      (shaped ? values : bars.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }))) as never,
+      (shaped ? values : painted.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }))) as never,
     )
     const up = eff.appearance.upColor
     const down = eff.appearance.downColor
-    volume.setData(bars.map((b) => ({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? up : down })))
+    volume.setData(painted.map((b) => ({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? up : down })))
     indicators.recompute()
     // Compares clip to the main window, so every reshape re-clips them here: paintAll is the one
     // choke point every load, scroll-back, snapshot and replay path exits by.
     compare?.sync()
-    extensions.host.barsChanged(bars)
-    events.emit('dataLoaded', { bars: bars.length })
+    // An extension sees what is DRAWN. A bar the active subsession filters out is not on screen,
+    // and an overlay placed against it would sit where there is nothing.
+    extensions.host.barsChanged(painted)
+    events.emit("dataLoaded", { bars: painted.length })
   }
 
   function paintLast(b: FeedBar): void {
@@ -654,6 +746,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     bars = []
     noMoreHistory = false
     feedStatus = null // the new subscription reports its own status; a stale one must not carry over
+    symbolInfo = null
     session.reset() // the next resolve states the new symbol's model, and unresolved never bands
     marks?.clear()
     setSymbolFormat(null) // until the next resolve, the declared stand-in
@@ -666,15 +759,14 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       .resolve(symbol)
       .then((info) => {
         if (disposed || myEpoch !== epoch || !info) return
+        symbolInfo = info
         setSymbolFormat(info.format)
         indicators.recompute() // study scales and rows re-read the formatter
         session.adopt(info)
-        legend.setDot(session.now())
-        const nextZone = info.timezone || null
-        if (nextZone !== timezone) {
-          timezone = nextZone
-          events.emit('timezone', nextZone ?? '')
-        }
+        legend.setDot(session.state())
+        // The choice is the viewer's; what it RESOLVES to follows the symbol, so a chart set to
+        // `exchange` re-labels its axis on every symbol switch without the choice moving.
+        applyTimezone()
         deps.onSymbolInfo(info)
       })
       .catch(() => {
@@ -864,15 +956,26 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       applyScaleMode(mode)
       compare?.releaseScaleLoan()
     },
-    timezone: () => timezone,
-    setTimezone(zone) {
-      // The chart writes its time axis in the symbol's exchange zone, and a host may name another.
-      // The zone registry and the locale-aware formatters land with the chart's own timeframe
-      // module; until they do this records the choice and reports it, which is what a host
-      // subscribing to `timezone` needs either way.
-      if (disposed || zone === timezone) return
-      timezone = zone
-      events.emit('timezone', zone ?? '')
+    timezone: () => timezoneChoice,
+    setTimezone(choice) {
+      // The CHOICE is what a host sets and what persists: an IANA id, or `exchange` to follow
+      // whatever venue the symbol resolves to. A choice outside the chart's registry is refused
+      // rather than written, because a zone the formatters cannot honor would silently mislabel
+      // every axis tick.
+      if (disposed || choice === timezoneChoice || !isTimezoneChoice(choice)) return
+      timezoneChoice = choice
+      storage.set(TIMEZONE_KEY, choice)
+      applyTimezone()
+    },
+    marketStatus: (nowSecs?: number) => session.status(nowSecs),
+    subsession: () => session.subsession(),
+    setSubsession: (active: ActiveSubsession) => session.setSubsession(active),
+    hasExtendedHours: () => session.extended(),
+    drawingPreferences: () => drawingPrefs,
+    setDrawingPreferences(next: DrawingPreferences) {
+      if (disposed) return
+      drawingPrefs = next
+      storage.set(DRAWING_PREFERENCES_KEY, serializeDrawingPreferences(next))
     },
     indicators: {
       get: () => indicators.list(),
@@ -956,6 +1059,22 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     handle,
     features: deps.features,
     capabilities: deps.capabilities,
+    t: () => i18n.t,
+    earliestBar: () => bars[0]?.t ?? null,
+    // A range preset frames the pane on its span AND switches to the timeframe that span reads
+    // best at, which is what makes one chip a whole answer rather than half of one.
+    frame: (preset) => {
+      if (preset.tf !== tf) handle.setTimeframe(preset.tf)
+      frameRange(chart, anchor, preset.span, preset.tf)
+    },
+    zoom: (direction) => {
+      const spacing = chart.timeScale().options().barSpacing
+      chart.timeScale().applyOptions({ barSpacing: zoomedBarSpacing(spacing, direction) })
+    },
+    scroll: (direction) => {
+      const position = chart.timeScale().scrollPosition()
+      chart.timeScale().scrollToPosition(scrolledPosition(position, direction), false)
+    },
     level: () => menuLevel,
     formatter: () => symbolFormatter,
     compareOpen: (mode) => compare?.openDialog(mode),
@@ -983,6 +1102,26 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     load()
   }
 
+  /** The viewer's timezone choice, or the chart's default. A stored value outside the registry is
+   *  ignored rather than honored: the formatters could not label an axis with it. */
+  function readTimezoneChoice(): string {
+    const stored = storage.get(TIMEZONE_KEY) ?? deps.preferences.timezone
+    return stored && isTimezoneChoice(stored) ? stored : DEFAULT_TIMEZONE
+  }
+
+  function readSubsession(): ActiveSubsession {
+    const stored = storage.get(SUBSESSION_KEY) ?? deps.preferences.subsession
+    return stored === 'extended' ? 'extended' : DEFAULT_SUBSESSION
+  }
+
+  /** The standing drawing choices. The record's own parser owns every fallback, so a stored value
+   *  this build does not recognize degrades to the shipped default rather than to nothing. */
+  function readDrawingPreferences(): DrawingPreferences {
+    const stored = storage.get(DRAWING_PREFERENCES_KEY)
+    if (stored) return parseDrawingPreferences(stored)
+    return deps.preferences.drawings ?? DEFAULT_DRAWING_PREFERENCES
+  }
+
   function readHidden(): string[] {
     const stored = storage.get(HIDDEN_KEY)
     if (stored === null || stored === undefined) return [...(deps.preferences.hiddenIndicators ?? [])]
@@ -999,10 +1138,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     canvases: () => [...gestures.querySelectorAll('canvas')] as HTMLCanvasElement[],
     repaintTheme() {
       applyLook()
-      legend.setDot(session.now())
+      legend.setDot(session.state())
     },
     relabel() {
-      chart.applyOptions({ localization: { locale: i18n.tag() } })
+      applyTimezone() // the tick and crosshair formatters carry the language, so they rebuild
       setSymbolFormat(symbolFormat) // the formatter carries the language's decimal sign
       indicators.recompute()
       legend.setHeader(symbol, replay.active() ? i18n.t('host.replayHeader', { tf }) : tf)
