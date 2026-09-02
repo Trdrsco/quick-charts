@@ -72,5 +72,3 @@ export function createPendingHolds(now: () => number = Date.now) {
     },
   }
 }
-
-export type PendingHolds = ReturnType<typeof createPendingHolds>
