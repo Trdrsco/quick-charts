@@ -6,7 +6,9 @@
 import { describe, expect, it } from 'vitest'
 import { createChartI18n } from '../src/i18n'
 import {
+  DEFAULT_SUBSESSION,
   exchangeTimezoneText,
+  hasExtendedHours,
   formatDuration,
   marketStatus,
   marketStatusFor,
@@ -16,6 +18,7 @@ import {
   parseSessionModel,
   sessionStateAt,
   sessionTimeline,
+  subsessionBarFilter,
   type SessionModel,
 } from '../src/sessionModel'
 
@@ -315,5 +318,98 @@ describe('market status', () => {
   it('names the exchange zone with its offset in the footer', () => {
     expect(exchangeTimezoneText(t, 'America/Chicago', new Date(now * 1000))).toBe('Exchange timezone: Chicago (UTC-5)')
     expect(exchangeTimezoneText(t, 'Etc/UTC', new Date(now * 1000))).toBe('Exchange timezone: UTC')
+  })
+})
+
+describe('the served equity shape: regular, extended, premarket and postmarket with early-close corrections', () => {
+  // The engine serves an equity exactly like this (regular equals the weekly session, its
+  // corrections equal the symbol's, and every subsession that closes early names the day).
+  const EQUITY_SERVED = model({
+    timezone: 'America/New_York',
+    session: '0930-1600',
+    sessionHolidays: '20261126',
+    corrections: '0930-1300:20261127,20261224',
+    subsessions: [
+      { id: 'regular', session: '0930-1600', sessionCorrections: '0930-1300:20261127,20261224' },
+      { id: 'extended', session: '0400-2000', sessionCorrections: '0400-1700:20261127,20261224' },
+      { id: 'premarket', session: '0400-0930' },
+      { id: 'postmarket', session: '1600-2000', sessionCorrections: '1300-1700:20261127,20261224' },
+    ],
+  })
+
+  it('classifies a full day as pre, open, after and closed', () => {
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 6, 13, 7, 59))).toBe('closed') // 03:59 EDT
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 6, 13, 8, 0))).toBe('pre') // 04:00 EDT
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 6, 13, 13, 29))).toBe('pre')
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 6, 13, 13, 30))).toBe('open') // 09:30 EDT
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 6, 13, 19, 59))).toBe('open')
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 6, 13, 20, 0))).toBe('after') // 16:00 EDT
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 6, 13, 23, 59))).toBe('after')
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 6, 14, 0, 0))).toBe('closed') // 20:00 EDT
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 6, 18, 14, 0))).toBe('closed') // Saturday
+  })
+
+  it('a holiday closes every subsession; an early close shortens each by its own correction', () => {
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 10, 26, 15, 0))).toBe('closed') // Thanksgiving 10:00 EST
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 10, 26, 10, 0))).toBe('closed') // 05:00 EST: no pre-market on a holiday
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 10, 27, 10, 0))).toBe('pre') // Nov 27 05:00 EST
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 10, 27, 17, 30))).toBe('open') // 12:30 EST
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 10, 27, 18, 0))).toBe('after') // 13:00 EST: the corrected close
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 10, 27, 21, 59))).toBe('after') // 16:59 EST
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 10, 27, 22, 0))).toBe('closed') // 17:00 EST: the corrected post-market close
+    expect(sessionStateAt(EQUITY_SERVED, utc(2026, 11, 24, 18, 0))).toBe('after') // Dec 24 13:00 EST
+  })
+
+  it('counts down through the subsessions and draws the day', () => {
+    expect(nextSessionChange(EQUITY_SERVED, utc(2026, 6, 13, 8, 0))).toEqual({ atSecs: utc(2026, 6, 13, 13, 30), state: 'open' })
+    expect(nextSessionChange(EQUITY_SERVED, utc(2026, 10, 27, 17, 30))).toEqual({ atSecs: utc(2026, 10, 27, 18, 0), state: 'after' })
+    expect(sessionTimeline(EQUITY_SERVED, utc(2026, 10, 27, 17, 30), 'en').segments).toEqual([
+      { start: 0, end: 240, state: 'closed' },
+      { start: 240, end: 570, state: 'pre' },
+      { start: 570, end: 780, state: 'open' },
+      { start: 780, end: 1020, state: 'after' },
+      { start: 1020, end: 1440, state: 'closed' },
+    ])
+  })
+
+  it('the regular subsession states the regular hours and its own corrections take precedence over the symbol level', () => {
+    const m = model({
+      timezone: 'America/New_York',
+      session: '0930-1600',
+      corrections: '0930-1200:20261127',
+      subsessions: [{ id: 'regular', session: '0930-1600', sessionCorrections: '0930-1300:20261127' }],
+    })
+    expect(sessionStateAt(m, utc(2026, 10, 27, 17, 30))).toBe('open') // 12:30 EST: the subsession's 13:00 close, not the symbol's 12:00
+  })
+})
+
+describe('the active subsession', () => {
+  const EQUITY_EXT = model({
+    timezone: 'America/New_York',
+    session: '0930-1600',
+    subsessions: [
+      { id: 'regular', session: '0930-1600' },
+      { id: 'extended', session: '0400-2000' },
+      { id: 'premarket', session: '0400-0930' },
+      { id: 'postmarket', session: '1600-2000' },
+    ],
+  })
+
+  it('defaults to regular, and only a symbol with extended hours has anything to choose', () => {
+    expect(DEFAULT_SUBSESSION).toBe('regular')
+    expect(hasExtendedHours(EQUITY_EXT)).toBe(true)
+    expect(hasExtendedHours(CME)).toBe(false)
+    expect(hasExtendedHours(PERP)).toBe(false)
+  })
+
+  it('filters bars to regular hours under regular, and filters nothing under extended or without extended hours', () => {
+    const keep = subsessionBarFilter(EQUITY_EXT, 'regular')!
+    expect(keep).toBeTypeOf('function')
+    expect(keep(utc(2026, 6, 13, 9, 0))).toBe(false) // 05:00 EDT, pre-market
+    expect(keep(utc(2026, 6, 13, 14, 0))).toBe(true) // 10:00 EDT
+    expect(keep(utc(2026, 6, 13, 21, 0))).toBe(false) // 17:00 EDT, after-hours
+    expect(subsessionBarFilter(EQUITY_EXT, 'extended')).toBeNull()
+    expect(subsessionBarFilter(CME, 'regular')).toBeNull()
+    expect(subsessionBarFilter(PERP, 'regular')).toBeNull()
   })
 })

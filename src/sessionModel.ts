@@ -25,11 +25,12 @@ export type SessionState = 'pre' | 'open' | 'extended' | 'after' | 'closed'
 
 /** One subsession of an extended-hours symbol, the reference's own shape: `regular`,
  *  `extended`, `premarket` or `postmarket`, each with its own session string and, optionally,
- *  its own corrections. */
+ *  the corrections that shorten it. `SymbolInfo.subsessions` satisfies it; an id the chart has
+ *  no state for is ignored. */
 export interface SubsessionSource {
   readonly id: string
   readonly session: string
-  readonly corrections?: string
+  readonly sessionCorrections?: string
 }
 
 /** What a session model is built from: the symbology triple plus the optional corrections and
@@ -192,6 +193,8 @@ function parseSchedule(session: string, corrections: string | undefined): Sessio
   return { week, corrections: dated }
 }
 
+const STATE_RANK: Readonly<Record<Exclude<SessionState, 'open' | 'closed'>, number>> = { pre: 0, after: 0, extended: 1 }
+
 const SUBSESSION_STATE: Readonly<Record<string, Exclude<SessionState, 'open' | 'closed'>>> = {
   premarket: 'pre',
   postmarket: 'after',
@@ -211,17 +214,43 @@ export function parseSessionModel(source: SessionSource): SessionModel | null {
     return { timezone, continuous: true, regular: { week: Array.from({ length: 7 }, () => [{ start: 0, end: MINUTES_PER_DAY }]), corrections: new Map() }, extended: [], holidays }
   }
   const regularSource = source.subsessions?.find((s) => s.id === 'regular')
-  const regular = regularSource ? parseSchedule(regularSource.session, regularSource.corrections ?? source.corrections) : parseSchedule(source.session, source.corrections)
+  const regular = regularSource ? parseSchedule(regularSource.session, regularSource.sessionCorrections ?? source.corrections) : parseSchedule(source.session, source.corrections)
   if (!regular) return null
   const extended: { state: Exclude<SessionState, 'open' | 'closed'>; schedule: SessionSchedule }[] = []
   for (const sub of source.subsessions ?? []) {
     const state = SUBSESSION_STATE[sub.id]
     if (!state) continue
-    const schedule = parseSchedule(sub.session, sub.corrections)
+    const schedule = parseSchedule(sub.session, sub.sessionCorrections)
     if (!schedule) return null
     extended.push({ state, schedule })
   }
+  // The named spans outrank the whole extended span: a minute in pre-market is pre, not extended,
+  // whatever order the feed listed them in.
+  extended.sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state])
   return { timezone, continuous: false, regular, extended, holidays }
+}
+
+/** Which of a symbol's named sessions a chart displays, the reference's `subsession_id`:
+ *  `regular` shows regular hours only, `extended` shows the extended-hours bars as well. A
+ *  per-chart preference a host persists; `regular` is the default. A symbol without extended hours
+ *  has nothing to choose, and every bar shows. */
+export type ActiveSubsession = 'regular' | 'extended'
+
+export const DEFAULT_SUBSESSION: ActiveSubsession = 'regular'
+
+/** Whether the symbol declared any hours outside its regular session. Only such a symbol offers a
+ *  subsession choice or shades extended hours. */
+export function hasExtendedHours(model: SessionModel): boolean {
+  return model.extended.length > 0
+}
+
+/** The bar filter for the active subsession: under `regular`, on a symbol with extended hours,
+ *  keep the bars whose open falls in regular hours; otherwise nothing is filtered (null). For
+ *  intraday intervals only: a daily bar spans whole sessions, so a caller applies the filter on
+ *  intraday intervals and shows every daily bar. */
+export function subsessionBarFilter(model: SessionModel, active: ActiveSubsession): ((epochSecs: number) => boolean) | null {
+  if (active !== 'regular' || !hasExtendedHours(model)) return null
+  return (epochSecs) => sessionStateAt(model, epochSecs) === 'open'
 }
 
 /** A trading day as the exchange calendar counts it: its 'YYYYMMDD' key and weekday. */
@@ -391,7 +420,7 @@ export function marketStatus(model: SessionModel, dataStatus: DataStatus, nowSec
 }
 
 /** The market status straight from a resolved symbol, or null when its session cannot be read. */
-export function marketStatusFor(symbol: Pick<SymbolInfo, 'timezone' | 'session' | 'sessionHolidays' | 'dataStatus'> & { corrections?: string; subsessions?: readonly SubsessionSource[] }, nowSecs: number): MarketStatus | null {
+export function marketStatusFor(symbol: Pick<SymbolInfo, 'timezone' | 'session' | 'sessionHolidays' | 'corrections' | 'subsessions' | 'dataStatus'>, nowSecs: number): MarketStatus | null {
   const model = parseSessionModel(symbol)
   return model ? marketStatus(model, symbol.dataStatus, nowSecs) : null
 }
@@ -401,7 +430,7 @@ export function marketStatusFor(symbol: Pick<SymbolInfo, 'timezone' | 'session' 
 export const SESSION_STATE_TITLE: Readonly<Record<SessionState, ChartMessageKey>> = {
   pre: 'session.pre',
   open: 'session.open',
-  extended: 'session.eth',
+  extended: 'session.extended',
   after: 'session.after',
   closed: 'session.closed',
 }

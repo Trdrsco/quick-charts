@@ -10,7 +10,7 @@
 // market: an unstated `minmov` is 1 because UDF says so, and an unstated session is the round clock
 // because claiming exchange hours nobody served would render wrong bands.
 import { udfResolutionToTf } from './udfResolution'
-import type { DataStatus, PriceFormat, SymbolInfo } from './symbology'
+import type { DataStatus, PriceFormat, Subsession, SubsessionId, SymbolInfo } from './symbology'
 
 /** The `/symbols` fields this mapping reads. A server may send more; anything not listed here has
  *  no place in symbology. */
@@ -30,6 +30,8 @@ export interface UdfSymbolResponse {
   timezone?: string
   session?: string
   session_holidays?: string
+  corrections?: string
+  subsessions?: readonly { id?: string; session?: string; description?: string; 'session-correction'?: string }[]
   data_status?: string
   currency_code?: string
   unit_id?: string
@@ -53,6 +55,27 @@ export function udfPriceFormat(raw: UdfSymbolResponse): PriceFormat {
     format.variableTickSize = raw.variable_tick_size.trim()
   }
   return format
+}
+
+const SUBSESSION_IDS: readonly SubsessionId[] = ['regular', 'extended', 'premarket', 'postmarket']
+
+/** The reference's `subsessions` array as the chart's: an entry with one of the four ids and a
+ *  session string is kept, its `session-correction` becomes `sessionCorrections`, and anything
+ *  else is dropped rather than half-read. */
+function udfSubsessions(raw: UdfSymbolResponse['subsessions']): Subsession[] {
+  const out: Subsession[] = []
+  for (const entry of raw ?? []) {
+    if (!entry || typeof entry !== 'object') continue
+    const id = entry.id
+    if (typeof id !== 'string' || !(SUBSESSION_IDS as readonly string[]).includes(id)) continue
+    if (typeof entry.session !== 'string' || entry.session.trim() === '') continue
+    const sub: Subsession = { id: id as SubsessionId, session: entry.session.trim() }
+    if (typeof entry.description === 'string' && entry.description !== '') sub.description = entry.description
+    const corrections = entry['session-correction']
+    if (typeof corrections === 'string' && corrections.trim() !== '') sub.sessionCorrections = corrections.trim()
+    out.push(sub)
+  }
+  return out
 }
 
 /** The whole symbol. `symbol` is the identifier the caller asked for, used where the server named
@@ -83,6 +106,9 @@ export function udfSymbolInfo(raw: UdfSymbolResponse, symbol: string): SymbolInf
     format: udfPriceFormat(raw),
   }
   if (typeof raw.session_holidays === 'string' && raw.session_holidays.trim() !== '') info.sessionHolidays = raw.session_holidays.trim()
+  if (typeof raw.corrections === 'string' && raw.corrections.trim() !== '') info.corrections = raw.corrections.trim()
+  const subsessions = udfSubsessions(raw.subsessions)
+  if (subsessions.length > 0) info.subsessions = subsessions
   if (typeof raw.currency_code === 'string' && raw.currency_code !== '') info.currencyCode = raw.currency_code
   if (typeof raw.unit_id === 'string' && raw.unit_id !== '') info.unitId = raw.unit_id
   return info

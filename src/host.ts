@@ -26,7 +26,9 @@ import { attachIndicators } from './indicatorRenderer'
 import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from './scaleMode'
 import { attachCompare, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSymbol } from './compare'
 import { openCompareDialog, type CompareDialogHandle } from './compareDialog'
-import { createSessionBands, isIntradayTf, knownMarketKind, sessionOf, setHolidayCalendar, SESSION_DOT, type MaybeMarketKind, type SessionBandsPrimitive } from './sessions'
+import { createSessionBands, SESSION_DOT, type SessionBandsPrimitive } from './sessions'
+import { parseSessionModel, sessionStateAt, type SessionModel } from './sessionModel'
+import { isIntradayTimeframe } from './timeframe'
 import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
 import { isCollapsed, planPaneOp } from './panePlan'
 import { openInputsEditor } from './inputsEditor'
@@ -321,7 +323,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   /** The resolved symbol's session model — null until resolve() states one. Null draws NOTHING
    *  (the bands primitive admits it), never a coerced stand-in class: an unknown symbol is not a
    *  24/7 claim any more than it is a CME one. */
-  let sessionKind: MaybeMarketKind = null
+  let sessionModel: SessionModel | null = null
   let legend: ChartLegend | null = null
   // The legend's per-chip eye state, persisted so a hide survives reloads. The widget merges it
   // with any host-supplied display.hidden so indicatorHidden stays the ONE render-or-not read.
@@ -445,7 +447,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   if (options.sessions !== false) {
     // The enabled getter reads the ladder live, so `appearance.sessions: false` (constructor or
     // runtime) blanks the shading without tearing the layer down.
-    sessionBands = createSessionBands(chart, candles, () => eff.appearance.sessions, () => sessionKind, () => isIntradayTf(tf))
+    sessionBands = createSessionBands(chart, candles, () => eff.appearance.sessions, () => sessionModel, () => isIntradayTimeframe(tf))
     candles.attachPrimitive(sessionBands as never)
   }
 
@@ -678,7 +680,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     }
     lastIndicatorChips = chips
     pushChips()
-    legend?.setDot(sessionKind ? SESSION_DOT[sessionOf(Date.now(), sessionKind)] : null)
+    legend?.setDot(sessionModel ? SESSION_DOT[sessionStateAt(sessionModel, Math.floor(Date.now() / 1000))] : null)
     // Pane heights settle a frame AFTER a pane is created/resized — a chip built in the same
     // frame can misread a fresh pane as collapsed. Converge on layout truth: re-check next frame
     // and re-render the chips only if a collapsed reading actually changed.
@@ -863,14 +865,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     bars = []
     noMoreHistory = false
     feedStatus = null // the new subscription reports its own status; a stale one must not carry over
-    sessionKind = null // the next resolve states the new symbol's model; unresolved never bands
+    sessionModel = null // the next resolve states the new symbol's model; unresolved never bands
     sessionBands?.refresh() // the old symbol's bands must not survive the switch
     setSymbolFormat(null) // the next resolve states the new symbol's format; until then, the declared stand-in
     abandonReplay() // a replay window is symbol+timeframe-bound; the switch invalidates it
     paintAll()
     if (!symbol) return
     // Symbol metadata rides ALONGSIDE the first history ask (never blocking it): the price format
-    // feeds every price display, sessionClass feeds the session bands. A failed resolve leaves
+    // feeds every price display, the session facts feed the session bands. A failed resolve leaves
     // both at their honest unknowns.
     void datafeed
       .resolve(symbol)
@@ -878,10 +880,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         if (removed || myEpoch !== epoch || !info) return
         setSymbolFormat(info.format)
         recomputeIndicators() // study scales and chips re-read the formatter
-        sessionKind = knownMarketKind(info.type, info.sessionClass ?? null)
-        if (info.sessionCalendar && sessionKind) setHolidayCalendar(sessionKind, info.sessionCalendar)
+        sessionModel = parseSessionModel(info)
         sessionBands?.refresh() // nothing else invalidates the pane when the model resolves
-        legend?.setDot(sessionKind ? SESSION_DOT[sessionOf(Date.now(), sessionKind)] : null)
+        legend?.setDot(sessionModel ? SESSION_DOT[sessionStateAt(sessionModel, Math.floor(Date.now() / 1000))] : null)
       })
       .catch(() => {
         /* metadata is an enhancement — the chart works without it */

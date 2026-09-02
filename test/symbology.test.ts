@@ -29,13 +29,14 @@ const FULL: SymbolInfo = {
   unitId: 'point',
   volumePrecision: 0,
   format: { pricescale: 100, minmov: 25 },
-  sessionClass: 'futures',
-  sessionCalendar: { holidays: { '2026-11-26': [] }, coverageThrough: '2026-12-31' },
+  corrections: '1700-1200:20261126',
+  subsessions: [{ id: 'regular', session: '1700-1600', description: 'Regular', sessionCorrections: '1700-1200:20261126' }],
 }
 
 describe('SymbolInfo', () => {
-  it('carries exactly the reference symbology scope plus the chart session model', () => {
+  it('carries exactly the reference symbology scope, the session facts included', () => {
     expect(Object.keys(FULL).sort()).toEqual([
+      'corrections',
       'currencyCode',
       'dataStatus',
       'description',
@@ -44,9 +45,8 @@ describe('SymbolInfo', () => {
       'listedExchange',
       'name',
       'session',
-      'sessionCalendar',
-      'sessionClass',
       'sessionHolidays',
+      'subsessions',
       'supportedResolutions',
       'ticker',
       'timezone',

@@ -104,6 +104,31 @@ describe('udfSymbolInfo', () => {
     })
   })
 
+  it('maps corrections and the reference subsessions, dropping an entry it cannot read', () => {
+    const info = udfSymbolInfo(
+      {
+        name: 'AAPL',
+        session: '0930-1600',
+        corrections: ' 0930-1300:20261127 ',
+        subsessions: [
+          { id: 'regular', session: '0930-1600', description: 'Regular Trading Hours', 'session-correction': '0930-1300:20261127' },
+          { id: 'premarket', session: '0400-0930' },
+          { id: 'night', session: '2000-0400' },
+          { id: 'postmarket' },
+          { session: '1600-2000' },
+        ],
+      },
+      'AAPL',
+    )
+    expect(info?.corrections).toBe('0930-1300:20261127')
+    expect(info?.subsessions).toEqual([
+      { id: 'regular', session: '0930-1600', description: 'Regular Trading Hours', sessionCorrections: '0930-1300:20261127' },
+      { id: 'premarket', session: '0400-0930' },
+    ])
+    expect(udfSymbolInfo({ name: 'AAPL', corrections: '  ', subsessions: [] }, 'AAPL')).not.toHaveProperty('corrections')
+    expect(udfSymbolInfo({ name: 'AAPL', corrections: '  ', subsessions: [] }, 'AAPL')).not.toHaveProperty('subsessions')
+  })
+
   it('refuses a data status outside the three the contract names', () => {
     expect(udfSymbolInfo({ name: 'AAPL', data_status: 'whenever' }, 'AAPL')?.dataStatus).toBe('streaming')
   })
