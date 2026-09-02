@@ -88,7 +88,7 @@ export async function exerciseFakes(): Promise<void> {
 // A complete typed datafeed — the seam a licensee actually implements.
 const feed: ChartDatafeed = {
   async config(): Promise<DatafeedConfig> {
-    return { resolutions: ['1m', '1h'], quotes: false }
+    return { resolutions: ['1m', '1h'] }
   },
   async search(q) {
     return { hits: [{ symbol: q.toUpperCase(), name: 'Stub', exchange: 'X', type: 'crypto' }], hasMore: false }

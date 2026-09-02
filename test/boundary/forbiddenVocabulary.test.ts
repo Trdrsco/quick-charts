@@ -26,8 +26,9 @@ interface Term {
 /** The target vocabulary, grouped by the stream that removes it. Every pattern is judged against
  *  package code (or the app chart tree for the two toolbar words), never the catalogs. */
 const TARGET: Record<'W1-A' | 'W2-A' | 'W3-A' | 'W5-A', { reason: string; terms: Term[] }> = {
-  // PCL-4 datafeed narrowing and symbology: SymbolInfo replaces tick plus pricePrecision; the
-  // quote board and the onQuote callback leave the free datafeed.
+  // PCL-4 datafeed narrowing and symbology. Landed: SymbolInfo owns the price-format facts and the
+  // quote board and the onQuote callback are gone from the free datafeed; the words stay listed so
+  // a return is caught.
   'W2-A': {
     reason: 'SymbolInfo owns price-format facts; no L1 or quote-board API in Quick Charts',
     terms: [
@@ -108,9 +109,6 @@ describe('the forbidden vocabulary, as built', () => {
       .filter((t) => lines(sourcesFor(t.scope), t.pattern).length > 0)
       .map((t) => t.term)
     expect(present).toEqual([
-      'onQuote',
-      'getQuotes',
-      'subscribeQuotes',
       'ChartTheme',
       'resolveTheme',
       'ResolvedTheme',
@@ -124,7 +122,7 @@ describe('the forbidden vocabulary, as built', () => {
 // TARGET. One block per stream, the whole word list in one assertion so the log names every
 // surviving line. Delete the stream from LANDED_LATER when it lands; remove the words from the
 // PRESENT pin. A landed stream's block runs.
-const LANDED_LATER = new Set<keyof typeof TARGET>(['W2-A', 'W3-A', 'W5-A'])
+const LANDED_LATER = new Set<keyof typeof TARGET>(['W3-A', 'W5-A'])
 describe('the forbidden vocabulary (target)', () => {
   for (const [stream, { reason, terms }] of Object.entries(TARGET) as [keyof typeof TARGET, (typeof TARGET)[keyof typeof TARGET]][]) {
     const block = LANDED_LATER.has(stream) ? it.skip : it

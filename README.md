@@ -34,18 +34,38 @@ const widget = createChart({
 ## The datafeed contract
 
 Implement `ChartDatafeed` (see `datafeed.ts`). Required methods: `search`, `resolve`, `history`,
-`subscribeBars`. Optional: `serverTime` (countdown skew correction), the quote surface — `getQuotes`
-(a batch board read) and `subscribeQuotes` (the push half: one `QuoteSnapshot` per update, initial
-state included, every update a REPLACEMENT; returns the unsubscribe; transport and cadence are
-yours — a stream pushes on tick, a poller on its board cadence) — and `config` (a feed-level
-capability declaration — [below](#capability-declaration-config-optional)).
+`subscribeBars`. Optional: `serverTime` (countdown skew correction) and `config` (a feed-level
+capability declaration — [below](#capability-declaration-config-optional)). The datafeed serves
+symbol metadata, bars and bar updates and nothing else: a quote board (last, change, volume) or a
+top-of-book is not a chart concern, and your host fans quotes to its own consumers from its own
+source.
+
+`resolve` answers with `SymbolInfo`, the symbology contract ([Symbology](#symbology)): the
+symbol's identity (`ticker`, `name`, `description`), venue and type (`exchange`,
+`listedExchange`, `type`), `supportedResolutions` (chart timeframe tokens; an empty list declares
+no restriction), the exchange session triple (`timezone`, `session`, `sessionHolidays`),
+`dataStatus`, `currencyCode` or `unitId`, `volumePrecision`, and the price-format facts in
+`format`. Null means the symbol is unknown to your catalogs.
 
 ```ts
-import type { ChartDatafeed } from 'quickcharts'
+import type { SymbolInfo } from 'quickcharts'
 
-declare const feed: ChartDatafeed
-const unsubscribe = feed.subscribeQuotes?.(['ES', 'NQ'], (q) => console.log(q.symbol, q.last))
-unsubscribe?.()
+const treasury: SymbolInfo = {
+  ticker: 'ZBZ2026',
+  name: 'ZBZ2026',
+  description: '30-year T-bond Dec 2026',
+  exchange: 'CBOT',
+  listedExchange: 'CBOT',
+  type: 'futures',
+  supportedResolutions: [], // no restriction: any timeframe token
+  timezone: 'America/Chicago',
+  session: '1700-1600:23456',
+  dataStatus: 'streaming',
+  currencyCode: 'USD',
+  volumePrecision: 0,
+  format: { pricescale: 32, minmov: 1, fractional: true },
+}
+void treasury
 ```
 
 ```ts
@@ -94,8 +114,8 @@ export const myFeed: ChartDatafeed = {
 6. **No feed for a symbol is terminal.** Throw `FeedUnavailableError` from `history` when no feed serves
    the symbol — the chart shows "market data unavailable" and stops. A transient fetch failure should
    throw a normal error (the chart retries).
-7. **Never synthesize prices.** `onQuote` carries real top-of-book bid/ask only; a feed with no L1 for a
-   symbol simply never calls it (the UI shows '—').
+7. **Never synthesize prices.** A bar carries what the market printed; a symbol with no data has no
+   bars, never invented ones.
 
 ### Capability declaration (`config`, optional)
 
@@ -113,7 +133,7 @@ declare const baseFeed: ChartDatafeed // your feed from the section above
 export const feed: ChartDatafeed = {
   ...baseFeed,
   async config(): Promise<DatafeedConfig> {
-    return { resolutions: ['1m', '5m', '1h', '1d'], quotes: false }
+    return { resolutions: ['1m', '5m', '1h', '1d'] }
   },
 }
 ```
@@ -155,9 +175,11 @@ What the adapter honors of the protocol:
 ## Symbology
 
 Symbology is the set of display facts that decide how a market's prices are written. Your datafeed
-owns them, and one package formatter uses them everywhere a price appears. Precision comes from the
-symbol, never from the size of the price, so the same market reads at the same width on every
-surface.
+owns them (`resolve` answers with `SymbolInfo`), and one package formatter uses them everywhere a
+price appears: the price scale, the crosshair and last-price labels, the legend, the level menu,
+every drawing label, study scales, and the extension seam. Precision comes from the symbol, never
+from the size of the price, so the same market reads at the same width on every surface. A study
+that declares its own precision keeps it; every other value writes through the symbol formatter.
 
 `PriceFormat` expresses every supported form in five facts:
 
@@ -773,7 +795,7 @@ What to know:
   removed/renamed export or a changed contract is **major**; new surface is **minor**; fixes are
   **patch** — never shipped as silent drift.
 - **Optionality is the compatibility mechanism.** New seam capabilities arrive as *optional* methods
-  and fields (`config`, `serverTime`, `getQuotes` are the pattern): an existing
+  and fields (`config` and `serverTime` are the pattern): an existing
   implementation keeps compiling, and the widget treats absence as "unconstrained / not supported".
   Your integration never breaks by standing still within a major.
 - **Deprecation runs a full major.** A deprecated export keeps working for the remainder of the

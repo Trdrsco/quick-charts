@@ -25,16 +25,27 @@
   `scale: 'volume'` to ride the chart's volume band, and a fill whose `between` names two levels
   shades between those limit lines. The package bundles its drawing and indicator source into the
   one artifact: `lightweight-charts` is its only peer and it declares no dependencies.
-- **Symbology and one price formatter.** `PriceFormat` carries the five facts that decide how a
+- **Symbology and one price formatter.** `ChartDatafeed.resolve` answers with **`SymbolInfo`**:
+  identity, venue and type, `supportedResolutions` (an empty list declares no restriction), the
+  exchange session triple, `dataStatus`, currency or unit, `volumePrecision`, and the
+  price-format facts in `format`. `PriceFormat` carries the five facts that decide how a
   market's prices are written (`pricescale`, `minmov`, `minmove2`, `fractional`,
   `variableTickSize`), and **`createPriceFormatter`** turns them into a `PriceFormatter` whose
   `format` and `parse` are exact inverses. It covers decimal, pip, fractional,
   fraction-of-a-fraction and variable-tick markets, and takes precision from the symbol rather than
-  from the size of the price. Punctuation is a `.` decimal sign and no grouping unless a `locale` or
-  an explicit `numericPunctuation` says otherwise. New exports **`parseTickBands`**,
+  from the size of the price. The widget writes every price through it: the price scale, the
+  crosshair and last-price labels, legend chips, the level menu, drawing labels, study scales, and
+  the extension seam's `formatter()`. Punctuation is a `.` decimal sign and no grouping unless a
+  `locale` or an explicit `numericPunctuation` says otherwise. New exports **`parseTickBands`**,
   **`tickBandFor`**, and the `DataStatus` and `TickBand` types. **`udfSymbolInfo`** and
   **`udfPriceFormat`** map a UDF `/symbols` answer to those facts without collapsing them to one
-  floating tick.
+  floating tick; `createUdfDatafeed` resolves through them.
+- **The datafeed serves the chart and nothing else.** `ChartDatafeed` is search, resolve, history,
+  live bars, the server clock and the capability declaration. It carries no quote board and no
+  top-of-book: a host fans quotes to its own consumers from its own source.
+- **The level menu is chart-only.** `chartContextMenu` offers reset, copy price, paste, the remove
+  rows and settings; a host contributes an alert or order row for the level through the extension
+  seam.
 - **A revisioned contract for saved resources.** `ResourceStore` gives saved charts, layouts,
   symbol-scoped drawings and templates one shape: stable ids, opaque revision tokens in
   `ResourceRef`, conditional `update` and `remove`, and typed `conflict` and `not-found` outcomes in
@@ -49,10 +60,6 @@
   in the chart's save blob. The chart takes back everything an extension drew at detach.
 - **The layout names its active symbol.** `ChartLayoutApi.activeSymbol()` and the
   `onActiveSymbol` event report the active pane's symbol every time it moves.
-- **The quote surface gains its push half.** `ChartDatafeed` gains optional
-  **`subscribeQuotes(symbols, onQuote)`** beside `getQuotes`: one `QuoteSnapshot` per update,
-  initial state included, every update a replacement; returns the unsubscribe; transport and
-  cadence are the adapter's own. Additive — existing feeds compile unchanged.
 - **Interface language.** New **`locale`** option on `createChart` and on a layout's `base`, one
   of the 21 codes in the package's own `BUILT_IN_LOCALES` inventory, English by
   default. The widget's own chrome reads it and the chart's axis and crosshair dates are formatted

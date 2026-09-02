@@ -121,20 +121,11 @@ describe('UdfDatafeed.resolve', () => {
   })
 })
 
-describe('UdfDatafeed.getQuotes', () => {
-  it('echoes one snapshot per requested symbol in order, all-null for an omitted one', async () => {
-    const { df } = feed({
-      '/quotes': { s: 'ok', d: [{ n: 'ES', s: 'ok', v: { lp: 5000, prev_close_price: 4950, ch: 50, chp: 1.01, open_price: 4960, high_price: 5010, low_price: 4940, volume: 1234 } }] },
-    })
-    const [es, nq] = await df.getQuotes!(['ES', 'NQ'])
-    expect(es).toMatchObject({ symbol: 'ES', last: 5000, prevClose: 4950, change: 50, changePct: 1.01, volume: 1234, spark: [] })
-    expect(nq).toMatchObject({ symbol: 'NQ', last: null, change: null })
-  })
-
-  it('derives change from last/prevClose when the server omits it', async () => {
-    const { df } = feed({ '/quotes': { s: 'ok', d: [{ n: 'ES', v: { lp: 100, prev_close_price: 90 } }] } })
-    const [es] = await df.getQuotes!(['ES'])
-    expect(es!.change).toBe(10)
+describe('UdfDatafeed and the protocol surfaces it does not read', () => {
+  it('serves no quote board: /quotes is not a chart concern', () => {
+    const { df } = feed({})
+    expect(df).not.toHaveProperty('getQuotes')
+    expect(df).not.toHaveProperty('subscribeQuotes')
   })
 })
 

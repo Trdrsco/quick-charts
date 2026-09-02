@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest'
 import { FORMATTER_SITES, type ValueKind } from './formatters.inventory'
 
-const PACKAGE_SOURCES = import.meta.glob('/packages/{chart,chart-trading,chart-drawings,broker,watchlist,order-ticket,account-manager}/src/**/*.{ts,tsx}', {
+const PACKAGE_SOURCES = import.meta.glob('/packages/{chart,chart-trading,chart-drawings,chart-engine,broker,watchlist,order-ticket,account-manager}/src/**/*.{ts,tsx}', {
   query: '?raw',
   import: 'default',
   eager: true,

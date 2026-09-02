@@ -11,7 +11,6 @@ export type {
   SessionClass,
   HistoryPage,
   OlderPageVerdict,
-  QuoteSnapshot,
   BarsEvent,
   SubscribeHandlers,
   DatafeedConfig,
