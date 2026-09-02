@@ -819,6 +819,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       .catch((e) => {
         if (removed || myEpoch !== epoch) return
         if (e instanceof FeedUnavailableError) {
+          feedStatus = 'feed_unavailable'
           events.onFeedStatus?.('feed_unavailable')
           return // terminal — don't open a live subscription for a symbol nothing serves
         }

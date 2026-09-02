@@ -652,6 +652,19 @@ describe('the widget wires the plane where the contract says it does', () => {
     expect(depsBlock).not.toMatch(/\bcandles\b/)
   })
 
+  it('the feed status an extension reads is the one the host was told, on every path', () => {
+    // Every site that raises onFeedStatus assigns the seam's read first, with the same value: a
+    // symbol the widget already called unserved must not answer null to an overlay that asks.
+    const sites = [...hostSrc.matchAll(/^(\s*)events\.onFeedStatus\?\.\(([^)]+)\)/gm)]
+    expect(sites.length).toBeGreaterThanOrEqual(2)
+    for (const site of sites) {
+      const before = hostSrc.slice(0, site.index).split('\n').filter((l) => l.trim() !== '').at(-1)!.trim()
+      expect(before).toBe(`feedStatus = ${site[2]}`)
+    }
+    // …and a reload resets it before the new subscription speaks.
+    expect(hostSrc).toMatch(/feedStatus = null \/\/ the new subscription/)
+  })
+
   it('a symbol or timeframe switch reaches the plane BEFORE the reload that repaints', () => {
     for (const [notify, lane] of [
       ['extHost?.symbolChanged(next)', 'symbol'],
