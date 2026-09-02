@@ -28,7 +28,7 @@ interface Term {
 const TARGET: Record<'W1-A' | 'W2-A' | 'W3-A' | 'W5-A', { reason: string; terms: Term[] }> = {
   // PCL-4 datafeed narrowing and symbology: SymbolInfo replaces tick plus pricePrecision; the
   // quote board and the onQuote callback leave the free datafeed.
-  'W1-A': {
+  'W2-A': {
     reason: 'SymbolInfo owns price-format facts; no L1 or quote-board API in Quick Charts',
     terms: [
       { term: 'pricePrecision', pattern: /\bpricePrecision\b/, scope: 'package' },
@@ -39,7 +39,7 @@ const TARGET: Record<'W1-A' | 'W2-A' | 'W3-A' | 'W5-A', { reason: string; terms:
     ],
   },
   // PCL-3 chart-trading extraction, and the PCL-4 rename of the layout's trading symbol.
-  'W2-A': {
+  'W1-A': {
     reason: 'trading vocabulary and APIs leave the free root; the layout names an active symbol',
     terms: [
       { term: 'createOrderTicket', pattern: /\bcreateOrderTicket\b/, scope: 'package' },

@@ -63,26 +63,26 @@ describe('the direct dependency set, as built', () => {
 // TARGET. Each block is the acceptance gate in full; the stream that lands the removal deletes the
 // `.skip`, and the matching as-built pin above moves with it.
 describe('the free chart dependency boundary (target)', () => {
-  // W2-A (PCL-3 chart-trading extraction): trade lines, execution marks, the chart order draft,
+  // W1-A (PCL-3 chart-trading extraction): trade lines, execution marks, the chart order draft,
   // gesture planning, and the account panel move to packages/chart-trading; the manifest loses
   // @trdrs/broker and @trdrs/account-manager.
-  it.skip('[W2-A unskips] carries no broker or account-manager edge, direct or through another organ', () => {
+  it.skip('[W1-A unskips] carries no broker or account-manager edge, direct or through another organ', () => {
     const ids = shippedClosure('packages/chart').map((e) => e.id)
     expect(ids.filter((id) => id === '@trdrs/broker' || id === '@trdrs/account-manager')).toEqual([])
     expect(directDependencies().dependencies).not.toContain('@trdrs/broker')
     expect(directDependencies().dependencies).not.toContain('@trdrs/account-manager')
   })
 
-  // W2-A (PCL-4 chart-owned localization runtime): the packed artifact bundles its own runtime and
+  // W1-C (PCL-4 chart-owned localization runtime): the packed artifact bundles its own runtime and
   // chart catalogs; @trdrs/i18n stays private and leaves the manifest.
-  it.skip('[W2-A unskips] carries no @trdrs/i18n edge', () => {
+  it.skip('[W1-C unskips] carries no @trdrs/i18n edge', () => {
     expect(shippedClosure('packages/chart').map((e) => e.id)).not.toContain('@trdrs/i18n')
     expect(directDependencies().dependencies).not.toContain('@trdrs/i18n')
   })
 
   // Whoever lands the last removal above also unskips the whole-set gate: no private workspace
   // package of any kind reaches the tarball, and the closure holds no forbidden name.
-  it.skip('[W2-A unskips, after both blocks above] ships no private workspace package and no forbidden name', () => {
+  it.skip('[W1-A unskips, after both blocks above] ships no private workspace package and no forbidden name', () => {
     const closure = shippedClosure('packages/chart')
     expect(closure.map((e) => e.id).filter((id) => FORBIDDEN.includes(id))).toEqual([])
     // chart-drawings is packed into the artifact under its drawing subpath, so once bundled it is
