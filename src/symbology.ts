@@ -11,10 +11,7 @@
 // either: they are quote data a host fans out on its own.
 //
 // This module is self-contained by the same rule as `datafeed.ts` — the contract must never drag a
-// backend SDK into the chart's dependency surface. Its two type imports are the chart's own session
-// vocabulary, which symbology carries rather than restates.
-import type { SessionClass } from './datafeed'
-import type { HolidayCalendar } from './sessions'
+// backend SDK into the chart's dependency surface. It imports nothing.
 
 /** How one symbol's prices are WRITTEN, in the reference's own five facts. Together they express
  *  every supported form: decimal, pip, fractional, fraction of a fraction, and variable tick.
@@ -44,14 +41,29 @@ export interface PriceFormat {
  *  stream behind a delay, not a degraded `streaming`. */
 export type DataStatus = 'streaming' | 'endofday' | 'delayed_streaming'
 
+/** The reference's subsession ids. `regular` is the weekly `session`; `premarket` and
+ *  `postmarket` are the extended spans before and after it; `extended` is the whole span from
+ *  pre-market open through post-market close. */
+export type SubsessionId = 'regular' | 'extended' | 'premarket' | 'postmarket'
+
+/** One named session of a market with extended hours, the reference's subsession shape. `session`
+ *  uses the grammar of `SymbolInfo.session`; `sessionCorrections` uses the grammar of
+ *  `SymbolInfo.corrections` and lists only the days that shorten THIS subsession. `description`
+ *  is a label a feed may state; the chart labels a subsession by its `id` from its own catalog. */
+export interface Subsession {
+  id: SubsessionId
+  session: string
+  description?: string
+  sessionCorrections?: string
+}
+
 /** Resolved metadata for ONE symbol: everything the chart needs to title it, page it, session it,
  *  and write its prices.
  *
- *  `timezone`/`session`/`sessionHolidays` are the reference's exchange-hours triple and travel with
- *  the symbol for display and session math. `sessionClass`/`sessionCalendar` are the chart's own
- *  session-band model (`sessions.ts`), which resolves market state, band rendering and the
- *  regular-hours filter; a feed that knows only the reference triple leaves them unset and the
- *  chart falls back to its per-class defaults rather than claiming a session it cannot support. */
+ *  `timezone`, `session`, `sessionHolidays`, `corrections` and `subsessions` are the reference's
+ *  exchange-hours facts and travel with the symbol. The chart's session model (`sessionModel.ts`)
+ *  is built from them alone: market state, session shading, the regular-hours filter and the
+ *  status popup all read what the feed said, and a feed that states no extended hours gets none. */
 export interface SymbolInfo {
   /** The symbol the datafeed answers to on every later call. */
   ticker: string
@@ -74,8 +86,15 @@ export interface SymbolInfo {
   timezone: string
   /** The reference session string, e.g. '1700-1600' or '0930-1600'. */
   session: string
-  /** The reference session-holidays string: comma-separated 'YYYYMMDD' dates. */
+  /** The reference session-holidays string: comma-separated 'YYYYMMDD' full closures. */
   sessionHolidays?: string
+  /** The reference corrections string: `;`-separated `<session>:<dates>` entries, each a session in
+   *  the grammar of `session` that holds on the `,`-separated 'YYYYMMDD' trading days named. A
+   *  correction outranks a holiday on the same date. */
+  corrections?: string
+  /** The symbol's named sessions, for a market whose exchange keeps extended hours. Absent for a
+   *  market with one continuous session. */
+  subsessions?: readonly Subsession[]
   dataStatus: DataStatus
   /** ISO 4217 for a money-quoted symbol; absent when the quote unit is not a currency. */
   currencyCode?: string
@@ -84,14 +103,6 @@ export interface SymbolInfo {
   /** Decimal places for a volume value. 0 for a whole-contract market. */
   volumePrecision: number
   format: PriceFormat
-  /** The chart's session-band model for this symbol. Absent leaves the chart on its per-class
-   *  defaults, never a wrong session claim. */
-  sessionClass?: SessionClass
-  /** The session model's holiday calendar: `holidays` maps exchange-local 'YYYY-MM-DD' dates to
-   *  that day's trading segments (empty = a full closure; absent dates follow the weekday rules),
-   *  and `coverageThrough` is the last date the calendar speaks for. The feed owns holiday truth,
-   *  because the calendar churns annually and must never be client-bundled. */
-  sessionCalendar?: HolidayCalendar
 }
 
 /** One band of a `variableTickSize` ladder: `size` is the tick that applies to prices strictly below

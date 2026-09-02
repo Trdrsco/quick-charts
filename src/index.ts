@@ -8,7 +8,6 @@ export type {
   FeedBar,
   SymbolRow,
   SearchPage,
-  SessionClass,
   HistoryPage,
   OlderPageVerdict,
   BarsEvent,
@@ -79,25 +78,7 @@ export { chartContextMenu, type ChartMenuAction, type ChartMenuContext, type Cha
 export { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
 export { coerceScaleMode, PRICE_SCALE_MODE, SCALE_MODES, SCALE_MODE_OPTIONS, type ScaleMode } from './scaleMode'
 export { attachCompare, clipToWindow, COMPARE_COLORS, pickCompareColor, seriesTargetOf, type CompareDeps, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSnapshot, type CompareSymbol } from './compare'
-export {
-  createSessionBands,
-  exchangeZoneOf,
-  isIntradayTf,
-  knownMarketKind,
-  marketKindOf,
-  nextSessionChange,
-  sessionOf,
-  sessionTimeline,
-  setHolidayCalendar,
-  SESSION_DOT,
-  SESSION_LABEL,
-  type HolidayCalendar,
-  type MarketKind,
-  type MarketSession,
-  type MaybeMarketKind,
-  type SessionBandsPrimitive,
-  type SessionTimeline,
-} from './sessions'
+export { createSessionBands, SESSION_DOT, SESSION_LABEL, type SessionBandsPrimitive } from './sessions'
 
 export type {
   ChartWidgetApi,
@@ -249,8 +230,24 @@ export {
   tzOffsetMinutes,
   zoneClock,
 } from './timezones'
-export type { MarketStatus, SessionModel, SessionSchedule, SessionSegment, SessionSource, SessionState, SubsessionSource } from './sessionModel'
-export { exchangeTimezoneText, formatDuration, marketStatus, marketStatusFor, marketStatusText, marketStatusTitle, parseSessionModel, sessionStateAt, SESSION_STATE_TITLE } from './sessionModel'
+export type { Subsession, SubsessionId } from './symbology'
+export type { ActiveSubsession, MarketStatus, SessionModel, SessionSchedule, SessionSegment, SessionSource, SessionState, SessionTimeline, SubsessionSource } from './sessionModel'
+export {
+  DEFAULT_SUBSESSION,
+  exchangeTimezoneText,
+  formatDuration,
+  hasExtendedHours,
+  marketStatus,
+  marketStatusFor,
+  marketStatusText,
+  marketStatusTitle,
+  nextSessionChange,
+  parseSessionModel,
+  sessionStateAt,
+  sessionTimeline,
+  subsessionBarFilter,
+  SESSION_STATE_TITLE,
+} from './sessionModel'
 export type { RangeFrameTarget, RangePreset, RangeSpan } from './ranges'
 export { frameRange, MIN_BAR_SPACING, RANGE_PRESETS, rangeAvailable, rangePresetTip, rangeSpanSeconds, SCROLL_STEP_BARS, scrolledPosition, ZOOM_FACTOR, zoomedBarSpacing } from './ranges'
 export type { MatchSegment, RecentsPort, SearchController, SearchControllerOptions, SearchState, SpreadOperator } from './search'

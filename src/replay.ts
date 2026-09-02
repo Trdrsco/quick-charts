@@ -5,17 +5,20 @@
 // form bars progressively from finer fetches — but the vocabulary must be ONE, or two replays
 // disagree about what '4h auto on a daily chart' means.
 
+import { parseTimeframe, timeframeSeconds } from './timeframe'
+
+
 /** Updates per second, fastest first. */
 export const REPLAY_SPEEDS = [10, 7, 5, 3, 1, 0.5, 0.3, 0.2, 0.1] as const
 export type ReplaySpeed = (typeof REPLAY_SPEEDS)[number]
 
-/** Seconds per bar for the wire tf tokens replay meets ('1m'…'1mo'); 0 when unknown (ticks,
- *  seconds — too fine to subdivide meaningfully). */
+/** Seconds per bar for the timeframe tokens replay meets ('1m' to '1mo'), by the chart grammar's
+ *  nominal seconds; 0 for ticks and seconds (too fine to subdivide meaningfully) and for a token
+ *  the grammar cannot read. */
 export function tfSeconds(tf: string): number {
-  const m = /^(\d+)(m|h|d|w|mo)$/.exec(tf)
-  if (!m) return 0
-  const n = Number(m[1])
-  return n * (m[2] === 'm' ? 60 : m[2] === 'h' ? 3600 : m[2] === 'd' ? 86400 : m[2] === 'w' ? 604800 : 2592000)
+  const parsed = parseTimeframe(tf)
+  if (!parsed || parsed.unit === 't' || parsed.unit === 's') return 0
+  return timeframeSeconds(parsed)
 }
 
 /** Sub-interval ladder the update-interval menu draws from (wire tf tokens, seconds). */

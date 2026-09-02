@@ -37,12 +37,6 @@ export interface SearchPage {
   hasMore: boolean
 }
 
-/** The trading-session model a symbol follows — SERVED by the feed rather than guessed from the
- *  display type, because session rendering (bands, market status, the regular-hours filter,
- *  holidays) must follow what the venue actually trades. A feed that omits it leaves the chart on
- *  its own per-class defaults. */
-export type SessionClass = 'equity' | 'futures' | 'fx' | 'crypto'
-
 export interface HistoryPage {
   bars: FeedBar[]
   /** True when a countBack ask found NOTHING — the "no more history, stop scrolling back" signal.

@@ -17,7 +17,13 @@
   subsessions in the reference grammar, and `sessionStateAt`, `marketStatus`, `marketStatusFor`,
   `marketStatusTitle`, `marketStatusText`, `formatDuration` and `exchangeTimezoneText` answer the
   session state and the market status over it, with the feed's `dataStatus` an explicit part of
-  the status. **`RANGE_PRESETS`** lists the nine range presets; `rangeAvailable`, `rangeSpanSeconds`,
+  the status; `nextSessionChange` and `sessionTimeline` answer the next transition and the
+  exchange-local day. `SymbolInfo` carries `corrections` and `subsessions` (`Subsession`,
+  `SubsessionId`), the UDF and engine mappings copy them, and `createSessionBands` shades over the
+  same model. Which named session a chart displays is the `ActiveSubsession` (`regular` by
+  default, `DEFAULT_SUBSESSION`); `hasExtendedHours` and `subsessionBarFilter` apply it. The
+  session vocabulary is one set of five states (`SessionState`), `extended` among them, keyed
+  through `SESSION_DOT`, `SESSION_LABEL` and the catalog's `session.*`. **`RANGE_PRESETS`** lists the nine range presets; `rangeAvailable`, `rangeSpanSeconds`,
   `rangePresetTip` and `frameRange` apply them, and `zoomedBarSpacing` and `scrolledPosition` apply
   the navigation steps `ZOOM_FACTOR`, `MIN_BAR_SPACING` and `SCROLL_STEP_BARS`.
   **`createSearchController`** drives a symbol search over the datafeed with a debounce, a cache
@@ -114,28 +120,6 @@
 
 - **Fix:** `createChart` no longer crashes at mount when the datafeed declares no `config()` (the
   synchronous first load reached a replay helper before its initializer ran).
-
-- **Holiday calendars are SERVED, never bundled.** `SymbolInfo` gains optional
-  **`sessionCalendar`** (exchange-local `'YYYY-MM-DD'` → that day's trading segments; empty = a
-  full closure; absent dates follow the weekday rules) and the package exports
-  **`setHolidayCalendar(kind, calendar | null)`** — the widget registers a served calendar per
-  session class automatically on `resolve()`. The previously bundled NYSE/CME tables are REMOVED:
-  holiday truth churns annually and belongs to the datafeed (the reference platform serves the
-  same knowledge as `session_holidays`/`corrections`); a feed that serves none gets weekday rules,
-  honestly uncorrected. Session math still runs entirely in the exchange timezone — the viewer's
-  display timezone never enters it.
-
-- **`knownMarketKind(catalogType, served?)`** added — the honest sibling of `marketKindOf`: returns
-  `null` (new exported alias `MaybeMarketKind`) when the session model is not actually known,
-  including the case a served `'futures'` rides an unrecognized display type (indistinguishable
-  from the wire mapping's catch-all default). `marketKindOf` is unchanged.
-- **`createSessionBands`** — the `kind` getter is widened to `MarketKind | null`
-  (source-compatible: a narrower getter still satisfies it); a null draws nothing. The primitive
-  now returns **`SessionBandsPrimitive`**, adding `refresh()` — hosts must call it when the model
-  changes outside a chart repaint, or the new bands appear only on the next incidental paint.
-- Session math (`sessionOf`, `sessionTimeline`, `exchangeZoneOf`, `nextSessionChange`) now
-  tolerates a kind from outside the union (decoded storage, a newer wire): classifies `closed`
-  instead of throwing mid-paint.
 
 ## 0.1.0 — 2026-08-06
 

@@ -1,312 +1,51 @@
-// Market sessions, per asset class. Three consumers: the SESSION BANDS primitive (shades
-// non-regular stretches of the chart), the legend's market-status dot, and the Market Status
-// pop-up (status text + countdown + the day's session timeline). All session math runs in the
-// EXCHANGE timezone via Intl, so DST is always the IANA database's answer.
-//
-//   equity  — US equities (New York): pre 04:00–09:30 · regular 09:30–16:00 · after 16:00–20:00,
-//             weekdays only.
-//   futures — CME Globex (Chicago), the TradingView ETH/RTH split: the full electronic session
-//             (ETH) opens Sunday 17:00 and trades around the clock to Friday 16:00 with the
-//             16:00–17:00 daily maintenance break; RTH ('open') is 08:30–15:15 within it, and the
-//             rest classifies 'eth'.
-//   fx      — spot FX + metals/rates/commodity indices (New York): Sunday 17:00 through Friday
-//             17:00, continuous.
-//   crypto  — 24/7; always open, no bands, no timeline transitions.
-//
-// Holidays: SERVED, never bundled (see the registry below). The weekday rules here are stable
-// exchange law; the annually-churning holiday dates ride the datafeed's symbol metadata and are
-// registered per session class at resolve time. A date outside a served calendar (or a class with
-// none registered) follows the weekday rules — honestly uncorrected, never a guessed calendar.
-// fx stays holiday-less by decision (venue-dependent, and the class is already an approximation).
+// Session shading and the session colors, over the symbol's own session model (sessionModel.ts).
+// Two consumers: the SESSION BANDS primitive, which shades every stretch of the visible chart that
+// is not regular hours, and the legend's market-status dot, which wears the state's color. Both
+// read what the feed said about the symbol and nothing else: a symbol whose model is not known
+// draws nothing, and a continuous market never bands.
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
-import type { SessionClass } from './datafeed'
-
-export type MarketSession = 'pre' | 'open' | 'eth' | 'after' | 'closed'
-/** The session models the chart renders. Identical to the datafeed's `SessionClass` by
- *  construction (the served value is assigned straight into it), so a feed can state a symbol's
- *  session model and the chart obeys it. */
-export type MarketKind = SessionClass
-
-/** The session model for a symbol: the feed's SERVED class when it states one, else a guess from
- *  the catalog display type (unknown tokens trade like futures — the platform's home asset class).
- *  Served-first is the point: an equity-typed row on a 24/7 venue is neither, and only the feed
- *  knows. */
-export function marketKindOf(catalogType: string, served?: SessionClass | null): MarketKind {
-  if (served) return served
-  if (catalogType === 'crypto') return 'crypto'
-  if (catalogType === 'equity') return 'equity'
-  if (catalogType === 'fx' || catalogType === 'metal' || catalogType === 'rates' || catalogType === 'commodity') return 'fx'
-  return 'futures'
-}
-
-/** A session model, or null while it is genuinely not known. */
-export type MaybeMarketKind = MarketKind | null
-
-/** Display types the chart has a session model for. A token outside this set is not a session
- *  claim: the wire's type→class mapping answers 'futures' for anything it does not enumerate, so
- *  an unrecognized type paired with a served 'futures' is indistinguishable from that default. */
-const SESSION_TYPES: ReadonlySet<string> = new Set(['future', 'crypto', 'equity', 'fx', 'metal', 'rates', 'commodity'])
-
-/** The session model when it is actually KNOWN, else null — the honest sibling of `marketKindOf`
- *  for a caller that would rather draw nothing than draw a default. The served class wins, except
- *  a served 'futures' on a display type the chart does not enumerate, which reads as unknown (the
- *  engine's mapping cannot abstain — its catch-all IS 'futures' — so that pairing is
- *  indistinguishable from "the engine had no idea"). */
-export function knownMarketKind(catalogType: string | null | undefined, served?: SessionClass | null): MaybeMarketKind {
-  const known = catalogType != null && SESSION_TYPES.has(catalogType)
-  if (served) return served === 'futures' && !known ? null : served
-  return known ? marketKindOf(catalogType as string) : null
-}
-
-interface SessionSegment {
-  /** Minutes from exchange-local midnight; end exclusive (1440 = next midnight). */
-  readonly start: number
-  readonly end: number
-  readonly session: Exclude<MarketSession, 'closed'>
-}
-
-interface MarketSpec {
-  readonly tz: string
-  readonly tzCity: string
-  /** The day's trading segments for an exchange-local weekday (0 = Sunday). Gaps are closed. */
-  day(weekday: number): readonly SessionSegment[]
-}
-
-const EQUITY_DAY: readonly SessionSegment[] = [
-  { start: 4 * 60, end: 9 * 60 + 30, session: 'pre' },
-  { start: 9 * 60 + 30, end: 16 * 60, session: 'open' },
-  { start: 16 * 60, end: 20 * 60, session: 'after' },
-]
-
-const SPECS: Record<MarketKind, MarketSpec> = {
-  equity: {
-    tz: 'America/New_York',
-    tzCity: 'New York',
-    day: (wd) => (wd === 0 || wd === 6 ? [] : EQUITY_DAY),
-  },
-  futures: {
-    tz: 'America/Chicago',
-    tzCity: 'Chicago',
-    day: (wd) => {
-      if (wd === 6) return []
-      if (wd === 0) return [{ start: 17 * 60, end: 1440, session: 'eth' }]
-      const weekday: readonly SessionSegment[] = [
-        { start: 0, end: 8 * 60 + 30, session: 'eth' },
-        { start: 8 * 60 + 30, end: 15 * 60 + 15, session: 'open' },
-        { start: 15 * 60 + 15, end: 16 * 60, session: 'eth' },
-      ]
-      if (wd === 5) return weekday
-      return [...weekday, { start: 17 * 60, end: 1440, session: 'eth' }]
-    },
-  },
-  fx: {
-    tz: 'America/New_York',
-    tzCity: 'New York',
-    day: (wd) => {
-      if (wd === 6) return []
-      if (wd === 0) return [{ start: 17 * 60, end: 1440, session: 'open' }]
-      if (wd === 5) return [{ start: 0, end: 17 * 60, session: 'open' }]
-      return [{ start: 0, end: 1440, session: 'open' }]
-    },
-  },
-  crypto: {
-    tz: 'Etc/UTC',
-    tzCity: 'UTC',
-    day: () => [{ start: 0, end: 1440, session: 'open' }],
-  },
-}
-
-const UNKNOWN_SPEC: MarketSpec = { tz: 'Etc/UTC', tzCity: 'UTC', day: () => [] }
-/** SPECS lookup that survives a value from outside the union (decoded storage, a wire that grew a
- *  class this build has not shipped): an unrecognized kind classifies 'closed' instead of throwing —
- *  a throw in this path crashes every chart paint (see the zOrder note below). */
-function specOf(kind: MarketKind): MarketSpec {
-  return (SPECS as Partial<Record<string, MarketSpec>>)[kind] ?? UNKNOWN_SPEC
-}
-
-/** The asset class's exchange timezone (the clock its sessions run on). */
-export function exchangeZoneOf(kind: MarketKind): { tz: string; city: string } {
-  const spec = specOf(kind)
-  return { tz: spec.tz, city: spec.tzCity }
-}
-
-/* ── Holiday overrides (exchange-local dates) ────────────────────────────────
-   The calendar is SERVED, never bundled: holiday dates churn annually, and a client-shipped table
-   is a silently-expiring copy of server truth (the reference platform serves the same knowledge as
-   session_holidays/corrections on its symbol metadata). A datafeed that resolves a symbol with a
-   `sessionCalendar` registers it here per session class; a class with no registered calendar
-   follows its weekday rules uncorrected — the feed owns holiday truth or there is none. */
-
-/** One served holiday calendar: exchange-local 'YYYY-MM-DD' → the day's trading segments (empty =
- *  a full closure); a date absent from the map follows the weekday rules. */
-export interface HolidayCalendar {
-  readonly holidays: Readonly<Record<string, readonly { start: number; end: number; session: Exclude<MarketSession, 'closed'> }[]>>
-  readonly coverageThrough: string
-}
-
-const servedCalendars = new Map<MarketKind, HolidayCalendar>()
-
-/** Register (or clear, with null) the served holiday calendar for a session class. Idempotent and
- *  class-level: every symbol of the class shares one exchange calendar, so last-write-wins is
- *  correct. Called by the datafeed layer when a resolve carries `sessionCalendar`. */
-export function setHolidayCalendar(kind: MarketKind, calendar: HolidayCalendar | null): void {
-  if (calendar === null) servedCalendars.delete(kind)
-  else servedCalendars.set(kind, calendar)
-}
-
-/** The trading segments for one exchange-local calendar day: the SERVED holiday override when the
- *  class has a registered calendar carrying the date, the weekday rules otherwise. */
-function daySegments(kind: MarketKind, dateKey: string, weekday: number): readonly SessionSegment[] {
-  return servedCalendars.get(kind)?.holidays[dateKey] ?? specOf(kind).day(weekday)
-}
-
-const WEEKDAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
-
-const localFmtCache = new Map<string, Intl.DateTimeFormat>()
-function localParts(epochMs: number, tz: string): { weekday: number; mins: number; dateKey: string } {
-  let fmt = localFmtCache.get(tz)
-  if (!fmt) {
-    fmt = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      hour12: false,
-      weekday: 'short',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-    localFmtCache.set(tz, fmt)
-  }
-  const parts = fmt.formatToParts(new Date(epochMs))
-  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
-  return {
-    weekday: WEEKDAY_INDEX[get('weekday')] ?? 0,
-    mins: (Number(get('hour')) % 24) * 60 + Number(get('minute')),
-    dateKey: `${get('year')}-${get('month')}-${get('day')}`,
-  }
-}
-
-/** Classify an epoch (seconds or ms) into a market session under the asset class's exchange clock. */
-export function sessionOf(epoch: number, kind: MarketKind): MarketSession {
-  const ms = epoch < 1e12 ? epoch * 1000 : epoch
-  const spec = specOf(kind)
-  const { weekday, mins, dateKey } = localParts(ms, spec.tz)
-  const seg = daySegments(kind, dateKey, weekday).find((s) => mins >= s.start && mins < s.end)
-  return seg?.session ?? 'closed'
-}
-
-/** The next session transition after `epochSecs`, exact to the minute (found by scan + binary
- *  search over real classifications, so DST weeks resolve correctly). Null = never (crypto). */
-export function nextSessionChange(epochSecs: number, kind: MarketKind): { atSecs: number; session: MarketSession } | null {
-  if (kind === 'crypto') return null
-  const from = sessionOf(epochSecs, kind)
-  const STEP = 15 * 60
-  const LIMIT = 8 * 86_400
-  let lo = epochSecs
-  let hi = epochSecs
-  for (let off = STEP; off <= LIMIT; off += STEP) {
-    hi = epochSecs + off
-    if (sessionOf(hi, kind) !== from) break
-    lo = hi
-  }
-  if (sessionOf(hi, kind) === from) return null
-  while (hi - lo > 60) {
-    // Floor to a minute but never back onto `lo` — a sub-2-minute window would otherwise loop.
-    const mid = lo + Math.max(60, Math.floor((hi - lo) / 2 / 60) * 60)
-    if (sessionOf(mid, kind) === from) lo = mid
-    else hi = mid
-  }
-  return { atSecs: hi, session: sessionOf(hi, kind) }
-}
-
-export interface SessionTimeline {
-  /** The exchange-local day's segments, closed gaps included, covering 0–1440. */
-  readonly segments: readonly { start: number; end: number; session: MarketSession }[]
-  /** Now, in exchange-local minutes from midnight. */
-  readonly nowMins: number
-  /** Exchange-local weekday label ("MON"), in the language the caller asked for. */
-  readonly dayLabel: string
-  readonly tz: string
-  readonly tzCity: string
-}
-
-const weekdayFmtCache = new Map<string, Intl.DateTimeFormat>()
-
-/** The current exchange-local day's session timeline for the Market Status pop-up. `tag` is the BCP
- *  47 tag the day's name is written in — a date part, so it comes from `Intl` rather than a catalog,
- *  and English is what it reads without one. */
-export function sessionTimeline(epochSecs: number, kind: MarketKind, tag = 'en-US'): SessionTimeline {
-  const spec = specOf(kind)
-  const { weekday, mins, dateKey } = localParts(epochSecs * 1000, spec.tz)
-  const open = daySegments(kind, dateKey, weekday)
-  const segments: { start: number; end: number; session: MarketSession }[] = []
-  let cursor = 0
-  for (const s of open) {
-    if (s.start > cursor) segments.push({ start: cursor, end: s.start, session: 'closed' })
-    segments.push({ start: s.start, end: s.end, session: s.session })
-    cursor = s.end
-  }
-  if (cursor < 1440) segments.push({ start: cursor, end: 1440, session: 'closed' })
-  const cacheKey = `${tag}|${spec.tz}`
-  let weekdayFmt = weekdayFmtCache.get(cacheKey)
-  if (!weekdayFmt) {
-    weekdayFmt = new Intl.DateTimeFormat(tag, { timeZone: spec.tz, weekday: 'short' })
-    weekdayFmtCache.set(cacheKey, weekdayFmt)
-  }
-  const dayLabel = weekdayFmt.format(new Date(epochSecs * 1000)).toUpperCase()
-  return { segments, nowMins: mins, dayLabel, tz: spec.tz, tzCity: spec.tzCity }
-}
-
-/** The chart's session view (TradingView's CME model): ETH shows every bar; RTH filters intraday
- *  bars to regular hours. Persisted once for all charts. */
-/** True for a sub-daily timeframe token (t/s/m/h units) — session bands and regular-hours
- *  filtering only make sense intraday, because a daily+ bar spans whole sessions. An unparseable
- *  token reads as NOT intraday: mis-shading a chart is worse than not shading it. */
-export function isIntradayTf(tf: string): boolean {
-  return /^\d+(t|s|m|h)$/.test(tf)
-}
+import { sessionStateAt, type SessionModel, type SessionState } from './sessionModel'
 
 /** The session's name in English — what a host renders when it shows status text of its own. The
- *  widget's catalog carries the same five under `session.<name>`, keyed by these very names, so a
+ *  widget's catalog carries the same five under `session.<state>`, keyed by these very names, so a
  *  host reading the catalog and a host reading this table always say the same thing. */
-export const SESSION_LABEL: Record<MarketSession, string> = {
+export const SESSION_LABEL: Readonly<Record<SessionState, string>> = {
   pre: 'Pre-market',
   open: 'Market open',
-  eth: 'Electronic hours',
+  extended: 'Extended hours',
   after: 'After-hours',
   closed: 'Market closed',
 }
 
-export const SESSION_DOT: Record<MarketSession, string> = {
+export const SESSION_DOT: Readonly<Record<SessionState, string>> = {
   pre: '#4c98fb',
   open: '#22c55e',
-  eth: '#4c98fb',
+  extended: '#4c98fb',
   after: '#f5a623',
   closed: 'rgba(255,255,255,0.35)',
 }
 
-const BAND_FILL: Record<Exclude<MarketSession, 'open'>, string> = {
+const BAND_FILL: Readonly<Record<Exclude<SessionState, 'open'>, string>> = {
   pre: 'rgba(76,152,251,0.05)',
-  eth: 'rgba(76,152,251,0.05)',
+  extended: 'rgba(76,152,251,0.05)',
   after: 'rgba(245,166,35,0.045)',
   closed: 'rgba(0,0,0,0.22)',
 }
 
 /** A series primitive that shades every non-regular-hours stretch of the visible chart. Bars are
- *  read back from the price series (no second feed), classified under the CURRENT market kind,
- *  merged into runs, and drawn as full-height rects UNDER the candles (zOrder bottom). Re-renders
- *  with every chart paint, so it tracks pan/zoom for free. An UNKNOWN model (null) never bands —
- *  drawing nothing is the only honest render before the symbol resolves. Crypto never bands
- *  (always open), and bands render on INTRADAY intervals only — a daily+ bar spans whole sessions,
- *  so classifying its single timestamp would shade entire days by whichever session that instant
- *  fell in. */
+ *  read back from the price series (no second feed), classified under the symbol's CURRENT session
+ *  model, merged into runs, and drawn as full-height rects UNDER the candles (zOrder bottom).
+ *  Re-renders with every chart paint, so it tracks pan/zoom for free. An UNKNOWN model (null)
+ *  never bands: drawing nothing is the only honest render before the symbol resolves. A continuous
+ *  market never bands (it is always open), and bands render on INTRADAY intervals only: a daily or
+ *  larger bar spans whole sessions, so classifying its single timestamp would shade entire days by
+ *  whichever session that instant fell in. */
 export interface SessionBandsPrimitive {
   paneViews(): unknown[]
   attached(param: { requestUpdate?: () => void }): void
   detached(): void
-  /** Repaint now. The primitive reads `enabled`/`kind`/`intraday` through getters and NOTHING in
-   *  the chart invalidates the pane when one of them changes — the host pokes it here when the
+  /** Repaint now. The primitive reads `enabled`/`model`/`intraday` through getters and NOTHING in
+   *  the chart invalidates the pane when one of them changes: the host pokes it here when the
    *  session model resolves or a setting flips, or bands appear only on the next incidental
    *  repaint (on a quiet market: never). */
   refresh(): void
@@ -316,18 +55,18 @@ export function createSessionBands(
   chart: IChartApi,
   series: ISeriesApi<SeriesType>,
   enabled: () => boolean,
-  kind: () => MaybeMarketKind,
+  model: () => SessionModel | null,
   intraday: () => boolean,
 ): SessionBandsPrimitive {
   const renderer = {
     draw(target: unknown) {
-      const k = kind()
-      if (!enabled() || !intraday() || k === null || k === 'crypto') return
+      const m = model()
+      if (!enabled() || !intraday() || m === null || m.continuous) return
       const t = target as {
         useBitmapCoordinateSpace: (fn: (scope: { context: CanvasRenderingContext2D; bitmapSize: { width: number; height: number }; horizontalPixelRatio: number }) => void) => void
       }
       t.useBitmapCoordinateSpace((scope) => {
-        // REAL bars only — the future-whitespace horizon (right-margin drawing) must not paint
+        // REAL bars only: the future-whitespace horizon (right-margin drawing) must not paint
         // session bands into empty space past the last candle.
         const data = (series.data() as { time: Time; close?: number; value?: number }[]).filter(
           (b) => typeof b.close === 'number' || typeof b.value === 'number',
@@ -337,11 +76,11 @@ export function createSessionBands(
         const range = ts.getVisibleRange()
         if (!range) return
         const barW = ts.options().barSpacing
-        // Merge consecutive same-session bars into runs (visible window only, with 1-bar slack).
+        // Merge consecutive same-state bars into runs (visible window only, with 1-bar slack).
         let runStart: number | null = null
-        let runSession: MarketSession | null = null
+        let runState: SessionState | null = null
         const flush = (endTime: number) => {
-          if (runStart == null || runSession == null || runSession === 'open') {
+          if (runStart == null || runState == null || runState === 'open') {
             runStart = null
             return
           }
@@ -354,7 +93,7 @@ export function createSessionBands(
           const r = scope.horizontalPixelRatio
           const left = ((x1 ?? -barW) - barW / 2) * r
           const right = ((x2 ?? scope.bitmapSize.width / r + barW) + barW / 2) * r
-          scope.context.fillStyle = BAND_FILL[runSession]
+          scope.context.fillStyle = BAND_FILL[runState]
           scope.context.fillRect(left, 0, right - left, scope.bitmapSize.height)
           runStart = null
         }
@@ -362,19 +101,19 @@ export function createSessionBands(
         for (const bar of data) {
           const time = bar.time as number
           if (time < (range.from as number) - 86_400 || time > (range.to as number) + 86_400) continue
-          const s = sessionOf(time, k)
-          if (s !== runSession) {
-            if (runSession != null) flush(prevTime)
+          const s = sessionStateAt(m, time)
+          if (s !== runState) {
+            if (runState != null) flush(prevTime)
             runStart = time
-            runSession = s
+            runState = s
           }
           prevTime = time
         }
-        if (runSession != null) flush(prevTime)
+        if (runState != null) flush(prevTime)
       })
     },
   }
-  // NOTE: in lightweight-charts v5 a pane view's zOrder is a METHOD — a plain property makes the
+  // NOTE: in lightweight-charts v5 a pane view's zOrder is a METHOD: a plain property makes the
   // library call a string and crash every chart paint (which unmounts the whole app).
   let requestUpdate: (() => void) | null = null
   return {
