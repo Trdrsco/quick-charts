@@ -9,8 +9,8 @@
 // A row's `id` is what a host acts on and its `label` is what a viewer reads, so the language only
 // ever reaches the label: pass `t` for the widget's language, and the rows read English without it.
 // The symbol and the level a row quotes are the pane's own values. Rows that act on an account
-// (the orders a level can hold) are not the chart's: an extension contributes them for the level,
-// and the painter appends them below these.
+// (the orders a level can hold) or on an application service (an alert) are not the chart's: an
+// extension contributes them for the level, and the painter appends them below these.
 import { englishChartStrings, type ChartTranslate } from './i18n'
 
 /** Every action the menu can offer. A host handles the ids it supports and passes `has` flags for
@@ -19,13 +19,12 @@ export type ChartMenuAction =
   | 'reset-view'
   | 'copy-price'
   | 'paste'
-  | 'add-alert'
   | 'remove-indicators'
   | 'remove-drawings'
   | 'settings'
 
 /** The glyph a row wears, named rather than drawn — the host owns the artwork. */
-export type ChartMenuIcon = 'reset' | 'alert' | 'settings' | 'check'
+export type ChartMenuIcon = 'reset' | 'settings' | 'check'
 
 export type ChartMenuRow =
   | { kind: 'separator' }
@@ -43,10 +42,8 @@ export type ChartMenuRow =
 export interface ChartMenuContext {
   /** The level the pointer landed on, already formatted in the pane's own precision. */
   priceText: string
-  /** The pane's display symbol — the reference names it in every row that acts on the market. */
+  /** The pane's display symbol — a contributed row that acts on the market names it. */
   symbol: string
-  /** Alerts need no account, so this rides for every viewer the host allows. */
-  canAlert: boolean
   /** Counts drive both the wording and whether the row appears at all. */
   indicatorCount: number
   drawingCount: number
@@ -73,12 +70,6 @@ export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
   const clip: ChartMenuRow[] = [{ kind: 'item', id: 'copy-price', label: t('menu.copyPrice', { price: c.priceText }) }]
   if (c.canPaste !== false) clip.push({ kind: 'item', id: 'paste', label: t('menu.paste'), shortcut: 'Ctrl + V' })
   groups.push(clip)
-
-  const market: ChartMenuRow[] = []
-  if (c.canAlert) {
-    market.push({ kind: 'item', id: 'add-alert', label: t('menu.addAlert', { symbol: c.symbol, price: c.priceText }), shortcut: 'Alt + A', icon: 'alert' })
-  }
-  groups.push(market)
 
   const remove: ChartMenuRow[] = []
   if (c.indicatorCount > 0) remove.push({ kind: 'item', id: 'remove-indicators', label: t('menu.removeIndicators', { count: c.indicatorCount }) })

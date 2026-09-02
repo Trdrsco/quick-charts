@@ -8,7 +8,6 @@ import menuUiSrc from '../src/contextMenuUi.ts?raw'
 const base: ChartMenuContext = {
   priceText: '4,512.25',
   symbol: 'ESU6',
-  canAlert: true,
   indicatorCount: 0,
   drawingCount: 0,
 }
@@ -24,26 +23,22 @@ describe('the level menu, in the reference order', () => {
       'Copy price 4,512.25',
       'Paste',
       '—',
-      'Add alert on ESU6 at 4,512.25…',
-      '—',
       'Settings…',
     ])
   })
 
-  // The orders a level can hold are an account's business: the chart's model has no row for one,
-  // and no field that could ask for one. An extension contributes those rows for the level.
-  it('offers no order row and knows no order field', () => {
+  // The orders a level can hold are an account's business and an alert is an application's: the
+  // chart's model has no row for either, and no field that could ask for one. An extension
+  // contributes those rows for the level.
+  it('offers no order or alert row and knows no order or alert field', () => {
     expect(labels().some((l) => /^(Buy|Sell) /.test(l))).toBe(false)
     expect(labels().some((l) => l.startsWith('Add order'))).toBe(false)
-    for (const field of ['aboveMarket', 'tradable', 'canTrade', 'qty', 'marksHidden']) expect(field in base).toBe(false)
+    expect(labels().some((l) => l.startsWith('Add alert'))).toBe(false)
+    for (const field of ['aboveMarket', 'tradable', 'canTrade', 'qty', 'marksHidden', 'canAlert']) expect(field in base).toBe(false)
   })
 })
 
 describe('what a level does NOT offer', () => {
-  it('no alert row where alerts are off', () => {
-    expect(labels({ canAlert: false }).some((l) => l.startsWith('Add alert'))).toBe(false)
-  })
-
   // The reference offers Paste whether or not anything is copied — pasting nothing is a no-op, and
   // a row that comes and goes with an invisible buffer reads as a glitch.
   it('always offers Paste, and offers no remove row at zero', () => {
@@ -63,12 +58,11 @@ describe('counts and state', () => {
 // The WIDGET serves a subset: no clipboard and no settings dialog. A row it cannot serve must not
 // appear at all.
 describe('a host that cannot serve a row does not show it', () => {
-  const widget = { ...base, canAlert: false, canPaste: false, canSettings: false }
-  it('omits paste, settings and the alert row', () => {
+  const widget = { ...base, canPaste: false, canSettings: false }
+  it('omits paste and settings', () => {
     const rows = labels(widget)
     expect(rows).not.toContain('Paste')
     expect(rows).not.toContain('Settings…')
-    expect(rows).not.toContain('Add alert on ESU6 at 4,512.25…')
   })
 
   it('still offers what it CAN serve, with no dangling separator', () => {
@@ -87,7 +81,7 @@ describe('a host that cannot serve a row does not show it', () => {
 
 describe('separators', () => {
   it('never opens, closes, or doubles on an empty group', () => {
-    for (const c of [{}, { canAlert: false }, { canPaste: false, canSettings: false }, { indicatorCount: 3 }]) {
+    for (const c of [{}, { canPaste: false, canSettings: false }, { indicatorCount: 3 }]) {
       const rows = chartContextMenu({ ...base, ...(c as Partial<ChartMenuContext>) })
       expect(rows[0]!.kind).toBe('item')
       expect(rows[rows.length - 1]!.kind).toBe('item')

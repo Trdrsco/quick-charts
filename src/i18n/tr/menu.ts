@@ -5,7 +5,6 @@ export const menu: Translation<typeof source> = {
   'menu.resetView': 'Grafik görünümünü sıfırla',
   'menu.copyPrice': '{price} fiyatını kopyala',
   'menu.paste': 'Yapıştır',
-  'menu.addAlert': '{symbol} için {price} seviyesine uyarı ekle…',
   'menu.removeIndicators': { one: '{count} göstergeyi kaldır', other: '{count} göstergeyi kaldır' },
   'menu.removeDrawings': { one: '{count} çizimi kaldır', other: '{count} çizimi kaldır' },
   'menu.settings': 'Ayarlar…',
