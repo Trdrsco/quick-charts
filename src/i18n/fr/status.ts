@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'État du marché',
+  'status.unknownTitle': 'Séance inconnue',
+  'status.unknown': 'La séance de cotation de ce symbole n\'est pas encore déterminée.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Ouvert 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'Le marché est ouvert en séance régulière.',
+  'status.openCloses': 'Le marché est ouvert en séance régulière. Clôture dans {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'Le marché est ouvert en préouverture.',
+  'status.preRegular': 'Le marché est ouvert en préouverture. La séance régulière commence dans {until}.',
+  'status.after': 'Le marché est ouvert après la clôture.',
+  'status.afterEnds': 'Le marché est ouvert après la clôture. Fin dans {until}.',
+  'status.closed': 'Le marché est fermé.',
+  'status.closedPre': 'Le marché est fermé. La préouverture commence dans {until}.',
+  'status.closedOpens': 'Le marché est fermé. Ouverture dans {until}.',
+  'status.exchangeTimezone': 'Fuseau horaire de la place de marché : {zone}',
+  'status.durationDays': { one: '{count} jour', many: '{count} jours', other: '{count} jours' },
+  'status.durationHours': { one: '{count} heure', many: '{count} heures', other: '{count} heures' },
+  'status.durationMinutes': { one: '{count} minute', many: '{count} minutes', other: '{count} minutes' },
+  'status.durationPair': '{major} {minor}',
+}

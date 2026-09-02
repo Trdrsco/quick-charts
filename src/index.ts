@@ -203,3 +203,56 @@ export { BUILT_IN_INDICATORS, type BuiltInIndicator, type IndicatorCategory } fr
 // itself supplies it from its own symbol formatter.
 export type { SymbolPriceFormat } from './indicatorRenderer'
 // ── end W2-A ──────────────────────────────────────────────────────────────────────────────────
+
+// ── W3-B: timeframes, timezones, sessions and status, ranges, and search ──────────────────────
+// The chart-owned models behind the picker surfaces (public-chart-library-boundary-plan.md PCL-5):
+// the one timeframe grammar with its 26 presets and capability filter, the 60 display timezones
+// with the exchange choice and locale-keyed formatters, the session model built from a symbol's
+// own session metadata with the market status over it, the nine range presets with the framing
+// and navigation step rules, and the framework-free search controller with its recents port and
+// list rules. Every string these need lives in the chart catalog (timeframe.*, timezone.*,
+// status.*, range.*, search.*). The default pickers over these models and the widget commands that
+// drive them are the later streams' work; nothing here builds DOM.
+export type { Timeframe, TimeframeGroup, TimeframeRestrictions, TimeframeUnit } from './timeframe'
+export {
+  allowedTimeframes,
+  compareTimeframes,
+  formatTimeframe,
+  isIntradayTimeframe,
+  parseTimeframe,
+  timeframeAllowed,
+  timeframeGroupUnit,
+  timeframeLabel,
+  timeframeOrder,
+  timeframeSeconds,
+  TIMEFRAME_MAX,
+  TIMEFRAME_PRESET_TOKENS,
+  TIMEFRAME_PRESETS,
+  TIMEFRAME_UNIT_NAME,
+  TIMEFRAME_UNIT_SECONDS,
+  TIMEFRAME_UNITS,
+} from './timeframe'
+export type { ChartTimezone, TimezoneRow, ZoneClock } from './timezones'
+export {
+  DEFAULT_TIMEZONE,
+  EXCHANGE_TIMEZONE,
+  formatClock,
+  isTimezoneChoice,
+  makeCrosshairTimeFormatter,
+  makeTickMarkFormatter,
+  resolveDisplayTimezone,
+  timezoneCity,
+  timezoneLabel,
+  timezoneListing,
+  TIMEZONES,
+  tzOffsetLabel,
+  tzOffsetMinutes,
+  zoneClock,
+} from './timezones'
+export type { MarketStatus, SessionModel, SessionSchedule, SessionSegment, SessionSource, SessionState, SubsessionSource } from './sessionModel'
+export { exchangeTimezoneText, formatDuration, marketStatus, marketStatusFor, marketStatusText, marketStatusTitle, parseSessionModel, sessionStateAt, SESSION_STATE_TITLE } from './sessionModel'
+export type { RangeFrameTarget, RangePreset, RangeSpan } from './ranges'
+export { frameRange, MIN_BAR_SPACING, RANGE_PRESETS, rangeAvailable, rangePresetTip, rangeSpanSeconds, SCROLL_STEP_BARS, scrolledPosition, ZOOM_FACTOR, zoomedBarSpacing } from './ranges'
+export type { MatchSegment, RecentsPort, SearchController, SearchControllerOptions, SearchState, SpreadOperator } from './search'
+export { createSearchController, isSymbolPair, looksLikeSpread, matchSegments, memoryRecents, promoteRecent, RECENT_SYMBOLS_CAP, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery } from './search'
+// ── end W3-B ──────────────────────────────────────────────────────────────────────────────────

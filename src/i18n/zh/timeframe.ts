@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': '时间周期',
+  'timeframe.all': '全部时间周期',
+  'timeframe.unitTicks': '跳',
+  'timeframe.unitSeconds': '秒',
+  'timeframe.unitMinutes': '分钟',
+  'timeframe.unitHours': '小时',
+  'timeframe.unitDays': '天',
+  'timeframe.unitWeeks': '周',
+  'timeframe.unitMonths': '月',
+  'timeframe.countTicks': { other: '{count}跳' },
+  'timeframe.countSeconds': { other: '{count}秒' },
+  'timeframe.countMinutes': { other: '{count}分钟' },
+  'timeframe.countHours': { other: '{count}小时' },
+  'timeframe.countDays': { other: '{count}天' },
+  'timeframe.countWeeks': { other: '{count}周' },
+  'timeframe.countMonths': { other: '{count}个月' },
+  'timeframe.delete': '删除{timeframe}',
+  'timeframe.save': '保存{timeframe}',
+  'timeframe.exists': '{timeframe}已存在',
+  'timeframe.custom': '自定义时间周期',
+  'timeframe.customCount': '自定义时间周期数值',
+  'timeframe.customUnit': '自定义时间周期单位',
+  'timeframe.addCustom': '添加自定义时间周期',
+  'timeframe.increment': '增加',
+  'timeframe.decrement': '减少',
+}

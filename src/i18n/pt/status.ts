@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Status do mercado',
+  'status.unknownTitle': 'Sessão desconhecida',
+  'status.unknown': 'A sessão de negociação deste símbolo ainda não foi definida.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Aberto 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'O mercado está aberto para negociação regular.',
+  'status.openCloses': 'O mercado está aberto para negociação regular. Fecha em {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'O mercado está aberto para negociação de pré-mercado.',
+  'status.preRegular': 'O mercado está aberto para negociação de pré-mercado. O horário regular começa em {until}.',
+  'status.after': 'O mercado está aberto para negociação após o fechamento.',
+  'status.afterEnds': 'O mercado está aberto para negociação após o fechamento. Termina em {until}.',
+  'status.closed': 'O mercado está fechado.',
+  'status.closedPre': 'O mercado está fechado. O pré-mercado começa em {until}.',
+  'status.closedOpens': 'O mercado está fechado. Abre em {until}.',
+  'status.exchangeTimezone': 'Fuso horário da bolsa: {zone}',
+  'status.durationDays': { one: '{count} dia', many: '{count} dias', other: '{count} dias' },
+  'status.durationHours': { one: '{count} hora', many: '{count} horas', other: '{count} horas' },
+  'status.durationMinutes': { one: '{count} minuto', many: '{count} minutos', other: '{count} minutos' },
+  'status.durationPair': '{major} e {minor}',
+}

@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Marktstatus',
+  'status.unknownTitle': 'Sitzung unbekannt',
+  'status.unknown': 'Die Handelssitzung dieses Symbols steht noch nicht fest.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Rund um die Uhr geöffnet',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'Der Markt ist für den regulären Handel geöffnet.',
+  'status.openCloses': 'Der Markt ist für den regulären Handel geöffnet. Schließt in {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'Der Markt ist für den vorbörslichen Handel geöffnet.',
+  'status.preRegular': 'Der Markt ist für den vorbörslichen Handel geöffnet. Die regulären Zeiten beginnen in {until}.',
+  'status.after': 'Der Markt ist für den nachbörslichen Handel geöffnet.',
+  'status.afterEnds': 'Der Markt ist für den nachbörslichen Handel geöffnet. Endet in {until}.',
+  'status.closed': 'Der Markt ist geschlossen.',
+  'status.closedPre': 'Der Markt ist geschlossen. Die Vorbörse beginnt in {until}.',
+  'status.closedOpens': 'Der Markt ist geschlossen. Öffnet in {until}.',
+  'status.exchangeTimezone': 'Zeitzone der Börse: {zone}',
+  'status.durationDays': { one: '{count} Tag', other: '{count} Tagen' },
+  'status.durationHours': { one: '{count} Stunde', other: '{count} Stunden' },
+  'status.durationMinutes': { one: '{count} Minute', other: '{count} Minuten' },
+  'status.durationPair': '{major} {minor}',
+}

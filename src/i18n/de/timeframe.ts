@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'Zeiteinheit',
+  'timeframe.all': 'Alle Zeiteinheiten',
+  'timeframe.unitTicks': 'Ticks',
+  'timeframe.unitSeconds': 'Sekunden',
+  'timeframe.unitMinutes': 'Minuten',
+  'timeframe.unitHours': 'Stunden',
+  'timeframe.unitDays': 'Tage',
+  'timeframe.unitWeeks': 'Wochen',
+  'timeframe.unitMonths': 'Monate',
+  'timeframe.countTicks': { one: '{count} Tick', other: '{count} Ticks' },
+  'timeframe.countSeconds': { one: '{count} Sekunde', other: '{count} Sekunden' },
+  'timeframe.countMinutes': { one: '{count} Minute', other: '{count} Minuten' },
+  'timeframe.countHours': { one: '{count} Stunde', other: '{count} Stunden' },
+  'timeframe.countDays': { one: '{count} Tag', other: '{count} Tage' },
+  'timeframe.countWeeks': { one: '{count} Woche', other: '{count} Wochen' },
+  'timeframe.countMonths': { one: '{count} Monat', other: '{count} Monate' },
+  'timeframe.delete': '{timeframe} löschen',
+  'timeframe.save': '{timeframe} speichern',
+  'timeframe.exists': '{timeframe} existiert bereits',
+  'timeframe.custom': 'Eigene Zeiteinheit',
+  'timeframe.customCount': 'Anzahl der eigenen Zeiteinheit',
+  'timeframe.customUnit': 'Einheit der eigenen Zeiteinheit',
+  'timeframe.addCustom': 'Eigene Zeiteinheit hinzufügen',
+  'timeframe.increment': 'Erhöhen',
+  'timeframe.decrement': 'Verringern',
+}

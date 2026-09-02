@@ -1,0 +1,28 @@
+import type { Translation } from '../runtime'
+import type { search as source } from '../en/search'
+
+export const search: Translation<typeof source> = {
+  'search.title': '銘柄検索',
+  'search.compareTitle': '銘柄を比較',
+  'search.changeSymbolTitle': '銘柄の変更',
+  'search.placeholder': 'Search symbol',
+  'search.clear': 'クリア',
+  'search.noMatches': '一致する銘柄がありません。',
+  'search.loadingMore': 'さらに読み込み中…',
+  'search.failed': 'Search failed.',
+  'search.samePercent': '同じ％スケール',
+  'search.newScale': '新しい価格スケール',
+  'search.newPane': '新規ペイン',
+  'search.added': '追加した銘柄',
+  'search.recent': '最近の銘柄',
+  'search.addedMark': '{symbol}はチャートに表示中です。クリックで削除します。',
+  'search.compareEmpty': 'No symbols here yet. Why not add some?',
+  'search.opDivision': '除算',
+  'search.opSubtraction': '減算',
+  'search.opAddition': '加算',
+  'search.opMultiplication': '乗算',
+  'search.opExponentiation': 'べき乗',
+  'search.opReciprocal': '逆数',
+  'search.opsHide': 'スプレッド演算子を非表示',
+  'search.opsShow': 'スプレッド演算子を表示',
+}

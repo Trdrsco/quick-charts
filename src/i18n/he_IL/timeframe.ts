@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'טווח זמן',
+  'timeframe.all': 'כל טווחי הזמן',
+  'timeframe.unitTicks': 'טיקים',
+  'timeframe.unitSeconds': 'שניות',
+  'timeframe.unitMinutes': 'דקות',
+  'timeframe.unitHours': 'שעות',
+  'timeframe.unitDays': 'ימים',
+  'timeframe.unitWeeks': 'שבועות',
+  'timeframe.unitMonths': 'חודשים',
+  'timeframe.countTicks': { one: '{count} טיק', two: '{count} טיקים', other: '{count} טיקים' },
+  'timeframe.countSeconds': { one: '{count} שנייה', two: '{count} שניות', other: '{count} שניות' },
+  'timeframe.countMinutes': { one: '{count} דקה', two: '{count} דקות', other: '{count} דקות' },
+  'timeframe.countHours': { one: '{count} שעה', two: '{count} שעות', other: '{count} שעות' },
+  'timeframe.countDays': { one: '{count} יום', two: '{count} ימים', other: '{count} ימים' },
+  'timeframe.countWeeks': { one: '{count} שבוע', two: '{count} שבועות', other: '{count} שבועות' },
+  'timeframe.countMonths': { one: '{count} חודש', two: '{count} חודשים', other: '{count} חודשים' },
+  'timeframe.delete': 'מחיקת {timeframe}',
+  'timeframe.save': 'שמירת {timeframe}',
+  'timeframe.exists': '{timeframe} כבר קיים',
+  'timeframe.custom': 'טווח זמן מותאם',
+  'timeframe.customCount': 'מספר לטווח זמן מותאם',
+  'timeframe.customUnit': 'יחידה לטווח זמן מותאם',
+  'timeframe.addCustom': 'הוספת טווח זמן מותאם',
+  'timeframe.increment': 'הגדלה',
+  'timeframe.decrement': 'הקטנה',
+}

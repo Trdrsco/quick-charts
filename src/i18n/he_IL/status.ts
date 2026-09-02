@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'מצב השוק',
+  'status.unknownTitle': 'הסשן אינו ידוע',
+  'status.unknown': 'סשן המסחר של הסימבול הזה עדיין לא נקבע.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'פתוח 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'השוק פתוח למסחר רגיל.',
+  'status.openCloses': 'השוק פתוח למסחר רגיל. נסגר בעוד {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'השוק פתוח למסחר מקדים.',
+  'status.preRegular': 'השוק פתוח למסחר מקדים. שעות המסחר הרגילות מתחילות בעוד {until}.',
+  'status.after': 'השוק פתוח למסחר מאוחר.',
+  'status.afterEnds': 'השוק פתוח למסחר מאוחר. מסתיים בעוד {until}.',
+  'status.closed': 'השוק סגור.',
+  'status.closedPre': 'השוק סגור. המסחר המקדים מתחיל בעוד {until}.',
+  'status.closedOpens': 'השוק סגור. נפתח בעוד {until}.',
+  'status.exchangeTimezone': 'אזור הזמן של הבורסה: {zone}',
+  'status.durationDays': { one: '{count} יום', two: '{count} ימים', other: '{count} ימים' },
+  'status.durationHours': { one: '{count} שעה', two: '{count} שעות', other: '{count} שעות' },
+  'status.durationMinutes': { one: '{count} דקה', two: '{count} דקות', other: '{count} דקות' },
+  'status.durationPair': '{major} ו-{minor}',
+}

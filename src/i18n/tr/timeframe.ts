@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'Zaman aralığı',
+  'timeframe.all': 'Tüm zaman aralıkları',
+  'timeframe.unitTicks': 'Tick',
+  'timeframe.unitSeconds': 'Saniye',
+  'timeframe.unitMinutes': 'Dakika',
+  'timeframe.unitHours': 'Saat',
+  'timeframe.unitDays': 'Gün',
+  'timeframe.unitWeeks': 'Hafta',
+  'timeframe.unitMonths': 'Ay',
+  'timeframe.countTicks': { one: '{count} tick', other: '{count} tick' },
+  'timeframe.countSeconds': { one: '{count} saniye', other: '{count} saniye' },
+  'timeframe.countMinutes': { one: '{count} dakika', other: '{count} dakika' },
+  'timeframe.countHours': { one: '{count} saat', other: '{count} saat' },
+  'timeframe.countDays': { one: '{count} gün', other: '{count} gün' },
+  'timeframe.countWeeks': { one: '{count} hafta', other: '{count} hafta' },
+  'timeframe.countMonths': { one: '{count} ay', other: '{count} ay' },
+  'timeframe.delete': '{timeframe} sil',
+  'timeframe.save': '{timeframe} kaydet',
+  'timeframe.exists': '{timeframe} zaten var',
+  'timeframe.custom': 'Özel zaman aralığı',
+  'timeframe.customCount': 'Özel zaman aralığı sayısı',
+  'timeframe.customUnit': 'Özel zaman aralığı birimi',
+  'timeframe.addCustom': 'Özel zaman aralığı ekle',
+  'timeframe.increment': 'Artır',
+  'timeframe.decrement': 'Azalt',
+}

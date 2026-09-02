@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': '타임프레임',
+  'timeframe.all': '모든 타임프레임',
+  'timeframe.unitTicks': '틱',
+  'timeframe.unitSeconds': '초',
+  'timeframe.unitMinutes': '분',
+  'timeframe.unitHours': '시간',
+  'timeframe.unitDays': '일',
+  'timeframe.unitWeeks': '주',
+  'timeframe.unitMonths': '개월',
+  'timeframe.countTicks': { other: '{count}틱' },
+  'timeframe.countSeconds': { other: '{count}초' },
+  'timeframe.countMinutes': { other: '{count}분' },
+  'timeframe.countHours': { other: '{count}시간' },
+  'timeframe.countDays': { other: '{count}일' },
+  'timeframe.countWeeks': { other: '{count}주' },
+  'timeframe.countMonths': { other: '{count}개월' },
+  'timeframe.delete': '{timeframe} 삭제',
+  'timeframe.save': '{timeframe} 저장',
+  'timeframe.exists': '{timeframe}이(가) 이미 있습니다',
+  'timeframe.custom': '사용자 지정 타임프레임',
+  'timeframe.customCount': '사용자 지정 타임프레임 수치',
+  'timeframe.customUnit': '사용자 지정 타임프레임 단위',
+  'timeframe.addCustom': '사용자 지정 타임프레임 추가',
+  'timeframe.increment': '증가',
+  'timeframe.decrement': '감소',
+}

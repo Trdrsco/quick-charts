@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'Kerangka waktu',
+  'timeframe.all': 'Semua kerangka waktu',
+  'timeframe.unitTicks': 'Tick',
+  'timeframe.unitSeconds': 'Detik',
+  'timeframe.unitMinutes': 'Menit',
+  'timeframe.unitHours': 'Jam',
+  'timeframe.unitDays': 'Hari',
+  'timeframe.unitWeeks': 'Minggu',
+  'timeframe.unitMonths': 'Bulan',
+  'timeframe.countTicks': { other: '{count} Tick' },
+  'timeframe.countSeconds': { other: '{count} Detik' },
+  'timeframe.countMinutes': { other: '{count} Menit' },
+  'timeframe.countHours': { other: '{count} Jam' },
+  'timeframe.countDays': { other: '{count} Hari' },
+  'timeframe.countWeeks': { other: '{count} Minggu' },
+  'timeframe.countMonths': { other: '{count} Bulan' },
+  'timeframe.delete': 'Hapus {timeframe}',
+  'timeframe.save': 'Simpan {timeframe}',
+  'timeframe.exists': '{timeframe} sudah ada',
+  'timeframe.custom': 'Kerangka waktu kustom',
+  'timeframe.customCount': 'Jumlah kerangka waktu kustom',
+  'timeframe.customUnit': 'Unit kerangka waktu kustom',
+  'timeframe.addCustom': 'Tambah kerangka waktu kustom',
+  'timeframe.increment': 'Tambah',
+  'timeframe.decrement': 'Kurangi',
+}

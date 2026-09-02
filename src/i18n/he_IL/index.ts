@@ -10,6 +10,11 @@ import { session } from './session'
 import { layouts } from './layouts'
 import { host } from './host'
 import { indicators } from './indicators'
+import { timeframe } from './timeframe'
+import { timezone } from './timezone'
+import { range } from './range'
+import { status } from './status'
+import { search } from './search'
 
-const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators }
+const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search }
 export default dict

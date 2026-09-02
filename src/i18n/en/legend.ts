@@ -15,21 +15,9 @@ export const legend = {
   'legend.scaleLog': 'Log',
   'legend.scalePercent': '%',
   'legend.scaleIndexed': '100',
-  // The compare surface: the header door, the dialog (both modes), and the compare chips' verbs.
+  // The compare surface's legend side: the header door and the compare chips' verbs. The dialog
+  // both open belongs to the search family (search.ts).
   'legend.compare': 'Compare or add symbol',
-  'legend.compareTitle': 'Compare symbols',
   'legend.changeSymbol': 'Change symbol',
-  'legend.samePercent': 'Same % scale',
-  'legend.newScale': 'New price scale',
-  'legend.newPane': 'New pane',
-  'legend.added': 'Added symbols',
   'legend.removeCompare': 'Remove compare',
-  'legend.searchPlaceholder': 'Symbol',
-  // The spread operators' tooltips (the reference's own names).
-  'legend.opDivision': 'Division',
-  'legend.opSubtraction': 'Subtraction',
-  'legend.opAddition': 'Addition',
-  'legend.opMultiplication': 'Multiplication',
-  'legend.opExponentiation': 'Exponentiation',
-  'legend.opReciprocal': 'Reciprocal',
 } as const

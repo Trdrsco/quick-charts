@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': '시장 상태',
+  'status.unknownTitle': '세션 알 수 없음',
+  'status.unknown': '이 심볼의 거래 세션이 아직 확인되지 않았습니다.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': '24시간 개장',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': '정규 거래가 진행 중입니다.',
+  'status.openCloses': '정규 거래가 진행 중입니다. {until} 후 마감됩니다.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': '장 시작 전 거래가 진행 중입니다.',
+  'status.preRegular': '장 시작 전 거래가 진행 중입니다. {until} 후 정규장이 시작됩니다.',
+  'status.after': '장 마감 후 거래가 진행 중입니다.',
+  'status.afterEnds': '장 마감 후 거래가 진행 중입니다. {until} 후 종료됩니다.',
+  'status.closed': '시장이 휴장 중입니다.',
+  'status.closedPre': '시장이 휴장 중입니다. {until} 후 장 시작 전 거래가 시작됩니다.',
+  'status.closedOpens': '시장이 휴장 중입니다. {until} 후 개장합니다.',
+  'status.exchangeTimezone': '거래소 시간대: {zone}',
+  'status.durationDays': { other: '{count}일' },
+  'status.durationHours': { other: '{count}시간' },
+  'status.durationMinutes': { other: '{count}분' },
+  'status.durationPair': '{major} {minor}',
+}

@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Состояние рынка',
+  'status.unknownTitle': 'Сессия неизвестна',
+  'status.unknown': 'Торговая сессия этого инструмента пока не определена.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Открыт 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'Рынок открыт, основная сессия.',
+  'status.openCloses': 'Рынок открыт, основная сессия. Закрытие через {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'Рынок открыт, предторговая сессия.',
+  'status.preRegular': 'Рынок открыт, предторговая сессия. Основная сессия начнется через {until}.',
+  'status.after': 'Рынок открыт, постторговая сессия.',
+  'status.afterEnds': 'Рынок открыт, постторговая сессия. Завершится через {until}.',
+  'status.closed': 'Рынок закрыт.',
+  'status.closedPre': 'Рынок закрыт. Предторговая сессия начнется через {until}.',
+  'status.closedOpens': 'Рынок закрыт. Откроется через {until}.',
+  'status.exchangeTimezone': 'Часовой пояс биржи: {zone}',
+  'status.durationDays': { one: '{count} день', few: '{count} дня', many: '{count} дней', other: '{count} дня' },
+  'status.durationHours': { one: '{count} час', few: '{count} часа', many: '{count} часов', other: '{count} часа' },
+  'status.durationMinutes': { one: '{count} минуту', few: '{count} минуты', many: '{count} минут', other: '{count} минуты' },
+  'status.durationPair': '{major} {minor}',
+}

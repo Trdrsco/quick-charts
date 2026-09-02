@@ -5,8 +5,8 @@
   "registries": [
     { "registry": "chart styles", "count": 7, "file": "apps/web/src/chart/chartStyles.ts", "symbol": "CHART_STYLES" },
     { "registry": "built-in indicators", "count": 23, "file": "packages/chart-indicators/src/registry.ts", "symbol": "BUILT_IN_INDICATORS" },
-    { "registry": "preset timeframes", "count": 26, "file": "apps/web/src/chart/timeframes.ts", "symbol": "TF_GROUPS" },
-    { "registry": "timezones", "count": 60, "file": "apps/web/src/chart/timezones.ts", "symbol": "TIMEZONES" },
+    { "registry": "preset timeframes", "count": 26, "file": "packages/chart/src/timeframe.ts", "symbol": "TIMEFRAME_PRESETS" },
+    { "registry": "timezones", "count": 60, "file": "packages/chart/src/timezones.ts", "symbol": "TIMEZONES" },
     { "registry": "drawing tools", "count": 90, "file": "packages/chart-drawings/src/registry.ts", "symbol": "DEFINITIONS" },
     { "registry": "layout arrangements", "count": 55, "file": "packages/chart/src/layoutGrid.ts", "symbol": "ARRANGEMENTS" }
   ]

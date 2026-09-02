@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'Interwał',
+  'timeframe.all': 'Wszystkie interwały',
+  'timeframe.unitTicks': 'Ticki',
+  'timeframe.unitSeconds': 'Sekundy',
+  'timeframe.unitMinutes': 'Minuty',
+  'timeframe.unitHours': 'Godziny',
+  'timeframe.unitDays': 'Dni',
+  'timeframe.unitWeeks': 'Tygodnie',
+  'timeframe.unitMonths': 'Miesiące',
+  'timeframe.countTicks': { one: '{count} tick', few: '{count} ticki', many: '{count} ticków', other: '{count} ticka' },
+  'timeframe.countSeconds': { one: '{count} sekunda', few: '{count} sekundy', many: '{count} sekund', other: '{count} sekundy' },
+  'timeframe.countMinutes': { one: '{count} minuta', few: '{count} minuty', many: '{count} minut', other: '{count} minuty' },
+  'timeframe.countHours': { one: '{count} godzina', few: '{count} godziny', many: '{count} godzin', other: '{count} godziny' },
+  'timeframe.countDays': { one: '{count} dzień', few: '{count} dni', many: '{count} dni', other: '{count} dnia' },
+  'timeframe.countWeeks': { one: '{count} tydzień', few: '{count} tygodnie', many: '{count} tygodni', other: '{count} tygodnia' },
+  'timeframe.countMonths': { one: '{count} miesiąc', few: '{count} miesiące', many: '{count} miesięcy', other: '{count} miesiąca' },
+  'timeframe.delete': 'Usuń {timeframe}',
+  'timeframe.save': 'Zapisz {timeframe}',
+  'timeframe.exists': '{timeframe} już istnieje',
+  'timeframe.custom': 'Własny interwał',
+  'timeframe.customCount': 'Liczba dla własnego interwału',
+  'timeframe.customUnit': 'Jednostka własnego interwału',
+  'timeframe.addCustom': 'Dodaj własny interwał',
+  'timeframe.increment': 'Zwiększ',
+  'timeframe.decrement': 'Zmniejsz',
+}

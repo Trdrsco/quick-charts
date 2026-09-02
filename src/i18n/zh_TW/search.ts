@@ -1,0 +1,28 @@
+import type { Translation } from '../runtime'
+import type { search as source } from '../en/search'
+
+export const search: Translation<typeof source> = {
+  'search.title': '商品搜尋',
+  'search.compareTitle': '比較商品',
+  'search.changeSymbolTitle': '變更商品',
+  'search.placeholder': 'Search symbol',
+  'search.clear': '清除',
+  'search.noMatches': '沒有符合的商品。',
+  'search.loadingMore': '載入更多…',
+  'search.failed': 'Search failed.',
+  'search.samePercent': '相同%刻度',
+  'search.newScale': '新價格刻度',
+  'search.newPane': '新窗格',
+  'search.added': '已加入商品',
+  'search.recent': '最近商品',
+  'search.addedMark': '{symbol}已在圖表上。點擊移除。',
+  'search.compareEmpty': 'No symbols here yet. Why not add some?',
+  'search.opDivision': '除法',
+  'search.opSubtraction': '減法',
+  'search.opAddition': '加法',
+  'search.opMultiplication': '乘法',
+  'search.opExponentiation': '冪運算',
+  'search.opReciprocal': '倒數',
+  'search.opsHide': '隱藏價差運算子',
+  'search.opsShow': '顯示價差運算子',
+}

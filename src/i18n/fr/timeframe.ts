@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'Intervalle',
+  'timeframe.all': 'Tous les intervalles',
+  'timeframe.unitTicks': 'Ticks',
+  'timeframe.unitSeconds': 'Secondes',
+  'timeframe.unitMinutes': 'Minutes',
+  'timeframe.unitHours': 'Heures',
+  'timeframe.unitDays': 'Jours',
+  'timeframe.unitWeeks': 'Semaines',
+  'timeframe.unitMonths': 'Mois',
+  'timeframe.countTicks': { one: '{count} tick', many: '{count} ticks', other: '{count} ticks' },
+  'timeframe.countSeconds': { one: '{count} seconde', many: '{count} secondes', other: '{count} secondes' },
+  'timeframe.countMinutes': { one: '{count} minute', many: '{count} minutes', other: '{count} minutes' },
+  'timeframe.countHours': { one: '{count} heure', many: '{count} heures', other: '{count} heures' },
+  'timeframe.countDays': { one: '{count} jour', many: '{count} jours', other: '{count} jours' },
+  'timeframe.countWeeks': { one: '{count} semaine', many: '{count} semaines', other: '{count} semaines' },
+  'timeframe.countMonths': { one: '{count} mois', many: '{count} mois', other: '{count} mois' },
+  'timeframe.delete': 'Supprimer {timeframe}',
+  'timeframe.save': 'Enregistrer {timeframe}',
+  'timeframe.exists': '{timeframe} existe déjà',
+  'timeframe.custom': 'Intervalle personnalisé',
+  'timeframe.customCount': 'Nombre de l\'intervalle personnalisé',
+  'timeframe.customUnit': 'Unité de l\'intervalle personnalisé',
+  'timeframe.addCustom': 'Ajouter un intervalle personnalisé',
+  'timeframe.increment': 'Augmenter',
+  'timeframe.decrement': 'Diminuer',
+}
