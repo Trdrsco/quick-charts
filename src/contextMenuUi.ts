@@ -4,10 +4,9 @@
 // its presses, and painted entirely through `.qc-*` recipes. The only inline writes are the
 // clamped position, which is calculated at the moment the menu opens.
 //
-// The geometry is the reference's, measured: a 327px box of 32px rows, the glyph 8px in at its own
-// 28 grid with the label at 40, and 1px separators between the groups that survived. Those numbers
-// live in the `.qc-menu*` recipes; the one below is the width the viewport clamp needs as a
-// number, because a clamp is arithmetic rather than a rule.
+// The geometry: a 327px box of 32px rows, the glyph 8px in at its own 28 grid with the label at 40,
+// and 1px separators between groups. Those numbers live in the `.qc-menu*` recipes; the one below is
+// the width the viewport clamp needs as a number, because a clamp is arithmetic rather than a rule.
 import { chartContextMenu, type ChartMenuAction, type ChartMenuContext, type ChartMenuIcon } from './contextMenu'
 import { createChartI18n, type ChartI18n } from './i18n'
 
@@ -32,7 +31,7 @@ export interface ContextMenuHandle {
 /** The measured box width, which the viewport clamp needs as a number. */
 const MENU_W = 327
 
-/** The reference's own glyphs, inline so the package ships no asset dependency. */
+/** The menu glyphs, inline so the package ships no asset dependency. */
 const ICONS: Record<ChartMenuIcon, string> = {
   reset: '<g fill="none" fill-rule="evenodd" stroke="currentColor"><path d="M6.5 15A8.5 8.5 0 1 0 15 6.5H8.5"/><path d="M12 10L8.5 6.5 12 3"/></g>',
   settings:

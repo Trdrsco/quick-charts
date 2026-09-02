@@ -1,11 +1,11 @@
-// The multi-chart layout: N charts tiled by an arrangement code, one ACTIVE chart, and the five
-// synchronization contracts (the reference's own wording, verbatim):
+// The multi-chart layout: N charts tiled by an arrangement code, one ACTIVE chart, and five
+// synchronization contracts:
 //
-//   symbol     "Symbol changes on all charts within the layout"
-//   interval   "Interval changes on all charts within the layout"
-//   crosshair  "Crosshair is synced across all charts within the layout"
-//   time       "When a chart is clicked, all charts within the layout display the same point of time"
-//   dateRange  "Date range changes on all charts within the layout"
+//   symbol     a symbol change lands on every chart in the layout
+//   interval   a timeframe change lands on every chart in the layout
+//   crosshair  the crosshair is mirrored across every chart in the layout
+//   time       clicking a chart shows the same moment on every chart in the layout
+//   dateRange  a visible-range change lands on every chart in the layout
 //
 // Symbol, interval and date range REPLAY a change onto every chart; crosshair mirrors
 // continuously; time fires on click, centering every chart on the clicked moment. The whole layout

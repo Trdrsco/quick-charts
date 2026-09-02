@@ -1,8 +1,9 @@
 // Compare: other symbols beside the charted one, clipped to the main bar model.
 //
-// The placement vocabulary is the reference dialog's own. `same-percent` shares the main scale and
-// flips it to percent while any such compare lives; `new-scale` binds the LEFT scale; `new-pane`
-// takes a pane of its own. The scale flip is a LOAN: the mode the trader held is restored when the
+// Three placements, and each answers a different question about the comparison. `same-percent`
+// shares the main scale and flips it to percent while any such compare lives, which is how two
+// markets at different price levels are read against each other; `new-scale` binds the LEFT scale
+// so a compare keeps its absolute prices; `new-pane` takes a pane of its own. The scale flip is a LOAN: the mode the trader held is restored when the
 // last same-percent compare leaves, and an explicit scale pick cancels the loan outright.
 //
 // One add and one remove pair serve every door — the public api, the dialog, the legend's remove —
@@ -162,7 +163,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
         const lastText = last != null ? (formatterFor(entry.symbol)?.format(last) ?? null) : null
         return {
           id: `cmp:${entry.symbol}`,
-          // A plain pair wears the reference's spaced form ("XRP / USDC"); anything else verbatim.
+          // A plain pair reads with spaces around the slash ("XRP / USDC"); anything else verbatim.
           title: /^[A-Za-z][A-Za-z0-9.]*\/[A-Za-z][A-Za-z0-9.]*$/.test(entry.symbol) ? entry.symbol.replace('/', ' / ') : entry.symbol,
           // A percentage is its own value kind and keeps two decimals; a last value is a price.
           value: pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : lastText,
