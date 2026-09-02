@@ -2,6 +2,31 @@
 
 ## Unreleased
 
+- **Timeframes, timezones, sessions, ranges and search as chart models.** The timeframe grammar is
+  root API: `parseTimeframe`, `formatTimeframe`, `timeframeSeconds`, `isIntradayTimeframe`,
+  `compareTimeframes` and `timeframeOrder` over the seven units, with `TIMEFRAME_MAX` and
+  `TIMEFRAME_UNIT_SECONDS` per unit. **`TIMEFRAME_PRESETS`** lists the 26 preset tokens in five
+  picker groups; `timeframeLabel` writes a token in the chart's language; `allowedTimeframes` and
+  `timeframeAllowed` filter tokens by a symbol's `supportedResolutions` and a feed's
+  `resolutions`, where an empty list is no restriction. **`TIMEZONES`** lists the 60 display
+  zones, `EXCHANGE_TIMEZONE` follows the charted symbol's own zone through
+  `resolveDisplayTimezone`, and `formatClock`, `makeTickMarkFormatter` and
+  `makeCrosshairTimeFormatter` take the host's BCP 47 tag beside the zone; `tzOffsetMinutes`,
+  `tzOffsetLabel`, `timezoneLabel`, `zoneClock` and `timezoneListing` complete the picker model.
+  **`parseSessionModel`** reads a symbol's `session`, `sessionHolidays`, `corrections` and
+  subsessions in the reference grammar, and `sessionStateAt`, `marketStatus`, `marketStatusFor`,
+  `marketStatusTitle`, `marketStatusText`, `formatDuration` and `exchangeTimezoneText` answer the
+  session state and the market status over it, with the feed's `dataStatus` an explicit part of
+  the status. **`RANGE_PRESETS`** lists the nine range presets; `rangeAvailable`, `rangeSpanSeconds`,
+  `rangePresetTip` and `frameRange` apply them, and `zoomedBarSpacing` and `scrolledPosition` apply
+  the navigation steps `ZOOM_FACTOR`, `MIN_BAR_SPACING` and `SCROLL_STEP_BARS`.
+  **`createSearchController`** drives a symbol search over the datafeed with a debounce, a cache
+  per query and class, background revalidation, paging and cancellation; `RecentsPort`,
+  `memoryRecents`, `promoteRecent`, `matchSegments`, `SPREAD_OPERATORS`, `looksLikeSpread`,
+  `isSymbolPair`, `spreadExpression` and `spreadSearchQuery` are the list rules beside it, and
+  the compare dialog runs on the controller. The chart catalog carries every word these need
+  under `timeframe.*`, `timezone.*`, `status.*`, `range.*` and `search.*` in every built-in
+  locale.
 - **Light and dark modes over a semantic theme.** `THEME_ROLES` publishes the semantic role
   inventory the chart is painted from, and both built-in palettes give every role a value.
   **`createThemeController`** owns one chart's mode and its custom palettes: `setMode`,
