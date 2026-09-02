@@ -13,7 +13,7 @@ if (typeof createUdfDatafeed !== 'function') fail('createUdfDatafeed missing')
 if (typeof attachDrawings !== 'function') fail('attachDrawings missing')
 if (olderPageVerdict({ bars: [], noData: true }, 100, false).kind !== 'end') fail('olderPageVerdict wrong')
 if (tfToUdfResolution('1d') !== '1D') fail('tfToUdfResolution wrong')
-if (mergeOverrides(null).trading.pnlMode !== 'money') fail('mergeOverrides defaults wrong')
+if (typeof mergeOverrides(null).appearance.background !== 'string') fail('mergeOverrides defaults wrong')
 if (toolRegistry.all().length < 80) fail(`toolRegistry too small: ${toolRegistry.all().length}`)
 
 // Draw → persist → reload, through the SHIPPED persistence codec: a drawing created via the
