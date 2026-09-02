@@ -137,17 +137,28 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   // ── symbology: the app chart body ───────────────────────────────────────────────────────────
   {
-    file: 'apps/web/src/chart/chartShared.ts',
-    symbols: ['chartDpOf', 'fmtChartPrice', 'axisPriceFormat', 'panePriceAt'],
+    file: 'apps/web/src/lib/priceFormat.ts',
+    symbols: ['priceFormatterOf', 'UNRESOLVED_PRICE_FORMAT', 'minMoveOf'],
     kind: 'symbology',
-    surface: 'the price axis, the crosshair and last-price labels (series priceFormat), the OHLC legend, and the context-menu price',
-    finding: 'decimals come from the broker seam (decimalsOfTick, capped at 8, 2 when unknown); prices at or above 1000 drop every decimal.',
+    surface: "the app's one price formatter: createPriceFormatter over the symbol's resolved format in the interface language, with the declared unresolved policy",
+  },
+  {
+    file: 'apps/web/src/chart/chartShared.ts',
+    symbols: ['paneSeriesPriceFormat', 'panePriceAt'],
+    kind: 'symbology',
+    surface: 'the price axis, the crosshair and last-price labels (series priceFormat over the symbol formatter), and the level a pointer snaps to on the symbol display grid',
   },
   {
     file: 'apps/web/src/chart/ChartPane.tsx',
-    symbols: ['fmtChartPrice', 'change.toFixed(dp)', 'changePct.toFixed(2)', 'value.toFixed(itemDp)', 'value.toFixed(cmpDp)'],
+    symbols: ['formatter.format(ohlc.c)', 'formatter.format(change)', 'changePct.toFixed(2)', 'value.toFixed(itemDp)', 'value.toFixed(cmpDp)'],
     kind: 'symbology',
-    surface: 'the OHLC legend, the change and percent-change legend, indicator legend values, compare legend values',
+    surface: 'the OHLC legend and the change legend through the symbol formatter; the percent-change legend, indicator legend values, compare legend values',
+  },
+  {
+    file: 'apps/web/src/chart/ChartPanel.tsx',
+    symbols: ['priceFormatterOf(cachedSymbolMeta(tradeMenu.instrument).format, info.tag).format(tradeMenu.price)'],
+    kind: 'symbology',
+    surface: "the level menu's price text, in the raising pane's own symbol format",
   },
   {
     file: 'apps/web/src/chart/barCountdown.ts',
@@ -202,9 +213,9 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   {
     file: 'apps/web/src/chart/useChartTradeLayer.ts',
-    symbols: ['chartDpOf'],
+    symbols: ['priceFormatterOf(priceFormat', '.precision()'],
     kind: 'execution',
-    surface: 'the trade layer takes the chart display precision for its lines',
+    surface: 'the execution marks take the symbol display precision for their price labels; the lines snap to the broker tick',
     finding: 'a display precision feeding an executable surface; chart-trading takes broker facts instead.',
   },
   {
@@ -262,7 +273,7 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   // ── quote ───────────────────────────────────────────────────────────────────────────────────
   {
     file: 'packages/chart-engine/src/quotes.ts',
-    symbols: ['QuoteSnapshot', 'getQuotes', 'subscribeQuotes', 'subscribeTopOfBook'],
+    symbols: ['QuoteSnapshot', 'subscribeTopOfBook', 'BOARD_POLL_MS'],
     kind: 'quote',
     surface: 'the first-party quote source: the board data the Watchlist and the dock format, and the top-of-book the ticket reads (data, not a formatter)',
   },
@@ -280,10 +291,10 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   {
     file: 'apps/web/src/widgets/watchlistFormat.ts',
-    symbols: ['priceFormatOfTick', 'createWatchlistValueFormatter', 'formatVolume', 'UNRESOLVED_PRICE_FORMAT'],
+    symbols: ['cachedSymbolMeta(symbol).format', 'createWatchlistValueFormatter', 'formatVolume', 'UNRESOLVED_PRICE_FORMAT'],
     kind: 'quote',
     surface: "this app's implementation of the Watchlist value-formatter port",
     finding:
-      'Last and Chg run through one createPriceFormatter over the symbol tick converted exactly to price-format facts; Chg% and Volume keep their own value kinds. A symbol with no resolved tick takes one declared cents policy.',
+      "Last and Chg run through one createPriceFormatter over the symbol's resolved price format; Chg% and Volume keep their own value kinds. A symbol whose format has not landed takes one declared cents policy.",
   },
 ]

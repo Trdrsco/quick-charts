@@ -104,7 +104,6 @@ describe('one formatter everywhere', () => {
     expect(hostSrc).not.toMatch(/toFixed\(2\)(?!\}%)/) // the percent chip is the one two-decimal value, and it is not a price
     expect(hostSrc).not.toContain('toLocaleString(')
     expect(hostSrc).not.toContain('maximumFractionDigits')
-    expect(hostSrc).not.toContain('priceFormatOfTick')
   })
 
   it('drawings snap to the symbol grid: the smallest move the format declares', () => {

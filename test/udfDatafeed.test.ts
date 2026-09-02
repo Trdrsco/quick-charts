@@ -124,8 +124,7 @@ describe('UdfDatafeed.resolve', () => {
 describe('UdfDatafeed and the protocol surfaces it does not read', () => {
   it('serves no quote board: /quotes is not a chart concern', () => {
     const { df } = feed({})
-    expect(df).not.toHaveProperty('getQuotes')
-    expect(df).not.toHaveProperty('subscribeQuotes')
+    expect(Object.keys(df).sort()).toEqual(['config', 'history', 'resolve', 'search', 'serverTime', 'subscribeBars'])
   })
 })
 

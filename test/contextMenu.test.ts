@@ -34,7 +34,7 @@ describe('the level menu, in the reference order', () => {
     expect(labels().some((l) => /^(Buy|Sell) /.test(l))).toBe(false)
     expect(labels().some((l) => l.startsWith('Add order'))).toBe(false)
     expect(labels().some((l) => l.startsWith('Add alert'))).toBe(false)
-    for (const field of ['aboveMarket', 'tradable', 'canTrade', 'qty', 'marksHidden', 'canAlert']) expect(field in base).toBe(false)
+    expect(Object.keys(base)).toEqual(['priceText', 'symbol', 'indicatorCount', 'drawingCount'])
   })
 })
 
