@@ -453,6 +453,85 @@ const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https
 await w.setLocale(picker[0]!.code)
 ```
 
+## Theme
+
+Quick Charts ships complete light and dark modes. Import the stylesheet once, choose a mode, and
+the chart canvas, toolbars, legend, scales, menus, dialogs and fields all render from it.
+
+```js
+import 'quickcharts/styles.css'
+```
+
+The stylesheet is scoped to the chart's own root element. It applies no reset to your document, it
+downloads no font, and it fetches nothing at runtime. Two charts on one page can run different
+modes.
+
+### Switch modes and customize the palette
+
+`createThemeController` owns one chart's mode and its custom palettes. Every method resolves a
+complete theme and publishes it to subscribers once, so a switch never leaves a surface behind.
+
+```ts
+import { createThemeController, type CustomThemes } from 'quickcharts'
+
+const brand: CustomThemes = {
+  light: { 'state.accent': '#1f6feb', 'canvas.background': '#fbfbfd' },
+  dark: { 'state.accent': '#58a6ff' },
+}
+
+const theme = createThemeController({ mode: 'light', custom: brand })
+const stop = theme.onChange((palette, mode) => note(`${mode} accent is ${palette['state.accent']}`))
+
+theme.setMode('dark')
+theme.applyCustom({ dark: { 'state.accent': '#7ee787' } })
+theme.resetCustom()
+stop()
+```
+
+Switching modes keeps the symbol, timeframe, visible range, drawings and studies the chart already
+has. A palette you supply is a tint rather than a replacement: a role you do not name keeps its
+built-in value for that mode.
+
+### Roles
+
+A role is a purpose, such as `text.muted` or `overlay.scrim`. `THEME_ROLES` is the published
+inventory, and the built-in palettes and the generated stylesheet are built from it. The custom
+property names and the component selectors inside the stylesheet are private, so style the chart
+through roles rather than by targeting them.
+
+```ts
+import { THEME_ROLES, type ThemeRoleFamily } from 'quickcharts'
+
+const family: ThemeRoleFamily = 'text'
+const inkRoles = THEME_ROLES.filter((role) => role.family === family).map((role) => role.id)
+note(inkRoles.join(', '))
+```
+
+If a value you supply is not valid for the role it is written for, the chart keeps the built-in
+value and reports it. Read `theme.diagnostics()` for the role, the code and a sentence naming the
+problem. Configuration errors never reach a render.
+
+### Theme and appearance are two ladders
+
+The theme palette is the broad brand surface. Chart appearance is the specific one: series colors,
+candle anatomy, grid visibility and study visuals in `ChartOverrides.appearance`. Where both could
+affect the same pixel, appearance wins.
+
+Theme palette precedence, lowest first:
+
+1. the built-in palette for the selected mode;
+2. your custom palette for that mode.
+
+Chart appearance precedence, lowest first:
+
+1. the built-in appearance for the selected mode;
+2. constructor overrides;
+3. restored user appearance;
+4. runtime `applyOverrides` patches.
+
+Resetting custom palettes returns the chart to the built-in mode and leaves saved chart appearance
+alone.
+
 ## Compare
 
 Every chart can draw OTHER symbols beside its own, the reference model: a compare is study-like —

@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- **Light and dark modes over a semantic theme.** `THEME_ROLES` publishes the semantic role
+  inventory the chart is painted from, and both built-in palettes give every role a value.
+  **`createThemeController`** owns one chart's mode and its custom palettes: `setMode`,
+  `applyCustom`, `resetCustom`, `get`, `diagnostics` and an `onChange` subscription that returns its
+  own unsubscribe. A change resolves a complete theme and reaches subscribers once, and the chart
+  keeps its symbol, timeframe, range, drawings and studies across a mode switch. `CustomThemes`
+  carries a partial palette for either mode, so a role you do not name keeps its built-in value; a
+  value that is not valid for its role is reported through `diagnostics()` and the built-in value
+  stands. **`quickcharts/styles.css`** is the one stylesheet a consumer imports. It is scoped to the
+  chart's own root element, applies no reset to the host document, downloads no font, and fetches
+  nothing at runtime, so two charts on one page can run different modes. Chart appearance in
+  `ChartOverrides.appearance` remains the separate, more specific ladder and wins where both could
+  reach the same pixel.
 - **Symbology and one price formatter.** `PriceFormat` carries the five facts that decide how a
   market's prices are written (`pricescale`, `minmov`, `minmove2`, `fractional`,
   `variableTickSize`), and **`createPriceFormatter`** turns them into a `PriceFormatter` whose
