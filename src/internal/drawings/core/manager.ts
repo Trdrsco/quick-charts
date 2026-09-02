@@ -6,6 +6,7 @@ import type {
   DrawingEventType,
   IDrawing,
   Point,
+  GlyphSourcePort,
   PriceFormatPort,
   SerializedDrawing,
   Viewport,
@@ -32,6 +33,7 @@ export class DrawingManager {
   private _barSource: BarSource | null = null
   private _tickSize: number | null = null
   private _priceFormat: PriceFormatPort | null = null
+  private _glyphSource: GlyphSourcePort | null = null
   private readonly _listeners = new Map<DrawingEventType, Set<DrawingEventCallback>>()
 
   /** Host bar feed, broadcast to every drawing (data-driven tools read it at paint time). */
@@ -51,6 +53,13 @@ export class DrawingManager {
   setPriceFormatter(format: PriceFormatPort | null): void {
     this._priceFormat = format
     for (const drawing of this._drawings.values()) drawing.setPriceFormatter(format)
+  }
+
+  /** The host's glyph artwork source, broadcast to every drawing. Per manager, so two charts in
+   *  one document can draw different asset sets. */
+  setGlyphSource(source: GlyphSourcePort | null): void {
+    this._glyphSource = source
+    for (const drawing of this._drawings.values()) drawing.setGlyphSource(source)
   }
 
   /** Broadcast the chart's interval so per-interval visibility rules apply. */
@@ -109,6 +118,7 @@ export class DrawingManager {
     concrete.setBarSource(this._barSource)
     concrete.setTickSize(this._tickSize)
     concrete.setPriceFormatter(this._priceFormat)
+    concrete.setGlyphSource(this._glyphSource)
     this._drawings.set(concrete.id, concrete)
     this._order.push(concrete.id)
     this._series?.attachPrimitive(concrete)

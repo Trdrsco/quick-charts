@@ -18,6 +18,7 @@ import type {
   DrawingStyle,
   IDrawing,
   Point,
+  GlyphSourcePort,
   PriceFormatPort,
   SerializedDrawing,
   Viewport,
@@ -385,6 +386,20 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   /** A price as the symbol writes it: every label, pill and readout comes through here. */
   protected formatPrice(price: number): string {
     return (this._priceFormat ?? UNRESOLVED_PRICE_TEXT)(price)
+  }
+
+  private _glyphSource: GlyphSourcePort | null = null
+
+  /** The host's glyph artwork source. Per instance, not per process: two charts on one page may
+   *  be handed different asset sets, and a module-level hook could only ever hold one. */
+  setGlyphSource(source: GlyphSourcePort | null): void {
+    this._glyphSource = source
+    this.requestUpdate()
+  }
+
+  /** The artwork URL for a glyph, or null to draw it as text. */
+  protected glyphUrl(glyph: string): string | null {
+    return this._glyphSource ? this._glyphSource(glyph) : null
   }
 
   isVisibleNow(): boolean {

@@ -13,10 +13,19 @@
 // list, so a document written here loads in any other host of that codec. Without a resource
 // port the layer keeps every symbol's drawings in memory for the page.
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
-import { DrawingManager, parseIntervalContext, restoreDrawings, toolRegistry, viewportOf } from '@trdrs/chart-drawings'
-import type { Anchor, IDrawing, SerializedDrawing, SourceBar } from '@trdrs/chart-drawings'
+import { DrawingManager, magnetSnap, parseIntervalContext, restoreDrawings, toolRegistry, viewportOf } from '@trdrs/chart-drawings'
+import type { Anchor, GlyphSourcePort, IDrawing, SerializedDrawing, SourceBar } from '@trdrs/chart-drawings'
 import type { DrawingsBody, DrawingsMeta, ResourceRef, ResourceStore } from './resources'
 import type { FeedBar } from './datafeed'
+import { editRefused, toolAfterPlacement, type CursorMode, type MagnetMode } from './drawings/index'
+
+/** What each cursor mode paints over the chart. The dot has no CSS keyword of its own, so it is
+ *  a 5px ring drawn inline; the trailing keyword is the fallback while the data URI parses. */
+const CURSOR_CSS: Record<CursorMode, string> = {
+  cross: 'crosshair',
+  arrow: 'default',
+  dot: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='5' cy='5' r='3.4' fill='none' stroke='%23e5e7eb' stroke-width='1.4'/%3E%3C/svg%3E") 5 5, crosshair`,
+}
 
 /** Pixels of pointer travel that turn the opening press into a drag (vs a click…click placement). */
 const PLACE_DRAG_PX = 6
@@ -39,6 +48,27 @@ export interface DrawingsEvents {
   onSaveConflict?: (info: { symbol: string; current: ResourceRef | null }) => void
 }
 
+/** The standing workflow choices this layer CONSULTS. It owns none of them: a host holds them in
+ *  its `DrawingPreferences` record and the models on `quickcharts/drawings` decide what each
+ *  control does to them, so a rail and this layer cannot disagree about what "weak magnet" or
+ *  "lock all" means. The layer reads them at the moment each one matters, which is why this is a
+ *  getter rather than a set of setters: there is no second copy to keep in step.
+ *
+ *  Drawing VISIBILITY is deliberately not here. Blanking is `setAllHidden` on the model, the eye
+ *  that drives it reaches indicators as well, and neither belongs to a minimal placement binding;
+ *  it arrives when this layer becomes the full drawing surface. */
+export interface DrawingsWorkflow {
+  /** How hard an anchor pulls to a bar's OHLC values while it is placed or dragged. */
+  magnet: MagnetMode
+  /** The rail's lock-all mode: editing is suspended across the layer, new drawings included,
+   *  without touching any drawing's own flag. */
+  allLocked: boolean
+  /** A placed tool stays armed for the next drawing. */
+  stayInDrawingMode: boolean
+  /** The pointer glyph over the chart. */
+  cursor: CursorMode
+}
+
 export interface AttachDrawingsOptions {
   chart: IChartApi
   series: ISeriesApi<SeriesType>
@@ -53,6 +83,12 @@ export interface AttachDrawingsOptions {
   resources?: (scope: { symbol: string }) => ResourceStore<DrawingsMeta, DrawingsBody>
   /** Bar reader for data-driven drawings (a restored anchored VWAP still computes). */
   bars?: () => readonly FeedBar[]
+  /** Where glyph artwork comes from, from the host's drawing asset port. Per layer, so two charts
+   *  in one document may be handed different asset sets. */
+  glyphSource?: GlyphSourcePort
+  /** The standing workflow choices, read live. Absent, the layer runs on the defaults: no magnet,
+   *  nothing locked, a placed tool released, a crosshair. */
+  workflow?: () => DrawingsWorkflow
   events?: DrawingsEvents
 }
 
@@ -118,6 +154,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   const events = options.events ?? {}
 
   const manager = new DrawingManager()
+  if (options.glyphSource) manager.setGlyphSource(options.glyphSource)
   manager.attach(chart, series)
   manager.setIntervalContext(parseIntervalContext(options.timeframe ?? ''))
 
@@ -146,6 +183,11 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   let armed: string | null = null
   let draft: Draft | null = null
   let drag: Drag | null = null
+  // The four workflow inputs. They are HELD here and applied by the pointer path; the policies that
+  // decide what a control does to them live on quickcharts/drawings, so a host driving its own rail
+  // and this layer cannot disagree about what "weak magnet" or "lock all" means.
+  const DEFAULT_WORKFLOW: DrawingsWorkflow = { magnet: 'off', allLocked: false, stayInDrawingMode: false, cursor: 'cross' }
+  const workflow = (): DrawingsWorkflow => options.workflow?.() ?? DEFAULT_WORKFLOW
 
   const syncDoc = () => {
     const bucket = manager.export().filter((d) => d.id !== draft?.drawing.id)
@@ -298,6 +340,11 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   const anchorAt = (x: number, y: number): Anchor | null => {
     const vp = viewportOf(chart, series)
     if (!vp) return null
+    // The magnet pulls FIRST: a snapped anchor is the bar's own OHLC value, exact rather than
+    // whatever price the pixel happened to land on. Weak returns null when nothing is near enough,
+    // and the raw pointer position stands.
+    const snapped = magnetSnap(chart, series, { x, y }, workflow().magnet)
+    if (snapped) return snapped
     const price = vp.priceAt(y)
     const time = vp.timeAt(x)
     if (price == null || time == null) return null
@@ -342,13 +389,25 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     draft = null
     // Bar-capturing tools snapshot their range the moment placement completes, before persisting.
     if (toolRegistry.get(d.drawing.type)?.capturesBars) (d.drawing as unknown as { capture?: () => void }).capture?.()
-    setArmed(null)
+    // Stay-in-drawing-mode keeps the tool for a run of the same shape; without it the rail falls
+    // back to the cursor. The model answers, so the rule is stated once.
+    setArmed(toolAfterPlacement(armed, workflow().stayInDrawingMode))
     manager.select(d.drawing.id)
     persist()
   }
 
   const onDown = (e: PointerEvent) => {
     if (e.button !== 0) return
+    // Lock-all suspends the whole layer, new drawings included, and clears any selection so the
+    // settings surfaces cannot offer an edit that would be refused.
+    const locked = workflow().allLocked
+    if (locked && !draft) {
+      manager.deselect()
+      return
+    }
+    // The pointer glyph follows the cursor mode; set on the press so a mode change reaches the
+    // element without the layer holding a second copy of the preference.
+    container.style.cursor = CURSOR_CSS[workflow().cursor]
     container.focus({ preventScroll: true })
     const { x, y } = localXY(e)
 
@@ -372,8 +431,10 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     }
 
     // ---- Cursor: select / move / resize ----
+    // Both locks answer through one predicate: the rail's lock-all mode, and the drawing's own
+    // flag. Selecting is deliberately still allowed on a locked drawing, so it can be unlocked.
     const selected = manager.selected()
-    if (selected && !selected.options.locked) {
+    if (selected && !editRefused('resize', selected.options, locked)) {
       const ai = anchorHit(selected, x, y)
       if (ai !== null) {
         startDrag('anchor', selected, ai, x, y)
@@ -382,8 +443,9 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     }
     const hit = manager.hitTest({ x, y })
     if (hit) {
+      if (editRefused('select', hit.options, locked)) return
       if (!selected || selected.id !== hit.id) manager.select(hit.id)
-      if (!hit.options.locked) startDrag('move', hit, null, x, y)
+      if (!editRefused('move', hit.options, locked)) startDrag('move', hit, null, x, y)
       return
     }
     manager.deselect()
@@ -465,7 +527,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       e.stopPropagation()
     } else if (e.key === 'Delete' || e.key === 'Backspace') {
       const sel = manager.selected()
-      if (!sel) return
+      if (!sel || editRefused('delete', sel.options, workflow().allLocked)) return
       manager.remove(sel.id)
       persist()
     }

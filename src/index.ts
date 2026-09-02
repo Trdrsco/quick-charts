@@ -96,7 +96,7 @@ export { ARRANGEMENTS, LAYOUT_MENU_ROWS, arrangementOf, type Arrangement, type P
 export { createChartLayout, type ChartLayoutApi, type ChartLayoutOptions, type LayoutSaveLoadApi, type LayoutSyncFlags } from './layout'
 export { openInputsEditor } from './inputsEditor'
 export { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
-export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
+export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow } from './drawings'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export { createChart, resolveTheme, applyBar, resolveInitialTf } from './host'
 export {

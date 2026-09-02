@@ -126,7 +126,6 @@ const SURFACE: Record<string, string> = {
   restoreDrawings: 'function',
   segmentTextAngle: 'function',
   serializeDrawingsStore: 'function',
-  setGlyphImageSource: 'function',
   snapToBar: 'function',
   toolRegistry: 'object',
   viewportOf: 'function',
