@@ -1,0 +1,513 @@
+{
+  "rootAttribute": "data-qc-theme",
+  "modes": {
+    "light": [
+      {
+        "property": "--qc-canvas-background",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-canvas-paneBorder",
+        "value": "#e0e3eb"
+      },
+      {
+        "property": "--qc-chrome-border",
+        "value": "#e0e3eb"
+      },
+      {
+        "property": "--qc-chrome-borderStrong",
+        "value": "#8a8d96"
+      },
+      {
+        "property": "--qc-chrome-radius",
+        "value": "4px"
+      },
+      {
+        "property": "--qc-chrome-radiusLarge",
+        "value": "6px"
+      },
+      {
+        "property": "--qc-chrome-surface",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-chrome-surfaceRaised",
+        "value": "#f0f3fa"
+      },
+      {
+        "property": "--qc-drawing-fill",
+        "value": "rgba(41, 98, 255, 0.15)"
+      },
+      {
+        "property": "--qc-drawing-handle",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-drawing-line",
+        "value": "#2962ff"
+      },
+      {
+        "property": "--qc-drawing-selected",
+        "value": "#2962ff"
+      },
+      {
+        "property": "--qc-drawing-text",
+        "value": "#0f0f0f"
+      },
+      {
+        "property": "--qc-motion-durationBase",
+        "value": "150ms"
+      },
+      {
+        "property": "--qc-motion-durationFast",
+        "value": "90ms"
+      },
+      {
+        "property": "--qc-overlay-border",
+        "value": "#e0e3eb"
+      },
+      {
+        "property": "--qc-overlay-scrim",
+        "value": "rgba(0, 0, 0, 0.35)"
+      },
+      {
+        "property": "--qc-overlay-separator",
+        "value": "#e0e3eb"
+      },
+      {
+        "property": "--qc-overlay-shadow",
+        "value": "0 2px 4px rgba(0, 0, 0, 0.2)"
+      },
+      {
+        "property": "--qc-overlay-surface",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-scale-background",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-scale-border",
+        "value": "#e0e3eb"
+      },
+      {
+        "property": "--qc-scale-crosshair",
+        "value": "#9598a1"
+      },
+      {
+        "property": "--qc-scale-crosshairLabelBackground",
+        "value": "#131722"
+      },
+      {
+        "property": "--qc-scale-crosshairLabelText",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-scale-grid",
+        "value": "rgba(0, 0, 0, 0.06)"
+      },
+      {
+        "property": "--qc-scale-sessionAfterHours",
+        "value": "rgba(245, 166, 35, 0.06)"
+      },
+      {
+        "property": "--qc-scale-sessionClosed",
+        "value": "rgba(0, 0, 0, 0.05)"
+      },
+      {
+        "property": "--qc-scale-sessionExtended",
+        "value": "rgba(76, 152, 251, 0.06)"
+      },
+      {
+        "property": "--qc-scale-sessionPreMarket",
+        "value": "rgba(76, 152, 251, 0.06)"
+      },
+      {
+        "property": "--qc-scale-text",
+        "value": "#5b616e"
+      },
+      {
+        "property": "--qc-series-down",
+        "value": "#f23645"
+      },
+      {
+        "property": "--qc-series-neutral",
+        "value": "#787b86"
+      },
+      {
+        "property": "--qc-series-up",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-state-accent",
+        "value": "#2962ff"
+      },
+      {
+        "property": "--qc-state-focusRing",
+        "value": "#2962ff"
+      },
+      {
+        "property": "--qc-state-hover",
+        "value": "rgba(0, 0, 0, 0.06)"
+      },
+      {
+        "property": "--qc-state-pressed",
+        "value": "rgba(0, 0, 0, 0.1)"
+      },
+      {
+        "property": "--qc-state-selected",
+        "value": "rgba(41, 98, 255, 0.12)"
+      },
+      {
+        "property": "--qc-state-selection",
+        "value": "rgba(41, 98, 255, 0.18)"
+      },
+      {
+        "property": "--qc-status-info",
+        "value": "#1160c4"
+      },
+      {
+        "property": "--qc-status-loading",
+        "value": "#787b86"
+      },
+      {
+        "property": "--qc-status-negative",
+        "value": "#c62537"
+      },
+      {
+        "property": "--qc-status-positive",
+        "value": "#067a67"
+      },
+      {
+        "property": "--qc-status-sessionAfterHours",
+        "value": "#f5a623"
+      },
+      {
+        "property": "--qc-status-sessionClosed",
+        "value": "rgba(0, 0, 0, 0.35)"
+      },
+      {
+        "property": "--qc-status-sessionExtended",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-status-sessionOpen",
+        "value": "#22c55e"
+      },
+      {
+        "property": "--qc-status-sessionPreMarket",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-status-warning",
+        "value": "#8a5a00"
+      },
+      {
+        "property": "--qc-text-disabled",
+        "value": "#a3a6af"
+      },
+      {
+        "property": "--qc-text-fontFamily",
+        "value": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
+      },
+      {
+        "property": "--qc-text-fontSizeAxis",
+        "value": "13px"
+      },
+      {
+        "property": "--qc-text-fontSizeBase",
+        "value": "13px"
+      },
+      {
+        "property": "--qc-text-fontSizeMicro",
+        "value": "10px"
+      },
+      {
+        "property": "--qc-text-fontSizeSmall",
+        "value": "11px"
+      },
+      {
+        "property": "--qc-text-fontSizeTitle",
+        "value": "14px"
+      },
+      {
+        "property": "--qc-text-inverse",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-text-link",
+        "value": "#1160c4"
+      },
+      {
+        "property": "--qc-text-muted",
+        "value": "#6a6d78"
+      },
+      {
+        "property": "--qc-text-onCanvas",
+        "value": "#5b616e"
+      },
+      {
+        "property": "--qc-text-primary",
+        "value": "#0f0f0f"
+      },
+      {
+        "property": "--qc-text-secondary",
+        "value": "#5b616e"
+      }
+    ],
+    "dark": [
+      {
+        "property": "--qc-canvas-background",
+        "value": "#0f0f0f"
+      },
+      {
+        "property": "--qc-canvas-paneBorder",
+        "value": "#2a2e39"
+      },
+      {
+        "property": "--qc-chrome-border",
+        "value": "#2a2e39"
+      },
+      {
+        "property": "--qc-chrome-borderStrong",
+        "value": "#6b7280"
+      },
+      {
+        "property": "--qc-chrome-radius",
+        "value": "4px"
+      },
+      {
+        "property": "--qc-chrome-radiusLarge",
+        "value": "6px"
+      },
+      {
+        "property": "--qc-chrome-surface",
+        "value": "#1f1f1f"
+      },
+      {
+        "property": "--qc-chrome-surfaceRaised",
+        "value": "#2a2a2a"
+      },
+      {
+        "property": "--qc-drawing-fill",
+        "value": "rgba(76, 152, 251, 0.15)"
+      },
+      {
+        "property": "--qc-drawing-handle",
+        "value": "#0f0f0f"
+      },
+      {
+        "property": "--qc-drawing-line",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-drawing-selected",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-drawing-text",
+        "value": "#dbdbdb"
+      },
+      {
+        "property": "--qc-motion-durationBase",
+        "value": "150ms"
+      },
+      {
+        "property": "--qc-motion-durationFast",
+        "value": "90ms"
+      },
+      {
+        "property": "--qc-overlay-border",
+        "value": "#2a2e39"
+      },
+      {
+        "property": "--qc-overlay-scrim",
+        "value": "rgba(0, 0, 0, 0.5)"
+      },
+      {
+        "property": "--qc-overlay-separator",
+        "value": "#2a2e39"
+      },
+      {
+        "property": "--qc-overlay-shadow",
+        "value": "0 2px 4px rgba(0, 0, 0, 0.4)"
+      },
+      {
+        "property": "--qc-overlay-surface",
+        "value": "#1f1f1f"
+      },
+      {
+        "property": "--qc-scale-background",
+        "value": "#0f0f0f"
+      },
+      {
+        "property": "--qc-scale-border",
+        "value": "#2a2e39"
+      },
+      {
+        "property": "--qc-scale-crosshair",
+        "value": "#758696"
+      },
+      {
+        "property": "--qc-scale-crosshairLabelBackground",
+        "value": "#dbdbdb"
+      },
+      {
+        "property": "--qc-scale-crosshairLabelText",
+        "value": "#0f0f0f"
+      },
+      {
+        "property": "--qc-scale-grid",
+        "value": "rgba(255, 255, 255, 0.035)"
+      },
+      {
+        "property": "--qc-scale-sessionAfterHours",
+        "value": "rgba(245, 166, 35, 0.045)"
+      },
+      {
+        "property": "--qc-scale-sessionClosed",
+        "value": "rgba(0, 0, 0, 0.22)"
+      },
+      {
+        "property": "--qc-scale-sessionExtended",
+        "value": "rgba(76, 152, 251, 0.05)"
+      },
+      {
+        "property": "--qc-scale-sessionPreMarket",
+        "value": "rgba(76, 152, 251, 0.05)"
+      },
+      {
+        "property": "--qc-scale-text",
+        "value": "#9aa0aa"
+      },
+      {
+        "property": "--qc-series-down",
+        "value": "#f23645"
+      },
+      {
+        "property": "--qc-series-neutral",
+        "value": "#787b86"
+      },
+      {
+        "property": "--qc-series-up",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-state-accent",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-state-focusRing",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-state-hover",
+        "value": "rgba(255, 255, 255, 0.08)"
+      },
+      {
+        "property": "--qc-state-pressed",
+        "value": "rgba(255, 255, 255, 0.12)"
+      },
+      {
+        "property": "--qc-state-selected",
+        "value": "rgba(76, 152, 251, 0.16)"
+      },
+      {
+        "property": "--qc-state-selection",
+        "value": "rgba(76, 152, 251, 0.22)"
+      },
+      {
+        "property": "--qc-status-info",
+        "value": "#68a5ff"
+      },
+      {
+        "property": "--qc-status-loading",
+        "value": "#787b86"
+      },
+      {
+        "property": "--qc-status-negative",
+        "value": "#ff5a68"
+      },
+      {
+        "property": "--qc-status-positive",
+        "value": "#089981"
+      },
+      {
+        "property": "--qc-status-sessionAfterHours",
+        "value": "#f5a623"
+      },
+      {
+        "property": "--qc-status-sessionClosed",
+        "value": "rgba(255, 255, 255, 0.35)"
+      },
+      {
+        "property": "--qc-status-sessionExtended",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-status-sessionOpen",
+        "value": "#22c55e"
+      },
+      {
+        "property": "--qc-status-sessionPreMarket",
+        "value": "#4c98fb"
+      },
+      {
+        "property": "--qc-status-warning",
+        "value": "#f5a623"
+      },
+      {
+        "property": "--qc-text-disabled",
+        "value": "#5c5f66"
+      },
+      {
+        "property": "--qc-text-fontFamily",
+        "value": "-apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, Helvetica, Arial, sans-serif"
+      },
+      {
+        "property": "--qc-text-fontSizeAxis",
+        "value": "13px"
+      },
+      {
+        "property": "--qc-text-fontSizeBase",
+        "value": "13px"
+      },
+      {
+        "property": "--qc-text-fontSizeMicro",
+        "value": "10px"
+      },
+      {
+        "property": "--qc-text-fontSizeSmall",
+        "value": "11px"
+      },
+      {
+        "property": "--qc-text-fontSizeTitle",
+        "value": "14px"
+      },
+      {
+        "property": "--qc-text-inverse",
+        "value": "#0f0f0f"
+      },
+      {
+        "property": "--qc-text-link",
+        "value": "#68a5ff"
+      },
+      {
+        "property": "--qc-text-muted",
+        "value": "#8c8c8c"
+      },
+      {
+        "property": "--qc-text-onCanvas",
+        "value": "#9aa0aa"
+      },
+      {
+        "property": "--qc-text-primary",
+        "value": "#dbdbdb"
+      },
+      {
+        "property": "--qc-text-secondary",
+        "value": "#a3a9b4"
+      }
+    ]
+  }
+}
