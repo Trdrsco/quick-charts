@@ -1,10 +1,11 @@
-// The layout's TRADING context. A host rendering one order ticket beside a multi-chart layout asks
-// the layout what market an order would hit, and the answer is the ACTIVE pane's symbol — measured on
-// the reference, where activating a chart moves the ticket to its market and moves no chart at all.
-// The whole point is that those two are different things, so what is pinned here is that the traded
-// market tracks activation exactly, that it never re-points a chart, and that it is reported for
-// every way it can move: a chart being activated, the active chart changing symbol, a re-tile that
-// drops the active pane, a restore. A market that moves in silence strands a ticket on the last one.
+// The layout's ACTIVE SYMBOL. A host with one surface that follows a multi-chart layout asks the
+// layout which market it is pointed at, and the answer is the ACTIVE pane's symbol — measured on
+// the reference, where activating a chart re-points such a surface at its market and moves no
+// chart at all. The whole point is that those two are different things, so what is pinned here is
+// that the active symbol tracks activation exactly, that it never re-points a chart, and that it is
+// reported for every way it can move: a chart being activated, the active chart changing symbol, a
+// re-tile that drops the active pane, a restore. A market that moves in silence strands the host
+// on the last one.
 //
 // The panes are fakes and the DOM is a stub, so the code under test is the real layout: its own
 // activation, fan-out, re-tile and restore paths decide every value asserted below.
@@ -96,89 +97,89 @@ beforeEach(() => {
   g.getComputedStyle = () => ({ position: 'relative' })
 })
 
-/** A layout of `symbols.length` panes, plus the traded markets it reported along the way. */
+/** A layout of `symbols.length` panes, plus the active symbols it reported along the way. */
 const mount = (symbols: string[], arrangement: string, sync?: { symbol?: boolean }) => {
-  const traded: string[] = []
+  const active: string[] = []
   const api = createChartLayout({
     container: el() as unknown as HTMLElement,
     base: {} as never,
     arrangement,
     panes: symbols.map((symbol) => ({ symbol })),
     ...(sync ? { sync } : {}),
-    events: { onTradingSymbol: (s) => traded.push(s) },
+    events: { onActiveSymbol: (s) => active.push(s) },
   })
-  return { api, traded, symbolsNow: () => api.panes().map((p) => p.symbol()) }
+  return { api, active, symbolsNow: () => api.panes().map((p) => p.symbol()) }
 }
 
-describe('the layout trades its active pane', () => {
-  it('reports the active pane’s market on mount without an event — state, not a change', () => {
-    const { api, traded } = mount(['AAPL', 'MSFT'], '2h')
-    expect(api.tradingSymbol()).toBe('AAPL')
-    expect(traded).toEqual([])
+describe('the layout is pointed at its active pane', () => {
+  it('reports the active pane’s symbol on mount without an event — state, not a change', () => {
+    const { api, active } = mount(['AAPL', 'MSFT'], '2h')
+    expect(api.activeSymbol()).toBe('AAPL')
+    expect(active).toEqual([])
   })
 
-  it('moves the traded market to an activated chart and leaves every chart’s symbol alone', () => {
-    const { api, traded, symbolsNow } = mount(['AAPL', 'MSFT'], '2h')
+  it('moves the active symbol to an activated chart and leaves every chart’s symbol alone', () => {
+    const { api, active, symbolsNow } = mount(['AAPL', 'MSFT'], '2h')
     api.setActivePane(1)
-    expect(api.tradingSymbol()).toBe('MSFT')
-    expect(traded).toEqual(['MSFT'])
+    expect(api.activeSymbol()).toBe('MSFT')
+    expect(active).toEqual(['MSFT'])
     // The half that a single shared "current symbol" could never express.
     expect(symbolsNow()).toEqual(['AAPL', 'MSFT'])
   })
 
   it('activates from the pane’s own pointerdown, not only the api', () => {
-    const { api, traded } = mount(['AAPL', 'MSFT'], '2h')
+    const { api, active } = mount(['AAPL', 'MSFT'], '2h')
     // Only the layout builds elements, one per pane, in order.
     made[1]!.down?.()
     expect(api.activePane()).toBe(1)
-    expect(traded).toEqual(['MSFT'])
+    expect(active).toEqual(['MSFT'])
   })
 
   it('follows the active chart changing symbol, and ignores an inactive one changing', () => {
-    const { api, traded } = mount(['AAPL', 'MSFT'], '2h')
+    const { api, active } = mount(['AAPL', 'MSFT'], '2h')
     api.panes()[1]!.setSymbol('NVDA')
-    expect(api.tradingSymbol()).toBe('AAPL')
-    expect(traded).toEqual([])
+    expect(api.activeSymbol()).toBe('AAPL')
+    expect(active).toEqual([])
     api.panes()[0]!.setSymbol('TSLA')
-    expect(api.tradingSymbol()).toBe('TSLA')
-    expect(traded).toEqual(['TSLA'])
+    expect(api.activeSymbol()).toBe('TSLA')
+    expect(active).toEqual(['TSLA'])
   })
 
   it('reports a value, never a gesture — re-activating the same market says nothing', () => {
-    const { api, traded } = mount(['AAPL', 'MSFT'], '2h')
+    const { api, active } = mount(['AAPL', 'MSFT'], '2h')
     api.setActivePane(1)
     api.setActivePane(0)
     api.setActivePane(1)
-    expect(traded).toEqual(['MSFT', 'AAPL', 'MSFT'])
+    expect(active).toEqual(['MSFT', 'AAPL', 'MSFT'])
     // Symbol sync puts the SAME market on every pane, so activating across them moves nothing.
     const b = mount(['AAPL', 'MSFT'], '2h', { symbol: true })
     b.api.panes()[0]!.setSymbol('GOOG')
     b.api.setActivePane(1)
-    expect(b.traded).toEqual(['GOOG'])
+    expect(b.active).toEqual(['GOOG'])
     expect(b.symbolsNow()).toEqual(['GOOG', 'GOOG'])
   })
 
-  it('reports the market a re-tile lands on when the active pane is destroyed', () => {
-    const { api, traded } = mount(['AAPL', 'MSFT'], '2h')
+  it('reports the symbol a re-tile lands on when the active pane is destroyed', () => {
+    const { api, active } = mount(['AAPL', 'MSFT'], '2h')
     api.setActivePane(1)
-    traded.length = 0
+    active.length = 0
     api.setArrangement('s')
     expect(api.activePane()).toBe(0)
-    expect(api.tradingSymbol()).toBe('AAPL')
-    expect(traded).toEqual(['AAPL'])
+    expect(api.activeSymbol()).toBe('AAPL')
+    expect(active).toEqual(['AAPL'])
   })
 
-  it('reports the restored market once, not the panes sweeping past it', () => {
+  it('reports the restored symbol once, not the panes sweeping past it', () => {
     const saved = (() => {
       const a = mount(['AAPL', 'MSFT'], '2h')
       a.api.setActivePane(1)
       return a.api.serialize().content
     })()
-    const { api, traded } = mount(['TSLA', 'TSLA'], '2h')
+    const { api, active } = mount(['TSLA', 'TSLA'], '2h')
     api.restore(saved)
     expect(api.activePane()).toBe(1)
-    expect(api.tradingSymbol()).toBe('MSFT')
-    expect(traded).toEqual(['MSFT'])
+    expect(api.activeSymbol()).toBe('MSFT')
+    expect(active).toEqual(['MSFT'])
   })
 
   it('switches one shared host localization adapter once for the whole layout', async () => {

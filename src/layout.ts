@@ -40,16 +40,17 @@ export interface ChartLayoutOptions {
   accent?: string
   events?: {
     onActivePane?: (index: number) => void
-    /** The market an order would hit changed. A host rendering ONE order ticket beside the layout
-     *  drives it from here: the reference moves the ticket to whichever chart you activate and
-     *  leaves every chart's own symbol alone, so a ticket follows THIS and never a chart.
+    /** The ACTIVE pane's symbol changed. A host with one surface that follows the layout (a symbol
+     *  header, a side panel about the selected market) drives it from here: the reference points
+     *  such a surface at whichever chart you activate and leaves every chart's own symbol alone, so
+     *  it follows THIS and never a chart.
      *
-     *  Fires for every way that market can move — activating another pane, the active pane changing
-     *  symbol, a re-tile that drops the active pane, a restore. An event reporting a traded market
-     *  that stayed silent while the traded market moved would strand a ticket on the wrong one, so
-     *  it reports the value rather than the gesture, and repeats of a value are dropped. Panes that
-     *  are not active are irrelevant to it. */
-    onTradingSymbol?: (symbol: string) => void
+     *  Fires for every way that symbol can move — activating another pane, the active pane changing
+     *  symbol, a re-tile that drops the active pane, a restore. An event that stayed silent while
+     *  the active symbol moved would strand the host on the wrong market, so it reports the value
+     *  rather than the gesture, and repeats of a value are dropped. Panes that are not active are
+     *  irrelevant to it. */
+    onActiveSymbol?: (symbol: string) => void
     /** Anything a host would save changed: arrangement, sync flags, a pane's symbol/timeframe. */
     onChange?: () => void
   }
@@ -63,8 +64,8 @@ export interface ChartLayoutApi {
   panes(): readonly ChartWidgetApi[]
   activePane(): number
   setActivePane(index: number): void
-  /** The market an order would hit: the ACTIVE pane's symbol. Null only once removed. */
-  tradingSymbol(): string | null
+  /** The ACTIVE pane's symbol. Null only once removed. */
+  activeSymbol(): string | null
   sync(): LayoutSyncFlags
   setSync(partial: Partial<LayoutSyncFlags>): void
   /** The whole layout as ONE opaque content blob (arrangement + sync + every pane's content). */
@@ -124,15 +125,15 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
     }
   }
 
-  /** What the layout is TRADING, as opposed to what any of it is charting: one market, the active
-   *  pane's. The two are different things — pointing the ticket at another chart disturbs no chart. */
-  const tradedSymbol = (): string | null => panes[active]?.api.symbol() ?? null
-  let lastTraded: string | null = null
-  const emitTraded = () => {
-    const next = tradedSymbol()
-    if (removed || next === null || next === lastTraded) return
-    lastTraded = next
-    options.events?.onTradingSymbol?.(next)
+  /** What the layout is pointed AT, as opposed to what any of it is charting: one market, the
+   *  active pane's. The two are different things — activating another chart disturbs no chart. */
+  const activeSymbol = (): string | null => panes[active]?.api.symbol() ?? null
+  let lastActive: string | null = null
+  const emitActive = () => {
+    const next = activeSymbol()
+    if (removed || next === null || next === lastActive) return
+    lastActive = next
+    options.events?.onActiveSymbol?.(next)
   }
 
   const setActive = (index: number) => {
@@ -140,7 +141,7 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
     active = index
     paintActive()
     options.events?.onActivePane?.(index)
-    emitTraded()
+    emitActive()
   }
 
   /** Fan a mirror out to every pane but the source, with echoes suppressed. */
@@ -195,9 +196,9 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
           baseEvents.onSymbolChange?.(s)
           if (flags.symbol) fanOut(index(), (other) => other.setSymbol(s))
           notifyChange()
-          // A replay onto panes is placement, not a market moving under the ticket: a restore mutes
-          // the bus for its whole sweep and reports once, at the end, with the pane it lands on.
-          if (!applying) emitTraded()
+          // A replay onto panes is placement, not the active market moving: a restore mutes the
+          // bus for its whole sweep and reports once, at the end, with the pane it lands on.
+          if (!applying) emitActive()
         },
         onTimeframeChange: (tf) => {
           baseEvents.onTimeframeChange?.(tf)
@@ -230,7 +231,7 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
     for (let i = 0; i < panes.length; i++) place(panes[i]!.el, i)
     if (active >= panes.length) active = panes.length - 1
     paintActive()
-    emitTraded()
+    emitActive()
   }
 
   // Initial build.
@@ -239,7 +240,7 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
     place(panes[i]!.el, i)
   }
   paintActive()
-  lastTraded = tradedSymbol()
+  lastActive = activeSymbol()
 
   const api: ChartLayoutApi = {
     arrangement: () => arrangement.code,
@@ -261,7 +262,7 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
     },
     activePane: () => active,
     setActivePane: (i) => setActive(i),
-    tradingSymbol: () => tradedSymbol(),
+    activeSymbol: () => activeSymbol(),
     sync: () => ({ ...flags }),
     setSync(partial) {
       if (removed) return
@@ -315,9 +316,9 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
         active = c.active
         paintActive()
       }
-      // Placement stays silent on the sync bus, but a ticket is not chrome: restoring a layout puts
-      // a different market under it, and a host that is not told keeps trading the one it left.
-      emitTraded()
+      // Placement stays silent on the sync bus, but the active symbol is not chrome: restoring a
+      // layout puts a different market under it, and a host that is not told keeps the one it left.
+      emitActive()
     },
     remove() {
       if (removed) return

@@ -15,13 +15,10 @@ chart layers on top of it. Both packages ship **ESM-only** — lightweight-chart
 `require` entry, so a `require`-able build here would advertise a path that breaks the moment the
 renderer loads. From a CommonJS host, load via dynamic `import()`.
 
-Licensing: this package requires a commercial license (see `LICENSE`). Licensing is TIERED as a
-matter of license terms, not packaging: the charting tier covers the datafeed-driven widget
-(drawings, indicators, panes, sessions), and the trading tier additionally covers the trading
-plane (trade lines, the order ticket, the account panel) over the `@trdrs/broker` trading seam. One artifact
-serves both — an unlicensed tier is simply unused code your bundler drops. Because the renderer is
-*your* dependency, its Apache-2.0 NOTICE obligations attach to **your** bundle —
-`THIRD-PARTY-NOTICES.md` in this package spells out exactly what to carry and how.
+Licensing: see `LICENSE`. Because the renderer is *your* dependency, its Apache-2.0 NOTICE
+obligations attach to **your** bundle: `THIRD-PARTY-NOTICES.md` in this package spells out exactly
+what to carry and how. The chart includes no trading, accounts or executions; an application that
+trades composes those outside the chart, through the extension seam below.
 
 Quickstart — the smallest working chart (see [The widget](#the-widget) for the full options):
 
@@ -382,7 +379,7 @@ The widget paints candles + volume, applies live updates by the bar rules above,
 as the viewer scrolls left (stopping at the feed's `noData`), persists its sticky state through
 `ChartStorage`, runs configured indicator instances through the manifest pipeline, and mounts the
 drawing layer and legend below. The trdrs app's own chart panel is a richer host over the same seams
-(trading, drawings UI, replay) and layers those on top.
+(drawings UI, replay) and layers those on top.
 
 Beyond the basics, the widget carries:
 
@@ -422,7 +419,7 @@ Beyond the basics, the widget carries:
   the `onMissing` option. A host can also supply `i18n: ChartI18n` of its own to own its codes,
   tags, dictionaries, loading, and fallback outright.
   Every piece of the widget's own chrome speaks the language; symbols, prices and anything the
-  datafeed or broker says are data and pass through untranslated. A host composing the chrome modules itself
+  datafeed says are data and pass through untranslated. A host composing the chrome modules itself
   hands them a `ChartI18n` from `createChartI18n(code)` (an optional trailing parameter or `strings`
   option on each) and reads the widget's words for drawing tools and arrangements through
   `toolName` and `arrangementName`.
@@ -496,11 +493,13 @@ wc.compare.remove('NQ') // the scale mode the trader held comes back
 keeps them in step. The catalog (`ARRANGEMENTS`, grouped for a picker as `LAYOUT_MENU_ROWS`) carries
 55 arrangements from a single full-bleed chart to an 8×2 grid; `setArrangement` re-tiles live —
 surviving panes keep their charts, new panes clone the active pane's symbol and timeframe. One pane
-is ACTIVE (it follows pointerdown; `onActivePane` reports it) — point your own toolbar at it. For
-order entry, ask the layout what it trades: `tradingSymbol()` is the active pane's market, and
-`onTradingSymbol` reports it every time it moves — another pane activated, the active pane's symbol
-changed, a re-tile, a restore. Pointing a ticket at a chart moves no chart's symbol, so the two
-concepts stay separate: each chart keeps charting what it charts, and one of them is being traded. Five sync toggles fan changes across the panes: `symbol`, `interval`, and `dateRange`
+is ACTIVE (it follows pointerdown; `onActivePane` reports it) — point your own toolbar at it. A
+surface of yours that follows the layout asks it which market it is pointed at: `activeSymbol()`
+is the active pane's symbol, and `onActiveSymbol` reports it every time it moves — another pane
+activated, the active pane's symbol changed, a re-tile, a restore. Pointing such a surface at a
+chart moves no chart's symbol, so the two concepts stay separate: each chart keeps charting what
+it charts, and one of them is the one you are looking at. Five sync toggles fan changes across
+the panes: `symbol`, `interval`, and `dateRange`
 replay a change onto every pane, `crosshair` mirrors continuously by time, and `time` centers every
 pane on a clicked moment. The whole layout serializes as ONE opaque content blob (arrangement, sync
 flags, active pane, every pane's own content), so a saved multi-chart layout is one row in the same
@@ -515,9 +514,9 @@ const layout = createChartLayout({
   arrangement: '2h',
   panes: [{ symbol: 'ES', timeframe: '1m' }, { symbol: 'NQ', timeframe: '5m' }],
   sync: { crosshair: true },
-  events: { onTradingSymbol: (symbol) => ticket.setInstrument(symbol) },
+  events: { onActiveSymbol: (symbol) => header.setSymbol(symbol) },
 })
-ticket.setInstrument(layout.tradingSymbol() ?? 'ES') // the value on mount; the event carries changes
+header.setSymbol(layout.activeSymbol() ?? 'ES') // the value on mount; the event carries changes
 layout.setSync({ symbol: true })
 layout.setArrangement(LAYOUT_MENU_ROWS[3]!.codes[0]!) // '4' — the 2×2 grid
 const saved = layout.serialize().content // ONE blob for the whole layout
@@ -645,239 +644,6 @@ What to know:
 - **Layouts attach per pane.** `createChartLayout` hands its shared options to every pane, so each
   pane gets its own attachment, its own context and its own state slot.
 
-## Chart trading over the broker seam
-
-Chart trading is the second seam, the exact analog of the datafeed — and the CONTRACT lives in its
-own package: `@trdrs/broker` owns `BrokerAdapter` (the actions), `BrokerSnapshot` /
-`AccountSnapshot` (the pushed account state), `TradingAdapter` (the whole trading plane),
-`PricePolicy`, and the pure price math. **The `@trdrs/broker` README is the doctested authority
-for every one of those types**; this document covers what the CHART does with them — the renderer,
-the gestures, the drop planners, and the surfaces below. Capability is presence-driven throughout:
-an omitted optional method hides its affordance, including `placeOrder`, whose absence means a
-mutation-only integration where no placement surface renders.
-
-### The widget mounts trading through one adapter
-
-For the widget, the whole trading plane arrives as a single `TradingAdapter`: your `BrokerAdapter`
-(actions), a full-snapshot account subscription (state), an optional capability declaration, and
-your price policy. **Snapshots are FULL and consistent by contract** — every push carries the
-account's complete positions and working orders, so there is no per-operation update to match and
-nothing to time out waiting for; the package holds no trading state of its own.
-
-```ts
-import type { AccountSnapshot, TradingAdapter } from '@trdrs/broker'
-import { createChart, createUdfDatafeed } from 'quickcharts'
-
-const trading: TradingAdapter = {
-  broker,
-  subscribeAccount(handlers) {
-    const stream = myBackend.accountStream()
-    stream.onSnapshot((s: AccountSnapshot) => handlers.onSnapshot({ ...s, scope: 'my-broker|ACC-1', currency: 'USD' }))
-    return () => stream.close()
-  },
-  async capabilities() {
-    return { exits: true } // declare only what is true; capability that IS a method is derived, never declared twice
-  },
-  policy: myPricePolicy,
-}
-
-const tradingWidget = createChart({
-  container,
-  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  trading,
-  events: { onTradingAction: (text, undo) => toast(text, undo), onTradingError: (msg) => note(msg) },
-})
-```
-
-The widget contributes what it owns — the live-trusted mark (null while the feed is not live), the
-resolved tick, the charted symbol — and the adapter owns everything else.
-
-**The order ticket** exists exactly when the adapter's broker implements `placeOrder`
-(presence-driven, like every affordance): the widget then owns the draft's state and renders it as
-the chart-native draft line — drag to reprice, tap the qty chip or type cell to edit (the package's
-own micro-editors), tap the side chip to send. `widget.ticket` drives it programmatically:
-
-```ts
-declare const tradingWidget: import('quickcharts').ChartWidgetApi
-
-tradingWidget.ticket?.open({ side: 'sell', qty: 2, orderType: 'limit' })
-tradingWidget.ticket?.setPrice(5001.25)
-void tradingWidget.ticket?.submit() // policy-gated, confirm-gated, idempotent via intentKey
-```
-
-The money rules the ticket enforces: every edit only recomposes the PREVIEW (nothing on the edit
-path can spend); `submit()` refuses without an armed scope, runs your `policy` over the composed
-entry exactly like a drag, passes the exact payload to `TradingAdapter.confirmOrder` when declared
-(resolve `false` to veto — the draft stays editable), and mints `intentKey` per composed intent —
-stable across retries of the same order, fresh the moment any field changes. A rejected placement
-surfaces the broker's message verbatim and keeps the draft for editing.
-
-**Bar replay** is always available through `widget.replay`: a cursor over the widget's own loaded
-window — `start(atSec?)`, step forward/back, play at the standard speed table, `goLive()`, `exit()`
-— with a transport strip appearing while replay is on. Stepping forward FORMS each bar from real
-finer bars when the feed can serve them: the strip's interval select (Auto by default, the choice
-persists) picks the sub-resolution, each step extends the forming bar by one sub-bar (open
-anchored, high/low cumulative, close latest, volume summed), and the fully-formed bar is the
-sealed bar verbatim; stepping back rewinds a forming bar to its sealed boundary first. On a feed
-with no finer history the step falls back to whole bars — honest, never synthesized. Live updates
-keep accumulating off-screen and the exit catches up. The money rule: **live trading from the
-chart disarms during replay**
-(the trade lines go display-only and the ticket refuses — a money gesture priced off a historical
-view is a foot-gun), while the account panel stays live because its actions are table-explicit; a
-host that wants replay *trading* swaps in a replay `TradingAdapter` at the seam.
-
-**Execution marks** draw where the account actually traded: one arrow per execution, anchored at
-the fill's own price (a buy hangs below its price pointing up at it, a sell sits above pointing
-down), overlapping same-bar same-side arrows stacking at a fixed pitch behind one shaft, with an
-optional "qty @ price" label beyond the shaft (off by default; `executionMarks: { labels: true }`
-on the widget, the `labels()` getter on the attachment). Clicking a mark opens a card that
-aggregates the bar's side group — the fill count, the summed quantity at average price, and the
-individual trades — styled through the `card()` palette getter so it sits beside the host's own
-popovers as one family. Fill-to-bar placement is by
-CONTAINING BAR, read from the loaded series itself — correct on every interval, and a fill whose
-bar is not loaded draws nothing rather than landing on the wrong bar. The widget feeds the surface
-automatically when the adapter declares `executions(symbol)` (refetched on symbol change, on an
-account switch — which clears the previous account's fills first, because fills belong to the
-account that made them — and whenever a snapshot's position quantities move; a fill is the only
-event that changes a quantity); `executionMarks: false` removes it. Live and replay fills are
-SEPARATE histories: entering bar replay switches the drawn history to `'replay'` (live marks hide
-for the whole session), exiting switches back, and a host that runs replay trading pushes that
-session's fills into the replay history through `widget.executions`:
-
-```ts
-import type { BrokerExecution } from '@trdrs/broker'
-import { attachExecutionMarks } from 'quickcharts'
-
-declare const tradingWidget: import('quickcharts').ChartWidgetApi
-declare function fillsFor(symbol: string): Promise<readonly BrokerExecution[]>
-
-// The widget feeds itself when the adapter declares executions(); a host can also push a history:
-tradingWidget.executions?.set('replay', [{ id: 'r-1', side: 'buy', qty: 2, price: 77.23, timeSecs: 1_755_000_000 }])
-
-// A richer host attaches the surface to its own chart (the third argument hosts the click card —
-// an overlay element ABOVE the chart's gesture surface, so card clicks are not swallowed):
-const marks = attachExecutionMarks(chart, series, container, {
-  buyColor: () => '#2962ff',
-  sellColor: () => '#f23645',
-})
-void fillsFor('ES').then((fills) => marks.set('live', fills))
-marks.setScope('replay') // entering replay: live fills hide, the replay history draws
-marks.destroy()
-```
-
-**The account manager** mounts below the chart whenever `trading` is supplied (`accountPanel: false`
-opts out, `{ height }` sizes it). It is `@trdrs/account-manager`'s own surface — the widget hands it
-the SAME adapter the lines consume (the manager owns its subscription; the reference engine adapter
-multiplexes both over one stream), so it is one data plane and one write path, two views. Pages are
-presence-driven: Positions and Orders always; Order history only when the adapter implements
-`ordersHistory`; Accounts only with `accounts()`; Risk — the account's loss limits, profit targets
-and end-of-day close, with the lock banner and the manual unlock — only with `riskControls()`; the
-money summary strip only when snapshots carry `summary`. `Reverse` renders only when the broker
-implements `reversePosition`, and every money
-control disables while no account is armed or trading is locked. Money figures are the venue's own
-or '—'; the manager computes none. A standalone host mounts it without a chart —
-`mountAccountManager(el, { adapter })` from `@trdrs/account-manager`, whose README carries the
-column model and formatter registry.
-
-A richer host can skip the widget and drive `attachTradeLines` directly:
-
-```ts
-import type { PricePolicy } from '@trdrs/broker'
-import { attachTradeLines } from 'quickcharts'
-
-const lines = attachTradeLines({ chart, series, container }, broker, {
-  symbol: 'ES',
-  snapshot: { positions: [], orders: [] }, // you push updates via lines.update(...)
-  scope: 'my-broker|ACC-1',                // the selection identity (null = display-only)
-  tick: 0.25,
-  mark: () => lastTradePrice,              // null when your feed is not live
-  policy: myPricePolicy,                   // the SAME rules your backend enforces
-  onAction: (text, undo) => toast(text, undo),
-  onError: (msg) => note(msg),
-})
-lines.update({ snapshot: nextSnapshot })   // on every account update
-lines.detach()                             // teardown
-```
-
-**Trading primitives** are the imperative alternative for a host with its OWN trading logic — no
-`trading` adapter, no snapshots: draw an order line, a position line, or an execution mark directly
-on any widget (they compose freely with a `trading` adapter's lines; each layer hit-tests only its
-own). The factories live on `ChartWidgetApi` — on a multi-chart layout, on whichever pane you
-target via `layout.panes()`. A primitive is CHART-scoped, not symbol-scoped: it draws until you
-`remove()` it, across symbol switches — remove and redraw on symbol change when a line is
-symbol-bound. Controls follow the callbacks: a ✕ renders only with `onCancel`/`onClose`, ⇄ only
-with `onReverse`, drag-to-reprice only with `onMove` (and only once the contract tick is known —
-a drag that cannot snap is refused), a tappable quantity chip only with `onModify`. Setters chain.
-Inside `onMove` the handle already reads the dropped price; throw to refuse the move and the line
-snaps back. The mark and card of `createExecutionShape` are the same measured rendering the
-account plane's fills use — the label derives from the fill's facts, and a time outside the loaded
-bars draws nothing rather than an arrow on the wrong bar.
-
-```ts
-declare const widget: import('quickcharts').ChartWidgetApi
-
-const order = widget
-  .createOrderLine({ side: 'buy', orderType: 'limit', qty: 2 })
-  .setPrice(5000.25)
-  .onMove((price) => myBackend.replace('ord-1', price)) // throw to refuse; the line snaps back
-  .onCancel(() => {
-    void myBackend.cancel('ord-1')
-    order.remove() // the host owns the lifecycle
-  })
-
-const position = widget
-  .createPositionLine({ qty: -3 })
-  .setPrice(4980.5)
-  .setUnrealizedPnl(-125.5) // your backend's number or null — the pill never fabricates one
-  .onClose(() => myBackend.flatten('ES'))
-
-const fill = widget.createExecutionShape({ direction: 'sell', qty: 3 }).setPrice(4980.5).setTime(1_755_000_000)
-
-position.remove()
-fill.remove()
-```
-
-A host composing the chrome itself uses the same layer through `attachChartPrimitives(deps)`
-(chart, series, the container, the chrome overlay, look/mark thunks) — the widget's factories are
-that attachment applied to its own chart.
-
-### The broker rules (non-negotiable — the surface relies on them)
-
-1. **Snapshots are FULL and CONSISTENT.** Every `update({ snapshot })` carries the account's complete
-   positions + working orders as one atomic read — never a partial patch. The renderer reconciles by
-   identity (`instrument` for positions, `brokerOrderId` for orders); a row that disappears from the
-   snapshot is a closed/cancelled row, so a partial push would erase live lines.
-2. **Identity is stable.** `brokerOrderId` names the SAME order across updates. If your backend
-   replaces-under-the-hood on amend (a new id per move), report the new id in the next snapshot and
-   resolve `moveOrder` only once the new order is live — the package re-keys from the snapshot.
-3. **`moveOrder` is atomic or honest.** Resolve only when the order rests at the new price; reject
-   with a human-readable message for ANY other outcome (filled meanwhile, replaced-but-lost,
-   unconfirmed transport). The message is shown verbatim — never resolve on a maybe.
-4. **Money numbers are real or null.** `unrealizedPnl` is your backend's own figure or `null` — the
-   line then simply omits the P&L suffix. Never synthesize one client-side.
-5. **Your policy is your server's policy.** The injected `PricePolicy` should run the same band /
-   tick-alignment / protective-side rules your backend enforces, so a drag the chart accepts is
-   never rejected server-side (and vice versa). Omitted ⇒ the package only tick-snaps.
-6. **`intentKey` is the retry key.** It is stable across retries of one gesture and changes when the
-   intent changes (the price is baked in). Map it to your backend's idempotency claim so a dropped
-   response + retry cannot double-execute.
-7. **Reverse is ONE backend operation.** Implement `reversePosition` only if your backend clears the
-   instrument's working orders and flips in one call (a client-side cancel+place pair can crash in
-   between). Omit it and the ⇄ affordance never renders.
-8. **Exit legs are THREE-STATE — and the pair is the primitive.** In `setExits` (and
-   `setOrderBracket`'s legs) a number SETS a level, `null` REMOVES it, and an ABSENT field leaves
-   the resting leg untouched. Never treat absent as remove: the levels are cancel-linked siblings
-   at the venue, and "move the stop, don't touch the target" must stay expressible. Capability is
-   presence-driven throughout: an omitted optional method hides its affordance (no `reversePosition`
-   ⇒ no ⇄; no `setOrderBracket` ⇒ no bracket handles on resting entries) — never a dead button.
-
-### Preview lines (pre-money decoration)
-
-A host can draw its own **preview** levels (an order ticket's pending entry/stop/target) through
-`update({ preview })`. Preview gestures are structurally money-free: a drag or ✕ on a preview line
-only ever calls your `onPreviewEdit` / `onPreviewCancel` callbacks — no `BrokerAdapter` method is in
-scope on that path.
-
 ## Versioning & deprecation
 
 - **SemVer, enforced at the gate.** The public surface is pinned by an API-surface test (every
@@ -887,7 +653,7 @@ scope on that path.
   removed/renamed export or a changed contract is **major**; new surface is **minor**; fixes are
   **patch** — never shipped as silent drift.
 - **Optionality is the compatibility mechanism.** New seam capabilities arrive as *optional* methods
-  and fields (`config`, `serverTime`, `getQuotes`, `reversePosition` are the pattern): an existing
+  and fields (`config`, `serverTime`, `getQuotes` are the pattern): an existing
   implementation keeps compiling, and the widget treats absence as "unconstrained / not supported".
   Your integration never breaks by standing still within a major.
 - **Deprecation runs a full major.** A deprecated export keeps working for the remainder of the
