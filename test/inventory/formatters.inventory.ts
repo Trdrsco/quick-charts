@@ -150,9 +150,9 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   {
     file: 'apps/web/src/chart/ChartPane.tsx',
-    symbols: ['formatter.format(ohlc.c)', 'formatter.format(change)', 'changePct.toFixed(2)', 'value.toFixed(itemDp)', 'value.toFixed(cmpDp)'],
+    symbols: ['formatter.format(ohlc.c)', 'formatter.format(change)', 'changePct.toFixed(2)', 'itemPrecision != null ? value.toFixed(itemPrecision) : formatter.format(value)', 'cmpFormatter.format(value)'],
     kind: 'symbology',
-    surface: 'the OHLC legend and the change legend through the symbol formatter; the percent-change legend, indicator legend values, compare legend values',
+    surface: "the OHLC legend and the change legend through the symbol formatter; the percent-change legend; indicator legend values at a declared precision else the symbol formatter; compare legend values in the compared symbol's own format",
   },
   {
     file: 'apps/web/src/chart/ChartPanel.tsx',
