@@ -46,13 +46,21 @@
 - **The level menu is chart-only.** `chartContextMenu` offers reset, copy price, paste, the remove
   rows and settings; a host contributes an alert or order row for the level through the extension
   seam.
-- **A revisioned contract for saved resources.** `ResourceStore` gives saved charts, layouts,
-  symbol-scoped drawings and templates one shape: stable ids, opaque revision tokens in
-  `ResourceRef`, conditional `update` and `remove`, and typed `conflict` and `not-found` outcomes in
-  `WriteOutcome`. A successful write returns the revision the store now holds. Every call accepts an
-  `AbortSignal` and rejects with an error named `AbortError` when that signal is already aborted.
+- **A revisioned contract for saved resources.** `ChartSaveLoadAdapter` is four `ResourceStore`
+  families (`charts`, `layouts`, `drawings(scope)`, `templates(kind)`) over one shape: stable
+  ids, opaque revision tokens in `ResourceRef` (every listing row carries its ref), conditional
+  `update` and `remove`, and typed `conflict` and `not-found` outcomes in `WriteOutcome`. A
+  successful write returns the revision the store now holds. Every call accepts an `AbortSignal`
+  and rejects with an error named `AbortError` when that signal is already aborted.
   **`memorySaveLoadAdapter`** is the in-memory implementation of the whole adapter, for tests,
-  server rendering and ephemeral embeds. `ChartStorage` remains the separate flat settings port.
+  server rendering and ephemeral embeds. The widget runs over it: `ChartWidgetOptions.saveLoad`
+  takes the adapter, **`widget.saveLoad`** holds the open saved chart (`current`, `save`,
+  `load`, `remove`, `detach`; `serialize` and `restore` stay), a save updates at the revision
+  the chart was opened at or creates for a copy, and a refusal is a `ResourceSaveOutcome` carrying
+  the catalog's sentence. The drawing layer persists each symbol's drawings through the drawings
+  family and reports a refused write through **`events.onSaveConflict`**. A layout saves itself
+  through **`layout.saveLoad`** over the layouts family. `ChartStorage` is the separate flat
+  preferences port, in memory by default; a host that wants a device-local store writes one.
 - **The extension seam.** `ChartWidgetOptions.extensions` attaches host code that draws on the
   chart through capability handles (price lines, a primitive mount, coordinate conversions, the
   pan and zoom lock), hears symbol, timeframe, bar, replay, theme and pane changes, reads the
