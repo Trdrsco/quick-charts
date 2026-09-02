@@ -45,7 +45,7 @@ export type {
   ChartExtension,
   ChartExtensionChart,
   ChartExtensionCommand,
-  ChartExtensionCommands,
+  CommandRegistry,
   ChartExtensionContext,
   ChartExtensionHandle,
   ChartExtensionMenuContext,

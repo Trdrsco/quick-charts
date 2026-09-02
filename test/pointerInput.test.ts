@@ -1,12 +1,12 @@
 // Generic pointer and touch behavior, pinned in the PACKAGE. The chart is driven by a finger as
-// often as by a mouse, and every one of these rules used to live in the web application: pan and
-// pinch left to the renderer, the press-and-hold menu written in a React component, the drag lock
-// half-applied at three call sites. A chart someone else embeds got none of it.
+// often as by a mouse, so pan and pinch, the press-and-hold menu, and the drag lock are the
+// widget's own: a chart anyone embeds gets all of it. (The web application's chart pane carries
+// a copy of the press-and-hold rule for its own chart until that pane is deleted.)
 //
-// So the rules are the package's now, and this file is where they hold. Nothing here imports or
-// simulates `apps/web`: the decisions are pure, and where behavior belongs to the widget itself
-// (which handlers it binds, what it does with the chart's own navigation) it is pinned against
-// host.ts's source, the way this package pins its other rules that no runtime assertion can reach.
+// Nothing here imports or simulates `apps/web`: the decisions are pure, and where behavior
+// belongs to the widget itself (which handlers it binds, what it does with the chart's own
+// navigation) it is pinned against host.ts's source, the way this package pins its other rules
+// that no runtime assertion can reach.
 import { describe, expect, it } from 'vitest'
 import { longPressArms, longPressCancels, pointerLock, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
 import { clickSlopFor, tapReleaseVerdict, CLICK_SLOP, CLICK_SLOP_TOUCH } from '../src/gestureRules'

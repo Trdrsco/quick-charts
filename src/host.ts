@@ -52,7 +52,7 @@ import { decimalsOfTick } from '@trdrs/broker'
 import { createChartI18n } from './i18n'
 import {
   createExtensionHost,
-  type ChartExtensionCommands,
+  type CommandRegistry,
   type ChartExtensionHost,
   type ChartExtensionMenuItem,
   type ChartExtensionPane,
@@ -184,7 +184,7 @@ export interface ChartWidgetApi {
   createExecutionShape(opts?: ExecutionShapeOptions): ExecutionShapeApi
   /** Commands contributed by the chart's extensions: what a host toolbar or menu can offer, and the
    *  one way to run them. Empty on a chart with no extensions. */
-  commands: ChartExtensionCommands
+  commands: CommandRegistry
   /** The interface language the widget is showing. */
   locale(): string
   /** Switch the interface language at runtime: the chrome re-labels as the translation lands, and
@@ -1130,10 +1130,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       }
     },
     attachPrimitive(primitive) {
-      candles.attachPrimitive(primitive as never)
+      candles.attachPrimitive(primitive)
       return () => {
         try {
-          candles.detachPrimitive(primitive as never)
+          candles.detachPrimitive(primitive)
         } catch {
           /* likewise */
         }
