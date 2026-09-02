@@ -172,10 +172,10 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   {
     file: 'packages/chart/src/host.ts',
-    symbols: ['function decimalsOfTick', 'decimalsOfTick(symbolTick)'],
+    symbols: ['priceFormatOfTick', 'createPriceFormatter(format'],
     kind: 'symbology',
-    surface: 'the extension formatter precision, from the resolved tick',
-    finding: 'a chart-local decimals-from-tick stand-in until W2-A hands it to the symbology formatter.',
+    surface: 'the extension formatter: the package price formatter over the price format the resolved tick implies',
+    finding: 'the tick-to-PriceFormat conversion is a stand-in until W2-A serves the facts through SymbolInfo.',
   },
   {
     file: 'apps/web/src/chart/useChartTradeLayer.ts',

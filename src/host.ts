@@ -33,6 +33,8 @@ import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfS
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 import { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
 import { createChartI18n } from './i18n'
+import { createPriceFormatter } from './priceFormatter'
+import type { PriceFormat } from './symbology'
 import {
   createExtensionHost,
   type CommandRegistry,
@@ -171,15 +173,16 @@ export function resolveTheme(theme?: ChartTheme): ResolvedTheme {
   }
 }
 
-/** Decimal places a tick resolves to (0.25 → 2, 0.0001 → 4). A chart-local stand-in for the
- *  extension formatter's precision until W2-A hands every chart price display to the symbology
- *  formatter built from `SymbolInfo`; it derives nothing from a price's magnitude. */
-function decimalsOfTick(tick: number): number {
+/** The price format a decimal tick implies, exactly: 0.25 is { pricescale: 100, minmov: 25 },
+ *  0.01 is { 100, 1 }, 0.0001 is { 10000, 1 }. A chart-local stand-in until W2-A serves these facts
+ *  through `SymbolInfo`; it derives nothing from a price's magnitude. */
+function priceFormatOfTick(tick: number): PriceFormat {
   const s = tick.toString()
   const sci = s.match(/e-(\d+)$/i)
-  if (sci) return Number(sci[1]) + (s.split('e')[0]!.split('.')[1]?.length ?? 0)
   const dot = s.indexOf('.')
-  return dot < 0 ? 0 : s.length - dot - 1
+  const decimals = sci ? Number(sci[1]) + (s.split('e')[0]!.split('.')[1]?.length ?? 0) : dot < 0 ? 0 : s.length - dot - 1
+  const pricescale = 10 ** decimals
+  return { pricescale, minmov: Math.max(1, Math.round(tick * pricescale)) }
 }
 
 /** Apply a live bar event to an ascending series: mutate the last bar (same bucket time), append (newer),
@@ -881,15 +884,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     downColor: eff.appearance.downColor,
     fontSize: theme.fontSize,
   })
-  /** The chart's price formatter. Precision comes from the resolved contract tick, and falls back to
-   *  two places only while the symbol is unresolved. */
+  /** The chart's price formatter: the package's own over the resolved tick's price format, in the
+   *  widget's language; two places only while the symbol is unresolved. */
   const extFormatter = (): ChartPriceFormatter => {
-    const dp = symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : 2
-    const tag = i18n.tag()
-    return {
-      format: (price) => price.toLocaleString(tag, { minimumFractionDigits: dp, maximumFractionDigits: dp }),
-      precision: () => dp,
-    }
+    const format = symbolTick != null && symbolTick > 0 ? priceFormatOfTick(symbolTick) : { pricescale: 100, minmov: 1 }
+    const formatter = createPriceFormatter(format, { locale: i18n.tag() })
+    return { format: (price) => formatter.format(price), precision: () => formatter.precision() }
   }
   const extPane = (): ChartExtensionPane => ({ id: chartId, width: chartBox.clientWidth, height: chartBox.clientHeight })
   const extReplay = (): ChartExtensionReplayState => ({
