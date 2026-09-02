@@ -33,8 +33,7 @@
   "dependencies": {
     "@trdrs/account-manager": "workspace:^",
     "@trdrs/broker": "workspace:^",
-    "@trdrs/chart-drawings": "workspace:^",
-    "@trdrs/i18n": "workspace:^"
+    "@trdrs/chart-drawings": "workspace:^"
   },
   "peerDependencies": {
     "lightweight-charts": "^5.0.0"

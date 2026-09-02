@@ -34,7 +34,7 @@ const FORBIDDEN: readonly string[] = [
 describe('the direct dependency set, as built', () => {
   it('pins the manifest edges by name', () => {
     expect(directDependencies()).toEqual({
-      dependencies: ['@trdrs/account-manager', '@trdrs/broker', '@trdrs/chart-drawings', '@trdrs/i18n'],
+      dependencies: ['@trdrs/account-manager', '@trdrs/broker', '@trdrs/chart-drawings'],
       peerDependencies: ['lightweight-charts'],
       devDependencies: ['lightweight-charts', 'tsup', 'typescript'],
       optionalDependencies: [],
@@ -47,7 +47,6 @@ describe('the direct dependency set, as built', () => {
       '@trdrs/account-manager <- packages/chart',
       '@trdrs/broker <- @trdrs/account-manager',
       '@trdrs/chart-drawings <- packages/chart',
-      '@trdrs/i18n <- packages/chart',
       'fancy-canvas@2.1.0 <- @trdrs/chart-drawings',
     ])
   })
@@ -56,7 +55,7 @@ describe('the direct dependency set, as built', () => {
     const present = shippedClosure('packages/chart')
       .map((e) => e.id)
       .filter((id) => FORBIDDEN.includes(id))
-    expect(present).toEqual(['@trdrs/account-manager', '@trdrs/broker', '@trdrs/i18n'])
+    expect(present).toEqual(['@trdrs/account-manager', '@trdrs/broker'])
   })
 })
 
@@ -74,8 +73,8 @@ describe('the free chart dependency boundary (target)', () => {
   })
 
   // W1-C (PCL-4 chart-owned localization runtime): the packed artifact bundles its own runtime and
-  // chart catalogs; @trdrs/i18n stays private and leaves the manifest.
-  it.skip('[W1-C unskips] carries no @trdrs/i18n edge', () => {
+  // chart catalogs; @trdrs/i18n is private and absent from the manifest.
+  it('carries no @trdrs/i18n edge', () => {
     expect(shippedClosure('packages/chart').map((e) => e.id)).not.toContain('@trdrs/i18n')
     expect(directDependencies().dependencies).not.toContain('@trdrs/i18n')
   })

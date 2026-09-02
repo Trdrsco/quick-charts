@@ -1,4 +1,4 @@
-import type { Translation } from '@trdrs/i18n'
+import type { Translation } from '../runtime'
 import type { menu as source } from '../en/menu'
 
 export const menu: Translation<typeof source> = {

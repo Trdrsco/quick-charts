@@ -1,4 +1,4 @@
-import type { Translation } from '@trdrs/i18n'
+import type { Translation } from '../runtime'
 import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {

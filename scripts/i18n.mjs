@@ -26,11 +26,15 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import ts from 'typescript'
+import { LOCALE_SOURCES, readLocales } from './i18n-locales.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
+// Each catalog follows the locale inventory of the runtime that renders it and types its language
+// files against that runtime's `Translation`: the app catalog against `@trdrs/i18n`, the chart
+// catalog against the chart's own runtime beside it. scripts/i18n-locales.mjs reads both tables.
 const CATALOGS = {
-  app: { base: 'apps/web/src/i18n/messages' },
-  sdk: { base: 'packages/chart/src/i18n' },
+  app: { base: 'apps/web/src/i18n/messages', locales: LOCALE_SOURCES.app, translationImport: '@trdrs/i18n' },
+  sdk: { base: 'packages/chart/src/i18n', locales: LOCALE_SOURCES.sdk, translationImport: '../runtime' },
 }
 const [command, ...rest] = process.argv.slice(2)
 const flag = (name) => rest.includes(`--${name}`)
@@ -39,11 +43,8 @@ const opt = (name) => {
   return i >= 0 ? rest[i + 1] : undefined
 }
 
-// ── the language registry, read from the runtime so this never drifts ───────────────────────────
-const localesSrc = readFileSync(resolve(ROOT, 'packages/i18n/src/locales.ts'), 'utf8')
-const LOCALES = [...localesSrc.matchAll(/\{ code: '([A-Za-z_]+)', endonym: '[^']*', tag: '([A-Za-z-]+)'/g)].map((m) => ({ code: m[1], tag: m[2] }))
-if (LOCALES.length < 21) throw new Error(`expected 21 locales in packages/i18n/src/locales.ts, parsed ${LOCALES.length}`)
-const TARGETS = LOCALES.filter((l) => l.code !== 'en')
+// ── the language inventory, read from each catalog's runtime so this never drifts ───────────────
+const targetsFor = (name) => readLocales(CATALOGS[name].locales).filter((l) => l.code !== 'en')
 const CLDR_ORDER = ['zero', 'one', 'two', 'few', 'many', 'other']
 const categoriesFor = (tag) => {
   const set = new Set(new Intl.PluralRules(tag).resolvedOptions().pluralCategories)
@@ -70,7 +71,7 @@ async function readCatalog(name) {
   const en = {}
   for (const s of surfaces) en[s.file] = await loadModule(join(base, 'en', `${s.file}.ts`))
   const eol = index.includes('\r\n') ? '\r\n' : '\n'
-  return { name, base, surfaces, en, eol }
+  return { name, base, surfaces, en, eol, targets: targetsFor(name), translationImport: CATALOGS[name].translationImport }
 }
 
 const hash = (value) => createHash('sha1').update(JSON.stringify(value)).digest('hex').slice(0, 10)
@@ -100,9 +101,9 @@ function decide(key, enValue, have, staleKey, cats, report, code) {
   return out
 }
 
-function renderSurface(surface, entries, eol) {
+function renderSurface(cat, surface, entries, eol) {
   const lines = [
-    `import type { Translation } from '@trdrs/i18n'`,
+    `import type { Translation } from '${cat.translationImport}'`,
     `import type { ${surface.name} as source } from '../en/${surface.file}'`,
     '',
     `export const ${surface.name}: Translation<typeof source> = {`,
@@ -116,7 +117,7 @@ function renderSurface(surface, entries, eol) {
 }
 
 function renderIndex(cat) {
-  const lines = [`import type { Translation } from '@trdrs/i18n'`, `import type { en } from '../en'`]
+  const lines = [`import type { Translation } from '${cat.translationImport}'`, `import type { en } from '../en'`]
   for (const s of cat.surfaces) lines.push(`import { ${s.name} } from './${s.file}'`)
   lines.push('', `const dict: Translation<typeof en> = { ${cat.surfaces.map((s) => `...${s.name}`).join(', ')} }`, 'export default dict', '')
   return lines.join(cat.eol)
@@ -132,7 +133,7 @@ async function sync(check) {
     const next = {}
     const report = { seeded: [], stray: [], written: 0 }
     for (const s of cat.surfaces) for (const key of Object.keys(cat.en[s.file])) next[key] = hash(cat.en[s.file][key])
-    for (const { code, tag } of TARGETS) {
+    for (const { code, tag } of cat.targets) {
       const cats = categoriesFor(tag)
       const dir = join(cat.base, code)
       if (!check) mkdirSync(dir, { recursive: true })
@@ -145,7 +146,7 @@ async function sync(check) {
           return [key, decide(key, en[key], have[key], stale, cats, report, code)]
         })
         for (const key of Object.keys(have)) if (!(key in en)) report.stray.push({ code, key })
-        const content = renderSurface(s, entries, fileEol(path, cat.eol))
+        const content = renderSurface(cat, s, entries, fileEol(path, cat.eol))
         const current = existsSync(path) ? readFileSync(path, 'utf8') : null
         if (content !== current) {
           if (check) {
@@ -183,7 +184,7 @@ async function sync(check) {
       const byKey = new Map()
       for (const s of report.seeded) if (!byKey.has(s.key)) byKey.set(s.key, s.reason)
       const strayKeys = [...new Set(report.stray.map((s) => s.key))]
-      console.log(`${name}: ${report.written} file(s) written, ${byKey.size} key(s) seeded from English across ${TARGETS.length} languages, ${strayKeys.length} stray key(s) dropped`)
+      console.log(`${name}: ${report.written} file(s) written, ${byKey.size} key(s) seeded from English across ${cat.targets.length} languages, ${strayKeys.length} stray key(s) dropped`)
       for (const [key, reason] of byKey) console.log(`  ${reason.padEnd(7)} ${key}`)
       for (const key of strayKeys) console.log(`  dropped ${key}`)
     }
@@ -224,10 +225,11 @@ async function todo() {
   const json = flag('json')
   const cats = await Promise.all(Object.keys(CATALOGS).map(readCatalog))
   const result = {}
-  for (const { code } of TARGETS) {
-    if (only && code !== only) continue
-    result[code] = {}
-    for (const cat of cats) result[code][cat.name] = await stillEnglish(cat, code)
+  for (const cat of cats) {
+    for (const { code } of cat.targets) {
+      if (only && code !== only) continue
+      ;(result[code] ??= {})[cat.name] = await stillEnglish(cat, code)
+    }
   }
   if (json) {
     console.log(JSON.stringify(result, null, 2))
@@ -265,10 +267,13 @@ async function glossary() {
   const lookup = async (cat, code, key) => {
     const s = cat.surfaces.find((s) => key in cat.en[s.file])
     if (!s) return undefined
-    const obj = code === 'en' ? cat.en[s.file] : await loadModule(join(cat.base, code, `${s.file}.ts`))
+    const path = join(cat.base, code, `${s.file}.ts`)
+    if (code !== 'en' && !existsSync(path)) return undefined
+    const obj = code === 'en' ? cat.en[s.file] : await loadModule(path)
     return obj[key]
   }
-  for (const { code } of TARGETS) {
+  const codes = [...new Set(Object.values(cats).flatMap((cat) => cat.targets.map((t) => t.code)))]
+  for (const code of codes) {
     if (only && code !== only) continue
     const rows = []
     for (const [name, key] of CONCEPTS) {

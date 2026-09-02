@@ -1,4 +1,4 @@
-import type { Translation } from '@trdrs/i18n'
+import type { Translation } from '../runtime'
 import type { en } from '../en'
 import { legend } from './legend'
 import { tools } from './tools'

@@ -1,4 +1,4 @@
-import type { Translation } from '@trdrs/i18n'
+import type { Translation } from '../runtime'
 import type { account as source } from '../en/account'
 
 export const account: Translation<typeof source> = {

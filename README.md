@@ -272,13 +272,20 @@ Beyond the basics, the widget carries:
   only on pane-placed instances, and the eye whose hidden state persists.
   `setIndicators(instances)` swaps the configured list at runtime (removed ids tear down, panes
   sweep, the legend follows).
-- **An interface language** (`locale`, English by default) drawn from the built-in trdrs inventory
-  in `@trdrs/i18n`: the widget's own chrome reads it, and the chart's axis and crosshair dates are
-  formatted in it. `setLocale(code)` switches at runtime and resolves after the dictionary settles;
-  `locale()` reports the current one. A host can supply `i18n: ChartI18n` instead to own different
-  stable codes, BCP 47 tags, dictionaries, loading, and fallback.
-  Every piece of the widget's own chrome speaks it; symbols, prices and anything the datafeed or
-  broker says are data and pass through untranslated. A host composing the chrome modules itself
+- **An interface language** (`locale`, English by default), one of the 21 the package ships.
+  `BUILT_IN_LOCALES` lists them for a picker: each carries its stable code, its canonical BCP 47
+  `tag`, its reading direction (`ar` and `he_IL` are `rtl`), and its endonym. The widget's own
+  chrome reads the language, and the chart's axis and crosshair dates are formatted in it. English
+  is in the bundle; every other dictionary is its own chunk, fetched the first time it is chosen
+  and shared by every widget on the page. `setLocale(code)` switches at runtime and resolves after
+  the dictionary settles; `locale()` reports the current one. Plural forms follow the language's
+  CLDR rules through `Intl.PluralRules`, and a number in a message is written with the language's
+  digits and grouping. The runtime is the package's own, framework-free and DOM-free, so a server
+  render can import it.
+  A host can supply `i18n: ChartI18n` of its own to own its codes, tags, dictionaries, loading,
+  and fallback outright.
+  Every piece of the widget's own chrome speaks the language; symbols, prices and anything the
+  datafeed or broker says are data and pass through untranslated. A host composing the chrome modules itself
   hands them a `ChartI18n` from `createChartI18n(code)` (an optional trailing parameter or `strings`
   option on each) and reads the widget's words for drawing tools and arrangements through
   `toolName` and `arrangementName`.
@@ -290,6 +297,15 @@ const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https
 w.setScaleMode(SCALE_MODES.includes('log') ? 'log' : 'normal')
 w.setIndicators([{ id: 'sma-20', definition: smaDefinition }])
 await w.setLocale('ja')
+```
+
+```ts
+import { BUILT_IN_LOCALES, createChart, createChartI18n, createUdfDatafeed } from 'quickcharts'
+
+const picker = BUILT_IN_LOCALES.map(({ code, endonym, dir }) => ({ code, endonym, dir }))
+const i18n = createChartI18n(picker[0]!.code)
+const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }), i18n })
+await w.setLocale('he_IL')
 ```
 
 ## Compare
