@@ -8,11 +8,9 @@
 // navigation) it is pinned against host.ts's source, the way this package pins its other rules
 // that no runtime assertion can reach.
 import { describe, expect, it } from 'vitest'
-import { longPressArms, longPressCancels, pointerLock, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
-import { clickSlopFor, tapReleaseVerdict, CLICK_SLOP, CLICK_SLOP_TOUCH } from '../src/gestureRules'
+import { clickSlopFor, longPressArms, longPressCancels, pointerLock, tapGeometryVerdict, CLICK_SLOP, CLICK_SLOP_TOUCH, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
 import { placeableByWidget } from '../src/drawings'
 import hostSrc from '../src/host.ts?raw'
-import tradeLinesSrc from '../src/tradeLines.ts?raw'
 
 describe('pan, pinch and axis scaling belong to the chart, and are borrowed rather than taken', () => {
   it('a drag suspends pan, zoom, pinch and axis scaling together, and hands all of them back', () => {
@@ -36,13 +34,13 @@ describe('pan, pinch and axis scaling belong to the chart, and are borrowed rath
     expect(created).not.toContain('handleScale')
   })
 
-  it('an in-chart drag locks and unlocks in the same place — the trade surface is the existing witness', () => {
-    const locks = tradeLinesSrc.match(/handleScroll: false, handleScale: false/g) ?? []
-    const unlocks = tradeLinesSrc.match(/handleScroll: true, handleScale: true/g) ?? []
-    expect(locks.length).toBeGreaterThan(0)
-    expect(unlocks.length).toBeGreaterThan(0)
-    // Every lock sets the container's touch action, and the release clears it.
-    expect(tradeLinesSrc.match(/touchAction = 'none'/g)!.length).toBe(locks.length)
+  it('an in-chart drag borrows the lock through one capability, and the chart alone applies it', () => {
+    // The widget's extension plane is the one door to the lock: an overlay asks `lockPanZoom`, and
+    // the flags and the touch action move together inside the chart. No other site in the widget
+    // writes the renderer's navigation flags.
+    expect(hostSrc.match(/handleScroll:/g)!.length).toBe(1)
+    expect(hostSrc.match(/handleScale:/g)!.length).toBe(1)
+    expect(hostSrc.match(/.touchAction =/g)!.length).toBe(1)
   })
 })
 
@@ -100,14 +98,28 @@ describe('a tap is judged by the pointer that made it', () => {
     expect(clickSlopFor(undefined)).toBe(CLICK_SLOP)
   })
 
-  it('the same release commits from a finger and is dropped from a mouse', () => {
+  it('the same release is a tap from a finger and a stray from a mouse', () => {
     const press = { downX: 100, downY: 100, upX: 108, upY: 100, onSameControl: () => true }
-    expect(tapReleaseVerdict({ ...press, pointerType: 'touch' })).toBe('commit')
-    expect(tapReleaseVerdict({ ...press, pointerType: 'mouse' })).toBe('strayed')
+    expect(tapGeometryVerdict({ ...press, pointerType: 'touch' })).toBe('tap')
+    expect(tapGeometryVerdict({ ...press, pointerType: 'mouse' })).toBe('strayed')
   })
 
-  it('a release that left the control it pressed commits nothing', () => {
-    expect(tapReleaseVerdict({ downX: 0, downY: 0, upX: 0, upY: 0, onSameControl: () => false })).toBe('missed')
+  it('a release that left the control it pressed is a miss, and a stray never pays for the hit test', () => {
+    expect(tapGeometryVerdict({ downX: 0, downY: 0, upX: 0, upY: 0, onSameControl: () => false })).toBe('missed')
+    let hitTested = false
+    expect(
+      tapGeometryVerdict({
+        downX: 0,
+        downY: 0,
+        upX: CLICK_SLOP + 1,
+        upY: 0,
+        onSameControl: () => {
+          hitTested = true
+          return true
+        },
+      }),
+    ).toBe('strayed')
+    expect(hitTested).toBe(false)
   })
 })
 
