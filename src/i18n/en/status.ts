@@ -1,7 +1,7 @@
 // Market status: the legend's status control and its popup. The five session NAMES a title line
-// shows live in session.ts (`session.<state>`); these are the states that have no session name
-// (a feed that is not live, a market that never closes, a session the feed has not resolved),
-// the sentence under the title, and the countdown that fills `{until}`.
+// shows live in session.ts, keyed through SESSION_STATE_TITLE; these are the states that have no
+// session name (a feed that is not live, a market that never closes, a session the feed has not
+// resolved), the sentence under the title, and the countdown that fills `{until}`.
 export const status = {
   'status.title': 'Market status',
   'status.unknownTitle': 'Session unknown',
