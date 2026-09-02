@@ -1,6 +1,6 @@
 // Plain-JS ESM consumer: the tarball must RESOLVE and EXECUTE (not just typecheck) in a project
 // with no TypeScript at all. Pure exports run for real; DOM-needing exports only need to exist.
-import { BUILT_IN_INDICATORS, attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTf, mergeOverrides, olderPageVerdict, planPaneOp, sessionOf, tfToUdfResolution } from 'quickcharts'
+import { BUILT_IN_INDICATORS, attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTimeframe, mergeOverrides, olderPageVerdict, parseSessionModel, planPaneOp, sessionStateAt, tfToUdfResolution } from 'quickcharts'
 import { parseDrawingsStore, serializeDrawingsStore, drawingTools } from 'quickcharts/drawings'
 
 const fail = (msg) => {
@@ -48,9 +48,9 @@ if (spec.plots[0].data[1].color !== '#f00') fail('histogram sign-coloring wrong'
 // session classifier answers, and the scale-mode coercion fails closed.
 const plan = planPaneOp({ heights: { 0: 300, 1: 100 }, remembered: {} }, { kind: 'collapse', pane: 1 })
 if (plan.apply[1] === undefined || plan.apply[0] + plan.apply[1] !== 400) fail('pane plan does not conserve height')
-if (sessionOf(1_700_000_000, 'crypto') !== 'open') fail('crypto must always be open')
+if (sessionStateAt(parseSessionModel({ timezone: 'Etc/UTC', session: '24x7' }), 1_700_000_000) !== 'open') fail('a continuous session must always be open')
 if (coerceScaleMode('banana') !== 'normal') fail('scale-mode coercion not failing closed')
-if (isIntradayTf('1d') || !isIntradayTf('5m')) fail('intraday predicate wrong')
+if (isIntradayTimeframe('1d') || !isIntradayTimeframe('5m')) fail('intraday predicate wrong')
 
 // The built-in indicators execute from the shipped artifact: the registry holds the 23, and one
 // computes over plain bars and walks into the render spec with nothing else of ours installed.
