@@ -49,6 +49,9 @@ const DEFAULT_SCOPE = [
   'apps/web/src/operator',
   'apps/web/src/marketplace',
   'apps/web/src/lib/flags.tsx',
+  // The chart-trading organ mounts its own DOM (editors, cards, pills) from .ts modules, so the
+  // sweep reads what those assign to the DOM and hand to their painters.
+  'packages/chart-trading/src',
 ]
 
 /** Inside the scope but not the product: the public marketing site's nav and footer speak English
@@ -62,6 +65,8 @@ const PROTOCOL_CALLS = new Set(['pageDoor', 'useOperatorManifest'])
 
 /** Attribute names whose string value a person reads or a screen reader speaks. */
 const READER_ATTRS = new Set(['title', 'placeholder', 'aria-label', 'aria-description', 'alt', 'label', 'hint', 'menuLabel', 'describe'])
+/** DOM properties a vanilla module writes text into: what `el.textContent = 'Close'` shows. */
+const READER_PROPS = new Set(['textContent', 'innerText', 'title', 'placeholder', 'ariaLabel'])
 
 /** Data, not interface: exact strings that are allowed to stay literal. */
 const ALLOW_EXACT = new Set([
@@ -102,7 +107,9 @@ function walkFiles(entry, out) {
   const st = statSync(abs, { throwIfNoEntry: false })
   if (!st) return
   if (st.isFile()) {
-    if (/\.tsx$/.test(abs) && !/\.test\.tsx$/.test(abs)) out.push(abs)
+    // Under packages/, vanilla .ts modules build DOM too; under apps/web the interface is JSX.
+    const wanted = /[\\/]packages[\\/]/.test(abs) ? /\.tsx?$/ : /\.tsx$/
+    if (wanted.test(abs) && !/\.test\.tsx?$/.test(abs) && !/\.d\.ts$/.test(abs) && !/[\\/]i18n[\\/]/.test(abs)) out.push(abs)
     return
   }
   for (const name of readdirSync(abs)) {
@@ -171,6 +178,30 @@ for (const file of scoped) {
         }
       }
       check(e)
+    } else if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.EqualsToken &&
+      ts.isPropertyAccessExpression(node.left) &&
+      READER_PROPS.has(node.left.name.getText())
+    ) {
+      // Text written straight into the DOM: el.textContent = 'Close', el.title = `Close ${name}`.
+      const rhs = node.right
+      const prop = node.left.name.getText()
+      if (ts.isStringLiteral(rhs) || ts.isNoSubstitutionTemplateLiteral(rhs)) report(file, node, `prop:${prop}`, rhs.text)
+      else if (ts.isTemplateExpression(rhs)) reportTemplate(file, node, `prop:${prop}`, rhs)
+      else if (ts.isConditionalExpression(rhs)) {
+        for (const side of [rhs.whenTrue, rhs.whenFalse]) {
+          if (ts.isStringLiteral(side) || ts.isNoSubstitutionTemplateLiteral(side)) report(file, node, `prop:${prop}`, side.text)
+          if (ts.isTemplateExpression(side)) reportTemplate(file, node, `prop:${prop}`, side)
+        }
+      }
+    } else if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.expression.name.getText() === 'setAttribute') {
+      // el.setAttribute('title', 'Close'): the attribute rule, for DOM built by hand.
+      const [name, value] = node.arguments
+      if (name && value && ts.isStringLiteral(name) && READER_ATTRS.has(name.text)) {
+        if (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) report(file, node, `attr:${name.text}`, value.text)
+        else if (ts.isTemplateExpression(value)) reportTemplate(file, node, `attr:${name.text}`, value)
+      }
     } else if (ts.isCallExpression(node) && !PROTOCOL_CALLS.has(node.expression.getText())) {
       // Sentences handed to a function: setError('Could not …'), throw new Error(…) is code, not UI.
       for (const arg of node.arguments) {
