@@ -1,4 +1,4 @@
-# @trdrs/chart
+# quickcharts
 
 The charting library's public surface. Build a platform on the chart by supplying a **datafeed** — the
 single seam the whole design turns on. The chart consumes the `ChartDatafeed` interface and never a
@@ -7,7 +7,7 @@ concrete backend, so your feed drives it with zero changes to the chart.
 ## Install
 
 ```bash
-npm install @trdrs/chart lightweight-charts
+npm install quickcharts lightweight-charts
 ```
 
 `lightweight-charts` (^5.0.0) is a **peer dependency**: your app owns the renderer version and the
@@ -26,7 +26,7 @@ serves both — an unlicensed tier is simply unused code your bundler drops. Bec
 Quickstart — the smallest working chart (see [The widget](#the-widget) for the full options):
 
 ```ts
-import { createChart, createUdfDatafeed } from '@trdrs/chart'
+import { createChart, createUdfDatafeed } from 'quickcharts'
 
 const widget = createChart({
   container,
@@ -44,7 +44,7 @@ yours — a stream pushes on tick, a poller on its board cadence) — and `confi
 capability declaration — [below](#capability-declaration-config-optional)).
 
 ```ts
-import type { ChartDatafeed } from '@trdrs/chart'
+import type { ChartDatafeed } from 'quickcharts'
 
 declare const feed: ChartDatafeed
 const unsubscribe = feed.subscribeQuotes?.(['ES', 'NQ'], (q) => console.log(q.symbol, q.last))
@@ -52,7 +52,7 @@ unsubscribe?.()
 ```
 
 ```ts
-import type { ChartDatafeed, FeedBar } from '@trdrs/chart'
+import type { ChartDatafeed, FeedBar } from 'quickcharts'
 
 export const myFeed: ChartDatafeed = {
   async search(query, opts) {
@@ -109,7 +109,7 @@ on a refusal. The viewer's stored preference is *not* overwritten (capability is
 preference is the viewer's — a later feed that serves the preferred tf gets it back).
 
 ```ts
-import type { ChartDatafeed, DatafeedConfig } from '@trdrs/chart'
+import type { ChartDatafeed, DatafeedConfig } from 'quickcharts'
 
 declare const baseFeed: ChartDatafeed // your feed from the section above
 
@@ -132,7 +132,7 @@ Already have a [UDF](https://www.tradingview.com/charting-library-docs/latest/co
 Skip implementing the interface — point the adapter at it:
 
 ```ts
-import { createUdfDatafeed } from '@trdrs/chart'
+import { createUdfDatafeed } from 'quickcharts'
 
 const datafeed = createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' })
 ```
@@ -161,7 +161,7 @@ What the adapter honors of the protocol:
 default is the browser's `localStorage`; supply your own adapter to key it to a user account:
 
 ```ts
-import { localStorageChartStorage, memoryChartStorage, type ChartStorage } from '@trdrs/chart'
+import { localStorageChartStorage, memoryChartStorage, type ChartStorage } from 'quickcharts'
 ```
 
 Scope honestly stated: `ChartStorage` redirects the persistence of **this package's widget** — the
@@ -178,7 +178,7 @@ band fills, per-instance style overrides), never the math. One definition render
 this widget and in any richer host built on the same pipeline.
 
 ```ts
-import type { IndicatorDefinition } from '@trdrs/chart'
+import type { IndicatorDefinition } from 'quickcharts'
 
 export const smaDefinition: IndicatorDefinition = {
   manifest: {
@@ -203,7 +203,7 @@ export const smaDefinition: IndicatorDefinition = {
 Wire instances through `ChartWidgetOptions.indicators`:
 
 ```ts
-import { createChart, createUdfDatafeed } from '@trdrs/chart'
+import { createChart, createUdfDatafeed } from 'quickcharts'
 
 const widget = createChart({
   container,
@@ -232,7 +232,7 @@ The lower-level pieces are exported for hosts that orchestrate their own compute
 `createChart(options)` mounts a complete datafeed-driven chart into a DOM element — no framework required:
 
 ```ts
-import { createChart, createUdfDatafeed } from '@trdrs/chart'
+import { createChart, createUdfDatafeed } from 'quickcharts'
 
 const widget = createChart({
   container: document.getElementById('chart')!,
@@ -284,7 +284,7 @@ Beyond the basics, the widget carries:
   `toolName` and `arrangementName`.
 
 ```ts
-import { createChart, createUdfDatafeed, SCALE_MODES } from '@trdrs/chart'
+import { createChart, createUdfDatafeed, SCALE_MODES } from 'quickcharts'
 
 const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }), locale: 'de' })
 w.setScaleMode(SCALE_MODES.includes('log') ? 'log' : 'normal')
@@ -311,7 +311,7 @@ to each pane's own chart (`layout.panes()[layout.activePane()].compare`) and rid
 with the rest of that pane's content.
 
 ```ts
-import { createChart, createUdfDatafeed } from '@trdrs/chart'
+import { createChart, createUdfDatafeed } from 'quickcharts'
 
 const wc = createChart({
   container,
@@ -343,7 +343,7 @@ flags, active pane, every pane's own content), so a saved multi-chart layout is 
 save/load backend a single chart uses.
 
 ```ts
-import { createChartLayout, createUdfDatafeed, LAYOUT_MENU_ROWS } from '@trdrs/chart'
+import { createChartLayout, createUdfDatafeed, LAYOUT_MENU_ROWS } from 'quickcharts'
 
 const layout = createChartLayout({
   container: document.getElementById('charts')!,
@@ -375,7 +375,7 @@ anchor-resize, per-symbol persistence, and a small built-in tool rail. Turn the 
 `drawings: false`, or keep it and hide the rail to drive it from your own UI:
 
 ```ts
-import { createChart, createUdfDatafeed } from '@trdrs/chart'
+import { createChart, createUdfDatafeed } from 'quickcharts'
 
 const widget = createChart({
   container,
@@ -389,7 +389,7 @@ const saved = widget.drawings?.export() // the persistence wire format (Serializ
 The layer is also mountable on its own lightweight-charts pair, without the widget:
 
 ```ts
-import { attachDrawings } from '@trdrs/chart'
+import { attachDrawings } from 'quickcharts'
 
 const layer = attachDrawings({ chart, series, container, symbol: 'ES' })
 layer.armTool('rectangle')
@@ -421,7 +421,7 @@ and stores viewer state in the chart's own save blob. The chart attaches it at m
 changes at it, and takes it down at teardown, along with everything it drew.
 
 ```ts
-import { createChart, createUdfDatafeed, type ChartExtension } from '@trdrs/chart'
+import { createChart, createUdfDatafeed, type ChartExtension } from 'quickcharts'
 
 const alertLines: ChartExtension = {
   id: 'acme.alerts',
@@ -499,7 +499,7 @@ nothing to time out waiting for; the package holds no trading state of its own.
 
 ```ts
 import type { AccountSnapshot, TradingAdapter } from '@trdrs/broker'
-import { createChart, createUdfDatafeed } from '@trdrs/chart'
+import { createChart, createUdfDatafeed } from 'quickcharts'
 
 const trading: TradingAdapter = {
   broker,
@@ -531,7 +531,7 @@ the chart-native draft line — drag to reprice, tap the qty chip or type cell t
 own micro-editors), tap the side chip to send. `widget.ticket` drives it programmatically:
 
 ```ts
-declare const tradingWidget: import('@trdrs/chart').ChartWidgetApi
+declare const tradingWidget: import('quickcharts').ChartWidgetApi
 
 tradingWidget.ticket?.open({ side: 'sell', qty: 2, orderType: 'limit' })
 tradingWidget.ticket?.setPrice(5001.25)
@@ -579,9 +579,9 @@ session's fills into the replay history through `widget.executions`:
 
 ```ts
 import type { BrokerExecution } from '@trdrs/broker'
-import { attachExecutionMarks } from '@trdrs/chart'
+import { attachExecutionMarks } from 'quickcharts'
 
-declare const tradingWidget: import('@trdrs/chart').ChartWidgetApi
+declare const tradingWidget: import('quickcharts').ChartWidgetApi
 declare function fillsFor(symbol: string): Promise<readonly BrokerExecution[]>
 
 // The widget feeds itself when the adapter declares executions(); a host can also push a history:
@@ -616,7 +616,7 @@ A richer host can skip the widget and drive `attachTradeLines` directly:
 
 ```ts
 import type { PricePolicy } from '@trdrs/broker'
-import { attachTradeLines } from '@trdrs/chart'
+import { attachTradeLines } from 'quickcharts'
 
 const lines = attachTradeLines({ chart, series, container }, broker, {
   symbol: 'ES',
@@ -647,7 +647,7 @@ account plane's fills use — the label derives from the fill's facts, and a tim
 bars draws nothing rather than an arrow on the wrong bar.
 
 ```ts
-declare const widget: import('@trdrs/chart').ChartWidgetApi
+declare const widget: import('quickcharts').ChartWidgetApi
 
 const order = widget
   .createOrderLine({ side: 'buy', orderType: 'limit', qty: 2 })

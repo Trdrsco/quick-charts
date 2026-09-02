@@ -116,7 +116,7 @@ const SURFACE: Record<string, string> = {
   withAlpha: 'function',
 }
 
-describe('@trdrs/chart API surface pin', () => {
+describe('quickcharts API surface pin', () => {
   it('exports exactly the pinned names', () => {
     expect(Object.keys(api).sort()).toEqual(Object.keys(SURFACE).sort())
   })

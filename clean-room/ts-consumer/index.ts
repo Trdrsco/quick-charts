@@ -22,7 +22,7 @@ import {
   type HistoryPage,
   type IndicatorDefinition,
   type SessionClass,
-} from '@trdrs/chart'
+} from 'quickcharts'
 import type { AccountSnapshot, BrokerAdapter, TradingAdapter, TradingCapabilities } from '@trdrs/broker'
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 import { parseDrawingsStore, serializeDrawingsStore, toolRegistry, type SerializedDrawing } from '@trdrs/chart-drawings'

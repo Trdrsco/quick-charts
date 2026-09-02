@@ -1,6 +1,6 @@
 // Plain-JS ESM consumer: the tarball must RESOLVE and EXECUTE (not just typecheck) in a project
 // with no TypeScript at all. Pure exports run for real; DOM-needing exports only need to exist.
-import { attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTf, mergeOverrides, olderPageVerdict, planPaneOp, sessionOf, tfToUdfResolution } from '@trdrs/chart'
+import { attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTf, mergeOverrides, olderPageVerdict, planPaneOp, sessionOf, tfToUdfResolution } from 'quickcharts'
 import { parseDrawingsStore, serializeDrawingsStore, toolRegistry } from '@trdrs/chart-drawings'
 
 const fail = (msg) => {
