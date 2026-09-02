@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Time } from 'lightweight-charts'
 import { DrawingManager } from '../src/core/manager'
+import { moneyText } from '../src/core/money'
+import forecastingSrc from '../src/tools/forecasting.ts?raw'
 import { toolRegistry } from '../src/registry'
 import type { Anchor } from '../src/core/types'
 
@@ -50,5 +52,22 @@ describe('the price-format port', () => {
     d.setPriceFormatter(thirtySeconds)
     d.setPriceFormatter(null)
     expect(axisText(d)).toBe('110.50')
+  })
+})
+
+describe('money is not a price', () => {
+  it('the money stand-in writes two decimals for every magnitude, signed', () => {
+    expect(moneyText(500)).toBe('500.00')
+    expect(moneyText(-12.345)).toBe('-12.35')
+    expect(moneyText(0.004)).toBe('0.00')
+  })
+
+  it('a position tool writes its P&L and amounts as money and its level offsets through the price port', () => {
+    expect(forecastingSrc).toContain('moneyText(s.pnl)')
+    expect(forecastingSrc).toContain('moneyText(s.amountAtTp)')
+    expect(forecastingSrc).toContain('moneyText(s.amountAtSl)')
+    expect(forecastingSrc).not.toContain('this.formatPrice(s.pnl)')
+    expect(forecastingSrc).not.toContain('this.formatPrice(s.amountAt')
+    expect(forecastingSrc).toContain('return `${this.formatPrice(offset)} (${percent.toFixed(2)}%)${ticks}`')
   })
 })
