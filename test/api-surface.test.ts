@@ -35,12 +35,6 @@ const SURFACE: Record<string, string> = {
   arrangementName: 'function',
   BRAND_DOWN: 'string',
   BRAND_UP: 'string',
-  // The chart's generic pointer rules, read by an overlay whose controls judge a tap the way the
-  // chart's own do.
-  CLICK_SLOP: 'number',
-  CLICK_SLOP_TOUCH: 'number',
-  clickSlopFor: 'function',
-  tapGeometryVerdict: 'function',
   COLLAPSED_H: 'number',
   DEFAULT_OVERRIDES: 'object',
   FeedUnavailableError: 'function',

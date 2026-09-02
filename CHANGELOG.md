@@ -26,9 +26,6 @@
   in the chart's save blob. The chart takes back everything an extension drew at detach.
 - **The layout names its active symbol.** `ChartLayoutApi.activeSymbol()` and the
   `onActiveSymbol` event report the active pane's symbol every time it moves.
-- **The chart's generic pointer rules are exported**: `CLICK_SLOP`, `CLICK_SLOP_TOUCH`,
-  `clickSlopFor` and `tapGeometryVerdict`, for an overlay whose controls judge a tap the way the
-  chart's own do.
 - **The quote surface gains its push half.** `ChartDatafeed` gains optional
   **`subscribeQuotes(symbols, onQuote)`** beside `getQuotes`: one `QuoteSnapshot` per update,
   initial state included, every update a replacement; returns the unsubscribe; transport and

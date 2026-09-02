@@ -50,43 +50,10 @@ export function longPressCancels(a: { touches: number; fromX: number; fromY: num
   return Math.abs(a.x - a.fromX) > LONG_PRESS_DRIFT_PX || Math.abs(a.y - a.fromY) > LONG_PRESS_DRIFT_PX
 }
 
-/** How far (px) a press may wander before release and still count as a tap. */
-export const CLICK_SLOP = 4
-/** The same allowance for a FINGER. A mouse releases within a pixel or two of where it pressed, so
- *  4 separates a click from an abandoned drag cleanly. A thumb does not: it lands on a soft contact
- *  patch, rolls slightly as it presses, and routinely reports 8 to 10px between down and up on a
- *  tap the person experienced as perfectly still. Judging that by the mouse's number drops real
- *  taps, and a dropped tap on a control reads as a control that ignored the press. */
-export const CLICK_SLOP_TOUCH = 12
-
-/** The tap allowance for the pointer in use. Absent reads as a mouse, the strict number. */
-export function clickSlopFor(pointerType: string | undefined): number {
-  return pointerType === 'touch' ? CLICK_SLOP_TOUCH : CLICK_SLOP
-}
-
-export type TapGeometryVerdict = 'tap' | 'strayed' | 'missed'
-
-/** Whether releasing a pressed on-chart control still counts as a tap ON that control, by geometry
- *  alone: the pointer stayed within its allowance of the press (a tap, not an abandoned drag), and
- *  the release still rests on the SAME control. `onSameControl` is lazy, so a strayed release never
- *  pays for a hit test. What a surface then does with a clean tap is its own rule, layered on top. */
-export function tapGeometryVerdict(a: {
-  downX: number
-  downY: number
-  upX: number
-  upY: number
-  onSameControl: () => boolean
-  /** The pointer that made the gesture; sets the wander allowance (see clickSlopFor). */
-  pointerType?: string
-}): TapGeometryVerdict {
-  const slop = clickSlopFor(a.pointerType)
-  if (Math.abs(a.upX - a.downX) > slop || Math.abs(a.upY - a.downY) > slop) return 'strayed'
-  if (!a.onSameControl()) return 'missed'
-  return 'tap'
-}
-
 // Pinch and axis-scale dragging are the renderer's own gestures: the chart enables them and gets out
 // of the way. What this package owns about them is exactly the lock above — an in-chart drag
 // suspends pinch and axis scaling for its duration and hands both back — and the rule that a second
 // finger ends a one-finger gesture instead of being folded into it. Both are pinned in
 // test/pointerInput.test.ts against these functions and the widget's own extension capabilities.
+// How far a press may wander and still be a tap on a CONTROL is a rule of whoever draws the
+// control (an extension's own), not the chart's.

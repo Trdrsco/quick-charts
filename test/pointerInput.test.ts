@@ -8,7 +8,7 @@
 // navigation) it is pinned against host.ts's source, the way this package pins its other rules
 // that no runtime assertion can reach.
 import { describe, expect, it } from 'vitest'
-import { clickSlopFor, longPressArms, longPressCancels, pointerLock, tapGeometryVerdict, CLICK_SLOP, CLICK_SLOP_TOUCH, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
+import { longPressArms, longPressCancels, pointerLock, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
 import { placeableByWidget } from '../src/drawings'
 import hostSrc from '../src/host.ts?raw'
 
@@ -86,40 +86,6 @@ describe('press and hold is the touch way into the level menu', () => {
     expect(hostSrc.match(/raiseMenuAt\(/g)!.length).toBe(2)
     // An armed hold cannot outlive the widget.
     expect(hostSrc).toContain('holdCleanup?.()')
-  })
-})
-
-describe('a tap is judged by the pointer that made it', () => {
-  it('a thumb is allowed to wander further than a mouse before a press stops being a tap', () => {
-    expect(CLICK_SLOP).toBe(4)
-    expect(CLICK_SLOP_TOUCH).toBe(12)
-    expect(clickSlopFor('touch')).toBe(CLICK_SLOP_TOUCH)
-    expect(clickSlopFor('mouse')).toBe(CLICK_SLOP)
-    expect(clickSlopFor(undefined)).toBe(CLICK_SLOP)
-  })
-
-  it('the same release is a tap from a finger and a stray from a mouse', () => {
-    const press = { downX: 100, downY: 100, upX: 108, upY: 100, onSameControl: () => true }
-    expect(tapGeometryVerdict({ ...press, pointerType: 'touch' })).toBe('tap')
-    expect(tapGeometryVerdict({ ...press, pointerType: 'mouse' })).toBe('strayed')
-  })
-
-  it('a release that left the control it pressed is a miss, and a stray never pays for the hit test', () => {
-    expect(tapGeometryVerdict({ downX: 0, downY: 0, upX: 0, upY: 0, onSameControl: () => false })).toBe('missed')
-    let hitTested = false
-    expect(
-      tapGeometryVerdict({
-        downX: 0,
-        downY: 0,
-        upX: CLICK_SLOP + 1,
-        upY: 0,
-        onSameControl: () => {
-          hitTested = true
-          return true
-        },
-      }),
-    ).toBe('strayed')
-    expect(hitTested).toBe(false)
   })
 })
 
