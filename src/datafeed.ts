@@ -8,6 +8,7 @@
 // volume, or a top-of-book) are not a chart concern and have no place on this seam: a host fans
 // them to its own quote consumers from its own source.
 import type { SymbolInfo } from './symbology'
+import type { BarMark, TimescaleMark } from './marks'
 
 /** One OHLCV bar on the wire: `t` = epoch SECONDS at bucket open (never milliseconds, never an
  *  update's wall time), strictly ascending within any batch, one bar per timestamp. */
@@ -127,4 +128,10 @@ export interface ChartDatafeed {
   /** Server clock (epoch seconds) — countdown skew correction. Optional: a feed without one leaves
    *  the chart on the client clock. */
   serverTime?(): Promise<number>
+  /** OPTIONAL neutral bar marks over a window (epoch seconds, inclusive of both ends). A mark is a
+   *  note about a moment: its color is a theme role, its words are the host's, and the chart
+   *  neither interprets nor acts on it. Omit it entirely when the feed serves none. */
+  marks?(symbol: string, from: number, to: number, resolution: string): Promise<readonly BarMark[]>
+  /** OPTIONAL neutral time-scale marks over the same window. */
+  timescaleMarks?(symbol: string, from: number, to: number, resolution: string): Promise<readonly TimescaleMark[]>
 }

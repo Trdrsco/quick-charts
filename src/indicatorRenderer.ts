@@ -24,6 +24,7 @@ import {
 } from 'lightweight-charts'
 import type { IndicatorPlot, IndicatorPlots } from './indicatorModel'
 import { FillBetweenPrimitive, ShadePrimitive } from './indicatorPrimitives'
+import { DARK_THEME } from './theme/palettes'
 
 type Series = ISeriesApi<SeriesType>
 
@@ -80,11 +81,16 @@ export function attachIndicators(
     /** The symbol's price format for studies that declare no precision. A host that supplies none
      *  leaves those scales on the library's own default formatting. */
     symbolPriceFormat?: () => SymbolPriceFormat
+    /** The undirected ink a level line takes when the manifest declares no color of its own. Read
+     *  live, so a theme switch repaints the levels with everything else; the built-in dark palette's
+     *  neutral stands in for a host that supplies none. */
+    neutral?: () => string
   },
 ): IndicatorsRenderer {
   const entries = new Map<string, Entry>()
   const candlesOf = options?.candles ?? (() => null)
   const symbolPriceFormat = options?.symbolPriceFormat ?? null
+  const neutralOf = options?.neutral ?? (() => DARK_THEME['series.neutral'])
 
   const removeEntry = (id: string): void => {
     const entry = entries.get(id)
@@ -114,14 +120,14 @@ export function attachIndicators(
         entry = undefined
       }
       if (!entry) {
-        entry = makeEntry(chart, built)
+        entry = makeEntry(chart, built, neutralOf())
         entries.set(id, entry)
       }
       built.plots.forEach((plot, i) => {
         entry.series[i]?.setData(plot.data)
         entry.markers[i]?.setMarkers(plot.visible === false ? [] : markersOf(plot))
       })
-      applyEntryStyles(entry, built, symbolPriceFormat?.() ?? null)
+      applyEntryStyles(entry, built, symbolPriceFormat?.() ?? null, neutralOf())
       feedChannels(entry, built, candlesOf())
     },
     remove(id) {
@@ -191,7 +197,7 @@ function shapeKeyOf(built: IndicatorPlots): string {
 /** Create one series per plot (plus marker plugins), attach the group's static levels to its first
  *  series, and wire the fill/shade painters. Overlays use the main pane (0); a pane-placed group
  *  gets a fresh pane appended at the bottom (every plot in the group shares it). */
-function makeEntry(chart: IChartApi, built: IndicatorPlots): Entry {
+function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): Entry {
   const paneIndex = built.placement === 'pane' ? chart.panes().length : 0
   // "Labels on price scale" (the standard output toggle, default ON): each visible value-carrying
   // plot shows its last value on the scale. Marker anchors never label.
@@ -260,7 +266,7 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots): Entry {
     markers.push(null)
   }
   const first = series[0]
-  const priceLines = first ? createLevels(first, built.levels ?? []) : []
+  const priceLines = first ? createLevels(first, built.levels ?? [], neutral) : []
   const fills = new Map<string, FillBetweenPrimitive>()
   for (const f of built.fills ?? []) {
     // The painter attaches to the band's UPPER edge series — its pane and price scale.
@@ -293,11 +299,11 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots): Entry {
 
 /** Create the group's static levels on its first series, returning the handles so a settings
  *  change can remove + recreate them (price lines have no applyOptions surface worth diffing). */
-function createLevels(host: Series, levels: NonNullable<IndicatorPlots['levels']>): IPriceLine[] {
+function createLevels(host: Series, levels: NonNullable<IndicatorPlots['levels']>, neutral: string): IPriceLine[] {
   return levels.map((l) =>
     host.createPriceLine({
       price: l.price,
-      color: l.color ?? '#94a3b8',
+      color: l.color ?? neutral,
       lineWidth: 1,
       lineStyle: LEVEL_STYLE[l.lineStyle ?? 'dashed'] ?? LineStyle.Dashed,
       axisLabelVisible: false,
@@ -314,7 +320,7 @@ function styleKeyOf(plot: IndicatorPlot, labels: boolean): string {
 /** Re-apply per-plot styling, levels, and precision when (and only when) their fingerprints moved —
  *  a style edit lands on the live series without teardown (teardown would flicker and lose the
  *  pane). */
-function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: SymbolPriceFormat | null): void {
+function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: SymbolPriceFormat | null, neutral: string): void {
   const labels = built.display?.labelsOnPriceScale !== false
   built.plots.forEach((plot, i) => {
     const key = styleKeyOf(plot, labels)
@@ -352,7 +358,7 @@ function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: Sym
         /* series mid-teardown */
       }
     }
-    entry.priceLines = createLevels(host, built.levels ?? [])
+    entry.priceLines = createLevels(host, built.levels ?? [], neutral)
   }
   // A manifest precision is the study's own declaration; without one the plots are values on the
   // symbol's price grid and take the symbol formatter, never a fixed decimal count.
@@ -384,7 +390,7 @@ function feedChannels(entry: Entry, built: IndicatorPlots, candleSeries: ISeries
   }
   // A fill hidden via settings drops out of `built.fills` — its painter must be emptied, or it
   // keeps drawing its last data forever.
-  for (const [key, prim] of entry.fills) if (!fedFills.has(key)) prim.setData([], [], 'rgba(0,0,0,0)')
+  for (const [key, prim] of entry.fills) if (!fedFills.has(key)) prim.setData([], [], 'transparent')
   entry.shade?.setData(built.shade ?? [])
   if (!candleSeries) return
   const wanted = new Map<number, string>((built.barColors ?? []).map((p) => [p.time as number, p.color]))

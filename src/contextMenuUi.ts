@@ -1,12 +1,12 @@
-// The level menu the widget raises on right-click — the rows come from `chartContextMenu`, this is
-// the painter. Same chrome discipline as the rail, legend and replay bar: tiny theme-tinted vanilla
-// DOM, mounted into the overlay subtree and opting back into pointer events so the gesture layers
-// cannot steal its presses.
+// The level menu the chart raises on right-click — the rows come from `chartContextMenu`, this is
+// the painter. Same chrome discipline as the rail, legend and replay bar: package-owned vanilla DOM
+// mounted into the chrome subtree, opting back into pointer events so the drag layers cannot steal
+// its presses, and painted entirely through `.qc-*` recipes. The only inline writes are the
+// clamped position, which is calculated at the moment the menu opens.
 //
 // The geometry is the reference's, measured: a 327px box of 32px rows, the glyph 8px in at its own
 // 28 grid with the label at 40, and 1px separators between the groups that survived.
 import { chartContextMenu, type ChartMenuAction, type ChartMenuContext, type ChartMenuIcon } from './contextMenu'
-import type { ResolvedTheme } from './host'
 import { createChartI18n, type ChartI18n } from './i18n'
 
 /** A row the HOST contributed for this raise (through the chart's extension seam). It carries its
@@ -27,8 +27,8 @@ export interface ContextMenuHandle {
   destroy(): void
 }
 
+/** The measured box width, which the viewport clamp needs as a number. */
 const MENU_W = 327
-const ROW_H = 32
 
 /** The reference's own glyphs, inline so the package ships no asset dependency. */
 const ICONS: Record<ChartMenuIcon, string> = {
@@ -41,29 +41,23 @@ const ICONS: Record<ChartMenuIcon, string> = {
 const svg = (icon: ChartMenuIcon): string =>
   `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true">${ICONS[icon]}</svg>`
 
-/** `strings` is the widget's language: the rows are built through it every time the menu is raised,
+/** `strings` is the chart's language: the rows are built through it every time the menu is raised,
  *  and an open menu re-labels in place if the language changes under it. */
 export function mountContextMenu(
   container: HTMLElement,
   run: (id: ChartMenuAction) => void,
-  theme: ResolvedTheme,
   strings: ChartI18n = createChartI18n(),
 ): ContextMenuHandle {
   // A full-viewport backdrop closes the menu on any press elsewhere, and swallows the browser's own
   // menu so a second right-click re-aims ours rather than stacking the native one on top.
   const backdrop = document.createElement('div')
-  backdrop.style.cssText = 'position:fixed;inset:0;z-index:2147483000;display:none;'
+  backdrop.className = 'qc-menu-backdrop'
+  backdrop.hidden = true
   backdrop.addEventListener('contextmenu', (e) => e.preventDefault())
 
   const box = document.createElement('div')
-  box.style.cssText =
-    // overflow:hidden is load-bearing — a row's highlight fills its slot squarely, so the surface
-    // is what rounds it off; without the clip it paints over the corners and out across the border.
-    // The 6px is the reference's own, measured off its live menu, and pairs with the 6px a
-    // separator carries on each side.
-    `position:fixed;z-index:2147483001;display:none;width:${MENU_W}px;overflow:hidden;padding:6px 0;` +
-    `background:${theme.background};border:1px solid ${theme.gridColor};border-radius:6px;` +
-    `color:${theme.textColor};font-size:13px;pointer-events:auto;box-shadow:0 8px 24px rgba(0,0,0,.45);`
+  box.className = 'qc-overlay qc-menu'
+  box.hidden = true
   box.addEventListener('contextmenu', (e) => e.preventDefault())
   for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) box.addEventListener(type, (e) => e.stopPropagation())
 
@@ -73,15 +67,15 @@ export function mountContextMenu(
   let openExtra: readonly ContextMenuExtraRow[] = []
 
   const close = (): void => {
-    box.style.display = 'none'
-    backdrop.style.display = 'none'
+    box.hidden = true
+    backdrop.hidden = true
     box.replaceChildren()
     openCtx = null
     openExtra = []
   }
   backdrop.addEventListener('pointerdown', close)
   const onKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape' && box.style.display !== 'none') close()
+    if (e.key === 'Escape' && !box.hidden) close()
   }
   window.addEventListener('keydown', onKey)
 
@@ -89,7 +83,7 @@ export function mountContextMenu(
 
   const separator = (): HTMLDivElement => {
     const sep = document.createElement('div')
-    sep.style.cssText = `height:1px;margin:6px 0;background:${theme.gridColor};`
+    sep.className = 'qc-separator'
     return sep
   }
 
@@ -98,27 +92,23 @@ export function mountContextMenu(
   const rowButton = (row: { label: string; shortcut?: string; checked?: boolean; icon?: ChartMenuIcon }, act: () => void): HTMLButtonElement => {
     const b = document.createElement('button')
     b.type = 'button'
-    b.style.cssText =
-      `display:flex;align-items:center;gap:6px;width:100%;height:${ROW_H}px;padding:0 20px 0 0;` +
-      `background:none;border:0;color:${theme.textColor};font:inherit;text-align:left;cursor:pointer;`
-    b.addEventListener('mouseenter', () => (b.style.background = theme.gridColor))
-    b.addEventListener('mouseleave', () => (b.style.background = 'none'))
+    b.className = 'qc-menu-row'
 
     // Every row reserves the glyph cell, so labels line up whether or not one is drawn.
     const cell = document.createElement('span')
-    cell.style.cssText = 'display:flex;width:36px;flex:0 0 36px;align-items:center;justify-content:center;'
+    cell.className = 'qc-menu-icon'
     const glyph = row.checked ? 'check' : row.icon
     if (glyph) cell.innerHTML = svg(glyph)
 
     const label = document.createElement('span')
+    label.className = 'qc-menu-label'
     label.textContent = row.label
-    label.style.cssText = 'flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
 
     b.append(cell, label)
     if (row.shortcut) {
       const sc = document.createElement('span')
+      sc.className = 'qc-menu-hint'
       sc.textContent = row.shortcut
-      sc.style.cssText = `flex:0 0 auto;padding-left:10px;padding-top:2px;font-size:11px;opacity:.55;`
       b.append(sc)
     }
     b.addEventListener('click', () => {
@@ -159,8 +149,8 @@ export function mountContextMenu(
 
       // Clamp into the viewport: a chart at the window's edge would otherwise raise a menu that
       // runs off it. Measured after filling, because the height depends on which rows survived.
-      backdrop.style.display = 'block'
-      box.style.display = 'block'
+      backdrop.hidden = false
+      box.hidden = false
       box.style.left = '0px'
       box.style.top = '0px'
       const h = box.getBoundingClientRect().height

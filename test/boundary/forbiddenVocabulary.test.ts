@@ -54,7 +54,8 @@ const TARGET: Record<'W1-A' | 'W2-A' | 'W3-A' | 'W3-C' | 'W5-A', { reason: strin
     ],
   },
   // PCL-5 executable theme: the six-field ChartTheme, one-shot ResolvedTheme, and inline cssText
-  // give way to the typed token schema and the generated scoped stylesheet.
+  // gave way to the typed token schema and the generated scoped stylesheet. Landed: the block below
+  // runs; the words stay listed so a return is caught.
   'W3-A': {
     reason: 'the typed token schema and quickcharts/styles.css replace the one-shot theme',
     terms: [
@@ -111,20 +112,14 @@ describe('the forbidden vocabulary, as built', () => {
       .flatMap((g) => g.terms)
       .filter((t) => lines(sourcesFor(t.scope), t.pattern).length > 0)
       .map((t) => t.term)
-    expect(present).toEqual([
-      'ChartTheme',
-      'resolveTheme',
-      'ResolvedTheme',
-      'cssText',
-      'HideMode',
-    ])
+    expect(present).toEqual(['HideMode'])
   })
 })
 
 // TARGET. One block per stream, the whole word list in one assertion so the log names every
 // surviving line. Delete the stream from LANDED_LATER when it lands; remove the words from the
 // PRESENT pin. A landed stream's block runs.
-const LANDED_LATER = new Set<keyof typeof TARGET>(['W3-A', 'W5-A'])
+const LANDED_LATER = new Set<keyof typeof TARGET>(['W5-A'])
 describe('the forbidden vocabulary (target)', () => {
   for (const [stream, { reason, terms }] of Object.entries(TARGET) as [keyof typeof TARGET, (typeof TARGET)[keyof typeof TARGET]][]) {
     const block = LANDED_LATER.has(stream) ? it.skip : it

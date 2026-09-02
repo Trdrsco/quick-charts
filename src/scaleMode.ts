@@ -3,17 +3,20 @@
 // vocabulary and the enum mapping every host shares — where a host PERSISTS its choice is the
 // host's business (the widget uses its ChartStorage; a richer host may key it per panel).
 import { PriceScaleMode } from 'lightweight-charts'
+import type { ChartMessageKey } from './i18n'
 
 export type ScaleMode = 'normal' | 'log' | 'percent' | 'indexed'
 
 export const SCALE_MODES: readonly ScaleMode[] = ['normal', 'log', 'percent', 'indexed']
 
-/** Settings-control chips, in render order. */
-export const SCALE_MODE_OPTIONS: readonly { id: ScaleMode; label: string }[] = [
-  { id: 'normal', label: 'Reg' },
-  { id: 'log', label: 'Log' },
-  { id: 'percent', label: '%' },
-  { id: 'indexed', label: '100' },
+/** Settings-control chips, in render order. Each names its own catalog key, so a control that
+ *  renders them reads the trader's language rather than an English word compiled into a public
+ *  export. */
+export const SCALE_MODE_OPTIONS: readonly { id: ScaleMode; label: ChartMessageKey }[] = [
+  { id: 'normal', label: 'legend.scaleNormal' },
+  { id: 'log', label: 'legend.scaleLog' },
+  { id: 'percent', label: 'legend.scalePercent' },
+  { id: 'indexed', label: 'legend.scaleIndexed' },
 ]
 
 export const PRICE_SCALE_MODE: Record<ScaleMode, PriceScaleMode> = {

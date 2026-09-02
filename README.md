@@ -29,6 +29,7 @@ const widget = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
 })
+await widget.ready()
 ```
 
 ## The datafeed contract
@@ -288,8 +289,8 @@ chart and opens it, `remove()` deletes the open one at its held revision, and `c
 the ref and name on screen. A refusal is a typed outcome carrying a sentence from the chart
 catalog, so you show one line and offer a reload; the widget never writes over a newer revision.
 The drawing layer persists each symbol's drawings through the adapter's drawings family the same
-way, and reports a refused write through `events.onSaveConflict`. A layout does the same for
-itself through `layout.saveLoad` over the layouts family.
+way, and reports a refused write through the widget's `saveConflict` event. A layout does the same
+for itself through `widget.layout.saveLoad` over the layouts family.
 
 ```ts
 import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
@@ -299,11 +300,12 @@ const widget = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
   saveLoad: memorySaveLoadAdapter(),
-  events: { onSaveConflict: (info) => console.warn(info.message) },
 })
-const saved = await widget.saveLoad.save('Morning')
+widget.on('saveConflict', (info) => console.warn(info.message))
+const saveLoad = widget.activeChart().saveLoad
+const saved = await saveLoad.save('Morning')
 if (saved.kind === 'conflict') console.warn(saved.message) // saved elsewhere since it was opened
-widget.saveLoad.current()?.name // 'Morning'
+saveLoad.current()?.name // 'Morning'
 ```
 
 Each family is a `ResourceStore` with the same five calls, and every call takes an `AbortSignal` so
@@ -456,7 +458,9 @@ The lower-level pieces are exported for hosts that orchestrate their own compute
 
 ## The widget
 
-`createChart(options)` mounts a complete datafeed-driven chart into a DOM element — no framework required:
+`createChart(options)` mounts a complete datafeed-driven chart into a DOM element, with no framework
+required. It answers a `ChartWidget`: one or many charts under one root, one theme, one language,
+one command registry.
 
 ```ts
 import { createChart, createUdfDatafeed } from 'quickcharts'
@@ -466,69 +470,230 @@ const widget = createChart({
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
   symbol: 'ES',
   timeframe: '1m',
-  theme: { mode: 'dark', upColor: '#4c98fb' },
-  events: { onReady: () => console.log('painted') },
+  style: 'candles',
+  theme: { mode: 'dark' },
 })
-widget.setSymbol('NQ') // later
-widget.remove() // teardown
+await widget.ready() // the first data has painted
+widget.activeChart().setSymbol('NQ')
+widget.dispose() // teardown; every handle and subscription is inert afterwards
 ```
 
-The widget paints candles + volume, applies live updates by the bar rules above, pages older history in
-as the viewer scrolls left (stopping at the feed's `noData`), persists its sticky state through
-`ChartStorage`, runs configured indicator instances through the manifest pipeline, and mounts the
-drawing layer and legend below. The trdrs app's own chart panel is a richer host over the same seams
-(drawings UI, replay) and layers those on top.
+The widget paints the main series and volume, applies live updates by the bar rules above, pages
+older history in as the viewer scrolls left (stopping at the feed's `noData`), persists the viewer's
+preferences through `ChartStorage`, runs configured indicator instances through the manifest
+pipeline, and mounts the drawing layer, the legend and the level menu.
 
-Beyond the basics, the widget carries:
+### Widget and chart
 
-- **Scale modes** — `setScaleMode('log' | 'percent' | 'indexed' | 'normal')` on the price scale,
-  persisted through `ChartStorage`.
-- **Session bands** (on by default; `sessions: false` opts out) — every stretch outside regular
-  hours shades under the candles, driven by the session model built from the symbol's own
+Two scopes, because two things are true at once: what the widget as a whole is doing, and what one
+chart is doing. `widget.charts()` lists every chart; `widget.activeChart()` is the one the viewer
+last pointed at; `widget.chart(id)` finds one by its stable id.
+
+```ts
+import { CHART_STYLES, type ChartHandle, type ChartWidget } from 'quickcharts'
+
+function drive(widget: ChartWidget): void {
+  const chart: ChartHandle = widget.activeChart()
+  chart.setTimeframe('5m')
+  chart.setStyle(CHART_STYLES[3]!) // 'line'
+  chart.setScaleMode('log')
+  chart.scroll(-50) // fifty bars back
+  chart.zoom(0.8) // show fewer bars
+  chart.reset() // fit the loaded data
+  chart.goLive() // back to the live edge, same span
+  chart.indicators.set([])
+  void chart.visibleRange()
+  void chart.logicalRange()
+}
+```
+
+### The seven chart styles
+
+`candles`, `hollow`, `bars`, `line`, `area`, `baseline`, `stepline`, listed in picker order as
+`CHART_STYLES`. A style switch is presentation: nothing refetches, and the loaded bars, indicators,
+drawings, comparisons, scale and visible range all survive it. Four of the seven are value-shaped
+(`valueShaped(style)`), which is the one predicate a host branches on when it renders open, high and
+low values of its own.
+
+### Events
+
+Typed maps, one per scope. Every subscription returns its unsubscribe and is inert after
+`dispose()`.
+
+```ts
+import { type ChartWidget } from 'quickcharts'
+
+function watch(widget: ChartWidget): () => void {
+  const offTheme = widget.on('theme', (_theme, mode) => document.body.setAttribute('data-mode', mode))
+  const offSave = widget.on('saveNeeded', () => void persist())
+  const offSymbol = widget.activeChart().on('symbol', (symbol) => header.setSymbol(symbol))
+  const offStatus = widget.activeChart().on('feedStatus', (status) => banner.set(status))
+  return () => {
+    offTheme()
+    offSave()
+    offSymbol()
+    offStatus()
+  }
+}
+```
+
+Widget events: `ready`, `activeChart`, `theme`, `locale`, `saveNeeded`, `saveConflict`,
+`fullscreen`, `dispose`. Chart events: `symbol`, `timeframe`, `style`, `visibleRange`,
+`logicalRange`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`, `drawing`,
+`replay`, `compare`.
+
+### Commands
+
+One registry is the only place a chart verb exists. The chart's own menu, your toolbar, a keyboard
+binding and an automation adapter all read this list and run through this `execute`, so a command
+your feature configuration hides or your access policy refuses cannot be reached from any of them.
+
+```ts
+import { type ChartWidget, type CommandResult } from 'quickcharts'
+
+function toolbar(widget: ChartWidget): void {
+  for (const spec of widget.commands.list()) {
+    button(spec.labelText ?? translate(spec.label), {
+      enabled: widget.commands.available(spec.id),
+      shortcut: spec.shortcut,
+      run: () => {
+        const outcome: CommandResult = widget.commands.execute(spec.id)
+        if (outcome.kind === 'denied') note('not permitted here')
+      },
+    })
+  }
+  widget.commands.setShortcut('chart.view.reset', 'Alt+KeyR')
+  const off = widget.commands.onChange(() => rebuild())
+  void off
+}
+```
+
+A refusal is a value, never a throw: `ok`, `unavailable`, `denied`, `unknown`, or `failed` with the
+error. Your own commands register through the same door — a chart extension's `contributeCommands`
+puts them in this list with `scope: 'chart'` and its own label text.
+
+### The four configuration planes
+
+They answer different questions, and only three of them are yours to set.
+
+| Plane | What it answers | Who decides |
+|---|---|---|
+| `capabilities()` | what the ports, the resolved symbol and the browser can do | derived, never set |
+| `features` | which built-in UI and behavior is present | you |
+| `access` | which commands, drawing tools and indicators are permitted | you |
+| `preferences` | the viewer's own values, persisted through `storage` | the viewer, seeded by you |
+
+A hidden control is not authorization: turning a feature off removes chrome, and the command behind
+it still answers to the access policy. An absent port is not a preference: a feed with no search
+does not become a viewer who dislikes searching.
+
+```ts
+import { createChart, createUdfDatafeed } from 'quickcharts'
+
+const gated = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  features: { drawings: true, drawingsRail: false, replay: false },
+  access: { command: (id) => !id.startsWith('chart.drawings.'), drawingTool: (tool) => tool !== 'brush' },
+  preferences: { scaleMode: 'log', style: 'bars' },
+})
+if (gated.capabilities().search) mountSymbolPicker()
+```
+
+### Fullscreen and image
+
+Chart-root fullscreen fills the screen with the widget's own element. It never takes over your
+application shell, which is a different thing from a fit-to-container layout your CSS owns.
+
+```ts
+import { type ChartWidget } from 'quickcharts'
+
+async function shareable(widget: ChartWidget): Promise<void> {
+  await widget.fullscreen.toggle()
+  const off = widget.on('fullscreen', (active) => chrome.setCompact(active))
+  if (!(await widget.image.copy())) await widget.image.download('desk.png')
+  const blob: Blob = await widget.image.capture()
+  void blob
+  off()
+}
+```
+
+`capture()` composes the chart, or every chart of a layout, into one PNG under a header carrying the
+identity and the attribution you configured through `image`. Nothing is uploaded, shared or stored:
+you receive a blob and decide.
+
+### Neutral marks
+
+Serve `marks` and `timescaleMarks` from your datafeed and the chart draws them. A mark is a note
+about a moment: its color is a semantic theme role rather than a literal, its words are yours, and
+the chart neither interprets nor acts on it.
+
+```ts
+import { type BarMark, type ChartDatafeed } from 'quickcharts'
+
+const withMarks: Pick<ChartDatafeed, 'marks'> = {
+  async marks(symbol, from, to): Promise<readonly BarMark[]> {
+    const rows = await myBackend.events(symbol, from, to)
+    return rows.map((row: { id: string; at: number; headline: string }) => ({
+      id: row.id,
+      time: row.at,
+      color: 'info',
+      text: 'E',
+      label: row.headline,
+    }))
+  },
+}
+void withMarks
+```
+
+`marks: false` draws none, even from a feed that serves them.
+
+### The rest of the widget
+
+- **Scale modes** — `chart.setScaleMode('log' | 'percent' | 'indexed' | 'normal')`, persisted
+  through `ChartStorage`, and reachable as commands.
+- **Session bands** (on by default; `features.sessions: false` opts out) — every stretch outside
+  regular hours shades under the bars, driven by the session model built from the symbol's own
   `session`, `sessionHolidays`, `corrections` and `subsessions` in `resolve()`'s answer (see
   Timezones and sessions). A continuous market never bands; intraday only; an UNRESOLVED symbol
-  never bands — the honest default, enforced: the primitive's `model` getter admits `null` and a
-  null draws nothing. A host that changes the model outside a `resolve()` — or supplies its own —
-  must call the primitive's `refresh()` when it does: the chart does not invalidate the pane on
-  a getter's value changing.
-- **A legend** (on by default; `legend: false` removes it) — the symbol/timeframe header with a
-  market-status dot and four price-scale chips (normal / log / percent / indexed — the SAME
-  application path as `setScaleMode`, so the api and the chips can never disagree), plus one chip
-  per indicator instance: title, latest value, and per-chip controls that render by presence — a
-  settings gear only when the definition declares inputs (it opens the package's inputs editor;
-  Apply patches the instance and recomputes in place), pane collapse / maximize / restore buttons
-  only on pane-placed instances, and the eye whose hidden state persists.
-  `setIndicators(instances)` swaps the configured list at runtime (removed ids tear down, panes
-  sweep, the legend follows).
+  never bands, which is the honest default rather than a coerced one, and it is enforced: the
+  primitive's `model` getter admits `null` and a null draws nothing. A host that changes the model
+  outside a `resolve()`, or supplies its own, calls the primitive's `refresh()` when it does; the
+  chart does not invalidate the pane on a getter's value changing.
+- **A legend** (on by default; `features.legend: false` removes it) — the symbol and timeframe
+  header with a market-status dot and the four price-scale chips (the SAME application path as
+  `setScaleMode`, so the api and the chips can never disagree), plus one row per indicator instance:
+  title, latest value, and per-row controls that render by presence. A settings gear appears only
+  when the definition declares inputs, pane collapse, maximize and restore only on pane-placed
+  instances, and the eye's hidden state persists.
 - **An interface language** (`locale`, English by default), one of the 21 the package ships.
   `BUILT_IN_LOCALES` lists them for a picker: each carries its stable code, its canonical BCP 47
-  `tag`, its reading direction (`ar` and `he_IL` are `rtl`), and its endonym. The widget's own
-  chrome reads the language, and the chart's axis and crosshair dates are formatted in it. English
-  is in the bundle; every other dictionary is its own chunk, fetched the first time it is chosen
-  and shared by every widget on the page. `setLocale(code)` switches at runtime and resolves after
-  the dictionary settles; `locale()` reports the current one. Plural forms follow the language's
+  `tag`, its reading direction (`ar` and `he_IL` are `rtl`), and its endonym. The chart's own chrome
+  reads the language, and its axis and crosshair dates are formatted in it. English is in the
+  bundle; every other dictionary is its own chunk, fetched the first time it is chosen and shared by
+  every widget on the page. `widget.setLocale(code)` switches at runtime and resolves after the
+  dictionary settles; `widget.locale()` reports the current one. Plural forms follow the language's
   CLDR rules through `Intl.PluralRules`, and a number in a message is written with the language's
   digits and grouping. The runtime is the package's own, framework-free and DOM-free, so a server
   render can import it.
   A host with a language the package does not ship registers it through `createChartI18n(code,
   { locales })`: a `ChartCustomLocale` names the code, tag, direction and endonym and supplies the
-  dictionary chunk, a `ChartDictionary` typed against the English catalog so it cannot miss a key
-  or flatten a plural. A code or tag the built-in inventory already holds is refused. A
-  dictionary that arrives from data and misses a key reads English for that key and reports it to
-  the `onMissing` option. A host can also supply `i18n: ChartI18n` of its own to own its codes,
-  tags, dictionaries, loading, and fallback outright.
-  Every piece of the widget's own chrome speaks the language; symbols, prices and anything the
+  dictionary chunk, a `ChartDictionary` typed against the English catalog so it cannot miss a key or
+  flatten a plural. A code or tag the built-in inventory already holds is refused. A dictionary that
+  arrives from data and misses a key reads English for that key and reports it to the `onMissing`
+  option. A host can also supply `i18n: ChartI18n` of its own to own its codes, tags, dictionaries,
+  loading, and fallback outright.
+  Every piece of the chart's own chrome speaks the language; symbols, prices and anything the
   datafeed says are data and pass through untranslated. A host composing the chrome modules itself
-  hands them a `ChartI18n` from `createChartI18n(code)` (an optional trailing parameter or `strings`
-  option on each) and reads the widget's words for drawing tools and arrangements through
-  `toolName` and `arrangementName`.
+  hands them a `ChartI18n` from `createChartI18n(code)` and reads the chart's words for drawing
+  tools and arrangements through `toolName` and `arrangementName`.
 
 ```ts
 import { createChart, createUdfDatafeed, SCALE_MODES } from 'quickcharts'
 
 const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }), locale: 'de' })
-w.setScaleMode(SCALE_MODES.includes('log') ? 'log' : 'normal')
-w.setIndicators([{ id: 'sma-20', definition: smaDefinition }])
+w.activeChart().setScaleMode(SCALE_MODES.includes('log') ? 'log' : 'normal')
+w.activeChart().indicators.set([{ id: 'sma-20', definition: smaDefinition }])
 await w.setLocale('ja')
 ```
 
@@ -624,9 +789,9 @@ Theme palette precedence, lowest first:
 Chart appearance precedence, lowest first:
 
 1. the built-in appearance for the selected mode;
-2. constructor overrides;
+2. the constructor's `appearance` partial;
 3. restored user appearance;
-4. runtime `applyOverrides` patches.
+4. runtime `chart.applyAppearance` patches.
 
 Resetting custom palettes returns the chart to the built-in mode and leaves saved chart appearance
 alone.
@@ -638,16 +803,16 @@ legend-managed, three placements, persisted in the chart content blob. `same-per
 main price scale and flips it to percent while any such compare lives (the prior scale mode comes
 back when the last one leaves); `new-scale` binds the LEFT scale with absolute prices (the left
 axis exists only while such a compare does); `new-pane` takes a pane of its own. Compared bars
-clip to the main series window — a compare never extends the time axis. `compareSymbols` supplies
-a curated quick-add list for a compare dialog; `compare.symbols()` reads it back.
+clip to the main series window — a compare never extends the time axis. `features.compareSymbols` supplies
+a curated quick-add list for the compare dialog; `compare.symbols()` reads it back.
 
 The widget ships its own compare chrome: the legend header carries a compare door (`+`) opening a
 built-in dialog — search rows add at any of the three placements, curated `compareSymbols` rows sit
-above results, and the ADDED section removes. Each compare takes a legend chip whose title reopens
+above results, and the ADDED section removes. Each compare takes a legend row whose title reopens
 the dialog in change-symbol mode (the pick re-keys the compare in place), with an eye and a remove
-beside the value (% under `same-percent`, the last close otherwise). In a layout, compares belong
-to each pane's own chart (`layout.panes()[layout.activePane()].compare`) and ride the layout blob
-with the rest of that pane's content.
+beside the value (% under `same-percent`, the last close otherwise). In a layout, compares belong to
+each chart of their own (`widget.activeChart().compare`) and ride the layout blob with the rest of
+that chart's content.
 
 ```ts
 import { createChart, createUdfDatafeed } from 'quickcharts'
@@ -655,14 +820,15 @@ import { createChart, createUdfDatafeed } from 'quickcharts'
 const wc = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  compareSymbols: [{ symbol: 'ES', title: 'S&P 500 futures' }],
+  features: { compareSymbols: [{ symbol: 'ES', title: 'S&P 500 futures' }] },
 })
-wc.compare.add('NQ', { placement: 'same-percent' }) // shares the scale; the axis flips to %
-wc.compare.add('CL', { placement: 'new-pane' })
-wc.compare.setVisible('CL', false)
-const active = wc.compare.list() // [{ symbol, placement, color, visible }]
-note(`NQ last: ${wc.compare.latest('NQ') ?? '-'}`)
-wc.compare.remove('NQ') // the scale mode the trader held comes back
+const compare = wc.activeChart().compare
+compare.add('NQ', { placement: 'same-percent' }) // shares the scale; the axis flips to %
+compare.add('CL', { placement: 'new-pane' })
+compare.setVisible('CL', false)
+const active = compare.list() // [{ symbol, placement, color, visible }]
+note(`NQ last: ${compare.latest('NQ') ?? '-'}`)
+compare.remove('NQ') // the scale mode the trader held comes back
 ```
 
 ## Timeframes
@@ -836,53 +1002,56 @@ spreadExpression(' es - nq ') // 'ES-NQ'
 
 ## Multi-chart layouts
 
-`createChartLayout(options)` tiles N widget panes over one container by an arrangement code and
-keeps them in step. The catalog (`ARRANGEMENTS`, grouped for a picker as `LAYOUT_MENU_ROWS`) carries
-55 arrangements from a single full-bleed chart to an 8×2 grid; `setArrangement` re-tiles live —
-surviving panes keep their charts, new panes clone the active pane's symbol and timeframe. One pane
-is ACTIVE (it follows pointerdown; `onActivePane` reports it) — point your own toolbar at it. A
-surface of yours that follows the layout asks it which market it is pointed at: `activeSymbol()`
-is the active pane's symbol, and `onActiveSymbol` reports it every time it moves — another pane
-activated, the active pane's symbol changed, a re-tile, a restore. Pointing such a surface at a
-chart moves no chart's symbol, so the two concepts stay separate: each chart keeps charting what
-it charts, and one of them is the one you are looking at. Five sync toggles fan changes across
-the panes: `symbol`, `interval`, and `dateRange`
-replay a change onto every pane, `crosshair` mirrors continuously by time, and `time` centers every
-pane on a clicked moment. The whole layout serializes as ONE opaque content blob (arrangement, sync
-flags, active pane, every pane's own content), so a saved multi-chart layout is one row in the same
+A widget always has a layout, reached as `widget.layout`, and it tiles N charts over the widget root
+by an arrangement code. The catalog (`ARRANGEMENTS`, grouped for a picker as `LAYOUT_MENU_ROWS`)
+carries 55 arrangements from a single full-bleed chart to an 8x2 grid; `setArrangement` re-tiles
+live, surviving charts keep their state and new charts clone the active chart's symbol and
+timeframe.
+
+One chart is ACTIVE: it follows pointerdown, `widget.activeChart()` is it, and the `activeChart`
+event reports it every time it moves — another chart activated, the active chart's symbol changed, a
+re-tile, a restore. Pointing your own surface at a chart moves no chart's symbol, so the two
+concepts stay separate: each chart keeps charting what it charts, and one of them is the one you are
+looking at.
+
+Five sync toggles fan changes across the charts: `symbol`, `interval` and `dateRange` replay a
+change onto every chart, `crosshair` mirrors continuously by time, and `time` centers every chart on
+a clicked moment. The whole layout serializes as ONE opaque content blob (arrangement, sync flags,
+active chart, every chart's own content), so a saved multi-chart layout is one row in the same
 save/load backend a single chart uses.
 
 ```ts
-import { createChartLayout, createUdfDatafeed, LAYOUT_MENU_ROWS } from 'quickcharts'
+import { createChart, createUdfDatafeed, LAYOUT_MENU_ROWS } from 'quickcharts'
 
-const layout = createChartLayout({
+const widget = createChart({
   container: document.getElementById('charts')!,
-  base: { datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }) },
-  arrangement: '2h',
-  panes: [{ symbol: 'ES', timeframe: '1m' }, { symbol: 'NQ', timeframe: '5m' }],
-  sync: { crosshair: true },
-  events: { onActiveSymbol: (symbol) => header.setSymbol(symbol) },
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  layout: {
+    arrangement: '2h',
+    charts: [{ symbol: 'ES', timeframe: '1m' }, { symbol: 'NQ', timeframe: '5m' }],
+    sync: { crosshair: true },
+  },
 })
-header.setSymbol(layout.activeSymbol() ?? 'ES') // the value on mount; the event carries changes
-layout.setSync({ symbol: true })
-layout.setArrangement(LAYOUT_MENU_ROWS[3]!.codes[0]!) // '4' — the 2×2 grid
-const saved = layout.serialize().content // ONE blob for the whole layout
-layout.restore(saved)
-layout.remove()
+widget.on('activeChart', (chart) => header.setSymbol(chart.symbol()))
+header.setSymbol(widget.activeChart().symbol()) // the value on mount; the event carries changes
+widget.layout.setSync({ symbol: true })
+widget.layout.setArrangement(LAYOUT_MENU_ROWS[3]!.codes[0]!) // '4' — the 2x2 grid
+const saved = widget.layout.serialize().content // ONE blob for the whole layout
+widget.layout.restore(saved)
+widget.dispose()
 ```
 
-Per-pane widget apis stay reachable through `layout.panes()` — each is the full `ChartWidgetApi`,
-including the `sync` pane-composition primitives (`onCrosshair`/`setCrosshair`, `onTimeClick`/
-`centerOn`, `onVisibleRange`/`setVisibleRange`/`visibleRange`) the layout itself is built on, so a
-host can compose panes its own way without the layout host. `base.locale` sets every pane's
-interface language and `layout.setLocale(code)` switches them together; a pane created by a later
+Each chart's handle stays reachable through `widget.charts()`, including the `sync`
+pane-composition primitives (`onCrosshair` and `setCrosshair`, `onTimeClick`, `onVisibleRange`) the
+layout itself is built on, so a host can compose charts its own way. `locale` sets every chart's
+interface language and `widget.setLocale(code)` switches them together; a chart created by a later
 re-tile opens in the current one.
 
 ## Drawings
 
 The widget ships with a drawing layer (on by default): placement, selection, drag-to-move and
 anchor-resize, per-symbol persistence through the adapter's drawings family, and a small built-in
-tool rail. Turn the layer off with `drawings: false`, or keep it and hide the rail to drive it
+tool rail. Turn the layer off with `features.drawings: false`, or keep it and hide the rail to drive it
 from your own UI:
 
 ```ts
@@ -891,10 +1060,11 @@ import { createChart, createUdfDatafeed } from 'quickcharts'
 const widget = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  drawings: { rail: false },
+  features: { drawingsRail: false },
 })
-widget.drawings?.armTool('trend_line')
-const saved = widget.drawings?.export() // the persistence wire format (SerializedDrawing[])
+const drawings = widget.activeChart().drawings
+drawings?.armTool('trend_line')
+const saved = drawings?.export() // the persistence wire format (SerializedDrawing[])
 ```
 
 The layer is also mountable on its own lightweight-charts pair, without the widget:

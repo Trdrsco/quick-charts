@@ -4,6 +4,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { parseSessionModel, type SessionModel, type SessionState } from '../src/sessionModel'
 import { createSessionBands, SESSION_DOT, SESSION_LABEL } from '../src/sessions'
+import { DARK_THEME } from '../src/theme/palettes'
 
 const model = (source: Parameters<typeof parseSessionModel>[0]): SessionModel => parseSessionModel(source)!
 const CME = model({ timezone: 'America/Chicago', session: '1700-1600:23456' })
@@ -28,7 +29,7 @@ describe('createSessionBands — an unknown model draws NOTHING (the promise the
   ]
   const fakeSeries = { data: () => bars }
   const draw = (m: SessionModel | null, intraday = true) => {
-    const prim = createSessionBands(fakeChart as never, fakeSeries as never, () => true, () => m, () => intraday)
+    const prim = createSessionBands(fakeChart as never, fakeSeries as never, () => true, () => m, () => intraday, () => DARK_THEME)
     const view = prim.paneViews()[0] as { renderer: () => { draw: (t: unknown) => void } }
     const useBitmap = vi.fn()
     view.renderer().draw({ useBitmapCoordinateSpace: useBitmap })
@@ -55,7 +56,7 @@ describe('createSessionBands — an unknown model draws NOTHING (the promise the
     expect(fillRect).toHaveBeenCalledTimes(1) // the one closed bar; the open bar draws no rect
   })
   it('refresh() is safe detached and forwards to requestUpdate once attached', () => {
-    const prim = createSessionBands(fakeChart as never, fakeSeries as never, () => true, () => CME, () => true)
+    const prim = createSessionBands(fakeChart as never, fakeSeries as never, () => true, () => CME, () => true, () => DARK_THEME)
     expect(() => prim.refresh()).not.toThrow()
     const requestUpdate = vi.fn()
     prim.attached({ requestUpdate })

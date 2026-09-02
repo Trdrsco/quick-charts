@@ -28,7 +28,14 @@ declare const series: any
 declare const container: HTMLElement
 declare const smaDefinition: import('quickcharts').IndicatorDefinition
 declare const header: { setSymbol(symbol: string): void }
+declare const banner: { set(status: string): void }
+declare const chrome: { setCompact(active: boolean): void }
 declare function note(msg: string): void
+declare function persist(): void
+declare function rebuild(): void
+declare function translate(key: string): string
+declare function mountSymbolPicker(): void
+declare function button(label: string, options: { enabled: boolean; shortcut?: string; run(): void }): void
 `
 
 const compilerOptions: ts.CompilerOptions = {

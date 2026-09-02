@@ -5,7 +5,7 @@
 // package test that resolves every key through the English source.
 import { BUILT_IN_INDICATORS as REGISTRY, type BuiltInIndicator as SeamBuiltInIndicator, type IndicatorCategory } from '@trdrs/chart-indicators'
 import type { ChartMessageKey } from './i18n'
-import type { IndicatorDefinition } from './widget'
+import type { IndicatorDefinition } from './widget/options'
 
 export type { IndicatorCategory }
 

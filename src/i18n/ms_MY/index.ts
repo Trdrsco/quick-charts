@@ -16,6 +16,7 @@ import { range } from './range'
 import { status } from './status'
 import { search } from './search'
 import { drawing } from './drawing'
+import { command } from './command'
 
-const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search, ...drawing }
+const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search, ...drawing, ...command }
 export default dict

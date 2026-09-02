@@ -24,7 +24,61 @@ export type { FetchLike, UdfDatafeedOptions } from './udfDatafeed'
 export { createUdfDatafeed } from './udfDatafeed'
 export { tfToUdfResolution, udfResolutionToTf } from './udfResolution'
 
-export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorDefinition, IndicatorInstance } from './widget'
+// ── W3-A: the widget kernel ───────────────────────────────────────────────────────────────────
+// `createChart(options)` mounts a complete datafeed-driven chart into a DOM element with no
+// framework dependency, and answers a `ChartWidget`. A widget hosts one or many `ChartHandle`s
+// under one root and one theme; the four configuration planes below decide what it can do, what it
+// shows, what it permits, and what the viewer prefers.
+export { createChart } from './widget/create'
+export type { ChartWidget } from './widget/create'
+export type { ChartHandle, ChartPaneSyncApi, IndicatorsApi } from './widget/chart'
+export { applyBar, resolveInitialTf } from './widget/chart'
+export type {
+  AccessPolicy,
+  Capabilities,
+  ChartPreferences,
+  ChartWidgetOptions,
+  FeatureConfig,
+  FullscreenOptions,
+  ImageOptions,
+  IndicatorDefinition,
+  IndicatorInstance,
+  LayoutOptions,
+  ThemeOptions,
+} from './widget/options'
+
+// The command registry is the ONE source for the chart's verbs: the context menu, the keyboard,
+// a host's own toolbar and an operator adapter all read this list and run through this `execute`,
+// so a command hidden by feature configuration or refused by access policy cannot be reached from
+// any of them.
+export type { CommandRegistry, CommandResult, CommandScope, CommandSpec } from './widget/commands'
+
+// Typed event maps. Every subscription returns its unsubscribe and is inert after `dispose()`.
+export type { ChartEvents, DrawingEvent, IndicatorEvent, ReplayEventState, SaveConflictInfo, WidgetEvents } from './widget/events'
+
+// The seven main-series styles. A style switch is presentation: nothing refetches, and the
+// indicators, drawings, comparisons, scale and visible range all survive it.
+export { CHART_STYLES, coerceChartStyle, isChartStyle, valueShaped } from './widget/styles'
+export type { ChartStyleId } from './widget/styles'
+
+export type { LogicalRange, TimeRange } from './widget/ranges'
+export type { LayoutApi, LayoutSaveLoadApi, LayoutSyncFlags } from './widget/layout'
+export type { FullscreenApi } from './widget/fullscreen'
+
+// Client image capture. `widget.image` is the surface a host uses; the composition below is
+// exported so a host that already holds its own chart bitmaps can compose the same picture.
+export { canvasToBlob, composeImage, imageFileName, imageHeaderRuns, imageLayoutHeaderRuns, imageTileRuns, IMAGE_HEADER_H } from './widget/image'
+export type { ImageApi, ImageHeader, ImageTextRun, ImageTile } from './widget/image'
+
+// Neutral marks: host-supplied chart data the feed serves through the two optional readers on
+// `ChartDatafeed`. A mark is a note about a moment and says nothing about an account.
+export type { BarMark, MarkColorRole, MarkPlacement, MarkShape, TimescaleMark } from './marks'
+
+export type { ChartCompareApi } from './widget/compare'
+export type { ChartDrawingsApi } from './widget/drawings'
+export type { ChartReplayApi } from './widget/replay'
+export type { ChartSaveLoadApi } from './widget/saveLoad'
+// ── end W3-A ──────────────────────────────────────────────────────────────────────────────────
 
 // The extension seam — a TYPE contract only. A host writes an object against `ChartExtension` and
 // hands it to `ChartWidgetOptions.extensions`; the chart owns every runtime piece, which is what
@@ -33,7 +87,6 @@ export type {
   ChartExtension,
   ChartExtensionChart,
   ChartExtensionCommand,
-  CommandRegistry,
   ChartExtensionContext,
   ChartExtensionHandle,
   ChartExtensionMenuContext,
@@ -80,25 +133,12 @@ export { coerceScaleMode, PRICE_SCALE_MODE, SCALE_MODES, SCALE_MODE_OPTIONS, typ
 export { attachCompare, clipToWindow, COMPARE_COLORS, pickCompareColor, seriesTargetOf, type CompareDeps, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSnapshot, type CompareSymbol } from './compare'
 export { createSessionBands, SESSION_DOT, SESSION_LABEL, type SessionBandsPrimitive } from './sessions'
 
-export type {
-  ChartWidgetApi,
-  ChartDrawingsApi,
-  ChartPaneSyncApi,
-  ChartReplayApi,
-  ChartSaveLoadApi,
-  OpenResource,
-  ResourceLoadOutcome,
-  ResourceRemoveOutcome,
-  ResourceSaveOutcome,
-  ResolvedTheme,
-} from './host'
+export type { OpenResource, ResourceLoadOutcome, ResourceRemoveOutcome, ResourceSaveOutcome } from './openResource'
 export { ARRANGEMENTS, LAYOUT_MENU_ROWS, arrangementOf, type Arrangement, type PaneRect } from './layoutGrid'
-export { createChartLayout, type ChartLayoutApi, type ChartLayoutOptions, type LayoutSaveLoadApi, type LayoutSyncFlags } from './layout'
 export { openInputsEditor } from './inputsEditor'
 export { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow } from './drawings'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
-export { createChart, resolveTheme, applyBar, resolveInitialTf } from './host'
 export {
   BUILT_IN_LOCALES,
   arrangementName,
@@ -160,6 +200,10 @@ export { memorySaveLoadAdapter, ResourceAbortError } from './resources'
 // study visuals and wins over the broad palette wherever both could reach the same pixel.
 export { createThemeController } from './theme/controller'
 export { THEME_ROLES } from './theme/schema'
+// The canvas projection: what an extension's `ctx.theme()` answers, and the one mapping from a
+// resolved semantic theme to the concrete values a canvas draws with.
+export { canvasTheme } from './theme/renderer'
+export type { CanvasTheme, ThemeDeclaration, ThemeRootStyle } from './theme/renderer'
 export type {
   CustomThemes,
   SemanticTheme,
