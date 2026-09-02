@@ -3,11 +3,10 @@
 // Compiling against the SHIPPED d.ts (skipLibCheck off) is the gate; no workspace source is
 // reachable from here.
 import { createChart } from '@trdrs/chart'
-import { createEngineTradingAdapter, engineDatafeed, useHandoffAuth, EngineError, engineApi } from '@trdrs/chart-engine'
+import { createEngineTradingAdapter, engineDatafeed, EngineError, engineApi } from '@trdrs/chart-engine'
 import type { HistoryResponse, PositionRow } from '@trdrs/engine-wire'
 
-// A server-to-server or embedded consumer points the transport at its engine + bearer once.
-useHandoffAuth('https://engine.example.com', 'trdrs_sk_example')
+// The transport rides the page's engine session cookie; a consumer configures nothing here.
 
 export function mount(container: HTMLElement) {
   const widget = createChart({
