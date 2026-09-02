@@ -1,0 +1,13 @@
+{
+  "recordedAt": "2026-09-02",
+  "plan": "public-chart-library-boundary-plan.md",
+  "note": "The day-one registry counts, read from the file that holds each registry today. A later stream that moves a registry updates the file path here in the same commit; the count moves only by a conscious decision.",
+  "registries": [
+    { "registry": "chart styles", "count": 7, "file": "apps/web/src/chart/chartStyles.ts", "symbol": "CHART_STYLES" },
+    { "registry": "built-in indicators", "count": 23, "file": "apps/web/src/chart/indicatorCatalog.ts", "symbol": "CATALOG_ORDER" },
+    { "registry": "preset timeframes", "count": 26, "file": "apps/web/src/chart/timeframes.ts", "symbol": "TF_GROUPS" },
+    { "registry": "timezones", "count": 60, "file": "apps/web/src/chart/timezones.ts", "symbol": "TIMEZONES" },
+    { "registry": "drawing tools", "count": 90, "file": "packages/chart-drawings/src/registry.ts", "symbol": "DEFINITIONS" },
+    { "registry": "layout arrangements", "count": 55, "file": "packages/chart/src/layoutGrid.ts", "symbol": "ARRANGEMENTS" }
+  ]
+}
