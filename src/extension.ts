@@ -191,9 +191,9 @@ export interface ChartExtensionHostDeps {
   series: ChartExtensionSeries
 }
 
-/** The contributed commands a host can see and run. Named for what the widget kernel grows it into,
- *  so nothing is renamed later. */
-export interface ChartExtensionCommands {
+/** The contributed commands a host can see and run. The widget kernel grows this registry in
+ *  place, under this name. */
+export interface CommandRegistry {
   /** Every contributed command that is available right now. */
   list(): readonly ChartExtensionCommand[]
   /** Run one by id. False when nothing carries that id, or it is not available, or it threw. */
@@ -211,7 +211,7 @@ export interface ChartExtensionHost {
   paneChanged(pane: ChartExtensionPane): void
   /** Rows every attached extension offers for this level, in registration order. */
   menuItems(context: ChartExtensionMenuContext): readonly ChartExtensionMenuItem[]
-  commands: ChartExtensionCommands
+  commands: CommandRegistry
   /** Viewer state by extension id — the widget nests this under one key of its save blob. */
   serialize(): Record<string, unknown>
   restore(state: unknown): void
@@ -324,7 +324,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     record.commands.clear()
   }
 
-  const attachOne = (extension: ChartExtension): void => {
+  const attachOne = (extension: ChartExtension, at?: number): void => {
     if (!hostLive) return
     // One id, one attachment: a duplicate would share the save-blob key with the original and
     // silently overwrite its viewer state.
@@ -437,15 +437,15 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     }
 
     // An extension that throws while attaching gets nothing: no record, no subscriptions, no save
-    // slot. The chart never learns why, and never fails to mount because of it.
+    // slot, and nothing it drew or locked before throwing stays on the chart. The chart never
+    // learns why, and never fails to mount because of it.
     try {
       record.handle = extension.attach(context)
     } catch {
-      record.live = false
-      clearLanes(record.lanes)
+      detachOne(record)
       return
     }
-    attached.push(record)
+    attached.splice(at ?? attached.length, 0, record)
   }
 
   const liveRecords = (): Attached[] => attached.filter((record) => record.live)
@@ -463,9 +463,13 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
         detachOne(record)
         const at = attached.indexOf(record)
         if (at !== -1) attached.splice(at, 1)
-        attachOne(extension)
+        attachOne(extension, at === -1 ? undefined : at)
       }
-      for (const record of liveRecords()) fanOut(record.lanes.symbol, symbol)
+      // A re-attached extension reads the new symbol from its context; only the chart-scoped ones
+      // are told, and a re-attachment keeps its slot so contributed rows keep their order.
+      for (const record of liveRecords()) {
+        if (record.extension.scope !== 'symbol') fanOut(record.lanes.symbol, symbol)
+      }
     },
     timeframeChanged(timeframe) {
       if (!hostLive) return

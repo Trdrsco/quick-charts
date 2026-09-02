@@ -459,8 +459,10 @@ What to know:
   capabilities: `createPriceLine`, `attachPrimitive`, `priceToY` / `yToPrice`, `timeToX` /
   `xToTime`, `plotWidth`, and `lockPanZoom` for the length of a drag. Every `on…` returns its own
   unsubscribe.
-- **The chart owns the renderer.** Extensions receive capabilities, never the underlying
-  lightweight-charts instance, which is what makes the next point a guarantee.
+- **The chart owns the renderer.** Extensions receive capabilities, not the chart or series
+  objects. A primitive mounted through `attachPrimitive` still meets the renderer's own
+  `attached` callback, which is lightweight-charts' contract for primitives; the chart detaches
+  that primitive for the extension when the extension comes down.
 - **Teardown is complete.** Detaching removes every price line and primitive the extension created
   and releases any pan/zoom lock it still holds, whether or not the extension took them down
   itself. Subscriptions stop, and the context becomes inert: afterwards every method is a no-op

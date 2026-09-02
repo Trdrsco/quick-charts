@@ -260,6 +260,59 @@ describe('the chart pushes its changes at every attached extension', () => {
     expect(state.lines.size).toBe(0)
   })
 
+  it('a symbol switch re-attaches in place and tells only the chart-scoped extensions', () => {
+    const { state, deps } = fakeChart()
+    const told: string[] = []
+    const host = createExtensionHost(deps, [
+      {
+        id: 'per-symbol',
+        scope: 'symbol',
+        attach(ctx) {
+          ctx.onSymbolChange((s) => told.push(`per-symbol:${s}`))
+          ctx.contributeContextMenu(() => [{ id: 'first', label: 'First', run: () => {} }])
+          return { detach: () => {} }
+        },
+      },
+      {
+        id: 'whole-chart',
+        attach(ctx) {
+          ctx.onSymbolChange((s) => told.push(`whole-chart:${s}`))
+          ctx.contributeContextMenu(() => [{ id: 'second', label: 'Second', run: () => {} }])
+          return { detach: () => {} }
+        },
+      },
+    ])
+    const rows = () => host.menuItems({ price: 1, priceText: '1', symbol: state.symbol, timeframe: '5m', clientX: 0, clientY: 0 }).map((r) => r.id)
+    expect(rows()).toEqual(['first', 'second'])
+    state.symbol = 'NQZ6'
+    host.symbolChanged('NQZ6')
+    // The re-attached extension already reads NQZ6 from its context; it is not also told.
+    expect(told).toEqual(['whole-chart:NQZ6'])
+    // And it keeps its slot, so its rows do not move below the others after every switch.
+    expect(rows()).toEqual(['first', 'second'])
+  })
+
+  it('an attach that draws and locks and then throws leaves nothing on the chart', () => {
+    const { state, deps } = fakeChart()
+    const host = createExtensionHost(deps, [
+      {
+        id: 'half-way',
+        attach(ctx) {
+          ctx.series.createPriceLine({ price: 3 })
+          ctx.series.attachPrimitive({})
+          ctx.series.lockPanZoom(true)
+          ctx.onBars(() => {})
+          throw new Error('nope')
+        },
+      },
+    ])
+    expect(state.lines.size).toBe(0)
+    expect(state.primitives.size).toBe(0)
+    expect(state.locked).toBe(false)
+    expect(host.subscriberCount()).toBe(0)
+    expect(host.serialize()).toEqual({})
+  })
+
   it('one subscriber that throws does not stop the next one, or reach the chart', () => {
     const { deps } = fakeChart()
     const reached: string[] = []
