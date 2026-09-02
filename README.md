@@ -618,7 +618,8 @@ widget.commands.execute('acme.alerts.clear')
 What to know:
 
 - **The context is the whole surface.** `ChartExtensionContext` carries the chart's symbol,
-  timeframe, bars, replay state, palette and pane geometry, a subscription for each of those, the
+  timeframe, bars, replay state, feed status, palette and pane geometry, a subscription for each of
+  the changing ones, the
   gesture box and the chrome overlay to mount DOM in, the chart's price formatter, and the series
   capabilities: `createPriceLine`, `attachPrimitive`, `priceToY` / `yToPrice`, `timeToX` /
   `xToTime`, `plotWidth`, and `lockPanZoom` for the length of a drag. Every `on…` returns its own

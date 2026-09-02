@@ -345,6 +345,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   /** Live-trust for the mark the trade surface reads: true only while the feed reports 'live' —
    *  a stale last close must not price a P&L readout or anchor a protective-stop band. */
   let feedLive = false
+  /** The feed's last reported status for this subscription, as the extension plane reads it;
+   *  null until the subscription has spoken. */
+  let feedStatus: string | null = null
   /** The resolved symbol's tick and the armed selection from the latest account snapshot — the
    *  two instrument/account truths the order ticket composes with. */
   let symbolTick: number | null = null
@@ -984,6 +987,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     bars = []
     noMoreHistory = false
     feedLive = false // the new subscription reports its own liveness; a stale mark must not carry over
+    feedStatus = null
     sessionKind = null // the next resolve states the new symbol's model; unresolved never bands
     sessionBands?.refresh() // the old symbol's bands must not survive the switch
     symbolTick = null
@@ -1077,6 +1081,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       onStatus: (status) => {
         if (removed || myEpoch !== epoch) return
         feedLive = status === 'live'
+        feedStatus = status
         events.onFeedStatus?.(status)
       },
     })
@@ -1173,6 +1178,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       timeframe: () => tf,
       bars: () => bars,
       replay: extReplay,
+      feedStatus: () => feedStatus,
       theme: extTheme,
       formatter: extFormatter,
       pane: extPane,

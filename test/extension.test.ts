@@ -40,6 +40,7 @@ function fakeChart() {
     timeframe: '5m',
     bars: [bar(100), bar(160)] as readonly FeedBar[],
     replay: { active: false, cursor: 2, total: 2 },
+    feedStatus: 'live' as string | null,
     theme: THEME,
     pane: { id: 'chart-1', width: 800, height: 400 },
     /** Price lines currently ON the series. */
@@ -80,6 +81,7 @@ function fakeChart() {
     timeframe: () => state.timeframe,
     bars: () => state.bars,
     replay: () => state.replay,
+    feedStatus: () => state.feedStatus,
     theme: () => state.theme,
     formatter: () => ({ format: (price) => price.toFixed(2), precision: () => 2 }),
     pane: () => state.pane,
@@ -426,6 +428,7 @@ describe('a detached context is inert, never explosive', () => {
 
     // Reads still answer: an extension winding down asks what it was looking at.
     expect(ctx.chart.symbol()).toBe('ESU6')
+    expect(ctx.chart.feedStatus()).toBe('live')
     expect(ctx.theme().background).toBe('#101010')
     expect(ctx.formatter().format(1.5)).toBe('1.50')
 
