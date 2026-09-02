@@ -5,7 +5,9 @@
 // clamped position, which is calculated at the moment the menu opens.
 //
 // The geometry is the reference's, measured: a 327px box of 32px rows, the glyph 8px in at its own
-// 28 grid with the label at 40, and 1px separators between the groups that survived.
+// 28 grid with the label at 40, and 1px separators between the groups that survived. Those numbers
+// live in the `.qc-menu*` recipes; the one below is the width the viewport clamp needs as a
+// number, because a clamp is arithmetic rather than a rule.
 import { chartContextMenu, type ChartMenuAction, type ChartMenuContext, type ChartMenuIcon } from './contextMenu'
 import { createChartI18n, type ChartI18n } from './i18n'
 

@@ -164,7 +164,7 @@ export interface ImageDeps {
   tiles(): readonly ImageTile[]
   /** The widget's logical size, in CSS pixels. */
   size(): { width: number; height: number }
-  header(): Omit<ImageHeader, 'symbol' | 'timeframe'> & { symbol: string; timeframe: string }
+  header(): ImageHeader
   options?: ImageOptions
 }
 

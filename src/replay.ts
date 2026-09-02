@@ -1,7 +1,7 @@
 // The bar-replay vocabulary — the pure decision layer every replay host shares: the speed table,
 // seconds-per-bar for the wire tf tokens replay meets, and the update-interval ladder (which
 // finer intervals can FORM a chart bar, and which one 'Auto' picks). The mechanism that consumes
-// this differs by host — the widget replays whole bars over its owned series; a richer host may
+// this differs by host — the chart replays whole bars over its own series; a richer host may
 // form bars progressively from finer fetches — but the vocabulary must be ONE, or two replays
 // disagree about what '4h auto on a daily chart' means.
 

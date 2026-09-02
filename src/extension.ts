@@ -146,7 +146,7 @@ export interface ChartExtensionContext {
   /** The painted bar series changed: a load, a page back, a live update, a replay step. */
   onBars(callback: (bars: readonly FeedBar[]) => void): () => void
   onReplayChange(callback: (state: ChartExtensionReplayState) => void): () => void
-  /** The pane was resized or re-tiled by a layout host. */
+  /** The chart was resized, or re-tiled by the widget's layout. */
   onPaneChange(callback: (pane: ChartExtensionPane) => void): () => void
   /** The chart is going away. Fires before the handle's own `detach()`. */
   onDispose(callback: () => void): () => void
