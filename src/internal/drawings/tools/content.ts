@@ -185,19 +185,10 @@ export type GlyphProps = {
   size: number
 }
 
-let glyphImageUrl: ((glyph: string) => string | null) | null = null
+/** Decoded artwork, keyed by URL. The cache is shared across instances on purpose: it is keyed
+ *  by the URL a source produced, so two charts pointing at the same asset set reuse one decode
+ *  and two pointing at different ones cannot collide. */
 const glyphImages = new Map<string, HTMLImageElement | 'loading' | 'failed'>()
-
-/**
- * Host-registered emoji artwork source (a vendored image set): platform emoji fonts can't be
- * trusted on canvas (Windows draws no flag glyphs at all), so emoji/sticker marks draw the
- * host's images when a source is registered. Icon marks always stay text — the stroke tint
- * must carry over.
- */
-export function setGlyphImageSource(resolve: ((glyph: string) => string | null) | null): void {
-  glyphImageUrl = resolve
-  glyphImages.clear()
-}
 
 /** Shared body of the emoji/sticker/icon tools: one glyph rendered at a point. */
 export class GlyphMark extends Drawing<GlyphProps> {
@@ -221,8 +212,8 @@ export class GlyphMark extends Drawing<GlyphProps> {
   }
 
   private glyphImage(): HTMLImageElement | null {
-    if (this.tintsWithStroke() || !glyphImageUrl || typeof Image === 'undefined') return null
-    const url = glyphImageUrl(this.props.glyph)
+    if (this.tintsWithStroke() || typeof Image === 'undefined') return null
+    const url = this.glyphUrl(this.props.glyph)
     if (!url) return null
     const cached = glyphImages.get(url)
     if (cached instanceof HTMLImageElement) return cached

@@ -21,6 +21,7 @@ export { Drawing, viewportOf } from './core/drawing'
 export { DrawingManager } from './core/manager'
 export type { IntervalBucket, IntervalContext, IntervalVisibility, VisibilityPreset, VisibilityRange } from './core/visibility'
 export { DEFAULT_VISIBILITY, normalizeVisibility, parseIntervalContext, visibilityPreset, visibleAt } from './core/visibility'
+export type { GlyphSourcePort } from './core/types'
 export type { MagnetMode, OhlcBar } from './core/magnet'
 export { magnetSnap, snapToBar } from './core/magnet'
 export {

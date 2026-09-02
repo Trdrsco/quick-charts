@@ -132,6 +132,8 @@ export type { DrawingAssetPort, ImageAsset, ImageIntakeError, ImageIntakeResult 
 // A host that has already decoded a picture hands the bitmap over, so the drawing paints on its
 // first frame instead of starting a second decode after the click that placed it.
 export { primeImageBitmap } from '@trdrs/chart-drawings'
+// The glyph half of the asset port, as the drawing model receives it.
+export type { GlyphSourcePort } from '@trdrs/chart-drawings'
 
 // ── What a tool's settings offer ────────────────────────────────────────────────────────────────
 export {

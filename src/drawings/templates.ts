@@ -66,6 +66,20 @@ export class DrawingTemplates {
     return rows.filter((row) => row.tool === tool && !isDefaultRow(row))
   }
 
+  /** Every row of the family, defaults included, each with its preset. A host that has to answer
+   *  synchronously (a placement path, a render) reads this once into a cache of its own rather
+   *  than awaiting per tool. The contract's listing carries metadata only, so each row's body is
+   *  fetched: one read per saved setup, once, against a family a trader keeps in the dozens. */
+  async listAll(signal?: AbortSignal): Promise<ToolTemplate[]> {
+    const rows = await this.store.list(signal)
+    const out: ToolTemplate[] = []
+    for (const row of rows) {
+      const found = await this.store.load(row.id, signal)
+      if (found) out.push({ ...decodePreset(found.body.content), ref: found.ref, name: found.body.name, tool: found.body.tool ?? '' })
+    }
+    return out
+  }
+
   /** One template's preset. Null when the id is gone, which is what a picker shows after another
    *  tab deleted it. */
   async load(id: string, signal?: AbortSignal): Promise<{ ref: ResourceRef; template: ToolTemplate } | null> {

@@ -7,6 +7,13 @@ import { DEFAULT_VISIBILITY } from './visibility'
  *  precision from a price's magnitude. */
 export type PriceFormatPort = (price: number) => string
 
+/** Where a glyph mark's artwork comes from. Platform emoji fonts cannot be trusted on a canvas
+ *  (Windows draws no flag glyphs at all), so emoji and sticker marks draw a host-supplied image
+ *  when this answers with a URL. Null falls back to drawing the glyph as text, which is also what
+ *  icon marks always do, because their ink is tinted by the stroke colour and artwork cannot
+ *  carry that. */
+export type GlyphSourcePort = (glyph: string) => string | null
+
 /** A point the drawing is pinned to, in chart coordinates. */
 export interface Anchor {
   time: Time
@@ -148,6 +155,8 @@ export interface IDrawing {
   /** The symbol's price formatter (the manager broadcasts it); null returns to the declared
    *  stand-in. */
   setPriceFormatter(format: PriceFormatPort | null): void
+  /** Where glyph artwork comes from (the manager broadcasts it); null draws glyphs as text. */
+  setGlyphSource(source: GlyphSourcePort | null): void
   /** Manual `visible` switch AND hide-all AND the per-interval rule, combined. */
   isVisibleNow(): boolean
 
