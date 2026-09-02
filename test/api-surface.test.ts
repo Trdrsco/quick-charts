@@ -16,11 +16,11 @@ const SURFACE: Record<string, string> = {
   // The free chart's runtime surface holds chart behavior only: nothing here draws, plans or
   // places anything for an account. Chart-native trading is @trdrs/chart-trading's own surface,
   // mounted through the extension seam.
-  // Additive (minor): the multi-chart layout plane — arrangement catalog + layout host, 2026-08-22.
+  // Additive (minor): the multi-chart arrangement catalog, 2026-08-22. The layout HOST is no longer
+  // a constructor of its own: a widget always has a layout, reached as `widget.layout`.
   ARRANGEMENTS: 'object',
   LAYOUT_MENU_ROWS: 'object',
   arrangementOf: 'function',
-  createChartLayout: 'function',
   // Additive (minor): COMPARE — other symbols beside the charted one, 2026-08-28.
   attachCompare: 'function',
   clipToWindow: 'function',
@@ -74,7 +74,7 @@ const SURFACE: Record<string, string> = {
   placeableByWidget: 'function',
   planPaneOp: 'function',
   resolveInitialTf: 'function',
-  resolveTheme: 'function',
+
   subIntervalsFor: 'function',
   tfSeconds: 'function',
   tfToUdfResolution: 'function',
@@ -97,6 +97,7 @@ const SURFACE: Record<string, string> = {
   // the clean-room consumer compiling the shipped declarations is its gate.
   THEME_ROLES: 'object',
   createThemeController: 'function',
+  canvasTheme: 'function',
   // ── end W2-C ────────────────────────────────────────────────────────────────────────────────
   // ── W2-B ────────────────────────────────────────────────────────────────────────────────────
   // Additive (minor): the 23 built-in indicator definitions, bundled from the chart-indicators
@@ -177,6 +178,29 @@ const SURFACE: Record<string, string> = {
   spreadExpression: 'function',
   spreadSearchQuery: 'function',
   // ── end W3-B ────────────────────────────────────────────────────────────────────────────────
+  // ── W3-A ────────────────────────────────────────────────────────────────────────────────────
+  // The widget kernel. `createChart` answers a `ChartWidget` that hosts one or many `ChartHandle`s;
+  // its four configuration planes, its command registry, its two event maps and its layout, theme,
+  // fullscreen and image surfaces are TYPES, so the clean-room consumer compiling the shipped
+  // declarations is their gate. What is runtime here is the style vocabulary, the bar-series
+  // algebra, and the image composition a host may reuse over its own bitmaps.
+  //
+  // Breaking (major) in the same landing: the standalone layout constructor, the one-shot theme
+  // resolver and the constructor callback bag are gone, with no alias. A widget always has a
+  // layout, a theme is a controller, and events are subscriptions. Their names are recorded in
+  // scripts/retired-surfaces.json, which is what proves them absent on every gate.
+  CHART_STYLES: 'object',
+  coerceChartStyle: 'function',
+  isChartStyle: 'function',
+  valueShaped: 'function',
+  IMAGE_HEADER_H: 'number',
+  canvasToBlob: 'function',
+  composeImage: 'function',
+  imageFileName: 'function',
+  imageHeaderRuns: 'function',
+  imageLayoutHeaderRuns: 'function',
+  imageTileRuns: 'function',
+  // ── end W3-A ────────────────────────────────────────────────────────────────────────────────
 }
 
 describe('quickcharts API surface pin', () => {

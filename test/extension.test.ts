@@ -5,30 +5,22 @@
 // never the chart's.
 //
 // The host is exercised directly against fake capabilities — the seam is where the design lives, and
-// a DOM would only add lightweight-charts to the failure surface. The widget's own wiring (which
+// a DOM would only add lightweight-charts to the failure surface. The chart's own wiring (which
 // change calls which lane, where extension state sits in the save blob, when the plane comes down)
-// is pinned against host.ts's source below, the way this package pins its other invisible rules.
+// is pinned against the widget kernel's source below, the way this package pins its other invisible
+// rules.
 import { describe, expect, it, vi } from 'vitest'
 import { createExtensionHost, type ChartExtension, type ChartExtensionContext, type ChartExtensionHostDeps, type ChartExtensionSeries } from '../src/extension'
 import type { FeedBar } from '../src/datafeed'
-import type { ResolvedTheme } from '../src/host'
-import hostSrc from '../src/host.ts?raw'
+import { createCommandRegistry, type CommandRegistry } from '../src/widget/commands'
+import { createLayoutPlane } from '../src/widget/layout'
+import { canvasTheme } from '../src/theme/renderer'
+import { DARK_THEME } from '../src/theme/palettes'
+import chartSrc from '../src/widget/chart.ts?raw'
+import extensionsSrc from '../src/widget/extensions.ts?raw'
 import extensionSrc from '../src/extension.ts?raw'
 
-// The layout section below drives the REAL `createChartLayout` over stand-in panes, each running a
-// real extension host. What is under test there is the pane lifecycle reaching the seam, so the
-// widget is the only thing faked.
-const H = vi.hoisted(() => ({ makeChart: null as null | ((options: unknown) => unknown) }))
-vi.mock('../src/host', () => ({ createChart: (options: unknown) => H.makeChart!(options) }))
-
-const THEME: ResolvedTheme = {
-  background: '#101010',
-  gridColor: '#202020',
-  textColor: '#f0f0f0',
-  upColor: '#0f0',
-  downColor: '#f00',
-  fontSize: 13,
-}
+const THEME = { ...canvasTheme(DARK_THEME), background: '#101010' }
 
 const bar = (t: number): FeedBar => ({ t, o: 1, h: 2, l: 0.5, c: 1.5, v: 10 })
 
@@ -73,8 +65,20 @@ function fakeChart() {
       state.lockCalls.push(locked)
     },
   }
+  // Contributed commands go into a REAL registry, because that is the contract: there is one
+  // registry, and a contribution is refused, listed and run through it exactly as a built-in is.
+  const commands: CommandRegistry = createCommandRegistry().registry
   const deps: ChartExtensionHostDeps = {
     chartId: 'chart-1',
+    registerCommand: (command) =>
+      commands.register({
+        id: command.id,
+        scope: 'chart',
+        label: 'command.extension',
+        labelText: command.label,
+        available: () => command.available?.() !== false,
+        execute: () => command.execute(),
+      }),
     container: { tag: 'gesture-box' } as unknown as HTMLElement,
     overlay: { tag: 'chrome-box' } as unknown as HTMLElement,
     symbol: () => state.symbol,
@@ -87,7 +91,7 @@ function fakeChart() {
     pane: () => state.pane,
     series,
   }
-  return { state, deps }
+  return { state, deps, commands }
 }
 
 /** An extension that subscribes to every lane and records what it heard. */
@@ -407,7 +411,7 @@ describe('a failing extension is its own problem', () => {
 
 describe('a detached context is inert, never explosive', () => {
   it('every method answers neutrally after detach and nothing throws', () => {
-    const { state, deps } = fakeChart()
+    const { state, deps, commands } = fakeChart()
     const r = recorder('one')
     const host = createExtensionHost(deps, [r.extension])
     const ctx = r.context()!
@@ -442,8 +446,8 @@ describe('a detached context is inert, never explosive', () => {
     expect(ctx.contributeContextMenu(() => [])()).toBeUndefined()
     expect(ctx.contributeCommands([])()).toBeUndefined()
     expect(host.menuItems({ price: 1, priceText: '1', symbol: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 })).toEqual([])
-    expect(host.commands.list()).toEqual([])
-    expect(host.commands.execute('anything')).toBe(false)
+    expect(commands.list()).toEqual([])
+    expect(commands.execute('anything')).toEqual({ kind: 'unknown' })
     expect(host.serialize()).toEqual({})
   })
 })
@@ -552,10 +556,10 @@ describe('contributions', () => {
   })
 
   it('commands list only what is available, and execute reports whether it ran', () => {
-    const { deps } = fakeChart()
+    const { deps, commands } = fakeChart()
     let armed = false
     const ran: string[] = []
-    const host = createExtensionHost(deps, [
+    createExtensionHost(deps, [
       {
         id: 'one',
         attach(ctx) {
@@ -567,18 +571,21 @@ describe('contributions', () => {
         },
       },
     ])
-    expect(host.commands.list().map((c) => c.id)).toEqual(['always'])
-    expect(host.commands.execute('sometimes')).toBe(false)
+    // Both are LISTED whichever is available: a menu decides whether to draw a disabled row, and
+    // hiding one would leave the host guessing why a verb vanished.
+    expect(commands.list().map((c) => c.id)).toEqual(['always', 'sometimes'])
+    expect(commands.available('sometimes')).toBe(false)
+    expect(commands.execute('sometimes')).toEqual({ kind: 'unavailable' })
     armed = true
-    expect(host.commands.list().map((c) => c.id)).toEqual(['always', 'sometimes'])
-    expect(host.commands.execute('sometimes')).toBe(true)
-    expect(host.commands.execute('nothing-by-that-name')).toBe(false)
+    expect(commands.available('sometimes')).toBe(true)
+    expect(commands.execute('sometimes')).toEqual({ kind: 'ok' })
+    expect(commands.execute('nothing-by-that-name')).toEqual({ kind: 'unknown' })
     expect(ran).toEqual(['sometimes'])
   })
 
   it('a command that throws reports failure instead of escaping into the host', () => {
-    const { deps } = fakeChart()
-    const host = createExtensionHost(deps, [
+    const { deps, commands } = fakeChart()
+    createExtensionHost(deps, [
       {
         id: 'one',
         attach(ctx) {
@@ -595,11 +602,11 @@ describe('contributions', () => {
         },
       },
     ])
-    expect(host.commands.execute('boom')).toBe(false)
+    expect(commands.execute('boom')).toMatchObject({ kind: 'failed' })
   })
 
   it('contributions come down with their extension', () => {
-    const { deps } = fakeChart()
+    const { deps, commands } = fakeChart()
     const host = createExtensionHost(deps, [
       {
         id: 'one',
@@ -612,7 +619,7 @@ describe('contributions', () => {
     ])
     host.detach()
     expect(host.menuItems({ price: 1, priceText: '1', symbol: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 })).toEqual([])
-    expect(host.commands.list()).toEqual([])
+    expect(commands.list()).toEqual([])
   })
 })
 
@@ -642,63 +649,66 @@ describe('the contract is neutral by construction, not by intention', () => {
   })
 })
 
-describe('the widget wires the plane where the contract says it does', () => {
+describe('the chart wires the plane where the contract says it does', () => {
   it('the chart hands out capabilities, never its lightweight-charts instance', () => {
-    // The one rule the whole seam rests on: an extension that could reach `chart` or `candles`
-    // could do anything, and nothing the widget promises about teardown would hold.
-    expect(hostSrc).toMatch(/createExtensionHost\(/)
-    const depsBlock = hostSrc.slice(hostSrc.indexOf('extHost = createExtensionHost('), hostSrc.indexOf('options.extensions ?? []'))
-    expect(depsBlock).not.toMatch(/\bchart\b\s*,/)
-    expect(depsBlock).not.toMatch(/\bcandles\b/)
+    // The one rule the whole seam rests on: an extension that could reach the renderer or the main
+    // series could do anything, and nothing the chart promises about teardown would hold.
+    expect(chartSrc).toMatch(/attachExtensionsPlane\(/)
+    const depsBlock = chartSrc.slice(chartSrc.indexOf('const extensions = attachExtensionsPlane('), chartSrc.indexOf('const menu ='))
+    // The plane receives the renderer and a series GETTER by name, and the seam it builds over them
+    // exposes neither: `extensions.ts` hands an extension capabilities only.
+    expect(extensionsSrc).not.toMatch(/chart: deps\.chart\b/)
+    expect(depsBlock).toContain('series: () => anchor')
   })
 
   it('the feed status an extension reads is the one the host was told, on every path', () => {
-    // Every site that raises onFeedStatus assigns the seam's read first, with the same value: a
-    // symbol the widget already called unserved must not answer null to an overlay that asks.
-    const sites = [...hostSrc.matchAll(/^(\s*)events\.onFeedStatus\?\.\(([^)]+)\)/gm)]
+    // Every site that emits the feedStatus event assigns the seam's read first, with the same
+    // value: a symbol the chart already called unserved must not answer null to an overlay.
+    const sites = [...chartSrc.matchAll(/^(\s*)events\.emit\('feedStatus', ([^)]+)\)/gm)]
     expect(sites.length).toBeGreaterThanOrEqual(2)
     for (const site of sites) {
-      const before = hostSrc.slice(0, site.index).split('\n').filter((l) => l.trim() !== '').at(-1)!.trim()
+      const before = chartSrc.slice(0, site.index).split('\n').filter((l) => l.trim() !== '').at(-1)!.trim()
       expect(before).toBe(`feedStatus = ${site[2]}`)
     }
     // …and a reload resets it before the new subscription speaks.
-    expect(hostSrc).toMatch(/feedStatus = null \/\/ the new subscription/)
+    expect(chartSrc).toMatch(/feedStatus = null \/\/ the new subscription/)
   })
 
   it('a symbol or timeframe switch reaches the plane BEFORE the reload that repaints', () => {
     for (const [notify, lane] of [
-      ['extHost?.symbolChanged(next)', 'symbol'],
-      ['extHost?.timeframeChanged(next)', 'timeframe'],
+      ['extensions.host.symbolChanged(next)', 'symbol'],
+      ['extensions.host.timeframeChanged(next)', 'timeframe'],
     ] as const) {
-      const at = hostSrc.indexOf(notify)
+      const at = chartSrc.indexOf(notify)
       expect(at, lane).toBeGreaterThan(-1)
-      expect(hostSrc.slice(at, at + 200)).toContain('load()')
+      expect(chartSrc.slice(at, at + 200)).toContain('load()')
     }
   })
 
   it('extension state is namespaced inside the save blob, and restores after the chart it describes', () => {
-    expect(hostSrc).toContain('ext: extHost?.serialize() ?? {}')
-    const restoreAt = hostSrc.indexOf('extHost?.restore(c.ext)')
+    expect(chartSrc).toContain('ext: extensions.host.serialize()')
+    const restoreAt = chartSrc.indexOf('extensions.host.restore(parsed.ext)')
     expect(restoreAt).toBeGreaterThan(-1)
     // Last in the restore body: the symbol, timeframe, scale and compares are the world the state
     // describes, so they must already be on screen.
-    expect(hostSrc.slice(hostSrc.indexOf('compareHandle!.restore('), restoreAt)).toContain('compareScalePolicy()')
+    expect(chartSrc.slice(chartSrc.indexOf('compare?.restore(parsed.compares)'), restoreAt).trim().length).toBeGreaterThan(0)
   })
 
   it('the plane comes down before the chart it drew on', () => {
-    const detachAt = hostSrc.indexOf('extHost?.detach()')
+    const detachAt = chartSrc.indexOf('extensions.destroy()')
     expect(detachAt).toBeGreaterThan(-1)
-    expect(detachAt).toBeLessThan(hostSrc.indexOf('chart.remove()'))
+    expect(detachAt).toBeLessThan(chartSrc.indexOf('chart.remove()'))
   })
-
 })
 
-// ── The layout attaches per PANE. Nothing in `createChartLayout` knows what an extension is: it
-// hands every pane the shared options and removes the panes it drops, so the seam's per-pane
-// behavior falls out of the pane lifecycle rather than out of a second rule that could disagree
-// with it. Driven here against the real layout, with the widget as the only stand-in. ──
+// ── The layout attaches per CHART. Nothing in the layout plane knows what an extension is: it asks
+// the widget for a chart and tears down the charts it drops, so the seam's per-chart behavior falls
+// out of the chart lifecycle rather than out of a second rule that could disagree with it. Driven
+// here against the real layout plane, with the chart as the only stand-in. ──
 const fakeEl = () => {
   const e = {
+    className: '',
+    dataset: {} as Record<string, string>,
     style: {} as Record<string, string>,
     appendChild: () => {},
     addEventListener: () => {},
@@ -708,59 +718,63 @@ const fakeEl = () => {
   return e
 }
 
-const { createChartLayout } = await import('../src/layout')
-
-describe('a layout attaches and detaches per pane', () => {
-  it('every pane gets its own attachment, its own id, and its own teardown', async () => {
+describe('a layout attaches and detaches per chart', () => {
+  it('every chart gets its own attachment, its own id, and its own teardown', () => {
     const attachedTo: string[] = []
     const detachedFrom: string[] = []
     const extension: ChartExtension = {
-      id: 'per-pane',
+      id: 'per-chart',
       attach(ctx) {
         attachedTo.push(ctx.chart.id)
         return { detach: () => detachedFrom.push(ctx.chart.id) }
       },
     }
 
-    let paneSeq = 0
-    H.makeChart = (options) => {
-      const opts = options as { extensions?: readonly ChartExtension[]; symbol?: string }
-      const { deps } = fakeChart()
-      const id = `pane-${++paneSeq}`
-      const host = createExtensionHost({ ...deps, chartId: id }, opts.extensions ?? [])
-      let symbol = opts.symbol ?? 'ESU6'
-      const off = () => () => {}
-      return {
-        symbol: () => symbol,
-        setSymbol: (s: string) => (symbol = s),
-        timeframe: () => '5m',
-        setTimeframe: () => {},
-        sync: { onCrosshair: off, onTimeClick: off, onVisibleRange: off, centerOn: () => {}, setCrosshair: () => {}, setVisibleRange: () => {} },
-        saveLoad: { serialize: () => ({ symbol, timeframe: '5m', content: '{}' }), restore: () => {} },
-        remove: () => host.detach(),
-      }
-    }
-    const globals = globalThis as unknown as { document: unknown; getComputedStyle: unknown }
+    let chartSeq = 0
+    const hosts = new Map<string, { detach: () => void }>()
+    const globals = globalThis as unknown as { document: unknown }
     globals.document = { createElement: () => fakeEl() }
-    globals.getComputedStyle = () => ({ position: 'relative' })
 
-    const layout = createChartLayout({
+    const layout = createLayoutPlane({
       container: fakeEl() as unknown as HTMLElement,
-      base: { extensions: [extension] } as never,
+      adapter: null,
+      i18n: { t: ((k: string) => k) as never, tag: () => 'en', locale: () => 'en', setLocale: async () => {}, onChange: () => () => {} } as never,
       arrangement: '2h',
+      createChart() {
+        const { deps } = fakeChart()
+        const id = `chart-${++chartSeq}`
+        hosts.set(id, createExtensionHost({ ...deps, chartId: id }, [extension]))
+        let symbol = 'ESU6'
+        const off = () => () => {}
+        return {
+          id,
+          symbol: () => symbol,
+          setSymbol: (s: string) => (symbol = s),
+          timeframe: () => '5m',
+          setTimeframe: () => {},
+          visibleRange: () => null,
+          setVisibleRange: () => {},
+          sync: { onCrosshair: off, onTimeClick: off, onVisibleRange: off },
+          saveLoad: { serialize: () => ({ symbol, timeframe: '5m', content: '{}' }), restore: () => {} },
+          on: off,
+        } as never
+      },
+      destroyChart: (handle) => hosts.get(handle.id)?.detach(),
+      onActive: () => {},
+      onChange: () => {},
     })
     expect(attachedTo.length).toBe(2)
-    expect(new Set(attachedTo).size).toBe(2) // two panes, two identities, two state slots
+    expect(new Set(attachedTo).size).toBe(2) // two charts, two identities, two state slots
     expect(detachedFrom).toEqual([])
 
-    layout.setArrangement('s') // the dropped pane takes its attachment with it
+    layout.api.setArrangement('s') // the dropped chart takes its attachment with it
     expect(detachedFrom.length).toBe(1)
     expect(attachedTo.length).toBe(2)
 
-    layout.setArrangement('2h') // a new pane attaches its own
+    layout.api.setArrangement('2h') // a new chart attaches its own
     expect(attachedTo.length).toBe(3)
 
-    layout.remove()
+    layout.destroy()
     expect(detachedFrom.length).toBe(3)
     expect(new Set(detachedFrom)).toEqual(new Set(attachedTo))
   })

@@ -117,8 +117,15 @@
 /* Menus --------------------------------------------------------------------------------------- */
 
 [data-qc-theme] .qc-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 32px;
+  padding: 0 20px 0 0;
   color: var(--qc-text-primary);
   font: inherit;
+  text-align: left;
   background: none;
   border: 0;
   cursor: pointer;
@@ -134,6 +141,9 @@
 }
 
 [data-qc-theme] .qc-menu-hint {
+  flex: 0 0 auto;
+  padding-left: 10px;
+  padding-top: 2px;
   color: var(--qc-text-muted);
   font-size: var(--qc-text-fontSizeSmall);
 }
@@ -213,12 +223,378 @@
 }
 
 [data-qc-theme] .qc-pane {
+  position: absolute;
   outline: 1px solid transparent;
   outline-offset: -1px;
 }
 
 [data-qc-theme] .qc-pane[data-qc-active='true'] {
   outline-color: var(--qc-state-focusRing);
+}
+
+/* Widget structure ----------------------------------------------------------------------------- */
+
+[data-qc-theme].qc-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+[data-qc-theme] .qc-panes {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* Two SIBLING boxes, and the split is load-bearing rather than cosmetic. The gesture box belongs
+ * to the drag layers: an extension binds a capture-phase pointer handler there and takes pointer
+ * capture, which no bubble-phase stopPropagation in a descendant could prevent. Chrome mounted
+ * inside it would have its clicks swallowed, so the chrome layer is a separate subtree overlaying
+ * it, inert by default, each interactive piece opting back in. */
+[data-qc-theme] .qc-gestures {
+  position: absolute;
+  inset: 0;
+}
+
+[data-qc-theme] .qc-chrome {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+[data-qc-theme] [hidden] {
+  display: none !important;
+}
+
+/* Legend --------------------------------------------------------------------------------------- */
+
+[data-qc-theme] .qc-legend {
+  position: absolute;
+  top: 8px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-legend-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-legend-scales {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 4px;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-legend-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+[data-qc-theme] .qc-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-legend-action {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-size: var(--qc-text-fontSizeMicro);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-legend-title {
+  font-size: var(--qc-text-fontSizeSmall);
+  text-decoration: underline dotted;
+}
+
+[data-qc-theme] .qc-legend-dot {
+  display: inline-block;
+}
+
+[data-qc-theme] .qc-chip {
+  padding: 0 5px;
+  font-size: var(--qc-text-fontSizeMicro);
+  line-height: 14px;
+}
+
+/* Drawing rail --------------------------------------------------------------------------------- */
+
+[data-qc-theme] .qc-rail {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-rail-button {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: var(--qc-chrome-surface);
+}
+
+/* Level menu ----------------------------------------------------------------------------------- */
+
+[data-qc-theme] .qc-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+}
+
+/* overflow:hidden is load-bearing: a row highlight fills its slot squarely, so the surface is what
+ * rounds it off. Without the clip it paints over the corners and out across the border. */
+[data-qc-theme] .qc-menu {
+  position: fixed;
+  z-index: 2147483001;
+  width: 327px;
+  padding: 6px 0;
+  overflow: hidden;
+  font-size: var(--qc-text-fontSizeBase);
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-menu-icon {
+  display: flex;
+  flex: 0 0 36px;
+  width: 36px;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-qc-theme] .qc-menu-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-menu .qc-separator {
+  margin: 6px 0;
+}
+
+/* Replay transport ----------------------------------------------------------------------------- */
+
+[data-qc-theme] .qc-replay {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+  font-size: var(--qc-text-fontSizeSmall);
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-replay-button {
+  padding: 1px 7px;
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+[data-qc-theme] .qc-replay-select {
+  padding: 1px 2px;
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+[data-qc-theme] .qc-replay-position {
+  padding: 0 4px;
+  color: var(--qc-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Indicator inputs ----------------------------------------------------------------------------- */
+
+[data-qc-theme] .qc-inputs {
+  position: absolute;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 150px;
+  padding: 6px 8px;
+  font-size: var(--qc-text-fontSizeSmall);
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-inputs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+[data-qc-theme] .qc-inputs-field {
+  width: 72px;
+  padding: 1px 4px;
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+[data-qc-theme] .qc-inputs-select {
+  padding: 1px 2px;
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+[data-qc-theme] .qc-inputs-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+[data-qc-theme] .qc-inputs-actions .qc-button {
+  padding: 1px 8px;
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+/* Dialog --------------------------------------------------------------------------------------- */
+
+[data-qc-theme] .qc-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-qc-theme] .qc-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(480px, calc(100vw - 32px));
+  max-height: min(420px, calc(100vh - 32px));
+  overflow: hidden;
+  font-size: var(--qc-text-fontSizeBase);
+}
+
+[data-qc-theme] .qc-dialog-title {
+  padding: 12px 14px;
+  font-size: var(--qc-text-fontSizeTitle);
+  font-weight: 600;
+}
+
+[data-qc-theme] .qc-dialog-search {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin: 0 14px 8px;
+  padding: 0 6px 0 0;
+  border: 1px solid var(--qc-chrome-border);
+  border-radius: var(--qc-chrome-radius);
+}
+
+[data-qc-theme] .qc-dialog-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  color: var(--qc-text-primary);
+  font: inherit;
+  background: none;
+  border: none;
+  outline: none;
+  text-transform: uppercase;
+}
+
+[data-qc-theme] .qc-dialog-input::placeholder {
+  color: var(--qc-text-muted);
+}
+
+[data-qc-theme] .qc-dialog-op {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--qc-text-secondary);
+  background: none;
+  border: none;
+  border-radius: var(--qc-chrome-radius);
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-dialog-list {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 6px;
+  overflow-y: auto;
+}
+
+[data-qc-theme] .qc-dialog-heading {
+  padding: 8px 14px 4px;
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeMicro);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+[data-qc-theme] .qc-dialog-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-dialog-row:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-dialog-row-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+}
+
+[data-qc-theme] .qc-dialog-row-name {
+  overflow: hidden;
+  color: var(--qc-text-secondary);
+  font-size: var(--qc-text-fontSizeMicro);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-dialog-row-actions {
+  display: none;
+  gap: 4px;
+}
+
+[data-qc-theme] .qc-dialog-row:hover .qc-dialog-row-actions {
+  display: inline-flex;
+}
+
+[data-qc-theme] .qc-dialog-row-actions .qc-button {
+  padding: 2px 6px;
+  font-size: var(--qc-text-fontSizeMicro);
+  white-space: nowrap;
 }
 
 /* Accessibility --------------------------------------------------------------------------------- */

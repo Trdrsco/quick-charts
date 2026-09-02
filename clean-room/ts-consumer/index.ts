@@ -17,9 +17,14 @@ import {
   resolveInitialTf,
   tfToUdfResolution,
   udfResolutionToTf,
+  CHART_STYLES,
   type BuiltInIndicator,
+  type Capabilities,
   type ChartDatafeed,
-  type ChartWidgetApi,
+  type ChartHandle,
+  type CommandRegistry,
+  type CommandResult,
+  type ChartWidget,
   type DatafeedConfig,
   type DrawingsHandle,
   type FeedBar,
@@ -37,7 +42,7 @@ import { memorySaveLoad, memoryStorage } from './fakes/memorySaveLoad'
 // a datafeed, a preferences store, and a revisioned save/load adapter the consumer wrote against the shipped
 // d.ts. This is the boundary a Quick Charts consumer lives on; mode-b.ts and ticket.ts are the
 // private product consumers and are not this.
-export function mountFreeChart(el: HTMLElement): ChartWidgetApi {
+export function mountFreeChart(el: HTMLElement): ChartWidget {
   return createChart({
     container: el,
     datafeed: memoryDatafeed(),
@@ -163,8 +168,47 @@ const trading: TradingAdapter = {
 void trading
 
 // Widget construction types (not executed here — node has no DOM; the render smoke covers that).
-export function mount(el: HTMLElement): ChartWidgetApi {
-  return createChart({ container: el, datafeed: feed, storage: memoryChartStorage(), symbol: 'BTC', timeframe: '1m', theme: mergeOverrides(null).appearance ? { mode: 'dark' } : undefined })
+export function mount(el: HTMLElement): ChartWidget {
+  return createChart({
+    container: el,
+    datafeed: feed,
+    storage: memoryChartStorage(),
+    symbol: 'BTC',
+    timeframe: '1m',
+    style: 'candles',
+    theme: { mode: 'dark' },
+    appearance: mergeOverrides(null),
+    features: { drawings: true, legend: true },
+    access: { command: (id) => !id.startsWith('chart.replay.') },
+    preferences: { scaleMode: 'log' },
+  })
+}
+
+// The runtime surfaces a consumer drives after the mount: readiness, the active chart's handle, the
+// one command registry, the derived capability plane, and typed subscriptions that hand back their
+// own unsubscribe.
+export async function exerciseWidget(widget: ChartWidget): Promise<void> {
+  await widget.ready()
+  const chart: ChartHandle = widget.activeChart()
+  const offSymbol = chart.on('symbol', (next: string) => void next)
+  const offTheme = widget.on('theme', (_theme, mode) => void mode)
+  chart.setStyle('line')
+  if (!CHART_STYLES.includes(chart.style())) throw new Error('a style is one of the seven')
+  chart.scroll(-10)
+  chart.zoom(1.2)
+  chart.reset()
+  chart.goLive()
+  const commands: CommandRegistry = widget.commands
+  const outcome: CommandResult = commands.execute('chart.view.reset')
+  if (outcome.kind !== 'ok') throw new Error('reset view is always available')
+  if (commands.execute('chart.replay.start').kind !== 'denied') throw new Error('the access policy refuses from every door')
+  const caps: Capabilities = widget.capabilities()
+  void caps.search
+  widget.theme.setMode('light')
+  widget.layout.setSync({ symbol: true })
+  offSymbol()
+  offTheme()
+  widget.dispose()
 }
 
 // Pure exports execute under types too.
@@ -204,7 +248,7 @@ if (builtSpec.plots[0]?.type !== 'line') throw new Error('unexpected walked plot
 // through the chart's own language object. Nothing of ours beyond quickcharts is installed for it.
 const rsi: BuiltInIndicator | undefined = BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')
 if (!rsi || BUILT_IN_INDICATORS.length !== 23) throw new Error('the 23 built-ins must ship')
-export function mountWithBuiltIn(el: HTMLElement): ChartWidgetApi {
+export function mountWithBuiltIn(el: HTMLElement): ChartWidget {
   return createChart({ container: el, datafeed: feed, indicators: [{ id: 'rsi-14', definition: rsi!, color: '#f5a623' }] })
 }
 const builtInBars: FeedBar[] = Array.from({ length: 40 }, (_, i) => ({ t: 60 * (i + 1), o: 100 + i, h: 101 + i, l: 99 + i, c: 100.5 + i, v: 10 }))

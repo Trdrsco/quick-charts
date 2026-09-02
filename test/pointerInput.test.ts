@@ -4,13 +4,15 @@
 // a copy of the press-and-hold rule for its own chart until that pane is deleted.)
 //
 // Nothing here imports or simulates `apps/web`: the decisions are pure, and where behavior
-// belongs to the widget itself (which handlers it binds, what it does with the chart's own
-// navigation) it is pinned against host.ts's source, the way this package pins its other rules
-// that no runtime assertion can reach.
+// belongs to the chart itself (which handlers it binds, what it does with the chart's own
+// navigation) it is pinned against the source of the two modules that own it, the way this package
+// pins its other rules that no runtime assertion can reach.
 import { describe, expect, it } from 'vitest'
 import { longPressArms, longPressCancels, pointerLock, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
 import { placeableByWidget } from '../src/drawings'
-import hostSrc from '../src/host.ts?raw'
+import extensionsSrc from '../src/widget/extensions.ts?raw'
+import pointerSrc from '../src/widget/pointer.ts?raw'
+import chartSrc from '../src/widget/chart.ts?raw'
 
 describe('pan, pinch and axis scaling belong to the chart, and are borrowed rather than taken', () => {
   it('a drag suspends pan, zoom, pinch and axis scaling together, and hands all of them back', () => {
@@ -20,27 +22,29 @@ describe('pan, pinch and axis scaling belong to the chart, and are borrowed rath
     expect(pointerLock(false)).toEqual({ handleScroll: true, handleScale: true, touchAction: '' })
   })
 
-  it('the widget applies that one rule rather than its own pair of flags', () => {
-    expect(hostSrc).toContain('const state = pointerLock(locked)')
-    expect(hostSrc).toContain('chart.applyOptions({ handleScroll: state.handleScroll, handleScale: state.handleScale })')
-    expect(hostSrc).toContain('chartBox.style.touchAction = state.touchAction')
+  it('the chart applies that one rule rather than its own pair of flags', () => {
+    expect(extensionsSrc).toContain('const state = pointerLock(locked)')
+    expect(extensionsSrc).toContain('deps.chart.applyOptions({ handleScroll: state.handleScroll, handleScale: state.handleScale })')
+    expect(extensionsSrc).toContain('deps.setTouchAction(state.touchAction)')
+    expect(chartSrc).toContain('gestures.style.touchAction = value')
   })
 
-  it('the widget opens with the renderer’s navigation ON — pan, wheel zoom, pinch and axis drag', () => {
+  it('the chart opens with the renderer’s navigation ON — pan, wheel zoom, pinch and axis drag', () => {
     // A chart that mounted with either flag off would be a chart nobody can move, and no runtime
     // assertion in this package would notice.
-    const created = hostSrc.slice(hostSrc.indexOf('createLwChart(chartBox, {'), hostSrc.indexOf('const candles:'))
+    const created = chartSrc.slice(chartSrc.indexOf('createRenderer(gestures, {'), chartSrc.indexOf('const anchor:'))
     expect(created).not.toContain('handleScroll')
     expect(created).not.toContain('handleScale')
   })
 
   it('an in-chart drag borrows the lock through one capability, and the chart alone applies it', () => {
-    // The widget's extension plane is the one door to the lock: an overlay asks `lockPanZoom`, and
-    // the flags and the touch action move together inside the chart. No other site in the widget
-    // writes the renderer's navigation flags.
-    expect(hostSrc.match(/handleScroll:/g)!.length).toBe(1)
-    expect(hostSrc.match(/handleScale:/g)!.length).toBe(1)
-    expect(hostSrc.match(/.touchAction =/g)!.length).toBe(1)
+    // The extension plane is the one door to the lock: an overlay asks `lockPanZoom`, and the flags
+    // and the touch action move together inside the chart. No other site in the package writes the
+    // renderer's navigation flags, and the chart makes exactly one touch-action write.
+    const widgetSrc = extensionsSrc + chartSrc + pointerSrc
+    expect(widgetSrc.match(/handleScroll:/g)!.length).toBe(1)
+    expect(widgetSrc.match(/handleScale:/g)!.length).toBe(1)
+    expect(widgetSrc.match(/\.touchAction =/g)!.length).toBe(1)
   })
 })
 
@@ -76,16 +80,17 @@ describe('press and hold is the touch way into the level menu', () => {
     expect(longPressCancels({ touches: 2, fromX: 100, fromY: 100, x: 100, y: 100 })).toBe(true)
   })
 
-  it('the widget binds the hold itself, passively, and raises the same menu a right-click does', () => {
+  it('the chart binds the hold itself, passively, and raises the same menu a right-click does', () => {
     for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
-      expect(hostSrc, type).toMatch(new RegExp(`chartBox\\.addEventListener\\(\\s*'${type}'`))
+      expect(pointerSrc, type).toMatch(new RegExp(`deps\\.gestures\\.addEventListener\\('${type}'`))
     }
     // Passive listeners: the hold observes the gesture and never blocks the renderer's own pan.
-    expect(hostSrc.match(/\{ passive: true \}/g)!.length).toBe(4)
+    expect(pointerSrc.match(/\{ passive: true \}/g)!.length).toBe(4)
     // The right-click and the hold call ONE raise, so a finger can never be offered other rows.
-    expect(hostSrc.match(/raiseMenuAt\(/g)!.length).toBe(2)
-    // An armed hold cannot outlive the widget.
-    expect(hostSrc).toContain('holdCleanup?.()')
+    expect(chartSrc.match(/menu\.raiseAt\(/g)!.length).toBe(2)
+    // An armed hold cannot outlive the chart.
+    expect(pointerSrc).toContain('cancel()')
+    expect(chartSrc).toContain('pointer?.destroy()')
   })
 })
 
@@ -103,8 +108,8 @@ describe('drawing placement is the chart’s own gesture', () => {
   })
 
   it('an armed tool owns the touch surface until it is disarmed', () => {
-    // The widget reads the layer's own armed tool rather than a flag of its own, so arming from any
+    // The chart reads the layer's own armed tool rather than a flag of its own, so arming from any
     // door (the rail, a host command, a keyboard shortcut) stands the hold down the same way.
-    expect(hostSrc).toContain('toolArmed: drawingsHandle?.activeTool() != null')
+    expect(chartSrc).toContain('toolArmed: () => drawings.handle?.activeTool() != null')
   })
 })

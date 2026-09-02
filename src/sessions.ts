@@ -5,6 +5,7 @@
 // draws nothing, and a continuous market never bands.
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
 import { sessionStateAt, type SessionModel, type SessionState } from './sessionModel'
+import type { SemanticTheme, ThemeRoleId } from './theme/schema'
 
 /** The session's name in English — what a host renders when it shows status text of its own. The
  *  widget's catalog carries the same five under `session.<state>`, keyed by these very names, so a
@@ -17,19 +18,24 @@ export const SESSION_LABEL: Readonly<Record<SessionState, string>> = {
   closed: 'Market closed',
 }
 
-export const SESSION_DOT: Readonly<Record<SessionState, string>> = {
-  pre: '#4c98fb',
-  open: '#22c55e',
-  extended: '#4c98fb',
-  after: '#f5a623',
-  closed: 'rgba(255,255,255,0.35)',
+/** The semantic theme role a session state's status marker wears. A consumer resolves the role
+ *  against the theme in effect, so the marker follows light or dark and a host's custom palette
+ *  instead of carrying a color of its own. */
+export const SESSION_DOT: Readonly<Record<SessionState, ThemeRoleId>> = {
+  pre: 'status.sessionPreMarket',
+  open: 'status.sessionOpen',
+  extended: 'status.sessionExtended',
+  after: 'status.sessionAfterHours',
+  closed: 'status.sessionClosed',
 }
 
-const BAND_FILL: Readonly<Record<Exclude<SessionState, 'open'>, string>> = {
-  pre: 'rgba(76,152,251,0.05)',
-  extended: 'rgba(76,152,251,0.05)',
-  after: 'rgba(245,166,35,0.045)',
-  closed: 'rgba(0,0,0,0.22)',
+/** The role each shaded stretch takes. Regular hours are the unshaded ground, which is why `open`
+ *  has no entry here. */
+const BAND_ROLE: Readonly<Record<Exclude<SessionState, 'open'>, ThemeRoleId>> = {
+  pre: 'scale.sessionPreMarket',
+  extended: 'scale.sessionExtended',
+  after: 'scale.sessionAfterHours',
+  closed: 'scale.sessionClosed',
 }
 
 /** A series primitive that shades every non-regular-hours stretch of the visible chart. Bars are
@@ -57,6 +63,8 @@ export function createSessionBands(
   enabled: () => boolean,
   model: () => SessionModel | null,
   intraday: () => boolean,
+  /** The theme in effect. Read at draw time, so a mode switch repaints the bands with the pane. */
+  theme: () => SemanticTheme,
 ): SessionBandsPrimitive {
   const renderer = {
     draw(target: unknown) {
@@ -93,7 +101,7 @@ export function createSessionBands(
           const r = scope.horizontalPixelRatio
           const left = ((x1 ?? -barW) - barW / 2) * r
           const right = ((x2 ?? scope.bitmapSize.width / r + barW) + barW / 2) * r
-          scope.context.fillStyle = BAND_FILL[runState]
+          scope.context.fillStyle = theme()[BAND_ROLE[runState]]
           scope.context.fillRect(left, 0, right - left, scope.bitmapSize.height)
           runStart = null
         }

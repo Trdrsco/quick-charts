@@ -40,7 +40,9 @@ export class FillBetweenPrimitive implements ISeriesPrimitive<Time> {
   private upper: readonly PlotPoint[] = []
   private lower: readonly PlotPoint[] = []
   private colors: readonly (string | null)[] | undefined
-  private color = 'rgba(38, 166, 154, 0.13)'
+  /** Nothing until the first `setData`, which every render path makes before a draw. A tint chosen
+   *  here would be a second study default with no owner. */
+  private color = 'transparent'
 
   attached(param: SeriesAttachedParameter<Time>): void {
     this.chart = param.chart

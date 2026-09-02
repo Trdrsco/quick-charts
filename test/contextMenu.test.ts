@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { chartContextMenu, type ChartMenuContext } from '../src/contextMenu'
 import menuUiSrc from '../src/contextMenuUi.ts?raw'
+import { authoredStylesheet } from './theme/stylesheetSource'
+import { BUILT_IN_THEMES } from '../src/theme/palettes'
+
+/** The authored component recipes: the one place a chart visual is written. */
+const css = authoredStylesheet()
 
 // The reference's own menu is the shape — order, verbatim wording, and which rows exist at all.
 // Captured live from both the Trading Platform library and tradingview.com; see the layouts corpus.
@@ -93,29 +98,45 @@ describe('separators', () => {
 })
 
 describe('a menu row highlights as a ROW', () => {
+  // The box model lives in the package stylesheet, which is the one place a rule lives; the painter
+  // only names classes. So these read the authored recipes rather than a style string.
+  const menu = css.slice(css.indexOf('.qc-menu {'), css.indexOf('/* Replay transport'))
+  const overlay = css.slice(css.indexOf('.qc-overlay {'), css.indexOf('.qc-scrim {'))
+  const row = css.slice(css.indexOf('.qc-menu-row {'), css.indexOf('.qc-menu-row:hover'))
+
+  it('paints the row from ONE rule, so there is no second painting to drift from', () => {
+    expect(css.split('.qc-menu-row {').length - 1).toBe(1)
+  })
+
   // The hover is a selection: it fills the row edge to edge and squarely. A radius on the row makes
   // it read as a floating pill inside the menu instead — the SURFACE is the thing that is rounded.
-  // Pinned because the app paints this same menu from its own painter, and two paintings of one
-  // menu are two things that can drift.
   it('the row spans the full width and carries no radius', () => {
-    expect(menuUiSrc).toContain('width:100%')
-    expect(menuUiSrc).not.toContain('border:0;border-radius:4px')
+    expect(row).toContain('width: 100%')
+    expect(row).not.toContain('border-radius')
   })
 
   it('the surface keeps its radius and CLIPS to it', () => {
     // Without the clip a square fill paints over the corners and out across the border.
-    expect(menuUiSrc).toContain('border-radius:6px')
-    expect(menuUiSrc).toContain('overflow:hidden')
+    expect(overlay).toContain('border-radius: var(--qc-chrome-radiusLarge)')
+    expect(BUILT_IN_THEMES.dark['chrome.radiusLarge']).toBe('6px')
+    expect(menu).toContain('overflow: hidden')
   })
 
   it('wears the same box model the app paints, read off the reference itself', () => {
-    // Two paintings of one menu; the numbers come from the reference's live DOM, not from either
-    // painter's taste. 6px inside the box, 6px on each side of a separator, a 36px glyph cell
-    // flush left, 6px to the label, 20px of right padding.
-    expect(menuUiSrc).toContain('padding:6px 0')
-    expect(menuUiSrc).toContain('margin:6px 0')
-    expect(menuUiSrc).toContain('width:36px;flex:0 0 36px')
-    expect(menuUiSrc).toContain('gap:6px')
-    expect(menuUiSrc).toContain('padding:0 20px 0 0')
+    // The numbers come from the reference's live DOM, not from a painter's taste. 6px inside the
+    // box, 6px on each side of a separator, a 36px glyph cell flush left, 6px to the label, 20px of
+    // right padding.
+    expect(menu).toContain('padding: 6px 0')
+    expect(menu).toContain('margin: 6px 0')
+    expect(menu).toContain('flex: 0 0 36px')
+    expect(menu).toContain('width: 36px')
+    expect(row).toContain('gap: 6px')
+    expect(row).toContain('padding: 0 20px 0 0')
+  })
+
+  it('the painter names classes and writes no visual of its own', () => {
+    expect(menuUiSrc).not.toContain('cssText')
+    expect(menuUiSrc).toContain("box.className = 'qc-overlay qc-menu'")
+    expect(menuUiSrc).toContain("b.className = 'qc-menu-row'")
   })
 })

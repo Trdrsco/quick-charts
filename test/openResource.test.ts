@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { openResourceController } from '../src/openResource'
 import { memorySaveLoadAdapter, type ChartBody, type ChartMeta } from '../src/resources'
 import { createChartI18n } from '../src/i18n'
-import hostSrc from '../src/host.ts?raw'
-import layoutSrc from '../src/layout.ts?raw'
+import saveLoadSrc from '../src/widget/saveLoad.ts?raw'
+import chartSrc from '../src/widget/chart.ts?raw'
+import createSrc from '../src/widget/create.ts?raw'
+import layoutSrc from '../src/widget/layout.ts?raw'
 import drawingsSrc from '../src/drawings.ts?raw'
 
 // The open resource: what the widget holds for its saved chart and the layout for its saved
@@ -91,16 +93,18 @@ describe('openResourceController', () => {
 })
 
 describe('the widget, the layout and the drawing layer run over the contract', () => {
-  it('the widget saves the open chart through the controller and reads preferences from options.storage', () => {
-    expect(hostSrc).toContain("const openChart = openResourceController<ChartMeta, ChartBody>({ store: () => resources?.charts ?? null, t: () => i18n.t })")
-    expect(hostSrc).toContain('const preferences: ChartStorage = options.storage ?? memoryChartStorage()')
-    expect(hostSrc).toContain('resources: resources ? (scope) => resources.drawings(scope) : undefined,')
-    expect(hostSrc).not.toContain('localStorage')
+  it('the chart saves the open chart through the controller and reads preferences from options.storage', () => {
+    expect(saveLoadSrc).toContain(
+      "const openChart = openResourceController<ChartMeta, ChartBody>({ store: () => deps.adapter?.charts ?? null, t: () => deps.i18n.t })",
+    )
+    expect(createSrc).toContain('const backing: ChartStorage = options.storage ?? memoryChartStorage()')
+    expect(chartSrc).toContain('resources: deps.saveLoad,')
+    for (const src of [saveLoadSrc, chartSrc, createSrc]) expect(src).not.toContain('localStorage')
   })
 
   it('the layout saves through the layouts family, never through charts', () => {
-    expect(layoutSrc).toContain('store: () => options.base.saveLoad?.layouts ?? null')
-    expect(layoutSrc).not.toContain('saveLoad?.charts')
+    expect(layoutSrc).toContain('store: () => deps.adapter?.layouts ?? null')
+    expect(layoutSrc).not.toContain('adapter?.charts')
   })
 
   it('the drawing layer writes at the held ref, adopts the ref a refusal names, and never retries over it', () => {

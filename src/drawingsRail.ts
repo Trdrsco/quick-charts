@@ -1,10 +1,10 @@
-// The widget's minimal drawing rail: a small framework-free button strip over the chart — cursor,
-// three core placement tools, delete and clear. Deliberately quiet chrome (theme-tinted, no
-// labels): the rail is the widget's built-in entry point, and a host wanting richer tooling hides
-// it and drives DrawingsHandle.armTool from its own UI. Glyphs live in RAIL_ICONS below so the
-// rail stays self-contained in the packed artifact.
+// The chart's minimal drawing rail: a small framework-free button strip over the plot area —
+// cursor, three core placement tools, delete and clear. Deliberately quiet chrome (no labels): the
+// rail is the chart's built-in entry point, and a host wanting richer tooling hides it and drives
+// `ChartDrawingsApi.armTool` from its own UI. Glyphs live in RAIL_ICONS below so the rail stays
+// self-contained in the packed artifact, and every visual comes from a `.qc-*` recipe in the
+// package stylesheet.
 import type { DrawingsHandle } from './drawings'
-import type { ResolvedTheme } from './host'
 import { createChartI18n, toolName, type ChartI18n } from './i18n'
 
 /** 24-grid stroke glyphs, keyed by rail button id. */
@@ -33,45 +33,31 @@ const toolTitle = (strings: ChartI18n, entry: (typeof TOOLS)[number]): string =>
 export interface DrawingsRail {
   /** Repaint the armed-tool highlight (wire to DrawingsEvents.onToolChange). */
   syncTool(type: string | null): void
-  /** Enable/disable the delete button (wire to DrawingsEvents.onSelectionChange). */
+  /** Enable or disable the delete button (wire to DrawingsEvents.onSelectionChange). */
   syncSelection(id: string | null): void
   destroy(): void
 }
 
-/** `strings` is the widget's language: every button's accessible name is read through it when the rail
- *  draws and again whenever the language changes, so a switch never leaves a stale title behind. */
-export function mountDrawingsRail(
-  container: HTMLElement,
-  drawings: DrawingsHandle,
-  theme: ResolvedTheme,
-  strings: ChartI18n = createChartI18n(),
-): DrawingsRail {
-  // The rail floats over the chart canvases; the container anchors it.
-  if (getComputedStyle(container).position === 'static') container.style.position = 'relative'
-
+/** `strings` is the chart's language: every button's accessible name is read through it when the
+ *  rail draws and again whenever the language changes, so a switch never leaves a stale title
+ *  behind. */
+export function mountDrawingsRail(container: HTMLElement, drawings: DrawingsHandle, strings: ChartI18n = createChartI18n()): DrawingsRail {
   const rail = document.createElement('div')
-  // pointer-events:auto opts this strip back in over an inert chrome layer; the layer being a
-  // SEPARATE subtree from the chart box is what keeps a tool click out of the gesture layers'
-  // capture-phase handlers (a bubble-phase stopPropagation cannot unwind those).
-  rail.style.cssText = 'position:absolute;left:8px;top:8px;z-index:3;display:flex;flex-direction:column;gap:4px;pointer-events:auto;'
+  // The rail opts back into pointer events over an inert chrome layer; the layer being a SEPARATE
+  // subtree from the gesture box is what keeps a tool click out of the drag layers' capture-phase
+  // handlers, which a bubble-phase stopPropagation cannot unwind.
+  rail.className = 'qc-rail'
   for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) {
     rail.addEventListener(type, (e) => e.stopPropagation())
   }
 
   const buttons = new Map<string, HTMLButtonElement>()
-  const baseStyle = (el: HTMLButtonElement) => {
-    el.style.cssText =
-      'width:28px;height:28px;display:flex;align-items:center;justify-content:center;' +
-      `background:${theme.background};border:1px solid ${theme.gridColor};border-radius:6px;` +
-      `color:${theme.textColor};cursor:pointer;padding:0;`
-  }
-
   const button = (id: string, title: string, onClick: () => void): HTMLButtonElement => {
     const el = document.createElement('button')
     el.type = 'button'
+    el.className = 'qc-button qc-rail-button'
     el.title = title
     el.innerHTML = `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${RAIL_ICONS[id] ?? ''}</svg>`
-    baseStyle(el)
     el.addEventListener('click', onClick)
     rail.appendChild(el)
     buttons.set(id, el)
@@ -82,7 +68,7 @@ export function mountDrawingsRail(
   const removeBtn = button('remove', strings.t('rail.deleteSelected'), () => drawings.deleteSelected())
   const clearBtn = button('clear', strings.t('rail.clearAll'), () => drawings.clearAll())
 
-  const retitle = () => {
+  const retitle = (): void => {
     for (const t of TOOLS) {
       const el = buttons.get(t.id)
       if (el) el.title = toolTitle(strings, t)
@@ -92,18 +78,14 @@ export function mountDrawingsRail(
   }
   const unsubscribe = strings.onChange(retitle)
 
-  const syncTool = (type: string | null) => {
+  const syncTool = (type: string | null): void => {
     for (const t of TOOLS) {
       const el = buttons.get(t.id)
-      if (!el) continue
-      const active = type === t.tool
-      el.style.color = active ? theme.upColor : theme.textColor
-      el.style.borderColor = active ? theme.upColor : theme.gridColor
+      if (el) el.dataset.qcActive = type === t.tool ? 'true' : 'false'
     }
   }
-  const syncSelection = (id: string | null) => {
+  const syncSelection = (id: string | null): void => {
     removeBtn.disabled = id === null
-    removeBtn.style.opacity = id === null ? '0.45' : '1'
   }
   syncTool(drawings.activeTool())
   syncSelection(drawings.hasSelection() ? 'selected' : null)

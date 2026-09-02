@@ -19,7 +19,7 @@
 //   work) cannot throw into the chart's own teardown path.
 import type { CreatePriceLineOptions, ISeriesPrimitive, PriceLineOptions, Time } from 'lightweight-charts'
 import type { FeedBar } from './datafeed'
-import type { ResolvedTheme } from './host'
+import type { CanvasTheme } from './theme/renderer'
 
 /** Price display as an extension reads it — the chart's own formatter, so an overlay's label and the
  *  axis beside it can never disagree about what a number looks like. */
@@ -134,12 +134,13 @@ export interface ChartExtensionContext {
    *  in with pointer-events. Popovers, cards and editors mount HERE — the gesture box swallows
    *  their clicks. */
   overlay: HTMLElement
-  /** The chart's effective palette: the resolved theme with any applied appearance overrides on top. */
-  theme(): ResolvedTheme
+  /** The chart's effective canvas palette: the mode's resolved theme with any applied appearance
+   *  overrides on top, projected onto the values a canvas draws with. */
+  theme(): CanvasTheme
   formatter(): ChartPriceFormatter
   series: ChartExtensionSeries
   pane(): ChartExtensionPane
-  onThemeChange(callback: (theme: ResolvedTheme) => void): () => void
+  onThemeChange(callback: (theme: CanvasTheme) => void): () => void
   onSymbolChange(callback: (symbol: string) => void): () => void
   onTimeframeChange(callback: (timeframe: string) => void): () => void
   /** The painted bar series changed: a load, a page back, a live update, a replay step. */
@@ -190,19 +191,15 @@ export interface ChartExtensionHostDeps {
   bars(): readonly FeedBar[]
   replay(): ChartExtensionReplayState
   feedStatus(): string | null
-  theme(): ResolvedTheme
+  theme(): CanvasTheme
   formatter(): ChartPriceFormatter
   pane(): ChartExtensionPane
   series: ChartExtensionSeries
-}
-
-/** The contributed commands a host can see and run. The widget kernel grows this registry in
- *  place, under this name. */
-export interface CommandRegistry {
-  /** Every contributed command that is available right now. */
-  list(): readonly ChartExtensionCommand[]
-  /** Run one by id. False when nothing carries that id, or it is not available, or it threw. */
-  execute(id: string): boolean
+  /** Register one contributed command with the chart's own command registry, and answer its
+   *  unregister. There is exactly one registry, so a contributed command is reachable from the
+   *  same menu, keyboard and operator surfaces as a built-in verb, and is refused by the same
+   *  access policy. */
+  registerCommand(command: ChartExtensionCommand): () => void
 }
 
 /** The widget's half of the seam: attach the configured extensions, push the chart's changes at
@@ -212,11 +209,10 @@ export interface ChartExtensionHost {
   timeframeChanged(timeframe: string): void
   barsChanged(bars: readonly FeedBar[]): void
   replayChanged(state: ChartExtensionReplayState): void
-  themeChanged(theme: ResolvedTheme): void
+  themeChanged(theme: CanvasTheme): void
   paneChanged(pane: ChartExtensionPane): void
   /** Rows every attached extension offers for this level, in registration order. */
   menuItems(context: ChartExtensionMenuContext): readonly ChartExtensionMenuItem[]
-  commands: CommandRegistry
   /** Viewer state by extension id — the widget nests this under one key of its save blob. */
   serialize(): Record<string, unknown>
   restore(state: unknown): void
@@ -228,7 +224,7 @@ export interface ChartExtensionHost {
 
 /** One attachment's callback sets, one per lane the chart pushes on. */
 interface Lanes {
-  theme: Set<(theme: ResolvedTheme) => void>
+  theme: Set<(theme: CanvasTheme) => void>
   symbol: Set<(symbol: string) => void>
   timeframe: Set<(timeframe: string) => void>
   bars: Set<(bars: readonly FeedBar[]) => void>
@@ -245,7 +241,9 @@ interface Attached {
   live: boolean
   lanes: Lanes
   menuProviders: Set<ChartExtensionMenuProvider>
-  commands: Map<string, ChartExtensionCommand>
+  /** The unregister the chart's command registry answered for each command this extension
+   *  contributed, so a detach takes its verbs out of the one registry with it. */
+  commands: Map<string, () => void>
   priceLines: Set<ChartExtensionPriceLine>
   primitives: Set<() => void>
   /** True while this extension holds the chart's pan/zoom lock, so the chart can hand it back. */
@@ -326,6 +324,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     }
     clearLanes(record.lanes)
     record.menuProviders.clear()
+    for (const unregister of record.commands.values()) unregister()
     record.commands.clear()
   }
 
@@ -433,11 +432,14 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
         const added: string[] = []
         for (const command of commands) {
           if (record.commands.has(command.id)) continue
-          record.commands.set(command.id, command)
+          record.commands.set(command.id, deps.registerCommand(command))
           added.push(command.id)
         }
         return () => {
-          for (const id of added) record.commands.delete(id)
+          for (const id of added) {
+            record.commands.get(id)?.()
+            record.commands.delete(id)
+          }
         }
       },
     }
@@ -510,30 +512,6 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
         }
       }
       return rows
-    },
-    commands: {
-      list() {
-        if (!hostLive) return []
-        const out: ChartExtensionCommand[] = []
-        for (const record of liveRecords()) {
-          for (const command of record.commands.values()) if (command.available?.() !== false) out.push(command)
-        }
-        return out
-      },
-      execute(id) {
-        if (!hostLive) return false
-        for (const record of liveRecords()) {
-          const command = record.commands.get(id)
-          if (!command || command.available?.() === false) continue
-          try {
-            command.execute()
-          } catch {
-            return false
-          }
-          return true
-        }
-        return false
-      },
     },
     serialize() {
       const out: Record<string, unknown> = {}

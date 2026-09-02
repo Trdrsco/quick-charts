@@ -22,9 +22,9 @@ export interface ChartOverrides {
   }
 }
 
-/** The brand palette, single-sourced: `resolveTheme()` reads these, and so does any surface that
- *  speaks for trdrs (the trading extension's buy line among them). A rebrand edits two strings.
- *  The pair does not reach the candle bodies; see the note on DEFAULT_OVERRIDES for why. */
+/** The brand palette, single-sourced: any surface that speaks for trdrs reads these (the trading
+ *  extension's buy line among them), and a rebrand edits two strings. The pair does not reach the
+ *  candle bodies; see the note on DEFAULT_OVERRIDES for why. */
 export const BRAND_UP = '#4c98fb'
 export const BRAND_DOWN = '#f23645'
 
