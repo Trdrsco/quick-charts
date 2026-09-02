@@ -1,0 +1,142 @@
+{
+  "$comment": [
+    "The exact multi-asset symbology and quote vectors (public-chart-library-boundary-plan.md PCL-4",
+    "and its acceptance gate: 'Pin exact formatter fixtures for equities, sub-cent crypto, FX and",
+    "pips, CME decimal futures, 1/32 and 1/4-of-1/32 futures, and variable tick bands ... Produce",
+    "reusable quote vectors').",
+    "",
+    "One entry per market shape. `format` is the Quick Charts PriceFormat the datafeed resolves;",
+    "`prices` are the display cases the one package formatter must produce, each of which must also",
+    "parse back to its own value; `quote` carries the raw quote values a board renders for the same",
+    "symbol, so a consumer can prove Last and Chg follow the symbol's price format while Chg% and",
+    "Volume keep their own value kinds. Quote values are quote data, never symbology: they are here",
+    "as inputs to a display test, not as facts the datafeed's symbology contract owns.",
+    "",
+    "Read by packages/chart/test/priceFormatter.test.ts. The private facade's quote work reuses the",
+    "same file rather than inventing a second set of numbers.",
+    "",
+    "punctuation: the punctuation the displays below assume. Absent means the default, which is a",
+    "'.' decimal sign and no grouping (the reference does not group thousands)."
+  ],
+  "cases": [
+    {
+      "id": "equities-decimal",
+      "symbol": "NASDAQ:AAPL",
+      "what": "a cent-quoted equity: pricescale 100, minmov 1",
+      "format": { "pricescale": 100, "minmov": 1 },
+      "precision": 2,
+      "prices": [
+        { "value": 123.45, "display": "123.45" },
+        { "value": 123.4, "display": "123.40" },
+        { "value": 1234.5, "display": "1234.50" },
+        { "value": 0, "display": "0.00" }
+      ],
+      "quote": { "last": 123.45, "change": -1.2, "changePct": -0.96, "volume": 51234567 }
+    },
+    {
+      "id": "equities-decimal-grouped",
+      "symbol": "NASDAQ:AAPL",
+      "what": "the same equity with a host that asked for grouping and a comma decimal sign",
+      "format": { "pricescale": 100, "minmov": 1 },
+      "punctuation": { "decimalSign": ",", "groupSign": "." },
+      "precision": 2,
+      "prices": [
+        { "value": 1234.5, "display": "1.234,50" },
+        { "value": 1234567.89, "display": "1.234.567,89" }
+      ],
+      "quote": { "last": 1234.5, "change": 12.25, "changePct": 1.0, "volume": 51234567 }
+    },
+    {
+      "id": "crypto-satoshi",
+      "symbol": "HYPERLIQUID:BTC",
+      "what": "sub-cent crypto: pricescale 100000000, minmov 1",
+      "format": { "pricescale": 100000000, "minmov": 1 },
+      "precision": 8,
+      "prices": [
+        { "value": 0.00001234, "display": "0.00001234" },
+        { "value": 68284.3, "display": "68284.30000000" }
+      ],
+      "quote": { "last": 68284.3, "change": 1204.51, "changePct": 1.8, "volume": 18422 }
+    },
+    {
+      "id": "fx-pips",
+      "symbol": "FX:EURUSD",
+      "what": "a five-decimal FX pair: pricescale 100000, minmov 1. The pip is the fourth decimal and the fifth is the pipette; both are written, because the price format says five",
+      "format": { "pricescale": 100000, "minmov": 1 },
+      "precision": 5,
+      "prices": [
+        { "value": 1.23456, "display": "1.23456" },
+        { "value": 1.2345, "display": "1.23450" },
+        { "value": 1.2, "display": "1.20000" }
+      ],
+      "quote": { "last": 1.23456, "change": 0.0012, "changePct": 0.1, "volume": 0 }
+    },
+    {
+      "id": "fx-pips-jpy",
+      "symbol": "FX:USDJPY",
+      "what": "a yen pair, whose pip is the second decimal: pricescale 1000, minmov 1",
+      "format": { "pricescale": 1000, "minmov": 1 },
+      "precision": 3,
+      "prices": [
+        { "value": 151.234, "display": "151.234" },
+        { "value": 151.2, "display": "151.200" }
+      ],
+      "quote": { "last": 151.234, "change": -0.412, "changePct": -0.27, "volume": 0 }
+    },
+    {
+      "id": "cme-decimal-futures",
+      "symbol": "ESZ2026",
+      "what": "a quarter-point CME future: pricescale 100, minmov 25. minmov declares the grid, not the column width",
+      "format": { "pricescale": 100, "minmov": 25 },
+      "precision": 2,
+      "prices": [
+        { "value": 4500.25, "display": "4500.25" },
+        { "value": 4500, "display": "4500.00" },
+        { "value": -12.5, "display": "-12.50" }
+      ],
+      "quote": { "last": 4500.25, "change": 18.75, "changePct": 0.42, "volume": 1284933 }
+    },
+    {
+      "id": "treasury-thirty-seconds",
+      "symbol": "ZNZ2026",
+      "what": "a 1/32 Treasury future: pricescale 32, minmov 1, fractional. The fraction is padded to the width of 31",
+      "format": { "pricescale": 32, "minmov": 1, "fractional": true },
+      "precision": 0,
+      "prices": [
+        { "value": 110.5, "display": "110'16" },
+        { "value": 110.03125, "display": "110'01" },
+        { "value": 110, "display": "110'00" },
+        { "value": -110.5, "display": "-110'16" }
+      ],
+      "quote": { "last": 110.5, "change": 0.15625, "changePct": 0.14, "volume": 402118 }
+    },
+    {
+      "id": "treasury-quarter-of-a-thirty-second",
+      "symbol": "ZBZ2026",
+      "what": "a 1/4-of-1/32 Treasury future: pricescale 128, minmov 1, minmove2 4, fractional",
+      "format": { "pricescale": 128, "minmov": 1, "minmove2": 4, "fractional": true },
+      "precision": 0,
+      "prices": [
+        { "value": 110.515625, "display": "110'16'2" },
+        { "value": 110.5, "display": "110'16'0" },
+        { "value": 110.0078125, "display": "110'00'1" },
+        { "value": -110.515625, "display": "-110'16'2" }
+      ],
+      "quote": { "last": 110.515625, "change": -0.0234375, "changePct": -0.02, "volume": 118204 }
+    },
+    {
+      "id": "variable-tick-bands",
+      "symbol": "VARTICK",
+      "what": "an ordered tick ladder: 0.0001 below 1, 0.001 below 10, 0.01 at or above 10. The band is a declared symbol fact, so the width changes by band and never by a magnitude guess",
+      "format": { "pricescale": 10000, "minmov": 1, "variableTickSize": "0.0001 1 0.001 10 0.01" },
+      "precision": 4,
+      "prices": [
+        { "value": 0.5432, "display": "0.5432" },
+        { "value": 5.432, "display": "5.432" },
+        { "value": 54.32, "display": "54.32" },
+        { "value": -54.32, "display": "-54.32" }
+      ],
+      "quote": { "last": 5.432, "change": 0.021, "changePct": 0.39, "volume": 9812 }
+    }
+  ]
+}

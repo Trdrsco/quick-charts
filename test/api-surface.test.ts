@@ -115,6 +115,17 @@ const SURFACE: Record<string, string> = {
   udfResolutionToTf: 'function',
   unionRect: 'function',
   withAlpha: 'function',
+  // ── W1-B ────────────────────────────────────────────────────────────────────────────────────
+  // Additive (minor): symbology and its one price formatter, the UDF symbology mapping, and the
+  // revisioned saved-resource contract with its in-memory reference store.
+  ResourceAbortError: 'function',
+  createPriceFormatter: 'function',
+  memorySaveLoadAdapter: 'function',
+  parseTickBands: 'function',
+  tickBandFor: 'function',
+  udfPriceFormat: 'function',
+  udfSymbolInfo: 'function',
+  // ── end W1-B ────────────────────────────────────────────────────────────────────────────────
 }
 
 describe('quickcharts API surface pin', () => {

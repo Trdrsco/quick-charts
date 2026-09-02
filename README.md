@@ -155,6 +155,138 @@ What the adapter honors of the protocol:
 - **The seam's inclusive `[from, to]` is bridged** to UDF's exclusive `to` inside the adapter — your
   server sees standard UDF ranges; implement nothing special.
 
+## Symbology
+
+Symbology is the set of display facts that decide how a market's prices are written. Your datafeed
+owns them, and one package formatter uses them everywhere a price appears. Precision comes from the
+symbol, never from the size of the price, so the same market reads at the same width on every
+surface.
+
+`PriceFormat` expresses every supported form in five facts:
+
+| Fact | What it says |
+|---|---|
+| `pricescale` | Price units per whole unit. `100` writes cents, `100000` writes FX pipettes, `32` writes thirty-seconds. |
+| `minmov` | The smallest move, in those units. It declares the grid, not the column width. |
+| `minmove2` | The further division of one `minmov` step. `4` means quarters of a thirty-second. |
+| `fractional` | Write the sub-unit part as a counted fraction rather than as decimals. |
+| `variableTickSize` | An ordered ladder of tick sizes by price band, as a space-separated string. |
+
+Build a formatter once per symbol and keep it:
+
+```ts
+import { createPriceFormatter, type PriceFormat } from 'quickcharts'
+
+const equity: PriceFormat = { pricescale: 100, minmov: 1 }
+createPriceFormatter(equity).format(123.4) // '123.40'
+
+const emini: PriceFormat = { pricescale: 100, minmov: 25 }
+createPriceFormatter(emini).format(4500.25) // '4500.25'
+
+const treasury: PriceFormat = { pricescale: 32, minmov: 1, fractional: true }
+createPriceFormatter(treasury).format(110.5) // "110'16"
+
+const bonds: PriceFormat = { pricescale: 128, minmov: 1, minmove2: 4, fractional: true }
+createPriceFormatter(bonds).format(110.515625) // "110'16'2"
+```
+
+`format` and `parse` are exact inverses, so a formatter reads back what it wrote:
+
+```ts
+import { createPriceFormatter } from 'quickcharts'
+
+const formatter = createPriceFormatter({ pricescale: 32, minmov: 1, fractional: true })
+formatter.parse("110'16") // 110.5
+formatter.parse('110.5') // null, because that symbol does not write decimals
+formatter.precision() // 0, because a fractional format writes no decimal digits
+```
+
+A ladder changes width by band, because the symbol declared those bands:
+
+```ts
+import { createPriceFormatter, parseTickBands, tickBandFor } from 'quickcharts'
+
+const laddered = createPriceFormatter({ pricescale: 10000, minmov: 1, variableTickSize: '0.0001 1 0.001 10 0.01' })
+laddered.format(0.5432) // '0.5432'
+laddered.format(54.32) // '54.32'
+
+const bands = parseTickBands('0.0001 1 0.001 10 0.01')
+tickBandFor(bands, 5)?.size // 0.001
+```
+
+The formatter writes a `.` decimal sign and no thousands separator. Pass a locale to take that
+locale's decimal sign, or set the punctuation yourself:
+
+```ts
+import { createPriceFormatter } from 'quickcharts'
+
+createPriceFormatter({ pricescale: 100, minmov: 1 }, { locale: 'de-DE' }).format(1234.5) // '1234,50'
+createPriceFormatter({ pricescale: 100, minmov: 1 }, { numericPunctuation: { groupSign: ',' } }).format(1234.5) // '1,234.50'
+```
+
+Symbology is display truth, not trading truth. It carries no order quantity, price step, lot size,
+or pip value. Your broker integration owns those, and a broker's execution grid can differ from a
+chart's display grid.
+
+If your data comes from a UDF server, map its `/symbols` answer without collapsing the facts:
+
+```ts
+import { createPriceFormatter, udfPriceFormat, udfSymbolInfo } from 'quickcharts'
+
+const raw = { name: 'ZBZ2026', pricescale: 128, minmov: 1, minmove2: 4, fractional: true }
+const info = udfSymbolInfo(raw, 'ZBZ2026')
+createPriceFormatter(udfPriceFormat(raw)).format(110.515625) // "110'16'2"
+info?.dataStatus // 'streaming'
+```
+
+## Saved resources
+
+Saved charts, layouts, symbol-scoped drawings, and templates are shared, mutable state. They use one
+revisioned contract, so a second tab or a slow save cannot quietly destroy newer work.
+
+Every read returns a `ResourceRef`: a stable id plus an opaque revision token. Every write quotes the
+revision it believes it is replacing. A write against a revision the store has moved past returns a
+typed `conflict` carrying the current ref, which you resolve rather than overwrite.
+
+```ts
+import { memorySaveLoadAdapter } from 'quickcharts'
+
+const adapter = memorySaveLoadAdapter()
+
+const created = await adapter.charts.create({ name: 'Morning', symbol: 'ESZ2026', timeframe: '5m', content: '{}' })
+if (created.kind === 'ok') {
+  const accepted = await adapter.charts.update(created.ref, { name: 'Morning', symbol: 'ESZ2026', timeframe: '15m', content: '{}' })
+  const stale = await adapter.charts.update(created.ref, { name: 'Morning', symbol: 'ESZ2026', timeframe: '1h', content: '{}' })
+  accepted.kind // 'ok', and it carries the revision the store now holds
+  stale.kind // 'conflict', and it carries the ref that won
+}
+```
+
+Each family is a `ResourceStore` with the same five calls, and every call takes an `AbortSignal` so
+abandoned work stops cleanly:
+
+```ts
+import { memorySaveLoadAdapter, type ResourceRef } from 'quickcharts'
+
+const adapter = memorySaveLoadAdapter()
+const controller = new AbortController()
+
+await adapter.layouts.list(controller.signal)
+await adapter.drawings({ symbol: 'ESZ2026' }).create({ content: '{}' })
+await adapter.templates('study').list()
+
+const ghost: ResourceRef = { id: 'gone', revision: 'rev-1' }
+const outcome = await adapter.charts.remove(ghost)
+outcome.kind // 'not-found'
+```
+
+An aborted call rejects with an error named `AbortError` and changes nothing. Treat the revision as
+opaque: mint it however your backend prefers, as an ETag, a counter, or a content hash, and compare
+it only for equality.
+
+`memorySaveLoadAdapter` persists nothing. Use it for tests, server rendering, and an intentionally
+ephemeral embed, and implement the same contract over your own backend for durable storage.
+
 ## Viewer state storage
 
 **The widget** persists its sticky state (the last symbol + timeframe) through `ChartStorage`. The

@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- **Symbology and one price formatter.** `PriceFormat` carries the five facts that decide how a
+  market's prices are written (`pricescale`, `minmov`, `minmove2`, `fractional`,
+  `variableTickSize`), and **`createPriceFormatter`** turns them into a `PriceFormatter` whose
+  `format` and `parse` are exact inverses. It covers decimal, pip, fractional,
+  fraction-of-a-fraction and variable-tick markets, and takes precision from the symbol rather than
+  from the size of the price. Punctuation is a `.` decimal sign and no grouping unless a `locale` or
+  an explicit `numericPunctuation` says otherwise. New exports **`parseTickBands`**,
+  **`tickBandFor`**, and the `DataStatus` and `TickBand` types. **`udfSymbolInfo`** and
+  **`udfPriceFormat`** map a UDF `/symbols` answer to those facts without collapsing them to one
+  floating tick.
+- **A revisioned contract for saved resources.** `ResourceStore` gives saved charts, layouts,
+  symbol-scoped drawings and templates one shape: stable ids, opaque revision tokens in
+  `ResourceRef`, conditional `update` and `remove`, and typed `conflict` and `not-found` outcomes in
+  `WriteOutcome`. A successful write returns the revision the store now holds. Every call accepts an
+  `AbortSignal` and rejects with an error named `AbortError` when that signal is already aborted.
+  **`memorySaveLoadAdapter`** is the in-memory implementation of the whole adapter, for tests,
+  server rendering and ephemeral embeds. `ChartStorage` remains the separate flat settings port.
 - **The account manager below the chart gains its Risk page** when the trading adapter implements
   the seam's `riskControls` (the account's loss limits, profit targets and end-of-day close, the
   lock banner off `snapshot.riskLock`, the manual unlock). Composition only — the page is
