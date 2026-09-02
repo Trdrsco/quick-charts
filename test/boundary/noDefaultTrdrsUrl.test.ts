@@ -15,7 +15,7 @@ const TRDRS_DEFAULTS: readonly { name: string; pattern: RegExp }[] = [
   { name: 'a bearer credential', pattern: /Authorization:\s*Bearer|['"`]Bearer\s+[A-Za-z0-9_\-.]+['"`]/ },
   { name: 'a local engine default', pattern: /localhost:8080|127\.0\.0\.1:8080/ },
   { name: 'an engine environment default', pattern: /VITE_ENGINE_URL|ENGINE_REPO_PATH|ENGINE_URL/ },
-  { name: 'a session handoff', pattern: /useHandoffAuth|trdrs_session|engine_session/ },
+  { name: 'a session handoff', pattern: /[Hh]andoffAuth|trdrs_session|engine_session/ },
   { name: 'a production API route', pattern: /['"`]\/api\// },
 ]
 
