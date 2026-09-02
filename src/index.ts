@@ -89,6 +89,9 @@ export { COLLAPSED_H, MAIN_MIN_H, isCollapsed, planPaneOp, type PaneOp, type Pan
 export { chartContextMenu, type ChartMenuAction, type ChartMenuContext, type ChartMenuIcon, type ChartMenuRow } from './contextMenu'
 export { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
 export { coerceScaleMode, PRICE_SCALE_MODE, SCALE_MODES, SCALE_MODE_OPTIONS, type ScaleMode } from './scaleMode'
+// The chart's generic pointer rules, for an overlay whose controls must judge a tap the way the
+// chart's own controls do.
+export { CLICK_SLOP, CLICK_SLOP_TOUCH, clickSlopFor, tapGeometryVerdict, type TapGeometryVerdict } from './pointerInput'
 export { attachCompare, clipToWindow, COMPARE_COLORS, pickCompareColor, seriesTargetOf, type CompareDeps, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSnapshot, type CompareSymbol } from './compare'
 export {
   createSessionBands,
@@ -110,63 +113,12 @@ export {
   type SessionTimeline,
 } from './sessions'
 
-export type { ChartWidgetApi, ChartDrawingsApi, ChartExecutionsApi, ChartPaneSyncApi, ChartReplayApi, ChartSaveLoadApi, ChartTicketApi, ResolvedTheme } from './host'
+export type { ChartWidgetApi, ChartDrawingsApi, ChartPaneSyncApi, ChartReplayApi, ChartSaveLoadApi, ResolvedTheme } from './host'
 export { ARRANGEMENTS, LAYOUT_MENU_ROWS, arrangementOf, type Arrangement, type PaneRect } from './layoutGrid'
 export { createChartLayout, type ChartLayoutApi, type ChartLayoutOptions, type LayoutSyncFlags } from './layout'
-export {
-  attachExecutionMarks,
-  groupExecutionsByBar,
-  type ArrowHit,
-  type ExecutionCardPalette,
-  type ExecutionGroup,
-  type ExecutionMarksHandle,
-  type ExecutionMarksOptions,
-  type ExecutionScope,
-} from './executionMarks'
-export { createOrderTicket, type OrderTicket, type OrderTicketDeps, type TicketOrderType, type TicketState, type TicketSubmit } from './orderTicket'
-export {
-  attachChartPrimitives,
-  type ChartPrimitivesDeps,
-  type ChartPrimitivesHandle,
-  type ExecutionShapeApi,
-  type ExecutionShapeOptions,
-  type OrderLineApi,
-  type OrderLineOptions,
-  type PositionLineApi,
-  type PositionLineOptions,
-} from './chartPrimitives'
 export { openInputsEditor } from './inputsEditor'
 export { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
-export * from './gesturePlan'
-export { attachTradeLines, normalizeRoot, type PreviewLine, type PreviewSet, type TradeLineAttachment, type TradeLineHost, type TradeLineOptions } from './tradeLines'
-export {
-  buildOrderParts,
-  buildPositionParts,
-  drawParts,
-  withAlpha,
-  EXIT_ZONE_ALPHA,
-  formatPnlMoney,
-  formatPnlPercent,
-  formatPnlTicks,
-  findPart,
-  hitTestParts,
-  layoutParts,
-  unionRect,
-  PART_H,
-  TRADE_FONT,
-  TRADE_THEME,
-  type DragRole,
-  type LayoutCtx,
-  type LayoutNode,
-  type ExitPartsInput,
-  type OrderPartsInput,
-  type PartHit,
-  type PartRole,
-  type PartSpec,
-  type PositionPartsInput,
-  type DraftPartsInput,
-} from './tradeLineParts'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export { createChart, resolveTheme, applyBar, resolveInitialTf } from './host'
 export {

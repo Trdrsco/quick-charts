@@ -1,7 +1,8 @@
-// The chart's full override tree — every host-tunable visual in ONE typed structure, package-owned
-// and engine-free (the same law as ChartDatafeed). The app persists ONE value of this shape; a B2B
-// host passes a partial and mergeOverrides() deep-fills the defaults. `appearance.*` is the candle
-// canvas; `trading.*` drives every trade-line color/width/visibility the broker layer renders.
+// The chart's override tree — every host-tunable visual of the chart itself in ONE typed structure,
+// package-owned and engine-free (the same law as ChartDatafeed). A host passes a partial and
+// mergeOverrides() deep-fills the defaults. `appearance.*` is the candle canvas: what a chart
+// draws for the market. Anything drawn for an account is an extension's own look, held beside
+// this tree by the host that composes both, never inside it.
 export interface ChartOverrides {
   appearance: {
     background: string
@@ -19,50 +20,23 @@ export interface ChartOverrides {
     /** Bar-close countdown pill on the price scale. */
     countdown: boolean
   }
-  trading: {
-    /** Buy-side line/marker color (position long, buy orders, buy execution marks). */
-    buyColor: string
-    /** Sell-side line/marker color. */
-    sellColor: string
-    /** A resting TAKE PROFIT's line + pill. Coloured by the LEG, not the side: a target is green on a
-     *  long and on a short alike, because the pair reads as "my target" and "my risk". */
-    tpColor: string
-    /** A resting STOP LOSS's line + pill — amber for the same reason, and deliberately NOT the
-     *  sell-side red, which would collide with a short's own entry lines. */
-    slColor: string
-    /** Draw the position average line (with P&L + ⇄/✕ affordances when armed). */
-    showPositions: boolean
-    /** Draw working-order lines (draggable to reprice when armed). */
-    showOrders: boolean
-    /** One width for EVERY trade line. A position and its exits are the same class of object, and a
-     *  separate width per class only ever produced an accidental hierarchy. */
-    lineWidth: 1 | 2 | 3
-    /** Buy/sell execution arrows from the fill ledger. */
-    executionMarks: boolean
-    /** The "qty @ price" labels beside execution arrows (off by default — arrows alone). */
-    executionLabels: boolean
-    /** Position-line P&L unit: broker money, tick distance, or percent from entry. */
-    pnlMode: 'money' | 'ticks' | 'percent'
-  }
 }
 
-/** The brand palette, single-sourced: `resolveTheme()` and the TRADE-LINE defaults reference these —
- *  a rebrand edits two strings and every surface that speaks for trdrs follows. It no longer reaches
- *  the candle bodies; see the note on DEFAULT_OVERRIDES for why that split is deliberate. */
+/** The brand palette, single-sourced: `resolveTheme()` reads these, and so does any surface that
+ *  speaks for trdrs (the trading extension's buy line among them). A rebrand edits two strings.
+ *  The pair does not reach the candle bodies; see the note on DEFAULT_OVERRIDES for why. */
 export const BRAND_UP = '#4c98fb'
 export const BRAND_DOWN = '#f23645'
 
 // The shipped default IS the owner's own chart, copied leaf for leaf off his account (// 2026-08-20): a warm paper canvas with teal/orange candles ringed and wicked in solid black.
 //
-// So the CANVAS stops tracking BRAND_UP/BRAND_DOWN while the TRADE LINES keep them, and that split
-// is the point rather than a miss: candles are the market, trade lines are your money sitting on it,
-// and the brand pair now marks only the second. `buyColor` staying BRAND_UP is that rule, not a
-// leftover.
+// The CANVAS does not track BRAND_UP/BRAND_DOWN, and that is the point rather than a miss: candles
+// are the market, and the brand pair marks what speaks for trdrs on top of it.
 //
 // `background` is LIGHT, and it is the one leaf here that changes what the rest of the chart must
 // cope with. Everything downstream already does — ChartPanel sets `data-chart-ink` off
-// isLightBackground(), which inverts the on-canvas DOM (legend, countdown, trade pills) — so verify
-// that attribute still resolves if this value ever moves back across the light/dark line.
+// isLightBackground(), which inverts the on-canvas DOM (legend, countdown) — so verify that
+// attribute still resolves if this value ever moves back across the light/dark line.
 export const DEFAULT_OVERRIDES: ChartOverrides = {
   appearance: {
     background: '#ece7c0',
@@ -78,20 +52,6 @@ export const DEFAULT_OVERRIDES: ChartOverrides = {
     grid: true,
     sessions: true,
     countdown: true,
-  },
-  trading: {
-    buyColor: BRAND_UP,
-    // Amber rather than BRAND_DOWN: the canvas already spends orange-red on down candles, so a sell
-    // line in the brand red would read as one more candle instead of as an order of yours.
-    sellColor: '#f5a623',
-    tpColor: '#089981',
-    slColor: '#ff9800',
-    showPositions: true,
-    showOrders: true,
-    lineWidth: 1,
-    executionMarks: true,
-    executionLabels: false,
-    pnlMode: 'money',
   },
 }
 
@@ -111,11 +71,10 @@ export function mergeOverrides(partial?: PartialOverrides | null): ChartOverride
  *  the host's constructor partial, then runtime applyOverrides calls — which is TradingView's own
  *  override ladder (runtime beats constructor beats theme) expressed as one pure function. */
 export function layerOverrides(base: ChartOverrides, ...partials: (PartialOverrides | null | undefined)[]): ChartOverrides {
-  const out: ChartOverrides = { appearance: { ...base.appearance }, trading: { ...base.trading } }
+  const out: ChartOverrides = { appearance: { ...base.appearance } }
   for (const p of partials) {
     if (!p) continue
     Object.assign(out.appearance, p.appearance ?? {})
-    Object.assign(out.trading, p.trading ?? {})
   }
   return out
 }

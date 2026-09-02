@@ -34,7 +34,7 @@ const FORBIDDEN: readonly string[] = [
 describe('the direct dependency set, as built', () => {
   it('pins the manifest edges by name', () => {
     expect(directDependencies()).toEqual({
-      dependencies: ['@trdrs/account-manager', '@trdrs/broker', '@trdrs/chart-drawings'],
+      dependencies: ['@trdrs/chart-drawings'],
       peerDependencies: ['lightweight-charts'],
       devDependencies: ['lightweight-charts', 'tsup', 'typescript'],
       optionalDependencies: [],
@@ -44,8 +44,6 @@ describe('the direct dependency set, as built', () => {
   it('pins the shipped lockfile closure, workspace links walked', () => {
     const closure = shippedClosure('packages/chart')
     expect(closure.map((e) => `${e.id} <- ${e.via}`)).toEqual([
-      '@trdrs/account-manager <- packages/chart',
-      '@trdrs/broker <- @trdrs/account-manager',
       '@trdrs/chart-drawings <- packages/chart',
       'fancy-canvas@2.1.0 <- @trdrs/chart-drawings',
     ])
@@ -55,17 +53,17 @@ describe('the direct dependency set, as built', () => {
     const present = shippedClosure('packages/chart')
       .map((e) => e.id)
       .filter((id) => FORBIDDEN.includes(id))
-    expect(present).toEqual(['@trdrs/account-manager', '@trdrs/broker'])
+    expect(present).toEqual([])
   })
 })
 
 // TARGET. Each block is the acceptance gate in full; the stream that lands the removal deletes the
 // `.skip`, and the matching as-built pin above moves with it.
 describe('the free chart dependency boundary (target)', () => {
-  // W1-A (PCL-3 chart-trading extraction): trade lines, execution marks, the chart order draft,
-  // gesture planning, and the account panel move to packages/chart-trading; the manifest loses
-  // @trdrs/broker and @trdrs/account-manager.
-  it.skip('[W1-A unskips] carries no broker or account-manager edge, direct or through another organ', () => {
+  // PCL-3: trade lines, execution marks, the chart order draft, gesture planning and the account
+  // panel live in packages/chart-trading; the manifest carries neither @trdrs/broker nor
+  // @trdrs/account-manager.
+  it('carries no broker or account-manager edge, direct or through another organ', () => {
     const ids = shippedClosure('packages/chart').map((e) => e.id)
     expect(ids.filter((id) => id === '@trdrs/broker' || id === '@trdrs/account-manager')).toEqual([])
     expect(directDependencies().dependencies).not.toContain('@trdrs/broker')

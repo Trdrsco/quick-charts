@@ -7,7 +7,6 @@ import type { ChartStorage } from './storage'
 import type { ChartSaveLoadAdapter } from './saveLoad'
 import type { PartialOverrides } from './overrides'
 import type { IndicatorManifest, IndicatorOverrides } from './indicatorModel'
-import type { TradingAdapter } from '@trdrs/broker'
 import type { ChartLocaleCode } from './i18n'
 import type { ChartI18n } from './i18n'
 import type { ChartExtension } from './extension'
@@ -39,12 +38,6 @@ export interface ChartWidgetEvents {
   onTimeframeChange?: (tf: string) => void
   /** The feed reported a terminal or status condition ('live' | 'no-data' | 'not_entitled' | …). */
   onFeedStatus?: (status: string) => void
-  /** A confirmed trading action's feedback line ("Stop moved to 5001.25"), with an optional Undo
-   *  for a protective-stop move. Wire it to a toast — silence loses the trader's receipt. */
-  onTradingAction?: (text: string, undo?: () => void) => void
-  /** A dropped/failed/informational trading message (a rejected reprice, a policy refusal). The
-   *  broker's rejection text arrives verbatim. */
-  onTradingError?: (msg: string) => void
   /** Viewer state changed (a drawing edit, a symbol/timeframe/scale switch, a legend eye…) —
    *  debounced ~1s so a drag emits once, not per frame. TradingView's onAutoSaveNeeded shape: a
    *  host that snapshots widget state through `api.saveLoad.serialize()` calls it here. The widget
@@ -79,7 +72,7 @@ export interface ChartWidgetOptions {
   /** Palette overrides. */
   theme?: ChartTheme
   /** The full override tree, partial over the theme-derived defaults — the richer sibling of
-   *  `theme` (candle anatomy, grid/sessions switches, every trade-line color and visibility).
+   *  `theme` (candle anatomy, the grid, session and countdown switches).
    *  Precedence is TradingView's ladder: runtime `applyOverrides` beats this, this beats `theme`,
    *  `theme` beats the built-ins. A loaded saved chart's appearance snapshot applies as a runtime
    *  layer, so a viewer's saved look beats the host's constructor values. */
@@ -99,28 +92,13 @@ export interface ChartWidgetOptions {
   /** The legend (on by default): the symbol/timeframe header with a market-status dot, plus one
    *  chip per indicator instance (title, latest value, per-chip eye). `false` removes it. */
   legend?: false
-  /** The trading plane (off unless supplied): mounts the trade-line surface — position pill,
-   *  draggable working-order lines, pre-arm brackets — fed by the adapter's account snapshots,
-   *  acting through its BrokerAdapter, price-gated by its policy. Capability is presence-driven:
-   *  an adapter whose broker omits a method never renders that affordance. */
-  trading?: TradingAdapter
-  /** The account panel below the chart (on by default WHEN `trading` is supplied): Positions and
-   *  Orders pages from the same snapshot plane the lines consume, actions through the same broker
-   *  seam. `false` removes it; `height` sizes the strip (default 148px). */
-  accountPanel?: false | { height?: number }
-  /** Execution marks (on by default): per-execution arrows anchored at the fill prices, with a
-   *  click card of the trades. Fed automatically when the trading adapter declares
-   *  `executions()`, or pushed by the host through `ChartWidgetApi.executions`. Live and replay
-   *  fills are SEPARATE histories — entering bar replay switches which one draws. `false`
-   *  removes the surface entirely; `{ labels: true }` adds "qty @ price" labels beside the
-   *  arrows (off by default). */
-  executionMarks?: false | { labels?: boolean }
-  /** The right-click LEVEL menu (reset view, copy price, the orders a level can hold, remove
-   *  indicators/drawings). `false` removes it and leaves the browser's own menu in place. */
+  /** The right-click LEVEL menu (reset view, copy price, remove indicators/drawings, and whatever
+   *  the chart's extensions contribute). `false` removes it and leaves the browser's own menu
+   *  in place. */
   contextMenu?: false
   /** A built-in interface language for the widget chrome and chart date formatting. English when
-   *  omitted. `setLocale` switches at runtime. Symbols,
-   *  prices and anything the datafeed or broker says are data and pass through untranslated. */
+   *  omitted. `setLocale` switches at runtime. Symbols, prices and anything the datafeed says
+   *  are data and pass through untranslated. */
   locale?: ChartLocaleCode
   /** A host-owned localization adapter. When supplied, it replaces `locale` and may use any stable
    *  locale codes and BCP 47 tags. The host owns its dictionaries, loading policy, and fallback. */
@@ -128,8 +106,8 @@ export interface ChartWidgetOptions {
   /** Extensions the chart attaches at mount: host code that draws on the chart, contributes menu
    *  rows and commands, and stores viewer state in the chart's save blob. Each is attached once per
    *  chart — a layout attaches them per pane — and torn down with it, including anything it drew.
-   *  The contract they receive is `ChartExtensionContext`: prices, times, bars, theme and pane
-   *  geometry, and nothing about accounts or money. */
+   *  The contract they receive is `ChartExtensionContext`: prices, times, bars, feed status,
+   *  theme and pane geometry, and nothing about accounts or money. */
   extensions?: readonly ChartExtension[]
   events?: ChartWidgetEvents
 }

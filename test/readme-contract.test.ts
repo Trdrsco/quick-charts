@@ -17,23 +17,17 @@ const blocks = [...readme.matchAll(/```ts\r?\n([\s\S]*?)```/g)].map((m) => m[1]!
 const testDir = decodeURIComponent(new URL('.', import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1')
 const pkgRoot = testDir.replace(/\/test\/?$/, '')
 
-// Examples reference the HOST's own ambient world (its backend, chart handles, UI helpers) and may
-// build on each other's exports (block 6 wires the `broker` block 5 defines). The contract under
-// test is the package surface, so the host side lives in a GLOBAL ambient d.ts — a separate virtual
-// file, so a block's own `export const broker` shadows the global instead of colliding with it —
-// loosely typed for scaffolding, while the package's own types stay fully strict.
+// Examples reference the HOST's own ambient world (its backend, chart handles, UI helpers). The
+// contract under test is the package surface, so the host side lives in a GLOBAL ambient d.ts — a
+// separate virtual file, loosely typed for scaffolding, while the package's own types stay fully
+// strict.
 const AMBIENT_DTS = `
 declare const myBackend: any
 declare const chart: any
 declare const series: any
 declare const container: HTMLElement
-declare const lastTradePrice: number
-declare const nextSnapshot: import('@trdrs/broker').BrokerSnapshot
-declare const myPricePolicy: import('@trdrs/broker').PricePolicy
-declare const broker: import('@trdrs/broker').BrokerAdapter
 declare const smaDefinition: import('quickcharts').IndicatorDefinition
-declare const ticket: { setInstrument(symbol: string): void }
-declare function toast(text: string, undo?: () => void): void
+declare const header: { setSymbol(symbol: string): void }
 declare function note(msg: string): void
 `
 
@@ -49,7 +43,7 @@ const compilerOptions: ts.CompilerOptions = {
   noUnusedLocals: false,
   noUnusedParameters: false,
   baseUrl: pkgRoot,
-  paths: { 'quickcharts': ['src/index.ts'], '@trdrs/broker': ['../broker/src/index.ts'] },
+  paths: { quickcharts: ['src/index.ts'] },
 }
 
 const VIRTUAL = `${pkgRoot}/test/__readme_block__.ts`
@@ -85,10 +79,11 @@ describe('README contract doctests', () => {
 
   it('the doctest harness itself catches a drifted example (negative control)', () => {
     const drifted = `
-      import type { BrokerAdapter } from '@trdrs/broker'
-      export const broker: BrokerAdapter = {
-        async setProtectiveStop() {}, // the method the README once documented — it does not exist
-      }
+      import type { ChartDatafeed } from 'quickcharts'
+      export const feed: ChartDatafeed = {
+        async quotes() {}, // a method the contract does not carry
+      } as ChartDatafeed
+      feed.subscribeTicks() // a method that does not exist
     `
     expect(diagnosticsFor(drifted).length).toBeGreaterThan(0)
   })

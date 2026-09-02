@@ -6,7 +6,7 @@
 // to-do list.
 //
 //   node scripts/i18n-dead-keys.mjs app     keys under apps/web/src/i18n/messages/en, searched in apps/web/src
-//   node scripts/i18n-dead-keys.mjs sdk     keys under packages/chart/src/i18n/en, searched across the SDK packages that consume the catalog (chart, account-manager, order-ticket) AND apps/web/src
+//   node scripts/i18n-dead-keys.mjs sdk     keys under packages/chart/src/i18n/en, searched across the packages that consume the catalog (chart, chart-trading, account-manager, order-ticket) AND apps/web/src
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -16,7 +16,7 @@ const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 const target = process.argv[2]
 const CFG = {
   app: { catalog: 'apps/web/src/i18n/messages/en', search: ['apps/web/src'], dynamic: [] },
-  sdk: { catalog: 'packages/chart/src/i18n/en', search: ['packages/chart/src', 'packages/account-manager/src', 'packages/order-ticket/src', 'apps/web/src'], dynamic: ['tool.', 'layout.', 'session.'] },
+  sdk: { catalog: 'packages/chart/src/i18n/en', search: ['packages/chart/src', 'packages/chart-trading/src', 'packages/account-manager/src', 'packages/order-ticket/src', 'apps/web/src'], dynamic: ['tool.', 'layout.', 'session.'] },
 }[target]
 if (!CFG) {
   console.error('usage: i18n-dead-keys.mjs <app|sdk>')

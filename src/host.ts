@@ -2,7 +2,7 @@
 // element with no framework dependency: lightweight-charts underneath, the ChartDatafeed seam for data,
 // ChartStorage for the viewer's sticky symbol/timeframe, theme overrides, event hooks, and indicator
 // plugins computed over the live bar series. This is the widget a third party embeds; the trdrs app's own
-// ChartPanel is a richer host over the same seams (trading, drawings UI, replay) and does not use this.
+// ChartPanel is a richer host over the same seams (drawings UI, replay) and does not use this.
 import {
   CandlestickSeries,
   ColorType,
@@ -29,26 +29,9 @@ import { createSessionBands, isIntradayTf, knownMarketKind, sessionOf, setHolida
 import { mountChartLegend, type ChartLegend, type LegendChip } from './chartLegend'
 import { isCollapsed, planPaneOp } from './panePlan'
 import { openInputsEditor } from './inputsEditor'
-import { attachTradeLines, type TradeLineAttachment } from './tradeLines'
-import { createOrderTicket, type OrderTicket } from './orderTicket'
-import { openQtyPopover, openTypeMenu } from './ticketChrome'
-import { mountAccountManager, type AccountManagerHandle } from '@trdrs/account-manager'
-import {
-  attachChartPrimitives,
-  type ChartPrimitivesHandle,
-  type ExecutionShapeApi,
-  type ExecutionShapeOptions,
-  type OrderLineApi,
-  type OrderLineOptions,
-  type PositionLineApi,
-  type PositionLineOptions,
-} from './chartPrimitives'
 import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 import { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
-import type { BrokerExecution } from '@trdrs/broker'
-import { attachExecutionMarks, type ExecutionMarksHandle, type ExecutionScope } from './executionMarks'
-import { decimalsOfTick } from '@trdrs/broker'
 import { createChartI18n } from './i18n'
 import {
   createExtensionHost,
@@ -66,15 +49,10 @@ import { longPressArms, longPressCancels, pointerLock, LONG_PRESS_MS } from './p
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
 export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe' | 'setTick' | 'destroy'>
 
-/** The ticket surface a host drives (teardown stays widget-owned). */
-export type ChartTicketApi = Omit<OrderTicket, 'destroy'>
-
 /** The bar-replay surface: a cursor over the widget's OWN loaded bars — whole-bar updates, played
  *  at a chosen speed or stepped. While replay is on, live updates keep accumulating off-screen
- *  (Go live / exit catches up) and LIVE TRADING FROM THE CHART DISARMS: a money gesture priced
- *  off a historical view is a foot-gun, so the trade lines go display-only and the ticket refuses
- *  — the account panel stays live (its actions are table-explicit, not chart-price-coupled). A
- *  host that wants replay TRADING swaps in a replay TradingAdapter at the seam. */
+ *  (Go live / exit catches up). Replay is a VIEW state and nothing more: an extension reads it
+ *  through its context, and what it does about a historical view is its own rule. */
 export interface ChartReplayApi {
   /** Enter replay with the cursor at the bar at/after `atSec` (default: three quarters through
    *  the loaded window). No-op with fewer than 3 loaded bars. */
@@ -88,17 +66,6 @@ export interface ChartReplayApi {
   /** Jump the cursor to the live edge (playback pauses; replay stays on). */
   goLive(): void
   state(): { on: boolean; playing: boolean; cursor: number; total: number; speed: ReplaySpeed }
-}
-
-/** The execution-marks surface a host drives: push fills into a history, read/flip which one
- *  draws. Live and replay are ISOLATED histories — replay fills never paint in live mode and
- *  vice versa. The widget flips the scope itself on replay start/exit; `set` is how a host that
- *  runs replay TRADING pushes its session's fills, and how a non-trading host overlays any fill
- *  history it holds. */
-export interface ChartExecutionsApi {
-  set(scope: ExecutionScope, executions: readonly BrokerExecution[]): void
-  setScope(scope: ExecutionScope): void
-  scope(): ExecutionScope
 }
 
 /** The save/load surface a host drives: the active adapter (the default storage-backed one, or
@@ -165,23 +132,10 @@ export interface ChartWidgetApi {
   setIndicators(instances: IndicatorInstance[]): void
   /** The drawing layer, or null when the widget was created with `drawings: false`. */
   drawings: ChartDrawingsApi | null
-  /** The order ticket, or null when no `trading` adapter was supplied OR its broker omits
-   *  `placeOrder` (a mutation-only integration has no placement surface, by contract). */
-  ticket: ChartTicketApi | null
   /** Bar replay over the loaded window. */
   replay: ChartReplayApi
   /** Pane-composition sync primitives (crosshair / time-click / visible range). */
   sync: ChartPaneSyncApi
-  /** Execution marks, or null when the widget was created with `executionMarks: false`. */
-  executions: ChartExecutionsApi | null
-  /** TRADING PRIMITIVES — the imperative surface for a host with its own trading logic: draw an
-   *  order line, a position line, or an execution mark directly, no `trading` adapter involved
-   *  (they compose freely with one). A primitive is CHART-scoped: it draws until removed, across
-   *  symbol switches. Controls follow the callbacks registered on the handle — a ✕ or ⇄ with no
-   *  handler behind it never renders. */
-  createOrderLine(opts?: OrderLineOptions): OrderLineApi
-  createPositionLine(opts?: PositionLineOptions): PositionLineApi
-  createExecutionShape(opts?: ExecutionShapeOptions): ExecutionShapeApi
   /** Commands contributed by the chart's extensions: what a host toolbar or menu can offer, and the
    *  one way to run them. Empty on a chart with no extensions. */
   commands: CommandRegistry
@@ -215,6 +169,17 @@ export function resolveTheme(theme?: ChartTheme): ResolvedTheme {
     downColor: theme?.downColor ?? BRAND_DOWN,
     fontSize: theme?.fontSize ?? 13,
   }
+}
+
+/** Decimal places a tick resolves to (0.25 → 2, 0.0001 → 4). A chart-local stand-in for the
+ *  extension formatter's precision until W2-A hands every chart price display to the symbology
+ *  formatter built from `SymbolInfo`; it derives nothing from a price's magnitude. */
+function decimalsOfTick(tick: number): number {
+  const s = tick.toString()
+  const sci = s.match(/e-(\d+)$/i)
+  if (sci) return Number(sci[1]) + (s.split('e')[0]!.split('.')[1]?.length ?? 0)
+  const dot = s.indexOf('.')
+  return dot < 0 ? 0 : s.length - dot - 1
 }
 
 /** Apply a live bar event to an ascending series: mutate the last bar (same bucket time), append (newer),
@@ -310,14 +275,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   let runtimePartial: PartialOverrides = {}
   let eff: ChartOverrides = layerOverrides(themeFloor, options.overrides, runtimePartial)
   /** True when a HOST-STATED layer (constructor or runtime) names the leaf — the explicitness
-   *  signal for looks that only engage once someone asks: candle borders, and the trading colors
-   *  whose per-surface defaults otherwise stay theme-derived. */
-  const overrideNamed = (section: 'appearance' | 'trading', leaf: string): boolean =>
-    [options.overrides, runtimePartial].some((p) => {
-      const sec = p?.[section] as Record<string, unknown> | undefined
-      return !!sec && leaf in sec
-    })
-  const candleBordersOn = (): boolean => overrideNamed('appearance', 'borderUpColor') || overrideNamed('appearance', 'borderDownColor')
+   *  signal for a look that only engages once someone asks: candle borders. */
+  const overrideNamed = (leaf: keyof ChartOverrides['appearance']): boolean =>
+    [options.overrides, runtimePartial].some((p) => !!p?.appearance && leaf in p.appearance)
+  const candleBordersOn = (): boolean => overrideNamed('borderUpColor') || overrideNamed('borderDownColor')
   let indicatorInstances: IndicatorInstance[] = options.indicators ?? []
 
   let symbol = options.symbol ?? storage.get(SYMBOL_KEY) ?? ''
@@ -342,17 +303,11 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     })(),
   )
   let ready = false
-  /** Live-trust for the mark the trade surface reads: true only while the feed reports 'live' —
-   *  a stale last close must not price a P&L readout or anchor a protective-stop band. */
-  let feedLive = false
   /** The feed's last reported status for this subscription, as the extension plane reads it;
    *  null until the subscription has spoken. */
   let feedStatus: string | null = null
-  /** The resolved symbol's tick and the armed selection from the latest account snapshot — the
-   *  two instrument/account truths the order ticket composes with. */
+  /** The resolved symbol's tick: the drawing readouts and the extension formatter read it. */
   let symbolTick: number | null = null
-  let currentScope: string | null = null
-  let currentLocked = false
   /** Replay: the MASTER bar set while replaying (null = replay off; `bars` is then the painted
    *  cursor slice). Live updates land here off-screen; Go live / exit catches the paint up. */
   let replayAll: FeedBar[] | null = null
@@ -368,10 +323,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   /** Increments on every symbol/timeframe switch and on remove() — stale async work checks it and bails. */
   let epoch = 0
 
-  // The widget owns its container's inner layout: a chart host (the chart + every overlay —
-  // rail, legend, trade-line canvas, ticket editors) above an optional account panel. The
-  // overlays MUST parent on the chart box, never the outer container: the trade-line overlay
-  // canvas sizes to its parent, and a panel-tall parent would misalign every drawn control.
+  // The widget owns its container's inner layout: a chart host (the chart + every overlay — the
+  // rail, the legend, an extension's canvas and editors) filling the container. The overlays
+  // parent on the chart box, never the outer container: an overlay canvas sizes to its parent.
   const container = options.container
   const prevContainerStyle = { display: container.style.display, flexDirection: container.style.flexDirection }
   container.style.display = 'flex'
@@ -380,24 +334,19 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   chartHost.style.cssText = 'position:relative;flex:1 1 auto;min-height:0;'
   container.appendChild(chartHost)
   // Two SIBLING boxes, and the split is load-bearing rather than cosmetic. The chart box belongs
-  // to the gesture layers: the trade-line surface binds a CAPTURE-phase pointer handler there and
-  // takes pointer capture to track drags, which no bubble-phase stopPropagation in a descendant
-  // could ever prevent — so widget chrome mounted inside that box has its clicks swallowed (the
-  // press retargets to the capturing element and the browser emits no click on the button). The
-  // chrome box is therefore a SEPARATE subtree overlaying it: presses on the rail, the legend, or
-  // a ticket editor never traverse the chart box at all. It is inert by default; each interactive
-  // piece opts back in with pointer-events:auto, so the chart stays fully draggable underneath.
+  // to the gesture layers: an extension's drag surface binds a CAPTURE-phase pointer handler there
+  // and takes pointer capture to track drags, which no bubble-phase stopPropagation in a descendant
+  // could ever prevent — so widget chrome mounted inside that box would have its clicks swallowed
+  // (the press retargets to the capturing element and the browser emits no click on the button).
+  // The chrome box is therefore a SEPARATE subtree overlaying it: presses on the rail, the legend,
+  // or an extension's editor never traverse the chart box at all. It is inert by default; each
+  // interactive piece opts back in with pointer-events:auto, so the chart stays fully draggable
+  // underneath.
   const chartBox = document.createElement('div')
   chartBox.style.cssText = 'position:absolute;inset:0;'
   const chromeBox = document.createElement('div')
   chromeBox.style.cssText = 'position:absolute;inset:0;z-index:5;pointer-events:none;'
   chartHost.append(chartBox, chromeBox)
-  let panelHost: HTMLDivElement | null = null
-  if (options.trading && options.accountPanel !== false) {
-    panelHost = document.createElement('div')
-    panelHost.style.cssText = `flex:0 0 ${typeof options.accountPanel === 'object' ? (options.accountPanel.height ?? 148) : 148}px;min-height:0;`
-    container.appendChild(panelHost)
-  }
 
   // Every string the chrome shows comes through here, in the host's language; the tag also drives
   // the library's own axis and crosshair formatting, so a canvas label and a menu row never disagree
@@ -448,44 +397,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     // runtime) blanks the shading without tearing the layer down.
     sessionBands = createSessionBands(chart, candles, () => eff.appearance.sessions, () => sessionKind, () => isIntradayTf(tf))
     candles.attachPrimitive(sessionBands as never)
-  }
-
-  // Execution marks (on unless the host opted out): grouped arrows on the bars where orders
-  // filled, with the click card of the trades. The card mounts in the chrome overlay — the chart
-  // box's capture-phase trade-line handler would swallow its clicks. Data arrives from the
-  // trading adapter's executions() (refetchExecutions below) or a host push through the api.
-  let execMarks: ExecutionMarksHandle | null = null
-  if (options.executionMarks !== false) {
-    const execLabels = options.executionMarks?.labels === true
-    execMarks = attachExecutionMarks(chart, candles, chromeBox, {
-      // Theme-derived until a host layer NAMES the trading color — the arrows' default follows
-      // the candles (as it always has), while a stated trading.buyColor/sellColor wins.
-      buyColor: () => (overrideNamed('trading', 'buyColor') ? eff.trading.buyColor : theme.upColor),
-      sellColor: () => (overrideNamed('trading', 'sellColor') ? eff.trading.sellColor : theme.downColor),
-      textColor: () => theme.textColor,
-      labels: () => execLabels || eff.trading.executionLabels,
-      precision: () => (symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : null),
-      strings: i18n,
-    })
-  }
-  /** Refetch the LIVE scope's fills for the charted symbol (adapters that declare executions()
-   *  only). Only the NEWEST in-flight read may land: a slow response issued before an account or
-   *  symbol switch must never repopulate the cleared scope with the old identity's fills. Hoisted
-   *  declarations on purpose: a config-less feed runs load() synchronously at mount, before any
-   *  later const initializes. */
-  let execFetchGen = 0
-  function refetchExecutions(): void {
-    const fetchExecutions = options.trading?.executions
-    if (!execMarks || !fetchExecutions || !symbol) return
-    const myGen = ++execFetchGen
-    void fetchExecutions(symbol)
-      .then((list) => {
-        if (removed || myGen !== execFetchGen) return
-        execMarks?.set('live', list)
-      })
-      .catch(() => {
-        /* marks are advisory — a failed read keeps the cleared/previous set */
-      })
   }
 
   /** The extension plane. Created once the chart, its overlay and its capabilities exist (below);
@@ -587,127 +498,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     })
     legend.setHeader(symbol, tf)
     legend.syncScale(scaleMode)
-  }
-
-  // The trading plane (mounted only when the host supplies an adapter): the package's trade-line
-  // surface fed by the adapter's FULL account snapshots, actions through its BrokerAdapter, prices
-  // gated by its policy. The widget contributes what it owns — the live-trusted mark, the resolved
-  // tick, the charted symbol — and nothing else; the package still holds no trading state.
-  let tradeLines: TradeLineAttachment | null = null
-  let tradingUnsub: (() => void) | null = null
-  let ticket: OrderTicket | null = null
-  let accountPanel: AccountManagerHandle | null = null
-  if (options.trading) {
-    const adapter = options.trading
-    // The mark is live-trusted AND not-replaying: a replayed close pricing a live P&L readout or
-    // anchoring a protective band would be trading against history.
-    const markNow = () => (feedLive && replayAll === null && bars.length ? bars[bars.length - 1]!.c : null)
-    // The ticket exists ONLY when the broker can place (presence-driven, like every affordance):
-    // without placeOrder the draft chrome never appears and the ticket api is null.
-    if (adapter.broker.placeOrder) {
-      ticket = createOrderTicket({
-        broker: adapter.broker,
-        instrument: () => symbol,
-        tick: () => symbolTick,
-        mark: markNow,
-        scope: () => currentScope,
-        locked: () => currentLocked || replayAll !== null,
-        policy: adapter.policy,
-        confirm: adapter.confirmOrder ? (order) => adapter.confirmOrder!(order) : undefined,
-        onChange: (preview) => tradeLines?.update({ preview }),
-        onAction: (text) => events.onTradingAction?.(text),
-        onError: (msg) => events.onTradingError?.(msg),
-        strings: i18n,
-      })
-    }
-    tradeLines = attachTradeLines({ chart, series: candles, container: chartBox }, adapter.broker, {
-      symbol,
-      snapshot: { positions: [], orders: [] },
-      scope: null,
-      mark: markNow,
-      policy: adapter.policy,
-      // The trading section of the resolved ladder — colors, widths, visibility, pnlMode. With no
-      // host layers this IS the package default the surface always used; applyOverrides refreshes
-      // it through update().
-      overrides: eff.trading,
-      strings: i18n,
-      onAction: (text, undo) => events.onTradingAction?.(text, undo),
-      onError: (msg) => events.onTradingError?.(msg),
-      // The draft path routes to the ticket controller; the micro-editors are the package's own
-      // chrome (pre-money: they only hand values back).
-      ...(ticket
-        ? {
-            onPreviewEdit: (id: string, price: number) => ticket?.setPrice(price, id === 'ticket-limit' ? 'limit' : 'trigger'),
-            onPreviewCancel: () => ticket?.close(),
-            onDraftSubmit: () => void ticket?.submit(),
-            onQtyEdit: (args: { qty: number; step: number; rect: { x: number; y: number; w: number; h: number } }) =>
-              openQtyPopover(chromeBox, args.rect, args.qty, args.step, theme, (qty) => ticket?.setQty(qty)),
-            onOrderTypeEdit: (args: { current: string; rect: { x: number; y: number; w: number; h: number } }) =>
-              openTypeMenu(chromeBox, args.rect, args.current, theme, (orderType) => ticket?.setOrderType(orderType), i18n),
-          }
-        : {}),
-    })
-    // The account manager below the chart is the SDK's own manager package, handed the SAME
-    // adapter as the lines — one data plane, one write path, two views. It owns its subscription
-    // (the adapter multiplexes), so the widget forwards nothing to it.
-    if (panelHost) {
-      accountPanel = mountAccountManager(panelHost, {
-        adapter,
-        theme,
-        strings: {
-          // The chart catalog is typed to ITS keys; the manager reads dynamically, and any key
-          // the catalog echoes back falls through to the manager's built-in English.
-          t: i18n.t as unknown as (key: string, vars?: Record<string, string | number>) => string,
-          onChange: (fn: () => void) => i18n.onChange(fn),
-        },
-        locale: () => i18n.tag(),
-        events: {
-          onAction: (text) => events.onTradingAction?.(text),
-          onError: (msg) => events.onTradingError?.(msg),
-        },
-      })
-    }
-    /** The last snapshot's position-quantity signature — the honest executions-refetch trigger:
-     *  a fill is the only event that moves a quantity, while P&L churns with every price tick
-     *  (refetching on the raw snapshot would hammer the backend once a second). */
-    let lastFillSig: string | null = null
-    /** The armed selection the current live fill set belongs to — fills are scoped to the account
-     *  that made them, so a selection switch CLEARS before it refetches (a failed refetch must
-     *  leave an empty chart, never another account's arrows). */
-    let lastExecScope: string | null = null
-    tradingUnsub = adapter.subscribeAccount({
-      onSnapshot: (s) => {
-        currentScope = s.scope
-        currentLocked = s.locked === true
-        tradeLines?.update({
-          snapshot: { positions: s.positions, orders: s.orders },
-          scope: s.scope,
-          currency: s.currency,
-          pointValue: s.pointValue,
-          // Replay folds into the lock: a historical view must not carry live money gestures.
-          locked: s.locked === true || replayAll !== null,
-          orderBrackets: s.orderBrackets,
-          managedOrderIds: s.managedOrderIds,
-        })
-        const scopeChanged = s.scope !== lastExecScope
-        if (scopeChanged) {
-          lastExecScope = s.scope
-          execMarks?.set('live', [])
-        }
-        const fillSig = s.positions.map((p) => `${p.instrument}:${p.qty}`).sort().join('|')
-        if (scopeChanged || fillSig !== lastFillSig) {
-          lastFillSig = fillSig
-          refetchExecutions()
-        }
-      },
-    })
-    // Declared capabilities, read once (declare-only-truth): what presence can't express.
-    void adapter
-      .capabilities?.()
-      .then((caps) => tradeLines?.update({ exits: caps.exits, orderBracketTypes: caps.orderBracketTypes }))
-      .catch(() => {
-        /* an undeclared capability set constrains nothing */
-      })
   }
 
   // The indicator pipeline: instance → compute (host-supplied) → the shared manifest walker → the
@@ -986,21 +776,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     unsubscribe = null
     bars = []
     noMoreHistory = false
-    feedLive = false // the new subscription reports its own liveness; a stale mark must not carry over
-    feedStatus = null
+    feedStatus = null // the new subscription reports its own status; a stale one must not carry over
     sessionKind = null // the next resolve states the new symbol's model; unresolved never bands
     sessionBands?.refresh() // the old symbol's bands must not survive the switch
     symbolTick = null
-    ticket?.close() // a draft composed against the old symbol must not survive onto the new one
     abandonReplay() // a replay window is symbol+timeframe-bound; the switch invalidates it
-    // Both fill histories clear: grouping is by containing bar, so the old symbol's fills would
-    // otherwise land on the new symbol's bars as if money moved there.
-    execMarks?.set('live', [])
-    execMarks?.set('replay', [])
     drawingsHandle?.setTick(null)
     paintAll()
     if (!symbol) return
-    refetchExecutions()
     // Symbol metadata rides ALONGSIDE the first history ask (never blocking it): tick size feeds
     // the drawing readouts, sessionClass feeds the session bands. A failed resolve leaves both at
     // their honest unknowns.
@@ -1010,8 +793,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         if (removed || myEpoch !== epoch || !info) return
         symbolTick = info.tick
         drawingsHandle?.setTick(info.tick)
-        tradeLines?.update({ tick: info.tick ?? undefined })
-        primitives?.setTick(info.tick ?? undefined)
         sessionKind = knownMarketKind(info.type, info.sessionClass ?? null)
         if (info.sessionCalendar && sessionKind) setHolidayCalendar(sessionKind, info.sessionCalendar)
         sessionBands?.refresh() // nothing else invalidates the pane when the model resolves
@@ -1080,7 +861,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       },
       onStatus: (status) => {
         if (removed || myEpoch !== epoch) return
-        feedLive = status === 'live'
         feedStatus = status
         events.onFeedStatus?.(status)
       },
@@ -1265,8 +1045,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       replayTimer = null
     }
   }
-  /** Re-push the effective lock so the trade lines disarm/re-arm the moment replay flips. */
-  const replayLockRefresh = () => tradeLines?.update({ locked: currentLocked || replayAll !== null })
   const replayPause = () => {
     replayPlaying = false
     stopReplayTimer()
@@ -1338,8 +1116,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     replayFormK = 0
     replayBar?.destroy()
     replayBar = null
-    replayLockRefresh()
-    execMarks?.setScope('live') // the replay history stays held, but only live fills may draw now
     extHost?.replayChanged(extReplay())
   }
   const replayApi: ChartReplayApi = {
@@ -1376,10 +1152,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         i18n,
       )
       legend?.setHeader(symbol, i18n.t('host.replayHeader', { tf }))
-      replayLockRefresh()
-      // Replay is a SEPARATE fill timeline: live marks hide for the whole session; whatever the
-      // host pushes into the 'replay' scope (a replay-trading sim's fills) draws instead.
-      execMarks?.setScope('replay')
       replayPaint()
       replaySync()
     },
@@ -1451,25 +1223,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       }
     : null
 
-  // The public ticket surface is a REAL subset (the drawings-api discipline): teardown stays
-  // widget-owned, and an untyped consumer must not find it either.
-  const tk = ticket
-  const ticketApi: ChartTicketApi | null = tk
-    ? {
-        open: (seed) => tk.open(seed),
-        close: () => tk.close(),
-        state: () => tk.state(),
-        setSide: (side) => tk.setSide(side),
-        setQty: (qty) => tk.setQty(qty),
-        setOrderType: (orderType) => tk.setOrderType(orderType),
-        setPrice: (price, leg) => tk.setPrice(price, leg),
-        submit: () => tk.submit(),
-      }
-    : null
-
   // The level menu, on the widget's own right-click. Its ROWS come from chartContextMenu, so an
   // embedder's chart offers what the app's does minus what this widget cannot serve: no clipboard
-  // and no settings dialog here, and the marks row only where execution marks are drawn.
+  // and no settings dialog here. Whatever an extension contributes for the level rides below.
   let contextMenu: ContextMenuHandle | null = null
   /** The level the open menu was raised at — its rows act on this, not on wherever the pointer
    *  wandered to while the menu was up. */
@@ -1493,17 +1249,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
           case 'copy-price':
             if (at != null) void navigator.clipboard?.writeText(String(at)).catch(() => undefined)
             break
-          case 'trade-sell-limit':
-          case 'trade-sell-stop':
-            if (at != null) ticket?.open({ side: 'sell', orderType: id.endsWith('stop') ? 'stop' : 'limit', price: at })
-            break
-          case 'trade-buy-limit':
-          case 'trade-buy-stop':
-            if (at != null) ticket?.open({ side: 'buy', orderType: id.endsWith('stop') ? 'stop' : 'limit', price: at })
-            break
-          case 'trade-new-order':
-            if (at != null) ticket?.open({ price: at })
-            break
           case 'remove-indicators':
             indicatorInstances = []
             indicatorsRenderer.prune(new Set())
@@ -1525,8 +1270,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       const price = priceAt(clientY)
       if (price == null) return false
       lastMenuPrice = price
-      const last = bars.length ? bars[bars.length - 1] : null
-      const mark = last ? last.c : null
       const priceText = price.toLocaleString(i18n.tag(), { maximumFractionDigits: 8 })
       // Contributed rows are asked for at the raise, so they can depend on the level pressed, and
       // they carry their own actions — the widget routes nothing on their behalf.
@@ -1537,15 +1280,11 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         {
           priceText,
           symbol,
-          aboveMarket: mark != null && mark > 0 ? price >= mark : null,
-          tradable: true,
-          canTrade: ticket !== null,
           canAlert: false, // no alerts surface in the widget
           canPaste: false, // the widget's drawing layer has no clipboard
           canSettings: false, // …and no settings dialog to open
           indicatorCount: indicatorInstances.length,
           drawingCount: drawingsHandle?.count() ?? 0,
-          marksHidden: null, // the widget's marks switch live/replay, not shown/hidden
         },
         extra,
       )
@@ -1598,21 +1337,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     holdCleanup = cancelHold
   }
 
-  // The public executions surface is a REAL subset (the drawings-api discipline): teardown stays
-  // widget-owned, and an untyped consumer must not find it either.
-  const em = execMarks
-  const executionsApi: ChartExecutionsApi | null = em
-    ? {
-        set: (scope, executions) => em.set(scope, executions),
-        setScope: (scope) => em.setScope(scope),
-        scope: () => em.scope(),
-      }
-    : null
-
   /** Re-resolve the ladder and restyle every surface that reads it — the runtime half of the
    *  precedence contract. Everything here is a repaint, never a rebuild: series options, chart
-   *  layout, the trade-line styles; the getter-driven surfaces (session bands, execution-mark
-   *  colors) pick the new values up on their next draw. */
+   *  layout; the getter-driven surfaces (session bands, extensions reading the theme lane) pick
+   *  the new values up on their next draw. */
   const applyLook = (): void => {
     eff = layerOverrides(themeFloor, options.overrides, runtimePartial)
     const A = eff.appearance
@@ -1632,8 +1360,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       wickUpColor: A.wickUpColor,
       wickDownColor: A.wickDownColor,
     })
-    tradeLines?.update({ overrides: eff.trading })
-    primitives?.syncLook()
     extHost?.themeChanged(extTheme())
   }
 
@@ -1716,36 +1442,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     legend?.setHeader(symbol, replayAll === null ? tf : i18n.t('host.replayHeader', { tf }))
   })
 
-  // TRADING PRIMITIVES — attached lazily on the first factory call, so a widget that never
-  // creates one pays nothing. The layer rides the same renderers as the trading plane (they
-  // compose: two attachments, each hit-testing only its own lines) and draws regardless of the
-  // charted symbol; only the tick and the resolved look need keeping in sync.
-  let primitives: ChartPrimitivesHandle | null = null
-  const primitivesLayer = (): ChartPrimitivesHandle => {
-    if (removed) throw new Error('the widget was removed')
-    if (!primitives) {
-      primitives = attachChartPrimitives({
-        chart,
-        series: candles,
-        container: chartBox,
-        chromeBox,
-        overrides: () => eff.trading,
-        mark: () => (feedLive && replayAll === null && bars.length ? bars[bars.length - 1]!.c : null),
-        execColors: {
-          buyColor: () => (overrideNamed('trading', 'buyColor') ? eff.trading.buyColor : theme.upColor),
-          sellColor: () => (overrideNamed('trading', 'sellColor') ? eff.trading.sellColor : theme.downColor),
-          textColor: () => theme.textColor,
-          labels: () => eff.trading.executionLabels,
-          precision: () => (symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : null),
-        },
-        strings: i18n,
-        onError: (msg) => events.onTradingError?.(msg),
-      })
-      primitives.setTick(symbolTick ?? undefined)
-    }
-    return primitives
-  }
-
   /** The widget's saved-chart CONTENT format. Versioned because the blob is contractually opaque
    *  to every backend — the reader here is the only place an upgrade path can ever live. */
   const CONTENT_V = 1
@@ -1778,7 +1474,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       symbol = next
       storage.set(SYMBOL_KEY, next)
       drawingsHandle?.setSymbol(next)
-      tradeLines?.update({ symbol: next })
       legend?.setHeader(symbol, tf)
       events.onSymbolChange?.(next)
       // Before the load: a symbol-scoped extension re-attaches against the new market, so its first
@@ -1822,10 +1517,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       if (removed) return
       // Runtime layers ACCUMULATE leaf by leaf — a later call restyles what it names and leaves
       // the rest of the runtime layer standing, so two hosts' calls compose instead of clobbering.
-      runtimePartial = {
-        appearance: { ...runtimePartial.appearance, ...(partial.appearance ?? {}) },
-        trading: { ...runtimePartial.trading, ...(partial.trading ?? {}) },
-      }
+      runtimePartial = { appearance: { ...runtimePartial.appearance, ...(partial.appearance ?? {}) } }
       applyLook()
       pingSaveNeeded()
     },
@@ -1869,13 +1561,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       execute: (id: string) => extHost?.commands.execute(id) ?? false,
     },
     drawings: drawingsApi,
-    ticket: ticketApi,
     replay: replayApi,
     sync: paneSync,
-    executions: executionsApi,
-    createOrderLine: (opts?: OrderLineOptions) => primitivesLayer().createOrderLine(opts),
-    createPositionLine: (opts?: PositionLineOptions) => primitivesLayer().createPositionLine(opts),
-    createExecutionShape: (opts?: ExecutionShapeOptions) => primitivesLayer().createExecutionShape(opts),
     remove() {
       if (removed) return
       removed = true
@@ -1892,12 +1579,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       // off. Detaching after the renderer is gone would leave their teardown reaching into nothing.
       extHost?.detach()
       extHost = null
-      ticket?.destroy()
-      tradingUnsub?.()
-      accountPanel?.destroy()
-      execMarks?.destroy()
-      tradeLines?.detach()
-      primitives?.detach()
       contextMenu?.destroy()
       drawingsRail?.destroy()
       compareDialog?.close()
@@ -1908,7 +1589,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       chart.remove()
       // Leave the host element exactly as found: our wrapper rows go, its layout styles restore.
       chartHost.remove()
-      panelHost?.remove()
       container.style.display = prevContainerStyle.display
       container.style.flexDirection = prevContainerStyle.flexDirection
     },

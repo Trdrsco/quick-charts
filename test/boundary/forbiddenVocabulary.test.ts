@@ -38,7 +38,8 @@ const TARGET: Record<'W1-A' | 'W2-A' | 'W3-A' | 'W5-A', { reason: string; terms:
       { term: 'subscribeQuotes', pattern: /\bsubscribeQuotes\b/, scope: 'package' },
     ],
   },
-  // PCL-3 chart-trading extraction, and the PCL-4 rename of the layout's trading symbol.
+  // PCL-3 chart-trading extraction, and the PCL-4 rename of the layout's trading symbol. Landed:
+  // the block below runs; the words stay listed so a return is caught.
   'W1-A': {
     reason: 'trading vocabulary and APIs leave the free root; the layout names an active symbol',
     terms: [
@@ -77,7 +78,7 @@ const sourcesFor = (scope: Term['scope']): Record<string, string> => (scope === 
 
 describe('the forbidden vocabulary, as built', () => {
   it('has package and app sources to read', () => {
-    expect(Object.keys(CODE).length).toBeGreaterThan(30)
+    expect(Object.keys(CODE).length).toBeGreaterThan(25)
     expect(Object.keys(APP_CHART_SOURCES).length).toBeGreaterThan(20)
     expect(APP_CHART_SOURCES['/apps/web/src/chart/DrawingToolbar.tsx']).toBeTypeOf('string')
   })
@@ -86,11 +87,13 @@ describe('the forbidden vocabulary, as built', () => {
     expect(lines(CHART_SOURCES, /from\s+['"][^'"]*\/apps\/|from\s+['"]\.\.\/\.\.\/\.\.\/apps\//)).toEqual([])
   })
 
-  it('imports exactly the three private organs the manifest names today, and nothing else private', () => {
+  it('imports exactly the one private organ the manifest names today, and nothing else private', () => {
     const specifiers = new Set<string>()
     for (const text of Object.values(CHART_SOURCES)) for (const m of text.matchAll(/from\s+['"](@trdrs\/[a-z0-9-]+)(?:\/[^'"]*)?['"]/g)) specifiers.add(m[1]!)
-    expect([...specifiers].sort()).toEqual(['@trdrs/account-manager', '@trdrs/broker', '@trdrs/chart-drawings'])
-    expect(lines(CHART_SOURCES, /from\s+['"](@trdrs\/(ui|engine-client|engine-wire|chart-engine|watchlist|news|trading-core|community|library|order-ticket)|tailwind)/)).toEqual([])
+    expect([...specifiers].sort()).toEqual(['@trdrs/chart-drawings'])
+    expect(
+      lines(CHART_SOURCES, /from\s+['"](@trdrs\/(ui|engine-client|engine-wire|chart-engine|watchlist|news|trading-core|community|library|order-ticket|broker|account-manager|chart-trading|i18n)|tailwind)/),
+    ).toEqual([])
   })
 
   it('keeps the V1 exclusions absent: no :root selector, no Object Tree, no watermark', () => {
@@ -110,13 +113,6 @@ describe('the forbidden vocabulary, as built', () => {
       'onQuote',
       'getQuotes',
       'subscribeQuotes',
-      'createOrderTicket',
-      'TicketOrderType',
-      'ChartTicketApi',
-      'ChartExecutionsApi',
-      'accountPanel',
-      'executionMarks',
-      'tradingSymbol',
       'ChartTheme',
       'resolveTheme',
       'ResolvedTheme',
@@ -128,10 +124,13 @@ describe('the forbidden vocabulary, as built', () => {
 })
 
 // TARGET. One block per stream, the whole word list in one assertion so the log names every
-// surviving line. Delete the `.skip` when the stream lands; remove the words from the PRESENT pin.
+// surviving line. Delete the stream from LANDED_LATER when it lands; remove the words from the
+// PRESENT pin. A landed stream's block runs.
+const LANDED_LATER = new Set<keyof typeof TARGET>(['W2-A', 'W3-A', 'W5-A'])
 describe('the forbidden vocabulary (target)', () => {
-  for (const [stream, { reason, terms }] of Object.entries(TARGET)) {
-    it.skip(`[${stream} unskips] ${reason}`, () => {
+  for (const [stream, { reason, terms }] of Object.entries(TARGET) as [keyof typeof TARGET, (typeof TARGET)[keyof typeof TARGET]][]) {
+    const block = LANDED_LATER.has(stream) ? it.skip : it
+    block(`${LANDED_LATER.has(stream) ? `[${stream} unskips] ` : ''}${reason}`, () => {
       const offenders = terms.flatMap((t) => lines(sourcesFor(t.scope), t.pattern).map((l) => `${t.term}: ${l}`))
       expect(offenders).toEqual([])
     })
