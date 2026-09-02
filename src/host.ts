@@ -50,6 +50,17 @@ import type { BrokerExecution } from '@trdrs/broker'
 import { attachExecutionMarks, type ExecutionMarksHandle, type ExecutionScope } from './executionMarks'
 import { decimalsOfTick } from '@trdrs/broker'
 import { createChartI18n } from './i18n'
+import {
+  createExtensionHost,
+  type ChartExtensionCommands,
+  type ChartExtensionHost,
+  type ChartExtensionMenuItem,
+  type ChartExtensionPane,
+  type ChartExtensionReplayState,
+  type ChartExtensionSeries,
+  type ChartPriceFormatter,
+} from './extension'
+import { pointerLock } from './pointerInput'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
@@ -171,6 +182,9 @@ export interface ChartWidgetApi {
   createOrderLine(opts?: OrderLineOptions): OrderLineApi
   createPositionLine(opts?: PositionLineOptions): PositionLineApi
   createExecutionShape(opts?: ExecutionShapeOptions): ExecutionShapeApi
+  /** Commands contributed by the chart's extensions: what a host toolbar or menu can offer, and the
+   *  one way to run them. Empty on a chart with no extensions. */
+  commands: ChartExtensionCommands
   /** The interface language the widget is showing. */
   locale(): string
   /** Switch the interface language at runtime: the chrome re-labels as the translation lands, and
@@ -226,6 +240,9 @@ export function resolveInitialTf(sticky: string, declared: readonly string[] | u
 const SYMBOL_KEY = 'trdrs.chart.widget.symbol.v1'
 const TF_KEY = 'trdrs.chart.widget.tf.v1'
 const SCALE_KEY = 'trdrs.chart.widget.scale.v1'
+/** Every mounted widget gets one, so an extension attached to two panes of a layout can tell them
+ *  apart and key its own per-pane state. Stable for the pane's life, never reused. */
+let chartSeq = 0
 const SNAPSHOT_BARS = 300
 const PAGE_BARS = 500
 /** How close to the left edge (in bars) the visible range must get before the next page is fetched. */
@@ -467,6 +484,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         /* marks are advisory — a failed read keeps the cleared/previous set */
       })
   }
+
+  /** The extension plane. Created once the chart, its overlay and its capabilities exist (below);
+   *  every notification site reads it optionally, so nothing depends on where that line sits. */
+  let extHost: ChartExtensionHost | null = null
 
   /** The full ascending bar series currently painted (snapshot + prepended pages + live updates). */
   let bars: FeedBar[] = []
@@ -809,6 +830,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     // Compares clip to the main window, so every reshape of the bar model re-clips them here —
     // paintAll is the one choke point every load / scroll-back / snapshot / replay path exits by.
     compareHandle?.sync()
+    extHost?.barsChanged(bars)
   }
 
   // ── COMPARE: the data-bearing organ, clipped to the main bar model (compare.ts owns the why).
@@ -908,6 +930,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     candles.update({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c })
     volume.update({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? theme.upColor : theme.downColor })
     recomputeIndicatorsThrottled()
+    extHost?.barsChanged(bars)
   }
 
   /** One older-history fetch with the gap hop (olderPageVerdict's rule): an empty page carrying
@@ -1059,6 +1082,113 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     })
   }
 
+  // ── The EXTENSION PLANE. Everything an extension can reach is built here, in the widget's own
+  // terms: the chart never hands out its lightweight-charts instance, so an extension can only do
+  // what these capabilities express and the widget can take back everything it gave.
+  const chartId = `chart-${++chartSeq}`
+  /** The palette an extension paints to: the resolved theme with the effective appearance layer on
+   *  top, so an `applyOverrides` reaches an overlay the same way it reaches the candles. */
+  const extTheme = (): ResolvedTheme => ({
+    background: eff.appearance.background,
+    gridColor: theme.gridColor,
+    textColor: theme.textColor,
+    upColor: eff.appearance.upColor,
+    downColor: eff.appearance.downColor,
+    fontSize: theme.fontSize,
+  })
+  /** The chart's price formatter. Precision comes from the resolved contract tick, and falls back to
+   *  two places only while the symbol is unresolved. */
+  const extFormatter = (): ChartPriceFormatter => {
+    const dp = symbolTick != null && symbolTick > 0 ? decimalsOfTick(symbolTick) : 2
+    const tag = i18n.tag()
+    return {
+      format: (price) => price.toLocaleString(tag, { minimumFractionDigits: dp, maximumFractionDigits: dp }),
+      precision: () => dp,
+    }
+  }
+  const extPane = (): ChartExtensionPane => ({ id: chartId, width: chartBox.clientWidth, height: chartBox.clientHeight })
+  const extReplay = (): ChartExtensionReplayState => ({
+    active: replayAll !== null,
+    cursor: replayAll === null ? bars.length : replayCursor,
+    total: replayAll?.length ?? bars.length,
+  })
+  const extSeries: ChartExtensionSeries = {
+    createPriceLine(opts) {
+      const line = candles.createPriceLine(opts)
+      return {
+        update: (next) => {
+          if (!removed) line.applyOptions(next)
+        },
+        remove: () => {
+          if (removed) return
+          try {
+            candles.removePriceLine(line)
+          } catch {
+            /* the series went down first */
+          }
+        },
+      }
+    },
+    attachPrimitive(primitive) {
+      candles.attachPrimitive(primitive as never)
+      return () => {
+        try {
+          candles.detachPrimitive(primitive as never)
+        } catch {
+          /* likewise */
+        }
+      }
+    },
+    priceToY: (price) => (removed ? null : candles.priceToCoordinate(price)),
+    yToPrice: (y) => (removed ? null : candles.coordinateToPrice(y)),
+    timeToX: (timeSeconds) => (removed ? null : chart.timeScale().timeToCoordinate(timeSeconds as UTCTimestamp)),
+    xToTime: (x) => {
+      if (removed) return null
+      const t = chart.timeScale().coordinateToTime(x)
+      return typeof t === 'number' ? t : null
+    },
+    plotWidth: () => {
+      if (removed) return 0
+      try {
+        return chartBox.clientWidth - chart.priceScale('right').width()
+      } catch {
+        return chartBox.clientWidth
+      }
+    },
+    lockPanZoom: (locked) => {
+      if (removed) return
+      // ONE rule for every in-chart drag (pointerInput.pointerLock): navigation and the container's
+      // touch action move together, so a released gesture cannot leave the chart half-frozen.
+      const state = pointerLock(locked)
+      chart.applyOptions({ handleScroll: state.handleScroll, handleScale: state.handleScale })
+      chartBox.style.touchAction = state.touchAction
+    },
+  }
+  extHost = createExtensionHost(
+    {
+      chartId,
+      container: chartBox,
+      overlay: chromeBox,
+      symbol: () => symbol,
+      timeframe: () => tf,
+      bars: () => bars,
+      replay: extReplay,
+      theme: extTheme,
+      formatter: extFormatter,
+      pane: extPane,
+      series: extSeries,
+    },
+    options.extensions ?? [],
+  )
+  // The pane lane: a layout re-tile and a window resize both reach an overlay the same way.
+  let paneObserver: ResizeObserver | null = null
+  if (typeof ResizeObserver === 'function') {
+    paneObserver = new ResizeObserver(() => {
+      if (!removed) extHost?.paneChanged(extPane())
+    })
+    paneObserver.observe(chartBox)
+  }
+
   // The initial load waits on the feed's OPTIONAL capability declaration: opening with a sticky tf the
   // feed already declared unservable would dead-end the first paint on a refusal. A declaring feed
   // resolves the initial tf first (a failed/empty declaration constrains nothing); a feed without
@@ -1097,7 +1227,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     return subIntervalsFor(tf).find((s) => s.tf === replayManualInterval) ?? null
   }
 
-  const replaySync = () =>
+  const replaySync = () => {
     replayBar?.sync({
       playing: replayPlaying,
       cursor: replayCursor,
@@ -1105,6 +1235,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       speed: replaySpeed,
       interval: replayAutoInterval ? 'auto' : (replayManualInterval ?? 'auto'),
     })
+    // Extensions see replay as a VIEW state, not as a session: entered, where the cursor sits, and
+    // exited. What a host does about it (disarming a money gesture, say) is the host's rule.
+    extHost?.replayChanged(extReplay())
+  }
   const replayPaint = () => {
     if (!replayAll) return
     bars = replayAll.slice(0, replayCursor)
@@ -1200,6 +1334,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     replayBar = null
     replayLockRefresh()
     execMarks?.setScope('live') // the replay history stays held, but only live fills may draw now
+    extHost?.replayChanged(extReplay())
   }
   const replayApi: ChartReplayApi = {
     start(atSec) {
@@ -1376,17 +1511,23 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       theme,
       i18n,
     )
-    chartBox.addEventListener('contextmenu', (e) => {
-      const price = priceAt(e.clientY)
-      if (price == null) return
-      e.preventDefault()
+    /** Raise the level menu at a viewport point — the right-click and the touch hold share it, so
+     *  a finger and a mouse reach the same rows. False when the point holds no readable level. */
+    const raiseMenuAt = (clientX: number, clientY: number): boolean => {
+      const price = priceAt(clientY)
+      if (price == null) return false
       lastMenuPrice = price
       const last = bars.length ? bars[bars.length - 1] : null
       const mark = last ? last.c : null
+      const priceText = price.toLocaleString(i18n.tag(), { maximumFractionDigits: 8 })
+      // Contributed rows are asked for at the raise, so they can depend on the level pressed, and
+      // they carry their own actions — the widget routes nothing on their behalf.
+      const extra: readonly ChartExtensionMenuItem[] =
+        extHost?.menuItems({ price, priceText, symbol, timeframe: tf, clientX, clientY }) ?? []
       contextMenu?.open(
-        { clientX: e.clientX, clientY: e.clientY },
+        { clientX, clientY },
         {
-          priceText: price.toLocaleString(i18n.tag(), { maximumFractionDigits: 8 }),
+          priceText,
           symbol,
           aboveMarket: mark != null && mark > 0 ? price >= mark : null,
           tradable: true,
@@ -1398,7 +1539,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
           drawingCount: drawingsHandle?.count() ?? 0,
           marksHidden: null, // the widget's marks switch live/replay, not shown/hidden
         },
+        extra,
       )
+      return true
+    }
+    chartBox.addEventListener('contextmenu', (e) => {
+      if (raiseMenuAt(e.clientX, e.clientY)) e.preventDefault()
     })
   }
 
@@ -1438,6 +1584,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     })
     tradeLines?.update({ overrides: eff.trading })
     primitives?.syncLook()
+    extHost?.themeChanged(extTheme())
   }
 
   // Pane-composition sync. Driving a pane through the setters MUTES its own subscriptions for the
@@ -1553,7 +1700,19 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
    *  to every backend — the reader here is the only place an upgrade path can ever live. */
   const CONTENT_V = 1
   const serializeContent = (): string =>
-    JSON.stringify({ v: CONTENT_V, symbol, tf, scale: scaleMode, hidden: [...hiddenIndicators], appearance: eff.appearance, compares: compareHandle!.serialize() })
+    JSON.stringify({
+      v: CONTENT_V,
+      symbol,
+      tf,
+      scale: scaleMode,
+      hidden: [...hiddenIndicators],
+      appearance: eff.appearance,
+      compares: compareHandle!.serialize(),
+      // Extension state rides in its own namespace, keyed by extension id, so a chart saved with
+      // one set of extensions loads under another without either reading the other's state. An
+      // additive key: a blob written before extensions existed simply has none.
+      ext: extHost?.serialize() ?? {},
+    })
 
   const api: ChartWidgetApi = {
     symbol: () => symbol,
@@ -1572,6 +1731,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       tradeLines?.update({ symbol: next })
       legend?.setHeader(symbol, tf)
       events.onSymbolChange?.(next)
+      // Before the load: a symbol-scoped extension re-attaches against the new market, so its first
+      // sight of the chart is the new symbol's empty buffer rather than the old symbol's bars.
+      extHost?.symbolChanged(next)
       load()
     },
     setTimeframe(next: string) {
@@ -1581,6 +1743,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       drawingsHandle?.setTimeframe(next)
       legend?.setHeader(symbol, tf)
       events.onTimeframeChange?.(next)
+      extHost?.timeframeChanged(next)
       load()
       compareHandle!.setTimeframe()
     },
@@ -1621,7 +1784,16 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       serialize: () => ({ symbol, timeframe: tf, content: serializeContent() }),
       restore(content: string) {
         if (removed) return
-        const c = JSON.parse(content) as { v?: unknown; symbol?: unknown; tf?: unknown; scale?: unknown; hidden?: unknown; appearance?: unknown; compares?: unknown }
+        const c = JSON.parse(content) as {
+          v?: unknown
+          symbol?: unknown
+          tf?: unknown
+          scale?: unknown
+          hidden?: unknown
+          appearance?: unknown
+          compares?: unknown
+          ext?: unknown
+        }
         if (c.v !== CONTENT_V) throw new Error(`unsupported chart content version ${String(c.v)}`)
         if (typeof c.symbol === 'string' && c.symbol) api.setSymbol(c.symbol)
         if (typeof c.tf === 'string' && c.tf) api.setTimeframe(c.tf)
@@ -1637,7 +1809,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         // so the policy only re-arms the flip-back for compares the restore brings in.
         compareHandle!.restore(Array.isArray(c.compares) ? c.compares : [])
         compareScalePolicy()
+        // Extensions restore LAST: the symbol, timeframe and scale a saved chart carries are the
+        // world an extension's state describes, so it must already be the world on screen.
+        extHost?.restore(c.ext)
       },
+    },
+    commands: {
+      list: () => extHost?.commands.list() ?? [],
+      execute: (id: string) => extHost?.commands.execute(id) ?? false,
     },
     drawings: drawingsApi,
     ticket: ticketApi,
@@ -1657,6 +1836,11 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       abandonReplay()
       if (saveNeededTimer) clearTimeout(saveNeededTimer)
       if (indicatorTrailer) clearTimeout(indicatorTrailer)
+      paneObserver?.disconnect()
+      // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
+      // off. Detaching after the renderer is gone would leave their teardown reaching into nothing.
+      extHost?.detach()
+      extHost = null
       ticket?.destroy()
       tradingUnsub?.()
       accountPanel?.destroy()

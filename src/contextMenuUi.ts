@@ -9,9 +9,20 @@ import { chartContextMenu, type ChartMenuAction, type ChartMenuContext, type Cha
 import type { ResolvedTheme } from './host'
 import { createChartI18n, type ChartI18n } from './i18n'
 
+/** A row the HOST contributed for this raise (through the chart's extension seam). It carries its
+ *  own action, so the painter routes nothing and a contributed row can never collide with a
+ *  built-in id. Structural on purpose: the menu has no dependency on who contributed or why. */
+export interface ContextMenuExtraRow {
+  label: string
+  shortcut?: string
+  checked?: boolean
+  run(): void
+}
+
 export interface ContextMenuHandle {
-  /** Raise the menu at a viewport point, for the level the caller resolved. */
-  open(at: { clientX: number; clientY: number }, ctx: ChartMenuContext): void
+  /** Raise the menu at a viewport point, for the level the caller resolved. `extra` appends one
+   *  group of contributed rows below the built-ins; an empty list adds no separator. */
+  open(at: { clientX: number; clientY: number }, ctx: ChartMenuContext, extra?: readonly ContextMenuExtraRow[]): void
   close(): void
   destroy(): void
 }
@@ -64,12 +75,15 @@ export function mountContextMenu(
 
   /** The level the open menu is showing rows for — kept so the rows can be rebuilt in place. */
   let openCtx: ChartMenuContext | null = null
+  /** The contributed rows this raise was given, kept for the same rebuild. */
+  let openExtra: readonly ContextMenuExtraRow[] = []
 
   const close = (): void => {
     box.style.display = 'none'
     backdrop.style.display = 'none'
     box.replaceChildren()
     openCtx = null
+    openExtra = []
   }
   backdrop.addEventListener('pointerdown', close)
   const onKey = (e: KeyboardEvent): void => {
@@ -79,59 +93,75 @@ export function mountContextMenu(
 
   container.append(backdrop, box)
 
-  const fill = (ctx: ChartMenuContext): void => {
+  const separator = (): HTMLDivElement => {
+    const sep = document.createElement('div')
+    sep.style.cssText = `height:1px;margin:6px 0;background:${theme.gridColor};`
+    return sep
+  }
+
+  /** One row, built the same way whichever list it came from — so a contributed row is
+   *  indistinguishable from a built-in one at the glass. */
+  const rowButton = (row: { label: string; shortcut?: string; checked?: boolean; icon?: ChartMenuIcon }, act: () => void): HTMLButtonElement => {
+    const b = document.createElement('button')
+    b.type = 'button'
+    b.style.cssText =
+      `display:flex;align-items:center;gap:6px;width:100%;height:${ROW_H}px;padding:0 20px 0 0;` +
+      `background:none;border:0;color:${theme.textColor};font:inherit;text-align:left;cursor:pointer;`
+    b.addEventListener('mouseenter', () => (b.style.background = theme.gridColor))
+    b.addEventListener('mouseleave', () => (b.style.background = 'none'))
+
+    // Every row reserves the glyph cell, so labels line up whether or not one is drawn.
+    const cell = document.createElement('span')
+    cell.style.cssText = 'display:flex;width:36px;flex:0 0 36px;align-items:center;justify-content:center;'
+    const glyph = row.checked ? 'check' : row.icon
+    if (glyph) cell.innerHTML = svg(glyph)
+
+    const label = document.createElement('span')
+    label.textContent = row.label
+    label.style.cssText = 'flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
+
+    b.append(cell, label)
+    if (row.shortcut) {
+      const sc = document.createElement('span')
+      sc.textContent = row.shortcut
+      sc.style.cssText = `flex:0 0 auto;padding-left:10px;padding-top:2px;font-size:11px;opacity:.55;`
+      b.append(sc)
+    }
+    b.addEventListener('click', () => {
+      close()
+      act()
+    })
+    return b
+  }
+
+  const fill = (ctx: ChartMenuContext, extra: readonly ContextMenuExtraRow[]): void => {
     box.replaceChildren()
     for (const row of chartContextMenu({ ...ctx, t: ctx.t ?? strings.t })) {
       if (row.kind === 'separator') {
-        const sep = document.createElement('div')
-        sep.style.cssText = `height:1px;margin:6px 0;background:${theme.gridColor};`
-        box.append(sep)
+        box.append(separator())
         continue
       }
-      const b = document.createElement('button')
-      b.type = 'button'
-      b.style.cssText =
-        `display:flex;align-items:center;gap:6px;width:100%;height:${ROW_H}px;padding:0 20px 0 0;` +
-        `background:none;border:0;color:${theme.textColor};font:inherit;text-align:left;cursor:pointer;`
-      b.addEventListener('mouseenter', () => (b.style.background = theme.gridColor))
-      b.addEventListener('mouseleave', () => (b.style.background = 'none'))
-
-      // Every row reserves the glyph cell, so labels line up whether or not one is drawn.
-      const cell = document.createElement('span')
-      cell.style.cssText = 'display:flex;width:36px;flex:0 0 36px;align-items:center;justify-content:center;'
-      const glyph = row.checked ? 'check' : row.icon
-      if (glyph) cell.innerHTML = svg(glyph)
-
-      const label = document.createElement('span')
-      label.textContent = row.label
-      label.style.cssText = 'flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'
-
-      b.append(cell, label)
-      if (row.shortcut) {
-        const sc = document.createElement('span')
-        sc.textContent = row.shortcut
-        sc.style.cssText = `flex:0 0 auto;padding-left:10px;padding-top:2px;font-size:11px;opacity:.55;`
-        b.append(sc)
-      }
       const id = row.id
-      b.addEventListener('click', () => {
-        close()
-        run(id)
-      })
-      box.append(b)
+      box.append(rowButton(row, () => run(id)))
     }
+    // Contributed rows come LAST, as their own group: the chart's own actions keep their measured
+    // order and position, and a host cannot displace them by contributing.
+    if (extra.length === 0) return
+    if (box.childElementCount > 0) box.append(separator())
+    for (const row of extra) box.append(rowButton(row, () => row.run()))
   }
 
   // A language switch under an OPEN menu rebuilds its rows where they stand: the labels were
   // resolved when it was raised, so nothing else would replace them until the next right-click.
   const unsubscribe = strings.onChange(() => {
-    if (openCtx) fill(openCtx)
+    if (openCtx) fill(openCtx, openExtra)
   })
 
   return {
-    open(at, ctx) {
+    open(at, ctx, extra = []) {
       openCtx = ctx
-      fill(ctx)
+      openExtra = extra
+      fill(ctx, extra)
 
       // Clamp into the viewport: a chart at the window's edge would otherwise raise a menu that
       // runs off it. Measured after filling, because the height depends on which rows survived.

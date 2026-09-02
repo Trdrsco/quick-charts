@@ -10,6 +10,7 @@ import type { IndicatorManifest, IndicatorOverrides } from './indicatorModel'
 import type { TradingAdapter } from '@trdrs/broker'
 import type { BuiltInLocaleCode } from '@trdrs/i18n'
 import type { ChartI18n } from './i18n'
+import type { ChartExtension } from './extension'
 
 /** Theme overrides — a host tints the chart to its own palette. Every field optional; omitted values keep
  *  the built-in default. Colors are any CSS color string. */
@@ -124,6 +125,12 @@ export interface ChartWidgetOptions {
   /** A host-owned localization adapter. When supplied, it replaces `locale` and may use any stable
    *  locale codes and BCP 47 tags. The host owns its dictionaries, loading policy, and fallback. */
   i18n?: ChartI18n
+  /** Extensions the chart attaches at mount: host code that draws on the chart, contributes menu
+   *  rows and commands, and stores viewer state in the chart's save blob. Each is attached once per
+   *  chart — a layout attaches them per pane — and torn down with it, including anything it drew.
+   *  The contract they receive is `ChartExtensionContext`: prices, times, bars, theme and pane
+   *  geometry, and nothing about accounts or money. */
+  extensions?: readonly ChartExtension[]
   events?: ChartWidgetEvents
 }
 

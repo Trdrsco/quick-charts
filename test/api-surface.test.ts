@@ -8,6 +8,11 @@ import { describe, expect, it } from 'vitest'
 import * as api from '../src/index'
 
 const SURFACE: Record<string, string> = {
+  // Unchanged by the extension seam, on purpose: `ChartExtension` and its context, handle, series
+  // capabilities, menu rows and command specs are TYPES only. A host writes an object against them
+  // and hands it to `ChartWidgetOptions.extensions`; every runtime piece stays inside the chart,
+  // which is exactly what lets the chart take back whatever an extension drew. The clean-room
+  // consumer compiles those declarations.
   // Breaking (major, 2026-08-29): the pure price math and the trading contracts moved to the
   // seam package @trdrs/broker — its own surface pin owns them now.
   // Additive (minor): the multi-chart layout plane — arrangement catalog + layout host, 2026-08-22.
