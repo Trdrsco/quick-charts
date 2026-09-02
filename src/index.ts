@@ -184,3 +184,30 @@ export {
   type ChartMessageKey,
   type ChartTranslate,
 } from './i18n'
+
+// ── W1-B: symbology, the price formatter, and the revisioned resource contract ────────────────
+// The symbology contract and its formatter are root Quick Charts API (DECISIONS.md: no symbology
+// subpath, package, or repository). `SymbolInfo`, `ChartMeta`, `ChartSaveLoadAdapter`,
+// `DrawingScope`, `TemplateKind` and `TemplateMeta` live in `symbology.ts` and `resources.ts` and
+// are NOT re-exported here: the datafeed and save/load modules still export those names, and W2-A
+// promotes the new definitions when it retires the old shapes.
+export type { DataStatus, PriceFormat, TickBand } from './symbology'
+export { parseTickBands, tickBandFor } from './symbology'
+export type { NumericPunctuation, PriceFormatter, PriceFormatterOptions } from './priceFormatter'
+export { createPriceFormatter } from './priceFormatter'
+export type { UdfSymbolResponse } from './udfSymbology'
+export { udfPriceFormat, udfSymbolInfo } from './udfSymbology'
+export type {
+  ChartBody,
+  DrawingsBody,
+  DrawingsMeta,
+  LayoutBody,
+  LayoutMeta,
+  MemoryResourcesOptions,
+  ResourceRef,
+  ResourceStore,
+  TemplateBody,
+  WriteOutcome,
+} from './resources'
+export { memorySaveLoadAdapter, ResourceAbortError } from './resources'
+// ── end W1-B ──────────────────────────────────────────────────────────────────────────────────
