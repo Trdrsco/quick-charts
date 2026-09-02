@@ -158,5 +158,18 @@ export function createChartI18n(initial: string = DEFAULT_LOCALE, options: Chart
     api.t = translator()
     for (const listener of listeners) listener()
   }
+  // Constructed against a language whose chunk is not in memory, the object fetches it now rather
+  // than reading English until the next switch; listeners hear it land.
+  if (!dict) {
+    const mine = ++epoch
+    void dictionaries
+      .load(locale)
+      .catch(() => null)
+      .then((loaded) => {
+        if (mine !== epoch) return // a switch superseded the construction-time load
+        dict = loaded
+        rebuild()
+      })
+  }
   return api
 }

@@ -12,6 +12,23 @@ import { packedFileList, packedText } from './boundary/scan'
 
 const KEYS = Object.keys(en)
 
+// First in the file on purpose: the German chunk must not be in memory yet, or the construction-
+// time fetch this proves would be indistinguishable from a cache hit.
+describe('createChartI18n, constructed in a language whose chunk is not in memory', () => {
+  it('fetches that language now and tells its listeners when it lands, rather than reading English until the next switch', async () => {
+    expect(chartDictionaries.ifLoaded('de')).toBeNull()
+    const i18n = createChartI18n('de')
+    const heard = vi.fn()
+    i18n.onChange(heard)
+    expect(i18n.locale()).toBe('de')
+    expect(i18n.t('legend.hideIndicator')).toBe('Hide indicator') // English until the chunk lands
+    await chartDictionaries.load('de')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(heard).toHaveBeenCalledTimes(1)
+    expect(i18n.t('legend.hideIndicator')).toBe('Indikator ausblenden')
+  })
+})
+
 describe('the widget catalog', () => {
   it('is assembled from surface catalogs that define no key twice', () => {
     expect(catalogs.reduce((n, c) => n + Object.keys(c).length, 0)).toBe(KEYS.length)
