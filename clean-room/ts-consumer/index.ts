@@ -25,7 +25,6 @@ import {
   type FeedBar,
   type HistoryPage,
   type IndicatorDefinition,
-  type SessionClass,
 } from 'quickcharts'
 import type { AccountSnapshot, BrokerAdapter, TradingAdapter, TradingCapabilities } from '@trdrs/broker'
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
@@ -108,7 +107,6 @@ const feed: ChartDatafeed = {
     return { hits: [{ symbol: q.toUpperCase(), name: 'Stub', exchange: 'X', type: 'crypto' }], hasMore: false }
   },
   async resolve(symbol) {
-    const sessionClass: SessionClass = 'crypto'
     return {
       ticker: symbol,
       name: symbol,
@@ -122,7 +120,6 @@ const feed: ChartDatafeed = {
       dataStatus: 'streaming',
       volumePrecision: 3,
       format: { pricescale: 10, minmov: 5 },
-      sessionClass,
     }
   },
   async history(): Promise<HistoryPage> {
