@@ -253,3 +253,11 @@ export { frameRange, MIN_BAR_SPACING, RANGE_PRESETS, rangeAvailable, rangePreset
 export type { MatchSegment, RecentsPort, SearchController, SearchControllerOptions, SearchState, SpreadOperator } from './search'
 export { createSearchController, isSymbolPair, looksLikeSpread, matchSegments, memoryRecents, promoteRecent, RECENT_SYMBOLS_CAP, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery } from './search'
 // ── end W3-B ──────────────────────────────────────────────────────────────────────────────────
+// ── W3-C: the drawing workflow's host inputs ─────────────────────────────────────────────
+// The drawing API is its own entrypoint (`quickcharts/drawings`), and everything about drawings
+// lives there. Two contracts surface here as well, and only because the WIDGET carries them: a
+// host hands the chart its asset port in the widget options, and the widget persists the drawing
+// preference record through the storage port it was given. Both are types; their models, defaults
+// and codecs stay on the subpath.
+export type { DrawingAssetPort, DrawingPreferences } from './drawings/index'
+// ── end W3-C ──────────────────────────────────────────────────────────────────────────

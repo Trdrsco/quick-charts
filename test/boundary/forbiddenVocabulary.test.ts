@@ -25,7 +25,7 @@ interface Term {
 
 /** The target vocabulary, grouped by the stream that removes it. Every pattern is judged against
  *  package code (or the app chart tree for the two toolbar words), never the catalogs. */
-const TARGET: Record<'W1-A' | 'W2-A' | 'W3-A' | 'W5-A', { reason: string; terms: Term[] }> = {
+const TARGET: Record<'W1-A' | 'W2-A' | 'W3-A' | 'W3-C' | 'W5-A', { reason: string; terms: Term[] }> = {
   // PCL-4 datafeed narrowing and symbology. Landed: SymbolInfo owns the price-format facts and the
   // quote board and the onQuote callback are gone from the free datafeed; the words stay listed so
   // a return is caught.
@@ -64,14 +64,17 @@ const TARGET: Record<'W1-A' | 'W2-A' | 'W3-A' | 'W5-A', { reason: string; terms:
       { term: 'cssText', pattern: /\bcssText\b/, scope: 'package' },
     ],
   },
-  // PCL-5 app convergence: the package drawing toolbar hides chart-owned drawings and indicators
-  // only; the app's trades hide mode and its position/order override writes are deleted.
+  // PCL-5 exclusion ledger: the eye reaches chart-owned drawings and indicators only. Landed: the
+  // block below runs; the word stays listed so a return is caught.
+  'W3-C': {
+    reason: 'the trades hide mode and its position/order override writes are gone from the rail',
+    terms: [{ term: "'trades' hide mode", pattern: /'trades'/, scope: 'app' }],
+  },
+  // PCL-5 app convergence: the app stops declaring a hide mode of its own and reads the package
+  // model instead, when it mounts the package toolbar.
   'W5-A': {
-    reason: 'the toolbar hides chart-owned drawings and indicators only',
-    terms: [
-      { term: 'HideMode', pattern: /\bHideMode\b/, scope: 'app' },
-      { term: "'trades' hide mode", pattern: /'trades'/, scope: 'app' },
-    ],
+    reason: 'the hide mode is the package model, not an app type',
+    terms: [{ term: 'HideMode', pattern: /\bHideMode\b/, scope: 'app' }],
   },
 }
 
@@ -114,7 +117,6 @@ describe('the forbidden vocabulary, as built', () => {
       'ResolvedTheme',
       'cssText',
       'HideMode',
-      "'trades' hide mode",
     ])
   })
 })

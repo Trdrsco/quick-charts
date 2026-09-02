@@ -907,22 +907,86 @@ layer.armTool('rectangle')
 layer.destroy()
 ```
 
+### `quickcharts/drawings`
+
+Everything about drawings a host builds its own UI from is one subpath. A host that never draws
+never imports any of it.
+
+```ts
+import { buildRailGroups, drawingTools, parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from 'quickcharts/drawings'
+
+// The catalog: 90 tools in 14 categories, read-only.
+const trendLine = drawingTools.get('trend_line')
+const fibs = drawingTools.byCategory('fibonacci')
+
+// The rail's own structure, as data: seven groups, their sections, and a catalog key per heading.
+for (const group of buildRailGroups()) {
+  for (const section of group.sections) note(`${group.id}/${section.label}: ${section.tools.length}`)
+}
+
+// Persistence: the store document, and live drawings back out of one symbol's bucket.
+const store = parseDrawingsStore(localStorage.getItem('acme.chart.drawings'))
+const drawings = restoreDrawings(store['ES'] ?? [])
+localStorage.setItem('acme.chart.drawings', serializeDrawingsStore(store))
+```
+
+The subpath carries the workflow models too: what the rail's eye blanks (`HideMode`, which reaches
+chart-owned drawings and indicators and nothing else), the cursor modes and the two transient
+tools, the magnet policy over `magnetSnap`, the lock policy, the remove menu, favorites over a
+`FavoritesPort`, the standing preference record, and per-tool defaults and named templates over
+`ChartSaveLoadAdapter.templates('drawing')`. Each is a pure function or a plain record, so a host
+builds its own controls without reimplementing the decisions behind them.
+
+```ts
+import { blanks, chooseHideMode, DEFAULT_HIDE_STATE, DrawingTemplates } from 'quickcharts/drawings'
+
+const eye = chooseHideMode(DEFAULT_HIDE_STATE, 'all') // points at All and blanks it in one gesture
+if (blanks(eye, 'indicators')) note('indicators are blanked')
+
+const templates = new DrawingTemplates(myBackend.templates('drawing'))
+await templates.save('trend_line', 'Thick red', { style: { lineWidth: 4, lineColor: '#ff3b30' } })
+const preset = await templates.defaultFor('trend_line')
+```
+
+Image-backed and glyph tools reach the host through one explicit asset port. The library owns the
+rules (JPG or PNG, 2 MB, a 2000 px longest edge, downscaled rather than refused) and names each
+refusal with a code that resolves through the chart's own catalog; the host owns the bytes.
+
+```ts
+import { checkImageFile, fittedSize, IMAGE_ACCEPT, type DrawingAssetPort } from 'quickcharts/drawings'
+
+const assets: DrawingAssetPort = {
+  async intakeImage(file) {
+    const bad = checkImageFile(file)
+    if (bad) return { ok: false, ...bad }
+    const { width, height } = fittedSize(1200, 900)
+    return { ok: true, asset: { dataUrl: await myBackend.read(file), width, height, downscaled: false } }
+  },
+  glyphSource: (glyph) => myBackend.emojiUrl(glyph),
+}
+note(IMAGE_ACCEPT)
+```
+
 What to know:
 
-- **Scope is deliberate.** This host places *fixed-anchor tools without text* — trend lines,
-  rays, shapes, fibs, patterns, and so on. `armTool` **throws** for tools needing chrome it does
-  not have (freehand strokes, multipoint runs, instant position tools, text-bearing tools);
-  `placeableByWidget(type)` answers in advance, so a custom rail can filter honestly.
+- **The subpath is a subset, not a re-export.** The drawing classes, the model store and the
+  mutable registry stay inside the library. There is no door for a host-authored tool: tool
+  contribution belongs to the access-policy plane, not to a bare registration call.
+- **Widget placement scope is deliberate.** The built-in host places *fixed-anchor tools without
+  text*: trend lines, rays, shapes, fibs, patterns, and so on. `armTool` **throws** for tools
+  needing chrome it does not have (freehand strokes, multipoint runs, instant position tools,
+  text-bearing tools); `placeableByWidget(type)` answers in advance, so a custom rail can filter
+  honestly.
 - **Persistence speaks a shared codec.** The store document (`{ [symbol]: SerializedDrawing[] }`,
-  via `parseDrawingsStore`/`serializeDrawingsStore` from `@trdrs/chart-drawings`) is the SAME
-  document every host of the codec reads and writes — drawings survive moving between hosts, and
-  restored documents may contain tools beyond this host's placement scope: they render, select,
-  move and persist fine; only their *creation* needs richer chrome.
-- **Keys are widget-scoped.** Delete removes the selection, Escape cancels a placement/disarms —
-  bound to the chart element (focused on interaction), never the page, so an embedded chart cannot
-  swallow the host page's keys.
-- **Gestures follow the standard grammar.** Press-drag-release or click…click to place; drag a
-  drawing to move it (rigid whole-bar translation — anchors never drift apart); grab an anchor
+  via `parseDrawingsStore`/`serializeDrawingsStore`) is the SAME document every host of the codec
+  reads and writes, so drawings survive moving between hosts. A restored document may hold tools
+  beyond the built-in host's placement scope: they render, select, move and persist fine; only
+  their *creation* needs richer chrome.
+- **Keys are widget-scoped.** Delete removes the selection, Escape cancels a placement or disarms,
+  bound to the chart element (focused on interaction) and never the page, so an embedded chart
+  cannot swallow the host page's keys.
+- **Gestures follow the standard grammar.** Press-drag-release, or click then click, to place; drag
+  a drawing to move it (rigid whole-bar translation, so anchors never drift apart); grab an anchor
   handle to reshape; locked drawings select but refuse edits.
 
 ## Extensions

@@ -6,7 +6,6 @@
     "@trdrs/account-manager": "file:../.artifacts/trdrs-account-manager-0.1.0.tgz",
     "@trdrs/broker": "file:../.artifacts/trdrs-broker-0.1.0.tgz",
     "quickcharts": "file:../.artifacts/quickcharts-0.0.0-staging.tgz",
-    "@trdrs/chart-drawings": "file:../.artifacts/trdrs-chart-drawings-0.1.0.tgz",
     "@trdrs/i18n": "file:../.artifacts/trdrs-i18n-0.1.0.tgz",
     "@trdrs/news": "file:../.artifacts/trdrs-news-0.1.0.tgz",
     "@trdrs/order-ticket": "file:../.artifacts/trdrs-order-ticket-0.2.0.tgz",

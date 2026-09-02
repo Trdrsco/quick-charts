@@ -3,7 +3,7 @@
 // inventory-pinned"). The registry is read at runtime; the list here is the pin. A tool added,
 // renamed, or moved between categories changes this file on purpose, in the same commit, and the
 // diff is the release note.
-import { TOOL_CATEGORIES, toolRegistry } from '@trdrs/chart-drawings'
+import { TOOL_CATEGORIES, drawingTools } from 'quickcharts/drawings'
 import { describe, expect, it } from 'vitest'
 
 /** Every registered tool type with its category, sorted by type. */
@@ -120,7 +120,7 @@ const CATEGORIES: readonly (readonly [category: string, count: number])[] = [
 
 describe('the 90 drawing registrations', () => {
   it('pins every registered tool type and its category, sorted', () => {
-    const registered = toolRegistry
+    const registered = drawingTools
       .all()
       .map((t) => [t.type, t.category] as const)
       .sort((a, b) => a[0].localeCompare(b[0]))
@@ -130,20 +130,20 @@ describe('the 90 drawing registrations', () => {
 
   it('pins the 14 categories in rail order, and the count under each', () => {
     expect([...TOOL_CATEGORIES]).toEqual(CATEGORIES.map(([c]) => c))
-    for (const [category, count] of CATEGORIES) expect(toolRegistry.byCategory(category as never).length, category).toBe(count)
+    for (const [category, count] of CATEGORIES) expect(drawingTools.byCategory(category as never).length, category).toBe(count)
     expect(CATEGORIES.reduce((n, [, c]) => n + c, 0)).toBe(90)
   })
 
   it('registers every type once and under a listed category', () => {
-    const types = toolRegistry.all().map((t) => t.type)
+    const types = drawingTools.all().map((t) => t.type)
     expect(new Set(types).size).toBe(types.length)
     const listed = new Set(CATEGORIES.map(([c]) => c))
-    for (const t of toolRegistry.all()) expect(listed.has(t.category), t.type).toBe(true)
+    for (const t of drawingTools.all()) expect(listed.has(t.category), t.type).toBe(true)
   })
 
   it('names the two position tools as analytical drawings: the registry carries no order verb', () => {
     for (const type of ['long_position', 'short_position']) {
-      const def = toolRegistry.get(type)!
+      const def = drawingTools.get(type)!
       expect(def.category).toBe('forecasting')
       expect(def.placement).toBe('instant')
     }

@@ -8,12 +8,12 @@ const fail = (msg) => {
   process.exit(1)
 }
 
-Promise.all([import('quickcharts'), import('@trdrs/chart-drawings')])
+Promise.all([import('quickcharts'), import('quickcharts/drawings')])
   .then(([chart, drawings]) => {
     if (typeof chart.createChart !== 'function') fail('createChart missing')
     if (chart.olderPageVerdict({ bars: [], noData: true }, 100, false).kind !== 'end') fail('olderPageVerdict wrong')
     if (chart.tfToUdfResolution('30m') !== '30') fail('tfToUdfResolution wrong')
-    if (drawings.toolRegistry.all().length < 80) fail('toolRegistry too small')
+    if (drawings.drawingTools.all().length < 80) fail('toolRegistry too small')
     console.log('clean-room js (cjs dynamic-import): ok')
   })
   .catch((e) => fail(String(e)))
