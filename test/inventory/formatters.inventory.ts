@@ -123,10 +123,10 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   { file: 'packages/chart-drawings/src/tools/annotations.ts', symbols: ['this.formatPrice'], kind: 'symbology', surface: 'price label and price note' },
   {
     file: 'packages/chart-drawings/src/tools/forecasting.ts',
-    symbols: ['this.formatPrice', 'qtyText'],
+    symbols: ['this.formatPrice', 'moneyText', 'qtyText'],
     kind: 'symbology',
-    surface: 'long and short position entry, stop, and target labels; position forecast pills',
-    finding: 'the P&L amount of an analytical position is written through the price port; the quantity keeps its own text.',
+    surface: 'long and short position entry, stop, and target level labels through the price port; position forecast pills',
+    finding: "the position's P&L and amounts at target and stop are money and write through the drawings package's declared two-decimal money stand-in (core/money.ts) until a money formatter port exists; the quantity keeps its own text.",
   },
   {
     file: 'packages/chart-drawings/src/tools/measurement.ts',
@@ -213,7 +213,7 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   {
     file: 'apps/web/src/chart/useChartTradeLayer.ts',
-    symbols: ['priceFormatterOf(priceFormat', '.precision()'],
+    symbols: ['precisionOf(priceFormat)'],
     kind: 'execution',
     surface: 'the execution marks take the symbol display precision for their price labels; the lines snap to the broker tick',
     finding: 'a display precision feeding an executable surface; chart-trading takes broker facts instead.',
