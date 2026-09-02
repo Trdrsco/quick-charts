@@ -483,13 +483,14 @@ Beyond the basics, the widget carries:
 
 - **Scale modes** — `setScaleMode('log' | 'percent' | 'indexed' | 'normal')` on the price scale,
   persisted through `ChartStorage`.
-- **Session bands** (on by default; `sessions: false` opts out) — non-regular-hours stretches shade
-  under the candles, driven by the session model the feed serves via `resolve()`'s `sessionClass`
-  (exchange-timezone session tables live in the package; crypto never bands; intraday only; an
-  UNRESOLVED symbol never bands — the honest default, enforced: the primitive's `kind` getter
-  admits `null` and a null draws nothing). A host that changes the model outside a `resolve()` —
-  or supplies its own — must call the primitive's `refresh()` when it does: the chart does not
-  invalidate the pane on a getter's value changing.
+- **Session bands** (on by default; `sessions: false` opts out) — every stretch outside regular
+  hours shades under the candles, driven by the session model built from the symbol's own
+  `session`, `sessionHolidays`, `corrections` and `subsessions` in `resolve()`'s answer (see
+  Timezones and sessions). A continuous market never bands; intraday only; an UNRESOLVED symbol
+  never bands — the honest default, enforced: the primitive's `model` getter admits `null` and a
+  null draws nothing. A host that changes the model outside a `resolve()` — or supplies its own —
+  must call the primitive's `refresh()` when it does: the chart does not invalidate the pane on
+  a getter's value changing.
 - **A legend** (on by default; `legend: false` removes it) — the symbol/timeframe header with a
   market-status dot and four price-scale chips (normal / log / percent / indexed — the SAME
   application path as `setScaleMode`, so the api and the chips can never disagree), plus one chip
@@ -727,9 +728,12 @@ current offset, so daylight-saving changes reorder the list on their own.
 A symbol's session facts build a session model: `session` in the reference grammar (`0930-1600`,
 `1700-1600:23456` with `1` as Sunday, `24x7`, several stretches per day, previous-day markers),
 `sessionHolidays` as `YYYYMMDD` full closures, and `corrections` as `SESSION:YYYYMMDD` overrides
-that outrank a holiday. Subsessions split extended hours into pre-market, regular and after-hours.
-The model answers the session state at an instant, and the market status combines that state with
-the feed's `dataStatus`: an end-of-day feed is its own state, never an open market.
+that outrank a holiday. `subsessions` (`regular`, `extended`, `premarket`, `postmarket`, each
+with its own session string and `sessionCorrections`) split extended hours into pre-market,
+regular and after-hours; a symbol without them has one continuous session. The model answers the
+session state at an instant, the next change and the exchange-local day's timeline, and the
+market status combines the state with the feed's `dataStatus`: an end-of-day feed is its own
+state, never an open market.
 
 ```ts
 import { createChartI18n, marketStatus, marketStatusText, marketStatusTitle, parseSessionModel, sessionStateAt } from 'quickcharts'
@@ -744,6 +748,32 @@ if (model) {
   marketStatusText(t, status, now) // 'Market is open for regular trading. Closes in 6 hours.'
 }
 parseSessionModel({ timezone: 'Etc/UTC', session: 'later' }) // null: the chart claims no session it cannot read
+```
+
+Which named session a chart displays is the reference's `subsession_id`, a per-chart preference
+with `regular` as the default. On a symbol with extended hours, `regular` filters intraday bars to
+regular hours and `extended` shows every bar; a symbol with one continuous session has nothing to
+filter.
+
+```ts
+import { DEFAULT_SUBSESSION, hasExtendedHours, parseSessionModel, subsessionBarFilter } from 'quickcharts'
+
+const equity = parseSessionModel({
+  timezone: 'America/New_York',
+  session: '0930-1600',
+  subsessions: [
+    { id: 'regular', session: '0930-1600' },
+    { id: 'extended', session: '0400-2000' },
+    { id: 'premarket', session: '0400-0930' },
+    { id: 'postmarket', session: '1600-2000' },
+  ],
+})
+if (equity) {
+  hasExtendedHours(equity) // true
+  const keep = subsessionBarFilter(equity, DEFAULT_SUBSESSION) // a function: regular hours only
+  keep?.(Date.UTC(2026, 6, 13, 14) / 1000) // true, 10:00 in New York
+  subsessionBarFilter(equity, 'extended') // null: nothing to filter
+}
 ```
 
 ## Ranges
