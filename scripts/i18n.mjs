@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The localization workbench: one command that keeps twenty languages in step with the English
-// source, for both catalogs (the app's and the chart SDK's). English is edited by hand; every other
+// source, for every catalog (the app's, the chart's, and the private organs'). English is edited by hand; every other
 // language file is GENERATED from English plus its existing translations, so a developer touches
 // one line and never twenty files.
 //
@@ -30,11 +30,17 @@ import { LOCALE_SOURCES, readLocales } from './i18n-locales.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 // Each catalog follows the locale inventory of the runtime that renders it and types its language
-// files against that runtime's `Translation`: the app catalog against `@trdrs/i18n`, the chart
-// catalog against the chart's own runtime beside it. scripts/i18n-locales.mjs reads both tables.
+// files against that runtime's `Translation`: the app catalog and the chart-trading catalog against
+// `@trdrs/i18n`, the chart catalog against the chart's own runtime beside it, and the order ticket's
+// and the account manager's against the structural `Translation` each declares in its own terms
+// (they consume the seam and nothing else; the host binds their dictionaries).
+// scripts/i18n-locales.mjs reads both locale tables.
 const CATALOGS = {
   app: { base: 'apps/web/src/i18n/messages', locales: LOCALE_SOURCES.app, translationImport: '@trdrs/i18n' },
   sdk: { base: 'packages/chart/src/i18n', locales: LOCALE_SOURCES.sdk, translationImport: '../runtime' },
+  trading: { base: 'packages/chart-trading/src/i18n', locales: LOCALE_SOURCES.app, translationImport: '@trdrs/i18n' },
+  ticket: { base: 'packages/order-ticket/src/i18n', locales: LOCALE_SOURCES.app, translationImport: '../translation' },
+  manager: { base: 'packages/account-manager/src/i18n', locales: LOCALE_SOURCES.app, translationImport: '../translation' },
 }
 const [command, ...rest] = process.argv.slice(2)
 const flag = (name) => rest.includes(`--${name}`)
@@ -292,6 +298,9 @@ function check() {
     ['literals', [process.execPath, resolve(ROOT, 'scripts/check-i18n-literals.mjs')]],
     ['dead keys (app)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'app']],
     ['dead keys (sdk)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'sdk']],
+    ['dead keys (trading)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'trading']],
+    ['dead keys (ticket)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'ticket']],
+    ['dead keys (manager)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'manager']],
   ]
   let failed = 0
   for (const [label, [cmd, ...args]] of steps) {
