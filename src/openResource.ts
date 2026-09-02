@@ -1,4 +1,4 @@
-// The OPEN RESOURCE: what the widget (a saved chart) and the layout (a saved layout) hold while a
+// The OPEN RESOURCE: what a chart (a saved chart) and a layout (a saved layout) hold while a
 // named resource is on screen — its ref and its name — and the three verbs that move it. One
 // module because the rule is the same for both families: a save is an UPDATE at the revision the
 // resource was opened at, or a CREATE when nothing is open (or the host asked for a copy); a

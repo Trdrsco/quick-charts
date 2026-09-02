@@ -9,7 +9,6 @@
 // Availability is a live read, never a stored flag: a command asks the chart what is true now.
 import type { ChartMessageKey } from '../i18n'
 import { SCALE_MODES, type ScaleMode } from '../scaleMode'
-import type { DrawingsHandle } from '../drawings'
 import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry, CommandSpec } from './commands'
 import type { ChartHandle } from './chart'
@@ -49,7 +48,6 @@ export interface ChartCommandDeps {
   /** The level the open menu was raised at, which copy-price acts on. */
   level(): number | null
   formatter(): PriceFormatter
-  drawings(): DrawingsHandle | null
   compareOpen(mode: 'compare' | 'change-symbol'): void
 }
 

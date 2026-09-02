@@ -958,7 +958,6 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     capabilities: deps.capabilities,
     level: () => menuLevel,
     formatter: () => symbolFormatter,
-    drawings: () => drawings.handle,
     compareOpen: (mode) => compare?.openDialog(mode),
   })
 
