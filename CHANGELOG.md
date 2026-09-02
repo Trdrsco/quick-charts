@@ -37,7 +37,7 @@
   context menu (an open menu relabels in place), the replay bar, trade-line pills and their
   actions, the inputs editor, execution-mark cards, the broker's own confirmation and refusal
   lines, and the session status words. What the datafeed or broker says, and every symbol, price
-  and id, passes through untranslated. The catalog ships a directory for every registry language;
+  and id, passes through untranslated. The catalog ships a directory for every built-in language;
   a key without a translation reads English.
   Hosts composing the chrome modules themselves pass a `ChartI18n` (from `createChartI18n(code)`)
   as a new OPTIONAL trailing parameter or option — `mountDrawingsRail`, `mountReplayBar`,
