@@ -72,9 +72,12 @@ export interface DrawingsHandle {
   count(): number
   setSymbol(symbol: string): void
   setTimeframe(tf: string): void
-  /** The instrument's tick size (tick-denominated readouts on measure-style drawings); null when
-   *  the feed doesn't know it. */
+  /** The symbol's smallest price move (tick-denominated readouts on measure-style drawings); null
+   *  while the symbol is unresolved. */
   setTick(tick: number | null): void
+  /** The symbol's price formatter: every drawing label, pill and readout writes prices through it.
+   *  Null returns the layer to the drawings package's declared stand-in. */
+  setPriceFormatter(format: ((price: number) => string) | null): void
   /** Serialize the current symbol's drawings (the persistence wire format). */
   export(): SerializedDrawing[]
   /** Replace the current symbol's drawings from serialized form. */
@@ -436,6 +439,9 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     },
     setTick(tick: number | null) {
       manager.setTickSize(tick)
+    },
+    setPriceFormatter(format) {
+      manager.setPriceFormatter(format)
     },
     export: () => manager.export().filter((d) => d.id !== draft?.drawing.id),
     restore(list: readonly SerializedDrawing[]) {

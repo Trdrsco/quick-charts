@@ -4,7 +4,7 @@
 // PCL-1: the clean-room consumer supplies its own fake datafeed and storage, never an engine
 // adapter). Bars are a pure function of symbol and bucket, so any window asked twice answers the
 // same twice and a snapshot never disagrees with history.
-import type { ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, SearchPage, SessionClass, SubscribeHandlers, SymbolInfo } from 'quickcharts'
+import type { ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, PriceFormat, SearchPage, SessionClass, SubscribeHandlers, SymbolInfo } from 'quickcharts'
 
 interface CatalogRow {
   symbol: string
@@ -12,18 +12,24 @@ interface CatalogRow {
   exchange: string
   type: string
   sessionClass: SessionClass
-  tick: number
-  pricePrecision: number
+  timezone: string
+  session: string
+  currencyCode: string
+  /** How the symbol writes its prices: the symbology facts the chart formats from. */
+  format: PriceFormat
   /** The price the deterministic series is centered on. */
   base: number
 }
 
 const CATALOG: readonly CatalogRow[] = [
-  { symbol: 'ESZ2026', name: 'E-mini S&P 500 Dec 2026', exchange: 'CME', type: 'futures', sessionClass: 'futures', tick: 0.25, pricePrecision: 2, base: 5000 },
-  { symbol: 'EURUSD', name: 'Euro / US Dollar', exchange: 'FX', type: 'fx', sessionClass: 'fx', tick: 0.00001, pricePrecision: 5, base: 1.085 },
-  { symbol: 'BTCUSD', name: 'Bitcoin / US Dollar', exchange: 'X', type: 'crypto', sessionClass: 'crypto', tick: 0.01, pricePrecision: 2, base: 65000 },
-  { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', type: 'stock', sessionClass: 'equity', tick: 0.01, pricePrecision: 2, base: 190 },
+  { symbol: 'ESZ2026', name: 'E-mini S&P 500 Dec 2026', exchange: 'CME', type: 'futures', sessionClass: 'futures', timezone: 'America/Chicago', session: '1700-1600:23456', currencyCode: 'USD', format: { pricescale: 100, minmov: 25 }, base: 5000 },
+  { symbol: 'EURUSD', name: 'Euro / US Dollar', exchange: 'FX', type: 'fx', sessionClass: 'fx', timezone: 'America/New_York', session: '1700-1700:23456', currencyCode: 'USD', format: { pricescale: 100000, minmov: 1 }, base: 1.085 },
+  { symbol: 'BTCUSD', name: 'Bitcoin / US Dollar', exchange: 'X', type: 'crypto', sessionClass: 'crypto', timezone: 'Etc/UTC', session: '24x7', currencyCode: 'USD', format: { pricescale: 100, minmov: 1 }, base: 65000 },
+  { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', type: 'stock', sessionClass: 'equity', timezone: 'America/New_York', session: '0930-1600', currencyCode: 'USD', format: { pricescale: 100, minmov: 1 }, base: 190 },
 ]
+
+/** The smallest price move a row's format declares: the grid its deterministic closes land on. */
+const tickOf = (row: CatalogRow): number => row.format.minmov / row.format.pricescale
 
 /** The intervals this feed serves, as wire tokens, and their bucket length in seconds. */
 const RESOLUTIONS: Readonly<Record<string, number>> = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 }
@@ -44,13 +50,13 @@ function closeAt(row: CatalogRow, i: number): number {
   const wave = 0.02 * Math.sin(i / 17) + 0.01 * Math.sin(i / 5)
   const noise = (hash(row.symbol, i) - 0.5) * 0.004
   const raw = row.base * (1 + wave + noise)
-  return Math.round(raw / row.tick) * row.tick
+  return Math.round(raw / tickOf(row)) * tickOf(row)
 }
 
 function barAt(row: CatalogRow, step: number, i: number): FeedBar {
   const o = closeAt(row, i - 1)
   const c = closeAt(row, i)
-  const spread = Math.abs(c - o) + row.tick * (1 + Math.floor(hash(row.symbol, i * 7) * 4))
+  const spread = Math.abs(c - o) + tickOf(row) * (1 + Math.floor(hash(row.symbol, i * 7) * 4))
   return {
     t: ORIGIN + i * step,
     o,
@@ -99,16 +105,20 @@ export function memoryDatafeed(options: MemoryDatafeedOptions = {}): ChartDatafe
       const row = rowOf(symbol)
       if (!row) return null
       return {
-        symbol: row.symbol,
-        name: row.name,
+        ticker: row.symbol,
+        name: row.symbol,
+        description: row.name,
         exchange: row.exchange,
+        listedExchange: row.exchange,
         type: row.type,
-        provider: null,
-        via: null,
+        supportedResolutions: Object.keys(RESOLUTIONS),
+        timezone: row.timezone,
+        session: row.session,
+        dataStatus: 'streaming',
+        currencyCode: row.currencyCode,
+        volumePrecision: 0,
+        format: { ...row.format },
         sessionClass: row.sessionClass,
-        tick: row.tick,
-        pricePrecision: row.pricePrecision,
-        quotes: false,
       }
     },
 
@@ -148,7 +158,7 @@ export function memoryDatafeed(options: MemoryDatafeedOptions = {}): ChartDatafe
         // A forming bar wobbles inside its own range so the update is visibly live and still
         // deterministic for the tick count.
         const wobble = ((hash(row.symbol, i * 31 + tick) - 0.5) * (bar.h - bar.l)) / 2
-        const c = Math.round((bar.c + wobble) / row.tick) * row.tick
+        const c = Math.round((bar.c + wobble) / tickOf(row)) * tickOf(row)
         handlers.onBars({ kind: 'bar', bar: { ...bar, c, h: Math.max(bar.h, c), l: Math.min(bar.l, c) } })
       }, liveIntervalMs)
       return () => clearInterval(timer)

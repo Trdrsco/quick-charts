@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createUdfDatafeed, tfToUdfResolution, udfResolutionToTf, type FetchLike } from '../src/udfDatafeed'
+import { createUdfDatafeed, type FetchLike } from '../src/udfDatafeed'
+import { tfToUdfResolution, udfResolutionToTf } from '../src/udfResolution'
 
 /** A fake UDF server: a route table of path → JSON (or text). Records the URLs it was asked for. */
 function fakeUdf(routes: Record<string, unknown>, opts?: { status?: number }) {
@@ -95,10 +96,23 @@ describe('UdfDatafeed.history', () => {
 })
 
 describe('UdfDatafeed.resolve', () => {
-  it('derives tick + precision from pricescale/minmov', async () => {
-    const { df } = feed({ '/symbols': { name: 'ES', ticker: 'ES', description: 'E-mini', exchange: 'CME', type: 'futures', pricescale: 100, minmov: 1 } })
-    const info = await df.resolve('ES')
-    expect(info).toMatchObject({ symbol: 'ES', exchange: 'CME', tick: 0.01, pricePrecision: 2, provider: null, quotes: false })
+  it('answers the symbology contract with the price-format facts intact', async () => {
+    const { df } = feed({
+      '/symbols': { name: 'ZB', ticker: 'ZB', description: '30-year T-bond', exchange: 'CBOT', type: 'futures', pricescale: 32, minmov: 1, fractional: true, supported_resolutions: ['1', '60', 'D'], timezone: 'America/Chicago', session: '1700-1600' },
+    })
+    const info = await df.resolve('ZB')
+    expect(info).toMatchObject({
+      ticker: 'ZB',
+      name: 'ZB',
+      description: '30-year T-bond',
+      exchange: 'CBOT',
+      listedExchange: 'CBOT',
+      supportedResolutions: ['1m', '1h', '1d'],
+      timezone: 'America/Chicago',
+      session: '1700-1600',
+      format: { pricescale: 32, minmov: 1, fractional: true },
+    })
+    expect(info).not.toHaveProperty('tick')
   })
 
   it('returns null for an unknown/error symbol', async () => {

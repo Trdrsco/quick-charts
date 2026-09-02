@@ -33,7 +33,7 @@ import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfS
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 import { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
 import { createChartI18n } from './i18n'
-import { createPriceFormatter } from './priceFormatter'
+import { createPriceFormatter, type PriceFormatter } from './priceFormatter'
 import type { PriceFormat } from './symbology'
 import {
   createExtensionHost,
@@ -49,7 +49,7 @@ import { longPressArms, longPressCancels, pointerLock, LONG_PRESS_MS } from './p
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
-export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe' | 'setTick' | 'destroy'>
+export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe' | 'setTick' | 'setPriceFormatter' | 'destroy'>
 
 /** The bar-replay surface: a cursor over the widget's OWN loaded bars — whole-bar updates, played
  *  at a chosen speed or stepped. While replay is on, live updates keep accumulating off-screen
@@ -173,17 +173,14 @@ export function resolveTheme(theme?: ChartTheme): ResolvedTheme {
   }
 }
 
-/** The price format a decimal tick implies, exactly: 0.25 is { pricescale: 100, minmov: 25 },
- *  0.01 is { 100, 1 }, 0.0001 is { 10000, 1 }. A chart-local stand-in until W2-A serves these facts
- *  through `SymbolInfo`; it derives nothing from a price's magnitude. */
-function priceFormatOfTick(tick: number): PriceFormat {
-  const s = tick.toString()
-  const sci = s.match(/e-(\d+)$/i)
-  const dot = s.indexOf('.')
-  const decimals = sci ? Number(sci[1]) + (s.split('e')[0]!.split('.')[1]?.length ?? 0) : dot < 0 ? 0 : s.length - dot - 1
-  const pricescale = 10 ** decimals
-  return { pricescale, minmov: Math.max(1, Math.round(tick * pricescale)) }
-}
+/** The price format the chart writes with while the symbol is unresolved: cents. A DECLARED
+ *  stand-in for the moment between mount and the resolve landing (and for a feed that answers
+ *  null), never a rule that reads precision off a price's magnitude. */
+const UNRESOLVED_PRICE_FORMAT: PriceFormat = { pricescale: 100, minmov: 1 }
+
+/** The smallest move a price format declares, as a price: the grid drawings snap to and the
+ *  series' `minMove`. */
+const minMoveOf = (format: PriceFormat): number => format.minmov / format.pricescale
 
 /** Apply a live bar event to an ascending series: mutate the last bar (same bucket time), append (newer),
  *  or drop a stale update (older than the last bar — never splice history). Returns the new array only
@@ -284,6 +281,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   const candleBordersOn = (): boolean => overrideNamed('borderUpColor') || overrideNamed('borderDownColor')
   let indicatorInstances: IndicatorInstance[] = options.indicators ?? []
 
+  // Every string the chrome shows comes through here, in the host's language; the tag also drives
+  // the library's own axis and crosshair formatting and the price formatter's decimal sign, so a
+  // canvas label and a menu row never disagree about what language the screen is in.
+  const i18n = options.i18n ?? createChartI18n(options.locale)
+  const i18nTag = (): string => i18n.tag()
+
   let symbol = options.symbol ?? storage.get(SYMBOL_KEY) ?? ''
   let tf = options.timeframe ?? storage.get(TF_KEY) ?? '1m'
   let scaleMode: ScaleMode = coerceScaleMode(storage.get(SCALE_KEY))
@@ -309,8 +312,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   /** The feed's last reported status for this subscription, as the extension plane reads it;
    *  null until the subscription has spoken. */
   let feedStatus: string | null = null
-  /** The resolved symbol's tick: the drawing readouts and the extension formatter read it. */
-  let symbolTick: number | null = null
+  /** The resolved symbol's price format, null until resolve() states one. */
+  let symbolFormat: PriceFormat | null = null
+  /** THE price formatter: one per symbol, in the widget's language. The price scale, the crosshair
+   *  and last-price labels, the legend chips, the level menu, the drawing labels, the study scales
+   *  and the extension seam all write through it, so no surface can carry its own precision. */
+  let symbolFormatter: PriceFormatter = createPriceFormatter(UNRESOLVED_PRICE_FORMAT, { locale: i18nTag() })
   /** Replay: the MASTER bar set while replaying (null = replay off; `bars` is then the painted
    *  cursor slice). Live updates land here off-screen; Go live / exit catches the paint up. */
   let replayAll: FeedBar[] | null = null
@@ -351,11 +358,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   chromeBox.style.cssText = 'position:absolute;inset:0;z-index:5;pointer-events:none;'
   chartHost.append(chartBox, chromeBox)
 
-  // Every string the chrome shows comes through here, in the host's language; the tag also drives
-  // the library's own axis and crosshair formatting, so a canvas label and a menu row never disagree
-  // about what language the screen is in.
-  const i18n = options.i18n ?? createChartI18n(options.locale)
-
   const chart: IChartApi = createLwChart(chartBox, {
     autoSize: true,
     localization: { locale: i18n.tag() },
@@ -389,6 +391,23 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     priceFormat: { type: 'volume' },
     priceScaleId: 'volume',
   })
+  /** The candle series' price format IS the symbol formatter: the price scale, the crosshair label
+   *  and the last-price label all write through it, on the symbol's own grid. A custom formatter
+   *  overrides the library's locale formatting, which is why the formatter carries the language. */
+  const applyPriceFormat = (): void => {
+    const format = symbolFormat ?? UNRESOLVED_PRICE_FORMAT
+    candles.applyOptions({ priceFormat: { type: 'custom', formatter: (price: number) => symbolFormatter.format(price), minMove: minMoveOf(format) } })
+  }
+  applyPriceFormat()
+  /** Rebuild the formatter (a resolve, a symbol switch, a language switch) and push it to every
+   *  surface that holds a reference rather than reading it live. */
+  const setSymbolFormat = (format: PriceFormat | null): void => {
+    symbolFormat = format
+    symbolFormatter = createPriceFormatter(format ?? UNRESOLVED_PRICE_FORMAT, { locale: i18nTag() })
+    applyPriceFormat()
+    drawingsHandle?.setTick(format ? minMoveOf(format) : null)
+    drawingsHandle?.setPriceFormatter((price) => symbolFormatter.format(price))
+  }
   chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
   if (scaleMode !== 'normal') chart.priceScale('right').applyOptions({ mode: PRICE_SCALE_MODE[scaleMode] })
 
@@ -430,6 +449,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       bars: () => bars,
       events: drawingsEvents,
     })
+    drawingsHandle.setPriceFormatter((price) => symbolFormatter.format(price))
     if (options.drawings?.rail !== false) {
       drawingsRail = mountDrawingsRail(chromeBox, drawingsHandle, theme, i18n)
       drawingsEvents.onToolChange = drawingsRail.syncTool
@@ -506,22 +526,52 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   // The indicator pipeline: instance → compute (host-supplied) → the shared manifest walker → the
   // shared renderer. Identical to what a richer host runs, so a definition renders the same
   // everywhere — panes, histograms, areas, markers, levels, band fills, volume-scale plots.
-  const indicatorsRenderer = attachIndicators(chart, { candles: () => candles })
+  /** The formatter's identity for fingerprint readers: the format facts plus the language. */
+  const symbolFormatKey = (): string => `${JSON.stringify(symbolFormat ?? UNRESOLVED_PRICE_FORMAT)}@${i18nTag()}`
+  const indicatorsRenderer = attachIndicators(chart, {
+    candles: () => candles,
+    // A study that declares no precision writes its scale through the symbol formatter, so a
+    // moving average on a Treasury reads in thirty-seconds like the candles beside it.
+    symbolPriceFormat: () => ({ key: symbolFormatKey(), formatter: (price) => symbolFormatter.format(price), minMove: minMoveOf(symbolFormat ?? UNRESOLVED_PRICE_FORMAT) }),
+  })
 
   // The legend strip is ONE chip list: indicator chips (rebuilt by recomputeIndicators) followed
   // by compare chips (rebuilt on every organ notification). `compareHandle` is assigned after the
   // chart's data plumbing below; chips built before that simply carry no compares yet.
   let compareHandle: CompareHandle | null = null
   let lastIndicatorChips: LegendChip[] = []
+  /** A compared symbol writes its last value in ITS OWN price format, resolved once per compare
+   *  through the same datafeed seam. Until that resolve lands (or when the feed knows nothing) the
+   *  chip carries no value rather than one written at another market's precision. */
+  const compareFormats = new Map<string, PriceFormat | null>()
+  const compareFormatterFor = (sym: string): PriceFormatter | null => {
+    if (!compareFormats.has(sym)) {
+      compareFormats.set(sym, null)
+      void datafeed
+        .resolve(sym)
+        .then((info) => {
+          if (removed || !info) return
+          compareFormats.set(sym, info.format)
+          pushChips()
+        })
+        .catch(() => {
+          /* the chip stays valueless; the next mount asks again */
+        })
+    }
+    const format = compareFormats.get(sym)
+    return format ? createPriceFormatter(format, { locale: i18nTag() }) : null
+  }
   const compareChips = (): LegendChip[] =>
     (compareHandle?.list() ?? []).map((e) => {
       const pct = e.placement === 'same-percent' ? compareHandle!.changePct(e.symbol) : null
       const last = e.placement === 'same-percent' ? null : compareHandle!.latest(e.symbol)
+      const lastText = last != null ? (compareFormatterFor(e.symbol)?.format(last) ?? null) : null
       return {
         id: `cmp:${e.symbol}`,
         // A plain pair wears the reference's spaced form ("XRP / USDC"); anything else verbatim.
         title: /^[A-Za-z][A-Za-z0-9.]*\/[A-Za-z][A-Za-z0-9.]*$/.test(e.symbol) ? e.symbol.replace('/', ' / ') : e.symbol,
-        value: pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : last != null ? last.toFixed(2) : null,
+        // A percentage is its own value kind and keeps two decimals; a last value is a price.
+        value: pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : lastText,
         hidden: !e.visible,
         titleButton: true,
         removable: true,
@@ -591,7 +641,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       const built = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? theme.upColor), inst.overrides)
       indicatorsRenderer.render(inst.id, built)
       const value = latestPlotValue(built.plots[0]?.data)
-      chips.push({ ...chipBase, value: value == null ? null : value.toFixed(built.precision ?? 2), hidden: false })
+      // A study that declares its precision writes its chip at that precision; one that does not
+      // is a value on the symbol's own price grid and writes through the symbol formatter.
+      chips.push({ ...chipBase, value: value == null ? null : built.precision != null ? value.toFixed(built.precision) : symbolFormatter.format(value), hidden: false })
     }
     lastIndicatorChips = chips
     pushChips()
@@ -782,20 +834,19 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     feedStatus = null // the new subscription reports its own status; a stale one must not carry over
     sessionKind = null // the next resolve states the new symbol's model; unresolved never bands
     sessionBands?.refresh() // the old symbol's bands must not survive the switch
-    symbolTick = null
+    setSymbolFormat(null) // the next resolve states the new symbol's format; until then, the declared stand-in
     abandonReplay() // a replay window is symbol+timeframe-bound; the switch invalidates it
-    drawingsHandle?.setTick(null)
     paintAll()
     if (!symbol) return
-    // Symbol metadata rides ALONGSIDE the first history ask (never blocking it): tick size feeds
-    // the drawing readouts, sessionClass feeds the session bands. A failed resolve leaves both at
-    // their honest unknowns.
+    // Symbol metadata rides ALONGSIDE the first history ask (never blocking it): the price format
+    // feeds every price display, sessionClass feeds the session bands. A failed resolve leaves
+    // both at their honest unknowns.
     void datafeed
       .resolve(symbol)
       .then((info) => {
         if (removed || myEpoch !== epoch || !info) return
-        symbolTick = info.tick
-        drawingsHandle?.setTick(info.tick)
+        setSymbolFormat(info.format)
+        recomputeIndicators() // study scales and chips re-read the formatter
         sessionKind = knownMarketKind(info.type, info.sessionClass ?? null)
         if (info.sessionCalendar && sessionKind) setHolidayCalendar(sessionKind, info.sessionCalendar)
         sessionBands?.refresh() // nothing else invalidates the pane when the model resolves
@@ -885,13 +936,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     downColor: eff.appearance.downColor,
     fontSize: theme.fontSize,
   })
-  /** The chart's price formatter: the package's own over the resolved tick's price format, in the
-   *  widget's language; two places only while the symbol is unresolved. */
-  const extFormatter = (): ChartPriceFormatter => {
-    const format = symbolTick != null && symbolTick > 0 ? priceFormatOfTick(symbolTick) : { pricescale: 100, minmov: 1 }
-    const formatter = createPriceFormatter(format, { locale: i18n.tag() })
-    return { format: (price) => formatter.format(price), precision: () => formatter.precision() }
-  }
+  /** The chart's price formatter, as an extension reads it: the one symbol formatter, resolved
+   *  live so an extension holding the handle follows a resolve or a language switch. */
+  const extFormatter = (): ChartPriceFormatter => ({ format: (price) => symbolFormatter.format(price), precision: () => symbolFormatter.precision() })
   const extPane = (): ChartExtensionPane => ({ id: chartId, width: chartBox.clientWidth, height: chartBox.clientHeight })
   const extReplay = (): ChartExtensionReplayState => ({
     active: replayAll !== null,
@@ -1234,10 +1281,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   /** Cancels an armed press-and-hold at teardown, so a widget removed mid-press fires nothing. */
   let holdCleanup: (() => void) | null = null
   if (options.contextMenu !== false) {
+    /** The level under a viewport point, snapped to the symbol's own grid: the price a menu row
+     *  names is one the market can actually hold. */
     const priceAt = (clientY: number): number | null => {
       const box = chartBox.getBoundingClientRect()
       const p = candles.coordinateToPrice(clientY - box.top)
-      return p != null && p > 0 ? p : null
+      if (p == null || !(p > 0)) return null
+      const step = minMoveOf(symbolFormat ?? UNRESOLVED_PRICE_FORMAT)
+      return Math.round(p / step) * step
     }
     contextMenu = mountContextMenu(
       chromeBox,
@@ -1248,7 +1299,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
             chart.timeScale().fitContent()
             break
           case 'copy-price':
-            if (at != null) void navigator.clipboard?.writeText(String(at)).catch(() => undefined)
+            if (at != null) void navigator.clipboard?.writeText(symbolFormatter.format(at)).catch(() => undefined)
             break
           case 'remove-indicators':
             indicatorInstances = []
@@ -1271,7 +1322,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       const price = priceAt(clientY)
       if (price == null) return false
       lastMenuPrice = price
-      const priceText = price.toLocaleString(i18n.tag(), { maximumFractionDigits: 8 })
+      const priceText = symbolFormatter.format(price)
       // Contributed rows are asked for at the raise, so they can depend on the level pressed, and
       // they carry their own actions — the widget routes nothing on their behalf.
       const extra: readonly ChartExtensionMenuItem[] =
@@ -1439,6 +1490,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   const unsubscribeStrings = i18n.onChange(() => {
     if (removed) return
     chart.applyOptions({ localization: { locale: i18n.tag() } })
+    setSymbolFormat(symbolFormat) // the formatter carries the language's decimal sign
+    recomputeIndicators()
     legend?.setHeader(symbol, replayAll === null ? tf : i18n.t('host.replayHeader', { tf }))
   })
 

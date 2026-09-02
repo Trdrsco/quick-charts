@@ -22,7 +22,10 @@
 // as the stop-scrolling-back signal. Live polling only ever emits the newest bar, which the chart applies
 // as mutate-last-or-append by bucket time.
 import { FeedUnavailableError } from './datafeed'
-import type { BarsEvent, ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, QuoteSnapshot, SearchPage, SubscribeHandlers, SymbolInfo, SymbolRow } from './datafeed'
+import type { BarsEvent, ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, QuoteSnapshot, SearchPage, SubscribeHandlers, SymbolRow } from './datafeed'
+import type { SymbolInfo } from './symbology'
+import { udfSymbolInfo, type UdfSymbolResponse } from './udfSymbology'
+import { canonicalResolution, tfToUdfResolution, udfResolutionToTf } from './udfResolution'
 
 /** The subset of `fetch` this adapter uses — kept minimal so the package stays DOM-independent and a
  *  test can drive it with a plain fake. The global `fetch` satisfies it. */
@@ -37,77 +40,6 @@ export interface UdfDatafeedOptions {
   pollMs?: number
   /** Bars pulled for the initial live snapshot. Default 300. */
   snapshotBars?: number
-}
-
-/** Map a `<N><unit>` timeframe token to a UDF resolution string: seconds `<N>S`, minutes `<N>`, hours as
- *  minutes (`<N*60>`, the classic UDF intraday encoding), day/week/month `<N>D`/`<N>W`/`<N>M`, ticks
- *  `<N>T`. An unrecognized token falls through as-is (a custom server may accept it). */
-export function tfToUdfResolution(tf: string): string {
-  const m = /^(\d+)(t|s|m|h|d|w|mo)$/.exec(tf)
-  if (!m) return tf
-  const n = Number(m[1])
-  switch (m[2]) {
-    case 't':
-      return `${n}T`
-    case 's':
-      return `${n}S`
-    case 'm':
-      return `${n}`
-    case 'h':
-      return `${n * 60}`
-    case 'd':
-      return `${n}D`
-    case 'w':
-      return `${n}W`
-    case 'mo':
-      return `${n}M`
-    default:
-      return tf
-  }
-}
-
-/** Canonical spelling of a UDF resolution for EQUALITY: real servers spell one-day as either 'D' or
- *  '1D' (same for W/M/S/T — a bare letter is an implicit count of 1), so both forms normalize to the
- *  digit-prefixed one. Anything else passes through unchanged — this canonicalizes spelling only,
- *  it never reinterprets an unknown token. */
-const canonicalResolution = (r: string): string => {
-  const t = r.trim()
-  return /^[TSDWM]$/.test(t) ? `1${t}` : t
-}
-
-/** The inverse of {@link tfToUdfResolution}: a UDF resolution string back to a wire tf token.
- *  Bare numbers are minutes; whole-hour counts ≥ 60 normalize to `<N>h` (the forward map emits hours
- *  AS minutes, so '1h' → '60' → '1h' round-trips); bare 'D'/'W'/'M'/'S'/'T' mean a count of 1. Null
- *  for a resolution the wire tf grammar cannot express — a caller building a capability declaration
- *  OMITS that resolution rather than mis-declaring it (the widget can't do bucket arithmetic on a
- *  token outside the grammar, so it isn't widget-servable even if the server serves it). */
-export function udfResolutionToTf(resolution: string): string | null {
-  const m = /^(\d+)(T|S|D|W|M)?$/.exec(canonicalResolution(resolution))
-  if (!m) return null
-  const n = Number(m[1])
-  if (!(n > 0)) return null
-  switch (m[2]) {
-    case 'T':
-      return `${n}t`
-    case 'S':
-      return `${n}s`
-    case 'D':
-      return `${n}d`
-    case 'W':
-      return `${n}w`
-    case 'M':
-      return `${n}mo`
-    default:
-      return n % 60 === 0 && n >= 60 ? `${n / 60}h` : `${n}m`
-  }
-}
-
-/** Decimal places implied by a UDF `pricescale` that is a power of ten (100 → 2); null otherwise (the
- *  chart then derives precision from price magnitude). */
-function decimalsOfPriceScale(pricescale: number): number | null {
-  if (!Number.isFinite(pricescale) || pricescale <= 0) return null
-  const log = Math.log10(pricescale)
-  return Number.isInteger(log) ? log : null
 }
 
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -313,28 +245,18 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
       return { hits, hasMore: false }
     },
 
+    /** '/symbols' answers the symbology contract through {@link udfSymbolInfo}: the price-format
+     *  facts ride through intact (never collapsed to one floating tick), and the server's declared
+     *  resolutions come back as chart timeframe tokens. */
     async resolve(symbol): Promise<SymbolInfo | null> {
-      let raw: { name?: string; ticker?: string; description?: string; exchange?: string; type?: string; pricescale?: number; minmov?: number; has_no_volume?: boolean; s?: string }
+      let raw: (UdfSymbolResponse & { s?: string }) | null
       try {
         raw = (await getJson(`/symbols?symbol=${encodeURIComponent(symbol)}`)) as typeof raw
       } catch {
         return null // UDF answers an unknown symbol with a non-2xx or an error object — treat as unresolved
       }
       if (!raw || raw.s === 'error' || !(raw.name || raw.ticker)) return null
-      const pricescale = raw.pricescale ?? 0
-      const minmov = raw.minmov ?? 1
-      const tick = pricescale > 0 ? minmov / pricescale : null
-      return {
-        symbol: raw.ticker ?? raw.name ?? symbol,
-        name: raw.description ?? raw.name ?? symbol,
-        exchange: raw.exchange ?? '',
-        type: raw.type ?? '',
-        provider: null, // UDF carries no per-row provider truth
-        via: null,
-        tick,
-        pricePrecision: decimalsOfPriceScale(pricescale),
-        quotes: false, // a UDF server may serve /quotes, but not per-symbol L1 capability — never assume it
-      }
+      return udfSymbolInfo(raw, symbol)
     },
 
     history,

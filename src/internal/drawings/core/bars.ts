@@ -70,18 +70,6 @@ export function linearRegression(
   return { slope, intercept, sigma: Math.sqrt(variance / n) }
 }
 
-/** Smallest price increment implied by the data — decimal places of the recent closes. The
- *  feed carries no instrument metadata, so tick-denominated readouts infer one from precision. */
-export function impliedTick(bars: readonly SourceBar[]): number {
-  let decimals = 0
-  for (const bar of bars.slice(-50)) {
-    const text = String(bar.close)
-    const dot = text.indexOf('.')
-    if (dot !== -1) decimals = Math.max(decimals, text.length - dot - 1)
-  }
-  return Math.pow(10, -Math.min(decimals, 8))
-}
-
 export interface VolumeBin {
   priceLow: number
   priceHigh: number
