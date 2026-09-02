@@ -112,7 +112,7 @@ const SURFACE: Record<string, string> = {
   // RangePreset, SearchState, RecentsPort) are types. The session model replaces the per-class
   // session model: sessionStateAt, nextSessionChange and sessionTimeline answer over a symbol's
   // own facts, and the active-subsession rules (DEFAULT_SUBSESSION, hasExtendedHours,
-  // subsessionBarFilter) are the reference's subsession_id.
+  // subsessionBarFilter) answer over a symbol's named subsessions.
   TIMEFRAME_MAX: 'object',
   TIMEFRAME_PRESET_TOKENS: 'object',
   TIMEFRAME_PRESETS: 'object',

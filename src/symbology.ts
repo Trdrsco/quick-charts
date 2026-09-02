@@ -13,7 +13,7 @@
 // This module is self-contained by the same rule as `datafeed.ts` — the contract must never drag a
 // backend SDK into the chart's dependency surface. It imports nothing.
 
-/** How one symbol's prices are WRITTEN, in the reference's own five facts. Together they express
+/** How one symbol's prices are WRITTEN, in five facts. Together they express
  *  every supported form: decimal, pip, fractional, fraction of a fraction, and variable tick.
  *
  *  - `pricescale` — price units per whole unit. 100 writes cents, 100000 writes FX pipettes,
@@ -24,7 +24,7 @@
  *  - `minmove2` — the further division of one `minmov` step for a fraction-of-a-fraction market:
  *    4 means quarters of a thirty-second.
  *  - `fractional` — write the sub-unit part as a counted fraction (110'16) instead of decimals.
- *  - `variableTickSize` — an ordered ladder of tick sizes by price band, the reference's
+ *  - `variableTickSize` — an ordered ladder of tick sizes by price band, written as a
  *    space-separated string: alternating tick and upper bound, ending with the tick that applies
  *    above the last bound. "0.01 10 0.02 100 0.05" means 0.01 below 10, 0.02 below 100, 0.05 at or
  *    above 100. The band a price falls in is a DECLARED fact of the symbol, not a guess from its
@@ -37,16 +37,16 @@ export interface PriceFormat {
   variableTickSize?: string
 }
 
-/** How live the served data is, in the reference's own three states. `delayed_streaming` is a real
+/** How live the served data is, in three states. `delayed_streaming` is a real
  *  stream behind a delay, not a degraded `streaming`. */
 export type DataStatus = 'streaming' | 'endofday' | 'delayed_streaming'
 
-/** The reference's subsession ids. `regular` is the weekly `session`; `premarket` and
+/** The subsession ids a symbol may name. `regular` is the weekly `session`; `premarket` and
  *  `postmarket` are the extended spans before and after it; `extended` is the whole span from
  *  pre-market open through post-market close. */
 export type SubsessionId = 'regular' | 'extended' | 'premarket' | 'postmarket'
 
-/** One named session of a market with extended hours, the reference's subsession shape. `session`
+/** One named session of a market with extended hours. `session`
  *  uses the grammar of `SymbolInfo.session`; `sessionCorrections` uses the grammar of
  *  `SymbolInfo.corrections` and lists only the days that shorten THIS subsession. `description`
  *  is a label a feed may state; the chart labels a subsession by its `id` from its own catalog. */
@@ -60,7 +60,7 @@ export interface Subsession {
 /** Resolved metadata for ONE symbol: everything the chart needs to title it, page it, session it,
  *  and write its prices.
  *
- *  `timezone`, `session`, `sessionHolidays`, `corrections` and `subsessions` are the reference's
+ *  `timezone`, `session`, `sessionHolidays`, `corrections` and `subsessions` are the
  *  exchange-hours facts and travel with the symbol. The chart's session model (`sessionModel.ts`)
  *  is built from them alone: market state, session shading, the regular-hours filter and the
  *  status popup all read what the feed said, and a feed that states no extended hours gets none. */
@@ -114,7 +114,7 @@ export interface TickBand {
   below: number
 }
 
-/** Parse the reference's space-separated `variable_tick_size` ladder into ordered bands. Returns an
+/** Parse the space-separated variable-tick ladder into ordered bands. Returns an
  *  empty array for a string the grammar cannot read, which is how a caller tells "no ladder" from
  *  "a ladder I must honour" without guessing at a half-parsed one. */
 export function parseTickBands(variableTickSize: string): TickBand[] {

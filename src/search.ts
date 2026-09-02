@@ -224,7 +224,7 @@ export interface SpreadOperator {
   readonly label: ChartMessageKey
 }
 
-/** The six operators in the reference's input-row order. */
+/** The six operators, in the order the input row offers them. */
 export const SPREAD_OPERATORS: readonly SpreadOperator[] = [
   { id: 'division', insert: '/', label: 'search.opDivision' },
   { id: 'subtraction', insert: '-', label: 'search.opSubtraction' },

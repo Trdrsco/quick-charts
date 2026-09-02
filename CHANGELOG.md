@@ -58,7 +58,7 @@
   `makeCrosshairTimeFormatter` take the host's BCP 47 tag beside the zone; `tzOffsetMinutes`,
   `tzOffsetLabel`, `timezoneLabel`, `zoneClock` and `timezoneListing` complete the picker model.
   **`parseSessionModel`** reads a symbol's `session`, `sessionHolidays`, `corrections` and
-  subsessions in the reference grammar, and `sessionStateAt`, `marketStatus`, `marketStatusFor`,
+  subsessions in the session grammar, and `sessionStateAt`, `marketStatus`, `marketStatusFor`,
   `marketStatusTitle`, `marketStatusText`, `formatDuration` and `exchangeTimezoneText` answer the
   session state and the market status over it, with the feed's `dataStatus` an explicit part of
   the status; `nextSessionChange` and `sessionTimeline` answer the next transition and the

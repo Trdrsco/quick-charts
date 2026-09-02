@@ -34,7 +34,7 @@ const FULL: SymbolInfo = {
 }
 
 describe('SymbolInfo', () => {
-  it('carries exactly the reference symbology scope, the session facts included', () => {
+  it('carries exactly the symbology scope the chart owns, the session facts included', () => {
     expect(Object.keys(FULL).sort()).toEqual([
       'corrections',
       'currencyCode',

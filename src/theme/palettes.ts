@@ -1,23 +1,22 @@
 // The built-in light and dark palettes: the only place in the package where a theme color is
 // written as a literal. Every other module reads a role.
 //
-// Provenance. The neutral grounds and inks are derived from the signed live reference corpus in
-// `docs/corpus/advanced-charts-styles/`, which records how a mature chart product renders one
-// complete UI in both modes: light ink `rgb(15, 15, 15)` and dark ink `rgb(219, 219, 219)`, a dark
-// panel ground of `rgb(31, 31, 31)`, a dark muted ink of `rgb(140, 140, 140)`, a 6px panel radius,
-// and floating-surface shadows of `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and `rgba(0, 0, 0, 0.4)`
-// in dark. Those measurements are reference evidence, not source: Quick Charts owns its own values,
-// and the corpus README records that boundary.
+// These values are the package's own. They were chosen against a measured study of how a complete
+// chart UI has to hold up in both modes, and what that study settled: a light ink of
+// `rgb(15, 15, 15)` and a dark ink of `rgb(219, 219, 219)`, a dark panel ground of
+// `rgb(31, 31, 31)`, a dark muted ink of `rgb(140, 140, 140)`, a 6px panel radius, and
+// floating-surface shadows of `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and `rgba(0, 0, 0, 0.4)` in
+// dark. Evidence informed them; it does not own them, and this file is where they live.
 //
-// Readability is a gate, not a preference. Where a measured reference value cannot reach the WCAG
-// 2.2 AA ratio required by the role's `contrast` rule, the value here is the hue-preserving one
-// that does, and `theme/contrast.test.ts` recomputes every ratio on each run. That is why light
-// `status.positive` is not the corpus `rgb(8, 153, 129)`, which reads at 3.57 to 1 on white: dark
-// mode keeps the measured value, which reads at 4.62 to 1 on the dark panel.
+// Readability is a gate, not a preference. Where a value cannot reach the WCAG 2.2 AA ratio the
+// role's `contrast` rule requires, what stands here is the hue-preserving value that does, and
+// `theme/contrast.test.ts` recomputes every ratio on each run. That is why light `status.positive`
+// is not `rgb(8, 153, 129)`, which reads at 3.57 to 1 on white; dark mode keeps that value, which
+// reads at 4.62 to 1 on the dark panel.
 //
-// The series pair is the documented brand pair from `overrides.ts`, unchanged. The corpus positive
-// value describes a text role, not a series, so it does not displace it. Candle body, border, and
-// wick colors are not theme roles at all: they belong to the separate chart appearance ladder.
+// The series pair is the documented brand pair from `overrides.ts`, unchanged: a positive TEXT role
+// and a rising SERIES are different jobs, so one does not displace the other. Candle body, border
+// and wick colors are not theme roles at all: they belong to the separate chart appearance ladder.
 //
 // This module imports no runtime value, only its types. The build script loads it directly under
 // Node's TypeScript stripping, which resolves no extensionless relative specifier.

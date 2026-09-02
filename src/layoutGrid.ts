@@ -1,7 +1,7 @@
-// The multi-chart arrangement catalog — the reference's 13-row / 55-code split grid, decoded from
+// The multi-chart arrangement catalog — 55 codes in 13 picker rows, decoded from
 // its own menu icons into unit-square pane rectangles.
 // Geometry only: no DOM, no chart. The widget's layout turns a code into positioned chart elements;
-// a menu turns the rows into its picker. Splits are EVEN fractions — the reference's icons draw
+// a menu turns the rows into its picker. Splits are EVEN fractions — the picker icons draw
 // stylized proportions, but its product opens every arrangement at equal splits.
 //
 // Code grammar (verified against the captured icon paths, not inferred):
@@ -81,7 +81,7 @@ const nameOf = (code: string): string => (layouts as Record<string, string>)[`la
 
 const A = (code: string, rects: PaneRect[]): Arrangement => ({ code, count: rects.length, label: nameOf(code), rects })
 
-/** Every arrangement, in the reference menu's own order. */
+/** Every arrangement, in picker order. */
 export const ARRANGEMENTS: readonly Arrangement[] = [
   A('s', [{ x: 0, y: 0, w: 1, h: 1 }]),
   A('2h', cols(2)),

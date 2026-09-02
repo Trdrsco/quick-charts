@@ -104,7 +104,8 @@ export const BAR_ONLY_COORDS: ReadonlySet<string> = new Set([
 /** Width applies but the stroke is always solid — no line-style control (marker ink). */
 export const NO_DASH: ReadonlySet<string> = new Set(['highlighter'])
 
-/** Prop keys that belong on a separate Inputs tab (the reference splits Inputs from Style).
+/** Prop keys that belong on a separate Inputs tab: what a drawing computes with, kept apart from
+ *  how it looks.
  *  A tool listed here gets the Inputs tab; unlisted props stay on Style. */
 export const INPUT_PROPS: Record<string, readonly string[]> = {
   fixed_range_volume_profile: ['rowsLayout', 'rowSize', 'volume', 'valueAreaVolume', 'extendRight'],

@@ -20,7 +20,7 @@ export const search = {
   /** The checkmark on a row already on the chart. */
   'search.addedMark': '{symbol} is on the chart. Click to remove.',
   'search.compareEmpty': 'No symbols here yet. Why not add some?',
-  // The spread operators' names (the reference's own), and the strip's toggle.
+  // The spread operators' names, each for the arithmetic it inserts, and the strip's toggle.
   'search.opDivision': 'Division',
   'search.opSubtraction': 'Subtraction',
   'search.opAddition': 'Addition',

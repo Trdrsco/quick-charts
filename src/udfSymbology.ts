@@ -59,7 +59,7 @@ export function udfPriceFormat(raw: UdfSymbolResponse): PriceFormat {
 
 const SUBSESSION_IDS: readonly SubsessionId[] = ['regular', 'extended', 'premarket', 'postmarket']
 
-/** The reference's `subsessions` array as the chart's: an entry with one of the four ids and a
+/** A UDF `subsessions` array as the chart's: an entry with one of the four ids and a
  *  session string is kept, its `session-correction` becomes `sessionCorrections`, and anything
  *  else is dropped rather than half-read. */
 function udfSubsessions(raw: UdfSymbolResponse['subsessions']): Subsession[] {
