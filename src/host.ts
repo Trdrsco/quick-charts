@@ -1281,7 +1281,6 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
         {
           priceText,
           symbol,
-          canAlert: false, // no alerts surface in the widget
           canPaste: false, // the widget's drawing layer has no clipboard
           canSettings: false, // …and no settings dialog to open
           indicatorCount: indicatorInstances.length,
