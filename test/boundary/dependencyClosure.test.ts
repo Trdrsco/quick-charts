@@ -36,7 +36,7 @@ describe('the direct dependency set, as built', () => {
     expect(directDependencies()).toEqual({
       dependencies: ['@trdrs/chart-drawings'],
       peerDependencies: ['lightweight-charts'],
-      devDependencies: ['lightweight-charts', 'tsup', 'typescript'],
+      devDependencies: ['@trdrs/chart-indicators', 'lightweight-charts', 'tsup', 'typescript'],
       optionalDependencies: [],
     })
   })

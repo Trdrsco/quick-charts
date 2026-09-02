@@ -9,6 +9,7 @@ import { inputs } from './inputs'
 import { session } from './session'
 import { layouts } from './layouts'
 import { host } from './host'
+import { indicators } from './indicators'
 
-const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host }
+const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators }
 export default dict

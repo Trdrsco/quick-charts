@@ -112,11 +112,12 @@ export interface ChartWidgetOptions {
   events?: ChartWidgetEvents
 }
 
-/** An indicator DEFINITION a host supplies: the declarative manifest plus a pure compute over the
- *  widget's bars. Compute stays outside the package on purpose — the widget owns the rendering
- *  pipeline (panes, histograms, levels, fills), never the math — and returns per-plot value
- *  channels aligned 1:1 to `bars`, NaN/null through the warmup (the walker maps those to clean
- *  whitespace gaps). No side effects, no chart access. */
+/** An indicator DEFINITION: the declarative manifest plus a pure compute over the widget's bars.
+ *  The 23 built-ins ship in this shape as `BUILT_IN_INDICATORS`, and a host supplies its own in
+ *  the same shape; the widget owns the rendering pipeline (panes, histograms, levels, fills) and
+ *  treats every definition alike. Compute returns per-plot value channels aligned 1:1 to `bars`,
+ *  NaN/null through the warmup (the walker maps those to clean whitespace gaps). No side
+ *  effects, no chart access. */
 export interface IndicatorDefinition {
   manifest: IndicatorManifest
   compute(bars: readonly FeedBar[], inputs: Record<string, number>): Readonly<Record<string, readonly (number | null)[]>>

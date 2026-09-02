@@ -187,3 +187,10 @@ export type {
 export type { ThemeChangeListener, ThemeController, ThemeControllerOptions } from './theme/controller'
 export type { ThemeDiagnostic, ThemeDiagnosticCode } from './theme/validate'
 // ── end W2-C ──────────────────────────────────────────────────────────────────────────────────
+// ── W2-B: the built-in indicators ───────────────────────────────────────────────────────
+// The 23 built-in definitions ship in the package (the day-one catalog of
+// public-chart-library-boundary-plan.md), each a plain IndicatorDefinition with its catalog keys,
+// tag and category beside it. A host mounts one through ChartWidgetOptions.indicators exactly as
+// it mounts its own definition, and reads its name through the chart's ChartI18n.
+export { BUILT_IN_INDICATORS, type BuiltInIndicator, type IndicatorCategory } from './builtInIndicators'
+// ── end W2-B ──────────────────────────────────────────────────────────────────────────

@@ -108,6 +108,11 @@ const SURFACE: Record<string, string> = {
   THEME_ROLES: 'object',
   createThemeController: 'function',
   // ── end W2-C ────────────────────────────────────────────────────────────────────────────────
+  // ── W2-B ────────────────────────────────────────────────────────────────────────────────────
+  // Additive (minor): the 23 built-in indicator definitions, bundled from the chart-indicators
+  // seam, as one ordered registry. `BuiltInIndicator` and `IndicatorCategory` are types.
+  BUILT_IN_INDICATORS: 'object',
+  // ── end W2-B ────────────────────────────────────────────────────────────────────────────────
 }
 
 describe('quickcharts API surface pin', () => {

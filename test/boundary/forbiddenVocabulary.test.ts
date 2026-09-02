@@ -87,10 +87,10 @@ describe('the forbidden vocabulary, as built', () => {
     expect(lines(CHART_SOURCES, /from\s+['"][^'"]*\/apps\/|from\s+['"]\.\.\/\.\.\/\.\.\/apps\//)).toEqual([])
   })
 
-  it('imports exactly the one private organ the manifest names today, and nothing else private', () => {
+  it('imports exactly the two internal seams the manifest names today, and nothing else private', () => {
     const specifiers = new Set<string>()
     for (const text of Object.values(CHART_SOURCES)) for (const m of text.matchAll(/from\s+['"](@trdrs\/[a-z0-9-]+)(?:\/[^'"]*)?['"]/g)) specifiers.add(m[1]!)
-    expect([...specifiers].sort()).toEqual(['@trdrs/chart-drawings'])
+    expect([...specifiers].sort()).toEqual(['@trdrs/chart-drawings', '@trdrs/chart-indicators'])
     expect(
       lines(CHART_SOURCES, /from\s+['"](@trdrs\/(ui|engine-client|engine-wire|chart-engine|watchlist|news|trading-core|community|library|order-ticket|broker|account-manager|chart-trading|i18n)|tailwind)/),
     ).toEqual([])
