@@ -16,8 +16,9 @@
 //              and the ticket (Plan 5).
 //   ledger     an account value: money, P&L, balances, account columns. Target: Account Manager
 //              column value kinds (Plan 6).
-//   quote      a quote-board value: Last, Chg, Chg%, Volume. Target: the Trading Platform quote
-//              hub feeding the Watchlist port; the free chart exposes no quote API.
+//   quote      a quote-board value: Last, Chg, Chg%, Volume. The free chart exposes no quote API;
+//              the first-party source is chart-engine's engineQuoteSource, and the Trading
+//              Platform quote hub (Plan 8) fans one subscription into the Watchlist port.
 //
 // This is data. formatters.inventory.test.ts proves every file and symbol still exists, so the
 // inventory cannot rot silently, and the stream that moves a site edits this row in the same
@@ -260,11 +261,10 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   // ── quote ───────────────────────────────────────────────────────────────────────────────────
   {
-    file: 'packages/chart/src/datafeed.ts',
-    symbols: ['QuoteSnapshot', 'getQuotes', 'subscribeQuotes'],
+    file: 'packages/chart-engine/src/quotes.ts',
+    symbols: ['QuoteSnapshot', 'getQuotes', 'subscribeQuotes', 'subscribeTopOfBook'],
     kind: 'quote',
-    surface: 'the quote board data the two Watchlist renderers format (data, not a formatter)',
-    finding: 'quote surfaces on the free datafeed; they move to the Trading Platform quote hub.',
+    surface: 'the first-party quote source: the board data the Watchlist and the dock format, and the top-of-book the ticket reads (data, not a formatter)',
   },
   {
     file: 'packages/watchlist/src/widget.ts',

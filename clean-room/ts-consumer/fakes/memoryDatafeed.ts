@@ -88,7 +88,7 @@ export function memoryDatafeed(options: MemoryDatafeedOptions = {}): ChartDatafe
 
   return {
     async config(): Promise<DatafeedConfig> {
-      return { resolutions: Object.keys(RESOLUTIONS), classes: ['futures', 'fx', 'crypto', 'stock'], quotes: false }
+      return { resolutions: Object.keys(RESOLUTIONS), classes: ['futures', 'fx', 'crypto', 'stock'] }
     },
 
     async search(q, opts): Promise<SearchPage> {

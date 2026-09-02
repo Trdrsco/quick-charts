@@ -1,6 +1,7 @@
 // A ChartDatafeed over a UDF (Universal Data Feed) HTTP server — the trivial-onboarding adapter. UDF is a
-// plain REST protocol (/config, /symbol_info, /search, /symbols, /history, /quotes, /time); anyone with a
-// UDF endpoint gets a working chart by pointing this adapter at it, with zero custom code. UDF is
+// plain REST protocol (/config, /symbol_info, /search, /symbols, /history, /time); anyone with a UDF
+// endpoint gets a working chart by pointing this adapter at it, with zero custom code. The protocol's
+// /quotes surface is not a chart concern and this adapter does not read it. UDF is
 // POLL-based (no push), so live updates poll /history for the newest bar — for true real-time a backend
 // implements ChartDatafeed directly (as the engine reference implementation does over SSE). This adapter
 // is the low-effort on-ramp.
@@ -22,7 +23,7 @@
 // as the stop-scrolling-back signal. Live polling only ever emits the newest bar, which the chart applies
 // as mutate-last-or-append by bucket time.
 import { FeedUnavailableError } from './datafeed'
-import type { BarsEvent, ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, QuoteSnapshot, SearchPage, SubscribeHandlers, SymbolRow } from './datafeed'
+import type { BarsEvent, ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, SearchPage, SubscribeHandlers, SymbolRow } from './datafeed'
 import type { SymbolInfo } from './symbology'
 import { udfSymbolInfo, type UdfSymbolResponse } from './udfSymbology'
 import { canonicalResolution, tfToUdfResolution, udfResolutionToTf } from './udfResolution'
@@ -295,37 +296,6 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
       const res = await doFetch(`${base}/time`)
       if (!res.ok) throw new Error(`udf /time → HTTP ${res.status}`)
       return Math.floor(Number(await res.text()))
-    },
-
-    async getQuotes(symbols): Promise<QuoteSnapshot[]> {
-      if (symbols.length === 0) return []
-      const raw = (await getJson(`/quotes?symbols=${encodeURIComponent(symbols.join(','))}`)) as {
-        s?: string
-        d?: Array<{ n?: string; s?: string; v?: Record<string, unknown> }>
-      }
-      const byName = new Map<string, Record<string, unknown>>()
-      for (const row of raw.d ?? []) if (row.n && row.v) byName.set(row.n, row.v)
-      // Echo one snapshot per REQUESTED symbol, in request order (a symbol the server omits → all-null).
-      // Prefer the server's ch/chp; derive them from last/prevClose when the server leaves them out.
-      return symbols.map((sym) => {
-        const v = byName.get(sym)
-        const last = v ? num(v.lp) : null
-        const prevClose = v ? num(v.prev_close_price) : null
-        const change = v ? (num(v.ch) ?? (last != null && prevClose != null ? last - prevClose : null)) : null
-        const changePct = v ? (num(v.chp) ?? (change != null && prevClose ? (change / prevClose) * 100 : null)) : null
-        return {
-          symbol: sym,
-          last,
-          open: v ? num(v.open_price) : null,
-          high: v ? num(v.high_price) : null,
-          low: v ? num(v.low_price) : null,
-          prevClose,
-          volume: v ? num(v.volume) : null,
-          change,
-          changePct,
-          spark: [], // UDF quotes carry no history series
-        }
-      })
     },
   }
 }
