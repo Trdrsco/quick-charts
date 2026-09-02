@@ -1,6 +1,6 @@
 // Plain-JS ESM consumer: the tarball must RESOLVE and EXECUTE (not just typecheck) in a project
 // with no TypeScript at all. Pure exports run for real; DOM-needing exports only need to exist.
-import { attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTf, mergeOverrides, olderPageVerdict, planPaneOp, sessionOf, tfToUdfResolution } from 'quickcharts'
+import { BUILT_IN_INDICATORS, attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTf, mergeOverrides, olderPageVerdict, planPaneOp, sessionOf, tfToUdfResolution } from 'quickcharts'
 import { parseDrawingsStore, serializeDrawingsStore, toolRegistry } from '@trdrs/chart-drawings'
 
 const fail = (msg) => {
@@ -51,6 +51,16 @@ if (plan.apply[1] === undefined || plan.apply[0] + plan.apply[1] !== 400) fail('
 if (sessionOf(1_700_000_000, 'crypto') !== 'open') fail('crypto must always be open')
 if (coerceScaleMode('banana') !== 'normal') fail('scale-mode coercion not failing closed')
 if (isIntradayTf('1d') || !isIntradayTf('5m')) fail('intraday predicate wrong')
+
+// The built-in indicators execute from the shipped artifact: the registry holds the 23, and one
+// computes over plain bars and walks into the render spec with nothing else of ours installed.
+if (BUILT_IN_INDICATORS.length !== 23) fail(`built-in registry holds ${BUILT_IN_INDICATORS.length}, not 23`)
+const rsi = BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')
+const rsiBars = Array.from({ length: 40 }, (_, i) => ({ t: 60 * (i + 1), o: 100 + i, h: 101 + i, l: 99 + i, c: 100.5 + i, v: 10 }))
+const rsiInputs = Object.fromEntries(Object.entries(rsi.manifest.inputs).map(([k, s]) => [k, s.default]))
+const rsiSpec = buildManifestPlots({ manifest: rsi.manifest, plots: rsi.compute(rsiBars, rsiInputs) }, rsiBars.map((b) => b.t), 'RSI', '#f5a623')
+if (rsiSpec.placement !== 'pane' || rsiSpec.plots[0].data.filter((p) => 'value' in p).length === 0) fail('the built-in RSI did not compute')
+if (!rsiSpec.fills || !rsiSpec.fills[0].upperData) fail('the built-in RSI background must carry its level edges')
 
 console.log('clean-room js (esm): ok')
 
