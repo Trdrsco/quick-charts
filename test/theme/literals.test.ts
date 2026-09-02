@@ -1,6 +1,6 @@
 // One place holds a color. `palettes.ts` is the only file in the theme source allowed to write a
-// hex or rgb literal, and the authored stylesheet writes none at all: every value it paints comes
-// from a generated custom property.
+// hex or rgb literal, and the authored stylesheet writes none: every value it paints comes from a
+// generated custom property, or from a system color keyword under forced colors.
 //
 // This pin is scoped to the theme source and the stylesheet, which is the surface W2-C owns. The
 // widget's DOM modules still carry theme-dependent literals; W3-A widens this sweep to the whole

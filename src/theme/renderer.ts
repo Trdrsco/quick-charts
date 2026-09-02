@@ -51,8 +51,9 @@ export interface CanvasTheme {
   session: { preMarket: string; extended: string; afterHours: string; closed: string }
 }
 
-/** Strip a CSS length to the number a canvas API wants. A malformed value cannot reach here: the
- *  role's kind is validated before resolution, and the built-in value is a plain pixel length. */
+/** The leading number of a CSS length, which is what a canvas API takes. The built-in type roles are
+ *  written in pixels; a value in another unit is read as its number, and one with no number at all
+ *  falls back rather than painting text at zero. */
 function pixels(value: string, fallback: number): number {
   const n = Number.parseFloat(value)
   return Number.isFinite(n) ? n : fallback
