@@ -17,7 +17,9 @@ export interface ManifestInput {
 }
 
 /** A declared plot channel. `area` fills toward `base`; `marker` draws an event glyph on bars with
- *  a finite value (`location` 'above'/'below' tracks the bar, 'absolute' anchors at the value). */
+ *  a finite value (`location` 'above'/'below' tracks the bar, 'absolute' anchors at the value).
+ *  `scale: 'volume'` pins the plot to the chart's own volume band instead of the pane's price
+ *  scale (a Volume MA rides the histogram it averages). */
 export interface ManifestPlot {
   readonly kind: 'line' | 'histogram' | 'area' | 'marker'
   readonly color?: string
@@ -30,6 +32,7 @@ export interface ManifestPlot {
   readonly shape?: 'circle' | 'square' | 'triangle-up' | 'triangle-down' | 'arrow-up' | 'arrow-down' | 'cross'
   readonly location?: 'above' | 'below' | 'absolute'
   readonly text?: string
+  readonly scale?: 'volume'
 }
 
 /** A declared static horizontal level. */
@@ -39,7 +42,8 @@ export interface ManifestLevel {
   readonly lineStyle?: 'solid' | 'dashed' | 'dotted'
 }
 
-/** A declared band fill between two sibling plots. */
+/** A declared band fill between two edges. Each name in `between` is a plot key, or a level key
+ *  when no plot carries that name: an oscillator's background shades between its limit levels. */
 export interface ManifestFill {
   readonly between: readonly [string, string]
   readonly color?: string
@@ -281,11 +285,13 @@ export function buildManifestPlots(run: ManifestRun, times: readonly UTCTimestam
   const plots: IndicatorPlot[] = Object.entries(manifest.plots).map(([key, spec]) => {
     const values = run.plots[key] ?? []
     const colors = run.plotColors?.[key]
+    const scale = spec.scale ? { scale: spec.scale } : {}
     if (spec.kind === 'histogram') {
       return {
         key,
         type: 'histogram' as const,
         color: spec.color ?? fallbackColor,
+        ...scale,
         data: toHistogram(values, times, spec.up ?? UP, spec.down ?? DOWN, colors),
       }
     }
@@ -295,6 +301,7 @@ export function buildManifestPlots(run: ManifestRun, times: readonly UTCTimestam
         type: 'area' as const,
         color: spec.color ?? fallbackColor,
         base: spec.base ?? 0,
+        ...scale,
         data: toGapped(values, times, colors),
       }
     }
@@ -306,6 +313,7 @@ export function buildManifestPlots(run: ManifestRun, times: readonly UTCTimestam
         shape: spec.shape ?? 'circle',
         location: spec.location ?? 'absolute',
         text: spec.text,
+        ...scale,
         data: toGapped(values, times, colors),
       }
     }
@@ -316,19 +324,32 @@ export function buildManifestPlots(run: ManifestRun, times: readonly UTCTimestam
       lineWidth: spec.lineWidth,
       lineStyle: spec.lineStyle,
       dots: spec.dots,
+      ...scale,
       data: toGapped(values, times, colors),
     }
   })
   const levels = Object.entries(manifest.levels ?? {}).map(([key, l]) => ({ key, price: l.price, color: l.color, lineStyle: l.lineStyle }))
   // Declared band fills: painted between the two edge plots' series; per-bar fill colors override
-  // the spec color (null = that bar unfilled).
-  const fills = Object.entries(manifest.fills ?? {}).map(([key, f]) => ({
-    key,
-    upper: f.between[0],
-    lower: f.between[1],
-    color: f.color ?? 'rgba(38, 166, 154, 0.13)',
-    colors: run.fillColors?.[key] as (string | null)[] | undefined,
-  }))
+  // the spec color (null = that bar unfilled). An edge that names no plot but names a LEVEL (an
+  // oscillator's background between its limits) carries a constant edge built from the level's
+  // price, so the painter shades between the limit lines wherever the run's bars are.
+  const plotKeys = new Set(Object.keys(manifest.plots))
+  const levelEdge = (name: string): PlotPoint[] | undefined => {
+    const level = plotKeys.has(name) ? undefined : manifest.levels?.[name]
+    return level ? times.map((t) => ({ time: t, value: level.price })) : undefined
+  }
+  const fills = Object.entries(manifest.fills ?? {}).map(([key, f]) => {
+    const upperData = levelEdge(f.between[0])
+    const lowerData = levelEdge(f.between[1])
+    return {
+      key,
+      upper: f.between[0],
+      lower: f.between[1],
+      color: f.color ?? 'rgba(38, 166, 154, 0.13)',
+      colors: run.fillColors?.[key] as (string | null)[] | undefined,
+      ...(upperData && lowerData ? { upperData, lowerData } : {}),
+    }
+  })
   // Sparse self-contained points for the pane shade + candle recolor channels.
   const toPoints = (arr: readonly (string | null)[] | undefined) => {
     if (!arr) return undefined
