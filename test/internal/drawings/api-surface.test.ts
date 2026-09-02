@@ -1,10 +1,10 @@
-// The API-surface pin — a lightweight stand-in for an api-extractor report: the package's public
-// RUNTIME surface as { name: typeof }. A diff here is a SemVer event to decide consciously (a
-// removal/rename is breaking → major; an addition → minor, then extend the pin) — never noise to
-// appease. The ~90 tool classes ARE public API: a licensee restores drawings through toolRegistry
-// and may construct/extend the classes directly, so an accidental drop of one must fail loudly
-// here rather than in their bundle. Type-only exports are erased at runtime and are gated by the
-// clean-room consumer (clean-room/ts-consumer, skipLibCheck: false) against the shipped .d.ts.
+// The seam's own surface inventory. This is an INTERNAL source module bundled into quickcharts, so
+// a diff here is not a SemVer event: it is an accident check. The 90 tool classes are what the
+// registry builds drawings from, and dropping one silently would take a tool off the chart, so
+// every export is named and a loss fails loudly here.
+//
+// The PUBLIC contract is quickcharts/drawings, pinned in packages/chart/test/drawings-surface.test.ts,
+// and it publishes a deliberate subset of what is listed below.
 import { describe, expect, it } from 'vitest'
 import * as api from '../src/index'
 
