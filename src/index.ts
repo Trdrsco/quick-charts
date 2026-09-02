@@ -193,3 +193,8 @@ export type { ThemeDiagnostic, ThemeDiagnosticCode } from './theme/validate'
 // it mounts its own definition, and reads its name through the chart's ChartI18n.
 export { BUILT_IN_INDICATORS, type BuiltInIndicator, type IndicatorCategory } from './builtInIndicators'
 // ── end W2-B ──────────────────────────────────────────────────────────────────────────
+// ── W2-A: the symbol price format a study scale falls back to ────────────────────────────────
+// The renderer's `symbolPriceFormat` option names this shape; a host composing the renderer
+// itself supplies it from its own symbol formatter.
+export type { SymbolPriceFormat } from './indicatorRenderer'
+// ── end W2-A ──────────────────────────────────────────────────────────────────────────────────
