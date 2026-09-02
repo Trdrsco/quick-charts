@@ -80,6 +80,10 @@ export interface ChartExtensionChart {
   timeframe(): string
   bars(): readonly FeedBar[]
   replay(): ChartExtensionReplayState
+  /** The feed's last reported status for the charted symbol ('live', 'no-data', a backend code),
+   *  or null before the subscription has said anything. An overlay that prices something against
+   *  the last bar reads this first: a bar the feed is not calling live is history, not a mark. */
+  feedStatus(): string | null
 }
 
 /** Where a menu was raised, in the chart's own terms. */
@@ -185,6 +189,7 @@ export interface ChartExtensionHostDeps {
   timeframe(): string
   bars(): readonly FeedBar[]
   replay(): ChartExtensionReplayState
+  feedStatus(): string | null
   theme(): ResolvedTheme
   formatter(): ChartPriceFormatter
   pane(): ChartExtensionPane
@@ -395,6 +400,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
         timeframe: () => deps.timeframe(),
         bars: () => deps.bars(),
         replay: () => deps.replay(),
+        feedStatus: () => deps.feedStatus(),
       },
       container: deps.container,
       overlay: deps.overlay,
