@@ -100,6 +100,14 @@ const SURFACE: Record<string, string> = {
   udfPriceFormat: 'function',
   udfSymbolInfo: 'function',
   // ── end W1-B ────────────────────────────────────────────────────────────────────────────────
+  // ── W2-C ────────────────────────────────────────────────────────────────────────────────────
+  // Additive (minor): the executable theme contract. `THEME_ROLES` is the public semantic role
+  // inventory; `createThemeController` is the one runtime surface for mode selection, custom
+  // palettes and change subscriptions. Everything else the theme system exposes is type-only, so
+  // the clean-room consumer compiling the shipped declarations is its gate.
+  THEME_ROLES: 'object',
+  createThemeController: 'function',
+  // ── end W2-C ────────────────────────────────────────────────────────────────────────────────
 }
 
 describe('quickcharts API surface pin', () => {
