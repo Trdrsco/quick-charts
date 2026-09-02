@@ -1,31 +1,19 @@
 // The trade-line gesture DECISIONS, pure — tradeLines.ts applies them at its pointer and
 // reconcile boundaries. They are extracted because they carry the money-safety rules of the whole
 // gesture surface, and the DOM loop around them cannot run outside a real browser (the control
-// overlay needs a 2d canvas): the rules test here; the loop stays a thin applier.
-
-/** How far (px) a press may wander before release and still count as a tap. */
-export const CLICK_SLOP = 4
-/** The same allowance for a FINGER. A mouse releases within a pixel or two of where it pressed, so
- *  4 separates a click from an abandoned drag cleanly. A thumb does not: it lands on a soft contact
- *  patch, rolls slightly as it presses, and routinely reports 8 to 10px between down and up on a
- *  tap the person experienced as perfectly still. Judging that by the mouse's number drops real
- *  taps, and the control it drops them on is the send button, which makes the app look like it
- *  ignored an order rather than like it measured a gesture strictly. */
-export const CLICK_SLOP_TOUCH = 12
-
-/** The tap allowance for the pointer in use. */
-export function clickSlopFor(pointerType: string | undefined): number {
-  return pointerType === 'touch' ? CLICK_SLOP_TOUCH : CLICK_SLOP
-}
+// overlay needs a 2d canvas): the rules test here; the loop stays a thin applier. The geometry of a
+// tap (how far a pointer may wander, whether it released on the control it pressed) is the chart's
+// own rule in pointerInput; what this module adds is the money half, the selection guard.
+import { tapGeometryVerdict } from './pointerInput'
 
 export type TapVerdict = 'commit' | 'strayed' | 'missed' | 'scope_changed'
 
 /** Whether releasing a pressed control (✕, ⇄, a leg's ✕) commits its action. Commit needs ALL of:
- *  the pointer stayed within CLICK_SLOP of the press (a tap, not an abandoned drag), the release
- *  still rests on the SAME control (`onSameControl` — lazy, so a strayed release never pays for a
- *  hit test), and the (scope, symbol) selection is still the one captured at press. Only the
- *  selection change is worth surfacing (the tap was real; its target changed underneath) — the
- *  caller maps 'scope_changed' to its message and drops the rest silently. */
+ *  the pointer stayed within the pointer's tap allowance of the press (a tap, not an abandoned
+ *  drag), the release still rests on the SAME control (`onSameControl` — lazy, so a strayed
+ *  release never pays for a hit test), and the (scope, symbol) selection is still the one captured
+ *  at press. Only the selection change is worth surfacing (the tap was real; its target changed
+ *  underneath) — the caller maps 'scope_changed' to its message and drops the rest silently. */
 export function tapReleaseVerdict(a: {
   downX: number
   downY: number
@@ -39,9 +27,8 @@ export function tapReleaseVerdict(a: {
    *  as a mouse, which keeps every existing caller on the strict number. */
   pointerType?: string
 }): TapVerdict {
-  const slop = clickSlopFor(a.pointerType)
-  if (Math.abs(a.upX - a.downX) > slop || Math.abs(a.upY - a.downY) > slop) return 'strayed'
-  if (!a.onSameControl()) return 'missed'
+  const geometry = tapGeometryVerdict(a)
+  if (geometry !== 'tap') return geometry
   if (a.scopes && (a.scopes.captured.scope !== a.scopes.current.scope || a.scopes.captured.symbol !== a.scopes.current.symbol)) return 'scope_changed'
   return 'commit'
 }

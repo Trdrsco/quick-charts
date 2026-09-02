@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { CLICK_SLOP, createPendingHolds, tapReleaseVerdict } from '../src/gestureRules'
+import { createPendingHolds, tapReleaseVerdict } from '../src/gestureRules'
+import { CLICK_SLOP } from '../src/pointerInput'
 
 // The gesture surface's money-safety rules. The DOM loop that applies them cannot run outside a
 // real browser (the control overlay needs a 2d canvas), so the DECISIONS are pinned here instead:

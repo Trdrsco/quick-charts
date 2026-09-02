@@ -10,7 +10,8 @@
 // into a planned broker call. Everything money-deciding (snap, band, protective-side, classify)
 // is the pure planBrokerDrop in broker.ts, gated by the HOST's injected price policy.
 import type { IChartApi, IPriceLine, ISeriesApi } from 'lightweight-charts'
-import { clickSlopFor, createPendingHolds, tapReleaseVerdict } from './gestureRules'
+import { createPendingHolds, tapReleaseVerdict } from './gestureRules'
+import { clickSlopFor } from './pointerInput'
 import { displayDecimals, fmtPrice, isMeaningfulMove, type BrokerAdapter, type BrokerOrder, type BrokerSnapshot, type PricePolicy } from '@trdrs/broker'
 import {
   boundBracketPrice,
