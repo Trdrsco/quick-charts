@@ -1,7 +1,7 @@
 // GENERIC pointer and touch rules for the chart surface — the decisions a chart makes about a
 // finger or a mouse before any product behavior reads the result. They live in the package because
 // they belong to the chart at every width: a chart embedded in someone else's application gets the
-// same drag lock as ours, with no host code.
+// same press-and-hold, the same drift cancel and the same drag lock as ours, with no host code.
 //
 // Pure on purpose. The loops around them need a real browser (pointer capture, a canvas, a live
 // price scale); the rules do not, so they are pinned here and the loops stay thin appliers.
@@ -27,6 +27,31 @@ export function pointerLock(locked: boolean): PointerLockState {
     : { handleScroll: true, handleScale: true, touchAction: '' }
 }
 
+/** How long a finger rests before the chart treats the press as a right-click. Measured against the
+ *  platform hold that raises a level menu: long enough not to fire during a flick-scroll, short
+ *  enough that a deliberate hold does not feel ignored. */
+export const LONG_PRESS_MS = 450
+
+/** How far that finger may travel first. A thumb rolls on its contact patch while it presses, so
+ *  the allowance is well above a mouse's — under it, a real hold on a small screen never fires. */
+export const LONG_PRESS_DRIFT_PX = 10
+
+/** Whether a touch start begins a press-and-hold at all. One finger only (a second is a pinch,
+ *  which is navigation), never while a drawing tool is armed (the press IS the drawing gesture),
+ *  and never on a control the finger is about to tap. */
+export function longPressArms(a: { touches: number; toolArmed: boolean; onControl?: boolean }): boolean {
+  return a.touches === 1 && !a.toolArmed && a.onControl !== true
+}
+
+/** Whether an armed hold is abandoned before it fires: the finger travelled, lifted, or was joined
+ *  by another. Drift is judged per axis, the way the press was measured. */
+export function longPressCancels(a: { touches: number; fromX: number; fromY: number; x: number; y: number }): boolean {
+  if (a.touches !== 1) return true
+  return Math.abs(a.x - a.fromX) > LONG_PRESS_DRIFT_PX || Math.abs(a.y - a.fromY) > LONG_PRESS_DRIFT_PX
+}
+
 // Pinch and axis-scale dragging are the renderer's own gestures: the chart enables them and gets out
 // of the way. What this package owns about them is exactly the lock above — an in-chart drag
-// suspends pinch and axis scaling for its duration and hands both back.
+// suspends pinch and axis scaling for its duration and hands both back — and the rule that a second
+// finger ends a one-finger gesture instead of being folded into it. Both are pinned in
+// test/pointerInput.test.ts against these functions and the widget's own chart options.
