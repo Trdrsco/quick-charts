@@ -169,13 +169,6 @@ export function paintTextBlock(
   return box
 }
 
-/** Price formatted to a sensible tick precision for labels and stats. */
-export function formatPrice(value: number): string {
-  const abs = Math.abs(value)
-  const decimals = abs >= 100 ? 2 : abs >= 1 ? 3 : 5
-  return value.toFixed(decimals)
-}
-
 const HANDLE_RADIUS = 4.5
 
 /** Paint the anchor handles for a selected/editing drawing. */

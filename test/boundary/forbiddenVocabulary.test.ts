@@ -108,8 +108,6 @@ describe('the forbidden vocabulary, as built', () => {
       .filter((t) => lines(sourcesFor(t.scope), t.pattern).length > 0)
       .map((t) => t.term)
     expect(present).toEqual([
-      'pricePrecision',
-      'tick: on the symbol type',
       'onQuote',
       'getQuotes',
       'subscribeQuotes',

@@ -9,7 +9,7 @@
 // Absent fields resolve to the protocol's own documented defaults, never to a guess about the
 // market: an unstated `minmov` is 1 because UDF says so, and an unstated session is the round clock
 // because claiming exchange hours nobody served would render wrong bands.
-import { udfResolutionToTf } from './udfDatafeed'
+import { udfResolutionToTf } from './udfResolution'
 import type { DataStatus, PriceFormat, SymbolInfo } from './symbology'
 
 /** The `/symbols` fields this mapping reads. A server may send more; anything not listed here has

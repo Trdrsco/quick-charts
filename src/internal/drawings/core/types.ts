@@ -2,6 +2,11 @@ import type { Time } from 'lightweight-charts'
 import type { IntervalContext, IntervalVisibility } from './visibility'
 import { DEFAULT_VISIBILITY } from './visibility'
 
+/** How the host writes a price: the symbol's own formatter, injected so every drawing label,
+ *  pill and readout carries the market's declared precision. The drawings package never derives a
+ *  precision from a price's magnitude. */
+export type PriceFormatPort = (price: number) => string
+
 /** A point the drawing is pinned to, in chart coordinates. */
 export interface Anchor {
   time: Time
@@ -138,8 +143,11 @@ export interface IDrawing {
   setIntervalContext(context: IntervalContext): void
   /** Chart-wide hide-all switch (transient view state — never serialized). */
   setGlobalHidden(hidden: boolean): void
-  /** The instrument's real tick size (tick-denominated readouts); null falls back to inference. */
+  /** The symbol's smallest price move (tick-denominated readouts); null omits those readouts. */
   setTickSize(tick: number | null): void
+  /** The symbol's price formatter (the manager broadcasts it); null returns to the declared
+   *  stand-in. */
+  setPriceFormatter(format: PriceFormatPort | null): void
   /** Manual `visible` switch AND hide-all AND the per-interval rule, combined. */
   isVisibleNow(): boolean
 

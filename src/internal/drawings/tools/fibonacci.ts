@@ -1,7 +1,7 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { angleOf, distanceToSegment, extendSegment, midpoint } from '../core/geometry'
-import { applyStroke, dashPattern, formatPrice, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { applyStroke, dashPattern, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
 /** One retracement/extension level. Color falls back to the shared palette by position. */
 export type FibLevel = {
@@ -175,7 +175,7 @@ export class FibRetracement extends Drawing<FibProps> {
       const parts: string[] = []
       if (entry.level.text) parts.push(entry.level.text)
       if (this.props.showLevels) parts.push(String(entry.level.value))
-      if (this.props.showPrices) parts.push(`(${formatPrice(this.priceAt(entry.level.value))})`)
+      if (this.props.showPrices) parts.push(`(${this.formatPrice(this.priceAt(entry.level.value))})`)
       if (parts.length) {
         paintLabel(ctx, parts.join(' '), { x: span.minX - 6, y: entry.y }, { ...this.style, textColor: entry.color }, { align: 'right' })
       }
@@ -300,7 +300,7 @@ export class FibChannel extends Drawing<FibProps> {
         const parts = [
           line.level.text || null,
           this.props.showLevels ? String(line.level.value) : null,
-          this.props.showPrices && price !== null ? `(${formatPrice(price)})` : null,
+          this.props.showPrices && price !== null ? `(${this.formatPrice(price)})` : null,
         ].filter((s): s is string => s !== null)
         paintLabel(ctx, parts.join(' '), { x: line.a.x - 6, y: line.a.y }, { ...this.style, textColor: line.color }, { align: 'right' })
       }
@@ -403,7 +403,7 @@ export class FibSpeedFan extends Drawing<FibProps> {
         const parts = [
           ray.level.text || null,
           this.props.showLevels ? String(ray.level.value) : null,
-          this.props.showPrices && price !== null ? `(${formatPrice(price)})` : null,
+          this.props.showPrices && price !== null ? `(${this.formatPrice(price)})` : null,
         ].filter((s): s is string => s !== null)
         paintLabel(ctx, parts.join(' '), { x: p2.x + 6, y }, { ...this.style, textColor: ray.color })
       }

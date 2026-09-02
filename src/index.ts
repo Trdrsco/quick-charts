@@ -8,7 +8,6 @@ export type {
   FeedBar,
   SymbolRow,
   SearchPage,
-  SymbolInfo,
   SessionClass,
   HistoryPage,
   OlderPageVerdict,
@@ -34,7 +33,8 @@ export {
 export { localStorageChartStorage, memoryChartStorage } from './storage'
 
 export type { FetchLike, UdfDatafeedOptions } from './udfDatafeed'
-export { createUdfDatafeed, tfToUdfResolution, udfResolutionToTf } from './udfDatafeed'
+export { createUdfDatafeed } from './udfDatafeed'
+export { tfToUdfResolution, udfResolutionToTf } from './udfResolution'
 
 export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorDefinition, IndicatorInstance } from './widget'
 
@@ -136,11 +136,11 @@ export {
 
 // ── W1-B: symbology, the price formatter, and the revisioned resource contract ────────────────
 // The symbology contract and its formatter are root Quick Charts API (DECISIONS.md: no symbology
-// subpath, package, or repository). `SymbolInfo`, `ChartMeta`, `ChartSaveLoadAdapter`,
-// `DrawingScope`, `TemplateKind` and `TemplateMeta` live in `symbology.ts` and `resources.ts` and
-// are NOT re-exported here: the datafeed and save/load modules still export those names, and W2-A
-// promotes the new definitions when it retires the old shapes.
-export type { DataStatus, PriceFormat, TickBand } from './symbology'
+// subpath, package, or repository). `SymbolInfo` is the shape `ChartDatafeed.resolve` answers
+// with. `ChartMeta`, `ChartSaveLoadAdapter`, `DrawingScope`, `TemplateKind` and `TemplateMeta`
+// live in `resources.ts` and are NOT re-exported here yet: the save/load module still exports
+// those names, and the revisioned contract is promoted when the engine's chart resources land.
+export type { DataStatus, PriceFormat, SymbolInfo, TickBand } from './symbology'
 export { parseTickBands, tickBandFor } from './symbology'
 export type { NumericPunctuation, PriceFormatter, PriceFormatterOptions } from './priceFormatter'
 export { createPriceFormatter } from './priceFormatter'

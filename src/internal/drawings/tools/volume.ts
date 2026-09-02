@@ -2,7 +2,7 @@ import type { Time } from 'lightweight-charts'
 
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
-import { barsInRange, impliedTick, volumeProfile } from '../core/bars'
+import { barsInRange, volumeProfile } from '../core/bars'
 import type { SourceBar } from '../core/bars'
 import { distanceToSegment } from '../core/geometry'
 import { alphaOf, applyStroke, dashPattern, paintLabel, withAlpha } from '../render/canvas'
@@ -221,7 +221,9 @@ abstract class VolumeProfileBase<P extends ProfileProps & Record<string, unknown
         max = Math.max(max, bar.high)
       }
       if (!(max > min)) return 24
-      const tick = this.tickSize() ?? impliedTick(range)
+      // Tick rows need the symbol's tick; without one the profile keeps its default row count.
+      const tick = this.tickSize()
+      if (tick === null) return 24
       const rows = Math.ceil((max - min) / (tick * size))
       return Math.max(1, Math.min(400, rows))
     }

@@ -3,7 +3,9 @@
 // speaks THIS interface and never a concrete client, so a third party can drive the chart from their own
 // feed by implementing one object: the chart is the product, a backend is the implementation. Types are
 // self-contained on purpose — the interface must not drag a backend SDK into the chart's dependency
-// surface.
+// surface. The symbol metadata `resolve` answers with is the symbology contract in `symbology.ts`;
+// the datafeed carries that type rather than restating it.
+import type { SymbolInfo } from './symbology'
 
 /** One OHLCV bar on the wire: `t` = epoch SECONDS at bucket open (never milliseconds, never an
  *  update's wall time), strictly ascending within any batch, one bar per timestamp. */
@@ -38,31 +40,6 @@ export interface SearchPage {
  *  holidays) must follow what the venue actually trades. A feed that omits it leaves the chart on
  *  its own per-class defaults. */
 export type SessionClass = 'equity' | 'futures' | 'fx' | 'crypto'
-
-/** Resolved metadata for ONE symbol — display identity + price format + feed capability. */
-export interface SymbolInfo {
-  symbol: string
-  name: string
-  exchange: string
-  type: string
-  provider: string | null
-  via: string | null
-  /** The session model this symbol trades on. Optional: a feed that doesn't know leaves the chart
-   *  to its per-class defaults (never a wrong session claim). */
-  sessionClass?: SessionClass
-  /** The session model's holiday calendar — exchange-local 'YYYY-MM-DD' dates mapped to that day's
-   *  trading segments (empty = a full closure; absent dates follow the weekday rules). Optional:
-   *  the feed owns holiday truth (the calendar churns annually and must never be client-bundled);
-   *  without it, holidays render as normal sessions. The host registers it per session class. */
-  sessionCalendar?: import('./sessions').HolidayCalendar
-  /** Minimum price increment, or null when the feed doesn't know it (the chart then derives
-   *  display precision from price magnitude). */
-  tick: number | null
-  /** Decimal places for price labels, or null (derive from magnitude). */
-  pricePrecision: number | null
-  /** Whether the serving feed exposes a real L1 (top-of-book) quote surface for this symbol. */
-  quotes: boolean
-}
 
 export interface HistoryPage {
   bars: FeedBar[]

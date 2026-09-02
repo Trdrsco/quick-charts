@@ -5,7 +5,6 @@ import { Drawing } from '../core/drawing'
 import { angleOf, distanceToSegment, extendSegment, midpoint, segmentTextAngle } from '../core/geometry'
 import {
   applyStroke,
-  formatPrice,
   paintArrowHead,
   paintLabel,
   strokeSegment,
@@ -120,11 +119,11 @@ export class TrendLine extends Drawing<TrendLineProps> {
 
     if (this.props.showPriceLabels) {
       const [a, b] = this.anchors
-      paintLabel(ctx, formatPrice(a.price), { x: pa.x - 8, y: pa.y }, this.style, {
+      paintLabel(ctx, this.formatPrice(a.price), { x: pa.x - 8, y: pa.y }, this.style, {
         align: 'right',
         background: withAlpha(this.style.lineColor, 0.2),
       })
-      paintLabel(ctx, formatPrice(b.price), { x: pb.x + 8, y: pb.y }, this.style, {
+      paintLabel(ctx, this.formatPrice(b.price), { x: pb.x + 8, y: pb.y }, this.style, {
         background: withAlpha(this.style.lineColor, 0.2),
       })
     }
@@ -160,7 +159,7 @@ export class TrendLine extends Drawing<TrendLineProps> {
     const parts: string[] = []
     const dPrice = b.price - a.price
     if (this.props.showPriceRange) {
-      parts.push(`${dPrice >= 0 ? '+' : ''}${formatPrice(dPrice)}`)
+      parts.push(`${dPrice >= 0 ? '+' : ''}${this.formatPrice(dPrice)}`)
     }
     if (this.props.showPercentChange) {
       const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
@@ -280,7 +279,7 @@ export class HorizontalLine extends Drawing<HorizontalLineProps> {
         if (!anchor || !viewport) return null
         return viewport.yOf(anchor.price)
       },
-      text: () => formatPrice(this.anchors[0]?.price ?? 0),
+      text: () => this.formatPrice(this.anchors[0]?.price ?? 0),
       color: () => this.style.lineColor,
       visible: () => this.props.showPrice && this.isVisibleNow(),
     }),
@@ -418,7 +417,7 @@ export class CrossLine extends Drawing<CrossLineProps> {
         if (!anchor || !viewport) return null
         return viewport.yOf(anchor.price)
       },
-      text: () => formatPrice(this.anchors[0]?.price ?? 0),
+      text: () => this.formatPrice(this.anchors[0]?.price ?? 0),
       color: () => this.style.lineColor,
       visible: () => this.props.showPrice && this.isVisibleNow(),
     }),

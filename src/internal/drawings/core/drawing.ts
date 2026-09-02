@@ -18,6 +18,7 @@ import type {
   DrawingStyle,
   IDrawing,
   Point,
+  PriceFormatPort,
   SerializedDrawing,
   Viewport,
 } from './types'
@@ -175,6 +176,11 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
  * `defaultProps` when they carry tool-specific state. `props` round-trips through
  * `toJSON`/`fromJSON` in full — a tool's serialized form IS its complete state.
  */
+/** What a drawing writes when no host formatter has been injected: cents, a DECLARED stand-in
+ *  for an unhosted drawing. A host always injects the symbol's formatter; this is never a rule
+ *  that reads precision off the price. */
+const UNRESOLVED_PRICE_TEXT: PriceFormatPort = (price) => price.toFixed(2)
+
 export abstract class Drawing<P extends Record<string, unknown> = Record<string, never>>
   implements IDrawing, ISeriesPrimitive<Time>
 {
@@ -357,7 +363,8 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
 
   private _tickSize: number | null = null
 
-  /** The instrument's real tick size; tick-denominated readouts fall back to inference without it. */
+  /** The symbol's smallest price move; a tick-denominated readout is omitted without it rather
+   *  than inferred from the data. */
   setTickSize(tick: number | null): void {
     this._tickSize = tick && tick > 0 ? tick : null
     this.requestUpdate()
@@ -365,6 +372,19 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
 
   protected tickSize(): number | null {
     return this._tickSize
+  }
+
+  private _priceFormat: PriceFormatPort | null = null
+
+  /** The symbol's price formatter, from the host. */
+  setPriceFormatter(format: PriceFormatPort | null): void {
+    this._priceFormat = format
+    this.requestUpdate()
+  }
+
+  /** A price as the symbol writes it: every label, pill and readout comes through here. */
+  protected formatPrice(price: number): string {
+    return (this._priceFormat ?? UNRESOLVED_PRICE_TEXT)(price)
   }
 
   isVisibleNow(): boolean {

@@ -6,6 +6,7 @@ import type {
   DrawingEventType,
   IDrawing,
   Point,
+  PriceFormatPort,
   SerializedDrawing,
   Viewport,
 } from './types'
@@ -30,6 +31,7 @@ export class DrawingManager {
   private _allHidden = false
   private _barSource: BarSource | null = null
   private _tickSize: number | null = null
+  private _priceFormat: PriceFormatPort | null = null
   private readonly _listeners = new Map<DrawingEventType, Set<DrawingEventCallback>>()
 
   /** Host bar feed, broadcast to every drawing (data-driven tools read it at paint time). */
@@ -38,10 +40,17 @@ export class DrawingManager {
     for (const drawing of this._drawings.values()) drawing.setBarSource(source)
   }
 
-  /** The instrument's tick size, broadcast to every drawing (tick-denominated readouts). */
+  /** The symbol's smallest price move, broadcast to every drawing (tick-denominated readouts). */
   setTickSize(tick: number | null): void {
     this._tickSize = tick
     for (const drawing of this._drawings.values()) drawing.setTickSize(tick)
+  }
+
+  /** The symbol's price formatter, broadcast to every drawing: the one port every label, pill
+   *  and readout writes prices through. The host resolves it from the symbol's declared format. */
+  setPriceFormatter(format: PriceFormatPort | null): void {
+    this._priceFormat = format
+    for (const drawing of this._drawings.values()) drawing.setPriceFormatter(format)
   }
 
   /** Broadcast the chart's interval so per-interval visibility rules apply. */
@@ -99,6 +108,7 @@ export class DrawingManager {
     concrete.setGlobalHidden(this._allHidden)
     concrete.setBarSource(this._barSource)
     concrete.setTickSize(this._tickSize)
+    concrete.setPriceFormatter(this._priceFormat)
     this._drawings.set(concrete.id, concrete)
     this._order.push(concrete.id)
     this._series?.attachPrimitive(concrete)

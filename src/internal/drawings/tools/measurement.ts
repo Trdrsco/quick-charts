@@ -1,7 +1,7 @@
 import type { DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
-import { barsInRange, impliedTick } from '../core/bars'
-import { applyStroke, formatPrice, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { barsInRange } from '../core/bars'
+import { applyStroke, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
 /** Compact volume readout (12.4M style). */
 function volumeText(volume: number): string {
@@ -69,7 +69,7 @@ abstract class RangeMeter extends Drawing<RangeMeterProps> {
       const dPrice = b.price - a.price
       const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
       const parts: string[] = []
-      if (this.props.showPriceDelta) parts.push(`${dPrice >= 0 ? '+' : ''}${formatPrice(dPrice)}`)
+      if (this.props.showPriceDelta) parts.push(`${dPrice >= 0 ? '+' : ''}${this.formatPrice(dPrice)}`)
       if (this.props.showPercent) parts.push(`(${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`)
       if (parts.length) out.push(parts.join(' '))
     }
@@ -231,9 +231,10 @@ export class Measure extends Drawing {
     // The data pill: solid direction color, white text, two centered lines.
     const dPrice = b.price - a.price
     const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
-    const tick = this.tickSize() ?? impliedTick(this.bars())
-    const ticks = tick > 0 ? Math.round(Math.abs(dPrice) / tick) : 0
-    const parts = [`${formatPrice(dPrice)} (${pct.toFixed(2)}%)`]
+    // The tick count rides only on a host-stated tick; without one the readout omits it.
+    const tick = this.tickSize()
+    const ticks = tick !== null && tick > 0 ? Math.round(Math.abs(dPrice) / tick) : 0
+    const parts = [`${this.formatPrice(dPrice)} (${pct.toFixed(2)}%)`]
     if (ticks > 0 && Number.isFinite(ticks)) parts[0] += ` ${ticks}`
     const bars = viewport.barsBetween(a.time, b.time)
     const secs = Math.abs(Number(b.time) - Number(a.time))

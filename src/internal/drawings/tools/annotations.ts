@@ -4,7 +4,6 @@ import { distanceToSegment } from '../core/geometry'
 import {
   applyStroke,
   fillPaint,
-  formatPrice,
   measureTextBlock,
   paintTextBlock,
   withAlpha,
@@ -199,7 +198,7 @@ export class PriceLabel extends Drawing {
     if (!anchor) return null
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return null
-    const { width, height } = measureTextBlock(formatPrice(anchor.price), this.style)
+    const { width, height } = measureTextBlock(this.formatPrice(anchor.price), this.style)
     return { x: p.x + 12, y: p.y - (height + 12) / 2, width: width + 12, height: height + 12 }
   }
 
@@ -227,7 +226,7 @@ export class PriceLabel extends Drawing {
     ctx.fill()
     ctx.stroke()
     ctx.restore()
-    paintTextBlock(ctx, formatPrice(anchor.price), { x: box.x, y: box.y }, this.style)
+    paintTextBlock(ctx, this.formatPrice(anchor.price), { x: box.x, y: box.y }, this.style)
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -321,7 +320,7 @@ export class PriceNote extends Callout {
 
   protected override bodyText(): string {
     const target = this.anchors[0]
-    const price = target ? formatPrice(target.price) : ''
+    const price = target ? this.formatPrice(target.price) : ''
     return this.props.text ? `${price}\n${this.props.text}` : price
   }
 }

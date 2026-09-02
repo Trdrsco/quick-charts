@@ -10,6 +10,7 @@ export type {
   IDrawing,
   LineStyle,
   Point,
+  PriceFormatPort,
   SerializedDrawing,
   ToolCategory,
   Viewport,

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { applyBar, resolveInitialTf, resolveTheme } from '../src/host'
+import { chartContextMenu } from '../src/contextMenu'
+import { createPriceFormatter } from '../src/priceFormatter'
 import type { FeedBar } from '../src/datafeed'
 import hostSrc from '../src/host.ts?raw'
 
@@ -72,5 +74,41 @@ describe('attribution', () => {
     // the chart canvas — an owner decision this pins, because turning the logo back on (or losing
     // the page) is invisible at runtime.
     expect(hostSrc).toContain('attributionLogo: false')
+  })
+})
+
+describe('one formatter everywhere', () => {
+  // A symbol with the Treasury format writes 110'16 on every surface: the candle series' price
+  // format (the axis, the crosshair and the last-price label), the level menu, and a drawing label
+  // all read the ONE symbol formatter. The DOM-free proof is the formatter itself plus the source
+  // pins that every surface writes through it; the drawings package proves its own port.
+  const treasury = createPriceFormatter({ pricescale: 32, minmov: 1, fractional: true })
+
+  it("the formatter writes 110'16 and the menu quotes exactly that text", () => {
+    expect(treasury.format(110.5)).toBe("110'16")
+    const labels = chartContextMenu({ priceText: treasury.format(110.5), symbol: 'ZB', indicatorCount: 0, drawingCount: 0 })
+      .map((r) => (r.kind === 'item' ? r.label : ''))
+    expect(labels).toContain("Copy price 110'16")
+  })
+
+  it('the candle series, the level menu, copy-price, the chips and the extension seam all write through the symbol formatter', () => {
+    expect(hostSrc).toContain("priceFormat: { type: 'custom', formatter: (price: number) => symbolFormatter.format(price), minMove: minMoveOf(format) }")
+    expect(hostSrc).toContain('const priceText = symbolFormatter.format(price)')
+    expect(hostSrc).toContain('writeText(symbolFormatter.format(at))')
+    expect(hostSrc).toContain('symbolFormatter.format(value)')
+    expect(hostSrc).toContain('drawingsHandle?.setPriceFormatter((price) => symbolFormatter.format(price))')
+    expect(hostSrc).toContain('const extFormatter = (): ChartPriceFormatter => ({ format: (price) => symbolFormatter.format(price)')
+  })
+
+  it('no surface keeps a precision of its own', () => {
+    expect(hostSrc).not.toMatch(/toFixed\(2\)(?!\}%)/) // the percent chip is the one two-decimal value, and it is not a price
+    expect(hostSrc).not.toContain('toLocaleString(')
+    expect(hostSrc).not.toContain('maximumFractionDigits')
+    expect(hostSrc).not.toContain('priceFormatOfTick')
+  })
+
+  it('drawings snap to the symbol grid: the smallest move the format declares', () => {
+    expect(hostSrc).toContain('drawingsHandle?.setTick(format ? minMoveOf(format) : null)')
+    expect(hostSrc).toContain('const minMoveOf = (format: PriceFormat): number => format.minmov / format.pricescale')
   })
 })

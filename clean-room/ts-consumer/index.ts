@@ -7,6 +7,7 @@ import {
   buildManifestPlots,
   createChart,
   createChartI18n,
+  createPriceFormatter,
   createUdfDatafeed,
   manifestInputDefaults,
   mergeOverrides,
@@ -57,7 +58,8 @@ export async function exerciseFakes(): Promise<void> {
   const config = await feed.config?.()
   if (!config?.resolutions?.includes('5m')) throw new Error('the fake feed must serve 5m')
   const info = await feed.resolve('ESZ2026')
-  if (info?.tick !== 0.25) throw new Error('unexpected tick')
+  if (info?.format.pricescale !== 100 || info.format.minmov !== 25) throw new Error('unexpected price format')
+  if (createPriceFormatter(info.format).format(5000.25) !== '5000.25') throw new Error('the symbol formatter writes the declared grid')
   const tail = await feed.history('ESZ2026', '5m', { countBack: 10 })
   if (tail.bars.length !== 10 || tail.noData) throw new Error('countBack must answer exactly the asked bars')
   const window = await feed.history('ESZ2026', '1h', { from: 1_700_000_000, to: 1_700_000_000 + 3600 * 5 })
@@ -93,7 +95,21 @@ const feed: ChartDatafeed = {
   },
   async resolve(symbol) {
     const sessionClass: SessionClass = 'crypto'
-    return { symbol, name: 'Stub', exchange: 'X', type: 'crypto', provider: null, via: null, tick: 0.5, pricePrecision: 1, quotes: false, sessionClass }
+    return {
+      ticker: symbol,
+      name: symbol,
+      description: 'Stub',
+      exchange: 'X',
+      listedExchange: 'X',
+      type: 'crypto',
+      supportedResolutions: ['1m', '1h'],
+      timezone: 'Etc/UTC',
+      session: '24x7',
+      dataStatus: 'streaming',
+      volumePrecision: 3,
+      format: { pricescale: 10, minmov: 5 },
+      sessionClass,
+    }
   },
   async history(): Promise<HistoryPage> {
     const bars: FeedBar[] = [{ t: 60, o: 1, h: 2, l: 0.5, c: 1.5, v: 10 }]

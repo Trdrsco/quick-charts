@@ -1,7 +1,7 @@
 import type { DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
-import { applyStroke, fillPaint, fontOf, formatPrice, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { applyStroke, fillPaint, fontOf, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
 const PROFIT = '#089981'
 const LOSS = '#f23645'
@@ -144,7 +144,7 @@ export class LongPosition extends Drawing<PositionProps> {
   private levelText(offset: number, percent: number): string {
     const tick = this.tickSize()
     const ticks = tick && tick > 0 ? `, ${Math.round(offset / tick)}` : ''
-    return `${formatPrice(offset)} (${percent.toFixed(2)}%)${ticks}`
+    return `${this.formatPrice(offset)} (${percent.toFixed(2)}%)${ticks}`
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -175,23 +175,23 @@ export class LongPosition extends Drawing<PositionProps> {
     const qtyText = s.qty >= 100 ? s.qty.toFixed(0) : s.qty.toFixed(2)
     const pnlLabel = s.closed ? 'Closed PnL' : 'Open PnL'
     const entryText = this.props.compact
-      ? `${formatPrice(s.pnl)} · ${qtyText} · ${s.ratio.toFixed(2)}`
-      : `${pnlLabel}: ${formatPrice(s.pnl)}, Qty: ${qtyText}, Risk/Reward Ratio: ${s.ratio.toFixed(2)}`
+      ? `${this.formatPrice(s.pnl)} · ${qtyText} · ${s.ratio.toFixed(2)}`
+      : `${pnlLabel}: ${this.formatPrice(s.pnl)}, Qty: ${qtyText}, Risk/Reward Ratio: ${s.ratio.toFixed(2)}`
     const targetText = this.props.compact
       ? this.levelText(s.tpOffset, s.tpPercent)
-      : `Target: ${this.levelText(s.tpOffset, s.tpPercent)}, Amount: ${formatPrice(s.amountAtTp)}`
+      : `Target: ${this.levelText(s.tpOffset, s.tpPercent)}, Amount: ${this.formatPrice(s.amountAtTp)}`
     const stopText = this.props.compact
       ? this.levelText(s.slOffset, s.slPercent)
-      : `Stop: ${this.levelText(s.slOffset, s.slPercent)}, Amount: ${formatPrice(s.amountAtSl)}`
+      : `Stop: ${this.levelText(s.slOffset, s.slPercent)}, Amount: ${this.formatPrice(s.amountAtSl)}`
 
     paintLabel(ctx, targetText, { x: mid, y: z.targetY }, white, { align: 'center', background: PROFIT })
     paintLabel(ctx, stopText, { x: mid, y: z.stopY }, white, { align: 'center', background: LOSS })
     paintLabel(ctx, entryText, { x: mid, y: z.entryY }, white, { align: 'center', background: '#585858' })
 
     if (this.props.showPrices) {
-      paintLabel(ctx, formatPrice(target.price), { x: z.right + 6, y: z.targetY }, { ...this.style, textColor: PROFIT })
-      paintLabel(ctx, formatPrice(stop.price), { x: z.right + 6, y: z.stopY }, { ...this.style, textColor: LOSS })
-      paintLabel(ctx, formatPrice(entry.price), { x: z.right + 6, y: z.entryY }, this.style)
+      paintLabel(ctx, this.formatPrice(target.price), { x: z.right + 6, y: z.targetY }, { ...this.style, textColor: PROFIT })
+      paintLabel(ctx, this.formatPrice(stop.price), { x: z.right + 6, y: z.stopY }, { ...this.style, textColor: LOSS })
+      paintLabel(ctx, this.formatPrice(entry.price), { x: z.right + 6, y: z.entryY }, this.style)
     }
   }
 
@@ -310,12 +310,12 @@ export class Forecast extends Drawing<ForecastProps> {
     paintArrowHead(ctx, p1, p2, this.style)
     const p = this.props
     const up = b.price >= a.price
-    paintPill(ctx, formatPrice(a.price), { x: p1.x, y: p1.y + (up ? 16 : -16) }, this.style, {
+    paintPill(ctx, this.formatPrice(a.price), { x: p1.x, y: p1.y + (up ? 16 : -16) }, this.style, {
       text: p.sourceTextColor,
       back: p.sourceBackColor,
       border: p.sourceBorderColor,
     })
-    paintPill(ctx, formatPrice(b.price), { x: p2.x, y: p2.y + (up ? -16 : 16) }, this.style, {
+    paintPill(ctx, this.formatPrice(b.price), { x: p2.x, y: p2.y + (up ? -16 : 16) }, this.style, {
       text: p.targetTextColor,
       back: p.targetBackColor,
       border: p.targetBorderColor,

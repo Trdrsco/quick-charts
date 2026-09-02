@@ -41,8 +41,18 @@ interface Entry {
   styleKeys: (string | null)[]
   levelsKey: string | null
   priceLines: IPriceLine[]
-  precisionKey: number | null
+  /** The applied price format's identity: a manifest precision, or the symbol format's key. */
+  precisionKey: string | null
   shapeKey: string
+}
+
+/** The symbol's price format, as a study scale falls back to it when the manifest declares no
+ *  precision: the formatter writes the scale labels, `minMove` is the symbol's smallest move, and
+ *  `key` changes whenever either does so the scale re-applies. */
+export interface SymbolPriceFormat {
+  key: string
+  formatter: (price: number) => string
+  minMove: number
 }
 
 /** The running renderer a host drives. */
@@ -63,9 +73,18 @@ export interface IndicatorsRenderer {
   destroy(): void
 }
 
-export function attachIndicators(chart: IChartApi, options?: { candles?: () => ISeriesApi<'Candlestick'> | null }): IndicatorsRenderer {
+export function attachIndicators(
+  chart: IChartApi,
+  options?: {
+    candles?: () => ISeriesApi<'Candlestick'> | null
+    /** The symbol's price format for studies that declare no precision. A host that supplies none
+     *  leaves those scales on the library's own default formatting. */
+    symbolPriceFormat?: () => SymbolPriceFormat
+  },
+): IndicatorsRenderer {
   const entries = new Map<string, Entry>()
   const candlesOf = options?.candles ?? (() => null)
+  const symbolPriceFormat = options?.symbolPriceFormat ?? null
 
   const removeEntry = (id: string): void => {
     const entry = entries.get(id)
@@ -102,7 +121,7 @@ export function attachIndicators(chart: IChartApi, options?: { candles?: () => I
         entry.series[i]?.setData(plot.data)
         entry.markers[i]?.setMarkers(plot.visible === false ? [] : markersOf(plot))
       })
-      applyEntryStyles(entry, built)
+      applyEntryStyles(entry, built, symbolPriceFormat?.() ?? null)
       feedChannels(entry, built, candlesOf())
     },
     remove(id) {
@@ -295,7 +314,7 @@ function styleKeyOf(plot: IndicatorPlot, labels: boolean): string {
 /** Re-apply per-plot styling, levels, and precision when (and only when) their fingerprints moved —
  *  a style edit lands on the live series without teardown (teardown would flicker and lose the
  *  pane). */
-function applyEntryStyles(entry: Entry, built: IndicatorPlots): void {
+function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: SymbolPriceFormat | null): void {
   const labels = built.display?.labelsOnPriceScale !== false
   built.plots.forEach((plot, i) => {
     const key = styleKeyOf(plot, labels)
@@ -335,14 +354,19 @@ function applyEntryStyles(entry: Entry, built: IndicatorPlots): void {
     }
     entry.priceLines = createLevels(host, built.levels ?? [])
   }
+  // A manifest precision is the study's own declaration; without one the plots are values on the
+  // symbol's price grid and take the symbol formatter, never a fixed decimal count.
   const precision = built.precision ?? null
-  if (precision !== entry.precisionKey) {
-    entry.precisionKey = precision
+  const precisionKey = precision !== null ? `manifest:${precision}` : symbolFormat ? `symbol:${symbolFormat.key}` : null
+  if (precisionKey !== entry.precisionKey) {
+    entry.precisionKey = precisionKey
     const priceFormat =
       precision !== null
         ? { type: 'price' as const, precision, minMove: Number((10 ** -precision).toFixed(precision)) || 0.01 }
-        : { type: 'price' as const, precision: 2, minMove: 0.01 }
-    for (const s of entry.series) s.applyOptions({ priceFormat })
+        : symbolFormat
+          ? { type: 'custom' as const, formatter: symbolFormat.formatter, minMove: symbolFormat.minMove }
+          : null
+    if (priceFormat) for (const s of entry.series) s.applyOptions({ priceFormat })
   }
 }
 

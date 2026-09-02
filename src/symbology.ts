@@ -65,7 +65,10 @@ export interface SymbolInfo {
   listedExchange: string
   /** The venue's own type token, e.g. 'futures', 'stock', 'crypto', 'forex'. */
   type: string
-  /** The resolutions this symbol serves, as chart timeframe tokens. Empty declares no restriction. */
+  /** The resolutions this symbol serves, as chart timeframe tokens ('1m', '4h', '1d', '1mo'). An
+   *  EMPTY list declares no restriction: the feed serves any token the grammar admits (a futures
+   *  or spread feed says exactly this), and the chart never reads it as "serves nothing". A finite
+   *  list is a promise the chart may enforce. */
   supportedResolutions: readonly string[]
   /** The exchange's IANA zone, e.g. 'America/New_York'. */
   timezone: string
