@@ -14,6 +14,7 @@
 // Paths are root-relative with forward slashes on every platform, so an offender reads the same in
 // a Windows and a CI log.
 import { execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 
 /** Every chart source, keyed by root-relative path. */
 export const CHART_SOURCES = import.meta.glob('/packages/chart/src/**/*.ts', { query: '?raw', import: 'default', eager: true })
@@ -30,8 +31,10 @@ const CHART_ROOT_FILES = import.meta.glob(['/packages/chart/*.md', '/packages/ch
 })
 
 /** The built artifact, when a build has run. Source maps are left out on purpose: their
- *  `sourcesContent` is the source the source sweep already reads. */
-const CHART_DIST = import.meta.glob('/packages/chart/dist/**/*.{js,ts}', { query: '?raw', import: 'default', eager: true })
+ *  `sourcesContent` is the source the source sweep already reads. The generated theme manifest is
+ *  packed beside the bundle, so JSON is read here too; the generated stylesheet is not, because
+ *  vitest does not process CSS and `packedText` reads it from disk instead. */
+const CHART_DIST = import.meta.glob('/packages/chart/dist/**/*.{js,ts,json}', { query: '?raw', import: 'default', eager: true })
 
 /** The app's chart sources, for the vocabulary that lives in the app toolbar rather than the package. */
 export const APP_CHART_SOURCES = import.meta.glob('/apps/web/src/chart/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true })
@@ -85,7 +88,12 @@ export function packedFileList(): string[] {
  *  failure to report: a packed file the fixtures cannot read is a gap in the boundary. */
 export function packedText(path: string): string | null {
   const key = `${CHART_ROOT}/${path}`
-  return CHART_ROOT_FILES[key] ?? CHART_DIST[key] ?? null
+  const known = CHART_ROOT_FILES[key] ?? CHART_DIST[key]
+  if (known !== undefined) return known
+  // The generated stylesheet is packed as well. Vitest does not process CSS, so a `?raw` import of
+  // one arrives empty; it is read from disk, where the packed list already proved it exists.
+  if (path.endsWith('.css')) return readFileSync(`${CHART_DIR}/${path}`, 'utf8')
+  return null
 }
 
 /** Whether a packed path is skipped by the text sweep on purpose. */
