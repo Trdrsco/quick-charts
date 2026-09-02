@@ -60,7 +60,7 @@ import {
   type ChartExtensionSeries,
   type ChartPriceFormatter,
 } from './extension'
-import { pointerLock } from './pointerInput'
+import { longPressArms, longPressCancels, pointerLock, LONG_PRESS_MS } from './pointerInput'
 
 /** The drawing surface a host drives (a subset of the layer's handle: symbol/timeframe/tick flow
  *  and teardown stay widget-owned, so a host cannot desync the layer from the chart). */
@@ -1468,6 +1468,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   /** The level the open menu was raised at — its rows act on this, not on wherever the pointer
    *  wandered to while the menu was up. */
   let lastMenuPrice: number | null = null
+  /** Cancels an armed press-and-hold at teardown, so a widget removed mid-press fires nothing. */
+  let holdCleanup: (() => void) | null = null
   if (options.contextMenu !== false) {
     const priceAt = (clientY: number): number | null => {
       const box = chartBox.getBoundingClientRect()
@@ -1546,6 +1548,48 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     chartBox.addEventListener('contextmenu', (e) => {
       if (raiseMenuAt(e.clientX, e.clientY)) e.preventDefault()
     })
+    // The TOUCH way into the same menu: one finger held still. Generic chart input, owned by the
+    // package at every width — an embedder gets press-and-hold without writing any of it. It stands
+    // down while a drawing tool is armed (the press IS the drawing gesture) and the moment a second
+    // finger lands (that is a pinch, which is navigation). The rules are pointerInput's.
+    let hold: { timer: ReturnType<typeof setTimeout>; x: number; y: number } | null = null
+    const cancelHold = (): void => {
+      if (!hold) return
+      clearTimeout(hold.timer)
+      hold = null
+    }
+    chartBox.addEventListener(
+      'touchstart',
+      (e) => {
+        cancelHold()
+        if (!longPressArms({ touches: e.touches.length, toolArmed: drawingsHandle?.activeTool() != null })) return
+        const touch = e.touches[0]
+        if (!touch) return
+        const { clientX: x, clientY: y } = touch
+        hold = {
+          x,
+          y,
+          timer: setTimeout(() => {
+            hold = null
+            if (!removed) raiseMenuAt(x, y)
+          }, LONG_PRESS_MS),
+        }
+      },
+      { passive: true },
+    )
+    chartBox.addEventListener(
+      'touchmove',
+      (e) => {
+        const held = hold
+        if (!held) return
+        const touch = e.touches[0]
+        if (!touch || longPressCancels({ touches: e.touches.length, fromX: held.x, fromY: held.y, x: touch.clientX, y: touch.clientY })) cancelHold()
+      },
+      { passive: true },
+    )
+    chartBox.addEventListener('touchend', cancelHold, { passive: true })
+    chartBox.addEventListener('touchcancel', cancelHold, { passive: true })
+    holdCleanup = cancelHold
   }
 
   // The public executions surface is a REAL subset (the drawings-api discipline): teardown stays
@@ -1836,6 +1880,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       abandonReplay()
       if (saveNeededTimer) clearTimeout(saveNeededTimer)
       if (indicatorTrailer) clearTimeout(indicatorTrailer)
+      holdCleanup?.()
       paneObserver?.disconnect()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
       // off. Detaching after the renderer is gone would leave their teardown reaching into nothing.
