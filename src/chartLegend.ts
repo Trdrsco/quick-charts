@@ -8,7 +8,7 @@
 // Every control reports INTENT to the chart, which owns the state and re-renders; the legend never
 // mutates chart state itself.
 import type { ChartI18n } from './i18n'
-import type { MarketSession } from './sessions'
+import type { SessionState } from './sessionModel'
 import { SCALE_MODE_OPTIONS, type ScaleMode } from './scaleMode'
 
 /** One legend row. `value` arrives pre-formatted (the chart owns precision); `note` is the
@@ -52,9 +52,9 @@ export interface ChartLegend {
   /** Extra left offset (px) past the strip's rail column — the LEFT price scale's width while a
    *  new-scale compare holds it up, so the strip never overlays the axis numbers. */
   setLeftInset(px: number): void
-  /** The market session the dot shows, or null to hide it. The dot's color is the session's own
-   *  theme role, resolved by the stylesheet from the attribute written here. */
-  setDot(session: MarketSession | null): void
+  /** The session state the dot shows, or null to hide it. The dot's color is the state's own theme
+   *  role, resolved by the stylesheet from the attribute written here. */
+  setDot(state: SessionState | null): void
   /** Highlight the active scale-mode chip. */
   syncScale(mode: ScaleMode): void
   setChips(chips: readonly LegendChip[]): void
@@ -210,9 +210,9 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     setLeftInset(px) {
       root.style.left = `${RAIL_COLUMN_PX + Math.max(0, px)}px`
     },
-    setDot(session) {
-      dot.hidden = session === null
-      if (session) dot.dataset.qcSession = session
+    setDot(state) {
+      dot.hidden = state === null
+      if (state) dot.dataset.qcSession = state
     },
     syncScale(mode) {
       for (const [id, b] of scaleButtons) b.dataset.qcActive = id === mode ? 'true' : 'false'

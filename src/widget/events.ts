@@ -10,6 +10,7 @@
 import type { SemanticTheme, ThemeMode } from '../theme/schema'
 import type { ResourceRef } from '../resources'
 import type { ScaleMode } from '../scaleMode'
+import type { ActiveSubsession } from '../sessionModel'
 import type { CompareEntry } from '../compare'
 import type { ChartStyleId } from './styles'
 import type { LogicalRange, TimeRange } from './ranges'
@@ -78,7 +79,10 @@ export interface ChartEvents {
   dataLoaded(info: { bars: number }): void
   feedStatus(status: string): void
   scaleMode(mode: ScaleMode): void
-  timezone(zone: string): void
+  /** The display timezone CHOICE moved: an IANA id, or `exchange`. */
+  timezone(choice: string): void
+  /** The active subsession moved, so a host control can follow it. */
+  subsession(active: ActiveSubsession): void
   indicator(event: IndicatorEvent): void
   drawing(event: DrawingEvent): void
   replay(state: ReplayEventState): void

@@ -24,6 +24,9 @@ import type { CompareSymbol } from '../compare'
 import type { ScaleMode } from '../scaleMode'
 import type { ReplaySpeed } from '../replay'
 import type { DataStatus } from '../symbology'
+import type { ActiveSubsession } from '../sessionModel'
+import type { DrawingAssetPort, DrawingPreferences } from '../drawings/index'
+import type { RecentsPort } from '../search'
 import type { CustomThemes, ThemeMode } from '../theme/schema'
 import type { ChartStyleId } from './styles'
 import type { LayoutSyncFlags } from './layout'
@@ -74,11 +77,20 @@ export interface ChartPreferences {
   timeframe: string
   style: ChartStyleId
   scaleMode: ScaleMode
+  /** The display timezone: an IANA id from the chart's registry, or `exchange` to follow whatever
+   *  venue the symbol resolves to. */
+  timezone: string
+  /** Which subsession intraday bars are shown for. A symbol with no extended hours has one, so a
+   *  stored `extended` on such a symbol falls back rather than filtering to nothing. */
+  subsession: ActiveSubsession
   /** Instance ids whose plots the legend's eye has hidden. */
   hiddenIndicators: readonly string[]
   replaySpeed: ReplaySpeed
   /** The replay update grain: `auto` or a finer timeframe token. */
   replayInterval: string
+  /** The standing drawing choices: cursor, magnet, stay-in-mode, favorites, per-group rail tools.
+   *  The drawing models own what each one means; the chart only persists the record. */
+  drawings: DrawingPreferences
 }
 
 /** ── CAPABILITIES ────────────────────────────────────────────────────────────────────────────
@@ -213,9 +225,13 @@ export interface ChartWidgetOptions {
   fullscreen?: FullscreenOptions
   /** Client image capture. */
   image?: ImageOptions
-  /** Reserved for the symbol picker port. Declare nothing here yet: the field names the seam so
-   *  the option shape is stable, and the picker itself is not part of this surface. */
-  search?: never
+  /** The symbol picker's host inputs. The chart owns the search controller (its debounce, cache and
+   *  cancellation); a host supplies only what it alone knows: where the viewer's recent symbols
+   *  live. Absent, recents last the page. */
+  search?: { recents?: RecentsPort }
+  /** Where the image and glyph drawing tools get their artwork, and how a picked file becomes a
+   *  usable payload. Absent, those tools draw their glyphs as text and take no file. */
+  assets?: DrawingAssetPort
   /** Neutral bar marks and time-scale marks from the datafeed. On by default; `false` draws none
    *  even from a feed that serves them. */
   marks?: boolean

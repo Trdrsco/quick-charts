@@ -7,7 +7,7 @@
 // door at once.
 //
 // Availability is a live read, never a stored flag: a command asks the chart what is true now.
-import type { ChartMessageKey } from '../i18n'
+import type { ChartMessageKey, ChartTranslate } from '../i18n'
 import { SCALE_MODES, type ScaleMode } from '../scaleMode'
 import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry, CommandSpec } from './commands'
@@ -15,11 +15,11 @@ import type { ChartHandle } from './chart'
 import type { Capabilities } from './options'
 import type { ResolvedFeatures } from './planes'
 import { CHART_STYLES, type ChartStyleId } from './styles'
-import { ZOOM_IN, ZOOM_OUT } from './ranges'
 import { REPLAY_SPEEDS } from '../replay'
-
-/** How many bars one scroll command moves. */
-const SCROLL_BARS = 10
+import { allowedTimeframes, TIMEFRAME_PRESETS, timeframeLabel } from '../timeframe'
+import { rangeAvailable, RANGE_PRESETS, type RangePreset } from '../ranges'
+import { isTimezoneChoice, TIMEZONES, EXCHANGE_TIMEZONE } from '../timezones'
+import { DEFAULT_SUBSESSION } from '../sessionModel'
 
 /** The catalog key each chart style's command wears. */
 const STYLE_LABEL: Record<ChartStyleId, ChartMessageKey> = {
@@ -45,6 +45,15 @@ export interface ChartCommandDeps {
   handle: ChartHandle
   features: ResolvedFeatures
   capabilities(): Capabilities
+  /** The chart's language, for the preset labels a picker renders. */
+  t(): ChartTranslate
+  /** The oldest loaded bar, which decides whether a range preset has data to frame. */
+  earliestBar(): number | null
+  /** Frame a range preset through the chart's own rule. */
+  frame(preset: RangePreset): void
+  /** One zoom or scroll step, by the chart's own step rules. */
+  zoom(direction: 'in' | 'out'): void
+  scroll(direction: 'left' | 'right'): void
   /** The level the open menu was raised at, which copy-price acts on. */
   level(): number | null
   formatter(): PriceFormatter
@@ -64,10 +73,12 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   // ── View and navigation ─────────────────────────────────────────────────────────────────────
   add({ id: 'chart.view.reset', scope: 'chart', label: 'command.viewReset', shortcut: 'Alt+KeyR', available: always, execute: () => handle.reset() })
   add({ id: 'chart.view.goLive', scope: 'chart', label: 'command.viewGoLive', available: always, execute: () => handle.goLive() })
-  add({ id: 'chart.view.zoomIn', scope: 'chart', label: 'command.viewZoomIn', available: always, execute: () => handle.zoom(ZOOM_IN) })
-  add({ id: 'chart.view.zoomOut', scope: 'chart', label: 'command.viewZoomOut', available: always, execute: () => handle.zoom(ZOOM_OUT) })
-  add({ id: 'chart.view.scrollLeft', scope: 'chart', label: 'command.viewScrollLeft', available: always, execute: () => handle.scroll(-SCROLL_BARS) })
-  add({ id: 'chart.view.scrollRight', scope: 'chart', label: 'command.viewScrollRight', available: always, execute: () => handle.scroll(SCROLL_BARS) })
+  // Zoom and scroll are the chart's own step rules, so a keyboard, a button and a host call all
+  // move by exactly the same amount and stop at the same floor.
+  add({ id: 'chart.view.zoomIn', scope: 'chart', label: 'command.viewZoomIn', available: always, execute: () => deps.zoom('in') })
+  add({ id: 'chart.view.zoomOut', scope: 'chart', label: 'command.viewZoomOut', available: always, execute: () => deps.zoom('out') })
+  add({ id: 'chart.view.scrollLeft', scope: 'chart', label: 'command.viewScrollLeft', available: always, execute: () => deps.scroll('left') })
+  add({ id: 'chart.view.scrollRight', scope: 'chart', label: 'command.viewScrollRight', available: always, execute: () => deps.scroll('right') })
 
   // ── The level menu's own verbs ──────────────────────────────────────────────────────────────
   add({
@@ -216,28 +227,89 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   // ── Timeframe and range presets. The grammar and the preset registries are the chart's own
   // timeframe module, which lands beside this one; the two ids exist now so a host binding a
   // toolbar or an operator adapter binds the same names it will keep.
+  // One command per preset token, plus the open-ended setter a custom interval uses. Availability
+  // is the intersection the capability plane already knows: a token the feed or the symbol cannot
+  // serve is refused here rather than sent and rejected.
+  const servable = (token: string): boolean => {
+    const caps = deps.capabilities()
+    return (
+      allowedTimeframes([token], {
+        supportedResolutions: caps.symbolResolutions ?? [],
+        resolutions: caps.resolutions ?? [],
+      }).length > 0
+    )
+  }
+  for (const group of TIMEFRAME_PRESETS) {
+    for (const token of group.tokens) {
+      add({
+        id: `chart.timeframe.${token}`,
+        scope: 'chart',
+        label: 'command.timeframeSet',
+        labelText: timeframeLabel(deps.t(), token),
+        available: () => handle.timeframe() !== token && servable(token),
+        execute: () => handle.setTimeframe(token),
+      })
+    }
+  }
   add({
     id: 'chart.timeframe.set',
     scope: 'chart',
     label: 'command.timeframeSet',
     available: always,
     execute: (arg) => {
-      if (typeof arg === 'string' && arg) handle.setTimeframe(arg)
+      if (typeof arg === 'string' && arg && servable(arg)) handle.setTimeframe(arg)
     },
   })
+  // One command per range preset. A preset whose span reaches further back than the chart holds is
+  // unavailable rather than framed onto data that is not there.
+  const presetByKey = new Map<string, RangePreset>(RANGE_PRESETS.map((preset) => [preset.key, preset]))
+  const framePreset = (preset: RangePreset): void => deps.frame(preset)
+  for (const preset of RANGE_PRESETS) {
+    add({
+      // The preset's key IS its chip's text and stays as written in every language, so it is the
+      // command id too; the tooltip's words are the catalog's.
+      id: `chart.range.${preset.key}`,
+      scope: 'chart',
+      label: preset.label,
+      labelText: preset.key,
+      available: () => rangeAvailable(preset, deps.earliestBar()),
+      execute: () => framePreset(preset),
+    })
+  }
   add({
     id: 'chart.range.set',
     scope: 'chart',
     label: 'command.rangeSet',
     available: () => handle.visibleRange() !== null,
     execute: (arg) => {
-      // A preset resolves to a window; until the preset registry lands, an explicit window is what
-      // this takes, and a preset token is refused rather than guessed at.
+      // A preset id frames through the chart's own rule; an explicit window is set as given.
+      if (typeof arg === 'string') {
+        const preset = presetByKey.get(arg)
+        if (preset && rangeAvailable(preset, deps.earliestBar())) framePreset(preset)
+        return
+      }
       if (arg && typeof arg === 'object' && 'from' in arg && 'to' in arg) {
         const range = arg as { from: unknown; to: unknown }
         if (typeof range.from === 'number' && typeof range.to === 'number') handle.setVisibleRange({ from: range.from, to: range.to })
       }
     },
+  })
+  for (const zone of TIMEZONES) {
+    add({
+      id: `chart.timezone.${zone.id}`,
+      scope: 'chart',
+      label: 'command.timezoneSet',
+      labelText: zone.city,
+      available: () => handle.timezone() !== zone.id,
+      execute: () => handle.setTimezone(zone.id),
+    })
+  }
+  add({
+    id: 'chart.timezone.exchange',
+    scope: 'chart',
+    label: 'command.timezoneSet',
+    available: () => handle.timezone() !== EXCHANGE_TIMEZONE,
+    execute: () => handle.setTimezone(EXCHANGE_TIMEZONE),
   })
   add({
     id: 'chart.timezone.set',
@@ -245,8 +317,25 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     label: 'command.timezoneSet',
     available: always,
     execute: (arg) => {
-      if (arg === null || typeof arg === 'string') handle.setTimezone(arg)
+      if (typeof arg === 'string' && isTimezoneChoice(arg)) handle.setTimezone(arg)
     },
+  })
+
+  // ── The subsession intraday bars are shown for. Offered only where the symbol has one to
+  // choose, which is what `hasExtendedHours` answers.
+  add({
+    id: 'chart.subsession.regular',
+    scope: 'chart',
+    label: 'command.subsessionRegular',
+    available: () => handle.subsession() !== DEFAULT_SUBSESSION,
+    execute: () => handle.setSubsession(DEFAULT_SUBSESSION),
+  })
+  add({
+    id: 'chart.subsession.extended',
+    scope: 'chart',
+    label: 'command.subsessionExtended',
+    available: () => handle.hasExtendedHours() && handle.subsession() !== 'extended',
+    execute: () => handle.setSubsession('extended'),
   })
 
   return () => {

@@ -8,6 +8,7 @@
 // Every verb refuses quietly on a chart with nothing to move: an empty chart has no range to set,
 // and answering with a throw would make a menu row a hazard.
 import type { IChartApi, UTCTimestamp } from 'lightweight-charts'
+import { MIN_BAR_SPACING } from '../ranges'
 
 /** A visible window in the feed's unix seconds. */
 export interface TimeRange {
@@ -22,9 +23,6 @@ export interface LogicalRange {
   to: number
 }
 
-/** How far one zoom step moves, as a fraction of the visible span kept. */
-const ZOOM_STEP = 0.2
-
 /** The navigation surface one chart exposes. */
 export interface RangeApi {
   visibleRange(): TimeRange | null
@@ -33,7 +31,8 @@ export interface RangeApi {
   setLogicalRange(range: LogicalRange): void
   /** Move the window by whole bars: negative goes back in time, positive forward. */
   scroll(bars: number): void
-  /** Zoom about the window's center. A factor above 1 shows more bars, below 1 shows fewer. */
+  /** Zoom about the window's center by widening or narrowing the bars. A factor above 1 shows more
+   *  bars, below 1 shows fewer; the chart's own minimum bar spacing is the floor either way. */
   zoom(factor: number): void
   /** Fit the loaded data. */
   reset(): void
@@ -87,19 +86,17 @@ export function createRangeApi(deps: RangeDeps): RangeApi {
     },
     scroll(bars) {
       if (deps.disposed() || bars === 0) return
-      const range = api.logicalRange()
-      if (!range) return
-      api.setLogicalRange({ from: range.from + bars, to: range.to + bars })
+      // ONE mechanism for every scroll: the scale's own position, moved by whole bars. The step
+      // commands move by `SCROLL_STEP_BARS` of these, so a keyboard and a host call cannot end up
+      // on two different arithmetics.
+      deps.muted(() => scale().scrollToPosition(scale().scrollPosition() + bars, false))
     },
     zoom(factor) {
       if (deps.disposed() || !(factor > 0) || factor === 1) return
-      const range = api.logicalRange()
-      if (!range) return
-      const center = (range.from + range.to) / 2
-      const half = ((range.to - range.from) / 2) * factor
-      // One bar is the floor: a window narrower than a bar has nothing left to show.
-      if (half < 0.5) return
-      api.setLogicalRange({ from: center - half, to: center + half })
+      // Zoom is bar spacing, which is the same quantity the step commands move. A wider factor
+      // shows more bars, so the spacing shrinks; the chart's own minimum is the floor.
+      const spacing = scale().options().barSpacing
+      deps.muted(() => scale().applyOptions({ barSpacing: Math.max(MIN_BAR_SPACING, spacing / factor) }))
     },
     reset() {
       if (deps.disposed()) return
@@ -119,7 +116,3 @@ export function createRangeApi(deps: RangeDeps): RangeApi {
   }
   return api
 }
-
-/** The zoom factors the two default commands use: one step out, one step in. */
-export const ZOOM_OUT = 1 + ZOOM_STEP
-export const ZOOM_IN = 1 - ZOOM_STEP

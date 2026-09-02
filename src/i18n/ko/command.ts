@@ -40,6 +40,8 @@ export const command: Translation<typeof source> = {
   'command.replayGoLive': 'Replay to the live edge',
   'command.replaySpeed': 'Replay speed',
   'command.timeframeSet': 'Timeframe',
+  'command.subsessionRegular': 'Regular hours',
+  'command.subsessionExtended': 'Extended hours',
   'command.rangeSet': 'Date range',
   'command.timezoneSet': 'Timezone',
   'command.themeLight': 'Light theme',

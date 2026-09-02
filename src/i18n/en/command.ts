@@ -61,6 +61,10 @@ export const command = {
   'command.replaySpeed': 'Replay speed',
 
   'command.timeframeSet': 'Timeframe',
+  /** Which subsession intraday bars are shown for. A symbol with no extended hours offers only
+   *  the first. */
+  'command.subsessionRegular': 'Regular hours',
+  'command.subsessionExtended': 'Extended hours',
   'command.rangeSet': 'Date range',
   'command.timezoneSet': 'Timezone',
 
