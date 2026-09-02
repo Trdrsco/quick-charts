@@ -664,6 +664,146 @@ note(`NQ last: ${wc.compare.latest('NQ') ?? '-'}`)
 wc.compare.remove('NQ') // the scale mode the trader held comes back
 ```
 
+## Timeframes
+
+A timeframe token names a bar interval: a count and a unit, `1m`, `4h`, `1d`, `3mo`, `500t`. The
+units are ticks (`t`), seconds (`s`), minutes (`m`), hours (`h`), days (`d`), weeks (`w`) and
+months (`mo`), and each unit has a ceiling (`TIMEFRAME_MAX`). A token outside the grammar parses
+as null, and the chart never asks a feed for it.
+
+```ts
+import { formatTimeframe, isIntradayTimeframe, parseTimeframe, timeframeSeconds } from 'quickcharts'
+
+parseTimeframe('4h') // { count: 4, unit: 'h' }
+parseTimeframe('3mo') // { count: 3, unit: 'mo' }
+parseTimeframe('1441m') // null: past the minute ceiling
+formatTimeframe({ count: 15, unit: 'm' }) // '15m'
+timeframeSeconds({ count: 4, unit: 'h' }) // 14400
+isIntradayTimeframe('1d') // false
+```
+
+`TIMEFRAME_PRESETS` lists the 26 preset tokens in five picker groups, weeks and months in the
+Days group. `timeframeLabel` writes a token in the chart's language, and `timeframeOrder` sorts
+tokens smallest first. A picker offers only what the symbol and the feed serve: pass the symbol's
+`supportedResolutions` and the feed's `resolutions` to `allowedTimeframes`. An empty list is no
+restriction.
+
+```ts
+import { allowedTimeframes, createChartI18n, timeframeLabel, TIMEFRAME_PRESETS } from 'quickcharts'
+
+const { t } = createChartI18n()
+const tokens = TIMEFRAME_PRESETS.flatMap((group) => group.tokens) // 26 tokens
+timeframeLabel(t, '5t') // '5 Ticks'
+allowedTimeframes(tokens, { supportedResolutions: ['1m', '1h', '1d'] }) // ['1m', '1h', '1d']
+allowedTimeframes(tokens, { supportedResolutions: [] }).length // 26
+```
+
+## Timezones and sessions
+
+Bar times are UTC epoch seconds. A display timezone changes how the time axis, the crosshair and
+a clock write them, never the bars. `TIMEZONES` lists the 60 selectable zones as IANA ids with a
+display city, and `EXCHANGE_TIMEZONE` is the choice that follows the charted symbol's own
+`timezone`. Every formatter takes the host's BCP 47 tag, so a month or a weekday reads in the
+chart's language.
+
+```ts
+import { EXCHANGE_TIMEZONE, formatClock, makeCrosshairTimeFormatter, makeTickMarkFormatter, resolveDisplayTimezone, TIMEZONES, tzOffsetLabel } from 'quickcharts'
+
+TIMEZONES.length // 60
+tzOffsetLabel('Asia/Kolkata') // 'UTC+5:30'
+const zone = resolveDisplayTimezone(EXCHANGE_TIMEZONE, { timezone: 'America/Chicago' }) // 'America/Chicago'
+if (zone) {
+  note(formatClock('en', zone))
+  chart.applyOptions({
+    localization: { timeFormatter: makeCrosshairTimeFormatter('en', zone, true) },
+    timeScale: { tickMarkFormatter: makeTickMarkFormatter('en', zone) },
+  })
+}
+```
+
+`timezoneListing` returns the picker rows: UTC, then the exchange choice, then every zone by its
+current offset, so daylight-saving changes reorder the list on their own.
+
+A symbol's session facts build a session model: `session` in the reference grammar (`0930-1600`,
+`1700-1600:23456` with `1` as Sunday, `24x7`, several stretches per day, previous-day markers),
+`sessionHolidays` as `YYYYMMDD` full closures, and `corrections` as `SESSION:YYYYMMDD` overrides
+that outrank a holiday. Subsessions split extended hours into pre-market, regular and after-hours.
+The model answers the session state at an instant, and the market status combines that state with
+the feed's `dataStatus`: an end-of-day feed is its own state, never an open market.
+
+```ts
+import { createChartI18n, marketStatus, marketStatusText, marketStatusTitle, parseSessionModel, sessionStateAt } from 'quickcharts'
+
+const { t } = createChartI18n()
+const model = parseSessionModel({ timezone: 'America/Chicago', session: '1700-1600:23456', sessionHolidays: '20260101' })
+if (model) {
+  const now = Date.UTC(2026, 6, 13, 15) / 1000 // a Monday, 10:00 in Chicago
+  sessionStateAt(model, now) // 'open'
+  const status = marketStatus(model, 'streaming', now)
+  marketStatusTitle(t, status) // 'Market open'
+  marketStatusText(t, status, now) // 'Market is open for regular trading. Closes in 6 hours.'
+}
+parseSessionModel({ timezone: 'Etc/UTC', session: 'later' }) // null: the chart claims no session it cannot read
+```
+
+## Ranges
+
+`RANGE_PRESETS` lists the nine range presets, each a visible span and the interval it reads best
+at: `1D` over one-minute bars through `All` over monthly bars. `rangeAvailable` withholds a preset
+deeper than the history a symbol has, and `frameRange` sets a pane's visible window for a span,
+anchored on the last real bar so a future whitespace horizon never frames as empty space. The
+navigation cluster's steps are constants: `ZOOM_FACTOR`, `MIN_BAR_SPACING` and
+`SCROLL_STEP_BARS`, applied by `zoomedBarSpacing` and `scrolledPosition`.
+
+```ts
+import { frameRange, RANGE_PRESETS, rangeAvailable, scrolledPosition, zoomedBarSpacing } from 'quickcharts'
+
+const oneYearAgo = Date.now() / 1000 - 365 * 86_400
+RANGE_PRESETS.filter((preset) => rangeAvailable(preset, oneYearAgo)).map((preset) => preset.key) // every preset but '5Y'
+frameRange(chart, series, RANGE_PRESETS[0]!.span, '1m')
+zoomedBarSpacing(8, 'in') // 10
+scrolledPosition(0, 'right') // 10
+```
+
+## Search
+
+`createSearchController` drives a symbol search over your datafeed's `search`: a debounce after
+the last keystroke, a cache per query and class for the controller's lifetime, a cached answer
+shown at once and revalidated in the background, paging through `loadMore` with no repeated row,
+and a newer query cancelling an older one's result. The chart's compare dialog runs on it, and a
+host's own search surface subscribes to the same state.
+
+```ts
+import { createSearchController, createUdfDatafeed } from 'quickcharts'
+
+const datafeed = createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' })
+const search = createSearchController(datafeed, { pageSize: 50, debounceMs: 200 })
+const stop = search.subscribe((state) => note(`${state.hits.length} rows${state.hasMore ? ', more' : ''}`))
+search.prefetch('') // warm the default list
+search.search('es', 'future') // one page after the debounce
+search.loadMore() // the next page, once
+stop()
+search.dispose()
+```
+
+Recent picks go through a `RecentsPort`. `memoryRecents` keeps them for the page; back the port
+with your own storage to keep them longer. `matchSegments` splits a symbol around the query for a
+highlight, and `looksLikeSpread`, `isSymbolPair`, `spreadExpression` and `spreadSearchQuery` apply
+the spread-expression rules: an operator over a symbol leg offers the expression as a row, a plain
+`BTC/USD` pair is catalog identity, and your feed evaluates the expression.
+
+```ts
+import { looksLikeSpread, isSymbolPair, matchSegments, memoryRecents, spreadExpression } from 'quickcharts'
+
+const recents = memoryRecents()
+recents.promote({ symbol: 'ES', name: 'E-mini S&P 500', exchange: 'CME', type: 'future' })
+recents.list().length // 1
+matchSegments('BTCUSDT', 'usd') // [{ text: 'BTC', hit: false }, { text: 'USD', hit: true }, { text: 'T', hit: false }]
+looksLikeSpread('ES-NQ') // true
+isSymbolPair('BTC/USD') // true
+spreadExpression(' es - nq ') // 'ES-NQ'
+```
+
 ## Multi-chart layouts
 
 `createChartLayout(options)` tiles N widget panes over one container by an arrangement code and
