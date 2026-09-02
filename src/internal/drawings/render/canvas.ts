@@ -29,15 +29,6 @@ export function strokeSegment(ctx: CanvasRenderingContext2D, a: Point, b: Point)
   ctx.stroke()
 }
 
-/** Stroke a polyline through the given points. */
-export function strokePolyline(ctx: CanvasRenderingContext2D, points: readonly Point[]): void {
-  if (points.length < 2) return
-  ctx.beginPath()
-  ctx.moveTo(points[0].x, points[0].y)
-  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y)
-  ctx.stroke()
-}
-
 /** The CSS font string for a drawing's text channel. */
 export function fontOf(style: DrawingStyle): string {
   const weight = style.bold ? '600 ' : ''
