@@ -245,9 +245,16 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   {
     file: 'apps/web/src/widgets/WatchlistWidget.tsx',
-    symbols: ['fmtPrice', 'fmtChange', 'fmtVolume'],
+    symbols: ['useWatchlistValueFormatter', 'formatter.last(', 'formatter.change(', 'formatter.changePct(', 'formatter.volume('],
     kind: 'quote',
     surface: 'the React Watchlist rows: Last, Chg, Chg%, Volume',
-    finding: 'a magnitude heuristic (four decimals under 10, else two) for Last and Chg; volume compacts by magnitude.',
+  },
+  {
+    file: 'apps/web/src/widgets/watchlistFormat.ts',
+    symbols: ['priceFormatOfTick', 'createWatchlistValueFormatter', 'formatVolume', 'UNRESOLVED_PRICE_FORMAT'],
+    kind: 'quote',
+    surface: "this app's implementation of the Watchlist value-formatter port",
+    finding:
+      'Last and Chg run through one createPriceFormatter over the symbol tick converted exactly to price-format facts; Chg% and Volume keep their own value kinds. A symbol with no resolved tick takes one declared cents policy.',
   },
 ]
