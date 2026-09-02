@@ -49,6 +49,15 @@
   2000 px longest edge, downscaled rather than refused) and names each refusal with a catalog code,
   and the host owns the bytes. The drawing classes, the model store and the mutable registry are
   not on the subpath, and a host-authored tool has no registration door.
+- **Glyph artwork is a port, not a process-wide hook.** `DrawingManager.setGlyphSource` and
+  `IDrawing.setGlyphSource` take a `GlyphSourcePort` per instance, beside the price formatter and
+  the tick, so two charts in one document can draw different asset sets. `attachDrawings` takes it
+  as `glyphSource`.
+- **The drawing layer consults a workflow.** `AttachDrawingsOptions.workflow` is a live getter for
+  the standing choices the layer acts on: the magnet strength an anchor snaps with, the lock-all
+  mode that suspends editing without touching any drawing's own flag, whether a placed tool stays
+  armed, and the pointer glyph. The layer holds no copy, and the models on `quickcharts/drawings`
+  decide what each control does to them.
 - **Light and dark modes over a semantic theme.** `THEME_ROLES` publishes the semantic role
   inventory the chart is painted from, and both built-in palettes give every role a value.
   **`createThemeController`** owns one chart's mode and its custom palettes: `setMode`,
