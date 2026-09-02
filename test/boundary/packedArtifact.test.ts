@@ -51,3 +51,51 @@ describe('the packed artifact bundles its internal seams', () => {
     for (const s of specifiers(js)) expect(installable.has(s), `dist/index.js imports ${s}, which the manifest does not give a consumer`).toBe(true)
   })
 })
+
+/** The shared chunks a built entry imports, as packed paths. */
+const chunks = (text: string): string[] => [...text.matchAll(/from\s*['"]\.\/(chunk-[^'"]+)['"]/g)].map((m) => `dist/${m[1]!}`)
+
+describe('the packed drawings subpath', () => {
+  const packed = packedFileList()
+  const manifest = chartManifest() as unknown as { exports?: Record<string, unknown>; publishConfig?: { exports?: Record<string, unknown> } }
+
+  it('ships the files its export map points a consumer at', () => {
+    // Both maps name dist/drawings.js and dist/drawings.d.ts, so `files` has to actually carry
+    // them, or `import 'quickcharts/drawings'` resolves to nothing in an installed project.
+    expect(Object.keys(manifest.exports ?? {})).toContain('./drawings')
+    expect(Object.keys(manifest.publishConfig?.exports ?? {})).toContain('./drawings')
+    if (packedText('dist/drawings.js') === null) return // no build to read
+    expect(packed).toContain('dist/drawings.js')
+    expect(packed).toContain('dist/drawings.d.ts')
+  })
+
+  it('imports nothing bare but the peer, and carries no @trdrs name', () => {
+    const js = packedText('dist/drawings.js')
+    const dts = packedText('dist/drawings.d.ts')
+    if (js === null || dts === null) return
+    // Empty is honest: the seam code the subpath re-exports sits in the shared chunk, and that is
+    // where the peer import lands. What matters is that nothing else bare appears here.
+    expect(specifiers(js).filter((s) => s !== 'lightweight-charts')).toEqual([])
+    expect(js).not.toMatch(/@trdrs\//)
+    expect(specifiers(dts).filter((s) => s.startsWith('@trdrs/'))).toEqual([])
+  })
+
+  it('SHARES the drawing seam with the root entry rather than duplicating it', () => {
+    // `toolRegistry` is a module singleton. A consumer who restores a drawing through the subpath
+    // while the widget renders it from the root has to reach the same instance, so both entries
+    // import the seam from one shared chunk instead of each inlining a copy.
+    const js = packedText('dist/drawings.js')
+    const rootJs = packedText('dist/index.js')
+    if (js === null || rootJs === null) return
+    const shared = chunks(js).filter((c) => chunks(rootJs).includes(c))
+    expect(chunks(js).length, 'the subpath reaches the seam through a chunk').toBeGreaterThan(0)
+    expect(shared.length, 'a chunk both entries import').toBeGreaterThan(0)
+    // The registry is CONSTRUCTED once, in that chunk, and neither entry carries a second copy.
+    for (const [name, text] of [
+      ['dist/drawings.js', js],
+      ['dist/index.js', rootJs],
+    ] as const)
+      expect(text.includes('new ToolRegistry('), `${name} inlines its own registry`).toBe(false)
+    for (const chunk of shared) expect(packedText(chunk), chunk).toMatch(/new ToolRegistry\(/)
+  })
+})
