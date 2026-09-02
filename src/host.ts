@@ -32,7 +32,7 @@ import { openInputsEditor } from './inputsEditor'
 import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 import { mountReplayBar, type ReplayBarHandle } from './replayBar'
 import { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
-import { createChartI18n } from './i18n'
+import { createChartI18n, type ChartMessageKey, type ChartTranslate } from './i18n'
 import { createPriceFormatter, type PriceFormatter } from './priceFormatter'
 import type { PriceFormat } from './symbology'
 import {
@@ -181,6 +181,16 @@ const UNRESOLVED_PRICE_FORMAT: PriceFormat = { pricescale: 100, minmov: 1 }
 /** The smallest move a price format declares, as a price: the grid drawings snap to and the
  *  series' `minMove`. */
 const minMoveOf = (format: PriceFormat): number => format.minmov / format.pricescale
+
+/** The title a mounted indicator wears: the host's own, else the manifest's name, else the chart
+ *  catalog's name for a definition that carries a `nameKey` (every built-in does), else the
+ *  instance id. Exported for tests. */
+export function indicatorTitleOf(inst: IndicatorInstance, t: ChartTranslate): string {
+  if (inst.title) return inst.title
+  if (inst.definition.manifest.name) return inst.definition.manifest.name
+  const key = (inst.definition as { nameKey?: unknown }).nameKey
+  return typeof key === 'string' ? t(key as ChartMessageKey) : inst.id
+}
 
 /** Apply a live bar event to an ascending series: mutate the last bar (same bucket time), append (newer),
  *  or drop a stale update (older than the last bar — never splice history). Returns the new array only
@@ -602,7 +612,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     const paneHeights = chart.panes().map((p) => p.getHeight())
     for (const inst of indicatorInstances) {
       const def = inst.definition
-      const title = inst.title ?? def.manifest.name ?? inst.id
+      const title = indicatorTitleOf(inst, i18n.t)
       const placement = def.manifest.pane === 'pane' ? ('pane' as const) : ('overlay' as const)
       const paneIdx = placement === 'pane' ? paneOfMap[inst.id] : undefined
       const chipBase = {

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { applyBar, resolveInitialTf, resolveTheme } from '../src/host'
+import { applyBar, indicatorTitleOf, resolveInitialTf, resolveTheme } from '../src/host'
+import { BUILT_IN_INDICATORS } from '../src/builtInIndicators'
+import { createChartI18n } from '../src/i18n'
 import { chartContextMenu } from '../src/contextMenu'
 import { createPriceFormatter } from '../src/priceFormatter'
 import type { FeedBar } from '../src/datafeed'
@@ -109,5 +111,24 @@ describe('one formatter everywhere', () => {
   it('drawings snap to the symbol grid: the smallest move the format declares', () => {
     expect(hostSrc).toContain('drawingsHandle?.setTick(format ? minMoveOf(format) : null)')
     expect(hostSrc).toContain('const minMoveOf = (format: PriceFormat): number => format.minmov / format.pricescale')
+  })
+})
+
+describe('the title a mounted indicator wears', () => {
+  const sma = BUILT_IN_INDICATORS.find((d) => d.id === 'sma')!
+  const t = createChartI18n().t
+
+  it("reads the chart catalog through a built-in's nameKey when the host names nothing", () => {
+    expect(sma.manifest.name).toBeUndefined()
+    expect(indicatorTitleOf({ id: 'ind-1', definition: sma }, t)).toBe(t(sma.nameKey))
+    expect(indicatorTitleOf({ id: 'ind-1', definition: sma }, t)).not.toBe('ind-1')
+  })
+
+  it("prefers the host's title, then a manifest name, and falls to the id only for a nameless definition", () => {
+    expect(indicatorTitleOf({ id: 'ind-1', definition: sma, title: 'Fast' }, t)).toBe('Fast')
+    const named = { ...sma, manifest: { ...sma.manifest, name: 'Named' } }
+    expect(indicatorTitleOf({ id: 'ind-1', definition: named }, t)).toBe('Named')
+    const bare = { manifest: { ...sma.manifest }, compute: sma.compute }
+    expect(indicatorTitleOf({ id: 'ind-1', definition: bare }, t)).toBe('ind-1')
   })
 })
