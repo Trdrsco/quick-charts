@@ -26,6 +26,59 @@ import {
 import type { AccountSnapshot, BrokerAdapter, TradingAdapter, TradingCapabilities } from '@trdrs/broker'
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 import { parseDrawingsStore, serializeDrawingsStore, toolRegistry, type SerializedDrawing } from '@trdrs/chart-drawings'
+import { memoryDatafeed } from './fakes/memoryDatafeed'
+import { memorySaveLoad, memoryStorage } from './fakes/memorySaveLoad'
+
+// THE FREE-CHART PATH (public-chart-library-boundary-plan.md PCL-1): the chart mounted over ONLY
+// consumer-owned fakes. No engine adapter, no trading plane, no account panel, no quote surface:
+// a datafeed, a settings store, and a save/load adapter the consumer wrote against the shipped
+// d.ts. This is the boundary a Quick Charts consumer lives on; mode-b.ts and ticket.ts are the
+// private product consumers and are not this.
+export function mountFreeChart(el: HTMLElement): ChartWidgetApi {
+  return createChart({
+    container: el,
+    datafeed: memoryDatafeed(),
+    storage: memoryStorage(),
+    saveLoad: memorySaveLoad(),
+    symbol: 'ESZ2026',
+    timeframe: '5m',
+  })
+}
+
+// The fakes' pure surface types end-to-end against the shipped contract: a countBack window, a
+// [from, to] window, the terminal no-data answer, paged search with an exact hasMore, resolve,
+// the server clock, and a save/load round trip. Not executed here (node has no DOM for the
+// widget; the render smoke covers it), but every call below must type-check as a consumer's would.
+export async function exerciseFakes(): Promise<void> {
+  const feed = memoryDatafeed({ liveIntervalMs: 0, now: () => 1_700_000_000 + 3600 * 24 })
+  const config = await feed.config?.()
+  if (!config?.resolutions?.includes('5m')) throw new Error('the fake feed must serve 5m')
+  const info = await feed.resolve('ESZ2026')
+  if (info?.tick !== 0.25) throw new Error('unexpected tick')
+  const tail = await feed.history('ESZ2026', '5m', { countBack: 10 })
+  if (tail.bars.length !== 10 || tail.noData) throw new Error('countBack must answer exactly the asked bars')
+  const window = await feed.history('ESZ2026', '1h', { from: 1_700_000_000, to: 1_700_000_000 + 3600 * 5 })
+  if (window.bars.length !== 6) throw new Error('an inclusive window must answer both ends')
+  const beforeInception = await feed.history('ESZ2026', '1d', { to: 1_600_000_000, countBack: 5 })
+  if (!beforeInception.noData) throw new Error('a countBack past inception is the terminal answer')
+  const page = await feed.search('usd', { limit: 1 })
+  if (page.hits.length !== 1 || !page.hasMore) throw new Error('hasMore is exact')
+  const clock = await feed.serverTime?.()
+  if (clock === undefined) throw new Error('the fake feed has a clock')
+  const unsubscribe = feed.subscribeBars('ESZ2026', '5m', { onBars: () => undefined })
+  unsubscribe()
+
+  const saveLoad = memorySaveLoad({ clock: () => 1 })
+  const id = await saveLoad.saveChart({ name: 'Morning', symbol: 'ESZ2026', timeframe: '5m', content: '{}' })
+  if ((await saveLoad.loadChart(id)) !== '{}') throw new Error('a saved chart loads back')
+  if ((await saveLoad.listCharts())[0]?.name !== 'Morning') throw new Error('a saved chart lists')
+  await saveLoad.saveDrawings({ symbol: 'ESZ2026' }, '[]')
+  if ((await saveLoad.loadDrawings({ symbol: 'ESZ2026' })) !== '[]') throw new Error('drawings are symbol-scoped')
+  await saveLoad.templates('study').save('Bands', '{}')
+  if ((await saveLoad.templates('study').load('Bands')) !== '{}') throw new Error('a template loads back')
+  saveLoad.settings.set('k', 'v')
+  if (saveLoad.settings.get('k') !== 'v') throw new Error('settings persist for the session')
+}
 
 // A complete typed datafeed — the seam a licensee actually implements.
 const feed: ChartDatafeed = {
