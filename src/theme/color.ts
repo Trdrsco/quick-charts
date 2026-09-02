@@ -85,8 +85,9 @@ export function relativeLuminance(c: Rgba): number {
   return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b)
 }
 
-/** The WCAG 2.2 contrast ratio between a foreground and an opaque backdrop, 1 to 21. A translucent
- *  foreground is composited onto the backdrop first. */
+/** The WCAG 2.2 contrast ratio between a foreground and a backdrop, 1 to 21. Contrast is defined on
+ *  opaque colors, so a translucent backdrop is flattened onto white first and the foreground is
+ *  then composited onto that. */
 export function contrastRatio(foreground: Rgba, background: Rgba): number {
   const front = compositeOver(foreground, background)
   const back = compositeOver(background, { r: 255, g: 255, b: 255, a: 1 })

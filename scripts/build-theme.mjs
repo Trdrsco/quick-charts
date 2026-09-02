@@ -7,9 +7,10 @@
 //                            attribute, and the stylesheet entry name
 //   test/theme/vectors.json  the committed declaration vectors the drift gate compares against
 //
-// It runs from `pnpm --filter quickcharts build:theme`, and `prebuild` runs it before the bundler,
-// so a build never ships a stylesheet older than the palettes it was generated from. Committing a
-// palette change without rerunning it fails `theme/drift.test.ts`.
+// It runs from `pnpm --filter quickcharts build:theme`, and `postbuild` runs it for every build, so
+// a build never ships a stylesheet older than the palettes it was generated from. It follows the
+// bundler rather than preceding it because the bundler clears `dist` as it starts. Committing a
+// palette change without rerunning it fails the drift block of `theme/stylesheet.test.ts`.
 //
 // The script imports the theme source directly. Node strips the type annotations, which is why
 // `schema.ts`, `palettes.ts`, and `css-contract.ts` carry no runtime import of their own: Node

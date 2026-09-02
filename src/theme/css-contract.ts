@@ -3,9 +3,9 @@
 //
 // Two rules decide everything in this file. Every declaration lands on the widget's own root
 // element, identified by one attribute, so two charts in one document can run different modes and
-// neither reaches the host page. And the custom-property names are private implementation: a role
-// id is the public contract, `--qc-surface-canvas` is not, and nothing outside this package should
-// target one.
+// neither reaches the host page. And the custom-property names are private implementation: the
+// role id `canvas.background` is the public contract, the `--qc-canvas-background` it resolves to
+// is not, and nothing outside this package should target one.
 //
 // This module deliberately has no runtime import. The build script loads it directly under Node's
 // TypeScript stripping to generate `dist/quickcharts.css`, and Node resolves no extensionless
