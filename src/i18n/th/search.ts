@@ -1,0 +1,28 @@
+import type { Translation } from '../runtime'
+import type { search as source } from '../en/search'
+
+export const search: Translation<typeof source> = {
+  'search.title': 'ค้นหาสัญลักษณ์',
+  'search.compareTitle': 'เปรียบเทียบสัญลักษณ์',
+  'search.changeSymbolTitle': 'เปลี่ยนสัญลักษณ์',
+  'search.placeholder': 'Search symbol',
+  'search.clear': 'ล้าง',
+  'search.noMatches': 'ไม่พบสัญลักษณ์ที่ตรงกัน',
+  'search.loadingMore': 'กำลังโหลดเพิ่ม…',
+  'search.failed': 'Search failed.',
+  'search.samePercent': 'สเกล % เดียวกัน',
+  'search.newScale': 'สเกลราคาใหม่',
+  'search.newPane': 'แผงใหม่',
+  'search.added': 'สัญลักษณ์ที่เพิ่ม',
+  'search.recent': 'สัญลักษณ์ล่าสุด',
+  'search.addedMark': '{symbol} อยู่บนกราฟแล้ว คลิกเพื่อนำออก',
+  'search.compareEmpty': 'No symbols here yet. Why not add some?',
+  'search.opDivision': 'การหาร',
+  'search.opSubtraction': 'การลบ',
+  'search.opAddition': 'การบวก',
+  'search.opMultiplication': 'การคูณ',
+  'search.opExponentiation': 'การยกกำลัง',
+  'search.opReciprocal': 'ส่วนกลับ',
+  'search.opsHide': 'ซ่อนตัวดำเนินการสเปรด',
+  'search.opsShow': 'แสดงตัวดำเนินการสเปรด',
+}

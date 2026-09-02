@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': '時間足',
+  'timeframe.all': 'すべての時間足',
+  'timeframe.unitTicks': 'ティック',
+  'timeframe.unitSeconds': '秒',
+  'timeframe.unitMinutes': '分',
+  'timeframe.unitHours': '時間',
+  'timeframe.unitDays': '日',
+  'timeframe.unitWeeks': '週',
+  'timeframe.unitMonths': '月',
+  'timeframe.countTicks': { other: '{count}ティック' },
+  'timeframe.countSeconds': { other: '{count}秒' },
+  'timeframe.countMinutes': { other: '{count}分' },
+  'timeframe.countHours': { other: '{count}時間' },
+  'timeframe.countDays': { other: '{count}日' },
+  'timeframe.countWeeks': { other: '{count}週' },
+  'timeframe.countMonths': { other: '{count}か月' },
+  'timeframe.delete': '{timeframe}を削除',
+  'timeframe.save': '{timeframe}を保存',
+  'timeframe.exists': '{timeframe}はすでに存在します',
+  'timeframe.custom': 'カスタム時間足',
+  'timeframe.customCount': 'カスタム時間足の数値',
+  'timeframe.customUnit': 'カスタム時間足の単位',
+  'timeframe.addCustom': 'カスタム時間足を追加',
+  'timeframe.increment': '増やす',
+  'timeframe.decrement': '減らす',
+}

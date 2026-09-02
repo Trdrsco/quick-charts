@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': '市场状态',
+  'status.unknownTitle': '交易时段未知',
+  'status.unknown': '该代码的交易时段尚未确定。',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': '7×24小时交易',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': '市场处于常规交易时段。',
+  'status.openCloses': '市场处于常规交易时段，将在{until}后收盘。',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': '市场处于盘前交易时段。',
+  'status.preRegular': '市场处于盘前交易时段，常规时段将在{until}后开始。',
+  'status.after': '市场处于盘后交易时段。',
+  'status.afterEnds': '市场处于盘后交易时段，将在{until}后结束。',
+  'status.closed': '市场已收盘。',
+  'status.closedPre': '市场已收盘，盘前时段将在{until}后开始。',
+  'status.closedOpens': '市场已收盘，将在{until}后开盘。',
+  'status.exchangeTimezone': '交易所时区：{zone}',
+  'status.durationDays': { other: '{count}天' },
+  'status.durationHours': { other: '{count}小时' },
+  'status.durationMinutes': { other: '{count}分钟' },
+  'status.durationPair': '{major}{minor}',
+}

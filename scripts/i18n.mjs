@@ -261,7 +261,7 @@ const CONCEPTS = [
   ['app', 'shell.widgetWatchlist'], ['app', 'ticket.tabOrders'], ['app', 'ticket.tabPositions'],
   ['app', 'ticket.colStopLoss'], ['app', 'ticket.colTakeProfit'], ['app', 'ticket.typeMarket'],
   ['app', 'ticket.typeLimit'], ['app', 'ticket.typeStop'], ['app', 'chart.replay'],
-  ['app', 'chart.indicators'], ['app', 'chart.timeframe'], ['app', 'alerts.title'],
+  ['app', 'chart.indicators'], ['sdk', 'timeframe.title'], ['app', 'alerts.title'],
   ['app', 'shell.pageJournal'], ['app', 'shell.pageBacktest'], ['app', 'watchlist.watchlists'],
   ['sdk', 'account.positions'], ['sdk', 'account.orders'], ['sdk', 'lines.takeProfit'],
   ['sdk', 'lines.stopLoss'], ['sdk', 'session.open'], ['sdk', 'rail.cursor'],

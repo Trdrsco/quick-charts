@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'Khung thời gian',
+  'timeframe.all': 'Tất cả khung thời gian',
+  'timeframe.unitTicks': 'Tick',
+  'timeframe.unitSeconds': 'Giây',
+  'timeframe.unitMinutes': 'Phút',
+  'timeframe.unitHours': 'Giờ',
+  'timeframe.unitDays': 'Ngày',
+  'timeframe.unitWeeks': 'Tuần',
+  'timeframe.unitMonths': 'Tháng',
+  'timeframe.countTicks': { other: '{count} tick' },
+  'timeframe.countSeconds': { other: '{count} giây' },
+  'timeframe.countMinutes': { other: '{count} phút' },
+  'timeframe.countHours': { other: '{count} giờ' },
+  'timeframe.countDays': { other: '{count} ngày' },
+  'timeframe.countWeeks': { other: '{count} tuần' },
+  'timeframe.countMonths': { other: '{count} tháng' },
+  'timeframe.delete': 'Xóa {timeframe}',
+  'timeframe.save': 'Lưu {timeframe}',
+  'timeframe.exists': '{timeframe} đã tồn tại',
+  'timeframe.custom': 'Khung thời gian tùy chỉnh',
+  'timeframe.customCount': 'Số lượng của khung thời gian tùy chỉnh',
+  'timeframe.customUnit': 'Đơn vị của khung thời gian tùy chỉnh',
+  'timeframe.addCustom': 'Thêm khung thời gian tùy chỉnh',
+  'timeframe.increment': 'Tăng',
+  'timeframe.decrement': 'Giảm',
+}

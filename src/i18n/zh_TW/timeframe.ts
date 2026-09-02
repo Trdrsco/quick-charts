@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': '時間週期',
+  'timeframe.all': '所有時間週期',
+  'timeframe.unitTicks': '筆',
+  'timeframe.unitSeconds': '秒',
+  'timeframe.unitMinutes': '分鐘',
+  'timeframe.unitHours': '小時',
+  'timeframe.unitDays': '日',
+  'timeframe.unitWeeks': '週',
+  'timeframe.unitMonths': '月',
+  'timeframe.countTicks': { other: '{count}筆' },
+  'timeframe.countSeconds': { other: '{count}秒' },
+  'timeframe.countMinutes': { other: '{count}分鐘' },
+  'timeframe.countHours': { other: '{count}小時' },
+  'timeframe.countDays': { other: '{count}日' },
+  'timeframe.countWeeks': { other: '{count}週' },
+  'timeframe.countMonths': { other: '{count}個月' },
+  'timeframe.delete': '刪除{timeframe}',
+  'timeframe.save': '儲存{timeframe}',
+  'timeframe.exists': '{timeframe}已存在',
+  'timeframe.custom': '自訂時間週期',
+  'timeframe.customCount': '自訂時間週期數值',
+  'timeframe.customUnit': '自訂時間週期單位',
+  'timeframe.addCustom': '新增自訂時間週期',
+  'timeframe.increment': '增加',
+  'timeframe.decrement': '減少',
+}

@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Trạng thái thị trường',
+  'status.unknownTitle': 'Không rõ phiên',
+  'status.unknown': 'Chưa xác định được phiên giao dịch của mã này.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Mở 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'Thị trường đang mở cho giao dịch thường.',
+  'status.openCloses': 'Thị trường đang mở cho giao dịch thường. Đóng cửa sau {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'Thị trường đang mở cho giao dịch trước giờ.',
+  'status.preRegular': 'Thị trường đang mở cho giao dịch trước giờ. Giờ giao dịch thường bắt đầu sau {until}.',
+  'status.after': 'Thị trường đang mở cho giao dịch sau giờ.',
+  'status.afterEnds': 'Thị trường đang mở cho giao dịch sau giờ. Kết thúc sau {until}.',
+  'status.closed': 'Thị trường đã đóng cửa.',
+  'status.closedPre': 'Thị trường đã đóng cửa. Phiên trước giờ bắt đầu sau {until}.',
+  'status.closedOpens': 'Thị trường đã đóng cửa. Mở cửa sau {until}.',
+  'status.exchangeTimezone': 'Múi giờ của sàn: {zone}',
+  'status.durationDays': { other: '{count} ngày' },
+  'status.durationHours': { other: '{count} giờ' },
+  'status.durationMinutes': { other: '{count} phút' },
+  'status.durationPair': '{major} {minor}',
+}

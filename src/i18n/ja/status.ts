@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': '市場ステータス',
+  'status.unknownTitle': 'セッション不明',
+  'status.unknown': 'この銘柄の取引セッションはまだ確定していません。',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': '24時間365日取引',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': '市場は通常取引時間中です。',
+  'status.openCloses': '市場は通常取引時間中です。{until}後に終了します。',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': '市場は寄り付き前の取引時間中です。',
+  'status.preRegular': '市場は寄り付き前の取引時間中です。通常取引時間は{until}後に開始します。',
+  'status.after': '市場は時間外取引の時間中です。',
+  'status.afterEnds': '市場は時間外取引の時間中です。{until}後に終了します。',
+  'status.closed': '市場は取引終了しています。',
+  'status.closedPre': '市場は取引終了しています。寄り付き前取引は{until}後に開始します。',
+  'status.closedOpens': '市場は取引終了しています。{until}後に取引開始します。',
+  'status.exchangeTimezone': '取引所のタイムゾーン：{zone}',
+  'status.durationDays': { other: '{count}日' },
+  'status.durationHours': { other: '{count}時間' },
+  'status.durationMinutes': { other: '{count}分' },
+  'status.durationPair': '{major}{minor}',
+}

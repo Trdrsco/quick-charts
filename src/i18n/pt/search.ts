@@ -1,0 +1,28 @@
+import type { Translation } from '../runtime'
+import type { search as source } from '../en/search'
+
+export const search: Translation<typeof source> = {
+  'search.title': 'Busca de símbolos',
+  'search.compareTitle': 'Comparar símbolos',
+  'search.changeSymbolTitle': 'Trocar símbolo',
+  'search.placeholder': 'Search symbol',
+  'search.clear': 'Limpar',
+  'search.noMatches': 'Nenhum símbolo encontrado.',
+  'search.loadingMore': 'Carregando mais…',
+  'search.failed': 'Search failed.',
+  'search.samePercent': 'Mesma escala %',
+  'search.newScale': 'Nova escala de preços',
+  'search.newPane': 'Novo painel',
+  'search.added': 'Símbolos adicionados',
+  'search.recent': 'Símbolos recentes',
+  'search.addedMark': '{symbol} está no gráfico. Clique para remover.',
+  'search.compareEmpty': 'No symbols here yet. Why not add some?',
+  'search.opDivision': 'Divisão',
+  'search.opSubtraction': 'Subtração',
+  'search.opAddition': 'Adição',
+  'search.opMultiplication': 'Multiplicação',
+  'search.opExponentiation': 'Exponenciação',
+  'search.opReciprocal': 'Recíproco',
+  'search.opsHide': 'Ocultar operadores de spread',
+  'search.opsShow': 'Mostrar operadores de spread',
+}

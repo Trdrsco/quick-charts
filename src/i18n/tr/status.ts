@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Piyasa durumu',
+  'status.unknownTitle': 'Seans bilinmiyor',
+  'status.unknown': 'Bu sembolün işlem seansı henüz belirlenmedi.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': '7/24 açık',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'Piyasa normal işlemler için açık.',
+  'status.openCloses': 'Piyasa normal işlemler için açık. {until} içinde kapanacak.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'Piyasa açılış öncesi işlemler için açık.',
+  'status.preRegular': 'Piyasa açılış öncesi işlemler için açık. Normal seans {until} içinde başlıyor.',
+  'status.after': 'Piyasa kapanış sonrası işlemler için açık.',
+  'status.afterEnds': 'Piyasa kapanış sonrası işlemler için açık. {until} içinde bitiyor.',
+  'status.closed': 'Piyasa kapalı.',
+  'status.closedPre': 'Piyasa kapalı. Açılış öncesi seans {until} içinde başlıyor.',
+  'status.closedOpens': 'Piyasa kapalı. {until} içinde açılıyor.',
+  'status.exchangeTimezone': 'Borsa saat dilimi: {zone}',
+  'status.durationDays': { one: '{count} gün', other: '{count} gün' },
+  'status.durationHours': { one: '{count} saat', other: '{count} saat' },
+  'status.durationMinutes': { one: '{count} dakika', other: '{count} dakika' },
+  'status.durationPair': '{major} {minor}',
+}

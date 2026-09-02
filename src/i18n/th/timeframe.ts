@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'กรอบเวลา',
+  'timeframe.all': 'กรอบเวลาทั้งหมด',
+  'timeframe.unitTicks': 'ทิก',
+  'timeframe.unitSeconds': 'วินาที',
+  'timeframe.unitMinutes': 'นาที',
+  'timeframe.unitHours': 'ชั่วโมง',
+  'timeframe.unitDays': 'วัน',
+  'timeframe.unitWeeks': 'สัปดาห์',
+  'timeframe.unitMonths': 'เดือน',
+  'timeframe.countTicks': { other: '{count} ทิก' },
+  'timeframe.countSeconds': { other: '{count} วินาที' },
+  'timeframe.countMinutes': { other: '{count} นาที' },
+  'timeframe.countHours': { other: '{count} ชั่วโมง' },
+  'timeframe.countDays': { other: '{count} วัน' },
+  'timeframe.countWeeks': { other: '{count} สัปดาห์' },
+  'timeframe.countMonths': { other: '{count} เดือน' },
+  'timeframe.delete': 'ลบ {timeframe}',
+  'timeframe.save': 'บันทึก {timeframe}',
+  'timeframe.exists': 'มี {timeframe} อยู่แล้ว',
+  'timeframe.custom': 'กรอบเวลาที่กำหนดเอง',
+  'timeframe.customCount': 'จำนวนของกรอบเวลาที่กำหนดเอง',
+  'timeframe.customUnit': 'หน่วยของกรอบเวลาที่กำหนดเอง',
+  'timeframe.addCustom': 'เพิ่มกรอบเวลาที่กำหนดเอง',
+  'timeframe.increment': 'เพิ่มขึ้น',
+  'timeframe.decrement': 'ลดลง',
+}

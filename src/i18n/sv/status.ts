@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Marknadsstatus',
+  'status.unknownTitle': 'Sessionen är okänd',
+  'status.unknown': 'Handelssessionen för den här symbolen har inte fastställts än.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Öppet dygnet runt',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'Marknaden är öppen för ordinarie handel.',
+  'status.openCloses': 'Marknaden är öppen för ordinarie handel. Stänger om {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'Marknaden är öppen för handel före öppning.',
+  'status.preRegular': 'Marknaden är öppen för handel före öppning. Ordinarie handel börjar om {until}.',
+  'status.after': 'Marknaden är öppen för handel efter stängning.',
+  'status.afterEnds': 'Marknaden är öppen för handel efter stängning. Slutar om {until}.',
+  'status.closed': 'Marknaden är stängd.',
+  'status.closedPre': 'Marknaden är stängd. Handeln före öppning börjar om {until}.',
+  'status.closedOpens': 'Marknaden är stängd. Öppnar om {until}.',
+  'status.exchangeTimezone': 'Börsens tidszon: {zone}',
+  'status.durationDays': { one: '{count} dag', other: '{count} dagar' },
+  'status.durationHours': { one: '{count} timme', other: '{count} timmar' },
+  'status.durationMinutes': { one: '{count} minut', other: '{count} minuter' },
+  'status.durationPair': '{major} {minor}',
+}

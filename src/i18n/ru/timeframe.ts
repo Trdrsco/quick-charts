@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'Таймфрейм',
+  'timeframe.all': 'Все таймфреймы',
+  'timeframe.unitTicks': 'Тики',
+  'timeframe.unitSeconds': 'Секунды',
+  'timeframe.unitMinutes': 'Минуты',
+  'timeframe.unitHours': 'Часы',
+  'timeframe.unitDays': 'Дни',
+  'timeframe.unitWeeks': 'Недели',
+  'timeframe.unitMonths': 'Месяцы',
+  'timeframe.countTicks': { one: '{count} тик', few: '{count} тика', many: '{count} тиков', other: '{count} тика' },
+  'timeframe.countSeconds': { one: '{count} секунда', few: '{count} секунды', many: '{count} секунд', other: '{count} секунды' },
+  'timeframe.countMinutes': { one: '{count} минута', few: '{count} минуты', many: '{count} минут', other: '{count} минуты' },
+  'timeframe.countHours': { one: '{count} час', few: '{count} часа', many: '{count} часов', other: '{count} часа' },
+  'timeframe.countDays': { one: '{count} день', few: '{count} дня', many: '{count} дней', other: '{count} дня' },
+  'timeframe.countWeeks': { one: '{count} неделя', few: '{count} недели', many: '{count} недель', other: '{count} недели' },
+  'timeframe.countMonths': { one: '{count} месяц', few: '{count} месяца', many: '{count} месяцев', other: '{count} месяца' },
+  'timeframe.delete': 'Удалить {timeframe}',
+  'timeframe.save': 'Сохранить {timeframe}',
+  'timeframe.exists': '{timeframe} уже есть в списке',
+  'timeframe.custom': 'Свой таймфрейм',
+  'timeframe.customCount': 'Значение своего таймфрейма',
+  'timeframe.customUnit': 'Единица своего таймфрейма',
+  'timeframe.addCustom': 'Добавить свой таймфрейм',
+  'timeframe.increment': 'Увеличить',
+  'timeframe.decrement': 'Уменьшить',
+}

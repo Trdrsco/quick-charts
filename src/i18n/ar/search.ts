@@ -1,0 +1,28 @@
+import type { Translation } from '../runtime'
+import type { search as source } from '../en/search'
+
+export const search: Translation<typeof source> = {
+  'search.title': 'البحث عن رمز',
+  'search.compareTitle': 'مقارنة الرموز',
+  'search.changeSymbolTitle': 'تغيير الرمز',
+  'search.placeholder': 'Search symbol',
+  'search.clear': 'مسح',
+  'search.noMatches': 'لا توجد رموز مطابقة.',
+  'search.loadingMore': 'جارٍ تحميل المزيد…',
+  'search.failed': 'Search failed.',
+  'search.samePercent': 'نفس مقياس %',
+  'search.newScale': 'مقياس سعر جديد',
+  'search.newPane': 'لوحة جديدة',
+  'search.added': 'الرموز المضافة',
+  'search.recent': 'الرموز الأخيرة',
+  'search.addedMark': '{symbol} على الرسم البياني. انقر للإزالة.',
+  'search.compareEmpty': 'No symbols here yet. Why not add some?',
+  'search.opDivision': 'قسمة',
+  'search.opSubtraction': 'طرح',
+  'search.opAddition': 'جمع',
+  'search.opMultiplication': 'ضرب',
+  'search.opExponentiation': 'أس',
+  'search.opReciprocal': 'مقلوب',
+  'search.opsHide': 'إخفاء عوامل السبريد',
+  'search.opsShow': 'إظهار عوامل السبريد',
+}

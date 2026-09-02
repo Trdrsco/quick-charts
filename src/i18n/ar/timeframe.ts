@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'الإطار الزمني',
+  'timeframe.all': 'كل الأطر الزمنية',
+  'timeframe.unitTicks': 'نقاط',
+  'timeframe.unitSeconds': 'ثوان',
+  'timeframe.unitMinutes': 'دقائق',
+  'timeframe.unitHours': 'ساعات',
+  'timeframe.unitDays': 'أيام',
+  'timeframe.unitWeeks': 'أسابيع',
+  'timeframe.unitMonths': 'أشهر',
+  'timeframe.countTicks': { zero: '{count} نقطة', one: '{count} نقطة', two: '{count} نقطتين', few: '{count} نقاط', many: '{count} نقطة', other: '{count} نقطة' },
+  'timeframe.countSeconds': { zero: '{count} ثانية', one: '{count} ثانية', two: '{count} ثانيتين', few: '{count} ثوان', many: '{count} ثانية', other: '{count} ثانية' },
+  'timeframe.countMinutes': { zero: '{count} دقيقة', one: '{count} دقيقة', two: '{count} دقيقتين', few: '{count} دقائق', many: '{count} دقيقة', other: '{count} دقيقة' },
+  'timeframe.countHours': { zero: '{count} ساعة', one: '{count} ساعة', two: '{count} ساعتين', few: '{count} ساعات', many: '{count} ساعة', other: '{count} ساعة' },
+  'timeframe.countDays': { zero: '{count} يوم', one: '{count} يوم', two: '{count} يومين', few: '{count} أيام', many: '{count} يوماً', other: '{count} يوم' },
+  'timeframe.countWeeks': { zero: '{count} أسبوع', one: '{count} أسبوع', two: '{count} أسبوعين', few: '{count} أسابيع', many: '{count} أسبوعاً', other: '{count} أسبوع' },
+  'timeframe.countMonths': { zero: '{count} شهر', one: '{count} شهر', two: '{count} شهرين', few: '{count} أشهر', many: '{count} شهراً', other: '{count} شهر' },
+  'timeframe.delete': 'حذف {timeframe}',
+  'timeframe.save': 'حفظ {timeframe}',
+  'timeframe.exists': '{timeframe} موجود بالفعل',
+  'timeframe.custom': 'إطار زمني مخصص',
+  'timeframe.customCount': 'عدد الإطار الزمني المخصص',
+  'timeframe.customUnit': 'وحدة الإطار الزمني المخصص',
+  'timeframe.addCustom': 'إضافة إطار زمني مخصص',
+  'timeframe.increment': 'زيادة',
+  'timeframe.decrement': 'إنقاص',
+}

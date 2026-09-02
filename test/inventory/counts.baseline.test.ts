@@ -8,7 +8,14 @@ import { describe, expect, it } from 'vitest'
 import baseline from './counts.baseline.json'
 
 const SOURCES = import.meta.glob(
-  ['/apps/web/src/chart/*.ts', '/packages/chart-drawings/src/registry.ts', '/packages/chart-indicators/src/registry.ts', '/packages/chart/src/layoutGrid.ts'],
+  [
+    '/apps/web/src/chart/chartStyles.ts',
+    '/packages/chart-drawings/src/registry.ts',
+    '/packages/chart-indicators/src/registry.ts',
+    '/packages/chart/src/layoutGrid.ts',
+    '/packages/chart/src/timeframe.ts',
+    '/packages/chart/src/timezones.ts',
+  ],
   {
     query: '?raw',
     import: 'default',
@@ -36,7 +43,7 @@ const COUNTERS: Record<string, (literal: string) => number> = {
   // [smaIndicator, emaIndicator, ...] one definition identifier per line.
   BUILT_IN_INDICATORS: (l) => l.match(/^\s*[a-z]+Indicator,/gm)?.length ?? 0,
   // { unit: 'm', tokens: ['1m', '3m', ...] } per group; a count of tokens across every group.
-  TF_GROUPS: (l) => [...l.matchAll(/tokens: \[([^\]]*)\]/g)].reduce((n, m) => n + (m[1]!.match(/'[0-9a-z]+'/g)?.length ?? 0), 0),
+  TIMEFRAME_PRESETS: (l) => [...l.matchAll(/tokens: \[([^\]]*)\]/g)].reduce((n, m) => n + (m[1]!.match(/'[0-9a-z]+'/g)?.length ?? 0), 0),
   // { id: 'Etc/UTC', city: 'UTC' } per zone.
   TIMEZONES: (l) => l.match(/\{ id: '/g)?.length ?? 0,
   // tool(Ctor, { type: ... }) per registration.

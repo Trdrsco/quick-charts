@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Estat del mercat',
+  'status.unknownTitle': 'Sessió desconeguda',
+  'status.unknown': 'Encara no s’ha resolt la sessió de negociació d’aquest símbol.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Obert 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'El mercat és obert per a la negociació regular.',
+  'status.openCloses': 'El mercat és obert per a la negociació regular. Tanca d’aquí a {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'El mercat és obert per a la negociació de preobertura.',
+  'status.preRegular': 'El mercat és obert per a la negociació de preobertura. L’horari regular comença d’aquí a {until}.',
+  'status.after': 'El mercat és obert per a la negociació posterior al tancament.',
+  'status.afterEnds': 'El mercat és obert per a la negociació posterior al tancament. Acaba d’aquí a {until}.',
+  'status.closed': 'El mercat és tancat.',
+  'status.closedPre': 'El mercat és tancat. La preobertura comença d’aquí a {until}.',
+  'status.closedOpens': 'El mercat és tancat. Obre d’aquí a {until}.',
+  'status.exchangeTimezone': 'Fus horari de la borsa: {zone}',
+  'status.durationDays': { one: '{count} dia', many: '{count} dies', other: '{count} dies' },
+  'status.durationHours': { one: '{count} hora', many: '{count} hores', other: '{count} hores' },
+  'status.durationMinutes': { one: '{count} minut', many: '{count} minuts', other: '{count} minuts' },
+  'status.durationPair': '{major} {minor}',
+}

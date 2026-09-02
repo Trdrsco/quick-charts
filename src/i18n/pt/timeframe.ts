@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'Tempo gráfico',
+  'timeframe.all': 'Todos os tempos gráficos',
+  'timeframe.unitTicks': 'Ticks',
+  'timeframe.unitSeconds': 'Segundos',
+  'timeframe.unitMinutes': 'Minutos',
+  'timeframe.unitHours': 'Horas',
+  'timeframe.unitDays': 'Dias',
+  'timeframe.unitWeeks': 'Semanas',
+  'timeframe.unitMonths': 'Meses',
+  'timeframe.countTicks': { one: '{count} tick', many: '{count} ticks', other: '{count} ticks' },
+  'timeframe.countSeconds': { one: '{count} segundo', many: '{count} segundos', other: '{count} segundos' },
+  'timeframe.countMinutes': { one: '{count} minuto', many: '{count} minutos', other: '{count} minutos' },
+  'timeframe.countHours': { one: '{count} hora', many: '{count} horas', other: '{count} horas' },
+  'timeframe.countDays': { one: '{count} dia', many: '{count} dias', other: '{count} dias' },
+  'timeframe.countWeeks': { one: '{count} semana', many: '{count} semanas', other: '{count} semanas' },
+  'timeframe.countMonths': { one: '{count} mês', many: '{count} meses', other: '{count} meses' },
+  'timeframe.delete': 'Excluir {timeframe}',
+  'timeframe.save': 'Salvar {timeframe}',
+  'timeframe.exists': '{timeframe} já existe',
+  'timeframe.custom': 'Tempo gráfico personalizado',
+  'timeframe.customCount': 'Quantidade do tempo gráfico personalizado',
+  'timeframe.customUnit': 'Unidade do tempo gráfico personalizado',
+  'timeframe.addCustom': 'Adicionar tempo gráfico personalizado',
+  'timeframe.increment': 'Aumentar',
+  'timeframe.decrement': 'Diminuir',
+}

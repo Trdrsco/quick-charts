@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': '市場狀態',
+  'status.unknownTitle': '交易時段未知',
+  'status.unknown': '此商品的交易時段尚未確定。',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': '全天候交易',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': '市場正處於一般交易時段。',
+  'status.openCloses': '市場正處於一般交易時段。{until}後收盤。',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': '市場正處於盤前交易時段。',
+  'status.preRegular': '市場正處於盤前交易時段。一般時段將於{until}後開始。',
+  'status.after': '市場正處於盤後交易時段。',
+  'status.afterEnds': '市場正處於盤後交易時段。{until}後結束。',
+  'status.closed': '市場已休市。',
+  'status.closedPre': '市場已休市。盤前時段將於{until}後開始。',
+  'status.closedOpens': '市場已休市。{until}後開盤。',
+  'status.exchangeTimezone': '交易所時區：{zone}',
+  'status.durationDays': { other: '{count}天' },
+  'status.durationHours': { other: '{count}小時' },
+  'status.durationMinutes': { other: '{count}分鐘' },
+  'status.durationPair': '{major}{minor}',
+}

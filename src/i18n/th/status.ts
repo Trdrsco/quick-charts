@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'สถานะตลาด',
+  'status.unknownTitle': 'ไม่ทราบรอบซื้อขาย',
+  'status.unknown': 'ยังระบุรอบซื้อขายของสัญลักษณ์นี้ไม่ได้',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'เปิด 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'ตลาดเปิดซื้อขายในเวลาปกติ',
+  'status.openCloses': 'ตลาดเปิดซื้อขายในเวลาปกติ ปิดในอีก {until}',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'ตลาดเปิดซื้อขายช่วงก่อนเปิดตลาด',
+  'status.preRegular': 'ตลาดเปิดซื้อขายช่วงก่อนเปิดตลาด เวลาปกติเริ่มในอีก {until}',
+  'status.after': 'ตลาดเปิดซื้อขายช่วงหลังปิดตลาด',
+  'status.afterEnds': 'ตลาดเปิดซื้อขายช่วงหลังปิดตลาด สิ้นสุดในอีก {until}',
+  'status.closed': 'ตลาดปิดอยู่',
+  'status.closedPre': 'ตลาดปิดอยู่ ช่วงก่อนเปิดตลาดเริ่มในอีก {until}',
+  'status.closedOpens': 'ตลาดปิดอยู่ เปิดในอีก {until}',
+  'status.exchangeTimezone': 'เขตเวลาของตลาด: {zone}',
+  'status.durationDays': { other: '{count} วัน' },
+  'status.durationHours': { other: '{count} ชั่วโมง' },
+  'status.durationMinutes': { other: '{count} นาที' },
+  'status.durationPair': '{major} {minor}',
+}

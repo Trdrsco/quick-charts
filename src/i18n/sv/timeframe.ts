@@ -1,0 +1,30 @@
+import type { Translation } from '../runtime'
+import type { timeframe as source } from '../en/timeframe'
+
+export const timeframe: Translation<typeof source> = {
+  'timeframe.title': 'Intervall',
+  'timeframe.all': 'Alla intervall',
+  'timeframe.unitTicks': 'Tick',
+  'timeframe.unitSeconds': 'Sekunder',
+  'timeframe.unitMinutes': 'Minuter',
+  'timeframe.unitHours': 'Timmar',
+  'timeframe.unitDays': 'Dagar',
+  'timeframe.unitWeeks': 'Veckor',
+  'timeframe.unitMonths': 'Månader',
+  'timeframe.countTicks': { one: '{count} tick', other: '{count} tick' },
+  'timeframe.countSeconds': { one: '{count} sekund', other: '{count} sekunder' },
+  'timeframe.countMinutes': { one: '{count} minut', other: '{count} minuter' },
+  'timeframe.countHours': { one: '{count} timme', other: '{count} timmar' },
+  'timeframe.countDays': { one: '{count} dag', other: '{count} dagar' },
+  'timeframe.countWeeks': { one: '{count} vecka', other: '{count} veckor' },
+  'timeframe.countMonths': { one: '{count} månad', other: '{count} månader' },
+  'timeframe.delete': 'Ta bort {timeframe}',
+  'timeframe.save': 'Spara {timeframe}',
+  'timeframe.exists': '{timeframe} finns redan',
+  'timeframe.custom': 'Eget intervall',
+  'timeframe.customCount': 'Antal för eget intervall',
+  'timeframe.customUnit': 'Enhet för eget intervall',
+  'timeframe.addCustom': 'Lägg till eget intervall',
+  'timeframe.increment': 'Öka',
+  'timeframe.decrement': 'Minska',
+}

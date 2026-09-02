@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Stato del mercato',
+  'status.unknownTitle': 'Sessione sconosciuta',
+  'status.unknown': 'La sessione di negoziazione di questo simbolo non è ancora stata determinata.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Aperto 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'Il mercato è aperto nella sessione regolare.',
+  'status.openCloses': 'Il mercato è aperto nella sessione regolare. Chiude tra {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'Il mercato è aperto nel pre-mercato.',
+  'status.preRegular': 'Il mercato è aperto nel pre-mercato. La sessione regolare inizia tra {until}.',
+  'status.after': 'Il mercato è aperto nel dopo-borsa.',
+  'status.afterEnds': 'Il mercato è aperto nel dopo-borsa. Finisce tra {until}.',
+  'status.closed': 'Il mercato è chiuso.',
+  'status.closedPre': 'Il mercato è chiuso. Il pre-mercato inizia tra {until}.',
+  'status.closedOpens': 'Il mercato è chiuso. Apre tra {until}.',
+  'status.exchangeTimezone': 'Fuso orario della borsa: {zone}',
+  'status.durationDays': { one: '{count} giorno', many: '{count} giorni', other: '{count} giorni' },
+  'status.durationHours': { one: '{count} ora', many: '{count} ore', other: '{count} ore' },
+  'status.durationMinutes': { one: '{count} minuto', many: '{count} minuti', other: '{count} minuti' },
+  'status.durationPair': '{major} {minor}',
+}

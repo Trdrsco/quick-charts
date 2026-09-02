@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Status pasar',
+  'status.unknownTitle': 'Sesi tidak diketahui',
+  'status.unknown': 'Sesi trading simbol ini belum ditentukan.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Buka 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'Pasar buka untuk perdagangan reguler.',
+  'status.openCloses': 'Pasar buka untuk perdagangan reguler. Tutup dalam {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'Pasar buka untuk perdagangan pra-pasar.',
+  'status.preRegular': 'Pasar buka untuk perdagangan pra-pasar. Jam reguler mulai dalam {until}.',
+  'status.after': 'Pasar buka untuk perdagangan setelah jam pasar.',
+  'status.afterEnds': 'Pasar buka untuk perdagangan setelah jam pasar. Berakhir dalam {until}.',
+  'status.closed': 'Pasar tutup.',
+  'status.closedPre': 'Pasar tutup. Pra-pasar mulai dalam {until}.',
+  'status.closedOpens': 'Pasar tutup. Buka dalam {until}.',
+  'status.exchangeTimezone': 'Zona waktu bursa: {zone}',
+  'status.durationDays': { other: '{count} hari' },
+  'status.durationHours': { other: '{count} jam' },
+  'status.durationMinutes': { other: '{count} menit' },
+  'status.durationPair': '{major} {minor}',
+}

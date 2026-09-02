@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'Status rynku',
+  'status.unknownTitle': 'Nieznana sesja',
+  'status.unknown': 'Sesja handlowa tego symbolu nie została jeszcze ustalona.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'Otwarty 24/7',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'Rynek jest otwarty w sesji regularnej.',
+  'status.openCloses': 'Rynek jest otwarty w sesji regularnej. Zamknięcie za {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'Rynek jest otwarty w handlu przed otwarciem.',
+  'status.preRegular': 'Rynek jest otwarty w handlu przed otwarciem. Sesja regularna rozpocznie się za {until}.',
+  'status.after': 'Rynek jest otwarty w handlu po zamknięciu.',
+  'status.afterEnds': 'Rynek jest otwarty w handlu po zamknięciu. Koniec za {until}.',
+  'status.closed': 'Rynek jest zamknięty.',
+  'status.closedPre': 'Rynek jest zamknięty. Handel przed otwarciem rozpocznie się za {until}.',
+  'status.closedOpens': 'Rynek jest zamknięty. Otwarcie za {until}.',
+  'status.exchangeTimezone': 'Strefa czasowa giełdy: {zone}',
+  'status.durationDays': { one: '{count} dzień', few: '{count} dni', many: '{count} dni', other: '{count} dnia' },
+  'status.durationHours': { one: '{count} godzina', few: '{count} godziny', many: '{count} godzin', other: '{count} godziny' },
+  'status.durationMinutes': { one: '{count} minuta', few: '{count} minuty', many: '{count} minut', other: '{count} minuty' },
+  'status.durationPair': '{major} {minor}',
+}

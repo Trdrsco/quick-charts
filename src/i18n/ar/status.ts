@@ -1,0 +1,31 @@
+import type { Translation } from '../runtime'
+import type { status as source } from '../en/status'
+
+export const status: Translation<typeof source> = {
+  'status.title': 'حالة السوق',
+  'status.unknownTitle': 'الجلسة غير معروفة',
+  'status.unknown': 'لم تُحدَّد جلسة التداول لهذا الرمز بعد.',
+  'status.endOfDayTitle': 'End of day',
+  'status.endOfDay': 'Prices update once a day, after the session closes.',
+  'status.delayed': 'Prices are delayed.',
+  'status.delayedPair': '{status} {delay}',
+  'status.continuousTitle': 'مفتوح على مدار الساعة',
+  'status.continuous': 'This market trades around the clock and never closes.',
+  'status.open': 'السوق مفتوح للتداول العادي.',
+  'status.openCloses': 'السوق مفتوح للتداول العادي. يُغلق بعد {until}.',
+  'status.extended': 'Market is open for extended-hours trading.',
+  'status.extendedRegular': 'Market is open for extended-hours trading. Regular hours start in {until}.',
+  'status.extendedCloses': 'Market is open for extended-hours trading. Closes in {until}.',
+  'status.pre': 'السوق مفتوح للتداول قبل الافتتاح.',
+  'status.preRegular': 'السوق مفتوح للتداول قبل الافتتاح. تبدأ الساعات العادية بعد {until}.',
+  'status.after': 'السوق مفتوح للتداول بعد الإغلاق.',
+  'status.afterEnds': 'السوق مفتوح للتداول بعد الإغلاق. ينتهي بعد {until}.',
+  'status.closed': 'السوق مغلق.',
+  'status.closedPre': 'السوق مغلق. يبدأ التداول قبل الافتتاح بعد {until}.',
+  'status.closedOpens': 'السوق مغلق. يفتح بعد {until}.',
+  'status.exchangeTimezone': 'المنطقة الزمنية للبورصة: {zone}',
+  'status.durationDays': { zero: '{count} يوم', one: '{count} يوم', two: '{count} يومين', few: '{count} أيام', many: '{count} يوماً', other: '{count} يوم' },
+  'status.durationHours': { zero: '{count} ساعة', one: '{count} ساعة', two: '{count} ساعتين', few: '{count} ساعات', many: '{count} ساعة', other: '{count} ساعة' },
+  'status.durationMinutes': { zero: '{count} دقيقة', one: '{count} دقيقة', two: '{count} دقيقتين', few: '{count} دقائق', many: '{count} دقيقة', other: '{count} دقيقة' },
+  'status.durationPair': '{major} {minor}',
+}
