@@ -78,7 +78,7 @@ const sourcesFor = (scope: Term['scope']): Record<string, string> => (scope === 
 
 describe('the forbidden vocabulary, as built', () => {
   it('has package and app sources to read', () => {
-    expect(Object.keys(CODE).length).toBeGreaterThan(25)
+    expect(Object.keys(CODE).length).toBeGreaterThan(30)
     expect(Object.keys(APP_CHART_SOURCES).length).toBeGreaterThan(20)
     expect(APP_CHART_SOURCES['/apps/web/src/chart/DrawingToolbar.tsx']).toBeTypeOf('string')
   })
