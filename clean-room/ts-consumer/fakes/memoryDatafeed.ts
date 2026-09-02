@@ -4,14 +4,13 @@
 // PCL-1: the clean-room consumer supplies its own fake datafeed and storage, never an engine
 // adapter). Bars are a pure function of symbol and bucket, so any window asked twice answers the
 // same twice and a snapshot never disagrees with history.
-import type { ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, PriceFormat, SearchPage, SessionClass, SubscribeHandlers, SymbolInfo } from 'quickcharts'
+import type { ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, PriceFormat, SearchPage, SubscribeHandlers, SymbolInfo } from 'quickcharts'
 
 interface CatalogRow {
   symbol: string
   name: string
   exchange: string
   type: string
-  sessionClass: SessionClass
   timezone: string
   session: string
   currencyCode: string
@@ -22,10 +21,10 @@ interface CatalogRow {
 }
 
 const CATALOG: readonly CatalogRow[] = [
-  { symbol: 'ESZ2026', name: 'E-mini S&P 500 Dec 2026', exchange: 'CME', type: 'futures', sessionClass: 'futures', timezone: 'America/Chicago', session: '1700-1600:23456', currencyCode: 'USD', format: { pricescale: 100, minmov: 25 }, base: 5000 },
-  { symbol: 'EURUSD', name: 'Euro / US Dollar', exchange: 'FX', type: 'fx', sessionClass: 'fx', timezone: 'America/New_York', session: '1700-1700:23456', currencyCode: 'USD', format: { pricescale: 100000, minmov: 1 }, base: 1.085 },
-  { symbol: 'BTCUSD', name: 'Bitcoin / US Dollar', exchange: 'X', type: 'crypto', sessionClass: 'crypto', timezone: 'Etc/UTC', session: '24x7', currencyCode: 'USD', format: { pricescale: 100, minmov: 1 }, base: 65000 },
-  { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', type: 'stock', sessionClass: 'equity', timezone: 'America/New_York', session: '0930-1600', currencyCode: 'USD', format: { pricescale: 100, minmov: 1 }, base: 190 },
+  { symbol: 'ESZ2026', name: 'E-mini S&P 500 Dec 2026', exchange: 'CME', type: 'futures', timezone: 'America/Chicago', session: '1700-1600:23456', currencyCode: 'USD', format: { pricescale: 100, minmov: 25 }, base: 5000 },
+  { symbol: 'EURUSD', name: 'Euro / US Dollar', exchange: 'FX', type: 'fx', timezone: 'America/New_York', session: '1700-1700:23456', currencyCode: 'USD', format: { pricescale: 100000, minmov: 1 }, base: 1.085 },
+  { symbol: 'BTCUSD', name: 'Bitcoin / US Dollar', exchange: 'X', type: 'crypto', timezone: 'Etc/UTC', session: '24x7', currencyCode: 'USD', format: { pricescale: 100, minmov: 1 }, base: 65000 },
+  { symbol: 'AAPL', name: 'Apple Inc.', exchange: 'NASDAQ', type: 'stock', timezone: 'America/New_York', session: '0930-1600', currencyCode: 'USD', format: { pricescale: 100, minmov: 1 }, base: 190 },
 ]
 
 /** The smallest price move a row's format declares: the grid its deterministic closes land on. */
@@ -118,7 +117,6 @@ export function memoryDatafeed(options: MemoryDatafeedOptions = {}): ChartDatafe
         currencyCode: row.currencyCode,
         volumePrecision: 0,
         format: { ...row.format },
-        sessionClass: row.sessionClass,
       }
     },
 
