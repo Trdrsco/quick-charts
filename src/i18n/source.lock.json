@@ -2,6 +2,8 @@
   "keys": {
     "host.noVolume": "891dd09835",
     "host.replayHeader": "c256faa725",
+    "host.saveConflict": "60789ff337",
+    "host.saveNotFound": "dfdd74bdd9",
     "indicator.adxDescription": "69eb465b60",
     "indicator.adxName": "4138f4983b",
     "indicator.atrDescription": "d529e2342d",

@@ -281,6 +281,31 @@ if (created.kind === 'ok') {
 }
 ```
 
+The widget drives the charts family for you. `createChart({ saveLoad })` takes your adapter, and
+`widget.saveLoad` holds the OPEN saved chart: `save(name)` updates it at the revision it was
+opened at (or creates, when nothing is open or you pass `asNew`), `load(id)` applies a saved
+chart and opens it, `remove()` deletes the open one at its held revision, and `current()` reports
+the ref and name on screen. A refusal is a typed outcome carrying a sentence from the chart
+catalog, so you show one line and offer a reload; the widget never writes over a newer revision.
+The drawing layer persists each symbol's drawings through the adapter's drawings family the same
+way, and reports a refused write through `events.onSaveConflict`. A layout does the same for
+itself through `layout.saveLoad` over the layouts family.
+
+```ts
+import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
+
+declare const container: HTMLElement
+const widget = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  saveLoad: memorySaveLoadAdapter(),
+  events: { onSaveConflict: (info) => console.warn(info.message) },
+})
+const saved = await widget.saveLoad.save('Morning')
+if (saved.kind === 'conflict') console.warn(saved.message) // saved elsewhere since it was opened
+widget.saveLoad.current()?.name // 'Morning'
+```
+
 Each family is a `ResourceStore` with the same five calls, and every call takes an `AbortSignal` so
 abandoned work stops cleanly:
 
@@ -306,19 +331,29 @@ it only for equality.
 `memorySaveLoadAdapter` persists nothing. Use it for tests, server rendering, and an intentionally
 ephemeral embed, and implement the same contract over your own backend for durable storage.
 
-## Viewer state storage
+## Viewer preferences
 
-**The widget** persists its sticky state (the last symbol + timeframe) through `ChartStorage`. The
-default is the browser's `localStorage`; supply your own adapter to key it to a user account:
+**The widget** keeps the viewer's flat preferences (the last symbol and timeframe, the scale mode,
+hidden studies, the replay speed) in a `ChartStorage`. The default is an in-memory store that
+lasts the page; supply your own to keep them per device or per account. A browser store is a few
+lines a host writes; it is not part of the package, because a device-local default is not a
+persistence architecture:
 
 ```ts
-import { localStorageChartStorage, memoryChartStorage, type ChartStorage } from 'quickcharts'
+import { memoryChartStorage, type ChartStorage } from 'quickcharts'
+
+const perDevice: ChartStorage = {
+  get: (key) => localStorage.getItem(key),
+  set: (key, value) => localStorage.setItem(key, value),
+  remove: (key) => localStorage.removeItem(key),
+  keys: () => Object.keys(localStorage),
+}
+void perDevice
+void memoryChartStorage()
 ```
 
-Scope honestly stated: `ChartStorage` redirects the persistence of **this package's widget** — the
-sticky symbol/timeframe and the drawing layer's store document both live behind it. The trdrs
-app's own richer chart panel manages its persistence outside this seam (its drawings speak the
-same store *codec*, so the documents stay interchangeable).
+Preferences need no identity or revision. Saved charts, layouts, drawings and templates do, and
+they live on the saved-resource adapter above, never here.
 
 ## Indicators
 
@@ -676,8 +711,9 @@ re-tile opens in the current one.
 ## Drawings
 
 The widget ships with a drawing layer (on by default): placement, selection, drag-to-move and
-anchor-resize, per-symbol persistence, and a small built-in tool rail. Turn the layer off with
-`drawings: false`, or keep it and hide the rail to drive it from your own UI:
+anchor-resize, per-symbol persistence through the adapter's drawings family, and a small built-in
+tool rail. Turn the layer off with `drawings: false`, or keep it and hide the rail to drive it
+from your own UI:
 
 ```ts
 import { createChart, createUdfDatafeed } from 'quickcharts'
@@ -685,7 +721,7 @@ import { createChart, createUdfDatafeed } from 'quickcharts'
 const widget = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  drawings: { rail: false, storageKey: 'acme.chart.drawings' },
+  drawings: { rail: false },
 })
 widget.drawings?.armTool('trend_line')
 const saved = widget.drawings?.export() // the persistence wire format (SerializedDrawing[])

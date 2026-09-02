@@ -54,6 +54,7 @@ const H = vi.hoisted(() => {
 vi.mock('../src/host', () => ({ createChart: H.createChart }))
 
 const { createChartLayout } = await import('../src/layout')
+const { memorySaveLoadAdapter } = await import('../src/resources')
 
 interface FakeEl {
   style: Record<string, string>
@@ -205,5 +206,46 @@ describe('the layout is pointed at its active pane', () => {
     await api.setLocale('canada')
     expect(setLocale).toHaveBeenCalledTimes(1)
     expect(setLocale).toHaveBeenCalledWith('canada')
+  })
+})
+
+describe('a layout is its own saved resource', () => {
+  // The layout saves through the adapter's LAYOUTS family, never through charts: a layout is an
+  // arrangement of charts and conflicts separately from the charts inside it.
+  it('saves under layouts at the held revision, loads back, and reports a conflict rather than overwriting', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const api = createChartLayout({
+      container: el() as unknown as HTMLElement,
+      base: { saveLoad: adapter } as never,
+      arrangement: '2h',
+      panes: [{ symbol: 'ES' }, { symbol: 'NQ' }],
+    })
+    const saved = await api.saveLoad.save('Pair')
+    expect(saved.kind).toBe('ok')
+    expect((await adapter.layouts.list()).map((r) => r.name)).toEqual(['Pair'])
+    expect(await adapter.charts.list()).toEqual([])
+    const held = api.saveLoad.current()!
+    // Another tab saves the same layout first.
+    const elsewhere = await adapter.layouts.update(held.ref, { name: 'Pair', content: '{}' })
+    expect(elsewhere.kind).toBe('ok')
+    const refused = await api.saveLoad.save('Pair')
+    expect(refused.kind).toBe('conflict')
+    if (refused.kind === 'conflict') expect(refused.message.length).toBeGreaterThan(0)
+    expect((await adapter.layouts.load(held.ref.id))!.body.content).toBe('{}')
+
+    api.saveLoad.detach()
+    expect(api.saveLoad.current()).toBeNull()
+    const fresh = await api.saveLoad.save('Pair copy')
+    if (fresh.kind !== 'ok') throw new Error('unreachable')
+    const other = createChartLayout({ container: el() as unknown as HTMLElement, base: { saveLoad: adapter } as never, arrangement: 's', panes: [{ symbol: 'GC' }] })
+    const loaded = await other.saveLoad.load(fresh.ref.id)
+    expect(loaded.kind).toBe('ok')
+    expect(other.panes().map((p) => p.symbol())).toEqual(['ES', 'NQ'])
+    expect(other.saveLoad.current()?.name).toBe('Pair copy')
+  })
+
+  it('rejects a save with no adapter in base', async () => {
+    const api = createChartLayout({ container: el() as unknown as HTMLElement, base: {} as never, arrangement: 's', panes: [{ symbol: 'ES' }] })
+    await expect(api.saveLoad.save('x')).rejects.toThrow(/no save\/load adapter/)
   })
 })

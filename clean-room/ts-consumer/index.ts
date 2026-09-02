@@ -73,16 +73,30 @@ export async function exerciseFakes(): Promise<void> {
   const unsubscribe = feed.subscribeBars('ESZ2026', '5m', { onBars: () => undefined })
   unsubscribe()
 
+  // The revisioned resource contract: a create answers a ref, an update at that ref lands and
+  // moves the revision, an update at the old ref is a typed conflict carrying the ref that stands.
   const saveLoad = memorySaveLoad({ clock: () => 1 })
-  const id = await saveLoad.saveChart({ name: 'Morning', symbol: 'ESZ2026', timeframe: '5m', content: '{}' })
-  if ((await saveLoad.loadChart(id)) !== '{}') throw new Error('a saved chart loads back')
-  if ((await saveLoad.listCharts())[0]?.name !== 'Morning') throw new Error('a saved chart lists')
-  await saveLoad.saveDrawings({ symbol: 'ESZ2026' }, '[]')
-  if ((await saveLoad.loadDrawings({ symbol: 'ESZ2026' })) !== '[]') throw new Error('drawings are symbol-scoped')
-  await saveLoad.templates('study').save('Bands', '{}')
-  if ((await saveLoad.templates('study').load('Bands')) !== '{}') throw new Error('a template loads back')
-  saveLoad.settings.set('k', 'v')
-  if (saveLoad.settings.get('k') !== 'v') throw new Error('settings persist for the session')
+  const created = await saveLoad.charts.create({ name: 'Morning', symbol: 'ESZ2026', timeframe: '5m', content: '{}' })
+  if (created.kind !== 'ok') throw new Error('a create never conflicts on charts')
+  const loaded = await saveLoad.charts.load(created.ref.id)
+  if (loaded?.body.content !== '{}' || loaded.ref.revision !== created.ref.revision) throw new Error('a saved chart loads back at its ref')
+  if ((await saveLoad.charts.list())[0]?.name !== 'Morning') throw new Error('a saved chart lists with its ref')
+  const moved = await saveLoad.charts.update(created.ref, { name: 'Morning', symbol: 'ESZ2026', timeframe: '15m', content: '{}' })
+  if (moved.kind !== 'ok' || moved.ref.revision === created.ref.revision) throw new Error('an update at the held ref moves the revision')
+  const stale = await saveLoad.charts.update(created.ref, { name: 'Morning', symbol: 'ESZ2026', timeframe: '1h', content: '{}' })
+  if (stale.kind !== 'conflict' || stale.current.revision !== moved.ref.revision) throw new Error('a stale write is a typed conflict carrying the ref that stands')
+  const drawings = saveLoad.drawings({ symbol: 'ESZ2026' })
+  const doc = await drawings.create({ content: '[]' })
+  if (doc.kind !== 'ok') throw new Error('a scope with no document accepts a create')
+  if ((await drawings.create({ content: '[]' })).kind !== 'conflict') throw new Error('a scope holds one document')
+  if ((await saveLoad.drawings({ symbol: 'NQZ2026' }).list()).length !== 0) throw new Error('drawings are symbol-scoped')
+  const study = await saveLoad.templates('study').create({ name: 'Bands', content: '{}' })
+  if (study.kind !== 'ok' || (await saveLoad.templates('study').load(study.ref.id))?.body.content !== '{}') throw new Error('a template loads back')
+  const removed = await saveLoad.charts.remove(moved.ref)
+  if (removed.kind !== 'ok' || (await saveLoad.charts.remove(moved.ref)).kind !== 'not-found') throw new Error('a delete is not idempotent')
+  const settings = memoryStorage()
+  settings.set('k', 'v')
+  if (settings.get('k') !== 'v') throw new Error('preferences persist for the session')
 }
 
 // A complete typed datafeed — the seam a licensee actually implements.
@@ -169,7 +183,7 @@ if (!placeableByWidget('trend_line') || placeableByWidget('brush')) throw new Er
 // The drawing layer types against a real chart/series pair (construction is DOM-bound; the render
 // smoke executes it) and the persisted store document round-trips through the shared codec.
 export function mountDrawingLayer(el: HTMLElement, chartApi: IChartApi, series: ISeriesApi<'Candlestick'>): DrawingsHandle {
-  return attachDrawings({ chart: chartApi, series, container: el, symbol: 'BTC', storage: memoryChartStorage() })
+  return attachDrawings({ chart: chartApi, series, container: el, symbol: 'BTC', resources: (scope) => memorySaveLoad().drawings(scope) })
 }
 const storeDoc: Record<string, SerializedDrawing[]> = parseDrawingsStore(serializeDrawingsStore({}))
 if (Object.keys(storeDoc).length !== 0) throw new Error('unexpected store round-trip')

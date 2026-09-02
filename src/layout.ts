@@ -11,7 +11,9 @@
 import { arrangementOf, type Arrangement } from './layoutGrid'
 import { createChart, type ChartWidgetApi } from './host'
 import type { ChartWidgetOptions } from './widget'
-import type { ChartLocaleCode } from './i18n'
+import { createChartI18n, type ChartLocaleCode } from './i18n'
+import type { LayoutBody, LayoutMeta } from './resources'
+import { openResourceController, type OpenResource, type ResourceLoadOutcome, type ResourceRemoveOutcome, type ResourceSaveOutcome } from './openResource'
 
 export interface LayoutSyncFlags {
   symbol: boolean
@@ -71,9 +73,26 @@ export interface ChartLayoutApi {
   /** The whole layout as ONE opaque content blob (arrangement + sync + every pane's content). */
   serialize(): { content: string }
   restore(content: string): void
+  /** The open saved LAYOUT and its verbs, over the adapter's layouts family (`base.saveLoad`): a
+   *  layout is its own resource, separate from the charts inside it, and conflicts separately. */
+  saveLoad: LayoutSaveLoadApi
   /** Switch every pane's interface language; panes created later open in it too. */
   setLocale(code: string): Promise<void>
   remove(): void
+}
+
+/** The layout's save/load surface: the same open-resource rule the widget applies to a saved
+ *  chart, over the layouts family. */
+export interface LayoutSaveLoadApi {
+  current(): OpenResource | null
+  /** Save the layout on screen under `name`: an update at the held revision, or a create when
+   *  nothing is open or `asNew` asks for a copy. Rejects when `base.saveLoad` is absent. */
+  save(name: string, opts?: { asNew?: boolean; signal?: AbortSignal }): Promise<ResourceSaveOutcome<LayoutMeta>>
+  /** Open a saved layout: its content is restored and it becomes the open layout. */
+  load(id: string, signal?: AbortSignal): Promise<ResourceLoadOutcome<LayoutBody>>
+  /** Delete the open layout at its held revision. The panes stay; the binding detaches. */
+  remove(signal?: AbortSignal): Promise<ResourceRemoveOutcome>
+  detach(): void
 }
 
 const LAYOUT_CONTENT_V = 1
@@ -105,6 +124,10 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
   let arrangement: Arrangement = arr0
 
   const notifyChange = () => options.events?.onChange?.()
+  /** The open saved layout, over the adapter's layouts family. The catalog copy for a refusal
+   *  reads in the layout's language: the shared i18n when the host passed one, else the locale. */
+  const strings = options.base.i18n ?? createChartI18n(options.base.locale)
+  const openLayout = openResourceController<LayoutMeta, LayoutBody>({ store: () => options.base.saveLoad?.layouts ?? null, t: () => strings.t })
 
   const place = (el: HTMLElement, i: number) => {
     const r = arrangement.rects[i]!
@@ -268,6 +291,17 @@ export function createChartLayout(options: ChartLayoutOptions): ChartLayoutApi {
       if (removed) return
       flags = { ...flags, ...partial }
       notifyChange()
+    },
+    saveLoad: {
+      current: () => openLayout.current(),
+      detach: () => openLayout.detach(),
+      save: (name, opts) => openLayout.save({ name, content: api.serialize().content }, opts),
+      async load(id, signal) {
+        const outcome = await openLayout.load(id, signal)
+        if (outcome.kind === 'ok' && !removed) api.restore(outcome.body.content)
+        return outcome
+      },
+      remove: (signal) => openLayout.remove(signal),
     },
     serialize() {
       return {

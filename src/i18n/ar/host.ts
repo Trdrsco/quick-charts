@@ -4,4 +4,6 @@ import type { host as source } from '../en/host'
 export const host: Translation<typeof source> = {
   'host.noVolume': 'لا يوفر هذا المصدر بيانات الحجم',
   'host.replayHeader': '{tf} · إعادة التشغيل',
+  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
+  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
 }
