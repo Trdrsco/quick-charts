@@ -1,10 +1,10 @@
 // The layout's ACTIVE CHART. A host with one surface that follows a multi-chart layout asks the
-// layout which chart it is pointed at, and through it which market. Measured on the reference,
-// where activating a chart re-points such a surface and moves no chart at all. The whole point is
-// that those two are different things, so what is pinned here is that the active chart tracks
-// activation exactly, that it never re-points a chart, and that it is reported for every way it can
-// move: a chart being activated, the active chart changing symbol, a re-tile that drops the active
-// chart, a restore. A market that moves in silence strands the host on the last one.
+// layout which chart it is pointed at, and through it which market. Activating a chart re-points
+// that surface and moves no chart at all: the two are different things, which is the whole point.
+// So what is pinned here is that the active chart tracks activation exactly, that it never
+// re-points a chart, and that it is reported for every way it can move: a chart being activated,
+// the active chart's symbol changed, a re-tile that drops the active chart, a restore. A market
+// that moves in silence strands the host on the last one.
 //
 // The charts are fakes and the DOM is a stub, so the code under test is the real layout plane: its
 // own activation, fan-out, re-tile and restore paths decide every value asserted below.

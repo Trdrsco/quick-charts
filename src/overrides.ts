@@ -8,8 +8,8 @@ export interface ChartOverrides {
     background: string
     upColor: string
     downColor: string
-    /** Candle anatomy, TradingView-style: the border ring and the wick are their OWN colors per
-     *  direction — they do NOT follow upColor/downColor; each is set independently. */
+    /** Candle anatomy: the border ring and the wick are their OWN colors per direction. They do
+     *  NOT follow upColor/downColor; each is set independently. */
     borderUpColor: string
     borderDownColor: string
     wickUpColor: string
@@ -68,8 +68,8 @@ export function mergeOverrides(partial?: PartialOverrides | null): ChartOverride
 
 /** The precedence composer: deep-fill any number of partials over an explicit BASE, later layers
  *  winning leaf by leaf. The widget's look resolves through this — its theme-derived floor, then
- *  the host's constructor partial, then runtime applyOverrides calls — which is TradingView's own
- *  override ladder (runtime beats constructor beats theme) expressed as one pure function. */
+ *  the host's constructor partial, then runtime applyAppearance calls: one ladder where runtime
+ *  beats constructor beats theme, expressed as one pure function. */
 export function layerOverrides(base: ChartOverrides, ...partials: (PartialOverrides | null | undefined)[]): ChartOverrides {
   const out: ChartOverrides = { appearance: { ...base.appearance } }
   for (const p of partials) {

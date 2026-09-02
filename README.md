@@ -146,8 +146,8 @@ timeframes it would actually serve).
 
 ## The UDF on-ramp
 
-Already have a [UDF](https://www.tradingview.com/charting-library-docs/latest/connecting_data/UDF) server?
-Skip implementing the interface — point the adapter at it:
+Already serving bars over the UDF wire protocol? Skip implementing the interface and point the
+adapter at your server:
 
 ```ts
 import { createUdfDatafeed } from 'quickcharts'
@@ -798,8 +798,8 @@ alone.
 
 ## Compare
 
-Every chart can draw OTHER symbols beside its own, the reference model: a compare is study-like —
-legend-managed, three placements, persisted in the chart content blob. `same-percent` shares the
+Every chart can draw OTHER symbols beside its own. A compare is study-like: legend-managed, three
+placements, persisted in the chart content blob. `same-percent` shares the
 main price scale and flips it to percent while any such compare lives (the prior scale mode comes
 back when the last one leaves); `new-scale` binds the LEFT scale with absolute prices (the left
 axis exists only while such a compare does); `new-pane` takes a pane of its own. Compared bars

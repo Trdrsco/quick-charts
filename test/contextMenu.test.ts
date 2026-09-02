@@ -7,8 +7,8 @@ import { BUILT_IN_THEMES } from '../src/theme/palettes'
 /** The authored component recipes: the one place a chart visual is written. */
 const css = authoredStylesheet()
 
-// The reference's own menu is the shape — order, verbatim wording, and which rows exist at all.
-// Captured live from both the Trading Platform library and tradingview.com; see the layouts corpus.
+// The menu's shape is pinned here: its order, its wording, and which rows exist at all. A level
+// menu that quietly grows or reorders a row is a menu a trader has to re-read every time.
 
 const base: ChartMenuContext = {
   priceText: '4,512.25',
@@ -20,8 +20,8 @@ const base: ChartMenuContext = {
 const labels = (c: Partial<ChartMenuContext> = {}) =>
   chartContextMenu({ ...base, ...c }).map((r) => (r.kind === 'separator' ? '—' : r.label))
 
-describe('the level menu, in the reference order', () => {
-  it('reads top to bottom as the reference does, with nothing about an account in it', () => {
+describe('the level menu, in its own order', () => {
+  it('reads top to bottom in one fixed order, with nothing about an account in it', () => {
     expect(labels()).toEqual([
       'Reset chart view',
       '—',
@@ -44,8 +44,8 @@ describe('the level menu, in the reference order', () => {
 })
 
 describe('what a level does NOT offer', () => {
-  // The reference offers Paste whether or not anything is copied — pasting nothing is a no-op, and
-  // a row that comes and goes with an invisible buffer reads as a glitch.
+  // Paste is offered whether or not anything is copied: pasting nothing is a no-op, and a row that
+  // comes and goes with an invisible buffer reads as a glitch.
   it('always offers Paste, and offers no remove row at zero', () => {
     expect(labels()).toContain('Paste')
     expect(labels().some((l) => l.startsWith('Remove'))).toBe(false)
@@ -122,10 +122,9 @@ describe('a menu row highlights as a ROW', () => {
     expect(menu).toContain('overflow: hidden')
   })
 
-  it('wears the same box model the app paints, read off the reference itself', () => {
-    // The numbers come from the reference's live DOM, not from a painter's taste. 6px inside the
-    // box, 6px on each side of a separator, a 36px glyph cell flush left, 6px to the label, 20px of
-    // right padding.
+  it('wears one measured box model, so the two painters of this menu cannot drift', () => {
+    // 6px inside the box, 6px on each side of a separator, a 36px glyph cell flush left, 6px to the
+    // label, 20px of right padding.
     expect(menu).toContain('padding: 6px 0')
     expect(menu).toContain('margin: 6px 0')
     expect(menu).toContain('flex: 0 0 36px')
