@@ -15,9 +15,7 @@ import { timezone } from './timezone'
 import { range } from './range'
 import { status } from './status'
 import { search } from './search'
-
-const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search }
 import { drawing } from './drawing'
 
-const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...drawing }
+const dict: Translation<typeof en> = { ...legend, ...tools, ...rail, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search, ...drawing }
 export default dict
