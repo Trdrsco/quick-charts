@@ -7,11 +7,14 @@
 import { describe, expect, it } from 'vitest'
 import baseline from './counts.baseline.json'
 
-const SOURCES = import.meta.glob(['/apps/web/src/chart/*.ts', '/packages/chart-drawings/src/registry.ts', '/packages/chart/src/layoutGrid.ts'], {
-  query: '?raw',
-  import: 'default',
-  eager: true,
-})
+const SOURCES = import.meta.glob(
+  ['/apps/web/src/chart/*.ts', '/packages/chart-drawings/src/registry.ts', '/packages/chart-indicators/src/registry.ts', '/packages/chart/src/layoutGrid.ts'],
+  {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  },
+)
 
 /** The text of the array literal declared as `symbol`, bracket-balanced from its first `[`. */
 function arrayLiteral(text: string, symbol: string): string {
@@ -30,8 +33,8 @@ function arrayLiteral(text: string, symbol: string): string {
 const COUNTERS: Record<string, (literal: string) => number> = {
   // ['candles', 'hollow', ...]
   CHART_STYLES: (l) => l.match(/'[a-z]+'/g)?.length ?? 0,
-  // ['sma', 'ema', ...]
-  CATALOG_ORDER: (l) => l.match(/'[a-z]+'/g)?.length ?? 0,
+  // [smaIndicator, emaIndicator, ...] one definition identifier per line.
+  BUILT_IN_INDICATORS: (l) => l.match(/^\s*[a-z]+Indicator,/gm)?.length ?? 0,
   // { unit: 'm', tokens: ['1m', '3m', ...] } per group; a count of tokens across every group.
   TF_GROUPS: (l) => [...l.matchAll(/tokens: \[([^\]]*)\]/g)].reduce((n, m) => n + (m[1]!.match(/'[0-9a-z]+'/g)?.length ?? 0), 0),
   // { id: 'Etc/UTC', city: 'UTC' } per zone.
