@@ -1,13 +1,43 @@
 // The widget's strings, in the language the host asked for. Framework-free like the rest of the
 // chrome: modules receive a `ChartI18n`, read `t` when they render, and re-render on `onChange`.
 // The runtime underneath (`./runtime`) is the chart's own and ships inside this package.
-import { BUILT_IN_LOCALE_REGISTRY, DEFAULT_LOCALE, createDictionaryLoader, createTranslator, type ChartLocaleCode, type Translate } from './runtime'
-import { en } from './en'
+import {
+  BUILT_IN_LOCALES,
+  BUILT_IN_LOCALE_REGISTRY,
+  DEFAULT_LOCALE,
+  createDictionaryLoader,
+  createLocaleRegistry,
+  createTranslator,
+  isBuiltInLocaleCode,
+  type DictionaryLoader,
+  type LocaleDefinition,
+  type LocaleRegistry,
+  type Translate,
+  type Translation,
+} from './runtime'
+import { en, type ChartMessageKey } from './en'
 
 export { BUILT_IN_LOCALES } from './runtime'
 export type { ChartLocale, ChartLocaleCode } from './runtime'
 export type { ChartMessageKey } from './en'
 export type ChartTranslate = Translate<typeof en>
+/** The widget's catalog in one language: every key of the English source, in the same shape. */
+export type ChartDictionary = Translation<typeof en>
+
+/** A locale a host adds beyond the built-in inventory: its stable code, canonical BCP 47 tag,
+ *  reading direction, endonym, and the dictionary chunk to fetch the first time it is chosen. */
+export interface ChartCustomLocale extends LocaleDefinition {
+  dictionary: () => Promise<{ default: ChartDictionary }>
+}
+
+export interface ChartI18nOptions {
+  /** Locales registered beside the built-in inventory. A code or tag the inventory already holds
+   *  is refused: the built-in dictionaries are not overridden through this door. */
+  locales?: readonly ChartCustomLocale[]
+  /** Hears every key a loaded dictionary is missing; the text falls back to English. The typed
+   *  catalogs cannot miss a key, so this only ever reports a dictionary loaded from data. */
+  onMissing?: (key: ChartMessageKey, locale: string) => void
+}
 
 export interface ChartI18n {
   /** The host-owned stable locale code. It does not need to use the built-in vocabulary. */
@@ -71,16 +101,35 @@ export function arrangementName(t: ChartTranslate, code: string, fallback: strin
   return key in en ? dynamic(t)(key) : fallback
 }
 
-/** A `ChartI18n` over the widget's own catalog, starting in `initial` (English when omitted), one
- *  of the built-in codes. */
-export function createChartI18n(initial: ChartLocaleCode = DEFAULT_LOCALE): ChartI18n {
-  const registry = BUILT_IN_LOCALE_REGISTRY
-  if (!registry.is(initial)) throw new Error(`unsupported chart locale "${String(initial)}"`)
-  let locale: ChartLocaleCode = initial
-  let dict = chartDictionaries.ifLoaded(locale)
+/** The registry and loader a `ChartI18n` reads: the built-in inventory alone, or the inventory
+ *  with the host's custom locales beside it. A custom locale's chunk is cached by its own loader;
+ *  the built-in chunks stay in the shared `chartDictionaries` cache so two instances never fetch
+ *  one language twice. */
+function inventory(custom: readonly ChartCustomLocale[]): { registry: LocaleRegistry<string>; dictionaries: DictionaryLoader<typeof en, string> } {
+  if (custom.length === 0) return { registry: BUILT_IN_LOCALE_REGISTRY, dictionaries: chartDictionaries }
+  const registry = createLocaleRegistry<string>([...BUILT_IN_LOCALES, ...custom], DEFAULT_LOCALE)
+  const own = createDictionaryLoader<typeof en, string>(en, Object.fromEntries(custom.map((l) => [l.code, l.dictionary])), DEFAULT_LOCALE)
+  return {
+    registry,
+    dictionaries: {
+      ifLoaded: (code) => (isBuiltInLocaleCode(code) ? chartDictionaries.ifLoaded(code) : own.ifLoaded(code)),
+      load: (code) => (isBuiltInLocaleCode(code) ? chartDictionaries.load(code) : own.load(code)),
+      has: (code) => (isBuiltInLocaleCode(code) ? chartDictionaries.has(code) : own.has(code)),
+    },
+  }
+}
+
+/** A `ChartI18n` over the widget's own catalog, starting in `initial` (English when omitted): one
+ *  of the built-in codes, or a code the `locales` option registers. */
+export function createChartI18n(initial: string = DEFAULT_LOCALE, options: ChartI18nOptions = {}): ChartI18n {
+  const { registry, dictionaries } = inventory(options.locales ?? [])
+  if (!registry.is(initial)) throw new Error(`unsupported chart locale "${initial}"`)
+  let locale = initial
+  let dict = dictionaries.ifLoaded(locale)
   let epoch = 0
   const listeners = new Set<() => void>()
-  const translator = () => createTranslator(en, dict, registry.info(locale).tag)
+  const missing = options.onMissing
+  const translator = () => createTranslator(en, dict, registry.info(locale).tag, missing && ((key) => missing(key, locale)))
   const api: ChartI18n = {
     locale: () => locale,
     tag: () => registry.info(locale).tag,
@@ -90,10 +139,10 @@ export function createChartI18n(initial: ChartLocaleCode = DEFAULT_LOCALE): Char
       if (!registry.is(code)) throw new Error(`unsupported chart locale "${code}"`)
       locale = code
       const mine = ++epoch
-      dict = chartDictionaries.ifLoaded(code)
+      dict = dictionaries.ifLoaded(code)
       rebuild()
       if (dict) return
-      const loaded = await chartDictionaries.load(code).catch(() => null)
+      const loaded = await dictionaries.load(code).catch(() => null)
       if (mine !== epoch) return // a later switch superseded this one
       dict = loaded
       rebuild()

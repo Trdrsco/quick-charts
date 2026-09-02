@@ -282,8 +282,13 @@ Beyond the basics, the widget carries:
   CLDR rules through `Intl.PluralRules`, and a number in a message is written with the language's
   digits and grouping. The runtime is the package's own, framework-free and DOM-free, so a server
   render can import it.
-  A host can supply `i18n: ChartI18n` of its own to own its codes, tags, dictionaries, loading,
-  and fallback outright.
+  A host with a language the package does not ship registers it through `createChartI18n(code,
+  { locales })`: a `ChartCustomLocale` names the code, tag, direction and endonym and supplies the
+  dictionary chunk, a `ChartDictionary` typed against the English catalog so it cannot miss a key
+  or flatten a plural. A code or tag the built-in inventory already holds is refused. A
+  dictionary that arrives from data and misses a key reads English for that key and reports it to
+  the `onMissing` option. A host can also supply `i18n: ChartI18n` of its own to own its codes,
+  tags, dictionaries, loading, and fallback outright.
   Every piece of the widget's own chrome speaks the language; symbols, prices and anything the
   datafeed or broker says are data and pass through untranslated. A host composing the chrome modules itself
   hands them a `ChartI18n` from `createChartI18n(code)` (an optional trailing parameter or `strings`
@@ -300,12 +305,23 @@ await w.setLocale('ja')
 ```
 
 ```ts
-import { BUILT_IN_LOCALES, createChart, createChartI18n, createUdfDatafeed } from 'quickcharts'
+import { BUILT_IN_LOCALES, createChart, createChartI18n, createUdfDatafeed, type ChartCustomLocale } from 'quickcharts'
 
-const picker = BUILT_IN_LOCALES.map(({ code, endonym, dir }) => ({ code, endonym, dir }))
-const i18n = createChartI18n(picker[0]!.code)
+// A language the package does not ship, with the dictionary served by the host.
+const frCA: ChartCustomLocale = {
+  code: 'fr-CA',
+  endonym: 'Français (Canada)',
+  tag: 'fr-CA',
+  dir: 'ltr',
+  dictionary: () => myBackend.chartDictionary('fr-CA'),
+}
+const i18n = createChartI18n('fr-CA', {
+  locales: [frCA],
+  onMissing: (key, locale) => note(`${locale} has no text for ${key}`),
+})
+const picker = [...BUILT_IN_LOCALES, frCA].map(({ code, endonym, dir }) => ({ code, endonym, dir }))
 const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }), i18n })
-await w.setLocale('he_IL')
+await w.setLocale(picker[0]!.code)
 ```
 
 ## Compare
