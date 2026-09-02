@@ -15,6 +15,7 @@
   "include": [
     "index.ts",
     "mode-b.ts",
-    "ticket.ts"
+    "ticket.ts",
+    "fakes/*.ts"
   ]
 }
