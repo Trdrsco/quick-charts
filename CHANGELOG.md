@@ -15,6 +15,16 @@
   nothing at runtime, so two charts on one page can run different modes. Chart appearance in
   `ChartOverrides.appearance` remains the separate, more specific ladder and wins where both could
   reach the same pixel.
+- **The built-in indicators.** **`BUILT_IN_INDICATORS`** lists the 23 built-in definitions in
+  picker order: SMA, EMA, HMA, VWMA, Bollinger Bands, Donchian Channels, Keltner Channels,
+  Supertrend, Parabolic SAR, RSI, MACD, Stochastic, Stochastic RSI, ADX, ATR, CCI, Williams %R,
+  Rate of Change, Momentum, Volume, VWAP, On-Balance Volume, and Money Flow Index. Each is a plain
+  `IndicatorDefinition` (the `BuiltInIndicator` type) with its `id`, `tag`, `category`, `nameKey`
+  and `descriptionKey`, and its `plotTitles` and `inputTitles`; the names and descriptions are
+  part of the package catalog in every built-in locale. A manifest plot can declare
+  `scale: 'volume'` to ride the chart's volume band, and a fill whose `between` names two levels
+  shades between those limit lines. The package bundles its drawing and indicator source into the
+  one artifact: `lightweight-charts` is its only peer and it declares no dependencies.
 - **Symbology and one price formatter.** `PriceFormat` carries the five facts that decide how a
   market's prices are written (`pricescale`, `minmov`, `minmove2`, `fractional`,
   `variableTickSize`), and **`createPriceFormatter`** turns them into a `PriceFormatter` whose
