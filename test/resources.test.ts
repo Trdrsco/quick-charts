@@ -16,7 +16,8 @@ describe('a resource store', () => {
     if (written.kind !== 'ok') return
     expect(written.ref.id.length).toBeGreaterThan(0)
     expect(written.ref.revision.length).toBeGreaterThan(0)
-    expect(written.value).toEqual({ id: written.ref.id, name: 'Morning', symbol: 'ESZ2026', timeframe: '5m', updatedAt: 1_700_000_000_000 })
+    // The listing row carries the row's ref, so a picker can open or delete it without a second read.
+    expect(written.value).toEqual({ id: written.ref.id, revision: written.ref.revision, name: 'Morning', symbol: 'ESZ2026', timeframe: '5m', updatedAt: 1_700_000_000_000 })
   })
 
   it('loads the body at the revision it was read at', async () => {

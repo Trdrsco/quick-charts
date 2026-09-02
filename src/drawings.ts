@@ -1,24 +1,21 @@
 // The widget's drawing layer: DrawingManager (state + pixels, from @trdrs/chart-drawings) mounted
-// behind a framework-free pointer/keyboard binding and ChartStorage persistence. The package owns
-// the model and this host owns the input, deliberately MINIMAL: fixed-anchor tools without text —
-// press-drag-release or click…click placement, drag-to-move (rigid whole-bar translation),
-// anchor-handle resize, select/deselect, Delete/Escape. Freehand strokes, multipoint runs, instant
-// position tools and text editing need richer chrome and are refused loudly by armTool rather than
-// half-supported. Persistence speaks the drawings package's shared store codec, so a store written
-// here loads in any other host of that codec (and vice versa).
+// behind a framework-free pointer/keyboard binding and the adapter's drawings resource. The
+// package owns the model and this host owns the input, deliberately MINIMAL: fixed-anchor tools
+// without text — press-drag-release or click…click placement, drag-to-move (rigid whole-bar
+// translation), anchor-handle resize, select/deselect, Delete/Escape. Freehand strokes, multipoint
+// runs, instant position tools and text editing need richer chrome and are refused loudly by
+// armTool rather than half-supported.
+//
+// Persistence is ONE revisioned document per symbol in the host's drawings family: read once per
+// symbol activation, written through at the revision it was read at, and never written over a
+// newer revision (a refused write keeps the on-screen state, adopts the current ref for the next
+// write, and reports the conflict). A document's content is the drawings package's serialized
+// list, so a document written here loads in any other host of that codec. Without a resource
+// port the layer keeps every symbol's drawings in memory for the page.
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
-import {
-  DrawingManager,
-  parseDrawingsStore,
-  parseIntervalContext,
-  restoreDrawings,
-  serializeDrawingsStore,
-  toolRegistry,
-  viewportOf,
-} from '@trdrs/chart-drawings'
+import { DrawingManager, parseIntervalContext, restoreDrawings, toolRegistry, viewportOf } from '@trdrs/chart-drawings'
 import type { Anchor, IDrawing, SerializedDrawing, SourceBar } from '@trdrs/chart-drawings'
-import type { ChartStorage } from './storage'
-import { localStorageChartStorage } from './storage'
+import type { DrawingsBody, DrawingsMeta, ResourceRef, ResourceStore } from './resources'
 import type { FeedBar } from './datafeed'
 
 /** Pixels of pointer travel that turn the opening press into a drag (vs a click…click placement). */
@@ -28,8 +25,6 @@ const MOVE_EPSILON_PX = 2
 /** Grab radius around an anchor handle — generous, independent of the small visual dot. */
 const HANDLE_GRAB_PX = 11
 
-const DEFAULT_STORE_KEY = 'trdrs.chart.widget.drawings.v1'
-
 let idSeq = 0
 const nextId = () => `dww-${idSeq++}-${Date.now() % 1e9}`
 
@@ -38,6 +33,10 @@ export interface DrawingsEvents {
   onToolChange?: (type: string | null) => void
   /** The selection changed (null = nothing selected). */
   onSelectionChange?: (id: string | null) => void
+  /** A write of a symbol's document was refused: the stored document moved on (`current` is the
+   *  ref that stands now) or vanished (null). The layer keeps its on-screen drawings and writes at
+   *  the adopted ref on the next edit; the host decides what to tell the trader. */
+  onSaveConflict?: (info: { symbol: string; current: ResourceRef | null }) => void
 }
 
 export interface AttachDrawingsOptions {
@@ -49,10 +48,9 @@ export interface AttachDrawingsOptions {
   symbol: string
   /** Timeframe token ('5m', '1d', …) — drives per-interval drawing visibility. */
   timeframe?: string
-  /** Where the store document lives. Defaults to the browser's localStorage. */
-  storage?: ChartStorage
-  /** Storage key for the store document. One key = one drawings surface. */
-  storageKey?: string
+  /** Where a symbol's drawings document lives: the adapter's drawings family for that scope.
+   *  Absent, the layer keeps its documents in memory for the page. */
+  resources?: (scope: { symbol: string }) => ResourceStore<DrawingsMeta, DrawingsBody>
   /** Bar reader for data-driven drawings (a restored anchored VWAP still computes). */
   bars?: () => readonly FeedBar[]
   events?: DrawingsEvents
@@ -117,8 +115,6 @@ interface Drag {
 
 export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   const { chart, series, container } = options
-  const storage: ChartStorage = options.storage ?? localStorageChartStorage
-  const storeKey = options.storageKey ?? DEFAULT_STORE_KEY
   const events = options.events ?? {}
 
   const manager = new DrawingManager()
@@ -141,9 +137,10 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     })
   }
 
-  // The store document: every symbol's serialized drawings. Hydrated once; the current symbol's
-  // live objects sit in the manager and re-serialize into the document on persist.
-  const doc: Record<string, SerializedDrawing[]> = parseDrawingsStore(storage.get(storeKey))
+  // The session cache: every symbol's serialized drawings, so switching away and back never
+  // refetches. The current symbol's live objects sit in the manager and re-serialize into the
+  // cache on persist.
+  const doc: Record<string, SerializedDrawing[]> = {}
   let symbol = options.symbol
   let destroyed = false
   let armed: string | null = null
@@ -156,25 +153,24 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     else delete doc[symbol]
   }
 
-  // Writes are debounced onto idle time (an image-bearing store stringifies megabytes — never do
-  // that inside a pointer gesture) and flushed on pagehide/destroy so a scheduled write survives
-  // the tab closing under it.
-  let writePending = false
-  const writeNow = () => {
-    writePending = false
-    syncDoc()
-    storage.set(storeKey, serializeDrawingsStore(doc))
+  // ── The drawings resource. `refs` holds the ref each symbol's stored document was last seen at
+  // (null = known absent); `touched` names the symbols the trader edited this session, so a
+  // hydration that lands after an edit never replaces in-hand work; `epoch` drops a hydration that
+  // lands for a symbol switched away from. Writes for one layer run in series, so two edits can
+  // never race each other into a conflict of the layer's own making.
+  const storeFor = options.resources ? (sym: string) => options.resources!({ symbol: sym }) : null
+  const refs = new Map<string, ResourceRef | null>()
+  const touched = new Set<string>()
+  let epoch = 0
+  let writeChain: Promise<void> = Promise.resolve()
+  const parseList = (content: string): SerializedDrawing[] => {
+    try {
+      const parsed: unknown = JSON.parse(content)
+      return Array.isArray(parsed) ? (parsed as SerializedDrawing[]) : []
+    } catch {
+      return []
+    }
   }
-  const persist = () => {
-    if (writePending) return
-    writePending = true
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => writePending && writeNow(), { timeout: 1000 })
-    else setTimeout(() => writePending && writeNow(), 200)
-  }
-  const flush = () => {
-    if (writePending) writeNow()
-  }
-  window.addEventListener('pagehide', flush)
 
   const importSymbol = (sym: string) => {
     for (const d of restoreDrawings(doc[sym] ?? [])) {
@@ -185,7 +181,97 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       }
     }
   }
+
+  /** Write the cache's document for one symbol at the ref it is held at: an update at that ref, a
+   *  create when none is stored, a remove when the document emptied. A refused write adopts the
+   *  current ref and reports; a transport failure leaves the cache as the truth for the next edit. */
+  const upload = (sym: string): void => {
+    if (!storeFor) return
+    const store = storeFor(sym)
+    const list = doc[sym] ?? []
+    writeChain = writeChain
+      .then(async () => {
+        const ref = refs.get(sym)
+        if (ref === undefined) return // not hydrated yet: the hydration that lands uploads a touched symbol
+        if (list.length === 0) {
+          if (!ref) return
+          const gone = await store.remove(ref)
+          if (gone.kind === 'ok') refs.set(sym, null)
+          else if (gone.kind === 'conflict') {
+            refs.set(sym, gone.current)
+            events.onSaveConflict?.({ symbol: sym, current: gone.current })
+          } else refs.set(sym, null)
+          return
+        }
+        const body: DrawingsBody = { content: JSON.stringify(list) }
+        const outcome = ref ? await store.update(ref, body) : await store.create(body)
+        if (outcome.kind === 'ok') refs.set(sym, outcome.ref)
+        else if (outcome.kind === 'conflict') {
+          refs.set(sym, outcome.current)
+          events.onSaveConflict?.({ symbol: sym, current: outcome.current })
+        } else {
+          refs.set(sym, null)
+          events.onSaveConflict?.({ symbol: sym, current: null })
+        }
+      })
+      .catch(() => {
+        /* transport failure: the cache holds the truth and the next edit retries */
+      })
+  }
+
+  /** Read a symbol's stored document once. The stored copy replaces the cache (and the screen, when
+   *  the symbol is still up) unless the trader edited the symbol meanwhile, in which case the
+   *  in-hand work stays and goes up at the ref just learned. */
+  const hydrate = (sym: string): void => {
+    if (!storeFor || refs.has(sym)) return
+    const store = storeFor(sym)
+    const myEpoch = epoch
+    void (async () => {
+      try {
+        const row = (await store.list())[0]
+        const found = row ? await store.load(row.id) : null
+        if (destroyed) return
+        refs.set(sym, found ? found.ref : null)
+        if (touched.has(sym)) {
+          upload(sym)
+          return
+        }
+        if (!found) return
+        doc[sym] = parseList(found.body.content)
+        if (myEpoch === epoch && sym === symbol) {
+          manager.deselect()
+          manager.clear()
+          importSymbol(sym)
+        }
+      } catch {
+        /* the layer keeps what it has; the next activation asks again */
+      }
+    })()
+  }
+
+  // Writes are debounced onto idle time (an image-bearing document stringifies megabytes — never do
+  // that inside a pointer gesture) and flushed on pagehide/destroy so a scheduled write survives
+  // the tab closing under it.
+  let writePending = false
+  const writeNow = () => {
+    writePending = false
+    syncDoc()
+    upload(symbol)
+  }
+  const persist = () => {
+    touched.add(symbol)
+    if (writePending) return
+    writePending = true
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => writePending && writeNow(), { timeout: 1000 })
+    else setTimeout(() => writePending && writeNow(), 200)
+  }
+  const flush = () => {
+    if (writePending) writeNow()
+  }
+  window.addEventListener('pagehide', flush)
+
   importSymbol(symbol)
+  hydrate(symbol)
 
   const selectionChanged = () => events.onSelectionChange?.(manager.selected()?.id ?? null)
   const offs = [manager.on('drawing:selected', selectionChanged), manager.on('drawing:deselected', selectionChanged)]
@@ -427,12 +513,14 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     setSymbol(next: string) {
       if (destroyed || next === symbol) return
       cancelDraft()
+      flush() // the old symbol's pending edit goes up before the switch
       syncDoc()
       manager.deselect()
       manager.clear()
       symbol = next
+      epoch++
       importSymbol(next)
-      persist()
+      hydrate(next)
     },
     setTimeframe(tf: string) {
       manager.setIntervalContext(parseIntervalContext(tf))

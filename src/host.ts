@@ -14,10 +14,11 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts'
 import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type DatafeedConfig, type FeedBar } from './datafeed'
-import { localStorageChartStorage, type ChartStorage } from './storage'
+import { memoryChartStorage, type ChartStorage } from './storage'
 import type { ChartTheme, ChartWidgetOptions, IndicatorInstance } from './widget'
 import { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
-import { storageSaveLoadAdapter, type ChartSaveLoadAdapter } from './saveLoad'
+import type { ChartBody, ChartMeta, ChartSaveLoadAdapter } from './resources'
+import { openResourceController, type OpenResource, type ResourceLoadOutcome, type ResourceRemoveOutcome, type ResourceSaveOutcome } from './openResource'
 import { attachDrawings, type DrawingsEvents, type DrawingsHandle } from './drawings'
 import { mountDrawingsRail, type DrawingsRail } from './drawingsRail'
 import { applyPlotOverrides, buildManifestPlots, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest } from './indicatorModel'
@@ -70,12 +71,16 @@ export interface ChartReplayApi {
   state(): { on: boolean; playing: boolean; cursor: number; total: number; speed: ReplaySpeed }
 }
 
-/** The save/load surface a host drives: the active adapter (the default storage-backed one, or
- *  whatever the host plugged in) plus the widget's own content (de)serialization — the two halves
- *  a "saved charts" UI composes: `serialize()` + `adapter.saveChart()` to save,
- *  `adapter.loadChart()` + `restore()` to load. */
+export type { OpenResource, ResourceLoadOutcome, ResourceRemoveOutcome, ResourceSaveOutcome } from './openResource'
+
+/** The save/load surface a host drives: the host's adapter (null without one), the widget's own
+ *  content (de)serialization, and the OPEN saved chart with the three verbs that move it. A save
+ *  updates the open chart at the revision it was opened at (or creates, when nothing is open or
+ *  the host asks for a copy); a refusal comes back as a typed outcome with the catalog's copy for
+ *  the case, and the widget never writes over a newer revision. Templates and the adapter's other
+ *  families are the host's to drive through `adapter` directly. */
 export interface ChartSaveLoadApi {
-  adapter: ChartSaveLoadAdapter
+  adapter: ChartSaveLoadAdapter | null
   /** Snapshot the widget's state as a name-less save: symbol/timeframe for the listing row, and
    *  the opaque, versioned content blob (symbol, timeframe, scale, hidden indicators, and the
    *  effective appearance — a loaded chart restores its LOOK, TradingView's layout behavior). */
@@ -83,6 +88,17 @@ export interface ChartSaveLoadApi {
   /** Apply a saved chart's content blob. Throws on an unrecognized content version — content is
    *  opaque to every backend, so the reader is the only place an upgrade path can live. */
   restore(content: string): void
+  /** The open saved chart, or null while the chart on screen is unsaved. */
+  current(): OpenResource | null
+  /** Save the chart on screen under `name`: an update of the open chart at its held revision, or
+   *  a create when nothing is open or `asNew` asks for a copy. Rejects without an adapter. */
+  save(name: string, opts?: { asNew?: boolean; signal?: AbortSignal }): Promise<ResourceSaveOutcome<ChartMeta>>
+  /** Open a saved chart: its content is applied and it becomes the open chart. */
+  load(id: string, signal?: AbortSignal): Promise<ResourceLoadOutcome<ChartBody>>
+  /** Delete the open chart at its held revision. The chart on screen stays; its binding detaches. */
+  remove(signal?: AbortSignal): Promise<ResourceRemoveOutcome>
+  /** Forget the open chart without touching the store: the next save creates. */
+  detach(): void
 }
 
 /** Pane-composition primitives — the raw mirrors a multi-chart layout host syncs panes with.
@@ -239,12 +255,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
   const datafeed: ChartDatafeed = options.datafeed
   const events = options.events ?? {}
   let removed = false
-  // The save/load adapter — the host's, or the default layering the same entities on the plain
-  // KV (options.storage, else localStorage), so an adapter-less widget behaves exactly as before.
-  const saveLoad: ChartSaveLoadAdapter = options.saveLoad ?? storageSaveLoadAdapter(options.storage ?? localStorageChartStorage)
-  // Every widget key flows through the adapter's settings store, wrapped so each state-dirtying
-  // write funnels ONE debounced onSaveNeeded (~1s, TradingView's auto-save shape) — no per-site
-  // wiring, and a drawing drag emits once rather than per frame.
+  // The saved-resource adapter is the host's or nothing: without one the widget saves nothing
+  // beyond the page. Viewer preferences are the separate flat port, in memory unless the host
+  // supplied a store.
+  const resources: ChartSaveLoadAdapter | null = options.saveLoad ?? null
+  const preferences: ChartStorage = options.storage ?? memoryChartStorage()
+  // Every widget key flows through the preferences store, wrapped so each state-dirtying write
+  // funnels ONE debounced onSaveNeeded (~1s, TradingView's auto-save shape) — no per-site wiring,
+  // and a drawing drag emits once rather than per frame.
   let saveNeededTimer: ReturnType<typeof setTimeout> | null = null
   const pingSaveNeeded = (): void => {
     if (!events.onSaveNeeded || removed) return
@@ -255,16 +273,16 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
     }, 1_000)
   }
   const storage: ChartStorage = {
-    get: (key) => saveLoad.settings.get(key),
+    get: (key) => preferences.get(key),
     set: (key, value) => {
-      saveLoad.settings.set(key, value)
+      preferences.set(key, value)
       pingSaveNeeded()
     },
     remove: (key) => {
-      saveLoad.settings.remove(key)
+      preferences.remove(key)
       pingSaveNeeded()
     },
-    keys: () => saveLoad.settings.keys(),
+    keys: () => preferences.keys(),
   }
   const theme = resolveTheme(options.theme)
   // The override LADDER. Floor: the resolved theme lifted into the full tree (candle bodies and
@@ -454,11 +472,14 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       container: chartBox,
       symbol,
       timeframe: tf,
-      storage,
-      storageKey: options.drawings?.storageKey,
+      resources: resources ? (scope) => resources.drawings(scope) : undefined,
       bars: () => bars,
       events: drawingsEvents,
     })
+    // A refused drawings write is the host's to explain; the layer already kept the screen and
+    // adopted the ref that stands.
+    drawingsEvents.onSaveConflict = ({ symbol: sym, current }) =>
+      events.onSaveConflict?.({ family: 'drawings', symbol: sym, current, message: i18n.t(current ? 'host.saveConflict' : 'host.saveNotFound') })
     drawingsHandle.setPriceFormatter((price) => symbolFormatter.format(price))
     if (options.drawings?.rail !== false) {
       drawingsRail = mountDrawingsRail(chromeBox, drawingsHandle, theme, i18n)
@@ -1523,6 +1544,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       ext: extHost?.serialize() ?? {},
     })
 
+  /** The open saved chart and its verbs, over the adapter's charts family. */
+  const openChart = openResourceController<ChartMeta, ChartBody>({ store: () => resources?.charts ?? null, t: () => i18n.t })
+
   const api: ChartWidgetApi = {
     symbol: () => symbol,
     timeframe: () => tf,
@@ -1585,8 +1609,17 @@ export function createChart(options: ChartWidgetOptions): ChartWidgetApi {
       pingSaveNeeded()
     },
     saveLoad: {
-      adapter: saveLoad,
+      adapter: resources,
       serialize: () => ({ symbol, timeframe: tf, content: serializeContent() }),
+      current: () => openChart.current(),
+      detach: () => openChart.detach(),
+      save: (name, opts) => openChart.save({ name, symbol, timeframe: tf, content: serializeContent() }, opts),
+      async load(id, signal) {
+        const outcome = await openChart.load(id, signal)
+        if (outcome.kind === 'ok' && !removed) api.saveLoad.restore(outcome.body.content)
+        return outcome
+      },
+      remove: (signal) => openChart.remove(signal),
       restore(content: string) {
         if (removed) return
         const c = JSON.parse(content) as {

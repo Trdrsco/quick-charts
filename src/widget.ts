@@ -4,7 +4,7 @@
 // options are stable public API; the component that mounts them is the remaining packaging step.
 import type { ChartDatafeed, FeedBar } from './datafeed'
 import type { ChartStorage } from './storage'
-import type { ChartSaveLoadAdapter } from './saveLoad'
+import type { ChartSaveLoadAdapter, ResourceRef } from './resources'
 import type { PartialOverrides } from './overrides'
 import type { IndicatorManifest, IndicatorOverrides } from './indicatorModel'
 import type { ChartLocaleCode } from './i18n'
@@ -40,10 +40,15 @@ export interface ChartWidgetEvents {
   onFeedStatus?: (status: string) => void
   /** Viewer state changed (a drawing edit, a symbol/timeframe/scale switch, a legend eye…) —
    *  debounced ~1s so a drag emits once, not per frame. TradingView's onAutoSaveNeeded shape: a
-   *  host that snapshots widget state through `api.saveLoad.serialize()` calls it here. The widget
-   *  already persists its own sticky state through the adapter's `settings` either way — this
-   *  event exists for hosts saving NAMED charts on top of that. */
+   *  host that saves the open chart through `api.saveLoad.save()` calls it here. The widget
+   *  already persists its own sticky preferences through `storage` either way — this event
+   *  exists for hosts saving NAMED charts on top of that. */
   onSaveNeeded?: () => void
+  /** A write the widget made on its own (the drawing layer persisting a symbol's drawings) was
+   *  refused because the stored document moved on, or vanished, since it was read. The widget
+   *  never overwrites newer work: it keeps the on-screen state, adopts the current ref for the next
+   *  write, and tells the host here with the catalog's copy for the case. */
+  onSaveConflict?: (info: { family: 'drawings'; symbol: string; current: ResourceRef | null; message: string }) => void
 }
 
 /** Everything needed to construct a chart. `datafeed` is the only hard requirement — the rest have
@@ -56,14 +61,14 @@ export interface ChartWidgetOptions {
   container: HTMLElement
   /** The market-data backend. Required — this is the seam the whole design turns on. */
   datafeed: ChartDatafeed
-  /** Where the chart persists viewer state (drawings, indicators, appearance). Defaults to the browser's
-   *  localStorage; a host supplies its own to sync state to a user account. When `saveLoad` is
-   *  also given, its `settings` store takes over this role — one adapter, one place state lives. */
+  /** Where the chart persists the viewer's flat preferences (the sticky symbol and timeframe, the
+   *  scale mode, hidden studies, the replay speed). Defaults to an in-memory store that lasts the
+   *  page; a host supplies its own to keep them per device or per account. */
   storage?: ChartStorage
-  /** The entity-aware persistence adapter (named charts, symbol-scoped drawings, named templates,
-   *  plus the flat `settings` KV) — the save_load_adapter-shaped seam a host plugs its own backend
-   *  into. Absent, the widget wraps `storage` in the default adapter, so local behavior is
-   *  unchanged; the host-facing surface is `api.saveLoad`. */
+  /** The revisioned saved-resource adapter (named charts, layouts, symbol-scoped drawings and
+   *  templates) — the seam a host plugs its own backend into. Absent, the widget saves nothing
+   *  beyond the page: the drawing layer keeps its documents in memory and `api.saveLoad.save`
+   *  rejects. The host-facing surface is `api.saveLoad`. */
   saveLoad?: ChartSaveLoadAdapter
   /** The symbol to open on. */
   symbol?: string
@@ -81,11 +86,11 @@ export interface ChartWidgetOptions {
    *  with instance inputs/overrides; the widget renders them through the same manifest pipeline
    *  richer hosts use — panes, histograms, areas, markers, levels, band fills. */
   indicators?: IndicatorInstance[]
-  /** The drawing layer (on by default): tools, selection, per-symbol persistence, and a small
-   *  built-in rail. `false` removes the layer entirely; `{ rail: false }` keeps the layer but
-   *  hides the rail for a host that drives `ChartWidgetApi.drawings` from its own UI;
-   *  `storageKey` names the persisted store document (one key = one drawings surface). */
-  drawings?: false | { rail?: false; storageKey?: string }
+  /** The drawing layer (on by default): tools, selection, per-symbol persistence through the
+   *  adapter's drawings family, and a small built-in rail. `false` removes the layer entirely;
+   *  `{ rail: false }` keeps the layer but hides the rail for a host that drives
+   *  `ChartWidgetApi.drawings` from its own UI. */
+  drawings?: false | { rail?: false }
   /** Session bands (on by default): non-regular-hours stretches shade under the candles, driven
    *  by the session model the feed serves via `resolve()`. `false` turns the shading off. */
   sessions?: false

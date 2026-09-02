@@ -19,17 +19,7 @@ export type {
 export { FeedUnavailableError, olderPageVerdict } from './datafeed'
 
 export type { ChartStorage } from './storage'
-export {
-  storageSaveLoadAdapter,
-  type ChartMeta,
-  type ChartSaveData,
-  type ChartSaveLoadAdapter,
-  type DrawingScope,
-  type TemplateKind,
-  type TemplateMeta,
-  type TemplateStore,
-} from './saveLoad'
-export { localStorageChartStorage, memoryChartStorage } from './storage'
+export { memoryChartStorage } from './storage'
 
 export type { FetchLike, UdfDatafeedOptions } from './udfDatafeed'
 export { createUdfDatafeed } from './udfDatafeed'
@@ -109,9 +99,20 @@ export {
   type SessionTimeline,
 } from './sessions'
 
-export type { ChartWidgetApi, ChartDrawingsApi, ChartPaneSyncApi, ChartReplayApi, ChartSaveLoadApi, ResolvedTheme } from './host'
+export type {
+  ChartWidgetApi,
+  ChartDrawingsApi,
+  ChartPaneSyncApi,
+  ChartReplayApi,
+  ChartSaveLoadApi,
+  OpenResource,
+  ResourceLoadOutcome,
+  ResourceRemoveOutcome,
+  ResourceSaveOutcome,
+  ResolvedTheme,
+} from './host'
 export { ARRANGEMENTS, LAYOUT_MENU_ROWS, arrangementOf, type Arrangement, type PaneRect } from './layoutGrid'
-export { createChartLayout, type ChartLayoutApi, type ChartLayoutOptions, type LayoutSyncFlags } from './layout'
+export { createChartLayout, type ChartLayoutApi, type ChartLayoutOptions, type LayoutSaveLoadApi, type LayoutSyncFlags } from './layout'
 export { openInputsEditor } from './inputsEditor'
 export { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
 export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle } from './drawings'
@@ -136,9 +137,8 @@ export {
 // ── W1-B: symbology, the price formatter, and the revisioned resource contract ────────────────
 // The symbology contract and its formatter are root Quick Charts API (DECISIONS.md: no symbology
 // subpath, package, or repository). `SymbolInfo` is the shape `ChartDatafeed.resolve` answers
-// with. `ChartMeta`, `ChartSaveLoadAdapter`, `DrawingScope`, `TemplateKind` and `TemplateMeta`
-// live in `resources.ts` and are NOT re-exported here yet: the save/load module still exports
-// those names, and the revisioned contract is promoted when the engine's chart resources land.
+// with. The revisioned saved-resource contract in `resources.ts` is the one save/load seam: the
+// widget, the layout and every host adapter run over its four `ResourceStore` families.
 export type { DataStatus, PriceFormat, SymbolInfo, TickBand } from './symbology'
 export { parseTickBands, tickBandFor } from './symbology'
 export type { NumericPunctuation, PriceFormatter, PriceFormatterOptions } from './priceFormatter'
@@ -147,6 +147,9 @@ export type { UdfSymbolResponse } from './udfSymbology'
 export { udfPriceFormat, udfSymbolInfo } from './udfSymbology'
 export type {
   ChartBody,
+  ChartMeta,
+  ChartSaveLoadAdapter,
+  DrawingScope,
   DrawingsBody,
   DrawingsMeta,
   LayoutBody,
@@ -155,6 +158,8 @@ export type {
   ResourceRef,
   ResourceStore,
   TemplateBody,
+  TemplateKind,
+  TemplateMeta,
   WriteOutcome,
 } from './resources'
 export { memorySaveLoadAdapter, ResourceAbortError } from './resources'

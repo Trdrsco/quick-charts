@@ -36,8 +36,9 @@ export type WriteOutcome<T = void> =
   | { kind: 'conflict'; current: ResourceRef }
   | { kind: 'not-found' }
 
-/** One family of resources. `Meta` is the listing row a picker shows without fetching content;
- *  `Body` is the stored document. */
+/** One family of resources. `Meta` is the listing row a picker shows without fetching content
+ *  (it carries the row's ref, so a picker can delete or open a row without a second read); `Body`
+ *  is the stored document. */
 export interface ResourceStore<Meta, Body> {
   /** Listing rows, metadata only. */
   list(signal?: AbortSignal): Promise<Meta[]>
@@ -52,8 +53,7 @@ export interface ResourceStore<Meta, Body> {
 }
 
 /** A saved chart's listing row. */
-export interface ChartMeta {
-  id: string
+export interface ChartMeta extends ResourceRef {
   name: string
   symbol: string
   timeframe: string
@@ -70,8 +70,7 @@ export interface ChartBody {
 }
 
 /** A saved multi-chart layout's listing row. */
-export interface LayoutMeta {
-  id: string
+export interface LayoutMeta extends ResourceRef {
   name: string
   updatedAt: number
 }
@@ -89,9 +88,8 @@ export interface DrawingScope {
 }
 
 /** A drawings document's listing row. A scope holds at most one, so `list` returns zero rows or
- *  one, and the id is the store's handle on it. */
-export interface DrawingsMeta {
-  id: string
+ *  one, and the ref is the store's handle on it. */
+export interface DrawingsMeta extends ResourceRef {
   updatedAt: number
 }
 
@@ -103,8 +101,7 @@ export type TemplateKind = 'study' | 'drawing' | 'palette'
 
 /** A named template's listing row. `tool` scopes DRAWING templates to their tool (a trend-line
  *  template is meaningless on a rectangle); study and palette templates carry no tool. */
-export interface TemplateMeta {
-  id: string
+export interface TemplateMeta extends ResourceRef {
   name: string
   tool?: string
   updatedAt: number
@@ -223,15 +220,15 @@ export function memorySaveLoadAdapter(options?: MemoryResourcesOptions): ChartSa
 
   return {
     charts: memoryStore<ChartMeta, ChartBody>(
-      (r) => ({ id: r.id, name: r.body.name, symbol: r.body.symbol, timeframe: r.body.timeframe, updatedAt: r.updatedAt }),
+      (r) => ({ id: r.id, revision: r.revision, name: r.body.name, symbol: r.body.symbol, timeframe: r.body.timeframe, updatedAt: r.updatedAt }),
       now,
     ),
-    layouts: memoryStore<LayoutMeta, LayoutBody>((r) => ({ id: r.id, name: r.body.name, updatedAt: r.updatedAt }), now),
+    layouts: memoryStore<LayoutMeta, LayoutBody>((r) => ({ id: r.id, revision: r.revision, name: r.body.name, updatedAt: r.updatedAt }), now),
     drawings(scope) {
       const key = scopeKey(scope)
       let store = drawingStores.get(key)
       if (!store) {
-        store = memoryStore<DrawingsMeta, DrawingsBody>((r) => ({ id: r.id, updatedAt: r.updatedAt }), now)
+        store = memoryStore<DrawingsMeta, DrawingsBody>((r) => ({ id: r.id, revision: r.revision, updatedAt: r.updatedAt }), now)
         drawingStores.set(key, store)
       }
       return store
@@ -240,7 +237,7 @@ export function memorySaveLoadAdapter(options?: MemoryResourcesOptions): ChartSa
       let store = templateStores.get(kind)
       if (!store) {
         store = memoryStore<TemplateMeta, TemplateBody>(
-          (r) => ({ id: r.id, name: r.body.name, ...(r.body.tool === undefined ? {} : { tool: r.body.tool }), updatedAt: r.updatedAt }),
+          (r) => ({ id: r.id, revision: r.revision, name: r.body.name, ...(r.body.tool === undefined ? {} : { tool: r.body.tool }), updatedAt: r.updatedAt }),
           now,
         )
         templateStores.set(kind, store)

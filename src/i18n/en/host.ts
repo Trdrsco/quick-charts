@@ -7,4 +7,9 @@ export const host = {
   'host.noVolume': 'No volume from this feed',
   /** The legend header while bar replay is on; `{tf}` is the timeframe token. */
   'host.replayHeader': '{tf} · replay',
+  /** A save refused because the resource moved on since it was opened: the chart never overwrites
+   *  newer work, and the host shows this beside its reload affordance. */
+  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
+  /** A save or delete refused because the resource no longer exists. */
+  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
 } as const
