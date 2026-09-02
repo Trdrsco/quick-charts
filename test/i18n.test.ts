@@ -1,11 +1,12 @@
 // The widget's own catalog held to the runtime's standard, and the language object the chrome
 // modules read: English by default, switchable, re-rendering its listeners as a translation lands.
 // The PCL-4 proofs live here too (public-chart-library-boundary-plan.md): a server can import the
-// runtime, reading direction is metadata, concurrent loads coalesce, every shipped language
+// runtime, a host registers a locale the inventory does not hold, reading direction is metadata,
+// concurrent loads coalesce, a missing key falls back with a diagnostic, every shipped language
 // conforms, and the packed declarations name no private workspace package.
 import { describe, expect, it, vi } from 'vitest'
 import { BUILT_IN_LOCALES, builtInLocaleInfo, catalogProblems } from '../src/i18n/runtime'
-import { chartDictionaries, createChartI18n } from '../src/i18n'
+import { chartDictionaries, createChartI18n, type ChartCustomLocale, type ChartDictionary } from '../src/i18n'
 import { catalogs, en } from '../src/i18n/en'
 import { packedFileList, packedText } from './boundary/scan'
 
@@ -95,11 +96,77 @@ describe('createChartI18n', () => {
     expect(listener).toHaveBeenCalledTimes(calls)
   })
 
-  it('refuses a locale the inventory does not hold, at construction and on switch', async () => {
+  it('refuses a locale neither the inventory nor the host registered, at construction and on switch', async () => {
     const i18n = createChartI18n()
     await expect(i18n.setLocale('fr-CA')).rejects.toThrow('unsupported chart locale "fr-CA"')
     expect(i18n.locale()).toBe('en')
-    expect(() => createChartI18n('fr-CA' as never)).toThrow('unsupported chart locale "fr-CA"')
+    expect(() => createChartI18n('fr-CA')).toThrow('unsupported chart locale "fr-CA"')
+  })
+})
+
+/** A host's Canadian French: the English catalog with one key translated, loaded through the
+ *  host's own chunk. */
+const frCA = (dictionary: Partial<ChartDictionary>, fetch = vi.fn()): ChartCustomLocale => ({
+  code: 'fr-CA',
+  endonym: 'Français (Canada)',
+  tag: 'fr-CA',
+  dir: 'ltr',
+  dictionary: () => {
+    fetch()
+    return Promise.resolve({ default: { ...en, ...dictionary } as ChartDictionary })
+  },
+})
+
+describe('a host-registered locale', () => {
+  it('joins the inventory for this instance: its code starts or switches the language, and its tag is its own', async () => {
+    const fetch = vi.fn()
+    const locale = frCA({ 'legend.hideIndicator': "Masquer l'indicateur" }, fetch)
+    const i18n = createChartI18n('en', { locales: [locale] })
+    const listener = vi.fn()
+    i18n.onChange(listener)
+    await i18n.setLocale('fr-CA')
+    expect(i18n.locale()).toBe('fr-CA')
+    expect(i18n.tag()).toBe('fr-CA')
+    expect(i18n.t('legend.hideIndicator')).toBe("Masquer l'indicateur")
+    expect(listener).toHaveBeenCalledTimes(2) // once as the switch begins in English, once as the chunk lands
+    expect(fetch).toHaveBeenCalledTimes(1)
+
+    const fromStart = createChartI18n('fr-CA', { locales: [locale] })
+    expect(fromStart.locale()).toBe('fr-CA')
+    expect(fromStart.tag()).toBe('fr-CA')
+    await fromStart.setLocale('de')
+    expect(fromStart.tag()).toBe('de')
+  })
+
+  it('fetches its chunk once for concurrent switches and shares the built-in cache', async () => {
+    const fetch = vi.fn()
+    const locale = frCA({}, fetch)
+    const a = createChartI18n('en', { locales: [locale] })
+    await Promise.all([a.setLocale('fr-CA'), a.setLocale('fr-CA')])
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await a.setLocale('th')
+    expect(a.t('legend.hideIndicator')).toBe(createChartI18n('th').t('legend.hideIndicator'))
+  })
+
+  it('cannot shadow a built-in code or tag', () => {
+    expect(() => createChartI18n('en', { locales: [{ ...frCA({}), code: 'de' }] })).toThrow('duplicate locale code "de"')
+    expect(() => createChartI18n('en', { locales: [{ ...frCA({}), code: 'deutsch', tag: 'de' }] })).toThrow('maps to more than one code')
+    expect(() => createChartI18n('en', { locales: [{ ...frCA({}), tag: 'fr_CA' }] })).toThrow('must be canonical "fr-CA"')
+  })
+
+  it('falls back to English for a key its dictionary misses, and the diagnostic names the key and the locale', async () => {
+    const missing = vi.fn()
+    const partial = { ...en } as Record<string, unknown>
+    delete partial['legend.hideIndicator']
+    const locale: ChartCustomLocale = { ...frCA({}), dictionary: () => Promise.resolve({ default: partial as ChartDictionary }) }
+    const i18n = createChartI18n('en', { locales: [locale], onMissing: missing })
+    expect(i18n.t('legend.hideIndicator')).toBe('Hide indicator')
+    expect(missing).not.toHaveBeenCalled() // English is the source; nothing is missing from it
+    await i18n.setLocale('fr-CA')
+    expect(i18n.t('legend.hideIndicator')).toBe('Hide indicator')
+    expect(missing).toHaveBeenCalledWith('legend.hideIndicator', 'fr-CA')
+    expect(i18n.t('legend.showIndicator')).toBe('Show indicator')
+    expect(missing).toHaveBeenCalledTimes(1)
   })
 })
 
