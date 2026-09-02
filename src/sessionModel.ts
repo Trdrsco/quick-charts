@@ -1,4 +1,4 @@
-// The session model a symbol's OWN metadata builds: the reference session grammar in `session`,
+// The session model a symbol's OWN metadata builds: the session grammar in `session`,
 // the full-closure dates in `sessionHolidays`, the dated overrides in `corrections`, and the
 // optional subsessions that split extended hours into pre-market, regular and after-hours, all
 // read in the symbol's exchange `timezone`. From it the chart answers the session state at an
@@ -6,7 +6,7 @@
 // status popup shows. The feed owns every one of these facts; the chart evaluates them and
 // claims nothing a feed did not say.
 //
-// The grammar is the reference's (docs/corpus, "Trading sessions" and "Symbology"): `24x7`;
+// The grammar the chart reads: `24x7`;
 // `HHMM-HHMM` stretches, several per day separated by commas; a `:days` suffix with 1 = Sunday
 // through 7 = Saturday, sessions for other days separated by `|`, weekdays by default; an `F` or
 // `Fn` after a time for a start or end on a previous day, a start later than its end for an
@@ -23,7 +23,7 @@ import { timezoneLabel, tzOffsetMinutes, zoneClock } from './timezones'
  *  symbol does not split it into pre-market and after-hours. */
 export type SessionState = 'pre' | 'open' | 'extended' | 'after' | 'closed'
 
-/** One subsession of an extended-hours symbol, the reference's own shape: `regular`,
+/** One subsession of an extended-hours symbol: `regular`,
  *  `extended`, `premarket` or `postmarket`, each with its own session string and, optionally,
  *  the corrections that shorten it. `SymbolInfo.subsessions` satisfies it; an id the chart has
  *  no state for is ignored. */
@@ -230,7 +230,7 @@ export function parseSessionModel(source: SessionSource): SessionModel | null {
   return { timezone, continuous: false, regular, extended, holidays }
 }
 
-/** Which of a symbol's named sessions a chart displays, the reference's `subsession_id`:
+/** Which of a symbol's named sessions a chart displays:
  *  `regular` shows regular hours only, `extended` shows the extended-hours bars as well. A
  *  per-chart preference a host persists; `regular` is the default. A symbol without extended hours
  *  has nothing to choose, and every bar shows. */

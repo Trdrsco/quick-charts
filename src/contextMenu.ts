@@ -1,5 +1,5 @@
 // The chart's right-click menu, as a MODEL: which rows a level offers, in what order, with what
-// wording. The reference's own menu is the shape (see the layouts corpus for the live capture) —
+// wording. The menu's shape is its own contract —
 // order, verbatim labels, shortcuts, and which rows carry a checkmark rather than a changing label.
 //
 // The model is pure so the same rows serve every host: this library's embedders render it with
@@ -34,7 +34,7 @@ export type ChartMenuRow =
       label: string
       shortcut?: string
       icon?: ChartMenuIcon
-      /** A CHECKABLE row: the reference marks state with a checkmark in the icon cell and never by
+      /** A CHECKABLE row: state is marked with a checkmark in the icon cell and never by
        *  rewording the label, so "Lock vertical cursor line by time" reads the same either way. */
       checked?: boolean
     }
@@ -47,7 +47,7 @@ export interface ChartMenuContext {
   /** Counts drive both the wording and whether the row appears at all. */
   indicatorCount: number
   drawingCount: number
-  /** A drawing clipboard exists. Default true: the reference offers Paste whether or not anything
+  /** A drawing clipboard exists. Default true: Paste is offered whether or not anything
    *  is copied, and pasting nothing is a no-op — but a host with no clipboard at all omits it. */
   canPaste?: boolean
   /** A settings surface exists to open. Default true; a host without one omits the row. */
@@ -56,7 +56,7 @@ export interface ChartMenuContext {
   t?: ChartTranslate
 }
 
-/** The menu a level offers, in the reference's own order. Separators are emitted between GROUPS
+/** The menu a level offers, in one fixed order. Separators are emitted between GROUPS
  *  that survived, never around an empty one, so a menu missing a group has no gap where it would
  *  have been. */
 export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
@@ -65,7 +65,7 @@ export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
 
   groups.push([{ kind: 'item', id: 'reset-view', label: t('menu.resetView'), shortcut: 'Alt + R', icon: 'reset' }])
 
-  // Paste rides whether or not the clipboard holds anything, as the reference's does — pasting
+  // Paste rides whether or not the clipboard holds anything — pasting
   // nothing is a no-op, and a row that comes and goes with an invisible buffer reads as a glitch.
   const clip: ChartMenuRow[] = [{ kind: 'item', id: 'copy-price', label: t('menu.copyPrice', { price: c.priceText }) }]
   if (c.canPaste !== false) clip.push({ kind: 'item', id: 'paste', label: t('menu.paste'), shortcut: 'Ctrl + V' })

@@ -1,4 +1,4 @@
-// The session model built from a symbol's own session metadata: the reference grammar (weekday
+// The session model built from a symbol's own session metadata: the session grammar (weekday
 // sessions, overnight starts, previous-day markers, per-day alternatives, multiple stretches),
 // holidays, corrections, subsessions, and the state, next-change, timeline and market-status
 // answers over it. Every expectation pins a concrete UTC epoch against an exchange-local wall
@@ -57,7 +57,7 @@ describe('parseSessionModel', () => {
     expect(PERP.continuous).toBe(true)
   })
 
-  it('reads the reference forms: alternatives per day, several stretches, previous-day markers, past-midnight ends, a first-day marker', () => {
+  it('reads every form of the grammar: alternatives per day, several stretches, previous-day markers, past-midnight ends, a first-day marker', () => {
     const m = model({ timezone: 'Etc/UTC', session: '0900-1400:2|0900-1630' })
     expect(m.regular.week[1]).toEqual([{ start: 540, end: 840 }])
     expect(m.regular.week[2]).toEqual([{ start: 540, end: 990 }])
@@ -198,7 +198,7 @@ describe('holidays and corrections', () => {
     expect(sessionStateAt(CORRECTED, utc(2026, 0, 1, 7, 0))).toBe('closed') // Jan 1 01:00 CST: closed at 0000
   })
 
-  it("reads the reference's own corrections example with previous-day markers", () => {
+  it('reads a corrections string with previous-day markers', () => {
     const m = model({ timezone: 'America/New_York', session: '0930-1600', corrections: '1900F4-2350F4,1000-1845:20181113;1000-1400:20181114' })
     expect(sessionStateAt(m, utc(2018, 10, 10, 1, 0))).toBe('open') // Friday Nov 9 20:00 EST, the first stretch of Nov 13
     expect(sessionStateAt(m, utc(2018, 10, 13, 14, 45))).toBe('closed') // Nov 13 09:45: the corrected day starts at 10:00

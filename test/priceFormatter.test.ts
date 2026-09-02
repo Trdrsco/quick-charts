@@ -90,7 +90,7 @@ describe('precision never comes from the price', () => {
 })
 
 describe('punctuation', () => {
-  it('defaults to a dot and no grouping, the reference default', () => {
+  it('defaults to a dot and no grouping', () => {
     expect(createPriceFormatter({ pricescale: 100, minmov: 1 }).format(1234567.5)).toBe('1234567.50')
   })
 
@@ -132,7 +132,7 @@ describe('parse', () => {
 })
 
 describe('tick bands', () => {
-  it('reads the reference ladder string', () => {
+  it('reads the variable-tick ladder string', () => {
     expect(parseTickBands('0.01 10 0.02 100 0.05')).toEqual([
       { size: 0.01, below: 10 },
       { size: 0.02, below: 100 },

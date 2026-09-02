@@ -30,7 +30,7 @@ describe('the pure rules', () => {
     expect(clipToWindow(bars, null)).toEqual([])
   })
 
-  it('maps each placement to the reference target', () => {
+  it('maps each placement to the scale it binds', () => {
     expect(seriesTargetOf('same-percent', 3)).toEqual({ paneIndex: 0 })
     expect(seriesTargetOf('new-scale', 3)).toEqual({ paneIndex: 0, priceScaleId: 'left' })
     expect(seriesTargetOf('new-pane', 3)).toEqual({ paneIndex: 3 })

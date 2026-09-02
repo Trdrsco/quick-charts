@@ -1,10 +1,10 @@
-// COMPARE — other symbols beside the charted one, the reference's own model (its compare is a
+// COMPARE — other symbols beside the charted one, drawn as a study rather than as a second chart (a
 // STUDY: legend-managed, three placements, removable from the legend or the dialog). This organ
 // owns the data half the indicator pipeline never had: an indicator computes from the chart's own
 // bars, a compare fetches ANOTHER symbol's bars through the same ChartDatafeed and follows its
 // stream. Corpus: docs/corpus/chart-compare/.
 //
-// The three placements are the dialog's own verbs, captured verbatim off the reference:
+// The three placements are the dialog's three verbs:
 //   'same-percent'  — a line on the MAIN pane's shared (right) scale. The renderer's Percentage
 //                     scale mode does the % math (base = each series' first visible bar), so the
 //                     host flips the scale mode rather than this organ computing percent series —
@@ -14,7 +14,7 @@
 //   'new-pane'      — a line on its own pane with its own scale, the non-price-study placement.
 //
 // ALIGNMENT: the time scale unions every series' timepoints, so a compare with bars outside the
-// main series' window would EXTEND the axis — the reference's "Allow extend time scale", which is
+// main series' window would EXTEND the axis, which is
 // deliberately out of scope. Bars are therefore CLIPPED to the main window the host reports, and
 // re-clipped as that window grows (scroll-back). Missing buckets stay missing — gaps are truth,
 // never interpolated.
@@ -24,7 +24,7 @@ import type { ChartDatafeed, FeedBar } from './datafeed'
 
 export type ComparePlacement = 'same-percent' | 'new-scale' | 'new-pane'
 
-/** One curated quick-add row for the compare dialog (the reference's own widget option shape). */
+/** One curated quick-add row for the compare dialog: a symbol a host offers before any search. */
 export interface CompareSymbol {
   symbol: string
   title: string
@@ -56,7 +56,7 @@ export interface CompareSnapshot {
   lineStyle?: 'solid' | 'dashed' | 'dotted'
 }
 
-/** The reference's compare line palette order (first compare is its blue). Assigned by first
+/** The compare line palette, in assignment order. Assigned by first
  *  unused slot, so removing a compare frees its color for the next one. */
 export const COMPARE_COLORS: readonly string[] = ['#2962ff', '#f23645', '#089981', '#ff9800', '#9c27b0', '#00bcd4']
 

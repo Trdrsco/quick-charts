@@ -16,7 +16,7 @@
     "same file rather than inventing a second set of numbers.",
     "",
     "punctuation: the punctuation the displays below assume. Absent means the default, which is a",
-    "'.' decimal sign and no grouping (the reference does not group thousands)."
+    "'.' decimal sign and no grouping: the chart writes a price ungrouped."
   ],
   "cases": [
     {

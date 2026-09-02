@@ -260,7 +260,7 @@ describe('the spread-row offer', () => {
     expect(spreadSearchQuery('1/ES')).toBe('1ES')
   })
 
-  it('lists the six operators in the reference order, the reciprocal as a prefix', () => {
+  it('lists the six operators in the order the input row offers them, the reciprocal as a prefix', () => {
     expect(SPREAD_OPERATORS.map((o) => o.insert)).toEqual(['/', '-', '+', '*', '^', '1/'])
     expect(SPREAD_OPERATORS.filter((o) => o.prefix).map((o) => o.id)).toEqual(['reciprocal'])
     for (const o of SPREAD_OPERATORS) expect(o.label.startsWith('search.op')).toBe(true)

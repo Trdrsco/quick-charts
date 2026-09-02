@@ -104,7 +104,7 @@ describe('udfSymbolInfo', () => {
     })
   })
 
-  it('maps corrections and the reference subsessions, dropping an entry it cannot read', () => {
+  it('maps corrections and subsessions, dropping an entry it cannot read', () => {
     const info = udfSymbolInfo(
       {
         name: 'AAPL',

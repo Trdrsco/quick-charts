@@ -20,7 +20,8 @@ export interface NumericPunctuation {
   /** What separates the whole part from the decimals. Default '.', or the locale's sign when a
    *  `locale` is given. */
   decimalSign?: string
-  /** What separates thousands in the whole part. Default '': the reference does not group. */
+  /** What separates thousands in the whole part. Default '': a price is written ungrouped, because
+   *  a grouped price is harder to compare against the axis beside it. */
   groupSign?: string
 }
 
@@ -44,7 +45,7 @@ export interface PriceFormatter {
   precision(): number
 }
 
-/** The apostrophe the reference writes between a whole price and its counted fraction, and again
+/** The apostrophe written between a whole price and its counted fraction, and again
  *  between that fraction and its sub-fraction: 110'16 and 110'16'2. */
 const FRACTION_SIGN = "'"
 

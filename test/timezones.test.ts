@@ -73,7 +73,7 @@ describe('offsets', () => {
     expect(tzOffsetMinutes('Etc/UTC', utc(2026, 6, 13))).toBe(0)
   })
 
-  it('writes the offset the reference way', () => {
+  it('writes the offset as a signed hour and minute', () => {
     expect(tzOffsetLabel('Etc/UTC', utc(2026, 6, 13))).toBe('UTC')
     expect(tzOffsetLabel('America/Los_Angeles', utc(2026, 6, 13))).toBe('UTC-7')
     expect(tzOffsetLabel('Asia/Kolkata', utc(2026, 6, 13))).toBe('UTC+5:30')

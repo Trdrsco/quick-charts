@@ -891,7 +891,7 @@ if (zone) {
 `timezoneListing` returns the picker rows: UTC, then the exchange choice, then every zone by its
 current offset, so daylight-saving changes reorder the list on their own.
 
-A symbol's session facts build a session model: `session` in the reference grammar (`0930-1600`,
+A symbol's session facts build a session model: `session` in the session grammar (`0930-1600`,
 `1700-1600:23456` with `1` as Sunday, `24x7`, several stretches per day, previous-day markers),
 `sessionHolidays` as `YYYYMMDD` full closures, and `corrections` as `SESSION:YYYYMMDD` overrides
 that outrank a holiday. `subsessions` (`regular`, `extended`, `premarket`, `postmarket`, each
@@ -916,7 +916,7 @@ if (model) {
 parseSessionModel({ timezone: 'Etc/UTC', session: 'later' }) // null: the chart claims no session it cannot read
 ```
 
-Which named session a chart displays is the reference's `subsession_id`, a per-chart preference
+Which named session a chart displays is its subsession, a per-chart preference
 with `regular` as the default. On a symbol with extended hours, `regular` filters intraday bars to
 regular hours and `extended` shows every bar; a symbol with one continuous session has nothing to
 filter.
