@@ -414,6 +414,70 @@ What to know:
   drawing to move it (rigid whole-bar translation — anchors never drift apart); grab an anchor
   handle to reshape; locked drawings select but refuse edits.
 
+## Extensions
+
+An extension is host code that draws on the chart, adds rows to its level menu, offers commands,
+and stores viewer state in the chart's own save blob. The chart attaches it at mount, pushes its
+changes at it, and takes it down at teardown, along with everything it drew.
+
+```ts
+import { createChart, createUdfDatafeed, type ChartExtension } from '@trdrs/chart'
+
+const alertLines: ChartExtension = {
+  id: 'acme.alerts',
+  attach(ctx) {
+    let levels: number[] = []
+    const lines = levels.map((price) => ctx.series.createPriceLine({ price, color: '#f5a623' }))
+    ctx.contributeContextMenu((menu) => [
+      { id: 'add', label: `Add alert at ${menu.priceText}`, run: () => levels.push(menu.price) },
+    ])
+    ctx.contributeCommands([{ id: 'acme.alerts.clear', label: 'Clear alerts', execute: () => (levels = []) }])
+    ctx.onSymbolChange(() => (levels = []))
+    return {
+      serialize: () => levels,
+      restore: (state) => {
+        levels = Array.isArray(state) ? state.filter((p): p is number => typeof p === 'number') : []
+      },
+      detach: () => lines.forEach((line) => line.remove()),
+    }
+  },
+}
+
+const widget = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  extensions: [alertLines],
+})
+widget.commands.execute('acme.alerts.clear')
+```
+
+What to know:
+
+- **The context is the whole surface.** `ChartExtensionContext` carries the chart's symbol,
+  timeframe, bars, replay state, palette and pane geometry, a subscription for each of those, the
+  gesture box and the chrome overlay to mount DOM in, the chart's price formatter, and the series
+  capabilities: `createPriceLine`, `attachPrimitive`, `priceToY` / `yToPrice`, `timeToX` /
+  `xToTime`, `plotWidth`, and `lockPanZoom` for the length of a drag. Every `on…` returns its own
+  unsubscribe.
+- **The chart owns the renderer.** Extensions receive capabilities, never the underlying
+  lightweight-charts instance, which is what makes the next point a guarantee.
+- **Teardown is complete.** Detaching removes every price line and primitive the extension created
+  and releases any pan/zoom lock it still holds, whether or not the extension took them down
+  itself. Subscriptions stop, and the context becomes inert: afterwards every method is a no-op
+  returning a neutral value rather than a throw into work already in flight.
+- **State is namespaced.** `serialize()` is stored under the extension's `id` inside the chart's
+  content blob, and `restore(state)` receives only that slot, after the saved symbol, timeframe,
+  scale and comparisons are on screen. One `id`, one attachment: a duplicate is refused.
+- **Scope is a declaration.** By default an extension stays attached for the chart's life and hears
+  symbol switches through `onSymbolChange`. Declare `scope: 'symbol'` and the chart detaches and
+  re-attaches it on every switch, so a market-scoped overlay cannot carry one market's drawing onto
+  another's bars.
+- **A failing extension is its own problem.** A throw in `attach` drops that extension and the
+  chart still mounts; a throw in a subscriber, a menu provider, a command or a teardown is
+  contained.
+- **Layouts attach per pane.** `createChartLayout` hands its shared options to every pane, so each
+  pane gets its own attachment, its own context and its own state slot.
+
 ## Chart trading over the broker seam
 
 Chart trading is the second seam, the exact analog of the datafeed — and the CONTRACT lives in its

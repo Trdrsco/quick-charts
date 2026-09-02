@@ -38,6 +38,27 @@ export { createUdfDatafeed, tfToUdfResolution, udfResolutionToTf } from './udfDa
 
 export type { ChartTheme, ChartWidgetEvents, ChartWidgetOptions, IndicatorDefinition, IndicatorInstance } from './widget'
 
+// The extension seam — a TYPE contract only. A host writes an object against `ChartExtension` and
+// hands it to `ChartWidgetOptions.extensions`; the chart owns every runtime piece, which is what
+// lets it take back everything an extension drew.
+export type {
+  ChartExtension,
+  ChartExtensionChart,
+  ChartExtensionCommand,
+  ChartExtensionCommands,
+  ChartExtensionContext,
+  ChartExtensionHandle,
+  ChartExtensionMenuContext,
+  ChartExtensionMenuItem,
+  ChartExtensionMenuProvider,
+  ChartExtensionPane,
+  ChartExtensionPriceLine,
+  ChartExtensionReplayState,
+  ChartExtensionScope,
+  ChartExtensionSeries,
+  ChartPriceFormatter,
+} from './extension'
+
 export type {
   ManifestInput,
   ManifestPlot,
