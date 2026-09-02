@@ -160,3 +160,30 @@ export type {
 } from './resources'
 export { memorySaveLoadAdapter, ResourceAbortError } from './resources'
 // ── end W1-B ──────────────────────────────────────────────────────────────────────────────────
+
+// ── W2-C: the executable theme contract ───────────────────────────────────────────────────────
+// Quick Charts ships complete light and dark UI. A host selects a mode, optionally overrides the
+// semantic palette for either mode, and switches at runtime through one controller; the chart keeps
+// its symbol, timeframe, range, drawings and studies across the switch. `THEME_ROLES` is the public
+// role inventory the palettes and the generated stylesheet are built from, and the same list is
+// published as `dist/theme-manifest.json`.
+//
+// The stylesheet is a separate asset: import `quickcharts/styles.css` once. The chart injects no
+// styles from JavaScript, and its custom-property names and component selectors are private.
+//
+// Chart appearance is the other ladder: `ChartOverrides.appearance` names specific series, grid and
+// study visuals and wins over the broad palette wherever both could reach the same pixel.
+export { createThemeController } from './theme/controller'
+export { THEME_ROLES } from './theme/schema'
+export type {
+  CustomThemes,
+  SemanticTheme,
+  ThemeMode,
+  ThemeRole,
+  ThemeRoleFamily,
+  ThemeRoleId,
+  ThemeRoleKind,
+} from './theme/schema'
+export type { ThemeChangeListener, ThemeController, ThemeControllerOptions } from './theme/controller'
+export type { ThemeDiagnostic, ThemeDiagnosticCode } from './theme/validate'
+// ── end W2-C ──────────────────────────────────────────────────────────────────────────────────
