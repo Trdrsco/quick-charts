@@ -1,5 +1,6 @@
 import type { DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
+import { moneyText } from '../core/money'
 import { distanceToSegment } from '../core/geometry'
 import { applyStroke, fillPaint, fontOf, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
@@ -174,15 +175,17 @@ export class LongPosition extends Drawing<PositionProps> {
     const white = { ...this.style, textColor: '#ffffff' }
     const qtyText = s.qty >= 100 ? s.qty.toFixed(0) : s.qty.toFixed(2)
     const pnlLabel = s.closed ? 'Closed PnL' : 'Open PnL'
+    // The P&L and the amounts at target and stop are MONEY, written by the money stand-in; the
+    // level offsets are prices on the symbol's grid and go through the price port (levelText).
     const entryText = this.props.compact
-      ? `${this.formatPrice(s.pnl)} · ${qtyText} · ${s.ratio.toFixed(2)}`
-      : `${pnlLabel}: ${this.formatPrice(s.pnl)}, Qty: ${qtyText}, Risk/Reward Ratio: ${s.ratio.toFixed(2)}`
+      ? `${moneyText(s.pnl)} · ${qtyText} · ${s.ratio.toFixed(2)}`
+      : `${pnlLabel}: ${moneyText(s.pnl)}, Qty: ${qtyText}, Risk/Reward Ratio: ${s.ratio.toFixed(2)}`
     const targetText = this.props.compact
       ? this.levelText(s.tpOffset, s.tpPercent)
-      : `Target: ${this.levelText(s.tpOffset, s.tpPercent)}, Amount: ${this.formatPrice(s.amountAtTp)}`
+      : `Target: ${this.levelText(s.tpOffset, s.tpPercent)}, Amount: ${moneyText(s.amountAtTp)}`
     const stopText = this.props.compact
       ? this.levelText(s.slOffset, s.slPercent)
-      : `Stop: ${this.levelText(s.slOffset, s.slPercent)}, Amount: ${this.formatPrice(s.amountAtSl)}`
+      : `Stop: ${this.levelText(s.slOffset, s.slPercent)}, Amount: ${moneyText(s.amountAtSl)}`
 
     paintLabel(ctx, targetText, { x: mid, y: z.targetY }, white, { align: 'center', background: PROFIT })
     paintLabel(ctx, stopText, { x: mid, y: z.stopY }, white, { align: 'center', background: LOSS })
