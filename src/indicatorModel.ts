@@ -2,9 +2,10 @@
 // render-agnostic plot spec built from it, per-instance style overrides, and the one walker that
 // turns computed value channels into that spec. Types are self-contained on purpose — the same
 // manifest grammar an external system publishes (the trdrs engine's script manifests satisfy these
-// shapes structurally) works here without importing that system, keeping the package's dependency
-// surface at the renderer alone. Compute stays OUTSIDE the model: a definition pairs a manifest
-// with a compute the HOST supplies, so the package never owns indicator math.
+// shapes structurally, and so do the bundled built-in definitions) works here without importing
+// that system, keeping the package's dependency surface at the renderer alone. Compute stays
+// OUTSIDE the model: a definition pairs a manifest with a compute, whether a built-in's or a
+// host's, and the model only walks what the compute returns.
 import type { HistogramData, LineData, UTCTimestamp, WhitespaceData } from 'lightweight-charts'
 
 /** A declared numeric input: `int`/`float` bound by min/max, `enum` an index into `options`. */
