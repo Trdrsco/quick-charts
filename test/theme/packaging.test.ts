@@ -19,6 +19,7 @@ describe('the stylesheet in the export map', () => {
 
   it('declares the stylesheet as the package side effect a bundler must keep', () => {
     expect(manifest.sideEffects).toContain('dist/quickcharts.css')
+    expect(manifest.sideEffects).toContain('src/styles/components/*.css')
   })
 
   it('packs the built stylesheet, and generates it from the build', () => {
@@ -34,6 +35,13 @@ describe('the built artifacts', () => {
     if (css === null) return
     expect(css.length).toBeGreaterThan(1000)
     expect(selectorsOf(css).filter((s) => !s.startsWith(`[${THEME_ROOT_ATTRIBUTE}`))).toEqual([])
+  })
+
+  it('carries the drawing recipes, concatenated after the structural file', () => {
+    if (css === null) return
+    expect(css).toContain('.qc-drawing-toolbar')
+    expect(css).toContain('.qc-drawing-settings-bar')
+    expect(css.indexOf('.qc-drawing-toolbar')).toBeGreaterThan(css.indexOf('.qc-chrome'))
   })
 
   it('injects no styles from JavaScript', () => {
