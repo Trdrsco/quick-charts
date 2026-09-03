@@ -26,6 +26,20 @@ export interface SaveConflictInfo {
   message: string
 }
 
+/** What the widget did to the saved layout it holds open, on the viewer's behalf. */
+export interface LayoutEvent {
+  kind: 'saved' | 'loaded' | 'removed' | 'detached'
+  /** The layout's id, or null after a detach. */
+  id: string | null
+  name: string | null
+}
+
+/** The outcome of a client-image verb the widget ran: the copy landed, the copy was refused and a
+ *  download stood in for it, or the capture failed. */
+export interface ImageEvent {
+  kind: 'copied' | 'copyFallback' | 'failed'
+}
+
 /** What changed about the chart's indicators. */
 export interface IndicatorEvent {
   kind: 'added' | 'removed' | 'changed' | 'hidden' | 'shown'
@@ -62,6 +76,11 @@ export interface WidgetEvents {
   saveConflict(info: SaveConflictInfo): void
   /** Chart-root fullscreen was entered or left, including by the browser's own escape. */
   fullscreen(active: boolean): void
+  /** A layout verb ran: the open layout was saved, another was opened, one was deleted, or the
+   *  binding was detached. A refusal reports through `saveConflict` instead. */
+  layout(event: LayoutEvent): void
+  /** A client-image verb settled. */
+  image(event: ImageEvent): void
   /** The widget was disposed. Fires once, before the emitters clear. */
   dispose(): void
 }

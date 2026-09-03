@@ -1,7 +1,9 @@
 // The default chrome's composition: the overlay layer, the top bar, the bottom bar, the notices,
 // the doors the charts knock on, and the subscriptions that keep every surface reading the active
-// chart. Mounted by the widget once its charts exist; it consumes the widget through the public
-// handle, the command registry and the event maps, and nothing else.
+// chart. Mounted by the widget once its charts exist. The widget-level surfaces consume the widget
+// through the public handle, the command registry and the event maps; the kernel in turn imports
+// the chrome's per-chart surfaces (the navigation cluster, the replay transport, the market-status
+// popup) and the doors contract, so the two are one package with two directions of import.
 import type { ChartDatafeed, DatafeedConfig } from '../../datafeed'
 import type { ChartI18n } from '../../i18n'
 import { BUILT_IN_LOCALES } from '../../i18n/runtime'
@@ -15,6 +17,7 @@ import { mountBottomBar, type BottomBarHandle } from './bottomBar'
 import type { ChromeContext } from './context'
 import type { ChromeDoors } from './doors'
 import { h } from './dom'
+import { closeOverlays } from './overlays'
 import { openIndicatorSettings } from './indicatorSettings'
 import { openSearchDialog } from './searchDialog'
 import { mountToasts, type ToastsHandle } from './toasts'
@@ -34,6 +37,8 @@ export interface ChromeDeps {
   feedConfig(): DatafeedConfig | null
   classNames?: Readonly<Record<string, string>>
   access?: AccessPolicy
+  /** The viewer's layout autosave switch, as the widget holds it. */
+  autosave: { get(): boolean }
   /** The doors the charts already hold. Filled in place. */
   doors: ChromeDoors
 }
@@ -105,6 +110,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       preferences: deps.preferences,
       saveLoad: deps.saveLoad,
       access: deps.access,
+      autosave: deps.autosave,
       openSearch: () => deps.doors.openSearch({ mode: 'search', chart: widget.activeChart() }),
       notify,
     })
@@ -162,6 +168,10 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
     widget.on('theme', sync),
     widget.on('saveNeeded', () => topBar?.changed()),
     widget.on('saveConflict', (info) => notify('error', info.message)),
+    widget.on('image', (event) => {
+      if (event.kind === 'copyFallback') notify('info', i18n.t('toast.imageCopyFallback'))
+      else if (event.kind === 'failed') notify('error', i18n.t('toast.imageFailed'))
+    }),
     () => {
       for (const off of chartSubscriptions) off()
       chartSubscriptions = []
@@ -171,6 +181,9 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   return {
     dispose() {
       for (const off of disposers.splice(0)) off()
+      // Every dialog and menu still open in the layer closes here, taking its document listeners
+      // with it; a bare remove would leave them bound to a detached panel.
+      closeOverlays(overlays)
       toasts?.destroy()
       overlays.remove()
       root.removeAttribute('dir')
