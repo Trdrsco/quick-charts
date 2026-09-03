@@ -44,6 +44,9 @@ export interface ChartI18n {
   locale(): string
   /** The BCP 47 tag for `Intl` and for the chart library's own axis and crosshair formatting. */
   tag(): string
+  /** The reading direction of the language in effect. The chrome writes it on the widget root so
+   *  the stylesheet's logical properties flip. A host adapter that omits it reads as left to right. */
+  dir?(): 'ltr' | 'rtl'
   t: ChartTranslate
   /** Switch language. The translation loads once; until it lands `t` reads English. Resolves when
    *  the switch is complete (or has settled on English because the chunk failed). */
@@ -133,6 +136,7 @@ export function createChartI18n(initial: string = DEFAULT_LOCALE, options: Chart
   const api: ChartI18n = {
     locale: () => locale,
     tag: () => registry.info(locale).tag,
+    dir: () => registry.info(locale).dir,
     t: translator(),
     async setLocale(code) {
       if (code === locale) return

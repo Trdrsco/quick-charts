@@ -16,6 +16,10 @@ import { status } from './status'
 import { search } from './search'
 import { drawing } from './drawing'
 import { command } from './command'
+import { chrome } from './chrome'
+import { picker } from './picker'
+import { settings } from './settings'
+import { toast } from './toast'
 
-const dict: Translation<typeof en> = { ...legend, ...tools, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search, ...drawing, ...command }
+const dict: Translation<typeof en> = { ...legend, ...tools, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search, ...drawing, ...command, ...chrome, ...picker, ...settings, ...toast }
 export default dict

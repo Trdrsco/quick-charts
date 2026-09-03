@@ -45,6 +45,9 @@ export interface LegendControls {
   onRemove?(id: string): void
   /** The header's compare door was tapped — present only when the chart serves the dialog. */
   onCompare?(): void
+  /** The market-status dot was tapped. Present only when the chart serves the status popup; without
+   *  it the dot is a plain mark. The anchor is the dot's own button, for the popup to hang from. */
+  onStatus?(anchor: HTMLElement): void
 }
 
 export interface ChartLegend {
@@ -85,7 +88,24 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   const dot = document.createElement('span')
   dot.className = 'qc-session-dot qc-legend-dot'
   dot.hidden = true
-  header.append(title, dot)
+  // With a status surface behind it the dot rides a button: the market-status control, named for
+  // a screen reader, opening the popup at itself. Without one the dot is a plain mark.
+  let statusButton: HTMLButtonElement | null = null
+  if (controls.onStatus) {
+    statusButton = document.createElement('button')
+    statusButton.type = 'button'
+    statusButton.className = 'qc-legend-action qc-legend-status'
+    statusButton.setAttribute('aria-haspopup', 'dialog')
+    statusButton.setAttribute('aria-expanded', 'false')
+    statusButton.title = strings.t('status.title')
+    statusButton.setAttribute('aria-label', strings.t('status.title'))
+    statusButton.hidden = true
+    statusButton.appendChild(dot)
+    statusButton.addEventListener('click', () => controls.onStatus?.(statusButton!))
+    header.append(title, statusButton)
+  } else {
+    header.append(title, dot)
+  }
 
   // The scale-mode chips ride the header (present only when the chart handles them).
   const scaleButtons = new Map<ScaleMode, HTMLButtonElement>()
@@ -200,6 +220,10 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   const unsubscribe = strings.onChange(() => {
     titleScaleButtons()
     if (compareBtn) compareBtn.title = strings.t('legend.compare')
+    if (statusButton) {
+      statusButton.title = strings.t('status.title')
+      statusButton.setAttribute('aria-label', strings.t('status.title'))
+    }
     render(lastChips)
   })
 
@@ -212,6 +236,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     },
     setDot(state) {
       dot.hidden = state === null
+      if (statusButton) statusButton.hidden = state === null
       if (state) dot.dataset.qcSession = state
     },
     syncScale(mode) {

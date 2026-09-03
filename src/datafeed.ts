@@ -128,6 +128,11 @@ export interface ChartDatafeed {
   /** Server clock (epoch seconds) — countdown skew correction. Optional: a feed without one leaves
    *  the chart on the client clock. */
   serverTime?(): Promise<number>
+  /** OPTIONAL depth of history for a symbol: the epoch seconds of its earliest available bar, or
+   *  null when the feed does not know. The range presets read it (a listing from last year offers
+   *  no five-year range); the chart never probes for it. Omit it entirely when the feed cannot
+   *  say, and every preset is offered. */
+  earliestBar?(symbol: string): Promise<number | null>
   /** OPTIONAL neutral bar marks over a window (epoch seconds, inclusive of both ends). A mark is a
    *  note about a moment: its color is a theme role, its words are the host's, and the chart
    *  neither interprets nor acts on it. Omit it entirely when the feed serves none. */

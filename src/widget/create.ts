@@ -26,6 +26,8 @@ import { createFullscreen, type FullscreenApi } from './fullscreen'
 import { createImageApi, type ImageApi, type ImageTile } from './image'
 import { registerWidgetCommands } from './widgetCommands'
 import { attachShortcuts } from './shortcuts'
+import { emptyDoors } from '../ui/chrome/doors'
+import { mountChrome, type ChromeHandle } from '../ui/chrome/mount'
 
 /** Every mounted chart gets one id, so an extension attached to two charts of a layout can tell
  *  them apart and key its own per-chart state. Stable for the chart's life, never reused. */
@@ -143,6 +145,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     events.emit('ready')
   }
 
+  // ── The chrome's doors. Every chart holds this one object from construction; the chrome fills it
+  // in once it is mounted below, after the layout has built the charts it acts on.
+  const doors = emptyDoors()
+
   // ── Charts. The layout owns placement; the widget owns construction.
   const instances = new Map<string, ChartInstance>()
   const layout = createLayoutPlane({
@@ -188,6 +194,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
         // ── W4-B: the drawing toolbar offers sync only in a layout of more than one chart ────
         chartCount: () => layout.handles().length,
         // ── end W4-B ──────────────────────────────────────────────────────────────────────────
+        doors,
       })
       instances.set(id, instance)
       return instance.handle
@@ -296,6 +303,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
       if (disposed) return
       disposed = true
       events.emit('dispose')
+      chrome.dispose()
       unregisterCommands()
       unsubscribeTheme()
       unsubscribeStrings()
@@ -319,6 +327,24 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   }
 
   const unregisterCommands = registerWidgetCommands({ commands, widget, theme, i18n, capabilities })
+
+  // ── The default chrome: the top bar, the bottom bar, the dialogs and the notices, driven only by
+  // the registry, the planes and the event maps. It fills the doors the charts already hold.
+  const chrome: ChromeHandle = mountChrome({
+    root,
+    panes,
+    widget,
+    i18n,
+    features,
+    storage,
+    preferences: options.preferences ?? {},
+    saveLoad: options.saveLoad ?? null,
+    datafeed: options.datafeed,
+    feedConfig: () => feedConfig,
+    classNames: options.search?.classNames,
+    access: options.access,
+    doors,
+  })
 
   return widget
 }

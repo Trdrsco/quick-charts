@@ -22,6 +22,9 @@ export const command = {
   /** The level the right-click menu was raised at, copied in the symbol's own price format. */
   'command.priceCopy': 'Copy price',
 
+  /** Change the chart's symbol. The symbol is the argument. */
+  'command.symbolSet': 'Change symbol',
+
   // The seven main-series styles.
   'command.styleCandles': 'Candles',
   'command.styleHollow': 'Hollow candles',
@@ -31,12 +34,17 @@ export const command = {
   'command.styleBaseline': 'Baseline',
   'command.styleStepline': 'Step line',
 
+  /** Restyle the chart through its runtime appearance layer. The partial is the argument. */
+  'command.appearanceApply': 'Chart appearance',
+
   // The four price-scale modes.
   'command.scaleNormal': 'Regular price scale',
   'command.scaleLog': 'Logarithmic price scale',
   'command.scalePercent': 'Percentage price scale',
   'command.scaleIndexed': 'Indexed price scale',
 
+  'command.indicatorAdd': 'Add indicator',
+  'command.indicatorUpdate': 'Update indicator',
   'command.indicatorsRemoveAll': 'Remove indicators',
   'command.indicatorRemove': 'Remove indicator',
   'command.indicatorHide': 'Hide indicator',
@@ -92,6 +100,7 @@ export const command = {
   'command.replayStepBack': 'Step back',
   'command.replayGoLive': 'Replay to the live edge',
   'command.replaySpeed': 'Replay speed',
+  'command.replayInterval': 'Replay update interval',
 
   'command.timeframeSet': 'Timeframe',
   /** Which subsession intraday bars are shown for. A symbol with no extended hours offers only

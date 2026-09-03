@@ -22,21 +22,49 @@ export interface ResolvedFeatures {
   contextMenu: boolean
   compare: boolean
   replay: boolean
+  topBar: boolean
+  bottomBar: boolean
+  navigation: boolean
+  marketStatus: boolean
+  symbolSearch: boolean
+  timeframes: boolean
+  chartStyles: boolean
+  indicators: boolean
+  layouts: boolean
+  settings: boolean
+  fullscreen: boolean
+  image: boolean
+  toasts: boolean
 }
 
-/** Fill the feature plane. Every flag defaults on, and the drawing surfaces cannot outlive the
- *  layer they drive. */
+/** Fill the feature plane. Every flag defaults on, the drawing surfaces cannot outlive the layer
+ *  they drive, and a top-bar control cannot outlive the bar it sits in. */
 export function resolveFeatures(config?: FeatureConfig): ResolvedFeatures {
   const drawings = config?.drawings !== false
+  const topBar = config?.topBar !== false
+  const on = (flag: boolean | undefined): boolean => flag !== false
   return {
     drawings,
     drawingsToolbar: drawings && config?.drawingsToolbar !== false,
     drawingsFavorites: drawings && config?.drawingsFavorites !== false,
-    sessions: config?.sessions !== false,
-    legend: config?.legend !== false,
-    contextMenu: config?.contextMenu !== false,
-    compare: config?.compare !== false,
-    replay: config?.replay !== false,
+    sessions: on(config?.sessions),
+    legend: on(config?.legend),
+    contextMenu: on(config?.contextMenu),
+    compare: on(config?.compare),
+    replay: on(config?.replay),
+    topBar,
+    bottomBar: on(config?.bottomBar),
+    navigation: on(config?.navigation),
+    marketStatus: on(config?.legend) && on(config?.marketStatus),
+    symbolSearch: topBar && on(config?.symbolSearch),
+    timeframes: topBar && on(config?.timeframes),
+    chartStyles: topBar && on(config?.chartStyles),
+    indicators: on(config?.indicators),
+    layouts: topBar && on(config?.layouts),
+    settings: topBar && on(config?.settings),
+    fullscreen: topBar && on(config?.fullscreen),
+    image: topBar && on(config?.image),
+    toasts: on(config?.toasts),
   }
 }
 

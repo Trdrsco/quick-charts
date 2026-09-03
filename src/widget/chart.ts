@@ -52,6 +52,9 @@ import { attachLegendPlane } from './legend'
 import { attachMenuPlane } from './menu'
 import { attachPointerPlane } from './pointer'
 import { attachMarks } from './marks'
+import type { ChromeDoors } from '../ui/chrome/doors'
+import { mountNavControls } from '../ui/chrome/navControls'
+import { mountReplayBar, type ReplayBarHandle } from '../ui/chrome/replayBar'
 import { createSaveLoadApi, type ChartSaveLoadApi, type ParsedChartContent } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
 import {
@@ -164,6 +167,9 @@ export interface ChartHandle {
   /** Set the choice. A value the chart's registry does not carry is refused, because the axis
    *  formatters could not label a tick with it. */
   setTimezone(choice: string): void
+  /** The zone the choice resolves to for the symbol on screen: the chosen IANA id, or the exchange
+   *  zone the resolved symbol declared. Null while `exchange` is chosen and no symbol has resolved. */
+  displayTimezone(): string | null
   /** The market's status right now: its session state, what transition is next, and how live the
    *  feed says its data is. Null until the symbol resolves. */
   marketStatus(nowSecs?: number): MarketStatus | null
@@ -230,6 +236,9 @@ export interface ChartInstanceDeps {
   capabilities(): Capabilities
   /** Charts in the layout, read live; the drawing toolbar offers sync only past one. */
   chartCount(): number
+  /** The widget chrome's doors: the search dialog and the indicator settings dialog. The object is
+   *  filled once the chrome mounts and answers honestly before that. */
+  doors: ChromeDoors
 }
 
 export interface ChartInstance {
@@ -291,6 +300,12 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let symbolInfo: SymbolInfo | null = null
   /** The resolved symbol's price format, null until resolve() states one. */
   let symbolFormat: PriceFormat | null = null
+  /** The feed's stated depth of history for the symbol (epoch seconds of its earliest bar), or
+   *  null while unknown: the range presets withhold nothing on an unknown depth. */
+  let earliestBarSecs: number | null = null
+  /** The transport bar while replay is on, mounted by this chart from the plane's change signal
+   *  so the replay plane owns no DOM. */
+  let replayBar: ReplayBarHandle | null = null
   /** THE price formatter: one per symbol, in the chart's language. The price scale, the crosshair
    *  and last-price labels, the legend rows, the level menu, the drawing labels, the study scales
    *  and the extension seam all write through it, so no surface carries its own precision. */
@@ -472,7 +487,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         chart,
         datafeed,
         i18n,
-        chrome,
+        openSearch: (mode, changeFrom, onPick) => deps.doors.openSearch({ mode, chart: handle, changeFrom, onPick }),
         symbol: () => symbol,
         timeframe: () => tf,
         mainWindow: () => (bars.length ? { from: bars[0]!.t, to: bars[bars.length - 1]!.t } : null),
@@ -492,9 +507,13 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     chrome,
     i18n,
     enabled: deps.features.legend,
+    marketStatus: deps.features.marketStatus,
     indicators,
     compare,
     scaleMode: () => scaleMode,
+    sessionModel: () => session.model(),
+    status: (nowSecs) => session.status(nowSecs),
+    openIndicatorSettings: (id) => deps.doors.openIndicatorSettings(handle, id),
   })
 
   // ── W4-B: the drawing plane, its toolbar and its settings surfaces ──────────────────────────
@@ -544,8 +563,6 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const replay = attachReplayPlane({
     chart,
     datafeed,
-    i18n,
-    chrome,
     symbol: () => symbol,
     timeframe: () => tf,
     // Replay runs over the model a viewer can SEE, so its cursor and total never count a bar the
@@ -569,10 +586,18 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     persist: (key, value) => storage.set(key === 'speed' ? REPLAY_SPEED_KEY : REPLAY_INTERVAL_KEY, value),
     onChange: () => {
       const state = replay.snapshot()
+      // The transport bar rides replay: mounted when replay comes on, taken down when it leaves,
+      // and re-read on every change in between. It states every intent by command id.
+      if (state.on && !replayBar && deps.features.replay) {
+        replayBar = mountReplayBar({ chrome, i18n, commands: deps.commands, handle, bars: () => bars, intraday: () => isIntradayTimeframe(tf) })
+      } else if (!state.on && replayBar) {
+        replayBar.destroy()
+        replayBar = null
+      }
+      replayBar?.sync()
       extensions.host.replayChanged({ active: state.on, cursor: state.cursor, total: state.total })
       events.emit('replay', state)
     },
-    run: (id, arg) => deps.commands.execute(id, arg),
     initialSpeed: coerceReplaySpeed(storage.get(REPLAY_SPEED_KEY) ?? deps.preferences.replaySpeed),
     initialInterval: storage.get(REPLAY_INTERVAL_KEY) ?? deps.preferences.replayInterval ?? 'auto',
   })
@@ -638,6 +663,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       if (menu.raiseAt(e.clientX, e.clientY)) e.preventDefault()
     })
   }
+
+  // The on-chart navigation cluster: zoom, scroll and reset over the chart's own view commands.
+  const nav = deps.features.navigation ? mountNavControls({ chrome, commands: deps.commands, i18n }) : null
 
   // ── Painting ─────────────────────────────────────────────────────────────────────────────────
   /** The bars actually PAINTED: the loaded model, filtered to the active subsession on an intraday
@@ -776,6 +804,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     noMoreHistory = false
     feedStatus = null // the new subscription reports its own status; a stale one must not carry over
     symbolInfo = null
+    earliestBarSecs = null
     session.reset() // the next resolve states the new symbol's model, and unresolved never bands
     marks?.clear()
     setSymbolFormat(null) // until the next resolve, the declared stand-in
@@ -802,6 +831,19 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       .catch(() => {
         /* metadata is an enhancement; the chart works without it */
       })
+    // The feed's depth of history rides beside the resolve, and only a feed that states one is
+    // asked. It gates the range presets; nothing else waits on it.
+    if (datafeed.earliestBar) {
+      void datafeed
+        .earliestBar(symbol)
+        .then((secs) => {
+          if (disposed || myEpoch !== epoch) return
+          earliestBarSecs = typeof secs === 'number' && Number.isFinite(secs) ? secs : null
+        })
+        .catch(() => {
+          /* an unknown depth withholds no preset */
+        })
+    }
     void datafeed
       .history(symbol, tf, { countBack: SNAPSHOT_BARS })
       .then((page) => {
@@ -998,6 +1040,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       storage.set(TIMEZONE_KEY, choice)
       applyTimezone()
     },
+    displayTimezone: () => resolveDisplayTimezone(timezoneChoice, symbolInfo),
     marketStatus: (nowSecs?: number) => session.status(nowSecs),
     subsession: () => session.subsession(),
     setSubsession: (active: ActiveSubsession) => session.setSubsession(active),
@@ -1092,7 +1135,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     features: deps.features,
     capabilities: deps.capabilities,
     t: () => i18n.t,
-    earliestBar: () => bars[0]?.t ?? null,
+    // The feed's own statement of how deep its history goes, never the oldest bar that happens to
+    // be loaded: the chart opens on a short window, and a preset judged against that would be
+    // withheld for a market that serves years.
+    earliestBar: () => earliestBarSecs,
     // A range preset frames the pane on its span AND switches to the timeframe that span reads
     // best at, which is what makes one chip a whole answer rather than half of one.
     frame: (preset) => {
@@ -1182,6 +1228,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       indicators.recompute()
       legend.setHeader(symbol, replay.active() ? i18n.t('host.replayHeader', { tf }) : tf)
       drawings.relabel()
+      replayBar?.sync()
     },
     dispose() {
       if (disposed) return
@@ -1190,6 +1237,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       unsubscribe?.()
       unsubscribe = null
       unregisterCommands()
+      replayBar?.destroy()
+      replayBar = null
+      nav?.destroy()
       replay.destroy()
       pointer?.destroy()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
