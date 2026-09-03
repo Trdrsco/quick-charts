@@ -1,0 +1,1343 @@
+{
+  "$comment": [
+    "Every registered drawing tool with the facts a placement loop and a settings surface read: its category,",
+    "the anchor count that completes it, how anchors are gathered, whether it carries text or snapshots bars,",
+    "the style it starts with, and the sorted keys of its default props. drawingTools.test.ts builds each tool",
+    "from the catalog and compares; a tool whose shape changes moves this file in the same commit."
+  ],
+  "tools": [
+    {
+      "type": "abcd_pattern",
+      "category": "patterns",
+      "anchors": 4,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "anchored_volume_profile",
+      "category": "volume",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "developingPoc",
+        "developingVa",
+        "downColor",
+        "placement",
+        "pocColor",
+        "pocStyle",
+        "pocVisible",
+        "pocWidth",
+        "rowSize",
+        "rowsLayout",
+        "upColor",
+        "vahColor",
+        "vahStyle",
+        "vahVisible",
+        "vahWidth",
+        "valColor",
+        "valStyle",
+        "valVisible",
+        "valWidth",
+        "valueAreaDownColor",
+        "valueAreaUpColor",
+        "valueAreaVolume",
+        "volume",
+        "widthPercent"
+      ]
+    },
+    {
+      "type": "anchored_vwap",
+      "category": "volume",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "arc",
+      "category": "shapes",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "arrow",
+      "category": "lines",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "leftEnd",
+        "middlePoint",
+        "rightEnd",
+        "showAngle",
+        "showBarsRange",
+        "showDateTimeRange",
+        "showPercentChange",
+        "showPriceLabels",
+        "showPriceRange",
+        "statsPosition",
+        "text"
+      ]
+    },
+    {
+      "type": "arrow_down",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "text"
+      ]
+    },
+    {
+      "type": "arrow_marker",
+      "category": "annotation",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "text"
+      ]
+    },
+    {
+      "type": "arrow_up",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "text"
+      ]
+    },
+    {
+      "type": "bars_pattern",
+      "category": "forecasting",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": true,
+      "style": null,
+      "props": [
+        "bars",
+        "flipped",
+        "mirrored",
+        "mode"
+      ]
+    },
+    {
+      "type": "brush",
+      "category": "shapes",
+      "anchors": 2,
+      "placement": "freehand",
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "callout",
+      "category": "annotation",
+      "anchors": 2,
+      "placement": null,
+      "hasText": true,
+      "capturesBars": false,
+      "style": {
+        "fillColor": "#1b1f27",
+        "fillOpacity": 0.95
+      },
+      "props": [
+        "text"
+      ]
+    },
+    {
+      "type": "circle",
+      "category": "shapes",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "comment",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": true,
+      "capturesBars": false,
+      "style": {
+        "fillColor": "#1b1f27",
+        "fillOpacity": 0.95
+      },
+      "props": [
+        "align",
+        "text"
+      ]
+    },
+    {
+      "type": "content_card",
+      "category": "content",
+      "anchors": 1,
+      "placement": null,
+      "hasText": true,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "text",
+        "url"
+      ]
+    },
+    {
+      "type": "cross_line",
+      "category": "lines",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "showPrice",
+        "showTime"
+      ]
+    },
+    {
+      "type": "curve",
+      "category": "shapes",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "cyclic_lines",
+      "category": "cycles",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "cypher_pattern",
+      "category": "patterns",
+      "anchors": 5,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.12
+      },
+      "props": []
+    },
+    {
+      "type": "date_and_price_range",
+      "category": "measurement",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extend",
+        "showBars",
+        "showPercent",
+        "showPriceDelta",
+        "showTimeSpan",
+        "showVolume"
+      ]
+    },
+    {
+      "type": "date_range",
+      "category": "measurement",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extend",
+        "showBars",
+        "showPercent",
+        "showPriceDelta",
+        "showTimeSpan",
+        "showVolume"
+      ]
+    },
+    {
+      "type": "disjoint_channel",
+      "category": "channels",
+      "anchors": 4,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.08
+      },
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "showMiddle",
+        "text"
+      ]
+    },
+    {
+      "type": "double_curve",
+      "category": "shapes",
+      "anchors": 4,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "elliott_correction",
+      "category": "elliott",
+      "anchors": 4,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "elliott_double_combo",
+      "category": "elliott",
+      "anchors": 4,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "elliott_impulse_wave",
+      "category": "elliott",
+      "anchors": 6,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "elliott_triangle_wave",
+      "category": "elliott",
+      "anchors": 6,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "elliott_triple_combo",
+      "category": "elliott",
+      "anchors": 6,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "ellipse",
+      "category": "shapes",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "emoji",
+      "category": "content",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "glyph",
+        "size"
+      ]
+    },
+    {
+      "type": "extended",
+      "category": "lines",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "leftEnd",
+        "middlePoint",
+        "rightEnd",
+        "showAngle",
+        "showBarsRange",
+        "showDateTimeRange",
+        "showPercentChange",
+        "showPriceLabels",
+        "showPriceRange",
+        "statsPosition",
+        "text"
+      ]
+    },
+    {
+      "type": "fib_channel",
+      "category": "fibonacci",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLeft",
+        "extendRight",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "fib_circles",
+      "category": "fibonacci",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "coeffsAsPercents",
+        "extendLeft",
+        "extendRight",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "fib_retracement",
+      "category": "fibonacci",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLeft",
+        "extendRight",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "fib_speed_resist_arcs",
+      "category": "fibonacci",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLeft",
+        "extendRight",
+        "fullCircles",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "fib_speed_resist_fan",
+      "category": "fibonacci",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLeft",
+        "extendRight",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "fib_spiral",
+      "category": "fibonacci",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "fib_timezone",
+      "category": "fibonacci",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLeft",
+        "extendRight",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "fib_trend_ext",
+      "category": "fibonacci",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLeft",
+        "extendRight",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "fib_trend_time",
+      "category": "fibonacci",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLeft",
+        "extendRight",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "fib_wedge",
+      "category": "fibonacci",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLeft",
+        "extendRight",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "fixed_range_volume_profile",
+      "category": "volume",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "developingPoc",
+        "developingVa",
+        "downColor",
+        "extendRight",
+        "placement",
+        "pocColor",
+        "pocStyle",
+        "pocVisible",
+        "pocWidth",
+        "rowSize",
+        "rowsLayout",
+        "upColor",
+        "vahColor",
+        "vahStyle",
+        "vahVisible",
+        "vahWidth",
+        "valColor",
+        "valStyle",
+        "valVisible",
+        "valWidth",
+        "valueAreaDownColor",
+        "valueAreaUpColor",
+        "valueAreaVolume",
+        "volume",
+        "widthPercent"
+      ]
+    },
+    {
+      "type": "flag",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "flat_top_bottom",
+      "category": "channels",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.08
+      },
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "showMiddle",
+        "text"
+      ]
+    },
+    {
+      "type": "forecast",
+      "category": "forecasting",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "failureBackColor",
+        "failureTextColor",
+        "sourceBackColor",
+        "sourceBorderColor",
+        "sourceTextColor",
+        "successBackColor",
+        "successTextColor",
+        "targetBackColor",
+        "targetBorderColor",
+        "targetTextColor"
+      ]
+    },
+    {
+      "type": "gannbox",
+      "category": "gann",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "levels",
+        "showLabels"
+      ]
+    },
+    {
+      "type": "gannbox_fan",
+      "category": "gann",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "levels",
+        "showLabels"
+      ]
+    },
+    {
+      "type": "gannbox_fixed",
+      "category": "gann",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "levels",
+        "showLabels"
+      ]
+    },
+    {
+      "type": "gannbox_square",
+      "category": "gann",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "levels",
+        "showLabels"
+      ]
+    },
+    {
+      "type": "ghost_feed",
+      "category": "forecasting",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": true,
+      "style": null,
+      "props": [
+        "averageHL",
+        "borderDownColor",
+        "borderUpColor",
+        "downColor",
+        "drawBorder",
+        "drawWick",
+        "transparency",
+        "upColor",
+        "variance",
+        "wickColor"
+      ]
+    },
+    {
+      "type": "head_and_shoulders",
+      "category": "patterns",
+      "anchors": 7,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.12
+      },
+      "props": []
+    },
+    {
+      "type": "highlighter",
+      "category": "shapes",
+      "anchors": 2,
+      "placement": "freehand",
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "lineColor": "rgba(245, 166, 35, 0.35)"
+      },
+      "props": []
+    },
+    {
+      "type": "horizontal_line",
+      "category": "lines",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "showPrice",
+        "text"
+      ]
+    },
+    {
+      "type": "horizontal_ray",
+      "category": "lines",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "showPrice",
+        "text"
+      ]
+    },
+    {
+      "type": "icon",
+      "category": "content",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "glyph",
+        "size"
+      ]
+    },
+    {
+      "type": "image",
+      "category": "content",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "dataUrl",
+        "opacity",
+        "width"
+      ]
+    },
+    {
+      "type": "info_line",
+      "category": "lines",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "leftEnd",
+        "middlePoint",
+        "rightEnd",
+        "showAngle",
+        "showBarsRange",
+        "showDateTimeRange",
+        "showPercentChange",
+        "showPriceLabels",
+        "showPriceRange",
+        "statsPosition",
+        "text"
+      ]
+    },
+    {
+      "type": "inside_pitchfork",
+      "category": "pitchforks",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLines",
+        "levels",
+        "variant"
+      ]
+    },
+    {
+      "type": "long_position",
+      "category": "forecasting",
+      "anchors": 3,
+      "placement": "instant",
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "accountSize",
+        "compact",
+        "leverage",
+        "lotSize",
+        "risk",
+        "riskDisplay",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "measure",
+      "category": "measurement",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "note",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": true,
+      "capturesBars": false,
+      "style": {
+        "fillColor": "#1b1f27",
+        "fillOpacity": 0.95
+      },
+      "props": [
+        "align",
+        "text"
+      ]
+    },
+    {
+      "type": "parallel_channel",
+      "category": "channels",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.08
+      },
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "showMiddle",
+        "text"
+      ]
+    },
+    {
+      "type": "path",
+      "category": "shapes",
+      "anchors": 2,
+      "placement": "multipoint",
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "pin",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": true,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "text"
+      ]
+    },
+    {
+      "type": "pitchfan",
+      "category": "fibonacci",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLeft",
+        "extendRight",
+        "levels",
+        "reverse",
+        "showLevels",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "pitchfork",
+      "category": "pitchforks",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLines",
+        "levels",
+        "variant"
+      ]
+    },
+    {
+      "type": "polyline",
+      "category": "shapes",
+      "anchors": 2,
+      "placement": "multipoint",
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.1
+      },
+      "props": []
+    },
+    {
+      "type": "price_label",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "price_note",
+      "category": "annotation",
+      "anchors": 2,
+      "placement": null,
+      "hasText": true,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "text"
+      ]
+    },
+    {
+      "type": "price_range",
+      "category": "measurement",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extend",
+        "showBars",
+        "showPercent",
+        "showPriceDelta",
+        "showTimeSpan",
+        "showVolume"
+      ]
+    },
+    {
+      "type": "ray",
+      "category": "lines",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "leftEnd",
+        "middlePoint",
+        "rightEnd",
+        "showAngle",
+        "showBarsRange",
+        "showDateTimeRange",
+        "showPercentChange",
+        "showPriceLabels",
+        "showPriceRange",
+        "statsPosition",
+        "text"
+      ]
+    },
+    {
+      "type": "rectangle",
+      "category": "shapes",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "middleLine",
+        "text"
+      ]
+    },
+    {
+      "type": "regression_trend",
+      "category": "channels",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "lowerDeviation",
+        "source",
+        "upperDeviation",
+        "useLower",
+        "useUpper"
+      ]
+    },
+    {
+      "type": "rotated_rectangle",
+      "category": "shapes",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "schiff_pitchfork",
+      "category": "pitchforks",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLines",
+        "levels",
+        "variant"
+      ]
+    },
+    {
+      "type": "schiff_pitchfork_modified",
+      "category": "pitchforks",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "background",
+        "extendLines",
+        "levels",
+        "variant"
+      ]
+    },
+    {
+      "type": "sector",
+      "category": "forecasting",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.2
+      },
+      "props": []
+    },
+    {
+      "type": "short_position",
+      "category": "forecasting",
+      "anchors": 3,
+      "placement": "instant",
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "accountSize",
+        "compact",
+        "leverage",
+        "lotSize",
+        "risk",
+        "riskDisplay",
+        "showPrices"
+      ]
+    },
+    {
+      "type": "signpost",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": true,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "text"
+      ]
+    },
+    {
+      "type": "sine_line",
+      "category": "cycles",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "sticker",
+      "category": "content",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "glyph",
+        "size"
+      ]
+    },
+    {
+      "type": "table",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillColor": "#1b1f27",
+        "fillOpacity": 0.95
+      },
+      "props": [
+        "cells",
+        "colWidths",
+        "headerRow",
+        "rowHeights"
+      ]
+    },
+    {
+      "type": "text",
+      "category": "annotation",
+      "anchors": 1,
+      "placement": null,
+      "hasText": true,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "align",
+        "text"
+      ]
+    },
+    {
+      "type": "three_drives",
+      "category": "patterns",
+      "anchors": 6,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "time_cycles",
+      "category": "cycles",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.12
+      },
+      "props": []
+    },
+    {
+      "type": "trend_angle",
+      "category": "lines",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "leftEnd",
+        "middlePoint",
+        "rightEnd",
+        "showAngle",
+        "showBarsRange",
+        "showDateTimeRange",
+        "showPercentChange",
+        "showPriceLabels",
+        "showPriceRange",
+        "statsPosition",
+        "text"
+      ]
+    },
+    {
+      "type": "trend_line",
+      "category": "lines",
+      "anchors": 2,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "leftEnd",
+        "middlePoint",
+        "rightEnd",
+        "showAngle",
+        "showBarsRange",
+        "showDateTimeRange",
+        "showPercentChange",
+        "showPriceLabels",
+        "showPriceRange",
+        "statsPosition",
+        "text"
+      ]
+    },
+    {
+      "type": "triangle",
+      "category": "shapes",
+      "anchors": 3,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": []
+    },
+    {
+      "type": "triangle_pattern",
+      "category": "patterns",
+      "anchors": 4,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.12
+      },
+      "props": []
+    },
+    {
+      "type": "vertical_line",
+      "category": "lines",
+      "anchors": 1,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": null,
+      "props": [
+        "showTime",
+        "text"
+      ]
+    },
+    {
+      "type": "xabcd_pattern",
+      "category": "patterns",
+      "anchors": 5,
+      "placement": null,
+      "hasText": false,
+      "capturesBars": false,
+      "style": {
+        "fillOpacity": 0.12
+      },
+      "props": []
+    }
+  ]
+}

@@ -1,20 +1,21 @@
 // The registry count baselines (public-chart-library-boundary-plan.md acceptance gate: seven chart
 // styles, 23 built-in indicators, 90 drawings, 55 layouts, 26 preset timeframes, 60 timezones).
 // counts.baseline.json records each count with the file it was read from today; this test reads
-// those files and counts again. A stream that moves a registry into Quick Charts updates the
-// path in the baseline; the count itself moves only by a conscious decision, and the PCL-5
-// delivery rule says day one adds nothing to any of them.
+// those files and counts again. Every registry lives in Quick Charts or one of its bundled seams;
+// a registry that moves updates the path in the baseline, and the count itself moves only by a
+// conscious decision, because the PCL-5 delivery rule says day one adds nothing to any of them.
+// registries.test.ts pins the ids behind each count.
 import { describe, expect, it } from 'vitest'
 import baseline from './counts.baseline.json'
 
 const SOURCES = import.meta.glob(
   [
-    '/apps/web/src/chart/chartStyles.ts',
     '/packages/chart-drawings/src/registry.ts',
     '/packages/chart-indicators/src/registry.ts',
     '/packages/chart/src/layoutGrid.ts',
     '/packages/chart/src/timeframe.ts',
     '/packages/chart/src/timezones.ts',
+    '/packages/chart/src/widget/styles.ts',
   ],
   {
     query: '?raw',
