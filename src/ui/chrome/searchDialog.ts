@@ -115,6 +115,9 @@ export function openSearchDialog(deps: SearchDialogDeps): DialogHandle {
     host: deps.host,
     label: title,
     className: `qc-search-dialog qc-search-dialog--${mode}`,
+    // The compare family (compare, and a compare row's change-symbol) shares one role for a host
+    // test to find; the chart's own symbol search is the other.
+    role: mode === 'search' ? 'symbol-search' : 'compare-dialog',
     width: 840,
     onClose: () => {
       search.dispose()

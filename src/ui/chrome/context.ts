@@ -27,9 +27,3 @@ export function commandLabel(ctx: ChromeContext, id: string): string {
   if (!spec) return ''
   return spec.labelText ?? ctx.i18n.t(spec.label as ChartMessageKey)
 }
-
-/** Run a command and answer whether it ran. A refusal of any kind is false; the control that asked
- *  reflects `available` already, so a false here is a race rather than a surprise. */
-export function run(ctx: ChromeContext, id: string, arg?: unknown): boolean {
-  return ctx.commands.execute(id, arg).kind === 'ok'
-}

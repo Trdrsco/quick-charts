@@ -54,7 +54,7 @@ import { attachPointerPlane } from './pointer'
 import { attachMarks } from './marks'
 import type { ChromeDoors } from '../ui/chrome/doors'
 import { mountNavControls } from '../ui/chrome/navControls'
-import { mountReplayBar, type ReplayBarHandle } from '../ui/chrome/replayBar'
+import { mountReplayTransport, type ReplayTransportHandle } from '../ui/chrome/replayBar'
 import { createSaveLoadApi, type ChartSaveLoadApi, type ParsedChartContent } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
 import {
@@ -305,7 +305,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let earliestBarSecs: number | null = null
   /** The transport bar while replay is on, mounted by this chart from the plane's change signal
    *  so the replay plane owns no DOM. */
-  let replayBar: ReplayBarHandle | null = null
+  let replayBar: ReplayTransportHandle | null = null
   /** THE price formatter: one per symbol, in the chart's language. The price scale, the crosshair
    *  and last-price labels, the legend rows, the level menu, the drawing labels, the study scales
    *  and the extension seam all write through it, so no surface carries its own precision. */
@@ -589,7 +589,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       // The transport bar rides replay: mounted when replay comes on, taken down when it leaves,
       // and re-read on every change in between. It states every intent by command id.
       if (state.on && !replayBar && deps.features.replay) {
-        replayBar = mountReplayBar({ chrome, i18n, commands: deps.commands, handle, bars: () => bars, intraday: () => isIntradayTimeframe(tf) })
+        replayBar = mountReplayTransport({ chrome, i18n, commands: deps.commands, handle, bars: () => bars, intraday: () => isIntradayTimeframe(tf) })
       } else if (!state.on && replayBar) {
         replayBar.destroy()
         replayBar = null

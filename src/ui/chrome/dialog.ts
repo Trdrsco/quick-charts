@@ -20,6 +20,8 @@ export interface DialogOptions {
   /** The accessible name. The surface renders its own visible title. */
   label: string
   className?: string
+  /** A stable `data-role` a host test can find the dialog by. */
+  role?: string
   /** The box's width in CSS pixels; the stylesheet clamps it to the viewport. */
   width?: number
   /** Fill the box. */
@@ -31,7 +33,7 @@ export interface DialogOptions {
 
 export function openDialog(options: DialogOptions): DialogHandle {
   const scrim = h('div', { class: 'qc-scrim qc-dialog-scrim' })
-  const box = h('div', { class: `qc-overlay qc-dialog${options.className ? ` ${options.className}` : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': options.label })
+  const box = h('div', { class: `qc-overlay qc-dialog${options.className ? ` ${options.className}` : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': options.label, 'data-role': options.role })
   if (options.width) box.style.width = `${options.width}px`
   stopPointer(box)
   scrim.appendChild(box)
