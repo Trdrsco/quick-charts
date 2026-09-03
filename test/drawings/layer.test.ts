@@ -304,6 +304,16 @@ describe('the cursor', () => {
     expect(handle.count()).toBe(2)
   })
 
+  it('a Command-drag duplicates as a Control-drag does, so the hint the platform shows is the gesture it has', () => {
+    const { container, handle } = make()
+    handle.armTool('rectangle')
+    drag(container, [10, 10], [100, 100])
+    drag(container, [10, 55], [110, 55], { metaKey: true })
+    expect(handle.count()).toBe(2)
+    click(container, 10, 55, { metaKey: true })
+    expect(handle.count()).toBe(2)
+  })
+
   it('reports the drawing under the resting pointer', () => {
     const { container, handle } = make()
     handle.armTool('rectangle')

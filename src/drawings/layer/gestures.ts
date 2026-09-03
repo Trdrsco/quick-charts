@@ -60,7 +60,8 @@ export interface Drag {
    *  handles never wobble apart on independent per-anchor time rounding. */
   origLogicals: (number | null)[]
   moved: boolean
-  /** A Ctrl-drag duplicate: the drag moves a fresh copy, and an unmoved release discards it. */
+  /** A Control- or Command-drag duplicate: the drag moves a fresh copy, and an unmoved release
+   *  discards it. */
   cloned?: boolean
 }
 
@@ -313,8 +314,8 @@ export function bindGestures(ctx: GestureContext): () => void {
       }
       const hit = manager.hitTest(p)
       if (hit) {
-        // A Ctrl-drag duplicates: the gesture grabs a fresh copy and moves that.
-        if (e.ctrlKey && !editRefused('clone', hit.options, false)) {
+        // A Control- or Command-drag duplicates: the gesture grabs a fresh copy and moves that.
+        if ((e.ctrlKey || e.metaKey) && !editRefused('clone', hit.options, false)) {
           const copy = drawingTools.restore({ ...hit.toJSON(), id: ctx.nextId() })
           if (copy) {
             manager.add(copy)
@@ -465,7 +466,7 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (drag) {
       ctx.drag = null
       freezePan(!!ctx.armed()) // an armed tool keeps the chart frozen; the cursor releases it
-      // A Ctrl-click that duplicated but never moved leaves no copy behind.
+      // A modified press that duplicated but never moved leaves no copy behind.
       if (drag.cloned && !drag.moved) manager.remove(drag.drawing.id)
       // An unmoved press inside a table lands in a cell: type right there.
       if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.drawing.type === 'table') {
