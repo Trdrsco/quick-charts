@@ -219,7 +219,7 @@ void udf
 if (tfToUdfResolution('1h') !== '60') throw new Error('unexpected resolution mapping')
 if (udfResolutionToTf('D') !== '1d') throw new Error('unexpected inverse resolution mapping')
 if (resolveInitialTf('3m', ['1m', '4h']) !== '1m') throw new Error('unexpected initial-tf resolution')
-if (!placeableByWidget('trend_line') || placeableByWidget('brush')) throw new Error('unexpected widget placeability')
+if (!placeableByWidget('trend_line') || !placeableByWidget('brush') || placeableByWidget('not-a-tool')) throw new Error('unexpected widget placeability')
 
 // The drawing layer types against a real chart/series pair (construction is DOM-bound; the render
 // smoke executes it) and the persisted store document round-trips through the shared codec.

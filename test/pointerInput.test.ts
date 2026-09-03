@@ -95,18 +95,17 @@ describe('press and hold is the touch way into the level menu', () => {
 })
 
 describe('drawing placement is the chart’s own gesture', () => {
-  it('the package decides which tools a plain widget can place, without asking a host', () => {
-    // Placement is chart behavior: a drawing tool the package cannot place must not be armable from
-    // any surface, and that answer comes from the package rather than from an app catalog.
+  it('the package places every registered tool and the transient tools, without asking a host', () => {
+    // Placement is chart behavior: every tool the catalog registers is placeable by the package's
+    // own pointer loop, and so are the three transient tools. Only a name the catalog does not
+    // know is refused, and that answer comes from the package rather than from an app catalog.
     expect(placeableByWidget('trend_line')).toBe(true)
-    expect(placeableByWidget('horizontal_line')).toBe(true)
-    // A tool whose placement is not a plain sequence of anchor presses, or that needs the host's
-    // text editor, is not placeable by the widget's own pointer loop.
-    expect(placeableByWidget('long_position')).toBe(false)
-    expect(placeableByWidget('content_card')).toBe(false)
+    expect(placeableByWidget('long_position')).toBe(true)
+    expect(placeableByWidget('content_card')).toBe(true)
+    expect(placeableByWidget('brush')).toBe(true)
+    expect(placeableByWidget('measure')).toBe(true)
     expect(placeableByWidget('not-a-tool')).toBe(false)
   })
-
   it('an armed tool owns the touch surface until it is disarmed', () => {
     // The chart reads the layer's own armed tool rather than a flag of its own, so arming from any
     // door (the rail, a host command, a keyboard shortcut) stands the hold down the same way.

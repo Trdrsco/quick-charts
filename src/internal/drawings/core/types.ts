@@ -126,6 +126,9 @@ export interface ControlPoint {
 export interface IDrawing {
   readonly id: string
   readonly type: string
+  /** The chart surface this drawing is bound to, when it is bound to one; undefined is shared by
+   *  every surface showing the symbol. The host assigns and compares it; the model only carries it. */
+  scope?: string
   anchors: readonly Anchor[]
   style: Readonly<DrawingStyle>
   options: Readonly<DrawingOptions>
