@@ -10,7 +10,6 @@
 // so the loan can never depend on which door was used.
 import type { IChartApi } from 'lightweight-charts'
 import { attachCompare, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSymbol } from '../compare'
-import { openCompareDialog, type CompareDialogHandle } from '../compareDialog'
 import type { ChartDatafeed } from '../datafeed'
 import type { ChartI18n } from '../i18n'
 import type { LegendChip } from '../chartLegend'
@@ -36,7 +35,8 @@ export interface ComparePlane {
   handle: CompareHandle
   /** The legend rows for the current compares. */
   chips(): LegendChip[]
-  /** Open the chart's own dialog: the legend's compare door, or a row's change-symbol. */
+  /** Open the search dialog: the legend's compare door, or a row's change-symbol. The dialog is
+   *  the widget chrome's; this plane supplies the pick that re-keys a compare in place. */
   openDialog(mode: 'compare' | 'change-symbol', changeFrom?: string): void
   /** Follow a timeframe switch. */
   setTimeframe(): void
@@ -53,8 +53,8 @@ export interface CompareDeps {
   chart: IChartApi
   datafeed: ChartDatafeed
   i18n: ChartI18n
-  /** The chrome subtree the dialog mounts into. */
-  chrome: HTMLElement
+  /** The widget chrome's search door. `onPick` receives a change-symbol pick. */
+  openSearch(mode: 'compare' | 'change-symbol', changeFrom: string | undefined, onPick: (symbol: string) => void): void
   symbol(): string
   timeframe(): string
   /** The main bar window, or null before first data. */
@@ -144,8 +144,6 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     return format ? createPriceFormatter(format, { locale: deps.i18n.tag() }) : null
   }
 
-  let dialog: CompareDialogHandle | null = null
-
   return {
     handle,
     api: {
@@ -175,29 +173,16 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     },
     openDialog(mode, changeFrom) {
       if (deps.disposed() || !deps.enabled) return
-      dialog?.close()
-      dialog = openCompareDialog({
-        container: deps.chrome,
-        strings: deps.i18n,
-        datafeed: deps.datafeed,
-        mode,
-        curated: deps.curated,
-        added: () => handle.list(),
-        onAdd: add,
-        onRemove: remove,
-        initialQuery: changeFrom,
-        onPick: (next) => {
-          if (!changeFrom || next === changeFrom || next === deps.symbol()) return
-          const current = handle.list().find((e) => e.symbol === changeFrom)
-          if (!current || handle.list().some((e) => e.symbol === next)) return
-          handle.remove(changeFrom)
-          handle.add(next, { placement: current.placement, color: current.color, visible: current.visible })
-          scalePolicy()
-          deps.onEvent(handle.list())
-        },
-        onClose: () => {
-          dialog = null
-        },
+      deps.openSearch(mode, changeFrom, (next) => {
+        // A change-symbol pick re-keys the compare in place: the placement, color and visibility
+        // the row had carry over to the new symbol, so the trader swapped a market, not a row.
+        if (!changeFrom || next === changeFrom || next === deps.symbol()) return
+        const current = handle.list().find((e) => e.symbol === changeFrom)
+        if (!current || handle.list().some((e) => e.symbol === next)) return
+        handle.remove(changeFrom)
+        handle.add(next, { placement: current.placement, color: current.color, visible: current.visible })
+        scalePolicy()
+        deps.onEvent(handle.list())
       })
     },
     setTimeframe: () => handle.setTimeframe(),
@@ -214,8 +199,6 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     destroy() {
       if (chipTimer) clearTimeout(chipTimer)
       chipTimer = null
-      dialog?.close()
-      dialog = null
       handle.destroy()
     },
   }

@@ -1,10 +1,12 @@
-// Multi-chart arrangement names for a layout picker — one per code in the ARRANGEMENTS catalog,
-// which carries the English of each as its own `label`, so the fallback and the source never drift.
-// The key is the arrangement's code with its separators as underscores (`2-2-l` → `layout.2_2_l`),
-// the shape every catalog key here takes; `arrangementName` does that conversion, so a caller passes
-// the code it already has.
+// Multi-chart arrangement names for a layout picker (`layout.<code>`), and the layout menus' own
+// vocabulary (`layouts.*`): the setup menu with its sync switches, and the saved-layouts menu.
 //
-// A name says the shape rather than counting panes: the count is already on the picker's own row.
+// Arrangement names: one per code in the ARRANGEMENTS catalog, which carries the English of each
+// as its own `label`, so the fallback and the source never drift. The key is the arrangement's
+// code with its separators as underscores (`2-2-l` becomes `layout.2_2_l`), the shape every catalog
+// key here takes; `arrangementName` does that conversion, so a caller passes the code it already
+// has. A name says the shape rather than counting panes: the count is already on the picker's own
+// row.
 export const layouts = {
   'layout.s': 'Single chart',
   'layout.2h': '2 columns',
@@ -61,4 +63,62 @@ export const layouts = {
   'layout.14c7': '7 × 2 grid',
   'layout.16c8': '8 × 2 grid',
   'layout.16c4': '4 × 4 grid',
+
+  // The layout setup menu: the arrangement grid and the sync switches. A switch's own accessible
+  // name is spelled out per row rather than built from its label, because recasing a word is a
+  // thing only its own language may do.
+  'layouts.setup': 'Layout setup',
+  'layouts.arrangement': 'Chart arrangement',
+  'layouts.syncInLayout': 'Sync in layout',
+  'layouts.syncSymbol': 'Symbol',
+  'layouts.syncInterval': 'Interval',
+  'layouts.syncCrosshair': 'Crosshair',
+  'layouts.syncTime': 'Time',
+  'layouts.syncDateRange': 'Date range',
+  'layouts.syncSymbolTip': 'Symbol changes on all charts within the layout',
+  'layouts.syncIntervalTip': 'Interval changes on all charts within the layout',
+  'layouts.syncCrosshairTip': 'Crosshair is synced across all charts within the layout',
+  'layouts.syncTimeTip': 'When a chart is clicked, all charts within the layout display the same point of time',
+  'layouts.syncDateRangeTip': 'Date range changes on all charts within the layout',
+  'layouts.syncSymbolToggle': 'Sync symbol',
+  'layouts.syncIntervalToggle': 'Sync interval',
+  'layouts.syncCrosshairToggle': 'Sync crosshair',
+  'layouts.syncTimeToggle': 'Sync time',
+  'layouts.syncDateRangeToggle': 'Sync date range',
+  // The saved-layouts menu: the name on the toolbar and its rows. A layout's name, symbol and
+  // timeframe are the viewer's own data.
+  'layouts.unnamed': 'Unnamed',
+  'layouts.unsavedChanges': 'Unsaved changes',
+  'layouts.allSaved': 'All changes saved',
+  'layouts.manage': 'Manage layouts',
+  'layouts.saveLayout': 'Save layout',
+  'layouts.save': 'Save',
+  'layouts.autosave': 'Autosave',
+  'layouts.namePlaceholder': 'Layout name',
+  'layouts.renameLayout': 'Rename layout',
+  'layouts.rename': 'Rename',
+  /** The name a copy is prefilled with, before the viewer edits it. The layout's identity is its id. */
+  'layouts.copyOfName': '{name} copy',
+  'layouts.makeCopyRow': 'Make a copy',
+  'layouts.renameRow': 'Rename',
+  'layouts.createNewRow': 'Create new layout',
+  'layouts.recentlyUsed': 'Recently used',
+  'layouts.loading': 'Loading',
+  'layouts.emptyNone': 'No saved layouts yet.',
+  'layouts.openLayoutRow': 'Open layout',
+  // The Open-layout dialog.
+  'layouts.openLayout': 'Open layout',
+  'layouts.search': 'Search layouts',
+  'layouts.noMatches': 'Nothing matches.',
+  'layouts.delete': 'Delete',
+  'layouts.deleteNamed': 'Delete {name}',
+  'layouts.deleteConfirm': 'Delete this layout?',
+  'layouts.deleteConfirmBody': 'This permanently deletes {name}.',
+  'layouts.cancel': 'Cancel',
+  'layouts.close': 'Close',
+  // Failures the menu surfaces itself. An adapter's own message is shown verbatim.
+  'layouts.errSave': 'Could not save the layout.',
+  'layouts.errLoad': 'Could not open the layout.',
+  'layouts.errDelete': 'Could not delete the layout.',
+  'layouts.errList': 'Could not load your saved layouts.',
 } as const

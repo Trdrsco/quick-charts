@@ -57,6 +57,35 @@ export interface FeatureConfig {
   compareSymbols?: readonly CompareSymbol[]
   /** Bar replay and its transport bar. */
   replay?: boolean
+  /** The top bar: the symbol pill, the compare door, the timeframe picker, the style picker, the
+   *  indicators button, the replay button, the layout menus, the settings menu, fullscreen and the
+   *  image menu. Each of those has its own flag below; this one removes the bar itself. */
+  topBar?: boolean
+  /** The bottom bar: range presets, the clock, the timezone picker and the session view. */
+  bottomBar?: boolean
+  /** The on-chart navigation cluster: zoom, scroll and reset. */
+  navigation?: boolean
+  /** The legend's market-status control and its popup. The dot itself stays. */
+  marketStatus?: boolean
+  /** The symbol pill and the search dialog's search mode. Compare keeps its own dialog mode. */
+  symbolSearch?: boolean
+  /** The timeframe picker. */
+  timeframes?: boolean
+  /** The chart-style picker. */
+  chartStyles?: boolean
+  /** The indicator picker and the indicator settings dialog. The legend's gear opens the
+   *  inputs-only editor instead when this is off. */
+  indicators?: boolean
+  /** The layout setup menu and the saved-layouts menu. */
+  layouts?: boolean
+  /** The chart settings menu. */
+  settings?: boolean
+  /** The fullscreen button. */
+  fullscreen?: boolean
+  /** The image menu. */
+  image?: boolean
+  /** The chart's own notices: feed states, the image fallback, a refused save. */
+  toasts?: boolean
 }
 
 /** ── ACCESS ──────────────────────────────────────────────────────────────────────────────────
@@ -95,6 +124,12 @@ export interface ChartPreferences {
   /** The standing drawing choices: cursor, magnet, stay-in-mode, favorites, per-group rail tools.
    *  The drawing models own what each one means; the chart only persists the record. */
   drawings: DrawingPreferences
+  /** The timeframe tokens the top bar shows as quick-select chips. */
+  savedTimeframes: readonly string[]
+  /** Timeframe tokens the viewer composed beyond the presets. */
+  customTimeframes: readonly string[]
+  /** Whether the saved-layouts menu saves the open layout on every change. */
+  layoutAutosave: boolean
 }
 
 /** ── CAPABILITIES ────────────────────────────────────────────────────────────────────────────
@@ -231,8 +266,13 @@ export interface ChartWidgetOptions {
   image?: ImageOptions
   /** The symbol picker's host inputs. The chart owns the search controller (its debounce, cache and
    *  cancellation); a host supplies only what it alone knows: where the viewer's recent symbols
-   *  live. Absent, recents last the page. */
-  search?: { recents?: RecentsPort }
+   *  live, and what its feed's asset classes are called. Absent, recents last the page and a
+   *  class's filter chip wears the class token as written. */
+  search?: {
+    recents?: RecentsPort
+    /** Display names for the asset-class tokens the feed's `config()` declares in `classes`. */
+    classNames?: Readonly<Record<string, string>>
+  }
   /** Where the image and glyph drawing tools get their artwork, and how a picked file becomes a
    *  usable payload. Absent, those tools draw their glyphs as text and take no file. */
   assets?: DrawingAssetPort

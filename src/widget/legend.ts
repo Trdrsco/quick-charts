@@ -2,7 +2,7 @@
 //
 // The legend itself owns no chart state. It reports an intent, this module turns that intent into a
 // call on the plane that owns the state, and the resulting recompute pushes fresh rows back. The
-// row list is ONE list — indicator rows followed by compare rows — so a compare row and a study row
+// row list is ONE list, indicator rows followed by compare rows, so a compare row and a study row
 // cannot end up rendered by two different passes and disagree.
 import type { IChartApi } from 'lightweight-charts'
 import { mountChartLegend, type ChartLegend, type LegendChip } from '../chartLegend'
@@ -11,7 +11,8 @@ import { openInputsEditor } from '../inputsEditor'
 import { manifestInputDefaults } from '../indicatorModel'
 import { COLLAPSED_H, planPaneOp } from '../panePlan'
 import type { ScaleMode } from '../scaleMode'
-import type { SessionState } from '../sessionModel'
+import type { MarketStatus, SessionModel, SessionState } from '../sessionModel'
+import { openMarketStatus } from '../ui/chrome/marketStatus'
 import type { IndicatorsPlane } from './indicators'
 import type { ComparePlane } from './compare'
 import type { CommandRegistry } from './commands'
@@ -38,9 +39,17 @@ export interface LegendDeps {
   chrome: HTMLElement
   i18n: ChartI18n
   enabled: boolean
+  /** Whether the dot opens the market-status popup. */
+  marketStatus: boolean
   indicators: IndicatorsPlane
   compare: ComparePlane | null
   scaleMode(): ScaleMode
+  /** The symbol's session model and status, for the popup. */
+  sessionModel(): SessionModel | null
+  status(nowSecs: number): MarketStatus | null
+  /** The chrome's indicator settings door. False when no dialog took the request, in which case
+   *  the inputs-only editor opens at the gear. */
+  openIndicatorSettings(instanceId: string): boolean
 }
 
 export function attachLegendPlane(deps: LegendDeps): LegendPlane {
@@ -77,8 +86,17 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       if (id.startsWith(COMPARE_ROW_PREFIX)) deps.commands.execute('chart.compare.remove', id.slice(COMPARE_ROW_PREFIX.length))
     },
     ...(deps.compare ? { onCompare: () => deps.commands.execute('chart.compare.open') } : {}),
+    ...(deps.marketStatus
+      ? {
+          onStatus: (anchor: HTMLElement) =>
+            openMarketStatus(anchor, { host: deps.chrome, i18n: deps.i18n, model: deps.sessionModel, status: deps.status }),
+        }
+      : {}),
     onScaleMode: (mode) => deps.commands.execute(`chart.scale.${mode}`),
     onSettings: (id, rect) => {
+      // The settings dialog takes the gear when the chrome serves one; otherwise the inputs-only
+      // editor opens at the gear, as the smallest surface that still edits the declaration.
+      if (deps.openIndicatorSettings(id)) return
       const inst = deps.indicators.list().find((i) => i.id === id)
       if (!inst) return
       openInputsEditor(

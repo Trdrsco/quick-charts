@@ -13,15 +13,15 @@ import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry, CommandSpec } from './commands'
 import type { ChartHandle } from './chart'
 import type { DrawingVerbs } from './drawings'
-import type { Capabilities } from './options'
 import { CURSOR_MODES, type CursorMode, type HideState, type MagnetMode, type VisibilityPreset } from '../drawings/index'
+import type { Capabilities, IndicatorInstance } from './options'
+import type { ComparePlacement } from '../compare'
 import type { ResolvedFeatures } from './planes'
 import { CHART_STYLES, type ChartStyleId } from './styles'
 import { REPLAY_SPEEDS } from '../replay'
 import { allowedTimeframes, TIMEFRAME_PRESETS, timeframeLabel } from '../timeframe'
 import { rangeAvailable, RANGE_PRESETS, type RangePreset } from '../ranges'
 import { isTimezoneChoice, TIMEZONES, EXCHANGE_TIMEZONE } from '../timezones'
-import { DEFAULT_SUBSESSION } from '../sessionModel'
 
 /** The catalog key each chart style's command wears. */
 const STYLE_LABEL: Record<ChartStyleId, ChartMessageKey> = {
@@ -75,6 +75,18 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   }
   const always = (): boolean => true
 
+  // ── The symbol. One setter taking the symbol, so the search dialog, a host toolbar and an
+  // operator adapter all change the market through the same door.
+  add({
+    id: 'chart.symbol.set',
+    scope: 'chart',
+    label: 'command.symbolSet',
+    available: always,
+    execute: (arg) => {
+      if (typeof arg === 'string' && arg) handle.setSymbol(arg)
+    },
+  })
+
   // ── View and navigation ─────────────────────────────────────────────────────────────────────
   add({ id: 'chart.view.reset', scope: 'chart', label: 'command.viewReset', shortcut: 'Alt+KeyR', available: always, execute: () => handle.reset() })
   add({ id: 'chart.view.goLive', scope: 'chart', label: 'command.viewGoLive', shortcut: 'Alt+KeyL', available: always, execute: () => handle.goLive() })
@@ -109,6 +121,21 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     })
   }
 
+  // ── Appearance. One command taking an appearance partial: the settings menu, a host control and
+  // an operator adapter all restyle the chart through the same runtime layer.
+  add({
+    id: 'chart.appearance.apply',
+    scope: 'chart',
+    label: 'command.appearanceApply',
+    available: always,
+    execute: (arg) => {
+      const partial = arg as { appearance?: unknown } | null
+      if (partial && typeof partial === 'object' && partial.appearance && typeof partial.appearance === 'object') {
+        handle.applyAppearance({ appearance: partial.appearance as Partial<ReturnType<ChartHandle['appearance']>['appearance']> })
+      }
+    },
+  })
+
   // ── Scale modes ─────────────────────────────────────────────────────────────────────────────
   for (const mode of SCALE_MODES) {
     add({
@@ -121,6 +148,32 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   }
 
   // ── Indicators ──────────────────────────────────────────────────────────────────────────────
+  // Adding and updating take the whole instance: the picker composes one from a definition, and
+  // the settings dialog hands back the instance with its inputs and overrides changed. The access
+  // policy's indicator predicate is asked inside the plane, so a refused id is refused here too.
+  const isInstance = (arg: unknown): arg is IndicatorInstance =>
+    !!arg && typeof arg === 'object' && typeof (arg as IndicatorInstance).id === 'string' && typeof (arg as IndicatorInstance).definition === 'object'
+  add({
+    id: 'chart.indicators.add',
+    scope: 'chart',
+    label: 'command.indicatorAdd',
+    available: always,
+    execute: (arg) => {
+      if (isInstance(arg)) handle.indicators.add(arg)
+    },
+  })
+  add({
+    id: 'chart.indicators.update',
+    scope: 'chart',
+    label: 'command.indicatorUpdate',
+    available: () => handle.indicators.get().length > 0,
+    execute: (arg) => {
+      if (!isInstance(arg)) return
+      const current = handle.indicators.get()
+      if (!current.some((i) => i.id === arg.id)) return
+      handle.indicators.set(current.map((i) => (i.id === arg.id ? arg : i)))
+    },
+  })
   add({
     id: 'chart.indicators.removeAll',
     scope: 'chart',
@@ -318,13 +371,22 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     available: () => features.compare && deps.capabilities().search,
     execute: () => deps.compareOpen('compare'),
   })
+  // A symbol alone adds on the shared scale; a `{ symbol, placement }` names the placement.
+  const PLACEMENTS: readonly ComparePlacement[] = ['same-percent', 'new-scale', 'new-pane']
   add({
     id: 'chart.compare.add',
     scope: 'chart',
     label: 'command.compareAdd',
     available: () => features.compare,
     execute: (arg) => {
-      if (typeof arg === 'string') handle.compare.add(arg, { placement: 'same-percent' })
+      if (typeof arg === 'string') {
+        handle.compare.add(arg, { placement: 'same-percent' })
+        return
+      }
+      const at = arg as { symbol?: unknown; placement?: unknown } | null
+      if (!at || typeof at.symbol !== 'string') return
+      const placement = PLACEMENTS.includes(at.placement as ComparePlacement) ? (at.placement as ComparePlacement) : 'same-percent'
+      handle.compare.add(at.symbol, { placement })
     },
   })
   add({
@@ -357,7 +419,15 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   })
 
   // ── Replay ──────────────────────────────────────────────────────────────────────────────────
-  add({ id: 'chart.replay.start', scope: 'chart', label: 'command.replayStart', available: () => features.replay && !handle.replay.state().on, execute: () => handle.replay.start() })
+  // Start takes an optional moment (epoch seconds): the bar picked on the chart or the date picked
+  // in the dialog. Without one, replay opens three quarters through the loaded window.
+  add({
+    id: 'chart.replay.start',
+    scope: 'chart',
+    label: 'command.replayStart',
+    available: () => features.replay && !handle.replay.state().on,
+    execute: (arg) => handle.replay.start(typeof arg === 'number' && Number.isFinite(arg) ? arg : undefined),
+  })
   add({ id: 'chart.replay.exit', scope: 'chart', label: 'command.replayExit', available: () => handle.replay.state().on, execute: () => handle.replay.exit() })
   add({ id: 'chart.replay.play', scope: 'chart', label: 'command.replayPlay', available: () => handle.replay.state().on && !handle.replay.state().playing, execute: () => handle.replay.play() })
   add({ id: 'chart.replay.pause', scope: 'chart', label: 'command.replayPause', available: () => handle.replay.state().playing, execute: () => handle.replay.pause() })
@@ -372,6 +442,15 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     execute: (arg) => {
       const speed = Number(arg)
       if ((REPLAY_SPEEDS as readonly number[]).includes(speed)) handle.replay.setSpeed(speed as (typeof REPLAY_SPEEDS)[number])
+    },
+  })
+  add({
+    id: 'chart.replay.setInterval',
+    scope: 'chart',
+    label: 'command.replayInterval',
+    available: () => handle.replay.state().on,
+    execute: (arg) => {
+      if (typeof arg === 'string' && arg) handle.replay.setInterval(arg)
     },
   })
 
@@ -478,8 +557,8 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     id: 'chart.subsession.regular',
     scope: 'chart',
     label: 'command.subsessionRegular',
-    available: () => handle.subsession() !== DEFAULT_SUBSESSION,
-    execute: () => handle.setSubsession(DEFAULT_SUBSESSION),
+    available: () => handle.hasExtendedHours() && handle.subsession() !== 'regular',
+    execute: () => handle.setSubsession('regular'),
   })
   add({
     id: 'chart.subsession.extended',

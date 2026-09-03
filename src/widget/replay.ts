@@ -15,9 +15,7 @@
 // does about a historical view is its own rule.
 import type { IChartApi } from 'lightweight-charts'
 import type { ChartDatafeed, FeedBar } from '../datafeed'
-import type { ChartI18n } from '../i18n'
 import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from '../replay'
-import { mountReplayBar, type ReplayBarHandle } from '../replayBar'
 
 /** The bar-replay surface a host drives. */
 export interface ChartReplayApi {
@@ -32,6 +30,13 @@ export interface ChartReplayApi {
   setSpeed(speed: ReplaySpeed): void
   /** Jump the cursor to the live edge. Playback pauses; replay stays on. */
   goLive(): void
+  /** The update grain: `auto`, or one of the finer timeframe tokens `subIntervals()` lists. */
+  interval(): string
+  /** Set the grain. A token the chart timeframe cannot form from is refused. */
+  setInterval(token: string): void
+  /** The finer timeframe tokens the chart timeframe can form bars from; empty means whole-bar
+   *  updates only. */
+  subIntervals(): readonly string[]
   state(): { on: boolean; playing: boolean; cursor: number; total: number; speed: ReplaySpeed }
 }
 
@@ -57,9 +62,6 @@ export interface ReplayPlane {
 export interface ReplayDeps {
   chart: IChartApi
   datafeed: ChartDatafeed
-  i18n: ChartI18n
-  /** The chrome subtree the transport bar mounts into. */
-  chrome: HTMLElement
   symbol(): string
   timeframe(): string
   /** The chart's PAINTED bars: the model the active subsession leaves visible. The replay master is
@@ -81,10 +83,9 @@ export interface ReplayDeps {
   setHeader(replaying: boolean): void
   /** Persist a preference the viewer just changed. */
   persist(key: 'speed' | 'interval', value: string): void
-  /** The cursor moved, entered or left. */
+  /** The cursor moved, entered or left. The chart's chrome mounts and unmounts the transport bar
+   *  from this, so the plane owns no DOM. */
   onChange(): void
-  /** Run one of the chart's commands by id: the transport's controls are verbs like any other. */
-  run(id: string, arg?: unknown): void
   /** Initial preference values. */
   initialSpeed: ReplaySpeed
   initialInterval: string
@@ -101,7 +102,6 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
   let cursor = 0
   let playing = false
   let timer: ReturnType<typeof setInterval> | null = null
-  let bar: ReplayBarHandle | null = null
   let speed: ReplaySpeed = deps.initialSpeed
   let autoInterval = deps.initialInterval === 'auto'
   let manualInterval: string | null = autoInterval ? null : deps.initialInterval
@@ -115,15 +115,9 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
   }
 
   const sync = (): void => {
-    bar?.sync({
-      playing,
-      cursor,
-      total: master?.length ?? 0,
-      speed,
-      interval: autoInterval ? 'auto' : (manualInterval ?? 'auto'),
-    })
     deps.onChange()
   }
+  const currentInterval = (): string => (autoInterval ? 'auto' : (manualInterval ?? 'auto'))
   const paintCursor = (): void => {
     if (!master) return
     deps.paint(master.slice(0, cursor))
@@ -211,8 +205,6 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
     master = null
     subs = null
     formK = 0
-    bar?.destroy()
-    bar = null
     deps.onChange()
   }
 
@@ -224,34 +216,6 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
       const at = atSec ?? master[Math.floor(master.length * 0.75)]!.t
       const idx = master.findIndex((b) => b.t >= at)
       cursor = Math.max(2, (idx === -1 ? master.length - 1 : idx) + 1)
-      bar = mountReplayBar(
-        deps.chrome,
-        {
-          // The transport states intents by command id for the same reason the legend does: a host
-          // that forbids a replay verb must not be able to reach it by clicking the bar.
-          play: () => deps.run('chart.replay.play'),
-          pause: () => deps.run('chart.replay.pause'),
-          stepForward: () => deps.run('chart.replay.stepForward'),
-          stepBack: () => deps.run('chart.replay.stepBack'),
-          setSpeed: (s) => deps.run('chart.replay.setSpeed', s),
-          setInterval: (token) => {
-            if (token === 'auto') {
-              autoInterval = true
-            } else {
-              autoInterval = false
-              manualInterval = token
-            }
-            deps.persist('interval', autoInterval ? 'auto' : (manualInterval ?? 'auto'))
-            subs = null // the next update re-fetches at the new grain
-            formK = 0
-            sync()
-          },
-          goLive: () => deps.run('chart.replay.goLive'),
-          exit: () => deps.run('chart.replay.exit'),
-        },
-        subIntervalsFor(deps.timeframe()).map((s) => s.tf),
-        deps.i18n,
-      )
       deps.setHeader(true)
       paintCursor()
       sync()
@@ -304,6 +268,23 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
       paintCursor()
       sync()
     },
+    interval: currentInterval,
+    setInterval(token) {
+      if (token === 'auto') {
+        autoInterval = true
+      } else {
+        // A grain the chart timeframe cannot form from is refused rather than stored: the next
+        // update would fall back to whole bars and the menu would claim a grain it never used.
+        if (!subIntervalsFor(deps.timeframe()).some((s) => s.tf === token)) return
+        autoInterval = false
+        manualInterval = token
+      }
+      deps.persist('interval', currentInterval())
+      subs = null // the next update re-fetches at the new grain
+      formK = 0
+      sync()
+    },
+    subIntervals: () => subIntervalsFor(deps.timeframe()).map((s) => s.tf),
     state: () => ({ on: master !== null, playing, cursor, total: master?.length ?? deps.bars().length, speed }),
   }
 
@@ -328,7 +309,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
     abandon,
     snapshot: () => ({ on: master !== null, playing, cursor: master === null ? deps.bars().length : cursor, total: master?.length ?? deps.bars().length }),
     speed: () => speed,
-    interval: () => (autoInterval ? 'auto' : (manualInterval ?? 'auto')),
+    interval: currentInterval,
     destroy() {
       abandon()
     },
