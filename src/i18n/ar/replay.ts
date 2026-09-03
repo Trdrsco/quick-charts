@@ -11,6 +11,8 @@ export const replay: Translation<typeof source> = {
   'replay.pickBarHint': 'Click a bar on the chart to start replay there',
   'replay.startDateField': 'Replay start date',
   'replay.startTimeField': 'Replay start time (UTC, optional)',
+  'replay.dateMask': 'YYYY-MM-DD',
+  'replay.timeMask': 'HH:MM',
   'replay.previousMonth': 'Previous month',
   'replay.nextMonth': 'Next month',
   'replay.cancel': 'Cancel',

@@ -101,6 +101,8 @@ export function openSearchDialog(deps: SearchDialogDeps): DialogHandle {
   const mode = request.mode
   const compare = mode === 'compare'
   const chart = request.chart
+  // Ids carry the chart id so two instances in one document never share one.
+  const listId = `qc-search-${chart.id}-list`
   const search = createSearchController(deps.datafeed, { pageSize: 50 })
   let query = request.changeFrom ?? ''
   let cls = ''
@@ -124,7 +126,7 @@ export function openSearchDialog(deps: SearchDialogDeps): DialogHandle {
       observer?.disconnect()
     },
     build(box, handle) {
-      const input = h('input', { type: 'text', role: 'combobox', class: 'qc-search-input', 'aria-label': t('search.placeholder'), placeholder: t('search.placeholder'), autocomplete: 'off', 'aria-autocomplete': 'list', 'aria-expanded': 'true', 'aria-controls': 'qc-search-list', spellcheck: 'false', value: query })
+      const input = h('input', { type: 'text', role: 'combobox', class: 'qc-search-input', 'aria-label': t('search.placeholder'), placeholder: t('search.placeholder'), autocomplete: 'off', 'aria-autocomplete': 'list', 'aria-expanded': 'true', 'aria-controls': listId, spellcheck: 'false', value: query })
       const clear = button({ label: t('search.clear'), icon: ICONS.clear, iconSize: 18, className: 'qc-search-op', onClick: () => setQuery('') })
       clear.hidden = query === ''
       const ops = h('span', { class: 'qc-search-ops', role: 'group', 'aria-label': t('search.opsShow') })
@@ -186,7 +188,7 @@ export function openSearchDialog(deps: SearchDialogDeps): DialogHandle {
         }
       }
 
-      const list = h('div', { class: 'qc-search-list', role: 'listbox', id: 'qc-search-list', 'aria-label': t('search.results') })
+      const list = h('div', { class: 'qc-search-list', role: 'listbox', id: listId, 'aria-label': t('search.results') })
       const status = h('div', { class: 'qc-search-status qc-secondary', role: 'status', 'aria-live': 'polite' })
       const sentinel = h('div', { class: 'qc-search-sentinel qc-muted' }, t('search.loadingMore'))
       sentinel.hidden = true
@@ -227,7 +229,7 @@ export function openSearchDialog(deps: SearchDialogDeps): DialogHandle {
         handle.close()
       }
 
-      const rowId = (i: number): string => `qc-search-row-${i}`
+      const rowId = (i: number): string => `qc-search-${chart.id}-row-${i}`
       const marked = (text: string): HTMLElement => {
         const span = h('span', { class: 'qc-search-symbol' })
         for (const seg of matchSegments(text, serverQuery())) span.appendChild(h('span', { class: seg.hit ? 'qc-search-hit' : undefined }, seg.text))

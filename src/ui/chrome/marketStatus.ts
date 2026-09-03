@@ -13,6 +13,7 @@ export interface MarketStatusDeps {
   i18n: ChartI18n
   model(): SessionModel | null
   status(nowSecs: number): MarketStatus | null
+  onClose?(): void
 }
 
 /** "09:30" from exchange-local minutes, wrapping at midnight. */
@@ -88,6 +89,7 @@ export function openMarketStatus(anchor: HTMLElement, deps: MarketStatusDeps): M
     onClose() {
       if (timer) clearInterval(timer)
       timer = null
+      deps.onClose?.()
     },
   })
   // The countdown and the now marker stay honest while the popup is up, without the closed popup

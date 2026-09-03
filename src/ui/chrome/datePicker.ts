@@ -4,7 +4,7 @@
 // unreadable time means the day's first bar. Every instant here is UTC, like the bars.
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import { openDialog, dialogTitle, type DialogHandle } from './dialog'
-import { button, h, setDisabled } from './dom'
+import { armRoving, button, h, items, setDisabled } from './dom'
 import { ICONS } from './icons'
 
 export interface DatePickerDeps {
@@ -16,6 +16,7 @@ export interface DatePickerDeps {
   /** Offer a time field. */
   withTime: boolean
   onSelect(atSec: number): void
+  onClose?(): void
 }
 
 const DAY = 86_400
@@ -58,8 +59,8 @@ export function openDatePicker(deps: DatePickerDeps): DialogHandle {
     className: 'qc-date-dialog',
     width: 320,
     build(box, dialog) {
-      const dateField = h('input', { type: 'text', class: 'qc-field qc-date-field', 'aria-label': t('replay.startDateField'), placeholder: 'YYYY-MM-DD', spellcheck: 'false', value: text })
-      const timeField = deps.withTime ? h('input', { type: 'text', class: 'qc-field qc-date-time', 'aria-label': t('replay.startTimeField'), placeholder: 'HH:MM', spellcheck: 'false' }) : null
+      const dateField = h('input', { type: 'text', class: 'qc-field qc-date-field', 'aria-label': t('replay.startDateField'), placeholder: t('replay.dateMask'), spellcheck: 'false', value: text })
+      const timeField = deps.withTime ? h('input', { type: 'text', class: 'qc-field qc-date-time', 'aria-label': t('replay.startTimeField'), placeholder: t('replay.timeMask'), spellcheck: 'false' }) : null
       const grid = h('div', { class: 'qc-date-grid', role: 'grid', 'aria-label': t('replay.selectDate') })
       const monthLabel = h('span', { class: 'qc-date-month', 'aria-live': 'polite' })
       const select = button({ label: t('replay.select'), text: t('replay.select'), className: 'qc-button--primary', onClick: () => submit() })
@@ -87,7 +88,7 @@ export function openDatePicker(deps: DatePickerDeps): DialogHandle {
         for (let d = 1; d <= daysInMonth; d++) {
           const sec = Date.UTC(view.y, view.m, d) / 1000
           const ok = inRange(sec)
-          const cell = h('button', { type: 'button', class: 'qc-button qc-date-day', role: 'gridcell', 'aria-label': dayFormat.format(sec * 1000), 'aria-selected': String(selected === sec) }, String(d))
+          const cell = h('button', { type: 'button', class: 'qc-button qc-date-day', role: 'gridcell', 'data-qc-item': '', tabindex: '-1', 'aria-label': dayFormat.format(sec * 1000), 'aria-selected': String(selected === sec) }, String(d))
           setDisabled(cell, !ok)
           cell.addEventListener('click', () => {
             text = ymd(sec)
@@ -103,7 +104,26 @@ export function openDatePicker(deps: DatePickerDeps): DialogHandle {
         if (row.childElementCount > 0) grid.appendChild(row)
         const day = chosen()
         setDisabled(select, day === null || !inRange(day))
+        // One tab stop for the whole grid: the selected day, else the first enabled one.
+        const cells = items(grid)
+        const start = Math.max(0, cells.findIndex((c) => c.getAttribute('aria-selected') === 'true'))
+        armRoving(grid, start)
       }
+      // Arrows move by a day and by a week, Home and End to the ends, over the enabled days only.
+      grid.addEventListener('keydown', (e) => {
+        const cells = items(grid)
+        const at = cells.indexOf(document.activeElement as HTMLElement)
+        if (at < 0) return
+        const step = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowDown' ? 7 : e.key === 'ArrowUp' ? -7 : 0
+        let target = -1
+        if (step !== 0) target = Math.max(0, Math.min(cells.length - 1, at + step))
+        else if (e.key === 'Home') target = 0
+        else if (e.key === 'End') target = cells.length - 1
+        if (target < 0) return
+        e.preventDefault()
+        cells.forEach((c, i) => c.setAttribute('tabindex', i === target ? '0' : '-1'))
+        cells[target]?.focus()
+      })
       dateField.addEventListener('input', () => {
         text = dateField.value
         const day = chosen()
@@ -145,5 +165,6 @@ export function openDatePicker(deps: DatePickerDeps): DialogHandle {
       render()
     },
     initialFocus: (box) => box.querySelector<HTMLElement>('.qc-date-field'),
+    onClose: deps.onClose,
   })
 }

@@ -119,6 +119,17 @@ describe('the replay bar', () => {
   })
 })
 
+describe('the transport at teardown', () => {
+  it('closes the menus and the date dialog it opened, so nothing survives in the chrome subtree', () => {
+    const { chrome, bar } = mount()
+    chrome.querySelector<HTMLButtonElement>('button[aria-label="Replay speed"]')!.click()
+    expect(chrome.querySelector('.qc-menu-panel')).not.toBeNull()
+    bar.destroy()
+    expect(chrome.querySelector('.qc-menu-panel')).toBeNull()
+    expect(chrome.querySelector('.qc-replay')).toBeNull()
+  })
+})
+
 describe('the date picker', () => {
   it('reads and writes UTC dates and times exactly', () => {
     expect(ymd(0)).toBe('1970-01-01')
@@ -142,6 +153,13 @@ describe('the date picker', () => {
     expect(days.length).toBe(28)
     expect(days[0]!.disabled).toBe(true) // the 1st is outside the window
     expect(days[14]!.disabled).toBe(false)
+    // One tab stop for the grid: the selected day holds it, and the arrows walk days and weeks.
+    expect(days.filter((d) => d.getAttribute('tabindex') === '0').map((d) => d.textContent)).toEqual(['20'])
+    days[19]!.focus()
+    press(days[19]!, 'ArrowLeft')
+    expect(document.activeElement?.textContent).toBe('19')
+    press(document.activeElement!, 'ArrowUp')
+    expect(document.activeElement?.textContent).toBe('12')
     days[14]!.click()
     expect(field.value).toBe('2026-02-15')
     const time = dialog.element.querySelector<HTMLInputElement>('.qc-date-time')!

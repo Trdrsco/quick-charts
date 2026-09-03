@@ -14,6 +14,7 @@ import { button, glyph, h, name, retext, setDisabled, stopPointer } from './dom'
 import { ICONS } from './icons'
 import { menuHeading, menuItem, menuSeparator, openMenu } from './menu'
 import { switchRow } from './dialog'
+import type { Closable } from './overlays'
 
 export interface ReplayTransportDeps {
   /** The chart's chrome subtree. */
@@ -54,6 +55,12 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
   let startMode: 'bar' | 'date' = 'bar'
   /** The subscription while the chart waits for a bar to be clicked, else null. */
   let picking: (() => void) | null = null
+  /** The menus and the date dialog this bar has open, so destroy closes them. */
+  const open = new Set<Closable>()
+  const hold = <T extends Closable>(handle: T): T => {
+    open.add(handle)
+    return handle
+  }
 
   const restartAt = (atSec: number): void => {
     commands.execute('chart.replay.exit')
@@ -90,7 +97,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
     const first = bars[0]
     const last = bars[bars.length - 1]
     if (!first || !last) return
-    openDatePicker({ host: deps.chrome, i18n, minSec: first.t, maxSec: last.t, withTime: deps.intraday(), onSelect: restartAt })
+    const dialog: Closable = hold(openDatePicker({ host: deps.chrome, i18n, minSec: first.t, maxSec: last.t, withTime: deps.intraday(), onSelect: restartAt, onClose: () => open.delete(dialog) }))
   }
   const pickRandom = (): void => {
     const bars = deps.bars()
@@ -109,11 +116,12 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
   const hint = h('span', { class: 'qc-replay-hint qc-secondary', role: 'status', hidden: true }, t()('replay.pickBarHint'))
 
   const openStartMenu = (): void => {
-    openMenu({
+    const menu: Closable = hold(openMenu({
       host: deps.chrome,
       anchor: startMenuButton,
       label: t()('replay.selectStartingPoint'),
       placement: 'up',
+      onClose: () => open.delete(menu),
       build(body, menu) {
         body.append(
           menuHeading(t()('replay.selectStartingPoint')),
@@ -151,7 +159,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
           }),
         )
       },
-    })
+    }))
   }
   const paintStart = (): void => {
     const label = startMode === 'bar' ? t()('replay.selectBar') : t()('replay.selectDate')
@@ -175,11 +183,12 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
   const speedButton = button({ label: t()('replay.speed'), text: '', className: 'qc-replay-button qc-replay-speed', onClick: () => openSpeedMenu() })
   speedButton.setAttribute('aria-haspopup', 'menu')
   const openSpeedMenu = (): void => {
-    openMenu({
+    const menu: Closable = hold(openMenu({
       host: deps.chrome,
       anchor: speedButton,
       label: t()('replay.speed'),
       placement: 'up',
+      onClose: () => open.delete(menu),
       initialIndex: Math.max(0, (REPLAY_SPEEDS as readonly number[]).indexOf(handle.replay.state().speed)),
       build(body, menu) {
         body.appendChild(menuHeading(t()('replay.speed')))
@@ -198,18 +207,19 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
           )
         }
       },
-    })
+    }))
   }
 
   const intervalButton = button({ label: t()('replay.interval'), text: '', className: 'qc-replay-button qc-replay-interval', onClick: () => openIntervalMenu() })
   intervalButton.setAttribute('aria-haspopup', 'menu')
   const openIntervalMenu = (): void => {
-    openMenu({
+    const menu: Closable = hold(openMenu({
       host: deps.chrome,
       anchor: intervalButton,
       label: t()('replay.interval'),
       role: 'dialog',
       placement: 'up',
+      onClose: () => open.delete(menu),
       build(body, menu) {
         const heading = menuHeading(t()('replay.interval'))
         heading.title = t()('replay.intervalHelp')
@@ -243,7 +253,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
           }),
         )
       },
-    })
+    }))
   }
 
   const goLive = button({ label: t()('replay.goLiveTitle'), icon: ICONS.goLive, className: 'qc-replay-button', onClick: () => commands.execute('chart.replay.goLive') })
@@ -300,6 +310,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
     sync,
     destroy() {
       stopPicking()
+      for (const handle of [...open]) handle.close()
       offStrings()
       bar.remove()
     },

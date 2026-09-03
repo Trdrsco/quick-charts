@@ -2,12 +2,18 @@
  * Every surface's own recipe file builds on these. */
 
 /* The widget-level layer menus and dialogs mount into: above every chart, inert by itself, each
- * panel opting back into pointer events. Fixed, so a panel positioned in viewport coordinates
- * lands where it was measured. */
+ * panel opting back into pointer events. Absolute inside the root rather than fixed, so a host
+ * ancestor with a transform, a filter or containment changes nothing: a panel is positioned in the
+ * root's own coordinates.
+ *
+ * The chrome's stacking ladder, all inside the root: legend and rail 3, navigation and replay 4,
+ * the chart chrome layer 5, notices 6, the overlay layer 20, a menu panel 21, a dialog scrim 22.
+ * A host that must stack something above the widget gives its own element a stacking context
+ * above the root; nothing here reaches the top of the integer range. */
 [data-qc-theme] .qc-overlays {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 2147483000;
+  z-index: 20;
   pointer-events: none;
 }
 
@@ -104,7 +110,7 @@
   padding: 0;
   background: var(--qc-chrome-borderStrong);
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--qc-chrome-radiusLarge);
   cursor: pointer;
   transition: background-color var(--qc-motion-durationFast) linear;
 }

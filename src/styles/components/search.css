@@ -73,7 +73,7 @@
   padding: 0 10px;
   font-size: var(--qc-text-fontSizeBase);
   white-space: nowrap;
-  border-radius: 13px;
+  border-radius: var(--qc-chrome-radiusLarge);
 }
 
 [data-qc-theme] .qc-search-class[aria-pressed='true'] {

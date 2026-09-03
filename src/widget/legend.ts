@@ -13,6 +13,7 @@ import { COLLAPSED_H, planPaneOp } from '../panePlan'
 import type { ScaleMode } from '../scaleMode'
 import type { MarketStatus, SessionModel, SessionState } from '../sessionModel'
 import { openMarketStatus } from '../ui/chrome/marketStatus'
+import type { MenuHandle } from '../ui/chrome/menu'
 import type { IndicatorsPlane } from './indicators'
 import type { ComparePlane } from './compare'
 import type { CommandRegistry } from './commands'
@@ -66,6 +67,8 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
   /** Remembered pane heights for collapse, maximize and restore. */
   let paneRemembered: Record<number, number> = {}
   let legend: ChartLegend | null = null
+  /** The market-status popup while it is open, so teardown closes it. */
+  let status: MenuHandle | null = null
 
   legend = mountChartLegend(deps.chrome, deps.i18n, {
     // Every row control is a COMMAND. The legend states an intent by id and the registry decides
@@ -88,8 +91,18 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     ...(deps.compare ? { onCompare: () => deps.commands.execute('chart.compare.open') } : {}),
     ...(deps.marketStatus
       ? {
-          onStatus: (anchor: HTMLElement) =>
-            openMarketStatus(anchor, { host: deps.chrome, i18n: deps.i18n, model: deps.sessionModel, status: deps.status }),
+          onStatus: (anchor: HTMLElement) => {
+            status?.close()
+            status = openMarketStatus(anchor, {
+              host: deps.chrome,
+              i18n: deps.i18n,
+              model: deps.sessionModel,
+              status: deps.status,
+              onClose: () => {
+                status = null
+              },
+            })
+          },
         }
       : {}),
     onScaleMode: (mode) => deps.commands.execute(`chart.scale.${mode}`),
@@ -146,6 +159,8 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     setDot: (state) => legend?.setDot(state),
     syncScale: (mode) => legend?.syncScale(mode),
     destroy() {
+      status?.close()
+      status = null
       legend?.destroy()
       legend = null
     },

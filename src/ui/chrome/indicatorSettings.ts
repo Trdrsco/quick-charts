@@ -166,7 +166,7 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): DialogHandle
         tab = id
         replace(panel, pages[id] ?? null)
       }
-      const list = tabList({ tabs, value: tab, label: t('settings.indicatorTitle', { name: title }), onChange: show })
+      const list = tabList({ tabs, value: tab, label: t('settings.indicatorTitle', { name: title }), id: `qc-settings-${chart.id}-${instance.id}`, panel, onChange: show })
       const apply = (): void => {
         const wasHidden = chart.indicators.hidden().includes(instance.id)
         deps.commands.execute('chart.indicators.update', { ...instance, inputs: { ...instance.inputs, ...fields.read() }, overrides })
