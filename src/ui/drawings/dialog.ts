@@ -5,6 +5,7 @@
 // none of its own custom properties.
 import { button, el, ownPointer, trapFocus } from './dom'
 import { iconSvg } from './icons'
+import { closeOverlays, trackOverlay } from './overlays'
 
 export interface DialogOptions {
   /** The chrome subtree the dialog mounts into. */
@@ -84,12 +85,17 @@ export function openDialog(options: DialogOptions): DialogHandle {
   const close = (): void => {
     if (closed) return
     closed = true
+    // Whatever the dialog opened over itself (a palette, a menu) goes first, so no document
+    // listener outlives the box it belonged to; then the dialog leaves the chrome's own register.
+    closeOverlays(box)
+    untrack()
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', onUp)
     untrap()
     backdrop.remove()
     options.onClose?.()
   }
+  const untrack = trackOverlay(options.container, close)
 
   options.container.appendChild(backdrop)
   return { body, footer, box, close }

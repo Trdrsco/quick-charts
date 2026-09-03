@@ -9,6 +9,7 @@ import type { ChartTranslate } from '../../i18n'
 import { button, dismissOnOutside, el, focusFirst, menuKeys, ownPointer, placePanel } from './dom'
 import { hexOf, hexToHsv, hsvToHex, isHex, SWATCH_ROWS } from './color'
 import { iconSvg } from './icons'
+import { trackOverlay } from './overlays'
 
 /** A settings row: the label in a fixed column, the controls left-aligned beside it. */
 export function row(label: string, ...controls: HTMLElement[]): HTMLElement {
@@ -220,11 +221,14 @@ export function openPopover(box: HTMLElement, anchor: HTMLElement, content: HTML
   const close = (): void => {
     if (closed) return
     closed = true
+    untrack()
     undismiss()
     panel.remove()
     anchor.setAttribute('aria-expanded', 'false')
     onClose?.()
   }
+  // The box's own teardown closes whatever is still open, so no document listener outlives it.
+  const untrack = trackOverlay(box, close)
   const undismiss = dismissOnOutside(panel, anchor, () => {
     close()
     anchor.focus({ preventScroll: true })
