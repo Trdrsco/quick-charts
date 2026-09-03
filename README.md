@@ -1155,9 +1155,12 @@ indicators, or both; drawing sync, shown only in a layout of more than one chart
 which names what each row takes and carries the locked-item policy; and the favorites star. Each
 group button wears the tool it last armed, and every action is a `chart.drawings.*` command
 through the registry: a control renders disabled, never hidden, while the registry would not run
-its command (a tool or verb your access policy refuses, a selection verb with nothing selected),
-and a command the policy refuses answers `denied` from the toolbar as from anywhere else. Every
-flyout, palette and dialog a surface opens sits inside the chart root and closes with it.
+its command (a tool or verb your access policy refuses, a selection verb with nothing selected,
+the Image tool without an asset port), and a command the policy refuses answers `denied` from the
+toolbar as from anywhere else, including `chart.drawings.arm` for a refused tool. An image is
+placed through `chart.drawings.placeImage`, from the picker or a system-clipboard paste over the
+chart. Every flyout, palette and dialog a surface opens sits inside the chart root and closes with
+it, and the eye and lock all announce their state through a live region.
 
 Arm the transient tools by name: `measure` draws a readout the next gesture clears, `zoom` sets
 the visible range to the dragged box, and `eraser` removes what it presses until Escape or the

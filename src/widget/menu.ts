@@ -85,10 +85,11 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
       {
         priceText,
         symbol: deps.symbol(),
-        // The level menu offers no paste and no settings row: the drawing clipboard and the
-        // settings dialog belong to the selected drawing's own surfaces, which the drawing plane
-        // mounts and the chart.drawings.* commands drive.
-        canPaste: false,
+        // The level menu's paste row is live exactly when the paste command would run (a copied
+        // drawing on the clipboard, the verb permitted). It offers no settings row: the settings
+        // dialog belongs to the selected drawing's own surfaces, which the drawing plane mounts
+        // and the chart.drawings.* commands drive.
+        canPaste: deps.commands.available('chart.drawings.paste'),
         canSettings: false,
         indicatorCount: deps.indicatorCount(),
         drawingCount: deps.drawingCount(),

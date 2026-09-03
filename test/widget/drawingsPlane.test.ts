@@ -15,6 +15,9 @@ import { openOverlays } from '../../src/ui/drawings/overlays'
 import { resolveFeatures } from '../../src/widget/planes'
 import type { ChartHandle } from '../../src/widget/chart'
 import { memorySaveLoadAdapter } from '../../src/resources'
+import { BUILT_IN_THEMES } from '../../src/theme/palettes'
+import type { DrawingAssetPort } from '../../src/drawings/index'
+import type { PlacedImage } from '../../src/drawings'
 import { click, drag, fakeChart } from '../drawings/fakeChart'
 
 interface Rig {
@@ -28,7 +31,7 @@ interface Rig {
   dispose: () => void
 }
 
-function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; charts?: number } = {}): Rig {
+function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; charts?: number; assets?: DrawingAssetPort } = {}): Rig {
   const fake = fakeChart()
   const root = document.createElement('div')
   const gestures = document.createElement('div')
@@ -56,7 +59,9 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     toolbar: true,
     favorites: true,
     ...(options.refuseTool ? { access: { drawingTool: (tool: string) => tool !== options.refuseTool } } : {}),
+    ...(options.assets ? { assets: options.assets } : {}),
     commands: registry.registry,
+    theme: () => BUILT_IN_THEMES.dark,
     preferences: () => prefs,
     setPreferences: (next) => {
       prefs = next
@@ -199,8 +204,12 @@ describe('the plane through the registry', () => {
   it('a tool the access policy refuses is disabled on the toolbar and refused by the api', () => {
     const { chrome, plane, run } = make({ refuseTool: 'trend_line' })
     expect(byLabel(chrome, 'Trend line').disabled).toBe(true)
-    expect(run('chart.drawings.arm', 'trend_line')).toBe('ok') // the command ran; the plane refused the tool
+    expect(run('chart.drawings.arm', 'trend_line')).toBe('denied') // the door itself refuses the tool
+    expect(run('chart.drawings.arm', { tool: 'trend_line', props: {} })).toBe('denied')
     expect(plane.api!.activeTool()).toBeNull()
+    expect(run('chart.drawings.arm', 'ray')).toBe('ok')
+    expect(plane.api!.activeTool()).toBe('ray')
+    plane.api!.armTool(null)
     plane.api!.armTool('trend_line')
     expect(plane.api!.activeTool()).toBeNull()
     plane.api!.armTool('ray')
@@ -260,6 +269,69 @@ describe('the plane through the registry', () => {
     dialog.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!.click()
     expect(chrome.querySelector('[data-role="drawing-settings"]')).toBeNull()
     expect(plane.api!.hasSelection()).toBe(true)
+  })
+
+  it('places an image only through its command: no asset port or a refused tool answers unavailable', () => {
+    const image: PlacedImage = { dataUrl: 'data:image/png;base64,AA', width: 64, height: 48, opacity: 1 }
+    const port: DrawingAssetPort = { intakeImage: async () => ({ ok: true, asset: { ...image, downscaled: false } }), glyphSource: () => null }
+    const bare = make()
+    expect(bare.run('chart.drawings.placeImage', image)).toBe('unavailable')
+    expect(bare.run('chart.drawings.arm', 'image')).toBe('ok')
+    expect(bare.chrome.querySelector('[data-role="drawing-image-picker"]')).toBeNull()
+    const refused = make({ assets: port, refuseTool: 'image' })
+    expect(refused.run('chart.drawings.placeImage', image)).toBe('unavailable')
+    expect(refused.run('chart.drawings.arm', 'image')).toBe('denied')
+    expect(refused.plane.api!.count()).toBe(0)
+    const able = make({ assets: port })
+    expect(able.run('chart.drawings.arm', 'image')).toBe('ok')
+    const picker = able.chrome.querySelector<HTMLElement>('[data-role="drawing-image-picker"]')!
+    expect(picker).toBeTruthy()
+    expect(picker.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!.disabled).toBe(true)
+    expect(able.run('chart.drawings.placeImage', image)).toBe('ok')
+    expect(able.plane.api!.count()).toBe(1)
+    expect(able.plane.api!.export()[0]?.type).toBe('image')
+  })
+
+  it('carries the snapshot, not the preview, in every document write while the settings dialog is open', () => {
+    const { chrome, gestures, run, plane } = make()
+    run('chart.drawings.arm', 'trend_line')
+    drag(gestures, [10, 10], [100, 100])
+    const before = plane.api!.export()[0]!.props!.middlePoint
+    byLabel(chrome, 'Drawing settings').click()
+    const dialog = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+    const middle = [...dialog.querySelectorAll<HTMLElement>('.qc-drawing-toggle')].find((x) => x.textContent === 'Middle point')!
+    middle.querySelector('input')!.click()
+    // The drawing previews the edit; the document still says what it said.
+    expect(plane.api!.export()[0]!.props!.middlePoint).toBe(before)
+    dialog.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!.click()
+    expect(plane.api!.export()[0]!.props!.middlePoint).toBe(!before)
+    // A symbol switch closes an open session with the drawing it previewed.
+    byLabel(chrome, 'Drawing settings').click()
+    expect(chrome.querySelector('[data-role="drawing-settings"]')).toBeTruthy()
+    plane.setSymbol('NQ')
+    expect(chrome.querySelector('[data-role="drawing-settings"]')).toBeNull()
+  })
+
+  it('announces the eye and lock all through its live region, and the public api carries no session verb', () => {
+    const { chrome, run, plane } = make()
+    const status = chrome.querySelector<HTMLElement>('[role="status"]')!
+    expect(status.getAttribute('aria-live')).toBe('polite')
+    run('chart.drawings.hide', { mode: 'drawings', on: true })
+    expect(status.textContent).toBe('Drawings hidden')
+    run('chart.drawings.hide', { mode: 'all', on: false })
+    expect(status.textContent).toBe('Drawings and indicators shown')
+    run('chart.drawings.lockAll', true)
+    expect(status.textContent).toBe('All drawings locked')
+    for (const verb of ['selectedDrawing', 'commitEdit', 'beginPreview', 'endPreview', 'textEdit', 'commitText', 'cancelText', 'presets']) expect(verb in plane.api!, verb).toBe(false)
+  })
+
+  it('locks the pointer as one state: the touch action moves with the pan lock', () => {
+    const { gestures, run } = make()
+    expect(gestures.style.touchAction).toBe('')
+    run('chart.drawings.arm', 'rectangle')
+    expect(gestures.style.touchAction).toBe('none')
+    gestures.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(gestures.style.touchAction).toBe('')
   })
 
   it('the inline text editor mounts on a text placement and commits into the drawing', () => {

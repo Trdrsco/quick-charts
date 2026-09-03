@@ -8,13 +8,22 @@ import { mountFavoritesBar } from '../../../src/ui/drawings/favoritesBar'
 
 const t = createChartI18n().t
 
-function rig(favorites: FavoritesState, activeTool: string | null = null) {
+function rig(favorites: FavoritesState, activeTool: string | null = null, gate: { available?: boolean; refuse?: string[] } = {}) {
   const chrome = document.createElement('div')
   document.body.appendChild(chrome)
   const armed: (string | null)[] = []
   const moved: FavoritesPosition[] = []
   const state = { favorites, activeTool }
-  const bar = mountFavoritesBar({ chrome, t, favorites: () => state.favorites, activeTool: () => state.activeTool, arm: (tool) => armed.push(tool), onMove: (p) => moved.push(p) })
+  const bar = mountFavoritesBar({
+    chrome,
+    t,
+    favorites: () => state.favorites,
+    activeTool: () => state.activeTool,
+    arm: (tool) => armed.push(tool),
+    available: () => gate.available ?? true,
+    toolAllowed: (tool) => !(gate.refuse ?? []).includes(tool),
+    onMove: (p) => moved.push(p),
+  })
   const root = chrome.querySelector<HTMLElement>('[data-role="drawing-favorites"]')!
   return { chrome, bar, root, state, armed, moved }
 }
@@ -24,6 +33,16 @@ afterEach(() => {
 })
 
 describe('the favorites bar', () => {
+  it('renders a refused tool disabled, and every arm disabled while the registry would not arm', () => {
+    const a = rig({ tools: ['trend_line', 'rectangle'], visible: true, position: null }, null, { refuse: ['rectangle'] })
+    const arms = () => [...a.root.querySelectorAll<HTMLButtonElement>('.qc-drawing-favorite')]
+    expect(arms().map((b) => b.disabled)).toEqual([false, true])
+    arms()[1]!.click()
+    expect(a.armed).toEqual([])
+    const b = rig({ tools: ['trend_line', 'rectangle'], visible: true, position: null }, null, { available: false })
+    expect([...b.root.querySelectorAll<HTMLButtonElement>('.qc-drawing-favorite')].map((x) => x.disabled)).toEqual([true, true])
+  })
+
   it('renders one named arm per starred tool and hides with nothing starred', () => {
     const { root, state, bar } = rig({ tools: ['trend_line', 'rectangle'], visible: true, position: null })
     expect(root.getAttribute('role')).toBe('toolbar')

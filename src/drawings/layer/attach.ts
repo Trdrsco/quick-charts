@@ -15,6 +15,7 @@ import { drawingTools } from '../tools'
 import { editRefused } from '../lockModel'
 import { isTransientTool, type CursorMode } from '../cursorModel'
 import { cancelText, commitText, type TextEditTarget } from '../editModel'
+import { pointerLock } from '../../pointerInput'
 import { createDocuments } from './documents'
 import { createPresets } from './presets'
 import { bindGestures, type Draft, type Drag, type GestureContext } from './gestures'
@@ -23,11 +24,13 @@ import { scopeForNew } from './scope'
 import type { AttachDrawingsOptions, DrawingsHandle, DrawingsWorkflow, SelectedDrawing, TextEditSession } from './types'
 
 /** What each cursor mode paints over the chart. The dot has no CSS keyword of its own, so it is
- *  a 5px ring drawn inline; the trailing keyword is the fallback while the data URI parses. */
-const CURSOR_CSS: Record<CursorMode, string> = {
-  cross: 'crosshair',
-  arrow: 'default',
-  dot: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='5' cy='5' r='3.4' fill='none' stroke='%23e5e7eb' stroke-width='1.4'/%3E%3C/svg%3E") 5 5, crosshair`,
+ *  a 5px ring drawn inline in the ink the chart hands over (its text role, so the ring follows
+ *  the theme); the trailing keyword is the fallback while the data URI parses. */
+function cursorCssFor(mode: CursorMode, ink: string): string {
+  if (mode === 'cross') return 'crosshair'
+  if (mode === 'arrow') return 'default'
+  const stroke = encodeURIComponent(ink)
+  return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10'%3E%3Ccircle cx='5' cy='5' r='3.4' fill='none' stroke='${stroke}' stroke-width='1.4'/%3E%3C/svg%3E") 5 5, crosshair`
 }
 
 const DEFAULT_WORKFLOW: DrawingsWorkflow = { magnet: 'off', stayInDrawingMode: false, cursor: 'cross' }
@@ -110,13 +113,27 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   let hovered: string | null = null
   let textEdit: TextEditSession | null = null
   const transient = new Set<string>()
+  /** The snapshot a preview session took, by drawing id: what the document carries meanwhile. */
+  const previewing = new Map<string, SerializedDrawing>()
 
   const locked = (): boolean => allLocked || workflow().allLocked === true
 
   const changed = (): void => events.onChange?.()
 
+  /** The one lock every in-chart gesture applies: the chart's pan and zoom and the container's
+   *  touch action move together, so a finger drawing a line never scrolls the page under it. */
+  const lockPointer = (locked: boolean): void => {
+    const lock = pointerLock(locked)
+    chart.applyOptions({ handleScroll: lock.handleScroll, handleScale: lock.handleScale })
+    container.style.touchAction = lock.touchAction
+  }
+
   /** The drawings on screen that are the trader's: never a transient readout, never a draft. */
-  const kept = (): SerializedDrawing[] => manager.export().filter((d) => d.id !== ctx.draft?.drawing.id && !transient.has(d.id))
+  const kept = (): SerializedDrawing[] =>
+    manager
+      .export()
+      .filter((d) => d.id !== ctx.draft?.drawing.id && !transient.has(d.id))
+      .map((d) => previewing.get(d.id) ?? d)
 
   const documents = createDocuments({
     resources: options.resources,
@@ -136,6 +153,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     cancelDraft()
     closeTextEdit(false)
     clearTransients()
+    previewing.clear()
     manager.clear()
     importList(list)
     if (selectedId && manager.get(selectedId)) manager.select(selectedId)
@@ -164,7 +182,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     armed = type
     if (!type) presetProps = null
     // Pan and zoom freeze while a tool is armed: a drag must draw, not scroll the chart.
-    chart.applyOptions({ handleScroll: !type, handleScale: !type })
+    lockPointer(!!type)
     events.onToolChange?.(type)
   }
 
@@ -276,7 +294,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     persist,
     changed,
     clearTransients,
-    cursorCss: () => CURSOR_CSS[workflow().cursor],
+    cursorCss: () => cursorCssFor(workflow().cursor, options.ink?.() ?? 'currentColor'),
+    lockPointer,
   }
 
   // ── Selection edits ─────────────────────────────────────────────────────────────────────────
@@ -287,7 +306,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     const sel = selection()
     if (!sel) return
     apply(sel)
-    presets.remember(sel)
+    // A preview is not a choice yet: the remembered default follows the commit, not the session.
+    if (!previewing.has(sel.id)) presets.remember(sel)
     persist()
     changed()
   }
@@ -411,7 +431,15 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       persist()
       changed()
     },
-    commitEdit: () => edit(() => undefined),
+    commitEdit() {
+      previewing.clear()
+      edit(() => undefined)
+    },
+    beginPreview() {
+      const sel = selection()
+      if (sel) previewing.set(sel.id, sel.toJSON())
+    },
+    endPreview: () => previewing.clear(),
     clone() {
       const sel = selection()
       if (!sel || editRefused('clone', sel.options, locked())) return

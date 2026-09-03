@@ -101,6 +101,8 @@ export interface GestureContext {
   clearTransients(): void
   /** The tool's own cursor over the chart, from the cursor mode. */
   cursorCss(): string
+  /** Freeze or release the chart's own navigation and the container's touch action together. */
+  lockPointer(locked: boolean): void
 }
 
 const isTransientArmed = (tool: string | null): tool is 'measure' | 'zoom' | 'eraser' => tool === 'measure' || tool === 'zoom' || tool === 'eraser'
@@ -154,7 +156,7 @@ export function bindGestures(ctx: GestureContext): () => void {
     return best
   }
 
-  const freezePan = (frozen: boolean): void => chart.applyOptions({ handleScroll: !frozen, handleScale: !frozen })
+  const freezePan = (frozen: boolean): void => ctx.lockPointer(frozen)
 
   const startDrag = (mode: Drag['mode'], drawing: IDrawing, anchorIndex: number | null, p: Px): void => {
     const vp = viewport()

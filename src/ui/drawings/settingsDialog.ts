@@ -1,16 +1,16 @@
 // The settings dialog for one drawing: Inputs, Style, Text, Table, Coordinates and Visibility
 // pages, each showing the rows the tool has. The dialog is an edit session the settings command
-// opened: its rows and its template applications preview LIVE on the drawing for instant
-// feedback and are the session's own, Cancel (or Escape) restores the snapshot taken at open, and
-// the session's outcomes are commands through the registry: Ok commits it as one edit, and the
-// footer's Template menu saves the current setup under a name or removes a saved template. A
-// control whose command the registry would refuse renders disabled.
+// opened over a preview the layer holds: its rows preview LIVE on the drawing for instant
+// feedback while the document keeps the snapshot taken at open, Cancel (or Escape) restores that
+// snapshot, and the session's outcomes are commands through the registry: Ok commits it as one
+// edit, and the footer's Template menu applies a template onto the selection, saves the current
+// setup under a name, or removes a saved template. A page whose commands the registry would not
+// run renders every control disabled, and so does a footer verb the registry refuses.
 import type { DrawingStyle, IDrawing, IntervalVisibility, SerializedDrawing } from '@trdrs/chart-drawings'
 import type { ChartTranslate } from '../../i18n'
 import { toolName } from '../../i18n'
 import { drawingTools, type DrawingAssetPort } from '../../drawings/index'
 import type { DrawingPresets } from '../../drawings'
-import type { ToolPreset } from '../../drawings/templates'
 import { openDialog } from './dialog'
 import { button, el, focusFirst, menuKeys } from './dom'
 import { dialogTabs, openPopover } from './fields'
@@ -24,6 +24,8 @@ export interface SettingsDialogDeps {
   t: ChartTranslate
   drawing: IDrawing
   presets: DrawingPresets
+  /** The stem every element id the dialog writes derives from: the chart's id. */
+  idBase: string
   assets?: DrawingAssetPort
   /** Run a command through the registry. Answers whether it ran. */
   run(command: string, arg?: unknown): boolean
@@ -59,17 +61,36 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
   dialog.box.classList.add('qc-drawing-settings-dialog')
 
   const strip = el('div', { class: 'qc-drawing-tabs-slot' })
-  const page = el('div', { class: 'qc-drawing-page' })
+  const page = el('div', { class: 'qc-drawing-page', role: 'tabpanel', id: `${deps.idBase}-page` })
   dialog.body.append(strip, page)
+  const tabId = (id: string): string => `${deps.idBase}-tab-${id}`
 
   const renderTabs = (): void => {
     strip.replaceChildren(
-      dialogTabs(tabsFor(drawing), tab, (id) => t(TAB_LABEL[id as SettingsTab]), (id) => {
-        tab = id as SettingsTab
-        renderTabs()
-        renderPage()
-      }),
+      dialogTabs(
+        tabsFor(drawing),
+        tab,
+        (id) => t(TAB_LABEL[id as SettingsTab]),
+        (id) => {
+          tab = id as SettingsTab
+          renderTabs()
+          renderPage()
+        },
+        { tab: tabId, panel: `${deps.idBase}-page` },
+      ),
     )
+    page.setAttribute('aria-labelledby', tabId(tab))
+  }
+
+  /** The commands a page's rows preview on behalf of: a page whose command the registry would
+   *  not run renders every control disabled, since the session could not be committed either. */
+  const PAGE_COMMANDS: Record<SettingsTab, readonly string[]> = {
+    Inputs: ['chart.drawings.style', 'chart.drawings.props'],
+    Style: ['chart.drawings.style', 'chart.drawings.props'],
+    Text: ['chart.drawings.style', 'chart.drawings.props'],
+    Table: ['chart.drawings.props'],
+    Coordinates: ['chart.drawings.props'],
+    Visibility: ['chart.drawings.visibility'],
   }
 
   const ctx: RowsContext = {
@@ -105,6 +126,9 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     const rows =
       tab === 'Style' || tab === 'Inputs' ? styleRows(ctx) : tab === 'Text' ? textRows(ctx) : tab === 'Table' ? tableRows(ctx) : tab === 'Coordinates' ? coordinateRows(ctx) : visibilityRows(ctx)
     page.replaceChildren(...rows)
+    if (!PAGE_COMMANDS[tab].every((command) => deps.available(command))) {
+      for (const control of page.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>('button, input, select, textarea')) control.disabled = true
+    }
   }
 
   const cancel = (): void => {
@@ -135,9 +159,10 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
   template.setAttribute('aria-haspopup', 'menu')
   template.setAttribute('aria-expanded', 'false')
   let closeMenu: (() => void) | null = null
-  const applyPreset = (preset: ToolPreset): void => {
-    if (preset.style) drawing.updateStyle(preset.style)
-    if (preset.props) drawing.applyProps(preset.props)
+  /** A template applies through the registry onto the selection, which is this drawing; the
+   *  document keeps the session's snapshot until Ok, so Cancel still restores it. */
+  const applyTemplate = (name: string | null): void => {
+    deps.run('chart.drawings.template.apply', name)
     renderPage()
   }
   template.addEventListener('click', () => {
@@ -157,15 +182,15 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     }
     menu.append(
       // The save command reads the selection, which is this drawing with the session's edits on it.
-      rowOf(t('drawing.saveAs'), 'chart.drawings.template.save', () => openTemplateNameDialog({ container: deps.chrome, t }, (templateName) => deps.run('chart.drawings.template.save', templateName))),
-      rowOf(t('drawing.applyDefaults'), 'chart.drawings.template.apply', () => applyPreset(deps.presets.defaultFor(drawing.type))),
+      rowOf(t('drawing.saveAs'), 'chart.drawings.template.save', () => openTemplateNameDialog({ container: dialog.box, t }, (templateName) => deps.run('chart.drawings.template.save', templateName))),
+      rowOf(t('drawing.applyDefaults'), 'chart.drawings.template.apply', () => applyTemplate(null)),
     )
     const saved = deps.presets.templatesFor(drawing.type)
     if (saved.length) menu.appendChild(el('div', { class: 'qc-separator', role: 'separator' }))
     for (const saved1 of saved) {
       const rowEl = el('div', { class: 'qc-drawing-flyout-row' })
       rowEl.append(
-        rowOf(saved1.name, 'chart.drawings.template.apply', () => applyPreset(saved1)),
+        rowOf(saved1.name, 'chart.drawings.template.apply', () => applyTemplate(saved1.name)),
         button({
           class: 'qc-drawing-star',
           label: t('drawing.removeTemplateNamed', { name: saved1.name }),
@@ -174,7 +199,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
           disabled: !deps.available('chart.drawings.template.remove'),
           onClick: () => {
             closeMenu?.()
-            openTemplateDeleteDialog({ container: deps.chrome, t }, saved1.name, () => deps.run('chart.drawings.template.remove', saved1.name))
+            openTemplateDeleteDialog({ container: dialog.box, t }, saved1.name, () => deps.run('chart.drawings.template.remove', saved1.name))
           },
         }),
       )

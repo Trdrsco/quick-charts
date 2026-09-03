@@ -11,12 +11,12 @@ import { firstImageFile, humanSize, openImagePicker } from '../../../src/ui/draw
 const t = createChartI18n().t
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 
-function rig(assets: DrawingAssetPort) {
+function rig(assets: DrawingAssetPort, canPlace = true) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const placed: PlacedImage[] = []
   let closed = 0
-  const close = openImagePicker({ container, t, assets, onConfirm: (image) => placed.push(image), onClose: () => closed++ })
+  const close = openImagePicker({ container, t, assets, canPlace: () => canPlace, onConfirm: (image) => placed.push(image), onClose: () => closed++ })
   const dialog = container.querySelector<HTMLElement>('[data-role="drawing-image-picker"]')!
   return { container, dialog, placed, close, closed: () => closed }
 }
@@ -25,6 +25,24 @@ const okPort: DrawingAssetPort = {
   intakeImage: async (file) => ({ ok: true, asset: { dataUrl: `data:${file.type};base64,AA`, width: 640, height: 480, downscaled: false } }),
   glyphSource: () => null,
 }
+
+describe('the registry gate', () => {
+  it('keeps Ok disabled while the registry would not place an image, and its refusals are a live region', async () => {
+    const { dialog, placed } = rig(okPort, false)
+    const file = dialog.querySelector<HTMLInputElement>('input[type="file"]')!
+    Object.defineProperty(file, 'files', { value: [new File(['x'], 'a.png', { type: 'image/png' })] })
+    file.dispatchEvent(new Event('change'))
+    await settle()
+    expect(dialog.querySelector<HTMLImageElement>('.qc-drawing-drop-preview')!.hidden).toBe(false)
+    const ok = dialog.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!
+    expect(ok.disabled).toBe(true)
+    ok.click()
+    expect(placed).toEqual([])
+    const error = dialog.querySelector<HTMLElement>('.qc-drawing-note.qc-negative')!
+    expect(error.getAttribute('role')).toBe('status')
+    expect(error.getAttribute('aria-live')).toBe('polite')
+  })
+})
 
 afterEach(() => {
   document.body.replaceChildren()

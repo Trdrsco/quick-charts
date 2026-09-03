@@ -32,15 +32,25 @@ describe('the glyph data', () => {
   })
 })
 
+/** A picker with every gate open. */
+const GATES = { idBase: 'c1-glyphs', available: () => true, toolAllowed: () => true }
+
 describe('the picker', () => {
   it('renders recents, the category strip and headings, and reports a pick with its kind', () => {
     const picks: [GlyphKind, string][] = []
-    const picker = mountGlyphPicker({ t, recents: ['🚀'], glyphSource: (glyph) => `/art/${glyph.codePointAt(0)}.svg`, onPick: (kind, glyph) => picks.push([kind, glyph]) })
+    const picker = mountGlyphPicker({ t, recents: ['🚀'], glyphSource: (glyph) => `/art/${glyph.codePointAt(0)}.svg`, ...GATES, onPick: (kind, glyph) => picks.push([kind, glyph]) })
     document.body.appendChild(picker.root)
     expect(picker.root.getAttribute('aria-label')).toBe('Glyph picker')
     const tabs = [...picker.root.querySelectorAll<HTMLElement>('.qc-drawing-glyph-strip [role="tab"]')]
     expect(tabs.map((tab) => tab.getAttribute('aria-label'))).toEqual(['Smileys & People', 'Animals & Nature', 'Food & Drink', 'Activity', 'Travel & Places', 'Objects', 'Symbols', 'Flags'])
     expect(tabs[0]!.getAttribute('aria-selected')).toBe('true')
+    // Every tab names the section it scrolls to, and the kind tabs name the grid they fill.
+    expect(tabs[0]!.getAttribute('aria-controls')).toBe('c1-glyphs-smileys')
+    expect(picker.root.querySelector('#c1-glyphs-smileys')).toBeTruthy()
+    const grid = picker.root.querySelector<HTMLElement>('#c1-glyphs-grid')!
+    expect(grid.getAttribute('role')).toBe('tabpanel')
+    expect(grid.getAttribute('aria-labelledby')).toBe('c1-glyphs-kind-emoji')
+    expect(picker.root.querySelector('#c1-glyphs-kind-emoji')!.getAttribute('aria-controls')).toBe('c1-glyphs-grid')
     const headings = [...picker.root.querySelectorAll('.qc-dialog-heading')].map((h) => h.textContent)
     expect(headings[0]).toBe('Recently used')
     expect(headings[1]).toBe('Smileys & People')
@@ -53,7 +63,7 @@ describe('the picker', () => {
   })
 
   it('draws a glyph as text when the port answers null, and icons always as text', () => {
-    const picker = mountGlyphPicker({ t, recents: [], glyphSource: () => null, onPick: () => undefined })
+    const picker = mountGlyphPicker({ t, recents: [], glyphSource: () => null, ...GATES, onPick: () => undefined })
     document.body.appendChild(picker.root)
     const first = picker.root.querySelector<HTMLButtonElement>('.qc-drawing-glyph-cell')!
     expect(first.querySelector('img')).toBeNull()
@@ -71,8 +81,26 @@ describe('the picker', () => {
     picker.destroy()
   })
 
+  it('renders every cell disabled while the registry would not arm, and the cells of a refused kind', () => {
+    const picks: [GlyphKind, string][] = []
+    const denied = mountGlyphPicker({ t, recents: ['🚀'], idBase: 'c1-glyphs', available: () => false, toolAllowed: () => true, onPick: (kind, glyph) => picks.push([kind, glyph]) })
+    document.body.appendChild(denied.root)
+    const cells = [...denied.root.querySelectorAll<HTMLButtonElement>('.qc-drawing-glyph-cell')]
+    expect(cells.length).toBeGreaterThan(1)
+    expect(cells.every((c) => c.disabled)).toBe(true)
+    cells[0]!.click()
+    expect(picks).toEqual([])
+    denied.destroy()
+    const refused = mountGlyphPicker({ t, recents: [], idBase: 'c1-glyphs', available: () => true, toolAllowed: (kind) => kind !== 'icon', onPick: () => undefined })
+    document.body.appendChild(refused.root)
+    expect(refused.root.querySelector<HTMLButtonElement>('.qc-drawing-glyph-cell')!.disabled).toBe(false)
+    ;[...refused.root.querySelectorAll<HTMLElement>('.qc-drawing-glyph-kinds [role="tab"]')][2]!.click()
+    expect(refused.root.querySelector<HTMLButtonElement>('.qc-drawing-glyph-cell')!.disabled).toBe(true)
+    refused.destroy()
+  })
+
   it('a category tab marks itself and jumps to its section', () => {
-    const picker = mountGlyphPicker({ t, recents: [], onPick: () => undefined })
+    const picker = mountGlyphPicker({ t, recents: [], ...GATES, onPick: () => undefined })
     document.body.appendChild(picker.root)
     const tabs = [...picker.root.querySelectorAll<HTMLElement>('.qc-drawing-glyph-strip [role="tab"]')]
     tabs[7]!.click()
