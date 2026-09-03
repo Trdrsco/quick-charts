@@ -56,12 +56,32 @@ for (const consumer of ['ts-consumer', 'js-consumer']) {
   run('npm install --no-audit --no-fund --install-links', dir)
 }
 
-// 3. The TS gate: the workspace's own tsc binary, the consumer's own node_modules for types.
+// 2b. The Quick Charts conformance suite (packages/chart/test/conformance) rides beside the TS
+//     consumer as a copy, so it is typed against the SHIPPED declarations rather than the workspace
+//     source, then compiled beside the JS consumer, where its `quickcharts` imports resolve to the
+//     installed tarball. The browser shim the workspace host uses travels with it. Both copies are
+//     ignored by git and remade every run.
+const conformanceSource = join(repo, 'packages', 'chart', 'test', 'conformance')
+const conformanceCopy = join(here, 'ts-consumer', 'conformance')
+rmSync(conformanceCopy, { recursive: true, force: true })
+mkdirSync(conformanceCopy, { recursive: true })
+copyFileSync(join(conformanceSource, 'index.ts'), join(conformanceCopy, 'index.ts'))
+copyFileSync(join(repo, 'packages', 'chart', 'scripts', 'browserShim.ts'), join(conformanceCopy, 'browserShim.ts'))
+
+// 3. The TS gate: the workspace's own tsc binary, the consumer's own node_modules for types. The
+//    conformance copy is in the consumer's include list, so it compiles against the packed d.ts
+//    with skipLibCheck off like everything else here; the second config emits it for the JS host.
 copyFileSync(join(repo, 'node_modules', 'typescript', 'bin', 'tsc'), join(artifacts, 'tsc'))
 run(`node ${JSON.stringify(join(repo, 'node_modules', 'typescript', 'bin', 'tsc'))} -p tsconfig.json`, join(here, 'ts-consumer'))
+rmSync(join(here, 'js-consumer', 'conformance'), { recursive: true, force: true })
+run(`node ${JSON.stringify(join(repo, 'node_modules', 'typescript', 'bin', 'tsc'))} -p tsconfig.conformance.json`, join(here, 'ts-consumer'))
 
 // 4. The runtime gates: both module systems execute.
 run('node smoke.mjs', join(here, 'js-consumer'))
 run('node smoke.cjs', join(here, 'js-consumer'))
+
+// 5. The conformance suite over the installed tarball: a real widget mounted into a happy-dom
+//    document, every check the workspace and app hosts run, through the same module.
+run('node conformance.mjs', join(here, 'js-consumer'))
 
 console.log('\nclean-room: ALL GATES PASSED')

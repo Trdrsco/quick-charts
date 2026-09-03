@@ -1,14 +1,15 @@
 // The stylesheet readers the theme fixtures share.
 //
 // Vitest does not process CSS, so a stylesheet imported with Vite's `?raw` arrives as an empty
-// string. These read the files as bytes instead, deriving the package root from the module URL so
-// no node path helper enters the package's type surface.
+// string. These read the files as bytes instead, deriving the package root from the module URL.
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
-/** This file's directory, then the package root. Decoded, because a Windows `Joe D` path URL-encodes
- *  its space, and drive-letter-normalized. */
-const testDir = decodeURIComponent(new URL('.', import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1')
-const packageRoot = testDir.replace(/\/test\/theme\/?$/, '')
+/** This file's path, then the package root, through Node's own file-URL conversion rather than the
+ *  global `URL`: a DOM environment replaces that global with one that reads a file URL differently,
+ *  and the theme matrix runs under happy-dom and reads these files too. Forward slashes throughout. */
+const thisFile = fileURLToPath(import.meta.url).replace(/\\/g, '/')
+const packageRoot = thisFile.replace(/\/test\/theme\/[^/]+$/, '')
 
 const componentsDir = `${packageRoot}/src/styles/components`
 

@@ -16,6 +16,7 @@
     "index.ts",
     "mode-b.ts",
     "ticket.ts",
-    "fakes/*.ts"
+    "fakes/*.ts",
+    "conformance/*.ts"
   ]
 }

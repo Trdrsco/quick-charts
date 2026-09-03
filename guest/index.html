@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- The guest reaches no network of its own: every script and style is a sibling file, data
+         arrives over the host's bridge, and no origin but the document's own is fetchable. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Quick Charts</title>
+    <link rel="stylesheet" href="./quickcharts.css" />
+    <link rel="stylesheet" href="./guest.css" />
+  </head>
+  <body>
+    <div id="chart"></div>
+    <script type="module" src="./quickcharts-guest.js"></script>
+  </body>
+</html>
