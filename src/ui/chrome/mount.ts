@@ -127,13 +127,18 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
 
   // ── Following the active chart. One sync re-reads everything from it; it runs on activation,
   // on every event the chart reports, and on any change to the registry. Chart subscriptions move
-  // with the active chart, so a background pane never repaints the bars.
+  // with the active chart, so a background pane never repaints the bars. The sync is deferred to a
+  // microtask, so a dispose can land between the event and the read; the queued run checks the
+  // flag first, because the bars it would refresh are gone and the widget it would read may have
+  // no charts left to answer with.
+  let disposed = false
   let pending = false
   const sync = (): void => {
-    if (pending) return
+    if (pending || disposed) return
     pending = true
     queueMicrotask(() => {
       pending = false
+      if (disposed) return
       topBar?.sync()
       bottomBar?.sync()
     })
@@ -181,6 +186,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
 
   return {
     dispose() {
+      disposed = true
       for (const off of disposers.splice(0)) off()
       // Every dialog and menu still open in the layer closes here, taking its document listeners
       // with it; a bare remove would leave them bound to a detached panel.

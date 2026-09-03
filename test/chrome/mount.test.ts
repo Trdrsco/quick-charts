@@ -104,6 +104,32 @@ describe('the chrome composition', () => {
     expect(root.hasAttribute('dir')).toBe(false)
   })
 
+  it('a sync queued by an event just before dispose never runs: nothing reads the widget or the DOM after teardown', async () => {
+    const { w, root, chrome } = mount()
+    const bars = [...root.querySelectorAll('.qc-topbar, .qc-bottombar')]
+    // The event queues the debounced sync; the dispose lands before the microtask runs.
+    w.chart.handle.setSymbol('NQ')
+    chrome.dispose()
+    // A disposed widget has no charts to answer with, which is exactly what the queued sync
+    // would have asked it for.
+    const activeChart = vi.spyOn(w.widget, 'activeChart').mockImplementation(() => {
+      throw new Error('the widget has no charts')
+    })
+    const observed: string[] = []
+    const observer = new MutationObserver((records) => observed.push(...records.map((r) => r.type)))
+    for (const bar of bars) observer.observe(bar, { subtree: true, childList: true, attributes: true, characterData: true })
+    await settle()
+    observer.disconnect()
+    expect(activeChart).not.toHaveBeenCalled()
+    expect(observed).toEqual([])
+    // Events after the dispose are equally inert: the subscriptions came down with it.
+    w.chart.handle.setTimeframe('5m')
+    w.events.emit('theme', 'light')
+    await settle()
+    expect(activeChart).not.toHaveBeenCalled()
+    expect(observed).toEqual([])
+  })
+
   it('disposing with a dialog and a menu open closes both: no document listener and no timer survives', () => {
     vi.useFakeTimers()
     const adds: string[] = []
