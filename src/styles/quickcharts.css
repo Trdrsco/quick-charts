@@ -291,6 +291,19 @@
   pointer-events: auto;
 }
 
+/* An overlay surface takes the pointer as a whole, not only where a native control happens to sit.
+ * A dialog row is a div, a menu label is a span, and a backdrop's whole job is to catch the click
+ * that dismisses it; on an inert layer all three are transparent, so the pointer keeps falling
+ * until it reaches something that is not. On a page holding one widget it lands on that widget's
+ * own canvas, which merely looks unresponsive. On a page holding two, an overlay that extends past
+ * its own root lands on the OTHER instance, and the other instance answers. Opting the surface in
+ * ends the fall at the surface, where it belongs. */
+[data-qc-theme] .qc-chrome .qc-overlay,
+[data-qc-theme] .qc-chrome .qc-scrim,
+[data-qc-theme] .qc-chrome .qc-menu-backdrop {
+  pointer-events: auto;
+}
+
 [data-qc-theme] [hidden] {
   display: none !important;
 }

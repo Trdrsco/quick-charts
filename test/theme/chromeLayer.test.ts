@@ -50,6 +50,20 @@ describe('every control in the chrome layer takes its own pointer events back', 
     expect(optIn.slice(0, optIn.indexOf('}') + 1)).toContain('pointer-events: auto')
   })
 
+  it('an overlay surface opts in whole, not one native control at a time', () => {
+    // A dialog row is a div and a menu label is a span. Neither matches the control rule above, so
+    // on an inert layer a viewer can see the row, hover it, and click straight through it. Worse,
+    // an overlay may extend past its own root, and then the pointer reaches the NEXT widget on the
+    // page and that widget answers. The surface itself takes the pointer so the fall stops here.
+    const start = css.indexOf('[data-qc-theme] .qc-chrome .qc-overlay')
+    expect(start, 'no opt-in rule for overlay surfaces').toBeGreaterThan(-1)
+    const surfaces = css.slice(start, css.indexOf('}', start) + 1)
+    expect(surfaces).toContain('.qc-chrome .qc-overlay') // the dialog and menu boxes
+    expect(surfaces).toContain('.qc-chrome .qc-scrim') // the dialog backdrop
+    expect(surfaces).toContain('.qc-chrome .qc-menu-backdrop') // the menu's dismiss catcher
+    expect(surfaces).toContain('pointer-events: auto')
+  })
+
   it('the legend header stays inert, so its controls depend on that opt-in', () => {
     // The header itself must not take events: it spans the top of the chart, and a bar that wide
     // swallowing drags would make the chart feel broken. Its compare door is a button, so the rule

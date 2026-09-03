@@ -28,6 +28,34 @@ export function indicatorTitleOf(inst: IndicatorInstance, t: ChartTranslate): st
   return typeof key === 'string' ? t(key as ChartMessageKey) : inst.id
 }
 
+/** The collapsed reading for a set of legend rows against one freshly read height table, plus
+ *  whether every pane-placed row now HAS a height. The renderer reports 0 for a pane it has not
+ *  laid out yet, which is not the same fact as a short pane, so a 0 leaves the answer unmeasured
+ *  and the caller looks again rather than publishing a guess. Pure, so the settle behavior is
+ *  pinned without a renderer. Exported for tests. */
+export function collapsedReadings(
+  rows: readonly { id: string; pane?: boolean }[],
+  paneOf: Readonly<Record<string, number>>,
+  heights: readonly number[],
+): { collapsed: Record<string, boolean>; measured: boolean } {
+  const collapsed: Record<string, boolean> = {}
+  let measured = true
+  for (const row of rows) {
+    if (!row.pane) continue
+    const index = paneOf[row.id]
+    // No pane index, or the main pane: the row is not pane-placed after all and never reads
+    // collapsed. That is a settled answer, not a missing one.
+    if (index === undefined || index <= 0) {
+      collapsed[row.id] = false
+      continue
+    }
+    const height = heights[index]
+    if (height === undefined || height === 0) measured = false
+    collapsed[row.id] = isCollapsed(height)
+  }
+  return { collapsed, measured }
+}
+
 /** Live ticks arrive many times a second, and a full recompute per tick multiplies by every
  *  configured instance. Structural paints recompute immediately; the MID-BAR tick path is capped
  *  at this interval, with a trailing run so the final tick of a burst still lands. */
@@ -98,6 +126,45 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     neutral: () => deps.canvas().neutral,
   })
 
+  /** A pane is laid out AFTER the frame that creates it, so rows built in the same frame read a
+   *  height of 0. Re-read and correct any row whose reading changed; answer whether the readings
+   *  are settled. */
+  const syncCollapsedReadings = (rows: LegendChip[]): boolean => {
+    const { collapsed, measured } = collapsedReadings(rows, renderer.paneOf(), deps.chart.panes().map((p) => p.getHeight()))
+    let changed = false
+    for (const row of rows) {
+      if (!row.pane) continue
+      const next = collapsed[row.id] ?? false
+      if (next !== row.collapsed) {
+        row.collapsed = next
+        changed = true
+      }
+    }
+    if (changed) deps.onChips()
+    return measured
+  }
+
+  /** How many frames to keep looking for a layout. Half a second at 60Hz: long enough for a pane
+   *  the renderer is slow to lay out, short enough that a chart which never lays one out is not
+   *  left with a frame loop running behind it. */
+  const SETTLE_FRAMES = 30
+
+  /** Look again each frame until the readings are measured, rather than betting the layout settles
+   *  in exactly one. It does not when the feed goes idle right after mount: nothing else would ever
+   *  recompute, and a row stuck on the 0 reading offers restore on a pane nobody collapsed. A newer
+   *  recompute replaces `chips`, which ends the older loop. */
+  const scheduleCollapsedSync = (rows: LegendChip[]): void => {
+    if (typeof requestAnimationFrame !== 'function' || !rows.some((c) => c.pane)) return
+    let left = SETTLE_FRAMES
+    const look = (): void => {
+      if (deps.disposed() || chips !== rows || left <= 0) return
+      left -= 1
+      if (syncCollapsedReadings(rows)) return
+      requestAnimationFrame(look)
+    }
+    requestAnimationFrame(look)
+  }
+
   const permitted = (id: string): boolean => {
     if (!deps.access?.indicator) return true
     try {
@@ -165,27 +232,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     }
     chips = next
     deps.onChips()
-    // Pane heights settle a frame AFTER a pane is created or resized, so a row built in the same
-    // frame can misread a fresh pane as collapsed. Converge on layout truth: re-check next frame
-    // and re-render only if a collapsed reading actually changed.
-    if (next.some((c) => c.pane) && typeof requestAnimationFrame === 'function') {
-      requestAnimationFrame(() => {
-        if (deps.disposed()) return
-        const freshPaneOf = renderer.paneOf()
-        const freshHeights = deps.chart.panes().map((p) => p.getHeight())
-        let changed = false
-        for (const c of next) {
-          if (!c.pane) continue
-          const idx = freshPaneOf[c.id]
-          const collapsed = idx !== undefined && idx > 0 ? isCollapsed(freshHeights[idx]) : false
-          if (collapsed !== c.collapsed) {
-            c.collapsed = collapsed
-            changed = true
-          }
-        }
-        if (changed) deps.onChips()
-      })
-    }
+    scheduleCollapsedSync(next)
   }
 
   return {
