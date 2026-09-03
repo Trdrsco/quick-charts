@@ -9,7 +9,7 @@ import { mountChartLegend, type ChartLegend, type LegendChip } from '../chartLeg
 import type { ChartI18n } from '../i18n'
 import { openInputsEditor } from '../inputsEditor'
 import { manifestInputDefaults } from '../indicatorModel'
-import { planPaneOp } from '../panePlan'
+import { COLLAPSED_H, planPaneOp } from '../panePlan'
 import type { ScaleMode } from '../scaleMode'
 import type { SessionState } from '../sessionModel'
 import type { IndicatorsPlane } from './indicators'
@@ -98,8 +98,17 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       panes.forEach((p, i) => (heights[i] = p.getHeight()))
       const plan = planPaneOp({ heights, remembered: paneRemembered }, { kind: op, pane: paneIdx })
       paneRemembered = plan.remembered
-      for (const [i, h] of Object.entries(plan.apply)) panes[Number(i)]?.setHeight(h)
-      deps.indicators.recompute() // the row's collapsed state follows the new heights
+      for (const [i, h] of Object.entries(plan.apply)) {
+        const index = Number(i)
+        panes[index]?.setHeight(h)
+        // The plan is the record of what the viewer asked for, so it is what the row reports. A
+        // maximize collapses every OTHER pane, which is why this reads the whole plan rather than
+        // just the pane the command named. Reading the heights back instead would be guesswork:
+        // a pane is born at the floor and rebalanced later, so short and collapsed look identical
+        // for the first frames of a pane's life.
+        if (index > 0) deps.indicators.setPaneCollapsed(index, h <= COLLAPSED_H)
+      }
+      deps.indicators.recompute()
     },
   })
   legend.syncScale(deps.scaleMode())

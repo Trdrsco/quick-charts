@@ -28,17 +28,35 @@ export function indicatorTitleOf(inst: IndicatorInstance, t: ChartTranslate): st
   return typeof key === 'string' ? t(key as ChartMessageKey) : inst.id
 }
 
-/** The collapsed reading for a set of legend rows against one freshly read height table, plus
- *  whether every pane-placed row now HAS a height. The renderer reports 0 for a pane it has not
- *  laid out yet, which is not the same fact as a short pane, so a 0 leaves the answer unmeasured
- *  and the caller looks again rather than publishing a guess. Pure, so the settle behavior is
- *  pinned without a renderer. Exported for tests. */
+/** How many consecutive readings at the floor height confirm a collapse nobody commanded.
+ *
+ *  A pane is BORN at the floor: the renderer allocates it there and rebalances it on a later
+ *  layout pass. So "short right now" and "collapsed" are different facts, and only time separates
+ *  them. A pane on its way from the floor to its real height passes through one or two readings; a
+ *  pane that is actually collapsed stays. */
+export const FLOOR_CONFIRM_READINGS = 4
+
+/** What each legend row should say about its pane, given one reading of the heights.
+ *
+ *  Collapse is something a VIEWER does, so the widget's own record of who collapsed what is the
+ *  authority: `commanded` holds the pane indices its collapse and maximize commands put at the
+ *  floor, and a row in it reads collapsed immediately and settles immediately. Geometry is only
+ *  corroboration, for a host that sets pane heights itself, and it may confirm a collapse only
+ *  after the height has stayed at the floor for FLOOR_CONFIRM_READINGS consecutive looks.
+ *
+ *  `measured` answers whether this reading can be trusted as final, which is what tells the caller
+ *  to stop looking. A height of 0 is a pane not yet laid out, and a height at the floor is a pane
+ *  that may still be mid-rebalance; neither is final. Pure, so the whole settle behavior is pinned
+ *  frame by frame without a renderer. Exported for tests. */
 export function collapsedReadings(
   rows: readonly { id: string; pane?: boolean }[],
   paneOf: Readonly<Record<string, number>>,
   heights: readonly number[],
-): { collapsed: Record<string, boolean>; measured: boolean } {
+  commanded: ReadonlySet<number>,
+  streaks: Readonly<Record<string, number>> = {},
+): { collapsed: Record<string, boolean>; measured: boolean; streaks: Record<string, number> } {
   const collapsed: Record<string, boolean> = {}
+  const nextStreaks: Record<string, number> = {}
   let measured = true
   for (const row of rows) {
     if (!row.pane) continue
@@ -49,11 +67,32 @@ export function collapsedReadings(
       collapsed[row.id] = false
       continue
     }
+    // The viewer's own doing. Nothing about the geometry can overrule it, and there is nothing to
+    // wait for.
+    if (commanded.has(index)) {
+      collapsed[row.id] = true
+      continue
+    }
     const height = heights[index]
-    if (height === undefined || height === 0) measured = false
-    collapsed[row.id] = isCollapsed(height)
+    if (height === undefined || height === 0) {
+      // Not laid out yet. Say the honest thing meanwhile and look again.
+      collapsed[row.id] = false
+      measured = false
+      continue
+    }
+    if (!isCollapsed(height)) {
+      collapsed[row.id] = false
+      continue
+    }
+    const streak = (streaks[row.id] ?? 0) + 1
+    nextStreaks[row.id] = streak
+    const confirmed = streak >= FLOOR_CONFIRM_READINGS
+    collapsed[row.id] = confirmed
+    // Still short, but not yet for long enough to call it: a pane rebalancing away from the floor
+    // must not be latched as collapsed on the way past.
+    if (!confirmed) measured = false
   }
-  return { collapsed, measured }
+  return { collapsed, measured, streaks: nextStreaks }
 }
 
 /** Live ticks arrive many times a second, and a full recompute per tick multiplies by every
@@ -78,6 +117,9 @@ export interface IndicatorsPlane {
   setHidden(ids: readonly string[]): void
   toggleHidden(id: string): void
   isHidden(id: string): boolean
+  /** Record what a pane command did, which is what makes a row read collapsed. The widget calls
+   *  this as it applies a collapse, restore or maximize; heights alone never decide. */
+  setPaneCollapsed(paneIndex: number, collapsed: boolean): void
   /** Recompute now and rebuild the legend rows. */
   recompute(): void
   /** Recompute under the tick cap: for the mid-bar live path only. */
@@ -117,6 +159,12 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   let chips: LegendChip[] = []
   let lastRecompute = 0
   let trailer: ReturnType<typeof setTimeout> | null = null
+  /** The pane indices this widget's own collapse and maximize commands put at the floor. This is
+   *  the authority on what is collapsed; heights only corroborate. Per chart and in memory: a
+   *  collapsed pane is a viewing posture, and nothing in the save blob carries it. */
+  const commandedPanes = new Set<number>()
+  /** Consecutive readings at the floor, per row, for a collapse nobody commanded. */
+  let floorStreaks: Record<string, number> = {}
 
   const renderer = attachIndicators(deps.chart, {
     candles: deps.candleSeries,
@@ -126,11 +174,12 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     neutral: () => deps.canvas().neutral,
   })
 
-  /** A pane is laid out AFTER the frame that creates it, so rows built in the same frame read a
-   *  height of 0. Re-read and correct any row whose reading changed; answer whether the readings
-   *  are settled. */
+  /** Re-read the heights, correct any row whose reading changed, and answer whether the readings
+   *  are final. */
   const syncCollapsedReadings = (rows: LegendChip[]): boolean => {
-    const { collapsed, measured } = collapsedReadings(rows, renderer.paneOf(), deps.chart.panes().map((p) => p.getHeight()))
+    const heights = deps.chart.panes().map((p) => p.getHeight())
+    const { collapsed, measured, streaks } = collapsedReadings(rows, renderer.paneOf(), heights, commandedPanes, floorStreaks)
+    floorStreaks = streaks
     let changed = false
     for (const row of rows) {
       if (!row.pane) continue
@@ -145,14 +194,14 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   }
 
   /** How many frames to keep looking for a layout. Half a second at 60Hz: long enough for a pane
-   *  the renderer is slow to lay out, short enough that a chart which never lays one out is not
-   *  left with a frame loop running behind it. */
+   *  the renderer is slow to lay out and rebalance, short enough that a chart which never lays one
+   *  out is not left with a frame loop running behind it. */
   const SETTLE_FRAMES = 30
 
-  /** Look again each frame until the readings are measured, rather than betting the layout settles
-   *  in exactly one. It does not when the feed goes idle right after mount: nothing else would ever
-   *  recompute, and a row stuck on the 0 reading offers restore on a pane nobody collapsed. A newer
-   *  recompute replaces `chips`, which ends the older loop. */
+  /** Look again each frame until the readings are final, rather than betting the layout settles in
+   *  any fixed number of frames. It does not settle on its own when the feed goes idle right after
+   *  mount: nothing else would ever recompute, so whatever the last look saw is what the viewer is
+   *  left with. A newer recompute replaces `chips`, which ends the older loop. */
   const scheduleCollapsedSync = (rows: LegendChip[]): void => {
     if (typeof requestAnimationFrame !== 'function' || !rows.some((c) => c.pane)) return
     let left = SETTLE_FRAMES
@@ -184,7 +233,6 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     // previous window's lines paint stale marks over the empty chart.
     if (bars.length === 0 && instances.length > 0) renderer.blank()
     const paneOfMap = renderer.paneOf()
-    const paneHeights = deps.chart.panes().map((p) => p.getHeight())
     const formatter = deps.formatter()
     for (const inst of instances) {
       const def = inst.definition
@@ -196,7 +244,10 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
         title,
         hasInputs: Object.keys(def.manifest.inputs ?? {}).length > 0,
         pane: placement === 'pane',
-        collapsed: paneIdx !== undefined && paneIdx > 0 ? isCollapsed(paneHeights[paneIdx]) : false,
+        // What the widget was told, not what the layout momentarily looks like. A pane is born at
+        // the floor height and rebalanced a frame or two later, so geometry cannot be trusted here;
+        // the settle loop below corroborates it afterwards.
+        collapsed: paneIdx !== undefined && paneIdx > 0 && commandedPanes.has(paneIdx),
       }
       if (hiddenIds.has(inst.id) || indicatorHidden(inst.overrides)) {
         renderer.remove(inst.id)
@@ -276,6 +327,13 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       deps.onEvent({ kind: nowHidden ? 'hidden' : 'shown', id })
     },
     isHidden: (id) => hiddenIds.has(id),
+    setPaneCollapsed(paneIndex, collapsed) {
+      if (paneIndex <= 0) return // the price pane never collapses
+      if (collapsed) commandedPanes.add(paneIndex)
+      else commandedPanes.delete(paneIndex)
+      // The command is the fact; drop any half-built geometry streak so a later look starts clean.
+      floorStreaks = {}
+    },
     recompute,
     recomputeThrottled() {
       const since = Date.now() - lastRecompute
