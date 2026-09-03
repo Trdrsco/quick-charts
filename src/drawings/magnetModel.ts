@@ -1,7 +1,7 @@
 // The magnet, as a POLICY over the seam's snap.
 //
 // `magnetSnap` answers one question — which OHLC value does this point pull to — and it is pure
-// geometry. The product decisions around it are separate and belong here: the rail's icon toggles
+// geometry. The product decisions around it are separate and belong here: the toolbar's icon toggles
 // between off and weak rather than cycling three states, the menu's two rows are latching (picking
 // the mode that is already on releases the magnet, so there is no Off row to hunt for), and the
 // button's face says strong or plain magnet rather than on or off.
@@ -18,7 +18,7 @@ export const MAGNET_LABELS: Readonly<Record<Exclude<MagnetMode, 'off'>, ChartMes
   strong: 'drawing.magnetStrong',
 }
 
-/** The rail button. It is a plain on/off switch over the LAST strength the trader chose, so a
+/** The toolbar button. It is a plain on/off switch over the LAST strength the trader chose, so a
  *  trader who set strong gets strong back when they turn the magnet on again. */
 export function toggleMagnet(mode: MagnetMode, lastStrength: Exclude<MagnetMode, 'off'> = 'weak'): MagnetMode {
   return mode === 'off' ? lastStrength : 'off'

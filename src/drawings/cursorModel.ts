@@ -1,7 +1,7 @@
 // What the pointer is doing on the chart: the cursor glyph, the two TRANSIENT tools, and whether
 // arming a tool survives the drawing it just made.
 //
-// Measure and Zoom arm from the rail exactly like a drawing tool, but nothing they place is kept:
+// Measure and Zoom arm from the toolbar exactly like a drawing tool, but nothing they place is kept:
 // the readout lives until the next gesture and the zoom box disappears into the range it set. They
 // are therefore not drawings with a "temporary" flag; they are pointer modes with a shape, which is
 // why they are modelled here and not in the tool catalog.
@@ -44,7 +44,7 @@ export function transientSurvives(tool: string | null): boolean {
 }
 
 /** What stays armed after a placement completes. Stay-in-drawing-mode keeps the tool so a trader
- *  can draw a run of the same shape; without it the rail falls back to the cursor. A transient is
+ *  can draw a run of the same shape; without it the toolbar falls back to the cursor. A transient is
  *  never released by its own completion: the eraser keeps erasing and measure keeps measuring
  *  until Escape or the cursor button releases it. */
 export function toolAfterPlacement(tool: string | null, stayInDrawingMode: boolean): string | null {
@@ -52,7 +52,7 @@ export function toolAfterPlacement(tool: string | null, stayInDrawingMode: boole
   return stayInDrawingMode ? tool : null
 }
 
-/** Which rail buttons look armed. The cursor button is the resting state, and it also owns the
+/** Which toolbar buttons look armed. The cursor button is the resting state, and it also owns the
  *  eraser, so it reads as armed while the eraser is. */
 export function cursorButtonArmed(tool: string | null): boolean {
   return tool === null || tool === 'eraser'

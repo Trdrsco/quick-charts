@@ -1,7 +1,7 @@
 // What a lock refuses, and what the remove menu takes.
 //
 // Two locks act at once and they are not the same thing. A DRAWING's own lock is a trader pinning
-// one object down; the rail's LOCK ALL is a mode that suspends editing across the chart without
+// one object down; the toolbar's LOCK ALL is a mode that suspends editing across the chart without
 // changing any drawing. Both refuse the same edits, so one predicate answers for both and no
 // surface has to remember to check the second one.
 //
@@ -20,7 +20,7 @@ const LOCKED_REFUSES: readonly DrawingEdit[] = ['move', 'resize', 'delete', 'edi
 
 /** The one lock question every surface asks.
  *
- *  Two locks act at once. `allLocked` is the rail's mode and it suspends editing across the whole
+ *  Two locks act at once. `allLocked` is the toolbar's mode and it suspends editing across the whole
  *  chart, new drawings included, without changing any drawing's own flag. A drawing's `locked`
  *  refuses only the edits that would change it. `target` is null for an edit that has no drawing
  *  yet. */

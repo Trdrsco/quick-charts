@@ -1,7 +1,7 @@
 // The chart's legend: a quiet framework-free strip over the plot area — the symbol/timeframe header
 // with a market-status dot and the price-scale mode chips, then one row per indicator instance
 // (title, latest value, per-row controls: settings gear, pane collapse/maximize for pane-placed
-// instances, the eye). Same chrome discipline as the drawing rail: package-owned DOM, no framework,
+// instances, the eye). Same chrome discipline as the drawing toolbar: package-owned DOM, no framework,
 // and every visual comes from a `.qc-*` recipe in the package stylesheet rather than a style
 // string. Only the left inset is written inline, because only it is calculated at runtime.
 //
@@ -68,7 +68,7 @@ const EYE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke=
 const EYE_OFF = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 12s3.5-6 10-6c1.8 0 3.4.5 4.8 1.2M22 12s-3.5 6-10 6c-1.8 0-3.4-.5-4.8-1.2"/><path d="M4 20 20 4"/></svg>'
 const GEAR = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>'
 
-/** The strip's own left column, past the drawing rail. */
+/** The strip's own left column, past the drawing toolbar. */
 const RAIL_COLUMN_PX = 44
 
 /** `strings` is the chart's language: every visible label reads through `strings.t` at render time,

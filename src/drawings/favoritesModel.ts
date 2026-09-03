@@ -30,7 +30,7 @@ export const DEFAULT_FAVORITES: FavoritesState = { tools: [], visible: true, pos
 
 /** Where favorites live. The chart holds no storage of its own, so a host implements this over
  *  whatever it already uses for viewer state, and every surface that stars a tool goes through it.
- *  `subscribe` is what keeps a rail's stars and the floating bar showing the same list without
+ *  `subscribe` is what keeps the toolbar's stars and the floating bar showing the same list without
  *  either one owning the other. */
 export interface FavoritesPort {
   read(): FavoritesState
