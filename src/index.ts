@@ -137,7 +137,18 @@ export type { OpenResource, ResourceLoadOutcome, ResourceRemoveOutcome, Resource
 export { ARRANGEMENTS, LAYOUT_MENU_ROWS, arrangementOf, type Arrangement, type PaneRect } from './layoutGrid'
 export { openInputsEditor } from './inputsEditor'
 export { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
-export { attachDrawings, placeableByWidget, type AttachDrawingsOptions, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow } from './drawings'
+export {
+  attachDrawings,
+  placeableByWidget,
+  type AttachDrawingsOptions,
+  type DrawingPresets,
+  type DrawingsEvents,
+  type DrawingsHandle,
+  type DrawingsWorkflow,
+  type PlacedImage,
+  type SelectedDrawing,
+  type TextEditSession,
+} from './drawings'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export {
   BUILT_IN_LOCALES,

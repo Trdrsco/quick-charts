@@ -1,31 +1,85 @@
-// The drawing plane: the layer, its rail, and the narrowed surface a host drives it through.
+// The drawing plane: the layer, the default drawing UI over it, and the narrowed surface a host
+// drives it through.
+//
+// The plane owns what no single surface should: the eye's state, the standing preferences the
+// toolbar edits, the template presets every surface reads, and the mounting of the toolbar, the
+// favorites bar, the selected drawing's settings bar, the inline text editor, the glyph and image
+// pickers and the settings dialog. Every surface renders from the layer and the preferences and
+// acts through the command registry, so a verb the host hides or refuses is refused from the
+// glass exactly as it is from a host call.
 //
 // The public surface is a REAL subset of the layer's handle, not a type-level narrowing: symbol
 // and timeframe flow, the tick grid, the price formatter and teardown stay chart-owned, so a host
-// cannot desync the layer from the bars under it. An untyped consumer must not find them either,
-// which is why the object below is built by hand rather than spread.
-import { attachDrawings, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow } from '../drawings'
-import type { GlyphSourcePort } from '../drawings/index'
-import { mountDrawingsRail, type DrawingsRail } from '../drawingsRail'
+// cannot desync the layer from the bars under it.
 import type { ISeriesApi, IChartApi, SeriesType } from 'lightweight-charts'
+import { attachDrawings, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow, type TextEditSession } from '../drawings'
+import {
+  DEFAULT_HIDE_STATE,
+  blanks,
+  rememberRailTool,
+  buildRailGroups,
+  toggleFavorite,
+  type CursorMode,
+  type DrawingAssetPort,
+  type DrawingPreferences,
+  type HideState,
+  type MagnetMode,
+} from '../drawings/index'
 import type { FeedBar } from '../datafeed'
-import type { ChartI18n } from '../i18n'
+import type { ChartI18n, ChartTranslate } from '../i18n'
 import type { ChartSaveLoadAdapter, ResourceRef } from '../resources'
+import { mountDrawingToolbar, type ToolbarHandle } from '../ui/drawings/toolbar'
+import { mountFavoritesBar, type FavoritesBarHandle } from '../ui/drawings/favoritesBar'
+import { mountSettingsBar, type SettingsBarHandle } from '../ui/drawings/settingsBar'
+import { mountTextEditor, type TextEditorHandle } from '../ui/drawings/textEditor'
+import { openSettingsDialog, type SettingsDialogHandle } from '../ui/drawings/settingsDialog'
+import { openImagePicker, firstImageFile } from '../ui/drawings/imagePicker'
+import { pushRecentGlyph } from '../ui/drawings/glyphPicker'
 import type { AccessPolicy } from './options'
+import type { CommandRegistry } from './commands'
 
 /** The drawing surface a host drives. */
 export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe' | 'setTick' | 'setPriceFormatter' | 'destroy'>
+
+/** The verbs the `chart.drawings.*` commands run that live above the layer: the standing
+ *  preferences, the eye, favorites, templates and the dialogs. */
+export interface DrawingVerbs {
+  arm(arg: unknown): void
+  setCursor(mode: CursorMode): void
+  setMagnet(mode: MagnetMode): void
+  setStayInMode(on: boolean): void
+  setLockAll(on: boolean): void
+  hide(): HideState
+  setHide(state: HideState): void
+  setSync(on: boolean): void
+  setRemoveLocked(on: boolean): void
+  toggleFavorite(tool: string): void
+  setFavoritesBar(on: boolean): void
+  openSettings(): void
+  /** Apply a named template to the selection, or the tool's default for null. */
+  applyTemplate(name: string | null): void
+  saveTemplate(name: string): void
+  removeTemplate(name: string): void
+  tableAddRow(): void
+  tableAddColumn(): void
+}
 
 export interface DrawingsLayer {
   /** The narrowed public surface, or null when the drawings feature is off. */
   api: ChartDrawingsApi | null
   /** The full handle the chart itself drives. Null with the feature off. */
   handle: DrawingsHandle | null
+  /** What the commands above the layer run. Null with the feature off. */
+  verbs: DrawingVerbs | null
   /** Follow a symbol switch. */
   setSymbol(symbol: string): void
   setTimeframe(timeframe: string): void
   /** Push the chart's tick grid and price formatter, after a resolve or a language switch. */
   setPricing(tick: number | null, format: (price: number) => string): void
+  /** Re-read every label after a language switch. */
+  relabel(): void
+  /** Re-render the surfaces after something they read moved (a preference, the layout). */
+  refresh(): void
   destroy(): void
 }
 
@@ -34,22 +88,30 @@ export interface DrawingsDeps {
   series: ISeriesApi<SeriesType>
   /** The gesture box the layer draws into. */
   container: HTMLElement
-  /** The inert chrome subtree the rail mounts into. */
+  /** The inert chrome subtree the surfaces mount into. */
   chrome: HTMLElement
+  /** This chart's identity, which a drawing bound to one chart carries as its scope. */
+  chartId: string
   symbol: string
   timeframe: string
   bars(): readonly FeedBar[]
   resources: ChartSaveLoadAdapter | null
   i18n: ChartI18n
-  /** Whether the layer exists at all, and whether its rail is shown. */
+  /** Whether the layer exists at all, and which of its surfaces are shown. */
   enabled: boolean
-  rail: boolean
+  toolbar: boolean
+  favorites: boolean
   access?: AccessPolicy
-  /** The standing workflow choices, read LIVE. The layer consults them and owns none of them, so
-   *  the chart's preference record stays the one copy. */
-  workflow?: () => DrawingsWorkflow
-  /** Where the image and glyph tools get their artwork. Absent, a glyph draws as text. */
-  glyphSource?: GlyphSourcePort
+  commands: CommandRegistry
+  /** Where the image and glyph tools get their artwork, and how a picked file becomes a payload. */
+  assets?: DrawingAssetPort
+  /** The standing preference record, read live, and the one way to write it. */
+  preferences(): DrawingPreferences
+  setPreferences(next: DrawingPreferences): void
+  /** The studies the eye reaches: how many there are, and the blanket over them. */
+  indicators: { count(): number; setAllHidden(hidden: boolean): void }
+  /** Charts in the layout, for the sync control. */
+  chartCount(): number
   /** A refused write the layer made on its own. */
   onSaveConflict(info: { symbol: string; current: ResourceRef | null; message: string }): void
   /** The armed tool or the selection changed. */
@@ -61,16 +123,33 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     return {
       api: null,
       handle: null,
+      verbs: null,
       setSymbol: () => undefined,
       setTimeframe: () => undefined,
       setPricing: () => undefined,
+      relabel: () => undefined,
+      refresh: () => undefined,
       destroy: () => undefined,
     }
   }
 
-  // The rail wires to the layer's events through a mutable events object: the layer needs its
-  // events at construction and the rail needs the layer's handle, so filling the object after both
-  // exist resolves the cycle without holding state for it.
+  // The translator is read at every call rather than captured, so a language switch reaches every
+  // label the surfaces re-render without the surfaces being rebuilt.
+  const live = ((...args: unknown[]) => (deps.i18n.t as unknown as (...a: unknown[]) => string)(...args)) as unknown as ChartTranslate
+  const t = (): ChartTranslate => live
+  const prefs = deps.preferences
+  const write = (patch: Partial<DrawingPreferences>): void => {
+    deps.setPreferences({ ...prefs(), ...patch })
+    refresh()
+  }
+
+  /** The eye: one switch with a chosen subject. Session state, never persisted. */
+  let hide: HideState = DEFAULT_HIDE_STATE
+  const groups = buildRailGroups()
+
+  // The surfaces wire to the layer's events through a mutable events object: the layer needs its
+  // events at construction and the surfaces need the layer's handle, so filling the object after
+  // both exist resolves the cycle without holding state for it.
   const events: DrawingsEvents = {}
   const handle = attachDrawings({
     chart: deps.chart,
@@ -78,25 +157,21 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     container: deps.container,
     symbol: deps.symbol,
     timeframe: deps.timeframe,
+    chartId: deps.chartId,
     resources: deps.resources ? (scope) => deps.resources!.drawings(scope) : undefined,
+    ...(deps.resources?.templates ? { templates: deps.resources.templates('drawing') } : {}),
     bars: deps.bars,
-    ...(deps.workflow ? { workflow: deps.workflow } : {}),
-    ...(deps.glyphSource ? { glyphSource: deps.glyphSource } : {}),
+    workflow: (): DrawingsWorkflow => {
+      const p = prefs()
+      return { magnet: p.magnet, stayInDrawingMode: p.stayInDrawingMode, cursor: p.cursor, syncAcrossPanes: p.syncAcrossPanes }
+    },
+    ...(deps.assets ? { glyphSource: (glyph: string) => deps.assets!.glyphSource(glyph) } : {}),
+    // The keyboard verbs go through the registry, so the access policy gates them like every door.
+    execute: (command, arg) => deps.commands.execute(command, arg).kind === 'ok',
     events,
   })
   events.onSaveConflict = ({ symbol, current }) =>
     deps.onSaveConflict({ symbol, current, message: deps.i18n.t(current ? 'host.saveConflict' : 'host.saveNotFound') })
-
-  let rail: DrawingsRail | null = null
-  if (deps.rail) rail = mountDrawingsRail(deps.chrome, handle, deps.i18n)
-  events.onToolChange = (type) => {
-    rail?.syncTool(type)
-    deps.onChange('tool', type)
-  }
-  events.onSelectionChange = (id) => {
-    rail?.syncSelection(id)
-    deps.onChange('selection', id)
-  }
 
   /** A tool the access policy refuses is never armed, whichever door asked for it. */
   const permitted = (tool: string | null): boolean => {
@@ -108,19 +183,233 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     }
   }
 
+  const run = (command: string, arg?: unknown): boolean => deps.commands.execute(command, arg).kind === 'ok'
+
+  // ── The surfaces ────────────────────────────────────────────────────────────────────────────
+  let toolbar: ToolbarHandle | null = null
+  let favoritesBar: FavoritesBarHandle | null = null
+  let settingsBar: SettingsBarHandle | null = null
+  let textEditor: TextEditorHandle | null = null
+  let dialog: SettingsDialogHandle | null = null
+  let closeImagePicker: (() => void) | null = null
+
+  if (deps.toolbar) {
+    toolbar = mountDrawingToolbar({
+      chrome: deps.chrome,
+      t: t(),
+      state: () => {
+        const p = prefs()
+        return {
+          activeTool: handle.activeTool(),
+          cursor: p.cursor,
+          magnet: p.magnet,
+          stayInDrawingMode: p.stayInDrawingMode,
+          allLocked: handle.allLocked(),
+          hide,
+          sync: p.syncAcrossPanes,
+          removeLocked: p.removeLocked,
+          counts: handle.counts(),
+          indicatorCount: deps.indicators.count(),
+          railTools: p.railTools,
+          favorites: p.favorites,
+          recentGlyphs: p.recentGlyphs,
+          layoutCharts: deps.chartCount(),
+        }
+      },
+      run,
+      toolAllowed: permitted,
+      ...(deps.assets ? { glyphSource: (glyph: string) => deps.assets!.glyphSource(glyph) } : {}),
+    })
+  }
+  if (deps.favorites) {
+    favoritesBar = mountFavoritesBar({
+      chrome: deps.chrome,
+      t: t(),
+      favorites: () => prefs().favorites,
+      activeTool: () => handle.activeTool(),
+      arm: (tool) => run('chart.drawings.arm', tool),
+      onMove: (position) => write({ favorites: { ...prefs().favorites, position } }),
+    })
+  }
+  settingsBar = mountSettingsBar({
+    chrome: deps.chrome,
+    t: t(),
+    selected: () => handle.selected(),
+    selectedProps: () => handle.selectedDrawing()?.props ?? null,
+    presets: handle.presets,
+    run,
+    stackPosition: () => handle.stackPosition(),
+    canPaste: () => handle.canPaste(),
+    position: () => prefs().settingsBarPosition,
+    onMove: (position) => write({ settingsBarPosition: position }),
+  })
+
+  const renderAll = (): void => {
+    toolbar?.render()
+    favoritesBar?.render()
+    settingsBar?.render()
+  }
+  const refresh = renderAll
+
+  events.onToolChange = (type) => {
+    renderAll()
+    deps.onChange('tool', type)
+  }
+  events.onSelectionChange = (id) => {
+    renderAll()
+    deps.onChange('selection', id)
+  }
+  events.onChange = renderAll
+  events.onTextEdit = (session: TextEditSession | null) => {
+    textEditor?.destroy()
+    textEditor = null
+    if (!session) return
+    textEditor = mountTextEditor(session, {
+      container: deps.chrome,
+      gestures: deps.container,
+      t: t(),
+      onCommit: (value) => {
+        textEditor = null
+        handle.commitText(value)
+      },
+      onCancel: () => {
+        textEditor = null
+        handle.cancelText()
+      },
+    })
+  }
+  const unsubscribePresets = handle.presets.subscribe(renderAll)
+
+  // A system-clipboard IMAGE pasted over the chart becomes an image drawing, a quick path around
+  // the Image tool's own dialog. Only an actual image file is taken; a copied drawing rides the
+  // layer's own keys, and text pastes belong to whatever field is focused.
+  const onPaste = (e: ClipboardEvent): void => {
+    if (!deps.assets) return
+    const target = e.target as HTMLElement | null
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
+    if (!deps.container.matches(':hover')) return
+    const file = firstImageFile(e.clipboardData?.files)
+    if (!file) return
+    e.preventDefault()
+    void deps.assets.intakeImage(file).then((result) => {
+      if (result.ok) handle.placeImage(result.asset)
+    })
+  }
+  window.addEventListener('paste', onPaste)
+
+  // ── The verbs above the layer ───────────────────────────────────────────────────────────────
+  const applyHide = (next: HideState): void => {
+    hide = next
+    handle.setAllHidden(blanks(next, 'drawings'))
+    deps.indicators.setAllHidden(blanks(next, 'indicators'))
+    renderAll()
+  }
+
+  const verbs: DrawingVerbs = {
+    arm(arg) {
+      const tool = arg === null || typeof arg === 'string' ? arg : arg && typeof arg === 'object' && typeof (arg as { tool?: unknown }).tool === 'string' ? (arg as { tool: string }).tool : undefined
+      if (tool === undefined || !permitted(tool)) return
+      const props = arg && typeof arg === 'object' && (arg as { props?: unknown }).props ? ((arg as { props: Record<string, unknown> }).props) : undefined
+      // The Image tool opens its picker rather than arming: its picture is chosen first and then
+      // dropped onto the chart, so there is nothing left to decide with a click.
+      if (tool === 'image') {
+        if (!deps.assets || closeImagePicker) return
+        closeImagePicker = openImagePicker({
+          container: deps.chrome,
+          t: t(),
+          assets: deps.assets,
+          onConfirm: (image) => handle.placeImage(image),
+          onClose: () => {
+            closeImagePicker = null
+          },
+        })
+        return
+      }
+      handle.armTool(tool, props)
+      if (tool) {
+        const patch: Partial<DrawingPreferences> = { railTools: rememberRailTool(groups, prefs().railTools, tool) }
+        const glyph = props && typeof props.glyph === 'string' ? props.glyph : null
+        if (glyph) patch.recentGlyphs = pushRecentGlyph(prefs().recentGlyphs, glyph)
+        write(patch)
+      }
+    },
+    setCursor(mode) {
+      write({ cursor: mode })
+      handle.armTool(null)
+    },
+    setMagnet(mode) {
+      write({ magnet: mode, ...(mode === 'off' ? {} : { magnetStrength: mode }) })
+    },
+    setStayInMode: (on) => write({ stayInDrawingMode: on }),
+    setLockAll(on) {
+      handle.setAllLocked(on)
+      renderAll()
+    },
+    hide: () => hide,
+    setHide: applyHide,
+    setSync: (on) => write({ syncAcrossPanes: on }),
+    setRemoveLocked: (on) => write({ removeLocked: on }),
+    toggleFavorite: (tool) => write({ favorites: toggleFavorite(prefs().favorites, tool) }),
+    setFavoritesBar: (on) => write({ favorites: { ...prefs().favorites, visible: on } }),
+    openSettings() {
+      const drawing = handle.selectedDrawing()
+      if (!drawing || dialog) return
+      dialog = openSettingsDialog({
+        chrome: deps.chrome,
+        t: t(),
+        drawing,
+        presets: handle.presets,
+        ...(deps.assets ? { assets: deps.assets } : {}),
+        onCommit: () => {
+          dialog = null
+          handle.commitEdit()
+        },
+        onCancel: () => {
+          dialog = null
+          renderAll()
+        },
+        onSaveTemplate: (name, preset) => void handle.presets.saveTemplate(drawing.type, name, preset),
+        onRemoveTemplate: (name) => void handle.presets.removeTemplate(drawing.type, name),
+      })
+    },
+    applyTemplate(name) {
+      const drawing = handle.selectedDrawing()
+      if (!drawing) return
+      const preset = name === null ? handle.presets.defaultFor(drawing.type) : handle.presets.templatesFor(drawing.type).find((template) => template.name === name)
+      if (!preset) return
+      if (preset.style) handle.updateStyle(preset.style)
+      if (preset.props) handle.updateProps(preset.props)
+    },
+    saveTemplate(name) {
+      const drawing = handle.selectedDrawing()
+      if (!drawing) return
+      void handle.presets.saveTemplate(drawing.type, name, { style: { ...drawing.style }, props: { ...drawing.props } })
+    },
+    removeTemplate(name) {
+      const drawing = handle.selectedDrawing()
+      if (drawing) void handle.presets.removeTemplate(drawing.type, name)
+    },
+    tableAddRow() {
+      const cells = (handle.selectedDrawing()?.props as { cells?: string[][] } | undefined)?.cells
+      if (cells?.length) handle.updateProps({ cells: [...cells, cells[0]!.map(() => '')] })
+    },
+    tableAddColumn() {
+      const cells = (handle.selectedDrawing()?.props as { cells?: string[][] } | undefined)?.cells
+      if (cells?.length) handle.updateProps({ cells: cells.map((row) => [...row, '']) })
+    },
+  }
+
+  // The public surface is the handle minus the five chart-owned verbs, with arming routed through
+  // the access policy. Built by hand so an untyped consumer finds exactly what the type names.
+  const { setSymbol: _s, setTimeframe: _t, setTick: _k, setPriceFormatter: _p, destroy: _d, armTool: _a, ...rest } = handle
   return {
     handle,
+    verbs,
     api: {
-      armTool: (type) => {
-        if (permitted(type)) handle.armTool(type)
+      ...rest,
+      armTool: (type, props) => {
+        if (permitted(type)) handle.armTool(type, props)
       },
-      activeTool: () => handle.activeTool(),
-      hasSelection: () => handle.hasSelection(),
-      deleteSelected: () => handle.deleteSelected(),
-      clearAll: () => handle.clearAll(),
-      count: () => handle.count(),
-      export: () => handle.export(),
-      restore: (list) => handle.restore(list),
     },
     setSymbol: (symbol) => handle.setSymbol(symbol),
     setTimeframe: (timeframe) => handle.setTimeframe(timeframe),
@@ -128,9 +417,21 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       handle.setTick(tick)
       handle.setPriceFormatter(format)
     },
+    relabel() {
+      toolbar?.relabel()
+      favoritesBar?.render()
+      settingsBar?.render()
+    },
+    refresh,
     destroy() {
-      rail?.destroy()
-      rail = null
+      window.removeEventListener('paste', onPaste)
+      unsubscribePresets()
+      closeImagePicker?.()
+      dialog?.close()
+      textEditor?.destroy()
+      settingsBar?.destroy()
+      favoritesBar?.destroy()
+      toolbar?.destroy()
       handle.destroy()
     },
   }

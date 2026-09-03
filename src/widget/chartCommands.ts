@@ -12,7 +12,9 @@ import { SCALE_MODES, type ScaleMode } from '../scaleMode'
 import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry, CommandSpec } from './commands'
 import type { ChartHandle } from './chart'
+import type { DrawingVerbs } from './drawings'
 import type { Capabilities } from './options'
+import { CURSOR_MODES, type CursorMode, type HideState, type MagnetMode, type VisibilityPreset } from '../drawings/index'
 import type { ResolvedFeatures } from './planes'
 import { CHART_STYLES, type ChartStyleId } from './styles'
 import { REPLAY_SPEEDS } from '../replay'
@@ -58,6 +60,9 @@ export interface ChartCommandDeps {
   level(): number | null
   formatter(): PriceFormatter
   compareOpen(mode: 'compare' | 'change-symbol', changeFrom?: string): void
+  /** The drawing verbs above the layer (preferences, the eye, favorites, templates, the dialogs);
+   *  null with the drawings feature off. */
+  drawingVerbs(): DrawingVerbs | null
 }
 
 /** Register every chart-scoped built-in. Returns one unregister for all of them, which the chart
@@ -151,43 +156,159 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
 
-  // ── Drawings ────────────────────────────────────────────────────────────────────────────────
+  // ── Drawings (W4-B) ─────────────────────────────────────────────────────────────────────────
+  // Every verb the drawing toolbar, the settings bar and the settings dialog run. The layer's own
+  // verbs act on `handle.drawings`; the verbs above the layer (preferences, the eye, favorites,
+  // templates, the dialogs) act through `deps.drawingVerbs()`. Both are unavailable with the
+  // drawings feature off, and a selection verb is unavailable without a selection.
+  const drawings = (): ChartHandle['drawings'] => (features.drawings ? handle.drawings : null)
+  const verbs = (): DrawingVerbs | null => (features.drawings ? deps.drawingVerbs() : null)
+  const withSelection = (): boolean => drawings()?.hasSelection() ?? false
+  const on = (): boolean => features.drawings && drawings() !== null
+  const isHideState = (arg: unknown): arg is HideState =>
+    !!arg && typeof arg === 'object' && typeof (arg as HideState).on === 'boolean' && ['drawings', 'indicators', 'all'].includes((arg as HideState).mode)
+
   add({
     id: 'chart.drawings.removeAll',
     scope: 'chart',
     label: 'command.drawingsRemoveAll',
-    available: () => (handle.drawings?.count() ?? 0) > 0,
-    execute: () => handle.drawings?.clearAll(),
+    available: () => (drawings()?.count() ?? 0) > 0,
+    // The argument is the locked-item policy: true takes locked drawings too.
+    execute: (arg) => drawings()?.clearAll(arg === true),
   })
   add({
     id: 'chart.drawings.deleteSelected',
     scope: 'chart',
     label: 'command.drawingDeleteSelected',
     shortcut: 'Delete',
-    available: () => handle.drawings?.hasSelection() ?? false,
-    execute: () => handle.drawings?.deleteSelected(),
+    available: withSelection,
+    execute: () => drawings()?.deleteSelected(),
   })
-  // Escape disarms the armed tool. The drawing layer owns the gesture; the registry is how a key
-  // reaches it, so a host that forbids the verb disables the key with it.
+  // Escape disarms the armed tool, cancels a placement, and closes an inline text edit. The drawing
+  // layer owns the gesture; the registry is how a key reaches it, so a host that forbids the verb
+  // disables the key with it.
   add({
     id: 'chart.drawings.cancel',
     scope: 'chart',
     label: 'command.drawingCancel',
     shortcut: 'Escape',
-    available: () => features.drawings && handle.drawings?.activeTool() != null,
-    execute: () => handle.drawings?.armTool(null),
+    available: () => on() && (drawings()!.activeTool() != null || drawings()!.textEdit() !== null),
+    execute: () => drawings()?.armTool(null),
   })
-  // Arming a tool is ONE command taking the tool id: the ninety registered tools would otherwise be
-  // ninety near-identical entries, and the access policy already refuses per tool inside the layer.
+  // Arming a tool is ONE command taking the tool id (or `{ tool, props }` to seed the placement,
+  // as a picked glyph does): the ninety registered tools would otherwise be ninety near-identical
+  // entries, and the access policy already refuses per tool inside the plane.
+  add({ id: 'chart.drawings.arm', scope: 'chart', label: 'command.drawingArm', available: on, execute: (arg) => verbs()?.arm(arg) })
   add({
-    id: 'chart.drawings.arm',
+    id: 'chart.drawings.cursor',
     scope: 'chart',
-    label: 'command.drawingArm',
-    available: () => features.drawings,
+    label: 'command.drawingCursor',
+    available: on,
     execute: (arg) => {
-      if (arg === null || typeof arg === 'string') handle.drawings?.armTool(arg)
+      if (typeof arg === 'string' && (CURSOR_MODES as readonly string[]).includes(arg)) verbs()?.setCursor(arg as CursorMode)
     },
   })
+  add({
+    id: 'chart.drawings.magnet',
+    scope: 'chart',
+    label: 'command.drawingMagnet',
+    available: on,
+    execute: (arg) => {
+      if (arg === 'off' || arg === 'weak' || arg === 'strong') verbs()?.setMagnet(arg as MagnetMode)
+    },
+  })
+  add({ id: 'chart.drawings.stayInMode', scope: 'chart', label: 'command.drawingStayInMode', available: on, execute: (arg) => verbs()?.setStayInMode(arg === true) })
+  add({ id: 'chart.drawings.lockAll', scope: 'chart', label: 'command.drawingLockAll', available: on, execute: (arg) => verbs()?.setLockAll(arg === true) })
+  add({
+    id: 'chart.drawings.hide',
+    scope: 'chart',
+    label: 'command.drawingHide',
+    available: on,
+    execute: (arg) => {
+      if (isHideState(arg)) verbs()?.setHide(arg)
+    },
+  })
+  add({ id: 'chart.drawings.sync', scope: 'chart', label: 'command.drawingSync', available: on, execute: (arg) => verbs()?.setSync(arg === true) })
+  add({ id: 'chart.drawings.removeLockedPolicy', scope: 'chart', label: 'command.drawingRemoveLockedPolicy', available: on, execute: (arg) => verbs()?.setRemoveLocked(arg === true) })
+  add({
+    id: 'chart.drawings.favorite',
+    scope: 'chart',
+    label: 'command.drawingFavorite',
+    available: on,
+    execute: (arg) => {
+      if (typeof arg === 'string') verbs()?.toggleFavorite(arg)
+    },
+  })
+  add({ id: 'chart.drawings.favoritesBar', scope: 'chart', label: 'command.drawingFavoritesBar', available: on, execute: (arg) => verbs()?.setFavoritesBar(arg === true) })
+  // The selection's own verbs.
+  add({
+    id: 'chart.drawings.style',
+    scope: 'chart',
+    label: 'command.drawingStyle',
+    available: withSelection,
+    execute: (arg) => {
+      if (arg && typeof arg === 'object') drawings()?.updateStyle(arg as Record<string, never>)
+    },
+  })
+  add({
+    id: 'chart.drawings.props',
+    scope: 'chart',
+    label: 'command.drawingProps',
+    available: withSelection,
+    execute: (arg) => {
+      if (arg && typeof arg === 'object') drawings()?.updateProps(arg as Record<string, unknown>)
+    },
+  })
+  add({ id: 'chart.drawings.lock', scope: 'chart', label: 'command.drawingLock', available: withSelection, execute: (arg) => drawings()?.setLocked(arg === true) })
+  add({ id: 'chart.drawings.clone', scope: 'chart', label: 'command.drawingClone', available: withSelection, execute: () => drawings()?.clone() })
+  add({ id: 'chart.drawings.copy', scope: 'chart', label: 'command.drawingCopy', shortcut: 'Ctrl+KeyC', available: withSelection, execute: () => drawings()?.copy() })
+  add({ id: 'chart.drawings.paste', scope: 'chart', label: 'command.drawingPaste', shortcut: 'Ctrl+KeyV', available: () => on() && drawings()!.canPaste(), execute: () => void drawings()?.paste() })
+  add({ id: 'chart.drawings.bringToFront', scope: 'chart', label: 'command.drawingBringToFront', available: withSelection, execute: () => drawings()?.bringToFront() })
+  add({ id: 'chart.drawings.sendToBack', scope: 'chart', label: 'command.drawingSendToBack', available: withSelection, execute: () => drawings()?.sendToBack() })
+  add({ id: 'chart.drawings.bringForward', scope: 'chart', label: 'command.drawingBringForward', available: withSelection, execute: () => drawings()?.bringForward() })
+  add({ id: 'chart.drawings.sendBackward', scope: 'chart', label: 'command.drawingSendBackward', available: withSelection, execute: () => drawings()?.sendBackward() })
+  add({ id: 'chart.drawings.hideSelected', scope: 'chart', label: 'command.drawingHideSelected', available: withSelection, execute: () => drawings()?.hideSelected() })
+  add({
+    id: 'chart.drawings.visibility',
+    scope: 'chart',
+    label: 'command.drawingVisibility',
+    available: withSelection,
+    execute: (arg) => {
+      if (arg === 'current-and-above' || arg === 'current-and-below' || arg === 'current-only' || arg === 'all') drawings()?.setVisibilityPreset(arg as VisibilityPreset)
+    },
+  })
+  add({ id: 'chart.drawings.settings', scope: 'chart', label: 'command.drawingSettings', available: withSelection, execute: () => verbs()?.openSettings() })
+  add({ id: 'chart.drawings.commitEdit', scope: 'chart', label: 'command.drawingSettings', available: withSelection, execute: () => drawings()?.commitEdit() })
+  add({
+    id: 'chart.drawings.template.apply',
+    scope: 'chart',
+    label: 'command.drawingTemplateApply',
+    available: withSelection,
+    execute: (arg) => {
+      if (arg === null || typeof arg === 'string') verbs()?.applyTemplate(arg)
+    },
+  })
+  add({
+    id: 'chart.drawings.template.save',
+    scope: 'chart',
+    label: 'command.drawingTemplateSave',
+    available: withSelection,
+    execute: (arg) => {
+      if (typeof arg === 'string' && arg.trim()) verbs()?.saveTemplate(arg.trim())
+    },
+  })
+  add({
+    id: 'chart.drawings.template.remove',
+    scope: 'chart',
+    label: 'command.drawingTemplateRemove',
+    available: withSelection,
+    execute: (arg) => {
+      if (typeof arg === 'string') verbs()?.removeTemplate(arg)
+    },
+  })
+  add({ id: 'chart.drawings.tableAddRow', scope: 'chart', label: 'command.drawingTableAddRow', available: () => drawings()?.selected()?.hasCells ?? false, execute: () => verbs()?.tableAddRow() })
+  add({ id: 'chart.drawings.tableAddColumn', scope: 'chart', label: 'command.drawingTableAddColumn', available: () => drawings()?.selected()?.hasCells ?? false, execute: () => verbs()?.tableAddColumn() })
+  // ── end Drawings (W4-B) ─────────────────────────────────────────────────────────────────────
 
   // ── Compare ─────────────────────────────────────────────────────────────────────────────────
   add({
