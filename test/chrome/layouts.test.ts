@@ -1,13 +1,12 @@
 // @vitest-environment happy-dom
 // The layout menus: the setup grid of 55 arrangements with radio semantics and the five sync
-// switches, and the saved-layouts menu with its dirty state, save, autosave, naming, recents and
-// the open dialog, all over the widget's layout commands and its revisioned save/load.
+// switches, and the saved-layouts menu, whose every verb is a widget command (`widget.layout.*`)
+// heard back through the `layout` and `saveConflict` events, so a policy that refuses layout
+// writes disables every row and nothing reaches the store.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { arrangementGlyph, mountLayoutSetup } from '../../src/ui/chrome/layoutSetup'
 import { mountLayoutsMenu, relativeTime } from '../../src/ui/chrome/layoutsMenu'
-import { createAutosaveStore } from '../../src/ui/chrome/preferences'
 import { ARRANGEMENTS } from '../../src/layoutGrid'
-import { memoryChartStorage } from '../../src/storage'
 import type { LayoutBody, LayoutMeta, ResourceStore } from '../../src/resources'
 import { fakeWidget, settle } from './harness'
 
@@ -71,19 +70,18 @@ function layoutStore(rows: LayoutMeta[] = []): ResourceStore<LayoutMeta, LayoutB
   return store
 }
 
-function mountLayouts(options: { store?: ReturnType<typeof layoutStore> | null } = {}) {
-  const w = fakeWidget()
+function mountLayouts(options: { store?: ReturnType<typeof layoutStore> | null; access?: (id: string) => boolean } = {}) {
+  const store = options.store === undefined ? layoutStore() : options.store
+  const w = fakeWidget({ layoutStore: store, access: options.access ? { command: options.access } : undefined, capabilities: { saveLoad: { charts: false, layouts: store !== null, drawings: false, templates: false } } })
   const notices: string[] = []
-  const storage = memoryChartStorage()
-  const autosave = createAutosaveStore(storage, {})
-  const menu = mountLayoutsMenu({ ...w.ctx, store: options.store === undefined ? layoutStore() : options.store, autosave, notify: (kind, text) => notices.push(`${kind}:${text}`) })
+  const menu = mountLayoutsMenu({ ...w.ctx, store, autosave: w.autosave, notify: (kind, text) => notices.push(`${kind}:${text}`) })
   document.body.appendChild(menu.element)
   cleanup.push(() => (menu.destroy(), w.dispose()))
-  return { w, menu, notices, autosave }
+  return { w, menu, notices, store }
 }
 
 describe('the saved-layouts menu', () => {
-  it('names the layout, marks it dirty on a change, and saves a never-saved layout under a typed name', async () => {
+  it('names the layout, marks it dirty on a change, and saves a never-saved layout under a typed name through the command', async () => {
     const { w, menu } = mountLayouts()
     const nameLabel = menu.element.querySelector<HTMLElement>('.qc-layouts-name')!
     expect(nameLabel.textContent).toBe('Unnamed')
@@ -95,7 +93,6 @@ describe('the saved-layouts menu', () => {
     expect(saveLink.hidden).toBe(false)
     saveLink.click()
     const field = w.overlays.querySelector<HTMLInputElement>('.qc-layouts-field')!
-    expect(field).not.toBeNull()
     field.value = 'Desk'
     field.dispatchEvent(new Event('input'))
     w.overlays.querySelector<HTMLButtonElement>('button[aria-label="Save layout"]')!.click()
@@ -105,23 +102,27 @@ describe('the saved-layouts menu', () => {
     expect(nameLabel.dataset.qcDirty).toBe('false')
   })
 
-  it('autosave writes the open layout on each change and hides the Save link', async () => {
-    const { w, menu, autosave } = mountLayouts()
-    await w.widget.layout.saveLoad.save('Desk')
-    menu.sync()
-    autosave.set(true)
+  it('autosave runs through its command, writes the open layout on each change, and hides the Save link', async () => {
+    const { w, menu } = mountLayouts()
+    w.commands.execute('widget.layout.save', 'Desk')
+    await settle()
+    menu.element.querySelector<HTMLButtonElement>('.qc-layouts-caret')!.click()
+    w.overlays.querySelector<HTMLButtonElement>('[role="switch"]')!.click()
+    expect(w.autosave.get()).toBe(true)
     menu.changed()
     await settle()
     expect(w.widgetCalls.filter((c) => c === 'save:Desk').length).toBe(2)
     expect(menu.element.querySelector<HTMLButtonElement>('.qc-layouts-save')!.hidden).toBe(true)
   })
 
-  it('lists the recent layouts, opens one, and reports a refused save', async () => {
+  it('lists the recent layouts, opens one through the command, and reports a refused save', async () => {
     const store = layoutStore([
       { id: 'a', revision: '1', name: 'Alpha', updatedAt: Date.now() - 60_000 },
       { id: 'b', revision: '1', name: 'Beta', updatedAt: Date.now() },
     ])
-    const { w, menu, notices } = mountLayouts({ store })
+    const { w, menu } = mountLayouts({ store })
+    const refused: string[] = []
+    w.events.on('saveConflict', (info) => refused.push(info.message))
     menu.element.querySelector<HTMLButtonElement>('.qc-layouts-caret')!.click()
     await settle()
     const rows = [...w.overlays.querySelectorAll<HTMLButtonElement>('.qc-layouts-recents [role="menuitemradio"]')]
@@ -129,26 +130,26 @@ describe('the saved-layouts menu', () => {
     rows[1]!.click()
     await settle()
     expect(w.widget.layout.saveLoad.load).toHaveBeenCalledWith('a')
+    expect(menu.element.querySelector('.qc-layouts-name')!.textContent).toBe('layout a')
     ;(w.widget.layout.saveLoad.save as unknown as { mockResolvedValueOnce(v: unknown): void }).mockResolvedValueOnce({ kind: 'conflict', current: { id: 'a', revision: '2' }, message: 'Saved elsewhere.' })
     menu.changed()
     menu.element.querySelector<HTMLButtonElement>('.qc-layouts-save')!.click()
     await settle()
-    expect(notices).toEqual(['error:Saved elsewhere.'])
+    expect(refused).toEqual(['Saved elsewhere.'])
+    expect(menu.element.querySelector<HTMLElement>('.qc-layouts-name')!.dataset.qcDirty).toBe('true')
   })
 
-  it('the open dialog searches, opens and deletes behind a confirm', async () => {
+  it('the open dialog searches, opens and deletes behind a confirm, the delete through its command', async () => {
     const store = layoutStore([
       { id: 'a', revision: '1', name: 'Alpha', updatedAt: Date.now() },
       { id: 'b', revision: '1', name: 'Beta', updatedAt: Date.now() },
     ])
     const { w } = mountLayouts({ store })
-    w.ctx.overlays.replaceChildren()
-    const menu = w.overlays
     document.body.querySelector<HTMLButtonElement>('.qc-layouts-caret')!.click()
     await settle()
-    ;[...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((r) => r.textContent === 'Open layout')!.click()
+    ;[...w.overlays.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((r) => r.textContent === 'Open layout')!.click()
     await settle()
-    const dialog = menu.querySelector<HTMLElement>('[role="dialog"][aria-label="Open layout"]')!
+    const dialog = w.overlays.querySelector<HTMLElement>('[role="dialog"][aria-label="Open layout"]')!
     const search = dialog.querySelector<HTMLInputElement>('.qc-layouts-search')!
     search.value = 'bet'
     search.dispatchEvent(new Event('input'))
@@ -160,6 +161,26 @@ describe('the saved-layouts menu', () => {
     await settle()
     expect(store.remove).toHaveBeenCalledWith({ id: 'b', revision: '1' })
     expect(dialog.querySelectorAll('.qc-layouts-item').length).toBe(0)
+  })
+
+  it('a policy that refuses the layout verbs disables every row and nothing reaches the store', async () => {
+    const store = layoutStore([{ id: 'a', revision: '1', name: 'Alpha', updatedAt: Date.now() }])
+    const { w, menu } = mountLayouts({ store, access: (id) => !id.startsWith('widget.layout.') })
+    menu.changed()
+    expect(menu.element.querySelector<HTMLButtonElement>('.qc-layouts-save')!.hidden).toBe(true)
+    menu.element.querySelector<HTMLButtonElement>('.qc-layouts-caret')!.click()
+    await settle()
+    const rows = [...w.overlays.querySelectorAll<HTMLButtonElement>('[role="menuitem"], [role="menuitemradio"], [role="switch"]')]
+    const byText = (text: string): HTMLButtonElement => rows.find((r) => (r.querySelector('.qc-menu-label')?.textContent ?? r.textContent) === text || r.getAttribute('aria-label') === text)!
+    for (const text of ['Save layout', 'Autosave', 'Make a copy', 'Rename', 'Create new layout', 'Alpha']) expect(byText(text).disabled, text).toBe(true)
+    for (const text of ['Save layout', 'Make a copy', 'Create new layout', 'Alpha']) byText(text).click()
+    await settle()
+    expect(w.widget.layout.saveLoad.save).not.toHaveBeenCalled()
+    expect(w.widget.layout.saveLoad.load).not.toHaveBeenCalled()
+    expect(w.widgetCalls).toEqual([])
+    // The command itself refuses too, whichever door asked.
+    expect(w.commands.execute('widget.layout.delete', { id: 'a', revision: '1' }).kind).toBe('denied')
+    expect(store.remove).not.toHaveBeenCalled()
   })
 
   it('without a store, saving is offered nowhere', () => {

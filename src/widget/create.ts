@@ -28,6 +28,7 @@ import { createImageApi, type ImageApi, type ImageTile } from './image'
 import { registerWidgetCommands } from './widgetCommands'
 import { attachShortcuts } from './shortcuts'
 import { emptyDoors } from '../ui/chrome/doors'
+import { createAutosaveStore } from '../ui/chrome/preferences'
 import { mountChrome, type ChromeHandle } from '../ui/chrome/mount'
 
 /** Every mounted chart gets one id, so an extension attached to two charts of a layout can tell
@@ -327,7 +328,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     },
   }
 
-  const unregisterCommands = registerWidgetCommands({ commands, widget, theme, i18n, capabilities })
+  // The layout autosave switch is a viewer preference the layout commands read and the chrome
+  // shows; it lives here so both see one store.
+  const autosave = createAutosaveStore(storage, options.preferences ?? {})
+  const unregisterCommands = registerWidgetCommands({ commands, widget, theme, i18n, capabilities, saveLoad: options.saveLoad ?? null, autosave, events })
 
   // ── The default chrome: the top bar, the bottom bar, the dialogs and the notices, driven only by
   // the registry, the planes and the event maps. It fills the doors the charts already hold.
@@ -344,6 +348,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     feedConfig: () => feedConfig,
     classNames: options.search?.classNames,
     access: options.access,
+    autosave,
     doors,
   })
 

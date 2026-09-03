@@ -13,7 +13,7 @@ import { openIndicatorPicker } from './indicatorPicker'
 import { mountLayoutSetup, type LayoutSetupHandle } from './layoutSetup'
 import { mountLayoutsMenu, type LayoutsMenuHandle } from './layoutsMenu'
 import { menuItem, openMenu, type MenuHandle } from './menu'
-import { createAutosaveStore, createTimeframeStore } from './preferences'
+import { createTimeframeStore } from './preferences'
 import { mountSettingsMenu, type SettingsMenuHandle } from './settingsMenu'
 import { mountStylePicker, type StylePickerHandle } from './stylePicker'
 import { mountTimeframePicker, type TimeframePickerHandle } from './timeframePicker'
@@ -24,6 +24,8 @@ export interface TopBarDeps extends ChromeContext {
   preferences: Partial<ChartPreferences>
   saveLoad: ChartSaveLoadAdapter | null
   access?: AccessPolicy
+  /** The viewer's layout autosave switch, as the widget holds it. */
+  autosave: { get(): boolean }
   /** Open the search dialog in search mode for the active chart. */
   openSearch(): void
   notify(kind: 'info' | 'error', text: string): void
@@ -123,7 +125,7 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
   let layoutsMenu: LayoutsMenuHandle | null = null
   if (features.layouts) {
     layoutSetup = mountLayoutSetup(deps)
-    layoutsMenu = mountLayoutsMenu({ ...deps, store: deps.saveLoad?.layouts ?? null, autosave: createAutosaveStore(deps.storage, deps.preferences), notify: deps.notify })
+    layoutsMenu = mountLayoutsMenu({ ...deps, store: deps.saveLoad?.layouts ?? null, autosave: deps.autosave, notify: deps.notify })
     end.append(layoutSetup.element, layoutsMenu.element, separator())
     syncers.push(() => layoutSetup!.sync(), () => layoutsMenu!.sync())
     disposers.push(() => layoutSetup!.destroy(), () => layoutsMenu!.destroy())
@@ -169,29 +171,20 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
             },
           }),
         )
-        // Copy is offered only where the registry says it can run: the browser can put an image on
-        // the clipboard and the policy permits it. The copy itself is asked for its outcome, which
-        // a command answer does not carry, so a refusal by the browser falls back to a download and
-        // says so.
-        if (commands.available('widget.image.copy')) {
-          body.appendChild(
-            menuItem({
-              text: commandLabel(deps, 'widget.image.copy'),
-              icon: glyph(ICONS.copy, { size: 18 }),
-              onSelect: () => {
-                handle.close()
-                void deps.widget.image
-                  .copy()
-                  .then((copied) => {
-                    if (copied) return
-                    deps.notify('info', t()('toast.imageCopyFallback'))
-                    commands.execute('widget.image.download')
-                  })
-                  .catch(() => deps.notify('error', t()('toast.imageFailed')))
-              },
-            }),
-          )
-        }
+        // Copy is a registry verb like download: disabled where the browser cannot put an image on
+        // the clipboard or the policy refuses. Its outcome (a refused copy falling back to a
+        // download) reports through the widget's `image` event, which the chrome turns into a notice.
+        body.appendChild(
+          menuItem({
+            text: commandLabel(deps, 'widget.image.copy'),
+            icon: glyph(ICONS.copy, { size: 18 }),
+            disabled: !commands.available('widget.image.copy'),
+            onSelect: () => {
+              handle.close()
+              commands.execute('widget.image.copy')
+            },
+          }),
+        )
       },
       onClose: () => {
         imageMenu = null

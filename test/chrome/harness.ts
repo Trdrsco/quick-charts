@@ -15,6 +15,8 @@ import { createChartI18n, type ChartI18n } from '../../src/i18n'
 import { createPriceFormatter } from '../../src/priceFormatter'
 import { memoryRecents } from '../../src/search'
 import { memoryChartStorage, type ChartStorage } from '../../src/storage'
+import { createAutosaveStore } from '../../src/ui/chrome/preferences'
+import type { LayoutBody, LayoutMeta, ResourceStore } from '../../src/resources'
 import { DEFAULT_OVERRIDES, type ChartOverrides } from '../../src/overrides'
 import type { ChartHandle } from '../../src/widget/chart'
 import type { ChartWidget } from '../../src/widget/create'
@@ -240,6 +242,8 @@ export interface FakeWidgetOptions {
   i18n?: ChartI18n
   storage?: ChartStorage
   layoutSaveLoad?: Partial<ChartWidget['layout']['saveLoad']>
+  /** The layouts store the widget commands delete through. */
+  layoutStore?: ResourceStore<LayoutMeta, LayoutBody> | null
 }
 
 /** The fake widget: the real registry over the fake chart, and enough of the widget surface for
@@ -358,7 +362,18 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     drawingVerbs: () => null,
     compareOpen: (mode) => chart.calls.push(`compareOpen:${mode}`),
   })
-  const unregisterWidget = registerWidgetCommands({ commands, widget, theme, i18n, capabilities: () => caps })
+  const storage = options.storage ?? memoryChartStorage()
+  const autosave = createAutosaveStore(storage, {})
+  const unregisterWidget = registerWidgetCommands({
+    commands,
+    widget,
+    theme,
+    i18n,
+    capabilities: () => caps,
+    saveLoad: options.layoutStore ? ({ layouts: options.layoutStore } as never) : null,
+    autosave,
+    events,
+  })
   const overlays = document.createElement('div')
   document.body.appendChild(overlays)
   const ctx: ChromeContext = { i18n, commands, overlays, widget }
@@ -372,7 +387,8 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     overlays,
     events,
     widgetCalls,
-    storage: options.storage ?? memoryChartStorage(),
+    storage,
+    autosave,
     dispose() {
       unregisterChart()
       unregisterWidget()

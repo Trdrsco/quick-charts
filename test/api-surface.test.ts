@@ -204,8 +204,9 @@ const SURFACE: Record<string, string> = {
   // The default chrome adds NO runtime export: every surface is mounted by `createChart` and
   // driven through the registry, the planes and the event maps, and a host reaches it through
   // `FeatureConfig` (one flag per surface), `ChartPreferences` (the saved and custom timeframes,
-  // layout autosave), `ChartWidgetOptions.search.classNames` and `ChartDatafeed.earliestBar`,
-  // which are all types. The clean-room consumer compiling the shipped declarations is their gate.
+  // layout autosave), `ChartWidgetOptions.search.classNames`, `ChartDatafeed.earliestBar` and the
+  // `layout` and `image` members of `WidgetEvents` (`LayoutEvent`, `ImageEvent`), which are
+  // all types. The clean-room consumer compiling the shipped declarations is their gate.
   // ── end W4-A ────────────────────────────────────────────────────────────────────────────────
 }
 

@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 // The chrome's composition: what mounting puts around the charts, which feature flags remove which
 // surface, the reading direction on the root, the doors it fills, the notices it raises from the
-// event maps, and a clean teardown.
-import { afterEach, describe, expect, it } from 'vitest'
+// event maps, and a clean teardown that closes every open overlay with its listeners and timers.
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mountChrome, readingDirection } from '../../src/ui/chrome/mount'
 import { emptyDoors } from '../../src/ui/chrome/doors'
+import { openOverlayCount } from '../../src/ui/chrome/overlays'
 import { createChartI18n } from '../../src/i18n'
 import { memoryChartStorage } from '../../src/storage'
 import type { ChartDatafeed } from '../../src/datafeed'
@@ -33,7 +34,7 @@ function mount(options: { features?: FeatureConfig; locale?: string } = {}) {
   root.appendChild(panes)
   document.body.appendChild(root)
   const doors = emptyDoors()
-  const chrome = mountChrome({ root, panes, widget: w.widget, i18n, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future'] }), doors })
+  const chrome = mountChrome({ root, panes, widget: w.widget, i18n, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future'] }), autosave: w.autosave, doors })
   cleanup.push(() => (chrome.dispose(), w.dispose()))
   return { w, root, panes, doors, chrome, i18n }
 }
@@ -76,13 +77,15 @@ describe('the chrome composition', () => {
     expect(root.querySelector('[role="dialog"][aria-label="Compare symbols"]')).not.toBeNull()
   })
 
-  it('raises a notice for a feed that cannot serve the symbol and for a refused save', () => {
+  it('raises a notice for a feed that cannot serve the symbol, a refused save, and a refused image copy', () => {
     const { w, panes } = mount()
     w.chart.events.emit('feedStatus', 'feed_unavailable')
     w.chart.events.emit('feedStatus', 'live')
     w.events.emit('saveConflict', { family: 'chart', current: null, message: 'Saved elsewhere since you opened it.' })
+    w.events.emit('image', { kind: 'copyFallback' })
+    w.events.emit('image', { kind: 'copied' })
     const texts = [...panes.querySelectorAll('.qc-toast-text')].map((t) => t.textContent)
-    expect(texts).toEqual(['No data for ES from this feed.', 'Saved elsewhere since you opened it.'])
+    expect(texts).toEqual(['No data for ES from this feed.', 'Saved elsewhere since you opened it.', 'Could not copy the image. Saved a file instead.'])
   })
 
   it('follows the active chart: a symbol change re-reads the pill after the debounce', async () => {
@@ -97,5 +100,42 @@ describe('the chrome composition', () => {
     chrome.dispose()
     expect([...root.children].map((el) => el.className)).toEqual(['qc-panes'])
     expect(root.hasAttribute('dir')).toBe(false)
+  })
+
+  it('disposing with a dialog and a menu open closes both: no document listener and no timer survives', () => {
+    vi.useFakeTimers()
+    const adds: string[] = []
+    const removes: string[] = []
+    const originalAdd = Document.prototype.addEventListener
+    const originalRemove = Document.prototype.removeEventListener
+    const onAdd = vi.spyOn(document, 'addEventListener').mockImplementation(function (this: Document, type: string, ...rest: unknown[]) {
+      adds.push(type)
+      return (originalAdd as (...a: unknown[]) => void).call(this, type, ...rest)
+    } as never)
+    const onRemove = vi.spyOn(document, 'removeEventListener').mockImplementation(function (this: Document, type: string, ...rest: unknown[]) {
+      removes.push(type)
+      return (originalRemove as (...a: unknown[]) => void).call(this, type, ...rest)
+    } as never)
+    cleanup.push(() => {
+      onAdd.mockRestore()
+      onRemove.mockRestore()
+      vi.useRealTimers()
+    })
+    const { w, doors, root, chrome } = mount()
+    const overlays = root.querySelector<HTMLElement>('.qc-overlays')!
+    root.querySelector<HTMLButtonElement>('button[aria-label^="Chart style"]')!.click()
+    doors.openSearch({ mode: 'search', chart: w.chart.handle })
+    expect(openOverlayCount(overlays)).toBe(2)
+    expect(adds.filter((t) => t === 'keydown').length).toBeGreaterThanOrEqual(2)
+    chrome.dispose()
+    expect(openOverlayCount(overlays)).toBe(0)
+    expect(document.querySelector('[role="dialog"], [role="menu"]')).toBeNull()
+    // Every document listener the overlays and the clock bound was unbound, and no timer stands.
+    for (const type of new Set(adds)) expect(removes.filter((t) => t === type).length, type).toBe(adds.filter((t) => t === type).length)
+    expect(vi.getTimerCount()).toBe(0)
+    // A stale Escape reaches the host now, rather than a closed dialog.
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    document.body.dispatchEvent(escape)
+    expect(escape.defaultPrevented).toBe(false)
   })
 })

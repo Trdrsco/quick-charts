@@ -16,7 +16,7 @@ afterEach(() => {
 function mount(options: { features?: FeatureConfig; access?: (id: string) => boolean } = {}): { bar: TopBarHandle; w: ReturnType<typeof fakeWidget> } {
   const w = fakeWidget({ features: options.features, access: options.access ? { command: options.access } : undefined })
   const notices: string[] = []
-  const bar = mountTopBar({ ...w.ctx, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, openSearch: () => notices.push('search'), notify: (kind, text) => notices.push(`${kind}:${text}`) })
+  const bar = mountTopBar({ ...w.ctx, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => notices.push('search'), notify: (kind, text) => notices.push(`${kind}:${text}`) })
   document.body.appendChild(bar.element)
   cleanup.push(() => {
     bar.destroy()
@@ -127,23 +127,28 @@ describe('the top bar', () => {
     expect(w.widget.image.download).toHaveBeenCalledTimes(1)
   })
 
-  it('the image menu hides copy when the browser cannot put an image on the clipboard', () => {
+  it('the image menu renders copy disabled and inert when the browser cannot put an image on the clipboard', () => {
     const w = fakeWidget({ capabilities: { imageCopy: false } })
-    const bar = mountTopBar({ ...w.ctx, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, openSearch: () => undefined, notify: () => undefined })
+    const bar = mountTopBar({ ...w.ctx, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => undefined, notify: () => undefined })
     document.body.appendChild(bar.element)
     cleanup.push(() => {
       bar.destroy()
       w.dispose()
     })
     bar.element.querySelector<HTMLButtonElement>('button[aria-label="Chart image"]')!.click()
-    expect([...w.overlays.querySelectorAll('[role="menuitem"]')].map((r) => r.textContent)).toEqual(['Download image'])
+    const rows = [...w.overlays.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    expect(rows.map((r) => r.textContent)).toEqual(['Download image', 'Copy image'])
+    expect(rows[1]!.disabled).toBe(true)
+    rows[1]!.click()
+    expect(w.widget.image.copy).not.toHaveBeenCalled()
   })
 
-  it('a refused copy falls back to a download and says so', async () => {
-    const notices: string[] = []
+  it('copy runs through its command, and a refused copy falls back to a download and reports it', async () => {
     const w = fakeWidget()
     ;(w.widget.image.copy as unknown as { mockResolvedValue(v: boolean): void }).mockResolvedValue(false)
-    const bar = mountTopBar({ ...w.ctx, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, openSearch: () => undefined, notify: (kind, text) => notices.push(`${kind}:${text}`) })
+    const heard: string[] = []
+    w.events.on('image', (event) => heard.push(event.kind))
+    const bar = mountTopBar({ ...w.ctx, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => undefined, notify: () => undefined })
     document.body.appendChild(bar.element)
     cleanup.push(() => {
       bar.destroy()
@@ -152,8 +157,9 @@ describe('the top bar', () => {
     bar.element.querySelector<HTMLButtonElement>('button[aria-label="Chart image"]')!.click()
     ;[...w.overlays.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')][1]!.click()
     await settle()
-    expect(notices).toEqual(['info:Could not copy the image. Saved a file instead.'])
+    expect(w.widget.image.copy).toHaveBeenCalledTimes(1)
     expect(w.widget.image.download).toHaveBeenCalledTimes(1)
+    expect(heard).toEqual(['copyFallback'])
   })
 
   it('relabels every control when the language changes', async () => {

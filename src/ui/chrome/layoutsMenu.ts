@@ -1,21 +1,23 @@
 // The saved-layouts menu: the layout's name on the toolbar (a marker for unsaved changes, a Save
 // link while autosave is off), and a menu with Save, the Autosave switch, Make a copy and Rename
 // as inline name fields, Create new layout, the three most recent layouts, and Open layout, the
-// dialog with search and delete behind a confirm. Everything runs over `widget.layout.saveLoad`,
-// the revisioned open-resource rule: a stale save is refused with the catalog's sentence rather
-// than written over newer work.
+// dialog with search and delete behind a confirm. Every verb is a widget command
+// (`widget.layout.save`, `rename`, `load`, `delete`, `detach`, `autosave`), so a policy that
+// forbids layout writes disables the rows here and refuses them from every other door; the menu
+// hears what a verb did through the widget's `layout` event and what it refused through
+// `saveConflict`. Listing is a read and comes from the store directly.
 import type { LayoutBody, LayoutMeta, ResourceStore } from '../../resources'
 import { type ChromeContext } from './context'
 import { dialogTitle, openDialog, switchRow } from './dialog'
 import { button, glyph, h, replace, setDisabled } from './dom'
 import { ICONS } from './icons'
 import { menuItem, menuHeading, menuSeparator, openMenu, type MenuHandle } from './menu'
-import type { AutosaveStore } from './preferences'
 
 export interface LayoutsMenuDeps extends ChromeContext {
-  /** The layouts family of the host's adapter, or null when the host saves none. */
+  /** The layouts family of the host's adapter, for the listings, or null when the host saves none. */
   store: ResourceStore<LayoutMeta, LayoutBody> | null
-  autosave: AutosaveStore
+  /** The viewer's autosave switch, as the widget holds it. */
+  autosave: { get(): boolean }
   notify(kind: 'info' | 'error', text: string): void
 }
 
@@ -38,63 +40,33 @@ export function relativeTime(tag: string, updatedAt: number, now: number = Date.
 
 export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
   const t = (): ChromeContext['i18n']['t'] => deps.i18n.t
+  const { commands } = deps
   const saveLoad = deps.widget.layout.saveLoad
   let dirty = false
-  let busy = false
   let menu: MenuHandle | null = null
   /** The inline name field the menu shows at a time, with the verb it serves. */
   let naming: { mode: 'save' | 'copy' | 'rename'; value: string } | null = null
+  /** The open-layout dialog's own refresh and close, while it is up. */
+  let browser: { removed(id: string): void; close(): void } | null = null
 
   const element = h('div', { class: 'qc-layouts' })
   const nameLabel = h('span', { class: 'qc-layouts-name qc-secondary' })
-  const saveLink = button({ label: t()('layouts.saveLayout'), text: t()('layouts.save'), className: 'qc-layouts-save qc-link', onClick: () => void quickSave() })
+  const saveLink = button({ label: t()('layouts.saveLayout'), text: t()('layouts.save'), className: 'qc-layouts-save qc-link', onClick: () => quickSave() })
   const trigger = button({ label: t()('layouts.manage'), icon: ICONS.chevronDown, iconSize: 18, className: 'qc-toolbar-button qc-layouts-caret', onClick: () => open() })
   trigger.setAttribute('aria-haspopup', 'menu')
   trigger.setAttribute('aria-expanded', 'false')
   element.append(h('span', { class: 'qc-layouts-title' }, nameLabel, saveLink), trigger)
 
   const currentName = (): string => saveLoad.current()?.name ?? t()('layouts.unnamed')
+  const can = (id: string): boolean => commands.available(id)
 
-  const save = async (opts?: { name?: string; asNew?: boolean }): Promise<boolean> => {
-    if (busy || !deps.store) return false
-    busy = true
-    try {
-      const outcome = await saveLoad.save(opts?.name ?? currentName(), { asNew: opts?.asNew })
-      if (outcome.kind === 'ok') {
-        dirty = false
-        return true
-      }
-      deps.notify('error', outcome.message)
-      return false
-    } catch {
-      deps.notify('error', t()('layouts.errSave'))
-      return false
-    } finally {
-      busy = false
-      sync()
-    }
-  }
-  /** The toolbar's Save: over the open layout, or the menu opens on the name prompt for a
-   *  never-saved one. */
-  const quickSave = async (): Promise<void> => {
-    if (saveLoad.current()) await save()
+  /** The toolbar's Save: the open layout through the command, or the menu opens on the name prompt
+   *  for a never-saved one. */
+  const quickSave = (): void => {
+    if (saveLoad.current()) commands.execute('widget.layout.save')
     else {
       naming = { mode: 'save', value: '' }
       open()
-    }
-  }
-  const load = async (row: LayoutMeta): Promise<void> => {
-    if (busy) return
-    busy = true
-    try {
-      const outcome = await saveLoad.load(row.id)
-      if (outcome.kind !== 'ok') deps.notify('error', outcome.message)
-      else dirty = false
-    } catch {
-      deps.notify('error', t()('layouts.errLoad'))
-    } finally {
-      busy = false
-      sync()
     }
   }
 
@@ -113,14 +85,15 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
       align: 'end',
       build(body, handle) {
         const current = saveLoad.current()
-        const canSave = !!deps.store && dirty && !busy
         body.appendChild(
           menuItem({
             text: t()('layouts.saveLayout'),
-            disabled: !canSave,
+            disabled: !dirty || !can('widget.layout.save'),
             onSelect: () => {
-              if (current) void save().then(() => handle.close())
-              else {
+              if (current) {
+                commands.execute('widget.layout.save')
+                handle.close()
+              } else {
                 naming = { mode: 'save', value: '' }
                 handle.refresh()
               }
@@ -131,10 +104,10 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
           switchRow({
             label: t()('layouts.autosave'),
             checked: deps.autosave.get(),
-            disabled: !deps.store,
+            disabled: !can('widget.layout.autosave'),
             onChange: (on) => {
-              deps.autosave.set(on)
-              if (on && dirty && current) void save()
+              commands.execute('widget.layout.autosave', on)
+              if (on && dirty && current) commands.execute('widget.layout.save')
               sync()
             },
           }),
@@ -143,29 +116,28 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
         if (naming) {
           const mode = naming.mode
           const field = h('input', { type: 'text', class: 'qc-field qc-layouts-field', 'aria-label': t()('layouts.namePlaceholder'), placeholder: t()('layouts.namePlaceholder'), maxlength: '120', value: naming.value })
-          const submit = button({ label: t()(mode === 'rename' ? 'layouts.renameLayout' : 'layouts.saveLayout'), text: t()(mode === 'rename' ? 'layouts.rename' : 'layouts.save'), className: 'qc-button--primary', onClick: () => void commit() })
-          const commit = async (): Promise<void> => {
+          const submit = button({ label: t()(mode === 'rename' ? 'layouts.renameLayout' : 'layouts.saveLayout'), text: t()(mode === 'rename' ? 'layouts.rename' : 'layouts.save'), className: 'qc-button--primary', onClick: () => commit() })
+          const commit = (): void => {
             const value = field.value.trim()
             if (!value) return
-            const ok = await save({ name: value, asNew: mode !== 'rename' })
-            if (ok) {
-              naming = null
-              handle.close()
-            }
+            const outcome = mode === 'rename' ? commands.execute('widget.layout.rename', value) : commands.execute('widget.layout.save', { name: value, asNew: true })
+            if (outcome.kind !== 'ok') return
+            naming = null
+            handle.close()
           }
           field.addEventListener('input', () => {
             naming = naming && { ...naming, value: field.value }
             setDisabled(submit, field.value.trim() === '')
           })
           field.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') void commit()
+            if (e.key === 'Enter') commit()
             else if (e.key === 'Escape') {
               e.stopPropagation()
               naming = null
               handle.refresh()
             }
           })
-          setDisabled(submit, field.value.trim() === '')
+          setDisabled(submit, field.value.trim() === '' || !can(mode === 'rename' ? 'widget.layout.rename' : 'widget.layout.save'))
           body.appendChild(h('div', { class: 'qc-layouts-naming' }, field, submit))
           queueMicrotask(() => field.focus())
         } else {
@@ -173,7 +145,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
             menuItem({
               text: t()('layouts.makeCopyRow'),
               icon: glyph(ICONS.clone, { size: 18 }),
-              disabled: !deps.store,
+              disabled: !can('widget.layout.save'),
               onSelect: () => {
                 naming = { mode: 'copy', value: t()('layouts.copyOfName', { name: currentName() }) }
                 handle.refresh()
@@ -184,7 +156,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
             menuItem({
               text: t()('layouts.renameRow'),
               icon: glyph(ICONS.pencil, { size: 18 }),
-              disabled: !current,
+              disabled: !can('widget.layout.rename'),
               onSelect: () => {
                 naming = { mode: 'rename', value: currentName() }
                 handle.refresh()
@@ -196,12 +168,11 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
           menuItem({
             text: t()('layouts.createNewRow'),
             icon: glyph(ICONS.plus, { size: 18 }),
+            disabled: !can('widget.layout.detach'),
             onSelect: () => {
               // A fresh identity: the chart keeps its state and the saved binding detaches.
-              saveLoad.detach()
-              dirty = false
+              commands.execute('widget.layout.detach')
               handle.close()
-              sync()
             },
           }),
         )
@@ -224,9 +195,10 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
                     hint: relativeTime(deps.i18n.tag(), row.updatedAt),
                     role: 'menuitemradio',
                     checked: current?.ref.id === row.id,
+                    disabled: !can('widget.layout.load'),
                     onSelect: () => {
                       handle.close()
-                      void load(row)
+                      commands.execute('widget.layout.load', row.id)
                     },
                   }),
                 ),
@@ -268,7 +240,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
       label: t()('layouts.openLayout'),
       className: 'qc-layouts-dialog',
       width: 480,
-      build(box, dialog) {
+      build(box, handle) {
         const field = h('input', { type: 'search', class: 'qc-field qc-layouts-search', 'aria-label': t()('layouts.search'), placeholder: t()('layouts.search'), autocomplete: 'off' })
         const list = h('div', { class: 'qc-layouts-list', role: 'list' })
         const confirm = h('div', { class: 'qc-layouts-confirm', role: 'alertdialog', 'aria-label': t()('layouts.deleteConfirm'), hidden: true })
@@ -285,36 +257,36 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
           const current = saveLoad.current()
           replace(
             list,
-            ...kept.map((row) =>
-              h(
+            ...kept.map((row) => {
+              const openButton = button({
+                label: row.name,
+                className: 'qc-layouts-open',
+                pressed: current?.ref.id === row.id,
+                disabled: !can('widget.layout.load'),
+                onClick: () => {
+                  handle.close()
+                  commands.execute('widget.layout.load', row.id)
+                },
+              })
+              openButton.append(h('span', { class: 'qc-layouts-item-name' }, row.name), h('span', { class: 'qc-layouts-item-meta qc-muted' }, relativeTime(deps.i18n.tag(), row.updatedAt)))
+              return h(
                 'div',
                 { class: 'qc-layouts-item', role: 'listitem' },
-                button({
-                  label: row.name,
-                  className: 'qc-layouts-open',
-                  pressed: current?.ref.id === row.id,
-                  onClick: () => {
-                    dialog.close()
-                    void load(row)
-                  },
-                }),
+                openButton,
                 button({
                   label: t()('layouts.deleteNamed', { name: row.name }),
                   icon: ICONS.trash,
                   iconSize: 18,
                   className: 'qc-layouts-delete',
+                  disabled: !can('widget.layout.delete'),
                   onClick: () => {
                     confirming = row
                     renderConfirm()
                   },
                 }),
-              ),
-            ),
+              )
+            }),
           )
-          for (const open of list.querySelectorAll<HTMLElement>('.qc-layouts-open')) {
-            const row = kept[[...list.querySelectorAll('.qc-layouts-open')].indexOf(open)]!
-            open.append(h('span', { class: 'qc-layouts-item-name' }, row.name), h('span', { class: 'qc-layouts-item-meta qc-muted' }, relativeTime(deps.i18n.tag(), row.updatedAt)))
-          }
         }
         const renderConfirm = (): void => {
           confirm.hidden = confirming === null
@@ -339,37 +311,32 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
                 label: t()('layouts.delete'),
                 text: t()('layouts.delete'),
                 className: 'qc-button--danger',
-                onClick: () => void remove(row),
+                disabled: !can('widget.layout.delete'),
+                onClick: () => {
+                  // Conditional on the revision the listing showed; the command refuses a layout saved
+                  // elsewhere since, and the widget reports the refusal.
+                  commands.execute('widget.layout.delete', { id: row.id, revision: row.revision })
+                  confirming = null
+                  renderConfirm()
+                },
               }),
             ),
           )
           confirm.querySelector<HTMLElement>('button')?.focus()
         }
-        const remove = async (row: LayoutMeta): Promise<void> => {
-          try {
-            // Conditional on the revision the listing showed: a layout saved elsewhere since is
-            // refused, and the list refreshes rather than deleting work nobody saw.
-            const outcome = await store.remove({ id: row.id, revision: row.revision })
-            if (outcome.kind === 'conflict') deps.notify('error', t()('layouts.errDelete'))
-            else {
-              rows = rows?.filter((r) => r.id !== row.id) ?? null
-              if (saveLoad.current()?.ref.id === row.id) saveLoad.detach()
-            }
-          } catch {
-            deps.notify('error', t()('layouts.errDelete'))
-          } finally {
-            confirming = null
-            renderConfirm()
-            render()
-            sync()
-          }
-        }
         field.addEventListener('input', () => {
           query = field.value
           render()
         })
-        box.append(dialogTitle(t()('layouts.openLayout'), t()('layouts.close'), () => dialog.close()), h('div', { class: 'qc-dialog-body' }, field, list, confirm))
+        box.append(dialogTitle(t()('layouts.openLayout'), t()('layouts.close'), () => handle.close()), h('div', { class: 'qc-dialog-body' }, field, list, confirm))
         render()
+        browser = {
+          removed(id) {
+            rows = rows?.filter((r) => r.id !== id) ?? null
+            render()
+          },
+          close: () => handle.close(),
+        }
         void store
           .list()
           .then((found) => {
@@ -383,6 +350,9 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
           })
       },
       initialFocus: (box) => box.querySelector<HTMLElement>('.qc-layouts-search'),
+      onClose: () => {
+        browser = null
+      },
     })
   }
 
@@ -391,7 +361,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
     nameLabel.title = t()(dirty ? 'layouts.unsavedChanges' : 'layouts.allSaved')
     nameLabel.setAttribute('aria-label', `${currentName()}: ${t()(dirty ? 'layouts.unsavedChanges' : 'layouts.allSaved')}`)
     nameLabel.dataset.qcDirty = String(dirty)
-    saveLink.hidden = !(dirty && !deps.autosave.get() && !!deps.store)
+    saveLink.hidden = !(dirty && !deps.autosave.get() && can('widget.layout.save'))
     saveLink.setAttribute('aria-label', t()('layouts.saveLayout'))
     saveLink.title = t()('layouts.saveLayout')
     const text = saveLink.querySelector('.qc-button-text')
@@ -402,17 +372,26 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
   }
 
   const offStrings = deps.i18n.onChange(sync)
+  // What a verb did: a save, an open or a detach leaves the layout clean; a delete refreshes the
+  // browser's rows.
+  const offLayout = deps.widget.on('layout', (event) => {
+    if (event.kind === 'removed') browser?.removed(event.id ?? '')
+    else dirty = false
+    sync()
+  })
   sync()
   return {
     element,
     changed() {
       dirty = true
-      if (deps.autosave.get() && saveLoad.current() && deps.store) void save()
-      else sync()
+      if (deps.autosave.get() && saveLoad.current() && can('widget.layout.save')) commands.execute('widget.layout.save')
+      sync()
     },
     sync,
     destroy() {
       offStrings()
+      offLayout()
+      browser?.close()
       menu?.close()
       element.remove()
     },

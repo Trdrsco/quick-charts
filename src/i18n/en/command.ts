@@ -128,4 +128,10 @@ export const command = {
   'command.layoutArrangement': 'Layout',
   'command.layoutActive': 'Active chart',
   'command.layoutSync': 'Chart synchronization',
+  'command.layoutSave': 'Save layout',
+  'command.layoutRename': 'Rename layout',
+  'command.layoutLoad': 'Open layout',
+  'command.layoutDelete': 'Delete layout',
+  'command.layoutDetach': 'Create new layout',
+  'command.layoutAutosave': 'Autosave layout',
 } as const
