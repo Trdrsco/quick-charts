@@ -18,7 +18,8 @@
   ],
   "sideEffects": [
     "dist/quickcharts.css",
-    "src/styles/*.css"
+    "src/styles/*.css",
+    "src/styles/components/*.css"
   ],
   "publishConfig": {
     "access": "restricted",
