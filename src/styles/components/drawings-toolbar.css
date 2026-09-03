@@ -1,0 +1,307 @@
+/* The drawing toolbar: the rail down the chart's inline-start edge, its split cells, its flyouts
+ * and menus, and the favorites bar. Every rule is scoped to the widget root like the rest of the
+ * package stylesheet, every value comes from a generated custom property, and geometry is stated
+ * with logical properties so the rail flips with the reading direction.
+ *
+ * The chrome layer is inert. The rail is a surface the pointer must stop at, so it opts in as a
+ * whole; the gaps between its buttons must not let a drag through to the canvas underneath. */
+
+[data-qc-theme] .qc-drawing-toolbar {
+  position: absolute;
+  inset-block: 8px;
+  inset-inline-start: 8px;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  width: 52px;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-drawing-toolbar-column {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 0;
+  padding: 6px 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+[data-qc-theme] .qc-drawing-toolbar-column::-webkit-scrollbar {
+  display: none;
+}
+
+[data-qc-theme] .qc-drawing-toolbar-end {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-block-start: auto;
+}
+
+/* One entry: the face fills the cell and the arrow rides its inline-end edge, revealed on hover
+ * or focus and lit while its flyout is open. The two overlap by a hair so they read as one seam. */
+[data-qc-theme] .qc-drawing-cell {
+  position: relative;
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+[data-qc-theme] .qc-drawing-rail-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 38px;
+  padding: 0;
+  color: var(--qc-text-secondary);
+  background: none;
+  border: 0;
+  border-radius: var(--qc-chrome-radius);
+}
+
+[data-qc-theme] .qc-drawing-rail-button:hover,
+[data-qc-theme] .qc-drawing-rail-button:focus-visible {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-drawing-rail-button[data-qc-active='true'] {
+  color: var(--qc-state-accent);
+  background: var(--qc-state-selected);
+}
+
+[data-qc-theme] .qc-drawing-rail-button[disabled] {
+  color: var(--qc-text-disabled);
+  background: none;
+}
+
+[data-qc-theme] .qc-drawing-rail-arrow {
+  position: absolute;
+  inset-block: 2px;
+  inset-inline-end: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 11px;
+  padding: 0;
+  overflow: hidden;
+  color: var(--qc-text-muted);
+  background: none;
+  border: 0;
+  border-start-start-radius: var(--qc-chrome-radius);
+  border-end-start-radius: var(--qc-chrome-radius);
+  opacity: 0;
+  transition: opacity var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] [dir='rtl'] .qc-drawing-rail-arrow svg,
+[data-qc-theme][dir='rtl'] .qc-drawing-rail-arrow svg {
+  transform: scaleX(-1);
+}
+
+[data-qc-theme] .qc-drawing-cell:hover .qc-drawing-rail-arrow,
+[data-qc-theme] .qc-drawing-rail-arrow:focus-visible,
+[data-qc-theme] .qc-drawing-rail-arrow[aria-expanded='true'] {
+  opacity: 1;
+}
+
+[data-qc-theme] .qc-drawing-rail-arrow:hover,
+[data-qc-theme] .qc-drawing-rail-arrow[aria-expanded='true'] {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-drawing-divider {
+  flex: 0 0 auto;
+  width: 24px;
+  margin: 2px 0;
+}
+
+/* Flyouts and menus: a floating panel placed beside its anchor inside the chart box. The panel is
+ * an overlay surface, so it takes the pointer as a whole. */
+[data-qc-theme] .qc-drawing-popover {
+  position: absolute;
+  z-index: 7;
+  overflow-y: auto;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-drawing-menu {
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  padding: 4px;
+}
+
+[data-qc-theme] .qc-drawing-menu-row {
+  height: 36px;
+  padding-inline-end: 12px;
+  border-radius: var(--qc-chrome-radius);
+}
+
+[data-qc-theme] .qc-drawing-menu-row[data-qc-active='true'] {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-selected);
+}
+
+[data-qc-theme] .qc-drawing-menu-row[disabled] {
+  color: var(--qc-text-disabled);
+  cursor: default;
+}
+
+[data-qc-theme] .qc-drawing-menu-note {
+  padding: 8px 12px;
+}
+
+[data-qc-theme] .qc-drawing-menu .qc-separator {
+  margin: 4px 0;
+}
+
+/* The tool flyout: sections under headings, a miniature and the name per row, and the star that
+ * lands the tool on the favorites bar, revealed on hover unless it is already starred. */
+[data-qc-theme] .qc-drawing-flyout {
+  display: flex;
+  flex-direction: column;
+  min-width: 192px;
+  max-width: 360px;
+  padding: 6px;
+}
+
+[data-qc-theme] .qc-drawing-flyout .qc-dialog-heading {
+  padding-inline: 8px;
+}
+
+[data-qc-theme] .qc-drawing-flyout-row {
+  display: flex;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-drawing-flyout-row .qc-drawing-menu-row {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+[data-qc-theme] .qc-drawing-star {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--qc-text-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--qc-chrome-radius);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] .qc-drawing-flyout-row:hover .qc-drawing-star,
+[data-qc-theme] .qc-drawing-star:focus-visible,
+[data-qc-theme] .qc-drawing-star[aria-pressed='true'] {
+  opacity: 1;
+}
+
+[data-qc-theme] .qc-drawing-star[aria-pressed='true'] {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-drawing-star:hover {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+/* The remove menu's policy row is a switch: the row is the control and the track is drawn inline. */
+[data-qc-theme] .qc-drawing-switch-row {
+  justify-content: space-between;
+}
+
+[data-qc-theme] .qc-drawing-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 16px;
+  margin-inline-start: 12px;
+  background: var(--qc-chrome-border);
+  border-radius: 8px;
+  transition: background-color var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] .qc-drawing-switch-row[aria-checked='true'] .qc-drawing-switch {
+  background: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-drawing-switch-knob {
+  position: absolute;
+  top: 2px;
+  inset-inline-start: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--qc-text-inverse);
+  border-radius: 50%;
+  transition: inset-inline-start var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] .qc-drawing-switch-row[aria-checked='true'] .qc-drawing-switch-knob {
+  inset-inline-start: 14px;
+}
+
+/* The favorites bar: a floating strip of one-click arms with a grip, in its default corner or
+ * wherever it was dragged. */
+[data-qc-theme] .qc-drawing-favorites {
+  position: absolute;
+  inset-inline-start: 8px;
+  bottom: 44px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-drawing-favorites-tools {
+  display: flex;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-drawing-favorite {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  color: var(--qc-text-secondary);
+  background: none;
+  border: 0;
+}
+
+[data-qc-theme] .qc-drawing-favorite:hover {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-drawing-favorite[data-qc-active='true'] {
+  color: var(--qc-state-accent);
+  background: var(--qc-state-selected);
+}
+
+[data-qc-theme] .qc-drawing-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 38px;
+  padding: 0;
+  color: var(--qc-text-muted);
+  background: none;
+  border: 0;
+  cursor: grab;
+}
+
+[data-qc-theme] .qc-drawing-grip:active {
+  cursor: grabbing;
+}
