@@ -541,6 +541,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     access: deps.access,
     commands: deps.commands,
     assets: deps.assets,
+    theme: () => deps.theme.get(),
     preferences: () => drawingPrefs,
     setPreferences: (next) => handle.setDrawingPreferences(next),
     indicators: { count: () => indicators.list().length, setAllHidden: (hidden) => indicators.setAllHidden(hidden) },

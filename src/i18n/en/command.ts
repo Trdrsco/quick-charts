@@ -78,6 +78,8 @@ export const command = {
   'command.drawingHideSelected': 'Hide drawing',
   'command.drawingVisibility': 'Drawing visibility on intervals',
   'command.drawingSettings': 'Drawing settings',
+  'command.drawingCommitEdit': 'Apply drawing settings',
+  'command.drawingPlaceImage': 'Place image',
   'command.drawingTemplateApply': 'Apply drawing template',
   'command.drawingTemplateSave': 'Save drawing template',
   'command.drawingTemplateRemove': 'Remove drawing template',

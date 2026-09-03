@@ -374,11 +374,16 @@ export function lineEndButton(t: ChartTranslate, box: HTMLElement, side: 'left' 
   return b
 }
 
-/** The dialog's page strip: one tab per page id, the label read separately, the active one marked. */
-export function dialogTabs(tabs: readonly string[], value: string, labels: (id: string) => string, onChange: (id: string) => void): HTMLElement {
+/** The dialog's page strip: one tab per page id, the label read separately, the active one marked.
+ *  With `ids`, each tab carries its own id and names the panel it controls. */
+export function dialogTabs(tabs: readonly string[], value: string, labels: (id: string) => string, onChange: (id: string) => void, ids?: { tab: (id: string) => string; panel: string }): HTMLElement {
   const strip = el('div', { class: 'qc-drawing-tabs', role: 'tablist' })
   for (const tab of tabs) {
     const b = el('button', { type: 'button', class: 'qc-drawing-tab', role: 'tab', 'aria-selected': String(tab === value), 'data-tab': tab }, el('span', { text: labels(tab) }), el('span', { class: 'qc-drawing-tab-rail' }))
+    if (ids) {
+      b.id = ids.tab(tab)
+      b.setAttribute('aria-controls', ids.panel)
+    }
     b.tabIndex = tab === value ? 0 : -1
     b.addEventListener('click', () => onChange(tab))
     strip.appendChild(b)

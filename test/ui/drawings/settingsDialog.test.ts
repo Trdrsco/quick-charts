@@ -26,6 +26,7 @@ function rig(type: string, props: Record<string, unknown> = {}, deny: string[] =
     t,
     drawing,
     presets,
+    idBase: 'c1-drawing-settings',
     run: (command, arg) => {
       ran.push([command, arg])
       return !deny.includes(command)
@@ -65,8 +66,14 @@ describe('the dialog', () => {
     expect(dialog.getAttribute('aria-label')).toBe('Trend line settings')
     expect(tabs().map((x) => x.textContent)).toEqual(['Style', 'Text', 'Coordinates', 'Visibility'])
     expect(tab('Style').getAttribute('aria-selected')).toBe('true')
+    // Each tab names the one page it fills, and the page names the tab that fills it.
+    const page = dialog.querySelector<HTMLElement>('[role="tabpanel"]')!
+    expect(page.id).toBe('c1-drawing-settings-page')
+    expect(tab('Style').getAttribute('aria-controls')).toBe('c1-drawing-settings-page')
+    expect(page.getAttribute('aria-labelledby')).toBe(tab('Style').id)
     tab('Coordinates').click()
     expect(tab('Coordinates').getAttribute('aria-selected')).toBe('true')
+    expect(page.getAttribute('aria-labelledby')).toBe(tab('Coordinates').id)
     expect(dialog.querySelectorAll('.qc-drawing-row')).toHaveLength(2) // one row per anchor
   })
 
@@ -111,6 +118,20 @@ describe('the dialog', () => {
     expect(a.ran).toEqual([['chart.drawings.commitEdit', undefined]])
     expect(a.out).toEqual(['cancel'])
     expect(a.drawing.props.middlePoint).toBe(before)
+  })
+
+  it('renders every control of a page disabled while the registry would not run the commands the page previews for', () => {
+    const { dialog, tab } = rig('trend_line', {}, ['chart.drawings.style'])
+    const controls = () => [...dialog.querySelectorAll<HTMLButtonElement | HTMLInputElement | HTMLSelectElement>('[role="tabpanel"] button, [role="tabpanel"] input, [role="tabpanel"] select')]
+    expect(controls().length).toBeGreaterThan(3)
+    expect(controls().every((c) => c.disabled)).toBe(true)
+    // The Coordinates page previews through props alone, which is still permitted.
+    tab('Coordinates').click()
+    expect(controls().length).toBeGreaterThan(0)
+    expect(controls().every((c) => !c.disabled)).toBe(true)
+    // The tabs themselves and Cancel stay live: the session can still be left.
+    expect((tab('Style') as HTMLButtonElement).disabled).toBe(false)
+    expect(dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.disabled).toBe(false)
   })
 
   it('Escape cancels once, and a second close is inert', () => {
@@ -175,25 +196,32 @@ describe('the dialog', () => {
 
   it('the footer template menu saves the current setup under a name, applies the default, and removes a saved one', async () => {
     const { chrome, dialog, presets, ran, drawing } = rig('ray')
+    expect(drawing.style.lineStyle).toBe('solid')
     await presets.saveTemplate('ray', 'Dashed', { style: { lineStyle: 'dashed' } })
     const template = dialog.querySelector<HTMLButtonElement>('button[aria-label="Template"]')!
     template.click()
     const rows = [...dialog.querySelectorAll<HTMLElement>('[role="menuitem"]')]
     expect(rows.map((r) => r.textContent)).toEqual(['Save as...', 'Apply defaults', 'Dashed'])
+    // A template applies through the registry onto the selection, which is this drawing.
     rows[2]!.click()
-    expect(drawing.style.lineStyle).toBe('dashed')
+    expect(ran[0]).toEqual(['chart.drawings.template.apply', 'Dashed'])
+    template.click()
+    ;[...dialog.querySelectorAll<HTMLElement>('[role="menuitem"]')][1]!.click()
+    expect(ran[1]).toEqual(['chart.drawings.template.apply', null])
     template.click()
     ;[...dialog.querySelectorAll<HTMLElement>('[role="menuitem"]')][0]!.click()
-    const input = chrome.querySelector<HTMLInputElement>('[data-role="drawing-template-name"] input')!
+    // The name dialog stands on the settings dialog's own box, so it closes with it.
+    const nameDialog = dialog.querySelector<HTMLElement>('[data-role="drawing-template-name"]')!
+    const input = nameDialog.querySelector<HTMLInputElement>('input')!
     input.value = 'Mine'
     input.dispatchEvent(new Event('input'))
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-    // The save command reads the selection, which carries the session's dashed style.
-    expect(ran).toEqual([['chart.drawings.template.save', 'Mine']])
-    expect(drawing.style.lineStyle).toBe('dashed')
+    expect(ran[2]).toEqual(['chart.drawings.template.save', 'Mine'])
     template.click()
     dialog.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.click()
-    chrome.querySelector<HTMLButtonElement>('[data-role="drawing-template-delete"] button[aria-label="Delete"]')!.click()
-    expect(ran[1]).toEqual(['chart.drawings.template.remove', 'Dashed'])
+    dialog.querySelector<HTMLButtonElement>('[data-role="drawing-template-delete"] button[aria-label="Delete"]')!.click()
+    expect(ran[3]).toEqual(['chart.drawings.template.remove', 'Dashed'])
+    expect(chrome.querySelector('[data-role="drawing-template-delete"]')).toBeNull()
+    expect(drawing.style.lineStyle).toBe('solid')
   })
 })

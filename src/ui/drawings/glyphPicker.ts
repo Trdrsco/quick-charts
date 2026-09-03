@@ -50,6 +50,12 @@ export interface GlyphPickerDeps {
   /** Artwork for a glyph, from the host's asset port; null draws the glyph as text. */
   glyphSource?: (glyph: string) => string | null
   recents: readonly string[]
+  /** The stem every element id the picker writes derives from: the chart's id. */
+  idBase: string
+  /** Whether the registry would arm a tool now; a cell renders disabled otherwise. */
+  available(): boolean
+  /** Whether the access policy permits the glyph tool of a kind. */
+  toolAllowed(kind: GlyphKind): boolean
   onPick(kind: GlyphKind, glyph: string): void
 }
 
@@ -73,7 +79,7 @@ export function mountGlyphPicker(deps: GlyphPickerDeps): GlyphPickerHandle {
 
   const root = el('div', { class: 'qc-drawing-glyphs', role: 'dialog', 'aria-label': t('drawing.glyphPicker') })
   const strip = el('div', { class: 'qc-drawing-glyph-strip', role: 'tablist' })
-  const grid = el('div', { class: 'qc-drawing-glyph-grid' })
+  const grid = el('div', { class: 'qc-drawing-glyph-grid', role: 'tabpanel', id: `${deps.idBase}-grid` })
   const empty = el('div', { class: 'qc-muted qc-drawing-glyph-empty', text: t('drawing.stickersSoon') })
   const kinds = el('div', { class: 'qc-drawing-glyph-kinds', role: 'tablist' })
   root.append(strip, grid, empty, kinds)
@@ -89,7 +95,7 @@ export function mountGlyphPicker(deps: GlyphPickerDeps): GlyphPickerHandle {
   }
 
   const cell = (glyph: string, name: string): HTMLButtonElement => {
-    const b = button({ class: 'qc-drawing-glyph-cell', label: name, onClick: () => deps.onPick(kind, glyph) })
+    const b = button({ class: 'qc-drawing-glyph-cell', label: name, disabled: !deps.available() || !deps.toolAllowed(kind), onClick: () => deps.onPick(kind, glyph) })
     b.append(face(glyph))
     return b
   }
@@ -110,7 +116,7 @@ export function mountGlyphPicker(deps: GlyphPickerDeps): GlyphPickerHandle {
       const take = Math.max(0, Math.min(c.glyphs.length, budget - spent))
       spent += c.glyphs.length
       if (take === 0) continue
-      const box = el('div', { class: 'qc-drawing-glyph-section', 'data-category': c.id }, el('div', { class: 'qc-dialog-heading', text: label(c) }))
+      const box = el('div', { class: 'qc-drawing-glyph-section', 'data-category': c.id, id: `${deps.idBase}-${c.id}` }, el('div', { class: 'qc-dialog-heading', text: label(c) }))
       // A section's intrinsic size is the FULL section's, so scroll offsets and category jumps are
       // true while only part of it is mounted.
       box.style.containIntrinsicSize = `auto ${26 + Math.ceil(c.glyphs.length / 8) * 32}px`
@@ -139,7 +145,7 @@ export function mountGlyphPicker(deps: GlyphPickerDeps): GlyphPickerHandle {
   const renderStrip = (): void => {
     strip.replaceChildren()
     for (const c of categories()) {
-      const b = el('button', { type: 'button', class: 'qc-drawing-glyph-tab', role: 'tab', 'aria-label': label(c), title: label(c), 'aria-selected': String(c.id === activeCategory) })
+      const b = el('button', { type: 'button', class: 'qc-drawing-glyph-tab', role: 'tab', 'aria-label': label(c), title: label(c), 'aria-selected': String(c.id === activeCategory), 'aria-controls': `${deps.idBase}-${c.id}` })
       b.append(face(c.face))
       b.addEventListener('click', () => jumpTo(c.id))
       strip.appendChild(b)
@@ -181,7 +187,8 @@ export function mountGlyphPicker(deps: GlyphPickerDeps): GlyphPickerHandle {
   const renderKinds = (): void => {
     kinds.replaceChildren()
     for (const k of ['emoji', 'sticker', 'icon'] as const) {
-      const b = el('button', { type: 'button', class: 'qc-button qc-drawing-glyph-kind', role: 'tab', 'aria-selected': String(k === kind), text: t(KIND_LABEL[k]) })
+      const b = el('button', { type: 'button', class: 'qc-button qc-drawing-glyph-kind', role: 'tab', id: `${deps.idBase}-kind-${k}`, 'aria-controls': `${deps.idBase}-grid`, 'aria-selected': String(k === kind), text: t(KIND_LABEL[k]) })
+      if (k === kind) grid.setAttribute('aria-labelledby', b.id)
       b.addEventListener('click', () => {
         kind = k
         activeCategory = categories()[0]?.id ?? ''

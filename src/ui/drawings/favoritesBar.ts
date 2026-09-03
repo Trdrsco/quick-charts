@@ -17,6 +17,10 @@ export interface FavoritesBarDeps {
   activeTool(): string | null
   /** Arm a tool, or release it when it is the armed one. */
   arm(tool: string | null): void
+  /** Whether the registry would arm a tool now; every arm renders disabled otherwise. */
+  available(): boolean
+  /** Whether the access policy permits a tool. A refused tool renders disabled. */
+  toolAllowed(tool: string): boolean
   /** The bar was dragged: persist where it landed. */
   onMove(position: FavoritesPosition): void
 }
@@ -88,7 +92,7 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
       const def = drawingTools.get(type)
       if (!def) continue
       const name = toolName(t, type, def.name)
-      const b = button({ class: 'qc-button qc-drawing-favorite', label: name, html: toolIconSvg(type), onClick: () => deps.arm(active === type ? null : type) })
+      const b = button({ class: 'qc-button qc-drawing-favorite', label: name, html: toolIconSvg(type), disabled: !deps.available() || !deps.toolAllowed(type), onClick: () => deps.arm(active === type ? null : type) })
       b.dataset.qcActive = String(active === type)
       b.dataset.tool = type
       tools.appendChild(b)

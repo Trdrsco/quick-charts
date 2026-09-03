@@ -15,7 +15,7 @@ function rig(over: Partial<TextEditSession> = {}) {
   const gestures = document.createElement('div')
   document.body.append(gestures, container)
   const out: string[] = []
-  const editor = mountTextEditor(session(over), { container, gestures, t, onCommit: (v) => out.push(`commit:${v}`), onCancel: () => out.push('cancel') })
+  const editor = mountTextEditor(session(over), { container, gestures, t, fontFamily: 'Inter, sans-serif', onCommit: (v) => out.push(`commit:${v}`), onCancel: () => out.push('cancel') })
   const area = container.querySelector('textarea')!
   return { container, gestures, out, editor, area }
 }

@@ -146,6 +146,9 @@ export interface AttachDrawingsOptions {
    *  here so Delete, Escape, copy and paste answer to the access policy like every other verb;
    *  absent, the layer runs the verb itself. Answers whether the command ran. */
   execute?: (command: string, arg?: unknown) => boolean
+  /** The ink the dot cursor's ring is drawn in, read when the cursor is set: the chart passes its
+   *  text role, so the ring follows the theme. */
+  ink?: () => string
   events?: DrawingsEvents
 }
 
@@ -180,6 +183,11 @@ export interface DrawingsHandle {
   /** Commit a dialog session that edited the live drawing directly: persist, remember the default,
    *  and report one change. */
   commitEdit(): void
+  /** Open a preview session on the selection: until `endPreview` or `commitEdit`, every write of
+   *  the document carries the snapshot taken here, not the live preview, so a persist that
+   *  arrives from outside (a symbol switch, a restore) cannot store what may still be cancelled. */
+  beginPreview(): void
+  endPreview(): void
   /** Duplicate the selection a few pixels to the right and select the copy. */
   clone(): void
   /** Copy the selection to the drawing clipboard, which lasts the page. */

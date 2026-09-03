@@ -11,9 +11,8 @@ import type { ChartTranslate } from '../../i18n'
 import type { TextEditSession } from '../../drawings'
 import { el } from './dom'
 
-/** The editor's line height and the family it types in, matched to the drawing renderer's text. */
+/** The editor's line height, matched to the drawing renderer's text. */
 const LINE_HEIGHT = 1.35
-const FONT_FAMILY = 'ui-sans-serif, system-ui, sans-serif'
 
 let measurer: CanvasRenderingContext2D | null | undefined
 
@@ -38,6 +37,8 @@ export interface TextEditorDeps {
   /** The gesture box, whose press commits the edit. */
   gestures: HTMLElement
   t: ChartTranslate
+  /** The family the editor types in: the theme's `text.fontFamily`, which the renderer shares. */
+  fontFamily: string
   onCommit(value: string): void
   onCancel(): void
 }
@@ -47,7 +48,7 @@ export interface TextEditorHandle {
 }
 
 export function mountTextEditor(session: TextEditSession, deps: TextEditorDeps): TextEditorHandle {
-  const font = `${session.italic ? 'italic ' : ''}${session.bold ? '600 ' : ''}${session.fontSize}px ${FONT_FAMILY}`
+  const font = `${session.italic ? 'italic ' : ''}${session.bold ? '600 ' : ''}${session.fontSize}px ${deps.fontFamily}`
   const placeholder = deps.t('drawing.textPlaceholder')
   const area = el('textarea', { class: 'qc-drawing-text-editor', 'aria-label': deps.t('drawing.textEditor'), rows: '1', spellcheck: 'false', wrap: 'off', placeholder }) as HTMLTextAreaElement
   area.value = session.value

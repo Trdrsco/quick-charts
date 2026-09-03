@@ -29,6 +29,9 @@ export interface CommandSpec {
   shortcut?: string
   /** Whether the command can run right now, from capability and chart state. */
   available(): boolean
+  /** Whether the access policy refuses this argument, for a command whose one id spans many
+   *  subjects (the tool to arm). A refused argument answers `denied`, as a refused id does. */
+  refuses?(arg: unknown): boolean
   execute(arg?: unknown): void | Promise<void>
 }
 
@@ -117,6 +120,11 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
       const spec = specs.get(id)
       if (!spec) return { kind: 'unknown' }
       if (!permitted(id)) return { kind: 'denied' }
+      try {
+        if (spec.refuses?.(arg)) return { kind: 'denied' }
+      } catch {
+        return { kind: 'denied' }
+      }
       let ready: boolean
       try {
         ready = spec.available()

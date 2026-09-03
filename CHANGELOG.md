@@ -14,8 +14,11 @@
   Shift constrains, Ctrl-drag duplicates, and the magnet pulls placed and dragged anchors onto the
   bar's own values.
   Every control on the toolbar, the settings bar and the dialog is a command through the registry
-  and renders disabled, never hidden, while the registry would not run it; every flyout, palette
-  and dialog sits inside the chart root and closes with it.
+  and renders disabled, never hidden, while the registry would not run it; `chart.drawings.arm`
+  answers `denied` for a tool the access policy refuses; an image is placed only through
+  `chart.drawings.placeImage`; every flyout, palette and dialog sits inside the chart root and
+  closes with it; and the eye and lock all announce through a live region. Keyboard hints name
+  the modifier the platform has.
 - **The selected drawing has a settings bar and a settings dialog.** The bar floats over the chart
   with templates, the stroke color and opacity, the background, the text color and font size,
   thickness and line style, the settings gear, lock, delete, and a More menu with the stacking

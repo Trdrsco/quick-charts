@@ -12,7 +12,7 @@
 // and timeframe flow, the tick grid, the price formatter and teardown stay chart-owned, so a host
 // cannot desync the layer from the bars under it.
 import type { ISeriesApi, IChartApi, SeriesType } from 'lightweight-charts'
-import { attachDrawings, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow, type TextEditSession } from '../drawings'
+import { attachDrawings, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow, type PlacedImage, type TextEditSession } from '../drawings'
 import {
   DEFAULT_HIDE_STATE,
   blanks,
@@ -26,8 +26,10 @@ import {
   type MagnetMode,
 } from '../drawings/index'
 import type { FeedBar } from '../datafeed'
-import type { ChartI18n, ChartTranslate } from '../i18n'
+import type { ChartI18n, ChartMessageKey, ChartTranslate } from '../i18n'
 import type { ChartSaveLoadAdapter, ResourceRef } from '../resources'
+import type { SemanticTheme } from '../theme/schema'
+import { el } from '../ui/drawings/dom'
 import { mountDrawingToolbar, type ToolbarHandle } from '../ui/drawings/toolbar'
 import { mountFavoritesBar, type FavoritesBarHandle } from '../ui/drawings/favoritesBar'
 import { mountSettingsBar, type SettingsBarHandle } from '../ui/drawings/settingsBar'
@@ -39,8 +41,14 @@ import { closeOverlays } from '../ui/drawings/overlays'
 import type { AccessPolicy } from './options'
 import type { CommandRegistry } from './commands'
 
-/** The drawing surface a host drives. */
-export type ChartDrawingsApi = Omit<DrawingsHandle, 'setSymbol' | 'setTimeframe' | 'setTick' | 'setPriceFormatter' | 'destroy'>
+/** The drawing surface a host drives: the layer's handle minus what the chart owns (symbol,
+ *  timeframe, tick, price format, teardown) and minus the session verbs only the package's own
+ *  surfaces use (the live `IDrawing`, the preview and edit session, the inline text session, the
+ *  presets). The public surface grows on demand, not by exposure. */
+export type ChartDrawingsApi = Omit<
+  DrawingsHandle,
+  'setSymbol' | 'setTimeframe' | 'setTick' | 'setPriceFormatter' | 'destroy' | 'selectedDrawing' | 'commitEdit' | 'beginPreview' | 'endPreview' | 'textEdit' | 'commitText' | 'cancelText' | 'presets'
+>
 
 /** The verbs the `chart.drawings.*` commands run that live above the layer: the standing
  *  preferences, the eye, favorites, templates and the dialogs. */
@@ -63,6 +71,15 @@ export interface DrawingVerbs {
   removeTemplate(name: string): void
   tableAddRow(): void
   tableAddColumn(): void
+  /** Whether the access policy permits arming a tool. */
+  toolPermitted(tool: string): boolean
+  /** Whether an inline text edit is open. */
+  editing(): boolean
+  /** Commit the open edit session as one edit. */
+  commitEdit(): void
+  /** Whether an image can be placed: an asset port is configured and the image tool permitted. */
+  canPlaceImage(): boolean
+  placeImage(image: PlacedImage): void
 }
 
 export interface DrawingsLayer {
@@ -113,6 +130,8 @@ export interface DrawingsDeps {
   indicators: { count(): number; setAllHidden(hidden: boolean): void }
   /** Charts in the layout, for the sync control. */
   chartCount(): number
+  /** The resolved theme, read live: the dot cursor's ink and the text editor's family. */
+  theme(): SemanticTheme
   /** A refused write the layer made on its own. */
   onSaveConflict(info: { symbol: string; current: ResourceRef | null; message: string }): void
   /** The armed tool or the selection changed. */
@@ -146,6 +165,12 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
 
   /** The eye: one switch with a chosen subject. Session state, never persisted. */
   let hide: HideState = DEFAULT_HIDE_STATE
+  /** What the status region says as the eye flips, by subject. */
+  const HIDE_STATUS: Record<HideState['mode'], { hidden: ChartMessageKey; shown: ChartMessageKey }> = {
+    drawings: { hidden: 'drawing.statusDrawingsHidden', shown: 'drawing.statusDrawingsShown' },
+    indicators: { hidden: 'drawing.statusIndicatorsHidden', shown: 'drawing.statusIndicatorsShown' },
+    all: { hidden: 'drawing.statusAllHidden', shown: 'drawing.statusAllShown' },
+  }
   const groups = buildRailGroups()
 
   // The surfaces wire to the layer's events through a mutable events object: the layer needs its
@@ -169,8 +194,18 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     ...(deps.assets ? { glyphSource: (glyph: string) => deps.assets!.glyphSource(glyph) } : {}),
     // The keyboard verbs go through the registry, so the access policy gates them like every door.
     execute: (command, arg) => deps.commands.execute(command, arg).kind === 'ok',
+    ink: () => deps.theme()['text.primary'],
     events,
   })
+  const idBase = `${deps.chartId}-drawing`
+  // What a screen reader hears when a whole-chart switch flips: the eye and lock all change
+  // nothing that reads as text, so the plane announces them itself.
+  const status = el('div', { class: 'qc-drawing-status', role: 'status', 'aria-live': 'polite' })
+  deps.chrome.appendChild(status)
+  const announce = (text: string): void => {
+    status.textContent = ''
+    status.textContent = text
+  }
   events.onSaveConflict = ({ symbol, current }) =>
     deps.onSaveConflict({ symbol, current, message: deps.i18n.t(current ? 'host.saveConflict' : 'host.saveNotFound') })
 
@@ -221,6 +256,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       run,
       available,
       toolAllowed: permitted,
+      idBase,
       ...(deps.assets ? { glyphSource: (glyph: string) => deps.assets!.glyphSource(glyph) } : {}),
     })
   }
@@ -231,6 +267,8 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       favorites: () => prefs().favorites,
       activeTool: () => handle.activeTool(),
       arm: (tool) => run('chart.drawings.arm', tool),
+      available: () => available('chart.drawings.arm'),
+      toolAllowed: permitted,
       onMove: (position) => write({ favorites: { ...prefs().favorites, position } }),
     })
   }
@@ -272,6 +310,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       container: deps.chrome,
       gestures: deps.container,
       t: t(),
+      fontFamily: deps.theme()['text.fontFamily'],
       onCommit: (value) => {
         textEditor = null
         handle.commitText(value)
@@ -292,7 +331,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
   // the Image tool's own dialog. Only an actual image file is taken; a copied drawing rides the
   // layer's own keys, and text pastes belong to whatever field is focused.
   const onPaste = (e: ClipboardEvent): void => {
-    if (!deps.assets) return
+    if (!deps.assets || !available('chart.drawings.placeImage')) return
     const target = e.target as HTMLElement | null
     if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return
     if (!deps.container.matches(':hover')) return
@@ -300,7 +339,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     if (!file) return
     e.preventDefault()
     void deps.assets.intakeImage(file).then((result) => {
-      if (result.ok) handle.placeImage(result.asset)
+      if (result.ok) run('chart.drawings.placeImage', result.asset)
     })
   }
   window.addEventListener('paste', onPaste)
@@ -310,6 +349,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     hide = next
     handle.setAllHidden(blanks(next, 'drawings'))
     deps.indicators.setAllHidden(blanks(next, 'indicators'))
+    announce(t()(HIDE_STATUS[next.mode][next.on ? 'hidden' : 'shown']))
     renderAll()
   }
 
@@ -321,12 +361,13 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       // The Image tool opens its picker rather than arming: its picture is chosen first and then
       // dropped onto the chart, so there is nothing left to decide with a click.
       if (tool === 'image') {
-        if (!deps.assets || closeImagePicker) return
+        if (!deps.assets || closeImagePicker || !available('chart.drawings.placeImage')) return
         closeImagePicker = openImagePicker({
           container: deps.chrome,
           t: t(),
           assets: deps.assets,
-          onConfirm: (image) => handle.placeImage(image),
+          canPlace: () => available('chart.drawings.placeImage'),
+          onConfirm: (image) => run('chart.drawings.placeImage', image),
           onClose: () => {
             closeImagePicker = null
           },
@@ -351,6 +392,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     setStayInMode: (on) => write({ stayInDrawingMode: on }),
     setLockAll(on) {
       handle.setAllLocked(on)
+      announce(t()(on ? 'drawing.statusAllLocked' : 'drawing.statusAllUnlocked'))
       renderAll()
     },
     hide: () => hide,
@@ -362,15 +404,19 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     openSettings() {
       const drawing = handle.selectedDrawing()
       if (!drawing || dialog) return
+      // The dialog previews on the drawing; the document carries the snapshot until Ok commits.
+      handle.beginPreview()
       dialog = openSettingsDialog({
         chrome: deps.chrome,
         t: t(),
         drawing,
         presets: handle.presets,
+        idBase: `${idBase}-settings`,
         ...(deps.assets ? { assets: deps.assets } : {}),
         run,
         available,
         onClose: () => {
+          handle.endPreview()
           dialog = null
           renderAll()
         },
@@ -401,11 +447,32 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       const cells = (handle.selectedDrawing()?.props as { cells?: string[][] } | undefined)?.cells
       if (cells?.length) handle.updateProps({ cells: cells.map((row) => [...row, '']) })
     },
+    toolPermitted: (tool) => permitted(tool),
+    editing: () => handle.textEdit() !== null,
+    commitEdit: () => handle.commitEdit(),
+    canPlaceImage: () => !!deps.assets && permitted('image'),
+    placeImage: (image) => handle.placeImage(image),
   }
 
   // The public surface is the handle minus the five chart-owned verbs, with arming routed through
   // the access policy. Built by hand so an untyped consumer finds exactly what the type names.
-  const { setSymbol: _s, setTimeframe: _t, setTick: _k, setPriceFormatter: _p, destroy: _d, armTool: _a, ...rest } = handle
+  const {
+    setSymbol: _s,
+    setTimeframe: _t,
+    setTick: _k,
+    setPriceFormatter: _p,
+    destroy: _d,
+    armTool: _a,
+    selectedDrawing: _sd,
+    commitEdit: _ce,
+    beginPreview: _bp,
+    endPreview: _ep,
+    textEdit: _te,
+    commitText: _ct,
+    cancelText: _cx,
+    presets: _pr,
+    ...rest
+  } = handle
   return {
     handle,
     verbs,
@@ -415,7 +482,11 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
         if (permitted(type)) handle.armTool(type, props)
       },
     },
-    setSymbol: (symbol) => handle.setSymbol(symbol),
+    setSymbol: (symbol) => {
+      // A session belongs to the drawing it previews; the drawing leaves with its symbol.
+      dialog?.close()
+      handle.setSymbol(symbol)
+    },
     setTimeframe: (timeframe) => handle.setTimeframe(timeframe),
     setPricing: (tick, format) => {
       handle.setTick(tick)
@@ -440,6 +511,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       settingsBar?.destroy()
       favoritesBar?.destroy()
       toolbar?.destroy()
+      status.remove()
       handle.destroy()
     },
   }

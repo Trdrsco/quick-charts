@@ -17,6 +17,8 @@ export interface ImagePickerDeps {
   container: HTMLElement
   t: ChartTranslate
   assets: DrawingAssetPort
+  /** Whether the registry would place an image now; Ok renders disabled otherwise. */
+  canPlace(): boolean
   onConfirm(image: PlacedImage): void
   onClose?(): void
 }
@@ -72,7 +74,8 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
   zone.append(preview, words)
   const file = el('input', { type: 'file', accept: IMAGE_ACCEPT, class: 'qc-drawing-file' }) as HTMLInputElement
   file.hidden = true
-  const error = el('div', { class: 'qc-negative qc-drawing-note' })
+  // A live region, so a refusal is heard as it lands.
+  const error = el('div', { class: 'qc-negative qc-drawing-note', role: 'status', 'aria-live': 'polite' })
   error.hidden = true
   const dims = el('div', { class: 'qc-secondary qc-drawing-note' })
   dims.hidden = true
@@ -89,7 +92,7 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
       dims.textContent = t('drawing.imageDimensions', { width: picked.width, height: picked.height })
     }
     dims.hidden = !picked || !error.hidden
-    ok.disabled = !picked || busy
+    ok.disabled = !picked || busy || !deps.canPlace()
   }
 
   const take = async (chosen: File | null): Promise<void> => {
@@ -132,7 +135,7 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
     file.value = '' // so picking the same file twice still fires a change
   })
   ok.addEventListener('click', () => {
-    if (!picked || busy) return
+    if (!picked || busy || !deps.canPlace()) return
     deps.onConfirm({ ...picked, opacity })
     dialog.close()
   })

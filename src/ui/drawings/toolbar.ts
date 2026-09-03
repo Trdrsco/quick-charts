@@ -75,6 +75,8 @@ export interface ToolbarDeps {
   available(command: string): boolean
   /** Whether the access policy permits arming a tool. A refused tool renders disabled. */
   toolAllowed(type: string): boolean
+  /** The stem every element id the rail's surfaces write derives from: the chart's id. */
+  idBase: string
   /** Artwork for a glyph, from the host's asset port. */
   glyphSource?: (glyph: string) => string | null
 }
@@ -134,9 +136,11 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   column.addEventListener('scroll', closeOpen)
 
   const rows = (menu: HTMLElement): HTMLElement[] => [...menu.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="switch"]')]
-  const menuRow = (label: string, onPick: () => void, options: { icon?: string; active?: boolean; role?: string; command?: string } = {}): HTMLButtonElement => {
+  const menuRow = (label: string, onPick: () => void, options: { icon?: string; active?: boolean; role?: string; command?: string; commands?: readonly string[] } = {}): HTMLButtonElement => {
     const b = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row', role: options.role ?? 'menuitem' })
-    if (options.command && !deps.available(options.command)) b.disabled = true
+    // A row that runs several commands is live only when every one of them would run.
+    const needs = [...(options.command ? [options.command] : []), ...(options.commands ?? [])]
+    if (needs.some((command) => !deps.available(command))) b.disabled = true
     if (options.active !== undefined) b.setAttribute('aria-checked', String(options.active))
     if (options.active) b.dataset.qcActive = 'true'
     const cell = el('span', { class: 'qc-menu-icon' })
@@ -195,6 +199,9 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         t,
         ...(deps.glyphSource ? { glyphSource: deps.glyphSource } : {}),
         recents: deps.state().recentGlyphs,
+        idBase: `${deps.idBase}-glyphs`,
+        available: () => deps.available('chart.drawings.arm'),
+        toolAllowed: (kind) => deps.toolAllowed(kind),
         onPick: (kind: GlyphKind, glyph: string) => {
           closeOpen()
           deps.run('chart.drawings.arm', { tool: kind, props: { glyph } })
@@ -217,6 +224,8 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         pick.appendChild(el('span', { class: 'qc-menu-label', text: name }))
         if (s.activeTool === tool.type) pick.dataset.qcActive = 'true'
         if (!deps.toolAllowed(tool.type) || !deps.available('chart.drawings.arm')) pick.disabled = true
+        // The Image tool places through its own command, which needs an asset port to exist.
+        if (tool.type === 'image' && !deps.available('chart.drawings.placeImage')) pick.disabled = true
         pick.addEventListener('click', () => {
           closeOpen()
           deps.run('chart.drawings.arm', tool.type)
@@ -333,7 +342,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
           if (rowSpec.drawings > 0) deps.run('chart.drawings.removeAll', s.removeLocked)
           if (rowSpec.indicators > 0) deps.run('chart.indicators.removeAll')
         },
-        { command: rowSpec.drawings > 0 ? 'chart.drawings.removeAll' : 'chart.indicators.removeAll' },
+        { commands: [...(rowSpec.drawings > 0 ? ['chart.drawings.removeAll'] : []), ...(rowSpec.indicators > 0 ? ['chart.indicators.removeAll'] : [])] },
       ),
     )
     if (items.length === 0) items.push(el('div', { class: 'qc-muted qc-drawing-menu-note', text: t('drawing.nothingToRemove') }))
@@ -427,10 +436,9 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     }
     const removable = removableDrawings(s.counts, s.removeLocked)
     removeFace.title = removable > 0 ? t('drawing.removeItems', { items: t('drawing.countDrawings', { count: removable }) }) : t('drawing.removeDrawings')
-    // The remove face takes drawings, so it is live only while there are drawings to take; the
-    // arrow's menu also carries the locked-item policy, which is its own command.
+    // The remove face takes drawings, so it is live only while there are drawings to take. The
+    // arrow always opens: its menu names what each row would take and gates every row itself.
     gate(removeFace, 'chart.drawings.removeAll')
-    gate(removeArrow, 'chart.drawings.removeLockedPolicy')
     favorites.innerHTML = iconSvg(s.favorites.visible ? 'starFilled' : 'star')
     favorites.setAttribute('aria-pressed', String(s.favorites.visible))
     setActive(favorites, s.favorites.visible)

@@ -8,7 +8,7 @@ import { alphaOf, withAlpha } from '@trdrs/chart-drawings'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import type { DrawingPresets, SelectedDrawing } from '../../drawings'
 import { clampFavoritesPosition, FILLABLE, FONT_TOOLS, NO_DASH, NO_LINE_DECOR, NO_STROKE, type FavoritesPosition, type VisibilityPreset } from '../../drawings/index'
-import { button, el, focusFirst, menuKeys, ownPointer, rovingFocus } from './dom'
+import { button, el, focusFirst, isApplePlatform, menuKeys, ownPointer, rovingFocus } from './dom'
 import { colorSwatches, openPopover, strokeSegments } from './fields'
 import { iconSvg } from './icons'
 import { openTemplateDeleteDialog, openTemplateNameDialog } from './templateDialog'
@@ -162,8 +162,18 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     if (Array.isArray(levels)) deps.run('chart.drawings.props', { levels: (levels as { color?: string }[]).map((l) => ({ ...l, color: withAlpha(l.color ?? selected.lineColor, v) })) })
   }
 
-  const colorFace = (icon: 'pencil' | 'bucket' | 'textTee', color: string, empty = false): string =>
-    `<span class="qc-drawing-color-face">${iconSvg(icon, 13)}<span class="qc-drawing-color-strip" data-empty="${empty}" style="--qcd-swatch: ${empty ? 'transparent' : color}"></span></span>`
+  /** The color buttons' face: the glyph over a strip in the drawing's color. The color is a stored
+   *  value, so it goes in through the style API, never through markup. */
+  const colorFace = (icon: 'pencil' | 'bucket' | 'textTee', color: string, empty = false): HTMLElement => {
+    const strip = el('span', { class: 'qc-drawing-color-strip', 'data-empty': String(empty) })
+    strip.style.setProperty('--qcd-swatch', empty ? 'transparent' : color)
+    const face = el('span', { class: 'qc-drawing-color-face' })
+    face.innerHTML = iconSvg(icon, 13)
+    face.appendChild(strip)
+    return face
+  }
+  /** The modifier the hints name: the key this platform has, since the layer takes either. */
+  const modifier = (): string => t(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl')
 
   const render = (): void => {
     const selected = deps.selected()
@@ -223,7 +233,8 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     }
 
     if (hasStroke) {
-      const color = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingColor'), title: t('drawing.color'), html: colorFace('pencil', selected.lineColor) }), 'chart.drawings.style')
+      const color = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingColor'), title: t('drawing.color') }), 'chart.drawings.style')
+      color.appendChild(colorFace('pencil', selected.lineColor))
       color.setAttribute('aria-haspopup', 'dialog')
       color.setAttribute('aria-expanded', 'false')
       color.addEventListener('click', () =>
@@ -232,7 +243,8 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       controls.appendChild(color)
     }
     if (FILLABLE.has(type)) {
-      const fill = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), title: t('drawing.background'), html: colorFace('bucket', selected.fillColor, selected.fillOpacity === 0) }), 'chart.drawings.style')
+      const fill = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), title: t('drawing.background') }), 'chart.drawings.style')
+      fill.appendChild(colorFace('bucket', selected.fillColor, selected.fillOpacity === 0))
       fill.setAttribute('aria-haspopup', 'dialog')
       fill.setAttribute('aria-expanded', 'false')
       fill.addEventListener('click', () =>
@@ -249,7 +261,8 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       controls.appendChild(fill)
     }
     if (selected.hasText || FONT_TOOLS.has(type)) {
-      const text = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.textColor'), html: colorFace('textTee', selected.textColor) }), 'chart.drawings.style')
+      const text = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.textColor') }), 'chart.drawings.style')
+      text.appendChild(colorFace('textTee', selected.textColor))
       text.setAttribute('aria-haspopup', 'dialog')
       text.setAttribute('aria-expanded', 'false')
       text.addEventListener('click', () =>
@@ -329,7 +342,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
         }),
         'chart.drawings.lock',
       ),
-      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.deleteDrawing'), title: `${t('drawing.delete')} (Del)`, html: iconSvg('trash'), onClick: () => deps.run('chart.drawings.deleteSelected') }), 'chart.drawings.deleteSelected'),
+      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.deleteDrawing'), title: t('drawing.deleteWithKey'), html: iconSvg('trash'), onClick: () => deps.run('chart.drawings.deleteSelected') }), 'chart.drawings.deleteSelected'),
     )
 
     const more = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.moreActions'), title: t('drawing.more'), html: iconSvg('kebab') })
@@ -347,9 +360,9 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
           heading(t('drawing.visibilityOnIntervals')),
           ...VISIBILITY_PRESETS.map((v) => menuRow(t(v.label), () => deps.run('chart.drawings.visibility', v.preset), { command: 'chart.drawings.visibility' })),
           el('div', { class: 'qc-separator', role: 'separator' }),
-          menuRow(t('drawing.clone'), () => deps.run('chart.drawings.clone'), { icon: iconSvg('clone'), hint: 'Ctrl + Drag', command: 'chart.drawings.clone' }),
-          menuRow(t('drawing.copy'), () => deps.run('chart.drawings.copy'), { hint: 'Ctrl + C', command: 'chart.drawings.copy' }),
-          menuRow(t('drawing.paste'), () => deps.run('chart.drawings.paste'), { hint: 'Ctrl + V', disabled: !deps.canPaste(), command: 'chart.drawings.paste' }),
+          menuRow(t('drawing.clone'), () => deps.run('chart.drawings.clone'), { icon: iconSvg('clone'), hint: t('drawing.hintClone', { modifier: modifier() }), command: 'chart.drawings.clone' }),
+          menuRow(t('drawing.copy'), () => deps.run('chart.drawings.copy'), { hint: t('drawing.hintCopy', { modifier: modifier() }), command: 'chart.drawings.copy' }),
+          menuRow(t('drawing.paste'), () => deps.run('chart.drawings.paste'), { hint: t('drawing.hintPaste', { modifier: modifier() }), disabled: !deps.canPaste(), command: 'chart.drawings.paste' }),
           el('div', { class: 'qc-separator', role: 'separator' }),
           menuRow(t('drawing.hide'), () => deps.run('chart.drawings.hideSelected'), { icon: iconSvg('eyeCrossed'), command: 'chart.drawings.hideSelected' }),
         ),

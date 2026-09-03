@@ -13,6 +13,7 @@ import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry, CommandSpec } from './commands'
 import type { ChartHandle } from './chart'
 import type { DrawingVerbs } from './drawings'
+import type { PlacedImage } from '../drawings'
 import { CURSOR_MODES, type CursorMode, type HideState, type MagnetMode, type VisibilityPreset } from '../drawings/index'
 import type { Capabilities, IndicatorInstance } from './options'
 import type { ComparePlacement } from '../compare'
@@ -220,6 +221,11 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   const on = (): boolean => features.drawings && drawings() !== null
   const isHideState = (arg: unknown): arg is HideState =>
     !!arg && typeof arg === 'object' && typeof (arg as HideState).on === 'boolean' && ['drawings', 'indicators', 'all'].includes((arg as HideState).mode)
+  /** The tool an arm argument names: the id itself, or the `tool` of a seeded placement. */
+  const toolOf = (arg: unknown): string | null | undefined =>
+    arg === null || typeof arg === 'string' ? arg : arg && typeof arg === 'object' && typeof (arg as { tool?: unknown }).tool === 'string' ? (arg as { tool: string }).tool : undefined
+  const isPlacedImage = (arg: unknown): arg is PlacedImage =>
+    !!arg && typeof arg === 'object' && typeof (arg as PlacedImage).dataUrl === 'string' && typeof (arg as PlacedImage).width === 'number' && typeof (arg as PlacedImage).height === 'number'
 
   add({
     id: 'chart.drawings.removeAll',
@@ -245,13 +251,35 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     scope: 'chart',
     label: 'command.drawingCancel',
     shortcut: 'Escape',
-    available: () => on() && (drawings()!.activeTool() != null || drawings()!.textEdit() !== null),
+    available: () => on() && (drawings()!.activeTool() != null || (verbs()?.editing() ?? false)),
     execute: () => drawings()?.armTool(null),
   })
   // Arming a tool is ONE command taking the tool id (or `{ tool, props }` to seed the placement,
   // as a picked glyph does): the ninety registered tools would otherwise be ninety near-identical
-  // entries, and the access policy already refuses per tool inside the plane.
-  add({ id: 'chart.drawings.arm', scope: 'chart', label: 'command.drawingArm', available: on, execute: (arg) => verbs()?.arm(arg) })
+  // entries, and the access policy refuses per tool through `refuses`, so a refused tool answers
+  // `denied` from this door as a refused command does.
+  add({
+    id: 'chart.drawings.arm',
+    scope: 'chart',
+    label: 'command.drawingArm',
+    available: on,
+    refuses: (arg) => {
+      const tool = toolOf(arg)
+      return typeof tool === 'string' && !(verbs()?.toolPermitted(tool) ?? true)
+    },
+    execute: (arg) => verbs()?.arm(arg),
+  })
+  // An image is placed whole, from the picker or a system-clipboard paste over the chart; the
+  // command exists only with an asset port to read the picture and the image tool permitted.
+  add({
+    id: 'chart.drawings.placeImage',
+    scope: 'chart',
+    label: 'command.drawingPlaceImage',
+    available: () => on() && (verbs()?.canPlaceImage() ?? false),
+    execute: (arg) => {
+      if (isPlacedImage(arg)) verbs()?.placeImage(arg)
+    },
+  })
   add({
     id: 'chart.drawings.cursor',
     scope: 'chart',
@@ -331,7 +359,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
   add({ id: 'chart.drawings.settings', scope: 'chart', label: 'command.drawingSettings', available: withSelection, execute: () => verbs()?.openSettings() })
-  add({ id: 'chart.drawings.commitEdit', scope: 'chart', label: 'command.drawingSettings', available: withSelection, execute: () => drawings()?.commitEdit() })
+  add({ id: 'chart.drawings.commitEdit', scope: 'chart', label: 'command.drawingCommitEdit', available: withSelection, execute: () => verbs()?.commitEdit() })
   add({
     id: 'chart.drawings.template.apply',
     scope: 'chart',

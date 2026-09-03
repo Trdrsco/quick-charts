@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // The settings bar: hidden without a selection, the controls the tool has and not the ones it
 // lacks, every action a command, and the menus it opens.
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
 import { createPresets } from '../../../src/drawings/layer/presets'
 import type { SelectedDrawing } from '../../../src/drawings'
@@ -187,6 +187,25 @@ describe('the settings bar', () => {
     input.dispatchEvent(new Event('input'))
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     expect(ran[3]).toEqual(['chart.drawings.template.save', 'Mine'])
+  })
+
+  it('names the Command key in its hints on an Apple platform, and Control elsewhere', () => {
+    vi.spyOn(navigator, 'platform', 'get').mockReturnValue('MacIntel')
+    const { byLabel, popover } = rig(selection())
+    byLabel('More drawing actions').click()
+    const hints = [...popover()!.querySelectorAll<HTMLElement>('.qc-menu-hint')].map((h) => h.textContent)
+    expect(hints).toEqual(['Cmd + Drag', 'Cmd + C', 'Cmd + V'])
+    vi.restoreAllMocks()
+  })
+
+  it('paints the color strip through the style API, never through markup', () => {
+    const { byLabel } = rig(selection({ lineColor: 'rgb(1, 2, 3)' }))
+    const strip = byLabel('Drawing color').querySelector<HTMLElement>('.qc-drawing-color-strip')!
+    expect(strip.style.getPropertyValue('--qcd-swatch')).toBe('rgb(1, 2, 3)')
+    // A stored value that reads like markup stays a value: it cannot close the attribute it sits in.
+    const hostile = rig(selection({ lineColor: 'red" onmouseover="x' }))
+    expect(hostile.byLabel('Drawing color').querySelector('[onmouseover]')).toBeNull()
+    expect(hostile.byLabel('Drawing color').querySelector<HTMLElement>('.qc-drawing-color-strip')!.hasAttribute('onmouseover')).toBe(false)
   })
 
   it('sits where it was dragged to', () => {

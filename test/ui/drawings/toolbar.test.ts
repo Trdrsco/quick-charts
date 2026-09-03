@@ -41,6 +41,7 @@ function rig(over: Partial<ToolbarState> = {}, options: { refuse?: string[]; den
     },
     available: (command) => !(options.deny ?? []).includes(command),
     toolAllowed: (type) => !(options.refuse ?? []).includes(type),
+    idBase: 'c1-drawing',
   })
   const buttons = () => [...chrome.querySelectorAll<HTMLButtonElement>('[data-role="drawing-toolbar"] button')]
   const byLabel = (label: string) => buttons().find((b) => b.getAttribute('aria-label') === label)!
@@ -249,9 +250,37 @@ describe('a group flyout', () => {
     const remove = [...popover()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
     expect(remove.map((r) => r.disabled)).toEqual([true])
     expect(popover()!.querySelector<HTMLButtonElement>('[role="switch"]')!.disabled).toBe(false)
+    // With studies on the chart, the row that takes both needs both commands; only the row that
+    // takes studies alone is live while removing drawings is refused.
+    state.indicatorCount = 1
+    toolbar.render()
+    byLabel('Remove menu').click()
+    byLabel('Remove menu').click()
+    const three = [...popover()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    expect(three).toHaveLength(3)
+    const live = three.filter((r) => !r.disabled)
+    expect(live).toHaveLength(1)
+    expect(live[0]!.textContent).toContain('indicator')
+    expect(live[0]!.textContent).not.toContain('drawing')
     state.counts = { total: 0, locked: 0 }
     toolbar.render()
     expect(byLabel('Remove drawings').disabled).toBe(true)
+    expect(byLabel('Remove menu').disabled).toBe(false)
+  })
+
+  it('the Image tool row is live only while an image could be placed', () => {
+    const imageRow = (r: ReturnType<typeof rig>): HTMLButtonElement => {
+      for (const arrow of r.buttons().filter((b) => / menu$/.test(b.getAttribute('aria-label') ?? ''))) {
+        arrow.click()
+        const row = r.popover()?.querySelector<HTMLButtonElement>('[data-tool="image"]')
+        if (row) return row
+        arrow.click()
+      }
+      throw new Error('no Image row on the rail')
+    }
+    expect(imageRow(rig({}, { deny: ['chart.drawings.placeImage'] })).disabled).toBe(true)
+    document.body.replaceChildren()
+    expect(imageRow(rig()).disabled).toBe(false)
   })
 
   it('renders a refused tool disabled, on its row and on the face', () => {
@@ -337,6 +366,7 @@ describe('the keyboard', () => {
       run: () => true,
       available: () => true,
       toolAllowed: () => true,
+      idBase: 'c1-drawing',
     })
     await strings.setLocale('fr-CA')
     toolbar.relabel()

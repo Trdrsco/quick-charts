@@ -197,3 +197,11 @@ export function menuKeys(menu: HTMLElement, rows: () => HTMLElement[]): () => vo
 export function focusFirst(root: HTMLElement): void {
   focusables(root)[0]?.focus({ preventScroll: true })
 }
+
+/** Whether the keyboard's command modifier is the Command key. A hint names the key this platform
+ *  has, since the layer accepts Control and Command alike. */
+export function isApplePlatform(): boolean {
+  const nav = typeof navigator === 'undefined' ? null : (navigator as Navigator & { userAgentData?: { platform?: string } })
+  const platform = nav?.userAgentData?.platform ?? nav?.platform ?? ''
+  return /mac|iphone|ipad|ipod/i.test(platform)
+}
