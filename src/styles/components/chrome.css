@@ -8,6 +8,9 @@
  *
  * The chrome's stacking ladder, all inside the root: legend and rail 3, navigation and replay 4,
  * the chart chrome layer 5, notices 6, the overlay layer 20, a menu panel 21, a dialog scrim 22.
+ * The chart chrome layer is a stacking context of its own, and the drawing surfaces inside it
+ * keep their own rungs: the toolbar on the rail's 3, the floating bars 7, the inline text
+ * editor 8, a flyout or palette 9, a drawing dialog's scrim 10.
  * A host that must stack something above the widget gives its own element a stacking context
  * above the root; nothing here reaches the top of the integer range. */
 [data-qc-theme] .qc-overlays {

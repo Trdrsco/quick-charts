@@ -5,7 +5,7 @@
  * role, so it reads as the field it is without a fill hiding the chart. */
 [data-qc-theme] .qc-drawing-text-editor {
   position: absolute;
-  z-index: 7;
+  z-index: 8;
   padding: 3px 6px;
   overflow: hidden;
   text-align: center;
@@ -196,4 +196,18 @@
 
 [data-qc-theme] .qc-drawing-file {
   display: none;
+}
+
+/* Forced colors: a glyph cell is a button and reads as one. */
+@media (forced-colors: active) {
+  [data-qc-theme] .qc-drawing-glyph-cell {
+    color: ButtonText;
+    background: ButtonFace;
+    border: 1px solid ButtonBorder;
+    forced-color-adjust: none;
+  }
+
+  [data-qc-theme] .qc-drawing-glyph-cell:disabled {
+    color: GrayText;
+  }
 }

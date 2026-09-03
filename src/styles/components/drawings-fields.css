@@ -616,3 +616,12 @@
   padding: 4px 8px;
   font-size: var(--qc-text-fontSizeSmall);
 }
+
+/* Forced colors: a swatch IS its color, so it keeps it, with a system border to stand on. */
+@media (forced-colors: active) {
+  [data-qc-theme] .qc-drawing-swatch,
+  [data-qc-theme] .qc-drawing-color-strip {
+    forced-color-adjust: none;
+    border: 1px solid ButtonText;
+  }
+}
