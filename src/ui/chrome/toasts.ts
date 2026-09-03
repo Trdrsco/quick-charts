@@ -1,6 +1,8 @@
 // The chart's notices: a stack at the bottom of the charts, newest last, each dismissible and
 // retiring itself after a few seconds. A live region, so a screen reader hears a notice as it
-// lands; the motion is the stylesheet's and flattens under reduced motion.
+// lands; the motion is the stylesheet's and flattens under reduced motion. The region mounts as
+// the charts grid's next sibling, a row of no height whose stack floats up over the charts, so the
+// grid itself holds nothing but the tiled charts.
 import type { ChartI18n } from '../../i18n'
 import { button, h, name } from './dom'
 import { ICONS } from './icons'
@@ -13,9 +15,11 @@ export interface ToastsHandle {
 /** How long a notice stands before it retires itself. */
 export const TOAST_MS = 5000
 
-export function mountToasts(host: HTMLElement, deps: { i18n: ChartI18n }): ToastsHandle {
+/** Mount the notices directly after `grid`, the element the charts tile. */
+export function mountToasts(grid: HTMLElement, deps: { i18n: ChartI18n }): ToastsHandle {
   const t = (): ChartI18n['t'] => deps.i18n.t
-  const list = h('div', { class: 'qc-toasts', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'false' })
+  const list = h('div', { class: 'qc-toast-stack' })
+  const region = h('div', { class: 'qc-toasts', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'false' }, list)
   const timers = new Map<HTMLElement, ReturnType<typeof setTimeout>>()
   const dismiss = (card: HTMLElement): void => {
     const timer = timers.get(card)
@@ -26,7 +30,7 @@ export function mountToasts(host: HTMLElement, deps: { i18n: ChartI18n }): Toast
   const offStrings = deps.i18n.onChange(() => {
     for (const b of list.querySelectorAll<HTMLElement>('.qc-toast-dismiss')) name(b, t()('toast.dismiss'))
   })
-  host.appendChild(list)
+  grid.after(region)
   return {
     push(kind, text) {
       const card = h('div', { class: 'qc-overlay qc-toast', 'data-qc-kind': kind }, h('span', { class: `qc-toast-text${kind === 'error' ? ' qc-negative' : ''}` }, text))
@@ -41,7 +45,7 @@ export function mountToasts(host: HTMLElement, deps: { i18n: ChartI18n }): Toast
       for (const timer of timers.values()) clearTimeout(timer)
       timers.clear()
       offStrings()
-      list.remove()
+      region.remove()
     },
   }
 }
