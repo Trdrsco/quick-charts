@@ -185,15 +185,20 @@ describe('switches and tabs', () => {
     expect(onChange).toHaveBeenLastCalledWith(false)
   })
 
-  it('tabs move with arrow keys and mark the selected one', () => {
+  it('tabs move with arrow keys, mark the selected one, control the panel and label it', () => {
     const onChange = vi.fn()
-    const tabs = tabList({ tabs: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], value: 'a', label: 'Pages', onChange })
-    document.body.appendChild(tabs.element)
+    const panel = h('div')
+    const tabs = tabList({ tabs: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], value: 'a', label: 'Pages', id: 'pages', panel, onChange })
+    document.body.append(tabs.element, panel)
     const [a, b] = [...tabs.element.querySelectorAll('button')]
     expect(a!.getAttribute('aria-selected')).toBe('true')
+    expect(a!.getAttribute('aria-controls')).toBe('pages-panel')
+    expect(panel.id).toBe('pages-panel')
+    expect(panel.getAttribute('aria-labelledby')).toBe('pages-tab-a')
     a!.focus()
     press(a!, 'ArrowRight')
     expect(b!.getAttribute('aria-selected')).toBe('true')
+    expect(panel.getAttribute('aria-labelledby')).toBe('pages-tab-b')
     expect(document.activeElement).toBe(b)
     expect(onChange).toHaveBeenCalledWith('b')
   })

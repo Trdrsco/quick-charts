@@ -2,12 +2,14 @@
 // indicator settings, the saved-layouts browser, the replay date picker. One primitive, so each of
 // them traps focus, closes and restores focus the same way.
 //
-// A dialog is a scrim over the whole viewport with a box centered in it, mounted inside the
-// widget's overlay host so the package stylesheet reaches it. It carries `role="dialog"` and
-// `aria-modal`, names itself, traps Tab inside its own focusables, closes on Escape and on a press
-// on the scrim, and returns focus to whatever had it before it opened.
+// A dialog is a scrim over the layer it mounts into with a box centered in it, so the package
+// stylesheet reaches it and a host ancestor's transform changes nothing. It carries
+// `role="dialog"` and `aria-modal`, names itself, traps Tab inside its own focusables, closes on
+// Escape and on a press on the scrim, returns focus to whatever had it before it opened, and
+// registers with its host so the host's owner can close it at teardown.
 import { focusables, glyph, h, stopPointer } from './dom'
 import { ICONS } from './icons'
+import { trackOverlay, untrackOverlay } from './overlays'
 
 export interface DialogHandle {
   element: HTMLElement
@@ -22,7 +24,7 @@ export interface DialogOptions {
   className?: string
   /** A stable `data-role` a host test can find the dialog by. */
   role?: string
-  /** The box's width in CSS pixels; the stylesheet clamps it to the viewport. */
+  /** The box's width in CSS pixels; the stylesheet clamps it to the layer. */
   width?: number
   /** Fill the box. */
   build(body: HTMLElement, dialog: DialogHandle): void
@@ -44,6 +46,7 @@ export function openDialog(options: DialogOptions): DialogHandle {
   const close = (): void => {
     if (!isOpen) return
     isOpen = false
+    untrackOverlay(options.host, handle)
     document.removeEventListener('keydown', onKey, true)
     scrim.remove()
     options.onClose?.()
@@ -84,6 +87,7 @@ export function openDialog(options: DialogOptions): DialogHandle {
   const handle: DialogHandle = { element: box, close, open: () => isOpen }
   options.build(box, handle)
   options.host.appendChild(scrim)
+  trackOverlay(options.host, handle)
   document.addEventListener('keydown', onKey, true)
   const target = options.initialFocus?.(box) ?? focusables(box)[0] ?? null
   target?.focus()
@@ -135,22 +139,30 @@ export interface TabsOptions {
   tabs: readonly { id: string; label: string }[]
   value: string
   label: string
+  /** A prefix for the tab and panel ids, unique within the document. */
+  id: string
+  /** The one panel every tab controls. It takes an id and is labelled by the selected tab. */
+  panel: HTMLElement
   onChange(id: string): void
 }
 
-/** A tab list with arrow-key movement and `aria-selected`; the surface swaps the panel. */
+/** A tab list with arrow-key movement and `aria-selected`; each tab controls the panel and the
+ *  selected tab labels it. The surface swaps the panel's content. */
 export function tabList(options: TabsOptions): { element: HTMLElement; set(id: string): void } {
   const element = h('div', { class: 'qc-tabs', role: 'tablist', 'aria-label': options.label })
+  const panelId = `${options.id}-panel`
+  options.panel.id = panelId
   const buttons = new Map<string, HTMLButtonElement>()
   const set = (id: string): void => {
     for (const [tabId, b] of buttons) {
       const selected = tabId === id
       b.setAttribute('aria-selected', String(selected))
       b.setAttribute('tabindex', selected ? '0' : '-1')
+      if (selected) options.panel.setAttribute('aria-labelledby', b.id)
     }
   }
   for (const tab of options.tabs) {
-    const b = h('button', { type: 'button', class: 'qc-tab', role: 'tab', 'aria-selected': 'false', tabindex: '-1' }, tab.label)
+    const b = h('button', { type: 'button', class: 'qc-tab', role: 'tab', id: `${options.id}-tab-${tab.id}`, 'aria-controls': panelId, 'aria-selected': 'false', tabindex: '-1' }, tab.label)
     b.addEventListener('click', () => {
       set(tab.id)
       options.onChange(tab.id)

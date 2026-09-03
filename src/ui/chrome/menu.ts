@@ -2,16 +2,19 @@
 // picker, the layout grid, the settings panel and the timezone list all open, position, close and
 // take the keyboard the same way.
 //
-// A menu is anchored to the control that opened it and positioned in viewport coordinates, clamped
-// so a chart at the window's edge never raises a panel that runs off it. It mounts inside the
-// widget's own overlay host, because the package stylesheet is scoped to the widget root and a
-// panel parented anywhere else would resolve none of its own custom properties.
+// A menu is anchored to the control that opened it and positioned in the coordinates of the host
+// it mounts into, clamped inside that host so a chart at the window's edge never raises a panel
+// that runs off it. It mounts inside the widget's own layer (or a chart's chrome subtree), because
+// the package stylesheet is scoped to the widget root, and it is positioned absolutely rather than
+// fixed, so a host ancestor with a transform or a filter changes nothing.
 //
 // The keyboard model: focus lands on the first row (or the row the surface names) when the menu
 // opens; arrow keys, Home and End move among rows with wraparound; Escape closes and returns focus
 // to the control that opened it; Tab closes and lets focus move on; a press outside closes. Rows
-// are roving-tabindex items, so a menu is one tab stop.
+// are roving-tabindex items, so a menu is one tab stop. Every open menu registers with its host so
+// the host's owner can close it at teardown.
 import { armRoving, focusItem, h, isRtl, items, roveFocus, stopPointer } from './dom'
+import { trackOverlay, untrackOverlay } from './overlays'
 
 export interface MenuHandle {
   element: HTMLElement
@@ -22,12 +25,12 @@ export interface MenuHandle {
   /** Re-run the builder over an emptied body: what a surface calls when its model changed. Focus
    *  stays on the row at the same index where one exists. */
   refresh(): void
-  /** Re-clamp the panel to the viewport: what a surface calls after its body grew. */
+  /** Re-clamp the panel inside its host: what a surface calls after its body grew. */
   reposition(): void
 }
 
 export interface MenuOptions {
-  /** The overlay host the panel mounts into. */
+  /** The layer the panel mounts into. Coordinates are computed against its box. */
   host: HTMLElement
   /** The control that opened the menu. It gets `aria-expanded`, and focus returns to it. */
   anchor: HTMLElement
@@ -50,10 +53,10 @@ export interface MenuOptions {
   onClose?(): void
 }
 
-const VIEWPORT_MARGIN = 8
+const HOST_MARGIN = 8
 
 export function openMenu(options: MenuOptions): MenuHandle {
-  const { anchor } = options
+  const { anchor, host } = options
   const rtl = isRtl(anchor)
   const role = options.role ?? 'menu'
   const element = h('div', {
@@ -73,6 +76,7 @@ export function openMenu(options: MenuOptions): MenuHandle {
   const close = (): void => {
     if (!isOpen) return
     isOpen = false
+    untrackOverlay(host, handle)
     document.removeEventListener('pointerdown', onOutside, true)
     document.removeEventListener('keydown', onDocumentKey, true)
     window.removeEventListener('resize', reposition)
@@ -85,18 +89,20 @@ export function openMenu(options: MenuOptions): MenuHandle {
     target?.focus()
   }
 
+  /** Place the panel in the host's coordinates, against the anchor, clamped inside the host. */
   const reposition = (): void => {
     if (!isOpen) return
     const a = anchor.getBoundingClientRect()
+    const bounds = host.getBoundingClientRect()
     element.style.left = '0px'
     element.style.top = '0px'
     const box = element.getBoundingClientRect()
     const alignEnd = (options.align ?? 'start') === (rtl ? 'start' : 'end')
-    let left = alignEnd ? a.right - box.width : a.left
-    left = Math.max(VIEWPORT_MARGIN, Math.min(left, window.innerWidth - box.width - VIEWPORT_MARGIN))
+    let left = (alignEnd ? a.right - box.width : a.left) - bounds.left
+    left = Math.max(HOST_MARGIN, Math.min(left, Math.max(HOST_MARGIN, bounds.width - box.width - HOST_MARGIN)))
     const below = (options.placement ?? 'down') === 'down'
-    let top = below ? a.bottom + 4 : a.top - box.height - 4
-    top = Math.max(VIEWPORT_MARGIN, Math.min(top, window.innerHeight - box.height - VIEWPORT_MARGIN))
+    let top = (below ? a.bottom + 4 : a.top - box.height - 4) - bounds.top
+    top = Math.max(HOST_MARGIN, Math.min(top, Math.max(HOST_MARGIN, bounds.height - box.height - HOST_MARGIN)))
     element.style.left = `${Math.round(left)}px`
     element.style.top = `${Math.round(top)}px`
   }
@@ -149,7 +155,8 @@ export function openMenu(options: MenuOptions): MenuHandle {
   }
 
   options.build(body, handle)
-  options.host.appendChild(element)
+  host.appendChild(element)
+  trackOverlay(host, handle)
   anchor.setAttribute('aria-expanded', 'true')
   reposition()
   const list = items(element)

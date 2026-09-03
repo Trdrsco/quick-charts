@@ -3,8 +3,8 @@
 /* overflow: hidden on the X axis is load-bearing: a row highlight fills its slot squarely, so the
  * panel is what rounds it off. The Y axis scrolls when a list outgrows the viewport. */
 [data-qc-theme] .qc-menu-panel {
-  position: fixed;
-  z-index: 2147483001;
+  position: absolute;
+  z-index: 21;
   display: flex;
   flex-direction: column;
   min-width: 160px;
@@ -61,9 +61,9 @@
 
 /* Dialogs. */
 [data-qc-theme] .qc-dialog-scrim {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  z-index: 2147483002;
+  z-index: 22;
   display: flex;
   align-items: center;
   justify-content: center;

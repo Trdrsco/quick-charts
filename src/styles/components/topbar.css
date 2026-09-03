@@ -34,7 +34,7 @@
   font-weight: 600;
   background: var(--qc-chrome-surfaceRaised);
   border-color: transparent;
-  border-radius: 14px;
+  border-radius: var(--qc-chrome-radiusLarge);
 }
 
 [data-qc-theme] .qc-symbol-pill:hover {

@@ -14,6 +14,9 @@ export const replay = {
   // The Select date dialog.
   'replay.startDateField': 'Replay start date',
   'replay.startTimeField': 'Replay start time (UTC, optional)',
+  /** The two fields' format hints, shown as placeholders. */
+  'replay.dateMask': 'YYYY-MM-DD',
+  'replay.timeMask': 'HH:MM',
   'replay.previousMonth': 'Previous month',
   'replay.nextMonth': 'Next month',
   'replay.cancel': 'Cancel',

@@ -7,7 +7,7 @@ import type { ChartMessageKey } from '../../i18n'
 import type { AccessPolicy, IndicatorInstance } from '../../widget/options'
 import { activeChart, type ChromeContext } from './context'
 import { dialogTitle, openDialog, type DialogHandle } from './dialog'
-import { h, replace, roveFocus } from './dom'
+import { h, items, replace, roveFocus } from './dom'
 
 export interface IndicatorPickerDeps extends ChromeContext {
   access?: AccessPolicy
@@ -110,14 +110,14 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         }
       })
       list.addEventListener('keydown', (e) => {
-        if (roveFocus(list, e)) {
-          e.preventDefault()
-          return
-        }
-        if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+        // ArrowUp from the first row, or Shift+Tab from any, goes back to the field.
+        const first = items(list).indexOf(document.activeElement as HTMLElement) === 0
+        if ((e.key === 'ArrowUp' && first) || (e.key === 'Tab' && e.shiftKey)) {
           e.preventDefault()
           input.focus()
+          return
         }
+        if (roveFocus(list, e)) e.preventDefault()
       })
       box.append(dialogTitle(t('picker.title'), t('search.close'), () => dialog.close()), h('div', { class: 'qc-dialog-body' }, input, list, status))
       render()

@@ -57,6 +57,7 @@ import { attachMarks } from './marks'
 import type { ChromeDoors } from '../ui/chrome/doors'
 import { mountNavControls } from '../ui/chrome/navControls'
 import { mountReplayTransport, type ReplayTransportHandle } from '../ui/chrome/replayBar'
+import { closeOverlays } from '../ui/chrome/overlays'
 import { createSaveLoadApi, type ChartSaveLoadApi, type ParsedChartContent } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
 import {
@@ -1260,6 +1261,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       events.clear()
       chart.remove()
       gestures.remove()
+      // Any popup or dialog still hosted in the chrome subtree closes with it, taking its document
+      // listeners and timers down rather than leaving them bound to a detached panel.
+      closeOverlays(chrome)
       chrome.remove()
     },
   }

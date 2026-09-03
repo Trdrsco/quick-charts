@@ -42,7 +42,32 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
     clock.textContent = z ? formatClock(deps.i18n.tag(), z) : ''
     offset.textContent = z ? tzOffsetLabel(z) : '--'
   }
-  const timer = setInterval(tick, 1000)
+  // The clock runs only while the widget can be seen: the document hidden, or the bar scrolled out
+  // of view, stops it, and coming back restarts it on a fresh reading.
+  let timer: ReturnType<typeof setInterval> | null = null
+  let inView = true
+  const start = (): void => {
+    if (timer || document.visibilityState === 'hidden' || !inView) return
+    tick()
+    timer = setInterval(tick, 1000)
+  }
+  const stop = (): void => {
+    if (!timer) return
+    clearInterval(timer)
+    timer = null
+  }
+  const onVisibility = (): void => (document.visibilityState === 'hidden' ? stop() : start())
+  document.addEventListener('visibilitychange', onVisibility)
+  const observer =
+    typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver((entries) => {
+          inView = entries.some((entry) => entry.isIntersecting)
+          if (inView) start()
+          else stop()
+        })
+      : null
+  observer?.observe(element)
+  start()
 
   const openTimezones = (): void => {
     const rows = timezoneListing(t(), { withExchange: true })
@@ -148,7 +173,9 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
     element,
     sync,
     destroy() {
-      clearInterval(timer)
+      stop()
+      document.removeEventListener('visibilitychange', onVisibility)
+      observer?.disconnect()
       offStrings()
       tzMenu?.close()
       sessionMenu?.close()
