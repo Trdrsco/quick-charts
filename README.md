@@ -650,8 +650,11 @@ chrome is painted from it and renders nothing without it.
   the store refused.
 
 Every control acts through the command registry and reflects `commands.available`, so a command
-your access policy refuses renders disabled and does nothing. Each surface has a feature flag; turn
-one off and the surface is absent.
+your access policy refuses renders disabled and does nothing. The saved-layouts menu runs the
+layout verbs `widget.layout.save`, `rename`, `load`, `delete`, `detach` and `autosave`; what a
+verb did reports through the `layout` event and what it refused through `saveConflict`. Copy image
+reports through the `image` event (a refused copy falls back to a download). Each surface has a
+feature flag; turn one off and the surface is absent.
 
 ```ts
 import { createChart, createUdfDatafeed } from 'quickcharts'

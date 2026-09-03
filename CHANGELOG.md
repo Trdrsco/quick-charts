@@ -83,7 +83,13 @@
   available bar. The range presets are judged against it, so a listing from last year offers no
   five-year range; a feed without it offers every preset.
 - **Commands** `chart.symbol.set`, `chart.indicators.add`, `chart.indicators.update`,
-  `chart.appearance.apply` and `chart.replay.setInterval`; `chart.compare.add` takes a
+  `chart.appearance.apply`, `chart.replay.setInterval`, and the layout verbs `widget.layout.save`
+  (a name, or `{ name, asNew }`), `widget.layout.rename`, `widget.layout.load`,
+  `widget.layout.delete` (`{ id, revision }`), `widget.layout.detach` and
+  `widget.layout.autosave`, each reporting through the new **`layout`** widget event
+  (`LayoutEvent`: saved, loaded, removed, detached) or `saveConflict` for a refusal; the
+  **`image`** widget event (`ImageEvent`: copied, copyFallback, failed) reports how
+  `widget.image.copy` ended; `chart.compare.add` takes a
   `{ symbol, placement }` beside a plain symbol, and `chart.replay.start` takes an optional moment.
   **`ChartReplayApi`** gains `interval()`, `setInterval(token)` and `subIntervals()`.
   **`ChartHandle.displayTimezone()`** answers the zone the timezone choice resolves to for the
