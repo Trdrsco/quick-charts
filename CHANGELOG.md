@@ -29,16 +29,18 @@
   through `ChartSaveLoadAdapter.templates('drawing')`.
 - **`FeatureConfig` names the drawing surfaces.** `drawingsToolbar` shows the toolbar and
   `drawingsFavorites` the favorites bar; both are on by default and absent with `drawings` off.
-- **`ChartDrawingsApi` is the whole selection surface.** `armTool(type, props)` arms any registered
-  tool or one of `measure`, `zoom` and `eraser`, seeding a placement with `props`; `select`,
-  `deselect`, `selected`, `selectedDrawing` and `hovered` read the selection; `updateStyle`,
-  `updateProps`, `setLocked`, `commitEdit`, `clone`, `copy`, `paste`, `canPaste`, the four
-  stacking moves, `stackPosition`, `hideSelected`, `setVisibilityPreset` and `placeImage` edit it;
-  `counts`, `setAllHidden`, `allHidden`, `setAllLocked` and `allLocked` are the layer's own
-  switches; `textEdit`, `editSelectedText`, `commitText` and `cancelText` drive the inline editor;
-  and `presets` reads and writes tool defaults and named templates. `placeableByWidget` answers
-  true for every registered tool and the three transient tools. The root also exports the
-  `DrawingPresets`, `PlacedImage`, `SelectedDrawing` and `TextEditSession` types.
+- **`ChartDrawingsApi` is the per-chart selection surface.** `armTool(type, props)` arms any
+  registered tool or one of `measure`, `zoom` and `eraser`, seeding a placement with `props`;
+  `select`, `deselect`, `selected` and `hovered` read the selection; `updateStyle`, `updateProps`,
+  `setLocked`, `clone`, `copy`, `paste`, `canPaste`, the four stacking moves, `stackPosition`,
+  `hideSelected`, `setVisibilityPreset` and `placeImage` edit it; `counts`, `setAllHidden`,
+  `allHidden`, `setAllLocked` and `allLocked` are the layer's own switches; `editSelectedText`
+  opens the inline editor; `export` and `restore` move the document. The live `IDrawing`, the edit
+  and preview session, the inline text session and the presets stay on the layer's own
+  `DrawingsHandle`, which `attachDrawings` returns to a host composing the layer itself.
+  `placeableByWidget` answers true for every registered tool and the three transient tools. The
+  root also exports the `DrawingPresets`, `PlacedImage`, `SelectedDrawing` and `TextEditSession`
+  types.
 - **`attachDrawings` takes `templates`, `chartId` and `execute`.** `templates` is the adapter's
   drawing-template store; `chartId` binds a drawing made while sync is off to one chart through the
   resource contract's chart-bound scope; `execute` is the door the layer's keyboard verbs run
@@ -120,7 +122,9 @@
   loaded bars, indicators, drawings, comparisons, scale and visible range all survive it.
 - **One command registry.** **`CommandRegistry`** on the widget is the only place a chart verb
   exists: `register`, `list`, `available`, `execute`, `setShortcut`, `onChange`. Every built-in verb
-  is registered with a catalog label and a live availability read, and an extension's
+  is registered with a catalog label and a live availability read; a command whose one id spans
+  many subjects declares `refuses(arg)`, and an argument the access policy turns away answers
+  `denied` before availability is asked, as `chart.drawings.arm` does for a refused tool. An extension's
   `contributeCommands` registers through the same door with `scope: 'chart'`. A command your feature
   configuration hides or your access policy refuses answers `denied` from every surface, because
   there is no second path to reach it. A refusal is a `CommandResult` value (`ok`, `unavailable`,

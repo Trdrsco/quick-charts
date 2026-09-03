@@ -571,7 +571,10 @@ function toolbar(widget: ChartWidget): void {
 }
 ```
 
-A refusal is a value, never a throw: `ok`, `unavailable`, `denied`, `unknown`, or `failed` with the
+A command whose one id spans many subjects declares `refuses(arg)` beside `available()`: an
+argument your access policy turns away answers `denied` before availability is asked, which is how
+`chart.drawings.arm` refuses a tool. A refusal is a value, never a throw: `ok`, `unavailable`,
+`denied`, `unknown`, or `failed` with the
 error. Your own commands register through the same door: a chart extension's `contributeCommands`
 puts them in this list with `scope: 'chart'` and its own label text.
 
