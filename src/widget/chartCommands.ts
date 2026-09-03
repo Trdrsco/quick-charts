@@ -210,7 +210,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
 
-  // ── Drawings (W4-B) ─────────────────────────────────────────────────────────────────────────
+  // ── Drawings ────────────────────────────────────────────────────────────────────────────────
   // Every verb the drawing toolbar, the settings bar and the settings dialog run. The layer's own
   // verbs act on `handle.drawings`; the verbs above the layer (preferences, the eye, favorites,
   // templates, the dialogs) act through `deps.drawingVerbs()`. Both are unavailable with the
@@ -389,8 +389,6 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   })
   add({ id: 'chart.drawings.tableAddRow', scope: 'chart', label: 'command.drawingTableAddRow', available: () => drawings()?.selected()?.hasCells ?? false, execute: () => verbs()?.tableAddRow() })
   add({ id: 'chart.drawings.tableAddColumn', scope: 'chart', label: 'command.drawingTableAddColumn', available: () => drawings()?.selected()?.hasCells ?? false, execute: () => verbs()?.tableAddColumn() })
-  // ── end Drawings (W4-B) ─────────────────────────────────────────────────────────────────────
-
   // ── Compare ─────────────────────────────────────────────────────────────────────────────────
   add({
     id: 'chart.compare.open',

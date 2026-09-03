@@ -23,6 +23,7 @@ import { deriveCapabilities, resolveFeatures } from './planes'
 import type { Capabilities, ChartWidgetOptions } from './options'
 import { createChartInstance, type ChartHandle, type ChartInstance } from './chart'
 import { createLayoutPlane, type LayoutApi } from './layout'
+import { arrangementOf } from '../layoutGrid'
 import { createFullscreen, type FullscreenApi } from './fullscreen'
 import { createImageApi, type ImageApi, type ImageTile } from './image'
 import { registerWidgetCommands } from './widgetCommands'
@@ -153,6 +154,18 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
 
   // ── Charts. The layout owns placement; the widget owns construction.
   const instances = new Map<string, ChartInstance>()
+  // The layout builds its first charts synchronously inside its own construction, so a chart
+  // mounting then cannot ask the layout how many charts there are: until the layout exists, the
+  // count is what the arrangement will build, and after it the layout's own tally.
+  let layoutBuilt = false
+  const configuredCharts = (): number => arrangementOf(options.layout?.arrangement ?? 's')?.count ?? 1
+  // While the layout rebuilds itself for a new arrangement, the chart being built is not in its
+  // tally yet, so the arrangement's own count is the floor.
+  const chartCount = (): number => (layoutBuilt ? Math.max(layout.handles().length, arrangementOf(layout.api.arrangement())?.count ?? 1) : configuredCharts())
+  /** A chart came or went: every chart's surfaces that read the layout re-render. */
+  const layoutChanged = (): void => {
+    for (const instance of instances.values()) instance.layoutChanged()
+  }
   const layout = createLayoutPlane({
     container: panes,
     adapter: options.saveLoad ?? null,
@@ -193,17 +206,17 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
         onSaveConflict: (info) => events.emit('saveConflict', info),
         onReady: markReady,
         capabilities,
-        // ── W4-B: the drawing toolbar offers sync only in a layout of more than one chart ────
-        chartCount: () => layout.handles().length,
-        // ── end W4-B ──────────────────────────────────────────────────────────────────────────
+        chartCount,
         doors,
       })
       instances.set(id, instance)
+      layoutChanged()
       return instance.handle
     },
     destroyChart(handle) {
       instances.get(handle.id)?.dispose()
       instances.delete(handle.id)
+      layoutChanged()
     },
     onActive: (handle) => {
       // Capabilities describe the chart a host is POINTED AT, so activating another chart re-reads
@@ -211,8 +224,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
       activeSymbolInfo = symbolInfoByChart.get(handle.id) ?? null
       events.emit('activeChart', handle)
     },
-    onChange: pingSaveNeeded,
+    onChange: () => {
+      pingSaveNeeded()
+      layoutChanged()
+    },
   })
+  layoutBuilt = true
 
   // ── Theme. A change repaints the root's custom properties and every chart's canvas in one pass,
   // and the chart keeps its symbol, timeframe, range, drawings and studies across it.
