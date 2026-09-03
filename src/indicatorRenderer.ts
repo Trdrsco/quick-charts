@@ -198,7 +198,7 @@ function shapeKeyOf(built: IndicatorPlots): string {
  *  series, and wire the fill/shade painters. Overlays use the main pane (0); a pane-placed group
  *  gets a fresh pane appended at the bottom (every plot in the group shares it). */
 function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): Entry {
-  const paneIndex = built.placement === 'pane' ? chart.panes().length : 0
+  const paneIndex = built.placement === 'pane' ? studyPaneIndex(chart) : 0
   // "Labels on price scale" (the standard output toggle, default ON): each visible value-carrying
   // plot shows its last value on the scale. Marker anchors never label.
   const labels = built.display?.labelsOnPriceScale !== false
@@ -429,6 +429,22 @@ function safeRemove(chart: IChartApi, series: Series): void {
   } catch {
     /* chart already disposed */
   }
+}
+
+/** Where the next pane-placed study goes.
+ *
+ *  The bottom of the chart, but "the bottom" has to be counted from a pane list that holds only
+ *  panes something is actually using. A pane nobody has swept is indistinguishable from a real one
+ *  in the count, so every study after it is placed one pane too low and the renderer divides the
+ *  chart's height by one more than it should: the study lands in the last pane, squeezed toward
+ *  the minimum, while an empty pane keeps its share of the height. Nothing errors, so the symptom
+ *  reaches a viewer as a legend row offering to restore a pane nobody collapsed.
+ *
+ *  Sweeping first makes the count mean what it is read as. It costs one pass over the panes and it
+ *  is the only place the index is decided, so no caller has to remember to do it. */
+function studyPaneIndex(chart: IChartApi): number {
+  sweepEmptyPanes(chart)
+  return chart.panes().length
 }
 
 /** Drop any non-main pane left with no series after a removal (descending so indices stay valid as
