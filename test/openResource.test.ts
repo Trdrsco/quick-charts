@@ -6,7 +6,7 @@ import saveLoadSrc from '../src/widget/saveLoad.ts?raw'
 import chartSrc from '../src/widget/chart.ts?raw'
 import createSrc from '../src/widget/create.ts?raw'
 import layoutSrc from '../src/widget/layout.ts?raw'
-import drawingsSrc from '../src/drawings.ts?raw'
+import drawingsSrc from '../src/drawings/layer/documents.ts?raw'
 
 // The open resource: what the widget holds for its saved chart and the layout for its saved
 // layout. A save is an update at the revision the resource was opened at; a copy or a fresh chart
@@ -109,8 +109,13 @@ describe('the widget, the layout and the drawing layer run over the contract', (
 
   it('the drawing layer writes at the held ref, adopts the ref a refusal names, and never retries over it', () => {
     expect(drawingsSrc).toContain('const outcome = ref ? await store.update(ref, body) : await store.create(body)')
-    expect(drawingsSrc).toContain('refs.set(sym, outcome.current)')
-    expect(drawingsSrc).toContain("events.onSaveConflict?.({ symbol: sym, current: outcome.current })")
+    // A refusal adopts the ref that stands, merges the stored document over the layer's own rows,
+    // reports, and writes the merge once more; it never writes over the newer revision blind.
+    expect(drawingsSrc).toContain("else if (outcome.kind === 'conflict') await adopt(symbol, kind, outcome.current, retry)")
+    expect(drawingsSrc).toContain('refs[kind].set(symbol, current)')
+    expect(drawingsSrc).toContain('setRows(symbol, kind, mergeStoredDrawings(stored, rowsOf(symbol, kind)))')
+    expect(drawingsSrc).toContain('deps.onConflict({ symbol, current })')
+    expect(drawingsSrc).toContain('if (retry) upload(symbol, kind, false)')
     expect(drawingsSrc).not.toContain('storage.set(')
     expect(drawingsSrc).not.toContain('localStorage')
   })
