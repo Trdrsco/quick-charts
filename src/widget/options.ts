@@ -36,10 +36,14 @@ import type { LayoutSyncFlags } from './layout'
  *  gets the complete chart. Turning one off removes the chrome AND the behavior behind it, and the
  *  commands it owned answer `unavailable` rather than disappearing from the registry. */
 export interface FeatureConfig {
-  /** The drawing layer: tools, selection, and per-symbol persistence. */
+  /** The drawing layer: tools, selection, the selected drawing's settings surfaces, and
+   *  per-symbol persistence. */
   drawings?: boolean
-  /** The built-in drawing rail. Absent with `drawings` off. */
-  drawingsRail?: boolean
+  /** The drawing toolbar: the tool groups, cursor, measure and zoom, magnet, lock, the eye, sync,
+   *  remove and the favorites star. Absent with `drawings` off. */
+  drawingsToolbar?: boolean
+  /** The floating favorite-tools bar. Absent with `drawings` off. */
+  drawingsFavorites?: boolean
   /** Session shading under the bars. */
   sessions?: boolean
   /** The on-canvas legend. */

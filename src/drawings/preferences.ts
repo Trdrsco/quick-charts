@@ -11,8 +11,11 @@
 import type { CursorMode } from './cursorModel'
 import { CURSOR_MODES } from './cursorModel'
 import type { MagnetMode } from './magnetModel'
-import type { FavoritesState } from './favoritesModel'
+import type { FavoritesPosition, FavoritesState } from './favoritesModel'
 import { DEFAULT_FAVORITES, MAX_FAVORITE_TOOLS } from './favoritesModel'
+
+/** The most recent glyph picks the record keeps. */
+const RECENT_GLYPHS_MAX = 12
 
 export interface DrawingPreferences {
   /** The pointer's glyph over the chart. */
@@ -28,9 +31,13 @@ export interface DrawingPreferences {
   removeLocked: boolean
   /** A NEW drawing is replicated to every pane charting the same symbol. */
   syncAcrossPanes: boolean
-  /** Each rail group's last-picked tool, so the button keeps that face. Keyed by group id. */
+  /** Each toolbar group's last-picked tool, so the button keeps that face. Keyed by group id. */
   railTools: Readonly<Record<string, string>>
   favorites: FavoritesState
+  /** Where the selected drawing's settings bar was dragged to; null takes its default place. */
+  settingsBarPosition: FavoritesPosition | null
+  /** The glyph picker's most recent picks, newest first. */
+  recentGlyphs: readonly string[]
 }
 
 export const DEFAULT_DRAWING_PREFERENCES: DrawingPreferences = {
@@ -42,6 +49,13 @@ export const DEFAULT_DRAWING_PREFERENCES: DrawingPreferences = {
   syncAcrossPanes: true,
   railTools: {},
   favorites: DEFAULT_FAVORITES,
+  settingsBarPosition: null,
+  recentGlyphs: [],
+}
+
+const positionOf = (value: unknown): FavoritesPosition | null => {
+  const p = value as { x?: unknown; y?: unknown } | null | undefined
+  return p && typeof p.x === 'number' && typeof p.y === 'number' ? { x: p.x, y: p.y } : null
 }
 
 const oneOf = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
@@ -86,6 +100,8 @@ export function parseDrawingPreferences(raw: string | null | undefined): Drawing
     syncAcrossPanes: bool(value.syncAcrossPanes, DEFAULT_DRAWING_PREFERENCES.syncAcrossPanes),
     railTools: stringRecord(value.railTools),
     favorites: favoritesOf(value.favorites),
+    settingsBarPosition: positionOf(value.settingsBarPosition),
+    recentGlyphs: Array.isArray(value.recentGlyphs) ? value.recentGlyphs.filter((g): g is string => typeof g === 'string').slice(0, RECENT_GLYPHS_MAX) : [],
   }
 }
 

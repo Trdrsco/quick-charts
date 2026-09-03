@@ -185,6 +185,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
         onSaveConflict: (info) => events.emit('saveConflict', info),
         onReady: markReady,
         capabilities,
+        // ── W4-B: the drawing toolbar offers sync only in a layout of more than one chart ────
+        chartCount: () => layout.handles().length,
+        // ── end W4-B ──────────────────────────────────────────────────────────────────────────
       })
       instances.set(id, instance)
       return instance.handle

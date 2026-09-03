@@ -228,6 +228,8 @@ export interface ChartInstanceDeps {
   /** The chart painted its first data. */
   onReady(): void
   capabilities(): Capabilities
+  /** Charts in the layout, read live; the drawing toolbar offers sync only past one. */
+  chartCount(): number
 }
 
 export interface ChartInstance {
@@ -495,32 +497,36 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     scaleMode: () => scaleMode,
   })
 
+  // ── W4-B: the drawing plane, its toolbar and its settings surfaces ──────────────────────────
+  // The plane CONSULTS the standing choices through the chart's one record and writes them back
+  // through the same setter the handle exposes, so a toolbar and the layer cannot disagree about
+  // what "weak magnet" or "stay in drawing mode" does, and a host reading `drawingPreferences()`
+  // sees what the toolbar shows.
   const drawings = attachDrawingsPlane({
     chart,
     series: anchor,
     container: gestures,
     chrome,
+    chartId: deps.id,
     symbol,
     timeframe: tf,
     bars: () => bars,
     resources: deps.saveLoad,
     i18n,
     enabled: deps.features.drawings,
-    rail: deps.features.drawingsRail,
+    toolbar: deps.features.drawingsToolbar,
+    favorites: deps.features.drawingsFavorites,
     access: deps.access,
-    // The layer CONSULTS the standing choices and owns none of them: the chart holds the record and
-    // the drawing models decide what each control means, so a rail and the layer cannot disagree
-    // about what "weak magnet" or "lock all" does.
-    workflow: () => ({
-      magnet: drawingPrefs.magnet,
-      allLocked: drawingPrefs.removeLocked,
-      stayInDrawingMode: drawingPrefs.stayInDrawingMode,
-      cursor: drawingPrefs.cursor,
-    }),
-    glyphSource: deps.assets ? (glyph: string) => deps.assets!.glyphSource(glyph) : undefined,
+    commands: deps.commands,
+    assets: deps.assets,
+    preferences: () => drawingPrefs,
+    setPreferences: (next) => handle.setDrawingPreferences(next),
+    indicators: { count: () => indicators.list().length, setAllHidden: (hidden) => indicators.setAllHidden(hidden) },
+    chartCount: deps.chartCount,
     onSaveConflict: (info) => deps.onSaveConflict({ family: 'drawings', ...info }),
     onChange: (kind, id) => events.emit('drawing', { kind, id }),
   })
+  // ── end W4-B ────────────────────────────────────────────────────────────────────────────────
 
   const marks = deps.marks
     ? attachMarks({
@@ -1001,6 +1007,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       if (disposed) return
       drawingPrefs = next
       storage.set(DRAWING_PREFERENCES_KEY, serializeDrawingPreferences(next))
+      drawings.refresh()
     },
     indicators: {
       get: () => indicators.list(),
@@ -1103,6 +1110,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     level: () => menuLevel,
     formatter: () => symbolFormatter,
     compareOpen: (mode, changeFrom) => compare?.openDialog(mode, changeFrom),
+    drawingVerbs: () => drawings.verbs,
   })
 
   // The initial load waits on the feed's OPTIONAL capability declaration: opening with a sticky
@@ -1173,6 +1181,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       setSymbolFormat(symbolFormat) // the formatter carries the language's decimal sign
       indicators.recompute()
       legend.setHeader(symbol, replay.active() ? i18n.t('host.replayHeader', { tf }) : tf)
+      drawings.relabel()
     },
     dispose() {
       if (disposed) return

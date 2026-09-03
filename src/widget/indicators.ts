@@ -120,6 +120,10 @@ export interface IndicatorsPlane {
   /** Record what a pane command did, which is what makes a row read collapsed. The widget calls
    *  this as it applies a collapse, restore or maximize; heights alone never decide. */
   setPaneCollapsed(paneIndex: number, collapsed: boolean): void
+  /** The drawing toolbar's eye: blank every study for the session without touching the hidden
+   *  set the save blob carries. */
+  setAllHidden(hidden: boolean): void
+  allHidden(): boolean
   /** Recompute now and rebuild the legend rows. */
   recompute(): void
   /** Recompute under the tick cap: for the mid-bar live path only. */
@@ -156,6 +160,8 @@ export interface IndicatorsDeps {
 export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   let instances: IndicatorInstance[] = []
   const hiddenIds = new Set<string>()
+  /** The eye's blanket over every study: view state, never persisted. */
+  let allHidden = false
   let chips: LegendChip[] = []
   let lastRecompute = 0
   let trailer: ReturnType<typeof setTimeout> | null = null
@@ -249,7 +255,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
         // the settle loop below corroborates it afterwards.
         collapsed: paneIdx !== undefined && paneIdx > 0 && commandedPanes.has(paneIdx),
       }
-      if (hiddenIds.has(inst.id) || indicatorHidden(inst.overrides)) {
+      if (allHidden || hiddenIds.has(inst.id) || indicatorHidden(inst.overrides)) {
         renderer.remove(inst.id)
         next.push({ ...base, value: null, hidden: true })
         continue
@@ -334,6 +340,12 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       // The command is the fact; drop any half-built geometry streak so a later look starts clean.
       floorStreaks = {}
     },
+    setAllHidden(hidden) {
+      if (allHidden === hidden) return
+      allHidden = hidden
+      recompute()
+    },
+    allHidden: () => allHidden,
     recompute,
     recomputeThrottled() {
       const since = Date.now() - lastRecompute

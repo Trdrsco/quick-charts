@@ -15,7 +15,8 @@ import type { Capabilities, FeatureConfig } from './options'
  *  feature and would otherwise need a plane of their own. */
 export interface ResolvedFeatures {
   drawings: boolean
-  drawingsRail: boolean
+  drawingsToolbar: boolean
+  drawingsFavorites: boolean
   sessions: boolean
   legend: boolean
   contextMenu: boolean
@@ -23,12 +24,14 @@ export interface ResolvedFeatures {
   replay: boolean
 }
 
-/** Fill the feature plane. Every flag defaults on, and the rail cannot outlive the layer it arms. */
+/** Fill the feature plane. Every flag defaults on, and the drawing surfaces cannot outlive the
+ *  layer they drive. */
 export function resolveFeatures(config?: FeatureConfig): ResolvedFeatures {
   const drawings = config?.drawings !== false
   return {
     drawings,
-    drawingsRail: drawings && config?.drawingsRail !== false,
+    drawingsToolbar: drawings && config?.drawingsToolbar !== false,
+    drawingsFavorites: drawings && config?.drawingsFavorites !== false,
     sessions: config?.sessions !== false,
     legend: config?.legend !== false,
     contextMenu: config?.contextMenu !== false,
