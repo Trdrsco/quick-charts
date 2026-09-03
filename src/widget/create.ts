@@ -3,8 +3,9 @@
 // A widget is one or many charts under one root. Everything scoped to the widget rather than to a
 // chart lives here: the theme controller and the root element it paints, the language, the command
 // registry, the capability plane, chart-root fullscreen, client image capture, the save-needed
-// debounce, and the layout that arranges the charts. Everything scoped to one chart lives in
-// `chart.ts`.
+// debounce, the layout that arranges the charts, and the default chrome mounted around them (the
+// top bar, the bottom bar, the dialogs and the notices), which consumes the widget through its
+// public handle. Everything scoped to one chart lives in `chart.ts`.
 //
 // The root element is the widget's own, created inside the host's container. That is what lets the
 // package stylesheet be scoped to one attribute: the widget paints its theme onto its own root and
