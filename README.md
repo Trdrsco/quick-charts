@@ -625,6 +625,68 @@ async function shareable(widget: ChartWidget): Promise<void> {
 identity and the attribution you configured through `image`. Nothing is uploaded, shared or stored:
 you receive a blob and decide.
 
+### Default chrome
+
+The widget mounts its complete chrome around the charts. Import `quickcharts/styles.css` once; the
+chrome is painted from it and renders nothing without it.
+
+- **The top bar.** The symbol pill opens the symbol search for the active chart; the compare door
+  opens it in compare mode. The timeframe picker shows the saved timeframes as chips and a list of
+  the 26 presets in five groups, each row savable as a chip, with a composer for a custom interval
+  under the unit's ceiling. The style picker lists the seven styles. Indicators opens the picker
+  over the 23 built-in definitions, and the legend's gear opens the settings dialog for an instance
+  (inputs, style, visibility). Bar replay starts and exits replay. Layout setup offers the 55
+  arrangements and the five sync switches; the saved-layouts menu saves, copies, renames, opens and
+  deletes layouts through `saveLoad.layouts` and marks unsaved changes, with an autosave switch.
+  Chart settings edits appearance, grid and session shading, the price-scale mode and the theme
+  mode. Fullscreen and the image menu (Download image, and Copy image where the browser can) close
+  the bar.
+- **The bottom bar.** The range presets, the clock in the display zone with the timezone list
+  (UTC and the exchange choice first), and the session view for a symbol that trades outside
+  regular hours.
+- **On the chart.** A navigation cluster (zoom, scroll, reset) at the bottom of each pane, the
+  market-status popup behind the legend's dot, the replay transport while replay is on, and the
+  chart's notices: a feed that cannot serve the symbol, an image that could not be copied, a save
+  the store refused.
+
+Every control acts through the command registry and reflects `commands.available`, so a command
+your access policy refuses renders disabled and does nothing. Each surface has a feature flag; turn
+one off and the surface is absent.
+
+```ts
+import { createChart, createUdfDatafeed } from 'quickcharts'
+
+const trimmed = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  features: { navigation: false, layouts: false, image: false },
+  search: { classNames: { future: 'Futures', crypto: 'Crypto' } },
+  preferences: { savedTimeframes: ['1m', '15m', '1h', '1d'], layoutAutosave: true },
+})
+trimmed.on('saveNeeded', () => note('the layout has unsaved changes'))
+```
+
+The search dialog's class chips come from your datafeed's `config().classes`, named through
+`search.classNames`; a class you do not name wears its token. The range presets read your
+datafeed's optional `earliestBar(symbol)`: a preset deeper than the history you serve is disabled.
+
+```ts
+import { type ChartDatafeed } from 'quickcharts'
+
+const withDepth: Pick<ChartDatafeed, 'earliestBar'> = {
+  async earliestBar(symbol): Promise<number | null> {
+    return myBackend.firstBarTime(symbol)
+  },
+}
+void withDepth
+```
+
+Keyboard and screen readers: every menu is one tab stop (arrow keys, Home and End move among rows,
+Escape closes and returns focus to the control that opened it); every dialog is modal, traps Tab and
+restores focus; every control carries an accessible name and its state; the root carries the
+language's reading direction, so the chrome mirrors for Arabic and Hebrew; motion flattens under
+`prefers-reduced-motion`.
+
 ### Neutral marks
 
 Serve `marks` and `timescaleMarks` from your datafeed and the chart draws them. A mark is a note

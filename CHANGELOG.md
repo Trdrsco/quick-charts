@@ -57,6 +57,37 @@
   picker, the image picker, the template dialogs and the inline editor; `command.drawing*` names
   the new commands. The `rail.*` namespace is gone with the rail it named.
 
+- **The default chrome.** `createChart` mounts the complete chart chrome around the charts: a top
+  bar with the symbol pill, the compare door, the timeframe chips and list with a custom-interval
+  composer, the style picker, the indicator picker and settings dialog, bar replay, the layout
+  setup grid of 55 arrangements with the five sync switches, the saved-layouts menu and dialog,
+  chart settings, fullscreen and the image menu; a bottom bar with the nine range presets, the
+  clock in the display zone, the timezone list and the session view; an on-chart navigation
+  cluster; a market-status popup on the legend's dot; a replay transport with a date picker; the
+  symbol search dialog in its search, compare and change-symbol modes; and the chart's own
+  notices. Every control acts through the command registry and reflects `available`, so a command
+  the access policy refuses renders disabled and does nothing. Every menu is one tab stop with
+  arrow keys, Home and End; Escape closes it and returns focus; every dialog is modal, traps Tab
+  and restores focus; the root carries the language's reading direction, and the stylesheet's
+  logical properties follow it. Every word comes from the chart catalog (`chrome.*`, `picker.*`,
+  `settings.*`, `toast.*`, and the `layouts.*` menu vocabulary beside the `layout.*` arrangement
+  names) in every built-in language. The stylesheet composes the structural rules and one recipe
+  file per surface into the same `quickcharts/styles.css`.
+- **`FeatureConfig`** gains a flag per chrome surface, every one defaulting on: `topBar`,
+  `bottomBar`, `navigation`, `marketStatus`, `symbolSearch`, `timeframes`, `chartStyles`,
+  `indicators`, `layouts`, `settings`, `fullscreen`, `image`, `toasts`. **`ChartPreferences`**
+  gains `savedTimeframes`, `customTimeframes` and `layoutAutosave`, persisted through the storage
+  port like every other preference. **`ChartWidgetOptions.search.classNames`** names the asset
+  classes a feed declares in `config().classes`, for the search dialog's filter chips.
+- **`ChartDatafeed.earliestBar(symbol)`**, optional: the epoch seconds of a symbol's earliest
+  available bar. The range presets are judged against it, so a listing from last year offers no
+  five-year range; a feed without it offers every preset.
+- **Commands** `chart.symbol.set`, `chart.indicators.add`, `chart.indicators.update`,
+  `chart.appearance.apply` and `chart.replay.setInterval`; `chart.compare.add` takes a
+  `{ symbol, placement }` beside a plain symbol, and `chart.replay.start` takes an optional moment.
+  **`ChartReplayApi`** gains `interval()`, `setInterval(token)` and `subIntervals()`.
+  **`ChartHandle.displayTimezone()`** answers the zone the timezone choice resolves to for the
+  symbol on screen.
 - **`quickcharts/styles.css` is required for LAYOUT, not only for color.** The chart's structural
   rules — the root filling its container, the charts tiling inside it, the plot area and its chrome
   layer sizing from that — live in the stylesheet with everything else it paints, so a host that
@@ -242,9 +273,10 @@
   price and id, passes through untranslated. The catalog ships a directory for every built-in
   language; a key without a translation reads English.
   Hosts composing the chrome modules themselves pass a `ChartI18n` (from `createChartI18n(code)`)
-  as a new OPTIONAL trailing parameter or option — `mountReplayBar`,
-  `mountContextMenu`, `openInputsEditor`; `t` on `ChartMenuContext`; a BCP 47 `tag` on
-  `sessionTimeline` — every existing call compiles unchanged and reads English. New exports `toolName(t, type, fallback)` and
+  as an OPTIONAL trailing parameter or option: `mountContextMenu`,
+  `openInputsEditor`; `t` on `ChartMenuContext`; a BCP 47 `tag` on `sessionTimeline`. A call
+  without one reads English. `ChartI18n.dir()` reports the language's reading direction, and the
+  widget writes it on its root. New exports `toolName(t, type, fallback)` and
   `arrangementName(t, code, fallback)` give a host the widget's word for a drawing tool or a
   multi-chart arrangement; `Arrangement` gains `label` (the English fallback). Exports
   `createChartI18n` and `chartDictionaries`.
