@@ -6,14 +6,13 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
 import { drawingTools } from '../../../src/drawings/index'
 import { createPresets } from '../../../src/drawings/layer/presets'
-import type { ToolPreset } from '../../../src/drawings/templates'
 import { openSettingsDialog } from '../../../src/ui/drawings/settingsDialog'
 import { firstTabFor, tabsFor } from '../../../src/ui/drawings/settingsRows'
 
 const t = createChartI18n().t
 const anchors = (n: number) => Array.from({ length: n }, (_, i) => ({ time: (1000 + i * 60) as never, price: 100 + i }))
 
-function rig(type: string, props: Record<string, unknown> = {}) {
+function rig(type: string, props: Record<string, unknown> = {}, deny: string[] = []) {
   const chrome = document.createElement('div')
   document.body.appendChild(chrome)
   const def = drawingTools.get(type)!
@@ -21,22 +20,24 @@ function rig(type: string, props: Record<string, unknown> = {}) {
   if (Object.keys(props).length) drawing.applyProps(props)
   const presets = createPresets(null)
   const out: string[] = []
-  const saved: [string, ToolPreset][] = []
+  const ran: [string, unknown][] = []
   const handle = openSettingsDialog({
     chrome,
     t,
     drawing,
     presets,
-    onCommit: () => out.push('commit'),
-    onCancel: () => out.push('cancel'),
-    onSaveTemplate: (name, preset) => saved.push([name, preset]),
-    onRemoveTemplate: (name) => out.push(`remove:${name}`),
+    run: (command, arg) => {
+      ran.push([command, arg])
+      return !deny.includes(command)
+    },
+    available: (command) => !deny.includes(command),
+    onClose: (outcome) => out.push(outcome),
   })
   const dialog = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
   const tabs = () => [...dialog.querySelectorAll<HTMLElement>('[role="tab"]')]
   const tab = (label: string) => tabs().find((x) => x.textContent === label)!
   const labels = () => [...dialog.querySelectorAll<HTMLElement>('.qc-drawing-row-label, .qc-drawing-toggle span, .qc-dialog-heading')].map((x) => x.textContent)
-  return { chrome, drawing, dialog, handle, out, saved, presets, tabs, tab, labels }
+  return { chrome, drawing, dialog, handle, out, ran, presets, tabs, tab, labels }
 }
 
 afterEach(() => {
@@ -81,8 +82,35 @@ describe('the dialog', () => {
     expect(a.out).toEqual(['cancel'])
     const b = rig('trend_line')
     b.dialog.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!.click()
+    expect(b.ran).toEqual([['chart.drawings.commitEdit', undefined]])
     expect(b.out).toEqual(['commit'])
     expect(document.querySelector('[data-role="drawing-settings"]')).toBeNull()
+  })
+
+  it('renders Ok and the template verbs disabled when the registry refuses them, and a refused commit keeps nothing', async () => {
+    const a = rig('trend_line', {}, ['chart.drawings.commitEdit', 'chart.drawings.template.save', 'chart.drawings.template.remove'])
+    await a.presets.saveTemplate('trend_line', 'Dashed', { style: { lineStyle: 'dashed' } })
+    const ok = a.dialog.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!
+    expect(ok.disabled).toBe(true)
+    expect(a.dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.disabled).toBe(false)
+    a.dialog.querySelector<HTMLButtonElement>('button[aria-label="Template"]')!.click()
+    const rows = [...a.dialog.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    expect(rows.map((r) => [r.textContent, r.disabled])).toEqual([
+      ['Save as...', true],
+      ['Apply defaults', false],
+      ['Dashed', false],
+    ])
+    expect(a.dialog.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.disabled).toBe(true)
+    // The disabled Ok cannot be pressed; were the commit refused at the door, the session ends as a cancel.
+    const middle = [...a.dialog.querySelectorAll<HTMLElement>('.qc-drawing-toggle')].find((x) => x.textContent === 'Middle point')!
+    const before = a.drawing.props.middlePoint
+    middle.querySelector('input')!.click()
+    expect(a.drawing.props.middlePoint).toBe(!before)
+    ok.disabled = false
+    ok.click()
+    expect(a.ran).toEqual([['chart.drawings.commitEdit', undefined]])
+    expect(a.out).toEqual(['cancel'])
+    expect(a.drawing.props.middlePoint).toBe(before)
   })
 
   it('Escape cancels once, and a second close is inert', () => {
@@ -146,7 +174,7 @@ describe('the dialog', () => {
   })
 
   it('the footer template menu saves the current setup under a name, applies the default, and removes a saved one', async () => {
-    const { chrome, dialog, presets, saved, out, drawing } = rig('ray')
+    const { chrome, dialog, presets, ran, drawing } = rig('ray')
     await presets.saveTemplate('ray', 'Dashed', { style: { lineStyle: 'dashed' } })
     const template = dialog.querySelector<HTMLButtonElement>('button[aria-label="Template"]')!
     template.click()
@@ -160,11 +188,12 @@ describe('the dialog', () => {
     input.value = 'Mine'
     input.dispatchEvent(new Event('input'))
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
-    expect(saved[0]![0]).toBe('Mine')
-    expect(saved[0]![1].style?.lineStyle).toBe('dashed')
+    // The save command reads the selection, which carries the session's dashed style.
+    expect(ran).toEqual([['chart.drawings.template.save', 'Mine']])
+    expect(drawing.style.lineStyle).toBe('dashed')
     template.click()
     dialog.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.click()
     chrome.querySelector<HTMLButtonElement>('[data-role="drawing-template-delete"] button[aria-label="Delete"]')!.click()
-    expect(out).toContain('remove:Dashed')
+    expect(ran[1]).toEqual(['chart.drawings.template.remove', 'Dashed'])
   })
 })

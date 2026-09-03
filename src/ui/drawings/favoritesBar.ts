@@ -75,7 +75,13 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
     const state = deps.favorites()
     const shown = favoritesBarShown(state)
     bar.hidden = !shown
-    if (!shown) return
+    // A hidden bar holds no controls at all, so a census of the chart's buttons and a keyboard
+    // walk both meet only what a viewer can reach.
+    if (!shown) {
+      bar.replaceChildren()
+      return
+    }
+    if (!bar.contains(grip)) bar.append(grip, tools)
     tools.replaceChildren()
     const active = deps.activeTool()
     for (const type of state.tools) {

@@ -41,6 +41,9 @@ export interface SettingsBarDeps {
   selectedProps(): Readonly<Record<string, unknown>> | null
   presets: DrawingPresets
   run(command: string, arg?: unknown): boolean
+  /** Whether the registry would run a command now. A control whose command is denied or
+   *  unavailable renders disabled, never hidden. */
+  available(command: string): boolean
   stackPosition(): { atFront: boolean; atBack: boolean }
   /** Whether the drawing clipboard holds anything, read as the More menu opens. */
   canPaste(): boolean
@@ -115,13 +118,13 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
 
   const unrove = rovingFocus(bar, () => [grip, ...controls.querySelectorAll<HTMLElement>('button')], 'horizontal')
 
-  const menuRow = (label: string, onPick: () => void, options: { icon?: string; hint?: string; disabled?: boolean } = {}): HTMLButtonElement => {
+  const menuRow = (label: string, onPick: () => void, options: { icon?: string; hint?: string; disabled?: boolean; command?: string } = {}): HTMLButtonElement => {
     const b = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row', role: 'menuitem' })
     const cell = el('span', { class: 'qc-menu-icon' })
     if (options.icon) cell.innerHTML = options.icon
     b.append(cell, el('span', { class: 'qc-menu-label', text: label }))
     if (options.hint) b.appendChild(el('span', { class: 'qc-menu-hint', text: options.hint }))
-    if (options.disabled) b.disabled = true
+    if (options.disabled || (options.command && !deps.available(options.command))) b.disabled = true
     b.addEventListener('click', () => {
       closeOpen()
       onPick()
@@ -134,6 +137,11 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     return m
   }
   const heading = (text: string): HTMLElement => el('div', { class: 'qc-dialog-heading', text })
+  /** A control is enabled exactly when the registry would run its command now. */
+  const gate = (b: HTMLButtonElement, command: string): HTMLButtonElement => {
+    b.disabled = !deps.available(command)
+    return b
+  }
 
   const style = (patch: Record<string, unknown>): void => {
     deps.run('chart.drawings.style', patch)
@@ -162,32 +170,39 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     closeOpen()
     bar.hidden = !selected
     controls.replaceChildren()
-    if (!selected) return
+    // A hidden bar holds no controls at all, so a census of the chart's buttons and a keyboard
+    // walk both meet only what a viewer can reach.
+    if (!selected) {
+      bar.replaceChildren()
+      return
+    }
+    if (!bar.contains(grip)) bar.append(grip, controls)
     place()
     const type = selected.type
     const hasStroke = !NO_STROKE.has(type)
 
     // Templates: the first control after the grip. The tool's default is the auto-remembered
     // last-used setup, so there is no explicit save-default row.
-    const templates = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingTemplates'), title: t('drawing.templates'), html: iconSvg('template') })
+    const templates = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingTemplates'), title: t('drawing.templates'), html: iconSvg('template') }), 'chart.drawings.template.apply')
     templates.setAttribute('aria-haspopup', 'menu')
     templates.setAttribute('aria-expanded', 'false')
     templates.addEventListener('click', () => {
       const saved = deps.presets.templatesFor(type)
       const items: HTMLElement[] = [
-        menuRow(t('drawing.saveTemplateAs'), () => openTemplateNameDialog({ container: deps.chrome, t }, (name) => deps.run('chart.drawings.template.save', name))),
-        menuRow(t('drawing.applyDefaultTemplate'), () => deps.run('chart.drawings.template.apply', null)),
+        menuRow(t('drawing.saveTemplateAs'), () => openTemplateNameDialog({ container: deps.chrome, t }, (name) => deps.run('chart.drawings.template.save', name)), { command: 'chart.drawings.template.save' }),
+        menuRow(t('drawing.applyDefaultTemplate'), () => deps.run('chart.drawings.template.apply', null), { command: 'chart.drawings.template.apply' }),
       ]
       if (saved.length) items.push(el('div', { class: 'qc-separator', role: 'separator' }))
       for (const template of saved) {
         const rowEl = el('div', { class: 'qc-drawing-flyout-row' })
         rowEl.append(
-          menuRow(template.name, () => deps.run('chart.drawings.template.apply', template.name)),
+          menuRow(template.name, () => deps.run('chart.drawings.template.apply', template.name), { command: 'chart.drawings.template.apply' }),
           button({
             class: 'qc-drawing-star',
             label: t('drawing.removeTemplateNamed', { name: template.name }),
             title: t('drawing.remove'),
             html: iconSvg('trash', 18),
+            disabled: !deps.available('chart.drawings.template.remove'),
             onClick: () => {
               closeOpen()
               openTemplateDeleteDialog({ container: deps.chrome, t }, template.name, () => deps.run('chart.drawings.template.remove', template.name))
@@ -202,13 +217,13 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
 
     if (selected.hasCells) {
       controls.append(
-        button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.addRow'), text: t('drawing.addRowShort'), onClick: () => deps.run('chart.drawings.tableAddRow') }),
-        button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.addColumn'), text: t('drawing.addColumnShort'), onClick: () => deps.run('chart.drawings.tableAddColumn') }),
+        gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.addRow'), text: t('drawing.addRowShort'), onClick: () => deps.run('chart.drawings.tableAddRow') }), 'chart.drawings.tableAddRow'),
+        gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.addColumn'), text: t('drawing.addColumnShort'), onClick: () => deps.run('chart.drawings.tableAddColumn') }), 'chart.drawings.tableAddColumn'),
       )
     }
 
     if (hasStroke) {
-      const color = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingColor'), title: t('drawing.color'), html: colorFace('pencil', selected.lineColor) })
+      const color = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingColor'), title: t('drawing.color'), html: colorFace('pencil', selected.lineColor) }), 'chart.drawings.style')
       color.setAttribute('aria-haspopup', 'dialog')
       color.setAttribute('aria-expanded', 'false')
       color.addEventListener('click', () =>
@@ -217,7 +232,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       controls.appendChild(color)
     }
     if (FILLABLE.has(type)) {
-      const fill = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), title: t('drawing.background'), html: colorFace('bucket', selected.fillColor, selected.fillOpacity === 0) })
+      const fill = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), title: t('drawing.background'), html: colorFace('bucket', selected.fillColor, selected.fillOpacity === 0) }), 'chart.drawings.style')
       fill.setAttribute('aria-haspopup', 'dialog')
       fill.setAttribute('aria-expanded', 'false')
       fill.addEventListener('click', () =>
@@ -234,7 +249,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       controls.appendChild(fill)
     }
     if (selected.hasText || FONT_TOOLS.has(type)) {
-      const text = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.textColor'), html: colorFace('textTee', selected.textColor) })
+      const text = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.textColor'), html: colorFace('textTee', selected.textColor) }), 'chart.drawings.style')
       text.setAttribute('aria-haspopup', 'dialog')
       text.setAttribute('aria-expanded', 'false')
       text.addEventListener('click', () =>
@@ -254,14 +269,14 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       controls.appendChild(text)
     }
     if (FONT_TOOLS.has(type) && type !== 'table') {
-      const size = button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.fontSize'), text: String(selected.fontSize) })
+      const size = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.fontSize'), text: String(selected.fontSize) }), 'chart.drawings.style')
       size.setAttribute('aria-haspopup', 'menu')
       size.setAttribute('aria-expanded', 'false')
       size.addEventListener('click', () => openPanel(size, menuOf(t('drawing.fontSize'), ...FONT_SIZES.map((n) => menuRow(String(n), () => style({ fontSize: n }))))))
       controls.appendChild(size)
     }
     if (hasStroke && !NO_LINE_DECOR.has(type)) {
-      const width = button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.lineThickness'), title: t('drawing.thickness') })
+      const width = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.lineThickness'), title: t('drawing.thickness') }), 'chart.drawings.style')
       width.append(strokeSegments(selected.lineWidth), el('span', { text: `${selected.lineWidth}px` }))
       width.setAttribute('aria-haspopup', 'menu')
       width.setAttribute('aria-expanded', 'false')
@@ -280,7 +295,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       )
       controls.appendChild(width)
       if (!NO_DASH.has(type)) {
-        const lineStyle = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.lineStyle') })
+        const lineStyle = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.lineStyle') }), 'chart.drawings.style')
         lineStyle.appendChild(strokeSegments(1, selected.lineStyle))
         lineStyle.setAttribute('aria-haspopup', 'menu')
         lineStyle.setAttribute('aria-expanded', 'false')
@@ -302,16 +317,19 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     }
 
     controls.append(
-      button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingSettings'), title: t('drawing.settings'), html: iconSvg('gear'), onClick: () => deps.run('chart.drawings.settings') }),
-      button({
-        class: 'qc-button qc-drawing-bar-button',
-        label: t(selected.locked ? 'drawing.unlockDrawing' : 'drawing.lockDrawing'),
-        title: t(selected.locked ? 'drawing.unlock' : 'drawing.lock'),
-        html: iconSvg(selected.locked ? 'lockClosed' : 'lockOpen'),
-        pressed: selected.locked,
-        onClick: () => deps.run('chart.drawings.lock', !selected.locked),
-      }),
-      button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.deleteDrawing'), title: `${t('drawing.delete')} (Del)`, html: iconSvg('trash'), onClick: () => deps.run('chart.drawings.deleteSelected') }),
+      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingSettings'), title: t('drawing.settings'), html: iconSvg('gear'), onClick: () => deps.run('chart.drawings.settings') }), 'chart.drawings.settings'),
+      gate(
+        button({
+          class: 'qc-button qc-drawing-bar-button',
+          label: t(selected.locked ? 'drawing.unlockDrawing' : 'drawing.lockDrawing'),
+          title: t(selected.locked ? 'drawing.unlock' : 'drawing.lock'),
+          html: iconSvg(selected.locked ? 'lockClosed' : 'lockOpen'),
+          pressed: selected.locked,
+          onClick: () => deps.run('chart.drawings.lock', !selected.locked),
+        }),
+        'chart.drawings.lock',
+      ),
+      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.deleteDrawing'), title: `${t('drawing.delete')} (Del)`, html: iconSvg('trash'), onClick: () => deps.run('chart.drawings.deleteSelected') }), 'chart.drawings.deleteSelected'),
     )
 
     const more = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.moreActions'), title: t('drawing.more'), html: iconSvg('kebab') })
@@ -324,16 +342,16 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
         menuOf(
           t('drawing.moreActions'),
           heading(t('drawing.visualOrder')),
-          ...ORDER_MOVES.map((move) => menuRow(t(move.label), () => deps.run(move.command), { icon: iconSvg('layers'), disabled: move.dead(at) })),
+          ...ORDER_MOVES.map((move) => menuRow(t(move.label), () => deps.run(move.command), { icon: iconSvg('layers'), disabled: move.dead(at), command: move.command })),
           el('div', { class: 'qc-separator', role: 'separator' }),
           heading(t('drawing.visibilityOnIntervals')),
-          ...VISIBILITY_PRESETS.map((v) => menuRow(t(v.label), () => deps.run('chart.drawings.visibility', v.preset))),
+          ...VISIBILITY_PRESETS.map((v) => menuRow(t(v.label), () => deps.run('chart.drawings.visibility', v.preset), { command: 'chart.drawings.visibility' })),
           el('div', { class: 'qc-separator', role: 'separator' }),
-          menuRow(t('drawing.clone'), () => deps.run('chart.drawings.clone'), { icon: iconSvg('clone'), hint: 'Ctrl + Drag' }),
-          menuRow(t('drawing.copy'), () => deps.run('chart.drawings.copy'), { hint: 'Ctrl + C' }),
-          menuRow(t('drawing.paste'), () => deps.run('chart.drawings.paste'), { hint: 'Ctrl + V', disabled: !deps.canPaste() }),
+          menuRow(t('drawing.clone'), () => deps.run('chart.drawings.clone'), { icon: iconSvg('clone'), hint: 'Ctrl + Drag', command: 'chart.drawings.clone' }),
+          menuRow(t('drawing.copy'), () => deps.run('chart.drawings.copy'), { hint: 'Ctrl + C', command: 'chart.drawings.copy' }),
+          menuRow(t('drawing.paste'), () => deps.run('chart.drawings.paste'), { hint: 'Ctrl + V', disabled: !deps.canPaste(), command: 'chart.drawings.paste' }),
           el('div', { class: 'qc-separator', role: 'separator' }),
-          menuRow(t('drawing.hide'), () => deps.run('chart.drawings.hideSelected'), { icon: iconSvg('eyeCrossed') }),
+          menuRow(t('drawing.hide'), () => deps.run('chart.drawings.hideSelected'), { icon: iconSvg('eyeCrossed'), command: 'chart.drawings.hideSelected' }),
         ),
       )
     })

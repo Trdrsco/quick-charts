@@ -35,6 +35,7 @@ import { mountTextEditor, type TextEditorHandle } from '../ui/drawings/textEdito
 import { openSettingsDialog, type SettingsDialogHandle } from '../ui/drawings/settingsDialog'
 import { openImagePicker, firstImageFile } from '../ui/drawings/imagePicker'
 import { pushRecentGlyph } from '../ui/drawings/glyphPicker'
+import { closeOverlays } from '../ui/drawings/overlays'
 import type { AccessPolicy } from './options'
 import type { CommandRegistry } from './commands'
 
@@ -184,6 +185,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
   }
 
   const run = (command: string, arg?: unknown): boolean => deps.commands.execute(command, arg).kind === 'ok'
+  const available = (command: string): boolean => deps.commands.available(command)
 
   // ── The surfaces ────────────────────────────────────────────────────────────────────────────
   let toolbar: ToolbarHandle | null = null
@@ -217,6 +219,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
         }
       },
       run,
+      available,
       toolAllowed: permitted,
       ...(deps.assets ? { glyphSource: (glyph: string) => deps.assets!.glyphSource(glyph) } : {}),
     })
@@ -238,6 +241,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     selectedProps: () => handle.selectedDrawing()?.props ?? null,
     presets: handle.presets,
     run,
+    available,
     stackPosition: () => handle.stackPosition(),
     canPaste: () => handle.canPaste(),
     position: () => prefs().settingsBarPosition,
@@ -279,6 +283,10 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     })
   }
   const unsubscribePresets = handle.presets.subscribe(renderAll)
+  // The surfaces enable a control exactly when the registry would run its command, so they render
+  // again whenever the registered set moves: the chart registers its commands after the plane
+  // mounts, and a host may add or replace verbs later.
+  const unsubscribeCommands = deps.commands.onChange(renderAll)
 
   // A system-clipboard IMAGE pasted over the chart becomes an image drawing, a quick path around
   // the Image tool's own dialog. Only an actual image file is taken; a copied drawing rides the
@@ -360,16 +368,12 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
         drawing,
         presets: handle.presets,
         ...(deps.assets ? { assets: deps.assets } : {}),
-        onCommit: () => {
-          dialog = null
-          handle.commitEdit()
-        },
-        onCancel: () => {
+        run,
+        available,
+        onClose: () => {
           dialog = null
           renderAll()
         },
-        onSaveTemplate: (name, preset) => void handle.presets.saveTemplate(drawing.type, name, preset),
-        onRemoveTemplate: (name) => void handle.presets.removeTemplate(drawing.type, name),
       })
     },
     applyTemplate(name) {
@@ -426,6 +430,10 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     destroy() {
       window.removeEventListener('paste', onPaste)
       unsubscribePresets()
+      unsubscribeCommands()
+      // Every overlay still open in the chrome (a flyout, a palette, a dialog and whatever it
+      // opened) closes here, so no document listener outlives the plane.
+      closeOverlays(deps.chrome)
       closeImagePicker?.()
       dialog?.close()
       textEditor?.destroy()
