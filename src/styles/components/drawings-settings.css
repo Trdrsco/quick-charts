@@ -5,7 +5,7 @@
   position: absolute;
   top: 8px;
   left: 50%;
-  z-index: 6;
+  z-index: 7;
   display: flex;
   align-items: center;
   transform: translateX(-50%);
@@ -77,7 +77,7 @@
 [data-qc-theme] .qc-drawing-dialog-backdrop {
   position: absolute;
   inset: 0;
-  z-index: 8;
+  z-index: 10;
 }
 
 [data-qc-theme] .qc-drawing-dialog {
@@ -171,4 +171,15 @@
 [data-qc-theme] .qc-drawing-note {
   padding: 2px 0 4px;
   font-size: var(--qc-text-fontSizeSmall);
+}
+
+/* The plane's live region: read by assistive technology, never seen. Clipped rather than hidden,
+ * because a hidden node is not announced. */
+[data-qc-theme] .qc-drawing-status {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
