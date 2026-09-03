@@ -6,10 +6,8 @@
 //
 //   node conformance.mjs
 //
-// The host declares what it cannot mount: the drawing plane stays off until W4-B lands its fix in
-// the widget constructor (mounting with drawings on throws before the layout exists), so the checks
-// that need drawings report skipped with that reason. Checks that document a known defect are
-// skipped by the suite itself and printed with their sentence.
+// Every plane mounts. Checks that document a known defect are skipped by the suite itself and
+// printed with their sentence.
 import { Window } from 'happy-dom'
 import { BROWSER_GLOBALS, installBrowserShim } from './conformance/browserShim.js'
 import { formatResults, runConformance } from './conformance/index.js'
@@ -25,10 +23,6 @@ const { createChart } = await import('quickcharts')
 const results = await runConformance({
   createWidget: (options) => createChart(options),
   document: window.document,
-  unavailable: {
-    features: { drawings: false },
-    reason: "W4-B: createChart with drawings on throws Cannot access 'layout' before initialization",
-  },
 })
 
 console.log(formatResults(results))

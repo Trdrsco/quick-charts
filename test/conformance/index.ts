@@ -427,11 +427,12 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
     async run(ctx) {
       const full = await ctx.mount({ symbol: 'ALPHA' })
       const toolbars = full.root.querySelectorAll('[role="toolbar"]').length
-      assert(toolbars >= 2, `the complete chart has its bars (${toolbars} toolbars)`)
+      assert(toolbars >= 3, `the complete chart has its bars and the drawing toolbar (${toolbars} toolbars)`)
       assert(full.root.querySelector('[role="status"][aria-live]'), 'the complete chart has a live region for its notices')
-      const bare = await ctx.mount({ symbol: 'ALPHA', features: { topBar: false, bottomBar: false, toasts: false, legend: false, replay: false } })
-      equal(bare.root.querySelectorAll('[role="toolbar"]').length, 0, 'no toolbar with both bars off')
-      equal(bare.root.querySelector('[role="status"][aria-live]'), null, 'no live region with notices off')
+      // The drawing plane carries a toolbar and a live region of its own, so it goes too.
+      const bare = await ctx.mount({ symbol: 'ALPHA', features: { topBar: false, bottomBar: false, toasts: false, legend: false, replay: false, drawings: false } })
+      equal(bare.root.querySelectorAll('[role="toolbar"]').length, 0, 'no toolbar with both bars and the drawing plane off')
+      equal(bare.root.querySelector('[role="status"][aria-live]'), null, 'no live region with notices and the drawing plane off')
       assert(bare.widget.commands.list().some((c) => c.id === 'chart.replay.start'), 'the replay command stays registered with replay off')
       equal(bare.widget.commands.execute('chart.replay.start').kind, 'unavailable', 'replay start with replay off')
       equal(bare.widget.commands.execute('chart.view.reset').kind, 'ok', 'a view verb is untouched by unrelated flags')
@@ -1011,8 +1012,10 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       await ctx.settle()
       assert(statuses.includes('feed_unavailable'), `the status lane carries the terminal state (${statuses.join(', ')})`)
       equal(loaded.filter((n) => n > 0).length, 0, 'no bar was fabricated')
-      const live = root.querySelector('[role="status"][aria-live]')
-      assert(live && (live.textContent ?? '').trim().length > 0, 'the notice names the unserved feed')
+      // The drawing plane keeps a live region of its own for its placement announcements; the notice
+      // is in whichever region carries text.
+      const regions = Array.from(root.querySelectorAll('[role="status"][aria-live]'))
+      assert(regions.some((r) => (r.textContent ?? '').trim().length > 0), 'the notice names the unserved feed')
       equal(chart.symbol(), 'NONE', 'the chart keeps the honest symbol')
     },
   },
