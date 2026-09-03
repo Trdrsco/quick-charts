@@ -263,8 +263,21 @@
 [data-qc-theme] .qc-chrome {
   position: absolute;
   inset: 0;
+  /* Above the gesture box, which is its earlier sibling: the chrome has to be clickable over the
+   * canvases, and the canvases have to stay draggable everywhere the chrome is not. */
   z-index: 5;
   pointer-events: none;
+}
+
+/* The layer is inert; every control in it takes its own events back. Without this a button that
+ * sits on an inert parent is transparent to the pointer and the canvas underneath takes the
+ * click, which looks exactly like a dead button. */
+[data-qc-theme] .qc-chrome button,
+[data-qc-theme] .qc-chrome input,
+[data-qc-theme] .qc-chrome select,
+[data-qc-theme] .qc-chrome textarea,
+[data-qc-theme] .qc-chrome a[href] {
+  pointer-events: auto;
 }
 
 [data-qc-theme] [hidden] {
