@@ -6,7 +6,9 @@
 // and this file is the wiring between them plus the handle they add up to. The rule that shapes it:
 // a plane never reaches into another plane's state, it asks this file, and this file owns the
 // mutable truth (the symbol, the timeframe, the style, the bars, the scale) that more than one
-// plane reads.
+// plane reads. The chart also mounts its own per-chart chrome (the navigation cluster, the replay
+// transport while replay is on) and knocks on the widget chrome's doors for the surfaces it does
+// not own: the search dialog and the indicator settings dialog.
 //
 // TWO SERIES, and the split is what makes a style switch cheap. The ANCHOR is an invisible line of
 // closes that lives as long as the chart: drawings, session bands, marks, the extension seam and
