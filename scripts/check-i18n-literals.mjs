@@ -70,7 +70,7 @@ const READER_PROPS = new Set(['textContent', 'innerText', 'title', 'placeholder'
 
 /** Data, not interface: exact strings that are allowed to stay literal. */
 const ALLOW_EXACT = new Set([
-  'trdrs', 'Trader Copier', 'Rithmic', 'TastyTrade', 'Tradovate', 'TradingView', 'Stripe', 'Discord', 'Telegram', 'Google', 'Instagram', 'X',
+  'trdrs', 'Trader Copier', 'Rithmic', 'TastyTrade', 'Tradovate', 'Stripe', 'Discord', 'Telegram', 'Google', 'Instagram', 'X',
   'Trading Platform by Rithmic', 'Powered by OMNE',
   'Esc', 'JSON', 'OK', 'USD', 'CT', 'UTC', 'ET', 'p95', 'ms', 'min', 'L', 'auto',
   'Trader', 'Pro', 'Free',
