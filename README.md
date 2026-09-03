@@ -596,7 +596,7 @@ import { createChart, createUdfDatafeed } from 'quickcharts'
 const gated = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  features: { drawings: true, drawingsRail: false, replay: false },
+  features: { drawings: true, drawingsToolbar: false, replay: false },
   access: { command: (id) => !id.startsWith('chart.drawings.'), drawingTool: (tool) => tool !== 'brush' },
   preferences: { scaleMode: 'log', style: 'bars' },
 })
@@ -1057,10 +1057,11 @@ re-tile opens in the current one.
 
 ## Drawings
 
-The widget ships with a drawing layer (on by default): placement, selection, drag-to-move and
-anchor-resize, per-symbol persistence through the adapter's drawings family, and a small built-in
-tool rail. Turn the layer off with `features.drawings: false`, or keep it and hide the rail to drive it
-from your own UI:
+The widget ships with a complete drawing product, on by default: every one of the 90 tools places
+from the toolbar, the selected drawing gets a floating settings bar and a settings dialog, tool
+defaults and named templates ride the adapter's template family, and a symbol's drawings persist
+through the adapter's drawings family. Turn the whole layer off with `features.drawings: false`,
+or keep the layer and hide its toolbar or favorites bar to drive it from your own UI:
 
 ```ts
 import { createChart, createUdfDatafeed } from 'quickcharts'
@@ -1068,12 +1069,58 @@ import { createChart, createUdfDatafeed } from 'quickcharts'
 const widget = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  features: { drawingsRail: false },
+  features: { drawingsToolbar: false, drawingsFavorites: false },
 })
 const drawings = widget.activeChart().drawings
 drawings?.armTool('trend_line')
+drawings?.armTool('emoji', { glyph: '🚀' }) // props seed the next placement
+const selected = drawings?.selected() // the selection's style channels and flags, or null
+drawings?.updateStyle({ lineWidth: 3 }) // the edit becomes the tool's remembered default
 const saved = drawings?.export() // the persistence wire format (SerializedDrawing[])
+note(`${selected?.type ?? 'nothing'} selected, ${saved?.length ?? 0} drawings`)
 ```
+
+### The toolbar
+
+The toolbar is the rail down the chart's leading edge. Its buttons are the cursor with its three
+pointer modes and the eraser; seven tool groups, each opening a flyout of the group's sections
+with a star on every row that lands the tool on the favorites bar; Measure and Zoom; the magnet
+with its weak and strong strengths; stay in drawing mode; lock all; the eye that hides drawings,
+indicators, or both; drawing sync, shown only in a layout of more than one chart; the remove menu,
+which names what each row takes and carries the locked-item policy; and the favorites star. Each
+group button wears the tool it last armed, and every action is a `chart.drawings.*` command
+through the registry, so a tool your access policy refuses renders disabled and a command it
+refuses answers `denied` from the toolbar as from anywhere else.
+
+Arm the transient tools by name: `measure` draws a readout the next gesture clears, `zoom` sets
+the visible range to the dragged box, and `eraser` removes what it presses until Escape or the
+cursor releases it. The `image` tool opens the picker, which places the picture once it is chosen.
+
+### The selected drawing
+
+Selecting a drawing shows the settings bar: templates, the stroke color with its opacity, the
+background for tools that have one, the text color and font size for text tools, thickness and
+line style, the settings gear, lock, delete, and a More menu with the stacking moves, the
+per-interval visibility presets, clone, copy and hide. Every edit persists at once and becomes the
+tool's default for the next drawing of that type. The settings dialog opens from the gear with
+Inputs, Style, Text, Table, Coordinates and Visibility pages as the tool has them; its edits apply
+live, Cancel restores the drawing, and Ok commits the session as one edit.
+
+Text-bearing tools open an inline editor where the text sits, in the drawing's own type. A fresh
+placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd
+with Enter commits, Escape cancels, and a press on the chart commits.
+
+Templates are named setups a trader saves from either surface and applies on demand. They and
+the remembered defaults ride `ChartSaveLoadAdapter.templates('drawing')`, so a host that keeps
+saved charts on a server keeps these there too; without an adapter they last the page.
+
+### The asset port
+
+The image and glyph tools reach your host through `ChartWidgetOptions.assets`. `intakeImage`
+turns a picked file into a payload within the caps and answers a refusal as a code the chart
+resolves through its own catalog; `glyphSource` answers the artwork URL an emoji or sticker draws
+with, or null to draw the glyph as text. Without the port the image tool does not open and glyphs
+draw as text.
 
 The layer is also mountable on its own lightweight-charts pair, without the widget:
 
@@ -1150,22 +1197,27 @@ What to know:
 - **The subpath is a subset, not a re-export.** The drawing classes, the model store and the
   mutable registry stay inside the library. There is no door for a host-authored tool: tool
   contribution belongs to the access-policy plane, not to a bare registration call.
-- **Widget placement scope is deliberate.** The built-in host places *fixed-anchor tools without
-  text*: trend lines, rays, shapes, fibs, patterns, and so on. `armTool` **throws** for tools
-  needing chrome it does not have (freehand strokes, multipoint runs, instant position tools,
-  text-bearing tools); `placeableByWidget(type)` answers in advance, so a custom rail can filter
-  honestly.
+- **Every tool places.** Fixed-anchor tools place by press-drag-release or click then click; an
+  instant tool (the position tools) lands whole from one press; a multipoint tool adds a point per
+  click until a double-click ends the run; a freehand tool captures the drag as a stroke; a
+  text-bearing tool opens the inline editor as it lands. `armTool` **throws** only for a name the
+  catalog does not know, and `placeableByWidget(type)` answers in advance.
 - **Persistence speaks a shared codec.** The store document (`{ [symbol]: SerializedDrawing[] }`,
   via `parseDrawingsStore`/`serializeDrawingsStore`) is the SAME document every host of the codec
-  reads and writes, so drawings survive moving between hosts. A restored document may hold tools
-  beyond the built-in host's placement scope: they render, select, move and persist fine; only
-  their *creation* needs richer chrome.
-- **Keys are widget-scoped.** Delete removes the selection, Escape cancels a placement or disarms,
-  bound to the chart element (focused on interaction) and never the page, so an embedded chart
-  cannot swallow the host page's keys.
-- **Gestures follow the standard grammar.** Press-drag-release, or click then click, to place; drag
-  a drawing to move it (rigid whole-bar translation, so anchors never drift apart); grab an anchor
-  handle to reshape; locked drawings select but refuse edits.
+  reads and writes, so drawings survive moving between hosts. A drawing bound to one chart (sync
+  off) lives in the adapter's chart-bound scope for the symbol; a shared drawing lives in the
+  symbol's scope, and a refused write merges the stored document over the layer's own before it
+  writes again.
+- **Keys run through the registry.** Delete and Backspace remove the selection, Escape cancels a
+  placement, disarms, or closes the inline editor, and Ctrl (or Cmd) with C and V copy and paste a
+  drawing. Each resolves to a `chart.drawings.*` command, so your access policy gates the keyboard
+  as it gates the toolbar; the keys bind to the chart element and never the page, so an embedded
+  chart cannot swallow the host page's keys.
+- **Gestures follow the standard grammar.** Drag a drawing to move it (rigid whole-bar translation,
+  so anchors never drift apart); grab an anchor handle to reshape; hold Shift to constrain a
+  two-point placement or an anchor drag to 45 degree rays; Ctrl-drag duplicates; the magnet pulls
+  a placed or dragged anchor onto the bar's own open, high, low or close; locked drawings select
+  but refuse edits, and lock all suspends every edit until it is released.
 
 ## Extensions
 
