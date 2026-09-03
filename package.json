@@ -40,7 +40,9 @@
   "scripts": {
     "build": "tsup",
     "build:theme": "node scripts/build-theme.mjs",
-    "postbuild": "node scripts/build-theme.mjs",
+    "build:manifest": "node scripts/build-feature-manifest.mjs",
+    "postbuild": "node scripts/build-theme.mjs && node scripts/build-feature-manifest.mjs",
+    "test": "vitest run --root ../.. packages/chart/test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "peerDependencies": {

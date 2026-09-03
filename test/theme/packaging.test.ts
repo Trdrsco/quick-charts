@@ -25,8 +25,9 @@ describe('the stylesheet in the export map', () => {
   it('packs the built stylesheet, and generates it from the build', () => {
     expect(manifest.files).toContain('dist')
     expect(manifest.scripts['build:theme']).toBe('node scripts/build-theme.mjs')
-    // The bundler clears dist as it runs, so the generator follows it rather than preceding it.
-    expect(manifest.scripts.postbuild).toBe('node scripts/build-theme.mjs')
+    // The bundler clears dist as it runs, so the generator follows it rather than preceding it; the
+    // feature manifest follows the theme generator, because it reads the theme manifest it wrote.
+    expect(manifest.scripts.postbuild).toBe('node scripts/build-theme.mjs && node scripts/build-feature-manifest.mjs')
   })
 })
 
