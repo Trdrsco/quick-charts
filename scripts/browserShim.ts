@@ -83,9 +83,13 @@ export function installBrowserShim(win: Window & typeof globalThis): BrowserShim
   const originalToBlob = canvasProto.toBlob
   const originalToDataURL = canvasProto.toDataURL
   const originalGetComputedStyle = win.getComputedStyle
-  const url = win.URL as typeof URL & { createObjectURL?: (blob: Blob) => string; revokeObjectURL?: (u: string) => void }
-  const originalCreateObjectURL = url.createObjectURL
-  const originalRevokeObjectURL = url.revokeObjectURL
+  // Object URLs: a download hands its blob to `URL.createObjectURL`. The widget reaches the GLOBAL
+  // `URL`, which under Node is Node's own and takes only Node's `Blob`, while the blob a fake canvas
+  // makes is the window's. Both URL objects take the stand-in, so a download resolves to a blob URL
+  // whichever `URL` the runtime hands the widget.
+  type ObjectUrls = { createObjectURL?: (blob: Blob) => string; revokeObjectURL?: (u: string) => void }
+  const urls = [...new Set([win.URL as unknown as ObjectUrls, globalThis.URL as unknown as ObjectUrls])]
+  const originalObjectUrls = urls.map((u) => ({ target: u, create: u.createObjectURL, revoke: u.revokeObjectURL }))
 
   canvasProto.getContext = function (this: HTMLCanvasElement, kind: string) {
     if (kind !== '2d') return null
@@ -118,20 +122,88 @@ export function installBrowserShim(win: Window & typeof globalThis): BrowserShim
   }) as typeof win.getComputedStyle
 
   let objectUrls = 0
-  if (typeof url.createObjectURL !== 'function') url.createObjectURL = () => `blob:shim/${++objectUrls}`
-  if (typeof url.revokeObjectURL !== 'function') url.revokeObjectURL = () => undefined
+  for (const target of urls) {
+    target.createObjectURL = () => `blob:shim/${++objectUrls}`
+    target.revokeObjectURL = () => undefined
+  }
+
+  // Layout. happy-dom lays nothing out, so every element measures zero and a chart has nothing to
+  // size itself by or to picture. An element measures as its own inline pixel size when it has one,
+  // else as the nearest ancestor that has one: the host's container box, handed down to the widget
+  // root and its panes the way the stylesheet's percentages would hand it down in a browser.
+  const elementProto = win.HTMLElement.prototype
+  const measured = (property: 'clientWidth' | 'clientHeight') => Object.getOwnPropertyDescriptor(elementProto, property)
+  const originalWidth = measured('clientWidth')
+  const originalHeight = measured('clientHeight')
+  const pixels = (value: string): number | null => {
+    const m = /^(\d+(?:\.\d+)?)px$/.exec(value.trim())
+    return m ? Number(m[1]) : null
+  }
+  const measure = (element: HTMLElement, axis: 'width' | 'height'): number => {
+    for (let at: HTMLElement | null = element; at; at = at.parentElement) {
+      const own = pixels(at.style[axis])
+      if (own !== null) return own
+    }
+    return 0
+  }
+  Object.defineProperty(elementProto, 'clientWidth', {
+    configurable: true,
+    get(this: HTMLElement) {
+      return measure(this, 'width')
+    },
+  })
+  Object.defineProperty(elementProto, 'clientHeight', {
+    configurable: true,
+    get(this: HTMLElement) {
+      return measure(this, 'height')
+    },
+  })
+
+  // A ResizeObserver that reports the same measure once, on observe, the way a browser reports an
+  // element's first layout. happy-dom's own never calls back, so a renderer that sizes itself from
+  // its container would stay at zero and hold no visible range.
+  const g = win as unknown as { ResizeObserver?: typeof ResizeObserver }
+  const originalResizeObserver = g.ResizeObserver
+  class MeasuredResizeObserver {
+    private readonly callback: ResizeObserverCallback
+    constructor(callback: ResizeObserverCallback) {
+      this.callback = callback
+    }
+    observe(target: Element): void {
+      const width = measure(target as HTMLElement, 'width')
+      const height = measure(target as HTMLElement, 'height')
+      const rect = { x: 0, y: 0, top: 0, left: 0, width, height, right: width, bottom: height, toJSON: () => ({}) } as DOMRectReadOnly
+      const size = [{ inlineSize: width, blockSize: height }]
+      const entry = { target, contentRect: rect, borderBoxSize: size, contentBoxSize: size, devicePixelContentBoxSize: size } as ResizeObserverEntry
+      win.setTimeout(() => this.callback([entry], this as unknown as ResizeObserver), 0)
+    }
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  g.ResizeObserver = MeasuredResizeObserver as unknown as typeof ResizeObserver
+  const globalScope = globalThis as unknown as { ResizeObserver?: typeof ResizeObserver }
+  const originalGlobalResizeObserver = globalScope.ResizeObserver
+  globalScope.ResizeObserver = g.ResizeObserver
 
   return {
     uninstall() {
+      g.ResizeObserver = originalResizeObserver
+      globalScope.ResizeObserver = originalGlobalResizeObserver
+      if (originalWidth) Object.defineProperty(elementProto, 'clientWidth', originalWidth)
+      else Reflect.deleteProperty(elementProto, 'clientWidth')
+      if (originalHeight) Object.defineProperty(elementProto, 'clientHeight', originalHeight)
+      else Reflect.deleteProperty(elementProto, 'clientHeight')
       delete canvasProto.__qcShim
       canvasProto.getContext = originalGetContext
       canvasProto.toBlob = originalToBlob
       canvasProto.toDataURL = originalToDataURL
       win.getComputedStyle = originalGetComputedStyle
-      if (originalCreateObjectURL) url.createObjectURL = originalCreateObjectURL
-      else delete url.createObjectURL
-      if (originalRevokeObjectURL) url.revokeObjectURL = originalRevokeObjectURL
-      else delete url.revokeObjectURL
+      for (const { target, create, revoke } of originalObjectUrls) {
+        if (create) target.createObjectURL = create
+        else Reflect.deleteProperty(target, 'createObjectURL')
+        if (revoke) target.revokeObjectURL = revoke
+        else Reflect.deleteProperty(target, 'revokeObjectURL')
+      }
     },
   }
 }

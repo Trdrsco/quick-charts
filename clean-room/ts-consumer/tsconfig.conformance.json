@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": false,
+    "sourceMap": false,
+    "rootDir": "conformance",
+    "outDir": "../js-consumer/conformance"
+  },
+  "include": [
+    "conformance/*.ts"
+  ]
+}

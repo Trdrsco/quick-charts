@@ -1,0 +1,13 @@
+/* The guest page: the document is the chart's box and nothing else. The widget root fills the box it
+ * is mounted into, so the page gives it the whole viewport and scrolls nowhere. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+#chart {
+  width: 100%;
+  height: 100%;
+}
