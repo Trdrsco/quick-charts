@@ -264,7 +264,7 @@ const CONCEPTS = [
   ['app', 'chart.indicators'], ['sdk', 'timeframe.title'], ['app', 'alerts.title'],
   ['app', 'shell.pageJournal'], ['app', 'shell.pageBacktest'], ['app', 'watchlist.watchlists'],
   ['sdk', 'account.positions'], ['sdk', 'account.orders'], ['sdk', 'lines.takeProfit'],
-  ['sdk', 'lines.stopLoss'], ['sdk', 'session.open'], ['sdk', 'rail.cursor'],
+  ['sdk', 'lines.stopLoss'], ['sdk', 'session.open'], ['sdk', 'drawing.cursor'],
 ]
 
 async function glossary() {
