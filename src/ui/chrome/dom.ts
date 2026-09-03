@@ -156,9 +156,3 @@ export function armRoving(root: HTMLElement, activeIndex = 0): void {
 export function isRtl(element: Element): boolean {
   return (element.closest('[dir]')?.getAttribute('dir') ?? getComputedStyle(element).direction) === 'rtl'
 }
-
-/** Whether the viewer asked for reduced motion. The stylesheet already flattens every transition
- *  under the media query; a script that would animate consults this before it does. */
-export function reducedMotion(): boolean {
-  return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
-}

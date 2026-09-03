@@ -15,7 +15,7 @@ import { ICONS } from './icons'
 import { menuHeading, menuItem, menuSeparator, openMenu } from './menu'
 import { switchRow } from './dialog'
 
-export interface ReplayBarDeps {
+export interface ReplayTransportDeps {
   /** The chart's chrome subtree. */
   chrome: HTMLElement
   i18n: ChartI18n
@@ -26,7 +26,7 @@ export interface ReplayBarDeps {
   intraday(): boolean
 }
 
-export interface ReplayBarHandle {
+export interface ReplayTransportHandle {
   /** Re-read the replay state and repaint every control. */
   sync(): void
   destroy(): void
@@ -44,7 +44,7 @@ export function intervalWords(t: ChartI18n['t'], token: string): string {
   return timeframeLabel(t, token)
 }
 
-export function mountReplayBar(deps: ReplayBarDeps): ReplayBarHandle {
+export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransportHandle {
   const { commands, handle, i18n } = deps
   const t = (): ChartI18n['t'] => i18n.t
   const bar = h('div', { class: 'qc-surface qc-replay', role: 'toolbar', 'aria-label': t()('chrome.replay') })

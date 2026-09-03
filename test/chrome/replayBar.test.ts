@@ -3,7 +3,7 @@
 // command, the starting point arms a chart click, the speed and interval menus set through
 // commands, and the date picker's arithmetic is exact.
 import { afterEach, describe, expect, it } from 'vitest'
-import { intervalWords, mountReplayBar, speedWords } from '../../src/ui/chrome/replayBar'
+import { intervalWords, mountReplayTransport, speedWords } from '../../src/ui/chrome/replayBar'
 import { openDatePicker, parseTimeOfDay, parseYmd, ymd } from '../../src/ui/chrome/datePicker'
 import { buttonNames, fakeChart, fakeWidget, press } from './harness'
 
@@ -19,7 +19,7 @@ function mount(options: { access?: (id: string) => boolean } = {}) {
   chart.handle.replay.start()
   const chrome = document.createElement('div')
   document.body.appendChild(chrome)
-  const bar = mountReplayBar({ chrome, i18n: w.i18n, commands: w.commands, handle: chart.handle, bars: () => chart.bars, intraday: () => true })
+  const bar = mountReplayTransport({ chrome, i18n: w.i18n, commands: w.commands, handle: chart.handle, bars: () => chart.bars, intraday: () => true })
   cleanup.push(() => (bar.destroy(), w.dispose()))
   return { w, chart, chrome, bar }
 }
