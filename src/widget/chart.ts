@@ -254,6 +254,8 @@ export interface ChartInstance {
   repaintTheme(): void
   /** The chart's language changed. */
   relabel(): void
+  /** The layout's chart count moved: the surfaces that read it re-render. */
+  layoutChanged(): void
   dispose(): void
 }
 
@@ -519,7 +521,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     openIndicatorSettings: (id) => deps.doors.openIndicatorSettings(handle, id),
   })
 
-  // ── W4-B: the drawing plane, its toolbar and its settings surfaces ──────────────────────────
+  // ── The drawing plane: the layer, its toolbar, its favorites bar and its settings surfaces.
   // The plane CONSULTS the standing choices through the chart's one record and writes them back
   // through the same setter the handle exposes, so a toolbar and the layer cannot disagree about
   // what "weak magnet" or "stay in drawing mode" does, and a host reading `drawingPreferences()`
@@ -549,7 +551,6 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     onSaveConflict: (info) => deps.onSaveConflict({ family: 'drawings', ...info }),
     onChange: (kind, id) => events.emit('drawing', { kind, id }),
   })
-  // ── end W4-B ────────────────────────────────────────────────────────────────────────────────
 
   const marks = deps.marks
     ? attachMarks({
@@ -1233,6 +1234,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       legend.setHeader(symbol, replay.active() ? i18n.t('host.replayHeader', { tf }) : tf)
       drawings.relabel()
       replayBar?.sync()
+    },
+    layoutChanged() {
+      drawings.refresh()
     },
     dispose() {
       if (disposed) return
