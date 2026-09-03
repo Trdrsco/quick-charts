@@ -32,7 +32,7 @@ export const DEFAULT_VISIBILITY: IntervalVisibility = {
 
 export type IntervalBucket = 'ticks' | 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months'
 
-/** The reference's four quick visibility rules, resolved against the chart's CURRENT interval. */
+/** The four quick visibility rules, resolved against the chart's CURRENT interval. */
 export type VisibilityPreset = 'current-and-above' | 'current-and-below' | 'current-only' | 'all'
 
 const RANGE_BUCKETS = ['seconds', 'minutes', 'hours', 'days', 'weeks', 'months'] as const

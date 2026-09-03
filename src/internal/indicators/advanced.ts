@@ -31,8 +31,8 @@ export function atr(d: readonly Candle[], period = 14): number[] {
 }
 
 /** ADX with directional indicators (+DI / -DI), Wilder-smoothed. `period` is the DI length;
- *  `adxSmoothing` (default = period) smooths DX into the ADX line: the two knobs the reference
- *  product exposes. */
+ *  `adxSmoothing` (default = period) smooths DX into the ADX line: the two knobs the indicator
+ *  exposes. */
 export function adx(d: readonly Candle[], period = 14, adxSmoothing = period): AdxResult {
   const n = d.length
   const plusDM: number[] = new Array(n).fill(0)

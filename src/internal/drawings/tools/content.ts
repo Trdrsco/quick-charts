@@ -64,7 +64,7 @@ export class ImageNote extends Drawing<ImageProps> {
     image.src = source
   }
 
-  /** Four corners, so any of them can be grabbed the way the reference describes. */
+  /** Four corners, so any of them can be grabbed. */
   override resizeHandles(viewport: Viewport): Point[] {
     if (!this.props.dataUrl) return []
     const f = this.frame(viewport)
