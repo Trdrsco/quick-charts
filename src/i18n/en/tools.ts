@@ -1,6 +1,6 @@
-// Drawing tool names by registry `type`: the vocabulary the drawing rail, the app's toolbar and the
-// settings dialogs share, so a tool is named once and translated once. The English is the registry's own
-// `name`; the registry stays the fallback for a type this catalog does not know.
+// Drawing tool names by registry `type`: the vocabulary the drawing toolbar, the favorites bar and
+// the settings dialog share, so a tool is named once and translated once. The English is the
+// registry's own `name`; the registry stays the fallback for a type this catalog does not know.
 export const tools = {
   'tool.trend_line': 'Trend line',
   'tool.ray': 'Ray',
