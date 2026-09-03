@@ -58,3 +58,26 @@ describe('every control in the chrome layer takes its own pointer events back', 
     expect(rule('[data-qc-theme] .qc-legend')).not.toContain('pointer-events: auto')
   })
 })
+
+describe('the widget root fills whatever box a host gives it', () => {
+  // Hosts hand a widget its space in one of two ways, and a chart that only understands one of them
+  // is sized by an accident of the host's CSS rather than by the host's intent. Both failures are
+  // silent: the chart renders, just short, and its study panes get squeezed to the renderer's
+  // minimum without anything erroring.
+  it('the root carries BOTH the percentage and the flex share', () => {
+    const root = rule('[data-qc-theme].qc-root')
+    expect(root).toContain('height: 100%') // a block host with a definite height
+    expect(root).toContain('flex: 1 1 auto') // a flex host handing out leftover space
+    expect(root).toContain('min-height: 0') // so it may shrink below its content instead of overflowing
+  })
+
+  it('the charts grid takes the root’s remaining height the same way', () => {
+    // Its own children are absolutely positioned, so it has no content height of its own to be
+    // sized by: without these it collapses to nothing and every chart in it collapses with it.
+    const panes = rule('[data-qc-theme] .qc-panes')
+    expect(panes).toContain('position: relative') // the containing block each chart is placed against
+    expect(panes).toContain('height: 100%')
+    expect(panes).toContain('flex: 1 1 auto')
+    expect(panes).toContain('min-height: 0')
+  })
+})
