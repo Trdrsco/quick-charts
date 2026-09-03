@@ -70,6 +70,9 @@ export interface ToolbarDeps {
   state(): ToolbarState
   /** Run a command through the registry. Answers whether it ran. */
   run(command: string, arg?: unknown): boolean
+  /** Whether the registry would run a command now. A control whose command is denied or
+   *  unavailable renders disabled, never hidden, so the rail keeps its shape. */
+  available(command: string): boolean
   /** Whether the access policy permits arming a tool. A refused tool renders disabled. */
   toolAllowed(type: string): boolean
   /** Artwork for a glyph, from the host's asset port. */
@@ -131,8 +134,9 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   column.addEventListener('scroll', closeOpen)
 
   const rows = (menu: HTMLElement): HTMLElement[] => [...menu.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="switch"]')]
-  const menuRow = (label: string, onPick: () => void, options: { icon?: string; active?: boolean; role?: string } = {}): HTMLButtonElement => {
+  const menuRow = (label: string, onPick: () => void, options: { icon?: string; active?: boolean; role?: string; command?: string } = {}): HTMLButtonElement => {
     const b = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row', role: options.role ?? 'menuitem' })
+    if (options.command && !deps.available(options.command)) b.disabled = true
     if (options.active !== undefined) b.setAttribute('aria-checked', String(options.active))
     if (options.active) b.dataset.qcActive = 'true'
     const cell = el('span', { class: 'qc-menu-icon' })
@@ -174,9 +178,9 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       menu(
         t('drawing.cursorMenu'),
         ...CURSOR_MODES.map((mode) =>
-          menuRow(t(CURSOR_LABELS[mode]), () => deps.run('chart.drawings.cursor', mode), { icon: iconSvg(CURSOR_ICON[mode]), active: s.cursor === mode && s.activeTool !== 'eraser', role: 'menuitemradio' }),
+          menuRow(t(CURSOR_LABELS[mode]), () => deps.run('chart.drawings.cursor', mode), { icon: iconSvg(CURSOR_ICON[mode]), active: s.cursor === mode && s.activeTool !== 'eraser', role: 'menuitemradio', command: 'chart.drawings.cursor' }),
         ),
-        menuRow(t(TRANSIENT_LABELS.eraser), () => deps.run('chart.drawings.arm', 'eraser'), { icon: iconSvg('eraser'), active: s.activeTool === 'eraser', role: 'menuitemradio' }),
+        menuRow(t(TRANSIENT_LABELS.eraser), () => deps.run('chart.drawings.arm', 'eraser'), { icon: iconSvg('eraser'), active: s.activeTool === 'eraser', role: 'menuitemradio', command: 'chart.drawings.arm' }),
       ),
     )
   })
@@ -212,7 +216,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         pick.innerHTML = `<span class="qc-menu-icon">${toolIconSvg(tool.type)}</span>`
         pick.appendChild(el('span', { class: 'qc-menu-label', text: name }))
         if (s.activeTool === tool.type) pick.dataset.qcActive = 'true'
-        if (!deps.toolAllowed(tool.type)) pick.disabled = true
+        if (!deps.toolAllowed(tool.type) || !deps.available('chart.drawings.arm')) pick.disabled = true
         pick.addEventListener('click', () => {
           closeOpen()
           deps.run('chart.drawings.arm', tool.type)
@@ -222,6 +226,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
           label: t(fav ? 'drawing.favRemove' : 'drawing.favAdd', { tool: name }),
           html: iconSvg(fav ? 'starFilled' : 'star', 18),
           pressed: fav,
+          disabled: !deps.available('chart.drawings.favorite'),
           onClick: () => {
             deps.run('chart.drawings.favorite', tool.type)
             const now = isFavorite(deps.state().favorites, tool.type)
@@ -279,6 +284,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
             icon: iconSvg(strength === 'strong' ? 'magnetStrong' : 'magnet'),
             active: s.magnet === strength,
             role: 'menuitemradio',
+            command: 'chart.drawings.magnet',
           }),
         ),
       ),
@@ -298,7 +304,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       menu(
         t('drawing.hideMenu'),
         ...HIDE_ORDER.map((mode) =>
-          menuRow(t(HIDE_LABELS[mode].hide), () => deps.run('chart.drawings.hide', chooseHideMode(s.hide, mode)), { icon: iconSvg(HIDE_ICON[mode].hidden), active: hideRowActive(s.hide, mode), role: 'menuitemradio' }),
+          menuRow(t(HIDE_LABELS[mode].hide), () => deps.run('chart.drawings.hide', chooseHideMode(s.hide, mode)), { icon: iconSvg(HIDE_ICON[mode].hidden), active: hideRowActive(s.hide, mode), role: 'menuitemradio', command: 'chart.drawings.hide' }),
         ),
       ),
     )
@@ -327,10 +333,12 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
           if (rowSpec.drawings > 0) deps.run('chart.drawings.removeAll', s.removeLocked)
           if (rowSpec.indicators > 0) deps.run('chart.indicators.removeAll')
         },
+        { command: rowSpec.drawings > 0 ? 'chart.drawings.removeAll' : 'chart.indicators.removeAll' },
       ),
     )
     if (items.length === 0) items.push(el('div', { class: 'qc-muted qc-drawing-menu-note', text: t('drawing.nothingToRemove') }))
     const policy = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row qc-drawing-switch-row', role: 'switch', 'aria-checked': String(s.removeLocked) })
+    policy.disabled = !deps.available('chart.drawings.removeLockedPolicy')
     policy.append(el('span', { class: 'qc-menu-label', text: t('drawing.alwaysRemoveLocked') }), el('span', { class: 'qc-drawing-switch', 'aria-hidden': 'true' }, el('span', { class: 'qc-drawing-switch-knob' })))
     policy.addEventListener('click', () => {
       const next = !deps.state().removeLocked
@@ -354,12 +362,18 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     b.setAttribute('aria-label', label)
     b.title = title
   }
+  /** A button is enabled exactly when the registry would run its command now. */
+  const gate = (b: HTMLButtonElement, command: string, refused = false): void => {
+    b.disabled = refused || !deps.available(command)
+  }
 
   const render = (): void => {
     const s = deps.state()
     // The cursor face wears the mode's glyph, or the eraser while it is armed.
     cursorFace.innerHTML = iconSvg(s.activeTool === 'eraser' ? 'eraser' : CURSOR_ICON[s.cursor])
     setActive(cursorFace, cursorButtonArmed(s.activeTool))
+    gate(cursorFace, 'chart.drawings.arm')
+    gate(cursorArrow, 'chart.drawings.cursor')
     const activeGroup = groupOfTool(groups, s.activeTool)
     for (const group of groups) {
       const entry = groupFaces.get(group.id)!
@@ -370,25 +384,34 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       // glyph group's face opens the picker and is named by the group.
       const faceName = faceTool && group.id !== 'glyphs' ? toolName(t, faceTool, faceTool) : t(group.label)
       relabelButton(entry.face, faceName)
-      entry.face.disabled = !!faceTool && group.id !== 'glyphs' && !deps.toolAllowed(faceTool)
+      gate(entry.face, 'chart.drawings.arm', !!faceTool && group.id !== 'glyphs' && !deps.toolAllowed(faceTool))
+      gate(entry.arrow, 'chart.drawings.arm')
       setActive(entry.face, activeGroup === group.id)
     }
     setActive(measure, s.activeTool === 'measure')
     setActive(zoom, s.activeTool === 'zoom')
+    gate(measure, 'chart.drawings.arm')
+    gate(zoom, 'chart.drawings.arm')
     magnetFace.innerHTML = iconSvg(s.magnet === 'strong' ? 'magnetStrong' : 'magnet')
     setActive(magnetFace, s.magnet !== 'off')
     magnetFace.setAttribute('aria-pressed', String(s.magnet !== 'off'))
+    gate(magnetFace, 'chart.drawings.magnet')
+    gate(magnetArrow, 'chart.drawings.magnet')
     stay.innerHTML = iconSvg(s.stayInDrawingMode ? 'pinOn' : 'pin')
     setActive(stay, s.stayInDrawingMode)
     stay.setAttribute('aria-pressed', String(s.stayInDrawingMode))
+    gate(stay, 'chart.drawings.stayInMode')
     lockAll.innerHTML = iconSvg(s.allLocked ? 'lockClosed' : 'lockOpen')
     relabelButton(lockAll, t(s.allLocked ? 'drawing.unlockAll' : 'drawing.lockAll'))
     setActive(lockAll, s.allLocked)
     lockAll.setAttribute('aria-pressed', String(s.allLocked))
+    gate(lockAll, 'chart.drawings.lockAll')
     eyeFace.innerHTML = iconSvg(s.hide.on ? HIDE_ICON[s.hide.mode].hidden : HIDE_ICON[s.hide.mode].shown)
     relabelButton(eyeFace, t(s.hide.on ? HIDE_LABELS[s.hide.mode].show : HIDE_LABELS[s.hide.mode].hide))
     setActive(eyeFace, s.hide.on)
     eyeFace.setAttribute('aria-pressed', String(s.hide.on))
+    gate(eyeFace, 'chart.drawings.hide')
+    gate(eyeArrow, 'chart.drawings.hide')
     if (s.layoutCharts > 1) {
       if (!syncButton) {
         syncButton = button({ class: 'qc-button qc-drawing-rail-button', label: t('drawing.syncLabel'), html: iconSvg('sync'), onClick: () => deps.run('chart.drawings.sync', !deps.state().sync) })
@@ -397,15 +420,21 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       syncButton.title = t(s.sync ? 'drawing.syncOnHelp' : 'drawing.syncOffHelp')
       syncButton.setAttribute('aria-pressed', String(s.sync))
       setActive(syncButton, s.sync)
+      gate(syncButton, 'chart.drawings.sync')
     } else if (syncButton) {
       syncButton.remove()
       syncButton = null
     }
     const removable = removableDrawings(s.counts, s.removeLocked)
     removeFace.title = removable > 0 ? t('drawing.removeItems', { items: t('drawing.countDrawings', { count: removable }) }) : t('drawing.removeDrawings')
+    // The remove face takes drawings, so it is live only while there are drawings to take; the
+    // arrow's menu also carries the locked-item policy, which is its own command.
+    gate(removeFace, 'chart.drawings.removeAll')
+    gate(removeArrow, 'chart.drawings.removeLockedPolicy')
     favorites.innerHTML = iconSvg(s.favorites.visible ? 'starFilled' : 'star')
     favorites.setAttribute('aria-pressed', String(s.favorites.visible))
     setActive(favorites, s.favorites.visible)
+    gate(favorites, 'chart.drawings.favoritesBar')
   }
 
   const relabel = (): void => {

@@ -11,6 +11,7 @@ import { DEFAULT_DRAWING_PREFERENCES, type DrawingPreferences } from '../../src/
 import { createCommandRegistry } from '../../src/widget/commands'
 import { registerChartCommands } from '../../src/widget/chartCommands'
 import { attachDrawingsPlane } from '../../src/widget/drawings'
+import { openOverlays } from '../../src/ui/drawings/overlays'
 import { resolveFeatures } from '../../src/widget/planes'
 import type { ChartHandle } from '../../src/widget/chart'
 import { memorySaveLoadAdapter } from '../../src/resources'
@@ -114,6 +115,7 @@ afterEach(() => {
   rigs = []
   document.body.replaceChildren()
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 describe('the plane through the registry', () => {
@@ -157,19 +159,41 @@ describe('the plane through the registry', () => {
     expect(byLabel(chrome, 'Show all')).toBeTruthy()
   })
 
-  it('a denied command is refused from the toolbar and from the keyboard alike', () => {
+  it('a denied command is refused from the toolbar and from the keyboard alike, and its control renders disabled', () => {
     const { chrome, plane, gestures, run } = make({ deny: (id) => id === 'chart.drawings.deleteSelected' || id === 'chart.drawings.magnet' })
+    expect(byLabel(chrome, 'Magnet').disabled).toBe(true)
+    expect(byLabel(chrome, 'Magnet menu').disabled).toBe(true)
+    expect(byLabel(chrome, 'Lock all drawings').disabled).toBe(false)
     byLabel(chrome, 'Magnet').click()
     expect(plane.api!.activeTool()).toBeNull()
     expect(run('chart.drawings.magnet', 'weak')).toBe('denied')
     run('chart.drawings.arm', 'rectangle')
     drag(gestures, [10, 10], [100, 100])
     expect(plane.api!.count()).toBe(1)
+    // The settings bar rendered for the selection: the delete control is there and disabled.
+    expect(byLabel(chrome, 'Delete drawing').disabled).toBe(true)
+    expect(byLabel(chrome, 'Lock drawing').disabled).toBe(false)
     gestures.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true }))
     expect(plane.api!.count()).toBe(1)
     expect(run('chart.drawings.deleteSelected')).toBe('denied')
     gestures.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(plane.api!.count()).toBe(1)
+  })
+
+  it('a selection verb renders enabled only while the registry would run it', () => {
+    const { chrome, gestures, run } = make()
+    expect(byLabel(chrome, 'Remove drawings').disabled).toBe(true)
+    run('chart.drawings.arm', 'rectangle')
+    drag(gestures, [10, 10], [100, 100])
+    expect(byLabel(chrome, 'Remove drawings').disabled).toBe(false)
+    byLabel(chrome, 'More drawing actions').click()
+    const rows = [...chrome.querySelectorAll<HTMLButtonElement>('[data-role="drawing-popover"] [role="menuitem"]')]
+    expect(rows.find((r) => r.textContent?.startsWith('Paste'))!.disabled).toBe(true)
+    run('chart.drawings.copy')
+    byLabel(chrome, 'More drawing actions').click()
+    byLabel(chrome, 'More drawing actions').click()
+    const again = [...chrome.querySelectorAll<HTMLButtonElement>('[data-role="drawing-popover"] [role="menuitem"]')]
+    expect(again.find((r) => r.textContent?.startsWith('Paste'))!.disabled).toBe(false)
   })
 
   it('a tool the access policy refuses is disabled on the toolbar and refused by the api', () => {
@@ -269,5 +293,63 @@ describe('the plane through the registry', () => {
     r.dispose()
     rigs = []
     expect(document.querySelector('[data-role="drawing-toolbar"]')).toBeNull()
+  })
+
+  it('closes every open overlay on destroy and leaves no document or window listener behind', () => {
+    // Every listener the plane and its surfaces put on the document or the window, by target,
+    // type and function; a removal takes its addition off, so what is left after destroy is a leak.
+    const live: { target: string; type: string; fn: unknown }[] = []
+    for (const [name, target] of [['document', document], ['window', window]] as const) {
+      const add = target.addEventListener.bind(target)
+      const remove = target.removeEventListener.bind(target)
+      vi.spyOn(target, 'addEventListener').mockImplementation((type: string, fn: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
+        live.push({ target: name, type, fn })
+        add(type, fn, options)
+      })
+      vi.spyOn(target, 'removeEventListener').mockImplementation((type: string, fn: EventListenerOrEventListenerObject, options?: boolean | EventListenerOptions) => {
+        const at = live.findIndex((x) => x.target === name && x.type === type && x.fn === fn)
+        if (at >= 0) live.splice(at, 1)
+        remove(type, fn, options)
+      })
+    }
+    const r = make()
+    const { chrome, gestures } = r
+    r.run('chart.drawings.arm', 'rectangle')
+    drag(gestures, [10, 10], [100, 100])
+    // A settings dialog with its template menu open over it, and the bar's color palette.
+    byLabel(chrome, 'Drawing settings').click()
+    const dialog = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+    dialog.querySelector<HTMLButtonElement>('button[aria-label="Template"]')!.click()
+    expect(dialog.querySelector('[data-role="drawing-popover"]')).toBeTruthy()
+    expect(openOverlays(chrome)).toBe(1)
+    expect(openOverlays(dialog)).toBe(1)
+    expect(live.length).toBeGreaterThan(0)
+    r.dispose()
+    rigs = []
+    expect(openOverlays(chrome)).toBe(0)
+    expect(openOverlays(dialog)).toBe(0)
+    expect(document.querySelector('[data-role="drawing-settings"]')).toBeNull()
+    expect(document.querySelector('[data-role="drawing-popover"]')).toBeNull()
+    expect(live.map((x) => `${x.target}:${x.type}`)).toEqual([])
+  })
+
+  it('opens the toolbar flyout and the bar palette inside the chart root, absolutely placed, and closes them with the plane', () => {
+    const r = make()
+    const { chrome, gestures } = r
+    byLabel(chrome, 'Trend tools menu').click()
+    const flyout = chrome.querySelector<HTMLElement>('[data-role="drawing-popover"]')!
+    // Positioned by the package stylesheet's .qc-drawing-popover rule (absolute, inside the root).
+    expect(flyout.classList.contains('qc-drawing-popover')).toBe(true)
+    expect(flyout.parentElement).toBe(chrome)
+    expect(openOverlays(chrome)).toBe(1)
+    r.run('chart.drawings.arm', 'rectangle')
+    drag(gestures, [10, 10], [100, 100])
+    byLabel(chrome, 'Drawing color').click()
+    expect(chrome.querySelectorAll('[data-role="drawing-popover"]')).toHaveLength(1)
+    expect(openOverlays(chrome)).toBe(1)
+    r.dispose()
+    rigs = []
+    expect(openOverlays(chrome)).toBe(0)
+    expect(document.querySelector('[data-role="drawing-popover"]')).toBeNull()
   })
 })

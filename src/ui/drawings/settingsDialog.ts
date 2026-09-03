@@ -1,8 +1,10 @@
 // The settings dialog for one drawing: Inputs, Style, Text, Table, Coordinates and Visibility
-// pages, each showing the rows the tool has. Edits apply LIVE to the drawing for instant
-// feedback; Cancel (or Escape) restores the snapshot taken at open, and Ok commits the whole
-// session as one edit. The footer's Template menu saves the current setup under a name, applies
-// the tool's remembered default, or applies and removes a saved template.
+// pages, each showing the rows the tool has. The dialog is an edit session the settings command
+// opened: its rows and its template applications preview LIVE on the drawing for instant
+// feedback and are the session's own, Cancel (or Escape) restores the snapshot taken at open, and
+// the session's outcomes are commands through the registry: Ok commits it as one edit, and the
+// footer's Template menu saves the current setup under a name or removes a saved template. A
+// control whose command the registry would refuse renders disabled.
 import type { DrawingStyle, IDrawing, IntervalVisibility, SerializedDrawing } from '@trdrs/chart-drawings'
 import type { ChartTranslate } from '../../i18n'
 import { toolName } from '../../i18n'
@@ -23,13 +25,12 @@ export interface SettingsDialogDeps {
   drawing: IDrawing
   presets: DrawingPresets
   assets?: DrawingAssetPort
-  /** Ok: the session becomes one edit. */
-  onCommit(): void
-  /** Cancel or Escape: the snapshot is already restored when this fires. */
-  onCancel?(): void
-  /** The current setup, saved under a name. */
-  onSaveTemplate(name: string, preset: ToolPreset): void
-  onRemoveTemplate(name: string): void
+  /** Run a command through the registry. Answers whether it ran. */
+  run(command: string, arg?: unknown): boolean
+  /** Whether the registry would run a command now. */
+  available(command: string): boolean
+  /** The session ended: Ok committed it, or Cancel, Escape or a close restored the snapshot. */
+  onClose?(outcome: 'commit' | 'cancel'): void
 }
 
 export interface SettingsDialogHandle {
@@ -114,13 +115,18 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     drawing.updateOptions(snapshot.options)
     if (snapshot.props) drawing.applyProps(snapshot.props)
     dialog.close()
-    deps.onCancel?.()
+    deps.onClose?.('cancel')
   }
   const ok = (): void => {
     if (settled) return
+    // A commit the registry refuses keeps nothing: the session ends as a cancel would.
+    if (!deps.run('chart.drawings.commitEdit')) {
+      cancel()
+      return
+    }
     settled = true
     dialog.close()
-    deps.onCommit()
+    deps.onClose?.('commit')
   }
 
   // The footer: the Template menu, then Cancel and Ok.
@@ -140,8 +146,9 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
       return
     }
     const menu = el('div', { class: 'qc-drawing-menu', role: 'menu', 'aria-label': t('drawing.template') })
-    const rowOf = (text: string, onPick: () => void): HTMLButtonElement => {
+    const rowOf = (text: string, command: string, onPick: () => void): HTMLButtonElement => {
       const b = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row', role: 'menuitem' }, el('span', { class: 'qc-menu-icon' }), el('span', { class: 'qc-menu-label', text }))
+      b.disabled = !deps.available(command)
       b.addEventListener('click', () => {
         closeMenu?.()
         onPick()
@@ -149,23 +156,25 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
       return b
     }
     menu.append(
-      rowOf(t('drawing.saveAs'), () => openTemplateNameDialog({ container: deps.chrome, t }, (templateName) => deps.onSaveTemplate(templateName, { style: { ...drawing.style }, props: { ...drawing.props } }))),
-      rowOf(t('drawing.applyDefaults'), () => applyPreset(deps.presets.defaultFor(drawing.type))),
+      // The save command reads the selection, which is this drawing with the session's edits on it.
+      rowOf(t('drawing.saveAs'), 'chart.drawings.template.save', () => openTemplateNameDialog({ container: deps.chrome, t }, (templateName) => deps.run('chart.drawings.template.save', templateName))),
+      rowOf(t('drawing.applyDefaults'), 'chart.drawings.template.apply', () => applyPreset(deps.presets.defaultFor(drawing.type))),
     )
     const saved = deps.presets.templatesFor(drawing.type)
     if (saved.length) menu.appendChild(el('div', { class: 'qc-separator', role: 'separator' }))
     for (const saved1 of saved) {
       const rowEl = el('div', { class: 'qc-drawing-flyout-row' })
       rowEl.append(
-        rowOf(saved1.name, () => applyPreset(saved1)),
+        rowOf(saved1.name, 'chart.drawings.template.apply', () => applyPreset(saved1)),
         button({
           class: 'qc-drawing-star',
           label: t('drawing.removeTemplateNamed', { name: saved1.name }),
           title: t('drawing.remove'),
           html: iconSvg('trash', 18),
+          disabled: !deps.available('chart.drawings.template.remove'),
           onClick: () => {
             closeMenu?.()
-            openTemplateDeleteDialog({ container: deps.chrome, t }, saved1.name, () => deps.onRemoveTemplate(saved1.name))
+            openTemplateDeleteDialog({ container: deps.chrome, t }, saved1.name, () => deps.run('chart.drawings.template.remove', saved1.name))
           },
         }),
       )
@@ -182,7 +191,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     template,
     el('span', { class: 'qc-drawing-footer-gap' }),
     button({ class: 'qc-button', label: t('drawing.cancel'), text: t('drawing.cancel'), onClick: cancel }),
-    button({ class: 'qc-button qc-button--primary', label: t('drawing.ok'), text: t('drawing.ok'), onClick: ok }),
+    button({ class: 'qc-button qc-button--primary', label: t('drawing.ok'), text: t('drawing.ok'), disabled: !deps.available('chart.drawings.commitEdit'), onClick: ok }),
   )
 
   renderTabs()

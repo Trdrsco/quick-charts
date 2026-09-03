@@ -10,7 +10,7 @@ import { mountDrawingToolbar, type ToolbarState } from '../../../src/ui/drawings
 
 const i18n = createChartI18n()
 
-function rig(over: Partial<ToolbarState> = {}, options: { refuse?: string[] } = {}) {
+function rig(over: Partial<ToolbarState> = {}, options: { refuse?: string[]; deny?: string[] } = {}) {
   const chrome = document.createElement('div')
   document.body.appendChild(chrome)
   const state: ToolbarState = {
@@ -39,6 +39,7 @@ function rig(over: Partial<ToolbarState> = {}, options: { refuse?: string[] } = 
       ran.push([command, arg])
       return true
     },
+    available: (command) => !(options.deny ?? []).includes(command),
     toolAllowed: (type) => !(options.refuse ?? []).includes(type),
   })
   const buttons = () => [...chrome.querySelectorAll<HTMLButtonElement>('[data-role="drawing-toolbar"] button')]
@@ -228,6 +229,31 @@ describe('a group flyout', () => {
     expect(popover()).toBeNull()
   })
 
+  it('renders a control whose command the registry refuses disabled, never hidden, on the rail and in its menus', () => {
+    const { buttons, byLabel, popover, state, toolbar } = rig({ counts: { total: 2, locked: 0 } }, { deny: ['chart.drawings.arm', 'chart.drawings.magnet', 'chart.drawings.removeAll'] })
+    expect(buttons()).toHaveLength(27)
+    expect(byLabel('Cursor').disabled).toBe(true)
+    expect(byLabel('Trend line').disabled).toBe(true)
+    expect(byLabel('Trend tools menu').disabled).toBe(true)
+    expect(byLabel('Measure').disabled).toBe(true)
+    expect(byLabel('Magnet').disabled).toBe(true)
+    expect(byLabel('Magnet menu').disabled).toBe(true)
+    expect(byLabel('Remove drawings').disabled).toBe(true)
+    expect(byLabel('Lock all drawings').disabled).toBe(false)
+    expect(byLabel('Stay in drawing mode').disabled).toBe(false)
+    // The cursor's menu is its own command, so it still opens; the eraser row arms and is refused.
+    byLabel('Cursor menu').click()
+    const rows = [...popover()!.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+    expect(rows.map((r) => r.disabled)).toEqual([false, false, false, true])
+    byLabel('Remove menu').click()
+    const remove = [...popover()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    expect(remove.map((r) => r.disabled)).toEqual([true])
+    expect(popover()!.querySelector<HTMLButtonElement>('[role="switch"]')!.disabled).toBe(false)
+    state.counts = { total: 0, locked: 0 }
+    toolbar.render()
+    expect(byLabel('Remove drawings').disabled).toBe(true)
+  })
+
   it('renders a refused tool disabled, on its row and on the face', () => {
     const { byLabel, popover, state, toolbar } = rig({}, { refuse: ['trend_line', 'ray'] })
     expect(byLabel('Trend line').disabled).toBe(true)
@@ -309,6 +335,7 @@ describe('the keyboard', () => {
       t: live,
       state: () => ({ activeTool: null, cursor: 'cross', magnet: 'off', stayInDrawingMode: false, allLocked: false, hide: DEFAULT_HIDE_STATE, sync: true, removeLocked: false, counts: { total: 0, locked: 0 }, indicatorCount: 0, railTools: {}, favorites: DEFAULT_FAVORITES, recentGlyphs: [], layoutCharts: 1 }),
       run: () => true,
+      available: () => true,
       toolAllowed: () => true,
     })
     await strings.setLocale('fr-CA')

@@ -27,7 +27,7 @@ const selection = (over: Partial<SelectedDrawing> = {}): SelectedDrawing => ({
   ...over,
 })
 
-function rig(selected: SelectedDrawing | null, props: Record<string, unknown> | null = null) {
+function rig(selected: SelectedDrawing | null, props: Record<string, unknown> | null = null, deny: string[] = []) {
   const chrome = document.createElement('div')
   document.body.appendChild(chrome)
   const ran: [string, unknown][] = []
@@ -43,6 +43,7 @@ function rig(selected: SelectedDrawing | null, props: Record<string, unknown> | 
       ran.push([command, arg])
       return true
     },
+    available: (command) => !deny.includes(command),
     stackPosition: () => state.stack,
     canPaste: () => false,
     position: () => state.position,
@@ -52,7 +53,7 @@ function rig(selected: SelectedDrawing | null, props: Record<string, unknown> | 
   })
   const root = chrome.querySelector<HTMLElement>('[data-role="drawing-settings-bar"]')!
   const labels = () => [...root.querySelectorAll<HTMLElement>('.qc-drawing-settings-controls button')].map((b) => b.getAttribute('aria-label'))
-  const byLabel = (label: string) => [...root.querySelectorAll<HTMLElement>('button')].find((b) => b.getAttribute('aria-label') === label)!
+  const byLabel = (label: string) => [...root.querySelectorAll<HTMLButtonElement>('button')].find((b) => b.getAttribute('aria-label') === label)!
   const popover = () => chrome.querySelector<HTMLElement>('[data-role="drawing-popover"]')
   return { chrome, root, bar, state, ran, presets, labels, byLabel, popover }
 }
@@ -98,6 +99,23 @@ describe('the settings bar', () => {
     state.selected = selection({ locked: true })
     bar.render()
     expect(byLabel('Unlock drawing').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('renders a control whose command the registry refuses disabled, never hidden, on the bar and in its menus', () => {
+    const { byLabel, labels, popover } = rig(selection(), null, ['chart.drawings.style', 'chart.drawings.deleteSelected', 'chart.drawings.clone', 'chart.drawings.template.save'])
+    expect(labels()).toHaveLength(9)
+    expect(byLabel('Drawing color').disabled).toBe(true)
+    expect(byLabel('Line thickness').disabled).toBe(true)
+    expect(byLabel('Delete drawing').disabled).toBe(true)
+    expect(byLabel('Lock drawing').disabled).toBe(false)
+    expect(byLabel('Drawing settings').disabled).toBe(false)
+    byLabel('More drawing actions').click()
+    const rows = [...popover()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    expect(rows.find((r) => r.textContent?.startsWith('Clone'))!.disabled).toBe(true)
+    expect(rows.find((r) => r.textContent?.startsWith('Copy'))!.disabled).toBe(false)
+    byLabel('Drawing templates').click()
+    const templates = [...popover()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    expect(templates.map((r) => r.disabled)).toEqual([true, false])
   })
 
   it('a color pick restyles and recolors every level of a leveled tool', () => {
