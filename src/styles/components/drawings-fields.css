@@ -1,0 +1,618 @@
+/* The settings field primitives: rows, checkbox rows, selects, number fields with their steppers,
+ * swatches and the palette, the custom color panel, the opacity slider, line-end pickers, the
+ * dialog tab strip and the interval-visibility rows. Every color a control paints with is either
+ * a generated custom property or the drawing's own value, carried in `--qcd-swatch`. */
+
+[data-qc-theme] .qc-drawing-row {
+  display: grid;
+  grid-template-columns: 105px 1fr;
+  gap: 12px;
+  align-items: center;
+  min-height: 42px;
+}
+
+[data-qc-theme] .qc-drawing-row-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-drawing-row-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-drawing-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  cursor: pointer;
+  user-select: none;
+}
+
+[data-qc-theme] .qc-drawing-toggle[data-disabled='true'] {
+  color: var(--qc-text-muted);
+  cursor: default;
+}
+
+[data-qc-theme] .qc-drawing-check {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-drawing-select,
+[data-qc-theme] .qc-drawing-input,
+[data-qc-theme] .qc-drawing-number {
+  height: 34px;
+  padding: 0 10px;
+  font-size: var(--qc-text-fontSizeBase);
+}
+
+[data-qc-theme] .qc-drawing-select {
+  min-width: 140px;
+}
+
+[data-qc-theme] .qc-drawing-input[data-width='short'] {
+  width: 96px;
+}
+
+[data-qc-theme] .qc-drawing-input[data-width='wide'] {
+  width: 100%;
+}
+
+[data-qc-theme] .qc-drawing-textarea {
+  width: 100%;
+  min-height: 80px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  font-size: var(--qc-text-fontSizeBase);
+  resize: vertical;
+}
+
+/* The number field owns the last 26px of its box for the stepper, revealed on hover or focus. */
+[data-qc-theme] .qc-drawing-number-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+[data-qc-theme] .qc-drawing-number-wrap[data-width='short'] {
+  width: 64px;
+}
+
+[data-qc-theme] .qc-drawing-number-wrap[data-width='medium'] {
+  width: 84px;
+}
+
+[data-qc-theme] .qc-drawing-number-wrap[data-width='wide'] {
+  width: 112px;
+}
+
+[data-qc-theme] .qc-drawing-number {
+  width: 100%;
+  padding-inline-end: 28px;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+}
+
+[data-qc-theme] .qc-drawing-number::-webkit-inner-spin-button,
+[data-qc-theme] .qc-drawing-number::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+[data-qc-theme] .qc-drawing-steppers {
+  position: absolute;
+  top: 50%;
+  inset-inline-end: 4px;
+  display: none;
+  flex-direction: column;
+  transform: translateY(-50%);
+}
+
+[data-qc-theme] .qc-drawing-number-wrap:hover .qc-drawing-steppers,
+[data-qc-theme] .qc-drawing-number-wrap:focus-within .qc-drawing-steppers {
+  display: flex;
+}
+
+[data-qc-theme] .qc-drawing-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 13px;
+  padding: 0;
+  color: var(--qc-text-muted);
+  background: none;
+  border: 0;
+  border-radius: var(--qc-chrome-radius);
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-drawing-stepper[data-up='true'] svg {
+  transform: rotate(180deg);
+}
+
+[data-qc-theme] .qc-drawing-stepper:hover {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+/* Swatches: a ten-wide grid of squares, the plus cell, and the custom panel it opens in place. */
+[data-qc-theme] .qc-drawing-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+}
+
+[data-qc-theme] .qc-drawing-swatches {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-qc-theme] .qc-drawing-swatch-row {
+  display: flex;
+  gap: 4px;
+}
+
+[data-qc-theme] .qc-drawing-swatch {
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  background: var(--qcd-swatch);
+  border: 0;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px var(--qc-chrome-border);
+  cursor: pointer;
+  transition: transform var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] .qc-drawing-swatch:hover {
+  transform: scale(1.1);
+}
+
+[data-qc-theme] .qc-drawing-swatch[data-qc-active='true'] {
+  box-shadow: inset 0 0 0 2px var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-drawing-swatch-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--qc-text-muted);
+  background: none;
+  border: 1px dashed var(--qc-chrome-borderStrong);
+  box-shadow: none;
+}
+
+[data-qc-theme] .qc-drawing-swatch-plus[aria-expanded='true'] {
+  color: var(--qc-text-primary);
+  border-color: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-drawing-palette-opacity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+[data-qc-theme] .qc-drawing-custom {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 188px;
+  padding-top: 6px;
+}
+
+[data-qc-theme] .qc-drawing-custom-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-drawing-custom-swatch {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  background: var(--qcd-swatch);
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px var(--qc-chrome-border);
+}
+
+[data-qc-theme] .qc-drawing-hex-wrap {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--qc-chrome-border);
+  border-radius: var(--qc-chrome-radius);
+}
+
+[data-qc-theme] .qc-drawing-hex-wrap:focus-within {
+  border-color: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-drawing-hex {
+  width: 100%;
+  min-width: 0;
+  padding: 0 4px;
+  color: var(--qc-text-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+[data-qc-theme] .qc-drawing-add {
+  padding: 4px 8px;
+}
+
+[data-qc-theme] .qc-drawing-custom-tracks {
+  display: flex;
+  gap: 6px;
+}
+
+/* The saturation and value square over the current hue, and the hue strip beside it. */
+[data-qc-theme] .qc-drawing-sv {
+  position: relative;
+  flex: 1 1 auto;
+  height: 120px;
+  background: linear-gradient(to top, var(--qcd-black), transparent), linear-gradient(to right, var(--qcd-white), var(--qcd-hue));
+  border-radius: var(--qc-chrome-radius);
+  cursor: crosshair;
+}
+
+[data-qc-theme] .qc-drawing-sv-dot {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--qcd-white);
+  border-radius: 50%;
+  box-shadow: var(--qc-overlay-shadow);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-drawing-hue {
+  position: relative;
+  flex: 0 0 14px;
+  height: 120px;
+  background: linear-gradient(
+    to bottom,
+    var(--qcd-hue-0) 0%,
+    var(--qcd-hue-60) 17%,
+    var(--qcd-hue-120) 33%,
+    var(--qcd-hue-180) 50%,
+    var(--qcd-hue-240) 67%,
+    var(--qcd-hue-300) 83%,
+    var(--qcd-hue-0) 100%
+  );
+  border-radius: var(--qc-chrome-radius);
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-drawing-hue-dot {
+  position: absolute;
+  inset-inline: -2px;
+  height: 6px;
+  border: 2px solid var(--qcd-white);
+  border-radius: 2px;
+  box-shadow: var(--qc-overlay-shadow);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+/* The hue wheel's six stops and the two poles of the value axis are color arithmetic, not theme
+ * roles: every mode paints the same wheel. They are stated once here as hsl functions of angle. */
+[data-qc-theme] .qc-drawing-custom {
+  --qcd-angle-0: 0deg;
+  --qcd-angle-60: 60deg;
+  --qcd-angle-120: 120deg;
+  --qcd-angle-180: 180deg;
+  --qcd-angle-240: 240deg;
+  --qcd-angle-300: 300deg;
+  --qcd-black: hsl(var(--qcd-angle-0) 0% 0%);
+  --qcd-white: hsl(var(--qcd-angle-0) 0% 100%);
+  --qcd-hue-0: hsl(var(--qcd-angle-0) 100% 50%);
+  --qcd-hue-60: hsl(var(--qcd-angle-60) 100% 50%);
+  --qcd-hue-120: hsl(var(--qcd-angle-120) 100% 50%);
+  --qcd-hue-180: hsl(var(--qcd-angle-180) 100% 50%);
+  --qcd-hue-240: hsl(var(--qcd-angle-240) 100% 50%);
+  --qcd-hue-300: hsl(var(--qcd-angle-300) 100% 50%);
+}
+
+/* The opacity slider fades a checkered track into the color. */
+[data-qc-theme] .qc-drawing-opacity-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-drawing-opacity {
+  width: 144px;
+  height: 14px;
+  margin: 0;
+  background: linear-gradient(to right, transparent, var(--qcd-swatch)), repeating-conic-gradient(var(--qc-chrome-border) 0% 25%, var(--qc-chrome-surfaceRaised) 0% 50%) 0 0 / 8px 8px;
+  border-radius: 7px;
+  appearance: none;
+  accent-color: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-drawing-opacity::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--qc-text-primary);
+  border: 2px solid var(--qc-chrome-surface);
+  border-radius: 50%;
+  appearance: none;
+}
+
+[data-qc-theme] .qc-drawing-opacity::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--qc-text-primary);
+  border: 2px solid var(--qc-chrome-surface);
+  border-radius: 50%;
+}
+
+[data-qc-theme] .qc-drawing-opacity-readout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 24px;
+  font-variant-numeric: tabular-nums;
+  background: var(--qc-chrome-surfaceRaised);
+  border-radius: var(--qc-chrome-radius);
+}
+
+/* The swatch button: a well holding the color, and for a stroke, the stroke at its thickness. */
+[data-qc-theme] .qc-drawing-swatch-button {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-drawing-well {
+  display: block;
+  width: 24px;
+  height: 24px;
+  overflow: hidden;
+  background: repeating-conic-gradient(var(--qc-chrome-border) 0% 25%, var(--qc-chrome-surfaceRaised) 0% 50%) 0 0 / 8px 8px;
+  border-radius: 3px;
+}
+
+[data-qc-theme] .qc-drawing-well-fill {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--qcd-swatch);
+}
+
+[data-qc-theme] .qc-drawing-swatch-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+[data-qc-theme] .qc-drawing-swatch-panel > .qc-muted {
+  padding: 0 8px;
+}
+
+[data-qc-theme] .qc-drawing-option-row {
+  display: flex;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+[data-qc-theme] .qc-drawing-option {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0;
+}
+
+/* The stroke preview: segments at the thickness, in currentColor or the drawing's own color. */
+[data-qc-theme] .qc-drawing-stroke {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 3px;
+  align-items: center;
+  width: 30px;
+}
+
+[data-qc-theme] .qc-drawing-stroke[data-dotted='tight'] {
+  gap: 2px;
+}
+
+[data-qc-theme] .qc-drawing-stroke-seg {
+  flex: 0 0 auto;
+  background: var(--qcd-swatch, currentColor);
+}
+
+[data-qc-theme] .qc-drawing-line-end {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* The dialog's page strip: equal tabs, each with its own rail segment, the active one bright. */
+[data-qc-theme] .qc-drawing-tabs {
+  display: flex;
+  align-items: stretch;
+  padding-bottom: 8px;
+}
+
+[data-qc-theme] .qc-drawing-tab {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 0 0;
+  color: var(--qc-text-muted);
+  font: inherit;
+  font-weight: 500;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-drawing-tab:hover {
+  color: var(--qc-text-secondary);
+}
+
+[data-qc-theme] .qc-drawing-tab[aria-selected='true'] {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-drawing-tab-rail {
+  height: 2px;
+  background: var(--qc-chrome-border);
+}
+
+[data-qc-theme] .qc-drawing-tab:first-child .qc-drawing-tab-rail {
+  border-start-start-radius: 2px;
+  border-end-start-radius: 2px;
+}
+
+[data-qc-theme] .qc-drawing-tab:last-child .qc-drawing-tab-rail {
+  border-start-end-radius: 2px;
+  border-end-end-radius: 2px;
+}
+
+[data-qc-theme] .qc-drawing-tab[aria-selected='true'] .qc-drawing-tab-rail {
+  background: var(--qc-text-primary);
+}
+
+/* One visibility bucket: the checkbox beside the word, then from, the two-thumb range, and to. */
+[data-qc-theme] .qc-drawing-visibility-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  align-items: center;
+  min-height: 50px;
+}
+
+[data-qc-theme] .qc-drawing-visibility-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-drawing-dual {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 96px;
+  height: 16px;
+}
+
+[data-qc-theme] .qc-drawing-dual-track {
+  position: absolute;
+  inset-inline: 0;
+  top: 50%;
+  height: 10px;
+  background: var(--qc-chrome-border);
+  border-radius: 5px;
+  transform: translateY(-50%);
+}
+
+[data-qc-theme] .qc-drawing-dual-fill {
+  position: absolute;
+  top: 50%;
+  height: 10px;
+  background: var(--qc-text-secondary);
+  border-radius: 5px;
+  transform: translateY(-50%);
+}
+
+[data-qc-theme] .qc-drawing-dual-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: none;
+  appearance: none;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-drawing-dual-input::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--qc-text-primary);
+  border: 2px solid var(--qc-chrome-surface);
+  border-radius: 50%;
+  appearance: none;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-drawing-dual-input::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  background: var(--qc-text-primary);
+  border: 2px solid var(--qc-chrome-surface);
+  border-radius: 50%;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-drawing-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-qc-theme] .qc-drawing-level {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-drawing-weight {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+}
+
+[data-qc-theme] .qc-drawing-table {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow-x: auto;
+}
+
+[data-qc-theme] .qc-drawing-table-row {
+  display: flex;
+  gap: 4px;
+}
+
+[data-qc-theme] .qc-drawing-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+[data-qc-theme] .qc-drawing-table-actions .qc-button {
+  padding: 4px 8px;
+  font-size: var(--qc-text-fontSizeSmall);
+}
