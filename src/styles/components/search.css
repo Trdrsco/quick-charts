@@ -1,0 +1,166 @@
+/* The symbol search dialog: the field with its operators, the class strip, and the result list. */
+[data-qc-theme] .qc-search-dialog {
+  height: min(85vh, 680px);
+}
+
+[data-qc-theme] .qc-search-dialog--compare {
+  height: min(85vh, 565px);
+}
+
+[data-qc-theme] .qc-search-field {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  margin: 0 14px;
+  padding: 0 8px;
+  border: 1px solid var(--qc-chrome-borderStrong);
+  border-radius: var(--qc-chrome-radiusLarge);
+}
+
+[data-qc-theme] .qc-search-magnifier {
+  color: var(--qc-text-muted);
+}
+
+[data-qc-theme] .qc-search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 4px;
+  color: var(--qc-text-primary);
+  font: inherit;
+  font-size: var(--qc-text-fontSizeTitle);
+  text-transform: uppercase;
+  background: none;
+  border: none;
+  outline: none;
+}
+
+[data-qc-theme] .qc-search-input::placeholder {
+  color: var(--qc-text-muted);
+  text-transform: none;
+}
+
+[data-qc-theme] .qc-search-ops {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding-inline-start: 6px;
+  border-inline-start: 1px solid var(--qc-overlay-separator);
+}
+
+[data-qc-theme] .qc-search-op {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--qc-text-secondary);
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-search-classes {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  padding: 8px 14px;
+  overflow-x: auto;
+}
+
+[data-qc-theme] .qc-search-class {
+  height: 26px;
+  padding: 0 10px;
+  font-size: var(--qc-text-fontSizeBase);
+  white-space: nowrap;
+  border-radius: 13px;
+}
+
+[data-qc-theme] .qc-search-class[aria-pressed='true'] {
+  color: var(--qc-text-inverse);
+  background: var(--qc-state-accent);
+  border-color: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-search-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+[data-qc-theme] .qc-search-list .qc-dialog-heading {
+  padding-inline: 14px;
+}
+
+[data-qc-theme] .qc-search-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--qc-overlay-separator);
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-search-row[aria-selected='true'] {
+  background: var(--qc-state-selected);
+}
+
+[data-qc-theme] .qc-search-text {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 12px;
+  align-items: baseline;
+  min-width: 0;
+}
+
+[data-qc-theme] .qc-search-symbol {
+  flex: 0 0 auto;
+  min-width: 96px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-search-hit {
+  color: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-search-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-search-meta {
+  flex: 0 0 auto;
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+[data-qc-theme] .qc-search-added {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Compare rows swap their meta for the three placement verbs under the pointer or the keyboard. */
+[data-qc-theme] .qc-search-actions {
+  display: none;
+  gap: 6px;
+}
+
+[data-qc-theme] .qc-search-row:hover .qc-search-actions,
+[data-qc-theme] .qc-search-row[aria-selected='true'] .qc-search-actions,
+[data-qc-theme] .qc-search-row:focus-within .qc-search-actions {
+  display: inline-flex;
+}
+
+[data-qc-theme] .qc-search-status {
+  flex: 0 0 auto;
+  padding: 6px 14px;
+  min-height: 12px;
+}
+
+[data-qc-theme] .qc-search-sentinel {
+  padding: 8px 14px;
+  font-size: var(--qc-text-fontSizeSmall);
+}

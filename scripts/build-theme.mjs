@@ -2,7 +2,8 @@
 // The theme generator: one typed source, three generated artifacts.
 //
 //   dist/quickcharts.css     the distributable stylesheet, the built-in mode blocks followed by the
-//                            authored component recipes
+//                            authored structural rules and then every component recipe file under
+//                            src/styles/components, in name order
 //   dist/theme-manifest.json the published role inventory, both palettes, the scoped root
 //                            attribute, and the stylesheet entry name
 //   test/theme/vectors.json  the committed declaration vectors the drift gate compares against
@@ -15,7 +16,7 @@
 // The script imports the theme source directly. Node strips the type annotations, which is why
 // `schema.ts`, `palettes.ts`, and `css-contract.ts` carry no runtime import of their own: Node
 // resolves no extensionless relative specifier, so each of those modules has to stand alone.
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -26,7 +27,15 @@ import { composeStylesheet, themeDeclarations, THEME_ROOT_ATTRIBUTE } from '../s
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const CSS_ENTRY = 'quickcharts/styles.css'
 
-const structural = readFileSync(join(pkgRoot, 'src/styles/quickcharts.css'), 'utf8')
+// The authored CSS is one structural file plus one recipe file per chrome surface. They are read in
+// name order so the composed stylesheet is deterministic, and every file is scoped the same way:
+// the stylesheet fixture in test/theme reads exactly this list and judges each selector in it.
+const componentsDir = join(pkgRoot, 'src/styles/components')
+const componentFiles = readdirSync(componentsDir)
+  .filter((name) => name.endsWith('.css'))
+  .sort()
+  .map((name) => join(componentsDir, name))
+const structural = [join(pkgRoot, 'src/styles/quickcharts.css'), ...componentFiles].map((path) => readFileSync(path, 'utf8').trim()).join('\n\n')
 const blocks = THEME_MODES.map((mode) => ({ mode, theme: BUILT_IN_THEMES[mode] }))
 
 const css = composeStylesheet({ blocks, structural })

@@ -1,0 +1,113 @@
+/* The market-status control on the legend and its popup. */
+[data-qc-theme] .qc-legend-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+}
+
+[data-qc-theme] .qc-legend-status:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-status-popup {
+  padding: 12px 12px 10px;
+}
+
+[data-qc-theme] .qc-status-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+[data-qc-theme] .qc-status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+}
+
+[data-qc-theme] .qc-status-text {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+[data-qc-theme] .qc-status-timeline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+[data-qc-theme] .qc-status-day {
+  flex: 0 0 32px;
+}
+
+[data-qc-theme] .qc-status-track {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 6px;
+}
+
+[data-qc-theme] .qc-status-bar {
+  display: flex;
+  gap: 1px;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+[data-qc-theme] .qc-status-segment[data-qc-session='pre'] {
+  background: var(--qc-status-sessionPreMarket);
+}
+
+[data-qc-theme] .qc-status-segment[data-qc-session='open'] {
+  background: var(--qc-status-sessionOpen);
+}
+
+[data-qc-theme] .qc-status-segment[data-qc-session='extended'] {
+  background: var(--qc-status-sessionExtended);
+}
+
+[data-qc-theme] .qc-status-segment[data-qc-session='after'] {
+  background: var(--qc-status-sessionAfterHours);
+}
+
+[data-qc-theme] .qc-status-segment[data-qc-session='closed'] {
+  background: var(--qc-status-sessionClosed);
+}
+
+[data-qc-theme] .qc-status-now {
+  position: absolute;
+  top: -2px;
+  width: 1px;
+  height: 10px;
+  background: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-status-labels {
+  position: relative;
+  height: 14px;
+  margin: 4px 0 0 40px;
+}
+
+[data-qc-theme][dir='rtl'] .qc-status-labels {
+  margin: 4px 40px 0 0;
+}
+
+[data-qc-theme] .qc-status-label {
+  position: absolute;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme][dir='rtl'] .qc-status-label {
+  transform: translateX(50%);
+}
+
+[data-qc-theme] .qc-status-footer {
+  margin-top: 8px;
+}

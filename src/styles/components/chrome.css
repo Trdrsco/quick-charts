@@ -1,0 +1,183 @@
+/* The chrome's shared recipes: the overlay layer, toolbar buttons, chips, separators, glyphs.
+ * Every surface's own recipe file builds on these. */
+
+/* The widget-level layer menus and dialogs mount into: above every chart, inert by itself, each
+ * panel opting back into pointer events. Fixed, so a panel positioned in viewport coordinates
+ * lands where it was measured. */
+[data-qc-theme] .qc-overlays {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-overlays > * {
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+[data-qc-theme] .qc-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  color: var(--qc-text-secondary);
+  white-space: nowrap;
+  background: none;
+  border: 1px solid transparent;
+}
+
+[data-qc-theme] .qc-toolbar-button:hover {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-toolbar-button[aria-pressed='true'],
+[data-qc-theme] .qc-toolbar-button[aria-expanded='true'] {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-selected);
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-toolbar-button[disabled] {
+  color: var(--qc-text-disabled);
+  background: none;
+}
+
+[data-qc-theme] .qc-button-text {
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-separator--vertical {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 20px;
+  margin: 0 4px;
+}
+
+[data-qc-theme] .qc-button--danger {
+  color: var(--qc-text-inverse);
+  background: var(--qc-status-negative);
+  border-color: var(--qc-status-negative);
+}
+
+[data-qc-theme] .qc-color-field {
+  width: 28px;
+  height: 20px;
+  padding: 0 2px;
+}
+
+[data-qc-theme] .qc-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 30px;
+  padding: 0 12px;
+}
+
+[data-qc-theme] .qc-field-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--qc-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Switches: a track and a knob, the state on `aria-checked`. */
+[data-qc-theme] .qc-switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 16px;
+  padding: 0;
+  background: var(--qc-chrome-borderStrong);
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] .qc-switch[aria-checked='true'] {
+  background: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-switch[disabled] {
+  background: var(--qc-chrome-border);
+  cursor: default;
+}
+
+[data-qc-theme] .qc-switch-knob {
+  position: absolute;
+  top: 2px;
+  inset-inline-start: 2px;
+  width: 12px;
+  height: 12px;
+  background: var(--qc-text-inverse);
+  border-radius: 50%;
+  transition: transform var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] .qc-switch[aria-checked='true'] .qc-switch-knob {
+  transform: translateX(12px);
+}
+
+[data-qc-theme][dir='rtl'] .qc-switch[aria-checked='true'] .qc-switch-knob {
+  transform: translateX(-12px);
+}
+
+[data-qc-theme] .qc-switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-switch-row:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-switch-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Tabs. */
+[data-qc-theme] .qc-tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--qc-overlay-separator);
+}
+
+[data-qc-theme] .qc-tab {
+  padding: 6px 10px;
+  color: var(--qc-text-secondary);
+  font: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-tab[aria-selected='true'] {
+  color: var(--qc-text-primary);
+  border-bottom-color: var(--qc-state-accent);
+}

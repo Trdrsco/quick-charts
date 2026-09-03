@@ -1,0 +1,9 @@
+/* The chart settings menu. */
+[data-qc-theme] .qc-settings-menu .qc-settings-row {
+  min-height: 28px;
+  padding: 0 12px;
+}
+
+[data-qc-theme] .qc-settings-menu .qc-switch-row {
+  min-height: 28px;
+}

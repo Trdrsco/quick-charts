@@ -1,0 +1,90 @@
+/* The indicator picker and the indicator settings dialog. */
+[data-qc-theme] .qc-picker-dialog {
+  height: min(80vh, 560px);
+}
+
+[data-qc-theme] .qc-picker-search {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+}
+
+[data-qc-theme] .qc-picker-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+[data-qc-theme] .qc-picker-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 6px 8px;
+  color: var(--qc-text-primary);
+  font: inherit;
+  text-align: start;
+  background: none;
+  border: 0;
+  border-radius: var(--qc-chrome-radius);
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-picker-row:hover,
+[data-qc-theme] .qc-picker-row:focus-visible {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-picker-row[disabled] {
+  color: var(--qc-text-disabled);
+  cursor: default;
+}
+
+[data-qc-theme] .qc-picker-name {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+[data-qc-theme] .qc-picker-description {
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+[data-qc-theme] .qc-picker-status {
+  flex: 0 0 auto;
+  min-height: 12px;
+}
+
+[data-qc-theme] .qc-settings-dialog {
+  max-height: min(80vh, 620px);
+}
+
+[data-qc-theme] .qc-settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+}
+
+[data-qc-theme] .qc-settings-page .qc-switch-row,
+[data-qc-theme] .qc-settings-page .qc-field-row {
+  padding-inline: 0;
+}
+
+[data-qc-theme] .qc-settings-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+
+[data-qc-theme] .qc-settings-row .qc-field {
+  padding: 2px 4px;
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+[data-qc-theme] .qc-settings-page .qc-inputs-row {
+  min-height: 30px;
+}

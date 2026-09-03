@@ -1,0 +1,132 @@
+/* The layout setup grid and the saved-layouts menu and dialog. */
+[data-qc-theme] .qc-layout-grid {
+  padding: 0 12px;
+}
+
+[data-qc-theme] .qc-layout-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+[data-qc-theme] .qc-layout-count {
+  flex: 0 0 18px;
+  font-size: var(--qc-text-fontSizeSmall);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-layout-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+[data-qc-theme] .qc-layout-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 29px;
+  height: 27px;
+  padding: 0;
+  color: var(--qc-text-muted);
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-layout-tile:hover {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-layout-tile[aria-checked='true'] {
+  color: var(--qc-text-inverse);
+  background: var(--qc-state-accent);
+  border-color: var(--qc-state-accent);
+}
+
+[data-qc-theme] .qc-layout-grid .qc-separator {
+  margin: 3px 0;
+}
+
+[data-qc-theme] .qc-arrangement svg {
+  display: block;
+}
+
+[data-qc-theme] .qc-layouts-naming {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+}
+
+[data-qc-theme] .qc-layouts-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 4px 8px;
+}
+
+[data-qc-theme] .qc-layouts-search {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+}
+
+[data-qc-theme] .qc-layouts-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+[data-qc-theme] .qc-layouts-item {
+  display: flex;
+  align-items: center;
+  border-radius: var(--qc-chrome-radius);
+}
+
+[data-qc-theme] .qc-layouts-item:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-layouts-open {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 4px 8px;
+  text-align: start;
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-layouts-item-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-layouts-item-meta {
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+[data-qc-theme] .qc-layouts-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-inline-end: 4px;
+  padding: 0;
+  color: var(--qc-text-muted);
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-layouts-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0 4px;
+  border-top: 1px solid var(--qc-overlay-separator);
+}

@@ -1,0 +1,96 @@
+/* The top bar. A 38px strip above the charts; its clusters sit at either end and the middle clips
+ * rather than wraps, because a widget narrower than its toolbar is a host's layout mistake. */
+[data-qc-theme] .qc-topbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  height: 38px;
+  padding: 0 8px;
+  overflow: hidden;
+  color: var(--qc-text-primary);
+  background: var(--qc-chrome-surface);
+  border-bottom: 1px solid var(--qc-chrome-border);
+}
+
+[data-qc-theme] .qc-topbar-start,
+[data-qc-theme] .qc-topbar-end {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+[data-qc-theme] .qc-symbol-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  min-width: 96px;
+  padding: 0 12px;
+  color: var(--qc-text-primary);
+  font-weight: 600;
+  background: var(--qc-chrome-surfaceRaised);
+  border-color: transparent;
+  border-radius: 14px;
+}
+
+[data-qc-theme] .qc-symbol-pill:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-symbol-pill[disabled] {
+  color: var(--qc-text-disabled);
+}
+
+/* The layouts cluster: the name with its dirty marker and Save link, then the caret. */
+[data-qc-theme] .qc-layouts {
+  display: inline-flex;
+  align-items: center;
+  max-width: 200px;
+}
+
+[data-qc-theme] .qc-layouts-title {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 6px;
+}
+
+[data-qc-theme] .qc-layouts-name {
+  max-width: 150px;
+  overflow: hidden;
+  font-size: var(--qc-text-fontSizeSmall);
+  line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-layouts-name[data-qc-dirty='true']::after {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-inline-start: 4px;
+  vertical-align: middle;
+  background: var(--qc-state-accent);
+  border-radius: 50%;
+}
+
+[data-qc-theme] .qc-layouts-save {
+  padding: 0;
+  font-size: var(--qc-text-fontSizeMicro);
+  line-height: 12px;
+  background: none;
+  border: 0;
+}
+
+[data-qc-theme] .qc-layouts-caret {
+  width: 24px;
+  min-width: 24px;
+  padding: 0;
+}
