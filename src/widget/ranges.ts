@@ -88,15 +88,16 @@ export function createRangeApi(deps: RangeDeps): RangeApi {
       if (deps.disposed() || bars === 0) return
       // ONE mechanism for every scroll: the scale's own position, moved by whole bars. The step
       // commands move by `SCROLL_STEP_BARS` of these, so a keyboard and a host call cannot end up
-      // on two different arithmetics.
-      deps.muted(() => scale().scrollToPosition(scale().scrollPosition() + bars, false))
+      // on two different arithmetics. It is NOT muted: moving the view is a real change, and a
+      // layout mirroring this chart has to hear it exactly as it hears a drag.
+      scale().scrollToPosition(scale().scrollPosition() + bars, false)
     },
     zoom(factor) {
       if (deps.disposed() || !(factor > 0) || factor === 1) return
       // Zoom is bar spacing, which is the same quantity the step commands move. A wider factor
       // shows more bars, so the spacing shrinks; the chart's own minimum is the floor.
       const spacing = scale().options().barSpacing
-      deps.muted(() => scale().applyOptions({ barSpacing: Math.max(MIN_BAR_SPACING, spacing / factor) }))
+      scale().applyOptions({ barSpacing: Math.max(MIN_BAR_SPACING, spacing / factor) })
     },
     reset() {
       if (deps.disposed()) return

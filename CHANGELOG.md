@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- **`quickcharts/styles.css` is required for LAYOUT, not only for color.** The chart's structural
+  rules — the root filling its container, the charts tiling inside it, the plot area and its chrome
+  layer sizing from that — live in the stylesheet with everything else it paints, so a host that
+  does not import it gets a root with no height and a chart that paints nothing. Nothing is written
+  from JavaScript but calculated geometry.
 - **`createChart` answers a `ChartWidget`.** A widget hosts one or many charts under one root, one
   theme, one language and one command registry. `ready()` settles when the first data has painted,
   `activeChart()` is the chart the viewer last pointed at, `charts()` lists them all, `chart(id)`

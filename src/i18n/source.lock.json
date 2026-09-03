@@ -1,9 +1,12 @@
 {
   "keys": {
     "command.compareAdd": "da4f448112",
+    "command.compareChangeSymbol": "7d8d43e090",
     "command.compareOpen": "6fbe7105c5",
     "command.compareRemove": "20001d8db6",
+    "command.compareVisible": "68c9477a27",
     "command.drawingArm": "727fe1afa9",
+    "command.drawingCancel": "ca76c7aa4e",
     "command.drawingDeleteSelected": "a5d81630e2",
     "command.drawingsRemoveAll": "d6920a4280",
     "command.extension": "69de427139",
@@ -17,7 +20,9 @@
     "command.indicatorRemove": "c593c9712f",
     "command.indicatorShow": "926de34db6",
     "command.indicatorsRemoveAll": "d60a35ed58",
+    "command.layoutActive": "af00c8d8fb",
     "command.layoutArrangement": "a302b0761f",
+    "command.layoutSync": "b9303b8361",
     "command.localeSet": "7936076a3f",
     "command.priceCopy": "d2167137c0",
     "command.rangeSet": "d66582c011",

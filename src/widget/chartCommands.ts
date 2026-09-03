@@ -57,7 +57,7 @@ export interface ChartCommandDeps {
   /** The level the open menu was raised at, which copy-price acts on. */
   level(): number | null
   formatter(): PriceFormatter
-  compareOpen(mode: 'compare' | 'change-symbol'): void
+  compareOpen(mode: 'compare' | 'change-symbol', changeFrom?: string): void
 }
 
 /** Register every chart-scoped built-in. Returns one unregister for all of them, which the chart
@@ -72,13 +72,13 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
 
   // ── View and navigation ─────────────────────────────────────────────────────────────────────
   add({ id: 'chart.view.reset', scope: 'chart', label: 'command.viewReset', shortcut: 'Alt+KeyR', available: always, execute: () => handle.reset() })
-  add({ id: 'chart.view.goLive', scope: 'chart', label: 'command.viewGoLive', available: always, execute: () => handle.goLive() })
+  add({ id: 'chart.view.goLive', scope: 'chart', label: 'command.viewGoLive', shortcut: 'Alt+KeyL', available: always, execute: () => handle.goLive() })
   // Zoom and scroll are the chart's own step rules, so a keyboard, a button and a host call all
   // move by exactly the same amount and stop at the same floor.
-  add({ id: 'chart.view.zoomIn', scope: 'chart', label: 'command.viewZoomIn', available: always, execute: () => deps.zoom('in') })
-  add({ id: 'chart.view.zoomOut', scope: 'chart', label: 'command.viewZoomOut', available: always, execute: () => deps.zoom('out') })
-  add({ id: 'chart.view.scrollLeft', scope: 'chart', label: 'command.viewScrollLeft', available: always, execute: () => deps.scroll('left') })
-  add({ id: 'chart.view.scrollRight', scope: 'chart', label: 'command.viewScrollRight', available: always, execute: () => deps.scroll('right') })
+  add({ id: 'chart.view.zoomIn', scope: 'chart', label: 'command.viewZoomIn', shortcut: 'Equal', available: always, execute: () => deps.zoom('in') })
+  add({ id: 'chart.view.zoomOut', scope: 'chart', label: 'command.viewZoomOut', shortcut: 'Minus', available: always, execute: () => deps.zoom('out') })
+  add({ id: 'chart.view.scrollLeft', scope: 'chart', label: 'command.viewScrollLeft', shortcut: 'ArrowLeft', available: always, execute: () => deps.scroll('left') })
+  add({ id: 'chart.view.scrollRight', scope: 'chart', label: 'command.viewScrollRight', shortcut: 'ArrowRight', available: always, execute: () => deps.scroll('right') })
 
   // ── The level menu's own verbs ──────────────────────────────────────────────────────────────
   add({
@@ -163,8 +163,19 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     id: 'chart.drawings.deleteSelected',
     scope: 'chart',
     label: 'command.drawingDeleteSelected',
+    shortcut: 'Delete',
     available: () => handle.drawings?.hasSelection() ?? false,
     execute: () => handle.drawings?.deleteSelected(),
+  })
+  // Escape disarms the armed tool. The drawing layer owns the gesture; the registry is how a key
+  // reaches it, so a host that forbids the verb disables the key with it.
+  add({
+    id: 'chart.drawings.cancel',
+    scope: 'chart',
+    label: 'command.drawingCancel',
+    shortcut: 'Escape',
+    available: () => features.drawings && handle.drawings?.activeTool() != null,
+    execute: () => handle.drawings?.armTool(null),
   })
   // Arming a tool is ONE command taking the tool id: the ninety registered tools would otherwise be
   // ninety near-identical entries, and the access policy already refuses per tool inside the layer.
@@ -193,6 +204,25 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     available: () => features.compare,
     execute: (arg) => {
       if (typeof arg === 'string') handle.compare.add(arg, { placement: 'same-percent' })
+    },
+  })
+  add({
+    id: 'chart.compare.setVisible',
+    scope: 'chart',
+    label: 'command.compareVisible',
+    available: () => features.compare && handle.compare.list().length > 0,
+    execute: (arg) => {
+      const at = arg as { symbol?: unknown; visible?: unknown } | null
+      if (at && typeof at.symbol === 'string' && typeof at.visible === 'boolean') handle.compare.setVisible(at.symbol, at.visible)
+    },
+  })
+  add({
+    id: 'chart.compare.changeSymbol',
+    scope: 'chart',
+    label: 'command.compareChangeSymbol',
+    available: () => features.compare && deps.capabilities().search,
+    execute: (arg) => {
+      if (typeof arg === 'string') deps.compareOpen('change-symbol', arg)
     },
   })
   add({

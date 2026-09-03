@@ -230,6 +230,8 @@
 
 [data-qc-theme] .qc-pane[data-qc-active='true'] {
   outline-color: var(--qc-state-focusRing);
+  /* The active chart stacks above its neighbours so its ring is never clipped by the one beside it. */
+  z-index: 1;
 }
 
 /* Widget structure ----------------------------------------------------------------------------- */

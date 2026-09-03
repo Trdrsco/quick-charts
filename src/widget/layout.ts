@@ -131,7 +131,6 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     for (let i = 0; i < slots.length; i++) {
       // The active ring only means something with a sibling to be active AGAINST.
       slots[i]!.element.dataset.qcActive = i === active && slots.length > 1 ? 'true' : 'false'
-      slots[i]!.element.style.zIndex = i === active ? '1' : '0'
     }
   }
 

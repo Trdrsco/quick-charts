@@ -25,6 +25,7 @@ import { createLayoutPlane, type LayoutApi } from './layout'
 import { createFullscreen, type FullscreenApi } from './fullscreen'
 import { createImageApi, type ImageApi, type ImageTile } from './image'
 import { registerWidgetCommands } from './widgetCommands'
+import { attachShortcuts } from './shortcuts'
 
 /** Every mounted chart gets one id, so an extension attached to two charts of a layout can tell
  *  them apart and key its own per-chart state. Stable for the chart's life, never reused. */
@@ -116,6 +117,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // asked for.
   let feedConfig: DatafeedConfig | null = null
   let activeSymbolInfo: SymbolInfo | null = null
+  /** Each chart's last resolved symbol, so activating one re-reads ITS facts instead of keeping
+   *  whichever chart resolved most recently. */
+  const symbolInfoByChart = new Map<string, SymbolInfo | null>()
   const capabilities = (): Capabilities =>
     deriveCapabilities({
       datafeed: options.datafeed,
@@ -172,6 +176,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
         timeframe: init?.timeframe ?? options.timeframe,
         style: options.style,
         onSymbolInfo: (info) => {
+          symbolInfoByChart.set(id, info)
           if (layout.activeHandle()?.id === id) activeSymbolInfo = info
         },
         onConfig: (config) => {
@@ -188,7 +193,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
       instances.get(handle.id)?.dispose()
       instances.delete(handle.id)
     },
-    onActive: (handle) => events.emit('activeChart', handle),
+    onActive: (handle) => {
+      // Capabilities describe the chart a host is POINTED AT, so activating another chart re-reads
+      // its symbol rather than leaving the previous one's facts standing.
+      activeSymbolInfo = symbolInfoByChart.get(handle.id) ?? null
+      events.emit('activeChart', handle)
+    },
     onChange: pingSaveNeeded,
   })
 
@@ -213,7 +223,18 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // for every search surface. A host supplies only what it alone knows, which is where the viewer's
   // recent symbols live; without one they last the page.
   const recents: RecentsPort = options.search?.recents ?? memoryRecents()
-  const search = (): SearchController => createSearchController(options.datafeed)
+  /** Every controller handed out, so dispose takes down the debounce timers and in-flight asks a
+   *  host's picker would otherwise leave running after the chart is gone. */
+  const searchControllers = new Set<SearchController>()
+  const search = (): SearchController => {
+    const controller = createSearchController(options.datafeed)
+    searchControllers.add(controller)
+    return controller
+  }
+
+  // The keyboard reaches verbs the same way the glass does: a press resolves to a command id and
+  // goes through the registry, so `access` and `features` gate it without a second rule.
+  const shortcuts = attachShortcuts({ root, commands })
 
   const fullscreen = createFullscreen(root, options.fullscreen, (active) => events.emit('fullscreen', active))
 
@@ -222,7 +243,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
       const rects = layout.rects()
       const out: ImageTile[] = []
       layout.slots().forEach((slot, index) => {
-        const canvas = instances.get(slot.handle.id)?.canvases()[0]
+        const canvas = instances.get(slot.handle.id)?.screenshot()
         const rect = rects[index]
         if (!canvas || !rect) return
         out.push({ canvas, rect, symbol: slot.handle.symbol(), timeframe: slot.handle.timeframe() })
@@ -277,6 +298,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
       unsubscribeStrings()
       if (saveNeededTimer) clearTimeout(saveNeededTimer)
       saveNeededTimer = null
+      shortcuts.dispose()
+      for (const controller of searchControllers) controller.dispose()
+      searchControllers.clear()
       fullscreen.dispose()
       layout.destroy()
       instances.clear()
