@@ -374,28 +374,8 @@
   line-height: 14px;
 }
 
-/* Drawing rail --------------------------------------------------------------------------------- */
-
-[data-qc-theme] .qc-rail {
-  position: absolute;
-  left: 8px;
-  top: 8px;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  pointer-events: auto;
-}
-
-[data-qc-theme] .qc-rail-button {
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: var(--qc-chrome-surface);
-}
+/* The drawing toolbar, the selected drawing's surfaces and their fields are recipes of their own
+ * under styles/components/drawings-*.css, which the build concatenates after this file. */
 
 /* Level menu ----------------------------------------------------------------------------------- */
 
