@@ -1,6 +1,6 @@
 // Quick Charts SYMBOLOGY — the display facts `ChartDatafeed.resolve` serves for one symbol, and the
-// only place a chart price display gets its precision from. The division of responsibility is the
-// Advanced Charts one (DECISIONS.md, "Quick Charts follows datafeed symbology; trading follows
+// only place a chart price display gets its precision from. The division of responsibility is the one
+// DECISIONS.md records ("Quick Charts follows datafeed symbology; trading follows
 // broker instrument facts"): the datafeed says how a market's prices are WRITTEN, a broker seam
 // says how they may be TRADED, and the two grids are allowed to differ.
 //
