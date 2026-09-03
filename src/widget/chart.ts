@@ -1120,6 +1120,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         deps.onConfig(cfg)
         tf = resolveInitialTf(tf, cfg.resolutions)
         drawings.setTimeframe(tf)
+        // The header carries the timeframe on screen, and negotiation can move it off the one the
+        // host asked for. Leaving it stale makes the legend state a timeframe the chart is not on.
+        legend.setHeader(symbol, tf)
         load()
       })
   } else {
