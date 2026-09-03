@@ -20,9 +20,12 @@ obligations attach to **your** bundle: `THIRD-PARTY-NOTICES.md` in this package 
 what to carry and how. The chart includes no trading, accounts or executions; an application that
 trades composes those outside the chart, through the extension seam below.
 
-Quickstart — the smallest working chart (see [The widget](#the-widget) for the full options):
+Quickstart — the smallest working chart (see [The widget](#the-widget) for the full options). The
+stylesheet import is not optional: it carries the chart's layout as well as its look, and without it
+the chart has no size and paints nothing.
 
 ```ts
+import 'quickcharts/styles.css'
 import { createChart, createUdfDatafeed } from 'quickcharts'
 
 const widget = createChart({
@@ -569,7 +572,7 @@ function toolbar(widget: ChartWidget): void {
 ```
 
 A refusal is a value, never a throw: `ok`, `unavailable`, `denied`, `unknown`, or `failed` with the
-error. Your own commands register through the same door — a chart extension's `contributeCommands`
+error. Your own commands register through the same door: a chart extension's `contributeCommands`
 puts them in this list with `scope: 'chart'` and its own label text.
 
 ### The four configuration planes
@@ -650,9 +653,9 @@ void withMarks
 
 ### The rest of the widget
 
-- **Scale modes** — `chart.setScaleMode('log' | 'percent' | 'indexed' | 'normal')`, persisted
+- **Scale modes.** `chart.setScaleMode('log' | 'percent' | 'indexed' | 'normal')`, persisted
   through `ChartStorage`, and reachable as commands.
-- **Session bands** (on by default; `features.sessions: false` opts out) — every stretch outside
+- **Session bands** (on by default; `features.sessions: false` opts out). Every stretch outside
   regular hours shades under the bars, driven by the session model built from the symbol's own
   `session`, `sessionHolidays`, `corrections` and `subsessions` in `resolve()`'s answer (see
   Timezones and sessions). A continuous market never bands; intraday only; an UNRESOLVED symbol
@@ -660,7 +663,7 @@ void withMarks
   primitive's `model` getter admits `null` and a null draws nothing. A host that changes the model
   outside a `resolve()`, or supplies its own, calls the primitive's `refresh()` when it does; the
   chart does not invalidate the pane on a getter's value changing.
-- **A legend** (on by default; `features.legend: false` removes it) — the symbol and timeframe
+- **A legend** (on by default; `features.legend: false` removes it). It carries the symbol and timeframe
   header with a market-status dot and the four price-scale chips (the SAME application path as
   `setScaleMode`, so the api and the chips can never disagree), plus one row per indicator instance:
   title, latest value, and per-row controls that render by presence. A settings gear appears only
@@ -725,6 +728,11 @@ the chart canvas, toolbars, legend, scales, menus, dialogs and fields all render
 ```js
 import 'quickcharts/styles.css'
 ```
+
+**The stylesheet is required, and it is not only about color.** It carries the chart's LAYOUT: the
+root fills your container, the charts tile inside it, and the plot area sizes itself from that.
+Without it the root has no height, so the renderer measures zero and the chart paints nothing at
+all. If you mount a widget and see an empty box, this import is the first thing to check.
 
 The stylesheet is scoped to the chart's own root element. It applies no reset to your document, it
 downloads no font, and it fetches nothing at runtime. Two charts on one page can run different
@@ -803,7 +811,7 @@ placements, persisted in the chart content blob. `same-percent` shares the
 main price scale and flips it to percent while any such compare lives (the prior scale mode comes
 back when the last one leaves); `new-scale` binds the LEFT scale with absolute prices (the left
 axis exists only while such a compare does); `new-pane` takes a pane of its own. Compared bars
-clip to the main series window — a compare never extends the time axis. `features.compareSymbols` supplies
+clip to the main series window, so a compare never extends the time axis. `features.compareSymbols` supplies
 a curated quick-add list for the compare dialog; `compare.symbols()` reads it back.
 
 The widget ships its own compare chrome: the legend header carries a compare door (`+`) opening a
@@ -1009,7 +1017,7 @@ live, surviving charts keep their state and new charts clone the active chart's 
 timeframe.
 
 One chart is ACTIVE: it follows pointerdown, `widget.activeChart()` is it, and the `activeChart`
-event reports it every time it moves — another chart activated, the active chart's symbol changed, a
+event reports it every time it moves: another chart activated, the active chart's symbol changed, a
 re-tile, a restore. Pointing your own surface at a chart moves no chart's symbol, so the two
 concepts stay separate: each chart keeps charting what it charts, and one of them is the one you are
 looking at.
@@ -1035,7 +1043,7 @@ const widget = createChart({
 widget.on('activeChart', (chart) => header.setSymbol(chart.symbol()))
 header.setSymbol(widget.activeChart().symbol()) // the value on mount; the event carries changes
 widget.layout.setSync({ symbol: true })
-widget.layout.setArrangement(LAYOUT_MENU_ROWS[3]!.codes[0]!) // '4' — the 2x2 grid
+widget.layout.setArrangement(LAYOUT_MENU_ROWS[3]!.codes[0]!) // '4', the 2x2 grid
 const saved = widget.layout.serialize().content // ONE blob for the whole layout
 widget.layout.restore(saved)
 widget.dispose()

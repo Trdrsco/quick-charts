@@ -395,8 +395,10 @@ describe('the active subsession', () => {
     ],
   })
 
-  it('defaults to regular, and only a symbol with extended hours has anything to choose', () => {
-    expect(DEFAULT_SUBSESSION).toBe('regular')
+  it('defaults to showing EVERY bar, and only a symbol with extended hours has anything to choose', () => {
+    // Narrowing to regular hours is the opt-in. A chart that hid bars it had been served by
+    // default would be understating the market before anyone asked it to.
+    expect(DEFAULT_SUBSESSION).toBe('extended')
     expect(hasExtendedHours(EQUITY_EXT)).toBe(true)
     expect(hasExtendedHours(CME)).toBe(false)
     expect(hasExtendedHours(PERP)).toBe(false)

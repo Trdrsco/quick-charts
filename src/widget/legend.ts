@@ -14,6 +14,7 @@ import type { ScaleMode } from '../scaleMode'
 import type { SessionState } from '../sessionModel'
 import type { IndicatorsPlane } from './indicators'
 import type { ComparePlane } from './compare'
+import type { CommandRegistry } from './commands'
 
 /** The compare-row id prefix. A compare row and a study row share one list, so the prefix is what
  *  tells the two apart without a second lookup. */
@@ -29,6 +30,9 @@ export interface LegendPlane {
 }
 
 export interface LegendDeps {
+  /** The chart's ONE command registry. Every control below runs through it, so the legend cannot
+   *  reach a verb the access policy refuses or a feature flag has switched off. */
+  commands: CommandRegistry
   chart: IChartApi
   /** The chrome subtree the legend mounts into. */
   chrome: HTMLElement
@@ -37,7 +41,6 @@ export interface LegendDeps {
   indicators: IndicatorsPlane
   compare: ComparePlane | null
   scaleMode(): ScaleMode
-  applyScaleMode(mode: ScaleMode): void
 }
 
 export function attachLegendPlane(deps: LegendDeps): LegendPlane {
@@ -56,23 +59,25 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
   let legend: ChartLegend | null = null
 
   legend = mountChartLegend(deps.chrome, deps.i18n, {
+    // Every row control is a COMMAND. The legend states an intent by id and the registry decides
+    // whether it may run, so a verb the host forbade cannot be reached by clicking either.
     onToggleEye: (id) => {
       if (id.startsWith(COMPARE_ROW_PREFIX)) {
         const symbol = id.slice(COMPARE_ROW_PREFIX.length)
         const entry = deps.compare?.api.list().find((e) => e.symbol === symbol)
-        if (entry) deps.compare?.api.setVisible(symbol, !entry.visible)
+        if (entry) deps.commands.execute('chart.compare.setVisible', { symbol, visible: !entry.visible })
         return
       }
-      deps.indicators.toggleHidden(id)
+      deps.commands.execute(deps.indicators.isHidden(id) ? 'chart.indicators.show' : 'chart.indicators.hide', id)
     },
     onTitle: (id) => {
-      if (id.startsWith(COMPARE_ROW_PREFIX)) deps.compare?.openDialog('change-symbol', id.slice(COMPARE_ROW_PREFIX.length))
+      if (id.startsWith(COMPARE_ROW_PREFIX)) deps.commands.execute('chart.compare.changeSymbol', id.slice(COMPARE_ROW_PREFIX.length))
     },
     onRemove: (id) => {
-      if (id.startsWith(COMPARE_ROW_PREFIX)) deps.compare?.api.remove(id.slice(COMPARE_ROW_PREFIX.length))
+      if (id.startsWith(COMPARE_ROW_PREFIX)) deps.commands.execute('chart.compare.remove', id.slice(COMPARE_ROW_PREFIX.length))
     },
-    ...(deps.compare ? { onCompare: () => deps.compare?.openDialog('compare') } : {}),
-    onScaleMode: (mode) => deps.applyScaleMode(mode),
+    ...(deps.compare ? { onCompare: () => deps.commands.execute('chart.compare.open') } : {}),
+    onScaleMode: (mode) => deps.commands.execute(`chart.scale.${mode}`),
     onSettings: (id, rect) => {
       const inst = deps.indicators.list().find((i) => i.id === id)
       if (!inst) return

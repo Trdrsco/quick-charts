@@ -8,6 +8,7 @@ import { THEME_MODES, type ThemeMode } from '../theme/schema'
 import type { ThemeController } from '../theme/controller'
 import type { CommandRegistry, CommandSpec } from './commands'
 import type { Capabilities } from './options'
+import type { LayoutSyncFlags } from './layout'
 import type { ChartWidget } from './create'
 
 export interface WidgetCommandDeps {
@@ -115,6 +116,24 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
   })
 
   // ── Layout ──────────────────────────────────────────────────────────────────────────────────
+  add({
+    id: 'widget.layout.setActive',
+    scope: 'widget',
+    label: 'command.layoutActive',
+    available: () => widget.charts().length > 1,
+    execute: (arg) => {
+      if (typeof arg === 'number') widget.layout.setActive(arg)
+    },
+  })
+  add({
+    id: 'widget.layout.setSync',
+    scope: 'widget',
+    label: 'command.layoutSync',
+    available: () => widget.charts().length > 1,
+    execute: (arg) => {
+      if (arg && typeof arg === 'object') widget.layout.setSync(arg as Partial<LayoutSyncFlags>)
+    },
+  })
   add({
     id: 'widget.layout.setArrangement',
     scope: 'widget',

@@ -232,11 +232,13 @@ export function parseSessionModel(source: SessionSource): SessionModel | null {
 
 /** Which of a symbol's named sessions a chart displays:
  *  `regular` shows regular hours only, `extended` shows the extended-hours bars as well. A
- *  per-chart preference a host persists; `regular` is the default. A symbol without extended hours
- *  has nothing to choose, and every bar shows. */
+ *  per-chart preference a host persists. `extended` is the DEFAULT and shows every bar the feed
+ *  served; narrowing to `regular` is the opt-in, because a chart that silently hid bars it had
+ *  would be lying about the market by default. A symbol without extended hours has nothing to
+ *  choose, and every bar shows either way. */
 export type ActiveSubsession = 'regular' | 'extended'
 
-export const DEFAULT_SUBSESSION: ActiveSubsession = 'regular'
+export const DEFAULT_SUBSESSION: ActiveSubsession = 'extended'
 
 /** Whether the symbol declared any hours outside its regular session. Only such a symbol offers a
  *  subsession choice or shades extended hours. */

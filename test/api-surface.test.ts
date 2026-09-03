@@ -74,7 +74,6 @@ const SURFACE: Record<string, string> = {
   placeableByWidget: 'function',
   planPaneOp: 'function',
   resolveInitialTf: 'function',
-
   subIntervalsFor: 'function',
   tfSeconds: 'function',
   tfToUdfResolution: 'function',

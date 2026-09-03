@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides } from '../src/overrides'
+import { DARK_THEME, LIGHT_THEME } from '../src/theme/palettes'
 
 describe('mergeOverrides', () => {
   it('nothing supplied → the defaults, whole and untouched', () => {
@@ -29,9 +30,11 @@ describe('brand colors are single-sourced', () => {
   // The brand pair marks what speaks for trdrs on top of a chart. It deliberately does not drive
   // the candle bodies: the shipped default canvas is the owner's own paper/teal/orange chart
   // (// 2026-08-20), and the pair is trdrs' own ink, not the market's.
-  it('the pair is two concrete colors a surface can paint with', () => {
-    expect(BRAND_UP).toMatch(/^#[0-9a-f]{6}$/i)
-    expect(BRAND_DOWN).toMatch(/^#[0-9a-f]{6}$/i)
+  it('the theme series roles ARE the brand pair, so one rebrand moves both', () => {
+    expect(DARK_THEME['series.up']).toBe(BRAND_UP)
+    expect(DARK_THEME['series.down']).toBe(BRAND_DOWN)
+    expect(LIGHT_THEME['series.up']).toBe(BRAND_UP)
+    expect(LIGHT_THEME['series.down']).toBe(BRAND_DOWN)
   })
 
   it('the candle canvas is its own palette, NOT the brand pair', () => {

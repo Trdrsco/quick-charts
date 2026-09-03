@@ -46,10 +46,14 @@ export const command = {
   'command.drawingDeleteSelected': 'Delete selected drawing',
   /** Arm a drawing tool. The tool is the argument, so the ninety tools share one command. */
   'command.drawingArm': 'Drawing tool',
+  /** Disarm the armed drawing tool. */
+  'command.drawingCancel': 'Cancel drawing',
 
   'command.compareOpen': 'Compare or add symbol',
   'command.compareAdd': 'Add comparison',
   'command.compareRemove': 'Remove comparison',
+  'command.compareVisible': 'Show or hide a comparison',
+  'command.compareChangeSymbol': 'Change compared symbol',
 
   'command.replayStart': 'Start bar replay',
   'command.replayExit': 'Exit bar replay',
@@ -84,4 +88,6 @@ export const command = {
   'command.imageCopy': 'Copy image',
 
   'command.layoutArrangement': 'Layout',
+  'command.layoutActive': 'Active chart',
+  'command.layoutSync': 'Chart synchronization',
 } as const

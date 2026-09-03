@@ -232,8 +232,10 @@ export interface ChartInstanceDeps {
 
 export interface ChartInstance {
   handle: ChartHandle
-  /** The chart's own canvases, for the image plane. */
-  canvases(): HTMLCanvasElement[]
+  /** The whole chart as one bitmap: the plot area with its axes, crosshair and every indicator
+   *  pane. The renderer composes it; tiling a single series canvas would ship a picture missing
+   *  the scales that make it readable. */
+  screenshot(): HTMLCanvasElement
   /** Push a theme change through every surface that reads it. */
   repaintTheme(): void
   /** The chart's language changed. */
@@ -270,8 +272,12 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let timezoneChoice: string = readTimezoneChoice()
   /** The zone that choice resolves to for the symbol on screen; null while it cannot be resolved. */
   let displayZone: string | null = null
-  /** The full ascending bar series currently painted (snapshot, prepended pages, live updates). */
+  /** The full ascending bar series the chart has LOADED (snapshot, prepended pages, live updates).
+   *  It keeps everything the feed served; what is drawn from it is `shownBars()`. */
   let bars: FeedBar[] = []
+  /** The replay cursor's slice while replay is on, else null. It is what gets PAINTED; the loaded
+   *  model above is untouched, so exiting replay gives it back whole. */
+  let replaySlice: FeedBar[] | null = null
   let unsubscribe: (() => void) | null = null
   let noMoreHistory = false
   let paging = false
@@ -479,6 +485,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     : null
 
   const legend = attachLegendPlane({
+    commands: deps.commands,
     chart,
     chrome,
     i18n,
@@ -486,10 +493,6 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     indicators,
     compare,
     scaleMode: () => scaleMode,
-    applyScaleMode: (mode) => {
-      applyScaleMode(mode)
-      compare?.releaseScaleLoan() // an explicit pick is the trader overriding the loan
-    },
   })
 
   const drawings = attachDrawingsPlane({
@@ -539,9 +542,19 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     chrome,
     symbol: () => symbol,
     timeframe: () => tf,
-    bars: () => bars,
+    // Replay runs over the model a viewer can SEE, so its cursor and total never count a bar the
+    // active subsession hides and a step never lands on one that paints nothing.
+    bars: () => shownBars(),
+    visible: (epochSecs) => {
+      const filter = session.barFilter(tf)
+      return filter ? filter(epochSecs) : true
+    },
     paint: (next) => {
-      bars = next
+      replaySlice = next
+      paintAll()
+    },
+    clearSlice: () => {
+      replaySlice = null
       paintAll()
     },
     enabled: deps.features.replay,
@@ -553,6 +566,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       extensions.host.replayChanged({ active: state.on, cursor: state.cursor, total: state.total })
       events.emit('replay', state)
     },
+    run: (id, arg) => deps.commands.execute(id, arg),
     initialSpeed: coerceReplaySpeed(storage.get(REPLAY_SPEED_KEY) ?? deps.preferences.replaySpeed),
     initialInterval: storage.get(REPLAY_INTERVAL_KEY) ?? deps.preferences.replayInterval ?? 'auto',
   })
@@ -565,7 +579,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     chrome,
     symbol: () => symbol,
     timeframe: () => tf,
-    bars: () => bars,
+    // What an extension reads is what is DRAWN: the same filtered model every paint path uses, so
+    // an overlay can never be placed against a bar that is not on screen.
+    bars: () => shownBars(),
     replay: () => {
       const state = replay.snapshot()
       return { active: state.on, cursor: state.cursor, total: state.total }
@@ -619,8 +635,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   // ── Painting ─────────────────────────────────────────────────────────────────────────────────
   /** The bars actually PAINTED: the loaded model, filtered to the active subsession on an intraday
-   *  timeframe. A daily or larger bar spans whole sessions, so it is never filtered. */
+   *  timeframe, or the replay cursor's slice while replay is on. A daily or larger bar spans whole
+   *  sessions, so it is never filtered. */
   function shownBars(): FeedBar[] {
+    if (replaySlice) return replaySlice
     const filter = session.barFilter(tf)
     return filter ? bars.filter((b) => filter(b.t)) : bars
   }
@@ -647,12 +665,17 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   function paintLast(b: FeedBar): void {
+    // A tick the active subsession hides is not part of the picture. Painting it here and dropping
+    // it on the next full repaint would show a bar that flickers in and back out, which reads as a
+    // glitch rather than as a filter doing its job.
+    const filter = session.barFilter(tf)
+    if (filter && !filter(b.t)) return
     const value = { time: b.t as UTCTimestamp, value: b.c }
     anchor.update(value)
     series.update((valueShaped(style) ? value : { time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }) as never)
     volume.update({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? eff.appearance.upColor : eff.appearance.downColor })
     indicators.recomputeThrottled()
-    extensions.host.barsChanged(bars)
+    extensions.host.barsChanged(shownBars())
   }
 
   /** Rebuild the formatter (a resolve, a symbol switch, a language switch) and push it to every
@@ -751,6 +774,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     marks?.clear()
     setSymbolFormat(null) // until the next resolve, the declared stand-in
     replay.abandon() // a replay window is symbol and timeframe bound; the switch invalidates it
+    replaySlice = null // and its cursor slice with it: the new symbol paints from its own model
     paintAll()
     if (!symbol) return
     // Symbol metadata rides ALONGSIDE the first history ask, never blocking it. A failed resolve
@@ -805,20 +829,21 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     unsubscribe = datafeed.subscribeBars(symbol, tf, {
       onBars: (e) => {
         if (disposed || myEpoch !== epoch) return
-        // While replaying, live updates land in the MASTER set off-screen: the painted slice stays
-        // put, and Go live or exit catches up. Nothing is dropped, nothing repaints history.
-        if (replay.absorb(e)) return
+        // While replaying, the painted slice stays put and the replay master accumulates off-screen
+        // so Go live and exit can catch up. The LOADED model below takes the update either way:
+        // what the feed served is not the cursor's business, and exiting must give it all back.
+        const replaying = replay.absorb(e)
         if (e.kind === 'snapshot') {
           // The transport's self-healing re-sync: the snapshot replaces the RECENT window; bars
           // paged in further back stay, because they are older than the snapshot's first bar.
           const first = e.bars[0]?.t
           bars = first === undefined ? [...e.bars] : [...bars.filter((b) => b.t < first), ...e.bars]
-          paintAll()
+          if (!replaying) paintAll()
         } else {
           const next = applyBar(bars, e.bar)
           if (next) {
             bars = next
-            paintLast(e.bar)
+            if (!replaying) paintLast(e.bar)
           }
         }
       },
@@ -1077,7 +1102,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
     level: () => menuLevel,
     formatter: () => symbolFormatter,
-    compareOpen: (mode) => compare?.openDialog(mode),
+    compareOpen: (mode, changeFrom) => compare?.openDialog(mode, changeFrom),
   })
 
   // The initial load waits on the feed's OPTIONAL capability declaration: opening with a sticky
@@ -1135,7 +1160,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   return {
     handle,
-    canvases: () => [...gestures.querySelectorAll('canvas')] as HTMLCanvasElement[],
+    screenshot: () => chart.takeScreenshot(),
     repaintTheme() {
       applyLook()
       legend.setDot(session.state())

@@ -62,9 +62,18 @@ export interface ReplayDeps {
   chrome: HTMLElement
   symbol(): string
   timeframe(): string
-  /** The chart's painted bars, and the one way to replace them. */
+  /** The chart's PAINTED bars: the model the active subsession leaves visible. The replay master is
+   *  built from these, so `cursor` and `total` count bars a viewer can actually see and a step never
+   *  advances onto a bar that paints nothing. */
   bars(): FeedBar[]
+  /** Paint one cursor slice. The chart keeps its own loaded model untouched, so what it holds is
+   *  never narrowed by what replay happens to be showing. */
   paint(bars: FeedBar[]): void
+  /** Stop painting a slice and show the loaded model again. */
+  clearSlice(): void
+  /** Whether a bar is visible under the active subsession. A live tick that fails it is dropped
+   *  rather than folded into the master, which would put a hidden bar back in the count. */
+  visible(epochSecs: number): boolean
   /** Whether the feature is on at all. */
   enabled: boolean
   disposed(): boolean
@@ -74,6 +83,8 @@ export interface ReplayDeps {
   persist(key: 'speed' | 'interval', value: string): void
   /** The cursor moved, entered or left. */
   onChange(): void
+  /** Run one of the chart's commands by id: the transport's controls are verbs like any other. */
+  run(id: string, arg?: unknown): void
   /** Initial preference values. */
   initialSpeed: ReplaySpeed
   initialInterval: string
@@ -216,11 +227,13 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
       bar = mountReplayBar(
         deps.chrome,
         {
-          play: () => api.play(),
-          pause: () => api.pause(),
-          stepForward: () => api.stepForward(),
-          stepBack: () => api.stepBack(),
-          setSpeed: (s) => api.setSpeed(s),
+          // The transport states intents by command id for the same reason the legend does: a host
+          // that forbids a replay verb must not be able to reach it by clicking the bar.
+          play: () => deps.run('chart.replay.play'),
+          pause: () => deps.run('chart.replay.pause'),
+          stepForward: () => deps.run('chart.replay.stepForward'),
+          stepBack: () => deps.run('chart.replay.stepBack'),
+          setSpeed: (s) => deps.run('chart.replay.setSpeed', s),
           setInterval: (token) => {
             if (token === 'auto') {
               autoInterval = true
@@ -233,8 +246,8 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
             formK = 0
             sync()
           },
-          goLive: () => api.goLive(),
-          exit: () => api.exit(),
+          goLive: () => deps.run('chart.replay.goLive'),
+          exit: () => deps.run('chart.replay.exit'),
         },
         subIntervalsFor(deps.timeframe()).map((s) => s.tf),
         deps.i18n,
@@ -245,9 +258,10 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
     },
     exit() {
       if (!master) return
-      const all = master
       abandon()
-      deps.paint(all) // the live edge, with everything that accumulated off-screen
+      // The chart's own model kept accumulating while replay was on, so handing the slice back is
+      // all that is needed: the live edge is already there, with everything that arrived off-screen.
+      deps.clearSlice()
       deps.setHeader(false)
     },
     play() {
@@ -300,9 +314,10 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
     absorb(event) {
       if (master === null) return false
       if (event.kind === 'snapshot') {
-        const first = event.bars[0]?.t
-        master = first === undefined ? [...event.bars] : [...master.filter((b) => b.t < first), ...event.bars]
-      } else {
+        const fresh = event.bars.filter((b) => deps.visible(b.t))
+        const first = fresh[0]?.t
+        master = first === undefined ? fresh : [...master.filter((b) => b.t < first), ...fresh]
+      } else if (deps.visible(event.bar.t)) {
         const last = master[master.length - 1]
         if (!last || event.bar.t > last.t) master = [...master, event.bar]
         else if (event.bar.t === last.t) master = [...master.slice(0, -1), event.bar]
