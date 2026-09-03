@@ -491,6 +491,10 @@
     background: Highlight;
   }
 
+  [data-qc-theme] .qc-button:disabled {
+    color: GrayText;
+  }
+
   [data-qc-theme] :focus-visible {
     outline-color: Highlight;
   }

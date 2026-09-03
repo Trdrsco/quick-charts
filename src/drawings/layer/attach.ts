@@ -558,6 +558,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       unbindGestures()
       container.removeEventListener('keydown', onKey)
       try {
+        // The chart's navigation and the container's touch action never outlive the layer.
+        lockPointer(false)
         manager.detach()
       } catch {
         /* chart already removed */

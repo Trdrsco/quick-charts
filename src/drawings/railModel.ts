@@ -1,12 +1,12 @@
-// The drawing rail's STRUCTURE, with no view attached.
+// The drawing toolbar's STRUCTURE, with no view attached.
 //
-// The rail is one button per tool GROUP; each group opens a flyout whose sections gather the
+// The toolbar is one button per tool GROUP; each group opens a flyout whose sections gather the
 // related registry categories under a heading. Categories alone do not give that shape: the arrow
 // marks belong beside the arrow line rather than with the annotations, the brushes lead the shapes,
 // and the image and content cards sit under Content rather than with the glyph marks. Those moves
 // are the product's, so they live here as data rather than as conditions inside a component.
 //
-// Everything is catalog KEYS, never words: the rail is built once from the registry while the
+// Everything is catalog KEYS, never words: the toolbar is built once from the registry while the
 // headings it shows follow the interface language.
 import type { ToolCategory } from '@trdrs/chart-drawings'
 import type { ChartMessageKey } from '../i18n/en'
@@ -18,7 +18,7 @@ export interface RailSection {
   tools: DrawingTool[]
 }
 
-/** One rail button: its stable id, its heading, and the sections its flyout shows. */
+/** One toolbar button: its stable id, its heading, and the sections its flyout shows. */
 export interface RailGroup {
   id: string
   label: ChartMessageKey
@@ -55,7 +55,7 @@ interface GroupPlan {
   sections: readonly SectionPlan[]
 }
 
-/** The rail's seven groups and their sections, in display order. This is the product decision the
+/** The toolbar's seven groups and their sections, in display order. This is the product decision the
  *  registry cannot express: which categories share a button, and where the moved types land. */
 export const RAIL_PLAN: readonly GroupPlan[] = [
   {
@@ -90,7 +90,7 @@ export const RAIL_PLAN: readonly GroupPlan[] = [
     sections: [
       { label: 'drawing.sectionForecasting', category: 'forecasting' },
       { label: 'drawing.sectionVolumeBased', category: 'volume' },
-      // Measure is a transient tool on the rail's action row, not a placeable drawing in a flyout.
+      // Measure is a transient tool on the toolbar's action row, not a placeable drawing in a flyout.
       { label: 'drawing.sectionMeasures', category: 'measurement', exclude: ['measure'] },
     ],
   },
@@ -120,7 +120,7 @@ export const RAIL_PLAN: readonly GroupPlan[] = [
 
 const isTypeSection = (section: SectionPlan): section is TypeSection => 'types' in section
 
-/** Build the rail from the tool catalog. An empty section and a group left with none are dropped,
+/** Build the toolbar from the tool catalog. An empty section and a group left with none are dropped,
  *  so a catalog trimmed by configuration never shows a button that opens on nothing. */
 export function buildRailGroups(catalog = drawingTools): RailGroup[] {
   const toolsOf = (section: SectionPlan): DrawingTool[] =>
@@ -135,14 +135,14 @@ export function buildRailGroups(catalog = drawingTools): RailGroup[] {
   })).filter((group) => group.sections.length > 0)
 }
 
-/** Which group holds a tool, or null when no group shows it. The rail highlights that button while
+/** Which group holds a tool, or null when no group shows it. The toolbar highlights that button while
  *  the tool is armed. */
 export function groupOfTool(groups: readonly RailGroup[], type: string | null): string | null {
   if (!type) return null
   return groups.find((group) => group.sections.some((section) => section.tools.some((tool) => tool.type === type)))?.id ?? null
 }
 
-/** Each rail button wears its last-picked tool's glyph, so the rail keeps that face across
+/** Each toolbar button wears its last-picked tool's glyph, so the toolbar keeps that face across
  *  reloads. This resolves the face: the remembered tool when the group still shows it, else the
  *  group's first tool, else null for a group whose tools carry no glyph. */
 export function railFaceOf(group: RailGroup, lastTools: Readonly<Record<string, string>>): string | null {
