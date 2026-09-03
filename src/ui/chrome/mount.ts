@@ -72,6 +72,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   root.setAttribute('dir', readingDirection(i18n))
   disposers.push(i18n.onChange(() => root.setAttribute('dir', readingDirection(i18n))))
 
+  // The notices sit right after the charts grid, never inside it: the grid holds only the charts.
   const toasts: ToastsHandle | null = features.toasts ? mountToasts(deps.panes, { i18n }) : null
   const notify = (kind: 'info' | 'error', text: string): void => toasts?.push(kind, text)
 

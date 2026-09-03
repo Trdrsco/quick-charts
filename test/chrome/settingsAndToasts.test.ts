@@ -59,11 +59,16 @@ describe('the notices', () => {
   it('announce through a live region, dismiss on their button, and retire themselves', () => {
     vi.useFakeTimers()
     const w = fakeWidget()
-    const host = document.createElement('div')
-    document.body.appendChild(host)
-    const toasts = mountToasts(host, { i18n: w.i18n })
+    const root = document.createElement('div')
+    const grid = document.createElement('div')
+    root.appendChild(grid)
+    document.body.appendChild(root)
+    const toasts = mountToasts(grid, { i18n: w.i18n })
     cleanup.push(() => (toasts.destroy(), w.dispose(), vi.useRealTimers()))
-    const region = host.querySelector<HTMLElement>('.qc-toasts')!
+    // The region follows the charts grid as its sibling; the grid itself stays empty.
+    const region = root.querySelector<HTMLElement>('.qc-toasts')!
+    expect(grid.nextElementSibling).toBe(region)
+    expect(grid.children.length).toBe(0)
     expect(region.getAttribute('role')).toBe('status')
     expect(region.getAttribute('aria-live')).toBe('polite')
     toasts.push('error', 'No data for ES from this feed.')

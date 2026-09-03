@@ -1,9 +1,18 @@
-/* The chart's notices, stacked at the bottom of the charts, newest last. */
+/* The chart's notices, stacked at the bottom of the charts, newest last. The region is the charts
+ * grid's next sibling in the root's column and takes no height of its own; the stack inside it is
+ * anchored to its top edge and grows upward, over the charts, never over the bottom bar. */
 [data-qc-theme] .qc-toasts {
+  position: relative;
+  z-index: 6;
+  flex: 0 0 auto;
+  height: 0;
+  overflow: visible;
+}
+
+[data-qc-theme] .qc-toast-stack {
   position: absolute;
   bottom: 12px;
   left: 50%;
-  z-index: 6;
   display: flex;
   flex-direction: column;
   align-items: center;

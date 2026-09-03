@@ -40,17 +40,19 @@ function mount(options: { features?: FeatureConfig; locale?: string } = {}) {
 }
 
 describe('the chrome composition', () => {
-  it('puts the top bar before the charts, the bottom bar after, the overlay layer last, and the notices over the charts', () => {
+  it('puts the top bar before the charts, the notices and the bottom bar after, and the overlay layer last', () => {
     const { root, panes } = mount()
     const classes = [...root.children].map((el) => el.className)
-    expect(classes).toEqual(['qc-topbar', 'qc-panes', 'qc-bottombar', 'qc-overlays'])
-    expect(panes.querySelector('.qc-toasts')).not.toBeNull()
+    expect(classes).toEqual(['qc-topbar', 'qc-panes', 'qc-toasts', 'qc-bottombar', 'qc-overlays'])
+    // The charts grid is the layout's to tile: nothing the chrome mounts lives inside it, so a
+    // host reading its children reads the charts and only the charts.
+    expect(panes.children.length).toBe(0)
   })
 
   it('removes the bars and the notices when their features are off', () => {
-    const { root, panes } = mount({ features: { topBar: false, bottomBar: false, toasts: false } })
+    const { root } = mount({ features: { topBar: false, bottomBar: false, toasts: false } })
     expect([...root.children].map((el) => el.className)).toEqual(['qc-panes', 'qc-overlays'])
-    expect(panes.querySelector('.qc-toasts')).toBeNull()
+    expect(root.querySelector('.qc-toasts')).toBeNull()
   })
 
   it('writes the reading direction on the root and flips it with the language', async () => {
@@ -78,13 +80,13 @@ describe('the chrome composition', () => {
   })
 
   it('raises a notice for a feed that cannot serve the symbol, a refused save, and a refused image copy', () => {
-    const { w, panes } = mount()
+    const { w, root } = mount()
     w.chart.events.emit('feedStatus', 'feed_unavailable')
     w.chart.events.emit('feedStatus', 'live')
     w.events.emit('saveConflict', { family: 'chart', current: null, message: 'Saved elsewhere since you opened it.' })
     w.events.emit('image', { kind: 'copyFallback' })
     w.events.emit('image', { kind: 'copied' })
-    const texts = [...panes.querySelectorAll('.qc-toast-text')].map((t) => t.textContent)
+    const texts = [...root.querySelectorAll('.qc-toast-text')].map((t) => t.textContent)
     expect(texts).toEqual(['No data for ES from this feed.', 'Saved elsewhere since you opened it.', 'Could not copy the image. Saved a file instead.'])
   })
 
