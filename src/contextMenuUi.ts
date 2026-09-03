@@ -1,5 +1,5 @@
 // The level menu the chart raises on right-click — the rows come from `chartContextMenu`, this is
-// the painter. Same chrome discipline as the rail, the legend and the chrome surfaces: package-owned vanilla DOM
+// the painter. Same chrome discipline as the drawing toolbar, the legend and the chrome surfaces: package-owned vanilla DOM
 // mounted into the chrome subtree, opting back into pointer events so the drag layers cannot steal
 // its presses, and painted entirely through `.qc-*` recipes. The only inline writes are the
 // clamped position, which is calculated at the moment the menu opens.

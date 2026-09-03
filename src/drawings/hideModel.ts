@@ -1,4 +1,4 @@
-// The rail's eye: ONE switch with a chosen subject, not a row of toggles.
+// The toolbar's eye: ONE switch with a chosen subject, not a row of toggles.
 //
 // The menu picks which layer the eye blanks, the eye blanks it, and the eye keeps wearing that
 // layer's mark until the subject changes. Exactly one subject is ever blanked, so choosing a new
@@ -26,7 +26,7 @@ export interface HideState {
 export const DEFAULT_HIDE_STATE: HideState = { mode: 'drawings', on: false }
 
 /** Each subject's wording in both states. The eye keeps its subject's mark whether or not the
- *  layer is blanked, so the rail never stops naming what the button acts on. */
+ *  layer is blanked, so the toolbar never stops naming what the button acts on. */
 export const HIDE_LABELS: Readonly<Record<HideMode, { hide: ChartMessageKey; show: ChartMessageKey }>> = {
   drawings: { hide: 'drawing.hideDrawings', show: 'drawing.showDrawings' },
   indicators: { hide: 'drawing.hideIndicators', show: 'drawing.showIndicators' },
