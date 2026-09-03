@@ -8,12 +8,12 @@
 
 [data-qc-theme] .qc-drawing-toolbar {
   position: absolute;
-  inset-block: 8px;
-  inset-inline-start: 8px;
+  inset-block: 0;
+  inset-inline-start: 0;
   z-index: 3;
   display: flex;
   flex-direction: column;
-  width: 52px;
+  width: 44px;
   overflow: hidden;
   pointer-events: auto;
 }
