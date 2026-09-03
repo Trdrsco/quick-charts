@@ -85,7 +85,14 @@ export function planPaneOp(state: PaneState, op: PaneOp): PanePlan {
   return { apply: { [target]: want, 0: Math.max(MAIN_MIN_H, main - delta) }, remembered: nextRemembered }
 }
 
-/** Whether a pane currently reads as collapsed (drives which control the legend shows). */
+/** Whether a pane currently reads as collapsed (drives which control the legend shows).
+ *
+ *  A height of 0 is not a short pane, it is a pane the renderer has not laid out yet, and the two
+ *  must not be confused: a pane read one frame after it is created reports 0, and calling that
+ *  collapsed offers restore on a pane nobody collapsed. The renderer clamps every real height to
+ *  COLLAPSED_H, so a genuine collapse never reports 0 and nothing is lost by treating it as
+ *  unknown. Unknown answers false: the honest reading of "not measured yet" is that the viewer has
+ *  not collapsed anything. */
 export function isCollapsed(height: number | undefined): boolean {
-  return height !== undefined && height <= COLLAPSED_H
+  return height !== undefined && height > 0 && height <= COLLAPSED_H
 }
