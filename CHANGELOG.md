@@ -2,6 +2,58 @@
 
 ## Unreleased
 
+- **The complete drawing product ships in the widget.** The drawing toolbar is the rail down the
+  chart's leading edge: the cursor with its cross, dot and arrow modes and the eraser; seven tool
+  groups whose flyouts list every one of the 90 tools by section, each row with a star for the
+  favorites bar; Measure and Zoom; the magnet with its weak and strong strengths; stay in drawing
+  mode; lock all; the eye that hides drawings, indicators, or both; drawing sync in a layout; the
+  remove menu that names what each row takes and carries the locked-item policy; and the favorites
+  star. Every tool places: fixed-anchor tools by press-drag-release or click then click, the
+  position tools whole from one press, the multipoint tools point by point until a double-click,
+  the brushes as a stroke, and the text-bearing tools with the inline editor opening as they land.
+  Shift constrains, Ctrl-drag duplicates, and the magnet pulls placed and dragged anchors onto the
+  bar's own values.
+- **The selected drawing has a settings bar and a settings dialog.** The bar floats over the chart
+  with templates, the stroke color and opacity, the background, the text color and font size,
+  thickness and line style, the settings gear, lock, delete, and a More menu with the stacking
+  moves, the per-interval visibility presets, clone, copy and hide. The dialog has Inputs, Style,
+  Text, Table, Coordinates and Visibility pages as the tool has them; edits apply live, Cancel
+  restores the drawing, Ok commits the session as one edit. Every edit becomes the tool's
+  remembered default, and named templates save and apply from either surface. Both persist
+  through `ChartSaveLoadAdapter.templates('drawing')`.
+- **`FeatureConfig` names the drawing surfaces.** `drawingsToolbar` shows the toolbar and
+  `drawingsFavorites` the favorites bar; both are on by default and absent with `drawings` off.
+- **`ChartDrawingsApi` is the whole selection surface.** `armTool(type, props)` arms any registered
+  tool or one of `measure`, `zoom` and `eraser`, seeding a placement with `props`; `select`,
+  `deselect`, `selected`, `selectedDrawing` and `hovered` read the selection; `updateStyle`,
+  `updateProps`, `setLocked`, `commitEdit`, `clone`, `copy`, `paste`, `canPaste`, the four
+  stacking moves, `stackPosition`, `hideSelected`, `setVisibilityPreset` and `placeImage` edit it;
+  `counts`, `setAllHidden`, `allHidden`, `setAllLocked` and `allLocked` are the layer's own
+  switches; `textEdit`, `editSelectedText`, `commitText` and `cancelText` drive the inline editor;
+  and `presets` reads and writes tool defaults and named templates. `placeableByWidget` answers
+  true for every registered tool and the three transient tools. The root also exports the
+  `DrawingPresets`, `PlacedImage`, `SelectedDrawing` and `TextEditSession` types.
+- **`attachDrawings` takes `templates`, `chartId` and `execute`.** `templates` is the adapter's
+  drawing-template store; `chartId` binds a drawing made while sync is off to one chart through the
+  resource contract's chart-bound scope; `execute` is the door the layer's keyboard verbs run
+  through, which a widget points at its command registry. `DrawingsWorkflow.allLocked` is optional
+  and `syncAcrossPanes` joins it. A refused document write merges the stored document over the
+  layer's own rows and writes once more at the ref that stands.
+- **The `chart.drawings.*` commands cover the whole toolbar and selection.** `cursor`, `magnet`,
+  `stayInMode`, `lockAll`, `hide`, `sync`, `removeLockedPolicy`, `favorite` and `favoritesBar` for
+  the toolbar; `style`, `props`, `lock`, `clone`, `copy` (Ctrl+C), `paste` (Ctrl+V),
+  `bringToFront`, `sendToBack`, `bringForward`, `sendBackward`, `hideSelected`, `visibility`,
+  `settings`, `commitEdit`, `template.apply`, `template.save`, `template.remove`, `tableAddRow`
+  and `tableAddColumn` for the selection. `removeAll` takes the locked-item policy as its argument
+  and `arm` takes a tool id or `{ tool, props }`. The layer's Delete, Backspace, Escape, copy and
+  paste keys run through the registry, so the access policy gates them like every other door.
+- **`DrawingPreferences` carries `settingsBarPosition` and `recentGlyphs`.** Where the settings bar
+  was dragged to, and the glyph picker's recent picks, both parsed tolerantly.
+- **The chart catalog owns the whole drawing vocabulary.** The `drawing.*` namespace names the
+  toolbar, the settings bar and dialog with every property row, the color palette, the glyph
+  picker, the image picker, the template dialogs and the inline editor; `command.drawing*` names
+  the new commands. The `rail.*` namespace is gone with the rail it named.
+
 - **`quickcharts/styles.css` is required for LAYOUT, not only for color.** The chart's structural
   rules — the root filling its container, the charts tiling inside it, the plot area and its chrome
   layer sizing from that — live in the stylesheet with everything else it paints, so a host that
@@ -181,13 +233,13 @@
   of the 21 codes in the package's own `BUILT_IN_LOCALES` inventory, English by
   default. The widget's own chrome reads it and the chart's axis and crosshair dates are formatted
   in it. **`setLocale(code)`** on a widget and on a layout switches at runtime; **`locale()`**
-  reports the current code. Every chrome module speaks it: the legend, the drawing rail (the 90
+  reports the current code. Every chrome module speaks it: the legend, the drawing toolbar (the 90
   tool names by registry `type`), the context menu (an open menu relabels in place), the replay
   bar, the inputs editor, and the session status words. What the datafeed says, and every symbol,
   price and id, passes through untranslated. The catalog ships a directory for every built-in
   language; a key without a translation reads English.
   Hosts composing the chrome modules themselves pass a `ChartI18n` (from `createChartI18n(code)`)
-  as a new OPTIONAL trailing parameter or option — `mountDrawingsRail`, `mountReplayBar`,
+  as a new OPTIONAL trailing parameter or option — `mountReplayBar`,
   `mountContextMenu`, `openInputsEditor`; `t` on `ChartMenuContext`; a BCP 47 `tag` on
   `sessionTimeline` — every existing call compiles unchanged and reads English. New exports `toolName(t, type, fallback)` and
   `arrangementName(t, code, fallback)` give a host the widget's word for a drawing tool or a
@@ -203,6 +255,6 @@
 
 Initial release. The datafeed-driven chart widget: candles + volume, the indicator
 pipeline (manifest + injected compute; panes, histograms, areas, markers, levels, band fills),
-drawings with per-symbol persistence and a built-in rail, bar replay with sub-bar forming,
+drawings with per-symbol persistence and a built-in toolbar, bar replay with sub-bar forming,
 session bands, scale modes, and the legend chrome (scale chips, per-chip settings gear, pane
 collapse/maximize/restore, eyes). ESM-only; `createUdfDatafeed` on-ramp included.
