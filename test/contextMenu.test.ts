@@ -60,8 +60,9 @@ describe('counts and state', () => {
 
 })
 
-// The WIDGET serves a subset: no clipboard and no settings dialog. A row it cannot serve must not
-// appear at all.
+// A host that cannot serve a row must not show it: the widget's level menu never offers Settings
+// (the settings dialog belongs to the selected drawing's own surfaces) and offers Paste only while
+// the paste command would run.
 describe('a host that cannot serve a row does not show it', () => {
   const widget = { ...base, canPaste: false, canSettings: false }
   it('omits paste and settings', () => {

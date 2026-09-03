@@ -11,6 +11,7 @@
 // The symbol and the level a row quotes are the pane's own values. Rows that act on an account
 // (the orders a level can hold) or on an application service (an alert) are not the chart's: an
 // extension contributes them for the level, and the painter appends them below these.
+import { isApplePlatform } from './platform'
 import { englishChartStrings, type ChartTranslate } from './i18n'
 
 /** Every action the menu can offer. A host handles the ids it supports and passes `has` flags for
@@ -68,7 +69,7 @@ export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
   // Paste rides whether or not the clipboard holds anything — pasting
   // nothing is a no-op, and a row that comes and goes with an invisible buffer reads as a glitch.
   const clip: ChartMenuRow[] = [{ kind: 'item', id: 'copy-price', label: t('menu.copyPrice', { price: c.priceText }) }]
-  if (c.canPaste !== false) clip.push({ kind: 'item', id: 'paste', label: t('menu.paste'), shortcut: 'Ctrl + V' })
+  if (c.canPaste !== false) clip.push({ kind: 'item', id: 'paste', label: t('menu.paste'), shortcut: t('drawing.hintPaste', { modifier: t(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl') }) })
   groups.push(clip)
 
   const remove: ChartMenuRow[] = []

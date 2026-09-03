@@ -14,12 +14,13 @@ import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry } from './commands'
 
 /** The command each built-in menu row runs. Named here so the menu and the registry cannot drift
- *  into two vocabularies for the same verb. A row the chart's own menu never renders (paste and
- *  settings belong to a richer host's drawing chrome) maps to nothing and is refused as unknown
- *  rather than silently routed. */
+ *  into two vocabularies for the same verb. The settings row is the one the chart's own menu never
+ *  renders (the settings dialog belongs to the selected drawing's own surfaces), so it maps to
+ *  nothing and is refused as unknown rather than silently routed. */
 export const MENU_COMMAND: Partial<Record<ChartMenuAction, string>> = {
   'reset-view': 'chart.view.reset',
   'copy-price': 'chart.price.copy',
+  paste: 'chart.drawings.paste',
   'remove-indicators': 'chart.indicators.removeAll',
   'remove-drawings': 'chart.drawings.removeAll',
 }
