@@ -1231,8 +1231,8 @@ What to know:
 - **A failing extension is its own problem.** A throw in `attach` drops that extension and the
   chart still mounts; a throw in a subscriber, a menu provider, a command or a teardown is
   contained.
-- **Layouts attach per pane.** `createChartLayout` hands its shared options to every pane, so each
-  pane gets its own attachment, its own context and its own state slot.
+- **Layouts attach per chart.** A widget hands its shared options to every chart it tiles, so each
+  chart gets its own attachment, its own context and its own state slot.
 
 ## Versioning & deprecation
 
