@@ -1,8 +1,0 @@
-import type { Translation } from '../runtime'
-import type { rail as source } from '../en/rail'
-
-export const rail: Translation<typeof source> = {
-  'rail.cursor': 'Cursor',
-  'rail.deleteSelected': 'Excluir desenho selecionado',
-  'rail.clearAll': 'Limpar todos os desenhos',
-}
