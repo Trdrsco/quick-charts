@@ -203,7 +203,7 @@ async function sync(check) {
 
 // ── what still reads English ─────────────────────────────────────────────────────────────────────
 /** Values that legitimately match English everywhere: product names, codes, bare placeholders. */
-const SAME_EVERYWHERE = /^(\{\w+\}|trdrs|Trader Copier|Rithmic|TastyTrade|Tradovate|TradingView|Stripe|Discord|Telegram|Google|OK|Admin|Pro|Free|Trader|JSON|AI|FX|[^A-Za-z]*)$/
+const SAME_EVERYWHERE = /^(\{\w+\}|trdrs|Trader Copier|Rithmic|TastyTrade|Tradovate|Stripe|Discord|Telegram|Google|OK|Admin|Pro|Free|Trader|JSON|AI|FX|[^A-Za-z]*)$/
 
 async function stillEnglish(cat, code) {
   const out = []
