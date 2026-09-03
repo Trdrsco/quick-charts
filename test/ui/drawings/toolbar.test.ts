@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // The drawing toolbar, model to DOM: what each button wears and says, which command each press
-// runs, how the flyouts open and close, the keyboard over the rail, and the gating a refused tool
+// runs, how the flyouts open and close, the keyboard over the toolbar, and the gating a refused tool
 // gets. The state is a plain object the test edits between renders, so every assertion names the
 // state that produced it.
 import { afterEach, describe, expect, it } from 'vitest'

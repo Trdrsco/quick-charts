@@ -22,6 +22,18 @@ describe('the drawing recipes', () => {
     expect(css).not.toMatch(/position:\s*fixed/)
   })
 
+  it('is as wide as the column the legend starts past, so neither covers the other in either direction', () => {
+    const toolbar = sheets.find(([name]) => name === 'drawings-toolbar.css')![1]
+    const width = toolbar.match(/\.qc-drawing-toolbar\s*\{[^}]*?width:\s*(\d+)px/)?.[1]
+    const legend = readFileSync(`${recipes}/../../chartLegend.ts`, 'utf8')
+    const column = legend.match(/const RAIL_COLUMN_PX = (\d+)/)?.[1]
+    expect(width).toBeDefined()
+    expect(column).toBe(width)
+    // The legend offsets with a logical inset, so a right-to-left chart keeps the same seam.
+    expect(legend).toMatch(/root\.style\.insetInlineStart = /)
+    expect(legend).not.toMatch(/root\.style\.left = /)
+  })
+
   it('places the popover absolutely, inside the root', () => {
     const toolbar = sheets.find(([name]) => name === 'drawings-toolbar.css')![1]
     const rule = toolbar.match(/\.qc-drawing-popover\s*\{([^}]*)\}/)

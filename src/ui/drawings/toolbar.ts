@@ -75,7 +75,7 @@ export interface ToolbarDeps {
   available(command: string): boolean
   /** Whether the access policy permits arming a tool. A refused tool renders disabled. */
   toolAllowed(type: string): boolean
-  /** The stem every element id the rail's surfaces write derives from: the chart's id. */
+  /** The stem every element id the toolbar's surfaces write derives from: the chart's id. */
   idBase: string
   /** Artwork for a glyph, from the host's asset port. */
   glyphSource?: (glyph: string) => string | null

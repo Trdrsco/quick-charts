@@ -162,7 +162,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // While the layout rebuilds itself for a new arrangement, the chart being built is not in its
   // tally yet, so the arrangement's own count is the floor.
   const chartCount = (): number => (layoutBuilt ? Math.max(layout.handles().length, arrangementOf(layout.api.arrangement())?.count ?? 1) : configuredCharts())
-  /** A chart came or went: every chart's surfaces that read the layout re-render. */
+  /** A chart came or went (createChart and destroyChart): every chart's surfaces that read the
+   *  layout re-render. A symbol or timeframe change moves nothing they read. */
   const layoutChanged = (): void => {
     for (const instance of instances.values()) instance.layoutChanged()
   }
@@ -224,10 +225,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
       activeSymbolInfo = symbolInfoByChart.get(handle.id) ?? null
       events.emit('activeChart', handle)
     },
-    onChange: () => {
-      pingSaveNeeded()
-      layoutChanged()
-    },
+    onChange: pingSaveNeeded,
   })
   layoutBuilt = true
 

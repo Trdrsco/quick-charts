@@ -68,7 +68,8 @@ const EYE = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke=
 const EYE_OFF = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 12s3.5-6 10-6c1.8 0 3.4.5 4.8 1.2M22 12s-3.5 6-10 6c-1.8 0-3.4-.5-4.8-1.2"/><path d="M4 20 20 4"/></svg>'
 const GEAR = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/></svg>'
 
-/** The strip's own left column, past the drawing toolbar. */
+/** The strip's own leading column, past the drawing toolbar: the toolbar recipe's width, which
+ *  the stylesheet fixture holds equal to this. */
 const RAIL_COLUMN_PX = 44
 
 /** `strings` is the chart's language: every visible label reads through `strings.t` at render time,
@@ -77,7 +78,7 @@ const RAIL_COLUMN_PX = 44
 export function mountChartLegend(container: HTMLElement, strings: ChartI18n, controls: LegendControls): ChartLegend {
   const root = document.createElement('div')
   root.className = 'qc-legend'
-  root.style.left = `${RAIL_COLUMN_PX}px`
+  root.style.insetInlineStart = `${RAIL_COLUMN_PX}px`
   for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) {
     root.addEventListener(type, (e) => e.stopPropagation())
   }
@@ -232,7 +233,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       title.textContent = symbol ? `${symbol} · ${tf}` : ''
     },
     setLeftInset(px) {
-      root.style.left = `${RAIL_COLUMN_PX + Math.max(0, px)}px`
+      root.style.insetInlineStart = `${RAIL_COLUMN_PX + Math.max(0, px)}px`
     },
     setDot(state) {
       dot.hidden = state === null
