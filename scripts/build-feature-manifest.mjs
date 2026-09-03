@@ -14,10 +14,9 @@
 // and the README's count claims to the manifest, so a product claim cannot outrun the code.
 //
 // The command registry is a runtime thing: it exists only inside a mounted widget. The script therefore
-// mounts one real widget into a happy-dom document, over a datafeed that serves nothing, with the browser
-// shim standing in for the canvas, and reads `widget.commands.list()`. Every built-in verb is registered
-// whether or not its feature is on (a feature off makes a command unavailable, never absent), so the mount
-// leaves the drawing plane off: its toolbar needs live pane geometry the build has no use for.
+// mounts one real widget with every plane on into a happy-dom document, over a datafeed that serves
+// nothing, with the browser shim standing in for the canvas and the layout, and reads
+// `widget.commands.list()`.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -55,7 +54,7 @@ function commandsOf() {
     history: async () => ({ bars: [], noData: true }),
     subscribeBars: () => () => undefined,
   }
-  const widget = root.createChart({ container, datafeed, symbol: 'MANIFEST', timeframe: '1m', features: { drawings: false } })
+  const widget = root.createChart({ container, datafeed, symbol: 'MANIFEST', timeframe: '1m' })
   try {
     return widget.commands
       .list()

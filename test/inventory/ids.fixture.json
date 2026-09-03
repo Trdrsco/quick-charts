@@ -392,6 +392,7 @@
       "chart.drawings.lockAll",
       "chart.drawings.magnet",
       "chart.drawings.paste",
+      "chart.drawings.placeImage",
       "chart.drawings.props",
       "chart.drawings.removeAll",
       "chart.drawings.removeLockedPolicy",

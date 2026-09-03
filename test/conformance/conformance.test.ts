@@ -5,12 +5,10 @@
 // and in the app's browser suite over the app's own composition; this host is the one that runs on
 // every `pnpm test`.
 //
-// The host declares what it cannot mount and what it can stand in for. The drawing plane is off here
-// until W4-B lands its fix in packages/chart/src/widget/create.ts: mounting a widget with drawings on
-// throws "Cannot access 'layout' before initialization", so the checks that need drawings report
-// skipped with that reason rather than passing on nothing. Delete `unavailable` when it lands. Two
-// checks document known defects in the widget and are skipped by the runner until the fixes land;
-// their sentences are in the module beside them.
+// The host declares what it can stand in for: a Fullscreen API on the root and an image-taking
+// clipboard, both of which a browser grants only from a user gesture. Every plane mounts. The checks
+// that document known defects in the widget are skipped by the runner until the fixes land; their
+// sentences are in the module beside them.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createChart } from '../../src/index'
 import { installBrowserShim, type BrowserShimHandle } from '../../scripts/browserShim'
@@ -77,10 +75,6 @@ function fakeClipboard(): { dispose(): void } {
 const host: ConformanceHost = {
   createWidget: (options) => createChart(options),
   document,
-  unavailable: {
-    features: { drawings: false },
-    reason: "W4-B: createChart with drawings on throws Cannot access 'layout' before initialization (packages/chart/src/widget/create.ts)",
-  },
   fullscreen: fakeFullscreen,
   clipboard: fakeClipboard,
 }

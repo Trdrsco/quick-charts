@@ -13,10 +13,6 @@
 // runtime-transition record are read as the coverage benchmark, and every role it names is mapped to
 // the Quick Charts surface that answers it. No stylesheet body of the reference is in the repository,
 // and none is read here.
-//
-// The drawing plane is censused from its recipes alone until W4-B lands: a widget with drawings on
-// throws before its layout exists (packages/chart/src/widget/create.ts). Delete `drawings: false`
-// from the mount below when it lands and the drawing toolbar joins the DOM census.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createChart, type ChartDatafeed, type ChartWidget } from '../../src/index'
 import { compositeOver, contrastRatio, parseCssColor } from '../../src/theme/color'
@@ -242,7 +238,7 @@ async function censusIn(mode: 'light' | 'dark', locale = 'en'): Promise<{ widget
     timeframe: '1m',
     locale: locale as never,
     theme: { mode },
-    features: { drawings: false, compareSymbols: [{ symbol: 'NQ', title: 'Nasdaq' }] },
+    features: { compareSymbols: [{ symbol: 'NQ', title: 'Nasdaq' }] },
     saveLoad: undefined,
   })
   await widget.ready()
