@@ -1,0 +1,131 @@
+/* Floating menus and modal dialogs: the two primitives every picker opens. */
+
+/* overflow: hidden on the X axis is load-bearing: a row highlight fills its slot squarely, so the
+ * panel is what rounds it off. The Y axis scrolls when a list outgrows the viewport. */
+[data-qc-theme] .qc-menu-panel {
+  position: fixed;
+  z-index: 2147483001;
+  display: flex;
+  flex-direction: column;
+  min-width: 160px;
+  max-height: min(calc(100vh - 16px), 620px);
+  padding: 6px 0;
+  overflow: hidden auto;
+  font-size: var(--qc-text-fontSizeBase);
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-menu-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+[data-qc-theme] .qc-menu-row[aria-checked='true'] {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-selected);
+}
+
+[data-qc-theme] .qc-menu-row[aria-checked='true'] .qc-menu-icon::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: var(--qc-state-accent);
+  border-radius: 50%;
+}
+
+[data-qc-theme] .qc-menu-row[disabled] {
+  color: var(--qc-text-disabled);
+  cursor: default;
+}
+
+[data-qc-theme] .qc-menu-row[disabled]:hover {
+  background: none;
+}
+
+[data-qc-theme] .qc-menu-heading {
+  padding: 6px 12px 2px;
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeMicro);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+[data-qc-theme] .qc-menu-note {
+  padding: 6px 12px;
+}
+
+[data-qc-theme] .qc-menu-panel .qc-separator {
+  margin: 6px 0;
+}
+
+/* Dialogs. */
+[data-qc-theme] .qc-dialog-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-dialog {
+  display: flex;
+  flex-direction: column;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  overflow: hidden;
+  font-size: var(--qc-text-fontSizeBase);
+}
+
+[data-qc-theme] .qc-dialog-title {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+}
+
+[data-qc-theme] .qc-dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--qc-text-secondary);
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-dialog-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 0 14px 12px;
+  overflow-y: auto;
+}
+
+[data-qc-theme] .qc-dialog-heading {
+  padding: 8px 0 4px;
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeMicro);
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+[data-qc-theme] .qc-dialog-actions {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--qc-overlay-separator);
+}
+
+[data-qc-theme] .qc-dialog-actions .qc-button {
+  padding: 4px 12px;
+}

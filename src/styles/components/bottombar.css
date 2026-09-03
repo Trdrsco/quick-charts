@@ -1,0 +1,91 @@
+/* The bottom bar and the on-chart navigation cluster. */
+[data-qc-theme] .qc-bottombar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 38px;
+  padding-inline: 8px 4px;
+  color: var(--qc-text-primary);
+  background: var(--qc-chrome-surface);
+  border-top: 1px solid var(--qc-chrome-border);
+}
+
+[data-qc-theme] .qc-ranges {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+[data-qc-theme] .qc-range-chip {
+  padding: 0 6px;
+  color: var(--qc-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-range-chip:hover {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-bottombar-end {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-tz-trigger {
+  gap: 6px;
+  color: var(--qc-text-muted);
+}
+
+[data-qc-theme] .qc-clock {
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-session-trigger {
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeSmall);
+}
+
+[data-qc-theme] .qc-tz-menu {
+  max-height: min(calc(100vh - 16px), 560px);
+}
+
+/* The navigation cluster floats at the bottom of its pane and appears while the pointer is over
+ * the chart or the keyboard is in it. Always in the DOM, so a screen reader and a Tab reach it. */
+[data-qc-theme] .qc-nav {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  z-index: 4;
+  display: flex;
+  gap: 4px;
+  padding: 2px 4px;
+  transform: translateX(-50%);
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity var(--qc-motion-durationBase) linear;
+}
+
+[data-qc-theme] .qc-pane:hover .qc-nav,
+[data-qc-theme] .qc-nav:focus-within {
+  opacity: 1;
+}
+
+[data-qc-theme] .qc-nav-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--qc-text-secondary);
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-nav-button:hover {
+  color: var(--qc-text-primary);
+}

@@ -1,21 +1,22 @@
 // One place holds a color. `palettes.ts` is the only file in the package allowed to write a hex or
-// rgb literal, and the authored stylesheet writes none: every value it paints comes from a
+// rgb literal, and the authored stylesheets write none: every value they paint comes from a
 // generated custom property, or from a system color keyword under forced colors.
 //
 // The sweep is the whole package source. A DOM module that needs a visual gets a `.qc-*` recipe in
-// the stylesheet, which resolves against the custom properties the theme generates, so there is no
-// second place a color could live.
+// a stylesheet, which resolves against the custom properties the theme generates, so there is no
+// second place a color could live. The stylesheets are the structural file plus every component
+// recipe file the generator concatenates after it; each is swept on its own so an offender is
+// named by file.
 //
 // The two documented SERIES defaults are the exception, and they are exceptions by kind rather than
 // by oversight: the compare palette and the built-in study colors are a chart's own data colors,
 // which a host overrides per instance and a mode does not re-resolve.
 import { describe, expect, it } from 'vitest'
 import { offenderText, scanFiles } from '../boundary/scan'
-import { authoredStylesheet } from './stylesheetSource'
+import { authoredStylesheets } from './stylesheetSource'
 
 const THEME_SOURCES = import.meta.glob('/packages/chart/src/**/*.ts', { query: '?raw', import: 'default', eager: true })
-const STYLESHEET = '/packages/chart/src/styles/quickcharts.css'
-const STYLE_SOURCES: Record<string, string> = { [STYLESHEET]: authoredStylesheet() }
+const STYLE_SOURCES: Record<string, string> = authoredStylesheets()
 
 /** A written color value, in either notation a palette may use. */
 const COLOR_LITERAL = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\(\s*[\d.]/
@@ -33,10 +34,15 @@ const SERIES_DEFAULTS = [
 ]
 
 describe('the package holds its colors in one file', () => {
-  it('reads the package source and the stylesheet', () => {
+  it('reads the package source and every authored stylesheet', () => {
     expect(Object.keys(THEME_SOURCES)).toContain(PALETTES)
     expect(Object.keys(THEME_SOURCES).length).toBeGreaterThan(30)
-    expect(STYLE_SOURCES[STYLESHEET]!.length).toBeGreaterThan(1000)
+    expect(Object.keys(STYLE_SOURCES)).toContain('/packages/chart/src/styles/quickcharts.css')
+    // Every chrome surface keeps a recipe file, and each is judged here by name.
+    for (const surface of ['chrome', 'menu', 'topbar', 'timeframe', 'search', 'indicators', 'layouts', 'settings', 'bottombar', 'status', 'replay', 'toasts']) {
+      expect(Object.keys(STYLE_SOURCES)).toContain(`/packages/chart/src/styles/components/${surface}.css`)
+    }
+    expect(STYLE_SOURCES['/packages/chart/src/styles/quickcharts.css']!.length).toBeGreaterThan(1000)
   })
 
   it('writes no color literal outside the palettes and the documented series defaults', () => {
@@ -49,7 +55,7 @@ describe('the package holds its colors in one file', () => {
     expect(scanFiles({ [PALETTES]: THEME_SOURCES[PALETTES]! }, COLOR_LITERAL).length).toBeGreaterThan(40)
   })
 
-  it('paints the stylesheet from custom properties alone', () => {
+  it('paints every stylesheet from custom properties alone', () => {
     expect(scanFiles(STYLE_SOURCES, COLOR_LITERAL).map(offenderText)).toEqual([])
   })
 })

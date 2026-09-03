@@ -1,0 +1,142 @@
+/* The replay transport, floating at the bottom of its pane while replay is on, and the date picker. */
+[data-qc-theme] .qc-replay {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  max-width: calc(100% - 16px);
+  padding: 4px 6px;
+  transform: translateX(-50%);
+  font-size: var(--qc-text-fontSizeSmall);
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-replay-group {
+  display: inline-flex;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-replay-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 4px;
+  color: var(--qc-text-secondary);
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-replay-button:hover {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-replay-button[aria-pressed='true'] {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-selected);
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-replay-button[disabled] {
+  color: var(--qc-text-disabled);
+  background: none;
+}
+
+[data-qc-theme] .qc-replay-caret {
+  width: 20px;
+  padding: 0;
+}
+
+[data-qc-theme] .qc-replay-speed,
+[data-qc-theme] .qc-replay-interval {
+  min-width: 36px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-replay-position {
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-replay-hint {
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-replay-exit {
+  margin-inline-start: 4px;
+}
+
+/* The date picker. */
+[data-qc-theme] .qc-date-fields {
+  display: flex;
+  gap: 8px;
+}
+
+[data-qc-theme] .qc-date-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 6px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-date-time {
+  flex: 0 0 74px;
+  padding: 6px 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-date-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0 2px;
+}
+
+[data-qc-theme] .qc-date-nav .qc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-date-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+[data-qc-theme] .qc-date-row {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+[data-qc-theme] .qc-date-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+}
+
+[data-qc-theme] .qc-date-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-date-day[aria-selected='true'] {
+  color: var(--qc-text-inverse);
+  background: var(--qc-state-accent);
+  border-color: var(--qc-state-accent);
+}

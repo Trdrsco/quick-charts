@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { composeStylesheet, cssVarName, selectorsOf, themeBlock, themeDeclarations, THEME_ROOT_ATTRIBUTE, themeRootSelector } from '../../src/theme/css-contract'
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import { THEME_MODES, THEME_ROLES } from '../../src/theme/schema'
-import { authoredStylesheet } from './stylesheetSource'
+import { authoredStylesheet, authoredStylesheets } from './stylesheetSource'
 import vectors from './vectors.json'
 
 const structural = authoredStylesheet()
@@ -20,6 +20,20 @@ describe('the scoped stylesheet', () => {
     const selectors = selectorsOf(css)
     expect(selectors.length).toBeGreaterThan(20)
     expect(selectors.filter((s) => !s.startsWith(`[${THEME_ROOT_ATTRIBUTE}`))).toEqual([])
+  })
+
+  it('scopes every component recipe file on its own, so an unscoped rule is named by file', () => {
+    for (const [file, text] of Object.entries(authoredStylesheets())) {
+      const selectors = selectorsOf(text)
+      expect(selectors.length, file).toBeGreaterThan(0)
+      expect(selectors.filter((s) => !s.startsWith(`[${THEME_ROOT_ATTRIBUTE}`)).map((s) => `${file}: ${s}`)).toEqual([])
+    }
+  })
+
+  it('writes no keyframes or other at-rule the scoping gate could not judge', () => {
+    // A keyframe's step selectors (`from`, `to`) would pass the selector sweep unscoped; the chrome
+    // animates with transitions instead, which the reduced-motion rule already flattens.
+    expect(structural).not.toMatch(/@keyframes/)
   })
 
   it('carries no global reset and no document-level selector', () => {
