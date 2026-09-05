@@ -329,7 +329,7 @@ const outcome = await adapter.charts.remove(ghost)
 outcome.kind // 'not-found'
 ```
 
-An aborted call rejects with an error named `AbortError` and changes nothing. Treat the revision as
+An aborted call rejects with an error named `AbortError` and changes nothing. A load superseded by a later load on the same chart or layout rejects the same way, with no signal of the host's own involved, and only the later load lands. Treat the revision as
 opaque: mint it however your backend prefers, as an ETag, a counter, or a content hash, and compare
 it only for equality.
 
