@@ -14,9 +14,9 @@
   id, the source and pane that own it, its type and its own opaque state, plus ordered groups with
   their own ids and deletion tombstones for drawings and groups, so a deletion never returns after
   a concurrent save, a reconnect or a reload. `emptyDrawingDocument`, `parseDrawingDocument`,
-  `reviseDrawingDocument`, `mergeDrawingDocuments`, `liveDrawingEntries`, `liveDrawingGroups`,
-  `drawingBuried` and `sameDrawingContext` are the pure rules over that document, on the root and
-  on `quickcharts/drawings`.
+  `reviseDrawingDocument`, `mergeDrawingDocuments`, `liveDrawingEntries`, `liveDrawingGroups` and
+  `sameDrawingContext` are the pure rules over that document, on the root and on
+  `quickcharts/drawings`.
 - **`chart.drawingResources` is the low-level separate-drawing API.** `get`, `apply` and `reload`
   over this chart's own context. A restore validates every entry against the live sources and panes
   and names what it will not attach (`missing-source`, `missing-pane`, `foreign-pane`,
@@ -61,7 +61,8 @@
   `DrawingsHandle`, which `attachDrawings` returns to a host composing the layer itself.
   `placeableByWidget` answers true for every registered tool and the three transient tools. The
   root also exports the `DrawingPresets`, `PlacedImage`, `SelectedDrawing` and `TextEditSession`
-  types.
+  types, and `DrawingDocumentPort` and `DrawingOwner`, which name the `documents` and
+  `surface.owner` option shapes.
 - **`attachDrawings` takes `templates`, `chartId` and `execute`.** `templates` is the adapter's
   drawing-template store; `chartId` binds a drawing made while sync is off to one chart through the
   resource contract's chart-bound scope; `execute` is the door the layer's keyboard verbs run

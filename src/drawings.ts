@@ -3,6 +3,7 @@
 // the revisioned documents in `documents`, the tool presets in `presets`, and the composition that
 // hands back a `DrawingsHandle` in `attach`.
 export { attachDrawings, placeableByWidget } from './drawings/layer/attach'
+export type { DrawingDocumentPort, DrawingOwner } from './drawings/layer/documents'
 export type {
   AttachDrawingsOptions,
   DrawingApplyOutcome,

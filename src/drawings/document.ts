@@ -154,7 +154,8 @@ function mergeTombstones(a: readonly DrawingTombstone[], b: readonly DrawingTomb
 const buriedSet = (tombstones: readonly DrawingTombstone[], kind: DrawingTombstone['kind']): Set<string> =>
   new Set(tombstones.filter((stone) => stone.kind === kind).map((stone) => stone.id))
 
-/** Whether a document buries this id. A caller that is about to apply a row asks here first. */
+/** Whether a document buries this id. Package-internal, beside the rules it serves: the layer asks
+ *  it to tell a live entry from one whose group is gone. */
 export const drawingBuried = (document: DrawingsBody, kind: DrawingTombstone['kind'], id: string): boolean =>
   document.tombstones.some((stone) => stone.kind === kind && stone.id === id)
 
