@@ -17,7 +17,7 @@
 // tab closing under it.
 import type { SerializedDrawing } from '@trdrs/chart-drawings'
 import type { DrawingEntry, DrawingResourceContext, DrawingsBody } from '../document'
-import { DRAWING_CONTEXT_VERSION, emptyDrawingDocument, liveDrawingEntries, mergeDrawingDocuments, parseDrawingDocument, reviseDrawingDocument } from '../document'
+import { DRAWING_CONTEXT_VERSION, drawingBuried, emptyDrawingDocument, liveDrawingEntries, mergeDrawingDocuments, parseDrawingDocument, reviseDrawingDocument } from '../document'
 import type { DrawingsMeta, ResourceRef, ResourceStore } from '../../resources'
 import { ownsDrawing } from './scope'
 
@@ -52,13 +52,13 @@ export interface DocumentsDeps {
 export interface Documents {
   /** The context a symbol's document is keyed by, or null in combined mode. */
   contextFor(symbol: string): DrawingResourceContext | null
-  /** The rows this chart shows for a symbol: the document's live entries this chart owns. */
+  /** The rows this chart shows for a symbol: the document's live entries this layer draws. */
   listFor(symbol: string): SerializedDrawing[]
   /** The whole working document for a symbol, as this layer holds it. */
   documentFor(symbol: string): DrawingsBody
-  /** Replace the cache for a symbol from the screen's export. Rows this chart does not own are
-   *  kept untouched, so a write never erases another chart's work, and rows that vanished are
-   *  buried, so a deletion survives the next merge. */
+  /** Replace the cache for a symbol from the screen's export. Every live row this layer does not
+   *  draw is kept untouched, so a write never erases another chart's or another pane's work, and
+   *  rows that vanished from the screen are buried, so a deletion survives the next merge. */
   sync(symbol: string, exported: readonly SerializedDrawing[]): void
   /** Read a symbol's stored document once, into the cache. */
   hydrate(symbol: string): void
@@ -131,16 +131,43 @@ export function createDocuments(deps: DocumentsDeps): Documents {
     return row ? ownsDrawing(row, chartId) : false
   }
 
-  const listFor = (symbol: string): SerializedDrawing[] =>
-    liveDrawingEntries(documentFor(symbol))
-      .filter(owned)
+  /** Whether this layer PAINTS an entry: it is this chart's, it is drawn on the source and pane
+   *  this layer draws, its state is a drawing this build can read, and its group still exists.
+   *  Anything else is somebody else's row in a document this layer merely shares, which is why the
+   *  same question decides both what the layer shows and what a save may replace. */
+  const drawnHere = (document: DrawingsBody, entry: DrawingEntry): boolean =>
+    owned(entry) &&
+    entry.source === owner.source &&
+    entry.pane === owner.pane &&
+    !(entry.group !== undefined && drawingBuried(document, 'group', entry.group))
+
+  const listFor = (symbol: string): SerializedDrawing[] => {
+    const document = documentFor(symbol)
+    return liveDrawingEntries(document)
+      .filter((entry) => drawnHere(document, entry))
       .map(drawingOf)
       .filter((row): row is SerializedDrawing => row !== null)
+  }
 
+  /** Replace what this layer draws and keep everything else exactly as the document states it.
+   *
+   *  The kept rows are the point: a study pane's drawing, another chart's row inside a shared
+   *  document, a row this build cannot read, and a row whose group was deleted are all live
+   *  entries this layer never had on screen. Dropping them here would bury them, because a save
+   *  states the whole document and every id it no longer lists is a deletion. So they are carried
+   *  through in the document's own order, with the group each one states, and only the rows this
+   *  layer draws are replaced by the export. */
   const sync = (symbol: string, exported: readonly SerializedDrawing[]): void => {
     const document = documentFor(symbol)
-    const foreign = liveDrawingEntries(document).filter((entry) => !owned(entry))
-    docs.set(symbol, reviseDrawingDocument(document, { entries: [...foreign, ...exported.map((row) => entryOf(row, owner))] }))
+    const live = new Set(liveDrawingEntries(document).map((entry) => entry.id))
+    const kept: DrawingEntry[] = []
+    const seen = new Set<string>()
+    for (const entry of document.entries) {
+      if (!live.has(entry.id) || seen.has(entry.id)) continue
+      seen.add(entry.id)
+      if (!drawnHere(document, entry)) kept.push(entry)
+    }
+    docs.set(symbol, reviseDrawingDocument(document, { entries: [...kept, ...exported.map((row) => entryOf(row, owner))] }))
   }
 
   const storeFor = (symbol: string): ResourceStore<DrawingsMeta, DrawingsBody> | null => {
