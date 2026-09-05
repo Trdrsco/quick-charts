@@ -313,7 +313,9 @@ const separate = createChart({
 const documents = separate.activeChart().drawingResources
 const read = await documents?.get()
 if (read?.kind === 'ok') {
-  const applied = documents?.apply(read.document)
+  // The ref the read stood at rides the apply, so the chart's next write is an update at that
+  // revision rather than a create that learns the ref from the refusal it gets back.
+  const applied = documents?.apply(read.document, read.ref)
   // 'ok' with the drawings it attached, and every one it would not: an entry whose source or pane
   // is not on this chart is named rather than moved onto whatever is nearest.
   applied?.kind

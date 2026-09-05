@@ -22,7 +22,8 @@
   and names what it will not attach (`missing-source`, `missing-pane`, `foreign-pane`,
   `deleted-group`, `unreadable`) rather than moving a drawing onto whatever fits; request
   generations and abort signals keep a late answer for an old layout, chart or symbol from reaching
-  the chart on screen. In combined mode every verb refuses.
+  the chart on screen. `apply` also takes the `ResourceRef` the document was read at, so the next
+  write is an update at that revision. In combined mode every verb refuses.
 - **The complete drawing product ships in the widget.** The drawing toolbar is the rail down the
   chart's leading edge: the cursor with its cross, dot and arrow modes and the eraser; seven tool
   groups whose flyouts list every one of the 90 tools by section, each row with a star for the

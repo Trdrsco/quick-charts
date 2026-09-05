@@ -457,7 +457,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
           : { kind: 'ok', ref: found.ref, document: found.document }
       return answer
     },
-    apply: (document) => applyDocument(document, null, documents.generation()),
+    apply: (document, ref) => applyDocument(document, ref ?? null, documents.generation()),
     async reload(signal) {
       const generation = documents.generation()
       const found = await documents.read(symbol, signal)

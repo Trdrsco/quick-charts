@@ -152,8 +152,14 @@ export interface DrawingDocumentApi {
   /** Put a document on the chart. Every entry is validated against the live sources and panes
    *  first; the ones that pass replace what is on screen, and the ones that do not come back named
    *  with their reason. Synchronous, because applying a document the caller already holds reaches
-   *  no store. */
-  apply(document: DrawingsBody): DrawingApplyOutcome
+   *  no store.
+   *
+   *  Pass the `ref` the document was read at and the layer's next write is an update at that
+   *  revision. Without one it holds no ref, so its next write creates, is refused by the document
+   *  that is already stored, and learns the ref from that conflict: correct, but a round trip a
+   *  caller that just read the document need not pay. A document a host composed itself stands at
+   *  no revision, which is why the ref is optional. */
+  apply(document: DrawingsBody, ref?: ResourceRef | null): DrawingApplyOutcome
   /** Read the stored document and apply it: the reload path after a reconnect or a save elsewhere. */
   reload(signal?: AbortSignal): Promise<DrawingApplyOutcome>
 }
