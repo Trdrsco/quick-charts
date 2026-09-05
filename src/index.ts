@@ -24,7 +24,7 @@ export type { FetchLike, UdfDatafeedOptions } from './udfDatafeed'
 export { createUdfDatafeed } from './udfDatafeed'
 export { tfToUdfResolution, udfResolutionToTf } from './udfResolution'
 
-// ── W3-A: the widget kernel ───────────────────────────────────────────────────────────────────
+// ── The widget kernel ─────────────────────────────────────────────────────────────────────────
 // `createChart(options)` mounts a complete datafeed-driven chart into a DOM element with no
 // framework dependency, and answers a `ChartWidget`. A widget hosts one or many `ChartHandle`s
 // under one root and one theme; the four configuration planes below decide what it can do, what it
@@ -78,7 +78,6 @@ export type { ChartCompareApi } from './widget/compare'
 export type { ChartDrawingsApi } from './widget/drawings'
 export type { ChartReplayApi } from './widget/replay'
 export type { ChartSaveLoadApi } from './widget/saveLoad'
-// ── end W3-A ──────────────────────────────────────────────────────────────────────────────────
 
 // The extension seam — a TYPE contract only. A host writes an object against `ChartExtension` and
 // hands it to `ChartWidgetOptions.extensions`; the chart owns every runtime piece, which is what
@@ -174,7 +173,7 @@ export {
   type ChartTranslate,
 } from './i18n'
 
-// ── W1-B: symbology, the price formatter, and the revisioned resource contract ────────────────
+// ── Symbology, the price formatter, and the revisioned resource contract ──────────────────────
 // The symbology contract and its formatter are root Quick Charts API (DECISIONS.md: no symbology
 // subpath, package, or repository). `SymbolInfo` is the shape `ChartDatafeed.resolve` answers
 // with. The revisioned saved-resource contract in `resources.ts` is the one save/load seam: the
@@ -227,9 +226,8 @@ export {
   reviseDrawingDocument,
   sameDrawingContext,
 } from './drawings/document'
-// ── end W1-B ──────────────────────────────────────────────────────────────────────────────────
 
-// ── W2-C: the executable theme contract ───────────────────────────────────────────────────────
+// ── The executable theme contract ─────────────────────────────────────────────────────────────
 // Quick Charts ships complete light and dark UI. A host selects a mode, optionally overrides the
 // semantic palette for either mode, and switches at runtime through one controller; the chart keeps
 // its symbol, timeframe, range, drawings and studies across the switch. `THEME_ROLES` is the public
@@ -258,29 +256,27 @@ export type {
 } from './theme/schema'
 export type { ThemeChangeListener, ThemeController, ThemeControllerOptions } from './theme/controller'
 export type { ThemeDiagnostic, ThemeDiagnosticCode } from './theme/validate'
-// ── end W2-C ──────────────────────────────────────────────────────────────────────────────────
-// ── W2-B: the built-in indicators ───────────────────────────────────────────────────────
-// The 23 built-in definitions ship in the package (the day-one catalog of
-// public-chart-library-boundary-plan.md), each a plain IndicatorDefinition with its catalog keys,
-// tag and category beside it. A host mounts one through ChartWidgetOptions.indicators exactly as
-// it mounts its own definition, and reads its name through the chart's ChartI18n.
+
+// ── The built-in indicators ───────────────────────────────────────────────────────────────────
+// The 23 built-in definitions ship in the package, each a plain IndicatorDefinition with its
+// catalog keys, tag and category beside it. A host mounts one through ChartWidgetOptions.indicators
+// exactly as it mounts its own definition, and reads its name through the chart's ChartI18n.
 export { BUILT_IN_INDICATORS, type BuiltInIndicator, type IndicatorCategory } from './builtInIndicators'
-// ── end W2-B ──────────────────────────────────────────────────────────────────────────
-// ── W2-A: the symbol price format a study scale falls back to ────────────────────────────────
+
+// ── The symbol price format a study scale falls back to ──────────────────────────────────────
 // The renderer's `symbolPriceFormat` option names this shape; a host composing the renderer
 // itself supplies it from its own symbol formatter.
 export type { SymbolPriceFormat } from './indicatorRenderer'
-// ── end W2-A ──────────────────────────────────────────────────────────────────────────────────
 
-// ── W3-B: timeframes, timezones, sessions and status, ranges, and search ──────────────────────
-// The chart-owned models behind the picker surfaces (public-chart-library-boundary-plan.md PCL-5):
+// ── Timeframes, timezones, sessions and status, ranges, and search ────────────────────────────
+// The chart-owned models behind the picker surfaces:
 // the one timeframe grammar with its 26 presets and capability filter, the 60 display timezones
 // with the exchange choice and locale-keyed formatters, the session model built from a symbol's
 // own session metadata with the market status over it, the nine range presets with the framing
 // and navigation step rules, and the framework-free search controller with its recents port and
 // list rules. Every string these need lives in the chart catalog (timeframe.*, timezone.*,
 // status.*, range.*, search.*). The default pickers over these models and the widget commands that
-// drive them are the later streams' work; nothing here builds DOM.
+// drive them live in the chrome; nothing here builds DOM.
 export type { Timeframe, TimeframeGroup, TimeframeRestrictions, TimeframeUnit } from './timeframe'
 export {
   allowedTimeframes,
@@ -339,12 +335,11 @@ export type { RangeFrameTarget, RangePreset, RangeSpan } from './ranges'
 export { frameRange, MIN_BAR_SPACING, RANGE_PRESETS, rangeAvailable, rangePresetTip, rangeSpanSeconds, SCROLL_STEP_BARS, scrolledPosition, ZOOM_FACTOR, zoomedBarSpacing } from './ranges'
 export type { MatchSegment, RecentsPort, SearchController, SearchControllerOptions, SearchState, SpreadOperator } from './search'
 export { createSearchController, isSymbolPair, looksLikeSpread, matchSegments, memoryRecents, promoteRecent, RECENT_SYMBOLS_CAP, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery } from './search'
-// ── end W3-B ──────────────────────────────────────────────────────────────────────────────────
-// ── W3-C: the drawing workflow's host inputs ─────────────────────────────────────────────
+
+// ── The drawing workflow's host inputs ────────────────────────────────────────────────────────
 // The drawing API is its own entrypoint (`quickcharts/drawings`), and everything about drawings
 // lives there. Two contracts surface here as well, and only because the WIDGET carries them: a
 // host hands the chart its asset port in the widget options, and the widget persists the drawing
 // preference record through the storage port it was given. Both are types; their models, defaults
 // and codecs stay on the subpath.
 export type { DrawingAssetPort, DrawingPreferences } from './drawings/index'
-// ── end W3-C ──────────────────────────────────────────────────────────────────────────
