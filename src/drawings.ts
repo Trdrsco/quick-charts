@@ -5,7 +5,13 @@
 export { attachDrawings, placeableByWidget } from './drawings/layer/attach'
 export type {
   AttachDrawingsOptions,
+  DrawingApplyOutcome,
+  DrawingDocumentApi,
+  DrawingDocumentRefusal,
   DrawingPresets,
+  DrawingReadOutcome,
+  DrawingRejection,
+  DrawingRejectionReason,
   DrawingsEvents,
   DrawingsHandle,
   DrawingsWorkflow,

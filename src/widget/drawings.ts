@@ -28,6 +28,8 @@ import {
 import type { FeedBar } from '../datafeed'
 import type { ChartI18n, ChartMessageKey, ChartTranslate } from '../i18n'
 import type { ChartSaveLoadAdapter, ResourceRef } from '../resources'
+import type { DrawingDocumentPort } from '../drawings/layer/documents'
+import type { DrawingDocumentApi } from '../drawings/layer/types'
 import type { SemanticTheme } from '../theme/schema'
 import { el } from '../ui/drawings/dom'
 import { mountDrawingToolbar, type ToolbarHandle } from '../ui/drawings/toolbar'
@@ -85,6 +87,8 @@ export interface DrawingVerbs {
 export interface DrawingsLayer {
   /** The narrowed public surface, or null when the drawings feature is off. */
   api: ChartDrawingsApi | null
+  /** The low-level document operations, or null with the feature off. */
+  documents: DrawingDocumentApi | null
   /** The full handle the chart itself drives. Null with the feature off. */
   handle: DrawingsHandle | null
   /** What the commands above the layer run. Null with the feature off. */
@@ -108,8 +112,17 @@ export interface DrawingsDeps {
   container: HTMLElement
   /** The inert chrome subtree the surfaces mount into. */
   chrome: HTMLElement
-  /** This chart's identity, which a drawing bound to one chart carries as its scope. */
+  /** This chart's identity within the document, for the DOM ids the surfaces mint. */
   chartId: string
+  /** This chart's place in the layout: the identity a drawing bound to one chart carries as its
+   *  scope, and the one a chart-local document is keyed by. */
+  chartKey: string
+  /** The separate-drawing document port, or null in combined mode. */
+  documents: DrawingDocumentPort | null
+  /** Every source and pane on this chart a drawing could belong to, read live: what a restore
+   *  validates a stored drawing against. */
+  sources(): readonly string[]
+  panes(): readonly string[]
   symbol: string
   timeframe: string
   bars(): readonly FeedBar[]
@@ -142,6 +155,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
   if (!deps.enabled) {
     return {
       api: null,
+      documents: null,
       handle: null,
       verbs: null,
       setSymbol: () => undefined,
@@ -183,8 +197,9 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     container: deps.container,
     symbol: deps.symbol,
     timeframe: deps.timeframe,
-    chartId: deps.chartId,
-    resources: deps.resources ? (scope) => deps.resources!.drawings(scope) : undefined,
+    chartId: deps.chartKey,
+    ...(deps.documents ? { documents: deps.documents } : {}),
+    surface: { sources: deps.sources, panes: deps.panes },
     ...(deps.resources?.templates ? { templates: deps.resources.templates('drawing') } : {}),
     bars: deps.bars,
     workflow: (): DrawingsWorkflow => {
@@ -475,6 +490,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
   } = handle
   return {
     handle,
+    documents: handle.documents,
     verbs,
     api: {
       ...rest,

@@ -32,9 +32,14 @@ import {
   type ChartSaveLoadAdapter,
   type ChartWidget,
   type ChartWidgetOptions,
+  drawingContextKey,
+  emptyDrawingDocument,
+  mergeDrawingDocuments,
+  reviseDrawingDocument,
+  type DrawingEntry,
+  type DrawingResourceContext,
   type DrawingsBody,
   type DrawingsMeta,
-  type DrawingScope,
   type FeatureConfig,
   type FeedBar,
   type HistoryPage,
@@ -49,7 +54,7 @@ import {
   type TemplateMeta,
   type WriteOutcome,
 } from 'quickcharts'
-import { drawingTools } from 'quickcharts/drawings'
+import { DEFAULT_OPTIONS, DEFAULT_STYLE, drawingTools } from 'quickcharts/drawings'
 
 // ── The host contract ───────────────────────────────────────────────────────────────────────────
 
@@ -109,6 +114,26 @@ function equal<T>(actual: T, expected: T, what: string): void {
 
 /** Long enough for a queued microtask, a macrotask and an animation frame to land. */
 const macrotask = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 25))
+
+/** One drawing as a document entry: a two-anchor line on the main series, in the main pane. The
+ *  envelope is what a restore validates; the state is the drawing's own serialized form. */
+const drawingEntry = (id: string): DrawingEntry => ({
+  id,
+  source: 'main',
+  pane: 'main',
+  type: 'trend_line',
+  state: {
+    v: 2,
+    id,
+    type: 'trend_line',
+    anchors: [
+      { time: ORIGIN + 100 * 60, price: 100 },
+      { time: ORIGIN + 200 * 60, price: 110 },
+    ],
+    style: DEFAULT_STYLE,
+    options: DEFAULT_OPTIONS,
+  },
+})
 
 // ── The scripted datafeed ───────────────────────────────────────────────────────────────────────
 
@@ -321,8 +346,8 @@ export function hostSaveLoadAdapter(options: AdapterBOptions = {}): ChartSaveLoa
   return {
     charts: hostStore<ChartMeta, ChartBody>('chart', (r) => ({ id: r.id, revision: String(r.revision), name: r.body.name, symbol: r.body.symbol, timeframe: r.body.timeframe, updatedAt: r.updatedAt }), options),
     layouts: hostStore<LayoutMeta, LayoutBody>('layout', (r) => ({ id: r.id, revision: String(r.revision), name: r.body.name, updatedAt: r.updatedAt }), options),
-    drawings(scope: DrawingScope) {
-      const key = `${scope.symbol}|${scope.chartId ?? ''}`
+    drawings(context: DrawingResourceContext) {
+      const key = drawingContextKey(context)
       let store = drawings.get(key)
       if (!store) {
         store = hostStore<DrawingsMeta, DrawingsBody>(`drawings:${key}`, (r) => ({ id: r.id, revision: String(r.revision), updatedAt: r.updatedAt }), options)
@@ -890,16 +915,130 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
         const stale = await templates.update({ id: study.ref.id, revision: 'stale' }, { name: 'Bands', content: '{"x":1}' })
         equal(stale.kind, 'conflict', 'a template write at a stale revision conflicts')
         equal((await templates.update({ id: 'missing', revision: '1' }, { name: 'x', content: '' })).kind, 'not-found', 'a missing template is not-found')
-        const drawings = adapter.drawings({ symbol: 'ALPHA' })
-        const doc = await drawings.create({ content: '[]' })
+        const local = (symbol: string, chartId: string): DrawingResourceContext => ({ version: 1, kind: 'chart-local', layoutId: 'desk', chartId, symbol })
+        const drawings = adapter.drawings(local('ALPHA', 'c1'))
+        const doc = await drawings.create(emptyDrawingDocument(local('ALPHA', 'c1')))
         assert(doc.kind === 'ok', 'a drawings document creates')
-        equal((await adapter.drawings({ symbol: 'BETA' }).list()).length, 0, 'drawings are symbol-scoped')
+        equal((await adapter.drawings(local('BETA', 'c1')).list()).length, 0, 'another symbol is another document')
+        equal((await adapter.drawings(local('ALPHA', 'c2')).list()).length, 0, 'another chart of the layout is another document')
+        equal((await adapter.drawings({ version: 1, kind: 'symbol-global', symbol: 'ALPHA' }).list()).length, 0, 'another context kind is another document')
         const remove = await drawings.remove(doc.ref)
         equal(remove.kind, 'ok', 'a drawings document deletes at its revision')
         equal((await drawings.remove(doc.ref)).kind, 'not-found', 'and only once')
       },
     }),
   ),
+  {
+    id: 'persistence.drawings.mode',
+    title: 'the drawing persistence mode is the host\'s construction choice: combined saves drawings with the chart, separate keeps them out of it and in their own document',
+    needs: ['drawings'],
+    async run(ctx) {
+      // Combined: the chart's own content carries the drawings, and the low-level document verbs
+      // refuse, because there is no separate document to reach.
+      const combined = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m', saveLoad: memorySaveLoadAdapter() })
+      const noDocuments = combined.chart.drawingResources
+      assert(noDocuments !== null, 'the document verbs are reachable with the drawings feature on')
+      equal(noDocuments.context(), null, 'combined mode names no document context')
+      equal((await noDocuments.get()).kind, 'refused', 'get refuses in combined mode')
+      equal((await noDocuments.reload()).kind, 'refused', 'reload refuses in combined mode')
+      const emptyCombined = JSON.parse(combined.chart.saveLoad.serialize().content) as { drawings?: unknown }
+      assert(Array.isArray(emptyCombined.drawings), 'a combined save carries the drawings field')
+
+      // Separate: one document per context, and the chart's content carries no drawings at all.
+      const adapter = memorySaveLoadAdapter()
+      const { chart } = await ctx.mount({
+        symbol: 'ALPHA',
+        timeframe: '5m',
+        saveLoad: adapter,
+        drawingPersistence: { mode: 'separate', scope: 'chart-local', layoutId: 'desk' },
+      })
+      const documents = chart.drawingResources
+      assert(documents !== null, 'the document verbs are reachable in separate mode')
+      const context = documents.context()
+      assert(context !== null && context.kind === 'chart-local' && context.symbol === 'ALPHA', 'the chart names its own document context')
+      const applied = documents.apply({ ...emptyDrawingDocument(context), revision: 1, entries: [drawingEntry('line-1')] })
+      assert(applied.kind === 'ok', 'a document applies')
+      equal(applied.applied, 1, 'its one drawing is on the chart')
+      equal(chart.drawings?.count(), 1, 'the layer holds it')
+      const separate = JSON.parse(chart.saveLoad.serialize().content) as { drawings?: unknown }
+      equal(separate.drawings, undefined, 'a separate-mode save carries no drawings')
+    },
+  },
+  {
+    id: 'persistence.drawings.apply',
+    title: 'restoring a document validates every drawing against the chart it is going onto, and names what it will not attach',
+    needs: ['drawings'],
+    async run(ctx) {
+      const adapter = memorySaveLoadAdapter()
+      const { chart } = await ctx.mount({
+        symbol: 'ALPHA',
+        timeframe: '5m',
+        saveLoad: adapter,
+        drawingPersistence: { mode: 'separate', scope: 'symbol-global' },
+      })
+      const documents = chart.drawingResources
+      assert(documents !== null, 'the document verbs are reachable')
+      const context = documents.context()
+      assert(context !== null && context.kind === 'symbol-global', 'the context is the one the host asked for')
+
+      // A document for another symbol is refused rather than merged onto this chart.
+      const foreign = { ...emptyDrawingDocument({ version: 1 as const, kind: 'symbol-global' as const, symbol: 'BETA' }), revision: 2, entries: [drawingEntry('elsewhere')] }
+      const mismatch = documents.apply(foreign)
+      assert(mismatch.kind === 'refused' && mismatch.reason === 'context-mismatch', 'a document for another context is refused')
+      equal(chart.drawings?.count(), 0, 'and nothing landed on the chart')
+
+      // An orphaned source, a pane that is not there, and a deleted group are each named; the
+      // drawing that fits is applied.
+      const outcome = documents.apply({
+        ...emptyDrawingDocument(context),
+        revision: 3,
+        entries: [
+          drawingEntry('good'),
+          { ...drawingEntry('orphan'), source: 'no-such-study' },
+          { ...drawingEntry('no-pane'), pane: 'no-such-pane' },
+          { ...drawingEntry('grouped'), group: 'gone' },
+        ],
+        tombstones: [{ kind: 'group', id: 'gone', at: 2 }],
+      })
+      assert(outcome.kind === 'ok', 'the rest of the document still applies')
+      equal(outcome.applied, 1, 'one drawing attached')
+      equal(chart.drawings?.count(), 1, 'and only that one is on the chart')
+      const reasons = [...outcome.rejected].sort((a, b) => a.id.localeCompare(b.id)).map((row) => `${row.id}:${row.reason}`)
+      equal(JSON.stringify(reasons), JSON.stringify(['grouped:deleted-group', 'no-pane:missing-pane', 'orphan:missing-source']), 'each refusal names its reason')
+
+      // The reload reads the document back and puts it on the chart.
+      const stored = adapter.drawings(context)
+      const written = await stored.create({ ...emptyDrawingDocument(context), revision: 4, entries: [drawingEntry('from-store'), drawingEntry('and-another')] })
+      assert(written.kind === 'ok', 'a document is stored for this context')
+      const reloaded = await documents.reload()
+      assert(reloaded.kind === 'ok', 'the reload applied the stored document')
+      equal(reloaded.applied, 2, 'both stored drawings are on the chart')
+      const read = await documents.get()
+      assert(read.kind === 'ok', 'get reads the stored document')
+      equal(read.document.entries.length, 2, 'and hands back what the store holds')
+      equal(read.ref?.id, written.ref.id, 'with the ref it stands at')
+    },
+  },
+  {
+    id: 'persistence.drawings.tombstones',
+    title: 'a deleted drawing or group never comes back through a concurrent save, a reconnect or a reload',
+    async run() {
+      const context: DrawingResourceContext = { version: 1, kind: 'layout-shared', layoutId: 'desk', symbol: 'ALPHA' }
+      const both = reviseDrawingDocument(emptyDrawingDocument(context), {
+        entries: [drawingEntry('a'), { ...drawingEntry('b'), group: 'g1' }],
+        groups: [{ id: 'g1', members: ['b'] }],
+      })
+      // This surface deletes one drawing and the group; the other surface still holds both and
+      // writes first. The merge keeps the deletions.
+      const mine = reviseDrawingDocument(both, { entries: [{ ...drawingEntry('b'), group: 'g1' }], groups: [] })
+      const merged = mergeDrawingDocuments(both, mine)
+      equal(JSON.stringify(merged.entries.map((row) => row.id)), JSON.stringify(['b']), 'the deleted drawing stays deleted')
+      equal(merged.groups.length, 0, 'the deleted group stays deleted')
+      assert(merged.revision > both.revision && merged.revision > mine.revision, 'the merge is newer than both documents')
+      // And once more, with the other surface writing the merge back: still gone.
+      equal(JSON.stringify(mergeDrawingDocuments(merged, both).entries.map((row) => row.id)), JSON.stringify(['b']), 'a later write cannot resurrect it')
+    },
+  },
   {
     id: 'persistence.stale-response',
     title: 'a load superseded by a newer load rejects with the abort error and never lands: the chart shows the newest ask',    async run(ctx) {

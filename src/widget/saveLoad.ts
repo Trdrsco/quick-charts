@@ -5,6 +5,7 @@
 // the revision it was opened at, or creates when nothing is open or the host asks for a copy; a
 // refusal comes back as a typed outcome with the catalog's copy for the case, and the chart never
 // writes over a newer revision.
+import type { SerializedDrawing } from '@trdrs/chart-drawings'
 import type { ChartBody, ChartMeta, ChartSaveLoadAdapter } from '../resources'
 import { openResourceController, type OpenResource, type ResourceLoadOutcome, type ResourceRemoveOutcome, type ResourceSaveOutcome } from '../openResource'
 import type { ChartI18n } from '../i18n'
@@ -34,7 +35,7 @@ export interface ChartSaveLoadApi {
 }
 
 /** The chart's saved-content format. Bumping this is the only reason a reader below ever branches. */
-export const CHART_CONTENT_VERSION = 2
+export const CHART_CONTENT_VERSION = 3
 
 /** Everything a saved chart carries. */
 export interface ChartContent {
@@ -45,6 +46,10 @@ export interface ChartContent {
   hidden: readonly string[]
   appearance: ChartOverrides['appearance']
   compares: unknown
+  /** The drawings on the chart, in COMBINED mode only. In separate mode this is absent and the
+   *  drawings family is their only path: one drawing is stored in one place, whichever mode the
+   *  host chose, so nothing here ever has to decide which copy is the newer one. */
+  drawings?: readonly SerializedDrawing[]
   /** Extension state by extension id, so a chart saved with one set of extensions loads under
    *  another without either reading the other's state. */
   ext: Record<string, unknown>
@@ -62,6 +67,7 @@ export function serializeChartContent(content: ChartContent): string {
     hidden: [...content.hidden],
     appearance: content.appearance,
     compares: content.compares,
+    ...(content.drawings ? { drawings: content.drawings } : {}),
     ext: content.ext,
   })
 }
@@ -76,6 +82,7 @@ export interface ParsedChartContent {
   hidden?: string[]
   appearance?: Partial<ChartOverrides['appearance']>
   compares?: unknown
+  drawings?: SerializedDrawing[]
   ext?: unknown
 }
 
@@ -91,6 +98,7 @@ export function parseChartContent(content: string): ParsedChartContent {
     scale: typeof raw.scale === 'string' ? raw.scale : undefined,
     hidden: Array.isArray(raw.hidden) ? raw.hidden.filter((v): v is string => typeof v === 'string') : undefined,
     appearance: raw.appearance && typeof raw.appearance === 'object' ? (raw.appearance as Partial<ChartOverrides['appearance']>) : undefined,
+    drawings: Array.isArray(raw.drawings) ? (raw.drawings as SerializedDrawing[]) : undefined,
     compares: raw.compares,
     ext: raw.ext,
   }

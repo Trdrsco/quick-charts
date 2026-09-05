@@ -15,6 +15,7 @@
 import type { ChartDatafeed } from '../datafeed'
 import type { ChartStorage } from '../storage'
 import type { ChartSaveLoadAdapter } from '../resources'
+import type { DrawingContextKind } from '../drawings/document'
 import type { PartialOverrides } from '../overrides'
 import type { IndicatorManifest, IndicatorOverrides } from '../indicatorModel'
 import type { FeedBar } from '../datafeed'
@@ -36,8 +37,8 @@ import type { LayoutSyncFlags } from './layout'
  *  gets the complete chart. Turning one off removes the chrome AND the behavior behind it, and the
  *  commands it owned answer `unavailable` rather than disappearing from the registry. */
 export interface FeatureConfig {
-  /** The drawing layer: tools, selection, the selected drawing's settings surfaces, and
-   *  per-symbol persistence. */
+  /** The drawing layer: tools, selection, the selected drawing's settings surfaces, and the
+   *  persistence `drawingPersistence` chose. */
   drawings?: boolean
   /** The drawing toolbar: the tool groups, cursor, measure and zoom, magnet, lock, the eye, sync,
    *  remove and the favorites star. Absent with `drawings` off. */
@@ -188,6 +189,28 @@ export interface ImageOptions {
   header?: boolean
 }
 
+/** ── DRAWING PERSISTENCE ─────────────────────────────────────────────────────────────────────
+ *  Where the trader's drawings are stored. Two modes, and the host picks one HERE, at construction:
+ *
+ *    combined  (the default) the drawings ride the chart's own saved content, so saving a chart or
+ *              a layout saves the drawings that are on it.
+ *    separate  the chart's saved content carries no drawings at all, and the adapter's drawings
+ *              family is their only path.
+ *
+ *  There is no third behavior: no fallback reader, no mirrored write and no runtime switch between
+ *  the two. A mode that could change under a running chart would mean two places one drawing might
+ *  be, and a save that has to guess which of them is the truth. */
+export interface DrawingPersistenceOptions {
+  mode: 'combined' | 'separate'
+  /** Which context a separate document is keyed by: this chart alone (`chart-local`, the default),
+   *  every chart of the layout (`layout-shared`), or every chart on the symbol (`symbol-global`). */
+  scope?: DrawingContextKind
+  /** The host's own stable identity for this layout. Required by `chart-local` and
+   *  `layout-shared`: a document keyed by an id the next page load mints again is a document
+   *  nothing can ever read back. */
+  layoutId?: string
+}
+
 /** The multi-chart arrangement the widget opens with. */
 export interface LayoutOptions {
   /** An arrangement code from the catalog (default `s`, one chart). Unknown codes throw. */
@@ -229,7 +252,7 @@ export interface ChartWidgetOptions {
   container: HTMLElement
   /** The market-data backend. Required: this is the seam the whole design turns on. */
   datafeed: ChartDatafeed
-  /** The revisioned saved-resource adapter (named charts, layouts, symbol-scoped drawings and
+  /** The revisioned saved-resource adapter (named charts, layouts, drawing documents and
    *  templates). Absent, the widget saves nothing beyond the page. */
   saveLoad?: ChartSaveLoadAdapter
   /** Where the viewer's flat preferences live. Defaults to an in-memory store that lasts the page. */
@@ -242,6 +265,9 @@ export interface ChartWidgetOptions {
   style?: ChartStyleId
   /** The multi-chart arrangement. One chart when omitted. */
   layout?: LayoutOptions
+  /** Where the drawings are stored: with the chart's own saved content (the default) or in their
+   *  own documents through the adapter's drawings family. */
+  drawingPersistence?: DrawingPersistenceOptions
   /** The product theme: which built-in mode, and any custom semantic palettes. */
   theme?: ThemeOptions
   /** Chart appearance: the typed override tree over the mode's defaults. This is the other

@@ -2,7 +2,9 @@
 // events the layer reports. Everything here is a type; the behavior lives in the sibling modules.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
 import type { DrawingStyle, GlyphSourcePort, IDrawing, LineStyle, SerializedDrawing, VisibilityPreset } from '@trdrs/chart-drawings'
-import type { DrawingsBody, DrawingsMeta, ResourceRef, ResourceStore, TemplateBody, TemplateMeta } from '../../resources'
+import type { ResourceRef, ResourceStore, TemplateBody, TemplateMeta } from '../../resources'
+import type { DrawingResourceContext, DrawingsBody } from '../document'
+import type { DrawingDocumentPort, DrawingOwner } from './documents'
 import type { FeedBar } from '../../datafeed'
 import type { CursorMode } from '../cursorModel'
 import type { MagnetMode } from '../magnetModel'
@@ -98,6 +100,64 @@ export interface DrawingPresets {
   subscribe(listener: () => void): () => void
 }
 
+/** Why a low-level document operation refused. Machine-readable on purpose: these answer a host's
+ *  code, not a trader, so nothing here is a sentence to render. */
+export type DrawingDocumentRefusal =
+  /** The widget runs in combined mode: its drawings ride whatever saves the chart, and there is no
+   *  separate document to get, apply or reload. */
+  | 'combined-mode'
+  /** The document names another context than the one this chart reads. It is not merged in: a
+   *  document for another layout, chart or symbol has no business on this chart. */
+  | 'context-mismatch'
+  /** A newer ask for this chart started while this one was in flight, so this answer is for a
+   *  layout, chart or symbol that has moved on. Nothing was changed. */
+  | 'stale'
+
+/** Why one drawing in a document was not applied. The rest of the document still applies: one
+ *  unusable row is not a reason to leave the trader with an empty chart. */
+export type DrawingRejectionReason =
+  /** Its owning source is not on this chart (an indicator that is gone, a series never added). */
+  | 'missing-source'
+  /** Its pane is not on this chart. */
+  | 'missing-pane'
+  /** Its source and pane are both on this chart, but they are not the ones this layer draws on.
+   *  The drawing stays where it belongs rather than being moved into this pane. */
+  | 'foreign-pane'
+  /** Its group was deleted. The row is not applied under a group that no longer exists. */
+  | 'deleted-group'
+  /** Its state is not a drawing this build can read. */
+  | 'unreadable'
+
+export interface DrawingRejection {
+  id: string
+  reason: DrawingRejectionReason
+}
+
+export type DrawingReadOutcome =
+  | { kind: 'ok'; ref: ResourceRef | null; document: DrawingsBody }
+  | { kind: 'refused'; reason: DrawingDocumentRefusal }
+
+export type DrawingApplyOutcome =
+  | { kind: 'ok'; applied: number; rejected: readonly DrawingRejection[] }
+  | { kind: 'refused'; reason: DrawingDocumentRefusal }
+
+/** The low-level separate-drawing operations. Three verbs over one document, each carrying its own
+ *  request generation so a late answer for an old layout, chart or symbol can never mutate the
+ *  chart that is on screen now, and each taking an `AbortSignal` so an abandoned ask stops. */
+export interface DrawingDocumentApi {
+  /** The context this chart's document is keyed by, or null in combined mode. */
+  context(): DrawingResourceContext | null
+  /** Read the stored document and the ref it stands at, without touching the chart. */
+  get(signal?: AbortSignal): Promise<DrawingReadOutcome>
+  /** Put a document on the chart. Every entry is validated against the live sources and panes
+   *  first; the ones that pass replace what is on screen, and the ones that do not come back named
+   *  with their reason. Synchronous, because applying a document the caller already holds reaches
+   *  no store. */
+  apply(document: DrawingsBody): DrawingApplyOutcome
+  /** Read the stored document and apply it: the reload path after a reconnect or a save elsewhere. */
+  reload(signal?: AbortSignal): Promise<DrawingApplyOutcome>
+}
+
 export interface DrawingsEvents {
   /** The armed tool changed (null = cursor). Fired by armTool and by auto-disarm after placement. */
   onToolChange?: (type: string | null) => void
@@ -125,9 +185,22 @@ export interface AttachDrawingsOptions {
   symbol: string
   /** Timeframe token ('5m', '1d', ...), which drives per-interval drawing visibility. */
   timeframe?: string
-  /** Where a symbol's drawings document lives: the adapter's drawings family for that scope.
-   *  Absent, the layer keeps its documents in memory for the page. */
-  resources?: (scope: { symbol: string; chartId?: string }) => ResourceStore<DrawingsMeta, DrawingsBody>
+  /** SEPARATE-drawing persistence: which drawing-resource context a symbol's document is keyed by,
+   *  and the store for that context. Absent is the COMBINED mode: the layer keeps its documents in
+   *  memory for the page and whatever saves the chart carries them. There is no third mode and no
+   *  reader between the two. */
+  documents?: DrawingDocumentPort
+  /** The chart surface this layer draws on, and what else the chart holds a drawing could belong
+   *  to. A restore validates every entry against these. Absent, the layer draws on the main series
+   *  in the main pane and the chart holds nothing else. */
+  surface?: {
+    /** What this layer draws on. Default: the main series in the main pane. */
+    owner?: DrawingOwner
+    /** Every source a drawing may legitimately name on this chart, read live. */
+    sources?: () => readonly string[]
+    /** Every pane a drawing may legitimately name on this chart, read live. */
+    panes?: () => readonly string[]
+  }
   /** The adapter's drawing-template family, which tool defaults and named templates ride. Absent,
    *  both last the page. */
   templates?: ResourceStore<TemplateMeta, TemplateBody>
@@ -222,6 +295,8 @@ export interface DrawingsHandle {
   cancelText(): void
   /** Tool defaults and named templates. */
   presets: DrawingPresets
+  /** The low-level separate-drawing document operations. */
+  documents: DrawingDocumentApi
   setSymbol(symbol: string): void
   setTimeframe(tf: string): void
   /** The symbol's smallest price move (tick-denominated readouts on measure-style drawings); null

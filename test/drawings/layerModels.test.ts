@@ -1,10 +1,8 @@
 // The pure decisions under the drawing layer: where a copy lands, what the Shift constraint does,
-// how an instant tool opens, which chart a drawing belongs to, how two documents meet, and what a
-// remembered default keeps.
+// how an instant tool opens, which chart a drawing belongs to, and what a remembered default keeps.
 import { describe, expect, it } from 'vitest'
-import type { SerializedDrawing } from '@trdrs/chart-drawings'
 import { barsShifted, constrain45, imagePlacement, instantPositionAnchors, shiftedAnchors } from '../../src/drawings/layer/geometry'
-import { mergeStoredDrawings, ownsDrawing, scopeForNew } from '../../src/drawings/layer/scope'
+import { ownsDrawing, scopeForNew } from '../../src/drawings/layer/scope'
 import { createPresets, presetOf } from '../../src/drawings/layer/presets'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { CLONE_OFFSET_PX, drawingTools } from '../../src/drawings/index'
@@ -71,12 +69,6 @@ describe('scope', () => {
     expect(scopeForNew('chart-1', true)).toBeUndefined()
     expect(scopeForNew('chart-1', false)).toBe('chart-1')
     expect(scopeForNew(undefined, false)).toBeUndefined()
-  })
-
-  it('merges with the stored rows winning and this surface\'s additions following', () => {
-    const row = (id: string, width: number): SerializedDrawing => ({ v: 2, id, type: 'trend_line', anchors: [], style: { lineWidth: width } as never, options: {} as never })
-    const merged = mergeStoredDrawings([row('a', 1), row('b', 1)], [row('b', 9), row('c', 9)])
-    expect(merged.map((d) => `${d.id}:${d.style.lineWidth}`)).toEqual(['a:1', 'b:1', 'c:9'])
   })
 })
 

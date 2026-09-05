@@ -27,6 +27,20 @@ const SURFACE: Record<string, string> = {
   serializeDrawingsStore: 'function',
   restoreDrawings: 'function',
 
+  // Additive (minor): the drawings document — where one lives, what it holds, and the pure rules
+  // a host needs to read or merge one itself.
+  DRAWING_CONTEXT_VERSION: 'number',
+  DRAWING_DOCUMENT_VERSION: 'number',
+  drawingBuried: 'function',
+  drawingContextKey: 'function',
+  emptyDrawingDocument: 'function',
+  liveDrawingEntries: 'function',
+  liveDrawingGroups: 'function',
+  mergeDrawingDocuments: 'function',
+  parseDrawingDocument: 'function',
+  reviseDrawingDocument: 'function',
+  sameDrawingContext: 'function',
+
   // Per-interval visibility.
   DEFAULT_VISIBILITY: 'object',
   normalizeVisibility: 'function',

@@ -21,6 +21,8 @@ import { createEmitter, type WidgetEvents } from './events'
 import { createSearchController, memoryRecents, type RecentsPort, type SearchController } from '../search'
 import { deriveCapabilities, resolveFeatures } from './planes'
 import type { Capabilities, ChartWidgetOptions } from './options'
+import { DRAWING_CONTEXT_VERSION, type DrawingContextKind, type DrawingResourceContext } from '../drawings/document'
+import type { ChartDrawingPersistence } from './chart'
 import { createChartInstance, type ChartHandle, type ChartInstance } from './chart'
 import { createLayoutPlane, type LayoutApi } from './layout'
 import { arrangementOf } from '../layoutGrid'
@@ -152,6 +154,36 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // in once it is mounted below, after the layout has built the charts it acts on.
   const doors = emptyDoors()
 
+  // ── Drawing persistence. The mode is settled ONCE, here, and each chart is handed the result: a
+  // document port in separate mode, nothing in combined mode. Both refusals below are construction
+  // errors rather than quiet degradations, because each describes a host that asked for separate
+  // documents nothing could ever read back.
+  const persistence = options.drawingPersistence ?? { mode: 'combined' as const }
+  const drawingScope: DrawingContextKind = persistence.scope ?? 'chart-local'
+  if (persistence.mode === 'separate') {
+    if (!options.saveLoad)
+      throw new Error('drawingPersistence.mode "separate" needs ChartWidgetOptions.saveLoad: the adapter\'s drawings family is where separate documents live')
+    if (drawingScope !== 'symbol-global' && !persistence.layoutId)
+      throw new Error(`drawingPersistence.scope "${drawingScope}" needs drawingPersistence.layoutId: a document keyed by a per-page id can never be read back`)
+  }
+  const layoutId = persistence.layoutId ?? ''
+  /** The context one chart's document is keyed by, for a symbol. */
+  const drawingContextFor = (chartKey: string, symbol: string): DrawingResourceContext => {
+    if (drawingScope === 'symbol-global') return { version: DRAWING_CONTEXT_VERSION, kind: 'symbol-global', symbol }
+    if (drawingScope === 'layout-shared') return { version: DRAWING_CONTEXT_VERSION, kind: 'layout-shared', layoutId, symbol }
+    return { version: DRAWING_CONTEXT_VERSION, kind: 'chart-local', layoutId, chartId: chartKey, symbol }
+  }
+  /** What one chart is handed: its stable place in the layout, and the mode with its port. */
+  const drawingPlanFor = (chartKey: string): ChartDrawingPersistence => {
+    const adapter = options.saveLoad
+    if (persistence.mode !== 'separate' || !adapter) return { chartKey, mode: 'combined' }
+    return {
+      chartKey,
+      mode: 'separate',
+      documents: { context: (symbol) => drawingContextFor(chartKey, symbol), store: (context) => adapter.drawings(context) },
+    }
+  }
+
   // ── Charts. The layout owns placement; the widget owns construction.
   const instances = new Map<string, ChartInstance>()
   // The layout builds its first charts synchronously inside its own construction, so a chart
@@ -174,13 +206,18 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     arrangement: options.layout?.arrangement,
     charts: options.layout?.charts,
     sync: options.layout?.sync,
-    createChart(element, init) {
+    createChart(element, init, index) {
       const id = `chart-${++chartSeq}`
+      // The chart's identity for PERSISTENCE is its place in the layout, not the instance id: a
+      // re-tile or a reload mints a new instance id, and a document keyed by one could never be
+      // read back.
+      const chartKey = `c${index + 1}`
       const instance = createChartInstance({
         id,
         container: element,
         datafeed: options.datafeed,
         saveLoad: options.saveLoad ?? null,
+        drawings: drawingPlanFor(chartKey),
         storage,
         i18n,
         theme,

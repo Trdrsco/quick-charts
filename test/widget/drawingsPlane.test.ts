@@ -50,6 +50,10 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     container: gestures,
     chrome,
     chartId: 'chart-1',
+    chartKey: 'c1',
+    documents: null,
+    sources: () => ['main'],
+    panes: () => ['main'],
     symbol: 'ES',
     timeframe: '5m',
     bars: () => [],
@@ -354,7 +358,9 @@ describe('the plane through the registry', () => {
     expect(prefs().syncAcrossPanes).toBe(false)
     run('chart.drawings.arm', 'rectangle')
     drag(gestures, [10, 10], [100, 100])
-    expect(plane.api!.export()[0]?.scope).toBe('chart-1')
+    // The binding token is the chart's PLACE in the layout, not its per-mount instance id: that is
+    // the only identity a stored drawing can still be matched against after a reload.
+    expect(plane.api!.export()[0]?.scope).toBe('c1')
   })
 
   it('reports tool and selection changes to the chart, and takes everything down on destroy', () => {

@@ -144,6 +144,7 @@ export function fakeChart(options: FakeChartOptions = {}) {
       hidden: () => state.hidden,
     },
     drawings: null,
+    drawingResources: null,
     compare: {
       add(symbol, opts) {
         state.compares = [...state.compares, { symbol, placement: opts.placement, color: 'x', visible: true } as CompareEntry]

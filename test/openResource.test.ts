@@ -158,14 +158,14 @@ describe('the widget, the layout and the drawing layer run over the contract', (
   })
 
   it('the drawing layer writes at the held ref, adopts the ref a refusal names, and never retries over it', () => {
-    expect(drawingsSrc).toContain('const outcome = ref ? await store.update(ref, body) : await store.create(body)')
+    expect(drawingsSrc).toContain('const outcome = ref ? await store.update(ref, document) : await store.create(document)')
     // A refusal adopts the ref that stands, merges the stored document over the layer's own rows,
     // reports, and writes the merge once more; it never writes over the newer revision blind.
-    expect(drawingsSrc).toContain("else if (outcome.kind === 'conflict') await adopt(symbol, kind, outcome.current, retry)")
-    expect(drawingsSrc).toContain('refs[kind].set(symbol, current)')
-    expect(drawingsSrc).toContain('setRows(symbol, kind, mergeStoredDrawings(stored, rowsOf(symbol, kind)))')
+    expect(drawingsSrc).toContain("else if (outcome.kind === 'conflict') await adopt(symbol, outcome.current, retry)")
+    expect(drawingsSrc).toContain('refs.set(symbol, current)')
+    expect(drawingsSrc).toContain('docs.set(symbol, mergeDrawingDocuments(stored, documentFor(symbol)))')
     expect(drawingsSrc).toContain('deps.onConflict({ symbol, current })')
-    expect(drawingsSrc).toContain('if (retry) upload(symbol, kind, false)')
+    expect(drawingsSrc).toContain('if (retry) upload(symbol, false)')
     expect(drawingsSrc).not.toContain('storage.set(')
     expect(drawingsSrc).not.toContain('localStorage')
   })

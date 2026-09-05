@@ -77,8 +77,10 @@ export interface LayoutDeps {
   arrangement?: string
   charts?: { symbol?: string; timeframe?: string }[]
   sync?: Partial<LayoutSyncFlags>
-  /** Build one chart into a fresh element. The widget owns construction; the layout owns placement. */
-  createChart(element: HTMLElement, init?: { symbol?: string; timeframe?: string }): ChartHandle
+  /** Build one chart into a fresh element. The widget owns construction; the layout owns
+   *  placement, so it also owns the chart's PLACE: `index` is the tile the chart is built for,
+   *  which is the only chart identity that survives a re-tile and a reload. */
+  createChart(element: HTMLElement, init: { symbol?: string; timeframe?: string } | undefined, index: number): ChartHandle
   /** Tear one chart down. */
   destroyChart(handle: ChartHandle): void
   /** The active chart changed. */
@@ -217,7 +219,8 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     deps.container.appendChild(element)
     const slot: LayoutSlot = { element, handle: null as unknown as ChartHandle, unsubscribes: [] }
     const index = (): number => slots.indexOf(slot)
-    slot.handle = deps.createChart(element, init)
+    // The slot is pushed by the caller, so its place is the length the list stands at now.
+    slot.handle = deps.createChart(element, init, slots.length)
     wire(slot, index)
     const onDown = (): void => setActive(index())
     element.addEventListener('pointerdown', onDown, true)

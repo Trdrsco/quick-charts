@@ -1,6 +1,6 @@
 // In-memory persistence a consumer owns outright: a ChartStorage for flat viewer preferences and a
-// ChartSaveLoadAdapter over the revisioned resource contract for saved charts, layouts,
-// symbol-scoped drawings and templates. Nothing persists past the page and nothing reaches a
+// ChartSaveLoadAdapter over the revisioned resource contract for saved charts, layouts, drawing
+// documents and templates. Nothing persists past the page and nothing reaches a
 // server, which is the clean-room point. Written
 // against the shipped d.ts, not the package's own memorySaveLoadAdapter, so the contract is proven
 // implementable from outside: every listing row carries its ref, every write is conditional on
@@ -10,7 +10,7 @@ import type {
   ChartMeta,
   ChartSaveLoadAdapter,
   ChartStorage,
-  DrawingScope,
+  DrawingResourceContext,
   DrawingsBody,
   DrawingsMeta,
   LayoutBody,
@@ -22,6 +22,7 @@ import type {
   TemplateMeta,
   WriteOutcome,
 } from 'quickcharts'
+import { drawingContextKey } from 'quickcharts'
 
 /** A ChartStorage over a Map. Never throws: an absent key reads as null, and every write lands. */
 export function memoryStorage(seed?: Record<string, string>): ChartStorage {
@@ -103,18 +104,17 @@ export function memorySaveLoad(options: MemorySaveLoadOptions = {}): ChartSaveLo
   const clock = options.clock ?? (() => Date.now())
   const drawingStores = new Map<string, ResourceStore<DrawingsMeta, DrawingsBody>>()
   const templateStores = new Map<TemplateKind, ResourceStore<TemplateMeta, TemplateBody>>()
-  const scopeKey = (scope: DrawingScope): string => `${scope.symbol} ${scope.chartId ?? ''}`
   return {
     charts: memoryStore<ChartMeta, ChartBody>({
       clock,
       metaOf: (r) => ({ ...r.ref, name: r.body.name, symbol: r.body.symbol, timeframe: r.body.timeframe, updatedAt: r.updatedAt }),
     }),
     layouts: memoryStore<LayoutMeta, LayoutBody>({ clock, metaOf: (r) => ({ ...r.ref, name: r.body.name, updatedAt: r.updatedAt }) }),
-    drawings(scope) {
-      const key = scopeKey(scope)
+    drawings(context: DrawingResourceContext) {
+      const key = drawingContextKey(context)
       let store = drawingStores.get(key)
       if (!store) {
-        // A scope holds ONE document: a second create answers the first document's ref.
+        // A context holds ONE document: a second create answers the first document's ref.
         store = memoryStore<DrawingsMeta, DrawingsBody>({ clock, metaOf: (r) => ({ ...r.ref, updatedAt: r.updatedAt }), collides: (rows) => rows[0] })
         drawingStores.set(key, store)
       }
