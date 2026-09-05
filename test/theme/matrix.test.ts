@@ -106,7 +106,7 @@ const INHERITED_PAIRS: readonly { ink: string; ground: string[]; min: number }[]
 
 /** Two representative host palettes: a brand accent over the light mode, and a high-contrast dark. */
 const CUSTOM_PALETTES: Record<string, CustomThemes> = {
-  'brand accent': { light: { 'state.accent': '#0a5fff', 'state.selected': 'rgba(10, 95, 255, 0.14)', 'text.link': '#0a5fff' } },
+  'brand accent': { light: { 'state.accent': '#0047d6', 'state.selected': 'rgba(0, 71, 214, 0.14)', 'text.link': '#0047d6' } },
   'high contrast dark': { dark: { 'canvas.background': '#000000', 'chrome.surface': '#000000', 'overlay.surface': '#0a0a0a', 'text.primary': '#ffffff', 'text.secondary': '#e6e6e6', 'text.muted': '#cccccc', 'scale.background': '#000000', 'scale.text': '#ffffff' } },
 }
 
@@ -342,17 +342,12 @@ const groundStack = (ground: string): string[] => (ground.startsWith('state.') ?
  *  reads under 4.5 to 1. The palette owner moves `state.accent` or `state.selected`; until then the
  *  AA gate for this pair is the skipped block below, and this record fails the moment the ratio
  *  moves in either direction. */
-const KNOWN_SHORTFALL: Readonly<Record<string, number>> = { 'built-in light': 4.15, 'built-in dark': 4.45, 'custom: brand accent': 4.2 }
-const SHORTFALL_INK = 'state.accent'
-const SHORTFALL_GROUND = 'state.selected'
-const isShortfall = (ink: string, ground: string): boolean => ink === SHORTFALL_INK && ground === SHORTFALL_GROUND
-
 describe('WCAG 2.2 AA contrast, computed from the theme vectors', () => {
   const stated = statedPairs()
 
   it('finds the pairs the recipes state outright', () => {
     expect(stated.length).toBeGreaterThan(5)
-    expect(stated.some((p) => isShortfall(p.ink, p.ground))).toBe(true)
+    expect(stated.some((p) => p.ink === 'state.accent' && p.ground === 'state.selected')).toBe(true)
   })
 
   const themes: { name: string; theme: SemanticTheme }[] = [
@@ -367,10 +362,9 @@ describe('WCAG 2.2 AA contrast, computed from the theme vectors', () => {
 
   for (const { name, theme } of themes) {
     describe(name, () => {
-      it('every stated ink over its stated ground reads at 4.5 to 1, the recorded shortfall aside', () => {
+      it('every stated ink over its stated ground reads at 4.5 to 1', () => {
         const failures: string[] = []
         for (const pair of stated) {
-          if (isShortfall(pair.ink, pair.ground)) continue
           const ratio = contrast(theme, pair.ink, groundStack(pair.ground))
           if (ratio === null) continue // a length or shadow role, not a color
           if (ratio < 4.5) failures.push(`${pair.selector}: ${pair.ink} over ${groundStack(pair.ground).join(' on ')} = ${ratio.toFixed(2)}`)
@@ -378,21 +372,12 @@ describe('WCAG 2.2 AA contrast, computed from the theme vectors', () => {
         expect(failures).toEqual([])
       })
 
-      const shortfall = KNOWN_SHORTFALL[name]
-      const gate = shortfall === undefined ? it : it.skip
-      gate(`${shortfall === undefined ? '' : '[palette owner unskips] '}${SHORTFALL_INK} over ${SHORTFALL_GROUND} on chrome.surface reaches 4.5 to 1`, () => {
-        const ratio = contrast(theme, SHORTFALL_INK, [SHORTFALL_GROUND, 'chrome.surface'])
+      it('state.accent over state.selected on chrome.surface reaches 4.5 to 1', () => {
+        const ratio = contrast(theme, 'state.accent', ['state.selected', 'chrome.surface'])
         expect(Number(ratio!.toFixed(2))).toBeGreaterThanOrEqual(4.5)
       })
-      if (shortfall !== undefined) {
-        it(`records the shortfall: ${SHORTFALL_INK} over ${SHORTFALL_GROUND} on chrome.surface reads ${shortfall} to 1 today`, () => {
-          const ratio = contrast(theme, SHORTFALL_INK, [SHORTFALL_GROUND, 'chrome.surface'])
-          expect(Number(ratio!.toFixed(2))).toBe(shortfall)
-        })
-      }
 
       for (const pair of INHERITED_PAIRS) {
-        if (isShortfall(pair.ink, pair.ground[0]!)) continue
         it(`${pair.ink} over ${pair.ground.join(' on ')} reaches ${pair.min} to 1`, () => {
           const ratio = contrast(theme, pair.ink, pair.ground)
           expect(ratio, 'measurable colors').not.toBeNull()

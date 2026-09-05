@@ -466,9 +466,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'access.indicator.one-id',
-    title: 'the indicator predicate is asked the same id from the picker and from the handle: the definition id',
-    defect: 'the picker asks access.indicator with the definition id (ui/chrome/indicatorPicker.ts) while the handle asks with the instance id (widget/indicators.ts permitted(instance.id)), so a policy written for catalog ids refuses a built-in in the picker and admits it through indicators.add under another instance id',
-    async run(ctx) {
+    title: 'the indicator predicate is asked the same id from the picker and from the handle: the definition id',    async run(ctx) {
       const { chart } = await ctx.mount({ symbol: 'ALPHA', access: { indicator: (id) => id !== 'rsi' } })
       equal(chart.indicators.add(rsiInstance('rsi-1')), false, 'an instance of a refused definition is refused whatever its instance id')
       equal(chart.indicators.get().length, 0, 'nothing was added')
@@ -582,9 +580,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'lifecycle.dispose.after-change',
-    title: 'a dispose in the same tick as a state change throws nothing afterwards',
-    defect: 'the chrome queues a microtask sync on every chart event and reads widget.activeChart() when it runs; a dispose in between makes that read throw "the widget has no charts" from the microtask (packages/chart/src/ui/chrome/mount.ts, sync)',
-    async run(ctx) {
+    title: 'a dispose in the same tick as a state change throws nothing afterwards',    async run(ctx) {
       const { widget } = await ctx.mount({ symbol: 'ALPHA' })
       widget.theme.setMode('light')
       widget.dispose()
@@ -906,9 +902,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   ),
   {
     id: 'persistence.stale-response',
-    title: 'a load that answers after a newer load is rejected: the chart shows the newest ask',
-    defect: 'chart.saveLoad.load applies whichever load resolves last (packages/chart/src/openResource.ts holds no epoch); a slow older answer overwrites a newer one',
-    async run(ctx) {
+    title: 'a load superseded by a newer load rejects with the abort error and never lands: the chart shows the newest ask',    async run(ctx) {
       const adapter = hostSaveLoadAdapter({ delayFor: (id) => (id.endsWith('-1') ? 40 : 0) })
       const { chart } = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m', saveLoad: adapter })
       chart.setSymbol('BETA')
@@ -922,7 +916,9 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       assert(slow.kind === 'ok' && fast.kind === 'ok', 'both saved')
       const first = chart.saveLoad.load(slow.ref.id)
       const second = chart.saveLoad.load(fast.ref.id)
-      await Promise.all([first, second])
+      const superseded = await first.then(() => null, (e: unknown) => (e instanceof Error ? e.name : String(e)))
+      equal(superseded, 'AbortError', 'the superseded load rejects with the abort error')
+      await second
       await ctx.settle()
       equal(chart.saveLoad.current()?.ref.id, fast.ref.id, 'the newest ask is the open chart')
       equal(chart.symbol(), 'GAMMA', 'the newest ask is on screen')
@@ -1020,9 +1016,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'feed.unavailable.no-subscription',
-    title: 'a symbol nothing serves opens no live subscription',
-    defect: "chart.ts load(): the history promise chain's final then() opens a subscription whenever none is open, so the FeedUnavailableError branch that returns early to keep one from opening is followed by a subscribeBars call anyway",
-    async run(ctx) {
+    title: 'a symbol nothing serves opens no live subscription',    async run(ctx) {
       const feed = scriptedFeed()
       await ctx.mount({ symbol: 'NONE', feed, ready: false })
       await ctx.settle()
@@ -1227,9 +1221,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   {
     id: 'styles.switch.compares-not-refetched',
     title: 'a style switch keeps the compared series without refetching their history',
-    needs: ['compare'],
-    defect: 'every style switch asks the feed for each compared symbol again (the compare plane refetches its window when the main series is rebuilt, widget/compare.ts sync after setStyle); the contract is that a style switch refetches nothing',
-    async run(ctx) {
+    needs: ['compare'],    async run(ctx) {
       const { chart, feed } = await ctx.mount({ symbol: 'ALPHA' })
       chart.compare.add('BETA', { placement: 'same-percent' })
       await quiet(feed, ctx.settle)
