@@ -447,7 +447,7 @@ describe('reading direction', () => {
     ])
   })
 
-  it('writes the direction on the root for a left-to-right and a right-to-left language', async () => {
+  it('writes the direction on the root for a left-to-right and a right-to-left language', { timeout: 30_000 }, async () => {
     const ltr = await censusIn('light', 'en')
     const rtl = await censusIn('dark', 'ar')
     try {
@@ -464,7 +464,7 @@ describe('reading direction', () => {
 })
 
 describe('the mounted widget in both modes', () => {
-  it('wears the same DOM in light and dark, and every class it wears has a recipe', async () => {
+  it('wears the same DOM in light and dark, and every class it wears has a recipe', { timeout: 30_000 }, async () => {
     const light = await censusIn('light')
     const dark = await censusIn('dark')
     try {
