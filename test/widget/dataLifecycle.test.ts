@@ -11,6 +11,7 @@ import { createThemeController } from '../../src/theme/controller'
 import { createChartI18n } from '../../src/i18n'
 import { memoryChartStorage } from '../../src/storage'
 import { emptyDoors } from '../../src/ui/chrome/doors'
+import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import { FeedUnavailableError, type ChartDatafeed, type FeedBar, type HistoryPage, type SubscribeHandlers } from '../../src/datafeed'
 import type { FeatureConfig } from '../../src/widget/options'
 import { lastRenderer, type FakeRenderer } from './rendererFake'
@@ -156,5 +157,32 @@ describe('the load and the live subscription', () => {
     await settle()
     expect(paintedBars(renderer)).toBe(2)
     expect(feed.open().map((s) => s.symbol)).toEqual(['NQ'])
+  })
+})
+
+describe('a style switch', () => {
+  it('is presentation only: nothing refetches, and the compares, indicators and visible range survive it', async () => {
+    // The compare's history is shorter than the main window, the case where a repaint used to
+    // re-ask the feed for the span it had already answered.
+    const feed = scriptedFeed({ history: (symbol) => Promise.resolve({ bars: symbol === 'NQ' ? bars(2, 1_700_000_180) : bars(5), noData: false }) })
+    const { handle, renderer } = mountChart(feed.feed, { features: { compare: true } })
+    await settle()
+    handle.compare.add('NQ', { placement: 'same-percent' })
+    handle.indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS[0]! })
+    await settle()
+    renderer.logicalRange = { from: 1, to: 4 }
+    const asked = feed.asks.length
+    const subscriptions = feed.subscriptions.length
+    handle.setStyle('line')
+    await settle()
+    expect(feed.asks.length).toBe(asked)
+    expect(feed.subscriptions.length).toBe(subscriptions)
+    expect(handle.style()).toBe('line')
+    expect(handle.compare.list().map((c) => c.symbol)).toEqual(['NQ'])
+    expect(handle.indicators.get().map((i) => i.id)).toEqual(['sma-1'])
+    expect(renderer.logicalRange).toEqual({ from: 1, to: 4 })
+    // The candle series is gone; a visible line series carries the same five bars.
+    expect(renderer.series.some((s) => s.kind === 'Candlestick')).toBe(false)
+    expect(renderer.series.some((s) => s.kind === 'Line' && s.options.visible !== false && s.data.length === 5)).toBe(true)
   })
 })
