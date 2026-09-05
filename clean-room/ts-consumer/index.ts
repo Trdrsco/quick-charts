@@ -19,6 +19,7 @@ import {
   tfToUdfResolution,
   udfResolutionToTf,
   CHART_STYLES,
+  DRAWING_CONTEXT_VERSION,
   type BuiltInIndicator,
   type Capabilities,
   type ChartDatafeed,
@@ -91,13 +92,13 @@ export async function exerciseFakes(): Promise<void> {
   if (moved.kind !== 'ok' || moved.ref.revision === created.ref.revision) throw new Error('an update at the held ref moves the revision')
   const stale = await saveLoad.charts.update(created.ref, { name: 'Morning', symbol: 'ESZ2026', timeframe: '1h', content: '{}' })
   if (stale.kind !== 'conflict' || stale.current.revision !== moved.ref.revision) throw new Error('a stale write is a typed conflict carrying the ref that stands')
-  const context: DrawingResourceContext = { version: 1, kind: 'chart-local', layoutId: 'desk', chartId: 'c1', symbol: 'ESZ2026' }
+  const context: DrawingResourceContext = { version: DRAWING_CONTEXT_VERSION, kind: 'chart-local', layoutId: 'desk', chartId: 'c1', symbol: 'ESZ2026' }
   const drawings = saveLoad.drawings(context)
   const doc = await drawings.create(emptyDrawingDocument(context))
   if (doc.kind !== 'ok') throw new Error('a context with no document accepts a create')
   if ((await drawings.create(emptyDrawingDocument(context))).kind !== 'conflict') throw new Error('a context holds one document')
   if ((await saveLoad.drawings({ ...context, symbol: 'NQZ2026' }).list()).length !== 0) throw new Error('another symbol is another document')
-  if ((await saveLoad.drawings({ version: 1, kind: 'symbol-global', symbol: 'ESZ2026' }).list()).length !== 0) throw new Error('another context kind is another document')
+  if ((await saveLoad.drawings({ version: DRAWING_CONTEXT_VERSION, kind: 'symbol-global', symbol: 'ESZ2026' }).list()).length !== 0) throw new Error('another context kind is another document')
   const study = await saveLoad.templates('study').create({ name: 'Bands', content: '{}' })
   if (study.kind !== 'ok' || (await saveLoad.templates('study').load(study.ref.id))?.body.content !== '{}') throw new Error('a template loads back')
   const removed = await saveLoad.charts.remove(moved.ref)
@@ -234,7 +235,7 @@ export function mountDrawingLayer(el: HTMLElement, chartApi: IChartApi, series: 
     series,
     container: el,
     symbol: 'BTC',
-    documents: { context: (symbol) => ({ version: 1, kind: 'symbol-global', symbol }), store: (context) => adapter.drawings(context) },
+    documents: { context: (symbol) => ({ version: DRAWING_CONTEXT_VERSION, kind: 'symbol-global', symbol }), store: (context) => adapter.drawings(context) },
   })
 }
 const storeDoc: Record<string, SerializedDrawing[]> = parseDrawingsStore(serializeDrawingsStore({}))

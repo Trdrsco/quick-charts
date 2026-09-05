@@ -78,8 +78,9 @@ export interface LayoutDeps {
   charts?: { symbol?: string; timeframe?: string }[]
   sync?: Partial<LayoutSyncFlags>
   /** Build one chart into a fresh element. The widget owns construction; the layout owns
-   *  placement, so it also owns the chart's PLACE: `index` is the tile the chart is built for,
-   *  which is the only chart identity that survives a re-tile and a reload. */
+   *  placement, so it also owns the chart's PLACE: `index` is the tile the chart is built for, and
+   *  a tile is the only chart identity that survives a reload. It survives a reload, not a
+   *  rearrangement: re-tiling or removing a chart renumbers the tiles after it. */
   createChart(element: HTMLElement, init: { symbol?: string; timeframe?: string } | undefined, index: number): ChartHandle
   /** Tear one chart down. */
   destroyChart(handle: ChartHandle): void
