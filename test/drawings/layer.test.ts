@@ -664,6 +664,43 @@ describe('the low-level document operations', () => {
     container.remove()
   })
 
+  it('keeps a row it never drew when the trader draws one it does, instead of burying it', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const fake = fakeChart()
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const handle = attachDrawings({
+      chart: fake.chart,
+      series: fake.series,
+      container,
+      symbol: 'ES',
+      chartId: 'c1',
+      documents: port(adapter),
+      surface: { sources: () => ['main', 'rsi-14'], panes: () => ['main', 'rsi-14'] },
+    })
+    // A row this layer does not draw: the study pane's, applied by the host and refused by this
+    // layer, so it is in the document and never on this screen.
+    const study = { id: 'in-study', source: 'rsi-14', pane: 'rsi-14', type: 'rectangle', state: { id: 'in-study', type: 'rectangle' } }
+    handle.documents.apply({ version: 1, context: port(adapter).context('ES'), revision: 1, entries: [study], groups: [], tombstones: [] })
+    handle.armTool('trend_line')
+    drag(container, [100, 100], [300, 200])
+    await settle()
+    await settle()
+    const store = adapter.drawings(port(adapter).context('ES'))
+    const row = (await store.list())[0]!
+    const stored = (await store.load(row.id))!
+    // The trader's line joins the document; the study pane's row survives it, byte for byte, and
+    // nothing is buried. A deletion here would take a drawing the trader can still see.
+    expect(stored.body.tombstones).toEqual([])
+    expect(stored.body.entries.map((e) => [e.id, e.source, e.pane])).toEqual([
+      ['in-study', 'rsi-14', 'rsi-14'],
+      [handle.export()[0]!.id, 'main', 'main'],
+    ])
+    expect(stored.body.entries[0]).toEqual(study)
+    handle.destroy()
+    container.remove()
+  })
+
   it('drops an answer for the symbol that just left rather than landing it on the one that arrived', async () => {
     const adapter = memorySaveLoadAdapter()
     const a = make({ documents: port(adapter), chartId: 'c1' })
