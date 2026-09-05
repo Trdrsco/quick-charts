@@ -34,9 +34,9 @@ export const BRAND_DOWN = '#f23645'
 // are the market, and the brand pair marks what speaks for trdrs on top of it.
 //
 // `background` is LIGHT, and it is the one leaf here that changes what the rest of the chart must
-// cope with. Everything downstream already does — ChartPanel sets `data-chart-ink` off
-// isLightBackground(), which inverts the on-canvas DOM (legend, countdown) — so verify that
-// attribute still resolves if this value ever moves back across the light/dark line.
+// cope with. The ink drawn over the plot (the legend, the countdown) is the theme's text.onCanvas
+// role, whose contrast is checked against the theme's canvas.background, not against this leaf, so
+// a host that moves this value across the light/dark line moves its theme with it.
 export const DEFAULT_OVERRIDES: ChartOverrides = {
   appearance: {
     background: '#ece7c0',

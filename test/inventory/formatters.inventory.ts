@@ -140,36 +140,12 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
     surface: 'price range, date range, and date-and-price range readouts; compact volume',
     finding: 'volume compacts by magnitude with no volume precision from the symbol.',
   },
-  // ── symbology: the app chart body ───────────────────────────────────────────────────────────
+  // ── symbology: the app around the chart ───────────────────────────────────────────────────────────
   {
     file: 'apps/web/src/integrations/quickcharts/priceFormat.ts',
     symbols: ['priceFormatterOf', 'UNRESOLVED_PRICE_FORMAT', 'minMoveOf'],
     kind: 'symbology',
     surface: "the app's one price formatter: createPriceFormatter over the symbol's resolved format in the interface language, with the declared unresolved policy",
-  },
-  {
-    file: 'apps/web/src/chart/chartShared.ts',
-    symbols: ['paneSeriesPriceFormat', 'panePriceAt'],
-    kind: 'symbology',
-    surface: 'the price axis, the crosshair and last-price labels (series priceFormat over the symbol formatter), and the level a pointer snaps to on the symbol display grid',
-  },
-  {
-    file: 'apps/web/src/chart/ChartPane.tsx',
-    symbols: ['formatter.format(ohlc.c)', 'formatter.format(change)', 'changePct.toFixed(2)', 'itemPrecision != null ? value.toFixed(itemPrecision) : formatter.format(value)', 'cmpFormatter.format(value)'],
-    kind: 'symbology',
-    surface: "the OHLC legend and the change legend through the symbol formatter; the percent-change legend; indicator legend values at a declared precision else the symbol formatter; compare legend values in the compared symbol's own format",
-  },
-  {
-    file: 'apps/web/src/chart/ChartPanel.tsx',
-    symbols: ['priceFormatterOf(cachedSymbolMeta(tradeMenu.instrument).format, info.tag).format(tradeMenu.price)'],
-    kind: 'symbology',
-    surface: "the level menu's price text, in the raising pane's own symbol format",
-  },
-  {
-    file: 'apps/web/src/chart/barCountdown.ts',
-    symbols: ['priceFormatter().format'],
-    kind: 'symbology',
-    surface: 'the bar countdown price bubble, through the series price formatter',
   },
   {
     file: 'packages/chart/src/widget/image.ts',
@@ -217,13 +193,6 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
     surface: 'the extension formatter: the one symbol formatter, read live through the extension seam',
   },
   {
-    file: 'apps/web/src/chart/useChartTradeLayer.ts',
-    symbols: ['precisionOf(priceFormat)'],
-    kind: 'execution',
-    surface: 'the execution marks take the symbol display precision for their price labels; the lines snap to the broker tick',
-    finding: 'a display precision feeding an executable surface; chart-trading takes broker facts instead.',
-  },
-  {
     file: 'packages/order-ticket/src/Panel.tsx',
     symbols: ['priceStr', 'capDisplayDecimals', 'decimalsOfTick', 'fmtQty'],
     kind: 'execution',
@@ -231,12 +200,6 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
     finding: 'when the tick is unknown, precision is read off the live quote; the read cap applies to an input.',
   },
   { file: 'packages/order-ticket/src/submitCore.ts', symbols: ['snapPrice'], kind: 'execution', surface: 'submit-time entry snap' },
-  {
-    file: 'apps/web/src/chart/QuantityCalculator.tsx',
-    symbols: ['toFixed(decimals)'],
-    kind: 'execution',
-    surface: 'stepped quantity cleanup',
-  },
   // ── ledger ──────────────────────────────────────────────────────────────────────────────────
   {
     file: 'packages/account-manager/src/formatters.ts',
