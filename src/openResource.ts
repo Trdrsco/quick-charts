@@ -5,7 +5,7 @@
 // refusal comes back as a typed outcome carrying the catalog's copy for the case; nothing here
 // ever resolves a conflict by writing over the newer revision.
 import type { ChartTranslate } from './i18n'
-import type { ResourceRef, ResourceStore } from './resources'
+import { ResourceAbortError, type ResourceRef, type ResourceStore } from './resources'
 
 /** The named resource on screen: the ref it was opened or last saved at, and its name. */
 export interface OpenResource {
@@ -32,6 +32,9 @@ export interface OpenResourceController<Meta, Body extends { name: string }> {
    *  binding detaches, and the next save creates. */
   detach(): void
   save(body: Body, opts?: { asNew?: boolean; signal?: AbortSignal }): Promise<ResourceSaveOutcome<Meta>>
+  /** Open a resource by id. A later load supersedes one still in flight: the earlier request's
+   *  signal aborts, its call rejects with the contract's `AbortError`, and a response that still
+   *  arrives is dropped, so the open resource is always the one asked for last. */
   load(id: string, signal?: AbortSignal): Promise<ResourceLoadOutcome<Body>>
   /** Delete the open resource at the revision it is held at. */
   remove(signal?: AbortSignal): Promise<ResourceRemoveOutcome>
@@ -45,6 +48,9 @@ export function openResourceController<Meta, Body extends { name: string }>(deps
   t: () => ChartTranslate
 }): OpenResourceController<Meta, Body> {
   let open: OpenResource | null = null
+  /** The load in flight, if any. A newer load takes its place and aborts it, so two loads can
+   *  never race to be the open resource. */
+  let inFlight: AbortController | null = null
   const storeOrThrow = (): ResourceStore<Meta, Body> => {
     const store = deps.store()
     if (!store) throw new Error('no save/load adapter: pass ChartWidgetOptions.saveLoad to save named resources')
@@ -67,10 +73,25 @@ export function openResourceController<Meta, Body extends { name: string }>(deps
       return { kind: 'not-found', message: deps.t()('host.saveNotFound') }
     },
     async load(id, signal) {
-      const found = await storeOrThrow().load(id, signal)
-      if (!found) return { kind: 'not-found', message: deps.t()('host.saveNotFound') }
-      open = { ref: found.ref, name: found.body.name }
-      return { kind: 'ok', ref: found.ref, body: found.body }
+      const store = storeOrThrow()
+      inFlight?.abort()
+      const mine = new AbortController()
+      inFlight = mine
+      // The caller's signal rides along: aborting it aborts this load the same way a newer load does.
+      const forward = (): void => mine.abort()
+      if (signal?.aborted) forward()
+      else signal?.addEventListener('abort', forward, { once: true })
+      try {
+        const found = await store.load(id, mine.signal)
+        // A store may answer after the abort it was handed; that answer is nobody's open resource.
+        if (mine.signal.aborted) throw new ResourceAbortError(inFlight === mine ? undefined : 'the load was superseded by a later load')
+        if (!found) return { kind: 'not-found', message: deps.t()('host.saveNotFound') }
+        open = { ref: found.ref, name: found.body.name }
+        return { kind: 'ok', ref: found.ref, body: found.body }
+      } finally {
+        signal?.removeEventListener('abort', forward)
+        if (inFlight === mine) inFlight = null
+      }
     },
     async remove(signal) {
       const store = storeOrThrow()
