@@ -15,7 +15,7 @@ import { applyPlotOverrides, buildManifestPlots, indicatorHidden, latestPlotValu
 import { attachIndicators, type IndicatorsRenderer } from '../indicatorRenderer'
 import { isCollapsed } from '../panePlan'
 import type { CanvasTheme } from '../theme/renderer'
-import type { AccessPolicy, IndicatorInstance } from './options'
+import type { AccessPolicy, IndicatorDefinition, IndicatorInstance } from './options'
 import type { IndicatorEvent } from './events'
 
 /** The title a mounted indicator wears: the host's own, else the manifest's name, else the chart
@@ -26,6 +26,20 @@ export function indicatorTitleOf(inst: IndicatorInstance, t: ChartTranslate): st
   if (inst.definition.manifest.name) return inst.definition.manifest.name
   const key = (inst.definition as { nameKey?: unknown }).nameKey
   return typeof key === 'string' ? t(key as ChartMessageKey) : inst.id
+}
+
+/** Whether the access policy permits a definition. The predicate is asked ONE id from every door,
+ *  the definition's own (`manifest.id`; a built-in's is the catalog id the picker lists), never the
+ *  instance id a host or the picker minted. A definition that declares no id cannot be refused by
+ *  name and is permitted. A predicate that throws refuses. */
+export function indicatorPermitted(access: AccessPolicy | undefined, definition: IndicatorDefinition): boolean {
+  const id = definition.manifest.id
+  if (!access?.indicator || id === undefined) return true
+  try {
+    return access.indicator(id) !== false
+  } catch {
+    return false
+  }
 }
 
 /** How many consecutive readings at the floor height confirm a collapse nobody commanded.
@@ -220,14 +234,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     requestAnimationFrame(look)
   }
 
-  const permitted = (id: string): boolean => {
-    if (!deps.access?.indicator) return true
-    try {
-      return deps.access.indicator(id) !== false
-    } catch {
-      return false
-    }
-  }
+  const permitted = (inst: IndicatorInstance): boolean => indicatorPermitted(deps.access, inst.definition)
 
   function recompute(): void {
     lastRecompute = Date.now() // every direct (structural) run resets the tick cap
@@ -296,12 +303,12 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     renderer,
     list: () => instances,
     set(next) {
-      instances = next.filter((inst) => permitted(inst.id))
+      instances = next.filter(permitted)
       renderer.prune(new Set(instances.map((i) => i.id)))
       recompute()
     },
     add(instance) {
-      if (!permitted(instance.id)) return false
+      if (!permitted(instance)) return false
       instances = [...instances.filter((i) => i.id !== instance.id), instance]
       recompute()
       deps.onEvent({ kind: 'added', id: instance.id })

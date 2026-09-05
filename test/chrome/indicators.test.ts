@@ -3,8 +3,9 @@
 // an add composed into an instance and run as a command, a refused definition disabled and named
 // as such, and the settings dialog's three tabs applied as one update.
 import { afterEach, describe, expect, it } from 'vitest'
-import { filterDefinitions, freshInstanceId, indicatorPermitted, openIndicatorPicker } from '../../src/ui/chrome/indicatorPicker'
+import { filterDefinitions, freshInstanceId, openIndicatorPicker } from '../../src/ui/chrome/indicatorPicker'
 import { hexOf, openIndicatorSettings } from '../../src/ui/chrome/indicatorSettings'
+import { indicatorPermitted } from '../../src/widget/indicators'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import { fakeWidget, press } from './harness'
 
@@ -26,8 +27,8 @@ describe('the picker rules', () => {
     const sma = BUILT_IN_INDICATORS[0]!
     expect(freshInstanceId('sma', [])).toBe('sma-1')
     expect(freshInstanceId('sma', [{ id: 'sma-1', definition: sma }, { id: 'sma-2', definition: sma }])).toBe('sma-3')
-    expect(indicatorPermitted(undefined, 'sma')).toBe(true)
-    expect(indicatorPermitted({ indicator: () => false }, 'sma')).toBe(false)
+    expect(indicatorPermitted(undefined, sma)).toBe(true)
+    expect(indicatorPermitted({ indicator: () => false }, sma)).toBe(false)
     expect(
       indicatorPermitted(
         {
@@ -35,9 +36,14 @@ describe('the picker rules', () => {
             throw new Error('policy down')
           },
         },
-        'sma',
+        sma,
       ),
     ).toBe(false)
+    // The predicate is asked the definition id, and a definition that names none is not gated.
+    const asked: string[] = []
+    expect(indicatorPermitted({ indicator: (id) => (asked.push(id), true) }, sma)).toBe(true)
+    expect(asked).toEqual(['sma'])
+    expect(indicatorPermitted({ indicator: () => false }, { manifest: { pane: 'overlay', plots: {} }, compute: () => ({}) })).toBe(true)
   })
 })
 

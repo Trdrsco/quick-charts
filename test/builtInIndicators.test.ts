@@ -34,6 +34,8 @@ describe('the 23 built-in indicators the chart ships', () => {
     expect(definitions.length).toBe(23)
     expect(new Set(BUILT_IN_INDICATORS.map((d) => d.id)).size).toBe(23)
     expect(new Set(BUILT_IN_INDICATORS.map((d) => d.tag)).size).toBe(23)
+    // The catalog id IS the manifest id: the one id the access policy is asked from every door.
+    for (const d of BUILT_IN_INDICATORS) expect(d.manifest.id, d.id).toBe(d.id)
   })
 
   it('resolves every name and description through the chart catalog, in English and after a language switch', async () => {

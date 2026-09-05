@@ -13,7 +13,7 @@ import { memoryChartStorage } from '../../src/storage'
 import { emptyDoors } from '../../src/ui/chrome/doors'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import { FeedUnavailableError, type ChartDatafeed, type FeedBar, type HistoryPage, type SubscribeHandlers } from '../../src/datafeed'
-import type { FeatureConfig } from '../../src/widget/options'
+import type { AccessPolicy, FeatureConfig } from '../../src/widget/options'
 import { lastRenderer, type FakeRenderer } from './rendererFake'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
@@ -60,7 +60,7 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; symbol?: string } = {}) {
+function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; symbol?: string; access?: AccessPolicy } = {}) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const registry = createCommandRegistry()
@@ -80,6 +80,7 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; sy
     extensions: [],
     marks: false,
     commands: registry.registry,
+    access: options.access,
     preferences: {},
     symbol: options.symbol ?? 'ES',
     timeframe: '1m',
@@ -184,5 +185,27 @@ describe('a style switch', () => {
     // The candle series is gone; a visible line series carries the same five bars.
     expect(renderer.series.some((s) => s.kind === 'Candlestick')).toBe(false)
     expect(renderer.series.some((s) => s.kind === 'Line' && s.options.visible !== false && s.data.length === 5)).toBe(true)
+  })
+})
+
+describe('the indicator access policy', () => {
+  it('is asked the definition id, the one the picker lists, never the instance id', async () => {
+    const asked: string[] = []
+    const feed = scriptedFeed()
+    const { handle } = mountChart(feed.feed, {
+      access: {
+        indicator: (id) => {
+          asked.push(id)
+          return id !== 'rsi'
+        },
+      },
+    })
+    await settle()
+    const sma = BUILT_IN_INDICATORS.find((d) => d.id === 'sma')!
+    const rsi = BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')!
+    expect(handle.indicators.add({ id: 'my-average', definition: sma })).toBe(true)
+    expect(handle.indicators.add({ id: 'momentum', definition: rsi })).toBe(false)
+    expect(asked).toEqual(['sma', 'rsi'])
+    expect(handle.indicators.get().map((i) => i.id)).toEqual(['my-average'])
   })
 })
