@@ -337,11 +337,9 @@ describe('every recipe draws from the theme', () => {
  *  chrome surface it most often covers. */
 const groundStack = (ground: string): string[] => (ground.startsWith('state.') ? [ground, 'chrome.surface'] : [ground])
 
-/** The one pair below AA today, measured here so the shortfall is a number rather than a memory:
- *  an active control writes the accent over the selected fill, and in both built-in palettes that
- *  reads under 4.5 to 1. The palette owner moves `state.accent` or `state.selected`; until then the
- *  AA gate for this pair is the skipped block below, and this record fails the moment the ratio
- *  moves in either direction. */
+/** Every ink the recipes state over a ground is measured at WCAG 2.2 AA in both built-in palettes
+ *  and in the representative host palettes, the accent over the selected fill included: a value that
+ *  slips under 4.5 to 1 fails here, not in a screen reader. */
 describe('WCAG 2.2 AA contrast, computed from the theme vectors', () => {
   const stated = statedPairs()
 
