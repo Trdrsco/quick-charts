@@ -2,13 +2,19 @@
 // The market-status popup: an honest line for an unknown session, and the title, sentence,
 // timeline, transition labels and exchange zone for a known one, all read off the symbol's own
 // session model.
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { openMarketStatus, timelineLabels } from '../../src/ui/chrome/marketStatus'
 import { marketStatus, parseSessionModel } from '../../src/sessionModel'
 import { createChartI18n } from '../../src/i18n'
 import { button } from '../../src/ui/chrome/dom'
 
+// The popup reads the wall clock, so the exchange day it draws depends on the day the test runs:
+// a weekend is one closed segment. Every test here runs on a Wednesday at 11:00 New York time.
+beforeEach(() => {
+  vi.useFakeTimers({ now: Date.UTC(2026, 8, 2, 15, 0, 0), toFake: ['Date'] })
+})
 afterEach(() => {
+  vi.useRealTimers()
   document.body.replaceChildren()
 })
 
