@@ -102,8 +102,5 @@ export const layouts: Translation<typeof source> = {
   'layouts.deleteConfirmBody': 'This permanently deletes {name}.',
   'layouts.cancel': 'Cancel',
   'layouts.close': 'Close',
-  'layouts.errSave': 'Could not save the layout.',
-  'layouts.errLoad': 'Could not open the layout.',
-  'layouts.errDelete': 'Could not delete the layout.',
   'layouts.errList': 'Could not load your saved layouts.',
 }
