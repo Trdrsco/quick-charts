@@ -339,10 +339,11 @@ ephemeral embed, and implement the same contract over your own backend for durab
 ## Viewer preferences
 
 **The widget** keeps the viewer's flat preferences (the last symbol and timeframe, the scale mode,
-hidden studies, the replay speed) in a `ChartStorage`. The default is an in-memory store that
-lasts the page; supply your own to keep them per device or per account. A browser store is a few
-lines a host writes; it is not part of the package, because a device-local default is not a
-persistence architecture:
+hidden studies, the replay speed) in a `ChartStorage`. Every key is an opaque string in the
+`quickcharts.` namespace, and every value is an opaque string; a store routes or scopes them and
+reads neither. The default is an in-memory store that lasts the page; supply your own to keep them
+per device or per account. A browser store is a few lines a host writes; it is not part of the
+package, because a device-local default is not a persistence architecture:
 
 ```ts
 import { memoryChartStorage, type ChartStorage } from 'quickcharts'

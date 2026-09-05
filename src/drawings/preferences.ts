@@ -112,4 +112,4 @@ export function serializeDrawingPreferences(preferences: DrawingPreferences): st
 
 /** The `ChartStorage` key the widget persists the record under, in the widget's own namespace
  *  beside its symbol, timeframe and scale keys. */
-export const DRAWING_PREFERENCES_KEY = 'trdrs.chart.widget.drawingPrefs.v1'
+export const DRAWING_PREFERENCES_KEY = 'quickcharts.drawingPrefs.v1'

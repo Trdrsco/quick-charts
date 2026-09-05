@@ -6,9 +6,9 @@ import type { ChartStorage } from '../../storage'
 import { parseTimeframe, TIMEFRAME_PRESET_TOKENS, timeframeOrder } from '../../timeframe'
 import type { ChartPreferences } from '../../widget/options'
 
-const SAVED_KEY = 'trdrs.chart.widget.savedTf.v1'
-const CUSTOM_KEY = 'trdrs.chart.widget.customTf.v1'
-const AUTOSAVE_KEY = 'trdrs.chart.widget.layoutAutosave.v1'
+const SAVED_KEY = 'quickcharts.savedTf.v1'
+const CUSTOM_KEY = 'quickcharts.customTf.v1'
+const AUTOSAVE_KEY = 'quickcharts.layoutAutosave.v1'
 
 /** The chips a first-run chart offers. */
 export const DEFAULT_SAVED_TIMEFRAMES: readonly string[] = ['1m', '5m', '1h', '4h', '1d']

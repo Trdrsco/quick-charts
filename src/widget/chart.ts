@@ -262,15 +262,15 @@ export interface ChartInstance {
 /** Storage keys. Every one flows through the `ChartStorage` port and nothing else: where a viewer's
  *  preferences live is the host's decision, and the chart has no business assuming a browser store
  *  of any kind. */
-const SYMBOL_KEY = 'trdrs.chart.widget.symbol.v1'
-const TF_KEY = 'trdrs.chart.widget.tf.v1'
-const STYLE_KEY = 'trdrs.chart.widget.style.v1'
-const SCALE_KEY = 'trdrs.chart.widget.scale.v1'
-const HIDDEN_KEY = 'trdrs.chart.widget.indHidden.v1'
-const REPLAY_SPEED_KEY = 'trdrs.chart.widget.replaySpeed.v1'
-const REPLAY_INTERVAL_KEY = 'trdrs.chart.widget.replayIv.v1'
-const TIMEZONE_KEY = 'trdrs.chart.widget.timezone.v1'
-const SUBSESSION_KEY = 'trdrs.chart.widget.subsession.v1'
+const SYMBOL_KEY = 'quickcharts.symbol.v1'
+const TF_KEY = 'quickcharts.tf.v1'
+const STYLE_KEY = 'quickcharts.style.v1'
+const SCALE_KEY = 'quickcharts.scale.v1'
+const HIDDEN_KEY = 'quickcharts.indHidden.v1'
+const REPLAY_SPEED_KEY = 'quickcharts.replaySpeed.v1'
+const REPLAY_INTERVAL_KEY = 'quickcharts.replayIv.v1'
+const TIMEZONE_KEY = 'quickcharts.timezone.v1'
+const SUBSESSION_KEY = 'quickcharts.subsession.v1'
 
 export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const { datafeed, storage, i18n } = deps

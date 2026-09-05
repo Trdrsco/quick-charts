@@ -8,8 +8,9 @@
 // preference persistence is fully redirectable. Saved charts, layouts, drawings and templates are
 // NOT preferences: they are revisioned resources on `ChartSaveLoadAdapter` (resources.ts).
 //
-// Keys are opaque `trdrs.chart.*` strings; values are opaque strings (JSON the chart owns). An adapter
-// must treat both as opaque — no parsing, no per-key logic — so the chart can evolve its formats freely.
+// Keys are opaque strings in the package's own `quickcharts.` namespace; values are opaque strings
+// (JSON the chart owns). An adapter must treat both as opaque — no parsing, no per-key logic — so
+// the chart can evolve its formats freely.
 
 export interface ChartStorage {
   /** The stored value for a key, or null when absent. Must not throw — a backing-store failure reads as
