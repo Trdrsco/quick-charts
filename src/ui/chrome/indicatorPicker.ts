@@ -4,6 +4,7 @@
 // predicate is read for the row, so a refused definition renders disabled and says why.
 import { BUILT_IN_INDICATORS, type BuiltInIndicator, type IndicatorCategory } from '../../builtInIndicators'
 import type { ChartMessageKey } from '../../i18n'
+import { indicatorPermitted } from '../../widget/indicators'
 import type { AccessPolicy, IndicatorInstance } from '../../widget/options'
 import { activeChart, type ChromeContext } from './context'
 import { dialogTitle, openDialog, type DialogHandle } from './dialog'
@@ -20,16 +21,6 @@ const CATEGORIES: readonly { id: IndicatorCategory; label: ChartMessageKey }[] =
   { id: 'osc', label: 'picker.categoryOsc' },
   { id: 'vol', label: 'picker.categoryVol' },
 ]
-
-/** Whether the policy permits a definition. A predicate that throws refuses. */
-export function indicatorPermitted(access: AccessPolicy | undefined, id: string): boolean {
-  if (!access?.indicator) return true
-  try {
-    return access.indicator(id) !== false
-  } catch {
-    return false
-  }
-}
 
 /** An instance id no instance on the chart holds: the definition id, then a counter. */
 export function freshInstanceId(definitionId: string, existing: readonly IndicatorInstance[]): string {
@@ -72,7 +63,7 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
           if (group.length === 0) continue
           children.push(h('div', { class: 'qc-dialog-heading', role: 'presentation' }, t(category.label)))
           for (const definition of group) {
-            const permitted = indicatorPermitted(deps.access, definition.id)
+            const permitted = indicatorPermitted(deps.access, definition)
             const row = h(
               'button',
               {

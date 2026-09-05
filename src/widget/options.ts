@@ -97,7 +97,10 @@ export interface AccessPolicy {
   command?(id: string): boolean
   /** Whether a drawing tool id may be armed. */
   drawingTool?(id: string): boolean
-  /** Whether an indicator id may be added. */
+  /** Whether an indicator definition may be added, asked by its DEFINITION id (`manifest.id`; a
+   *  built-in's is the catalog id the picker lists, such as `sma`), never by an instance id. Every
+   *  door asks the same id: the picker row, `indicators.add`, and a restore. A definition that
+   *  declares no id is not gated. */
   indicator?(id: string): boolean
 }
 
