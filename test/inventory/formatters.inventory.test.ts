@@ -45,7 +45,7 @@ describe('the formatter inventory', () => {
     const files = new Set(FORMATTER_SITES.map((s) => s.file))
     for (const file of [
       'packages/chart/src/datafeed.ts',
-      'apps/web/src/chart/chartShared.ts',
+      'apps/web/src/integrations/quickcharts/priceFormat.ts',
       'packages/chart-drawings/src/render/canvas.ts',
       'packages/broker/src/index.ts',
       'packages/watchlist/src/widget.ts',
