@@ -1,6 +1,5 @@
-// The 90 drawing registrations as explicit release inventory (public-chart-library-boundary-plan.md
-// PCL-1, PCL-5 extraction ledger, acceptance gate "all 90 drawings and 55 layouts are
-// inventory-pinned"). The registry is read at runtime; the list here is the pin. A tool added,
+// The 90 drawing registrations as explicit release inventory. The registry is read at runtime; the
+// list here is the pin. A tool added,
 // renamed, or moved between categories changes this file on purpose, in the same commit, and the
 // diff is the release note.
 import { TOOL_CATEGORIES, drawingTools } from 'quickcharts/drawings'

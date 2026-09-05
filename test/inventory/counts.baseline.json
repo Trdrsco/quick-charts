@@ -1,6 +1,5 @@
 {
   "recordedAt": "2026-09-02",
-  "plan": "public-chart-library-boundary-plan.md",
   "note": "The day-one registry counts, read from the source file that holds each registry. A registry that moves updates the file path here in the same commit; the count moves only by a conscious decision. ids.fixture.json pins the ids themselves.",
   "registries": [
     { "registry": "chart styles", "count": 7, "file": "packages/chart/src/widget/styles.ts", "symbol": "CHART_STYLES" },

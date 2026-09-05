@@ -1,7 +1,7 @@
-// The WebView guest artifact (public-chart-library-boundary-plan.md PCL-6: "Prove the chart can be
-// bundled into a network-denied local WebView guest without importing any first-party app, session,
-// service URL, or trading code ... Make that guest build deterministic and self-contained: preserve its
-// relative asset structure, prohibit runtime remote imports, emit a version/build manifest").
+// The WebView guest artifact: the chart bundled into a network-denied local WebView guest without
+// importing any first-party app, session, service URL, or trading code, as a deterministic and
+// self-contained build that preserves its relative asset structure, carries no runtime remote
+// import, and emits a version/build manifest.
 //
 // scripts/build-guest.mjs writes dist/guest; this fixture reads it back. It lives in the boundary
 // folder because, like its neighbours, it names the shapes it hunts. The artifact blocks are vacuous

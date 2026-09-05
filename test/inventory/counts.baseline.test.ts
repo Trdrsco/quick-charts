@@ -1,9 +1,9 @@
-// The registry count baselines (public-chart-library-boundary-plan.md acceptance gate: seven chart
+// The registry count baselines (seven chart
 // styles, 23 built-in indicators, 90 drawings, 55 layouts, 26 preset timeframes, 60 timezones).
 // counts.baseline.json records each count with the file it was read from today; this test reads
 // those files and counts again. Every registry lives in Quick Charts or one of its bundled seams;
 // a registry that moves updates the path in the baseline, and the count itself moves only by a
-// conscious decision, because the PCL-5 delivery rule says day one adds nothing to any of them.
+// conscious decision, because the first release adds nothing to any of them.
 // registries.test.ts pins the ids behind each count.
 import { describe, expect, it } from 'vitest'
 import baseline from './counts.baseline.json'

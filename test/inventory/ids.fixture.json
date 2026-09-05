@@ -1,9 +1,9 @@
 {
   "$comment": [
     "The stable ids of every V1 registry the feature manifest publishes, sorted, one array per registry",
-    "(public-chart-library-boundary-plan.md PCL-6: seven styles, 23 built-in indicators, 90 drawings, 55 layouts,",
-    "26 preset timeframes, 60 timezone choices; the built-in locales, the theme roles and the command registry",
-    "ride beside them because the manifest publishes those too). registries.test.ts reads every registry from",
+    "(seven styles, 23 built-in indicators, 90 drawings, 55 layouts, 26 preset timeframes, 60 timezone",
+    "choices; the built-in locales, the theme roles and the command registry ride beside them because the",
+    "manifest publishes those too). registries.test.ts reads every registry from",
     "the package source and compares; an id added, renamed or dropped moves this file in the same commit."
   ],
   "registries": {

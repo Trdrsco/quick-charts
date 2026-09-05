@@ -1,6 +1,5 @@
-// Export-map delivery and SSR-safe import of every entrypoint (public-chart-library-boundary-plan.md
-// PCL-6: "Pin ... export-map delivery, CSP-safe static stylesheet use, SSR-safe imports, and absence of
-// runtime style injection or remote assets"). The published export map names three entries; every one
+// Export-map delivery and SSR-safe import of every entrypoint: CSP-safe static stylesheet use, no
+// runtime style injection, no remote assets. The published export map names three entries; every one
 // has to be a file the tarball carries, and both JavaScript entries have to load in a plain Node process
 // with no window and no document, because a server-rendered host imports the package long before any
 // chart mounts. The dist blocks are vacuous until a build has run, like the other packed fixtures.

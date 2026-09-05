@@ -37,7 +37,7 @@ import { parseDrawingsStore, serializeDrawingsStore, drawingTools, type Serializ
 import { memoryDatafeed } from './fakes/memoryDatafeed'
 import { memorySaveLoad, memoryStorage } from './fakes/memorySaveLoad'
 
-// THE FREE-CHART PATH (public-chart-library-boundary-plan.md PCL-1): the chart mounted over ONLY
+// THE FREE-CHART PATH: the chart mounted over ONLY
 // consumer-owned fakes. No engine adapter, no trading plane, no account panel, no quote surface:
 // a datafeed, a preferences store, and a revisioned save/load adapter the consumer wrote against the shipped
 // d.ts. This is the boundary a Quick Charts consumer lives on; mode-b.ts and ticket.ts are the

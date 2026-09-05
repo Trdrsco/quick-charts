@@ -1,12 +1,12 @@
-// The dependency boundary (public-chart-library-boundary-plan.md, PCL-1 and the acceptance gates):
+// The dependency boundary:
 // the free chart's tarball may not depend, directly or through another organ, on broker,
 // account-manager, chart-engine, engine-client, engine-wire, i18n, ui, watchlist, news,
 // trading-core, or app code.
 //
 // Two layers, kept apart on purpose. The AS-BUILT pins say exactly what the manifest and the
 // lockfile closure hold today, so a change is a conscious event and the target blocks cannot rot
-// against a tree that moved. The TARGET blocks are the gate itself, written in full and skipped,
-// with the stream that unskips each named in its title. Nothing here fakes a pass.
+// against a tree that moved. The TARGET blocks are the gate itself, written in full. Nothing here
+// fakes a pass.
 import { describe, expect, it } from 'vitest'
 import { directDependencies, shippedClosure } from './scan'
 
@@ -55,10 +55,10 @@ describe('the direct dependency set, as built', () => {
   })
 })
 
-// TARGET. Each block is the acceptance gate in full; the stream that lands the removal deletes the
-// `.skip`, and the matching as-built pin above moves with it.
+// TARGET. Each block is the acceptance gate in full; a removal that lands here moves the matching
+// as-built pin above with it.
 describe('the free chart dependency boundary (target)', () => {
-  // PCL-3: trade lines, execution marks, the chart order draft, gesture planning and the account
+  // Trade lines, execution marks, the chart order draft, gesture planning and the account
   // panel live in packages/chart-trading; the manifest carries neither @trdrs/broker nor
   // @trdrs/account-manager.
   it('carries no broker or account-manager edge, direct or through another organ', () => {
@@ -68,7 +68,7 @@ describe('the free chart dependency boundary (target)', () => {
     expect(directDependencies().dependencies).not.toContain('@trdrs/account-manager')
   })
 
-  // W1-C (PCL-4 chart-owned localization runtime): the packed artifact bundles its own runtime and
+  // The chart-owned localization runtime: the packed artifact bundles its own runtime and
   // chart catalogs; @trdrs/i18n is private and absent from the manifest.
   it('carries no @trdrs/i18n edge', () => {
     expect(shippedClosure('packages/chart').map((e) => e.id)).not.toContain('@trdrs/i18n')

@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
-// The theme matrix (public-chart-library-boundary-plan.md PCL-6: "Test every included toolbar, dialog,
-// menu, popover, tooltip, field, legend, scale, drawing surface, loading state, empty state, error
-// state, and interaction state in built-in light and dark modes. Run the same matrix against
-// representative custom palettes, LTR, RTL, reduced motion, forced colors, and WCAG 2.2 AA contrast").
+// The theme matrix: every included toolbar, dialog, menu, popover, tooltip, field, legend, scale,
+// drawing surface, loading state, empty state, error state, and interaction state in built-in light
+// and dark modes, and the same matrix against representative custom palettes, LTR, RTL, reduced
+// motion, forced colors, and WCAG 2.2 AA contrast.
 //
 // Three sources meet here. The AUTHORED STYLESHEET says which surface has which recipe and which
 // states; the resolved THEMES (both built-in modes and two representative custom palettes) say what

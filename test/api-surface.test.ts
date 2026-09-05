@@ -78,7 +78,7 @@ const SURFACE: Record<string, string> = {
   tfSeconds: 'function',
   tfToUdfResolution: 'function',
   udfResolutionToTf: 'function',
-  // ── W1-B ────────────────────────────────────────────────────────────────────────────────────
+  // ── Symbology, the price formatter and the revisioned resource contract ─────────────────────
   // Additive (minor): symbology and its one price formatter, the UDF symbology mapping, and the
   // revisioned saved-resource contract with its in-memory reference store.
   ResourceAbortError: 'function',
@@ -88,8 +88,7 @@ const SURFACE: Record<string, string> = {
   tickBandFor: 'function',
   udfPriceFormat: 'function',
   udfSymbolInfo: 'function',
-  // ── end W1-B ────────────────────────────────────────────────────────────────────────────────
-  // ── W2-C ────────────────────────────────────────────────────────────────────────────────────
+  // ── The executable theme contract ───────────────────────────────────────────────────────────
   // Additive (minor): the executable theme contract. `THEME_ROLES` is the public semantic role
   // inventory; `createThemeController` is the one runtime surface for mode selection, custom
   // palettes and change subscriptions. Everything else the theme system exposes is type-only, so
@@ -97,13 +96,11 @@ const SURFACE: Record<string, string> = {
   THEME_ROLES: 'object',
   createThemeController: 'function',
   canvasTheme: 'function',
-  // ── end W2-C ────────────────────────────────────────────────────────────────────────────────
-  // ── W2-B ────────────────────────────────────────────────────────────────────────────────────
+  // ── The built-in indicators ─────────────────────────────────────────────────────────────────
   // Additive (minor): the 23 built-in indicator definitions, bundled from the chart-indicators
   // seam, as one ordered registry. `BuiltInIndicator` and `IndicatorCategory` are types.
   BUILT_IN_INDICATORS: 'object',
-  // ── end W2-B ────────────────────────────────────────────────────────────────────────────────
-  // ── W3-B ────────────────────────────────────────────────────────────────────────────────────
+  // ── Timeframes, timezones, sessions, ranges and search ──────────────────────────────────────
   // Additive (minor): the timeframe grammar and its 26 presets, the 60 display timezones and
   // their formatters, the session model and market status over a symbol's own session metadata,
   // the nine range presets with the framing and navigation step rules, and the search controller
@@ -176,8 +173,7 @@ const SURFACE: Record<string, string> = {
   promoteRecent: 'function',
   spreadExpression: 'function',
   spreadSearchQuery: 'function',
-  // ── end W3-B ────────────────────────────────────────────────────────────────────────────────
-  // ── W3-A ────────────────────────────────────────────────────────────────────────────────────
+  // ── The widget kernel ───────────────────────────────────────────────────────────────────────
   // The widget kernel. `createChart` answers a `ChartWidget` that hosts one or many `ChartHandle`s;
   // its four configuration planes, its command registry, its two event maps and its layout, theme,
   // fullscreen and image surfaces are TYPES, so the clean-room consumer compiling the shipped
@@ -199,7 +195,6 @@ const SURFACE: Record<string, string> = {
   imageHeaderRuns: 'function',
   imageLayoutHeaderRuns: 'function',
   imageTileRuns: 'function',
-  // ── end W3-A ────────────────────────────────────────────────────────────────────────────────
   // The default chrome adds NO runtime export: every surface is mounted by `createChart` and
   // driven through the registry, the planes and the event maps, and a host reaches it through
   // `FeatureConfig` (one flag per surface), `ChartPreferences` (the saved and custom timeframes,

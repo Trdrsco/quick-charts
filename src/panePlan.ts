@@ -1,4 +1,4 @@
-// Pane sizing plans (CAP-14/C5): the user-facing pane operations the renderer already supports
+// Pane sizing plans: the user-facing pane operations the renderer already supports
 // (IPaneApi.getHeight/setHeight) but nothing exposed. The DECISIONS are pure here — what height
 // every pane should get for a collapse / maximize / restore — so the DOM applier stays a loop over
 // a computed map and the invariants (heights are conserved, nothing collapses to zero, restore is

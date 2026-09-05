@@ -99,7 +99,7 @@ describe('the conformance suite over the workspace source', () => {
     expect(results.filter((r) => r.status === 'skipped').map((r) => r.id)).toEqual(CONFORMANCE_CHECKS.filter((c) => skipReason(c, host)).map((c) => c.id))
   })
 
-  it('covers every contract the plan names', () => {
+  it('covers every contract area', () => {
     const ids = CONFORMANCE_CHECKS.map((c) => c.id)
     for (const prefix of ['api', 'features', 'access', 'commands', 'lifecycle', 'theme', 'strings', 'a11y', 'image', 'fullscreen', 'persistence', 'feed', 'replay', 'scale', 'sessions', 'compare', 'indicators', 'layouts', 'styles', 'drawings']) {
       expect(ids.some((id) => id.startsWith(`${prefix}.`)), prefix).toBe(true)

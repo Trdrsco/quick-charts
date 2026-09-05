@@ -1,6 +1,6 @@
-// Every registered drawing tool through its whole life (public-chart-library-boundary-plan.md PCL-6: "Test
-// each of the 90 drawing tools for registration, construction, serialization, restore, and attach/detach.
-// Add focused geometry or rendering tests for each tool family where a generic test is insufficient").
+// Every registered drawing tool through its whole life: each of the 90 drawing tools is tested for
+// registration, construction, serialization, restore, and attach/detach, with focused geometry or
+// rendering tests for each tool family where a generic test is insufficient.
 //
 // drawings90.test.ts pins the catalog; this file builds every tool from it, round-trips it through the
 // public codec, attaches and detaches it through the manager the layer uses, and paints it once over the

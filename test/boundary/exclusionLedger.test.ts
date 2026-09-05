@@ -1,10 +1,9 @@
-// The exclusion ledger, as a source and packed-artifact scan (public-chart-library-boundary-plan.md
-// PCL-6: "A source scan rejects app React components, Tailwind, @trdrs/ui, engine clients, private
-// product imports, hard-coded storage keys, and default trdrs URLs in Quick Charts. Prove no legacy
-// tick-plus-precision contract, magnitude-based price formatter, duplicate snap implementation, Object
-// Tree placeholder, watermark placeholder, app account control, or app-shell fullscreen command survives
-// in the package ... Source and packed scans reject the retired `trades` hide mode and its position/order
-// override writes").
+// The exclusion ledger, as a source and packed-artifact scan. No app React component, Tailwind,
+// @trdrs/ui, engine client, private product import, hard-coded storage key, or default trdrs URL
+// belongs in Quick Charts; no legacy tick-plus-precision contract, magnitude-based price formatter,
+// duplicate snap implementation, Object Tree placeholder, watermark placeholder, app account control,
+// or app-shell fullscreen command survives in the package; and neither the source nor the packed
+// output carries the retired `trades` hide mode or its position/order override writes.
 //
 // forbiddenVocabulary.test.ts holds the import boundary, the retired API names and the two words of the
 // legacy symbology contract (the float tick and its precision field); noDefaultTrdrsUrl the URLs and

@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
-// The 26 preset timeframes as release inventory (public-chart-library-boundary-plan.md PCL-5 extraction
-// ledger: "Preserve the 26 presets, capability-filtered custom intervals"; PCL-6 "Prove ... 26 preset
-// timeframes" and "timeframe tokens"). timeframe.test.ts proves the grammar; this file pins the preset
+// The 26 preset timeframes as release inventory, with capability-filtered custom intervals beside them.
+// timeframe.test.ts proves the grammar; this file pins the preset
 // registry: the five groups and their tokens, that every token reads, labels and measures through the
 // grammar, that the capability filter keeps or drops each one, and that each preset is a chart command.
 import { describe, expect, it } from 'vitest'

@@ -1,5 +1,5 @@
-// The shared readers for the Quick Charts boundary fixtures (public-chart-library-boundary-plan.md,
-// PCL-1). Three sources of truth, each read the way a consumer would meet it:
+// The shared readers for the Quick Charts boundary fixtures. Three sources of truth, each read the
+// way a consumer would meet it:
 //
 //   - the SOURCE: every file under packages/chart/src, through Vite's own glob (this package is
 //     browser-typed; no node:fs), keyed by root-relative path;

@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
-// The seven main-series styles as release inventory (public-chart-library-boundary-plan.md PCL-5 extraction
-// ledger: candles, hollow candles, bars, line, area, baseline and step line; PCL-6 "Prove all seven chart
-// styles"). The registry, the two predicates every consumer branches on, the series options each style
+// The seven main-series styles as release inventory: candles, hollow candles, bars, line, area, baseline
+// and step line. The registry, the two predicates every consumer branches on, the series options each style
 // paints with, and the command each style is reached through: one block per fact, so a style added or
 // dropped, or a style that stopped being a command, is a readable failure. The switch itself, and what
 // it preserves, is proved on a mounted widget by the conformance suite.

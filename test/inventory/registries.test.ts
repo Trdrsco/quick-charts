@@ -1,7 +1,6 @@
 // @vitest-environment happy-dom
-// The V1 registries pinned by stable id, from the package's own source (public-chart-library-boundary-plan.md
-// PCL-6: "Pin the V1 registry counts and stable ids from generated source: seven styles, 23 built-in
-// indicators, 90 drawings, 55 layouts, 26 preset timeframes, and 60 timezone choices").
+// The V1 registries pinned by stable id, from the package's own source: seven styles, 23 built-in
+// indicators, 90 drawings, 55 layouts, 26 preset timeframes, and 60 timezone choices.
 //
 // ids.fixture.json is the sorted record of every registry the feature manifest publishes, the built-in
 // locales, the theme roles and the command registry included. Every block below reads a registry as the
@@ -47,8 +46,8 @@ const REGISTRIES: Record<Registry, () => string[]> = {
   commands: registeredCommands,
 }
 
-/** The counts, stated once more in the plan's own numbers, so a fixture edited to a new length fails
- *  against the plan and not only against itself. */
+/** The counts, stated once more as literals, so a fixture edited to a new length fails against a
+ *  number someone wrote down and not only against itself. */
 const COUNTS: Record<Registry, number> = {
   styles: 7,
   indicators: 23,

@@ -1,6 +1,6 @@
-// The 23 built-in definitions as release inventory (public-chart-library-boundary-plan.md: the
-// day-one catalog is exactly these), and the contract every one of them keeps: a manifest whose
-// every declared plot the compute answers, aligned 1:1 to the bars, with the defaults alone.
+// The 23 built-in definitions as release inventory, and the contract every one of them keeps: a
+// manifest whose every declared plot the compute answers, aligned 1:1 to the bars, with the
+// defaults alone.
 import { describe, expect, it } from 'vitest'
 import { BUILT_IN_INDICATORS, builtInIndicator, PRICE_SOURCES, type IndicatorBar } from '../src'
 

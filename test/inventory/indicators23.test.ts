@@ -1,6 +1,5 @@
-// The 23 built-in indicators as release inventory (public-chart-library-boundary-plan.md PCL-5 extraction
-// ledger: "Move exactly the shipped manifests, math, defaults, plots, settings, and tests"; PCL-6 "Prove
-// ... 23 built-in indicators" and "indicator plot families"). builtInIndicators.test.ts proves the catalog
+// The 23 built-in indicators as release inventory: exactly the shipped manifests, math, defaults, plots,
+// settings and plot families, no more and no fewer. builtInIndicators.test.ts proves the catalog
 // names and one walk; this file pins the registry itself: picker order, the four categories, every plot
 // family the manifests declare, and that each definition computes channels aligned to the bars and walks
 // through the one rendering pipeline into the placement its manifest names.

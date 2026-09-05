@@ -1,6 +1,6 @@
 // The widget's own catalog held to the runtime's standard, and the language object the chrome
 // modules read: English by default, switchable, re-rendering its listeners as a translation lands.
-// The PCL-4 proofs live here too (public-chart-library-boundary-plan.md): a server can import the
+// The localization-runtime proofs live here too: a server can import the
 // runtime, a host registers a locale the inventory does not hold, reading direction is metadata,
 // concurrent loads coalesce, a missing key falls back with a diagnostic, every shipped language
 // conforms, and the packed declarations name no private workspace package.

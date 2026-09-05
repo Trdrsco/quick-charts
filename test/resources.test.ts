@@ -1,5 +1,5 @@
 // The revisioned saved-resource contract, proved through its in-memory reference store. These are
-// the behaviours the plan's acceptance gate names: resource identity, revision return, conditional
+// the behaviours the contract requires: resource identity, revision return, conditional
 // write, typed conflict, deletion, not-found, and an aborted call. The store under test is the one
 // a host copies from, so a second host adapter that passes the same assertions is compatible by
 // construction.

@@ -1,4 +1,4 @@
-// The packed artifact carries its internal seams (public-chart-library-boundary-plan.md: the
+// The packed artifact carries its internal seams (the
 // drawing and indicator source modules are bundled into the one quickcharts artifact and are never
 // installs of their own). Read from the built files themselves after `pnpm --filter quickcharts
 // build`; without a build there is nothing packed to read and the checks pass vacuously, the same

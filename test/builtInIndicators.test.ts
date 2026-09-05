@@ -1,5 +1,5 @@
-// The built-in indicators at the chart's boundary (public-chart-library-boundary-plan.md: 23
-// built-ins in the day-one catalog). Every one is a widget IndicatorDefinition as shipped: its
+// The built-in indicators at the chart's boundary: the 23 built-ins the registry ships. Every one
+// is a widget IndicatorDefinition as shipped: its
 // manifest walks through the package pipeline with the defaults alone, its catalog keys resolve
 // through the chart's own catalog, and the registry order is pinned by id.
 import { describe, expect, it } from 'vitest'

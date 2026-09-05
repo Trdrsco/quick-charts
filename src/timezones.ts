@@ -19,7 +19,7 @@ export interface ChartTimezone {
 }
 
 /** The selectable zones: one city per offset region a trader picks. The count is a release
- *  inventory (public-chart-library-boundary-plan.md): it moves only by decision. */
+ *  inventory: it moves only by decision. */
 export const TIMEZONES: readonly ChartTimezone[] = [
   { id: 'Etc/UTC', city: 'UTC' },
   { id: 'Pacific/Honolulu', city: 'Honolulu' },

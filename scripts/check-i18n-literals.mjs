@@ -11,7 +11,7 @@
 // (a symbol, a brand, a unit, a token) or a miss. The allowlist below names what is legitimately
 // data so the report is a to-do list, not noise.
 //
-//   node scripts/check-i18n-literals.mjs [paths…]     default: the app surfaces the plan lists
+//   node scripts/check-i18n-literals.mjs [paths…]     default: DEFAULT_SCOPE below
 //   node scripts/check-i18n-literals.mjs --json       machine-readable
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
@@ -55,7 +55,7 @@ const DEFAULT_SCOPE = [
 ]
 
 /** Inside the scope but not the product: the public marketing site's nav and footer speak English
- *  by decision (the marketing pages, help center and admin back office are outside the plan). */
+ *  by decision (the marketing pages, help center and admin back office are outside the localized product). */
 const EXCLUDE = ['apps/web/src/layout/PublicNav.tsx', 'apps/web/src/layout/SiteFooter.tsx']
 
 /** The operator protocol: a registered widget's `title` is serialized into the manifest the AI reads

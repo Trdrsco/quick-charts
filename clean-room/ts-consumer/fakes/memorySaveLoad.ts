@@ -1,7 +1,7 @@
 // In-memory persistence a consumer owns outright: a ChartStorage for flat viewer preferences and a
 // ChartSaveLoadAdapter over the revisioned resource contract for saved charts, layouts,
 // symbol-scoped drawings and templates. Nothing persists past the page and nothing reaches a
-// server, which is the clean-room point (public-chart-library-boundary-plan.md PCL-1). Written
+// server, which is the clean-room point. Written
 // against the shipped d.ts, not the package's own memorySaveLoadAdapter, so the contract is proven
 // implementable from outside: every listing row carries its ref, every write is conditional on
 // the revision it quotes, and a stale write answers a typed conflict rather than overwriting.

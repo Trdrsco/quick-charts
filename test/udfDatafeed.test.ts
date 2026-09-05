@@ -128,7 +128,7 @@ describe('UdfDatafeed and the protocol surfaces it does not read', () => {
   })
 })
 
-describe('UdfDatafeed — /config conformance (AF-4)', () => {
+describe('UdfDatafeed — /config conformance', () => {
   it('fetches /config ONCE and refuses a resolution the server does not list (fail closed, terminal)', async () => {
     const { df, calls } = feed({
       '/config': { supports_search: true, supported_resolutions: ['1', '60', '1D'] },
@@ -202,7 +202,7 @@ describe('UdfDatafeed.config — the seam-level capability declaration (B2B-5)',
   })
 })
 
-describe('UdfDatafeed — the nextTime gap hint (AF-4)', () => {
+describe('UdfDatafeed — the nextTime gap hint', () => {
   it('surfaces no_data + nextTime as a NON-terminal page with the hint in seconds (ms normalized)', async () => {
     const { df } = feed({ '/config': { supports_search: true }, '/history': { s: 'no_data', nextTime: 1_428_001_140_000 } })
     const page = await df.history('ES', '1m', { countBack: 300 })
@@ -220,7 +220,7 @@ describe('UdfDatafeed — the nextTime gap hint (AF-4)', () => {
   })
 })
 
-describe('UdfDatafeed — group-request search (AF-4)', () => {
+describe('UdfDatafeed — group-request search', () => {
   const GROUPS = {
     '/config': { supports_search: false, supports_group_request: true, exchanges: [{ value: 'CME' }, { value: 'NYSE' }, { value: '' }] },
     '/symbol_info?group=CME': { symbol: ['ES', 'NQ'], description: ['E-mini S&P', 'E-mini Nasdaq'], type: 'futures' },
