@@ -126,6 +126,9 @@ export interface DrawingsDeps {
   symbol: string
   timeframe: string
   bars(): readonly FeedBar[]
+  /** The saved-resource adapter, for the TEMPLATE family alone: a tool's default and its named
+   *  templates are the same wherever the drawings themselves are stored, so they never ride the
+   *  persistence mode. Where the drawings go is `documents`. */
   resources: ChartSaveLoadAdapter | null
   i18n: ChartI18n
   /** Whether the layer exists at all, and which of its surfaces are shown. */
