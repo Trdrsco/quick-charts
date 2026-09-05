@@ -135,6 +135,26 @@ describe('the load and the live subscription', () => {
     expect(paintedBars(renderer)).toBe(0)
   })
 
+  it('the terminal state is per symbol: a later switch to a served symbol loads, subscribes once, and the status lane moves on', async () => {
+    const feed = scriptedFeed({
+      history: (symbol) => (symbol === 'ES' ? Promise.reject(new FeedUnavailableError('no feed', 'feed_requires_connection')) : Promise.resolve({ bars: bars(4), noData: false })),
+    })
+    const { handle, renderer, statuses } = mountChart(feed.feed)
+    await settle()
+    await settle()
+    expect(statuses).toEqual(['feed_unavailable'])
+    expect(feed.subscriptions).toEqual([])
+    handle.setSymbol('NQ')
+    await settle()
+    await settle()
+    expect(paintedBars(renderer)).toBe(4)
+    expect(feed.subscriptions.map((s) => `${s.symbol}@${s.tf}`)).toEqual(['NQ@1m'])
+    // The new subscription's status is the one the lane reports; the old symbol's terminal state
+    // does not carry over onto a symbol that is served.
+    feed.open()[0]!.handlers.onStatus?.('live')
+    expect(statuses).toEqual(['feed_unavailable', 'live'])
+  })
+
   it('a transient history failure still lets the subscription seed the chart from its own snapshot', async () => {
     const feed = scriptedFeed({ history: () => Promise.reject(new Error('timeout')) })
     const { renderer, statuses } = mountChart(feed.feed)
