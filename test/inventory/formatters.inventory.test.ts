@@ -41,7 +41,7 @@ describe('the formatter inventory', () => {
     }
   })
 
-  it('covers the surfaces the plan names', () => {
+  it('covers every price-bearing surface', () => {
     const files = new Set(FORMATTER_SITES.map((s) => s.file))
     for (const file of [
       'packages/chart/src/datafeed.ts',

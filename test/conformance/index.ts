@@ -1,10 +1,9 @@
 // The Quick Charts conformance suite: one assertion module the three hosts share.
 //
-// public-chart-library-boundary-plan.md PCL-6: "Run the production apps/web mount and clean-room
-// consumer through the same API, feature, lifecycle, theme, strings, accessibility, image, fullscreen,
-// persistence, and teardown contract suite. Exercise built-in light/dark and palette apply/reset
-// through public methods, never DOM mutation. A test-only adapter contract or app-only rendering branch
-// fails dogfood."
+// The production apps/web mount and the clean-room consumer run through the same API, feature,
+// lifecycle, theme, strings, accessibility, image, fullscreen, persistence, and teardown contract
+// suite. Built-in light/dark and palette apply/reset are exercised through public methods, never DOM
+// mutation. A test-only adapter contract or an app-only rendering branch fails dogfood.
 //
 // This module imports the two public entrypoints and nothing else: no package source path, no test
 // runner, no DOM library. A host hands it `createWidget` (the way that host builds a widget) and a
@@ -1229,7 +1228,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
     id: 'styles.switch.compares-not-refetched',
     title: 'a style switch keeps the compared series without refetching their history',
     needs: ['compare'],
-    defect: 'every style switch asks the feed for each compared symbol again (the compare plane refetches its window when the main series is rebuilt, widget/compare.ts sync after setStyle); the plan says a style switch refetches nothing',
+    defect: 'every style switch asks the feed for each compared symbol again (the compare plane refetches its window when the main series is rebuilt, widget/compare.ts sync after setStyle); the contract is that a style switch refetches nothing',
     async run(ctx) {
       const { chart, feed } = await ctx.mount({ symbol: 'ALPHA' })
       chart.compare.add('BETA', { placement: 'same-percent' })

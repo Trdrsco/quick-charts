@@ -21,7 +21,7 @@ interface Case {
 const CASES = vectors.cases as unknown as Case[]
 
 describe('the fixture', () => {
-  it('covers every market shape the plan names', () => {
+  it('covers every market shape', () => {
     expect(CASES.map((c) => c.id)).toEqual([
       'equities-decimal',
       'equities-decimal-grouped',

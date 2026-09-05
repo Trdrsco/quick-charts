@@ -1,7 +1,7 @@
-// The quote vectors end to end (public-chart-library-boundary-plan.md PCL-6: "Produce reusable quote vectors
-// for last, bid, ask, open, high, low, prevClose, change, changePct, volume, status, and timestamp ... The
-// injected Watchlist formatter matches Last and Chg to that display for the same symbol, while Chg% and
-// Volume use their correct independent value formats. Prove Watchlist has no Quick Charts import").
+// The quote vectors end to end: reusable vectors for last, bid, ask, open, high, low, prevClose, change,
+// changePct, volume, status, and timestamp; the injected Watchlist formatter matches Last and Chg to the
+// chart's display for the same symbol while Chg% and Volume keep their own independent value formats;
+// and Watchlist has no Quick Charts import.
 //
 // priceFormatter.test.ts proves each price case; this file proves the quote block: that the vectors are
 // coherent with one another and land on the symbol grid, that every price field of a quote writes through
@@ -65,7 +65,7 @@ describe('the quote vectors are coherent', () => {
       const grid = c.format.minmov / c.format.pricescale
       const formatter = createPriceFormatter(c.format, c.punctuation ? { numericPunctuation: c.punctuation } : undefined)
 
-      it('carries every field the plan names', () => {
+      it('carries every quote field', () => {
         expect(Object.keys(c.quote).sort()).toEqual(['ask', 'bid', 'change', 'changePct', 'high', 'low', 'open', 'prevClose', 'timestamp', 'volume', 'last', 'status'].sort())
         expect(DATA_STATUSES).toContain(c.quote.status)
         expect(Number.isInteger(c.quote.timestamp)).toBe(true)

@@ -99,8 +99,7 @@ export interface TimeframeGroup {
 }
 
 /** The 26 preset timeframes, grouped as the picker shows them. Weeks and months share the Days
- *  group. The count is a release inventory (public-chart-library-boundary-plan.md): it moves only
- *  by decision. */
+ *  group. The count is a release inventory: it moves only by decision. */
 export const TIMEFRAME_PRESETS: readonly TimeframeGroup[] = [
   { unit: 't', tokens: ['1t', '10t', '100t', '1000t'] },
   { unit: 's', tokens: ['1s', '5s', '10s', '15s', '30s', '45s'] },

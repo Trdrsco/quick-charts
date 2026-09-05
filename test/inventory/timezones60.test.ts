@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-// The 60 display timezones as release inventory (public-chart-library-boundary-plan.md PCL-5 extraction
-// ledger: "60 zones, exchange mode"; PCL-6 "Prove ... 60 timezone choices"). timezones.test.ts proves the
+// The 60 display timezones as release inventory, with the exchange choice beside them. timezones.test.ts
+// proves the
 // clock and the formatters; this file pins the registry: every id, that each is an IANA zone the platform
 // accepts and has a city of its own, the exchange choice beside them, the picker listing over them, and
 // that each zone is a chart command.

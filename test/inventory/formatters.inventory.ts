@@ -1,8 +1,7 @@
-// The symbology and quote-display inventory (public-chart-library-boundary-plan.md PCL-1:
-// "Inventory every old chart and Watchlist tick, precision, axis, legend, drawing-label, quote,
-// and image formatter before the first move. Inventory broker, ticket, and account value
-// formatters separately so the sprint removes heuristics without conflating display symbology
-// with execution or ledger values."; clean-seams-entry-packets.md section 4.10).
+// The symbology and quote-display inventory: every chart and Watchlist tick, precision, axis,
+// legend, drawing-label, quote, and image formatter, with broker, ticket, and account value
+// formatters inventoried separately so heuristics are removed without conflating display symbology
+// with execution or ledger values.
 //
 // Every price-bearing formatter site in the repository today, with the file it lives in, the
 // symbols that carry it, and the VALUE KIND the site formats:
@@ -13,16 +12,16 @@
 //              and Chg.
 //   execution  an executable price or quantity: broker tick math, ticket inputs, trade lines,
 //              execution marks. Target: @trdrs/broker instrument facts, consumed by chart-trading
-//              and the ticket (Plan 5).
+//              and the ticket.
 //   ledger     an account value: money, P&L, balances, account columns. Target: Account Manager
-//              column value kinds (Plan 6).
+//              column value kinds.
 //   quote      a quote-board value: Last, Chg, Chg%, Volume. The free chart exposes no quote API;
 //              the first-party source is chart-engine's engineQuoteSource, and the Trading
-//              Platform quote hub (Plan 8) fans one subscription into the Watchlist port.
+//              Platform quote hub fans one subscription into the Watchlist port.
 //
 // This is data. formatters.inventory.test.ts proves every file and symbol still exists, so the
-// inventory cannot rot silently, and the stream that moves a site edits this row in the same
-// commit. Paths are root-relative.
+// inventory cannot rot silently, and whoever moves a site edits this row in the same commit.
+// Paths are root-relative.
 
 export type ValueKind = 'symbology' | 'execution' | 'ledger' | 'quote'
 

@@ -1,6 +1,6 @@
-// One resolved formatter on every price-bearing surface (public-chart-library-boundary-plan.md PCL-6: "The
-// axis, OHLC legend, crosshair, drawing labels, marks, indicator price plots, and exported image use one
-// resolved Quick Charts formatter"). kernel.test.ts pins in source which surface reads which formatter;
+// One resolved formatter on every price-bearing surface: the axis, OHLC legend, crosshair, drawing
+// labels, marks, indicator price plots, and exported image all write through one resolved Quick Charts
+// formatter. kernel.test.ts pins in source which surface reads which formatter;
 // this file drives the surfaces that can be driven, with every fixture symbol, so the text a Treasury
 // axis, a satoshi drawing label and a variable-tick study scale write is the text `createPriceFormatter`
 // writes, and nothing on the way keeps a decimal count of its own.

@@ -1,9 +1,9 @@
 {
   "$comment": [
-    "The exact multi-asset symbology and quote vectors (public-chart-library-boundary-plan.md PCL-6:",
-    "'Pin exact formatter fixtures for equities, sub-cent crypto, FX and pips, CME decimal futures, 1/32",
-    "and 1/4-of-1/32 futures, and variable tick bands ... Produce reusable quote vectors for last, bid,",
-    "ask, open, high, low, prevClose, change, changePct, volume, status, and timestamp').",
+    "The exact multi-asset symbology and quote vectors: formatter fixtures for equities, sub-cent",
+    "crypto, FX and pips, CME decimal futures, 1/32 and 1/4-of-1/32 futures, and variable tick bands,",
+    "with reusable quote vectors for last, bid, ask, open, high, low, prevClose, change, changePct,",
+    "volume, status, and timestamp.",
     "",
     "One entry per market shape. `format` is the Quick Charts PriceFormat the datafeed resolves;",
     "`prices` are the display cases the one package formatter must produce, each of which must also",

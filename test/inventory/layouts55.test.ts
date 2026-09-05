@@ -1,5 +1,5 @@
-// The 55 layout arrangements as explicit release inventory (public-chart-library-boundary-plan.md
-// PCL-1, PCL-5 "preserve all 55 arrangements, panes through 16"). layoutGrid.test.ts proves the
+// The 55 layout arrangements as explicit release inventory: all 55 arrangements, panes through 16.
+// layoutGrid.test.ts proves the
 // geometry; this file pins the catalog itself, code by code and count by count, in picker
 // menu's own order, so an arrangement added or dropped is a conscious event with a readable diff.
 import { describe, expect, it } from 'vitest'

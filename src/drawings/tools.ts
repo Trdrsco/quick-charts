@@ -7,7 +7,7 @@
 // over the registry and a `DrawingTool` shape that stops at metadata.
 //
 // There is deliberately no host registration door. A host-authored tool would need the seam's
-// `Drawing` base class, which is not public, and the plan puts host tool contribution behind the
+// `Drawing` base class, which is not public, and host tool contribution belongs behind the
 // access-policy plane rather than a bare `register`. Publishing a door nobody can walk through is
 // the kind of dead API this sprint deletes.
 import { toolRegistry, TOOL_CATEGORIES, type ToolCategory, type SerializedDrawing, type IDrawing, type Anchor, type DrawingStyle } from '@trdrs/chart-drawings'

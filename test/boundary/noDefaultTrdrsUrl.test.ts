@@ -1,4 +1,4 @@
-// No default points at trdrs (public-chart-library-boundary-plan.md, architecture ruling and PCL-1).
+// No default points at trdrs.
 // The free chart's only network access is through URLs or adapters the host supplies, so no chart
 // source, manifest, README quickstart, test fixture, or packed file may carry a trdrs URL, a
 // credential, a session, a tenant key, or a production API route. This is already true; the

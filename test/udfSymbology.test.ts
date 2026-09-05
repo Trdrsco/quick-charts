@@ -1,4 +1,4 @@
-// UDF `/symbols` → SymbolInfo. The load-bearing claim is the one the plan makes: pricescale,
+// UDF `/symbols` → SymbolInfo. The load-bearing claim: pricescale,
 // minmov, minmove2, fractional and variable_tick_size arrive intact, because a single floating tick
 // cannot carry thirty-seconds, quarters of a thirty-second, or a ladder of tick bands.
 import { describe, expect, it } from 'vitest'

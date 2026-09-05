@@ -1,6 +1,5 @@
-// The README's count claims against the registries (public-chart-library-boundary-plan.md PCL-5: "Public
-// docs must be generated from or checked against that manifest so product claims cannot outrun code";
-// PCL-6: "Add a package feature manifest generated or checked against tests"). Every place the README or
+// The README's count claims against the registries, so product claims cannot outrun code. Every place
+// the README or
 // the changelog states a number of styles, indicators, tools, categories, arrangements, presets, zones or
 // languages is found by the words around it and held to the registry it describes; and each registry has
 // to be claimed at least once, so a count the documentation has stopped stating is a finding too.

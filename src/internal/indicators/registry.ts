@@ -1,7 +1,6 @@
 // The built-in registry: the 23 definitions in the picker's order (moving averages, bands and
-// channels, oscillators, volume). The count is release inventory
-// (public-chart-library-boundary-plan.md: a day-one catalog of exactly these); the chart's
-// inventory test reads this literal, so an addition or removal changes it on purpose.
+// channels, oscillators, volume). The count is release inventory: the chart's inventory test reads
+// this literal, so an addition or removal changes it on purpose.
 import {
   adxIndicator,
   atrIndicator,
