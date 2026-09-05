@@ -55,6 +55,6 @@ describe('the drawing preference record', () => {
   })
 
   it('persists in the widget storage namespace, beside its other viewer keys', () => {
-    expect(DRAWING_PREFERENCES_KEY).toMatch(/^trdrs\.chart\.widget\./)
+    expect(DRAWING_PREFERENCES_KEY).toMatch(/^quickcharts\./)
   })
 })
