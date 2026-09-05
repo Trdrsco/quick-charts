@@ -799,8 +799,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   /** (Re)load the active symbol and timeframe: initial history paints first, then the live
    *  subscription's snapshot replaces it and bar events mutate or append. A FeedUnavailableError is
-   *  terminal for this symbol; any other history failure leaves the subscription to seed the chart
-   *  through its own snapshot. */
+   *  terminal for this symbol: the chart stays honestly empty, no subscription opens, and the
+   *  status lane reads `feed_unavailable` alone. Any other history failure leaves the subscription
+   *  to seed the chart through its own snapshot. */
   function load(): void {
     const myEpoch = ++epoch
     unsubscribe?.()
@@ -861,19 +862,17 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
           ready = true
           deps.onReady()
         }
+        openSubscription(myEpoch)
       })
       .catch((e) => {
         if (disposed || myEpoch !== epoch) return
         if (e instanceof FeedUnavailableError) {
           feedStatus = 'feed_unavailable'
           events.emit('feedStatus', 'feed_unavailable')
-          return // terminal: do not open a live subscription for a symbol nothing serves
+          return // terminal: no live subscription for a symbol nothing serves
         }
-        // Transient history failure: the subscription snapshot below still seeds the chart.
+        // Transient history failure: the subscription's own snapshot still seeds the chart.
         openSubscription(myEpoch)
-      })
-      .then(() => {
-        if (!disposed && myEpoch === epoch && unsubscribe === null) openSubscription(myEpoch)
       })
   }
 
