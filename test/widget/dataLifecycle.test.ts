@@ -70,6 +70,8 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; sy
     id: 'chart-1',
     container,
     datafeed: feed,
+    // The lifecycle under test is the data path; drawings ride the chart's own content here.
+    drawings: { chartKey: 'c1', mode: 'combined' },
     saveLoad: null,
     storage: memoryChartStorage(),
     i18n,
