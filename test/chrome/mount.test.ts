@@ -8,6 +8,7 @@ import { emptyDoors } from '../../src/ui/chrome/doors'
 import { openOverlayCount } from '../../src/ui/chrome/overlays'
 import { createChartI18n } from '../../src/i18n'
 import { memoryChartStorage } from '../../src/storage'
+import { LIGHT_THEME } from '../../src/theme/palettes'
 import type { ChartDatafeed } from '../../src/datafeed'
 import type { FeatureConfig } from '../../src/widget/options'
 import { fakeWidget, settle } from './harness'
@@ -124,7 +125,7 @@ describe('the chrome composition', () => {
     expect(observed).toEqual([])
     // Events after the dispose are equally inert: the subscriptions came down with it.
     w.chart.handle.setTimeframe('5m')
-    w.events.emit('theme', 'light')
+    w.events.emit('theme', LIGHT_THEME, 'light')
     await settle()
     expect(activeChart).not.toHaveBeenCalled()
     expect(observed).toEqual([])
