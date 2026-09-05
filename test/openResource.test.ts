@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { openResourceController } from '../src/openResource'
-import { memorySaveLoadAdapter, type ChartBody, type ChartMeta } from '../src/resources'
+import { memorySaveLoadAdapter, type ChartBody, type ChartMeta, type ResourceStore } from '../src/resources'
 import { createChartI18n } from '../src/i18n'
 import saveLoadSrc from '../src/widget/saveLoad.ts?raw'
 import chartSrc from '../src/widget/chart.ts?raw'
@@ -65,6 +65,56 @@ describe('openResourceController', () => {
     expect(loaded).toEqual({ kind: 'ok', ref: created.ref, body: body('Evening') })
     expect(open.current()).toEqual({ ref: created.ref, name: 'Evening' })
     expect(await open.load('ghost')).toEqual({ kind: 'not-found', message: t('host.saveNotFound') })
+  })
+
+  it('a later load supersedes one still in flight: its response is dropped even when it lands last, and the call rejects as aborted', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const a = await adapter.charts.create(body('A'))
+    const b = await adapter.charts.create(body('B', '1h'))
+    if (a.kind !== 'ok' || b.kind !== 'ok') throw new Error('unreachable')
+    // A store whose answers land when the test releases them, and which ignores the signal it was
+    // handed: the hardest case, where the superseded response still arrives.
+    const release = new Map<string, () => void>()
+    const signals = new Map<string, AbortSignal | undefined>()
+    const store: ResourceStore<ChartMeta, ChartBody> = {
+      ...adapter.charts,
+      load: (id, signal) =>
+        new Promise((resolve, reject) => {
+          signals.set(id, signal)
+          release.set(id, () => adapter.charts.load(id).then(resolve, reject))
+        }),
+    }
+    const open = openResourceController<ChartMeta, ChartBody>({ store: () => store, t: () => t })
+    const first = open.load(a.ref.id)
+    const second = open.load(b.ref.id)
+    expect(signals.get(a.ref.id)!.aborted).toBe(true) // the newer load aborted the older request
+    expect(signals.get(b.ref.id)!.aborted).toBe(false)
+    release.get(b.ref.id)!()
+    expect(await second).toEqual({ kind: 'ok', ref: b.ref, body: body('B', '1h') })
+    release.get(a.ref.id)!() // A's answer arrives after B is open
+    await expect(first).rejects.toMatchObject({ name: 'AbortError' })
+    expect(open.current()).toEqual({ ref: b.ref, name: 'B' })
+  })
+
+  it("a caller's own abort rides along and rejects its load the same way", async () => {
+    const adapter = memorySaveLoadAdapter()
+    const created = await adapter.charts.create(body('A'))
+    if (created.kind !== 'ok') throw new Error('unreachable')
+    let answer: (() => void) | null = null
+    const store: ResourceStore<ChartMeta, ChartBody> = {
+      ...adapter.charts,
+      load: (id) =>
+        new Promise((resolve, reject) => {
+          answer = () => adapter.charts.load(id).then(resolve, reject)
+        }),
+    }
+    const open = openResourceController<ChartMeta, ChartBody>({ store: () => store, t: () => t })
+    const controller = new AbortController()
+    const loading = open.load(created.ref.id, controller.signal)
+    controller.abort()
+    answer!()
+    await expect(loading).rejects.toMatchObject({ name: 'AbortError' })
+    expect(open.current()).toBeNull()
   })
 
   it('remove deletes at the held revision, detaches, and a second remove is not-found', async () => {
