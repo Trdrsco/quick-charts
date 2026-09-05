@@ -333,6 +333,12 @@ widget's `saveConflict` event.
 require it, because a document keyed by an id the next page load mints again could never be read
 back. There is no reader, fallback or mirrored write between the two modes.
 
+A `chart-local` document is keyed by the chart's tile in the layout, which is what survives a
+reload. It is a position, so it follows the position: changing the arrangement, or closing a chart
+with charts after it, renumbers those tiles, and each of them then opens the document of the tile it
+now occupies. Choose `layout-shared` when the drawings belong to the layout rather than to one
+tile.
+
 ```ts
 import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
 

@@ -208,9 +208,12 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     sync: options.layout?.sync,
     createChart(element, init, index) {
       const id = `chart-${++chartSeq}`
-      // The chart's identity for PERSISTENCE is its place in the layout, not the instance id: a
-      // re-tile or a reload mints a new instance id, and a document keyed by one could never be
-      // read back.
+      // The chart's identity for PERSISTENCE is its PLACE in the layout, not the instance id: the
+      // id is minted again on every mount, so a document keyed by one could never be read back.
+      // The place is exactly that, a place: re-tiling, or removing a chart from the middle of the
+      // layout, renumbers the tiles after it, and a chart-local document follows the tile rather
+      // than the chart that used to sit in it. Sharing a document across the layout is what
+      // `layout-shared` is for.
       const chartKey = `c${index + 1}`
       const instance = createChartInstance({
         id,
