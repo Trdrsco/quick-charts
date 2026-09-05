@@ -17,7 +17,8 @@
 // which read at 3.86 to 1 over the dark selected tint a search or menu row wears; and why the
 // accent is `#1f56ee` in light and `#52a0fc` in dark, where `#2962ff` and `#4c98fb` read at 4.15
 // and 4.45 to 1 as ink over the selected tint an active tool sits on. The focus ring keeps the
-// accent's value in each mode, so the two stay one color.
+// accent's value in each mode, and the selected and selection tints are the accent's rgb at an
+// alpha, so the accent, its ring and its tints stay one color.
 //
 // The series pair is the documented brand pair from `overrides.ts`, unchanged: a positive TEXT role
 // and a rising SERIES are different jobs, so one does not displace the other. Candle body, border
@@ -78,9 +79,9 @@ export const LIGHT_THEME: SemanticTheme = {
   'state.accent': '#1f56ee',
   'state.hover': 'rgba(0, 0, 0, 0.06)',
   'state.pressed': 'rgba(0, 0, 0, 0.1)',
-  'state.selected': 'rgba(41, 98, 255, 0.12)',
+  'state.selected': 'rgba(31, 86, 238, 0.12)',
   'state.focusRing': '#1f56ee',
-  'state.selection': 'rgba(41, 98, 255, 0.18)',
+  'state.selection': 'rgba(31, 86, 238, 0.18)',
 
   'status.positive': '#067a67',
   'status.negative': '#c62537',
@@ -154,9 +155,9 @@ export const DARK_THEME: SemanticTheme = {
   'state.accent': '#52a0fc',
   'state.hover': 'rgba(255, 255, 255, 0.08)',
   'state.pressed': 'rgba(255, 255, 255, 0.12)',
-  'state.selected': 'rgba(76, 152, 251, 0.16)',
+  'state.selected': 'rgba(82, 160, 252, 0.16)',
   'state.focusRing': '#52a0fc',
-  'state.selection': 'rgba(76, 152, 251, 0.22)',
+  'state.selection': 'rgba(82, 160, 252, 0.22)',
 
   'status.positive': '#089981',
   'status.negative': '#ff5a68',
