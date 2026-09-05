@@ -197,7 +197,7 @@ export interface ChartExtensionHostDeps {
   series: ChartExtensionSeries
   /** Register one contributed command with the chart's own command registry, and answer its
    *  unregister. There is exactly one registry, so a contributed command is reachable from the
-   *  same menu, keyboard and operator surfaces as a built-in verb, and is refused by the same
+   *  same menu, keyboard and host-automation surfaces as a built-in verb, and is refused by the same
    *  access policy. */
   registerCommand(command: ChartExtensionCommand): () => void
 }
