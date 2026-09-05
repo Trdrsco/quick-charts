@@ -156,11 +156,11 @@
       },
       {
         "property": "--qc-state-selected",
-        "value": "rgba(41, 98, 255, 0.12)"
+        "value": "rgba(31, 86, 238, 0.12)"
       },
       {
         "property": "--qc-state-selection",
-        "value": "rgba(41, 98, 255, 0.18)"
+        "value": "rgba(31, 86, 238, 0.18)"
       },
       {
         "property": "--qc-status-info",
@@ -410,11 +410,11 @@
       },
       {
         "property": "--qc-state-selected",
-        "value": "rgba(76, 152, 251, 0.16)"
+        "value": "rgba(82, 160, 252, 0.16)"
       },
       {
         "property": "--qc-state-selection",
-        "value": "rgba(76, 152, 251, 0.22)"
+        "value": "rgba(82, 160, 252, 0.22)"
       },
       {
         "property": "--qc-status-info",
