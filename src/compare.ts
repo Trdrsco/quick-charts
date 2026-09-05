@@ -189,11 +189,14 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
     slot.series.setData(clipped.map(toLine))
   }
 
-  const fetchInto = async (slot: Slot, range: { from?: number; to?: number; countBack?: number }, mode: 'replace' | 'prepend') => {
+  /** Fetch one page into the slot. Resolves true when the page landed, false when the feed failed
+   *  or a newer fetch, a removal or teardown made this one stale, so a caller can tell a span the
+   *  slot holds from a span it only asked for. */
+  const fetchInto = async (slot: Slot, range: { from?: number; to?: number; countBack?: number }, mode: 'replace' | 'prepend'): Promise<boolean> => {
     const seq = ++slot.fetchSeq
     try {
       const page = await deps.datafeed.history(slot.entry.symbol, deps.tf(), range)
-      if (destroyed || slot.fetchSeq !== seq || !slots.has(slot.entry.symbol)) return
+      if (destroyed || slot.fetchSeq !== seq || !slots.has(slot.entry.symbol)) return false
       if (mode === 'replace') slot.bars = [...page.bars]
       else {
         // Prepend strictly-older bars; the seam bar (equal time) defers to what is already held.
@@ -203,9 +206,12 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
       slot.oldest = slot.bars[0]?.t ?? slot.oldest
       paint(slot)
       notify()
+      return true
     } catch {
       // A compare that cannot load stays empty rather than tearing the chart down — the legend's
-      // null value is the honest signal, matching the indicator pipeline's advisory posture.
+      // null value is the honest signal, matching the indicator pipeline's advisory posture. The
+      // page was not held, and the caller's bookkeeping must not record it as asked.
+      return false
     }
   }
 
@@ -376,11 +382,20 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
         paint(slot)
         // The window now begins before anything ASKED for: page the older span in, once. A sync
         // that reshapes nothing (a style switch, a live bar, a snapshot) re-clips and asks nothing.
+        // `askedFrom` advances BEFORE the page arrives so the repaints that land while it is in
+        // flight ask nothing; a page that fails gives the span back, so the next sync that still
+        // begins before it asks again, the retry the main series keeps at its own left edge. A
+        // compare is never left permanently short by one transient history error.
         if (!w || slot.oldest === null) continue
         const reached = slot.askedFrom ?? slot.oldest
         if (w.from < reached) {
+          const before = slot.askedFrom
           slot.askedFrom = w.from
-          void fetchInto(slot, { from: w.from, to: reached }, 'prepend')
+          void fetchInto(slot, { from: w.from, to: reached }, 'prepend').then((landed) => {
+            // Roll back only what this ask advanced: a later sync that asked further back, or a
+            // re-key that blanked the slot, owns the bookkeeping now.
+            if (!landed && slot.askedFrom === w.from) slot.askedFrom = before
+          })
         }
       }
     },

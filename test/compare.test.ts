@@ -75,13 +75,18 @@ function fakeChart() {
   return { chart: chart as unknown as IChartApi, series, chartOptions }
 }
 
-function fakeFeed(history: Record<string, FeedBar[]>) {
-  const calls: { symbol: string; tf: string; range?: { from?: number; to?: number; countBack?: number } }[] = []
+type HistoryRange = { from?: number; to?: number; countBack?: number }
+
+/** `failing` is asked per history call, in order; a true answer rejects that call the way a
+ *  transport error would, and later calls are asked afresh. */
+function fakeFeed(history: Record<string, FeedBar[]>, failing: (call: number, range?: HistoryRange) => boolean = () => false) {
+  const calls: { symbol: string; tf: string; range?: HistoryRange }[] = []
   const subs = new Map<string, SubscribeHandlers>()
   const unsubs: string[] = []
   const feed = {
-    history: (symbol: string, tf: string, range?: { from?: number; to?: number; countBack?: number }) => {
+    history: (symbol: string, tf: string, range?: HistoryRange) => {
       calls.push({ symbol, tf, range })
+      if (failing(calls.length, range)) return Promise.reject(new Error('history unavailable'))
       const bars = history[symbol] ?? []
       const inRange =
         range?.from != null && range?.to != null ? bars.filter((b) => b.t >= range.from! && b.t <= range.to!) : bars
@@ -100,9 +105,13 @@ function fakeFeed(history: Record<string, FeedBar[]>) {
 
 const flush = () => new Promise((r) => setTimeout(r, 0))
 
-function harness(history: Record<string, FeedBar[]>, window: { from: number; to: number } | null = { from: 10, to: 40 }) {
+function harness(
+  history: Record<string, FeedBar[]>,
+  window: { from: number; to: number } | null = { from: 10, to: 40 },
+  failing?: (call: number, range?: HistoryRange) => boolean,
+) {
   const { chart, series, chartOptions } = fakeChart()
-  const { feed, calls, subs, unsubs } = fakeFeed(history)
+  const { feed, calls, subs, unsubs } = fakeFeed(history, failing)
   const win = { current: window }
   const onChange = vi.fn()
   const handle = attachCompare(chart, { datafeed: feed, tf: () => '1m', mainWindow: () => win.current, onChange })
@@ -247,6 +256,32 @@ describe('sync follows the main window', () => {
     h.handle.sync()
     await flush()
     expect(h.calls).toHaveLength(2)
+  })
+
+  it('a prepend the feed fails is asked again on the next sync, and the repaints in between ask nothing', async () => {
+    // NQ has bars back to 5; the seed answers the 20..30 window. The second ask (the older span)
+    // fails once as a transport error would, then the feed serves it.
+    const h = harness({ NQ: [bar(5), bar(10), bar(20), bar(30)] }, { from: 20, to: 30 }, (call) => call === 2)
+    h.handle.add('NQ', { placement: 'same-percent' })
+    await flush()
+    expect((h.series[0]!.s.data as unknown[]).length).toBe(2)
+    h.win.current = { from: 5, to: 30 }
+    h.handle.sync()
+    h.handle.sync() // a repaint while the page is in flight
+    expect(h.calls).toHaveLength(2)
+    await flush()
+    // The failed span is not held: the compare is still short, and the legend's value is honest.
+    expect((h.series[0]!.s.data as unknown[]).length).toBe(2)
+    // The next sync over the same window asks the same span again, and this time it lands.
+    h.handle.sync()
+    await flush()
+    expect(h.calls).toHaveLength(3)
+    expect(h.calls[2]!.range).toEqual({ from: 5, to: 20 })
+    expect((h.series[0]!.s.data as unknown[]).length).toBe(4)
+    // Held now: further repaints ask nothing.
+    h.handle.sync()
+    await flush()
+    expect(h.calls).toHaveLength(3)
   })
 })
 
