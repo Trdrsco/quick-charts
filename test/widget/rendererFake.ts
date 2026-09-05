@@ -46,11 +46,14 @@ export function fakeRenderer(): FakeRenderer {
     },
     removed: false,
   }
+  const seriesApis = new Map<object, FakeSeries>()
+  const apiOf = new Map<FakeSeries, object>()
   const makePane = (index: number) => ({
     paneIndex: () => index,
     getHeight: () => 300,
     setHeight: () => undefined,
     getHTMLElement: () => document.createElement('div'),
+    getSeries: () => series.filter((s) => s.paneIndex === index).map((s) => apiOf.get(s)),
   })
   const priceScale = () => ({
     applyOptions: () => undefined,
@@ -84,7 +87,6 @@ export function fakeRenderer(): FakeRenderer {
     width: () => 0,
     height: () => 0,
   }
-  const seriesApis = new Map<object, FakeSeries>()
   const addSeries = (type: unknown, options: Record<string, unknown> = {}, paneIndex = 0) => {
     const record: FakeSeries = { kind: seriesKind(type), options: { ...options }, data: [], paneIndex, primitives: [], priceLines: [] }
     series.push(record)
@@ -124,6 +126,7 @@ export function fakeRenderer(): FakeRenderer {
       setMarkers: () => undefined,
     }
     seriesApis.set(api, record)
+    apiOf.set(record, api)
     return api
   }
   const chart = {

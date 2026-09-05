@@ -226,6 +226,28 @@ describe('sync follows the main window', () => {
     expect(h.calls).toHaveLength(1)
     expect(h.calls[0]!.range).toMatchObject({ from: 5 })
   })
+
+  it('a window that begins before what the feed served is asked about once, never on every repaint', async () => {
+    // NQ's history starts at 20 while the main window starts at 10: the feed has already answered
+    // the whole window and has nothing older. Every repaint syncs; none of them may ask again.
+    const h = harness({ NQ: [bar(20), bar(30)] }, { from: 10, to: 40 })
+    h.handle.add('NQ', { placement: 'same-percent' })
+    await flush()
+    expect(h.calls).toHaveLength(1)
+    h.handle.sync()
+    h.handle.sync()
+    await flush()
+    expect(h.calls).toHaveLength(1)
+    // Only a window that grows older asks again, and only for the span it grew by.
+    h.win.current = { from: 5, to: 40 }
+    h.handle.sync()
+    await flush()
+    expect(h.calls).toHaveLength(2)
+    expect(h.calls[1]!.range).toEqual({ from: 5, to: 10 })
+    h.handle.sync()
+    await flush()
+    expect(h.calls).toHaveLength(2)
+  })
 })
 
 describe('timeframe re-key', () => {

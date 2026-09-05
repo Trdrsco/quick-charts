@@ -121,8 +121,9 @@ export interface CompareHandle {
   changePct(symbol: string): number | null
   /** True while any 'same-percent' compare lives — the host's cue to hold the percent scale. */
   hasSamePercent(): boolean
-  /** The main window moved (older history paged in, live bars appended): re-clip, and fetch older
-   *  compare history where the window now starts earlier than what is cached. */
+  /** The main window may have moved (older history paged in, live bars appended, or a repaint that
+   *  reshaped nothing): re-clip, and fetch older compare history only where the window now starts
+   *  earlier than anything already asked for. */
   sync(): void
   /** The chart's timeframe changed: every compare refetches at the new bucket size. */
   setTimeframe(): void
@@ -142,6 +143,11 @@ interface Slot {
   bars: FeedBar[]
   /** Earliest time already fetched, so a window growing older knows what to page in. */
   oldest: number | null
+  /** Earliest time already ASKED for, set when the ask leaves rather than when it answers. A
+   *  window that begins before what the feed served, because the compare's history is shorter
+   *  than the main series', is asked about once, not on every repaint. Null while the only ask
+   *  was a count-back seed, which names no start. */
+  askedFrom: number | null
   unsubscribe: (() => void) | null
   /** Monotonic fetch stamp: a slow response landing after a re-key must not paint. */
   fetchSeq: number
@@ -229,6 +235,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
 
   const seed = (slot: Slot) => {
     const w = deps.mainWindow()
+    slot.askedFrom = w ? w.from : null
     void fetchInto(slot, w ? { from: w.from, to: w.to } : { countBack: seedCountBack }, 'replace')
     subscribe(slot)
   }
@@ -278,7 +285,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
         const bars = existing.bars
         dispose(existing)
         const entry: CompareEntry = { ...existing.entry, placement: opts.placement }
-        const slot: Slot = { entry, suppressed: existing.suppressed, priceLabel: existing.priceLabel, series: makeSeries(entry), bars, oldest: bars[0]?.t ?? null, unsubscribe: null, fetchSeq: 0 }
+        const slot: Slot = { entry, suppressed: existing.suppressed, priceLabel: existing.priceLabel, series: makeSeries(entry), bars, oldest: bars[0]?.t ?? null, askedFrom: existing.askedFrom, unsubscribe: null, fetchSeq: 0 }
         slots.set(symbol, slot)
         paint(slot)
         subscribe(slot)
@@ -288,7 +295,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
       }
       const color = opts.color ?? pickCompareColor([...slots.values()].map((s) => s.entry.color))
       const entry: CompareEntry = { symbol, placement: opts.placement, color, visible: opts.visible ?? true }
-      const slot: Slot = { entry, suppressed: false, priceLabel: true, series: makeSeries(entry), bars: [], oldest: null, unsubscribe: null, fetchSeq: 0 }
+      const slot: Slot = { entry, suppressed: false, priceLabel: true, series: makeSeries(entry), bars: [], oldest: null, askedFrom: null, unsubscribe: null, fetchSeq: 0 }
       slots.set(symbol, slot)
       seed(slot)
       syncLeftScale()
@@ -367,9 +374,13 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
       const w = deps.mainWindow()
       for (const slot of slots.values()) {
         paint(slot)
-        // The window now begins before anything fetched: page the older span in once.
-        if (w && slot.oldest !== null && w.from < slot.oldest) {
-          void fetchInto(slot, { from: w.from, to: slot.oldest }, 'prepend')
+        // The window now begins before anything ASKED for: page the older span in, once. A sync
+        // that reshapes nothing (a style switch, a live bar, a snapshot) re-clips and asks nothing.
+        if (!w || slot.oldest === null) continue
+        const reached = slot.askedFrom ?? slot.oldest
+        if (w.from < reached) {
+          slot.askedFrom = w.from
+          void fetchInto(slot, { from: w.from, to: reached }, 'prepend')
         }
       }
     },
@@ -377,6 +388,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
       for (const slot of slots.values()) {
         slot.bars = []
         slot.oldest = null
+        slot.askedFrom = null
         slot.series.setData([])
         seed(slot)
       }
