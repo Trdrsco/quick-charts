@@ -117,8 +117,5 @@ export const layouts = {
   'layouts.cancel': 'Cancel',
   'layouts.close': 'Close',
   // Failures the menu surfaces itself. An adapter's own message is shown verbatim.
-  'layouts.errSave': 'Could not save the layout.',
-  'layouts.errLoad': 'Could not open the layout.',
-  'layouts.errDelete': 'Could not delete the layout.',
   'layouts.errList': 'Could not load your saved layouts.',
 } as const
