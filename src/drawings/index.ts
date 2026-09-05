@@ -57,7 +57,6 @@ export type {
 export {
   DRAWING_CONTEXT_VERSION,
   DRAWING_DOCUMENT_VERSION,
-  drawingBuried,
   drawingContextKey,
   emptyDrawingDocument,
   liveDrawingEntries,

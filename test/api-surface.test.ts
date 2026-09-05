@@ -88,7 +88,6 @@ const SURFACE: Record<string, string> = {
   // a host needs to read or merge one itself.
   DRAWING_CONTEXT_VERSION: 'number',
   DRAWING_DOCUMENT_VERSION: 'number',
-  drawingBuried: 'function',
   drawingContextKey: 'function',
   emptyDrawingDocument: 'function',
   liveDrawingEntries: 'function',

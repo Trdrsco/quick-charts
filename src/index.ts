@@ -143,7 +143,9 @@ export {
   type AttachDrawingsOptions,
   type DrawingApplyOutcome,
   type DrawingDocumentApi,
+  type DrawingDocumentPort,
   type DrawingDocumentRefusal,
+  type DrawingOwner,
   type DrawingPresets,
   type DrawingReadOutcome,
   type DrawingRejection,
@@ -216,7 +218,6 @@ export type {
 export {
   DRAWING_CONTEXT_VERSION,
   DRAWING_DOCUMENT_VERSION,
-  drawingBuried,
   drawingContextKey,
   emptyDrawingDocument,
   liveDrawingEntries,
