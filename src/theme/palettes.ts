@@ -4,15 +4,20 @@
 // These values are the package's own. They were chosen against a measured study of how a complete
 // chart UI has to hold up in both modes, and what that study settled: a light ink of
 // `rgb(15, 15, 15)` and a dark ink of `rgb(219, 219, 219)`, a dark panel ground of
-// `rgb(31, 31, 31)`, a dark muted ink of `rgb(140, 140, 140)`, a 6px panel radius, and
-// floating-surface shadows of `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and `rgba(0, 0, 0, 0.4)` in
-// dark. Evidence informed them; it does not own them, and this file is where they live.
+// `rgb(31, 31, 31)`, a 6px panel radius, and floating-surface shadows of
+// `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and `rgba(0, 0, 0, 0.4)` in dark. Evidence informed
+// them; it does not own them, and this file is where they live.
 //
 // Readability is a gate, not a preference. Where a value cannot reach the WCAG 2.2 AA ratio the
-// role's `contrast` rule requires, what stands here is the hue-preserving value that does, and
-// `theme/contrast.test.ts` recomputes every ratio on each run. That is why light `status.positive`
-// is not `rgb(8, 153, 129)`, which reads at 3.57 to 1 on white; dark mode keeps that value, which
-// reads at 4.62 to 1 on the dark panel.
+// role's `contrast` rules require, on every ground the recipes draw it over, what stands here is
+// the hue-preserving value that does, and `theme/contrast.test.ts` recomputes every ratio on each
+// run. That is why light `status.positive` is not `rgb(8, 153, 129)`, which reads at 3.57 to 1 on
+// white (dark mode keeps that value, which reads at 4.62 to 1 on the dark panel); why the muted
+// ink is `#64676f` in light and `#9c9c9c` in dark rather than the study's `rgb(140, 140, 140)`,
+// which read at 3.86 to 1 over the dark selected tint a search or menu row wears; and why the
+// accent is `#1f56ee` in light and `#52a0fc` in dark, where `#2962ff` and `#4c98fb` read at 4.15
+// and 4.45 to 1 as ink over the selected tint an active tool sits on. The focus ring keeps the
+// accent's value in each mode, so the two stay one color.
 //
 // The series pair is the documented brand pair from `overrides.ts`, unchanged: a positive TEXT role
 // and a rising SERIES are different jobs, so one does not displace the other. Candle body, border
@@ -45,7 +50,7 @@ export const LIGHT_THEME: SemanticTheme = {
 
   'text.primary': '#0f0f0f',
   'text.secondary': '#5b616e',
-  'text.muted': '#6a6d78',
+  'text.muted': '#64676f',
   'text.disabled': '#a3a6af',
   'text.inverse': '#ffffff',
   'text.link': '#1160c4',
@@ -70,11 +75,11 @@ export const LIGHT_THEME: SemanticTheme = {
   'overlay.shadow': '0 2px 4px rgba(0, 0, 0, 0.2)',
   'overlay.scrim': 'rgba(0, 0, 0, 0.35)',
 
-  'state.accent': '#2962ff',
+  'state.accent': '#1f56ee',
   'state.hover': 'rgba(0, 0, 0, 0.06)',
   'state.pressed': 'rgba(0, 0, 0, 0.1)',
   'state.selected': 'rgba(41, 98, 255, 0.12)',
-  'state.focusRing': '#2962ff',
+  'state.focusRing': '#1f56ee',
   'state.selection': 'rgba(41, 98, 255, 0.18)',
 
   'status.positive': '#067a67',
@@ -121,7 +126,7 @@ export const DARK_THEME: SemanticTheme = {
 
   'text.primary': '#dbdbdb',
   'text.secondary': '#a3a9b4',
-  'text.muted': '#8c8c8c',
+  'text.muted': '#9c9c9c',
   'text.disabled': '#5c5f66',
   'text.inverse': '#0f0f0f',
   'text.link': '#68a5ff',
@@ -146,11 +151,11 @@ export const DARK_THEME: SemanticTheme = {
   'overlay.shadow': '0 2px 4px rgba(0, 0, 0, 0.4)',
   'overlay.scrim': 'rgba(0, 0, 0, 0.5)',
 
-  'state.accent': '#4c98fb',
+  'state.accent': '#52a0fc',
   'state.hover': 'rgba(255, 255, 255, 0.08)',
   'state.pressed': 'rgba(255, 255, 255, 0.12)',
   'state.selected': 'rgba(76, 152, 251, 0.16)',
-  'state.focusRing': '#4c98fb',
+  'state.focusRing': '#52a0fc',
   'state.selection': 'rgba(76, 152, 251, 0.22)',
 
   'status.positive': '#089981',

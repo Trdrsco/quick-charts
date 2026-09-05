@@ -28,11 +28,15 @@ describe('the semantic role inventory', () => {
     expect(bad).toEqual([])
   })
 
-  it('points every contrast rule at a role that exists, at a WCAG 2.2 threshold', () => {
+  it('points every contrast rule at roles that exist, at a WCAG 2.2 threshold', () => {
     for (const role of THEME_ROLES) {
       if (!('contrast' in role)) continue
-      expect(isThemeRoleId(role.contrast.over), `${role.id} reads over ${role.contrast.over}`).toBe(true)
-      expect([3, 4.5], `${role.id} threshold`).toContain(role.contrast.min)
+      expect(role.contrast.length, `${role.id} declares at least one ground`).toBeGreaterThan(0)
+      for (const rule of role.contrast) {
+        expect(isThemeRoleId(rule.over), `${role.id} reads over ${rule.over}`).toBe(true)
+        if ('on' in rule) expect(isThemeRoleId(rule.on), `${role.id} reads over ${rule.over} on ${rule.on}`).toBe(true)
+        expect([3, 4.5], `${role.id} threshold`).toContain(rule.min)
+      }
     }
   })
 
