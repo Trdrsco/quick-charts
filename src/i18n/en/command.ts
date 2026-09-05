@@ -1,4 +1,4 @@
-// The command registry's own words: what a menu row, a shortcut list or an operator adapter calls
+// The command registry's own words: what a menu row, a shortcut list or a host's own automation calls
 // each built-in verb. Every command the chart registers names a key here, so a host that renders
 // the registry renders it in the trader's language without writing a word of its own.
 //
