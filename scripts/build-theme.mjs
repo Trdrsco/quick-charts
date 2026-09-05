@@ -43,7 +43,7 @@ const manifest = {
     family: role.family,
     kind: role.kind,
     description: role.description,
-    ...('contrast' in role ? { contrast: { over: role.contrast.over, min: role.contrast.min } } : {}),
+    ...('contrast' in role ? { contrast: role.contrast.map((rule) => ({ over: rule.over, ...(rule.on ? { on: rule.on } : {}), min: rule.min })) } : {}),
     values: Object.fromEntries(THEME_MODES.map((mode) => [mode, BUILT_IN_THEMES[mode][role.id]])),
   })),
 }

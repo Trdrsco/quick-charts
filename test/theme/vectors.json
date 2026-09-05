@@ -140,11 +140,11 @@
       },
       {
         "property": "--qc-state-accent",
-        "value": "#2962ff"
+        "value": "#1f56ee"
       },
       {
         "property": "--qc-state-focusRing",
-        "value": "#2962ff"
+        "value": "#1f56ee"
       },
       {
         "property": "--qc-state-hover",
@@ -240,7 +240,7 @@
       },
       {
         "property": "--qc-text-muted",
-        "value": "#6a6d78"
+        "value": "#64676f"
       },
       {
         "property": "--qc-text-onCanvas",
@@ -394,11 +394,11 @@
       },
       {
         "property": "--qc-state-accent",
-        "value": "#4c98fb"
+        "value": "#52a0fc"
       },
       {
         "property": "--qc-state-focusRing",
-        "value": "#4c98fb"
+        "value": "#52a0fc"
       },
       {
         "property": "--qc-state-hover",
@@ -494,7 +494,7 @@
       },
       {
         "property": "--qc-text-muted",
-        "value": "#8c8c8c"
+        "value": "#9c9c9c"
       },
       {
         "property": "--qc-text-onCanvas",

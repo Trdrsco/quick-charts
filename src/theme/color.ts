@@ -85,19 +85,25 @@ export function relativeLuminance(c: Rgba): number {
   return 0.2126 * linear(c.r) + 0.7152 * linear(c.g) + 0.0722 * linear(c.b)
 }
 
+const WHITE: Rgba = { r: 255, g: 255, b: 255, a: 1 }
+
 /** The WCAG 2.2 contrast ratio between a foreground and a backdrop, 1 to 21. Contrast is defined on
- *  opaque colors, so a translucent backdrop is flattened onto white first and the foreground is
- *  then composited onto that. */
-export function contrastRatio(foreground: Rgba, background: Rgba): number {
-  const front = compositeOver(foreground, background)
-  const back = compositeOver(background, { r: 255, g: 255, b: 255, a: 1 })
+ *  opaque colors, so a translucent backdrop is flattened first, onto `beneath` (the opaque surface
+ *  it is drawn on) when one is given and onto white otherwise, and the foreground is then composited
+ *  onto that. */
+export function contrastRatio(foreground: Rgba, background: Rgba, beneath?: Rgba): number {
+  const back = compositeOver(background, beneath ? compositeOver(beneath, WHITE) : WHITE)
+  const front = compositeOver(foreground, back)
   const [hi, lo] = [relativeLuminance(front), relativeLuminance(back)].sort((a, b) => b - a) as [number, number]
   return (hi + 0.05) / (lo + 0.05)
 }
 
-/** The contrast ratio between two color strings, or null when either is unparseable. */
-export function contrastOf(foreground: string, background: string): number | null {
+/** The contrast ratio between two color strings, or null when any of them is unparseable. `beneath`
+ *  is the opaque surface a translucent `background` is drawn on. */
+export function contrastOf(foreground: string, background: string, beneath?: string): number | null {
   const f = parseCssColor(foreground)
   const b = parseCssColor(background)
-  return f && b ? contrastRatio(f, b) : null
+  const under = beneath === undefined ? undefined : parseCssColor(beneath)
+  if (!f || !b || under === null) return null
+  return contrastRatio(f, b, under)
 }
