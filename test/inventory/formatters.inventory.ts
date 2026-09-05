@@ -142,7 +142,7 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   // ── symbology: the app chart body ───────────────────────────────────────────────────────────
   {
-    file: 'apps/web/src/lib/priceFormat.ts',
+    file: 'apps/web/src/integrations/quickcharts/priceFormat.ts',
     symbols: ['priceFormatterOf', 'UNRESOLVED_PRICE_FORMAT', 'minMoveOf'],
     kind: 'symbology',
     surface: "the app's one price formatter: createPriceFormatter over the symbol's resolved format in the interface language, with the declared unresolved policy",
@@ -290,15 +290,15 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   },
   {
     file: 'apps/web/src/widgets/WatchlistWidget.tsx',
-    symbols: ['useWatchlistValueFormatter', 'formatter.last(', 'formatter.change(', 'formatter.changePct(', 'formatter.volume('],
+    symbols: ['formatter: WatchlistValueFormatter', 'formatter.last(', 'formatter.change(', 'formatter.changePct(', 'formatter.volume('],
     kind: 'quote',
     surface: 'the React Watchlist rows: Last, Chg, Chg%, Volume',
   },
   {
-    file: 'apps/web/src/widgets/watchlistFormat.ts',
+    file: 'apps/web/src/integrations/quickcharts/watchlistFormatter.ts',
     symbols: ['cachedSymbolMeta(symbol).format', 'createWatchlistValueFormatter', 'formatVolume', 'UNRESOLVED_PRICE_FORMAT'],
     kind: 'quote',
-    surface: "this app's implementation of the Watchlist value-formatter port",
+    surface: "this app's implementation of the Watchlist value-formatter port, handed to the widget by the composition root",
     finding:
       "Last and Chg run through one createPriceFormatter over the symbol's resolved price format; Chg% and Volume keep their own value kinds. A symbol whose format has not landed takes one declared cents policy.",
   },
