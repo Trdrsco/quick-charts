@@ -13,32 +13,22 @@
 // bundler rather than preceding it because the bundler clears `dist` as it starts. Committing a
 // palette change without rerunning it fails the drift block of `theme/stylesheet.test.ts`.
 //
-// The script imports the theme source directly. Node strips the type annotations, which is why
-// `schema.ts`, `palettes.ts`, and `css-contract.ts` carry no runtime import of their own: Node
-// resolves no extensionless relative specifier, so each of those modules has to stand alone.
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+// The script imports the theme source directly (see scripts/stylesheet.mjs for why those modules
+// carry no runtime import of their own).
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { THEME_MODES, THEME_ROLES } from '../src/theme/schema.ts'
 import { BUILT_IN_THEMES } from '../src/theme/palettes.ts'
-import { composeStylesheet, themeDeclarations, THEME_ROOT_ATTRIBUTE } from '../src/theme/css-contract.ts'
+import { themeDeclarations, THEME_ROOT_ATTRIBUTE } from '../src/theme/css-contract.ts'
+import { composeDistributableStylesheet } from './stylesheet.mjs'
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const CSS_ENTRY = 'quickcharts/styles.css'
 
-// The authored CSS is one structural file plus one recipe file per chrome surface. They are read in
-// name order so the composed stylesheet is deterministic, and every file is scoped the same way:
-// the stylesheet fixture in test/theme reads exactly this list and judges each selector in it.
-const componentsDir = join(pkgRoot, 'src/styles/components')
-const componentFiles = readdirSync(componentsDir)
-  .filter((name) => name.endsWith('.css'))
-  .sort()
-  .map((name) => join(componentsDir, name))
-const structural = [join(pkgRoot, 'src/styles/quickcharts.css'), ...componentFiles].map((path) => readFileSync(path, 'utf8').trim()).join('\n\n')
-const blocks = THEME_MODES.map((mode) => ({ mode, theme: BUILT_IN_THEMES[mode] }))
-
-const css = composeStylesheet({ blocks, structural })
+// The stylesheet itself comes from the composition the guest build shares (scripts/stylesheet.mjs).
+const css = composeDistributableStylesheet()
 
 const manifest = {
   rootAttribute: THEME_ROOT_ATTRIBUTE,

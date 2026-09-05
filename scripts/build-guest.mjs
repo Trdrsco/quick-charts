@@ -3,7 +3,7 @@
 //
 //   dist/guest/index.html            the page a native host loads from its own files
 //   dist/guest/guest.css             the page's own sizing rules
-//   dist/guest/quickcharts.css       the package stylesheet, copied beside the page
+//   dist/guest/quickcharts.css       the package stylesheet, composed from the theme source beside the page
 //   dist/guest/quickcharts-guest.js  guest/main.ts with the chart and its renderer bundled in: no
 //                                    bare import survives, nothing is fetched at runtime
 //   dist/guest/build-manifest.json   the package version and the SHA-256 of every file above
@@ -20,6 +20,7 @@ import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'tsup'
+import { composeDistributableStylesheet } from './stylesheet.mjs'
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const { version } = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8'))
@@ -52,7 +53,9 @@ await build({
 
 copyFileSync(join(pkgRoot, 'guest', 'index.html'), join(out, 'index.html'))
 copyFileSync(join(pkgRoot, 'guest', 'guest.css'), join(out, 'guest.css'))
-copyFileSync(join(pkgRoot, 'dist', 'quickcharts.css'), join(out, 'quickcharts.css'))
+// The stylesheet is composed here from the same source the theme generator reads, so the guest
+// needs no earlier build and can never carry a stylesheet older than the palettes.
+writeFileSync(join(out, 'quickcharts.css'), composeDistributableStylesheet())
 
 const sha256 = (path) => createHash('sha256').update(readFileSync(path)).digest('hex')
 const files = Object.fromEntries(
