@@ -1,5 +1,5 @@
 // SAVED RESOURCES — the revisioned, async persistence contract for the entities a chart names and
-// a user can lose: saved charts, layouts, symbol-scoped drawings, and templates.
+// a user can lose: saved charts, layouts, drawing documents, and templates.
 //
 // The contract exists because a saved chart is shared, mutable, remote state. Two tabs, two
 // devices, or one slow save and one fast one all end at the same question: whose version wins?
@@ -17,9 +17,17 @@
 //   - A successful write RETURNS the stored revision, so the caller's next write is conditional on
 //     what the store actually holds rather than on what it hoped it wrote.
 //
-// Bodies are contractually OPAQUE to the store: no parsing, no per-entity logic, so the chart can
-// evolve its own formats freely. Flat viewer preferences that need no entity identity are NOT here;
-// they stay on `ChartStorage`, the small settings port beside this one.
+// A chart's, a layout's and a template's body is contractually OPAQUE to the store: no parsing, no
+// per-entity logic, so the chart can evolve those formats freely. The drawings family is the one
+// deliberate exception: its body is the structured document in `drawings/document.ts`, because
+// deletion tombstones, ordered groups and per-drawing ownership have to survive a merge between two
+// surfaces, and a merge cannot be performed over a string. Each drawing's own state stays opaque
+// inside its entry.
+//
+// Flat viewer preferences that need no entity identity are NOT here; they stay on `ChartStorage`,
+// the small settings port beside this one.
+import type { DrawingResourceContext, DrawingsBody } from './drawings/document'
+import { drawingContextKey } from './drawings/document'
 
 /** A resource's identity plus the exact version this reader saw. A write quotes it back. */
 export interface ResourceRef {
@@ -80,21 +88,10 @@ export interface LayoutBody {
   content: string
 }
 
-/** Where a drawings document lives. `symbol` alone is the shared scope: the same lines on every
- *  chart of that symbol; `chartId` binds a copy to one saved chart instead. */
-export interface DrawingScope {
-  symbol: string
-  chartId?: string
-}
-
-/** A drawings document's listing row. A scope holds at most one, so `list` returns zero rows or
+/** A drawings document's listing row. A context holds at most one, so `list` returns zero rows or
  *  one, and the ref is the store's handle on it. */
 export interface DrawingsMeta extends ResourceRef {
   updatedAt: number
-}
-
-export interface DrawingsBody {
-  content: string
 }
 
 export type TemplateKind = 'study' | 'drawing' | 'palette'
@@ -118,8 +115,9 @@ export interface TemplateBody {
 export interface ChartSaveLoadAdapter {
   charts: ResourceStore<ChartMeta, ChartBody>
   layouts: ResourceStore<LayoutMeta, LayoutBody>
-  /** The store for one drawing scope. Calling with the same scope returns an equivalent store. */
-  drawings(scope: DrawingScope): ResourceStore<DrawingsMeta, DrawingsBody>
+  /** The store for one drawing-resource context. Calling with an equal context returns an
+   *  equivalent store; `drawingContextKey` is the canonical way to compare two. */
+  drawings(context: DrawingResourceContext): ResourceStore<DrawingsMeta, DrawingsBody>
   templates(kind: TemplateKind): ResourceStore<TemplateMeta, TemplateBody>
 }
 
@@ -209,11 +207,8 @@ function memoryStore<Meta, Body>(
   }
 }
 
-// The two parts join on an escaped null: no symbol or chart id carries one, so the key is unambiguous.
-const scopeKey = (scope: DrawingScope): string => `${scope.symbol}\u0000${scope.chartId ?? ''}`
-
-/** An in-memory {@link ChartSaveLoadAdapter}. Each drawing scope and each template kind gets its own
- *  store, created on first ask and kept, so two calls for the same scope see the same documents. */
+/** An in-memory {@link ChartSaveLoadAdapter}. Each drawing context and each template kind gets its
+ *  own store, created on first ask and kept, so two calls for one context see the same document. */
 export function memorySaveLoadAdapter(options?: MemoryResourcesOptions): ChartSaveLoadAdapter {
   const now = options?.now ?? (() => Date.now())
   const drawingStores = new Map<string, ResourceStore<DrawingsMeta, DrawingsBody>>()
@@ -225,8 +220,8 @@ export function memorySaveLoadAdapter(options?: MemoryResourcesOptions): ChartSa
       now,
     ),
     layouts: memoryStore<LayoutMeta, LayoutBody>((r) => ({ id: r.id, revision: r.revision, name: r.body.name, updatedAt: r.updatedAt }), now),
-    drawings(scope) {
-      const key = scopeKey(scope)
+    drawings(context) {
+      const key = drawingContextKey(context)
       let store = drawingStores.get(key)
       if (!store) {
         store = memoryStore<DrawingsMeta, DrawingsBody>((r) => ({ id: r.id, revision: r.revision, updatedAt: r.updatedAt }), now)

@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+- **Drawings are stored in one of two modes, chosen at construction.** `drawingPersistence` takes
+  `combined` (the default: the chart's saved content carries the drawings on it) or `separate` (the
+  saved content carries none, and the adapter's drawings family is their only path). `scope` picks
+  which drawing-resource context a separate document is keyed by: `chart-local`, `layout-shared` or
+  `symbol-global`, with a host-owned `layoutId` for the first two. There is no reader, fallback or
+  mirrored write between the modes.
+- **The drawings family is keyed by a discriminated, versioned context.**
+  `ChartSaveLoadAdapter.drawings(context)` takes a `DrawingResourceContext`, and
+  `drawingContextKey` is the canonical way to compare two. A document carries each drawing's stable
+  id, the source and pane that own it, its type and its own opaque state, plus ordered groups with
+  their own ids and deletion tombstones for drawings and groups, so a deletion never returns after
+  a concurrent save, a reconnect or a reload. `emptyDrawingDocument`, `parseDrawingDocument`,
+  `reviseDrawingDocument`, `mergeDrawingDocuments`, `liveDrawingEntries`, `liveDrawingGroups`,
+  `drawingBuried` and `sameDrawingContext` are the pure rules over that document, on the root and
+  on `quickcharts/drawings`.
+- **`chart.drawingResources` is the low-level separate-drawing API.** `get`, `apply` and `reload`
+  over this chart's own context. A restore validates every entry against the live sources and panes
+  and names what it will not attach (`missing-source`, `missing-pane`, `foreign-pane`,
+  `deleted-group`, `unreadable`) rather than moving a drawing onto whatever fits; request
+  generations and abort signals keep a late answer for an old layout, chart or symbol from reaching
+  the chart on screen. In combined mode every verb refuses.
 - **The complete drawing product ships in the widget.** The drawing toolbar is the rail down the
   chart's leading edge: the cursor with its cross, dot and arrow modes and the eraser; seven tool
   groups whose flyouts list every one of the 90 tools by section, each row with a star for the

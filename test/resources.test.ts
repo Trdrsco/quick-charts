@@ -5,8 +5,16 @@
 // construction.
 import { describe, expect, it } from 'vitest'
 import { memorySaveLoadAdapter, ResourceAbortError, type ChartBody, type ResourceRef } from '../src/resources'
+import { DRAWING_CONTEXT_VERSION, emptyDrawingDocument, type DrawingResourceContext, type DrawingsBody } from '../src/drawings/document'
 
 const chart = (name: string, content = 'blob'): ChartBody => ({ name, symbol: 'ESZ2026', timeframe: '5m', content })
+
+const everyChart = (symbol: string): DrawingResourceContext => ({ version: DRAWING_CONTEXT_VERSION, kind: 'symbol-global', symbol })
+const oneChart = (symbol: string, chartId: string): DrawingResourceContext => ({ version: DRAWING_CONTEXT_VERSION, kind: 'chart-local', layoutId: 'desk', chartId, symbol })
+const withLine = (context: DrawingResourceContext, id: string): DrawingsBody => ({
+  ...emptyDrawingDocument(context),
+  entries: [{ id, source: 'main', pane: 'main', type: 'trend-line', state: { id, type: 'trend-line' } }],
+})
 
 describe('a resource store', () => {
   it('mints an id and a revision on create, and returns the stored metadata', async () => {
@@ -121,27 +129,31 @@ describe('the four resource families', () => {
     const adapter = memorySaveLoadAdapter()
     await adapter.charts.create(chart('One'))
     await adapter.layouts.create({ name: 'Four up', content: 'layout' })
-    await adapter.drawings({ symbol: 'ESZ2026' }).create({ content: 'lines' })
+    await adapter.drawings(everyChart('ESZ2026')).create(withLine(everyChart('ESZ2026'), 'd1'))
     await adapter.templates('study').create({ name: 'My RSI', content: 'study' })
 
     expect(await adapter.charts.list()).toHaveLength(1)
     expect(await adapter.layouts.list()).toHaveLength(1)
-    expect(await adapter.drawings({ symbol: 'ESZ2026' }).list()).toHaveLength(1)
+    expect(await adapter.drawings(everyChart('ESZ2026')).list()).toHaveLength(1)
     expect(await adapter.templates('study').list()).toHaveLength(1)
     expect(await adapter.templates('drawing').list()).toHaveLength(0)
   })
 
-  it('scopes drawings by symbol, and binds a copy to one chart when a chartId is given', async () => {
+  it('keys a drawings document by its whole context: the kind, the layout, the chart and the symbol', async () => {
     const adapter = memorySaveLoadAdapter()
-    await adapter.drawings({ symbol: 'ESZ2026' }).create({ content: 'shared' })
-    await adapter.drawings({ symbol: 'ESZ2026', chartId: 'c1' }).create({ content: 'bound' })
+    await adapter.drawings(everyChart('ESZ2026')).create(withLine(everyChart('ESZ2026'), 'shared'))
+    await adapter.drawings(oneChart('ESZ2026', 'c1')).create(withLine(oneChart('ESZ2026', 'c1'), 'bound'))
 
-    expect((await adapter.drawings({ symbol: 'ESZ2026' }).list())).toHaveLength(1)
-    expect((await adapter.drawings({ symbol: 'NQZ2026' }).list())).toHaveLength(0)
-    const bound = await adapter.drawings({ symbol: 'ESZ2026', chartId: 'c1' }).list()
+    expect(await adapter.drawings(everyChart('ESZ2026')).list()).toHaveLength(1)
+    // Another symbol, another chart of the same layout, and another kind on the same symbol are
+    // three different documents; none of them reads another's.
+    expect(await adapter.drawings(everyChart('NQZ2026')).list()).toHaveLength(0)
+    expect(await adapter.drawings(oneChart('ESZ2026', 'c2')).list()).toHaveLength(0)
+    const bound = await adapter.drawings(oneChart('ESZ2026', 'c1')).list()
     expect(bound).toHaveLength(1)
-    const read = await adapter.drawings({ symbol: 'ESZ2026', chartId: 'c1' }).load(bound[0]!.id)
-    expect(read?.body.content).toBe('bound')
+    const read = await adapter.drawings(oneChart('ESZ2026', 'c1')).load(bound[0]!.id)
+    expect(read?.body.entries[0]?.id).toBe('bound')
+    expect(read?.body.context).toEqual(oneChart('ESZ2026', 'c1'))
   })
 
   it('carries a drawing template tool onto its listing row and leaves study rows without one', async () => {

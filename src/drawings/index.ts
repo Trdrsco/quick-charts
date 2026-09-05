@@ -39,9 +39,34 @@ export { alphaOf, withAlpha } from '@trdrs/chart-drawings'
 
 // ── Persistence ─────────────────────────────────────────────────────────────────────────────────
 export { parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from './store'
-// Where a drawings document lives, from the chart's revisioned resource contract. The scope is the
-// resource contract's, not a second one: a drawings document is one of the four saved entities.
-export type { DrawingScope, ResourceRef, ResourceStore, TemplateBody, TemplateMeta, WriteOutcome } from '../resources'
+// Where a drawings document lives and what it holds, from the chart's revisioned resource
+// contract. The context and the document are the resource contract's, not a second pair: a
+// drawings document is one of the four saved entities.
+export type { ResourceRef, ResourceStore, TemplateBody, TemplateMeta, WriteOutcome } from '../resources'
+export type {
+  ChartLocalDrawingContext,
+  DrawingContextKind,
+  DrawingEntry,
+  DrawingGroup,
+  DrawingResourceContext,
+  DrawingTombstone,
+  DrawingsBody,
+  LayoutSharedDrawingContext,
+  SymbolGlobalDrawingContext,
+} from './document'
+export {
+  DRAWING_CONTEXT_VERSION,
+  DRAWING_DOCUMENT_VERSION,
+  drawingBuried,
+  drawingContextKey,
+  emptyDrawingDocument,
+  liveDrawingEntries,
+  liveDrawingGroups,
+  mergeDrawingDocuments,
+  parseDrawingDocument,
+  reviseDrawingDocument,
+  sameDrawingContext,
+} from './document'
 
 // ── Per-interval visibility ─────────────────────────────────────────────────────────────────────
 export type { IntervalBucket, IntervalContext, IntervalVisibility, VisibilityPreset, VisibilityRange } from '@trdrs/chart-drawings'

@@ -11,17 +11,29 @@
 import type { Time } from 'lightweight-charts'
 import { DrawingManager, parseIntervalContext, restoreDrawings, viewportOf, visibilityPreset } from '@trdrs/chart-drawings'
 import type { IDrawing, SerializedDrawing, SourceBar } from '@trdrs/chart-drawings'
+import type { ResourceRef } from '../../resources'
 import { drawingTools } from '../tools'
 import { editRefused } from '../lockModel'
 import { isTransientTool, type CursorMode } from '../cursorModel'
 import { cancelText, commitText, type TextEditTarget } from '../editModel'
 import { pointerLock } from '../../pointerInput'
-import { createDocuments } from './documents'
+import { createDocuments, drawingOf, type DrawingOwner } from './documents'
+import { liveDrawingEntries, liveDrawingGroups, sameDrawingContext, type DrawingsBody } from '../document'
 import { createPresets } from './presets'
 import { bindGestures, type Draft, type Drag, type GestureContext } from './gestures'
 import { imagePlacement, shiftedAnchors } from './geometry'
-import { scopeForNew } from './scope'
-import type { AttachDrawingsOptions, DrawingsHandle, DrawingsWorkflow, SelectedDrawing, TextEditSession } from './types'
+import { ownsDrawing, scopeForNew } from './scope'
+import type {
+  AttachDrawingsOptions,
+  DrawingApplyOutcome,
+  DrawingDocumentApi,
+  DrawingReadOutcome,
+  DrawingRejection,
+  DrawingsHandle,
+  DrawingsWorkflow,
+  SelectedDrawing,
+  TextEditSession,
+} from './types'
 
 /** What each cursor mode paints over the chart. The dot has no CSS keyword of its own, so it is
  *  a 5px ring drawn inline in the ink the chart hands over (its text role, so the ring follows
@@ -135,9 +147,14 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       .filter((d) => d.id !== ctx.draft?.drawing.id && !transient.has(d.id))
       .map((d) => previewing.get(d.id) ?? d)
 
+  const owner: DrawingOwner = options.surface?.owner ?? { source: 'main', pane: 'main' }
+  const liveSources = options.surface?.sources ?? ((): readonly string[] => [owner.source])
+  const livePanes = options.surface?.panes ?? ((): readonly string[] => [owner.pane])
+
   const documents = createDocuments({
-    resources: options.resources,
-    chartId: options.chartId,
+    ...(options.documents ? { port: options.documents } : {}),
+    owner,
+    ...(options.chartId === undefined ? {} : { chartId: options.chartId }),
     current: () => symbol,
     onDocument: (sym, list) => {
       if (sym !== symbol) return
@@ -385,6 +402,70 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   importList(documents.listFor(symbol))
   documents.hydrate(symbol)
 
+  // ── The low-level document operations ───────────────────────────────────────────────────────
+  /** Validate a document against what this chart actually holds, then paint what survives.
+   *
+   *  A row this chart does not own (another chart's, inside a shared document) is not a rejection:
+   *  it simply is not this chart's to draw, and it stays in the document untouched. A row that
+   *  names a source or a pane this chart does not have, or names one it has but is not this
+   *  layer's, comes back named: the alternative is to attach it to whatever is nearest, which
+   *  silently moves a trader's drawing onto the wrong series. */
+  const applyDocument = (document: DrawingsBody, ref: ResourceRef | null, generation: number): DrawingApplyOutcome => {
+    // The generation is read FIRST: an ask that a symbol switch has already overtaken is stale,
+    // whatever it happens to hold, and calling it a mismatch would name the wrong problem.
+    if (destroyed || generation !== documents.generation()) return { kind: 'refused', reason: 'stale' }
+    const context = documents.contextFor(symbol)
+    if (!context) return { kind: 'refused', reason: 'combined-mode' }
+    if (!sameDrawingContext(document.context, context)) return { kind: 'refused', reason: 'context-mismatch' }
+    const sources = new Set(liveSources())
+    const panes = new Set(livePanes())
+    const groups = new Set(liveDrawingGroups(document).map((group) => group.id))
+    // The group each entry STATES, before the document's own reading drops a buried one: an entry
+    // whose group is gone is the host's to resolve, so it is named rather than quietly ungrouped.
+    const stated = new Map(document.entries.map((entry) => [entry.id, entry.group]))
+    const rejected: DrawingRejection[] = []
+    const rows: SerializedDrawing[] = []
+    for (const entry of liveDrawingEntries(document)) {
+      const row = drawingOf(entry)
+      if (row && !ownsDrawing(row, options.chartId)) continue
+      const group = stated.get(entry.id)
+      if (group !== undefined && !groups.has(group)) rejected.push({ id: entry.id, reason: 'deleted-group' })
+      else if (!sources.has(entry.source)) rejected.push({ id: entry.id, reason: 'missing-source' })
+      else if (!panes.has(entry.pane)) rejected.push({ id: entry.id, reason: 'missing-pane' })
+      else if (entry.source !== owner.source || entry.pane !== owner.pane) rejected.push({ id: entry.id, reason: 'foreign-pane' })
+      else if (!row) rejected.push({ id: entry.id, reason: 'unreadable' })
+      else rows.push(row)
+    }
+    documents.adopt(symbol, document, ref)
+    replaceScreen(rows)
+    changed()
+    return { kind: 'ok', applied: rows.length, rejected }
+  }
+
+  /** Each verb captures the layer's request generation before it awaits anything: a symbol switch
+   *  bumps it, so an answer meant for the symbol that just left is refused as stale instead of
+   *  landing on the one that arrived. */
+  const documentApi: DrawingDocumentApi = {
+    context: () => documents.contextFor(symbol),
+    async get(signal) {
+      const generation = documents.generation()
+      const found = await documents.read(symbol, signal)
+      const answer: DrawingReadOutcome = !found
+        ? { kind: 'refused', reason: 'combined-mode' }
+        : destroyed || generation !== documents.generation()
+          ? { kind: 'refused', reason: 'stale' }
+          : { kind: 'ok', ref: found.ref, document: found.document }
+      return answer
+    },
+    apply: (document) => applyDocument(document, null, documents.generation()),
+    async reload(signal) {
+      const generation = documents.generation()
+      const found = await documents.read(symbol, signal)
+      if (!found) return { kind: 'refused', reason: 'combined-mode' }
+      return applyDocument(found.document, found.ref, generation)
+    },
+  }
+
   const handle: DrawingsHandle = {
     armTool(type, props) {
       if (destroyed) return
@@ -519,6 +600,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     commitText: commitTextEdit,
     cancelText: cancelTextEdit,
     presets,
+    documents: documentApi,
     setSymbol(next) {
       if (destroyed || next === symbol) return
       cancelDraft()

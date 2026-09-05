@@ -9,6 +9,7 @@ import {
   createChartI18n,
   createPriceFormatter,
   createUdfDatafeed,
+  emptyDrawingDocument,
   manifestInputDefaults,
   mergeOverrides,
   memoryChartStorage,
@@ -26,6 +27,7 @@ import {
   type CommandResult,
   type ChartWidget,
   type DatafeedConfig,
+  type DrawingResourceContext,
   type DrawingsHandle,
   type FeedBar,
   type HistoryPage,
@@ -89,11 +91,13 @@ export async function exerciseFakes(): Promise<void> {
   if (moved.kind !== 'ok' || moved.ref.revision === created.ref.revision) throw new Error('an update at the held ref moves the revision')
   const stale = await saveLoad.charts.update(created.ref, { name: 'Morning', symbol: 'ESZ2026', timeframe: '1h', content: '{}' })
   if (stale.kind !== 'conflict' || stale.current.revision !== moved.ref.revision) throw new Error('a stale write is a typed conflict carrying the ref that stands')
-  const drawings = saveLoad.drawings({ symbol: 'ESZ2026' })
-  const doc = await drawings.create({ content: '[]' })
-  if (doc.kind !== 'ok') throw new Error('a scope with no document accepts a create')
-  if ((await drawings.create({ content: '[]' })).kind !== 'conflict') throw new Error('a scope holds one document')
-  if ((await saveLoad.drawings({ symbol: 'NQZ2026' }).list()).length !== 0) throw new Error('drawings are symbol-scoped')
+  const context: DrawingResourceContext = { version: 1, kind: 'chart-local', layoutId: 'desk', chartId: 'c1', symbol: 'ESZ2026' }
+  const drawings = saveLoad.drawings(context)
+  const doc = await drawings.create(emptyDrawingDocument(context))
+  if (doc.kind !== 'ok') throw new Error('a context with no document accepts a create')
+  if ((await drawings.create(emptyDrawingDocument(context))).kind !== 'conflict') throw new Error('a context holds one document')
+  if ((await saveLoad.drawings({ ...context, symbol: 'NQZ2026' }).list()).length !== 0) throw new Error('another symbol is another document')
+  if ((await saveLoad.drawings({ version: 1, kind: 'symbol-global', symbol: 'ESZ2026' }).list()).length !== 0) throw new Error('another context kind is another document')
   const study = await saveLoad.templates('study').create({ name: 'Bands', content: '{}' })
   if (study.kind !== 'ok' || (await saveLoad.templates('study').load(study.ref.id))?.body.content !== '{}') throw new Error('a template loads back')
   const removed = await saveLoad.charts.remove(moved.ref)
@@ -224,7 +228,14 @@ if (!placeableByWidget('trend_line') || !placeableByWidget('brush') || placeable
 // The drawing layer types against a real chart/series pair (construction is DOM-bound; the render
 // smoke executes it) and the persisted store document round-trips through the shared codec.
 export function mountDrawingLayer(el: HTMLElement, chartApi: IChartApi, series: ISeriesApi<'Candlestick'>): DrawingsHandle {
-  return attachDrawings({ chart: chartApi, series, container: el, symbol: 'BTC', resources: (scope) => memorySaveLoad().drawings(scope) })
+  const adapter = memorySaveLoad()
+  return attachDrawings({
+    chart: chartApi,
+    series,
+    container: el,
+    symbol: 'BTC',
+    documents: { context: (symbol) => ({ version: 1, kind: 'symbol-global', symbol }), store: (context) => adapter.drawings(context) },
+  })
 }
 const storeDoc: Record<string, SerializedDrawing[]> = parseDrawingsStore(serializeDrawingsStore({}))
 if (Object.keys(storeDoc).length !== 0) throw new Error('unexpected store round-trip')

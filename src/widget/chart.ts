@@ -46,6 +46,8 @@ import { createRangeApi, type LogicalRange, type RangeApi, type TimeRange } from
 import { frameRange, scrolledPosition, zoomedBarSpacing } from '../ranges'
 import { attachSession } from './session'
 import { attachDrawingsPlane, type ChartDrawingsApi } from './drawings'
+import type { DrawingDocumentApi } from '../drawings/layer/types'
+import type { DrawingDocumentPort } from '../drawings/layer/documents'
 import { attachIndicatorsPlane, type IndicatorsPlane } from './indicators'
 import { attachComparePlane, type ChartCompareApi } from './compare'
 import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './replay'
@@ -188,6 +190,10 @@ export interface ChartHandle {
   indicators: IndicatorsApi
   /** The drawing layer, or null when the drawings feature is off. */
   drawings: ChartDrawingsApi | null
+  /** The low-level separate-drawing document operations: get, apply and reload over this chart's
+   *  own drawing-resource context. Null when the drawings feature is off; in combined mode every
+   *  verb refuses, because there is no separate document to reach. */
+  drawingResources: DrawingDocumentApi | null
   compare: ChartCompareApi
   replay: ChartReplayApi
   /** The EFFECTIVE appearance tree: the mode's floor, the constructor partial, then every runtime
@@ -204,6 +210,11 @@ export interface ChartHandle {
   on<K extends keyof ChartEvents>(name: K, callback: ChartEvents[K]): () => void
 }
 
+/** How ONE chart's drawings are stored, as the widget resolved it. `chartKey` is the chart's place
+ *  in the layout, which is the identity a document outlives a re-tile and a reload by; the mode is
+ *  the widget's construction-time choice, and there is no path between the two. */
+export type ChartDrawingPersistence = { chartKey: string } & ({ mode: 'combined' } | { mode: 'separate'; documents: DrawingDocumentPort })
+
 /** What the widget hands one chart. */
 export interface ChartInstanceDeps {
   id: string
@@ -211,6 +222,8 @@ export interface ChartInstanceDeps {
   container: HTMLElement
   datafeed: ChartDatafeed
   saveLoad: ChartSaveLoadAdapter | null
+  /** Where this chart's drawings are stored. */
+  drawings: ChartDrawingPersistence
   /** The preference store, already wrapped so a write pings the widget's save-needed debounce. */
   storage: ChartStorage
   i18n: ChartI18n
@@ -532,6 +545,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     container: gestures,
     chrome,
     chartId: deps.id,
+    chartKey: deps.drawings.chartKey,
+    documents: deps.drawings.mode === 'separate' ? deps.drawings.documents : null,
     symbol,
     timeframe: tf,
     bars: () => bars,
@@ -547,6 +562,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     preferences: () => drawingPrefs,
     setPreferences: (next) => handle.setDrawingPreferences(next),
     indicators: { count: () => indicators.list().length, setAllHidden: (hidden) => indicators.setAllHidden(hidden) },
+    // What a stored drawing may name on this chart: the main series and its pane, plus every
+    // indicator instance and the panes the pane-placed ones own.
+    sources: () => ['main', ...indicators.list().map((instance) => instance.id)],
+    panes: () => ['main', ...indicators.list().filter((instance) => instance.definition.manifest.pane === 'pane').map((instance) => instance.id)],
     chartCount: deps.chartCount,
     onSaveConflict: (info) => deps.onSaveConflict({ family: 'drawings', ...info }),
     onChange: (kind, id) => events.emit('drawing', { kind, id }),
@@ -965,6 +984,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // Compares restore AFTER the scale: the blob's own scale is the truth of how it was saved, so
     // the policy only re-arms the flip-back for compares the restore brings in.
     compare?.restore(parsed.compares)
+    // In COMBINED mode the blob carries the drawings that were on the chart, so restoring it puts
+    // them back; in separate mode it carries none and the drawings family is their only path.
+    if (deps.drawings.mode === 'combined' && parsed.drawings) drawings.handle?.restore(parsed.drawings)
     // Extensions restore LAST: the symbol, timeframe and scale a saved chart carries are the world
     // an extension's state describes, so it must already be the world on screen.
     extensions.host.restore(parsed.ext)
@@ -983,6 +1005,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       hidden: indicators.hidden(),
       appearance: eff.appearance,
       compares: compare?.serialize() ?? [],
+      // The drawings ride the blob in combined mode only. They are the symbol's own: a saved chart
+      // is one symbol, and the drawings it carries are the ones drawn on it.
+      ...(deps.drawings.mode === 'combined' ? { drawings: drawings.handle?.export() ?? [] } : {}),
       // Extension state rides in its own namespace, keyed by extension id, so a chart saved with
       // one set of extensions loads under another without either reading the other's state.
       ext: extensions.host.serialize(),
@@ -1072,6 +1097,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       hidden: () => indicators.hidden(),
     },
     drawings: drawings.api,
+    drawingResources: drawings.documents,
     compare: compare?.api ?? {
       add: () => undefined,
       remove: () => undefined,

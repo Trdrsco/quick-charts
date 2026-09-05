@@ -291,9 +291,45 @@ opened at (or creates, when nothing is open or you pass `asNew`), `load(id)` app
 chart and opens it, `remove()` deletes the open one at its held revision, and `current()` reports
 the ref and name on screen. A refusal is a typed outcome carrying a sentence from the chart
 catalog, so you show one line and offer a reload; the widget never writes over a newer revision.
-The drawing layer persists each symbol's drawings through the adapter's drawings family the same
-way, and reports a refused write through the widget's `saveConflict` event. A layout does the same
-for itself through `widget.layout.saveLoad` over the layouts family.
+A layout does the same for itself through `widget.layout.saveLoad` over the layouts family.
+
+Drawings have two storage modes, and you pick one when you construct the widget. **Combined** is
+the default: the drawings ride the chart's own saved content, so saving a chart or a layout saves
+the drawings on it. **Separate** keeps them out of that content entirely and stores them as their
+own documents in the adapter's drawings family, one document per drawing-resource context:
+
+```ts
+import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
+
+declare const separateContainer: HTMLElement
+const separate = createChart({
+  container: separateContainer,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  saveLoad: memorySaveLoadAdapter(),
+  // chart-local: one document per chart, per symbol. `layout-shared` gives the layout's charts one
+  // document per symbol, and `symbol-global` gives every chart one.
+  drawingPersistence: { mode: 'separate', scope: 'chart-local', layoutId: 'desk-1' },
+})
+const documents = separate.activeChart().drawingResources
+const read = await documents?.get()
+if (read?.kind === 'ok') {
+  const applied = documents?.apply(read.document)
+  // 'ok' with the drawings it attached, and every one it would not: an entry whose source or pane
+  // is not on this chart is named rather than moved onto whatever is nearest.
+  applied?.kind
+}
+await documents?.reload()
+```
+
+A document carries each drawing's stable id, the source and pane that own it, its type and its own
+opaque state, plus ordered groups and deletion tombstones. The tombstones are why a drawing you
+delete stays deleted: another chart showing the same document still holds it, and the merge that
+follows a refused write drops it instead of taking it back. A refused write reaches you through the
+widget's `saveConflict` event.
+
+`layoutId` is yours to choose and must be stable across reloads; `chart-local` and `layout-shared`
+require it, because a document keyed by an id the next page load mints again could never be read
+back. There is no reader, fallback or mirrored write between the two modes.
 
 ```ts
 import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
@@ -315,14 +351,15 @@ Each family is a `ResourceStore` with the same five calls, and every call takes 
 abandoned work stops cleanly:
 
 ```ts
-import { memorySaveLoadAdapter, type ResourceRef } from 'quickcharts'
+import { emptyDrawingDocument, memorySaveLoadAdapter, type ResourceRef } from 'quickcharts'
 
 const adapter = memorySaveLoadAdapter()
 const controller = new AbortController()
 
 await adapter.layouts.list(controller.signal)
-await adapter.drawings({ symbol: 'ESZ2026' }).create({ content: '{}' })
 await adapter.templates('study').list()
+const context = { version: 1, kind: 'symbol-global', symbol: 'ESZ2026' } as const
+await adapter.drawings(context).create(emptyDrawingDocument(context))
 
 const ghost: ResourceRef = { id: 'gone', revision: 'rev-1' }
 const outcome = await adapter.charts.remove(ghost)
