@@ -209,7 +209,8 @@ function memoryStore<Meta, Body>(
   }
 }
 
-const scopeKey = (scope: DrawingScope): string => `${scope.symbol} ${scope.chartId ?? ''}`
+// The two parts join on an escaped null: no symbol or chart id carries one, so the key is unambiguous.
+const scopeKey = (scope: DrawingScope): string => `${scope.symbol}\u0000${scope.chartId ?? ''}`
 
 /** An in-memory {@link ChartSaveLoadAdapter}. Each drawing scope and each template kind gets its own
  *  store, created on first ask and kept, so two calls for the same scope see the same documents. */
