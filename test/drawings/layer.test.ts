@@ -586,6 +586,32 @@ describe('the low-level document operations', () => {
     expect(b.handle.count()).toBe(1)
   })
 
+  it('writes at the ref a document was applied with, instead of creating a second one', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const a = make({ documents: port(adapter), chartId: 'c1' })
+    a.handle.armTool('rectangle')
+    drag(a.container, [10, 10], [100, 100])
+    await new Promise((resolve) => setTimeout(resolve, 250)) // every write of the first chart lands
+    await settle()
+    a.handle.destroy()
+
+    const b = make({ documents: port(adapter), chartId: 'c1' })
+    const read = await b.handle.documents.get()
+    expect(read.kind).toBe('ok')
+    if (read.kind !== 'ok') return
+    // The ref the read stood at rides the apply, so the next write is an update at that revision.
+    expect(b.handle.documents.apply(read.document, read.ref)).toMatchObject({ kind: 'ok', applied: 1 })
+    b.handle.armTool('trend_line')
+    drag(b.container, [100, 100], [300, 200])
+    await new Promise((resolve) => setTimeout(resolve, 250)) // the debounced write
+    await settle()
+    expect(b.events.conflicts).toEqual([])
+    const store = adapter.drawings(port(adapter).context('ES'))
+    const rows = await store.list()
+    expect(rows).toHaveLength(1)
+    expect((await store.load(rows[0]!.id))!.body.entries.map((e) => e.type)).toEqual(['rectangle', 'trend_line'])
+  })
+
   it('refuses a document written for another context', () => {
     const adapter = memorySaveLoadAdapter()
     const a = make({ documents: port(adapter), chartId: 'c1' })
