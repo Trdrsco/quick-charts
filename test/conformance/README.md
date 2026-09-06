@@ -22,12 +22,24 @@ Every host builds a `ConformanceHost` and runs the checks through it.
 |---|---|---|
 | The workspace build | `packages/chart/test/conformance/conformance.test.ts` | `import { CONFORMANCE_CHECKS, runCheck } from './index'` under Vitest and happy-dom, `createChart` from the package source, the browser shim from `packages/chart/scripts/browserShim.ts` standing in for the canvas. |
 | The clean-room consumers | `clean-room/run.mjs` | Copies this folder and the browser shim beside the consumers, typechecks the copy against the packed declarations with `skipLibCheck` off, compiles it, and runs it under happy-dom over the installed tarball (`clean-room/js-consumer/conformance.mjs`). |
-| The app mount | `apps/web/e2e/conformance.spec.ts` | Bundles `packages/chart/test/conformance/index.ts` into the widget smoke page and runs `runConformance` in the browser with `createWidget` bound to the app's own composition (`apps/web/src/integrations/quickcharts/compose.ts`). The page exposes the results; the spec asserts every one passed or was skipped for a stated reason. |
+| The app mount | `apps/web/e2e/conformance.spec.ts` | Loads this module into the live app page through the dev server's filesystem serving (`/@fs/<workspace>/packages/chart/test/conformance/index.ts`), where its `quickcharts` imports resolve to the same source URLs the app's do, and runs `runCheck` in the browser with `createWidget` bound to the app's own composition (`apps/web/src/integrations/quickcharts/compose.ts`, reached through the door `compositionDoor.ts` puts on `window` under the dev server only). The spec asserts every result passed or was skipped for a stated reason, and prints the report. |
 
 A host that cannot mount a plane names it in `unavailable`; the checks that need it report skipped
 with the reason rather than passing on nothing. A host that can stand in a Fullscreen API or an
 image-taking clipboard passes `fullscreen` and `clipboard`; a browser host leaves them out and the
 checks prove the refusal path instead.
+
+The app host is the one whose `createWidget` is a production door rather than the package
+constructor. What a caller of that door decides rides through from the check's options: the
+symbol, timeframe, features, access, indicators, layout, preferences, the feed and the save/load
+adapter. What the app decides for every chart it mounts stands as the app mounts it: its theme, its
+language, where the viewer's preferences live, how drawings persist, the image line, the fullscreen
+frame, the search recents, the drawing assets and the extensions. A check observing one of those
+planes observes the app's real choice, and where its expectation differs it fails naming the value
+the app mounted; the spec reports that as a finding against the composition or the check, never as
+a skip. The engine is mocked at the network edge, with the revisioned `/api/charts` families in
+memory, so a check that mounts without an adapter of its own saves through the app's engine
+adapter. Every mount gets its own mount id, so no check reads another's stored preferences.
 
 ## The host contract
 
