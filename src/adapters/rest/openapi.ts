@@ -45,6 +45,13 @@ const refusals: Record<string, Json> = {
   [REST_STATUS.notFound]: jsonBody(ref('NotFound'), 'No row with that id.'),
 }
 
+/** A create cannot conflict on a revision, because it quotes none. It can conflict on IDENTITY,
+ *  where the service holds one row per scope (a drawings context) or one row per name. */
+const createRefusals: Record<string, Json> = {
+  ...refusals,
+  [REST_STATUS.conflict]: jsonBody(ref('Conflict'), 'A row already stands for this identity. The body carries its ref, which the caller loads instead of forking a second.'),
+}
+
 const conditionalRefusals: Record<string, Json> = {
   ...refusals,
   [REST_STATUS.conflict]: jsonBody(ref('Conflict'), 'The quoted revision is not the one that stands. The body carries the ref that does.'),
@@ -91,10 +98,10 @@ function familyPaths(deps: { collection: string; item: string; meta: string; bod
       },
       post: {
         tags: [deps.tag],
-        summary: 'Store a new row. The service mints the id, so a create never conflicts on a revision.',
+        summary: 'Store a new row. The service mints the id, so a create quotes no revision.',
         parameters: [...collectionScope],
         requestBody: jsonBody(ref(deps.body), 'The document to store.'),
-        responses: { '200': jsonBody(ref(`${deps.meta}Write`), 'The ref the service now holds.'), ...refusals },
+        responses: { '200': jsonBody(ref(`${deps.meta}Write`), 'The ref the service now holds.'), ...createRefusals },
       },
     },
     [deps.item]: {
