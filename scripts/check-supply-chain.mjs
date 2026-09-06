@@ -81,8 +81,9 @@ export const HISTORY_EXCLUSIONS = []
 
 /** Never walked: installed packages, tool caches and packed fixtures. */
 // .candidate is the packed tarball extracted beside the package; the tarball itself is judged from its
-// packed file list below, so the extraction would only repeat every finding.
-const SKIPPED_DIRS = new Set(['node_modules', '.git', '.turbo', '.artifacts', 'test-results', '.candidate'])
+// packed file list below, so the extraction would only repeat every finding. .release is the
+// rehearsal dossier: logs of the gates above, written locally, never packed.
+const SKIPPED_DIRS = new Set(['node_modules', '.git', '.turbo', '.artifacts', 'test-results', '.candidate', '.release'])
 const TEXT_FILE = /\.(ts|tsx|mts|cts|js|mjs|cjs|json|jsonc|yml|yaml|toml|html|css|md|txt|sh|svg|d\.ts)$|(^|\/)(LICENSE|NOTICE|Dockerfile)$|\/\.env\.(example|template|sample)$/
 const SOURCE_MAP = /\.map$/
 
