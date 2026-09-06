@@ -1031,6 +1031,9 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       },
     }),
   ),
+  // The two UI checks drive the built-in Save/Load chrome by its accessible names, which are the
+  // default-locale catalog values (Save layout, Rename, Open layout, Layout name); a host running the
+  // suite in another locale would need the names of its own catalog.
   ...(['package', 'rest'] as const).map(
     (kind): ConformanceCheck => ({
       id: `persistence.ui.${kind}-adapter`,

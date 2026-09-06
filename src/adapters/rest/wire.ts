@@ -149,14 +149,15 @@ export function restItemPath(collection: RestCollection, id: string): string {
 }
 
 /** The drawing-resource context as one opaque token for the `context` query parameter. Each part is
- *  percent-encoded before the join, so no layout or chart id can spell another context's token, and
- *  the kind leads, so a symbol-global document and a layout-shared one never collide. The service
+ *  percent-encoded before the join, with the dot separator itself encoded (percent-encoding leaves an
+ *  unreserved dot alone), so no layout or chart id can spell another context's token, and the kind
+ *  leads, so a symbol-global document and a layout-shared one never collide. The service
  *  keys rows by it and never parses it. */
 export function restDrawingContextToken(context: DrawingResourceContext): string {
   const parts: string[] = [String(context.version), context.kind]
   if (context.kind === 'chart-local') parts.push(context.layoutId, context.chartId)
   else if (context.kind === 'layout-shared') parts.push(context.layoutId)
-  return parts.map(encodeURIComponent).join('.')
+  return parts.map((part) => encodeURIComponent(part).replace(/\./g, '%2E')).join('.')
 }
 
 /** The drawings collection's query: the symbol it belongs to, and the context token. Both are

@@ -199,7 +199,7 @@ export function createRestSaveLoadAdapter(options: RestSaveLoadOptions): ChartSa
 
     /** A write's answer as the port's outcome: the ref it landed at, the ref that beat it, or the
      *  absence it found. */
-    const written = <T>(method: string, path: string, answer: { status: number; text: string }): WriteOutcome<T> => {
+    const written = <T>(method: string, path: string, answer: { status: number; text: string }, carriesMeta: boolean): WriteOutcome<T> => {
       const url = `${base}${path}`
       if (answer.status === REST_STATUS.notFound) return { kind: 'not-found' }
       if (answer.status === REST_STATUS.conflict) {
@@ -213,7 +213,8 @@ export function createRestSaveLoadAdapter(options: RestSaveLoadOptions): ChartSa
       const ref = refOf(body)
       if (!ref) throw new RestSaveLoadError({ reason: 'invalid-payload', status: answer.status, method, url, detail: 'the write states no ref' })
       const outcome: WriteOutcome<T> = { kind: 'ok', ref }
-      if (body.meta !== undefined) outcome.value = deps.metaOf(body.meta) as unknown as T
+      // A delete answers a ref alone; only a create or an update carries the stored row's meta.
+      if (carriesMeta && body.meta !== undefined) outcome.value = deps.metaOf(body.meta) as unknown as T
       return outcome
     }
 
@@ -240,17 +241,17 @@ export function createRestSaveLoadAdapter(options: RestSaveLoadOptions): ChartSa
       },
       async create(body, signal) {
         const answer = await call({ method: 'POST', path: collectionPath, body: deps.wireOf(body), signal })
-        return written<Meta>('POST', collectionPath, answer)
+        return written<Meta>('POST', collectionPath, answer, true)
       },
       async update(ref, body, signal) {
         const path = itemPath(ref.id)
         const answer = await call({ method: 'PUT', path, body: deps.wireOf(body), ref, signal })
-        return written<Meta>('PUT', path, answer)
+        return written<Meta>('PUT', path, answer, true)
       },
       async remove(ref, signal) {
         const path = itemPath(ref.id)
         const answer = await call({ method: 'DELETE', path, ref, signal })
-        return written<void>('DELETE', path, answer)
+        return written<void>('DELETE', path, answer, false)
       },
     }
   }

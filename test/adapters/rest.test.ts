@@ -51,12 +51,15 @@ describe('the wire contract', () => {
     const tokens = [
       restDrawingContextToken({ version: 1, kind: 'chart-local', layoutId: 'a', chartId: 'b', symbol: 'ES' }),
       restDrawingContextToken({ version: 1, kind: 'chart-local', layoutId: 'a.b', chartId: '', symbol: 'ES' }),
+      // A dot inside an id must not read as a boundary: unencoded, these two would both spell 1.chart-local.a.b.c.
+      restDrawingContextToken({ version: 1, kind: 'chart-local', layoutId: 'a.b', chartId: 'c', symbol: 'ES' }),
+      restDrawingContextToken({ version: 1, kind: 'chart-local', layoutId: 'a', chartId: 'b.c', symbol: 'ES' }),
       restDrawingContextToken({ version: 1, kind: 'layout-shared', layoutId: 'a', symbol: 'ES' }),
       restDrawingContextToken({ version: 1, kind: 'symbol-global', symbol: 'ES' }),
     ]
     expect(new Set(tokens).size).toBe(tokens.length)
     // The symbol is its own query parameter, so it is not in the token.
-    expect(tokens[3]).toBe('1.symbol-global')
+    expect(tokens.at(-1)).toBe('1.symbol-global')
   })
 })
 

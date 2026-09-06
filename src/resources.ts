@@ -52,7 +52,9 @@ export interface ResourceStore<Meta, Body> {
   list(signal?: AbortSignal): Promise<Meta[]>
   /** The stored document and the revision it was read at, or null when the id is unknown. */
   load(id: string, signal?: AbortSignal): Promise<{ ref: ResourceRef; body: Body } | null>
-  /** Store a new document. Never conflicts: the store mints the id. */
+  /** Store a new document. The store mints the id; a create conflicts only where the store keys a
+   *  document by identity and one already stands there (a drawings context that holds a document, a
+   *  name already taken), and then it answers the ref that stands. */
   create(body: Body, signal?: AbortSignal): Promise<WriteOutcome<Meta>>
   /** Replace the document at `ref.id`, but only while it still stands at `ref.revision`. */
   update(ref: ResourceRef, body: Body, signal?: AbortSignal): Promise<WriteOutcome<Meta>>
