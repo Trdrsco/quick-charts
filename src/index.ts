@@ -48,7 +48,7 @@ export type {
 } from './widget/options'
 
 // The command registry is the ONE source for the chart's verbs: the context menu, the keyboard,
-// a host's own toolbar and an operator adapter all read this list and run through this `execute`,
+// a host's own toolbar and any automation adapter all read this list and run through this `execute`,
 // so a command hidden by feature configuration or refused by access policy cannot be reached from
 // any of them.
 export type { CommandRegistry, CommandResult, CommandScope, CommandSpec } from './widget/commands'

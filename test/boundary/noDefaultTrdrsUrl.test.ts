@@ -23,7 +23,7 @@ const TRDRS_DEFAULTS: readonly { name: string; pattern: RegExp }[] = [
 
 /** The one fixture folder the sweep does not read: these files name the shapes they hunt. Exact
  *  folder, stated reason, and a test below proves it is the only exclusion. */
-const EXCLUDED_FIXTURE_DIR = '/packages/chart/test/boundary/'
+const EXCLUDED_FIXTURE_DIR = '/test/boundary/'
 
 const sweep = (files: Record<string, string>): string[] =>
   TRDRS_DEFAULTS.flatMap(({ name, pattern }) => scanFiles(files, pattern).map((o) => `${name}: ${offenderText(o)}`))
@@ -31,11 +31,11 @@ const sweep = (files: Record<string, string>): string[] =>
 describe('no default trdrs URL, credential, session, tenant key, or API route', () => {
   it('has chart sources to read (a silent empty walk would pass forever)', () => {
     expect(Object.keys(CHART_SOURCES).length).toBeGreaterThan(30)
-    expect(CHART_SOURCES['/packages/chart/src/datafeed.ts']).toBeTypeOf('string')
-    expect(CHART_SOURCES['/packages/chart/src/udfDatafeed.ts']).toBeTypeOf('string')
+    expect(CHART_SOURCES['/src/datafeed.ts']).toBeTypeOf('string')
+    expect(CHART_SOURCES['/src/udfDatafeed.ts']).toBeTypeOf('string')
   })
 
-  it('finds none in packages/chart/src', () => {
+  it('finds none in src', () => {
     expect(sweep(CHART_SOURCES)).toEqual([])
   })
 
@@ -47,7 +47,7 @@ describe('no default trdrs URL, credential, session, tenant key, or API route', 
 
   it('keeps the exclusion honest: the boundary folder is present and is excluded only because it names the shapes', () => {
     const excluded = Object.keys(CHART_FIXTURES).filter((file) => file.startsWith(EXCLUDED_FIXTURE_DIR))
-    expect(excluded).toContain('/packages/chart/test/boundary/noDefaultTrdrsUrl.test.ts')
+    expect(excluded).toContain('/test/boundary/noDefaultTrdrsUrl.test.ts')
     expect(sweep(Object.fromEntries(excluded.map((f) => [f, CHART_FIXTURES[f]!]))).length).toBeGreaterThan(0)
   })
 

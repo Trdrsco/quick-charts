@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Time } from 'lightweight-charts'
-import { barsInRange, linearRegression, volumeProfile } from '../src/core/bars'
-import type { SourceBar } from '../src/core/bars'
+import { barsInRange, linearRegression, volumeProfile } from '../../../src/internal/drawings/core/bars'
+import type { SourceBar } from '../../../src/internal/drawings/core/bars'
 
 const bar = (t: number, close: number, volume?: number, spread = 1): SourceBar => ({
   time: t as Time,

@@ -1,0 +1,45 @@
+name: Bug report
+description: Something in the library behaves differently from what the documentation states.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report a security vulnerability here. Use the private reporting route in
+        SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The version of quickcharts you installed.
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and lightweight-charts version
+      placeholder: Chrome 126, lightweight-charts 5.2.0
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+      description: Quote the documented behavior you relied on.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: The smallest chart construction and the steps that show it. Do not include credentials or private data.
+      render: ts
+    validations:
+      required: true

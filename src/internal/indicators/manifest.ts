@@ -1,7 +1,7 @@
 // The manifest grammar a built-in definition is written in, and the definition shape itself.
 // Declared here in the seam's own terms, structurally identical to the chart's IndicatorManifest,
 // so this package imports nothing at runtime or in types: the chart bundles it and proves
-// assignability at its own boundary (packages/chart/src/builtInIndicators.ts).
+// assignability at its own boundary (src/builtInIndicators.ts).
 import type { IndicatorBar } from './types'
 
 /** A declared numeric input: `int`/`float` bound by min/max, `enum` an index into `options`. */

@@ -11,7 +11,7 @@
 // editing the same template get a typed conflict instead of a silent overwrite. A drawing template
 // carries its `tool`, which is what makes "the templates for a trend line" a filter rather than a
 // separate collection: a trend-line template is meaningless on a rectangle.
-import type { DrawingStyle } from '@trdrs/chart-drawings'
+import type { DrawingStyle } from '../internal/drawings/index'
 import type { ResourceRef, ResourceStore, TemplateBody, TemplateMeta, WriteOutcome } from '../resources'
 
 /** A saved tool setup: style and props partials layered over the tool's factory defaults. */

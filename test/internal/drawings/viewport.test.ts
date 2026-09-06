@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
-import { viewportOf } from '../src/core/drawing'
+import { viewportOf } from '../../../src/internal/drawings/core/drawing'
 
 // The stub reproduces the library's contract exactly as MEASURED live, because the previous stub
 // did not and certified a fallback production never executes:

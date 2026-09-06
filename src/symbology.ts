@@ -7,7 +7,7 @@
 // What lives here: identity, venue and type, supported resolutions, exchange timezone and session,
 // data status, currency and unit, volume precision, and the price-format facts. What does NOT:
 // order quantity, price steps, lot size, pip value, P&L, balances, or any validation rule; those
-// are `@trdrs/broker` `InstrumentInfo`. Quote values (last, change, volume) are not symbology
+// are a broker's executable instrument facts. Quote values (last, change, volume) are not symbology
 // either: they are quote data a host fans out on its own.
 //
 // This module is self-contained by the same rule as `datafeed.ts` — the contract must never drag a

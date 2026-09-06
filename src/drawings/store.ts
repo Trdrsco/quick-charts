@@ -14,7 +14,7 @@ import {
   serializeDrawingsStore as serializeStore,
   type IDrawing,
   type SerializedDrawing,
-} from '@trdrs/chart-drawings'
+} from '../internal/drawings/index'
 
 export { parseStore as parseDrawingsStore, serializeStore as serializeDrawingsStore }
 

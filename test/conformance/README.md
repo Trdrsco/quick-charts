@@ -20,9 +20,9 @@ Every host builds a `ConformanceHost` and runs the checks through it.
 
 | Host | Where | How it reaches the module |
 |---|---|---|
-| The workspace build | `packages/chart/test/conformance/conformance.test.ts` | `import { CONFORMANCE_CHECKS, runCheck } from './index'` under Vitest and happy-dom, `createChart` from the package source, the browser shim from `packages/chart/scripts/browserShim.ts` standing in for the canvas. |
+| The workspace build | `test/conformance/conformance.test.ts` | `import { CONFORMANCE_CHECKS, runCheck } from './index'` under Vitest and happy-dom, `createChart` from the package source, the browser shim from `scripts/browserShim.ts` standing in for the canvas. |
 | The clean-room consumers | `clean-room/run.mjs` | Copies this folder and the browser shim beside the consumers, typechecks the copy against the packed declarations with `skipLibCheck` off, compiles it, and runs it under happy-dom over the installed tarball (`clean-room/js-consumer/conformance.mjs`). |
-| The app mount | `apps/web/e2e/conformance.spec.ts` | Loads this module into the live app page through the dev server's filesystem serving (`/@fs/<workspace>/packages/chart/test/conformance/index.ts`), where its `quickcharts` imports resolve to the same source URLs the app's do, and runs `runCheck` in the browser with `createWidget` bound to the app's own composition (`apps/web/src/integrations/quickcharts/compose.ts`, reached through the door `compositionDoor.ts` puts on `window` under the dev server only). The spec asserts every result passed or was skipped for a stated reason, and prints the report. |
+| An application mount | the application's own end-to-end suite | An application that embeds Quick Charts loads this module in the browser and runs `runCheck` with `createWidget` bound to its own composition, then asserts that every result passed or was skipped for a stated reason. |
 
 A host that cannot mount a plane names it in `unavailable`; the checks that need it report skipped
 with the reason rather than passing on nothing. A host whose door decides a construction choice for
@@ -61,7 +61,7 @@ would count as the widget's, and the app's loader only warns when the script doe
 ## The host contract
 
 ```ts
-import { runConformance, formatResults, type ConformanceHost } from '../../packages/chart/test/conformance/index'
+import { runConformance, formatResults, type ConformanceHost } from '../../test/conformance/index'
 
 const host: ConformanceHost = {
   createWidget: (options) => createChart(options),

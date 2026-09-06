@@ -7,8 +7,9 @@ and what happens when access is lost.
 
 - **Owner.** Holds the npm package `quickcharts` and the `quick-charts` repository. Grants and
   revokes maintainer access, approves the first publication of every major, and holds the recovery
-  codes. The owner confirms the repository organization, the homepage address and the security
-  contact named in `package.json`, `SECURITY.md` and this page before the repository is public.
+  codes. The owner confirms the repository organization and the homepage address named in
+  `package.json` and this page, and that private vulnerability reporting is enabled on the
+  repository, before it is public.
 - **Maintainer.** Reviews and merges pull requests, cuts releases through the release workflow, and
   answers security reports. A maintainer never publishes from a workstation.
 - **Contributor.** Everyone else. Contributors open pull requests and cannot merge or publish.

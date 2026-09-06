@@ -3,10 +3,10 @@
 // registry builds drawings from, and dropping one silently would take a tool off the chart, so
 // every export is named and a loss fails loudly here.
 //
-// The PUBLIC contract is quickcharts/drawings, pinned in packages/chart/test/drawings-surface.test.ts,
+// The PUBLIC contract is quickcharts/drawings, pinned in test/drawings-surface.test.ts,
 // and it publishes a deliberate subset of what is listed below.
 import { describe, expect, it } from 'vitest'
-import * as api from '../src/index'
+import * as api from '../../../src/internal/drawings/index'
 
 const SURFACE: Record<string, string> = {
   AbcdPattern: 'function',

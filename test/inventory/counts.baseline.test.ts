@@ -10,12 +10,12 @@ import baseline from './counts.baseline.json'
 
 const SOURCES = import.meta.glob(
   [
-    '/packages/chart-drawings/src/registry.ts',
-    '/packages/chart-indicators/src/registry.ts',
-    '/packages/chart/src/layoutGrid.ts',
-    '/packages/chart/src/timeframe.ts',
-    '/packages/chart/src/timezones.ts',
-    '/packages/chart/src/widget/styles.ts',
+    '/src/internal/drawings/registry.ts',
+    '/src/internal/indicators/registry.ts',
+    '/src/layoutGrid.ts',
+    '/src/timeframe.ts',
+    '/src/timezones.ts',
+    '/src/widget/styles.ts',
   ],
   {
     query: '?raw',

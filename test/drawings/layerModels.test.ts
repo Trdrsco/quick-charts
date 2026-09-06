@@ -7,7 +7,7 @@ import { createPresets, presetOf } from '../../src/drawings/layer/presets'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { CLONE_OFFSET_PX, drawingTools } from '../../src/drawings/index'
 import { fakeChart } from './fakeChart'
-import { viewportOf } from '@trdrs/chart-drawings'
+import { viewportOf } from '../../src/internal/drawings/index'
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
 

@@ -31,11 +31,11 @@ export type {
   SerializedDrawing,
   ToolCategory,
   Viewport,
-} from '@trdrs/chart-drawings'
-export { DEFAULT_OPTIONS, DEFAULT_STYLE } from '@trdrs/chart-drawings'
+} from '../internal/drawings/index'
+export { DEFAULT_OPTIONS, DEFAULT_STYLE } from '../internal/drawings/index'
 // A drawing style's colour carries its own alpha, so reading and rewriting that channel is part of
 // working with one rather than a general colour utility.
-export { alphaOf, withAlpha } from '@trdrs/chart-drawings'
+export { alphaOf, withAlpha } from '../internal/drawings/index'
 
 // ── Persistence ─────────────────────────────────────────────────────────────────────────────────
 export { parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from './store'
@@ -68,12 +68,12 @@ export {
 } from './document'
 
 // ── Per-interval visibility ─────────────────────────────────────────────────────────────────────
-export type { IntervalBucket, IntervalContext, IntervalVisibility, VisibilityPreset, VisibilityRange } from '@trdrs/chart-drawings'
-export { DEFAULT_VISIBILITY, normalizeVisibility, parseIntervalContext, visibilityPreset, visibleAt } from '@trdrs/chart-drawings'
+export type { IntervalBucket, IntervalContext, IntervalVisibility, VisibilityPreset, VisibilityRange } from '../internal/drawings/index'
+export { DEFAULT_VISIBILITY, normalizeVisibility, parseIntervalContext, visibilityPreset, visibleAt } from '../internal/drawings/index'
 
 // ── The magnet ──────────────────────────────────────────────────────────────────────────────────
-export { magnetSnap, snapToBar } from '@trdrs/chart-drawings'
-export type { OhlcBar } from '@trdrs/chart-drawings'
+export { magnetSnap, snapToBar } from '../internal/drawings/index'
+export type { OhlcBar } from '../internal/drawings/index'
 export { chooseMagnetStrength, magnetActive, MAGNET_LABELS, MAGNET_STRENGTHS, toggleMagnet } from './magnetModel'
 export type { MagnetMode } from './magnetModel'
 
@@ -155,9 +155,9 @@ export {
 export type { DrawingAssetPort, ImageAsset, ImageIntakeError, ImageIntakeResult } from './assets'
 // A host that has already decoded a picture hands the bitmap over, so the drawing paints on its
 // first frame instead of starting a second decode after the click that placed it.
-export { primeImageBitmap } from '@trdrs/chart-drawings'
+export { primeImageBitmap } from '../internal/drawings/index'
 // The glyph half of the asset port, as the drawing model receives it.
-export type { GlyphSourcePort } from '@trdrs/chart-drawings'
+export type { GlyphSourcePort } from '../internal/drawings/index'
 
 // ── What a tool's settings offer ────────────────────────────────────────────────────────────────
 export {

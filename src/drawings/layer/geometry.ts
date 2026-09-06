@@ -1,7 +1,7 @@
 // The pure geometry behind the placement gestures: the shift constraint, where a copy lands, where
 // an instant tool opens, and where a dropped picture sits. Every function takes numbers and answers
 // numbers, so the gestures test against these without a chart.
-import type { Anchor, Viewport } from '@trdrs/chart-drawings'
+import type { Anchor, Viewport } from '../../internal/drawings/index'
 import { CLONE_OFFSET_PX } from '../editModel'
 
 export interface Px {

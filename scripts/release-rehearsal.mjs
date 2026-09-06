@@ -3,17 +3,17 @@
 // install.
 //
 //   node scripts/release-rehearsal.mjs           the whole rehearsal, browser suite included
-//   node scripts/release-rehearsal.mjs --fast    the same with `pnpm gate --fast`; the dossier
-//                                                reads PARTIAL, never PASS
+//   node scripts/release-rehearsal.mjs --fast    the same with `pnpm gate --fast`, which leaves out
+//                                                the clean room; the dossier reads PARTIAL, never PASS
 //   node scripts/release-rehearsal.mjs --only=a,b   just these stages, for repairing one; PARTIAL
 //
 // Stages, in order, stopping at the first failure:
 //
 //   checkout      the working tree is clean and the commit is recorded
 //   install       `pnpm install --frozen-lockfile`
-//   gate          `node scripts/gate.mjs`: candidate build, typecheck, tests, the package, i18n,
-//                 plan-index, dead-code, retired-surface, supply-chain and docs checks, then the
-//                 browser suite (the port it boots on must be free first)
+//   gate          `node scripts/gate.mjs`: the candidate build, the type check, the tests, the
+//                 candidate pin, the supply-chain scan, the notices check, the documentation check
+//                 and the clean room
 //   pack          the deterministic pack, re-run on its own, compared file for file and by tar
 //                 stream hash with the committed pin
 //   clean-room    `node clean-room/run.mjs`: the TypeScript, JavaScript and Vite consumers and
@@ -27,7 +27,7 @@
 //                 with skipLibCheck off, the installed dependency closure, and that a bundler
 //                 drops the widget from a build that imports one helper
 //
-// Every stage's output goes to `packages/chart/.release/<version>/logs/`, the artifact and its
+// Every stage's output goes to `.release/<version>/logs/`, the artifact and its
 // manifest to `artifact/`, a SHA-256 of every dossier file to `hashes.json`, and the verdict per
 // gate to `SUMMARY.md`. The folder is git-ignored and rewritten on every run.
 //
@@ -39,17 +39,12 @@ import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { createServer } from 'node:net'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join, posix, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const chartDir = join(repo, 'packages', 'chart')
-
-/** The browser suite boots Vite here; a second listener on it makes the suite fail for a reason
- *  that has nothing to do with the code. */
-export const E2E_PORT = 5199
+const chartDir = repo
 
 /** The public subpaths of the artifact. The install test holds the installed manifest to exactly
  *  these keys. */
@@ -125,7 +120,7 @@ export function renderSummary({ result, version, commit, branch, date, fast, sta
   const lines = []
   lines.push('# Quick Charts release rehearsal', '')
   lines.push(`Result: **${result}**`, '')
-  if (result === 'PARTIAL') lines.push(`${fast ? 'The gate ran without the browser suite (`--fast`)' : 'Only some stages ran (`--only`)'}. A partial rehearsal is not a release rehearsal.`, '')
+  if (result === 'PARTIAL') lines.push(`${fast ? 'The gate ran without the clean room (`--fast`)' : 'Only some stages ran (`--only`)'}. A partial rehearsal is not a release rehearsal.`, '')
   lines.push(`Candidate: \`quickcharts\` ${version}, commit \`${commit}\` on \`${branch}\`, ${date}.`, '')
   lines.push('Published: nothing. This rehearsal ran no publish, no registry write and no push.', '')
   lines.push('## Gates', '', '| Gate | Result | Duration | Log |', '|---|---|---|---|')
@@ -198,22 +193,6 @@ function run(argv, { cwd, log, env }) {
       done({ status, output: Buffer.concat(chunks).toString('utf8'), stdout: Buffer.concat(out).toString('utf8') })
     })
   })
-}
-
-/** Resolve when nothing listens on the port, checking every fifteen seconds for up to the limit. */
-async function waitForFreePort(port, limitMs, note) {
-  const started = Date.now()
-  for (;;) {
-    const free = await new Promise((answer) => {
-      const server = createServer()
-      server.once('error', () => answer(false))
-      server.listen(port, '127.0.0.1', () => server.close(() => answer(true)))
-    })
-    if (free) return true
-    if (Date.now() - started > limitMs) return false
-    note(`port ${port} is in use; waiting`)
-    await new Promise((r) => setTimeout(r, 15_000))
-  }
 }
 
 /** A path as one argument: quoted with forward slashes where the shell is in the way (Windows),
@@ -467,16 +446,10 @@ async function main() {
 
   await stage('install', (log) => exec(['pnpm', 'install', '--frozen-lockfile'], log))
 
-  await stage('gate', async (log) => {
-    if (!fast) {
-      const free = await waitForFreePort(E2E_PORT, 10 * 60_000, note)
-      if (!free) return `port ${E2E_PORT} stayed in use for ten minutes; the browser suite cannot boot`
-    }
-    return exec(['node', 'scripts/gate.mjs', ...(fast ? ['--fast'] : [])], log)
-  })
+  await stage('gate', (log) => exec(['node', 'scripts/gate.mjs', ...(fast ? ['--fast'] : [])], log))
 
   await stage('pack', async (log) => {
-    const reason = await exec(['pnpm', '--filter', 'quickcharts', 'pack:candidate'], log)
+    const reason = await exec(['node', 'scripts/pack-candidate.mjs'], log)
     if (reason) return reason
     const candidate = JSON.parse(readFileSync(join(chartDir, '.candidate', 'manifest.json'), 'utf8'))
     const pin = JSON.parse(readFileSync(join(chartDir, 'test', 'fixtures', 'candidate-manifest.json'), 'utf8'))
@@ -530,7 +503,7 @@ async function main() {
 
   console.log(`\n\x1b[1m── release rehearsal ──\x1b[0m`)
   for (const s of stages) console.log(`  ${s.result === 'pass' ? '\x1b[32m✓\x1b[0m' : s.result === 'not run' || s.result === 'skipped' ? '\x1b[2m·\x1b[0m' : '\x1b[31m✗\x1b[0m'} ${s.id.padEnd(13)} ${s.secs === null ? s.result : `${s.secs}s`}`)
-  console.log(`\n${result === 'PASS' ? '\x1b[32m' : result === 'PARTIAL' ? '\x1b[33m' : '\x1b[31m'}${result}\x1b[0m: dossier at ${posix.join('packages/chart/.release', version)}/SUMMARY.md. Nothing was published.`)
+  console.log(`\n${result === 'PASS' ? '\x1b[32m' : result === 'PARTIAL' ? '\x1b[33m' : '\x1b[31m'}${result}\x1b[0m: dossier at ${posix.join('.release', version)}/SUMMARY.md. Nothing was published.`)
   return failed ? 1 : 0
 }
 

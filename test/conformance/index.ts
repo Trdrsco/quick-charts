@@ -1,9 +1,9 @@
 // The Quick Charts conformance suite: one assertion module the three hosts share.
 //
-// The production apps/web mount and the clean-room consumer run through the same API, feature,
+// An embedding application and the clean-room consumer run through the same API, feature,
 // lifecycle, theme, strings, accessibility, image, fullscreen, persistence, and teardown contract
 // suite. Built-in light/dark and palette apply/reset are exercised through public methods, never DOM
-// mutation. A test-only adapter contract or an app-only rendering branch fails dogfood.
+// mutation. A test-only adapter contract or a host-only rendering branch fails the suite.
 //
 // This module imports the two public entrypoints and nothing else: no package source path, no test
 // runner, no DOM library. A host hands it `createWidget` (the way that host builds a widget) and a
@@ -15,7 +15,7 @@
 // Three hosts run it:
 //   the workspace build     test/conformance/conformance.test.ts, under Vitest and happy-dom
 //   the clean-room consumer clean-room/js-consumer/conformance.mjs, over the packed tarball
-//   the app mount           apps/web/e2e/conformance.spec.ts, through the app's own composition
+//   an application mount    an embedding application's own end-to-end suite, through its composition
 // A host that cannot mount a plane names it in `unavailable`; the checks that need it report skipped
 // with the reason rather than passing vacuously. A host whose door decides the theme mode or the
 // drawing persistence mode for every widget names that in `fixed`; the checks that must make that

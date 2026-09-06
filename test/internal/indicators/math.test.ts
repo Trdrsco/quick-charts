@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { Candle, IndicatorBar } from '../src'
+import type { Candle, IndicatorBar } from '../../../src/internal/indicators/index'
 import {
   toCandles,
   sma,
@@ -23,7 +23,7 @@ import {
   maArr,
   shiftArr,
   keltner,
-} from '../src'
+} from '../../../src/internal/indicators/index'
 
 const BASE = 1_700_000_000
 

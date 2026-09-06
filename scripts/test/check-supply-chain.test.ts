@@ -6,7 +6,8 @@
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ConfigError, EXCLUSIONS, HISTORY_EXCLUSIONS, RULES, check, historyLines, walk } from '../check-supply-chain.mjs'
 
@@ -37,7 +38,7 @@ afterEach(() => rmSync(root, { recursive: true, force: true }))
 
 describe('each rule reports its seeded value from the tree', () => {
   it('secret: keys, tokens, key blocks and dotenv assignments', () => {
-    write('packages/chart/src/a.ts', [
+    write('src/a.ts', [
       "const key = 'trdrs_sk_abc123'",
       "const stripe = 'sk_live_0123456789abcdef'",
       "headers: { Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload' }",
@@ -52,7 +53,7 @@ describe('each rule reports its seeded value from the tree', () => {
   })
 
   it('never prints a credential whole', () => {
-    write('packages/chart/src/a.ts', "const t = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0'")
+    write('src/a.ts', "const t = 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0'")
     const { hits } = check(root, noPacked)
     expect(hits).toHaveLength(1)
     expect(hits[0]!.text).not.toContain('eyJzdWIiOiIxMjM0NTY3ODkwIn0')
@@ -60,9 +61,9 @@ describe('each rule reports its seeded value from the tree', () => {
   })
 
   it('pii: an e-mail outside the example domains, and a user home path', () => {
-    write('packages/chart/README.md', 'Write to someone@company.io, or to support@example.com.\nBuilt at C:\\Users\\Someone\\repo and /Users/someone/repo and /home/someone/repo.\n')
+    write('README.md', 'Write to someone@company.io, or to support@example.com.\nBuilt at C:\\Users\\Someone\\repo and /Users/someone/repo and /home/someone/repo.\n')
     const { hits } = check(root, noPacked)
-    expect(keys(hits)).toEqual(['packages/chart/README.md:1:pii', 'packages/chart/README.md:2:pii'])
+    expect(keys(hits)).toEqual(['README.md:1:pii', 'README.md:2:pii'])
     expect(hits[0]!.text).toContain('someone@company.io')
     expect(hits[0]!.text).not.toContain('support@example.com')
   })
@@ -82,70 +83,70 @@ describe('each rule reports its seeded value from the tree', () => {
   })
 
   it('proprietary: a private package in what a consumer receives, not in the source the build inlines', () => {
-    write('packages/chart/src/index.ts', "export * from '@trdrs/chart-drawings'\n")
-    write('packages/chart/test/a.test.ts', "import '@trdrs/chart-drawings'\n")
-    write('packages/chart/dist/index.js', "import '@trdrs/broker'\n")
-    write('packages/chart/README.md', 'Install `@trdrs/chart-engine` beside it.\n')
-    write('packages/chart/package.json', JSON.stringify({ name: 'quickcharts', dependencies: { '@trdrs/broker': 'workspace:^' }, devDependencies: { '@trdrs/chart-drawings': 'workspace:^' } }))
+    write('src/index.ts', "export * from './internal/drawings/index'\n")
+    write('test/a.test.ts', "import '@trdrs/chart-drawings'\n")
+    write('dist/index.js', "import '@trdrs/broker'\n")
+    write('README.md', 'Install `@trdrs/chart-engine` beside it.\n')
+    write('package.json', JSON.stringify({ name: 'quickcharts', dependencies: { '@trdrs/broker': 'workspace:^' }, devDependencies: { '@trdrs/chart-drawings': 'workspace:^' } }))
     const { hits } = check(root, noPacked)
     // The manifest is judged structurally: the devDependency the build inlines is not a finding,
     // and the installable block is reported once, not per line of text.
-    expect(keys(hits)).toEqual(['packages/chart/README.md:1:proprietary', 'packages/chart/dist/index.js:1:proprietary', 'packages/chart/package.json:0:proprietary'])
+    expect(keys(hits)).toEqual(['README.md:1:proprietary', 'dist/index.js:1:proprietary', 'package.json:0:proprietary'])
     expect(hits.find((h) => h.file.endsWith('package.json'))?.what).toBe('dependencies names @trdrs/broker')
   })
 
   it('proprietary is a present-tense rule: a private name in an old README revision is not a leak', () => {
-    const history = [{ commit: 'b'.repeat(40), file: 'packages/chart/README.md', line: 1, text: "import { mount } from '@trdrs/account-manager'" }]
+    const history = [{ commit: 'b'.repeat(40), file: 'README.md', line: 1, text: "import { mount } from '@trdrs/account-manager'" }]
     expect(check(root, { packed: () => [], history: () => history }).hits).toEqual([])
   })
 })
 
 describe('the packed list and the history are judged as the tree is', () => {
   it('reads every packed file from disk, judges a source map by the paths it names, and refuses a packed file that is not there', () => {
-    write('packages/chart/dist/index.js', "const url = 'https://api.trdrs.co'\n")
+    write('dist/index.js', "const url = 'https://api.trdrs.co'\n")
     const map = { sources: ['../src/a.ts', 'C:\\Users\\someone\\repo\\src\\b.ts'], sourcesContent: ["const url = 'https://api.trdrs.co'"] }
-    write('packages/chart/dist/index.js.map', JSON.stringify(map))
+    write('dist/index.js.map', JSON.stringify(map))
     const { hits, packed } = check(root, { packed: () => ['dist/index.js', 'dist/index.js.map'], history: () => [] })
     expect(packed).toBe(2)
-    expect(keys(hits)).toEqual(['packages/chart/dist/index.js.map:4:pii', 'packages/chart/dist/index.js:1:private-host'])
+    expect(keys(hits)).toEqual(['dist/index.js.map:4:pii', 'dist/index.js:1:private-host'])
     expect(() => check(root, { packed: () => ['dist/missing.js'], history: () => [] })).toThrow(/not on disk/)
   })
 
   it('finds a value in a commit that later removed it, and names the commit', () => {
     git('init', '-q')
-    write('packages/chart/src/a.ts', "const url = 'http://localhost:8080/api/market'\n")
+    write('src/a.ts', "const url = 'http://localhost:8080/api/market'\n")
     git('add', '-A')
     git('commit', '-q', '-m', 'seed')
-    write('packages/chart/src/a.ts', "const url = baseUrl\n")
+    write('src/a.ts', "const url = baseUrl\n")
     git('add', '-A')
     git('commit', '-q', '-m', 'remove')
     const added = historyLines(root)
     expect(added.map((l) => l.text)).toEqual(["const url = baseUrl", "const url = 'http://localhost:8080/api/market'"])
     const { hits } = check(root, { packed: () => [], history: () => added })
-    expect(keys(hits)).toEqual(['packages/chart/src/a.ts:1:private-host'])
+    expect(keys(hits)).toEqual(['src/a.ts:1:private-host'])
     expect(hits[0]!.commit).toMatch(/^[0-9a-f]{40}$/)
   })
 
-  it('reads history only under the package', () => {
+  it('reads the history of the whole repository, because the whole repository is the package', () => {
     git('init', '-q')
-    write('apps/web/src/a.ts', "const url = 'http://localhost:8080'\n")
-    write('packages/chart/src/b.ts', 'export const b = 1\n')
+    write('clean-room/ts-consumer/a.ts', "const url = 'http://localhost:8080'\n")
+    write('src/b.ts', 'export const b = 1\n')
     git('add', '-A')
     git('commit', '-q', '-m', 'seed')
-    expect(historyLines(root).map((l) => l.file)).toEqual(['packages/chart/src/b.ts'])
+    expect(historyLines(root).map((l) => l.file).sort()).toEqual(['clean-room/ts-consumer/a.ts', 'src/b.ts'])
   })
 })
 
 describe('exclusions', () => {
   it('an exact-file exclusion silences that file and rule alone, in the tree and in history', () => {
-    // The one file excluded for exactly one rule: the placeholder license, for its contact line.
+    // The one file excluded for exactly one rule: the Vite consumer, for the hosts it forbids.
     const [file, rule] = EXCLUSIONS.find(([f]) => EXCLUSIONS.filter(([g]) => g === f).length === 1)!
-    expect(rule).toBe('pii')
-    write(file, 'Contact: someone@company.io\nhttp://localhost:8080\n')
-    write('packages/chart/src/other.ts', 'someone@company.io\n')
-    const history = [{ commit: 'a'.repeat(40), file, line: 1, text: 'Contact: someone@company.io' }]
+    expect(rule).toBe('private-host')
+    write(file, 'http://localhost:8080\nContact: someone@company.io\n')
+    write('src/other.ts', 'someone@company.io\n')
+    const history = [{ commit: 'a'.repeat(40), file, line: 1, text: "fetch('http://localhost:8080')" }]
     const { hits } = check(root, { packed: () => [], history: () => history })
-    expect(keys(hits)).toEqual([`${file}:2:private-host`, 'packages/chart/src/other.ts:1:pii'].sort())
+    expect(keys(hits)).toEqual([`${file}:2:pii`, 'src/other.ts:1:pii'].sort())
   })
 
   it('every real exclusion names an existing file, a known rule and a reason', () => {
@@ -154,7 +155,16 @@ describe('exclusions', () => {
       expect(RULES.some((r) => r.id === rule), `${file}: ${rule}`).toBe(true)
       expect(reason.trim().length, file).toBeGreaterThan(0)
     }
-    expect(HISTORY_EXCLUSIONS).toEqual([])
+  })
+
+  it('every history exclusion names one commit, one path, a known rule and a reason, and this repository knows it', () => {
+    const repo = resolve(fileURLToPath(new URL('../..', import.meta.url)))
+    for (const [commit, file, rule, reason] of HISTORY_EXCLUSIONS) {
+      expect(commit, file).toMatch(/^[0-9a-f]{40}$/)
+      expect(RULES.some((r) => r.id === rule), `${file}: ${rule}`).toBe(true)
+      expect(reason.trim().length, file).toBeGreaterThan(0)
+      expect(() => execFileSync('git', ['cat-file', '-e', `${commit}:${file}`], { cwd: repo, stdio: 'ignore' }), `${file} at ${commit}`).not.toThrow()
+    }
   })
 
   it('refuses an exclusion whose file is missing', () => {
@@ -165,20 +175,20 @@ describe('exclusions', () => {
 })
 
 describe('the walk', () => {
-  it('reads text files and source maps under the package and the examples, never installed trees', () => {
-    write('packages/chart/node_modules/x/index.js', '')
-    write('packages/chart/dist/index.js', '')
-    write('packages/chart/dist/index.js.map', '')
-    write('packages/chart/src/a.ts', '')
-    write('packages/chart/LICENSE', '')
+  it('reads text files and source maps from the root down, never installed trees', () => {
+    write('node_modules/x/index.js', '')
+    write('dist/index.js', '')
+    write('dist/index.js.map', '')
+    write('src/a.ts', '')
+    write('LICENSE', '')
     write('clean-room/.artifacts/pkg.tgz', '')
     write('clean-room/ts-consumer/a.ts', '')
-    write('apps/web/src/a.ts', '')
-    expect([...walk(root, 'packages/chart'), ...walk(root, 'clean-room')].filter((f) => !EXCLUSIONS.some(([e]) => e === f))).toEqual([
-      'packages/chart/dist/index.js',
-      'packages/chart/dist/index.js.map',
-      'packages/chart/src/a.ts',
+    expect(walk(root, '.').filter((f) => !EXCLUSIONS.some(([e]) => e === f))).toEqual([
       'clean-room/ts-consumer/a.ts',
+      'dist/index.js',
+      'dist/index.js.map',
+      'LICENSE',
+      'src/a.ts',
     ])
   })
 })

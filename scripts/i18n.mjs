@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // The localization workbench: one command that keeps twenty languages in step with the English
-// source, for every catalog (the app's, the chart's, and the private organs'). English is edited by hand; every other
+// source. English is edited by hand; every other
 // language file is GENERATED from English plus its existing translations, so a developer touches
 // one line and never twenty files.
 //
@@ -29,18 +29,10 @@ import ts from 'typescript'
 import { LOCALE_SOURCES, readLocales } from './i18n-locales.mjs'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
-// Each catalog follows the locale inventory of the runtime that renders it and types its language
-// files against that runtime's `Translation`: the app catalog and the chart-trading catalog against
-// `@trdrs/i18n`, the chart catalog against the chart's own runtime beside it, and the order ticket's
-// and the account manager's against the structural `Translation` each declares in its own terms
-// (they consume the seam and nothing else; the host binds their dictionaries).
-// scripts/i18n-locales.mjs reads both locale tables.
+// The catalog follows the locale inventory of the runtime that renders it and types its language
+// files against that runtime's `Translation`, which sits beside it.
 const CATALOGS = {
-  app: { base: 'apps/web/src/i18n/messages', locales: LOCALE_SOURCES.app, translationImport: '@trdrs/i18n' },
-  sdk: { base: 'packages/chart/src/i18n', locales: LOCALE_SOURCES.sdk, translationImport: '../runtime' },
-  trading: { base: 'packages/chart-trading/src/i18n', locales: LOCALE_SOURCES.app, translationImport: '@trdrs/i18n' },
-  ticket: { base: 'packages/order-ticket/src/i18n', locales: LOCALE_SOURCES.app, translationImport: '../translation' },
-  manager: { base: 'packages/account-manager/src/i18n', locales: LOCALE_SOURCES.app, translationImport: '../translation' },
+  chart: { base: 'src/i18n', locales: LOCALE_SOURCES.chart, translationImport: '../runtime' },
 }
 const [command, ...rest] = process.argv.slice(2)
 const flag = (name) => rest.includes(`--${name}`)
@@ -258,13 +250,9 @@ async function todo() {
 /** Core concepts a translator must render the same way everywhere; read from the catalogs, so the
  *  glossary is never a document to maintain. */
 const CONCEPTS = [
-  ['app', 'shell.widgetWatchlist'], ['app', 'ticket.tabOrders'], ['app', 'ticket.tabPositions'],
-  ['app', 'ticket.colStopLoss'], ['app', 'ticket.colTakeProfit'], ['app', 'ticket.typeMarket'],
-  ['app', 'ticket.typeLimit'], ['app', 'ticket.typeStop'], ['app', 'chart.replay'],
-  ['app', 'chart.indicators'], ['sdk', 'timeframe.title'], ['app', 'alerts.title'],
-  ['app', 'shell.pageJournal'], ['app', 'shell.pageBacktest'], ['app', 'watchlist.watchlists'],
-  ['sdk', 'account.positions'], ['sdk', 'account.orders'], ['sdk', 'lines.takeProfit'],
-  ['sdk', 'lines.stopLoss'], ['sdk', 'session.open'], ['sdk', 'drawing.cursor'],
+  ['chart', 'timeframe.title'], ['chart', 'account.positions'], ['chart', 'account.orders'],
+  ['chart', 'lines.takeProfit'], ['chart', 'lines.stopLoss'], ['chart', 'session.open'],
+  ['chart', 'drawing.cursor'],
 ]
 
 async function glossary() {
@@ -295,12 +283,7 @@ async function glossary() {
 function check() {
   const steps = [
     ['sync', [process.execPath, resolve(ROOT, 'scripts/i18n.mjs'), 'sync', '--check']],
-    ['literals', [process.execPath, resolve(ROOT, 'scripts/check-i18n-literals.mjs')]],
-    ['dead keys (app)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'app']],
-    ['dead keys (sdk)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'sdk']],
-    ['dead keys (trading)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'trading']],
-    ['dead keys (ticket)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'ticket']],
-    ['dead keys (manager)', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'manager']],
+    ['dead keys', [process.execPath, resolve(ROOT, 'scripts/i18n-dead-keys.mjs'), 'chart']],
   ]
   let failed = 0
   for (const [label, [cmd, ...args]] of steps) {

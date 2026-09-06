@@ -15,7 +15,7 @@
 // The handlers close over one context the attach module builds, so the state they share (the
 // draft, the drag, the armed tool) has one owner.
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
-import { magnetSnap, viewportOf, type Anchor, type IDrawing, type Viewport } from '@trdrs/chart-drawings'
+import { magnetSnap, viewportOf, type Anchor, type IDrawing, type Viewport } from '../../internal/drawings/index'
 import { drawingTools, type DrawingTool } from '../tools'
 import { editRefused } from '../lockModel'
 import { toolAfterPlacement } from '../cursorModel'

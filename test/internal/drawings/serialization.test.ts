@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Time } from 'lightweight-charts'
-import { toolRegistry } from '../src/registry'
-import type { Anchor, SerializedDrawing } from '../src/core/types'
+import { toolRegistry } from '../../../src/internal/drawings/registry'
+import type { Anchor, SerializedDrawing } from '../../../src/internal/drawings/core/types'
 
 // Every registered tool must round-trip its COMPLETE state: create → toJSON → restore → toJSON
 // gives an identical document. This is the schema's contract — user text, extension flags, any

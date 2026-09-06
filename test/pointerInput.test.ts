@@ -3,7 +3,7 @@
 // widget's own: a chart anyone embeds gets all of it. (The web application's chart pane carries
 // a copy of the press-and-hold rule for its own chart until that pane is deleted.)
 //
-// Nothing here imports or simulates `apps/web`: the decisions are pure, and where behavior
+// Nothing here imports or simulates a host application: the decisions are pure, and where behavior
 // belongs to the chart itself (which handlers it binds, what it does with the chart's own
 // navigation) it is pinned against the source of the two modules that own it, the way this package
 // pins its other rules that no runtime assertion can reach.

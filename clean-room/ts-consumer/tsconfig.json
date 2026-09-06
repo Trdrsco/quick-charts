@@ -9,13 +9,10 @@
     "lib": [
       "ES2022",
       "DOM"
-    ],
-    "jsx": "react-jsx"
+    ]
   },
   "include": [
     "index.ts",
-    "mode-b.ts",
-    "ticket.ts",
     "fakes/*.ts",
     "conformance/*.ts"
   ]

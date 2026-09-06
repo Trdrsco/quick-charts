@@ -8,7 +8,7 @@
 //
 // A DEFAULT is remembered from the last edit to any drawing of a type, and it styles the NEXT
 // drawing: it never writes the words, the cells, or the picture the edited drawing carried.
-import type { IDrawing } from '@trdrs/chart-drawings'
+import type { IDrawing } from '../../internal/drawings/index'
 import type { ResourceStore, TemplateBody, TemplateMeta } from '../../resources'
 import { DEFAULT_PRESET_NAME, DrawingTemplates, type ToolPreset, type ToolTemplate } from '../templates'
 import type { DrawingPresets } from './types'

@@ -2,8 +2,8 @@
 // from the drawing's own props and the settings capabilities on `quickcharts/drawings`; this
 // module turns those facts into fields. A row exists only where the prop exists and the tool's
 // paint honors it, so the dialog never shows a control that does nothing.
-import type { DrawingStyle, IDrawing, IntervalVisibility } from '@trdrs/chart-drawings'
-import { alphaOf, withAlpha } from '@trdrs/chart-drawings'
+import type { DrawingStyle, IDrawing, IntervalVisibility } from '../../internal/drawings/index'
+import { alphaOf, withAlpha } from '../../internal/drawings/index'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import {
   BAR_ONLY_COORDS,

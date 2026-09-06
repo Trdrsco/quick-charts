@@ -8,11 +8,7 @@
 // states; the resolved THEMES (both built-in modes and two representative custom palettes) say what
 // every role is worth; and a MOUNTED WIDGET says which surfaces exist in the DOM and that the same DOM
 // stands in both modes. Contrast is computed from the theme vectors over the ink-and-ground pairs the
-// recipes actually draw, never eyeballed. The reference corpus under docs/corpus is consumed the way
-// the theming audit defines: its metadata, hashes, frame ownership, same-state role records and the
-// runtime-transition record are read as the coverage benchmark, and every role it names is mapped to
-// the Quick Charts surface that answers it. No stylesheet body of the reference is in the repository,
-// and none is read here.
+// recipes actually draw, never eyeballed.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createChart, type ChartDatafeed, type ChartWidget } from '../../src/index'
 import { compositeOver, contrastRatio, parseCssColor } from '../../src/theme/color'
@@ -22,13 +18,6 @@ import { THEME_MODES, THEME_ROLES, type CustomThemes, type SemanticTheme } from 
 import { cssVarName, selectorsOf } from '../../src/theme/css-contract'
 import { installBrowserShim, type BrowserShimHandle } from '../../scripts/browserShim'
 import { authoredStylesheet, authoredStylesheets } from './stylesheetSource'
-
-// ── The corpus, read without naming its folder ──────────────────────────────────────────────────
-const CORPUS = import.meta.glob('/docs/corpus/*-styles/*.json', { query: '?raw', import: 'default', eager: true }) as Record<string, string>
-const corpus = (suffix: string): Record<string, unknown> | null => {
-  const key = Object.keys(CORPUS).find((k) => k.endsWith(suffix))
-  return key ? (JSON.parse(CORPUS[key]!) as Record<string, unknown>) : null
-}
 
 // ── The surfaces, as the recipes name them ──────────────────────────────────────────────────────
 
@@ -110,38 +99,6 @@ const CUSTOM_PALETTES: Record<string, CustomThemes> = {
   'high contrast dark': { dark: { 'canvas.background': '#000000', 'chrome.surface': '#000000', 'overlay.surface': '#0a0a0a', 'text.primary': '#ffffff', 'text.secondary': '#e6e6e6', 'text.muted': '#cccccc', 'scale.background': '#000000', 'scale.text': '#ffffff' } },
 }
 
-/** The reference corpus role names, each answered by a Quick Charts class or state in the authored
- *  stylesheet. This is the coverage benchmark the theming audit accepted: a role the reference
- *  styles that Quick Charts has no recipe for would be a gap. */
-const CORPUS_ROLE_MAP: Readonly<Record<string, string>> = {
-  root: '[data-qc-theme]',
-  body: '[data-qc-theme].qc-root',
-  chartCanvas: '.qc-panes',
-  chartRegion: '.qc-pane',
-  topToolbar: '.qc-topbar',
-  drawingToolbar: '.qc-drawing-toolbar',
-  bottomToolbar: '.qc-bottombar',
-  symbolButton: '.qc-symbol-pill',
-  settingsButton: '.qc-toolbar-button',
-  disabledButton: '[disabled]',
-  legend: '.qc-legend',
-  dialog: '.qc-dialog',
-  dialogBackdrop: '.qc-scrim',
-  menu: '.qc-menu',
-  menuItem: '.qc-menu-row',
-  listbox: '.qc-search-list',
-  popupContainer: '.qc-overlay',
-  tooltip: 'title',
-  separator: '.qc-separator',
-  field: '.qc-field',
-  selected: "[aria-selected='true']",
-  enabledCheckbox: '.qc-switch',
-  positiveValue: '.qc-positive',
-  negativeValue: '.qc-negative',
-  focused: ':focus-visible',
-  hovered: ':hover',
-  checked: "[aria-checked='true']",
-}
 
 // ── Helpers ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -471,59 +428,6 @@ describe('the mounted widget in both modes', () => {
       dark.widget.dispose()
       light.container.remove()
       dark.container.remove()
-    }
-  })
-})
-
-describe('the reference corpus, consumed as the coverage benchmark', () => {
-  it('is present with its metadata, hashes and frame ownership, and carries no stylesheet body', () => {
-    const light = corpus('light-base-stylesheet-manifest.json')
-    const dark = corpus('dark-base-stylesheet-manifest.json')
-    expect(light && dark).toBeTruthy()
-    for (const manifest of [light!, dark!]) {
-      expect(typeof manifest.frameUrl).toBe('string')
-      const sheets = manifest.stylesheets as { href: string | null; owner: string; sha256: string | null; byteLength: number | null; fetch: string }[]
-      expect(sheets.length).toBeGreaterThan(20)
-      for (const sheet of sheets) {
-        expect(['link', 'style']).toContain(sheet.owner)
-        if (sheet.href) expect(sheet.sha256, sheet.href).toMatch(/^[0-9a-f]{64}$/)
-        expect('body' in sheet).toBe(false)
-        expect('cssText' in sheet).toBe(false)
-      }
-    }
-  })
-
-  it('records the same roles in the same states for light and dark, one capture gap aside', () => {
-    for (const state of ['base', 'surfaces', 'overlays']) {
-      const light = Object.keys(corpus(`light-${state}-computed-styles.json`)!.styles as object).sort()
-      const dark = Object.keys(corpus(`dark-${state}-computed-styles.json`)!.styles as object).sort()
-      // The dark settings capture has no reading for the popup container: a gap in the corpus,
-      // recorded here so it is a known one rather than a silent one.
-      expect(light.filter((role) => !dark.includes(role)), state).toEqual(state === 'surfaces' ? ['popupContainer'] : [])
-      expect(dark.filter((role) => !light.includes(role)), state).toEqual([])
-      expect(corpus(`light-${state}-computed-styles.json`)!.themeToggleChecked).toBe(false)
-      expect(corpus(`dark-${state}-computed-styles.json`)!.themeToggleChecked).toBe(true)
-    }
-  })
-
-  it('shows a mode switch that keeps the document, the body and the canvas, which the widget also does', () => {
-    const transition = corpus('theme-transition.json')!
-    expect(transition.sameHtml).toBe(true)
-    expect(transition.sameBody).toBe(true)
-    expect(transition.sameCanvas).toBe(true)
-    expect(transition.themeBefore).toBe('light')
-    expect(transition.themeAfter).toBe('dark')
-    expect(JSON.stringify(transition.stylesheetSetBefore)).toBe(JSON.stringify(transition.stylesheetSetAfter))
-  })
-
-  it('names no role Quick Charts has no recipe or state for', () => {
-    const roles = new Set<string>()
-    for (const state of ['base', 'surfaces', 'overlays']) for (const role of Object.keys(corpus(`light-${state}-computed-styles.json`)!.styles as object)) roles.add(role)
-    for (const role of roles) {
-      const answer = CORPUS_ROLE_MAP[role]
-      expect(answer, `${role} is mapped`).toBeDefined()
-      if (answer === 'title') continue // hover text: the DOM helpers write `title` on every named control
-      expect(whole, `${role} answered by ${answer}`).toContain(answer!)
     }
   })
 })

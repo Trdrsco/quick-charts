@@ -2,11 +2,11 @@
   "recordedAt": "2026-09-02",
   "note": "The day-one registry counts, read from the source file that holds each registry. A registry that moves updates the file path here in the same commit; the count moves only by a conscious decision. ids.fixture.json pins the ids themselves.",
   "registries": [
-    { "registry": "chart styles", "count": 7, "file": "packages/chart/src/widget/styles.ts", "symbol": "CHART_STYLES" },
-    { "registry": "built-in indicators", "count": 23, "file": "packages/chart-indicators/src/registry.ts", "symbol": "BUILT_IN_INDICATORS" },
-    { "registry": "preset timeframes", "count": 26, "file": "packages/chart/src/timeframe.ts", "symbol": "TIMEFRAME_PRESETS" },
-    { "registry": "timezones", "count": 60, "file": "packages/chart/src/timezones.ts", "symbol": "TIMEZONES" },
-    { "registry": "drawing tools", "count": 90, "file": "packages/chart-drawings/src/registry.ts", "symbol": "DEFINITIONS" },
-    { "registry": "layout arrangements", "count": 55, "file": "packages/chart/src/layoutGrid.ts", "symbol": "ARRANGEMENTS" }
+    { "registry": "chart styles", "count": 7, "file": "src/widget/styles.ts", "symbol": "CHART_STYLES" },
+    { "registry": "built-in indicators", "count": 23, "file": "src/internal/indicators/registry.ts", "symbol": "BUILT_IN_INDICATORS" },
+    { "registry": "preset timeframes", "count": 26, "file": "src/timeframe.ts", "symbol": "TIMEFRAME_PRESETS" },
+    { "registry": "timezones", "count": 60, "file": "src/timezones.ts", "symbol": "TIMEZONES" },
+    { "registry": "drawing tools", "count": 90, "file": "src/internal/drawings/registry.ts", "symbol": "DEFINITIONS" },
+    { "registry": "layout arrangements", "count": 55, "file": "src/layoutGrid.ts", "symbol": "ARRANGEMENTS" }
   ]
 }

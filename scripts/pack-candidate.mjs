@@ -46,7 +46,6 @@ import { fileURLToPath } from 'node:url'
 import { gzipSync } from 'node:zlib'
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const repoRoot = join(pkgRoot, '..', '..')
 
 const outArg = process.argv.find((a) => a.startsWith('--out='))
 const out = outArg ? resolve(outArg.slice('--out='.length)) : join(pkgRoot, '.candidate')
@@ -58,8 +57,8 @@ const PIN_PATH = 'test/fixtures/candidate-manifest.json'
 /** Every entry's modification time: 1985-10-26T08:15:00Z, the constant npm's pack writes. */
 const ENTRY_MTIME = Math.floor(Date.UTC(1985, 9, 26, 8, 15, 0) / 1000)
 
-/** The four documents packed beside the manifest. */
-const ROOT_DOCUMENTS = ['README.md', 'CHANGELOG.md', 'LICENSE', 'THIRD-PARTY-NOTICES.md']
+/** The documents packed beside the manifest. */
+const ROOT_DOCUMENTS = ['README.md', 'CHANGELOG.md', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.md']
 
 /** The manifest fields a publish takes from `publishConfig` in place of the workspace value. */
 const PUBLISH_OVERRIDES = ['bin', 'type', 'imports', 'main', 'module', 'exports', 'browser', 'esnext', 'es2015', 'unpkg', 'umd:main', 'typings', 'types', 'typesVersions', 'cpu', 'os']
@@ -91,7 +90,7 @@ const byteOrder = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 const LF = (text) => text.replace(/\r\n/g, '\n')
 
 /** The forms a checkout's own location could take inside a built file. */
-const MACHINE_PATHS = [repoRoot, repoRoot.replace(/\\/g, '/'), 'file:///']
+const MACHINE_PATHS = [pkgRoot, pkgRoot.replace(/\\/g, '/'), 'file:///']
 
 /** The text one packed file carries: normalized to LF, a source map with its embedded sources
  *  normalized the same way and its `sources` proven relative, the manifest rewritten for publish. */
@@ -108,8 +107,8 @@ function contentOf(path) {
 }
 
 /** The manifest as a publish writes it: `publishConfig` overrides applied and removed from the
- *  block, every `workspace:` specifier replaced by the sibling's version with the range it asked
- *  for, and nothing else changed. */
+ *  block, and nothing else changed. Every dependency of this package is a registry package with a
+ *  written range, so no specifier is rewritten here. */
 function publishedManifest() {
   const manifest = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8'))
   const publishConfig = { ...(manifest.publishConfig ?? {}) }
@@ -123,26 +122,13 @@ function publishedManifest() {
   else delete manifest.publishConfig
   for (const block of ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies']) {
     for (const [name, spec] of Object.entries(manifest[block] ?? {})) {
-      if (spec.startsWith('workspace:')) manifest[block][name] = workspaceVersion(name, spec.slice('workspace:'.length))
+      if (spec.startsWith('workspace:') || spec.startsWith('link:') || spec.startsWith('file:')) {
+        throw new Error(`${block} names ${name} as ${spec}; a published manifest carries registry ranges only`)
+      }
     }
   }
-  return `${JSON.stringify(manifest, null, 2)}\n`
-}
-
-/** `workspace:^` on a sibling at 0.1.0 is `^0.1.0`; `workspace:*` is `0.1.0`; a range that names
- *  a version is kept as written. */
-function workspaceVersion(name, range) {
-  const packagesDir = join(repoRoot, 'packages')
-  for (const dir of readdirSync(packagesDir)) {
-    const manifestPath = join(packagesDir, dir, 'package.json')
-    if (!existsSync(manifestPath)) continue
-    const sibling = JSON.parse(readFileSync(manifestPath, 'utf8'))
-    if (sibling.name !== name) continue
-    if (range === '*' || range === '') return sibling.version
-    if (range === '^' || range === '~') return `${range}${sibling.version}`
-    return range
-  }
-  throw new Error(`no workspace package named ${name} for the ${range} specifier`)
+  return `${JSON.stringify(manifest, null, 2)}
+`
 }
 
 // ── The archive ─────────────────────────────────────────────────────────────────────────────────

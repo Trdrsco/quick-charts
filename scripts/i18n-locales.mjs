@@ -1,18 +1,15 @@
-// The locale inventories the localization tooling reads, one per catalog, each parsed from the
-// runtime that ships it so the tooling can never drift from the code: the app catalog follows the
-// `@trdrs/i18n` inventory, the chart catalog follows the chart's own runtime. The two tables are
-// pinned equal by scripts/test/i18n-inventory.test.ts, and each is parsed by its line shape rather
-// than executed, so this stays a plain script with no TypeScript loader.
+// The locale inventory the localization tooling reads, parsed from the runtime that ships it so
+// the tooling can never drift from the code. It is read by its line shape rather than executed, so
+// this stays a plain script with no TypeScript loader.
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)))
 
-/** Where each catalog's inventory lives, root-relative. */
+/** Where the catalog's inventory lives, root-relative. */
 export const LOCALE_SOURCES = {
-  app: 'packages/i18n/src/locales.ts',
-  sdk: 'packages/chart/src/i18n/runtime/locales.ts',
+  chart: 'src/i18n/runtime/locales.ts',
 }
 
 const ENTRY = /\{ code: '([A-Za-z_]+)', endonym: '([^']*)', tag: '([A-Za-z-]+)', dir: '(ltr|rtl)'/g

@@ -1,0 +1,21 @@
+name: Feature request
+description: A capability the library does not have.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you are trying to build, and where the current API stops you.
+    validations:
+      required: true
+  - type: textarea
+    id: shape
+    attributes:
+      label: The shape you have in mind
+      description: The API you would call, if it existed.
+      render: ts
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do today instead

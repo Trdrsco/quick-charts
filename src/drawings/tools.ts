@@ -10,7 +10,7 @@
 // `Drawing` base class, which is not public, and host tool contribution belongs behind the
 // access-policy plane rather than a bare `register`. Publishing a door nobody can walk through is
 // the kind of dead API this sprint deletes.
-import { toolRegistry, TOOL_CATEGORIES, type ToolCategory, type SerializedDrawing, type IDrawing, type Anchor, type DrawingStyle } from '@trdrs/chart-drawings'
+import { toolRegistry, TOOL_CATEGORIES, type ToolCategory, type SerializedDrawing, type IDrawing, type Anchor, type DrawingStyle } from '../internal/drawings/index'
 
 export { TOOL_CATEGORIES }
 

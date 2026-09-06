@@ -1,4 +1,4 @@
-// @trdrs/chart-indicators: the Quick Charts built-in indicators. Pure, dependency-free source the
+// The Quick Charts built-in indicators. Pure, dependency-free source the
 // chart bundles into the one quickcharts artifact: 23 manifest-plus-compute definitions in one
 // ordered registry, and the indicator math they compute with (Candle[] in, arrays aligned 1:1 to
 // the input out, NaN through the lookback head). Rendering, settings and localization are the

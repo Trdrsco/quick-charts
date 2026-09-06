@@ -9,8 +9,8 @@
 // and never holds a second copy, and it reports every change through its events so a toolbar and a
 // settings bar render from the layer rather than from state of their own.
 import type { Time } from 'lightweight-charts'
-import { DrawingManager, parseIntervalContext, restoreDrawings, viewportOf, visibilityPreset } from '@trdrs/chart-drawings'
-import type { IDrawing, SerializedDrawing, SourceBar } from '@trdrs/chart-drawings'
+import { DrawingManager, parseIntervalContext, restoreDrawings, viewportOf, visibilityPreset } from '../../internal/drawings/index'
+import type { IDrawing, SerializedDrawing, SourceBar } from '../../internal/drawings/index'
 import type { ResourceRef } from '../../resources'
 import { drawingTools } from '../tools'
 import { editRefused } from '../lockModel'

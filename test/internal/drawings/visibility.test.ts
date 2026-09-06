@@ -5,7 +5,7 @@ import {
   parseIntervalContext,
   visibilityPreset,
   visibleAt,
-} from '../src/core/visibility'
+} from '../../../src/internal/drawings/core/visibility'
 
 describe('parseIntervalContext — timeframe tokens to buckets', () => {
   it('maps the platform timeframe vocabulary', () => {

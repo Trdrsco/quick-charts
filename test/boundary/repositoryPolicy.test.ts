@@ -4,7 +4,7 @@
 // homepage, bugs, engines) and publishes only in the open with provenance; the policy files state
 // contribution, security, conduct, support and release terms beside the source. Every file is
 // held to existence and to the few facts other files depend on; the wording is the documentation
-// gate's business. The license field is not pinned here: counsel's review sets it.
+// gate's business.
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import manifest from '../../package.json'
@@ -48,7 +48,7 @@ describe('the repository policy files', () => {
       expect(existsSync(`${CHART_DIR}/${file}`), file).toBe(true)
       expect(packed, file).not.toContain(file)
     }
-    for (const file of ['README.md', 'CHANGELOG.md', 'LICENSE', 'THIRD-PARTY-NOTICES.md']) expect(packed).toContain(file)
+    for (const file of ['README.md', 'CHANGELOG.md', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.md']) expect(packed).toContain(file)
   })
 
   it('agree on the facts they share', () => {
@@ -73,8 +73,12 @@ describe('the repository policy files', () => {
     expect(releasing).toContain('publishConfig.provenance')
   })
 
-  it('carry the placeholders the owner fills, and no invented contact', () => {
-    expect(read('SECURITY.md')).toContain('[security contact, set by the owner before the repository is public]')
-    expect(read('SECURITY.md')).not.toMatch(/@[a-z0-9-]+\.[a-z]{2,}/)
+  it('route a vulnerability privately, and name no personal address', () => {
+    const security = read('SECURITY.md')
+    expect(security).toMatch(/Report privately/)
+    expect(security).toMatch(/Security tab/)
+    // A reporting address in a public repository is a mailbox to harvest; the private advisory is
+    // the route, and this file carries no e-mail address.
+    expect(security).not.toMatch(/@[a-z0-9-]+\.[a-z]{2,}/)
   })
 })
