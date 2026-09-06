@@ -1,8 +1,10 @@
 // The wire contract of `./wire` rendered as an OpenAPI document: the same facts a service author
 // can read, lint, or generate a server stub from.
 //
-// It is BUILT from the contract rather than written beside it, so a path, a status, a template kind
-// or a field cannot be documented one way and implemented another. `scripts/build-rest-openapi.mjs`
+// It is BUILT from the contract rather than written beside it: paths, statuses, template kinds and
+// the wire version come from `./wire`, so none of them can be documented one way and implemented
+// another. The payload field lists are written here by hand beside their interfaces, so a new field
+// on a wire type is a conscious edit in both places. `scripts/build-rest-openapi.mjs`
 // writes what this module returns into `dist/rest-openapi.json` during the build, and
 // `test/adapters/openapi.test.ts` compares the committed artifact with the same rendering.
 //
@@ -10,8 +12,8 @@
 // its import graph, and a packed-artifact fixture proves the schema text is absent from what a
 // consumer downloads: a host implementing the contract reads the document, and a browser running
 // the adapter should not have to carry it.
-// The extension is explicit because the build script runs this module through Node directly, the
-// way the theme and manifest generators run theirs.
+// The extension is explicit because the build script imports this module through Node directly,
+// which strips the type annotations and resolves no extensionless specifier.
 import { REST_STATUS, REST_TEMPLATE_KINDS, REST_WIRE_VERSION, restCollectionPath } from './wire.ts'
 
 /** A JSON value in the emitted document. The renderer builds plain data; nothing here executes. */
