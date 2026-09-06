@@ -1,10 +1,10 @@
 {
-  "tarSha256": "da4b2bf086cb326a5279c0274b13cb1a9def90a11ee9dabcd65dd6eed998a3d0",
+  "tarSha256": "a77c1a3a9879590f06b32e31adda7956ca54cad53cb37588a88bae864e169d97",
   "files": {
-    "CHANGELOG.md": "cd1ead5c14e0f4f170422d94abf20dcf3801ae9b617b0b9aa581b1d8528e9848",
+    "CHANGELOG.md": "cc8350a9df78231cf622d34d03ad02e4dd6aab03e4b722c3813dd56375de9b86",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
     "NOTICE": "fdea87c69eb418e4a9e2f37b17bd70c0fa4474f6f8361b7981838fdf968f4678",
-    "README.md": "cc5ebcb8da52c9e55f6d4ebbdfc71e700b015285f5a1920992525725ba211cdc",
+    "README.md": "bf63b5e760a6f31abdec0831d0a5775d4c25bf739f11c12c0f878af9dca50a1c",
     "THIRD-PARTY-NOTICES.md": "2a4a47f5cc31a35819c68c4093cbb3683e865276bf2bd315ed5ec80f54debbfe",
     "dist/adapters/rest.d.ts": "58d3db804006a40a117b09a6d127a887483b565859268f75c8558a948829b00a",
     "dist/adapters/rest.js": "43779f5c161784dc1e517bdb41116a91dc69c6d85e423f2eb450f380648c391e",
@@ -27,7 +27,7 @@
     "dist/drawings.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
     "dist/es-GGPQFJOQ.js": "596b4331c9da308ec204d13b9d2626a34af52152aaca3edcc288ced8c46fed65",
     "dist/es-GGPQFJOQ.js.map": "ca18763aaed31de916ce6e45cabd026b2354e90495d71d5af669503501fdbfa1",
-    "dist/feature-manifest.json": "308369d270876f9a3d4f5ce4f4fcde3347fcacc160fda6a4049a106e2f88def4",
+    "dist/feature-manifest.json": "5e957dd4c51552165dcd4c1f01de8909a13a0642f940d620b4a9fc636ff08df6",
     "dist/fr-O6PICEF3.js": "56591bb5653e642cd1c2118feab7a18254c9afc3e12d2be3a961d2311918a531",
     "dist/fr-O6PICEF3.js.map": "c021b16e121c9171315435126729e1d4aff1ce5484b6f99c9fcc5fd81b8cb28d",
     "dist/he_IL-GRTHKK77.js": "ccb30a0aef80d715c7b927173bbed068d91498fef6fdc3d7dc38e46fa9758c08",
@@ -67,6 +67,6 @@
     "dist/zh-7FEIDYWR.js.map": "6d5c34cfed140641b8c5861e9e2660bd9548a261a2034c57e168ef80b0a5405c",
     "dist/zh_TW-WALZJZXR.js": "b9901ba56fddc3ab9a005e5b6492d27ba785ae320713575dcd42c1bf1d65b613",
     "dist/zh_TW-WALZJZXR.js.map": "810a539908cecead45d2caa90ab1a8e6a3bdd535fba5690825895490c3efa280",
-    "package.json": "8989c05c4cc0f91feb9d8ebd07c1ba9c0f09ec09df253ba724533d754806c61b"
+    "package.json": "7022fb92638e0f1d35d7331ad259c6c1efef05225b482eb7b1da64b309bcfd63"
   }
 }

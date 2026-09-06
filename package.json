@@ -1,6 +1,6 @@
 {
   "name": "quickcharts",
-  "version": "0.0.0-staging",
+  "version": "0.1.0",
   "description": "Quick Charts: a datafeed-driven charting library with drawings, indicators, layouts and replay over host-supplied data and storage ports.",
   "keywords": [
     "charts",
