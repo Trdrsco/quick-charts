@@ -53,7 +53,8 @@ touches the public surface names the export or option it changes.
 
 ## Commands
 
-The repository uses pnpm.
+The repository uses pnpm, and the build scripts read TypeScript directly, so they need Node 22
+or newer. The published package itself runs on Node 20 and newer, as `engines` says.
 
 | Command | What it does |
 |---|---|
