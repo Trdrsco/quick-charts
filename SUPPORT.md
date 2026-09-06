@@ -10,7 +10,7 @@ maintainers support, where the library is verified to run, and how versions chan
 - The behavior the package tests prove: the feature manifest in `dist/feature-manifest.json`, the
   theme manifest in `dist/theme-manifest.json`, the REST wire contract in `dist/rest-openapi.json`,
   and the contract tests beside the source.
-- The `README.md` examples, which type-check against the shipped declarations on every build.
+- The `README.md` examples, which type-check against the package exports in its test suite.
 
 Outside support: your datafeed and its data, your storage service, your page's other scripts and
 styles, the internal selectors and custom properties of the stylesheet, and any behavior reached by
