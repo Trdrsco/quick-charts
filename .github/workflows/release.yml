@@ -27,7 +27,7 @@ jobs:
           echo "Publication waits on the owner's instruction; nothing is published by this run."
           exit 1
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
