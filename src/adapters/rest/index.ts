@@ -57,6 +57,29 @@ import {
   type RestWriteResponse,
 } from './wire'
 
+/** The wire contract, as types a service implementer writes their handlers against. They are what
+ *  the adapter sends and reads, so a service typed by them and an adapter driving it cannot drift.
+ *  The paths, the statuses and the schema document are in `./wire` and `dist/rest-openapi.json`. */
+export type {
+  RestChartBody,
+  RestChartMeta,
+  RestCollection,
+  RestConflictBody,
+  RestDrawingsBody,
+  RestDrawingsMeta,
+  RestLayoutBody,
+  RestLayoutMeta,
+  RestListResponse,
+  RestLoadResponse,
+  RestNotFoundBody,
+  RestResourceRef,
+  RestRevisionRequiredBody,
+  RestTemplateBody,
+  RestTemplateKind,
+  RestTemplateMeta,
+  RestWriteResponse,
+} from './wire'
+
 /** What the adapter asks a request function to do. Deliberately the subset of `RequestInit` the
  *  contract needs, so a host implementing this by hand implements four fields rather than thirty,
  *  and a plain `fetch` accepts it unchanged. */
