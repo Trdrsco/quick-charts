@@ -55,7 +55,15 @@ import {
   type WriteOutcome,
 } from 'quickcharts'
 import { DEFAULT_OPTIONS, DEFAULT_STYLE, drawingTools } from 'quickcharts/drawings'
-import { createRestSaveLoadAdapter, type RestRequest, type RestResponse } from 'quickcharts/adapters/rest'
+import {
+  createRestSaveLoadAdapter,
+  type RestConflictBody,
+  type RestNotFoundBody,
+  type RestRequest,
+  type RestResourceRef,
+  type RestResponse,
+  type RestRevisionRequiredBody,
+} from 'quickcharts/adapters/rest'
 
 // ── The host contract ───────────────────────────────────────────────────────────────────────────
 
@@ -402,7 +410,11 @@ export function restHostService(baseUrl: string = REST_SERVICE_URL): RestHostSer
   const stamp = (): number => (clock = Math.max(Date.now(), clock + 1))
 
   const answer = (status: number, body?: unknown): RestResponse => ({ status, text: () => Promise.resolve(body === undefined ? '' : JSON.stringify(body)) })
-  const ref = (id: string, row: ServiceRow): { id: string; revision: string } => ({ id, revision: String(row.revision) })
+  const ref = (id: string, row: ServiceRow): RestResourceRef => ({ id, revision: String(row.revision) })
+  // The three refusals, typed by the contract the adapter reads them with.
+  const notFound: RestNotFoundBody = { error: 'not_found' }
+  const revisionRequired: RestRevisionRequiredBody = { error: 'revision_required' }
+  const conflict = (id: string, row: ServiceRow): RestConflictBody => ({ error: 'conflict', current: ref(id, row) })
   /** The listing row: the ref, the stamp, and everything in the body but the opaque content. */
   const meta = (id: string, row: ServiceRow): Record<string, unknown> => {
     const { content: _opaque, ...rest } = row.body
@@ -431,11 +443,11 @@ export function restHostService(baseUrl: string = REST_SERVICE_URL): RestHostSer
     }
 
     const row = rows.get(id)
-    if (init.method === 'GET') return Promise.resolve(row ? answer(200, { ...ref(id, row), body: row.body }) : answer(404, { error: 'not_found' }))
+    if (init.method === 'GET') return Promise.resolve(row ? answer(200, { ...ref(id, row), body: row.body }) : answer(404, notFound))
     // Every write past a create is conditional: no quoted revision is a refusal, not an overwrite.
-    if (quoted === undefined) return Promise.resolve(answer(428, { error: 'revision_required' }))
-    if (!row) return Promise.resolve(answer(404, { error: 'not_found' }))
-    if (quoted !== String(row.revision)) return Promise.resolve(answer(409, { error: 'conflict', current: ref(id, row) }))
+    if (quoted === undefined) return Promise.resolve(answer(428, revisionRequired))
+    if (!row) return Promise.resolve(answer(404, notFound))
+    if (quoted !== String(row.revision)) return Promise.resolve(answer(409, conflict(id, row)))
     if (init.method === 'DELETE') {
       rows.delete(id)
       return Promise.resolve(answer(200, ref(id, row)))

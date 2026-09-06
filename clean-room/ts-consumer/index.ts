@@ -279,7 +279,16 @@ void drawing
 // The optional REST save/load adapter, typed against the shipped declarations. A host's transport
 // is whatever it already has: `fetch` itself satisfies the request signature, and so does a wrapper
 // that adds the host's own authorization. The adapter takes those two values and nothing else.
-import { createRestSaveLoadAdapter, RestSaveLoadError, type RestRequest, type RestSaveLoadOptions } from 'quickcharts/adapters/rest'
+import {
+  createRestSaveLoadAdapter,
+  RestSaveLoadError,
+  type RestChartBody,
+  type RestChartMeta,
+  type RestListResponse,
+  type RestRequest,
+  type RestSaveLoadOptions,
+  type RestWriteResponse,
+} from 'quickcharts/adapters/rest'
 
 const plainFetch: RestRequest = fetch
 const withHostAuth: RestRequest = (url, init) => fetch(url, { ...init, credentials: 'include', headers: { ...init.headers, 'x-example-tenant': 'acme' } })
@@ -301,4 +310,14 @@ export async function saveOverRest(name: string): Promise<string> {
     if (e instanceof RestSaveLoadError) return `${e.reason}:${String(e.status)}`
     throw e
   }
+}
+
+// The service side of the same contract, typed by the shipped declarations: a handler written
+// against these types and an adapter driving it cannot disagree about a field.
+export function listSavedCharts(rows: RestChartMeta[]): RestListResponse<RestChartMeta> {
+  return { items: rows }
+}
+
+export function storeSavedChart(id: string, revision: string, body: RestChartBody, at: number): RestWriteResponse<RestChartMeta> {
+  return { id, revision, meta: { id, revision, name: body.name, symbol: body.symbol, timeframe: body.timeframe, updatedAt: at } }
 }
