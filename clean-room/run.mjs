@@ -5,10 +5,13 @@
 //
 //   node clean-room/run.mjs
 //
-// Steps: pack every publishable package → .artifacts/ → npm-install each consumer (npm, not pnpm: a customer
+// Steps: pack every publishable package → .artifacts/ (the chart's build packs its own candidate,
+// and that one tarball is copied here rather than packed again, so the clean room installs the
+// artifact the web app installs) → npm-install each consumer (npm, not pnpm: a customer
 // won't have our workspace, and npm exercises the packed manifest exactly as published) → tsc
 // --noEmit for the TS consumer (skipLibCheck OFF — the shipped d.ts must stand alone) → execute
-// the JS smokes under BOTH module systems (import + require).
+// the JS smokes under BOTH module systems (import + require) → bundle the chart's four entrypoints
+// with Vite and read the bundles for what a licensee's build must not carry.
 import { execSync } from 'node:child_process'
 import { copyFileSync, mkdirSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -40,7 +43,9 @@ run('pnpm build', join(repo, 'packages/order-ticket'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-broker-0.1.0.tgz'))}`, join(repo, 'packages/broker'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-i18n-0.1.0.tgz'))}`, join(repo, 'packages/i18n'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-account-manager-0.1.0.tgz'))}`, join(repo, 'packages/account-manager'))
-run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'quickcharts-0.0.0-staging.tgz'))}`, join(repo, 'packages/chart'))
+// The chart is the one package whose build already packed: .candidate holds the deterministic
+// tarball the web app installs by link, and the clean room proves that same tarball.
+copyFileSync(join(repo, 'packages/chart/.candidate/quickcharts-0.0.0-staging.tgz'), join(artifacts, 'quickcharts-0.0.0-staging.tgz'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-news-0.1.0.tgz'))}`, join(repo, 'packages/news'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-watchlist-0.1.0.tgz'))}`, join(repo, 'packages/watchlist'))
 run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-engine-wire-0.1.0.tgz'))}`, join(repo, 'packages/engine-wire'))
@@ -49,7 +54,7 @@ run(`pnpm pack --out ${JSON.stringify(join(artifacts, 'trdrs-order-ticket-0.2.0.
 
 // 2. Fresh installs. --install-links copies file: deps instead of symlinking (closer to a real
 //    registry install); lockfiles are disposable here — the point is a cold resolve every run.
-for (const consumer of ['ts-consumer', 'js-consumer']) {
+for (const consumer of ['ts-consumer', 'js-consumer', 'vite-consumer']) {
   const dir = join(here, consumer)
   rmSync(join(dir, 'node_modules'), { recursive: true, force: true })
   rmSync(join(dir, 'package-lock.json'), { force: true })
@@ -83,5 +88,11 @@ run('node smoke.cjs', join(here, 'js-consumer'))
 // 5. The conformance suite over the installed tarball: a real widget mounted into a happy-dom
 //    document, every check the workspace and app hosts run, through the same module.
 run('node conformance.mjs', join(here, 'js-consumer'))
+
+// 6. The bundler gate: Vite builds the root, the drawings subpath, the REST adapter and the
+//    stylesheet from the installed tarball, then a root-only build, and the consumer reads both
+//    bundles for test code, a trdrs host, a workspace path, and the adapter's absence from the
+//    root-only build.
+run('node build.mjs', join(here, 'vite-consumer'))
 
 console.log('\nclean-room: ALL GATES PASSED')
