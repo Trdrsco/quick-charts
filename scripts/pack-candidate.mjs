@@ -22,7 +22,12 @@
 //     no group, one mode, so a checkout's clock and account never reach the archive;
 //   - one newline: every file is text, and a Windows checkout writes CRLF into the composed
 //     stylesheet, the root documents and the sources a source map embeds; all of it is normalized
-//     to LF here, so the Linux build and the Windows build of one commit pack the same bytes;
+//     to LF here, so the Linux build and the Windows build of one commit pack the same bytes. A
+//     checkout's line endings reach one place this pass cannot: esbuild names every shared and
+//     dynamic chunk after a hash of the bytes it read, and that name is already written into the
+//     entries importing it, so a CRLF checkout produced `ar-XYEYU6VD.js` where an LF checkout
+//     produced `ar-FHCG6QP4.js`. scripts/lf-sources.mjs strips the carriage returns before the
+//     bundler reads them, which leaves this pass only the files the bundler did not write;
 //   - no machine path: a source map's `sources` are relative, and the pack refuses any file that
 //     names this checkout's absolute path or a file URL;
 //   - one gzip header: the operating-system byte is fixed, so the same tar stream gzips to the same

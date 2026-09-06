@@ -13,6 +13,7 @@
 // The REST adapter is an entry of its own for the opposite reason: nothing in the root reaches it,
 // so a consumer who never imports it ships none of it and the chart makes no request on its own.
 import { defineConfig } from 'tsup'
+import { lfSources } from './scripts/lf-sources.mjs'
 
 /** The internal seams: bundled into the JavaScript (`noExternal`) and into the declarations,
  *  so neither name survives in what a consumer installs. The declaration build reaches each seam
@@ -30,4 +31,5 @@ export default defineConfig({
   clean: true,
   external: ['lightweight-charts'],
   noExternal: SEAMS,
+  esbuildPlugins: [lfSources],
 })

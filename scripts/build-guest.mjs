@@ -20,6 +20,7 @@ import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { build } from 'tsup'
+import { lfSources } from './lf-sources.mjs'
 import { composeDistributableStylesheet } from './stylesheet.mjs'
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -49,6 +50,7 @@ await build({
   clean: false,
   silent: true,
   define: { __QC_VERSION__: JSON.stringify(version) },
+  esbuildPlugins: [lfSources],
 })
 
 copyFileSync(join(pkgRoot, 'guest', 'index.html'), join(out, 'index.html'))
