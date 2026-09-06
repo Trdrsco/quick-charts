@@ -29,7 +29,8 @@ export function authoredStylesheetFiles() {
 /** The distributable stylesheet, composed from the theme source and the authored CSS. */
 export function composeDistributableStylesheet() {
   const structural = authoredStylesheetFiles()
-    .map((path) => readFileSync(path, 'utf8').trim())
+    // A checkout may hold the authored files with carriage returns; the stylesheet carries one line ending.
+    .map((path) => readFileSync(path, 'utf8').replace(/\r/g, '').trim())
     .join('\n\n')
   const blocks = THEME_MODES.map((mode) => ({ mode, theme: BUILT_IN_THEMES[mode] }))
   return composeStylesheet({ blocks, structural })
