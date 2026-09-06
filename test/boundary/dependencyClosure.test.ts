@@ -19,7 +19,7 @@ describe('the direct dependency set, as built', () => {
     expect(directDependencies()).toEqual({
       dependencies: [],
       peerDependencies: ['lightweight-charts'],
-      devDependencies: ['fancy-canvas', 'happy-dom', 'lightweight-charts', 'tsup', 'typescript', 'vitest'],
+      devDependencies: ['fancy-canvas', 'happy-dom', 'lightweight-charts', 'tsup', 'typescript', 'vite', 'vitest'],
       optionalDependencies: [],
     })
   })
