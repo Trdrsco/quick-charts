@@ -84,7 +84,7 @@ function readTar(tar: Buffer): Entry[] {
   return out
 }
 
-const ROOT_DOCUMENTS = ['CHANGELOG.md', 'LICENSE', 'README.md', 'THIRD-PARTY-NOTICES.md', 'package.json']
+const ROOT_DOCUMENTS = ['CHANGELOG.md', 'LICENSE', 'NOTICE', 'README.md', 'THIRD-PARTY-NOTICES.md', 'package.json']
 
 describe('the candidate pack is wired', () => {
   it('runs as the last step of every build, and can be run alone', () => {
@@ -102,7 +102,7 @@ describe('the candidate carries exactly the published file set', () => {
     expect(extractedFiles(`${candidateDir}/package`)).toEqual(files)
   })
 
-  it('carries dist without the guest, the four documents and the manifest, and nothing from src, test, scripts or guest', () => {
+  it('carries dist without the guest, the root documents and the manifest, and nothing from src, test, scripts or guest', () => {
     if (!built) return
     for (const path of Object.keys(readManifest().files)) {
       const allowed = ROOT_DOCUMENTS.includes(path) || (path.startsWith('dist/') && !path.startsWith('dist/guest/'))

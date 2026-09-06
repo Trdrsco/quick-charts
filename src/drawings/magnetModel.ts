@@ -5,7 +5,7 @@
 // between off and weak rather than cycling three states, the menu's two rows are latching (picking
 // the mode that is already on releases the magnet, so there is no Off row to hunt for), and the
 // button's face says strong or plain magnet rather than on or off.
-import type { MagnetMode } from '@trdrs/chart-drawings'
+import type { MagnetMode } from '../internal/drawings/index'
 import type { ChartMessageKey } from '../i18n/en'
 
 export type { MagnetMode }

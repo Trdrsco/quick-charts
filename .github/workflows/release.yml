@@ -1,0 +1,59 @@
+# The release: one tagged commit on `main`, published by this workflow through the registry's
+# trusted publishing with provenance. No token that can publish exists on a workstation or in a
+# workflow secret.
+#
+# The workflow is inert until the repository variable PUBLICATION_APPROVED is set to the string
+# `yes`. That variable does not exist, and only the owner creates it, so a tag pushed before the
+# owner's publication instruction runs the checks and stops before the publish.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: the owner's publication instruction
+        if: vars.PUBLICATION_APPROVED != 'yes'
+        run: |
+          echo "The repository variable PUBLICATION_APPROVED is not set to 'yes'."
+          echo "Publication waits on the owner's instruction; nothing is published by this run."
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: the tag is on main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: the whole rehearsal, which runs the gate and publishes nothing
+        run: node scripts/release-rehearsal.mjs
+
+      - name: the tag names the version in the manifest
+        run: |
+          version=$(node -p "require('./package.json').version")
+          test "refs/tags/v$version" = "$GITHUB_REF"
+
+      - name: publish
+        run: npm publish --provenance --access public

@@ -3,8 +3,8 @@
 // gear, lock, delete, and the More menu with the stacking moves, the interval presets, clone, copy
 // and hide. Grip-draggable anywhere over the chart; where it sits is a preference. Every action is
 // a command through the registry.
-import type { LineStyle } from '@trdrs/chart-drawings'
-import { alphaOf, withAlpha } from '@trdrs/chart-drawings'
+import type { LineStyle } from '../../internal/drawings/index'
+import { alphaOf, withAlpha } from '../../internal/drawings/index'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import type { DrawingPresets, SelectedDrawing } from '../../drawings'
 import { clampFavoritesPosition, FILLABLE, FONT_TOOLS, NO_DASH, NO_LINE_DECOR, NO_STROKE, type FavoritesPosition, type VisibilityPreset } from '../../drawings/index'

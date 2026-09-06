@@ -83,10 +83,10 @@ describe('the summary', () => {
     expect(ownerSection).not.toMatch(/\| pass \|/)
   })
 
-  it('reads PARTIAL with the reason when the browser suite was skipped', () => {
+  it('reads PARTIAL with the reason when the clean room was skipped', () => {
     const partial = renderSummary({ result: 'PARTIAL', version: 'v', commit: 'c', branch: 'b', date: 'd', fast: true, stages: [], artifact: null, ownerGates: OWNER_GATES })
     expect(partial).toContain('Result: **PARTIAL**')
-    expect(partial).toContain('without the browser suite')
+    expect(partial).toContain('without the clean room')
     expect(partial).toContain('Run the whole rehearsal before this page goes into a dossier.')
   })
 

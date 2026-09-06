@@ -51,8 +51,8 @@ async function bundle(name, entry) {
 /** Every shape neither bundle may carry, each named for the report. */
 const FORBIDDEN = [
   { name: 'test code', pattern: /\b(describe|expect)\s*\(|\bvitest\b|happy-dom/ },
-  { name: 'a trdrs host or service route', pattern: /trdrs\.co\b|localhost:8080|["'`]\/api\/|@trdrs\// },
-  { name: 'a workspace path', pattern: /packages\/chart|trdrs-app|\.trdrs-worktrees|file:\/\/\// },
+  { name: 'a private host or service route', pattern: /trdrs\.co\b|localhost:8080|["'`]\/api\/|@trdrs\// },
+  { name: 'a source path', pattern: /\/src\/internal\/|\/test\/|file:\/\/\// },
   { name: 'this checkout', pattern: new RegExp([repo, repo.replace(/\\/g, '/')].map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')) },
 ]
 

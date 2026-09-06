@@ -3,16 +3,8 @@
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "@trdrs/account-manager": "file:../.artifacts/trdrs-account-manager-0.1.0.tgz",
-    "@trdrs/broker": "file:../.artifacts/trdrs-broker-0.1.0.tgz",
     "quickcharts": "file:../.artifacts/quickcharts-0.0.0-staging.tgz",
-    "@trdrs/i18n": "file:../.artifacts/trdrs-i18n-0.1.0.tgz",
-    "@trdrs/news": "file:../.artifacts/trdrs-news-0.1.0.tgz",
-    "@trdrs/order-ticket": "file:../.artifacts/trdrs-order-ticket-0.2.0.tgz",
-    "@trdrs/watchlist": "file:../.artifacts/trdrs-watchlist-0.1.0.tgz",
-    "lightweight-charts": "^5.0.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "lightweight-charts": "^5.0.0"
   },
   "devDependencies": {
     "happy-dom": "^20.13.2"

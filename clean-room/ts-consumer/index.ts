@@ -35,7 +35,6 @@ import {
   type HistoryPage,
   type IndicatorDefinition,
 } from 'quickcharts'
-import type { AccountSnapshot, BrokerAdapter, TradingAdapter, TradingCapabilities } from '@trdrs/broker'
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 import { parseDrawingsStore, serializeDrawingsStore, drawingTools, type SerializedDrawing } from 'quickcharts/drawings'
 import { memoryDatafeed } from './fakes/memoryDatafeed'
@@ -141,37 +140,6 @@ const feed: ChartDatafeed = {
     return () => undefined
   },
 }
-
-// The broker seam type-checks against the real seven methods (four required, three optional).
-const broker: BrokerAdapter = {
-  async moveOrder() {},
-  async setExits() {},
-  async flatten() {},
-  async cancelOrder() {},
-  async reversePosition() {
-    return { cancelledOrders: 0 }
-  },
-  async setOrderBracket() {},
-  // A placement answers with what the venue accepted — the ticket reports the id and the fill.
-  async placeOrder(args) {
-    return { brokerOrderId: `stub-${args.intentKey}`, filledQty: 0, avgFillPrice: null }
-  },
-}
-void broker
-
-// The trading plane types end-to-end: adapter + full account snapshot + declared capabilities.
-const trading: TradingAdapter = {
-  broker,
-  subscribeAccount(handlers) {
-    const snapshot: AccountSnapshot = { scope: 'x|1', positions: [], orders: [], currency: 'USD' }
-    handlers.onSnapshot(snapshot)
-    return () => undefined
-  },
-  async capabilities(): Promise<TradingCapabilities> {
-    return { exits: true, orderBracketTypes: ['limit'] }
-  },
-}
-void trading
 
 // Widget construction types (not executed here — node has no DOM; the render smoke covers that).
 export function mount(el: HTMLElement): ChartWidget {

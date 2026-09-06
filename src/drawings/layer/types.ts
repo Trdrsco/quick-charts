@@ -1,7 +1,7 @@
 // The drawing layer's contracts: what a host hands `attachDrawings`, what it gets back, and the
 // events the layer reports. Everything here is a type; the behavior lives in the sibling modules.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
-import type { DrawingStyle, GlyphSourcePort, IDrawing, LineStyle, SerializedDrawing, VisibilityPreset } from '@trdrs/chart-drawings'
+import type { DrawingStyle, GlyphSourcePort, IDrawing, LineStyle, SerializedDrawing, VisibilityPreset } from '../../internal/drawings/index'
 import type { ResourceRef, ResourceStore, TemplateBody, TemplateMeta } from '../../resources'
 import type { DrawingResourceContext, DrawingsBody } from '../document'
 import type { DrawingDocumentPort, DrawingOwner } from './documents'

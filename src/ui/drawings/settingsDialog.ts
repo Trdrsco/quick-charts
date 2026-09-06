@@ -6,7 +6,7 @@
 // edit, and the footer's Template menu applies a template onto the selection, saves the current
 // setup under a name, or removes a saved template. A page whose commands the registry would not
 // run renders every control disabled, and so does a footer verb the registry refuses.
-import type { DrawingStyle, IDrawing, IntervalVisibility, SerializedDrawing } from '@trdrs/chart-drawings'
+import type { DrawingStyle, IDrawing, IntervalVisibility, SerializedDrawing } from '../../internal/drawings/index'
 import type { ChartTranslate } from '../../i18n'
 import { toolName } from '../../i18n'
 import { drawingTools, type DrawingAssetPort } from '../../drawings/index'

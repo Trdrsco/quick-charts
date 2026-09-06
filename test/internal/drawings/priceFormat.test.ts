@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import type { Time } from 'lightweight-charts'
-import { DrawingManager } from '../src/core/manager'
-import { moneyText } from '../src/core/money'
-import forecastingSrc from '../src/tools/forecasting.ts?raw'
-import { toolRegistry } from '../src/registry'
-import type { Anchor } from '../src/core/types'
+import { DrawingManager } from '../../../src/internal/drawings/core/manager'
+import { moneyText } from '../../../src/internal/drawings/core/money'
+import forecastingSrc from '../../../src/internal/drawings/tools/forecasting.ts?raw'
+import { toolRegistry } from '../../../src/internal/drawings/registry'
+import type { Anchor } from '../../../src/internal/drawings/core/types'
 
 // Every price a drawing writes comes through the host-injected price-format port: the symbol's
 // own formatter, carrying the market's declared precision. The package has no magnitude rule of

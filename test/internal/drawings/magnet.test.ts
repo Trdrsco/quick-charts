@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Time } from 'lightweight-charts'
-import { snapToBar } from '../src/core/magnet'
+import { snapToBar } from '../../../src/internal/drawings/core/magnet'
 
 // Pixel mapping for the tests: price 100 → y 0, one point per pixel, y grows downward.
 const priceToY = (price: number) => 100 - price

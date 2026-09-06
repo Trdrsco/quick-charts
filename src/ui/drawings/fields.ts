@@ -3,8 +3,8 @@
 // the custom color panel, the opacity slider, a line-end picker, the dialog's tab strip, and one
 // interval-visibility row. Each builds real elements, reads its words from the chart's language,
 // and reports a value; none holds chart state.
-import type { LineStyle } from '@trdrs/chart-drawings'
-import { alphaOf, withAlpha } from '@trdrs/chart-drawings'
+import type { LineStyle } from '../../internal/drawings/index'
+import { alphaOf, withAlpha } from '../../internal/drawings/index'
 import type { ChartTranslate } from '../../i18n'
 import { button, dismissOnOutside, el, focusFirst, menuKeys, ownPointer, placePanel } from './dom'
 import { hexOf, hexToHsv, hsvToHex, isHex, SWATCH_ROWS } from './color'

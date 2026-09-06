@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question about using the library
+    url: https://github.com/Trdrsco/quick-charts/discussions
+    about: Ask how to do something with the documented API.
+  - name: Security vulnerability
+    url: https://github.com/Trdrsco/quick-charts/security/advisories/new
+    about: Report privately through the repository's security advisories.

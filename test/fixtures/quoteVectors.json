@@ -18,7 +18,7 @@
     "`board` is a punctuation variant of the case before it. Quote values are quote data, never symbology:",
     "they are here as inputs to a display test, not as facts the datafeed's symbology contract owns.",
     "",
-    "Read by packages/chart/test/priceFormatter.test.ts and test/inventory/quoteVectors.test.ts. The",
+    "Read by test/priceFormatter.test.ts and test/inventory/quoteVectors.test.ts. The",
     "private facade's quote work reuses the same file rather than inventing a second set of numbers.",
     "",
     "punctuation: the punctuation the displays below assume. Absent means the default, which is a",

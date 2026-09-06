@@ -17,9 +17,9 @@ const componentsDir = `${packageRoot}/src/styles/components`
  *  then each component recipe file in name order. Keyed by root-relative path so an offender reads
  *  the same in a Windows and a CI log. */
 export const authoredStylesheets = (): Record<string, string> => {
-  const out: Record<string, string> = { '/packages/chart/src/styles/quickcharts.css': readFileSync(`${packageRoot}/src/styles/quickcharts.css`, 'utf8') }
+  const out: Record<string, string> = { '/src/styles/quickcharts.css': readFileSync(`${packageRoot}/src/styles/quickcharts.css`, 'utf8') }
   for (const name of readdirSync(componentsDir).filter((n) => n.endsWith('.css')).sort()) {
-    out[`/packages/chart/src/styles/components/${name}`] = readFileSync(`${componentsDir}/${name}`, 'utf8')
+    out[`/src/styles/components/${name}`] = readFileSync(`${componentsDir}/${name}`, 'utf8')
   }
   return out
 }

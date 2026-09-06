@@ -1,0 +1,20 @@
+node_modules
+dist
+
+# OS and editor junk
+.DS_Store
+Thumbs.db
+*.log
+*.tsbuildinfo
+
+# clean-room consumer fixtures: installs and packed artifacts are disposable
+clean-room/.artifacts/
+clean-room/*/node_modules/
+clean-room/*/package-lock.json
+# the conformance suite copied beside each consumer by clean-room/run.mjs
+clean-room/*/conformance/
+
+# the packed candidate; every build rewrites it
+.candidate/
+# the release rehearsal dossier (logs, hashes, the summary); every rehearsal rewrites its version
+.release/

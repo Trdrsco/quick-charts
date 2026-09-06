@@ -64,15 +64,6 @@ if (!rsiSpec.fills || !rsiSpec.fills[0].upperData) fail('the built-in RSI backgr
 
 console.log('clean-room js (esm): ok')
 
-// The order ticket: the tarball must resolve and its pure core must execute; the mount only needs to exist.
-const ticket = await import('@trdrs/order-ticket')
-if (typeof ticket.createOrderTicket !== 'function') fail('createOrderTicket missing')
-if (typeof ticket.Panel !== 'function') fail('Panel missing')
-const ticketPlan = ticket.buildSubmitPlan({ scope: 'x|1', instrument: 'ESZ2026', root: 'ES', side: 'sell', qty: 1, orderType: 'Market', limitPrice: 0, stopPrice: 0, stopLimitPrice: 0, canSnapEntry: true, tick: 0.25, markRef: 5000, entryRef: 5000, tif: 'GTC', sl: { enabled: false, price: 0, ticks: 0 }, tp: { enabled: false, price: 0, ticks: 0 }, strategy: null })
-if (!ticketPlan.ok || ticketPlan.key !== 'x|1|ESZ2026|sell|1|market||||gtc|sl|tp') fail(`buildSubmitPlan wrong: ${JSON.stringify(ticketPlan)}`)
-if (ticket.ticketStrings().t('panel.buy') !== 'Buy') fail('built-in English missing')
-console.log('clean-room js (esm): order ticket OK')
-
 // The optional REST save/load adapter, over a host service that lives in this file. The point is
 // that a fresh project can reach `quickcharts/adapters/rest` from the packed tarball, hand it its
 // own transport, and get the port's typed outcomes back: nothing here configures an origin, a

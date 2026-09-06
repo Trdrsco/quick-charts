@@ -15,7 +15,7 @@ import { describe, expect, it } from 'vitest'
 import { CHART_SOURCES, isSourceMap, offenderText, packedFileList, packedText, scanFiles, scanLines } from './scan'
 
 /** Package sources without the locale catalogs: a translated string is a message, not a contract. */
-const CODE_FILES = Object.entries(CHART_SOURCES).filter(([file]) => !file.startsWith('/packages/chart/src/i18n/'))
+const CODE_FILES = Object.entries(CHART_SOURCES).filter(([file]) => !file.startsWith('/src/i18n/'))
 
 /** A source with its comments removed, so a comment that names a shape to explain its absence is not
  *  read as the shape. Block comments and line comments; string literals are left alone, which is the
@@ -83,7 +83,7 @@ const RETIRED_TRADES: readonly Shape[] = [
 describe('the exclusion ledger against package code', () => {
   it('has code to read, with its comments stripped', () => {
     expect(Object.keys(CODE).length).toBeGreaterThan(30)
-    expect(CODE['/packages/chart/src/storage.ts']).not.toContain('localStorage') // the comment that names it is stripped
+    expect(CODE['/src/storage.ts']).not.toContain('localStorage') // the comment that names it is stripped
     const stripped = stripComments("const url = 'https://example.test' // a comment\n/* block */ const x = 1")
     expect(stripped).toContain("const url = 'https://example.test'")
     expect(stripped).toContain('const x = 1')
@@ -104,11 +104,14 @@ describe('the exclusion ledger against package code', () => {
   })
 
   it('keeps one snap: the magnet in the drawing seam, and one level grid in the chart', () => {
-    expect(sweep(CODE, DUPLICATE_SNAP)).toEqual([])
+    // The seam under src/internal/drawings IS the one magnet; the sweep asks whether a second one
+    // grew anywhere else in the source.
+    const outsideTheSeam = Object.fromEntries(Object.entries(CODE).filter(([file]) => !file.startsWith('/src/internal/drawings/')))
+    expect(sweep(outsideTheSeam, DUPLICATE_SNAP)).toEqual([])
     // The level menu snaps a pointed-at price to the symbol grid; that is the one place the chart
     // rounds a price to a step, and it is not the magnet.
-    const gridRounding = scanFiles(CODE, /Math\.round\([^)]*\/\s*(step|tick|minMove)\)/)
-    expect(gridRounding.map((o) => o.file)).toEqual(['/packages/chart/src/widget/menu.ts'])
+    const gridRounding = scanFiles(outsideTheSeam, /Math\.round\([^)]*\/\s*(step|tick|minMove)\)/)
+    expect(gridRounding.map((o) => o.file)).toEqual(['/src/widget/menu.ts'])
   })
 
   it('carries no Object Tree, watermark, account control or document-level fullscreen', () => {

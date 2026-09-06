@@ -7,7 +7,7 @@
 // fake renderer, so a tool that constructs but cannot be restored, attached or drawn is named by type.
 // drawingTools.fixture.json records each tool's placement facts and default props; the family blocks at
 // the end pin the values a generic pass cannot see.
-import { DrawingManager, type IDrawing } from '@trdrs/chart-drawings'
+import { DrawingManager, type IDrawing } from '../../src/internal/drawings/index'
 import type { ISeriesApi, ISeriesPrimitive, SeriesType, Time } from 'lightweight-charts'
 import { describe, expect, it } from 'vitest'
 import { drawingTools } from '../../src/drawings/index'

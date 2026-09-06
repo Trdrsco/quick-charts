@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SymbolInfo } from '../src/symbology'
 
-const SOURCES: Record<string, string> = import.meta.glob('/packages/chart/src/symbology.ts', {
+const SOURCES: Record<string, string> = import.meta.glob('/src/symbology.ts', {
   query: '?raw',
   import: 'default',
   eager: true,
@@ -76,7 +76,7 @@ describe('SymbolInfo', () => {
 })
 
 describe('what symbology refuses to own', () => {
-  const source = SOURCES['/packages/chart/src/symbology.ts'] ?? ''
+  const source = SOURCES['/src/symbology.ts'] ?? ''
   /** Comments explain the boundary by naming what sits outside it, so only DECLARATIONS are judged. */
   const declarations = source
     .split('\n')

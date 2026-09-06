@@ -3,7 +3,7 @@
 // seam declares its manifest grammar in its own terms, so the spread below is the compile-time
 // proof that every built-in IS an IndicatorDefinition; the catalog-key narrowing is proven by the
 // package test that resolves every key through the English source.
-import { BUILT_IN_INDICATORS as REGISTRY, type BuiltInIndicator as SeamBuiltInIndicator, type IndicatorCategory } from '@trdrs/chart-indicators'
+import { BUILT_IN_INDICATORS as REGISTRY, type BuiltInIndicator as SeamBuiltInIndicator, type IndicatorCategory } from './internal/indicators/index'
 import type { ChartMessageKey } from './i18n'
 import type { IndicatorDefinition } from './widget/options'
 

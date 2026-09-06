@@ -1,0 +1,65 @@
+# The gate, as CI runs it: the same steps `node scripts/gate.mjs` runs locally, one job, in order.
+# The supply-chain scan walks every line ever added to this repository, so the checkout is a full
+# one; a shallow checkout would let a history the scan cannot see through.
+name: ci
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: build (its last step packs the candidate)
+        run: pnpm run build
+
+      - name: typecheck
+        run: pnpm run typecheck
+
+      - name: tests
+        run: pnpm run test
+
+      - name: candidate pin
+        run: node scripts/check-candidate-pin.mjs
+
+      - name: supply chain, history walk included
+        run: node scripts/check-supply-chain.mjs
+
+      - name: notices
+        run: node scripts/build-third-party-notices.mjs --check
+
+      - name: documents
+        run: node scripts/check-docs.mjs
+
+      - name: clean room
+        run: node clean-room/run.mjs
+
+      - name: release rehearsal
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node scripts/release-rehearsal.mjs

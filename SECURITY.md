@@ -10,9 +10,10 @@ renders into.
 
 Report privately. Do not open a public issue for a vulnerability.
 
-Send the report to [security contact, set by the owner before the repository is public]. Include
-the affected version, the steps to reproduce, and the impact you observed. You receive an
-acknowledgement within three business days.
+Open a private advisory on the repository's Security tab, under "Report a vulnerability". Include
+the affected version, the steps to reproduce, and the impact you observed. The report is visible
+only to you and the maintainers until an advisory is published. You receive an acknowledgement
+within three business days.
 
 ## Disclosure
 

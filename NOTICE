@@ -1,0 +1,18 @@
+Quick Charts
+Copyright 2026 trdrs
+
+This product is licensed under the Apache License, Version 2.0. A copy of the
+license is in the LICENSE file beside this notice.
+
+This product declares one peer dependency, which your application installs and
+bundles rather than receiving inside this package:
+
+  lightweight-charts, Copyright 2023 TradingView, Inc., licensed under the
+  Apache License, Version 2.0. Its own notice travels with the package your
+  application installs.
+
+  lightweight-charts reaches one package of its own, fancy-canvas, Copyright
+  2019 TradingView, Inc., licensed under the MIT License.
+
+THIRD-PARTY-NOTICES.md carries the full license text of each package above, and
+is regenerated from the installed packages on every build.

@@ -2,7 +2,7 @@
 // manifest whose every declared plot the compute answers, aligned 1:1 to the bars, with the
 // defaults alone.
 import { describe, expect, it } from 'vitest'
-import { BUILT_IN_INDICATORS, builtInIndicator, PRICE_SOURCES, type IndicatorBar } from '../src'
+import { BUILT_IN_INDICATORS, builtInIndicator, PRICE_SOURCES, type IndicatorBar } from '../../../src/internal/indicators/index'
 
 const N = 120
 const BASE = 1_700_000_000

@@ -16,7 +16,8 @@ chart layers on top of it. Both packages ship **ESM-only**: lightweight-charts v
 `require` entry, so a `require`-able build here would advertise a path that breaks the moment the
 renderer loads. From a CommonJS host, load via dynamic `import()`.
 
-Licensing: see `LICENSE`. Because the renderer is *your* dependency, its Apache-2.0 NOTICE
+Quick Charts is licensed under the Apache License 2.0: see `LICENSE` and `NOTICE`. Because the
+renderer is *your* dependency, its own Apache-2.0 NOTICE
 obligations attach to **your** bundle: `THIRD-PARTY-NOTICES.md` in this package spells out exactly
 what to carry and how. The chart includes no trading, accounts or executions; an application that
 trades composes those outside the chart, through the extension seam below.

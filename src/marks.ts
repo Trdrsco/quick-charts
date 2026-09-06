@@ -2,7 +2,7 @@
 //
 // A mark says nothing about an account, an order or a fill. Its color is a semantic theme role
 // rather than a literal, its text is the host's own words, and the chart neither interprets nor
-// acts on it. Execution marks are `@trdrs/chart-trading`'s, over the extension seam, and never
+// acts on it. Execution marks belong to a trading extension, over the extension seam, and never
 // these.
 //
 // The two families answer different questions. A BAR mark sits on a bar, above or below it, and

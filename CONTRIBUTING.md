@@ -65,6 +65,11 @@ The repository uses pnpm.
 | `pnpm build:manifest` | Regenerates the feature manifest from the source. |
 | `pnpm build:rest-openapi` | Regenerates `dist/rest-openapi.json` from the wire contract. |
 | `pnpm build:notices` | Regenerates `THIRD-PARTY-NOTICES.md` from the installed packages. |
+| `pnpm gate` | The whole gate, in the order CI runs it: build, type check, tests, the candidate pin, the supply-chain scan, the notices, the documents, the clean room. |
+| `pnpm gate --fast` | The same without the clean room. |
+| `pnpm clean-room` | Installs the packed tarball into three fresh projects and drives it there. |
+| `pnpm check:supply-chain` | Reads the tree, the packed file list and every line ever added to the history for a secret, an address, a private host or a private package. |
+| `pnpm check:docs` | Holds every document to the documentation style. |
 
 The generated files are committed. A pull request that changes a source of a generated file
 regenerates it in the same commit; the tests compare the committed file with the rendering.
@@ -79,5 +84,5 @@ regenerates it in the same commit; the tests compare the committed file with the
 
 ## License of contributions
 
-By opening a pull request you agree that your contribution is licensed under the license in
-`LICENSE`.
+By opening a pull request you agree that your contribution is licensed under the Apache License
+2.0, the license in `LICENSE`.

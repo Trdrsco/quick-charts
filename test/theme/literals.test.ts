@@ -15,39 +15,49 @@ import { describe, expect, it } from 'vitest'
 import { offenderText, scanFiles } from '../boundary/scan'
 import { authoredStylesheets } from './stylesheetSource'
 
-const THEME_SOURCES = import.meta.glob('/packages/chart/src/**/*.ts', { query: '?raw', import: 'default', eager: true })
+const THEME_SOURCES = import.meta.glob('/src/**/*.ts', { query: '?raw', import: 'default', eager: true })
 const STYLE_SOURCES: Record<string, string> = authoredStylesheets()
 
 /** A written color value, in either notation a palette may use. */
 const COLOR_LITERAL = /#[0-9a-fA-F]{3,8}\b|\b(?:rgba?|hsla?)\(\s*[\d.]/
 
-const PALETTES = '/packages/chart/src/theme/palettes.ts'
+const PALETTES = '/src/theme/palettes.ts'
 
 /** The documented series defaults: a chart's own data colors, which a host overrides per instance
  *  and a mode does not re-resolve. Each is a named, exported palette rather than a literal buried in
  *  a painter, which is what keeps the exemption honest. */
+/** The drawing seam's per-tool default styles: a drawing carries its own colors, which a host
+ *  overrides per drawing and a mode does not re-resolve, so they are defaults of the tool rather
+ *  than roles of the theme. */
+const DRAWING_DEFAULTS = '/src/internal/drawings/'
+
 const SERIES_DEFAULTS = [
-  '/packages/chart/src/compare.ts',
-  '/packages/chart/src/overrides.ts',
-  '/packages/chart/src/builtInIndicators.ts',
-  '/packages/chart/src/indicatorModel.ts',
+  '/src/compare.ts',
+  '/src/overrides.ts',
+  '/src/builtInIndicators.ts',
+  '/src/indicatorModel.ts',
+  // The built-in indicators' named plot palette: the same kind of exported series default, in the
+  // indicator seam rather than the chart.
+  '/src/internal/indicators/palette.ts',
 ]
 
 describe('the package holds its colors in one file', () => {
   it('reads the package source and every authored stylesheet', () => {
     expect(Object.keys(THEME_SOURCES)).toContain(PALETTES)
     expect(Object.keys(THEME_SOURCES).length).toBeGreaterThan(30)
-    expect(Object.keys(STYLE_SOURCES)).toContain('/packages/chart/src/styles/quickcharts.css')
+    expect(Object.keys(STYLE_SOURCES)).toContain('/src/styles/quickcharts.css')
     // Every chrome surface keeps a recipe file, and each is judged here by name.
     for (const surface of ['chrome', 'menu', 'topbar', 'timeframe', 'search', 'indicators', 'layouts', 'settings', 'bottombar', 'status', 'replay', 'toasts']) {
-      expect(Object.keys(STYLE_SOURCES)).toContain(`/packages/chart/src/styles/components/${surface}.css`)
+      expect(Object.keys(STYLE_SOURCES)).toContain(`/src/styles/components/${surface}.css`)
     }
-    expect(STYLE_SOURCES['/packages/chart/src/styles/quickcharts.css']!.length).toBeGreaterThan(1000)
+    expect(STYLE_SOURCES['/src/styles/quickcharts.css']!.length).toBeGreaterThan(1000)
   })
 
   it('writes no color literal outside the palettes and the documented series defaults', () => {
     const exempt = new Set([PALETTES, ...SERIES_DEFAULTS])
-    const others = Object.fromEntries(Object.entries(THEME_SOURCES).filter(([file]) => !exempt.has(file)))
+    const others = Object.fromEntries(
+      Object.entries(THEME_SOURCES).filter(([file]) => !exempt.has(file) && !file.startsWith(DRAWING_DEFAULTS)),
+    )
     expect(scanFiles(others, COLOR_LITERAL).map(offenderText)).toEqual([])
   })
 

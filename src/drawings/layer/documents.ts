@@ -15,7 +15,7 @@
 // Writes are debounced onto idle time (an image-bearing document stringifies megabytes, never
 // inside a pointer gesture) and flushed on pagehide and destroy so a scheduled write survives the
 // tab closing under it.
-import type { SerializedDrawing } from '@trdrs/chart-drawings'
+import type { SerializedDrawing } from '../../internal/drawings/index'
 import type { DrawingEntry, DrawingResourceContext, DrawingsBody } from '../document'
 import { DRAWING_CONTEXT_VERSION, drawingBuried, emptyDrawingDocument, liveDrawingEntries, mergeDrawingDocuments, parseDrawingDocument, reviseDrawingDocument } from '../document'
 import type { DrawingsMeta, ResourceRef, ResourceStore } from '../../resources'

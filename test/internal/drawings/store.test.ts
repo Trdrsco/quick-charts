@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import type { Time } from 'lightweight-charts'
-import { parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from '../src/store'
-import { toolRegistry } from '../src/registry'
-import type { Anchor, SerializedDrawing } from '../src/core/types'
+import { parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from '../../../src/internal/drawings/store'
+import { toolRegistry } from '../../../src/internal/drawings/registry'
+import type { Anchor, SerializedDrawing } from '../../../src/internal/drawings/core/types'
 
 // The store codec is the cross-surface persistence contract (app panel ⇄ widget host) — its
 // round-trip and its tolerance are what keep a saved store loadable across hosts and versions.

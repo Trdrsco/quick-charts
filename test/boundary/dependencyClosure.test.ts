@@ -1,87 +1,53 @@
 // The dependency boundary:
-// the free chart's tarball may not depend, directly or through another organ, on broker,
-// account-manager, chart-engine, engine-client, engine-wire, i18n, ui, watchlist, news,
-// trading-core, or app code.
+// the free chart's tarball may not depend, directly or through anything else, on a package a reader
+// cannot install. What a reader receives is one artifact and one peer, and this fixture reads the
+// manifest to say so.
 //
-// Two layers, kept apart on purpose. The AS-BUILT pins say exactly what the manifest and the
-// lockfile closure hold today, so a change is a conscious event and the target blocks cannot rot
-// against a tree that moved. The TARGET blocks are the gate itself, written in full. Nothing here
-// fakes a pass.
+// Two layers, kept apart on purpose. The AS-BUILT pins say exactly what the manifest holds today,
+// so a change is a conscious event and the target blocks cannot rot against a tree that moved. The
+// TARGET blocks are the gate itself, written in full. Nothing here fakes a pass.
 import { describe, expect, it } from 'vitest'
-import { directDependencies, shippedClosure } from './scan'
+import { chartManifest, directDependencies } from './scan'
 
-/** Names the free chart may never carry in its shipped closure. App code has no package name a
- *  chart could depend on by accident; the workspace-link walk would surface it as a link outside
- *  `packages/`, and the two app names are listed so a manifest typo cannot hide one. */
-const FORBIDDEN: readonly string[] = [
-  '@trdrs/account-manager',
-  '@trdrs/broker',
-  '@trdrs/chart-engine',
-  '@trdrs/engine-client',
-  '@trdrs/engine-wire',
-  '@trdrs/i18n',
-  '@trdrs/ui',
-  '@trdrs/watchlist',
-  '@trdrs/news',
-  '@trdrs/trading-core',
-  '@trdrs/community',
-  '@trdrs/library',
-  '@trdrs/order-ticket',
-  '@trdrs/web',
-  '@trdrs/mobile',
-]
+/** Names the free chart may never carry, in any dependency block. */
+const FORBIDDEN = /@trdrs\//
 
 describe('the direct dependency set, as built', () => {
   it('pins the manifest edges by name', () => {
-    // The two internal seams are devDependencies on purpose: tsup bundles them into the artifact
-    // (tsup.config.ts `noExternal`), so a consumer installs quickcharts and nothing else of ours.
+    // The drawing and indicator seams are source modules under src/internal, compiled into the
+    // artifact like any other source, so neither is a dependency of any kind.
     expect(directDependencies()).toEqual({
       dependencies: [],
       peerDependencies: ['lightweight-charts'],
-      devDependencies: ['@trdrs/chart-drawings', '@trdrs/chart-indicators', 'lightweight-charts', 'tsup', 'typescript'],
+      devDependencies: ['fancy-canvas', 'happy-dom', 'lightweight-charts', 'tsup', 'typescript', 'vitest'],
       optionalDependencies: [],
     })
   })
 
-  it('pins the shipped lockfile closure, workspace links walked: nothing', () => {
-    expect(shippedClosure('packages/chart')).toEqual([])
-  })
-
-  it('names the forbidden edges present today, so the target blocks track a real removal', () => {
-    const present = shippedClosure('packages/chart')
-      .map((e) => e.id)
-      .filter((id) => FORBIDDEN.includes(id))
-    expect(present).toEqual([])
+  it('installs nothing but the one peer: no runtime dependency at all', () => {
+    const m = chartManifest()
+    expect(m.dependencies ?? {}).toEqual({})
+    expect(m.optionalDependencies ?? {}).toEqual({})
+    expect(Object.keys(m.peerDependencies ?? {})).toEqual(['lightweight-charts'])
   })
 })
 
-// TARGET. Each block is the acceptance gate in full; a removal that lands here moves the matching
-// as-built pin above with it.
+// TARGET. Each block is the acceptance gate in full.
 describe('the free chart dependency boundary (target)', () => {
-  // Trade lines, execution marks, the chart order draft, gesture planning and the account
-  // panel live in packages/chart-trading; the manifest carries neither @trdrs/broker nor
-  // @trdrs/account-manager.
-  it('carries no broker or account-manager edge, direct or through another organ', () => {
-    const ids = shippedClosure('packages/chart').map((e) => e.id)
-    expect(ids.filter((id) => id === '@trdrs/broker' || id === '@trdrs/account-manager')).toEqual([])
-    expect(directDependencies().dependencies).not.toContain('@trdrs/broker')
-    expect(directDependencies().dependencies).not.toContain('@trdrs/account-manager')
+  it('names no private package in any dependency block', () => {
+    const m = chartManifest()
+    const every = [
+      ...Object.keys(m.dependencies ?? {}),
+      ...Object.keys(m.peerDependencies ?? {}),
+      ...Object.keys(m.devDependencies ?? {}),
+      ...Object.keys(m.optionalDependencies ?? {}),
+    ]
+    expect(every.filter((name) => FORBIDDEN.test(name))).toEqual([])
   })
 
-  // The chart-owned localization runtime: the packed artifact bundles its own runtime and
-  // chart catalogs; @trdrs/i18n is private and absent from the manifest.
-  it('carries no @trdrs/i18n edge', () => {
-    expect(shippedClosure('packages/chart').map((e) => e.id)).not.toContain('@trdrs/i18n')
-    expect(directDependencies().dependencies).not.toContain('@trdrs/i18n')
-  })
-
-  // The whole-set gate, live since both removals above landed: no private workspace package of any
-  // kind reaches the tarball, and the closure holds no forbidden name.
-  it('ships no private workspace package and no forbidden name', () => {
-    const closure = shippedClosure('packages/chart')
-    expect(closure.map((e) => e.id).filter((id) => FORBIDDEN.includes(id))).toEqual([])
-    // The drawing and indicator seams are bundled into the artifact, so no workspace link of any
-    // kind is a shipped edge.
-    expect(closure.filter((e) => e.workspace).map((e) => e.id)).toEqual([])
+  it('ships one artifact: nothing a reader installs carries a scope of ours', () => {
+    const m = chartManifest()
+    expect(m.name).toBe('quickcharts')
+    expect(m.name.startsWith('@')).toBe(false)
   })
 })

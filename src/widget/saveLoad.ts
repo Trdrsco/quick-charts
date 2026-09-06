@@ -5,7 +5,7 @@
 // the revision it was opened at, or creates when nothing is open or the host asks for a copy; a
 // refusal comes back as a typed outcome with the catalog's copy for the case, and the chart never
 // writes over a newer revision.
-import type { SerializedDrawing } from '@trdrs/chart-drawings'
+import type { SerializedDrawing } from '../internal/drawings/index'
 import type { ChartBody, ChartMeta, ChartSaveLoadAdapter } from '../resources'
 import { openResourceController, type OpenResource, type ResourceLoadOutcome, type ResourceRemoveOutcome, type ResourceSaveOutcome } from '../openResource'
 import type { ChartI18n } from '../i18n'

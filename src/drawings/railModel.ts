@@ -8,7 +8,7 @@
 //
 // Everything is catalog KEYS, never words: the toolbar is built once from the registry while the
 // headings it shows follow the interface language.
-import type { ToolCategory } from '@trdrs/chart-drawings'
+import type { ToolCategory } from '../internal/drawings/index'
 import type { ChartMessageKey } from '../i18n/en'
 import { drawingTools, type DrawingTool } from './tools'
 

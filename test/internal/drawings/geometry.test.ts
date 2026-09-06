@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { angleOf, distanceToLine, distanceToSegment, extendSegment, midpoint } from '../src/core/geometry'
+import { angleOf, distanceToLine, distanceToSegment, extendSegment, midpoint } from '../../../src/internal/drawings/core/geometry'
 
 describe('distance helpers', () => {
   it('segment distance clamps to the endpoints', () => {

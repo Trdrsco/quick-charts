@@ -8,7 +8,7 @@
 // one of the 90 tool classes. None of them are here, and the second test says so by name.
 import { describe, expect, it } from 'vitest'
 import * as api from '../src/drawings/index'
-import * as seam from '@trdrs/chart-drawings'
+import * as seam from '../src/internal/drawings/index'
 
 const SURFACE: Record<string, string> = {
   // The catalog, as a read-only view. `drawingTools` replaces the seam's mutable registry: a
