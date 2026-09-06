@@ -6,5 +6,8 @@
  *  package's type environment. Vitest runs on node, where they are real. */
 declare module 'node:fs' {
   export function readFileSync(path: string, encoding: 'utf8'): string
+  /** The candidate fixture reads the tarball as bytes; an explicit export here hides the one the
+   *  wider environment re-exports, so the byte form is declared beside the text form. */
+  export function readFileSync(path: string): Buffer
   export function existsSync(path: string): boolean
 }
