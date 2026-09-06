@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "quickcharts": "file:../.artifacts/quickcharts-0.0.0-staging.tgz",
+    "quickcharts": "file:../.artifacts/quickcharts.tgz",
     "lightweight-charts": "^5.0.0"
   },
   "devDependencies": {
