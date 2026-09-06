@@ -395,7 +395,8 @@ gives you:
 
 - `404` is `not-found` from a write, and `null` from a load.
 - `409` is `conflict`, and its body states the ref that stands now: `{ "error": "conflict",
-  "current": { "id", "revision" } }`.
+  "current": { "id", "revision" } }`. A create quotes no revision, so it can conflict only on
+  identity: a drawings context that already holds a document, or a name a sibling already has.
 - `428` states that a conditional route was reached with no `If-Match`. The adapter always sends
   one, so a `428` means the request did not arrive as it was sent.
 
