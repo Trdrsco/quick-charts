@@ -90,12 +90,59 @@ describe('the packed drawings subpath', () => {
     const shared = chunks(js).filter((c) => chunks(rootJs).includes(c))
     expect(chunks(js).length, 'the subpath reaches the seam through a chunk').toBeGreaterThan(0)
     expect(shared.length, 'a chunk both entries import').toBeGreaterThan(0)
-    // The registry is CONSTRUCTED once, in that chunk, and neither entry carries a second copy.
+    // The registry is CONSTRUCTED once, in one of those shared chunks, and neither entry carries a
+    // second copy.
     for (const [name, text] of [
       ['dist/drawings.js', js],
       ['dist/index.js', rootJs],
     ] as const)
       expect(text.includes('new ToolRegistry('), `${name} inlines its own registry`).toBe(false)
-    for (const chunk of shared) expect(packedText(chunk), chunk).toMatch(/new ToolRegistry\(/)
+    const holders = shared.filter((chunk) => /new ToolRegistry\(/.test(packedText(chunk) ?? ''))
+    expect(holders.length, `the registry is built in exactly one shared chunk, found in ${JSON.stringify(holders)}`).toBe(1)
+  })
+})
+
+describe('the packed REST adapter subpath', () => {
+  const packed = packedFileList()
+
+  it('ships the files its export map points a consumer at, and its schema beside them', () => {
+    if (packedText('dist/adapters/rest.js') === null) return // no build to read
+    expect(packed).toContain('dist/adapters/rest.js')
+    expect(packed).toContain('dist/adapters/rest.d.ts')
+    expect(packed).toContain('dist/rest-openapi.json')
+  })
+
+  it('imports nothing bare, and carries no @trdrs name', () => {
+    const js = packedText('dist/adapters/rest.js')
+    const dts = packedText('dist/adapters/rest.d.ts')
+    if (js === null || dts === null) return
+    expect(specifiers(js)).toEqual([])
+    expect(js).not.toMatch(/@trdrs\//)
+    expect(specifiers(dts).filter((s) => s.startsWith('@trdrs/'))).toEqual([])
+  })
+
+  it('is absent from the root entry and every chunk the root reaches', () => {
+    // The adapter is optional because a consumer who never imports it ships none of it, and a
+    // chart that never mounts it makes no request. That is only true while nothing the root reaches
+    // pulls it in, so the built files say so rather than the intention.
+    const rootJs = packedText('dist/index.js')
+    if (rootJs === null) return
+    const reachable = ['dist/index.js', ...chunks(rootJs)]
+    for (const file of reachable) {
+      const text = packedText(file)
+      expect(text, file).not.toBeNull()
+      expect(text!.includes('createRestSaveLoadAdapter'), `${file} carries the REST adapter`).toBe(false)
+      expect(text!.includes('RestSaveLoadError'), `${file} carries the REST adapter`).toBe(false)
+    }
+  })
+
+  it('carries the wire contract it implements, and none of the schema rendering', () => {
+    // The OpenAPI document is a build artifact, not runtime behavior: a consumer who imports the
+    // adapter downloads the transport, not the schema that describes it.
+    const js = packedText('dist/adapters/rest.js')
+    if (js === null) return
+    expect(js).toMatch(/if-match/)
+    expect(js.includes('openapi')).toBe(false)
+    expect(js.includes('#/components/schemas/')).toBe(false)
   })
 })

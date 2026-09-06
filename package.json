@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./drawings": "./src/drawings/index.ts",
+    "./adapters/rest": "./src/adapters/rest/index.ts",
     "./styles.css": "./dist/quickcharts.css"
   },
   "files": [
@@ -35,6 +36,10 @@
         "types": "./dist/drawings.d.ts",
         "import": "./dist/drawings.js"
       },
+      "./adapters/rest": {
+        "types": "./dist/adapters/rest.d.ts",
+        "import": "./dist/adapters/rest.js"
+      },
       "./styles.css": "./dist/quickcharts.css"
     }
   },
@@ -43,7 +48,8 @@
     "build:theme": "node scripts/build-theme.mjs",
     "build:manifest": "node scripts/build-feature-manifest.mjs",
     "build:guest": "node scripts/build-guest.mjs",
-    "postbuild": "node scripts/build-theme.mjs && node scripts/build-feature-manifest.mjs && node scripts/build-guest.mjs",
+    "build:rest-openapi": "node scripts/build-rest-openapi.mjs",
+    "postbuild": "node scripts/build-theme.mjs && node scripts/build-feature-manifest.mjs && node scripts/build-guest.mjs && node scripts/build-rest-openapi.mjs",
     "test": "vitest run --root ../.. packages/chart/test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
