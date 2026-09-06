@@ -1,11 +1,10 @@
 // THE PUBLIC REST WIRE CONTRACT for saved chart resources: the paths, the payloads and the
 // conditional-write rule a service implements so that `createRestSaveLoadAdapter` can drive it.
 //
-// This module is the contract's one source. The types below are what a service's handlers return,
-// the path helpers are what the adapter asks for, and `restOpenApiDocument` renders the same facts
-// as an OpenAPI document, so the schema a service author reads and the requests the adapter makes
-// can never drift apart: `scripts/build-rest-openapi.mjs` emits it into `dist/rest-openapi.json`
-// during the build, and a test compares the committed artifact with what this module produces.
+// This module is the contract's one source. The types below are what a service's handlers return
+// and what `./index` reads back; the path helpers are what it asks for. `./openapi` renders the
+// same facts as an OpenAPI document, which the build writes to `dist/rest-openapi.json`, so the
+// schema a service author reads and the requests the adapter makes cannot drift apart.
 //
 // Four rules the contract enforces:
 //   - Every path is RELATIVE to a base URL the host owns. Nothing here names an origin, a service,
@@ -21,8 +20,8 @@
 //     without parsing it, so a chart's formats stay the chart's own.
 import type { DrawingResourceContext } from '../../drawings/document'
 
-/** The contract's own version. A later shape arrives as a later number rather than as a widened
- *  old one; the adapter states it, and the OpenAPI document carries it. */
+/** The contract's own version, which the published OpenAPI document carries as its `info.version`.
+ *  A later shape arrives as a later number rather than as a widened old one. */
 export const REST_WIRE_VERSION = 1
 
 /** The three template collections. */
