@@ -49,7 +49,8 @@
     "build:manifest": "node scripts/build-feature-manifest.mjs",
     "build:guest": "node scripts/build-guest.mjs",
     "build:rest-openapi": "node scripts/build-rest-openapi.mjs",
-    "postbuild": "node scripts/build-theme.mjs && node scripts/build-feature-manifest.mjs && node scripts/build-guest.mjs && node scripts/build-rest-openapi.mjs",
+    "build:notices": "node scripts/build-third-party-notices.mjs",
+    "postbuild": "node scripts/build-theme.mjs && node scripts/build-feature-manifest.mjs && node scripts/build-guest.mjs && node scripts/build-rest-openapi.mjs && node scripts/build-third-party-notices.mjs",
     "test": "vitest run --root ../.. packages/chart/test",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
