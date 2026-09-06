@@ -2,13 +2,13 @@
 // exclusions may not survive in the free chart's source.
 //
 // Same shape as the dependency fixture. AS-BUILT pins what is true today: no app source path is
-// imported, no private organ beyond the four the manifest names, and the exclusions that are
+// imported, no private organ beyond the two the manifest names, and the exclusions that are
 // already absent stay absent. PRESENT pins the target words that ARE here today, so the target
-// list cannot rot against a source that moved. TARGET carries the gate itself, one block per group of
-// words; a group whose removal has not landed is skipped, and landing it deletes the `.skip` and
-// moves its words out of PRESENT.
+// list cannot rot against a source that moved; every removal has landed, so it is empty. TARGET
+// carries the gate itself, one block per group of words; a group whose removal has not landed is
+// skipped, and landing it deletes the `.skip` and moves its words out of PRESENT.
 import { describe, expect, it } from 'vitest'
-import { APP_CHART_SOURCES, CHART_SOURCES, offenderText, scanFiles } from './scan'
+import { APP_SOURCES, CHART_SOURCES, offenderText, scanFiles } from './scan'
 
 /** Package sources without the locale catalogs: a translated string is a message, not a contract,
  *  and the catalogs are held to their own contract in i18n.test.ts. */
@@ -19,12 +19,12 @@ const lines = (files: Record<string, string>, pattern: RegExp): string[] => scan
 interface Term {
   term: string
   pattern: RegExp
-  /** Where the word lives today and where it is judged: the package, or the app chart tree. */
+  /** Where the word is judged: the package, or the first-party web app around the package. */
   scope: 'package' | 'app'
 }
 
 /** The target vocabulary, grouped by the removal that forbids it. Every pattern is judged against
- *  package code (or the app chart tree for the two toolbar words), never the catalogs. */
+ *  package code (or the app's sources for the two toolbar words), never the catalogs. */
 const TARGET: Record<'trading' | 'symbology' | 'theme' | 'tradesHideMode' | 'appHideMode', { reason: string; terms: Term[] }> = {
   // The datafeed narrowing and symbology. Landed: SymbolInfo owns the price-format facts and the
   // quote board and the onQuote callback are gone from the free datafeed; the words stay listed so
@@ -71,21 +71,22 @@ const TARGET: Record<'trading' | 'symbology' | 'theme' | 'tradesHideMode' | 'app
     reason: 'the trades hide mode and its position/order override writes are gone from the rail',
     terms: [{ term: "'trades' hide mode", pattern: /'trades'/, scope: 'app' }],
   },
-  // App convergence: the app stops declaring a hide mode of its own and reads the package
-  // model instead, when it mounts the package toolbar.
+  // App convergence. Landed: the app mounts the package toolbar and declares no hide mode of its
+  // own; the word stays listed so a return is caught.
   appHideMode: {
     reason: 'the hide mode is the package model, not an app type',
     terms: [{ term: 'HideMode', pattern: /\bHideMode\b/, scope: 'app' }],
   },
 }
 
-const sourcesFor = (scope: Term['scope']): Record<string, string> => (scope === 'package' ? CODE : APP_CHART_SOURCES)
+const sourcesFor = (scope: Term['scope']): Record<string, string> => (scope === 'package' ? CODE : APP_SOURCES)
 
 describe('the forbidden vocabulary, as built', () => {
-  it('has package and app sources to read', () => {
+  it('has package and app sources to read, and the app has no chart tree of its own', () => {
     expect(Object.keys(CODE).length).toBeGreaterThan(30)
-    expect(Object.keys(APP_CHART_SOURCES).length).toBeGreaterThan(20)
-    expect(APP_CHART_SOURCES['/apps/web/src/chart/DrawingToolbar.tsx']).toBeTypeOf('string')
+    expect(Object.keys(APP_SOURCES).length).toBeGreaterThan(100)
+    expect(APP_SOURCES['/apps/web/src/integrations/quickcharts/mount.tsx']).toBeTypeOf('string')
+    expect(Object.keys(APP_SOURCES).filter((f) => f.startsWith('/apps/web/src/chart/') || f.startsWith('/apps/web/src/search/'))).toEqual([])
   })
 
   it('imports no app source path from packages/chart/src', () => {
@@ -112,14 +113,14 @@ describe('the forbidden vocabulary, as built', () => {
       .flatMap((g) => g.terms)
       .filter((t) => lines(sourcesFor(t.scope), t.pattern).length > 0)
       .map((t) => t.term)
-    expect(present).toEqual(['HideMode'])
+    expect(present).toEqual([])
   })
 })
 
 // TARGET. One block per group, the whole word list in one assertion so the log names every
 // surviving line. Delete the group from LANDED_LATER when its removal lands; remove the words from
-// the PRESENT pin. A landed group's block runs.
-const LANDED_LATER = new Set<keyof typeof TARGET>(['appHideMode'])
+// the PRESENT pin. Every group has landed, so every block runs.
+const LANDED_LATER = new Set<keyof typeof TARGET>()
 describe('the forbidden vocabulary (target)', () => {
   for (const [group, { reason, terms }] of Object.entries(TARGET) as [keyof typeof TARGET, (typeof TARGET)[keyof typeof TARGET]][]) {
     const block = LANDED_LATER.has(group) ? it.skip : it

@@ -13,7 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { createPriceFormatter, type NumericPunctuation, type PriceFormat } from '../../src/index'
 import vectors from '../fixtures/quoteVectors.json'
 
-const APP_SOURCES = import.meta.glob(['/apps/web/src/widgets/watchlistFormat.ts', '/apps/web/src/lib/priceFormat.ts'], { query: '?raw', import: 'default', eager: true })
+const APP_SOURCES = import.meta.glob(['/apps/web/src/integrations/quickcharts/watchlistFormatter.ts', '/apps/web/src/integrations/quickcharts/priceFormat.ts'], { query: '?raw', import: 'default', eager: true })
 const WATCHLIST_FILES = import.meta.glob(['/packages/watchlist/src/**/*.ts', '/packages/watchlist/test/**/*.ts', '/packages/watchlist/package.json', '/packages/watchlist/README.md'], {
   query: '?raw',
   import: 'default',
@@ -129,7 +129,7 @@ describe('the Watchlist port over the same symbol', () => {
   })
 
   it('is how the first-party host builds its port: Last and Chg through createPriceFormatter, Chg% a percent, Volume compacted', () => {
-    const source = APP_SOURCES['/apps/web/src/widgets/watchlistFormat.ts']
+    const source = APP_SOURCES['/apps/web/src/integrations/quickcharts/watchlistFormatter.ts']
     expect(source).toBeTypeOf('string')
     expect(source).toContain("import { createPriceFormatter, type PriceFormat, type PriceFormatter } from 'quickcharts'")
     expect(source).toContain('last: (symbol, value) => priceOf(symbol).format(value)')
@@ -137,7 +137,7 @@ describe('the Watchlist port over the same symbol', () => {
     expect(source).toMatch(/changePct: \(_symbol, value\) =>\s*deps\.number\(value \/ 100, \{ style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'always' \}\)/)
     expect(source).toContain('volume: (_symbol, value) => formatVolume(value, deps.number)')
     // The unresolved policy is a declared format, not a guess from the price.
-    expect(APP_SOURCES['/apps/web/src/lib/priceFormat.ts']).toContain('export const UNRESOLVED_PRICE_FORMAT: PriceFormat = { pricescale: 100, minmov: 1 }')
+    expect(APP_SOURCES['/apps/web/src/integrations/quickcharts/priceFormat.ts']).toContain('export const UNRESOLVED_PRICE_FORMAT: PriceFormat = { pricescale: 100, minmov: 1 }')
   })
 })
 
