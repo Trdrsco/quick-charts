@@ -36,8 +36,9 @@ const CHART_ROOT_FILES = import.meta.glob(['/packages/chart/*.md', '/packages/ch
  *  vitest does not process CSS and `packedText` reads it from disk instead. */
 const CHART_DIST = import.meta.glob('/packages/chart/dist/**/*.{js,ts,json}', { query: '?raw', import: 'default', eager: true })
 
-/** The app's chart sources, for the vocabulary that lives in the app toolbar rather than the package. */
-export const APP_CHART_SOURCES = import.meta.glob('/apps/web/src/chart/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true })
+/** The first-party web app's sources, for the vocabulary that must stay out of the app as well as
+ *  the package now that the app mounts the package composition and owns no chart tree of its own. */
+export const APP_SOURCES = import.meta.glob('/apps/web/src/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true })
 
 /** Every workspace package manifest, keyed by root-relative path. */
 const WORKSPACE_MANIFESTS = import.meta.glob('/packages/*/package.json', { query: '?raw', import: 'default', eager: true })
