@@ -2,8 +2,31 @@
   "name": "quickcharts",
   "version": "0.0.0-staging",
   "description": "Quick Charts: a datafeed-driven charting library with drawings, indicators, layouts and replay over host-supplied data and storage ports.",
+  "keywords": [
+    "charts",
+    "charting",
+    "financial-charts",
+    "candlestick",
+    "trading-chart",
+    "datafeed",
+    "drawings",
+    "indicators",
+    "lightweight-charts",
+    "typescript"
+  ],
+  "homepage": "https://github.com/Trdrsco/quick-charts#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Trdrsco/quick-charts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Trdrsco/quick-charts/issues"
+  },
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./drawings": "./src/drawings/index.ts",
@@ -24,7 +47,8 @@
     "src/styles/components/*.css"
   ],
   "publishConfig": {
-    "access": "restricted",
+    "access": "public",
+    "provenance": true,
     "module": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
