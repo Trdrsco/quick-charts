@@ -263,7 +263,15 @@ if (isMain) {
     }
     console.log(`quickcharts: ${NOTICES_FILE} matches the rendering`)
   } else {
-    writeFileSync(target, rendered)
-    console.log(`quickcharts: wrote ./${NOTICES_FILE}`)
+    // The rendering is LF; the checkout may keep the file CRLF. Writing in the file's own line
+    // endings, and only when the content moved, keeps a build from dirtying the tree.
+    const existing = existsSync(target) ? readFileSync(target, 'utf8') : ''
+    const crlf = existing.includes('\r\n')
+    const next = crlf ? rendered.replace(/\n/g, '\r\n') : rendered
+    if (existing === next) console.log(`quickcharts: ./${NOTICES_FILE} is current`)
+    else {
+      writeFileSync(target, next)
+      console.log(`quickcharts: wrote ./${NOTICES_FILE}`)
+    }
   }
 }
