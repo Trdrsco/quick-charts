@@ -50,7 +50,7 @@ const compilerOptions: ts.CompilerOptions = {
   noUnusedLocals: false,
   noUnusedParameters: false,
   baseUrl: pkgRoot,
-  paths: { quickcharts: ['src/index.ts'], 'quickcharts/drawings': ['src/drawings/index.ts'] },
+  paths: { quickcharts: ['src/index.ts'], 'quickcharts/drawings': ['src/drawings/index.ts'], 'quickcharts/adapters/rest': ['src/adapters/rest/index.ts'] },
 }
 
 const VIRTUAL = `${pkgRoot}/test/__readme_block__.ts`

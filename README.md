@@ -262,14 +262,26 @@ createPriceFormatter(udfPriceFormat(raw)).format(110.515625) // "110'16'2"
 info?.dataStatus // 'streaming'
 ```
 
-## Saved resources
+## Save and load
 
-Saved charts, layouts, symbol-scoped drawings, and templates are shared, mutable state. They use one
-revisioned contract, so a second tab or a slow save cannot quietly destroy newer work.
+Quick Charts persists two different kinds of thing, and the difference decides where each one lives.
 
-Every read returns a `ResourceRef`: a stable id plus an opaque revision token. Every write quotes the
-revision it believes it is replacing. A write against a revision the store has moved past returns a
-typed `conflict` carrying the current ref, which you resolve rather than overwrite.
+Saved charts, layouts, drawing documents and templates are **entities**: a user names them, opens
+them in two tabs, and can lose them. They have identity and versions, and they live on the
+save/load adapter you supply. Viewer preferences (the last symbol and timeframe, the scale mode, the
+replay speed) are **flat settings**: they need no identity, and they live on the small `ChartStorage`
+port beside it.
+
+The chart never writes on its own. It tells you when a save would be worth making, through the
+`saveNeeded` event, and it runs a write only when a user asks for one through the built-in UI or
+when you call a save method yourself.
+
+### What a saved entity carries
+
+Every family works the same way. A read returns a `ResourceRef`: a stable id plus an opaque revision
+token. A write quotes the revision it believes it is replacing. A write against a revision the store
+has moved past returns a typed `conflict` carrying the current ref, which you resolve rather than
+overwrite.
 
 ```ts
 import { memorySaveLoadAdapter } from 'quickcharts'
@@ -285,18 +297,170 @@ if (created.kind === 'ok') {
 }
 ```
 
-The widget drives the charts family for you. `createChart({ saveLoad })` takes your adapter, and
-`widget.saveLoad` holds the OPEN saved chart: `save(name)` updates it at the revision it was
-opened at (or creates, when nothing is open or you pass `asNew`), `load(id)` applies a saved
-chart and opens it, `remove()` deletes the open one at its held revision, and `current()` reports
-the ref and name on screen. A refusal is a typed outcome carrying a sentence from the chart
-catalog, so you show one line and offer a reload; the widget never writes over a newer revision.
-A layout does the same for itself through `widget.layout.saveLoad` over the layouts family.
+A chart's, a layout's and a template's `content` is opaque to your store: pass it through, and the
+chart's formats stay the chart's own. A drawing document is the one structured body, because two
+surfaces showing the same drawings have to merge rather than overwrite.
 
-Drawings have two storage modes, and you pick one when you construct the widget. **Combined** is
-the default: the drawings ride the chart's own saved content, so saving a chart or a layout saves
-the drawings on it. **Separate** keeps them out of that content entirely and stores them as their
-own documents in the adapter's drawings family, one document per drawing-resource context:
+Treat the revision as opaque. Mint it however your backend prefers, as an ETag, a counter or a
+content hash, and compare it only for equality.
+
+### The built-in Save/Load UI
+
+With the `layouts` feature on, the top bar carries the open layout's name, a marker for unsaved
+changes, and a menu with Save, an Autosave switch, Make a copy, Rename, Create new layout, the
+layouts used most recently, and Open layout: a dialog with search, and delete behind a confirmation.
+
+Every row runs a widget command (`widget.layout.save`, `rename`, `load`, `delete`, `detach`,
+`autosave`), so an access policy that refuses layout writes disables the rows and refuses the same
+verb from every other door. The menu hears what a verb did through the widget's `layout` event and
+what it refused through `saveConflict`.
+
+```ts
+import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
+
+declare const uiContainer: HTMLElement
+const uiWidget = createChart({
+  container: uiContainer,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  saveLoad: memorySaveLoadAdapter(),
+})
+uiWidget.on('saveNeeded', () => note('the viewer changed something a save would keep'))
+uiWidget.on('layout', (event) => note(`${event.kind} ${event.name ?? ''}`))
+uiWidget.commands.execute('widget.layout.save', { name: 'Desk', asNew: true })
+```
+
+### The transport-neutral adapter
+
+`ChartSaveLoadAdapter` is four families over one contract. Each family is a `ResourceStore` with the
+same five calls, and every call takes an `AbortSignal` so abandoned work stops cleanly:
+
+```ts
+import { emptyDrawingDocument, memorySaveLoadAdapter, type ResourceRef } from 'quickcharts'
+
+const adapter = memorySaveLoadAdapter()
+const controller = new AbortController()
+
+await adapter.layouts.list(controller.signal)
+await adapter.templates('study').list()
+const context = { version: 1, kind: 'symbol-global', symbol: 'ESZ2026' } as const
+await adapter.drawings(context).create(emptyDrawingDocument(context))
+
+const ghost: ResourceRef = { id: 'gone', revision: 'rev-1' }
+const outcome = await adapter.charts.remove(ghost)
+outcome.kind // 'not-found'
+```
+
+An aborted call rejects with an error named `AbortError` and changes nothing.
+
+`memorySaveLoadAdapter` persists nothing. Use it for tests, server rendering and an intentionally
+ephemeral embed, and implement the same contract over your own backend for durable storage.
+
+### The REST adapter and its wire contract
+
+If your saved resources live behind HTTP, `quickcharts/adapters/rest` implements the same contract
+over a published wire contract, and you implement the service.
+
+```ts
+import { createRestSaveLoadAdapter } from 'quickcharts/adapters/rest'
+
+const restSaves = createRestSaveLoadAdapter({
+  baseUrl: 'https://api.example.com/chart-storage',
+  // Your transport. `fetch` fits as it is; wrap it to add what your product needs.
+  request: (url, init) => fetch(url, { ...init, credentials: 'include' }),
+})
+await restSaves.layouts.list()
+```
+
+You supply two values and nothing else. `baseUrl` is where you mounted the routes, and `request` is
+how a request is made. Authorization, cookies, CORS, retries, timeouts and tenancy stay in your
+request function, because their consequences are yours: the adapter holds no credential, no token
+store, no header policy and no default origin, and it makes no request until you call a verb.
+
+Your service serves four collections under that base URL. Every path below is relative to it.
+
+| Path | Verbs | Body |
+| --- | --- | --- |
+| `/charts` | `GET` lists, `POST` creates | `{ name, symbol, timeframe, content }` |
+| `/charts/{id}` | `GET` reads, `PUT` replaces, `DELETE` removes | the same |
+| `/layouts`, `/layouts/{id}` | the same five | `{ name, content }` |
+| `/drawings?symbol=&context=`, `/drawings/{id}` | the same five | `{ content }` |
+| `/templates/{kind}`, `/templates/{kind}/{id}` | the same five | `{ name, tool?, content }` |
+
+A listing answers `{ "items": [...] }` of metadata. A read answers `{ "id", "revision", "body" }`. A
+create, update or delete answers `{ "id", "revision", "meta"? }`. Every update and delete sends the
+revision it is replacing in `If-Match`, and your service must compare it before it writes.
+
+Three statuses carry meaning, and the adapter turns each into the same outcome the in-memory adapter
+gives you:
+
+- `404` is `not-found` from a write, and `null` from a load.
+- `409` is `conflict`, and its body states the ref that stands now: `{ "error": "conflict",
+  "current": { "id", "revision" } }`.
+- `428` states that a conditional route was reached with no `If-Match`. The adapter always sends
+  one, so a `428` means the request did not arrive as it was sent.
+
+Any other status, and any body that is not the shape the route promises, raises a
+`RestSaveLoadError` carrying the status, the method and the URL. Decide what it means: an outage is
+not an empty listing, and answering one as an empty listing is a lie the next save acts on.
+
+```ts
+import { createRestSaveLoadAdapter, RestSaveLoadError } from 'quickcharts/adapters/rest'
+
+const saves = createRestSaveLoadAdapter({ baseUrl: 'https://api.example.com/chart-storage', request: fetch })
+try {
+  const rows = await saves.layouts.list()
+  note(`${rows.length} saved layouts`)
+} catch (e) {
+  if (e instanceof RestSaveLoadError) note(`${e.method} ${e.url} answered ${e.status}`)
+  else throw e
+}
+```
+
+The drawings collection is scoped by two query parameters: `symbol`, and an opaque `context` token
+for the drawing-resource context. Store rows under the pair and return them under the pair; the
+token is not for reading.
+
+The full schema ships with the package as `dist/rest-openapi.json`, an OpenAPI document generated
+from the same contract the adapter implements. Read it, lint it, or generate a server stub from it.
+
+The adapter is a separate entrypoint, so a project that never imports it carries none of it.
+
+### Charts, layouts and their low-level APIs
+
+The widget drives the charts family for you. `createChart({ saveLoad })` takes your adapter, and
+`chart.saveLoad` holds the open saved chart: `save(name)` updates it at the revision it was opened
+at (or creates, when nothing is open or you pass `asNew`), `load(id)` applies a saved chart and
+opens it, `remove()` deletes the open one at its held revision, `detach()` forgets the binding so
+the next save creates, and `current()` reports the ref and name on screen. `serialize()` hands you
+the same opaque content the save writes, and `restore(content)` applies one. A layout does the same
+for itself through `widget.layout.saveLoad` over the layouts family.
+
+```ts
+import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
+
+declare const container: HTMLElement
+const widget = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  saveLoad: memorySaveLoadAdapter(),
+})
+widget.on('saveConflict', (info) => console.warn(info.message))
+const saveLoad = widget.activeChart().saveLoad
+const saved = await saveLoad.save('Morning')
+if (saved.kind === 'conflict') console.warn(saved.message) // saved elsewhere since it was opened
+saveLoad.current()?.name // 'Morning'
+```
+
+A load that a later load supersedes rejects with `AbortError`, with no signal of your own involved,
+and only the later load lands. That is what keeps a slow answer for the chart a user has left from
+landing on the chart they are looking at.
+
+### Drawings: combined or separate
+
+Drawings have two storage modes, and you pick one when you construct the widget. **Combined** is the
+default: the drawings ride the chart's own saved content, so saving a chart or a layout saves the
+drawings on it. **Separate** keeps them out of that content entirely and stores them as their own
+documents in the adapter's drawings family, one document per drawing-resource context:
 
 ```ts
 import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
@@ -339,56 +503,20 @@ with charts after it, renumbers those tiles, and each of them then opens the doc
 now occupies. Choose `layout-shared` when the drawings belong to the layout rather than to one
 tile.
 
-```ts
-import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
+### Templates
 
-declare const container: HTMLElement
-const widget = createChart({
-  container,
-  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  saveLoad: memorySaveLoadAdapter(),
-})
-widget.on('saveConflict', (info) => console.warn(info.message))
-const saveLoad = widget.activeChart().saveLoad
-const saved = await saveLoad.save('Morning')
-if (saved.kind === 'conflict') console.warn(saved.message) // saved elsewhere since it was opened
-saveLoad.current()?.name // 'Morning'
-```
+`adapter.templates(kind)` is a store per kind: `'study'` for indicator settings, `'drawing'` for a
+drawing tool's look, and `'palette'` for chart appearance. A drawing template carries the `tool` it
+belongs to, because a trend-line template means nothing on a rectangle. Their content is opaque,
+like a chart's.
 
-Each family is a `ResourceStore` with the same five calls, and every call takes an `AbortSignal` so
-abandoned work stops cleanly:
+### User settings
 
-```ts
-import { emptyDrawingDocument, memorySaveLoadAdapter, type ResourceRef } from 'quickcharts'
-
-const adapter = memorySaveLoadAdapter()
-const controller = new AbortController()
-
-await adapter.layouts.list(controller.signal)
-await adapter.templates('study').list()
-const context = { version: 1, kind: 'symbol-global', symbol: 'ESZ2026' } as const
-await adapter.drawings(context).create(emptyDrawingDocument(context))
-
-const ghost: ResourceRef = { id: 'gone', revision: 'rev-1' }
-const outcome = await adapter.charts.remove(ghost)
-outcome.kind // 'not-found'
-```
-
-An aborted call rejects with an error named `AbortError` and changes nothing. A load superseded by a later load on the same chart or layout rejects the same way, with no signal of the host's own involved, and only the later load lands. Treat the revision as
-opaque: mint it however your backend prefers, as an ETag, a counter, or a content hash, and compare
-it only for equality.
-
-`memorySaveLoadAdapter` persists nothing. Use it for tests, server rendering, and an intentionally
-ephemeral embed, and implement the same contract over your own backend for durable storage.
-
-## Viewer preferences
-
-**The widget** keeps the viewer's flat preferences (the last symbol and timeframe, the scale mode,
-hidden studies, the replay speed) in a `ChartStorage`. Every key is an opaque string in the
-`quickcharts.` namespace, and every value is an opaque string; a store routes or scopes them and
+The widget keeps the viewer's flat preferences in a `ChartStorage`. Every key is an opaque string in
+the `quickcharts.` namespace, and every value is an opaque string; a store routes or scopes them and
 reads neither. The default is an in-memory store that lasts the page; supply your own to keep them
-per device or per account. A browser store is a few lines a host writes; it is not part of the
-package, because a device-local default is not a persistence architecture:
+per device or per account. A browser store is a few lines you write; it is not part of the package,
+because a device-local default is not a persistence architecture:
 
 ```ts
 import { memoryChartStorage, type ChartStorage } from 'quickcharts'
@@ -403,8 +531,39 @@ void perDevice
 void memoryChartStorage()
 ```
 
-Preferences need no identity or revision. Saved charts, layouts, drawings and templates do, and
-they live on the saved-resource adapter above, never here.
+Preferences need no identity or revision. Saved charts, layouts, drawings and templates do, and they
+live on the saved-resource adapter above, never here.
+
+### Conflicts
+
+A conflict means someone else wrote the same entity after the copy on screen was read. The chart
+never resolves that by overwriting. It reports the case with a sentence from its own catalog and the
+ref that stands now, and leaves the decision to you: reload and lose the local edit, save a copy
+under a new name, or show the user both.
+
+Reach the report in two places. A verb you called answers a typed `conflict` outcome. A write the
+widget made for the viewer, through the built-in UI or its own drawing sync, arrives on the
+`saveConflict` event with the family it came from.
+
+### Common issues
+
+**Nothing saves and no error appears.** The widget has no adapter. `createChart({ saveLoad })` is
+what enables the family, and `widget.capabilities().saveLoad` reports which families it sees.
+
+**Every save creates another row.** Something detached the open resource, or each save passes
+`asNew`. `current()` reports what the next save will update.
+
+**A saved layout opens with the wrong drawings.** In separate mode the document is keyed by
+`layoutId` and the chart's tile. An id that changes between reloads, or a re-tile that moves a
+chart, points the chart at another document.
+
+**A conflict on the first save of the day.** Two tabs are open on the same entity. Both hold a
+revision, and the second write is refused; reload the newer one before saving it again.
+
+**A REST call raises instead of answering.** The status is one the contract gives no meaning to.
+Read `error.status` and `error.url`: a `401` is a session your request function has to renew, and a
+`5xx` is your service.
+
 
 ## Indicators
 

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- **`quickcharts/adapters/rest` saves and loads over HTTP.**
+  `createRestSaveLoadAdapter({ baseUrl, request })` implements the same `ChartSaveLoadAdapter`
+  contract over a published wire contract: four collections under a base URL you own, refs in the
+  body, and `If-Match` on every conditional write. Your request function is the whole transport, so
+  authorization, cookies, CORS, retries and tenancy stay with you; the adapter carries no
+  credential, no token store, no header policy and no default origin, and makes no request until
+  you call a verb. `404` and `409` become the contract's `not-found` and `conflict`, and any other
+  status or malformed body raises `RestSaveLoadError` with its status, method and URL. The
+  entrypoint is separate, so a project that never imports it carries none of it, and the schema
+  ships beside the bundle as `dist/rest-openapi.json`.
 - **Drawings are stored in one of two modes, chosen at construction.** `drawingPersistence` takes
   `combined` (the default: the chart's saved content carries the drawings on it) or `separate` (the
   saved content carries none, and the adapter's drawings family is their only path). `scope` picks
