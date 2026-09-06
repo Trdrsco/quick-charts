@@ -375,7 +375,10 @@ async function installTest({ tarball, manifestPath, log, note }) {
 
     const checks = [...probe.checks, ...bundle.checks]
     for (const c of checks) say(`${c.ok ? 'ok  ' : 'FAIL'} ${c.id}: ${c.detail}`)
-    return { checks, tree: tree.trim() ? JSON.parse(tree) : {}, bytes: bundle.bytes }
+    // The tree names the scratch directory as the tarball's `resolved` location; the dossier keeps
+    // the tarball's name and not the machine's path.
+    const parsedTree = tree.trim() ? JSON.parse(tree, (key, value) => (key === 'resolved' && typeof value === 'string' && value.startsWith('file:') ? `file:${tarballName}` : value)) : {}
+    return { checks, tree: parsedTree, bytes: bundle.bytes }
   } finally {
     writeFileSync(log, chunks.join(''))
     rmSync(scratch, { recursive: true, force: true })
