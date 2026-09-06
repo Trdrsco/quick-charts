@@ -9,7 +9,9 @@ import { CHART_FIXTURES, CHART_SOURCES, isSourceMap, offenderText, packedFileLis
 /** Every shape a trdrs default could take. Each pattern names what it catches so an offender line
  *  reads as a finding, not a regex. */
 const TRDRS_DEFAULTS: readonly { name: string; pattern: RegExp }[] = [
-  { name: 'a trdrs host URL', pattern: /https?:\/\/[^\s'"`)]*trdrs/i },
+  // The manifest's repository, homepage and bugs URLs name the GitHub organization, which is a
+  // source address and not a service the chart could call; every other host carrying the name is.
+  { name: 'a trdrs host URL', pattern: /https?:\/\/(?!github\.com\/)[^\s'"`)]*trdrs/i },
   { name: 'a trdrs domain', pattern: /\btrdrs\.co\b|\btrdrsco[\w-]*\.fly\.dev\b/i },
   { name: 'a tenant key', pattern: /trdrs_sk_/ },
   { name: 'a bearer credential', pattern: /Authorization:\s*Bearer|['"`]Bearer\s+[A-Za-z0-9_\-.]+['"`]/ },
