@@ -8,7 +8,7 @@ or hosting: the host supplies data and storage, and the chart draws.
 ## Install
 
 ```bash
-npm install quickcharts lightweight-charts
+npm install quickcharts@0.1.0 lightweight-charts
 ```
 
 `lightweight-charts` (^5.0.0) is a **peer dependency**: your app owns the renderer version and the

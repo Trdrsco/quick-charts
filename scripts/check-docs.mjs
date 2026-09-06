@@ -75,7 +75,6 @@ const EXCLUSIONS = [
   ['THIRD-PARTY-NOTICES.md', 'reference-product', 'the notices quote each package license as its repository states it'],
   ['NOTICE', 'reference-product', 'the notice attributes the peer dependency the license asks it to name'],
   ['README.md', 'emoji', 'the drawings example arms the emoji tool and shows the glyph it seeds the placement with'],
-  ['CHANGELOG.md', 'history', 'the line names the LayoutEvent values (saved, loaded, removed, detached), not a change to anything released'],
 ]
 
 class ConfigError extends Error {}
