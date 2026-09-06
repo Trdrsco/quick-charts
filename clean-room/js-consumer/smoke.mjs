@@ -72,3 +72,60 @@ const ticketPlan = ticket.buildSubmitPlan({ scope: 'x|1', instrument: 'ESZ2026',
 if (!ticketPlan.ok || ticketPlan.key !== 'x|1|ESZ2026|sell|1|market||||gtc|sl|tp') fail(`buildSubmitPlan wrong: ${JSON.stringify(ticketPlan)}`)
 if (ticket.ticketStrings().t('panel.buy') !== 'Buy') fail('built-in English missing')
 console.log('clean-room js (esm): order ticket OK')
+
+// The optional REST save/load adapter, over a host service that lives in this file. The point is
+// that a fresh project can reach `quickcharts/adapters/rest` from the packed tarball, hand it its
+// own transport, and get the port's typed outcomes back: nothing here configures an origin, a
+// credential or a header, because the adapter takes none.
+const { createRestSaveLoadAdapter, RestSaveLoadError } = await import('quickcharts/adapters/rest')
+if (typeof createRestSaveLoadAdapter !== 'function') fail('createRestSaveLoadAdapter missing')
+
+const BASE = 'https://saves.example.com/v1'
+const rows = new Map()
+let seq = 0
+const service = async (url, init) => {
+  const [path, query = ''] = url.slice(BASE.length).split('?')
+  const parts = path.split('/').filter(Boolean)
+  const collection = parts[0] === 'drawings' ? `drawings?${query}` : parts[0]
+  const id = parts[1]
+  const answer = (status, body) => ({ status, text: async () => (body === undefined ? '' : JSON.stringify(body)) })
+  const body = init.body === undefined ? null : JSON.parse(init.body)
+  if (id === undefined) {
+    if (init.method === 'GET') return answer(200, { items: [...rows].filter(([, r]) => r.collection === collection).map(([rowId, r]) => ({ id: rowId, revision: String(r.revision), ...r.meta })) })
+    const rowId = `row-${++seq}`
+    rows.set(rowId, { collection, revision: 1, body, meta: { name: body.name, symbol: body.symbol, timeframe: body.timeframe, updatedAt: Date.now() } })
+    return answer(200, { id: rowId, revision: '1' })
+  }
+  const row = rows.get(id)
+  if (init.method === 'GET') return row ? answer(200, { id, revision: String(row.revision), body: row.body }) : answer(404, { error: 'not_found' })
+  if (init.headers['if-match'] === undefined) return answer(428, { error: 'revision_required' })
+  if (!row) return answer(404, { error: 'not_found' })
+  if (init.headers['if-match'] !== String(row.revision)) return answer(409, { error: 'conflict', current: { id, revision: String(row.revision) } })
+  if (init.method === 'DELETE') {
+    rows.delete(id)
+    return answer(200, { id, revision: String(row.revision) })
+  }
+  row.revision += 1
+  row.body = body
+  return answer(200, { id, revision: String(row.revision) })
+}
+
+const saves = createRestSaveLoadAdapter({ baseUrl: BASE, request: service })
+const chartBody = { name: 'Morning', symbol: 'ES', timeframe: '5m', content: '{"v":1}' }
+const created = await saves.charts.create(chartBody)
+if (created.kind !== 'ok') fail(`the REST create did not land: ${JSON.stringify(created)}`)
+if ((await saves.charts.list()).length !== 1) fail('the REST listing did not answer the created row')
+const read = await saves.charts.load(created.ref.id)
+if (!read || read.body.content !== chartBody.content) fail('the REST load did not answer the stored chart')
+const updated = await saves.charts.update(created.ref, { ...chartBody, timeframe: '1h' })
+if (updated.kind !== 'ok' || updated.ref.revision === created.ref.revision) fail('the REST update did not move the revision')
+const stale = await saves.charts.update(created.ref, chartBody)
+if (stale.kind !== 'conflict' || stale.current.revision !== updated.ref.revision) fail('a stale REST write must be a conflict carrying the ref that stands')
+if (await saves.charts.load('no-such-chart') !== null) fail('an unknown id must read as null')
+if ((await saves.charts.remove(updated.ref)).kind !== 'ok') fail('the REST delete did not land')
+if ((await saves.charts.remove(updated.ref)).kind !== 'not-found') fail('a second REST delete must be not-found')
+// A status the contract gives no meaning to is raised with what it was, never swallowed as empty.
+const outage = createRestSaveLoadAdapter({ baseUrl: BASE, request: async () => ({ status: 503, text: async () => '' }) })
+const raised = await outage.charts.list().then(() => null, (e) => e)
+if (!(raised instanceof RestSaveLoadError) || raised.status !== 503) fail(`a 503 must raise a typed error: ${String(raised)}`)
+console.log('clean-room js (esm): REST save/load adapter OK')

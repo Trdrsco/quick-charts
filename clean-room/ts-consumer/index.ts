@@ -26,6 +26,7 @@ import {
   type ChartHandle,
   type CommandRegistry,
   type CommandResult,
+  type ChartSaveLoadAdapter,
   type ChartWidget,
   type DatafeedConfig,
   type DrawingResourceContext,
@@ -274,3 +275,30 @@ if (builtInSpec.placement !== 'pane' || builtInSpec.plots[0]?.key !== 'rsi') thr
 if (!drawingTools.get('trend_line')) throw new Error('registry missing trend_line')
 const drawing: SerializedDrawing | undefined = undefined
 void drawing
+
+// The optional REST save/load adapter, typed against the shipped declarations. A host's transport
+// is whatever it already has: `fetch` itself satisfies the request signature, and so does a wrapper
+// that adds the host's own authorization. The adapter takes those two values and nothing else.
+import { createRestSaveLoadAdapter, RestSaveLoadError, type RestRequest, type RestSaveLoadOptions } from 'quickcharts/adapters/rest'
+
+const plainFetch: RestRequest = fetch
+const withHostAuth: RestRequest = (url, init) => fetch(url, { ...init, credentials: 'include', headers: { ...init.headers, 'x-example-tenant': 'acme' } })
+const restOptions: RestSaveLoadOptions = { baseUrl: 'https://saves.example.com/v1', request: withHostAuth }
+const restSaves: ChartSaveLoadAdapter = createRestSaveLoadAdapter(restOptions)
+void plainFetch
+
+export async function saveOverRest(name: string): Promise<string> {
+  const created = await restSaves.charts.create({ name, symbol: 'ESZ2026', timeframe: '5m', content: '{}' })
+  if (created.kind === 'conflict') return created.current.revision
+  if (created.kind === 'not-found') return ''
+  try {
+    const again = await restSaves.charts.update(created.ref, { name, symbol: 'ESZ2026', timeframe: '1h', content: '{}' })
+    return again.kind === 'ok' ? again.ref.revision : ''
+  } catch (e) {
+    // A status the contract gives no meaning to, or a body that is not the shape the route
+    // promises: the host decides what to do with it, so it arrives as an error rather than as an
+    // empty answer.
+    if (e instanceof RestSaveLoadError) return `${e.reason}:${String(e.status)}`
+    throw e
+  }
+}
