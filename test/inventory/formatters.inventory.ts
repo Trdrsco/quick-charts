@@ -143,9 +143,9 @@ export const FORMATTER_SITES: readonly FormatterSite[] = [
   // ── symbology: the app around the chart ───────────────────────────────────────────────────────────
   {
     file: 'apps/web/src/integrations/quickcharts/priceFormat.ts',
-    symbols: ['priceFormatterOf', 'UNRESOLVED_PRICE_FORMAT', 'minMoveOf'],
+    symbols: ['UNRESOLVED_PRICE_FORMAT', 'punctuationOf'],
     kind: 'symbology',
-    surface: "the app's one price formatter: createPriceFormatter over the symbol's resolved format in the interface language, with the declared unresolved policy",
+    surface: "the two facts the app's watchlist formatter builds createPriceFormatter from: the declared unresolved policy and the interface language's punctuation",
   },
   {
     file: 'packages/chart/src/widget/image.ts',
