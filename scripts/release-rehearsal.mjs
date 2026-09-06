@@ -34,8 +34,8 @@
 //
 // What it refuses: it exits 2 before doing anything when the environment or an npmrc carries a
 // registry credential, because a rehearsal that could publish is not a rehearsal. It runs no
-// `npm publish`, no `git push`, and no registry write; the only registry reads are the peer
-// dependency the clean room and the scratch project install.
+// `npm publish`, no `git push`, and no registry write; the registry traffic is the reads that
+// install the clean-room consumers' and the scratch project's dependencies.
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -345,7 +345,7 @@ async function installTest({ tarball, manifestPath, log, note }) {
   try {
     writeFileSync(join(scratch, 'package.json'), `${JSON.stringify({ name: 'quickcharts-install-test', private: true, type: 'module' }, null, 2)}\n`)
     // npm, not pnpm: a consumer has no workspace. Scripts stay off, so the install proves the
-    // artifact needs none; the peer is the one registry read.
+    // artifact needs none; the peer and its own dependency are the registry reads here.
     const tarballName = tarball.split(/[\\/]/).pop()
     copyFileSync(tarball, join(scratch, tarballName))
     copyFileSync(manifestPath, join(scratch, 'manifest.json'))
