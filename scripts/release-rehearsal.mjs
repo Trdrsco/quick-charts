@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 // The release rehearsal: every proof a Quick Charts release needs, run in order from a clean
 // checkout, with nothing published. It writes a dossier a person signs, not a version anyone can
 // install.
