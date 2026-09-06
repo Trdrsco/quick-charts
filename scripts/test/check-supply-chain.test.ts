@@ -95,7 +95,7 @@ describe('each rule reports its seeded value from the tree', () => {
   })
 
   it('proprietary is a present-tense rule: a private name in an old README revision is not a leak', () => {
-    const history = [{ commit: 'b'.repeat(40), file: 'packages/chart/README.md', line: 1, text: "import { createChart } from '@trdrs/chart'" }]
+    const history = [{ commit: 'b'.repeat(40), file: 'packages/chart/README.md', line: 1, text: "import { mount } from '@trdrs/account-manager'" }]
     expect(check(root, { packed: () => [], history: () => history }).hits).toEqual([])
   })
 })
