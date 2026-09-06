@@ -73,13 +73,16 @@ export const EXCLUSIONS = [
   ['packages/chart/test/boundary/guestArtifact.test.ts', 'private-host', 'the fixture names the hosts it hunts'],
   ['packages/chart/test/boundary/guestArtifact.test.ts', 'secret', 'the fixture names the credential shapes it hunts'],
   ['packages/chart/LICENSE', 'pii', 'the owner contact of the placeholder license; counsel replaces the file'],
+  ['clean-room/vite-consumer/build.mjs', 'private-host', 'the consumer names the hosts it forbids in the bundles it judges'],
 ]
 
 /** Historical paths that no longer exist: [commit, path, rule, reason]. Empty is the goal. */
 export const HISTORY_EXCLUSIONS = []
 
 /** Never walked: installed packages, tool caches and packed fixtures. */
-const SKIPPED_DIRS = new Set(['node_modules', '.git', '.turbo', '.artifacts', 'test-results'])
+// .candidate is the packed tarball extracted beside the package; the tarball itself is judged from its
+// packed file list below, so the extraction would only repeat every finding.
+const SKIPPED_DIRS = new Set(['node_modules', '.git', '.turbo', '.artifacts', 'test-results', '.candidate'])
 const TEXT_FILE = /\.(ts|tsx|mts|cts|js|mjs|cjs|json|jsonc|yml|yaml|toml|html|css|md|txt|sh|svg|d\.ts)$|(^|\/)(LICENSE|NOTICE|Dockerfile)$|\/\.env\.(example|template|sample)$/
 const SOURCE_MAP = /\.map$/
 
