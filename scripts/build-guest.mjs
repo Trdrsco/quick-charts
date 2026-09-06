@@ -53,8 +53,9 @@ await build({
   esbuildPlugins: [lfSources],
 })
 
-copyFileSync(join(pkgRoot, 'guest', 'index.html'), join(out, 'index.html'))
-copyFileSync(join(pkgRoot, 'guest', 'guest.css'), join(out, 'guest.css'))
+// The page and its own stylesheet are copied as text with one line ending, so a checkout's carriage
+// returns never reach the guest and two checkouts build the same bytes.
+for (const name of ['index.html', 'guest.css']) writeFileSync(join(out, name), readFileSync(join(pkgRoot, 'guest', name), 'utf8').replace(/\r/g, ''))
 // The stylesheet is composed here from the same source the theme generator reads, so the guest
 // needs no earlier build and can never carry a stylesheet older than the palettes.
 writeFileSync(join(out, 'quickcharts.css'), composeDistributableStylesheet())
