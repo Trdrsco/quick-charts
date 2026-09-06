@@ -11,14 +11,18 @@
 // systems (import and require) -> run the conformance suite over the installed tarball -> bundle the
 // entrypoints with Vite and read the bundles for what a reader's build must not carry.
 import { execSync } from 'node:child_process'
-import { copyFileSync, mkdirSync, rmSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = resolve(here, '..')
 const artifacts = join(here, '.artifacts')
-const TARBALL = 'quickcharts-0.0.0-staging.tgz'
+// The candidate is named after the version in the manifest, and the consumers install it under a
+// version-free name, so a release changes the version in one place and the clean room follows.
+const version = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
+const PACKED = `quickcharts-${version}.tgz`
+const TARBALL = 'quickcharts.tgz'
 
 const run = (cmd, cwd) => {
   console.log(`\n$ ${cmd}  (${cwd.replace(repo, '.')})`)
@@ -31,7 +35,7 @@ mkdirSync(artifacts, { recursive: true })
 // 1. Build. The build's last step writes the deterministic candidate; the clean room installs that
 //    same tarball rather than packing a second one.
 run('pnpm run build', repo)
-copyFileSync(join(repo, '.candidate', TARBALL), join(artifacts, TARBALL))
+copyFileSync(join(repo, '.candidate', PACKED), join(artifacts, TARBALL))
 
 // 2. Fresh installs. --install-links copies file: deps instead of symlinking (closer to a real
 //    registry install); lockfiles are disposable here, because the point is a cold resolve.
