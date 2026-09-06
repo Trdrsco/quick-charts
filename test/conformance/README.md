@@ -25,9 +25,23 @@ Every host builds a `ConformanceHost` and runs the checks through it.
 | The app mount | `apps/web/e2e/conformance.spec.ts` | Loads this module into the live app page through the dev server's filesystem serving (`/@fs/<workspace>/packages/chart/test/conformance/index.ts`), where its `quickcharts` imports resolve to the same source URLs the app's do, and runs `runCheck` in the browser with `createWidget` bound to the app's own composition (`apps/web/src/integrations/quickcharts/compose.ts`, reached through the door `compositionDoor.ts` puts on `window` under the dev server only). The spec asserts every result passed or was skipped for a stated reason, and prints the report. |
 
 A host that cannot mount a plane names it in `unavailable`; the checks that need it report skipped
-with the reason rather than passing on nothing. A host that can stand in a Fullscreen API or an
-image-taking clipboard passes `fullscreen` and `clipboard`; a browser host leaves them out and the
-checks prove the refusal path instead.
+with the reason rather than passing on nothing. A host whose door decides a construction choice for
+every widget it builds (the theme mode, the drawing persistence mode) names it in `fixed` with the
+reason; a check that must make that choice itself (`chooses`) reports skipped with the reason, and
+every other check runs and observes the host's real choice. A host that can stand in a Fullscreen
+API or an image-taking clipboard passes `fullscreen` and `clipboard`; a browser host leaves them
+out and the checks prove the refusal path instead.
+
+What each host declares:
+
+| Host | `unavailable` | `fixed` | `fullscreen` / `clipboard` |
+|---|---|---|---|
+| The workspace build | nothing: every plane mounts | nothing: `createChart` takes every option | both, over the browser shim |
+| The clean-room consumers | nothing: every plane mounts | nothing: `createChart` takes every option | both, over the browser shim |
+| The app mount | nothing: every plane mounts | `theme` (the app composes every chart in the shell's mode with the app palette) and `drawingPersistence` (the app keeps drawings in a separate symbol-global document whenever it has an adapter) | neither: a real browser refuses without a gesture |
+
+So the workspace and clean-room hosts run `theme.two-instances` and `persistence.drawings.mode`,
+and the app host reports both skipped with those two reasons.
 
 The app host is the one whose `createWidget` is a production door rather than the package
 constructor. What a caller of that door decides rides through from the check's options: the
@@ -39,7 +53,10 @@ planes observes the app's real choice, and where its expectation differs it fail
 the app mounted; the spec reports that as a finding against the composition or the check, never as
 a skip. The engine is mocked at the network edge, with the revisioned `/api/charts` families in
 memory, so a check that mounts without an adapter of its own saves through the app's engine
-adapter. Every mount gets its own mount id, so no check reads another's stored preferences.
+adapter. Every mount gets its own mount id, so no check reads another's stored preferences. The
+spec also blocks `js.stripe.com`, the one script the app page fetches off the box: it attaches its
+own document listeners on its own schedule, which a check that balances the widget's listeners
+would count as the widget's, and the app's loader only warns when the script does not arrive.
 
 ## The host contract
 
