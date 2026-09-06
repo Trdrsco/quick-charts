@@ -55,6 +55,7 @@ import {
   type WriteOutcome,
 } from 'quickcharts'
 import { DEFAULT_OPTIONS, DEFAULT_STYLE, drawingTools } from 'quickcharts/drawings'
+import { createRestSaveLoadAdapter, type RestRequest, type RestResponse } from 'quickcharts/adapters/rest'
 
 // ── The host contract ───────────────────────────────────────────────────────────────────────────
 
@@ -364,6 +365,93 @@ export function hostSaveLoadAdapter(options: AdapterBOptions = {}): ChartSaveLoa
       return store
     },
   }
+}
+
+// ── A fake host service, and the REST adapter over it ───────────────────────────────────────────
+//
+// The third adapter is the package's own `quickcharts/adapters/rest` talking to a service written
+// here from the published wire contract alone: paths, `items` listings, refs in the body, `If-Match`
+// on every conditional write, and the three refusals. It holds its rows in a Map and answers
+// synchronously, so the suite runs it in any host without a server, a port or a global to patch,
+// and the adapter reaches it exactly the way it would reach a real one.
+
+/** Where the fake service is mounted. A placeholder origin: nothing here resolves. */
+export const REST_SERVICE_URL = 'https://saves.example.com/v1'
+
+interface ServiceRow {
+  collection: string
+  revision: number
+  body: Record<string, unknown>
+  updatedAt: number
+}
+
+export interface RestHostService {
+  /** The transport a host would hand the adapter. */
+  request: RestRequest
+  /** Every request the service answered, as `METHOD path`, so a check can prove what was asked. */
+  log: string[]
+}
+
+/** A service over the wire contract, in memory. */
+export function restHostService(baseUrl: string = REST_SERVICE_URL): RestHostService {
+  const rows = new Map<string, ServiceRow>()
+  const log: string[] = []
+  let seq = 0
+  let clock = 0
+  /** A server stamp: wall clock, and never twice the same, so a listing sorted by it is stable. */
+  const stamp = (): number => (clock = Math.max(Date.now(), clock + 1))
+
+  const answer = (status: number, body?: unknown): RestResponse => ({ status, text: () => Promise.resolve(body === undefined ? '' : JSON.stringify(body)) })
+  const ref = (id: string, row: ServiceRow): { id: string; revision: string } => ({ id, revision: String(row.revision) })
+  /** The listing row: the ref, the stamp, and everything in the body but the opaque content. */
+  const meta = (id: string, row: ServiceRow): Record<string, unknown> => {
+    const { content: _opaque, ...rest } = row.body
+    return { ...ref(id, row), ...rest, updatedAt: row.updatedAt }
+  }
+
+  const request: RestRequest = (url, init) => {
+    const relative = url.slice(baseUrl.length)
+    const [pathname = '', query = ''] = relative.split('?')
+    log.push(`${init.method} ${relative}`)
+    const parts = pathname.split('/').filter(Boolean).map(decodeURIComponent)
+    // A template collection is `/templates/{kind}`; every other family is one segment. A drawings
+    // collection is also scoped by its query, so two contexts never share a listing.
+    const depth = parts[0] === 'templates' ? 2 : 1
+    const collection = `${parts.slice(0, depth).join('/')}${parts[0] === 'drawings' ? `?${query}` : ''}`
+    const id = parts[depth]
+    const body = init.body === undefined ? null : (JSON.parse(init.body) as Record<string, unknown>)
+    const quoted = init.headers['if-match']
+
+    if (id === undefined) {
+      if (init.method === 'GET') return Promise.resolve(answer(200, { items: [...rows].filter(([, row]) => row.collection === collection).map(([rowId, row]) => meta(rowId, row)) }))
+      const created: ServiceRow = { collection, revision: 1, body: body ?? {}, updatedAt: stamp() }
+      const createdId = `row-${++seq}`
+      rows.set(createdId, created)
+      return Promise.resolve(answer(200, { ...ref(createdId, created), meta: meta(createdId, created) }))
+    }
+
+    const row = rows.get(id)
+    if (init.method === 'GET') return Promise.resolve(row ? answer(200, { ...ref(id, row), body: row.body }) : answer(404, { error: 'not_found' }))
+    // Every write past a create is conditional: no quoted revision is a refusal, not an overwrite.
+    if (quoted === undefined) return Promise.resolve(answer(428, { error: 'revision_required' }))
+    if (!row) return Promise.resolve(answer(404, { error: 'not_found' }))
+    if (quoted !== String(row.revision)) return Promise.resolve(answer(409, { error: 'conflict', current: ref(id, row) }))
+    if (init.method === 'DELETE') {
+      rows.delete(id)
+      return Promise.resolve(answer(200, ref(id, row)))
+    }
+    row.revision++
+    row.body = body ?? {}
+    row.updatedAt = stamp()
+    return Promise.resolve(answer(200, { ...ref(id, row), meta: meta(id, row) }))
+  }
+
+  return { request, log }
+}
+
+/** The published REST adapter over a fresh fake service. */
+export function restSaveLoadAdapter(): ChartSaveLoadAdapter {
+  return createRestSaveLoadAdapter({ baseUrl: REST_SERVICE_URL, request: restHostService().request })
 }
 
 // ── The check context ───────────────────────────────────────────────────────────────────────────
@@ -845,12 +933,15 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       }
     },
   },
-  ...(['package', 'host'] as const).map(
+  // Three independent adapters run the same contract: the package's in-memory reference, a store a
+  // host wrote itself, and the published REST adapter over a fake host service. A check that passes
+  // on one and fails on another is the contract being underspecified, which is the point.
+  ...(['package', 'host', 'rest'] as const).map(
     (kind): ConformanceCheck => ({
       id: `persistence.${kind}-adapter`,
       title: `saved charts and layouts keep identity, return revisions, write conditionally, and refuse conflicts, deletions and aborted loads (${kind} adapter)`,
       async run(ctx) {
-        const adapter = kind === 'package' ? memorySaveLoadAdapter() : hostSaveLoadAdapter()
+        const adapter = kind === 'package' ? memorySaveLoadAdapter() : kind === 'host' ? hostSaveLoadAdapter() : restSaveLoadAdapter()
         const { widget, chart } = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m', saveLoad: adapter })
         equal(widget.capabilities().saveLoad.charts, true, 'the charts family is seen')
         equal(widget.capabilities().saveLoad.layouts, true, 'the layouts family is seen')
@@ -925,6 +1016,137 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
         const remove = await drawings.remove(doc.ref)
         equal(remove.kind, 'ok', 'a drawings document deletes at its revision')
         equal((await drawings.remove(doc.ref)).kind, 'not-found', 'and only once')
+      },
+    }),
+  ),
+  ...(['package', 'rest'] as const).map(
+    (kind): ConformanceCheck => ({
+      id: `persistence.ui.${kind}-adapter`,
+      title: `the built-in Save/Load UI lists, creates, renames, updates, loads, deletes and asks to save, over the ${kind} adapter`,
+      needs: ['topBar', 'layouts'],
+      async run(ctx) {
+        const adapter = kind === 'package' ? memorySaveLoadAdapter() : restSaveLoadAdapter()
+        const { widget, chart, root } = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m', saveLoad: adapter })
+        const layoutEvents: string[] = []
+        widget.on('layout', (event) => layoutEvents.push(`${event.kind}:${event.name ?? ''}`))
+        let asked = 0
+        widget.on('saveNeeded', () => (asked += 1))
+
+        /** A control with this accessible name, inside `scope`. A viewer finds a control by what it
+         *  is called, so the checks do too: no class, no test id. */
+        const named = async (name: string, scope?: () => ParentNode): Promise<HTMLButtonElement> => {
+          await ctx.settle()
+          const where = scope ? scope() : root
+          const found = Array.from(where.querySelectorAll<HTMLButtonElement>('button')).filter(
+            (button) => (button.getAttribute('aria-label') ?? button.textContent?.trim() ?? '') === name && !button.disabled,
+          )
+          assert(found.length > 0, `no enabled control named ${JSON.stringify(name)}; this surface offers ${JSON.stringify(accessibleNames(where))}`)
+          return found[0]!
+        }
+        /** A row whose name leads with this text. A saved-layout row reads as its name followed by
+         *  how long ago it was written, so it is found by the name the viewer gave it. */
+        const startingWith = async (prefix: string, scope: () => ParentNode): Promise<HTMLButtonElement> => {
+          await ctx.settle()
+          const where = scope()
+          const found = Array.from(where.querySelectorAll<HTMLButtonElement>('button')).filter((button) => (button.textContent?.trim() ?? '').startsWith(prefix) && !button.disabled)
+          assert(found.length > 0, `no enabled row named ${JSON.stringify(prefix)}; this surface offers ${JSON.stringify(accessibleNames(where))}`)
+          return found[0]!
+        }
+        /** The saved-layouts menu, while it is up: a non-modal dialog the toolbar anchors. */
+        const menu = (): ParentNode => {
+          const panel = root.querySelector<HTMLElement>('[role="dialog"][aria-modal="false"]')
+          assert(panel, 'the saved-layouts menu is open')
+          return panel
+        }
+        const modal = (): ParentNode => {
+          const panel = root.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
+          assert(panel, 'a modal dialog is open')
+          return panel
+        }
+        const confirmation = (): ParentNode => {
+          const panel = root.querySelector<HTMLElement>('[role="alertdialog"]')
+          assert(panel, 'the confirmation is up')
+          return panel
+        }
+        /** Type a name into the field the menu is showing and commit it with Enter, the way a
+         *  viewer does. Enter is what the field itself acts on, and it names the verb the field was
+         *  opened for, so a check never has to guess which of two same-named controls submits. */
+        const typeAndCommit = async (label: string, value: string): Promise<void> => {
+          await ctx.settle()
+          const field = root.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)
+          assert(field, `no field named ${JSON.stringify(label)}`)
+          field.value = value
+          field.dispatchEvent(new ctx.window.Event('input', { bubbles: true }))
+          field.dispatchEvent(new ctx.window.KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }))
+          await ctx.settle()
+        }
+        const listed = async (): Promise<string[]> => (await adapter.layouts.list()).map((row) => row.name)
+
+        // A viewer change asks the host to save. The chart never writes on its own. The ask is
+        // debounced, so a drag reports once rather than per frame; the wait is for that window.
+        chart.setTimeframe('1h')
+        for (let i = 0; i < 120 && asked === 0; i++) await ctx.settle()
+        assert(asked > 0, 'a viewer change raised saveNeeded')
+        equal((await listed()).length, 0, 'and nothing was written without the viewer asking')
+
+        // CREATE: the toolbar's Save on a never-saved layout asks for a name first.
+        ;(await named('Save layout')).click()
+        await typeAndCommit('Layout name', 'Desk')
+        equal((await listed()).join('|'), 'Desk', 'the layout was created under the typed name')
+        equal(widget.layout.saveLoad.current()?.name, 'Desk', 'and it is the open layout')
+        assert(layoutEvents.includes('saved:Desk'), `the save reported itself (${JSON.stringify(layoutEvents)})`)
+
+        // RENAME: the menu's Rename row prefills the open name and updates the same row.
+        ;(await named('Manage layouts')).click()
+        ;(await named('Rename', menu)).click()
+        await typeAndCommit('Layout name', 'Desk B')
+        equal((await listed()).join('|'), 'Desk B', 'the rename updated the row rather than creating one')
+
+        // CREATE NEW: the binding detaches, so the next save is another layout, not an overwrite.
+        ;(await named('Manage layouts')).click()
+        ;(await named('Create new layout', menu)).click()
+        await ctx.settle()
+        equal(widget.layout.saveLoad.current(), null, 'nothing is open after Create new layout')
+        ;(await named('Save layout')).click()
+        await typeAndCommit('Layout name', 'Desk C')
+        equal((await listed()).sort().join('|'), 'Desk B|Desk C', 'the second layout is its own row')
+
+        // LOAD the last selection: the menu lists what was used most recently, newest first, and
+        // opening one is a load.
+        ;(await named('Manage layouts')).click()
+        await ctx.settle()
+        const recents = Array.from(root.querySelectorAll<HTMLElement>('[role="menuitemradio"]')).map((row) => row.textContent?.trim() ?? '')
+        assert(recents.length >= 2, `the recently used layouts are listed (${JSON.stringify(recents)})`)
+        assert(recents[0]!.startsWith('Desk C'), `the most recent is first (${JSON.stringify(recents)})`)
+        ;(await startingWith('Desk B', menu)).click()
+        await ctx.settle()
+        equal(widget.layout.saveLoad.current()?.name, 'Desk B', 'the chosen layout is open')
+        assert(layoutEvents.includes('loaded:Desk B'), `the load reported itself (${JSON.stringify(layoutEvents)})`)
+
+        // LIST and DELETE: the open-layout dialog lists every saved layout and deletes behind a
+        // confirmation.
+        ;(await named('Manage layouts')).click()
+        ;(await named('Open layout', menu)).click()
+        await ctx.settle()
+        const dialog = root.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
+        assert(dialog, 'the open-layout dialog is a modal dialog')
+        const rows = Array.from(dialog.querySelectorAll<HTMLElement>('[role="listitem"]')).length
+        equal(rows, 2, 'the dialog lists both saved layouts')
+        ;(await named('Delete Desk C', modal)).click()
+        await ctx.settle()
+        assert(root.querySelector('[role="alertdialog"]'), 'the delete asks first')
+        ;(await named('Delete', confirmation)).click()
+        await ctx.settle()
+        equal((await listed()).join('|'), 'Desk B', 'the confirmed delete removed exactly that row')
+
+        // SERIALIZE and RESTORE: what the layout writes is what it reads back.
+        const content = widget.layout.serialize().content
+        assert(content.length > 0, 'the layout serializes')
+        chart.setSymbol('BETA')
+        await ctx.settle()
+        widget.layout.restore(content)
+        await ctx.settle()
+        equal(widget.activeChart().symbol(), 'ALPHA', 'the restore put the saved market back')
       },
     }),
   ),

@@ -54,7 +54,7 @@ const FIRST_PARTY: readonly { name: string; pattern: RegExp }[] = [
 describe('the guest build is wired and kept out of the tarball', () => {
   it('runs after the theme generator on every build, and can be run alone', () => {
     expect(manifest.scripts['build:guest']).toBe('node scripts/build-guest.mjs')
-    expect(manifest.scripts.postbuild.endsWith('&& node scripts/build-guest.mjs')).toBe(true)
+    expect(manifest.scripts.postbuild).toContain('&& node scripts/build-guest.mjs')
   })
 
   it('is excluded from the files npm packs', () => {
