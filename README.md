@@ -1,8 +1,9 @@
 # quickcharts
 
-The charting library's public surface. Build a platform on the chart by supplying a **datafeed** — the
-single seam the whole design turns on. The chart consumes the `ChartDatafeed` interface and never a
-concrete backend, so your feed drives it with zero changes to the chart.
+Quick Charts is a charting library that draws over the datafeed and the storage you supply. The chart
+consumes the `ChartDatafeed` interface and never a concrete backend, so your feed drives it without a
+change to the chart. It does not include market data, trading, accounts, execution, community, news
+or hosting: the host supplies data and storage, and the chart draws.
 
 ## Install
 
@@ -11,7 +12,7 @@ npm install quickcharts lightweight-charts
 ```
 
 `lightweight-charts` (^5.0.0) is a **peer dependency**: your app owns the renderer version and the
-chart layers on top of it. Both packages ship **ESM-only** — lightweight-charts v5 itself exports no
+chart layers on top of it. Both packages ship **ESM-only**: lightweight-charts v5 itself exports no
 `require` entry, so a `require`-able build here would advertise a path that breaks the moment the
 renderer loads. From a CommonJS host, load via dynamic `import()`.
 
@@ -20,7 +21,7 @@ obligations attach to **your** bundle: `THIRD-PARTY-NOTICES.md` in this package 
 what to carry and how. The chart includes no trading, accounts or executions; an application that
 trades composes those outside the chart, through the extension seam below.
 
-Quickstart — the smallest working chart (see [The widget](#the-widget) for the full options). The
+Quickstart, the smallest working chart (see [The widget](#the-widget) for the full options). The
 stylesheet import is not optional: it carries the chart's layout as well as its look, and without it
 the chart has no size and paints nothing.
 
@@ -96,18 +97,18 @@ export const myFeed: ChartDatafeed = {
 }
 ```
 
-### The bar rules (non-negotiable — the chart relies on them)
+### The bar rules (the chart relies on them)
 
 1. **Ascending, unique, inclusive.** Bars are sorted by time, one bar per timestamp. A `history`
-   window is INCLUSIVE of both ends — a bar exactly at `from` or at `to` belongs to the answer.
+   window is INCLUSIVE of both ends: a bar exactly at `from` or at `to` belongs to the answer.
    The chart never re-requests a bar it holds: it pages with `to = oldest − 1`, so you never
-   re-send one either. (The engine reference implementation serves exactly this contract.)
-2. **`countBack` outranks `from` — and the count is an obligation.** When `history` is called with
+   re-send one either.
+2. **`countBack` outranks `from`, and the count is an obligation.** When `history` is called with
    `countBack: N`, return the last N bars at/before `to` even if that reaches back past `from`
    (a weekend or holiday week between `to` and the data is YOUR problem to reach across, not the
-   chart's). The widget asks once per scroll approach and does not loop to compensate — a short
-   answer is a visibly short chart. The engine reference implementation fills outward in widening
-   rounds until the count is met or history is exhausted; do the same.
+   chart's). The widget asks once per scroll approach and does not loop to compensate: a short
+   answer is a visibly short chart. Fill outward in widening rounds until the count is met or
+   history is exhausted.
 3. **`noData` ends scroll-back.** When a `countBack` request finds nothing, return `{ bars: [], noData: true }`.
    A plain `from/to` request with an empty window must **not** set `noData` (an empty window can be a
    mid-history gap, not the end of history).
@@ -116,7 +117,7 @@ export const myFeed: ChartDatafeed = {
    A bar's `t` is its **bucket-open** epoch-seconds time, never the update's wall-clock time.
 5. **Bar time is epoch SECONDS.** Not milliseconds.
 6. **No feed for a symbol is terminal.** Throw `FeedUnavailableError` from `history` when no feed serves
-   the symbol — the chart shows "market data unavailable" and stops. A transient fetch failure should
+   the symbol; the chart shows "market data unavailable" and stops. A transient fetch failure should
    throw a normal error (the chart retries).
 7. **Never synthesize prices.** A bar carries what the market printed; a symbol with no data has no
    bars, never invented ones.
@@ -124,10 +125,10 @@ export const myFeed: ChartDatafeed = {
 ### Capability declaration (`config`, optional)
 
 A feed with a **fixed** capability set may declare it; the widget reads the declaration once at mount
-and constrains itself — in particular, its opening timeframe must be servable: a sticky/default tf the
+and constrains itself. In particular, its opening timeframe must be servable: a sticky/default tf the
 feed did not declare falls to your **first** declared resolution instead of dead-ending the first paint
 on a refusal. The viewer's stored preference is *not* overwritten (capability is the feed's property,
-preference is the viewer's — a later feed that serves the preferred tf gets it back).
+preference is the viewer's, so a later feed that serves the preferred tf gets it back).
 
 ```ts
 import type { ChartDatafeed, DatafeedConfig } from 'quickcharts'
@@ -142,7 +143,7 @@ export const feed: ChartDatafeed = {
 }
 ```
 
-Declare only what is **true**. Absent method / absent field / empty list = unconstrained — a feed that
+Declare only what is **true**. Absent method / absent field / empty list = unconstrained, so a feed that
 serves any interval must not declare a finite `resolutions` list, because the widget then enforces it.
 The UDF adapter declares automatically from the server's own `/config` (and only ever declares
 timeframes it would actually serve).
@@ -159,12 +160,12 @@ const datafeed = createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' })
 ```
 
 UDF is REST and **poll-based** (no push): `subscribeBars` polls `/history` for the newest bar. For true
-real-time, implement `ChartDatafeed` directly over your own stream (as the engine reference implementation
-does over SSE). UDF is the low-effort on-ramp, not the endpoint.
+real-time, implement `ChartDatafeed` directly over your own stream. UDF is the low-effort on-ramp,
+not the endpoint.
 
 What the adapter honors of the protocol:
 
-- **`/config` is fetched once and drives the rest.** `supported_resolutions` is validated against —
+- **`/config` is fetched once and drives the rest.** `supported_resolutions` is validated against:
   asking for a resolution the server didn't declare is `FeedUnavailableError`, not a silent guess
   (`'D'` and `'1D'` are recognized as the same declaration). A server without `/config` gets the
   protocol's defaults (search on, no groups). The adapter also republishes the declaration through
@@ -173,7 +174,7 @@ What the adapter honors of the protocol:
   from the columnar `/symbol_info?group=` catalog instead of `/search`.
 - **`no_data` + `nextTime` is a gap, not the end.** The chart re-asks once at `nextTime` (a session
   gap hop); only `no_data` *without* the hint ends scroll-back. `nextTime` in ms or s both work.
-- **The seam's inclusive `[from, to]` is bridged** to UDF's exclusive `to` inside the adapter — your
+- **The seam's inclusive `[from, to]` is bridged** to UDF's exclusive `to` inside the adapter, so your
   server sees standard UDF ranges; implement nothing special.
 
 ## Symbology
@@ -659,7 +660,7 @@ Rules the pipeline enforces:
 - **`needsVolume` is honest.** On a feed whose bars carry no volume, the instance draws nothing
   and reports "No volume from this feed" instead of painting a flat lie.
 - **Overrides layer, never fork.** Per-instance styling (`IndicatorOverrides`) folds into the
-  manifest before the walk and gates visibility after — the same layering every host applies.
+  manifest before the walk and gates visibility after, the same layering every host applies.
 
 The lower-level pieces are exported for hosts that orchestrate their own compute:
 `buildManifestPlots` (the walker), `attachIndicators` (the renderer), `overriddenManifest` /
@@ -1089,7 +1090,7 @@ clip to the main series window, so a compare never extends the time axis. `featu
 a curated quick-add list for the compare dialog; `compare.symbols()` reads it back.
 
 The widget ships its own compare chrome: the legend header carries a compare door (`+`) opening a
-built-in dialog — search rows add at any of the three placements, curated `compareSymbols` rows sit
+built-in dialog: search rows add at any of the three placements, curated `compareSymbols` rows sit
 above results, and the ADDED section removes. Each compare takes a legend row whose title reopens
 the dialog in change-symbol mode (the pick re-keys the compare in place), with an eye and a remove
 beside the value (% under `same-percent`, the last close otherwise). In a layout, compares belong to
@@ -1565,20 +1566,39 @@ What to know:
 - **Layouts attach per chart.** A widget hands its shared options to every chart it tiles, so each
   chart gets its own attachment, its own context and its own state slot.
 
+## What is verified
+
+Every claim in this document maps to a test or a generated artifact in the package:
+
+- The feature inventory (chrome surfaces, commands, drawing tools, arrangements, indicators and
+  locales) is `dist/feature-manifest.json`, generated from the source on every build; the inventory
+  tests compare the committed manifest with the source.
+- The theme roles, both built-in palettes and the stylesheet are `dist/theme-manifest.json` and
+  `quickcharts/styles.css`, generated from the token schema; the theme vectors under `test/theme` pin
+  the resolved values.
+- The REST wire contract is `dist/rest-openapi.json`, rendered from the typed contract the adapter
+  implements; the adapter tests compare the committed schema with the rendering.
+- The exported names and their runtime kinds are pinned by the API-surface test, the declarations
+  compile in a clean-room project with `skipLibCheck` off, and every `ts` block in this document
+  type-checks against the real exports.
+- The dependency closure, the absence of private packages, hosts and credentials from the source
+  and the tarball, and the third-party notices are held by the boundary tests and
+  `THIRD-PARTY-NOTICES.md`.
+
 ## Versioning & deprecation
 
 - **SemVer, enforced at the gate.** The public surface is pinned by an API-surface test (every
   exported name and its runtime kind), the shipped type declarations are compiled against by a
   clean-room consumer with `skipLibCheck: false`, and this README's own `ts` examples type-check
-  against the real exports. A change that trips any of those is decided as a version event — a
+  against the real exports. A change that trips any of those is decided as a version event: a
   removed/renamed export or a changed contract is **major**; new surface is **minor**; fixes are
-  **patch** — never shipped as silent drift.
+  **patch**. None ships as silent drift.
 - **Optionality is the compatibility mechanism.** New seam capabilities arrive as *optional* methods
   and fields (`config` and `serverTime` are the pattern): an existing
   implementation keeps compiling, and the widget treats absence as "unconstrained / not supported".
   Your integration never breaks by standing still within a major.
 - **Deprecation runs a full major.** A deprecated export keeps working for the remainder of the
   current major, is marked `@deprecated` in the types with its replacement named in the note (your
-  editor flags every call site), and is removed only in the next major — never silently.
+  editor flags every call site), and is removed only in the next major, never silently.
 - **The wire timeframe grammar is stable vocabulary.** `<N><unit>` with units `t s m h d w mo`.
   Extensions may add units; an existing token never changes meaning.

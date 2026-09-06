@@ -93,7 +93,7 @@
 - **The chart catalog owns the whole drawing vocabulary.** The `drawing.*` namespace names the
   toolbar, the settings bar and dialog with every property row, the color palette, the glyph
   picker, the image picker, the template dialogs and the inline editor; `command.drawing*` names
-  the new commands. The `rail.*` namespace is gone with the rail it named.
+  the new commands.
 
 - **The default chrome.** `createChart` mounts the complete chart chrome around the charts: a top
   bar with the symbol pill, the compare door, the timeframe chips and list with a custom-interval
@@ -125,7 +125,7 @@
   (a name, or `{ name, asNew }`), `widget.layout.rename`, `widget.layout.load`,
   `widget.layout.delete` (`{ id, revision }`), `widget.layout.detach` and
   `widget.layout.autosave`, each reporting through the new **`layout`** widget event
-  (`LayoutEvent`: saved, loaded, removed, detached) or `saveConflict` for a refusal; the
+  (`LayoutEvent`: `saved`, `loaded`, `removed`, `detached`) or `saveConflict` for a refusal; the
   **`image`** widget event (`ImageEvent`: copied, copyFallback, failed) reports how
   `widget.image.copy` ended; `chart.compare.add` takes a
   `{ symbol, placement }` beside a plain symbol, and `chart.replay.start` takes an optional moment.
@@ -133,8 +133,8 @@
   **`ChartHandle.displayTimezone()`** answers the zone the timezone choice resolves to for the
   symbol on screen.
 - **`quickcharts/styles.css` is required for LAYOUT, not only for color.** The chart's structural
-  rules — the root filling its container, the charts tiling inside it, the plot area and its chrome
-  layer sizing from that — live in the stylesheet with everything else it paints, so a host that
+  rules (the root filling its container, the charts tiling inside it, the plot area and its chrome
+  layer sizing from that) live in the stylesheet with everything else it paints, so a host that
   does not import it gets a root with no height and a chart that paints nothing. Nothing is written
   from JavaScript but calculated geometry.
 - **`createChart` answers a `ChartWidget`.** A widget hosts one or many charts under one root, one
@@ -327,15 +327,3 @@
   multi-chart arrangement; `Arrangement` gains `label` (the English fallback). Exports
   `createChartI18n` and `chartDictionaries`.
 
-## 0.2.0 — 2026-08-14
-
-- **Fix:** `createChart` no longer crashes at mount when the datafeed declares no `config()` (the
-  synchronous first load reached a replay helper before its initializer ran).
-
-## 0.1.0 — 2026-08-06
-
-Initial release. The datafeed-driven chart widget: candles + volume, the indicator
-pipeline (manifest + injected compute; panes, histograms, areas, markers, levels, band fills),
-drawings with per-symbol persistence and a built-in toolbar, bar replay with sub-bar forming,
-session bands, scale modes, and the legend chrome (scale chips, per-chip settings gear, pane
-collapse/maximize/restore, eyes). ESM-only; `createUdfDatafeed` on-ramp included.
