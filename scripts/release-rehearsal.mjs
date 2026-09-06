@@ -342,8 +342,8 @@ async function installTest({ tarball, manifestPath, log, note }) {
     writeFileSync(join(scratch, 'tsconfig.json'), `${JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', strict: true, noEmit: true, skipLibCheck: false, lib: ['ES2022', 'DOM'] }, files: ['types.ts'] }, null, 2)}\n`)
     await step(['node', q(join(repo, 'node_modules', 'typescript', 'bin', 'tsc')), '-p', 'tsconfig.json'])
 
-    // The bundler is the workspace's Vite; the artifact it bundles is the installed one.
-    const viteDir = dirname(createRequire(join(repo, 'apps', 'web', 'package.json')).resolve('vite/package.json'))
+    // The bundler is this repository's Vite; the artifact it bundles is the installed one.
+    const viteDir = dirname(createRequire(join(repo, 'package.json')).resolve('vite/package.json'))
     writeFileSync(join(scratch, 'full.ts'), "export * from 'quickcharts'\n")
     writeFileSync(join(scratch, 'narrow.ts'), "export { tfToUdfResolution } from 'quickcharts'\n")
     writeFileSync(join(scratch, 'vite-entry.txt'), join(viteDir, 'dist', 'node', 'index.js'))

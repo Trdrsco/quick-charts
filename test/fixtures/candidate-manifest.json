@@ -1,5 +1,5 @@
 {
-  "tarSha256": "5be87f8599422bcda79c31638ed14360652946c3aa5833d7312a3b70729f51f8",
+  "tarSha256": "da4b2bf086cb326a5279c0274b13cb1a9def90a11ee9dabcd65dd6eed998a3d0",
   "files": {
     "CHANGELOG.md": "cd1ead5c14e0f4f170422d94abf20dcf3801ae9b617b0b9aa581b1d8528e9848",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -67,6 +67,6 @@
     "dist/zh-7FEIDYWR.js.map": "6d5c34cfed140641b8c5861e9e2660bd9548a261a2034c57e168ef80b0a5405c",
     "dist/zh_TW-WALZJZXR.js": "b9901ba56fddc3ab9a005e5b6492d27ba785ae320713575dcd42c1bf1d65b613",
     "dist/zh_TW-WALZJZXR.js.map": "810a539908cecead45d2caa90ab1a8e6a3bdd535fba5690825895490c3efa280",
-    "package.json": "3f9bc77dcc81371c77920cbf08234ecd7011d7d3a561e7a9a4c43cac624a7e82"
+    "package.json": "8989c05c4cc0f91feb9d8ebd07c1ba9c0f09ec09df253ba724533d754806c61b"
   }
 }
