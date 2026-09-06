@@ -17,8 +17,11 @@
 //   the clean-room consumer clean-room/js-consumer/conformance.mjs, over the packed tarball
 //   the app mount           apps/web/e2e/conformance.spec.ts, through the app's own composition
 // A host that cannot mount a plane names it in `unavailable`; the checks that need it report skipped
-// with the reason rather than passing vacuously. A check that documents a known defect names it in
-// `defect`; hosts skip it and the report carries the defect until the fix lands.
+// with the reason rather than passing vacuously. A host whose door decides the theme mode or the
+// drawing persistence mode for every widget names that in `fixed`; the checks that must make that
+// choice themselves report skipped with the reason, and every other check observes the host's real
+// choice. A check that documents a known defect names it in `defect`; hosts skip it and the report
+// carries the defect until the fix lands.
 import {
   BUILT_IN_INDICATORS,
   CHART_STYLES,
@@ -75,6 +78,10 @@ export interface ConformanceHost {
   /** Feature flags this host cannot mount today, with the reason. Checks that need one of them
    *  report skipped rather than passing on a plane that is not there. */
   unavailable?: { features: FeatureConfig; reason: string }
+  /** Construction choices this host's door makes for every widget, each with the reason. A check
+   *  that must make one of them itself reports skipped; a check that only observes the choice runs
+   *  and sees the host's real one. */
+  fixed?: Partial<Record<ConstructionChoice, string>>
   /** Stand a Fullscreen API on the widget root, where the host can. A browser refuses a request
    *  with no user gesture, so a browser host leaves this out and the check proves the refusal path. */
   fullscreen?: (root: HTMLElement) => { dispose(): void }
@@ -83,6 +90,9 @@ export interface ConformanceHost {
   /** Let the host's own queued work land. Defaults to one macrotask. */
   settle?: () => Promise<void>
 }
+
+/** A widget option a host may decide for every widget it builds rather than take from its caller. */
+export type ConstructionChoice = 'theme' | 'drawingPersistence'
 
 export type ConformanceStatus = 'passed' | 'failed' | 'skipped'
 
@@ -99,6 +109,8 @@ export interface ConformanceCheck {
   title: string
   /** Feature flags the check mounts with on; a host that names one unavailable skips the check. */
   needs?: (keyof FeatureConfig)[]
+  /** Construction choices the check makes itself on mount; a host that fixes one skips the check. */
+  chooses?: ConstructionChoice[]
   /** A defect the check documents. Hosts skip it, and every report carries the sentence. */
   defect?: string
   run(ctx: CheckContext): Promise<void>
@@ -762,6 +774,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   {
     id: 'theme.two-instances',
     title: 'two widgets in one document run different modes without touching the document or each other',
+    chooses: ['theme'],
     async run(ctx) {
       const a = await ctx.mount({ symbol: 'ALPHA', theme: { mode: 'dark' } })
       const b = await ctx.mount({ symbol: 'BETA', theme: { mode: 'light' } })
@@ -1169,6 +1182,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
     id: 'persistence.drawings.mode',
     title: 'the drawing persistence mode is the host\'s construction choice: combined saves drawings with the chart, separate keeps them out of it and in their own document',
     needs: ['drawings'],
+    chooses: ['drawingPersistence'],
     async run(ctx) {
       // Combined: the chart's own content carries the drawings, and the low-level document verbs
       // refuse, because there is no separate document to reach.
@@ -1631,13 +1645,21 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
 
 // ── The runner ──────────────────────────────────────────────────────────────────────────────────
 
-/** Whether a host has named one of a check's needed features unavailable. */
+/** Why a host skips a check: a documented defect, a needed feature the host named unavailable, or a
+ *  construction choice the check makes that the host's door has fixed. Null when the check runs. */
 export function skipReason(check: ConformanceCheck, host: ConformanceHost): string | null {
   if (check.defect) return `known defect: ${check.defect}`
   const off = host.unavailable
-  if (!off || !check.needs) return null
-  const missing = check.needs.filter((flag) => off.features[flag] === false)
-  return missing.length > 0 ? `${off.reason} (needs ${missing.join(', ')})` : null
+  if (off && check.needs) {
+    const missing = check.needs.filter((flag) => off.features[flag] === false)
+    if (missing.length > 0) return `${off.reason} (needs ${missing.join(', ')})`
+  }
+  const fixed = host.fixed
+  if (fixed && check.chooses) {
+    const taken = check.chooses.filter((choice) => fixed[choice] !== undefined)
+    if (taken.length > 0) return `${taken.map((choice) => fixed[choice]).join('; ')} (chooses ${taken.join(', ')})`
+  }
+  return null
 }
 
 /** Run one check against a host, mounting through the host's door and disposing everything the
