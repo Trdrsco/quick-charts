@@ -83,18 +83,6 @@ export const EXCLUSIONS = [
 
 /** Historical paths that no longer exist: [commit, path, rule, reason]. Empty is the goal. */
 export const HISTORY_EXCLUSIONS = [
-  [
-    'c7de05be552e379b2f7c476f84137cb5ec3535eb',
-    'LICENSE',
-    'pii',
-    'the superseded placeholder license carried the copyright holder\u2019s published contact address; the Apache-2.0 license that replaced it carries none',
-  ],
-  [
-    'a63beefab6611de4c5e05f8c6b628494698991b0',
-    'clean-room/ts-consumer/mode-b.ts',
-    'secret',
-    'a consumer example wrote a literal placeholder tenant key beside an example host; the file and the transport it showed are both gone',
-  ],
 ]
 
 /** Never walked: installed packages, tool caches and packed fixtures. */
