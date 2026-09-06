@@ -1572,7 +1572,7 @@ Every claim in this document maps to a test or a generated artifact in the packa
 
 - The feature inventory (chrome surfaces, commands, drawing tools, arrangements, indicators and
   locales) is `dist/feature-manifest.json`, generated from the source on every build; the inventory
-  tests compare the committed manifest with the source.
+  tests hold the built manifest to the source registries.
 - The theme roles, both built-in palettes and the stylesheet are `dist/theme-manifest.json` and
   `quickcharts/styles.css`, generated from the token schema; the theme vectors under `test/theme` pin
   the resolved values.

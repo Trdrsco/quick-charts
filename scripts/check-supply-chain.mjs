@@ -6,8 +6,8 @@
 // stranger would read:
 //
 //   tree      every text file under packages/chart (source, fixtures, scripts, guest, docs and
-//             policy files) and under clean-room (the consumer examples), skipping installed and
-//             generated trees except the built dist
+//             policy files) and under clean-room (the consumer examples), skipping installed
+//             trees and reading the built dist; a source map is judged by the paths it names
 //   packed    every file `npm pack --dry-run` would put in the tarball, read from disk, so the
 //             artifact is judged as the registry would receive it
 //   history   every line ever ADDED under packages/chart on the current branch, read from
@@ -45,7 +45,8 @@ export const PACKAGE = 'packages/chart'
 export const EXAMPLES = 'clean-room'
 
 /** What a stranger must never find. `where` narrows a rule to the files a consumer receives
- *  (`shipped`); every other rule reads everything. */
+ *  (`shipped`) and `history: false` keeps it out of the history walk; every other rule reads
+ *  everything. */
 export const RULES = [
   { id: 'secret', what: 'a tenant key', re: /trdrs_sk_[A-Za-z0-9]/ },
   { id: 'secret', what: 'a live or test API key', re: /\b[sprk]k_(live|test)_[A-Za-z0-9]{8,}/ },
