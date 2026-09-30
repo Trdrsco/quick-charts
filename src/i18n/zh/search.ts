@@ -8,7 +8,7 @@ export const search: Translation<typeof source> = {
   'search.placeholder': 'Search symbol',
   'search.clear': '清除',
   'search.close': 'Close',
-  'search.noMatches': '没有匹配的代码。',
+  'search.noMatches': 'No symbols match your criteria',
   'search.loadingMore': 'Loading more',
   'search.failed': 'Search failed.',
   'search.results': 'Symbols',
@@ -29,4 +29,5 @@ export const search: Translation<typeof source> = {
   'search.opReciprocal': '倒数',
   'search.opsHide': '隐藏价差运算符',
   'search.opsShow': '显示价差运算符',
+  'search.ops': 'Spread operators',
 }

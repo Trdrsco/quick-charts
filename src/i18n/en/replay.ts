@@ -2,15 +2,17 @@
 // transport, the speed and update-interval menus, and the exit. A speed option ('1x'), the bar
 // counter's figures and a timeframe token are data and carry no words.
 export const replay = {
+  /** Pane-local watermark and legend status title. */
+  'replay.watermark': 'Replay',
   // The starting point.
   'replay.selectBar': 'Select bar',
   'replay.selectDate': 'Select date',
   'replay.selectStartingPoint': 'Select starting point',
   'replay.startBar': 'Bar',
-  'replay.startDate': 'Date',
+  'replay.startDate': 'Date…',
+  'replay.startFirst': 'First available date',
   'replay.startRandom': 'Random bar',
   /** The hint while the chart waits for the click that picks the bar. */
-  'replay.pickBarHint': 'Click a bar on the chart to start replay there',
   // The Select date dialog.
   'replay.startDateField': 'Replay start date',
   'replay.startTimeField': 'Replay start time (UTC, optional)',
@@ -37,7 +39,6 @@ export const replay = {
   'replay.goLiveTitle': 'Jump to the live edge',
   'replay.exit': 'Exit replay',
   /** The bar counter; both figures are data. */
-  'replay.position': '{cursor} of {total}',
   // Speed. The multiplier itself ('10x') is data; these name what it means.
   'replay.speed': 'Replay speed',
   'replay.updatesPerSecond': { one: '{count} update per second', other: '{count} updates per second' },
@@ -45,6 +46,8 @@ export const replay = {
   // The update interval.
   'replay.interval': 'Update interval',
   'replay.intervalHelp': 'How much time each replay update advances. Finer than the chart interval, each bar forms from real finer bars.',
+  /** Why the control is unavailable: this timeframe has nothing finer to form its bars from. */
+  'replay.intervalNone': 'No finer interval for this chart interval',
   /** The interval option that picks the grain itself, rather than a named token. */
   'replay.auto': 'Auto',
   'replay.autoSelectInterval': 'Auto select interval',

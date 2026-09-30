@@ -26,6 +26,7 @@ const STEPS = [
   { id: 'notices', run: ['node', 'scripts/build-third-party-notices.mjs', '--check'] },
   { id: 'docs', run: ['node', 'scripts/check-docs.mjs'] },
   { id: 'clean-room', slow: true, run: ['node', 'clean-room/run.mjs'] },
+  { id: 'browser', slow: true, run: ['pnpm', 'run', 'test:browser'] },
 ]
 
 const argv = process.argv.slice(2)

@@ -14,6 +14,11 @@ const CODE = Object.fromEntries(Object.entries(CHART_SOURCES).filter(([file]) =>
 
 const lines = (files: Record<string, string>, pattern: RegExp): string[] => scanFiles(files, pattern).map(offenderText)
 
+const REPLAY_INDICATOR_TOKEN = /\breplayWatermark(?:Text)?\b|replay\.watermark|qc-replay-watermark/gi
+const watermarkViolations = (files: Record<string, string>): string[] => scanFiles(files, /watermark/i)
+  .filter((o) => o.file !== '/src/chartLegend.ts' || /watermark/i.test(o.text.replace(REPLAY_INDICATOR_TOKEN, '')))
+  .map(offenderText)
+
 interface Term {
   term: string
   pattern: RegExp
@@ -83,10 +88,19 @@ describe('the forbidden vocabulary, as built', () => {
     expect(lines(CHART_SOURCES, /from\s+['"](@trdrs\/|tailwind)/)).toEqual([])
   })
 
-  it('keeps the V1 exclusions absent: no :root selector, no Object Tree, no watermark', () => {
+  it('keeps the V1 exclusions absent while allowing only the fixed replay state indicator', () => {
     expect(lines(CODE, /:root\b/)).toEqual([])
     expect(lines(CODE, /Object Tree|objectTree/)).toEqual([])
-    expect(lines(CODE, /\bwatermark/i)).toEqual([])
+    // Every one of these is the replay session's own mark on the plot, built and named in the
+    // legend. The count is the canary: a brand watermark, a screenshot stamp or an export overlay
+    // would have to move this number, which is the conscious event the guard is here to force.
+    const watermark = lines(CODE, /watermark/i)
+    expect(watermark).toHaveLength(16)
+    expect(watermarkViolations(CODE)).toEqual([])
+    expect(watermarkViolations({
+      '/src/chartLegend.ts': "replayWatermark.className = 'qc-replay-watermark'\nconst watermarkOptions = {}",
+      '/src/widget/create.ts': 'const brandWatermark = true',
+    })).toHaveLength(2)
   })
 
   it('names every target word that is present today, so a removal is a conscious event', () => {

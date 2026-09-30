@@ -53,6 +53,22 @@ export function themeBlock(mode: string, theme: Readonly<Record<string, string |
   return `${themeRootSelector(mode)} {\n${body}\n}`
 }
 
+/** The cascade layers the stylesheet declares. The built-in mode blocks sit in the tokens layer
+ *  and every recipe in the chart layer, so a host decides where its own CSS stands by declaring
+ *  the order once, before any product stylesheet loads. The names and their relative order are
+ *  public: a host writes them into its ordering statement, and a later product declares its own
+ *  layers after them. */
+export const STYLE_LAYERS = { tokens: 'trdrs.tokens', chart: 'trdrs.chart' } as const
+
+/** The statement this stylesheet opens with: the layers it uses, in order. It never names a host
+ *  layer, because the host owns the complete ordering and this sheet only takes its place in it. */
+export const LAYER_ORDER_STATEMENT = `@layer ${STYLE_LAYERS.tokens}, ${STYLE_LAYERS.chart};`
+
+/** The ordering a host declares in its first stylesheet, before any product CSS: its own reset
+ *  first, the product layers, then the layer its intentional overrides live in. Documented, not
+ *  emitted: a product that wrote a host layer would be deciding the host's cascade for it. */
+export const HOST_LAYER_ORDER = `@layer reset, ${STYLE_LAYERS.tokens}, ${STYLE_LAYERS.chart}, trdrs.platform, host;`
+
 /** What the generator writes into the distributable stylesheet. */
 export interface StylesheetInput {
   /** Built-in mode blocks, in the order they should appear. */
@@ -61,19 +77,65 @@ export interface StylesheetInput {
   structural: string
 }
 
-/** Compose the distributable stylesheet: a short banner, the built-in mode blocks, then the
- *  authored component CSS. The output is deterministic for a given input, which is what lets the
- *  drift gate compare a rebuild against the committed vectors. */
+/** Compose the distributable stylesheet: a short banner, the layer order, the built-in mode blocks
+ *  in the tokens layer, then the authored component CSS in the chart layer. The output is
+ *  deterministic for a given input, which is what lets the drift gate compare a rebuild against the
+ *  committed vectors. */
 export function composeStylesheet(input: StylesheetInput): string {
   const banner = [
     '/* Quick Charts stylesheet.',
     ' * Generated from the typed theme source. Do not edit by hand.',
-    ` * Every rule is scoped to ${THEME_ROOT_SELECTOR}, the widget root element.`,
-    ' * The custom-property names below are private implementation, not API.',
+    ` * Every rule is scoped to ${THEME_ROOT_SELECTOR}, the widget root element, and sits in a cascade`,
+    ` * layer: the built-in palettes in ${STYLE_LAYERS.tokens}, every recipe in ${STYLE_LAYERS.chart}.`,
+    ' * The custom-property names below are private implementation, not API. The supported class',
+    ' * names are listed in the theme manifest under hooks; every other class is private.',
     ' */',
   ].join('\n')
   const blocks = input.blocks.map((b) => themeBlock(b.mode, b.theme)).join('\n\n')
-  return `${banner}\n\n${blocks}\n\n${input.structural.trim()}\n`
+  return [
+    banner,
+    '',
+    LAYER_ORDER_STATEMENT,
+    '',
+    `@layer ${STYLE_LAYERS.tokens} {`,
+    blocks,
+    '}',
+    '',
+    `@layer ${STYLE_LAYERS.chart} {`,
+    input.structural.trim(),
+    '}',
+    '',
+  ].join('\n')
+}
+
+/** Every selector that introduces declarations outside any `@layer` block, in source order, with
+ *  comments dropped. A stylesheet that keeps every rule layered answers an empty list. */
+export function unlayeredSelectorsOf(css: string): string[] {
+  const source = css.replace(/\/\*[\s\S]*?\*\//g, '')
+  const out: string[] = []
+  /** The at-rules whose block encloses the current position, innermost last. */
+  const enclosing: string[] = []
+  let prelude = ''
+  for (const char of source) {
+    if (char === '{') {
+      const text = prelude.trim()
+      if (text.startsWith('@')) enclosing.push(text)
+      else {
+        enclosing.push('')
+        if (text && !enclosing.some((at) => at.startsWith('@layer'))) out.push(...text.split(',').map((s) => s.trim()).filter(Boolean))
+      }
+      prelude = ''
+    } else if (char === '}') {
+      enclosing.pop()
+      prelude = ''
+    } else if (char === ';' && enclosing.length === 0) {
+      // A statement at the top level, such as the layer order, opens no block.
+      prelude = ''
+    } else {
+      prelude += char
+    }
+  }
+  return out
 }
 
 /** Every selector in a stylesheet, in source order. Comments and at-rule preludes are dropped, so

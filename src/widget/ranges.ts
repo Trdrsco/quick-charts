@@ -40,6 +40,8 @@ export interface RangeApi {
   goLive(): void
   /** Center the window on a moment, keeping the current span. */
   centerOn(time: number): void
+  /** Package-private layout mirror. Never expose through ChartHandle. */
+  mirrorVisibleRange(range: TimeRange): void
 }
 
 export interface RangeDeps {
@@ -48,6 +50,75 @@ export interface RangeDeps {
   disposed(): boolean
   /** Runs a range write with the sync bus muted, so a mirrored pane cannot echo it back. */
   muted(write: () => void): void
+  /** Marks a layout-mirrored time-range write. Its accepted renderer report is suppressed even
+   * when the renderer delivers it after the setter returns. */
+  mirrored(write: () => void): void
+}
+
+interface RangeMirror {
+  setVisibleRange(range: TimeRange): void
+}
+
+const mirrors = new WeakMap<object, RangeMirror>()
+
+/** Package-private range mirror lookup. Layout coordination uses this instead of turning a mirror
+ * back into a public navigation intent on the target chart. */
+export const chartRangeMirror = (handle: object): RangeMirror | null => mirrors.get(handle) ?? null
+
+export const registerChartRangeMirror = (handle: object, mirror: RangeMirror): (() => void) => {
+  mirrors.set(handle, mirror)
+  return () => mirrors.delete(handle)
+}
+
+/** The smallest renderer surface needed to hold a viewport across a timeline mutation. Kept
+ * package-private: hosts move ranges through RangeApi; only chart-owned data painters rewrite the
+ * renderer's logical index space. */
+export interface TimelineContinuityTarget {
+  getVisibleLogicalRange(): { from: number; to: number } | null
+  timeToIndex(time: UTCTimestamp, findNearest: boolean): number | null
+  setVisibleLogicalRange(range: { from: number; to: number }): void
+}
+
+export interface TimelineContinuity {
+  readonly range: LogicalRange
+  readonly anchorTime: number
+  readonly anchorIndex: number
+}
+
+/** Capture the view at mutation time against a timestamp that will survive the repaint. A logical
+ * range retains fractional endpoints and permitted off-data padding; the anchor's renderer index
+ * lets restoration measure the effective shared timeline rather than guess from a page length. */
+export function captureTimelineContinuity(target: TimelineContinuityTarget, anchorTimes: readonly number[]): TimelineContinuity | null {
+  const range = target.getVisibleLogicalRange()
+  if (!range) return null
+  let fallback: { anchorTime: number; anchorIndex: number } | null = null
+  for (const anchorTime of anchorTimes) {
+    const anchorIndex = target.timeToIndex(anchorTime as UTCTimestamp, false)
+    if (anchorIndex === null || !Number.isFinite(anchorIndex)) continue
+    fallback = { anchorTime, anchorIndex }
+    // Prefer a candle at or just inside the visible left edge. It survives an older-data paint and
+    // measures every newly inserted timestamp before the part of the picture the viewer is using.
+    if (anchorIndex >= range.from) return { range: { from: range.from, to: range.to }, anchorTime, anchorIndex }
+  }
+  return fallback ? { range: { from: range.from, to: range.to }, ...fallback } : null
+}
+
+/** Restore the same screen window after the renderer has rebuilt its unified timeline. Returns
+ * false when the anchor vanished or nothing shifted, leaving renderer bounds untouched. */
+export function restoreTimelineContinuity(
+  target: TimelineContinuityTarget,
+  held: TimelineContinuity | null,
+  beforeWrite?: (range: LogicalRange) => void,
+): boolean {
+  if (!held) return false
+  const anchorIndex = target.timeToIndex(held.anchorTime as UTCTimestamp, false)
+  if (anchorIndex === null || !Number.isFinite(anchorIndex)) return false
+  const shift = anchorIndex - held.anchorIndex
+  if (!Number.isFinite(shift) || shift === 0) return false
+  const range = { from: held.range.from + shift, to: held.range.to + shift }
+  beforeWrite?.(range)
+  target.setVisibleLogicalRange(range)
+  return true
 }
 
 export function createRangeApi(deps: RangeDeps): RangeApi {
@@ -61,13 +132,11 @@ export function createRangeApi(deps: RangeDeps): RangeApi {
     },
     setVisibleRange(range) {
       if (deps.disposed()) return
-      deps.muted(() => {
-        try {
-          scale().setVisibleRange({ from: range.from as UTCTimestamp, to: range.to as UTCTimestamp })
-        } catch {
-          /* a window entirely outside the data is the scale's refusal to honor — stay put */
-        }
-      })
+      try {
+        scale().setVisibleRange({ from: range.from as UTCTimestamp, to: range.to as UTCTimestamp })
+      } catch {
+        /* a window entirely outside the data is the scale's refusal to honor — stay put */
+      }
     },
     logicalRange() {
       if (deps.disposed()) return null
@@ -76,13 +145,11 @@ export function createRangeApi(deps: RangeDeps): RangeApi {
     },
     setLogicalRange(range) {
       if (deps.disposed() || !(range.to > range.from)) return
-      deps.muted(() => {
-        try {
-          scale().setVisibleLogicalRange({ from: range.from, to: range.to })
-        } catch {
-          /* likewise */
-        }
-      })
+      try {
+        scale().setVisibleLogicalRange({ from: range.from, to: range.to })
+      } catch {
+        /* likewise */
+      }
     },
     scroll(bars) {
       if (deps.disposed() || bars === 0) return
@@ -101,11 +168,11 @@ export function createRangeApi(deps: RangeDeps): RangeApi {
     },
     reset() {
       if (deps.disposed()) return
-      deps.muted(() => scale().fitContent())
+      scale().fitContent()
     },
     goLive() {
       if (deps.disposed()) return
-      deps.muted(() => scale().scrollToRealTime())
+      scale().scrollToRealTime()
     },
     centerOn(time) {
       if (deps.disposed()) return
@@ -113,6 +180,14 @@ export function createRangeApi(deps: RangeDeps): RangeApi {
       if (!current) return
       const span = current.to - current.from
       api.setVisibleRange({ from: time - span / 2, to: time + span / 2 })
+    },
+    mirrorVisibleRange(range) {
+      if (deps.disposed()) return
+      try {
+        deps.mirrored(() => scale().setVisibleRange({ from: range.from as UTCTimestamp, to: range.to as UTCTimestamp }))
+      } catch {
+        /* a target pane without that time window stays put and emits no mirror */
+      }
     },
   }
   return api

@@ -57,32 +57,50 @@ export interface ChartMenuContext {
   t?: ChartTranslate
 }
 
-/** The menu a level offers, in one fixed order. Separators are emitted between GROUPS
- *  that survived, never around an empty one, so a menu missing a group has no gap where it would
- *  have been. */
-export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
-  const t = c.t ?? englishChartStrings()
-  const groups: ChartMenuRow[][] = []
+/** The menu's groups, top to bottom. A painter composing contributed rows places them by slot:
+ *  rows that act on the level follow `clipboard`, and switches over what the chart shows follow
+ *  `remove`. */
+export type ChartMenuSlot = 'view' | 'clipboard' | 'remove' | 'settings'
 
-  groups.push([{ kind: 'item', id: 'reset-view', label: t('menu.resetView'), shortcut: 'Alt + R', icon: 'reset' }])
+export interface ChartMenuGroup {
+  slot: ChartMenuSlot
+  rows: ChartMenuRow[]
+}
+
+/** The menu a level offers as GROUPS, in one fixed order. An empty group is still named, so a
+ *  painter can place rows after it, and it draws nothing. */
+export function chartContextMenuGroups(c: ChartMenuContext): ChartMenuGroup[] {
+  const t = c.t ?? englishChartStrings()
 
   // Paste rides whether or not the clipboard holds anything — pasting
   // nothing is a no-op, and a row that comes and goes with an invisible buffer reads as a glitch.
-  const clip: ChartMenuRow[] = [{ kind: 'item', id: 'copy-price', label: t('menu.copyPrice', { price: c.priceText }) }]
-  if (c.canPaste !== false) clip.push({ kind: 'item', id: 'paste', label: t('menu.paste'), shortcut: t('drawing.hintPaste', { modifier: t(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl') }) })
-  groups.push(clip)
+  const clipboard: ChartMenuRow[] = [{ kind: 'item', id: 'copy-price', label: t('menu.copyPrice', { price: c.priceText }) }]
+  if (c.canPaste !== false) clipboard.push({ kind: 'item', id: 'paste', label: t('menu.paste'), shortcut: t('drawing.hintPaste', { modifier: t(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl') }) })
 
   const remove: ChartMenuRow[] = []
   if (c.indicatorCount > 0) remove.push({ kind: 'item', id: 'remove-indicators', label: t('menu.removeIndicators', { count: c.indicatorCount }) })
   if (c.drawingCount > 0) remove.push({ kind: 'item', id: 'remove-drawings', label: t('menu.removeDrawings', { count: c.drawingCount }) })
-  groups.push(remove)
 
-  if (c.canSettings !== false) groups.push([{ kind: 'item', id: 'settings', label: t('menu.settings'), icon: 'settings' }])
+  return [
+    { slot: 'view', rows: [{ kind: 'item', id: 'reset-view', label: t('menu.resetView'), shortcut: 'Alt + R', icon: 'reset' }] },
+    { slot: 'clipboard', rows: clipboard },
+    { slot: 'remove', rows: remove },
+    { slot: 'settings', rows: c.canSettings !== false ? [{ kind: 'item', id: 'settings', label: t('menu.settings'), icon: 'settings' }] : [] },
+  ]
+}
 
+/** Groups flattened into one list: separators between GROUPS that survived, never around an
+ *  empty one, so a menu missing a group has no gap where it would have been. */
+export function flattenMenuGroups(groups: readonly (readonly ChartMenuRow[])[]): ChartMenuRow[] {
   const rows: ChartMenuRow[] = []
   for (const g of groups.filter((g) => g.length > 0)) {
     if (rows.length) rows.push({ kind: 'separator' })
     rows.push(...g)
   }
   return rows
+}
+
+/** The menu a level offers, in one fixed order. */
+export function chartContextMenu(c: ChartMenuContext): ChartMenuRow[] {
+  return flattenMenuGroups(chartContextMenuGroups(c).map((g) => g.rows))
 }

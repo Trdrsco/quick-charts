@@ -17,6 +17,12 @@ function rule(selector: string): string {
   return css.slice(at, css.indexOf('}', at))
 }
 
+function lastRule(selector: string): string {
+  const at = css.lastIndexOf(selector + ' {')
+  expect(at, `no rule for ${selector}`).toBeGreaterThan(-1)
+  return css.slice(at, css.indexOf('}', at))
+}
+
 describe('the chrome layer sits above the gesture box', () => {
   it('the gesture box takes no stacking of its own, so the chrome can rise above it', () => {
     // Both fill the chart. They are siblings in source order, gestures first, so the chrome would
@@ -60,7 +66,8 @@ describe('every control in the chrome layer takes its own pointer events back', 
     const surfaces = css.slice(start, css.indexOf('}', start) + 1)
     expect(surfaces).toContain('.qc-chrome .qc-overlay') // the dialog and menu boxes
     expect(surfaces).toContain('.qc-chrome .qc-scrim') // the dialog backdrop
-    expect(surfaces).toContain('.qc-chrome .qc-menu-backdrop') // the menu's dismiss catcher
+    // The menu's dismiss catcher mounts on the grid, above every pane, so it opts in on its own.
+    expect(surfaces).toContain('.qc-menu-backdrop')
     expect(surfaces).toContain('pointer-events: auto')
   })
 
@@ -70,6 +77,33 @@ describe('every control in the chrome layer takes its own pointer events back', 
     // above is the ONLY thing that makes it clickable.
     expect(rule('[data-qc-theme] .qc-legend-header')).toContain('pointer-events: none')
     expect(rule('[data-qc-theme] .qc-legend')).not.toContain('pointer-events: auto')
+  })
+})
+
+describe('the legend keeps the measured responsive bands', () => {
+  it('uses the baseline header, row, action and list-toggle geometry', () => {
+    expect(lastRule('[data-qc-theme] .qc-legend')).toContain('top: 4px')
+    const header = rule('[data-qc-theme] .qc-legend-header')
+    expect(header).toContain('flex-wrap: wrap')
+    // No row gap: a reading that wraps sits directly under the identity band, as a two-line legend.
+    expect(header).toContain('gap: 0 8px')
+    expect(rule('[data-qc-theme] .qc-legend-quote')).toContain('height: 18px')
+    expect(header).toContain('min-height: 24px')
+    expect(header).toContain('padding-inline-start: 9px')
+    const row = rule('[data-qc-theme] .qc-legend-row')
+    expect(row).toContain('height: 24px')
+    expect(row).toContain('gap: 6px')
+    const toggle = rule('[data-qc-theme] .qc-legend-collapse')
+    expect(toggle).toContain('width: 29px')
+    expect(toggle).toContain('height: 21px')
+    expect(toggle).toContain('margin-top: 3px')
+  })
+
+  it('reveals one touching action cluster on hover and keyboard focus', () => {
+    expect(rule('[data-qc-theme] .qc-legend-actions')).toContain('display: inline-flex')
+    expect(css).toContain('.qc-legend-row:hover .qc-legend-actions > .qc-legend-action')
+    expect(css).toContain('.qc-legend-row:focus-within .qc-legend-actions > .qc-legend-action')
+    expect(css).toContain(".qc-legend-row[data-qc-hidden='true'] .qc-legend-eye")
   })
 })
 
@@ -93,5 +127,39 @@ describe('the widget root fills whatever box a host gives it', () => {
     expect(panes).toContain('height: 100%')
     expect(panes).toContain('flex: 1 1 auto')
     expect(panes).toContain('min-height: 0')
+  })
+})
+
+describe('replay reserves a responsive row instead of floating over a chart', () => {
+  it('takes one baseline-height flex row and never carries the retired absolute recipe', () => {
+    const replay = rule('[data-qc-theme] .qc-replay')
+    expect(replay).toContain('flex: 0 0 49px')
+    expect(replay).toContain('height: 49px')
+    expect(replay).toContain('width: 100%')
+    expect(replay).toContain('border-top: 1px solid var(--qc-canvas-paneBorder)')
+    expect(replay).toContain('overflow-x: auto')
+    for (const retired of ['position: absolute', 'bottom:', 'left:', 'transform:', 'max-width:']) {
+      expect(replay, retired).not.toContain(retired)
+    }
+  })
+
+  it('centers when content fits and becomes intrinsic scroll content when labels do not', () => {
+    const strip = rule('[data-qc-theme] .qc-replay-command-strip')
+    // Equal outer tracks, so the middle track and only the middle track sits at the row's center.
+    // The leading track carries NOTHING: the transport has no readout, so nothing needs to be
+    // measured into the track opposite Exit.
+    expect(strip).toContain('grid-template-columns: 70px minmax(max-content, 1fr) 70px')
+    expect(strip).toContain('width: max-content')
+    expect(strip).toContain('min-width: 100%')
+    expect(rule('[data-qc-theme] .qc-replay-controls')).toContain('grid-column: 2')
+    const exit = rule('[data-qc-theme] .qc-replay-exit')
+    expect(exit).toContain('grid-column: 3')
+    expect(exit).toContain('justify-self: center')
+    expect(css).not.toContain('.qc-replay-readout')
+  })
+
+  it('uses only logical grid placement so either RTL root placement reverses it', () => {
+    const replayCss = css.slice(css.indexOf('[data-qc-theme] .qc-replay'), css.indexOf('/* The date picker. */'))
+    expect(replayCss).not.toMatch(/\bleft:|\bright:|translateX/)
   })
 })

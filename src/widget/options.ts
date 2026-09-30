@@ -1,17 +1,20 @@
-// What a host configures Quick Charts with, in four separate planes.
+// What a host configures Quick Charts with, in five separate planes.
 //
-// The planes are separate because they answer different questions and only one of them is the
+// The planes are separate because they answer different questions and only two of them are the
 // host's to decide freely:
 //
 //   capabilities  what the ports and the resolved symbol can actually do. Derived, never set.
-//   features      which built-in UI and behavior the host wants visible. Every flag defaults on.
+//   features      which chart behavior exists. Every flag defaults on.
+//   ui            which of the chart's own controls render. Every control defaults present.
 //   access        which commands, drawing tools and indicators the host permits.
 //   preferences   the viewer's own values, persisted through the storage port.
 //
-// A hidden control is not authorization: turning a feature off removes chrome, and the command
-// behind it still answers to the access policy. An absent port is not a preference: a feed with no
-// search does not become a viewer who dislikes searching. Keeping the four apart is what lets the
-// widget answer "can this run" without asking four questions in four different vocabularies.
+// A hidden control is not authorization and not a disabled behavior: hiding a control removes that
+// control alone, and the command behind it still runs for whoever else calls it, subject to the
+// access policy. A disabled feature is the one that removes behavior. An absent port is not a
+// preference: a feed with no search does not become a viewer who dislikes searching. Keeping the
+// five apart is what lets the widget answer "can this run" and "is this drawn" without asking
+// either question in another plane's vocabulary.
 import type { ChartDatafeed } from '../datafeed'
 import type { ChartStorage } from '../storage'
 import type { ChartSaveLoadAdapter } from '../resources'
@@ -21,6 +24,7 @@ import type { IndicatorManifest, IndicatorOverrides } from '../indicatorModel'
 import type { FeedBar } from '../datafeed'
 import type { ChartI18n, ChartLocaleCode } from '../i18n'
 import type { ChartExtension } from '../extension'
+import type { IndicatorPickerSource } from './indicatorPicker'
 import type { CompareSymbol } from '../compare'
 import type { ScaleMode } from '../scaleMode'
 import type { ReplaySpeed } from '../replay'
@@ -31,62 +35,116 @@ import type { RecentsPort } from '../search'
 import type { CustomThemes, ThemeMode } from '../theme/schema'
 import type { ChartStyleId } from './styles'
 import type { LayoutSyncFlags } from './layout'
+import type { MarkPainterHooks } from '../markPainters'
+import type { ChartIcons } from '../ui/icons/catalog'
 
 /** ── FEATURES ────────────────────────────────────────────────────────────────────────────────
- *  Which built-in UI and behavior is present. Every flag defaults on: a host that passes nothing
- *  gets the complete chart. Turning one off removes the chrome AND the behavior behind it, and the
- *  commands it owned answer `unavailable` rather than disappearing from the registry. */
+ *  Which chart behavior exists. Every flag defaults on: a host that passes nothing gets the complete
+ *  chart. Turning one off removes the behavior: its model is never built, the commands it owns
+ *  answer `unavailable` rather than disappearing from the registry, and no control presents it,
+ *  whatever `ui` says. */
 export interface FeatureConfig {
-  /** The drawing layer: tools, selection, the selected drawing's settings surfaces, and the
-   *  persistence `drawingPersistence` chose. */
+  /** The drawing layer: tools, selection, editing, and the persistence `drawingPersistence` chose. */
   drawings?: boolean
-  /** The drawing toolbar: the tool groups, cursor, measure and zoom, magnet, lock, the eye, sync,
-   *  remove and the favorites star. Absent with `drawings` off. */
-  drawingsToolbar?: boolean
-  /** The floating favorite-tools bar. Absent with `drawings` off. */
-  drawingsFavorites?: boolean
-  /** Session shading under the bars. */
-  sessions?: boolean
-  /** The on-canvas legend. */
-  legend?: boolean
-  /** The chart's own right-click level menu. */
-  contextMenu?: boolean
-  /** Comparing other symbols beside the charted one, and the compare dialog. */
+  /** Comparing other symbols beside the charted one, and the compare dialog that adds them. */
   compare?: boolean
   /** Curated quick-add rows for the compare dialog, above the search results. Absent leaves the
    *  dialog search-only. */
   compareSymbols?: readonly CompareSymbol[]
-  /** Bar replay and its transport bar. */
+  /** Bar replay: the replay model and its commands. */
   replay?: boolean
-  /** The top bar: the symbol pill, the compare door, the timeframe picker, the style picker, the
-   *  indicators button, the replay button, the layout menus, the settings menu, fullscreen and the
-   *  image menu. Each of those has its own flag below; this one removes the bar itself. */
-  topBar?: boolean
+  /** Undo and redo over the chart's content: the history and its two commands. */
+  history?: boolean
+  /** Session shading under the bars. */
+  sessions?: boolean
+  /** The crosshair. Off draws none: the chart is read by looking rather than by pointing, which is
+   *  what a touch surface does. The crosshair SYNC lane is untouched: a host mirroring a moment
+   *  across a layout still gets its events. */
+  crosshair?: boolean
+}
+
+/** ── UI ──────────────────────────────────────────────────────────────────────────────────────
+ *  Which of the chart's own controls render. Every control defaults present: a host that passes
+ *  nothing gets the complete default interface. Hiding a control removes that control alone. The
+ *  behavior behind it, its commands and the public API stay available, so a control of the host's
+ *  own can stand in its place and act through `widget.commands`. A control over a behavior that
+ *  `features` turned off is absent whatever this says, and a control inside a hidden surface is
+ *  hidden with it: no top bar, no symbol pill.
+ *
+ *  Presentation is read once, at construction. */
+export interface UiConfig {
+  /** The top bar. `false` removes the bar and every control in it; an object hides some of them. */
+  topBar?: boolean | TopBarUi
   /** The bottom bar: range presets, the clock, the timezone picker and the session view. */
   bottomBar?: boolean
+  /** The drawing rail: the tool groups, cursor, measure and zoom, magnet, lock, the eye, sync,
+   *  remove and the favorites star. */
+  drawingToolbar?: boolean
+  /** The floating favorite-tools bar. */
+  drawingFavorites?: boolean
+  /** The legend over the plot. `false` removes it; an object hides some of its parts. */
+  legend?: boolean | LegendUi
   /** The on-chart navigation cluster: zoom, scroll and reset. */
   navigation?: boolean
-  /** The legend's market-status control and its popup. The dot itself stays. */
-  marketStatus?: boolean
-  /** The symbol pill and the search dialog's search mode. Compare keeps its own dialog mode. */
+  /** The chart's own right-click level menu. */
+  contextMenu?: boolean
+  /** The replay transport row: play, pause, step, speed and exit. */
+  replayTransport?: boolean
+  /** The chart's own notices: feed states, the image fallback, a refused save. */
+  toasts?: boolean
+  /** The symbol search dialog, and every door that opens it: the symbol pill, the legend's symbol
+   *  and `chart.symbol.search`. Off, the symbol still changes through `chart.symbol.set`. The
+   *  compare dialog belongs to `features.compare`. */
   symbolSearch?: boolean
+  /** The indicator browser, and its doors: the Indicators button and `chart.indicators.open`. Off,
+   *  indicators are still added through `chart.indicators.add`. */
+  indicatorPicker?: boolean
+  /** The full indicator settings dialog. Off, the legend's gear opens the inputs-only editor, and
+   *  `chart.indicators.update` still changes an indicator. */
+  indicatorSettings?: boolean
+}
+
+/** The top bar's own controls. */
+export interface TopBarUi {
+  /** The symbol pill. Absent with `symbolSearch` off, since it is the search dialog's door. */
+  symbol?: boolean
+  /** The compare button. */
+  compare?: boolean
   /** The timeframe picker. */
   timeframes?: boolean
   /** The chart-style picker. */
-  chartStyles?: boolean
-  /** The indicator picker and the indicator settings dialog. The legend's gear opens the
-   *  inputs-only editor instead when this is off. */
+  styles?: boolean
+  /** The Indicators button. Absent with `indicatorPicker` off. */
   indicators?: boolean
+  /** The Bar replay button. */
+  replay?: boolean
+  /** Undo and redo. */
+  history?: boolean
   /** The layout setup menu and the saved-layouts menu. */
   layouts?: boolean
-  /** The chart settings menu. */
-  settings?: boolean
+  /** The chart settings menu. `false` removes it; an object hides part of it. */
+  settings?: boolean | SettingsMenuUi
   /** The fullscreen button. */
   fullscreen?: boolean
   /** The image menu. */
   image?: boolean
-  /** The chart's own notices: feed states, the image fallback, a refused save. */
-  toasts?: boolean
+}
+
+/** The settings menu's own sections. */
+export interface SettingsMenuUi {
+  /** The Theme section: the light and dark pair at the end of the menu, for a host that offers the
+   *  choice in its own settings. The theme API and the theme commands are untouched. */
+  theme?: boolean
+}
+
+/** The legend's own parts. */
+export interface LegendUi {
+  /** The values row: the hovered bar's O H L C and its move. The identity row stays. A touch
+   *  surface with no pointer to hover with has no bar to read but the last one, and a row of
+   *  numbers over the candles buys nothing there. */
+  values?: boolean
+  /** The market-status control and its popup. The dot itself stays. */
+  marketStatus?: boolean
 }
 
 /** ── ACCESS ──────────────────────────────────────────────────────────────────────────────────
@@ -247,9 +305,18 @@ export interface IndicatorInstance {
 
 /** Everything needed to construct a widget. `container` and `datafeed` are the two hard
  *  requirements; every other field has a working default. */
-export interface ChartWidgetOptions {
+export interface ChartWidgetOptions extends MarkPainterHooks {
   /** The DOM element the widget mounts into. */
   container: HTMLElement
+  /** Optional host-owned space for the chart's top toolbar, outside the chart container.
+   *  The widget appends its own themed child here and removes only that child at dispose.
+   *  Menus and dialogs stay in the chart container. Include both containers in a custom
+   *  fullscreen target when the toolbar should remain available in fullscreen. */
+  toolbarContainer?: HTMLElement
+  /** Optional host-owned space for one drawing toolbar following the active chart.
+   *  The widget appends its own themed child and leaves the supplied element untouched.
+   *  Flyouts remain inside the active chart; include this space in a custom fullscreen target. */
+  drawingToolbarContainer?: HTMLElement
   /** The market-data backend. Required: this is the seam the whole design turns on. */
   datafeed: ChartDatafeed
   /** The revisioned saved-resource adapter (named charts, layouts, drawing documents and
@@ -274,12 +341,19 @@ export interface ChartWidgetOptions {
    *  precedence ladder, and it wins over the palette wherever both could reach the same pixel:
    *  runtime `applyAppearance` beats this, and this beats what the theme resolves to. */
   appearance?: PartialOverrides
-  /** Which built-in UI and behavior is present. */
+  /** Which chart behavior exists. */
   features?: FeatureConfig
+  /** Which of the chart's own controls render. */
+  ui?: UiConfig
+  /** The host's drawings for the chart's own glyphs, by icon id. An icon left out keeps the chart's
+   *  own; `CHART_ICON_IDS` lists every one. Read once, at construction. */
+  icons?: ChartIcons
   /** What the host permits. */
   access?: AccessPolicy
   /** Initial viewer preferences, for a first-run chart. A stored value wins once there is one. */
   preferences?: Partial<ChartPreferences>
+  /** Optional localized content and actions in the chart-owned indicator browser. */
+  indicatorPicker?: IndicatorPickerSource
   /** Indicator instances on the chart at mount. */
   indicators?: IndicatorInstance[]
   /** A built-in interface language for the chart's chrome and its date formatting. */

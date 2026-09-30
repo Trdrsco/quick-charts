@@ -14,14 +14,16 @@ import type { DrawingPresets } from '../../drawings'
 import { openDialog } from './dialog'
 import { button, el, focusFirst, menuKeys } from './dom'
 import { dialogTabs, openPopover } from './fields'
-import { iconSvg } from './icons'
 import { coordinateRows, firstTabFor, styleRows, tableRows, tabsFor, textRows, visibilityRows, TAB_LABEL, type RowsContext, type SettingsTab } from './settingsRows'
 import { openTemplateDeleteDialog, openTemplateNameDialog } from './templateDialog'
+import type { IconResolver } from '../icons/resolver'
 
 export interface SettingsDialogDeps {
   /** The chrome subtree the dialog and its popovers mount into. */
   chrome: HTMLElement
   t: ChartTranslate
+  /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
+  icons: IconResolver
   drawing: IDrawing
   presets: DrawingPresets
   /** The stem every element id the dialog writes derives from: the chart's id. */
@@ -51,6 +53,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     container: deps.chrome,
     title: t('drawing.settingsTitle', { tool: name }),
     closeLabel: t('drawing.close'),
+    icons: deps.icons,
     role: 'drawing-settings',
     width: 380,
     onClose: () => {
@@ -95,6 +98,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
 
   const ctx: RowsContext = {
     t,
+    icons: deps.icons,
     box: dialog.box,
     drawing,
     tab,
@@ -155,7 +159,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
 
   // The footer: the Template menu, then Cancel and Ok.
   const template = button({ class: 'qc-button qc-drawing-template-button', label: t('drawing.template') })
-  template.append(el('span', { text: t('drawing.template') }), el('span', { class: 'qc-drawing-caret', html: iconSvg('chevronDown', 18) }))
+  template.append(el('span', { text: t('drawing.template') }), el('span', { class: 'qc-drawing-caret' }, deps.icons.icon('chevronDown18', 18)))
   template.setAttribute('aria-haspopup', 'menu')
   template.setAttribute('aria-expanded', 'false')
   let closeMenu: (() => void) | null = null
@@ -182,7 +186,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     }
     menu.append(
       // The save command reads the selection, which is this drawing with the session's edits on it.
-      rowOf(t('drawing.saveAs'), 'chart.drawings.template.save', () => openTemplateNameDialog({ container: dialog.box, t }, (templateName) => deps.run('chart.drawings.template.save', templateName))),
+      rowOf(t('drawing.saveAs'), 'chart.drawings.template.save', () => openTemplateNameDialog({ container: dialog.box, t, icons: deps.icons }, (templateName) => deps.run('chart.drawings.template.save', templateName))),
       rowOf(t('drawing.applyDefaults'), 'chart.drawings.template.apply', () => applyTemplate(null)),
     )
     const saved = deps.presets.templatesFor(drawing.type)
@@ -195,11 +199,11 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
           class: 'qc-drawing-star',
           label: t('drawing.removeTemplateNamed', { name: saved1.name }),
           title: t('drawing.remove'),
-          html: iconSvg('trash', 18),
+          icon: deps.icons.icon('trash', 18),
           disabled: !deps.available('chart.drawings.template.remove'),
           onClick: () => {
             closeMenu?.()
-            openTemplateDeleteDialog({ container: dialog.box, t }, saved1.name, () => deps.run('chart.drawings.template.remove', saved1.name))
+            openTemplateDeleteDialog({ container: dialog.box, t, icons: deps.icons }, saved1.name, () => deps.run('chart.drawings.template.remove', saved1.name))
           },
         }),
       )

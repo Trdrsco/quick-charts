@@ -4,7 +4,8 @@
 // as such, and the settings dialog's three tabs applied as one update.
 import { afterEach, describe, expect, it } from 'vitest'
 import { filterDefinitions, freshInstanceId, openIndicatorPicker } from '../../src/ui/chrome/indicatorPicker'
-import { hexOf, openIndicatorSettings } from '../../src/ui/chrome/indicatorSettings'
+import { openIndicatorSettings } from '../../src/ui/chrome/indicatorSettings'
+import { readColor } from '../../src/ui/controls/color'
 import { indicatorPermitted } from '../../src/widget/indicators'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import { fakeWidget, press } from './harness'
@@ -48,14 +49,45 @@ describe('the picker rules', () => {
 })
 
 describe('the picker dialog', () => {
-  it('lists the 23 built-ins in four groups, searches, and adds through the command with a fresh id', () => {
+  it('uses the historical table and navigation, with no host-only sections in standalone mode', () => {
+    const w = fakeWidget()
+    cleanup.push(() => w.dispose())
+    const dialog = openIndicatorPicker({ ...w.ctx })
+    cleanup.push(() => dialog.close())
+    expect(dialog.element.style.width).toBe('840px')
+    expect([...dialog.element.querySelectorAll('[data-picker-collection]')].map((row) => row.textContent?.trim())).toEqual(['Favorites', 'Built-in'])
+    expect([...dialog.element.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent)).toEqual(['', 'Name', 'Author', 'Favorites', ''])
+    expect(dialog.element.textContent).not.toMatch(/Community|Strategies|My library/)
+    expect(dialog.element.querySelector('.qc-picker-list')!.contains(dialog.element.querySelector('[role="rowgroup"]'))).toBe(true)
+    // The close is the dialogs' own cross; no dialog writes a key's name in its header.
+    const close = dialog.element.querySelector<HTMLButtonElement>('.qc-dialog-close')!
+    expect(close.getAttribute('aria-label')).toBe('Close')
+    expect(close.querySelector('svg')).not.toBeNull()
+    expect(dialog.element.textContent).not.toContain('Esc')
+  })
+
+  it('keeps the modal and query open while adding repeated instances through row and Plus', () => {
+    const w = fakeWidget()
+    cleanup.push(() => w.dispose())
+    const dialog = openIndicatorPicker({ ...w.ctx })
+    cleanup.push(() => dialog.close())
+    const search = dialog.element.querySelector<HTMLInputElement>('.qc-picker-search')!
+    search.value = 'macd'
+    search.dispatchEvent(new Event('input'))
+    dialog.element.querySelector<HTMLElement>('[data-indicator="macd"]')!.click()
+    expect(dialog.open()).toBe(true)
+    dialog.element.querySelector<HTMLButtonElement>('[data-picker-add="macd"]')!.click()
+    expect(w.chart.state.indicators.map((instance) => instance.id)).toEqual(['macd-1', 'macd-2'])
+    expect(search.value).toBe('macd')
+  })
+
+  it('lists all 23 built-ins, searches, and adds through the command with a fresh id', () => {
     const w = fakeWidget()
     cleanup.push(() => w.dispose())
     const dialog = openIndicatorPicker({ ...w.ctx })
     expect(dialog.element.getAttribute('aria-label')).toBe('Indicators')
-    const rows = (): HTMLButtonElement[] => [...dialog.element.querySelectorAll<HTMLButtonElement>('[role="option"]')]
+    const rows = (): HTMLButtonElement[] => [...dialog.element.querySelectorAll<HTMLButtonElement>('[data-indicator]')]
     expect(rows().length).toBe(23)
-    expect([...dialog.element.querySelectorAll('.qc-dialog-heading')].map((h) => h.textContent)).toEqual(['Moving averages', 'Bands and channels', 'Oscillators', 'Volume'])
     const search = dialog.element.querySelector<HTMLInputElement>('.qc-picker-search')!
     expect(document.activeElement).toBe(search)
     search.value = 'macd'
@@ -67,7 +99,8 @@ describe('the picker dialog', () => {
     rows()[0]!.click()
     expect(w.chart.calls).toContain('indicators:add:macd-1')
     expect(w.chart.state.indicators[0]!.definition).toBe(BUILT_IN_INDICATORS.find((d) => d.id === 'macd'))
-    expect(dialog.open()).toBe(false)
+    expect(dialog.open()).toBe(true)
+    dialog.close()
   })
 
   it('a definition the policy refuses renders disabled and says so', () => {
@@ -108,7 +141,9 @@ describe('the settings dialog', () => {
     const period = dialog.element.querySelector<HTMLInputElement>('input[type="number"]')!
     period.value = '50'
     tabs[1]!.click()
-    expect(dialog.element.querySelectorAll('input[type="color"]').length).toBeGreaterThan(0)
+    // Every color here is the package's own control: no surface falls back to the OS dialog.
+    expect(dialog.element.querySelector('input[type="color"]')).toBeNull()
+    expect(dialog.element.querySelectorAll('.qc-drawing-swatch-button').length).toBeGreaterThan(0)
     const width = dialog.element.querySelector<HTMLSelectElement>('select[aria-label$="line width"]')!
     width.value = '3'
     width.dispatchEvent(new Event('change'))
@@ -140,11 +175,29 @@ describe('the settings dialog', () => {
     expect(w.chart.calls).toContain('indicators:hide:bollinger-1')
   })
 
-  it('reads a color for the native field only when it can show it', () => {
-    expect(hexOf('#4c98fb')).toBe('#4c98fb')
-    expect(hexOf('rgb(76, 152, 251)')).toBe('#4c98fb')
-    expect(hexOf('rgba(76, 152, 251, 0.5)')).toBe('#4c98fb')
-    expect(hexOf('currentColor')).toBeNull()
-    expect(hexOf(undefined)).toBeNull()
+  it('reads a color and its alpha, and leaves a value it cannot read intact', () => {
+    expect(readColor('#4c98fb')).toEqual({ hex: '#4c98fb', alpha: 1 })
+    expect(readColor('rgb(76, 152, 251)')).toEqual({ hex: '#4c98fb', alpha: 1 })
+    expect(readColor('rgba(76, 152, 251, 0.5)')).toEqual({ hex: '#4c98fb', alpha: 0.5 })
+    expect(readColor('currentColor')).toBeNull()
+    expect(readColor(undefined)).toBeNull()
+  })
+
+  it('edits a plot color through the shared palette, and holds the pick for Apply', () => {
+    const w = fakeWidget()
+    cleanup.push(() => w.dispose())
+    w.chart.handle.indicators.add({ id: 'bollinger-1', definition: bollinger })
+    const dialog = openIndicatorSettings({ ...w.ctx, chart: w.chart.handle, instance: w.chart.state.indicators[0]! })
+    ;[...dialog.element.querySelectorAll<HTMLButtonElement>('[role="tab"]')][1]!.click()
+    const control = dialog.element.querySelector<HTMLButtonElement>('.qc-drawing-swatch-button')!
+    control.click()
+    const palette = dialog.element.querySelector<HTMLElement>('.qc-inline-panel .qc-drawing-palette')!
+    expect(palette.querySelectorAll('.qc-drawing-swatch:not(.qc-drawing-swatch-plus)')).toHaveLength(80)
+    palette.querySelector<HTMLButtonElement>('[aria-label="Color #f23645"]')!.click()
+    // The pick is a draft: the dialog reaches the chart only on Apply.
+    expect(w.chart.calls.filter((c) => c.startsWith('indicators:set'))).toEqual([])
+    dialog.element.querySelector<HTMLButtonElement>('button[aria-label="Apply"]')!.click()
+    const firstPlot = Object.keys(bollinger.manifest.plots)[0]!
+    expect(w.chart.state.indicators[0]!.overrides?.plots?.[firstPlot]?.color).toBe('#f23645')
   })
 })

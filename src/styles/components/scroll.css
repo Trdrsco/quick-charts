@@ -1,0 +1,88 @@
+/* The thin bar beside a list the viewer scrolls to find something: the search results, the
+ * indicator list, the saved layouts, a menu's rows, a dialog's body. Five pixels wide with a 3px
+ * thumb inside a transparent border, so it reads as a position marker rather than a control.
+ *
+ * Only these surfaces carry it. A strip that scrolls sideways under a pointer that is already on it
+ * (the toolbars, the range row, the class chips, the picker's nav) keeps its own hide beside its
+ * layout, because a bar under a row of chips is chrome nobody asked for and steals the row's height.
+ *
+ * Written for both engines, as the platforms split it: WebKit and Blink take the pseudo-elements,
+ * which is where the 5px lives; Gecko has no pseudo-elements and takes `scrollbar-width: thin` with
+ * the thumb as a colour pair. The Gecko block is fenced behind its own feature query so that Blink,
+ * which now understands the standard property too, does not quietly widen these bars to its own
+ * idea of thin. `scrollbar-width: auto` keeps a host page that hides every bar (a blanket
+ * `scrollbar-width: none`, which more than one app ships) from erasing the chart's own. */
+[data-qc-theme] .qc-menu-body,
+[data-qc-theme] .qc-dialog-body,
+[data-qc-theme] .qc-picker-list,
+[data-qc-theme] .qc-layouts-list,
+[data-qc-theme] .qc-search-list,
+[data-qc-theme] .qc-status-popup,
+[data-qc-theme] .qc-drawing-dialog-body,
+[data-qc-theme] .qc-drawing-popover {
+  scrollbar-width: auto;
+}
+
+[data-qc-theme] .qc-menu-body::-webkit-scrollbar,
+[data-qc-theme] .qc-dialog-body::-webkit-scrollbar,
+[data-qc-theme] .qc-picker-list::-webkit-scrollbar,
+[data-qc-theme] .qc-layouts-list::-webkit-scrollbar,
+[data-qc-theme] .qc-search-list::-webkit-scrollbar,
+[data-qc-theme] .qc-status-popup::-webkit-scrollbar,
+[data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar,
+[data-qc-theme] .qc-drawing-popover::-webkit-scrollbar {
+  display: block;
+  width: 5px;
+  height: 5px;
+}
+
+[data-qc-theme] .qc-menu-body::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-dialog-body::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-picker-list::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-layouts-list::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-search-list::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-status-popup::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-drawing-popover::-webkit-scrollbar-thumb {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background-color: var(--qc-chrome-scrollThumb);
+  background-clip: content-box;
+}
+
+[data-qc-theme] .qc-menu-body::-webkit-scrollbar-track,
+[data-qc-theme] .qc-dialog-body::-webkit-scrollbar-track,
+[data-qc-theme] .qc-picker-list::-webkit-scrollbar-track,
+[data-qc-theme] .qc-layouts-list::-webkit-scrollbar-track,
+[data-qc-theme] .qc-search-list::-webkit-scrollbar-track,
+[data-qc-theme] .qc-status-popup::-webkit-scrollbar-track,
+[data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar-track,
+[data-qc-theme] .qc-drawing-popover::-webkit-scrollbar-track {
+  border-radius: 3px;
+  background-color: transparent;
+}
+
+[data-qc-theme] .qc-menu-body::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-dialog-body::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-picker-list::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-layouts-list::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-search-list::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-status-popup::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-drawing-popover::-webkit-scrollbar-corner {
+  display: none;
+}
+
+@supports (-moz-appearance: none) {
+  [data-qc-theme] .qc-menu-body,
+  [data-qc-theme] .qc-dialog-body,
+  [data-qc-theme] .qc-picker-list,
+  [data-qc-theme] .qc-layouts-list,
+  [data-qc-theme] .qc-search-list,
+  [data-qc-theme] .qc-status-popup,
+  [data-qc-theme] .qc-drawing-dialog-body,
+  [data-qc-theme] .qc-drawing-popover {
+    scrollbar-width: thin;
+    scrollbar-color: var(--qc-chrome-scrollThumb) transparent;
+  }
+}

@@ -81,6 +81,13 @@
   display: none;
 }
 
+/* One set's grid. It groups the sections a kind owns so a switch between kinds detaches and
+   reattaches them whole, and it takes no box of its own, so the sections lay out as children of
+   the scrolling grid exactly as they did before the wrapper existed. */
+[data-qc-theme] .qc-drawing-glyph-panel {
+  display: contents;
+}
+
 [data-qc-theme] .qc-drawing-glyph-section {
   content-visibility: auto;
 }

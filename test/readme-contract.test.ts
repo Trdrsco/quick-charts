@@ -56,22 +56,33 @@ const compilerOptions: ts.CompilerOptions = {
 const VIRTUAL = `${pkgRoot}/test/__readme_block__.ts`
 const VIRTUAL_DTS = `${pkgRoot}/test/__readme_ambient__.d.ts`
 
-function diagnosticsFor(source: string): readonly ts.Diagnostic[] {
-  const virtualFiles = new Map<string, string>([
-    [VIRTUAL, source],
-    [VIRTUAL_DTS, AMBIENT_DTS],
-  ])
-  const host = ts.createCompilerHost(compilerOptions, true)
-  const readFile = host.readFile.bind(host)
-  const fileExists = host.fileExists.bind(host)
-  const getSourceFile = host.getSourceFile.bind(host)
-  host.readFile = (f) => virtualFiles.get(f) ?? readFile(f)
-  host.fileExists = (f) => virtualFiles.has(f) || fileExists(f)
-  host.getSourceFile = (f, langVersion, onError, shouldCreate) => {
-    const v = virtualFiles.get(f)
-    return v !== undefined ? ts.createSourceFile(f, v, ts.ScriptTarget.ES2022, true) : getSourceFile(f, langVersion, onError, shouldCreate)
+/** One compiler host for every block. The standard library and the package's own sources are read and
+ *  parsed once, and each block's program is built on the one before it, so a block costs its own
+ *  file rather than the whole package again. A block's diagnostics are its own file's. */
+const blockFiles = new Map<string, string>([
+  [VIRTUAL_DTS, AMBIENT_DTS],
+])
+const parsedFiles = new Map<string, ts.SourceFile | undefined>()
+const blockHost = ts.createCompilerHost(compilerOptions, true)
+{
+  const readFile = blockHost.readFile.bind(blockHost)
+  const fileExists = blockHost.fileExists.bind(blockHost)
+  const getSourceFile = blockHost.getSourceFile.bind(blockHost)
+  blockHost.readFile = (f) => blockFiles.get(f) ?? readFile(f)
+  blockHost.fileExists = (f) => blockFiles.has(f) || fileExists(f)
+  blockHost.getSourceFile = (f, languageVersion, onError, shouldCreate) => {
+    const text = blockFiles.get(f)
+    if (f === VIRTUAL) return ts.createSourceFile(f, text ?? '', ts.ScriptTarget.ES2022, true)
+    if (!parsedFiles.has(f)) parsedFiles.set(f, text !== undefined ? ts.createSourceFile(f, text, ts.ScriptTarget.ES2022, true) : getSourceFile(f, languageVersion, onError, shouldCreate))
+    return parsedFiles.get(f)
   }
-  const program = ts.createProgram([VIRTUAL_DTS, VIRTUAL], compilerOptions, host)
+}
+let previousProgram: ts.Program | undefined
+
+function diagnosticsFor(source: string): readonly ts.Diagnostic[] {
+  blockFiles.set(VIRTUAL, source)
+  const program = ts.createProgram([VIRTUAL_DTS, VIRTUAL], compilerOptions, blockHost, previousProgram)
+  previousProgram = program
   const sf = program.getSourceFile(VIRTUAL)
   if (!sf) throw new Error(`the virtual block file did not load: ${VIRTUAL}`)
   return [...program.getSyntacticDiagnostics(sf), ...program.getSemanticDiagnostics(sf)]

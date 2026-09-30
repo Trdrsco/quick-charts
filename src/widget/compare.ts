@@ -9,12 +9,13 @@
 // One add and one remove pair serve every door — the public api, the dialog, the legend's remove —
 // so the loan can never depend on which door was used.
 import type { IChartApi } from 'lightweight-charts'
-import { attachCompare, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSymbol } from '../compare'
+import { attachCompare, maintainCompareTimeline, readCompareAt, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSymbol } from '../compare'
 import type { ChartDatafeed } from '../datafeed'
 import type { ChartI18n } from '../i18n'
 import type { LegendChip } from '../chartLegend'
 import { createPriceFormatter, type PriceFormatter } from '../priceFormatter'
-import type { PriceFormat } from '../symbology'
+import type { SymbolInfo } from '../symbology'
+import { symbolNames } from '../symbolLabel'
 import type { ScaleMode } from '../scaleMode'
 
 /** The compare surface a host drives. */
@@ -34,7 +35,7 @@ export interface ComparePlane {
   api: ChartCompareApi
   handle: CompareHandle
   /** The legend rows for the current compares. */
-  chips(): LegendChip[]
+  chips(time?: number | null): LegendChip[]
   /** Open the search dialog: the legend's compare door, or a row's change-symbol. The dialog is
    *  the widget chrome's; this plane supplies the pick that re-keys a compare in place. */
   openDialog(mode: 'compare' | 'change-symbol', changeFrom?: string): void
@@ -71,6 +72,8 @@ export interface CompareDeps {
   /** The rows changed. */
   onChips(): void
   onEvent(entries: readonly CompareEntry[]): void
+  /** Hold the chart's shared viewport across older compare history painting. */
+  maintainTimeline?(write: () => void): void
 }
 
 /** How long a burst of compare ticks is collected before the rows are rebuilt. Every compare's
@@ -92,6 +95,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
       }, CHIP_THROTTLE_MS)
     },
   })
+  if (deps.maintainTimeline) maintainCompareTimeline(handle, deps.maintainTimeline)
 
   /** The scale the trader held before same-percent forced percent. Null while no flip is on loan. */
   let scaleBeforeCompare: ScaleMode | null = null
@@ -118,6 +122,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
   const remove = (symbol: string): void => {
     if (deps.disposed()) return
     handle.remove(symbol)
+    formats.delete(symbol)
     scalePolicy()
     deps.onEvent(handle.list())
   }
@@ -125,22 +130,23 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
   /** A compared symbol writes its last value in ITS OWN price format, resolved once per compare
    *  through the same datafeed seam. Until that resolve lands (or when the feed knows nothing) the
    *  row carries no value rather than one written at another market's precision. */
-  const formats = new Map<string, PriceFormat | null>()
+  const formats = new Map<string, { info: SymbolInfo | null }>()
   const formatterFor = (symbol: string): PriceFormatter | null => {
     if (!formats.has(symbol)) {
-      formats.set(symbol, null)
+      const record = { info: null as SymbolInfo | null }
+      formats.set(symbol, record)
       void deps.datafeed
         .resolve(symbol)
         .then((info) => {
-          if (deps.disposed() || !info) return
-          formats.set(symbol, info.format)
+          if (deps.disposed() || !info || formats.get(symbol) !== record || !handle.list().some(entry => entry.symbol === symbol)) return
+          record.info = info
           deps.onChips()
         })
         .catch(() => {
           /* the row stays valueless; the next mount asks again */
         })
     }
-    const format = formats.get(symbol)
+    const format = formats.get(symbol)?.info?.format
     return format ? createPriceFormatter(format, { locale: deps.i18n.tag() }) : null
   }
 
@@ -149,22 +155,36 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     api: {
       add: (symbol, opts) => add(symbol, opts.placement),
       remove,
-      setVisible: (symbol, visible) => handle.setVisible(symbol, visible),
+      setVisible: (symbol, visible) => {
+        handle.setVisible(symbol, visible)
+        // Visibility is part of what a comparison row IS, so hiding one reports like adding or
+        // removing one: it is written down with the row and every follower reads the same list.
+        deps.onEvent(handle.list())
+      },
       list: () => handle.list(),
       latest: (symbol) => handle.latest(symbol),
       symbols: () => [...deps.curated],
     },
-    chips() {
+    chips(time = null) {
       return handle.list().map((entry) => {
-        const pct = entry.placement === 'same-percent' ? handle.changePct(entry.symbol) : null
-        const last = entry.placement === 'same-percent' ? null : handle.latest(entry.symbol)
-        const lastText = last != null ? (formatterFor(entry.symbol)?.format(last) ?? null) : null
+        const formatter = formatterFor(entry.symbol)
+        const reading = readCompareAt(handle, entry.symbol, time)
+        const pct = entry.placement === 'same-percent' ? reading.percent : null
+        const last = entry.placement === 'same-percent' ? null : reading.latest
+        const lastText = last != null ? (formatter?.format(last) ?? null) : null
+        const info = formats.get(entry.symbol)?.info ?? null
         return {
           id: `cmp:${entry.symbol}`,
-          // A plain pair reads with spaces around the slash ("XRP / USDC"); anything else verbatim.
-          title: /^[A-Za-z][A-Za-z0-9.]*\/[A-Za-z][A-Za-z0-9.]*$/.test(entry.symbol) ? entry.symbol.replace('/', ' / ') : entry.symbol,
+          // The market as the legend writes it — the pair spelled out, never the contract's prose
+          // name — so a compare row and the header's identity read the same way.
+          title: symbolNames(info ?? entry.symbol).title,
+          mark: entry.symbol,
+          venue: info?.exchange ?? '',
           // A percentage is its own value kind and keeps two decimals; a last value is a price.
           value: pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%` : lastText,
+          // Only the MOVE takes a direction. A last price is a level, and colouring it would claim
+          // a direction the number is not stating.
+          ...(pct != null ? { tone: pct >= 0 ? ('up' as const) : ('down' as const) } : {}),
           hidden: !entry.visible,
           titleButton: true,
           removable: true,
@@ -180,6 +200,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
         const current = handle.list().find((e) => e.symbol === changeFrom)
         if (!current || handle.list().some((e) => e.symbol === next)) return
         handle.remove(changeFrom)
+        formats.delete(changeFrom)
         handle.add(next, { placement: current.placement, color: current.color, visible: current.visible })
         scalePolicy()
         deps.onEvent(handle.list())
@@ -189,6 +210,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     sync: () => handle.sync(),
     serialize: () => handle.serialize(),
     restore(state) {
+      formats.clear()
       handle.restore(Array.isArray(state) ? state : [])
       scalePolicy()
       deps.onEvent(handle.list())
@@ -199,6 +221,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     destroy() {
       if (chipTimer) clearTimeout(chipTimer)
       chipTimer = null
+      formats.clear()
       handle.destroy()
     },
   }

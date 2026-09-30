@@ -7,7 +7,8 @@ document, strings through the catalog, accessibility, image capture, download an
 fullscreen, persistence over two independent host adapters, the feed's capability fallback, older
 paging, reconnect snapshots and terminal unavailable state, data-only replay, the four scale modes,
 sessions and holiday injection, compare placement, indicator families, layouts, the seven styles,
-and the drawing catalog.
+the drawing catalog, and the presentation plane: hidden controls that leave their commands, a host
+control in a top-bar slot, and a host's drawings for the chart's icons.
 
 The module imports `quickcharts` and `quickcharts/drawings` and nothing else. It observes only what
 a consumer can observe: the widget's answers, its events, the theme root attribute the theme manifest
@@ -45,8 +46,8 @@ and the app host reports both skipped with those two reasons.
 
 The app host is the one whose `createWidget` is a production door rather than the package
 constructor. What a caller of that door decides rides through from the check's options: the
-symbol, timeframe, features, access, indicators, layout, preferences, the feed and the save/load
-adapter. What the app decides for every chart it mounts stands as the app mounts it: its theme, its
+symbol, timeframe, features, the presentation, the icons, access, indicators, layout, preferences,
+the feed and the save/load adapter. What the app decides for every chart it mounts stands as the app mounts it: its theme, its
 language, where the viewer's preferences live, how drawings persist, the image line, the fullscreen
 frame, the search recents, the drawing assets and the extensions. A check observing one of those
 planes observes the app's real choice, and where its expectation differs it fails naming the value
@@ -54,9 +55,9 @@ the app mounted; the spec reports that as a finding against the composition or t
 a skip. The engine is mocked at the network edge, with the revisioned `/api/charts` families in
 memory, so a check that mounts without an adapter of its own saves through the app's engine
 adapter. Every mount gets its own mount id, so no check reads another's stored preferences. The
-spec also blocks `js.stripe.com`, the one script the app page fetches off the box: it attaches its
-own document listeners on its own schedule, which a check that balances the widget's listeners
-would count as the widget's, and the app's loader only warns when the script does not arrive.
+app page fetches no script off the box: its payment surfaces load Stripe's script only when a
+trader opens one, so a check that balances the widget's document listeners counts only the
+widget's.
 
 ## The host contract
 

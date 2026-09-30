@@ -6,13 +6,15 @@
 // here too, so a saved-layouts menu is a consumer of the registry like any other surface, and a
 // policy that forbids layout writes forbids them from every door.
 import type { ChartI18n } from '../i18n'
-import type { ChartSaveLoadAdapter, ResourceRef } from '../resources'
+import type { ResourceRef } from '../resources'
+import type { ResourceRemoveOutcome } from '../openResource'
 import { THEME_MODES, type ThemeMode } from '../theme/schema'
 import type { ThemeController } from '../theme/controller'
 import type { CommandRegistry, CommandSpec } from './commands'
 import type { Emitter, WidgetEvents } from './events'
 import type { Capabilities } from './options'
 import type { LayoutSyncFlags } from './layout'
+import type { LayoutChanges } from './layoutChanges'
 import type { ChartWidget } from './create'
 
 /** The viewer's layout autosave switch, read by the commands and shown by the chrome. */
@@ -27,9 +29,19 @@ export interface WidgetCommandDeps {
   theme: ThemeController
   i18n: ChartI18n
   capabilities(): Capabilities
-  /** The host's saved-resource adapter, for the layouts family a delete reaches. */
-  saveLoad: ChartSaveLoadAdapter | null
+  canSaveLayout(): boolean
+  /** The layout's private maximize toggle, over its active tile. */
+  toggleMaximize(): void
+  /** Ask a never-saved layout's name in the chrome's name dialog. False when no chrome took it, which
+   *  leaves the save a no-op rather than a nameless write. */
+  nameLayout(): boolean
+  /** Raise the chrome's Layouts dialog. False when no chrome took it. */
+  openLayouts(): boolean
+  /** The layout owner's conditional removal, also used for a browser row that is not open. */
+  removeLayout(ref: ResourceRef): Promise<ResourceRemoveOutcome>
   autosave: AutosavePreference
+  /** Whether the open layout holds unwritten changes, and the autosave that writes them. */
+  layoutChanges: LayoutChanges
   /** The widget's event emitter: a layout or image verb reports its outcome through it. */
   events: Emitter<WidgetEvents>
 }
@@ -153,14 +165,49 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
       if (typeof arg === 'number') widget.layout.setActive(arg)
     },
   })
+  // A sync flag is a standing preference for the layout, not an action on the charts open right
+  // now: setting it while one chart is up is what decides how the next split behaves. Gating it on
+  // a split already existing would leave every switch dead in the state a viewer is usually in.
   add({
     id: 'widget.layout.setSync',
     scope: 'widget',
     label: 'command.layoutSync',
-    available: () => widget.charts().length > 1,
+    available: () => true,
     execute: (arg) => {
       if (arg && typeof arg === 'object') widget.layout.setSync(arg as Partial<LayoutSyncFlags>)
     },
+  })
+  const split = (): boolean => widget.charts().length > 1
+  const step = (delta: number): void => {
+    const count = widget.charts().length
+    if (count < 2) return
+    widget.layout.setActive((widget.layout.active() + count + delta) % count)
+  }
+  add({
+    id: 'widget.layout.activateNext',
+    scope: 'widget',
+    label: 'command.layoutActivateNext',
+    shortcut: 'Tab',
+    available: split,
+    execute: () => step(1),
+  })
+  add({
+    id: 'widget.layout.activatePrevious',
+    scope: 'widget',
+    label: 'command.layoutActivatePrevious',
+    shortcut: 'Shift+Tab',
+    available: split,
+    execute: () => step(-1),
+  })
+  // The active tile fills the layout, or gives it back. One toggle, so the on-chart control, the
+  // Alt gesture and the Alt+Enter chord are the same verb, and a single chart has nothing to fill.
+  add({
+    id: 'widget.layout.toggleMaximize',
+    scope: 'widget',
+    label: 'command.layoutMaximize',
+    shortcut: 'Alt+Enter',
+    available: split,
+    execute: () => deps.toggleMaximize(),
   })
   add({
     id: 'widget.layout.setArrangement',
@@ -172,26 +219,44 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
     },
   })
 
-  // ── The saved layout. Every verb reports through the event maps: `layout` for what it did,
-  // `saveConflict` for a refusal, because a command answers whether it started, not how it ended.
+  // The layout owner publishes commits and refusals for API and command callers alike.
   const layouts = (): boolean => deps.capabilities().saveLoad.layouts
   const current = (): { ref: ResourceRef; name: string } | null => widget.layout.saveLoad.current()
-  const refuse = (currentRef: ResourceRef | null, message: string): void => events.emit('saveConflict', { family: 'layout', current: currentRef, message })
 
-  /** Save under a name: an update of the open layout at its revision, or a create for a new name or
-   *  a copy. A never-saved layout with no name given cannot be saved, and answers nothing. */
+  /** The ONE naming-and-saving controller every door runs through: the menu's Save row, the name
+   *  dialog's verb, the autosave, a host call and the Ctrl/Cmd+S shortcut. A never-saved layout with
+   *  no name given cannot be written, so it asks the name in the chrome's dialog instead of writing
+   *  under a name nobody chose.
+   *
+   *  A write already on its way is not started again. Two presses in a row are one intent, and a
+   *  second update of the same revision would either duplicate the write or lose to its own
+   *  conflict; every door shares this guard because every door is this function. */
+  let pending: { key: string; done: Promise<void> } | null = null
   const save = async (name: string | undefined, asNew: boolean): Promise<void> => {
     const target = name ?? current()?.name
-    if (!target) return
-    const outcome = await widget.layout.saveLoad.save(target, { asNew })
-    if (outcome.kind === 'ok') events.emit('layout', { kind: 'saved', id: outcome.ref.id, name: target })
-    else refuse(outcome.kind === 'conflict' ? outcome.current : null, outcome.message)
+    if (!target) {
+      deps.nameLayout()
+      return
+    }
+    const key = `${asNew ? 'copy' : 'update'}:${target}`
+    if (pending?.key === key) return pending.done
+    const done = widget.layout.saveLoad.save(target, { asNew }).then(() => undefined)
+    const mine = { key, done }
+    pending = mine
+    try {
+      await done
+    } finally {
+      if (pending === mine) pending = null
+    }
   }
   add({
     id: 'widget.layout.save',
     scope: 'widget',
     label: 'command.layoutSave',
-    available: layouts,
+    // Ctrl+S, and Cmd+S on a Mac keyboard, which the dispatcher reads as the same chord. Bound on
+    // the chart's own root, so a host IDE's save outside the chart is left alone.
+    shortcut: 'Ctrl+KeyS',
+    available: () => layouts() && deps.canSaveLayout(),
     execute: (arg) => {
       if (typeof arg === 'string') return save(arg, false)
       const at = arg as { name?: unknown; asNew?: unknown } | null | undefined
@@ -202,7 +267,7 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
     id: 'widget.layout.rename',
     scope: 'widget',
     label: 'command.layoutRename',
-    available: () => layouts() && current() !== null,
+    available: () => layouts() && deps.canSaveLayout() && current() !== null,
     execute: (arg) => (typeof arg === 'string' && arg ? save(arg, false) : undefined),
   })
   add({
@@ -212,9 +277,19 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
     available: layouts,
     execute: async (arg) => {
       if (typeof arg !== 'string' || !arg) return
-      const outcome = await widget.layout.saveLoad.load(arg)
-      if (outcome.kind === 'ok') events.emit('layout', { kind: 'loaded', id: outcome.ref.id, name: outcome.body.name })
-      else refuse(null, outcome.message)
+      await widget.layout.saveLoad.load(arg)
+    },
+  })
+  // The Open-layout dialog, from its menu row and from the period key. It lists what the store
+  // holds, so a host that saves no layouts has nothing to open.
+  add({
+    id: 'widget.layout.open',
+    scope: 'widget',
+    label: 'command.layoutOpen',
+    shortcut: 'Period',
+    available: layouts,
+    execute: () => {
+      deps.openLayouts()
     },
   })
   add({
@@ -223,27 +298,32 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
     label: 'command.layoutDelete',
     available: layouts,
     execute: async (arg) => {
-      const store = deps.saveLoad?.layouts
       const ref = arg as { id?: unknown; revision?: unknown } | null | undefined
-      if (!store || typeof ref?.id !== 'string' || typeof ref.revision !== 'string') return
+      if (typeof ref?.id !== 'string' || typeof ref.revision !== 'string') return
       // Conditional on the revision the caller saw: a layout saved elsewhere since is refused rather
       // than deleted under someone.
-      const outcome = await store.remove({ id: ref.id, revision: ref.revision })
-      if (outcome.kind === 'ok') {
-        if (current()?.ref.id === ref.id) widget.layout.saveLoad.detach()
-        events.emit('layout', { kind: 'removed', id: ref.id, name: null })
-      } else refuse(outcome.kind === 'conflict' ? outcome.current : null, deps.i18n.t(outcome.kind === 'conflict' ? 'host.saveConflict' : 'host.saveNotFound'))
+      await deps.removeLayout({ id: ref.id, revision: ref.revision })
     },
   })
+  /** A new layout by the name it is given: one chart on the market and interval the active chart
+   *  shows, with none of the open layout's studies, comparisons, authored look or extension state,
+   *  saved as a layout of its own. Drawings kept beside the chart in their own documents stay with
+   *  their market; drawings kept in the chart's content start empty. The binding detaches FIRST, so
+   *  nothing written to the tiles on the way can land on the layout that was open. */
+  const create = async (name: string): Promise<void> => {
+    const content = JSON.parse(widget.activeChart().saveLoad.serialize().content) as Record<string, unknown>
+    const fresh = JSON.stringify({ ...content, indicators: [], compares: [], appearance: {}, ext: {}, ...('drawings' in content ? { drawings: [] } : {}) })
+    widget.layout.saveLoad.detach()
+    widget.layout.setArrangement('s')
+    widget.charts()[0]!.saveLoad.restore(fresh)
+    await save(name, true)
+  }
   add({
-    id: 'widget.layout.detach',
+    id: 'widget.layout.create',
     scope: 'widget',
-    label: 'command.layoutDetach',
-    available: () => current() !== null,
-    execute: () => {
-      widget.layout.saveLoad.detach()
-      events.emit('layout', { kind: 'detached', id: null, name: null })
-    },
+    label: 'command.layoutCreate',
+    available: () => layouts() && deps.canSaveLayout(),
+    execute: (arg) => (typeof arg === 'string' && arg.trim() ? create(arg.trim()) : undefined),
   })
   add({
     id: 'widget.layout.autosave',
@@ -251,7 +331,10 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
     label: 'command.layoutAutosave',
     available: layouts,
     execute: (arg) => {
-      if (typeof arg === 'boolean') deps.autosave.set(arg)
+      if (typeof arg !== 'boolean') return
+      deps.autosave.set(arg)
+      // Switching it on catches a dirty layout up, from whichever door switched it.
+      if (arg) deps.layoutChanges.catchUp()
     },
   })
 

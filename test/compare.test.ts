@@ -4,7 +4,7 @@
 // removal, snapshot round-trips that drop junk, and a live path that can only touch the newest bar.
 // The chart and the datafeed are fakes; the code under test is the real organ.
 import { describe, expect, it, vi } from 'vitest'
-import { attachCompare, clipToWindow, COMPARE_COLORS, pickCompareColor, seriesTargetOf } from '../src/compare'
+import { attachCompare, clipToWindow, COMPARE_COLORS, pickCompareColor, readCompareAt, seriesTargetOf } from '../src/compare'
 import type { BarsEvent, ChartDatafeed, FeedBar, SubscribeHandlers } from '../src/datafeed'
 import type { IChartApi } from 'lightweight-charts'
 
@@ -119,6 +119,54 @@ function harness(
 }
 
 describe('adding a compare', () => {
+  it('does not revive an obsolete subscription when timeframe changes away and back', async () => {
+    const { chart } = fakeChart()
+    const { feed, subs } = fakeFeed({ NQ: [bar(10, 100), bar(20, 110)] })
+    let timeframe = '1m'
+    const handle = attachCompare(chart, { datafeed: feed, tf: () => timeframe, mainWindow: () => ({ from: 10, to: 40 }) })
+    handle.add('NQ', { placement: 'new-pane' })
+    await flush()
+    const old = subs.get('NQ')!
+    timeframe = '5m'
+    handle.setTimeframe()
+    timeframe = '1m'
+    handle.setTimeframe()
+    await flush()
+    old.onBars({ kind: 'bar', bar: bar(20, 999) })
+    expect(readCompareAt(handle, 'NQ', null).latest).toBe(110)
+    handle.destroy()
+  })
+  it('reads hovered or latest values from the current clipped owner window, with no before-first borrowing', async () => {
+    const h = harness({ NQ: [bar(10, 100), bar(20, 110), bar(30, 120), bar(40, 130)] })
+    h.handle.add('NQ', { placement: 'new-pane' })
+    await flush()
+    expect(readCompareAt(h.handle, 'NQ', null)).toEqual({ latest: 130, percent: 30.000000000000004 })
+    expect(readCompareAt(h.handle, 'NQ', 25).latest).toBe(110)
+    expect(readCompareAt(h.handle, 'NQ', 9)).toEqual({ latest: null, percent: null })
+    h.win.current = { from: 10, to: 20 }
+    h.handle.sync()
+    expect(readCompareAt(h.handle, 'NQ', 40).latest).toBe(110)
+    h.win.current = null
+    expect(readCompareAt(h.handle, 'NQ', null).latest).toBeNull()
+    h.handle.destroy()
+  })
+
+  it('rejects late removed-slot subscriptions after the same symbol is recreated and clears its private reader on dispose', async () => {
+    const h = harness({ NQ: [bar(10, 100), bar(20, 110)] })
+    h.handle.add('NQ', { placement: 'new-pane' })
+    await flush()
+    const obsolete = h.subs.get('NQ')!
+    h.handle.remove('NQ')
+    expect(readCompareAt(h.handle, 'NQ', null).latest).toBeNull()
+    h.handle.add('NQ', { placement: 'new-scale' })
+    await flush()
+    h.onChange.mockClear()
+    obsolete.onBars({ kind: 'bar', bar: bar(20, 999) })
+    expect(h.onChange).not.toHaveBeenCalled()
+    expect(readCompareAt(h.handle, 'NQ', null).latest).toBe(110)
+    h.handle.destroy()
+    expect(readCompareAt(h.handle, 'NQ', null)).toEqual({ latest: null, percent: null })
+  })
   it('creates the series at the placement target, fetches the main window, clips into it', async () => {
     const h = harness({ NQ: [bar(5), bar(10), bar(20), bar(50)] })
     h.handle.add('NQ', { placement: 'same-percent' })

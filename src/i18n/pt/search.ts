@@ -8,7 +8,7 @@ export const search: Translation<typeof source> = {
   'search.placeholder': 'Search symbol',
   'search.clear': 'Limpar',
   'search.close': 'Close',
-  'search.noMatches': 'Nenhum símbolo encontrado.',
+  'search.noMatches': 'No symbols match your criteria',
   'search.loadingMore': 'Loading more',
   'search.failed': 'Search failed.',
   'search.results': 'Symbols',
@@ -29,4 +29,5 @@ export const search: Translation<typeof source> = {
   'search.opReciprocal': 'Recíproco',
   'search.opsHide': 'Ocultar operadores de spread',
   'search.opsShow': 'Mostrar operadores de spread',
+  'search.ops': 'Spread operators',
 }

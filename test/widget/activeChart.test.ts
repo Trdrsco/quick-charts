@@ -13,12 +13,15 @@ import { createLayoutPlane } from '../../src/widget/layout'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { createChartI18n } from '../../src/i18n'
 import type { ChartHandle } from '../../src/widget/chart'
+import { parseChartContent, serializeChartContent, type ChartContent } from '../../src/widget/saveLoad'
+import { DEFAULT_OVERRIDES } from '../../src/overrides'
 
 interface FakeEl {
   className: string
   dataset: Record<string, string>
   style: Record<string, string>
   down: (() => void) | null
+  removed: boolean
   appendChild(c: FakeEl): void
   addEventListener(t: string, h: () => void): void
   removeEventListener(t: string, h: () => void): void
@@ -31,6 +34,7 @@ const el = (): FakeEl => {
     dataset: {},
     style: {},
     down: null,
+    removed: false,
     appendChild: () => {},
     addEventListener: (t, h) => {
       if (t === 'pointerdown') e.down = h
@@ -38,7 +42,7 @@ const el = (): FakeEl => {
     removeEventListener: () => {
       e.down = null
     },
-    remove: () => {},
+    remove: () => { e.removed = true },
   }
   return e
 }
@@ -56,6 +60,20 @@ beforeEach(() => {
   }
 })
 
+/** The chart content a stand-in chart holds: nothing but the symbol and timeframe move in these
+ *  tests, and the rest is the chart's own defaults. */
+const BLANK_CONTENT = {
+  symbol: '',
+  timeframe: '1D',
+  style: 'candles',
+  scale: 'normal',
+  priceAxis: 'auto',
+  indicators: [],
+  appearance: DEFAULT_OVERRIDES.appearance,
+  compares: null,
+  ext: {},
+} as const satisfies ChartContent
+
 /** A stand-in chart: symbol and timeframe state, the two sync lanes the layout wires, and the save
  *  blob it serializes. Everything the layout actually touches, and nothing else. */
 function fakeChart(id: string, initial: string) {
@@ -66,6 +84,7 @@ function fakeChart(id: string, initial: string) {
   const handle = {
     id,
     symbol: () => symbol,
+    symbolInfo: () => null,
     setSymbol(next: string) {
       if (next === symbol) return
       symbol = next
@@ -75,14 +94,21 @@ function fakeChart(id: string, initial: string) {
     setTimeframe(next: string) {
       timeframe = next
     },
+    style: () => 'candles',
+    indicators: { get: () => [] },
+    compare: { list: () => [] },
     visibleRange: () => null,
     setVisibleRange: () => undefined,
     sync: { onCrosshair: off, onTimeClick: off, onVisibleRange: off },
     saveLoad: {
-      serialize: () => ({ symbol, timeframe, content: JSON.stringify({ symbol }) }),
+      notSaving: () => false,
+      // A layout reads every nested chart's blob before it re-tiles, so the stand-in writes the
+      // chart's real content format rather than a shape of its own.
+      serialize: () => ({ symbol, timeframe, content: serializeChartContent({ ...BLANK_CONTENT, symbol, timeframe }) }),
       restore(content: string) {
-        const parsed = JSON.parse(content) as { symbol?: string }
-        if (typeof parsed.symbol === 'string') handle.setSymbol(parsed.symbol)
+        const parsed = parseChartContent(content)
+        if (parsed.symbol) handle.setSymbol(parsed.symbol)
+        if (parsed.timeframe) timeframe = parsed.timeframe
       },
     },
     on(name: string, callback: (value: string) => void) {
@@ -114,6 +140,97 @@ const mount = (symbols: string[], arrangement: string, sync?: { symbol?: boolean
 }
 
 describe('the layout is pointed at its active chart', () => {
+  it('rolls an expansion back when constructing a new cloned tile fails', () => {
+    let seq = 0
+    let refuseThird = false
+    let refuseCleanup = false
+    const destroyed: string[] = []
+    const plane = createLayoutPlane({
+      container: el() as unknown as HTMLElement,
+      adapter: null,
+      i18n: createChartI18n(),
+      arrangement: 's',
+      charts: [{ symbol: 'ES' }],
+      createChart: (_element, init, index) => {
+        if (refuseThird && index === 2) throw new Error('construction refused')
+        return fakeChart(`chart-${++seq}`, init?.symbol ?? 'SEED')
+      },
+      destroyChart: (handle) => {
+        destroyed.push(handle.id)
+        if (refuseCleanup && handle.id === 'chart-2') throw new Error('cleanup refused')
+      },
+      onActive: () => undefined,
+      onChange: () => undefined,
+    })
+    const held = [...plane.handles()]
+    const style = held[0]!.style
+    held[0]!.style = () => { throw new Error('snapshot refused') }
+    expect(() => plane.api.setArrangement('3h')).toThrow('snapshot refused')
+    expect(plane.api.arrangement()).toBe('s')
+    expect(plane.handles()).toEqual(held)
+    held[0]!.style = style
+    refuseThird = true
+    refuseCleanup = true
+    expect(() => plane.api.setArrangement('3h')).toThrow('construction refused')
+    expect(plane.api.arrangement()).toBe('s')
+    expect(plane.handles()).toEqual(held)
+    expect(destroyed).toEqual(['chart-2'])
+  })
+
+  it('disposes a constructed chart when subscribing its layout lanes fails', () => {
+    let seq = 0
+    let unsubscribed = 0
+    const destroyed: string[] = []
+    const plane = createLayoutPlane({
+      container: el() as unknown as HTMLElement,
+      adapter: null,
+      i18n: createChartI18n(),
+      arrangement: 's',
+      createChart: (_element, init, index) => {
+        const handle = fakeChart(`chart-${++seq}`, init?.symbol ?? 'ES')
+        if (index === 1) {
+          handle.sync.onCrosshair = () => () => {
+            unsubscribed++
+            throw new Error('unsubscribe refused')
+          }
+          handle.sync.onTimeClick = () => { throw new Error('subscription refused') }
+        }
+        return handle
+      },
+      destroyChart: (handle) => destroyed.push(handle.id),
+      onActive: () => undefined,
+      onChange: () => undefined,
+    })
+    const held = plane.handles()[0]
+    expect(() => plane.api.setArrangement('2h')).toThrow('subscription refused')
+    expect(plane.api.arrangement()).toBe('s')
+    expect(plane.handles()).toEqual([held])
+    expect(unsubscribed).toBe(1)
+    expect(destroyed).toEqual(['chart-2'])
+  })
+
+  it('finishes a shrink when a retired child cleanup throws', () => {
+    let seq = 0
+    const destroyed: string[] = []
+    const changes: string[] = []
+    const committed: string[] = []
+    const plane = createLayoutPlane({
+      container: el() as unknown as HTMLElement, adapter: null, i18n: createChartI18n(), arrangement: '3h',
+      createChart: () => fakeChart(`chart-${++seq}`, 'ES'),
+      destroyChart: (handle) => { destroyed.push(handle.id); if (handle.id === 'chart-3') throw new Error('cleanup refused') },
+      onActive: () => undefined, onChange: () => changes.push('changed'),
+      onCommitted: (state) => committed.push(state.arrangement),
+    })
+    expect(() => plane.api.setArrangement('s')).toThrow('cleanup refused')
+    expect(plane.api.arrangement()).toBe('s')
+    expect(plane.handles().map((handle) => handle.id)).toEqual(['chart-1'])
+    expect(destroyed.slice(0, 2)).toEqual(['chart-3', 'chart-2'])
+    expect(made.filter((element) => element.className === 'qc-layout-divider' && !element.removed)).toHaveLength(0)
+    expect(changes).toEqual(['changed'])
+    expect(committed).toEqual(['s'])
+    plane.destroy()
+  })
+
   it('opens pointed at the first chart without an event — state, not a change', () => {
     const { plane, active } = mount(['AAPL', 'MSFT'], '2h')
     expect(plane.activeHandle()!.symbol()).toBe('AAPL')
@@ -211,6 +328,8 @@ describe('a layout is its own saved resource', () => {
     const saved = await plane.api.saveLoad.save('Pair')
     expect(saved.kind).toBe('ok')
     expect((await adapter.layouts.list()).map((r) => r.name)).toEqual(['Pair'])
+    // The listing names what the layout shows: the active chart's market and interval.
+    expect((await adapter.layouts.list()).map(({ symbol, timeframe }) => ({ symbol, timeframe }))).toEqual([{ symbol: 'ES', timeframe: '1D' }])
     expect(await adapter.charts.list()).toEqual([])
     const held = plane.api.saveLoad.current()!
     // Another tab saves the same layout first.

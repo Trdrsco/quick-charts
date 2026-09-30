@@ -27,6 +27,29 @@ describe('named drawing templates', () => {
     expect(loaded?.template.style).toEqual({ lineWidth: 9 })
   })
 
+  it("reads every body together, a few at a time, and lists them in the store's order", async () => {
+    const store = memorySaveLoadAdapter().templates('drawing')
+    const names = Array.from({ length: 9 }, (_, i) => `Setup ${i}`)
+    for (const name of names) await new DrawingTemplates(store).save('trend_line', name, { style: { lineWidth: 1 } })
+    let reading = 0
+    let most = 0
+    const slow = {
+      ...store,
+      async load(id: string, signal?: AbortSignal) {
+        reading += 1
+        most = Math.max(most, reading)
+        // The first bodies answer last, so an order kept by arrival would come back reversed.
+        await new Promise((resolve) => setTimeout(resolve, 20 - names.length + reading))
+        reading -= 1
+        return store.load(id, signal)
+      },
+    }
+    const all = await new DrawingTemplates(slow).listAll()
+    expect(all.map((t) => t.name)).toEqual(names)
+    expect(most).toBeGreaterThan(1)
+    expect(most).toBeLessThanOrEqual(6)
+  })
+
   it('loads one back with its identity and revision', async () => {
     const t = templates()
     const saved = await t.save('ray', 'Dashed', { style: { lineStyle: 'dashed' } })

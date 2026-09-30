@@ -17,4 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': 'التمرير يساراً',
   'range.scrollRight': 'التمرير يميناً',
   'range.reset': 'إعادة تعيين عرض الرسم البياني',
+  'range.maximizeChart': 'Maximize chart',
+  'range.restoreChart': 'Restore chart',
 }

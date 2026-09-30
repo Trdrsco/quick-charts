@@ -517,6 +517,9 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   paintTextHint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     this._textHint = null
     if (this.textEditing) return
+    // The invitation belongs to a tool that DECLARES a label. A stored drawing may carry a text
+    // key its tool no longer has, and a stray key is not a channel.
+    if (!('text' in (this.defaultProps() as Record<string, unknown>))) return
     const text = (this._props as Record<string, unknown>).text
     if (typeof text !== 'string' || text !== '') return
     const points = this.anchorPixels(viewport).filter((p): p is Point => !!p)

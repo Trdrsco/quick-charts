@@ -385,3 +385,20 @@ export function latestPlotValue(data: readonly unknown[] | undefined): number | 
   }
   return null
 }
+
+/** The plot's reading AT a moment: the last finite value at or before `time`, which is what a
+ *  legend row shows while the crosshair stands on a bar. A time before the plot's first point
+ *  reads null rather than borrowing the first value, and `null` asks for the latest, so one call
+ *  serves both the hovered and the resting reading. Points are ascending in time. */
+export function plotValueAt(data: readonly unknown[] | undefined, time: number | null): number | null {
+  if (!data) return null
+  if (time === null) return latestPlotValue(data)
+  let last: number | null = null
+  for (const point of data) {
+    const p = point as { time?: unknown; value?: unknown } | undefined
+    if (typeof p?.time !== 'number' || !Number.isFinite(p.time)) continue
+    if (p.time > time) break
+    if (typeof p.value === 'number' && Number.isFinite(p.value)) last = p.value
+  }
+  return last
+}

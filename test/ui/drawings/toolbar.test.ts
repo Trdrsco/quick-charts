@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
 import { DEFAULT_FAVORITES, DEFAULT_HIDE_STATE } from '../../../src/drawings/index'
 import { mountDrawingToolbar, type ToolbarState } from '../../../src/ui/drawings/toolbar'
+import { ownIcons } from '../../ownIcons'
 
 const i18n = createChartI18n()
 
@@ -20,6 +21,7 @@ function rig(over: Partial<ToolbarState> = {}, options: { refuse?: string[]; den
     stayInDrawingMode: false,
     allLocked: false,
     hide: DEFAULT_HIDE_STATE,
+    hideLayers: [],
     sync: true,
     removeLocked: false,
     counts: { total: 0, locked: 0 },
@@ -32,6 +34,7 @@ function rig(over: Partial<ToolbarState> = {}, options: { refuse?: string[]; den
   }
   const ran: [string, unknown][] = []
   const toolbar = mountDrawingToolbar({
+    icons: ownIcons(),
     chrome,
     t: i18n.t,
     state: () => state,
@@ -54,6 +57,19 @@ afterEach(() => {
 })
 
 describe('the rail', () => {
+  it('keeps the brush and highlighter faces visibly active while their tool is armed', () => {
+    const { state, toolbar, byLabel } = rig()
+    for (const tool of ['brush', 'highlighter']) {
+      state.activeTool = tool
+      toolbar.render()
+      const face = byLabel(tool === 'brush' ? 'Brush' : 'Highlighter')
+      expect(face.dataset.qcActive).toBe('true')
+      expect(face.getAttribute('aria-pressed')).toBe('true')
+    }
+    state.activeTool = null
+    toolbar.render()
+    expect(byLabel('Brush').dataset.qcActive).toBe('false')
+  })
   it('renders the cursor, seven groups with their arrows, the actions, and the favorites star, and no sync on one chart', () => {
     const { buttons, chrome } = rig()
     const rail = chrome.querySelector('[data-role="drawing-toolbar"]')!
@@ -63,6 +79,53 @@ describe('the rail', () => {
     // cursor (2) + seven groups (14) + measure + zoom + magnet (2) + stay + lock + eye (2) + remove (2) + favorites
     expect(buttons()).toHaveLength(27)
     expect(buttons().filter((b) => b.getAttribute('aria-label') === 'Sync drawings across the layout')).toHaveLength(0)
+  })
+
+  it('orders the cursor, the seven groups and the actions, separated by three short rail rules', () => {
+    const { chrome } = rig()
+    const column = chrome.querySelector<HTMLElement>('.qc-drawing-toolbar-column')!
+    // Every entry in the rail's own order: the face's accessible name, or the rule between groups.
+    const order = [...column.children].flatMap((child) =>
+      child.classList.contains('qc-separator') ? ['rule'] : [...child.querySelectorAll<HTMLElement>('.qc-drawing-rail-button')].map((b) => b.getAttribute('aria-label')!),
+    )
+    expect(order).toEqual([
+      'Cursor',
+      'Trend line',
+      'Fib retracement',
+      'XABCD pattern',
+      'Long position',
+      'Brush',
+      'Text',
+      'Emojis & stickers',
+      'rule',
+      'Measure',
+      'Zoom in',
+      'rule',
+      'Magnet',
+      'Stay in drawing mode',
+      'Lock all drawings',
+      'Hide drawings',
+      'rule',
+      'Remove drawings',
+      'Favorite drawing tools toolbar',
+    ])
+    // The rail's rules are the SHORT ones; a flyout's section rule and a menu's rule are their own.
+    expect([...column.querySelectorAll('.qc-separator')].every((r) => r.classList.contains('qc-drawing-divider'))).toBe(true)
+  })
+
+  it('gives a flyout section rule and a menu rule their own recipe, not the rail width', () => {
+    const { byLabel, popover } = rig({ counts: { total: 2, locked: 1 } })
+    byLabel('Trend tools menu').click()
+    const sectionRules = [...popover()!.querySelectorAll('.qc-separator')]
+    expect(sectionRules).toHaveLength(2) // Lines | Channels | Pitchforks
+    expect(sectionRules.every((r) => r.classList.contains('qc-drawing-flyout-rule'))).toBe(true)
+    expect(sectionRules.some((r) => r.classList.contains('qc-drawing-divider'))).toBe(false)
+    byLabel('Trend tools menu').click()
+    byLabel('Remove menu').click()
+    const menuRules = [...popover()!.querySelectorAll('.qc-separator')]
+    expect(menuRules).toHaveLength(1)
+    expect(menuRules[0]!.classList.contains('qc-drawing-menu-rule')).toBe(true)
+    expect(menuRules[0]!.classList.contains('qc-drawing-divider')).toBe(false)
   })
 
   it('shows the sync switch only in a layout of more than one chart, and it runs the sync command', () => {
@@ -175,6 +238,27 @@ describe('the rail', () => {
     expect(rows[0]!.getAttribute('aria-checked')).toBe('true')
     rows[2]!.click()
     expect(ran[1]).toEqual(['chart.drawings.hide', { mode: 'all', on: true }])
+  })
+
+  it('lists a contributed layer after its own, as words alone, and wears its mark on the eye', () => {
+    const shown = { paths: [{ d: 'M4 14 H24' }] }
+    const hidden = { paths: [{ d: 'M4 4 L24 24' }] }
+    const layer = { id: 'notes', label: { hide: 'Hide notes', show: 'Show notes' }, icon: { shown, hidden }, apply: () => {} }
+    const { state, toolbar, byLabel, ran, popover } = rig({ hideLayers: [layer] })
+    byLabel('Hide menu').click()
+    const rows = [...popover()!.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
+    expect(rows.map((r) => r.textContent)).toEqual(['Hide drawings', 'Hide indicators', 'Hide notes', 'Hide all'])
+    expect(rows.map((r) => r.querySelector('.qc-menu-icon'))).toEqual([null, null, null, null])
+    rows[2]!.click()
+    expect(ran[0]).toEqual(['chart.drawings.hide', { mode: 'notes', on: true }])
+    state.hide = { mode: 'notes', on: true }
+    toolbar.render()
+    const eye = byLabel('Show notes')
+    expect(eye.getAttribute('aria-pressed')).toBe('true')
+    expect(eye.querySelector('path')?.getAttribute('d')).toBe('M4 4 L24 24')
+    state.hide = { mode: 'notes', on: false }
+    toolbar.render()
+    expect(byLabel('Hide notes').querySelector('path')?.getAttribute('d')).toBe('M4 14 H24')
   })
 
   it('the remove menu names what each row takes, offers nothing for nothing, and carries the policy switch', () => {
@@ -360,9 +444,10 @@ describe('the keyboard', () => {
     // The widget hands its surfaces a translator that reads the current language at every call.
     const live = ((...args: unknown[]) => (strings.t as unknown as (...a: unknown[]) => string)(...args)) as unknown as typeof strings.t
     const toolbar = mountDrawingToolbar({
+      icons: ownIcons(),
       chrome,
       t: live,
-      state: () => ({ activeTool: null, cursor: 'cross', magnet: 'off', stayInDrawingMode: false, allLocked: false, hide: DEFAULT_HIDE_STATE, sync: true, removeLocked: false, counts: { total: 0, locked: 0 }, indicatorCount: 0, railTools: {}, favorites: DEFAULT_FAVORITES, recentGlyphs: [], layoutCharts: 1 }),
+      state: () => ({ activeTool: null, cursor: 'cross', magnet: 'off', stayInDrawingMode: false, allLocked: false, hide: DEFAULT_HIDE_STATE, hideLayers: [], sync: true, removeLocked: false, counts: { total: 0, locked: 0 }, indicatorCount: 0, railTools: {}, favorites: DEFAULT_FAVORITES, recentGlyphs: [], layoutCharts: 1 }),
       run: () => true,
       available: () => true,
       toolAllowed: () => true,

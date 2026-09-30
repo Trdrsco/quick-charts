@@ -31,3 +31,10 @@ const typed = (d: SeamBuiltInIndicator): BuiltInIndicator => ({
 /** The 23 built-in indicators in picker order: moving averages, bands and channels, oscillators,
  *  volume. Each mounts through `ChartWidgetOptions.indicators` like any host definition. */
 export const BUILT_IN_INDICATORS: readonly BuiltInIndicator[] = REGISTRY.map(typed)
+
+/** The ten default study colors, dealt in order as instances are minted so two studies added one
+ *  after another never paint the same hue and a viewer can tell them apart at a glance. Ten because
+ *  the eleventh add wraps to the first: distinctness among what is on screen, not an endless supply.
+ *  A chart's own data colors, like the compare palette beside it: a host overrides one per instance
+ *  and a theme mode does not re-resolve them. */
+export const INDICATOR_PALETTE = ['#2196f3', '#ff9800', '#26a69a', '#e91e63', '#9c27b0', '#00bcd4', '#8bc34a', '#ffc107', '#f44336', '#3f51b5'] as const

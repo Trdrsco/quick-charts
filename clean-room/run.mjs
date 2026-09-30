@@ -39,7 +39,7 @@ copyFileSync(join(repo, '.candidate', PACKED), join(artifacts, TARBALL))
 
 // 2. Fresh installs. --install-links copies file: deps instead of symlinking (closer to a real
 //    registry install); lockfiles are disposable here, because the point is a cold resolve.
-for (const consumer of ['ts-consumer', 'js-consumer', 'vite-consumer']) {
+for (const consumer of ['ts-consumer', 'js-consumer', 'vite-consumer', 'browser-consumer']) {
   const dir = join(here, consumer)
   rmSync(join(dir, 'node_modules'), { recursive: true, force: true })
   rmSync(join(dir, 'package-lock.json'), { force: true })
@@ -56,6 +56,10 @@ rmSync(conformanceCopy, { recursive: true, force: true })
 mkdirSync(conformanceCopy, { recursive: true })
 copyFileSync(join(conformanceSource, 'index.ts'), join(conformanceCopy, 'index.ts'))
 copyFileSync(join(repo, 'scripts', 'browserShim.ts'), join(conformanceCopy, 'browserShim.ts'))
+
+const browserCopy = join(here, 'browser-consumer', 'conformance')
+mkdirSync(browserCopy, { recursive: true })
+copyFileSync(join(conformanceSource, 'index.ts'), join(browserCopy, 'index.ts'))
 
 // 3. The TypeScript gate: this repository's own tsc binary, the consumer's own node_modules for
 //    types. The conformance copy is in the include list, so it compiles against the packed

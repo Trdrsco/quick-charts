@@ -9,4 +9,9 @@ export const toast = {
   'toast.feedNoData': 'No data for {symbol} yet.',
   'toast.imageCopyFallback': 'Could not copy the image. Saved a file instead.',
   'toast.imageFailed': 'Could not capture the chart image.',
+  /** Saved definitions that are unavailable or denied are left out and counted together. */
+  'toast.indicatorsNotCarried': {
+    one: '{count} indicator in this saved chart is not available here and was left out.',
+    other: '{count} indicators in this saved chart are not available here and were left out.',
+  },
 } as const

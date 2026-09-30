@@ -11,11 +11,14 @@ import type { ChartTranslate } from '../../i18n'
 import type { PlacedImage } from '../../drawings'
 import { openDialog } from './dialog'
 import { button, el } from './dom'
-import { opacitySlider } from './fields'
+import { createOpacitySlider } from '../controls/color'
+import type { IconResolver } from '../icons/resolver'
 
 export interface ImagePickerDeps {
   container: HTMLElement
   t: ChartTranslate
+  /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
+  icons: IconResolver
   assets: DrawingAssetPort
   /** Whether the registry would place an image now; Ok renders disabled otherwise. */
   canPlace(): boolean
@@ -50,6 +53,7 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
     container: deps.container,
     title: t('drawing.image'),
     closeLabel: t('drawing.close'),
+    icons: deps.icons,
     role: 'drawing-image-picker',
     width: 420,
     onClose: () => {
@@ -145,10 +149,10 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
     file,
     error,
     dims,
-    el('div', { class: 'qc-drawing-row' }, el('span', { class: 'qc-secondary qc-drawing-row-label', text: t('drawing.transparency') }), opacitySlider(t, SWATCH_TRACK, opacity, (v) => {
+    el('div', { class: 'qc-drawing-row' }, el('span', { class: 'qc-secondary qc-drawing-row-label', text: t('drawing.transparency') }), createOpacitySlider(t, SWATCH_TRACK, opacity, (v) => {
       opacity = v
       render()
-    })),
+    }).element),
   )
   dialog.footer.append(button({ class: 'qc-button', label: t('drawing.cancel'), text: t('drawing.cancel'), onClick: () => dialog.close() }), ok)
   render()

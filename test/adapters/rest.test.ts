@@ -104,6 +104,21 @@ describe('the adapter asks the host for exactly what the contract names', () => 
     expect(JSON.parse(sent[1]!.init.body!)).toEqual(body)
   })
 
+  it('carries a layout listing facts both ways, and lists a row a service kept none for without them', async () => {
+    const { request, sent } = recorder((call) =>
+      call.init.method === 'GET'
+        ? { status: 200, text: '{"items":[{"id":"l1","revision":"r1","name":"Desk","symbol":"BTCUSDC","timeframe":"1h","updatedAt":1},{"id":"l2","revision":"r1","name":"Old","updatedAt":2}]}' }
+        : { status: 200, text: '{"id":"l1","revision":"r2"}' },
+    )
+    const adapter = createRestSaveLoadAdapter({ baseUrl: BASE, request })
+    await adapter.layouts.create({ name: 'Desk', symbol: 'BTCUSDC', timeframe: '1h', content: '{}' })
+    expect(JSON.parse(sent[0]!.init.body!)).toEqual({ name: 'Desk', symbol: 'BTCUSDC', timeframe: '1h', content: '{}' })
+    expect(await adapter.layouts.list()).toEqual([
+      { id: 'l1', revision: 'r1', name: 'Desk', symbol: 'BTCUSDC', timeframe: '1h', updatedAt: 1 },
+      { id: 'l2', revision: 'r1', name: 'Old', updatedAt: 2 },
+    ])
+  })
+
   it('scopes a drawings collection by symbol and context token, and reaches the row by id alone', async () => {
     const { request, sent } = recorder((call) => ({ status: 200, text: call.init.method === 'GET' ? '{"items":[]}' : '{"id":"d1","revision":"r1"}' }))
     const adapter = createRestSaveLoadAdapter({ baseUrl: BASE, request })

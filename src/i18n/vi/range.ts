@@ -17,4 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': 'Cuộn sang trái',
   'range.scrollRight': 'Cuộn sang phải',
   'range.reset': 'Đặt lại khung nhìn biểu đồ',
+  'range.maximizeChart': 'Maximize chart',
+  'range.restoreChart': 'Restore chart',
 }

@@ -7,8 +7,8 @@
 // of their own: the glyph group opens a picker and measure is a toolbar action, so neither has a
 // miniature here. The inventory test holds the set to that rule.
 
-/** The inner markup of each miniature, without its `<svg>` wrapper. */
-export const TOOL_ICONS: Readonly<Record<string, string>> = {
+/** The inner markup of each miniature, without its `<svg>` wrapper, keyed by the tool's registry type. */
+export const TOOL_ICONS = {
   trend_line: '<path d="M7.3 20.7 20.7 7.3" stroke="currentColor" stroke-width="1.2"/><circle cx="5.5" cy="22.5" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="22.5" cy="5.5" r="2" stroke="currentColor" stroke-width="1.2"/>',
   ray: '<path d="M8.3 19.7 12.7 15.3 M16.3 11.7 24.4 3.6" stroke="currentColor" stroke-width="1.2"/><circle cx="6.5" cy="21.5" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="14.5" cy="13.5" r="2" stroke="currentColor" stroke-width="1.2"/>',
   info_line: '<path d="M7.3 20.7 20.7 7.3" stroke="currentColor" stroke-width="1.2"/><rect x="16.5" y="17.5" width="9" height="7" rx="2" stroke="currentColor" stroke-width="1.2"/><circle cx="5.5" cy="22.5" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="22.5" cy="5.5" r="2" stroke="currentColor" stroke-width="1.2"/>',
@@ -95,11 +95,7 @@ export const TOOL_ICONS: Readonly<Record<string, string>> = {
   image: '<rect x="3.5" y="4.5" width="21" height="19" rx="3.5" stroke="currentColor" stroke-width="1.2"/><circle cx="10" cy="10" r="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4.2 21.5 9.3 15.1l3.3 4 M12.9 17.4 18 10.7l5.9 7.7" stroke="currentColor" stroke-width="1.2"/>',
   content_card: '<rect x="4.5" y="5.5" width="19" height="17" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M4.5 11.5h19 M8 15.5h9 M8 18.5h6" stroke="currentColor" stroke-width="1.2"/>',
   pin: '<path d="M14 3.5a7.5 7.5 0 0 1 7.5 7.5c0 4.2-4.2 8.9-7.5 12.6C10.7 19.9 6.5 15.2 6.5 11A7.5 7.5 0 0 1 14 3.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="14" cy="11" r="3" stroke="currentColor" stroke-width="1.2"/>',
-}
+} satisfies Readonly<Record<string, string>>
 
-/** One miniature as an inline `<svg>`, or an empty string for a type without one. */
-export function toolIconSvg(type: string, size = 28): string {
-  const body = TOOL_ICONS[type]
-  if (!body) return ''
-  return `<svg width="${size}" height="${size}" viewBox="0 0 28 28" fill="none" aria-hidden="true">${body}</svg>`
-}
+/** A drawing tool that wears a miniature, by its registry type. */
+export type MiniatureTool = keyof typeof TOOL_ICONS

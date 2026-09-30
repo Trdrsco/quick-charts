@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import type { IChartApi } from 'lightweight-charts'
 import { attachIndicators } from '../src/indicatorRenderer'
-import { attachIndicatorsPlane } from '../src/widget/indicators'
+import { attachIndicatorsPlane, createIndicatorCatalog } from '../src/widget/indicators'
 import { createChartI18n } from '../src/i18n'
 import { createPriceFormatter } from '../src/priceFormatter'
 import type { FeedBar } from '../src/datafeed'
@@ -157,6 +157,7 @@ describe('the widget plane places one study pane and keeps it there', () => {
     disposed: () => false,
     onChips: () => {},
     onEvent: () => {},
+    catalog: createIndicatorCatalog(),
   })
 
   const bars: FeedBar[] = Array.from({ length: 40 }, (_, i) => ({ t: (i + 1) * 60, o: 1, h: 2, l: 0.5, c: 1 + i / 40, v: 10 }))

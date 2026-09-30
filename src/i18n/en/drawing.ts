@@ -123,7 +123,6 @@ export const drawing = {
   'drawing.visibilityOnIntervals': 'Visibility on intervals',
   'drawing.clone': 'Clone',
   'drawing.copy': 'Copy',
-  'drawing.paste': 'Paste',
   'drawing.modifierControl': 'Ctrl',
   'drawing.modifierCommand': 'Cmd',
   'drawing.hintClone': '{modifier} + Drag',
@@ -176,6 +175,8 @@ export const drawing = {
   'drawing.rowLine': 'Line',
   'drawing.background': 'Background',
   'drawing.border': 'Border',
+  'drawing.profitColor': 'Target zone color',
+  'drawing.stopColor': 'Stop zone color',
   'drawing.textColor': 'Text color',
   'drawing.fontSize': 'Font size',
   'drawing.size': 'Size',
@@ -326,6 +327,8 @@ export const drawing = {
   // The color palette: swatches, the custom color panel, the opacity row.
   'drawing.colorSwatch': 'Color {hex}',
   'drawing.customColor': 'Custom color',
+  'drawing.saturationValue': 'Saturation and brightness',
+  'drawing.hue': 'Hue',
   'drawing.hexColor': 'Hex color',
   'drawing.add': 'Add',
 

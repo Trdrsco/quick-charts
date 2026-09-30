@@ -67,13 +67,16 @@ const SURFACE: Record<string, string> = {
   railFaceOf: 'function',
   rememberRailTool: 'function',
 
-  // What the eye blanks: chart-owned drawings and indicators only.
+  // What the eye blanks: the chart's own drawings and indicators, and the layers extensions
+  // contribute, listed by hideOrder between them and all.
   blanks: 'function',
+  CHART_HIDE_LAYERS: 'object',
   chooseHideMode: 'function',
   DEFAULT_HIDE_STATE: 'object',
   HIDE_LABELS: 'object',
-  HIDE_ORDER: 'object',
+  hideOrder: 'function',
   hideRowActive: 'function',
+  isBuiltInHideMode: 'function',
   toggleHide: 'function',
 
   // The pointer.
@@ -86,8 +89,8 @@ const SURFACE: Record<string, string> = {
   TRANSIENT_TOOLS: 'object',
   transientSurvives: 'function',
 
-  // Locks, and what a sweep takes.
-  editRefused: 'function',
+  // What a sweep takes. What a lock refuses is the library's own policy and is not published:
+  // a host locks and unlocks through the drawing commands.
   removableDrawings: 'function',
   removeRows: 'function',
 

@@ -2,18 +2,24 @@ import type { Translation } from '../runtime'
 import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
+  'legend.open': 'O',
+  'legend.high': 'H',
+  'legend.low': 'L',
+  'legend.close': 'C',
+  'legend.change': '{change} ({percent}%)',
   'legend.indicatorSettings': 'Configurações do indicador',
+  'legend.showRows': 'Show study rows',
+  'legend.hideRows': 'Hide study rows',
   'legend.restorePane': 'Restaurar painel',
   'legend.collapsePane': 'Recolher painel',
   'legend.maximizePane': 'Maximizar painel',
   'legend.showIndicator': 'Mostrar indicador',
   'legend.hideIndicator': 'Ocultar indicador',
-  'legend.priceScale': 'Escala de preço: {mode}',
   'legend.scaleNormal': 'Reg',
   'legend.scaleLog': 'Log',
   'legend.scalePercent': '%',
   'legend.scaleIndexed': '100',
-  'legend.compare': 'Comparar ou adicionar símbolo',
   'legend.changeSymbol': 'Trocar símbolo',
   'legend.removeCompare': 'Remover comparação',
+  'legend.removeIndicator': 'Remove indicator',
 }

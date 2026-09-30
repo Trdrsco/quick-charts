@@ -34,6 +34,47 @@ describe('the timeline labels', () => {
 })
 
 describe('the popup', () => {
+  it('does not admit timer work after a reentrant opener displaced it before return', () => {
+    vi.useRealTimers()
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    const anchor = button({ label: 'Market status' })
+    document.body.append(host, anchor)
+    const deps = { host, i18n, model: () => null, status: () => null }
+    let newest: ReturnType<typeof openMarketStatus> | undefined
+    const first = openMarketStatus(anchor, {
+      ...deps,
+      onClose: () => {
+        newest = openMarketStatus(anchor, deps)
+      },
+    })
+
+    const displaced = openMarketStatus(anchor, deps)
+
+    expect(first.open()).toBe(false)
+    expect(displaced.open()).toBe(false)
+    expect(newest?.open()).toBe(true)
+    expect(host.querySelectorAll('.qc-status-popup')).toHaveLength(1)
+    expect(vi.getTimerCount()).toBe(1)
+    newest?.close()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('retires a replaced popup lifetime including its timer', () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    const anchor = button({ label: 'Market status' })
+    document.body.append(host, anchor)
+    const deps = { host, i18n, model: () => null, status: () => null }
+    const first = openMarketStatus(anchor, deps)
+    const second = openMarketStatus(anchor, deps)
+    expect(first.open()).toBe(false)
+    expect(second.open()).toBe(true)
+    expect(host.querySelectorAll('.qc-status-popup')).toHaveLength(1)
+    second.close()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
   it('says the session is unknown when no model has resolved', () => {
     const host = document.createElement('div')
     document.body.appendChild(host)

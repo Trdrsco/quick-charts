@@ -5,22 +5,30 @@
 // the same access policy the widget uses; only the renderer is absent, because these fixtures run
 // under happy-dom, which has no canvas.
 import { vi } from 'vitest'
-import { createEmitter, type ChartEvents, type WidgetEvents } from '../../src/widget/events'
+import { createEmitter, type ChartEvents, type HistoryEventState, type WidgetEvents } from '../../src/widget/events'
+import type { HistoryChange } from '../../src/widget/history'
 import { createCommandRegistry, type CommandRegistry } from '../../src/widget/commands'
 import { registerChartCommands } from '../../src/widget/chartCommands'
 import { registerWidgetCommands } from '../../src/widget/widgetCommands'
-import { resolveFeatures, type ResolvedFeatures } from '../../src/widget/planes'
+import { trackLayoutChanges } from '../../src/widget/layoutChanges'
+import { resolveFeatures, resolveUi, type ResolvedFeatures, type ResolvedUi } from '../../src/widget/planes'
 import { createThemeController } from '../../src/theme/controller'
 import { createChartI18n, type ChartI18n } from '../../src/i18n'
 import { createPriceFormatter } from '../../src/priceFormatter'
 import { memoryRecents } from '../../src/search'
 import { memoryChartStorage, type ChartStorage } from '../../src/storage'
-import { createAutosaveStore } from '../../src/ui/chrome/preferences'
-import type { LayoutBody, LayoutMeta, ResourceStore } from '../../src/resources'
+import { createAutosaveStore, createLayoutListStore } from '../../src/ui/chrome/preferences'
+import { createLayoutCatalog } from '../../src/ui/chrome/layoutCatalog'
+import { mountLayoutDialogs } from '../../src/ui/chrome/layoutDialogs'
+import { createToolbarButton } from '../../src/ui/chrome/hostControls'
+import { createIconDiagnostics } from '../../src/ui/icons/draw'
+import type { LayoutBody, LayoutMeta, ResourceRef, ResourceStore } from '../../src/resources'
 import { DEFAULT_OVERRIDES, type ChartOverrides } from '../../src/overrides'
 import type { ChartHandle } from '../../src/widget/chart'
 import type { ChartWidget } from '../../src/widget/create'
-import type { AccessPolicy, Capabilities, FeatureConfig, IndicatorInstance } from '../../src/widget/options'
+import type { AccessPolicy, Capabilities, FeatureConfig, IndicatorInstance, UiConfig } from '../../src/widget/options'
+import type { ChartIcons } from '../../src/ui/icons/catalog'
+import { createIconResolver } from '../../src/ui/icons/resolver'
 import type { ChartStyleId } from '../../src/widget/styles'
 import type { ScaleMode } from '../../src/scaleMode'
 import type { ActiveSubsession, MarketStatus, SessionModel } from '../../src/sessionModel'
@@ -29,10 +37,12 @@ import type { ReplaySpeed } from '../../src/replay'
 import type { LayoutSyncFlags } from '../../src/widget/layout'
 import type { OpenResource } from '../../src/openResource'
 import type { FeedBar } from '../../src/datafeed'
+import type { SymbolInfo } from '../../src/symbology'
 import type { ChromeContext } from '../../src/ui/chrome/context'
 
 export interface FakeChartOptions {
   symbol?: string
+  symbolInfo?: SymbolInfo | null
   timeframe?: string
   style?: ChartStyleId
   extendedHours?: boolean
@@ -47,6 +57,9 @@ export function fakeChart(options: FakeChartOptions = {}) {
   const events = createEmitter<ChartEvents>()
   const state = {
     symbol: options.symbol ?? 'ES',
+    /** What the feed resolved, so a spec can drive how a surface WRITES the symbol. Null is the
+     *  honest default: a chart that has not resolved yet knows only its ticker. */
+    symbolInfo: options.symbolInfo ?? null,
     timeframe: options.timeframe ?? '1m',
     style: options.style ?? ('candles' as ChartStyleId),
     scale: 'normal' as ScaleMode,
@@ -56,22 +69,42 @@ export function fakeChart(options: FakeChartOptions = {}) {
     hidden: [] as string[],
     compares: [] as CompareEntry[],
     replay: { on: false, playing: false, cursor: 0, total: 0, speed: 10 as ReplaySpeed },
+    /** The picker is live: a click on the plot would name the bar replay starts from. */
+    arming: false,
     interval: 'auto',
     appearance: { appearance: { ...DEFAULT_OVERRIDES.appearance } } as ChartOverrides,
     visible: { from: 0, to: 100 },
+    rangePreset: null as string | null,
+    /** Two depths and the word on top of each: enough for a control to read both states without a
+     *  content model behind them. */
+    history: { past: 0, future: 0, undoChange: null as HistoryChange | null, redoChange: null as HistoryChange | null },
   }
+  const historyState = (): HistoryEventState => ({
+    canUndo: state.history.past > 0,
+    canRedo: state.history.future > 0,
+    undoChange: state.history.undoChange,
+    redoChange: state.history.redoChange,
+  })
   const timeClicks = new Set<(time: number) => void>()
   const calls: string[] = []
+  const setRangePreset = (key: string | null): void => {
+    if (state.rangePreset === key) return
+    state.rangePreset = key
+    events.emit('rangePreset', key)
+  }
   const handle: ChartHandle = {
     id: 'chart-1',
     symbol: () => state.symbol,
+    symbolInfo: () => state.symbolInfo,
     setSymbol(next) {
+      setRangePreset(null)
       state.symbol = next
       calls.push(`symbol:${next}`)
       events.emit('symbol', next)
     },
     timeframe: () => state.timeframe,
     setTimeframe(next) {
+      setRangePreset(null)
       state.timeframe = next
       calls.push(`timeframe:${next}`)
       events.emit('timeframe', next)
@@ -83,7 +116,9 @@ export function fakeChart(options: FakeChartOptions = {}) {
       events.emit('style', next)
     },
     visibleRange: () => state.visible,
+    rangePreset: () => state.rangePreset,
     setVisibleRange(range) {
+      setRangePreset(null)
       state.visible = range
       calls.push(`range:${range.from}-${range.to}`)
     },
@@ -91,7 +126,7 @@ export function fakeChart(options: FakeChartOptions = {}) {
     setLogicalRange: () => undefined,
     scroll: (bars) => calls.push(`scroll:${bars}`),
     zoom: (factor) => calls.push(`zoom:${factor}`),
-    reset: () => calls.push('reset'),
+    reset: () => { setRangePreset(null); calls.push('reset') },
     goLive: () => calls.push('goLive'),
     scaleMode: () => state.scale,
     setScaleMode(mode) {
@@ -162,12 +197,35 @@ export function fakeChart(options: FakeChartOptions = {}) {
       symbols: () => [{ symbol: 'NQ', title: 'Nasdaq' }],
     },
     replay: {
+      // The phase the fake reports, so a spec can drive the armed state the bar and the legend mark
+      // both read. An open question outranks a running session, as the real plane's does.
+      phase: () => (state.arming ? 'arming' : state.replay.on ? 'on' : 'off'),
+      arm() {
+        if (state.arming) return
+        state.arming = true
+        calls.push('replay:arm')
+        events.emit('replay', state.replay)
+      },
+      disarm() {
+        if (!state.arming) return
+        state.arming = false
+        calls.push('replay:disarm')
+        events.emit('replay', state.replay)
+      },
       start(at) {
-        state.replay = { ...state.replay, on: true, cursor: 91, total: 120 }
         calls.push(`replay:start:${at ?? ''}`)
+        // No moment ARMS, as the real plane does: entry asks where to begin and leaves the window
+        // whole until it is told.
+        if (at === undefined) {
+          state.arming = true
+          return
+        }
+        state.arming = false
+        state.replay = { ...state.replay, on: true, cursor: 91, total: 120 }
         events.emit('replay', state.replay)
       },
       exit() {
+        state.arming = false
         state.replay = { ...state.replay, on: false, playing: false }
         calls.push('replay:exit')
         events.emit('replay', state.replay)
@@ -182,8 +240,18 @@ export function fakeChart(options: FakeChartOptions = {}) {
         calls.push('replay:pause')
         events.emit('replay', state.replay)
       },
-      stepForward: () => calls.push('replay:stepForward'),
-      stepBack: () => calls.push('replay:stepBack'),
+      // A step MOVES the cursor and reports it, as the real plane's does. A transport row repaints
+      // on every one of these, so a spec that never moves the cursor never exercises the repaint.
+      stepForward() {
+        calls.push('replay:stepForward')
+        state.replay = { ...state.replay, cursor: state.replay.cursor + 1 }
+        events.emit('replay', state.replay)
+      },
+      stepBack() {
+        calls.push('replay:stepBack')
+        state.replay = { ...state.replay, cursor: state.replay.cursor - 1 }
+        events.emit('replay', state.replay)
+      },
       setSpeed(speed) {
         state.replay = { ...state.replay, speed }
         calls.push(`replay:speed:${speed}`)
@@ -195,13 +263,36 @@ export function fakeChart(options: FakeChartOptions = {}) {
         events.emit('replay', state.replay)
       },
       interval: () => state.interval,
+      // `auto` resolves to a grain, as the real plane's does: the control draws the token, not the
+      // mode, so a spec that only set the mode would never see what it renders.
+      resolvedInterval: () => (state.interval === 'auto' ? '15m' : state.interval),
       setInterval(token) {
         state.interval = token
         calls.push(`replay:interval:${token}`)
         events.emit('replay', state.replay)
       },
-      subIntervals: () => ['1m', '5m', '15m'],
+      // Grains spanning three UNIT groups, as a real hour chart's do, so a spec sees the rules the
+      // menu draws between them.
+      subIntervals: () => ['1s', '1m', '5m', '15m', '1h'],
       state: () => state.replay,
+    },
+    history: {
+      canUndo: () => state.history.past > 0,
+      canRedo: () => state.history.future > 0,
+      undoChange: () => state.history.undoChange,
+      redoChange: () => state.history.redoChange,
+      undo() {
+        if (state.history.past === 0) return
+        state.history = { ...state.history, past: state.history.past - 1, future: state.history.future + 1 }
+        calls.push('history:undo')
+        events.emit('history', historyState())
+      },
+      redo() {
+        if (state.history.future === 0) return
+        state.history = { ...state.history, past: state.history.past + 1, future: state.history.future - 1 }
+        calls.push('history:redo')
+        events.emit('history', historyState())
+      },
     },
     appearance: () => state.appearance,
     applyAppearance(partial) {
@@ -226,6 +317,7 @@ export function fakeChart(options: FakeChartOptions = {}) {
     state,
     calls,
     events,
+    setRangePreset,
     /** A viewer click on the chart at a moment. */
     clickTime: (time: number): void => {
       for (const cb of [...timeClicks]) cb(time)
@@ -237,8 +329,12 @@ export function fakeChart(options: FakeChartOptions = {}) {
 
 export interface FakeWidgetOptions {
   chart?: ReturnType<typeof fakeChart>
+  chartCount?: number
   access?: AccessPolicy
   features?: FeatureConfig
+  ui?: UiConfig
+  /** The host's drawings for the chart's icons, as a widget takes them. */
+  icons?: ChartIcons
   capabilities?: Partial<Capabilities>
   i18n?: ChartI18n
   storage?: ChartStorage
@@ -257,6 +353,9 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   const registryHandle = createCommandRegistry({ access: options.access })
   const commands: CommandRegistry = registryHandle.registry
   const features: ResolvedFeatures = resolveFeatures(options.features)
+  const iconDiagnostics = createIconDiagnostics()
+  const icons = createIconResolver({ icons: options.icons, document, direction: () => 'ltr', diagnostics: iconDiagnostics })
+  const ui: ResolvedUi = resolveUi(options.ui, features)
   const caps: Capabilities = {
     resolutions: null,
     symbolResolutions: null,
@@ -277,10 +376,15 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   let sync: LayoutSyncFlags = { symbol: false, interval: false, crosshair: false, time: false, dateRange: false }
   let open: OpenResource | null = null
   const widgetCalls: string[] = []
+  /** The chrome's name-prompt door, filled by a mounted saved-layouts menu exactly as the real
+   *  chrome fills it. */
+  let nameLayoutDoor: () => boolean = () => false
+  /** The chrome's Open-layout door, filled the same way. */
+  let openLayoutsDoor: () => boolean = () => false
   const widget: ChartWidget = {
     ready: () => Promise.resolve(),
     activeChart: () => chart.handle,
-    charts: () => [chart.handle],
+    charts: () => Array.from({ length: options.chartCount ?? 1 }, () => chart.handle),
     chart: () => chart.handle,
     layout: {
       arrangement: () => arrangement,
@@ -290,6 +394,8 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
       },
       active: () => 0,
       setActive: () => undefined,
+      maximized: () => null,
+      setMaximized: () => undefined,
       sync: () => sync,
       setSync(partial) {
         sync = { ...sync, ...partial }
@@ -299,6 +405,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
       restore: () => undefined,
       saveLoad: {
         current: () => open,
+        notSaving: () => false,
         save: vi.fn(async (name: string) => {
           open = { ref: { id: 'l-1', revision: '1' }, name }
           widgetCalls.push(`save:${name}`)
@@ -345,6 +452,13 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
       },
       active: () => fullscreenActive,
     },
+    // The fake mounts a top bar of its own, so the slot is read off whatever bar the test raised
+    // rather than answered from a stub: a spec that fills the slot fills the real element.
+    chrome: {
+      topBar: () => document.querySelector<HTMLElement>('.qc-topbar-host'),
+      toolbarButton: (options) => createToolbarButton(options, icons),
+      iconDiagnostics: () => iconDiagnostics.list(),
+    },
     on: (name, callback) => events.on(name, callback),
     dispose: () => undefined,
   }
@@ -352,47 +466,119 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     commands,
     handle: chart.handle,
     features,
+    ui,
     capabilities: () => caps,
+    // The fake's Reset defaults: the viewer's layer drops back to the package defaults and the
+    // scale returns to normal, which is what the real chart's reset leaves behind.
+    resetAppearance: () => {
+      chart.state.appearance = { appearance: { ...DEFAULT_OVERRIDES.appearance } }
+      chart.handle.setScaleMode('normal')
+      chart.calls.push('appearance:reset')
+    },
     t: () => i18n.t,
+    bars: () => chart.bars,
     earliestBar: () => null,
-    frame: (preset) => chart.calls.push(`frame:${preset.key}`),
+    replayFromFirst: async () => {
+      chart.calls.push('replay:first')
+    },
+    frame: (preset) => { chart.setRangePreset(preset.key); chart.calls.push(`frame:${preset.key}`) },
     zoom: (direction) => chart.calls.push(`zoom:${direction}`),
     scroll: (direction) => chart.calls.push(`scroll:${direction}`),
     level: () => null,
     formatter: () => chart.handle.formatter(),
     drawingVerbs: () => null,
     compareOpen: (mode) => chart.calls.push(`compareOpen:${mode}`),
+    indicatorsOpen: () => chart.calls.push('indicatorsOpen'),
+    symbolSearchOpen: () => chart.calls.push('symbolSearchOpen'),
   })
   const storage = options.storage ?? memoryChartStorage()
   const autosave = createAutosaveStore(storage, {})
+  // The widget's own record of unwritten layout changes and its autosave, heard on the real events.
+  const layoutChanges = trackLayoutChanges({ widget, commands, autosave, events })
+  // The fake layout owns publication, just like the real layout plane. Commands only delegate.
+  const resource = { ...widget.layout.saveLoad }
+  const report = <T extends { kind: string; message?: string }>(outcome: T): T => {
+    if (outcome.message) events.emit('saveConflict', { family: 'layout', current: 'current' in outcome ? outcome.current as ResourceRef : null, message: outcome.message })
+    return outcome
+  }
+  widget.layout.saveLoad.save = vi.fn(async (name, opts) => {
+    const outcome = await resource.save(name, opts)
+    if (outcome.kind === 'ok') events.emit('layout', { kind: 'saved', id: outcome.ref.id, name })
+    return report(outcome)
+  })
+  widget.layout.saveLoad.load = vi.fn(async (id, signal) => {
+    const outcome = await resource.load(id, signal)
+    if (outcome.kind === 'ok') events.emit('layout', { kind: 'loaded', id: outcome.ref.id, name: outcome.body.name })
+    return report(outcome)
+  })
+  widget.layout.saveLoad.detach = () => {
+    resource.detach()
+    events.emit('layout', { kind: 'detached', id: null, name: null })
+  }
   const unregisterWidget = registerWidgetCommands({
     commands,
     widget,
+    toggleMaximize: () => {},
     theme,
     i18n,
     capabilities: () => caps,
-    saveLoad: options.layoutStore ? ({ layouts: options.layoutStore } as never) : null,
+    canSaveLayout: () => true,
+    nameLayout: () => nameLayoutDoor(),
+    openLayouts: () => openLayoutsDoor(),
+    layoutChanges,
+    removeLayout: async (ref) => {
+      const outcome = await options.layoutStore?.remove(ref)
+      if (outcome?.kind === 'ok') {
+        if (resource.current()?.ref.id === ref.id) resource.detach()
+        events.emit('layout', { kind: 'removed', id: ref.id, name: null })
+        return { kind: 'ok' }
+      }
+      const message = i18n.t(outcome?.kind === 'conflict' ? 'host.saveConflict' : 'host.saveNotFound')
+      return report(outcome?.kind === 'conflict' ? { kind: 'conflict' as const, current: outcome.current, message } : { kind: 'not-found' as const, message })
+    },
     autosave,
     events,
   })
   const overlays = document.createElement('div')
   document.body.appendChild(overlays)
-  const ctx: ChromeContext = { i18n, commands, overlays, widget }
+  const ctx: ChromeContext = { i18n, commands, overlays, widget, icons }
+  // The chrome's saved-layout parts, built as `mountChrome` builds them: what a top bar presents and
+  // outlives. A test that mounts a top bar passes them in; one that needs its own store builds its own.
+  const layoutListing = createLayoutListStore(storage)
+  const layoutCatalog = options.layoutStore ? createLayoutCatalog({ store: options.layoutStore, widget }) : null
+  const layoutDialogs = mountLayoutDialogs({ ...ctx, catalog: layoutCatalog, listing: layoutListing, notify: () => undefined })
+  const topBarParts = { layoutDialogs, layoutCatalog, layoutListing, layoutChanges }
   return {
     widget,
     chart,
     commands,
     i18n,
     features,
+    ui,
     ctx,
     overlays,
     events,
     widgetCalls,
+    layoutChanges,
+    topBarParts,
+    iconDiagnostics,
+    icons,
+    /** Fill the name-prompt door, as `mountChrome` does with the chrome's layout dialogs. */
+    setNameLayoutDoor(fn: () => boolean) {
+      nameLayoutDoor = fn
+    },
+    /** Fill the Open-layout door, as `mountChrome` does with the chrome's layout dialogs. */
+    setOpenLayoutsDoor(fn: () => boolean) {
+      openLayoutsDoor = fn
+    },
+    resource,
     storage,
     autosave,
     dispose() {
       unregisterChart()
       unregisterWidget()
+      layoutDialogs.destroy()
+      layoutChanges.dispose()
       registryHandle.dispose()
       overlays.remove()
     },

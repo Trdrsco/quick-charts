@@ -7,7 +7,9 @@ import { DEFAULT_SUBSESSION } from '../../sessionModel'
 import { EXCHANGE_TIMEZONE, formatClock, timezoneListing, tzOffsetLabel } from '../../timezones'
 import { activeChart, commandLabel, type ChromeContext } from './context'
 import { button, h, name, replace, setDisabled, stopPointer } from './dom'
-import { menuHeading, menuItem, openMenu, type MenuHandle } from './menu'
+import { FLYOUT_WIDTH } from './flyoutGeometry'
+import { ICONS } from '../controls/icons'
+import { menuHeading, menuItem, openMenu, toggleMenu, type MenuHandle } from './menu'
 
 export interface BottomBarHandle {
   element: HTMLElement
@@ -25,11 +27,11 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
   const ranges = h('div', { class: 'qc-ranges', role: 'group', 'aria-label': t()('command.rangeSet') })
   const clock = h('span', { class: 'qc-clock' })
   const offset = h('span', { class: 'qc-clock-offset' })
-  const tzTrigger = button({ label: t()('timezone.title'), className: 'qc-toolbar-button qc-tz-trigger', onClick: () => openTimezones() })
+  const tzTrigger = button({ label: t()('timezone.title'), className: 'qc-toolbar-button qc-tz-trigger', onClick: () => toggleMenu(tzTrigger, openTimezones) })
   tzTrigger.append(clock, offset)
   tzTrigger.setAttribute('aria-haspopup', 'listbox')
   tzTrigger.setAttribute('aria-expanded', 'false')
-  const sessionTrigger = button({ label: t()('chrome.session'), text: '', className: 'qc-toolbar-button qc-session-trigger', onClick: () => openSessions() })
+  const sessionTrigger = button({ label: t()('chrome.session'), text: '', className: 'qc-toolbar-button qc-session-trigger', onClick: () => toggleMenu(sessionTrigger, openSessions) })
   sessionTrigger.setAttribute('aria-haspopup', 'menu')
   sessionTrigger.setAttribute('aria-expanded', 'false')
   element.append(ranges, h('div', { class: 'qc-bottombar-end' }, tzTrigger, sessionTrigger))
@@ -78,7 +80,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
       label: t()('timezone.title'),
       role: 'listbox',
       className: 'qc-tz-menu',
-      width: 240,
+      width: FLYOUT_WIDTH.timezone,
       align: 'end',
       placement: 'up',
       initialIndex: Math.max(0, rows.findIndex((r) => r.id === current)),
@@ -91,6 +93,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
               text: row.label,
               role: 'option',
               checked: row.id === active,
+              ...(row.id === active ? { icon: deps.icons.glyph(ICONS.check, { size: 28 }) } : {}),
               disabled: row.id !== active && !deps.commands.available(id),
               onSelect: () => {
                 handle.close()
@@ -112,7 +115,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
       anchor: sessionTrigger,
       label: t()('chrome.session'),
       className: 'qc-session-menu',
-      width: 200,
+      width: FLYOUT_WIDTH.session,
       align: 'end',
       placement: 'up',
       build(body, handle) {
@@ -145,7 +148,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
       ranges,
       ...RANGE_PRESETS.map((preset) => {
         const id = `chart.range.${preset.key}`
-        const chip = button({ label: rangePresetTip(t(), preset), text: preset.key, className: 'qc-toolbar-button qc-range-chip', onClick: () => deps.commands.execute(id) })
+        const chip = button({ label: rangePresetTip(t(), preset), text: preset.key, className: 'qc-toolbar-button qc-range-chip', pressed: chart.rangePreset() === preset.key, onClick: () => deps.commands.execute(id) })
         setDisabled(chip, !deps.commands.available(id))
         return chip
       }),

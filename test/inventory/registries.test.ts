@@ -56,8 +56,8 @@ const COUNTS: Record<Registry, number> = {
   timeframes: 26,
   timezones: 60,
   locales: 21,
-  themeRoles: 63,
-  commands: 194,
+  themeRoles: 80,
+  commands: 205,
 }
 
 /** How counts.baseline.json names each registry the fixture also carries. */

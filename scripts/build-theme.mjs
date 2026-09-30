@@ -21,7 +21,8 @@ import { fileURLToPath } from 'node:url'
 
 import { THEME_MODES, THEME_ROLES } from '../src/theme/schema.ts'
 import { BUILT_IN_THEMES } from '../src/theme/palettes.ts'
-import { themeDeclarations, THEME_ROOT_ATTRIBUTE } from '../src/theme/css-contract.ts'
+import { HOST_LAYER_ORDER, STYLE_LAYERS, themeDeclarations, THEME_ROOT_ATTRIBUTE } from '../src/theme/css-contract.ts'
+import { STYLE_HOOKS } from '../src/theme/hooks.ts'
 import { composeDistributableStylesheet } from './stylesheet.mjs'
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -33,6 +34,8 @@ const css = composeDistributableStylesheet()
 const manifest = {
   rootAttribute: THEME_ROOT_ATTRIBUTE,
   cssEntry: CSS_ENTRY,
+  layers: { ...STYLE_LAYERS, hostOrder: HOST_LAYER_ORDER },
+  hooks: STYLE_HOOKS.map((hook) => ({ className: hook.className, purpose: hook.purpose, states: [...hook.states], customization: [...hook.customization] })),
   modes: [...THEME_MODES],
   families: [...new Set(THEME_ROLES.map((r) => r.family))].map((family) => ({
     family,

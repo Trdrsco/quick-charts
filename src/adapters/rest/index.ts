@@ -141,6 +141,13 @@ const refOf = (value: unknown): ResourceRef | null => {
   return typeof id === 'string' && id !== '' && typeof revision === 'string' ? { id, revision } : null
 }
 
+/** A layout's listing facts, carried only where they were stated: a service that keeps none answers
+ *  rows without them, and a row without them is a row the listing names by its time instead. */
+const listingFacts = (from: { symbol?: string; timeframe?: string }): { symbol?: string; timeframe?: string } => ({
+  ...(typeof from.symbol === 'string' ? { symbol: from.symbol } : {}),
+  ...(typeof from.timeframe === 'string' ? { timeframe: from.timeframe } : {}),
+})
+
 /** The base URL with no trailing slash, so `${base}/charts` never doubles one. */
 const trimBase = (baseUrl: string): string => baseUrl.replace(/\/+$/, '')
 
@@ -268,9 +275,9 @@ export function createRestSaveLoadAdapter(options: RestSaveLoadOptions): ChartSa
     }),
     layouts: store<LayoutMeta, LayoutBody, RestLayoutMeta, RestLayoutBody>({
       collection: { family: 'layouts' },
-      metaOf: (r) => ({ id: r.id, revision: r.revision, name: r.name, updatedAt: r.updatedAt }),
-      bodyOf: (w) => ({ name: w.name, content: w.content }),
-      wireOf: (b) => ({ name: b.name, content: b.content }),
+      metaOf: (r) => ({ id: r.id, revision: r.revision, name: r.name, ...listingFacts(r), updatedAt: r.updatedAt }),
+      bodyOf: (w) => ({ name: w.name, ...listingFacts(w), content: w.content }),
+      wireOf: (b) => ({ name: b.name, ...listingFacts(b), content: b.content }),
     }),
     drawings(context: DrawingResourceContext) {
       const key = drawingContextKey(context)

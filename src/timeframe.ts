@@ -53,6 +53,17 @@ export function formatTimeframe(tf: Timeframe): string | null {
   return `${tf.count}${tf.unit}`
 }
 
+/** The token as a toolbar CHIP wears it. Sub-daily keeps its own token; a day or a week drops to the
+ *  unit's letter, and a month keeps its count beside it. The full list still spells every one out. */
+export function timeframeChipLabel(token: string): string {
+  const tf = parseTimeframe(token)
+  if (!tf) return token
+  if (tf.unit === 'mo') return `${tf.count}M`
+  if (tf.unit === 'd') return tf.count === 1 ? 'D' : `${tf.count}D`
+  if (tf.unit === 'w') return tf.count === 1 ? 'W' : `${tf.count}W`
+  return token
+}
+
 /** The nominal seconds one bar of the timeframe spans ({@link TIMEFRAME_UNIT_SECONDS} times the
  *  count). */
 export function timeframeSeconds(tf: Timeframe): number {

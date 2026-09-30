@@ -1,25 +1,32 @@
 // The floating settings bar for the selected drawing: templates first, then the controls the tool
 // actually has (a glyph mark carries no stroke, so it gets no color, width or style), the settings
-// gear, lock, delete, and the More menu with the stacking moves, the interval presets, clone, copy
-// and hide. Grip-draggable anywhere over the chart; where it sits is a preference. Every action is
-// a command through the registry.
+// gear, lock, delete, and the More menu with the stacking moves and the interval presets as
+// hover-opened submenus, then clone, copy and hide. Grip-draggable anywhere over the chart; where
+// it sits is a preference. Every action is a command through the registry.
 import type { LineStyle } from '../../internal/drawings/index'
 import { alphaOf, withAlpha } from '../../internal/drawings/index'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import type { DrawingPresets, SelectedDrawing } from '../../drawings'
 import { clampFavoritesPosition, FILLABLE, FONT_TOOLS, NO_DASH, NO_LINE_DECOR, NO_STROKE, type FavoritesPosition, type VisibilityPreset } from '../../drawings/index'
+// The channel table is the bar's own business: a host composes colours through the drawing's
+// props, not through a list the package publishes.
+import { TOOL_COLOR_CHANNELS } from '../../drawings/capabilities'
 import { isApplePlatform } from '../../platform'
-import { button, el, focusFirst, menuKeys, ownPointer, rovingFocus } from './dom'
-import { colorSwatches, openPopover, strokeSegments } from './fields'
-import { iconSvg } from './icons'
+import { button, dragUntilRelease, el, focusFirst, followHostSize, menuKeys, ownPointer, paintedPosition, rovingFocus } from './dom'
+import { openPopover } from './fields'
+import { createColorPalette } from '../controls/color'
+import { OWN_WORDS_TOOLS } from '../../drawings/capabilities'
+import type { IconName } from '../controls/icons'
 import { openTemplateDeleteDialog, openTemplateNameDialog } from './templateDialog'
+import type { IconResolver } from '../icons/resolver'
+import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
 
-const WIDTHS = [1, 2, 3, 4]
+const WIDTHS = [1, 2, 3, 4] as const
 const FONT_SIZES = [10, 12, 14, 16, 20, 24, 28, 32, 40]
-const LINE_STYLES: readonly { id: LineStyle; label: ChartMessageKey }[] = [
-  { id: 'solid', label: 'drawing.lineSolid' },
-  { id: 'dashed', label: 'drawing.lineDashed' },
-  { id: 'dotted', label: 'drawing.lineDotted' },
+const LINE_STYLES: readonly { id: LineStyle; label: ChartMessageKey; icon: IconName }[] = [
+  { id: 'solid', label: 'drawing.lineSolid', icon: 'lineSolid' },
+  { id: 'dashed', label: 'drawing.lineDashed', icon: 'lineDashed' },
+  { id: 'dotted', label: 'drawing.lineDotted', icon: 'lineDotted' },
 ]
 const ORDER_MOVES: readonly { label: ChartMessageKey; command: string; dead: (at: { atFront: boolean; atBack: boolean }) => boolean }[] = [
   { label: 'drawing.bringToFront', command: 'chart.drawings.bringToFront', dead: (at) => at.atFront },
@@ -33,10 +40,27 @@ const VISIBILITY_PRESETS: readonly { label: ChartMessageKey; preset: VisibilityP
   { label: 'drawing.visCurrentOnly', preset: 'current-only' },
   { label: 'drawing.visAll', preset: 'all' },
 ]
+/** How long a submenu survives the pointer leaving its row or itself. The pointer travels between
+ *  the two, and on a diagonal it can leave both for a frame; closing on the first leave makes the
+ *  panel feel like it is running away from the cursor. */
+const SUBMENU_GRACE_MS = 150
+/** The line style glyphs are 28-grid marks, worn at their own size on the bar and in their menu. */
+const LINE_STYLE_GLYPH = 28
+
+/** The thickness marks by width, one per width the bar offers. */
+const THICKNESS_ICONS = { 1: 'lineThickness1', 2: 'lineThickness2', 3: 'lineThickness3', 4: 'lineThickness4' } as const satisfies Record<(typeof WIDTHS)[number], IconName>
+
+/** The thickness mark: an 18 by N bar with fully rounded ends, on the bar and in its menu. */
+function widthBar(icons: IconResolver, width: number): HTMLElement {
+  const h = Math.max(1, Math.min(4, Math.round(width))) as keyof typeof THICKNESS_ICONS
+  return el('span', { class: 'qc-drawing-width-bar', 'aria-hidden': 'true' }, icons.icon(THICKNESS_ICONS[h]))
+}
 
 export interface SettingsBarDeps {
   chrome: HTMLElement
   t: ChartTranslate
+  /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
+  icons: IconResolver
   selected(): SelectedDrawing | null
   /** The selection's props, for the leveled tools whose level colors follow a color pick. */
   selectedProps(): Readonly<Record<string, unknown>> | null
@@ -46,10 +70,12 @@ export interface SettingsBarDeps {
    *  unavailable renders disabled, never hidden. */
   available(command: string): boolean
   stackPosition(): { atFront: boolean; atBack: boolean }
-  /** Whether the drawing clipboard holds anything, read as the More menu opens. */
-  canPaste(): boolean
   position(): FavoritesPosition | null
   onMove(position: FavoritesPosition): void
+  /** The colours this viewer mixed, newest first, and how a new one joins them. Kept by whoever
+   *  mounts the bar, beside the position it already remembers. */
+  recentColors(): readonly string[]
+  onMixColor(hex: string): void
 }
 
 export interface SettingsBarHandle {
@@ -57,35 +83,58 @@ export interface SettingsBarHandle {
   destroy(): void
 }
 
+type MenuWidth = 'content' | 'wide' | 'narrow'
+
 export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
   const { t } = deps
   const bar = el('div', { class: 'qc-overlay qc-drawing-settings-bar', role: 'toolbar', 'aria-label': t('drawing.settingsBar'), 'data-role': 'drawing-settings-bar' })
   ownPointer(bar)
   bar.hidden = true
-  const grip = button({ class: 'qc-drawing-grip', label: t('drawing.moveToolbar'), html: iconSvg('grip', 12) })
+  const grip = button({ class: 'qc-drawing-grip', label: t('drawing.moveToolbar'), icon: deps.icons.icon('grip', 12) })
   const controls = el('div', { class: 'qc-drawing-settings-controls' })
   bar.append(grip, controls)
 
   let closePanel: (() => void) | null = null
+  /** Which drawing the open panel belongs to, so a re-render can tell an edit from a new selection. */
+  let panelFor: string | null = null
+  /** Which control it hangs off, so a rebuilt bar can give that control its open state back. */
+  let panelControl: string | null = null
+  /** Say the control is shut, on whichever button is CURRENTLY standing for it: a rebuilt bar
+   *  holds a different element than the one the panel was opened from, and the detached one's
+   *  attribute is read by nobody. */
+  const markOpen = (open: boolean): void => {
+    if (panelControl) controls.querySelector(`[data-qc-control='${panelControl}']`)?.setAttribute('aria-expanded', String(open))
+  }
   const closeOpen = (): void => {
+    markOpen(false)
     closePanel?.()
     closePanel = null
+    panelFor = null
+    panelControl = null
   }
-  const openPanel = (anchor: HTMLElement, content: HTMLElement, onClose?: () => void): void => {
+  const openPanel = (anchor: HTMLElement, content: HTMLElement, placement: 'below' | 'below-end' = 'below', onClose?: () => void): void => {
     const wasOpen = anchor.getAttribute('aria-expanded') === 'true'
     closeOpen()
     if (wasOpen) return
-    const close = openPopover(deps.chrome, anchor, content, 'below', () => {
-      if (closePanel === close) closePanel = null
+    const close = openPopover(deps.chrome, anchor, content, placement, () => {
+      if (closePanel === close) {
+        markOpen(false)
+        closePanel = null
+        panelFor = null
+        panelControl = null
+      }
       onClose?.()
     })
     closePanel = close
+    panelFor = deps.selected()?.id ?? null
+    panelControl = anchor.dataset.qcControl ?? null
     focusFirst(content)
   }
 
   const place = (): void => {
-    const position = deps.position()
-    if (position) {
+    const remembered = deps.position()
+    if (remembered) {
+      const position = paintedPosition(remembered, bar, deps.chrome)
       bar.style.left = `${position.x}px`
       bar.style.top = `${position.y}px`
       bar.style.transform = ''
@@ -107,37 +156,47 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       bar.style.top = `${last.y}px`
       bar.style.transform = ''
     }
-    const onUp = (): void => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
+    // A press with no movement is a press, not a move: nothing is reported and nothing is saved.
+    dragUntilRelease(onMove, () => {
       if (last) deps.onMove(last)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
+    })
     e.preventDefault()
   })
 
   const unrove = rovingFocus(bar, () => [grip, ...controls.querySelectorAll<HTMLElement>('button')], 'horizontal')
+  // A panel opening beside the chart narrows the box this bar floats in; the bar moves in with it
+  // rather than standing where the chart used to be, cut off behind what opened.
+  const unfollow = followHostSize(deps.chrome, place)
 
-  const menuRow = (label: string, onPick: () => void, options: { icon?: string; hint?: string; disabled?: boolean; command?: string } = {}): HTMLButtonElement => {
-    const b = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row', role: 'menuitem' })
-    const cell = el('span', { class: 'qc-menu-icon' })
-    if (options.icon) cell.innerHTML = options.icon
-    b.append(cell, el('span', { class: 'qc-menu-label', text: label }))
+  /** One row of a bar menu. A row carries a mark only when it has one: a plain row is its label
+   *  alone, and a row aligned under a marked one takes a spacer the mark's width. The current
+   *  choice in a menu of values is marked active. */
+  const menuRow = (label: string, onPick: () => void, options: { icon?: Element; spacer?: boolean; hint?: string; disabled?: boolean; command?: string; active?: boolean; submenu?: boolean } = {}): HTMLButtonElement => {
+    const b = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-bar-row', role: 'menuitem' })
+    if (options.icon !== undefined || options.spacer) {
+      const cell = el('span', { class: 'qc-menu-icon' })
+      if (options.icon) cell.appendChild(options.icon)
+      b.appendChild(cell)
+    }
+    b.appendChild(el('span', { class: 'qc-menu-label', text: label }))
     if (options.hint) b.appendChild(el('span', { class: 'qc-menu-hint', text: options.hint }))
+    if (options.submenu) b.appendChild(el('span', { class: 'qc-drawing-bar-arrow' }, deps.icons.icon('submenuArrow', 18)))
+    if (options.active) b.dataset.qcActive = 'true'
     if (options.disabled || (options.command && !deps.available(options.command))) b.disabled = true
-    b.addEventListener('click', () => {
-      closeOpen()
-      onPick()
-    })
+    if (!options.submenu) {
+      b.addEventListener('click', () => {
+        closeOpen()
+        onPick()
+      })
+    }
     return b
   }
-  const menuOf = (label: string, ...items: HTMLElement[]): HTMLElement => {
-    const m = el('div', { class: 'qc-drawing-menu', role: 'menu', 'aria-label': label }, ...items)
+  const menuOf = (label: string, width: MenuWidth, ...items: HTMLElement[]): HTMLElement => {
+    const m = el('div', { class: 'qc-drawing-menu qc-drawing-bar-menu', role: 'menu', 'aria-label': label, 'data-width': width }, ...items)
     menuKeys(m, () => [...m.querySelectorAll<HTMLElement>('[role="menuitem"]')])
     return m
   }
-  const heading = (text: string): HTMLElement => el('div', { class: 'qc-dialog-heading', text })
+  const separator = (): HTMLElement => el('div', { class: 'qc-separator', role: 'separator' })
   /** A control is enabled exactly when the registry would run its command now. */
   const gate = (b: HTMLButtonElement, command: string): HTMLButtonElement => {
     b.disabled = !deps.available(command)
@@ -165,20 +224,87 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
 
   /** The color buttons' face: the glyph over a strip in the drawing's color. The color is a stored
    *  value, so it goes in through the style API, never through markup. */
-  const colorFace = (icon: 'pencil' | 'bucket' | 'textTee', color: string, empty = false): HTMLElement => {
+  const colorFace = (icon: 'pencil16' | 'bucket' | 'textTee', color: string, empty = false): HTMLElement => {
     const strip = el('span', { class: 'qc-drawing-color-strip', 'data-empty': String(empty) })
     strip.style.setProperty('--qcd-swatch', empty ? 'transparent' : color)
     const face = el('span', { class: 'qc-drawing-color-face' })
-    face.innerHTML = iconSvg(icon, 13)
-    face.appendChild(strip)
+    face.append(deps.icons.icon(icon), strip)
     return face
   }
   /** The modifier the hints name: the key this platform has, since the layer takes either. */
   const modifier = (): string => t(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl')
 
+  /** The More menu's submenus: one open at a time, raised beside the row the pointer is on and
+   *  kept up through the grace period while the pointer crosses from the row into the panel. */
+  const moreMenu = (): { element: HTMLElement; closeSub(): void } => {
+    let sub: { kind: 'order' | 'visibility'; close: () => void } | null = null
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const cancelClose = (): void => {
+      if (timer !== null) clearTimeout(timer)
+      timer = null
+    }
+    const closeSub = (): void => {
+      cancelClose()
+      sub?.close()
+      sub = null
+    }
+    const scheduleClose = (): void => {
+      cancelClose()
+      timer = setTimeout(closeSub, SUBMENU_GRACE_MS)
+    }
+    const submenuOf = (kind: 'order' | 'visibility'): HTMLElement => {
+      if (kind === 'order') {
+        const at = deps.stackPosition()
+        return menuOf(t('drawing.visualOrder'), 'narrow', ...ORDER_MOVES.map((move) => menuRow(t(move.label), () => deps.run(move.command), { disabled: move.dead(at), command: move.command })))
+      }
+      return menuOf(t('drawing.visibilityOnIntervals'), 'wide', ...VISIBILITY_PRESETS.map((v) => menuRow(t(v.label), () => deps.run('chart.drawings.visibility', v.preset), { command: 'chart.drawings.visibility' })))
+    }
+    const arm = (kind: 'order' | 'visibility' | null, row?: HTMLElement): void => {
+      cancelClose()
+      if (sub?.kind === kind) return
+      sub?.close()
+      sub = null
+      if (!kind || !row) return
+      const panel = submenuOf(kind)
+      panel.addEventListener('mouseenter', cancelClose)
+      panel.addEventListener('mouseleave', scheduleClose)
+      const close = openPopover(deps.chrome, row, panel, 'sidecar', () => {
+        if (sub?.close === close) sub = null
+      })
+      sub = { kind, close }
+    }
+    const submenuRow = (kind: 'order' | 'visibility', label: string, icon?: IconName): HTMLButtonElement => {
+      const row = menuRow(label, () => undefined, { ...(icon ? { icon: deps.icons.icon(icon) } : { spacer: true }), submenu: true })
+      row.setAttribute('aria-haspopup', 'menu')
+      row.addEventListener('mouseenter', () => arm(kind, row))
+      row.addEventListener('mouseleave', scheduleClose)
+      row.addEventListener('click', () => arm(kind, row))
+      return row
+    }
+    const plain = (b: HTMLButtonElement): HTMLButtonElement => {
+      b.addEventListener('mouseenter', () => arm(null))
+      return b
+    }
+    const element = menuOf(
+      t('drawing.moreActions'),
+      'wide',
+      submenuRow('order', t('drawing.visualOrder'), 'layers'),
+      submenuRow('visibility', t('drawing.visibilityOnIntervals')),
+      separator(),
+      plain(menuRow(t('drawing.clone'), () => deps.run('chart.drawings.clone'), { icon: deps.icons.icon('clone'), hint: t('drawing.hintClone', { modifier: modifier() }), command: 'chart.drawings.clone' })),
+      plain(menuRow(t('drawing.copy'), () => deps.run('chart.drawings.copy'), { spacer: true, hint: t('drawing.hintCopy', { modifier: modifier() }), command: 'chart.drawings.copy' })),
+      separator(),
+      plain(menuRow(t('drawing.hide'), () => deps.run('chart.drawings.hideSelected'), { icon: deps.icons.icon('eyeCrossed'), command: 'chart.drawings.hideSelected' })),
+    )
+    return { element, closeSub }
+  }
+
   const render = (): void => {
     const selected = deps.selected()
-    closeOpen()
+    // A panel is dismissed when the SELECTION moves, not when a control inside it reports an edit.
+    // Dragging the opacity restyles the drawing on every step, and every restyle renders the bar
+    // again: closing here would take the slider out from under the pointer holding it.
+    if (!selected || selected.id !== panelFor) closeOpen()
     bar.hidden = !selected
     controls.replaceChildren()
     // A hidden bar holds no controls at all, so a census of the chart's buttons and a keyboard
@@ -194,16 +320,17 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
 
     // Templates: the first control after the grip. The tool's default is the auto-remembered
     // last-used setup, so there is no explicit save-default row.
-    const templates = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingTemplates'), title: t('drawing.templates'), html: iconSvg('template') }), 'chart.drawings.template.apply')
+    const templates = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingTemplates'), title: t('drawing.templates'), icon: deps.icons.icon('template') }), 'chart.drawings.template.apply')
     templates.setAttribute('aria-haspopup', 'menu')
     templates.setAttribute('aria-expanded', 'false')
+    templates.dataset.qcControl = 'templates'
     templates.addEventListener('click', () => {
       const saved = deps.presets.templatesFor(type)
       const items: HTMLElement[] = [
-        menuRow(t('drawing.saveTemplateAs'), () => openTemplateNameDialog({ container: deps.chrome, t }, (name) => deps.run('chart.drawings.template.save', name)), { command: 'chart.drawings.template.save' }),
+        menuRow(t('drawing.saveTemplateAs'), () => openTemplateNameDialog({ container: deps.chrome, t, icons: deps.icons }, (name) => deps.run('chart.drawings.template.save', name)), { command: 'chart.drawings.template.save' }),
         menuRow(t('drawing.applyDefaultTemplate'), () => deps.run('chart.drawings.template.apply', null), { command: 'chart.drawings.template.apply' }),
       ]
-      if (saved.length) items.push(el('div', { class: 'qc-separator', role: 'separator' }))
+      if (saved.length) items.push(separator())
       for (const template of saved) {
         const rowEl = el('div', { class: 'qc-drawing-flyout-row' })
         rowEl.append(
@@ -212,17 +339,17 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
             class: 'qc-drawing-star',
             label: t('drawing.removeTemplateNamed', { name: template.name }),
             title: t('drawing.remove'),
-            html: iconSvg('trash', 18),
+            icon: deps.icons.icon('trash', 18),
             disabled: !deps.available('chart.drawings.template.remove'),
             onClick: () => {
               closeOpen()
-              openTemplateDeleteDialog({ container: deps.chrome, t }, template.name, () => deps.run('chart.drawings.template.remove', template.name))
+              openTemplateDeleteDialog({ container: deps.chrome, t, icons: deps.icons }, template.name, () => deps.run('chart.drawings.template.remove', template.name))
             },
           }),
         )
         items.push(rowEl)
       }
-      openPanel(templates, menuOf(t('drawing.drawingTemplates'), ...items))
+      openPanel(templates, menuOf(t('drawing.drawingTemplates'), 'wide', ...items))
     })
     controls.appendChild(templates)
 
@@ -233,13 +360,36 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       )
     }
 
+    /** A color panel on the bar. Choosing a colour is the whole of what the panel is for, so the
+     *  choice closes it; moving the opacity is not a choice and leaves it standing. */
+    const colorPanel = (control: HTMLElement, spec: { value: string; onPick: (c: string) => void; opacity: number; onOpacity: (v: number) => void }): void => {
+      openPanel(
+        control,
+        createColorPalette(t, {
+          recents: { list: deps.recentColors, add: deps.onMixColor },
+          value: spec.value,
+          onPick: (c) => {
+            spec.onPick(c)
+            closeOpen()
+          },
+          opacity: spec.opacity,
+          onOpacity: spec.onOpacity,
+        }).element,
+      )
+    }
     if (hasStroke) {
       const color = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingColor'), title: t('drawing.color') }), 'chart.drawings.style')
-      color.appendChild(colorFace('pencil', selected.lineColor))
+      color.appendChild(colorFace('pencil16', selected.lineColor))
       color.setAttribute('aria-haspopup', 'dialog')
       color.setAttribute('aria-expanded', 'false')
+      color.dataset.qcControl = 'color'
       color.addEventListener('click', () =>
-        openPanel(color, colorSwatches(t, { value: selected.lineColor, onPick: (c) => pickLineColor(selected, c), opacity: alphaOf(selected.lineColor), onOpacity: (v) => pickLineOpacity(selected, v) })),
+        colorPanel(color, {
+          value: selected.lineColor,
+          onPick: (c) => pickLineColor(selected, c),
+          opacity: alphaOf(selected.lineColor),
+          onOpacity: (v) => pickLineOpacity(selected, v),
+        }),
       )
       controls.appendChild(color)
     }
@@ -248,82 +398,82 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       fill.appendChild(colorFace('bucket', selected.fillColor, selected.fillOpacity === 0))
       fill.setAttribute('aria-haspopup', 'dialog')
       fill.setAttribute('aria-expanded', 'false')
+      fill.dataset.qcControl = 'fill'
       fill.addEventListener('click', () =>
-        openPanel(
-          fill,
-          colorSwatches(t, {
-            value: selected.fillColor,
-            onPick: (c) => style({ fillColor: c, ...(selected.fillOpacity === 0 ? { fillOpacity: 0.12 } : {}) }),
-            opacity: selected.fillOpacity,
-            onOpacity: (v) => style({ fillOpacity: v }),
-          }),
-        ),
+        colorPanel(fill, {
+          value: selected.fillColor,
+          onPick: (c) => style({ fillColor: c, ...(selected.fillOpacity === 0 ? { fillOpacity: 0.12 } : {}) }),
+          opacity: selected.fillOpacity,
+          onOpacity: (v) => style({ fillOpacity: v }),
+        }),
       )
       controls.appendChild(fill)
     }
-    if (selected.hasText || FONT_TOOLS.has(type)) {
+    if (selected.hasText || FONT_TOOLS.has(type) || OWN_WORDS_TOOLS.has(type)) {
       const text = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.textColor') }), 'chart.drawings.style')
       text.appendChild(colorFace('textTee', selected.textColor))
       text.setAttribute('aria-haspopup', 'dialog')
       text.setAttribute('aria-expanded', 'false')
+      text.dataset.qcControl = 'text'
       text.addEventListener('click', () =>
-        openPanel(
-          text,
-          colorSwatches(t, {
-            value: selected.textColor,
-            onPick: (c) => {
-              const alpha = alphaOf(selected.textColor)
-              style({ textColor: alpha < 1 ? withAlpha(c, alpha) : c })
-            },
-            opacity: alphaOf(selected.textColor),
-            onOpacity: (v) => style({ textColor: withAlpha(selected.textColor, v) }),
-          }),
-        ),
+        colorPanel(text, {
+          value: selected.textColor,
+          onPick: (c) => {
+            const alpha = alphaOf(selected.textColor)
+            style({ textColor: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(selected.textColor),
+          onOpacity: (v) => style({ textColor: withAlpha(selected.textColor, v) }),
+        }),
       )
       controls.appendChild(text)
+    }
+    for (const channel of TOOL_COLOR_CHANNELS[type] ?? []) {
+      const current = typeof deps.selectedProps()?.[channel.prop] === 'string' ? String(deps.selectedProps()![channel.prop]) : selected.lineColor
+      const control = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t(channel.label as Parameters<typeof t>[0]) }), 'chart.drawings.style')
+      control.appendChild(colorFace(channel.icon, current))
+      control.setAttribute('aria-haspopup', 'dialog')
+      control.setAttribute('aria-expanded', 'false')
+      control.dataset.qcControl = channel.prop
+      control.addEventListener('click', () =>
+        colorPanel(control, {
+          value: current,
+          onPick: (c) => deps.run('chart.drawings.props', { [channel.prop]: alphaOf(current) < 1 ? withAlpha(c, alphaOf(current)) : c }),
+          opacity: alphaOf(current),
+          onOpacity: (v) => deps.run('chart.drawings.props', { [channel.prop]: withAlpha(current, v) }),
+        }),
+      )
+      controls.appendChild(control)
     }
     if (FONT_TOOLS.has(type) && type !== 'table') {
       const size = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.fontSize'), text: String(selected.fontSize) }), 'chart.drawings.style')
       size.setAttribute('aria-haspopup', 'menu')
       size.setAttribute('aria-expanded', 'false')
-      size.addEventListener('click', () => openPanel(size, menuOf(t('drawing.fontSize'), ...FONT_SIZES.map((n) => menuRow(String(n), () => style({ fontSize: n }))))))
+      size.dataset.qcControl = 'size'
+      size.addEventListener('click', () => openPanel(size, menuOf(t('drawing.fontSize'), 'content', ...FONT_SIZES.map((n) => menuRow(String(n), () => style({ fontSize: n }), { active: selected.fontSize === n })))))
       controls.appendChild(size)
     }
     if (hasStroke && !NO_LINE_DECOR.has(type)) {
+      const widths: readonly number[] = type === 'highlighter' ? HIGHLIGHTER_WIDTHS : WIDTHS
       const width = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.lineThickness'), title: t('drawing.thickness') }), 'chart.drawings.style')
-      width.append(strokeSegments(selected.lineWidth), el('span', { text: `${selected.lineWidth}px` }))
+      width.append(widthBar(deps.icons, selected.lineWidth), el('span', { text: `${selected.lineWidth}px` }))
       width.setAttribute('aria-haspopup', 'menu')
       width.setAttribute('aria-expanded', 'false')
+      width.dataset.qcControl = 'width'
       width.addEventListener('click', () =>
-        openPanel(
-          width,
-          menuOf(
-            t('drawing.lineThickness'),
-            ...WIDTHS.map((w) => {
-              const rowEl = menuRow(`${w}px`, () => style({ lineWidth: w }))
-              rowEl.querySelector('.qc-menu-icon')?.appendChild(strokeSegments(w))
-              return rowEl
-            }),
-          ),
-        ),
+        openPanel(width, menuOf(t('drawing.lineThickness'), 'content', ...widths.map((w) => menuRow(`${w}px`, () => style({ lineWidth: w }), { ...(type === 'highlighter' ? {} : { icon: widthBar(deps.icons, w) }), active: selected.lineWidth === w })))),
       )
       controls.appendChild(width)
       if (!NO_DASH.has(type)) {
-        const lineStyle = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.lineStyle') }), 'chart.drawings.style')
-        lineStyle.appendChild(strokeSegments(1, selected.lineStyle))
+        const current = LINE_STYLES.find((s) => s.id === selected.lineStyle) ?? LINE_STYLES[0]!
+        const lineStyle = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.lineStyle'), icon: deps.icons.icon(current.icon, LINE_STYLE_GLYPH) }), 'chart.drawings.style')
         lineStyle.setAttribute('aria-haspopup', 'menu')
         lineStyle.setAttribute('aria-expanded', 'false')
+        lineStyle.dataset.qcControl = 'lineStyle'
         lineStyle.addEventListener('click', () =>
           openPanel(
             lineStyle,
-            menuOf(
-              t('drawing.lineStyle'),
-              ...LINE_STYLES.map((s) => {
-                const rowEl = menuRow(t(s.label), () => style({ lineStyle: s.id }))
-                rowEl.querySelector('.qc-menu-icon')?.appendChild(strokeSegments(1, s.id))
-                return rowEl
-              }),
-            ),
+            menuOf(t('drawing.lineStyle'), 'content', ...LINE_STYLES.map((s) => menuRow(t(s.label), () => style({ lineStyle: s.id }), { icon: deps.icons.icon(s.icon, LINE_STYLE_GLYPH), active: selected.lineStyle === s.id }))),
           ),
         )
         controls.appendChild(lineStyle)
@@ -331,45 +481,34 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     }
 
     controls.append(
-      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingSettings'), title: t('drawing.settings'), html: iconSvg('gear'), onClick: () => deps.run('chart.drawings.settings') }), 'chart.drawings.settings'),
+      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingSettings'), title: t('drawing.settings'), icon: deps.icons.icon('gear'), onClick: () => deps.run('chart.drawings.settings') }), 'chart.drawings.settings'),
       gate(
         button({
           class: 'qc-button qc-drawing-bar-button',
           label: t(selected.locked ? 'drawing.unlockDrawing' : 'drawing.lockDrawing'),
           title: t(selected.locked ? 'drawing.unlock' : 'drawing.lock'),
-          html: iconSvg(selected.locked ? 'lockClosed' : 'lockOpen'),
+          icon: deps.icons.icon(selected.locked ? 'lockClosed' : 'lockOpen'),
           pressed: selected.locked,
           onClick: () => deps.run('chart.drawings.lock', !selected.locked),
         }),
         'chart.drawings.lock',
       ),
-      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.deleteDrawing'), title: t('drawing.deleteWithKey'), html: iconSvg('trash'), onClick: () => deps.run('chart.drawings.deleteSelected') }), 'chart.drawings.deleteSelected'),
+      gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.deleteDrawing'), title: t('drawing.deleteWithKey'), icon: deps.icons.icon('trash28'), onClick: () => deps.run('chart.drawings.deleteSelected') }), 'chart.drawings.deleteSelected'),
     )
 
-    const more = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.moreActions'), title: t('drawing.more'), html: iconSvg('kebab') })
+    // More opens with its inline-end edge level with the control's, since it is the last control
+    // and a menu hanging past the bar's end would run off the chart.
+    const more = button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.moreActions'), title: t('drawing.more'), icon: deps.icons.icon('kebab') })
     more.setAttribute('aria-haspopup', 'menu')
     more.setAttribute('aria-expanded', 'false')
+    more.dataset.qcControl = 'more'
     more.addEventListener('click', () => {
-      const at = deps.stackPosition()
-      openPanel(
-        more,
-        menuOf(
-          t('drawing.moreActions'),
-          heading(t('drawing.visualOrder')),
-          ...ORDER_MOVES.map((move) => menuRow(t(move.label), () => deps.run(move.command), { icon: iconSvg('layers'), disabled: move.dead(at), command: move.command })),
-          el('div', { class: 'qc-separator', role: 'separator' }),
-          heading(t('drawing.visibilityOnIntervals')),
-          ...VISIBILITY_PRESETS.map((v) => menuRow(t(v.label), () => deps.run('chart.drawings.visibility', v.preset), { command: 'chart.drawings.visibility' })),
-          el('div', { class: 'qc-separator', role: 'separator' }),
-          menuRow(t('drawing.clone'), () => deps.run('chart.drawings.clone'), { icon: iconSvg('clone'), hint: t('drawing.hintClone', { modifier: modifier() }), command: 'chart.drawings.clone' }),
-          menuRow(t('drawing.copy'), () => deps.run('chart.drawings.copy'), { hint: t('drawing.hintCopy', { modifier: modifier() }), command: 'chart.drawings.copy' }),
-          menuRow(t('drawing.paste'), () => deps.run('chart.drawings.paste'), { hint: t('drawing.hintPaste', { modifier: modifier() }), disabled: !deps.canPaste(), command: 'chart.drawings.paste' }),
-          el('div', { class: 'qc-separator', role: 'separator' }),
-          menuRow(t('drawing.hide'), () => deps.run('chart.drawings.hideSelected'), { icon: iconSvg('eyeCrossed'), command: 'chart.drawings.hideSelected' }),
-        ),
-      )
+      const menu = moreMenu()
+      openPanel(more, menu.element, 'below-end', menu.closeSub)
     })
     controls.appendChild(more)
+    // The rebuilt control takes back the open state, so the next press closes what is already up.
+    if (closePanel) markOpen(true)
   }
 
   deps.chrome.appendChild(bar)
@@ -378,6 +517,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     render,
     destroy() {
       closeOpen()
+      unfollow()
       unrove()
       bar.remove()
     },

@@ -1,11 +1,11 @@
-// The modal shell every drawing dialog stands in: a scrim over the chart, a titled box the trader
-// can drag by its header, a close affordance, Escape, a focus trap, and focus back on the control
-// that opened it when it closes. It mounts into the chart's own chrome subtree, because the
-// package stylesheet is scoped to the chart root and a box parented anywhere else would resolve
-// none of its own custom properties.
-import { button, el, ownPointer, trapFocus } from './dom'
-import { iconSvg } from './icons'
-import { closeOverlays, trackOverlay } from './overlays'
+// The frame a drawing dialog stands in. The modal shell every chrome surface opens owns the scrim,
+// the centring, the focus trap, Escape and giving focus back to whatever had it; this adds the two
+// things a drawing dialog needs on top, and nothing else: a header the trader can drag, so a dialog
+// never hides the drawing it is editing, and a body and footer the caller fills.
+import { dialogTitle, openDialog as openModal } from '../chrome/dialog'
+import { closeOverlays } from '../controls/overlays'
+import { el, ownPointer } from './dom'
+import type { IconResolver } from '../icons/resolver'
 
 export interface DialogOptions {
   /** The chrome subtree the dialog mounts into. */
@@ -14,6 +14,8 @@ export interface DialogOptions {
   title: string
   /** The close control's accessible name. */
   closeLabel: string
+  /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
+  icons: IconResolver
   /** A stable role name for tests and hosts, written as `data-role`. */
   role: string
   width?: number
@@ -30,36 +32,20 @@ export interface DialogHandle {
   close(): void
 }
 
-export function openDialog(options: DialogOptions): DialogHandle {
-  const backdrop = el('div', { class: 'qc-scrim qc-dialog-backdrop qc-drawing-dialog-backdrop' })
-  const box = el('div', { class: 'qc-overlay qc-dialog qc-drawing-dialog', role: 'dialog', 'aria-modal': 'true', 'aria-label': options.title, 'data-role': options.role })
-  if (options.width) box.style.width = `min(${options.width}px, calc(100% - 16px))`
-  ownPointer(box)
-
-  const header = el('div', { class: 'qc-drawing-dialog-header' })
-  const title = el('span', { class: 'qc-title qc-drawing-dialog-title', text: options.title })
-  const closeButton = button({ class: 'qc-dialog-op', label: options.closeLabel, html: iconSvg('close', 18), onClick: () => close() })
-  header.append(title, closeButton)
-  const body = el('div', { class: 'qc-drawing-dialog-body' })
-  const footer = el('div', { class: 'qc-drawing-dialog-footer' })
-  box.append(header, body, footer)
-  backdrop.appendChild(box)
-
-  // The header drags the box, so a dialog never hides the drawing it is editing. The offset is
-  // remembered for the dialog's own life only.
+/** Let the header carry the box. The offset is remembered for the dialog's own life only. */
+function dragBy(header: HTMLElement, box: HTMLElement): () => void {
   let dragging: { dx: number; dy: number } | null = null
-  header.addEventListener('pointerdown', (e) => {
-    if ((e.target as HTMLElement).closest('button')) return
+  header.addEventListener('pointerdown', (event) => {
+    if ((event.target as HTMLElement).closest('button')) return
     const rect = box.getBoundingClientRect()
-    dragging = { dx: e.clientX - rect.left, dy: e.clientY - rect.top }
-    e.preventDefault()
+    dragging = { dx: event.clientX - rect.left, dy: event.clientY - rect.top }
+    event.preventDefault()
   })
-  const onMove = (e: PointerEvent): void => {
+  const onMove = (event: PointerEvent): void => {
     if (!dragging) return
-    const host = backdrop.getBoundingClientRect()
-    const x = Math.max(0, Math.min(e.clientX - host.left - dragging.dx, host.width - box.offsetWidth))
-    const y = Math.max(0, Math.min(e.clientY - host.top - dragging.dy, host.height - box.offsetHeight))
-    box.style.position = 'absolute'
+    const x = Math.max(0, Math.min(event.clientX - dragging.dx, window.innerWidth - box.offsetWidth))
+    const y = Math.max(0, Math.min(event.clientY - dragging.dy, window.innerHeight - box.offsetHeight))
+    box.style.position = 'fixed'
     box.style.left = `${Math.round(x)}px`
     box.style.top = `${Math.round(y)}px`
   }
@@ -68,35 +54,39 @@ export function openDialog(options: DialogOptions): DialogHandle {
   }
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
-
-  let closed = false
-  const untrap = trapFocus(box)
-  const onKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape') {
-      e.stopPropagation()
-      close()
-    }
-  }
-  box.addEventListener('keydown', onKey)
-  backdrop.addEventListener('mousedown', (e) => {
-    if (e.target === backdrop) close()
-  })
-
-  const close = (): void => {
-    if (closed) return
-    closed = true
-    // Whatever the dialog opened over itself (a palette, a menu) goes first, so no document
-    // listener outlives the box it belonged to; then the dialog leaves the chrome's own register.
-    closeOverlays(box)
-    untrack()
+  return () => {
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', onUp)
-    untrap()
-    backdrop.remove()
-    options.onClose?.()
   }
-  const untrack = trackOverlay(options.container, close)
+}
 
-  options.container.appendChild(backdrop)
-  return { body, footer, box, close }
+export function openDialog(options: DialogOptions): DialogHandle {
+  const body = el('div', { class: 'qc-drawing-dialog-body' })
+  const footer = el('div', { class: 'qc-drawing-dialog-footer' })
+  let box: HTMLElement | null = null
+  let stopDrag: () => void = () => undefined
+  const modal = openModal({
+    host: options.container,
+    label: options.title,
+    className: 'qc-drawing-dialog',
+    role: options.role,
+    ...(options.width === undefined ? {} : { width: options.width }),
+    build(element, dialog) {
+      box = element
+      ownPointer(element)
+      const header = dialogTitle(options.title, options.closeLabel, () => dialog.close(), options.icons)
+      header.classList.add('qc-drawing-dialog-header')
+      header.querySelector('.qc-title')?.classList.add('qc-drawing-dialog-title')
+      stopDrag = dragBy(header, element)
+      element.append(header, body, footer)
+    },
+    onClose: () => {
+      stopDrag()
+      // Whatever the dialog opened over itself (a palette, a menu) goes with it, so no document
+      // listener outlives the box it belonged to.
+      if (box) closeOverlays(box)
+      options.onClose?.()
+    },
+  })
+  return { body, footer, box: modal.element, close: modal.close }
 }

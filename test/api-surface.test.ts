@@ -3,7 +3,9 @@
 // removal/rename is breaking → major; an addition → minor, then extend the pin) — never noise to
 // appease. Type-only exports are erased at runtime so they cannot be pinned here; the clean-room
 // consumer (clean-room/ts-consumer, skipLibCheck: false) compiles against the shipped .d.ts and is
-// their gate.
+// their gate. A union that grows or loses a member changes no name and no `typeof` either:
+// saveLoadOutcomes.test.ts switches over the save, load and remove outcomes exhaustively, so the
+// compiler is what notices.
 import { describe, expect, it } from 'vitest'
 import * as api from '../src/index'
 
@@ -21,6 +23,9 @@ const SURFACE: Record<string, string> = {
   ARRANGEMENTS: 'object',
   LAYOUT_MENU_ROWS: 'object',
   arrangementOf: 'function',
+  // Additive (minor): the icon inventory a host draws the chart's glyphs against, 2026-09-23.
+  CHART_ICON_IDS: 'object',
+  MIRRORED_ICONS: 'object',
   // Additive (minor): COMPARE — other symbols beside the charted one, 2026-08-28.
   attachCompare: 'function',
   clipToWindow: 'function',
@@ -47,6 +52,7 @@ const SURFACE: Record<string, string> = {
   SESSION_DOT: 'object',
   SESSION_LABEL: 'object',
   ShadePrimitive: 'function',
+  TOP_BAR_SLOTS: 'object',
   applyBar: 'function',
   applyPlotOverrides: 'function',
   attachDrawings: 'function',
@@ -70,6 +76,7 @@ const SURFACE: Record<string, string> = {
   mountContextMenu: 'function',
   openInputsEditor: 'function',
   olderPageVerdict: 'function',
+  withFoldedHistory: 'function',
   overriddenManifest: 'function',
   placeableByWidget: 'function',
   planPaneOp: 'function',
@@ -84,6 +91,7 @@ const SURFACE: Record<string, string> = {
   ResourceAbortError: 'function',
   createPriceFormatter: 'function',
   memorySaveLoadAdapter: 'function',
+  symbolNames: 'function',
   // Additive (minor): the drawings document — where one lives, what it holds, and the pure rules
   // a host needs to read or merge one itself.
   DRAWING_CONTEXT_VERSION: 'number',
@@ -185,6 +193,11 @@ const SURFACE: Record<string, string> = {
   promoteRecent: 'function',
   spreadExpression: 'function',
   spreadSearchQuery: 'function',
+  // Additive (minor): the search as a surface a page opens away from a chart, 2026-09-19 — over a
+  // dialog or a box the page owns, with a catalog it can keep warm between opens.
+  createSymbolSearchCache: 'function',
+  mountSymbolSearch: 'function',
+  openSymbolSearch: 'function',
   // ── The widget kernel ───────────────────────────────────────────────────────────────────────
   // The widget kernel. `createChart` answers a `ChartWidget` that hosts one or many `ChartHandle`s;
   // its four configuration planes, its command registry, its two event maps and its layout, theme,
@@ -195,7 +208,7 @@ const SURFACE: Record<string, string> = {
   // Breaking (major) in the same landing: the standalone layout constructor, the one-shot theme
   // resolver and the constructor callback bag are gone, with no alias. A widget always has a
   // layout, a theme is a controller, and events are subscriptions. Their names are recorded in
-  // scripts/retired-surfaces.json, which is what proves them absent on every gate.
+  // the package boundary tests, which prove they are absent from the public API.
   CHART_STYLES: 'object',
   coerceChartStyle: 'function',
   isChartStyle: 'function',

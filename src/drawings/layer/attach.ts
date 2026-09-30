@@ -21,8 +21,11 @@ import { createDocuments, drawingOf, type DrawingOwner } from './documents'
 import { liveDrawingEntries, liveDrawingGroups, sameDrawingContext, type DrawingsBody } from '../document'
 import { createPresets } from './presets'
 import { bindGestures, type Draft, type Drag, type GestureContext } from './gestures'
+
+const identityRebinders = new WeakMap<DrawingsHandle, (id: string) => void>()
+export const rebindDrawingIdentity = (handle: DrawingsHandle, id: string): void => identityRebinders.get(handle)?.(id)
 import { imagePlacement, shiftedAnchors } from './geometry'
-import { ownsDrawing, scopeForNew } from './scope'
+import { ownsDrawing, stampNewScope } from './scope'
 import type {
   AttachDrawingsOptions,
   DrawingApplyOutcome,
@@ -62,6 +65,15 @@ const nextId = (): string => `dww-${idSeq++}-${Date.now() % 1e9}`
  *  on one chart pastes on another. */
 let clipboard: SerializedDrawing | null = null
 
+/** Command-only state stays off the low-level public handle. The widget asks this helper when it
+ * registers Cancel, so a completed Measure readout remains cancellable after the tool disarms
+ * without publishing another drawing-session verb. */
+const canCancelByHandle = new WeakMap<DrawingsHandle, () => boolean>()
+
+export function drawingCancelAvailable(handle: DrawingsHandle): boolean {
+  return canCancelByHandle.get(handle)?.() ?? false
+}
+
 /** A tool this layer places: every registered tool, plus the transient tools. */
 export function placeableByWidget(type: string): boolean {
   return drawingTools.has(type) || isTransientTool(type)
@@ -89,6 +101,7 @@ const snapshot = (d: IDrawing | null): SelectedDrawing | null => {
 }
 
 export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
+  let chartId = options.chartId
   const { chart, series, container } = options
   const events = options.events ?? {}
   const workflow = (): DrawingsWorkflow => options.workflow?.() ?? DEFAULT_WORKFLOW
@@ -125,6 +138,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   let hovered: string | null = null
   let textEdit: TextEditSession | null = null
   const transient = new Set<string>()
+  /** Drawings the trader hid during this layer's life, by id: what an import hides again. */
+  const hiddenThisSession = new Set<string>()
   /** The snapshot a preview session took, by drawing id: what the document carries meanwhile. */
   const previewing = new Map<string, SerializedDrawing>()
 
@@ -154,7 +169,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   const documents = createDocuments({
     ...(options.documents ? { port: options.documents } : {}),
     owner,
-    ...(options.chartId === undefined ? {} : { chartId: options.chartId }),
+    ...(options.chartId === undefined ? {} : { chartId: () => chartId! }),
     current: () => symbol,
     onDocument: (sym, list) => {
       if (sym !== symbol) return
@@ -178,7 +193,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
 
   const importList = (list: readonly SerializedDrawing[]): void => {
     // A drawing's own `visible` switch has no per-item control once it is off: it paints nothing
-    // and takes no hit. So a stored `false` comes back on, and hiding lasts the session.
+    // and takes no hit. So a STORED `false` comes back on, and a hidden drawing is never stranded
+    // where nothing can reach it.
     const rows = list.map((d) => (d.options?.visible === false ? { ...d, options: { ...d.options, visible: true } } : d))
     for (const d of restoreDrawings(rows)) {
       try {
@@ -187,6 +203,10 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
         /* skip a drawing the series refuses */
       }
     }
+    // A hide the trader made THIS session is different: it is a standing choice, so it survives
+    // every import that follows it (another symbol and back, a document landing, a restore) and
+    // ends only with the layer.
+    for (const id of hiddenThisSession) manager.get(id)?.updateOptions({ visible: false })
   }
 
   const persist = (): void => {
@@ -291,7 +311,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     manager,
     presets,
     workflow,
-    chartId: options.chartId,
+    chartId,
     nextId,
     armed: () => armed,
     presetProps: () => presetProps,
@@ -311,7 +331,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     persist,
     changed,
     clearTransients,
-    cursorCss: () => cursorCssFor(workflow().cursor, options.ink?.() ?? 'currentColor'),
+    cursorCss: () => (options.pointerSuppressed?.() ? 'none' : cursorCssFor(workflow().cursor, options.ink?.() ?? 'currentColor')),
     lockPointer,
   }
 
@@ -341,7 +361,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     if (locked()) return false
     const copy = drawingTools.restore({ ...source, id: nextId(), anchors: shiftedAnchors(source.anchors, viewportOf(chart, series)) })
     if (!copy) return false
-    copy.scope = scopeForNew(options.chartId, workflow().syncAcrossPanes !== false)
+    stampNewScope(copy, chartId, workflow().syncAcrossPanes)
     manager.add(copy)
     manager.select(copy.id)
     persist()
@@ -427,7 +447,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     const rows: SerializedDrawing[] = []
     for (const entry of liveDrawingEntries(document)) {
       const row = drawingOf(entry)
-      if (row && !ownsDrawing(row, options.chartId)) continue
+      if (row && !ownsDrawing(row, chartId)) continue
       const group = stated.get(entry.id)
       if (group !== undefined && !groups.has(group)) rejected.push({ id: entry.id, reason: 'deleted-group' })
       else if (!sources.has(entry.source)) rejected.push({ id: entry.id, reason: 'missing-source' })
@@ -531,7 +551,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       if (sel) clipboard = sel.toJSON()
     },
     paste: () => (clipboard ? placeCopy(clipboard) : false),
-    canPaste: () => clipboard !== null,
+    canPaste: () => clipboard !== null && !locked(),
     bringToFront: () => restack('bringToFront'),
     sendToBack: () => restack('sendToBack'),
     bringForward: () => restack('bringForward'),
@@ -544,6 +564,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       const sel = selection()
       if (!sel) return
       sel.updateOptions({ visible: false })
+      hiddenThisSession.add(sel.id)
       manager.deselect()
       persist()
       changed()
@@ -566,7 +587,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       if (!drawing) return
       if (preset.props) drawing.applyProps(preset.props)
       drawing.applyProps({ dataUrl: image.dataUrl, width: placed.width, opacity: image.opacity ?? 1 })
-      drawing.scope = scopeForNew(options.chartId, workflow().syncAcrossPanes !== false)
+      stampNewScope(drawing, chartId, workflow().syncAcrossPanes)
       manager.add(drawing)
       manager.select(drawing.id)
       persist()
@@ -631,6 +652,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     destroy() {
       if (destroyed) return
       destroyed = true
+      identityRebinders.delete(handle)
+      canCancelByHandle.delete(handle)
       cancelDraft()
       closeTextEdit(false)
       documents.sync(symbol, kept())
@@ -648,5 +671,16 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       }
     },
   }
+  canCancelByHandle.set(handle, () => !destroyed && (ctx.draft !== null || armed !== null || textEdit !== null || transient.size > 0))
+  identityRebinders.set(handle, (id) => {
+    if (destroyed || id === chartId) return
+    documents.sync(symbol, kept())
+    documents.flush()
+    chartId = id
+    documents.rebind()
+    manager.deselect()
+    manager.clear()
+    documents.hydrate(symbol)
+  })
   return handle
 }

@@ -1,15 +1,19 @@
 // The field primitives the settings surfaces are built from: a labeled row, a checkbox row, a
-// dropdown, a number field with its stepper, the color swatch button and the palette it opens,
-// the custom color panel, the opacity slider, a line-end picker, the dialog's tab strip, and one
-// interval-visibility row. Each builds real elements, reads its words from the chart's language,
-// and reports a value; none holds chart state.
+// dropdown, a number field with its stepper, the color swatch button, a line-end picker, the
+// dialog's tab strip, and one interval-visibility row. Each builds real elements, reads its words
+// from the chart's language, and reports a value; none holds chart state.
+//
+// The palette, the custom color editor and the opacity slider are not built here. They are the
+// package's one shared control in `ui/controls/color`, which the chart settings menu and the
+// indicator editors mount from the same modules; this file keeps only the drawing-domain framing
+// around it, including the thickness and line-style rows a drawing's color popover also carries.
 import type { LineStyle } from '../../internal/drawings/index'
 import { alphaOf, withAlpha } from '../../internal/drawings/index'
 import type { ChartTranslate } from '../../i18n'
-import { button, dismissOnOutside, el, focusFirst, menuKeys, ownPointer, placePanel } from './dom'
-import { hexOf, hexToHsv, hsvToHex, isHex, SWATCH_ROWS } from './color'
-import { iconSvg } from './icons'
-import { trackOverlay } from './overlays'
+import { createColorControl, type ColorControlHandle } from '../controls/color'
+import { button, dismissOnOutside, el, focusFirst, menuKeys, ownPointer, placePanel, type PanelPlacement } from './dom'
+import { trackOverlay } from '../controls/overlays'
+import type { IconResolver } from '../icons/resolver'
 
 /** A settings row: the label in a fixed column, the controls left-aligned beside it. */
 export function row(label: string, ...controls: HTMLElement[]): HTMLElement {
@@ -19,7 +23,7 @@ export function row(label: string, ...controls: HTMLElement[]): HTMLElement {
 
 /** A boolean row: a checkbox and its label, the whole line one click target. */
 export function toggleRow(label: string, value: boolean, onChange: (v: boolean) => void, disabled = false): HTMLElement {
-  const input = el('input', { type: 'checkbox', class: 'qc-drawing-check', 'aria-label': label }) as HTMLInputElement
+  const input = el('input', { type: 'checkbox', class: 'qc-checkbox', 'aria-label': label }) as HTMLInputElement
   input.checked = value
   input.disabled = disabled
   input.addEventListener('change', () => onChange(input.checked))
@@ -28,7 +32,7 @@ export function toggleRow(label: string, value: boolean, onChange: (v: boolean) 
 
 /** A checkbox on its own, for a row that pairs it with other controls. */
 export function checkbox(label: string, value: boolean, onChange: (v: boolean) => void): HTMLInputElement {
-  const input = el('input', { type: 'checkbox', class: 'qc-drawing-check', 'aria-label': label }) as HTMLInputElement
+  const input = el('input', { type: 'checkbox', class: 'qc-checkbox', 'aria-label': label }) as HTMLInputElement
   input.checked = value
   input.addEventListener('change', () => onChange(input.checked))
   return input
@@ -48,6 +52,7 @@ export function dropdown<T extends string>(label: string, options: readonly T[],
  *  own precision so float steps never accumulate dust. */
 export function numberInput(
   t: ChartTranslate,
+  icons: IconResolver,
   props: { label: string; value: number; onChange: (v: number) => void; step?: number; min?: number; max?: number; width?: 'short' | 'medium' | 'wide' },
 ): HTMLElement {
   const input = el('input', { type: 'number', class: 'qc-field qc-drawing-number', 'aria-label': props.label }) as HTMLInputElement
@@ -74,153 +79,43 @@ export function numberInput(
   const steppers = el(
     'span',
     { class: 'qc-drawing-steppers' },
-    button({ class: 'qc-drawing-stepper', label: t('drawing.increase'), html: iconSvg('chevronDown', 14), onClick: () => stepBy(1) }),
-    button({ class: 'qc-drawing-stepper', label: t('drawing.decrease'), html: iconSvg('chevronDown', 14), onClick: () => stepBy(-1) }),
+    button({ class: 'qc-drawing-stepper', label: t('drawing.increase'), icon: icons.icon('chevronDown18', 14), onClick: () => stepBy(1) }),
+    button({ class: 'qc-drawing-stepper', label: t('drawing.decrease'), icon: icons.icon('chevronDown18', 14), onClick: () => stepBy(-1) }),
   )
   steppers.firstElementChild?.setAttribute('data-up', 'true')
   for (const b of steppers.querySelectorAll('button')) b.tabIndex = -1
   return el('span', { class: 'qc-drawing-number-wrap', 'data-width': props.width ?? 'medium' }, input, steppers)
 }
 
-/** The opacity control: a range over a track that fades into the color, with a percent readout. */
-export function opacitySlider(t: ChartTranslate, color: string, value: number, onChange: (v: number) => void): HTMLElement {
-  const input = el('input', { type: 'range', min: '0', max: '100', class: 'qc-drawing-opacity', 'aria-label': t('drawing.opacity') }) as HTMLInputElement
-  input.value = String(Math.round(value * 100))
-  input.style.setProperty('--qcd-swatch', hexOf(color))
-  const readout = el('span', { class: 'qc-drawing-opacity-readout', text: `${Math.round(value * 100)}%` })
-  input.addEventListener('input', () => {
-    readout.textContent = `${input.value}%`
-    onChange(Number(input.value) / 100)
-  })
-  return el('div', { class: 'qc-drawing-opacity-row' }, input, readout)
-}
-
-/** The custom color panel behind the palette's plus cell: a live swatch, a hex field and an Add
- *  button on one row, then a saturation and value square beside a hue strip. */
-export function customColorPicker(t: ChartTranslate, initial: string, onAdd: (hex: string) => void): HTMLElement {
-  const start = isHex(hexOf(initial)) ? hexOf(initial) : SWATCH_ROWS[1]![6]!
-  let hsv = hexToHsv(start)
-  const hex = (): string => hsvToHex(hsv.h, hsv.s, hsv.v)
-
-  const swatch = el('span', { class: 'qc-drawing-custom-swatch' })
-  const field = el('input', { class: 'qc-drawing-hex', 'aria-label': t('drawing.hexColor'), spellcheck: 'false' }) as HTMLInputElement
-  const add = button({ class: 'qc-button qc-drawing-add', label: t('drawing.add'), text: t('drawing.add'), onClick: () => isHex(field.value) && onAdd(`#${field.value.toLowerCase()}`) })
-  const square = el('div', { class: 'qc-drawing-sv', role: 'presentation' })
-  const squareDot = el('span', { class: 'qc-drawing-sv-dot' })
-  const strip = el('div', { class: 'qc-drawing-hue', role: 'presentation' })
-  const stripDot = el('span', { class: 'qc-drawing-hue-dot' })
-  square.appendChild(squareDot)
-  strip.appendChild(stripDot)
-
-  /** Repaint from the HSV state. A paint that follows typing leaves the field as typed, so a
-   *  half-typed hex is never overwritten under the trader's hands. */
-  const paint = (typed = false): void => {
-    const h = hex()
-    swatch.style.setProperty('--qcd-swatch', h)
-    square.style.setProperty('--qcd-hue', hsvToHex(hsv.h, 1, 1))
-    squareDot.style.left = `${hsv.s * 100}%`
-    squareDot.style.top = `${(1 - hsv.v) * 100}%`
-    stripDot.style.top = `${(hsv.h / 360) * 100}%`
-    if (!typed) field.value = h.slice(1)
-    add.disabled = !isHex(field.value)
-  }
-  field.addEventListener('input', () => {
-    field.value = field.value.replace(/[^0-9a-f]/gi, '').slice(0, 6)
-    if (isHex(field.value)) hsv = hexToHsv(`#${field.value}`)
-    paint(true)
-  })
-  field.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && isHex(field.value)) onAdd(`#${field.value.toLowerCase()}`)
-  })
-  const drag = (track: HTMLElement, onPos: (x: number, y: number) => void) => (e: PointerEvent) => {
-    const move = (clientX: number, clientY: number): void => {
-      const r = track.getBoundingClientRect()
-      onPos(Math.min(1, Math.max(0, (clientX - r.left) / (r.width || 1))), Math.min(1, Math.max(0, (clientY - r.top) / (r.height || 1))))
-      paint()
-    }
-    move(e.clientX, e.clientY)
-    const onMove = (ev: PointerEvent): void => move(ev.clientX, ev.clientY)
-    const onUp = (): void => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
-  }
-  square.addEventListener('pointerdown', drag(square, (x, y) => (hsv = { ...hsv, s: x, v: 1 - y })))
-  strip.addEventListener('pointerdown', drag(strip, (_x, y) => (hsv = { ...hsv, h: y * 360 })))
-  paint()
-
-  return el(
-    'div',
-    { class: 'qc-drawing-custom' },
-    el('div', { class: 'qc-drawing-custom-row' }, swatch, el('span', { class: 'qc-drawing-hex-wrap' }, el('span', { class: 'qc-muted', text: '#' }), field), add),
-    el('div', { class: 'qc-drawing-custom-tracks' }, square, strip),
-  )
-}
-
-export interface SwatchesOptions {
-  value: string
-  onPick(color: string): void
-  /** 0..1 opacity; omit to hide the slider row. */
-  opacity?: number
-  onOpacity?(value: number): void
-}
-
-/** The palette: square swatches on a ten-wide grid, a plus cell that opens the custom panel in
- *  place, and the opacity slider beneath. */
-export function colorSwatches(t: ChartTranslate, options: SwatchesOptions): HTMLElement {
-  const base = hexOf(options.value)
-  const grid = el('div', { class: 'qc-drawing-swatches', role: 'group', 'aria-label': t('drawing.pickColor') })
-  for (const swatchRow of SWATCH_ROWS) {
-    const line = el('div', { class: 'qc-drawing-swatch-row' })
-    for (const c of swatchRow) {
-      const b = button({ class: 'qc-drawing-swatch', label: t('drawing.colorSwatch', { hex: c }), onClick: () => options.onPick(c) })
-      b.style.setProperty('--qcd-swatch', c)
-      if (base === c) b.dataset.qcActive = 'true'
-      line.appendChild(b)
-    }
-    grid.appendChild(line)
-  }
-  let custom: HTMLElement | null = null
-  const plus = button({ class: 'qc-drawing-swatch qc-drawing-swatch-plus', label: t('drawing.customColor'), html: iconSvg('plus', 9) })
-  plus.setAttribute('aria-expanded', 'false')
-  plus.addEventListener('click', () => {
-    if (custom) {
-      custom.remove()
-      custom = null
-      plus.setAttribute('aria-expanded', 'false')
-      return
-    }
-    custom = customColorPicker(t, options.value, (hex) => {
-      options.onPick(hex)
-      custom?.remove()
-      custom = null
-      plus.setAttribute('aria-expanded', 'false')
-    })
-    grid.appendChild(custom)
-    plus.setAttribute('aria-expanded', 'true')
-    focusFirst(custom)
-  })
-  grid.appendChild(el('div', { class: 'qc-drawing-swatch-row' }, plus))
-  const root = el('div', { class: 'qc-drawing-palette' }, grid)
-  if (options.opacity !== undefined && options.onOpacity) {
-    root.appendChild(el('div', { class: 'qc-drawing-palette-opacity' }, el('span', { class: 'qc-muted', text: t('drawing.opacity') }), opacitySlider(t, base, options.opacity, options.onOpacity)))
-  }
-  return root
-}
+/** Every popover open, in the order it opened. A panel raised from inside another one (a submenu
+ *  beside its row) is part of what opened it: a press inside any LATER panel is not outside an
+ *  earlier one, so the parent stays up while its child is used. */
+const openPanels: HTMLElement[] = []
 
 /** A floating panel beside its anchor inside the chart box, closed on an outside press or Escape.
  *  Returns its close, which the caller runs when the surface that opened it goes. */
-export function openPopover(box: HTMLElement, anchor: HTMLElement, content: HTMLElement, mode: 'side' | 'below', onClose?: () => void): () => void {
+export function openPopover(box: HTMLElement, anchor: HTMLElement, content: HTMLElement, mode: PanelPlacement, onClose?: () => void, place: HTMLElement = anchor): () => void {
   const panel = el('div', { class: 'qc-overlay qc-drawing-popover', 'data-role': 'drawing-popover' }, content)
   ownPointer(panel)
   box.appendChild(panel)
-  placePanel(panel, anchor, box, mode)
+  openPanels.push(panel)
+  const insideChild = (target: Node): boolean => openPanels.slice(openPanels.indexOf(panel) + 1).some((p) => p.contains(target))
   let closed = false
+  const reposition = (): void => {
+    if (closed || !place.isConnected) return
+    placePanel(panel, place, box, mode)
+  }
+  reposition()
+  const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(reposition) : null
+  resize?.observe(box)
+  resize?.observe(place)
   const close = (): void => {
     if (closed) return
     closed = true
+    openPanels.splice(openPanels.indexOf(panel), 1)
+    resize?.disconnect()
+    window.removeEventListener('resize', reposition)
+    document.removeEventListener('scroll', reposition, true)
     untrack()
     undismiss()
     panel.remove()
@@ -229,10 +124,20 @@ export function openPopover(box: HTMLElement, anchor: HTMLElement, content: HTML
   }
   // The box's own teardown closes whatever is still open, so no document listener outlives it.
   const untrack = trackOverlay(box, close)
-  const undismiss = dismissOnOutside(panel, anchor, () => {
-    close()
-    anchor.focus({ preventScroll: true })
-  })
+  const undismiss = dismissOnOutside(
+    panel,
+    anchor,
+    () => {
+      close()
+      anchor.focus({ preventScroll: true })
+    },
+    insideChild,
+  )
+  window.addEventListener('resize', reposition)
+  // The observer owns element-only reflows (a flex sibling docking or yielding); capture reaches
+  // scrollable host ancestors because scroll does not bubble. No timeout or viewport heuristic
+  // owns placement: every report re-reads the real anchor and chosen bounds.
+  document.addEventListener('scroll', reposition, true)
   anchor.setAttribute('aria-expanded', 'true')
   return close
 }
@@ -240,7 +145,9 @@ export function openPopover(box: HTMLElement, anchor: HTMLElement, content: HTML
 /** The stroke rendered as segments: a bar for solid, four dashes, or a run of square dots, at the
  *  thickness. Divs rather than a dashed stroke, so the pattern never clips at an edge. */
 export function strokeSegments(thickness: number, lineStyle: LineStyle = 'solid', color?: string): HTMLElement {
-  const t = Math.max(1, Math.min(4, Math.round(thickness)))
+  const t = thickness > 4
+    ? Math.max(1, Math.min(8, Math.round(thickness / 12)))
+    : Math.max(1, Math.min(4, Math.round(thickness)))
   let segs: { w: number; h: number }[]
   if (lineStyle === 'dotted') {
     const side = t + 1
@@ -268,51 +175,48 @@ export interface SwatchButtonOptions {
   onOpacity?(value: number): void
   /** Wired, the face grows a stroke preview and the popover gains the thickness row. */
   thickness?: number
+  /** A tool with its own width scale, such as the highlighter, supplies its actual pixel choices. */
+  thicknessChoices?: readonly number[]
   onThickness?(value: number): void
   /** Wired, the popover gains the line-style row. */
   lineStyle?: LineStyle
   onLineStyle?(value: LineStyle): void
 }
 
-/** The color-with-thickness control: a swatch well and, for a stroke, the stroke drawn at its own
- *  thickness beside it. The popover carries the palette, the opacity, and the stroke rows. */
+/** The color-with-thickness control: the shared color control, and for a stroke, the stroke drawn
+ *  at its own thickness beside it. Its panel carries the palette, the opacity, and the stroke rows
+ *  a drawing adds. The drawing surface owns the commit: every edit here patches at once, so the
+ *  undo boundary stays the one the drawing document already keeps. */
 export function swatchButton(t: ChartTranslate, box: HTMLElement, options: SwatchButtonOptions): HTMLButtonElement {
   const alpha = options.opacity ?? alphaOf(options.value)
   const hasStroke = options.thickness !== undefined && options.onThickness !== undefined
-  const well = el('span', { class: 'qc-drawing-well' }, el('span', { class: 'qc-drawing-well-fill' }))
-  ;(well.firstElementChild as HTMLElement).style.setProperty('--qcd-swatch', options.value)
-  ;(well.firstElementChild as HTMLElement).style.opacity = String(options.opacity ?? 1)
-  const b = button({ class: 'qc-field qc-drawing-swatch-button', label: options.label })
-  b.setAttribute('aria-haspopup', 'dialog')
-  b.setAttribute('aria-expanded', 'false')
-  b.appendChild(well)
+  const control: ColorControlHandle = createColorControl(t, {
+    label: options.label,
+    value: options.value,
+    opacity: alpha,
+    // A pick keeps the alpha the value carries. Picking a color leaves a panel that also edits
+    // thickness and style open, because those edits usually come together.
+    onPick: (c) => options.onPick(options.onOpacity ? c : alpha < 1 ? withAlpha(c, alpha) : c),
+    onOpacity: options.onOpacity ?? ((v) => options.onPick(withAlpha(options.value, v))),
+    closeOnPick: !hasStroke && !options.onLineStyle,
+    extraRows: (content) => strokeRows(t, content, options),
+    openPanel: (anchor, content, onClosed) => openPopover(box, anchor, content, 'below', onClosed),
+  })
+  const b = control.element
   if (hasStroke) b.appendChild(strokeSegments(options.thickness!, options.lineStyle, options.value))
-  let close: (() => void) | null = null
-  b.addEventListener('click', () => {
-    if (close) {
-      close()
-      return
-    }
-    const content = el('div', { class: 'qc-drawing-swatch-panel' })
-    content.appendChild(
-      colorSwatches(t, {
-        value: options.value,
-        onPick: (c) => {
-          // A pick keeps the alpha the value carries. Picking a color leaves a popover that also
-          // edits thickness and style open, because those edits usually come together.
-          options.onPick(options.onOpacity ? c : alpha < 1 ? withAlpha(c, alpha) : c)
-          if (!hasStroke && !options.onLineStyle) close?.()
-        },
-        opacity: alpha,
-        onOpacity: options.onOpacity ?? ((v) => options.onPick(withAlpha(options.value, v))),
-      }),
-    )
+  return b
+}
+
+/** The thickness and line-style rows a drawing's color panel carries below the palette. */
+function strokeRows(t: ChartTranslate, content: HTMLElement, options: SwatchButtonOptions): void {
+  const hasStroke = options.thickness !== undefined && options.onThickness !== undefined
+  {
     if (hasStroke) {
       const rowEl = el('div', { class: 'qc-drawing-option-row', role: 'group', 'aria-label': t('drawing.thickness') })
-      for (const w of [1, 2, 3, 4]) {
+      for (const w of options.thicknessChoices ?? [1, 2, 3, 4]) {
         const opt = button({ class: 'qc-button qc-drawing-option', label: t('drawing.thicknessValue', { n: w }), onClick: () => options.onThickness!(w) })
         opt.appendChild(strokeSegments(w))
-        if (Math.min(4, options.thickness!) === w) opt.dataset.qcActive = 'true'
+        if (options.thickness === w) opt.dataset.qcActive = 'true'
         rowEl.appendChild(opt)
       }
       content.append(el('span', { class: 'qc-muted', text: t('drawing.thickness') }), rowEl)
@@ -328,23 +232,16 @@ export function swatchButton(t: ChartTranslate, box: HTMLElement, options: Swatc
       }
       content.append(el('span', { class: 'qc-muted', text: t('drawing.lineStyle') }), rowEl)
     }
-    close = openPopover(box, b, content, 'below', () => {
-      close = null
-    })
-    focusFirst(content)
-  })
-  return b
+  }
 }
 
 /** A line-end picker for one side: the face is the current end drawn as its own icon, and the
  *  menu offers the two ends by icon and name. */
-export function lineEndButton(t: ChartTranslate, box: HTMLElement, side: 'left' | 'right', value: 'normal' | 'arrow', onChange: (v: 'normal' | 'arrow') => void): HTMLButtonElement {
-  const flip = side === 'right' ? ' transform="scale(-1,1) translate(-28,0)"' : ''
-  const face = (v: 'normal' | 'arrow'): string =>
-    `<svg width="28" height="28" viewBox="0 0 28 28" fill="none" aria-hidden="true"><g${flip}>${
-      v === 'normal' ? '<path stroke="currentColor" d="M8.5 13.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 0H24"/>' : '<path stroke="currentColor" d="M4.5 13.5H24m-19.5 0L8 17m-3.5-3.5L8 10"/>'
-    }</g></svg>`
-  const b = button({ class: 'qc-field qc-drawing-line-end', label: t(side === 'left' ? 'drawing.leftEnd' : 'drawing.rightEnd'), html: face(value) })
+export function lineEndButton(t: ChartTranslate, icons: IconResolver, box: HTMLElement, side: 'left' | 'right', value: 'normal' | 'arrow', onChange: (v: 'normal' | 'arrow') => void): HTMLButtonElement {
+  // Each style is one glyph drawn for the left end; the stylesheet mirrors the right end's.
+  const face = (v: 'normal' | 'arrow'): SVGSVGElement => icons.icon(v === 'normal' ? 'lineEndNormal' : 'lineEndArrow')
+  const b = button({ class: 'qc-field qc-drawing-line-end', label: t(side === 'left' ? 'drawing.leftEnd' : 'drawing.rightEnd'), icon: face(value) })
+  b.dataset.qcEnd = side
   b.setAttribute('aria-haspopup', 'listbox')
   b.setAttribute('aria-expanded', 'false')
   let close: (() => void) | null = null
@@ -353,10 +250,9 @@ export function lineEndButton(t: ChartTranslate, box: HTMLElement, side: 'left' 
       close()
       return
     }
-    const list = el('div', { class: 'qc-drawing-menu', role: 'listbox', 'aria-label': b.getAttribute('aria-label') ?? '' })
+    const list = el('div', { class: 'qc-drawing-menu', role: 'listbox', 'aria-label': b.getAttribute('aria-label') ?? '', 'data-qc-end': side })
     for (const v of ['normal', 'arrow'] as const) {
-      const opt = el('button', { type: 'button', class: 'qc-menu-row', role: 'option', 'aria-selected': String(v === value) })
-      opt.innerHTML = face(v)
+      const opt = el('button', { type: 'button', class: 'qc-menu-row', role: 'option', 'aria-selected': String(v === value) }, face(v))
       opt.appendChild(el('span', { class: 'qc-menu-label', text: t(v === 'normal' ? 'drawing.lineEndNormal' : 'drawing.lineEndArrow') }))
       opt.addEventListener('click', () => {
         onChange(v)
@@ -399,13 +295,14 @@ export function dialogTabs(tabs: readonly string[], value: string, labels: (id: 
  *  and to. The from and to writes clamp against each other, so the boxes can never cross. */
 export function visibilityRangeRow(
   t: ChartTranslate,
+  icons: IconResolver,
   props: { label: string; range: { on: boolean; from: number; to: number }; max: number; disabled?: boolean; onChange(next: { on: boolean; from: number; to: number }): void },
 ): HTMLElement {
   const { range, max } = props
   const check = checkbox(t('drawing.rowVisible', { name: props.label }), range.on, (v) => props.onChange({ ...range, on: v }))
   check.disabled = !!props.disabled
-  const from = numberInput(t, { label: t('drawing.rangeFrom'), value: range.from, min: 1, max, step: 1, width: 'short', onChange: (v) => props.onChange({ ...range, from: Math.min(v, range.to) }) })
-  const to = numberInput(t, { label: t('drawing.rangeTo'), value: range.to, min: 1, max, step: 1, width: 'short', onChange: (v) => props.onChange({ ...range, to: Math.max(v, range.from) }) })
+  const from = numberInput(t, icons, { label: t('drawing.rangeFrom'), value: range.from, min: 1, max, step: 1, width: 'short', onChange: (v) => props.onChange({ ...range, from: Math.min(v, range.to) }) })
+  const to = numberInput(t, icons, { label: t('drawing.rangeTo'), value: range.to, min: 1, max, step: 1, width: 'short', onChange: (v) => props.onChange({ ...range, to: Math.max(v, range.from) }) })
   const lo = el('input', { type: 'range', min: '1', max: String(max), class: 'qc-drawing-dual-input', 'aria-label': t('drawing.rangeFrom') }) as HTMLInputElement
   const hi = el('input', { type: 'range', min: '1', max: String(max), class: 'qc-drawing-dual-input', 'aria-label': t('drawing.rangeTo') }) as HTMLInputElement
   lo.value = String(range.from)

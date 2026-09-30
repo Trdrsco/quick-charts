@@ -5,11 +5,14 @@
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import { openDialog, dialogTitle, type DialogHandle } from './dialog'
 import { armRoving, button, h, items, setDisabled } from './dom'
-import { ICONS } from './icons'
+import { ICONS } from '../controls/icons'
+import type { IconResolver } from '../icons/resolver'
 
 export interface DatePickerDeps {
   host: HTMLElement
   i18n: ChartI18n
+  /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
+  icons: IconResolver
   /** The loaded window, epoch seconds. */
   minSec: number
   maxSec: number
@@ -141,24 +144,20 @@ export function openDatePicker(deps: DatePickerDeps): DialogHandle {
       })
       const previous = button({
         label: t('replay.previousMonth'),
-        icon: ICONS.chevronLeft,
-        iconSize: 18,
+        icon: deps.icons.glyph(ICONS.chevronLeft, { size: 18 }),
         onClick: () => {
           view = view.m === 0 ? { y: view.y - 1, m: 11 } : { y: view.y, m: view.m - 1 }
           render()
-        },
-      })
+        },})
       const next = button({
         label: t('replay.nextMonth'),
-        icon: ICONS.chevronRight,
-        iconSize: 18,
+        icon: deps.icons.glyph(ICONS.chevronRight, { size: 18 }),
         onClick: () => {
           view = view.m === 11 ? { y: view.y + 1, m: 0 } : { y: view.y, m: view.m + 1 }
           render()
-        },
-      })
+        },})
       box.append(
-        dialogTitle(t('replay.selectDate'), t('replay.cancel'), () => dialog.close()),
+        dialogTitle(t('replay.selectDate'), t('replay.cancel'), () => dialog.close(), deps.icons),
         h('div', { class: 'qc-dialog-body' }, h('div', { class: 'qc-date-fields' }, dateField, timeField), h('div', { class: 'qc-date-nav' }, previous, monthLabel, next), grid),
         h('div', { class: 'qc-dialog-actions' }, button({ label: t('replay.cancel'), text: t('replay.cancel'), onClick: () => dialog.close() }), select),
       )

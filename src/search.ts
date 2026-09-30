@@ -2,8 +2,8 @@
 // session cache by query and class, stale-while-revalidate, paging with de-duplication, cancel on
 // a newer query, prefetch), the recents port a host backs with its own storage, and the pure rules
 // a result list applies (the recents promotion, the match highlight, and the spread-expression
-// offer). The datafeed's `search` is the only source; the chart never caches across sessions or
-// invents a row.
+// offer). The datafeed's `search` is the only source; completed pages may be reused within one
+// widget/feed lifetime, never globally or across providers. The chart never invents a row.
 import type { ChartDatafeed, SymbolRow } from './datafeed'
 import type { ChartMessageKey } from './i18n/en'
 
@@ -50,26 +50,117 @@ export interface SearchController {
 interface Loaded {
   readonly hits: readonly SymbolRow[]
   readonly hasMore: boolean
+  readonly pages: number
+  readonly nextOffset: number
 }
 
-const keyOf = (query: string, cls: string): string => `${cls}::${query.trim().toLowerCase()}`
+const keyOf = (query: string, cls: string, pageSize: number): string => JSON.stringify([pageSize, cls, query.trim().toLowerCase()])
 const hitKey = (h: SymbolRow): string => `${h.symbol}|${h.exchange}`
 
+/** Bounded completed-result reuse. An active session holds its current page separately, so an
+ *  eviction never truncates the visible list or changes its next server offset. */
+function completedCache() {
+  const entries = new Map<string, Loaded>()
+  let rows = 0
+  return {
+    get(key: string) {
+      const held = entries.get(key)
+      if (held) { entries.delete(key); entries.set(key, held) }
+      return held
+    },
+    has: (key: string) => entries.has(key),
+    set(key: string, value: Loaded) {
+      rows -= entries.get(key)?.hits.length ?? 0
+      entries.delete(key)
+      // Large catalogs remain pageable in the active session, without unbounded retained reuse.
+      if (value.hits.length > 5_000) return
+      entries.set(key, value)
+      rows += value.hits.length
+      while (entries.size > 32 || rows > 5_000) {
+        const oldest = entries.keys().next().value!
+        rows -= entries.get(oldest)!.hits.length
+        entries.delete(oldest)
+      }
+    },
+    clear() { entries.clear(); rows = 0 },
+  }
+}
+
+/** Private dialog lifecycle, not part of the public controller or root entrypoint. */
+export interface SearchSession {
+  readonly controller: SearchController
+  /** Retire the current query without searching the feed's empty catalog. */
+  cancelPending(): void
+}
+
 export function createSearchController(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchControllerOptions = {}): SearchController {
+  const cache = completedCache()
+  return searchSession(datafeed, options, cache, () => cache.clear()).controller
+}
+
+/** Private chrome owner, deliberately absent from the public entrypoint. Completed catalog pages
+ *  outlive a dialog, but query state and in-flight work never pass from a closed session to a new one. */
+export function createSearchSessionOwner(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchControllerOptions = {}) {
+  const cache = completedCache()
+  const sessions = new Set<SearchSession>()
+  let warm: SearchSession | undefined
+  let disposed = false
+  const create = (): SearchSession => {
+    if (disposed) throw new Error('search owner is disposed')
+    if (warm) {
+      const session = warm
+      warm = undefined
+      return session
+    }
+    const session = searchSession(datafeed, options, cache, () => sessions.delete(session))
+    sessions.add(session)
+    return session
+  }
+  return {
+    create,
+    prefetch() {
+      if (disposed || warm) return
+      warm = create()
+      warm.controller.prefetch()
+    },
+    dispose() {
+      if (disposed) return
+      disposed = true
+      for (const session of sessions) session.controller.dispose()
+      warm = undefined
+      cache.clear()
+    },
+  }
+}
+
+function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchControllerOptions, cache: ReturnType<typeof completedCache>, onDispose: () => void): SearchSession {
   const pageSize = options.pageSize ?? 50
   const debounceMs = options.debounceMs ?? 200
-  // The cache lives for the controller's lifetime and is keyed by the normalized (class, query)
-  // pair. An entry the user has paged DEEPER than one page is never revalidated: a page-0 refetch
-  // would truncate what they scrolled to.
-  const cache = new Map<string, Loaded>()
+  // Completed entries belong to the bounded owner; query state and flights belong only to this
+  // session. Page size, class and normalized query identify catalog results. Dialog mode only
+  // projects those results and is not an input to the feed. A deep entry is never revalidated:
+  // a page-0 refetch would truncate what the viewer scrolled to.
   // One first-page ask in flight per key: a prefetch and a search for the same query share it.
   const inflight = new Map<string, Promise<Loaded>>()
   const listeners = new Set<(state: SearchState) => void>()
   let state: SearchState = { query: '', cls: '', hits: [], loading: false, failed: false, hasMore: false }
-  let key = keyOf('', '')
+  let key = keyOf('', '', pageSize)
   let timer: ReturnType<typeof setTimeout> | undefined
-  let moreBusy = false
+  let moreBusy: object | null = null
   let disposed = false
+  let generation = 0
+  let current: Loaded | undefined
+
+  const cancelPending = () => {
+    generation++
+    clearTimeout(timer)
+    inflight.clear()
+    moreBusy = null
+  }
+  const askFeed: ChartDatafeed['search'] = (query, opts) => {
+    try { return datafeed.search(query, opts) }
+    catch (error) { return Promise.reject(error) }
+  }
 
   const emit = (next: Partial<SearchState>) => {
     state = { ...state, ...next }
@@ -79,23 +170,37 @@ export function createSearchController(datafeed: Pick<ChartDatafeed, 'search'>, 
   const load = (k: string, query: string, cls: string): Promise<Loaded> => {
     const pending = inflight.get(k)
     if (pending) return pending
-    const ask = datafeed
-      .search(query, { limit: pageSize, cls: cls || undefined })
+    const mine = generation
+    const ask = askFeed(query, { limit: pageSize, cls: cls || undefined })
       .then(({ hits, hasMore }) => {
-        const loaded = { hits, hasMore }
-        cache.set(k, loaded)
+        const loaded = { hits, hasMore, pages: 1, nextOffset: hits.length }
+        if (!disposed && generation === mine) {
+          // A slower first page never replaces pages another live session already accumulated.
+          const retained = cache.get(k)
+          const held = key === k && current && current.pages > (retained?.pages ?? 0) ? current : retained
+          if (held && held.pages > 1) return held
+          // Revalidation replaces the active first-page receipt at the same point as cache
+          // publication. A continuation captured from the old receipt is now obsolete, even
+          // between this promise step and the state notification below.
+          if (key === k && current) {
+            current = loaded
+            moreBusy = null
+          }
+          cache.set(k, loaded)
+        }
         return loaded
       })
       .finally(() => {
-        inflight.delete(k)
+        if (inflight.get(k) === ask) inflight.delete(k)
       })
     inflight.set(k, ask)
     return ask
   }
 
-  return {
+  const controller: SearchController = {
     state: () => state,
     subscribe(listener) {
+      if (disposed) return () => {}
       listeners.add(listener)
       return () => {
         listeners.delete(listener)
@@ -104,42 +209,63 @@ export function createSearchController(datafeed: Pick<ChartDatafeed, 'search'>, 
     search(query, cls = '') {
       if (disposed) return
       clearTimeout(timer)
-      key = keyOf(query, cls)
+      const nextKey = keyOf(query, cls, pageSize)
+      const unchanged = key === nextKey
+      if (!unchanged) {
+        cancelPending()
+      }
+      key = nextKey
       const mine = key
-      const cached = cache.get(key)
+      const epoch = generation
+      const retained = cache.get(key)
+      // A normalized same-query edit still owns its active pages, even if reuse evicted them.
+      const cached = unchanged && current ? current : retained
+      current = cached
       if (cached) {
         emit({ query, cls, hits: cached.hits, hasMore: cached.hasMore, loading: false, failed: false })
-        if (cached.hits.length > pageSize) return
+        if (cached.pages > 1) return
       } else {
         emit({ query, cls, loading: true, failed: false })
       }
-      timer = setTimeout(() => {
+      // A listener may close or replace this session during the loading notification.
+      if (disposed || generation !== epoch || key !== mine) return
+      const run = () => {
+        if (disposed || generation !== epoch || key !== mine) return
         load(mine, query, cls)
           .then((loaded) => {
-            if (disposed || key !== mine) return
-            emit({ hits: loaded.hits, hasMore: loaded.hasMore, loading: false, failed: false })
+            if (disposed || generation !== epoch || key !== mine) return
+            // A continuation may have committed between first-page acceptance and this callback.
+            current = current && current.pages > loaded.pages ? current : loaded
+            emit({ hits: current.hits, hasMore: current.hasMore, loading: false, failed: false })
           })
           .catch(() => {
-            if (disposed || key !== mine) return
+            if (disposed || generation !== epoch || key !== mine) return
             // A failure only surfaces when nothing cached stands in for it.
-            if (cache.has(mine)) emit({ loading: false })
+            if (current) emit({ loading: false })
             else emit({ hits: [], hasMore: false, loading: false, failed: true })
           })
-      }, debounceMs)
+      }
+      // Adopt a live prefetch immediately, including one that resolves before the debounce.
+      if (inflight.has(mine)) run()
+      else timer = setTimeout(run, debounceMs)
     },
     loadMore() {
-      if (disposed) return
+      if (disposed || state.loading) return
       const mine = key
-      const current = cache.get(mine) ?? state
+      if (!current) return
       if (!current.hasMore || current.hits.length === 0 || moreBusy) return
-      moreBusy = true
+      const flight = {}
+      moreBusy = flight
+      const epoch = generation
+      const page = current
       const { query, cls } = state
-      datafeed
-        .search(query, { limit: pageSize, cls: cls || undefined, offset: current.hits.length })
+      askFeed(query, { limit: pageSize, cls: cls || undefined, offset: page.nextOffset })
         .then(({ hits, hasMore }) => {
-          const base = cache.get(mine)?.hits ?? current.hits
+          if (disposed || generation !== epoch || current !== page) return
+          const base = page.hits
           const seen = new Set(base.map(hitKey))
-          const merged = { hits: [...base, ...hits.filter((h) => !seen.has(hitKey(h)))], hasMore }
+          const merged = { hits: [...base, ...hits.filter((h) => !seen.has(hitKey(h)))], hasMore, pages: page.pages + 1, nextOffset: page.nextOffset + hits.length }
+          current = merged
           cache.set(mine, merged)
           if (!disposed && key === mine) emit({ hits: merged.hits, hasMore: merged.hasMore })
         })
@@ -147,20 +273,24 @@ export function createSearchController(datafeed: Pick<ChartDatafeed, 'search'>, 
           /* a failed page keeps the list as it is; the next ask retries */
         })
         .finally(() => {
-          moreBusy = false
+          if (moreBusy === flight) moreBusy = null
         })
     },
     prefetch(query = '', cls = '') {
       if (disposed) return
-      const k = keyOf(query, cls)
+      const k = keyOf(query, cls, pageSize)
       if (!cache.has(k)) void load(k, query, cls).catch(() => {})
     },
     dispose() {
+      if (disposed) return
       disposed = true
-      clearTimeout(timer)
+      cancelPending()
+      current = undefined
       listeners.clear()
+      onDispose()
     },
   }
+  return { controller, cancelPending }
 }
 
 /** How many recent picks a search surface lists. */

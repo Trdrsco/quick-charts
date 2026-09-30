@@ -1,8 +1,7 @@
 // Quick Charts SYMBOLOGY — the display facts `ChartDatafeed.resolve` serves for one symbol, and the
-// only place a chart price display gets its precision from. The division of responsibility is the one
-// DECISIONS.md records ("Quick Charts follows datafeed symbology; trading follows
-// broker instrument facts"): the datafeed says how a market's prices are WRITTEN, a broker seam
-// says how they may be TRADED, and the two grids are allowed to differ.
+// only place a chart price display gets its precision from. The datafeed says how a market's prices
+// are WRITTEN, while broker instrument facts say how they may be TRADED. The display and
+// execution grids may differ.
 //
 // What lives here: identity, venue and type, supported resolutions, exchange timezone and session,
 // data status, currency and unit, volume precision, and the price-format facts. What does NOT:
@@ -84,11 +83,11 @@ export interface SymbolInfo {
   supportedResolutions: readonly string[]
   /** The exchange's IANA zone, e.g. 'America/New_York'. */
   timezone: string
-  /** The reference session string, e.g. '1700-1600' or '0930-1600'. */
+  /** The session string, e.g. '1700-1600' or '0930-1600'. */
   session: string
-  /** The reference session-holidays string: comma-separated 'YYYYMMDD' full closures. */
+  /** The session-holidays string: comma-separated 'YYYYMMDD' full closures. */
   sessionHolidays?: string
-  /** The reference corrections string: `;`-separated `<session>:<dates>` entries, each a session in
+  /** The corrections string: `;`-separated `<session>:<dates>` entries, each a session in
    *  the grammar of `session` that holds on the `,`-separated 'YYYYMMDD' trading days named. A
    *  correction outranks a holiday on the same date. */
   corrections?: string
@@ -104,6 +103,7 @@ export interface SymbolInfo {
   volumePrecision: number
   format: PriceFormat
 }
+
 
 /** One band of a `variableTickSize` ladder: `size` is the tick that applies to prices strictly below
  *  `below`, and the last band's `below` is `Infinity`. */

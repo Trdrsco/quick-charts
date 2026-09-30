@@ -36,12 +36,18 @@ export const command = {
 
   /** Restyle the chart through its runtime appearance layer. The partial is the argument. */
   'command.appearanceApply': 'Chart appearance',
+  /** Drop the viewer's own appearance choices back to the theme and host baseline. */
+  'command.appearanceReset': 'Reset defaults',
 
   // The four price-scale modes.
   'command.scaleNormal': 'Regular price scale',
   'command.scaleLog': 'Logarithmic price scale',
   'command.scalePercent': 'Percentage price scale',
   'command.scaleIndexed': 'Indexed price scale',
+
+  // Stepping back and forward through the chart's own content history.
+  'command.historyUndo': 'Undo',
+  'command.historyRedo': 'Redo',
 
   'command.indicatorAdd': 'Add indicator',
   'command.indicatorUpdate': 'Update indicator',
@@ -95,6 +101,7 @@ export const command = {
   'command.compareChangeSymbol': 'Change compared symbol',
 
   'command.replayStart': 'Start bar replay',
+  'command.replayStartFirst': 'Start bar replay at the first available date',
   'command.replayExit': 'Exit bar replay',
   'command.replayPlay': 'Play replay',
   'command.replayPause': 'Pause replay',
@@ -125,15 +132,20 @@ export const command = {
 
   'command.imageCapture': 'Capture image',
   'command.imageDownload': 'Download image',
+  'command.dataDownload': 'Download chart data',
   'command.imageCopy': 'Copy image',
 
   'command.layoutArrangement': 'Layout',
   'command.layoutActive': 'Active chart',
   'command.layoutSync': 'Chart synchronization',
+  'command.layoutActivateNext': 'Next chart in layout',
+  'command.layoutActivatePrevious': 'Previous chart in layout',
+  'command.layoutMaximize': 'Maximize or restore the active chart',
   'command.layoutSave': 'Save layout',
   'command.layoutRename': 'Rename layout',
   'command.layoutLoad': 'Open layout',
+  'command.layoutOpen': 'Open layout…',
   'command.layoutDelete': 'Delete layout',
-  'command.layoutDetach': 'Create new layout',
+  'command.layoutCreate': 'Create new layout',
   'command.layoutAutosave': 'Autosave layout',
 } as const

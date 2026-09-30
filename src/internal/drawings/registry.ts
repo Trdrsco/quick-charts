@@ -214,8 +214,8 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(SineLine, { type: 'sine_line', name: 'Sine line', category: 'cycles', anchors: 2 }),
 
   // Forecasting & positions
-  tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3, placement: 'instant' }),
-  tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3, placement: 'instant' }),
+  tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3, placement: 'instant', style: { textColor: '#ffffff' } }),
+  tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3, placement: 'instant', style: { textColor: '#ffffff' } }),
   tool(Forecast, { type: 'forecast', name: 'Position forecast', category: 'forecasting', anchors: 2 }),
   tool(Sector, { type: 'sector', name: 'Sector', category: 'forecasting', anchors: 3, style: { fillOpacity: 0.2 } }),
   tool(BarsPattern, { type: 'bars_pattern', name: 'Bars pattern', category: 'forecasting', anchors: 2, capturesBars: true }),
@@ -250,7 +250,7 @@ const DEFINITIONS: ToolDefinition[] = [
 
   // Brushes & multi-point shapes
   tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand' }),
-  tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: 'rgba(245, 166, 35, 0.35)' } }),
+  tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: 'rgba(245, 166, 35, 0.35)', lineWidth: 20 } }),
   tool(PathLine, { type: 'path', name: 'Path', category: 'shapes', anchors: 2, placement: 'multipoint' }),
   tool(Polyline, { type: 'polyline', name: 'Polyline', category: 'shapes', anchors: 2, placement: 'multipoint', style: { fillOpacity: 0.1 } }),
 

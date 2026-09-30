@@ -6,12 +6,14 @@
 // the menu exactly as it refuses from the keyboard. Contributed rows carry their own action and
 // ride below the built-ins, so a host cannot displace the chart's own order.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
-import { mountContextMenu, type ContextMenuHandle } from '../contextMenuUi'
+import { mountMenu, type ContextMenuHandle } from '../contextMenuUi'
 import type { ChartMenuAction } from '../contextMenu'
 import type { ChartExtensionHost, ChartExtensionMenuItem } from '../extension'
 import type { ChartI18n } from '../i18n'
 import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry } from './commands'
+import type { IconResolver } from '../ui/icons/resolver'
+import { normalizeShortcut } from './shortcuts'
 
 /** The command each built-in menu row runs. Named here so the menu and the registry cannot drift
  *  into two vocabularies for the same verb. The settings row is the one the chart's own menu never
@@ -28,6 +30,10 @@ export const MENU_COMMAND: Partial<Record<ChartMenuAction, string>> = {
 export interface MenuPlane {
   /** Raise the menu at a viewport point. False when the point holds no readable level. */
   raiseAt(clientX: number, clientY: number): boolean
+  /** Run the contributed row bound to a press, at the level under a viewport point, WITHOUT
+   *  raising the menu. False when the point holds no readable level or no contributed row claims
+   *  the press. */
+  runShortcutAt(clientX: number, clientY: number, pressed: string): boolean
   close(): void
   destroy(): void
 }
@@ -35,15 +41,19 @@ export interface MenuPlane {
 export interface MenuDeps {
   chart: IChartApi
   series(): ISeriesApi<SeriesType>
-  /** The gesture box, and the chrome subtree the menu mounts into. */
+  /** The gesture box, and the element the menu mounts into: the widget's layer on the body. */
   gestures: HTMLElement
-  chrome: HTMLElement
+  host: HTMLElement
   i18n: ChartI18n
+  /** Draws the menu's own glyphs: the host's drawing for each icon, or the chart's own. */
+  icons: IconResolver
   commands: CommandRegistry
   formatter(): PriceFormatter
   /** The smallest move the symbol's format declares: the grid a named level is snapped to. */
   minMove(): number
   symbol(): string
+  /** The symbol's display name, which the rows print. */
+  symbolName(): string
   timeframe(): string
   indicatorCount(): number
   drawingCount(): number
@@ -53,13 +63,14 @@ export interface MenuDeps {
 }
 
 export function attachMenuPlane(deps: MenuDeps): MenuPlane {
-  const menu: ContextMenuHandle = mountContextMenu(
-    deps.chrome,
+  const menu: ContextMenuHandle = mountMenu(
+    deps.host,
     (id) => {
       const command = MENU_COMMAND[id]
       if (command) deps.commands.execute(command)
     },
     deps.i18n,
+    deps.icons,
   )
 
   /** The level under a viewport point, snapped to the symbol's own grid: the price a row names is
@@ -80,7 +91,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     // Contributed rows are asked for at the raise, so they can depend on the level pressed, and
     // they carry their own actions: the chart routes nothing on their behalf.
     const extra: readonly ChartExtensionMenuItem[] =
-      deps.extensions()?.menuItems({ price, priceText, symbol: deps.symbol(), timeframe: deps.timeframe(), clientX, clientY }) ?? []
+      deps.extensions()?.menuItems({ price, priceText, symbol: deps.symbol(), name: deps.symbolName(), timeframe: deps.timeframe(), clientX, clientY }) ?? []
     menu.open(
       { clientX, clientY },
       {
@@ -100,8 +111,35 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     return true
   }
 
+  /** The keyboard's half of a contributed row. The rows are asked for at the pressed level exactly
+   *  as the right-click asks for them, and the row's own `run` is what fires, so a shortcut and a
+   *  click at one spot are one code path and can never come to disagree. A row a contribution did
+   *  not offer for this level (no permission, no armed account, a lock, nothing to act on) is not
+   *  in the list and the press is simply not ours. */
+  const runShortcutAt = (clientX: number, clientY: number, pressed: string): boolean => {
+    const host = deps.extensions()
+    if (!host) return false
+    const price = priceAt(clientY)
+    if (price == null) return false
+    const priceText = deps.formatter().format(price)
+    const rows = host.menuItems({ price, priceText, symbol: deps.symbol(), name: deps.symbolName(), timeframe: deps.timeframe(), clientX, clientY })
+    // Later contributions win a collision, as they do in the command registry.
+    let match: ChartExtensionMenuItem | null = null
+    for (const row of rows) {
+      if (row.shortcut && normalizeShortcut(row.shortcut) === pressed) match = row
+    }
+    if (!match) return false
+    try {
+      match.run()
+    } catch {
+      /* a contribution's own failure is its own; the key was still ours */
+    }
+    return true
+  }
+
   return {
     raiseAt,
+    runShortcutAt,
     close: () => menu.close(),
     destroy: () => menu.destroy(),
   }

@@ -1,10 +1,16 @@
-import type { Point, Viewport } from '../core/types'
+import type { ControlPoint, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
 import { applyStroke, paintArrowHead, withAlpha } from '../render/canvas'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
+}
+
+/** Earlier saved highlighters stored the shared 1–4 line width and rendered it eightfold. New
+ * strokes store their actual pixel width, so the style value matches the toolbar label. */
+export function highlighterStrokeWidth(lineWidth: number): number {
+  return lineWidth <= 4 ? Math.max(lineWidth * 8, 12) : lineWidth
 }
 
 /** Polyline through every anchor — the shared body of the freehand/multi-point family. */
@@ -36,20 +42,28 @@ abstract class StrokeDrawing extends Drawing {
 
   testHit(point: Point, viewport: Viewport): boolean {
     const points = this.points(viewport)
-    const tolerance = hitTolerance(this.style.lineWidth) + this.extraHitWidth()
+    const tolerance = hitTolerance(this.strokeWidth())
     for (let i = 0; i < points.length - 1; i++) {
       if (distanceToSegment(point, points[i], points[i + 1]) <= tolerance) return true
     }
     return false
   }
 
-  protected extraHitWidth(): number {
-    return 0
+  protected strokeWidth(): number {
+    return this.style.lineWidth
+  }
+}
+
+/** Sampled points shape a freehand stroke, but are not individually editable handles. The whole
+ * stroke remains selectable and movable by grabbing its ink. */
+abstract class FreehandStroke extends StrokeDrawing {
+  override getControlPoints(_viewport: Viewport): ControlPoint[] {
+    return []
   }
 }
 
 /** Freehand stroke captured while the pointer drags. */
-export class Brush extends StrokeDrawing {
+export class Brush extends FreehandStroke {
   readonly type: string = 'brush'
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -75,7 +89,7 @@ export class Brush extends StrokeDrawing {
  * in the color value itself (the default seeds ~35% alpha), so the opacity control is the whole
  * style surface.
  */
-export class Highlighter extends StrokeDrawing {
+export class Highlighter extends FreehandStroke {
   override readonly type = 'highlighter'
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -86,14 +100,14 @@ export class Highlighter extends StrokeDrawing {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.strokeStyle = this.style.lineColor
-    ctx.lineWidth = Math.max(this.style.lineWidth * 8, 12)
+    ctx.lineWidth = highlighterStrokeWidth(this.style.lineWidth)
     this.tracePath(ctx, points, true)
     ctx.stroke()
     ctx.restore()
   }
 
-  protected override extraHitWidth(): number {
-    return Math.max(this.style.lineWidth * 4, 6)
+  protected override strokeWidth(): number {
+    return highlighterStrokeWidth(this.style.lineWidth)
   }
 }
 

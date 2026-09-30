@@ -4,7 +4,9 @@
 // only as a method on the handle would be reachable from code but not from a menu, a shortcut or an
 // operator; a verb that exists only as a menu row would be reachable from the glass but not from a
 // host. Registering them here makes those the same list, so `features` and `access` filter every
-// door at once.
+// door at once. `ui` filters only the commands whose one job is to open one of the chart's own
+// dialogs: with the dialog out of the interface, its door answers `unavailable` and the verbs the
+// dialog would have run stay available.
 //
 // Availability is a live read, never a stored flag: a command asks the chart what is true now.
 import type { ChartMessageKey, ChartTranslate } from '../i18n'
@@ -12,12 +14,14 @@ import { SCALE_MODES, type ScaleMode } from '../scaleMode'
 import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry, CommandSpec } from './commands'
 import type { ChartHandle } from './chart'
+import type { FeedBar } from '../datafeed'
+import { downloadBarsCsv } from './dataExport'
 import type { DrawingVerbs } from './drawings'
 import type { PlacedImage } from '../drawings'
 import { CURSOR_MODES, type CursorMode, type HideState, type MagnetMode, type VisibilityPreset } from '../drawings/index'
 import type { Capabilities, IndicatorInstance } from './options'
 import type { ComparePlacement } from '../compare'
-import type { ResolvedFeatures } from './planes'
+import type { ResolvedFeatures, ResolvedUi } from './planes'
 import { CHART_STYLES, type ChartStyleId } from './styles'
 import { REPLAY_SPEEDS } from '../replay'
 import { allowedTimeframes, TIMEFRAME_PRESETS, timeframeLabel } from '../timeframe'
@@ -47,11 +51,21 @@ export interface ChartCommandDeps {
   commands: CommandRegistry
   handle: ChartHandle
   features: ResolvedFeatures
+  ui: ResolvedUi
   capabilities(): Capabilities
+  /** Drop the viewer's OWN appearance layer and return the price scale to normal, leaving the theme
+   *  floor, the host's constructor partial, the viewport and every other preference alone. */
+  resetAppearance(): void
   /** The chart's language, for the preset labels a picker renders. */
   t(): ChartTranslate
+  /** The bars the chart is PAINTING: already the replay slice while replay is on, so the data
+   *  export cannot reach past the boundary the cursor is holding. */
+  bars(): readonly FeedBar[]
   /** The oldest loaded bar, which decides whether a range preset has data to frame. */
   earliestBar(): number | null
+  /** Start replay at the first available date: the chart walks its history back to the oldest bar
+   *  the feed serves, within the depth one session holds, and starts there. */
+  replayFromFirst(): Promise<void>
   /** Frame a range preset through the chart's own rule. */
   frame(preset: RangePreset): void
   /** One zoom or scroll step, by the chart's own step rules. */
@@ -61,6 +75,9 @@ export interface ChartCommandDeps {
   level(): number | null
   formatter(): PriceFormatter
   compareOpen(mode: 'compare' | 'change-symbol', changeFrom?: string): void
+  indicatorsOpen(): void
+  /** Raise the chart's own symbol search dialog on this chart. */
+  symbolSearchOpen(): void
   /** The drawing verbs above the layer (preferences, the eye, favorites, templates, the dialogs);
    *  null with the drawings feature off. */
   drawingVerbs(): DrawingVerbs | null
@@ -69,7 +86,7 @@ export interface ChartCommandDeps {
 /** Register every chart-scoped built-in. Returns one unregister for all of them, which the chart
  *  calls at dispose so a held registry cannot run a verb against a chart that is gone. */
 export function registerChartCommands(deps: ChartCommandDeps): () => void {
-  const { commands, handle, features } = deps
+  const { commands, handle, features, ui } = deps
   const unregisters: (() => void)[] = []
   const add = (spec: CommandSpec): void => {
     unregisters.push(commands.register(spec))
@@ -87,6 +104,16 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       if (typeof arg === 'string' && arg) handle.setSymbol(arg)
     },
   })
+  // The chart's own search dialog on this chart, for a host whose control stands where the symbol
+  // pill would. It opens only where the dialog is in the interface, the feed searches, and a pick
+  // would be taken, which is exactly when the pill is enabled.
+  add({
+    id: 'chart.symbol.search',
+    scope: 'chart',
+    label: 'chrome.symbolSearch',
+    available: () => ui.symbolSearch && deps.capabilities().search && commands.available('chart.symbol.set'),
+    execute: () => deps.symbolSearchOpen(),
+  })
 
   // ── View and navigation ─────────────────────────────────────────────────────────────────────
   add({ id: 'chart.view.reset', scope: 'chart', label: 'command.viewReset', shortcut: 'Alt+KeyR', available: always, execute: () => handle.reset() })
@@ -97,6 +124,19 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   add({ id: 'chart.view.zoomOut', scope: 'chart', label: 'command.viewZoomOut', shortcut: 'Minus', available: always, execute: () => deps.zoom('out') })
   add({ id: 'chart.view.scrollLeft', scope: 'chart', label: 'command.viewScrollLeft', shortcut: 'ArrowLeft', available: always, execute: () => deps.scroll('left') })
   add({ id: 'chart.view.scrollRight', scope: 'chart', label: 'command.viewScrollRight', shortcut: 'ArrowRight', available: always, execute: () => deps.scroll('right') })
+
+  // ── The loaded bars, as a file. A local write of what is already on screen: no history request
+  // and no server export. An empty chart has nothing to write and the command is unavailable, which
+  // is how every other door hears "nothing to do" rather than receiving an empty file.
+  add({
+    id: 'chart.data.download',
+    scope: 'chart',
+    label: 'command.dataDownload',
+    available: () => deps.bars().length > 0,
+    execute: (arg) => {
+      downloadBarsCsv({ bars: deps.bars(), symbol: handle.symbol(), timeframe: handle.timeframe(), name: typeof arg === 'string' && arg ? arg : undefined })
+    },
+  })
 
   // ── The level menu's own verbs ──────────────────────────────────────────────────────────────
   add({
@@ -137,6 +177,17 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
 
+  // Reset defaults: the same door for the gear menu's row, a host control and an operator. It is
+  // the appearance twin of `chart.view.reset` and shares nothing with it — one puts back the look,
+  // the other puts back the window.
+  add({
+    id: 'chart.appearance.reset',
+    scope: 'chart',
+    label: 'command.appearanceReset',
+    available: always,
+    execute: () => deps.resetAppearance(),
+  })
+
   // ── Scale modes ─────────────────────────────────────────────────────────────────────────────
   for (const mode of SCALE_MODES) {
     add({
@@ -148,10 +199,35 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     })
   }
 
+  // ── History ─────────────────────────────────────────────────────────────────────────────────
+  // One step back and one step forward through the chart's own content. Availability is the stack:
+  // a verb with nothing to take back is unavailable, so a toolbar button, a menu row and an
+  // operator all read the same "nothing to do" rather than each deciding for itself.
+  add({
+    id: 'chart.history.undo',
+    scope: 'chart',
+    // Ctrl+Z, and Cmd+Z on a Mac keyboard, which the dispatcher reads as the same chord. The token
+    // a press resolves to carries Shift in it, so Ctrl+Shift+Z is not this chord and takes nothing
+    // back: redo has a key of its own rather than a second spelling of undo's.
+    shortcut: 'Ctrl+KeyZ',
+    label: 'command.historyUndo',
+    available: () => features.history && handle.history.canUndo(),
+    execute: () => handle.history.undo(),
+  })
+  add({
+    id: 'chart.history.redo',
+    scope: 'chart',
+    shortcut: 'Ctrl+KeyY',
+    label: 'command.historyRedo',
+    available: () => features.history && handle.history.canRedo(),
+    execute: () => handle.history.redo(),
+  })
+
   // ── Indicators ──────────────────────────────────────────────────────────────────────────────
   // Adding and updating take the whole instance: the picker composes one from a definition, and
   // the settings dialog hands back the instance with its inputs and overrides changed. The access
   // policy's indicator predicate is asked inside the plane, so a refused id is refused here too.
+  add({ id: 'chart.indicators.open', scope: 'chart', label: 'chrome.indicators', available: () => ui.indicatorPicker, execute: () => deps.indicatorsOpen() })
   const isInstance = (arg: unknown): arg is IndicatorInstance =>
     !!arg && typeof arg === 'object' && typeof (arg as IndicatorInstance).id === 'string' && typeof (arg as IndicatorInstance).definition === 'object'
   add({
@@ -218,9 +294,15 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   const drawings = (): ChartHandle['drawings'] => (features.drawings ? handle.drawings : null)
   const verbs = (): DrawingVerbs | null => (features.drawings ? deps.drawingVerbs() : null)
   const withSelection = (): boolean => drawings()?.hasSelection() ?? false
+  // Lock all suspends every edit, the deliberate Delete and Clone included, so those two are
+  // unavailable while it holds rather than answering ok for an edit the layer refused. A drawing's
+  // own lock is not asked here: it lets both act on the drawing the trader named.
+  const withEditableSelection = (): boolean => withSelection() && !drawings()!.allLocked()
   const on = (): boolean => features.drawings && drawings() !== null
   const isHideState = (arg: unknown): arg is HideState =>
-    !!arg && typeof arg === 'object' && typeof (arg as HideState).on === 'boolean' && ['drawings', 'indicators', 'all'].includes((arg as HideState).mode)
+    // The subject is any layer the eye lists, contributed ones included; the eye itself refuses a
+    // subject it cannot find.
+    !!arg && typeof arg === 'object' && typeof (arg as HideState).on === 'boolean' && typeof (arg as HideState).mode === 'string'
   /** The tool an arm argument names: the id itself, or the `tool` of a seeded placement. */
   const toolOf = (arg: unknown): string | null | undefined =>
     arg === null || typeof arg === 'string' ? arg : arg && typeof arg === 'object' && typeof (arg as { tool?: unknown }).tool === 'string' ? (arg as { tool: string }).tool : undefined
@@ -240,19 +322,19 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     scope: 'chart',
     label: 'command.drawingDeleteSelected',
     shortcut: 'Delete',
-    available: withSelection,
+    available: withEditableSelection,
     execute: () => drawings()?.deleteSelected(),
   })
-  // Escape disarms the armed tool, cancels a placement, and closes an inline text edit. The drawing
-  // layer owns the gesture; the registry is how a key reaches it, so a host that forbids the verb
-  // disables the key with it.
+  // Escape disarms the armed tool, cancels a placement, closes an inline text edit, or clears a
+  // completed Measure readout. The layer owns that transient state; the registry is how every
+  // caller reaches it, so availability and access policy stay truthful after Measure disarms.
   add({
     id: 'chart.drawings.cancel',
     scope: 'chart',
     label: 'command.drawingCancel',
     shortcut: 'Escape',
-    available: () => on() && (drawings()!.activeTool() != null || (verbs()?.editing() ?? false)),
-    execute: () => drawings()?.armTool(null),
+    available: () => on() && (verbs()?.canCancel() ?? false),
+    execute: () => verbs()?.cancel(),
   })
   // Arming a tool is ONE command taking the tool id (or `{ tool, props }` to seed the placement,
   // as a picked glyph does): the ninety registered tools would otherwise be ninety near-identical
@@ -341,7 +423,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
   add({ id: 'chart.drawings.lock', scope: 'chart', label: 'command.drawingLock', available: withSelection, execute: (arg) => drawings()?.setLocked(arg === true) })
-  add({ id: 'chart.drawings.clone', scope: 'chart', label: 'command.drawingClone', available: withSelection, execute: () => drawings()?.clone() })
+  add({ id: 'chart.drawings.clone', scope: 'chart', label: 'command.drawingClone', available: withEditableSelection, execute: () => drawings()?.clone() })
   add({ id: 'chart.drawings.copy', scope: 'chart', label: 'command.drawingCopy', shortcut: 'Ctrl+KeyC', available: withSelection, execute: () => drawings()?.copy() })
   add({ id: 'chart.drawings.paste', scope: 'chart', label: 'command.drawingPaste', shortcut: 'Ctrl+KeyV', available: () => on() && drawings()!.canPaste(), execute: () => void drawings()?.paste() })
   add({ id: 'chart.drawings.bringToFront', scope: 'chart', label: 'command.drawingBringToFront', available: withSelection, execute: () => drawings()?.bringToFront() })
@@ -446,15 +528,25 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
 
   // ── Replay ──────────────────────────────────────────────────────────────────────────────────
   // Start takes an optional moment (epoch seconds): the bar picked on the chart or the date picked
-  // in the dialog. Without one, replay opens three quarters through the loaded window.
+  // in the dialog. Without one it ARMS, opening replay on the whole window with the question of
+  // where to begin still open. It stays reachable while a session runs, because answering that
+  // question again moves the cursor rather than starting a second session.
   add({
     id: 'chart.replay.start',
     scope: 'chart',
     label: 'command.replayStart',
-    available: () => features.replay && !handle.replay.state().on,
+    available: () => features.replay,
     execute: (arg) => handle.replay.start(typeof arg === 'number' && Number.isFinite(arg) ? arg : undefined),
   })
-  add({ id: 'chart.replay.exit', scope: 'chart', label: 'command.replayExit', available: () => handle.replay.state().on, execute: () => handle.replay.exit() })
+  // The first available date needs no moment from the viewer: the chart finds the oldest bar itself.
+  add({
+    id: 'chart.replay.startFirst',
+    scope: 'chart',
+    label: 'command.replayStartFirst',
+    available: () => features.replay,
+    execute: () => deps.replayFromFirst(),
+  })
+  add({ id: 'chart.replay.exit', scope: 'chart', label: 'command.replayExit', available: () => handle.replay.phase() !== 'off', execute: () => handle.replay.exit() })
   add({ id: 'chart.replay.play', scope: 'chart', label: 'command.replayPlay', available: () => handle.replay.state().on && !handle.replay.state().playing, execute: () => handle.replay.play() })
   add({ id: 'chart.replay.pause', scope: 'chart', label: 'command.replayPause', available: () => handle.replay.state().playing, execute: () => handle.replay.pause() })
   add({ id: 'chart.replay.stepForward', scope: 'chart', label: 'command.replayStepForward', available: () => handle.replay.state().on, execute: () => handle.replay.stepForward() })

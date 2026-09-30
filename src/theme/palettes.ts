@@ -12,17 +12,21 @@
 // role's `contrast` rules require, on every ground the recipes draw it over, what stands here is
 // the hue-preserving value that does, and `theme/contrast.test.ts` recomputes every ratio on each
 // run. That is why light `status.positive` is not `rgb(8, 153, 129)`, which reads at 3.57 to 1 on
-// white (dark mode keeps that value, which reads at 4.62 to 1 on the dark panel); why the muted
-// ink is `#64676f` in light and `#9c9c9c` in dark rather than the study's `rgb(140, 140, 140)`,
-// which read at 3.86 to 1 over the dark selected tint a search or menu row wears; and why the
-// accent is `#1f56ee` in light and `#52a0fc` in dark, where `#2962ff` and `#4c98fb` read at 4.15
-// and 4.45 to 1 as ink over the selected tint an active tool sits on. The focus ring keeps the
-// accent's value in each mode, and the selected and selection tints are the accent's rgb at an
-// alpha, so the accent, its ring and its tints stay one color.
+// white (dark mode keeps that value, which reads at 4.62 to 1 on the dark panel), and why the muted
+// ink is `#636363` in light and `#9c9c9c` in dark rather than the study's `rgb(140, 140, 140)`,
+// which falls short of 4.5 to 1 over the dark selected fill a search or menu row wears. It is also
+// why the dark match highlight is `#5280ff` rather than the study's `#2962ff`, which reads at 3.36
+// to 1 on the dark panel; light mode keeps `#2962ff`, which clears 4.5 to 1 on white. The accent
+// is a mark and never words, and the focus ring keeps its value in each mode. The selected fill is
+// a step of the neutral grey ramp, and the selection tint is a blue at an alpha.
 //
-// The series pair is the documented brand pair from `overrides.ts`, unchanged: a positive TEXT role
-// and a rising SERIES are different jobs, so one does not displace the other. Candle body, border
-// and wick colors are not theme roles at all: they belong to the separate chart appearance ladder.
+// The illustration roles are the one set drawn from a cooler grey: an empty state's art is not a
+// control, so it does not have to sit on the ramp the controls share.
+//
+// The series pair is the market's own, green up and red down in both modes, and it is the floor the
+// chart's appearance ladder paints default candle bodies, borders and wicks from until a host or a
+// viewer names their own. The brand pair in `overrides.ts` stays with what speaks for trdrs. A
+// positive TEXT role and a rising SERIES are different jobs, so one does not displace the other.
 //
 // This module imports no runtime value, only its types. The build script loads it directly under
 // Node's TypeScript stripping, which resolves no extensionless relative specifier.
@@ -31,9 +35,9 @@ import type { SemanticTheme, ThemeMode } from './schema'
 /** The built-in light palette. */
 export const LIGHT_THEME: SemanticTheme = {
   'canvas.background': '#ffffff',
-  'canvas.paneBorder': '#e0e3eb',
+  'canvas.paneBorder': '#ebebeb',
 
-  'series.up': '#4c98fb',
+  'series.up': '#089981',
   'series.down': '#f23645',
   'series.neutral': '#787b86',
 
@@ -50,41 +54,56 @@ export const LIGHT_THEME: SemanticTheme = {
   'scale.sessionClosed': 'rgba(0, 0, 0, 0.05)',
 
   'text.primary': '#0f0f0f',
-  'text.secondary': '#5b616e',
-  'text.muted': '#64676f',
-  'text.disabled': '#a3a6af',
+  'text.secondary': '#4a4a4a',
+  'text.muted': '#636363',
+  'text.disabled': '#b8b8b8',
   'text.inverse': '#ffffff',
-  'text.link': '#1160c4',
-  'text.onCanvas': '#5b616e',
-  'text.fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  'text.link': '#2962ff',
+  'text.highlight': '#2962ff',
+  'text.onCanvas': '#0f0f0f',
+  'text.fontFamily': '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif',
   'text.fontSizeAxis': '13px',
   'text.fontSizeTitle': '14px',
-  'text.fontSizeBase': '13px',
+  'text.fontSizeBase': '14px',
   'text.fontSizeSmall': '11px',
   'text.fontSizeMicro': '10px',
 
   'chrome.surface': '#ffffff',
-  'chrome.surfaceRaised': '#f0f3fa',
-  'chrome.border': '#e0e3eb',
-  'chrome.borderStrong': '#8a8d96',
-  'chrome.radius': '4px',
+  'chrome.surfaceRaised': '#ffffff',
+  'chrome.border': '#ebebeb',
+  'chrome.borderStrong': '#8c8c8c',
+  'chrome.fieldBorder': '#dbdbdb',
+  'chrome.caret': '#0f0f0f',
+  'chrome.grip': '#b8b8b8',
+  'chrome.scrollThumb': '#9c9c9c',
+  'chrome.radius': '6px',
   'chrome.radiusLarge': '6px',
 
   'overlay.surface': '#ffffff',
-  'overlay.border': '#e0e3eb',
-  'overlay.separator': '#e0e3eb',
+  'overlay.separator': '#ebebeb',
   'overlay.shadow': '0 2px 4px rgba(0, 0, 0, 0.2)',
   'overlay.scrim': 'rgba(0, 0, 0, 0.35)',
 
-  'state.accent': '#1f56ee',
-  'state.hover': 'rgba(0, 0, 0, 0.06)',
-  'state.pressed': 'rgba(0, 0, 0, 0.1)',
-  'state.selected': 'rgba(31, 86, 238, 0.12)',
-  'state.focusRing': '#1f56ee',
+  'state.accent': '#2962ff',
+  'state.hover': '#f2f2f2',
+  'state.hoverInk': '#0f0f0f',
+  'state.pressed': '#ebebeb',
+  'state.pressedHover': '#dbdbdb',
+  'state.selected': '#ebebeb',
+  'state.focusRing': '#2962ff',
+  'state.markInk': '#ffffff',
   'state.selection': 'rgba(31, 86, 238, 0.18)',
 
+  'control.on': '#2e2e2e',
+  'control.onHover': '#4a4a4a',
+  'control.onPressed': '#707070',
+  'control.off': '#9c9c9c',
+  'control.offHover': '#8c8c8c',
+  'control.offPressed': '#b8b8b8',
+  'control.mark': '#ffffff',
+
   'status.positive': '#067a67',
-  'status.negative': '#c62537',
+  'status.negative': '#cc2f3c',
   'status.warning': '#8a5a00',
   'status.info': '#1160c4',
   'status.loading': '#787b86',
@@ -93,6 +112,10 @@ export const LIGHT_THEME: SemanticTheme = {
   'status.sessionExtended': '#4c98fb',
   'status.sessionAfterHours': '#f5a623',
   'status.sessionClosed': 'rgba(0, 0, 0, 0.35)',
+
+  'illustration.ink': '#1e222d',
+  'illustration.accent': '#2196f3',
+  'illustration.accentInk': '#ffffff',
 
   'drawing.line': '#2962ff',
   'drawing.fill': 'rgba(41, 98, 255, 0.15)',
@@ -107,9 +130,9 @@ export const LIGHT_THEME: SemanticTheme = {
 /** The built-in dark palette. */
 export const DARK_THEME: SemanticTheme = {
   'canvas.background': '#0f0f0f',
-  'canvas.paneBorder': '#2a2e39',
+  'canvas.paneBorder': '#2e2e2e',
 
-  'series.up': '#4c98fb',
+  'series.up': '#089981',
   'series.down': '#f23645',
   'series.neutral': '#787b86',
 
@@ -126,41 +149,56 @@ export const DARK_THEME: SemanticTheme = {
   'scale.sessionClosed': 'rgba(0, 0, 0, 0.22)',
 
   'text.primary': '#dbdbdb',
-  'text.secondary': '#a3a9b4',
+  'text.secondary': '#b8b8b8',
   'text.muted': '#9c9c9c',
-  'text.disabled': '#5c5f66',
+  'text.disabled': '#575757',
   'text.inverse': '#0f0f0f',
-  'text.link': '#68a5ff',
-  'text.onCanvas': '#9aa0aa',
-  'text.fontFamily': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+  'text.link': '#5b9cf6',
+  'text.highlight': '#5280ff',
+  'text.onCanvas': '#dbdbdb',
+  'text.fontFamily': '-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif',
   'text.fontSizeAxis': '13px',
   'text.fontSizeTitle': '14px',
-  'text.fontSizeBase': '13px',
+  'text.fontSizeBase': '14px',
   'text.fontSizeSmall': '11px',
   'text.fontSizeMicro': '10px',
 
-  'chrome.surface': '#1f1f1f',
-  'chrome.surfaceRaised': '#2a2a2a',
-  'chrome.border': '#2a2e39',
-  'chrome.borderStrong': '#6b7280',
-  'chrome.radius': '4px',
+  'chrome.surface': '#0f0f0f',
+  'chrome.surfaceRaised': '#2e2e2e',
+  'chrome.border': '#2e2e2e',
+  'chrome.borderStrong': '#707070',
+  'chrome.fieldBorder': '#636363',
+  'chrome.caret': '#8c8c8c',
+  'chrome.grip': '#575757',
+  'chrome.scrollThumb': '#3d3d3d',
+  'chrome.radius': '6px',
   'chrome.radiusLarge': '6px',
 
   'overlay.surface': '#1f1f1f',
-  'overlay.border': '#2a2e39',
-  'overlay.separator': '#2a2e39',
+  'overlay.separator': '#4a4a4a',
   'overlay.shadow': '0 2px 4px rgba(0, 0, 0, 0.4)',
   'overlay.scrim': 'rgba(0, 0, 0, 0.5)',
 
-  'state.accent': '#52a0fc',
-  'state.hover': 'rgba(255, 255, 255, 0.08)',
-  'state.pressed': 'rgba(255, 255, 255, 0.12)',
-  'state.selected': 'rgba(82, 160, 252, 0.16)',
-  'state.focusRing': '#52a0fc',
+  'state.accent': '#2962ff',
+  'state.hover': '#2e2e2e',
+  'state.hoverInk': '#c9c9c9',
+  'state.pressed': '#3d3d3d',
+  'state.pressedHover': '#4a4a4a',
+  'state.selected': '#333333',
+  'state.focusRing': '#2962ff',
+  'state.markInk': '#ffffff',
   'state.selection': 'rgba(82, 160, 252, 0.22)',
 
+  'control.on': '#f2f2f2',
+  'control.onHover': '#dbdbdb',
+  'control.onPressed': '#8c8c8c',
+  'control.off': '#636363',
+  'control.offHover': '#707070',
+  'control.offPressed': '#636363',
+  'control.mark': '#2e2e2e',
+
   'status.positive': '#089981',
-  'status.negative': '#ff5a68',
+  'status.negative': '#f7525f',
   'status.warning': '#f5a623',
   'status.info': '#68a5ff',
   'status.loading': '#787b86',
@@ -169,6 +207,10 @@ export const DARK_THEME: SemanticTheme = {
   'status.sessionExtended': '#4c98fb',
   'status.sessionAfterHours': '#f5a623',
   'status.sessionClosed': 'rgba(255, 255, 255, 0.35)',
+
+  'illustration.ink': '#d1d4dc',
+  'illustration.accent': '#1976d2',
+  'illustration.accentInk': '#d1d4dc',
 
   'drawing.line': '#4c98fb',
   'drawing.fill': 'rgba(76, 152, 251, 0.15)',

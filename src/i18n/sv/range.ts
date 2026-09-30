@@ -17,4 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': 'Rulla vänster',
   'range.scrollRight': 'Rulla höger',
   'range.reset': 'Återställ diagramvyn',
+  'range.maximizeChart': 'Maximize chart',
+  'range.restoreChart': 'Restore chart',
 }

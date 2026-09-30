@@ -5,7 +5,8 @@
 // uses. Run `pnpm --filter quickcharts build` and they judge the real artifact.
 import { describe, expect, it } from 'vitest'
 import manifest from '../../package.json'
-import { selectorsOf, THEME_ROOT_ATTRIBUTE } from '../../src/theme/css-contract'
+import { HOST_LAYER_ORDER, LAYER_ORDER_STATEMENT, selectorsOf, STYLE_LAYERS, THEME_ROOT_ATTRIBUTE, unlayeredSelectorsOf } from '../../src/theme/css-contract'
+import { STYLE_HOOK_CLASSES } from '../../src/theme/hooks'
 import { builtArtifact } from './stylesheetSource'
 
 const css = builtArtifact('quickcharts.css')
@@ -37,10 +38,20 @@ describe('the stylesheet in the export map', () => {
 })
 
 describe('the built artifacts', () => {
-  it('writes a scoped stylesheet beside the bundle', () => {
+  it('writes a scoped, layered stylesheet beside the bundle', () => {
     if (css === null) return
     expect(css.length).toBeGreaterThan(1000)
     expect(selectorsOf(css).filter((s) => !s.startsWith(`[${THEME_ROOT_ATTRIBUTE}`))).toEqual([])
+    expect(css.replace(/\/\*[\s\S]*?\*\//g, '').trimStart().startsWith(LAYER_ORDER_STATEMENT)).toBe(true)
+    expect(unlayeredSelectorsOf(css)).toEqual([])
+  })
+
+  it('publishes the layers and the supported hooks in the theme manifest', () => {
+    const manifest = builtArtifact('theme-manifest.json')
+    if (manifest === null) return
+    const parsed = JSON.parse(manifest) as { layers: Record<string, string>; hooks: { className: string }[] }
+    expect(parsed.layers).toEqual({ ...STYLE_LAYERS, hostOrder: HOST_LAYER_ORDER })
+    expect(parsed.hooks.map((hook) => hook.className)).toEqual([...STYLE_HOOK_CLASSES])
   })
 
   it('carries the drawing recipes, concatenated after the structural file', () => {

@@ -51,8 +51,7 @@
         "status": "streaming",
         "timestamp": 1788292800
       },
-      "display": { "last": "123.45", "bid": "123.44", "ask": "123.46", "open": "124.10", "high": "124.90", "low": "123.10", "prevClose": "124.65", "change": "-1.20" },
-      "board": { "last": "123.45", "change": "-1.20", "changePct": "-0.96%", "volume": "51.23M" }
+      "display": { "last": "123.45", "bid": "123.44", "ask": "123.46", "open": "124.10", "high": "124.90", "low": "123.10", "prevClose": "124.65", "change": "-1.20" }
     },
     {
       "id": "equities-decimal-grouped",
@@ -114,8 +113,7 @@
         "low": "66950.50000000",
         "prevClose": "67079.79000000",
         "change": "+1204.51000000"
-      },
-      "board": { "last": "68284.30000000", "change": "+1204.51000000", "changePct": "+1.80%", "volume": "18.42K" }
+      }
     },
     {
       "id": "fx-pips",
@@ -142,8 +140,7 @@
         "status": "streaming",
         "timestamp": 1788292800
       },
-      "display": { "last": "1.23456", "bid": "1.23455", "ask": "1.23457", "open": "1.23340", "high": "1.23510", "low": "1.23300", "prevClose": "1.23336", "change": "+0.00120" },
-      "board": { "last": "1.23456", "change": "+0.00120", "changePct": "+0.10%", "volume": "0" }
+      "display": { "last": "1.23456", "bid": "1.23455", "ask": "1.23457", "open": "1.23340", "high": "1.23510", "low": "1.23300", "prevClose": "1.23336", "change": "+0.00120" }
     },
     {
       "id": "fx-pips-jpy",
@@ -169,8 +166,7 @@
         "status": "streaming",
         "timestamp": 1788292800
       },
-      "display": { "last": "151.234", "bid": "151.233", "ask": "151.235", "open": "151.600", "high": "151.900", "low": "151.100", "prevClose": "151.646", "change": "-0.412" },
-      "board": { "last": "151.234", "change": "-0.412", "changePct": "-0.27%", "volume": "0" }
+      "display": { "last": "151.234", "bid": "151.233", "ask": "151.235", "open": "151.600", "high": "151.900", "low": "151.100", "prevClose": "151.646", "change": "-0.412" }
     },
     {
       "id": "cme-decimal-futures",
@@ -197,8 +193,7 @@
         "status": "streaming",
         "timestamp": 1788292800
       },
-      "display": { "last": "4500.25", "bid": "4500.00", "ask": "4500.25", "open": "4485.00", "high": "4512.75", "low": "4478.25", "prevClose": "4481.50", "change": "+18.75" },
-      "board": { "last": "4500.25", "change": "+18.75", "changePct": "+0.42%", "volume": "1.28M" }
+      "display": { "last": "4500.25", "bid": "4500.00", "ask": "4500.25", "open": "4485.00", "high": "4512.75", "low": "4478.25", "prevClose": "4481.50", "change": "+18.75" }
     },
     {
       "id": "treasury-thirty-seconds",
@@ -226,8 +221,7 @@
         "status": "delayed_streaming",
         "timestamp": 1788292800
       },
-      "display": { "last": "110'16", "bid": "110'15", "ask": "110'17", "open": "110'12", "high": "110'20", "low": "110'09", "prevClose": "110'11", "change": "+0'05" },
-      "board": { "last": "110'16", "change": "+0'05", "changePct": "+0.14%", "volume": "402.12K" }
+      "display": { "last": "110'16", "bid": "110'15", "ask": "110'17", "open": "110'12", "high": "110'20", "low": "110'09", "prevClose": "110'11", "change": "+0'05" }
     },
     {
       "id": "treasury-quarter-of-a-thirty-second",
@@ -255,8 +249,7 @@
         "status": "delayed_streaming",
         "timestamp": 1788292800
       },
-      "display": { "last": "110'16'2", "bid": "110'16'1", "ask": "110'16'3", "open": "110'17'0", "high": "110'18'0", "low": "110'15'3", "prevClose": "110'17'1", "change": "-0'00'3" },
-      "board": { "last": "110'16'2", "change": "-0'00'3", "changePct": "-0.02%", "volume": "118.20K" }
+      "display": { "last": "110'16'2", "bid": "110'16'1", "ask": "110'16'3", "open": "110'17'0", "high": "110'18'0", "low": "110'15'3", "prevClose": "110'17'1", "change": "-0'00'3" }
     },
     {
       "id": "variable-tick-bands",
@@ -284,8 +277,7 @@
         "status": "endofday",
         "timestamp": 1788292800
       },
-      "display": { "last": "5.432", "bid": "5.431", "ask": "5.433", "open": "5.400", "high": "5.450", "low": "5.380", "prevClose": "5.411", "change": "+0.0210" },
-      "board": { "last": "5.432", "change": "+0.0210", "changePct": "+0.39%", "volume": "9.81K" }
+      "display": { "last": "5.432", "bid": "5.431", "ask": "5.433", "open": "5.400", "high": "5.450", "low": "5.380", "prevClose": "5.411", "change": "+0.0210" }
     }
   ]
 }

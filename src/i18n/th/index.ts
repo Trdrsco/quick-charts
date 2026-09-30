@@ -17,9 +17,10 @@ import { search } from './search'
 import { drawing } from './drawing'
 import { command } from './command'
 import { chrome } from './chrome'
+import { history } from './history'
 import { picker } from './picker'
 import { settings } from './settings'
 import { toast } from './toast'
 
-const dict: Translation<typeof en> = { ...legend, ...tools, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search, ...drawing, ...command, ...chrome, ...picker, ...settings, ...toast }
+const dict: Translation<typeof en> = { ...legend, ...tools, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search, ...drawing, ...command, ...chrome, ...history, ...picker, ...settings, ...toast }
 export default dict

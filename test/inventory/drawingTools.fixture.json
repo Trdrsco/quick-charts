@@ -14,7 +14,9 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "anchored_volume_profile",
@@ -179,7 +181,9 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "comment",
@@ -253,7 +257,9 @@
       "style": {
         "fillOpacity": 0.12
       },
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "date_and_price_range",
@@ -269,7 +275,8 @@
         "showPercent",
         "showPriceDelta",
         "showTimeSpan",
-        "showVolume"
+        "showVolume",
+        "text"
       ]
     },
     {
@@ -286,7 +293,8 @@
         "showPercent",
         "showPriceDelta",
         "showTimeSpan",
-        "showVolume"
+        "showVolume",
+        "text"
       ]
     },
     {
@@ -324,7 +332,9 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "elliott_double_combo",
@@ -334,7 +344,9 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "elliott_impulse_wave",
@@ -344,7 +356,9 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "elliott_triangle_wave",
@@ -354,7 +368,9 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "elliott_triple_combo",
@@ -364,7 +380,9 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "ellipse",
@@ -374,7 +392,9 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "emoji",
@@ -758,7 +778,9 @@
       "style": {
         "fillOpacity": 0.12
       },
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "highlighter",
@@ -768,7 +790,8 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "lineColor": "rgba(245, 166, 35, 0.35)"
+        "lineColor": "rgba(245, 166, 35, 0.35)",
+        "lineWidth": 20
       },
       "props": []
     },
@@ -871,15 +894,19 @@
       "placement": "instant",
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "textColor": "#ffffff"
+      },
       "props": [
         "accountSize",
         "compact",
         "leverage",
         "lotSize",
+        "profitColor",
         "risk",
         "riskDisplay",
-        "showPrices"
+        "showPrices",
+        "stopColor"
       ]
     },
     {
@@ -1028,7 +1055,8 @@
         "showPercent",
         "showPriceDelta",
         "showTimeSpan",
-        "showVolume"
+        "showVolume",
+        "text"
       ]
     },
     {
@@ -1145,15 +1173,19 @@
       "placement": "instant",
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "textColor": "#ffffff"
+      },
       "props": [
         "accountSize",
         "compact",
         "leverage",
         "lotSize",
+        "profitColor",
         "risk",
         "riskDisplay",
-        "showPrices"
+        "showPrices",
+        "stopColor"
       ]
     },
     {
@@ -1230,7 +1262,9 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "time_cycles",
@@ -1312,7 +1346,9 @@
       "style": {
         "fillOpacity": 0.12
       },
-      "props": []
+      "props": [
+        "text"
+      ]
     },
     {
       "type": "vertical_line",
@@ -1337,7 +1373,9 @@
       "style": {
         "fillOpacity": 0.12
       },
-      "props": []
+      "props": [
+        "text"
+      ]
     }
   ]
 }

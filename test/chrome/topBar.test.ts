@@ -1,11 +1,13 @@
 // @vitest-environment happy-dom
-// The top bar: what it renders from the active chart, which controls each feature flag removes,
+// The top bar: what it renders from the active chart, which controls each presentation flag removes,
 // and that every press is a command: a denied command renders disabled and does nothing.
 import { afterEach, describe, expect, it } from 'vitest'
-import { mountTopBar, pillSymbol, type TopBarHandle } from '../../src/ui/chrome/topBar'
+import { mountTopBar, type TopBarHandle } from '../../src/ui/chrome/topBar'
+import { FLYOUT_WIDTH } from '../../src/ui/chrome/flyoutGeometry'
+import { symbolLabel } from '../../src/symbolLabel'
 import { memoryChartStorage } from '../../src/storage'
 import { buttonNames, fakeWidget, settle } from './harness'
-import type { FeatureConfig } from '../../src/widget/options'
+import type { FeatureConfig, UiConfig } from '../../src/widget/options'
 
 let cleanup: (() => void)[] = []
 afterEach(() => {
@@ -13,10 +15,10 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-function mount(options: { features?: FeatureConfig; access?: (id: string) => boolean } = {}): { bar: TopBarHandle; w: ReturnType<typeof fakeWidget> } {
-  const w = fakeWidget({ features: options.features, access: options.access ? { command: options.access } : undefined })
+function mount(options: { features?: FeatureConfig; ui?: UiConfig; access?: (id: string) => boolean } = {}): { bar: TopBarHandle; w: ReturnType<typeof fakeWidget> } {
+  const w = fakeWidget({ features: options.features, ui: options.ui, access: options.access ? { command: options.access } : undefined })
   const notices: string[] = []
-  const bar = mountTopBar({ ...w.ctx, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => notices.push('search'), notify: (kind, text) => notices.push(`${kind}:${text}`) })
+  const bar = mountTopBar({ ...w.ctx, ...w.topBarParts, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => notices.push('search'), notify: (kind, text) => notices.push(`${kind}:${text}`) })
   document.body.appendChild(bar.element)
   cleanup.push(() => {
     bar.destroy()
@@ -26,6 +28,64 @@ function mount(options: { features?: FeatureConfig; access?: (id: string) => boo
 }
 
 describe('the top bar', () => {
+  it('uses the chart-owned double-rewind mark for replay', () => {
+    const { bar } = mount()
+    const replay = bar.element.querySelector<HTMLButtonElement>('button[aria-label="Bar replay"]')!
+    const path = replay.querySelector('path')!
+    expect(path.getAttribute('d')).toBe('M13.5 20V9l-6 5.5 6 5.5zM21.5 20V9l-6 5.5 6 5.5z')
+    expect(path.getAttribute('stroke')).toBe('currentColor')
+  })
+  it('stands undo and redo down on an empty history, and names each after the step it would move', () => {
+    const { bar, w } = mount()
+    const control = (label: string): HTMLButtonElement => [...bar.element.querySelectorAll<HTMLButtonElement>('button')].find((b) => (b.getAttribute('aria-label') ?? '').startsWith(label))!
+    const undo = control('Undo')
+    const redo = control('Redo')
+    // Nothing to take back and nothing to put back: both controls are out of the tab order and
+    // carry the verb's own name rather than a word for a step that is not there.
+    expect([undo.disabled, redo.disabled]).toEqual([true, true])
+    expect([undo.getAttribute('aria-label'), undo.title]).toEqual(['Undo', 'Undo'])
+    undo.click()
+    expect(w.chart.calls).not.toContain('history:undo')
+
+    w.chart.state.history = { past: 1, future: 0, undoChange: 'timeframe', redoChange: null }
+    bar.sync()
+    expect(undo.disabled).toBe(false)
+    expect(undo.getAttribute('aria-label')).toBe('Undo timeframe change')
+    expect(redo.disabled).toBe(true)
+    undo.click()
+    expect(w.chart.calls).toContain('history:undo')
+    // The step's own word travels with it, so the redo that would put it back names the same thing.
+    bar.sync()
+    expect(control('Redo').disabled).toBe(false)
+  })
+
+  it('renders undo and redo disabled where the policy refuses them, and running one does nothing', () => {
+    const { bar, w } = mount({ access: (id) => !id.startsWith('chart.history.') })
+    w.chart.state.history = { past: 2, future: 2, undoChange: 'symbol', redoChange: 'symbol' }
+    bar.sync()
+    for (const label of ['Undo', 'Redo']) {
+      const control = [...bar.element.querySelectorAll<HTMLButtonElement>('button')].find((b) => (b.getAttribute('aria-label') ?? '').startsWith(label))!
+      expect(control.disabled, label).toBe(true)
+      control.click()
+    }
+    expect(w.chart.calls.filter((c) => c.startsWith('history:'))).toEqual([])
+  })
+
+  it.each(['All timeframes', 'Chart style', 'Layout setup', 'Manage layouts', 'Chart settings', 'Chart image'])('%s toggles without duplicating its panel', (label) => {
+    const { bar, w } = mount()
+    const trigger = [...bar.element.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.getAttribute('aria-label')?.startsWith(label))!
+    for (let repeat = 0; repeat < 3; repeat++) {
+      trigger.click()
+      expect(w.overlays.querySelectorAll('.qc-menu-panel')).toHaveLength(1)
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
+      bar.sync()
+      trigger.click()
+      expect(w.overlays.querySelectorAll('.qc-menu-panel')).toHaveLength(0)
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(document.activeElement).toBe(trigger)
+    }
+  })
+
   it('is a labeled toolbar carrying every control by default', () => {
     const { bar } = mount()
     expect(bar.element.getAttribute('role')).toBe('toolbar')
@@ -37,6 +97,8 @@ describe('the top bar', () => {
     expect(names.some((n) => n.startsWith('Chart style'))).toBe(true)
     expect(names).toContain('Indicators')
     expect(names).toContain('Bar replay')
+    expect(names).toContain('Undo')
+    expect(names).toContain('Redo')
     expect(names.some((n) => n.startsWith('Layout setup'))).toBe(true)
     expect(names).toContain('Manage layouts')
     expect(names).toContain('Chart settings')
@@ -50,12 +112,22 @@ describe('the top bar', () => {
     w.chart.handle.setSymbol('BTC/USD')
     bar.sync()
     expect(bar.element.querySelector('.qc-symbol-pill .qc-button-text')?.textContent).toBe('BTCUSD')
-    expect(pillSymbol('1/ES')).toBe('1/ES')
-    expect(pillSymbol('ES-NQ')).toBe('ES-NQ')
+    expect(symbolLabel('1/ES')).toBe('1/ES')
+    expect(symbolLabel('ES-NQ')).toBe('ES-NQ')
+    expect(symbolLabel('BINANCE:BTCUSDT')).toBe('BTCUSDT')
+    expect(symbolLabel('CME:ES1!')).toBe('ES1!')
+    expect(symbolLabel('CME:ES-NQ')).toBe('CME:ES-NQ')
+    expect(symbolLabel('CME:ES/CME:NQ')).toBe('CME:ES/CME:NQ')
+    w.chart.handle.setSymbol('BINANCE:BTCUSDT')
+    bar.sync()
+    const pill = bar.element.querySelector('.qc-symbol-pill')!
+    expect(pill.textContent).toBe('BTCUSDT')
+    expect(pill.getAttribute('title')).toContain('BINANCE:BTCUSDT')
+    expect(w.chart.handle.symbol()).toBe('BINANCE:BTCUSDT')
   })
 
-  it('removes a surface when its feature flag is off, and the whole bar when topBar is off', () => {
-    const { bar } = mount({ features: { symbolSearch: false, chartStyles: false, layouts: false, image: false } })
+  it('removes a control when the interface hides it, and keeps the rest', () => {
+    const { bar } = mount({ ui: { topBar: { symbol: false, styles: false, layouts: false, image: false } } })
     const names = buttonNames(bar.element)
     expect(names.some((n) => n.startsWith('Search symbol'))).toBe(false)
     expect(names.some((n) => n.startsWith('Chart style'))).toBe(false)
@@ -64,14 +136,18 @@ describe('the top bar', () => {
     expect(names).toContain('Indicators')
   })
 
-  it('the style picker lists the seven styles as radio rows, checks the current one, and routes a pick through its command', () => {
+  it('the style picker lists the seven styles by family as radio rows, checks the current one, and routes a pick through its command', () => {
     const { bar, w } = mount()
     const trigger = bar.element.querySelector<HTMLButtonElement>('button[aria-label^="Chart style"]')!
     trigger.click()
-    const menu = w.overlays.querySelector('[role="menu"]')!
+    const menu = w.overlays.querySelector<HTMLElement>('[role="menu"]')!
+    expect(menu.classList.contains('qc-style-menu')).toBe(true)
+    expect(menu.style.width).toBe(`${FLYOUT_WIDTH.chartStyle}px`)
     const rows = [...menu.querySelectorAll('[role="menuitemradio"]')]
-    expect(rows.length).toBe(7)
-    expect(rows.map((r) => r.getAttribute('aria-checked'))).toEqual(['true', 'false', 'false', 'false', 'false', 'false', 'false'])
+    expect(rows.map((r) => r.textContent)).toEqual(['Bars', 'Candles', 'Hollow candles', 'Line', 'Step line', 'Area', 'Baseline'])
+    // The bars, the lines and the filled areas, each family under a rule.
+    expect(menu.querySelectorAll('[role="separator"]').length).toBe(2)
+    expect(rows.map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'false', 'false', 'false', 'false'])
     ;(rows[3] as HTMLButtonElement).click()
     expect(w.chart.calls).toContain('style:line')
     expect(w.overlays.querySelector('[role="menu"]')).toBeNull()
@@ -84,7 +160,9 @@ describe('the top bar', () => {
     const trigger = bar.element.querySelector<HTMLButtonElement>('button[aria-label^="Chart style"]')!
     trigger.click()
     const rows = [...w.overlays.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
-    expect(rows.slice(1).every((r) => r.disabled && r.getAttribute('aria-disabled') === 'true')).toBe(true)
+    const others = rows.filter((r) => r.getAttribute('aria-checked') !== 'true')
+    expect(others.length).toBe(6)
+    expect(others.every((r) => r.disabled && r.getAttribute('aria-disabled') === 'true')).toBe(true)
     rows[2]!.click()
     expect(w.chart.calls.filter((c) => c.startsWith('style:'))).toEqual([])
     const replay = bar.element.querySelector<HTMLButtonElement>('button[aria-label="Bar replay"]')!
@@ -129,7 +207,7 @@ describe('the top bar', () => {
 
   it('the image menu renders copy disabled and inert when the browser cannot put an image on the clipboard', () => {
     const w = fakeWidget({ capabilities: { imageCopy: false } })
-    const bar = mountTopBar({ ...w.ctx, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => undefined, notify: () => undefined })
+    const bar = mountTopBar({ ...w.ctx, ...w.topBarParts, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => undefined, notify: () => undefined })
     document.body.appendChild(bar.element)
     cleanup.push(() => {
       bar.destroy()
@@ -148,7 +226,7 @@ describe('the top bar', () => {
     ;(w.widget.image.copy as unknown as { mockResolvedValue(v: boolean): void }).mockResolvedValue(false)
     const heard: string[] = []
     w.events.on('image', (event) => heard.push(event.kind))
-    const bar = mountTopBar({ ...w.ctx, features: w.features, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => undefined, notify: () => undefined })
+    const bar = mountTopBar({ ...w.ctx, ...w.topBarParts, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => undefined, notify: () => undefined })
     document.body.appendChild(bar.element)
     cleanup.push(() => {
       bar.destroy()
@@ -160,6 +238,48 @@ describe('the top bar', () => {
     expect(w.widget.image.copy).toHaveBeenCalledTimes(1)
     expect(w.widget.image.download).toHaveBeenCalledTimes(1)
     expect(heard).toEqual(['copyFallback'])
+  })
+
+  describe('the labels a control carries', () => {
+    const chip = (bar: TopBarHandle, selector: string): string | null =>
+      bar.element.querySelector(`${selector} .qc-button-text`)?.textContent ?? null
+    const indicators = '[aria-haspopup="dialog"][data-qc-label]'
+    const replay = '[data-qc-mode="held"]'
+
+    it('writes the short word beside the glyph while the accessible name stays the full one', () => {
+      const { bar } = mount()
+      expect(chip(bar, indicators)).toBe('Indicators')
+      expect(chip(bar, replay)).toBe('Replay')
+      // A bar read aloud says which replay it is; the chip beside the glyph does not have to.
+      expect(bar.element.querySelector(replay)!.getAttribute('aria-label')).toBe('Bar replay')
+    })
+
+    it('says which labels the row may take back, and keeps the one it may not', () => {
+      const { bar } = mount()
+      expect(bar.element.querySelector(indicators)!.getAttribute('data-qc-label')).toBe('last')
+      expect(bar.element.querySelector(replay)!.getAttribute('data-qc-label')).toBe('drop')
+      // The row states how far down the order it got, so the recipe has something to answer.
+      expect(bar.element.dataset.qcLabels).toBe('all')
+    })
+
+    it('rewrites the chips from the catalog on a language change rather than emptying them', async () => {
+      const { bar, w } = mount()
+      await w.i18n.setLocale('de')
+      // German has yet to be written for these two, so the words are still the English ones; what
+      // this holds is that the sync REWRITES them from the catalog instead of clearing the nodes.
+      expect(chip(bar, indicators)).toBe('Indicators')
+      expect(chip(bar, replay)).toBe('Replay')
+      expect(bar.element.dataset.qcLabels).toBe('all')
+    })
+
+    it('reads replay as a held mode, pressed for as long as the chart is in it', async () => {
+      const { bar, w } = mount()
+      const button = bar.element.querySelector(replay)!
+      expect(button.getAttribute('aria-pressed')).toBe('false')
+      w.chart.state.replay.on = true
+      bar.sync()
+      expect(button.getAttribute('aria-pressed')).toBe('true')
+    })
   })
 
   it('relabels every control when the language changes', async () => {

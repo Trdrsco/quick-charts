@@ -7,7 +7,7 @@
 
 export interface ArrangementIcon { viewBox: string; body: string }
 
-export const ARRANGEMENT_ICONS: Record<string, ArrangementIcon> = {
+export const ARRANGEMENT_ICONS = {
   's': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" d="M2.5 1C1.67 1 1 1.67 1 2.5v12c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5h-14ZM0 2.5A2.5 2.5 0 0 1 2.5 0h14A2.5 2.5 0 0 1 19 2.5v12a2.5 2.5 0 0 1-2.5 2.5h-14A2.5 2.5 0 0 1 0 14.5v-12Z"></path>' },
   '2h': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v15H2.5A1.5 1.5 0 0 1 1 14.5v-12ZM10 16h6.5c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5H10v15ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
   '2v': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1h14c.83 0 1.5.67 1.5 1.5V8H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5V9H1Zm1.5-9A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
@@ -63,4 +63,7 @@ export const ARRANGEMENT_ICONS: Record<string, ArrangementIcon> = {
   '14c7': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M19 10H2V9h17v1Z"></path><path fill="currentColor" d="M4 17V2h1v15H4Z"></path><path fill="currentColor" d="M7 17V2h1v15H7Z" opacity=".85"></path><path fill="currentColor" d="M10 17V2h1v15h-1Z" opacity=".65"></path><path fill="currentColor" d="M13 17V2h1v15h-1Z" opacity=".25"></path><path fill="currentColor" d="M16 18V2h1v16h-1Z" opacity=".05"></path></g>' },
   '16c8': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M19 10H2V9h17v1Z"></path><path fill="currentColor" d="M4 17V2h1v15H4Z"></path><path fill="currentColor" d="M7 17V2h1v15H7Z" opacity=".85"></path><path fill="currentColor" d="M10 17V2h1v15h-1Z" opacity=".65"></path><path fill="currentColor" d="M13 17V2h1v15h-1Z" opacity=".25"></path><path fill="currentColor" d="M16 18V2h1v16h-1Z" opacity=".05"></path></g>' },
   '16c4': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M3.5 2C2.67 2 2 2.67 2 3.5v12c0 .83.67 1.5 1.5 1.5H5v-3H2v-1h3v-3H2V9h3V6H2V5h3V2H3.5ZM6 14v3h4v-3H6Zm4-1H6v-3h4v3Zm1 1v3h4v-3h-4Zm4-1h-4v-3h4v3Zm1 1v3h1.5c.83 0 1.5-.67 1.5-1.5V14h-3Zm3-1h-3v-3h3v3Zm-8-4h4V6h-4v3Zm5-3v3h3V6h-3ZM6 9h4V6H6v3Zm0-4h4V2H6v3Zm10 13H3.5A2.5 2.5 0 0 1 1 15.5v-12A2.5 2.5 0 0 1 3.5 1h14A2.5 2.5 0 0 1 20 3.5v12a2.5 2.5 0 0 1-2.5 2.5H16Zm0-13V2h1.5c.83 0 1.5.67 1.5 1.5V5h-3Zm-1-3h-4v3h4V2Z"></path>' },
-}
+} satisfies Readonly<Record<string, ArrangementIcon>>
+
+/** A layout arrangement that wears a glyph, by its code. */
+export type ArrangementGlyphCode = keyof typeof ARRANGEMENT_ICONS

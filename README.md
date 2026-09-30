@@ -8,13 +8,15 @@ or hosting: the host supplies data and storage, and the chart draws.
 ## Install
 
 ```bash
-npm install quickcharts@0.1.0 lightweight-charts
+npm install quickcharts
 ```
 
-`lightweight-charts` (^5.0.0) is a **peer dependency**: your app owns the renderer version and the
-chart layers on top of it. Both packages ship **ESM-only**: lightweight-charts v5 itself exports no
-`require` entry, so a `require`-able build here would advertise a path that breaks the moment the
-renderer loads. From a CommonJS host, load via dynamic `import()`.
+Supported npm versions automatically install the required renderer. You do not need to name
+another package in the install command. Quick Charts ships ESM and TypeScript declarations.
+From a CommonJS host, load it through dynamic `import()`.
+
+The renderer remains a required `lightweight-charts` 5 peer so compatible consumers share one
+runtime. Use default peer resolution; do not suppress peer checks.
 
 Quick Charts is licensed under the Apache License 2.0: see `LICENSE` and `NOTICE`. Because the
 renderer is *your* dependency, its own Apache-2.0 NOTICE
@@ -45,6 +47,13 @@ capability declaration, described [below](#capability-declaration-config-optiona
 symbol metadata, bars and bar updates and nothing else: a quote board (last, change, volume) or a
 top-of-book is not a chart concern, and your host fans quotes to its own consumers from its own
 source.
+
+When `appearance.countdown` is enabled, a live streaming time bar replaces the native last-value
+label with one price-and-time label. The price uses the resolved symbol formatter. Replay, stale,
+delayed or end-of-day data, tick bars, closed declared sessions and missing bars retain the native
+price label. `serverTime` corrects clock skew when available; absence or failure uses the client
+clock. Bar opens define fixed and calendar alignment, and declared session facts shorten only a
+bar they actually close.
 
 `resolve` answers with `SymbolInfo`, the symbology contract ([Symbology](#symbology)): the
 symbol's identity (`ticker`, `name`, `description`), venue and type (`exchange`,
@@ -122,6 +131,28 @@ export const myFeed: ChartDatafeed = {
    throw a normal error (the chart retries).
 7. **Never synthesize prices.** A bar carries what the market printed; a symbol with no data has no
    bars, never invented ones.
+
+### Coarser grains than the feed serves (`withFoldedHistory`, optional)
+
+A venue that keeps 15-minute bars keeps every 45-minute bar too, just not under that name. Wrap a
+feed to answer those:
+
+```ts
+import { withFoldedHistory, type ChartDatafeed } from 'quickcharts'
+
+declare const venueFeed: ChartDatafeed // your feed from the section above
+
+const feed = withFoldedHistory(venueFeed, { serves: ['1m', '15m', '1h', '1d', '1mo'] })
+```
+
+`serves` names the grains the feed answers natively. Every other request is folded from the coarsest
+of them that divides it, so a 45-minute ask fetches 15-minute bars three at a time: first open,
+extremes across the run, last close, summed volume. Month multiples fold by calendar month, so a
+quarter is a quarter rather than ninety days, and weeks start on Monday.
+
+Folding only works downward. A finer bar cannot be recovered from a coarser one, because the path
+the price took inside it was never written down, so a request below everything the feed serves passes
+through untouched and the feed answers for itself. This is rule 7 in wrapper form.
 
 ### Capability declaration (`config`, optional)
 
@@ -249,6 +280,29 @@ createPriceFormatter({ pricescale: 100, minmov: 1 }, { locale: 'de-DE' }).format
 createPriceFormatter({ pricescale: 100, minmov: 1 }, { numericPunctuation: { groupSign: ',' } }).format(1234.5) // '1,234.50'
 ```
 
+### Naming
+
+The same facts name the market on screen, through one rule with three faces. `symbolNames` reads a
+resolved `SymbolInfo`, a search row, or the feed symbol alone before either has landed, and answers
+the compact mark a label wears, the title a reading wears, and the description beside a mark. A
+pair market reads in the codes it trades in, never a spelled-out currency; a market that is not a
+pair keeps the feed's own words; the venue prefix never reaches the screen. The chart's pill, legend
+and picker read these faces, so anything you name beside the chart reads the same:
+
+```ts
+import { symbolNames, type SymbolNames, type SymbolRow } from 'quickcharts'
+
+const row: SymbolRow = { symbol: 'HYPERLIQUID:ETH', name: 'Ethereum perpetual', exchange: 'Hyperliquid', type: 'crypto', currencyCode: 'USDC' }
+const perp: SymbolNames = symbolNames(row)
+perp.mark // 'ETHUSDC'
+perp.title // 'ETH / USDC'
+perp.description // 'ETH / USDC'
+
+symbolNames({ symbol: 'NASDAQ:AAPL', name: 'Apple Inc', exchange: 'NASDAQ', type: 'stock', currencyCode: 'USD' }).mark // 'AAPL'
+symbolNames({ symbol: 'NASDAQ:AAPL', name: 'Apple Inc', exchange: 'NASDAQ', type: 'stock', currencyCode: 'USD' }).description // 'Apple Inc'
+symbolNames('HYPERLIQUID:ETH').mark // 'ETH', before the symbol resolves
+```
+
 Symbology is display truth, not trading truth. It carries no order quantity, price step, lot size,
 or pip value. Your broker integration owns those, and a broker's execution grid can differ from a
 chart's display grid.
@@ -309,13 +363,33 @@ content hash, and compare it only for equality.
 ### The built-in Save/Load UI
 
 With the `layouts` feature on, the top bar carries the open layout's name, a marker for unsaved
-changes, and a menu with Save, an Autosave switch, Make a copy, Rename, Create new layout, the
-layouts used most recently, and Open layout: a dialog with search, and delete behind a confirmation.
+changes, and a menu with Save, an Autosave switch, Make a copy, Rename, Download chart data, Create
+new layout, the layouts used most recently, and Open layout: the Layouts dialog, with search, a sort
+by name or by date modified, a star that keeps a layout at the top, and delete behind a
+confirmation. The sort and the stars are the viewer's, kept in the widget's `ChartStorage`. Each
+saved layout is listed by the market and interval its active chart showed when
+it was saved, or by its age where the store kept neither.
 
-Every row runs a widget command (`widget.layout.save`, `rename`, `load`, `delete`, `detach`,
-`autosave`), so an access policy that refuses layout writes disables the rows and refuses the same
-verb from every other door. The menu hears what a verb did through the widget's `layout` event and
+Every row runs a command (`widget.layout.save`, `rename`, `load`, `open`, `delete`, `create`, `autosave`,
+and `chart.data.download` for the export), so an access policy that refuses layout writes disables
+the rows and refuses the same verb from every other door. Ctrl+S, and Cmd+S on a Mac keyboard, run
+the save command from the chart's own root, under that same policy: an open layout saves, and a
+never-saved one is asked for a name first. The period key opens the Layouts dialog through
+`widget.layout.open`, under the same policy. Download chart data writes the active chart's loaded bars
+as CSV with time, open, high, low, close and volume columns in UTC, and is unavailable on a chart
+holding no bars. The menu hears what a verb did through the widget's `layout` event and
 what it refused through `saveConflict`.
+
+Save and Rename commands are unavailable while a layout load is pending. Hosts performing
+background initialization should recheck `commands.available('widget.layout.save')` after any
+awaited discovery, before creating an initial layout. Direct API calls retain caller-controlled
+ordering; this command readiness is distinct from the unsafe-content `notSaving()` state.
+
+Direct `widget.layout.saveLoad` calls publish the same events once at the committed binding,
+so a host-created or reopened layout immediately updates the package toolbar. Cancelled loads
+and stale write results publish no success. A rescue copy or partial load can update the name
+without clearing `notSaving()` or the toolbar's existing dirty state. Removing an already absent
+open row reports its removal and a `saveConflict` refusal; the absent binding is detached.
 
 ```ts
 import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
@@ -384,9 +458,13 @@ Your service serves four collections under that base URL. Every path below is re
 | --- | --- | --- |
 | `/charts` | `GET` lists, `POST` creates | `{ name, symbol, timeframe, content }` |
 | `/charts/{id}` | `GET` reads, `PUT` replaces, `DELETE` removes | the same |
-| `/layouts`, `/layouts/{id}` | the same five | `{ name, content }` |
+| `/layouts`, `/layouts/{id}` | the same five | `{ name, symbol?, timeframe?, content }` |
 | `/drawings?symbol=&context=`, `/drawings/{id}` | the same five | `{ content }` |
 | `/templates/{kind}`, `/templates/{kind}/{id}` | the same five | `{ name, tool?, content }` |
+
+A layout's `symbol` and `timeframe` are listing text: the active chart's market as the chart writes it
+(`BTCUSDC`) and its timeframe token, as they stood at the save. Keep them and return them in the
+listing, or leave them out and the chart lists the layout by its age.
 
 A listing answers `{ "items": [...] }` of metadata. A read answers `{ "id", "revision", "body" }`. A
 create, update or delete answers `{ "id", "revision", "meta"? }`. Every update and delete sends the
@@ -438,6 +516,43 @@ the next save creates, and `current()` reports the ref and name on screen. `seri
 the same opaque content the save writes, and `restore(content)` applies one. A layout does the same
 for itself through `widget.layout.saveLoad` over the layouts family.
 
+A load is one transaction. The content is read and applied first, and the resource's id, name and
+revision become the open resource only after that succeeds. A saved layout is read whole, its
+version, arrangement, normalized custom pane geometry, sync flags, active tile and every chart
+inside it included, before a single tile moves. The current layout reader accepts only this v2
+shape. Divider drags preserve the selected arrangement's topology and save normalized geometry;
+tile maximize is transient and preserves every chart instance. If a chart
+callback synchronously detaches or starts another load while that content is applying, the later
+operation owns the binding. The superseded load answers `cancelled` and cannot restore its id after
+the callback returns.
+
+The built-in layout setup control follows committed layout state, including direct API changes and
+restores. Its arrangement glyph, accessible name, selected tile, and five synchronization switches
+remain in step while the menu is open; transient tile maximize does not change the arrangement it
+names.
+
+Growing a layout keeps every existing chart instance and initializes each new tile from pane 0's
+safe presentation: symbol, timeframe, style, studies and comparisons. Mutable study configuration
+is copied per tile; replay, session state and saved-chart identity are not copied.
+
+`load` answers rather than rejecting. Five kinds, told apart without reading a message:
+
+| `kind` | What happened |
+|---|---|
+| `ok` | The content is on screen and the resource is open. Carries its `ref` and `body`. |
+| `not-found` | The store answered, and holds no resource under that id. |
+| `invalid` | The content could not be read, or could not be applied. |
+| `unavailable` | The store could not be reached. Carries `cause`, the error it failed with. |
+| `cancelled` | The load was abandoned: a later load took its place, your signal aborted, or the widget went down. |
+
+Only `ok` binds. A refusal before application leaves the screen and its former binding untouched.
+If a synchronous callback supersedes a load during application, the applied screen is left unbound
+unless the newer operation has already committed its own binding, so it can never autosave through
+the resource that was on screen before the load. An `AbortSignal` of your own ends the load as
+`cancelled` too, so nothing in this family rejects for a load that was abandoned. A widget built
+with no `saveLoad` adapter is the one case that is not an outcome: every verb of the family rejects,
+because nothing was wired for them to reach.
+
 ```ts
 import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
 
@@ -452,11 +567,64 @@ const saveLoad = widget.activeChart().saveLoad
 const saved = await saveLoad.save('Morning')
 if (saved.kind === 'conflict') console.warn(saved.message) // saved elsewhere since it was opened
 saveLoad.current()?.name // 'Morning'
+
+const opened = await saveLoad.load('chart-42')
+switch (opened.kind) {
+  case 'ok':
+    break
+  case 'cancelled':
+    break // a later load is landing instead, so there is nothing to say
+  case 'unavailable':
+    console.warn(opened.message, opened.cause) // your store, not the content
+    break
+  case 'invalid':
+  case 'not-found':
+    console.warn(opened.message) // still bound to what you had
+    break
+}
 ```
 
-A load that a later load supersedes rejects with `AbortError`, with no signal of your own involved,
-and only the later load lands. That is what keeps a slow answer for the chart a user has left from
-landing on the chart they are looking at.
+A load that a later load supersedes is `cancelled`, with no signal of your own involved, and only
+the later load binds. This includes a later load begun synchronously by a chart callback during
+application. A widget disposed while the store is still answering answers the same way. That is
+what keeps a slow answer for the chart a user has left from landing on the chart they are looking
+at.
+
+Where a body fails after part of it has been applied, the chart puts back the content it held. If
+that fails too the chart is holding neither, and it stops saving: `saveLoad.notSaving()` reports it,
+`save` answers `not-saving` and writes nothing, the built-in layouts menu says so on the toolbar and
+stands its Save and its autosave down, and the sentence for the trader arrives on `saveConflict`.
+
+Saving starts again when a load lands, and only then: a whole content out of the store, applied in
+full, under the resource it came from. `save(name, { asNew: true })` stays available throughout, and
+it is worth offering, because a copy creates a resource of its own and writes over nothing, so the
+work on screen is kept and the last version that was whole is left standing. It is a rescue rather
+than a repair: a store accepting a write says nothing about the content of what it took, so the
+chart goes on saving nowhere else until a load puts a whole content back.
+
+A layout also refuses writes while any child chart is not saving. A complete layout load recovers
+its children only after the whole content and layout binding commit, and detaches their previous
+standalone chart bindings. Partial content and copy saves do not establish recovery.
+
+A saved chart carries its symbol, timeframe, style, scale, appearance, comparisons, extension
+state, combined-mode drawings, and every indicator instance. Indicator definitions remain code in
+your widget. The blob names each definition by `manifest.id` and carries the instance id, explicit
+inputs, color, title, overrides and hidden state. Loading replaces the full instance list, so the
+constructor's `indicators` are seeds only for a chart with no saved content. Definitions resolve
+against the widget's built-ins and the host definitions that widget has carried. An unknown or
+access-denied definition is left out with one counted notice while the remaining content lands. A
+definition of your own survives a save only when its manifest declares an `id`.
+
+The opaque version-4 reader validates the whole indicator list before changing a chart or layout.
+Missing lists, duplicate instance ids and malformed inputs, titles, colors or overrides refuse the
+body as `invalid`; values are not silently filtered or normalized. A load that omits a definition
+because it is unavailable is partial and cannot clear an earlier `notSaving()` state.
+Complete recovery requires every typed appearance leaf with a valid concrete color value and,
+in combined mode, a drawings array. Separate-mode chart content does not need that array.
+
+Hydration and rollback do not emit `saveNeeded` for their own storage writes. An event already
+queued by a user edit is preserved. A late save result does not replace a newer load's binding;
+the built-in commands announce a saved layout only while that result is still current.
 
 ### Drawings: combined or separate
 
@@ -662,6 +830,9 @@ Rules the pipeline enforces:
   and reports "No volume from this feed" instead of painting a flat lie.
 - **Overrides layer, never fork.** Per-instance styling (`IndicatorOverrides`) folds into the
   manifest before the walk and gates visibility after, the same layering every host applies.
+- **Instances save by definition id.** Saved charts and layouts retain each instance's explicit
+  inputs, look and hidden state. Give a host definition a stable `manifest.id` so the widget can
+  resolve it when content loads.
 
 The lower-level pieces are exported for hosts that orchestrate their own compute:
 `buildManifestPlots` (the walker), `attachIndicators` (the renderer), `overriddenManifest` /
@@ -694,6 +865,34 @@ older history in as the viewer scrolls left (stopping at the feed's `noData`), p
 preferences through `ChartStorage`, runs configured indicator instances through the manifest
 pipeline, and mounts the drawing layer, the legend and the level menu.
 
+When older main or comparison history extends the renderer's shared timeline, the chart retains
+the latest fractional logical window, spacing and permitted off-data padding. Its compensating
+range write is not a viewer event and does not fan through layout date-range synchronization. The
+write owns the renderer's deferred reports only while the current symbol generation and navigation
+epoch still match. A coalesced mouse, touch or wheel pan/zoom remains observable and
+takes priority, including when a mouse drag continues outside the chart or renderer bounds retain
+the maintenance span or either endpoint. Public range methods and built-in navigation commands
+enter that same epoch, so every supported navigation door has the same precedence.
+
+`toolbarContainer` optionally supplies a separate element for the top toolbar, such as a space
+between a host's navigation and account controls. The widget appends one package-owned, themed
+child there; it never clears or styles the supplied element. The toolbar follows the widget's
+theme, language and active chart, and its child is removed at disposal. The toolbar's menus and
+dialogs open in the widget's layer on the document body, at viewport coordinates, so each menu
+drops from its control wherever you place the toolbar and stands over your own elements. Supply a
+`fullscreen.target` containing both elements to keep the
+toolbar available in fullscreen. Without `toolbarContainer`, the toolbar sits above the chart as
+part of the default composition. When horizontal space is limited, the toolbar scrolls without
+dropping controls from the keyboard order.
+
+`drawingToolbarContainer` supplies separate host space for a single drawing rail. The package
+fills that space's height with its own themed child, follows the active chart when a layout
+changes, and removes the child on disposal. An external rail leaves the full chart width for the
+canvas; without the option, each chart keeps its internal rail and reserved leading column.
+Drawing flyouts stay beside the external rail within the widget's bounds regardless of the active
+pane. Switching charts closes an open flyout before the rail targets the newly active chart.
+Include this container in the custom fullscreen target alongside the chart and top toolbar.
+
 ### Widget and chart
 
 Two scopes, because two things are true at once: what the widget as a whole is doing, and what one
@@ -714,6 +913,7 @@ function drive(widget: ChartWidget): void {
   chart.goLive() // back to the live edge, same span
   chart.indicators.set([])
   void chart.visibleRange()
+  void chart.rangePreset() // selected bottom-bar range, or null after other navigation
   void chart.logicalRange()
 }
 ```
@@ -751,7 +951,7 @@ function watch(widget: ChartWidget): () => void {
 Widget events: `ready`, `activeChart`, `theme`, `locale`, `saveNeeded`, `saveConflict`,
 `fullscreen`, `dispose`. Chart events: `symbol`, `timeframe`, `style`, `visibleRange`,
 `logicalRange`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`, `drawing`,
-`replay`, `compare`.
+`replay`, `compare`, `history`.
 
 ### Commands
 
@@ -786,20 +986,29 @@ argument your access policy turns away answers `denied` before availability is a
 error. Your own commands register through the same door: a chart extension's `contributeCommands`
 puts them in this list with `scope: 'chart'` and its own label text.
 
-### The four configuration planes
+### Configuration planes
 
-They answer different questions, and only three of them are yours to set.
+Five planes configure a widget, and each answers one question.
 
 | Plane | What it answers | Who decides |
 |---|---|---|
 | `capabilities()` | what the ports, the resolved symbol and the browser can do | derived, never set |
-| `features` | which built-in UI and behavior is present | you |
+| `features` | which chart behaviors exist | you |
+| `ui` | which of the chart's own controls render | you |
 | `access` | which commands, drawing tools and indicators are permitted | you |
 | `preferences` | the viewer's own values, persisted through `storage` | the viewer, seeded by you |
 
-A hidden control is not authorization: turning a feature off removes chrome, and the command behind
-it still answers to the access policy. An absent port is not a preference: a feed with no search
-does not become a viewer who dislikes searching.
+A behavior you turn off in `features` is gone: its commands report `unavailable`, and every control
+over it is absent. A control you hide in `ui` is the only thing that changes. The commands behind it stay available, so a control of your own can run them through
+`widget.commands`.
+
+Two presentation flags also close the one command whose only job is opening their dialog.
+`ui.symbolSearch: false` removes the search dialog and `chart.symbol.search`, while
+`chart.symbol.set` still changes the symbol. `ui.indicatorPicker: false` removes the indicator
+browser and `chart.indicators.open`, while `chart.indicators.add` still adds an indicator.
+
+Neither plane is authorization. A hidden control's command still answers to `access`, and no flag
+supplies a capability the datafeed lacks: a feed with no search keeps every search door closed.
 
 ```ts
 import { createChart, createUdfDatafeed } from 'quickcharts'
@@ -807,12 +1016,65 @@ import { createChart, createUdfDatafeed } from 'quickcharts'
 const gated = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  features: { drawings: true, drawingsToolbar: false, replay: false },
+  features: { replay: false },
+  ui: { drawingToolbar: false, topBar: { layouts: false } },
   access: { command: (id) => !id.startsWith('chart.drawings.'), drawingTool: (tool) => tool !== 'brush' },
   preferences: { scaleMode: 'log', style: 'bars' },
 })
 if (gated.capabilities().search) mountSymbolPicker()
 ```
+
+The library reads `features` and `ui` once, when the widget is created. A key or a value either
+plane does not take throws a `TypeError` naming its path before anything mounts. The package's
+`dist/feature-manifest.json` lists every flag in its `features` and `ui` blocks.
+
+### Your own interface
+
+The widget supports three ways to present a chart, over the same behavior and the same commands.
+
+- The default interface: pass no `ui`, and every control renders.
+- The branded default: keep the controls, and draw their glyphs with `icons` and their colors with
+  the theme.
+- Your own controls: hide the chart's controls in `ui` and build yours over `widget.commands`, the
+  chart handles and their events. Your control reaches what the built-in one reached and answers to
+  the same access policy.
+
+Every built-in control runs a command, so a control of yours needs nothing beyond the registry and
+the handles. `commands.available` says whether a verb would run now, and the widget and chart
+events tell you when to ask again.
+
+```ts
+import { createChart, createUdfDatafeed } from 'quickcharts'
+
+const custom = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  ui: { topBar: false, drawingToolbar: false },
+})
+
+const undo = document.createElement('button')
+undo.textContent = 'Undo'
+const paint = (): void => {
+  undo.disabled = !custom.commands.available('chart.history.undo')
+}
+undo.addEventListener('click', () => custom.commands.execute('chart.history.undo'))
+custom.activeChart().on('history', paint)
+paint()
+
+const search = document.createElement('button')
+search.textContent = 'Search'
+search.addEventListener('click', () => custom.commands.execute('chart.symbol.search'))
+container.before(undo, search)
+```
+
+The chart's own dialogs still open from their commands while its bars are hidden.
+`chart.symbol.search`, `chart.indicators.open`, `chart.compare.open` and `widget.layout.open` raise
+them in the widget's layer on the document, and `widget.layout.save` asks a layout that was never
+saved for its name. Hide a dialog in `ui` when your interface provides its own.
+
+The library does not export its internal components, replace its renderer, or take markup for its
+controls. The class names under the widget's root are private, apart from the styling hooks listed
+under Theme.
 
 ### Fullscreen and image
 
@@ -836,6 +1098,58 @@ async function shareable(widget: ChartWidget): Promise<void> {
 identity and the attribution you configured through `image`. Nothing is uploaded, shared or stored:
 you receive a blob and decide.
 
+### Indicator browser content
+
+The Indicators button and `commands.execute('chart.indicators.open')` open the same browser.
+It lists the 23 shipped definitions, with search and Favorites. Add creates a new instance on the
+currently active chart and keeps the browser open. Favorites use your `ChartStorage` port.
+
+Supply `ChartWidgetOptions.indicatorPicker` to include additional localized collections and rows
+in that browser. You supply data and opaque actions, not DOM, indicator definitions, or a renderer.
+Built-in annotations can add favorite state, counts and actions; they cannot replace a definition,
+its name, or Add. Without a source, the browser has only shipped built-ins and Favorites.
+
+```ts
+import type { IndicatorPickerSource } from 'quickcharts'
+
+const indicatorPicker: IndicatorPickerSource = {
+  collections: [{ id: 'saved', label: 'Saved studies' }],
+  async list({ collection, query, builtInIds }, signal) {
+    if (signal.aborted) return { kind: 'unavailable', message: 'Content unavailable.' }
+    return {
+      kind: 'ok',
+      items: collection === 'saved' && 'Example'.toLowerCase().includes(query.toLowerCase())
+        ? [{ id: 'example', title: 'Example', primaryAction: 'inspect', actions: [{ id: 'inspect', label: 'Inspect' }] }]
+        : [],
+      builtIns: builtInIds.map((id) => ({ id })),
+    }
+  },
+  async act({ target, action }, signal) {
+    if (signal.aborted) return { kind: 'refused', message: 'Action cancelled.' }
+    if (target.kind !== 'item' || action !== 'inspect') return { kind: 'refused', message: 'Action unavailable.' }
+    return { kind: 'ok' }
+  },
+}
+```
+
+The source receives the collection, query and shipped definition ids. It owns filtering and any
+service limits; the browser does not promise an unlimited catalog or implement paging for you.
+Collection ids `builtin` and `favorites`, and action ids `add` and `favorite`, are reserved.
+Item ids cannot collide with shipped definition ids or these reserved ids. Duplicate ids,
+malformed rows and missing primary actions refuse the response; the shipped catalog remains usable.
+An item has up to two actions; a built-in annotation has at most one beside Add. Collections can
+name a localized navigation group and use `layout: 'list'` for name/secondary-action rows.
+An absent count stays blank. Omit `favorite` to omit that action on a contributed item.
+
+A favorite action receives the requested next boolean. Successful actions refresh the current
+collection unless they return `close: true`. Refusals and exceptions keep the browser open with
+plain text, never rendered markup. Icons reuse `ChartExtensionIcon`; invalid icons draw no glyph.
+The host localizes contributed labels and messages; the chart localizes its own controls.
+
+Changing query or collection aborts pending work. Closing or disposing the widget aborts it too.
+Late responses are ignored even when the source ignores cancellation. Your action must check its
+signal before late UI effects; cancellation cannot undo a service mutation already accepted.
+
 ### Default chrome
 
 The widget mounts its complete chrome around the charts. Import `quickcharts/styles.css` once; the
@@ -846,26 +1160,122 @@ chrome is painted from it and renders nothing without it.
   the 26 presets in five groups, each row savable as a chip, with a composer for a custom interval
   under the unit's ceiling. The style picker lists the seven styles. Indicators opens the picker
   over the 23 built-in definitions, and the legend's gear opens the settings dialog for an instance
-  (inputs, style, visibility). Bar replay starts and exits replay. Layout setup offers the 55
+  (inputs, style, visibility). Bar replay enters and leaves replay for the active chart; entering
+  asks where to begin rather than choosing a starting bar. Its starting-point menu answers with a
+  bar picked on the plot, a date, the first available date, or a random bar. The first available
+  date runs `chart.replay.startFirst`: the chart pages the feed's history back to its oldest bar,
+  within the 20,000 bars one session holds, and starts there. Undo and
+  redo step back and forward through the active chart's own content, and each names the change it
+  would move. Layout setup offers the 55
   arrangements and the five sync switches; the saved-layouts menu saves, copies, renames, opens and
   deletes layouts through `saveLoad.layouts` and marks unsaved changes, with an autosave switch.
   Chart settings edits appearance, grid and session shading, the price-scale mode and the theme
-  mode. Fullscreen and the image menu (Download image, and Copy image where the browser can) close
+  mode, and its Reset defaults row runs `chart.appearance.reset`, which drops the viewer's own
+  appearance edits and returns the price scale to normal so the chart reads as the theme and your
+  constructor options paint it. `ui: { topBar: { settings: { theme: false } } }` removes its Theme
+  section and leaves the rest of the menu, for a host that offers the theme choice in its own
+  settings; the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, and Copy image where the browser can) close
   the bar.
 - **The bottom bar.** The range presets, the clock in the display zone with the timezone list
   (UTC and the exchange choice first), and the session view for a symbol that trades outside
   regular hours.
-- **On the chart.** A navigation cluster (zoom, scroll, reset) at the bottom of each pane, the
-  market-status popup behind the legend's dot, the replay transport while replay is on, and the
-  chart's notices: a feed that cannot serve the symbol, an image that could not be copied, a save
-  the store refused.
+- **Around the charts.** A navigation cluster (zoom, scroll, reset) sits at the bottom of each
+  pane, and past one tile it carries a sixth control that fills the layout with the active tile or
+  gives the layout back, over `widget.layout.toggleMaximize`, the same verb the Alt press on a tile
+  and the `Alt+Enter` chord run. It wears the mark and the name for what the next press does. The market-status popup opens behind the legend's dot. From the moment replay is
+  entered, one reserved
+  transport row spans the widget below the chart grid and above the bottom bar. The first chart to
+  enter replay owns that row until it exits or is removed; activating or starting another chart
+  does not retarget it. Concurrent charts keep their independent `ChartReplayApi` and active-chart
+  top-bar command. An already-running non-owner is not promoted when the owner leaves, but its next
+  replay entry can claim the row. Chart notices report a feed that cannot serve the symbol, an
+  image that could not be copied, or a save the store refused.
+
+Undo and redo step through the chart's own content: the symbol, the interval, the style, the price
+scale and whether it frames itself, the appearance a viewer authored, the comparisons, the
+indicators and the drawings. A step is one reading of that content, so a step back puts the whole
+reading back rather than reversing a single verb, and the two controls name the change they would
+move. Each chart keeps its own last 100 steps for as long as it is mounted. `chart.history.undo`
+and `chart.history.redo` are the verbs, `chart.history` on the handle reads the two stacks, the
+`history` event reports every move of either one. `features: { history: false }` removes the history
+and both controls, and `ui: { topBar: { history: false } }` removes only the controls.
+
+#### Your own controls in the top bar
+
+A service the chart does not implement can still stand in its toolbar. `widget.chrome.topBar(slot)`
+answers the element at one of nine named boundaries. Append your control to it, and remove your own
+node when you are done with it. The slot belongs to the chart and is never removed.
+
+| Slot | Where it stands |
+| --- | --- |
+| `start` | Before the symbol pill |
+| `afterSymbol` | After the symbol pill and the compare door |
+| `afterTimeframe` | After the timeframe picker |
+| `afterStyle` | After the style picker |
+| `afterIndicators` | Between Indicators and Bar replay |
+| `afterReplay` | After Bar replay |
+| `afterHistory` | After Undo and Redo |
+| `afterLayouts` | After the layout menus |
+| `end` | After Fullscreen and the image menu |
+
+Each name says which group the slot follows, so a control placed there leads the group after it.
+`TOP_BAR_SLOTS` lists them in reading order. Every slot exists whichever controls `ui` leaves
+standing, and an empty slot has no width and no ink.
+
+`widget.chrome.toolbarButton(options)` makes a control that reads as one of the bar's own. It keeps
+the bar's height, spacing, hover, pressed and open states, and when the row runs short it gives up
+its words before the bar's own last label does. You supply the accessible name, optional words, an
+optional glyph drawn by an icon factory, and what a press does. `pressed` makes it a toggle, and
+`popup` announces a menu or dialog of your own whose open state you report through `update`.
+
+```ts
+import { createChart, createUdfDatafeed, TOP_BAR_SLOTS, type ChartIconFactory } from 'quickcharts'
+
+const bell: ChartIconFactory = ({ document }) => {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('viewBox', '0 0 28 28')
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  path.setAttribute('d', 'M14 6a5 5 0 0 0-5 5v5l-2 3h14l-2-3v-5a5 5 0 0 0-5-5Zm-2 15a2 2 0 0 0 4 0')
+  path.setAttribute('fill', 'none')
+  path.setAttribute('stroke', 'currentColor')
+  svg.append(path)
+  return svg
+}
+
+const hosted = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+})
+
+const alerts = hosted.chrome.toolbarButton({
+  label: 'Price alerts',
+  text: 'Alerts',
+  icon: bell,
+  popup: 'dialog',
+  onClick: () => {
+    note(`alerts for ${hosted.activeChart().symbol()}`)
+    alerts.update({ expanded: true })
+  },
+})
+hosted.chrome.topBar('afterIndicators')?.appendChild(alerts.element)
+note(`${TOP_BAR_SLOTS.length} slots`)
+```
+
+The chart's class names stay private: style what you render inside your own popup. A glyph factory
+that fails leaves the control without a glyph and records a `toolbarButton` diagnostic, as the
+Icons section describes.
+
+The chart still owns the bar's composition: which of its controls are present, the order they stand
+in, and where the rules fall between them. You choose what stands at a boundary. `topBar` answers
+null when `ui: { topBar: false }` removes the bar, which is what to check before composing a control
+you would have nowhere to put.
 
 Every control acts through the command registry and reflects `commands.available`, so a command
 your access policy refuses renders disabled and does nothing. The saved-layouts menu runs the
-layout verbs `widget.layout.save`, `rename`, `load`, `delete`, `detach` and `autosave`; what a
+layout verbs `widget.layout.save`, `rename`, `load`, `open`, `delete`, `create` and `autosave`; what a
 verb did reports through the `layout` event and what it refused through `saveConflict`. Copy image
-reports through the `image` event (a refused copy falls back to a download). Each surface has a
-feature flag; turn one off and the surface is absent.
+reports through the `image` event (a refused copy falls back to a download). Each control has a flag
+in `ui`; hiding one removes the control and leaves its commands.
 
 ```ts
 import { createChart, createUdfDatafeed } from 'quickcharts'
@@ -873,7 +1283,7 @@ import { createChart, createUdfDatafeed } from 'quickcharts'
 const trimmed = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  features: { navigation: false, layouts: false, image: false },
+  ui: { navigation: false, topBar: { layouts: false, image: false } },
   search: { classNames: { future: 'Futures', crypto: 'Crypto' } },
   preferences: { savedTimeframes: ['1m', '15m', '1h', '1d'], layoutAutosave: true },
 })
@@ -900,6 +1310,70 @@ Escape closes and returns focus to the control that opened it); every dialog is 
 restores focus; every control carries an accessible name and its state; the root carries the
 language's reading direction, so the chrome mirrors for Arabic and Hebrew; motion flattens under
 `prefers-reduced-motion`.
+
+### Icons
+
+`icons` draws the glyphs of the chart's own controls. Each key is a published icon id and each value
+is a factory that returns a fresh `<svg>` element. An id you leave out keeps the chart's own glyph.
+`CHART_ICON_IDS` lists every id, and the feature manifest's `icons` block lists them too. The
+`ChartIconId` type is exactly that list, so an id the chart does not draw is a type error as well
+as a `TypeError` when the widget is created.
+
+An id names what a glyph means, not one control. `settings` is the top bar's settings button, a
+study's gear in the legend and the drawing settings bar's gear, so one drawing stands in all three.
+Drawing tools take `tool.<type>`, chart styles `style.<style>` and layout arrangements
+`layout.<code>`, from the registries the rest of the API uses.
+
+```ts
+import { CHART_ICON_IDS, createChart, createUdfDatafeed, type ChartIconFactory, type ChartIcons } from 'quickcharts'
+
+const outline = (d: string): ChartIconFactory => ({ document }) => {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  svg.setAttribute('viewBox', '0 0 28 28')
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+  path.setAttribute('d', d)
+  path.setAttribute('fill', 'none')
+  path.setAttribute('stroke', 'currentColor')
+  svg.append(path)
+  return svg
+}
+
+const icons: ChartIcons = {
+  settings: outline('M14 9a5 5 0 1 0 0 10 5 5 0 0 0 0-10Z'),
+  'tool.trend_line': outline('M6 22 22 6'),
+  'style.candles': outline('M9 7v14M19 7v14'),
+}
+
+const branded = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }), icons })
+note(`${CHART_ICON_IDS.length} icons, ${branded.chrome.iconDiagnostics().length} not drawn`)
+```
+
+A factory receives the document to create nodes in, the box it fills in CSS pixels, and the reading
+direction. The chart sizes your element to the box and hides it from assistive technology. The
+control keeps its accessible name, hit area, focus, and pressed and disabled states, so artwork
+changes how a control looks and never what it does. Draw in `currentColor` to take the control's ink
+in every theme and state.
+
+The direction is the widget's when the glyph is drawn. When a language change turns it around, the
+chart asks each factory again for every glyph it drew, a `toolbarButton` glyph included, and puts
+the new drawing in place of the old one. A factory that refuses the new direction leaves the
+previous drawing standing and records the failure.
+
+The chart mirrors the glyphs in `MIRRORED_ICONS` for a right-to-left language whatever artwork they
+wear, so draw their left-to-right form. The line-end icons are drawn for a line's left end, and the
+right end's picker wears the same drawing mirrored.
+
+The library reads `icons` once, when the widget is created. An id the chart does not draw, or a value
+that is not a function, throws a `TypeError` before anything mounts. A factory that throws, answers
+something other than an `<svg>` element, or answers an element already in the document or answered
+before costs that one glyph its artwork. The control draws the chart's own glyph, and
+`widget.chrome.iconDiagnostics()` records the icon's first failure.
+
+`icons` covers the chart's own controls. The emoji, sticker and icon glyphs a drawing places come
+through the asset port, and a chart extension draws its rows and layers from the
+`ChartExtensionIcon` descriptors it contributes. The product's mark in the plot's corner is not an
+icon. `mountContextMenu`, `openSymbolSearch` and `mountSymbolSearch` take the same `icons` for a menu
+or search you mount without a widget.
 
 ### Neutral marks
 
@@ -939,12 +1413,17 @@ void withMarks
   primitive's `model` getter admits `null` and a null draws nothing. A host that changes the model
   outside a `resolve()`, or supplies its own, calls the primitive's `refresh()` when it does; the
   chart does not invalidate the pane on a getter's value changing.
-- **A legend** (on by default; `features.legend: false` removes it). It carries the symbol and timeframe
-  header with a market-status dot and the four price-scale chips (the SAME application path as
-  `setScaleMode`, so the api and the chips can never disagree), plus one row per indicator instance:
-  title, latest value, and per-row controls that render by presence. A settings gear appears only
-  when the definition declares inputs, pane collapse, maximize and restore only on pane-placed
-  instances, and the eye's hidden state persists.
+- **A legend** (on by default; `ui: { legend: false }` removes it). The header shows the resolved
+  display name, venue, timeframe, OHLC and change against the previous painted close. Prices use
+  the symbol's formatter. Hover selects a bar; leaving restores the latest painted reading. Replay
+  does not expose bars beyond its cursor. Missing metadata leaves the supplied symbol unchanged.
+  Legend and search use a decorative monogram; they do not fetch symbol logos or infer a provider.
+  Study and separate-pane comparison rows follow their renderer panes. Stable row controls retain
+  focus during value updates. Study values read the first plot, using declared precision or the
+  symbol formatter; Volume reads bar volume using resolved volume precision. The row-list toggle,
+  study eye and pane collapse are independent controls. Pane restore remembers study identity
+  across pane removal. The status control opens session details, retains an unknown-session state
+  and is hidden during replay. Price-scale chips use the same commands as `setScaleMode`.
 - **An interface language** (`locale`, English by default), one of the 21 the package ships.
   `BUILT_IN_LOCALES` lists them for a picker: each carries its stable code, its canonical BCP 47
   `tag`, its reading direction (`ar` and `he_IL` are `rtl`), and its endonym. The chart's own chrome
@@ -1044,8 +1523,58 @@ built-in value for that mode.
 
 A role is a purpose, such as `text.muted` or `overlay.scrim`. `THEME_ROLES` is the published
 inventory, and the built-in palettes and the generated stylesheet are built from it. The custom
-property names and the component selectors inside the stylesheet are private, so style the chart
-through roles rather than by targeting them.
+property names are private, so a color, a size or a radius is always set through a role. The
+class names inside the stylesheet are private too, except the supported hooks below.
+
+### Cascade layers
+
+The stylesheet declares two cascade layers and puts everything it contains in them: the built-in
+palettes in `trdrs.tokens`, every recipe in `trdrs.chart`. Nothing in it is unlayered. It marks a
+declaration `!important` only where a later layer must not undo it: an element's `hidden`
+attribute, the shortened motion under a reduced-motion preference, and the missing focus ring of a
+search field, which shows its focus by its caret. Your first stylesheet must declare the complete
+order before any product stylesheet loads, because a layer's position is fixed by the first
+statement that names it:
+
+```css
+@layer reset, trdrs.tokens, trdrs.chart, trdrs.platform, host;
+```
+
+Put your reset in `reset`. A reset left unlayered outranks every layered rule and strips the
+chart's controls of their borders and grounds. Put an intentional override of a supported hook in
+`host`, or leave it unlayered; either wins over the chart's recipe. A chart-only host declares only
+`reset`, the two chart layers and `host`; `trdrs.platform` is the layer a later product declares
+for itself. Inline styles the chart writes for measured geometry outrank any stylesheet rule, and
+a rule marked `!important` reverses layer order, so neither is a way to restyle the chart.
+
+### Supported styling hooks
+
+A hook is a block-level surface you may write a rule against. Each announces its state through an
+attribute, never a modifier class, and each names the presentation a rule may change. A rule that
+changes anything else, or that targets a class not listed here, is unsupported and may stop
+applying in any release. Removing a hook, a state or a customization is a breaking change.
+
+| Hook | Purpose | States | Customization |
+|---|---|---|---|
+| `.qc-topbar` | The top toolbar: symbol search, timeframe, chart style, indicators, layouts, replay and the widget menus. | | background-color, border, padding, gap, box-shadow |
+| `.qc-drawing-toolbar` | The drawing rail beside the plot. | `aria-orientation`: vertical beside the plot, horizontal in a host row. | background-color, border, padding, gap, box-shadow |
+| `.qc-bottombar` | The bottom bar: range shortcuts, the session clock and the timezone. | | background-color, border, padding, gap, box-shadow |
+| `.qc-legend` | The legend over the plot: the symbol, its reading and each study row. | | background-color, border, border-radius, padding, box-shadow, inset |
+| `.qc-menu-panel` | A floating menu opened from a toolbar control. | `hidden`: present while the menu is closed. | background-color, border, border-radius, padding, box-shadow |
+| `.qc-dialog` | A modal dialog: settings, search, layouts and the drawing editors. | `data-role`: which dialog this is, in the chart's own vocabulary. | background-color, border, border-radius, padding, box-shadow, max-width |
+
+Scope a rule to your own chart container so it cannot reach a chart elsewhere on the page. The
+hooks, their states and their customization are published in `dist/theme-manifest.json` under
+`hooks`, beside the layer names under `layers`.
+
+```css
+@layer host {
+  #my-chart .qc-topbar {
+    background-color: #101828;
+    border-bottom: 1px solid #1d2939;
+  }
+}
+```
 
 ```ts
 import { THEME_ROLES, type ThemeRoleFamily } from 'quickcharts'
@@ -1080,6 +1609,10 @@ Chart appearance precedence, lowest first:
 Resetting custom palettes returns the chart to the built-in mode and leaves saved chart appearance
 alone.
 
+A saved chart carries the appearance leaves a viewer chose and no others, so a chart nobody restyled
+follows whatever theme the host gives it on the next load, and one whose owner picked candle colors
+opens in those colors on any theme.
+
 ## Compare
 
 Every chart can draw OTHER symbols beside its own. A compare is study-like: legend-managed, three
@@ -1090,8 +1623,10 @@ axis exists only while such a compare does); `new-pane` takes a pane of its own.
 clip to the main series window, so a compare never extends the time axis. `features.compareSymbols` supplies
 a curated quick-add list for the compare dialog; `compare.symbols()` reads it back.
 
-The widget ships its own compare chrome: the legend header carries a compare door (`+`) opening a
-built-in dialog: search rows add at any of the three placements, curated `compareSymbols` rows sit
+The widget's standard Compare door lives in the top bar, and `ui: { topBar: { compare: false } }`
+hides it. The legend header does not duplicate that door. Commands and comparison-row actions remain
+available when the top-bar door is hidden, and `features: { compare: false }` removes comparing
+altogether. The built-in dialog's search rows add at any of the three placements, curated `compareSymbols` rows sit
 above results, and the ADDED section removes. Each compare takes a legend row whose title reopens
 the dialog in change-symbol mode (the pick re-keys the compare in place), with an eye and a remove
 beside the value (% under `same-percent`, the last close otherwise). In a layout, compares belong to
@@ -1248,10 +1783,20 @@ scrolledPosition(0, 'right') // 10
 ## Search
 
 `createSearchController` drives a symbol search over your datafeed's `search`: a debounce after
-the last keystroke, a cache per query and class for the controller's lifetime, a cached answer
+the last keystroke, a bounded cache per query and class for the controller's lifetime, a cached answer
 shown at once and revalidated in the background, paging through `loadMore` with no repeated row,
 and a newer query cancelling an older one's result. The chart's compare dialog runs on it, and a
 host's own search surface subscribes to the same state.
+
+The widget prefetches the default catalog and reuses completed pages across search, compare and
+change-symbol dialogs. Each opening owns its query, class filter and pending work. Closing it
+discards late results without clearing completed pages. Locale changes and widget disposal clear
+the widget cache. A replacement widget never inherits a previous provider's cache.
+
+Completed reuse holds at most 32 queries and 5,000 rows, evicting least-recent entries. Retained
+multi-page results reopen without a first-page refetch. Eviction does not truncate an active
+list or change its next paging offset; an oversized list is not retained after close.
+Cancellation ignores obsolete responses; it does not abort your datafeed's transport.
 
 ```ts
 import { createSearchController, createUdfDatafeed } from 'quickcharts'
@@ -1284,6 +1829,96 @@ isSymbolPair('BTC/USD') // true
 spreadExpression(' es - nq ') // 'ES-NQ'
 ```
 
+### The picker, away from a chart
+
+A page that picks a market where no chart is mounted opens the same dialog the chart's symbol pill
+opens, over the same controller, grammar, recents rule and symbol names. `openSymbolSearch` stands
+it over the page; `mountSymbolSearch` builds it bare into a box you own and position. Both take what
+you already give a chart: the feed, the mode, the language, the classes and their names, the marks,
+and where recents are kept. Picking hands the symbol back and closes, because there is no chart here
+to set.
+
+`createSymbolSearchCache` keeps one feed's catalog warm between opens, so the next picker a page
+opens stands on pages the viewer already saw rather than on a loading line.
+
+```ts
+import { createSymbolSearchCache, createUdfDatafeed, mountSymbolSearch, openSymbolSearch } from 'quickcharts'
+
+declare const pickerBox: HTMLElement
+declare const form: { setInstrument(symbol: string): void }
+
+const searchFeed = createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' })
+const catalog = createSymbolSearchCache({ datafeed: searchFeed, pageSize: 50 })
+catalog.prefetch() // warm the list a picker opens on
+
+const picker = openSymbolSearch({
+  datafeed: searchFeed,
+  cache: catalog,
+  theme: { mode: 'light' },
+  classes: ['future', 'crypto'],
+  classNames: { future: 'Futures', crypto: 'Crypto' },
+  query: 'ES', // opens holding it, selected
+  onPick: (symbol) => form.setInstrument(symbol),
+})
+picker.close() // or the viewer closes it: the X, the scrim, Escape
+
+const card = mountSymbolSearch({ container: pickerBox, datafeed: searchFeed, cache: catalog, onPick: (symbol) => form.setInstrument(symbol) })
+card.focus()
+card.dispose()
+catalog.dispose()
+```
+
+### The legend
+
+Every chart carries its own legend over its plot: an identity row naming the market, the interval
+and the venue, and a values row carrying the hovered bar's O H L C and its move against the previous
+close. The numbers are written through that chart's own formatter, so a level in the legend is the
+level its price axis writes, and they follow the pointer while the crosshair is on the plot and the
+latest bar when it is not. In a split layout each chart carries its own, for the market it shows.
+
+`symbolMark` paints a market's mark, and the chart calls it **wherever it names one**: each chart's
+legend identity, the compare rows beneath it, and every row of the symbol-search and compare
+dialogs. It receives the symbol, the element to paint into and the size of the box, and returns a
+disposer that takes the mark down again. One hook rather than one per surface, so a market wears the
+same face across the product and you implement it once.
+
+The `size` is the chart's, not a suggestion: the box is already laid out, and painting at the size
+you were given is what lines the marks up down a list. The chart ships no artwork and fetches none,
+so without this every mark is the neutral monogram it draws itself.
+
+`venueMark` and `providerMark` paint the source at the end of every symbol search and compare row
+the same way: the venue a market lists on, or the data provider where a row names no venue. Each
+receives the name the row writes (`exchange` or `provider`), the element and the size, and returns
+a disposer. Without them a source wears its initial on a neutral disc.
+
+```ts
+import { createChart, createUdfDatafeed } from 'quickcharts'
+
+const widget = createChart({
+  container: document.getElementById('chart')!,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  symbolMark: ({ symbol, host, size }) => {
+    const img = document.createElement('img')
+    img.src = `/logos/${symbol.toLowerCase()}.svg`
+    img.width = size
+    img.height = size
+    host.replaceChildren(img)
+    return () => host.replaceChildren()
+  },
+  // A touch surface has no pointer to hover with, so the reading is the last bar either way.
+  features: { crosshair: false },
+  ui: { legend: { values: false } },
+})
+```
+
+The market's name opens the chart's own search dialog where the feed serves one and
+`ui.symbolSearch` is on, and is a plain mark where it is not, since a control that opens nothing is
+a lie. `ui: { legend: { values: false } }` takes the reading off the legend and
+`features: { crosshair: false }` draws no crosshair, for a surface read by looking rather than by
+pointing; the crosshair SYNC lane is untouched either way. The reading also gives way on its own as a pane narrows: it wraps whole under
+the identity first, then holds the close and the change alone rather than covering the candles it
+describes.
+
 ## Multi-chart layouts
 
 A widget always has a layout, reached as `widget.layout`, and it tiles N charts over the widget root
@@ -1301,7 +1936,8 @@ looking at.
 Five sync toggles fan changes across the charts: `symbol`, `interval` and `dateRange` replay a
 change onto every chart, `crosshair` mirrors continuously by time, and `time` centers every chart on
 a clicked moment. The whole layout serializes as ONE opaque content blob (arrangement, sync flags,
-active chart, every chart's own content), so a saved multi-chart layout is one row in the same
+durable chart-entity identities, active chart, every chart's own content), so a saved multi-chart
+layout is one row in the same
 save/load backend a single chart uses.
 
 ```ts
@@ -1325,6 +1961,24 @@ widget.layout.restore(saved)
 widget.dispose()
 ```
 
+A split is RESIZABLE. Every boundary between two charts carries a grab strip, and dragging one
+resizes each chart that sits on it, clamped so no chart is squeezed under a minimum share of the
+square. The sizes ride the layout blob and belong to the arrangement they were dragged on, so
+re-tiling opens at the catalog's own splits rather than inheriting numbers that describe a
+different shape.
+
+One chart can also stand ALONE: `widget.layout.setMaximized(index)` fills the square with it and
+steps its siblings out of the flow, and `setMaximized(null)` puts them all back exactly where they
+were, still charting what they charted. `widget.layout.maximized()` reads which one stands, or
+`null` while every chart is tiled. Maximizing is a way of looking at a layout, not a shape it was
+saved in, so it is not carried by the blob and a re-tile restores it.
+
+Three keys drive a split, all of them ordinary commands a host can rebind or turn off:
+`widget.layout.activateNext` on `Tab`, `widget.layout.activatePrevious` on `Shift+Tab`, and
+`widget.layout.toggleMaximize` on `Alt+Enter`. Tab is claimed only when nothing focusable inside
+the chart has focus, so tabbing along the toolbar still reaches the next button. Alt+click on a
+chart maximizes it, and alt+click again restores the split.
+
 Each chart's handle stays reachable through `widget.charts()`, including the `sync`
 pane-composition primitives (`onCrosshair` and `setCrosshair`, `onTimeClick`, `onVisibleRange`) the
 layout itself is built on, so a host can compose charts its own way. `locale` sets every chart's
@@ -1345,7 +1999,7 @@ import { createChart, createUdfDatafeed } from 'quickcharts'
 const widget = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
-  features: { drawingsToolbar: false, drawingsFavorites: false },
+  ui: { drawingToolbar: false, drawingFavorites: false },
 })
 const drawings = widget.activeChart().drawings
 drawings?.armTool('trend_line')
@@ -1371,11 +2025,14 @@ the Image tool without an asset port), and a command the policy refuses answers 
 toolbar as from anywhere else, including `chart.drawings.arm` for a refused tool. An image is
 placed through `chart.drawings.placeImage`, from the picker or a system-clipboard paste over the
 chart. Every flyout, palette and dialog a surface opens sits inside the chart root and closes with
-it, and the eye and lock all announce their state through a live region.
+it, and the eye and lock all announce their state through a live region. Lock all also makes Paste
+unavailable, so a control never reports success for a drawing the layer refused.
 
 Arm the transient tools by name: `measure` draws a readout the next gesture clears, `zoom` sets
 the visible range to the dragged box, and `eraser` removes what it presses until Escape or the
-cursor releases it. The `image` tool opens the picker, which places the picture once it is chosen.
+cursor releases it. Measure disarms when it completes, while Cancel and Escape remain available to
+clear its standing readout. The `image` tool opens the picker, which places the picture once it is
+chosen.
 
 ### The selected drawing
 
@@ -1393,7 +2050,12 @@ with Enter commits, Escape cancels, and a press on the chart commits.
 
 Templates are named setups a trader saves from either surface and applies on demand. They and
 the remembered defaults ride `ChartSaveLoadAdapter.templates('drawing')`, so a host that keeps
-saved charts on a server keeps these there too; without an adapter they last the page.
+saved charts on a server keeps these there too. Same-tool default changes are written in issue
+order, and a delayed read or failed write does not replace the newest local choice. Store work is
+admitted before subscribers hear an optimistic clear, save or removal, so a subscriber that
+replaces the last chart cannot reopen from stale data between the local change and its write. A
+subscriber exception still rejects the operation and releases its cache lifetime. Without an
+adapter they last the page.
 
 ### The asset port
 
@@ -1438,10 +2100,16 @@ localStorage.setItem('acme.chart.drawings', serializeDrawingsStore(store))
 
 The subpath carries the workflow models too: what the rail's eye blanks (`HideMode`, which reaches
 chart-owned drawings and indicators and nothing else), the cursor modes and the two transient
-tools, the magnet policy over `magnetSnap`, the lock policy, the remove menu, favorites over a
-`FavoritesPort`, the standing preference record, and per-tool defaults and named templates over
+tools, the magnet policy over `magnetSnap`, the remove menu, favorites over a `FavoritesPort`, the
+standing preference record, and per-tool defaults and named templates over
 `ChartSaveLoadAdapter.templates('drawing')`. Each is a pure function or a plain record, so a host
 builds its own controls without reimplementing the decisions behind them.
+
+What a lock refuses is the library's own. A host locks and unlocks through the drawing commands and
+reads what they answer: `chart.drawings.lock` holds one drawing where it stands,
+`chart.drawings.lockAll` suspends the whole chart, and every editing command answers `ok` or
+`unavailable` for the state the chart is actually in, so a control built on those outcomes says
+exactly what the chart will accept. The gesture list below is what a trader meets.
 
 ```ts
 import { blanks, chooseHideMode, DEFAULT_HIDE_STATE, DrawingTemplates } from 'quickcharts/drawings'
@@ -1497,8 +2165,10 @@ What to know:
 - **Gestures follow the standard grammar.** Drag a drawing to move it (rigid whole-bar translation,
   so anchors never drift apart); grab an anchor handle to reshape; hold Shift to constrain a
   two-point placement or an anchor drag to 45 degree rays; Ctrl-drag duplicates; the magnet pulls
-  a placed or dragged anchor onto the bar's own open, high, low or close; locked drawings select
-  but refuse edits, and lock all suspends every edit until it is released.
+  a placed or dragged anchor onto the bar's own open, high, low or close; a locked drawing
+  selects, takes the Delete and Clone a trader asks for by name, and refuses a move, a resize, a
+  text edit, the eraser and a Ctrl-drag copy; lock all suspends every edit, Delete and Clone
+  included, until it is released.
 
 ## Extensions
 
@@ -1515,7 +2185,12 @@ const alertLines: ChartExtension = {
     let levels: number[] = []
     const lines = levels.map((price) => ctx.series.createPriceLine({ price, color: '#f5a623' }))
     ctx.contributeContextMenu((menu) => [
-      { id: 'add', label: `Add alert at ${menu.priceText}`, run: () => levels.push(menu.price) },
+      {
+        id: 'add',
+        label: `Add alert at ${menu.priceText}`,
+        icon: { paths: [{ d: 'M14 6 L22 20 H6 Z' }] },
+        run: () => levels.push(menu.price),
+      },
     ])
     ctx.contributeCommands([{ id: 'acme.alerts.clear', label: 'Clear alerts', execute: () => (levels = []) }])
     ctx.onSymbolChange(() => (levels = []))
@@ -1540,12 +2215,53 @@ widget.commands.execute('acme.alerts.clear')
 What to know:
 
 - **The context is the whole surface.** `ChartExtensionContext` carries the chart's symbol,
-  timeframe, bars, replay state, feed status, palette and pane geometry, a subscription for each of
+  timeframe, bars, replay state, feed status, palette, pane geometry and whether the chart is the
+  widget's active chart (`active()`, a sole chart being active), a subscription for each of
   the changing ones, the
   gesture box and the chrome overlay to mount DOM in, the chart's price formatter, and the series
   capabilities: `createPriceLine`, `attachPrimitive`, `priceToY` / `yToPrice`, `timeToX` /
   `xToTime`, `plotWidth`, and `lockPanZoom` for the length of a drag. Every `on…` returns its own
   unsubscribe.
+- **A popover that must stand over everything mounts on the layer.** `ctx.layer` is the widget's
+  layer on the document body, painted with the widget's theme: a menu or an editor mounted there at
+  viewport coordinates stands over every pane and over whatever the page stacks around the widget,
+  which the pane's own overlay cannot promise. `ctx.symbolTitle()` is the name symbology gives the
+  charted market, the name the legend and the level menu print; `ctx.chart.symbol()` stays the
+  ticker an action is sent for. `ctx.painters` carries the mark painters you supplied as `.symbol`,
+  `.venue` and `.provider`, so a surface that names a market paints it with the same mark the
+  legend and the search rows wear rather than shipping artwork of its own; a painter you did not
+  supply is `null`, and the surface writes the name alone.
+- **A contributed row may bring its own glyph.** `ChartExtensionMenuItem.icon` is a
+  `ChartExtensionIcon`: shapes on the menu's 28-unit grid, each one SVG path data plus a closed set
+  of paint values (`solid` or `outline` in the current text colour, a stroke width, a winding rule).
+  The chart's own menu glyphs are described the same way and built by the same code, so there is one
+  icon contract rather than two and a contributed row reads exactly like a built-in one. The chart
+  creates elements and writes only the attributes the contract names, so a glyph has nowhere to
+  carry a script, an event handler, a colour or a remote reference. It takes the ink of the row it
+  sits in and is hidden from assistive technology; the row's label is its accessible name either way.
+- **A contributed row sits in one of two groups.** `ChartExtensionMenuItem.group` is `level` (the
+  default), an action on the price the pointer landed on, placed under Copy price and Paste; or
+  `view`, a switch over what the chart shows, placed under the remove rows. Rows keep the order
+  they were contributed in within their group.
+- **A drawn layer can join the rail's eye.** `ctx.contributeHideLayer({ id, label, icon, apply })`
+  lists the layer in the eye's menu after the chart's own drawings and indicators and before
+  "Hide all", which blanks it with them. `label` carries the row's wording in both states, `icon`
+  the two marks the eye wears while the layer is its subject, and `apply(hidden)` is called with
+  the current state at contribution and on every change. The handle reads `hidden()`, flips
+  `setHidden()` through the same eye the rail drives, and `remove()` withdraws the layer.
+- **A printed chord is a real binding.** `ChartExtensionMenuItem.shortcut` prints on the row and
+  answers to the key. The chart's dispatcher offers a press no built-in verb claims to the rows your
+  provider contributes for the level under the pointer and runs that row's own `run`, the same call
+  the click makes. The press acts on the tile the pointer is inside, active or not; outside every
+  tile, on a point with no readable level, while the viewer is typing, or while a modal holds the
+  keyboard, the key is left to your page. A row your provider withholds claims no key, and a row
+  carries one chord.
+- **A glyph is bounded, and a refusal is free.** Up to 8 shapes, each up to 2048 characters of path
+  data with every number in it finite, and an `outline` stroke width above 0 and up to 8. A shape
+  outside that is dropped and the rest of the glyph still draws; a descriptor outside it draws
+  nothing at all. A row with no icon, or with one the chart will not draw, keeps the gutter and the
+  label alignment it has, raises nothing and logs nothing. A checkable row shows the check instead.
+  The chart names no glyph vocabulary for contributed rows: what a row means is the host's business.
 - **The chart owns the renderer.** Extensions receive capabilities, not the chart or series
   objects. A primitive mounted through `attachPrimitive` still meets the renderer's own
   `attached` callback, which is lightweight-charts' contract for primitives; the chart detaches
@@ -1571,9 +2287,13 @@ What to know:
 
 Every claim in this document maps to a test or a generated artifact in the package:
 
-- The feature inventory (chrome surfaces, commands, drawing tools, arrangements, indicators and
-  locales) is `dist/feature-manifest.json`, generated from the source on every build; the inventory
-  tests hold the built manifest to the source registries.
+- The feature inventory (commands, drawing tools, arrangements, indicators, locales, the `features`
+  and `ui` flags and the icon ids) is `dist/feature-manifest.json`, generated from the source on
+  every build; the inventory tests hold the built manifest to the source registries.
+- Hiding any control in `ui` leaves every command exactly as available as before, apart from the
+  two dialog doors named under Configuration planes, across every flag the plane takes.
+- With a drawing for every icon, every glyph on each surface of the default interface is the host's,
+  and nothing in the package draws a control's glyph except through the one resolver.
 - The theme roles, both built-in palettes and the stylesheet are `dist/theme-manifest.json` and
   `quickcharts/styles.css`, generated from the token schema; the theme vectors under `test/theme` pin
   the resolved values.

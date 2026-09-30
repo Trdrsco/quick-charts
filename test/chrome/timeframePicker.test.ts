@@ -4,6 +4,7 @@
 // a command: a preset's own, or the open-ended setter for a custom token.
 import { afterEach, describe, expect, it } from 'vitest'
 import { mountTimeframePicker, timeframeCommand } from '../../src/ui/chrome/timeframePicker'
+import { FLYOUT_WIDTH } from '../../src/ui/chrome/flyoutGeometry'
 import { createTimeframeStore, DEFAULT_SAVED_TIMEFRAMES } from '../../src/ui/chrome/preferences'
 import { memoryChartStorage } from '../../src/storage'
 import { fakeWidget, press } from './harness'
@@ -59,7 +60,9 @@ describe('the timeframe chips', () => {
     const { w, picker } = mount()
     w.chart.handle.setTimeframe('3m')
     picker.sync()
-    expect(chips(picker.element).map((c) => c.textContent)).toEqual(['1m', '3m', '5m', '1h', '4h', '1d'])
+    // A chip wears the SHORT form: sub-daily keeps its token, a day drops to its letter. The list
+    // still spells every one out.
+    expect(chips(picker.element).map((c) => c.textContent)).toEqual(['1m', '3m', '5m', '1h', '4h', 'D'])
     expect(chips(picker.element).map((c) => c.getAttribute('aria-pressed'))).toEqual(['false', 'true', 'false', 'false', 'false', 'false'])
     expect(chips(picker.element)[0]!.getAttribute('aria-label')).toBe('1 Minute')
   })
@@ -89,6 +92,20 @@ describe('the timeframe chips', () => {
 })
 
 describe('the timeframe list', () => {
+  it('toggles one panel on repeated trigger activation and reopens after dismissal', () => {
+    const { w, picker } = mount()
+    const trigger = picker.element.querySelector<HTMLButtonElement>('.qc-tf-caret')!
+    for (let cycle = 0; cycle < 3; cycle++) {
+      trigger.click()
+      expect(w.overlays.querySelectorAll('.qc-tf-menu')).toHaveLength(1)
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
+      trigger.click()
+      expect(w.overlays.querySelectorAll('.qc-tf-menu')).toHaveLength(0)
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(document.activeElement).toBe(trigger)
+    }
+  })
+
   it('opens the five groups with the active row checked, stars save, and the composer adds a custom token', () => {
     const { w, picker, store } = mount()
     picker.element.querySelector<HTMLButtonElement>('.qc-tf-caret')!.click()
@@ -103,20 +120,54 @@ describe('the timeframe list', () => {
     expect(star.getAttribute('aria-pressed')).toBe('false')
     star.click()
     expect(store.saved()).toContain('1t')
-    // The composer: a count, a unit, and Add.
-    const count = menu.querySelector<HTMLInputElement>('.qc-tf-count')!
-    const unit = menu.querySelector<HTMLSelectElement>('.qc-tf-unit')!
+    // The composer: a count with its own spinner, a unit that opens a list, and Add.
+    const count = menu.querySelector<HTMLInputElement>('.qc-tf-count-input')!
+    const unit = menu.querySelector<HTMLButtonElement>('.qc-tf-unit')!
     const add = menu.querySelector<HTMLButtonElement>('.qc-tf-add')!
     expect(add.disabled).toBe(true) // 1m already exists as a preset
     count.value = '7'
     count.dispatchEvent(new Event('input'))
     expect(add.disabled).toBe(false)
-    unit.value = 'h'
-    unit.dispatchEvent(new Event('change'))
+    // The unit is a listbox on a button, not a native select: the list is the menu's own rows, so
+    // it wears the same highlight and checked state as every other list in the chrome.
+    expect(unit.getAttribute('aria-haspopup')).toBe('listbox')
+    expect(unit.getAttribute('aria-expanded')).toBe('false')
+    unit.click()
+    expect(unit.getAttribute('aria-expanded')).toBe('true')
+    const options = [...menu.querySelectorAll<HTMLButtonElement>('.qc-tf-unit-list [role="option"]')]
+    expect(options.map((o) => o.textContent)).toEqual(['Ticks', 'Seconds', 'Minutes', 'Hours', 'Days', 'Weeks', 'Months'])
+    expect(options.filter((o) => o.getAttribute('aria-selected') === 'true').map((o) => o.textContent)).toEqual(['Minutes'])
+    options[3]!.click()
+    expect(unit.getAttribute('aria-expanded')).toBe('false')
+    // The list is one element toggled shut, not rebuilt per open: the options keep their identity,
+    // so the row a viewer chose stays the row that is selected.
+    expect(menu.querySelector<HTMLElement>('.qc-tf-unit-list')!.hidden).toBe(true)
+    expect(unit.querySelector('.qc-tf-unit-label')!.textContent).toBe('Hours')
     add.click()
     expect(store.custom()).toEqual(['7h'])
     expect(w.chart.calls).toContain('timeframe:7h')
     expect(w.overlays.querySelector('[role="menu"]')).toBeNull()
+  })
+
+  it('steps the composer count with its own spinner, never below one', () => {
+    const { w, picker } = mount()
+    picker.element.querySelector<HTMLButtonElement>('.qc-tf-caret')!.click()
+    const menu = w.overlays.querySelector<HTMLElement>('[role="menu"]')!
+    const count = menu.querySelector<HTMLInputElement>('.qc-tf-count-input')!
+    const up = menu.querySelector<HTMLButtonElement>('.qc-tf-spin-up')!
+    const down = menu.querySelector<HTMLButtonElement>('.qc-tf-spin-down')!
+    expect(count.value).toBe('1')
+    up.click()
+    up.click()
+    expect(count.value).toBe('3')
+    down.click()
+    expect(count.value).toBe('2')
+    // A count is a multiplier: there is no zeroth interval and no negative one, so the floor holds
+    // however many times the step is pressed.
+    down.click()
+    down.click()
+    down.click()
+    expect(count.value).toBe('1')
   })
 
   it('collapses a group from its heading and reaches the side controls by ArrowRight', () => {
@@ -135,5 +186,66 @@ describe('the timeframe list', () => {
     expect(document.activeElement?.classList.contains('qc-tf-side')).toBe(true)
     press(document.activeElement!, 'ArrowLeft')
     expect(document.activeElement).toBe(row)
+  })
+
+  it('keeps a reader where they scrolled to when the list refreshes under them', () => {
+    const { picker } = mount()
+    picker.element.querySelector<HTMLButtonElement>('.qc-tf-caret')!.click()
+    const scroller = () => document.querySelector<HTMLElement>('.qc-tf-menu .qc-menu-body')!
+    const before = scroller()
+    scroller().scrollTop = 240
+
+    // Collapsing a group rebuilds the list, and so does any state change the chart reports while
+    // the list is up. Neither is a reason to put a reader back at the first row.
+    document.querySelectorAll<HTMLButtonElement>('.qc-tf-group')[3]!.click()
+    // The scroll region is the MENU'S, so a rebuild replaces the rows inside it and not the region
+    // itself. That is what holds the position: nothing saves and restores a number.
+    expect(scroller()).toBe(before)
+    expect(scroller().scrollTop).toBe(240)
+    // And the list builds no scroller of its own. One that did would be rebuilt with the rows, and
+    // would open at the top every time.
+    expect(document.querySelector('.qc-tf-menu .qc-menu-body [class*="groups"]')).toBeNull()
+  })
+
+  it('leaves the open list alone when a sync changes nothing it shows', () => {
+    const { picker } = mount()
+    picker.element.querySelector<HTMLButtonElement>('.qc-tf-caret')!.click()
+    const before = document.querySelector('.qc-tf-menu .qc-menu-body')
+    // The chart reports state many times a second on a streaming symbol. A sync that moves none of
+    // the active token, the saved list, the custom list or the collapsed groups must not rebuild.
+    picker.sync()
+    picker.sync()
+    expect(document.querySelector('.qc-tf-menu .qc-menu-body')).toBe(before)
+  })
+})
+
+describe('the timeframe flyout geometry', () => {
+  it('opens at the pinned 192px width', () => {
+    const { w, picker } = mount()
+    picker.element.querySelector<HTMLButtonElement>('.qc-tf-caret')!.click()
+    const panel = w.overlays.querySelector<HTMLElement>('.qc-tf-menu')!
+    expect(panel.style.width).toBe(`${FLYOUT_WIDTH.timeframe}px`)
+    expect(FLYOUT_WIDTH.timeframe).toBe(192)
+  })
+
+  it('marks the chosen row cell, so the wash reaches its star and its delete', () => {
+    const { w, picker } = mount()
+    picker.element.querySelector<HTMLButtonElement>('.qc-tf-caret')!.click()
+    const menu = w.overlays.querySelector<HTMLElement>('[role="menu"]')!
+    const marked = [...menu.querySelectorAll<HTMLElement>('.qc-tf-row[data-qc-checked="true"]')]
+    expect(marked.length).toBe(1)
+    expect(marked[0]!.querySelector('[role="menuitemradio"]')!.getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('keeps the composer outside the scrolling list, so the last group never hides it', () => {
+    const { w, picker } = mount()
+    picker.element.querySelector<HTMLButtonElement>('.qc-tf-caret')!.click()
+    const panel = w.overlays.querySelector<HTMLElement>('.qc-tf-menu')!
+    const body = panel.querySelector<HTMLElement>('.qc-menu-body')!
+    const composer = panel.querySelector<HTMLElement>('.qc-tf-composer')!
+    // In the PINNED footer, a sibling of the scroll rather than its last child: a reader partway
+    // down the list can still reach the custom field.
+    expect(body.contains(composer)).toBe(false)
+    expect(composer.closest('.qc-menu-footer')?.parentElement).toBe(panel)
   })
 })

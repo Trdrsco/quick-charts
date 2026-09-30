@@ -26,15 +26,16 @@ describe('mergeOverrides', () => {
   })
 })
 
-describe('brand colors are single-sourced', () => {
-  // The brand pair marks what speaks for trdrs on top of a chart. It deliberately does not drive
-  // the candle bodies: the shipped default canvas is the owner's own paper/teal/orange chart
-  // (// 2026-08-20), and the pair is trdrs' own ink, not the market's.
-  it('the theme series roles ARE the brand pair, so one rebrand moves both', () => {
-    expect(DARK_THEME['series.up']).toBe(BRAND_UP)
-    expect(DARK_THEME['series.down']).toBe(BRAND_DOWN)
-    expect(LIGHT_THEME['series.up']).toBe(BRAND_UP)
-    expect(LIGHT_THEME['series.down']).toBe(BRAND_DOWN)
+describe('the market pair and the brand pair', () => {
+  // The brand pair marks what speaks for trdrs on top of a chart, the trading extension's buy line
+  // among it. The theme's series roles are the market's own: candles rise green and fall red in
+  // either mode until a viewer sets their own colors.
+  it('the theme series roles are the market pair, apart from the brand pair', () => {
+    for (const theme of [DARK_THEME, LIGHT_THEME]) {
+      expect(theme['series.up']).toBe('#089981')
+      expect(theme['series.down']).toBe('#f23645')
+      expect(theme['series.up']).not.toBe(BRAND_UP)
+    }
   })
 
   it('the candle canvas is its own palette, NOT the brand pair', () => {

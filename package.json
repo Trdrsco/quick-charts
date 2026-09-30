@@ -1,6 +1,6 @@
 {
   "name": "quickcharts",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Quick Charts: a datafeed-driven charting library with drawings, indicators, layouts and replay over host-supplied data and storage ports.",
   "keywords": [
     "charts",
@@ -78,7 +78,7 @@
     "build:notices": "node scripts/build-third-party-notices.mjs",
     "pack:candidate": "node scripts/pack-candidate.mjs",
     "postbuild": "node scripts/build-theme.mjs && node scripts/build-feature-manifest.mjs && node scripts/build-guest.mjs && node scripts/build-rest-openapi.mjs && node scripts/build-third-party-notices.mjs && node scripts/pack-candidate.mjs",
-    "test": "vitest run",
+    "test": "vitest run --maxWorkers=4 --minWorkers=1",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "gate": "node scripts/gate.mjs",
     "check:notices": "node scripts/build-third-party-notices.mjs --check",
@@ -87,12 +87,14 @@
     "check:i18n": "node scripts/i18n.mjs check",
     "clean-room": "node clean-room/run.mjs",
     "rehearsal": "node scripts/release-rehearsal.mjs",
-    "i18n": "node scripts/i18n.mjs"
+    "i18n": "node scripts/i18n.mjs",
+    "test:browser": "playwright test"
   },
   "peerDependencies": {
     "lightweight-charts": "^5.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.61.0",
     "fancy-canvas": "2.1.0",
     "happy-dom": "^20.13.2",
     "lightweight-charts": "5.2.0",

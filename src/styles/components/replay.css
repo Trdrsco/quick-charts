@@ -1,17 +1,32 @@
-/* The replay transport, floating at the bottom of its pane while replay is on, and the date picker. */
+/* The replay transport's reserved row below the chart grid, and the date picker.
+ *
+ * The row is in the root's own flow and positions nothing: it reserves 49px of the column between
+ * the charts grid and the bottom range and timezone band (a 48px row under the pane's own hairline),
+ * so the plot and the time axis stay unobscured and the drawing rail keeps its column beside it.
+ * Entry reserves that height and exit returns it. Everything inside is placed by the strip's logical
+ * grid, so a right-to-left chart mirrors without a transform, and a long translation scrolls the
+ * strip rather than overlapping a neighbour. */
 [data-qc-theme] .qc-replay {
-  position: absolute;
-  left: 50%;
-  bottom: 10px;
-  z-index: 4;
   display: flex;
+  flex: 0 0 49px;
   align-items: center;
-  gap: 2px;
-  max-width: calc(100% - 16px);
-  padding: 4px 6px;
-  transform: translateX(-50%);
-  font-size: var(--qc-text-fontSizeSmall);
+  justify-content: flex-end;
+  width: 100%;
+  min-width: 0;
+  height: 49px;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  font-size: var(--qc-text-fontSizeBase);
+  color: var(--qc-text-primary);
+  background: var(--qc-chrome-surface);
+  border-top: 1px solid var(--qc-canvas-paneBorder);
   pointer-events: auto;
+  scrollbar-width: none;
+}
+
+[data-qc-theme] .qc-replay::-webkit-scrollbar {
+  display: none;
 }
 
 [data-qc-theme] .qc-replay-group {
@@ -19,55 +34,191 @@
   align-items: center;
 }
 
-[data-qc-theme] .qc-replay-button {
+/* The transport's controls stand flush, each a 38px toolbar cell, the way the top bar's do: the
+ * pitch carries the spacing, and a rule with 8px either side parts one group from the next. */
+[data-qc-theme] .qc-replay-controls {
   display: inline-flex;
+  grid-column: 2;
+  justify-self: center;
   align-items: center;
-  justify-content: center;
+}
+
+[data-qc-theme] .qc-replay .qc-separator--vertical {
+  margin: 0 8px;
+}
+
+/* Two 70px outer tracks around the controls: they center the transport on the row, and Exit sits in
+ * the middle of the far one. */
+[data-qc-theme] .qc-replay-command-strip {
+  display: grid;
+  grid-template-columns: 70px minmax(max-content, 1fr) 70px;
+  align-items: center;
+  width: max-content;
+  min-width: 100%;
+}
+
+/* Select bar carries its mark and its words: 4px between them and 8px after the words. Held while
+ * the chart waits for the bar, it wears the toolbar's pressed fill. */
+[data-qc-theme] .qc-replay-start {
   gap: 4px;
-  height: 28px;
-  padding: 0 4px;
-  color: var(--qc-text-secondary);
-  border-color: transparent;
-}
-
-[data-qc-theme] .qc-replay-button:hover {
-  color: var(--qc-text-primary);
-}
-
-[data-qc-theme] .qc-replay-button[aria-pressed='true'] {
-  color: var(--qc-text-primary);
-  background: var(--qc-state-selected);
-  border-color: transparent;
-}
-
-[data-qc-theme] .qc-replay-button[disabled] {
-  color: var(--qc-text-disabled);
-  background: none;
+  padding-inline-end: 8px;
 }
 
 [data-qc-theme] .qc-replay-caret {
-  width: 20px;
+  width: 24px;
   padding: 0;
 }
 
 [data-qc-theme] .qc-replay-speed,
 [data-qc-theme] .qc-replay-interval {
-  min-width: 36px;
+  justify-content: center;
+  min-width: 38px;
   font-variant-numeric: tabular-nums;
-}
-
-[data-qc-theme] .qc-replay-position {
-  padding: 0 6px;
-  font-variant-numeric: tabular-nums;
-}
-
-[data-qc-theme] .qc-replay-hint {
-  padding: 0 6px;
-  white-space: nowrap;
 }
 
 [data-qc-theme] .qc-replay-exit {
-  margin-inline-start: 4px;
+  grid-column: 3;
+  justify-self: center;
+  width: 38px;
+  padding: 0;
+}
+
+/* The transport's menus are plain lists that run edge to edge of the box: rows 32px tall with their
+ * words 12px in, a starting point's 28px mark 8px in with its words 6px past it on a 34px row, and
+ * the rules across the whole width. Under the pointer a row lays the hover fill and lifts its ink; the
+ * chosen row inverts, its second column with it. */
+[data-qc-theme] .qc-menu-panel.qc-replay-menu {
+  padding: 6px 0;
+}
+
+[data-qc-theme] .qc-replay-menu .qc-menu-row {
+  gap: 6px;
+  padding-block: 0;
+  padding-inline: 12px 14px;
+  border-radius: 0;
+}
+
+[data-qc-theme] .qc-replay-menu .qc-menu-row:hover {
+  color: var(--qc-state-hoverInk);
+}
+
+[data-qc-theme] .qc-replay-menu .qc-menu-row[aria-checked='true'],
+[data-qc-theme] .qc-replay-menu .qc-menu-row[aria-checked='true']:hover {
+  color: var(--qc-text-inverse);
+}
+
+[data-qc-theme] .qc-replay-menu .qc-menu-row--marked {
+  height: 34px;
+  padding-inline-start: 8px;
+}
+
+[data-qc-theme] .qc-replay-menu .qc-menu-heading {
+  padding: 0 12px;
+}
+
+/* A speed's rate reads in the row's own ink and size, held against the far edge. The speed itself
+ * never gives up its width to the rate; the list grows to fit its words from the 196px it opens at. */
+[data-qc-theme] .qc-replay-menu .qc-menu-label {
+  flex: 0 0 auto;
+}
+
+[data-qc-theme] .qc-replay-menu .qc-menu-hint {
+  margin-inline-start: auto;
+  padding: 0;
+  padding-inline-start: 12px;
+  color: inherit;
+  font-size: var(--qc-text-fontSizeBase);
+}
+
+[data-qc-theme] .qc-menu-panel.qc-replay-speed-menu {
+  min-width: 196px;
+}
+
+[data-qc-theme] .qc-replay-menu .qc-switch-row {
+  padding-inline: 12px 10px;
+}
+
+/* The starting points carry the same 28-grid marks the rail does, so the gutter is the mark's own
+ * width; a list whose rows carry no mark keeps no gutter for one. */
+[data-qc-theme] .qc-replay-menu .qc-menu-icon {
+  flex: 0 0 28px;
+  width: 28px;
+}
+
+[data-qc-theme] .qc-replay-menu .qc-menu-icon:empty {
+  display: none;
+}
+
+/* Logical grid columns handle both a theme-root dir and an ancestor dir without transforms or
+ * negative overflow. When content cannot fit, this intrinsic strip is the row's scroll content. */
+
+/* The session's mark: a filled disc with the rewind cut out of it in the ground's own ink. The DISC
+ * carries the state — quiet grey while replay is still asking where to start, the accent once it is
+ * running — because the shape is what a viewer recognises and the colour is what tells them how far
+ * along it is. */
+[data-qc-theme] .qc-legend-replay {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--qc-text-link);
+  font-weight: 500;
+}
+
+/* The quiet disc is MIXED toward the plot rather than made translucent: the cut-out is one ink in
+ * both modes, so the disc has to land mid-grey in both for that ink to read on it. A plain 30% wash
+ * lands near-black over a dark plot and near-white over a light one. */
+[data-qc-theme] .qc-legend-replay[data-qc-phase='arming'] {
+  color: color-mix(in srgb, var(--qc-text-secondary) 70%, var(--qc-canvas-background));
+}
+
+/* The arming guide: a rule at the pointer and a wash over everything after it. It is drawn from the
+ * pointer to the END of the plot, because replay starts where the pointer is and what is dimmed is
+ * the future about to be rewound past. Above the canvas, below the chrome, and never in the way of
+ * the click it is asking for. */
+[data-qc-theme] .qc-replay-guide {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  z-index: 5;
+  /* HALF the dialog scrim. The same role dims the chart in both places, but a dialog has taken the
+   * chart away entirely while this has only marked part of it as about to be rewound past: the plot
+   * under the wash still has to be readable, because it is what the viewer is choosing from. */
+  background: color-mix(in srgb, var(--qc-overlay-scrim) 50%, transparent);
+  border-inline-start: 1px solid var(--qc-text-secondary);
+  pointer-events: none;
+}
+
+/* The shears ride the rule at the pointer, centred across it. NO plate behind them: open strokes
+ * let the rule stay whole through the mark, where a filled disc would cut a hole in the very line
+ * the mark is pointing at. */
+[data-qc-theme] .qc-replay-cut {
+  position: absolute;
+  inset-inline-start: 0;
+  color: var(--qc-text-primary);
+  transform: translate(-50%, -50%);
+}
+
+/* While the question is open the plot draws no pointer of its own. The shears on the rule are the
+ * pointer, and an arrow or a crosshair beside them would be a second claim about where a click
+ * would land. */
+[data-qc-theme] .qc-pane[data-qc-replay-arming='true'] {
+  cursor: none;
+}
+
+[data-qc-theme] .qc-replay-watermark {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--qc-text-onCanvas);
+  font-size: calc(var(--qc-text-fontSizeTitle) * 4);
+  line-height: 1;
+  opacity: 0.07;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* The date picker. */
@@ -136,7 +287,7 @@
 }
 
 [data-qc-theme] .qc-date-day[aria-selected='true'] {
-  color: var(--qc-text-inverse);
+  color: var(--qc-state-markInk);
   background: var(--qc-state-accent);
   border-color: var(--qc-state-accent);
 }

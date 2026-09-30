@@ -1,77 +1,56 @@
 # Releasing Quick Charts
 
-This page is for maintainers. It states who can publish, what a release proves before it ships,
-and what happens when access is lost.
+Quick Charts releases are selected by Joe and published from the reviewed public repository.
+Joe can approve his own release. No approval from Dylan or another person is required.
 
 ## Roles
 
-- **Owner.** Holds the npm package `quickcharts` and the `quick-charts` repository. Grants and
-  revokes maintainer access, approves the first publication of every major, and holds the recovery
-  codes. The owner confirms the repository organization and the homepage address named in
-  `package.json` and this page, and that private vulnerability reporting is enabled on the
-  repository, before it is public.
-- **Maintainer.** Reviews and merges pull requests, cuts releases through the release workflow, and
-  answers security reports. A maintainer never publishes from a workstation.
-- **Contributor.** Everyone else. Contributors open pull requests and cannot merge or publish.
+Only the existing project maintainers have repository write access. Contributors can propose
+changes but cannot merge, create official releases or upgrade a consuming application. Main
+requires the `gate` check and a pull request with resolved conversations. No approving review is
+mandatory. Normal administrator operations follow these controls.
 
-Every owner and maintainer account on npm and on the repository host has two-factor authentication
-enabled with an authenticator app or a hardware key, not SMS. The npm package requires two-factor
-authentication for publishing and for changing access. Access is reviewed when a maintainer leaves
-and at least twice a year.
+The npm owner secures the account with two-factor authentication and retains recovery access.
+Registry publishing access is separate from repository access. Do not grant it to contributors.
 
-## Provenance
+## Candidate acceptance
 
-Every published version is built and published by the repository's release workflow with npm
-provenance enabled (`publishConfig.provenance` in `package.json`). A version that lacks a
-provenance attestation linking it to a commit on `main` and a workflow run in this repository is
-not a release of this project, and the owner unpublishes it within the registry's window.
+1. Build and run `pnpm gate` from the exact release commit. This includes source and contract tests,
+   clean consumers and browser conformance over the packed artifact.
+2. Inspect the export map, declaration files, stylesheet, LICENSE, NOTICE and
+   THIRD-PARTY-NOTICES.md. Check the generated dist/feature-manifest.json,
+   dist/theme-manifest.json and dist/rest-openapi.json.
+3. Run the first host against this same tarball and retain its exact source commit, the candidate
+   digest and passing integration results. Complete manual accessibility and advertised browser
+   acceptance; automated conformance alone does not prove a screen reader result.
+4. Run `pnpm rehearsal` from a clean checkout. Keep the complete dossier and its artifact hashes.
+5. Create `v<version>` on the accepted main commit. A tag alone publishes nothing.
 
-No token that can publish is stored on a workstation or in a workflow secret. The workflow
-publishes with the registry's trusted-publishing grant for this repository and this workflow file.
+## Publication
 
-## What a release proves
+Dispatch `release.yml` on the exact release tag, supplying the SHA-256 of the candidate accepted
+by the first host and an HTTPS link to that host's acceptance record. The validation job verifies
+the tag, version and main ancestry, rehearses the candidate and refuses a digest mismatch.
 
-A release is cut from `main` and ships only when, on the candidate commit:
+Joe reads that evidence and approves the `npm-publish` environment. Self-approval is allowed.
+The publishing job downloads the validated tarball, verifies its digest again and publishes that
+file without rebuilding it or executing package scripts. Only this protected job receives OIDC
+permission. Node 24.15.0 and npm 12.1.0 are pinned. `publishConfig.provenance` is enabled.
 
-1. the package builds, and every generated file it commits (`THIRD-PARTY-NOTICES.md`,
-   `dist/feature-manifest.json`, `dist/theme-manifest.json`, `dist/rest-openapi.json`) equals its
-   rendering;
-2. the tests, the type check, the boundary fixtures and the supply-chain scan pass;
-3. a local tarball is inspected: its file list, its export map, its declarations, its dependency
-   closure, its notices and its size match what the changelog describes;
-4. the clean-room projects install the tarball and run;
-5. the `Unreleased` section of `CHANGELOG.md` is moved under the new version with the date, and
-   the version in `package.json` is bumped by the SemVer rule in `SUPPORT.md`;
-6. the release commit is tagged `v<version>`.
+Configure npm trust for repository `Trdrsco/quick-charts`, workflow `release.yml` and environment
+`npm-publish` before using this path. GitHub configuration alone does not establish npm trust.
+The first package's registry bootstrap must be completed with the npm owner once the final
+candidate is accepted; do not publish a placeholder to reserve the name or treat a 404 as ownership.
+Keep publishing credentials out of this repository and its logs.
 
-The workflow publishes the tagged commit. A publication that is not a tagged `main` commit is
-refused by the workflow.
-
-## Name and registry
-
-The package identifier is `quickcharts`. Registry ownership of the name is a release gate, not a
-step a maintainer takes early: no incomplete artifact is published to reserve the name, no
-placeholder version exists, and no alias is published under any other name. The first published
-version is the first release the gates above pass.
+After publication, install the exact registry version in a fresh project, run its browser check,
+and verify provenance. The first host adopts that exact version through its own checked dependency
+change. Publication never deploys or automatically upgrades the first host.
 
 ## Recovery
 
-- **A lost second factor.** The owner holds the recovery codes for the package and the
-  organization. A maintainer who loses access asks the owner, who re-verifies the maintainer through
-  a channel that was set up earlier and re-issues access.
-- **A compromised account.** The owner revokes the account's access on npm and on the repository
-  host, rotates any grant the account could reach, audits the versions published and the commits
-  merged since the last known-good date, and unpublishes or deprecates any version the audit does
-  not clear.
-- **A bad release.** Publish a patch that reverts the change; do not unpublish a version consumers
-  may have installed unless it carries a secret or malicious code. Deprecate the bad version on
-  the registry with a message that names the patch.
-- **A lost owner.** A second owner account is designated before the first release, so that the
-  loss of one account never blocks a security fix.
-
-## Before the repository is public
-
-The owner completes these before changing the repository's visibility, in this order: the license
-review and the license file, the security contact, the repository organization and homepage in
-`package.json`, branch protection on `main`, the release workflow with trusted publishing, the
-second owner, and the compatibility matrix in `SUPPORT.md`.
+For a faulty release, publish a corrective patch and deprecate the faulty version with the
+replacement named. Keep artifacts consumers already installed. For a compromised publishing
+account, revoke its access, review affected versions and restore access through the owner's
+independent recovery method. Repository administrators retain recovery powers to change controls;
+record the reason for emergency configuration changes and restore the normal protections.

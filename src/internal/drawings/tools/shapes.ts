@@ -187,12 +187,27 @@ export class Triangle extends Drawing {
   }
 }
 
+/** The free label a round shape carries, centered in it. */
+export type RoundShapeProps = {
+  text: string
+}
+
 /** Circle from a center anchor and a radius anchor. */
-export class Circle extends Drawing {
+export class Circle extends Drawing<RoundShapeProps> {
   readonly type = 'circle'
+
+  protected override defaultProps(): RoundShapeProps {
+    return { text: '' }
+  }
 
   requiredAnchors(): number {
     return 2
+  }
+
+  /** The hint sits at the center anchor, which is where the text itself renders. */
+  protected override textHintPlacement(points: Point[]): { x: number; y: number; angle: number } {
+    const center = points[0]
+    return center ? { x: center.x, y: center.y, angle: 0 } : super.textHintPlacement(points)
   }
 
   protected geometry(viewport: Viewport): { center: Point; radius: number } | null {
@@ -213,6 +228,7 @@ export class Circle extends Drawing {
       ctx.fill()
     }
     ctx.stroke()
+    if (this.props.text) paintLabel(ctx, this.props.text, geo.center, this.style, { align: 'center' })
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -228,11 +244,21 @@ export class Circle extends Drawing {
  * Axis-aligned ellipse: anchors 1–2 span the horizontal diameter, anchor 3 drags the vertical
  * radius from the diameter's midline.
  */
-export class Ellipse extends Drawing {
+export class Ellipse extends Drawing<RoundShapeProps> {
   readonly type = 'ellipse'
+
+  protected override defaultProps(): RoundShapeProps {
+    return { text: '' }
+  }
 
   requiredAnchors(): number {
     return 3
+  }
+
+  /** The hint sits on the diameter's midpoint, which is where the text itself renders. */
+  protected override textHintPlacement(points: Point[]): { x: number; y: number; angle: number } {
+    const [a, b] = points
+    return a && b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, angle: 0 } : super.textHintPlacement(points)
   }
 
   protected geometry(viewport: Viewport): { center: Point; rx: number; ry: number } | null {
@@ -257,6 +283,7 @@ export class Ellipse extends Drawing {
       ctx.fill()
     }
     ctx.stroke()
+    if (this.props.text) paintLabel(ctx, this.props.text, geo.center, this.style, { align: 'center' })
   }
 
   testHit(point: Point, viewport: Viewport): boolean {

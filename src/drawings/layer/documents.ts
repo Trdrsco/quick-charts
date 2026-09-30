@@ -20,6 +20,7 @@ import type { DrawingEntry, DrawingResourceContext, DrawingsBody } from '../docu
 import { DRAWING_CONTEXT_VERSION, drawingBuried, emptyDrawingDocument, liveDrawingEntries, mergeDrawingDocuments, parseDrawingDocument, reviseDrawingDocument } from '../document'
 import type { DrawingsMeta, ResourceRef, ResourceStore } from '../../resources'
 import { ownsDrawing } from './scope'
+import { drawingDocumentCoordinator } from './documentCoordinator'
 
 /** Where a layer's separate-drawing documents live: which context a symbol's document is keyed by,
  *  and the store for that context. Both together or neither, so a layer is never half-configured. */
@@ -41,7 +42,7 @@ export interface DocumentsDeps {
   port?: DrawingDocumentPort
   owner: DrawingOwner
   /** This chart's identity for rows bound to one chart inside a SHARED document. */
-  chartId?: string
+  chartId?: string | (() => string)
   /** The symbol currently on screen. */
   current(): string
   /** The stored document for the current symbol landed (a hydration or a merge): repaint from it. */
@@ -77,6 +78,7 @@ export interface Documents {
   generation(): number
   /** A symbol switched away: in-flight reads aimed at the old one stop counting. */
   bumpEpoch(): void
+  rebind(): void
   destroy(): void
 }
 
@@ -99,7 +101,8 @@ export const drawingOf = (entry: DrawingEntry): SerializedDrawing | null => {
 }
 
 export function createDocuments(deps: DocumentsDeps): Documents {
-  const { port, owner, chartId } = deps
+  const { port, owner } = deps
+  const chartId = (): string | undefined => typeof deps.chartId === 'function' ? deps.chartId() : deps.chartId
   /** The working document per symbol. */
   const docs = new Map<string, DrawingsBody>()
   /** The ref each stored document was last seen at (null = known absent, absent = not read yet). */
@@ -108,11 +111,15 @@ export function createDocuments(deps: DocumentsDeps): Documents {
    *  in-hand work. */
   const touched = new Set<string>()
   const pending = new Set<string>()
+  /** Symbols whose in-memory document received a mounted peer before storage hydration landed. */
+  const coordinated = new Set<string>()
   let epoch = 0
   let destroyed = false
   let writeChain: Promise<void> = Promise.resolve()
   let timer: ReturnType<typeof setTimeout> | null = null
   let idle: number | null = null
+  const coordinatorOwner = {}
+  const coordinatorOff = new Map<string, () => void>()
 
   const contextFor = (symbol: string): DrawingResourceContext | null => port?.context(symbol) ?? null
 
@@ -126,9 +133,20 @@ export function createDocuments(deps: DocumentsDeps): Documents {
     return fresh
   }
 
+  const joinCoordinator = (symbol: string): void => {
+    const context = contextFor(symbol)
+    if (!context || coordinatorOff.has(symbol)) return
+    coordinatorOff.set(symbol, drawingDocumentCoordinator.join(context, coordinatorOwner, (incoming) => {
+      if (destroyed) return
+      docs.set(symbol, mergeDrawingDocuments(incoming, documentFor(symbol)))
+      coordinated.add(symbol)
+      if (deps.current() === symbol) deps.onDocument(symbol, listFor(symbol))
+    }))
+  }
+
   const owned = (entry: DrawingEntry): boolean => {
     const row = drawingOf(entry)
-    return row ? ownsDrawing(row, chartId) : false
+    return row ? ownsDrawing(row, chartId()) : false
   }
 
   /** Whether this layer PAINTS an entry: it is this chart's, it is drawn on the source and pane
@@ -158,6 +176,7 @@ export function createDocuments(deps: DocumentsDeps): Documents {
    *  through in the document's own order, with the group each one states, and only the rows this
    *  layer draws are replaced by the export. */
   const sync = (symbol: string, exported: readonly SerializedDrawing[]): void => {
+    joinCoordinator(symbol)
     const document = documentFor(symbol)
     const live = new Set(liveDrawingEntries(document).map((entry) => entry.id))
     const kept: DrawingEntry[] = []
@@ -168,6 +187,8 @@ export function createDocuments(deps: DocumentsDeps): Documents {
       if (!drawnHere(document, entry)) kept.push(entry)
     }
     docs.set(symbol, reviseDrawingDocument(document, { entries: [...kept, ...exported.map((row) => entryOf(row, owner))] }))
+    const context = contextFor(symbol)
+    if (context) drawingDocumentCoordinator.publish(context, coordinatorOwner, docs.get(symbol)!)
   }
 
   const storeFor = (symbol: string): ResourceStore<DrawingsMeta, DrawingsBody> | null => {
@@ -184,15 +205,18 @@ export function createDocuments(deps: DocumentsDeps): Documents {
   const upload = (symbol: string, retry: boolean): void => {
     const store = storeFor(symbol)
     if (!store) return
+    const myEpoch = epoch
     writeChain = writeChain
       .then(async () => {
+        if (destroyed || myEpoch !== epoch) return
         const ref = refs.get(symbol)
         if (ref === undefined) return // not hydrated yet: the hydration that lands uploads a touched symbol
         const document = documentFor(symbol)
         if (!ref && document.entries.length === 0 && document.groups.length === 0 && document.tombstones.length === 0) return
         const outcome = ref ? await store.update(ref, document) : await store.create(document)
+        if (destroyed || myEpoch !== epoch) return
         if (outcome.kind === 'ok') refs.set(symbol, outcome.ref)
-        else if (outcome.kind === 'conflict') await adopt(symbol, outcome.current, retry)
+        else if (outcome.kind === 'conflict') await adoptConflict(symbol, outcome.current, retry, myEpoch)
         else {
           // The document was deleted under this layer. What is on screen is the only copy left, so
           // the next write creates it again, and the host is told the write was refused.
@@ -207,13 +231,14 @@ export function createDocuments(deps: DocumentsDeps): Documents {
 
   /** A refused write: take the stored document in, merge this layer's over it, repaint when the
    *  symbol is up, and write the merge once at the ref that stands. */
-  const adopt = async (symbol: string, current: ResourceRef, retry: boolean): Promise<void> => {
+  const adoptConflict = async (symbol: string, current: ResourceRef, retry: boolean, myEpoch: number): Promise<void> => {
+    if (destroyed || myEpoch !== epoch) return
     refs.set(symbol, current)
     const store = storeFor(symbol)
     const context = contextFor(symbol)
     if (!store || !context) return
     const found = await store.load(current.id)
-    if (destroyed) return
+    if (destroyed || myEpoch !== epoch) return
     const stored = found ? parseDrawingDocument(found.body, context) : emptyDrawingDocument(context)
     if (found) refs.set(symbol, found.ref)
     docs.set(symbol, mergeDrawingDocuments(stored, documentFor(symbol)))
@@ -232,20 +257,24 @@ export function createDocuments(deps: DocumentsDeps): Documents {
   }
 
   const hydrate = (symbol: string): void => {
+    joinCoordinator(symbol)
     if (!port || refs.has(symbol)) return
     const myEpoch = epoch
     void (async () => {
       try {
         const found = await read(symbol)
-        if (destroyed || !found) return
+        // A symbol switch may still keep the old symbol's cache, but an identity rebind clears the
+        // cache and advances the epoch. Either way a read from the prior lifetime must not become
+        // the document of the entity now occupying this chart instance.
+        if (destroyed || !found || myEpoch !== epoch) return
         refs.set(symbol, found.ref)
         if (touched.has(symbol)) {
           upload(symbol, true)
           return
         }
         if (!found.ref) return
-        docs.set(symbol, found.document)
-        if (myEpoch === epoch && deps.current() === symbol) deps.onDocument(symbol, listFor(symbol))
+        docs.set(symbol, coordinated.has(symbol) ? mergeDrawingDocuments(found.document, documentFor(symbol)) : found.document)
+        if (deps.current() === symbol) deps.onDocument(symbol, listFor(symbol))
       } catch {
         /* the layer keeps what it has; the next activation asks again */
       }
@@ -292,9 +321,21 @@ export function createDocuments(deps: DocumentsDeps): Documents {
     bumpEpoch: () => {
       epoch++
     },
+    rebind() {
+      epoch++
+      for (const off of coordinatorOff.values()) off()
+      coordinatorOff.clear()
+      docs.clear()
+      refs.clear()
+      touched.clear()
+      coordinated.clear()
+      pending.clear()
+    },
     destroy() {
       flush()
       destroyed = true
+      for (const off of coordinatorOff.values()) off()
+      coordinatorOff.clear()
       window.removeEventListener('pagehide', flush)
     },
   }

@@ -27,7 +27,7 @@ export type ThemeRoleKind = 'color' | 'length' | 'font' | 'duration' | 'shadow'
 
 /** The grouping a role belongs to. Families organize the manual and the manifest; they are not part
  *  of a role's identity. */
-export type ThemeRoleFamily = 'canvas' | 'series' | 'scale' | 'text' | 'chrome' | 'overlay' | 'state' | 'status' | 'drawing' | 'motion'
+export type ThemeRoleFamily = 'canvas' | 'series' | 'scale' | 'text' | 'chrome' | 'overlay' | 'state' | 'control' | 'status' | 'illustration' | 'drawing' | 'motion'
 
 /** A readability requirement the palettes must meet: this role's value, read against the value of
  *  `over`, reaches `min` under the WCAG 2.2 contrast formula. Where `over` is a translucent tint
@@ -124,13 +124,14 @@ export const THEME_ROLES = [
     id: 'text.inverse',
     family: 'text',
     kind: 'color',
-    description: 'Ink on a saturated accent or danger fill.',
+    description: 'Ink on an inverted or danger fill: a held mode on the on fill, a destructive action.',
     contrast: [
-      { over: 'state.accent', min: 4.5 },
+      { over: 'control.on', min: 4.5 },
       { over: 'status.negative', min: 4.5 },
     ],
   },
-  { id: 'text.link', family: 'text', kind: 'color', description: 'Ink of a text link inside chart chrome.', contrast: [{ over: 'chrome.surface', min: 4.5 }] },
+  { id: 'text.link', family: 'text', kind: 'color', description: 'Ink of a text link inside chart chrome, and of a label naming an accent state, such as a running replay.', contrast: [{ over: 'chrome.surface', min: 4.5 }, { over: 'overlay.surface', min: 4.5 }] },
+  { id: 'text.highlight', family: 'text', kind: 'color', description: 'Ink of the part of a label that matches what the reader typed, such as a symbol search.', contrast: [{ over: 'overlay.surface', min: 4.5 }, { over: 'chrome.surface', min: 4.5 }] },
   { id: 'text.onCanvas', family: 'text', kind: 'color', description: 'Ink drawn directly over the plot area, such as the legend.', contrast: [{ over: 'canvas.background', min: 4.5 }] },
   { id: 'text.fontFamily', family: 'text', kind: 'font', description: 'The font stack chart chrome and canvas text share. Quick Charts never downloads a font.' },
   { id: 'text.fontSizeAxis', family: 'text', kind: 'length', description: 'Size of scale and crosshair labels drawn into the canvas.' },
@@ -144,34 +145,90 @@ export const THEME_ROLES = [
   { id: 'chrome.surfaceRaised', family: 'chrome', kind: 'color', description: 'The fill of a control sitting on a chrome surface, such as a button or field.' },
   { id: 'chrome.border', family: 'chrome', kind: 'color', description: 'The ordinary border of a control or panel.' },
   { id: 'chrome.borderStrong', family: 'chrome', kind: 'color', description: 'A border or divider that must stay visible at a glance.', contrast: [{ over: 'chrome.surface', min: 3 }] },
+  { id: 'chrome.fieldBorder', family: 'chrome', kind: 'color', description: 'The outline of a text field, such as the symbol search field. The field\'s mark and prompt name it, so the outline is not its only sign.' },
+  { id: 'chrome.caret', family: 'chrome', kind: 'color', description: 'The ink of the arrow that opens a control\'s menu or flyout.', contrast: [{ over: 'chrome.surface', min: 3 }] },
+  { id: 'chrome.grip', family: 'chrome', kind: 'color', description: 'The dots of a drag handle on a floating toolbar.' },
+  // No contrast rule: the thumb says where a list is, and the wheel, the drag and the keyboard
+  // scroll it whether or not the thumb is read. Held to a control's ratio it would shout over the
+  // rows it runs beside.
+  { id: 'chrome.scrollThumb', family: 'chrome', kind: 'color', description: 'The thumb of the thin bar beside a list the viewer scrolls, such as the search results or the indicator list.' },
   { id: 'chrome.radius', family: 'chrome', kind: 'length', description: 'Corner radius of a control.' },
   { id: 'chrome.radiusLarge', family: 'chrome', kind: 'length', description: 'Corner radius of a panel, dialog, or menu.' },
 
   // ── overlay: menus, dialogs, popovers, and what sits behind them ────────────────────────────
   { id: 'overlay.surface', family: 'overlay', kind: 'color', description: 'The fill of a floating menu, dialog, or popover.' },
-  { id: 'overlay.border', family: 'overlay', kind: 'color', description: 'The border of a floating surface.' },
   { id: 'overlay.separator', family: 'overlay', kind: 'color', description: 'The rule between groups inside a menu or panel.' },
   { id: 'overlay.shadow', family: 'overlay', kind: 'shadow', description: 'The elevation shadow of a floating surface.' },
   { id: 'overlay.scrim', family: 'overlay', kind: 'color', description: 'The backdrop that dims the chart behind a modal dialog.' },
 
   // ── state: hover, pressed, selected, focus, and selection ───────────────────────────────────
-  // An active tool or pressed toggle writes the accent as INK over the selected tint, on a toolbar
-  // and inside a dialog alike, so the accent is held to the text ratio on both.
+  // The accent is a mark or a fill, never words: a chosen day, a selected tab's underline, an armed
+  // favorite's glyph, the focus ring. It is held to the non-text ratio on both surfaces; words in its
+  // hue read in `text.link` or `text.highlight`.
   {
     id: 'state.accent',
     family: 'state',
     kind: 'color',
-    description: 'The accent an active tool or a primary action wears.',
+    description: 'The accent a mark, fill, or glyph wears: a chosen day, a selected tab, an armed favorite.',
     contrast: [
-      { over: 'state.selected', on: 'chrome.surface', min: 4.5 },
-      { over: 'state.selected', on: 'overlay.surface', min: 4.5 },
+      { over: 'chrome.surface', min: 3 },
+      { over: 'overlay.surface', min: 3 },
     ],
   },
   { id: 'state.hover', family: 'state', kind: 'color', description: 'The fill a control takes under the pointer.' },
-  { id: 'state.pressed', family: 'state', kind: 'color', description: 'The fill a control takes while the pointer is down.' },
+  {
+    id: 'state.hoverInk',
+    family: 'state',
+    kind: 'color',
+    description: 'The ink a row of a plain picking list, such as the time zone list, dims to under the pointer.',
+    contrast: [{ over: 'state.hover', on: 'overlay.surface', min: 4.5 }],
+  },
+  { id: 'state.pressed', family: 'state', kind: 'color', description: 'The fill a control takes while the pointer is down, and the fill of an armed tool.' },
+  { id: 'state.pressedHover', family: 'state', kind: 'color', description: 'The fill of an armed tool or a held toggle under the pointer.' },
   { id: 'state.selected', family: 'state', kind: 'color', description: 'The fill of a chosen row, tab, or tool.' },
   { id: 'state.focusRing', family: 'state', kind: 'color', description: 'The visible focus indicator, including the active pane ring.', contrast: [{ over: 'chrome.surface', min: 3 }] },
+  // Distinct from `text.inverse`, which flips by mode because it reads on the inverted fills. The
+  // accent and a filled state mark are saturated in both modes, so what is written on or cut out of
+  // them is one ink in both: flipping it would make the same mark read as two different objects.
+  {
+    id: 'state.markInk',
+    family: 'state',
+    kind: 'color',
+    description: 'Ink on the accent or a filled state mark: a chosen day, the replay disc\'s cut-out.',
+    contrast: [{ over: 'state.accent', min: 4.5 }],
+  },
   { id: 'state.selection', family: 'state', kind: 'color', description: 'The tint over selected content.' },
+
+  // ── control: switches, checkboxes, and radios ───────────────────────────────────────────────
+  // The emphasis fill is neutral in both modes, the strong end of the grey ramp: a control that is on,
+  // a chosen row, a held mode and the primary action all wear it. The mark a control carries is cut
+  // from the surface end of the ramp.
+  {
+    id: 'control.on',
+    family: 'control',
+    kind: 'color',
+    description: 'The emphasis fill: a switch, checkbox, or radio that is on, a chosen row, a held mode, and the primary action; also the ring of a checkbox or radio that is off.',
+    contrast: [
+      { over: 'overlay.surface', min: 3 },
+      { over: 'chrome.surface', min: 3 },
+    ],
+  },
+  { id: 'control.onHover', family: 'control', kind: 'color', description: 'The emphasis fill, and the ring of a radio, under the pointer.' },
+  { id: 'control.onPressed', family: 'control', kind: 'color', description: 'The emphasis fill, and the ring of a radio, while the pointer is down.' },
+  { id: 'control.off', family: 'control', kind: 'color', description: 'The track of a switch that is off.' },
+  { id: 'control.offHover', family: 'control', kind: 'color', description: 'The track of a switch that is off, under the pointer.' },
+  { id: 'control.offPressed', family: 'control', kind: 'color', description: 'The track of a switch that is off, while the pointer is down.' },
+  {
+    id: 'control.mark',
+    family: 'control',
+    kind: 'color',
+    description: 'The knob of a switch, the check of a checkbox, and the dot of a radio.',
+    contrast: [
+      { over: 'control.on', min: 3 },
+      { over: 'control.onHover', min: 3 },
+      { over: 'control.onPressed', min: 3 },
+    ],
+  },
 
   // ── status: feedback, including market session status ───────────────────────────────────────
   { id: 'status.positive', family: 'status', kind: 'color', description: 'A positive value or a successful outcome in chart chrome.', contrast: [{ over: 'chrome.surface', min: 4.5 }] },
@@ -184,6 +241,13 @@ export const THEME_ROLES = [
   { id: 'status.sessionExtended', family: 'status', kind: 'color', description: 'The session status marker for electronic hours.' },
   { id: 'status.sessionAfterHours', family: 'status', kind: 'color', description: 'The session status marker for after-hours.' },
   { id: 'status.sessionClosed', family: 'status', kind: 'color', description: 'The session status marker while the market is closed.' },
+
+  // ── illustration: the art an empty state stands on ──────────────────────────────────────────
+  // An illustration says nothing the words beside it do not, so it holds the non-text ratio rather
+  // than a text one: the drawing and its badge against the dialog, and the mark against the badge.
+  { id: 'illustration.ink', family: 'illustration', kind: 'color', description: 'The line drawing of an empty-state illustration.', contrast: [{ over: 'overlay.surface', min: 3 }] },
+  { id: 'illustration.accent', family: 'illustration', kind: 'color', description: 'The badge an empty-state illustration wears on the action it invites.', contrast: [{ over: 'overlay.surface', min: 3 }] },
+  { id: 'illustration.accentInk', family: 'illustration', kind: 'color', description: 'The mark on an illustration\'s badge.', contrast: [{ over: 'illustration.accent', min: 3 }] },
 
   // ── drawing: what a new drawing wears before a user styles it ───────────────────────────────
   { id: 'drawing.line', family: 'drawing', kind: 'color', description: 'The stroke of a newly placed drawing.' },

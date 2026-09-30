@@ -16,6 +16,7 @@ export type {
   ChartDatafeed,
 } from './datafeed'
 export { FeedUnavailableError, olderPageVerdict } from './datafeed'
+export { withFoldedHistory } from './aggregate'
 
 export type { ChartStorage } from './storage'
 export { memoryChartStorage } from './storage'
@@ -27,10 +28,15 @@ export { tfToUdfResolution, udfResolutionToTf } from './udfResolution'
 // ── The widget kernel ─────────────────────────────────────────────────────────────────────────
 // `createChart(options)` mounts a complete datafeed-driven chart into a DOM element with no
 // framework dependency, and answers a `ChartWidget`. A widget hosts one or many `ChartHandle`s
-// under one root and one theme; the four configuration planes below decide what it can do, what it
-// shows, what it permits, and what the viewer prefers.
+// under one root and one theme; the configuration planes below decide what it can do, which of its
+// own controls it draws, what it permits, and what the viewer prefers.
 export { createChart } from './widget/create'
-export type { ChartWidget } from './widget/create'
+export type { ChartChrome, ChartWidget } from './widget/create'
+export type { ToolbarButton, ToolbarButtonOptions, ToolbarButtonState } from './ui/chrome/hostControls'
+export type { ChartIconContext, ChartIconDiagnostic, ChartIconFactory, ChartIconFailure } from './ui/icons/contract'
+export { CHART_ICON_IDS, MIRRORED_ICONS, type ChartIconId, type ChartIcons } from './ui/icons/catalog'
+export { TOP_BAR_SLOTS } from './ui/chrome/topBar'
+export type { TopBarSlot } from './ui/chrome/topBar'
 export type { ChartHandle, ChartPaneSyncApi, IndicatorsApi } from './widget/chart'
 export { applyBar, resolveInitialTf } from './widget/chart'
 export type {
@@ -44,17 +50,21 @@ export type {
   IndicatorDefinition,
   IndicatorInstance,
   LayoutOptions,
+  LegendUi,
+  SettingsMenuUi,
   ThemeOptions,
+  TopBarUi,
+  UiConfig,
 } from './widget/options'
 
 // The command registry is the ONE source for the chart's verbs: the context menu, the keyboard,
-// a host's own toolbar and any automation adapter all read this list and run through this `execute`,
-// so a command hidden by feature configuration or refused by access policy cannot be reached from
-// any of them.
+// a host's own toolbar and an operator adapter all read this list and run through this `execute`,
+// so a command a disabled feature removed or the access policy refuses cannot be reached from any
+// of them, and a command whose built-in control is hidden is still reached from every other door.
 export type { CommandRegistry, CommandResult, CommandScope, CommandSpec } from './widget/commands'
 
 // Typed event maps. Every subscription returns its unsubscribe and is inert after `dispose()`.
-export type { ChartEvents, DrawingEvent, ImageEvent, IndicatorEvent, LayoutEvent, ReplayEventState, SaveConflictInfo, WidgetEvents } from './widget/events'
+export type { ChartEvents, DrawingEvent, HistoryEventState, ImageEvent, IndicatorEvent, LayoutEvent, ReplayEventState, SaveConflictInfo, WidgetEvents } from './widget/events'
 
 // The seven main-series styles. A style switch is presentation: nothing refetches, and the
 // indicators, drawings, comparisons, scale and visible range all survive it.
@@ -73,10 +83,12 @@ export type { ImageApi, ImageHeader, ImageTextRun, ImageTile } from './widget/im
 // Neutral marks: host-supplied chart data the feed serves through the two optional readers on
 // `ChartDatafeed`. A mark is a note about a moment and says nothing about an account.
 export type { BarMark, MarkColorRole, MarkPlacement, MarkShape, TimescaleMark } from './marks'
+export type { MarkPainters, ProviderMarkPainter, SymbolMarkPainter, VenueMarkPainter } from './markPainters'
 
 export type { ChartCompareApi } from './widget/compare'
 export type { ChartDrawingsApi } from './widget/drawings'
 export type { ChartReplayApi } from './widget/replay'
+export type { ChartHistoryApi, HistoryChange } from './widget/history'
 export type { ChartSaveLoadApi } from './widget/saveLoad'
 
 // The extension seam — a TYPE contract only. A host writes an object against `ChartExtension` and
@@ -88,6 +100,8 @@ export type {
   ChartExtensionCommand,
   ChartExtensionContext,
   ChartExtensionHandle,
+  ChartExtensionIcon,
+  ChartExtensionIconPath,
   ChartExtensionMenuContext,
   ChartExtensionMenuItem,
   ChartExtensionMenuProvider,
@@ -174,12 +188,16 @@ export {
 } from './i18n'
 
 // ── Symbology, the price formatter, and the revisioned resource contract ──────────────────────
-// The symbology contract and its formatter are root Quick Charts API (DECISIONS.md: no symbology
-// subpath, package, or repository). `SymbolInfo` is the shape `ChartDatafeed.resolve` answers
+// The symbology contract and its formatter are root Quick Charts API, with no symbology
+// subpath, package, or repository. `SymbolInfo` is the shape `ChartDatafeed.resolve` answers
 // with. The revisioned saved-resource contract in `resources.ts` is the one save/load seam: the
 // widget, the layout and every host adapter run over its four `ResourceStore` families.
 export type { DataStatus, PriceFormat, SymbolInfo, TickBand } from './symbology'
 export { parseTickBands, tickBandFor } from './symbology'
+// How a market is named on screen, from the same facts: one rule with three faces, so a host that
+// names a symbol beside the chart (a watchlist row, a position, a picker) reads as the chart does.
+export type { SymbolNames } from './symbolLabel'
+export { symbolNames } from './symbolLabel'
 export type { NumericPunctuation, PriceFormatter, PriceFormatterOptions } from './priceFormatter'
 export { createPriceFormatter } from './priceFormatter'
 export type { UdfSymbolResponse } from './udfSymbology'
@@ -335,6 +353,9 @@ export type { RangeFrameTarget, RangePreset, RangeSpan } from './ranges'
 export { frameRange, MIN_BAR_SPACING, RANGE_PRESETS, rangeAvailable, rangePresetTip, rangeSpanSeconds, SCROLL_STEP_BARS, scrolledPosition, ZOOM_FACTOR, zoomedBarSpacing } from './ranges'
 export type { MatchSegment, RecentsPort, SearchController, SearchControllerOptions, SearchState, SpreadOperator } from './search'
 export { createSearchController, isSymbolPair, looksLikeSpread, matchSegments, memoryRecents, promoteRecent, RECENT_SYMBOLS_CAP, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery } from './search'
+// The search as a dialog, for a page that needs a market picked away from a chart.
+export type { MountedSymbolSearch, SymbolSearchCache, SymbolSearchHandle, SymbolSearchOptions } from './ui/chrome/openSymbolSearch'
+export { createSymbolSearchCache, mountSymbolSearch, openSymbolSearch } from './ui/chrome/openSymbolSearch'
 
 // ── The drawing workflow's host inputs ────────────────────────────────────────────────────────
 // The drawing API is its own entrypoint (`quickcharts/drawings`), and everything about drawings
@@ -343,3 +364,4 @@ export { createSearchController, isSymbolPair, looksLikeSpread, matchSegments, m
 // preference record through the storage port it was given. Both are types; their models, defaults
 // and codecs stay on the subpath.
 export type { DrawingAssetPort, DrawingPreferences } from './drawings/index'
+export type { IndicatorPickerSource, IndicatorPickerCollection, IndicatorPickerAction, IndicatorPickerItem, IndicatorPickerBuiltInState } from './widget/indicatorPicker'

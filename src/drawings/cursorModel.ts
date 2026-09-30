@@ -43,12 +43,10 @@ export function transientSurvives(tool: string | null): boolean {
   return tool === 'measure' || tool === 'zoom'
 }
 
-/** What stays armed after a placement completes. Stay-in-drawing-mode keeps the tool so a trader
- *  can draw a run of the same shape; without it the toolbar falls back to the cursor. A transient is
- *  never released by its own completion: the eraser keeps erasing and measure keeps measuring
- *  until Escape or the cursor button releases it. */
+/** What stays armed after a placement completes. Freehand tools keep drawing successive strokes;
+ *  other permanent tools follow Stay in drawing mode. Transients keep their own pointer mode. */
 export function toolAfterPlacement(tool: string | null, stayInDrawingMode: boolean): string | null {
-  if (isTransientTool(tool)) return tool
+  if (isTransientTool(tool) || tool === 'brush' || tool === 'highlighter') return tool
   return stayInDrawingMode ? tool : null
 }
 

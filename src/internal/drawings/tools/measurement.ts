@@ -25,6 +25,8 @@ function inBox(p: Point, r: { x: number; y: number; width: number; height: numbe
 }
 
 export type RangeMeterProps = {
+  /** The trader's own word for the span, inside it. */
+  text: string
   /** Stats readout toggles; a meter only surfaces the ones its axes measure. */
   showPriceDelta: boolean
   showPercent: boolean
@@ -45,6 +47,12 @@ abstract class RangeMeter extends Drawing<RangeMeterProps> {
     const [a, b] = this.anchorPixels(viewport)
     if (!a || !b) return null
     return { a, b }
+  }
+
+  /** The hint sits at the span's center, which is where the text itself renders. */
+  protected override textHintPlacement(points: Point[]): { x: number; y: number; angle: number } {
+    const [a, b] = points
+    return a && b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, angle: 0 } : super.textHintPlacement(points)
   }
 
   protected paintSpan(ctx: CanvasRenderingContext2D, a: Point, b: Point, viewport: Viewport): void {
@@ -118,6 +126,10 @@ abstract class RangeMeter extends Drawing<RangeMeterProps> {
         background: withAlpha('#1b1f27', 0.92),
       })
     }
+    if (this.props.text) {
+      const r = box(a, b)
+      paintLabel(ctx, this.props.text, { x: r.x + r.width / 2, y: r.y + r.height / 2 }, this.style, { align: 'center' })
+    }
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -132,7 +144,7 @@ export class PriceRange extends RangeMeter {
   readonly type = 'price_range'
 
   protected override defaultProps(): RangeMeterProps {
-    return { showPriceDelta: true, showPercent: true, showBars: false, showTimeSpan: false, showVolume: false, extend: false }
+    return { text: '', showPriceDelta: true, showPercent: true, showBars: false, showTimeSpan: false, showVolume: false, extend: false }
   }
 
   protected measuresPrice(): boolean {
@@ -149,7 +161,7 @@ export class DateRange extends RangeMeter {
   readonly type = 'date_range'
 
   protected override defaultProps(): RangeMeterProps {
-    return { showPriceDelta: false, showPercent: false, showBars: true, showTimeSpan: true, showVolume: true, extend: false }
+    return { text: '', showPriceDelta: false, showPercent: false, showBars: true, showTimeSpan: true, showVolume: true, extend: false }
   }
 
   protected measuresPrice(): boolean {
@@ -166,7 +178,7 @@ export class DatePriceRange extends RangeMeter {
   readonly type = 'date_and_price_range'
 
   protected override defaultProps(): RangeMeterProps {
-    return { showPriceDelta: true, showPercent: true, showBars: true, showTimeSpan: true, showVolume: true, extend: false }
+    return { text: '', showPriceDelta: true, showPercent: true, showBars: true, showTimeSpan: true, showVolume: true, extend: false }
   }
 
   protected measuresPrice(): boolean {

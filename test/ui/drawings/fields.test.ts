@@ -3,10 +3,12 @@
 // chart's language, and carries its accessible name.
 import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
-import { colorSwatches, customColorPicker, dialogTabs, dropdown, lineEndButton, numberInput, opacitySlider, row, strokeSegments, swatchButton, toggleRow, visibilityRangeRow } from '../../../src/ui/drawings/fields'
-import { hexOf, hexToHsv, hsvToHex, shade, SWATCH_ROWS } from '../../../src/ui/drawings/color'
+import { dialogTabs, dropdown, lineEndButton, numberInput, row, strokeSegments, swatchButton, toggleRow, visibilityRangeRow } from '../../../src/ui/drawings/fields'
+import { createColorPalette, createCustomColorPicker, createOpacitySlider, hexOf, hexToHsv, hsvToHex, SWATCH_BLOCKS } from '../../../src/ui/controls/color'
+import { ownIcons } from '../../ownIcons'
 
 const t = createChartI18n().t
+const icons = ownIcons()
 const box = (): HTMLElement => {
   const b = document.createElement('div')
   document.body.appendChild(b)
@@ -22,18 +24,17 @@ describe('color arithmetic', () => {
     for (const hex of ['#ff0000', '#00ff00', '#0000ff', '#4c98fb', '#123456']) expect(hsvToHex(hexToHsv(hex).h, hexToHsv(hex).s, hexToHsv(hex).v)).toBe(hex)
     expect(hexOf('rgba(76, 152, 251, 0.5)')).toBe('#4c98fb')
     expect(hexOf('#abc')).toBe('#aabbcc')
-    expect(shade('#808080', -1)).toBe('#ffffff')
-    expect(shade('#808080', 1)).toBe('#000000')
   })
 
-  it('computes a six by ten palette, greys first, every cell a hex', () => {
-    expect(SWATCH_ROWS).toHaveLength(6)
-    for (const rowOfSwatches of SWATCH_ROWS) {
+  it('offers eight rows of ten in two blocks, greys first, every cell a hex', () => {
+    const rows = SWATCH_BLOCKS.flat()
+    expect(rows).toHaveLength(8)
+    for (const rowOfSwatches of rows) {
       expect(rowOfSwatches).toHaveLength(10)
       for (const c of rowOfSwatches) expect(c).toMatch(/^#[0-9a-f]{6}$/)
     }
-    expect(SWATCH_ROWS[0]![0]).toBe('#ffffff')
-    expect(SWATCH_ROWS[0]![9]).toBe('#000000')
+    expect(rows[0]![0]).toBe('#ffffff')
+    expect(rows[0]![9]).toBe('#000000')
   })
 })
 
@@ -64,7 +65,7 @@ describe('rows and toggles', () => {
 
   it('a number field steps by its step within its bounds and rounds float dust away', () => {
     const values: number[] = []
-    const field = numberInput(t, { label: 'Risk', value: 0.2, step: 0.1, min: 0, max: 0.4, onChange: (v) => values.push(v) })
+    const field = numberInput(t, icons, { label: 'Risk', value: 0.2, step: 0.1, min: 0, max: 0.4, onChange: (v) => values.push(v) })
     const [up, down] = [...field.querySelectorAll<HTMLButtonElement>('button')]
     expect(up!.getAttribute('aria-label')).toBe('Increase')
     up!.click()
@@ -79,16 +80,21 @@ describe('rows and toggles', () => {
     expect(values).toHaveLength(4)
   })
 
-  it('an opacity slider reports a fraction and shows a percent', () => {
+  it('an opacity slider reports a fraction, and its field takes one typed', () => {
     const out: number[] = []
-    const slider = opacitySlider(t, '#ff0000', 0.25, (v) => out.push(v))
-    const input = slider.querySelector('input')!
-    expect(input.value).toBe('25')
-    expect(slider.textContent).toBe('25%')
-    input.value = '60'
-    input.dispatchEvent(new Event('input'))
+    const slider = createOpacitySlider(t, '#ff0000', 0.25, (v) => out.push(v)).element
+    const [track, figure] = [...slider.querySelectorAll('input')]
+    expect(track!.value).toBe('25')
+    expect(figure!.value).toBe('25')
+    track!.value = '60'
+    track!.dispatchEvent(new Event('input'))
     expect(out).toEqual([0.6])
-    expect(slider.textContent).toBe('60%')
+    expect(figure!.value).toBe('60')
+    // The field holds the range as it is typed, so a hundred is the most a hand can reach.
+    figure!.value = '200'
+    figure!.dispatchEvent(new Event('input'))
+    expect(out).toEqual([0.6, 1])
+    expect(track!.value).toBe('100')
   })
 })
 
@@ -96,17 +102,17 @@ describe('the palette', () => {
   it('lays out the swatches by name, marks the current one, and opens the custom panel in place', () => {
     const picked: string[] = []
     const opacities: number[] = []
-    const palette = colorSwatches(t, { value: 'rgba(255, 255, 255, 0.5)', onPick: (c) => picked.push(c), opacity: 0.5, onOpacity: (v) => opacities.push(v) })
+    const palette = createColorPalette(t, { value: 'rgba(255, 255, 255, 0.5)', onPick: (c) => picked.push(c), opacity: 0.5, onOpacity: (v) => opacities.push(v) }).element
     document.body.appendChild(palette)
     const swatches = [...palette.querySelectorAll<HTMLButtonElement>('.qc-drawing-swatch:not(.qc-drawing-swatch-plus)')]
-    expect(swatches).toHaveLength(60)
+    expect(swatches).toHaveLength(80)
     expect(swatches[0]!.getAttribute('aria-label')).toBe('Color #ffffff')
     expect(swatches[0]!.dataset.qcActive).toBe('true')
     swatches[15]!.click()
-    expect(picked).toEqual([SWATCH_ROWS[1]![5]])
+    expect(picked).toEqual([SWATCH_BLOCKS.flat()[1]![5]])
     const plus = palette.querySelector<HTMLButtonElement>('.qc-drawing-swatch-plus')!
     plus.click()
-    expect(plus.getAttribute('aria-expanded')).toBe('true')
+    expect(palette.querySelector<HTMLElement>('.qc-drawing-swatches')!.hidden).toBe(true)
     const hex = palette.querySelector<HTMLInputElement>('.qc-drawing-hex')!
     hex.value = '00ff00'
     hex.dispatchEvent(new Event('input'))
@@ -118,7 +124,7 @@ describe('the palette', () => {
 
   it('the custom panel refuses a half-typed hex and paints the square from the hue', () => {
     const added: string[] = []
-    const panel = customColorPicker(t, '#4c98fb', (hex) => added.push(hex))
+    const panel = createCustomColorPicker(t, '#4c98fb', (hex) => added.push(hex)).element
     document.body.appendChild(panel)
     const hex = panel.querySelector<HTMLInputElement>('.qc-drawing-hex')!
     const add = panel.querySelector<HTMLButtonElement>('.qc-drawing-add')!
@@ -136,6 +142,18 @@ describe('the palette', () => {
 })
 
 describe('the swatch button', () => {
+  it('uses a highlighter-specific thickness scale when supplied', () => {
+    const b = box()
+    const picks: number[] = []
+    const control = swatchButton(t, b, { label: 'Highlighter', value: '#ffcc00', onPick: () => {}, thickness: 20, thicknessChoices: [8, 12, 20, 32, 48, 64, 80, 96], onThickness: (width) => picks.push(width) })
+    b.appendChild(control)
+    control.click()
+    const options = [...b.querySelectorAll<HTMLButtonElement>('.qc-drawing-option')]
+    expect(options.map((option) => option.getAttribute('aria-label'))).toEqual([8, 12, 20, 32, 48, 64, 80, 96].map((width) => `Thickness ${width}px`))
+    expect(options[2]!.dataset.qcActive).toBe('true')
+    options[7]!.click()
+    expect(picks).toEqual([96])
+  })
   it('opens its popover with the palette and, for a stroke, the thickness and style rows', () => {
     const b = box()
     const picks: unknown[] = []
@@ -188,7 +206,7 @@ describe('line ends, tabs and visibility rows', () => {
   it('a line-end picker offers the two ends and reports the pick', () => {
     const b = box()
     const picks: string[] = []
-    const button = lineEndButton(t, b, 'right', 'normal', (v) => picks.push(v))
+    const button = lineEndButton(t, icons, b, 'right', 'normal', (v) => picks.push(v))
     b.appendChild(button)
     expect(button.getAttribute('aria-label')).toBe('Right end')
     button.click()
@@ -217,7 +235,7 @@ describe('line ends, tabs and visibility rows', () => {
 
   it('a visibility row clamps from and to against each other', () => {
     const out: { on: boolean; from: number; to: number }[] = []
-    const r = visibilityRangeRow(t, { label: 'Minutes', range: { on: true, from: 5, to: 30 }, max: 59, onChange: (next) => out.push(next) })
+    const r = visibilityRangeRow(t, icons, { label: 'Minutes', range: { on: true, from: 5, to: 30 }, max: 59, onChange: (next) => out.push(next) })
     document.body.appendChild(r)
     const [from, to] = [...r.querySelectorAll<HTMLInputElement>('input[type="number"]')]
     from!.value = '45'

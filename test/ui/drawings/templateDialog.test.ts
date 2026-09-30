@@ -4,8 +4,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
 import { openTemplateDeleteDialog, openTemplateNameDialog } from '../../../src/ui/drawings/templateDialog'
+import { ownIcons } from '../../ownIcons'
 
 const t = createChartI18n().t
+const icons = ownIcons()
 
 afterEach(() => {
   document.body.replaceChildren()
@@ -19,7 +21,7 @@ describe('the template name dialog', () => {
     document.body.appendChild(opener)
     opener.focus()
     const saved: string[] = []
-    openTemplateNameDialog({ container, t }, (name) => saved.push(name))
+    openTemplateNameDialog({ container, t, icons }, (name) => saved.push(name))
     const dialog = container.querySelector<HTMLElement>('[data-role="drawing-template-name"]')!
     expect(dialog.getAttribute('aria-label')).toBe('Save drawing template')
     const input = dialog.querySelector<HTMLInputElement>('input')!
@@ -41,14 +43,14 @@ describe('the template name dialog', () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
     const saved: string[] = []
-    openTemplateNameDialog({ container, t }, (name) => saved.push(name))
+    openTemplateNameDialog({ container, t, icons }, (name) => saved.push(name))
     container.querySelector<HTMLElement>('[data-role="drawing-template-name"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(container.querySelector('[data-role="drawing-template-name"]')).toBeNull()
-    openTemplateNameDialog({ container, t }, (name) => saved.push(name))
+    openTemplateNameDialog({ container, t, icons }, (name) => saved.push(name))
     container.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
     expect(container.querySelector('[data-role="drawing-template-name"]')).toBeNull()
-    openTemplateNameDialog({ container, t }, (name) => saved.push(name))
-    container.querySelector<HTMLElement>('.qc-drawing-dialog-backdrop')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    openTemplateNameDialog({ container, t, icons }, (name) => saved.push(name))
+    container.querySelector<HTMLElement>('.qc-dialog-scrim')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
     expect(container.querySelector('[data-role="drawing-template-name"]')).toBeNull()
     expect(saved).toEqual([])
   })
@@ -56,7 +58,7 @@ describe('the template name dialog', () => {
   it('traps Tab inside the box', () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
-    openTemplateNameDialog({ container, t }, () => undefined)
+    openTemplateNameDialog({ container, t, icons }, () => undefined)
     const dialog = container.querySelector<HTMLElement>('[data-role="drawing-template-name"]')!
     const input = dialog.querySelector<HTMLInputElement>('input')!
     input.value = 'Mine'
@@ -75,14 +77,14 @@ describe('the delete confirmation', () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
     let deleted = 0
-    openTemplateDeleteDialog({ container, t }, 'Thick red', () => deleted++)
+    openTemplateDeleteDialog({ container, t, icons }, 'Thick red', () => deleted++)
     const dialog = container.querySelector<HTMLElement>('[data-role="drawing-template-delete"]')!
     expect(dialog.textContent).toContain('"Thick red"')
     const remove = dialog.querySelector<HTMLButtonElement>('button[aria-label="Delete"]')!
     expect(document.activeElement).toBe(remove)
     dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
     expect(deleted).toBe(0)
-    openTemplateDeleteDialog({ container, t }, 'Thick red', () => deleted++)
+    openTemplateDeleteDialog({ container, t, icons }, 'Thick red', () => deleted++)
     container.querySelector<HTMLButtonElement>('button[aria-label="Delete"]')!.click()
     expect(deleted).toBe(1)
     expect(container.querySelector('[data-role="drawing-template-delete"]')).toBeNull()

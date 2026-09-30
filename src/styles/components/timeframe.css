@@ -2,12 +2,13 @@
 [data-qc-theme] .qc-tf {
   display: inline-flex;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
+  padding-inline: 2px;
 }
 
 [data-qc-theme] .qc-tf-chips {
   display: inline-flex;
-  gap: 1px;
+  gap: 2px;
 }
 
 [data-qc-theme] .qc-tf-chip {
@@ -21,13 +22,27 @@
   padding: 0;
 }
 
-[data-qc-theme] .qc-tf-groups {
-  display: flex;
+/* The panel stands as tall as the widget allows, rising over its own trigger when the groups need
+ * the room; the list takes the space the footer leaves and scrolls only when the groups genuinely
+ * outgrow it. */
+[data-qc-theme] .qc-menu-panel.qc-tf-menu {
+  max-height: calc(100% - 16px);
+  padding: 0;
+  overflow: hidden;
+}
+
+/* This panel carries no padding of its own, so the list holds its own 6px and scrolls in the menu's
+ * body: the region belongs to the menu, so a redraw of the rows leaves a reader where they were. */
+[data-qc-theme] .qc-tf-menu .qc-menu-body {
   flex: 1 1 auto;
-  flex-direction: column;
   min-height: 0;
-  max-height: 380px;
+  padding: 6px;
   overflow-y: auto;
+}
+
+/* A rule between unit groups spans the list with 6px above and below. */
+[data-qc-theme] .qc-tf-menu .qc-menu-body > .qc-separator {
+  margin: 6px 0;
 }
 
 [data-qc-theme] .qc-tf-group {
@@ -35,11 +50,12 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  height: 26px;
-  padding: 0 12px;
+  height: 24px;
+  padding: 0 8px;
   color: var(--qc-text-muted);
   font: inherit;
-  font-size: var(--qc-text-fontSizeMicro);
+  font-size: var(--qc-text-fontSizeSmall);
+  line-height: 16px;
   letter-spacing: 0.4px;
   text-transform: uppercase;
   background: none;
@@ -51,16 +67,50 @@
   color: var(--qc-text-secondary);
 }
 
+/* The row is the washed surface, not the label button: hover and the selected state fill the whole
+ * cell, star and delete included, and the row's own radius rounds it off. */
 [data-qc-theme] .qc-tf-row {
   display: flex;
   align-items: center;
+  gap: 2px;
   padding-inline-end: 6px;
+  border-radius: var(--qc-chrome-radiusLarge);
 }
 
-[data-qc-theme] .qc-tf-item {
+[data-qc-theme] .qc-tf-row:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-tf-row:active {
+  background: var(--qc-state-pressed);
+}
+
+/* The chosen timeframe inverts, star and all. */
+[data-qc-theme] .qc-tf-row[data-qc-checked='true'] {
+  background: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-tf-row[data-qc-checked='true'] .qc-tf-item,
+[data-qc-theme] .qc-tf-row[data-qc-checked='true'] .qc-tf-side {
+  color: var(--qc-text-inverse);
+}
+
+[data-qc-theme] .qc-tf-menu .qc-tf-item {
   flex: 1 1 auto;
   min-width: 0;
-  padding-inline-end: 4px;
+  height: 32px;
+  padding: 0 8px;
+  background: none;
+}
+
+/* No icon gutter: a timeframe row is its label. */
+[data-qc-theme] .qc-tf-menu .qc-tf-item:hover {
+  background: none;
+}
+
+/* No icon gutter: a timeframe row is its label. */
+[data-qc-theme] .qc-tf-menu .qc-tf-item .qc-menu-icon {
+  display: none;
 }
 
 [data-qc-theme] .qc-tf-side {
@@ -73,6 +123,7 @@
   padding: 0;
   color: var(--qc-text-muted);
   border-color: transparent;
+  border-radius: 4px;
   opacity: 0;
 }
 
@@ -82,16 +133,34 @@
   opacity: 1;
 }
 
+/* A saved timeframe's star holds in the emphasis fill, and under the pointer the star lifts onto the
+ * held hover fill in the primary ink, as a tool's star does in the drawing flyouts. */
 [data-qc-theme] .qc-tf-side[aria-pressed='true'] {
-  color: var(--qc-state-accent);
+  color: var(--qc-control-on);
   background: none;
   border-color: transparent;
 }
 
+[data-qc-theme] .qc-tf-side:hover {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-pressedHover);
+}
+
+/* A saved star keeps its fill under the pointer; only the cell behind it lifts. On the chosen row the
+ * cell lifts as a faint wash of the row's own ink, and the star keeps that ink. */
+[data-qc-theme] .qc-tf-side[aria-pressed='true']:hover {
+  color: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-tf-row[data-qc-checked='true'] .qc-tf-side:hover {
+  color: var(--qc-text-inverse);
+  background: color-mix(in srgb, var(--qc-text-inverse) 10%, transparent);
+}
+
+/* The composer is part of the menu: it stands on the panel's own surface under a rule. */
 [data-qc-theme] .qc-tf-composer {
   flex: 0 0 auto;
-  padding: 6px 0 2px;
-  background: var(--qc-chrome-surfaceRaised);
+  padding: 10px 0;
   border-top: 1px solid var(--qc-overlay-separator);
 }
 
@@ -99,26 +168,166 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 12px 6px;
+  padding: 0 12px;
 }
 
+[data-qc-theme] .qc-tf-composer .qc-menu-heading {
+  padding: 0 12px 6px;
+}
+
+/* The composer's fields are filled, not outlined: they sit inside a panel that already has an edge,
+ * and a border on each one would draw three more inside it. Both stand the same height as the
+ * action beside them, so the row reads as one control. */
+[data-qc-theme] .qc-tf-count,
+[data-qc-theme] .qc-tf-unit {
+  height: 28px;
+  color: var(--qc-text-primary);
+  background: color-mix(in srgb, var(--qc-text-primary) 8%, transparent);
+  border: 0;
+  border-radius: 8px;
+}
+
+/* The count is a shell around a bare input and its own spinner, so the field lights as one thing
+ * while the caret sits inside the text. */
 [data-qc-theme] .qc-tf-count {
-  width: 56px;
-  padding: 3px 6px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-tf-count:focus-within {
+  background: color-mix(in srgb, var(--qc-text-primary) 14%, transparent);
+}
+
+[data-qc-theme] .qc-tf-count-input {
+  width: 32px;
+  padding: 4px 0 4px 8px;
+  color: var(--qc-text-primary);
+  font: inherit;
+  background: none;
+  border: 0;
+  outline: none;
+}
+
+[data-qc-theme] .qc-tf-count-input::-webkit-outer-spin-button,
+[data-qc-theme] .qc-tf-count-input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+[data-qc-theme] .qc-tf-spin-column {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  padding-inline-end: 2px;
+}
+
+/* Two 18px marks stacked would stand taller than the 28px field they sit in, and the ink inside
+ * each is only a few pixels: it is the empty box that overflows. So each step CLIPS its glyph to a
+ * 12px half rather than shrinking the mark below the size every other dense glyph is drawn at. */
+[data-qc-theme] .qc-tf-spin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 12px;
+  padding: 0;
+  overflow: hidden;
+  color: var(--qc-text-muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-tf-spin:hover {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-tf-spin-up svg {
+  transform: rotate(180deg);
+}
+
+[data-qc-theme] .qc-tf-unit-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 [data-qc-theme] .qc-tf-unit {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding: 3px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 8px;
+  font: inherit;
+  cursor: pointer;
 }
 
+[data-qc-theme] .qc-tf-unit:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-tf-unit-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The caret points at where the list will appear, which is upward, and turns to face it once it is
+ * open. */
+[data-qc-theme] .qc-tf-unit-caret {
+  flex: 0 0 auto;
+  color: var(--qc-text-muted);
+  transition: transform var(--qc-motion-durationFast) linear;
+  transform: rotate(180deg);
+}
+
+[data-qc-theme] .qc-tf-unit[aria-expanded='true'] .qc-tf-unit-caret {
+  transform: none;
+}
+
+/* It opens UPWARD: this footer sits at the bottom of the panel, and a list dropping below it would
+ * hang off the end of the menu with nothing to scroll. */
+[data-qc-theme] .qc-tf-unit-list {
+  position: absolute;
+  inset-inline: 0;
+  bottom: calc(100% + 4px);
+  z-index: 10;
+  padding: 6px;
+  overflow: hidden;
+  color: var(--qc-text-primary);
+  background: var(--qc-overlay-surface);
+  border-radius: var(--qc-chrome-radius);
+  box-shadow: var(--qc-overlay-shadow);
+}
+
+/* A filled disc, not an outlined one: it sits in a row of filled fields and reads as their peer.
+ * Unavailable it stands back rather than disappearing, so the row keeps its shape while the pair
+ * being composed is still invalid. */
 [data-qc-theme] .qc-tf-add {
   display: inline-flex;
+  /* It must not give width to the fields beside it: a compressed disc is an oval, and the shape
+   * is what says the control is a single action rather than another field. */
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
   padding: 0;
+  color: var(--qc-text-secondary);
+  background: color-mix(in srgb, var(--qc-text-primary) 8%, transparent);
+  border: 0;
   border-radius: 50%;
+}
+
+[data-qc-theme] .qc-tf-add:hover:not([disabled]) {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-tf-add[disabled] {
+  color: var(--qc-text-secondary);
+  background: color-mix(in srgb, var(--qc-text-primary) 8%, transparent);
+  opacity: 0.4;
+  cursor: not-allowed;
 }

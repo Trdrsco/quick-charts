@@ -4,8 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "quickcharts": "file:../.artifacts/quickcharts.tgz",
-    "lightweight-charts": "^5.0.0"
+    "quickcharts": "file:../.artifacts/quickcharts.tgz"
   },
   "devDependencies": {
     "vite": "^5.4.11"

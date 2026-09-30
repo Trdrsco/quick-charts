@@ -4,8 +4,11 @@ import { moneyText } from '../core/money'
 import { distanceToSegment } from '../core/geometry'
 import { applyStroke, fillPaint, fontOf, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
+/** The hues a position opens its two zones in, until the trader says otherwise. */
 const PROFIT = '#089981'
 const LOSS = '#f23645'
+/** How solid a zone's wash opens. The bars have to stay readable through it. */
+const ZONE_ALPHA = 0.2
 
 export type PositionProps = {
   /** Account equity the risk figure is taken from. */
@@ -17,6 +20,11 @@ export type PositionProps = {
   lotSize: number
   /** Caps the position at the account's buying power: qty ≤ account × leverage / entry. */
   leverage: number
+  /** The reward zone's background: the band between entry and target, painted as given, opacity
+   *  and all. Its rule and its label take the same hue at full strength. */
+  profitColor: string
+  /** The risk zone's background, the same three places below the entry. */
+  stopColor: string
   showPrices: boolean
   /** Compact stats mode — the tags shrink to their essentials. */
   compact: boolean
@@ -48,7 +56,7 @@ export class LongPosition extends Drawing<PositionProps> {
   readonly type: string = 'long_position'
 
   protected override defaultProps(): PositionProps {
-    return { accountSize: 1000, risk: 25, riskDisplay: 'percent', lotSize: 1, leverage: 1, showPrices: true, compact: false }
+    return { accountSize: 1000, risk: 25, riskDisplay: 'percent', lotSize: 1, leverage: 1, profitColor: withAlpha(PROFIT, ZONE_ALPHA), stopColor: withAlpha(LOSS, ZONE_ALPHA), showPrices: true, compact: false }
   }
 
   requiredAnchors(): number {
@@ -153,17 +161,19 @@ export class LongPosition extends Drawing<PositionProps> {
     if (!z) return
     const [entry, target, stop] = this.anchors
     ctx.save()
-    ctx.fillStyle = withAlpha(PROFIT, 0.2)
+    const profitInk = withAlpha(this.props.profitColor, 1)
+    const stopInk = withAlpha(this.props.stopColor, 1)
+    ctx.fillStyle = this.props.profitColor
     ctx.fillRect(z.left, Math.min(z.entryY, z.targetY), z.right - z.left, Math.abs(z.targetY - z.entryY))
-    ctx.fillStyle = withAlpha(LOSS, 0.2)
+    ctx.fillStyle = this.props.stopColor
     ctx.fillRect(z.left, Math.min(z.entryY, z.stopY), z.right - z.left, Math.abs(z.stopY - z.entryY))
     ctx.restore()
 
     ctx.save()
     applyStroke(ctx, this.style)
-    ctx.strokeStyle = PROFIT
+    ctx.strokeStyle = profitInk
     strokeSegment(ctx, { x: z.left, y: z.targetY }, { x: z.right, y: z.targetY })
-    ctx.strokeStyle = LOSS
+    ctx.strokeStyle = stopInk
     strokeSegment(ctx, { x: z.left, y: z.stopY }, { x: z.right, y: z.stopY })
     ctx.strokeStyle = this.style.lineColor
     strokeSegment(ctx, { x: z.left, y: z.entryY }, { x: z.right, y: z.entryY })
@@ -172,7 +182,6 @@ export class LongPosition extends Drawing<PositionProps> {
     const s = this.stats()
     if (!s) return
     const mid = (z.left + z.right) / 2
-    const white = { ...this.style, textColor: '#ffffff' }
     const qtyText = s.qty >= 100 ? s.qty.toFixed(0) : s.qty.toFixed(2)
     const pnlLabel = s.closed ? 'Closed PnL' : 'Open PnL'
     // The P&L and the amounts at target and stop are MONEY, written by the money stand-in; the
@@ -187,14 +196,18 @@ export class LongPosition extends Drawing<PositionProps> {
       ? this.levelText(s.slOffset, s.slPercent)
       : `Stop: ${this.levelText(s.slOffset, s.slPercent)}, Amount: ${moneyText(s.amountAtSl)}`
 
-    paintLabel(ctx, targetText, { x: mid, y: z.targetY }, white, { align: 'center', background: PROFIT })
-    paintLabel(ctx, stopText, { x: mid, y: z.stopY }, white, { align: 'center', background: LOSS })
-    paintLabel(ctx, entryText, { x: mid, y: z.entryY }, white, { align: 'center', background: '#585858' })
+    // The three tags are written in the drawing's text colour, which is what the bar's text
+    // control sets: the plan's words are the only text it has.
+    paintLabel(ctx, targetText, { x: mid, y: z.targetY }, this.style, { align: 'center', background: profitInk })
+    paintLabel(ctx, stopText, { x: mid, y: z.stopY }, this.style, { align: 'center', background: stopInk })
+    paintLabel(ctx, entryText, { x: mid, y: z.entryY }, this.style, { align: 'center', background: '#585858' })
 
     if (this.props.showPrices) {
-      paintLabel(ctx, this.formatPrice(target.price), { x: z.right + 6, y: z.targetY }, { ...this.style, textColor: PROFIT })
-      paintLabel(ctx, this.formatPrice(stop.price), { x: z.right + 6, y: z.stopY }, { ...this.style, textColor: LOSS })
-      paintLabel(ctx, this.formatPrice(entry.price), { x: z.right + 6, y: z.entryY }, this.style)
+      paintLabel(ctx, this.formatPrice(target.price), { x: z.right + 6, y: z.targetY }, { ...this.style, textColor: profitInk })
+      paintLabel(ctx, this.formatPrice(stop.price), { x: z.right + 6, y: z.stopY }, { ...this.style, textColor: stopInk })
+      // Each price beside the plan is written in its own level's ink, the entry's in the entry line's:
+      // the text colour belongs to the tags alone.
+      paintLabel(ctx, this.formatPrice(entry.price), { x: z.right + 6, y: z.entryY }, { ...this.style, textColor: this.style.lineColor })
     }
   }
 

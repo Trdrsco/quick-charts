@@ -92,8 +92,8 @@ export {
 export type { RailGroup, RailSection } from './railModel'
 
 // ── What the eye blanks ─────────────────────────────────────────────────────────────────────────
-export { blanks, chooseHideMode, DEFAULT_HIDE_STATE, HIDE_LABELS, HIDE_ORDER, hideRowActive, toggleHide } from './hideModel'
-export type { HideMode, HideState } from './hideModel'
+export { blanks, CHART_HIDE_LAYERS, chooseHideMode, DEFAULT_HIDE_STATE, HIDE_LABELS, hideOrder, hideRowActive, isBuiltInHideMode, toggleHide } from './hideModel'
+export type { BuiltInHideMode, HideMode, HideState } from './hideModel'
 
 // ── The pointer ─────────────────────────────────────────────────────────────────────────────────
 export {
@@ -108,9 +108,11 @@ export {
 } from './cursorModel'
 export type { CursorMode, TransientTool } from './cursorModel'
 
-// ── Locks, and what a sweep takes ───────────────────────────────────────────────────────────────
-export { editRefused, removableDrawings, removeRows } from './lockModel'
-export type { DrawingCounts, DrawingEdit, RemoveRow } from './lockModel'
+// ── What a sweep takes ──────────────────────────────────────────────────────────────────────────
+// What a lock refuses is the library's own policy and stays inside it: a host locks and unlocks
+// through the drawing commands and reads what they answer.
+export { removableDrawings, removeRows } from './lockModel'
+export type { DrawingCounts, RemoveRow } from './lockModel'
 
 // ── Favorites ───────────────────────────────────────────────────────────────────────────────────
 export {
