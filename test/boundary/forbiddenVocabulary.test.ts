@@ -83,9 +83,9 @@ describe('the forbidden vocabulary, as built', () => {
 
   it('imports no private package: the seams are source modules of this one package', () => {
     const specifiers = new Set<string>()
-    for (const text of Object.values(CHART_SOURCES)) for (const m of text.matchAll(/from\s+['"](@trdrs\/[a-z0-9-]+)(?:\/[^'"]*)?['"]/g)) specifiers.add(m[1]!)
+    for (const text of Object.values(CHART_SOURCES)) for (const m of text.matchAll(/from\s+['"](@trdrs\/[a-z0-9-]+)(?:\/[^'"]*)?['"]/g)) { if (m[1] !== '@trdrs/quickcharts') specifiers.add(m[1]!) }
     expect([...specifiers].sort()).toEqual([])
-    expect(lines(CHART_SOURCES, /from\s+['"](@trdrs\/|tailwind)/)).toEqual([])
+    expect(lines(CHART_SOURCES, /from\s+['"](@trdrs\/(?!quickcharts(?:\/|['"]))|tailwind)/)).toEqual([])
   })
 
   it('keeps the V1 exclusions absent while allowing only the fixed replay state indicator', () => {

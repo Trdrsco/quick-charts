@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "dependencies": {
-    "quickcharts": "file:../.artifacts/quickcharts.tgz"
+    "@trdrs/quickcharts": "file:../.artifacts/quickcharts.tgz"
   },
   "devDependencies": {
     "happy-dom": "^20.13.2"

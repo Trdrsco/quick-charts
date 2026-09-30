@@ -156,7 +156,7 @@ describe('the tarball is what the directory and the manifest say', () => {
     const record = readManifest()
     expect(record.name).toBe(manifest.name)
     expect(record.version).toBe(manifest.version)
-    expect(record.tarball.name).toBe(`${manifest.name}-${manifest.version}.tgz`)
+    expect(record.tarball.name).toBe(`${manifest.name.replace(/^@/, '').replace('/', '-')}-${manifest.version}.tgz`)
     const tgz = readFileSync(`${candidateDir}/${record.tarball.name}`)
     expect(sha256(tgz)).toBe(record.tarball.sha256)
     expect(tgz.length).toBe(record.tarball.bytes)
@@ -204,7 +204,7 @@ describe('the candidate pack is deterministic', () => {
     const b = mkdtempSync(join(tmpdir(), 'qc-candidate-b-'))
     try {
       for (const out of [a, b]) execFileSync(process.execPath, ['scripts/pack-candidate.mjs', `--out=${out}`], { cwd: CHART_DIR, stdio: 'pipe' })
-      const tarballName = `${manifest.name}-${manifest.version}.tgz`
+      const tarballName = `${manifest.name.replace(/^@/, '').replace('/', '-')}-${manifest.version}.tgz`
       expect(readdirSync(a).sort()).toEqual(['manifest.json', 'package', tarballName])
       expect(readFileSync(join(a, tarballName)).equals(readFileSync(join(b, tarballName)))).toBe(true)
       expect(readFileSync(join(a, 'manifest.json'), 'utf8')).toBe(readFileSync(join(b, 'manifest.json'), 'utf8'))

@@ -26,7 +26,7 @@ declare const myBackend: any
 declare const chart: any
 declare const series: any
 declare const container: HTMLElement
-declare const smaDefinition: import('quickcharts').IndicatorDefinition
+declare const smaDefinition: import('@trdrs/quickcharts').IndicatorDefinition
 declare const header: { setSymbol(symbol: string): void }
 declare const banner: { set(status: string): void }
 declare const chrome: { setCompact(active: boolean): void }
@@ -50,7 +50,7 @@ const compilerOptions: ts.CompilerOptions = {
   noUnusedLocals: false,
   noUnusedParameters: false,
   baseUrl: pkgRoot,
-  paths: { quickcharts: ['src/index.ts'], 'quickcharts/drawings': ['src/drawings/index.ts'], 'quickcharts/adapters/rest': ['src/adapters/rest/index.ts'] },
+  paths: { '@trdrs/quickcharts': ['src/index.ts'], '@trdrs/quickcharts/drawings': ['src/drawings/index.ts'], '@trdrs/quickcharts/adapters/rest': ['src/adapters/rest/index.ts'] },
 }
 
 const VIRTUAL = `${pkgRoot}/test/__readme_block__.ts`
@@ -97,7 +97,7 @@ describe('README contract doctests', () => {
 
   it('the doctest harness itself catches a drifted example (negative control)', () => {
     const drifted = `
-      import type { ChartDatafeed } from 'quickcharts'
+      import type { ChartDatafeed } from '@trdrs/quickcharts'
       export const feed: ChartDatafeed = {
         async quotes() {}, // a method the contract does not carry
       } as ChartDatafeed

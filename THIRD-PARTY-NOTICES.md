@@ -1,8 +1,8 @@
-# Third-party notices for quickcharts
+# Third-party notices for @trdrs/quickcharts
 
-This document lists every third-party package in the dependency closure of `quickcharts`, with the license and copyright statement each package publishes. It is generated from the installed packages by `scripts/build-third-party-notices.mjs` on every build.
+This document lists every third-party package in the dependency closure of `@trdrs/quickcharts`, with the license and copyright statement each package publishes. It is generated from the installed packages by `scripts/build-third-party-notices.mjs` on every build.
 
-`quickcharts` bundles no third-party code. It declares one peer dependency that your application installs and bundles, and that peer installs one package of its own. Because your application bundle redistributes these packages, their license conditions attach to your product; this document tells you what each one asks for.
+`@trdrs/quickcharts` bundles no third-party code. It declares one peer dependency that your application installs and bundles, and that peer installs one package of its own. Because your application bundle redistributes these packages, their license conditions attach to your product; this document tells you what each one asks for.
 
 | Package | Version | License | Reached through |
 |---|---|---|---|

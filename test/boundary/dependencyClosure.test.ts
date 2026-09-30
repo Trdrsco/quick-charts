@@ -45,9 +45,9 @@ describe('the free chart dependency boundary (target)', () => {
     expect(every.filter((name) => FORBIDDEN.test(name))).toEqual([])
   })
 
-  it('ships one artifact: nothing a reader installs carries a scope of ours', () => {
+  it('ships the selected public artifact without separate organ installs', () => {
     const m = chartManifest()
-    expect(m.name).toBe('quickcharts')
-    expect(m.name.startsWith('@')).toBe(false)
+    expect(m.name).toBe('@trdrs/quickcharts')
+    expect(m.publishConfig?.access).toBe('public')
   })
 })

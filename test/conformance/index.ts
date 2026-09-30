@@ -58,8 +58,8 @@ import {
   type TemplateMeta,
   type UiConfig,
   type WriteOutcome,
-} from 'quickcharts'
-import { DEFAULT_OPTIONS, DEFAULT_STYLE, drawingTools } from 'quickcharts/drawings'
+} from '@trdrs/quickcharts'
+import { DEFAULT_OPTIONS, DEFAULT_STYLE, drawingTools } from '@trdrs/quickcharts/drawings'
 import {
   createRestSaveLoadAdapter,
   type RestConflictBody,
@@ -68,7 +68,7 @@ import {
   type RestResourceRef,
   type RestResponse,
   type RestRevisionRequiredBody,
-} from 'quickcharts/adapters/rest'
+} from '@trdrs/quickcharts/adapters/rest'
 
 // ── The host contract ───────────────────────────────────────────────────────────────────────────
 
@@ -398,7 +398,7 @@ export function hostSaveLoadAdapter(options: AdapterBOptions = {}): ChartSaveLoa
 
 // ── A fake host service, and the REST adapter over it ───────────────────────────────────────────
 //
-// The third adapter is the package's own `quickcharts/adapters/rest` talking to a service written
+// The third adapter is the package's own `@trdrs/quickcharts/adapters/rest` talking to a service written
 // here from the published wire contract alone: paths, `items` listings, refs in the body, `If-Match`
 // on every conditional write, and the three refusals. It holds its rows in a Map and answers
 // synchronously, so the suite runs it in any host without a server, a port or a global to patch,

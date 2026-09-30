@@ -252,7 +252,7 @@ export {
 // role inventory the palettes and the generated stylesheet are built from, and the same list is
 // published as `dist/theme-manifest.json`.
 //
-// The stylesheet is a separate asset: import `quickcharts/styles.css` once. The chart injects no
+// The stylesheet is a separate asset: import `@trdrs/quickcharts/styles.css` once. The chart injects no
 // styles from JavaScript, and its custom-property names and component selectors are private.
 //
 // Chart appearance is the other ladder: `ChartOverrides.appearance` names specific series, grid and
@@ -358,7 +358,7 @@ export type { MountedSymbolSearch, SymbolSearchCache, SymbolSearchHandle, Symbol
 export { createSymbolSearchCache, mountSymbolSearch, openSymbolSearch } from './ui/chrome/openSymbolSearch'
 
 // ── The drawing workflow's host inputs ────────────────────────────────────────────────────────
-// The drawing API is its own entrypoint (`quickcharts/drawings`), and everything about drawings
+// The drawing API is its own entrypoint (`@trdrs/quickcharts/drawings`), and everything about drawings
 // lives there. Two contracts surface here as well, and only because the WIDGET carries them: a
 // host hands the chart its asset port in the widget options, and the widget persists the drawing
 // preference record through the storage port it was given. Both are types; their models, defaults

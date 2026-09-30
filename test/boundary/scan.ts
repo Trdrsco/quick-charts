@@ -95,6 +95,7 @@ export const isSourceMap = (path: string): boolean => /\.map$/.test(path)
 
 interface Manifest {
   name: string
+  publishConfig?: { access?: string }
   dependencies?: Record<string, string>
   peerDependencies?: Record<string, string>
   devDependencies?: Record<string, string>

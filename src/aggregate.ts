@@ -136,7 +136,7 @@ export function foldBars(bars: readonly FeedBar[], bucket: (epochSecs: number) =
  *  the wrapped feed gives its own honest answer rather than this wrapper inventing one.
  *
  *  ```ts
- *  import { withFoldedHistory } from 'quickcharts'
+ *  import { withFoldedHistory } from '@trdrs/quickcharts'
  *
  *  const feed = withFoldedHistory(venueFeed, { serves: ['1m', '15m', '1h', '1d', '1mo'] })
  *  // A 45m request now fetches 15m bars and folds them three at a time.

@@ -1,9 +1,9 @@
 // The full consumer: the root, the drawings subpath, the REST adapter and the stylesheet, used the
 // way an application uses them, so the bundler keeps exactly what an application's build keeps.
-import 'quickcharts/styles.css'
-import { createChart } from 'quickcharts'
-import { drawingTools } from 'quickcharts/drawings'
-import { createRestSaveLoadAdapter } from 'quickcharts/adapters/rest'
+import '@trdrs/quickcharts/styles.css'
+import { createChart } from '@trdrs/quickcharts'
+import { drawingTools } from '@trdrs/quickcharts/drawings'
+import { createRestSaveLoadAdapter } from '@trdrs/quickcharts/adapters/rest'
 
 const datafeed = {
   search: async () => [],

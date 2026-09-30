@@ -2,7 +2,7 @@
 // and a bundle that injects nothing.
 //
 // The dist blocks are vacuous until a build has run, the same shape the packed-declaration fixture
-// uses. Run `pnpm --filter quickcharts build` and they judge the real artifact.
+// uses. Run `pnpm --filter @trdrs/quickcharts build` and they judge the real artifact.
 import { describe, expect, it } from 'vitest'
 import manifest from '../../package.json'
 import { HOST_LAYER_ORDER, LAYER_ORDER_STATEMENT, selectorsOf, STYLE_LAYERS, THEME_ROOT_ATTRIBUTE, unlayeredSelectorsOf } from '../../src/theme/css-contract'

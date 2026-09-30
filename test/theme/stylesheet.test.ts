@@ -3,7 +3,7 @@
 // The composed stylesheet is built here from the same two inputs the generator uses, so this
 // fixture judges the real artifact without needing a build to have run. `vectors.json` is the
 // committed record of what the generator emits for the built-in palettes; editing a palette without
-// rerunning `pnpm --filter quickcharts build:theme` fails the drift block below.
+// rerunning `pnpm --filter @trdrs/quickcharts build:theme` fails the drift block below.
 import { describe, expect, it } from 'vitest'
 import { composeStylesheet, cssVarName, HOST_LAYER_ORDER, LAYER_ORDER_STATEMENT, selectorsOf, STYLE_LAYERS, themeBlock, themeDeclarations, THEME_ROOT_ATTRIBUTE, themeRootSelector, unlayeredSelectorsOf } from '../../src/theme/css-contract'
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
@@ -201,7 +201,7 @@ describe('generated-artifact drift', () => {
   it('matches the committed vectors for both built-in palettes', () => {
     expect(vectors.rootAttribute).toBe(THEME_ROOT_ATTRIBUTE)
     for (const mode of THEME_MODES) {
-      expect(vectors.modes[mode], `${mode}: rerun pnpm --filter quickcharts build:theme`).toEqual(themeDeclarations(BUILT_IN_THEMES[mode]))
+      expect(vectors.modes[mode], `${mode}: rerun pnpm --filter @trdrs/quickcharts build:theme`).toEqual(themeDeclarations(BUILT_IN_THEMES[mode]))
     }
   })
 

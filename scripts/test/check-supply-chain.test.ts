@@ -87,12 +87,19 @@ describe('each rule reports its seeded value from the tree', () => {
     write('test/a.test.ts', "import '@trdrs/chart-drawings'\n")
     write('dist/index.js', "import '@trdrs/broker'\n")
     write('README.md', 'Install `@trdrs/chart-engine` beside it.\n')
-    write('package.json', JSON.stringify({ name: 'quickcharts', dependencies: { '@trdrs/broker': 'workspace:^' }, devDependencies: { '@trdrs/chart-drawings': 'workspace:^' } }))
+    write('package.json', JSON.stringify({ name: '@trdrs/quickcharts', dependencies: { '@trdrs/broker': 'workspace:^' }, devDependencies: { '@trdrs/chart-drawings': 'workspace:^' } }))
     const { hits } = check(root, noPacked)
     // The manifest is judged structurally: the devDependency the build inlines is not a finding,
     // and the installable block is reported once, not per line of text.
     expect(keys(hits)).toEqual(['README.md:1:proprietary', 'dist/index.js:1:proprietary', 'package.json:0:proprietary'])
     expect(hits.find((h) => h.file.endsWith('package.json'))?.what).toBe('dependencies names @trdrs/broker')
+  })
+
+  it('allows the selected public chart name but rejects a similarly prefixed private package', () => {
+    write('README.md', 'Install @trdrs/quickcharts and import @trdrs/quickcharts/drawings.\n')
+    expect(check(root, noPacked).hits).toEqual([])
+    write('README.md', 'Install @trdrs/quickcharts-private.\n')
+    expect(keys(check(root, noPacked).hits)).toEqual(['README.md:1:proprietary'])
   })
 
   it('proprietary is a present-tense rule: a private name in an old README revision is not a leak', () => {

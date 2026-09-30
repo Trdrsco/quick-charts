@@ -5,8 +5,8 @@ maintainers support, where the library is verified to run, and how versions chan
 
 ## What is supported
 
-- The documented API of the `quickcharts` package: the root entrypoint, `quickcharts/drawings`,
-  `quickcharts/adapters/rest`, and `quickcharts/styles.css`.
+- The documented API of the `@trdrs/quickcharts` package: the root entrypoint, `@trdrs/quickcharts/drawings`,
+  `@trdrs/quickcharts/adapters/rest`, and `@trdrs/quickcharts/styles.css`.
 - The behavior the package tests prove: the feature manifest in `dist/feature-manifest.json`, the
   theme manifest in `dist/theme-manifest.json`, the REST wire contract in `dist/rest-openapi.json`,
   and the contract tests beside the source.
@@ -29,7 +29,7 @@ consumers verify declarations with library checking enabled and production bundl
 workspace dependencies. The release toolchain uses Node 24.15.0 and npm 12.1.0.
 
 The required `lightweight-charts` 5 peer is installed automatically with default npm peer
-resolution. The primary command is `npm install quickcharts`.
+resolution. The primary command is `npm install @trdrs/quickcharts`.
 
 The packed production bundle passes the automated public conformance suite in Chromium, Firefox
 and WebKit through Playwright 1.61.0. These checks cover chart behavior, controls, themes,

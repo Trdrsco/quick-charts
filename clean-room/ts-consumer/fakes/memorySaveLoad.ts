@@ -21,8 +21,8 @@ import type {
   TemplateKind,
   TemplateMeta,
   WriteOutcome,
-} from 'quickcharts'
-import { drawingContextKey } from 'quickcharts'
+} from '@trdrs/quickcharts'
+import { drawingContextKey } from '@trdrs/quickcharts'
 
 /** A ChartStorage over a Map. Never throws: an absent key reads as null, and every write lands. */
 export function memoryStorage(seed?: Record<string, string>): ChartStorage {

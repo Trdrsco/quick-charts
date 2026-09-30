@@ -21,7 +21,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const evidence = process.env.FIRST_HOST_EVIDENCE
   validateIdentity({ ref: process.env.GITHUB_REF, version, digest, evidence })
   if (process.argv[2] === 'artifact') {
-    const bytes = readFileSync(new URL(`../.candidate/quickcharts-${version}.tgz`, import.meta.url))
+    const bytes = readFileSync(new URL(`../.candidate/trdrs-quickcharts-${version}.tgz`, import.meta.url))
     verifyArtifact(bytes, digest)
     appendFileSync(process.env.GITHUB_OUTPUT, `digest=${digest}\n`)
     // The release approver reads the first-host record and the exact digest before approving.

@@ -1,4 +1,4 @@
-// The `quickcharts/adapters/rest` API-surface pin, the same contract as the root's and the drawing
+// The `@trdrs/quickcharts/adapters/rest` API-surface pin, the same contract as the root's and the drawing
 // subpath's: the entrypoint's public RUNTIME surface as { name: typeof }. A diff here is a SemVer
 // event to decide consciously, never noise to appease. Type-only exports are erased at runtime and
 // cannot be pinned here; the clean-room consumer compiles against the shipped declarations and is

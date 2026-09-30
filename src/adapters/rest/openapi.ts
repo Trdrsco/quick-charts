@@ -141,7 +141,7 @@ export function restOpenApiDocument(): Json {
       title: 'Quick Charts saved resources',
       version: String(REST_WIRE_VERSION),
       description:
-        'The service contract behind `createRestSaveLoadAdapter` from `quickcharts/adapters/rest`. Every path is relative to the base URL the host configures. Authorization, cookies, CORS, retries and tenancy belong to the host request function, so no path, header or field here carries a credential. Saved charts, layouts, drawing documents and templates share one revisioned rule: a read answers the ref a row stands at, a write quotes that revision in `If-Match`, and a write against a revision the service has moved past answers 409 with the ref that stands.',
+        'The service contract behind `createRestSaveLoadAdapter` from `@trdrs/quickcharts/adapters/rest`. Every path is relative to the base URL the host configures. Authorization, cookies, CORS, retries and tenancy belong to the host request function, so no path, header or field here carries a credential. Saved charts, layouts, drawing documents and templates share one revisioned rule: a read answers the ref a row stands at, a write quotes that revision in `If-Match`, and a write against a revision the service has moved past answers 409 with the ref that stands.',
     },
     servers: [
       {

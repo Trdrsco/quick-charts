@@ -11,7 +11,7 @@ link to it.
 
 A bug report contains:
 
-- the `quickcharts` version and the `lightweight-charts` version you installed;
+- the `@trdrs/quickcharts` version and the `lightweight-charts` version you installed;
 - the browser or runtime, with its version;
 - an isolated reproduction: the smallest page or test that shows the behavior, with an in-memory
   datafeed and no service of yours behind it;
