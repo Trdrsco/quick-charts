@@ -2,18 +2,24 @@ import type { Translation } from '../runtime'
 import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
+  'legend.open': 'O',
+  'legend.high': 'H',
+  'legend.low': 'L',
+  'legend.close': 'C',
+  'legend.change': '{change} ({percent}%)',
   'legend.indicatorSettings': '指標設定',
+  'legend.showRows': 'Show study rows',
+  'legend.hideRows': 'Hide study rows',
   'legend.restorePane': '還原窗格',
   'legend.collapsePane': '收合窗格',
   'legend.maximizePane': '最大化窗格',
   'legend.showIndicator': '顯示指標',
   'legend.hideIndicator': '隱藏指標',
-  'legend.priceScale': '價格座標：{mode}',
   'legend.scaleNormal': '一般',
   'legend.scaleLog': '對數',
   'legend.scalePercent': '%',
   'legend.scaleIndexed': '100',
-  'legend.compare': '比較或加入商品',
   'legend.changeSymbol': '變更商品',
   'legend.removeCompare': '移除比較',
+  'legend.removeIndicator': 'Remove indicator',
 }

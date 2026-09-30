@@ -7,9 +7,13 @@
 // `role="dialog"` and `aria-modal`, names itself, traps Tab inside its own focusables, closes on
 // Escape and on a press on the scrim, returns focus to whatever had it before it opened, and
 // registers with its host so the host's owner can close it at teardown.
-import { focusables, glyph, h, stopPointer } from './dom'
-import { ICONS } from './icons'
-import { trackOverlay, untrackOverlay } from './overlays'
+import { h, stopPointer } from './dom'
+import { focusables } from '../controls/dom'
+import { layerFor } from '../controls/layer'
+import { ICONS, SEARCH_EMPTY_MARK } from '../controls/icons'
+import { trackOverlay } from '../controls/overlays'
+import { ownsEscape, pushEscapeOwner } from '../controls/escape'
+import type { IconResolver } from '../icons/resolver'
 
 export interface DialogHandle {
   element: HTMLElement
@@ -24,6 +28,9 @@ export interface DialogOptions {
   className?: string
   /** A stable `data-role` a host test can find the dialog by. */
   role?: string
+  /** What the box is to a reader. A question that must be answered before anything else can happen
+   *  is an alert; everything else is an ordinary dialog. */
+  ariaRole?: 'dialog' | 'alertdialog'
   /** The box's width in CSS pixels; the stylesheet clamps it to the layer. */
   width?: number
   /** Fill the box. */
@@ -35,18 +42,21 @@ export interface DialogOptions {
 
 export function openDialog(options: DialogOptions): DialogHandle {
   const scrim = h('div', { class: 'qc-scrim qc-dialog-scrim' })
-  const box = h('div', { class: `qc-overlay qc-dialog${options.className ? ` ${options.className}` : ''}`, role: 'dialog', 'aria-modal': 'true', 'aria-label': options.label, 'data-role': options.role })
+  const box = h('div', { class: `qc-overlay qc-dialog${options.className ? ` ${options.className}` : ''}`, role: options.ariaRole ?? 'dialog', 'aria-modal': 'true', 'aria-label': options.label, 'data-role': options.role })
   if (options.width) box.style.width = `${options.width}px`
   stopPointer(box)
   scrim.appendChild(box)
 
   let isOpen = true
   const previouslyFocused = document.activeElement as HTMLElement | null
+  const escape = pushEscapeOwner()
 
+  let untrack: () => void = () => undefined
   const close = (): void => {
     if (!isOpen) return
     isOpen = false
-    untrackOverlay(options.host, handle)
+    escape.release()
+    untrack()
     document.removeEventListener('keydown', onKey, true)
     scrim.remove()
     options.onClose?.()
@@ -54,7 +64,9 @@ export function openDialog(options: DialogOptions): DialogHandle {
   }
 
   const onKey = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape') {
+    // A control a row expanded in place owns Escape while it is open: the first press closes that
+    // control, the next closes the dialog.
+    if (event.key === 'Escape' && ownsEscape(escape.token)) {
       event.stopPropagation()
       event.preventDefault()
       close()
@@ -86,8 +98,11 @@ export function openDialog(options: DialogOptions): DialogHandle {
 
   const handle: DialogHandle = { element: box, close, open: () => isOpen }
   options.build(box, handle)
-  options.host.appendChild(scrim)
-  trackOverlay(options.host, handle)
+  // The widget's body-level layer where there is one, so nothing the page stacks beside or above
+  // the widget can paint over a question that must be answered; the host itself where a root was
+  // built without a layer.
+  ;(layerFor(options.host) ?? options.host).appendChild(scrim)
+  untrack = trackOverlay(options.host, close)
   document.addEventListener('keydown', onKey, true)
   const target = options.initialFocus?.(box) ?? focusables(box)[0] ?? null
   target?.focus()
@@ -95,10 +110,22 @@ export function openDialog(options: DialogOptions): DialogHandle {
 }
 
 /** A dialog's title row: the heading and the close control. */
-export function dialogTitle(text: string, closeLabel: string, onClose: () => void): HTMLElement {
-  const closeButton = h('button', { type: 'button', class: 'qc-button qc-dialog-close', 'aria-label': closeLabel, title: closeLabel }, glyph(ICONS.close, { size: 18 }))
+export function dialogTitle(text: string, closeLabel: string, onClose: () => void, icons: IconResolver): HTMLElement {
+  const closeButton = h('button', { type: 'button', class: 'qc-button qc-dialog-close', 'aria-label': closeLabel, title: closeLabel }, icons.glyph(ICONS.dialogClose, { size: 18 }))
   closeButton.addEventListener('click', onClose)
   return h('div', { class: 'qc-dialog-title' }, h('span', { class: 'qc-title' }, text), closeButton)
+}
+
+/** What a list shows in place of its rows when nothing matched: the drawing over the line that
+ *  says so, centred where the rows would have stood. The symbol search and the layouts browser
+ *  both say it this way, so a trader meets one answer rather than two. */
+export function emptyState(text: string, icons: IconResolver): HTMLElement {
+  return h(
+    'div',
+    { class: 'qc-empty' },
+    icons.glyph(SEARCH_EMPTY_MARK, { size: 120, className: 'qc-empty-art' }),
+    h('div', { class: 'qc-empty-text' }, text),
+  )
 }
 
 export interface SwitchOptions {

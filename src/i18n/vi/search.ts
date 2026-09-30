@@ -8,7 +8,7 @@ export const search: Translation<typeof source> = {
   'search.placeholder': 'Search symbol',
   'search.clear': 'Xóa',
   'search.close': 'Close',
-  'search.noMatches': 'Không có mã nào khớp.',
+  'search.noMatches': 'No symbols match your criteria',
   'search.loadingMore': 'Loading more',
   'search.failed': 'Search failed.',
   'search.results': 'Symbols',
@@ -29,4 +29,5 @@ export const search: Translation<typeof source> = {
   'search.opReciprocal': 'Nghịch đảo',
   'search.opsHide': 'Ẩn toán tử spread',
   'search.opsShow': 'Hiện toán tử spread',
+  'search.ops': 'Spread operators',
 }

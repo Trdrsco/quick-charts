@@ -6,6 +6,8 @@
 // Text roles are held to 4.5 to 1, the AA minimum for text under 18pt. Non-text indicators, such as
 // the focus ring and the strong border, are held to 3 to 1 under WCAG 1.4.11. `text.disabled`
 // declares no rule: WCAG exempts an inactive user interface component from a contrast minimum.
+// `chrome.fieldBorder` declares none either: a field's mark and prompt already name it, and 1.4.11
+// asks 3 to 1 only of what a component needs in order to be identified.
 //
 // A palette edit that drops a value below its threshold fails here with the measured ratio in the
 // message, so the fix is a value rather than a waiver.
@@ -24,14 +26,23 @@ describe('WCAG 2.2 contrast in both built-in modes', () => {
   it('gates every role that carries a readability requirement', () => {
     expect(GATED.map((r) => r.id).sort()).toEqual([
       'chrome.borderStrong',
+      'chrome.caret',
+      'control.mark',
+      'control.on',
+      'illustration.accent',
+      'illustration.accentInk',
+      'illustration.ink',
       'scale.crosshairLabelText',
       'scale.text',
       'state.accent',
       'state.focusRing',
+      'state.hoverInk',
+      'state.markInk',
       'status.info',
       'status.negative',
       'status.positive',
       'status.warning',
+      'text.highlight',
       'text.inverse',
       'text.link',
       'text.muted',

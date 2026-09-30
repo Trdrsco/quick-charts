@@ -8,17 +8,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChartI18n } from '../../src/i18n'
 import { DEFAULT_DRAWING_PREFERENCES, type DrawingPreferences } from '../../src/drawings/index'
+import type { ChartExtensionHideLayer } from '../../src/extension'
 import { createCommandRegistry } from '../../src/widget/commands'
 import { registerChartCommands } from '../../src/widget/chartCommands'
 import { attachDrawingsPlane } from '../../src/widget/drawings'
-import { openOverlays } from '../../src/ui/drawings/overlays'
-import { resolveFeatures } from '../../src/widget/planes'
+import { openOverlays } from '../../src/ui/controls/overlays'
+import { resolveFeatures, resolveUi } from '../../src/widget/planes'
 import type { ChartHandle } from '../../src/widget/chart'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import type { DrawingAssetPort } from '../../src/drawings/index'
 import type { PlacedImage } from '../../src/drawings'
 import { click, drag, fakeChart } from '../drawings/fakeChart'
+import { ownIcons } from '../ownIcons'
 
 interface Rig {
   chrome: HTMLElement
@@ -27,6 +29,8 @@ interface Rig {
   plane: ReturnType<typeof attachDrawingsPlane>
   run: (id: string, arg?: unknown) => string
   indicatorsHidden: () => boolean
+  /** The layers extensions offered the eye; a test pushes one and tells the plane. */
+  hideLayers: ChartExtensionHideLayer[]
   events: { kind: string; id: string | null }[]
   dispose: () => void
 }
@@ -41,16 +45,18 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
   const i18n = createChartI18n()
   let prefs: DrawingPreferences = DEFAULT_DRAWING_PREFERENCES
   let indicatorsHidden = false
+  const hideLayers: ChartExtensionHideLayer[] = []
   const events: Rig['events'] = []
   const registry = createCommandRegistry(options.deny ? { access: { command: (id) => !options.deny!(id) } } : undefined)
   const adapter = memorySaveLoadAdapter()
   const plane = attachDrawingsPlane({
+    icons: ownIcons(),
     chart: fake.chart,
     series: fake.series,
     container: gestures,
     chrome,
     chartId: 'chart-1',
-    chartKey: 'c1',
+    chartIdentity: { current: () => 'c1', set: () => undefined },
     documents: null,
     sources: () => ['main'],
     panes: () => ['main'],
@@ -66,12 +72,14 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     ...(options.assets ? { assets: options.assets } : {}),
     commands: registry.registry,
     theme: () => BUILT_IN_THEMES.dark,
+    replayPhase: () => 'off' as const,
     preferences: () => prefs,
     setPreferences: (next) => {
       prefs = next
       plane.refresh()
     },
     indicators: { count: () => 2, setAllHidden: (hidden) => (indicatorsHidden = hidden) },
+    hideLayers: () => hideLayers,
     chartCount: () => options.charts ?? 1,
     onSaveConflict: () => undefined,
     onChange: (kind, id) => events.push({ kind, id }),
@@ -83,15 +91,21 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     commands: registry.registry,
     handle,
     features: resolveFeatures(),
+    ui: resolveUi(undefined, resolveFeatures()),
     capabilities: () => ({}) as never,
+    bars: () => [],
+    resetAppearance: () => undefined,
     t: () => i18n.t,
     earliestBar: () => null,
+    replayFromFirst: async () => undefined,
     frame: () => undefined,
     zoom: () => undefined,
     scroll: () => undefined,
     level: () => null,
     formatter: () => ({}) as never,
     compareOpen: () => undefined,
+    indicatorsOpen: () => undefined,
+    symbolSearchOpen: () => undefined,
     drawingVerbs: () => plane.verbs,
   })
   return {
@@ -101,6 +115,7 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     plane,
     run: (id, arg) => registry.registry.execute(id, arg).kind,
     indicatorsHidden: () => indicatorsHidden,
+    hideLayers,
     events,
     dispose: () => {
       unregister()
@@ -168,6 +183,33 @@ describe('the plane through the registry', () => {
     expect(byLabel(chrome, 'Show all')).toBeTruthy()
   })
 
+  it('a contributed layer joins the eye: listed after its own, blanked by its subject and by all, released when it leaves', () => {
+    const { chrome, plane, run, hideLayers } = make()
+    const applied: boolean[] = []
+    const glyph = { paths: [{ d: 'M4 4 H24 V24 H4 Z' }] }
+    hideLayers.push({ id: 'notes', label: { hide: 'Hide notes', show: 'Show notes' }, icon: { shown: glyph, hidden: glyph }, apply: (hidden) => applied.push(hidden) })
+    plane.syncHideLayers()
+    expect(applied).toEqual([false])
+    byLabel(chrome, 'Hide menu').click()
+    const rows = [...chrome.querySelectorAll<HTMLElement>('[data-role="drawing-popover"] [role="menuitemradio"]')]
+    expect(rows.map((r) => r.textContent)).toEqual(['Hide drawings', 'Hide indicators', 'Hide notes', 'Hide all'])
+    rows[2]!.click()
+    expect(applied).toEqual([false, true])
+    expect(plane.api!.allHidden()).toBe(false)
+    expect(byLabel(chrome, 'Show notes').getAttribute('aria-pressed')).toBe('true')
+    expect(run('chart.drawings.hide', { mode: 'all', on: true })).toBe('ok')
+    expect(applied).toEqual([false, true, true])
+    expect(plane.api!.allHidden()).toBe(true)
+    // A subject the eye can no longer find is not one it can point at: the eye rests, and what it
+    // was blanking is shown again.
+    run('chart.drawings.hide', { mode: 'notes', on: true })
+    hideLayers.length = 0
+    plane.syncHideLayers()
+    expect(plane.verbs!.hide()).toEqual({ mode: 'drawings', on: false })
+    expect(run('chart.drawings.hide', { mode: 'notes', on: true })).toBe('ok')
+    expect(plane.verbs!.hide()).toEqual({ mode: 'drawings', on: false })
+  })
+
   it('a denied command is refused from the toolbar and from the keyboard alike, and its control renders disabled', () => {
     const { chrome, plane, gestures, run } = make({ deny: (id) => id === 'chart.drawings.deleteSelected' || id === 'chart.drawings.magnet' })
     expect(byLabel(chrome, 'Magnet').disabled).toBe(true)
@@ -190,19 +232,29 @@ describe('the plane through the registry', () => {
   })
 
   it('a selection verb renders enabled only while the registry would run it', () => {
-    const { chrome, gestures, run } = make()
+    const { chrome, gestures, run, plane } = make()
     expect(byLabel(chrome, 'Remove drawings').disabled).toBe(true)
     run('chart.drawings.arm', 'rectangle')
     drag(gestures, [10, 10], [100, 100])
     expect(byLabel(chrome, 'Remove drawings').disabled).toBe(false)
-    byLabel(chrome, 'More drawing actions').click()
-    const rows = [...chrome.querySelectorAll<HTMLButtonElement>('[data-role="drawing-popover"] [role="menuitem"]')]
-    expect(rows.find((r) => r.textContent?.startsWith('Paste'))!.disabled).toBe(true)
-    run('chart.drawings.copy')
-    byLabel(chrome, 'More drawing actions').click()
-    byLabel(chrome, 'More drawing actions').click()
-    const again = [...chrome.querySelectorAll<HTMLButtonElement>('[data-role="drawing-popover"] [role="menuitem"]')]
-    expect(again.find((r) => r.textContent?.startsWith('Paste'))!.disabled).toBe(false)
+    // Clone needs an EDITABLE selection, so Lock all takes it away and releasing it gives it back;
+    // Copy only needs a selection and stays. Lock all drops the selection, so it is named again.
+    const id = plane.api!.export()[0]!.id
+    const moreRows = (): HTMLButtonElement[] => {
+      if (chrome.querySelector('[data-role="drawing-popover"]')) byLabel(chrome, 'More drawing actions').click()
+      byLabel(chrome, 'More drawing actions').click()
+      return [...chrome.querySelectorAll<HTMLButtonElement>('[data-role="drawing-popover"] [role="menuitem"]')]
+    }
+    const verb = (rows: HTMLButtonElement[], name: string) => rows.find((r) => r.textContent?.startsWith(name))!
+    expect(verb(moreRows(), 'Clone').disabled).toBe(false)
+    run('chart.drawings.lockAll', true)
+    plane.api!.select(id)
+    const locked = moreRows()
+    expect(verb(locked, 'Clone').disabled).toBe(true)
+    expect(verb(locked, 'Copy').disabled).toBe(false)
+    run('chart.drawings.lockAll', false)
+    plane.api!.select(id)
+    expect(verb(moreRows(), 'Clone').disabled).toBe(false)
   })
 
   it('a tool the access policy refuses is disabled on the toolbar and refused by the api', () => {
@@ -329,6 +381,55 @@ describe('the plane through the registry', () => {
     for (const verb of ['selectedDrawing', 'commitEdit', 'beginPreview', 'endPreview', 'textEdit', 'commitText', 'cancelText', 'presets']) expect(verb in plane.api!, verb).toBe(false)
   })
 
+  it('Delete and Clone are unavailable under lock all, and act on a drawing whose own lock is on', () => {
+    const { plane, gestures, run } = make()
+    run('chart.drawings.arm', 'rectangle')
+    drag(gestures, [10, 10], [100, 100])
+    const id = plane.api!.export()[0]!.id
+    expect(run('chart.drawings.lockAll', true)).toBe('ok')
+    plane.api!.select(id)
+    expect(run('chart.drawings.deleteSelected')).toBe('unavailable')
+    expect(run('chart.drawings.clone')).toBe('unavailable')
+    expect(plane.api!.count()).toBe(1)
+
+    run('chart.drawings.lockAll', false)
+    plane.api!.select(id)
+    expect(run('chart.drawings.lock', true)).toBe('ok')
+    expect(run('chart.drawings.clone')).toBe('ok')
+    expect(plane.api!.count()).toBe(2)
+    plane.api!.select(id)
+    expect(run('chart.drawings.deleteSelected')).toBe('ok')
+    expect(plane.api!.count()).toBe(1)
+  })
+
+  it('makes Paste unavailable under lock all and never reports ok for a refused paste', () => {
+    const { plane, gestures, run } = make()
+    run('chart.drawings.arm', 'rectangle')
+    drag(gestures, [10, 10], [100, 100])
+    expect(run('chart.drawings.copy')).toBe('ok')
+    expect(run('chart.drawings.lockAll', true)).toBe('ok')
+
+    expect(run('chart.drawings.paste')).toBe('unavailable')
+    expect(plane.api!.count()).toBe(1)
+
+    expect(run('chart.drawings.lockAll', false)).toBe('ok')
+    expect(run('chart.drawings.paste')).toBe('ok')
+    expect(plane.api!.count()).toBe(2)
+  })
+
+  it('keeps Cancel available for a completed Measure readout after Measure disarms', () => {
+    const { plane, gestures, run } = make()
+    expect(run('chart.drawings.cancel')).toBe('unavailable')
+    expect(run('chart.drawings.arm', 'measure')).toBe('ok')
+    drag(gestures, [100, 100], [300, 200])
+    expect(plane.api!.activeTool()).toBeNull()
+
+    expect(run('chart.drawings.cancel')).toBe('ok')
+    gestures.dispatchEvent(new PointerEvent('pointermove', { clientX: 200, clientY: 150, bubbles: true }))
+    expect(plane.api!.hovered()).toBeNull()
+    expect(run('chart.drawings.cancel')).toBe('unavailable')
+  })
+
   it('locks the pointer as one state: the touch action moves with the pan lock', () => {
     const { gestures, run } = make()
     expect(gestures.style.touchAction).toBe('')
@@ -363,11 +464,14 @@ describe('the plane through the registry', () => {
     expect(plane.api!.export()[0]?.scope).toBe('c1')
   })
 
-  it('reports tool and selection changes to the chart, and takes everything down on destroy', () => {
+  it('reports tool, selection and drawing changes to the chart, and takes everything down on destroy', () => {
     const r = make()
     r.run('chart.drawings.arm', 'rectangle')
     drag(r.gestures, [10, 10], [100, 100])
-    expect(r.events.map((e) => e.kind)).toEqual(['tool', 'tool', 'selection'])
+    // Arming the tool, the placement landing, the tool standing down, the new drawing taking the
+    // selection, and the layer settling. An edit reports as `changed`, which is what lets a
+    // consumer that cares about the drawings themselves tell one from a tool being picked up.
+    expect(r.events.map((e) => e.kind)).toEqual(['tool', 'changed', 'tool', 'selection', 'changed', 'changed'])
     r.dispose()
     rigs = []
     expect(document.querySelector('[data-role="drawing-toolbar"]')).toBeNull()
@@ -429,5 +533,99 @@ describe('the plane through the registry', () => {
     rigs = []
     expect(openOverlays(chrome)).toBe(0)
     expect(document.querySelector('[data-role="drawing-popover"]')).toBeNull()
+  })
+})
+
+describe('an image pasted over the chart', () => {
+  const image: PlacedImage = { dataUrl: 'data:image/png;base64,AA', width: 64, height: 48, opacity: 1 }
+  const imageFile = (type = 'image/png'): File => new File(['x'], 'shot.png', { type })
+  /** The chart is under the pointer: a paste anywhere else on the page is not this chart's. */
+  const hovering = (r: Rig): void => {
+    r.gestures.matches = () => true
+  }
+  const paste = (files: File[]): void => {
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', { value: { files } })
+    window.dispatchEvent(event)
+  }
+  const status = (r: Rig): string => r.chrome.querySelector<HTMLElement>('.qc-drawing-status')!.textContent ?? ''
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
+
+  it('places the image the port took', async () => {
+    const port: DrawingAssetPort = { intakeImage: async () => ({ ok: true, asset: { ...image, downscaled: false } }), glyphSource: () => null }
+    const r = make({ assets: port })
+    hovering(r)
+    paste([imageFile()])
+    await settle()
+    expect(r.plane.api!.count()).toBe(1)
+    expect(status(r)).toBe('')
+  })
+
+  it('says what went wrong for each way the port can refuse, in the words the chart owns', async () => {
+    const refusals = [
+      ['wrong-type', 'That file is not a JPG or PNG. Pick one of those two formats.'],
+      ['too-large', 'The limit is 2MB.'],
+      ['unreadable', 'That file could not be read. Try picking it again.'],
+      ['undecodable', 'That image could not be opened. It may be damaged.'],
+    ] as const
+    for (const [error, message] of refusals) {
+      const port: DrawingAssetPort = { intakeImage: async () => ({ ok: false, error }), glyphSource: () => null }
+      const r = make({ assets: port })
+      hovering(r)
+      paste([imageFile()])
+      await settle()
+      expect(status(r), error).toContain(message)
+      expect(r.plane.api!.count()).toBe(0)
+    }
+  })
+
+  it('leaves a text paste and a paste into a field alone', async () => {
+    const asked: string[] = []
+    const port: DrawingAssetPort = {
+      intakeImage: async (file) => (asked.push(file.name), { ok: false, error: 'unreadable' }),
+      glyphSource: () => null,
+    }
+    const r = make({ assets: port })
+    hovering(r)
+    paste([new File(['x'], 'notes.txt', { type: 'text/plain' })])
+    await settle()
+    expect(asked).toEqual([])
+    expect(status(r)).toBe('')
+
+    const field = document.createElement('input')
+    document.body.appendChild(field)
+    const event = new Event('paste', { bubbles: true, cancelable: true })
+    Object.defineProperty(event, 'clipboardData', { value: { files: [imageFile()] } })
+    field.dispatchEvent(event)
+    await settle()
+    expect(asked).toEqual([])
+  })
+
+  it('reports on the chart the pointer is over, and nowhere else', async () => {
+    const port: DrawingAssetPort = { intakeImage: async () => ({ ok: false, error: 'too-large' }), glyphSource: () => null }
+    const a = make({ assets: port })
+    const b = make({ assets: port })
+    hovering(b)
+    paste([imageFile()])
+    await settle()
+    expect(status(a)).toBe('')
+    expect(status(b)).toContain('The limit is 2MB.')
+  })
+
+  it('says nothing after the plane is gone', async () => {
+    let answer: (result: { ok: false; error: 'unreadable' }) => void = () => undefined
+    const port: DrawingAssetPort = {
+      intakeImage: () => new Promise((resolve) => (answer = resolve)),
+      glyphSource: () => null,
+    }
+    const r = make({ assets: port })
+    const chrome = r.chrome
+    hovering(r)
+    paste([imageFile()])
+    r.dispose()
+    rigs = []
+    answer({ ok: false, error: 'unreadable' })
+    await settle()
+    expect(chrome.querySelector('.qc-drawing-status')?.textContent ?? '').toBe('')
   })
 })

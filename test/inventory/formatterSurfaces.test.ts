@@ -122,7 +122,8 @@ describe('the wiring that makes those the same formatter', () => {
   })
 
   it('the legend rows write a study value through the symbol formatter unless the manifest declares a precision', () => {
-    expect(indicatorsSrc).toContain("built.precision != null ? value.toFixed(built.precision) : formatter.format(value)")
+    expect(indicatorsSrc).toContain('createPriceFormatter({ pricescale: 10 ** precision, minmov: 1 }, { locale: deps.i18n.tag() }).format(value) : formatter.format(value)')
+    expect(indicatorsSrc).toContain('createPriceFormatter({ pricescale: 10 ** reading.precision, minmov: 1 }, { locale: deps.i18n.tag() }).format(value) : formatter.format(value)')
   })
 
   it('the study scale falls back to the symbol format the same way the axis is built', () => {

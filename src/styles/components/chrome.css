@@ -6,8 +6,9 @@
  * ancestor with a transform, a filter or containment changes nothing: a panel is positioned in the
  * root's own coordinates.
  *
- * The chrome's stacking ladder, all inside the root: legend and rail 3, navigation and replay 4,
+ * The chrome's stacking ladder, all inside the root: legend and rail 3, navigation 4,
  * the chart chrome layer 5, notices 6, the overlay layer 20, a menu panel 21, a dialog scrim 22.
+ * The replay transport takes no rung: it is an in-flow row of the root's column, not a float.
  * The chart chrome layer is a stacking context of its own, and the drawing surfaces inside it
  * keep their own rungs: the toolbar on the rail's 3, the floating bars 7, the inline text
  * editor 8, a flyout or palette 9, a drawing dialog's scrim 10.
@@ -24,6 +25,21 @@
   pointer-events: auto;
 }
 
+/* The same layer on the document body, for the menus of a top bar a page mounted outside the
+ * widget: fixed to the viewport, so a menu drops from its control wherever the page placed the bar,
+ * over the page's own boxes, where one inside the root would be held within the widget's box. */
+[data-qc-theme].qc-layer > .qc-overlays {
+  position: fixed;
+  z-index: 2147483001;
+}
+
+/* Reserve the drawing column in both coordinate planes. The renderer, gesture listeners and
+ * chart-native overlays keep the same origin and width, including after a direction switch. */
+[data-qc-theme] .qc-gestures[data-qc-drawing-toolbar='true'],
+[data-qc-theme] .qc-chrome[data-qc-drawing-toolbar='true'] {
+  inset-inline-start: 52px;
+}
+
 [data-qc-theme] .qc-icon {
   display: inline-flex;
   flex: 0 0 auto;
@@ -32,34 +48,131 @@
   line-height: 0;
 }
 
+/* A toolbar button is a cell on the bar's own rhythm, and its highlight is a smaller shape drawn
+ * INSIDE that cell. Separating the two is what lets neighbours sit flush without their washes
+ * touching, and keeps the hit area larger than the mark it paints. */
 [data-qc-theme] .qc-toolbar-button {
+  position: relative;
+  z-index: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  min-width: 28px;
-  height: 28px;
-  padding: 0 6px;
-  color: var(--qc-text-secondary);
+  /* No width floor: a button is as wide as what it carries plus its padding, which is what keeps
+   * `1m` a chip and not a cell. Height alone puts it on the bar's rhythm. */
+  height: 38px;
+  padding: 0 5px;
+  color: var(--qc-text-primary);
   white-space: nowrap;
   background: none;
-  border: 1px solid transparent;
+  border: 0;
+}
+
+/* A toolbar button carries the base control recipe too, and that one fills its whole box. Every
+ * state has to stand it down, or its wash paints under this one and the two read as a highlight
+ * inside a highlight. */
+[data-qc-theme] .qc-toolbar-button,
+[data-qc-theme] .qc-toolbar-button:hover,
+[data-qc-theme] .qc-toolbar-button:active,
+[data-qc-theme] .qc-toolbar-button[aria-pressed='true'],
+[data-qc-theme] .qc-toolbar-button[aria-expanded='true'],
+[data-qc-theme] .qc-toolbar-button[data-qc-active='true'] {
+  background: none;
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-toolbar-button::before {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border-radius: var(--qc-chrome-radius);
+  transition: background-color var(--qc-motion-durationFast) linear;
 }
 
 [data-qc-theme] .qc-toolbar-button:hover {
   color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-toolbar-button:hover::before,
+[data-qc-theme] .qc-toolbar-button:active::before {
   background: var(--qc-state-hover);
 }
 
+/* A chosen interval or a held toggle takes the pressed fill, a step past hover; a door whose menu is
+ * open fills its whole cell, square, in the hover fill. */
 [data-qc-theme] .qc-toolbar-button[aria-pressed='true'],
-[data-qc-theme] .qc-toolbar-button[aria-expanded='true'] {
+[data-qc-theme] .qc-toolbar-button[aria-expanded='true'],
+[data-qc-theme] .qc-toolbar-button[data-qc-active='true'] {
   color: var(--qc-text-primary);
-  background: var(--qc-state-selected);
-  border-color: transparent;
+}
+
+[data-qc-theme] .qc-toolbar-button[aria-pressed='true']::before,
+[data-qc-theme] .qc-toolbar-button[data-qc-active='true']::before {
+  background: var(--qc-state-pressed);
+}
+
+[data-qc-theme] .qc-toolbar-button[aria-pressed='true']:hover::before,
+[data-qc-theme] .qc-toolbar-button[data-qc-active='true']:hover::before {
+  background: var(--qc-state-pressedHover);
+}
+
+[data-qc-theme] .qc-toolbar-button[aria-expanded='true']::before {
+  inset: 0;
+  border-radius: 0;
+  background: var(--qc-state-hover);
+}
+
+/* A HELD MODE is not a chosen option. A chip chosen among its siblings takes the quiet pressed
+ * wash above; a mode the chart is IN until the trader leaves it says so the way this product says
+ * "on" everywhere else, in the emphasis fill with the ink cut out of it. */
+[data-qc-theme] .qc-toolbar-button[data-qc-mode='held'][aria-pressed='true'] {
+  color: var(--qc-text-inverse);
+}
+
+[data-qc-theme] .qc-toolbar-button[data-qc-mode='held'][aria-pressed='true']::before {
+  background: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-toolbar-button[data-qc-mode='held'][aria-pressed='true']:hover::before {
+  background: var(--qc-control-onHover);
+}
+
+[data-qc-theme] .qc-toolbar-button[data-qc-mode='held'][aria-pressed='true']:active::before {
+  background: var(--qc-control-onPressed);
+}
+
+/* A disclosure caret dips 2px under the pointer and turns to face what it opened, with a slight
+ * overshoot: pointing down at a closed list, back up at the one standing open, where it holds level.
+ * The caret's own span dips and the mark inside it turns, so the two motions keep their own timing
+ * and neither bends the other, and each answers to its OWN button: a caret nested inside some other
+ * open thing is not the thing that opened. */
+[data-qc-theme] .qc-caret {
+  transition: translate 350ms ease;
+}
+
+[data-qc-theme] .qc-caret > svg {
+  transition: rotate 350ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+[data-qc-theme] .qc-toolbar-button:not([aria-expanded='true']):hover > .qc-caret {
+  translate: 0 2px;
+}
+
+[data-qc-theme] .qc-toolbar-button[aria-expanded='true'] > .qc-caret > svg {
+  rotate: 180deg;
 }
 
 [data-qc-theme] .qc-toolbar-button[disabled] {
-  color: var(--qc-text-disabled);
+  color: var(--qc-text-primary);
+  opacity: 0.5;
+  background: none;
+}
+
+/* The hover wash is painted on the pseudo-element, and :hover still matches a disabled control, so
+ * standing the button's own background down is not enough: a control with nothing to do would
+ * light up under the cursor as though it had. */
+[data-qc-theme] .qc-toolbar-button[disabled]:hover::before {
   background: none;
 }
 
@@ -70,20 +183,22 @@
 [data-qc-theme] .qc-separator--vertical {
   flex: 0 0 auto;
   width: 1px;
-  height: 20px;
+  height: 22px;
   margin: 0 4px;
 }
 
+/* The verb that ends something wears the negative fill, under the ink that sits on an emphasis
+ * fill. White on the dark mode's red reads at 3.3 to 1, under the 4.5 this package holds every
+ * stated ink to, so the words stay dark there and the fill carries the warning. */
 [data-qc-theme] .qc-button--danger {
   color: var(--qc-text-inverse);
   background: var(--qc-status-negative);
   border-color: var(--qc-status-negative);
 }
 
-[data-qc-theme] .qc-color-field {
-  width: 28px;
-  height: 20px;
-  padding: 0 2px;
+[data-qc-theme] .qc-button--danger:hover:not([disabled]) {
+  background: color-mix(in srgb, var(--qc-status-negative) 86%, var(--qc-overlay-surface));
+  border-color: color-mix(in srgb, var(--qc-status-negative) 86%, var(--qc-overlay-surface));
 }
 
 [data-qc-theme] .qc-field-row {
@@ -104,46 +219,119 @@
   white-space: nowrap;
 }
 
-/* Switches: a track and a knob, the state on `aria-checked`. */
+/* Switches: a track and a knob, the state on `aria-checked` of the switch itself or of the menu row
+ * that carries one. */
+/* A 38x20 track holding a 14px knob 3px in, fully round. The track is the off fill or the on fill,
+ * each a step apart under the pointer and while pressed. */
 [data-qc-theme] .qc-switch {
   position: relative;
   flex: 0 0 auto;
-  width: 28px;
-  height: 16px;
+  width: 38px;
+  height: 20px;
   padding: 0;
-  background: var(--qc-chrome-borderStrong);
+  background: var(--qc-control-off);
   border: 0;
-  border-radius: var(--qc-chrome-radiusLarge);
+  border-radius: 20px;
   cursor: pointer;
-  transition: background-color var(--qc-motion-durationFast) linear;
 }
 
-[data-qc-theme] .qc-switch[aria-checked='true'] {
-  background: var(--qc-state-accent);
+[data-qc-theme] .qc-switch:not([disabled]):hover {
+  background: var(--qc-control-offHover);
 }
 
+[data-qc-theme] .qc-switch:not([disabled]):active {
+  background: var(--qc-control-offPressed);
+}
+
+[data-qc-theme] .qc-switch[aria-checked='true'],
+[data-qc-theme] [aria-checked='true'] > .qc-switch {
+  background: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-switch[aria-checked='true']:not([disabled]):hover,
+[data-qc-theme] [aria-checked='true'] > .qc-switch:hover {
+  background: var(--qc-control-onHover);
+}
+
+[data-qc-theme] .qc-switch[aria-checked='true']:not([disabled]):active,
+[data-qc-theme] [aria-checked='true'] > .qc-switch:active {
+  background: var(--qc-control-onPressed);
+}
+
+/* Unavailable, the switch keeps its state and stands back: which way it is set is still the answer
+ * to a question the viewer asked, and a switch that greyed to one color would state the wrong one. */
 [data-qc-theme] .qc-switch[disabled] {
-  background: var(--qc-chrome-border);
-  cursor: default;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
+/* The knob is the mark color on either track and slides 18px along the reading direction, so a
+ * right-to-left switch turns on toward the left without a mirrored rule. */
 [data-qc-theme] .qc-switch-knob {
   position: absolute;
-  top: 2px;
-  inset-inline-start: 2px;
-  width: 12px;
-  height: 12px;
-  background: var(--qc-text-inverse);
+  top: 3px;
+  inset-inline-start: 3px;
+  width: 14px;
+  height: 14px;
+  background: var(--qc-control-mark);
   border-radius: 50%;
-  transition: transform var(--qc-motion-durationFast) linear;
+  transition: inset-inline-start 250ms ease-out;
 }
 
-[data-qc-theme] .qc-switch[aria-checked='true'] .qc-switch-knob {
-  transform: translateX(12px);
+[data-qc-theme] .qc-switch[aria-checked='true'] .qc-switch-knob,
+[data-qc-theme] [aria-checked='true'] > .qc-switch .qc-switch-knob {
+  inset-inline-start: 21px;
 }
 
-[data-qc-theme][dir='rtl'] .qc-switch[aria-checked='true'] .qc-switch-knob {
-  transform: translateX(-12px);
+/* Checkboxes: an 18px box with a 3px corner, a ring in the on fill until it is checked, then filled
+ * and carrying the check. Only a checked box answers the pointer. The check is a 2px stroke with a
+ * 3px and a 6px arm, drawn as the two far borders of a box turned 45 degrees, its corner low of
+ * center. */
+[data-qc-theme] .qc-checkbox {
+  position: relative;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  appearance: none;
+  background: none;
+  border: 1px solid var(--qc-control-on);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 350ms, border-color 350ms;
+}
+
+[data-qc-theme] .qc-checkbox:checked {
+  background: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-checkbox:checked:not(:disabled):hover {
+  background: var(--qc-control-onHover);
+  border-color: var(--qc-control-onHover);
+}
+
+[data-qc-theme] .qc-checkbox:checked:not(:disabled):active {
+  background: var(--qc-control-onPressed);
+  border-color: var(--qc-control-onPressed);
+}
+
+[data-qc-theme] .qc-checkbox:checked::before {
+  content: '';
+  position: absolute;
+  top: 1.96px;
+  left: 5.38px;
+  box-sizing: border-box;
+  width: 5.24px;
+  height: 9.49px;
+  border: solid var(--qc-control-mark);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+[data-qc-theme] .qc-checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 [data-qc-theme] .qc-switch-row {
@@ -189,4 +377,21 @@
 [data-qc-theme] .qc-tab[aria-selected='true'] {
   color: var(--qc-text-primary);
   border-bottom-color: var(--qc-state-accent);
+}
+
+/* A control a settings row expands in place: the color palette the chart settings menu and the
+ * indicator dialog open. It sits inside the surface, so one dismissal closes one thing. */
+[data-qc-theme] .qc-inline-panel {
+  padding: 0 6px 6px;
+}
+
+/* The shared color control inside a chrome row is the drawing field at the row's own height. */
+[data-qc-theme] .qc-settings-row .qc-drawing-swatch-button {
+  height: 24px;
+  padding: 0 4px;
+}
+
+[data-qc-theme] .qc-settings-row .qc-drawing-well {
+  width: 20px;
+  height: 16px;
 }

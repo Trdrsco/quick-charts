@@ -19,8 +19,9 @@ import {
   cursorButtonArmed,
   groupOfTool,
   HIDE_LABELS,
-  HIDE_ORDER,
+  hideOrder,
   hideRowActive,
+  isBuiltInHideMode,
   isFavorite,
   MAGNET_LABELS,
   MAGNET_STRENGTHS,
@@ -31,17 +32,21 @@ import {
   TRANSIENT_LABELS,
   type CursorMode,
   type DrawingCounts,
+  type BuiltInHideMode,
   type FavoritesState,
   type HideMode,
   type HideState,
   type MagnetMode,
   type RailGroup,
 } from '../../drawings/index'
+import type { ChartExtensionHideLayer } from '../../extension'
+import { buildGlyph } from '../chrome/vector'
 import { button, el, focusFirst, menuKeys, ownPointer, rovingFocus } from './dom'
 import { openPopover } from './fields'
 import { mountGlyphPicker, type GlyphKind } from './glyphPicker'
-import { iconSvg, type IconName } from './icons'
-import { toolIconSvg } from './toolIcons'
+import type { IconName } from '../controls/icons'
+import { panelHostFor } from './overlays'
+import type { IconResolver } from '../icons/resolver'
 
 /** Everything the rail renders from, read live at every render. */
 export interface ToolbarState {
@@ -51,6 +56,8 @@ export interface ToolbarState {
   stayInDrawingMode: boolean
   allLocked: boolean
   hide: HideState
+  /** The layers extensions offered the eye, after the chart's own. */
+  hideLayers: readonly ChartExtensionHideLayer[]
   /** Whether new drawings are shared across the layout. */
   sync: boolean
   removeLocked: boolean
@@ -66,7 +73,11 @@ export interface ToolbarState {
 export interface ToolbarDeps {
   /** The chrome subtree the rail mounts into, and the box its flyouts stay within. */
   chrome: HTMLElement
+  /** Separate mounting space, or null to keep the rail detached until its chart is active. */
+  container?: HTMLElement | null
   t: ChartTranslate
+  /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
+  icons: IconResolver
   state(): ToolbarState
   /** Run a command through the registry. Answers whether it ran. */
   run(command: string, arg?: unknown): boolean
@@ -82,6 +93,8 @@ export interface ToolbarDeps {
 }
 
 export interface ToolbarHandle {
+  /** Move the rail and close any flyout belonging to its previous placement. */
+  mount(container: HTMLElement | null): void
   /** Re-render from the current state. */
   render(): void
   /** Re-read every label, after a language switch. */
@@ -89,20 +102,9 @@ export interface ToolbarHandle {
   destroy(): void
 }
 
-/** Each group's static face, worn when its face tool carries no miniature (the glyph group). */
-const GROUP_ICON: Record<string, IconName> = {
-  trend: 'groupTrend',
-  'fib-gann': 'groupFib',
-  patterns: 'groupPatterns',
-  forecast: 'groupForecast',
-  shapes: 'groupShapes',
-  annotation: 'groupText',
-  glyphs: 'groupGlyphs',
-}
-
 const CURSOR_ICON: Record<CursorMode, IconName> = { cross: 'cursorCross', dot: 'cursorDot', arrow: 'cursorArrow' }
 
-const HIDE_ICON: Record<HideMode, { shown: IconName; hidden: IconName }> = {
+const HIDE_ICON: Record<BuiltInHideMode, { shown: IconName; hidden: IconName }> = {
   drawings: { shown: 'drawingsShown', hidden: 'drawingsHidden' },
   indicators: { shown: 'indicatorsShown', hidden: 'indicatorsHidden' },
   all: { shown: 'allShown', hidden: 'allHidden' },
@@ -118,6 +120,9 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
 
   /** The one open flyout's closer. Opening another closes it first: a swap, not a stack. */
   let closeFlyout: (() => void) | null = null
+  /** The coordinate plane a flyout mounts into. Internal rails use their chart chrome; the
+   * package-created external surface resolves to the widget plane without changing its target. */
+  let panelHost = deps.chrome
   const closeOpen = (): void => {
     closeFlyout?.()
     closeFlyout = null
@@ -126,26 +131,30 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     const wasOpen = anchor.getAttribute('aria-expanded') === 'true'
     closeOpen()
     if (wasOpen) return
-    const close = openPopover(deps.chrome, anchor, content, 'side', () => {
+    const close = openPopover(panelHost, anchor, content, 'side', () => {
       if (closeFlyout === close) closeFlyout = null
       onClose?.()
-    })
+    }, anchor.closest<HTMLElement>('.qc-drawing-cell') ?? anchor)
     closeFlyout = close
     focusFirst(content)
   }
   column.addEventListener('scroll', closeOpen)
 
   const rows = (menu: HTMLElement): HTMLElement[] => [...menu.querySelectorAll<HTMLElement>('[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"], [role="switch"]')]
-  const menuRow = (label: string, onPick: () => void, options: { icon?: string; active?: boolean; role?: string; command?: string; commands?: readonly string[] } = {}): HTMLButtonElement => {
+  const menuRow = (label: string, onPick: () => void, options: { icon?: Element; active?: boolean; role?: string; command?: string; commands?: readonly string[] } = {}): HTMLButtonElement => {
     const b = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row', role: options.role ?? 'menuitem' })
     // A row that runs several commands is live only when every one of them would run.
     const needs = [...(options.command ? [options.command] : []), ...(options.commands ?? [])]
     if (needs.some((command) => !deps.available(command))) b.disabled = true
     if (options.active !== undefined) b.setAttribute('aria-checked', String(options.active))
     if (options.active) b.dataset.qcActive = 'true'
-    const cell = el('span', { class: 'qc-menu-icon' })
-    if (options.icon) cell.innerHTML = options.icon
-    b.append(cell, el('span', { class: 'qc-menu-label', text: label }))
+    // A row carries a mark column only when it has a mark: a menu of words alone starts its
+    // labels at the row's own edge.
+    if (options.icon) {
+      b.classList.add('qc-drawing-menu-row--marked')
+      b.appendChild(el('span', { class: 'qc-menu-icon' }, options.icon))
+    }
+    b.appendChild(el('span', { class: 'qc-menu-label', text: label }))
     b.addEventListener('click', () => {
       closeOpen()
       onPick()
@@ -170,11 +179,15 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     }
     return box
   }
-  const divider = (): HTMLElement => el('div', { class: 'qc-separator qc-drawing-divider', role: 'separator' })
+  /** A rule, in the recipe of the surface that draws it: the rail's short hairline between groups,
+   *  a tool flyout's section rule across the panel's content area, or a menu's rule across the same
+   *  content area. One width for all three read as the rail's everywhere it was not. */
+  const divider = (where: 'rail' | 'flyout' | 'menu' = 'rail'): HTMLElement =>
+    el('div', { class: `qc-separator qc-drawing-${where === 'rail' ? 'divider' : where === 'flyout' ? 'flyout-rule' : 'menu-rule'}`, role: 'separator' })
 
   // ── Cursor ──────────────────────────────────────────────────────────────────────────────────
   const cursorFace = button({ class: 'qc-button', label: t('drawing.cursor'), onClick: () => deps.run('chart.drawings.arm', null) })
-  const cursorArrow = button({ class: 'qc-button', label: t('drawing.cursorMenu'), html: iconSvg('chevronRight', 18) })
+  const cursorArrow = button({ class: 'qc-button', label: t('drawing.cursorMenu'), icon: deps.icons.icon('chevronRight16') })
   cursorArrow.addEventListener('click', () => {
     const s = deps.state()
     openFlyout(
@@ -182,9 +195,9 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       menu(
         t('drawing.cursorMenu'),
         ...CURSOR_MODES.map((mode) =>
-          menuRow(t(CURSOR_LABELS[mode]), () => deps.run('chart.drawings.cursor', mode), { icon: iconSvg(CURSOR_ICON[mode]), active: s.cursor === mode && s.activeTool !== 'eraser', role: 'menuitemradio', command: 'chart.drawings.cursor' }),
+          menuRow(t(CURSOR_LABELS[mode]), () => deps.run('chart.drawings.cursor', mode), { icon: deps.icons.icon(CURSOR_ICON[mode]), active: s.cursor === mode && s.activeTool !== 'eraser', role: 'menuitemradio', command: 'chart.drawings.cursor' }),
         ),
-        menuRow(t(TRANSIENT_LABELS.eraser), () => deps.run('chart.drawings.arm', 'eraser'), { icon: iconSvg('eraser'), active: s.activeTool === 'eraser', role: 'menuitemradio', command: 'chart.drawings.arm' }),
+        menuRow(t(TRANSIENT_LABELS.eraser), () => deps.run('chart.drawings.arm', 'eraser'), { icon: deps.icons.icon('eraser'), active: s.activeTool === 'eraser', role: 'menuitemradio', command: 'chart.drawings.arm' }),
       ),
     )
   })
@@ -192,10 +205,12 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
 
   // ── Tool groups ─────────────────────────────────────────────────────────────────────────────
   const groupFaces = new Map<string, { face: HTMLButtonElement; arrow: HTMLButtonElement }>()
+  let glyphPicker: ReturnType<typeof mountGlyphPicker> | null = null
   const openGroup = (group: RailGroup, anchor: HTMLElement): void => {
     if (group.id === 'glyphs') {
-      let picker: ReturnType<typeof mountGlyphPicker> | null = null
-      picker = mountGlyphPicker({
+      // One picker for the life of the rail. Its grid is the most expensive thing the toolbar
+      // builds, so a close detaches it and the next open brings the same cells back.
+      glyphPicker ??= mountGlyphPicker({
         t,
         ...(deps.glyphSource ? { glyphSource: deps.glyphSource } : {}),
         recents: deps.state().recentGlyphs,
@@ -207,20 +222,21 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
           deps.run('chart.drawings.arm', { tool: kind, props: { glyph } })
         },
       })
-      openFlyout(anchor, picker.root, () => picker?.destroy())
+      glyphPicker.refresh(deps.state().recentGlyphs)
+      openFlyout(anchor, glyphPicker.root, () => glyphPicker?.root.remove())
       return
     }
     const s = deps.state()
     const list = el('div', { class: 'qc-drawing-flyout', role: 'menu', 'aria-label': t(group.label) })
     group.sections.forEach((section, index) => {
-      if (index > 0) list.appendChild(divider())
+      if (index > 0) list.appendChild(divider('flyout'))
       list.appendChild(el('div', { class: 'qc-dialog-heading', text: t(section.label) }))
       for (const tool of section.tools) {
         const name = toolName(t, tool.type, tool.name)
         const fav = isFavorite(s.favorites, tool.type)
         const rowEl = el('div', { class: 'qc-drawing-flyout-row' })
-        const pick = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row', role: 'menuitem', 'data-tool': tool.type })
-        pick.innerHTML = `<span class="qc-menu-icon">${toolIconSvg(tool.type)}</span>`
+        const pick = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row qc-drawing-menu-row--marked', role: 'menuitem', 'data-tool': tool.type })
+        pick.appendChild(el('span', { class: 'qc-menu-icon' }, deps.icons.tool(tool.type)))
         pick.appendChild(el('span', { class: 'qc-menu-label', text: name }))
         if (s.activeTool === tool.type) pick.dataset.qcActive = 'true'
         if (!deps.toolAllowed(tool.type) || !deps.available('chart.drawings.arm')) pick.disabled = true
@@ -233,13 +249,13 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         const star = button({
           class: 'qc-drawing-star',
           label: t(fav ? 'drawing.favRemove' : 'drawing.favAdd', { tool: name }),
-          html: iconSvg(fav ? 'starFilled' : 'star', 18),
+          icon: deps.icons.icon(fav ? 'starFilled' : 'star', 18),
           pressed: fav,
           disabled: !deps.available('chart.drawings.favorite'),
           onClick: () => {
             deps.run('chart.drawings.favorite', tool.type)
             const now = isFavorite(deps.state().favorites, tool.type)
-            star.innerHTML = iconSvg(now ? 'starFilled' : 'star', 18)
+            star.replaceChildren(deps.icons.icon(now ? 'starFilled' : 'star', 18))
             star.setAttribute('aria-pressed', String(now))
             star.setAttribute('aria-label', t(now ? 'drawing.favRemove' : 'drawing.favAdd', { tool: name }))
             star.title = star.getAttribute('aria-label') ?? ''
@@ -254,7 +270,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   }
   for (const group of groups) {
     const face = button({ class: 'qc-button', label: t(group.label) })
-    const arrow = button({ class: 'qc-button', label: t('drawing.groupMenu', { group: t(group.label) }), html: iconSvg('chevronRight', 18) })
+    const arrow = button({ class: 'qc-button', label: t('drawing.groupMenu', { group: t(group.label) }), icon: deps.icons.icon('chevronRight16') })
     face.addEventListener('click', () => {
       // The face arms the tool it wears. The glyph group is the exception: a glyph tool is nothing
       // without a chosen glyph, so its face opens the picker as its arrow does.
@@ -274,14 +290,14 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   column.appendChild(divider())
 
   // ── Measure and zoom ────────────────────────────────────────────────────────────────────────
-  const measure = button({ class: 'qc-button', label: t(TRANSIENT_LABELS.measure), html: iconSvg('ruler'), onClick: () => deps.run('chart.drawings.arm', deps.state().activeTool === 'measure' ? null : 'measure') })
-  const zoom = button({ class: 'qc-button', label: t(TRANSIENT_LABELS.zoom), html: iconSvg('zoomIn'), onClick: () => deps.run('chart.drawings.arm', deps.state().activeTool === 'zoom' ? null : 'zoom') })
+  const measure = button({ class: 'qc-button', label: t(TRANSIENT_LABELS.measure), icon: deps.icons.icon('ruler'), onClick: () => deps.run('chart.drawings.arm', deps.state().activeTool === 'measure' ? null : 'measure') })
+  const zoom = button({ class: 'qc-button', label: t(TRANSIENT_LABELS.zoom), icon: deps.icons.icon('zoomIn'), onClick: () => deps.run('chart.drawings.arm', deps.state().activeTool === 'zoom' ? null : 'zoom') })
   column.append(cell(measure, null), cell(zoom, null), divider())
 
   // ── Magnet, stay in mode, lock all ──────────────────────────────────────────────────────────
   const magnetFace = button({ class: 'qc-button', label: t('drawing.magnet'), onClick: () => deps.run('chart.drawings.magnet', toggleMagnet(deps.state().magnet, lastStrength())) })
   const lastStrength = (): Exclude<MagnetMode, 'off'> => (deps.state().magnet === 'strong' ? 'strong' : 'weak')
-  const magnetArrow = button({ class: 'qc-button', label: t('drawing.magnetMenu'), html: iconSvg('chevronRight', 18) })
+  const magnetArrow = button({ class: 'qc-button', label: t('drawing.magnetMenu'), icon: deps.icons.icon('chevronRight16') })
   magnetArrow.addEventListener('click', () => {
     const s = deps.state()
     openFlyout(
@@ -290,7 +306,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         t('drawing.magnetMenu'),
         ...MAGNET_STRENGTHS.map((strength) =>
           menuRow(t(MAGNET_LABELS[strength]), () => deps.run('chart.drawings.magnet', chooseMagnetStrength(s.magnet, strength)), {
-            icon: iconSvg(strength === 'strong' ? 'magnetStrong' : 'magnet'),
+            icon: deps.icons.icon(strength === 'strong' ? 'magnetStrong' : 'magnet'),
             active: s.magnet === strength,
             role: 'menuitemradio',
             command: 'chart.drawings.magnet',
@@ -299,21 +315,32 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       ),
     )
   })
-  const stay = button({ class: 'qc-button', label: t('drawing.stayInDrawingMode'), onClick: () => deps.run('chart.drawings.stayInMode', !deps.state().stayInDrawingMode) })
+  const stay = button({ class: 'qc-button qc-drawing-rail-mode', label: t('drawing.stayInDrawingMode'), onClick: () => deps.run('chart.drawings.stayInMode', !deps.state().stayInDrawingMode) })
   const lockAll = button({ class: 'qc-button', label: t('drawing.lockAll'), onClick: () => deps.run('chart.drawings.lockAll', !deps.state().allLocked) })
   column.append(cell(magnetFace, magnetArrow), cell(stay, null), cell(lockAll, null))
 
   // ── The eye ─────────────────────────────────────────────────────────────────────────────────
   const eyeFace = button({ class: 'qc-button', label: t('drawing.hideDrawings'), onClick: () => deps.run('chart.drawings.hide', { mode: deps.state().hide.mode, on: !deps.state().hide.on }) })
-  const eyeArrow = button({ class: 'qc-button', label: t('drawing.hideMenu'), html: iconSvg('chevronRight', 18) })
+  const eyeArrow = button({ class: 'qc-button', label: t('drawing.hideMenu'), icon: deps.icons.icon('chevronRight16') })
+  /** A subject's wording: the chart's own from the catalog, a contributed layer's from itself. */
+  const hideLabel = (s: ToolbarState, mode: HideMode, kind: 'hide' | 'show'): string =>
+    isBuiltInHideMode(mode) ? t(HIDE_LABELS[mode][kind]) : (s.hideLayers.find((layer) => layer.id === mode)?.label[kind] ?? '')
+  /** The eye's mark for a subject in a state: the chart's own glyphs by name, a contributed
+   *  layer's from its descriptor through the one builder every contributed glyph rides. */
+  const hideMark = (s: ToolbarState, mode: HideMode, on: boolean): Node | null => {
+    if (isBuiltInHideMode(mode)) return deps.icons.icon(HIDE_ICON[mode][on ? 'hidden' : 'shown'])
+    const layer = s.hideLayers.find((l) => l.id === mode)
+    return layer ? buildGlyph(layer.icon[on ? 'hidden' : 'shown']) : null
+  }
   eyeArrow.addEventListener('click', () => {
     const s = deps.state()
+    // The rows are words alone: the eye wears the subject's mark, the menu only names the choice.
     openFlyout(
       eyeArrow,
       menu(
         t('drawing.hideMenu'),
-        ...HIDE_ORDER.map((mode) =>
-          menuRow(t(HIDE_LABELS[mode].hide), () => deps.run('chart.drawings.hide', chooseHideMode(s.hide, mode)), { icon: iconSvg(HIDE_ICON[mode].hidden), active: hideRowActive(s.hide, mode), role: 'menuitemradio', command: 'chart.drawings.hide' }),
+        ...hideOrder(s.hideLayers.map((layer) => layer.id)).map((mode) =>
+          menuRow(hideLabel(s, mode, 'hide'), () => deps.run('chart.drawings.hide', chooseHideMode(s.hide, mode)), { active: hideRowActive(s.hide, mode), role: 'menuitemradio', command: 'chart.drawings.hide' }),
         ),
       ),
     )
@@ -328,8 +355,8 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   column.appendChild(divider())
 
   // ── Remove ──────────────────────────────────────────────────────────────────────────────────
-  const removeFace = button({ class: 'qc-button', label: t('drawing.removeDrawings'), html: iconSvg('trash'), onClick: () => deps.run('chart.drawings.removeAll', deps.state().removeLocked) })
-  const removeArrow = button({ class: 'qc-button', label: t('drawing.removeMenu'), html: iconSvg('chevronRight', 18) })
+  const removeFace = button({ class: 'qc-button', label: t('drawing.removeDrawings'), icon: deps.icons.icon('trash28'), onClick: () => deps.run('chart.drawings.removeAll', deps.state().removeLocked) })
+  const removeArrow = button({ class: 'qc-button', label: t('drawing.removeMenu'), icon: deps.icons.icon('chevronRight16') })
   removeArrow.addEventListener('click', () => {
     const s = deps.state()
     const list = removeRows(s.counts, s.indicatorCount, s.removeLocked)
@@ -348,18 +375,18 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     if (items.length === 0) items.push(el('div', { class: 'qc-muted qc-drawing-menu-note', text: t('drawing.nothingToRemove') }))
     const policy = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row qc-drawing-switch-row', role: 'switch', 'aria-checked': String(s.removeLocked) })
     policy.disabled = !deps.available('chart.drawings.removeLockedPolicy')
-    policy.append(el('span', { class: 'qc-menu-label', text: t('drawing.alwaysRemoveLocked') }), el('span', { class: 'qc-drawing-switch', 'aria-hidden': 'true' }, el('span', { class: 'qc-drawing-switch-knob' })))
+    policy.append(el('span', { class: 'qc-menu-label', text: t('drawing.alwaysRemoveLocked') }), el('span', { class: 'qc-switch', 'aria-hidden': 'true' }, el('span', { class: 'qc-switch-knob' })))
     policy.addEventListener('click', () => {
       const next = !deps.state().removeLocked
       deps.run('chart.drawings.removeLockedPolicy', next)
       policy.setAttribute('aria-checked', String(next))
     })
-    openFlyout(removeArrow, menu(t('drawing.removeMenu'), ...items, divider(), policy))
+    openFlyout(removeArrow, menu(t('drawing.removeMenu'), ...items, divider('menu'), policy))
   })
   column.append(cell(removeFace, removeArrow))
 
   // ── Favorites, pinned to the end ────────────────────────────────────────────────────────────
-  const favorites = button({ class: 'qc-button', label: t('drawing.favToolsBar'), title: t('drawing.favTools'), onClick: () => deps.run('chart.drawings.favoritesBar', !deps.state().favorites.visible) })
+  const favorites = button({ class: 'qc-button qc-drawing-rail-mode', label: t('drawing.favToolsBar'), title: t('drawing.favTools'), onClick: () => deps.run('chart.drawings.favoritesBar', !deps.state().favorites.visible) })
   column.append(el('div', { class: 'qc-drawing-toolbar-end' }, cell(favorites, null)))
 
   const unrove = rovingFocus(rail, () => [...column.querySelectorAll<HTMLElement>('button')], 'vertical')
@@ -379,16 +406,20 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   const render = (): void => {
     const s = deps.state()
     // The cursor face wears the mode's glyph, or the eraser while it is armed.
-    cursorFace.innerHTML = iconSvg(s.activeTool === 'eraser' ? 'eraser' : CURSOR_ICON[s.cursor])
+    cursorFace.replaceChildren(deps.icons.icon(s.activeTool === 'eraser' ? 'eraser' : CURSOR_ICON[s.cursor]))
     setActive(cursorFace, cursorButtonArmed(s.activeTool))
     gate(cursorFace, 'chart.drawings.arm')
     gate(cursorArrow, 'chart.drawings.cursor')
     const activeGroup = groupOfTool(groups, s.activeTool)
     for (const group of groups) {
       const entry = groupFaces.get(group.id)!
-      const faceTool = railFaceOf(group, s.railTools)
-      const miniature = faceTool && group.id !== 'glyphs' ? toolIconSvg(faceTool) : ''
-      entry.face.innerHTML = miniature || iconSvg(GROUP_ICON[group.id] ?? 'groupTrend')
+      // The armed tool takes the face immediately, even before the remembered preference writes.
+      const faceTool = activeGroup === group.id && s.activeTool
+        ? s.activeTool
+        : railFaceOf(group, s.railTools)
+      // Every tool outside the glyph family carries its own miniature, which its group's face wears;
+      // the glyph family's face is its own mark and opens the picker.
+      entry.face.replaceChildren(...[group.id === 'glyphs' ? deps.icons.icon('groupGlyphs') : faceTool ? deps.icons.tool(faceTool) : null].filter((face) => face !== null))
       // The face is named by what it arms, so a reader and a test find the tool by name; the
       // glyph group's face opens the picker and is named by the group.
       const faceName = faceTool && group.id !== 'glyphs' ? toolName(t, faceTool, faceTool) : t(group.label)
@@ -396,34 +427,37 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       gate(entry.face, 'chart.drawings.arm', !!faceTool && group.id !== 'glyphs' && !deps.toolAllowed(faceTool))
       gate(entry.arrow, 'chart.drawings.arm')
       setActive(entry.face, activeGroup === group.id)
+      entry.face.setAttribute('aria-pressed', String(activeGroup === group.id))
     }
     setActive(measure, s.activeTool === 'measure')
     setActive(zoom, s.activeTool === 'zoom')
     gate(measure, 'chart.drawings.arm')
     gate(zoom, 'chart.drawings.arm')
-    magnetFace.innerHTML = iconSvg(s.magnet === 'strong' ? 'magnetStrong' : 'magnet')
+    magnetFace.replaceChildren(deps.icons.icon(s.magnet === 'strong' ? 'magnetStrong' : 'magnet'))
     setActive(magnetFace, s.magnet !== 'off')
     magnetFace.setAttribute('aria-pressed', String(s.magnet !== 'off'))
     gate(magnetFace, 'chart.drawings.magnet')
     gate(magnetArrow, 'chart.drawings.magnet')
-    stay.innerHTML = iconSvg(s.stayInDrawingMode ? 'pinOn' : 'pin')
+    stay.replaceChildren(deps.icons.icon(s.stayInDrawingMode ? 'pinOn' : 'pin'))
     setActive(stay, s.stayInDrawingMode)
     stay.setAttribute('aria-pressed', String(s.stayInDrawingMode))
     gate(stay, 'chart.drawings.stayInMode')
-    lockAll.innerHTML = iconSvg(s.allLocked ? 'lockClosed' : 'lockOpen')
+    lockAll.replaceChildren(deps.icons.icon(s.allLocked ? 'lockClosed' : 'lockOpen'))
     relabelButton(lockAll, t(s.allLocked ? 'drawing.unlockAll' : 'drawing.lockAll'))
     setActive(lockAll, s.allLocked)
     lockAll.setAttribute('aria-pressed', String(s.allLocked))
     gate(lockAll, 'chart.drawings.lockAll')
-    eyeFace.innerHTML = iconSvg(s.hide.on ? HIDE_ICON[s.hide.mode].hidden : HIDE_ICON[s.hide.mode].shown)
-    relabelButton(eyeFace, t(s.hide.on ? HIDE_LABELS[s.hide.mode].show : HIDE_LABELS[s.hide.mode].hide))
+    const mark = hideMark(s, s.hide.mode, s.hide.on)
+    if (mark) eyeFace.replaceChildren(mark)
+    else eyeFace.replaceChildren()
+    relabelButton(eyeFace, hideLabel(s, s.hide.mode, s.hide.on ? 'show' : 'hide'))
     setActive(eyeFace, s.hide.on)
     eyeFace.setAttribute('aria-pressed', String(s.hide.on))
     gate(eyeFace, 'chart.drawings.hide')
     gate(eyeArrow, 'chart.drawings.hide')
     if (s.layoutCharts > 1) {
       if (!syncButton) {
-        syncButton = button({ class: 'qc-button qc-drawing-rail-button', label: t('drawing.syncLabel'), html: iconSvg('sync'), onClick: () => deps.run('chart.drawings.sync', !deps.state().sync) })
+        syncButton = button({ class: 'qc-button qc-drawing-rail-button', label: t('drawing.syncLabel'), icon: deps.icons.icon('sync'), onClick: () => deps.run('chart.drawings.sync', !deps.state().sync) })
         syncCell.appendChild(syncButton)
       }
       syncButton.title = t(s.sync ? 'drawing.syncOnHelp' : 'drawing.syncOffHelp')
@@ -439,7 +473,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     // The remove face takes drawings, so it is live only while there are drawings to take. The
     // arrow always opens: its menu names what each row would take and gates every row itself.
     gate(removeFace, 'chart.drawings.removeAll')
-    favorites.innerHTML = iconSvg(s.favorites.visible ? 'starFilled' : 'star')
+    favorites.replaceChildren(deps.icons.icon('favoritesBar'))
     favorites.setAttribute('aria-pressed', String(s.favorites.visible))
     setActive(favorites, s.favorites.visible)
     gate(favorites, 'chart.drawings.favoritesBar')
@@ -463,14 +497,26 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     render()
   }
 
-  deps.chrome.appendChild(rail)
+  const mount = (container: HTMLElement | null): void => {
+    const nextPanelHost = panelHostFor(container, deps.chrome)
+    if (rail.parentElement === container && panelHost === nextPanelHost) return
+    closeOpen()
+    panelHost = nextPanelHost
+    rail.remove()
+    container?.appendChild(rail)
+    render()
+  }
+  mount(deps.container === undefined ? deps.chrome : deps.container)
   render()
   return {
+    mount,
     render,
     relabel,
     destroy() {
       closeOpen()
       unrove()
+      glyphPicker?.destroy()
+      glyphPicker = null
       rail.remove()
     },
   }

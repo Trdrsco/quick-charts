@@ -26,13 +26,14 @@ export const FILLABLE: ReadonlySet<string> = new Set([
   'head_and_shoulders',
   'time_cycles',
   'sector',
-  'text',
-  'note',
   'comment',
   'callout',
+  'price_label',
   'table',
   'arc',
   'brush',
+  'curve',
+  'double_curve',
 ])
 
 /** No stroke channel at all (glyph/image marks; ghost feed and the volume profiles carry their
@@ -46,6 +47,11 @@ export const NO_STROKE: ReadonlySet<string> = new Set([
   'fixed_range_volume_profile',
   'anchored_volume_profile',
   'text',
+  'long_position',
+  'short_position',
+  'callout',
+  'comment',
+  'price_label',
 ])
 
 /** Stroke color applies but width/line-style don't (sized by their own geometry or fixed ink,
@@ -60,14 +66,20 @@ export const NO_LINE_DECOR: ReadonlySet<string> = new Set([
   'comment',
   'note',
   'table',
+  'signpost',
 ])
 
 /** Annotation text tools: no Style tab at all — color/size/weight/background/border live on the
  *  Text tab (border applies where the tool draws one). */
 export const NO_STYLE_TAB: ReadonlySet<string> = new Set(['text', 'note', 'comment', 'callout'])
 
+/** Tools that write words of their own and carry none of the trader's: a plan's target, P&L and
+ *  stop tags. Their bar offers the text colour, because those words take it, and nothing that
+ *  belongs to a free label: no font size, and no invitation on the canvas to add text. */
+export const OWN_WORDS_TOOLS: ReadonlySet<string> = new Set(['long_position', 'short_position'])
+
 /** Tools whose floating bar carries a font-size control (their ink is type, not lines). */
-export const FONT_TOOLS: ReadonlySet<string> = new Set(['text', 'note', 'comment', 'callout', 'table'])
+export const FONT_TOOLS: ReadonlySet<string> = new Set(['text', 'note', 'comment', 'callout', 'table', 'price_label', 'signpost'])
 
 /** Pattern/wave tools with circled vertex labels — the Style tab gets a Label styling row. */
 export const LABELED_PATTERNS: ReadonlySet<string> = new Set([
@@ -102,7 +114,32 @@ export const BAR_ONLY_COORDS: ReadonlySet<string> = new Set([
 ])
 
 /** Width applies but the stroke is always solid — no line-style control (marker ink). */
-export const NO_DASH: ReadonlySet<string> = new Set(['highlighter'])
+/** A colour a tool paints that is none of the three every drawing may have. A plan paints two
+ *  zones, and a reader tells them apart by what the glyph says as much as by where it sits, so a
+ *  channel names its own mark. The pick writes the tool's own PROP, not the shared style. */
+export interface ToolColorChannel {
+  /** The prop the pick writes. */
+  prop: string
+  /** The mark the button wears, from the settings bar's own glyph set. */
+  icon: 'pencil16' | 'bucket' | 'textTee'
+  /** The catalog key naming it. */
+  label: string
+}
+
+/** The extra colours a tool offers, in the order its bar shows them. A tool absent here offers
+ *  only the stroke, fill and text every drawing may carry. */
+export const TOOL_COLOR_CHANNELS: Record<string, readonly ToolColorChannel[]> = {
+  long_position: [
+    { prop: 'profitColor', icon: 'bucket', label: 'drawing.profitColor' },
+    { prop: 'stopColor', icon: 'bucket', label: 'drawing.stopColor' },
+  ],
+  short_position: [
+    { prop: 'profitColor', icon: 'bucket', label: 'drawing.profitColor' },
+    { prop: 'stopColor', icon: 'bucket', label: 'drawing.stopColor' },
+  ],
+}
+
+export const NO_DASH: ReadonlySet<string> = new Set(['highlighter', 'brush', 'price_range', 'date_range', 'date_and_price_range'])
 
 /** Prop keys that belong on a separate Inputs tab: what a drawing computes with, kept apart from
  *  how it looks.

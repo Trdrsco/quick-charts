@@ -13,7 +13,7 @@
 // is the punctuation the caller passes (or asks to be derived once, at construction).
 import { parseTickBands, tickBandFor, type PriceFormat, type TickBand } from './symbology'
 
-/** How a formatted price is punctuated. The reference localizes the decimal sign only, so
+/** How a formatted price is punctuated. A price localizes the decimal sign only, so
  *  `groupSign` defaults to '' (no thousands separator) and a host that wants grouping asks for it
  *  explicitly. */
 export interface NumericPunctuation {

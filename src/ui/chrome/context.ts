@@ -1,11 +1,13 @@
 // What every chrome surface is handed: the language, the one command registry, the overlay host
-// its menus and dialogs mount into, and the widget it reads state from. A surface never receives
+// its menus and dialogs mount into, the widget it reads state from, and the icon resolver every
+// glyph it draws goes through. A surface never receives
 // a chart plane, a store or a renderer object: it reads the public handle and speaks through the
 // registry, which is what makes the chrome a consumer of the widget rather than a part of it.
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import type { CommandRegistry } from '../../widget/commands'
 import type { ChartWidget } from '../../widget/create'
 import type { ChartHandle } from '../../widget/chart'
+import type { IconResolver } from '../icons/resolver'
 
 export interface ChromeContext {
   i18n: ChartI18n
@@ -14,6 +16,8 @@ export interface ChromeContext {
    *  stylesheet reaches them and they stack above every chart. */
   overlays: HTMLElement
   widget: ChartWidget
+  /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
+  icons: IconResolver
 }
 
 /** The chart the chrome acts on: the active one. */

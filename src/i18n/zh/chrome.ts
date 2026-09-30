@@ -9,6 +9,7 @@ export const chrome: Translation<typeof source> = {
   'chrome.chartStyle': 'Chart style',
   'chrome.indicators': 'Indicators',
   'chrome.replay': 'Bar replay',
+  'chrome.replayChip': 'Replay',
   'chrome.image': 'Chart image',
   'chrome.session': 'Trading session',
   'chrome.sessionsHeading': 'Sessions',

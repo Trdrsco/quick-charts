@@ -8,6 +8,7 @@ import { createPriceFormatter } from '../../src/priceFormatter'
 import { createCommandRegistry } from '../../src/widget/commands'
 import { attachMenuPlane, MENU_COMMAND } from '../../src/widget/menu'
 import { fakeChart } from '../drawings/fakeChart'
+import { ownIcons } from '../ownIcons'
 
 function rig(canPaste: boolean) {
   const fake = fakeChart()
@@ -20,15 +21,17 @@ function rig(canPaste: boolean) {
     registry.registry.register({ id, scope: 'chart', label: 'command.drawingPaste', available: () => id !== 'chart.drawings.paste' || canPaste, execute: () => void ran.push(id) })
   }
   const plane = attachMenuPlane({
+    icons: ownIcons(),
     chart: fake.chart,
     series: () => fake.series,
     gestures,
-    chrome,
+    host: chrome,
     i18n: createChartI18n(),
     commands: registry.registry,
     formatter: () => createPriceFormatter({ pricescale: 100, minmov: 1 }),
     minMove: () => 0.01,
     symbol: () => 'ES',
+    symbolName: () => 'ES / USD',
     timeframe: () => '5m',
     indicatorCount: () => 0,
     drawingCount: () => 1,

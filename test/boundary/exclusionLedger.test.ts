@@ -1,7 +1,7 @@
 // The exclusion ledger, as a source and packed-artifact scan. No app React component, Tailwind,
 // @trdrs/ui, engine client, private product import, hard-coded storage key, or default trdrs URL
 // belongs in Quick Charts; no legacy tick-plus-precision contract, magnitude-based price formatter,
-// duplicate snap implementation, Object Tree placeholder, watermark placeholder, app account control,
+// duplicate snap implementation, Object Tree placeholder, configurable or branding watermark, app account control,
 // or app-shell fullscreen command survives in the package; and neither the source nor the packed
 // output carries the retired `trades` hide mode or its position/order override writes.
 //
@@ -43,7 +43,7 @@ const APP_FRAMEWORK: readonly Shape[] = [
   { name: 'a Tailwind directive or config', pattern: /@apply\b|\btailwind/i },
   { name: 'the first-party design system', pattern: /@trdrs\/ui\b/ },
   { name: 'an engine client', pattern: /@trdrs\/(engine-client|engine-wire|chart-engine)\b|\bengineApi\b|\bmarketStream\b/ },
-  { name: 'a private product organ', pattern: /@trdrs\/(broker|order-ticket|account-manager|chart-trading|watchlist|news|trading-core|community|library|i18n)\b/ },
+  { name: 'a private product organ', pattern: /@trdrs\/(broker|order-ticket|account-manager|chart-trading|watchlist|news|community|library|i18n)\b/ },
 ]
 
 // ── Storage: every viewer key flows through the port; the package assumes no browser store ─────────
@@ -69,10 +69,15 @@ const DUPLICATE_SNAP: readonly Shape[] = [
 // ── The V1 exclusions and the app-shell controls ──────────────────────────────────────────────────
 const V1_EXCLUSIONS: readonly Shape[] = [
   { name: 'an Object Tree', pattern: /Object Tree|\bobjectTree\b/ },
-  { name: 'a watermark', pattern: /\bwatermark/i },
   { name: 'an account or profile control', pattern: /\b(logout|signOut|signIn|accountMenu|profileMenu|userMenu|avatar)\b/i },
   { name: 'a document-level fullscreen call', pattern: /document\.(documentElement|body)\.requestFullscreen\s*\(/ },
 ]
+
+const REPLAY_INDICATOR_TOKEN = /\breplayWatermark(?:Text)?\b|replay\.watermark|qc-replay-watermark/gi
+
+const watermarkViolations = (files: Record<string, string>) => scanFiles(files, /watermark/i)
+  .filter((o) => o.file !== '/src/chartLegend.ts' || /watermark/i.test(o.text.replace(REPLAY_INDICATOR_TOKEN, '')))
+  .map(offenderText)
 
 // ── The retired trades hide mode and the override writes that served it ───────────────────────────
 const RETIRED_TRADES: readonly Shape[] = [
@@ -114,8 +119,19 @@ describe('the exclusion ledger against package code', () => {
     expect(gridRounding.map((o) => o.file)).toEqual(['/src/widget/menu.ts'])
   })
 
-  it('carries no Object Tree, watermark, account control or document-level fullscreen', () => {
+  it('carries no Object Tree, account control or document-level fullscreen', () => {
     expect(sweep(CODE, V1_EXCLUSIONS)).toEqual([])
+  })
+
+  it('limits watermark vocabulary to the fixed replay-only indicator, never configuration or branding', () => {
+    const uses = scanFiles(CODE, /watermark/i)
+    expect(new Set(uses.map((o) => o.file))).toEqual(new Set(['/src/chartLegend.ts']))
+    expect(uses).toHaveLength(14)
+    expect(watermarkViolations(CODE)).toEqual([])
+    expect(watermarkViolations({
+      '/src/chartLegend.ts': "replayWatermark.className = 'qc-replay-watermark'\nconst watermarkOptions = {}",
+      '/src/widget/create.ts': 'const brandWatermark = true',
+    })).toHaveLength(2)
   })
 
   it('carries neither the trades hide mode nor its override writes', () => {

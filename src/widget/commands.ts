@@ -61,6 +61,11 @@ export interface CommandRegistry {
   onChange(cb: () => void): () => void
 }
 
+/** The part of a command registry a package-owned control needs to judge and run an intent. Chart
+ *  scopes keep one of these privately so an origin-bound control can address its chart even while
+ *  another chart is active, without publishing a second command registry. */
+export type CommandExecutor = Pick<CommandRegistry, 'available' | 'execute'>
+
 /** What the registry needs from the planes around it. */
 export interface CommandRegistryOptions {
   /** The host's access policy. A command the policy refuses answers `denied` and never runs. */
@@ -75,8 +80,63 @@ export interface CommandRegistryHandle {
   dispose(): void
 }
 
+/** One chart's registrations, including extension contributions. Only the active chart publishes
+ *  chart-scoped specs to the shared registry; widget-scoped contributions keep shared behavior. */
+export function createChartCommandScope(shared: CommandRegistry, options?: CommandRegistryOptions) {
+  const entries = new Map<string, { spec: CommandSpec; off?: () => void }>()
+  let active = false
+  const deactivate = (): void => {
+    active = false
+    for (const entry of entries.values()) {
+      entry.off?.()
+      entry.off = undefined
+    }
+  }
+  const registry: CommandRegistry = {
+    ...shared,
+    register(spec) {
+      if (spec.scope !== 'chart') return shared.register(spec)
+      entries.get(spec.id)?.off?.()
+      const entry: { spec: CommandSpec; off?: () => void } = { spec }
+      entries.set(spec.id, entry)
+      if (active) entry.off = shared.register(spec)
+      return () => {
+        if (entries.get(spec.id) !== entry) return
+        entry.off?.()
+        entries.delete(spec.id)
+      }
+    },
+  }
+  const target: CommandExecutor = {
+    available(id) {
+      const spec = entries.get(id)?.spec
+      return spec ? commandAvailable(spec, options?.access?.command) : false
+    },
+    execute(id, arg) {
+      const spec = entries.get(id)?.spec
+      return spec ? executeCommand(spec, options?.access?.command, arg) : { kind: 'unknown' }
+    },
+  }
+  return {
+    registry,
+    target,
+    activate() {
+      if (active) return
+      active = true
+      for (const entry of entries.values()) entry.off = shared.register(entry.spec)
+    },
+    deactivate,
+    dispose() {
+      deactivate()
+      entries.clear()
+    },
+  }
+}
+
 export function createCommandRegistry(options?: CommandRegistryOptions): CommandRegistryHandle {
   const specs = new Map<string, CommandSpec>()
+  const registrations = new Map<string, symbol>()
+  const shortcuts = new Map<string, string | null>()
   const listeners = new Set<() => void>()
   const allow = options?.access?.command
   let disposed = false
@@ -84,23 +144,17 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
   const notify = (): void => {
     for (const cb of [...listeners]) cb()
   }
-  /** A command the policy refuses is denied wherever it is reached from. */
-  const permitted = (id: string): boolean => {
-    if (!allow) return true
-    try {
-      return allow(id) !== false
-    } catch {
-      return false // a policy that throws refuses; the chart never guesses in the host's favor
-    }
-  }
-
   const registry: CommandRegistry = {
     register(spec) {
       if (disposed) return () => undefined
-      specs.set(spec.id, spec)
+      const registration = Symbol(spec.id)
+      registrations.set(spec.id, registration)
+      const shortcut = shortcuts.get(spec.id)
+      specs.set(spec.id, shortcuts.has(spec.id) ? { ...spec, shortcut: shortcut ?? undefined } : spec)
       notify()
       return () => {
-        if (specs.get(spec.id) === spec) {
+        if (registrations.get(spec.id) === registration) {
+          registrations.delete(spec.id)
           specs.delete(spec.id)
           notify()
         }
@@ -109,43 +163,17 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
     list: () => [...specs.values()],
     available(id) {
       const spec = specs.get(id)
-      if (!spec || !permitted(id)) return false
-      try {
-        return spec.available()
-      } catch {
-        return false
-      }
+      return spec ? commandAvailable(spec, allow) : false
     },
     execute(id, arg) {
       const spec = specs.get(id)
       if (!spec) return { kind: 'unknown' }
-      if (!permitted(id)) return { kind: 'denied' }
-      try {
-        if (spec.refuses?.(arg)) return { kind: 'denied' }
-      } catch {
-        return { kind: 'denied' }
-      }
-      let ready: boolean
-      try {
-        ready = spec.available()
-      } catch (error) {
-        return { kind: 'failed', error }
-      }
-      if (!ready) return { kind: 'unavailable' }
-      try {
-        const outcome = spec.execute(arg)
-        // An async command reports the start it made; a rejection later is the host's to observe
-        // through the promise it did not receive, so the rejection is swallowed rather than left
-        // unhandled on the page.
-        if (outcome && typeof (outcome as Promise<void>).catch === 'function') void (outcome as Promise<void>).catch(() => undefined)
-        return { kind: 'ok' }
-      } catch (error) {
-        return { kind: 'failed', error }
-      }
+      return executeCommand(spec, allow, arg)
     },
     setShortcut(id, shortcut) {
       const spec = specs.get(id)
       if (!spec) return
+      shortcuts.set(id, shortcut)
       specs.set(id, shortcut === null ? { ...spec, shortcut: undefined } : { ...spec, shortcut })
       notify()
     },
@@ -162,7 +190,54 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
     dispose() {
       disposed = true
       specs.clear()
+      registrations.clear()
+      shortcuts.clear()
       listeners.clear()
     },
+  }
+}
+
+/** A command the policy refuses is denied wherever it is reached from. */
+function commandPermitted(allow: AccessPolicy['command'] | undefined, id: string): boolean {
+  if (!allow) return true
+  try {
+    return allow(id) !== false
+  } catch {
+    return false // a policy that throws refuses; the chart never guesses in the host's favor
+  }
+}
+
+function commandAvailable(spec: CommandSpec, allow: AccessPolicy['command'] | undefined): boolean {
+  if (!commandPermitted(allow, spec.id)) return false
+  try {
+    return spec.available()
+  } catch {
+    return false
+  }
+}
+
+function executeCommand(spec: CommandSpec, allow: AccessPolicy['command'] | undefined, arg?: unknown): CommandResult {
+  if (!commandPermitted(allow, spec.id)) return { kind: 'denied' }
+  try {
+    if (spec.refuses?.(arg)) return { kind: 'denied' }
+  } catch {
+    return { kind: 'denied' }
+  }
+  let ready: boolean
+  try {
+    ready = spec.available()
+  } catch (error) {
+    return { kind: 'failed', error }
+  }
+  if (!ready) return { kind: 'unavailable' }
+  try {
+    const outcome = spec.execute(arg)
+    // An async command reports the start it made; a rejection later is the host's to observe
+    // through the promise it did not receive, so the rejection is swallowed rather than left
+    // unhandled on the page.
+    if (outcome && typeof (outcome as Promise<void>).catch === 'function') void (outcome as Promise<void>).catch(() => undefined)
+    return { kind: 'ok' }
+  } catch (error) {
+    return { kind: 'failed', error }
   }
 }

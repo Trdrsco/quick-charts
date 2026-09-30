@@ -1,18 +1,28 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
-import { applyStroke, fontOf, withAlpha } from '../render/canvas'
+import { applyStroke, fontOf, paintLabel, withAlpha } from '../render/canvas'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
+}
+
+/** What a pattern carries beyond its vertices. */
+export type PatternProps = {
+  /** The trader's own word for the pattern, above the whole of it. */
+  text: string
 }
 
 /**
  * Shared body of the pattern/wave tools: a polyline through every anchor with a circled letter
  * (or number) at each vertex. Subclasses supply the label sequence and any extra ink.
  */
-export abstract class LabeledPolyline extends Drawing {
+export abstract class LabeledPolyline extends Drawing<PatternProps> {
   protected abstract labels(): readonly string[]
+
+  protected override defaultProps(): PatternProps {
+    return { text: '' }
+  }
 
   protected points(viewport: Viewport): (Point | null)[] {
     return this.anchorPixels(viewport)
@@ -28,6 +38,13 @@ export abstract class LabeledPolyline extends Drawing {
     ctx.stroke()
     this.paintExtras(ctx, points, viewport)
     this.paintLabels(ctx, points)
+    this.paintText(ctx, points)
+  }
+
+  /** The free label, standing where the hint stood offering it, so the two never drift apart. */
+  protected paintText(ctx: CanvasRenderingContext2D, points: Point[]): void {
+    if (!this.props.text) return
+    paintLabel(ctx, this.props.text, this.textHintPlacement(points), this.style, { align: 'center' })
   }
 
   /** Placement preview IS the progressive pattern — the zigzag grows labeled leg by leg. */

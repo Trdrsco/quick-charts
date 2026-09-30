@@ -31,6 +31,7 @@ import {
   type ChartBody,
   type ChartDatafeed,
   type ChartHandle,
+  type ChartIconFactory,
   type ChartMeta,
   type ChartSaveLoadAdapter,
   type ChartWidget,
@@ -55,6 +56,7 @@ import {
   type TemplateBody,
   type TemplateKind,
   type TemplateMeta,
+  type UiConfig,
   type WriteOutcome,
 } from 'quickcharts'
 import { DEFAULT_OPTIONS, DEFAULT_STYLE, drawingTools } from 'quickcharts/drawings'
@@ -75,9 +77,9 @@ export interface ConformanceHost {
    *  every plane it exercises; the host adds only what it alone owns. */
   createWidget(options: ChartWidgetOptions): ChartWidget
   document: Document
-  /** Feature flags this host cannot mount today, with the reason. Checks that need one of them
-   *  report skipped rather than passing on a plane that is not there. */
-  unavailable?: { features: FeatureConfig; reason: string }
+  /** Behavior and controls this host cannot mount today, with the reason. Checks that need one of
+   *  them report skipped rather than passing on a plane or a control that is not there. */
+  unavailable?: { features?: FeatureConfig; ui?: UiConfig; reason: string }
   /** Construction choices this host's door makes for every widget, each with the reason. A check
    *  that must make one of them itself reports skipped; a check that only observes the choice runs
    *  and sees the host's real one. */
@@ -107,8 +109,10 @@ export interface ConformanceResult {
 export interface ConformanceCheck {
   id: string
   title: string
-  /** Feature flags the check mounts with on; a host that names one unavailable skips the check. */
+  /** Behavior the check mounts with on; a host that names one unavailable skips the check. */
   needs?: (keyof FeatureConfig)[]
+  /** The chart's own controls the check drives; a host that names one unavailable skips the check. */
+  shows?: (keyof UiConfig)[]
   /** Construction choices the check makes itself on mount; a host that fixes one skips the check. */
   chooses?: ConstructionChoice[]
   /** A defect the check documents. Hosts skip it, and every report carries the sentence. */
@@ -294,9 +298,11 @@ export function scriptedFeed(): ScriptedFeed {
 
 // ── A second, host-written save/load adapter ────────────────────────────────────────────────────
 
-/** How long each verb of adapter B takes, by id, so a check can make one answer land after another. */
+/** How long each verb of adapter B takes, by id, so a check can make one answer land after another,
+ *  and which ids it cannot serve, so a check can see what the chart does with a store that fails. */
 export interface AdapterBOptions {
   delayFor?: (id: string) => number
+  failFor?: (id: string) => Error | null
 }
 
 interface Row<Body> {
@@ -307,8 +313,9 @@ interface Row<Body> {
 }
 
 /** A resource store written the way a host would write one: its own ids, integer revisions written as
- *  text, a settable delay, and an `AbortError` of its own when a signal is already aborted. Nothing
- *  of the package's memory adapter is reused, which is the point of running both. */
+ *  text, a settable delay, an `AbortError` of its own when a signal is already aborted, and a
+ *  failure of its own for an id it is told it cannot serve. Nothing of the package's memory adapter
+ *  is reused, which is the point of running both. */
 function hostStore<Meta extends ResourceRef, Body>(family: string, metaOf: (row: Row<Body>) => Meta, options: AdapterBOptions): ResourceStore<Meta, Body> {
   const rows = new Map<string, Row<Body>>()
   let seq = 0
@@ -322,6 +329,8 @@ function hostStore<Meta extends ResourceRef, Body>(family: string, metaOf: (row:
     }
     const ms = options.delayFor?.(id) ?? 0
     if (ms > 0) await new Promise((resolve) => setTimeout(resolve, ms))
+    const failure = options.failFor?.(id) ?? null
+    if (failure) throw failure
   }
   return {
     async list(signal) {
@@ -529,6 +538,21 @@ const looksLikeKey = (text: string): boolean => /^[a-z]+\.[a-zA-Z0-9]+$/.test(te
 
 // ── The checks ──────────────────────────────────────────────────────────────────────────────────
 
+/** A host's drawing for one icon: a square in the control's ink, marked with the icon it stands for
+ *  so a check finds it without a private selector. */
+const markedIcon =
+  (id: string): ChartIconFactory =>
+  ({ document }) => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('viewBox', '0 0 10 10')
+    svg.setAttribute('data-conformance-icon', id)
+    const square = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+    square.setAttribute('d', 'M1 1h8v8H1z')
+    square.setAttribute('fill', 'currentColor')
+    svg.append(square)
+    return svg
+  }
+
 const smaInstance = (id: string) => ({ id, definition: BUILT_IN_INDICATORS.find((d) => d.id === 'sma')!, color: '#4c98fb' })
 const rsiInstance = (id: string) => ({ id, definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')!, color: '#f5a623' })
 
@@ -566,12 +590,106 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       assert(toolbars >= 3, `the complete chart has its bars and the drawing toolbar (${toolbars} toolbars)`)
       assert(full.root.querySelector('[role="status"][aria-live]'), 'the complete chart has a live region for its notices')
       // The drawing plane carries a toolbar and a live region of its own, so it goes too.
-      const bare = await ctx.mount({ symbol: 'ALPHA', features: { topBar: false, bottomBar: false, toasts: false, legend: false, replay: false, drawings: false } })
+      const bare = await ctx.mount({ symbol: 'ALPHA', features: { replay: false, drawings: false }, ui: { topBar: false, bottomBar: false, toasts: false, legend: false } })
       equal(bare.root.querySelectorAll('[role="toolbar"]').length, 0, 'no toolbar with both bars and the drawing plane off')
       equal(bare.root.querySelector('[role="status"][aria-live]'), null, 'no live region with notices and the drawing plane off')
       assert(bare.widget.commands.list().some((c) => c.id === 'chart.replay.start'), 'the replay command stays registered with replay off')
       equal(bare.widget.commands.execute('chart.replay.start').kind, 'unavailable', 'replay start with replay off')
       equal(bare.widget.commands.execute('chart.view.reset').kind, 'ok', 'a view verb is untouched by unrelated flags')
+    },
+  },
+  {
+    id: 'ui.presentation',
+    title: "hiding the chart's own controls leaves every command behind them, and the chart's dialogs still open from their commands",
+    shows: ['symbolSearch'],
+    async run(ctx) {
+      const shown = await ctx.mount({ symbol: 'ALPHA' })
+      const hidden = await ctx.mount({ symbol: 'ALPHA', ui: { topBar: false, bottomBar: false, drawingToolbar: false, navigation: false, legend: false } })
+      const availability = (widget: ChartWidget): string =>
+        widget.commands
+          .list()
+          .map((c) => `${c.id} ${widget.commands.available(c.id)}`)
+          .sort()
+          .join('\n')
+      equal(availability(hidden.widget), availability(shown.widget), 'every command is as available with the bars hidden')
+      equal(hidden.widget.chrome.topBar('end'), null, 'a hidden top bar answers no slot')
+      equal(hidden.widget.commands.execute('chart.timeframe.5m').kind, 'ok', "a control of the host's own sets the timeframe")
+      equal(hidden.chart.timeframe(), '5m', 'the timeframe moved')
+      const dialogs = (): number => ctx.document.querySelectorAll('[role="dialog"]').length
+      const before = dialogs()
+      equal(hidden.widget.commands.execute('chart.symbol.search').kind, 'ok', 'the search door runs with the top bar hidden')
+      await ctx.settle()
+      assert(dialogs() > before, "the chart's own search dialog opened")
+      const closed = await ctx.mount({ symbol: 'ALPHA', ui: { symbolSearch: false } })
+      equal(closed.widget.commands.execute('chart.symbol.search').kind, 'unavailable', 'the door closes with the dialog')
+      equal(closed.widget.commands.execute('chart.symbol.set', 'BETA').kind, 'ok', 'the symbol still changes')
+    },
+  },
+  {
+    id: 'ui.host-control',
+    title: 'a control the widget makes for the host stands in a top-bar slot by its name, reports its state, and leaves with the host',
+    shows: ['topBar'],
+    async run(ctx) {
+      const { widget } = await ctx.mount({ symbol: 'ALPHA' })
+      const slot = widget.chrome.topBar('afterIndicators')
+      assert(slot, 'the top bar answers its slot')
+      let presses = 0
+      const control = widget.chrome.toolbarButton({ label: 'Conformance control', text: 'Control', icon: markedIcon('host'), popup: 'dialog', onClick: () => presses++ })
+      slot.appendChild(control.element)
+      const found = Array.from(ctx.document.querySelectorAll('button')).find((b) => b.getAttribute('aria-label') === 'Conformance control')
+      assert(found === control.element, 'the control stands in the bar by its accessible name')
+      equal(control.element.getAttribute('aria-haspopup'), 'dialog', 'it announces its popup')
+      equal(control.element.getAttribute('aria-expanded'), 'false', 'its popup starts closed')
+      assert(control.element.querySelector('svg[data-conformance-icon="host"]'), "it wears the host's glyph")
+      control.element.click()
+      equal(presses, 1, 'a press reaches the host')
+      control.update({ expanded: true, label: 'Conformance control, open' })
+      equal(control.element.getAttribute('aria-expanded'), 'true', 'the host reports its popup open')
+      equal(control.element.getAttribute('aria-label'), 'Conformance control, open', 'the host renames it')
+      control.element.remove()
+      assert(!ctx.document.contains(control.element), 'the host takes its control out')
+      assert(slot.isConnected, "the slot stays the chart's")
+      equal(widget.chrome.iconDiagnostics().length, 0, "the host's glyph drew")
+    },
+  },
+  {
+    id: 'ui.icons',
+    title: "a host's drawing for an icon stands in the chart's controls, a failing one falls back and is reported once, and an unknown icon is refused",
+    shows: ['topBar'],
+    async run(ctx) {
+      const drawn = await ctx.mount({ symbol: 'ALPHA', icons: { settings: markedIcon('settings'), fullscreen: markedIcon('fullscreen') } })
+      for (const id of ['settings', 'fullscreen']) {
+        const glyphs = Array.from(ctx.document.querySelectorAll(`svg[data-conformance-icon="${id}"]`))
+        assert(glyphs.length > 0, `the host's ${id} glyph stands in the chart's controls`)
+        for (const glyph of glyphs) {
+          equal(glyph.getAttribute('aria-hidden'), 'true', `the ${id} glyph is hidden from assistive technology`)
+          assert(glyph.closest('button')?.getAttribute('aria-label'), `the control wearing the ${id} glyph keeps its name`)
+        }
+      }
+      equal(drawn.widget.chrome.iconDiagnostics().length, 0, 'every drawing stood')
+      const failing = await ctx.mount({
+        symbol: 'ALPHA',
+        icons: {
+          settings: () => {
+            throw new Error('no artwork')
+          },
+        },
+      })
+      const report = failing.widget.chrome.iconDiagnostics()
+      equal(report.length, 1, 'one failing icon is one record')
+      equal(report[0]!.icon, 'settings', 'the record names the icon')
+      equal(report[0]!.code, 'threw', 'the record says why')
+      const container = ctx.document.createElement('div')
+      ctx.document.body.appendChild(container)
+      let refused: unknown = null
+      try {
+        ctx.host.createWidget({ container, datafeed: scriptedFeed(), icons: { 'no.such.icon': markedIcon('none') } as never })
+      } catch (error) {
+        refused = error
+      } finally {
+        container.remove()
+      }
+      assert(refused instanceof TypeError, 'an icon the chart does not draw is refused with a TypeError before anything mounts')
     },
   },
   {
@@ -603,7 +721,8 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'access.indicator.one-id',
-    title: 'the indicator predicate is asked the same id from the picker and from the handle: the definition id',    async run(ctx) {
+    title: 'the indicator predicate is asked the same id from the picker and from the handle: the definition id',
+    async run(ctx) {
       const { chart } = await ctx.mount({ symbol: 'ALPHA', access: { indicator: (id) => id !== 'rsi' } })
       equal(chart.indicators.add(rsiInstance('rsi-1')), false, 'an instance of a refused definition is refused whatever its instance id')
       equal(chart.indicators.get().length, 0, 'nothing was added')
@@ -717,7 +836,8 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'lifecycle.dispose.after-change',
-    title: 'a dispose in the same tick as a state change throws nothing afterwards',    async run(ctx) {
+    title: 'a dispose in the same tick as a state change throws nothing afterwards',
+    async run(ctx) {
       const { widget } = await ctx.mount({ symbol: 'ALPHA' })
       widget.theme.setMode('light')
       widget.dispose()
@@ -849,7 +969,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       equal(ctx.document.activeElement, first, 'a toolbar button takes focus')
       equal(widget.commands.execute('chart.compare.open').kind, 'ok', 'the compare dialog opens through its command')
       await ctx.settle()
-      const dialog = root.querySelector<HTMLElement>('[role="dialog"]')
+      const dialog = document.querySelector<HTMLElement>('[role="dialog"]')
       assert(dialog, 'a dialog is open')
       equal(dialog.getAttribute('aria-modal'), 'true', 'the dialog is modal')
       assert((dialog.getAttribute('aria-label') ?? dialog.getAttribute('aria-labelledby') ?? '').length > 0, 'the dialog is named')
@@ -857,7 +977,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       assert(dialog.querySelector('[role="listbox"]'), 'the results are a listbox')
       dialog.dispatchEvent(new ctx.window.KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }))
       await ctx.settle()
-      equal(root.querySelector('[role="dialog"]'), null, 'Escape closed the dialog')
+      equal(document.querySelector('[role="dialog"]'), null, 'Escape closed the dialog')
       equal(ctx.document.activeElement, first, 'focus returned to where it was')
     },
   },
@@ -964,7 +1084,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   ...(['package', 'host', 'rest'] as const).map(
     (kind): ConformanceCheck => ({
       id: `persistence.${kind}-adapter`,
-      title: `saved charts and layouts keep identity, return revisions, write conditionally, and refuse conflicts, deletions and aborted loads (${kind} adapter)`,
+      title: `saved charts and layouts keep identity, return revisions, write conditionally, and refuse conflicts, deletions and abandoned loads (${kind} adapter)`,
       async run(ctx) {
         const adapter = kind === 'package' ? memorySaveLoadAdapter() : kind === 'host' ? hostSaveLoadAdapter() : restSaveLoadAdapter()
         const { widget, chart } = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m', saveLoad: adapter })
@@ -1001,13 +1121,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
         equal(chart.timeframe(), '1h', 'the load restored the saved timeframe')
         const aborted = new AbortController()
         aborted.abort()
-        let abortName = ''
-        try {
-          await chart.saveLoad.load(created.ref.id, aborted.signal)
-        } catch (e) {
-          abortName = (e as Error).name
-        }
-        equal(abortName, 'AbortError', 'an aborted load rejects with AbortError')
+        equal((await chart.saveLoad.load(created.ref.id, aborted.signal)).kind, 'cancelled', 'a load abandoned by its caller is cancelled')
         const removed = await chart.saveLoad.remove()
         equal(removed.kind, 'ok', 'the open chart deletes')
         equal(chart.saveLoad.current(), null, 'nothing is open after a delete')
@@ -1045,13 +1159,13 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
     }),
   ),
   // The two UI checks drive the built-in Save/Load chrome by its accessible names, which are the
-  // default-locale catalog values (Save layout, Rename, Open layout, Layout name); a host running the
+  // default-locale catalog values (Save layout, Rename…, Open layout…, Layout name); a host running the
   // suite in another locale would need the names of its own catalog.
   ...(['package', 'rest'] as const).map(
     (kind): ConformanceCheck => ({
       id: `persistence.ui.${kind}-adapter`,
       title: `the built-in Save/Load UI lists, creates, renames, updates, loads, deletes and asks to save, over the ${kind} adapter`,
-      needs: ['topBar', 'layouts'],
+      shows: ['topBar'],
       async run(ctx) {
         const adapter = kind === 'package' ? memorySaveLoadAdapter() : restSaveLoadAdapter()
         const { widget, chart, root } = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m', saveLoad: adapter })
@@ -1087,21 +1201,25 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
           return panel
         }
         const modal = (): ParentNode => {
-          const panel = root.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
+          const panel = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
           assert(panel, 'a modal dialog is open')
           return panel
         }
         const confirmation = (): ParentNode => {
-          const panel = root.querySelector<HTMLElement>('[role="alertdialog"]')
+          const panel = document.querySelector<HTMLElement>('[role="alertdialog"]')
           assert(panel, 'the confirmation is up')
           return panel
         }
-        /** Type a name into the field the menu is showing and commit it with Enter, the way a
+        /** Type a name into the field the dialog is showing and commit it with Enter, the way a
          *  viewer does. Enter is what the field itself acts on, and it names the verb the field was
-         *  opened for, so a check never has to guess which of two same-named controls submits. */
+         *  opened for, so a check never has to guess which of two same-named controls submits. The
+         *  field is found by what it is called, whether that name is written on it or on the label
+         *  it stands in. */
         const typeAndCommit = async (label: string, value: string): Promise<void> => {
           await ctx.settle()
-          const field = root.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)
+          const field = Array.from(document.querySelectorAll<HTMLInputElement>('input')).find(
+            (input) => (input.getAttribute('aria-label') ?? input.closest('label')?.textContent?.trim() ?? '') === label,
+          )
           assert(field, `no field named ${JSON.stringify(label)}`)
           field.value = value
           field.dispatchEvent(new ctx.window.Event('input', { bubbles: true }))
@@ -1119,24 +1237,23 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
 
         // CREATE: the toolbar's Save on a never-saved layout asks for a name first.
         ;(await named('Save layout')).click()
-        await typeAndCommit('Layout name', 'Desk')
+        await typeAndCommit('Enter a new chart layout name:', 'Desk')
         equal((await listed()).join('|'), 'Desk', 'the layout was created under the typed name')
         equal(widget.layout.saveLoad.current()?.name, 'Desk', 'and it is the open layout')
         assert(layoutEvents.includes('saved:Desk'), `the save reported itself (${JSON.stringify(layoutEvents)})`)
 
         // RENAME: the menu's Rename row prefills the open name and updates the same row.
         ;(await named('Manage layouts')).click()
-        ;(await named('Rename', menu)).click()
-        await typeAndCommit('Layout name', 'Desk B')
+        ;(await named('Rename…', menu)).click()
+        await typeAndCommit('New layout name', 'Desk B')
         equal((await listed()).join('|'), 'Desk B', 'the rename updated the row rather than creating one')
 
-        // CREATE NEW: the binding detaches, so the next save is another layout, not an overwrite.
+        // CREATE NEW: a layout named on the spot, written as its own row and opened, leaving the
+        // one it was created from as it was saved.
         ;(await named('Manage layouts')).click()
-        ;(await named('Create new layout', menu)).click()
-        await ctx.settle()
-        equal(widget.layout.saveLoad.current(), null, 'nothing is open after Create new layout')
-        ;(await named('Save layout')).click()
-        await typeAndCommit('Layout name', 'Desk C')
+        ;(await named('Create new layout…', menu)).click()
+        await typeAndCommit('New layout name', 'Desk C')
+        equal(widget.layout.saveLoad.current()?.name, 'Desk C', 'the new layout is the open one')
         equal((await listed()).sort().join('|'), 'Desk B|Desk C', 'the second layout is its own row')
 
         // LOAD the last selection: the menu lists what was used most recently, newest first, and
@@ -1154,15 +1271,15 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
         // LIST and DELETE: the open-layout dialog lists every saved layout and deletes behind a
         // confirmation.
         ;(await named('Manage layouts')).click()
-        ;(await named('Open layout', menu)).click()
+        ;(await named('Open layout…', menu)).click()
         await ctx.settle()
-        const dialog = root.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
+        const dialog = document.querySelector<HTMLElement>('[role="dialog"][aria-modal="true"]')
         assert(dialog, 'the open-layout dialog is a modal dialog')
         const rows = Array.from(dialog.querySelectorAll<HTMLElement>('[role="listitem"]')).length
         equal(rows, 2, 'the dialog lists both saved layouts')
         ;(await named('Delete Desk C', modal)).click()
         await ctx.settle()
-        assert(root.querySelector('[role="alertdialog"]'), 'the delete asks first')
+        assert(document.querySelector('[role="alertdialog"]'), 'the delete asks first')
         ;(await named('Delete', confirmation)).click()
         await ctx.settle()
         equal((await listed()).join('|'), 'Desk B', 'the confirmed delete removed exactly that row')
@@ -1292,7 +1409,8 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'persistence.stale-response',
-    title: 'a load superseded by a newer load rejects with the abort error and never lands: the chart shows the newest ask',    async run(ctx) {
+    title: 'a load superseded by a newer load is cancelled and never lands: the chart shows the newest ask',
+    async run(ctx) {
       const adapter = hostSaveLoadAdapter({ delayFor: (id) => (id.endsWith('-1') ? 40 : 0) })
       const { chart } = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m', saveLoad: adapter })
       chart.setSymbol('BETA')
@@ -1306,12 +1424,53 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       assert(slow.kind === 'ok' && fast.kind === 'ok', 'both saved')
       const first = chart.saveLoad.load(slow.ref.id)
       const second = chart.saveLoad.load(fast.ref.id)
-      const superseded = await first.then(() => null, (e: unknown) => (e instanceof Error ? e.name : String(e)))
-      equal(superseded, 'AbortError', 'the superseded load rejects with the abort error')
+      equal((await first).kind, 'cancelled', 'the superseded load is cancelled')
       await second
       await ctx.settle()
       equal(chart.saveLoad.current()?.ref.id, fast.ref.id, 'the newest ask is the open chart')
       equal(chart.symbol(), 'GAMMA', 'the newest ask is on screen')
+    },
+  },
+  {
+    id: 'persistence.load-outcomes',
+    title: 'a load answers by kind: the body, a body that cannot be read, an id the store does not hold, a store that could not be reached, or a load that was abandoned',
+    async run(ctx) {
+      // The five are told apart by `kind` alone. A host that had to read a message to know whether
+      // its own service was down would be reading copy written for a trader.
+      let unreachable = ''
+      const adapter = hostSaveLoadAdapter({ failFor: (id) => (id === unreachable ? new Error('the host service could not be reached') : null) })
+      const { chart } = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m', saveLoad: adapter })
+      chart.setSymbol('BETA')
+      await ctx.settle()
+      const good = await adapter.charts.create({ name: 'Good', ...chart.saveLoad.serialize() })
+      const down = await adapter.charts.create({ name: 'Down', ...chart.saveLoad.serialize() })
+      // A row whose content this build has no reader for. The store holds it and hands it over
+      // intact, which is the contract: the blob is opaque to a store and only the chart judges it.
+      const unreadable = await adapter.charts.create({ name: 'Unreadable', symbol: 'DELTA', timeframe: '1h', content: '{"v":0}' })
+      assert(good.kind === 'ok' && down.kind === 'ok' && unreadable.kind === 'ok', 'all three saved')
+      unreachable = down.ref.id
+      chart.setSymbol('GAMMA')
+      await ctx.settle()
+      equal((await chart.saveLoad.load(good.ref.id)).kind, 'ok', 'a body the chart can read is ok')
+      equal(chart.saveLoad.current()?.ref.id, good.ref.id, 'and only that one binds')
+      equal((await chart.saveLoad.load('no-such-chart')).kind, 'not-found', 'an id the store does not hold is not-found')
+      equal((await chart.saveLoad.load(unreadable.ref.id)).kind, 'invalid', 'a body this build cannot read is invalid')
+      equal(chart.symbol(), 'BETA', 'the refused body moved nothing on screen')
+      const failed = await chart.saveLoad.load(down.ref.id)
+      equal(failed.kind, 'unavailable', 'a store that rejects is unavailable, not a refusal of the content')
+      assert(failed.kind === 'unavailable' && failed.cause instanceof Error, 'the answer carries what the store failed with')
+      const abandoned = new AbortController()
+      abandoned.abort()
+      equal((await chart.saveLoad.load(good.ref.id, abandoned.signal)).kind, 'cancelled', 'a load abandoned by its caller is cancelled')
+      equal(chart.saveLoad.current()?.ref.id, good.ref.id, 'nothing after the one that landed moved the binding')
+      equal(chart.saveLoad.notSaving(), false, 'a load that left the chart alone leaves it saving')
+      const still = await chart.saveLoad.save('Good')
+      equal(still.kind, 'ok', 'and it still writes to the resource it holds')
+      // The other side of `notSaving` is not checkable from out here, and that is the design rather
+      // than a gap: it is reached only where a body lands part-way AND the content the chart held
+      // fails to go back, and every port a host supplies to an apply either keeps its own failures
+      // to itself (an extension's `restore`) or is contractually forbidden to throw (`ChartStorage`).
+      // A conforming host cannot put a chart there, so the package's own tests hold that rule.
     },
   },
   {
@@ -1328,23 +1487,19 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'feed.paging.older',
-    title: 'scrolling to the left edge pages older history in once, keeps the window, and stops at the feed origin',
+    title: 'reaching the left edge pages older history in until the window is filled, and stops at the feed origin',
     async run(ctx) {
-      const { chart, feed } = await ctx.mount({ symbol: 'ALPHA', timeframe: '1m' })
+      // The first window fits to the pane, which already sits at the left edge: the chart pages
+      // from there and keeps paging while the edge is still in reach, one request at a time.
+      const { chart, feed } = await ctx.mount({ symbol: 'ALPHA', timeframe: '1m', settle: false })
       const loaded: number[] = []
       chart.on('dataLoaded', (info) => loaded.push(info.bars))
-      const before = feed.historyCalls.length
-      chart.setLogicalRange({ from: -10, to: 90 })
-      await ctx.settle()
-      await ctx.settle()
-      assert(feed.historyCalls.length > before, 'an older page was asked for')
-      const ask = feed.historyCalls[before]!
-      assert(ask.range?.to !== undefined && ask.range.to < ORIGIN + 600 * 60, 'the ask is for bars before the loaded window')
+      await quiet(feed, ctx.settle)
+      const older = feed.historyCalls.filter((call) => call.range?.to !== undefined)
+      assert(older.length > 0, 'an older page was asked for')
+      assert(older[0]!.range!.to! < ORIGIN + 600 * 60, 'the ask is for bars before the loaded window')
       assert(loaded.length > 0 && loaded.at(-1)! > 300, `more bars are loaded (${loaded.at(-1)})`)
-      // Paging again reaches the origin and the feed says so; a later scroll asks for nothing more.
-      chart.setLogicalRange({ from: -10, to: 90 })
-      await ctx.settle()
-      await ctx.settle()
+      // The feed states its origin, and a later scroll asks for nothing more.
       const calls = feed.historyCalls.length
       chart.setLogicalRange({ from: -10, to: 90 })
       await ctx.settle()
@@ -1385,7 +1540,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   {
     id: 'feed.unavailable.notice',
     title: 'a symbol nothing serves reports feed_unavailable on the status lane, paints no bar, and shows an honest notice',
-    needs: ['toasts'],
+    shows: ['toasts'],
     async run(ctx) {
       const feed = scriptedFeed()
       const { chart, root } = await ctx.mount({ symbol: 'NONE', feed, ready: false, settle: false })
@@ -1406,7 +1561,8 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'feed.unavailable.no-subscription',
-    title: 'a symbol nothing serves opens no live subscription',    async run(ctx) {
+    title: 'a symbol nothing serves opens no live subscription',
+    async run(ctx) {
       const feed = scriptedFeed()
       await ctx.mount({ symbol: 'NONE', feed, ready: false })
       await ctx.settle()
@@ -1415,15 +1571,21 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'replay.data-only',
-    title: 'bar replay runs on data alone: start, step, play, pause, go live, exit, and live bars absorbed off screen',
+    title: 'bar replay runs on data alone: arm, start, step, play, pause, go live, exit, and live bars absorbed off screen',
     needs: ['replay'],
     async run(ctx) {
       const { widget, chart, feed } = await ctx.mount({ symbol: 'ALPHA', timeframe: '1m' })
       const states: string[] = []
       chart.on('replay', (s) => states.push(`${s.on ? 'on' : 'off'}:${s.playing ? 'play' : 'pause'}:${s.cursor}/${s.total}`))
-      equal(widget.commands.execute('chart.replay.start').kind, 'ok', 'replay starts through its command')
+      // Entry ARMS: replay opens on the whole loaded window and waits to be told where to begin.
+      equal(widget.commands.execute('chart.replay.start').kind, 'ok', 'replay arms through its command')
+      equal(chart.replay.phase(), 'arming', 'replay is asking where to begin')
+      equal(chart.replay.state().on, false, 'no session runs until a moment is given')
+      const from = barAt('ALPHA', '1m', Math.floor(BAR_COUNT * 0.75))
+      equal(widget.commands.execute('chart.replay.start', from.t).kind, 'ok', 'a moment starts the session')
       const started = chart.replay.state()
       equal(started.on, true, 'replay is on')
+      equal(chart.replay.phase(), 'on', 'the phase says a session runs')
       assert(started.total > 0 && started.cursor < started.total, 'the cursor sits before the end')
       chart.replay.stepForward()
       equal(chart.replay.state().cursor, started.cursor + 1, 'a step moves one bar')
@@ -1441,6 +1603,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       equal(chart.replay.state().cursor, chart.replay.state().total, 'go live lands on the last bar')
       chart.replay.exit()
       equal(chart.replay.state().on, false, 'replay is off')
+      equal(chart.replay.phase(), 'off', 'and the phase agrees')
       assert(states.length >= 6, `the replay lane reported each move (${states.length})`)
       for (const key of Object.keys(chart.replay)) assert(!/order|position|account|trade/i.test(key), `replay offers no trading verb: ${key}`)
     },
@@ -1611,7 +1774,8 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   {
     id: 'styles.switch.compares-not-refetched',
     title: 'a style switch keeps the compared series without refetching their history',
-    needs: ['compare'],    async run(ctx) {
+    needs: ['compare'],
+    async run(ctx) {
       const { chart, feed } = await ctx.mount({ symbol: 'ALPHA' })
       chart.compare.add('BETA', { placement: 'same-percent' })
       await quiet(feed, ctx.settle)
@@ -1645,13 +1809,17 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
 
 // ── The runner ──────────────────────────────────────────────────────────────────────────────────
 
-/** Why a host skips a check: a documented defect, a needed feature the host named unavailable, or a
- *  construction choice the check makes that the host's door has fixed. Null when the check runs. */
+/** Why a host skips a check: a documented defect, a needed behavior or control the host named
+ *  unavailable, or a construction choice the check makes that the host's door has fixed. Null when
+ *  the check runs. */
 export function skipReason(check: ConformanceCheck, host: ConformanceHost): string | null {
   if (check.defect) return `known defect: ${check.defect}`
   const off = host.unavailable
-  if (off && check.needs) {
-    const missing = check.needs.filter((flag) => off.features[flag] === false)
+  if (off) {
+    const missing = [
+      ...(check.needs ?? []).filter((flag) => off.features?.[flag] === false),
+      ...(check.shows ?? []).filter((control) => off.ui?.[control] === false),
+    ]
     if (missing.length > 0) return `${off.reason} (needs ${missing.join(', ')})`
   }
   const fixed = host.fixed
@@ -1685,7 +1853,8 @@ export async function runCheck(check: ConformanceCheck, host: ConformanceHost): 
       container.style.height = '420px'
       doc.body.appendChild(container)
       const features = { ...(host.unavailable?.features ?? {}), ...(options.features ?? {}) }
-      const widget = host.createWidget({ container, datafeed: feed, symbol: 'ALPHA', timeframe: '1m', ...options, features })
+      const ui = { ...(host.unavailable?.ui ?? {}), ...(options.ui ?? {}) }
+      const widget = host.createWidget({ container, datafeed: feed, symbol: 'ALPHA', timeframe: '1m', ...options, features, ui })
       if (ready) await widget.ready()
       if (settleFirst) await settle()
       const root = rootOf(container)

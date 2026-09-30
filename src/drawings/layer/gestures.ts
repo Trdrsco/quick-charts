@@ -19,7 +19,7 @@ import { magnetSnap, viewportOf, type Anchor, type IDrawing, type Viewport } fro
 import { drawingTools, type DrawingTool } from '../tools'
 import { editRefused } from '../lockModel'
 import { toolAfterPlacement } from '../cursorModel'
-import { scopeForNew } from './scope'
+import { stampNewScope } from './scope'
 import { constrain45, instantPositionAnchors, barsShifted, type Px } from './geometry'
 import type { DrawingsWorkflow } from './types'
 import type { PresetCache } from './presets'
@@ -118,6 +118,17 @@ export function bindGestures(ctx: GestureContext): () => void {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top }
   }
 
+  /** The cursor this layer last wrote on the box. Another surface on the same box (a trade line's
+   *  control under the pointer) writes its own, and that claim stands: the layer restates its
+   *  cursor only over a box that is bare or still wearing the layer's own. */
+  let ownCursor = ''
+  const wearCursor = (css: string): void => {
+    const current = container.style.cursor
+    if (current !== '' && current !== ownCursor) return
+    if (current !== css) container.style.cursor = css
+    ownCursor = css
+  }
+
   /** The raw anchor under a pane point. The viewport's time mapping extrapolates into empty future
    *  space, which is where a ghost feed lives. */
   const anchorAt = (p: Px): Anchor | null => {
@@ -184,12 +195,12 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (preset.props) drawing.applyProps(preset.props)
     const seeded = ctx.presetProps()
     if (seeded) drawing.applyProps(seeded)
-    drawing.scope = scopeForNew(ctx.chartId, ctx.workflow().syncAcrossPanes !== false)
+    stampNewScope(drawing, ctx.chartId, ctx.workflow().syncAcrossPanes)
     return drawing
   }
 
-  /** A placement finished. Stay-in-drawing-mode keeps the tool for a run of the same shape; the
-   *  model answers, so the rule is stated once. */
+  /** A placement finished. Freehand tools keep drawing successive strokes; other permanent
+   *  tools follow Stay in drawing mode. The model owns the rule. */
   const finalize = (): void => {
     ctx.draft = null
     ctx.setArmed(toolAfterPlacement(ctx.armed(), ctx.workflow().stayInDrawingMode))
@@ -213,10 +224,15 @@ export function bindGestures(ctx: GestureContext): () => void {
     return drawing
   }
 
-  /** Measure and zoom completion, shared by drag-release and the second click. The measure
-   *  readout stays on screen until the next gesture clears it; the zoom box becomes the range. */
+  /** Measure and zoom completion, shared by drag-release and the second click.
+   *
+   *  Both tools run ONCE: the action completes here and the tool releases with it, whatever Stay in
+   *  Drawing Mode says, because the trader asked to measure this rather than to keep measuring.
+   *  Releasing hands the chart its own pan and zoom back, so the next drag navigates. The measure
+   *  readout stays on screen until that next gesture clears it; the zoom box becomes the range. */
   const completeTransient = (draft: Draft, tool: 'measure' | 'zoom', at: Px): void => {
     ctx.draft = null
+    ctx.setArmed(null)
     if (tool !== 'zoom') return
     const [a, b] = draft.drawing.anchors
     ctx.clearTransients()
@@ -235,7 +251,7 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (e.button !== 0) return
     // A press while the inline editor is open belongs to the editor, which commits itself on it.
     if (ctx.textEditOpen()) return
-    container.style.cursor = ctx.cursorCss()
+    wearCursor(ctx.cursorCss())
     container.focus({ preventScroll: true })
     const p = localXY(e)
     const tool = ctx.armed()
@@ -247,7 +263,7 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (tool === 'eraser') {
       if (ctx.locked()) return
       const hit = manager.hitTest(p)
-      if (hit && !editRefused('delete', hit.options, false)) {
+      if (hit && !editRefused('erase', hit.options, false)) {
         manager.remove(hit.id)
         ctx.persist()
         ctx.changed()
@@ -315,9 +331,12 @@ export function bindGestures(ctx: GestureContext): () => void {
       const hit = manager.hitTest(p)
       if (hit) {
         // A Control- or Command-drag duplicates: the gesture grabs a fresh copy and moves that.
-        if ((e.ctrlKey || e.metaKey) && !editRefused('clone', hit.options, false)) {
+        if ((e.ctrlKey || e.metaKey) && !editRefused('cloneDrag', hit.options, false)) {
           const copy = drawingTools.restore({ ...hit.toJSON(), id: ctx.nextId() })
           if (copy) {
+            // The copy is a NEW drawing, so it takes the ownership a new drawing takes; the source
+            // keeps the one it already had.
+            stampNewScope(copy, ctx.chartId, ctx.workflow().syncAcrossPanes)
             manager.add(copy)
             manager.select(copy.id)
             startDrag('move', copy, null, p)
@@ -447,8 +466,7 @@ export function bindGestures(ctx: GestureContext): () => void {
     }
 
     // At rest over the chart the pointer glyph follows the cursor mode.
-    const css = ctx.cursorCss()
-    if (container.style.cursor !== css) container.style.cursor = css
+    wearCursor(ctx.cursorCss())
   }
 
   /** The drawing under the resting pointer, reported for the surfaces that follow it. Bound to the

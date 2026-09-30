@@ -3,10 +3,33 @@
   padding: 0 12px;
 }
 
+/* The arrangement grid sets its own side inset per row, so the panel adds none: a panel padding
+ * here would narrow the row by twice itself, and the widest row is sized to fit exactly, so
+ * anything taken off it wraps a tile and grows the panel a row taller than it needs to be. */
+[data-qc-theme] .qc-menu-panel.qc-layout-menu {
+  max-width: calc(100% - 16px);
+  max-height: min(calc(100% - 16px), 86vh, 747px);
+  padding: 6px 0;
+  overflow: hidden;
+}
+
+/* ONE scrolling surface for the whole menu, and it scrolls WITHOUT a bar. The grid is sized to fit
+ * the widest row exactly, so a gutter appearing beside it would either narrow the rows into a wrap
+ * or overlay the last tile in each one. A viewer reaches the sync switches by scrolling the panel
+ * they are already pointing at; a bar down the side buys nothing and costs the row its width. */
+[data-qc-theme] .qc-layout-menu .qc-menu-body {
+  min-height: 0;
+  overflow: auto;
+  scrollbar-width: none;
+}
+
+[data-qc-theme] .qc-layout-menu .qc-menu-body::-webkit-scrollbar {
+  display: none;
+}
+
 [data-qc-theme] .qc-layout-row {
   display: flex;
   align-items: center;
-  gap: 4px;
   padding: 4px 0;
 }
 
@@ -18,55 +41,173 @@
 
 [data-qc-theme] .qc-layout-tiles {
   display: flex;
-  flex-wrap: wrap;
+  flex: 1 1 auto;
   gap: 10px;
 }
 
 [data-qc-theme] .qc-layout-tile {
   display: inline-flex;
+  flex: 0 0 29px;
   align-items: center;
   justify-content: center;
   width: 29px;
   height: 27px;
   padding: 0;
-  color: var(--qc-text-muted);
+  /* The ink every glyph in the product wears. A tile is told from its neighbours by the wash under
+   * the pointer and by the chosen one's fill, never by being drawn fainter than the toolbar. */
+  color: var(--qc-text-primary);
   border-color: transparent;
 }
 
+/* Lighter than a menu row's: a grid of these washes at once under a travelling pointer, and the
+ * chosen tile has to stay the loudest thing in the grid. */
 [data-qc-theme] .qc-layout-tile:hover {
-  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-layout-trigger {
+  width: 38px;
+  padding: 0;
 }
 
 [data-qc-theme] .qc-layout-tile[aria-checked='true'] {
-  color: var(--qc-text-inverse);
-  background: var(--qc-state-accent);
-  border-color: var(--qc-state-accent);
+  color: var(--qc-overlay-surface);
+  background: var(--qc-text-primary);
+  border-color: transparent;
 }
 
-[data-qc-theme] .qc-layout-grid .qc-separator {
+/* Half a menu's separator margin, and stated through the PANEL so it wins: a menu panel's own rule
+ * carries the same specificity as a bare `.qc-layout-grid .qc-separator`, and these sheets
+ * concatenate by filename, which puts menu.css after this one and hands it every tie. The grid is
+ * thirteen rows of rules; six pixels each is seventy-two the panel does not have, and the sync
+ * switches fall off the bottom of a menu that would otherwise close on its own edge. */
+[data-qc-theme] .qc-menu-panel.qc-layout-menu .qc-layout-grid .qc-separator {
   margin: 3px 0;
+}
+
+[data-qc-theme] .qc-layout-menu .qc-menu-heading {
+  padding: 8px 12px 4px;
+}
+
+/* The hint belongs to the WORDS, not to the switch: it sits against the label it explains and the
+ * empty space falls after it, so the toggle stays on the far edge on its own.
+ *
+ * The row states no gap of its own here. A hint stands its own six pixels off the word it explains,
+ * and a row gap would add to that margin rather than replace it, pushing the mark away from the
+ * only thing that tells a reader what it is about. */
+[data-qc-theme] .qc-layout-menu .qc-switch-row {
+  gap: 0;
+}
+
+[data-qc-theme] .qc-layout-menu .qc-switch-label {
+  flex: 0 1 auto;
+}
+
+[data-qc-theme] .qc-layout-info {
+  flex: 0 0 auto;
+  margin-inline-start: 6px;
+  margin-inline-end: auto;
+  color: var(--qc-text-muted);
+  opacity: 0.6;
 }
 
 [data-qc-theme] .qc-arrangement svg {
   display: block;
 }
 
-[data-qc-theme] .qc-layouts-naming {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+/* The Layouts dialog: a 480 by 540 box with a 68px heading, a 40px search field, a column head that
+ * carries the sort, and the saved layouts as 48px rows. */
+[data-qc-theme] .qc-layouts-dialog {
+  height: 540px;
 }
 
-[data-qc-theme] .qc-layouts-field {
+[data-qc-theme] .qc-layouts-dialog .qc-dialog-title {
+  height: 68px;
+  padding: 0 20px;
+}
+
+[data-qc-theme] .qc-layouts-dialog .qc-dialog-title .qc-title {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+/* The close reaches 3px past the heading's inset, so its mark lines up with the rows' marks below. */
+[data-qc-theme] .qc-layouts-dialog .qc-dialog-close {
+  margin-inline-end: -3px;
+}
+
+/* The field is its mark and its words on one 40px line, ringed in the strong rule. The ring is an
+ * outline, so the side padding carries the pixel a border would take. */
+[data-qc-theme] .qc-layouts-search {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 40px;
+  margin: 0 20px 12px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  outline: 1px solid var(--qc-chrome-borderStrong);
+  outline-offset: -1px;
+}
+
+[data-qc-theme] .qc-layouts-search-mark {
+  flex: 0 0 auto;
+  color: var(--qc-text-muted);
+}
+
+[data-qc-theme] .qc-layouts-search-input {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 4px 8px;
+  padding: 0;
+  color: var(--qc-text-primary);
+  font: inherit;
+  font-size: calc(var(--qc-text-fontSizeBase) + 2px);
+  line-height: 24px;
+  background: none;
+  border: none;
+  outline: none;
 }
 
-[data-qc-theme] .qc-layouts-search {
+[data-qc-theme] .qc-layouts-search-input::placeholder {
+  color: var(--qc-text-disabled);
+}
+
+/* The column the rows stand under, its name set where the names below it start, and the sort at its
+ * end. */
+[data-qc-theme] .qc-layouts-columns {
+  display: flex;
   flex: 0 0 auto;
-  padding: 6px 10px;
+  align-items: center;
+  margin: 0 20px;
+  padding: 6px 8px 4px 34px;
+}
+
+[data-qc-theme] .qc-layouts-column {
+  flex: 1 1 auto;
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeSmall);
+  line-height: 16px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+[data-qc-theme] .qc-layouts-sort {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-color: transparent;
+}
+
+[data-qc-theme] .qc-layouts-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 20px 20px;
 }
 
 [data-qc-theme] .qc-layouts-list {
@@ -77,9 +218,14 @@
   overflow-y: auto;
 }
 
+/* A saved layout: its star, its name over what it shows and when, and its delete. The star and the
+ * delete stand back until the pointer is on the row; a starred layout keeps its star up. */
 [data-qc-theme] .qc-layouts-item {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
+  height: 48px;
+  margin-top: 1px;
   border-radius: var(--qc-chrome-radius);
 }
 
@@ -87,46 +233,187 @@
   background: var(--qc-state-hover);
 }
 
+/* The layout on screen stands inverted among the rest, as a chosen row does in a list. */
+[data-qc-theme] .qc-layouts-item[aria-current='true'] {
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-on);
+}
+
 [data-qc-theme] .qc-layouts-open {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
   gap: 2px;
   min-width: 0;
-  min-height: 44px;
-  padding: 4px 8px;
+  height: 100%;
+  padding: 0 20px 0 0;
+  color: var(--qc-text-primary);
   text-align: start;
-  border-color: transparent;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+[data-qc-theme] .qc-layouts-open:hover,
+[data-qc-theme] .qc-layouts-open:active {
+  background: none;
 }
 
 [data-qc-theme] .qc-layouts-item-name {
   max-width: 100%;
   overflow: hidden;
+  font-size: var(--qc-text-fontSizeBase);
+  line-height: 18px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 [data-qc-theme] .qc-layouts-item-meta {
-  font-size: var(--qc-text-fontSizeSmall);
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--qc-text-muted);
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-open,
+[data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-item-meta {
+  color: var(--qc-text-inverse);
+}
+
+[data-qc-theme] .qc-layouts-star,
+[data-qc-theme] .qc-layouts-delete {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  color: var(--qc-text-muted);
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  opacity: 0;
+}
+
+[data-qc-theme] .qc-layouts-star {
+  margin-inline: 8px 4px;
 }
 
 [data-qc-theme] .qc-layouts-delete {
+  margin-inline: auto 8px;
+}
+
+[data-qc-theme] .qc-layouts-item:hover .qc-layouts-star,
+[data-qc-theme] .qc-layouts-item:hover .qc-layouts-delete,
+[data-qc-theme] .qc-layouts-star:focus-visible,
+[data-qc-theme] .qc-layouts-delete:focus-visible,
+[data-qc-theme] .qc-layouts-star[aria-pressed='true'] {
+  opacity: 1;
+}
+
+/* A starred layout says so with a filled star, in the dialog and in the menu's recent rows alike, not
+ * with the held fill a pressed button wears: the plate is for the pointer alone. */
+[data-qc-theme] .qc-layouts-star[aria-pressed='true'],
+[data-qc-theme] .qc-layouts-recent-star[aria-pressed='true'] {
+  color: var(--qc-control-on);
+  background: none;
+}
+
+[data-qc-theme] .qc-layouts-star:hover,
+[data-qc-theme] .qc-layouts-recent-star:hover,
+[data-qc-theme] .qc-layouts-delete:hover {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-pressedHover);
+}
+
+/* On the inverted row the marks take its ink, and a plate under the pointer shows through it. */
+[data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-star,
+[data-qc-theme] .qc-layouts-recent[data-current='true'] .qc-layouts-recent-star,
+[data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-delete {
+  color: var(--qc-text-inverse);
+}
+
+[data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-star:hover,
+[data-qc-theme] .qc-layouts-recent[data-current='true'] .qc-layouts-recent-star:hover {
+  background: color-mix(in srgb, var(--qc-text-secondary) 40%, transparent);
+}
+
+[data-qc-theme] .qc-layouts-item[aria-current='true'] .qc-layouts-delete:hover {
+  background: var(--qc-control-onHover);
+}
+
+[data-qc-theme] .qc-layouts-open[disabled],
+[data-qc-theme] .qc-layouts-delete[disabled] {
+  opacity: 0.5;
+}
+
+/* The saved-layouts menu keeps the package's list rhythm: 32px rows on 8px sides, a 28px mark 4px in
+ * with the words 4px past it, and rules 6px off the rows either side. A row without a mark starts
+ * its words on the padding rather than past an empty gutter. */
+[data-qc-theme] .qc-layouts-menu .qc-menu-icon:empty {
+  display: none;
+}
+
+/* A shortcut stands 24px clear of the words it belongs to, in the muted ink at the list's small
+ * size. An unavailable row stands back whole, its mark and shortcut with it. */
+[data-qc-theme] .qc-layouts-menu .qc-menu-hint {
+  padding: 0;
+  padding-inline-start: 24px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+[data-qc-theme] .qc-layouts-menu .qc-menu-row[disabled] {
+  color: var(--qc-text-primary);
+  opacity: 0.5;
+}
+
+/* A recently used layout carries its name over what it shows, so the row stands 48px. */
+[data-qc-theme] .qc-layouts-recents .qc-menu-row {
+  height: 48px;
+}
+
+/* A recent layout's star stands at its row's end, over the row: under the pointer, or always once
+ * starred. The row keeps room for it, so a long name never runs beneath the star. */
+[data-qc-theme] .qc-layouts-recent {
+  position: relative;
+}
+
+[data-qc-theme] .qc-layouts-recent > .qc-menu-row {
+  padding-inline-end: 34px;
+}
+
+[data-qc-theme] .qc-layouts-recent-star {
+  position: absolute;
+  top: 12px;
+  inset-inline-end: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  margin-inline-end: 4px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   color: var(--qc-text-muted);
-  border-color: transparent;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  opacity: 0;
 }
 
-[data-qc-theme] .qc-layouts-confirm {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 0 4px;
-  border-top: 1px solid var(--qc-overlay-separator);
+[data-qc-theme] .qc-layouts-recent:hover .qc-layouts-recent-star,
+[data-qc-theme] .qc-layouts-recent-star:focus-visible,
+[data-qc-theme] .qc-layouts-recent-star[aria-pressed='true'] {
+  opacity: 1;
+}
+
+/* Autosave is a row of the same rhythm, switch and all, rounded like the rows around it. */
+[data-qc-theme] .qc-layouts-menu .qc-switch-row {
+  padding: 0 8px;
+  border-radius: var(--qc-chrome-radius);
 }

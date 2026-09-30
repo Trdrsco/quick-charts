@@ -15,6 +15,7 @@ import { search } from './search'
 import { drawing } from './drawing'
 import { command } from './command'
 import { chrome } from './chrome'
+import { history } from './history'
 import { picker } from './picker'
 import { settings } from './settings'
 import { toast } from './toast'
@@ -40,6 +41,7 @@ export const en = {
   ...drawing,
   ...command,
   ...chrome,
+  ...history,
   ...picker,
   ...settings,
   ...toast,
@@ -66,6 +68,7 @@ export const catalogs: readonly Readonly<Record<string, string | object>>[] = [
   drawing,
   command,
   chrome,
+  history,
   picker,
   settings,
   toast,

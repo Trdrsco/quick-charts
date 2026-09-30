@@ -2,13 +2,14 @@ import type { Translation } from '../runtime'
 import type { replay as source } from '../en/replay'
 
 export const replay: Translation<typeof source> = {
+  'replay.watermark': 'Replay',
   'replay.selectBar': 'Select bar',
   'replay.selectDate': 'Select date',
   'replay.selectStartingPoint': 'Select starting point',
   'replay.startBar': 'Bar',
-  'replay.startDate': 'Date',
+  'replay.startDate': 'Date…',
+  'replay.startFirst': 'First available date',
   'replay.startRandom': 'Random bar',
-  'replay.pickBarHint': 'Click a bar on the chart to start replay there',
   'replay.startDateField': 'Replay start date',
   'replay.startTimeField': 'Replay start time (UTC, optional)',
   'replay.dateMask': 'YYYY-MM-DD',
@@ -30,12 +31,12 @@ export const replay: Translation<typeof source> = {
   'replay.stepForward': 'التقدم شريطاً واحداً',
   'replay.goLiveTitle': 'الانتقال إلى الحد المباشر',
   'replay.exit': 'إنهاء إعادة التشغيل',
-  'replay.position': '{cursor} of {total}',
   'replay.speed': 'Replay speed',
   'replay.updatesPerSecond': { zero: '{count} updates per second', one: '{count} update per second', two: '{count} updates per second', few: '{count} updates per second', many: '{count} updates per second', other: '{count} updates per second' },
   'replay.oneUpdatePerSeconds': { zero: '1 update per {count} seconds', one: '1 update per {count} second', two: '1 update per {count} seconds', few: '1 update per {count} seconds', many: '1 update per {count} seconds', other: '1 update per {count} seconds' },
   'replay.interval': 'Update interval',
   'replay.intervalHelp': 'How much time each replay update advances. Finer than the chart interval, each bar forms from real finer bars.',
+  'replay.intervalNone': 'No finer interval for this chart interval',
   'replay.auto': 'تلقائي',
   'replay.autoSelectInterval': 'Auto select interval',
 }

@@ -5,14 +5,15 @@
 import type { ChartTranslate } from '../../i18n'
 import { clampFavoritesPosition, drawingTools, favoritesBarShown, type FavoritesPosition, type FavoritesState } from '../../drawings/index'
 import { toolName } from '../../i18n'
-import { button, el, ownPointer, rovingFocus } from './dom'
-import { iconSvg } from './icons'
-import { toolIconSvg } from './toolIcons'
+import { button, dragUntilRelease, el, followHostSize, ownPointer, paintedPosition, rovingFocus } from './dom'
+import type { IconResolver } from '../icons/resolver'
 
 export interface FavoritesBarDeps {
   /** The chrome subtree the bar floats in. */
   chrome: HTMLElement
   t: ChartTranslate
+  /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
+  icons: IconResolver
   favorites(): FavoritesState
   activeTool(): string | null
   /** Arm a tool, or release it when it is the armed one. */
@@ -35,16 +36,20 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
   const { t } = deps
   const bar = el('div', { class: 'qc-overlay qc-drawing-favorites', role: 'toolbar', 'aria-label': t('drawing.favToolsBar'), 'data-role': 'drawing-favorites' })
   ownPointer(bar)
-  const grip = button({ class: 'qc-drawing-grip', label: t('drawing.moveFavoritesToolbar'), title: t('drawing.moveToolbar'), html: iconSvg('grip', 12) })
+  const grip = button({ class: 'qc-drawing-grip', label: t('drawing.moveFavoritesToolbar'), title: t('drawing.moveToolbar'), icon: deps.icons.icon('grip', 12) })
   const tools = el('div', { class: 'qc-drawing-favorites-tools' })
   bar.append(grip, tools)
 
   const place = (): void => {
-    const position = deps.favorites().position
-    if (position) {
+    const remembered = deps.favorites().position
+    if (remembered) {
+      const position = paintedPosition(remembered, bar, deps.chrome)
       bar.style.left = `${position.x}px`
       bar.style.top = `${position.y}px`
-      bar.style.bottom = ''
+      // AUTO, not empty. The recipe anchors this bar to the bottom of the pane, and an empty string
+      // drops the inline copy rather than the rule: a box placed by both a top and a bottom is
+      // stretched between them, and this one reflows into a tall column that reads as a resize.
+      bar.style.bottom = 'auto'
     } else {
       bar.style.left = ''
       bar.style.top = ''
@@ -52,6 +57,7 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
     }
   }
 
+  // Moving the bar, through the one drag every floating surface here uses.
   grip.addEventListener('pointerdown', (e) => {
     const host = deps.chrome.getBoundingClientRect()
     const rect = bar.getBoundingClientRect()
@@ -61,19 +67,18 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
       last = clampFavoritesPosition({ x: ev.clientX - host.left - offset.dx, y: ev.clientY - host.top - offset.dy }, { width: rect.width, height: rect.height }, { width: host.width, height: host.height })
       bar.style.left = `${last.x}px`
       bar.style.top = `${last.y}px`
-      bar.style.bottom = ''
+      bar.style.bottom = 'auto'
     }
-    const onUp = (): void => {
-      window.removeEventListener('pointermove', onMove)
-      window.removeEventListener('pointerup', onUp)
+    // A press with no movement is a press, not a move: nothing is reported and nothing is saved.
+    dragUntilRelease(onMove, () => {
       if (last) deps.onMove(last)
-    }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', onUp)
+    })
     e.preventDefault()
   })
 
   const unrove = rovingFocus(bar, () => [grip, ...tools.querySelectorAll<HTMLElement>('button')], 'horizontal')
+  // A panel opening beside the chart narrows the box this bar floats in; the bar moves in with it.
+  const unfollow = followHostSize(deps.chrome, place)
 
   const render = (): void => {
     const state = deps.favorites()
@@ -92,7 +97,7 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
       const def = drawingTools.get(type)
       if (!def) continue
       const name = toolName(t, type, def.name)
-      const b = button({ class: 'qc-button qc-drawing-favorite', label: name, html: toolIconSvg(type), disabled: !deps.available() || !deps.toolAllowed(type), onClick: () => deps.arm(active === type ? null : type) })
+      const b = button({ class: 'qc-button qc-drawing-favorite', label: name, icon: deps.icons.tool(type), disabled: !deps.available() || !deps.toolAllowed(type), onClick: () => deps.arm(active === type ? null : type) })
       b.dataset.qcActive = String(active === type)
       b.dataset.tool = type
       tools.appendChild(b)
@@ -105,6 +110,7 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
   return {
     render,
     destroy() {
+      unfollow()
       unrove()
       bar.remove()
     },

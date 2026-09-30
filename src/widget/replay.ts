@@ -15,12 +15,14 @@
 // does about a historical view is its own rule.
 import type { IChartApi } from 'lightweight-charts'
 import type { ChartDatafeed, FeedBar } from '../datafeed'
-import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from '../replay'
+import { composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from '../replay'
 
 /** The bar-replay surface a host drives. */
 export interface ChartReplayApi {
-  /** Enter replay with the cursor at the bar at or after `atSec` (default: three quarters through
-   *  the loaded window). No-op with fewer than 3 loaded bars. */
+  /** Without a moment, ARM: replay opens on the whole loaded window and waits to be told where to
+   *  begin. With one, run from the bar at or after `atSec` — from off, from armed, or from a
+   *  session already running, which moves the cursor rather than restarting. No-op with fewer than
+   *  3 loaded bars. */
   start(atSec?: number): void
   exit(): void
   play(): void
@@ -34,11 +36,27 @@ export interface ChartReplayApi {
   interval(): string
   /** Set the grain. A token the chart timeframe cannot form from is refused. */
   setInterval(token: string): void
+  /** The grain updates actually use, with `auto` resolved to the token it chose. Empty when the
+   *  chart's timeframe has nothing finer to form from, so updates advance whole bars. */
+  resolvedInterval(): string
   /** The finer timeframe tokens the chart timeframe can form bars from; empty means whole-bar
    *  updates only. */
   subIntervals(): readonly string[]
   state(): { on: boolean; playing: boolean; cursor: number; total: number; speed: ReplaySpeed }
+  /** Where replay stands as a viewer reads it, rather than as a pair of booleans.
+   *
+   *  `arming` is replay WAITING to be told where to start: the transport is up, the plot is taking
+   *  a click, and no past has been chosen yet. It is a state of the session rather than of the
+   *  toolbar, which is why it lives here — the legend's mark and the plot's own guide answer to it
+   *  as much as the button that armed it does. */
+  phase(): ReplayPhase
+  /** Take, or stop taking, a click on the plot as the bar to start from. */
+  arm(): void
+  disarm(): void
 }
+
+/** Off, waiting to be told where to start, or running. */
+export type ReplayPhase = 'off' | 'arming' | 'on'
 
 export interface ReplayPlane {
   api: ChartReplayApi
@@ -81,6 +99,14 @@ export interface ReplayDeps {
   disposed(): boolean
   /** The header word while replay is on, and the plain timeframe when it is off. */
   setHeader(replaying: boolean): void
+  /** Show or hide the renderer's crosshair. It stands down while the picker is ARMED: the guide's
+   *  rule already says where a click would land, and a crosshair beside it would be a second claim
+   *  about the same point. */
+  setCrosshair(visible: boolean): void
+  /** The grains the feed actually serves, or null when it declares none. A grain the feed cannot
+   *  answer is not offered and is never fetched: every update would spend a request to be told no
+   *  and then advance whole-bar anyway. */
+  resolutions(): readonly string[] | null
   /** Persist a preference the viewer just changed. */
   persist(key: 'speed' | 'interval', value: string): void
   /** The cursor moved, entered or left. The chart's chrome mounts and unmounts the transport bar
@@ -101,17 +127,36 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
   let master: FeedBar[] | null = null
   let cursor = 0
   let playing = false
+  /** The picker is live: a click on the plot names the bar replay starts from. */
+  let arming = false
   let timer: ReturnType<typeof setInterval> | null = null
   let speed: ReplaySpeed = deps.initialSpeed
   let autoInterval = deps.initialInterval === 'auto'
   let manualInterval: string | null = autoInterval ? null : deps.initialInterval
   let subs: FeedBar[] | null = null
   let formK = 0
-  let stepping = false
+  let stepping: { targetCursor: number; parent: FeedBar | undefined } | null = null
+  let generation = 0
+  let destroyed = false
+  const invalidateStep = (): void => {
+    generation += 1
+    stepping = null
+  }
+
+  /** The grains this chart can actually form from: finer than its timeframe, dividing it evenly, and
+   *  SERVED by the feed. A feed that declares nothing restricts nothing. */
+  const grains = (): { tf: string; sec: number }[] => {
+    const served = deps.resolutions()
+    const ladder = subIntervalsFor(deps.timeframe())
+    return served && served.length > 0 ? ladder.filter((s) => served.includes(s.tf)) : ladder
+  }
 
   const effectiveInterval = (): { tf: string; sec: number } | null => {
-    if (autoInterval) return autoIntervalFor(deps.timeframe())
-    return subIntervalsFor(deps.timeframe()).find((s) => s.tf === manualInterval) ?? null
+    const available = grains()
+    // Auto is the COARSEST grain on offer, which is the chart's own interval whenever that is a
+    // rung: replay advances a whole bar per update until a viewer asks for something finer.
+    if (autoInterval) return available.length ? available[available.length - 1]! : null
+    return available.find((s) => s.tf === manualInterval) ?? null
   }
 
   const sync = (): void => {
@@ -142,11 +187,33 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
     sync()
   }
 
+  /** Put the picking QUESTION: the transport comes up and the chart stays WHOLE while a click on
+   *  the plot names the bar to begin at. Entry arms rather than choosing a start on the viewer's
+   *  behalf, so the window they are picking from is the one already in front of them. */
+  const armPicker = (): void => {
+    if (arming || destroyed || deps.disposed() || !deps.enabled) return
+    if (master === null && deps.bars().length < 3) return
+    setArming(true)
+    sync()
+  }
+
+  /** The picker and the crosshair move TOGETHER. While the question is open the guide's rule is the
+   *  answer to where a click would land, so the renderer's own crosshair stands down beside it and
+   *  comes back the moment the question is answered or withdrawn. */
+  const setArming = (next: boolean): void => {
+    if (arming === next) return
+    arming = next
+    deps.setCrosshair(!next)
+  }
+
   /** The forming parent's sub-bars over its window, or null when the feed cannot provide at least
    *  two (one sub-bar has no forming value) — the caller then advances whole-bar. */
   const fetchSubs = async (parentIdx: number): Promise<FeedBar[] | null> => {
     const interval = effectiveInterval()
     if (!master || !interval) return null
+    // The chart's OWN interval is a legitimate choice, and it means whole-bar updates. There is
+    // nothing finer to ask the feed for, so no request is spent finding that out.
+    if (interval.sec >= tfSeconds(deps.timeframe())) return null
     const parent = master[parentIdx]
     if (!parent) return null
     const from = parent.t
@@ -165,8 +232,9 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
    *  guarded so a fast timer never double-advances over one fetch. */
   const stepForward = (): void => {
     void (async () => {
-      if (!master || stepping) return
-      stepping = true
+      if (!master || stepping || destroyed || deps.disposed()) return
+      const flight = { targetCursor: cursor + 1, parent: master[cursor] }
+      stepping = flight
       try {
         if (subs && formK < subs.length) {
           formK += 1
@@ -182,9 +250,28 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
           pause() // the live edge: playback stops, replay stays on
           return
         }
-        cursor += 1
-        const found = await fetchSubs(cursor - 1)
-        if (found && master) {
+        // Reserve the next parent without reporting an unpainted cursor. An invalidated request
+        // must leave that parent available to the next step rather than silently skipping it.
+        const { targetCursor, parent } = flight
+        const epoch = generation
+        const symbol = deps.symbol()
+        const timeframe = deps.timeframe()
+        const grain = currentInterval()
+        // A WHOLE-BAR update does not cross an async boundary: its public step and cursor stay
+        // synchronous. That is the default path now that auto is the chart's own interval, so an
+        // await here would put a microtask under every ordinary press of step forward. Only an
+        // actual finer-history request needs deferred admission.
+        const chosen = effectiveInterval()
+        const wholeBar = !chosen || chosen.sec >= tfSeconds(deps.timeframe())
+        const found = wholeBar ? null : await fetchSubs(targetCursor - 1)
+        // A non-null master is not proof this response belongs to the current replay. The old
+        // request may finish after a seek, grain change, teardown or restart. Identity also fences
+        // a replaced parent in a fresh snapshot, even when its array index is unchanged.
+        if (destroyed || deps.disposed() || stepping !== flight || generation !== epoch ||
+          deps.symbol() !== symbol || deps.timeframe() !== timeframe || currentInterval() !== grain ||
+          !master || cursor !== targetCursor - 1 || master[targetCursor - 1] !== parent) return
+        cursor = targetCursor
+        if (found) {
           subs = found
           formK = 1
           paintForming()
@@ -193,12 +280,13 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
         }
         sync()
       } finally {
-        stepping = false
+        if (stepping === flight) stepping = null
       }
     })()
   }
 
   function abandon(): void {
+    invalidateStep()
     if (!master) return
     stopTimer()
     playing = false
@@ -210,18 +298,43 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
 
   const api: ChartReplayApi = {
     start(atSec) {
-      const bars = deps.bars()
-      if (deps.disposed() || !deps.enabled || master !== null || bars.length < 3) return
+      if (destroyed || deps.disposed() || !deps.enabled) return
+      // Entry ASKS where to begin. Choosing a bar for the viewer would hide part of the very window
+      // they are choosing from, so a start with no moment is the question and one with a moment is
+      // its answer.
+      if (atSec === undefined) {
+        armPicker()
+        return
+      }
+      // Answering again while a session is already running MOVES the cursor. Leaving and re-entering
+      // to land on another bar would tear the transport down and build it back inside the very click
+      // that asked for it, and the master set would be re-snapshotted from a slice.
+      const bars = master ?? deps.bars()
+      if (bars.length < 3) return
+      invalidateStep()
+      stopTimer()
+      playing = false
+      // A start ANSWERS the arming question, so the picker stands down with it.
+      setArming(false)
+      subs = null
+      formK = 0
       master = bars
-      const at = atSec ?? master[Math.floor(master.length * 0.75)]!.t
-      const idx = master.findIndex((b) => b.t >= at)
+      const idx = master.findIndex((b) => b.t >= atSec)
       cursor = Math.max(2, (idx === -1 ? master.length - 1 : idx) + 1)
       deps.setHeader(true)
       paintCursor()
       sync()
     },
     exit() {
-      if (!master) return
+      if (!master) {
+        // Leaving while still ASKING where to begin: there is no slice to hand back and no header to
+        // restore, but the phase moved and every reader of it has to hear that.
+        if (!arming) return
+        setArming(false)
+        sync()
+        return
+      }
+      setArming(false)
       abandon()
       // The chart's own model kept accumulating while replay was on, so handing the slice back is
       // all that is needed: the live edge is already there, with everything that arrived off-screen.
@@ -229,7 +342,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
       deps.setHeader(false)
     },
     play() {
-      if (!master || playing) return
+      if (destroyed || deps.disposed() || !master || playing) return
       playing = true
       timer = setInterval(stepForward, 1000 / speed)
       sync()
@@ -238,6 +351,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
     stepForward: () => stepForward(),
     stepBack() {
       if (!master || cursor <= 2) return
+      invalidateStep()
       pause() // retreating while playing is a scrub, not playback
       if (subs) {
         // A forming bar rewinds to its sealed boundary first: the partial disappears and the view
@@ -261,6 +375,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
     },
     goLive() {
       if (!master) return
+      invalidateStep()
       pause()
       subs = null
       formK = 0
@@ -269,23 +384,40 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
       sync()
     },
     interval: currentInterval,
+    // What `auto` actually RESOLVED to, so a surface can say the grain rather than the mode. Empty
+    // when the chart's timeframe has nothing finer to form from and updates advance whole bars.
+    resolvedInterval: () => effectiveInterval()?.tf ?? '',
     setInterval(token) {
+      if (token === currentInterval()) return
       if (token === 'auto') {
         autoInterval = true
       } else {
         // A grain the chart timeframe cannot form from is refused rather than stored: the next
         // update would fall back to whole bars and the menu would claim a grain it never used.
-        if (!subIntervalsFor(deps.timeframe()).some((s) => s.tf === token)) return
+        if (!grains().some((s) => s.tf === token)) return
         autoInterval = false
         manualInterval = token
       }
+      invalidateStep()
       deps.persist('interval', currentInterval())
       subs = null // the next update re-fetches at the new grain
       formK = 0
       sync()
     },
-    subIntervals: () => subIntervalsFor(deps.timeframe()).map((s) => s.tf),
+    subIntervals: () => grains().map((s) => s.tf),
     state: () => ({ on: master !== null, playing, cursor, total: master?.length ?? deps.bars().length, speed }),
+    // An OPEN QUESTION outranks a running session. Re-arming mid-replay to choose a different start
+    // puts the plot back to taking a click, and every surface that answers to the picker — the
+    // guide's rule and shears, the pointer, Select bar's held state — has to say so whether or not
+    // a past is already loaded. Whether a session is RUNNING is a separate fact, and `state().on`
+    // is where that is read, so the transport's own verbs stay live throughout.
+    phase: () => (arming ? 'arming' : master !== null ? 'on' : 'off'),
+    arm: () => armPicker(),
+    disarm() {
+      if (!arming) return
+      setArming(false)
+      sync()
+    },
   }
 
   return {
@@ -303,6 +435,10 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
         if (!last || event.bar.t > last.t) master = [...master, event.bar]
         else if (event.bar.t === last.t) master = [...master.slice(0, -1), event.bar]
       }
+      // A snapshot (or current-bar replacement) can retire the reserved parent while its history
+      // request is still pending. Release that known-obsolete flight now; a stalled provider must
+      // not prevent the replacement parent from being requested. Unrelated appends retain it.
+      if (stepping && master[stepping.targetCursor - 1] !== stepping.parent) invalidateStep()
       sync()
       return true
     },
@@ -311,6 +447,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
     speed: () => speed,
     interval: currentInterval,
     destroy() {
+      destroyed = true
       abandon()
     },
   }

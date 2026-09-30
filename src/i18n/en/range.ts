@@ -18,4 +18,6 @@ export const range = {
   'range.scrollLeft': 'Scroll left',
   'range.scrollRight': 'Scroll right',
   'range.reset': 'Reset chart view',
+  'range.maximizeChart': 'Maximize chart',
+  'range.restoreChart': 'Restore chart',
 } as const

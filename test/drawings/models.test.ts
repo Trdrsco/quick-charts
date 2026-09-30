@@ -1,6 +1,6 @@
-// The drawing product models: the rail's shape, the eye, the pointer, the magnet, the locks, the
-// favorites, and what copying and typing do. Every one of these was a condition inside a React
-// component before; a test can reach them now, which is the point of moving them.
+// The drawing product models: the rail's shape, the eye, the pointer, the magnet, what a sweep
+// takes, the favorites, and what copying and typing do. Every one of these was a condition inside a
+// React component before; a test can reach them now, which is the point of moving them.
 import { describe, expect, it } from 'vitest'
 import {
   ARROW_TYPES,
@@ -20,12 +20,12 @@ import {
   DEFAULT_FAVORITES,
   DEFAULT_HIDE_STATE,
   drawingTools,
-  editRefused,
   favoritesBarShown,
   GLYPH_TYPES,
   groupOfTool,
   HIDE_LABELS,
-  HIDE_ORDER,
+  hideOrder,
+  isBuiltInHideMode,
   hideRowActive,
   isFavorite,
   isTransientTool,
@@ -121,10 +121,21 @@ describe('the rail', () => {
 })
 
 describe('the eye', () => {
-  it('offers drawings, indicators and all, and nothing about trading', () => {
-    expect([...HIDE_ORDER]).toEqual(['drawings', 'indicators', 'all'])
+  it('offers drawings, indicators and all of its own, and nothing about trading', () => {
+    expect([...hideOrder()]).toEqual(['drawings', 'indicators', 'all'])
     expect(Object.keys(HIDE_LABELS).sort()).toEqual(['all', 'drawings', 'indicators'])
     expect(JSON.stringify(HIDE_LABELS)).not.toMatch(/trade|position|order/i)
+  })
+
+  // A layer an extension contributes lists after the chart's own and before all, which blanks it
+  // with them; the chart's own subjects stay the chart's.
+  it('lists a contributed layer between its own and all, and all blanks it too', () => {
+    expect([...hideOrder(['notes'])]).toEqual(['drawings', 'indicators', 'notes', 'all'])
+    expect(blanks({ mode: 'all', on: true }, 'notes')).toBe(true)
+    expect(blanks({ mode: 'notes', on: true }, 'drawings')).toBe(false)
+    expect(blanks({ mode: 'notes', on: true }, 'notes')).toBe(true)
+    expect(isBuiltInHideMode('notes')).toBe(false)
+    expect(isBuiltInHideMode('all')).toBe(true)
   })
 
   it('rests pointed at drawings, blanking nothing', () => {
@@ -182,6 +193,8 @@ describe('the pointer', () => {
   it('releases a placed tool unless stay-in-drawing-mode holds it, and never releases a transient', () => {
     expect(toolAfterPlacement('trend_line', false)).toBeNull()
     expect(toolAfterPlacement('trend_line', true)).toBe('trend_line')
+    expect(toolAfterPlacement('brush', false)).toBe('brush')
+    expect(toolAfterPlacement('highlighter', false)).toBe('highlighter')
     expect(toolAfterPlacement('eraser', false)).toBe('eraser')
     expect(toolAfterPlacement('measure', false)).toBe('measure')
   })
@@ -218,30 +231,9 @@ describe('the magnet', () => {
   })
 })
 
-describe('locks and sweeps', () => {
-  const locked = { locked: true }
-  const free = { locked: false }
-
-  it('lets a locked drawing still be selected, so it can be unlocked', () => {
-    expect(editRefused('select', locked, false)).toBe(false)
-    expect(editRefused('move', locked, false)).toBe(true)
-    expect(editRefused('delete', locked, false)).toBe(true)
-    expect(editRefused('editText', locked, false)).toBe(true)
-    expect(editRefused('clone', locked, false)).toBe(true)
-  })
-
-  it('leaves an unlocked drawing alone', () => {
-    for (const edit of ['select', 'move', 'resize', 'delete', 'editText', 'clone'] as const)
-      expect(editRefused(edit, free, false), edit).toBe(false)
-  })
-
-  it('refuses everything under lock-all, new drawings included', () => {
-    expect(editRefused('place', null, true)).toBe(true)
-    expect(editRefused('paste', null, true)).toBe(true)
-    expect(editRefused('select', free, true)).toBe(true)
-    expect(editRefused('place', null, false)).toBe(false)
-  })
-
+// What a lock refuses is the library's own policy, and the tests that hold it drive a real layer.
+// What a SWEEP takes is a count a surface renders, so it is answered here.
+describe('what a sweep takes', () => {
   it('counts what a sweep would actually take', () => {
     expect(removableDrawings({ total: 5, locked: 2 }, false)).toBe(3)
     expect(removableDrawings({ total: 5, locked: 2 }, true)).toBe(5)

@@ -152,7 +152,8 @@ export function mount(el: HTMLElement): ChartWidget {
     style: 'candles',
     theme: { mode: 'dark' },
     appearance: mergeOverrides(null),
-    features: { drawings: true, legend: true },
+    features: { drawings: true },
+    ui: { legend: true },
     access: { command: (id) => !id.startsWith('chart.replay.') },
     preferences: { scaleMode: 'log' },
   })
@@ -289,3 +290,4 @@ export function listSavedCharts(rows: RestChartMeta[]): RestListResponse<RestCha
 export function storeSavedChart(id: string, revision: string, body: RestChartBody, at: number): RestWriteResponse<RestChartMeta> {
   return { id, revision, meta: { id, revision, name: body.name, symbol: body.symbol, timeframe: body.timeframe, updatedAt: at } }
 }
+

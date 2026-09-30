@@ -79,14 +79,24 @@ export interface ChartBody {
   content: string
 }
 
-/** A saved multi-chart layout's listing row. */
+/** A saved multi-chart layout's listing row. `symbol` is the active chart's market as the chart
+ *  writes it (`symbolNames(...).mark`, such as `BTCUSDC`) and `timeframe` its timeframe token, both
+ *  as they stood at the last save, so a listing can say what each layout shows without opening it. A
+ *  store that does not keep them, or a layout saved before they were stated, leaves them out. */
 export interface LayoutMeta extends ResourceRef {
   name: string
+  symbol?: string
+  timeframe?: string
   updatedAt: number
 }
 
+/** A saved multi-chart layout. `content` is the arrangement's serialized state, opaque to the store.
+ *  The widget states the listing's `symbol` and `timeframe` on every save; they are display text and
+ *  play no part in restoring the layout. */
 export interface LayoutBody {
   name: string
+  symbol?: string
+  timeframe?: string
   content: string
 }
 
@@ -221,7 +231,17 @@ export function memorySaveLoadAdapter(options?: MemoryResourcesOptions): ChartSa
       (r) => ({ id: r.id, revision: r.revision, name: r.body.name, symbol: r.body.symbol, timeframe: r.body.timeframe, updatedAt: r.updatedAt }),
       now,
     ),
-    layouts: memoryStore<LayoutMeta, LayoutBody>((r) => ({ id: r.id, revision: r.revision, name: r.body.name, updatedAt: r.updatedAt }), now),
+    layouts: memoryStore<LayoutMeta, LayoutBody>(
+      (r) => ({
+        id: r.id,
+        revision: r.revision,
+        name: r.body.name,
+        ...(r.body.symbol === undefined ? {} : { symbol: r.body.symbol }),
+        ...(r.body.timeframe === undefined ? {} : { timeframe: r.body.timeframe }),
+        updatedAt: r.updatedAt,
+      }),
+      now,
+    ),
     drawings(context) {
       const key = drawingContextKey(context)
       let store = drawingStores.get(key)

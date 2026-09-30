@@ -17,4 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': 'Sola kaydır',
   'range.scrollRight': 'Sağa kaydır',
   'range.reset': 'Grafik görünümünü sıfırla',
+  'range.maximizeChart': 'Maximize chart',
+  'range.restoreChart': 'Restore chart',
 }

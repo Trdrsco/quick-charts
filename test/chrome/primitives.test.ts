@@ -4,8 +4,9 @@
 // builds with. What is pinned is the keyboard and screen-reader contract, because every picker
 // inherits it from here.
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { armRoving, button, focusables, h, isRtl, items, roveFocus, setDisabled } from '../../src/ui/chrome/dom'
-import { menuItem, openMenu } from '../../src/ui/chrome/menu'
+import { armRoving, button, glyph, h, items, roveFocus, setDisabled } from '../../src/ui/chrome/dom'
+import { focusables, isRtl } from '../../src/ui/controls/dom'
+import { menuItem, openMenu, toggleMenu } from '../../src/ui/chrome/menu'
 import { openDialog, switchControl, switchRow, tabList } from '../../src/ui/chrome/dialog'
 import { press } from './harness'
 
@@ -29,7 +30,7 @@ describe('the DOM helpers', () => {
   })
 
   it('names a button for a screen reader and a hover alike, and disables it both ways', () => {
-    const b = button({ label: 'Zoom in', icon: '<path d="M0 0"/>' })
+    const b = button({ label: 'Zoom in', icon: glyph({ viewBox: '0 0 28 28', body: '<path d="M0 0"/>' }) })
     expect(b.getAttribute('aria-label')).toBe('Zoom in')
     expect(b.title).toBe('Zoom in')
     expect(b.querySelector('svg')?.getAttribute('aria-hidden')).toBe('true')
@@ -68,6 +69,66 @@ describe('the DOM helpers', () => {
 })
 
 describe('the menu', () => {
+  it('keeps the newest reentrant direct opening as the only anchor lifetime', () => {
+    const overlays = host()
+    const anchor = button({ label: 'open' })
+    document.body.appendChild(anchor)
+    const closed: string[] = []
+    const options = { host: overlays, anchor, label: 'm', build: (body: HTMLElement) => body.append(menuItem({ text: 'row' })) }
+    let newest: ReturnType<typeof openMenu> | undefined
+    const first = openMenu({
+      ...options,
+      onClose: () => {
+        closed.push('first')
+        newest = openMenu({ ...options, onClose: () => closed.push('newest') })
+      },
+    })
+
+    const displaced = openMenu({ ...options, onClose: () => closed.push('displaced') })
+
+    expect(first.open()).toBe(false)
+    expect(displaced.open()).toBe(false)
+    expect(newest?.open()).toBe(true)
+    expect(closed).toEqual(['first', 'displaced'])
+    expect(overlays.querySelectorAll('.qc-menu-panel')).toHaveLength(1)
+    newest?.close()
+    expect(closed).toEqual(['first', 'displaced', 'newest'])
+  })
+
+  it('does not let a stale close take focus from its callback replacement', () => {
+    const overlays = host()
+    const anchor = button({ label: 'open' })
+    document.body.appendChild(anchor)
+    anchor.focus()
+    let reopened: ReturnType<typeof openMenu> | undefined
+    const options = { host: overlays, anchor, label: 'm', build: (body: HTMLElement) => body.append(menuItem({ text: 'row' })) }
+    openMenu({ ...options, onClose: () => { reopened = openMenu(options) } })
+
+    toggleMenu(anchor, () => { throw new Error('must close, not reopen') })
+
+    expect(reopened?.open()).toBe(true)
+    expect(document.activeElement).toBe(reopened?.element.querySelector('[data-qc-item]'))
+    reopened?.close()
+  })
+
+  it('keeps refresh separate from activation and retires the old anchor registration before callbacks', () => {
+    const overlays = host()
+    const anchor = button({ label: 'open' })
+    document.body.appendChild(anchor)
+    let reopened: ReturnType<typeof openMenu> | undefined
+    const options = { host: overlays, anchor, label: 'm', build: (body: HTMLElement) => body.append(menuItem({ text: 'row' })) }
+    const first = openMenu({ ...options, onClose: () => { reopened = openMenu(options) } })
+    first.refresh()
+    expect(overlays.querySelectorAll('.qc-menu-panel')).toHaveLength(1)
+    toggleMenu(anchor, () => { throw new Error('must close, not reopen') })
+    expect(first.open()).toBe(false)
+    expect(reopened?.open()).toBe(true)
+    expect(anchor.getAttribute('aria-expanded')).toBe('true')
+    toggleMenu(anchor, () => { throw new Error('must close the replacement') })
+    expect(reopened?.open()).toBe(false)
+    expect(overlays.childElementCount).toBe(0)
+  })
+
   it('opens with focus on the first row, marks the anchor expanded, and closes on Escape back to the anchor', () => {
     const overlays = host()
     const anchor = button({ label: 'open' })
@@ -106,6 +167,21 @@ describe('the menu', () => {
     expect(menu.open()).toBe(true)
     document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     expect(menu.open()).toBe(false)
+  })
+
+  it('stands an upward list as tall as the room above its anchor, and a downward one uncapped by it', () => {
+    const overlays = host()
+    overlays.getBoundingClientRect = () => ({ left: 0, top: 40, right: 800, bottom: 1240, width: 800, height: 1200 }) as DOMRect
+    const anchor = button({ label: 'open' })
+    anchor.getBoundingClientRect = () => ({ left: 600, top: 1156, right: 700, bottom: 1194, width: 100, height: 38 }) as DOMRect
+    document.body.appendChild(anchor)
+    const up = openMenu({ host: overlays, anchor, label: 'up', placement: 'up', build: (body) => body.append(menuItem({ text: 'a' })) })
+    // From the anchor's top edge, less the 2px it stands clear of the anchor and the 8px host margin.
+    expect(up.element.style.maxHeight).toBe(`${1156 - 40 - 8 - 2}px`)
+    up.close()
+    const down = openMenu({ host: overlays, anchor, label: 'down', build: (body) => body.append(menuItem({ text: 'a' })) })
+    expect(down.element.style.maxHeight).toBe('')
+    down.close()
   })
 
   it('refreshes its rows in place from the builder', () => {

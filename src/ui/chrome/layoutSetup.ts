@@ -5,20 +5,31 @@
 import { arrangementName } from '../../i18n'
 import type { ChartMessageKey } from '../../i18n'
 import { arrangementOf, LAYOUT_MENU_ROWS } from '../../layoutGrid'
-import type { LayoutSyncFlags } from '../../widget/layout'
-import { ARRANGEMENT_ICONS } from './arrangementGlyphs'
+import type { LayoutModelState, LayoutSyncFlags } from '../../widget/layout'
 import type { ChromeContext } from './context'
+import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { switchRow } from './dialog'
-import { button, h, name } from './dom'
-import { openMenu, menuHeading, type MenuHandle } from './menu'
+import { button, h, name, setDisabled } from './dom'
+import { ICONS } from '../controls/icons'
+import { openMenu, menuHeading, toggleMenu, type MenuHandle } from './menu'
+import { arrangementGlyphOf, iconOf } from '../icons/catalog'
+import type { IconResolver } from '../icons/resolver'
 
-/** One arrangement glyph at its native 21 by 19. A mirror matrix on the body is hoisted onto the
- *  element, where CSS gives the flip a center origin; the same matrix on an inner group would run
- *  in user space and throw the art outside the view box. */
-export function arrangementGlyph(code: string): HTMLElement {
-  const icon = ARRANGEMENT_ICONS[code]
+/** One arrangement glyph at its native 21 by 19: the host's drawing for the arrangement when there
+ *  is one, else the chart's own. A mirror matrix on the chart's body is hoisted onto the element,
+ *  where CSS gives the flip a center origin; the same matrix on an inner group would run in user
+ *  space and throw the art outside the view box. */
+export function arrangementGlyph(code: string, icons: IconResolver): HTMLElement {
   const span = h('span', { class: 'qc-icon qc-arrangement', 'aria-hidden': 'true' })
-  if (!icon) return span
+  // A code the catalog does not carry draws nothing, for the host and for the chart alike.
+  const icon = arrangementGlyphOf(code)
+  const id = icon && iconOf(icon)
+  if (!icon || !id) return span
+  const hosted = icons.host(id, { width: 21, height: 19 })
+  if (hosted) {
+    span.append(hosted)
+    return span
+  }
   const mirrored = /^<g transform="(matrix\([^"]+\))">([\s\S]*)<\/g>$/.exec(icon.body)
   span.innerHTML = `<svg viewBox="${icon.viewBox}" width="21" height="19" aria-hidden="true"${mirrored ? ` style="transform: ${mirrored[1]}"` : ''}>${mirrored ? mirrored[2] : icon.body}</svg>`
   return span
@@ -35,15 +46,20 @@ const SYNC_ROWS: readonly { key: keyof LayoutSyncFlags; label: ChartMessageKey; 
 
 export interface LayoutSetupHandle {
   element: HTMLButtonElement
-  sync(): void
+  sync(state?: LayoutModelState): void
   destroy(): void
 }
 
 export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
   const t = (): ChromeContext['i18n']['t'] => deps.i18n.t
   let menu: MenuHandle | null = null
-  const trigger = button({ label: t()('layouts.setup'), className: 'qc-toolbar-button', onClick: () => open() })
-  trigger.appendChild(arrangementGlyph(deps.widget.layout.arrangement()))
+  /** The open menu's tiles and switches, and the language they were written in. A change to the
+   *  layout is written onto these in place: a rebuild would swap the switch just pressed for a new
+   *  one already at its end, and the knob would jump rather than slide. */
+  let live: { tag: string; tiles: HTMLButtonElement[]; switches: { key: keyof LayoutSyncFlags; control: HTMLButtonElement }[] } | null = null
+  let projected = { arrangement: deps.widget.layout.arrangement(), sync: deps.widget.layout.sync() }
+  const trigger = button({ label: t()('layouts.setup'), className: 'qc-toolbar-button qc-layout-trigger', onClick: () => toggleMenu(trigger, open) })
+  trigger.appendChild(arrangementGlyph(deps.widget.layout.arrangement(), deps.icons))
   trigger.setAttribute('aria-haspopup', 'menu')
   trigger.setAttribute('aria-expanded', 'false')
   const numbers = (): Intl.NumberFormat => new Intl.NumberFormat(deps.i18n.tag())
@@ -55,16 +71,17 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
       label: t()('layouts.setup'),
       role: 'dialog',
       className: 'qc-layout-menu',
-      width: 428,
+      width: FLYOUT_WIDTH.arrangement,
       build(body, handle) {
-        const current = deps.widget.layout.arrangement()
+        const current = projected.arrangement
+        const built: NonNullable<typeof live> = { tag: deps.i18n.tag(), tiles: [], switches: [] }
         const grid = h('div', { class: 'qc-layout-grid', role: 'radiogroup', 'aria-label': t()('layouts.arrangement') })
         LAYOUT_MENU_ROWS.forEach((row, ri) => {
           const line = h('div', { class: 'qc-layout-row' }, h('span', { class: 'qc-layout-count qc-muted' }, numbers().format(Number(row.label))))
           const tiles = h('span', { class: 'qc-layout-tiles' })
           for (const code of row.codes) {
             const tile = h('button', { type: 'button', class: 'qc-button qc-layout-tile', role: 'radio', 'aria-checked': String(code === current), 'aria-label': arrangementName(t(), code, arrangementOf(code)?.label ?? code), 'data-qc-item': '', tabindex: '-1', 'data-arrangement': code })
-            tile.appendChild(arrangementGlyph(code))
+            tile.appendChild(arrangementGlyph(code, deps.icons))
             if (!deps.commands.available('widget.layout.setArrangement')) {
               tile.disabled = true
               tile.setAttribute('aria-disabled', 'true')
@@ -74,6 +91,7 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
               deps.commands.execute('widget.layout.setArrangement', code)
             })
             tiles.appendChild(tile)
+            built.tiles.push(tile)
           }
           line.appendChild(tiles)
           grid.appendChild(line)
@@ -81,33 +99,64 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
         })
         body.appendChild(grid)
         body.appendChild(menuHeading(t()('layouts.syncInLayout')))
-        const flags = deps.widget.layout.sync()
+        const flags = projected.sync
         const syncAvailable = deps.commands.available('widget.layout.setSync')
         for (const row of SYNC_ROWS) {
-          body.appendChild(
-            switchRow({
-              label: t()(row.label),
-              hint: t()(row.tip),
-              checked: flags[row.key],
-              disabled: !syncAvailable,
-              onChange: (on) => deps.commands.execute('widget.layout.setSync', { [row.key]: on }),
-            }),
-          )
-          const control = body.lastElementChild?.querySelector('[role="switch"]')
+          const switchLine = switchRow({
+            label: t()(row.label),
+            hint: t()(row.tip),
+            checked: flags[row.key],
+            disabled: !syncAvailable,
+            onChange: (on) => deps.commands.execute('widget.layout.setSync', { [row.key]: on }),
+          })
+          switchLine.querySelector('.qc-switch-label')?.after(deps.icons.glyph(ICONS.info, { size: 18, className: 'qc-layout-info' }))
+          body.appendChild(switchLine)
+          const control = switchLine.querySelector<HTMLButtonElement>('[role="switch"]')
           control?.setAttribute('aria-label', t()(row.toggle))
+          if (control) built.switches.push({ key: row.key, control })
         }
+        live = built
       },
       onClose: () => {
         menu = null
+        live = null
       },
     })
   }
 
-  const sync = (): void => {
-    const code = deps.widget.layout.arrangement()
-    trigger.querySelector('.qc-arrangement')?.replaceWith(arrangementGlyph(code))
+  const sync = (state?: LayoutModelState): void => {
+    projected = state ? { arrangement: state.arrangement, sync: { ...state.sync } } : { arrangement: deps.widget.layout.arrangement(), sync: deps.widget.layout.sync() }
+    const code = projected.arrangement
+    trigger.querySelector('.qc-arrangement')?.replaceWith(arrangementGlyph(code, deps.icons))
     name(trigger, `${t()('layouts.setup')}: ${arrangementName(t(), code, arrangementOf(code)?.label ?? code)}`)
+    if (live && live.tag === deps.i18n.tag()) {
+      const arrangeable = deps.commands.available('widget.layout.setArrangement')
+      for (const tile of live.tiles) {
+        tile.setAttribute('aria-checked', String(tile.dataset.arrangement === code))
+        setDisabled(tile, !arrangeable)
+      }
+      const syncAvailable = deps.commands.available('widget.layout.setSync')
+      for (const { key, control } of live.switches) {
+        control.setAttribute('aria-checked', String(projected.sync[key]))
+        setDisabled(control, !syncAvailable)
+      }
+      return
+    }
+    // A new language rewrites every word, so the menu is built again, keeping the reader's place.
+    const controls = menu ? [...menu.element.querySelectorAll<HTMLElement>('[data-qc-item], [role="switch"]')] : []
+    const focused = menu?.element.contains(document.activeElement) ? controls.indexOf(document.activeElement as HTMLElement) : -1
+    const scrollBody = menu?.element.querySelector<HTMLElement>('.qc-menu-body')
+    const scrollTop = scrollBody?.scrollTop ?? 0
+    const scrollLeft = scrollBody?.scrollLeft ?? 0
     menu?.refresh()
+    const body = menu?.element.querySelector<HTMLElement>('.qc-menu-body')
+    if (focused >= 0 && (document.activeElement === document.body || document.activeElement === null)) {
+      menu?.element.querySelectorAll<HTMLElement>('[data-qc-item], [role="switch"]')[focused]?.focus({ preventScroll: true })
+    }
+    if (body) {
+      body.scrollTop = scrollTop
+      body.scrollLeft = scrollLeft
+    }
   }
   sync()
   return {

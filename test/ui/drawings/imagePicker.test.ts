@@ -7,6 +7,7 @@ import { createChartI18n } from '../../../src/i18n'
 import type { DrawingAssetPort } from '../../../src/drawings/index'
 import type { PlacedImage } from '../../../src/drawings'
 import { firstImageFile, humanSize, openImagePicker } from '../../../src/ui/drawings/imagePicker'
+import { ownIcons } from '../../ownIcons'
 
 const t = createChartI18n().t
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
@@ -16,7 +17,7 @@ function rig(assets: DrawingAssetPort, canPlace = true) {
   document.body.appendChild(container)
   const placed: PlacedImage[] = []
   let closed = 0
-  const close = openImagePicker({ container, t, assets, canPlace: () => canPlace, onConfirm: (image) => placed.push(image), onClose: () => closed++ })
+  const close = openImagePicker({ container, t, icons: ownIcons(), assets, canPlace: () => canPlace, onConfirm: (image) => placed.push(image), onClose: () => closed++ })
   const dialog = container.querySelector<HTMLElement>('[data-role="drawing-image-picker"]')!
   return { container, dialog, placed, close, closed: () => closed }
 }

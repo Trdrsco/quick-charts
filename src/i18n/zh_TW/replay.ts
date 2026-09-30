@@ -2,13 +2,14 @@ import type { Translation } from '../runtime'
 import type { replay as source } from '../en/replay'
 
 export const replay: Translation<typeof source> = {
+  'replay.watermark': 'Replay',
   'replay.selectBar': 'Select bar',
   'replay.selectDate': 'Select date',
   'replay.selectStartingPoint': 'Select starting point',
   'replay.startBar': 'Bar',
-  'replay.startDate': 'Date',
+  'replay.startDate': 'Date…',
+  'replay.startFirst': 'First available date',
   'replay.startRandom': 'Random bar',
-  'replay.pickBarHint': 'Click a bar on the chart to start replay there',
   'replay.startDateField': 'Replay start date',
   'replay.startTimeField': 'Replay start time (UTC, optional)',
   'replay.dateMask': 'YYYY-MM-DD',
@@ -30,12 +31,12 @@ export const replay: Translation<typeof source> = {
   'replay.stepForward': '前進一根K線',
   'replay.goLiveTitle': '跳至即時行情',
   'replay.exit': '結束回放',
-  'replay.position': '{cursor} of {total}',
   'replay.speed': 'Replay speed',
   'replay.updatesPerSecond': { other: '{count} updates per second' },
   'replay.oneUpdatePerSeconds': { other: '1 update per {count} seconds' },
   'replay.interval': 'Update interval',
   'replay.intervalHelp': 'How much time each replay update advances. Finer than the chart interval, each bar forms from real finer bars.',
+  'replay.intervalNone': 'No finer interval for this chart interval',
   'replay.auto': '自動',
   'replay.autoSelectInterval': 'Auto select interval',
 }

@@ -87,3 +87,13 @@ regenerates it in the same commit; the tests compare the committed file with the
 
 By opening a pull request you agree that your contribution is licensed under the Apache License
 2.0, the license in `LICENSE`.
+
+## Maintainer control
+
+Only the maintainers have write access. Every change to `main` requires the current `gate` check,
+resolved conversations. No second-person approval is required. Joe can merge his own passing work. Administrators follow these rules during normal operation.
+
+Contributors cannot merge or publish. A merged change does not publish a package or upgrade any
+consumer. Releases require a separate approval, and consumers select their own package version.
+Fork checks run with read-only permissions on isolated GitHub-hosted runners.
+

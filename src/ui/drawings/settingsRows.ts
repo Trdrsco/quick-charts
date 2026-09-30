@@ -21,9 +21,11 @@ import {
   type DrawingAssetPort,
 } from '../../drawings/index'
 import { button, el } from './dom'
-import { checkbox, dropdown, lineEndButton, numberInput, opacitySlider, row, swatchButton, toggleRow, visibilityRangeRow } from './fields'
-import { iconSvg } from './icons'
+import { checkbox, dropdown, lineEndButton, numberInput, row, swatchButton, toggleRow, visibilityRangeRow } from './fields'
+import { createOpacitySlider } from '../controls/color'
 import { humanSize } from './imagePicker'
+import type { IconResolver } from '../icons/resolver'
+import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
 
 export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Table' | 'Coordinates' | 'Visibility'
 
@@ -79,6 +81,8 @@ type FibLevel = { value: number; visible: boolean; color?: string; text?: string
  *  the page; `patchQuiet` applies without a rebuild, for a field the trader is typing into. */
 export interface RowsContext {
   t: ChartTranslate
+  /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
+  icons: IconResolver
   /** The chrome box popovers stay within. */
   box: HTMLElement
   drawing: IDrawing
@@ -128,14 +132,14 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
       opacity: alphaOf(style.lineColor),
       onOpacity: (v) => ctx.patchStyle({ lineColor: withAlpha(style.lineColor, v) }),
       ...(!NO_LINE_DECOR.has(type)
-        ? { thickness: style.lineWidth, onThickness: (v: number) => ctx.patchStyle({ lineWidth: v }), ...(!NO_DASH.has(type) ? { lineStyle: style.lineStyle, onLineStyle: (v: DrawingStyle['lineStyle']) => ctx.patchStyle({ lineStyle: v }) } : {}) }
+        ? { thickness: style.lineWidth, thicknessChoices: type === 'highlighter' ? HIGHLIGHTER_WIDTHS : undefined, onThickness: (v: number) => ctx.patchStyle({ lineWidth: v }), ...(!NO_DASH.has(type) ? { lineStyle: style.lineStyle, onLineStyle: (v: DrawingStyle['lineStyle']) => ctx.patchStyle({ lineStyle: v }) } : {}) }
         : {}),
     })
     const ends: HTMLElement[] = []
     if ('leftEnd' in props && sect('leftEnd')) {
       ends.push(
-        lineEndButton(t, box, 'left', props.leftEnd as 'normal' | 'arrow', (v) => ctx.patchProps({ leftEnd: v })),
-        lineEndButton(t, box, 'right', props.rightEnd as 'normal' | 'arrow', (v) => ctx.patchProps({ rightEnd: v })),
+        lineEndButton(t, ctx.icons, box, 'left', props.leftEnd as 'normal' | 'arrow', (v) => ctx.patchProps({ leftEnd: v })),
+        lineEndButton(t, ctx.icons, box, 'right', props.rightEnd as 'normal' | 'arrow', (v) => ctx.patchProps({ rightEnd: v })),
       )
     }
     out.push(row(t(NO_LINE_DECOR.has(type) ? 'drawing.color' : 'drawing.rowLine'), stroke, ...ends))
@@ -196,7 +200,7 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   if (sect('glyph')) {
     out.push(
       row(t('drawing.glyph'), textField(String(props.glyph ?? ''), t('drawing.glyph'), (v) => ctx.patchQuiet({ glyph: v }))),
-      row(t('drawing.size'), numberInput(t, { label: t('drawing.size'), value: Number(props.size), min: 10, max: 120, step: 1, onChange: (v) => ctx.patchProps({ size: v }) })),
+      row(t('drawing.size'), numberInput(t, ctx.icons, { label: t('drawing.size'), value: Number(props.size), min: 10, max: 120, step: 1, onChange: (v) => ctx.patchProps({ size: v }) })),
     )
   }
   if (sect('dataUrl')) {
@@ -222,23 +226,23 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
     out.push(
       row(t('drawing.image'), choose, file),
       error,
-      row(t('drawing.width'), numberInput(t, { label: t('drawing.width'), value: Number(props.width), min: 24, max: 800, step: 1, onChange: (v) => ctx.patchProps({ width: v }) })),
-      row(t('drawing.opacity'), opacitySlider(t, 'currentColor', Number(props.opacity ?? 1), (v) => ctx.patchQuiet({ opacity: v }))),
+      row(t('drawing.width'), numberInput(t, ctx.icons, { label: t('drawing.width'), value: Number(props.width), min: 24, max: 800, step: 1, onChange: (v) => ctx.patchProps({ width: v }) })),
+      row(t('drawing.opacity'), createOpacitySlider(t, 'currentColor', Number(props.opacity ?? 1), (v) => ctx.patchQuiet({ opacity: v })).element),
     )
   }
   if (sect('url')) out.push(row(t('drawing.link'), textField(String(props.url ?? ''), t('drawing.link'), (v) => ctx.patchQuiet({ url: v }), { wide: true })))
   if (sect('rowsLayout')) {
     out.push(
       row(t('drawing.rowsLayout'), dropdown(t('drawing.rowsLayout'), ['number', 'ticks'] as const, props.rowsLayout as 'number', label(t, ROWS_LAYOUT_LABEL), (v) => ctx.patchProps({ rowsLayout: v }))),
-      row(t('drawing.rowSize'), numberInput(t, { label: t('drawing.rowSize'), value: Number(props.rowSize), min: 1, max: 400, step: 1, onChange: (v) => ctx.patchProps({ rowSize: v }) })),
+      row(t('drawing.rowSize'), numberInput(t, ctx.icons, { label: t('drawing.rowSize'), value: Number(props.rowSize), min: 1, max: 400, step: 1, onChange: (v) => ctx.patchProps({ rowSize: v }) })),
       row(t('drawing.volume'), dropdown(t('drawing.volume'), ['updown', 'total', 'delta'] as const, props.volume as 'updown', label(t, PROFILE_VOLUME_LABEL), (v) => ctx.patchProps({ volume: v }))),
-      row(t('drawing.valueAreaVolume'), numberInput(t, { label: t('drawing.valueAreaVolume'), value: Number(props.valueAreaVolume), min: 0, max: 95, step: 5, onChange: (v) => ctx.patchProps({ valueAreaVolume: v }) })),
+      row(t('drawing.valueAreaVolume'), numberInput(t, ctx.icons, { label: t('drawing.valueAreaVolume'), value: Number(props.valueAreaVolume), min: 0, max: 95, step: 5, onChange: (v) => ctx.patchProps({ valueAreaVolume: v }) })),
     )
     if ('extendRight' in props) out.push(toggleRow(t('drawing.extendRight'), !!props.extendRight, (v) => ctx.patchProps({ extendRight: v })))
   }
   if ('rowsLayout' in props && tab === 'Style') {
     out.push(
-      row(t('drawing.widthPercent'), numberInput(t, { label: t('drawing.widthPercent'), value: Number(props.widthPercent), min: 5, max: 100, step: 5, onChange: (v) => ctx.patchProps({ widthPercent: v }) })),
+      row(t('drawing.widthPercent'), numberInput(t, ctx.icons, { label: t('drawing.widthPercent'), value: Number(props.widthPercent), min: 5, max: 100, step: 5, onChange: (v) => ctx.patchProps({ widthPercent: v }) })),
       row(t('drawing.placement'), dropdown(t('drawing.placement'), ['left', 'right'] as const, props.placement as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ placement: v }))),
       row(t('drawing.upDownVolume'), swatch('upColor'), swatch('downColor')),
       row(t('drawing.valueAreaUpDown'), swatch('valueAreaUpColor'), swatch('valueAreaDownColor')),
@@ -273,8 +277,8 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   }
   if (sect('averageHL')) {
     out.push(
-      row(t('drawing.avgHl'), numberInput(t, { label: t('drawing.avgHl'), value: Number(props.averageHL), min: 0, max: 1_000_000, step: 0.5, onChange: (v) => ctx.patchProps({ averageHL: v }) })),
-      row(t('drawing.variance'), numberInput(t, { label: t('drawing.variance'), value: Number(props.variance), min: 0, max: 100, step: 5, onChange: (v) => ctx.patchProps({ variance: v }) })),
+      row(t('drawing.avgHl'), numberInput(t, ctx.icons, { label: t('drawing.avgHl'), value: Number(props.averageHL), min: 0, max: 1_000_000, step: 0.5, onChange: (v) => ctx.patchProps({ averageHL: v }) })),
+      row(t('drawing.variance'), numberInput(t, ctx.icons, { label: t('drawing.variance'), value: Number(props.variance), min: 0, max: 100, step: 5, onChange: (v) => ctx.patchProps({ variance: v }) })),
     )
   }
   if ('wickColor' in props && tab === 'Style') {
@@ -282,37 +286,41 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
       row(t('drawing.body'), swatch('upColor'), swatch('downColor')),
       row(t('drawing.borders'), checkbox(t('drawing.drawBorders'), !!props.drawBorder, (v) => ctx.patchProps({ drawBorder: v })), swatch('borderUpColor'), swatch('borderDownColor')),
       row(t('drawing.wick'), checkbox(t('drawing.drawWicks'), !!props.drawWick, (v) => ctx.patchProps({ drawWick: v })), swatch('wickColor')),
-      row(t('drawing.transparency'), opacitySlider(t, String(props.upColor), Number(props.transparency) / 100, (v) => ctx.patchQuiet({ transparency: Math.round(v * 100) }))),
+      row(t('drawing.transparency'), createOpacitySlider(t, String(props.upColor), Number(props.transparency) / 100, (v) => ctx.patchQuiet({ transparency: Math.round(v * 100) })).element),
     )
   }
   if (sect('upperDeviation')) {
     out.push(
       el('div', { class: 'qc-dialog-heading', text: t('drawing.sectionDeviation') }),
-      row(t('drawing.upper'), checkbox(t('drawing.useUpperDeviation'), !!props.useUpper, (v) => ctx.patchProps({ useUpper: v })), numberInput(t, { label: t('drawing.upper'), value: Number(props.upperDeviation), step: 0.5, onChange: (v) => ctx.patchProps({ upperDeviation: v }) })),
-      row(t('drawing.lower'), checkbox(t('drawing.useLowerDeviation'), !!props.useLower, (v) => ctx.patchProps({ useLower: v })), numberInput(t, { label: t('drawing.lower'), value: Number(props.lowerDeviation), step: 0.5, onChange: (v) => ctx.patchProps({ lowerDeviation: v }) })),
+      row(t('drawing.upper'), checkbox(t('drawing.useUpperDeviation'), !!props.useUpper, (v) => ctx.patchProps({ useUpper: v })), numberInput(t, ctx.icons, { label: t('drawing.upper'), value: Number(props.upperDeviation), step: 0.5, onChange: (v) => ctx.patchProps({ upperDeviation: v }) })),
+      row(t('drawing.lower'), checkbox(t('drawing.useLowerDeviation'), !!props.useLower, (v) => ctx.patchProps({ useLower: v })), numberInput(t, ctx.icons, { label: t('drawing.lower'), value: Number(props.lowerDeviation), step: 0.5, onChange: (v) => ctx.patchProps({ lowerDeviation: v }) })),
     )
   }
   if (sect('accountSize')) {
     out.push(
       el('div', { class: 'qc-dialog-heading', text: t('drawing.risk') }),
-      row(t('drawing.accountSize'), numberInput(t, { label: t('drawing.accountSize'), value: Number(props.accountSize), width: 'wide', onChange: (v) => ctx.patchProps({ accountSize: v }) })),
+      row(t('drawing.accountSize'), numberInput(t, ctx.icons, { label: t('drawing.accountSize'), value: Number(props.accountSize), width: 'wide', onChange: (v) => ctx.patchProps({ accountSize: v }) })),
       row(
         t('drawing.risk'),
-        numberInput(t, { label: t('drawing.risk'), value: Number(props.risk), onChange: (v) => ctx.patchProps({ risk: v }) }),
+        numberInput(t, ctx.icons, { label: t('drawing.risk'), value: Number(props.risk), onChange: (v) => ctx.patchProps({ risk: v }) }),
         dropdown(t('drawing.risk'), ['percent', 'money'] as const, props.riskDisplay as 'percent', (v) => (v === 'percent' ? '%' : '$'), (v) => ctx.patchProps({ riskDisplay: v })),
       ),
-      row(t('drawing.lotSize'), numberInput(t, { label: t('drawing.lotSize'), value: Number(props.lotSize), min: 0, step: 0.01, onChange: (v) => ctx.patchProps({ lotSize: v }) })),
-      row(t('drawing.leverage'), numberInput(t, { label: t('drawing.leverage'), value: Number(props.leverage), min: 1, max: 500, step: 1, onChange: (v) => ctx.patchProps({ leverage: v }) })),
+      row(t('drawing.lotSize'), numberInput(t, ctx.icons, { label: t('drawing.lotSize'), value: Number(props.lotSize), min: 0, step: 0.01, onChange: (v) => ctx.patchProps({ lotSize: v }) })),
+      row(t('drawing.leverage'), numberInput(t, ctx.icons, { label: t('drawing.leverage'), value: Number(props.leverage), min: 1, max: 500, step: 1, onChange: (v) => ctx.patchProps({ leverage: v }) })),
       toggleRow(t('drawing.compactStatsMode'), !!props.compact, (v) => ctx.patchProps({ compact: v })),
     )
   }
   const levels = Array.isArray(props.levels) ? (props.levels as FibLevel[]) : null
   if (levels && tab === 'Style') {
+    // The levels as the drawing holds them NOW. Every change replaces the whole array, so a row
+    // built before an earlier edit must read the current one rather than write its own copy back
+    // and undo what came between.
+    const liveLevels = (): FibLevel[] => (Array.isArray(drawing.props.levels) ? (drawing.props.levels as FibLevel[]) : levels)
     out.push(el('div', { class: 'qc-dialog-heading', text: t('drawing.levels') }))
     const list = el('div', { class: 'qc-drawing-levels' })
     levels.forEach((level, i) => {
       const patchLevel = (patch: Partial<FibLevel>, quiet = false): void => {
-        const next = levels.map((l, j) => (j === i ? { ...l, ...patch } : l))
+        const next = liveLevels().map((l, j) => (j === i ? { ...l, ...patch } : l))
         if (quiet) ctx.patchQuiet({ levels: next })
         else ctx.patchProps({ levels: next })
       }
@@ -321,14 +329,18 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
           'div',
           { class: 'qc-drawing-level' },
           checkbox(t('drawing.levelVisible', { value: level.value }), level.visible, (v) => patchLevel({ visible: v })),
-          numberInput(t, { label: t('drawing.levelVisible', { value: level.value }), value: level.value, width: 'short', onChange: (v) => patchLevel({ value: v }) }),
+          numberInput(t, ctx.icons, { label: t('drawing.levelVisible', { value: level.value }), value: level.value, width: 'short', onChange: (v) => patchLevel({ value: v }) }),
           swatchButton(t, box, { label: t('drawing.color'), value: level.color ?? style.lineColor, onPick: (c) => patchLevel({ color: c }) }),
           textField(level.text ?? '', t('drawing.levelText', { value: level.value }), (v) => patchLevel({ text: v }, true), { placeholder: t('drawing.textPlaceholder') }),
-          button({ class: 'qc-drawing-star', label: t('drawing.removeLevel', { value: level.value }), html: iconSvg('close', 18), onClick: () => ctx.patchProps({ levels: levels.filter((_, j) => j !== i) }) }),
+          button({ class: 'qc-drawing-star', label: t('drawing.removeLevel', { value: level.value }), icon: ctx.icons.icon('close18', 18), onClick: () => ctx.patchProps({ levels: liveLevels().filter((_, j) => j !== i) }) }),
         ),
       )
     })
-    out.push(list, button({ class: 'qc-button', label: t('drawing.addLevel'), text: t('drawing.addLevel'), onClick: () => ctx.patchProps({ levels: [...levels, { value: 0, visible: true }] }) }), row(t('drawing.fontSize'), fontSize()))
+    out.push(
+      list,
+      button({ class: 'qc-button', label: t('drawing.addLevel'), text: t('drawing.addLevel'), onClick: () => ctx.patchProps({ levels: [...liveLevels(), { value: 0, visible: true }] }) }),
+      row(t('drawing.fontSize'), fontSize()),
+    )
   }
   if ('cells' in props && tab === 'Style') {
     out.push(
@@ -377,6 +389,13 @@ export function tableRows(ctx: RowsContext): HTMLElement[] {
   const { t, drawing } = ctx
   const props = drawing.props as { cells: string[][]; headerRow?: boolean }
   const cells = props.cells
+  // The grid as the drawing holds it NOW. Typing into a cell replaces the whole array, so the next
+  // field a trader moves to writes from the current grid: reading the copy this page was built from
+  // would put the cell they just left back the way it was.
+  const liveCells = (): string[][] => {
+    const held = (drawing.props as { cells?: string[][] }).cells
+    return Array.isArray(held) ? held : cells
+  }
   const rows = cells.length
   const cols = cells[0]?.length ?? 0
   const grid = el('div', { class: 'qc-drawing-table' })
@@ -385,7 +404,7 @@ export function tableRows(ctx: RowsContext): HTMLElement[] {
     line.forEach((value, c) => {
       lineEl.appendChild(
         textField(value, t('drawing.tableCell', { row: r + 1, col: c + 1 }), (v) => {
-          const next = cells.map((x, ri) => (ri === r ? x.map((cell, ci) => (ci === c ? v : cell)) : x))
+          const next = liveCells().map((x, ri) => (ri === r ? x.map((cell, ci) => (ci === c ? v : cell)) : x))
           ctx.patchQuiet({ cells: next })
         }),
       )
@@ -395,10 +414,21 @@ export function tableRows(ctx: RowsContext): HTMLElement[] {
   const actions = el(
     'div',
     { class: 'qc-drawing-table-actions' },
-    button({ class: 'qc-button', label: t('drawing.addRow'), text: t('drawing.addRow'), onClick: () => ctx.patchProps({ cells: [...cells, Array.from({ length: cols }, () => '')] }) }),
-    button({ class: 'qc-button', label: t('drawing.removeRow'), text: t('drawing.removeRow'), disabled: rows <= 1, onClick: () => ctx.patchProps({ cells: cells.slice(0, -1) }) }),
-    button({ class: 'qc-button', label: t('drawing.addColumn'), text: t('drawing.addColumn'), onClick: () => ctx.patchProps({ cells: cells.map((line) => [...line, '']) }) }),
-    button({ class: 'qc-button', label: t('drawing.removeColumn'), text: t('drawing.removeColumn'), disabled: cols <= 1, onClick: () => ctx.patchProps({ cells: cells.map((line) => line.slice(0, -1)) }) }),
+    button({
+      class: 'qc-button',
+      label: t('drawing.addRow'),
+      text: t('drawing.addRow'),
+      onClick: () => ctx.patchProps({ cells: [...liveCells(), Array.from({ length: liveCells()[0]?.length ?? cols }, () => '')] }),
+    }),
+    button({ class: 'qc-button', label: t('drawing.removeRow'), text: t('drawing.removeRow'), disabled: rows <= 1, onClick: () => ctx.patchProps({ cells: liveCells().slice(0, -1) }) }),
+    button({ class: 'qc-button', label: t('drawing.addColumn'), text: t('drawing.addColumn'), onClick: () => ctx.patchProps({ cells: liveCells().map((line) => [...line, '']) }) }),
+    button({
+      class: 'qc-button',
+      label: t('drawing.removeColumn'),
+      text: t('drawing.removeColumn'),
+      disabled: cols <= 1,
+      onClick: () => ctx.patchProps({ cells: liveCells().map((line) => line.slice(0, -1)) }),
+    }),
   )
   return [toggleRow(t('drawing.headerRow'), !!props.headerRow, (v) => ctx.patchProps({ headerRow: v })), grid, actions]
 }
@@ -412,9 +442,9 @@ export function coordinateRows(ctx: RowsContext): HTMLElement[] {
   return drawing.anchors.map((anchor, i) => {
     const bar = viewport?.logicalOf(anchor.time)
     const controls: HTMLElement[] = []
-    if (!barOnly) controls.push(numberInput(t, { label: t('drawing.coordPriceBar', { n: i + 1 }), value: anchor.price, width: 'wide', onChange: (v) => ctx.patchAnchor(i, { price: v }) }))
+    if (!barOnly) controls.push(numberInput(t, ctx.icons, { label: t('drawing.coordPriceBar', { n: i + 1 }), value: anchor.price, width: 'wide', onChange: (v) => ctx.patchAnchor(i, { price: v }) }))
     controls.push(
-      numberInput(t, {
+      numberInput(t, ctx.icons, {
         label: t('drawing.coordBar', { n: i + 1 }),
         value: bar === null || bar === undefined ? NaN : Math.round(bar),
         step: 1,
@@ -439,7 +469,7 @@ export function visibilityRows(ctx: RowsContext): HTMLElement[] {
   const out: HTMLElement[] = [toggleRow(t('drawing.unitTicks'), visibility.ticks, (v) => ctx.patchVisibility({ ticks: v }), pinned(visibility.ticks))]
   for (const { key, label: text, max } of VISIBILITY_ROWS) {
     const range = visibility[key] as { on: boolean; from: number; to: number }
-    out.push(visibilityRangeRow(t, { label: t(text), range, max, disabled: pinned(range.on), onChange: (next) => ctx.patchVisibility({ [key]: next }) }))
+    out.push(visibilityRangeRow(t, ctx.icons, { label: t(text), range, max, disabled: pinned(range.on), onChange: (next) => ctx.patchVisibility({ [key]: next }) }))
   }
   if (enabled === 1) out.push(el('span', { class: 'qc-muted qc-drawing-note', text: t('drawing.intervalPinnedNote') }))
   return out

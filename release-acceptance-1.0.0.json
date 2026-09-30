@@ -1,0 +1,33 @@
+{
+  "date": "2026-09-29",
+  "version": "1.0.0",
+  "candidateCommit": "412d728f76e6b58ac0ffb20f6e948c2c2d2eb0a0",
+  "tarballSha256": "e29a366a61d206b484451eb14fe89824950133534892040521aa126d822d74af",
+  "rehearsal": "pass",
+  "gateRun": "https://github.com/Trdrsco/quick-charts/actions/runs/36664534952",
+  "unitTestsPassed": 3497,
+  "browserChecks": {
+    "webkit": 41,
+    "firefox": 41,
+    "chromium": 41
+  },
+  "firstHost": {
+    "browserTestsPassed": 13,
+    "integrationTestsPassed": 1027,
+    "fullAppGateRun": false,
+    "sourceCommit": "dc0eb8337",
+    "typecheckWorkspacesPassed": 22
+  },
+  "ownerDecision": {
+    "screenReaderSupportMeasured": false,
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner",
+    "safariDeviceSupportMeasured": false,
+    "manualAcceptancePerformed": false
+  },
+  "publication": {
+    "subsequentReleases": "protected GitHub workflow with npm OIDC provenance",
+    "bootstrapProvenance": false,
+    "bootstrap": "interactive npm owner authentication for the first accepted artifact"
+  }
+}

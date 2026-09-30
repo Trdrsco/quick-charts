@@ -17,4 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': '왼쪽으로 이동',
   'range.scrollRight': '오른쪽으로 이동',
   'range.reset': '차트 보기 초기화',
+  'range.maximizeChart': 'Maximize chart',
+  'range.restoreChart': 'Restore chart',
 }

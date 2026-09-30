@@ -2,7 +2,7 @@
 // the spec's own refusal of the argument, then availability, then the run. Each step is pinned
 // against what the later steps never see, and a refusal that throws is a refusal.
 import { describe, expect, it } from 'vitest'
-import { createCommandRegistry, type CommandSpec } from '../../src/widget/commands'
+import { createChartCommandScope, createCommandRegistry, type CommandSpec } from '../../src/widget/commands'
 
 function rig(options: { permit?: (id: string) => boolean; refuses?: (arg: unknown) => boolean; available?: () => boolean } = {}) {
   const calls: string[] = []
@@ -32,6 +32,52 @@ function rig(options: { permit?: (id: string) => boolean; refuses?: (arg: unknow
 }
 
 describe('the door, in order', () => {
+  it('a chart-bound executor keeps the same live access and availability checks while its chart is inactive', () => {
+    let permitted = false
+    let available = true
+    let calls = 0
+    const shared = createCommandRegistry()
+    const scope = createChartCommandScope(shared.registry, { access: { command: () => permitted } })
+    scope.registry.register({
+      id: 'chart.replay.stepForward',
+      scope: 'chart',
+      label: 'command.replayStepForward',
+      available: () => available,
+      execute: () => { calls++ },
+    })
+
+    expect(scope.target.available('chart.replay.stepForward')).toBe(false)
+    expect(scope.target.execute('chart.replay.stepForward')).toEqual({ kind: 'denied' })
+    permitted = true
+    available = false
+    expect(scope.target.execute('chart.replay.stepForward')).toEqual({ kind: 'unavailable' })
+    available = true
+    expect(scope.target.execute('chart.replay.stepForward')).toEqual({ kind: 'ok' })
+    expect(calls).toBe(1)
+    expect(shared.registry.list()).toEqual([])
+
+    scope.dispose()
+    expect(scope.target.execute('chart.replay.stepForward')).toEqual({ kind: 'unknown' })
+    expect(calls).toBe(1)
+  })
+
+  it('keeps shortcut choices through replacement while unregister still owns only its registration', () => {
+    const { registry } = createCommandRegistry()
+    const command: CommandSpec = { id: 'chart.test', scope: 'chart', label: 'command.viewReset', shortcut: 'KeyR', available: () => true, execute: () => undefined }
+    const firstOff = registry.register(command)
+    registry.setShortcut(command.id, 'Alt+KeyR')
+    const secondOff = registry.register({ ...command })
+    firstOff()
+    expect(registry.list()[0]?.shortcut).toBe('Alt+KeyR')
+    registry.setShortcut(command.id, null)
+    secondOff()
+    expect(registry.list()).toEqual([])
+    const thirdOff = registry.register({ ...command })
+    expect(registry.list()[0]?.shortcut).toBeUndefined()
+    thirdOff()
+    expect(registry.list()).toEqual([])
+  })
+
   it('a refused id is denied before the spec is asked anything', () => {
     const { registry, calls } = rig({ permit: () => false, refuses: () => false })
     expect(registry.execute('chart.test.arm', 'ray')).toEqual({ kind: 'denied' })

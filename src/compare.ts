@@ -2,7 +2,7 @@
 // STUDY: legend-managed, three placements, removable from the legend or the dialog). This organ
 // owns the data half the indicator pipeline never had: an indicator computes from the chart's own
 // bars, a compare fetches ANOTHER symbol's bars through the same ChartDatafeed and follows its
-// stream. Corpus: docs/corpus/chart-compare/.
+// stream.
 //
 // The three placements are the dialog's three verbs:
 //   'same-percent'  — a line on the MAIN pane's shared (right) scale. The renderer's Percentage
@@ -159,6 +159,21 @@ const LINE_STYLE = { solid: LineStyle.Solid, dashed: LineStyle.Dashed, dotted: L
 
 const PLACEMENTS: readonly ComparePlacement[] = ['same-percent', 'new-scale', 'new-pane']
 
+/** Package-private legend access. The closure reads the live slots; it owns no second bar cache
+ * and is deliberately absent from the public root and CompareHandle. */
+const readouts = new WeakMap<CompareHandle, (symbol: string, time: number | null) => { latest: number | null; percent: number | null }>()
+export function readCompareAt(handle: CompareHandle, symbol: string, time: number | null): { latest: number | null; percent: number | null } {
+  return readouts.get(handle)?.(symbol, time) ?? { latest: null, percent: null }
+}
+
+/** Package-private ownership hook. The widget owns the shared renderer timeline, while this data
+ * owner knows exactly which paints prepend older comparison history. It is intentionally absent
+ * from the public root and CompareDeps. */
+const timelineMaintainers = new WeakMap<CompareHandle, (write: () => void) => void>()
+export function maintainCompareTimeline(handle: CompareHandle, maintain: (write: () => void) => void): void {
+  timelineMaintainers.set(handle, maintain)
+}
+
 export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandle {
   const slots = new Map<string, Slot>()
   let destroyed = false
@@ -184,9 +199,12 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
     }
   }
 
-  const paint = (slot: Slot) => {
+  const paint = (slot: Slot, preserveTimeline = false) => {
     const clipped = clipToWindow(slot.bars, deps.mainWindow())
-    slot.series.setData(clipped.map(toLine))
+    const write = () => slot.series.setData(clipped.map(toLine))
+    const maintain = timelineMaintainers.get(handle)
+    if (preserveTimeline && maintain) maintain(write)
+    else write()
   }
 
   /** Fetch one page into the slot. Resolves true when the page landed, false when the feed failed
@@ -196,7 +214,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
     const seq = ++slot.fetchSeq
     try {
       const page = await deps.datafeed.history(slot.entry.symbol, deps.tf(), range)
-      if (destroyed || slot.fetchSeq !== seq || !slots.has(slot.entry.symbol)) return false
+      if (destroyed || slot.fetchSeq !== seq || slots.get(slot.entry.symbol) !== slot) return false
       if (mode === 'replace') slot.bars = [...page.bars]
       else {
         // Prepend strictly-older bars; the seam bar (equal time) defers to what is already held.
@@ -204,7 +222,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
         slot.bars = [...page.bars.filter((b) => b.t < first), ...slot.bars]
       }
       slot.oldest = slot.bars[0]?.t ?? slot.oldest
-      paint(slot)
+      paint(slot, mode === 'prepend')
       notify()
       return true
     } catch {
@@ -217,9 +235,10 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
 
   const subscribe = (slot: Slot) => {
     slot.unsubscribe?.()
-    slot.unsubscribe = deps.datafeed.subscribeBars(slot.entry.symbol, deps.tf(), {
+    let listening = true
+    const unsubscribe = deps.datafeed.subscribeBars(slot.entry.symbol, deps.tf(), {
       onBars: (e) => {
-        if (destroyed) return
+        if (!listening || destroyed || slots.get(slot.entry.symbol) !== slot) return
         if (e.kind === 'snapshot') {
           // The transport's re-sync replaces the RECENT window; older paged-in bars stay — the
           // same seam rule the main series applies to its own snapshots.
@@ -237,6 +256,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
         notify()
       },
     })
+    slot.unsubscribe = () => { listening = false; unsubscribe() }
   }
 
   const seed = (slot: Slot) => {
@@ -433,9 +453,25 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
     },
     destroy() {
       destroyed = true
+      readouts.delete(handle)
+      timelineMaintainers.delete(handle)
       for (const slot of slots.values()) dispose(slot)
       slots.clear()
     },
   }
+  readouts.set(handle, (symbol, time) => {
+    const slot = slots.get(symbol)
+    const clipped = slot && slot.entry.visible && !slot.suppressed ? clipToWindow(slot.bars, deps.mainWindow()) : []
+    let selected: FeedBar | undefined
+    for (let index = clipped.length - 1; index >= 0; index--) {
+      const bar = clipped[index]!
+      if (time === null || bar.t <= time) { selected = bar; break }
+    }
+    const first = clipped[0]?.c
+    return {
+      latest: selected?.c ?? null,
+      percent: selected && first !== undefined && first !== 0 ? (selected.c / first - 1) * 100 : null,
+    }
+  })
   return handle
 }

@@ -4,48 +4,13 @@
 // documents, and the keyboard door. The renderer is `fakeChart`, whose conversions are exact
 // arithmetic, so each assertion names where a press landed in price and time.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { attachDrawings, type DrawingsHandle, type DrawingsWorkflow } from '../../src/drawings'
+import { attachDrawings } from '../../src/drawings'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { DRAWING_CONTEXT_VERSION, liveDrawingEntries, type DrawingResourceContext } from '../../src/drawings/document'
-import { click, drag, fakeChart, pointer, type FakeChart } from './fakeChart'
+import { click, drag, fakeChart, pointer } from './fakeChart'
+import { documentOf, localPort, rig, sharedPort, type Rig } from './layerRig'
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
-
-interface Rig {
-  fake: FakeChart
-  container: HTMLElement
-  handle: DrawingsHandle
-  workflow: DrawingsWorkflow
-  events: { tools: (string | null)[]; selections: (string | null)[]; changes: number; texts: unknown[]; conflicts: unknown[] }
-}
-
-function rig(options: { documents?: Parameters<typeof attachDrawings>[0]['documents']; templates?: Parameters<typeof attachDrawings>[0]['templates']; chartId?: string; execute?: (command: string) => boolean; symbol?: string } = {}): Rig {
-  const fake = fakeChart()
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-  const workflow: DrawingsWorkflow = { magnet: 'off', stayInDrawingMode: false, cursor: 'cross', syncAcrossPanes: true }
-  const events: Rig['events'] = { tools: [], selections: [], changes: 0, texts: [], conflicts: [] }
-  const handle = attachDrawings({
-    chart: fake.chart,
-    series: fake.series,
-    container,
-    symbol: options.symbol ?? 'ES',
-    timeframe: '5m',
-    workflow: () => workflow,
-    ...(options.documents ? { documents: options.documents } : {}),
-    ...(options.templates ? { templates: options.templates } : {}),
-    ...(options.chartId ? { chartId: options.chartId } : {}),
-    ...(options.execute ? { execute: options.execute } : {}),
-    events: {
-      onToolChange: (type) => events.tools.push(type),
-      onSelectionChange: (id) => events.selections.push(id),
-      onChange: () => events.changes++,
-      onTextEdit: (session) => events.texts.push(session),
-      onSaveConflict: (info) => events.conflicts.push(info),
-    },
-  })
-  return { fake, container, handle, workflow, events }
-}
 
 let rigs: Rig[] = []
 const make = (options?: Parameters<typeof rig>[0]): Rig => {
@@ -146,6 +111,16 @@ describe('placing a fixed tool', () => {
     expect(handle.count()).toBe(1) // the click left nothing
   })
 
+  it.each(['brush', 'highlighter'])('%s stays armed for successive separate strokes', (tool) => {
+    const { container, handle } = make()
+    handle.armTool(tool)
+    drag(container, [10, 10], [90, 50])
+    expect(handle.activeTool()).toBe(tool)
+    drag(container, [130, 20], [210, 60])
+    expect(handle.export().map((drawing) => drawing.type)).toEqual([tool, tool])
+    expect(handle.activeTool()).toBe(tool)
+  })
+
   it('shift holds a two-point placement to 45 degree rays', () => {
     const { fake, container, handle } = make()
     handle.armTool('trend_line')
@@ -217,13 +192,11 @@ describe('placing a fixed tool', () => {
 })
 
 describe('the transient tools', () => {
-  it('measure draws a readout that stays armed and clears on the next gesture', () => {
+  it('measure draws a readout that is never a kept drawing, and releases the tool as it completes', () => {
     const { container, handle } = make()
     handle.armTool('measure')
     drag(container, [100, 100], [300, 150])
     expect(handle.count()).toBe(0) // never a kept drawing
-    expect(handle.activeTool()).toBe('measure')
-    handle.armTool(null)
     expect(handle.activeTool()).toBeNull()
   })
 
@@ -247,6 +220,24 @@ describe('the transient tools', () => {
 })
 
 describe('the cursor', () => {
+  it('paints no pointer glyph at all while the host has taken the pointer', () => {
+    let taken = false
+    const { container } = make({ pointerSuppressed: () => taken })
+    container.dispatchEvent(pointer('pointermove', 200, 150))
+    // The cursor mode's own glyph by default. This layer writes it as an INLINE style, which is why
+    // it has to stand the pointer down itself: no stylesheet rule can reach past an inline one.
+    expect(container.style.cursor).toBe('crosshair')
+
+    taken = true
+    container.dispatchEvent(pointer('pointermove', 210, 150))
+    expect(container.style.cursor).toBe('none')
+
+    taken = false
+    container.dispatchEvent(pointer('pointermove', 220, 150))
+    expect(container.style.cursor).toBe('crosshair')
+  })
+
+
   it('selects, moves by whole bars, and reshapes by an anchor handle', () => {
     const { fake, container, handle } = make()
     handle.armTool('trend_line')
@@ -280,7 +271,7 @@ describe('the cursor', () => {
     expect(events.changes).toBeGreaterThan(0)
   })
 
-  it("a locked drawing selects but refuses a move, and the layer's delete refuses it too", () => {
+  it('a locked drawing selects but refuses a move, while a deliberate delete still takes it', () => {
     const { fake, container, handle } = make()
     handle.armTool('trend_line')
     drag(container, [100, 100], [300, 200])
@@ -288,9 +279,6 @@ describe('the cursor', () => {
     expect(handle.selected()?.locked).toBe(true)
     drag(container, [200, 150], [230, 170])
     expect(fake.xOf(Number(handle.export()[0]!.anchors[0]!.time))).toBe(100)
-    handle.deleteSelected()
-    expect(handle.count()).toBe(1)
-    handle.setLocked(false)
     handle.deleteSelected()
     expect(handle.count()).toBe(0)
   })
@@ -434,20 +422,50 @@ describe('the keyboard', () => {
 })
 
 describe('the documents', () => {
-  /** A layout-shared port over one adapter: two charts of one layout write one document per symbol. */
-  const sharedPort = (adapter: ReturnType<typeof memorySaveLoadAdapter>) => ({
-    context: (symbol: string): DrawingResourceContext => ({ version: DRAWING_CONTEXT_VERSION, kind: 'layout-shared', layoutId: 'desk', symbol }),
-    store: (context: DrawingResourceContext) => adapter.drawings(context),
+  it('fans live create, edit and delete to eligible mounted peers before storage round-trips', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const a = make({ documents: sharedPort(adapter), chartId: 'chart-1' })
+    const b = make({ documents: sharedPort(adapter), chartId: 'chart-2' })
+    await settle()
+    a.handle.armTool('rectangle')
+    drag(a.container, [10, 10], [100, 100])
+    expect(b.handle.export().map((drawing) => drawing.type)).toEqual(['rectangle'])
+    a.handle.select(a.handle.export()[0]!.id)
+    a.handle.updateStyle({ lineWidth: 4 })
+    expect(b.handle.export()[0]!.style.lineWidth).toBe(4)
+    a.handle.deleteSelected()
+    expect(b.handle.count()).toBe(0)
   })
-  const localPort = (adapter: ReturnType<typeof memorySaveLoadAdapter>, chartId: string) => ({
-    context: (symbol: string): DrawingResourceContext => ({ version: DRAWING_CONTEXT_VERSION, kind: 'chart-local', layoutId: 'desk', chartId, symbol }),
-    store: (context: DrawingResourceContext) => adapter.drawings(context),
+
+  it('keeps live chart-local documents isolated by durable chart identity', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const a = make({ documents: localPort(adapter, 'layout:desk:chart:1'), chartId: 'layout:desk:chart:1' })
+    const b = make({ documents: localPort(adapter, 'layout:desk:chart:2'), chartId: 'layout:desk:chart:2' })
+    await settle()
+    a.handle.armTool('rectangle')
+    drag(a.container, [10, 10], [100, 100])
+    expect(a.handle.count()).toBe(1)
+    expect(b.handle.count()).toBe(0)
   })
-  const documentOf = async (adapter: ReturnType<typeof memorySaveLoadAdapter>, context: DrawingResourceContext) => {
-    const store = adapter.drawings(context)
-    const row = (await store.list())[0]
-    return row ? (await store.load(row.id))! : null
-  }
+
+  it('fans tombstones while preserving a peer-owned row in the shared document', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const a = make({ documents: sharedPort(adapter), chartId: 'chart-1' })
+    const b = make({ documents: sharedPort(adapter), chartId: 'chart-2' })
+    await settle()
+    a.workflow.syncAcrossPanes = false
+    a.handle.armTool('trend_line')
+    drag(a.container, [10, 10], [100, 100])
+    expect(a.handle.count()).toBe(1)
+    expect(b.handle.count()).toBe(0)
+    b.handle.armTool('rectangle')
+    drag(b.container, [20, 20], [120, 120])
+    expect(a.handle.export().map((drawing) => drawing.type)).toEqual(['trend_line', 'rectangle'])
+    b.handle.select(b.handle.export()[0]!.id)
+    b.handle.deleteSelected()
+    expect(a.handle.export().map((drawing) => drawing.type)).toEqual(['trend_line'])
+    expect(b.handle.count()).toBe(0)
+  })
 
   it('writes one document per context, hydrates on activation, and keeps a chart-bound drawing to its chart', async () => {
     vi.useFakeTimers()

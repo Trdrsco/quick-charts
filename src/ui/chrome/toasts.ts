@@ -5,7 +5,8 @@
 // grid itself holds nothing but the tiled charts.
 import type { ChartI18n } from '../../i18n'
 import { button, h, name } from './dom'
-import { ICONS } from './icons'
+import { ICONS } from '../controls/icons'
+import type { IconResolver } from '../icons/resolver'
 
 export interface ToastsHandle {
   push(kind: 'info' | 'error', text: string): void
@@ -16,7 +17,7 @@ export interface ToastsHandle {
 export const TOAST_MS = 5000
 
 /** Mount the notices directly after `grid`, the element the charts tile. */
-export function mountToasts(grid: HTMLElement, deps: { i18n: ChartI18n }): ToastsHandle {
+export function mountToasts(grid: HTMLElement, deps: { i18n: ChartI18n; icons: IconResolver }): ToastsHandle {
   const t = (): ChartI18n['t'] => deps.i18n.t
   const list = h('div', { class: 'qc-toast-stack' })
   const region = h('div', { class: 'qc-toasts', role: 'status', 'aria-live': 'polite', 'aria-atomic': 'false' }, list)
@@ -34,7 +35,7 @@ export function mountToasts(grid: HTMLElement, deps: { i18n: ChartI18n }): Toast
   return {
     push(kind, text) {
       const card = h('div', { class: 'qc-overlay qc-toast', 'data-qc-kind': kind }, h('span', { class: `qc-toast-text${kind === 'error' ? ' qc-negative' : ''}` }, text))
-      card.appendChild(button({ label: t()('toast.dismiss'), icon: ICONS.close, iconSize: 18, className: 'qc-toast-dismiss', onClick: () => dismiss(card) }))
+      card.appendChild(button({ label: t()('toast.dismiss'), icon: deps.icons.glyph(ICONS.close, { size: 18 }), className: 'qc-toast-dismiss', onClick: () => dismiss(card) }))
       list.appendChild(card)
       timers.set(
         card,

@@ -24,18 +24,22 @@ only as far as the library's contract reaches.
 
 ## Browser and runtime support
 
-The package is ESM only and ships TypeScript declarations that compile with `skipLibCheck` off
-against TypeScript 5.7 and later. `lightweight-charts` 5 is the peer dependency; your application
-installs it.
+Quick Charts is a browser package with ESM exports and TypeScript declarations. The clean-room
+consumers verify declarations with library checking enabled and production bundling without
+workspace dependencies. The release toolchain uses Node 24.15.0 and npm 12.1.0.
 
-The library is verified on current Chromium through its browser suite, and a fresh project
-installs, type-checks and runs the packed artifact in the clean-room check on the Node.js version
-`engines` names. Other engines are not verified: Firefox, WebKit, and the WKWebView and Android
-System WebView engines of a mobile host are measured on the packed artifact before the first
-release, and this page names each engine and version once it is.
+The required `lightweight-charts` 5 peer is installed automatically with default npm peer
+resolution. The primary command is `npm install quickcharts`.
 
-The stylesheet uses logical properties and follows the root element's reading direction. The
-chrome honors `prefers-reduced-motion`.
+The packed production bundle passes the automated public conformance suite in Chromium, Firefox
+and WebKit through Playwright 1.61.0. These checks cover chart behavior, controls, themes,
+persistence, accessible names and lifecycle. Playwright WebKit is not a claim of measured Safari
+or iOS support. Manual screen-reader acceptance and actual Safari/device measurements remain
+release evidence to complete before advertising those environments.
+
+The optional local WebView guest is excluded from the npm package. No native-host distribution or
+WebView support promise is part of this release. The stylesheet follows the root element's reading
+direction and the controls honor `prefers-reduced-motion`.
 
 ## Versions
 

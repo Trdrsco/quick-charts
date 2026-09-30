@@ -18,3 +18,7 @@ clean-room/*/conformance/
 .candidate/
 # the release rehearsal dossier (logs, hashes, the summary); every rehearsal rewrites its version
 .release/
+
+# Browser verification artifacts
+test-results/
+playwright-report/

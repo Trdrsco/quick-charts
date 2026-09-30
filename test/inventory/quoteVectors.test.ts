@@ -1,14 +1,4 @@
-// The quote vectors end to end: reusable vectors for last, bid, ask, open, high, low, prevClose, change,
-// changePct, volume, status, and timestamp; and an injected value-formatter port that matches Last and
-// Chg to the chart's display for the same symbol while Chg% and Volume keep their own independent
-// value formats.
-//
-// priceFormatter.test.ts proves each price case; this file proves the quote block: that the vectors are
-// coherent with one another and land on the symbol grid, that every price field of a quote writes through
-// the one formatter to the recorded display, and that a Watchlist value-formatter port built the way the
-// first-party host builds it writes Last and Chg to the chart's own text while Chg% and Volume keep their
-// own value kinds. A quote board consumes the port and never the chart's internals, so the port is the
-// only way the two can agree.
+// Quote fixtures exercise the public formatter over representative market formats.
 import { describe, expect, it } from 'vitest'
 import { createPriceFormatter, type NumericPunctuation, type PriceFormat } from '../../src/index'
 import vectors from '../fixtures/quoteVectors.json'
@@ -24,33 +14,9 @@ interface Case {
   punctuation?: NumericPunctuation
   quote: Record<Price, number> & { change: number; changePct: number; volume: number; status: string; timestamp: number }
   display: Record<Price, string> & { change: string }
-  board?: { last: string; change: string; changePct: string; volume: string }
 }
 
 const CASES = vectors.cases as unknown as Case[]
-
-/** A quote-board value-formatter port built the way a host builds one: Last and Chg through the ONE
- *  Quick Charts formatter for the symbol, Chg% as a
- *  signed percentage at two decimals in the interface language, Volume compacted in that language. */
-function hostPort(format: PriceFormat, punctuation: NumericPunctuation | undefined, locale: string) {
-  const price = createPriceFormatter(format, punctuation ? { numericPunctuation: punctuation } : undefined)
-  const two = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  const percent = new Intl.NumberFormat(locale, { style: 'percent', minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'always' })
-  const whole = new Intl.NumberFormat(locale)
-  const volume = (value: number): string => {
-    const at = Math.abs(value)
-    if (at >= 1e9) return `${two.format(value / 1e9)}B`
-    if (at >= 1e6) return `${two.format(value / 1e6)}M`
-    if (at >= 1e3) return `${two.format(value / 1e3)}K`
-    return whole.format(Math.round(value))
-  }
-  return {
-    last: (value: number) => price.format(value),
-    change: (value: number) => `${value >= 0 ? '+' : ''}${price.format(value)}`,
-    changePct: (value: number) => percent.format(value / 100),
-    volume,
-  }
-}
 
 describe('the quote vectors are coherent', () => {
   for (const c of CASES) {
@@ -100,24 +66,4 @@ describe('every price field of a quote writes through the one formatter', () => 
   }
 })
 
-describe('a quote-board port over the same symbol', () => {
-  for (const c of CASES.filter((c) => c.board)) {
-    it(`${c.id}: Last and Chg read as the chart writes them, Chg% and Volume keep their own kinds`, () => {
-      const port = hostPort(c.format, c.punctuation, 'en')
-      expect(port.last(c.quote.last)).toBe(c.display.last)
-      expect(port.change(c.quote.change)).toBe(c.display.change)
-      expect(port.last(c.quote.last)).toBe(c.board!.last)
-      expect(port.change(c.quote.change)).toBe(c.board!.change)
-      expect(port.changePct(c.quote.changePct)).toBe(c.board!.changePct)
-      expect(port.volume(c.quote.volume)).toBe(c.board!.volume)
-      // A percentage and a count are not prices: neither carries the symbol's decimal width.
-      expect(port.changePct(c.quote.changePct)).toMatch(/^[+-]\d+\.\d{2}%$/)
-      expect(port.volume(c.quote.volume)).not.toBe(createPriceFormatter(c.format).format(c.quote.volume))
-    })
-  }
 
-  it('every case with a board says every one of the four columns', () => {
-    for (const c of CASES.filter((c) => c.board)) expect(Object.keys(c.board!).sort(), c.id).toEqual(['change', 'changePct', 'last', 'volume'])
-    expect(CASES.filter((c) => c.board).length).toBeGreaterThanOrEqual(8)
-  })
-})

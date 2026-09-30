@@ -2,7 +2,8 @@
 // The DOM vocabulary the drawing surfaces share: roving focus, the focus trap with its
 // restoration, outside dismissal, reading direction, and panel placement inside the chart box.
 import { afterEach, describe, expect, it } from 'vitest'
-import { button, dismissOnOutside, el, focusables, isRtl, placePanel, rovingFocus, trapFocus } from '../../../src/ui/drawings/dom'
+import { button, dismissOnOutside, el, placePanel, rovingFocus, trapFocus } from '../../../src/ui/drawings/dom'
+import { focusables, isRtl } from '../../../src/ui/controls/dom'
 
 afterEach(() => {
   document.body.replaceChildren()
@@ -124,5 +125,62 @@ describe('dismissal and direction', () => {
     expect(panel.style.maxHeight).toMatch(/px$/)
     placePanel(panel, anchor, box, 'below')
     expect(panel.style.left).toBe('0px')
+  })
+
+  it.each(['ltr', 'rtl'])('places an external rail flyout against its physical anchor inside widget bounds in %s', (dir) => {
+    const box = el('div', { dir })
+    const anchor = el('button')
+    const panel = el('div')
+    document.body.append(box, anchor)
+    box.appendChild(panel)
+    box.getBoundingClientRect = () => ({ left: 60, top: 50, right: 1060, bottom: 750, width: 1000, height: 700 }) as DOMRect
+    anchor.getBoundingClientRect = () => ({ left: 10, top: 90, right: 48, bottom: 128, width: 38, height: 38 }) as DOMRect
+    Object.defineProperties(panel, { offsetWidth: { value: 192 }, offsetHeight: { value: 200 } })
+    placePanel(panel, anchor, box, 'side')
+    expect(panel.style.left).toBe('0px')
+    expect(panel.style.top).toBe('40px')
+    anchor.getBoundingClientRect = () => ({ left: 10, top: 620, right: 48, bottom: 658, width: 38, height: 38 }) as DOMRect
+    placePanel(panel, anchor, box, 'side')
+    expect(panel.style.left).toBe('0px')
+    expect(panel.style.top).toBe('500px')
+  })
+
+  // A submenu is level with its row and flush to the row's outer edge, with no offset at all: a
+  // pointer travelling from the row into the panel crosses nothing that would close it. Without
+  // room on that side it mirrors to the other, keeping the same zero offset.
+  it('places a sidecar level with its row and flush to its edge, mirroring without room', () => {
+    const box = el('div')
+    const row = el('button')
+    const panel = el('div')
+    box.append(row, panel)
+    document.body.appendChild(box)
+    box.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1000, bottom: 700, width: 1000, height: 700 }) as DOMRect
+    row.getBoundingClientRect = () => ({ left: 100, top: 200, right: 332, bottom: 234, width: 232, height: 34 }) as DOMRect
+    Object.defineProperties(panel, { offsetWidth: { value: 176 }, offsetHeight: { value: 150 } })
+    placePanel(panel, row, box, 'sidecar')
+    expect(panel.style.left).toBe('332px')
+    expect(panel.style.top).toBe('200px')
+    row.getBoundingClientRect = () => ({ left: 760, top: 200, right: 992, bottom: 234, width: 232, height: 34 }) as DOMRect
+    placePanel(panel, row, box, 'sidecar')
+    expect(panel.style.left).toBe('584px')
+    expect(panel.style.top).toBe('200px')
+  })
+
+  it('hangs a below-end panel with its inline-end edge level with the anchor', () => {
+    const box = el('div')
+    const anchor = el('button')
+    const panel = el('div')
+    box.append(anchor, panel)
+    document.body.appendChild(box)
+    box.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1000, bottom: 700, width: 1000, height: 700 }) as DOMRect
+    anchor.getBoundingClientRect = () => ({ left: 500, top: 200, right: 538, bottom: 238, width: 38, height: 38 }) as DOMRect
+    Object.defineProperties(panel, { offsetWidth: { value: 240 }, offsetHeight: { value: 150 } })
+    placePanel(panel, anchor, box, 'below-end')
+    expect(panel.style.left).toBe('298px')
+    // A panel opens a hair clear of its anchor: close enough that the control and what it opened
+    // read as one move.
+    expect(panel.style.top).toBe('240px')
+    placePanel(panel, anchor, box, 'below')
+    expect(panel.style.left).toBe('500px')
   })
 })

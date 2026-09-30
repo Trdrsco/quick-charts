@@ -10,7 +10,7 @@
 // stands in both modes. Contrast is computed from the theme vectors over the ink-and-ground pairs the
 // recipes actually draw, never eyeballed.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createChart, type ChartDatafeed, type ChartWidget } from '../../src/index'
+import { createChart, createChartI18n, type ChartDatafeed, type ChartWidget } from '../../src/index'
 import { compositeOver, contrastRatio, parseCssColor } from '../../src/theme/color'
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import { resolveSemanticTheme } from '../../src/theme/resolve'
@@ -52,8 +52,8 @@ const SURFACES: readonly Surface[] = [
   { name: 'buttons and controls', files: ['chrome.css'], classes: ['qc-toolbar-button', 'qc-switch', 'qc-tabs', 'qc-tab'], states: [STATE.hover, STATE.pressed, STATE.expanded, STATE.disabled, STATE.checked, STATE.selected] },
   { name: 'dialogs', files: ['menu.css', 'search.css', 'indicators.css', 'layouts.css'], classes: ['qc-dialog', 'qc-dialog-scrim', 'qc-search-dialog', 'qc-picker-dialog', 'qc-settings-dialog', 'qc-layouts-open'], states: [STATE.hover, STATE.selected, STATE.disabled] },
   { name: 'menus', files: ['menu.css', 'bottombar.css', 'drawings-toolbar.css'], classes: ['qc-menu-panel', 'qc-menu-row', 'qc-tz-menu', 'qc-drawing-menu'], states: [STATE.hover, STATE.checked, STATE.disabled] },
-  { name: 'popovers', files: ['status.css', 'drawings-toolbar.css', 'timeframe.css', 'replay.css'], classes: ['qc-status-popup', 'qc-drawing-popover', 'qc-tf-groups', 'qc-replay'], states: [STATE.hover] },
-  { name: 'fields', files: ['chrome.css', 'drawings-fields.css', 'search.css', 'timeframe.css'], classes: ['qc-color-field', 'qc-field-row', 'qc-drawing-input', 'qc-drawing-select', 'qc-search-input', 'qc-tf-composer'], states: [STATE.placeholder, ':focus'] },
+  { name: 'popovers', files: ['status.css', 'drawings-toolbar.css', 'timeframe.css', 'replay.css'], classes: ['qc-status-popup', 'qc-drawing-popover', 'qc-tf-row', 'qc-replay'], states: [STATE.hover] },
+  { name: 'fields', files: ['chrome.css', 'drawings-fields.css', 'search.css', 'timeframe.css'], classes: ['qc-field-row', 'qc-drawing-input', 'qc-drawing-select', 'qc-search-input', 'qc-tf-composer'], states: [STATE.placeholder, ':focus'] },
   { name: 'settings menu', files: ['settings.css'], classes: ['qc-settings-menu', 'qc-settings-row'], states: [] },
   { name: 'legend', files: ['quickcharts.css'], classes: ['qc-legend', 'qc-legend-row', 'qc-legend-action', 'qc-session-dot'], states: ["[data-qc-hidden='true']", "[data-qc-session='open']", "[data-qc-session='closed']"] },
   { name: 'panes and scales', files: ['quickcharts.css'], classes: ['qc-pane', 'qc-panes', 'qc-gestures'], states: [STATE.on] },
@@ -61,6 +61,7 @@ const SURFACES: readonly Surface[] = [
   { name: 'loading state', files: ['search.css'], classes: ['qc-search-status', 'qc-search-sentinel'], states: [] },
   { name: 'empty state', files: ['search.css', 'drawings-editors.css'], classes: ['qc-search-status', 'qc-drawing-glyph-empty'], states: [] },
   { name: 'error state', files: ['toasts.css', 'quickcharts.css'], classes: ['qc-toast', 'qc-negative'], states: [] },
+  { name: 'scrolled lists', files: ['scroll.css'], classes: ['qc-menu-body', 'qc-dialog-body', 'qc-picker-list', 'qc-layouts-list', 'qc-search-list'], states: [] },
 ]
 
 /** The pairs a recipe draws ink over ground with, beyond what a rule states outright: the text roles
@@ -77,9 +78,11 @@ const INHERITED_PAIRS: readonly { ink: string; ground: string[]; min: number }[]
   { ink: 'text.muted', ground: ['chrome.surface'], min: 4.5 },
   { ink: 'text.muted', ground: ['overlay.surface'], min: 4.5 },
   { ink: 'text.link', ground: ['chrome.surface'], min: 4.5 },
-  { ink: 'text.inverse', ground: ['state.accent'], min: 4.5 },
+  { ink: 'state.markInk', ground: ['state.accent'], min: 4.5 },
+  { ink: 'text.inverse', ground: ['control.on'], min: 4.5 },
+  { ink: 'text.highlight', ground: ['overlay.surface'], min: 4.5 },
   { ink: 'text.onCanvas', ground: ['canvas.background'], min: 4.5 },
-  { ink: 'state.accent', ground: ['state.selected', 'chrome.surface'], min: 4.5 },
+  { ink: 'state.accent', ground: ['chrome.surface'], min: 3 },
   { ink: 'scale.text', ground: ['scale.background'], min: 4.5 },
   { ink: 'scale.crosshairLabelText', ground: ['scale.crosshairLabelBackground'], min: 4.5 },
   { ink: 'status.positive', ground: ['chrome.surface'], min: 4.5 },
@@ -145,7 +148,8 @@ function contrast(theme: SemanticTheme, ink: string, ground: string[]): number |
 }
 
 /** The ink-over-ground pairs a recipe states outright: a rule declaring both a color and a
- *  background from theme roles. */
+ *  background from theme roles. An unavailable control's words are left out: WCAG 1.4.3 sets no
+ *  minimum for an inactive component, the reason `text.disabled` declares no contrast rule. */
 function statedPairs(): { selector: string; ink: string; ground: string }[] {
   const out: { selector: string; ink: string; ground: string }[] = []
   for (const rule of rulesOf(whole)) {
@@ -154,7 +158,7 @@ function statedPairs(): { selector: string; ink: string; ground: string }[] {
     if (!ink || !ground) continue
     const inkRole = roleOfVar(ink)
     const groundRole = roleOfVar(ground)
-    if (inkRole && groundRole) out.push({ selector: rule.selectors[0]!, ink: inkRole, ground: groundRole })
+    if (inkRole && groundRole && inkRole !== 'text.disabled') out.push({ selector: rule.selectors[0]!, ink: inkRole, ground: groundRole })
   }
   return out
 }
@@ -174,10 +178,12 @@ const feed: ChartDatafeed = {
 
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 25))
 
-/** Every `qc-` class present in a subtree. */
+/** Every `qc-` class the widget is wearing: its root's subtree, and its layer on the document body,
+ *  where a dialog stands over whatever the page stacks beside the widget. */
 const classCensus = (root: ParentNode): Set<string> => {
   const out = new Set<string>()
-  for (const el of root.querySelectorAll('[class]')) for (const c of el.classList) if (c.startsWith('qc-')) out.add(c)
+  const worn = [...root.querySelectorAll('[class]'), ...document.querySelectorAll('.qc-layer [class]')]
+  for (const el of worn) for (const c of el.classList) if (c.startsWith('qc-')) out.add(c)
   return out
 }
 
@@ -188,12 +194,19 @@ async function censusIn(mode: 'light' | 'dark', locale = 'en'): Promise<{ widget
   container.style.width = '900px'
   container.style.height = '500px'
   document.body.appendChild(container)
+  // The census counts the surfaces in the language it asked for, so it mounts on a catalog whose
+  // language has already landed, as a host that owns its catalog may. A widget made in a language
+  // still loading reads English until the chunk arrives, and the chrome answers that arrival by
+  // closing any open search dialog, as it answers every language change; mounting first would race
+  // the census against the chunk.
+  const i18n = createChartI18n()
+  await i18n.setLocale(locale)
   const widget = createChart({
     container,
     datafeed: feed,
     symbol: 'ES',
     timeframe: '1m',
-    locale: locale as never,
+    i18n,
     theme: { mode },
     features: { compareSymbols: [{ symbol: 'NQ', title: 'Nasdaq' }] },
     saveLoad: undefined,
@@ -239,7 +252,6 @@ beforeAll(() => {
 afterAll(() => {
   shim.uninstall()
 })
-
 // ── The matrix ──────────────────────────────────────────────────────────────────────────────────
 
 describe('every surface has its recipe and its states', () => {
@@ -271,7 +283,8 @@ describe('every recipe draws from the theme', () => {
       for (const rule of rulesOf(withoutMediaBlocks(text))) {
         for (const decl of rule.body.split(';')) {
           const [prop, ...rest] = decl.split(':')
-          const value = rest.join(':').trim()
+          // A declaration's priority is not part of its value.
+          const value = rest.join(':').replace(/!important\s*$/, '').trim()
           if (!prop || !value) continue
           const name = prop.trim()
           if (!/^(color|background|background-color|border|border-color|border-top-color|border-bottom-color|border-left-color|border-right-color|outline|outline-color|box-shadow|fill|stroke|caret-color)$/.test(name)) continue
@@ -302,7 +315,7 @@ describe('WCAG 2.2 AA contrast, computed from the theme vectors', () => {
 
   it('finds the pairs the recipes state outright', () => {
     expect(stated.length).toBeGreaterThan(5)
-    expect(stated.some((p) => p.ink === 'state.accent' && p.ground === 'state.selected')).toBe(true)
+    expect(stated.some((p) => p.ink === 'state.markInk' && p.ground === 'state.accent')).toBe(true)
   })
 
   const themes: { name: string; theme: SemanticTheme }[] = [
@@ -327,9 +340,9 @@ describe('WCAG 2.2 AA contrast, computed from the theme vectors', () => {
         expect(failures).toEqual([])
       })
 
-      it('state.accent over state.selected on chrome.surface reaches 4.5 to 1', () => {
-        const ratio = contrast(theme, 'state.accent', ['state.selected', 'chrome.surface'])
-        expect(Number(ratio!.toFixed(2))).toBeGreaterThanOrEqual(4.5)
+      it('state.accent reads as a mark on the chrome surface at 3 to 1', () => {
+        const ratio = contrast(theme, 'state.accent', ['chrome.surface'])
+        expect(Number(ratio!.toFixed(2))).toBeGreaterThanOrEqual(3)
       })
 
       for (const pair of INHERITED_PAIRS) {
@@ -383,7 +396,6 @@ describe('reading direction', () => {
     expect(physical).toEqual([
       'quickcharts.css: [data-qc-theme] .qc-menu-row text-align: left',
       'quickcharts.css: [data-qc-theme] .qc-menu-hint padding-left: 10px',
-      'quickcharts.css: [data-qc-theme] .qc-legend-scales margin-left: 4px',
     ])
   })
 
@@ -417,7 +429,12 @@ describe('the mounted widget in both modes', () => {
       // their own; every visual they carry comes from a sibling class. Pinned, so a new class the
       // stylesheet does not know is a conscious event.
       const unstyled = [...light.classes].filter((c) => !styled.has(c)).sort()
-      expect(unstyled).toEqual(['qc-clock-offset', 'qc-layout-menu', 'qc-layouts-menu', 'qc-layouts-recents', 'qc-picker-tag', 'qc-replay-start', 'qc-search-dialog--search', 'qc-session-menu', 'qc-tf-menu'])
+      // `qc-tf-spin-down` is a hook of that kind: the composer's two steps share `qc-tf-spin`, and
+      // only the UP step earns a rule, because it is the one drawn against the glyph's orientation.
+      // `qc-search-dialog--search` is one too: the row anatomy that reads ACROSS on fixed columns,
+      // where compare stacks its rows, is written on `qc-search-table`, which the surface itself
+      // wears in a dialog and in a page's own box alike, so the dialog's mode class only names it.
+      expect(unstyled).toEqual(['qc-clock-offset', 'qc-search-dialog--search', 'qc-tf-spin-down'])
       // The census reached the surfaces the matrix names: bars, menus, a dialog, the transport, a
       // notice region and the legend.
       for (const cls of ['qc-topbar', 'qc-bottombar', 'qc-menu-panel', 'qc-dialog', 'qc-search-dialog', 'qc-replay', 'qc-toasts', 'qc-legend', 'qc-tf-chips', 'qc-ranges']) {

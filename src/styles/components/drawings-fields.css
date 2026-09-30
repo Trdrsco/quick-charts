@@ -38,13 +38,6 @@
   cursor: default;
 }
 
-[data-qc-theme] .qc-drawing-check {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--qc-state-accent);
-}
-
 [data-qc-theme] .qc-drawing-select,
 [data-qc-theme] .qc-drawing-input,
 [data-qc-theme] .qc-drawing-number {
@@ -146,104 +139,148 @@
 [data-qc-theme] .qc-drawing-palette {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px;
+  padding: 12px;
+}
+
+/* Inside a panel that pads already, the palette pads the rest of the way rather than again. */
+[data-qc-theme] .qc-inline-panel > .qc-drawing-palette {
+  padding: 6px;
 }
 
 [data-qc-theme] .qc-drawing-swatches {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+}
+
+/* A block is a group of rows that stand together; the gap falls between blocks, never between the
+ * rows inside one, so the ten hues read as one field of colour rather than ten loose lines. The
+ * negative inline margin pulls the outer cells' own gutters back off the panel's padding. */
+[data-qc-theme] .qc-drawing-swatch-block {
+  margin: 0 -3px 6px;
 }
 
 [data-qc-theme] .qc-drawing-swatch-row {
   display: flex;
-  gap: 4px;
 }
 
+/* Each cell carries its own 3px gutter rather than the row spacing them, which leaves room inside
+ * the cell for the ring a chosen colour wears without moving its neighbours. */
 [data-qc-theme] .qc-drawing-swatch {
+  position: relative;
   width: 17px;
   height: 17px;
+  margin: 3px;
   padding: 0;
   background: var(--qcd-swatch);
   border: 0;
   border-radius: 2px;
-  box-shadow: inset 0 0 0 1px var(--qc-chrome-border);
   cursor: pointer;
-  transition: transform var(--qc-motion-durationFast) linear;
 }
 
-[data-qc-theme] .qc-drawing-swatch:hover {
-  transform: scale(1.1);
+/* A cell pale enough to vanish into the panel behind it says so, and takes the panel's own edge. */
+[data-qc-theme] .qc-drawing-swatch[data-qc-pale='true'] {
+  box-shadow: inset 0 0 0 1px var(--qc-chrome-border);
 }
 
-[data-qc-theme] .qc-drawing-swatch[data-qc-active='true'] {
-  box-shadow: inset 0 0 0 2px var(--qc-text-primary);
+/* The chosen colour is ringed from OUTSIDE, so the swatch keeps its whole face: a ring drawn
+ * inside would eat the colour it is pointing at, which is the one thing the reader is judging. */
+[data-qc-theme] .qc-drawing-swatch[data-qc-active='true']::after {
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--qc-text-primary);
+  border-radius: var(--qc-chrome-radius);
+  content: '';
 }
 
+/* The plus is two hairlines on the cell's own grid: a drawn cross lands dead centre where a glyph
+ * would ride high and left of it. The cell carries no fill and no outline of its own. */
 [data-qc-theme] .qc-drawing-swatch-plus {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--qc-text-muted);
   background: none;
-  border: 1px dashed var(--qc-chrome-borderStrong);
   box-shadow: none;
 }
 
-[data-qc-theme] .qc-drawing-swatch-plus[aria-expanded='true'] {
-  color: var(--qc-text-primary);
-  border-color: var(--qc-state-accent);
+[data-qc-theme] .qc-drawing-swatch-plus::before,
+[data-qc-theme] .qc-drawing-swatch-plus::after {
+  position: absolute;
+  inset: 8px 2px;
+  background: var(--qc-text-primary);
+  content: '';
+}
+
+[data-qc-theme] .qc-drawing-swatch-plus::before {
+  inset: 2px 8px;
+}
+
+/* The rule between the offered colours and the ones this viewer mixed. */
+[data-qc-theme] .qc-drawing-separator {
+  height: 1px;
+  margin: 6px 0 12px;
+  background: var(--qc-overlay-separator);
+}
+
+/* A quiet label over a section of the panel: the room above it is its own, so the panel holding
+ * it keeps no gap of its own to add to this. */
+[data-qc-theme] .qc-drawing-section-title {
+  margin: 12px 0 4px;
+  color: var(--qc-text-muted);
+  font-size: calc(var(--qc-text-fontSizeBase) - 2px);
 }
 
 [data-qc-theme] .qc-drawing-palette-opacity {
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
 [data-qc-theme] .qc-drawing-custom {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: 188px;
-  padding-top: 6px;
+  gap: 12px;
+  width: 224px;
 }
 
 [data-qc-theme] .qc-drawing-custom-row {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
+  height: 26px;
 }
 
 [data-qc-theme] .qc-drawing-custom-swatch {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   background: var(--qcd-swatch);
-  border-radius: 3px;
-  box-shadow: inset 0 0 0 1px var(--qc-chrome-border);
+  border-radius: 4px;
 }
 
 [data-qc-theme] .qc-drawing-hex-wrap {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   align-items: center;
+  width: 68px;
   min-width: 0;
-  height: 28px;
-  padding: 0 6px;
-  border: 1px solid var(--qc-chrome-border);
-  border-radius: var(--qc-chrome-radius);
+  height: 26px;
+  padding: 0 5px;
+  border: 1px solid var(--qc-chrome-grip);
+  border-radius: 4px;
 }
 
-[data-qc-theme] .qc-drawing-hex-wrap:focus-within {
-  border-color: var(--qc-state-accent);
+[data-qc-theme] .qc-drawing-hex-wrap > .qc-muted {
+  flex: 0 0 7px;
+}
+
+/* A field says it has the keyboard on its OWN box: its edge turns the ring colour, one line on the
+ * field's exact edge following its corner. A ring the browser draws would sit square outside a
+ * rounded field and belong to nothing. */
+[data-qc-theme] .qc-drawing-hex-wrap:focus-within,
+[data-qc-theme] .qc-drawing-opacity-readout:focus-visible {
+  border-color: var(--qc-state-focusRing);
 }
 
 [data-qc-theme] .qc-drawing-hex {
   width: 100%;
   min-width: 0;
-  padding: 0 4px;
+  padding: 0;
   color: var(--qc-text-primary);
   font: inherit;
   font-variant-numeric: tabular-nums;
@@ -252,22 +289,31 @@
   outline: none;
 }
 
+/* The Add button takes the colour the mixer is holding. It is sized to its own word and pushed to
+ * the end of the row; its fill and ink are the primary recipe's. */
 [data-qc-theme] .qc-drawing-add {
-  padding: 4px 8px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  margin-inline-start: auto;
+  padding: 0 7px;
 }
 
 [data-qc-theme] .qc-drawing-custom-tracks {
   display: flex;
-  gap: 6px;
+  gap: 7px;
 }
 
-/* The saturation and value square over the current hue, and the hue strip beside it. */
+/* The saturation and value square over the current hue, and the hue strip beside it. The square
+ * keeps square corners: the black it fades into is a second layer over its whole face, and a
+ * rounded corner would show the hue beneath it. */
 [data-qc-theme] .qc-drawing-sv {
   position: relative;
   flex: 1 1 auto;
-  height: 120px;
+  height: 184px;
   background: linear-gradient(to top, var(--qcd-black), transparent), linear-gradient(to right, var(--qcd-white), var(--qcd-hue));
-  border-radius: var(--qc-chrome-radius);
   cursor: crosshair;
 }
 
@@ -284,8 +330,8 @@
 
 [data-qc-theme] .qc-drawing-hue {
   position: relative;
-  flex: 0 0 14px;
-  height: 120px;
+  flex: 0 0 17px;
+  height: 184px;
   background: linear-gradient(
     to bottom,
     var(--qcd-hue-0) 0%,
@@ -296,7 +342,7 @@
     var(--qcd-hue-300) 83%,
     var(--qcd-hue-0) 100%
   );
-  border-radius: var(--qc-chrome-radius);
+  border-radius: 2px;
   cursor: pointer;
 }
 
@@ -311,17 +357,35 @@
   pointer-events: none;
 }
 
-/* The hue wheel's six stops and the two poles of the value axis are color arithmetic, not theme
- * roles: every mode paints the same wheel. They are stated once here as hsl functions of angle. */
-[data-qc-theme] .qc-drawing-custom {
+/* Black and white are the poles of the value axis the square fades between, and the two the
+ * opacity knob is drawn from. They are color arithmetic, not theme roles: every mode has them. */
+[data-qc-theme] .qc-drawing-custom,
+[data-qc-theme] .qc-drawing-opacity-row {
   --qcd-angle-0: 0deg;
+  --qcd-black: hsl(var(--qcd-angle-0) 0% 0%);
+  --qcd-white: hsl(var(--qcd-angle-0) 0% 100%);
+}
+
+/* What "see-through" is drawn as under the fade: a slate check at two fifths, the same in every
+ * mode, on the mode's own pole. It is the checker every image editor uses for nothing-here, so a
+ * low opacity reads as the drawing thinning out rather than as the track running out of paint. */
+[data-qc-theme] .qc-drawing-opacity-row {
+  --qcd-check-hue: 224deg;
+  --qcd-check: hsl(var(--qcd-check-hue) 15% 19% / 0.4);
+  --qcd-ground: var(--qcd-black);
+}
+
+[data-qc-theme='light'] .qc-drawing-opacity-row {
+  --qcd-ground: var(--qcd-white);
+}
+
+/* The hue wheel's six stops, stated once as hsl functions of angle. */
+[data-qc-theme] .qc-drawing-custom {
   --qcd-angle-60: 60deg;
   --qcd-angle-120: 120deg;
   --qcd-angle-180: 180deg;
   --qcd-angle-240: 240deg;
   --qcd-angle-300: 300deg;
-  --qcd-black: hsl(var(--qcd-angle-0) 0% 0%);
-  --qcd-white: hsl(var(--qcd-angle-0) 0% 100%);
   --qcd-hue-0: hsl(var(--qcd-angle-0) 100% 50%);
   --qcd-hue-60: hsl(var(--qcd-angle-60) 100% 50%);
   --qcd-hue-120: hsl(var(--qcd-angle-120) 100% 50%);
@@ -330,7 +394,7 @@
   --qcd-hue-300: hsl(var(--qcd-angle-300) 100% 50%);
 }
 
-/* The opacity slider fades a checkered track into the color. */
+/* The opacity slider fades a checked ground into the color being set. */
 [data-qc-theme] .qc-drawing-opacity-row {
   display: flex;
   gap: 8px;
@@ -338,41 +402,75 @@
 }
 
 [data-qc-theme] .qc-drawing-opacity {
-  width: 144px;
-  height: 14px;
+  flex: 1 1 auto;
+  width: auto;
+  height: 10px;
   margin: 0;
-  background: linear-gradient(to right, transparent, var(--qcd-swatch)), repeating-conic-gradient(var(--qc-chrome-border) 0% 25%, var(--qc-chrome-surfaceRaised) 0% 50%) 0 0 / 8px 8px;
-  border-radius: 7px;
+  /* Three layers, top down: the fade into the color, the 8px check it fades over (two 4px squares
+   * to a tile, top left and bottom right), and the ground the check stands on. */
+  background:
+    linear-gradient(to right, transparent, var(--qcd-swatch)),
+    repeating-conic-gradient(from 270deg, var(--qcd-check) 0% 25%, transparent 0% 50%) 1px 50% / 8px 8px,
+    var(--qcd-ground);
+  border: 1px solid var(--qcd-swatch);
+  border-radius: 5px;
+  outline: none;
   appearance: none;
   accent-color: var(--qc-state-accent);
 }
 
+/* The thumb is a disc a hand can take: it says so with the pointer cursor, and it is drawn from
+ * the two poles rather than from the theme, so it reads at both ends of the fade in either mode. */
 [data-qc-theme] .qc-drawing-opacity::-webkit-slider-thumb {
-  width: 14px;
-  height: 14px;
-  background: var(--qc-text-primary);
-  border: 2px solid var(--qc-chrome-surface);
+  width: 12px;
+  height: 12px;
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
   border-radius: 50%;
+  box-shadow: 0 1px 2px hsl(var(--qcd-angle-0) 0% 0% / 0.5);
+  cursor: pointer;
   appearance: none;
 }
 
 [data-qc-theme] .qc-drawing-opacity::-moz-range-thumb {
   width: 12px;
   height: 12px;
-  background: var(--qc-text-primary);
-  border: 2px solid var(--qc-chrome-surface);
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
   border-radius: 50%;
+  box-shadow: 0 1px 2px hsl(var(--qcd-angle-0) 0% 0% / 0.5);
+  cursor: pointer;
+}
+
+/* The readout is a FIELD beside the track: outlined rather than washed, because it is a number a
+ * trader types over and not a chip the panel is showing them. */
+[data-qc-theme] .qc-drawing-opacity-field {
+  position: relative;
+  flex: 0 0 auto;
 }
 
 [data-qc-theme] .qc-drawing-opacity-readout {
+  width: 47px;
+  height: 26px;
+  padding: 0 14px 0 5px;
+  color: var(--qc-text-primary);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  background: none;
+  border: 1px solid var(--qc-chrome-grip);
+  border-radius: 4px;
+  outline: none;
+}
+
+/* The unit sits in the room the field keeps at its end, so a typed number never runs under it. */
+[data-qc-theme] .qc-drawing-opacity-unit {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 5px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 24px;
-  font-variant-numeric: tabular-nums;
-  background: var(--qc-chrome-surfaceRaised);
-  border-radius: var(--qc-chrome-radius);
+  color: var(--qc-text-primary);
+  pointer-events: none;
 }
 
 /* The swatch button: a well holding the color, and for a stroke, the stroke at its thickness. */
@@ -410,13 +508,13 @@
 }
 
 [data-qc-theme] .qc-drawing-swatch-panel > .qc-muted {
-  padding: 0 8px;
+  padding: 0 12px;
 }
 
 [data-qc-theme] .qc-drawing-option-row {
   display: flex;
   gap: 4px;
-  padding: 0 8px;
+  padding: 0 12px;
 }
 
 [data-qc-theme] .qc-drawing-option {
@@ -454,6 +552,12 @@
   height: 34px;
   padding: 0;
   cursor: pointer;
+}
+
+/* A line end's glyph is drawn for the left end; the right end's picker wears it mirrored. */
+[data-qc-theme] .qc-drawing-line-end[data-qc-end='right'] > svg,
+[data-qc-theme] .qc-drawing-menu[data-qc-end='right'] .qc-menu-row > svg {
+  transform: scaleX(-1);
 }
 
 /* The dialog's page strip: equal tabs, each with its own rail segment, the active one bright. */
@@ -593,11 +697,18 @@
   padding: 0;
 }
 
+/* A row of cells wider than the dialog slides sideways under the pointer already on it; a bar
+ * beneath it would be chrome the table does not own. */
 [data-qc-theme] .qc-drawing-table {
   display: flex;
   flex-direction: column;
   gap: 4px;
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+[data-qc-theme] .qc-drawing-table::-webkit-scrollbar {
+  display: none;
 }
 
 [data-qc-theme] .qc-drawing-table-row {

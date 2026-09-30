@@ -6,9 +6,8 @@
 // and this file is the wiring between them plus the handle they add up to. The rule that shapes it:
 // a plane never reaches into another plane's state, it asks this file, and this file owns the
 // mutable truth (the symbol, the timeframe, the style, the bars, the scale) that more than one
-// plane reads. The chart also mounts its own per-chart chrome (the navigation cluster, the replay
-// transport while replay is on) and knocks on the widget chrome's doors for the surfaces it does
-// not own: the search dialog and the indicator settings dialog.
+// plane reads. The chart mounts its own navigation cluster and knocks on the widget chrome's doors
+// for surfaces it does not own: the replay row, search dialog and indicator settings dialog.
 //
 // TWO SERIES, and the split is what makes a style switch cheap. The ANCHOR is an invisible line of
 // closes that lives as long as the chart: drawings, session bands, marks, the extension seam and
@@ -33,35 +32,47 @@ import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from '../scaleMode'
 import { createPriceFormatter, type PriceFormatter } from '../priceFormatter'
 import type { PriceFormat, SymbolInfo } from '../symbology'
 import type { ChartI18n } from '../i18n'
-import type { ChartExtension } from '../extension'
-import type { CompareSymbol } from '../compare'
+import type { ChartExtension, ChartExtensionHost } from '../extension'
+import type { CompareEntry, CompareSymbol } from '../compare'
 import type { ThemeController } from '../theme/controller'
 import { canvasTheme, type CanvasTheme } from '../theme/renderer'
-import type { CommandRegistry } from './commands'
+import type { CommandExecutor, CommandRegistry } from './commands'
 import { createEmitter, type ChartEvents, type SaveConflictInfo } from './events'
 import type { AccessPolicy, Capabilities, ChartPreferences, IndicatorInstance } from './options'
-import type { ResolvedFeatures } from './planes'
+import type { ResolvedFeatures, ResolvedUi } from './planes'
+import type { IconResolver } from '../ui/icons/resolver'
 import { addStyleSeries, coerceChartStyle, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
-import { createRangeApi, type LogicalRange, type RangeApi, type TimeRange } from './ranges'
-import { frameRange, scrolledPosition, zoomedBarSpacing } from '../ranges'
+import { createBaselineLevel } from './baselineLevel'
+import {
+  captureTimelineContinuity,
+  registerChartRangeMirror,
+  createRangeApi,
+  restoreTimelineContinuity,
+  type LogicalRange,
+  type RangeApi,
+  type TimeRange,
+} from './ranges'
+import { frameRange, rangeSpanSeconds, scrolledPosition, zoomedBarSpacing, type RangeSpan } from '../ranges'
 import { attachSession } from './session'
 import { attachDrawingsPlane, type ChartDrawingsApi } from './drawings'
 import type { DrawingDocumentApi } from '../drawings/layer/types'
 import type { DrawingDocumentPort } from '../drawings/layer/documents'
-import { attachIndicatorsPlane, type IndicatorsPlane } from './indicators'
+import { attachIndicatorsPlane, type IndicatorCatalog, type IndicatorsPlane } from './indicators'
+import { attachHistoryPlane, type ChartHistoryApi } from './history'
 import { attachComparePlane, type ChartCompareApi } from './compare'
 import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './replay'
 import { attachExtensionsPlane } from './extensions'
 import { attachLegendPlane } from './legend'
 import { attachMenuPlane } from './menu'
+import { symbolNames } from '../symbolLabel'
 import { attachPointerPlane } from './pointer'
 import { attachMarks } from './marks'
 import type { ChromeDoors } from '../ui/chrome/doors'
 import { mountNavControls } from '../ui/chrome/navControls'
-import { mountReplayTransport, type ReplayTransportHandle } from '../ui/chrome/replayBar'
-import { closeOverlays } from '../ui/chrome/overlays'
-import { createSaveLoadApi, type ChartSaveLoadApi, type ParsedChartContent } from './saveLoad'
+import { closeOverlays } from '../ui/controls/overlays'
+import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
+import { attachCountdown, createCountdownClock, type CountdownLayer } from './countdown'
 import {
   DEFAULT_TIMEZONE,
   isTimezoneChoice,
@@ -69,7 +80,7 @@ import {
   makeTickMarkFormatter,
   resolveDisplayTimezone,
 } from '../timezones'
-import { isIntradayTimeframe } from '../timeframe'
+import { isIntradayTimeframe, parseTimeframe, timeframeSeconds } from '../timeframe'
 import { DEFAULT_SUBSESSION, type ActiveSubsession, type MarketStatus } from '../sessionModel'
 import {
   DEFAULT_DRAWING_PREFERENCES,
@@ -79,6 +90,7 @@ import {
   type DrawingAssetPort,
   type DrawingPreferences,
 } from '../drawings/index'
+import type { MarkPainters } from '../markPainters'
 
 /** The price format the chart writes with while the symbol is unresolved: cents. A DECLARED
  *  stand-in for the moment between mount and the resolve landing (and for a feed that answers
@@ -93,6 +105,28 @@ const SNAPSHOT_BARS = 300
 const PAGE_BARS = 500
 /** How close to the left edge (in bars) the visible range must get before the next page is fetched. */
 const PAGE_TRIGGER_BARS = 60
+/** How many consecutive pages ONE approach of the left edge may fetch without the viewer moving
+ *  again. Four pages is 2,000 bars: enough to fill a wide or fast-panned window that a single page
+ *  leaves short, and a hard ceiling on the work any one range report can start. A run that spends
+ *  it stops, and the next approach opens a new one. */
+const PAGE_RUNWAY = 4
+/** How deep replay's first available date walks: the most bars one replay session holds. A feed
+ *  that serves more starts the session at the oldest bar within this depth. */
+const REPLAY_DEPTH = 20_000
+/** The page that walk asks for: larger than scrolling's, so a deep walk takes few round trips. */
+const REPLAY_PAGE_BARS = 2_000
+/** The most bars one ask for a range preset's span may name. */
+const SPAN_PAGE_MAX_BARS = 4_000
+
+/** The bars a preset's span covers at its interval, with room past the paging trigger so framing
+ *  the span does not start a page at once. Null for a span with no length, or an interval with no
+ *  bar width. */
+function barsForSpan(span: RangeSpan, tf: string): number | null {
+  const secs = rangeSpanSeconds(span, Math.floor(Date.now() / 1000))
+  const parsed = parseTimeframe(tf)
+  if (secs === null || !parsed || parsed.unit === 't') return null
+  return Math.min(SPAN_PAGE_MAX_BARS, Math.ceil(secs / timeframeSeconds(parsed)) + PAGE_TRIGGER_BARS + 20)
+}
 
 /** Apply a live bar event to an ascending series: mutate the last bar (same bucket time), append
  *  (newer), or drop a stale update (older than the last bar; never splice history). Returns the new
@@ -146,6 +180,10 @@ export interface ChartHandle {
   id: string
   symbol(): string
   setSymbol(symbol: string): void
+  /** The market as the FEED resolved it, or null while nothing has resolved yet. What a surface
+   *  reads to WRITE the symbol: the ticker alone cannot say what a pair is priced in, and a host
+   *  that guessed from the string would be inventing a quote the feed never stated. */
+  symbolInfo(): SymbolInfo | null
   timeframe(): string
   setTimeframe(timeframe: string): void
   style(): ChartStyleId
@@ -153,6 +191,8 @@ export interface ChartHandle {
    *  drawings, comparisons and visible range all survive. */
   setStyle(id: ChartStyleId): void
   visibleRange(): TimeRange | null
+  /** The range preset currently framing this chart, or null after other navigation. */
+  rangePreset(): string | null
   setVisibleRange(range: TimeRange): void
   logicalRange(): LogicalRange | null
   setLogicalRange(range: LogicalRange): void
@@ -196,6 +236,9 @@ export interface ChartHandle {
   drawingResources: DrawingDocumentApi | null
   compare: ChartCompareApi
   replay: ChartReplayApi
+  /** Stepping back and forward through this chart's own content. Each step is one reading of the
+   *  content, so a step back puts the whole reading back rather than reversing one verb. */
+  history: ChartHistoryApi
   /** The EFFECTIVE appearance tree: the mode's floor, the constructor partial, then every runtime
    *  layer. */
   appearance(): ChartOverrides
@@ -213,13 +256,28 @@ export interface ChartHandle {
 /** How ONE chart's drawings are stored, as the widget resolved it. `chartKey` is the chart's place
  *  in the layout, which is the identity a document outlives a re-tile and a reload by; the mode is
  *  the widget's construction-time choice, and there is no path between the two. */
-export type ChartDrawingPersistence = { chartKey: string } & ({ mode: 'combined' } | { mode: 'separate'; documents: DrawingDocumentPort })
+export interface ChartEntityIdentity { current(): string; set(value: string): void }
+export type ChartDrawingPersistence = { identity: ChartEntityIdentity } & ({ mode: 'combined' } | { mode: 'separate'; documents: DrawingDocumentPort })
 
 /** What the widget hands one chart. */
 export interface ChartInstanceDeps {
+  beginHydration?: () => () => void
+  /** Report a committed change to this chart's CONTENT, for a surface that changes content without
+   *  writing a preference key. Every other content change reaches the widget's debounced
+   *  save-needed through the wrapped storage port; appearance has no key of its own, so it says so
+   *  here. Hydration-aware and debounced by the widget, exactly as a key write is. */
+  contentChanged?: () => void
   id: string
+  /** Whether this chart is the widget's active chart, the widget's own fact. */
+  active(): boolean
   /** The pane element this chart fills. The chart creates its own boxes inside it. */
   container: HTMLElement
+  /** The widget's layer on the document body, themed as the root is. The level menu mounts here
+   *  rather than in this pane's own chrome: it stands over every pane and over whatever the page
+   *  stacks around the widget, at viewport coordinates. */
+  layer: HTMLElement
+  /** An external widget-level rail replaces the internal per-chart rail. */
+  externalDrawingToolbar?: boolean
   datafeed: ChartDatafeed
   saveLoad: ChartSaveLoadAdapter | null
   /** Where this chart's drawings are stored. */
@@ -229,14 +287,24 @@ export interface ChartInstanceDeps {
   i18n: ChartI18n
   theme: ThemeController
   features: ResolvedFeatures
+  /** Which of the chart's own controls render. */
+  ui: ResolvedUi
+  /** Draws every glyph the chart's own surfaces draw. */
+  icons: IconResolver
   /** The curated quick-add rows the compare dialog offers. */
   compareSymbols: readonly CompareSymbol[]
   access?: AccessPolicy
   appearance?: PartialOverrides
   indicators: readonly IndicatorInstance[]
+  /** Private safe presentation copied when the layout creates a sibling. */
+  compares?: readonly CompareEntry[]
+  /** Definitions carried by any chart in this widget, shared so a saved tile can resolve them. */
+  indicatorCatalog: IndicatorCatalog
   extensions: readonly ChartExtension[]
   marks: boolean
   commands: CommandRegistry
+  /** This chart's private command target for an origin-bound widget-owned transport. */
+  replayCommands: CommandExecutor
   /** Where the image and glyph drawing tools get their artwork. */
   assets?: DrawingAssetPort
   preferences: Partial<ChartPreferences>
@@ -252,12 +320,21 @@ export interface ChartInstanceDeps {
   capabilities(): Capabilities
   /** Charts in the layout, read live; the drawing toolbar offers sync only past one. */
   chartCount(): number
+  /** The host's mark painters, as the widget resolved them. The legend paints its badge with the
+   *  market's, and an extension reads the same value, so a split carries a badge on each chart
+   *  rather than one over the grid, and a notice wears what the legend wears. */
+  painters: MarkPainters
+  /** Whether a tile fills the layout now, so the on-chart control wears the mark for what it would
+   *  do next. */
+  layoutMaximized(): boolean
+  drawingToolIntent?: { shared(arg: unknown): void; state(tool: string | null): void }
   /** The widget chrome's doors: the search dialog and the indicator settings dialog. The object is
    *  filled once the chrome mounts and answers honestly before that. */
   doors: ChromeDoors
 }
 
 export interface ChartInstance {
+  mountDrawingToolbar(container: HTMLElement | null): void
   handle: ChartHandle
   /** The whole chart as one bitmap: the plot area with its axes, crosshair and every indicator
    *  pane. The renderer composes it; tiling a single series canvas would ship a picture missing
@@ -269,6 +346,14 @@ export interface ChartInstance {
   relabel(): void
   /** The layout's chart count moved: the surfaces that read it re-render. */
   layoutChanged(): void
+  /** Run the contributed row bound to a press, at the level under a viewport point on THIS chart.
+   *  The widget resolves which chart the pointer is over; this one answers only for itself. */
+  runShortcutAt(clientX: number, clientY: number, pressed: string): boolean
+  applyDrawingToolIntent(arg: unknown): void
+  /** Private layout transaction hook. Public handles never expose persistence identity. */
+  rebindDrawingIdentity(id: string): void
+  /** The widget activated this chart, or another one. Reaches every attached extension. */
+  activeChanged(active: boolean): void
   dispose(): void
 }
 
@@ -279,11 +364,18 @@ const SYMBOL_KEY = 'quickcharts.symbol.v1'
 const TF_KEY = 'quickcharts.tf.v1'
 const STYLE_KEY = 'quickcharts.style.v1'
 const SCALE_KEY = 'quickcharts.scale.v1'
+const PRICE_AXIS_KEY = 'quickcharts.priceAxis.v1'
 const HIDDEN_KEY = 'quickcharts.indHidden.v1'
 const REPLAY_SPEED_KEY = 'quickcharts.replaySpeed.v1'
 const REPLAY_INTERVAL_KEY = 'quickcharts.replayIv.v1'
 const TIMEZONE_KEY = 'quickcharts.timezone.v1'
 const SUBSESSION_KEY = 'quickcharts.subsession.v1'
+
+function sameIds(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) return false
+  const ids = new Set(left)
+  return right.every((id) => ids.has(id))
+}
 
 export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const { datafeed, storage, i18n } = deps
@@ -310,6 +402,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let unsubscribe: (() => void) | null = null
   let noMoreHistory = false
   let paging = false
+  /** How many bars the next load's first page asks for: a preset that switches the interval sizes
+   *  it to its span, so the first paint can frame the whole span. */
+  let firstPageBars = SNAPSHOT_BARS
   let ready = false
   /** The feed's last reported status for this subscription; null until it has spoken. */
   let feedStatus: string | null = null
@@ -321,15 +416,20 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   /** The feed's stated depth of history for the symbol (epoch seconds of its earliest bar), or
    *  null while unknown: the range presets withhold nothing on an unknown depth. */
   let earliestBarSecs: number | null = null
-  /** The transport bar while replay is on, mounted by this chart from the plane's change signal
-   *  so the replay plane owns no DOM. */
-  let replayBar: ReplayTransportHandle | null = null
   /** THE price formatter: one per symbol, in the chart's language. The price scale, the crosshair
    *  and last-price labels, the legend rows, the level menu, the drawing labels, the study scales
    *  and the extension seam all write through it, so no surface carries its own precision. */
   let symbolFormatter: PriceFormatter = createPriceFormatter(UNRESOLVED_PRICE_FORMAT, { locale: i18n.tag() })
   /** Increments on every symbol or timeframe switch and at dispose; stale async work checks it. */
   let epoch = 0
+  /** True once the load epoch on screen has painted its own history answer, or has been refused.
+   *  A range preset asked before that has nothing to measure a span against. */
+  let historyPainted = false
+  /** A range preset asked while the current load epoch still has no data: the span it wants, held
+   *  until that load's FIRST paint frames it, once, in place of the default fit. It is bound to the
+   *  epoch it was issued under, so a newer preset, a symbol switch, a refused load or disposal
+   *  drops it rather than framing a picture nobody asked for. */
+  let pendingFrame: { epoch: number; span: RangeSpan; tf: string } | null = null
   /** The level the open menu was raised at, so a copy runs on that and not on wherever the pointer
    *  wandered to while the menu was up. */
   let menuLevel: number | null = null
@@ -340,6 +440,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // ── The appearance ladder. Floor: the built-in defaults, tinted by the mode's series pair, with
   // candle borders left INVISIBLE until some layer names a border color. Above it: the host's
   // constructor partial, then every runtime layer.
+  // The VIEWER's own leaves, and only those. It has no preference key: saved chart content is the
+  // single authority on an authored look, so a second device-wide copy here would be a second
+  // writer of the same fact and would stamp a loaded layout's look onto the device.
   let runtimePartial: PartialOverrides = {}
   const canvas = (): CanvasTheme => canvasTheme(deps.theme.get())
   const themeFloor = (): ChartOverrides => {
@@ -370,6 +473,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   gestures.className = 'qc-gestures'
   const chrome = document.createElement('div')
   chrome.className = 'qc-chrome'
+  if (deps.ui.drawingToolbar && !deps.externalDrawingToolbar) {
+    gestures.dataset.qcDrawingToolbar = 'true'
+    chrome.dataset.qcDrawingToolbar = 'true'
+  }
   deps.container.append(gestures, chrome)
 
   const chart: IChartApi = createRenderer(gestures, {
@@ -388,7 +495,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       vertLines: { color: canvas().grid, visible: eff.appearance.grid },
       horzLines: { color: canvas().grid, visible: eff.appearance.grid },
     },
-    crosshair: { mode: CrosshairMode.Normal },
+    crosshair: { mode: deps.features.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden },
     rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.08 } },
     timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 8, minBarSpacing: 0.5 },
   })
@@ -402,9 +509,103 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     crosshairMarkerVisible: false,
   })
   let series: ISeriesApi<SeriesType> = addStyleSeries(chart, style, paint())
-  const volume: ISeriesApi<'Histogram'> = chart.addSeries(HistogramSeries, { priceFormat: { type: 'volume' }, priceScaleId: 'volume' })
+  // The Baseline style's base is a screen level, not a price, so it is re-derived while that style
+  // is the one on screen and never written into saved content.
+  const baselineLevel = createBaselineLevel({ paneHeight: () => chart.paneSize().height })
+  if (style === 'baseline') baselineLevel.follow(series)
+  // THE VOLUME HISTOGRAM IS THE `volume` INDICATOR'S BODY, not chart furniture. The catalog carries
+  // the study (its MA plots pin to this same band's scale); the bars themselves are drawn here,
+  // because they are per-bar chart data rather than a computed series. So the presence of a
+  // non-hidden `volume` instance is what shows them, and its `colorPrevClose` input is what colours
+  // them. Drawn unconditionally, they were a second volume nobody could remove: bars at the foot of
+  // a chart whose owner never asked for them, with no legend row, no eye and no ✕.
+  const volume: ISeriesApi<'Histogram'> = chart.addSeries(HistogramSeries, {
+    priceFormat: { type: 'volume' },
+    priceScaleId: 'volume',
+    visible: false,
+  })
   chart.priceScale('volume').applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } })
+  /** The showing `volume` instance, or null when none is configured or it is hidden. */
+  const volumeInstance = (): IndicatorInstance | null =>
+    indicators.list().find((i) => i.definition.manifest.id === 'volume' && !indicators.isHidden(i.id)) ?? null
+  /** Bar colours: the study's own rule when it asks for it (this close against the PREVIOUS one),
+   *  else the chart's up/down by the bar's own body. */
+  const volumeColors = (bars: readonly FeedBar[]): string[] => {
+    const inst = volumeInstance()
+    const prevClose = (inst?.inputs?.colorPrevClose ?? inst?.definition.manifest.inputs?.colorPrevClose?.default ?? 0) === 1
+    const up = eff.appearance.upColor
+    const down = eff.appearance.downColor
+    return bars.map((b, i) => {
+      const ref = prevClose ? bars[i - 1]?.c : b.o
+      return ref == null || b.c >= ref ? up : down
+    })
+  }
+  /** Show or hide the band with the study, and repaint its bars when it appears or its rule moves. */
+  const syncVolume = (): void => {
+    const on = volumeInstance() != null
+    volume.applyOptions({ visible: on })
+    if (on) paintVolume()
+  }
+  function paintVolume(): void {
+    const bars = shownBars()
+    const colors = volumeColors(bars)
+    volume.setData(bars.map((b, i) => ({ time: b.t as UTCTimestamp, value: b.v, color: colors[i]! })))
+  }
   if (scaleMode !== 'normal') chart.priceScale('right').applyOptions({ mode: PRICE_SCALE_MODE[scaleMode] })
+  /** The policy the viewer chose, held as intent until there are bars to hold. A manual axis with
+   *  no bars behind it would keep the renderer's default bounds, and every bar of a market priced
+   *  outside them would stand off the pane: a blank chart under a legend that reads the data. So the
+   *  renderer is told to stop framing only once a history has painted and framed the market, and
+   *  a load that brings a new symbol or timeframe frames first for the same reason. */
+  let heldPolicy: PriceAxisPolicy = coercePriceAxisPolicy(storage.get(PRICE_AXIS_KEY))
+
+  /** Whether the price axis is framing itself or holding what the viewer stretched it to. The
+   *  renderer's own price scale is the truth, because a drag on the axis is what turns framing off
+   *  and no event announces it; reading the option means a manual axis is caught however it was
+   *  reached. It is INDEPENDENT of the scale mode: regular, log, percent and indexed each frame
+   *  either way, and neither setting moves the other. Until the first history has framed, the
+   *  answer is the held intent, since the renderer has not yet been asked to hold anything. */
+  const priceAxisPolicy = (): PriceAxisPolicy =>
+    historyPainted && bars.length > 0 ? (chart.priceScale('right').options().autoScale ? 'auto' : 'manual') : heldPolicy
+
+  /** Move the policy and remember it. The exact bounds are deliberately not carried: they are this
+   *  device's view of this market, and a saved chart states the POLICY the viewer chose. A manual
+   *  policy reaches the renderer once bars stand behind it; before that it is held as intent. */
+  function applyPriceAxisPolicy(next: PriceAxisPolicy): void {
+    if (disposed) return
+    heldPolicy = next
+    storage.set(PRICE_AXIS_KEY, next)
+    if (historyPainted && bars.length > 0) chart.priceScale('right').applyOptions({ autoScale: next === 'auto' })
+  }
+
+  /** The first paint of a history frames the market, and only then is a held manual policy handed
+   *  to the renderer: the bounds it holds are the frame it just drew, never bounds from before the
+   *  bars existed. The renderer frames in its own render pass and says so through the price scale's
+   *  visible range, which is null until a frame has happened and then states the prices on screen.
+   *  The hold waits, one animation frame at a time, until that range exists and covers the bars it
+   *  is asked to hold; a range the bars fall outside is a frame of some other data, never held. A
+   *  new load or disposal withdraws a hold still waiting. */
+  let holdFrame: number | null = null
+  const HOLD_FRAMES = 120
+  function holdAxisAfterFrame(): void {
+    if (holdFrame !== null) window.cancelAnimationFrame(holdFrame)
+    holdFrame = null
+    if (heldPolicy !== 'manual') return
+    let left = HOLD_FRAMES
+    const attempt = (): void => {
+      holdFrame = null
+      if (disposed || heldPolicy !== 'manual') return
+      const shown = shownBars()
+      const range = chart.priceScale('right').getVisibleRange()
+      const framed = shown.length > 0 && range !== null && shown.some((b) => b.l <= range.to && b.h >= range.from)
+      if (framed) {
+        chart.priceScale('right').applyOptions({ autoScale: false })
+        return
+      }
+      if (--left > 0) holdFrame = window.requestAnimationFrame(attempt)
+    }
+    holdFrame = window.requestAnimationFrame(attempt)
+  }
 
   /** The style series when it is candle-shaped. A study that recolors bar bodies needs a series that
    *  has bodies; the other five styles answer null rather than a series that cannot take the paint. */
@@ -423,10 +624,52 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const formatKey = (): string => `${JSON.stringify(symbolFormat ?? UNRESOLVED_PRICE_FORMAT)}@${i18n.tag()}`
   const minMove = (): number => minMoveOf(symbolFormat ?? UNRESOLVED_PRICE_FORMAT)
 
-  // ── The sync bus. Driving a chart through the setters MUTES its own subscriptions for the
-  // duration, so a layout mirroring chart A onto chart B never hears B echo the change back. The
-  // renderer fires these synchronously, which is what makes the flag work.
+  // ── The sync bus. Maintenance writes are muted for their immediate renderer reports. A layout
+  // mirror additionally owns its next accepted time report, because a renderer may publish that
+  // report after its setter returns. Public navigation clears that ownership before it writes.
   let syncMuted = false
+  let mirrorEpoch = 0
+  let mirrorOwner: number | null = null
+  let mirrorReleaseFrame: number | null = null
+  const releaseMirror = (): void => {
+    mirrorOwner = null
+    if (mirrorReleaseFrame !== null) window.cancelAnimationFrame(mirrorReleaseFrame)
+    mirrorReleaseFrame = null
+  }
+  /** Ownership of the renderer invalidation written solely to compensate for a timeline mutation.
+   * Lightweight Charts may settle different bounds and publish logical and timestamp views later.
+   * The chart and navigation-intent epochs distinguish that work from a newer motion without
+   * guessing from the report's span or endpoints. */
+  let maintenanceRange: {
+    epoch: number
+    navigationEpoch: number
+    logicalReported: boolean
+    timeReported: boolean
+  } | null = null
+  let navigationEpoch = 0
+  let selectedRangePreset: string | null = null
+  const setRangePreset = (key: string | null): void => {
+    if (selectedRangePreset === key) return
+    selectedRangePreset = key
+    events.emit('rangePreset', key)
+  }
+  const currentMaintenance = (): NonNullable<typeof maintenanceRange> | null => {
+    if (maintenanceRange && (maintenanceRange.epoch !== epoch || maintenanceRange.navigationEpoch !== navigationEpoch))
+      maintenanceRange = null
+    return maintenanceRange
+  }
+  const finishMaintenanceReport = (kind: 'logical' | 'time'): void => {
+    if (!maintenanceRange) return
+    if (kind === 'logical') maintenanceRange.logicalReported = true
+    else maintenanceRange.timeReported = true
+    if (maintenanceRange.logicalReported && maintenanceRange.timeReported) maintenanceRange = null
+  }
+  const beginNavigation = (): void => {
+    navigationEpoch++
+    maintenanceRange = null
+    releaseMirror()
+    setRangePreset(null)
+  }
   const muted = (write: () => void): void => {
     syncMuted = true
     try {
@@ -435,11 +678,32 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       syncMuted = false
     }
   }
+  const mirrored = (write: () => void): void => {
+    const owner = ++mirrorEpoch
+    mirrorOwner = owner
+    if (mirrorReleaseFrame !== null) window.cancelAnimationFrame(mirrorReleaseFrame)
+    try {
+      muted(write)
+      // Lightweight Charts applies time-scale invalidations in its queued animation frame. Its
+      // mask coalesces rapid ApplyRange writes and equal ranges can publish nothing, so ownership
+      // belongs to that render batch rather than to an assumed callback count. This frame is
+      // requested after the setter queued its own; it releases the batch whether it emitted once
+      // or not at all.
+      mirrorReleaseFrame = window.requestAnimationFrame(() => {
+        if (mirrorOwner === owner) mirrorOwner = null
+        mirrorReleaseFrame = null
+      })
+    } catch (error) {
+      if (mirrorOwner === owner) releaseMirror()
+      throw error
+    }
+  }
   const crosshairSubs = new Set<(time: number | null) => void>()
   const timeClickSubs = new Set<(time: number) => void>()
   const rangeSubs = new Set<(range: TimeRange) => void>()
 
-  const ranges: RangeApi = createRangeApi({ chart, disposed: disposedFn, muted })
+  const ranges: RangeApi = createRangeApi({ chart, disposed: disposedFn, muted, mirrored })
+  let unregisterRangeMirror = (): void => undefined
 
   /** Resolve the viewer's timezone CHOICE against the symbol on screen and re-label the axis and
    *  the crosshair through it. Both formatters carry the widget's locale tag, so the month a tick
@@ -459,9 +723,16 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   function applyScaleMode(next: ScaleMode): void {
     if (disposed || next === scaleMode) return
     scaleMode = next
+    // The renderer frames the axis again whenever the mode moves, which would make choosing a
+    // logarithmic axis silently discard the bounds the viewer stretched it to. The mode is how
+    // price maps to pixels and the policy is whether the axis re-frames at all: two settings, and
+    // moving one must not move the other, so the policy is held across the mode write. It takes a
+    // second call, because the renderer turns framing back on as part of applying the mode and
+    // would swallow an `autoScale` asked for in the same one.
+    const held = priceAxisPolicy()
     chart.priceScale('right').applyOptions({ mode: PRICE_SCALE_MODE[next] })
+    if (held === 'manual') chart.priceScale('right').applyOptions({ autoScale: false })
     storage.set(SCALE_KEY, next)
-    legend.syncScale(next)
     events.emit('scaleMode', next)
   }
 
@@ -476,12 +747,17 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     i18n,
     formatter: () => symbolFormatter,
     formatKey,
+    volumePrecision: () => symbolInfo?.volumePrecision ?? 0,
     minMove,
     canvas,
     access: deps.access,
     disposed: disposedFn,
-    onChips: () => legend.push(),
+    onChips: () => {
+      syncVolume()
+      legend.push()
+    },
     onEvent: (event) => events.emit('indicator', event),
+    catalog: deps.indicatorCatalog,
   })
 
   const session = attachSession({
@@ -508,12 +784,16 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         openSearch: (mode, changeFrom, onPick) => deps.doors.openSearch({ mode, chart: handle, changeFrom, onPick }),
         symbol: () => symbol,
         timeframe: () => tf,
-        mainWindow: () => (bars.length ? { from: bars[0]!.t, to: bars[bars.length - 1]!.t } : null),
+        mainWindow: () => {
+          const painted = shownBars()
+          return painted.length ? { from: painted[0]!.t, to: painted[painted.length - 1]!.t } : null
+        },
         scaleMode: () => scaleMode,
         applyScaleMode,
         curated: deps.compareSymbols,
         enabled: true,
         disposed: disposedFn,
+        maintainTimeline,
         onChips: () => legend.push(),
         onEvent: (entries) => events.emit('compare', entries),
       })
@@ -524,14 +804,25 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     chart,
     chrome,
     i18n,
-    enabled: deps.features.legend,
-    marketStatus: deps.features.marketStatus,
+    icons: deps.icons,
+    enabled: deps.ui.legend,
+    marketStatus: deps.ui.marketStatus,
+    symbolSearch: deps.ui.symbolSearch,
+    openSearch: () => deps.doors.openSearch({ mode: 'search', chart: handle }),
     indicators,
     compare,
-    scaleMode: () => scaleMode,
+    // The market as the FEED resolved it, the bars actually on screen, and the chart's one
+    // formatter: the legend states what this chart knows, never a second lookup of its own.
+    symbolInfo: () => symbolInfo,
+    bars: () => shownBars(),
+    formatter: () => symbolFormatter,
+    replayPhase: () => replay.api.phase(),
+    valueShaped: () => valueShaped(style),
     sessionModel: () => session.model(),
     status: (nowSecs) => session.status(nowSecs),
     openIndicatorSettings: (id) => deps.doors.openIndicatorSettings(handle, id),
+    legendValues: deps.ui.legendValues,
+    painters: deps.painters,
   })
 
   // ── The drawing plane: the layer, its toolbar, its favorites bar and its settings surfaces.
@@ -539,34 +830,44 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // through the same setter the handle exposes, so a toolbar and the layer cannot disagree about
   // what "weak magnet" or "stay in drawing mode" does, and a host reading `drawingPreferences()`
   // sees what the toolbar shows.
+  let extensionsHost: ChartExtensionHost | null = null
   const drawings = attachDrawingsPlane({
     chart,
     series: anchor,
     container: gestures,
     chrome,
     chartId: deps.id,
-    chartKey: deps.drawings.chartKey,
+    chartIdentity: deps.drawings.identity,
     documents: deps.drawings.mode === 'separate' ? deps.drawings.documents : null,
     symbol,
     timeframe: tf,
     bars: () => bars,
     resources: deps.saveLoad,
     i18n,
+    icons: deps.icons,
     enabled: deps.features.drawings,
-    toolbar: deps.features.drawingsToolbar,
-    favorites: deps.features.drawingsFavorites,
+    toolbar: deps.ui.drawingToolbar,
+    toolbarContainer: deps.externalDrawingToolbar ? null : undefined,
+    favorites: deps.ui.drawingFavorites,
     access: deps.access,
     commands: deps.commands,
     assets: deps.assets,
     theme: () => deps.theme.get(),
+    replayPhase: () => replay.api.phase(),
     preferences: () => drawingPrefs,
     setPreferences: (next) => handle.setDrawingPreferences(next),
     indicators: { count: () => indicators.list().length, setAllHidden: (hidden) => indicators.setAllHidden(hidden) },
+    // The extension plane attaches after this one and its layers are read live, so the eye lists
+    // whatever is contributed by the time it is opened.
+    hideLayers: () => extensionsHost?.hideLayers() ?? [],
     // What a stored drawing may name on this chart: the main series and its pane, plus every
     // indicator instance and the panes the pane-placed ones own.
     sources: () => ['main', ...indicators.list().map((instance) => instance.id)],
     panes: () => ['main', ...indicators.list().filter((instance) => instance.definition.manifest.pane === 'pane').map((instance) => instance.id)],
     chartCount: deps.chartCount,
+    ...(deps.externalDrawingToolbar && deps.drawingToolIntent
+      ? { onSharedToolIntent: deps.drawingToolIntent.shared, onToolState: deps.drawingToolIntent.state }
+      : {}),
     onSaveConflict: (info) => deps.onSaveConflict({ family: 'drawings', ...info }),
     onChange: (kind, id) => events.emit('drawing', { kind, id }),
   })
@@ -584,6 +885,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       })
     : null
 
+  let countdown: CountdownLayer | null = null
   const replay = attachReplayPlane({
     chart,
     datafeed,
@@ -597,6 +899,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       return filter ? filter(epochSecs) : true
     },
     paint: (next) => {
+      // Replay owns the picture while it runs; a range preset waiting on live history is not its
+      // to consume.
+      pendingFrame = null
       replaySlice = next
       paintAll()
     },
@@ -606,19 +911,26 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
     enabled: deps.features.replay,
     disposed: disposedFn,
-    setHeader: (replaying) => legend.setHeader(symbol, replaying ? i18n.t('host.replayHeader', { tf }) : tf),
+    setHeader: () => legend.setHeader(symbol, tf),
+    // A chart whose crosshair the host switched OFF keeps it off: replay may take the crosshair
+    // away for the length of a question, never hand one back that was never there.
+    setCrosshair: (visible) =>
+      chart.applyOptions({ crosshair: { mode: visible && deps.features.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden } }),
+    // The feed's own grains: a chart never offers, or fetches, an interval its feed cannot serve.
+    resolutions: () => deps.capabilities().resolutions,
     persist: (key, value) => storage.set(key === 'speed' ? REPLAY_SPEED_KEY : REPLAY_INTERVAL_KEY, value),
     onChange: () => {
       const state = replay.snapshot()
-      // The transport bar rides replay: mounted when replay comes on, taken down when it leaves,
-      // and re-read on every change in between. It states every intent by command id.
-      if (state.on && !replayBar && deps.features.replay) {
-        replayBar = mountReplayTransport({ chrome, i18n, commands: deps.commands, handle, bars: () => bars, intraday: () => isIntradayTimeframe(tf) })
-      } else if (!state.on && replayBar) {
-        replayBar.destroy()
-        replayBar = null
-      }
-      replayBar?.sync()
+      countdown?.refresh()
+      // The legend reads the PHASE, and a phase moves without the cursor moving: arming and
+      // disarming change what the mark should say while `on` and the counts stay exactly as they
+      // were. Refreshing the header here is what makes every consumer of the replay state hear the
+      // same change — without it the mark only ever updated on entry and exit, because those are
+      // the two transitions that happen to call `setHeader` on their own.
+      legend.setHeader(symbol, tf)
+      // The row is widget chrome, but its state and commands remain chart-local. The first chart
+      // entering replay owns that one presentation row until it leaves or is removed.
+      deps.doors.replayChanged({ chart: handle, commands: deps.replayCommands, bars: () => bars, intraday: () => isIntradayTimeframe(tf) })
       extensions.host.replayChanged({ active: state.on, cursor: state.cursor, total: state.total })
       events.emit('replay', state)
     },
@@ -626,13 +938,34 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     initialInterval: storage.get(REPLAY_INTERVAL_KEY) ?? deps.preferences.replayInterval ?? 'auto',
   })
 
+  const countdownClock = createCountdownClock(() => Date.now() / 1000, datafeed.serverTime?.bind(datafeed))
+  countdown = attachCountdown({
+    series: () => series,
+    bars: () => shownBars(),
+    timeframe: () => tf,
+    enabled: () => eff.appearance.countdown,
+    replaying: () => replay.active(),
+    dataStatus: () => (feedStatus === 'live' ? deps.capabilities().dataStatus : null),
+    session: () => session.model(),
+    activeSubsession: () => session.subsession(),
+    formatter: () => symbolFormatter,
+    theme: () => deps.theme.get(),
+    now: () => countdownClock.now(),
+    setInterval: (callback, delay) => window.setInterval(callback, delay),
+    clearInterval: (timer) => window.clearInterval(timer as number),
+  })
+
   const extensions = attachExtensionsPlane({
     chartId: deps.id,
     chart,
     series: () => anchor,
+    visible: () => series,
     gestures,
     chrome,
+    layer: deps.layer,
     symbol: () => symbol,
+    symbolTitle: () => symbolNames(symbolInfo ?? symbol).title,
+    painters: deps.painters,
     timeframe: () => tf,
     // What an extension reads is what is DRAWN: the same filtered model every paint path uses, so
     // an overlay can never be placed against a bar that is not on screen.
@@ -644,25 +977,33 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     feedStatus: () => feedStatus,
     theme: canvas,
     formatter: () => ({ format: (price) => symbolFormatter.format(price), precision: () => symbolFormatter.precision() }),
+    active: deps.active,
     commands: deps.commands,
     extensions: deps.extensions,
     disposed: disposedFn,
     setTouchAction: (value) => {
       gestures.style.touchAction = value
     },
+    // A contributed layer rides the same eye the rail drives, through the drawing plane's verbs.
+    hideState: () => drawings.verbs?.hide() ?? { mode: 'drawings', on: false },
+    setHide: (state) => drawings.verbs?.setHide(state),
+    hideLayersChanged: () => drawings.syncHideLayers(),
   })
+  extensionsHost = extensions.host
 
-  const menu = deps.features.contextMenu
+  const menu = deps.ui.contextMenu
     ? attachMenuPlane({
         chart,
         series: () => anchor,
         gestures,
-        chrome,
+        host: deps.layer,
         i18n,
+        icons: deps.icons,
         commands: deps.commands,
         formatter: () => symbolFormatter,
         minMove,
         symbol: () => symbol,
+        symbolName: () => symbolNames(symbolInfo ?? symbol).title,
         timeframe: () => tf,
         indicatorCount: () => indicators.list().length,
         drawingCount: () => drawings.handle?.count() ?? 0,
@@ -689,7 +1030,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   // The on-chart navigation cluster: zoom, scroll and reset over the chart's own view commands.
-  const nav = deps.features.navigation ? mountNavControls({ chrome, commands: deps.commands, i18n }) : null
+  const nav = deps.ui.navigation ? mountNavControls({ chrome, gestures, commands: deps.commands, i18n, icons: deps.icons, maximized: () => deps.layoutMaximized() }) : null
 
   // ── Painting ─────────────────────────────────────────────────────────────────────────────────
   /** The bars actually PAINTED: the loaded model, filtered to the active subsession on an intraday
@@ -700,6 +1041,50 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     const filter = session.barFilter(tf)
     return filter ? bars.filter((b) => filter(b.t)) : bars
   }
+  let nativeDragActive = false
+  const onNativeDragStart = (event: MouseEvent | PointerEvent): void => {
+    if (event.button === 0) nativeDragActive = true
+  }
+  const onNativeDragMove = (event: MouseEvent | PointerEvent): void => {
+    if (!nativeDragActive) return
+    if (event.buttons === 0) {
+      nativeDragActive = false
+      return
+    }
+    beginNavigation()
+  }
+  const onNativeDragEnd = (): void => {
+    nativeDragActive = false
+  }
+  const onNativeTouchOrWheel = (): void => beginNavigation()
+  const navigationRoot = gestures.ownerDocument.documentElement
+  gestures.addEventListener('mousedown', onNativeDragStart, { passive: true })
+  gestures.addEventListener('pointerdown', onNativeDragStart, { passive: true })
+  gestures.addEventListener('touchmove', onNativeTouchOrWheel, { passive: true })
+  gestures.addEventListener('wheel', onNativeTouchOrWheel, { passive: true })
+  navigationRoot.addEventListener('mousemove', onNativeDragMove, { passive: true })
+  navigationRoot.addEventListener('pointermove', onNativeDragMove, { passive: true })
+  navigationRoot.addEventListener('mouseup', onNativeDragEnd, { passive: true })
+  navigationRoot.addEventListener('pointerup', onNativeDragEnd, { passive: true })
+  navigationRoot.addEventListener('pointercancel', onNativeDragEnd, { passive: true })
+
+  /** Apply a data-only rewrite without changing where the viewer is looking. Every current main
+   * candle is a candidate so the range owner can choose one at the visible left edge, including
+   * when a delayed compare page lands after the main page that requested it. */
+  function maintainTimeline(write: () => void): void {
+    const continuity = captureTimelineContinuity(
+      chart.timeScale(),
+      shownBars().map((bar) => bar.t),
+    )
+    write()
+    // The renderer fires range subscriptions synchronously. This maintenance write must not echo
+    // through layout synchronization as if it were a new drag from this chart.
+    muted(() => {
+      restoreTimelineContinuity(chart.timeScale(), continuity, () => {
+        maintenanceRange = { epoch, navigationEpoch, logicalReported: false, timeReported: false }
+      })
+    })
+  }
 
   function paintAll(): void {
     const shaped = valueShaped(style)
@@ -709,9 +1094,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     series.setData(
       (shaped ? values : painted.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }))) as never,
     )
-    const up = eff.appearance.upColor
-    const down = eff.appearance.downColor
-    volume.setData(painted.map((b) => ({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? up : down })))
+    if (volumeInstance()) paintVolume()
     indicators.recompute()
     // Compares clip to the main window, so every reshape re-clips them here: paintAll is the one
     // choke point every load, scroll-back, snapshot and replay path exits by.
@@ -719,6 +1102,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // An extension sees what is DRAWN. A bar the active subsession filters out is not on screen,
     // and an overlay placed against it would sit where there is nothing.
     extensions.host.barsChanged(painted)
+    countdown?.refresh()
     events.emit("dataLoaded", { bars: painted.length })
   }
 
@@ -731,9 +1115,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     const value = { time: b.t as UTCTimestamp, value: b.c }
     anchor.update(value)
     series.update((valueShaped(style) ? value : { time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }) as never)
-    volume.update({ time: b.t as UTCTimestamp, value: b.v, color: b.c >= b.o ? eff.appearance.upColor : eff.appearance.downColor })
+    if (volumeInstance()) paintVolume()
     indicators.recomputeThrottled()
     extensions.host.barsChanged(shownBars())
+    countdown?.refresh()
   }
 
   /** Rebuild the formatter (a resolve, a symbol switch, a language switch) and push it to every
@@ -743,6 +1128,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     symbolFormatter = createPriceFormatter(format ?? UNRESOLVED_PRICE_FORMAT, { locale: i18n.tag() })
     applyPriceFormat()
     drawings.setPricing(format ? minMoveOf(format) : null, (price) => symbolFormatter.format(price))
+    countdown?.refresh()
   }
 
   /** Re-resolve the ladder and restyle every surface that reads it: the runtime half of the
@@ -768,16 +1154,36 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     session.refresh()
     marks?.repaint()
     extensions.host.themeChanged(c)
+    countdown?.refresh()
+  }
+
+  /** Reset defaults: drop the viewer's OWN appearance layer and put the price scale back to normal.
+   *
+   *  Precisely the runtime layer and nothing else. The theme floor and the host's constructor
+   *  partial are not the viewer's to reset, so a branded chart resets to its BRAND, not to the
+   *  package's stock canvas. The viewport is a separate verb (`chart.view.reset`), and no other
+   *  preference is touched.
+   *
+   *  It reports as a content change like any other, so an autosaving host writes the reset into the
+   *  saved chart and reopening it does not undo the reset. Saved content is the only place an
+   *  authored look persists. */
+  function resetAppearance(): void {
+    if (disposed) return
+    runtimePartial = {}
+    applyScaleMode('normal')
+    applyLook()
+    deps.contentChanged?.()
+    history.changed()
   }
 
   // ── Data ─────────────────────────────────────────────────────────────────────────────────────
   /** One older-history fetch with the gap hop: an empty page carrying nextTime re-asks once
    *  anchored there; only the `end` verdict is the true end of history. */
-  async function fetchOlder(to: number): Promise<{ olderBars: FeedBar[]; end: boolean }> {
-    const page = await datafeed.history(symbol, tf, { to, countBack: PAGE_BARS })
+  async function fetchOlder(to: number, count: number = PAGE_BARS): Promise<{ olderBars: FeedBar[]; end: boolean }> {
+    const page = await datafeed.history(symbol, tf, { to, countBack: count })
     const verdict = olderPageVerdict(page, to, false)
     if (verdict.kind !== 'hop') return { olderBars: page.bars, end: verdict.kind === 'end' }
-    const hop = await datafeed.history(symbol, tf, { to: verdict.to, countBack: PAGE_BARS })
+    const hop = await datafeed.history(symbol, tf, { to: verdict.to, countBack: count })
     return { olderBars: hop.bars, end: olderPageVerdict(hop, verdict.to, true).kind === 'end' }
   }
 
@@ -787,8 +1193,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   /** Fetch the page older than the current left edge and prepend it while HOLDING the visible
-   *  window in place. Stops for good at the feed's true end of history. */
-  function maybePageBack(): void {
+   *  window in place. Stops for good at the feed's true end of history.
+   *
+   *  `runway` is how many more consecutive pages this approach may fetch on its own. A landing page
+   *  restores the viewport under a maintenance record, and that record owns the renderer's range
+   *  report, so nothing would look at the left edge again until the viewer moved: a wide or
+   *  fast-panned view needing several pages would strand one page in. The continuation is this
+   *  function re-asking its own trigger after a page paints, never a second flight beside the one
+   *  already in the air. */
+  function maybePageBack(runway: number = PAGE_RUNWAY): void {
     if (replay.active()) return // the replay window is fixed; paging would desync the master set
     if (paging || noMoreHistory || bars.length === 0) return
     const range = chart.timeScale().getVisibleLogicalRange()
@@ -796,24 +1209,115 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     paging = true
     const myEpoch = epoch
     const oldest = bars[0]!.t
+    // Only a page that actually painted older bars earns another. The end of history, a gap verdict
+    // that served nothing, an answer this chart already holds or the session filters away, and a
+    // transient failure all end the run; the viewer's next approach opens a fresh one.
+    let again = false
     void fetchOlder(oldest - 1)
       .then(({ olderBars, end }) => {
         if (disposed || myEpoch !== epoch) return
         if (end) noMoreHistory = true
-        const older = olderBars.filter((b) => b.t < oldest)
+        const seen = new Set(bars.map((b) => b.t))
+        const older: FeedBar[] = []
+        for (const bar of olderBars) {
+          if (bar.t >= oldest || seen.has(bar.t)) continue
+          seen.add(bar.t)
+          older.push(bar)
+        }
         if (older.length === 0) return
-        const keep = chart.timeScale().getVisibleRange()
-        bars = [...older, ...bars]
-        paintAll()
-        if (keep) chart.timeScale().setVisibleRange(keep)
+        // Read the view only now, after the asynchronous page has landed, so a drag or zoom made
+        // while it was away wins. The surviving candle's renderer index measures every timestamp
+        // the repaint actually adds to the unified axis, including session-filtered main bars and
+        // comparison-only points. Raw response length cannot state that shift.
+        maintainTimeline(() => {
+          bars = [...older, ...bars]
+          paintAll()
+        })
         refreshMarks()
+        again = runway > 1
       })
       .catch(() => {
         /* transient; the next left-edge approach retries */
       })
       .finally(() => {
-        paging = false
+        // A page from an earlier load leaves the flag to the load that replaced it.
+        if (myEpoch === epoch) paging = false
+        // The trigger is re-read inside this call, against the viewport the maintenance write just
+        // restored: a page that pushed the left edge out of reach ends the run by itself.
+        if (again && !disposed && myEpoch === epoch) maybePageBack(runway - 1)
       })
+  }
+
+  /** Bring the loaded history back far enough to cover a preset's span, then frame it again. The
+   *  whole shortfall is one ask, so a preset costs at most one fetch; a span the history already
+   *  covers, or a feed at its end, asks nothing. */
+  function fillSpan(span: RangeSpan, spanTf: string): void {
+    const want = barsForSpan(span, spanTf)
+    if (want === null || replay.active() || paging || noMoreHistory || bars.length === 0) return
+    const short = want - bars.length
+    if (short <= 0) return
+    paging = true
+    const myEpoch = epoch
+    const oldest = bars[0]!.t
+    void fetchOlder(oldest - 1, short)
+      .then(({ olderBars, end }) => {
+        if (disposed || myEpoch !== epoch) return
+        if (end) noMoreHistory = true
+        const older = olderBars.filter((bar) => bar.t < oldest)
+        if (older.length === 0) return
+        bars = [...older, ...bars]
+        paintAll()
+        refreshMarks()
+        frameRange(chart, anchor, span, spanTf)
+      })
+      .catch(() => {
+        /* transient; the span frames what the chart holds */
+      })
+      .finally(() => {
+        if (myEpoch === epoch) paging = false
+      })
+  }
+
+  /** Replay's first available date: page older history back to the feed's true beginning, or to the
+   *  depth it states, prepending each page while holding the view, then start at the oldest bar held.
+   *  A session already open is left first, because its window is fixed and paging under it would
+   *  desync it. The walk stops at REPLAY_DEPTH bars, and a symbol or timeframe switch abandons it. */
+  let walkingBack = false
+  async function replayFromFirst(): Promise<void> {
+    if (!symbol || walkingBack || disposed) return
+    if (handle.replay.phase() !== 'off') handle.replay.exit()
+    walkingBack = true
+    paging = true
+    const myEpoch = epoch
+    try {
+      while (!noMoreHistory && bars.length > 0 && bars.length < REPLAY_DEPTH) {
+        if (earliestBarSecs !== null && bars[0]!.t <= earliestBarSecs) break
+        const oldest = bars[0]!.t
+        const { olderBars, end } = await fetchOlder(oldest - 1, REPLAY_PAGE_BARS)
+        if (disposed || myEpoch !== epoch) return
+        if (end) noMoreHistory = true
+        const seen = new Set<number>()
+        const older: FeedBar[] = []
+        for (const bar of olderBars) {
+          if (bar.t >= oldest || seen.has(bar.t)) continue
+          seen.add(bar.t)
+          older.push(bar)
+        }
+        if (older.length === 0) break
+        maintainTimeline(() => {
+          bars = [...older, ...bars]
+          paintAll()
+        })
+        refreshMarks()
+      }
+    } catch {
+      // A page that failed ends the walk; the session starts on the history already held.
+    } finally {
+      walkingBack = false
+      if (myEpoch === epoch) paging = false
+    }
+    if (disposed || myEpoch !== epoch || bars.length === 0) return
+    handle.replay.start(bars[0]!.t)
   }
 
   /** (Re)load the active symbol and timeframe: initial history paints first, then the live
@@ -823,9 +1327,19 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  to seed the chart through its own snapshot. */
   function load(): void {
     const myEpoch = ++epoch
+    const firstPage = firstPageBars
+    firstPageBars = SNAPSHOT_BARS
     unsubscribe?.()
     unsubscribe = null
     bars = []
+    // A page still away for the previous load cannot hold this one's first page back.
+    paging = false
+    historyPainted = false
+    // The axis frames the market that is about to arrive; a held manual policy returns once it has.
+    if (holdFrame !== null) window.cancelAnimationFrame(holdFrame)
+    holdFrame = null
+    chart.priceScale('right').applyOptions({ autoScale: true })
+    pendingFrame = null // a preset issued against the previous load never frames this one
     noMoreHistory = false
     feedStatus = null // the new subscription reports its own status; a stale one must not carry over
     symbolInfo = null
@@ -835,8 +1349,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     setSymbolFormat(null) // until the next resolve, the declared stand-in
     replay.abandon() // a replay window is symbol and timeframe bound; the switch invalidates it
     replaySlice = null // and its cursor slice with it: the new symbol paints from its own model
+    legend.setHeader(symbol, tf)
+    legend.setDot(null)
     paintAll()
     if (!symbol) return
+    countdownClock.reset()
     // Symbol metadata rides ALONGSIDE the first history ask, never blocking it. A failed resolve
     // leaves the price format and the session model at their honest unknowns.
     void datafeed
@@ -847,6 +1364,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         setSymbolFormat(info.format)
         indicators.recompute() // study scales and rows re-read the formatter
         session.adopt(info)
+        legend.setHeader(symbol, tf)
         legend.setDot(session.state())
         // The choice is the viewer's; what it RESOLVES to follows the symbol, so a chart set to
         // `exchange` re-labels its axis on every symbol switch without the choice moving.
@@ -870,12 +1388,21 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         })
     }
     void datafeed
-      .history(symbol, tf, { countBack: SNAPSHOT_BARS })
+      .history(symbol, tf, { countBack: firstPage })
       .then((page) => {
         if (disposed || myEpoch !== epoch) return
         bars = [...page.bars]
         paintAll()
-        chart.timeScale().fitContent()
+        historyPainted = true
+        // A preset asked while this load was away framed nothing: the series was empty. Its span is
+        // what the viewer asked to see, so it frames this first paint instead of the default fit.
+        const framing = pendingFrame?.epoch === myEpoch ? pendingFrame : null
+        pendingFrame = null
+        if (framing) {
+          frameRange(chart, anchor, framing.span, framing.tf)
+          fillSpan(framing.span, framing.tf)
+        } else chart.timeScale().fitContent()
+        holdAxisAfterFrame()
         refreshMarks()
         if (!ready) {
           ready = true
@@ -885,6 +1412,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       })
       .catch((e) => {
         if (disposed || myEpoch !== epoch) return
+        // Refused or failed: this load paints no history, so a waiting preset has nothing to frame.
+        historyPainted = true
+        pendingFrame = null
         if (e instanceof FeedUnavailableError) {
           feedStatus = 'feed_unavailable'
           events.emit('feedStatus', 'feed_unavailable')
@@ -922,11 +1452,28 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         if (disposed || myEpoch !== epoch) return
         feedStatus = status
         events.emit('feedStatus', status)
+        countdown?.refresh()
       },
     })
   }
 
-  chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+  chart.timeScale().subscribeVisibleLogicalRangeChange((reported) => {
+    if (syncMuted) {
+      const maintenance = currentMaintenance()
+      if (maintenance && reported) finishMaintenanceReport('logical')
+      return
+    }
+    const maintenance = currentMaintenance()
+    if (maintenance && reported) {
+      // The renderer is free to settle different bounded endpoints from the range it accepted.
+      // Absent a newer navigation input or public command, this report still belongs to the owned
+      // invalidation rather than to a user gesture.
+      finishMaintenanceReport('logical')
+      return
+    } else if (maintenance) {
+      // Null is the renderer rebuilding its logical points, not a settled range report.
+      return
+    }
     maybePageBack()
     if (syncMuted) return
     const range = ranges.logicalRange()
@@ -935,16 +1482,31 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   chart.subscribeCrosshairMove((param) => {
     if (syncMuted || crosshairSubs.size === 0) return
     const t = typeof param.time === 'number' ? param.time : null
-    for (const cb of crosshairSubs) cb(t)
+    for (const cb of [...crosshairSubs]) cb(t)
   })
   chart.subscribeClick((param) => {
     if (syncMuted || typeof param.time !== 'number') return
-    for (const cb of timeClickSubs) cb(param.time)
+    // Over a COPY, because a listener may subscribe from inside its own call: the replay transport
+    // answers a picked bar by re-arming, which adds the next picker. A Set iterator visits values
+    // added while it runs, so dispatching over the live set would hand that new picker the click
+    // that created it, and each answer would arm again without end.
+    for (const cb of [...timeClickSubs]) cb(param.time)
   })
   chart.timeScale().subscribeVisibleTimeRangeChange((range) => {
-    if (syncMuted || !range) return
+    if (syncMuted) {
+      if (currentMaintenance() && range) finishMaintenanceReport('time')
+      return
+    }
+    if (mirrorOwner !== null) return
+    const maintenance = currentMaintenance()
+    if (maintenance) {
+      if (!range) return
+      finishMaintenanceReport('time')
+      return
+    }
+    if (!range) return
     const next: TimeRange = { from: range.from as number, to: range.to as number }
-    for (const cb of rangeSubs) cb(next)
+    for (const cb of [...rangeSubs]) cb(next)
     events.emit('visibleRange', next)
   })
 
@@ -960,6 +1522,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     style = next
     storage.set(STYLE_KEY, next)
     series = addStyleSeries(chart, next, paint())
+    baselineLevel.follow(next === 'baseline' ? series : null)
+    countdown?.seriesChanged(previous)
+    extensions.visibleSeriesReplaced()
     applyPriceFormat()
     try {
       chart.removeSeries(previous)
@@ -971,13 +1536,43 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     events.emit('style', next)
   }
 
-  function applyContent(parsed: ParsedChartContent): void {
+  /** Everything this chart is showing, as the save format states it. One value, read fresh: the
+   *  saved-chart writer, the layout writer and the undo history all describe a chart the same way,
+   *  so none of them can drift from another about what a chart IS. */
+  function content(): ChartContent {
+    return {
+      symbol,
+      timeframe: tf,
+      style,
+      scale: scaleMode,
+      priceAxis: priceAxisPolicy(),
+      indicators: indicators.list().map(serializeIndicatorInstance).filter((saved): saved is SavedIndicator => saved !== null),
+      // The AUTHORED layer, never the resolved tree: writing `eff` down would save the theme's
+      // derived colors and the host's brand as though a viewer had chosen every one of them, and a
+      // reopen under another theme or another brand would then be stuck with the old ones.
+      appearance: { ...runtimePartial.appearance },
+      compares: compare?.serialize() ?? [],
+      // The drawings ride the blob in combined mode only. They are the symbol's own: a saved chart
+      // is one symbol, and the drawings it carries are the ones drawn on it.
+      ...(deps.drawings.mode === 'combined' ? { drawings: drawings.handle?.export() ?? [] } : {}),
+      // Extension state rides in its own namespace, keyed by extension id, so a chart saved with
+      // one set of extensions loads under another without either reading the other's state.
+      ext: extensions.host.serialize(),
+    }
+  }
+
+  function applyContent(parsed: ParsedChartContent): boolean {
     if (parsed.symbol) handle.setSymbol(parsed.symbol)
     if (parsed.timeframe) handle.setTimeframe(parsed.timeframe)
     if (parsed.style) setStyle(coerceChartStyle(parsed.style))
     applyScaleMode(coerceScaleMode(parsed.scale ?? null))
-    indicators.setHidden(parsed.hidden ?? [])
-    storage.set(HIDDEN_KEY, JSON.stringify(indicators.hidden()))
+    // The blob's policy is authoritative in both directions: a manual chart loading an auto blob
+    // starts framing again, and a fresh auto chart loading a manual blob stops. A blob that states
+    // none is auto, which is what a chart saved before the policy existed meant.
+    applyPriceAxisPolicy(coercePriceAxisPolicy(parsed.priceAxis))
+    const { dropped } = indicators.restore(parsed.indicators)
+    writeHidden()
+    if (dropped > 0) deps.doors.notify('info', i18n.t('toast.indicatorsNotCarried', { count: dropped }))
     // The saved appearance applies as a RUNTIME layer: a viewer's saved look beats the host's
     // constructor values, exactly the precedence the option contract states.
     if (parsed.appearance) handle.applyAppearance({ appearance: parsed.appearance })
@@ -989,38 +1584,87 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     if (deps.drawings.mode === 'combined' && parsed.drawings) drawings.handle?.restore(parsed.drawings)
     // Extensions restore LAST: the symbol, timeframe and scale a saved chart carries are the world
     // an extension's state describes, so it must already be the world on screen.
-    extensions.host.restore(parsed.ext)
+    const extensionsComplete = extensions.host.restore(parsed.ext)
+    return dropped === 0 && extensionsComplete
+  }
+
+  /** Put one reading of this chart's content back, for the history.
+   *
+   *  Two things separate it from loading a saved chart. The viewer's appearance layer is REPLACED
+   *  rather than layered over, because a step back has to take a leaf off again and a layering call
+   *  can only ever add one. And extension state is left alone: a reading does not carry it, so an
+   *  extension keeps whatever it holds rather than being handed an empty namespace. */
+  function applyHistoryContent(next: ChartContent): void {
+    if (disposed) return
+    runtimePartial = { appearance: { ...next.appearance } }
+    // Ahead of the rest, so a style series built during the apply is painted with the look that is
+    // going back rather than with the one being left behind.
+    applyLook()
+    applyContent({
+      symbol: next.symbol,
+      timeframe: next.timeframe,
+      style: next.style,
+      scale: next.scale,
+      priceAxis: next.priceAxis,
+      indicators: [...next.indicators],
+      compares: next.compares,
+      ...(next.drawings ? { drawings: [...next.drawings] } : {}),
+    })
+    // A step back is a content change like any other. The fields that write a preference key have
+    // already said so; an appearance-only step writes none, so it says so here.
+    deps.contentChanged?.()
   }
 
   const saveLoad = createSaveLoadApi({
+    beginHydration: deps.beginHydration,
     adapter: deps.saveLoad,
     i18n,
     symbol: () => symbol,
     timeframe: () => tf,
-    content: () => ({
-      symbol,
-      timeframe: tf,
-      style,
-      scale: scaleMode,
-      hidden: indicators.hidden(),
-      appearance: eff.appearance,
-      compares: compare?.serialize() ?? [],
-      // The drawings ride the blob in combined mode only. They are the symbol's own: a saved chart
-      // is one symbol, and the drawings it carries are the ones drawn on it.
-      ...(deps.drawings.mode === 'combined' ? { drawings: drawings.handle?.export() ?? [] } : {}),
-      // Extension state rides in its own namespace, keyed by extension id, so a chart saved with
-      // one set of extensions loads under another without either reading the other's state.
-      ext: extensions.host.serialize(),
-    }),
+    content,
     apply: applyContent,
+    // In separate mode the blob carries no drawings, and applying one still moves them: the symbol
+    // it lands loads that symbol's drawings. So a rollback puts the chart's own drawing state back
+    // rather than the blob's. In combined mode the blob is already carrying them.
+    heldDrawings:
+      deps.drawings.mode === 'separate'
+        ? { snapshot: () => drawings.handle?.export() ?? null, restore: (list) => drawings.handle?.restore(list) }
+        : undefined,
+    heldIndicators: { snapshot: () => indicators.list(), restore: (list) => indicators.restoreHeld(list) },
     disposed: disposedFn,
+  })
+
+  const history = attachHistoryPlane({
+    enabled: deps.features.history,
+    content,
+    symbol: () => symbol,
+    apply: applyHistoryContent,
+    // In separate mode the content carries no drawings, so a reading holds the layer's own copy and
+    // puts it back itself. In combined mode the content is already carrying them.
+    drawings:
+      deps.drawings.mode === 'separate'
+        ? { snapshot: () => drawings.handle?.export() ?? null, restore: (list) => drawings.handle?.restore(list) }
+        : null,
+    disposed: disposedFn,
+    // The document, not the gesture box: a price-axis drag is released wherever the pointer ended
+    // up, and the renderer captures the pointer on its own canvas while it lasts.
+    pointerRoot: navigationRoot,
+    onChange: () =>
+      events.emit('history', {
+        canUndo: history.api.canUndo(),
+        canRedo: history.api.canRedo(),
+        undoChange: history.api.undoChange(),
+        redoChange: history.api.redoChange(),
+      }),
   })
 
   const handle: ChartHandle = {
     id: deps.id,
     symbol: () => symbol,
+    symbolInfo: () => symbolInfo,
     setSymbol(next) {
       if (disposed || next === symbol) return
+      setRangePreset(null)
       symbol = next
       storage.set(SYMBOL_KEY, next)
       drawings.setSymbol(next)
@@ -1034,6 +1678,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     timeframe: () => tf,
     setTimeframe(next) {
       if (disposed || next === tf) return
+      setRangePreset(null)
       tf = next
       storage.set(TF_KEY, next)
       drawings.setTimeframe(next)
@@ -1046,13 +1691,36 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     style: () => style,
     setStyle,
     visibleRange: () => ranges.visibleRange(),
-    setVisibleRange: (range) => ranges.setVisibleRange(range),
+    rangePreset: () => selectedRangePreset,
+    setVisibleRange: (range) => {
+      beginNavigation()
+      ranges.setVisibleRange(range)
+    },
     logicalRange: () => ranges.logicalRange(),
-    setLogicalRange: (range) => ranges.setLogicalRange(range),
-    scroll: (barCount) => ranges.scroll(barCount),
-    zoom: (factor) => ranges.zoom(factor),
-    reset: () => ranges.reset(),
-    goLive: () => ranges.goLive(),
+    setLogicalRange: (range) => {
+      beginNavigation()
+      ranges.setLogicalRange(range)
+    },
+    scroll: (barCount) => {
+      beginNavigation()
+      ranges.scroll(barCount)
+    },
+    zoom: (factor) => {
+      beginNavigation()
+      ranges.zoom(factor)
+    },
+    reset: () => {
+      beginNavigation()
+      // Reset frames the view again on BOTH axes: a stretched price axis is exactly what a viewer
+      // asking for the default view wants undone. The scale MODE is not a framing choice and
+      // survives, so a log chart reset stays logarithmic.
+      applyPriceAxisPolicy('auto')
+      ranges.reset()
+    },
+    goLive: () => {
+      beginNavigation()
+      ranges.goLive()
+    },
     scaleMode: () => scaleMode,
     setScaleMode(mode) {
       applyScaleMode(mode)
@@ -1088,11 +1756,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       remove: (id) => indicators.remove(id),
       hide(id) {
         if (!indicators.isHidden(id)) indicators.toggleHidden(id)
-        storage.set(HIDDEN_KEY, JSON.stringify(indicators.hidden()))
       },
       show(id) {
         if (indicators.isHidden(id)) indicators.toggleHidden(id)
-        storage.set(HIDDEN_KEY, JSON.stringify(indicators.hidden()))
       },
       hidden: () => indicators.hidden(),
     },
@@ -1107,6 +1773,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       symbols: () => [],
     },
     replay: replay.api,
+    history: history.api,
     appearance: () => eff,
     applyAppearance(partial) {
       if (disposed) return
@@ -1114,6 +1781,12 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       // rest of the runtime layer standing, so two hosts' calls compose instead of clobbering.
       runtimePartial = { appearance: { ...runtimePartial.appearance, ...(partial.appearance ?? {}) } }
       applyLook()
+      // An appearance-only edit changes CONTENT, so it marks the chart dirty like a style or a
+      // timeframe does. During a restore the widget is hydrating and this reports nothing.
+      deps.contentChanged?.()
+      // The appearance ladder has no event lane of its own, so the history is told here rather than
+      // through a subscription it could take out on its own.
+      history.changed()
     },
     formatter: () => symbolFormatter,
     saveLoad,
@@ -1151,41 +1824,82 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
     on: (name, callback) => events.on(name, callback),
   }
+  unregisterRangeMirror = registerChartRangeMirror(handle, { setVisibleRange: (range) => ranges.mirrorVisibleRange(range) })
 
   // ── Opening state. Everything above is wiring; these are the first values on screen. ──────────
   setSymbolFormat(null)
   legend.setHeader(symbol, tf)
-  legend.syncScale(scaleMode)
-  indicators.setHidden(readHidden())
-  indicators.set(deps.indicators)
+  const storedHidden = readHidden()
+  const endOpening = deps.beginHydration?.()
+  try {
+    indicators.set(deps.indicators)
+    indicators.setHidden(storedHidden)
+    if (deps.compares) compare?.restore(deps.compares)
+    if (!sameIds(storedHidden, indicators.hidden())) writeHidden()
+  } finally {
+    endOpening?.()
+  }
+  events.on('indicator', writeHidden)
+
+  // The lanes the history reads a change from. Everything else content is made of either travels on
+  // one of these or is caught by the plane's own pointer sweep: the price-axis policy and the
+  // appearance ladder have no lane, and the appearance ladder says so where it moves. Subscribing on
+  // the chart's own emitter rather than through the handle means a host cannot unsubscribe it.
+  for (const lane of ['symbol', 'timeframe', 'style', 'scaleMode', 'indicator', 'compare', 'drawing'] as const) {
+    events.on(lane, () => history.changed())
+  }
 
   const unregisterCommands = registerChartCommands({
     commands: deps.commands,
     handle,
     features: deps.features,
+    ui: deps.ui,
     capabilities: deps.capabilities,
+    resetAppearance,
     t: () => i18n.t,
+    // What is PAINTED, which is the replay slice while replay is on: the data export writes what
+    // the trader can see and never a bar the cursor has not revealed.
+    bars: () => shownBars(),
     // The feed's own statement of how deep its history goes, never the oldest bar that happens to
     // be loaded: the chart opens on a short window, and a preset judged against that would be
     // withheld for a market that serves years.
     earliestBar: () => earliestBarSecs,
+    replayFromFirst,
     // A range preset frames the pane on its span AND switches to the timeframe that span reads
     // best at, which is what makes one chip a whole answer rather than half of one.
     frame: (preset) => {
-      if (preset.tf !== tf) handle.setTimeframe(preset.tf)
-      frameRange(chart, anchor, preset.span, preset.tf)
+      beginNavigation()
+      // Switching the interval reloads: the model is cleared synchronously and the new page is
+      // still away, so framing here would measure an empty series and the arriving history would
+      // fit content instead of the span. The intent waits for that load's first paint.
+      if (preset.tf !== tf) {
+        firstPageBars = Math.max(SNAPSHOT_BARS, barsForSpan(preset.span, preset.tf) ?? 0)
+        handle.setTimeframe(preset.tf)
+      }
+      if (historyPainted) {
+        pendingFrame = null
+        frameRange(chart, anchor, preset.span, preset.tf)
+        fillSpan(preset.span, preset.tf)
+      } else {
+        pendingFrame = { epoch, span: preset.span, tf: preset.tf }
+      }
+      setRangePreset(preset.key)
     },
     zoom: (direction) => {
+      beginNavigation()
       const spacing = chart.timeScale().options().barSpacing
       chart.timeScale().applyOptions({ barSpacing: zoomedBarSpacing(spacing, direction) })
     },
     scroll: (direction) => {
+      beginNavigation()
       const position = chart.timeScale().scrollPosition()
       chart.timeScale().scrollToPosition(scrolledPosition(position, direction), false)
     },
     level: () => menuLevel,
     formatter: () => symbolFormatter,
     compareOpen: (mode, changeFrom) => compare?.openDialog(mode, changeFrom),
+    indicatorsOpen: () => deps.doors.showIndicatorPicker(),
+    symbolSearchOpen: () => deps.doors.openSearch({ mode: 'search', chart: handle }),
     drawingVerbs: () => drawings.verbs,
   })
 
@@ -1208,10 +1922,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         // host asked for. Leaving it stale makes the legend state a timeframe the chart is not on.
         legend.setHeader(symbol, tf)
         load()
+        // The first reading is taken here rather than at construction: the negotiation above moves
+        // the timeframe with no event and no key write, and a reading taken before it would make
+        // the trader's first change look like a timeframe change and offer to undo the negotiation.
+        history.seed()
       })
   } else {
     deps.onConfig(null)
     load()
+    history.seed()
   }
 
   /** The viewer's timezone choice, or the chart's default. A stored value outside the registry is
@@ -1245,6 +1964,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     }
   }
 
+  function writeHidden(): void {
+    storage.set(HIDDEN_KEY, JSON.stringify(indicators.hidden()))
+  }
+
   return {
     handle,
     screenshot: () => chart.takeScreenshot(),
@@ -1256,28 +1979,45 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       applyTimezone() // the tick and crosshair formatters carry the language, so they rebuild
       setSymbolFormat(symbolFormat) // the formatter carries the language's decimal sign
       indicators.recompute()
-      legend.setHeader(symbol, replay.active() ? i18n.t('host.replayHeader', { tf }) : tf)
+      legend.setHeader(symbol, tf)
       drawings.relabel()
-      replayBar?.sync()
     },
     layoutChanged() {
       drawings.refresh()
+      nav?.sync()
     },
+    runShortcutAt: (clientX, clientY, pressed) => menu?.runShortcutAt(clientX, clientY, pressed) ?? false,
+    applyDrawingToolIntent(arg) {
+      drawings.applyToolIntent(arg)
+    },
+    rebindDrawingIdentity(id) {
+      drawings.rebindIdentity(id)
+    },
+    activeChanged(active) {
+      extensions.host.activeChanged(active)
+    },
+    mountDrawingToolbar: (container) => drawings.mountToolbar(container),
     dispose() {
+      if (holdFrame !== null) window.cancelAnimationFrame(holdFrame)
+      holdFrame = null
       if (disposed) return
       disposed = true
       epoch++
+      pendingFrame = null
       unsubscribe?.()
       unsubscribe = null
       unregisterCommands()
-      replayBar?.destroy()
-      replayBar = null
+      baselineLevel.destroy()
       nav?.destroy()
       replay.destroy()
+      countdown?.destroy()
+      countdown = null
+      countdownClock.destroy()
       pointer?.destroy()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
       // off. Detaching after the renderer is gone would leave their teardown reaching into nothing.
       extensions.destroy()
+      history.destroy()
       menu?.destroy()
       marks?.destroy()
       compare?.destroy()
@@ -1288,7 +2028,18 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       crosshairSubs.clear()
       timeClickSubs.clear()
       rangeSubs.clear()
+      unregisterRangeMirror()
+      releaseMirror()
       events.clear()
+      gestures.removeEventListener('mousedown', onNativeDragStart)
+      gestures.removeEventListener('pointerdown', onNativeDragStart)
+      gestures.removeEventListener('touchmove', onNativeTouchOrWheel)
+      gestures.removeEventListener('wheel', onNativeTouchOrWheel)
+      navigationRoot.removeEventListener('mousemove', onNativeDragMove)
+      navigationRoot.removeEventListener('pointermove', onNativeDragMove)
+      navigationRoot.removeEventListener('mouseup', onNativeDragEnd)
+      navigationRoot.removeEventListener('pointerup', onNativeDragEnd)
+      navigationRoot.removeEventListener('pointercancel', onNativeDragEnd)
       chart.remove()
       gestures.remove()
       // Any popup or dialog still hosted in the chrome subtree closes with it, taking its document

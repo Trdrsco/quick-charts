@@ -19,7 +19,9 @@
 //   work) cannot throw into the chart's own teardown path.
 import type { CreatePriceLineOptions, ISeriesPrimitive, PriceLineOptions, Time } from 'lightweight-charts'
 import type { FeedBar } from './datafeed'
+import { blanks, type HideState } from './drawings/hideModel'
 import type { CanvasTheme } from './theme/renderer'
+import type { MarkPainters } from './markPainters'
 
 /** Price display as an extension reads it — the chart's own formatter, so an overlay's label and the
  *  axis beside it can never disagree about what a number looks like. */
@@ -92,11 +94,44 @@ export interface ChartExtensionMenuContext {
   price: number
   /** That level through the chart's formatter — use it so a contributed row reads like a built-in one. */
   priceText: string
+  /** The charted symbol as the feed names it: what an action on the market is sent for. */
   symbol: string
+  /** The symbol's title from its symbology (`BTC / USDC` for a pair, the feed's short name, or
+   *  the bare ticker): what a row that names the market prints. */
+  name: string
   timeframe: string
   /** Viewport coordinates of the press. */
   clientX: number
   clientY: number
+}
+
+/** One filled or stroked shape of a contributed glyph, on the menu's own 28-unit grid. Path data
+ *  and a closed set of paint values are the whole vocabulary: a contribution carries no markup, no
+ *  attribute passthrough, no URL and nowhere to hang a handler, so an icon is a drawing and can
+ *  never be a behaviour. The chart builds it as elements and writes only the attributes this
+ *  contract names. */
+export interface ChartExtensionIconPath {
+  /** SVG path data, up to 2048 characters, every number in it finite. Only path-data characters
+   *  are accepted; a value holding anything else is dropped and that shape is not drawn. */
+  d: string
+  /** `solid` paints the shape in the current text colour (the default); `outline` strokes its
+   *  edge in that colour instead. No other value exists, so a glyph can never name a colour of its
+   *  own, a gradient, or a resource to load. */
+  paint?: 'solid' | 'outline'
+  /** The stroke width for an `outline` shape, in grid units: above 0 and up to 8. Default 1. */
+  width?: number
+  /** `evenodd` for a shape drawn with holes in it. */
+  rule?: 'nonzero' | 'evenodd'
+}
+
+/** An inert vector glyph an extension contributes for its own row. The chart draws it in the same
+ *  icon gutter as its built-in glyphs, in the current text colour, so a contributed row is
+ *  indistinguishable from a built-in one at the glass. The chart names no glyph vocabulary of its
+ *  own here: what a host's rows mean is the host's business. */
+export interface ChartExtensionIcon {
+  /** Up to 8 shapes, drawn in order. A glyph with none, or with more than that, draws nothing and
+   *  the row reads exactly as a row that contributed no glyph at all. */
+  paths: readonly ChartExtensionIconPath[]
 }
 
 /** A row an extension adds to the chart's level menu. It carries its own action: the chart routes
@@ -106,7 +141,37 @@ export interface ChartExtensionMenuItem {
   label: string
   shortcut?: string
   checked?: boolean
+  /** The row's glyph. Omitted leaves the gutter empty and the label still aligned. */
+  icon?: ChartExtensionIcon
+  /** Where the row sits. `level` (the default) is an action on the price the pointer landed on and
+   *  joins the group under Copy price and Paste; `view` is a switch over what the chart shows and
+   *  joins the group under the remove rows. */
+  group?: 'level' | 'view'
   run(): void
+}
+
+/** A layer an extension draws that the rail's eye can blank. It joins the eye's menu after the
+ *  chart's own layers and before "Hide all", which blanks it too, and it wears the layer's own two
+ *  marks on the eye while it is the chosen subject. */
+export interface ChartExtensionHideLayer {
+  /** Unique within one chart; the mode the hide command names for this layer. */
+  id: string
+  /** The row's wording in both states, in the extension's own language. */
+  label: { hide: string; show: string }
+  /** The eye's mark while this layer is the subject: shown, and struck through when blanked. */
+  icon: { shown: ChartExtensionIcon; hidden: ChartExtensionIcon }
+  /** Blank or restore the layer. Called with the current state at contribution, and again on
+   *  every change to what the eye is doing. */
+  apply(hidden: boolean): void
+}
+
+/** The chart's side of a contributed layer: read whether it is blanked and flip it, through the
+ *  same eye the rail drives, so a switch on the extension's own surface and the eye agree. */
+export interface ChartExtensionHideLayerHandle {
+  hidden(): boolean
+  setHidden(hidden: boolean): void
+  /** Withdraw the layer from the eye. Detach withdraws it either way. */
+  remove(): void
 }
 
 /** Asked on every raise, so rows can depend on the level that was pressed. Returning an empty list
@@ -134,10 +199,23 @@ export interface ChartExtensionContext {
    *  in with pointer-events. Popovers, cards and editors mount HERE — the gesture box swallows
    *  their clicks. */
   overlay: HTMLElement
+  /** The widget's layer on the document body, themed as the root is. A popover that must stand
+   *  over every pane and over whatever the page stacks around the widget mounts HERE, at viewport
+   *  coordinates; the level menu does the same. */
+  layer: HTMLElement
   /** The chart's effective canvas palette: the mode's resolved theme with any applied appearance
    *  overrides on top, projected onto the values a canvas draws with. */
   theme(): CanvasTheme
   formatter(): ChartPriceFormatter
+  /** The name symbology gives the charted market, for a surface that prints it; `chart.symbol()`
+   *  stays the ticker an action is sent for. */
+  symbolTitle(): string
+  /** The host's mark painters: the same value the legend and the search rows paint with, so a
+   *  surface that names a market paints it the same way rather than shipping artwork of its own.
+   *  A painter is null where the host lent none, and then a surface writes the name alone. Each
+   *  receives the element to paint into and the size of the box, and answers the disposer that
+   *  empties it. */
+  painters: MarkPainters
   series: ChartExtensionSeries
   pane(): ChartExtensionPane
   onThemeChange(callback: (theme: CanvasTheme) => void): () => void
@@ -148,10 +226,16 @@ export interface ChartExtensionContext {
   onReplayChange(callback: (state: ChartExtensionReplayState) => void): () => void
   /** The chart was resized, or re-tiled by the widget's layout. */
   onPaneChange(callback: (pane: ChartExtensionPane) => void): () => void
+  /** Whether this chart is the widget's active chart: the one its keyboard, its toolbar and a host's
+   *  actions address. A sole chart is active. */
+  active(): boolean
+  /** The chart became the active chart, or stopped being it. */
+  onActiveChange(callback: (active: boolean) => void): () => void
   /** The chart is going away. Fires before the handle's own `detach()`. */
   onDispose(callback: () => void): () => void
   contributeContextMenu(provider: ChartExtensionMenuProvider): () => void
   contributeCommands(commands: readonly ChartExtensionCommand[]): () => void
+  contributeHideLayer(layer: ChartExtensionHideLayer): ChartExtensionHideLayerHandle
 }
 
 /** What an extension gives back at attach. `detach` is required; the two state methods are the
@@ -186,7 +270,10 @@ export interface ChartExtensionHostDeps {
   chartId: string
   container: HTMLElement
   overlay: HTMLElement
+  layer: HTMLElement
   symbol(): string
+  symbolTitle(): string
+  painters: MarkPainters
   timeframe(): string
   bars(): readonly FeedBar[]
   replay(): ChartExtensionReplayState
@@ -194,12 +281,19 @@ export interface ChartExtensionHostDeps {
   theme(): CanvasTheme
   formatter(): ChartPriceFormatter
   pane(): ChartExtensionPane
+  active(): boolean
   series: ChartExtensionSeries
   /** Register one contributed command with the chart's own command registry, and answer its
    *  unregister. There is exactly one registry, so a contributed command is reachable from the
    *  same menu, keyboard and host-automation surfaces as a built-in verb, and is refused by the same
    *  access policy. */
   registerCommand(command: ChartExtensionCommand): () => void
+  /** What the rail's eye is doing, and the one writer that changes it. A contributed layer's
+   *  handle reads and flips through these, so it can never disagree with the eye. */
+  hideState(): HideState
+  setHide(state: HideState): void
+  /** The set of contributed layers changed: the eye re-lists them and re-applies its state. */
+  hideLayersChanged(): void
 }
 
 /** The widget's half of the seam: attach the configured extensions, push the chart's changes at
@@ -211,11 +305,16 @@ export interface ChartExtensionHost {
   replayChanged(state: ChartExtensionReplayState): void
   themeChanged(theme: CanvasTheme): void
   paneChanged(pane: ChartExtensionPane): void
+  activeChanged(active: boolean): void
   /** Rows every attached extension offers for this level, in registration order. */
   menuItems(context: ChartExtensionMenuContext): readonly ChartExtensionMenuItem[]
+  /** The layers every attached extension offers the eye, in contribution order. */
+  hideLayers(): readonly ChartExtensionHideLayer[]
   /** Viewer state by extension id — the widget nests this under one key of its save blob. */
   serialize(): Record<string, unknown>
-  restore(state: unknown): void
+  /** Apply opaque state as usual, and report whether all registered saved state round-tripped.
+   *  Internal recovery evidence, not validation of an extension's arbitrary private state. */
+  restore(state: unknown): boolean
   /** Live subscriptions across every attached extension. The leak pin reads it: attach then detach
    *  must return to zero. */
   subscriberCount(): number
@@ -230,6 +329,7 @@ interface Lanes {
   bars: Set<(bars: readonly FeedBar[]) => void>
   replay: Set<(state: ChartExtensionReplayState) => void>
   pane: Set<(pane: ChartExtensionPane) => void>
+  active: Set<(active: boolean) => void>
   dispose: Set<() => void>
 }
 
@@ -241,6 +341,8 @@ interface Attached {
   live: boolean
   lanes: Lanes
   menuProviders: Set<ChartExtensionMenuProvider>
+  /** The layers this extension offered the eye, by id. */
+  hideLayers: Map<string, ChartExtensionHideLayer>
   /** The unregister the chart's command registry answered for each command this extension
    *  contributed, so a detach takes its verbs out of the one registry with it. */
   commands: Map<string, () => void>
@@ -268,13 +370,15 @@ const newLanes = (): Lanes => ({
   bars: new Set(),
   replay: new Set(),
   pane: new Set(),
+  active: new Set(),
   dispose: new Set(),
 })
 
 const laneSizes = (lanes: Lanes): number =>
-  lanes.theme.size + lanes.symbol.size + lanes.timeframe.size + lanes.bars.size + lanes.replay.size + lanes.pane.size + lanes.dispose.size
+  lanes.theme.size + lanes.symbol.size + lanes.timeframe.size + lanes.bars.size + lanes.replay.size + lanes.pane.size + lanes.active.size + lanes.dispose.size
 
 const clearLanes = (lanes: Lanes): void => {
+  lanes.active.clear()
   lanes.theme.clear()
   lanes.symbol.clear()
   lanes.timeframe.clear()
@@ -282,6 +386,18 @@ const clearLanes = (lanes: Lanes): void => {
   lanes.replay.clear()
   lanes.pane.clear()
   lanes.dispose.clear()
+}
+
+/** Compare normalized JSON trees without giving object insertion order semantic meaning. The
+ *  extension's serializer supplies the state vocabulary; this is not another extension schema. */
+function sameJsonState(left: unknown, right: unknown): boolean {
+  if (left === right) return true
+  if (!left || !right || typeof left !== 'object' || typeof right !== 'object') return false
+  if (Array.isArray(left) !== Array.isArray(right)) return false
+  const a = left as Record<string, unknown>
+  const b = right as Record<string, unknown>
+  const keys = Object.keys(a)
+  return keys.length === Object.keys(b).length && keys.every((key) => Object.hasOwn(b, key) && sameJsonState(a[key], b[key]))
 }
 
 export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: readonly ChartExtension[] = []): ChartExtensionHost {
@@ -324,8 +440,23 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     }
     clearLanes(record.lanes)
     record.menuProviders.clear()
+    if (record.hideLayers.size) {
+      record.hideLayers.clear()
+      notifyHideLayers()
+    }
     for (const unregister of record.commands.values()) unregister()
     record.commands.clear()
+  }
+
+  /** The eye re-lists its subjects. Told after the record changed, never during a sweep the chart
+   *  is already making, and a chart mid-teardown hears nothing. */
+  const notifyHideLayers = (): void => {
+    if (!hostLive) return
+    try {
+      deps.hideLayersChanged()
+    } catch {
+      /* the eye's own failure is its own */
+    }
   }
 
   const attachOne = (extension: ChartExtension, at?: number): void => {
@@ -339,6 +470,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       live: true,
       lanes: newLanes(),
       menuProviders: new Set(),
+      hideLayers: new Map(),
       commands: new Map(),
       priceLines: new Set(),
       primitives: new Set(),
@@ -403,16 +535,21 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       },
       container: deps.container,
       overlay: deps.overlay,
+      layer: deps.layer,
       theme: () => deps.theme(),
       formatter: () => deps.formatter(),
+      symbolTitle: () => deps.symbolTitle(),
+      painters: deps.painters,
       series,
       pane: () => deps.pane(),
+      active: () => deps.active(),
       onThemeChange: (callback) => subscribe(record.lanes.theme, callback),
       onSymbolChange: (callback) => subscribe(record.lanes.symbol, callback),
       onTimeframeChange: (callback) => subscribe(record.lanes.timeframe, callback),
       onBars: (callback) => subscribe(record.lanes.bars, callback),
       onReplayChange: (callback) => subscribe(record.lanes.replay, callback),
       onPaneChange: (callback) => subscribe(record.lanes.pane, callback),
+      onActiveChange: (callback) => subscribe(record.lanes.active, callback),
       onDispose(callback) {
         if (!record.live) return () => {}
         record.lanes.dispose.add(callback)
@@ -440,6 +577,29 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
             record.commands.get(id)?.()
             record.commands.delete(id)
           }
+        }
+      },
+      contributeHideLayer(layer) {
+        // A dead context, a second layer under one id, or an id the chart's own layers already
+        // hold, gets a handle that reads "shown" and changes nothing.
+        const taken = !record.live || record.hideLayers.has(layer.id) || attached.some((a) => a.live && a.hideLayers.has(layer.id)) || layer.id === 'drawings' || layer.id === 'indicators' || layer.id === 'all'
+        if (taken) return { hidden: () => false, setHidden: () => {}, remove: () => {} }
+        record.hideLayers.set(layer.id, layer)
+        notifyHideLayers()
+        const held = (): boolean => record.live && record.hideLayers.get(layer.id) === layer
+        return {
+          hidden: () => held() && blanks(deps.hideState(), layer.id),
+          setHidden(hidden) {
+            if (!held()) return
+            // Blanking points the eye at this layer; restoring releases it from whatever subject
+            // was blanking it, this layer or all.
+            deps.setHide({ mode: layer.id, on: hidden })
+          },
+          remove() {
+            if (!held()) return
+            record.hideLayers.delete(layer.id)
+            notifyHideLayers()
+          },
         }
       },
     }
@@ -499,6 +659,10 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       if (!hostLive) return
       for (const record of liveRecords()) fanOut(record.lanes.pane, pane)
     },
+    activeChanged(active) {
+      if (!hostLive) return
+      for (const record of liveRecords()) fanOut(record.lanes.active, active)
+    },
     menuItems(context) {
       if (!hostLive) return []
       const rows: ChartExtensionMenuItem[] = []
@@ -512,6 +676,10 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
         }
       }
       return rows
+    },
+    hideLayers() {
+      if (!hostLive) return []
+      return liveRecords().flatMap((record) => [...record.hideLayers.values()])
     },
     serialize() {
       const out: Record<string, unknown> = {}
@@ -527,17 +695,31 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       return out
     },
     restore(state) {
-      if (!hostLive || !state || typeof state !== 'object') return
+      if (!hostLive || !state || typeof state !== 'object' || Array.isArray(state)) return false
       const byId = state as Record<string, unknown>
+      let complete = true
       for (const record of liveRecords()) {
         // Namespaced by id, so one extension can neither read nor corrupt another's slot.
-        if (!record.handle.restore || !Object.hasOwn(byId, record.extension.id)) continue
+        const supplied = Object.hasOwn(byId, record.extension.id)
         try {
-          record.handle.restore(byId[record.extension.id])
+          // Snapshot before handing opaque state to a callback that could mutate its argument.
+          const expected = supplied ? JSON.stringify(byId[record.extension.id]) : undefined
+          if (record.handle.restore && supplied) record.handle.restore(byId[record.extension.id])
+          // A stateful owner must actually accept its own complete serialized namespace. A void
+          // callback alone proves nothing: it can silently ignore invalid leaves or patch only
+          // part of the old state. JSON normalization preserves toJSON/undefined semantics, while
+          // structural comparison permits reordered keys. Unknown ids remain ignored.
+          const actual = record.handle.serialize ? JSON.stringify(record.handle.serialize()) : undefined
+          if (actual !== undefined || record.handle.restore) {
+            if (!supplied || !record.handle.restore || expected === undefined || actual === undefined || !sameJsonState(JSON.parse(expected), JSON.parse(actual))) complete = false
+          }
         } catch {
-          /* a blob this version cannot read leaves the extension at its defaults */
+          // Normal restore remains tolerant, but a failed callback or serializer cannot certify
+          // recovery or a rollback. Stateful extensions without both methods cannot prove it.
+          complete = false
         }
       }
+      return complete
     },
     subscriberCount() {
       let total = 0

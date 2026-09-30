@@ -13,6 +13,7 @@ import { CURSOR_MODES } from './cursorModel'
 import type { MagnetMode } from './magnetModel'
 import type { FavoritesPosition, FavoritesState } from './favoritesModel'
 import { DEFAULT_FAVORITES, MAX_FAVORITE_TOOLS } from './favoritesModel'
+import { RECENT_COLOR_LIMIT } from '../ui/controls/color'
 
 /** The most recent glyph picks the record keeps. */
 const RECENT_GLYPHS_MAX = 12
@@ -38,6 +39,8 @@ export interface DrawingPreferences {
   settingsBarPosition: FavoritesPosition | null
   /** The glyph picker's most recent picks, newest first. */
   recentGlyphs: readonly string[]
+  /** The colours this viewer mixed in the picker, newest first. */
+  recentColors: readonly string[]
 }
 
 export const DEFAULT_DRAWING_PREFERENCES: DrawingPreferences = {
@@ -51,6 +54,7 @@ export const DEFAULT_DRAWING_PREFERENCES: DrawingPreferences = {
   favorites: DEFAULT_FAVORITES,
   settingsBarPosition: null,
   recentGlyphs: [],
+  recentColors: [],
 }
 
 const positionOf = (value: unknown): FavoritesPosition | null => {
@@ -102,6 +106,7 @@ export function parseDrawingPreferences(raw: string | null | undefined): Drawing
     favorites: favoritesOf(value.favorites),
     settingsBarPosition: positionOf(value.settingsBarPosition),
     recentGlyphs: Array.isArray(value.recentGlyphs) ? value.recentGlyphs.filter((g): g is string => typeof g === 'string').slice(0, RECENT_GLYPHS_MAX) : [],
+    recentColors: Array.isArray(value.recentColors) ? value.recentColors.filter((c): c is string => typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c)).slice(0, RECENT_COLOR_LIMIT) : [],
   }
 }
 

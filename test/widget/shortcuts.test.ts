@@ -4,7 +4,7 @@
 // and that a shortcut means the same physical key however a host wrote it.
 import { describe, expect, it } from 'vitest'
 import { createCommandRegistry } from '../../src/widget/commands'
-import { attachShortcuts, eventShortcut, normalizeShortcut } from '../../src/widget/shortcuts'
+import { attachShortcuts, eventShortcut, normalizeShortcut, pressedTokens } from '../../src/widget/shortcuts'
 
 /** A stand-in root that records its listener, so a press can be delivered without a DOM. */
 function fakeRoot() {
@@ -48,6 +48,13 @@ describe('a shortcut names one physical key', () => {
   it('refuses a modifier it cannot honor rather than binding the key to something else', () => {
     expect(normalizeShortcut('Hyper+KeyR')).toBeNull()
     expect(normalizeShortcut('')).toBeNull()
+  })
+
+  it('reads a Command chord as the Ctrl spelling too, so one shortcut means both keyboards', () => {
+    expect(pressedTokens({ code: 'KeyS', ctrlKey: true } as KeyboardEvent)).toEqual(['Ctrl+KeyS'])
+    expect(pressedTokens({ code: 'KeyS', metaKey: true } as KeyboardEvent)).toEqual(['Meta+KeyS', 'Ctrl+KeyS'])
+    // A press holding both is exactly what it says, and never two chords at once.
+    expect(pressedTokens({ code: 'KeyS', ctrlKey: true, metaKey: true } as KeyboardEvent)).toEqual(['Ctrl+Meta+KeyS'])
   })
 
   it('reads a press in the same terms', () => {
@@ -105,6 +112,15 @@ describe('the dispatcher runs shortcuts through the registry', () => {
     attachShortcuts({ root, commands: handle.registry })
     press({ code: 'KeyR', altKey: true, target: { tagName: 'INPUT' } as unknown as EventTarget })
     expect(ran).toEqual([])
+  })
+
+  it('runs a Ctrl shortcut from a Command press, and a host Meta binding still wins its own key', () => {
+    const { ran, handle } = registryWith(() => true)
+    const { root, press } = fakeRoot()
+    attachShortcuts({ root, commands: handle.registry })
+    handle.registry.setShortcut('chart.view.reset', 'Ctrl+KeyK')
+    expect(press({ code: 'KeyK', metaKey: true }).prevented).toBe(true)
+    expect(ran).toEqual(['reset'])
   })
 
   it('ignores a chord that names a different key', () => {

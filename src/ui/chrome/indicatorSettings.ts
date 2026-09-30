@@ -6,7 +6,8 @@
 import { manifestInputDefaults, type IndicatorOverrides } from '../../indicatorModel'
 import type { BuiltInIndicator } from '../../builtInIndicators'
 import { buildInputFields } from '../../inputsEditor'
-import { parseCssColor } from '../../theme/color'
+import { createColorControl, readColor, type ColorControlHandle } from '../controls/color'
+import { openInlinePanel } from '../controls/inlinePanel'
 import type { ChartHandle } from '../../widget/chart'
 import type { IndicatorInstance } from '../../widget/options'
 import { indicatorTitleOf } from '../../widget/indicators'
@@ -22,16 +23,6 @@ export interface IndicatorSettingsDeps extends ChromeContext {
 type LineStyle = 'solid' | 'dashed' | 'dotted'
 const LINE_WIDTHS = [1, 2, 3, 4] as const
 const PRECISIONS = [0, 1, 2, 3, 4, 5, 6, 7, 8] as const
-
-/** A color as a `#rrggbb` the native color field takes, or null when it is not one the field can
- *  show (a translucent or named value keeps its declaration until the viewer picks). */
-export function hexOf(color: string | undefined): string | null {
-  if (!color) return null
-  const rgba = parseCssColor(color)
-  if (!rgba) return null
-  const pair = (n: number): string => Math.round(n).toString(16).padStart(2, '0')
-  return `#${pair(rgba.r)}${pair(rgba.g)}${pair(rgba.b)}`
-}
 
 /** A display name for a plot, level, fill or input key: the built-in's own title where it carries
  *  one, else the key read as words. */
@@ -57,11 +48,25 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): DialogHandle
   const levelOverride = (key: string): NonNullable<IndicatorOverrides['levels']>[string] => ((overrides.levels ??= {})[key] ??= {})
   const fillOverride = (key: string): NonNullable<IndicatorOverrides['fills']>[string] => ((overrides.fills ??= {})[key] ??= {})
 
-  const colorField = (label: string, current: string | undefined, onChange: (hex: string) => void): HTMLElement => {
-    const hex = hexOf(current)
-    const input = h('input', { type: 'color', class: 'qc-field qc-color-field', 'aria-label': label, ...(hex ? { value: hex } : {}) })
-    input.addEventListener('input', () => onChange(input.value))
-    return input
+  // The shared color control, opened as a disclosure inside the dialog's own page. The dialog
+  // still owns the commit: a pick writes the draft overrides, and only Apply reaches the chart.
+  // A value in a notation the control does not read keeps its declaration until a pick.
+  const controls: ColorControlHandle[] = []
+  const colorField = (label: string, current: string | undefined, onChange: (color: string) => void): HTMLElement => {
+    const value = current ?? ''
+    const control: ColorControlHandle = createColorControl(t, {
+      label,
+      value,
+      opacity: readColor(value)?.alpha ?? 1,
+      closeOnPick: true,
+      onPick: (color) => {
+        control.update(color)
+        onChange(color)
+      },
+      openPanel: (anchor, content, onClosed) => openInlinePanel(anchor, content, anchor.closest('.qc-settings-row') ?? anchor, onClosed),
+    })
+    controls.push(control)
+    return control.element
   }
   const select = (label: string, options: readonly { value: string; text: string }[], current: string, onChange: (value: string) => void): HTMLElement => {
     const el = h('select', { class: 'qc-field', 'aria-label': label })
@@ -174,7 +179,7 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): DialogHandle
         dialog.close()
       }
       box.append(
-        dialogTitle(title, t('inputs.cancel'), () => dialog.close()),
+        dialogTitle(title, t('inputs.cancel'), () => dialog.close(), deps.icons),
         list.element,
         panel,
         h('div', { class: 'qc-dialog-actions' }, button({ label: t('inputs.cancel'), text: t('inputs.cancel'), onClick: () => dialog.close() }), button({ label: t('inputs.apply'), text: t('inputs.apply'), className: 'qc-button--primary', onClick: apply })),
@@ -185,5 +190,9 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): DialogHandle
       show(tab)
     },
     initialFocus: (box) => box.querySelector<HTMLElement>('.qc-dialog-body input, .qc-dialog-body select, .qc-dialog-body button'),
+    onClose: () => {
+      for (const control of controls) control.destroy()
+      controls.length = 0
+    },
   })
 }

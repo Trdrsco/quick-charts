@@ -4,17 +4,24 @@
 // layer's mark until the subject changes. Exactly one subject is ever blanked, so choosing a new
 // one restores the last, and `all` is a subject like the others rather than an extra switch.
 //
-// The eye reaches CHART-OWNED layers only: drawings and indicators. Positions, working orders,
-// executions and any other trading overlay are not the chart's to blank, and `all` therefore
-// carries no trading meaning. A product that sells trading marks owns their visibility on its own
-// surface.
+// The chart's own layers are drawings and indicators. Positions, working orders, executions and
+// any other overlay are not the chart's to know: an extension that draws one CONTRIBUTES it as a
+// layer, and it then lists between the chart's own and `all`, which blanks it with them.
 import type { ChartMessageKey } from '../i18n/en'
 
-/** The layers the eye can blank. `all` is drawings plus indicators, and nothing else. */
-export type HideMode = 'drawings' | 'indicators' | 'all'
+/** The layers the eye itself owns, and `all`. */
+export type BuiltInHideMode = 'drawings' | 'indicators' | 'all'
 
-/** Menu order. */
-export const HIDE_ORDER: readonly HideMode[] = ['drawings', 'indicators', 'all']
+/** A subject of the eye: one of its own, or the id of a contributed layer. */
+export type HideMode = string
+
+/** The chart's own layers, ahead of any contributed one. */
+export const CHART_HIDE_LAYERS: readonly BuiltInHideMode[] = ['drawings', 'indicators']
+
+/** Menu order: the chart's layers, then the contributed ones in contribution order, then all. */
+export function hideOrder(contributed: readonly string[] = []): readonly HideMode[] {
+  return [...CHART_HIDE_LAYERS, ...contributed, 'all']
+}
 
 /** What the eye is pointed at, and whether it is blanking. */
 export interface HideState {
@@ -25,17 +32,22 @@ export interface HideState {
 /** The eye's resting state: pointed at drawings, blanking nothing. */
 export const DEFAULT_HIDE_STATE: HideState = { mode: 'drawings', on: false }
 
-/** Each subject's wording in both states. The eye keeps its subject's mark whether or not the
- *  layer is blanked, so the toolbar never stops naming what the button acts on. */
-export const HIDE_LABELS: Readonly<Record<HideMode, { hide: ChartMessageKey; show: ChartMessageKey }>> = {
+/** Each built-in subject's wording in both states. The eye keeps its subject's mark whether or not
+ *  the layer is blanked, so the toolbar never stops naming what the button acts on. A contributed
+ *  layer carries its own wording. */
+export const HIDE_LABELS: Readonly<Record<BuiltInHideMode, { hide: ChartMessageKey; show: ChartMessageKey }>> = {
   drawings: { hide: 'drawing.hideDrawings', show: 'drawing.showDrawings' },
   indicators: { hide: 'drawing.hideIndicators', show: 'drawing.showIndicators' },
   all: { hide: 'drawing.hideAll', show: 'drawing.showAll' },
 }
 
-/** Whether a state blanks one concrete layer. `all` covers both concrete layers; asking whether
+export function isBuiltInHideMode(mode: HideMode): mode is BuiltInHideMode {
+  return mode === 'drawings' || mode === 'indicators' || mode === 'all'
+}
+
+/** Whether a state blanks one concrete layer. `all` covers every concrete layer; asking whether
  *  `all` itself is blanked is asking about the subject, which is `state.mode`. */
-export function blanks(state: HideState, layer: 'drawings' | 'indicators'): boolean {
+export function blanks(state: HideState, layer: HideMode): boolean {
   return state.on && (state.mode === layer || state.mode === 'all')
 }
 

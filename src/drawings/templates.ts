@@ -53,6 +53,9 @@ export function decodePreset(content: string): ToolPreset {
 /** Whether a listing row is a tool's silent default rather than a named template. */
 const isDefaultRow = (row: TemplateMeta): boolean => row.name === DEFAULT_PRESET_NAME
 
+/** How many template bodies `listAll` reads at a time. */
+const BODY_READS = 6
+
 /** The drawing-template workflow over one `templates('drawing')` store. Every call takes the
  *  caller's `AbortSignal`, so a closed dialog or a fast retype abandons in flight and a late answer
  *  never lands. */
@@ -68,14 +71,22 @@ export class DrawingTemplates {
 
   /** Every row of the family, defaults included, each with its preset. A host that has to answer
    *  synchronously (a placement path, a render) reads this once into a cache of its own rather
-   *  than awaiting per tool. The contract's listing carries metadata only, so each row's body is
-   *  fetched: one read per saved setup, once, against a family a trader keeps in the dozens. */
+   *  fetched: one read per saved setup, once, against a family a trader keeps in the dozens. The
+   *  reads run together, `BODY_READS` at a time, and the answer keeps the store's order. */
   async listAll(signal?: AbortSignal): Promise<ToolTemplate[]> {
     const rows = await this.store.list(signal)
+    const found: (Awaited<ReturnType<ResourceStore<TemplateMeta, TemplateBody>['load']>> | undefined)[] = new Array(rows.length)
+    let next = 0
+    const reader = async (): Promise<void> => {
+      while (next < rows.length) {
+        const at = next++
+        found[at] = await this.store.load(rows[at]!.id, signal)
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(BODY_READS, rows.length) }, reader))
     const out: ToolTemplate[] = []
-    for (const row of rows) {
-      const found = await this.store.load(row.id, signal)
-      if (found) out.push({ ...decodePreset(found.body.content), ref: found.ref, name: found.body.name, tool: found.body.tool ?? '' })
+    for (const one of found) {
+      if (one) out.push({ ...decodePreset(one.body.content), ref: one.ref, name: one.body.name, tool: one.body.tool ?? '' })
     }
     return out
   }

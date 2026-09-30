@@ -4,8 +4,8 @@
 //   dist/feature-manifest.json   every registry the chart ships, read from the built entrypoints the
 //                                consumer installs: the seven styles, the built-in indicators, the drawing
 //                                tools, the layout arrangements, the preset timeframes, the timezones, the
-//                                command registry, the feature flags, the theme modes and roles, and the
-//                                built-in locales
+//                                command registry, the feature flags, the interface's control flags, the
+//                                icons a host may draw, the theme modes and roles, and the built-in locales
 //
 // It runs from `pnpm --filter quickcharts build:manifest`, and `postbuild` runs it after the theme
 // generator for every build, so a manifest never describes an artifact older than itself. The
@@ -23,7 +23,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Window } from 'happy-dom'
 
 import { BROWSER_GLOBALS, installBrowserShim } from './browserShim.ts'
-import { resolveFeatures } from '../src/widget/planes.ts'
+import { FEATURE_KEYS, flagPaths, UI_KEYS } from '../src/widget/planes.ts'
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const manifestPath = join(pkgRoot, 'package.json')
@@ -66,7 +66,6 @@ function commandsOf() {
   }
 }
 
-const features = resolveFeatures()
 
 const manifest = {
   version,
@@ -77,9 +76,15 @@ const manifest = {
   timeframes: root.TIMEFRAME_PRESETS.flatMap((g) => g.tokens.map((id) => ({ id, unit: g.unit }))),
   timezones: root.TIMEZONES.map((z) => ({ id: z.id, city: z.city })),
   commands: commandsOf(),
-  features: Object.keys(features)
+  // Every flag of each plane defaults on, which is what a host that passes nothing gets.
+  features: flagPaths(FEATURE_KEYS)
     .sort()
-    .map((id) => ({ id, default: features[id] })),
+    .map((id) => ({ id, default: true })),
+  ui: flagPaths(UI_KEYS)
+    .sort()
+    .map((id) => ({ id, default: true })),
+  // In catalog order; a glyph the chart mirrors for a right-to-left language says so.
+  icons: root.CHART_ICON_IDS.map((id) => ({ id, ...(root.MIRRORED_ICONS.has(id) ? { mirrored: true } : {}) })),
   themes: {
     modes: themeManifest.modes,
     roles: themeManifest.roles.map((r) => ({ id: r.id, family: r.family, kind: r.kind })),
@@ -94,6 +99,6 @@ writeFileSync(out, `${JSON.stringify(manifest, null, 2)}\n`)
 shim.uninstall()
 await window.happyDOM.close()
 
-const counts = ['styles', 'indicators', 'drawings', 'layouts', 'timeframes', 'timezones', 'commands', 'features', 'locales'].map((k) => `${k} ${manifest[k].length}`)
+const counts = ['styles', 'indicators', 'drawings', 'layouts', 'timeframes', 'timezones', 'commands', 'features', 'ui', 'icons', 'locales'].map((k) => `${k} ${manifest[k].length}`)
 console.log(`feature manifest: ${counts.join(', ')}, themes ${manifest.themes.modes.length} modes over ${manifest.themes.roles.length} roles`)
 console.log(`  ${out}`)

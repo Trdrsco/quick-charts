@@ -1,4 +1,5 @@
-/* The symbol search dialog: the field with its operators, the class strip, and the result list. */
+/* The symbol search dialog and its compare family: the heading, the field with its operators, the
+ * class strip, and the result list. */
 [data-qc-theme] .qc-search-dialog {
   height: min(85vh, 680px);
 }
@@ -7,48 +8,110 @@
   height: min(85vh, 565px);
 }
 
+/* The same search with no dialog around it, for a page that holds the picker in a box of its own:
+ * a phone's top card, where the card IS the picker. It fills that box and scrolls inside it. */
+[data-qc-theme].qc-search-card {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  padding: 0 6px 6px;
+  color: var(--qc-text-primary);
+  font-family: var(--qc-text-fontFamily);
+  font-size: var(--qc-text-fontSizeBase);
+}
+
+/* The heading band: a 68px line with the title at 20px on 28. The close reaches 3px past the band's
+ * inset, where every dialog of this size keeps it. */
+[data-qc-theme] .qc-search-dialog .qc-dialog-title {
+  height: 68px;
+  padding: 0 20px;
+}
+
+[data-qc-theme] .qc-search-dialog .qc-dialog-title .qc-title {
+  font-size: 20px;
+  line-height: 28px;
+}
+
+[data-qc-theme] .qc-search-dialog .qc-dialog-close {
+  margin-inline-end: -3px;
+}
+
+/* One 40px row in an 8px round box: the mark, the value, and the strip of things to do to the value.
+ * It does NOT wrap: a field that reflows as the operators appear moves the caret out from under the
+ * hand that is typing into it. The outline stands in for a border, so the side padding carries the
+ * pixel a border would take. */
 [data-qc-theme] .qc-search-field {
   display: flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 6px;
   height: 40px;
-  margin: 0 14px;
-  padding: 0 8px;
-  border: 1px solid var(--qc-chrome-borderStrong);
-  border-radius: var(--qc-chrome-radiusLarge);
+  margin: 0 20px 8px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  outline: 1px solid var(--qc-chrome-fieldBorder);
+  outline-offset: -1px;
 }
 
+/* The mark stands back while the field is idle and steps forward once the caret is in it. */
 [data-qc-theme] .qc-search-magnifier {
+  flex: 0 0 auto;
+  color: var(--qc-text-disabled);
+}
+
+[data-qc-theme] .qc-search-field:focus-within .qc-search-magnifier {
   color: var(--qc-text-muted);
 }
 
+/* The value at 16px on 24, raised to the case a ticker is written in. */
 [data-qc-theme] .qc-search-input {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 6px 4px;
+  height: 24px;
+  padding: 0;
   color: var(--qc-text-primary);
   font: inherit;
-  font-size: var(--qc-text-fontSizeTitle);
+  font-size: calc(var(--qc-text-fontSizeBase) + 2px);
+  line-height: 24px;
   text-transform: uppercase;
   background: none;
   border: none;
   outline: none;
 }
 
+/* The prompt is not a value: it keeps its own case, in the ink of the idle field's mark. */
 [data-qc-theme] .qc-search-input::placeholder {
-  color: var(--qc-text-muted);
+  color: var(--qc-text-disabled);
   text-transform: none;
+}
+
+/* The trailing strip, in the order a hand reaches for it: the clear mark, a rule, the operators when
+ * they are out, and the toggle that brings them. */
+[data-qc-theme] .qc-search-actions-field {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+/* A mark of its own height beside the clear, not a border down the field: the rule separates two
+ * runs of controls inside the row, and a full-depth edge would read as the field being cut in two. */
+[data-qc-theme] .qc-search-rule {
+  flex: 0 0 1px;
+  width: 1px;
+  height: 15px;
+  margin-inline: 8px;
+  background: var(--qc-state-hover);
 }
 
 [data-qc-theme] .qc-search-ops {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding-inline-start: 6px;
-  border-inline-start: 1px solid var(--qc-overlay-separator);
+  gap: 4px;
+  margin-inline-end: 8px;
 }
 
+/* Every control in the strip is a 24px cell around its mark, 4px round, in the muted ink until the
+ * pointer lifts it onto a fill. The toggle is not painted as held: the strip it opens is the answer. */
 [data-qc-theme] .qc-search-op {
   display: inline-flex;
   align-items: center;
@@ -56,30 +119,64 @@
   width: 24px;
   height: 24px;
   padding: 0;
-  color: var(--qc-text-secondary);
+  color: var(--qc-text-muted);
+  background: none;
   border-color: transparent;
+  border-radius: 4px;
 }
 
+[data-qc-theme] .qc-search-op:hover {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-pressedHover);
+}
+
+/* The class strip: filled round tabs 4px apart on the field's inset, scrolling sideways when the
+ * feed serves more classes than the width holds. */
 [data-qc-theme] .qc-search-classes {
   display: flex;
   flex: 0 0 auto;
-  gap: 6px;
-  padding: 8px 14px;
+  gap: 4px;
+  padding: 8px 20px;
   overflow-x: auto;
+  scrollbar-width: none;
 }
 
+[data-qc-theme] .qc-search-classes::-webkit-scrollbar {
+  display: none;
+}
+
+/* A class rests on the neutral fill, steps deeper under the pointer and deeper again while pressed. */
 [data-qc-theme] .qc-search-class {
-  height: 26px;
-  padding: 0 10px;
+  flex: 0 0 auto;
+  height: 28px;
+  padding: 0 11px;
+  color: var(--qc-text-primary);
   font-size: var(--qc-text-fontSizeBase);
+  line-height: 18px;
+  background: var(--qc-state-hover);
+  border-color: var(--qc-state-hover);
+  border-radius: 14px;
   white-space: nowrap;
-  border-radius: var(--qc-chrome-radiusLarge);
 }
 
-[data-qc-theme] .qc-search-class[aria-pressed='true'] {
+[data-qc-theme] .qc-search-class:hover {
+  background: var(--qc-state-pressed);
+  border-color: var(--qc-state-pressed);
+}
+
+[data-qc-theme] .qc-search-class:active {
+  background: var(--qc-state-pressedHover);
+  border-color: var(--qc-state-pressedHover);
+}
+
+/* The chosen class INVERTS, under the pointer as at rest: one tab out of a row has to be
+ * unmistakable at a glance, and a deeper step of the same fill would only be a louder hover. */
+[data-qc-theme] .qc-search-class[aria-pressed='true'],
+[data-qc-theme] .qc-search-class[aria-pressed='true']:hover,
+[data-qc-theme] .qc-search-class[aria-pressed='true']:active {
   color: var(--qc-text-inverse);
-  background: var(--qc-state-accent);
-  border-color: var(--qc-state-accent);
+  background: var(--qc-control-on);
+  border-color: var(--qc-control-on);
 }
 
 [data-qc-theme] .qc-search-list {
@@ -88,79 +185,335 @@
   overflow-y: auto;
 }
 
+/* A section heading: 11px capitals in the muted ink on the rows' inset, 16px under what is above. */
 [data-qc-theme] .qc-search-list .qc-dialog-heading {
-  padding-inline: 14px;
+  padding: 16px 20px 8px;
+  letter-spacing: normal;
 }
 
+/* A row. The pointer lifts it a step up the neutral ramp, the same step its divider is drawn in, so a
+ * hovered row reads as one block with its edge. The keyboard's row wears a 2px ring in the emphasis
+ * ink inside its own box, apart from the hover: the ring says where Enter will land. */
 [data-qc-theme] .qc-search-row {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 40px;
-  padding: 0 14px;
-  border-bottom: 1px solid var(--qc-overlay-separator);
-  cursor: pointer;
+  border-bottom: 1px solid var(--qc-state-pressed);
+  cursor: default;
 }
 
-[data-qc-theme] .qc-search-row[aria-selected='true'] {
-  background: var(--qc-state-selected);
+[data-qc-theme] .qc-search-row:hover {
+  background: var(--qc-state-pressed);
 }
 
-[data-qc-theme] .qc-search-text {
-  display: flex;
-  flex: 1 1 auto;
-  gap: 12px;
-  align-items: baseline;
-  min-width: 0;
+[data-qc-theme] .qc-search-row[aria-selected='true']::after {
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--qc-control-on);
+  border-radius: 4px;
+  content: '';
+  pointer-events: none;
+}
+
+/* A row's own mark: 24px, 20px in from the dialog's edge and 8px before the ticker. */
+[data-qc-theme] .qc-search-row .qc-symbol-badge {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  margin-inline: 20px 8px;
 }
 
 [data-qc-theme] .qc-search-symbol {
-  flex: 0 0 auto;
-  min-width: 96px;
-  font-variant-numeric: tabular-nums;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--qc-text-primary);
+  font-size: calc(var(--qc-text-fontSizeBase) + 2px);
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 [data-qc-theme] .qc-search-hit {
-  color: var(--qc-state-accent);
+  color: var(--qc-text-highlight);
 }
 
 [data-qc-theme] .qc-search-name {
-  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-[data-qc-theme] .qc-search-meta {
+/* The source cell: what kind of market a row is and where its data comes from, then the venue's
+ * mark, set against the row's end. */
+[data-qc-theme] .qc-search-source {
+  display: inline-flex;
   flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  padding-inline-end: 20px;
+}
+
+[data-qc-theme] .qc-search-venue {
+  color: var(--qc-text-primary);
+  font-size: var(--qc-text-fontSizeBase);
+  line-height: 21px;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-search-kind {
+  color: var(--qc-text-muted);
+  font-size: calc(var(--qc-text-fontSizeBase) - 2px);
+  white-space: nowrap;
+}
+
+/* The source's mark: an 18px disc in a 20px cell. The package ships no brand artwork and fetches
+ * none: a host paints the venue's own mark, or a provider's, and without one the source is written
+ * in the one letter it is known by on the neutral fill. */
+[data-qc-theme] .qc-search-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 1px;
+  color: var(--qc-text-muted);
+  font-size: var(--qc-text-fontSizeMicro);
+  font-weight: 700;
+  line-height: 1;
+  background: var(--qc-chrome-border);
+  border-radius: 50%;
+}
+
+/* A host's venue or provider mark IS the disc: the package's ground stands down under it, and the
+ * artwork fills the round box. */
+[data-qc-theme] .qc-search-mark[data-qc-host='true'] {
+  background: none;
+}
+
+[data-qc-theme] .qc-search-mark[data-qc-host='true'] > * {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+/* A SEARCH and a PICK list their markets as a table, in a dialog or in a card a page holds: the mark, the ticker on a column as wide as the widest ticker
+ * the list holds, the description in the room that is left, and the source. Each row is a subgrid of
+ * the list, so the columns line up down every row. The list opens 8px under the class strip. */
+[data-qc-theme] .qc-search-table .qc-search-list {
+  display: grid;
+  grid-template-columns: 52px max-content minmax(0, 1fr) max-content;
+  align-content: start;
+  margin-top: 8px;
+  padding: 1px 0 6px;
+}
+
+[data-qc-theme] .qc-search-table .qc-search-list > :not(.qc-search-row) {
+  grid-column: 1 / -1;
+}
+
+[data-qc-theme] .qc-search-table .qc-search-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  height: 40px;
+}
+
+/* The ticker and its description stand in the row's own columns rather than in a box of their own,
+ * and the source cell's wrapper steps aside the same way, so the kind reads ahead of the venue on
+ * the row's one line. */
+[data-qc-theme] .qc-search-table .qc-search-text,
+[data-qc-theme] .qc-search-table .qc-search-source-text {
+  display: contents;
+}
+
+[data-qc-theme] .qc-search-table .qc-search-symbol {
+  padding-inline-end: 24px;
+}
+
+[data-qc-theme] .qc-search-table .qc-search-name {
+  padding-inline-end: 24px;
+  color: var(--qc-text-primary);
+  font-size: var(--qc-text-fontSizeBase);
+}
+
+[data-qc-theme] .qc-search-table .qc-search-kind {
+  order: -1;
+  margin-inline-end: 8px;
+  line-height: 21px;
+}
+
+[data-qc-theme] .qc-search-table .qc-search-venue {
+  margin-inline-end: 8px;
+}
+
+/* COMPARE stacks the ticker over its description and the venue over the kind, on 52px rows, and
+ * keeps 6px of air at the list's two ends. */
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row {
+  height: 52px;
+}
+
+[data-qc-theme] .qc-search-dialog--compare .qc-search-list > .qc-search-row:first-child {
+  margin-top: 6px;
+}
+
+[data-qc-theme] .qc-search-dialog--compare .qc-search-list > .qc-search-row:last-child {
+  margin-bottom: 6px;
+}
+
+[data-qc-theme] .qc-search-dialog--compare .qc-search-text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding-inline-end: 16px;
+}
+
+[data-qc-theme] .qc-search-dialog--compare .qc-search-name {
+  color: var(--qc-text-muted);
+  font-size: calc(var(--qc-text-fontSizeBase) - 2px);
+  line-height: 17px;
+}
+
+/* The venue over its kind, with 4px of air above the pair so the two lines sit level with the
+ * ticker and description beside them. */
+[data-qc-theme] .qc-search-dialog--compare .qc-search-source-text {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding-top: 4px;
+}
+
+[data-qc-theme] .qc-search-dialog--compare .qc-search-kind {
+  line-height: 17px;
+}
+
+[data-qc-theme] .qc-search-dialog--compare .qc-search-mark {
+  margin-inline-start: 9px;
+}
+
+/* A row already on the chart carries a check where its source would stand. */
+[data-qc-theme] .qc-search-added {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-inline-end: 16px;
+  color: var(--qc-text-muted);
+}
+
+/* Under the pointer or the keyboard, a compare row's source steps aside for the three placement
+ * verbs: a row a viewer is reaching for should say what it can DO, not restate what it is. */
+[data-qc-theme] .qc-search-actions {
+  display: none;
+  flex: 0 0 auto;
+  gap: 8px;
+  padding-inline-end: 20px;
+}
+
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row:hover .qc-search-actions,
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row[aria-selected='true'] .qc-search-actions,
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row:focus-within .qc-search-actions {
+  display: inline-flex;
+}
+
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row:hover .qc-search-source,
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row[aria-selected='true'] .qc-search-source,
+[data-qc-theme] .qc-search-dialog--compare .qc-search-row:focus-within .qc-search-source {
+  display: none;
+}
+
+/* A placement is an outlined button on the dialog's own ground that fills with the emphasis ink
+ * under the pointer, and a step softer while pressed. */
+[data-qc-theme] .qc-search-place {
+  height: 28px;
+  padding: 0 7px;
+  color: var(--qc-text-primary);
+  font-size: var(--qc-text-fontSizeBase);
+  line-height: 1;
+  background: var(--qc-overlay-surface);
+  border: 1px solid var(--qc-overlay-separator);
+  border-radius: var(--qc-chrome-radius);
+}
+
+[data-qc-theme] .qc-search-place:hover {
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-onHover);
+  border-color: var(--qc-control-onHover);
+}
+
+[data-qc-theme] .qc-search-place:active {
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-onPressed);
+  border-color: var(--qc-control-onPressed);
+}
+
+/* Nothing added and nothing recent: the compare list invites the first comparison, its drawing over
+ * a line in the dialog's ink, centred in whatever the dialog left the list. */
+[data-qc-theme] .qc-search-empty {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  padding: 32px 20px;
+}
+
+[data-qc-theme] .qc-search-empty-note {
+  color: var(--qc-text-primary);
+  font-size: calc(var(--qc-text-fontSizeBase) + 2px);
+  line-height: 24px;
+  text-align: center;
+}
+
+/* What the list says. Empty, it takes no room. Under rows the cache still shows, a failure is one
+ * line beneath them. */
+[data-qc-theme] .qc-search-status:not(:empty) {
+  padding: 6px 20px;
+  color: var(--qc-text-secondary);
   font-size: var(--qc-text-fontSizeSmall);
 }
 
-[data-qc-theme] .qc-search-added {
-  display: inline-flex;
+/* In place of rows it is the whole answer: the empty result's drawing over a line saying so, or a
+ * failure's line alone, centred where the rows would have stood. */
+[data-qc-theme] .qc-search-list[hidden] + .qc-search-status {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
+  padding: 8px 20px 70px;
+  color: var(--qc-text-primary);
+  font-size: var(--qc-text-fontSizeBase);
+  text-align: center;
 }
 
-/* Compare rows swap their meta for the three placement verbs under the pointer or the keyboard. */
-[data-qc-theme] .qc-search-actions {
+/* Artwork drawn once per mode shows only in its own: the empty result's light drawing is heavier, so
+ * it holds on white. */
+[data-qc-theme='light'] .qc-only-dark,
+[data-qc-theme='dark'] .qc-only-light {
   display: none;
-  gap: 6px;
 }
 
-[data-qc-theme] .qc-search-row:hover .qc-search-actions,
-[data-qc-theme] .qc-search-row[aria-selected='true'] .qc-search-actions,
-[data-qc-theme] .qc-search-row:focus-within .qc-search-actions {
-  display: inline-flex;
+/* Compare has no strip above its list, so its answer centres in the list's own room. */
+[data-qc-theme] .qc-search-dialog--compare .qc-search-list[hidden] + .qc-search-status {
+  padding: 0 20px;
 }
 
-[data-qc-theme] .qc-search-status {
-  flex: 0 0 auto;
-  padding: 6px 14px;
-  min-height: 12px;
+[data-qc-theme] .qc-search-dialog--compare .qc-search-list[hidden] + .qc-search-status .qc-search-status-text {
+  margin-top: 8px;
+  font-size: calc(var(--qc-text-fontSizeBase) + 2px);
+  line-height: 24px;
 }
 
 [data-qc-theme] .qc-search-sentinel {
-  padding: 8px 14px;
+  padding: 8px 20px;
   font-size: var(--qc-text-fontSizeSmall);
 }

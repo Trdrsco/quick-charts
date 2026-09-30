@@ -30,6 +30,11 @@ export interface SymbolRow {
   type: string
   provider?: string | null
   via?: string | null
+  /** What the market is priced in, when the feed knows it here. A PAIR market writes itself as
+   *  `BASE / QUOTE` wherever it is named, and a ticker alone cannot say what the quote is; a row
+   *  without it keeps the name the feed sent instead. `resolve()` states the same fact for the
+   *  charted symbol, so a row and the legend that follows it agree. */
+  currencyCode?: string
 }
 
 export interface SearchPage {

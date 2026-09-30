@@ -5,18 +5,21 @@
 //
 // Two rules shape everything here. A compute that throws is skipped for that round rather than
 // sinking the chart. And a hidden instance renders nothing (its series come down) but keeps its
-// legend row, so the eye can bring it back.
+// legend row, so the eye can bring it back. Hidden is part of the instance override record, which
+// is also what the saved chart carries.
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 import type { FeedBar } from '../datafeed'
 import type { ChartI18n, ChartMessageKey, ChartTranslate } from '../i18n'
 import type { LegendChip } from '../chartLegend'
-import type { PriceFormatter } from '../priceFormatter'
-import { applyPlotOverrides, buildManifestPlots, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest } from '../indicatorModel'
+import { createPriceFormatter, type PriceFormatter } from '../priceFormatter'
+import { BUILT_IN_INDICATORS, INDICATOR_PALETTE } from '../builtInIndicators'
+import { applyPlotOverrides, buildManifestPlots, effectivePlotColor, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest, plotValueAt } from '../indicatorModel'
 import { attachIndicators, type IndicatorsRenderer } from '../indicatorRenderer'
 import { isCollapsed } from '../panePlan'
 import type { CanvasTheme } from '../theme/renderer'
 import type { AccessPolicy, IndicatorDefinition, IndicatorInstance } from './options'
 import type { IndicatorEvent } from './events'
+import { restoreIndicatorInstance, type SavedIndicator } from './saveLoad'
 
 /** The title a mounted indicator wears: the host's own, else the manifest's name, else the chart
  *  catalog's name for a definition carrying a `nameKey` (every built-in does), else the instance
@@ -26,6 +29,31 @@ export function indicatorTitleOf(inst: IndicatorInstance, t: ChartTranslate): st
   if (inst.definition.manifest.name) return inst.definition.manifest.name
   const key = (inst.definition as { nameKey?: unknown }).nameKey
   return typeof key === 'string' ? t(key as ChartMessageKey) : inst.id
+}
+
+/** The short mark a legend row wears: the definition's own locale-neutral tag ("SMA", "%R") when it
+ *  declares one, else the full title. The period and the source live in the input readout beside it,
+ *  so the mark never repeats them. A settings surface keeps the full title. */
+export function indicatorMarkOf(inst: IndicatorInstance, t: ChartTranslate): string {
+  if (inst.title) return inst.title
+  const tag = (inst.definition as { tag?: unknown }).tag
+  return typeof tag === 'string' && tag ? tag : indicatorTitleOf(inst, t)
+}
+
+/** The compact input readout that follows the mark, e.g. "(2, Close)". An enum resolves its index to
+ *  its own option, title-cased; a number prints as it stands. Empty when the study takes no input. */
+export function indicatorInputsOf(inst: IndicatorInstance): string {
+  const inputs = inst.definition.manifest.inputs
+  if (!inputs) return ''
+  const parts = Object.entries(inputs).map(([key, spec]) => {
+    const value = inst.inputs?.[key] ?? spec.default
+    if (spec.kind === 'enum' && spec.options) {
+      const label = spec.options[value] ?? String(value)
+      return label.charAt(0).toUpperCase() + label.slice(1)
+    }
+    return String(value)
+  })
+  return parts.length ? `(${parts.join(', ')})` : ''
 }
 
 /** Whether the access policy permits a definition. The predicate is asked ONE id from every door,
@@ -40,6 +68,25 @@ export function indicatorPermitted(access: AccessPolicy | undefined, definition:
   } catch {
     return false
   }
+}
+
+/** The color a saved per-type default pinned on the primary plot, if it pinned one. A pinned color
+ *  is the viewer's own standing choice for that study, so it wins and consumes no palette slot. */
+function pinnedColor(instance: IndicatorInstance): string | undefined {
+  const primary = Object.keys(instance.definition.manifest.plots)[0]
+  return primary ? instance.overrides?.plots?.[primary]?.color : undefined
+}
+
+/** Return the same instance with the persisted hidden flag changed. Clearing the only display
+ *  override removes the empty records too, so a never-styled instance keeps its original shape. */
+export function withHidden(instance: IndicatorInstance, hidden: boolean): IndicatorInstance {
+  if (indicatorHidden(instance.overrides) === hidden) return instance
+  const { hidden: _hidden, ...display } = instance.overrides?.display ?? {}
+  const nextDisplay = hidden ? { ...display, hidden: true } : display
+  const { display: _display, ...rest } = instance.overrides ?? {}
+  const overrides = Object.keys(nextDisplay).length > 0 ? { ...rest, display: nextDisplay } : rest
+  const { overrides: _overrides, ...bare } = instance
+  return Object.keys(overrides).length > 0 ? { ...bare, overrides } : bare
 }
 
 /** How many consecutive readings at the floor height confirm a collapse nobody commanded.
@@ -126,11 +173,18 @@ export interface IndicatorsPlane {
   remove(id: string): void
   /** Patch one instance's inputs. */
   patchInputs(id: string, patch: Record<string, number>): void
-  /** The hidden set, as the save blob carries it. */
+  /** The ids whose instance records say hidden. */
   hidden(): readonly string[]
+  /** Apply the stored opening eye state to the named mount-time instances. An instance already
+   *  hidden in its own record remains hidden. */
   setHidden(ids: readonly string[]): void
   toggleHidden(id: string): void
   isHidden(id: string): boolean
+  /** Replace the list from saved records. Unknown and policy-denied definitions are omitted and
+   *  counted so the caller can report partial application and withhold recovery certification. */
+  restore(saved: readonly SavedIndicator[]): { dropped: number }
+  /** Restore the exact live list after a failed load, including anonymous host definitions. */
+  restoreHeld(instances: readonly IndicatorInstance[]): void
   /** Record what a pane command did, which is what makes a row read collapsed. The widget calls
    *  this as it applies a collapse, restore or maximize; heights alone never decide. */
   setPaneCollapsed(paneIndex: number, collapsed: boolean): void
@@ -144,6 +198,10 @@ export interface IndicatorsPlane {
   recomputeThrottled(): void
   /** The legend rows from the last recompute. */
   chips(): readonly LegendChip[]
+  /** The same rows read AT a moment: every value taken at the last plot point at or before
+   *  `time`, which is what a legend row shows while the crosshair stands on a bar. `null` is the
+   *  resting reading and answers `chips()` itself. */
+  chipsAt(time: number | null): readonly LegendChip[]
   destroy(): void
 }
 
@@ -156,6 +214,7 @@ export interface IndicatorsDeps {
   bars(): readonly FeedBar[]
   i18n: ChartI18n
   formatter(): PriceFormatter
+  volumePrecision?(): number
   /** The symbol's price-format identity plus the language, for the renderer's fingerprint. */
   formatKey(): string
   /** The smallest move the symbol's format declares. */
@@ -169,22 +228,61 @@ export interface IndicatorsDeps {
   onChips(): void
   /** A structural change a host would want to save, and the event that reports it. */
   onEvent(event: IndicatorEvent): void
+  /** The definition catalog shared by every chart in this widget. */
+  catalog: IndicatorCatalog
+}
+
+/** Definitions that a saved record may resolve against. Built-ins are always available; host
+ *  definitions remain available for the lifetime of the widget once any chart carries them. */
+export interface IndicatorCatalog {
+  carry(instances: readonly IndicatorInstance[]): void
+  resolve(definitionId: string): IndicatorDefinition | undefined
+}
+
+export function createIndicatorCatalog(): IndicatorCatalog {
+  const carried = new Map<string, IndicatorDefinition>()
+  return {
+    carry(instances) {
+      for (const instance of instances) {
+        const id = instance.definition.manifest.id
+        if (id) carried.set(id, instance.definition)
+      }
+    },
+    resolve: (id) => carried.get(id) ?? BUILT_IN_INDICATORS.find((definition) => definition.id === id),
+  }
 }
 
 export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   let instances: IndicatorInstance[] = []
-  const hiddenIds = new Set<string>()
   /** The eye's blanket over every study: view state, never persisted. */
   let allHidden = false
   let chips: LegendChip[] = []
+  /** Each drawn instance's first plot, kept so a hovered reading is a lookup rather than a second
+   *  compute pass over the bars. */
+  let readings = new Map<string, { data: readonly unknown[]; precision?: number }>()
   let lastRecompute = 0
   let trailer: ReturnType<typeof setTimeout> | null = null
-  /** The pane indices this widget's own collapse and maximize commands put at the floor. This is
+  /** The study identities this widget's own collapse and maximize commands put at the floor. This is
    *  the authority on what is collapsed; heights only corroborate. Per chart and in memory: a
    *  collapsed pane is a viewing posture, and nothing in the save blob carries it. */
-  const commandedPanes = new Set<number>()
+  const commandedIds = new Set<string>()
   /** Consecutive readings at the floor, per row, for a collapse nobody commanded. */
   let floorStreaks: Record<string, number> = {}
+  /** Where the palette stands for THIS chart. Per plane, never global: two charts each deal from
+   *  the top, so a second widget on the page does not open on the seventh color. */
+  let paletteCursor = 0
+
+  /** The color a newly MINTED instance opens with. Minting is the only moment a color is dealt: a
+   *  restore, a hide, a theme change and a recompute all carry the colors the instances already
+   *  hold, so nothing on screen is ever repainted behind the viewer. An explicit instance color and
+   *  a pinned saved default both win outright and take no palette slot. */
+  const withMintedColor = (instance: IndicatorInstance): IndicatorInstance => {
+    if (instance.color !== undefined || pinnedColor(instance) !== undefined) return instance
+    // A re-add of an id the chart already holds is an edit, not a mint: it keeps its color.
+    const held = instances.find((i) => i.id === instance.id)?.color
+    if (held !== undefined) return { ...instance, color: held }
+    return { ...instance, color: INDICATOR_PALETTE[paletteCursor++ % INDICATOR_PALETTE.length]! }
+  }
 
   const renderer = attachIndicators(deps.chart, {
     candles: deps.candleSeries,
@@ -198,7 +296,9 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
    *  are final. */
   const syncCollapsedReadings = (rows: LegendChip[]): boolean => {
     const heights = deps.chart.panes().map((p) => p.getHeight())
-    const { collapsed, measured, streaks } = collapsedReadings(rows, renderer.paneOf(), heights, commandedPanes, floorStreaks)
+    const paneOf = renderer.paneOf()
+    const commandedPanes = new Set([...commandedIds].map(id => paneOf[id]).filter((pane): pane is number => pane !== undefined))
+    const { collapsed, measured, streaks } = collapsedReadings(rows, paneOf, heights, commandedPanes, floorStreaks)
     floorStreaks = streaks
     let changed = false
     for (const row of rows) {
@@ -236,10 +336,32 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
 
   const permitted = (inst: IndicatorInstance): boolean => indicatorPermitted(deps.access, inst.definition)
 
+  /** Replace and report structural differences. Restore/rollback arrivals are changes, not user
+   *  adds. A rollback bypasses current policy so it can put back exactly what the chart held. */
+  const replace = (next: readonly IndicatorInstance[], arrival: 'added' | 'changed', applyPolicy = true): void => {
+    const before = instances
+    // Carry what the host supplied even when today's policy refuses it. The predicate is live: if
+    // that policy later permits the definition, a saved record can resolve and ask it again.
+    deps.catalog.carry(next)
+    instances = applyPolicy ? next.filter(permitted) : [...next]
+    renderer.prune(new Set(instances.map((instance) => instance.id)))
+    recompute()
+    const afterIds = new Set(instances.map((instance) => instance.id))
+    for (const instance of before) if (!afterIds.has(instance.id)) deps.onEvent({ kind: 'removed', id: instance.id })
+    const beforeById = new Map(before.map((instance) => [instance.id, instance]))
+    for (const instance of instances) {
+      const previous = beforeById.get(instance.id)
+      if (!previous) deps.onEvent({ kind: arrival, id: instance.id })
+      else if (previous !== instance) deps.onEvent({ kind: 'changed', id: instance.id })
+    }
+  }
+
   function recompute(): void {
+    for (const id of commandedIds) if (!instances.some(inst => inst.id === id)) commandedIds.delete(id)
     lastRecompute = Date.now() // every direct (structural) run resets the tick cap
     const bars = deps.bars()
     const next: LegendChip[] = []
+    const nextReadings = new Map<string, { data: readonly unknown[]; precision?: number }>()
     const times = bars.map((b) => b.t as UTCTimestamp)
     const hasVolume = bars.some((b) => b.v > 0)
     // A blanked buffer (mid symbol or timeframe switch): clear plot data without teardown, or the
@@ -254,15 +376,22 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       const paneIdx = placement === 'pane' ? paneOfMap[inst.id] : undefined
       const base = {
         id: inst.id,
-        title,
+        title: indicatorMarkOf(inst, deps.i18n.t),
+        inputs: inst.overrides?.display?.inputsInStatusLine === false ? undefined : indicatorInputsOf(inst),
+        color: effectivePlotColor(def.manifest, Object.keys(def.manifest.plots)[0] ?? '', inst.overrides, inst.color ?? ''),
         hasInputs: Object.keys(def.manifest.inputs ?? {}).length > 0,
+        // Removable from the row itself: the settings dialog is the other door, and a host that
+        // turns the picker off (its own library adds) would otherwise leave no way back out.
+        removable: true,
+        removeLabel: deps.i18n.t('legend.removeIndicator'),
         pane: placement === 'pane',
         // What the widget was told, not what the layout momentarily looks like. A pane is born at
         // the floor height and rebalanced a frame or two later, so geometry cannot be trusted here;
         // the settle loop below corroborates it afterwards.
-        collapsed: paneIdx !== undefined && paneIdx > 0 && commandedPanes.has(paneIdx),
+        collapsed: paneIdx !== undefined && paneIdx > 0 && commandedIds.has(inst.id),
       }
-      if (allHidden || hiddenIds.has(inst.id) || indicatorHidden(inst.overrides)) {
+      if (allHidden || indicatorHidden(inst.overrides)) {
+        commandedIds.delete(inst.id)
         renderer.remove(inst.id)
         next.push({ ...base, value: null, hidden: true })
         continue
@@ -289,12 +418,18 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       const manifest = overriddenManifest(def.manifest, inst.overrides)
       const built = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? deps.canvas().neutral), inst.overrides)
       renderer.render(inst.id, built)
-      const value = latestPlotValue(built.plots[0]?.data)
+      const volume = def.manifest.id === 'volume'
+      const data = volume ? bars.map(bar => ({ time: bar.t, value: bar.v })) : built.plots[0]?.data ?? []
+      const precision = volume ? deps.volumePrecision?.() ?? 0 : built.precision
+      const statusLine = built.display?.valuesInStatusLine !== false
+      nextReadings.set(inst.id, { data: statusLine ? data : [], ...(precision != null ? { precision } : {}) })
+      const value = statusLine ? latestPlotValue(data) : null
       // A study that declares its precision writes its row at that precision; one that does not is
       // a value on the symbol's own price grid and writes through the symbol formatter.
-      next.push({ ...base, value: value == null ? null : built.precision != null ? value.toFixed(built.precision) : formatter.format(value), hidden: false })
+      next.push({ ...base, value: value == null ? null : precision != null ? createPriceFormatter({ pricescale: 10 ** precision, minmov: 1 }, { locale: deps.i18n.tag() }).format(value) : formatter.format(value), hidden: false })
     }
     chips = next
+    readings = nextReadings
     deps.onChips()
     scheduleCollapsedSync(next)
   }
@@ -302,14 +437,14 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   return {
     renderer,
     list: () => instances,
-    set(next) {
-      instances = next.filter(permitted)
-      renderer.prune(new Set(instances.map((i) => i.id)))
-      recompute()
-    },
+    set: (next) => replace(next, 'added'),
     add(instance) {
+      deps.catalog.carry([instance])
       if (!permitted(instance)) return false
-      instances = [...instances.filter((i) => i.id !== instance.id), instance]
+      // The ONE add path: the package picker, a host's `indicators.add` and the operator all land
+      // here, so all three deal from the same palette in the same order.
+      const minted = withMintedColor(instance)
+      instances = [...instances.filter((i) => i.id !== minted.id), minted]
       recompute()
       deps.onEvent({ kind: 'added', id: instance.id })
       return true
@@ -326,24 +461,42 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       recompute()
       deps.onEvent({ kind: 'changed', id })
     },
-    hidden: () => [...hiddenIds],
+    hidden: () => instances.filter((instance) => indicatorHidden(instance.overrides)).map((instance) => instance.id),
     setHidden(ids) {
-      hiddenIds.clear()
-      for (const id of ids) hiddenIds.add(id)
+      const hidden = new Set(ids)
+      instances = instances.map((instance) => (hidden.has(instance.id) ? withHidden(instance, true) : instance))
       recompute()
     },
     toggleHidden(id) {
-      const nowHidden = !hiddenIds.has(id)
-      if (nowHidden) hiddenIds.add(id)
-      else hiddenIds.delete(id)
+      const current = instances.find((instance) => instance.id === id)
+      if (!current) return
+      const nowHidden = !indicatorHidden(current.overrides)
+      instances = instances.map((instance) => (instance.id === id ? withHidden(instance, nowHidden) : instance))
       recompute()
       deps.onEvent({ kind: nowHidden ? 'hidden' : 'shown', id })
     },
-    isHidden: (id) => hiddenIds.has(id),
+    isHidden: (id) => instances.some((instance) => instance.id === id && indicatorHidden(instance.overrides)),
+    restore(saved) {
+      const restored: IndicatorInstance[] = []
+      let dropped = 0
+      for (const record of saved) {
+        const instance = restoreIndicatorInstance(record, deps.catalog.resolve)
+        if (!instance || !permitted(instance)) {
+          dropped++
+          continue
+        }
+        restored.push(instance)
+      }
+      replace(restored, 'changed', false)
+      return { dropped }
+    },
+    restoreHeld: (held) => replace(held, 'changed', false),
     setPaneCollapsed(paneIndex, collapsed) {
       if (paneIndex <= 0) return // the price pane never collapses
-      if (collapsed) commandedPanes.add(paneIndex)
-      else commandedPanes.delete(paneIndex)
+      for (const [id, pane] of Object.entries(renderer.paneOf())) if (pane === paneIndex) {
+        if (collapsed) commandedIds.add(id)
+        else commandedIds.delete(id)
+      }
       // The command is the fact; drop any half-built geometry streak so a later look starts clean.
       floorStreaks = {}
     },
@@ -367,9 +520,20 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       }, TICK_CAP_MS - since)
     },
     chips: () => chips,
+    chipsAt(time) {
+      if (time === null) return chips
+      const formatter = deps.formatter()
+      return chips.map((chip) => {
+        const reading = readings.get(chip.id)
+        if (!reading || chip.hidden || chip.note !== undefined) return chip
+        const value = plotValueAt(reading.data, time)
+        return { ...chip, value: value == null ? null : reading.precision != null ? createPriceFormatter({ pricescale: 10 ** reading.precision, minmov: 1 }, { locale: deps.i18n.tag() }).format(value) : formatter.format(value) }
+      })
+    },
     destroy() {
       if (trailer) clearTimeout(trailer)
       trailer = null
+      readings.clear()
       renderer.destroy()
     },
   }

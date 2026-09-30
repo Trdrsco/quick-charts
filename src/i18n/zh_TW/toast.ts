@@ -7,4 +7,5 @@ export const toast: Translation<typeof source> = {
   'toast.feedNoData': 'No data for {symbol} yet.',
   'toast.imageCopyFallback': 'Could not copy the image. Saved a file instead.',
   'toast.imageFailed': 'Could not capture the chart image.',
+  'toast.indicatorsNotCarried': { other: '{count} indicators in this saved chart are not available here and were left out.' },
 }

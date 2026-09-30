@@ -15,18 +15,23 @@ afterEach(() => {
 describe('the settings menu', () => {
   it('edits appearance through the appearance command, and scale and theme through theirs', () => {
     const w = fakeWidget()
-    const menu = mountSettingsMenu(w.ctx)
+    const menu = mountSettingsMenu({ ...w.ctx, ui: w.ui })
     document.body.appendChild(menu.element)
     cleanup.push(() => (menu.destroy(), w.dispose()))
     expect(menu.element.getAttribute('aria-haspopup')).toBe('dialog')
     menu.element.click()
     const panel = w.overlays.querySelector<HTMLElement>('[role="dialog"]')!
-    const colors = [...panel.querySelectorAll<HTMLInputElement>('input[type="color"]')]
+    // Every color row is the package's own control, never the operating system's dialog.
+    expect(panel.querySelector('input[type="color"]')).toBeNull()
+    const colors = [...panel.querySelectorAll<HTMLButtonElement>('.qc-drawing-swatch-button')]
     expect(colors.map((c) => c.getAttribute('aria-label'))).toEqual(['Background', 'Up candles', 'Down candles', 'Up borders', 'Down borders', 'Up wicks', 'Down wicks'])
-    colors[1]!.value = '#112233'
-    colors[1]!.dispatchEvent(new Event('input'))
+    colors[1]!.click()
+    const palette = panel.querySelector<HTMLElement>('.qc-inline-panel .qc-drawing-palette')!
+    expect(palette.querySelectorAll('.qc-drawing-swatch:not(.qc-drawing-swatch-plus)')).toHaveLength(80)
+    palette.querySelector<HTMLButtonElement>('[aria-label="Color #2962ff"]')!.click()
     expect(w.chart.calls).toContain('appearance:upColor')
-    expect(w.chart.state.appearance.appearance.upColor).toBe('#112233')
+    expect(w.chart.state.appearance.appearance.upColor).toBe('#2962ff')
+    expect(panel.querySelector('.qc-inline-panel')).toBeNull() // the pick closes what it opened
     const switches = [...panel.querySelectorAll<HTMLButtonElement>('[role="switch"]')]
     expect(switches.map((s) => s.getAttribute('aria-label'))).toEqual(['Grid lines', 'Session shading'])
     switches[0]!.click()
@@ -41,17 +46,89 @@ describe('the settings menu', () => {
     expect(w.widget.theme.mode()).toBe('light')
   })
 
-  it('a denied appearance command leaves the fields disabled and the chart untouched', () => {
-    const w = fakeWidget({ access: { command: (id) => id !== 'chart.appearance.apply' } })
-    const menu = mountSettingsMenu(w.ctx)
+  it('offers Reset defaults below the scale section and runs it through the registry', () => {
+    const w = fakeWidget()
+    const menu = mountSettingsMenu({ ...w.ctx, ui: w.ui })
     document.body.appendChild(menu.element)
     cleanup.push(() => (menu.destroy(), w.dispose()))
     menu.element.click()
-    const color = w.overlays.querySelector<HTMLInputElement>('input[type="color"]')!
-    expect(color.disabled).toBe(true)
-    color.value = '#112233'
-    color.dispatchEvent(new Event('input'))
+    const panel = w.overlays.querySelector<HTMLElement>('[role="dialog"]')!
+    const rows = [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    expect(rows.map((r) => r.textContent)).toEqual(['Reset defaults'])
+    // Directly below the four scale radios and above the theme pair: the baseline's own position.
+    const order = [...panel.querySelectorAll<HTMLElement>('[role="menuitem"],[role="menuitemradio"]')]
+    const radios = [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+    expect(order.indexOf(rows[0]!)).toBe(order.indexOf(radios[3]!) + 1)
+    w.chart.handle.setScaleMode('log')
+    w.chart.handle.applyAppearance({ appearance: { upColor: '#112233' } })
+    rows[0]!.click()
+    expect(w.chart.calls).toContain('appearance:reset')
+    expect(w.chart.state.appearance.appearance.upColor).not.toBe('#112233')
+    expect(w.chart.state.scale).toBe('normal')
+  })
+
+  it('a denied reset leaves its row disabled and the chart untouched', () => {
+    const w = fakeWidget({ access: { command: (id) => id !== 'chart.appearance.reset' } })
+    const menu = mountSettingsMenu({ ...w.ctx, ui: w.ui })
+    document.body.appendChild(menu.element)
+    cleanup.push(() => (menu.destroy(), w.dispose()))
+    menu.element.click()
+    const row = w.overlays.querySelector<HTMLButtonElement>('[role="menuitem"]')!
+    expect(row.textContent).toBe('Reset defaults')
+    expect(row.disabled).toBe(true)
+    row.click()
     expect(w.chart.calls).toEqual([])
+  })
+
+  it('a denied appearance command leaves the fields disabled and the chart untouched', () => {
+    const w = fakeWidget({ access: { command: (id) => id !== 'chart.appearance.apply' } })
+    const menu = mountSettingsMenu({ ...w.ctx, ui: w.ui })
+    document.body.appendChild(menu.element)
+    cleanup.push(() => (menu.destroy(), w.dispose()))
+    menu.element.click()
+    const color = w.overlays.querySelector<HTMLButtonElement>('.qc-drawing-swatch-button')!
+    expect(color.disabled).toBe(true)
+    color.click()
+    expect(w.overlays.querySelector('.qc-inline-panel')).toBeNull()
+    expect(w.chart.calls).toEqual([])
+  })
+
+  it('carries the Theme section by default and leaves the whole section out for a host that owns the choice', () => {
+    const on = fakeWidget()
+    const withTheme = mountSettingsMenu({ ...on.ctx, ui: on.ui })
+    document.body.appendChild(withTheme.element)
+    cleanup.push(() => (withTheme.destroy(), on.dispose()))
+    withTheme.element.click()
+    const shown = on.overlays.querySelector<HTMLElement>('[role="dialog"]')!
+    expect([...shown.querySelectorAll('.qc-menu-heading')].map((h) => h.textContent)).toContain('Theme')
+    expect([...shown.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].map((r) => r.textContent)).toEqual([
+      'Regular price scale',
+      'Logarithmic price scale',
+      'Percentage price scale',
+      'Indexed price scale',
+      'Light theme',
+      'Dark theme',
+    ])
+
+    const off = fakeWidget({ ui: { topBar: { settings: { theme: false } } } })
+    const withoutTheme = mountSettingsMenu({ ...off.ctx, ui: off.ui })
+    document.body.appendChild(withoutTheme.element)
+    cleanup.push(() => (withoutTheme.destroy(), off.dispose()))
+    withoutTheme.element.click()
+    const hidden = off.overlays.querySelector<HTMLElement>('[role="dialog"]')!
+    expect([...hidden.querySelectorAll('.qc-menu-heading')].map((h) => h.textContent)).not.toContain('Theme')
+    expect([...hidden.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].map((r) => r.textContent)).toEqual([
+      'Regular price scale',
+      'Logarithmic price scale',
+      'Percentage price scale',
+      'Indexed price scale',
+    ])
+    // Reset defaults ends the menu: no rule with nothing under it.
+    const body = hidden.querySelector<HTMLElement>('.qc-separator')!.parentElement!
+    expect(body.lastElementChild!.getAttribute('role')).toBe('menuitem')
+    expect(body.lastElementChild!.textContent).toBe('Reset defaults')
+    // The theme itself is still the widget's to set.
+    expect(off.commands.available('widget.theme.light')).toBe(true)
   })
 })
 
@@ -63,7 +140,7 @@ describe('the notices', () => {
     const grid = document.createElement('div')
     root.appendChild(grid)
     document.body.appendChild(root)
-    const toasts = mountToasts(grid, { i18n: w.i18n })
+    const toasts = mountToasts(grid, { i18n: w.i18n, icons: w.icons })
     cleanup.push(() => (toasts.destroy(), w.dispose(), vi.useRealTimers()))
     // The region follows the charts grid as its sibling; the grid itself stays empty.
     const region = root.querySelector<HTMLElement>('.qc-toasts')!

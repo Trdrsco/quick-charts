@@ -10,8 +10,9 @@
 // is pinned against the widget kernel's source below, the way this package pins its other invisible
 // rules.
 import { describe, expect, it, vi } from 'vitest'
-import { createExtensionHost, type ChartExtension, type ChartExtensionContext, type ChartExtensionHostDeps, type ChartExtensionSeries } from '../src/extension'
+import { createExtensionHost, type ChartExtension, type ChartExtensionContext, type ChartExtensionHideLayerHandle, type ChartExtensionHostDeps, type ChartExtensionSeries } from '../src/extension'
 import type { FeedBar } from '../src/datafeed'
+import type { HideState } from '../src/drawings/hideModel'
 import { createCommandRegistry, type CommandRegistry } from '../src/widget/commands'
 import { createLayoutPlane } from '../src/widget/layout'
 import { canvasTheme } from '../src/theme/renderer'
@@ -19,6 +20,7 @@ import { DARK_THEME } from '../src/theme/palettes'
 import chartSrc from '../src/widget/chart.ts?raw'
 import extensionsSrc from '../src/widget/extensions.ts?raw'
 import extensionSrc from '../src/extension.ts?raw'
+import { resolveMarkPainters } from '../src/markPainters'
 
 const THEME = { ...canvasTheme(DARK_THEME), background: '#101010' }
 
@@ -35,11 +37,14 @@ function fakeChart() {
     feedStatus: 'live' as string | null,
     theme: THEME,
     pane: { id: 'chart-1', width: 800, height: 400 },
+    active: true,
     /** Price lines currently ON the series. */
     lines: new Set<string>(),
     primitives: new Set<unknown>(),
     locked: false,
     lockCalls: [] as boolean[],
+    hide: { mode: 'drawings', on: false } as HideState,
+    hideLayerChanges: 0,
   }
   let lineSeq = 0
   const series: ChartExtensionSeries = {
@@ -70,6 +75,7 @@ function fakeChart() {
   const commands: CommandRegistry = createCommandRegistry().registry
   const deps: ChartExtensionHostDeps = {
     chartId: 'chart-1',
+    painters: resolveMarkPainters({}),
     registerCommand: (command) =>
       commands.register({
         id: command.id,
@@ -81,7 +87,9 @@ function fakeChart() {
       }),
     container: { tag: 'gesture-box' } as unknown as HTMLElement,
     overlay: { tag: 'chrome-box' } as unknown as HTMLElement,
+    layer: { tag: 'body-layer' } as unknown as HTMLElement,
     symbol: () => state.symbol,
+    symbolTitle: () => `${state.symbol} title`,
     timeframe: () => state.timeframe,
     bars: () => state.bars,
     replay: () => state.replay,
@@ -89,14 +97,23 @@ function fakeChart() {
     theme: () => state.theme,
     formatter: () => ({ format: (price) => price.toFixed(2), precision: () => 2 }),
     pane: () => state.pane,
+    active: () => state.active,
     series,
+    // The eye a contributed layer rides: its state, its one writer, and the re-list signal.
+    hideState: () => state.hide,
+    setHide: (next) => {
+      state.hide = next
+    },
+    hideLayersChanged: () => {
+      state.hideLayerChanges += 1
+    },
   }
   return { state, deps, commands }
 }
 
 /** An extension that subscribes to every lane and records what it heard. */
 function recorder(id: string, scope?: 'chart' | 'symbol') {
-  const heard = { attach: 0, detach: 0, symbols: [] as string[], timeframes: [] as string[], bars: 0, replay: [] as boolean[], themes: 0, panes: 0, disposed: 0 }
+  const heard = { attach: 0, detach: 0, symbols: [] as string[], timeframes: [] as string[], bars: 0, replay: [] as boolean[], themes: 0, panes: 0, active: [] as boolean[], disposed: 0 }
   let context: ChartExtensionContext | null = null
   const extension: ChartExtension = {
     id,
@@ -110,6 +127,7 @@ function recorder(id: string, scope?: 'chart' | 'symbol') {
       ctx.onReplayChange((r) => heard.replay.push(r.active))
       ctx.onThemeChange(() => (heard.themes += 1))
       ctx.onPaneChange(() => (heard.panes += 1))
+      ctx.onActiveChange((active) => heard.active.push(active))
       ctx.onDispose(() => (heard.disposed += 1))
       return { detach: () => (heard.detach += 1) }
     },
@@ -117,14 +135,32 @@ function recorder(id: string, scope?: 'chart' | 'symbol') {
   return { extension, heard, context: () => context }
 }
 
+describe('the active chart reaches every extension', () => {
+  it('reads the chart\'s activity live and hears each change, and nothing after detach', () => {
+    const { state, deps } = fakeChart()
+    const a = recorder('a')
+    const host = createExtensionHost(deps, [a.extension])
+    expect(a.context()!.active()).toBe(true)
+    state.active = false
+    host.activeChanged(false)
+    expect(a.context()!.active()).toBe(false)
+    state.active = true
+    host.activeChanged(true)
+    expect(a.heard.active).toEqual([false, true])
+    host.detach()
+    host.activeChanged(false)
+    expect(a.heard.active).toEqual([false, true])
+  })
+})
+
 describe('attach and detach are symmetrical', () => {
   it('every subscription made at attach is gone after detach', () => {
     const { deps } = fakeChart()
     const a = recorder('a')
     const b = recorder('b')
     const host = createExtensionHost(deps, [a.extension, b.extension])
-    // Seven lanes each: theme, symbol, timeframe, bars, replay, pane, dispose.
-    expect(host.subscriberCount()).toBe(14)
+    // Eight lanes each: theme, symbol, timeframe, bars, replay, pane, active, dispose.
+    expect(host.subscriberCount()).toBe(16)
     host.detach()
     expect(host.subscriberCount()).toBe(0)
     expect(a.heard.detach).toBe(1)
@@ -288,7 +324,7 @@ describe('the chart pushes its changes at every attached extension', () => {
         },
       },
     ])
-    const rows = () => host.menuItems({ price: 1, priceText: '1', symbol: state.symbol, timeframe: '5m', clientX: 0, clientY: 0 }).map((r) => r.id)
+    const rows = () => host.menuItems({ price: 1, priceText: '1', symbol: state.symbol, name: state.symbol, timeframe: '5m', clientX: 0, clientY: 0 }).map((r) => r.id)
     expect(rows()).toEqual(['first', 'second'])
     state.symbol = 'NQZ6'
     host.symbolChanged('NQZ6')
@@ -359,7 +395,7 @@ describe('a failing extension is its own problem', () => {
       good.extension,
     ])
     expect(good.heard.attach).toBe(1)
-    expect(host.subscriberCount()).toBe(7)
+    expect(host.subscriberCount()).toBe(8)
     host.barsChanged([bar(1)])
     expect(good.heard.bars).toBe(1)
     expect(host.serialize()).toEqual({})
@@ -404,7 +440,7 @@ describe('a failing extension is its own problem', () => {
         },
       },
     ])
-    const rows = host.menuItems({ price: 1, priceText: '1.00', symbol: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 })
+    const rows = host.menuItems({ price: 1, priceText: '1.00', symbol: 'ESU6', name: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 })
     expect(rows.map((r) => r.id)).toEqual(['row'])
   })
 })
@@ -445,7 +481,7 @@ describe('a detached context is inert, never explosive', () => {
     expect(() => off()).not.toThrow()
     expect(ctx.contributeContextMenu(() => [])()).toBeUndefined()
     expect(ctx.contributeCommands([])()).toBeUndefined()
-    expect(host.menuItems({ price: 1, priceText: '1', symbol: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 })).toEqual([])
+    expect(host.menuItems({ price: 1, priceText: '1', symbol: 'ESU6', name: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 })).toEqual([])
     expect(commands.list()).toEqual([])
     expect(commands.execute('anything')).toEqual({ kind: 'unknown' })
     expect(host.serialize()).toEqual({})
@@ -453,6 +489,53 @@ describe('a detached context is inert, never explosive', () => {
 })
 
 describe('extensions cannot see each other', () => {
+  it('certifies only canonical serialized state, without restricting tolerant extension application', () => {
+    const { deps } = fakeChart()
+    let marksHidden = false
+    // The trading extension's declared state contract: a typed boolean patch, not replacement.
+    const host = createExtensionHost(deps, [{ id: 'trading', attach: () => ({
+      detach() {},
+      serialize: () => ({ marksHidden }),
+      restore(state) {
+        const hidden = (state as { marksHidden?: unknown } | null)?.marksHidden
+        if (typeof hidden === 'boolean') marksHidden = hidden
+      },
+    }) }])
+    expect(host.restore({ trading: { marksHidden: true } })).toBe(true)
+    expect(host.restore({})).toBe(false)
+    expect(host.restore({ trading: {} })).toBe(false)
+    expect(host.restore({ trading: { marksHidden: 'false' } })).toBe(false)
+    expect(marksHidden).toBe(true)
+    expect(host.restore({ trading: { marksHidden: false }, unknown: { opaque: 1 } })).toBe(true)
+  })
+
+  it('compares JSON-normalized structures, while accepting noncanonical defaults without certifying them', () => {
+    const { deps } = fakeChart()
+    let state = { level: 1, enabled: true }
+    const host = createExtensionHost(deps, [{ id: 'known', attach: () => ({
+      detach() {},
+      serialize: () => ({ toJSON: () => ({ enabled: state.enabled, level: state.level, omitted: undefined }) }),
+      restore(value) { state = { level: 1, enabled: true, ...value as Partial<typeof state> } },
+    }) }])
+    expect(host.restore({ known: { level: 2, enabled: false } })).toBe(true)
+    expect(host.restore({ known: { level: 3 } })).toBe(false)
+    expect(state).toEqual({ level: 3, enabled: true })
+    expect(host.restore({ known: { enabled: true, level: 3 } })).toBe(true)
+  })
+
+  it('requires a round-trip pair only for stateful owners', () => {
+    const { deps } = fakeChart()
+    const stateless = createExtensionHost(deps, [
+      { id: 'quiet', attach: () => ({ detach() {} }) },
+      { id: 'undefined', attach: () => ({ detach() {}, serialize: () => undefined }) },
+    ])
+    expect(stateless.restore({ unknown: 1 })).toBe(true)
+    const saveOnly = createExtensionHost(deps, [{ id: 'known', attach: () => ({ detach() {}, serialize: () => 1 }) }])
+    expect(saveOnly.restore({ known: 1 })).toBe(false)
+    const restoreOnly = createExtensionHost(deps, [{ id: 'known', attach: () => ({ detach() {}, restore() {} }) }])
+    expect(restoreOnly.restore({ known: 1 })).toBe(false)
+  })
+
   it('viewer state is namespaced by id, and restore hands each one only its own slot', () => {
     const { deps } = fakeChart()
     const seen: Record<string, unknown> = {}
@@ -529,7 +612,7 @@ describe('extensions cannot see each other', () => {
         },
       },
     ])
-    const raise = () => host.menuItems({ price: 1, priceText: '1', symbol: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 }).map((r) => r.id)
+    const raise = () => host.menuItems({ price: 1, priceText: '1', symbol: 'ESU6', name: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 }).map((r) => r.id)
     expect(raise()).toEqual(['a-row', 'b-row'])
     offA()
     expect(raise()).toEqual(['b-row'])
@@ -549,7 +632,7 @@ describe('contributions', () => {
         },
       },
     ])
-    const rows = host.menuItems({ price: 5000.25, priceText: '5,000.25', symbol: 'ESU6', timeframe: '5m', clientX: 10, clientY: 20 })
+    const rows = host.menuItems({ price: 5000.25, priceText: '5,000.25', symbol: 'ESU6', name: 'ESU6', timeframe: '5m', clientX: 10, clientY: 20 })
     expect(rows[0]!.label).toBe('Alert at 5,000.25')
     rows[0]!.run()
     expect(ran).toEqual(['5,000.25'])
@@ -618,7 +701,7 @@ describe('contributions', () => {
       },
     ])
     host.detach()
-    expect(host.menuItems({ price: 1, priceText: '1', symbol: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 })).toEqual([])
+    expect(host.menuItems({ price: 1, priceText: '1', symbol: 'ESU6', name: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 })).toEqual([])
     expect(commands.list()).toEqual([])
   })
 })
@@ -650,6 +733,24 @@ describe('the contract is neutral by construction, not by intention', () => {
 })
 
 describe('the chart wires the plane where the contract says it does', () => {
+  it('names the market to a menu row by its symbology title, never the feed ticker or its description', () => {
+    // A pair reads `BTC / USDC`, a named market its short name, anything else its bare ticker: the
+    // one rule every surface titles a symbol by, so a row reads as the legend does.
+    expect(chartSrc).toContain('symbolName: () => symbolNames(symbolInfo ?? symbol).title')
+    // …and the extension seam prints the same name, from the same rule.
+    expect(chartSrc).toContain('symbolTitle: () => symbolNames(symbolInfo ?? symbol).title')
+  })
+
+  it('an extension is handed the body layer and the symbol title through its context', () => {
+    const { deps, state } = fakeChart()
+    let seen: { layer: unknown; title: string } | null = null
+    createExtensionHost(deps, [{ id: 'x', attach: (ctx) => { seen = { layer: ctx.layer, title: ctx.symbolTitle() }; return { detach() {} } } }])
+    expect(seen).toEqual({ layer: { tag: 'body-layer' }, title: `${state.symbol} title` })
+    // The plane passes the widget's own layer through, never a box of its own.
+    expect(extensionsSrc).toContain('layer: deps.layer')
+    expect(chartSrc).toContain('layer: deps.layer')
+  })
+
   it('the chart hands out capabilities, never its lightweight-charts instance', () => {
     // The one rule the whole seam rests on: an extension that could reach the renderer or the main
     // series could do anything, and nothing the chart promises about teardown would hold.
@@ -749,13 +850,18 @@ describe('a layout attaches and detaches per chart', () => {
         return {
           id,
           symbol: () => symbol,
+          symbolInfo: () => null,
           setSymbol: (s: string) => (symbol = s),
           timeframe: () => '5m',
           setTimeframe: () => {},
+          // The pane-0 template a split clones: the arrangement change below reads these first.
+          style: () => 'candles',
+          indicators: { get: () => [] },
+          compare: { list: () => [] },
           visibleRange: () => null,
           setVisibleRange: () => {},
           sync: { onCrosshair: off, onTimeClick: off, onVisibleRange: off },
-          saveLoad: { serialize: () => ({ symbol, timeframe: '5m', content: '{}' }), restore: () => {} },
+          saveLoad: { serialize: () => ({ symbol, timeframe: '5m', content: '{}' }), restore: () => {}, notSaving: () => false },
           on: off,
         } as never
       },
@@ -777,5 +883,62 @@ describe('a layout attaches and detaches per chart', () => {
     layout.destroy()
     expect(detachedFrom.length).toBe(3)
     expect(new Set(detachedFrom)).toEqual(new Set(attachedTo))
+  })
+})
+
+describe('a contributed hide layer', () => {
+  const glyph = { paths: [{ d: 'M4 4 H24 V24 H4 Z' }] }
+  const layerOf = (id: string, applied: boolean[]) => ({ id, label: { hide: `Hide ${id}`, show: `Show ${id}` }, icon: { shown: glyph, hidden: glyph }, apply: (hidden: boolean) => applied.push(hidden) })
+
+  it('lists on the eye, reads and flips through it, and leaves at remove', () => {
+    const { state, deps } = fakeChart()
+    const applied: boolean[] = []
+    let handle: ChartExtensionHideLayerHandle | null = null
+    const host = createExtensionHost(deps, [{ id: 'x', attach: (ctx) => ((handle = ctx.contributeHideLayer(layerOf('notes', applied))), { detach: () => {} }) }])
+    expect(host.hideLayers().map((l) => l.id)).toEqual(['notes'])
+    expect(state.hideLayerChanges).toBe(1)
+    expect(handle!.hidden()).toBe(false)
+    handle!.setHidden(true)
+    expect(state.hide).toEqual({ mode: 'notes', on: true })
+    expect(handle!.hidden()).toBe(true)
+    state.hide = { mode: 'all', on: true }
+    expect(handle!.hidden()).toBe(true)
+    handle!.setHidden(false)
+    expect(state.hide).toEqual({ mode: 'notes', on: false })
+    handle!.remove()
+    expect(host.hideLayers()).toEqual([])
+    expect(state.hideLayerChanges).toBe(2)
+    handle!.setHidden(true)
+    expect(state.hide).toEqual({ mode: 'notes', on: false })
+    expect(handle!.hidden()).toBe(false)
+    host.detach()
+  })
+
+  it('refuses a second layer under a taken id, and the ids the eye already owns', () => {
+    const { state, deps } = fakeChart()
+    const handles: ChartExtensionHideLayerHandle[] = []
+    const host = createExtensionHost(deps, [
+      { id: 'a', attach: (ctx) => (handles.push(ctx.contributeHideLayer(layerOf('notes', [])), ctx.contributeHideLayer(layerOf('notes', [])), ctx.contributeHideLayer(layerOf('drawings', []))), { detach: () => {} }) },
+      { id: 'b', attach: (ctx) => (handles.push(ctx.contributeHideLayer(layerOf('notes', [])), ctx.contributeHideLayer(layerOf('all', []))), { detach: () => {} }) },
+    ])
+    expect(host.hideLayers().map((l) => l.id)).toEqual(['notes'])
+    expect(state.hideLayerChanges).toBe(1)
+    handles[1]!.setHidden(true)
+    handles[2]!.setHidden(true)
+    handles[3]!.setHidden(true)
+    expect(state.hide).toEqual({ mode: 'drawings', on: false })
+    host.detach()
+  })
+
+  it('a symbol re-attach withdraws and re-lists the layer; the chart going away lists nothing', () => {
+    const { state, deps } = fakeChart()
+    const host = createExtensionHost(deps, [{ id: 'x', scope: 'symbol', attach: (ctx) => (ctx.contributeHideLayer(layerOf('notes', [])), { detach: () => {} }) }])
+    expect(state.hideLayerChanges).toBe(1)
+    host.symbolChanged('NQU6')
+    expect(host.hideLayers().map((l) => l.id)).toEqual(['notes'])
+    expect(state.hideLayerChanges).toBe(3)
+    host.detach()
+    expect(host.hideLayers()).toEqual([])
+    expect(state.hideLayerChanges).toBe(3)
   })
 })

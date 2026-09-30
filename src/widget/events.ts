@@ -13,12 +13,12 @@ import type { ScaleMode } from '../scaleMode'
 import type { ActiveSubsession } from '../sessionModel'
 import type { CompareEntry } from '../compare'
 import type { ChartStyleId } from './styles'
+import type { HistoryChange } from './history'
 import type { LogicalRange, TimeRange } from './ranges'
 import type { ChartHandle } from './chart'
 
-/** A refused write the widget made on its own. The widget never overwrites newer work: it keeps
- *  what is on screen, adopts the ref that stands, and reports the case here with the catalog's
- *  copy for it. */
+/** A saved-resource refusal, including layout API calls and commands. The widget never
+ *  overwrites newer work; `current` reports the store's revision, not a newly adopted binding. */
 export interface SaveConflictInfo {
   family: 'drawings' | 'chart' | 'layout'
   symbol?: string
@@ -53,6 +53,15 @@ export interface DrawingEvent {
   id: string | null
 }
 
+/** The chart's undo history as a subscriber reads it: whether each verb has something to do, and
+ *  the change it would take back or put back. */
+export interface HistoryEventState {
+  canUndo: boolean
+  canRedo: boolean
+  undoChange: HistoryChange | null
+  redoChange: HistoryChange | null
+}
+
 /** The replay cursor as a subscriber reads it. */
 export interface ReplayEventState {
   on: boolean
@@ -76,8 +85,9 @@ export interface WidgetEvents {
   saveConflict(info: SaveConflictInfo): void
   /** Chart-root fullscreen was entered or left, including by the browser's own escape. */
   fullscreen(active: boolean): void
-  /** A layout verb ran: the open layout was saved, another was opened, one was deleted, or the
-   *  binding was detached. A refusal reports through `saveConflict` instead. */
+  /** A layout commit, from an API call or command: saved, loaded, removed, or detached.
+   *  Stale results publish nothing. A refusal reports through `saveConflict`; confirmed absence
+   *  of the open row also reports its removal. A save or partial load does not prove recovery. */
   layout(event: LayoutEvent): void
   /** A client-image verb settled. */
   image(event: ImageEvent): void
@@ -94,6 +104,8 @@ export interface ChartEvents {
   visibleRange(range: TimeRange): void
   /** The visible logical (bar index) range moved. */
   logicalRange(range: LogicalRange): void
+  /** The chosen range preset changed, or navigation left the preset view. */
+  rangePreset(key: string | null): void
   /** A load, a page back or a live snapshot reshaped the bar series. */
   dataLoaded(info: { bars: number }): void
   feedStatus(status: string): void
@@ -104,6 +116,8 @@ export interface ChartEvents {
   subsession(active: ActiveSubsession): void
   indicator(event: IndicatorEvent): void
   drawing(event: DrawingEvent): void
+  /** A step was filed, taken back or put back, so a control can follow what each verb would do. */
+  history(state: HistoryEventState): void
   replay(state: ReplayEventState): void
   compare(entries: readonly CompareEntry[]): void
 }

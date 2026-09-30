@@ -18,10 +18,14 @@ let shim: BrowserShimHandle
 /** Every result, from one run of the whole suite the way the other two hosts run it. */
 let results: ConformanceResult[] = []
 
+/** The budget for that one run: a share per check, so it grows with the suite instead of tightening
+ *  as checks are added, and holds on a machine running every other test file at the same time. */
+const SUITE_BUDGET_MS = CONFORMANCE_CHECKS.length * 6_000
+
 beforeAll(async () => {
   shim = installBrowserShim(window)
   results = await runConformance(host)
-}, 120_000)
+}, SUITE_BUDGET_MS)
 afterAll(() => {
   shim.uninstall()
 })
@@ -101,7 +105,7 @@ describe('the conformance suite over the workspace source', () => {
 
   it('covers every contract area', () => {
     const ids = CONFORMANCE_CHECKS.map((c) => c.id)
-    for (const prefix of ['api', 'features', 'access', 'commands', 'lifecycle', 'theme', 'strings', 'a11y', 'image', 'fullscreen', 'persistence', 'feed', 'replay', 'scale', 'sessions', 'compare', 'indicators', 'layouts', 'styles', 'drawings']) {
+    for (const prefix of ['api', 'features', 'ui', 'access', 'commands', 'lifecycle', 'theme', 'strings', 'a11y', 'image', 'fullscreen', 'persistence', 'feed', 'replay', 'scale', 'sessions', 'compare', 'indicators', 'layouts', 'styles', 'drawings']) {
       expect(ids.some((id) => id.startsWith(`${prefix}.`)), prefix).toBe(true)
     }
     expect(new Set(ids).size).toBe(ids.length)

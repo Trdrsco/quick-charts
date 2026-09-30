@@ -9,7 +9,7 @@
   padding-inline: 8px 4px;
   color: var(--qc-text-primary);
   background: var(--qc-chrome-surface);
-  border-top: 1px solid var(--qc-chrome-border);
+  border-top: 1px solid var(--qc-canvas-paneBorder);
 }
 
 [data-qc-theme] .qc-ranges {
@@ -20,14 +20,15 @@
   scrollbar-width: none;
 }
 
-[data-qc-theme] .qc-range-chip {
-  padding: 0 6px;
-  color: var(--qc-text-muted);
-  font-variant-numeric: tabular-nums;
+[data-qc-theme] .qc-ranges::-webkit-scrollbar {
+  display: none;
 }
 
-[data-qc-theme] .qc-range-chip:hover {
-  color: var(--qc-text-primary);
+/* The footer's controls are the toolbar's own 38px cells, in the primary ink, with the same inset
+ * hover and held fills. */
+[data-qc-theme] .qc-bottombar .qc-range-chip {
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 [data-qc-theme] .qc-bottombar-end {
@@ -36,56 +37,138 @@
   align-items: center;
 }
 
-[data-qc-theme] .qc-tz-trigger {
-  gap: 6px;
-  color: var(--qc-text-muted);
+[data-qc-theme] .qc-bottombar .qc-tz-trigger {
+  gap: 4px;
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums lining-nums;
 }
 
 [data-qc-theme] .qc-clock {
   font-variant-numeric: tabular-nums;
 }
 
-[data-qc-theme] .qc-session-trigger {
-  color: var(--qc-text-muted);
-  font-size: var(--qc-text-fontSizeSmall);
+[data-qc-theme] .qc-bottombar .qc-session-trigger {
+  padding: 0 6px;
 }
 
-[data-qc-theme] .qc-tz-menu {
-  max-height: min(calc(100vh - 16px), 560px);
+/* The zone list and the session list open upward off their buttons as plain lists: 6px above and
+ * below, flush square rows 32px tall in the primary ink that dims a step under the pointer. The zone
+ * list is capped so a sixty-zone list scrolls instead of running off the top of the window. Both
+ * state their own geometry rather than leaning on the shared recipes. */
+[data-qc-theme] .qc-menu-panel.qc-tz-menu {
+  padding: 6px 0;
 }
 
-/* The navigation cluster floats at the bottom of its pane and appears while the pointer is over
- * the chart or the keyboard is in it. Always in the DOM, so a screen reader and a Tab reach it. */
+[data-qc-theme] .qc-menu-panel.qc-session-menu {
+  padding: 6px 0;
+}
+
+[data-qc-theme] .qc-tz-menu .qc-menu-row,
+[data-qc-theme] .qc-session-menu .qc-menu-row {
+  gap: 6px;
+  height: 32px;
+  padding: 0 20px 0 0;
+  border-radius: 0;
+}
+
+[data-qc-theme] .qc-tz-menu .qc-menu-row:hover,
+[data-qc-theme] .qc-session-menu .qc-menu-row:hover {
+  color: var(--qc-state-hoverInk);
+}
+
+/* The zone list marks the chosen zone with a check in a 36px column and no fill of its own. */
+[data-qc-theme] .qc-tz-menu .qc-menu-row .qc-menu-icon {
+  flex: 0 0 36px;
+  width: 36px;
+  padding-inline-start: 8px;
+  justify-content: flex-start;
+}
+
+[data-qc-theme] .qc-tz-menu .qc-menu-row[aria-selected='true'] {
+  color: var(--qc-text-primary);
+  background: none;
+}
+
+[data-qc-theme] .qc-tz-menu .qc-menu-row[aria-selected='true']:hover {
+  color: var(--qc-state-hoverInk);
+  background: var(--qc-state-hover);
+}
+
+/* A session is its label, 12px in under a heading that stands 6px off the rows. */
+[data-qc-theme] .qc-session-menu .qc-menu-icon {
+  display: none;
+}
+
+[data-qc-theme] .qc-session-menu .qc-menu-row {
+  padding-inline-start: 12px;
+}
+
+[data-qc-theme] .qc-session-menu .qc-menu-heading {
+  height: auto;
+  margin: 6px 0;
+  padding: 0 12px;
+}
+
+/* The navigation cluster floats over the bars at the bottom of its pane and appears while the
+ * pointer is NEAR it (the chrome marks that; see navControls) or the keyboard is in it. Always in
+ * the DOM, so a screen reader and a Tab reach it.
+ *
+ * It is a row of chips rather than one bar: the cluster itself carries no ground, and each button
+ * is its own raised 24px square. A single bar behind five verbs would read as a toolbar that had
+ * wandered onto the plot, and it would darken the candles under the gaps between them. */
 [data-qc-theme] .qc-nav {
   position: absolute;
-  bottom: 32px;
-  left: 50%;
+  bottom: 55px;
+  /* Centered on the PLOT, not on the chrome: the price axis is a column beside the bars, and a
+   * cluster centered across it reads as pushed to one side. The widget publishes both scale widths
+   * as it lays them out; with neither, this is the plain middle. */
+  left: calc(50% + (var(--qcp-plot-start, 0px) - var(--qcp-plot-end, 0px)) / 2);
   z-index: 4;
   display: flex;
-  gap: 4px;
-  padding: 2px 4px;
   transform: translateX(-50%);
   opacity: 0;
   pointer-events: auto;
   transition: opacity var(--qc-motion-durationBase) linear;
 }
 
-[data-qc-theme] .qc-pane:hover .qc-nav,
+[data-qc-theme] .qc-nav[data-qc-near],
+[data-qc-theme] .qc-nav:hover,
 [data-qc-theme] .qc-nav:focus-within {
   opacity: 1;
 }
 
+/* Each group keeps the same 4px as the chips inside it, so the space between two groups is twice
+ * the space between two chips and the eye reads three clusters rather than six buttons. */
+[data-qc-theme] .qc-nav-group {
+  display: flex;
+  align-items: center;
+  margin: 0 4px;
+}
+
 [data-qc-theme] .qc-nav-button {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 24px;
   height: 24px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 4px;
   padding: 0;
-  color: var(--qc-text-secondary);
   border-color: transparent;
+  border-radius: 4px;
+  color: var(--qc-text-primary);
+  background: var(--qc-chrome-surfaceRaised);
+  box-shadow: var(--qc-overlay-shadow);
 }
 
 [data-qc-theme] .qc-nav-button:hover {
-  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-nav-button:active {
+  background: var(--qc-state-pressed);
+}
+
+/* One chevron serves both directions. */
+[data-qc-theme] .qc-nav-turned .qc-icon {
+  transform: rotate(180deg);
 }

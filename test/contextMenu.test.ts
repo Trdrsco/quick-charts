@@ -106,14 +106,23 @@ describe('a menu row highlights as a ROW', () => {
   const row = css.slice(css.indexOf('.qc-menu-row {'), css.indexOf('.qc-menu-row:hover'))
 
   it('paints the row from ONE rule, so there is no second painting to drift from', () => {
-    expect(css.split('.qc-menu-row {').length - 1).toBe(1)
+    // The root rule is the only one that PAINTS a row. A menu may restate its rows' rhythm (height,
+    // gap, margin, padding, radius) under its own class, but never their background or ink.
+    expect(css.split('[data-qc-theme] .qc-menu-row {').length - 1).toBe(1)
+    const scoped = [...css.matchAll(/\[data-qc-theme\] \.[\w-]+ \.qc-menu-row \{([^}]*)\}/g)].map((m) => m[1]!)
+    expect(scoped.length).toBeGreaterThan(0)
+    for (const block of scoped) {
+      expect(block).not.toMatch(/background|(^|\s)color:/)
+    }
   })
 
-  // The hover is a selection: it fills the row edge to edge and squarely. A radius on the row makes
-  // it read as a floating pill inside the menu instead — the SURFACE is the thing that is rounded.
-  it('the row spans the full width and carries no radius', () => {
+  // The row is its own rounded slot INSIDE the panel's padding, not a band cut off by the panel
+  // edge: the panel insets its rows and each highlight rounds off within that inset, so a hover
+  // reads as the row being picked rather than as a stripe running under the surface's corners.
+  // The row still spans every pixel it is given, so the whole cell is the target.
+  it('the row spans the full width and rounds off inside the panel', () => {
     expect(row).toContain('width: 100%')
-    expect(row).not.toContain('border-radius')
+    expect(row).toContain('border-radius: var(--qc-chrome-radius)')
   })
 
   it('the surface keeps its radius and CLIPS to it', () => {
@@ -124,14 +133,16 @@ describe('a menu row highlights as a ROW', () => {
   })
 
   it('wears one measured box model, so the two painters of this menu cannot drift', () => {
-    // 6px inside the box, 6px on each side of a separator, a 36px glyph cell flush left, 6px to the
-    // label, 20px of right padding.
+    // 6px inside the box, 6px on each side of a separator, and a 36px glyph cell flush left. The
+    // row itself is the package's universal recipe: 32px tall on 8px side padding with 8px to the
+    // label, which is the rhythm every list in the chrome keeps.
     expect(menu).toContain('padding: 6px 0')
     expect(menu).toContain('margin: 6px 0')
     expect(menu).toContain('flex: 0 0 36px')
     expect(menu).toContain('width: 36px')
-    expect(row).toContain('gap: 6px')
-    expect(row).toContain('padding: 0 20px 0 0')
+    expect(row).toContain('height: 32px')
+    expect(row).toContain('gap: 8px')
+    expect(row).toContain('padding: 0 8px')
   })
 
   it('the painter names classes and writes no visual of its own', () => {

@@ -9,7 +9,7 @@ export const search = {
   'search.placeholder': 'Search symbol',
   'search.clear': 'Clear',
   'search.close': 'Close',
-  'search.noMatches': 'No matching symbols.',
+  'search.noMatches': 'No symbols match your criteria',
   'search.loadingMore': 'Loading more',
   /** The feed refused or failed the query and nothing cached stands in. */
   'search.failed': 'Search failed.',
@@ -36,4 +36,6 @@ export const search = {
   'search.opReciprocal': 'Reciprocal',
   'search.opsHide': 'Hide spread operators',
   'search.opsShow': 'Show spread operators',
+  /** The operator strip's own name, for the group the toggle shows and hides. */
+  'search.ops': 'Spread operators',
 } as const

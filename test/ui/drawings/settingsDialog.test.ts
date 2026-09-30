@@ -8,6 +8,7 @@ import { drawingTools } from '../../../src/drawings/index'
 import { createPresets } from '../../../src/drawings/layer/presets'
 import { openSettingsDialog } from '../../../src/ui/drawings/settingsDialog'
 import { firstTabFor, tabsFor } from '../../../src/ui/drawings/settingsRows'
+import { ownIcons } from '../../ownIcons'
 
 const t = createChartI18n().t
 const anchors = (n: number) => Array.from({ length: n }, (_, i) => ({ time: (1000 + i * 60) as never, price: 100 + i }))
@@ -22,6 +23,7 @@ function rig(type: string, props: Record<string, unknown> = {}, deny: string[] =
   const out: string[] = []
   const ran: [string, unknown][] = []
   const handle = openSettingsDialog({
+    icons: ownIcons(),
     chrome,
     t,
     drawing,

@@ -228,6 +228,11 @@ export interface AttachDrawingsOptions {
   /** The ink the dot cursor's ring is drawn in, read when the cursor is set: the chart passes its
    *  text role, so the ring follows the theme. */
   ink?: () => string
+  /** Whether the HOST has taken the pointer over for a gesture of its own. While it has, this layer
+   *  paints no pointer glyph at all: the host is drawing the mark that says where a click lands, and
+   *  a cursor beside it would be a second claim about the same point. This layer writes the plot's
+   *  cursor as an inline style, so it is the only place that can stand it down. */
+  pointerSuppressed?: () => boolean
   events?: DrawingsEvents
 }
 

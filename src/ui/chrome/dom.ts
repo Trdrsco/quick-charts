@@ -7,6 +7,9 @@
 // or a size. The one style a helper ever sets inline is calculated geometry, which is the
 // stylesheet contract's own exception.
 
+import type { Glyph } from '../controls/icons'
+import type { GlyphOptions, IconResolver } from '../icons/resolver'
+
 /** What `h` accepts as a child: an element, text, or nothing at all. */
 export type Child = Node | string | null | undefined | false
 
@@ -40,14 +43,35 @@ export function replace(parent: HTMLElement, ...children: Child[]): void {
   append(parent, ...children)
 }
 
-/** An inline SVG glyph from a body string. The body is package-authored markup (see icons.ts), which
- *  is what makes the innerHTML write safe. Hidden from assistive technology: the control it sits in
- *  carries the accessible name. */
-export function glyph(body: string, options: { size?: number; viewBox?: string; className?: string } = {}): HTMLElement {
-  const size = options.size ?? 28
+/** The chart's own drawing of a glyph from the package's table, on the grid the glyph carries. Its
+ *  body is package-authored markup, which is what makes the innerHTML write safe. Hidden from
+ *  assistive technology: the control it sits in carries the accessible name. Every surface draws
+ *  through its widget's icon resolver, which calls this when the host drew nothing for the glyph;
+ *  a surface drawing an extension's descriptor uses `buildGlyph` in vector.ts. */
+export function glyph(mark: Glyph, options: GlyphOptions = {}): HTMLElement {
+  const size = options.size ?? mark.size ?? 28
+  // A mark drawn on a grid that is not square keeps its own proportions: the wide caret is twice as
+  // wide as it is tall, and squaring it would either stretch the arrow or pad it off centre.
+  const height = options.height ?? size
   const span = h('span', { class: `qc-icon${options.className ? ` ${options.className}` : ''}`, 'aria-hidden': 'true' })
-  span.innerHTML = `<svg width="${size}" height="${size}" viewBox="${options.viewBox ?? '0 0 28 28'}" fill="none" aria-hidden="true">${body}</svg>`
+  span.innerHTML = `<svg width="${size}" height="${height}" viewBox="${mark.viewBox}" fill="none" aria-hidden="true">${mark.body}</svg>`
   return span
+}
+
+/** Swap the glyph a control wears, and ONLY when the drawing actually changes.
+ *
+ *  A control whose surface repaints on a clock is repainted many times a second: the replay
+ *  transport syncs on every step, which is ten times a second at 10x. Replacing the mark under the
+ *  pointer between a press and its release detaches the node the press landed on, and the click
+ *  that was being made on it is lost. So a repaint that draws the same mark must leave the node it
+ *  already has alone. */
+export function reglyph(element: HTMLElement, icons: IconResolver, mark: Glyph, options: GlyphOptions = {}): void {
+  const current = element.querySelector('.qc-icon')
+  if (current && element.dataset.qcGlyph === mark.body) return
+  element.dataset.qcGlyph = mark.body
+  const next = icons.glyph(mark, options)
+  if (current) current.replaceWith(next)
+  else element.prepend(next)
 }
 
 /** Write a control's accessible name: what a screen reader speaks and what a hover shows. */
@@ -61,9 +85,8 @@ export interface ButtonOptions {
   label: string
   /** Visible text. Omitted for an icon-only control. */
   text?: string
-  /** A glyph body from icons.ts. */
-  icon?: string
-  iconSize?: number
+  /** The control's glyph, drawn through the widget's icon resolver. */
+  icon?: HTMLElement
   className?: string
   /** Whether the control reads as pressed (a toggle) rather than merely enabled. */
   pressed?: boolean
@@ -76,7 +99,7 @@ export interface ButtonOptions {
 export function button(options: ButtonOptions): HTMLButtonElement {
   const element = h('button', { type: 'button', class: `qc-button${options.className ? ` ${options.className}` : ''}` })
   name(element, options.label)
-  if (options.icon) element.appendChild(glyph(options.icon, { size: options.iconSize }))
+  if (options.icon) element.appendChild(options.icon)
   if (options.text !== undefined) element.appendChild(h('span', { class: 'qc-button-text' }, options.text))
   if (options.pressed !== undefined) element.setAttribute('aria-pressed', String(options.pressed))
   setDisabled(element, options.disabled === true)
@@ -109,11 +132,6 @@ export function stopPointer(element: HTMLElement): void {
 }
 
 /** The elements inside `root` a keyboard can land on, in document order. */
-export function focusables(root: HTMLElement): HTMLElement[] {
-  const all = root.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]')
-  return [...all].filter((el) => !el.hasAttribute('disabled') && el.getAttribute('tabindex') !== '-1' && !el.hidden && el.getAttribute('aria-hidden') !== 'true')
-}
-
 /** The keyboard-reachable rows of a list: everything marked as an item that is neither disabled nor
  *  hidden. The mark is what a roving focus walks, so a heading or a separator is never landed on. */
 export function items(root: HTMLElement): HTMLElement[] {
@@ -152,7 +170,3 @@ export function armRoving(root: HTMLElement, activeIndex = 0): void {
   list.forEach((el, i) => el.setAttribute('tabindex', i === activeIndex ? '0' : '-1'))
 }
 
-/** Whether the reading direction of an element resolves right to left. */
-export function isRtl(element: Element): boolean {
-  return (element.closest('[dir]')?.getAttribute('dir') ?? getComputedStyle(element).direction) === 'rtl'
-}

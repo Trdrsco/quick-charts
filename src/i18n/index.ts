@@ -55,6 +55,14 @@ export interface ChartI18n {
   onChange(listener: () => void): () => void
 }
 
+/** The reading direction the language resolves to: the adapter's own answer, else the built-in
+ *  inventory's, else left to right. */
+export function readingDirection(i18n: ChartI18n): 'ltr' | 'rtl' {
+  const own = i18n.dir?.()
+  if (own) return own
+  return BUILT_IN_LOCALES.find((l) => l.code === i18n.locale())?.dir ?? 'ltr'
+}
+
 /** One chunk per language the widget ships, every language in `BUILT_IN_LOCALES`, fetched the
  *  first time it is chosen. */
 export const chartDictionaries = createDictionaryLoader(en, {

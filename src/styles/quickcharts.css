@@ -5,13 +5,16 @@
  * import, and no remote asset. Two charts in one page can therefore run different modes, and a host
  * page keeps its own styling untouched.
  *
- * Values come from the custom properties the theme generates. Class names and property names are
- * private implementation. A host themes Quick Charts through role ids and the theme controller.
+ * Values come from the custom properties the theme generates. Property names are private. A host
+ * themes Quick Charts through role ids and the theme controller, and may write a rule against one
+ * of the supported hooks listed in `src/theme/hooks.ts`; every other class name is private
+ * implementation.
  *
- * The build script prepends the generated built-in mode blocks to this file, appends every recipe
- * file under `components/` in name order, and writes the result as `dist/quickcharts.css`, which
- * is what `quickcharts/styles.css` resolves to. This file holds the structure and the shared
- * primitives; each chrome surface keeps its own recipes beside it.
+ * The build script opens the stylesheet with its layer order, puts the generated built-in mode
+ * blocks in the tokens layer, then this file followed by every recipe file under `components/` in
+ * name order in the chart layer, and writes the result as `dist/quickcharts.css`, which is what
+ * `quickcharts/styles.css` resolves to. This file holds the structure and the shared primitives;
+ * each chrome surface keeps its own recipes beside it.
  */
 
 [data-qc-theme] {
@@ -41,7 +44,6 @@
 [data-qc-theme] .qc-overlay {
   color: var(--qc-text-primary);
   background: var(--qc-overlay-surface);
-  border: 1px solid var(--qc-overlay-border);
   border-radius: var(--qc-chrome-radiusLarge);
   box-shadow: var(--qc-overlay-shadow);
 }
@@ -50,7 +52,11 @@
   background: var(--qc-overlay-scrim);
 }
 
+/* A hairline never shrinks. Menus lay their rows out in a flex column, and a 1px item with the
+ * default shrink is the first thing squashed to nothing when the list overflows: the rule is in the
+ * DOM, carries its margins, and paints zero pixels. */
 [data-qc-theme] .qc-separator {
+  flex: 0 0 1px;
   height: 1px;
   background: var(--qc-overlay-separator);
 }
@@ -75,11 +81,13 @@
   background: var(--qc-state-pressed);
 }
 
+/* A held button wears the neutral held fill in the primary ink, the held state the toolbars and the
+ * rail show too. */
 [data-qc-theme] .qc-button[aria-pressed='true'],
 [data-qc-theme] .qc-button[data-qc-active='true'] {
-  color: var(--qc-state-accent);
-  background: var(--qc-state-selected);
-  border-color: var(--qc-state-accent);
+  color: var(--qc-text-primary);
+  background: var(--qc-state-pressed);
+  border-color: transparent;
 }
 
 [data-qc-theme] .qc-button[disabled],
@@ -89,10 +97,44 @@
   cursor: default;
 }
 
+/* The primary action wears the emphasis fill the on states wear, behind the inverse ink, a step
+ * apart under the pointer. */
 [data-qc-theme] .qc-button--primary {
   color: var(--qc-text-inverse);
-  background: var(--qc-state-accent);
-  border-color: var(--qc-state-accent);
+  background: var(--qc-control-on);
+  border-color: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-button--primary:hover:not([disabled]) {
+  background: var(--qc-control-onHover);
+  border-color: var(--qc-control-onHover);
+}
+
+/* A primary action with nothing to act on yet stands as a flat pressed fill with its words stood
+ * back, rather than as an outline of the fill it will take. */
+[data-qc-theme] .qc-button--primary[disabled],
+[data-qc-theme] .qc-button--primary[aria-disabled='true'] {
+  color: var(--qc-text-disabled);
+  background: var(--qc-state-pressed);
+  border-color: var(--qc-state-pressed);
+}
+
+/* The quiet action beside a primary one, such as Cancel: an outline in the separator's grey that
+ * fills a step up the ramp under the pointer and a step further while pressed. */
+[data-qc-theme] .qc-button--secondary {
+  color: var(--qc-text-primary);
+  background: none;
+  border-color: var(--qc-overlay-separator);
+}
+
+[data-qc-theme] .qc-button--secondary:hover:not([disabled]) {
+  background: var(--qc-state-hover);
+  border-color: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-button--secondary:active:not([disabled]) {
+  background: var(--qc-state-pressed);
+  border-color: var(--qc-state-pressed);
 }
 
 [data-qc-theme] .qc-field {
@@ -112,34 +154,63 @@
   outline-offset: 1px;
 }
 
+/* A field inside its own box says it has the keyboard with the caret in it: the search fields, the
+ * name field whose box turns the accent, and the two the color mixer carries. The ring that marks a
+ * focused control would draw a second box inside the field's own, so those inputs stand out of it,
+ * and hold that
+ * against a host's focus rule from a later cascade layer too: an important declaration in an earlier
+ * layer outranks a normal one in a later layer. */
+[data-qc-theme] .qc-search-input:focus-visible,
+[data-qc-theme] .qc-picker-search:focus-visible,
+[data-qc-theme] .qc-layouts-search-input:focus-visible,
+[data-qc-theme] .qc-name-input:focus-visible,
+[data-qc-theme] .qc-drawing-hex:focus-visible {
+  outline: none !important;
+}
+
 [data-qc-theme] ::selection {
   background: var(--qc-state-selection);
 }
 
 /* Menus --------------------------------------------------------------------------------------- */
 
+/* A row is its own rounded slot inside the panel's padding, so a highlight reads as a chip rather
+ * than as a band cut off by the panel edge. It rests in the primary ink; the pointer lays the hover
+ * fill under it and a press the pressed fill, and the chosen row inverts. */
 [data-qc-theme] .qc-menu-row {
   display: flex;
+  /* A row is a flex item of the scrolling column, where `height` alone is not a floor: a list long
+   * enough to fill the panel would shrink every row to fit rather than scroll. Refusing to shrink
+   * is what makes the panel scroll instead. */
+  flex: 0 0 auto;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   width: 100%;
   height: 32px;
-  padding: 0 20px 0 0;
+  margin: 0;
+  padding: 0 8px;
   color: var(--qc-text-primary);
   font: inherit;
   text-align: left;
   background: none;
   border: 0;
+  border-radius: var(--qc-chrome-radius);
   cursor: pointer;
   transition: background-color var(--qc-motion-durationFast) linear;
 }
 
 [data-qc-theme] .qc-menu-row:hover {
+  color: var(--qc-text-primary);
   background: var(--qc-state-hover);
 }
 
+[data-qc-theme] .qc-menu-row:active {
+  background: var(--qc-state-pressed);
+}
+
 [data-qc-theme] .qc-menu-row[aria-selected='true'] {
-  background: var(--qc-state-selected);
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-on);
 }
 
 [data-qc-theme] .qc-menu-hint {
@@ -166,36 +237,24 @@
   font-size: var(--qc-text-fontSizeMicro);
 }
 
-[data-qc-theme] .qc-link {
-  color: var(--qc-text-link);
-}
-
-[data-qc-theme] .qc-positive {
-  color: var(--qc-status-positive);
-}
-
 [data-qc-theme] .qc-negative {
   color: var(--qc-status-negative);
-}
-
-[data-qc-theme] .qc-warning {
-  color: var(--qc-status-warning);
-}
-
-[data-qc-theme] .qc-info {
-  color: var(--qc-status-info);
 }
 
 /* Chart surfaces -------------------------------------------------------------------------------- */
 
 [data-qc-theme] .qc-legend {
   color: var(--qc-text-onCanvas);
-  font-size: var(--qc-text-fontSizeSmall);
-  line-height: 16px;
+  font-size: var(--qc-text-fontSizeBase);
+  font-weight: 500;
+  line-height: 18px;
+  font-variant-numeric: tabular-nums;
 }
 
+/* A hidden study keeps its ink and stands the WHOLE row back, controls included, so the row reads
+ * as switched off rather than as a different kind of row. */
 [data-qc-theme] .qc-legend-row[data-qc-hidden='true'] {
-  color: var(--qc-text-disabled);
+  opacity: 0.5;
 }
 
 [data-qc-theme] .qc-session-dot {
@@ -226,15 +285,72 @@
 
 [data-qc-theme] .qc-pane {
   position: absolute;
-  outline: 1px solid transparent;
-  outline-offset: -1px;
 }
 
+/* The ring is the focus colour held back to 60%: a marker of which chart the controls point at,
+ * not an alarm.
+ *
+ * It is a LAYER OVER the pane, not an outline on it. An outline is painted by the pane itself, and
+ * the renderer's canvas is a positioned descendant, so the canvas paints over it: the edges the
+ * canvas reaches — the top and the side away from the price scale — simply vanished, leaving a ring
+ * that traced two sides of the chart and looked like a bug in the layout. A pseudo-element is a
+ * child like the canvas is, so a z-index puts it above.
+ *
+ * The layer belongs to the ACTIVE pane alone. Only an active pane opens a stacking context of its
+ * own (below), so drawing it unconditionally would put a z-index 7 child in the GRID's context on
+ * every other pane, over the dividers a viewer drags. */
 [data-qc-theme] .qc-pane[data-qc-active='true'] {
-  outline-color: var(--qc-state-focusRing);
-  /* The active chart stacks above its neighbours so its ring is never clipped by the one beside it. */
+  /* The active chart stacks above its neighbours so its ring is never clipped by the one beside it,
+   * and stays below the dividers (z-index 3), which are grabbed through the ring. */
   z-index: 1;
 }
+
+[data-qc-theme] .qc-pane[data-qc-active='true']::after {
+  content: '';
+  position: absolute;
+  /* Half a pixel PROUD of the pane, not flush with it. Flush, the line lands on a half device pixel
+   * at most fractional pane widths and renders as a two-pixel smear at half strength, and its
+   * corner arc is clipped away by the card that rounds the same edge — which is what made the ring
+   * look ragged where it turned. Straddling the boundary, the clip takes the outward half and the
+   * full-strength pixel is the one that survives. */
+  inset: -0.5px;
+  z-index: 7;
+  border: 1px solid color-mix(in srgb, var(--qc-state-focusRing) 60%, transparent);
+  /* The pane's own corners, whichever of them meet the card's rounded ones. */
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Only the corners that meet the surrounding card's own rounded ones. Panel radius, not control. */
+[data-qc-theme] .qc-pane[data-qc-corner-tl='true'] { border-top-left-radius: var(--qc-chrome-radiusLarge); }
+[data-qc-theme] .qc-pane[data-qc-corner-tr='true'] { border-top-right-radius: var(--qc-chrome-radiusLarge); }
+
+[data-qc-theme] .qc-layout-divider {
+  position: absolute;
+  z-index: 3;
+  touch-action: none;
+}
+
+/* The product mark's corner of the plot. Bottom-leading INSIDE the plot: the price scales set its
+ * inline start and the time axis holds it up, so it never stands over a number, and it lives in the
+ * pane, so a transport row opening below the grid carries it up with the pane rather than leaving it
+ * behind. Logical placement, so a right-to-left chart puts it in the corner a reader starts from.
+ * Quiet ink and no pointer: it signs the chart, it does not compete with it. */
+[data-qc-theme] .qc-plot-corner {
+  position: absolute;
+  inset-block-end: 0;
+  inset-inline-start: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  padding: 8px 10px;
+  color: var(--qc-text-onCanvas);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-layout-divider[data-qc-axis='v'] { cursor: col-resize; }
+[data-qc-theme] .qc-layout-divider[data-qc-axis='h'] { cursor: row-resize; }
 
 /* Widget structure ----------------------------------------------------------------------------- */
 
@@ -243,6 +359,19 @@
  * `flex`, where a percentage resolves against a height the host never set. Carrying both means the
  * chart is never sized by which of the two a host happened to use. `min-height: 0` is what lets it
  * shrink below its content in a column flex host rather than overflowing it. */
+/* The widget's layer on the document body: no box of its own, only the theme its children read.
+ * The surfaces mounted here place themselves against the viewport. */
+[data-qc-theme].qc-layer {
+  display: contents;
+}
+
+/* An external rail's flyout stands here, over anything the page stacks beside the widget and under
+ * the widget's own dialogs. */
+[data-qc-theme].qc-layer > .qc-drawing-popover {
+  position: fixed;
+  z-index: 2147483001;
+}
+
 [data-qc-theme].qc-root {
   display: flex;
   flex-direction: column;
@@ -254,9 +383,16 @@
 }
 
 /* The charts grid takes the root's remaining height by the same pair, for the same reason: its own
- * children are absolutely positioned, so it has no content height to be sized by. */
+ * children are absolutely positioned, so it has no content height to be sized by.
+ *
+ * The grid is a stacking context of its own. The renderer positions its pane separators with an
+ * inline z-index far above the chrome ladder, and left in the root's context they would paint over
+ * an open menu or dialog and take its clicks. Isolated here, every renderer layer stays below the
+ * overlay layer (20) and the notices (6), while the active chart (1) still stacks above its
+ * neighbours and below the layout dividers (3) inside the grid. */
 [data-qc-theme] .qc-panes {
   position: relative;
+  isolation: isolate;
   height: 100%;
   flex: 1 1 auto;
   min-width: 0;
@@ -302,7 +438,7 @@
  * ends the fall at the surface, where it belongs. */
 [data-qc-theme] .qc-chrome .qc-overlay,
 [data-qc-theme] .qc-chrome .qc-scrim,
-[data-qc-theme] .qc-chrome .qc-menu-backdrop {
+[data-qc-theme] .qc-menu-backdrop {
   pointer-events: auto;
 }
 
@@ -314,60 +450,404 @@
 
 [data-qc-theme] .qc-legend {
   position: absolute;
-  top: 8px;
+  top: 4px;
+  inset-inline-end: 64px;
   z-index: 3;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  min-width: 0;
   pointer-events: none;
 }
 
+/* Neighbours on one line stand 8px apart; a reading that wraps sits directly under the identity
+ * band, with no gap between the lines. */
 [data-qc-theme] .qc-legend-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  gap: 0 8px;
+  min-height: 24px;
+  padding-inline-start: 9px;
   pointer-events: none;
 }
 
-[data-qc-theme] .qc-legend-scales {
+/* The market and its facts stand as one 24px band, in the legend's ink at a size up from the
+ * chrome's: the mark, the name 4px past it, then the interval and the venue, each in a 12px cell
+ * that carries its separating dot. The reading beside it wraps whole to its own line, so the two
+ * are separate hover targets and only the band under the pointer takes the chip. */
+[data-qc-theme] .qc-legend-identity {
   display: inline-flex;
-  gap: 2px;
-  margin-left: 4px;
+  align-items: center;
+  gap: 0;
+  height: 24px;
+  color: var(--qc-text-onCanvas);
+  font-size: calc(var(--qc-text-fontSizeBase) + 2px);
+  font-weight: 400;
+  margin-inline: -4px;
+  padding-inline: 4px;
+  border-radius: 4px;
   pointer-events: auto;
 }
 
+/* A band under the pointer reads as one solid chip over the candles: the canvas' own fill, so the
+ * bars behind it stop dead, under a whisper of an inset ring. The negative margin pays for the
+ * padding, so nothing shifts as the chip appears. */
+[data-qc-theme] .qc-legend-identity:hover {
+  background: var(--qc-canvas-background);
+  box-shadow: inset 0 0 0 1px var(--qc-chrome-border);
+}
+
+/* The band sets no gap of its own: the mark stands 4px before the name, and a state mark 8px past
+ * the venue. */
+[data-qc-theme] .qc-legend-identity > .qc-symbol-badge {
+  margin-inline-end: 4px;
+}
+
+[data-qc-theme] .qc-legend-identity > .qc-legend-status {
+  margin-inline-start: 8px;
+}
+
+[data-qc-theme] .qc-legend-identity > .qc-legend-replay {
+  margin-inline-start: 8px;
+}
+
+/* The market's own name leads the header in the band's ink and size. It is a button when the chart
+ * serves symbol search and a plain mark when it does not, so the recipe styles both. */
+[data-qc-theme] .qc-legend-symbol {
+  line-height: 20px;
+  margin-inline: -3px;
+  padding: 0 3px;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  background: none;
+  border: 0;
+  border-radius: 3px;
+  pointer-events: auto;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-qc-theme] button.qc-legend-symbol {
+  cursor: pointer;
+}
+
+[data-qc-theme] button.qc-legend-symbol:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] button.qc-legend-symbol:active {
+  background: var(--qc-state-pressed);
+}
+
+/* The interval and the venue, each behind its own separator dot, in the name's own ink and size. */
+[data-qc-theme] .qc-legend-fact {
+  white-space: nowrap;
+}
+
+/* The separator is set, not drawn: a middle dot on the text baseline, so it sits with the facts
+ * either side of it at whatever size they are. */
+[data-qc-theme] .qc-legend-sep {
+  display: inline-flex;
+  flex: 0 0 12px;
+  justify-content: center;
+  width: 12px;
+}
+
+[data-qc-theme] .qc-legend-sep::before {
+  content: '\00B7';
+}
+
+/* The bar being read at the axis size, in an 18px band: centred on the identity's 24px line beside
+ * it, and set directly under it when the two wrap. Each mark is in the legend's ink with its price in
+ * the direction's own ink right after it, 6px to the next, then the change. A flat bar takes the
+ * ordinary text ink, since neither status colour is true of it. */
+[data-qc-theme] .qc-legend-quote {
+  line-height: 17px;
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  gap: 6px;
+  font-size: var(--qc-text-fontSizeAxis);
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-legend-ohlc {
+  display: inline-flex;
+  align-items: center;
+  color: var(--qc-text-onCanvas);
+}
+
+[data-qc-theme] .qc-legend-quote[data-qc-direction='up'] .qc-legend-ohlc > :last-child,
+[data-qc-theme] .qc-legend-quote[data-qc-direction='up'] .qc-legend-change {
+  color: var(--qc-status-positive);
+}
+
+[data-qc-theme] .qc-legend-quote[data-qc-direction='down'] .qc-legend-ohlc > :last-child,
+[data-qc-theme] .qc-legend-quote[data-qc-direction='down'] .qc-legend-change {
+  color: var(--qc-status-negative);
+}
+
+[data-qc-theme] .qc-legend-quote[data-qc-direction='flat'] .qc-legend-ohlc > :last-child,
+[data-qc-theme] .qc-legend-quote[data-qc-direction='flat'] .qc-legend-change {
+  color: var(--qc-text-primary);
+}
+
+/* The narrow cascade, step 2: a reading that cannot fit its line stands the open, high and low
+ * down and lets the close carry the bar. A close-only chart style reads the same way from the
+ * start. The nodes stay mounted, so widening the pane brings them straight back. */
+[data-qc-theme] .qc-legend[data-qc-compact='true'] .qc-legend-ohlc:not([data-qc-ohlc='close']) {
+  display: none;
+}
+
+/* Step 3: a slim pane sheds the venue and its separator, in the header and in every market row
+ * under it — one answer for the whole legend, because a row that kept its venue while the header
+ * above it dropped one would read as two different markets. The interval stays, because one chart
+ * of a layout has nowhere else to say what interval it is on. */
+[data-qc-theme] .qc-legend[data-qc-slim='true'] [data-role='legend-exchange'],
+[data-qc-theme] .qc-legend[data-qc-slim='true'] [data-role='legend-exchange-sep'],
+[data-qc-theme] .qc-legend[data-qc-slim='true'] .qc-legend-row-venue {
+  display: none;
+}
+
+[data-qc-theme] .qc-legend-mark {
+  color: var(--qc-text-onCanvas);
+}
+
+[data-qc-theme] .qc-legend-change {
+  color: var(--qc-text-primary);
+}
+
 [data-qc-theme] .qc-legend-rows {
+  /* Rows hug their own content: the chip a hovered row takes must be the width of the row, not
+   * of the chart. They start at the same 9px inset the header does. */
+  align-items: flex-start;
+  padding-inline-start: 9px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
+}
+
+[data-qc-theme] .qc-legend-pane {
+  position: absolute;
+  inset-inline: 0;
+}
+
+/* A host's own logo IS the badge, so the disc stands down rather than sitting as a coloured ring
+ * behind a logo that does not fill it. The mark takes the whole box, round like the disc it
+ * replaced: a logo boxed inside a smaller circle reads as a mark sitting ON a badge instead of
+ * being one, and the two would not line up down a column of rows. */
+[data-qc-theme] .qc-symbol-badge[data-qc-host='true'] {
+  background: none;
+}
+
+[data-qc-theme] .qc-symbol-badge[data-qc-host='true'] > * {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: contain;
+}
+
+[data-qc-theme] .qc-symbol-badge {
+  display: inline-flex;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--qc-text-secondary);
+  background: var(--qc-state-hover);
+  font-size: var(--qc-text-fontSizeMicro);
+  line-height: 1;
+}
+
+[data-qc-theme] .qc-legend[data-rows-collapsed='true'] .qc-legend-row {
+  display: none;
+}
+
+[data-qc-theme] .qc-legend-actions > .qc-legend-action {
+  opacity: 0;
+}
+
+[data-qc-theme] .qc-legend-row:hover .qc-legend-actions > .qc-legend-action,
+[data-qc-theme] .qc-legend-row:focus-within .qc-legend-actions > .qc-legend-action {
+  opacity: 1;
+}
+
+/* A hidden study says so whether or not the pointer is on it, so its eye stands on its own. */
+[data-qc-theme] .qc-legend-row[data-qc-hidden='true'] .qc-legend-eye {
+  opacity: 1;
+}
+
+[data-qc-theme] .qc-legend [hidden] {
+  display: none;
 }
 
 [data-qc-theme] .qc-legend-row {
   display: flex;
   align-items: center;
   gap: 6px;
+  height: 24px;
+  min-width: 0;
+  max-width: 100%;
+  margin-inline: -4px;
+  padding-inline: 4px;
+  color: var(--qc-text-primary);
+  /* The study rows are their own stack over the plot, not part of the header band, so they take the
+   * ordinary weight rather than the header's. */
+  font-weight: 400;
+  border-radius: 4px;
   pointer-events: auto;
 }
 
+/* The same chip the identity band takes, on the same terms. */
+[data-qc-theme] .qc-legend-row:hover,
+[data-qc-theme] .qc-legend-row:focus-within {
+  background: var(--qc-canvas-background);
+  box-shadow: inset 0 0 0 1px var(--qc-chrome-border);
+}
+
+/* A market row leads with its mark, a size under the header's: the header names what the chart IS
+ * and a compare row names what is standing beside it. */
+[data-qc-theme] .qc-legend-row-mark {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+}
+
+[data-qc-theme] .qc-legend-venue {
+  flex: 0 0 auto;
+  color: var(--qc-text-muted);
+}
+
+/* A move reads in the market's own two colours, the same pair the price scale and the quote use. */
+[data-qc-theme] .qc-legend-value[data-qc-tone='up'] {
+  color: var(--qc-status-positive);
+}
+
+[data-qc-theme] .qc-legend-value[data-qc-tone='down'] {
+  color: var(--qc-status-negative);
+}
+
+/* A row's controls sit ADJACENT in a zero-gap cluster; each box carries the spacing itself. The
+ * box stands 22px in the 24px row, so it never touches the chip's edge. */
 [data-qc-theme] .qc-legend-action {
-  display: flex;
+  display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 22px;
   padding: 0;
   color: inherit;
   font: inherit;
-  font-size: var(--qc-text-fontSizeMicro);
+  font-size: 12px;
+  line-height: 1;
   background: none;
   border: 0;
+  border-radius: 4px;
   cursor: pointer;
 }
 
+[data-qc-theme] .qc-legend-label,
 [data-qc-theme] .qc-legend-title {
-  font-size: var(--qc-text-fontSizeSmall);
-  text-decoration: underline dotted;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The input readout after the mark, quiet so the mark reads first. */
+[data-qc-theme] .qc-legend-inputs {
+  color: var(--qc-text-muted);
+}
+
+[data-qc-theme] .qc-legend-value {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-legend-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-legend-action:hover {
+  color: var(--qc-text-primary);
+  background: color-mix(in srgb, var(--qc-text-primary) 10%, transparent);
+  opacity: 1;
+}
+
+[data-qc-theme] .qc-legend-action:active {
+  background: color-mix(in srgb, var(--qc-text-primary) 15%, transparent);
+}
+
+[data-qc-theme] .qc-legend-action svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* A compare's own name is a door to symbol search, so it is a button. It reads as text and takes
+ * the same wash box the market's name does, never a rule under the words. */
+[data-qc-theme] .qc-legend-title {
+  width: auto;
+  height: auto;
+  margin-inline: -3px;
+  padding: 0 3px;
+  font-size: inherit;
 }
 
 [data-qc-theme] .qc-legend-dot {
   display: inline-block;
+  color: var(--qc-text-muted);
+}
+
+[data-qc-theme] .qc-legend-action svg[viewBox='0 0 18 18'] {
+  width: 18px;
+  height: 18px;
+}
+
+/* The rows' own toggler, standing under the stack. It carries the study/compare rows away and
+ * leaves the identity and the reading in place. Its box is set here, AFTER the shared action
+ * recipe, because it is the one action that is not a row control and does not take that geometry. */
+[data-qc-theme] .qc-legend-collapse {
+  margin-inline-start: 9px;
+  pointer-events: auto;
+  width: 29px;
+  height: 21px;
+  margin-top: 3px;
+  align-self: flex-start;
+  border: 1px solid color-mix(in srgb, var(--qc-text-primary) 20%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--qc-canvas-background) 80%, transparent);
+  opacity: 1;
+}
+
+[data-qc-theme] .qc-legend-collapse svg {
+  width: 15px;
+  height: 15px;
+}
+
+[data-qc-theme] .qc-legend-collapse[aria-expanded='true'] svg { transform: rotate(180deg); }
+
+[data-qc-theme] .qc-legend-status .qc-legend-dot svg {
+  width: 18px;
+  height: 18px;
+}
+
+[data-qc-theme] .qc-legend-dot[data-qc-session='pre'] { color: var(--qc-status-sessionPreMarket); }
+[data-qc-theme] .qc-legend-dot[data-qc-session='open'] { color: var(--qc-status-sessionOpen); }
+[data-qc-theme] .qc-legend-dot[data-qc-session='extended'] { color: var(--qc-status-sessionExtended); }
+[data-qc-theme] .qc-legend-dot[data-qc-session='after'] { color: var(--qc-status-sessionAfterHours); }
+[data-qc-theme] .qc-legend-dot[data-qc-session='closed'] { color: var(--qc-status-sessionClosed); }
+
+[data-qc-theme] .qc-legend-status {
+  pointer-events: auto;
 }
 
 [data-qc-theme] .qc-chip {
@@ -388,7 +868,7 @@
 }
 
 /* overflow:hidden is load-bearing: a row highlight fills its slot squarely, so the surface is what
- * rounds it off. Without the clip it paints over the corners and out across the border. */
+ * rounds it off. Without the clip it paints over the rounded corners. */
 [data-qc-theme] .qc-menu {
   position: fixed;
   z-index: 2147483001;
@@ -397,6 +877,21 @@
   overflow: hidden;
   font-size: var(--qc-text-fontSizeBase);
   pointer-events: auto;
+}
+
+/* The level menu's rows restate the row rhythm: 32px tall, square-cornered and running edge to
+ * edge of the box (the surface's clip rounds them off), the glyph 6px from the label and 20px of
+ * room at the end for a chord. */
+[data-qc-theme] .qc-menu .qc-menu-row {
+  gap: 6px;
+  height: 32px;
+  margin: 0;
+  padding: 0 20px 0 0;
+  border-radius: 0;
+}
+
+[data-qc-theme] .qc-menu .qc-menu-hint {
+  font-size: var(--qc-text-fontSizeMicro);
 }
 
 [data-qc-theme] .qc-menu-icon {

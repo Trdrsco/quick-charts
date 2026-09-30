@@ -90,7 +90,7 @@ describe('createChartI18n', () => {
     expect(createChartI18n().tag()).toBe('en')
     expect(createChartI18n('zh_TW').tag()).toBe('zh-TW')
     expect(createChartI18n().t('legend.hideIndicator')).toBe('Hide indicator')
-    expect(createChartI18n().t('legend.priceScale', { mode: 'log' })).toBe('Price scale: log')
+    expect(createChartI18n().t('legend.scaleLog')).toBe('Log')
   })
 
   it('switches language, tells its listeners, and always has text: English until a translation lands', async () => {

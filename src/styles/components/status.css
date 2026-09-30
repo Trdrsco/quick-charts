@@ -14,6 +14,9 @@
 
 [data-qc-theme] .qc-status-popup {
   padding: 12px 12px 10px;
+  max-width: calc(100% - 16px);
+  max-height: calc(100% - 16px);
+  overflow: auto;
 }
 
 [data-qc-theme] .qc-status-title {

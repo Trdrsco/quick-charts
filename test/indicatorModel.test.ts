@@ -1,4 +1,13 @@
 import { describe, expect, it } from 'vitest'
+describe('hovered plot readings', () => {
+  it('uses only finite points at or before the selected bar, including warmup and whitespace gaps', () => {
+    const data = [null, { time: 10 }, { time: Number.NaN, value: 999 }, { time: 20, value: 2 }, { time: 30 }, { time: 40, value: 4 }]
+    expect(plotValueAt(data, 19)).toBeNull()
+    expect(plotValueAt(data, 30)).toBe(2)
+    expect(plotValueAt(data, null)).toBe(4)
+    expect(plotValueAt([], 30)).toBeNull()
+  })
+})
 import type { UTCTimestamp } from 'lightweight-charts'
 import {
   applyPlotOverrides,
@@ -6,6 +15,7 @@ import {
   effectivePlotColor,
   indicatorHidden,
   latestPlotValue,
+  plotValueAt,
   manifestInputDefaults,
   overriddenManifest,
   type IndicatorManifest,

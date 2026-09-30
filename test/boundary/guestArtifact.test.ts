@@ -47,7 +47,7 @@ const FIRST_PARTY: readonly { name: string; pattern: RegExp }[] = [
   { name: 'a credential or session', pattern: /trdrs_sk_|Authorization|Set-Cookie|document\.cookie|engine_session|trdrs_session/ },
   { name: 'a private package', pattern: /@trdrs\// },
   { name: 'an engine client', pattern: /\bengineApi\b|\bmarketStream\b|engine-client|engine-wire|chart-engine/ },
-  { name: 'trading code', pattern: /\bplaceOrder\b|\bcancelOrder\b|\bflatten\b|order-ticket|account-manager|chart-trading|\bBrokerAdapter\b|\bTradingAdapter\b/ },
+  { name: 'trading code', pattern: /\bplaceOrder\b|\bcancelOrder\b|\bflatten\b|order-ticket|account-manager|chart-trading|\bOrderCommandPort\b|\bPositionCommandPort\b|\bTradingSession\b/ },
   { name: 'browser storage', pattern: /\b(localStorage|sessionStorage|indexedDB)\b/ },
 ]
 

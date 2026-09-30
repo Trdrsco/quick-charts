@@ -40,6 +40,13 @@ export function openMarketStatus(anchor: HTMLElement, deps: MarketStatusDeps): M
   const t = deps.i18n.t
   const now = (): number => Math.floor(Date.now() / 1000)
   let timer: ReturnType<typeof setInterval> | null = null
+  let offLocale = (): void => undefined
+  const stopUpdates = (): void => {
+    if (timer) clearInterval(timer)
+    timer = null
+    offLocale()
+    offLocale = () => undefined
+  }
 
   const titleRow = (state: SessionState | null, text: string): HTMLElement => {
     const dot = h('span', { class: 'qc-session-dot qc-status-dot', ...(state ? { 'data-qc-session': state } : {}) })
@@ -87,13 +94,16 @@ export function openMarketStatus(anchor: HTMLElement, deps: MarketStatusDeps): M
       body.appendChild(h('div', { class: 'qc-status-footer qc-muted' }, exchangeTimezoneText(t, tl.timezone, new Date(nowSecs * 1000))))
     },
     onClose() {
-      if (timer) clearInterval(timer)
-      timer = null
+      stopUpdates()
       deps.onClose?.()
     },
   })
   // The countdown and the now marker stay honest while the popup is up, without the closed popup
   // doing any work.
   timer = setInterval(() => menu.refresh(), 60_000)
+  offLocale = deps.i18n.onChange(() => menu.refresh())
+  // A newer opening may have displaced this one from a reentrant close callback before this
+  // function received its handle. Do not admit timer or locale work after that terminal close.
+  if (!menu.open()) stopUpdates()
   return menu
 }

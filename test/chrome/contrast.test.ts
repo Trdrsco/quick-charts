@@ -1,8 +1,10 @@
 // The text-on-surface pairings the chrome introduces, measured under WCAG 2.2 in both built-in
 // modes. The palette's own contrast rules cover ink over `chrome.surface`; the chrome also sets ink
 // over the raised control fill (the symbol pill, the composer footer), over the overlay surface
-// (every menu and dialog), inverse ink over the accent (a checked tile, a selected class chip, a
-// selected day), and the negative ink of an error notice over the overlay surface. Each is held to
+// (every menu and dialog), the mark ink over the accent (a selected day), the inverse ink over the
+// emphasis fill (a primary action, a chosen row), the surface ink over the primary fill (a checked
+// tile, a selected class chip), the highlight ink of a
+// search match, and the negative ink of an error notice over the overlay surface. Each is held to
 // 4.5 to 1 for text.
 import { describe, expect, it } from 'vitest'
 import { contrastOf } from '../../src/theme/color'
@@ -15,9 +17,11 @@ const PAIRS: readonly { ink: ThemeRoleId; over: ThemeRoleId; where: string }[] =
   { ink: 'text.primary', over: 'overlay.surface', where: 'menu and dialog rows' },
   { ink: 'text.secondary', over: 'overlay.surface', where: 'menu hints and dialog descriptions' },
   { ink: 'text.muted', over: 'overlay.surface', where: 'menu headings and status footers' },
-  { ink: 'text.inverse', over: 'state.accent', where: 'a checked arrangement tile, a selected class chip, a selected day' },
+  { ink: 'state.markInk', over: 'state.accent', where: 'a selected day' },
+  { ink: 'text.inverse', over: 'control.on', where: 'a primary action, a chosen row and a held mode' },
+  { ink: 'overlay.surface', over: 'text.primary', where: 'a checked arrangement tile and a selected class chip' },
   { ink: 'status.negative', over: 'overlay.surface', where: 'an error notice' },
-  { ink: 'state.accent', over: 'overlay.surface', where: 'a search match highlight' },
+  { ink: 'text.highlight', over: 'overlay.surface', where: 'a search match highlight' },
   { ink: 'text.inverse', over: 'status.negative', where: 'the delete confirmation button' },
 ]
 

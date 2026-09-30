@@ -102,14 +102,19 @@ export interface RestChartBody {
   content: string
 }
 
-/** A saved multi-chart layout's listing row. */
+/** A saved multi-chart layout's listing row. `symbol` and `timeframe` are the active chart's when the
+ *  layout was last saved; a service that does not keep them leaves them out. */
 export interface RestLayoutMeta extends RestResourceRef {
   name: string
+  symbol?: string
+  timeframe?: string
   updatedAt: number
 }
 
 export interface RestLayoutBody {
   name: string
+  symbol?: string
+  timeframe?: string
   content: string
 }
 

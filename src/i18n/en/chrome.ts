@@ -12,6 +12,9 @@ export const chrome = {
   'chrome.chartStyle': 'Chart style',
   'chrome.indicators': 'Indicators',
   'chrome.replay': 'Bar replay',
+  /** The short word the replay control wears on the bar, where the icon beside it already says
+   *  which replay is meant. Its accessible name stays the full one above. */
+  'chrome.replayChip': 'Replay',
   'chrome.image': 'Chart image',
   /** The bottom bar's session-view trigger. Its clock and timezone trigger reads `timezone.title`. */
   'chrome.session': 'Trading session',

@@ -20,3 +20,11 @@ export function ownsDrawing(row: { scope?: string }, chartId: string | undefined
 export function scopeForNew(chartId: string | undefined, syncAcrossPanes: boolean): string | undefined {
   return syncAcrossPanes ? undefined : chartId
 }
+
+/** Stamp a drawing the layer has just MADE with the scope its creation takes. Placement, the menu
+ *  clone, a paste and a modifier-drag copy all mint a fresh object, so all four stamp it here: the
+ *  source a copy was taken from keeps its own ownership, and only the new object follows the
+ *  switch as it stands at the moment of creation. */
+export function stampNewScope(drawing: { scope?: string }, chartId: string | undefined, syncAcrossPanes: boolean | undefined): void {
+  drawing.scope = scopeForNew(chartId, syncAcrossPanes !== false)
+}
