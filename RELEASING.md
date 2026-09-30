@@ -21,8 +21,9 @@ Registry publishing access is separate from repository access. Do not grant it t
    THIRD-PARTY-NOTICES.md. Check the generated dist/feature-manifest.json,
    dist/theme-manifest.json and dist/rest-openapi.json.
 3. Run the first host against this same tarball and retain its exact source commit, the candidate
-   digest and passing integration results. Complete manual accessibility and advertised browser
-   acceptance; automated conformance alone does not prove a screen reader result.
+   digest and passing integration results. Record manual accessibility and advertised browser
+   acceptance, or an explicit owner waiver. A waiver does not establish screen-reader or device
+   support; automated conformance alone does not prove those results.
 4. Run `pnpm rehearsal` from a clean checkout. Keep the complete dossier and its artifact hashes.
 5. Create `v<version>` on the accepted main commit. A tag alone publishes nothing.
 
