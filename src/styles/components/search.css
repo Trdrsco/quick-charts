@@ -145,7 +145,7 @@
   display: none;
 }
 
-[data-qc-theme] .qc-search-venue-badge {
+[data-qc-theme] .qc-search-scope {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
@@ -161,7 +161,7 @@
   white-space: nowrap;
 }
 
-[data-qc-theme] .qc-search-venue-badge-mark {
+[data-qc-theme] .qc-search-scope-mark {
   display: inline-flex;
   flex: 0 0 18px;
   align-items: center;

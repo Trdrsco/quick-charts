@@ -2,7 +2,7 @@
 
 ## 1.0.2
 
-The symbol search can show the selected account's venue and its host-painted mark beside the asset-class filters.
+The symbol search can name what it is limited to, with a host-painted mark, beside the asset-class filters (`search.scope`, `SearchScope`).
 
 ## 1.0.1
 

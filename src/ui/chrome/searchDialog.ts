@@ -14,6 +14,7 @@ import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import type { CompareEntry, ComparePlacement, CompareSymbol } from '../../compare'
 import { isSymbolPair, looksLikeSpread, matchSegments, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery, type RecentsPort, type SearchSession } from '../../search'
 import type { CommandRegistry } from '../../widget/commands'
+import type { SearchScope } from '../../widget/options'
 import type { SearchRequest } from './doors'
 import { dialogTitle, emptyState, openDialog, type DialogHandle } from './dialog'
 import { append, button, h, name, reglyph, replace, setDisabled } from './dom'
@@ -37,8 +38,8 @@ export interface SearchDialogDeps {
   classes(): readonly string[] | null
   /** Display names for those classes, from the host. A class without one wears its token. */
   classNames?: Readonly<Record<string, string>>
-  /** The selected account's venue, shown as a branded badge at the far edge of the class strip. */
-  venue?: () => string | null
+  /** What the search is limited to, named at the far edge of the class strip with the host's mark. */
+  scope?: () => SearchScope | null
   /** The host's mark painters: the same value the legend paints its badge with. A row wears the
    *  market's, and its source cell the venue's, or the data provider's where it names no venue.
    *  Where the host lent none, a row wears the neutral monogram and the source its initial on the
@@ -238,8 +239,8 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     const classes = compare ? null : deps.classes()
     let strip: HTMLElement | null = null
     const classChips = new Map<string, HTMLButtonElement>()
-    const venue = deps.venue?.() ?? null
-    if ((classes && classes.length > 0) || venue) {
+    const searchScope = deps.scope?.() ?? null
+    if ((classes && classes.length > 0) || searchScope) {
       strip = h('div', { class: 'qc-search-classes', role: 'group', 'aria-label': t('search.classFilter') })
       if (classes && classes.length > 0) {
         const all = [{ id: '', label: t('search.allClasses') }, ...classes.map((id) => ({ id, label: deps.classNames?.[id] ?? id }))]
@@ -261,14 +262,14 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           strip.appendChild(chip)
         }
       }
-      if (venue) {
-        const mark = h('span', { class: 'qc-search-venue-badge-mark', 'aria-hidden': 'true' })
-        const drop = deps.painters.venue?.({ exchange: venue, host: mark, size: SOURCE_MARK_SIZE })
+      if (searchScope) {
+        const mark = h('span', { class: 'qc-search-scope-mark', 'aria-hidden': 'true' })
+        const drop = searchScope.mark?.({ host: mark, size: SOURCE_MARK_SIZE })
         if (typeof drop === 'function') {
           mark.dataset.qcHost = 'true'
           markDisposers.push(drop)
-        } else mark.textContent = venue.charAt(0).toUpperCase()
-        strip.appendChild(h('span', { class: 'qc-search-venue-badge', 'aria-label': venue }, mark, h('span', {}, venue)))
+        } else if (mark.childNodes.length === 0) mark.textContent = searchScope.label.charAt(0).toUpperCase()
+        strip.appendChild(h('span', { class: 'qc-search-scope', 'aria-label': searchScope.label }, mark, h('span', {}, searchScope.label)))
       }
     }
 
