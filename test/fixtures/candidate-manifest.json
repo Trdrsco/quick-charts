@@ -1,5 +1,5 @@
 {
-  "tarSha256": "b948923444148b1f1b3de4989c4c183669f48a61b9e59c7c2fc9aa98d1e73898",
+  "tarSha256": "57b344902ba5e973d98fd0659fb1e7ef301d925bfe65b2af34f3a83d7c2dda1d",
   "files": {
     "CHANGELOG.md": "c89ec79474e4cce2d33943c33f15ec29c72b6204bad26a426806395637ff0d31",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -35,8 +35,8 @@
     "dist/id_ID-XSTFHHJQ.js": "92b4a89397088083d8871a5eb310243ec1c97a9137ca2480fc94187664b3bf21",
     "dist/id_ID-XSTFHHJQ.js.map": "071d55c88da5bcb9ab4d7e2a7de5502f4d943957b15a0e0555f301b7ef81d7ab",
     "dist/index.d.ts": "d3cc8dba2657ee6fe40b748c734cd55ca65883070e6aa675cacdd437bb9d5b80",
-    "dist/index.js": "a352e2089988b7127a8b38eac3e811df043e55583e8f5d7dfa450a376512db31",
-    "dist/index.js.map": "573f9386cd5320a95f6bfc9129943ee34da259425bcb300107063b4208f1dade",
+    "dist/index.js": "5b015408c3a00065f96c1ac61b88736b7b414d0360214ee521db943ed59dd00a",
+    "dist/index.js.map": "8b71fdc2f2f35a9c5ae76e54c436c8c3e401551eda3ad4a1c20424966a199054",
     "dist/it-EIY6JESQ.js": "34169237127fa797727e4ea04e00881716fdb907c513b36cde548b2ce41f62ac",
     "dist/it-EIY6JESQ.js.map": "a70561ec02cfa3d56dd47e7c67ea00ee50657cc79c2c978cb6646e05240f809b",
     "dist/ja-42N4XRCW.js": "247754c82c1c890d933b896affdf1118d8e2911934de036b6ef3f555cb52cc34",
@@ -49,7 +49,7 @@
     "dist/pl-TYARHCLT.js.map": "2214edea5906202edcd95315dcfc970d445a96f718c5a857a73ed500a86185d8",
     "dist/pt-72IIFLL4.js": "6f5a016f7c158a4a58c1f9d3ec3861060fd9c71d816194ee291fc6fbde397485",
     "dist/pt-72IIFLL4.js.map": "65cd963eeab9040736e31cdae42b008b43e5350a08591da2e251c59d3505f1a7",
-    "dist/quickcharts.css": "a373734aa4a1b19baa53448aafdd3ef72db0ecd74c89ae280f5a374f8e963d1c",
+    "dist/quickcharts.css": "9da218c395c0a3b4f446e2e7665f77d3352a6b2d9a2f502bf579b3d4b97ac6fa",
     "dist/resources-Ch8eA1Mw.d.ts": "755f844543bc417805091098d6be758f1d1d153d780d5f58ea9d3f77b611c628",
     "dist/rest-openapi.json": "f1f72cbd2a2960723c32b8e22de57664113b5463c15a11063ecd25a0857279df",
     "dist/ru-TPH4F7IB.js": "ef8da45bc01c769f732e1f39822bd6de1e57a012e844c709b07c38cc3b6e3d89",

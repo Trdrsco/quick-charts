@@ -153,10 +153,10 @@
   height: 28px;
   margin-inline-start: auto;
   padding: 0 10px 0 6px;
-  color: var(--qc-text-primary);
+  color: var(--qc-text-inverse);
   font-size: var(--qc-text-fontSizeBase);
   line-height: 18px;
-  background: var(--qc-state-hover);
+  background: var(--qc-control-on);
   border-radius: 14px;
   white-space: nowrap;
 }

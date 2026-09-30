@@ -195,6 +195,7 @@ describe('search mode', () => {
     const badge = strip.lastElementChild as HTMLElement
     expect(badge.classList.contains('qc-search-venue-badge')).toBe(true)
     expect(badge.getAttribute('aria-label')).toBe('Meridian')
+    expect(badge.getAttribute('aria-current')).toBe('true')
     expect(badge.textContent).toBe('Meridian')
     expect(badge.querySelector('img')).not.toBeNull()
     expect(painted).toContain('Meridian:18')

@@ -269,7 +269,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           mark.dataset.qcHost = 'true'
           venueMarkDisposer = drop
         } else mark.textContent = venue.charAt(0).toUpperCase()
-        strip.appendChild(h('span', { class: 'qc-search-venue-badge', 'aria-label': venue }, mark, h('span', {}, venue)))
+        strip.appendChild(h('span', { class: 'qc-search-venue-badge', 'aria-label': venue, 'aria-current': 'true' }, mark, h('span', {}, venue)))
       }
     }
 
