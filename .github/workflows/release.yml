@@ -91,4 +91,4 @@ jobs:
           files=(artifact/trdrs-quickcharts-*.tgz)
           test "${#files[@]}" -eq 1
           printf '%s  %s\n' "$EXPECTED_DIGEST" "${files[0]}" | sha256sum --check --strict
-          npm publish "${files[0]}" --ignore-scripts --provenance --access public
+          npm publish "./${files[0]}" --ignore-scripts --provenance --access public
