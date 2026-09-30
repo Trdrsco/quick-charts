@@ -190,6 +190,9 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     markDisposers = []
     for (const drop of drops) drop()
   }
+  /** What takes the scope's mark down. The scope sits in the class strip, which lives as long as the
+   *  surface, so its mark is released on teardown and never with the rows a render replaces. */
+  let scopeMarkDisposer: (() => void) | null = null
 
     const input = h('input', { type: 'text', role: 'combobox', class: 'qc-search-input', 'aria-label': t('search.placeholder'), placeholder: t('search.placeholder'), autocomplete: 'off', 'aria-autocomplete': 'list', 'aria-expanded': 'true', 'aria-controls': listId, spellcheck: 'false', value: query })
     const clear = button({ label: t('search.clear'), icon: deps.icons.glyph(ICONS.clear, { size: 18 }), className: 'qc-search-op', onClick: () => setQuery('') })
@@ -267,7 +270,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
         const drop = searchScope.mark?.({ host: mark, size: SOURCE_MARK_SIZE })
         if (typeof drop === 'function') {
           mark.dataset.qcHost = 'true'
-          markDisposers.push(drop)
+          scopeMarkDisposer = drop
         } else if (mark.childNodes.length === 0) mark.textContent = searchScope.label.charAt(0).toUpperCase()
         strip.appendChild(h('span', { class: 'qc-search-scope', 'aria-label': searchScope.label }, mark, h('span', {}, searchScope.label)))
       }
@@ -476,6 +479,8 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
 
   return {
     teardown() {
+      scopeMarkDisposer?.()
+      scopeMarkDisposer = null
       releaseMarks()
       search.dispose()
       observer?.disconnect()

@@ -1,6 +1,6 @@
 # @trdrs/quickcharts
 
-## 1.0.2
+## 1.1.0
 
 The symbol search can name what it is limited to, with a host-painted mark, beside the asset-class filters (`search.scope`, `SearchScope`).
 
