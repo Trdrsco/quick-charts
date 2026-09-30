@@ -145,6 +145,32 @@
   display: none;
 }
 
+[data-qc-theme] .qc-search-venue-badge {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  margin-inline-start: auto;
+  padding: 0 10px 0 6px;
+  color: var(--qc-text-primary);
+  font-size: var(--qc-text-fontSizeBase);
+  line-height: 18px;
+  background: var(--qc-state-hover);
+  border-radius: 14px;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-search-venue-badge-mark {
+  display: inline-flex;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
+}
+
 /* A class rests on the neutral fill, steps deeper under the pointer and deeper again while pressed. */
 [data-qc-theme] .qc-search-class {
   flex: 0 0 auto;
