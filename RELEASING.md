@@ -1,7 +1,7 @@
 # Releasing Quick Charts
 
 Quick Charts releases are selected by Joe and published from the reviewed public repository.
-Joe can approve his own release. No approval from Dylan or another person is required.
+Joe can approve his own release.
 
 ## Roles
 
@@ -54,3 +54,18 @@ replacement named. Keep artifacts consumers already installed. For a compromised
 account, revoke its access, review affected versions and restore access through the owner's
 independent recovery method. Repository administrators retain recovery powers to change controls;
 record the reason for emergency configuration changes and restore the normal protections.
+
+## First-publication bootstrap
+
+A package must exist in the registry before npm can attach a trusted publisher. For the first
+publication only, the npm owner authenticates through the web login flow and publishes the accepted
+tarball interactively with package scripts disabled. Verify the tarball SHA-256 before publishing.
+A workstation publish cannot produce GitHub OIDC provenance; record that bootstrap limitation and
+use the protected workflow with provenance for subsequent versions. Do not edit or repack the
+accepted tarball to change publishing configuration.
+
+After the first version exists, configure trust with `npm trust github quickcharts --file
+release.yml --repo Trdrsco/quick-charts --env npm-publish --allow-publish --yes`. Require 2FA and
+disallow traditional publishing tokens. Verify the trust configuration and registry artifact,
+then log out and remove the temporary workstation login configuration. The registry owner remains
+the only publishing account unless the owner explicitly adds another maintainer.
