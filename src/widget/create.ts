@@ -634,6 +634,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     datafeed: options.datafeed,
     feedConfig: () => feedConfig,
     classNames: options.search?.classNames,
+    venue: options.search?.venue,
     painters,
     indicatorPicker: options.indicatorPicker,
     access: options.access,

@@ -1,5 +1,9 @@
 # @trdrs/quickcharts
 
+## 1.0.2
+
+The symbol search can show the selected account's venue and its host-painted mark beside the asset-class filters.
+
 ## 1.0.1
 
 Emoji drawings and the picker use bundled Twemoji artwork without a host asset server.

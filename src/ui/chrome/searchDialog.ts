@@ -37,6 +37,8 @@ export interface SearchDialogDeps {
   classes(): readonly string[] | null
   /** Display names for those classes, from the host. A class without one wears its token. */
   classNames?: Readonly<Record<string, string>>
+  /** The selected account's venue, shown as a branded badge at the far edge of the class strip. */
+  venue?: () => string | null
   /** The host's mark painters: the same value the legend paints its badge with. A row wears the
    *  market's, and its source cell the venue's, or the data provider's where it names no venue.
    *  Where the host lent none, a row wears the neutral monogram and the source its initial on the
@@ -236,25 +238,37 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     const classes = compare ? null : deps.classes()
     let strip: HTMLElement | null = null
     const classChips = new Map<string, HTMLButtonElement>()
-    if (classes && classes.length > 0) {
+    const venue = deps.venue?.() ?? null
+    if ((classes && classes.length > 0) || venue) {
       strip = h('div', { class: 'qc-search-classes', role: 'group', 'aria-label': t('search.classFilter') })
-      const all = [{ id: '', label: t('search.allClasses') }, ...classes.map((id) => ({ id, label: deps.classNames?.[id] ?? id }))]
-      for (const c of all) {
-        const chip = button({
-          label: c.label,
-          text: c.label,
-          className: 'qc-chip qc-search-class',
-          pressed: c.id === cls,
-          onClick: () => {
-            cls = c.id
-            for (const [id, b] of classChips) b.setAttribute('aria-pressed', String(id === cls))
-            active = -1
-            search.search(serverQuery(), cls)
-            render()
-          },
-        })
-        classChips.set(c.id, chip)
-        strip.appendChild(chip)
+      if (classes && classes.length > 0) {
+        const all = [{ id: '', label: t('search.allClasses') }, ...classes.map((id) => ({ id, label: deps.classNames?.[id] ?? id }))]
+        for (const c of all) {
+          const chip = button({
+            label: c.label,
+            text: c.label,
+            className: 'qc-chip qc-search-class',
+            pressed: c.id === cls,
+            onClick: () => {
+              cls = c.id
+              for (const [id, b] of classChips) b.setAttribute('aria-pressed', String(id === cls))
+              active = -1
+              search.search(serverQuery(), cls)
+              render()
+            },
+          })
+          classChips.set(c.id, chip)
+          strip.appendChild(chip)
+        }
+      }
+      if (venue) {
+        const mark = h('span', { class: 'qc-search-venue-badge-mark', 'aria-hidden': 'true' })
+        const drop = deps.painters.venue?.({ exchange: venue, host: mark, size: SOURCE_MARK_SIZE })
+        if (typeof drop === 'function') {
+          mark.dataset.qcHost = 'true'
+          markDisposers.push(drop)
+        } else mark.textContent = venue.charAt(0).toUpperCase()
+        strip.appendChild(h('span', { class: 'qc-search-venue-badge', 'aria-label': venue }, mark, h('span', {}, venue)))
       }
     }
 

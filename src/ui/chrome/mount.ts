@@ -62,6 +62,7 @@ export interface ChromeDeps {
   datafeed: ChartDatafeed
   feedConfig(): DatafeedConfig | null
   classNames?: Readonly<Record<string, string>>
+  venue?: () => string | null
   access?: AccessPolicy
   /** The host's mark painters, passed to every surface that names a market or a source. */
   painters: MarkPainters
@@ -186,6 +187,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       recents: widget.recents,
       classes: () => deps.feedConfig()?.classes ?? null,
       classNames: deps.classNames,
+      venue: deps.venue,
       painters: deps.painters,
       curated: request.chart?.compare.symbols() ?? [],
       request,

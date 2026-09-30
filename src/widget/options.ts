@@ -375,6 +375,8 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
     recents?: RecentsPort
     /** Display names for the asset-class tokens the feed's `config()` declares in `classes`. */
     classNames?: Readonly<Record<string, string>>
+    /** The selected account's venue, shown at the far edge of the asset-class strip. */
+    venue?: () => string | null
   }
   /** Where the image and glyph drawing tools get their artwork, and how a picked file becomes a
    *  usable payload. Emoji artwork is bundled. Absent, the image tool takes no file. */

@@ -42,7 +42,7 @@ const settle = async (): Promise<void> => {
 
 function open(
   mode: 'search' | 'compare' | 'change-symbol',
-  extra: { access?: (id: string) => boolean; classes?: string[]; onPick?(s: string): void; changeFrom?: string; catalog?: readonly SymbolRow[]; venueMark?: MarkHook<'exchange'>; providerMark?: MarkHook<'provider'> } = {},
+  extra: { access?: (id: string) => boolean; classes?: string[]; venue?: string; onPick?(s: string): void; changeFrom?: string; catalog?: readonly SymbolRow[]; venueMark?: MarkHook<'exchange'>; providerMark?: MarkHook<'provider'> } = {},
 ) {
   const w = fakeWidget({ access: extra.access ? { command: extra.access } : undefined })
   const dialog = openSearchDialog({
@@ -54,6 +54,7 @@ function open(
     recents: w.widget.recents,
     classes: () => extra.classes ?? null,
     classNames: { future: 'Futures' },
+    venue: () => extra.venue ?? null,
     curated: [{ symbol: 'NQ', title: 'Nasdaq' }],
     painters: resolveMarkPainters(extra),
     request: { mode, chart: w.chart.handle, changeFrom: extra.changeFrom, onPick: extra.onPick },
@@ -176,6 +177,26 @@ describe('search mode', () => {
     expect(input.value).toBe('1/')
     toggle.click()
     expect(strip.hidden).toBe(true)
+  })
+
+  it('shows the selected venue and its host-painted mark at the far edge of the class strip', () => {
+    const painted: string[] = []
+    const { dialog } = open('search', {
+      classes: ['future', 'crypto'],
+      venue: 'Meridian',
+      venueMark: ({ exchange, host, size }) => {
+        painted.push(`${exchange}:${size}`)
+        host.appendChild(document.createElement('img'))
+        return () => undefined
+      },
+    })
+    const strip = dialog.element.querySelector<HTMLElement>('.qc-search-classes')!
+    const badge = strip.lastElementChild as HTMLElement
+    expect(badge.classList.contains('qc-search-venue-badge')).toBe(true)
+    expect(badge.getAttribute('aria-label')).toBe('Meridian')
+    expect(badge.textContent).toBe('Meridian')
+    expect(badge.querySelector('img')).not.toBeNull()
+    expect(painted).toContain('Meridian:18')
   })
 
   it('shows the clear mark and its rule only over a query', async () => {

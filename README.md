@@ -1280,18 +1280,24 @@ in `ui`; hiding one removes the control and leaves its commands.
 ```ts
 import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
+declare const selectedAccount: { venueName: string | null }
+
 const trimmed = createChart({
   container,
   datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
   ui: { navigation: false, topBar: { layouts: false, image: false } },
-  search: { classNames: { future: 'Futures', crypto: 'Crypto' } },
+  search: {
+    classNames: { future: 'Futures', crypto: 'Crypto' },
+    venue: () => selectedAccount.venueName,
+  },
   preferences: { savedTimeframes: ['1m', '15m', '1h', '1d'], layoutAutosave: true },
 })
 trimmed.on('saveNeeded', () => note('the layout has unsaved changes'))
 ```
 
 The search dialog's class chips come from your datafeed's `config().classes`, named through
-`search.classNames`; a class you do not name wears its token. The range presets read your
+`search.classNames`; a class you do not name wears its token. `search.venue` names the selected
+account's venue at the far edge of that strip and uses `venueMark` for its mark. The range presets read your
 datafeed's optional `earliestBar(symbol)`: a preset deeper than the history you serve is disabled.
 
 ```ts
