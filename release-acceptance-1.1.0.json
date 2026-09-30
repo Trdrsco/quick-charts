@@ -1,0 +1,61 @@
+{
+  "date": "2026-09-30",
+  "packageName": "@trdrs/quickcharts",
+  "version": "1.1.0",
+  "releaseCommit": "8a4bc1ebdfb13afdb5d05bf554a76055815573b1",
+  "tarballSha256": "a59734b9a6e9395eeca40c710c2086a7a84a4ed96302b7253f8abcc1747bb65c",
+  "tarStreamSha256": "62d63ff0e6127ab261f18bfc4469e338653cbbafc094bc689ad5160ec47645cd",
+  "bundledEmojiGlyphs": 1566,
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/36789180579",
+    "unitTestsPassed": 3506,
+    "typecheck": "pass",
+    "candidatePin": "pass",
+    "supplyChain": "pass",
+    "notices": "pass",
+    "documents": "pass",
+    "cleanConsumers": "pass",
+    "browsers": {
+      "chromium": {
+        "playwright": "1.61.0",
+        "passed": 42,
+        "skipped": 0,
+        "failed": 0
+      },
+      "firefox": {
+        "playwright": "1.61.0",
+        "passed": 42,
+        "skipped": 0,
+        "failed": 0
+      },
+      "webkit": {
+        "playwright": "1.61.0",
+        "passed": 42,
+        "skipped": 0,
+        "failed": 0
+      }
+    }
+  },
+  "firstHost": {
+    "baselineCommit": "c4ec031e58eed7c1331587a205f82d6c8c832e6a",
+    "testedCommit": "fa2b454317d9bffe64d0657c2564cbf32d1cc9fd",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/36789188998",
+    "workingTree": "1.1.0 adoption on every pin and the Platform version matrix; exact tarball installed through a temporary pnpm override",
+    "typecheckWorkspacesPassed": 18,
+    "unitTestsPassed": 2405,
+    "appBrowserTestsPassed": 98,
+    "productionBuild": "pass",
+    "packageChecks": "pass",
+    "localization": "pass",
+    "deadCode": "pass",
+    "documents": "pass"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false
+  },
+  "ci": "GitHub-hosted runners; the browser suite runs in the Playwright 1.61.0 image; separate protected upload of the tested tarball"
+}
