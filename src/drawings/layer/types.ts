@@ -12,7 +12,7 @@ import type { DrawingCounts } from '../lockModel'
 import type { ToolPreset, ToolTemplate } from '../templates'
 
 /** The standing workflow choices this layer CONSULTS. It owns none of them: a host holds them in
- *  its `DrawingPreferences` record and the models on `quickcharts/drawings` decide what each
+ *  its `DrawingPreferences` record and the models on `@trdrs/quickcharts/drawings` decide what each
  *  control does to them, so a toolbar and this layer cannot disagree about what "weak magnet" or
  *  "stay in drawing mode" means. The layer reads them at the moment each one matters, which is
  *  why this is a getter rather than a set of setters: there is no second copy to keep in step. */

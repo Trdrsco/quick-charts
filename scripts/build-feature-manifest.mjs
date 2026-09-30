@@ -7,7 +7,7 @@
 //                                command registry, the feature flags, the interface's control flags, the
 //                                icons a host may draw, the theme modes and roles, and the built-in locales
 //
-// It runs from `pnpm --filter quickcharts build:manifest`, and `postbuild` runs it after the theme
+// It runs from `pnpm --filter @trdrs/quickcharts build:manifest`, and `postbuild` runs it after the theme
 // generator for every build, so a manifest never describes an artifact older than itself. The
 // registries are read from `dist/index.js` and `dist/drawings.js`, not from source: what the manifest
 // publishes is what the tarball carries. The inventory tests hold the manifest to the source registries

@@ -3,13 +3,13 @@
 // rehearsal publishes, written by this package rather than by a package manager so that the same
 // source builds the same bytes on every machine.
 //
-//   .candidate/quickcharts-<version>.tgz   the tarball, byte-identical across runs
+//   .candidate/trdrs-quickcharts-<version>.tgz   the tarball, byte-identical across runs
 //   .candidate/package/**                  the tarball's contents, extracted: what `link:` installs
 //                                          resolve through the published export map
 //   .candidate/manifest.json               the file list with a SHA-256 per file, the SHA-256 of the
 //                                          uncompressed tar stream, and the SHA-256 of the tarball
 //
-// It runs from `pnpm --filter quickcharts pack:candidate`, and `postbuild` runs it as the last
+// It runs from `pnpm --filter @trdrs/quickcharts pack:candidate`, and `postbuild` runs it as the last
 // step of every build, so a build never leaves a candidate older than the dist it packs. The
 // candidate carries exactly what `files` in package.json names: dist without the WebView guest,
 // the four root documents, and the manifest with its `publishConfig` applied the way a publish
@@ -205,7 +205,7 @@ const sha256 = (bytes) => createHash('sha256').update(bytes).digest('hex')
 const BUILT = ['index.js', 'index.d.ts', 'drawings.js', 'drawings.d.ts', 'adapters/rest.js', 'adapters/rest.d.ts', 'quickcharts.css', 'theme-manifest.json', 'feature-manifest.json', 'rest-openapi.json']
 const unbuilt = BUILT.filter((file) => !existsSync(join(pkgRoot, 'dist', ...file.split('/'))))
 if (unbuilt.length) {
-  console.error(`pack-candidate: dist is missing ${unbuilt.join(', ')}; run \`pnpm --filter quickcharts build\`, whose last step packs the candidate`)
+  console.error(`pack-candidate: dist is missing ${unbuilt.join(', ')}; run \`pnpm --filter @trdrs/quickcharts build\`, whose last step packs the candidate`)
   process.exit(1)
 }
 
@@ -221,7 +221,7 @@ const entries = paths.map((name) => {
 const { name: packageName, version } = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8'))
 const tar = tarStream(entries)
 const tgz = tarball(tar)
-const tarballName = `${packageName}-${version}.tgz`
+const tarballName = `${packageName.replace(/^@/, '').replace('/', '-')}-${version}.tgz`
 
 rmSync(out, { recursive: true, force: true })
 mkdirSync(join(out, 'package'), { recursive: true })

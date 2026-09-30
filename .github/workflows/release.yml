@@ -60,7 +60,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: quickcharts-release
-          path: .candidate/quickcharts-*.tgz
+          path: .candidate/trdrs-quickcharts-*.tgz
           if-no-files-found: error
           retention-days: 30
 
@@ -87,7 +87,7 @@ jobs:
           EXPECTED_DIGEST: ${{ needs.validate.outputs.digest }}
         run: |
           shopt -s nullglob
-          files=(artifact/quickcharts-*.tgz)
+          files=(artifact/trdrs-quickcharts-*.tgz)
           test "${#files[@]}" -eq 1
           printf '%s  %s\n' "$EXPECTED_DIGEST" "${files[0]}" | sha256sum --check --strict
           npm publish "${files[0]}" --ignore-scripts --provenance --access public

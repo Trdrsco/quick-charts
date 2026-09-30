@@ -1,4 +1,4 @@
-// `quickcharts/adapters/rest` — the optional save/load adapter over the public wire contract in
+// `@trdrs/quickcharts/adapters/rest` — the optional save/load adapter over the public wire contract in
 // `./wire`.
 //
 // It is a SEPARATE entrypoint because the chart makes no network request of its own. A consumer who

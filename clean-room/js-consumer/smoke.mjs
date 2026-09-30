@@ -1,7 +1,7 @@
 // Plain-JS ESM consumer: the tarball must RESOLVE and EXECUTE (not just typecheck) in a project
 // with no TypeScript at all. Pure exports run for real; DOM-needing exports only need to exist.
-import { BUILT_IN_INDICATORS, attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTimeframe, mergeOverrides, olderPageVerdict, parseSessionModel, planPaneOp, sessionStateAt, tfToUdfResolution } from 'quickcharts'
-import { parseDrawingsStore, serializeDrawingsStore, drawingTools } from 'quickcharts/drawings'
+import { BUILT_IN_INDICATORS, attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTimeframe, mergeOverrides, olderPageVerdict, parseSessionModel, planPaneOp, sessionStateAt, tfToUdfResolution } from '@trdrs/quickcharts'
+import { parseDrawingsStore, serializeDrawingsStore, drawingTools } from '@trdrs/quickcharts/drawings'
 
 const fail = (msg) => {
   console.error(`clean-room js (esm): ${msg}`)
@@ -65,10 +65,10 @@ if (!rsiSpec.fills || !rsiSpec.fills[0].upperData) fail('the built-in RSI backgr
 console.log('clean-room js (esm): ok')
 
 // The optional REST save/load adapter, over a host service that lives in this file. The point is
-// that a fresh project can reach `quickcharts/adapters/rest` from the packed tarball, hand it its
+// that a fresh project can reach `@trdrs/quickcharts/adapters/rest` from the packed tarball, hand it its
 // own transport, and get the port's typed outcomes back: nothing here configures an origin, a
 // credential or a header, because the adapter takes none.
-const { createRestSaveLoadAdapter, RestSaveLoadError } = await import('quickcharts/adapters/rest')
+const { createRestSaveLoadAdapter, RestSaveLoadError } = await import('@trdrs/quickcharts/adapters/rest')
 if (typeof createRestSaveLoadAdapter !== 'function') fail('createRestSaveLoadAdapter missing')
 
 const BASE = 'https://saves.example.com/v1'

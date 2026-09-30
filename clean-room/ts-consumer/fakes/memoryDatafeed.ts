@@ -3,7 +3,7 @@
 // reaches a network or a trdrs service, which is the point: the clean-room consumer supplies its own
 // fake datafeed and storage, never an engine adapter. Bars are a pure function of symbol and bucket, so any window asked twice answers the
 // same twice and a snapshot never disagrees with history.
-import type { ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, PriceFormat, SearchPage, SubscribeHandlers, SymbolInfo } from 'quickcharts'
+import type { ChartDatafeed, DatafeedConfig, FeedBar, HistoryPage, PriceFormat, SearchPage, SubscribeHandlers, SymbolInfo } from '@trdrs/quickcharts'
 
 interface CatalogRow {
   symbol: string

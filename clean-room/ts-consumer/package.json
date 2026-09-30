@@ -4,6 +4,6 @@
   "version": "0.0.0",
   "type": "module",
   "dependencies": {
-    "quickcharts": "file:../.artifacts/quickcharts.tgz"
+    "@trdrs/quickcharts": "file:../.artifacts/quickcharts.tgz"
   }
 }

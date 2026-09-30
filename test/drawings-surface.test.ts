@@ -1,4 +1,4 @@
-// The `quickcharts/drawings` API-surface pin, the same contract as the root's: the subpath's public
+// The `@trdrs/quickcharts/drawings` API-surface pin, the same contract as the root's: the subpath's public
 // RUNTIME surface as { name: typeof }. A diff here is a SemVer event to decide consciously, never
 // noise to appease. Type-only exports are erased at runtime and cannot be pinned here; the
 // clean-room consumer compiles against the shipped declarations and is their gate.
@@ -144,7 +144,7 @@ const SURFACE: Record<string, string> = {
   NO_STYLE_TAB: 'object',
 }
 
-describe('quickcharts/drawings API surface pin', () => {
+describe('@trdrs/quickcharts/drawings API surface pin', () => {
   it('exports exactly the pinned names', () => {
     expect(Object.keys(api).sort()).toEqual(Object.keys(SURFACE).sort())
   })

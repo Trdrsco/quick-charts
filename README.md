@@ -1,4 +1,4 @@
-# quickcharts
+# @trdrs/quickcharts
 
 Quick Charts is a charting library that draws over the datafeed and the storage you supply. The chart
 consumes the `ChartDatafeed` interface and never a concrete backend, so your feed drives it without a
@@ -8,7 +8,7 @@ or hosting: the host supplies data and storage, and the chart draws.
 ## Install
 
 ```bash
-npm install quickcharts
+npm install @trdrs/quickcharts
 ```
 
 Supported npm versions automatically install the required renderer. You do not need to name
@@ -29,8 +29,8 @@ stylesheet import is not optional: it carries the chart's layout as well as its 
 the chart has no size and paints nothing.
 
 ```ts
-import 'quickcharts/styles.css'
-import { createChart, createUdfDatafeed } from 'quickcharts'
+import '@trdrs/quickcharts/styles.css'
+import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const widget = createChart({
   container,
@@ -63,7 +63,7 @@ no restriction), the exchange session triple (`timezone`, `session`, `sessionHol
 `format`. Null means the symbol is unknown to your catalogs.
 
 ```ts
-import type { SymbolInfo } from 'quickcharts'
+import type { SymbolInfo } from '@trdrs/quickcharts'
 
 const treasury: SymbolInfo = {
   ticker: 'ZBZ2026',
@@ -84,7 +84,7 @@ void treasury
 ```
 
 ```ts
-import type { ChartDatafeed, FeedBar } from 'quickcharts'
+import type { ChartDatafeed, FeedBar } from '@trdrs/quickcharts'
 
 export const myFeed: ChartDatafeed = {
   async search(query, opts) {
@@ -138,7 +138,7 @@ A venue that keeps 15-minute bars keeps every 45-minute bar too, just not under 
 feed to answer those:
 
 ```ts
-import { withFoldedHistory, type ChartDatafeed } from 'quickcharts'
+import { withFoldedHistory, type ChartDatafeed } from '@trdrs/quickcharts'
 
 declare const venueFeed: ChartDatafeed // your feed from the section above
 
@@ -163,7 +163,7 @@ on a refusal. The viewer's stored preference is *not* overwritten (capability is
 preference is the viewer's, so a later feed that serves the preferred tf gets it back).
 
 ```ts
-import type { ChartDatafeed, DatafeedConfig } from 'quickcharts'
+import type { ChartDatafeed, DatafeedConfig } from '@trdrs/quickcharts'
 
 declare const baseFeed: ChartDatafeed // your feed from the section above
 
@@ -186,7 +186,7 @@ Already serving bars over the UDF wire protocol? Skip implementing the interface
 adapter at your server:
 
 ```ts
-import { createUdfDatafeed } from 'quickcharts'
+import { createUdfDatafeed } from '@trdrs/quickcharts'
 
 const datafeed = createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' })
 ```
@@ -231,7 +231,7 @@ that declares its own precision keeps it; every other value writes through the s
 Build a formatter once per symbol and keep it:
 
 ```ts
-import { createPriceFormatter, type PriceFormat } from 'quickcharts'
+import { createPriceFormatter, type PriceFormat } from '@trdrs/quickcharts'
 
 const equity: PriceFormat = { pricescale: 100, minmov: 1 }
 createPriceFormatter(equity).format(123.4) // '123.40'
@@ -249,7 +249,7 @@ createPriceFormatter(bonds).format(110.515625) // "110'16'2"
 `format` and `parse` are exact inverses, so a formatter reads back what it wrote:
 
 ```ts
-import { createPriceFormatter } from 'quickcharts'
+import { createPriceFormatter } from '@trdrs/quickcharts'
 
 const formatter = createPriceFormatter({ pricescale: 32, minmov: 1, fractional: true })
 formatter.parse("110'16") // 110.5
@@ -260,7 +260,7 @@ formatter.precision() // 0, because a fractional format writes no decimal digits
 A ladder changes width by band, because the symbol declared those bands:
 
 ```ts
-import { createPriceFormatter, parseTickBands, tickBandFor } from 'quickcharts'
+import { createPriceFormatter, parseTickBands, tickBandFor } from '@trdrs/quickcharts'
 
 const laddered = createPriceFormatter({ pricescale: 10000, minmov: 1, variableTickSize: '0.0001 1 0.001 10 0.01' })
 laddered.format(0.5432) // '0.5432'
@@ -274,7 +274,7 @@ The formatter writes a `.` decimal sign and no thousands separator. Pass a local
 locale's decimal sign, or set the punctuation yourself:
 
 ```ts
-import { createPriceFormatter } from 'quickcharts'
+import { createPriceFormatter } from '@trdrs/quickcharts'
 
 createPriceFormatter({ pricescale: 100, minmov: 1 }, { locale: 'de-DE' }).format(1234.5) // '1234,50'
 createPriceFormatter({ pricescale: 100, minmov: 1 }, { numericPunctuation: { groupSign: ',' } }).format(1234.5) // '1,234.50'
@@ -290,7 +290,7 @@ pair keeps the feed's own words; the venue prefix never reaches the screen. The 
 and picker read these faces, so anything you name beside the chart reads the same:
 
 ```ts
-import { symbolNames, type SymbolNames, type SymbolRow } from 'quickcharts'
+import { symbolNames, type SymbolNames, type SymbolRow } from '@trdrs/quickcharts'
 
 const row: SymbolRow = { symbol: 'HYPERLIQUID:ETH', name: 'Ethereum perpetual', exchange: 'Hyperliquid', type: 'crypto', currencyCode: 'USDC' }
 const perp: SymbolNames = symbolNames(row)
@@ -310,7 +310,7 @@ chart's display grid.
 If your data comes from a UDF server, map its `/symbols` answer without collapsing the facts:
 
 ```ts
-import { createPriceFormatter, udfPriceFormat, udfSymbolInfo } from 'quickcharts'
+import { createPriceFormatter, udfPriceFormat, udfSymbolInfo } from '@trdrs/quickcharts'
 
 const raw = { name: 'ZBZ2026', pricescale: 128, minmov: 1, minmove2: 4, fractional: true }
 const info = udfSymbolInfo(raw, 'ZBZ2026')
@@ -340,7 +340,7 @@ has moved past returns a typed `conflict` carrying the current ref, which you re
 overwrite.
 
 ```ts
-import { memorySaveLoadAdapter } from 'quickcharts'
+import { memorySaveLoadAdapter } from '@trdrs/quickcharts'
 
 const adapter = memorySaveLoadAdapter()
 
@@ -392,7 +392,7 @@ without clearing `notSaving()` or the toolbar's existing dirty state. Removing a
 open row reports its removal and a `saveConflict` refusal; the absent binding is detached.
 
 ```ts
-import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
+import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from '@trdrs/quickcharts'
 
 declare const uiContainer: HTMLElement
 const uiWidget = createChart({
@@ -411,7 +411,7 @@ uiWidget.commands.execute('widget.layout.save', { name: 'Desk', asNew: true })
 same five calls, and every call takes an `AbortSignal` so abandoned work stops cleanly:
 
 ```ts
-import { emptyDrawingDocument, memorySaveLoadAdapter, type ResourceRef } from 'quickcharts'
+import { emptyDrawingDocument, memorySaveLoadAdapter, type ResourceRef } from '@trdrs/quickcharts'
 
 const adapter = memorySaveLoadAdapter()
 const controller = new AbortController()
@@ -433,11 +433,11 @@ ephemeral embed, and implement the same contract over your own backend for durab
 
 ### The REST adapter and its wire contract
 
-If your saved resources live behind HTTP, `quickcharts/adapters/rest` implements the same contract
+If your saved resources live behind HTTP, `@trdrs/quickcharts/adapters/rest` implements the same contract
 over a published wire contract, and you implement the service.
 
 ```ts
-import { createRestSaveLoadAdapter } from 'quickcharts/adapters/rest'
+import { createRestSaveLoadAdapter } from '@trdrs/quickcharts/adapters/rest'
 
 const restSaves = createRestSaveLoadAdapter({
   baseUrl: 'https://api.example.com/chart-storage',
@@ -485,7 +485,7 @@ Any other status, and any body that is not the shape the route promises, raises 
 not an empty listing, and answering one as an empty listing is a lie the next save acts on.
 
 ```ts
-import { createRestSaveLoadAdapter, RestSaveLoadError } from 'quickcharts/adapters/rest'
+import { createRestSaveLoadAdapter, RestSaveLoadError } from '@trdrs/quickcharts/adapters/rest'
 
 const saves = createRestSaveLoadAdapter({ baseUrl: 'https://api.example.com/chart-storage', request: fetch })
 try {
@@ -554,7 +554,7 @@ with no `saveLoad` adapter is the one case that is not an outcome: every verb of
 because nothing was wired for them to reach.
 
 ```ts
-import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
+import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from '@trdrs/quickcharts'
 
 declare const container: HTMLElement
 const widget = createChart({
@@ -634,7 +634,7 @@ drawings on it. **Separate** keeps them out of that content entirely and stores 
 documents in the adapter's drawings family, one document per drawing-resource context:
 
 ```ts
-import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from 'quickcharts'
+import { createChart, createUdfDatafeed, memorySaveLoadAdapter } from '@trdrs/quickcharts'
 
 declare const separateContainer: HTMLElement
 const separate = createChart({
@@ -690,7 +690,7 @@ per device or per account. A browser store is a few lines you write; it is not p
 because a device-local default is not a persistence architecture:
 
 ```ts
-import { memoryChartStorage, type ChartStorage } from 'quickcharts'
+import { memoryChartStorage, type ChartStorage } from '@trdrs/quickcharts'
 
 const perDevice: ChartStorage = {
   get: (key) => localStorage.getItem(key),
@@ -755,7 +755,7 @@ shows), `category`, and `nameKey` and `descriptionKey`, which resolve through th
 language object in every built-in locale.
 
 ```ts
-import { BUILT_IN_INDICATORS, createChart, createChartI18n, createUdfDatafeed } from 'quickcharts'
+import { BUILT_IN_INDICATORS, createChart, createChartI18n, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const i18n = createChartI18n('en')
 const rsi = BUILT_IN_INDICATORS.find((definition) => definition.id === 'rsi')!
@@ -782,7 +782,7 @@ settings surface.
 A host definition is the same shape. The math is yours; the manifest declares what to draw.
 
 ```ts
-import type { IndicatorDefinition } from 'quickcharts'
+import type { IndicatorDefinition } from '@trdrs/quickcharts'
 
 export const smaDefinition: IndicatorDefinition = {
   manifest: {
@@ -807,7 +807,7 @@ export const smaDefinition: IndicatorDefinition = {
 Wire instances through `ChartWidgetOptions.indicators`:
 
 ```ts
-import { createChart, createUdfDatafeed } from 'quickcharts'
+import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const widget = createChart({
   container,
@@ -845,7 +845,7 @@ required. It answers a `ChartWidget`: one or many charts under one root, one the
 one command registry.
 
 ```ts
-import { createChart, createUdfDatafeed } from 'quickcharts'
+import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const widget = createChart({
   container: document.getElementById('chart')!,
@@ -900,7 +900,7 @@ chart is doing. `widget.charts()` lists every chart; `widget.activeChart()` is t
 last pointed at; `widget.chart(id)` finds one by its stable id.
 
 ```ts
-import { CHART_STYLES, type ChartHandle, type ChartWidget } from 'quickcharts'
+import { CHART_STYLES, type ChartHandle, type ChartWidget } from '@trdrs/quickcharts'
 
 function drive(widget: ChartWidget): void {
   const chart: ChartHandle = widget.activeChart()
@@ -932,7 +932,7 @@ Typed maps, one per scope. Every subscription returns its unsubscribe and is ine
 `dispose()`.
 
 ```ts
-import { type ChartWidget } from 'quickcharts'
+import { type ChartWidget } from '@trdrs/quickcharts'
 
 function watch(widget: ChartWidget): () => void {
   const offTheme = widget.on('theme', (_theme, mode) => document.body.setAttribute('data-mode', mode))
@@ -960,7 +960,7 @@ binding and an automation adapter all read this list and run through this `execu
 your feature configuration hides or your access policy refuses cannot be reached from any of them.
 
 ```ts
-import { type ChartWidget, type CommandResult } from 'quickcharts'
+import { type ChartWidget, type CommandResult } from '@trdrs/quickcharts'
 
 function toolbar(widget: ChartWidget): void {
   for (const spec of widget.commands.list()) {
@@ -1011,7 +1011,7 @@ Neither plane is authorization. A hidden control's command still answers to `acc
 supplies a capability the datafeed lacks: a feed with no search keeps every search door closed.
 
 ```ts
-import { createChart, createUdfDatafeed } from 'quickcharts'
+import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const gated = createChart({
   container,
@@ -1044,7 +1044,7 @@ the handles. `commands.available` says whether a verb would run now, and the wid
 events tell you when to ask again.
 
 ```ts
-import { createChart, createUdfDatafeed } from 'quickcharts'
+import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const custom = createChart({
   container,
@@ -1082,7 +1082,7 @@ Chart-root fullscreen fills the screen with the widget's own element. It never t
 application shell, which is a different thing from a fit-to-container layout your CSS owns.
 
 ```ts
-import { type ChartWidget } from 'quickcharts'
+import { type ChartWidget } from '@trdrs/quickcharts'
 
 async function shareable(widget: ChartWidget): Promise<void> {
   await widget.fullscreen.toggle()
@@ -1110,7 +1110,7 @@ Built-in annotations can add favorite state, counts and actions; they cannot rep
 its name, or Add. Without a source, the browser has only shipped built-ins and Favorites.
 
 ```ts
-import type { IndicatorPickerSource } from 'quickcharts'
+import type { IndicatorPickerSource } from '@trdrs/quickcharts'
 
 const indicatorPicker: IndicatorPickerSource = {
   collections: [{ id: 'saved', label: 'Saved studies' }],
@@ -1152,7 +1152,7 @@ signal before late UI effects; cancellation cannot undo a service mutation alrea
 
 ### Default chrome
 
-The widget mounts its complete chrome around the charts. Import `quickcharts/styles.css` once; the
+The widget mounts its complete chrome around the charts. Import `@trdrs/quickcharts/styles.css` once; the
 chrome is painted from it and renders nothing without it.
 
 - **The top bar.** The symbol pill opens the symbol search for the active chart; the compare door
@@ -1229,7 +1229,7 @@ optional glyph drawn by an icon factory, and what a press does. `pressed` makes 
 `popup` announces a menu or dialog of your own whose open state you report through `update`.
 
 ```ts
-import { createChart, createUdfDatafeed, TOP_BAR_SLOTS, type ChartIconFactory } from 'quickcharts'
+import { createChart, createUdfDatafeed, TOP_BAR_SLOTS, type ChartIconFactory } from '@trdrs/quickcharts'
 
 const bell: ChartIconFactory = ({ document }) => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -1278,7 +1278,7 @@ reports through the `image` event (a refused copy falls back to a download). Eac
 in `ui`; hiding one removes the control and leaves its commands.
 
 ```ts
-import { createChart, createUdfDatafeed } from 'quickcharts'
+import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const trimmed = createChart({
   container,
@@ -1295,7 +1295,7 @@ The search dialog's class chips come from your datafeed's `config().classes`, na
 datafeed's optional `earliestBar(symbol)`: a preset deeper than the history you serve is disabled.
 
 ```ts
-import { type ChartDatafeed } from 'quickcharts'
+import { type ChartDatafeed } from '@trdrs/quickcharts'
 
 const withDepth: Pick<ChartDatafeed, 'earliestBar'> = {
   async earliestBar(symbol): Promise<number | null> {
@@ -1325,7 +1325,7 @@ Drawing tools take `tool.<type>`, chart styles `style.<style>` and layout arrang
 `layout.<code>`, from the registries the rest of the API uses.
 
 ```ts
-import { CHART_ICON_IDS, createChart, createUdfDatafeed, type ChartIconFactory, type ChartIcons } from 'quickcharts'
+import { CHART_ICON_IDS, createChart, createUdfDatafeed, type ChartIconFactory, type ChartIcons } from '@trdrs/quickcharts'
 
 const outline = (d: string): ChartIconFactory => ({ document }) => {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -1382,7 +1382,7 @@ about a moment: its color is a semantic theme role rather than a literal, its wo
 the chart neither interprets nor acts on it.
 
 ```ts
-import { type BarMark, type ChartDatafeed } from 'quickcharts'
+import { type BarMark, type ChartDatafeed } from '@trdrs/quickcharts'
 
 const withMarks: Pick<ChartDatafeed, 'marks'> = {
   async marks(symbol, from, to): Promise<readonly BarMark[]> {
@@ -1447,7 +1447,7 @@ void withMarks
   tools and arrangements through `toolName` and `arrangementName`.
 
 ```ts
-import { createChart, createUdfDatafeed, SCALE_MODES } from 'quickcharts'
+import { createChart, createUdfDatafeed, SCALE_MODES } from '@trdrs/quickcharts'
 
 const w = createChart({ container, datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }), locale: 'de' })
 w.activeChart().setScaleMode(SCALE_MODES.includes('log') ? 'log' : 'normal')
@@ -1456,7 +1456,7 @@ await w.setLocale('ja')
 ```
 
 ```ts
-import { BUILT_IN_LOCALES, createChart, createChartI18n, createUdfDatafeed, type ChartCustomLocale } from 'quickcharts'
+import { BUILT_IN_LOCALES, createChart, createChartI18n, createUdfDatafeed, type ChartCustomLocale } from '@trdrs/quickcharts'
 
 // A language the package does not ship, with the dictionary served by the host.
 const frCA: ChartCustomLocale = {
@@ -1481,7 +1481,7 @@ Quick Charts ships complete light and dark modes. Import the stylesheet once, ch
 the chart canvas, toolbars, legend, scales, menus, dialogs and fields all render from it.
 
 ```js
-import 'quickcharts/styles.css'
+import '@trdrs/quickcharts/styles.css'
 ```
 
 **The stylesheet is required, and it is not only about color.** It carries the chart's LAYOUT: the
@@ -1499,7 +1499,7 @@ modes.
 complete theme and publishes it to subscribers once, so a switch never leaves a surface behind.
 
 ```ts
-import { createThemeController, type CustomThemes } from 'quickcharts'
+import { createThemeController, type CustomThemes } from '@trdrs/quickcharts'
 
 const brand: CustomThemes = {
   light: { 'state.accent': '#1f6feb', 'canvas.background': '#fbfbfd' },
@@ -1577,7 +1577,7 @@ hooks, their states and their customization are published in `dist/theme-manifes
 ```
 
 ```ts
-import { THEME_ROLES, type ThemeRoleFamily } from 'quickcharts'
+import { THEME_ROLES, type ThemeRoleFamily } from '@trdrs/quickcharts'
 
 const family: ThemeRoleFamily = 'text'
 const inkRoles = THEME_ROLES.filter((role) => role.family === family).map((role) => role.id)
@@ -1634,7 +1634,7 @@ each chart of their own (`widget.activeChart().compare`) and ride the layout blo
 that chart's content.
 
 ```ts
-import { createChart, createUdfDatafeed } from 'quickcharts'
+import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const wc = createChart({
   container,
@@ -1658,7 +1658,7 @@ months (`mo`), and each unit has a ceiling (`TIMEFRAME_MAX`). A token outside th
 as null, and the chart never asks a feed for it.
 
 ```ts
-import { formatTimeframe, isIntradayTimeframe, parseTimeframe, timeframeSeconds } from 'quickcharts'
+import { formatTimeframe, isIntradayTimeframe, parseTimeframe, timeframeSeconds } from '@trdrs/quickcharts'
 
 parseTimeframe('4h') // { count: 4, unit: 'h' }
 parseTimeframe('3mo') // { count: 3, unit: 'mo' }
@@ -1675,7 +1675,7 @@ tokens smallest first. A picker offers only what the symbol and the feed serve: 
 restriction.
 
 ```ts
-import { allowedTimeframes, createChartI18n, timeframeLabel, TIMEFRAME_PRESETS } from 'quickcharts'
+import { allowedTimeframes, createChartI18n, timeframeLabel, TIMEFRAME_PRESETS } from '@trdrs/quickcharts'
 
 const { t } = createChartI18n()
 const tokens = TIMEFRAME_PRESETS.flatMap((group) => group.tokens) // 26 tokens
@@ -1693,7 +1693,7 @@ display city, and `EXCHANGE_TIMEZONE` is the choice that follows the charted sym
 chart's language.
 
 ```ts
-import { EXCHANGE_TIMEZONE, formatClock, makeCrosshairTimeFormatter, makeTickMarkFormatter, resolveDisplayTimezone, TIMEZONES, tzOffsetLabel } from 'quickcharts'
+import { EXCHANGE_TIMEZONE, formatClock, makeCrosshairTimeFormatter, makeTickMarkFormatter, resolveDisplayTimezone, TIMEZONES, tzOffsetLabel } from '@trdrs/quickcharts'
 
 TIMEZONES.length // 60
 tzOffsetLabel('Asia/Kolkata') // 'UTC+5:30'
@@ -1721,7 +1721,7 @@ market status combines the state with the feed's `dataStatus`: an end-of-day fee
 state, never an open market.
 
 ```ts
-import { createChartI18n, marketStatus, marketStatusText, marketStatusTitle, parseSessionModel, sessionStateAt } from 'quickcharts'
+import { createChartI18n, marketStatus, marketStatusText, marketStatusTitle, parseSessionModel, sessionStateAt } from '@trdrs/quickcharts'
 
 const { t } = createChartI18n()
 const model = parseSessionModel({ timezone: 'America/Chicago', session: '1700-1600:23456', sessionHolidays: '20260101' })
@@ -1741,7 +1741,7 @@ regular hours and `extended` shows every bar; a symbol with one continuous sessi
 filter.
 
 ```ts
-import { DEFAULT_SUBSESSION, hasExtendedHours, parseSessionModel, subsessionBarFilter } from 'quickcharts'
+import { DEFAULT_SUBSESSION, hasExtendedHours, parseSessionModel, subsessionBarFilter } from '@trdrs/quickcharts'
 
 const equity = parseSessionModel({
   timezone: 'America/New_York',
@@ -1771,7 +1771,7 @@ navigation cluster's steps are constants: `ZOOM_FACTOR`, `MIN_BAR_SPACING` and
 `SCROLL_STEP_BARS`, applied by `zoomedBarSpacing` and `scrolledPosition`.
 
 ```ts
-import { frameRange, RANGE_PRESETS, rangeAvailable, scrolledPosition, zoomedBarSpacing } from 'quickcharts'
+import { frameRange, RANGE_PRESETS, rangeAvailable, scrolledPosition, zoomedBarSpacing } from '@trdrs/quickcharts'
 
 const oneYearAgo = Date.now() / 1000 - 365 * 86_400
 RANGE_PRESETS.filter((preset) => rangeAvailable(preset, oneYearAgo)).map((preset) => preset.key) // every preset but '5Y'
@@ -1799,7 +1799,7 @@ list or change its next paging offset; an oversized list is not retained after c
 Cancellation ignores obsolete responses; it does not abort your datafeed's transport.
 
 ```ts
-import { createSearchController, createUdfDatafeed } from 'quickcharts'
+import { createSearchController, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const datafeed = createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' })
 const search = createSearchController(datafeed, { pageSize: 50, debounceMs: 200 })
@@ -1818,7 +1818,7 @@ the spread-expression rules: an operator over a symbol leg offers the expression
 `BTC/USD` pair is catalog identity, and your feed evaluates the expression.
 
 ```ts
-import { looksLikeSpread, isSymbolPair, matchSegments, memoryRecents, spreadExpression } from 'quickcharts'
+import { looksLikeSpread, isSymbolPair, matchSegments, memoryRecents, spreadExpression } from '@trdrs/quickcharts'
 
 const recents = memoryRecents()
 recents.promote({ symbol: 'ES', name: 'E-mini S&P 500', exchange: 'CME', type: 'future' })
@@ -1842,7 +1842,7 @@ to set.
 opens stands on pages the viewer already saw rather than on a loading line.
 
 ```ts
-import { createSymbolSearchCache, createUdfDatafeed, mountSymbolSearch, openSymbolSearch } from 'quickcharts'
+import { createSymbolSearchCache, createUdfDatafeed, mountSymbolSearch, openSymbolSearch } from '@trdrs/quickcharts'
 
 declare const pickerBox: HTMLElement
 declare const form: { setInstrument(symbol: string): void }
@@ -1892,7 +1892,7 @@ receives the name the row writes (`exchange` or `provider`), the element and the
 a disposer. Without them a source wears its initial on a neutral disc.
 
 ```ts
-import { createChart, createUdfDatafeed } from 'quickcharts'
+import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const widget = createChart({
   container: document.getElementById('chart')!,
@@ -1941,7 +1941,7 @@ layout is one row in the same
 save/load backend a single chart uses.
 
 ```ts
-import { createChart, createUdfDatafeed, LAYOUT_MENU_ROWS } from 'quickcharts'
+import { createChart, createUdfDatafeed, LAYOUT_MENU_ROWS } from '@trdrs/quickcharts'
 
 const widget = createChart({
   container: document.getElementById('charts')!,
@@ -1994,7 +1994,7 @@ through the adapter's drawings family. Turn the whole layer off with `features.d
 or keep the layer and hide its toolbar or favorites bar to drive it from your own UI:
 
 ```ts
-import { createChart, createUdfDatafeed } from 'quickcharts'
+import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
 
 const widget = createChart({
   container,
@@ -2068,20 +2068,20 @@ draw as text.
 The layer is also mountable on its own lightweight-charts pair, without the widget:
 
 ```ts
-import { attachDrawings } from 'quickcharts'
+import { attachDrawings } from '@trdrs/quickcharts'
 
 const layer = attachDrawings({ chart, series, container, symbol: 'ES' })
 layer.armTool('rectangle')
 layer.destroy()
 ```
 
-### `quickcharts/drawings`
+### `@trdrs/quickcharts/drawings`
 
 Everything about drawings a host builds its own UI from is one subpath. A host that never draws
 never imports any of it.
 
 ```ts
-import { buildRailGroups, drawingTools, parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from 'quickcharts/drawings'
+import { buildRailGroups, drawingTools, parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from '@trdrs/quickcharts/drawings'
 
 // The catalog: 90 tools in 14 categories, read-only.
 const trendLine = drawingTools.get('trend_line')
@@ -2112,7 +2112,7 @@ reads what they answer: `chart.drawings.lock` holds one drawing where it stands,
 exactly what the chart will accept. The gesture list below is what a trader meets.
 
 ```ts
-import { blanks, chooseHideMode, DEFAULT_HIDE_STATE, DrawingTemplates } from 'quickcharts/drawings'
+import { blanks, chooseHideMode, DEFAULT_HIDE_STATE, DrawingTemplates } from '@trdrs/quickcharts/drawings'
 
 const eye = chooseHideMode(DEFAULT_HIDE_STATE, 'all') // points at All and blanks it in one gesture
 if (blanks(eye, 'indicators')) note('indicators are blanked')
@@ -2127,7 +2127,7 @@ rules (JPG or PNG, 2 MB, a 2000 px longest edge, downscaled rather than refused)
 refusal with a code that resolves through the chart's own catalog; the host owns the bytes.
 
 ```ts
-import { checkImageFile, fittedSize, IMAGE_ACCEPT, type DrawingAssetPort } from 'quickcharts/drawings'
+import { checkImageFile, fittedSize, IMAGE_ACCEPT, type DrawingAssetPort } from '@trdrs/quickcharts/drawings'
 
 const assets: DrawingAssetPort = {
   async intakeImage(file) {
@@ -2177,7 +2177,7 @@ and stores viewer state in the chart's own save blob. The chart attaches it at m
 changes at it, and takes it down at teardown, along with everything it drew.
 
 ```ts
-import { createChart, createUdfDatafeed, type ChartExtension } from 'quickcharts'
+import { createChart, createUdfDatafeed, type ChartExtension } from '@trdrs/quickcharts'
 
 const alertLines: ChartExtension = {
   id: 'acme.alerts',
@@ -2295,7 +2295,7 @@ Every claim in this document maps to a test or a generated artifact in the packa
 - With a drawing for every icon, every glyph on each surface of the default interface is the host's,
   and nothing in the package draws a control's glyph except through the one resolver.
 - The theme roles, both built-in palettes and the stylesheet are `dist/theme-manifest.json` and
-  `quickcharts/styles.css`, generated from the token schema; the theme vectors under `test/theme` pin
+  `@trdrs/quickcharts/styles.css`, generated from the token schema; the theme vectors under `test/theme` pin
   the resolved values.
 - The REST wire contract is `dist/rest-openapi.json`, rendered from the typed contract the adapter
   implements; the adapter tests compare the committed schema with the rendering.

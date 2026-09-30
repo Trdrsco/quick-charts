@@ -65,7 +65,7 @@ A workstation publish cannot produce GitHub OIDC provenance; record that bootstr
 use the protected workflow with provenance for subsequent versions. Do not edit or repack the
 accepted tarball to change publishing configuration.
 
-After the first version exists, configure trust with `npm trust github quickcharts --file
+After the first version exists, configure trust with `npm trust github @trdrs/quickcharts --file
 release.yml --repo Trdrsco/quick-charts --env npm-publish --allow-publish --yes`. Require 2FA and
 disallow traditional publishing tokens. Verify the trust configuration and registry artifact,
 then log out and remove the temporary workstation login configuration. The registry owner remains

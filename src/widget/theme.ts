@@ -1,7 +1,7 @@
 // Where a resolved theme meets the DOM: one attribute and one set of custom properties, written on
 // the widget's own root element and nowhere else.
 //
-// This is the whole styling mechanism. The package stylesheet (`quickcharts/styles.css`) is scoped
+// This is the whole styling mechanism. The package stylesheet (`@trdrs/quickcharts/styles.css`) is scoped
 // to that attribute, so every `.qc-*` recipe resolves against the properties this module writes.
 // Two widgets in one document therefore run different modes without either reaching the host page,
 // and nothing in the package writes a color from JavaScript: a component that needs a new rule

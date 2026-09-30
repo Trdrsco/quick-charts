@@ -2,7 +2,7 @@
 // each with a flyout of the group's sections; the cursor with its modes and the eraser; measure
 // and zoom; the magnet with its strengths; stay-in-drawing-mode; lock all; the eye with its
 // subjects; drawing sync in a layout; the remove menu that names what it takes; and the favorites
-// star. WHAT is on the rail comes from the models on `quickcharts/drawings`; this module is the
+// star. WHAT is on the rail comes from the models on `@trdrs/quickcharts/drawings`; this module is the
 // rail's presentation over them, and every action it takes is a command through the registry, so
 // a verb the host hides or refuses is refused here too.
 //

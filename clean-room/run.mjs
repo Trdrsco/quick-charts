@@ -21,7 +21,7 @@ const artifacts = join(here, '.artifacts')
 // The candidate is named after the version in the manifest, and the consumers install it under a
 // version-free name, so a release changes the version in one place and the clean room follows.
 const version = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
-const PACKED = `quickcharts-${version}.tgz`
+const PACKED = `trdrs-quickcharts-${version}.tgz`
 const TARBALL = 'quickcharts.tgz'
 
 const run = (cmd, cwd) => {
@@ -48,7 +48,7 @@ for (const consumer of ['ts-consumer', 'js-consumer', 'vite-consumer', 'browser-
 
 // 2b. The conformance suite rides beside the TypeScript consumer as a copy, so it is typed against
 //     the SHIPPED declarations rather than the source, then compiled beside the JavaScript consumer,
-//     where its `quickcharts` imports resolve to the installed tarball. The browser shim travels
+//     where its `@trdrs/quickcharts` imports resolve to the installed tarball. The browser shim travels
 //     with it. Both copies are ignored by git and remade every run.
 const conformanceSource = join(repo, 'test', 'conformance')
 const conformanceCopy = join(here, 'ts-consumer', 'conformance')

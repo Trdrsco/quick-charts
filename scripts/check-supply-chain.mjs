@@ -62,7 +62,7 @@ export const RULES = [
   // history that the public repository's history import decides; what a consumer receives today
   // is what this rule judges. The manifest is read structurally (INSTALLABLE), never as text,
   // because its devDependencies name the two seams the build inlines.
-  { id: 'proprietary', what: 'a private workspace package', re: /@trdrs\//, where: 'shipped', history: false },
+  { id: 'proprietary', what: 'a private workspace package', re: /@trdrs\/(?!quickcharts(?:\/|[^a-zA-Z0-9_.-]|$))/, where: 'shipped', history: false },
 ]
 
 /** Exact files whose text names the shapes above on purpose. One file, one rule, one reason. */

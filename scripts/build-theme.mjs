@@ -8,7 +8,7 @@
 //                            attribute, and the stylesheet entry name
 //   test/theme/vectors.json  the committed declaration vectors the drift gate compares against
 //
-// It runs from `pnpm --filter quickcharts build:theme`, and `postbuild` runs it for every build, so
+// It runs from `pnpm --filter @trdrs/quickcharts build:theme`, and `postbuild` runs it for every build, so
 // a build never ships a stylesheet older than the palettes it was generated from. It follows the
 // bundler rather than preceding it because the bundler clears `dist` as it starts. Committing a
 // palette change without rerunning it fails the drift block of `theme/stylesheet.test.ts`.
@@ -26,7 +26,7 @@ import { STYLE_HOOKS } from '../src/theme/hooks.ts'
 import { composeDistributableStylesheet } from './stylesheet.mjs'
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
-const CSS_ENTRY = 'quickcharts/styles.css'
+const CSS_ENTRY = '@trdrs/quickcharts/styles.css'
 
 // The stylesheet itself comes from the composition the guest build shares (scripts/stylesheet.mjs).
 const css = composeDistributableStylesheet()

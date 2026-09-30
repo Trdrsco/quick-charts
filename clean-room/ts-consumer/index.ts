@@ -34,9 +34,9 @@ import {
   type FeedBar,
   type HistoryPage,
   type IndicatorDefinition,
-} from 'quickcharts'
+} from '@trdrs/quickcharts'
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
-import { parseDrawingsStore, serializeDrawingsStore, drawingTools, type SerializedDrawing } from 'quickcharts/drawings'
+import { parseDrawingsStore, serializeDrawingsStore, drawingTools, type SerializedDrawing } from '@trdrs/quickcharts/drawings'
 import { memoryDatafeed } from './fakes/memoryDatafeed'
 import { memorySaveLoad, memoryStorage } from './fakes/memorySaveLoad'
 
@@ -257,7 +257,7 @@ import {
   type RestRequest,
   type RestSaveLoadOptions,
   type RestWriteResponse,
-} from 'quickcharts/adapters/rest'
+} from '@trdrs/quickcharts/adapters/rest'
 
 const plainFetch: RestRequest = fetch
 const withHostAuth: RestRequest = (url, init) => fetch(url, { ...init, credentials: 'include', headers: { ...init.headers, 'x-example-tenant': 'acme' } })

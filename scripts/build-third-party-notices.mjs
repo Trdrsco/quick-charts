@@ -9,7 +9,7 @@
 //                            the record REPOSITORY_STATEMENTS keeps of what the package's own
 //                            repository states.
 //
-// It runs from `pnpm --filter quickcharts build:notices`, and `postbuild` runs it for every build,
+// It runs from `pnpm --filter @trdrs/quickcharts build:notices`, and `postbuild` runs it for every build,
 // so the committed document never lags a peer bump. The document is RENDERED from the installed
 // packages rather than written by hand, which is what makes it impossible to list a dependency the
 // artifact does not have or to drop one it gained; test/boundary/thirdPartyNotices.test.ts compares
@@ -258,7 +258,7 @@ if (isMain) {
   } else if (process.argv.includes('--check')) {
     const committed = existsSync(target) ? readFileSync(target, 'utf8').replace(/\r\n/g, '\n') : ''
     if (committed !== rendered) {
-      console.error(`quickcharts: ${NOTICES_FILE} differs from the rendering; run \`pnpm --filter quickcharts build:notices\``)
+      console.error(`quickcharts: ${NOTICES_FILE} differs from the rendering; run \`pnpm --filter @trdrs/quickcharts build:notices\``)
       process.exit(1)
     }
     console.log(`quickcharts: ${NOTICES_FILE} matches the rendering`)

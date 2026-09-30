@@ -2,11 +2,11 @@
 // The REST wire contract as a published document.
 //
 //   dist/rest-openapi.json   the schema a service author implements so that
-//                            `createRestSaveLoadAdapter` from `quickcharts/adapters/rest` can drive
+//                            `createRestSaveLoadAdapter` from `@trdrs/quickcharts/adapters/rest` can drive
 //                            it: the four collections, their payloads, the `If-Match` rule and the
 //                            three refusals
 //
-// It runs from `pnpm --filter quickcharts build:rest-openapi`, and `postbuild` runs it for every
+// It runs from `pnpm --filter @trdrs/quickcharts build:rest-openapi`, and `postbuild` runs it for every
 // build, so the packed artifact never carries a schema older than the adapter beside it. The
 // document is RENDERED from the typed contract in src/adapters/rest/wire.ts rather than written by
 // hand, which is what makes it impossible to document a path, a status or a field the adapter does

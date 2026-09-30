@@ -1,6 +1,6 @@
 // The packed artifact carries its internal seams (the
 // drawing and indicator source modules are bundled into the one quickcharts artifact and are never
-// installs of their own). Read from the built files themselves after `pnpm --filter quickcharts
+// installs of their own). Read from the built files themselves after `pnpm --filter @trdrs/quickcharts
 // build`; without a build there is nothing packed to read and the checks pass vacuously, the same
 // way the packed-declarations check does.
 import { describe, expect, it } from 'vitest'
@@ -61,7 +61,7 @@ describe('the packed drawings subpath', () => {
 
   it('ships the files its export map points a consumer at', () => {
     // Both maps name dist/drawings.js and dist/drawings.d.ts, so `files` has to actually carry
-    // them, or `import 'quickcharts/drawings'` resolves to nothing in an installed project.
+    // them, or `import '@trdrs/quickcharts/drawings'` resolves to nothing in an installed project.
     expect(Object.keys(manifest.exports ?? {})).toContain('./drawings')
     expect(Object.keys(manifest.publishConfig?.exports ?? {})).toContain('./drawings')
     if (packedText('dist/drawings.js') === null) return // no build to read

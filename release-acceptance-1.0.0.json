@@ -1,23 +1,7 @@
 {
   "date": "2026-09-29",
   "version": "1.0.0",
-  "candidateCommit": "412d728f76e6b58ac0ffb20f6e948c2c2d2eb0a0",
-  "tarballSha256": "e29a366a61d206b484451eb14fe89824950133534892040521aa126d822d74af",
-  "rehearsal": "pass",
-  "gateRun": "https://github.com/Trdrsco/quick-charts/actions/runs/36664534952",
-  "unitTestsPassed": 3497,
-  "browserChecks": {
-    "webkit": 41,
-    "firefox": 41,
-    "chromium": 41
-  },
-  "firstHost": {
-    "browserTestsPassed": 13,
-    "integrationTestsPassed": 1027,
-    "fullAppGateRun": false,
-    "sourceCommit": "dc0eb8337",
-    "typecheckWorkspacesPassed": 22
-  },
+  "tarballSha256": "53ea55cd820f054a4cfac6e7a8c80fb86261639e767b15eb0db0889337479245",
   "ownerDecision": {
     "screenReaderSupportMeasured": false,
     "publicationAuthorized": true,
@@ -29,5 +13,31 @@
     "subsequentReleases": "protected GitHub workflow with npm OIDC provenance",
     "bootstrapProvenance": false,
     "bootstrap": "interactive npm owner authentication for the first accepted artifact"
+  },
+  "previousValidatedArtifact": {
+    "tarballSha256": "e29a366a61d206b484451eb14fe89824950133534892040521aa126d822d74af",
+    "candidateCommit": "412d728f76e6b58ac0ffb20f6e948c2c2d2eb0a0",
+    "rehearsal": "pass",
+    "unitTestsPassed": 3497,
+    "browserChecks": {
+      "webkit": 41,
+      "firefox": 41,
+      "chromium": 41
+    },
+    "firstHost": {
+      "browserTestsPassed": 13,
+      "integrationTestsPassed": 1027,
+      "fullAppGateRun": false,
+      "sourceCommit": "dc0eb8337",
+      "typecheckWorkspacesPassed": 22
+    }
+  },
+  "packageName": "@trdrs/quickcharts",
+  "scopedCandidate": {
+    "packagingTestsPassed": 226,
+    "typecheck": "pass",
+    "firstHostTypecheckWorkspacesPassed": 22,
+    "fullGate": "Required before publication",
+    "fullRehearsal": "Required before publication"
   }
 }

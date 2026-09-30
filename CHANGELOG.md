@@ -1,4 +1,4 @@
-# quickcharts
+# @trdrs/quickcharts
 
 ## 1.0.0
 
@@ -10,7 +10,7 @@
 - Root-scoped styling with light and dark palettes, typed themes and documented styling hooks.
 - Multi-asset price formatting, sessions, timezones, symbol search and 21 interface languages.
 - Chart image export, fullscreen, keyboard commands and saved layouts.
-- Public entries: `quickcharts`, `quickcharts/drawings`, `quickcharts/adapters/rest` and
-  `quickcharts/styles.css`. The required renderer is resolved automatically by supported npm
-  versions when installing `quickcharts` with default peer resolution.
+- Public entries: `@trdrs/quickcharts`, `@trdrs/quickcharts/drawings`, `@trdrs/quickcharts/adapters/rest` and
+  `@trdrs/quickcharts/styles.css`. The required renderer is resolved automatically by supported npm
+  versions when installing `@trdrs/quickcharts` with default peer resolution.
 - Apache-2.0 license and third-party notices accompany the package.

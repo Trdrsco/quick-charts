@@ -54,7 +54,7 @@ export const PUBLIC_ENTRIES = ['.', './drawings', './adapters/rest', './styles.c
 export const OWNER_GATES = [
   'License text applied to the artifact after counsel review',
   'Repository visibility of quick-charts',
-  'Registry ownership of the quickcharts name, with two-factor authentication on every publishing account',
+  'Registry ownership of the @trdrs/quickcharts name, with two-factor authentication on every publishing account',
   'Website address of the chart manual',
   'Publication: the explicit instruction to publish the first version',
 ]
@@ -121,7 +121,7 @@ export function renderSummary({ result, version, commit, branch, date, fast, sta
   lines.push('# Quick Charts release rehearsal', '')
   lines.push(`Result: **${result}**`, '')
   if (result === 'PARTIAL') lines.push(`${fast ? 'The gate ran without the clean room (`--fast`)' : 'Only some stages ran (`--only`)'}. A partial rehearsal is not a release rehearsal.`, '')
-  lines.push(`Candidate: \`quickcharts\` ${version}, commit \`${commit}\` on \`${branch}\`, ${date}.`, '')
+  lines.push(`Candidate: \`@trdrs/quickcharts\` ${version}, commit \`${commit}\` on \`${branch}\`, ${date}.`, '')
   lines.push('Published: nothing. This rehearsal ran no publish, no registry write and no push.', '')
   lines.push('## Gates', '', '| Gate | Result | Duration | Log |', '|---|---|---|---|')
   for (const s of stages) {
@@ -217,7 +217,7 @@ const check = (id, ok, detail) => checks.push({ id, ok: Boolean(ok), detail })
 
 check('no-dom', typeof globalThis.window === 'undefined' && typeof globalThis.document === 'undefined', 'the probe runs with no window and no document')
 
-const installed = join(process.cwd(), 'node_modules', 'quickcharts')
+const installed = join(process.cwd(), 'node_modules', '@trdrs/quickcharts')
 const pkg = JSON.parse(readFileSync(join(installed, 'package.json'), 'utf8'))
 check('exports-keys', JSON.stringify(Object.keys(pkg.exports ?? {}).sort()) === JSON.stringify([...entries].sort()), 'the export map names exactly the public entries: ' + Object.keys(pkg.exports ?? {}).join(', '))
 const targets = Object.values(pkg.exports ?? {}).flatMap((v) => (typeof v === 'string' ? [v] : Object.values(v)))
@@ -240,12 +240,12 @@ check('installed-files', JSON.stringify(files) === JSON.stringify(expected), fil
 const mismatched = expected.filter((f) => manifest.files[f] && existsSync(join(installed, f)) && createHash('sha256').update(readFileSync(join(installed, f))).digest('hex') !== manifest.files[f].sha256)
 check('installed-hashes', mismatched.length === 0, mismatched.length ? 'differ from the manifest: ' + mismatched.join(', ') : 'every installed file hashes as the manifest says')
 
-const root = await import('quickcharts')
+const root = await import('@trdrs/quickcharts')
 check('root-entry', typeof root.createChart === 'function' && typeof root.createPriceFormatter === 'function', 'createChart and createPriceFormatter are functions')
-const drawings = await import('quickcharts/drawings')
+const drawings = await import('@trdrs/quickcharts/drawings')
 const toolCount = typeof drawings.drawingTools?.all === 'function' ? drawings.drawingTools.all().length : -1
 check('drawings-entry', toolCount >= 90 && typeof drawings.parseDrawingsStore === 'function', 'the drawings catalog holds ' + toolCount + ' tools')
-const rest = await import('quickcharts/adapters/rest')
+const rest = await import('@trdrs/quickcharts/adapters/rest')
 check('rest-entry', typeof rest.createRestSaveLoadAdapter === 'function' && typeof rest.RestSaveLoadError === 'function', 'the REST adapter constructor and error class are exported')
 
 let requestsAtConstruction = 0
@@ -257,12 +257,12 @@ const outage = rest.createRestSaveLoadAdapter({ baseUrl: 'https://saves.example.
 const raised = await outage.charts.list().then(() => null, (e) => e)
 check('rest-typed-error', raised instanceof rest.RestSaveLoadError && raised.status === 503, 'a 503 raises RestSaveLoadError with its status')
 
-const cssUrl = import.meta.resolve('quickcharts/styles.css')
+const cssUrl = import.meta.resolve('@trdrs/quickcharts/styles.css')
 const cssPath = fileURLToPath(cssUrl)
 const css = existsSync(cssPath) ? readFileSync(cssPath, 'utf8') : ''
 check('stylesheet', cssPath.endsWith('quickcharts.css') && css.includes('.qc-chrome') && !/url\(\s*["']?https?:/.test(css) && !/@import/.test(css), 'styles.css resolves to the packed stylesheet with the chart chrome and no remote asset')
 
-for (const deep of ['quickcharts/dist/index.js', 'quickcharts/src/index.ts', 'quickcharts/package.json']) {
+for (const deep of ['@trdrs/quickcharts/dist/index.js', '@trdrs/quickcharts/src/index.ts', '@trdrs/quickcharts/package.json']) {
   const code = await import(deep).then(() => 'resolved', (e) => e.code)
   check('sealed:' + deep, code === 'ERR_PACKAGE_PATH_NOT_EXPORTED', deep + ': ' + code)
 }
@@ -328,7 +328,7 @@ async function installTest({ tarball, manifestPath, log, note }) {
     copyFileSync(tarball, join(scratch, tarballName))
     copyFileSync(manifestPath, join(scratch, 'manifest.json'))
     writeFileSync(join(scratch, 'entries.json'), JSON.stringify(PUBLIC_ENTRIES))
-    await step(['npm', 'install', '--no-audit', '--no-fund', '--no-package-lock', '--ignore-scripts', `./${tarballName}`, 'lightweight-charts@^5.0.0'])
+    await step(['npm', 'install', '--no-audit', '--no-fund', '--no-package-lock', '--ignore-scripts', `./${tarballName}`])
     // `npm ls` exits non-zero on any tree problem; the tree is recorded either way and the probe
     // below is what judges the install.
     const tree = await step(['npm', 'ls', '--all', '--json'], { tolerate: true })
@@ -338,14 +338,14 @@ async function installTest({ tarball, manifestPath, log, note }) {
     const probe = JSON.parse(probeOut.trim().split('\n').pop())
 
     // The shipped declarations, with skipLibCheck off: a consumer's compiler reads them whole.
-    writeFileSync(join(scratch, 'types.ts'), ["import { createChart, createPriceFormatter } from 'quickcharts'", "import { drawingTools } from 'quickcharts/drawings'", "import { createRestSaveLoadAdapter } from 'quickcharts/adapters/rest'", "import 'quickcharts/styles.css'", 'export const shape: [typeof createChart, typeof createPriceFormatter, typeof drawingTools, typeof createRestSaveLoadAdapter] = [createChart, createPriceFormatter, drawingTools, createRestSaveLoadAdapter]', ''].join('\n'))
+    writeFileSync(join(scratch, 'types.ts'), ["import { createChart, createPriceFormatter } from '@trdrs/quickcharts'", "import { drawingTools } from '@trdrs/quickcharts/drawings'", "import { createRestSaveLoadAdapter } from '@trdrs/quickcharts/adapters/rest'", "import '@trdrs/quickcharts/styles.css'", 'export const shape: [typeof createChart, typeof createPriceFormatter, typeof drawingTools, typeof createRestSaveLoadAdapter] = [createChart, createPriceFormatter, drawingTools, createRestSaveLoadAdapter]', ''].join('\n'))
     writeFileSync(join(scratch, 'tsconfig.json'), `${JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', strict: true, noEmit: true, skipLibCheck: false, lib: ['ES2022', 'DOM'] }, files: ['types.ts'] }, null, 2)}\n`)
     await step(['node', q(join(repo, 'node_modules', 'typescript', 'bin', 'tsc')), '-p', 'tsconfig.json'])
 
     // The bundler is this repository's Vite; the artifact it bundles is the installed one.
     const viteDir = dirname(createRequire(join(repo, 'package.json')).resolve('vite/package.json'))
-    writeFileSync(join(scratch, 'full.ts'), "export * from 'quickcharts'\n")
-    writeFileSync(join(scratch, 'narrow.ts'), "export { tfToUdfResolution } from 'quickcharts'\n")
+    writeFileSync(join(scratch, 'full.ts'), "export * from '@trdrs/quickcharts'\n")
+    writeFileSync(join(scratch, 'narrow.ts'), "export { tfToUdfResolution } from '@trdrs/quickcharts'\n")
     writeFileSync(join(scratch, 'vite-entry.txt'), join(viteDir, 'dist', 'node', 'index.js'))
     writeFileSync(join(scratch, 'bundle.mjs'), BUNDLE)
     const bundleOut = await step(['node', 'bundle.mjs'])

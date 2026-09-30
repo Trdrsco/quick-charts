@@ -1,7 +1,7 @@
 // The clean-room host of the Quick Charts conformance suite: every check in
 // packages/chart/test/conformance, run over the INSTALLED tarball in a happy-dom document. The suite
 // arrives as the copy clean-room/run.mjs compiled beside this consumer (./conformance, ignored by
-// git), so its `quickcharts` imports resolve to node_modules/quickcharts here exactly as a customer's
+// git), so its `@trdrs/quickcharts` imports resolve to node_modules/quickcharts here exactly as a customer's
 // would. The browser shim that stands in for the canvas travels with it.
 //
 //   node conformance.mjs
@@ -18,7 +18,7 @@ for (const name of BROWSER_GLOBALS) {
 }
 const shim = installBrowserShim(window)
 
-const { createChart } = await import('quickcharts')
+const { createChart } = await import('@trdrs/quickcharts')
 
 const results = await runConformance({
   createWidget: (options) => createChart(options),

@@ -10,7 +10,7 @@ sessions and holiday injection, compare placement, indicator families, layouts, 
 the drawing catalog, and the presentation plane: hidden controls that leave their commands, a host
 control in a top-bar slot, and a host's drawings for the chart's icons.
 
-The module imports `quickcharts` and `quickcharts/drawings` and nothing else. It observes only what
+The module imports `@trdrs/quickcharts` and `@trdrs/quickcharts/drawings` and nothing else. It observes only what
 a consumer can observe: the widget's answers, its events, the theme root attribute the theme manifest
 publishes, ARIA roles and accessible names, and element identity. It is a test-only path: it is not
 exported by the package and never packed.

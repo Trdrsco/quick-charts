@@ -1,6 +1,6 @@
 // The root-only consumer: an application that never imports the REST adapter, whose bundle must
 // carry none of it.
-import { createChart } from 'quickcharts'
+import { createChart } from '@trdrs/quickcharts'
 
 const datafeed = {
   search: async () => [],

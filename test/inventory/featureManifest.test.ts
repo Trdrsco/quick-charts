@@ -4,7 +4,7 @@
 // against it. scripts/build-feature-manifest.mjs writes dist/feature-manifest.json from the built
 // entrypoints; this fixture reads it back and holds every block to the registries the inventory tests pin,
 // so the published inventory and the source cannot disagree. The blocks over the built file are vacuous
-// until a build has run, the shape the other dist fixtures use: `pnpm --filter quickcharts build`.
+// until a build has run, the shape the other dist fixtures use: `pnpm --filter @trdrs/quickcharts build`.
 import { describe, expect, it } from 'vitest'
 import manifest from '../../package.json'
 import { BUILT_IN_LOCALES, CHART_ICON_IDS, MIRRORED_ICONS, valueShaped, type ChartStyleId } from '../../src/index'

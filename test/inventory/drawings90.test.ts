@@ -2,7 +2,7 @@
 // list here is the pin. A tool added,
 // renamed, or moved between categories changes this file on purpose, in the same commit, and the
 // diff is the release note.
-import { TOOL_CATEGORIES, drawingTools } from 'quickcharts/drawings'
+import { TOOL_CATEGORIES, drawingTools } from '@trdrs/quickcharts/drawings'
 import { describe, expect, it } from 'vitest'
 
 /** Every registered tool type with its category, sorted by type. */

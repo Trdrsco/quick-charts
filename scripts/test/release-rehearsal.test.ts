@@ -61,7 +61,7 @@ describe('the summary', () => {
 
   it('states the verdict, the candidate, and that nothing was published', () => {
     expect(page).toContain('Result: **FAIL**')
-    expect(page).toContain('`quickcharts` 0.0.0-staging, commit `abc123` on `main`')
+    expect(page).toContain('`@trdrs/quickcharts` 0.0.0-staging, commit `abc123` on `main`')
     expect(page).toContain('Published: nothing.')
   })
 

@@ -8,7 +8,7 @@
 //                                    bare import survives, nothing is fetched at runtime
 //   dist/guest/build-manifest.json   the package version and the SHA-256 of every file above
 //
-// It runs from `pnpm --filter quickcharts build:guest`, and `postbuild` runs it after the theme
+// It runs from `pnpm --filter @trdrs/quickcharts build:guest`, and `postbuild` runs it after the theme
 // generator, whose stylesheet it copies. The build is deterministic: the same source builds the
 // same bytes, and the manifest carries no clock, so two builds compare equal file for file. The
 // guest fixture (test/guest) builds twice into scratch directories through `--out` and proves it.
