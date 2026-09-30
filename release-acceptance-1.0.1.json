@@ -1,0 +1,57 @@
+{
+  "date": "2026-09-30",
+  "packageName": "@trdrs/quickcharts",
+  "version": "1.0.1",
+  "tarballSha256": "ef87637a4744cf259bc48950093fb856391f9f5b28d2b37a783dd224e06a6544",
+  "tarStreamSha256": "5de356033ce5ab990f84d001399e7c0990c579556733f3bd7d2a8c0b757c562c",
+  "bundledEmojiGlyphs": 1566,
+  "producer": {
+    "unitTestsPassed": 3503,
+    "typecheck": "pass",
+    "candidatePin": "pass",
+    "supplyChain": "pass",
+    "notices": "pass",
+    "documents": "pass",
+    "cleanConsumers": "pass",
+    "browsers": {
+      "chromium": {
+        "version": "149.0.7827.55",
+        "passed": 42,
+        "skipped": 0,
+        "failed": 0
+      },
+      "firefox": {
+        "version": "151.0",
+        "passed": 42,
+        "skipped": 0,
+        "failed": 0
+      },
+      "webkit": {
+        "version": "26.5",
+        "passed": 42,
+        "skipped": 0,
+        "failed": 0
+      }
+    }
+  },
+  "firstHost": {
+    "baselineCommit": "3a9baf2a0d00b03fe5b5071fb8ded089568f7e20",
+    "workingTree": "prepared chart-source cleanup and 1.0.1 adoption; exact tarball installed through a temporary pnpm override",
+    "typecheckWorkspacesPassed": 18,
+    "unitTestsPassed": 2391,
+    "appBrowserTestsPassed": 98,
+    "productionBuild": "pass",
+    "packageChecks": "pass",
+    "localization": "pass",
+    "deadCode": "pass",
+    "documents": "pass"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this launch",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false
+  },
+  "ci": "GitHub-hosted runners; separate protected upload of tested tarball"
+}

@@ -4,6 +4,10 @@ This document lists every third-party package in the dependency closure of `@trd
 
 `@trdrs/quickcharts` bundles no third-party code. It declares one peer dependency that your application installs and bundles, and that peer installs one package of its own. Because your application bundle redistributes these packages, their license conditions attach to your product; this document tells you what each one asks for.
 
+### Bundled Twemoji artwork
+
+The emoji SVG graphics are from [Twemoji](https://github.com/jdecked/twemoji), copyright Twitter, Inc and other contributors, licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/). The graphics are combined into an internal artwork table; SVG identifiers are namespaced per glyph. Keep this credit and the license link accessible to users of your product. The graphics license is separate from the Apache-2.0 license of the library code.
+
 | Package | Version | License | Reached through |
 |---|---|---|---|
 | `fancy-canvas` | 2.1.0 | MIT | `lightweight-charts@5.2.0` |

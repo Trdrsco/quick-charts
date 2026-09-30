@@ -36,6 +36,15 @@ describe('the glyph data', () => {
 const GATES = { idBase: 'c1-glyphs', available: () => true, toolAllowed: () => true }
 
 describe('the picker', () => {
+  it('uses bundled artwork without a host port, including flags and keycaps', () => {
+    const picker = mountGlyphPicker({ t, recents: ['🇺🇸', '1️⃣'], ...GATES, onPick: () => undefined })
+    document.body.appendChild(picker.root)
+    const images = [...picker.root.querySelectorAll<HTMLImageElement>('.qc-drawing-glyph-art')]
+    expect(images.length).toBeGreaterThan(2)
+    for (const image of images) expect(image.getAttribute('src')).toMatch(/^data:image\/svg\+xml/)
+    picker.destroy()
+  })
+
   it('renders recents, the category strip and headings, and reports a pick with its kind', () => {
     const picks: [GlyphKind, string][] = []
     const picker = mountGlyphPicker({ t, recents: ['🚀'], glyphSource: (glyph) => `/art/${glyph.codePointAt(0)}.svg`, ...GATES, onPick: (kind, glyph) => picks.push([kind, glyph]) })

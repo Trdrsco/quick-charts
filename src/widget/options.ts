@@ -377,7 +377,7 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
     classNames?: Readonly<Record<string, string>>
   }
   /** Where the image and glyph drawing tools get their artwork, and how a picked file becomes a
-   *  usable payload. Absent, those tools draw their glyphs as text and take no file. */
+   *  usable payload. Emoji artwork is bundled. Absent, the image tool takes no file. */
   assets?: DrawingAssetPort
   /** Neutral bar marks and time-scale marks from the datafeed. On by default; `false` draws none
    *  even from a feed that serves them. */

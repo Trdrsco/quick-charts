@@ -203,7 +203,7 @@ export const ICON_CATEGORIES: readonly GlyphCategory[] = [
   },
 ]
 
-/** True when the glyph is an emoji sequence, drawn from the host's artwork, rather than a text icon. */
+/** True when the glyph is an emoji sequence, drawn from bundled or host-supplied artwork, rather than a text icon. */
 export function isEmojiGlyph(glyph: string): boolean {
   if (glyph.includes('\uFE0E')) return false // text presentation forced: an icon glyph
   // A keycap sequence (a digit or symbol under U+20E3) is an emoji too, though its base is not.

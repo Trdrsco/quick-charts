@@ -558,6 +558,24 @@ const rsiInstance = (id: string) => ({ id, definition: BUILT_IN_INDICATORS.find(
 
 export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   {
+    id: 'drawings.emoji.bundled',
+    title: 'emoji picker artwork works without a host asset port',
+    needs: ['drawings'],
+    async run(ctx) {
+      const { container } = await ctx.mount({ symbol: 'ALPHA' })
+      const open = container.querySelector<HTMLButtonElement>('button[aria-label="Emojis & stickers"]')
+      assert(open, 'the drawing toolbar offers the emoji picker')
+      open.click()
+      await ctx.settle()
+      const picker = ctx.document.querySelector('[role="dialog"][aria-label="Glyph picker"]')
+      assert(picker, 'the glyph picker opens')
+      const image = picker.querySelector('img')
+      assert(image, 'the default picker renders emoji artwork')
+      assert(image.getAttribute('src')?.startsWith('data:image/svg+xml'), 'the image comes from bundled bytes')
+      equal(image.getAttribute('alt'), '', 'the button names its decorative artwork')
+    },
+  },
+  {
     id: 'api.shape',
     title: 'the widget and its active chart answer the documented surface, and ready resolves once data paints',
     async run(ctx) {

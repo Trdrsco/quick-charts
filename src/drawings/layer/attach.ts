@@ -9,6 +9,7 @@
 // and never holds a second copy, and it reports every change through its events so a toolbar and a
 // settings bar render from the layer rather than from state of their own.
 import type { Time } from 'lightweight-charts'
+import { bundledGlyphSource } from '../emoji'
 import { DrawingManager, parseIntervalContext, restoreDrawings, viewportOf, visibilityPreset } from '../../internal/drawings/index'
 import type { IDrawing, SerializedDrawing, SourceBar } from '../../internal/drawings/index'
 import type { ResourceRef } from '../../resources'
@@ -107,7 +108,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   const workflow = (): DrawingsWorkflow => options.workflow?.() ?? DEFAULT_WORKFLOW
 
   const manager = new DrawingManager()
-  if (options.glyphSource) manager.setGlyphSource(options.glyphSource)
+  manager.setGlyphSource(options.glyphSource ?? bundledGlyphSource)
   manager.attach(chart, series)
   manager.setIntervalContext(parseIntervalContext(options.timeframe ?? ''))
 

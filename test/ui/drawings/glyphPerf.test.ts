@@ -72,7 +72,8 @@ describe('the cost of opening the glyph picker', () => {
     // Every cell was built once: the ramp appends, it does not rebuild what it already mounted.
     // Rebuilding the mounted grid each step would cost the square of the set over the budget,
     // which for this set is more than nine times the cells it ends with.
-    expect(built).toBeLessThan(total + 200)
+    // Each bundled emoji adds one image node beside its button.
+    expect(built).toBeLessThan(total * 2 + 200)
     picker.destroy()
   })
 
