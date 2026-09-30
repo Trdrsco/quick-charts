@@ -263,7 +263,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       const p = prefs()
       return { magnet: p.magnet, stayInDrawingMode: p.stayInDrawingMode, cursor: p.cursor, syncAcrossPanes: p.syncAcrossPanes }
     },
-    ...(deps.assets ? { glyphSource: (glyph: string) => deps.assets!.glyphSource(glyph) } : {}),
+    ...(deps.assets?.glyphSource ? { glyphSource: (glyph: string) => deps.assets!.glyphSource!(glyph) } : {}),
     // The keyboard verbs go through the registry, so the access policy gates them like every door.
     execute: (command, arg) => deps.commands.execute(command, arg).kind === 'ok',
     ink: () => deps.theme()['text.primary'],
@@ -343,7 +343,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       available,
       toolAllowed: permitted,
       idBase,
-      ...(deps.assets ? { glyphSource: (glyph: string) => deps.assets!.glyphSource(glyph) } : {}),
+      ...(deps.assets?.glyphSource ? { glyphSource: (glyph: string) => deps.assets!.glyphSource!(glyph) } : {}),
     })
   }
   if (deps.favorites) {

@@ -1,6 +1,6 @@
 {
   "name": "@trdrs/quickcharts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Quick Charts: a datafeed-driven charting library with drawings, indicators, layouts and replay over host-supplied data and storage ports.",
   "keywords": [
     "charts",
@@ -70,7 +70,7 @@
     }
   },
   "scripts": {
-    "build": "tsup",
+    "build": "node scripts/build-emoji.mjs && tsup",
     "build:theme": "node scripts/build-theme.mjs",
     "build:manifest": "node scripts/build-feature-manifest.mjs",
     "build:guest": "node scripts/build-guest.mjs",
@@ -88,7 +88,8 @@
     "clean-room": "node clean-room/run.mjs",
     "rehearsal": "node scripts/release-rehearsal.mjs",
     "i18n": "node scripts/i18n.mjs",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "build:emoji": "node scripts/build-emoji.mjs"
   },
   "peerDependencies": {
     "lightweight-charts": "^5.0.0"

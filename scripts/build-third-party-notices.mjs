@@ -211,6 +211,10 @@ export function renderThirdPartyNotices(root = pkgRoot) {
       'this document tells you what each one asks for.',
   )
   out.push('')
+  out.push('### Bundled Twemoji artwork')
+  out.push('')
+  out.push('The emoji SVG graphics are from [Twemoji](https://github.com/jdecked/twemoji), copyright Twitter, Inc and other contributors, licensed under [CC-BY 4.0](https://creativecommons.org/licenses/by/4.0/). The graphics are combined into an internal artwork table; SVG identifiers are namespaced per glyph. Keep this credit and the license link accessible to users of your product. The graphics license is separate from the Apache-2.0 license of the library code.')
+  out.push('')
   out.push('| Package | Version | License | Reached through |')
   out.push('|---|---|---|---|')
   for (const n of notices) out.push(`| \`${n.name}\` | ${n.version} | ${n.license} | ${n.via === 'peer' ? 'peer dependency' : `\`${n.via}\``} |`)

@@ -4,12 +4,13 @@
 // bottom switches sets. Picking a glyph arms the matching tool with it; the next chart press
 // drops it.
 //
-// Emoji cells draw the artwork the host's asset port answers for the glyph, as an image, because
+// Emoji cells use bundled artwork or the host's override, as an image, because
 // platform emoji fonts cannot be trusted; a null answer draws the glyph as text. Icon glyphs are
 // always text, so the drawing's own tint carries over.
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import { EMOJI_CATEGORIES, ICON_CATEGORIES, isEmojiGlyph, type GlyphCategory } from '../../drawings/glyphs'
 import { button, el, rovingFocus } from './dom'
+import { bundledGlyphSource } from '../../drawings/emoji'
 
 export type GlyphKind = 'emoji' | 'sticker' | 'icon'
 
@@ -97,7 +98,7 @@ export function mountGlyphPicker(input: GlyphPickerDeps): GlyphPickerHandle {
 
   const face = (glyph: string): HTMLElement | string => {
     if (kind === 'icon' || !isEmojiGlyph(glyph)) return glyph
-    const url = deps.glyphSource?.(glyph) ?? null
+    const url = (deps.glyphSource ?? bundledGlyphSource)(glyph)
     if (!url) return glyph
     return el('img', { class: 'qc-drawing-glyph-art', src: url, alt: '', draggable: 'false' })
   }

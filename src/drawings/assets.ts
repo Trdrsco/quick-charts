@@ -1,15 +1,4 @@
-// The host's asset port: where the image-backed tools get their pictures, and where the glyph
-// marks get their artwork.
-//
-// Two tools need a byte payload the chart cannot invent. The Image note holds a picture the trader
-// picked, and the emoji and sticker marks draw vendored artwork because platform emoji fonts cannot
-// be trusted on a canvas (Windows draws no flag glyphs at all). Both were reached through ambient
-// globals: a module-level glyph hook set once per process, and an intake function that read a file
-// and produced its own English error text. Neither survives a library a stranger embeds twice on
-// one page with two different asset sets.
-//
-// So both are one explicit port the host supplies per instance. The library owns the RULES — what
-// a picture may be, how large, and what a rejection is called — and the host owns the bytes.
+// Host image intake and an optional replacement for the chart's bundled emoji artwork.
 import type { ChartMessageKey } from '../i18n/en'
 
 /** What the intake accepts. Stated here because it is a product rule, not a host preference: a
@@ -51,10 +40,10 @@ export interface DrawingAssetPort {
    *  used. The host owns the decode and the resample; `checkImageFile` and `fitScale` below are the
    *  library's rules it applies. */
   intakeImage(file: File): Promise<ImageIntakeResult>
-  /** Artwork for one emoji or sticker glyph, as a URL the canvas can draw, or null to fall back to
+  /** Optional replacement for the bundled Twemoji artwork. Artwork for one emoji or sticker glyph, as a URL the canvas can draw, or null to fall back to
    *  drawing the glyph as text. Icon marks always stay text: their ink is tinted by the stroke
    *  color, which artwork cannot carry. */
-  glyphSource(glyph: string): string | null
+  glyphSource?(glyph: string): string | null
 }
 
 /** Type and size gate, pure so it needs no DOM and no real file. */

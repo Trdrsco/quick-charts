@@ -1,5 +1,10 @@
 # @trdrs/quickcharts
 
+## 1.0.1
+
+Emoji drawings and the picker use bundled Twemoji artwork without a host asset server.
+Hosts may supply an image intake port while keeping the bundled emoji artwork.
+
 ## 1.0.0
 
 - A complete browser chart over host-supplied market data and storage, with seven chart styles,
