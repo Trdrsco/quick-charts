@@ -474,7 +474,9 @@ async function main() {
     const { status, stdout } = await run(['npm', 'pack', '--dry-run', '--json'], { cwd: chartDir, log })
     if (status !== 0) return `npm pack --dry-run exited ${status}`
     const parsed = JSON.parse(stdout)
-    const npmFiles = parsed[0].files.map((f) => f.path.replace(/\\/g, '/')).sort()
+    const first = Array.isArray(parsed) ? parsed[0] : parsed['@trdrs/quickcharts']
+    if (!first) return 'npm pack --dry-run --json returned no package'
+    const npmFiles = first.files.map((f) => f.path.replace(/\\/g, '/')).sort()
     const manifest = JSON.parse(readFileSync(join(dossier, 'artifact', 'manifest.json'), 'utf8'))
     const diff = compareFileLists(npmFiles, Object.keys(manifest.files))
     writeFileSync(join(dossier, 'artifact', 'npm-pack-dry-run.json'), `${JSON.stringify({ files: npmFiles, onlyNpm: diff.onlyNpm, onlyManifest: diff.onlyManifest }, null, 2)}\n`)

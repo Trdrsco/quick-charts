@@ -130,8 +130,9 @@ export function packedFiles(root) {
   // One static string, so the Windows .cmd shim needs no argument quoting.
   const json = execSync('npm pack --dry-run --json', { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
   const parsed = JSON.parse(json)
-  if (!parsed[0]) throw new Error('npm pack --dry-run --json returned no package')
-  return parsed[0].files.map((f) => toPosix(f.path)).sort()
+  const first = Array.isArray(parsed) ? parsed[0] : parsed['@trdrs/quickcharts']
+  if (!first) throw new Error('npm pack --dry-run --json returned no package')
+  return first.files.map((f) => toPosix(f.path)).sort()
 }
 
 /** Every line ever added under the package on the current branch: [{ commit, file, line, text }].
