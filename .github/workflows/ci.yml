@@ -33,6 +33,9 @@ jobs:
           node-version: 24.15.0
           cache: pnpm
 
+      - name: Pin npm to the release toolchain
+        run: npm install --global npm@12.1.0
+
       - name: install
         run: pnpm install --frozen-lockfile
 

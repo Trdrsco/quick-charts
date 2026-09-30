@@ -70,8 +70,8 @@ export const offenderText = (o: Offender): string => `${o.file}:${o.line}: ${o.t
 /** The paths `npm pack` would put in the tarball, read from npm itself, sorted. */
 export function packedFileList(): string[] {
   const json = execSync('npm pack --dry-run --json', { cwd: CHART_DIR, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] })
-  const parsed = JSON.parse(json) as { files: { path: string }[] }[]
-  const first = parsed[0]
+  const parsed = JSON.parse(json) as { files: { path: string }[] }[] | Record<string, { files: { path: string }[] }>
+  const first = Array.isArray(parsed) ? parsed[0] : parsed['@trdrs/quickcharts']
   if (!first) throw new Error('npm pack --dry-run --json returned no package')
   return first.files.map((f) => f.path.replace(/\\/g, '/')).sort()
 }
