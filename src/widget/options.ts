@@ -303,6 +303,14 @@ export interface IndicatorInstance {
   overrides?: IndicatorOverrides
 }
 
+/** The set of symbols a search answers from, as the host names it: a portfolio, a broker, a
+ *  watchlist or any other scope its datafeed applies. `mark` paints the scope's own mark into the
+ *  box the chart owns and returns what takes it down; absent, the scope wears its initial. */
+export interface SearchScope {
+  readonly label: string
+  readonly mark?: (request: { host: HTMLElement; size: number }) => (() => void) | void
+}
+
 /** Everything needed to construct a widget. `container` and `datafeed` are the two hard
  *  requirements; every other field has a working default. */
 export interface ChartWidgetOptions extends MarkPainterHooks {
@@ -375,8 +383,10 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
     recents?: RecentsPort
     /** Display names for the asset-class tokens the feed's `config()` declares in `classes`. */
     classNames?: Readonly<Record<string, string>>
-    /** The selected account's venue, shown at the far edge of the asset-class strip. */
-    venue?: () => string | null
+    /** What the search is limited to, named at the far edge of the asset-class strip. Read each
+     *  time the dialog opens; null names nothing. It only labels the scope: your datafeed's
+     *  `searchSymbols` decides what is found. */
+    scope?: () => SearchScope | null
   }
   /** Where the image and glyph drawing tools get their artwork, and how a picked file becomes a
    *  usable payload. Emoji artwork is bundled. Absent, the image tool takes no file. */
