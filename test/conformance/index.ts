@@ -1693,9 +1693,13 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       chart.on('indicator', (e) => events.push(`${e.kind}:${e.id}`))
       equal(chart.indicators.add(smaInstance('sma-1')), true, 'overlay added')
       equal(chart.indicators.add(rsiInstance('rsi-1')), true, 'pane study added')
-      await ctx.settle()
-      await ctx.settle()
       equal(chart.indicators.get().length, 2, 'two instances')
+      // Pane canvases arrive on the renderer's layout pass. Wait for that observable result
+      // with a deadline, rather than assuming two 25ms settle windows cover a loaded browser.
+      const paneDeadline = Date.now() + 2_000
+      while (root.querySelectorAll('canvas').length <= canvases && Date.now() < paneDeadline) {
+        await ctx.settle()
+      }
       assert(root.querySelectorAll('canvas').length > canvases, 'a pane study adds a pane')
       chart.indicators.hide('rsi-1')
       equal(JSON.stringify(chart.indicators.hidden()), JSON.stringify(['rsi-1']), 'hidden reads the eye')
