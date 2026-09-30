@@ -206,6 +206,29 @@ describe('search mode', () => {
     expect(exchanges).not.toContain('Northwind Brokerage')
   })
 
+  it('keeps the scope mark while results render, then releases it with the surface', async () => {
+    const disposed = vi.fn()
+    const { dialog } = open('search', {
+      scope: {
+        label: 'Northwind Brokerage',
+        mark: ({ host }) => {
+          host.appendChild(document.createElement('img'))
+          return () => {
+            disposed()
+            host.replaceChildren()
+          }
+        },
+      },
+    })
+    const badge = dialog.element.querySelector<HTMLElement>('.qc-search-scope')!
+    await settle()
+    expect(dialog.element.querySelectorAll('[role="option"]').length).toBeGreaterThan(0)
+    expect(badge.querySelector('img')).not.toBeNull()
+    expect(disposed).not.toHaveBeenCalled()
+    dialog.close()
+    expect(disposed).toHaveBeenCalledTimes(1)
+  })
+
   it('writes the scope initial when the host lends no mark', () => {
     const { dialog } = open('search', { scope: { label: 'paper' } })
     const badge = dialog.element.querySelector<HTMLElement>('.qc-search-scope')!
