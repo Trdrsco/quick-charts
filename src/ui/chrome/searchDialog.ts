@@ -184,6 +184,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   /** What takes the host's marks down again. The list is rebuilt on every render and on close, so a
    *  host that hands back a disposer never has one outlive the row it painted into. */
   let markDisposers: (() => void)[] = []
+  let venueMarkDisposer: (() => void) | null = null
   const releaseMarks = (): void => {
     const drops = markDisposers
     markDisposers = []
@@ -266,7 +267,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
         const drop = deps.painters.venue?.({ exchange: venue, host: mark, size: SOURCE_MARK_SIZE })
         if (typeof drop === 'function') {
           mark.dataset.qcHost = 'true'
-          markDisposers.push(drop)
+          venueMarkDisposer = drop
         } else mark.textContent = venue.charAt(0).toUpperCase()
         strip.appendChild(h('span', { class: 'qc-search-venue-badge', 'aria-label': venue }, mark, h('span', {}, venue)))
       }
@@ -475,6 +476,8 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
 
   return {
     teardown() {
+      venueMarkDisposer?.()
+      venueMarkDisposer = null
       releaseMarks()
       search.dispose()
       observer?.disconnect()

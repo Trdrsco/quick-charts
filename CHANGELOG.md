@@ -1,5 +1,9 @@
 # @trdrs/quickcharts
 
+## 1.0.3
+
+The selected venue's mark remains visible while symbol-search results refresh.
+
 ## 1.0.2
 
 The symbol search can show the selected account's venue and its host-painted mark beside the asset-class filters.

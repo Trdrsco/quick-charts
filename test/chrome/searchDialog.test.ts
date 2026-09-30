@@ -179,15 +179,16 @@ describe('search mode', () => {
     expect(strip.hidden).toBe(true)
   })
 
-  it('shows the selected venue and its host-painted mark at the far edge of the class strip', () => {
+  it('keeps the selected venue mark while results render, then releases it with the surface', async () => {
     const painted: string[] = []
+    const disposed = vi.fn()
     const { dialog } = open('search', {
       classes: ['future', 'crypto'],
       venue: 'Meridian',
       venueMark: ({ exchange, host, size }) => {
         painted.push(`${exchange}:${size}`)
         host.appendChild(document.createElement('img'))
-        return () => undefined
+        return host.classList.contains('qc-search-venue-badge-mark') ? disposed : () => undefined
       },
     })
     const strip = dialog.element.querySelector<HTMLElement>('.qc-search-classes')!
@@ -197,6 +198,11 @@ describe('search mode', () => {
     expect(badge.textContent).toBe('Meridian')
     expect(badge.querySelector('img')).not.toBeNull()
     expect(painted).toContain('Meridian:18')
+    await settle()
+    expect(badge.querySelector('img')).not.toBeNull()
+    expect(disposed).not.toHaveBeenCalled()
+    dialog.close()
+    expect(disposed).toHaveBeenCalledTimes(1)
   })
 
   it('shows the clear mark and its rule only over a query', async () => {
