@@ -1,12 +1,17 @@
-# The gate, as CI runs it: the same steps `node scripts/gate.mjs` runs locally, one job, in order.
-# The supply-chain scan walks every line ever added to this repository, so the checkout is a full
-# one; a shallow checkout would let a history the scan cannot see through.
+# The gate, as CI runs it: the steps `node scripts/gate.mjs` runs locally, split into jobs that run
+# side by side. `checks` holds the build and the repository checks, `tests` splits the unit suite
+# across three runners, and `browser` runs the clean room and then the browser suite over the
+# consumer the clean room installed, in the Playwright image, whose browsers and system libraries
+# are already installed. The `gate` job is the one required check: it passes only when every other
+# job passed.
+#
+# A release is proven by the release workflow, which rehearses the exact tagged candidate, so a tag
+# push does not run this workflow again.
 name: ci
 
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -18,57 +23,96 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  gate:
+  checks:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     steps:
+      # The supply-chain scan walks every line ever added to this repository, so this checkout is a
+      # full one; a shallow checkout would hide history from the scan.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24.15.0
           cache: pnpm
-
       - name: Pin npm to the release toolchain
         run: npm install --global npm@12.1.0
-
       - name: install
         run: pnpm install --frozen-lockfile
-
       - name: build (its last step packs the candidate)
         run: pnpm run build
-
       - name: typecheck
         run: pnpm run typecheck
-
-      - name: tests
-        run: pnpm run test
-
       - name: candidate pin
         run: node scripts/check-candidate-pin.mjs
-
       - name: supply chain, history walk included
         run: node scripts/check-supply-chain.mjs
-
       - name: notices
         run: node scripts/build-third-party-notices.mjs --check
-
       - name: documents
         run: node scripts/check-docs.mjs
 
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+      - name: Pin npm to the release toolchain
+        run: npm install --global npm@12.1.0
+      - name: install
+        run: pnpm install --frozen-lockfile
+      - name: build (its last step packs the candidate)
+        run: pnpm run build
+      - name: tests, shard ${{ matrix.shard }} of 3
+        run: pnpm run test --shard=${{ matrix.shard }}/3
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # The image's tag matches the pinned @playwright/test, so its browsers are the ones the suite
+    # expects. The runner's own user id keeps Firefox from refusing a home directory it does not own.
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.0-noble@sha256:57b65fdc9ceabe0ef613124c7bbe2babcf9362c4d85e382fe3b03604e84b428a
+      options: --user 1001
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.15.0
+          cache: pnpm
+      - name: Pin npm to the release toolchain
+        run: npm install --global npm@12.1.0
+      - name: install
+        run: pnpm install --frozen-lockfile
+      - name: build (its last step packs the candidate)
+        run: pnpm run build
       - name: clean room
         run: node clean-room/run.mjs
-
-      - name: install browser engines
-        run: pnpm exec playwright install --with-deps chromium firefox webkit
-
       - name: browser conformance
         run: pnpm run test:browser
 
-      - name: release rehearsal
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: node scripts/release-rehearsal.mjs
+  gate:
+    if: always()
+    needs: [checks, tests, browser]
+    runs-on: ubuntu-latest
+    steps:
+      - name: every job passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "results: $RESULTS"
+          for result in $RESULTS; do test "$result" = success; done

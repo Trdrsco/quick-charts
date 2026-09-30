@@ -1,5 +1,5 @@
 // THE GATE, as one command, so that "green" means one thing to everybody: the same steps the
-// public CI runs, in the same order, stopping at the first failure.
+// public CI runs side by side, here in order, stopping at the first failure.
 //
 //   node scripts/gate.mjs          the whole gate, clean room included
 //   node scripts/gate.mjs --fast   the inner loop, without the clean room
