@@ -28,6 +28,11 @@
 // viewer names their own. The brand pair in `overrides.ts` stays with what speaks for trdrs. A
 // positive TEXT role and a rising SERIES are different jobs, so one does not displace the other.
 //
+// The motion roles are the same in both modes, because a mode changes how the chart looks, not how
+// it moves, and this file is where every duration, timing function and motion scale the chart runs
+// is written. A modal dialog opens over the base duration: its backdrop on the out timing, its box on
+// the standard timing from the entrance scale.
+//
 // This module imports no runtime value, only its types. The build script loads it directly under
 // Node's TypeScript stripping, which resolves no extensionless relative specifier.
 import type { SemanticTheme, ThemeMode } from './schema'
@@ -125,6 +130,14 @@ export const LIGHT_THEME: SemanticTheme = {
 
   'motion.durationFast': '90ms',
   'motion.durationBase': '150ms',
+  'motion.durationModerate': '250ms',
+  'motion.durationSlow': '350ms',
+  'motion.durationSlower': '500ms',
+  'motion.easingStandard': 'ease',
+  'motion.easingOut': 'ease-out',
+  'motion.easingLinear': 'linear',
+  'motion.easingSpring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  'motion.scaleEnter': '0.97',
 }
 
 /** The built-in dark palette. */
@@ -220,6 +233,14 @@ export const DARK_THEME: SemanticTheme = {
 
   'motion.durationFast': '90ms',
   'motion.durationBase': '150ms',
+  'motion.durationModerate': '250ms',
+  'motion.durationSlow': '350ms',
+  'motion.durationSlower': '500ms',
+  'motion.easingStandard': 'ease',
+  'motion.easingOut': 'ease-out',
+  'motion.easingLinear': 'linear',
+  'motion.easingSpring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  'motion.scaleEnter': '0.97',
 }
 
 /** Both built-in palettes, keyed by mode. */

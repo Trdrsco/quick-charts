@@ -1,10 +1,5 @@
 /* Chart settings follows the same centered, two-column layout as TradingView: a fixed title and
  * footer around a section rail and one roomy settings page. */
-[data-qc-theme] .qc-chart-settings-scrim {
-  opacity: 1;
-  transition: opacity 160ms linear;
-}
-
 [data-qc-theme] .qc-chart-settings-dialog {
   box-sizing: border-box;
   height: min(612px, calc(100vh - 32px));
@@ -14,32 +9,6 @@
   border: 0;
   border-radius: 6px;
   box-shadow: var(--qc-overlay-shadow);
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  transform-origin: center 42%;
-  transition:
-    opacity 150ms ease-out,
-    transform 190ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-[data-qc-theme] .qc-chart-settings-scrim[data-state='opening'],
-[data-qc-theme] .qc-chart-settings-scrim[data-state='closing'] {
-  opacity: 0;
-}
-
-[data-qc-theme] .qc-chart-settings-scrim[data-state='opening'] .qc-chart-settings-dialog,
-[data-qc-theme] .qc-chart-settings-scrim[data-state='closing'] .qc-chart-settings-dialog {
-  opacity: 0;
-  transform: translateY(8px) scale(0.985);
-}
-
-[data-qc-theme] .qc-chart-settings-scrim[data-state='closing'] {
-  transition-duration: 140ms;
-}
-
-[data-qc-theme] .qc-chart-settings-scrim[data-state='closing'] .qc-chart-settings-dialog {
-  transition-duration: 110ms, 140ms;
-  transition-timing-function: ease-in, cubic-bezier(0.4, 0, 1, 1);
 }
 
 [data-qc-theme] .qc-chart-settings-dialog .qc-dialog-title {
@@ -201,7 +170,7 @@
   border-radius: 0;
   opacity: 0;
   transform: rotate(45deg);
-  transition: opacity var(--qc-motion-durationFast) linear;
+  transition: opacity var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-settings-menu .qc-switch[aria-checked='true'] .qc-switch-knob {
@@ -334,12 +303,5 @@
 
   [data-qc-theme] .qc-chart-settings-footer {
     padding: 0 12px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  [data-qc-theme] .qc-chart-settings-scrim,
-  [data-qc-theme] .qc-chart-settings-dialog {
-    transition-duration: 0ms;
   }
 }

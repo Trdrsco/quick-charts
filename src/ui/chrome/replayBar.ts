@@ -14,6 +14,7 @@ import { button, h, name, reglyph, retext, setDisabled, stopPointer } from './do
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { ICONS, type Glyph } from '../controls/icons'
 import { menuHeading, menuItem, menuSeparator, openMenu, toggleMenu } from './menu'
+import { EXIT_EVENT_GRACE_MS, motionDurationMs } from './motion'
 import { switchRow } from './dialog'
 import type { Closable } from '../controls/overlays'
 import type { IconResolver } from '../icons/resolver'
@@ -362,10 +363,10 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
   return {
     element: bar,
     enter() {
-      const view = bar.ownerDocument.defaultView
-      const reduceMotion = typeof view?.matchMedia === 'function' && view.matchMedia('(prefers-reduced-motion: reduce)').matches
       if (destroyed || !bar.isConnected) return
-      if (reduceMotion) {
+      // The entrance runs over `motion.durationBase`, which is zero under a reduced-motion
+      // preference: then the row simply stands open.
+      if (motionDurationMs(bar, 'motion.durationBase') <= 0) {
         bar.dataset.state = 'open'
         return
       }
@@ -385,15 +386,17 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
       for (const handle of [...open]) handle.close()
       offStrings()
 
+      // The exit lasts as long as the duration role the stylesheet's transition reads, which is zero
+      // under a reduced-motion preference: then the row goes at once.
       const view = bar.ownerDocument.defaultView
-      const reduceMotion = typeof view?.matchMedia === 'function' && view.matchMedia('(prefers-reduced-motion: reduce)').matches
-      if (!animate || reduceMotion || !bar.isConnected || !view) {
+      const exitMs = animate && bar.isConnected ? motionDurationMs(bar, 'motion.durationBase') : 0
+      if (exitMs <= 0 || !view) {
         bar.remove()
         return
       }
 
       // It leaves the accessibility tree immediately, but stays in layout for the short collapse.
-      // Collapsing the actual in-flow row—not an overlaid copy—is what makes the chart grow back
+      // Collapsing the actual in-flow row, not an overlaid copy, is what makes the chart grow back
       // into its space instead of jumping full-height while only the toolbar pixels fade away.
       bar.style.pointerEvents = 'none'
       bar.inert = true
@@ -415,8 +418,8 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
         remove()
         return
       }
-      bar.addEventListener('transitionend', onTransitionEnd, { once: true })
-      timer = setTimeout(remove, 240)
+      bar.addEventListener('transitionend', onTransitionEnd)
+      timer = setTimeout(remove, exitMs + EXIT_EVENT_GRACE_MS)
     },
   }
 }

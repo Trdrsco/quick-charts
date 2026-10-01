@@ -497,8 +497,7 @@ export function openSearchDialog(deps: SearchDialogDeps): DialogHandle {
     host: deps.host,
     label: title,
     className: `qc-search-dialog qc-search-dialog--${mode}`,
-    scrimClassName: 'qc-search-dialog-scrim',
-    exitMs: 140,
+    animated: true,
     // The compare family (compare, and a compare row's change-symbol) shares one role for a host
     // test to find; a symbol search, with or without a chart behind it, is the other.
     role: mode === 'compare' || mode === 'change-symbol' ? 'compare-dialog' : 'symbol-search',

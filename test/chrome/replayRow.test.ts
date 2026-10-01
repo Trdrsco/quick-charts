@@ -34,13 +34,16 @@ describe('the reserved replay row', () => {
 
   it('slides its reserved row upward and returns the same space on close', () => {
     const transport = readFileSync(`${testDir.replace(/\/test\/chrome\/?$/, '/src/ui/chrome')}/replayBar.ts`, 'utf8')
-    expect(css).toContain('flex-basis 220ms cubic-bezier(0.22, 1, 0.36, 1)')
-    expect(css).toContain('max-height 220ms cubic-bezier(0.22, 1, 0.36, 1)')
+    // The row enters and leaves on the modal motion's roles, and closing runs the opening in
+    // reverse: no closing rule retunes the timing, and the chrome waits on the same duration role.
+    expect(rule('.qc-replay')).toContain('flex-basis var(--qc-motion-durationBase) var(--qc-motion-easingStandard)')
+    expect(rule('.qc-replay')).toContain('max-height var(--qc-motion-durationBase) var(--qc-motion-easingStandard)')
     expect(css).toContain(".qc-replay[data-state='opening']")
     expect(css).toContain(".qc-replay[data-state='closing']")
     expect(css).toMatch(/flex-basis:\s*0/)
     expect(css).toMatch(/max-height:\s*0/)
-    expect(css).toContain('transition-duration: 170ms')
+    expect(css).not.toMatch(/transition-(duration|timing-function)/)
+    expect(transport).toContain("motionDurationMs(bar, 'motion.durationBase')")
     expect(transport).toContain("bar.dataset.state = 'opening'")
     expect(transport).toContain("bar.dataset.state = 'open'")
     expect(transport).toContain("bar.dataset.state = 'closing'")

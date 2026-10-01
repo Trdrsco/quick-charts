@@ -119,6 +119,38 @@
         "value": "90ms"
       },
       {
+        "property": "--qc-motion-durationModerate",
+        "value": "250ms"
+      },
+      {
+        "property": "--qc-motion-durationSlow",
+        "value": "350ms"
+      },
+      {
+        "property": "--qc-motion-durationSlower",
+        "value": "500ms"
+      },
+      {
+        "property": "--qc-motion-easingLinear",
+        "value": "linear"
+      },
+      {
+        "property": "--qc-motion-easingOut",
+        "value": "ease-out"
+      },
+      {
+        "property": "--qc-motion-easingSpring",
+        "value": "cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+      },
+      {
+        "property": "--qc-motion-easingStandard",
+        "value": "ease"
+      },
+      {
+        "property": "--qc-motion-scaleEnter",
+        "value": "0.97"
+      },
+      {
         "property": "--qc-overlay-scrim",
         "value": "rgba(0, 0, 0, 0.35)"
       },
@@ -439,6 +471,38 @@
       {
         "property": "--qc-motion-durationFast",
         "value": "90ms"
+      },
+      {
+        "property": "--qc-motion-durationModerate",
+        "value": "250ms"
+      },
+      {
+        "property": "--qc-motion-durationSlow",
+        "value": "350ms"
+      },
+      {
+        "property": "--qc-motion-durationSlower",
+        "value": "500ms"
+      },
+      {
+        "property": "--qc-motion-easingLinear",
+        "value": "linear"
+      },
+      {
+        "property": "--qc-motion-easingOut",
+        "value": "ease-out"
+      },
+      {
+        "property": "--qc-motion-easingSpring",
+        "value": "cubic-bezier(0.175, 0.885, 0.32, 1.275)"
+      },
+      {
+        "property": "--qc-motion-easingStandard",
+        "value": "ease"
+      },
+      {
+        "property": "--qc-motion-scaleEnter",
+        "value": "0.97"
       },
       {
         "property": "--qc-overlay-scrim",

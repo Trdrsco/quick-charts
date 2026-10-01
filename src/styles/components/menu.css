@@ -137,6 +137,34 @@
   font-size: var(--qc-text-fontSizeBase);
 }
 
+/* The modal motion, for a dialog that opens and closes with it (the scrim carries `data-state`):
+ * the backdrop fades in, and the box fades in and grows from the entrance scale, over one duration.
+ * Closing runs the same motion in reverse. Under a reduced-motion preference the duration is zero,
+ * so both are instant. */
+[data-qc-theme] .qc-dialog-scrim[data-state] {
+  opacity: 1;
+  transition: opacity var(--qc-motion-durationBase) var(--qc-motion-easingOut);
+}
+
+[data-qc-theme] .qc-dialog-scrim[data-state] > .qc-dialog {
+  opacity: 1;
+  scale: none;
+  transition:
+    opacity var(--qc-motion-durationBase) var(--qc-motion-easingStandard),
+    scale var(--qc-motion-durationBase) var(--qc-motion-easingStandard);
+}
+
+[data-qc-theme] .qc-dialog-scrim[data-state='opening'],
+[data-qc-theme] .qc-dialog-scrim[data-state='closing'] {
+  opacity: 0;
+}
+
+[data-qc-theme] .qc-dialog-scrim[data-state='opening'] > .qc-dialog,
+[data-qc-theme] .qc-dialog-scrim[data-state='closing'] > .qc-dialog {
+  opacity: 0;
+  scale: var(--qc-motion-scaleEnter);
+}
+
 /* In place of rows: the drawing over the line that says nothing matched, centred where the rows
  * would have stood. */
 [data-qc-theme] .qc-empty {

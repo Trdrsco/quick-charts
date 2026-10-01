@@ -9,7 +9,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { THEME_MODES } from '../src/theme/schema.ts'
+import { THEME_MODES, THEME_ROLES } from '../src/theme/schema.ts'
 import { BUILT_IN_THEMES } from '../src/theme/palettes.ts'
 import { composeStylesheet } from '../src/theme/css-contract.ts'
 
@@ -33,5 +33,6 @@ export function composeDistributableStylesheet() {
     .map((path) => readFileSync(path, 'utf8').replace(/\r/g, '').trim())
     .join('\n\n')
   const blocks = THEME_MODES.map((mode) => ({ mode, theme: BUILT_IN_THEMES[mode] }))
-  return composeStylesheet({ blocks, structural })
+  const durationRoles = THEME_ROLES.filter((role) => role.kind === 'duration').map((role) => role.id)
+  return composeStylesheet({ blocks, durationRoles, structural })
 }

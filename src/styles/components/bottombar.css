@@ -128,7 +128,7 @@
   transform: translateX(-50%);
   opacity: 0;
   pointer-events: auto;
-  transition: opacity var(--qc-motion-durationBase) linear;
+  transition: opacity var(--qc-motion-durationBase) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-nav[data-qc-near],

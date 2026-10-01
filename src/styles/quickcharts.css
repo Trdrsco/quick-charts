@@ -70,7 +70,7 @@
   border: 1px solid var(--qc-chrome-border);
   border-radius: var(--qc-chrome-radius);
   cursor: pointer;
-  transition: background-color var(--qc-motion-durationFast) linear, border-color var(--qc-motion-durationFast) linear;
+  transition: background-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear), border-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-button:hover {
@@ -196,7 +196,7 @@
   border: 0;
   border-radius: var(--qc-chrome-radius);
   cursor: pointer;
-  transition: background-color var(--qc-motion-durationFast) linear;
+  transition: background-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-menu-row:hover {
@@ -960,13 +960,8 @@
 
 /* Accessibility --------------------------------------------------------------------------------- */
 
-@media (prefers-reduced-motion: reduce) {
-  [data-qc-theme] * {
-    transition-duration: 1ms !important;
-    animation-duration: 1ms !important;
-    animation-iteration-count: 1 !important;
-  }
-}
+/* Every transition reads a motion duration role, and the generated tokens resolve each of them to
+ * zero under a reduced-motion preference, so no recipe here repeats that rule. */
 
 @media (forced-colors: active) {
   [data-qc-theme] .qc-surface,

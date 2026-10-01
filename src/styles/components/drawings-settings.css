@@ -46,7 +46,7 @@
   border-radius: var(--qc-chrome-radius);
   content: '';
   pointer-events: none;
-  transition: background-color var(--qc-motion-durationFast) linear;
+  transition: background-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-drawing-bar-wide {
@@ -264,7 +264,7 @@
 
 [data-qc-theme] .qc-drawing-caret {
   display: flex;
-  transition: transform var(--qc-motion-durationFast) linear;
+  transition: transform var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-drawing-template-button[aria-expanded='true'] .qc-drawing-caret {

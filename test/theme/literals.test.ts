@@ -84,3 +84,43 @@ describe('the package holds its colors in one file', () => {
     expect(scanFiles(STYLE_SOURCES, COLOR_LITERAL).map(offenderText)).toEqual([])
   })
 })
+
+/** A written duration, such as `150ms` or `.3s`. */
+const DURATION_LITERAL = /(?<![\w.-])(?:\d+|\d*\.\d+)m?s\b/
+/** A written timing function: a keyword, or a curve, step or piecewise function. `linear-gradient`
+ *  is an image, not a timing function, so it does not count. */
+const EASING_LITERAL = /\b(?:cubic-bezier|steps)\(|(?<![\w-])(?:ease(?:-in-out|-in|-out)?|linear|step-start|step-end)(?![\w-])/
+/** A written scale factor, the size a surface grows from or shrinks to. A factor of one or minus one
+ *  is the identity or a mirror, which is geometry rather than motion. */
+const SCALE_LITERAL = /\bscale(?:X|Y|Z|3d)?\(\s*(?!-?1\s*[,)])-?[\d.]|(?<![\w-])scale:\s*(?!-?1\s*[;}])-?[\d.]/
+
+/** A stylesheet with its comments blanked, line for line, so prose about motion is not motion and
+ *  an offender keeps its line number. */
+const withoutComments = (text: string): string => text.replace(/\/\*[\s\S]*?\*\//g, (comment) => comment.replace(/[^\n]/g, ' '))
+
+describe('the stylesheets hold every motion value as a role', () => {
+  const styles = Object.fromEntries(Object.entries(STYLE_SOURCES).map(([file, text]) => [file, withoutComments(text)]))
+
+  it('writes no duration literal: every duration reads a motion role, which reduced motion zeroes', () => {
+    expect(scanFiles(styles, DURATION_LITERAL).map(offenderText)).toEqual([])
+  })
+
+  it('writes no timing function literal', () => {
+    expect(scanFiles(styles, EASING_LITERAL).map(offenderText)).toEqual([])
+  })
+
+  it('writes no motion scale literal', () => {
+    expect(scanFiles(styles, SCALE_LITERAL).map(offenderText)).toEqual([])
+  })
+
+  it('catches each kind of literal, so an empty answer means something', () => {
+    const probe = { probe: 'a { transition: opacity 150ms ease-out, scale .2s cubic-bezier(0, 0, 1, 1); scale: 0.97; transform: scale(0.97) scaleX(-1); background: linear-gradient(red, blue) }' }
+    expect(scanFiles(probe, DURATION_LITERAL)).toHaveLength(1)
+    expect(scanFiles(probe, EASING_LITERAL)).toHaveLength(1)
+    expect(scanFiles(probe, SCALE_LITERAL)).toHaveLength(1)
+    expect(DURATION_LITERAL.test('var(--qc-motion-durationBase) var(--qc-motion-easingOut)')).toBe(false)
+    expect(EASING_LITERAL.test('linear-gradient(to top, red, blue)')).toBe(false)
+    expect(['150ms', '.2s', '1s'].every((value) => DURATION_LITERAL.test(`opacity ${value}`))).toBe(true)
+    expect(['ease', 'ease-in-out', 'linear', 'steps(4)'].every((value) => EASING_LITERAL.test(`opacity 1ms ${value}`))).toBe(true)
+  })
+})

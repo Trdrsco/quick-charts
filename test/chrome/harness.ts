@@ -13,6 +13,7 @@ import { registerWidgetCommands } from '../../src/widget/widgetCommands'
 import { trackLayoutChanges } from '../../src/widget/layoutChanges'
 import { resolveFeatures, resolveUi, type ResolvedFeatures, type ResolvedUi } from '../../src/widget/planes'
 import { createThemeController } from '../../src/theme/controller'
+import { paintThemeRoot } from '../../src/widget/theme'
 import { createChartI18n, type ChartI18n } from '../../src/i18n'
 import { createPriceFormatter } from '../../src/priceFormatter'
 import { memoryRecents } from '../../src/search'
@@ -541,6 +542,9 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     events,
   })
   const overlays = document.createElement('div')
+  // The overlay host wears the theme, as a widget root's layer does, so a surface reads its motion
+  // roles from it.
+  paintThemeRoot(overlays, theme.mode(), theme.get())
   document.body.appendChild(overlays)
   const ctx: ChromeContext = { i18n, commands, overlays, widget, icons }
   // The chrome's saved-layout parts, built as `mountChrome` builds them: what a top bar presents and

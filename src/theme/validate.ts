@@ -24,6 +24,22 @@ export interface ThemeDiagnostic {
 
 const LENGTH = /^-?(?:\d+|\d*\.\d+)(?:px|rem|em|%)$/
 const DURATION = /^(?:\d+|\d*\.\d+)(?:ms|s)$/
+const EASING_KEYWORD = /^(?:linear|ease|ease-in|ease-out|ease-in-out|step-start|step-end)$/
+const CUBIC_BEZIER = /^cubic-bezier\(\s*(-?(?:\d+|\d*\.\d+))\s*,\s*-?(?:\d+|\d*\.\d+)\s*,\s*(-?(?:\d+|\d*\.\d+))\s*,\s*-?(?:\d+|\d*\.\d+)\s*\)$/
+const STEPS = /^steps\(\s*\d+\s*(?:,\s*(?:jump-start|jump-end|jump-none|jump-both|start|end)\s*)?\)$/
+const LINEAR_FUNCTION = /^linear\([^()]+\)$/
+const SCALE = /^(?:\d+|\d*\.\d+)$/
+
+/** Whether a value is a CSS timing function: a keyword, a cubic Bezier curve whose x coordinates
+ *  stay within 0 and 1 as CSS requires, a step function, or a piecewise linear function. */
+function isEasing(value: string): boolean {
+  if (EASING_KEYWORD.test(value) || STEPS.test(value) || LINEAR_FUNCTION.test(value)) return true
+  const curve = CUBIC_BEZIER.exec(value)
+  if (!curve) return false
+  const x1 = Number(curve[1])
+  const x2 = Number(curve[2])
+  return x1 >= 0 && x1 <= 1 && x2 >= 0 && x2 <= 1
+}
 
 /** Whether a value is a valid token for a role of this kind. */
 function isValidValue(kind: ThemeRoleKind, value: string): boolean {
@@ -34,6 +50,10 @@ function isValidValue(kind: ThemeRoleKind, value: string): boolean {
       return LENGTH.test(value)
     case 'duration':
       return DURATION.test(value)
+    case 'easing':
+      return isEasing(value.trim())
+    case 'scale':
+      return SCALE.test(value.trim())
     case 'font':
       // A font stack is a comma-separated family list. Quick Charts never loads a font, so the only
       // requirement is that the value names at least one family.
@@ -52,6 +72,8 @@ const EXPECTED: Record<ThemeRoleKind, string> = {
   color: 'a CSS color in hex or rgb notation',
   length: 'a CSS length such as 4px',
   duration: 'a CSS duration such as 150ms',
+  easing: 'a CSS timing function such as ease-out or cubic-bezier(0.4, 0, 1, 1)',
+  scale: 'a unitless scale factor such as 0.97',
   font: 'a font family stack',
   shadow: 'a CSS box shadow, or none',
 }

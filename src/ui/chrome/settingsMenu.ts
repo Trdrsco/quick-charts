@@ -236,8 +236,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
       host: deps.overlays,
       label: t()('settings.menu'),
       className: 'qc-settings-menu qc-chart-settings-dialog',
-      scrimClassName: 'qc-chart-settings-scrim',
-      exitMs: 180,
+      animated: true,
       width: 750,
       build(box, handle) {
         content = h('div', { class: 'qc-dialog-body qc-chart-settings-body' })

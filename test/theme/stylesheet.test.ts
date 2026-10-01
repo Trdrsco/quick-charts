@@ -5,7 +5,7 @@
 // committed record of what the generator emits for the built-in palettes; editing a palette without
 // rerunning `pnpm --filter @trdrs/quickcharts build:theme` fails the drift block below.
 import { describe, expect, it } from 'vitest'
-import { composeStylesheet, cssVarName, HOST_LAYER_ORDER, LAYER_ORDER_STATEMENT, selectorsOf, STYLE_LAYERS, themeBlock, themeDeclarations, THEME_ROOT_ATTRIBUTE, themeRootSelector, unlayeredSelectorsOf } from '../../src/theme/css-contract'
+import { composeStylesheet, cssVarName, HOST_LAYER_ORDER, LAYER_ORDER_STATEMENT, REDUCED_MOTION_DURATION, reducedMotionBlock, selectorsOf, STYLE_LAYERS, themeBlock, themeDeclarations, THEME_ROOT_ATTRIBUTE, themeRootSelector, unlayeredSelectorsOf } from '../../src/theme/css-contract'
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import { THEME_MODES, THEME_ROLES } from '../../src/theme/schema'
 import { authoredStylesheet, authoredStylesheets } from './stylesheetSource'
@@ -13,7 +13,8 @@ import vectors from './vectors.json'
 
 const structural = authoredStylesheet()
 const blocks = THEME_MODES.map((mode) => ({ mode, theme: BUILT_IN_THEMES[mode] }))
-const css = composeStylesheet({ blocks, structural })
+const durationRoles = THEME_ROLES.filter((role) => role.kind === 'duration').map((role) => role.id)
+const css = composeStylesheet({ blocks, durationRoles, structural })
 
 describe('the scoped stylesheet', () => {
   it('keeps the layout setup flyout measured, reachable, and neutral', () => {
@@ -147,6 +148,31 @@ describe('the scoped stylesheet', () => {
   it('answers forced colors and reduced motion', () => {
     expect(css).toMatch(/@media \(forced-colors: active\)/)
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/)
+  })
+
+  it('zeroes every duration role under reduced motion, in the tokens layer, past any inline palette', () => {
+    const block = reducedMotionBlock(durationRoles)
+    expect(durationRoles.length).toBeGreaterThan(2)
+    expect(block.startsWith('@media (prefers-reduced-motion: reduce) {')).toBe(true)
+    // `!important` outranks the custom properties the widget writes inline for a host's palette.
+    for (const role of durationRoles) expect(block).toContain(`${cssVarName(role)}: ${REDUCED_MOTION_DURATION} !important;`)
+    expect(block).not.toMatch(/easing|scale/)
+    const at = css.indexOf(block)
+    expect(at).toBeGreaterThan(css.indexOf(`@layer ${STYLE_LAYERS.tokens} {`))
+    expect(at).toBeLessThan(css.indexOf(`@layer ${STYLE_LAYERS.chart} {`))
+  })
+
+  it('opens and closes an animated dialog on the modal motion roles', () => {
+    const body = (selector: string): string => structural.match(new RegExp(`${selector.replace(/[[\]().*]/g, '\\$&')} \\{[^}]+\\}`, 's'))?.[0] ?? ''
+    // The backdrop fades on the out timing; the box fades and scales on the standard timing; both
+    // over the base duration, and from the entrance scale.
+    expect(body("[data-qc-theme] .qc-dialog-scrim[data-state]")).toContain('transition: opacity var(--qc-motion-durationBase) var(--qc-motion-easingOut)')
+    const box = body('[data-qc-theme] .qc-dialog-scrim[data-state] > .qc-dialog')
+    expect(box).toContain('opacity var(--qc-motion-durationBase) var(--qc-motion-easingStandard)')
+    expect(box).toContain('scale var(--qc-motion-durationBase) var(--qc-motion-easingStandard)')
+    expect(structural).toMatch(/\.qc-dialog-scrim\[data-state='closing'\] > \.qc-dialog \{[^}]*scale: var\(--qc-motion-scaleEnter\)/s)
+    // Closing is the same motion reversed: no surface retunes the timing of its own dialog.
+    expect(structural).not.toMatch(/transition-(duration|timing-function)/)
   })
 
   it('declares one custom property per role in each mode block, and reads only those', () => {

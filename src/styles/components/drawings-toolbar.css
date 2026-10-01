@@ -99,7 +99,7 @@
   content: '';
   pointer-events: none;
   transform: translate(-50%, -50%);
-  transition: background-color var(--qc-motion-durationFast) linear;
+  transition: background-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-drawing-rail-button:hover,
@@ -179,13 +179,13 @@
   border-start-end-radius: 0;
   border-end-end-radius: 0;
   opacity: 0;
-  transition: opacity var(--qc-motion-durationFast) linear;
+  transition: opacity var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 /* The chevron turns to face the panel: pointing out at where the flyout will appear while closed,
  * back at the rail once it is open. */
 [data-qc-theme] .qc-drawing-rail-arrow svg {
-  transition: transform 500ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform var(--qc-motion-durationSlower) var(--qc-motion-easingSpring);
 }
 
 [data-qc-theme] .qc-drawing-rail-arrow[aria-expanded='true'] svg {
@@ -362,7 +362,7 @@
   border-radius: 4px;
   cursor: pointer;
   opacity: 0;
-  transition: opacity var(--qc-motion-durationFast) linear;
+  transition: opacity var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-drawing-flyout-row:hover .qc-drawing-star,
@@ -459,7 +459,7 @@
   border-radius: 2px;
   content: '';
   pointer-events: none;
-  transition: background-color var(--qc-motion-durationFast) linear;
+  transition: background-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-drawing-favorite:hover,
