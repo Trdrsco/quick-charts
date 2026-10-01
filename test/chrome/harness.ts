@@ -455,6 +455,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     // The fake mounts a top bar of its own, so the slot is read off whatever bar the test raised
     // rather than answered from a stub: a spec that fills the slot fills the real element.
     chrome: {
+      legendRows: () => undefined,
       topBar: () => document.querySelector<HTMLElement>('.qc-topbar-host'),
       toolbarButton: (options) => createToolbarButton(options, icons),
       iconDiagnostics: () => iconDiagnostics.list(),

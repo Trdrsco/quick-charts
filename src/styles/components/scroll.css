@@ -14,6 +14,7 @@
  * `scrollbar-width: none`, which more than one app ships) from erasing the chart's own. */
 [data-qc-theme] .qc-menu-body,
 [data-qc-theme] .qc-dialog-body,
+[data-qc-theme] .qc-chart-settings-panel,
 [data-qc-theme] .qc-picker-list,
 [data-qc-theme] .qc-layouts-list,
 [data-qc-theme] .qc-search-list,
@@ -25,6 +26,7 @@
 
 [data-qc-theme] .qc-menu-body::-webkit-scrollbar,
 [data-qc-theme] .qc-dialog-body::-webkit-scrollbar,
+[data-qc-theme] .qc-chart-settings-panel::-webkit-scrollbar,
 [data-qc-theme] .qc-picker-list::-webkit-scrollbar,
 [data-qc-theme] .qc-layouts-list::-webkit-scrollbar,
 [data-qc-theme] .qc-search-list::-webkit-scrollbar,
@@ -38,6 +40,7 @@
 
 [data-qc-theme] .qc-menu-body::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-dialog-body::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-chart-settings-panel::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-picker-list::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-layouts-list::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-search-list::-webkit-scrollbar-thumb,
@@ -52,6 +55,7 @@
 
 [data-qc-theme] .qc-menu-body::-webkit-scrollbar-track,
 [data-qc-theme] .qc-dialog-body::-webkit-scrollbar-track,
+[data-qc-theme] .qc-chart-settings-panel::-webkit-scrollbar-track,
 [data-qc-theme] .qc-picker-list::-webkit-scrollbar-track,
 [data-qc-theme] .qc-layouts-list::-webkit-scrollbar-track,
 [data-qc-theme] .qc-search-list::-webkit-scrollbar-track,
@@ -64,6 +68,7 @@
 
 [data-qc-theme] .qc-menu-body::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-dialog-body::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-chart-settings-panel::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-picker-list::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-layouts-list::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-search-list::-webkit-scrollbar-corner,
@@ -76,6 +81,7 @@
 @supports (-moz-appearance: none) {
   [data-qc-theme] .qc-menu-body,
   [data-qc-theme] .qc-dialog-body,
+  [data-qc-theme] .qc-chart-settings-panel,
   [data-qc-theme] .qc-picker-list,
   [data-qc-theme] .qc-layouts-list,
   [data-qc-theme] .qc-search-list,

@@ -45,7 +45,7 @@ function open(extra: Partial<Parameters<typeof openSymbolSearch>[0]> = {}) {
     onClose: () => closed.push(true),
     ...extra,
   })
-  cleanup.push(() => handle.close())
+  cleanup.push(() => { handle.close(); vi.runAllTimers() })
   return { handle, picked, closed }
 }
 
@@ -57,6 +57,8 @@ describe('the symbol search a page opens on its own', () => {
     expect(rows().length).toBeGreaterThan(0)
     rows()[0]!.click()
     expect(picked).toEqual(['ES'])
+    expect(dialog()?.getAttribute('aria-hidden')).toBe('true')
+    await vi.advanceTimersByTimeAsync(200)
     expect(closed).toEqual([true])
     expect(document.querySelector('.qc-layer')).toBeNull()
   })
@@ -102,6 +104,8 @@ describe('the symbol search a page opens on its own', () => {
     await settle()
     handle.close()
     handle.close()
+    expect(dialog()?.getAttribute('aria-hidden')).toBe('true')
+    await vi.advanceTimersByTimeAsync(200)
     expect(closed).toEqual([true])
     expect(document.querySelector('.qc-layer')).toBeNull()
   })

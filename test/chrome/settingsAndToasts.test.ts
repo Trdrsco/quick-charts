@@ -32,33 +32,37 @@ describe('the settings menu', () => {
     expect(w.chart.calls).toContain('appearance:upColor')
     expect(w.chart.state.appearance.appearance.upColor).toBe('#2962ff')
     expect(panel.querySelector('.qc-inline-panel')).toBeNull() // the pick closes what it opened
+    panel.querySelector<HTMLButtonElement>('[data-settings-page="display"]')!.click()
     const switches = [...panel.querySelectorAll<HTMLButtonElement>('[role="switch"]')]
     expect(switches.map((s) => s.getAttribute('aria-label'))).toEqual(['Grid lines', 'Session shading'])
     switches[0]!.click()
     expect(w.chart.state.appearance.appearance.grid).toBe(false)
-    const radios = [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
-    expect(radios.map((r) => r.textContent)).toEqual(['Regular price scale', 'Logarithmic price scale', 'Percentage price scale', 'Indexed price scale', 'Light theme', 'Dark theme'])
+    panel.querySelector<HTMLButtonElement>('[data-settings-page="scale"]')!.click()
+    const radios = [...panel.querySelectorAll<HTMLButtonElement>('[role="radio"]')]
+    expect(radios.map((r) => r.textContent)).toEqual(['Regular price scale', 'Logarithmic price scale', 'Percentage price scale', 'Indexed price scale'])
     expect(radios[0]!.getAttribute('aria-checked')).toBe('true')
-    expect(radios[5]!.getAttribute('aria-checked')).toBe('true')
     radios[1]!.click()
     expect(w.chart.calls).toContain('scale:log')
-    radios[4]!.click()
+    panel.querySelector<HTMLButtonElement>('[data-settings-page="theme"]')!.click()
+    const themes = [...panel.querySelectorAll<HTMLButtonElement>('[role="radio"]')]
+    expect(themes.map((r) => r.textContent)).toEqual(['Light theme', 'Dark theme'])
+    expect(themes[1]!.getAttribute('aria-checked')).toBe('true')
+    themes[0]!.click()
     expect(w.widget.theme.mode()).toBe('light')
   })
 
-  it('offers Reset defaults below the scale section and runs it through the registry', () => {
+  it('offers Reset defaults in the fixed footer and runs it through the registry', () => {
     const w = fakeWidget()
     const menu = mountSettingsMenu({ ...w.ctx, ui: w.ui })
     document.body.appendChild(menu.element)
     cleanup.push(() => (menu.destroy(), w.dispose()))
     menu.element.click()
     const panel = w.overlays.querySelector<HTMLElement>('[role="dialog"]')!
-    const rows = [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    const rows = [...panel.querySelectorAll<HTMLButtonElement>('.qc-chart-settings-footer .qc-chart-settings-reset')]
     expect(rows.map((r) => r.textContent)).toEqual(['Reset defaults'])
-    // Directly below the four scale radios and above the theme pair: the baseline's own position.
-    const order = [...panel.querySelectorAll<HTMLElement>('[role="menuitem"],[role="menuitemradio"]')]
-    const radios = [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
-    expect(order.indexOf(rows[0]!)).toBe(order.indexOf(radios[3]!) + 1)
+    panel.querySelector<HTMLButtonElement>('[data-settings-page="scale"]')!.click()
+    expect(panel.querySelectorAll('[role="radio"]')).toHaveLength(4)
+    expect(panel.querySelector('.qc-chart-settings-footer')!.contains(rows[0]!)).toBe(true)
     w.chart.handle.setScaleMode('log')
     w.chart.handle.applyAppearance({ appearance: { upColor: '#112233' } })
     rows[0]!.click()
@@ -73,7 +77,7 @@ describe('the settings menu', () => {
     document.body.appendChild(menu.element)
     cleanup.push(() => (menu.destroy(), w.dispose()))
     menu.element.click()
-    const row = w.overlays.querySelector<HTMLButtonElement>('[role="menuitem"]')!
+    const row = w.overlays.querySelector<HTMLButtonElement>('.qc-chart-settings-reset')!
     expect(row.textContent).toBe('Reset defaults')
     expect(row.disabled).toBe(true)
     row.click()
@@ -100,12 +104,9 @@ describe('the settings menu', () => {
     cleanup.push(() => (withTheme.destroy(), on.dispose()))
     withTheme.element.click()
     const shown = on.overlays.querySelector<HTMLElement>('[role="dialog"]')!
+    shown.querySelector<HTMLButtonElement>('[data-settings-page="theme"]')!.click()
     expect([...shown.querySelectorAll('.qc-menu-heading')].map((h) => h.textContent)).toContain('Theme')
-    expect([...shown.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].map((r) => r.textContent)).toEqual([
-      'Regular price scale',
-      'Logarithmic price scale',
-      'Percentage price scale',
-      'Indexed price scale',
+    expect([...shown.querySelectorAll<HTMLButtonElement>('[role="radio"]')].map((r) => r.textContent)).toEqual([
       'Light theme',
       'Dark theme',
     ])
@@ -116,17 +117,16 @@ describe('the settings menu', () => {
     cleanup.push(() => (withoutTheme.destroy(), off.dispose()))
     withoutTheme.element.click()
     const hidden = off.overlays.querySelector<HTMLElement>('[role="dialog"]')!
+    expect(hidden.querySelector('[data-settings-page="theme"]')).toBeNull()
+    hidden.querySelector<HTMLButtonElement>('[data-settings-page="scale"]')!.click()
     expect([...hidden.querySelectorAll('.qc-menu-heading')].map((h) => h.textContent)).not.toContain('Theme')
-    expect([...hidden.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')].map((r) => r.textContent)).toEqual([
+    expect([...hidden.querySelectorAll<HTMLButtonElement>('[role="radio"]')].map((r) => r.textContent)).toEqual([
       'Regular price scale',
       'Logarithmic price scale',
       'Percentage price scale',
       'Indexed price scale',
     ])
-    // Reset defaults ends the menu: no rule with nothing under it.
-    const body = hidden.querySelector<HTMLElement>('.qc-separator')!.parentElement!
-    expect(body.lastElementChild!.getAttribute('role')).toBe('menuitem')
-    expect(body.lastElementChild!.textContent).toBe('Reset defaults')
+    expect(hidden.querySelector('.qc-chart-settings-footer .qc-chart-settings-reset')!.textContent).toBe('Reset defaults')
     // The theme itself is still the widget's to set.
     expect(off.commands.available('widget.theme.light')).toBe(true)
   })

@@ -13,6 +13,8 @@
   justify-content: flex-end;
   width: 100%;
   min-width: 0;
+  min-height: 0;
+  max-height: 49px;
   height: 49px;
   padding: 0;
   overflow-x: auto;
@@ -23,6 +25,33 @@
   border-top: 1px solid var(--qc-canvas-paneBorder);
   pointer-events: auto;
   scrollbar-width: none;
+  transform-origin: bottom center;
+  opacity: 1;
+  transform: translateY(0);
+  clip-path: inset(0);
+  transition:
+    flex-basis 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    max-height 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 140ms linear,
+    transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+    clip-path 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* The row itself animates from zero to 49px and back. max-height clamps the fixed-height band while
+ * flex-basis gives the chart space up at the same pace, so the chart and controls move together.
+ * The state is driven by CSS transitions because some embedded hosts omit Element.animate(). */
+[data-qc-theme] .qc-replay[data-state='opening'],
+[data-qc-theme] .qc-replay[data-state='closing'] {
+  flex-basis: 0;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(8px);
+  clip-path: inset(100% 0 0);
+}
+
+[data-qc-theme] .qc-replay[data-state='closing'] {
+  transition-duration: 170ms, 170ms, 170ms, 170ms, 170ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 1, 1), cubic-bezier(0.4, 0, 1, 1), linear, cubic-bezier(0.4, 0, 1, 1), cubic-bezier(0.4, 0, 1, 1);
 }
 
 [data-qc-theme] .qc-replay::-webkit-scrollbar {

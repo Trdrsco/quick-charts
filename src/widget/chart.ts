@@ -62,7 +62,7 @@ import { attachHistoryPlane, type ChartHistoryApi } from './history'
 import { attachComparePlane, type ChartCompareApi } from './compare'
 import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './replay'
 import { attachExtensionsPlane } from './extensions'
-import { attachLegendPlane } from './legend'
+import { attachLegendPlane, type ChartLegendRow } from './legend'
 import { attachMenuPlane } from './menu'
 import { symbolNames } from '../symbolLabel'
 import { attachPointerPlane } from './pointer'
@@ -334,6 +334,7 @@ export interface ChartInstanceDeps {
 }
 
 export interface ChartInstance {
+  setLegendRows(rows: readonly ChartLegendRow[]): void
   mountDrawingToolbar(container: HTMLElement | null): void
   handle: ChartHandle
   /** The whole chart as one bitmap: the plot area with its axes, crosshair and every indicator
@@ -1898,7 +1899,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     level: () => menuLevel,
     formatter: () => symbolFormatter,
     compareOpen: (mode, changeFrom) => compare?.openDialog(mode, changeFrom),
-    indicatorsOpen: () => deps.doors.showIndicatorPicker(),
+    indicatorsOpen: (collection) => deps.doors.showIndicatorPicker(collection),
     symbolSearchOpen: () => deps.doors.openSearch({ mode: 'search', chart: handle }),
     drawingVerbs: () => drawings.verbs,
   })
@@ -1970,6 +1971,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   return {
     handle,
+    setLegendRows: (rows) => legend.setHostRows(rows),
     screenshot: () => chart.takeScreenshot(),
     repaintTheme() {
       applyLook()

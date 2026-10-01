@@ -17,7 +17,7 @@ import type { IconResolver } from '../icons/resolver'
 
 export interface DialogHandle {
   element: HTMLElement
-  close(): void
+  close(options?: { animate?: boolean }): void
   open(): boolean
 }
 
@@ -26,6 +26,10 @@ export interface DialogOptions {
   /** The accessible name. The surface renders its own visible title. */
   label: string
   className?: string
+  /** A class on the modal backdrop, for a surface-specific entrance and exit. */
+  scrimClassName?: string
+  /** Keep the surface mounted for this long while its exit animation runs. */
+  exitMs?: number
   /** A stable `data-role` a host test can find the dialog by. */
   role?: string
   /** What the box is to a reader. A question that must be answered before anything else can happen
@@ -37,30 +41,65 @@ export interface DialogOptions {
   build(body: HTMLElement, dialog: DialogHandle): void
   /** The control that takes focus on open. Default the first focusable. */
   initialFocus?(body: HTMLElement): HTMLElement | null
+  /** The dialog has begun closing and is no longer interactive, before any exit motion finishes. */
+  onClosing?(): void
   onClose?(): void
 }
 
 export function openDialog(options: DialogOptions): DialogHandle {
-  const scrim = h('div', { class: 'qc-scrim qc-dialog-scrim' })
+  const scrim = h('div', { class: `qc-scrim qc-dialog-scrim${options.scrimClassName ? ` ${options.scrimClassName}` : ''}` })
   const box = h('div', { class: `qc-overlay qc-dialog${options.className ? ` ${options.className}` : ''}`, role: options.ariaRole ?? 'dialog', 'aria-modal': 'true', 'aria-label': options.label, 'data-role': options.role })
   if (options.width) box.style.width = `${options.width}px`
   stopPointer(box)
   scrim.appendChild(box)
+  if (options.exitMs) scrim.dataset.state = 'opening'
 
   let isOpen = true
   const previouslyFocused = document.activeElement as HTMLElement | null
   const escape = pushEscapeOwner()
 
   let untrack: () => void = () => undefined
-  const close = (): void => {
-    if (!isOpen) return
+  let removed = false
+  let exitTimer: ReturnType<typeof setTimeout> | null = null
+  const remove = (): void => {
+    if (removed) return
+    removed = true
+    if (exitTimer !== null) clearTimeout(exitTimer)
+    scrim.remove()
+    options.onClose?.()
+  }
+  const close = (closeOptions?: { animate?: boolean }): void => {
+    // Teardown or a replacement can overtake an exit already in flight. In that case the caller
+    // asking for no animation means "finish now", not "start closing again".
+    if (!isOpen) {
+      if (closeOptions?.animate === false) remove()
+      return
+    }
     isOpen = false
+    options.onClosing?.()
     escape.release()
     untrack()
     document.removeEventListener('keydown', onKey, true)
-    scrim.remove()
-    options.onClose?.()
     previouslyFocused?.focus?.()
+    const reduceMotion = document.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+    if (closeOptions?.animate === false || !options.exitMs || reduceMotion) {
+      remove()
+      return
+    }
+    // The dialog stops being interactive and leaves the accessibility tree at once; only its
+    // pixels remain for the short exit. `animationend` is the normal path, with a timer for hidden
+    // tabs and renderers that do not deliver animation events.
+    scrim.dataset.state = 'closing'
+    scrim.style.pointerEvents = 'none'
+    box.inert = true
+    box.removeAttribute('role')
+    box.removeAttribute('aria-modal')
+    box.setAttribute('aria-hidden', 'true')
+    const onAnimationEnd = (event: AnimationEvent) => {
+      if (event.target === box) remove()
+    }
+    box.addEventListener('animationend', onAnimationEnd, { once: true })
+    exitTimer = setTimeout(remove, options.exitMs + 50)
   }
 
   const onKey = (event: KeyboardEvent): void => {
@@ -102,6 +141,12 @@ export function openDialog(options: DialogOptions): DialogHandle {
   // the widget can paint over a question that must be answered; the host itself where a root was
   // built without a layer.
   ;(layerFor(options.host) ?? options.host).appendChild(scrim)
+  if (options.exitMs) {
+    // Commit the visible start frame now rather than waiting on rAF, which a hidden tab may pause.
+    // The next style change can then transition without ever leaving a dialog permanently hidden.
+    scrim.getBoundingClientRect()
+    scrim.dataset.state = 'open'
+  }
   untrack = trackOverlay(options.host, close)
   document.addEventListener('keydown', onKey, true)
   const target = options.initialFocus?.(box) ?? focusables(box)[0] ?? null

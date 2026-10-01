@@ -307,6 +307,7 @@ describe('the transport at teardown', () => {
     expect(root.querySelector('.qc-menu-panel')).toBeNull()
     expect(root.querySelector('.qc-replay')).toBeNull()
   })
+
 })
 
 describe('the date picker', () => {

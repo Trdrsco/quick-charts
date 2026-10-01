@@ -103,7 +103,7 @@ const COVERAGE: Readonly<Record<string, Probe | { provedBy: string }>> = {
   'topBar.settings.theme': async (container) => {
     container.querySelector<HTMLButtonElement>('button[aria-label="Chart settings"]')!.click()
     await settle()
-    return [...document.querySelectorAll('.qc-menu-heading')].some((heading) => heading.textContent === 'Theme')
+    return [...document.querySelectorAll('.qc-chart-settings-nav-item')].some((item) => item.textContent === 'Theme')
   },
   'topBar.fullscreen': named('Fullscreen'),
   'topBar.image': named('Chart image'),

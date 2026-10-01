@@ -276,7 +276,7 @@ describe('what a factory is handed and what the chart keeps', () => {
     // Pressing it still opens the chart's own menu.
     settings.click()
     await settle()
-    expect([...document.querySelectorAll('.qc-menu-heading')].some((heading) => heading.textContent === 'Theme')).toBe(true)
+    expect(document.querySelector('[role="dialog"] [data-settings-page="theme"]')).not.toBeNull()
   })
 })
 

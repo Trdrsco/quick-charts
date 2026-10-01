@@ -46,6 +46,10 @@ export interface LegendChip {
   color?: string
   note?: string
   hidden: boolean
+  /** Host activity may be managed elsewhere, without a misleading hide or stop control. */
+  hideable?: boolean
+  settingsLabel?: string
+  description?: string
   /** The instance declares inputs, so the settings gear renders. */
   hasInputs?: boolean
   /** Pane-placed instance: the row carries the pane controls. */
@@ -386,6 +390,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       update(next: LegendChip) {
         chip = next
         row.dataset.qcHidden = String(chip.hidden)
+        row.title = chip.description ?? ''
         // A market row leads with its own mark; a study has none and the head of the row closes up.
         // The mark goes through the SAME host hook the header's does, so a host that supplies
         // artwork supplies it everywhere a market is named, and one that does not gets the package's
@@ -427,7 +432,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         if (chip.tone && !chip.hidden && !chip.note) value.dataset.qcTone = chip.tone
         else delete value.dataset.qcTone
         gear.hidden = !chip.hasInputs || !controls.onSettings
-        nameButton(gear, strings.t('legend.indicatorSettings'))
+        nameButton(gear, chip.settingsLabel ?? strings.t('legend.indicatorSettings'))
         collapse.hidden = !chip.pane || !controls.onPaneOp || chip.hidden
         collapse.replaceChildren(controls.icons.glyph(chip.collapsed ? ICONS.paneRestore : ICONS.paneCollapse, { size: 18 }))
         nameButton(collapse, strings.t(chip.collapsed ? 'legend.restorePane' : 'legend.collapsePane'))
@@ -440,6 +445,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
           eye.dataset.hidden = eyeState
         }
         nameButton(eye, strings.t(chip.hidden ? 'legend.showIndicator' : 'legend.hideIndicator'))
+        eye.hidden = chip.hideable === false
         remove.hidden = !chip.removable || !controls.onRemove
         nameButton(remove, chip.removeLabel ?? strings.t('legend.removeCompare'))
       },

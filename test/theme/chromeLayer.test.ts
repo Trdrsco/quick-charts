@@ -138,7 +138,7 @@ describe('replay reserves a responsive row instead of floating over a chart', ()
     expect(replay).toContain('width: 100%')
     expect(replay).toContain('border-top: 1px solid var(--qc-canvas-paneBorder)')
     expect(replay).toContain('overflow-x: auto')
-    for (const retired of ['position: absolute', 'bottom:', 'left:', 'transform:', 'max-width:']) {
+    for (const retired of ['position: absolute', 'bottom:', 'left:', 'max-width:']) {
       expect(replay, retired).not.toContain(retired)
     }
   })

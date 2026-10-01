@@ -37,7 +37,7 @@ export interface ReplayTransportTarget {
 }
 
 export interface ChromeDoors {
-  showIndicatorPicker(): void
+  showIndicatorPicker(collection?: string): void
   openSearch(request: SearchRequest): void
   /** Open the settings dialog for one indicator instance. False when no surface took it. */
   openIndicatorSettings(chart: ChartHandle, instanceId: string): boolean

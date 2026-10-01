@@ -63,6 +63,8 @@ const SAVE_NEEDED_MS = 1_000
  *  A slot is live for as long as the widget is. A host appends its own node and takes that node back
  *  out again; the slot itself belongs to the chart and is never removed or replaced. */
 export interface ChartChrome {
+  /** Transient host activity in this chart's native study list. Does not affect chart content. */
+  legendRows(chartId: string, rows: readonly import('./legend').ChartLegendRow[]): void
   /** One named place in the top bar. Null when the top bar is hidden, which is the answer a host
    *  checks before composing a door it would have nowhere to put. */
   topBar(slot: TopBarSlot): HTMLElement | null
@@ -563,6 +565,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     // Read on demand, because the chrome mounts below this object: a host asks for the slot when it
     // has a door to put there, which is always after the widget exists.
     chrome: {
+      legendRows: (chartId, rows) => { if (!disposed) instances.get(chartId)?.setLegendRows(rows) },
       topBar: (slot) => chrome.topBarSlot(slot),
       toolbarButton: (options) => chrome.toolbarButton(options),
       iconDiagnostics: () => iconDiagnostics.list(),
