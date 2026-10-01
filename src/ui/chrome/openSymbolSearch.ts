@@ -125,7 +125,6 @@ export function openSymbolSearch(options: SymbolSearchOptions): SymbolSearchHand
   return {
     close() {
       dialog.close()
-      teardown()
     },
   }
 }

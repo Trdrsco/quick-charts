@@ -60,7 +60,7 @@ function open(
     painters: resolveMarkPainters(extra),
     request: { mode, chart: w.chart.handle, changeFrom: extra.changeFrom, onPick: extra.onPick },
   })
-  cleanup.push(() => (dialog.close(), w.dispose()))
+  cleanup.push(() => (dialog.close({ animate: false }), w.dispose()))
   return { w, dialog, input: dialog.element.querySelector<HTMLInputElement>('.qc-search-input')!, rows: () => [...dialog.element.querySelectorAll<HTMLElement>('[role="option"]')] }
 }
 
@@ -126,7 +126,7 @@ describe('search mode', () => {
   })
 
   it('types, highlights with the arrows, and Enter sets the symbol through its command', async () => {
-    const { w, input, rows } = open('search')
+    const { w, dialog, input, rows } = open('search')
     input.value = 'n'
     input.dispatchEvent(new Event('input'))
     await settle()
@@ -150,6 +150,11 @@ describe('search mode', () => {
     press(input, 'Enter')
     expect(w.chart.calls).toContain('symbol:NQ')
     expect(w.widget.recents.list()[0]?.symbol).toBe('NQ')
+    const scrim = w.overlays.querySelector<HTMLElement>('.qc-search-dialog-scrim')!
+    expect(dialog.open()).toBe(false)
+    expect(scrim.dataset.state).toBe('closing')
+    expect(dialog.element.getAttribute('aria-hidden')).toBe('true')
+    await vi.advanceTimersByTimeAsync(200)
     expect(w.overlays.querySelector('[role="dialog"]')).toBeNull()
   })
 
@@ -226,6 +231,7 @@ describe('search mode', () => {
     expect(badge.querySelector('img')).not.toBeNull()
     expect(disposed).not.toHaveBeenCalled()
     dialog.close()
+    await vi.waitFor(() => expect(disposed).toHaveBeenCalledTimes(1))
     expect(disposed).toHaveBeenCalledTimes(1)
   })
 

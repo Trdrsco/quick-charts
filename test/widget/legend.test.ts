@@ -61,6 +61,33 @@ const series = (count: number, first = 4500, start = 1_700_000_000): FeedBar[] =
 
 const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
 
+it('keeps host activity in the native legend across status updates without creating an indicator', async () => {
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  const widget = createChart({ container, datafeed: scriptedFeed(), symbol: 'ES', timeframe: '1m', features: { drawings: false } })
+  mounted.push(widget)
+  await settle()
+  const chart = widget.activeChart()
+  chart.indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find(definition => definition.id === 'sma')! })
+  const manage = vi.fn()
+  const activity = { id: 'strategy:one', title: 'TrendVol', status: 'running', settingsLabel: 'Manage strategy', onSettings: manage }
+  widget.chrome.legendRows(chart.id, [activity])
+  const row = container.querySelector<HTMLElement>('[data-legend-row="host:strategy:one"]')!
+  expect(row.closest('.qc-legend')).not.toBeNull()
+  expect(container.querySelectorAll('[data-legend-row]')).toHaveLength(2)
+  expect(chart.indicators.get()).toHaveLength(1)
+  expect(row.textContent).toContain('running')
+  expect([...row.querySelectorAll('button')].filter(button => !button.hidden).map(button => button.getAttribute('aria-label'))).toEqual(['Manage strategy'])
+  row.querySelector<HTMLButtonElement>('button[aria-label="Manage strategy"]')!.click()
+  expect(manage).toHaveBeenCalledOnce()
+  widget.chrome.legendRows(chart.id, [{ ...activity, status: 'Paused · Feed disconnected' }])
+  expect(container.querySelector('[data-legend-row="host:strategy:one"]')).toBe(row)
+  expect(row.textContent).toContain('Paused · Feed disconnected')
+  widget.chrome.legendRows(chart.id, [])
+  expect(row.isConnected).toBe(false)
+  expect(chart.indicators.get()).toHaveLength(1)
+})
+
 it.each([true, false])('keeps the default Compare door in the toolbar only (shown=%s), without disabling commands', async (compareDoor) => {
   const container = document.createElement('div')
   document.body.appendChild(container)

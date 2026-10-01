@@ -34,11 +34,25 @@ import type { IconResolver } from '../ui/icons/resolver'
  *  tells the two apart without a second lookup. */
 export const COMPARE_ROW_PREFIX = 'cmp:'
 
+/** Host-owned activity, displayed with studies but never saved as an indicator or plotted. */
+export interface ChartLegendRow {
+  id: string
+  title: string
+  inputs?: string
+  status: string
+  description?: string
+  settingsLabel?: string
+  onSettings?: () => void
+}
+
+const HOST_ROW_PREFIX = 'host:'
+
 export interface LegendPlane {
   /** Push the current reading: the bar being read, then the rows (indicators, then compares). */
   push(): void
   setHeader(symbol: string, tf: string): void
   setDot(state: SessionState | null): void
+  setHostRows(rows: readonly ChartLegendRow[]): void
   destroy(): void
 }
 
@@ -127,12 +141,14 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       push: () => undefined,
       setHeader: () => undefined,
       setDot: () => undefined,
+      setHostRows: () => undefined,
       destroy: () => undefined,
     }
   }
 
   /** Remembered pane heights for collapse, maximize and restore. */
   let destroyed = false
+  const hostRows = new Map<string, ChartLegendRow>()
   const paneRemembered = new Map<string, number>()
   const paneKeys = (): Record<number, string> => {
     const keys: Record<number, string> = { 0: 'main' }
@@ -191,6 +207,8 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
         }
       : {}),
     onSettings: (id, rect) => {
+      const host = hostRows.get(id)
+      if (host) { host.onSettings?.(); return }
       // The settings dialog takes the gear when the chrome serves one; otherwise the inputs-only
       // editor opens at the gear, as the smallest surface that still edits the declaration.
       if (deps.openIndicatorSettings(id)) return
@@ -274,6 +292,11 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
         return { ...row, paneIndex, maximized: remembered !== undefined && !row.collapsed && (deps.chart.panes()[paneIndex]?.getHeight() ?? 0) > remembered }
       }),
       ...(deps.compare?.chips(hovered) ?? []).map(row => ({ ...row, paneIndex: deps.compare!.handle.paneIndexOf(row.id.slice(COMPARE_ROW_PREFIX.length)) ?? 0 })),
+      ...[...hostRows].map(([id, row]) => ({
+        id, title: row.title, inputs: row.inputs, value: null, note: row.status,
+        description: row.description, settingsLabel: row.settingsLabel,
+        hidden: false, hideable: false, removable: false, hasInputs: !!row.onSettings, paneIndex: 0,
+      })),
     ])
     const tops: Record<number, number> = {}
     let top = 0
@@ -324,6 +347,12 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
   deps.chart.subscribeCrosshairMove(onCrosshair)
 
   return {
+    setHostRows(rows) {
+      if (destroyed) return
+      hostRows.clear()
+      for (const row of rows) hostRows.set(`${HOST_ROW_PREFIX}${row.id}`, { ...row })
+      paint()
+    },
     push() {
       paint()
     },
@@ -350,6 +379,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     },
     destroy() {
       destroyed = true
+      hostRows.clear()
       resize?.disconnect()
       observed.clear()
       deps.chart.unsubscribeCrosshairMove(onCrosshair)

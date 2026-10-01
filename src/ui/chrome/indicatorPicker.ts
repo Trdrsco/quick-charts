@@ -17,6 +17,7 @@ export interface IndicatorPickerDeps extends ChromeContext {
   access?: AccessPolicy
   storage?: ChartStorage
   indicatorPicker?: IndicatorPickerSource
+  initialCollection?: string
 }
 const FAVORITES_KEY = 'quickcharts.indicatorFavorites.v1'
 // The rows' own marks; a host's glyph goes through the shared inert vector builder instead.
@@ -50,7 +51,7 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
     if (Array.isArray(stored)) favorites = [...new Set(stored.filter((id): id is string => typeof id === 'string' && BUILT_IN_INDICATORS.some((d) => d.id === id)))]
   } catch { /* A preference failure does not prevent using the catalog. */ }
   let query = ''
-  let collection = 'builtin'
+  let collection = deps.initialCollection === 'favorites' || collections?.some(row => row.id === deps.initialCollection) ? deps.initialCollection! : 'builtin'
   let generation = 0
   let controller: AbortController | null = null
   let busy = false

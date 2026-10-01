@@ -71,7 +71,7 @@ describe('the top bar', () => {
     expect(w.chart.calls.filter((c) => c.startsWith('history:'))).toEqual([])
   })
 
-  it.each(['All timeframes', 'Chart style', 'Layout setup', 'Manage layouts', 'Chart settings', 'Chart image'])('%s toggles without duplicating its panel', (label) => {
+  it.each(['All timeframes', 'Chart style', 'Layout setup', 'Manage layouts', 'Chart image'])('%s toggles without duplicating its panel', (label) => {
     const { bar, w } = mount()
     const trigger = [...bar.element.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.getAttribute('aria-label')?.startsWith(label))!
     for (let repeat = 0; repeat < 3; repeat++) {
@@ -84,6 +84,39 @@ describe('the top bar', () => {
       expect(trigger.getAttribute('aria-expanded')).toBe('false')
       expect(document.activeElement).toBe(trigger)
     }
+  })
+
+  it('Chart settings opens one dialog and completes its animated close before reopening', async () => {
+    const { bar } = mount()
+    const trigger = bar.element.querySelector<HTMLButtonElement>('button[aria-label="Chart settings"]')!
+    for (let repeat = 0; repeat < 2; repeat++) {
+      trigger.focus()
+      trigger.click()
+      expect(document.querySelectorAll('.qc-chart-settings-dialog')).toHaveLength(1)
+      expect(trigger.getAttribute('aria-expanded')).toBe('true')
+      trigger.click()
+      expect(trigger.getAttribute('aria-expanded')).toBe('false')
+      expect(document.querySelector('.qc-chart-settings-dialog')?.getAttribute('aria-hidden')).toBe('true')
+      await new Promise((resolve) => setTimeout(resolve, 240))
+      expect(document.querySelectorAll('.qc-chart-settings-dialog')).toHaveLength(0)
+      expect(document.activeElement).toBe(trigger)
+    }
+  })
+
+  it('Chart settings uses a section rail and Cancel restores previewed changes', () => {
+    const { bar, w } = mount()
+    bar.element.querySelector<HTMLButtonElement>('button[aria-label="Chart settings"]')!.click()
+    const dialog = document.querySelector<HTMLElement>('.qc-chart-settings-dialog')!
+    expect(dialog.querySelector('.qc-dialog-title')?.textContent).toContain('Settings')
+    expect([...dialog.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual(['Appearance', 'Display', 'Price scale', 'Theme'])
+    expect([...dialog.querySelectorAll('.qc-chart-settings-footer .qc-button')].map((control) => control.textContent)).toEqual(['Reset defaults', 'Cancel', 'Ok'])
+
+    dialog.querySelector<HTMLButtonElement>('[role="tab"][data-settings-page="display"]')!.click()
+    const grid = dialog.querySelector<HTMLButtonElement>('[role="switch"][aria-label="Grid lines"]')!
+    grid.click()
+    expect(w.chart.state.appearance.appearance.grid).toBe(false)
+    dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
+    expect(w.chart.state.appearance.appearance.grid).toBe(true)
   })
 
   it('is a labeled toolbar carrying every control by default', () => {

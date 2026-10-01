@@ -35,9 +35,13 @@ export interface ReplayTransportDeps {
 
 export interface ReplayTransportHandle {
   element: HTMLElement
+  /** Play the entrance after the host has placed the detached row in its final slot. */
+  enter(): void
   /** Re-read the replay state and repaint every control. */
   sync(): void
-  destroy(): void
+  /** Tear down immediately during widget disposal; ordinary replay exits keep the last frame long
+   *  enough to run the short closing motion. */
+  destroy(options?: { animate?: boolean }): void
 }
 
 /** How a speed reads in words: updates per second at 1x and above, seconds per update below. */
@@ -354,14 +358,65 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
   // to start somewhere and the transport is what asks where. This first sync therefore finds Select
   // bar held and the plot live, without the row arming anything itself.
   sync()
+  let destroyed = false
   return {
     element: bar,
+    enter() {
+      const view = bar.ownerDocument.defaultView
+      const reduceMotion = typeof view?.matchMedia === 'function' && view.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (destroyed || !bar.isConnected) return
+      if (reduceMotion) {
+        bar.dataset.state = 'open'
+        return
+      }
+      // Use the stylesheet's transition rather than Element.animate(): the transport is embedded
+      // in hosts (including webviews) that do not all expose the Web Animations API. Committing the
+      // collapsed frame before opening makes the actual reserved row grow instead of only moving
+      // the controls inside an already-full-height band.
+      bar.dataset.state = 'opening'
+      bar.getBoundingClientRect()
+      bar.dataset.state = 'open'
+    },
     sync,
-    destroy() {
+    destroy({ animate = false } = {}) {
+      if (destroyed) return
+      destroyed = true
       releasePicking()
       for (const handle of [...open]) handle.close()
       offStrings()
-      bar.remove()
+
+      const view = bar.ownerDocument.defaultView
+      const reduceMotion = typeof view?.matchMedia === 'function' && view.matchMedia('(prefers-reduced-motion: reduce)').matches
+      if (!animate || reduceMotion || !bar.isConnected || !view) {
+        bar.remove()
+        return
+      }
+
+      // It leaves the accessibility tree immediately, but stays in layout for the short collapse.
+      // Collapsing the actual in-flow row—not an overlaid copy—is what makes the chart grow back
+      // into its space instead of jumping full-height while only the toolbar pixels fade away.
+      bar.style.pointerEvents = 'none'
+      bar.inert = true
+      bar.removeAttribute('role')
+      bar.setAttribute('aria-hidden', 'true')
+      let timer: ReturnType<typeof setTimeout> | null = null
+      const remove = (): void => {
+        if (timer !== null) clearTimeout(timer)
+        bar.remove()
+      }
+      const onTransitionEnd = (event: TransitionEvent): void => {
+        if (event.target === bar) remove()
+      }
+      bar.dataset.state = 'closing'
+      // A host may omit the package stylesheet. With no authored transition there are no closing
+      // pixels to retain and no transitionend to wait for, so finish synchronously.
+      const transitionDuration = view.getComputedStyle(bar).transitionDuration
+      if (!transitionDuration.split(',').some((value) => Number.parseFloat(value) > 0)) {
+        remove()
+        return
+      }
+      bar.addEventListener('transitionend', onTransitionEnd, { once: true })
+      timer = setTimeout(remove, 240)
     },
   }
 }

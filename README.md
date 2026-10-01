@@ -1101,6 +1101,8 @@ you receive a blob and decide.
 ### Indicator browser content
 
 The Indicators button and `commands.execute('chart.indicators.open')` open the same browser.
+Pass `{ collection: 'saved' }` as the command argument to open a declared host collection directly.
+An unknown collection falls back to the shipped catalog. Reopening an already open browser keeps its current selection and query.
 It lists the 23 shipped definitions, with search and Favorites. Add creates a new instance on the
 currently active chart and keeps the browser open. Favorites use your `ChartStorage` port.
 

@@ -22,6 +22,17 @@ function mount(options: Partial<ChartWidgetOptions> = {}) {
 }
 
 describe('the real widget owns one indicator browser', () => {
+  it('opens a declared host collection directly and falls back safely for an unknown collection', async () => {
+    const list = vi.fn(async (_request: { collection: string }) => ({ kind: 'ok' as const, items: [] }))
+    const { widget } = mount({ indicatorPicker: { collections: [{ id: 'saved', label: 'Saved studies' }], list, act: async () => ({ kind: 'ok' }) } })
+    widget.commands.execute('chart.indicators.open', { collection: 'saved' })
+    await vi.waitFor(() => expect(list).toHaveBeenCalled())
+    expect(list.mock.calls[0]?.[0]).toMatchObject({ collection: 'saved' })
+    expect(document.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).toContain('Saved studies')
+    document.querySelector<HTMLButtonElement>('.qc-dialog-close')!.click()
+    widget.commands.execute('chart.indicators.open', { collection: 'missing' })
+    expect(document.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).not.toContain('Saved studies')
+  })
   it('shares the toolbar and command modal, rereads the active pane on each Add, and keeps replay bounded', async () => {
     const { widget, container } = mount()
     await widget.ready()

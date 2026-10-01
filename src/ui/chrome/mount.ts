@@ -103,9 +103,11 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   let searchOwner = createSearchSessionOwner(deps.datafeed, { pageSize: 50 })
   const prefetchSearch = (): void => { if (ui.symbolSearch || features.compare) searchOwner.prefetch() }
   prefetchSearch()
-  disposers.push(() => { searchDialog?.close(); searchOwner.dispose(); deps.doors.openSearch = () => undefined })
+  disposers.push(() => { searchDialog?.close({ animate: false }); searchOwner.dispose(); deps.doors.openSearch = () => undefined })
   disposers.push(i18n.onChange(() => {
-    searchDialog?.close()
+    // A locale replacement is not a viewer dismissing the surface: retire the old-language dialog
+    // before the new one can open, rather than leaving two localized copies crossing in the layer.
+    searchDialog?.close({ animate: false })
     searchOwner.dispose()
     searchOwner = createSearchSessionOwner(deps.datafeed, { pageSize: 50 })
     prefetchSearch()
@@ -130,8 +132,8 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   let replayOwner: ReplayTransportTarget | null = null
   let replayBar: ReplayTransportHandle | null = null
   const replayWasUp = new WeakMap<ChartHandle, boolean>()
-  const releaseReplayRow = (): void => {
-    replayBar?.destroy()
+  const releaseReplayRow = (animate = true): void => {
+    replayBar?.destroy({ animate })
     replayBar = null
     replayOwner = null
   }
@@ -155,18 +157,19 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       // root's column between the grid and the bottom range and timezone band. The transport is
       // never a child of the overlay layer, and no recipe positions it over a pane.
       deps.panes.after(replayBar.element)
+      replayBar.enter()
     }
     replayBar?.sync()
   }
   disposers.push(() => {
     deps.doors.replayChanged = () => undefined
-    releaseReplayRow()
+    releaseReplayRow(false)
   })
   deps.doors.notify = notify
   let indicatorDialog: DialogHandle | null = null
-  deps.doors.showIndicatorPicker = () => {
+  deps.doors.showIndicatorPicker = (initialCollection) => {
     if (!ui.indicatorPicker || indicatorDialog?.open()) return
-    indicatorDialog = openIndicatorPicker({ ...ctx, access: deps.access, storage: deps.storage, indicatorPicker: deps.indicatorPicker })
+    indicatorDialog = openIndicatorPicker({ ...ctx, access: deps.access, storage: deps.storage, indicatorPicker: deps.indicatorPicker, initialCollection })
   }
   disposers.push(() => { indicatorDialog?.close(); deps.doors.showIndicatorPicker = () => undefined })
 
@@ -176,7 +179,9 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
     if (disposed) return
     if (request.mode !== 'compare' && !ui.symbolSearch && !request.onPick) return
     if (request.mode === 'compare' && !features.compare) return
-    searchDialog?.close()
+    // Replacing one search mode with another is one surface changing contents, not a dismissal.
+    // Remove the old instance immediately so its rows never overlap the new dialog during entry.
+    searchDialog?.close({ animate: false })
     searchDialog = openSearchDialog({
       host: overlays,
       i18n,

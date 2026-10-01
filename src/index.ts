@@ -32,6 +32,7 @@ export { tfToUdfResolution, udfResolutionToTf } from './udfResolution'
 // own controls it draws, what it permits, and what the viewer prefers.
 export { createChart } from './widget/create'
 export type { ChartChrome, ChartWidget } from './widget/create'
+export type { ChartLegendRow } from './widget/legend'
 export type { ToolbarButton, ToolbarButtonOptions, ToolbarButtonState } from './ui/chrome/hostControls'
 export type { ChartIconContext, ChartIconDiagnostic, ChartIconFactory, ChartIconFailure } from './ui/icons/contract'
 export { CHART_ICON_IDS, MIRRORED_ICONS, type ChartIconId, type ChartIcons } from './ui/icons/catalog'

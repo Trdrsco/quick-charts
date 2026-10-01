@@ -1,5 +1,9 @@
 # @trdrs/quickcharts
 
+## 1.2.0
+
+Hosts can supply scoped legend rows and open a named indicator collection. Chart dialogs and replay controls animate their opening and closing.
+
 ## 1.1.0
 
 The symbol search can name what it is limited to, with a host-painted mark, beside the asset-class filters (`search.scope`, `SearchScope`).

@@ -26,11 +26,26 @@ describe('the reserved replay row', () => {
     expect(row).toMatch(/border-top:\s*1px solid var\(--qc-canvas-paneBorder\)/)
     expect(row).not.toMatch(/position:\s*(absolute|fixed|sticky)/)
     expect(row).not.toMatch(/z-index/)
-    // No recipe lifts any part of the TRANSPORT out of the row's own flow. The absolutely placed
-    // replay recipes are marks on the PLOT — the guide that shades what a chosen start would rewind
-    // past, the shears riding its rule, and the centred state mark — and none is a transport part.
+    // The TRANSPORT stays in flow while opening and closing. The absolutely placed replay recipes
+    // are marks on the PLOT — the guide, its shears, and the centred state mark.
     const floated = [...css.matchAll(/\[data-qc-theme\] (\.qc-replay[a-z-]*)\s*\{[^}]*position:\s*(?:absolute|fixed)/g)].map((m) => m[1])
     expect(floated).toEqual(['.qc-replay-guide', '.qc-replay-cut', '.qc-replay-watermark'])
+  })
+
+  it('slides its reserved row upward and returns the same space on close', () => {
+    const transport = readFileSync(`${testDir.replace(/\/test\/chrome\/?$/, '/src/ui/chrome')}/replayBar.ts`, 'utf8')
+    expect(css).toContain('flex-basis 220ms cubic-bezier(0.22, 1, 0.36, 1)')
+    expect(css).toContain('max-height 220ms cubic-bezier(0.22, 1, 0.36, 1)')
+    expect(css).toContain(".qc-replay[data-state='opening']")
+    expect(css).toContain(".qc-replay[data-state='closing']")
+    expect(css).toMatch(/flex-basis:\s*0/)
+    expect(css).toMatch(/max-height:\s*0/)
+    expect(css).toContain('transition-duration: 170ms')
+    expect(transport).toContain("bar.dataset.state = 'opening'")
+    expect(transport).toContain("bar.dataset.state = 'open'")
+    expect(transport).toContain("bar.dataset.state = 'closing'")
+    expect(transport).toContain('transitionend')
+    expect(transport).not.toContain('bar.animate(')
   })
 
   it('is placed once, after the charts grid, by the chrome that owns it', () => {

@@ -1,9 +1,345 @@
-/* The chart settings menu. */
-[data-qc-theme] .qc-settings-menu .qc-settings-row {
-  min-height: 28px;
-  padding: 0 12px;
+/* Chart settings follows the same centered, two-column layout as TradingView: a fixed title and
+ * footer around a section rail and one roomy settings page. */
+[data-qc-theme] .qc-chart-settings-scrim {
+  opacity: 1;
+  transition: opacity 160ms linear;
 }
 
+[data-qc-theme] .qc-chart-settings-dialog {
+  box-sizing: border-box;
+  height: min(612px, calc(100vh - 32px));
+  max-height: min(612px, calc(100vh - 32px));
+  color: var(--qc-text-primary);
+  background: var(--qc-overlay-surface);
+  border: 0;
+  border-radius: 6px;
+  box-shadow: var(--qc-overlay-shadow);
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transform-origin: center 42%;
+  transition:
+    opacity 150ms ease-out,
+    transform 190ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-qc-theme] .qc-chart-settings-scrim[data-state='opening'],
+[data-qc-theme] .qc-chart-settings-scrim[data-state='closing'] {
+  opacity: 0;
+}
+
+[data-qc-theme] .qc-chart-settings-scrim[data-state='opening'] .qc-chart-settings-dialog,
+[data-qc-theme] .qc-chart-settings-scrim[data-state='closing'] .qc-chart-settings-dialog {
+  opacity: 0;
+  transform: translateY(8px) scale(0.985);
+}
+
+[data-qc-theme] .qc-chart-settings-scrim[data-state='closing'] {
+  transition-duration: 140ms;
+}
+
+[data-qc-theme] .qc-chart-settings-scrim[data-state='closing'] .qc-chart-settings-dialog {
+  transition-duration: 110ms, 140ms;
+  transition-timing-function: ease-in, cubic-bezier(0.4, 0, 1, 1);
+}
+
+[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-title {
+  box-sizing: border-box;
+  min-height: 64px;
+  padding: 0 14px 0 19px;
+}
+
+[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-title .qc-title {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-close {
+  width: 40px;
+  height: 40px;
+  border: 0;
+}
+
+[data-qc-theme] .qc-chart-settings-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: row;
+  gap: 0;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+[data-qc-theme] .qc-chart-settings-nav {
+  display: flex;
+  flex: 0 0 226px;
+  flex-direction: column;
+  gap: 2px;
+  box-sizing: border-box;
+  padding: 10px;
+  border-inline-end: 1px solid var(--qc-overlay-separator);
+}
+
+[data-qc-theme] .qc-chart-settings-nav-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  color: var(--qc-text-secondary);
+  font: inherit;
+  font-size: 14px;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-chart-settings-nav-item:hover {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-chart-settings-nav-item[aria-selected='true'] {
+  color: var(--qc-text-primary);
+  font-weight: 600;
+  background: var(--qc-state-selected);
+}
+
+[data-qc-theme] .qc-chart-settings-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  padding: 13px 20px 26px;
+  overflow-y: auto;
+  outline: none;
+}
+
+[data-qc-theme] .qc-chart-settings-panel > .qc-menu-heading {
+  min-height: auto;
+  margin: 0 0 8px;
+  padding: 0;
+  color: var(--qc-text-muted);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 24px;
+  letter-spacing: 0;
+}
+
+[data-qc-theme] .qc-settings-menu .qc-settings-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto;
+  gap: 16px;
+  min-height: 44px;
+  padding: 0;
+}
+
+[data-qc-theme] .qc-settings-menu .qc-settings-row .qc-field-label {
+  color: var(--qc-text-secondary);
+  font-size: 14px;
+}
+
+[data-qc-theme] .qc-settings-menu .qc-settings-row .qc-drawing-swatch-button {
+  box-sizing: border-box;
+  width: 38px;
+  height: 34px;
+  padding: 3px;
+  background: var(--qc-chrome-surfaceRaised);
+  border-color: var(--qc-chrome-fieldBorder);
+  border-radius: 6px;
+}
+
+[data-qc-theme] .qc-settings-menu .qc-settings-row .qc-drawing-well {
+  width: 28px;
+  height: 26px;
+  border-radius: 4px;
+}
+
+/* TradingView uses compact square checks in this dialog. Keep the existing accessible switch role
+ * while painting it as the same control and placing it before the label. */
 [data-qc-theme] .qc-settings-menu .qc-switch-row {
-  min-height: 28px;
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0;
+  color: var(--qc-text-secondary);
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-settings-menu .qc-switch {
+  width: 18px;
+  height: 18px;
+  box-sizing: border-box;
+  background: transparent;
+  border: 1px solid var(--qc-control-on);
+  border-radius: 3px;
+}
+
+[data-qc-theme] .qc-settings-menu .qc-switch:hover:not([disabled]) {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-settings-menu .qc-switch[aria-checked='true'] {
+  background: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-settings-menu .qc-switch-knob {
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 6px;
+  width: 5px;
+  height: 9px;
+  box-sizing: border-box;
+  background: transparent;
+  border: solid var(--qc-control-mark);
+  border-width: 0 2px 2px 0;
+  border-radius: 0;
+  opacity: 0;
+  transform: rotate(45deg);
+  transition: opacity var(--qc-motion-durationFast) linear;
+}
+
+[data-qc-theme] .qc-settings-menu .qc-switch[aria-checked='true'] .qc-switch-knob {
+  inset-inline-start: 6px;
+  opacity: 1;
+}
+
+[data-qc-theme] .qc-chart-settings-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: min(100%, 360px);
+}
+
+[data-qc-theme] .qc-chart-settings-choice {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 8px;
+  color: var(--qc-text-secondary);
+  font: inherit;
+  text-align: start;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-chart-settings-choice:hover:not([disabled]) {
+  color: var(--qc-text-primary);
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-chart-settings-choice[disabled] {
+  color: var(--qc-text-disabled);
+  cursor: default;
+}
+
+[data-qc-theme] .qc-chart-settings-radio {
+  position: relative;
+  flex: 0 0 auto;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--qc-control-on);
+  border-radius: 50%;
+}
+
+[data-qc-theme] .qc-chart-settings-choice[aria-checked='true'] .qc-chart-settings-radio::after {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  background: var(--qc-control-on);
+  border-radius: 50%;
+}
+
+[data-qc-theme] .qc-chart-settings-footer {
+  display: flex;
+  flex: 0 0 64px;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  padding: 0 18px;
+  border-top: 1px solid var(--qc-overlay-separator);
+}
+
+[data-qc-theme] .qc-chart-settings-actions {
+  display: flex;
+  gap: 10px;
+}
+
+[data-qc-theme] .qc-chart-settings-footer .qc-button {
+  min-width: 62px;
+  height: 34px;
+  padding: 0 11px;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+[data-qc-theme] .qc-chart-settings-footer .qc-chart-settings-reset {
+  min-width: 0;
+}
+
+[data-qc-theme] .qc-chart-settings-cancel,
+[data-qc-theme] .qc-chart-settings-ok {
+  min-width: 62px;
+}
+
+[data-qc-theme] .qc-chart-settings-nav {
+  scrollbar-width: none;
+}
+
+[data-qc-theme] .qc-chart-settings-nav::-webkit-scrollbar {
+  display: none;
+}
+
+@media (max-width: 680px) {
+  [data-qc-theme] .qc-chart-settings-dialog {
+    width: calc(100% - 20px) !important;
+    height: calc(100vh - 20px);
+    max-width: none;
+    max-height: none;
+  }
+
+  [data-qc-theme] .qc-chart-settings-body {
+    flex-direction: column;
+  }
+
+  [data-qc-theme] .qc-chart-settings-nav {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 4px;
+    padding: 6px 10px 8px;
+    overflow-x: auto;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--qc-overlay-separator);
+  }
+
+  [data-qc-theme] .qc-chart-settings-nav-item {
+    width: auto;
+    min-width: max-content;
+    min-height: 36px;
+    padding: 0 10px;
+  }
+
+  [data-qc-theme] .qc-chart-settings-panel {
+    padding: 13px 16px 20px;
+  }
+
+  [data-qc-theme] .qc-chart-settings-footer {
+    padding: 0 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-qc-theme] .qc-chart-settings-scrim,
+  [data-qc-theme] .qc-chart-settings-dialog {
+    transition-duration: 0ms;
+  }
 }
