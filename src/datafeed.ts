@@ -98,6 +98,29 @@ export class FeedUnavailableError extends Error {
   }
 }
 
+/** One class in a feed's catalog that holds narrower classes: a `spot` class over its `usdc` and
+ *  `usdt` quotes, say. `id` is the token the feed is searched with, as a plain string entry is, and
+ *  `children` are the narrower classes, as tokens or nodes of their own. The search renders two
+ *  levels, a top-level class and its children: a child's own `children` are not offered, and the
+ *  child narrows by its `id` alone. */
+export interface SearchClassNode {
+  readonly id: string
+  readonly children?: readonly (string | SearchClassNode)[]
+}
+
+/** What a feed's `search` is asked with. `cls` and `classes` say which classes to narrow to; both
+ *  absent is every class. */
+export interface DatafeedSearchOptions {
+  /** One class to narrow to. When the viewer may select several classes it is set only while
+   *  exactly one is selected, so a feed that reads `cls` alone still narrows a single chip. */
+  cls?: string
+  /** Every class to narrow to, sent only when the search lets the viewer select several classes at
+   *  once: a row matches when it is in any of them. A feed may ignore it and read `cls` alone. */
+  classes?: readonly string[]
+  limit?: number
+  offset?: number
+}
+
 /** A feed's coarse, feed-LEVEL capability declaration. Everything optional and the method itself
  *  optional: an ABSENT declaration means unconstrained (today's behavior), and a feed must only
  *  declare what is true — a finite `resolutions` list from a feed that serves any interval would
@@ -106,8 +129,10 @@ export class FeedUnavailableError extends Error {
 export interface DatafeedConfig {
   /** The wire timeframe tokens this feed can serve ('1m', '4h', '1d', …). Absent = any. */
   resolutions?: readonly string[]
-  /** Asset-class tokens the catalog carries. Absent = unspecified. */
-  classes?: readonly string[]
+  /** Asset-class tokens the catalog carries, in the order the search offers them. An entry is a
+   *  token, or a {@link SearchClassNode} whose children the search offers beneath it once it is
+   *  selected. Absent = unspecified. */
+  classes?: readonly (string | SearchClassNode)[]
 }
 
 /** The datafeed a chart consumes. Implementations must follow the bar rules on {@link FeedBar} and
@@ -117,8 +142,9 @@ export interface ChartDatafeed {
    *  feed declares (e.g. its initial timeframe must be servable). Omit it entirely when the feed
    *  has no fixed capability set. */
   config?(): Promise<DatafeedConfig>
-  /** Server-side symbol search, paged. `cls` narrows to one asset class ('' / absent = all). */
-  search(q: string, opts?: { cls?: string; limit?: number; offset?: number }): Promise<SearchPage>
+  /** Server-side symbol search, paged. `cls` narrows to one asset class ('' / absent = all), and
+   *  `classes`, when present, to any of several (see {@link DatafeedSearchOptions}). */
+  search(q: string, opts?: DatafeedSearchOptions): Promise<SearchPage>
   /** Resolve one symbol's metadata; null when the symbol is unknown to the feed's catalogs. */
   resolve(symbol: string): Promise<SymbolInfo | null>
   /** Historical sealed bars: a [from,to] window (epoch seconds, INCLUSIVE of both ends — the chart

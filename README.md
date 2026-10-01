@@ -1298,7 +1298,9 @@ trimmed.on('saveNeeded', () => note('the layout has unsaved changes'))
 ```
 
 The search dialog's class chips come from your datafeed's `config().classes`, named through
-`search.classNames`; a class you do not name wears its token. `search.scope` names what your
+`search.classNames`; a class you do not name wears its token. `search.spreads`,
+`search.allClasses` and `search.classSelection` choose how the classes and the spread operators are
+offered, as "Classes and spread operators" under Search describes. `search.scope` names what your
 search is limited to at the far edge of that strip, with the mark its `mark` paints; your datafeed
 decides what is found. The range presets read your
 datafeed's optional `earliestBar(symbol)`: a preset deeper than the history you serve is disabled.
@@ -1883,6 +1885,87 @@ looksLikeSpread('ES-NQ') // true
 isSymbolPair('BTC/USD') // true
 spreadExpression(' es - nq ') // 'ES-NQ'
 ```
+
+### Classes and spread operators
+
+The dialog offers your datafeed's `config().classes` as a strip of chips, an All chip first, one
+class selected at a time and sent to your feed as `cls`. Its field offers six spread operators
+behind a toggle, and a query that reads as an expression leads the list with the expression row.
+Three `search` options change that, and a chart that sets none of them searches exactly as above.
+
+- `spreads`: `false` offers no operator toggle, no operator and no expression row, and your feed
+  receives the query exactly as typed. `{ operators }` keeps spreads on and offers only the listed
+  operators (`SpreadOperatorId`: `division`, `subtraction`, `addition`, `multiplication`,
+  `exponentiation`, `reciprocal`), in the listed order. Default `true`. The compare dialog never
+  offers the operators.
+- `allClasses`: `false` offers no All chip. With one class at a time, the first class you declare
+  starts selected; with several, no selection means every class. `{ label }` writes the All chip
+  with your label. Default: the chip, with the catalog's label.
+- `classSelection`: `'multiple'` makes every chip a toggle, and the All chip clears the selection.
+  Your feed receives `classes` with every selected class in declared order, and `cls` too while
+  exactly one is selected, so a feed that reads only `cls` still narrows a single chip. Default
+  `'single'`.
+
+A `classes` entry is a class token, or a `SearchClassNode`, `{ id, children }`, whose children are
+narrower classes. Selecting such a class opens a second row of chips beneath the strip: its own
+all chip, written like the All chip, and one chip per child, named through `search.classNames`.
+Your feed always receives the most specific class selected: the child when one is picked, the
+class when none is. The dialog renders two levels; a child's own `children` are not offered, and
+the child narrows by its `id`. The second row is a labelled group of pressed buttons, reached by
+Tab after the strip, as the strip is.
+
+```ts
+import { createChart, type ChartDatafeed, type DatafeedConfig } from '@trdrs/quickcharts'
+
+declare const cryptoBase: ChartDatafeed
+
+// Spot markets by quote currency, beside perpetuals.
+const cryptoFeed: ChartDatafeed = {
+  ...cryptoBase,
+  async config(): Promise<DatafeedConfig> {
+    return { classes: [{ id: 'spot', children: ['usdc', 'usdt'] }, 'perp'] }
+  },
+  // `cls` is 'spot' while the whole class is selected, and 'usdc' once USDC is picked under it.
+  search: (query, options) => cryptoBase.search(query, options),
+}
+
+const crypto = createChart({
+  container,
+  datafeed: cryptoFeed,
+  search: {
+    classNames: { spot: 'Spot', usdc: 'USDC', usdt: 'USDT', perp: 'Perpetuals' },
+    allClasses: { label: 'Every market' },
+    spreads: { operators: ['division', 'subtraction'] },
+  },
+})
+void crypto
+```
+
+With several classes at once, read `classes` and fall back to `cls`:
+
+```ts
+import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const catalogFeed: ChartDatafeed
+
+const multiFeed: ChartDatafeed = {
+  ...catalogFeed,
+  async search(query, options = {}) {
+    // ['future', 'option'] with two chips selected; absent with none, which is every class.
+    const classes = options.classes ?? (options.cls ? [options.cls] : [])
+    return myBackend.search(query, classes, options.limit, options.offset)
+  },
+}
+
+const multi = createChart({
+  container,
+  datafeed: multiFeed,
+  search: { classSelection: 'multiple', allClasses: false, spreads: false },
+})
+void multi
+```
+
+`openSymbolSearch` and `mountSymbolSearch` take the same three options beside their `classes`.
 
 ### The picker, away from a chart
 

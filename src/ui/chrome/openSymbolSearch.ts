@@ -8,7 +8,8 @@
 // phone shows it. Both bring their own painted element, because neither has a widget to live in.
 // The host supplies the feed, and anything else it already gives a chart: the mode, the language,
 // the classes and their names, the marks, the glyphs, and where recents are kept.
-import type { ChartDatafeed } from '../../datafeed'
+import type { ChartDatafeed, SearchClassNode } from '../../datafeed'
+import type { SearchDisplayOptions } from '../../widget/options'
 import { createChartI18n, readingDirection, type ChartI18n } from '../../i18n'
 import { createSearchSessionOwner, memoryRecents, type RecentsPort } from '../../search'
 import { createThemeController, type ThemeControllerOptions } from '../../theme/controller'
@@ -45,7 +46,7 @@ export function createSymbolSearchCache(options: { datafeed: Pick<ChartDatafeed,
   return cache
 }
 
-export interface SymbolSearchOptions extends MarkPainterHooks {
+export interface SymbolSearchOptions extends MarkPainterHooks, SearchDisplayOptions {
   /** The feed the search runs against: the one a chart takes, or anything that answers `search`. */
   datafeed: Pick<ChartDatafeed, 'search'>
   /** A catalog warmed over that same feed. Absent, this picker searches from cold and its pages go
@@ -66,8 +67,9 @@ export interface SymbolSearchOptions extends MarkPainterHooks {
   icons?: ChartIcons
   /** Where recent picks are read and written. Default: a list that lives as long as the dialog. */
   recents?: RecentsPort
-  /** The asset classes the feed declares, for the filter strip. Absent, there is no strip. */
-  classes?: readonly string[] | null
+  /** The asset classes the feed declares, for the filter strip, as a feed's `config()` declares
+   *  them. Absent, there is no strip. */
+  classes?: readonly (string | SearchClassNode)[] | null
   /** Display names for those classes. A class without one wears its token. */
   classNames?: Readonly<Record<string, string>>
   /** The query the field opens holding, selected so that typing replaces it. */
@@ -80,6 +82,9 @@ export interface SymbolSearchHandle {
   /** Close it from the outside. Closing twice is safe, and the dialog's own close is the same door. */
   close(): void
 }
+
+/** The display options a picker was opened with, and nothing else it carries. */
+const searchDisplay = (options: SearchDisplayOptions): SearchDisplayOptions => ({ spreads: options.spreads, allClasses: options.allClasses, classSelection: options.classSelection })
 
 /** Open the symbol search over a feed, with no chart behind it. */
 export function openSymbolSearch(options: SymbolSearchOptions): SymbolSearchHandle {
@@ -113,6 +118,7 @@ export function openSymbolSearch(options: SymbolSearchOptions): SymbolSearchHand
     recents: options.recents ?? memoryRecents(),
     classes: () => options.classes ?? null,
     ...(options.classNames ? { classNames: options.classNames } : {}),
+    display: searchDisplay(options),
     painters: resolveMarkPainters(options),
     request: {
       mode: 'pick',
@@ -162,6 +168,7 @@ export function mountSymbolSearch(options: SymbolSearchOptions & { container: HT
       recents: options.recents ?? memoryRecents(),
       classes: () => options.classes ?? null,
       ...(options.classNames ? { classNames: options.classNames } : {}),
+    display: searchDisplay(options),
       painters: resolveMarkPainters(options),
       request: {
         mode: 'pick',

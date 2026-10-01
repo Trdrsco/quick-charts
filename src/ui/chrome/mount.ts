@@ -13,7 +13,7 @@ import type { ChartHandle } from '../../widget/chart'
 import type { ChartWidget } from '../../widget/create'
 import { paintThemeRoot } from '../../widget/theme'
 import { attachShortcuts } from '../../widget/shortcuts'
-import type { AccessPolicy, ChartPreferences, SearchScope } from '../../widget/options'
+import type { AccessPolicy, ChartPreferences, SearchDisplayOptions, SearchScope } from '../../widget/options'
 import type { ResolvedFeatures, ResolvedUi } from '../../widget/planes'
 import { mountBottomBar, type BottomBarHandle } from './bottomBar'
 import { bindPanelHost } from '../drawings/overlays'
@@ -63,6 +63,8 @@ export interface ChromeDeps {
   feedConfig(): DatafeedConfig | null
   classNames?: Readonly<Record<string, string>>
   scope?: () => SearchScope | null
+  /** How the symbol search offers its classes and its spread operators. */
+  searchDisplay?: SearchDisplayOptions
   access?: AccessPolicy
   /** The host's mark painters, passed to every surface that names a market or a source. */
   painters: MarkPainters
@@ -193,6 +195,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       classes: () => deps.feedConfig()?.classes ?? null,
       classNames: deps.classNames,
       scope: deps.scope,
+      display: deps.searchDisplay,
       painters: deps.painters,
       curated: request.chart?.compare.symbols() ?? [],
       request,

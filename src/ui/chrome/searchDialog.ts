@@ -9,14 +9,15 @@
 // has moved; Escape closes. The list is a listbox the field controls through
 // `aria-activedescendant`, so a screen reader hears the row under the highlight without focus
 // leaving the field. The pointer only hovers: it never moves the keyboard's row.
-import type { SymbolRow } from '../../datafeed'
+import type { SearchClassNode, SymbolRow } from '../../datafeed'
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import type { CompareEntry, ComparePlacement, CompareSymbol } from '../../compare'
-import { isSymbolPair, looksLikeSpread, matchSegments, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery, type RecentsPort, type SearchSession } from '../../search'
+import { isSymbolPair, looksLikeSpread, matchSegments, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery, type RecentsPort, type SearchClassFilter, type SearchSession, type SpreadOperator } from '../../search'
 import type { CommandRegistry } from '../../widget/commands'
-import type { SearchScope } from '../../widget/options'
+import type { SearchDisplayOptions, SearchScope } from '../../widget/options'
 import type { SearchRequest } from './doors'
 import { dialogTitle, emptyState, openDialog, type DialogHandle } from './dialog'
+import { classBranches, classSelection } from './searchClasses'
 import { append, button, h, name, reglyph, replace, setDisabled } from './dom'
 import { COMPARE_EMPTY_MARK, ICONS, OPERATOR_GLYPHS } from '../controls/icons'
 import { createSymbolBadge } from './symbolBadge'
@@ -35,9 +36,11 @@ export interface SearchDialogDeps {
   commands?: CommandRegistry
   recents: RecentsPort
   /** The asset classes the feed declares, or null for no filter strip. */
-  classes(): readonly string[] | null
+  classes(): readonly (string | SearchClassNode)[] | null
   /** Display names for those classes, from the host. A class without one wears its token. */
   classNames?: Readonly<Record<string, string>>
+  /** How the host has the classes and the spread operators offered. Absent is the default search. */
+  display?: SearchDisplayOptions
   /** What the search is limited to, named at the far edge of the class strip with the host's mark. */
   scope?: () => SearchScope | null
   /** The host's mark painters: the same value the legend paints its badge with. A row wears the
@@ -83,6 +86,19 @@ export function rowLabels(row: SymbolRow): { ticker: string; description: string
   return { ticker: names.mark, description: names.description, source: row.exchange || row.provider || '' }
 }
 
+/** The operators a search offers for the host's `spreads` option: every one by default, none with
+ *  spreads off, and otherwise the listed ones in the listed order, each once. */
+export function offeredOperators(spreads: SearchDisplayOptions['spreads']): readonly SpreadOperator[] {
+  if (spreads === false) return []
+  if (spreads === undefined || spreads === true) return SPREAD_OPERATORS
+  const out: SpreadOperator[] = []
+  for (const id of spreads.operators) {
+    const op = SPREAD_OPERATORS.find((o) => o.id === id)
+    if (op && !out.includes(op)) out.push(op)
+  }
+  return out
+}
+
 /** The flat row model for a mode, query and controller state. Pure, so the list a viewer sees
  *  and the list a test asserts are one computation. */
 export function dialogRows(input: {
@@ -93,6 +109,8 @@ export function dialogRows(input: {
   recents: readonly SymbolRow[]
   curated: readonly CompareSymbol[]
   added: readonly CompareEntry[]
+  /** Whether a query may read as a spread expression. Default true. */
+  spreads?: boolean
 }): DialogRow[] {
   const q = input.query.trim()
   const addedSet = new Set(input.added.map((e) => e.symbol))
@@ -116,7 +134,9 @@ export function dialogRows(input: {
   }
   // A query reading as a spread EXPRESSION leads with the exact expression; catalog matches on its
   // stripped ticker follow. A plain slash pair is catalog identity and offers a spread row only
-  // once the search settled with no hits, because a listed market outranks arithmetic.
+  // once the search settled with no hits, because a listed market outranks arithmetic. With spreads
+  // off, a query is only ever a catalog question.
+  if (input.spreads === false) return base
   const expression = looksLikeSpread(q) && !isSymbolPair(q)
   if (expression) {
     const expr = spreadExpression(q)
@@ -173,7 +193,12 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   // Search and pick list their markets as a table; the compare family lists them as cards.
   if (mode === 'search' || mode === 'pick') box.classList.add('qc-search-table')
   let query = request.changeFrom ?? ''
-  let cls = ''
+  const display = deps.display ?? {}
+  // Spreads off, a query is only a catalog question: no operator, no expression row, and the feed
+  // hears the query as typed. The compare family never offers the operators.
+  const spreads = display.spreads !== false
+  const operators = compare ? [] : offeredOperators(display.spreads)
+  const offerOps = operators.length > 0
   // The row the keyboard stands on, or -1 before an arrow has moved it: a list opens with no row
   // claimed. A prefilled query stands on its first answer, because the viewer arrived holding it.
   let active = request.changeFrom ? 0 : -1
@@ -197,7 +222,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     const input = h('input', { type: 'text', role: 'combobox', class: 'qc-search-input', 'aria-label': t('search.placeholder'), placeholder: t('search.placeholder'), autocomplete: 'off', 'aria-autocomplete': 'list', 'aria-expanded': 'true', 'aria-controls': listId, spellcheck: 'false', value: query })
     const clear = button({ label: t('search.clear'), icon: deps.icons.glyph(ICONS.clear, { size: 18 }), className: 'qc-search-op', onClick: () => setQuery('') })
     // The rule parts the clear mark from what follows it, so the two come and go together.
-    const rule = compare ? null : h('span', { class: 'qc-search-rule', 'aria-hidden': 'true' })
+    const rule = offerOps ? h('span', { class: 'qc-search-rule', 'aria-hidden': 'true' }) : null
     const showClear = (shown: boolean): void => {
       clear.hidden = !shown
       if (rule) rule.hidden = !shown
@@ -216,8 +241,8 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       name(opsToggle, t(open ? 'search.opsHide' : 'search.opsShow'))
       reglyph(opsToggle, deps.icons, open ? ICONS.spreadOpsHide : ICONS.spreadOpsShow, { size: 18 })
     }
-    if (!compare) {
-      for (const op of SPREAD_OPERATORS) {
+    if (offerOps) {
+      for (const op of operators) {
         const b = button({
           label: t(op.label),
           className: 'qc-search-op',
@@ -235,35 +260,48 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     // that is there, a hairline, the operators when they are out, and the toggle that brings them.
     // The rule belongs to the strip rather than to the operator group, so it is a mark of its own
     // height rather than a border running the full depth of the field.
-    const actions = h('span', { class: 'qc-search-actions-field' }, clear, rule, compare ? null : ops, compare ? null : opsToggle)
+    const actions = h('span', { class: 'qc-search-actions-field' }, clear, rule, offerOps ? ops : null, offerOps ? opsToggle : null)
     const field = h('div', { class: 'qc-search-field' }, deps.icons.glyph(ICONS.search, { size: 28, className: 'qc-search-magnifier' }), input, actions)
 
-    // The asset-class strip, search family only: chips that narrow the feed's answer.
+    // The asset-class strip, search family only: chips that narrow the feed's answer. A class that
+    // holds narrower classes offers them in a row of their own beneath the strip while it is
+    // selected, opening with its all chip: the feed hears the child where one is picked, and the
+    // class where none is. Every row is a group of pressed buttons in the tab order.
     const classes = compare ? null : deps.classes()
+    const branches = classes ? classBranches(classes) : []
+    const allShown = display.allClasses !== false
+    const allLabel = display.allClasses ? display.allClasses.label : t('search.allClasses')
+    const labelOf = (id: string): string => deps.classNames?.[id] ?? id
+    const selection = classSelection(branches, { multiple: display.classSelection === 'multiple', all: allShown })
+    let cls: SearchClassFilter = selection.filter()
     let strip: HTMLElement | null = null
-    const classChips = new Map<string, HTMLButtonElement>()
+    const narrower: { row: HTMLElement; top: string }[] = []
+    const chips: { chip: HTMLButtonElement; pressed(): boolean }[] = []
+    const reflect = (): void => {
+      for (const { chip, pressed } of chips) chip.setAttribute('aria-pressed', String(pressed()))
+      for (const { row, top } of narrower) row.hidden = !selection.has(top)
+      cls = selection.filter()
+      active = -1
+      search.search(serverQuery(), cls)
+      render()
+    }
+    const classChip = (label: string, pressed: () => boolean, pick: () => void): HTMLButtonElement => {
+      const chip = button({ label, text: label, className: 'qc-chip qc-search-class', pressed: pressed(), onClick: () => (pick(), reflect()) })
+      chips.push({ chip, pressed })
+      return chip
+    }
     const searchScope = deps.scope?.() ?? null
-    if ((classes && classes.length > 0) || searchScope) {
+    if (branches.length > 0 || searchScope) {
       strip = h('div', { class: 'qc-search-classes', role: 'group', 'aria-label': t('search.classFilter') })
-      if (classes && classes.length > 0) {
-        const all = [{ id: '', label: t('search.allClasses') }, ...classes.map((id) => ({ id, label: deps.classNames?.[id] ?? id }))]
-        for (const c of all) {
-          const chip = button({
-            label: c.label,
-            text: c.label,
-            className: 'qc-chip qc-search-class',
-            pressed: c.id === cls,
-            onClick: () => {
-              cls = c.id
-              for (const [id, b] of classChips) b.setAttribute('aria-pressed', String(id === cls))
-              active = -1
-              search.search(serverQuery(), cls)
-              render()
-            },
-          })
-          classChips.set(c.id, chip)
-          strip.appendChild(chip)
-        }
+      if (allShown && branches.length > 0) strip.appendChild(classChip(allLabel, () => selection.isAll(), () => selection.clear()))
+      for (const branch of branches) {
+        strip.appendChild(classChip(labelOf(branch.id), () => selection.has(branch.id), () => selection.pickTop(branch.id)))
+        if (branch.children.length === 0) continue
+        const row = h('div', { class: 'qc-search-classes qc-search-subclasses', role: 'group', 'aria-label': labelOf(branch.id) })
+        row.appendChild(classChip(allLabel, () => selection.has(branch.id) && !selection.narrowed(branch.id), () => selection.clearChildren(branch.id)))
+        for (const child of branch.children) row.appendChild(classChip(labelOf(child), () => selection.hasChild(branch.id, child), () => selection.pickChild(branch.id, child)))
+        row.hidden = !selection.has(branch.id)
+        narrower.push({ row, top: branch.id })
       }
       if (searchScope) {
         const mark = h('span', { class: 'qc-search-scope-mark', 'aria-hidden': 'true' })
@@ -282,9 +320,9 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     const status = h('div', { class: 'qc-search-status', role: 'status', 'aria-live': 'polite' })
     const sentinel = h('div', { class: 'qc-search-sentinel qc-muted' }, t('search.loadingMore'))
     sentinel.hidden = true
-    append(box, frame.title === null ? null : dialogTitle(frame.title, t('search.close'), frame.done, deps.icons), field, strip, list, status)
+    append(box, frame.title === null ? null : dialogTitle(frame.title, t('search.close'), frame.done, deps.icons), field, strip, ...narrower.map((n) => n.row), list, status)
 
-    const serverQuery = (): string => (looksLikeSpread(query) && !isSymbolPair(query) ? spreadSearchQuery(query) : query)
+    const serverQuery = (): string => (spreads && looksLikeSpread(query) && !isSymbolPair(query) ? spreadSearchQuery(query) : query)
     const setQuery = (next: string): void => {
       query = next
       input.value = next
@@ -330,7 +368,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       releaseMarks()
       const state = search.state()
       const settled = state.query.trim() === serverQuery().trim()
-      rows = dialogRows({ mode, query, hits: settled ? state.hits : [], loading: state.loading || !settled, recents: deps.recents.list(), curated: deps.curated ?? [], added: chart?.compare.list() ?? [] })
+      rows = dialogRows({ mode, query, hits: settled ? state.hits : [], loading: state.loading || !settled, recents: deps.recents.list(), curated: deps.curated ?? [], added: chart?.compare.list() ?? [], spreads })
       active = Math.min(active, rows.length - 1)
       const emptyStack = compare && query.trim() === ''
       const addedCount = emptyStack ? (chart?.compare.list().length ?? 0) : 0
@@ -474,7 +512,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     render()
     if (!compare || query.trim() !== '') search.search(serverQuery(), cls)
     if (request.changeFrom) input.select()
-    // The strip's chips reflect the strip's state, which starts at every class.
+    // The strip's chips reflect the selection the strip opened on.
     setDisabled(clear, false)
 
   return {

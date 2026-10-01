@@ -4,7 +4,7 @@
 // a result list applies (the recents promotion, the match highlight, and the spread-expression
 // offer). The datafeed's `search` is the only source; completed pages may be reused within one
 // widget/feed lifetime, never globally or across providers. The chart never invents a row.
-import type { ChartDatafeed, SymbolRow } from './datafeed'
+import type { ChartDatafeed, DatafeedSearchOptions, SymbolRow } from './datafeed'
 import type { ChartMessageKey } from './i18n/en'
 
 export interface SearchControllerOptions {
@@ -16,8 +16,11 @@ export interface SearchControllerOptions {
 
 export interface SearchState {
   readonly query: string
-  /** The asset-class filter the feed narrowed to; '' is every class. */
+  /** The asset-class filter the feed narrowed to; '' is every class. With a list filter it is the
+   *  one class the list holds, or '' when it holds several. */
   readonly cls: string
+  /** The list filter the feed narrowed to, when the search was asked with one. */
+  readonly classes?: readonly string[]
   /** Every row loaded so far for the query, in the feed's order. */
   readonly hits: readonly SymbolRow[]
   /** A page for THIS query is in flight and nothing cached answers it yet. Rows of the previous
@@ -35,14 +38,16 @@ export interface SearchController {
   subscribe(listener: (state: SearchState) => void): () => void
   /** Ask for a query. A cached answer shows at once and a single-page entry revalidates in the
    *  background; a miss keeps the previous rows, marks loading, and fetches after the debounce.
-   *  A newer query cancels an older one's result. */
-  search(query: string, cls?: string): void
+   *  A newer query cancels an older one's result. `cls` is one class ('' is every class), or a
+   *  list of classes: the feed hears a list as `classes`, and as `cls` too when it holds exactly
+   *  one. An empty list is every class. */
+  search(query: string, cls?: SearchClassFilter): void
   /** Append the next page of the current query while `hasMore` holds. One page in flight at a
    *  time; rows already shown are never repeated even when a revalidation shifted a page edge. */
   loadMore(): void
   /** Warm the cache for a query without changing the current one, so its first open is instant.
    *  A failure is dropped; the query fetches on open as it would have. */
-  prefetch(query?: string, cls?: string): void
+  prefetch(query?: string, cls?: SearchClassFilter): void
   /** Stop timers; later results are ignored. */
   dispose(): void
 }
@@ -54,7 +59,22 @@ interface Loaded {
   readonly nextOffset: number
 }
 
-const keyOf = (query: string, cls: string, pageSize: number): string => JSON.stringify([pageSize, cls, query.trim().toLowerCase()])
+/** Which classes a search narrows to: one class token ('' is every class), or a list of them. */
+export type SearchClassFilter = string | readonly string[]
+
+/** One filter in its settled form: an empty list is every class, the same ask as ''. */
+const settleFilter = (cls: SearchClassFilter): SearchClassFilter => (typeof cls === 'string' ? cls : cls.length === 0 ? '' : [...cls])
+
+/** The class part of the feed's options for a filter. A single class keeps the one-field shape a
+ *  feed has always been asked with. */
+const classOptions = (cls: SearchClassFilter): Pick<DatafeedSearchOptions, 'cls' | 'classes'> =>
+  typeof cls === 'string' ? { cls: cls || undefined } : { classes: cls, cls: cls.length === 1 ? cls[0] : undefined }
+
+/** The filter as the state reports it. */
+const classState = (cls: SearchClassFilter): Pick<SearchState, 'cls' | 'classes'> =>
+  typeof cls === 'string' ? { cls, classes: undefined } : { cls: cls.length === 1 ? cls[0]! : '', classes: cls }
+
+const keyOf = (query: string, cls: SearchClassFilter, pageSize: number): string => JSON.stringify([pageSize, cls, query.trim().toLowerCase()])
 const hitKey = (h: SymbolRow): string => `${h.symbol}|${h.exchange}`
 
 /** Bounded completed-result reuse. An active session holds its current page separately, so an
@@ -145,6 +165,7 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
   const listeners = new Set<(state: SearchState) => void>()
   let state: SearchState = { query: '', cls: '', hits: [], loading: false, failed: false, hasMore: false }
   let key = keyOf('', '', pageSize)
+  let filter: SearchClassFilter = ''
   let timer: ReturnType<typeof setTimeout> | undefined
   let moreBusy: object | null = null
   let disposed = false
@@ -167,11 +188,11 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
     for (const l of listeners) l(state)
   }
 
-  const load = (k: string, query: string, cls: string): Promise<Loaded> => {
+  const load = (k: string, query: string, cls: SearchClassFilter): Promise<Loaded> => {
     const pending = inflight.get(k)
     if (pending) return pending
     const mine = generation
-    const ask = askFeed(query, { limit: pageSize, cls: cls || undefined })
+    const ask = askFeed(query, { limit: pageSize, ...classOptions(cls) })
       .then(({ hits, hasMore }) => {
         const loaded = { hits, hasMore, pages: 1, nextOffset: hits.length }
         if (!disposed && generation === mine) {
@@ -206,8 +227,9 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
         listeners.delete(listener)
       }
     },
-    search(query, cls = '') {
+    search(query, asked = '') {
       if (disposed) return
+      const cls = settleFilter(asked)
       clearTimeout(timer)
       const nextKey = keyOf(query, cls, pageSize)
       const unchanged = key === nextKey
@@ -215,6 +237,7 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
         cancelPending()
       }
       key = nextKey
+      filter = cls
       const mine = key
       const epoch = generation
       const retained = cache.get(key)
@@ -222,10 +245,10 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
       const cached = unchanged && current ? current : retained
       current = cached
       if (cached) {
-        emit({ query, cls, hits: cached.hits, hasMore: cached.hasMore, loading: false, failed: false })
+        emit({ query, ...classState(cls), hits: cached.hits, hasMore: cached.hasMore, loading: false, failed: false })
         if (cached.pages > 1) return
       } else {
-        emit({ query, cls, loading: true, failed: false })
+        emit({ query, ...classState(cls), loading: true, failed: false })
       }
       // A listener may close or replace this session during the loading notification.
       if (disposed || generation !== epoch || key !== mine) return
@@ -258,8 +281,8 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
       moreBusy = flight
       const epoch = generation
       const page = current
-      const { query, cls } = state
-      askFeed(query, { limit: pageSize, cls: cls || undefined, offset: page.nextOffset })
+      const { query } = state
+      askFeed(query, { limit: pageSize, ...classOptions(filter), offset: page.nextOffset })
         .then(({ hits, hasMore }) => {
           if (disposed || generation !== epoch || current !== page) return
           const base = page.hits
@@ -276,8 +299,9 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
           if (moreBusy === flight) moreBusy = null
         })
     },
-    prefetch(query = '', cls = '') {
+    prefetch(query = '', asked = '') {
       if (disposed) return
+      const cls = settleFilter(asked)
       const k = keyOf(query, cls, pageSize)
       if (!cache.has(k)) void load(k, query, cls).catch(() => {})
     },
@@ -344,8 +368,11 @@ export function matchSegments(text: string, query: string): MatchSegment[] {
 
 /** One spread operator a search input offers. It TYPES into the query; the feed parses and
  *  evaluates the expression, because the whole expression is the instrument. */
+/** The name of one spread operator, as a host lists the operators a search offers. */
+export type SpreadOperatorId = 'division' | 'subtraction' | 'addition' | 'multiplication' | 'exponentiation' | 'reciprocal'
+
 export interface SpreadOperator {
-  readonly id: 'division' | 'subtraction' | 'addition' | 'multiplication' | 'exponentiation' | 'reciprocal'
+  readonly id: SpreadOperatorId
   /** What it inserts. */
   readonly insert: string
   /** Inserted before the query rather than after it (the reciprocal form). */
