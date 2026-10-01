@@ -8,6 +8,8 @@ Every duration, timing function and motion scale is a theme role in the `motion`
 
 The symbol search offers its classes and spread operators as the host configures them: `search.spreads` switches spreads off or offers only the listed operators (`SpreadOperatorId`), `search.allClasses` hides or renames the All chip, and `search.classSelection: 'multiple'` lets the viewer select several classes, which the feed receives as `classes` (`DatafeedSearchOptions`). A feed's `config().classes` may declare a class with narrower classes (`SearchClassNode`), which the search offers in a second row of chips. `openSymbolSearch` and `mountSymbolSearch` take the same options.
 
+Hosts choose which chart styles a chart offers with `styles`, in the order the style picker lists them; a style left out has no command, the picker is not shown for a single style, and a saved layout naming a style left out opens on the first offered one.
+
 ## 1.1.0
 
 The symbol search can name what it is limited to, with a host-painted mark, beside the asset-class filters (`search.scope`, `SearchScope`).

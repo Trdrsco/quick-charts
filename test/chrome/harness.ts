@@ -30,7 +30,7 @@ import type { ChartWidget } from '../../src/widget/create'
 import type { AccessPolicy, Capabilities, FeatureConfig, IndicatorInstance, UiConfig } from '../../src/widget/options'
 import type { ChartIcons } from '../../src/ui/icons/catalog'
 import { createIconResolver } from '../../src/ui/icons/resolver'
-import type { ChartStyleId } from '../../src/widget/styles'
+import { resolveOfferedStyles, type ChartStyleId } from '../../src/widget/styles'
 import type { ScaleMode } from '../../src/scaleMode'
 import type { ActiveSubsession, MarketStatus, SessionModel } from '../../src/sessionModel'
 import type { CompareEntry } from '../../src/compare'
@@ -342,6 +342,8 @@ export interface FakeWidgetOptions {
   layoutSaveLoad?: Partial<ChartWidget['layout']['saveLoad']>
   /** The layouts store the widget commands delete through. */
   layoutStore?: ResourceStore<LayoutMeta, LayoutBody> | null
+  /** The styles the widget offers, as `ChartWidgetOptions.styles` takes them. */
+  styles?: readonly ChartStyleId[]
 }
 
 /** The fake widget: the real registry over the fake chart, and enough of the widget surface for
@@ -356,7 +358,8 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   const features: ResolvedFeatures = resolveFeatures(options.features)
   const iconDiagnostics = createIconDiagnostics()
   const icons = createIconResolver({ icons: options.icons, document, direction: () => 'ltr', diagnostics: iconDiagnostics })
-  const ui: ResolvedUi = resolveUi(options.ui, features)
+  const styles = resolveOfferedStyles(options.styles, undefined)
+  const ui: ResolvedUi = resolveUi(options.ui, features, styles.list.length)
   const caps: Capabilities = {
     resolutions: null,
     symbolResolutions: null,
@@ -467,6 +470,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   const unregisterChart = registerChartCommands({
     commands,
     handle: chart.handle,
+    styles: styles.list,
     features,
     ui,
     capabilities: () => caps,
@@ -546,7 +550,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   // roles from it.
   paintThemeRoot(overlays, theme.mode(), theme.get())
   document.body.appendChild(overlays)
-  const ctx: ChromeContext = { i18n, commands, overlays, widget, icons }
+  const ctx: ChromeContext = { i18n, commands, overlays, widget, icons, styles }
   // The chrome's saved-layout parts, built as `mountChrome` builds them: what a top bar presents and
   // outlives. A test that mounts a top bar passes them in; one that needs its own store builds its own.
   const layoutListing = createLayoutListStore(storage)

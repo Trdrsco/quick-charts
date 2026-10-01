@@ -6,6 +6,7 @@
 // object URL the download rides on is revoked afterwards, and an empty chart writes nothing at all.
 // The command itself is registered against the ACTIVE chart's painted bars, which is what makes the
 // replay boundary hold: while replay is on, the painted model IS the revealed slice.
+import { CHART_STYLES } from '../../src/widget/styles'
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { barsToCsv, csvField, dataFileName, downloadBarsCsv } from '../../src/widget/dataExport'
 import { createCommandRegistry } from '../../src/widget/commands'
@@ -103,6 +104,7 @@ describe('the chart.data.download command', () => {
     const unregister = registerChartCommands({
       commands: registry.registry,
       handle: chart.handle,
+      styles: CHART_STYLES,
       features: resolveFeatures(),
     ui: resolveUi(undefined, resolveFeatures()),
       capabilities: () => ({ saveLoad: {}, extensions: [] }) as unknown as Capabilities,

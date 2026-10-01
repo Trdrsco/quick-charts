@@ -7,6 +7,7 @@
 // replay window is read at its cursor and at its edges.
 //
 // Independent chart tiles are distinct from renderer study panes; both lifecycles are tested.
+import { CHART_STYLES } from '../../src/widget/styles'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChartInstance, type ChartInstance } from '../../src/widget/chart'
 import { createIndicatorCatalog } from '../../src/widget/indicators'
@@ -210,6 +211,7 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; ui
     features: resolveFeatures({ drawings: false, sessions: false, ...options.features }),
     ui: resolveUi({ contextMenu: false, navigation: false, ...options.ui }, resolveFeatures({ drawings: false, sessions: false, ...options.features })),
     compareSymbols: [],
+    styles: CHART_STYLES,
     indicators: [],
     extensions: [],
     marks: false,

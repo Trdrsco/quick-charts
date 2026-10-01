@@ -918,13 +918,39 @@ function drive(widget: ChartWidget): void {
 }
 ```
 
-### The seven chart styles
+### Chart styles
 
-`candles`, `hollow`, `bars`, `line`, `area`, `baseline`, `stepline`, listed in picker order as
-`CHART_STYLES`. A style switch is presentation: nothing refetches, and the loaded bars, indicators,
-drawings, comparisons, scale and visible range all survive it. Four of the seven are value-shaped
+`candles`, `hollow`, `bars`, `line`, `area`, `baseline`, `stepline`, listed as `CHART_STYLES`. A
+style switch is presentation: nothing refetches, and the loaded bars, indicators, drawings,
+comparisons, scale and visible range all survive it. Four of the seven are value-shaped
 (`valueShaped(style)`), which is the one predicate a host branches on when it renders open, high and
 low values of its own.
+
+By default a chart offers all seven styles, and the style picker groups them by family. `styles`
+names the styles you offer, in the order the picker lists them, and `style` must be one of them:
+
+```ts
+import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+// Candles, line and area, in this order, opening on the line.
+createChart({ container, datafeed, styles: ['candles', 'line', 'area'], style: 'line' })
+
+// Every style and no picker: a control of your own runs the chart.style.<id> commands.
+createChart({ container, datafeed, ui: { topBar: { styles: false } } })
+
+// Candles and line, with no picker.
+createChart({ container, datafeed, styles: ['candles', 'line'], ui: { topBar: { styles: false } } })
+```
+
+A style you leave out has no `chart.style.<id>` command, so no menu, shortcut or host control
+reaches it, and `setStyle` ignores it. With one style offered the picker is not shown, since there
+is nothing to choose. `ui.topBar.styles: false` hides the picker on its own terms, so you can
+restrict the set, hide the picker, do both, or do neither. A saved layout, saved chart or stored
+preference that names a style you left out opens on the first style in `styles`, and the rest of it
+restores. An empty list, an id outside `CHART_STYLES`, a repeated id and a `style` outside the list
+are setup errors that `createChart` throws.
 
 ### Events
 
@@ -1160,7 +1186,7 @@ chrome is painted from it and renders nothing without it.
 - **The top bar.** The symbol pill opens the symbol search for the active chart; the compare door
   opens it in compare mode. The timeframe picker shows the saved timeframes as chips and a list of
   the 26 presets in five groups, each row savable as a chip, with a composer for a custom interval
-  under the unit's ceiling. The style picker lists the seven styles. Indicators opens the picker
+  under the unit's ceiling. The style picker lists the styles the chart offers. Indicators opens the picker
   over the 23 built-in definitions, and the legend's gear opens the settings dialog for an instance
   (inputs, style, visibility). Bar replay enters and leaves replay for the active chart; entering
   asks where to begin rather than choosing a starting bar. Its starting-point menu answers with a

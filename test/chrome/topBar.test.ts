@@ -8,6 +8,7 @@ import { symbolLabel } from '../../src/symbolLabel'
 import { memoryChartStorage } from '../../src/storage'
 import { buttonNames, fakeWidget, settle } from './harness'
 import type { FeatureConfig, UiConfig } from '../../src/widget/options'
+import type { ChartStyleId } from '../../src/widget/styles'
 
 let cleanup: (() => void)[] = []
 afterEach(() => {
@@ -15,8 +16,8 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-function mount(options: { features?: FeatureConfig; ui?: UiConfig; access?: (id: string) => boolean } = {}): { bar: TopBarHandle; w: ReturnType<typeof fakeWidget> } {
-  const w = fakeWidget({ features: options.features, ui: options.ui, access: options.access ? { command: options.access } : undefined })
+function mount(options: { features?: FeatureConfig; ui?: UiConfig; access?: (id: string) => boolean; styles?: readonly ChartStyleId[] } = {}): { bar: TopBarHandle; w: ReturnType<typeof fakeWidget> } {
+  const w = fakeWidget({ features: options.features, ui: options.ui, styles: options.styles, access: options.access ? { command: options.access } : undefined })
   const notices: string[] = []
   const bar = mountTopBar({ ...w.ctx, ...w.topBarParts, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, autosave: w.autosave, openSearch: () => notices.push('search'), notify: (kind, text) => notices.push(`${kind}:${text}`) })
   document.body.appendChild(bar.element)
@@ -186,6 +187,40 @@ describe('the top bar', () => {
     expect(w.overlays.querySelector('[role="menu"]')).toBeNull()
     bar.sync()
     expect(trigger.getAttribute('aria-label')).toBe('Chart style: Line')
+  })
+
+  it('the style picker lists only the offered styles, in the order given, with a rule where the family changes', () => {
+    const { bar, w } = mount({ styles: ['line', 'candles', 'bars', 'area'] })
+    bar.element.querySelector<HTMLButtonElement>('button[aria-label^="Chart style"]')!.click()
+    const menu = w.overlays.querySelector<HTMLElement>('[role="menu"]')!
+    const rows = [...menu.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
+    expect(rows.map((r) => r.textContent)).toEqual(['Line', 'Candles', 'Bars', 'Area'])
+    expect(menu.querySelectorAll('[role="separator"]').length).toBe(2)
+    expect(rows.map((r) => r.getAttribute('aria-checked'))).toEqual(['false', 'true', 'false', 'false'])
+    rows[3]!.click()
+    expect(w.chart.calls).toContain('style:area')
+    const ids = w.commands.list().map((spec) => spec.id).filter((id) => id.startsWith('chart.style.'))
+    expect(ids).toEqual(['chart.style.line', 'chart.style.candles', 'chart.style.bars', 'chart.style.area'])
+    expect(w.commands.execute('chart.style.hollow').kind).not.toBe('ok')
+    expect(w.chart.calls).not.toContain('style:hollow')
+  })
+
+  it('shows no style picker when one style is offered, since there is nothing to choose', () => {
+    const { bar, w } = mount({ styles: ['line'] })
+    expect(buttonNames(bar.element).some((n) => n.startsWith('Chart style'))).toBe(false)
+    expect(w.ui.stylePicker).toBe(false)
+    expect(w.commands.list().map((spec) => spec.id).filter((id) => id.startsWith('chart.style.'))).toEqual(['chart.style.line'])
+  })
+
+  it('hides the picker with ui.topBar.styles: false independently of the offered styles', () => {
+    const hidden = mount({ ui: { topBar: { styles: false } } })
+    expect(buttonNames(hidden.bar.element).some((n) => n.startsWith('Chart style'))).toBe(false)
+    expect(hidden.w.commands.list().filter((spec) => spec.id.startsWith('chart.style.'))).toHaveLength(7)
+    const both = mount({ ui: { topBar: { styles: false } }, styles: ['candles', 'line'] })
+    expect(buttonNames(both.bar.element).some((n) => n.startsWith('Chart style'))).toBe(false)
+    expect(both.w.commands.execute('chart.style.line').kind).toBe('ok')
+    expect(both.w.chart.calls).toContain('style:line')
+    expect(both.w.commands.list().map((spec) => spec.id).filter((id) => id.startsWith('chart.style.'))).toEqual(['chart.style.candles', 'chart.style.line'])
   })
 
   it('a denied command renders disabled and does nothing when pressed', () => {

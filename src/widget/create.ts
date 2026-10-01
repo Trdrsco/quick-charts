@@ -20,6 +20,7 @@ import { createChartCommandScope, createCommandRegistry, type CommandRegistry } 
 import { createEmitter, type WidgetEvents } from './events'
 import { createSearchController, memoryRecents, type RecentsPort, type SearchController } from '../search'
 import { deriveCapabilities, resolveFeatures, resolveUi } from './planes'
+import { resolveOfferedStyles } from './styles'
 import type { Capabilities, ChartWidgetOptions } from './options'
 import { DRAWING_CONTEXT_VERSION, type DrawingContextKind, type DrawingResourceContext } from '../drawings/document'
 import type { ChartDrawingPersistence } from './chart'
@@ -113,7 +114,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   let disposed = false
   const events = createEmitter<WidgetEvents>()
   const features = resolveFeatures(options.features)
-  const ui = resolveUi(options.ui, features)
+  // The styles every chart of this widget offers, checked before anything mounts: a list or an
+  // opening style the host got wrong is a setup error, never a chart quietly on another style.
+  const styles = resolveOfferedStyles(options.styles, options.style)
+  const ui = resolveUi(options.ui, features, styles.list.length)
   const iconDiagnostics = createIconDiagnostics()
   const i18n: ChartI18n = options.i18n ?? createChartI18n(options.locale)
   // Every glyph the widget draws goes through this one resolver, so a host's drawing for an icon
@@ -340,6 +344,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           symbol: init?.symbol ?? options.symbol,
           timeframe: init?.timeframe ?? options.timeframe,
           style: init?.style ?? options.style,
+          styles: styles.list,
           compares: init?.compares,
           onSymbolInfo: (info) => {
             symbolInfoByChart.set(id, info)
@@ -645,6 +650,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     autosave,
     layoutChanges,
     icons,
+    styles,
     doors,
   })
 

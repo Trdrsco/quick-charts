@@ -5,6 +5,7 @@
 // What is pinned is the wiring: a toolbar press changes the preference the chart persists, the
 // eye blanks drawings and studies, a refused command is refused from the glass, and the keyboard
 // goes through the same door.
+import { CHART_STYLES } from '../../src/widget/styles'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChartI18n } from '../../src/i18n'
 import { DEFAULT_DRAWING_PREFERENCES, type DrawingPreferences } from '../../src/drawings/index'
@@ -90,6 +91,7 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
   const unregister = registerChartCommands({
     commands: registry.registry,
     handle,
+    styles: CHART_STYLES,
     features: resolveFeatures(),
     ui: resolveUi(undefined, resolveFeatures()),
     capabilities: () => ({}) as never,

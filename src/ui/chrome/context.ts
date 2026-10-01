@@ -8,6 +8,7 @@ import type { CommandRegistry } from '../../widget/commands'
 import type { ChartWidget } from '../../widget/create'
 import type { ChartHandle } from '../../widget/chart'
 import type { IconResolver } from '../icons/resolver'
+import type { OfferedChartStyles } from '../../widget/styles'
 
 export interface ChromeContext {
   i18n: ChartI18n
@@ -18,6 +19,8 @@ export interface ChromeContext {
   widget: ChartWidget
   /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
   icons: IconResolver
+  /** The main-series styles the widget offers, which are the style picker's rows. */
+  styles: OfferedChartStyles
 }
 
 /** The chart the chrome acts on: the active one. */
