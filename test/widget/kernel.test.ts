@@ -62,7 +62,7 @@ describe('resolveInitialTf — the capability-declaring feed’s initial-timefra
     // the timeframe event: capability is the feed's property and preference is the viewer's, so a
     // later feed that serves the preferred timeframe gets it back. Pinned in source because losing
     // it (a well-meaning storage.set next to the resolution) is invisible at runtime.
-    expect(chartSrc).toContain('tf = resolveInitialTf(tf, cfg.resolutions)')
+    expect(chartSrc).toContain('tf = resolveInitialTf(tf, cfg.resolutions?.filter((token) => offersTimeframe(deps.timeframes, token)))')
     expect(chartSrc).not.toMatch(/resolveInitialTf[\s\S]{0,120}storage\.set/)
   })
 })
