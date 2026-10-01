@@ -21,9 +21,11 @@ export type ThemeMode = 'light' | 'dark'
 /** Both modes, in the order they appear in the generated stylesheet. */
 export const THEME_MODES: readonly ThemeMode[] = ['light', 'dark']
 
-/** What a role's value is written as. Every value is a CSS token string, so `length` is `'4px'` and
- *  `duration` is `'150ms'`; the kind says which tokens are valid, and validation enforces it. */
-export type ThemeRoleKind = 'color' | 'length' | 'font' | 'duration' | 'shadow'
+/** What a role's value is written as. Every value is a CSS token string, so `length` is `'4px'`,
+ *  `duration` is `'150ms'`, `easing` is a timing function such as `'ease-out'`, and `scale` is a
+ *  unitless factor such as `'0.97'`; the kind says which tokens are valid, and validation enforces
+ *  it. */
+export type ThemeRoleKind = 'color' | 'length' | 'font' | 'duration' | 'easing' | 'scale' | 'shadow'
 
 /** The grouping a role belongs to. Families organize the manual and the manifest; they are not part
  *  of a role's identity. */
@@ -256,9 +258,19 @@ export const THEME_ROLES = [
   { id: 'drawing.handle', family: 'drawing', kind: 'color', description: 'The center of a drawing selection handle.' },
   { id: 'drawing.selected', family: 'drawing', kind: 'color', description: 'The highlight of a selected drawing and its handles.' },
 
-  // ── motion ──────────────────────────────────────────────────────────────────────────────────
+  // ── motion: every duration, timing function and motion scale the stylesheet and the chrome use ──
+  // Under a reduced-motion preference every duration resolves to zero, whatever a palette says, so
+  // a reader who asked for no motion sees none.
   { id: 'motion.durationFast', family: 'motion', kind: 'duration', description: 'A state change the reader should not have to wait for, such as a hover.' },
-  { id: 'motion.durationBase', family: 'motion', kind: 'duration', description: 'An ordinary transition, such as a menu opening.' },
+  { id: 'motion.durationBase', family: 'motion', kind: 'duration', description: 'An ordinary transition: a modal dialog and its backdrop opening and closing, and the replay row entering and leaving.' },
+  { id: 'motion.durationModerate', family: 'motion', kind: 'duration', description: 'A control moving to its new state, such as a switch knob sliding.' },
+  { id: 'motion.durationSlow', family: 'motion', kind: 'duration', description: 'A small mark settling, such as a disclosure caret turning or a checkbox filling.' },
+  { id: 'motion.durationSlower', family: 'motion', kind: 'duration', description: 'A larger mark turning, such as the drawing rail\'s chevron.' },
+  { id: 'motion.easingStandard', family: 'motion', kind: 'easing', description: 'The timing of an ordinary transition: a modal dialog box, the replay row, a caret dip, a checkbox fill.' },
+  { id: 'motion.easingOut', family: 'motion', kind: 'easing', description: 'The timing of a motion that settles as it ends: a modal backdrop fading, a switch knob sliding.' },
+  { id: 'motion.easingLinear', family: 'motion', kind: 'easing', description: 'The timing of a color or opacity change under the pointer.' },
+  { id: 'motion.easingSpring', family: 'motion', kind: 'easing', description: 'The timing of a mark that turns with a slight overshoot, such as a caret or chevron.' },
+  { id: 'motion.scaleEnter', family: 'motion', kind: 'scale', description: 'The scale a modal dialog box grows from as it opens and returns to as it closes.' },
 ] as const satisfies readonly ThemeRole[]
 
 /** Every role id in the inventory. */

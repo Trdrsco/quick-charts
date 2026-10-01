@@ -66,8 +66,8 @@ describe('the built-in palettes', () => {
     expect(LIGHT_THEME['text.primary']).not.toBe(DARK_THEME['text.primary'])
   })
 
-  it('shares the type roles across modes: canvas and DOM agree regardless of mode', () => {
-    for (const role of THEME_ROLES.filter((r) => r.kind === 'length' || r.kind === 'font' || r.kind === 'duration')) {
+  it('shares the type and motion roles across modes: canvas and DOM agree regardless of mode', () => {
+    for (const role of THEME_ROLES.filter((r) => r.kind !== 'color' && r.kind !== 'shadow')) {
       expect(LIGHT_THEME[role.id], role.id).toBe(DARK_THEME[role.id])
     }
   })

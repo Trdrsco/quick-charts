@@ -150,7 +150,7 @@ describe('search mode', () => {
     press(input, 'Enter')
     expect(w.chart.calls).toContain('symbol:NQ')
     expect(w.widget.recents.list()[0]?.symbol).toBe('NQ')
-    const scrim = w.overlays.querySelector<HTMLElement>('.qc-search-dialog-scrim')!
+    const scrim = dialog.element.parentElement!
     expect(dialog.open()).toBe(false)
     expect(scrim.dataset.state).toBe('closing')
     expect(dialog.element.getAttribute('aria-hidden')).toBe('true')

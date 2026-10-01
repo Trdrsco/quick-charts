@@ -15,7 +15,7 @@ import { compositeOver, contrastRatio, parseCssColor } from '../../src/theme/col
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import { resolveSemanticTheme } from '../../src/theme/resolve'
 import { THEME_MODES, THEME_ROLES, type CustomThemes, type SemanticTheme } from '../../src/theme/schema'
-import { cssVarName, selectorsOf } from '../../src/theme/css-contract'
+import { cssVarName, reducedMotionBlock, selectorsOf } from '../../src/theme/css-contract'
 import { installBrowserShim, type BrowserShimHandle } from '../../scripts/browserShim'
 import { authoredStylesheet, authoredStylesheets } from './stylesheetSource'
 
@@ -273,7 +273,7 @@ describe('every surface has its recipe and its states', () => {
 })
 
 /** A stylesheet with its media blocks removed: the forced-colors block writes system color keywords
- *  on purpose, and the reduced-motion block writes no color at all. */
+ *  on purpose. */
 const withoutMediaBlocks = (css: string): string => css.replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '')
 
 describe('every recipe draws from the theme', () => {
@@ -359,11 +359,15 @@ describe('WCAG 2.2 AA contrast, computed from the theme vectors', () => {
 describe('reduced motion and forced colors', () => {
   const structural = fileText('quickcharts.css')
 
-  it('flattens every transition under prefers-reduced-motion with one universal rule', () => {
-    const block = /@media \(prefers-reduced-motion: reduce\)\s*\{([\s\S]*?)\n\}/.exec(structural)?.[1] ?? ''
-    expect(block).toContain('[data-qc-theme] *')
-    expect(block).toContain('transition-duration: 1ms !important')
-    expect(block).toContain('animation-duration: 1ms !important')
+  it('flattens every transition under prefers-reduced-motion through the duration roles', () => {
+    // The generated tokens zero every duration role under the preference, so the recipes carry no
+    // reduced-motion rule of their own, and every transition they write reads a duration role.
+    const block = reducedMotionBlock(THEME_ROLES.filter((role) => role.kind === 'duration').map((role) => role.id))
+    for (const role of THEME_ROLES.filter((r) => r.kind === 'duration')) expect(block).toContain(`${cssVarName(role.id)}: 0ms !important;`)
+    expect(whole).not.toMatch(/prefers-reduced-motion/)
+    const transitions = [...whole.matchAll(/transition(?:-duration)?:([^;]+);/g)].map((m) => m[1]!)
+    expect(transitions.length).toBeGreaterThan(10)
+    expect(transitions.filter((value) => !value.includes('var(--qc-motion-duration'))).toEqual([])
     expect(whole).not.toMatch(/@keyframes/)
   })
 

@@ -123,6 +123,23 @@ describe('validation of a host palette', () => {
     ])
   })
 
+  it('takes any CSS timing function for an easing role and a unitless factor for a scale role', () => {
+    for (const easing of ['ease', 'ease-in-out', 'linear', 'step-end', 'steps(4, jump-end)', 'linear(0, 0.6 40%, 1)', 'cubic-bezier(0.2, -0.5, 0.8, 1.6)']) {
+      expect(validateCustomThemes({ dark: { 'motion.easingStandard': easing } }), easing).toEqual([])
+    }
+    for (const scale of ['1', '0.95', '.9']) expect(validateCustomThemes({ dark: { 'motion.scaleEnter': scale } }), scale).toEqual([])
+    const diagnostics = validateCustomThemes({
+      light: { 'motion.easingOut': 'cubic-bezier(1.2, 0, 0, 1)', 'motion.easingLinear': '150ms', 'motion.scaleEnter': '97%', 'motion.easingSpring': 'bounce' },
+    })
+    expect(diagnostics.map((d) => `${d.role}: ${d.code}`)).toEqual([
+      'motion.easingLinear: invalid-value',
+      'motion.easingOut: invalid-value',
+      'motion.easingSpring: invalid-value',
+      'motion.scaleEnter: invalid-value',
+    ])
+    expect(diagnostics[3]!.message).toBe('motion.scaleEnter needs a unitless scale factor such as 0.97. It received 97%.')
+  })
+
   it('rejects an empty value rather than resolving to a blank declaration', () => {
     expect(validateCustomThemes({ dark: { 'text.fontFamily': '  ' } })).toEqual([
       { mode: 'dark', role: 'text.fontFamily', code: 'empty-value', message: 'text.fontFamily needs a non-empty string value.' },

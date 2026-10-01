@@ -278,7 +278,7 @@
 [data-qc-theme] .qc-tf-unit-caret {
   flex: 0 0 auto;
   color: var(--qc-text-muted);
-  transition: transform var(--qc-motion-durationFast) linear;
+  transition: transform var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
   transform: rotate(180deg);
 }
 

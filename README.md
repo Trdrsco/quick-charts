@@ -1535,15 +1535,61 @@ inventory, and the built-in palettes and the generated stylesheet are built from
 property names are private, so a color, a size or a radius is always set through a role. The
 class names inside the stylesheet are private too, except the supported hooks below.
 
+### Motion
+
+Every duration, timing function and motion scale the chart uses is a role in the `motion` family,
+so you retune the chart's motion the way you retune its colors. Both built-in palettes carry the
+same values:
+
+| Role | Default | What it times |
+|---|---|---|
+| `motion.durationFast` | `90ms` | A state change under the pointer, such as a hover fill. |
+| `motion.durationBase` | `150ms` | A modal dialog and its backdrop opening and closing, and the replay row entering and leaving. |
+| `motion.durationModerate` | `250ms` | A control moving to its new state, such as a switch knob sliding. |
+| `motion.durationSlow` | `350ms` | A small mark settling, such as a disclosure caret turning or a checkbox filling. |
+| `motion.durationSlower` | `500ms` | A larger mark turning, such as the drawing rail's chevron. |
+| `motion.easingStandard` | `ease` | A modal dialog box, the replay row, a caret dip, a checkbox fill. |
+| `motion.easingOut` | `ease-out` | A modal backdrop fading, a switch knob sliding. |
+| `motion.easingLinear` | `linear` | A color or opacity change under the pointer. |
+| `motion.easingSpring` | `cubic-bezier(0.175, 0.885, 0.32, 1.275)` | A caret or chevron turning with a slight overshoot. |
+| `motion.scaleEnter` | `0.97` | The scale a modal dialog box grows from as it opens. |
+
+A modal dialog, such as the symbol search or chart settings, opens with its backdrop fading in over
+`motion.durationBase` on `motion.easingOut`, and its box fading in and growing from
+`motion.scaleEnter` to full size over `motion.durationBase` on `motion.easingStandard`. It closes
+with the same motion reversed. A closing dialog stops taking input and returns focus at once, and the
+chart removes it when the same `motion.durationBase` has elapsed, so a duration you set times both
+the transition and the removal.
+
+A duration takes a CSS duration such as `200ms` or `0.2s`; an easing takes any CSS timing function,
+such as `ease-in-out`, `steps(4)` or `cubic-bezier(0.2, 0, 0, 1)`; a scale takes a unitless factor
+such as `0.95`.
+
+```ts
+import { createThemeController, type CustomThemes } from '@trdrs/quickcharts'
+
+const calm: CustomThemes = {
+  light: { 'motion.durationBase': '200ms', 'motion.scaleEnter': '0.95' },
+  dark: { 'motion.durationBase': '200ms', 'motion.scaleEnter': '0.95' },
+}
+const theme = createThemeController({ mode: 'dark', custom: calm })
+note(theme.get()['motion.durationBase'])
+```
+
+When the reader's system asks for reduced motion (`prefers-reduced-motion: reduce`), the
+stylesheet resolves every duration role to `0ms` and marks those declarations `!important`, so a
+palette you supply cannot bring motion back: dialogs, menus and the replay row open and close at
+once.
+
 ### Cascade layers
 
 The stylesheet declares two cascade layers and puts everything it contains in them: the built-in
 palettes in `trdrs.tokens`, every recipe in `trdrs.chart`. Nothing in it is unlayered. It marks a
-declaration `!important` only where a later layer must not undo it: an element's `hidden`
-attribute, the shortened motion under a reduced-motion preference, and the missing focus ring of a
-search field, which shows its focus by its caret. Your first stylesheet must declare the complete
-order before any product stylesheet loads, because a layer's position is fixed by the first
-statement that names it:
+declaration `!important` only where a later layer or an inline palette must not undo it: an
+element's `hidden` attribute, the zero motion durations under a reduced-motion preference, and the
+missing focus ring of a search field, which shows its focus by its caret. Your first stylesheet must
+declare the complete order before any product stylesheet loads, because a layer's position is fixed
+by the first statement that names it:
 
 ```css
 @layer reset, trdrs.tokens, trdrs.chart, trdrs.platform, host;

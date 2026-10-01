@@ -87,7 +87,7 @@
   inset: 2px;
   z-index: -1;
   border-radius: var(--qc-chrome-radius);
-  transition: background-color var(--qc-motion-durationFast) linear;
+  transition: background-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-toolbar-button:hover {
@@ -148,11 +148,11 @@
  * and neither bends the other, and each answers to its OWN button: a caret nested inside some other
  * open thing is not the thing that opened. */
 [data-qc-theme] .qc-caret {
-  transition: translate 350ms ease;
+  transition: translate var(--qc-motion-durationSlow) var(--qc-motion-easingStandard);
 }
 
 [data-qc-theme] .qc-caret > svg {
-  transition: rotate 350ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: rotate var(--qc-motion-durationSlow) var(--qc-motion-easingSpring);
 }
 
 [data-qc-theme] .qc-toolbar-button:not([aria-expanded='true']):hover > .qc-caret {
@@ -275,7 +275,7 @@
   height: 14px;
   background: var(--qc-control-mark);
   border-radius: 50%;
-  transition: inset-inline-start 250ms ease-out;
+  transition: inset-inline-start var(--qc-motion-durationModerate) var(--qc-motion-easingOut);
 }
 
 [data-qc-theme] .qc-switch[aria-checked='true'] .qc-switch-knob,
@@ -299,7 +299,7 @@
   border: 1px solid var(--qc-control-on);
   border-radius: 3px;
   cursor: pointer;
-  transition: background-color 350ms, border-color 350ms;
+  transition: background-color var(--qc-motion-durationSlow) var(--qc-motion-easingStandard), border-color var(--qc-motion-durationSlow) var(--qc-motion-easingStandard);
 }
 
 [data-qc-theme] .qc-checkbox:checked {

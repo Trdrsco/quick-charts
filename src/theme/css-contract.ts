@@ -69,18 +69,36 @@ export const LAYER_ORDER_STATEMENT = `@layer ${STYLE_LAYERS.tokens}, ${STYLE_LAY
  *  emitted: a product that wrote a host layer would be deciding the host's cascade for it. */
 export const HOST_LAYER_ORDER = `@layer reset, ${STYLE_LAYERS.tokens}, ${STYLE_LAYERS.chart}, trdrs.platform, host;`
 
+/** What every duration role resolves to while the reader prefers reduced motion. */
+export const REDUCED_MOTION_DURATION = '0ms'
+
+/** The reduced-motion block: under `prefers-reduced-motion: reduce`, every duration role resolves to
+ *  zero on every widget root. The declarations are `!important`, which outranks the custom
+ *  properties the widget writes inline for a host's palette, so no palette can bring motion back to
+ *  a reader who asked for none. Every transition the stylesheet runs reads one of these roles, and
+ *  the chrome reads the same roles for how long to keep a closing surface, so both end at once. */
+export function reducedMotionBlock(durationRoleIds: readonly string[]): string {
+  const body = [...durationRoleIds]
+    .sort()
+    .map((roleId) => `    ${cssVarName(roleId)}: ${REDUCED_MOTION_DURATION} !important;`)
+    .join('\n')
+  return `@media (prefers-reduced-motion: reduce) {\n  ${THEME_ROOT_SELECTOR} {\n${body}\n  }\n}`
+}
+
 /** What the generator writes into the distributable stylesheet. */
 export interface StylesheetInput {
   /** Built-in mode blocks, in the order they should appear. */
   blocks: { mode: string; theme: Readonly<Record<string, string | number>> }[]
+  /** The duration role ids the reduced-motion block resolves to zero. */
+  durationRoles: readonly string[]
   /** The authored structural and component CSS, already scoped to the root selector. */
   structural: string
 }
 
 /** Compose the distributable stylesheet: a short banner, the layer order, the built-in mode blocks
- *  in the tokens layer, then the authored component CSS in the chart layer. The output is
- *  deterministic for a given input, which is what lets the drift gate compare a rebuild against the
- *  committed vectors. */
+ *  and the reduced-motion block in the tokens layer, then the authored component CSS in the chart
+ *  layer. The output is deterministic for a given input, which is what lets the drift gate compare a
+ *  rebuild against the committed vectors. */
 export function composeStylesheet(input: StylesheetInput): string {
   const banner = [
     '/* Quick Charts stylesheet.',
@@ -91,7 +109,7 @@ export function composeStylesheet(input: StylesheetInput): string {
     ' * names are listed in the theme manifest under hooks; every other class is private.',
     ' */',
   ].join('\n')
-  const blocks = input.blocks.map((b) => themeBlock(b.mode, b.theme)).join('\n\n')
+  const blocks = [...input.blocks.map((b) => themeBlock(b.mode, b.theme)), reducedMotionBlock(input.durationRoles)].join('\n\n')
   return [
     banner,
     '',
