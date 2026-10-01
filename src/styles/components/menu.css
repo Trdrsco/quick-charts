@@ -102,8 +102,12 @@
   text-transform: uppercase;
 }
 
+/* The line a list shows in place of rows (empty, loading, failed): the rows' own size in the muted
+ * ink, on a row's height, its words 8px in where a row's label starts. */
 [data-qc-theme] .qc-menu-note {
-  padding: 6px 12px;
+  padding: 6px 8px;
+  color: var(--qc-text-muted);
+  line-height: 20px;
 }
 
 [data-qc-theme] .qc-menu-panel .qc-separator {

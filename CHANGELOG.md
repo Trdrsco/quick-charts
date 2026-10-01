@@ -12,6 +12,8 @@ Hosts choose which chart styles a chart offers with `styles`, in the order the s
 
 Hosts choose which timeframes a chart offers with `timeframes`, presets or other tokens, and can switch custom timeframes off with `customTimeframes: false`; a timeframe left out has no command and no chip or row in the picker, `setTimeframe` ignores it, the picker is not shown for a single timeframe, and a saved layout naming a timeframe left out opens on the smallest offered one.
 
+A menu that has no rows to show (nothing to remove, no saved layouts, loading) states it at the rows' own size and inset, in the muted ink.
+
 ## 1.1.0
 
 The symbol search can name what it is limited to, with a host-painted mark, beside the asset-class filters (`search.scope`, `SearchScope`).

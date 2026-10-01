@@ -166,7 +166,7 @@ export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {
           // The rows the catalog holds, or an empty list once the store refused its only listing.
           const rows = catalog.rows() ?? (catalog.failed() ? [] : null)
           if (rows === null) {
-            replace(list, h('div', { class: 'qc-menu-note qc-muted' }, t()('layouts.loading')))
+            replace(list, h('div', { class: 'qc-menu-note' }, t()('layouts.loading')))
             return
           }
           // A search reads the name and what the layout shows, as its line writes them.
