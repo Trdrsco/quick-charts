@@ -98,6 +98,7 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; ui
     features: resolveFeatures({ drawings: false, replay: false, sessions: false, ...options.features }),
     ui: resolveUi({ legend: false, contextMenu: false, navigation: false, ...options.ui }, resolveFeatures({ drawings: false, replay: false, sessions: false, ...options.features })),
     compareSymbols: [],
+    styles: CHART_STYLES,
     indicators: [],
     indicatorCatalog: createIndicatorCatalog(),
     extensions: [],

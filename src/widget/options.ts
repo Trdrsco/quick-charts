@@ -358,8 +358,21 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   symbol?: string
   /** The timeframe token to open on. */
   timeframe?: string
-  /** The main-series style to open on. */
+  /** The main-series style to open on. It must be one of `styles`. */
   style?: ChartStyleId
+  /** The main-series styles the chart offers, in this order. Absent, every style in `CHART_STYLES`
+   *  is offered and the picker groups them by family.
+   *
+   *  A style left out is not a style of this chart: it has no `chart.style.<id>` command, so no
+   *  menu, shortcut or host control reaches it, and `setStyle` ignores it. The picker lists the
+   *  offered styles in the order given, and is not shown when one style is offered, since there is
+   *  nothing to choose. `ui.topBar.styles: false` hides the picker on its own terms.
+   *
+   *  A saved layout, saved chart or stored preference that names a style outside the list opens on
+   *  the FIRST offered style, and the rest of it restores. An empty list, an id outside
+   *  `CHART_STYLES`, a repeated id, and a `style` outside the list are setup errors thrown from
+   *  `createChart`. */
+  styles?: readonly ChartStyleId[]
   /** The multi-chart arrangement. One chart when omitted. */
   layout?: LayoutOptions
   /** Where the drawings are stored: with the chart's own saved content (the default) or in their

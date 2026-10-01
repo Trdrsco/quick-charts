@@ -1,7 +1,8 @@
-// The chart-style picker: one button wearing the active style's glyph, opening a menu of the seven
-// styles grouped by family. Each row is the style's own command, so the current style reads as
-// checked and a refused style renders disabled.
-import type { ChartStyleId } from '../../widget/styles'
+// The chart-style picker: one button wearing the active style's glyph, opening a menu of the styles
+// the widget offers. Every style, when the host named no list, groups by family; a list the host
+// named keeps the host's order, with a rule wherever the family changes. Each row is the style's own
+// command, so the current style reads as checked and a refused style renders disabled.
+import type { ChartStyleId, OfferedChartStyles } from '../../widget/styles'
 import { activeChart, commandLabel, type ChromeContext } from './context'
 import { button, name } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
@@ -15,6 +16,21 @@ const STYLE_MENU_GROUPS: readonly (readonly ChartStyleId[])[] = [
   ['area', 'baseline'],
 ]
 
+const FAMILY_OF = new Map<ChartStyleId, number>(STYLE_MENU_GROUPS.flatMap((group, family) => group.map((style) => [style, family] as const)))
+
+/** The menu's groups for what the widget offers: the families as above for every style, or the
+ *  host's list in its own order, split where two neighbors belong to different families. */
+export function styleMenuGroups(offered: OfferedChartStyles): readonly (readonly ChartStyleId[])[] {
+  if (!offered.named) return STYLE_MENU_GROUPS
+  const groups: ChartStyleId[][] = []
+  for (const style of offered.list) {
+    const last = groups.at(-1)
+    if (last && FAMILY_OF.get(last[0]!) === FAMILY_OF.get(style)) last.push(style)
+    else groups.push([style])
+  }
+  return groups
+}
+
 export interface StylePickerHandle {
   element: HTMLButtonElement
   sync(): void
@@ -24,6 +40,7 @@ export interface StylePickerHandle {
 export function mountStylePicker(deps: ChromeContext): StylePickerHandle {
   const t = (): ChromeContext['i18n']['t'] => deps.i18n.t
   let menu: MenuHandle | null = null
+  const groups = styleMenuGroups(deps.styles)
   const trigger = button({ label: t()('chrome.chartStyle'), icon: deps.icons.glyph(STYLE_ICONS.candles), className: 'qc-toolbar-button', onClick: () => toggleMenu(trigger, open) })
   trigger.setAttribute('aria-haspopup', 'menu')
   trigger.setAttribute('aria-expanded', 'false')
@@ -36,10 +53,10 @@ export function mountStylePicker(deps: ChromeContext): StylePickerHandle {
       label: t()('chrome.chartStyle'),
       className: 'qc-style-menu',
       width: FLYOUT_WIDTH.chartStyle,
-      initialIndex: Math.max(0, STYLE_MENU_GROUPS.flat().indexOf(current)),
+      initialIndex: Math.max(0, groups.flat().indexOf(current)),
       build(body, handle) {
         const active = activeChart(deps).style()
-        STYLE_MENU_GROUPS.forEach((group, gi) => {
+        groups.forEach((group, gi) => {
           if (gi > 0) body.appendChild(menuSeparator())
           for (const style of group) {
             const id = `chart.style.${style}`

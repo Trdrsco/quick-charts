@@ -35,6 +35,43 @@ export function coerceChartStyle(raw: unknown): ChartStyleId {
   return isChartStyle(raw) ? raw : 'candles'
 }
 
+/** The styles a widget offers: the host's list in its own order, or every style. `named` says which,
+ *  because the picker follows a list the host named and keeps its own family grouping otherwise. */
+export interface OfferedChartStyles {
+  readonly list: readonly ChartStyleId[]
+  readonly named: boolean
+}
+
+/** Every style, grouped the picker's own way: what a widget offers when the host names no list. */
+export const ALL_STYLES_OFFERED: OfferedChartStyles = { list: CHART_STYLES, named: false }
+
+/** Validate the host's `styles` and `style` options. An empty list, an unknown id, a repeated id
+ *  and an opening style outside the list are setup errors: nothing a host passes is substituted. */
+export function resolveOfferedStyles(styles: readonly unknown[] | undefined, style: unknown): OfferedChartStyles {
+  let offered = ALL_STYLES_OFFERED
+  if (styles !== undefined) {
+    if (!Array.isArray(styles)) throw new TypeError(`styles must be a list of chart styles; it takes ${CHART_STYLES.join(', ')}`)
+    if (styles.length === 0) throw new TypeError(`styles must name at least one chart style; it takes ${CHART_STYLES.join(', ')}`)
+    const seen = new Set<ChartStyleId>()
+    for (const id of styles) {
+      if (!isChartStyle(id)) throw new TypeError(`styles names ${JSON.stringify(id)}, which is not a chart style; it takes ${CHART_STYLES.join(', ')}`)
+      if (seen.has(id)) throw new TypeError(`styles names "${id}" more than once`)
+      seen.add(id)
+    }
+    offered = { list: [...seen], named: true }
+  }
+  if (style !== undefined && !(offered.list as readonly unknown[]).includes(style)) {
+    throw new TypeError(`style ${JSON.stringify(style)} is not one of the offered styles: ${offered.list.join(', ')}`)
+  }
+  return offered
+}
+
+/** The offered style a stored or restored value opens on: the value itself when it is offered, else
+ *  the first offered style. */
+export function offeredStyle(raw: unknown, offered: readonly ChartStyleId[]): ChartStyleId {
+  return isChartStyle(raw) && offered.includes(raw) ? raw : offered[0]!
+}
+
 /** Styles whose series consumes `{ time, value }` (close only). The rest consume the whole bar.
  *  Every consumer branches on this ONE predicate: a style is value-shaped or bar-shaped, never a
  *  third thing. A value-shaped style has no open, high or low to show, so the legend drops the

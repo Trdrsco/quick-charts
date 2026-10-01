@@ -22,7 +22,7 @@ import { CURSOR_MODES, type CursorMode, type HideState, type MagnetMode, type Vi
 import type { Capabilities, IndicatorInstance } from './options'
 import type { ComparePlacement } from '../compare'
 import type { ResolvedFeatures, ResolvedUi } from './planes'
-import { CHART_STYLES, type ChartStyleId } from './styles'
+import type { ChartStyleId } from './styles'
 import { REPLAY_SPEEDS } from '../replay'
 import { allowedTimeframes, TIMEFRAME_PRESETS, timeframeLabel } from '../timeframe'
 import { rangeAvailable, RANGE_PRESETS, type RangePreset } from '../ranges'
@@ -50,6 +50,8 @@ const SCALE_LABEL: Record<ScaleMode, ChartMessageKey> = {
 export interface ChartCommandDeps {
   commands: CommandRegistry
   handle: ChartHandle
+  /** The styles the widget offers. Each one has a command; a style left out has none. */
+  styles: readonly ChartStyleId[]
   features: ResolvedFeatures
   ui: ResolvedUi
   capabilities(): Capabilities
@@ -151,8 +153,9 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
 
-  // ── Styles: one command per style, all seven, so a picker and a shortcut share the list ──────
-  for (const style of CHART_STYLES) {
+  // ── Styles: one command per offered style, so a picker and a shortcut share the list, and a
+  // style the host left out is reachable from no door at all.
+  for (const style of deps.styles) {
     add({
       id: `chart.style.${style}`,
       scope: 'chart',

@@ -41,7 +41,7 @@ import { createEmitter, type ChartEvents, type SaveConflictInfo } from './events
 import type { AccessPolicy, Capabilities, ChartPreferences, IndicatorInstance } from './options'
 import type { ResolvedFeatures, ResolvedUi } from './planes'
 import type { IconResolver } from '../ui/icons/resolver'
-import { addStyleSeries, coerceChartStyle, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
+import { addStyleSeries, offeredStyle, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
 import { createBaselineLevel } from './baselineLevel'
 import {
   captureTimelineContinuity,
@@ -188,7 +188,8 @@ export interface ChartHandle {
   setTimeframe(timeframe: string): void
   style(): ChartStyleId
   /** Switch the main-series style. Presentation only: nothing refetches, and the indicators,
-   *  drawings, comparisons and visible range all survive. */
+   *  drawings, comparisons and visible range all survive. A style the widget does not offer is
+   *  ignored. */
   setStyle(id: ChartStyleId): void
   visibleRange(): TimeRange | null
   /** The range preset currently framing this chart, or null after other navigation. */
@@ -311,6 +312,8 @@ export interface ChartInstanceDeps {
   symbol?: string
   timeframe?: string
   style?: ChartStyleId
+  /** The styles the widget offers, in the host's order. A style outside them is never set. */
+  styles: readonly ChartStyleId[]
   /** The chart resolved a symbol: the widget re-derives its capability plane from it. */
   onSymbolInfo(info: SymbolInfo | null): void
   onConfig(config: DatafeedConfig | null): void
@@ -387,7 +390,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // ── State more than one plane reads. Everything else lives in the plane that owns it. ────────
   let symbol = deps.symbol ?? storage.get(SYMBOL_KEY) ?? deps.preferences.symbol ?? ''
   let tf = deps.timeframe ?? storage.get(TF_KEY) ?? deps.preferences.timeframe ?? '1m'
-  let style: ChartStyleId = deps.style ?? coerceChartStyle(storage.get(STYLE_KEY) ?? deps.preferences.style)
+  let style: ChartStyleId = deps.style ?? offeredStyle(storage.get(STYLE_KEY) ?? deps.preferences.style, deps.styles)
   let scaleMode: ScaleMode = coerceScaleMode(storage.get(SCALE_KEY) ?? deps.preferences.scaleMode)
   /** The viewer's timezone CHOICE: an IANA id, or `exchange` to follow the symbol's own venue. It
    *  is what persists, because a resolved zone would go stale the moment the symbol changed. */
@@ -1513,7 +1516,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   // ── The handle ───────────────────────────────────────────────────────────────────────────────
   function setStyle(next: ChartStyleId): void {
-    if (disposed || next === style) return
+    if (disposed || next === style || !deps.styles.includes(next)) return
     // A style switch is presentation. The loaded bars, the indicators, the drawings, the compares,
     // the scale and the visible range all survive it, and nothing refetches: only the visible
     // series is replaced, and the same bar model is painted into the new one. Everything with a
@@ -1565,7 +1568,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   function applyContent(parsed: ParsedChartContent): boolean {
     if (parsed.symbol) handle.setSymbol(parsed.symbol)
     if (parsed.timeframe) handle.setTimeframe(parsed.timeframe)
-    if (parsed.style) setStyle(coerceChartStyle(parsed.style))
+    if (parsed.style) setStyle(offeredStyle(parsed.style, deps.styles))
     applyScaleMode(coerceScaleMode(parsed.scale ?? null))
     // The blob's policy is authoritative in both directions: a manual chart loading an auto blob
     // starts framing again, and a fresh auto chart loading a manual blob stops. A blob that states
@@ -1853,6 +1856,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const unregisterCommands = registerChartCommands({
     commands: deps.commands,
     handle,
+    styles: deps.styles,
     features: deps.features,
     ui: deps.ui,
     capabilities: deps.capabilities,
