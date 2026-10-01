@@ -31,7 +31,7 @@ import type { ReplaySpeed } from '../replay'
 import type { DataStatus } from '../symbology'
 import type { ActiveSubsession } from '../sessionModel'
 import type { DrawingAssetPort, DrawingPreferences } from '../drawings/index'
-import type { RecentsPort } from '../search'
+import type { RecentsPort, SpreadOperatorId } from '../search'
 import type { CustomThemes, ThemeMode } from '../theme/schema'
 import type { ChartStyleId } from './styles'
 import type { LayoutSyncFlags } from './layout'
@@ -311,6 +311,28 @@ export interface SearchScope {
   readonly mark?: (request: { host: HTMLElement; size: number }) => (() => void) | void
 }
 
+/** How the symbol search offers its class filter and its spread operators. Every field is optional,
+ *  and a host that sets none gets the default search: all six operators, an All chip, and one class
+ *  selected at a time. */
+export interface SearchDisplayOptions {
+  /** The spread operators and the expression rows. `true` (the default) offers every operator.
+   *  `false` offers no operator toggle, no operator and no expression row, and searches your feed
+   *  with the query exactly as typed. `{ operators }` keeps spreads on and offers only the listed
+   *  operators, in the listed order; an empty list offers no operator toggle while a typed
+   *  expression still reads as one. The compare dialog offers no operator buttons either way. */
+  spreads?: boolean | { readonly operators: readonly SpreadOperatorId[] }
+  /** The class strip's All chip. `false` offers none: with one class selected at a time the first
+   *  declared class starts selected, and with several, no selection means every class. `{ label }`
+   *  writes the chip with your label. Absent, the chip wears the catalog's own label. A class's own
+   *  row of narrower classes always opens with its all chip, written the same way. */
+  allClasses?: false | { readonly label: string }
+  /** How many classes the viewer selects at once. `single` (the default) makes the chips a choice
+   *  of one, and your feed hears it as `cls`. `multiple` makes each chip a toggle, the All chip
+   *  clears the selection, and your feed hears `classes` with every selected class, and `cls` too
+   *  while exactly one is selected. */
+  classSelection?: 'single' | 'multiple'
+}
+
 /** Everything needed to construct a widget. `container` and `datafeed` are the two hard
  *  requirements; every other field has a working default. */
 export interface ChartWidgetOptions extends MarkPainterHooks {
@@ -377,9 +399,10 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   image?: ImageOptions
   /** The symbol picker's host inputs. The chart owns the search controller (its debounce, cache and
    *  cancellation); a host supplies only what it alone knows: where the viewer's recent symbols
-   *  live, and what its feed's asset classes are called. Absent, recents last the page and a
-   *  class's filter chip wears the class token as written. */
-  search?: {
+   *  live, what its feed's asset classes are called, and how the classes and the spread operators
+   *  are offered. Absent, recents last the page, a class's filter chip wears the class token as
+   *  written, and the search offers its default class strip and operators. */
+  search?: SearchDisplayOptions & {
     recents?: RecentsPort
     /** Display names for the asset-class tokens the feed's `config()` declares in `classes`. */
     classNames?: Readonly<Record<string, string>>

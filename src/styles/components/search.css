@@ -145,6 +145,12 @@
   display: none;
 }
 
+/* A selected class's narrower classes: a second strip of the same tabs, standing directly under the
+ * strip above so the two rows read as one filter. */
+[data-qc-theme] .qc-search-classes + .qc-search-subclasses {
+  padding-top: 0;
+}
+
 [data-qc-theme] .qc-search-scope {
   display: inline-flex;
   flex: 0 0 auto;

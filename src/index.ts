@@ -13,6 +13,8 @@ export type {
   BarsEvent,
   SubscribeHandlers,
   DatafeedConfig,
+  DatafeedSearchOptions,
+  SearchClassNode,
   ChartDatafeed,
 } from './datafeed'
 export { FeedUnavailableError, olderPageVerdict } from './datafeed'
@@ -46,6 +48,7 @@ export type {
   ChartPreferences,
   ChartWidgetOptions,
   FeatureConfig,
+  SearchDisplayOptions,
   SearchScope,
   FullscreenOptions,
   ImageOptions,
@@ -353,7 +356,7 @@ export {
 } from './sessionModel'
 export type { RangeFrameTarget, RangePreset, RangeSpan } from './ranges'
 export { frameRange, MIN_BAR_SPACING, RANGE_PRESETS, rangeAvailable, rangePresetTip, rangeSpanSeconds, SCROLL_STEP_BARS, scrolledPosition, ZOOM_FACTOR, zoomedBarSpacing } from './ranges'
-export type { MatchSegment, RecentsPort, SearchController, SearchControllerOptions, SearchState, SpreadOperator } from './search'
+export type { MatchSegment, RecentsPort, SearchClassFilter, SearchController, SearchControllerOptions, SearchState, SpreadOperator, SpreadOperatorId } from './search'
 export { createSearchController, isSymbolPair, looksLikeSpread, matchSegments, memoryRecents, promoteRecent, RECENT_SYMBOLS_CAP, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery } from './search'
 // The search as a dialog, for a page that needs a market picked away from a chart.
 export type { MountedSymbolSearch, SymbolSearchCache, SymbolSearchHandle, SymbolSearchOptions } from './ui/chrome/openSymbolSearch'
