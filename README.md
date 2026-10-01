@@ -926,21 +926,21 @@ comparisons, scale and visible range all survive it. Four of the seven are value
 (`valueShaped(style)`), which is the one predicate a host branches on when it renders open, high and
 low values of its own.
 
-By default a chart offers all seven, and the style picker groups them by family. `styles` names the
-styles you offer, in the order the picker lists them, and `style` must be one of them:
+By default a chart offers all seven styles, and the style picker groups them by family. `styles`
+names the styles you offer, in the order the picker lists them, and `style` must be one of them:
 
 ```ts
 import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
 
 declare const datafeed: ChartDatafeed
 
-// Three styles, in this order, opening on the line.
+// Candles, line and area, in this order, opening on the line.
 createChart({ container, datafeed, styles: ['candles', 'line', 'area'], style: 'line' })
 
 // Every style and no picker: a control of your own runs the chart.style.<id> commands.
 createChart({ container, datafeed, ui: { topBar: { styles: false } } })
 
-// Two styles and no picker.
+// Candles and line, with no picker.
 createChart({ container, datafeed, styles: ['candles', 'line'], ui: { topBar: { styles: false } } })
 ```
 
