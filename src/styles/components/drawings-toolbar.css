@@ -296,10 +296,6 @@
   cursor: default;
 }
 
-[data-qc-theme] .qc-drawing-menu-note {
-  padding: 8px 12px;
-}
-
 [data-qc-theme] .qc-drawing-menu .qc-separator {
   margin: 6px 0;
 }

@@ -247,13 +247,13 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
         const showRecents = (): void => {
           const rows = deps.catalog?.rows() ?? (deps.catalog ? null : [])
           if (rows === null) {
-            replace(recents, h('div', { class: 'qc-menu-note qc-muted' }, t()(deps.catalog?.failed() ? 'layouts.errList' : 'layouts.loading')))
+            replace(recents, h('div', { class: 'qc-menu-note' }, t()(deps.catalog?.failed() ? 'layouts.errList' : 'layouts.loading')))
             return
           }
           const sorted = [...rows].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 3)
           replace(
             recents,
-            sorted.length === 0 ? h('div', { class: 'qc-menu-note qc-muted' }, t()('layouts.emptyNone')) : null,
+            sorted.length === 0 ? h('div', { class: 'qc-menu-note' }, t()('layouts.emptyNone')) : null,
             ...sorted.map((row) => recentRow(row, current?.ref.id === row.id, handle)),
           )
         }

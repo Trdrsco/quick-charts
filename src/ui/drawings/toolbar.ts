@@ -372,7 +372,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         { commands: [...(rowSpec.drawings > 0 ? ['chart.drawings.removeAll'] : []), ...(rowSpec.indicators > 0 ? ['chart.indicators.removeAll'] : [])] },
       ),
     )
-    if (items.length === 0) items.push(el('div', { class: 'qc-muted qc-drawing-menu-note', text: t('drawing.nothingToRemove') }))
+    if (items.length === 0) items.push(el('div', { class: 'qc-menu-note', text: t('drawing.nothingToRemove') }))
     const policy = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row qc-drawing-switch-row', role: 'switch', 'aria-checked': String(s.removeLocked) })
     policy.disabled = !deps.available('chart.drawings.removeLockedPolicy')
     policy.append(el('span', { class: 'qc-menu-label', text: t('drawing.alwaysRemoveLocked') }), el('span', { class: 'qc-switch', 'aria-hidden': 'true' }, el('span', { class: 'qc-switch-knob' })))
