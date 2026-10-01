@@ -23,6 +23,7 @@ import type { Capabilities, IndicatorInstance } from './options'
 import type { ComparePlacement } from '../compare'
 import type { ResolvedFeatures, ResolvedUi } from './planes'
 import type { ChartStyleId } from './styles'
+import { offersTimeframe, type OfferedTimeframes } from './timeframes'
 import { REPLAY_SPEEDS } from '../replay'
 import { allowedTimeframes, TIMEFRAME_PRESETS, timeframeLabel } from '../timeframe'
 import { rangeAvailable, RANGE_PRESETS, type RangePreset } from '../ranges'
@@ -52,6 +53,9 @@ export interface ChartCommandDeps {
   handle: ChartHandle
   /** The styles the widget offers. Each one has a command; a style left out has none. */
   styles: readonly ChartStyleId[]
+  /** The timeframes the widget offers. A preset left out has no command, and the open-ended setter
+   *  refuses a token left out. */
+  timeframes: OfferedTimeframes
   features: ResolvedFeatures
   ui: ResolvedUi
   capabilities(): Capabilities
@@ -579,7 +583,8 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   // ── Timeframe and range presets. The grammar and the preset registries are the chart's own
   // timeframe module, which lands beside this one; the two ids exist now so a host binding a
   // toolbar or an operator adapter binds the same names it will keep.
-  // One command per preset token, plus the open-ended setter a custom interval uses. Availability
+  // One command per preset token the widget offers, plus the open-ended setter a custom interval
+  // uses, which refuses a token the widget does not offer. Availability
   // is the intersection the capability plane already knows: a token the feed or the symbol cannot
   // serve is refused here rather than sent and rejected.
   const servable = (token: string): boolean => {
@@ -593,6 +598,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   }
   for (const group of TIMEFRAME_PRESETS) {
     for (const token of group.tokens) {
+      if (!offersTimeframe(deps.timeframes, token)) continue
       add({
         id: `chart.timeframe.${token}`,
         scope: 'chart',
@@ -609,7 +615,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     label: 'command.timeframeSet',
     available: always,
     execute: (arg) => {
-      if (typeof arg === 'string' && arg && servable(arg)) handle.setTimeframe(arg)
+      if (typeof arg === 'string' && arg && offersTimeframe(deps.timeframes, arg) && servable(arg)) handle.setTimeframe(arg)
     },
   })
   // One command per range preset. A preset whose span reaches further back than the chart holds is

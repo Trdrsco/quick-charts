@@ -4,7 +4,10 @@
 // their unit's group, a star per row that saves it as a chip, a delete on each custom row, and a
 // footer that composes a custom token clamped by the unit's ceiling. Every row is a command:
 // `chart.timeframe.<token>` for a preset, `chart.timeframe.set` for a custom token, so a token the
-// feed or the symbol cannot serve is disabled rather than sent.
+// feed or the symbol cannot serve is disabled as a chip and left out of the list rather than sent.
+// When the host names the timeframes the widget offers, the chips and the rows are that list alone:
+// a group with no listed token is not drawn, a listed token beyond the presets sits in its unit's
+// group without a delete, and there is no composer.
 import type { ChartMessageKey } from '../../i18n'
 import {
   allowedTimeframes,
@@ -107,9 +110,13 @@ export function mountTimeframePicker(deps: TimeframePickerDeps): TimeframePicker
         const saved = deps.store.saved()
         const custom = deps.store.custom()
         const groupOf = (token: string): TimeframeUnit => timeframeGroupUnit(parseTimeframe(token)?.unit ?? 'd')
-        TIMEFRAME_PRESETS.forEach((group, gi) => {
-          const tokens = allowedTimeframes([...group.tokens, ...custom.filter((c) => groupOf(c) === group.unit)], deps.restrictions()).sort((a, b) => timeframeOrder(a) - timeframeOrder(b))
-          if (gi > 0) body.appendChild(h('div', { class: 'qc-separator', role: 'separator' }))
+        const listed = deps.timeframes.list
+        let drawn = 0
+        TIMEFRAME_PRESETS.forEach((group) => {
+          const offered = listed ? listed.filter((token) => groupOf(token) === group.unit) : [...group.tokens, ...custom.filter((c) => groupOf(c) === group.unit)]
+          if (offered.length === 0) return
+          const tokens = allowedTimeframes(offered, deps.restrictions()).sort((a, b) => timeframeOrder(a) - timeframeOrder(b))
+          if (drawn++ > 0) body.appendChild(h('div', { class: 'qc-separator', role: 'separator' }))
           const isCollapsed = collapsed.has(group.unit)
           const heading = h('button', { type: 'button', class: 'qc-tf-group', 'data-qc-item': '', tabindex: '-1', 'aria-expanded': String(!isCollapsed) }, h('span', {}, t()(TIMEFRAME_UNIT_NAME[group.unit])), deps.icons.glyph(isCollapsed ? ICONS.chevronDown : ICONS.chevronUp, { size: 18 }))
           heading.addEventListener('click', () => {
@@ -187,9 +194,14 @@ export function mountTimeframePicker(deps: TimeframePickerDeps): TimeframePicker
           }
         })
       },
-      footer(foot, handle) {
-        foot.appendChild(composer(handle))
-      },
+      // The composer adds a custom timeframe, so it is drawn only where the widget offers them.
+      ...(deps.timeframes.list === null && deps.timeframes.custom
+        ? {
+            footer(foot: HTMLElement, handle: MenuHandle) {
+              foot.appendChild(composer(handle))
+            },
+          }
+        : {}),
       initialIndex: 0,
       onClose: () => {
         menu = null

@@ -7,6 +7,7 @@
 // The command itself is registered against the ACTIVE chart's painted bars, which is what makes the
 // replay boundary hold: while replay is on, the painted model IS the revealed slice.
 import { CHART_STYLES } from '../../src/widget/styles'
+import { ALL_TIMEFRAMES_OFFERED } from '../../src/widget/timeframes'
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { barsToCsv, csvField, dataFileName, downloadBarsCsv } from '../../src/widget/dataExport'
 import { createCommandRegistry } from '../../src/widget/commands'
@@ -105,6 +106,7 @@ describe('the chart.data.download command', () => {
       commands: registry.registry,
       handle: chart.handle,
       styles: CHART_STYLES,
+      timeframes: ALL_TIMEFRAMES_OFFERED,
       features: resolveFeatures(),
     ui: resolveUi(undefined, resolveFeatures()),
       capabilities: () => ({ saveLoad: {}, extensions: [] }) as unknown as Capabilities,

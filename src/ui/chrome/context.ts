@@ -9,6 +9,7 @@ import type { ChartWidget } from '../../widget/create'
 import type { ChartHandle } from '../../widget/chart'
 import type { IconResolver } from '../icons/resolver'
 import type { OfferedChartStyles } from '../../widget/styles'
+import type { OfferedTimeframes } from '../../widget/timeframes'
 
 export interface ChromeContext {
   i18n: ChartI18n
@@ -21,6 +22,9 @@ export interface ChromeContext {
   icons: IconResolver
   /** The main-series styles the widget offers, which are the style picker's rows. */
   styles: OfferedChartStyles
+  /** The timeframes the widget offers, which bound the timeframe picker's chips and rows and the
+   *  interval a range preset reads at. */
+  timeframes: OfferedTimeframes
 }
 
 /** The chart the chrome acts on: the active one. */

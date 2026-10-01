@@ -38,6 +38,7 @@ import { mountTopBar, type TopBarHandle, type TopBarSlot } from './topBar'
 import { mountReplayTransport, type ReplayTransportHandle } from './replayBar'
 import type { MarkPainters } from '../../markPainters'
 import type { OfferedChartStyles } from '../../widget/styles'
+import type { OfferedTimeframes } from '../../widget/timeframes'
 
 export interface ChromeDeps {
   root: HTMLElement
@@ -78,6 +79,8 @@ export interface ChromeDeps {
   icons: IconResolver
   /** The main-series styles the widget offers. */
   styles: OfferedChartStyles
+  /** The timeframes the widget offers. */
+  timeframes: OfferedTimeframes
   /** The doors the charts already hold. Filled in place. */
   doors: ChromeDoors
 }
@@ -101,7 +104,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   const { root, widget, i18n, features, ui } = deps
   const overlays = h('div', { class: 'qc-overlays' })
   root.appendChild(overlays)
-  const ctx: ChromeContext = { i18n, commands: widget.commands, overlays, widget, icons: deps.icons, styles: deps.styles }
+  const ctx: ChromeContext = { i18n, commands: widget.commands, overlays, widget, icons: deps.icons, styles: deps.styles, timeframes: deps.timeframes }
   const disposers: (() => void)[] = []
   let disposed = false
   let searchDialog: DialogHandle | null = null

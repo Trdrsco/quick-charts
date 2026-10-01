@@ -6,6 +6,7 @@
 // eye blanks drawings and studies, a refused command is refused from the glass, and the keyboard
 // goes through the same door.
 import { CHART_STYLES } from '../../src/widget/styles'
+import { ALL_TIMEFRAMES_OFFERED } from '../../src/widget/timeframes'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChartI18n } from '../../src/i18n'
 import { DEFAULT_DRAWING_PREFERENCES, type DrawingPreferences } from '../../src/drawings/index'
@@ -92,6 +93,7 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     commands: registry.registry,
     handle,
     styles: CHART_STYLES,
+    timeframes: ALL_TIMEFRAMES_OFFERED,
     features: resolveFeatures(),
     ui: resolveUi(undefined, resolveFeatures()),
     capabilities: () => ({}) as never,

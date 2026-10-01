@@ -153,9 +153,10 @@ const shown = (value: boolean | object | undefined): boolean => value !== false
  *  and a door is drawn only where the dialog it opens is, so every resolved control can do what it
  *  shows. Nothing here changes a behavior: that is `resolveFeatures`, and it is not read back. A key
  *  the plane does not take throws. The style picker needs more than one offered style to choose
- *  between, so a `styleCount` below two leaves it out whatever `ui` says. Absent, every style is
- *  offered. */
-export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatures, styleCount?: number): ResolvedUi {
+ *  between, so a `styleCount` below two leaves it out whatever `ui` says, and the timeframe picker
+ *  likewise needs more than one offered timeframe, which a `timeframeCount` below two denies.
+ *  Absent, every style and every timeframe is offered. */
+export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatures, styleCount?: number, timeframeCount?: number): ResolvedUi {
   checkKeys('ui', config, UI_KEYS)
   const bar = config?.topBar
   const topBar = shown(bar)
@@ -171,7 +172,7 @@ export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatur
     topBar,
     symbolPill: inBar('symbol') && symbolSearch,
     compareButton: inBar('compare') && features.compare,
-    timeframePicker: inBar('timeframes'),
+    timeframePicker: inBar('timeframes') && (timeframeCount === undefined || timeframeCount > 1),
     stylePicker: inBar('styles') && (styleCount === undefined || styleCount > 1),
     indicatorsButton: inBar('indicators') && indicatorPicker,
     replayButton: inBar('replay') && features.replay,

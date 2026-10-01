@@ -21,6 +21,7 @@ import { createEmitter, type WidgetEvents } from './events'
 import { createSearchController, memoryRecents, type RecentsPort, type SearchController } from '../search'
 import { deriveCapabilities, resolveFeatures, resolveUi } from './planes'
 import { resolveOfferedStyles } from './styles'
+import { offeredTimeframe, resolveOfferedTimeframes } from './timeframes'
 import type { Capabilities, ChartWidgetOptions } from './options'
 import { DRAWING_CONTEXT_VERSION, type DrawingContextKind, type DrawingResourceContext } from '../drawings/document'
 import type { ChartDrawingPersistence } from './chart'
@@ -117,7 +118,13 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // The styles every chart of this widget offers, checked before anything mounts: a list or an
   // opening style the host got wrong is a setup error, never a chart quietly on another style.
   const styles = resolveOfferedStyles(options.styles, options.style)
-  const ui = resolveUi(options.ui, features, styles.list.length)
+  // The timeframes likewise: a list, a custom switch or an opening timeframe that disagree are a
+  // setup error, never a chart quietly on another timeframe.
+  const timeframes = resolveOfferedTimeframes(options.timeframes, options.customTimeframes, [
+    { name: 'timeframe', token: options.timeframe },
+    ...(options.layout?.charts ?? []).map((chart, i) => ({ name: `layout.charts[${i}].timeframe`, token: chart?.timeframe })),
+  ])
+  const ui = resolveUi(options.ui, features, styles.list.length, timeframes.list?.length)
   const iconDiagnostics = createIconDiagnostics()
   const i18n: ChartI18n = options.i18n ?? createChartI18n(options.locale)
   // Every glyph the widget draws goes through this one resolver, so a host's drawing for an icon
@@ -299,6 +306,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     charts: options.layout?.charts,
     sync: options.layout?.sync,
     identitySeed: persistence.layoutId,
+    timeframeOf: (token) => offeredTimeframe(token, timeframes),
     createChart(element, init, _index, chartKey) {
       const id = `chart-${++chartSeq}`
       const scope = createChartCommandScope(commands, { access: options.access })
@@ -345,6 +353,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           timeframe: init?.timeframe ?? options.timeframe,
           style: init?.style ?? options.style,
           styles: styles.list,
+          timeframes,
           compares: init?.compares,
           onSymbolInfo: (info) => {
             symbolInfoByChart.set(id, info)
@@ -651,6 +660,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     layoutChanges,
     icons,
     styles,
+    timeframes,
     doors,
   })
 

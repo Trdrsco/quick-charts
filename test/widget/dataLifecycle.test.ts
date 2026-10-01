@@ -18,6 +18,7 @@ import type { AccessPolicy, FeatureConfig, UiConfig } from '../../src/widget/opt
 import type { SymbolInfo } from '../../src/symbology'
 import { lastRenderer, type FakeRenderer } from './rendererFake'
 import { CHART_STYLES } from '../../src/widget/styles'
+import { ALL_TIMEFRAMES_OFFERED } from '../../src/widget/timeframes'
 import { resolveMarkPainters } from '../../src/markPainters'
 import { ownIcons } from '../ownIcons'
 
@@ -99,6 +100,7 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; ui
     ui: resolveUi({ legend: false, contextMenu: false, navigation: false, ...options.ui }, resolveFeatures({ drawings: false, replay: false, sessions: false, ...options.features })),
     compareSymbols: [],
     styles: CHART_STYLES,
+    timeframes: ALL_TIMEFRAMES_OFFERED,
     indicators: [],
     indicatorCatalog: createIndicatorCatalog(),
     extensions: [],

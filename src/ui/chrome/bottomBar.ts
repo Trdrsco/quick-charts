@@ -4,6 +4,7 @@
 // row is a command, so a preset deeper than the feed's history is disabled rather than sent.
 import { RANGE_PRESETS, rangePresetTip } from '../../ranges'
 import { DEFAULT_SUBSESSION } from '../../sessionModel'
+import { rangeTimeframe } from '../../widget/timeframes'
 import { EXCHANGE_TIMEZONE, formatClock, timezoneListing, tzOffsetLabel } from '../../timezones'
 import { activeChart, commandLabel, type ChromeContext } from './context'
 import { button, h, name, replace, setDisabled, stopPointer } from './dom'
@@ -148,7 +149,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
       ranges,
       ...RANGE_PRESETS.map((preset) => {
         const id = `chart.range.${preset.key}`
-        const chip = button({ label: rangePresetTip(t(), preset), text: preset.key, className: 'qc-toolbar-button qc-range-chip', pressed: chart.rangePreset() === preset.key, onClick: () => deps.commands.execute(id) })
+        const chip = button({ label: rangePresetTip(t(), { ...preset, tf: rangeTimeframe(preset.tf, deps.timeframes) }), text: preset.key, className: 'qc-toolbar-button qc-range-chip', pressed: chart.rangePreset() === preset.key, onClick: () => deps.commands.execute(id) })
         setDisabled(chip, !deps.commands.available(id))
         return chip
       }),

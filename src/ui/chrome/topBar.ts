@@ -112,7 +112,7 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
   // ── The timeframe picker ────────────────────────────────────────────────────────────────────
   let timeframes: TimeframePickerHandle | null = null
   if (ui.timeframePicker) {
-    const store = createTimeframeStore(deps.storage, deps.preferences)
+    const store = createTimeframeStore(deps.storage, deps.preferences, deps.timeframes)
     timeframes = mountTimeframePicker({
       ...deps,
       store,

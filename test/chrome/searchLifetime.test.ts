@@ -25,7 +25,7 @@ function mount(provider: ChartDatafeed['search'] | ChartDatafeed) {
   const panes = root.appendChild(document.createElement('div'))
   const doors = emptyDoors()
   const datafeed: ChartDatafeed = typeof provider === 'function' ? { search: provider, resolve: async () => null, history: async () => ({ bars: [], noData: true }), subscribeBars: () => () => {} } : provider
-  const chrome = mountChrome({ root, layer: document.body.appendChild(document.createElement('div')), panes, widget: w.widget, i18n: w.i18n, features: w.features, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future', 'crypto'] }), autosave: w.autosave, layoutChanges: w.layoutChanges, icons: w.icons, styles: w.ctx.styles, doors, painters: resolveMarkPainters({}) })
+  const chrome = mountChrome({ root, layer: document.body.appendChild(document.createElement('div')), panes, widget: w.widget, i18n: w.i18n, features: w.features, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future', 'crypto'] }), autosave: w.autosave, layoutChanges: w.layoutChanges, icons: w.icons, styles: w.ctx.styles, timeframes: w.ctx.timeframes, doors, painters: resolveMarkPainters({}) })
   cleanup.push(() => { chrome.dispose(); w.dispose() })
   const open = (mode: 'search' | 'compare' | 'change-symbol' = 'search', changeFrom?: string) => {
     doors.openSearch({ mode, chart: w.chart.handle, changeFrom, ...(mode === 'change-symbol' ? { onPick: () => {} } : {}) })
