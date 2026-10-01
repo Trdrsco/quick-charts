@@ -8,6 +8,7 @@ import { FLYOUT_WIDTH } from '../../src/ui/chrome/flyoutGeometry'
 import { createTimeframeStore, DEFAULT_SAVED_TIMEFRAMES } from '../../src/ui/chrome/preferences'
 import { memoryChartStorage } from '../../src/storage'
 import { fakeWidget, press } from './harness'
+import { resolveOfferedTimeframes } from '../../src/widget/timeframes'
 
 let cleanup: (() => void)[] = []
 afterEach(() => {
@@ -52,6 +53,36 @@ describe('the timeframe store', () => {
     store.removeCustom('7m')
     expect(store.custom()).toEqual([])
     expect(store.saved()).not.toContain('7m')
+  })
+})
+
+describe('the timeframe store under the offered timeframes', () => {
+  it('shows the saved chips the list offers and keeps the rest stored', () => {
+    const storage = memoryChartStorage()
+    const store = createTimeframeStore(storage, { savedTimeframes: ['1m', '5m', '1d'], customTimeframes: ['7m'] }, resolveOfferedTimeframes(['5m', '1h', '1d'], undefined))
+    expect(store.saved()).toEqual(['5m', '1d'])
+    expect(store.custom()).toEqual([])
+    expect(store.addCustom('13m')).toBe(false)
+    store.toggleSaved('4h') // not offered: nothing changes
+    expect(storage.get('quickcharts.savedTf.v1')).toBeNull()
+    store.toggleSaved('1h')
+    expect(store.saved()).toEqual(['5m', '1d', '1h'])
+    expect(JSON.parse(storage.get('quickcharts.savedTf.v1')!)).toEqual(['1m', '5m', '1d', '1h'])
+    expect(JSON.parse(storage.get('quickcharts.customTf.v1')!)).toEqual(['7m'])
+  })
+
+  it('seeds from the first five offered when none of a saved list is offered, but keeps an empty list empty', () => {
+    const offered = resolveOfferedTimeframes(['1d', '2m', '10m', '2h', '6h', '2d'], undefined)
+    expect(createTimeframeStore(memoryChartStorage(), { savedTimeframes: ['1m'] }, offered).saved()).toEqual(['2m', '10m', '2h', '6h', '1d'])
+    expect(createTimeframeStore(memoryChartStorage(), { savedTimeframes: [] }, offered).saved()).toEqual([])
+  })
+
+  it('with customTimeframes: false hides the custom tokens, refuses new ones, and falls back to the first-run chips', () => {
+    const presets = resolveOfferedTimeframes(undefined, false)
+    const store = createTimeframeStore(memoryChartStorage(), { savedTimeframes: ['7m'], customTimeframes: ['7m'] }, presets)
+    expect(store.custom()).toEqual([])
+    expect(store.addCustom('13m')).toBe(false)
+    expect(store.saved()).toEqual([...DEFAULT_SAVED_TIMEFRAMES])
   })
 })
 

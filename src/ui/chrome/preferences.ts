@@ -5,6 +5,7 @@
 import type { ChartStorage } from '../../storage'
 import { parseTimeframe, TIMEFRAME_PRESET_TOKENS, timeframeOrder } from '../../timeframe'
 import type { ChartPreferences } from '../../widget/options'
+import { ALL_TIMEFRAMES_OFFERED, offersTimeframe, type OfferedTimeframes } from '../../widget/timeframes'
 
 const SAVED_KEY = 'quickcharts.savedTf.v1'
 const CUSTOM_KEY = 'quickcharts.customTf.v1'
@@ -14,6 +15,10 @@ const LAYOUT_SORT_KEY = 'quickcharts.layoutSort.v1'
 
 /** The chips a first-run chart offers. */
 export const DEFAULT_SAVED_TIMEFRAMES: readonly string[] = ['1m', '5m', '1h', '4h', '1d']
+
+/** How many chips a chart shows when the host's timeframes leave none of the viewer's saved ones:
+ *  that many of the smallest offered timeframes, as many as a first-run chart shows. */
+export const SEEDED_CHIP_COUNT = DEFAULT_SAVED_TIMEFRAMES.length
 
 const readList = (storage: ChartStorage, key: string, seed: readonly string[] | undefined, fallback: readonly string[]): string[] => {
   const stored = storage.get(key)
@@ -29,31 +34,53 @@ const readList = (storage: ChartStorage, key: string, seed: readonly string[] | 
   return [...new Set(source.filter((v): v is string => typeof v === 'string' && parseTimeframe(v) !== null))]
 }
 
+/** The viewer's timeframe choices as the widget's offered timeframes show them. What is stored
+ *  outlives the filter: a saved or custom token the widget does not offer is hidden, never dropped,
+ *  so a chart that offers it again shows it again. */
 export interface TimeframeStore {
+  /** The saved chips the widget offers. When the offered timeframes leave none of a non-empty saved
+   *  list, the first {@link SEEDED_CHIP_COUNT} offered ones stand in, or the first-run chips when
+   *  the offered set is the presets. */
   saved(): readonly string[]
+  /** The viewer's custom tokens, or none when the widget offers no custom timeframes. */
   custom(): readonly string[]
+  /** Save or unsave a chip the widget offers. The shown chips become the saved ones, and the stored
+   *  tokens the widget does not offer are kept. */
   toggleSaved(token: string): void
-  /** Add a custom token. A preset, an unparseable token, or one already held is refused. */
+  /** Add a custom token. A preset, an unparseable token, one already held, or any token while the
+   *  widget offers no custom timeframes is refused. */
   addCustom(token: string): boolean
   removeCustom(token: string): void
 }
 
-export function createTimeframeStore(storage: ChartStorage, preferences: Partial<ChartPreferences>): TimeframeStore {
+export function createTimeframeStore(storage: ChartStorage, preferences: Partial<ChartPreferences>, offered: OfferedTimeframes = ALL_TIMEFRAMES_OFFERED): TimeframeStore {
   let saved = readList(storage, SAVED_KEY, preferences.savedTimeframes, DEFAULT_SAVED_TIMEFRAMES)
   let custom = readList(storage, CUSTOM_KEY, preferences.customTimeframes, []).filter((c) => !TIMEFRAME_PRESET_TOKENS.has(c))
   const write = (): void => {
     storage.set(SAVED_KEY, JSON.stringify(saved))
     storage.set(CUSTOM_KEY, JSON.stringify(custom))
   }
+  const offers = (token: string): boolean => offersTimeframe(offered, token)
+  const restricted = offered.list !== null || !offered.custom
+  const composable = offered.list === null && offered.custom
+  const shownSaved = (): readonly string[] => {
+    if (!restricted) return saved
+    const shown = saved.filter(offers)
+    if (shown.length > 0 || saved.length === 0) return shown
+    return offered.list ? offered.list.slice(0, SEEDED_CHIP_COUNT) : DEFAULT_SAVED_TIMEFRAMES
+  }
   return {
-    saved: () => saved,
-    custom: () => custom,
+    saved: shownSaved,
+    custom: () => (composable ? custom : []),
     toggleSaved(token) {
-      saved = saved.includes(token) ? saved.filter((s) => s !== token) : [...saved, token]
+      if (!offers(token)) return
+      const shown = shownSaved()
+      const next = shown.includes(token) ? shown.filter((s) => s !== token) : [...shown, token]
+      saved = [...saved.filter((s) => !offers(s)), ...next]
       write()
     },
     addCustom(token) {
-      if (parseTimeframe(token) === null || TIMEFRAME_PRESET_TOKENS.has(token) || custom.includes(token)) return false
+      if (!composable || parseTimeframe(token) === null || TIMEFRAME_PRESET_TOKENS.has(token) || custom.includes(token)) return false
       custom = [...custom, token].sort((a, b) => timeframeOrder(a) - timeframeOrder(b))
       write()
       return true

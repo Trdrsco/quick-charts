@@ -43,6 +43,7 @@ import type { ResolvedFeatures, ResolvedUi } from './planes'
 import type { IconResolver } from '../ui/icons/resolver'
 import { addStyleSeries, offeredStyle, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
 import { createBaselineLevel } from './baselineLevel'
+import { offeredTimeframe, offersTimeframe, rangeTimeframe, type OfferedTimeframes } from './timeframes'
 import {
   captureTimelineContinuity,
   registerChartRangeMirror,
@@ -185,6 +186,7 @@ export interface ChartHandle {
    *  that guessed from the string would be inventing a quote the feed never stated. */
   symbolInfo(): SymbolInfo | null
   timeframe(): string
+  /** Switch the timeframe. A timeframe the widget does not offer is ignored. */
   setTimeframe(timeframe: string): void
   style(): ChartStyleId
   /** Switch the main-series style. Presentation only: nothing refetches, and the indicators,
@@ -314,6 +316,8 @@ export interface ChartInstanceDeps {
   style?: ChartStyleId
   /** The styles the widget offers, in the host's order. A style outside them is never set. */
   styles: readonly ChartStyleId[]
+  /** The timeframes the widget offers. A timeframe outside them is never set. */
+  timeframes: OfferedTimeframes
   /** The chart resolved a symbol: the widget re-derives its capability plane from it. */
   onSymbolInfo(info: SymbolInfo | null): void
   onConfig(config: DatafeedConfig | null): void
@@ -389,7 +393,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   // ── State more than one plane reads. Everything else lives in the plane that owns it. ────────
   let symbol = deps.symbol ?? storage.get(SYMBOL_KEY) ?? deps.preferences.symbol ?? ''
-  let tf = deps.timeframe ?? storage.get(TF_KEY) ?? deps.preferences.timeframe ?? '1m'
+  let tf = offeredTimeframe(deps.timeframe ?? storage.get(TF_KEY) ?? deps.preferences.timeframe ?? '1m', deps.timeframes)
   let style: ChartStyleId = deps.style ?? offeredStyle(storage.get(STYLE_KEY) ?? deps.preferences.style, deps.styles)
   let scaleMode: ScaleMode = coerceScaleMode(storage.get(SCALE_KEY) ?? deps.preferences.scaleMode)
   /** The viewer's timezone CHOICE: an IANA id, or `exchange` to follow the symbol's own venue. It
@@ -1567,7 +1571,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   function applyContent(parsed: ParsedChartContent): boolean {
     if (parsed.symbol) handle.setSymbol(parsed.symbol)
-    if (parsed.timeframe) handle.setTimeframe(parsed.timeframe)
+    if (parsed.timeframe) handle.setTimeframe(offeredTimeframe(parsed.timeframe, deps.timeframes))
     if (parsed.style) setStyle(offeredStyle(parsed.style, deps.styles))
     applyScaleMode(coerceScaleMode(parsed.scale ?? null))
     // The blob's policy is authoritative in both directions: a manual chart loading an auto blob
@@ -1681,7 +1685,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
     timeframe: () => tf,
     setTimeframe(next) {
-      if (disposed || next === tf) return
+      if (disposed || next === tf || !offersTimeframe(deps.timeframes, next)) return
       setRangePreset(null)
       tf = next
       storage.set(TF_KEY, next)
@@ -1857,6 +1861,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     commands: deps.commands,
     handle,
     styles: deps.styles,
+    timeframes: deps.timeframes,
     features: deps.features,
     ui: deps.ui,
     capabilities: deps.capabilities,
@@ -1874,19 +1879,22 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // best at, which is what makes one chip a whole answer rather than half of one.
     frame: (preset) => {
       beginNavigation()
+      // The span reads at the preset's own timeframe, or, when the widget does not offer it, at the
+      // nearest coarser timeframe it offers, else the largest it offers.
+      const target = rangeTimeframe(preset.tf, deps.timeframes)
       // Switching the interval reloads: the model is cleared synchronously and the new page is
       // still away, so framing here would measure an empty series and the arriving history would
       // fit content instead of the span. The intent waits for that load's first paint.
-      if (preset.tf !== tf) {
-        firstPageBars = Math.max(SNAPSHOT_BARS, barsForSpan(preset.span, preset.tf) ?? 0)
-        handle.setTimeframe(preset.tf)
+      if (target !== tf) {
+        firstPageBars = Math.max(SNAPSHOT_BARS, barsForSpan(preset.span, target) ?? 0)
+        handle.setTimeframe(target)
       }
       if (historyPainted) {
         pendingFrame = null
-        frameRange(chart, anchor, preset.span, preset.tf)
-        fillSpan(preset.span, preset.tf)
+        frameRange(chart, anchor, preset.span, target)
+        fillSpan(preset.span, target)
       } else {
-        pendingFrame = { epoch, span: preset.span, tf: preset.tf }
+        pendingFrame = { epoch, span: preset.span, tf: target }
       }
       setRangePreset(preset.key)
     },
@@ -1921,7 +1929,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       .then((cfg) => {
         if (disposed || epoch !== 0) return
         deps.onConfig(cfg)
-        tf = resolveInitialTf(tf, cfg.resolutions)
+        // Only a declared timeframe the widget offers can be the one negotiation lands on.
+        tf = resolveInitialTf(tf, cfg.resolutions?.filter((token) => offersTimeframe(deps.timeframes, token)))
         drawings.setTimeframe(tf)
         // The header carries the timeframe on screen, and negotiation can move it off the one the
         // host asked for. Leaving it stale makes the legend state a timeframe the chart is not on.

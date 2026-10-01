@@ -147,6 +147,9 @@ export interface LayoutDeps {
   rebindChart?(handle: ChartHandle, entityId: string): void
   /** Capture-phase pane entry, before that pane's drawing gesture consumes the pointer. */
   beforePointer?(handle: ChartHandle): void
+  /** The timeframe a restored chart opens on for the token its layout names: the token when the
+   *  widget offers it, else the widget's first offered timeframe. Absent, the token as named. */
+  timeframeOf?(token: string): string
   /** Stable document seed when the host has one. Absent means this widget's identities are session-only. */
   identitySeed?: string
   /** Tear one chart down. */
@@ -625,7 +628,7 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
           if (recover) recoveries.push(recover)
         } else {
           if (typeof entry.symbol === 'string' && entry.symbol) slots[i]!.handle.setSymbol(entry.symbol)
-          if (typeof entry.tf === 'string' && entry.tf) slots[i]!.handle.setTimeframe(entry.tf)
+          if (typeof entry.tf === 'string' && entry.tf) slots[i]!.handle.setTimeframe(deps.timeframeOf?.(entry.tf) ?? entry.tf)
         }
       }
     } finally {

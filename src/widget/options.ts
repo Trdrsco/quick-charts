@@ -273,7 +273,8 @@ export interface DrawingPersistenceOptions {
 export interface LayoutOptions {
   /** An arrangement code from the catalog (default `s`, one chart). Unknown codes throw. */
   arrangement?: string
-  /** Per-chart starting symbol and timeframe, index-aligned to the arrangement's panes. */
+  /** Per-chart starting symbol and timeframe, index-aligned to the arrangement's panes. A timeframe
+   *  must be one the widget offers. */
   charts?: { symbol?: string; timeframe?: string }[]
   /** Which changes replay across the layout. All off by default. */
   sync?: Partial<LayoutSyncFlags>
@@ -356,7 +357,8 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   storage?: ChartStorage
   /** The symbol to open on. */
   symbol?: string
-  /** The timeframe token to open on. */
+  /** The timeframe token to open on. With `timeframes` or `customTimeframes: false` it must be one
+   *  the chart offers. */
   timeframe?: string
   /** The main-series style to open on. It must be one of `styles`. */
   style?: ChartStyleId
@@ -373,6 +375,37 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  `CHART_STYLES`, a repeated id, and a `style` outside the list are setup errors thrown from
    *  `createChart`. */
   styles?: readonly ChartStyleId[]
+  /** The timeframe tokens the chart offers. Absent, every preset in `TIMEFRAME_PRESETS` is offered
+   *  and the viewer may compose custom timeframes. Any token the grammar reads may be listed,
+   *  preset or not (`2m`). The order given does not matter: the picker lists each unit's group
+   *  smallest first.
+   *
+   *  A token left out is not a timeframe of this chart. A preset left out has no
+   *  `chart.timeframe.<token>` command, `chart.timeframe.set` and `setTimeframe` ignore a token
+   *  left out, and the picker shows no chip and no row for it. A group with no listed token is not
+   *  shown, a listed token beyond the presets sits in its unit's group, and there is no
+   *  custom-timeframe composer. The viewer's saved chips show where they are listed. When the list
+   *  leaves none of them, the chips are the first five listed tokens, and the viewer's stored chips
+   *  are kept unchanged for a chart that offers them. The picker is not shown when one timeframe is
+   *  offered, since there is nothing to choose. `ui.topBar.timeframes: false` hides the picker on
+   *  its own terms. A range preset whose interval is left out reads its span at the smallest listed
+   *  timeframe at or above that interval, else at the largest listed.
+   *
+   *  A saved layout, saved chart or stored preference that names a token outside the list opens on
+   *  the SMALLEST listed timeframe, and the rest of it restores. An empty list, a token the grammar
+   *  cannot read, a repeated token, a `timeframe` or `layout.charts[].timeframe` outside the list,
+   *  and `customTimeframes: true` beside a list are setup errors thrown from `createChart`. */
+  timeframes?: readonly string[]
+  /** Whether the viewer may compose custom timeframes beyond the presets (default true). `false`
+   *  offers the 26 presets alone: the picker has no composer and lists none of the viewer's custom
+   *  timeframes, and `chart.timeframe.set` and `setTimeframe` ignore a token that is not a preset.
+   *  A stored token beyond the presets opens on `1m`, and a `timeframe` beyond them is a setup
+   *  error. A `timeframes` list offers nothing beyond itself, so `false` beside one changes nothing
+   *  and `true` beside one is a setup error.
+   *
+   *  This switch is not `preferences.customTimeframes`, which is the list of custom tokens a
+   *  first-run viewer starts with. */
+  customTimeframes?: boolean
   /** The multi-chart arrangement. One chart when omitted. */
   layout?: LayoutOptions
   /** Where the drawings are stored: with the chart's own saved content (the default) or in their

@@ -952,6 +952,48 @@ preference that names a style you left out opens on the first style in `styles`,
 restores. An empty list, an id outside `CHART_STYLES`, a repeated id and a `style` outside the list
 are setup errors that `createChart` throws.
 
+### Offered timeframes
+
+By default a chart offers the 26 presets (`TIMEFRAME_PRESETS`) and lets the viewer compose custom
+timeframes. `timeframes` names the timeframe tokens you offer, presets or any other token the
+grammar reads, and `timeframe` must be one of them. The order you give does not matter: the picker
+lists each unit's group smallest first. `customTimeframes: false` keeps the presets and removes
+custom timeframes:
+
+```ts
+import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+// Four timeframes, one of them beyond the presets, opening on five minutes.
+createChart({ container, datafeed, timeframes: ['2m', '5m', '1h', '1d'], timeframe: '5m' })
+
+// Every preset and no custom timeframes.
+createChart({ container, datafeed, customTimeframes: false })
+
+// Two timeframes and no picker: a control of your own runs the chart.timeframe.<token> commands.
+createChart({ container, datafeed, timeframes: ['1m', '5m'], ui: { topBar: { timeframes: false } } })
+```
+
+A preset you leave out has no `chart.timeframe.<token>` command, and `chart.timeframe.set` and
+`setTimeframe` ignore any token you leave out. The picker shows only what you list: a group with
+no listed token is not drawn, a listed token beyond the presets sits in its unit's group without a
+delete, and there is no custom-timeframe composer. The viewer's saved chips show where you list
+them. When you list none of them, the chips are your five smallest timeframes, and the viewer's
+stored chips stay stored for a chart that offers them. With one timeframe offered the picker is not
+shown. `ui.topBar.timeframes: false` hides the picker on its own terms. A range preset whose
+interval you leave out reads its span at your nearest coarser timeframe, or at your largest when
+none is coarser. Within what you offer, the feed's `resolutions` and the symbol's
+`supportedResolutions` still apply: a chip the feed or the symbol does not serve is disabled, and
+the picker's list leaves its row out.
+
+A saved layout, saved chart or stored preference that names a timeframe you left out opens on your
+smallest timeframe, and the rest of it restores. With `customTimeframes: false` a stored custom
+token opens on `1m`. An empty list, a token the grammar cannot read, a repeated token, a
+`timeframe` or `layout.charts[].timeframe` outside what you offer, and `customTimeframes: true`
+beside a list are setup errors that `createChart` throws. `customTimeframes` is the switch, and
+`preferences.customTimeframes` is the list of custom tokens a first-run viewer starts with.
+
 ### Events
 
 Typed maps, one per scope. Every subscription returns its unsubscribe and is inert after
@@ -1185,8 +1227,9 @@ chrome is painted from it and renders nothing without it.
 
 - **The top bar.** The symbol pill opens the symbol search for the active chart; the compare door
   opens it in compare mode. The timeframe picker shows the saved timeframes as chips and a list of
-  the 26 presets in five groups, each row savable as a chip, with a composer for a custom interval
-  under the unit's ceiling. The style picker lists the styles the chart offers. Indicators opens the picker
+  the timeframes the chart offers (by default the 26 presets in five groups), each row savable as a
+  chip, with a composer for a custom interval under the unit's ceiling while custom timeframes are
+  offered. The style picker lists the styles the chart offers. Indicators opens the picker
   over the 23 built-in definitions, and the legend's gear opens the settings dialog for an instance
   (inputs, style, visibility). Bar replay enters and leaves replay for the active chart; entering
   asks where to begin rather than choosing a starting bar. Its starting-point menu answers with a
