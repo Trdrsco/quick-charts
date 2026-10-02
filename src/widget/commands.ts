@@ -58,7 +58,9 @@ export interface CommandRegistry {
   execute(id: string, arg?: unknown): CommandResult
   /** Remap a shortcut, or clear it with null. */
   setShortcut(id: string, shortcut: string | null): void
-  /** Fires when the registered set or a shortcut changes. Returns the unsubscribe. */
+  /** Fires when the registered set or a shortcut changes, and when the host says its access policy
+   *  may answer differently (`widget.refreshAccess()`), since what `available` answers may have
+   *  moved with it. Returns the unsubscribe. */
   onChange(cb: () => void): () => void
 }
 
@@ -78,6 +80,9 @@ export interface CommandRegistryOptions {
  *  rather than dangerous. */
 export interface CommandRegistryHandle {
   registry: CommandRegistry
+  /** Tell every listener that availability may have moved with nothing registered or remapped:
+   *  the access policy answering differently. */
+  changed(): void
   dispose(): void
 }
 
@@ -188,6 +193,9 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
 
   return {
     registry,
+    changed() {
+      if (!disposed) notify()
+    },
     dispose() {
       disposed = true
       specs.clear()

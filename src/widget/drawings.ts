@@ -599,7 +599,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
   }
 
   // The public surface is the handle minus the five chart-owned verbs, with arming routed through
-  // the host's list and the access policy, and image placement through the list. Built by hand so
+  // the host's list and the access policy, and image placement likewise. Built by hand so
   // an untyped consumer finds exactly what the type names.
   const {
     setSymbol: _s,
@@ -628,10 +628,10 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       armTool: (type, props) => {
         if (permitted(type)) handle.armTool(type, props)
       },
-      // A placed picture is a new image drawing, so a host whose list leaves the image tool out
-      // places none.
+      // A placed picture is a new image drawing, so it asks what arming the image tool asks: a host
+      // whose list leaves the tool out, or whose policy refuses it, places none.
       placeImage: (image) => {
-        if (offered('image')) handle.placeImage(image)
+        if (permitted('image')) handle.placeImage(image)
       },
     },
     setSymbol: (symbol) => {

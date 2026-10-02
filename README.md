@@ -1146,7 +1146,9 @@ function toolbar(widget: ChartWidget): void {
 
 A command whose one id spans many subjects declares `refuses(arg)` beside `available()`: an
 argument your access policy turns away answers `denied` before availability is asked, which is how
-`chart.drawings.arm` refuses a tool. A refusal is a value, never a throw: `ok`, `unavailable`,
+`chart.drawings.arm` refuses a tool. `onChange` fires when the registered set or a shortcut changes,
+and when `widget.refreshAccess()` says your policy may answer differently. A refusal is a value,
+never a throw: `ok`, `unavailable`,
 `denied`, `unknown`, or `failed` with the
 error. Your own commands register through the same door: a chart extension's `contributeCommands`
 puts them in this list with `scope: 'chart'` and its own label text.
@@ -1229,11 +1231,48 @@ is listed even when its command is refused.
 Only a refusal hides. A permitted command that cannot run now (nothing to undo, no bars loaded,
 nothing selected) is drawn disabled as before. The policy is asked whenever the chrome syncs (a
 change on the active chart, a change to the command registry) and whenever a menu or flyout opens,
-so a policy that follows your session moves the controls with it. Nothing stored is rewritten: a
+and `widget.refreshAccess()` asks it again at any moment (see A policy that changes), so a policy
+that follows your session moves the controls with it. Nothing stored is rewritten: a
 viewer's favorite keeps its star and returns to the favorites bar once you permit the tool again,
 and drawings and indicators already on the chart render exactly as they do under a refusal by
 default. The keyboard, `widget.commands` and the chart handles refuse exactly as they do with
 `'disable'`. A value other than `'disable'` or `'hide'` is a setup error that `createChart` throws.
+
+### A policy that changes
+
+The predicates are asked live: every door that runs a command, arms a tool or adds an indicator asks
+at that moment, so a refusal holds from the instant your policy answers it. The chart's own controls
+read the policy when they sync and when a menu opens. When its answers change and nothing on the
+chart does (a viewer's plan changed mid-session), call `widget.refreshAccess()`:
+
+```ts
+import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+declare const session: { may(feature: string): boolean; onChange(listener: () => void): void }
+
+const widget = createChart({
+  container,
+  datafeed,
+  access: {
+    refused: 'hide',
+    command: (id) => id !== 'chart.replay.start' || session.may('replay'),
+    indicator: (id) => id !== 'vwap' || session.may('vwap'),
+  },
+})
+session.onChange(() => widget.refreshAccess())
+```
+
+Every surface that reads the policy reads it again at once: the top and bottom bars and their
+controls, the drawing toolbar's tools and groups, the favorites bar, the selection's bar, the
+navigation cluster, the replay transport and the legend's row controls, shown or left out as
+`access.refused` says and enabled or disabled. A menu, flyout or dialog that is open reads it too:
+the bars' menus, the level menu, the indicator browser and the saved layouts dialog rebuild their
+rows in place, and a drawing toolbar flyout (the glyph picker among them) or a selection bar panel
+opens again from its control, or closes when that control is now left out or disabled. Listeners of `widget.commands.onChange`
+hear it as well, so a control of your own can read `commands.available` again. Nothing stored
+changes, nothing on the chart changes, and no `saveNeeded` is raised: a refresh is a reading, never
+a write.
 
 ### Your own interface
 

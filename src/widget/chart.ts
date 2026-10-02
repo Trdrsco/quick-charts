@@ -359,6 +359,10 @@ export interface ChartInstance {
   relabel(): void
   /** The layout's chart count moved: the surfaces that read it re-render. */
   layoutChanged(): void
+  /** The host's access policy may answer differently: every surface of this chart that reads it
+   *  (the legend's row controls, the level menu if open, the navigation cluster, the drawing
+   *  surfaces) reads it again. Nothing stored and nothing drawn on the chart changes. */
+  refreshAccess(): void
   /** Run the contributed row bound to a press, at the level under a viewport point on THIS chart.
    *  The widget resolves which chart the pointer is over; this one answers only for itself. */
   runShortcutAt(clientX: number, clientY: number, pressed: string): boolean
@@ -2008,6 +2012,13 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     layoutChanged() {
       drawings.refresh()
       nav?.sync()
+    },
+    refreshAccess() {
+      if (disposed) return
+      legend.push()
+      menu?.refresh()
+      nav?.sync()
+      drawings.refresh()
     },
     runShortcutAt: (clientX, clientY, pressed) => menu?.runShortcutAt(clientX, clientY, pressed) ?? false,
     applyDrawingToolIntent(arg) {

@@ -45,7 +45,7 @@ import type { ChartExtensionHideLayer } from '../../extension'
 import { buildGlyph } from '../chrome/vector'
 import { tidyRules } from '../chrome/dom'
 import { button, el, focusFirst, menuKeys, ownPointer, rovingFocus } from './dom'
-import { openPopover } from './fields'
+import { openPopover, reopenPopover } from './fields'
 import { mountGlyphPicker, type GlyphKind } from './glyphPicker'
 import type { IconName } from '../controls/icons'
 import { panelHostFor } from './overlays'
@@ -148,10 +148,12 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     const wasOpen = anchor.getAttribute('aria-expanded') === 'true'
     closeOpen()
     if (wasOpen) return
+    // A flyout re-reads the host's policy by opening again from its control, which builds its rows
+    // afresh; a control the policy now hides or disables leaves it closed.
     const close = openPopover(panelHost, anchor, content, 'side', () => {
       if (closeFlyout === close) closeFlyout = null
       onClose?.()
-    }, anchor.closest<HTMLElement>('.qc-drawing-cell') ?? anchor)
+    }, anchor.closest<HTMLElement>('.qc-drawing-cell') ?? anchor, () => reopenPopover(close, content, () => anchor))
     closeFlyout = close
     focusFirst(content)
   }

@@ -482,6 +482,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
       iconDiagnostics: () => iconDiagnostics.list(),
     },
     on: (name, callback) => events.on(name, callback),
+    refreshAccess: () => undefined,
     dispose: () => undefined,
   }
   const unregisterChart = registerChartCommands({

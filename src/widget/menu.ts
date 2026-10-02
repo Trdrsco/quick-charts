@@ -6,7 +6,7 @@
 // the menu exactly as it refuses from the keyboard. Contributed rows carry their own action and
 // ride below the built-ins, so a host cannot displace the chart's own order.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
-import { mountMenu, type ContextMenuHandle } from '../contextMenuUi'
+import { mountMenu } from '../contextMenuUi'
 import type { ChartMenuAction } from '../contextMenu'
 import type { ChartExtensionHost, ChartExtensionMenuItem } from '../extension'
 import type { ChartI18n } from '../i18n'
@@ -35,6 +35,8 @@ export interface MenuPlane {
    *  the press. */
   runShortcutAt(clientX: number, clientY: number, pressed: string): boolean
   close(): void
+  /** Rebuild an open menu's rows, asking the access policy again. A closed menu stays closed. */
+  refresh(): void
   destroy(): void
 }
 
@@ -66,7 +68,7 @@ export interface MenuDeps {
 }
 
 export function attachMenuPlane(deps: MenuDeps): MenuPlane {
-  const menu: ContextMenuHandle = mountMenu(
+  const menu = mountMenu(
     deps.host,
     (id) => {
       const command = MENU_COMMAND[id]
@@ -148,6 +150,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     raiseAt,
     runShortcutAt,
     close: () => menu.close(),
+    refresh: () => menu.refresh(),
     destroy: () => menu.destroy(),
   }
 }

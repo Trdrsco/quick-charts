@@ -162,7 +162,8 @@ export interface LegendUi {
 export interface AccessPolicy {
   /** Whether a command id may run. A refused command answers `denied` from every surface. */
   command?(id: string): boolean
-  /** Whether a drawing tool id may be armed. */
+  /** Whether a drawing tool id may be armed. Placing an image (`placeImage`, the picker, a paste)
+   *  asks it for `image`. */
   drawingTool?(id: string): boolean
   /** Whether an indicator definition may be added, asked by its DEFINITION id (`manifest.id`; a
    *  built-in's is the catalog id the picker lists, such as `sma`), never by an instance id. Every
@@ -177,7 +178,8 @@ export interface AccessPolicy {
    *
    *  Only a refusal hides. A permitted command that cannot run now (nothing to undo, no bars
    *  loaded, nothing selected) is still drawn disabled. Like the predicates it is read whenever a
-   *  control is drawn or synced, so the controls follow a policy that changes. Nothing stored is
+   *  control is drawn or synced, and again on `widget.refreshAccess()`, so the controls follow a
+   *  policy that changes. Nothing stored is
    *  rewritten: a viewer's favorite keeps its star and returns when the policy permits it again,
    *  and drawings and indicators already on the chart render as they do under either value. Every
    *  other door (the keyboard, `widget.commands`, the chart handles) refuses exactly as it does
