@@ -1,8 +1,8 @@
 # @trdrs/quickcharts
 
-## 1.2.0
+## 1.3.0
 
-Hosts can supply scoped legend rows and open a named indicator collection. Chart dialogs and replay controls animate their opening and closing.
+Hosts choose which chart styles, timeframes, layouts, drawing tools, built-in indicators, range presets and display timezones a chart offers, how the chart presents what the access policy refuses, and can open the timeframe list away from a chart. Every motion value is a theme role. Content already on a chart, or restored to it, stays when the access policy refuses creating it.
 
 Every duration, timing function and motion scale is a theme role in the `motion` family, which a host's palette retunes and a reduced-motion preference resolves to no motion: `motion.durationModerate`, `motion.durationSlow`, `motion.durationSlower`, `motion.easingStandard`, `motion.easingOut`, `motion.easingLinear`, `motion.easingSpring` and `motion.scaleEnter` join `motion.durationFast` and `motion.durationBase`, and `ThemeRoleKind` includes `easing` and `scale`. A modal dialog fades its backdrop in and fades and scales its box from `motion.scaleEnter`, over `motion.durationBase`.
 
@@ -35,6 +35,10 @@ Hosts choose which range presets the bottom bar offers with `ranges`, a list of 
 Hosts choose which display timezones a chart offers with `timezones`, zone ids and `exchange`; a choice left out has no command and no row in the timezone picker, `chart.timezone.set` and `setTimezone` ignore it, the picker is not shown for a single choice (the clock still reads that zone), and a stored or preferred choice left out opens on the first listed one without being rewritten. The exported `TIMEZONES`, `isTimezoneChoice` and `timezoneListing` are not filtered. A non-list, an empty list, an unknown id and a repeated id are setup errors from `createChart`.
 
 Hosts open the chart's own timeframe list away from a chart with `openTimeframePicker`, a drop-down under a control the page owns, and `mountTimeframePicker`, a card in a box the page owns (`TimeframePickerOptions`, `TimeframePickerHandle`, `MountedTimeframePicker`). Both draw the same unit groups, rows and custom composer as the chart's picker, take `timeframe`, `timeframes` and `customTimeframes` with the setup errors `createChart` throws, leave out a row `resolutions` or `supportedResolutions` does not serve, paint their own theme root from `theme`, `locale` and `icons`, and hand the chosen token to `onPick`. They carry no saved chips or stars and keep nothing.
+
+## 1.2.0
+
+Hosts can supply scoped legend rows and open a named indicator collection. Chart dialogs and replay controls animate their opening and closing.
 
 ## 1.1.0
 
