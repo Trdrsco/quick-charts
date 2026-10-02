@@ -11,6 +11,7 @@ import type { IconResolver } from '../icons/resolver'
 import type { OfferedChartStyles } from '../../widget/styles'
 import type { OfferedTimeframes } from '../../widget/timeframes'
 import type { OfferedLayouts } from '../../widget/arrangements'
+import type { OfferedIndicators } from '../../widget/offeredIndicators'
 import type { AccessPolicy } from '../../widget/options'
 import { commandShown } from '../../widget/access'
 
@@ -34,6 +35,9 @@ export interface ChromeContext {
   /** The host's access policy. The registry already refuses what it refuses; the chrome reads it
    *  only to know whether a refused control is drawn disabled or left out. */
   access?: AccessPolicy
+  /** The built-in indicators the widget offers, or null (or absent) for every built-in: the ones
+   *  the indicator browser lists. */
+  builtInIndicators?: OfferedIndicators
 }
 
 /** Whether the chrome draws a control or a menu row for this command. Every one is drawn unless

@@ -57,6 +57,7 @@ import { frameRange, rangeSpanSeconds, scrolledPosition, zoomedBarSpacing, type 
 import { attachSession } from './session'
 import { attachDrawingsPlane, type ChartDrawingsApi } from './drawings'
 import type { OfferedDrawingTools } from './drawingTools'
+import { indicatorOffered, type OfferedIndicators } from './offeredIndicators'
 import type { DrawingDocumentApi } from '../drawings/layer/types'
 import type { DrawingDocumentPort } from '../drawings/layer/documents'
 import { attachIndicatorsPlane, type IndicatorCatalog, type IndicatorsPlane } from './indicators'
@@ -321,6 +322,9 @@ export interface ChartInstanceDeps {
   /** The drawing tools the widget offers, or null for every tool. A tool outside them is never
    *  armed, and no copy of a drawing of it is made. */
   drawingTools: OfferedDrawingTools
+  /** The built-in indicators the widget offers, or null (or absent) for every built-in. One left out
+   *  is never added; an instance of it already on the chart stays. */
+  builtInIndicators?: OfferedIndicators
   /** The timeframes the widget offers. A timeframe outside them is never set. */
   timeframes: OfferedTimeframes
   /** The chart resolved a symbol: the widget re-derives its capability plane from it. */
@@ -768,6 +772,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     minMove,
     canvas,
     access: deps.access,
+    offered: deps.builtInIndicators ?? null,
     disposed: disposedFn,
     onChips: () => {
       syncVolume()
@@ -1874,6 +1879,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     handle,
     styles: deps.styles,
     timeframes: deps.timeframes,
+    indicatorOffered: (definition) => indicatorOffered(deps.builtInIndicators ?? null, definition),
     features: deps.features,
     ui: deps.ui,
     capabilities: deps.capabilities,

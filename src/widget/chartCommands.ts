@@ -56,6 +56,9 @@ export interface ChartCommandDeps {
   /** The timeframes the widget offers. A preset left out has no command, and the open-ended setter
    *  refuses a token left out. */
   timeframes: OfferedTimeframes
+  /** Whether the widget offers a definition for adding: false for a built-in the host's list
+   *  leaves out. */
+  indicatorOffered?(definition: IndicatorInstance['definition']): boolean
   features: ResolvedFeatures
   ui: ResolvedUi
   capabilities(): Capabilities
@@ -243,6 +246,8 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     scope: 'chart',
     label: 'command.indicatorAdd',
     available: always,
+    // A built-in the host's list leaves out is refused by name, as a tool left out is for arming.
+    refuses: (arg) => isInstance(arg) && deps.indicatorOffered?.(arg.definition) === false,
     execute: (arg) => {
       if (isInstance(arg)) handle.indicators.add(arg)
     },

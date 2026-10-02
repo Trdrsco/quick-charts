@@ -1091,6 +1091,48 @@ bar on a chart that offers it, and a group's remembered face is kept the same wa
 `features.drawings: false` removes drawing altogether, whatever the list says. An empty list, a type
 that names no tool and a repeated type are setup errors that `createChart` throws.
 
+### Offered indicators
+
+By default a chart offers every built-in indicator. `builtInIndicators` names the built-ins you
+offer, by the definition id `access.indicator` receives: an id `BUILT_IN_INDICATORS` lists, such as
+`sma`. The order you give does not matter, because the indicator browser keeps its own:
+
+```ts
+import { BUILT_IN_INDICATORS, createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+// Moving averages and RSI only.
+createChart({ container, datafeed, builtInIndicators: ['sma', 'ema', 'rsi'] })
+
+// A chart that opens with a study it offers.
+const sma = BUILT_IN_INDICATORS.find((definition) => definition.id === 'sma')!
+createChart({ container, datafeed, builtInIndicators: ['sma'], indicators: [{ id: 'sma-1', definition: sma }] })
+```
+
+A built-in you leave out is not listed in the indicator browser: not among the built-ins, not
+among the favorites, and not in search results. Every door that would add one refuses:
+`chart.indicators.add` (from the browser, the keyboard or your own control) answers `denied`,
+`indicators.add` adds nothing, `indicators.set` leaves out an instance of it the chart does not
+already hold, and a new pane that a re-tile adds copies the first chart's studies without it. The
+chart has no verb that duplicates an indicator, so a second instance is an add like any other.
+
+Instances of a built-in you leave out that are already on the chart, from a saved chart or layout,
+an undo step or another host sharing the store, render and stay fully editable and removable. The
+settings dialog, `chart.indicators.update`, the legend's eye and remove control, remove all and
+`indicators.remove` work on them exactly as on any instance, and an edit that would move one onto
+another built-in you leave out keeps it as it stands. Nothing saved is rewritten because of the
+list: a starred built-in you leave out keeps its star and returns to the favorites on a chart that
+offers it.
+
+The list filters the built-ins alone. A definition of your own, whose `manifest.id` names no
+built-in, is never filtered, and neither is what your `indicatorPicker` source lists: its
+collections and rows are your content. The source is handed only the offered ids as `builtInIds`.
+The list composes with your access policy: a built-in is offered when you list it and the policy
+permits it, and a listed one the policy refuses is drawn as `access.refused` says (see Refused
+controls). A non-list, an empty list, an id that names no built-in, a repeated id and an
+`indicators` instance whose built-in you do not list are setup errors that `createChart` throws.
+
 ### Events
 
 Typed maps, one per scope. Every subscription returns its unsubscribe and is inert after
@@ -1380,7 +1422,9 @@ const indicatorPicker: IndicatorPickerSource = {
 }
 ```
 
-The source receives the collection, query and shipped definition ids. It owns filtering and any
+The source receives the collection, query and the shipped definition ids the browser lists (only
+those `builtInIndicators` offers, when you name a list). Its own collections and rows are never
+filtered by that list. It owns filtering and any
 service limits; the browser does not promise an unlimited catalog or implement paging for you.
 Collection ids `builtin` and `favorites`, and action ids `add` and `favorite`, are reserved.
 Item ids cannot collide with shipped definition ids or these reserved ids. Duplicate ids,

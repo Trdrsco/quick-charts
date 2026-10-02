@@ -24,6 +24,8 @@ Hosts tell a chart that the access policy answers differently with `widget.refre
 
 The public `placeImage` on a chart's drawings asks the access policy for the `image` tool, as arming it and `chart.drawings.placeImage` do; it placed an image the policy refused.
 
+Hosts choose which built-in indicators a chart offers with `builtInIndicators`, a list of built-in definition ids; one left out is not in the indicator browser (built-ins, favorites, search results), the host's picker listing is handed only the offered ids, and adding one is refused from every door (`chart.indicators.add` answers `denied`, `indicators.add` and `indicators.set` add none, a re-tiled pane copies the first chart's studies without it). Instances of it already on the chart render and stay fully editable and removable, a host's own definitions and picker content are never filtered, a listed built-in the access policy refuses follows `access.refused`, and nothing saved is rewritten. A non-list, an empty list, an unknown id, a repeated id and an `indicators` instance whose built-in is not listed are setup errors from `createChart`.
+
 ## 1.1.0
 
 The symbol search can name what it is limited to, with a host-painted mark, beside the asset-class filters (`search.scope`, `SearchScope`).
