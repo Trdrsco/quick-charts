@@ -232,7 +232,9 @@ describe('a drawing whose tool the policy refuses, already on the chart', () => 
   })
 })
 
-describe('content the policy refuses, put back by a restore', () => {
+// Each case mounts three widgets in turn (the writer, then one per refusal mode), which takes
+// several seconds on a busy worker; the default five seconds timed one out under CI load.
+describe('content the policy refuses, put back by a restore', { timeout: 20_000 }, () => {
   /** Saved content written by a chart that permits everything: a VWAP and an SMA, a trend line and
    *  a rectangle. */
   async function savedContent(): Promise<{ chart: string; layout: string }> {
