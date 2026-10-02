@@ -1,7 +1,7 @@
 // The command registry: the one place a Quick Charts verb exists.
 //
 // Every built-in action the widget can take is registered here, and so is every action a host
-// extension contributes. The context menu, the keyboard, a host's own toolbar and an operator
+// extension contributes. The context menu, the keyboard, a host's own toolbar and an automation
 // adapter all read this list and run through this `execute`, so a command hidden by feature
 // configuration or refused by access policy cannot be reached from any of them: it answers
 // `denied` whichever door was used. There is no second path to a verb.
@@ -37,7 +37,8 @@ export interface CommandSpec {
 }
 
 /** What running a command answers. A refusal is a value, never a throw: a menu row, a shortcut and
- *  an operator all need to tell "nothing by that name" from "not allowed" without a try block. */
+ *  an automation adapter all need to tell "nothing by that name" from "not allowed" without a try
+ *  block. */
 export type CommandResult =
   | { kind: 'ok' }
   | { kind: 'unavailable' }

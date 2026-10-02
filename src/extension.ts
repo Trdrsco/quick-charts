@@ -1,9 +1,7 @@
-// The chart's EXTENSION SEAM: how code that is not the chart draws on the chart, contributes to its
+// The chart's EXTENSION SEAM: how a host's own code draws on the chart, contributes to its
 // menu, and survives a save/load round trip — without the chart learning anything about what that
-// code is for. The contract carries prices, times, bars, the pane's own geometry and its palette.
-// It carries no account, no position, no order, no execution, no money: a chart that knew those
-// would be a trading product wearing a chart's name, and the trading product is a separate organ
-// over its own seam.
+// code is for. The contract carries prices, times, bars, the pane's own geometry and its palette,
+// in chart words only, and whatever a host builds over this seam keeps its own meaning in the host.
 //
 // The lifecycle is deliberately four moves — attach, observe, contribute, detach — because every
 // extra move is a way for a host to leak. Two rules make it safe rather than merely small:
@@ -73,8 +71,8 @@ export interface ChartExtensionReplayState {
   total: number
 }
 
-/** The chart an extension is attached to, read-only. It answers what is on screen; it does not let
- *  an extension steer the chart, because a host that wants to steer already holds the widget. */
+/** The chart an extension is attached to, read-only. It answers what is on screen, and a host
+ *  steers the chart through the widget it already holds. */
 export interface ChartExtensionChart {
   /** Same value as `pane().id` — the chart and its pane are one thing to an extension. */
   id: string

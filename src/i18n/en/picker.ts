@@ -1,4 +1,4 @@
-// The chart-owned indicator browser. Definitions use indicators.ts; optional host labels are
+// The chart-owned indicator picker. Definitions use indicators.ts; optional host labels are
 // localized by the host and never added to the product's built-in catalog.
 export const picker = {
   'picker.title': 'Indicators',

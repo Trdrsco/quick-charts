@@ -4,7 +4,7 @@ import { olderPageVerdict, type HistoryPage } from '../src/datafeed'
 const bar = { t: 100, o: 1, h: 2, l: 0.5, c: 1.5, v: 10 }
 const page = (p: Partial<HistoryPage>): HistoryPage => ({ bars: [], noData: false, ...p })
 
-// The one scroll-back rule both paging consumers (the widget host and the app's stream hook) apply.
+// The one scroll-back rule every paging consumer (the widget and a host's own pager) applies.
 // The stakes of each verdict differ by an order of magnitude: `end` PERMANENTLY seals scroll-back
 // for the (symbol, tf), so it must be unreachable from a gap or a transient; `hop` must be bounded
 // so a lying feed can't spin a flight.

@@ -249,7 +249,7 @@ describe('older-history viewport continuity', () => {
     expect(renderer.chart.timeScale().timeToCoordinate(300 as never)).toBe(beforeX)
   })
 
-  it('does not broadcast its maintenance range write as synchronized user navigation', async () => {
+  it('does not broadcast its maintenance range write as synchronized viewer navigation', async () => {
     const page = deferred<HistoryPage>()
     const feed = scriptedFeed({ history: (_symbol, _tf, range) => (range.to === undefined ? Promise.resolve({ bars: [bar(300), bar(360), bar(420)], noData: false }) : page.promise) })
     const { handle, renderer } = mountChart(feed.feed)
@@ -640,7 +640,7 @@ describe('the scroll-back runway', () => {
     const { renderer } = mountChart(feed.feed)
     await settle()
     // A window far wider than any page: every landing still leaves the left edge inside the
-    // trigger, which is exactly the approach that used to strand after one page.
+    // trigger, and paging keeps going from there rather than stopping after one page.
     renderer.logicalRange = { from: -20, to: 40 }
     renderer.fireLogicalRange()
     for (let tick = 0; tick < 8; tick++) await settle()
@@ -778,8 +778,8 @@ describe('a style switch', () => {
   })
 
   it('is presentation only: nothing refetches, and the compares, indicators and visible range survive it', async () => {
-    // The compare's history is shorter than the main window, the case where a repaint used to
-    // re-ask the feed for the span it had already answered.
+    // The compare's history is shorter than the main window, the case that tempts a repaint to
+    // re-ask the feed for a span it already answered.
     const feed = scriptedFeed({ history: (symbol) => Promise.resolve({ bars: symbol === 'NQ' ? bars(2, 1_700_000_180) : bars(5), noData: false }) })
     const { handle, renderer } = mountChart(feed.feed, { features: { compare: true } })
     await settle()

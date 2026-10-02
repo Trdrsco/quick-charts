@@ -2,7 +2,7 @@
 // what the store holds. They belong to the widget's chrome rather than to a toolbar control, so a
 // command reaches them whatever controls are drawn: `widget.layout.open` raises the Layouts dialog
 // and a first save raises the name dialog from the saved-layouts menu, the keyboard, a host's own
-// control or an operator alike.
+// control or an automation adapter alike.
 //
 // The Layouts dialog lists the chrome's layout catalog under a sortable column with the viewer's starred ones
 // first, each row opening its layout, and delete behind a confirm. Every verb is a widget command,

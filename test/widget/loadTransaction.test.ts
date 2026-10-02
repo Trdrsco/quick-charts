@@ -262,7 +262,7 @@ describe('a saved chart refuses a body it cannot read, and stays bound to what i
     expect((await chart.api.load(refs.B!.id)).kind).toBe('invalid')
     expect(chart.api.notSaving()).toBe(true)
     // A copy creates, so it writes over nothing: A stands at the body and the revision it stood at,
-    // and the trader keeps what is on screen.
+    // and the viewer keeps what is on screen.
     const copy = await chart.api.save('A recovered', { asNew: true })
     expect(copy.kind).toBe('ok')
     expect((await adapter.charts.load(boundToA.ref.id))!.ref.revision).toBe(boundToA.ref.revision)

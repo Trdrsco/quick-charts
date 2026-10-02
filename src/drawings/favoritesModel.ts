@@ -1,9 +1,9 @@
 // Favorite drawing tools: the starred list, and the floating bar it fills.
 //
-// The list is ORDERED and the order is the trader's: a tool joins at the end and keeps its place,
+// The list is ORDERED and the order is the viewer's: a tool joins at the end and keeps its place,
 // because a bar that re-sorts itself is a bar whose buttons move under the pointer. The bar's own
 // visibility and dragged position travel with the list, since all three are the same preference
-// from a trader's point of view: where my favorites are.
+// from a viewer's point of view: where my favorites are.
 //
 // The cap exists so the bar cannot grow past the chart it floats over. Starring past the cap is
 // refused rather than silently dropping the oldest: a star that appears to do nothing is a bug

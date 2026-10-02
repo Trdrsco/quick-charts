@@ -169,7 +169,7 @@ export function dialogTitle(text: string, closeLabel: string, onClose: () => voi
 
 /** What a list shows in place of its rows when nothing matched: the drawing over the line that
  *  says so, centred where the rows would have stood. The symbol search and the layouts browser
- *  both say it this way, so a trader meets one answer rather than two. */
+ *  both say it this way, so a viewer meets one answer rather than two. */
 export function emptyState(text: string, icons: IconResolver): HTMLElement {
   return h(
     'div',

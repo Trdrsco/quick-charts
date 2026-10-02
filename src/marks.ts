@@ -1,9 +1,8 @@
 // Neutral marks: the host-supplied chart data contract for a note about a moment.
 //
-// A mark says nothing about an account, an order or a fill. Its color is a semantic theme role
-// rather than a literal, its text is the host's own words, and the chart neither interprets nor
-// acts on it. Execution marks belong to a trading extension, over the extension seam, and never
-// these.
+// A mark is a note about a moment. Its color is a semantic theme role rather than a literal, its
+// text is the host's own words, and the chart draws it as given. A host draws marks of its own
+// through the extension seam.
 //
 // The two families answer different questions. A BAR mark sits on a bar, above or below it, and
 // carries a letter or a short label. A TIME-SCALE mark sits under the axis and marks a session, an

@@ -3,7 +3,7 @@
 // model replaces whole on every change, so each field derives its next value from the drawing as it
 // stands rather than from the copy its row was built with. Typing in one cell and then another,
 // adding a row after typing, or renaming a level and then editing another keeps every earlier edit,
-// and the input the trader is in is never rebuilt underneath them.
+// and the input the viewer is in is never rebuilt underneath them.
 import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
 import { drawingTools } from '../../../src/drawings/index'
@@ -93,7 +93,7 @@ describe('a table with several cells edited in turn', () => {
     expect(cellsOf(r.drawing)).toEqual(before)
   })
 
-  it('leaves the input the trader is typing in exactly where it was', () => {
+  it('leaves the input the viewer is typing in exactly where it was', () => {
     const r = rig('table')
     r.tab('Table').click()
     const first = r.field('Cell 1,1')

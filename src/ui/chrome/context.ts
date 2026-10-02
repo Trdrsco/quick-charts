@@ -38,7 +38,7 @@ export interface ChromeContext {
    *  only to know whether a refused control is drawn disabled or left out. */
   access?: AccessPolicy
   /** The built-in indicators the widget offers, or null (or absent) for every built-in: the ones
-   *  the indicator browser lists. */
+   *  the indicator picker lists. */
   builtInIndicators?: OfferedIndicators
   /** The range presets the widget offers, in the order the bottom bar draws them, or absent for
    *  every preset. */

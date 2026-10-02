@@ -2,11 +2,11 @@
 // typing into one.
 //
 // CLONE AND PASTE both land a copy BESIDE its source rather than under it, because a copy that
-// lands exactly on the original is invisible and the trader drags what they think is the copy while
+// lands exactly on the original is invisible and the viewer drags what they think is the copy while
 // the original sits underneath. The offset is stated once here, in pixels, and converted to the
 // chart's own time by the caller that has a viewport.
 //
-// TEXT is the workflow where an empty commit means two different things. On a drawing the trader
+// TEXT is the workflow where an empty commit means two different things. On a drawing the viewer
 // just placed, empty means "I changed my mind" and the placement is undone: there is no such thing
 // as a blank note nobody asked for. On a drawing that already carries text, empty means "clear it",
 // and the drawing stays. Getting that backwards leaves a chart littered with empty labels or eats

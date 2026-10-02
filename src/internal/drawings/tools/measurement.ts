@@ -25,7 +25,7 @@ function inBox(p: Point, r: { x: number; y: number; width: number; height: numbe
 }
 
 export type RangeMeterProps = {
-  /** The trader's own word for the span, inside it. */
+  /** The viewer's own word for the span, inside it. */
   text: string
   /** Stats readout toggles; a meter only surfaces the ones its axes measure. */
   showPriceDelta: boolean

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // Hiding one drawing, and how long that lasts. A hidden drawing has no control of its own once it
 // is off screen, so a fresh layer brings every stored hidden drawing back rather than stranding it.
-// Within one layer's life the trader's hide is the truth: a symbol switch, a document landing and
+// Within one layer's life the viewer's hide is the truth: a symbol switch, a document landing and
 // a restore all keep it, and none of them writes an unhide back into the document.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { memorySaveLoadAdapter } from '../../src/resources'

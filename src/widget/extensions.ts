@@ -3,7 +3,7 @@
 // The chart never hands out its renderer instance, so an extension can only do what these
 // capabilities express, and the chart can take back everything it gave. A contributed command goes
 // into the chart's ONE command registry with `scope: 'chart'`, which is what makes it reachable
-// from the same menu, keyboard and operator surfaces as a built-in verb and refusable by the same
+// from the same menu, keyboard and automation surfaces as a built-in verb and refusable by the same
 // access policy.
 import type { CreatePriceLineOptions, IChartApi, IPriceLine, ISeriesApi, SeriesType, UTCTimestamp } from 'lightweight-charts'
 import {

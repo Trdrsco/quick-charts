@@ -101,7 +101,7 @@ export interface DrawingPresets {
 }
 
 /** Why a low-level document operation refused. Machine-readable on purpose: these answer a host's
- *  code, not a trader, so nothing here is a sentence to render. */
+ *  code, not a viewer, so nothing here is a sentence to render. */
 export type DrawingDocumentRefusal =
   /** The widget runs in combined mode: its drawings ride whatever saves the chart, and there is no
    *  separate document to get, apply or reload. */
@@ -114,7 +114,7 @@ export type DrawingDocumentRefusal =
   | 'stale'
 
 /** Why one drawing in a document was not applied. The rest of the document still applies: one
- *  unusable row is not a reason to leave the trader with an empty chart. */
+ *  unusable row is not a reason to leave the viewer with an empty chart. */
 export type DrawingRejectionReason =
   /** Its owning source is not on this chart (an indicator that is gone, a series never added). */
   | 'missing-source'
@@ -171,7 +171,7 @@ export interface DrawingsEvents {
   onSelectionChange?: (id: string | null) => void
   /** A write of a symbol's document was refused: the stored document moved on (`current` is the
    *  ref that stands now) or vanished (null). The layer merges the stored document over its own
-   *  work and writes again at the adopted ref; the host decides what to tell the trader. */
+   *  work and writes again at the adopted ref; the host decides what to tell the viewer. */
   onSaveConflict?: (info: { symbol: string; current: ResourceRef | null }) => void
   /** Anything a toolbar or a settings surface renders from changed: a drawing was added, removed,
    *  restyled, locked, hidden or restacked, or the layer's own switches moved. */

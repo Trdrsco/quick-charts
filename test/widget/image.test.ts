@@ -23,11 +23,11 @@ describe('the single-chart header', () => {
   })
 
   it('carries the host attribution at the right edge, and none when the host states none', () => {
-    const marked = imageHeaderRuns(header({ attribution: 'trdrs' }), 800)
-    expect(marked.map((r) => r.text)).toEqual(['ESU6 · 5m', 'trdrs'])
+    const marked = imageHeaderRuns(header({ attribution: 'Northwind' }), 800)
+    expect(marked.map((r) => r.text)).toEqual(['ESU6 · 5m', 'Northwind'])
     expect(marked[1]!.align).toBe('right')
     expect(marked[1]!.x).toBe(790)
-    expect(imageHeaderRuns(header(), 800).some((r) => r.text === 'trdrs')).toBe(false)
+    expect(imageHeaderRuns(header(), 800).some((r) => r.text === 'Northwind')).toBe(false)
   })
 
   it('places a note after the identity rather than over it', () => {
@@ -38,7 +38,7 @@ describe('the single-chart header', () => {
   })
 
   it('every run fits inside the header strip', () => {
-    for (const run of imageHeaderRuns(header({ attribution: 'trdrs', note: 'data by Rithmic' }), 800)) {
+    for (const run of imageHeaderRuns(header({ attribution: 'Northwind', note: 'data by Example Feed' }), 800)) {
       expect(run.y).toBeLessThanOrEqual(IMAGE_HEADER_H)
       expect(run.y).toBeGreaterThan(0)
     }
@@ -54,9 +54,9 @@ describe('a layout is ONE picture', () => {
   ]
 
   it('the strip carries only what is true of the whole image', () => {
-    expect(imageLayoutHeaderRuns(header({ attribution: 'trdrs', note: 'data by Rithmic' }), 800).map((r) => r.text)).toEqual([
-      'data by Rithmic',
-      'trdrs',
+    expect(imageLayoutHeaderRuns(header({ attribution: 'Northwind', note: 'data by Example Feed' }), 800).map((r) => r.text)).toEqual([
+      'data by Example Feed',
+      'Northwind',
     ])
     expect(imageLayoutHeaderRuns(header(), 800)).toEqual([])
   })

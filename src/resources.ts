@@ -1,5 +1,5 @@
 // SAVED RESOURCES — the revisioned, async persistence contract for the entities a chart names and
-// a user can lose: saved charts, layouts, drawing documents, and templates.
+// a viewer can lose: saved charts, layouts, drawing documents, and templates.
 //
 // The contract exists because a saved chart is shared, mutable, remote state. Two tabs, two
 // devices, or one slow save and one fast one all end at the same question: whose version wins?

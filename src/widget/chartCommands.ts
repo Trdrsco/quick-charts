@@ -2,11 +2,11 @@
 //
 // This file is the reason the command registry can claim to be the ONE source. A verb that exists
 // only as a method on the handle would be reachable from code but not from a menu, a shortcut or an
-// operator; a verb that exists only as a menu row would be reachable from the glass but not from a
-// host. Registering them here makes those the same list, so `features` and `access` filter every
-// door at once. `ui` filters only the commands whose one job is to open one of the chart's own
-// dialogs: with the dialog out of the interface, its door answers `unavailable` and the verbs the
-// dialog would have run stay available.
+// automation adapter; a verb that exists only as a menu row would be reachable from the glass but
+// not from a host. Registering them here makes those the same list, so `features` and `access`
+// filter every door at once. `ui` filters only the commands whose one job is to open one of the
+// chart's own dialogs: with the dialog out of the interface, its door answers `unavailable` and
+// the verbs the dialog would have run stay available.
 //
 // Availability is a live read, never a stored flag: a command asks the chart what is true now.
 import type { ChartMessageKey, ChartTranslate } from '../i18n'
@@ -110,7 +110,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   const always = (): boolean => true
 
   // ── The symbol. One setter taking the symbol, so the search dialog, a host toolbar and an
-  // operator adapter all change the market through the same door.
+  // automation adapter all change the market through the same door.
   add({
     id: 'chart.symbol.set',
     scope: 'chart',
@@ -180,7 +180,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   }
 
   // ── Appearance. One command taking an appearance partial: the settings menu, a host control and
-  // an operator adapter all restyle the chart through the same runtime layer.
+  // an automation adapter all restyle the chart through the same runtime layer.
   add({
     id: 'chart.appearance.apply',
     scope: 'chart',
@@ -194,9 +194,9 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
 
-  // Reset defaults: the same door for the gear menu's row, a host control and an operator. It is
-  // the appearance twin of `chart.view.reset` and shares nothing with it — one puts back the look,
-  // the other puts back the window.
+  // Reset defaults: the same door for the gear menu's row, a host control and an automation
+  // adapter. It is the appearance twin of `chart.view.reset` and shares nothing with it — one puts
+  // back the look, the other puts back the window.
   add({
     id: 'chart.appearance.reset',
     scope: 'chart',
@@ -219,7 +219,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   // ── History ─────────────────────────────────────────────────────────────────────────────────
   // One step back and one step forward through the chart's own content. Availability is the stack:
   // a verb with nothing to take back is unavailable, so a toolbar button, a menu row and an
-  // operator all read the same "nothing to do" rather than each deciding for itself.
+  // automation adapter all read the same "nothing to do" rather than each deciding for itself.
   add({
     id: 'chart.history.undo',
     scope: 'chart',
@@ -316,7 +316,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   const withSelection = (): boolean => drawings()?.hasSelection() ?? false
   // Lock all suspends every edit, the deliberate Delete and Clone included, so those two are
   // unavailable while it holds rather than answering ok for an edit the layer refused. A drawing's
-  // own lock is not asked here: it lets both act on the drawing the trader named.
+  // own lock is not asked here: it lets both act on the drawing the viewer named.
   const withEditableSelection = (): boolean => withSelection() && !drawings()!.allLocked()
   const on = (): boolean => features.drawings && drawings() !== null
   const isHideState = (arg: unknown): arg is HideState =>
@@ -357,7 +357,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     execute: () => verbs()?.cancel(),
   })
   // Arming a tool is ONE command taking the tool id (or `{ tool, props }` to seed the placement,
-  // as a picked glyph does): the ninety registered tools would otherwise be ninety near-identical
+  // as a picked glyph does): the 90 tools would otherwise be 90 near-identical
   // entries, and the access policy refuses per tool through `refuses`, so a refused tool answers
   // `denied` from this door as a refused command does.
   add({
@@ -596,8 +596,8 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   })
 
   // ── Timeframe and range presets. The grammar and the preset registries are the chart's own
-  // timeframe module, which lands beside this one; the two ids exist now so a host binding a
-  // toolbar or an operator adapter binds the same names it will keep.
+  // timeframe module, beside this one, so a host binding a toolbar or an automation adapter binds
+  // the same names the chart uses.
   // One command per preset token the widget offers, plus the open-ended setter a custom interval
   // uses, which refuses a token the widget does not offer. Availability
   // is the intersection the capability plane already knows: a token the feed or the symbol cannot

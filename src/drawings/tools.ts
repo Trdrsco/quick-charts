@@ -30,7 +30,7 @@ export interface DrawingTool {
   readonly anchors: number
   /** Style overrides every new drawing of this tool starts with. */
   readonly style?: Partial<DrawingStyle>
-  /** The tool renders user text, so a host opens its text editor once placement completes. */
+  /** The tool renders the viewer's text, so a host opens its text editor once placement completes. */
   readonly hasText?: boolean
   readonly placement?: DrawingPlacement
   /** The tool snapshots the bars between its anchors when placement completes. */

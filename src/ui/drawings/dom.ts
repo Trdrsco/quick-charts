@@ -66,8 +66,8 @@ export function ownPointer(node: HTMLElement): void {
  *  {@link ownPointer} so a press on a control never reaches the chart underneath, which means a
  *  release over the surface is stopped on its way out and a bubble listener never hears it. Capture
  *  runs before the event reaches the surface at all, so a drag always hears its own end. */
-/** Where a floating bar is PAINTED, given where the trader left it and the box it floats in now.
- *  The remembered position is the trader's and is never rewritten: a panel that opens beside the
+/** Where a floating bar is PAINTED, given where the viewer left it and the box it floats in now.
+ *  The remembered position is the viewer's and is never rewritten: a panel that opens beside the
  *  chart pushes the bar in, and one that closes lets it back to where it was put. A box with no
  *  measured size yet, as before first layout, leaves the position as it was remembered. */
 export function paintedPosition(position: { x: number; y: number }, bar: HTMLElement, host: HTMLElement): { x: number; y: number } {

@@ -193,7 +193,7 @@ describe('the packed declarations', () => {
     for (const path of declarations) {
       const text = packedText(path)
       expect(text, `${path} is packed but unreadable`).not.toBeNull()
-      expect(text, path).not.toMatch(/@trdrs\/i18n/)
+      expect(text, path).not.toMatch(/@trdrs\/(?!quickcharts(?:\/|[^a-zA-Z0-9_.-]|$))/)
     }
   })
 })

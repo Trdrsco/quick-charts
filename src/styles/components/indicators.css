@@ -1,4 +1,4 @@
-/* The historical indicator browser, rendered by the product with product tokens. */
+/* The indicator picker, drawn with the chart's own tokens. */
 [data-qc-theme] .qc-picker-dialog {
   height: 638px;
   max-height: min(85vh, calc(100% - 32px));
@@ -266,7 +266,7 @@
    So the rail lies DOWN. It becomes a row of chips above the list, scrolling sideways the way every
    other run of choices on a phone does, and the table sheds the columns a phone has no room to
    spend: the author and the count go, the star and the actions stay, and the name takes what is
-   left. The GROUP headings go with the rail's column — "Personal" over "Community" reads as
+   left. The GROUP headings go with the rail's column — "Saved" over "Shared" reads as
    structure in a list and as noise in a row, and the chips say what they are. */
 @media (max-width: 560px) {
   [data-qc-theme] .qc-picker-body {

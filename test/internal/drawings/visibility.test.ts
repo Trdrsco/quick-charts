@@ -19,7 +19,7 @@ describe('parseIntervalContext — timeframe tokens to buckets', () => {
     expect(parseIntervalContext('3mo')).toEqual({ bucket: 'months', value: 3 })
   })
 
-  it('rolls oversized values into the bucket users expect', () => {
+  it('rolls oversized values into the bucket viewers expect', () => {
     expect(parseIntervalContext('90m')).toEqual({ bucket: 'hours', value: 1.5 })
     expect(parseIntervalContext('120s')).toEqual({ bucket: 'minutes', value: 2 })
   })

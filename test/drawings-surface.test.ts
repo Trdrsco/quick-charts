@@ -5,7 +5,7 @@
 //
 // The pin is also the boundary proof. The internal drawing seam exports far more than this: the
 // `Drawing` base class, the `DrawingManager`, the pane views, the mutable `ToolRegistry`, and every
-// one of the 90 tool classes. None of them are here, and the second test says so by name.
+// class of the 90 tools. None of them are here, and the second test says so by name.
 import { describe, expect, it } from 'vitest'
 import * as api from '../src/drawings/index'
 import * as seam from '../src/internal/drawings/index'

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // The built-in indicators a host offers, on a widget mounted the way a host mounts it. A built-in
-// the list leaves out is absent from the indicator browser and refused by every door that would add
+// the list leaves out is absent from the indicator picker and refused by every door that would add
 // one. Instances of it already on the chart stay whole: they render, edit through the settings
 // dialog and the inputs, hide and show from the legend, and remove from every door. A host's own
 // definitions are never filtered, nothing stored is rewritten, and the list composes with the
@@ -50,7 +50,7 @@ const custom: IndicatorDefinition = { manifest: { id: 'host-band', pane: 'overla
 const ids = (widget: ChartWidget): string[] => widget.activeChart().indicators.get().map((i) => i.id)
 const drawn = (element: Element | null | undefined): boolean => !!element && !element.closest('[hidden]')
 
-/** Open the browser on a collection and read the built-in rows it lists. */
+/** Open the picker on a collection and read the built-in rows it lists. */
 function browser(widget: ChartWidget, collection?: string): { listed: string[]; disabled: string[] } {
   widget.commands.execute('chart.indicators.open', collection ? { collection } : undefined)
   const rows = [...document.querySelectorAll<HTMLButtonElement>('.qc-picker-dialog [data-indicator]')]
@@ -88,7 +88,7 @@ describe('builtInIndicators: setup', () => {
   })
 })
 
-describe('a built-in left out is absent from the browser', () => {
+describe('a built-in left out is absent from the picker', () => {
   it('lists only the offered built-ins, in search results too', async () => {
     const { widget } = mount({ builtInIndicators: ['sma', 'ema'] })
     await settle()

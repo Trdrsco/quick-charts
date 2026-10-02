@@ -25,7 +25,7 @@
 //
 // The series pair is the market's own, green up and red down in both modes, and it is the floor the
 // chart's appearance ladder paints default candle bodies, borders and wicks from until a host or a
-// viewer names their own. The brand pair in `overrides.ts` stays with what speaks for trdrs. A
+// viewer names their own. The brand pair in `overrides.ts` stays with what a host draws on top. A
 // positive TEXT role and a rising SERIES are different jobs, so one does not displace the other.
 //
 // The motion roles are the same in both modes, because a mode changes how the chart looks, not how

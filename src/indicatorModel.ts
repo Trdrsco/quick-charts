@@ -1,11 +1,10 @@
 // The indicator MODEL: a declarative manifest (typed inputs + declared plots/levels/fills), the
 // render-agnostic plot spec built from it, per-instance style overrides, and the one walker that
-// turns computed value channels into that spec. Types are self-contained on purpose — the same
-// manifest grammar an external system publishes (the trdrs engine's script manifests satisfy these
-// shapes structurally, and so do the bundled built-in definitions) works here without importing
-// that system, keeping the package's dependency surface at the renderer alone. Compute stays
-// OUTSIDE the model: a definition pairs a manifest with a compute, whether a built-in's or a
-// host's, and the model only walks what the compute returns.
+// turns computed value channels into that spec. Types are self-contained on purpose: any manifest
+// in this grammar (the bundled built-in definitions among them) satisfies these shapes structurally
+// and works here as published, keeping the package's dependency surface at the renderer alone.
+// Compute stays OUTSIDE the model: a definition pairs a manifest with a compute, whether a
+// built-in's or a host's, and the model only walks what the compute returns.
 import type { HistogramData, LineData, UTCTimestamp, WhitespaceData } from 'lightweight-charts'
 
 /** A declared numeric input: `int`/`float` bound by min/max, `enum` an index into `options`. */
@@ -158,7 +157,7 @@ export function manifestInputDefaults(m: IndicatorManifest): Record<string, numb
 }
 
 /** The effective color of a plot spec under an instance: override → declared → the instance's
- *  rotated color. A legend dot and a save-as-default snapshot both read THIS, so what the user
+ *  rotated color. A legend dot and a save-as-default snapshot both read THIS, so what the viewer
  *  sees is what persists. */
 export function effectivePlotColor(m: IndicatorManifest, key: string, ov: IndicatorOverrides | undefined, instanceColor: string): string {
   return ov?.plots?.[key]?.color ?? m.plots[key]?.color ?? instanceColor
@@ -277,8 +276,8 @@ function toHistogram(
   return out
 }
 
-/** The ONE walker from a computed run to the render-agnostic spec — built-ins, user scripts, and
- *  widget definitions all render through this, so plot semantics can never drift between them.
+/** The ONE walker from a computed run to the render-agnostic spec: built-ins and host
+ *  definitions all render through this, so plot semantics can never drift between them.
  *  `fallbackColor` is the instance's rotated color, used by any plot channel that doesn't declare
  *  its own. */
 export function buildManifestPlots(run: ManifestRun, times: readonly UTCTimestamp[], title: string, fallbackColor: string): IndicatorPlots {

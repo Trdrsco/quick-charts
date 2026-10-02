@@ -7,7 +7,7 @@
 // `toolName`, so a tool is named once and translated once wherever it appears. What is here is
 // everything around them.
 //
-// Level values, prices, bar indexes, hex colors, template names a trader typed, emoji and icon
+// Level values, prices, bar indexes, hex colors, template names a viewer typed, emoji and icon
 // glyphs are data and never pass through this catalog.
 export const drawing = {
   // The toolbar itself, and its tool GROUPS (a button each) with the SECTION headings inside their

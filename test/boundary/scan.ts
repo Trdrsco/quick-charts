@@ -39,7 +39,7 @@ const CHART_DIST = import.meta.glob('/dist/**/*.{js,ts,json}', { query: '?raw', 
 export const CHART_ROOT = ''
 
 /** This package's directory on disk, derived from the module URL so no node:path is needed. Decoded
- *  (a Windows "Joe D" path URL-encodes its space) and drive-letter-normalized. */
+ *  (a Windows path URL-encodes a space in it) and drive-letter-normalized. */
 const boundaryDir = decodeURIComponent(new URL('.', import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1')
 export const CHART_DIR = boundaryDir.replace(/\/test\/boundary\/?$/, '')
 

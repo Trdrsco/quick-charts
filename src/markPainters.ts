@@ -2,7 +2,7 @@
 //
 // The chart ships no artwork and fetches none. A host that has logos lends a painter, and the
 // chart calls it wherever it names that thing, so a market wears the same mark in the legend, in
-// a search row and on a trading notice, and the host implements it once. A host that lends none
+// a search row and on an extension's notice, and the host implements it once. A host that lends none
 // gets the neutral monogram the package draws itself. The marks a feed serves are a different
 // thing entirely: those are notes about a moment, not artwork for a name.
 //
@@ -32,7 +32,7 @@ export interface MarkPainters {
 export interface MarkPainterHooks {
   /** The host's mark for a market, called WHEREVER the chart names one: each chart's legend, the
    *  compare rows under it, every row of the symbol search and compare dialogs, and the market tag
-   *  a trading notice wears. It receives the element to paint into and the symbol it stands for,
+   *  an extension's notice wears. It receives the element to paint into and the symbol it stands for,
    *  and returns a disposer that takes the mark down again.
    *
    *  One hook rather than one per surface, so a market wears the same mark everywhere it appears and

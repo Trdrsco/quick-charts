@@ -15,7 +15,7 @@ describe('mergeOverrides', () => {
     expect(o.appearance.background).toBe(DEFAULT_OVERRIDES.appearance.background)
   })
 
-  it('the tree is the chart’s own look: one section, nothing about an account', () => {
+  it('the tree is the chart’s own look: one section, the appearance', () => {
     expect(Object.keys(DEFAULT_OVERRIDES)).toEqual(['appearance'])
   })
 
@@ -27,9 +27,9 @@ describe('mergeOverrides', () => {
 })
 
 describe('the market pair and the brand pair', () => {
-  // The brand pair marks what speaks for trdrs on top of a chart, the trading extension's buy line
-  // among it. The theme's series roles are the market's own: candles rise green and fall red in
-  // either mode until a viewer sets their own colors.
+  // The brand pair marks what a host draws on top of a chart, an extension's lines among it. The
+  // theme's series roles are the market's own: candles rise green and fall red in either mode until
+  // a viewer sets their own colors.
   it('the theme series roles are the market pair, apart from the brand pair', () => {
     for (const theme of [DARK_THEME, LIGHT_THEME]) {
       expect(theme['series.up']).toBe('#089981')
@@ -44,9 +44,9 @@ describe('the market pair and the brand pair', () => {
   })
 })
 
-// Pinned literally, because these came off the owner's account rather than out of a palette — there
-// is no rule to re-derive them from, so a silent edit would have nothing to fail against.
-describe('the shipped default chart is the owner-approved one', () => {
+// Pinned literally, because these are chosen values rather than a palette's output: there is no
+// rule to re-derive them from, so a silent edit would have nothing to fail against.
+describe('the shipped default chart', () => {
   it('appearance', () => {
     expect(DEFAULT_OVERRIDES.appearance).toEqual({
       background: '#ece7c0',

@@ -1,10 +1,9 @@
-// The forbidden vocabulary: words that belong to trading, quotes, the retired theme, or the V1
-// exclusions may not survive in the free chart's source.
+// The forbidden vocabulary: words that belong to trading, quotes, a one-shot theme, or the excluded
+// chrome may not appear in Quick Charts source.
 //
-// Same shape as the dependency fixture. AS-BUILT pins what is true today: no private package is
-// imported at all, and the exclusions that are already absent stay absent. PRESENT pins the target
-// words that ARE here today, so the target list cannot rot against a source that moved; every
-// removal has landed, so it is empty. TARGET carries the gate itself, one block per group of words.
+// The first block holds the import boundary (no private package is imported at all) and the
+// excluded chrome. Each word group follows with the reason it is forbidden, judged in one block so
+// the log names every offending line.
 import { describe, expect, it } from 'vitest'
 import { CHART_SOURCES, offenderText, scanFiles } from './scan'
 
@@ -24,12 +23,11 @@ interface Term {
   pattern: RegExp
 }
 
-/** The target vocabulary, grouped by the removal that forbids it. Every pattern is judged against
+/** The forbidden vocabulary, grouped by the reason it is forbidden. Every pattern is judged against
  *  package code, never the catalogs. */
 const TARGET: Record<'trading' | 'symbology' | 'theme', { reason: string; terms: Term[] }> = {
-  // The datafeed narrowing and symbology. Landed: SymbolInfo owns the price-format facts and the
-  // quote board and the onQuote callback are gone from the free datafeed; the words stay listed so
-  // a return is caught.
+  // Symbology: SymbolInfo owns the price-format facts, and the datafeed serves bars, so a quote
+  // board and a quote callback stay out of it.
   symbology: {
     reason: 'SymbolInfo owns price-format facts; no L1 or quote-board API in Quick Charts',
     terms: [
@@ -40,10 +38,10 @@ const TARGET: Record<'trading' | 'symbology' | 'theme', { reason: string; terms:
       { term: 'subscribeQuotes', pattern: /\bsubscribeQuotes\b/ },
     ],
   },
-  // The chart-trading extraction, and the rename of the layout's trading symbol. Landed:
-  // the block below runs; the words stay listed so a return is caught.
+  // Trading: a host's trading lives in the host, over the extension seam, and the layout names an
+  // active symbol.
   trading: {
-    reason: 'trading vocabulary and APIs leave the free root; the layout names an active symbol',
+    reason: 'no trading vocabulary or API in the Quick Charts root; the layout names an active symbol',
     terms: [
       { term: 'createOrderTicket', pattern: /\bcreateOrderTicket\b/ },
       { term: 'TicketOrderType', pattern: /\bTicketOrderType\b/ },
@@ -54,11 +52,10 @@ const TARGET: Record<'trading' | 'symbology' | 'theme', { reason: string; terms:
       { term: 'tradingSymbol', pattern: /\btradingSymbol\b|\bonTradingSymbol\b/ },
     ],
   },
-  // The executable theme: the six-field ChartTheme, one-shot ResolvedTheme, and inline cssText
-  // gave way to the typed token schema and the generated scoped stylesheet. Landed: the block below
-  // runs; the words stay listed so a return is caught.
+  // The executable theme: the typed token schema and the generated scoped stylesheet carry every
+  // theme, so a six-field ChartTheme, a one-shot ResolvedTheme and inline cssText stay out.
   theme: {
-    reason: 'the typed token schema and quickcharts/styles.css replace the one-shot theme',
+    reason: 'the typed token schema and quickcharts/styles.css carry every theme',
     terms: [
       { term: 'ChartTheme', pattern: /\bChartTheme\b/ },
       { term: 'resolveTheme', pattern: /\bresolveTheme\b/ },
@@ -70,7 +67,7 @@ const TARGET: Record<'trading' | 'symbology' | 'theme', { reason: string; terms:
 
 const sourcesFor = (): Record<string, string> => CODE
 
-describe('the forbidden vocabulary, as built', () => {
+describe('the import boundary and the excluded chrome', () => {
   it('has package sources to read', () => {
     expect(Object.keys(CODE).length).toBeGreaterThan(30)
     expect(CODE['/src/index.ts']).toBeTypeOf('string')
@@ -88,7 +85,7 @@ describe('the forbidden vocabulary, as built', () => {
     expect(lines(CHART_SOURCES, /from\s+['"](@trdrs\/(?!quickcharts(?:\/|['"]))|tailwind)/)).toEqual([])
   })
 
-  it('keeps the V1 exclusions absent while allowing only the fixed replay state indicator', () => {
+  it('keeps the excluded chrome absent while allowing only the fixed replay state indicator', () => {
     expect(lines(CODE, /:root\b/)).toEqual([])
     expect(lines(CODE, /Object Tree|objectTree/)).toEqual([])
     // Every one of these is the replay session's own mark on the plot, built and named in the
@@ -103,7 +100,7 @@ describe('the forbidden vocabulary, as built', () => {
     })).toHaveLength(2)
   })
 
-  it('names every target word that is present today, so a removal is a conscious event', () => {
+  it('finds no word of any group in the package code', () => {
     const present = Object.values(TARGET)
       .flatMap((g) => g.terms)
       .filter((t) => lines(sourcesFor(), t.pattern).length > 0)
@@ -112,14 +109,13 @@ describe('the forbidden vocabulary, as built', () => {
   })
 })
 
-// TARGET. One block per group, the whole word list in one assertion so the log names every
-// surviving line. Delete the group from LANDED_LATER when its removal lands; remove the words from
-// the PRESENT pin. Every group has landed, so every block runs.
-const LANDED_LATER = new Set<keyof typeof TARGET>()
-describe('the forbidden vocabulary (target)', () => {
+// One block per group, the whole word list in one assertion so the log names every offending
+// line. A group named in SKIPPED_GROUPS runs skipped; the set is empty, so every block runs.
+const SKIPPED_GROUPS = new Set<keyof typeof TARGET>()
+describe('the forbidden vocabulary, by group', () => {
   for (const [group, { reason, terms }] of Object.entries(TARGET) as [keyof typeof TARGET, (typeof TARGET)[keyof typeof TARGET]][]) {
-    const block = LANDED_LATER.has(group) ? it.skip : it
-    block(`${LANDED_LATER.has(group) ? `[${group}, not yet landed] ` : ''}${reason}`, () => {
+    const block = SKIPPED_GROUPS.has(group) ? it.skip : it
+    block(`${SKIPPED_GROUPS.has(group) ? `[${group}, skipped] ` : ''}${reason}`, () => {
       const offenders = terms.flatMap((t) => lines(sourcesFor(), t.pattern).map((l) => `${t.term}: ${l}`))
       expect(offenders).toEqual([])
     })

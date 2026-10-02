@@ -73,7 +73,7 @@ export const NO_LINE_DECOR: ReadonlySet<string> = new Set([
  *  Text tab (border applies where the tool draws one). */
 export const NO_STYLE_TAB: ReadonlySet<string> = new Set(['text', 'note', 'comment', 'callout'])
 
-/** Tools that write words of their own and carry none of the trader's: a plan's target, P&L and
+/** Tools that write words of their own and carry none of the viewer's: a plan's target, P&L and
  *  stop tags. Their bar offers the text colour, because those words take it, and nothing that
  *  belongs to a free label: no font size, and no invitation on the canvas to add text. */
 export const OWN_WORDS_TOOLS: ReadonlySet<string> = new Set(['long_position', 'short_position'])

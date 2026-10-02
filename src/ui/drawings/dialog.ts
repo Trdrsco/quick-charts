@@ -1,6 +1,6 @@
 // The frame a drawing dialog stands in. The modal shell every chrome surface opens owns the scrim,
 // the centring, the focus trap, Escape and giving focus back to whatever had it; this adds the two
-// things a drawing dialog needs on top, and nothing else: a header the trader can drag, so a dialog
+// things a drawing dialog needs on top, and nothing else: a header the viewer can drag, so a dialog
 // never hides the drawing it is editing, and a body and footer the caller fills.
 import { dialogTitle, openDialog as openModal } from '../chrome/dialog'
 import { closeOverlays } from '../controls/overlays'

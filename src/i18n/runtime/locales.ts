@@ -88,8 +88,7 @@ export type ChartLocaleCode =
 export type ChartLocale = LocaleDefinition<ChartLocaleCode>
 
 /** English first, then the Latin-script languages, then the others. Endonyms let every reader find
- *  their own language in a picker. `scripts/i18n.mjs` reads this table by its line shape, and
- *  `scripts/test/i18n-inventory.test.ts` pins it equal to the app runtime's inventory. */
+ *  their own language in a picker. `scripts/i18n.mjs` reads this table by its line shape. */
 export const BUILT_IN_LOCALES: readonly ChartLocale[] = [
   { code: 'en', endonym: 'English', tag: 'en', dir: 'ltr' },
   { code: 'de', endonym: 'Deutsch', tag: 'de', dir: 'ltr' },

@@ -111,7 +111,7 @@ describe('one pane-placed study means exactly one study pane', () => {
   })
 
   it('even when a pane was left behind before it was placed', () => {
-    // The regression this exists for. A pane nobody swept counts the same as a real one, so the
+    // The case this exists for. A pane nobody swept counts the same as a real one, so the
     // study is placed BELOW it: three panes for one study, the study squeezed into the last of
     // them and an empty pane keeping its share of the height. The index has to be counted from a
     // pane list that holds only panes something is using.

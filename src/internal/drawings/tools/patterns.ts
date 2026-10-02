@@ -9,7 +9,7 @@ function hitTolerance(lineWidth: number): number {
 
 /** What a pattern carries beyond its vertices. */
 export type PatternProps = {
-  /** The trader's own word for the pattern, above the whole of it. */
+  /** The viewer's own word for the pattern, above the whole of it. */
   text: string
 }
 

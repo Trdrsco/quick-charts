@@ -25,8 +25,8 @@ URLs from your product; the reproduction must run without them.
 
 Open an issue that states the use case before you write code. A maintainer answers whether the
 proposal fits the library's boundary: Quick Charts draws over the datafeed and storage you supply,
-and does not include market data, trading, accounts, execution, community, news or hosting. Work
-that starts before that answer can be declined for scope alone.
+and everything around the chart is your product's. Work that starts before that answer can be
+declined for scope alone.
 
 ## Send a pull request
 
@@ -91,7 +91,8 @@ By opening a pull request you agree that your contribution is licensed under the
 ## Maintainer control
 
 Only the maintainers have write access. Every change to `main` requires the current `gate` check,
-resolved conversations. No second-person approval is required. Joe can merge his own passing work. Administrators follow these rules during normal operation.
+and resolved conversations. No second-person approval is required, so the owner can merge their
+own passing work. Administrators follow these rules during normal operation.
 
 Contributors cannot merge or publish. A merged change does not publish a package or upgrade any
 consumer. Releases require a separate approval, and consumers select their own package version.

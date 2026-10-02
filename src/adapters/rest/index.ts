@@ -187,7 +187,7 @@ export function createRestSaveLoadAdapter(options: RestSaveLoadOptions): ChartSa
   }
 
   /** A non-2xx the caller did not name: raised with its status, so a host can tell a 401 from a 503
-   *  and decide (sign in again, back off, tell the trader) rather than see an empty chart. */
+   *  and decide (sign in again, back off, tell the viewer) rather than see an empty chart. */
   const httpError = (method: string, url: string, status: number): RestSaveLoadError =>
     new RestSaveLoadError({ reason: 'http', status, method, url, detail: `unexpected status ${status}` })
 

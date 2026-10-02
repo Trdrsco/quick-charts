@@ -1,6 +1,5 @@
 {
-  "recordedAt": "2026-09-02",
-  "note": "The day-one registry counts, read from the source file that holds each registry. A registry that moves updates the file path here in the same commit; the count moves only by a conscious decision. ids.fixture.json pins the ids themselves.",
+  "note": "The registry counts, read from the source file that holds each registry. A registry that moves updates the file path here in the same commit; the count moves only by a conscious decision. ids.fixture.json pins the ids themselves.",
   "registries": [
     { "registry": "chart styles", "count": 7, "file": "src/widget/styles.ts", "symbol": "CHART_STYLES" },
     { "registry": "built-in indicators", "count": 23, "file": "src/internal/indicators/registry.ts", "symbol": "BUILT_IN_INDICATORS" },

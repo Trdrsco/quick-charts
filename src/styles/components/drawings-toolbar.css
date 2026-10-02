@@ -505,7 +505,7 @@
   cursor: grabbing;
 }
 
-/* Forced colors: a row or tab the trader has chosen reads as the system highlight, since the
+/* Forced colors: a row or tab the viewer has chosen reads as the system highlight, since the
  * accent fill it wears otherwise is discarded. */
 @media (forced-colors: active) {
   [data-qc-theme] .qc-drawing-rail-button[data-qc-active='true'] {

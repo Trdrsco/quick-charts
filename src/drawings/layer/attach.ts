@@ -139,7 +139,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   let hovered: string | null = null
   let textEdit: TextEditSession | null = null
   const transient = new Set<string>()
-  /** Drawings the trader hid during this layer's life, by id: what an import hides again. */
+  /** Drawings the viewer hid during this layer's life, by id: what an import hides again. */
   const hiddenThisSession = new Set<string>()
   /** The snapshot a preview session took, by drawing id: what the document carries meanwhile. */
   const previewing = new Map<string, SerializedDrawing>()
@@ -156,7 +156,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     container.style.touchAction = lock.touchAction
   }
 
-  /** The drawings on screen that are the trader's: never a transient readout, never a draft. */
+  /** The drawings on screen that are the viewer's: never a transient readout, never a draft. */
   const kept = (): SerializedDrawing[] =>
     manager
       .export()
@@ -204,7 +204,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
         /* skip a drawing the series refuses */
       }
     }
-    // A hide the trader made THIS session is different: it is a standing choice, so it survives
+    // A hide the viewer made THIS session is different: it is a standing choice, so it survives
     // every import that follows it (another symbol and back, a document landing, a restore) and
     // ends only with the layer.
     for (const id of hiddenThisSession) manager.get(id)?.updateOptions({ visible: false })
@@ -434,7 +434,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
    *  it simply is not this chart's to draw, and it stays in the document untouched. A row that
    *  names a source or a pane this chart does not have, or names one it has but is not this
    *  layer's, comes back named: the alternative is to attach it to whatever is nearest, which
-   *  silently moves a trader's drawing onto the wrong series. */
+   *  silently moves a viewer's drawing onto the wrong series. */
   const applyDocument = (document: DrawingsBody, ref: ResourceRef | null, generation: number): DrawingApplyOutcome => {
     // The generation is read FIRST: an ask that a symbol switch has already overtaken is stale,
     // whatever it happens to hold, and calling it a mismatch would name the wrong problem.

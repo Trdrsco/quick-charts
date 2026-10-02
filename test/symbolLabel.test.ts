@@ -1,6 +1,6 @@
-// How a symbol is written on screen, for markets a first-party feed may never serve. An integrator's
+// How a symbol is written on screen, for any market an integrator's feed serves. An integrator's
 // datafeed decides what markets exist, so the rule is pinned here against the shapes `SymbolInfo`
-// and `SymbolRow` admit rather than against whatever one engine happens to answer with.
+// and `SymbolRow` admit rather than against whatever one backend happens to answer with.
 import { describe, expect, it } from 'vitest'
 import type { SymbolRow } from '../src/datafeed'
 import { bareTicker, symbolLabel, symbolNames } from '../src/symbolLabel'
@@ -116,7 +116,7 @@ describe('before a symbol resolves, the ticker stands on its own', () => {
   })
 })
 
-describe('the venue prefix is routing identity, not display', () => {
+describe('the venue prefix is feed identity, not display', () => {
   it('sheds a well-formed venue prefix', () => {
     expect(bareTicker('NASDAQ:AAPL')).toBe('AAPL')
   })

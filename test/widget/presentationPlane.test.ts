@@ -6,8 +6,8 @@
 // the built-in one reached. The first block proves that for every flag the plane has, by comparing
 // the whole registry of a widget with one flag off against a widget with none. The coverage table
 // then accounts for every flag on screen: a hidden control is gone, and a shown one is there, found
-// by what a viewer or a screen reader finds it by. The rest proves the doors a hidden top bar used to
-// take with it: the search dialog, the saved-layout dialogs and autosave.
+// by what a viewer or a screen reader finds it by. The rest proves a hidden top bar leaves its doors
+// in place: the search dialog, the saved-layout dialogs and autosave.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import { memorySaveLoadAdapter } from '../../src/resources'
@@ -154,7 +154,7 @@ describe('every control flag is accounted for on screen', () => {
   })
 })
 
-describe('a hidden top bar keeps every door it used to carry', () => {
+describe('a hidden top bar keeps every door it carries when shown', () => {
   it('opens the chart’s own search dialog from a command', async () => {
     const { widget, container } = await mount({ ui: { topBar: false } })
     expect(container.querySelector('.qc-topbar')).toBeNull()

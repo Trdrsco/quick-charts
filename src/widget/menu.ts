@@ -123,7 +123,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
   /** The keyboard's half of a contributed row. The rows are asked for at the pressed level exactly
    *  as the right-click asks for them, and the row's own `run` is what fires, so a shortcut and a
    *  click at one spot are one code path and can never come to disagree. A row a contribution did
-   *  not offer for this level (no permission, no armed account, a lock, nothing to act on) is not
+   *  not offer for this level (no permission, a lock, nothing to act on) is not
    *  in the list and the press is simply not ours. */
   const runShortcutAt = (clientX: number, clientY: number, pressed: string): boolean => {
     const host = deps.extensions()

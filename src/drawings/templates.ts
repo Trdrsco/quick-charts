@@ -3,8 +3,8 @@
 //   DEFAULTS  — the style and props every NEW drawing of a tool starts with. There is no save
 //               control: the last edit to any drawing of that type becomes the default, silently,
 //               and editing a default never touches drawings already on a chart. One per tool.
-//   TEMPLATES — named snapshots a trader applies on demand. Several per tool, each with a name the
-//               trader typed.
+//   TEMPLATES — named snapshots a viewer applies on demand. Several per tool, each with a name the
+//               viewer typed.
 //
 // Both ride the revisioned resource contract's `templates('drawing')` store rather than a store of
 // their own, so a host that keeps saved charts on a server keeps these there too, and two tabs
@@ -28,7 +28,7 @@ export interface ToolTemplate extends ToolPreset {
 }
 
 /** The reserved template name that holds a tool's silent last-used DEFAULT. It is not shown in the
- *  template list and cannot be typed: a name a trader could collide with would let them overwrite
+ *  template list and cannot be typed: a name a viewer could collide with would let them overwrite
  *  their defaults by saving a template. */
 export const DEFAULT_PRESET_NAME = ''
 
@@ -71,7 +71,7 @@ export class DrawingTemplates {
 
   /** Every row of the family, defaults included, each with its preset. A host that has to answer
    *  synchronously (a placement path, a render) reads this once into a cache of its own rather
-   *  fetched: one read per saved setup, once, against a family a trader keeps in the dozens. The
+   *  fetched: one read per saved setup, once, against a family a viewer keeps in the dozens. The
    *  reads run together, `BODY_READS` at a time, and the answer keeps the store's order. */
   async listAll(signal?: AbortSignal): Promise<ToolTemplate[]> {
     const rows = await this.store.list(signal)
@@ -127,7 +127,7 @@ export class DrawingTemplates {
   }
 
   /** Remember a tool's default. This runs after an ordinary style edit, so a CONFLICT here is not
-   *  worth surfacing: another surface already wrote a newer default and the trader's next edit
+   *  worth surfacing: another surface already wrote a newer default and the viewer's next edit
    *  writes again. It is returned rather than swallowed so a caller may still look. */
   async rememberDefault(tool: string, preset: ToolPreset, signal?: AbortSignal): Promise<WriteOutcome<TemplateMeta>> {
     return this.save(tool, DEFAULT_PRESET_NAME, preset, signal)

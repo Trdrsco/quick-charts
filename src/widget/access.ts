@@ -80,7 +80,7 @@ export function drawingToolShown(access: AccessPolicy | undefined, tool: string)
   return !hidesRefused(access) || drawingToolPermitted(access, tool)
 }
 
-/** Whether the indicator browser lists a definition. */
+/** Whether the indicator picker lists a definition. */
 export function indicatorShown(access: AccessPolicy | undefined, definition: IndicatorDefinition): boolean {
   return !hidesRefused(access) || indicatorPermitted(access, definition)
 }

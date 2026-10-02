@@ -101,7 +101,7 @@ describe('the settings bar', () => {
     expect(d.labels()).not.toContain('Background color')
   })
 
-  // What each tool's bar offers, held against the reference platform's own rule table rather than
+  // What each tool's bar offers, held against one rule table rather than
   // against how the sets happened to be written. A tool whose ink is its text offers no stroke; a
   // stroke that is always solid offers no dash; a fill is offered only where the paint encloses.
   it.each([
@@ -123,7 +123,7 @@ describe('the settings bar', () => {
   })
 
   // A plan paints two zones, so it offers two fills of its own and no stroke: the entry rule is
-  // part of the plan rather than a line the trader draws.
+  // part of the plan rather than a line the viewer draws.
   it.each(['long_position', 'short_position'])('%s offers its own two zones and the word on the plan', (type) => {
     const { labels } = rig(selection({ type, hasText: true }), { profitColor: '#089981', stopColor: '#f23645' })
     expect(labels()).toEqual(['Drawing templates', 'Text color', 'Target zone color', 'Stop zone color', 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])

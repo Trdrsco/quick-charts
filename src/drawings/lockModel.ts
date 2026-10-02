@@ -2,9 +2,9 @@
 //
 // Two locks act at once and they are not the same thing. The toolbar's LOCK ALL is a mode that
 // suspends the chart: it refuses every edit, the deliberate Delete and Clone included, without
-// changing any drawing. A DRAWING's own lock is a trader pinning one object down: it refuses a
+// changing any drawing. A DRAWING's own lock is a viewer pinning one object down: it refuses a
 // move, a resize, a text edit, the eraser and a modifier-drag duplicate, and lets Delete and Clone
-// act, because a trader who names a locked drawing and asks for either has asked for exactly that.
+// act, because a viewer who names a locked drawing and asks for either has asked for exactly that.
 // One predicate holds that matrix, so no surface has to remember which lock answers which edit.
 //
 // The matrix is the library's own and stays inside it. Nothing on the public subpath names it: a
@@ -19,7 +19,7 @@ import type { ChartMessageKey } from '../i18n/en'
 /** Every edit a lock is asked about. `place` and `paste` bring a new drawing and so have no target
  *  of their own; the rest act on one.
  *
- *  `delete` and `clone` are the DELIBERATE actions a trader names from the toolbar, the menu or a
+ *  `delete` and `clone` are the DELIBERATE actions a viewer names from the toolbar, the menu or a
  *  key. `erase` and `cloneDrag` are the gestures that would do the same thing by accident: the
  *  eraser sweeping over a drawing, and a modifier-drag pulling a copy out of it. They are separate
  *  edits because a lock answers them differently. */
@@ -30,7 +30,7 @@ type DrawingEdit = 'select' | 'move' | 'resize' | 'delete' | 'editText' | 'clone
  *
  *  Selecting is deliberately absent, because a locked drawing stays reachable so it can be
  *  inspected, restyled and unlocked, which is the only way back. So are `delete` and `clone`: a
- *  trader who selects a locked drawing and presses Delete, or picks Clone from its menu, has named
+ *  viewer who selects a locked drawing and presses Delete, or picks Clone from its menu, has named
  *  that one object and asked for exactly this. Refusing there leaves a button that says it acted
  *  and did not. */
 const LOCKED_REFUSES: readonly DrawingEdit[] = ['move', 'resize', 'editText', 'erase', 'cloneDrag']

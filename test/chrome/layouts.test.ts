@@ -588,7 +588,7 @@ describe('the saved-layouts menu', () => {
     expect(menu.element.querySelector<HTMLElement>('.qc-layouts-name')!.dataset.qcDirty).toBe('true')
   })
 
-  it('every way a verb can end reaches the trader once, and a load nobody is waiting for reaches them not at all', async () => {
+  it('every way a verb can end reaches the viewer once, and a load nobody is waiting for reaches them not at all', async () => {
     const { w } = mountLayouts()
     const refused: string[] = []
     w.events.on('saveConflict', (info) => refused.push(`${info.current?.id ?? 'none'}:${info.message}`))
@@ -611,7 +611,7 @@ describe('the saved-layouts menu', () => {
     w.commands.execute('widget.layout.load', 'a')
     await settle()
     expect(refused).toEqual(['none:Not saving.', 'none:Deleted elsewhere.', 'none:Could not be opened.', 'none:Could not be reached.'])
-    // A load the trader themselves replaced is nobody's news: nothing moved, and nothing is said.
+    // A load the viewer themselves replaced is nobody's news: nothing moved, and nothing is said.
     load.mockResolvedValueOnce({ kind: 'cancelled' })
     w.commands.execute('widget.layout.load', 'a')
     await settle()
@@ -701,7 +701,7 @@ describe('the saved-layouts menu', () => {
     const { w, menu } = mountLayouts({ layoutSaveLoad: layout.saveLoad })
     const refused: string[] = []
     w.events.on('saveConflict', (info) => refused.push(info.message))
-    // A layout saved under a name, the way a trader gets one.
+    // A layout saved under a name, the way a viewer gets one.
     w.commands.execute('widget.layout.save', 'Desk')
     await settle()
     const desk = layout.saveLoad.current()!.ref
@@ -710,7 +710,7 @@ describe('the saved-layouts menu', () => {
     await settle()
     const nameLabel = menu.element.querySelector<HTMLElement>('.qc-layouts-name')!
     expect(nameLabel.dataset.qcNotSaving).toBe('true')
-    // The copy the trader asks for by name, through the menu row that is still on.
+    // The copy the viewer asks for by name, through the menu row that is still on.
     menu.element.querySelector<HTMLButtonElement>('.qc-layouts-caret')!.click()
     const copyRow = [...w.overlays.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((r) => r.querySelector('.qc-menu-label')?.textContent === 'Make a copy…')!
     expect(copyRow.disabled).toBe(false)
@@ -733,7 +733,7 @@ describe('the saved-layouts menu', () => {
     await settle()
     expect(menu.element.querySelector<HTMLButtonElement>('.qc-layouts-save')!.hidden).toBe(true)
     // The manual save, from the command every door reaches: refused, with its sentence for the
-    // trader, and the store untouched.
+    // viewer, and the store untouched.
     w.commands.execute('widget.layout.save')
     await settle()
     expect(refused).toEqual([w.i18n.t('host.notSaving')])

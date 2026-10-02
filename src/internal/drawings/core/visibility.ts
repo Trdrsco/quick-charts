@@ -93,7 +93,7 @@ export type IntervalContext = { bucket: IntervalBucket; value: number } | null
 
 /**
  * Parse a timeframe token ('1t', '30s', '45m', '4h', '1d', '1w', '3mo') into a bucket context.
- * Oversized values roll up so custom intervals land in the range users expect (90m → 1.5h).
+ * Oversized values roll up so custom intervals land in the range viewers expect (90m → 1.5h).
  */
 export function parseIntervalContext(tf: string): IntervalContext {
   const match = /^(\d+)(t|s|m|h|d|w|mo)$/.exec(tf.trim().toLowerCase())

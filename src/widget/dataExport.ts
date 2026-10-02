@@ -1,13 +1,13 @@
 // Download chart data: the bars the chart currently holds, written as CSV.
 //
 // This is a LOCAL export and nothing else. It writes what is already loaded and painted, so what
-// lands in the file is exactly what the trader is looking at: no second history request, no server
+// lands in the file is exactly what the viewer is looking at: no second history request, no server
 // export endpoint, and no reach past the boundary a replay cursor is holding. The chart hands the
 // command its painted bars, which are already the replay slice while replay is on, so a revealed
 // bar is exported and a bar the cursor has not reached is not.
 import type { FeedBar } from '../datafeed'
 
-/** The columns, in the order a trader's spreadsheet expects them. */
+/** The columns, in the order a viewer's spreadsheet expects them. */
 const HEADER = 'time,open,high,low,close,volume'
 
 /** One CSV cell, quoted when its own text would otherwise break the row. Bar numbers never need

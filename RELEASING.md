@@ -1,7 +1,8 @@
 # Releasing Quick Charts
 
-Quick Charts releases are selected by Joe and published from the reviewed public repository.
-Joe can approve his own release.
+Quick Charts releases are selected by the owner and published from the reviewed public repository.
+The owner can approve their own release. The first host is the application that installs each
+release candidate before it is published and records its acceptance.
 
 ## Roles
 
@@ -33,7 +34,7 @@ Dispatch `release.yml` on the exact release tag, supplying the SHA-256 of the ca
 by the first host and an HTTPS link to that host's acceptance record. The validation job verifies
 the tag, version and main ancestry, rehearses the candidate and refuses a digest mismatch.
 
-Joe reads that evidence and approves the `npm-publish` environment. Self-approval is allowed.
+The owner reads that evidence and approves the `npm-publish` environment. Self-approval is allowed.
 The publishing job downloads the validated tarball, verifies its digest again and publishes that
 file without rebuilding it or executing package scripts. Only this protected job receives OIDC
 permission. Node 24.15.0 and npm 12.1.0 are pinned. `publishConfig.provenance` is enabled.

@@ -1,6 +1,6 @@
 // The image rules behind the drawing asset port. They decide whether a picked file is USABLE, and
 // the failure they replaced was a silent drop, so a refusal must carry a code a host can turn into
-// a sentence a trader can act on.
+// a sentence a viewer can act on.
 import { describe, expect, it } from 'vitest'
 import {
   checkImageFile,

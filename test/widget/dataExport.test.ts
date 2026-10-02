@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// Download chart data: the bars the chart is painting, written as a CSV file the trader can open.
+// Download chart data: the bars the chart is painting, written as a CSV file the viewer can open.
 //
 // What is pinned here is that the file says what the screen says. The columns and their order are
 // the ones a saved file has always had, a timestamp is UTC so it can be read back anywhere, the

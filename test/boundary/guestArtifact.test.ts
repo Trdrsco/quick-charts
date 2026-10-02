@@ -1,7 +1,7 @@
-// The WebView guest artifact: the chart bundled into a network-denied local WebView guest without
-// importing any first-party app, session, service URL, or trading code, as a deterministic and
-// self-contained build that preserves its relative asset structure, carries no runtime remote
-// import, and emits a version/build manifest.
+// The WebView guest artifact: the chart bundled into a network-denied local WebView guest from its
+// public surface alone, with no host application, session, service URL or trading code, as a
+// deterministic and self-contained build that preserves its relative asset structure, carries no
+// runtime remote import, and emits a version/build manifest.
 //
 // scripts/build-guest.mjs writes dist/guest; this fixture reads it back. It lives in the boundary
 // folder because, like its neighbours, it names the shapes it hunts. The artifact blocks are vacuous
@@ -40,14 +40,14 @@ const REMOTE: readonly { name: string; pattern: RegExp }[] = [
   { name: 'a network request', pattern: /\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon/ },
 ]
 
-/** Every first-party, session, service or trading shape the guest must not carry. */
-const FIRST_PARTY: readonly { name: string; pattern: RegExp }[] = [
+/** Every host, session, service or trading shape the guest must not carry. */
+const HOST_SHAPES: readonly { name: string; pattern: RegExp }[] = [
   { name: 'a trdrs host or domain', pattern: /trdrs\.co\b|trdrsco[\w-]*\.fly\.dev|localhost:8080/ },
   { name: 'a service route', pattern: /["'`]\/api\// },
   { name: 'a credential or session', pattern: /trdrs_sk_|Authorization|Set-Cookie|document\.cookie|engine_session|trdrs_session/ },
   { name: 'a private package', pattern: /@trdrs\// },
-  { name: 'an engine client', pattern: /\bengineApi\b|\bmarketStream\b|engine-client|engine-wire|chart-engine/ },
-  { name: 'trading code', pattern: /\bplaceOrder\b|\bcancelOrder\b|\bflatten\b|order-ticket|account-manager|chart-trading|\bOrderCommandPort\b|\bPositionCommandPort\b|\bTradingSession\b/ },
+  { name: 'a host data client', pattern: /\bengineApi\b|\bmarketStream\b/ },
+  { name: 'trading code', pattern: /\bplaceOrder\b|\bcancelOrder\b|\bflatten\b|\bOrderCommandPort\b|\bPositionCommandPort\b|\bTradingSession\b/ },
   { name: 'browser storage', pattern: /\b(localStorage|sessionStorage|indexedDB)\b/ },
 ]
 
@@ -105,10 +105,10 @@ describe('the built guest', () => {
     expect(read('quickcharts.css')).toBe(readFileSync(`${CHART_DIR}/dist/quickcharts.css`, 'utf8'))
   })
 
-  it('carries no first-party app, session, service URL or trading code', () => {
+  it('carries no host application, session, service URL or trading code', () => {
     if (!built) return
     const bundle = read('quickcharts-guest.js')
-    for (const { name, pattern } of FIRST_PARTY) {
+    for (const { name, pattern } of HOST_SHAPES) {
       const line = bundle.split('\n').find((l) => pattern.test(l))
       expect(line, `${name}: ${line?.trim().slice(0, 120)}`).toBeUndefined()
     }

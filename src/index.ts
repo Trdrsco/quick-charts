@@ -1,8 +1,7 @@
 // quickcharts — the charting library's public surface. A host builds a chart by supplying a ChartDatafeed
 // (implement it directly for real-time, or point createUdfDatafeed at a UDF server for the trivial on-ramp),
-// optionally a ChartStorage for where viewer state lives, and the widget options/theme/event hooks. The
-// engine reference implementation of ChartDatafeed lives in the trdrs app; this package is what a third
-// party depends on to build their own platform on the chart.
+// optionally a ChartStorage for where viewer state lives, and the widget options/theme/event hooks. This
+// package is what a third party depends on to build its own product on the chart.
 
 export type {
   FeedBar,
@@ -63,7 +62,7 @@ export type {
 } from './widget/options'
 
 // The command registry is the ONE source for the chart's verbs: the context menu, the keyboard,
-// a host's own toolbar and an operator adapter all read this list and run through this `execute`,
+// a host's own toolbar and an automation adapter all read this list and run through this `execute`,
 // so a command a disabled feature removed or the access policy refuses cannot be reached from any
 // of them, and a command whose built-in control is hidden is still reached from every other door.
 export type { CommandRegistry, CommandResult, CommandScope, CommandSpec } from './widget/commands'
@@ -86,7 +85,7 @@ export { canvasToBlob, composeImage, imageFileName, imageHeaderRuns, imageLayout
 export type { ImageApi, ImageHeader, ImageTextRun, ImageTile } from './widget/image'
 
 // Neutral marks: host-supplied chart data the feed serves through the two optional readers on
-// `ChartDatafeed`. A mark is a note about a moment and says nothing about an account.
+// `ChartDatafeed`. A mark is a note about a moment, in the host's own words.
 export type { BarMark, MarkColorRole, MarkPlacement, MarkShape, TimescaleMark } from './marks'
 export type { MarkPainters, ProviderMarkPainter, SymbolMarkPainter, VenueMarkPainter } from './markPainters'
 
@@ -200,7 +199,7 @@ export {
 export type { DataStatus, PriceFormat, SymbolInfo, TickBand } from './symbology'
 export { parseTickBands, tickBandFor } from './symbology'
 // How a market is named on screen, from the same facts: one rule with three faces, so a host that
-// names a symbol beside the chart (a watchlist row, a position, a picker) reads as the chart does.
+// names a symbol beside the chart (a watchlist row, a picker) reads as the chart does.
 export type { SymbolNames } from './symbolLabel'
 export { symbolNames } from './symbolLabel'
 export type { NumericPunctuation, PriceFormatter, PriceFormatterOptions } from './priceFormatter'

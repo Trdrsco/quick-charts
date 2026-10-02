@@ -172,7 +172,7 @@ describe('every top-bar control speaks', () => {
   })
 })
 
-describe('the marks the baseline header drew', () => {
+describe('the header marks', () => {
   it('draws each icon-only control on the grid and at the weight it was drawn at', () => {
     const { bar } = mount()
     const table: Record<string, Mark> = {
@@ -267,7 +267,7 @@ describe('the marks the baseline header drew', () => {
     expect(chrome.querySelector<HTMLButtonElement>('.qc-nav button[aria-pressed]')!.hidden).toBe(true)
   })
 
-  it('opens the pickers with the baseline wide caret, half size on its own 16 by 8 grid', () => {
+  it('opens the pickers with the wide caret, half size on its own 16 by 8 grid', () => {
     const { bar } = mount()
     for (const selector of ['.qc-tf-caret', '.qc-layouts-caret']) {
       const caret = markOf(bar.element.querySelector(selector)!)

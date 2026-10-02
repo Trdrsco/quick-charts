@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
-// The ACTIVE CHART RING in a multi-chart layout, pinned to the source it was restored from: the
-// baseline drew a one-pixel inset ring in the focus colour at 60%, rounded on the outer TOP corners
-// only, painted over the chart canvas and under the drag dividers, and drew nothing at all when the
-// layout held a single chart. Quick Charts draws the same mark from its own tokens, as an outline on
-// the pane element rather than an overlay div, because an outline paints in the last step of its
-// stacking context and therefore lands above the canvas an inset box-shadow was overpainted by.
+// The ACTIVE CHART RING in a multi-chart layout: a one-pixel inset ring in the focus colour at 60%,
+// rounded on the outer TOP corners only, painted over the chart canvas and under the drag
+// dividers, and nothing at all when the layout holds a single chart. Quick Charts draws the mark
+// from its own tokens, as an outline on the pane element rather than an overlay div, because an
+// outline paints in the last step of its stacking context and therefore lands above the canvas,
+// which overpaints an inset box-shadow.
 //
 // Two halves are pinned here because the mark needs both: the DOM state the layout writes as tiles
 // are activated, re-tiled and maximized, and the CSS recipe those data attributes select. Neither

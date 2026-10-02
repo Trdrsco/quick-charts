@@ -17,7 +17,7 @@ export type ImageProps = {
   opacity: number
 }
 
-/** User image pinned to a chart point (anchor = top-left). */
+/** A viewer's image pinned to a chart point (anchor = top-left). */
 export class ImageNote extends Drawing<ImageProps> {
   readonly type = 'image'
 

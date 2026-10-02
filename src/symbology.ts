@@ -1,13 +1,12 @@
 // Quick Charts SYMBOLOGY — the display facts `ChartDatafeed.resolve` serves for one symbol, and the
 // only place a chart price display gets its precision from. The datafeed says how a market's prices
-// are WRITTEN, while broker instrument facts say how they may be TRADED. The display and
+// are WRITTEN on the chart; a host that trades keeps its own execution facts, and the display and
 // execution grids may differ.
 //
 // What lives here: identity, venue and type, supported resolutions, exchange timezone and session,
-// data status, currency and unit, volume precision, and the price-format facts. What does NOT:
-// order quantity, price steps, lot size, pip value, P&L, balances, or any validation rule; those
-// are a broker's executable instrument facts. Quote values (last, change, volume) are not symbology
-// either: they are quote data a host fans out on its own.
+// data status, currency and unit, volume precision, and the price-format facts. Every one is a
+// display fact. A host keeps its execution facts and its quote values (last, change, volume) on its
+// own side of the chart.
 //
 // This module is self-contained by the same rule as `datafeed.ts` — the contract must never drag a
 // backend SDK into the chart's dependency surface. It imports nothing.

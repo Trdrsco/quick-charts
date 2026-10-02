@@ -251,7 +251,7 @@ export const THEME_ROLES = [
   { id: 'illustration.accent', family: 'illustration', kind: 'color', description: 'The badge an empty-state illustration wears on the action it invites.', contrast: [{ over: 'overlay.surface', min: 3 }] },
   { id: 'illustration.accentInk', family: 'illustration', kind: 'color', description: 'The mark on an illustration\'s badge.', contrast: [{ over: 'illustration.accent', min: 3 }] },
 
-  // ── drawing: what a new drawing wears before a user styles it ───────────────────────────────
+  // ── drawing: what a new drawing wears before a viewer styles it ─────────────────────────────
   { id: 'drawing.line', family: 'drawing', kind: 'color', description: 'The stroke of a newly placed drawing.' },
   { id: 'drawing.fill', family: 'drawing', kind: 'color', description: 'The fill of a newly placed drawing that has an area.' },
   { id: 'drawing.text', family: 'drawing', kind: 'color', description: 'The ink of a drawing label.' },

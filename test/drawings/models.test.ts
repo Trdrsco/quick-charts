@@ -257,7 +257,7 @@ describe('favorites', () => {
     expect(DEFAULT_FAVORITES).toEqual({ tools: [], visible: true, position: null })
   })
 
-  it('appends in the order the trader starred them and never re-sorts', () => {
+  it('appends in the order the viewer starred them and never re-sorts', () => {
     let state = DEFAULT_FAVORITES
     state = toggleFavorite(state, 'ray')
     state = toggleFavorite(state, 'brush')

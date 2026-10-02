@@ -18,7 +18,7 @@ export interface ChartTimezone {
   readonly city: string
 }
 
-/** The selectable zones: one city per offset region a trader picks. The count is a release
+/** The selectable zones: one city per offset region a viewer picks. The count is a release
  *  inventory: it moves only by decision. */
 export const TIMEZONES: readonly ChartTimezone[] = [
   { id: 'Etc/UTC', city: 'UTC' },
@@ -83,7 +83,7 @@ export const TIMEZONES: readonly ChartTimezone[] = [
   { id: 'Pacific/Auckland', city: 'Auckland' },
 ]
 
-/** The zone a chart displays in before a host or a trader chooses one. */
+/** The zone a chart displays in before a host or a viewer chooses one. */
 export const DEFAULT_TIMEZONE = 'Etc/UTC'
 
 /** The timezone choice that follows the charted symbol's exchange: a display preference resolves

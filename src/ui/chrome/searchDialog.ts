@@ -74,13 +74,13 @@ export interface DialogRow {
  *  The mark and the description are the names every surface gives a market (`symbolNames`): a
  *  pair market reads `ETHUSDC` beside `ETH / USDC`, in the terms it trades in, where "Ethereum
  *  perpetual" names the contract and leaves out what it is priced in; a market that is not a pair
- *  wears its bare ticker beside the feed's own name. The venue prefix is routing identity and never
+ *  wears its bare ticker beside the feed's own name. The venue prefix is feed identity and never
  *  reaches a cell. A spread's expression IS its identity, operators and all, so it passes through
  *  untouched. A row reads here as the same market reads once it is on the chart: the pill wears
  *  the same mark and the legend the same pair.
  *
  *  The source is the VENUE when the row names one, because that is the feed the row charts off,
- *  and the publisher otherwise. A row with neither says nothing rather than borrowing a name. */
+ *  and the data provider otherwise. A row with neither says nothing rather than borrowing a name. */
 export function rowLabels(row: SymbolRow): { ticker: string; description: string; source: string } {
   const names = symbolNames(row)
   return { ticker: names.mark, description: names.description, source: row.exchange || row.provider || '' }

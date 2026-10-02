@@ -1,4 +1,4 @@
-// Client image capture: what the trader is looking at, as one PNG, composed in the browser and
+// Client image capture: what the viewer is looking at, as one PNG, composed in the browser and
 // never sent anywhere.
 //
 // The canvas screenshot alone drops the on-canvas legend, so a shared picture would lack the one

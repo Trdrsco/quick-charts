@@ -368,7 +368,7 @@ export interface SaveLoadDeps {
     restore(instances: readonly IndicatorInstance[]): void
   }
   disposed(): boolean
-  /** Internal widget scope: hydration writes are not user edits. */
+  /** Internal widget scope: hydration writes are not viewer edits. */
   beginHydration?: () => () => void
 }
 
@@ -460,7 +460,7 @@ export function createSaveLoadApi(deps: SaveLoadDeps): ChartSaveLoadApi {
           if (!ownersRestored) throw new Error('an opaque content owner could not certify rollback')
         } catch (rollback) {
           // The chart took neither content whole. That is a different answer from a clean refusal
-          // and it is reported as one, rather than left for the trader to notice; and until the
+          // and it is reported as one, rather than left for the viewer to notice; and until the
           // chart holds a whole content again, nothing it shows is written anywhere. Set here
           // rather than only on the load path, because a host that applies a blob itself leaves the
           // screen in exactly the same place.

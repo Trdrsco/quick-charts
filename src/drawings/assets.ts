@@ -11,7 +11,7 @@ export const IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png']
 export const IMAGE_ACCEPT = 'image/jpeg,image/png'
 
 /** Why an intake failed. A CODE, not a sentence: the host renders it through the catalog, so the
- *  reason reaches a trader in their own language and no English lives in the port. */
+ *  reason reaches a viewer in their own language and no English lives in the port. */
 export type ImageIntakeError = 'wrong-type' | 'too-large' | 'unreadable' | 'undecodable'
 
 /** The catalog message each code says. `too-large` carries the picked file's size in its slot. */

@@ -113,7 +113,7 @@ export interface ChartWidget {
    *  and whenever a menu opens; call this when the policy's answers changed with nothing on the
    *  chart changing (a viewer's plan changed mid-session). Every control, menu row, rail tool and
    *  group, the favorites bar, the glyph picker, the legend's row controls and every menu, flyout
-   *  and dialog that is open (the indicator browser among them) read the policy again: shown or
+   *  and dialog that is open (the indicator picker among them) read the policy again: shown or
    *  left out under `access.refused`, enabled or disabled. Listeners of `commands.onChange` hear
    *  it too, so a host's own controls can read `commands.available` again. Nothing stored and
    *  nothing on the chart changes. Inert after `dispose`. */
@@ -180,7 +180,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   let hydrationDepth = 0
   const beginHydration = (): (() => void) => {
     hydrationDepth++
-    // Do not cancel a timer queued before hydration: it belongs to an existing user edit.
+    // Do not cancel a timer queued before hydration: it belongs to an existing viewer edit.
     return () => {
       hydrationDepth--
     }
@@ -539,7 +539,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   //
   // A press no built-in verb claims reaches the rows extensions contribute, at the level under the
   // POINTER and on the tile the pointer is over — the active tile does not decide, because the only
-  // level a contributed row can act at is the one the trader is pointing to. The position is
+  // level a contributed row can act at is the one the viewer is pointing to. The position is
   // tracked on the root the listener already lives on; outside every tile there is no level and the
   // press is left alone.
   let pointerPoint: ShortcutPoint | null = null

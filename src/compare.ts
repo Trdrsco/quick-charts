@@ -1,15 +1,15 @@
 // COMPARE — other symbols beside the charted one, drawn as a study rather than as a second chart (a
-// STUDY: legend-managed, three placements, removable from the legend or the dialog). This organ
-// owns the data half the indicator pipeline never had: an indicator computes from the chart's own
+// STUDY: legend-managed, three placements, removable from the legend or the dialog). This module
+// owns the data a compare draws: an indicator computes from the chart's own
 // bars, a compare fetches ANOTHER symbol's bars through the same ChartDatafeed and follows its
 // stream.
 //
 // The three placements are the dialog's three verbs:
 //   'same-percent'  — a line on the MAIN pane's shared (right) scale. The renderer's Percentage
 //                     scale mode does the % math (base = each series' first visible bar), so the
-//                     host flips the scale mode rather than this organ computing percent series —
-//                     one axis, every series on it in %, the observed reference behaviour.
-//   'new-scale'     — a line on the main pane bound to the LEFT scale, absolute prices. The organ
+//                     host flips the scale mode rather than this module computing percent series:
+//                     one axis, every series on it in %.
+//   'new-scale'     — a line on the main pane bound to the LEFT scale, absolute prices. The module
 //                     shows the left scale while any such compare lives and hides it again after.
 //   'new-pane'      — a line on its own pane with its own scale, the non-price-study placement.
 //
@@ -43,9 +43,9 @@ export interface CompareEntry {
 }
 
 /** The serialized form carried inside the chart content blob — and the shape host STATE holds.
- *  Only the identity is required: color and visibility are the ORGAN's to deal (the palette pick,
+ *  Only the identity is required: color and visibility are the MODULE's to deal (the palette pick,
  *  the eye's default), so a host can state membership — "compare MSFT on a new scale" — before
- *  the organ has dealt them, and the organ's report back fills them in. `serialize` always emits
+ *  the module has dealt them, and the module's report back fills them in. `serialize` always emits
  *  the dealt fields; `restore`/`apply` accept either form. */
 export interface CompareSnapshot {
   symbol: string
@@ -86,7 +86,7 @@ export interface CompareDeps {
   /** The chart's CURRENT timeframe — read per fetch, never captured. */
   tf(): string
   /** The MAIN series' loaded bar window (epoch seconds, inclusive), or null before first paint.
-   *  The organ clips every compare to it; the host calls `sync()` whenever it changes shape. */
+   *  The module clips every compare to it; the host calls `sync()` whenever it changes shape. */
   mainWindow(): { from: number; to: number } | null
   /** How many bars a fresh compare asks for when the main window is not yet known. */
   seedCountBack?: number
@@ -103,7 +103,7 @@ export interface CompareHandle {
   setVisible(symbol: string, visible: boolean): void
   /** A host-side hide ANDed with the eye (interval visibility, a plot-visibility override) —
    *  never serialized and never touching `visible`, so a timeframe switch that suppresses a
-   *  compare cannot flip the trader's eye state. */
+   *  compare cannot flip the viewer's eye state. */
   suppress(symbol: string, on: boolean): void
   /** Restyle one compare's line (a settings edit). Omitted fields keep their current value;
    *  `priceLabel` is the price-scale label+line pair. Identical values are a no-op (no notify). */

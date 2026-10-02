@@ -91,7 +91,7 @@ export const chartDictionaries = createDictionaryLoader(en, {
 const dynamic = (t: ChartTranslate) => t as unknown as (key: string) => string
 
 /** The English source translator, for a pure helper called WITHOUT a language: every function here
- *  that returns trader-visible text takes `t` optionally and falls back to this, so a host that has
+ *  that returns viewer-visible text takes `t` optionally and falls back to this, so a host that has
  *  not passed one reads exactly the English it always did. Built once and shared; the menu model
  *  composes its rows on every raise. */
 let source: ChartTranslate | null = null

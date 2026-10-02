@@ -1,9 +1,9 @@
 // The registry count baselines (seven chart
-// styles, 23 built-in indicators, 90 drawings, 55 layouts, 26 preset timeframes, 60 timezones).
-// counts.baseline.json records each count with the file it was read from today; this test reads
+// styles, 23 built-in indicators, 90 tools, 55 layouts, 26 preset timeframes, 60 timezones).
+// counts.baseline.json records each count with the file it is read from; this test reads
 // those files and counts again. Every registry lives in Quick Charts or one of its bundled seams;
 // a registry that moves updates the path in the baseline, and the count itself moves only by a
-// conscious decision, because the first release adds nothing to any of them.
+// conscious decision.
 // registries.test.ts pins the ids behind each count.
 import { describe, expect, it } from 'vitest'
 import baseline from './counts.baseline.json'
@@ -54,7 +54,7 @@ const COUNTERS: Record<string, (literal: string) => number> = {
 }
 
 describe('the registry count baselines', () => {
-  it('records the six day-one registries', () => {
+  it('records the six counted registries', () => {
     expect(baseline.registries.map((r) => [r.registry, r.count])).toEqual([
       ['chart styles', 7],
       ['built-in indicators', 23],

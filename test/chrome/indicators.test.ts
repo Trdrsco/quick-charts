@@ -49,7 +49,7 @@ describe('the picker rules', () => {
 })
 
 describe('the picker dialog', () => {
-  it('uses the historical table and navigation, with no host-only sections in standalone mode', () => {
+  it('uses the pinned table and navigation, with no host-only sections in standalone mode', () => {
     const w = fakeWidget()
     cleanup.push(() => w.dispose())
     const dialog = openIndicatorPicker({ ...w.ctx })

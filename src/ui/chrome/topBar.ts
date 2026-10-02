@@ -145,17 +145,17 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
   if (ui.indicatorsButton) {
     indicators = button({ label: t()('chrome.indicators'), text: t()('chrome.indicators'), icon: deps.icons.glyph(ICONS.indicators), className: 'qc-toolbar-button', onClick: () => commands.execute('chart.indicators.open') })
     indicators.setAttribute('aria-haspopup', 'dialog')
-    // The last label to go: what a trader adds to the chart is the bar's most-reached control, so
+    // The last label to go: what a viewer adds to the chart is the bar's most-reached control, so
     // it keeps its word until the row has no room for any.
     indicators.dataset.qcLabel = 'last'
     start.appendChild(indicators)
-    // The rule the baseline header keeps: Indicators closes the group that changes WHAT the chart
+    // The header's rule: Indicators closes the group that changes WHAT the chart
     // shows, and the transport group that follows it stands behind its own rule. A separator is
     // drawn only where something follows it, so a switched-off feature leaves no rule hanging.
     if (ui.replayButton || ui.historyButtons) start.appendChild(separator())
   }
-  // The head of the transport group: what a host service that WATCHES the market belongs beside.
-  // Price alerts is the first-party case, and the baseline header put it exactly here.
+  // The head of the transport group: what a host service that WATCHES the market belongs beside,
+  // such as price alerts.
   start.appendChild(slot('afterIndicators'))
 
   // ── Replay ──────────────────────────────────────────────────────────────────────────────────
@@ -357,7 +357,7 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
       setDisabled(replay, !commands.available(on ? 'chart.replay.exit' : 'chart.replay.start'))
     }
     if (undo && redo) {
-      // A step that has a word says the word: "Undo timeframe change" tells a trader what they are
+      // A step that has a word says the word: "Undo timeframe change" tells a viewer what they are
       // about to get back, where a bare "Undo" makes them find out by pressing it. With nothing to
       // take back the control falls back to the verb's own name rather than a stale word.
       named(undo, chart.history.undoChange(), 'history.undoNamed', 'chart.history.undo')

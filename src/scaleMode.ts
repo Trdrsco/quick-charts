@@ -10,7 +10,7 @@ export type ScaleMode = 'normal' | 'log' | 'percent' | 'indexed'
 export const SCALE_MODES: readonly ScaleMode[] = ['normal', 'log', 'percent', 'indexed']
 
 /** Settings-control chips, in render order. Each names its own catalog key, so a control that
- *  renders them reads the trader's language rather than an English word compiled into a public
+ *  renders them reads the viewer's language rather than an English word compiled into a public
  *  export. */
 export const SCALE_MODE_OPTIONS: readonly { id: ScaleMode; label: ChartMessageKey }[] = [
   { id: 'normal', label: 'legend.scaleNormal' },

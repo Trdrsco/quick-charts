@@ -1,6 +1,6 @@
 // The display timezones a widget offers: every zone in `TIMEZONES` and the exchange choice when the
-// host names no list, or exactly the host's list. A choice outside the offered set is not a
-// timezone of this chart: it has no `chart.timezone.<id>` command, `chart.timezone.set` and
+// host names no list, or exactly the host's list. A choice outside the offered set stays off this
+// chart: it has no `chart.timezone.<id>` command, `chart.timezone.set` and
 // `setTimezone` ignore it, and the timezone picker lists no row for it. A stored or preferred
 // choice outside the list opens on the first choice the host lists, and what is stored is not
 // rewritten until the viewer chooses. The standalone registry (`TIMEZONES`, `isTimezoneChoice`,

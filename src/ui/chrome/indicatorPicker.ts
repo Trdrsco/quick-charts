@@ -1,4 +1,4 @@
-// One package-owned browser: shipped definitions and Add stay local; host rows are inert data.
+// One package-owned indicator picker: shipped definitions and Add stay local; host rows are inert data.
 import { BUILT_IN_INDICATORS, type BuiltInIndicator } from '../../builtInIndicators'
 import type { ChartExtensionIcon } from '../../extension'
 import type { ChartStorage } from '../../storage'
@@ -37,7 +37,7 @@ export function filterDefinitions(t: ChromeContext['i18n']['t'], query: string, 
 }
 
 export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
-  /** Whether the widget offers a built-in: the browser lists only those. */
+  /** Whether the widget offers a built-in: the picker lists only those. */
   const offered = (definition: BuiltInIndicator): boolean => indicatorOffered(deps.builtInIndicators ?? null, definition)
   const t: ChromeContext['i18n']['t'] = (key, ...args) => deps.i18n.t(key, ...args)
   const source = deps.indicatorPicker

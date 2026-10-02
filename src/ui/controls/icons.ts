@@ -61,9 +61,9 @@ export const ICONS = {
     '<path fill="currentColor" d="M113 2.5A7 7 0 0 1 120 9.5L120 71.5A6 6 0 0 1 114 77.5L83 77.5A3 3 0 0 1 80 74.5L80 42.5A4 4 0 0 1 84 38.5L110 38.5A4 4 0 0 0 114 34.5L114 12.5A4 4 0 0 0 110 8.5L10 8.5A4 4 0 0 0 6 12.5L6 34.5A4 4 0 0 0 10 38.5L36 38.5A4 4 0 0 1 40 42.5L40 74.5A3 3 0 0 1 37 77.5L6 77.5A6 6 0 0 1 0 71.5L0 9.5A7 7 0 0 1 7 2.5Z"/>' +
     '<path fill="currentColor" d="M40 77.5H80V110.5A7 7 0 0 1 73 117.5H47A7 7 0 0 1 40 110.5Z"/>',
   },
-  /** Baseline market-status mark, on its native 18 grid. */
+  /** The market-status mark, on its native 18 grid. */
   marketStatus: { viewBox: '0 0 18 18', body: '<circle cx="9" cy="9" r="7" fill="currentColor" opacity="0.2"/><path fill="currentColor" d="M9 5a4 4 0 1 1 0 8 4 4 0 0 1 0-8"/>' },
-  /** Independently drawn replay marks on the baseline 18 grid. */
+  /** The replay marks, on their native 18 grid. */
   // The disc carries the phase in `currentColor`; the rewind stays ONE ink in both modes, because a
   // mark that changed the colour of its own shape between modes would read as a different mark.
   replayStatus: { viewBox: '0 0 18 18', body: '<circle cx="9" cy="9" r="9" fill="currentColor"/><path d="M8 5.5v7L4.5 9 8 5.5Zm5 0v7L9.5 9 13 5.5Z" fill="var(--qc-state-markInk)"/>' },
@@ -93,18 +93,18 @@ export const ICONS = {
     fill('M18 14a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm-1 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z')
     + fill('M8.5 5h11l5 9-5 9h-11l-5-9 5-9Zm-3.86 9L9.1 6h9.82l4.45 8-4.45 8H9.1l-4.45-8Z'),
   },
-  // Enter fullscreen: the baseline's four corner brackets turning outward, drawn as a one-unit
+  // Enter fullscreen: four corner brackets turning outward, drawn as a one-unit
   // wall on the 28 grid.
   fullscreen: { viewBox: '0 0 28 28', body: fill('M7 18.5A2.5 2.5 0 0 0 9.5 21H12v1H9.5A3.5 3.5 0 0 1 6 18.5V16h1zm15 0a3.5 3.5 0 0 1-3.5 3.5H16v-1h2.5a2.5 2.5 0 0 0 2.5-2.5V16h1zM12 7H9.5A2.5 2.5 0 0 0 7 9.5V12H6V9.5A3.5 3.5 0 0 1 9.5 6H12zm6.5-1A3.5 3.5 0 0 1 22 9.5V12h-1V9.5A2.5 2.5 0 0 0 18.5 7H16V6z') },
-  // Exit fullscreen: the same brackets folded inward, stroked at the baseline's 1.5 weight.
+  // Exit fullscreen: the same brackets folded inward, stroked at a 1.5 weight.
   exitFullscreen: { viewBox: '0 0 28 28', body: stroke('M11 6v1.5A3.5 3.5 0 0 1 7.5 11H6M22 11h-1.5A3.5 3.5 0 0 1 17 7.5V6M17 22v-1.5a3.5 3.5 0 0 1 3.5-3.5H22M6 17h1.5a3.5 3.5 0 0 1 3.5 3.5V22', 1.5) },
-  // Chart image: the baseline camera, a one-unit-walled body with the shutter hump left of centre
+  // Chart image: a camera, a one-unit-walled body with the shutter hump left of centre
   // and the lens ring offset toward it.
   camera: { viewBox: '0 0 28 28', body:
     fill('M11.118 6a.5.5 0 0 0-.447.276L9.809 8H5.5A1.5 1.5 0 0 0 4 9.5v10A1.5 1.5 0 0 0 5.5 21h16a1.5 1.5 0 0 0 1.5-1.5v-10A1.5 1.5 0 0 0 21.5 8h-4.309l-.862-1.724A.5.5 0 0 0 15.882 6h-4.764zm-1.342-.17A1.5 1.5 0 0 1 11.118 5h4.764a1.5 1.5 0 0 1 1.342.83L17.809 7H21.5A2.5 2.5 0 0 1 24 9.5v10a2.5 2.5 0 0 1-2.5 2.5h-16A2.5 2.5 0 0 1 3 19.5v-10A2.5 2.5 0 0 1 5.5 7h3.691l.585-1.17z')
     + fill('M13.5 18a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zm0 1a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9z'),
   },
-  /** The layout tile's own maximize and restore marks, on the baseline's native 18 grid: two
+  /** The layout tile's own maximize and restore marks, on their native 18 grid: two
    *  opposite corner brackets turning outward to fill the layout, and inward to give the tile back. */
   tileMaximize: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M14.5 8V3.5H10V2h6v6h-1.5Zm-11 2v4.5H8V16H2v-6h1.5Z"/>' },
   tileRestore: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M10 8V2h1.5v4.5H16V8h-6Zm-2 2v6H6.5v-4.5H2V10h6Z"/>' },
@@ -115,7 +115,7 @@ export const ICONS = {
   navZoomIn: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M8.25 13.75v-9.5h1.5v9.5h-1.5Z"/><path fill="currentColor" d="M13.75 9.75h-9.5v-1.5h9.5v1.5Z"/>' },
   navScroll: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M7.83 3.92 12.28 9l-4.45 5.08-1.13-1L10.29 9l-3.6-4.09 1.14-.99Z"/>' },
   navReset: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M10 6.38V8L6 5.5 10 3v1.85A5.25 5.25 0 1 1 3.75 10a.75.75 0 0 1 1.5 0A3.75 3.75 0 1 0 10 6.38Z"/>' },
-  /** The pickers' wide caret, on its native 16 by 8 grid: the baseline's own trigger arrow, which
+  /** The pickers' wide caret, on its native 16 by 8 grid: the trigger arrow, which
    *  renders half size beside a picker's text. */
   menuArrowWide: { viewBox: '0 0 16 8', body: '<path fill="currentColor" d="M0 1.475l7.396 6.04.596.485.593-.49L16 1.39 14.807 0 7.393 6.122 8.58 6.12 1.186.08z"/>' },
   // Hairline weight: these two sit beside a label rather than alone in a 38px cell.
@@ -268,7 +268,7 @@ export const ICONS = {
   submenuArrow: { viewBox: '0 0 24 24', body: '<path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' },
   close18: { viewBox: '0 0 18 18', body: '<path d="M4.5 4.5l9 9M13.5 4.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' },
   chevronDown18: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M3.92 7.83 9 12.29l5.08-4.46-1-1.13L9 10.29l-4.09-3.6-.99 1.14Z"/>' },
-  // The indicator browser's marks, on the grids its rows were drawn for.
+  // The indicator picker's marks, on the grids its rows were drawn for.
   pickerStar: { viewBox: '0 0 18 18', body: '<path fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M9 2.13L11.057 6.168L15.534 6.877L12.329 10.082L13.038 14.558L9 12.5L4.962 14.558L5.671 10.082L2.466 6.877L6.943 6.168z"/>' },
   pickerStarFilled: { viewBox: '0 0 18 18', body: '<path fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M9 2.13L11.057 6.168L15.534 6.877L12.329 10.082L13.038 14.558L9 12.5L4.962 14.558L5.671 10.082L2.466 6.877L6.943 6.168z"/>' },
   plus24: { viewBox: '0 0 24 24', body: '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' },

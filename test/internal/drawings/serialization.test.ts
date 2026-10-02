@@ -4,7 +4,7 @@ import { toolRegistry } from '../../../src/internal/drawings/registry'
 import type { Anchor, SerializedDrawing } from '../../../src/internal/drawings/core/types'
 
 // Every registered tool must round-trip its COMPLETE state: create → toJSON → restore → toJSON
-// gives an identical document. This is the schema's contract — user text, extension flags, any
+// gives an identical document. This is the schema's contract — viewer text, extension flags, any
 // tool-specific props can never silently reset on reload.
 
 const anchorsFor = (count: number): Anchor[] =>

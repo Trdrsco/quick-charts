@@ -17,7 +17,7 @@ const NUMBER = '(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|twelve|fo
 const count = (word: string): number => WORDS[word.toLowerCase()] ?? Number(word)
 
 /** What a number written beside these words claims, and the registry that decides whether it is true.
- *  `stated` says the README has to state the count at least once: true for the six day-one registries
+ *  `stated` says the README has to state the count at least once: true for the six counted registries
  *  and the tool categories; the language count is listed by `BUILT_IN_LOCALES` rather than stated in
  *  prose, so it is checked only where a document writes it. */
 const CLAIMS: { registry: string; actual: number; pattern: RegExp; stated: boolean }[] = [

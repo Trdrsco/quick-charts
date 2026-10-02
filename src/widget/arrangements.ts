@@ -1,6 +1,6 @@
 // The arrangements and sync switches a widget offers: every arrangement in the catalog and every
 // switch when the host names no list, or exactly the host's lists. An arrangement outside the
-// offered set is not an arrangement of this widget: no menu tile shows it, the setter ignores it,
+// offered set stays off this widget: no menu tile shows it, the setter ignores it,
 // and a saved layout that names one opens on an offered arrangement instead. A switch outside the
 // offered set holds the value the host's `layout.sync` gives it, and nothing the viewer does or a
 // saved layout says moves it.

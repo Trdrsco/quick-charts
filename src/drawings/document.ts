@@ -7,7 +7,7 @@
 // Three rules the module enforces:
 //   - A deletion is a TOMBSTONE, never an omission. Two charts hold the same document; if a
 //     deletion were just a shorter list, the other chart's copy would put the row back on the next
-//     merge, and a drawing the trader deleted would return after a save, a reconnect or a reload.
+//     merge, and a drawing the viewer deleted would return after a save, a reconnect or a reload.
 //   - A merge is not a last-write-wins overwrite. The stored document is the other surface's work
 //     and wins by identity and by order; this surface's own additions follow it. Neither side
 //     loses a row it made, and neither side resurrects a row the other buried.
@@ -94,7 +94,7 @@ export interface DrawingGroup {
 }
 
 /** A deletion, kept. A document that listed only what survives lets a concurrent save, a reconnect
- *  or a reload resurrect what the trader deleted: the other side still holds the row and a merge
+ *  or a reload resurrect what the viewer deleted: the other side still holds the row and a merge
  *  takes it back. A tombstone says the deletion happened, and at which document revision, so the
  *  merge drops it instead. */
 export interface DrawingTombstone {

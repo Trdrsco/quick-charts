@@ -3,7 +3,7 @@
 // and that chord is a real binding: the press runs the row's own action at the level under the
 // pointer, on the tile the pointer is over, through the very same `run` the click uses. What is
 // pinned here is that the level and the chart context travel with the press, that a row the
-// contribution did not offer (no permission, no account, nothing to act on) leaves the key alone,
+// contribution did not offer (no permission, nothing to act on) leaves the key alone,
 // that a press with no readable level under the pointer does nothing, that a two-tile layout acts
 // on the tile the pointer is in rather than the active one, and that disposal unbinds.
 import { describe, expect, it } from 'vitest'

@@ -4,7 +4,7 @@ import { moneyText } from '../core/money'
 import { distanceToSegment } from '../core/geometry'
 import { applyStroke, fillPaint, fontOf, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
-/** The hues a position opens its two zones in, until the trader says otherwise. */
+/** The hues a position opens its two zones in, until the viewer says otherwise. */
 const PROFIT = '#089981'
 const LOSS = '#f23645'
 /** How solid a zone's wash opens. The bars have to stay readable through it. */

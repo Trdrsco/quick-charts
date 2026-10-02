@@ -90,7 +90,7 @@ export function wmaArr(src: readonly number[], period: number): number[] {
   return out
 }
 
-/** The moving-average families a manifest lets a trader pick for a smoothing or MACD line. */
+/** The moving-average families a manifest lets a viewer pick for a smoothing or MACD line. */
 export type MaType = 'sma' | 'ema' | 'rma' | 'wma'
 
 /** One moving average of `src` by family; the primitives above, selected by name. */

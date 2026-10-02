@@ -1,6 +1,5 @@
-// The neutral fallback shared by legend and search. It never parses a routing ticker, guesses a
-// provider, or fetches app-relative artwork. A logo needs the approved neutral asset contract;
-// until that exists, a decorative monogram accompanies the complete supplied display identity.
+// The neutral fallback shared by legend and search: a decorative monogram of the display name the
+// host supplied, drawn beside that whole name.
 import { h } from './dom'
 
 export function createSymbolBadge(displayName: string): { element: HTMLElement; set(name: string): void } {

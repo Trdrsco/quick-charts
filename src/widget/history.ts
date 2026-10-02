@@ -48,7 +48,7 @@ export type HistoryChange =
   | 'drawingRemove'
   | 'drawingChange'
 
-/** The catalog key each change wears, so a control names the step in the trader's language. */
+/** The catalog key each change wears, so a control names the step in the viewer's language. */
 export const HISTORY_CHANGE_LABELS: Readonly<Record<HistoryChange, ChartMessageKey>> = {
   symbol: 'history.changeSymbol',
   timeframe: 'history.changeTimeframe',
@@ -157,7 +157,7 @@ const listOf = (value: unknown): readonly unknown[] => (Array.isArray(value) ? v
 
 /** The word for what moved between two readings, or null when nothing this plane watches did.
  *
- *  The order is the order a trader would name the change in: what the chart is showing first, then
+ *  The order is the order a viewer would name the change in: what the chart is showing first, then
  *  how it is framed, then how it looks, then what is layered on it. A gesture that moves two fields
  *  at once is named by the first rung it reaches, so a symbol change that also reframes the axis
  *  reads as a symbol change. Extension state is not a rung: nothing announces it, nothing bounds how

@@ -6,7 +6,7 @@
 // Two builds. `full` bundles the root, the drawings subpath, the REST adapter and the stylesheet
 // from src/full.ts; `root` bundles the root alone from src/root.ts. Both are library builds with
 // the renderer external, so the output is the chart's own code and nothing else, and both are
-// unminified so a name in the output is a name in the source. The checks: no test code, no trdrs
+// unminified so a name in the output is a name in the source. The checks: no test code, no private
 // host or service route, no path of this workspace, the renderer still a bare import, the
 // stylesheet emitted with the chart's own selectors, and the REST adapter present in the full
 // bundle and absent from the root-only one.

@@ -1,5 +1,5 @@
 name: Feature request
-description: A capability the library does not have.
+description: Propose a capability for the library.
 labels: [enhancement]
 body:
   - type: textarea

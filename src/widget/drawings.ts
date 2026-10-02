@@ -57,7 +57,7 @@ import { RECENT_COLOR_LIMIT } from '../ui/controls/color'
 import type { IconResolver } from '../ui/icons/resolver'
 
 /** A tool's default look: the style and props the tool itself opens with. It is NOT the look the
- *  layer remembers, because that is rewritten by every edit: the moment a trader changes a colour it
+ *  layer remembers, because that is rewritten by every edit: the moment a viewer changes a colour it
  *  IS that colour, and resetting to it would put back exactly what they are trying to leave. The
  *  reset writes through the ordinary edit path, so what is remembered for the next drawing of the
  *  tool becomes this look too. */

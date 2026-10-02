@@ -553,7 +553,7 @@ describe('the documents', () => {
     await vi.advanceTimersByTimeAsync(300)
     await vi.advanceTimersByTimeAsync(0)
     const before = (await documentOf(adapter, context))!
-    // The trader deletes it here...
+    // The viewer deletes it here...
     a.handle.select(a.handle.export()[0]!.id)
     a.handle.deleteSelected()
     // ...while another surface, which still shows it, writes first.
@@ -708,7 +708,7 @@ describe('the low-level document operations', () => {
     container.remove()
   })
 
-  it('keeps a row it never drew when the trader draws one it does, instead of burying it', async () => {
+  it('keeps a row it never drew when the viewer draws one it does, instead of burying it', async () => {
     const adapter = memorySaveLoadAdapter()
     const fake = fakeChart()
     const container = document.createElement('div')
@@ -733,8 +733,8 @@ describe('the low-level document operations', () => {
     const store = adapter.drawings(port(adapter).context('ES'))
     const row = (await store.list())[0]!
     const stored = (await store.load(row.id))!
-    // The trader's line joins the document; the study pane's row survives it, byte for byte, and
-    // nothing is buried. A deletion here would take a drawing the trader can still see.
+    // The viewer's line joins the document; the study pane's row survives it, byte for byte, and
+    // nothing is buried. A deletion here would take a drawing the viewer can still see.
     expect(stored.body.tombstones).toEqual([])
     expect(stored.body.entries.map((e) => [e.id, e.source, e.pane])).toEqual([
       ['in-study', 'rsi-14', 'rsi-14'],
