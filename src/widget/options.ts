@@ -169,6 +169,20 @@ export interface AccessPolicy {
    *  door asks the same id: the picker row, `indicators.add`, and a restore. A definition that
    *  declares no id is not gated. */
   indicator?(id: string): boolean
+  /** How the chart's own controls present what the predicates refuse. `'disable'` (the default)
+   *  draws a refused control disabled, which suits an offer the viewer can unlock. `'hide'` leaves
+   *  it out: a refused drawing tool is not in the rail's flyouts, on the favorites bar or in the
+   *  glyph picker, and a section or group it empties goes with it; a refused indicator is not in
+   *  the indicator browser; and a control or menu row whose command is refused is not drawn.
+   *
+   *  Only a refusal hides. A permitted command that cannot run now (nothing to undo, no bars
+   *  loaded, nothing selected) is still drawn disabled. Like the predicates it is read whenever a
+   *  control is drawn or synced, so the controls follow a policy that changes. Nothing stored is
+   *  rewritten: a viewer's favorite keeps its star and returns when the policy permits it again,
+   *  and drawings and indicators already on the chart render as they do under either value. Every
+   *  other door (the keyboard, `widget.commands`, the chart handles) refuses exactly as it does
+   *  under `'disable'`. Any other value is a setup error thrown from `createChart`. */
+  refused?: 'disable' | 'hide'
 }
 
 /** ── PREFERENCES ─────────────────────────────────────────────────────────────────────────────

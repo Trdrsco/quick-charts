@@ -49,6 +49,7 @@ import { openImagePicker, firstImageFile, humanSize } from '../ui/drawings/image
 import { pushRecentGlyph } from '../ui/drawings/glyphPicker'
 import { closeOverlays } from '../ui/controls/overlays'
 import type { AccessPolicy } from './options'
+import { commandShown, drawingToolPermitted, drawingToolShown } from './access'
 import type { CommandRegistry } from './commands'
 import { drawingCancelAvailable } from '../drawings/layer/attach'
 import { RECENT_COLOR_LIMIT } from '../ui/controls/color'
@@ -287,14 +288,11 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     deps.onSaveConflict({ symbol, current, message: deps.i18n.t(current ? 'host.saveConflict' : 'host.saveNotFound') })
 
   /** A tool the access policy refuses is never armed, whichever door asked for it. */
-  const permitted = (tool: string | null): boolean => {
-    if (tool === null || !deps.access?.drawingTool) return true
-    try {
-      return deps.access.drawingTool(tool) !== false
-    } catch {
-      return false
-    }
-  }
+  const permitted = (tool: string | null): boolean => drawingToolPermitted(deps.access, tool)
+  // What the rail, the favorites bar, the glyph picker and the selection's bar draw: everything,
+  // unless the host hides what its policy refuses.
+  const toolShown = (tool: string): boolean => drawingToolShown(deps.access, tool)
+  const shown = (command: string): boolean => commandShown(deps.access, command)
 
   const run = (command: string, arg?: unknown): boolean => deps.commands.execute(command, arg).kind === 'ok'
   const available = (command: string): boolean => deps.commands.available(command)
@@ -341,7 +339,9 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
         return ok
       },
       available,
+      shown,
       toolAllowed: permitted,
+      toolShown,
       idBase,
       ...(deps.assets?.glyphSource ? { glyphSource: (glyph: string) => deps.assets!.glyphSource!(glyph) } : {}),
     })
@@ -356,6 +356,8 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       arm: (tool) => run('chart.drawings.arm', tool),
       available: () => available('chart.drawings.arm'),
       toolAllowed: permitted,
+      // Every favorite arms its tool, so a host that hides a refused arm leaves them all out.
+      toolShown: (tool) => shown('chart.drawings.arm') && toolShown(tool),
       onMove: (position) => write({ favorites: { ...prefs().favorites, position } }),
     })
   }
@@ -368,6 +370,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     presets: handle.presets,
     run,
     available,
+    shown,
     stackPosition: () => handle.stackPosition(),
     position: () => prefs().settingsBarPosition,
     onMove: (position) => write({ settingsBarPosition: position }),
@@ -538,6 +541,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
         ...(deps.assets ? { assets: deps.assets } : {}),
         run,
         available,
+        shown,
         onClose: () => {
           handle.endPreview()
           dialog = null

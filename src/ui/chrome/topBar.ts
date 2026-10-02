@@ -7,12 +7,12 @@ import { symbolNames } from '../../symbolLabel'
 // Download chart data row joins the image menu.
 import type { ChartSaveLoadAdapter } from '../../resources'
 import type { ChartStorage } from '../../storage'
-import type { AccessPolicy, ChartPreferences } from '../../widget/options'
+import type { ChartPreferences } from '../../widget/options'
 import { HISTORY_CHANGE_LABELS, type HistoryChange } from '../../widget/history'
 import type { LayoutModelState } from '../../widget/layout'
 import type { ResolvedUi } from '../../widget/planes'
-import { activeChart, commandLabel, type ChromeContext } from './context'
-import { button, h, name, setDisabled, stopPointer } from './dom'
+import { activeChart, commandLabel, shows, type ChromeContext } from './context'
+import { button, h, name, setDisabled, stopPointer, tidyRules } from './dom'
 import { ICONS } from '../controls/icons'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { mountLayoutSetup, type LayoutSetupHandle } from './layoutSetup'
@@ -32,7 +32,6 @@ export interface TopBarDeps extends ChromeContext {
   storage: ChartStorage
   preferences: Partial<ChartPreferences>
   saveLoad: ChartSaveLoadAdapter | null
-  access?: AccessPolicy
   /** The viewer's layout autosave switch, as the widget holds it. */
   autosave: { get(): boolean }
   /** The chrome's saved-layout dialogs, its listing of the saved layouts (null when the host saves
@@ -236,6 +235,9 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
     end.appendChild(image)
   }
   end.appendChild(slot('end'))
+  /** The image menu's rows, by the command each runs, as a host that hides what its policy refuses
+   *  draws them. */
+  const imageRows = (): string[] => ['widget.image.download', 'widget.image.copy', ...(dataInImageMenu ? ['chart.data.download'] : [])].filter((id) => shows(deps, id))
   const openImageMenu = (): void => {
     imageMenu = openMenu({
       host: deps.overlays,
@@ -246,7 +248,8 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
       width: dataInImageMenu ? FLYOUT_WIDTH.layouts : 168,
       align: 'end',
       build(body, handle) {
-        body.appendChild(
+        const drawn = imageRows()
+        if (drawn.includes('widget.image.download')) body.appendChild(
           menuItem({
             text: commandLabel(deps, 'widget.image.download'),
             icon: deps.icons.glyph(ICONS.download),
@@ -260,7 +263,7 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
         // Copy is a registry verb like download: disabled where the browser cannot put an image on
         // the clipboard or the policy refuses. Its outcome (a refused copy falling back to a
         // download) reports through the widget's `image` event, which the chrome turns into a notice.
-        body.appendChild(
+        if (drawn.includes('widget.image.copy')) body.appendChild(
           menuItem({
             text: commandLabel(deps, 'widget.image.copy'),
             icon: deps.icons.glyph(ICONS.copy),
@@ -274,7 +277,7 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
         // The active chart's loaded bars as a file, where no saved-layouts menu carries the row. A
         // chart-scoped command, so the access policy refuses it here as it would anywhere, and a
         // chart holding no bars leaves the row disabled.
-        if (dataInImageMenu) {
+        if (drawn.includes('chart.data.download')) {
           body.appendChild(
             menuItem({
               text: t()('layouts.downloadDataRow'),
@@ -331,15 +334,18 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
       const text = pill.querySelector('.qc-button-text')
       if (text) text.textContent = symbolNames(chart.symbolInfo() ?? chart.symbol()).mark
       name(pill, `${t()('chrome.symbolSearch')}: ${t()('chrome.activeChart', { symbol: chart.symbol(), timeframe: chart.timeframe() })}`)
+      pill.hidden = !shows(deps, 'chart.symbol.set')
       setDisabled(pill, !commands.available('chart.symbol.set') || !deps.widget.capabilities().search)
     }
     if (compareDoor) {
       name(compareDoor, t()('chrome.compare'))
+      compareDoor.hidden = !shows(deps, 'chart.compare.open')
       setDisabled(compareDoor, !commands.available('chart.compare.open'))
     }
     if (indicators) {
       name(indicators, t()('chrome.indicators'))
       label(indicators, t()('chrome.indicators'))
+      indicators.hidden = !shows(deps, 'chart.indicators.open')
       setDisabled(indicators, !commands.available('chart.indicators.open'))
     }
     if (replay) {
@@ -347,6 +353,7 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
       name(replay, t()('chrome.replay'))
       label(replay, t()('chrome.replayChip'))
       replay.setAttribute('aria-pressed', String(on))
+      replay.hidden = !shows(deps, on ? 'chart.replay.exit' : 'chart.replay.start')
       setDisabled(replay, !commands.available(on ? 'chart.replay.exit' : 'chart.replay.start'))
     }
     if (undo && redo) {
@@ -355,6 +362,8 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
       // take back the control falls back to the verb's own name rather than a stale word.
       named(undo, chart.history.undoChange(), 'history.undoNamed', 'chart.history.undo')
       named(redo, chart.history.redoChange(), 'history.redoNamed', 'chart.history.redo')
+      undo.hidden = !shows(deps, 'chart.history.undo')
+      redo.hidden = !shows(deps, 'chart.history.redo')
       setDisabled(undo, !commands.available('chart.history.undo'))
       setDisabled(redo, !commands.available('chart.history.redo'))
     }
@@ -363,14 +372,22 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
       name(fullscreen, commandLabel(deps, active ? 'widget.fullscreen.exit' : 'widget.fullscreen.enter'))
       fullscreen.setAttribute('aria-pressed', String(active))
       fullscreen.querySelector('.qc-icon')?.replaceWith(deps.icons.glyph(active ? ICONS.exitFullscreen : ICONS.fullscreen))
+      fullscreen.hidden = !shows(deps, 'widget.fullscreen.toggle')
       setDisabled(fullscreen, !commands.available('widget.fullscreen.toggle'))
     }
     if (image) {
       name(image, t()('chrome.image'))
-      setDisabled(image, !commands.available('widget.image.download'))
+      // The menu is live by its first row, which is Download image unless the host hides it; with
+      // every row hidden the menu is not drawn.
+      const drawn = imageRows()
+      image.hidden = drawn.length === 0
+      if (image.hidden) imageMenu?.close()
+      setDisabled(image, !commands.available(drawn[0] ?? 'widget.image.download'))
       imageMenu?.refresh()
     }
     for (const s of syncers) s()
+    // A group the host's policy emptied takes its rule with it.
+    for (const row of [start, end]) tidyRules(row, (child) => !child.hidden && (!child.classList.contains('qc-topbar-slot') || child.childElementCount > 0))
     // A reworded bar is a differently wide bar: a language whose word for replay is longer can
     // cost the row the labels the last one fitted.
     fitLabels()

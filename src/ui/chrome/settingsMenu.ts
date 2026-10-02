@@ -5,7 +5,7 @@ import type { ChartMessageKey } from '../../i18n'
 import type { ChartOverrides } from '../../overrides'
 import { SCALE_MODE_OPTIONS, type ScaleMode } from '../../scaleMode'
 import { THEME_MODES, type ThemeMode } from '../../theme/schema'
-import { activeChart, commandLabel, type ChromeContext } from './context'
+import { activeChart, commandLabel, shows, type ChromeContext } from './context'
 import type { ResolvedUi } from '../../widget/planes'
 import { dialogTitle, fieldRow, openDialog, switchRow, type DialogHandle } from './dialog'
 import { button, h, name } from './dom'
@@ -87,9 +87,15 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
     buildContent(content)
   }
 
+  // The appearance and display pages edit through one command; a host that hides what its policy
+  // refuses leaves both pages out when it refuses that command.
   const pageDefinitions = (): readonly { id: SettingsPage; label: string; icon: Glyph }[] => [
-    { id: 'appearance', label: t()('settings.sectionAppearance'), icon: STYLE_ICONS.candles },
-    { id: 'display', label: t()('settings.sectionDisplay'), icon: ICONS.template },
+    ...(shows(deps, 'chart.appearance.apply')
+      ? [
+          { id: 'appearance' as const, label: t()('settings.sectionAppearance'), icon: STYLE_ICONS.candles },
+          { id: 'display' as const, label: t()('settings.sectionDisplay'), icon: ICONS.template },
+        ]
+      : []),
     { id: 'scale', label: t()('settings.sectionScale'), icon: ICONS.ruler },
     ...(deps.ui.settingsTheme ? [{ id: 'theme' as const, label: t()('settings.sectionTheme'), icon: ICONS.settings }] : []),
   ]
@@ -151,6 +157,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
     const group = h('div', { class: 'qc-chart-settings-choices', role: 'radiogroup', 'aria-label': t()('settings.sectionScale') })
     for (const option of SCALE_MODE_OPTIONS) {
       const id = `chart.scale.${option.id}`
+      if (option.id !== scale && !shows(deps, id)) continue
       group.appendChild(choice(commandLabel(deps, id), option.id === scale, option.id !== scale && !deps.commands.available(id), () => {
         deps.commands.execute(id)
         refresh()
@@ -165,6 +172,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
     const group = h('div', { class: 'qc-chart-settings-choices', role: 'radiogroup', 'aria-label': t()('settings.sectionTheme') })
     for (const themeMode of THEME_MODES) {
       const id = `widget.theme.${themeMode}`
+      if (themeMode !== mode && !shows(deps, id)) continue
       group.appendChild(choice(commandLabel(deps, id), themeMode === mode, themeMode !== mode && !deps.commands.available(id), () => {
         deps.commands.execute(id)
         refresh()
@@ -175,7 +183,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
 
   const buildContent = (body: HTMLElement): void => {
     const pages = pageDefinitions()
-    if (!pages.some((page) => page.id === activePage)) activePage = 'appearance'
+    if (!pages.some((page) => page.id === activePage)) activePage = pages[0]!.id
     const panelId = `qc-chart-settings-panel-${settingsId}`
     const selectedTabId = `qc-chart-settings-tab-${settingsId}-${activePage}`
     const nav = h('div', { class: 'qc-chart-settings-nav', role: 'tablist', 'aria-orientation': 'vertical', 'aria-label': t()('settings.menu') })
@@ -225,7 +233,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
 
   const open = (): void => {
     const chart = activeChart(deps)
-    activePage = 'appearance'
+    activePage = pageDefinitions()[0]!.id
     committed = false
     initial = {
       appearance: { ...chart.appearance().appearance },
@@ -264,6 +272,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
             },
           }),
         )
+        reset.hidden = !shows(deps, 'chart.appearance.reset')
         footer.append(reset, actions)
         box.append(dialogTitle(t()('drawing.settings'), t()('layouts.close'), () => handle.close(), deps.icons), content, footer)
         buildContent(content)

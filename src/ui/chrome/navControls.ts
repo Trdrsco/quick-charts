@@ -1,7 +1,8 @@
 // The on-chart navigation cluster: zoom out, zoom in, scroll back, scroll forward, reset. Five
 // buttons over the chart's own view commands, floating at the bottom of the pane and shown while
 // the pointer is NEAR them or the keyboard is in the cluster. Every press is a command, so a
-// refused verb renders disabled and does nothing.
+// refused verb renders disabled and does nothing, or is not drawn when the host hides what its
+// policy refuses.
 //
 // NEAR, not anywhere on the chart: this cluster sits over the bars, and a viewer reading price
 // action at the top of the pane has no use for five buttons fading in at the bottom every time the
@@ -28,6 +29,9 @@ export interface NavControlsDeps {
   /** Whether a tile fills the layout now: the maximize control wears the mark and the name for what
    *  the next press would do. */
   maximized(): boolean
+  /** Whether a control is drawn: false for a command the policy refuses when the host hides what it
+   *  refuses. Every control is drawn without it. */
+  shown?(id: string): boolean
 }
 
 /** The five verbs, in the three groups they read in: what the view is worth seeing at, then which
@@ -67,12 +71,14 @@ export function mountNavControls(deps: NavControlsDeps): { sync(): void; destroy
   const maximize = button({ label: t('range.maximizeChart'), icon: deps.icons.glyph(ICONS.tileMaximize, { size: 18 }), className: 'qc-nav-button', pressed: false, onClick: () => deps.commands.execute(MAXIMIZE) })
   boxes[1]!.appendChild(maximize)
 
+  const shown = (id: string): boolean => deps.shown?.(id) ?? true
+
   const syncMaximize = (): void => {
     const available = deps.commands.available(MAXIMIZE)
     const on = deps.maximized()
-    maximize.hidden = !available
+    maximize.hidden = !available || !shown(MAXIMIZE)
     // Its group goes with it: an empty box would still hold the 8px that parts two groups.
-    boxes[1]!.hidden = !available
+    boxes[1]!.hidden = maximize.hidden
     setDisabled(maximize, !available)
     maximize.setAttribute('aria-pressed', String(on))
     name(maximize, t(on ? 'range.restoreChart' : 'range.maximizeChart'))
@@ -80,7 +86,11 @@ export function mountNavControls(deps: NavControlsDeps): { sync(): void; destroy
   }
 
   const sync = (): void => {
-    for (const [id, b] of buttons) setDisabled(b, !deps.commands.available(id))
+    for (const [id, b] of buttons) {
+      b.hidden = !shown(id)
+      setDisabled(b, !deps.commands.available(id))
+    }
+    for (const box of [boxes[0]!, boxes[2]!, boxes[3]!]) box.hidden = [...box.children].every((child) => (child as HTMLElement).hidden)
     syncMaximize()
   }
   const relabel = (): void => {

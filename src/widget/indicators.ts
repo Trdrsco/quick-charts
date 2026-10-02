@@ -18,6 +18,7 @@ import { attachIndicators, type IndicatorsRenderer } from '../indicatorRenderer'
 import { isCollapsed } from '../panePlan'
 import type { CanvasTheme } from '../theme/renderer'
 import type { AccessPolicy, IndicatorDefinition, IndicatorInstance } from './options'
+import { indicatorPermitted } from './access'
 import type { IndicatorEvent } from './events'
 import { restoreIndicatorInstance, type SavedIndicator } from './saveLoad'
 
@@ -54,20 +55,6 @@ export function indicatorInputsOf(inst: IndicatorInstance): string {
     return String(value)
   })
   return parts.length ? `(${parts.join(', ')})` : ''
-}
-
-/** Whether the access policy permits a definition. The predicate is asked ONE id from every door,
- *  the definition's own (`manifest.id`; a built-in's is the catalog id the picker lists), never the
- *  instance id a host or the picker minted. A definition that declares no id cannot be refused by
- *  name and is permitted. A predicate that throws refuses. */
-export function indicatorPermitted(access: AccessPolicy | undefined, definition: IndicatorDefinition): boolean {
-  const id = definition.manifest.id
-  if (!access?.indicator || id === undefined) return true
-  try {
-    return access.indicator(id) !== false
-  } catch {
-    return false
-  }
 }
 
 /** The color a saved per-type default pinned on the primary plot, if it pinned one. A pinned color

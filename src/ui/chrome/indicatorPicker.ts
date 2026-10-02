@@ -2,8 +2,8 @@
 import { BUILT_IN_INDICATORS, type BuiltInIndicator } from '../../builtInIndicators'
 import type { ChartExtensionIcon } from '../../extension'
 import type { ChartStorage } from '../../storage'
-import { indicatorPermitted } from '../../widget/indicators'
-import type { AccessPolicy, IndicatorInstance } from '../../widget/options'
+import { commandShown, indicatorPermitted, indicatorShown } from '../../widget/access'
+import type { IndicatorInstance } from '../../widget/options'
 import type { IndicatorPickerAction, IndicatorPickerSource } from '../../widget/indicatorPicker'
 import { activeChart, type ChromeContext } from './context'
 import { openDialog, type DialogHandle } from './dialog'
@@ -14,7 +14,6 @@ import { buildGlyph } from './vector'
 import type { IconResolver } from '../icons/resolver'
 
 export interface IndicatorPickerDeps extends ChromeContext {
-  access?: AccessPolicy
   storage?: ChartStorage
   indicatorPicker?: IndicatorPickerSource
   initialCollection?: string
@@ -161,6 +160,9 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
             const metadata = rows.builtIns.find((row) => row.id === definition.id)
             const favorite = metadata?.favorite ?? favorites.includes(definition.id)
             if (collection === 'favorites' && !favorite) continue
+            // A host that hides what its policy refuses lists neither a refused definition nor any
+            // built-in when it refuses adding one. A starred one keeps its star in storage.
+            if (!indicatorShown(deps.access, definition) || !commandShown(deps.access, 'chart.indicators.add')) continue
             body.append(buildRow({ id: definition.id, kind: 'builtin', title: t(definition.nameKey), description: t(definition.descriptionKey), author: t('picker.builtin'), favorite, count: metadata?.favoriteCount, hostedFavorite: metadata?.favorite !== undefined || (!!source && loading), actions: metadata?.actions ?? [], primary: () => add(definition), permitted: indicatorPermitted(deps.access, definition) && deps.commands.available('chart.indicators.add'), builtin: definition }))
           }
         }

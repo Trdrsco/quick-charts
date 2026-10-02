@@ -65,6 +65,7 @@ import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './rep
 import { attachExtensionsPlane } from './extensions'
 import { attachLegendPlane, type ChartLegendRow } from './legend'
 import { attachMenuPlane } from './menu'
+import { commandShown } from './access'
 import { symbolNames } from '../symbolLabel'
 import { attachPointerPlane } from './pointer'
 import { attachMarks } from './marks'
@@ -809,6 +810,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   const legend = attachLegendPlane({
     commands: deps.commands,
+    shown: (id) => commandShown(deps.access, id),
     chart,
     chrome,
     i18n,
@@ -1016,6 +1018,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         indicatorCount: () => indicators.list().length,
         drawingCount: () => drawings.handle?.count() ?? 0,
         extensions: () => extensions.host,
+        shown: (id) => commandShown(deps.access, id),
         setLevel: (price) => {
           menuLevel = price
         },
@@ -1038,7 +1041,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   // The on-chart navigation cluster: zoom, scroll and reset over the chart's own view commands.
-  const nav = deps.ui.navigation ? mountNavControls({ chrome, gestures, commands: deps.commands, i18n, icons: deps.icons, maximized: () => deps.layoutMaximized() }) : null
+  const nav = deps.ui.navigation ? mountNavControls({ chrome, gestures, commands: deps.commands, i18n, icons: deps.icons, maximized: () => deps.layoutMaximized(), shown: (id) => commandShown(deps.access, id) }) : null
 
   // ── Painting ─────────────────────────────────────────────────────────────────────────────────
   /** The bars actually PAINTED: the loaded model, filtered to the active subsession on an intraday

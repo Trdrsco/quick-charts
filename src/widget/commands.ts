@@ -11,6 +11,7 @@
 // asked rather than at the moment something was registered.
 import type { ChartMessageKey } from '../i18n'
 import type { AccessPolicy } from './options'
+import { commandPermitted } from './access'
 
 /** Which handle a command acts on: the widget as a whole, or the active chart. */
 export type CommandScope = 'widget' | 'chart'
@@ -110,11 +111,11 @@ export function createChartCommandScope(shared: CommandRegistry, options?: Comma
   const target: CommandExecutor = {
     available(id) {
       const spec = entries.get(id)?.spec
-      return spec ? commandAvailable(spec, options?.access?.command) : false
+      return spec ? commandAvailable(spec, options?.access) : false
     },
     execute(id, arg) {
       const spec = entries.get(id)?.spec
-      return spec ? executeCommand(spec, options?.access?.command, arg) : { kind: 'unknown' }
+      return spec ? executeCommand(spec, options?.access, arg) : { kind: 'unknown' }
     },
   }
   return {
@@ -138,7 +139,7 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
   const registrations = new Map<string, symbol>()
   const shortcuts = new Map<string, string | null>()
   const listeners = new Set<() => void>()
-  const allow = options?.access?.command
+  const access = options?.access
   let disposed = false
 
   const notify = (): void => {
@@ -163,12 +164,12 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
     list: () => [...specs.values()],
     available(id) {
       const spec = specs.get(id)
-      return spec ? commandAvailable(spec, allow) : false
+      return spec ? commandAvailable(spec, access) : false
     },
     execute(id, arg) {
       const spec = specs.get(id)
       if (!spec) return { kind: 'unknown' }
-      return executeCommand(spec, allow, arg)
+      return executeCommand(spec, access, arg)
     },
     setShortcut(id, shortcut) {
       const spec = specs.get(id)
@@ -197,18 +198,9 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
   }
 }
 
-/** A command the policy refuses is denied wherever it is reached from. */
-function commandPermitted(allow: AccessPolicy['command'] | undefined, id: string): boolean {
-  if (!allow) return true
-  try {
-    return allow(id) !== false
-  } catch {
-    return false // a policy that throws refuses; the chart never guesses in the host's favor
-  }
-}
-
-function commandAvailable(spec: CommandSpec, allow: AccessPolicy['command'] | undefined): boolean {
-  if (!commandPermitted(allow, spec.id)) return false
+// A command the policy refuses is denied wherever it is reached from.
+function commandAvailable(spec: CommandSpec, access: AccessPolicy | undefined): boolean {
+  if (!commandPermitted(access, spec.id)) return false
   try {
     return spec.available()
   } catch {
@@ -216,8 +208,8 @@ function commandAvailable(spec: CommandSpec, allow: AccessPolicy['command'] | un
   }
 }
 
-function executeCommand(spec: CommandSpec, allow: AccessPolicy['command'] | undefined, arg?: unknown): CommandResult {
-  if (!commandPermitted(allow, spec.id)) return { kind: 'denied' }
+function executeCommand(spec: CommandSpec, access: AccessPolicy | undefined, arg?: unknown): CommandResult {
+  if (!commandPermitted(access, spec.id)) return { kind: 'denied' }
   try {
     if (spec.refuses?.(arg)) return { kind: 'denied' }
   } catch {

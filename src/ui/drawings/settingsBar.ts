@@ -13,6 +13,7 @@ import { clampFavoritesPosition, FILLABLE, FONT_TOOLS, NO_DASH, NO_LINE_DECOR, N
 import { TOOL_COLOR_CHANNELS } from '../../drawings/capabilities'
 import { isApplePlatform } from '../../platform'
 import { button, dragUntilRelease, el, focusFirst, followHostSize, menuKeys, ownPointer, paintedPosition, rovingFocus } from './dom'
+import { tidyRules } from '../chrome/dom'
 import { openPopover } from './fields'
 import { createColorPalette } from '../controls/color'
 import { OWN_WORDS_TOOLS } from '../../drawings/capabilities'
@@ -67,8 +68,11 @@ export interface SettingsBarDeps {
   presets: DrawingPresets
   run(command: string, arg?: unknown): boolean
   /** Whether the registry would run a command now. A control whose command is denied or
-   *  unavailable renders disabled, never hidden. */
+   *  unavailable renders disabled. */
   available(command: string): boolean
+  /** Whether a control for a command is drawn at all: false for a command the policy refuses when
+   *  the host hides what it refuses. Every control is drawn without it. */
+  shown?(command: string): boolean
   stackPosition(): { atFront: boolean; atBack: boolean }
   position(): FavoritesPosition | null
   onMove(position: FavoritesPosition): void
@@ -87,6 +91,7 @@ type MenuWidth = 'content' | 'wide' | 'narrow'
 
 export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
   const { t } = deps
+  const shown = (command: string): boolean => deps.shown?.(command) ?? true
   const bar = el('div', { class: 'qc-overlay qc-drawing-settings-bar', role: 'toolbar', 'aria-label': t('drawing.settingsBar'), 'data-role': 'drawing-settings-bar' })
   ownPointer(bar)
   bar.hidden = true
@@ -183,6 +188,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     if (options.submenu) b.appendChild(el('span', { class: 'qc-drawing-bar-arrow' }, deps.icons.icon('submenuArrow', 18)))
     if (options.active) b.dataset.qcActive = 'true'
     if (options.disabled || (options.command && !deps.available(options.command))) b.disabled = true
+    if (options.command && !shown(options.command)) b.hidden = true
     if (!options.submenu) {
       b.addEventListener('click', () => {
         closeOpen()
@@ -192,7 +198,8 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     return b
   }
   const menuOf = (label: string, width: MenuWidth, ...items: HTMLElement[]): HTMLElement => {
-    const m = el('div', { class: 'qc-drawing-menu qc-drawing-bar-menu', role: 'menu', 'aria-label': label, 'data-width': width }, ...items)
+    const m = el('div', { class: 'qc-drawing-menu qc-drawing-bar-menu', role: 'menu', 'aria-label': label, 'data-width': width }, ...items.filter((item) => !item.hidden))
+    tidyRules(m, (child) => !child.hidden)
     menuKeys(m, () => [...m.querySelectorAll<HTMLElement>('[role="menuitem"]')])
     return m
   }
@@ -200,6 +207,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
   /** A control is enabled exactly when the registry would run its command now. */
   const gate = (b: HTMLButtonElement, command: string): HTMLButtonElement => {
     b.disabled = !deps.available(command)
+    b.hidden = !shown(command)
     return b
   }
 
@@ -279,6 +287,9 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       row.addEventListener('mouseenter', () => arm(kind, row))
       row.addEventListener('mouseleave', scheduleClose)
       row.addEventListener('click', () => arm(kind, row))
+      // A submenu every row of which is left out is not offered.
+      const commands = kind === 'order' ? ORDER_MOVES.map((move) => move.command) : ['chart.drawings.visibility']
+      if (!commands.some(shown)) row.hidden = true
       return row
     }
     const plain = (b: HTMLButtonElement): HTMLButtonElement => {
@@ -347,6 +358,11 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
             },
           }),
         )
+        // A saved template is applied by its row and removed by its trash; a host that hides what
+        // its policy refuses leaves out the trash it refuses, and the template with its row.
+        const remove = rowEl.querySelector<HTMLElement>('.qc-drawing-star')
+        if (remove) remove.hidden = !shown('chart.drawings.template.remove')
+        rowEl.hidden = !shown('chart.drawings.template.apply')
         items.push(rowEl)
       }
       openPanel(templates, menuOf(t('drawing.drawingTemplates'), 'wide', ...items))

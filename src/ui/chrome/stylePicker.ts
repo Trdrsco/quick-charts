@@ -3,7 +3,7 @@
 // named keeps the host's order, with a rule wherever the family changes. Each row is the style's own
 // command, so the current style reads as checked and a refused style renders disabled.
 import type { ChartStyleId, OfferedChartStyles } from '../../widget/styles'
-import { activeChart, commandLabel, type ChromeContext } from './context'
+import { activeChart, commandLabel, shows, type ChromeContext } from './context'
 import { button, name } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { STYLE_ICONS } from '../controls/icons'
@@ -45,6 +45,8 @@ export function mountStylePicker(deps: ChromeContext): StylePickerHandle {
   trigger.setAttribute('aria-haspopup', 'menu')
   trigger.setAttribute('aria-expanded', 'false')
 
+  const listedStyle = (style: ChartStyleId, active: ChartStyleId): boolean => style === active || shows(deps, `chart.style.${style}`)
+
   const open = (): void => {
     const current = activeChart(deps).style()
     menu = openMenu({
@@ -53,12 +55,17 @@ export function mountStylePicker(deps: ChromeContext): StylePickerHandle {
       label: t()('chrome.chartStyle'),
       className: 'qc-style-menu',
       width: FLYOUT_WIDTH.chartStyle,
-      initialIndex: Math.max(0, groups.flat().indexOf(current)),
+      initialIndex: Math.max(0, groups.flat().filter((style) => listedStyle(style, current)).indexOf(current)),
       build(body, handle) {
         const active = activeChart(deps).style()
-        groups.forEach((group, gi) => {
-          if (gi > 0) body.appendChild(menuSeparator())
-          for (const style of group) {
+        // The chosen style is always listed. A style the host hides because its policy refuses it
+        // is not, and a group left with none draws no rule.
+        let drawn = 0
+        groups.forEach((group) => {
+          const listed = group.filter((style) => listedStyle(style, active))
+          if (listed.length === 0) return
+          if (drawn++ > 0) body.appendChild(menuSeparator())
+          for (const style of listed) {
             const id = `chart.style.${style}`
             body.appendChild(
               menuItem({
@@ -88,6 +95,8 @@ export function mountStylePicker(deps: ChromeContext): StylePickerHandle {
     const style: ChartStyleId = activeChart(deps).style()
     trigger.querySelector('.qc-icon')?.replaceWith(deps.icons.glyph(STYLE_ICONS[style]))
     name(trigger, `${t()('chrome.chartStyle')}: ${commandLabel(deps, `chart.style.${style}`)}`)
+    // With every other style hidden there is nothing to choose, so the picker is not drawn.
+    trigger.hidden = !groups.flat().some((other) => other !== style && listedStyle(other, style))
     menu?.refresh()
   }
   sync()

@@ -32,6 +32,9 @@ export interface ReplayTransportDeps {
   /** The chart's loaded bars: the window a starting point is picked from. */
   bars(): readonly FeedBar[]
   intraday(): boolean
+  /** Whether a control is drawn: false for a command the policy refuses when the host hides what
+   *  it refuses. Every control is drawn without it. */
+  shown?(id: string): boolean
 }
 
 export interface ReplayTransportHandle {
@@ -60,6 +63,7 @@ export function intervalWords(t: ChartI18n['t'], token: string): string {
 export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransportHandle {
   const { commands, handle, i18n } = deps
   const t = (): ChartI18n['t'] => i18n.t
+  const shown = (id: string): boolean => deps.shown?.(id) ?? true
   const bar = h('div', { class: 'qc-replay', role: 'toolbar', 'aria-label': t()('chrome.replay') })
   stopPointer(bar)
 
@@ -175,7 +179,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
             },
           }),
           // The oldest bar the feed serves: the chart walks back to it and starts there.
-          menuItem({
+          ...[menuItem({
             text: t()('replay.startFirst'),
             icon: deps.icons.glyph(ICONS.firstAvailable),
             disabled: !commands.available('chart.replay.startFirst'),
@@ -183,7 +187,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
               menu.close()
               commands.execute('chart.replay.startFirst')
             },
-          }),
+          })].filter(() => shown('chart.replay.startFirst')),
           menuItem({
             text: t()('replay.startRandom'),
             icon: deps.icons.glyph(ICONS.randomBar),
@@ -326,6 +330,13 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
     // pointer between a press and its release is what loses the press: the control a viewer reaches
     // for most while replay runs is this one, and pausing has to answer on the first click.
     reglyph(playPause, deps.icons, playing ? ICONS.pause : ICONS.play)
+    stepBack.hidden = !shown('chart.replay.stepBack')
+    playPause.hidden = !shown(playing ? 'chart.replay.pause' : 'chart.replay.play')
+    stepForward.hidden = !shown('chart.replay.stepForward')
+    goLive.hidden = !shown('chart.replay.goLive')
+    speedButton.hidden = !shown('chart.replay.setSpeed')
+    intervalButton.hidden = !shown('chart.replay.setInterval')
+    exit.hidden = !shown('chart.replay.exit')
     setDisabled(stepBack, !commands.available('chart.replay.stepBack') || state.cursor <= 2)
     setDisabled(playPause, !commands.available(playing ? 'chart.replay.pause' : 'chart.replay.play') || (!playing && atLive))
     setDisabled(stepForward, !commands.available('chart.replay.stepForward') || atLive)

@@ -10,7 +10,7 @@
 import { timeframeChipLabel } from '../../timeframe'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import type { LayoutMeta } from '../../resources'
-import type { ChromeContext } from './context'
+import { shows, type ChromeContext } from './context'
 import { dialogTitle, emptyState, openDialog } from './dialog'
 import { button, h, reglyph, replace } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
@@ -206,6 +206,8 @@ export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {
                 className: 'qc-layouts-delete',
                 disabled: !can('widget.layout.delete'),
                 onClick: () => askDelete(row),})
+              // The name stays, since it is what the row lists; a delete the host hides goes.
+              remove.hidden = !shows(deps, 'widget.layout.delete')
               const item = h('div', { class: 'qc-layouts-item', role: 'listitem' }, star, openButton, remove)
               // The layout on screen stands inverted among the rest, as a chosen row does in a list.
               if (current?.ref.id === row.id) {

@@ -17,7 +17,7 @@ import type { AccessPolicy, ChartPreferences, SearchDisplayOptions, SearchScope 
 import type { ResolvedFeatures, ResolvedUi } from '../../widget/planes'
 import { mountBottomBar, type BottomBarHandle } from './bottomBar'
 import { bindPanelHost } from '../drawings/overlays'
-import type { ChromeContext } from './context'
+import { shows, type ChromeContext } from './context'
 import type { ChromeDoors, ReplayTransportTarget } from './doors'
 import { h } from './dom'
 import { closeOverlays } from '../controls/overlays'
@@ -107,7 +107,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   const { root, widget, i18n, features, ui } = deps
   const overlays = h('div', { class: 'qc-overlays' })
   root.appendChild(overlays)
-  const ctx: ChromeContext = { i18n, commands: widget.commands, overlays, widget, icons: deps.icons, styles: deps.styles, timeframes: deps.timeframes, layouts: deps.layouts }
+  const ctx: ChromeContext = { i18n, commands: widget.commands, overlays, widget, icons: deps.icons, styles: deps.styles, timeframes: deps.timeframes, layouts: deps.layouts, access: deps.access }
   const disposers: (() => void)[] = []
   let disposed = false
   let searchDialog: DialogHandle | null = null
@@ -163,7 +163,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
     }
     if (!replayOwner && entered && ui.replayTransport) {
       replayOwner = target
-      replayBar = mountReplayTransport({ chrome: overlays, i18n, icons: deps.icons, commands: target.commands, handle: target.chart, bars: target.bars, intraday: target.intraday })
+      replayBar = mountReplayTransport({ chrome: overlays, i18n, icons: deps.icons, commands: target.commands, handle: target.chart, bars: target.bars, intraday: target.intraday, shown: (id) => shows(ctx, id) })
       // The one placement: a sibling of the charts grid, so the row reserves its own height in the
       // root's column between the grid and the bottom range and timezone band. The transport is
       // never a child of the overlay layer, and no recipe positions it over a pane.
@@ -180,7 +180,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   let indicatorDialog: DialogHandle | null = null
   deps.doors.showIndicatorPicker = (initialCollection) => {
     if (!ui.indicatorPicker || indicatorDialog?.open()) return
-    indicatorDialog = openIndicatorPicker({ ...ctx, access: deps.access, storage: deps.storage, indicatorPicker: deps.indicatorPicker, initialCollection })
+    indicatorDialog = openIndicatorPicker({ ...ctx, storage: deps.storage, indicatorPicker: deps.indicatorPicker, initialCollection })
   }
   disposers.push(() => { indicatorDialog?.close(); deps.doors.showIndicatorPicker = () => undefined })
 
@@ -278,7 +278,6 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       storage: deps.storage,
       preferences: deps.preferences,
       saveLoad: deps.saveLoad,
-      access: deps.access,
       autosave: deps.autosave,
       layoutDialogs,
       layoutCatalog,

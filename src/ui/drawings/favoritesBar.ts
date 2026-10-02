@@ -22,6 +22,9 @@ export interface FavoritesBarDeps {
   available(): boolean
   /** Whether the access policy permits a tool. A refused tool renders disabled. */
   toolAllowed(tool: string): boolean
+  /** Whether the bar draws a starred tool at all. A tool it leaves out keeps its star, and the bar
+   *  draws it again once this says so. Every starred tool is drawn without it. */
+  toolShown?(tool: string): boolean
   /** The bar was dragged: persist where it landed. */
   onMove(position: FavoritesPosition): void
 }
@@ -82,7 +85,9 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
 
   const render = (): void => {
     const state = deps.favorites()
-    const shown = favoritesBarShown(state)
+    // The starred tools the bar draws. The favorites themselves are never rewritten here.
+    const listed = state.tools.filter((type) => deps.toolShown?.(type) ?? true)
+    const shown = favoritesBarShown({ ...state, tools: listed })
     bar.hidden = !shown
     // A hidden bar holds no controls at all, so a census of the chart's buttons and a keyboard
     // walk both meet only what a viewer can reach.
@@ -93,7 +98,7 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
     if (!bar.contains(grip)) bar.append(grip, tools)
     tools.replaceChildren()
     const active = deps.activeTool()
-    for (const type of state.tools) {
+    for (const type of listed) {
       const def = drawingTools.get(type)
       if (!def) continue
       const name = toolName(t, type, def.name)

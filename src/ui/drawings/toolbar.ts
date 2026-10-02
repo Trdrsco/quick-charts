@@ -4,7 +4,9 @@
 // subjects; drawing sync in a layout; the remove menu that names what it takes; and the favorites
 // star. WHAT is on the rail comes from the models on `@trdrs/quickcharts/drawings`; this module is the
 // rail's presentation over them, and every action it takes is a command through the registry, so
-// a verb the host hides or refuses is refused here too.
+// a verb the host hides or refuses is refused here too. A control the registry would not run is
+// drawn disabled; one the host's policy refuses is left out instead when the host hides what it
+// refuses, and a section, group or rule it empties goes with it.
 //
 // The rail renders from a state getter and re-renders on demand. Flyouts are built when they open
 // and torn down when they close, so the toolbar's own DOM stays the buttons a reader can count.
@@ -41,6 +43,7 @@ import {
 } from '../../drawings/index'
 import type { ChartExtensionHideLayer } from '../../extension'
 import { buildGlyph } from '../chrome/vector'
+import { tidyRules } from '../chrome/dom'
 import { button, el, focusFirst, menuKeys, ownPointer, rovingFocus } from './dom'
 import { openPopover } from './fields'
 import { mountGlyphPicker, type GlyphKind } from './glyphPicker'
@@ -86,6 +89,11 @@ export interface ToolbarDeps {
   available(command: string): boolean
   /** Whether the access policy permits arming a tool. A refused tool renders disabled. */
   toolAllowed(type: string): boolean
+  /** Whether a control for a command is drawn at all. Every control is drawn without it. */
+  shown?(command: string): boolean
+  /** Whether a tool is drawn at all: in its group's flyout, as its group's face, and in the glyph
+   *  picker. Every tool is drawn without it. */
+  toolShown?(type: string): boolean
   /** The stem every element id the toolbar's surfaces write derives from: the chart's id. */
   idBase: string
   /** Artwork for a glyph, from the host's asset port. */
@@ -113,6 +121,15 @@ const HIDE_ICON: Record<BuiltInHideMode, { shown: IconName; hidden: IconName }> 
 export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   const { t } = deps
   const groups: RailGroup[] = buildRailGroups()
+  const shown = (command: string): boolean => deps.shown?.(command) ?? true
+  const toolShown = (type: string): boolean => deps.toolShown?.(type) ?? true
+  /** A group as the rail draws it: the tools it draws, leaving out a section with none. A group
+   *  left with no section is not drawn, and its face wears the first tool it draws when the one
+   *  the viewer last armed there is left out. */
+  const drawnGroup = (group: RailGroup): RailGroup => ({
+    ...group,
+    sections: group.sections.map((section) => ({ ...section, tools: section.tools.filter((tool) => toolShown(tool.type)) })).filter((section) => section.tools.length > 0),
+  })
   const rail = el('div', { class: 'qc-surface qc-drawing-toolbar', role: 'toolbar', 'aria-orientation': 'vertical', 'aria-label': t('drawing.toolbar'), 'data-role': 'drawing-toolbar' })
   ownPointer(rail)
   const column = el('div', { class: 'qc-drawing-toolbar-column' })
@@ -146,6 +163,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     // A row that runs several commands is live only when every one of them would run.
     const needs = [...(options.command ? [options.command] : []), ...(options.commands ?? [])]
     if (needs.some((command) => !deps.available(command))) b.disabled = true
+    if (needs.some((command) => !shown(command))) b.hidden = true
     if (options.active !== undefined) b.setAttribute('aria-checked', String(options.active))
     if (options.active) b.dataset.qcActive = 'true'
     // A row carries a mark column only when it has a mark: a menu of words alone starts its
@@ -162,7 +180,8 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     return b
   }
   const menu = (label: string, ...items: HTMLElement[]): HTMLElement => {
-    const m = el('div', { class: 'qc-drawing-menu', role: 'menu', 'aria-label': label }, ...items)
+    const m = el('div', { class: 'qc-drawing-menu', role: 'menu', 'aria-label': label }, ...items.filter((item) => !item.hidden))
+    tidyRules(m, (child) => !child.hidden)
     menuKeys(m, () => rows(m))
     return m
   }
@@ -197,7 +216,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         ...CURSOR_MODES.map((mode) =>
           menuRow(t(CURSOR_LABELS[mode]), () => deps.run('chart.drawings.cursor', mode), { icon: deps.icons.icon(CURSOR_ICON[mode]), active: s.cursor === mode && s.activeTool !== 'eraser', role: 'menuitemradio', command: 'chart.drawings.cursor' }),
         ),
-        menuRow(t(TRANSIENT_LABELS.eraser), () => deps.run('chart.drawings.arm', 'eraser'), { icon: deps.icons.icon('eraser'), active: s.activeTool === 'eraser', role: 'menuitemradio', command: 'chart.drawings.arm' }),
+        ...[menuRow(t(TRANSIENT_LABELS.eraser), () => deps.run('chart.drawings.arm', 'eraser'), { icon: deps.icons.icon('eraser'), active: s.activeTool === 'eraser', role: 'menuitemradio', command: 'chart.drawings.arm' })].filter(() => toolShown('eraser')),
       ),
     )
   })
@@ -217,6 +236,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         idBase: `${deps.idBase}-glyphs`,
         available: () => deps.available('chart.drawings.arm'),
         toolAllowed: (kind) => deps.toolAllowed(kind),
+        toolShown: (kind) => toolShown(kind),
         onPick: (kind: GlyphKind, glyph: string) => {
           closeOpen()
           deps.run('chart.drawings.arm', { tool: kind, props: { glyph } })
@@ -228,7 +248,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     }
     const s = deps.state()
     const list = el('div', { class: 'qc-drawing-flyout', role: 'menu', 'aria-label': t(group.label) })
-    group.sections.forEach((section, index) => {
+    drawnGroup(group).sections.forEach((section, index) => {
       if (index > 0) list.appendChild(divider('flyout'))
       list.appendChild(el('div', { class: 'qc-dialog-heading', text: t(section.label) }))
       for (const tool of section.tools) {
@@ -242,6 +262,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
         if (!deps.toolAllowed(tool.type) || !deps.available('chart.drawings.arm')) pick.disabled = true
         // The Image tool places through its own command, which needs an asset port to exist.
         if (tool.type === 'image' && !deps.available('chart.drawings.placeImage')) pick.disabled = true
+        if (tool.type === 'image' && !shown('chart.drawings.placeImage')) continue
         pick.addEventListener('click', () => {
           closeOpen()
           deps.run('chart.drawings.arm', tool.type)
@@ -261,6 +282,8 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
             star.title = star.getAttribute('aria-label') ?? ''
           },
         })
+        // The star is a command of its own; a host that hides it when refused keeps the row.
+        star.hidden = !shown('chart.drawings.favorite')
         rowEl.append(pick, star)
         list.appendChild(rowEl)
       }
@@ -274,7 +297,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     face.addEventListener('click', () => {
       // The face arms the tool it wears. The glyph group is the exception: a glyph tool is nothing
       // without a chosen glyph, so its face opens the picker as its arrow does.
-      const faceTool = railFaceOf(group, deps.state().railTools)
+      const faceTool = railFaceOf(drawnGroup(group), deps.state().railTools)
       if (group.id === 'glyphs' || !faceTool) {
         openGroup(group, arrow)
         return
@@ -375,6 +398,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     if (items.length === 0) items.push(el('div', { class: 'qc-menu-note', text: t('drawing.nothingToRemove') }))
     const policy = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row qc-drawing-switch-row', role: 'switch', 'aria-checked': String(s.removeLocked) })
     policy.disabled = !deps.available('chart.drawings.removeLockedPolicy')
+    policy.hidden = !shown('chart.drawings.removeLockedPolicy')
     policy.append(el('span', { class: 'qc-menu-label', text: t('drawing.alwaysRemoveLocked') }), el('span', { class: 'qc-switch', 'aria-hidden': 'true' }, el('span', { class: 'qc-switch-knob' })))
     policy.addEventListener('click', () => {
       const next = !deps.state().removeLocked
@@ -389,7 +413,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   const favorites = button({ class: 'qc-button qc-drawing-rail-mode', label: t('drawing.favToolsBar'), title: t('drawing.favTools'), onClick: () => deps.run('chart.drawings.favoritesBar', !deps.state().favorites.visible) })
   column.append(el('div', { class: 'qc-drawing-toolbar-end' }, cell(favorites, null)))
 
-  const unrove = rovingFocus(rail, () => [...column.querySelectorAll<HTMLElement>('button')], 'vertical')
+  const unrove = rovingFocus(rail, () => [...column.querySelectorAll<HTMLElement>('button')].filter((b) => !b.closest('[hidden]')), 'vertical')
 
   const setActive = (b: HTMLElement, active: boolean): void => {
     b.dataset.qcActive = String(active)
@@ -401,6 +425,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   /** A button is enabled exactly when the registry would run its command now. */
   const gate = (b: HTMLButtonElement, command: string, refused = false): void => {
     b.disabled = refused || !deps.available(command)
+    b.hidden = !shown(command)
   }
 
   const render = (): void => {
@@ -410,13 +435,17 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     setActive(cursorFace, cursorButtonArmed(s.activeTool))
     gate(cursorFace, 'chart.drawings.arm')
     gate(cursorArrow, 'chart.drawings.cursor')
+    // The eraser is the cursor menu's one tool, so a host that hides it when refused keeps the menu
+    // for the cursor modes.
+    cursorArrow.hidden = !shown('chart.drawings.cursor') && !(shown('chart.drawings.arm') && toolShown('eraser'))
     const activeGroup = groupOfTool(groups, s.activeTool)
     for (const group of groups) {
       const entry = groupFaces.get(group.id)!
+      const drawn = drawnGroup(group)
       // The armed tool takes the face immediately, even before the remembered preference writes.
-      const faceTool = activeGroup === group.id && s.activeTool
+      const faceTool = activeGroup === group.id && s.activeTool && toolShown(s.activeTool)
         ? s.activeTool
-        : railFaceOf(group, s.railTools)
+        : railFaceOf(drawn, s.railTools)
       // Every tool outside the glyph family carries its own miniature, which its group's face wears;
       // the glyph family's face is its own mark and opens the picker.
       entry.face.replaceChildren(...[group.id === 'glyphs' ? deps.icons.icon('groupGlyphs') : faceTool ? deps.icons.tool(faceTool) : null].filter((face) => face !== null))
@@ -426,6 +455,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       relabelButton(entry.face, faceName)
       gate(entry.face, 'chart.drawings.arm', !!faceTool && group.id !== 'glyphs' && !deps.toolAllowed(faceTool))
       gate(entry.arrow, 'chart.drawings.arm')
+      if (drawn.sections.length === 0) entry.face.hidden = entry.arrow.hidden = true
       setActive(entry.face, activeGroup === group.id)
       entry.face.setAttribute('aria-pressed', String(activeGroup === group.id))
     }
@@ -433,6 +463,8 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     setActive(zoom, s.activeTool === 'zoom')
     gate(measure, 'chart.drawings.arm')
     gate(zoom, 'chart.drawings.arm')
+    if (!toolShown('measure')) measure.hidden = true
+    if (!toolShown('zoom')) zoom.hidden = true
     magnetFace.replaceChildren(deps.icons.icon(s.magnet === 'strong' ? 'magnetStrong' : 'magnet'))
     setActive(magnetFace, s.magnet !== 'off')
     magnetFace.setAttribute('aria-pressed', String(s.magnet !== 'off'))
@@ -473,10 +505,17 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     // The remove face takes drawings, so it is live only while there are drawings to take. The
     // arrow always opens: its menu names what each row would take and gates every row itself.
     gate(removeFace, 'chart.drawings.removeAll')
+    removeArrow.hidden = !shown('chart.drawings.removeAll') && !shown('chart.indicators.removeAll') && !shown('chart.drawings.removeLockedPolicy')
     favorites.replaceChildren(deps.icons.icon('favoritesBar'))
     favorites.setAttribute('aria-pressed', String(s.favorites.visible))
     setActive(favorites, s.favorites.visible)
     gate(favorites, 'chart.drawings.favoritesBar')
+    // A cell whose every control is left out goes, and a rule left with nothing on one side of it.
+    for (const box of column.querySelectorAll<HTMLElement>('.qc-drawing-cell')) {
+      const controls = [...box.querySelectorAll<HTMLElement>('button')]
+      box.hidden = controls.length > 0 && controls.every((control) => control.hidden)
+    }
+    tidyRules(column, (child) => !child.hidden && [...child.querySelectorAll<HTMLElement>('button')].some((control) => !control.closest('[hidden]')))
   }
 
   const relabel = (): void => {

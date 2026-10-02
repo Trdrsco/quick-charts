@@ -8,7 +8,7 @@ import { arrangementName } from '../../i18n'
 import type { ChartMessageKey } from '../../i18n'
 import { arrangementOf, LAYOUT_MENU_ROWS } from '../../layoutGrid'
 import type { LayoutModelState, LayoutSyncFlags } from '../../widget/layout'
-import type { ChromeContext } from './context'
+import { shows, type ChromeContext } from './context'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { switchRow } from './dialog'
 import { button, h, name, setDisabled } from './dom'
@@ -64,7 +64,18 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
   /** The open menu's tiles and switches, and the language they were written in. A change to the
    *  layout is written onto these in place: a rebuild would swap the switch just pressed for a new
    *  one already at its end, and the knob would jump rather than slide. */
-  let live: { tag: string; tiles: HTMLButtonElement[]; switches: { key: keyof LayoutSyncFlags; control: HTMLButtonElement }[] } | null = null
+  let live: { tag: string; parts: string; tiles: HTMLButtonElement[]; switches: { key: keyof LayoutSyncFlags; control: HTMLButtonElement }[] } | null = null
+  /** Which of the menu's two parts it draws: the grid, with more than one arrangement to choose,
+   *  and the switches, with a switch to change. A host that hides what its policy refuses leaves out
+   *  a part whose command the policy refuses. */
+  const parts = (): { grid: boolean; switches: boolean } => ({
+    grid: deps.layouts.arrangements.length > 1 && shows(deps, 'widget.layout.setArrangement'),
+    switches: deps.layouts.sync.length > 0 && shows(deps, 'widget.layout.setSync'),
+  })
+  const partsKey = (): string => {
+    const drawn = parts()
+    return `${drawn.grid}|${drawn.switches}`
+  }
   let projected = { arrangement: deps.widget.layout.arrangement(), sync: deps.widget.layout.sync() }
   const trigger = button({ label: t()('layouts.setup'), className: 'qc-toolbar-button qc-layout-trigger', onClick: () => toggleMenu(trigger, open) })
   trigger.appendChild(arrangementGlyph(deps.widget.layout.arrangement(), deps.icons))
@@ -82,7 +93,8 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
       width: FLYOUT_WIDTH.arrangement,
       build(body, handle) {
         const current = projected.arrangement
-        const built: NonNullable<typeof live> = { tag: deps.i18n.tag(), tiles: [], switches: [] }
+        const built: NonNullable<typeof live> = { tag: deps.i18n.tag(), parts: partsKey(), tiles: [], switches: [] }
+        const drawn = parts()
         const grid = h('div', { class: 'qc-layout-grid', role: 'radiogroup', 'aria-label': t()('layouts.arrangement') })
         const rows = offeredRows(deps.layouts.arrangements)
         rows.forEach((row, ri) => {
@@ -108,8 +120,8 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
         })
         // One offered arrangement is nothing to choose, so the grid is left out and the menu holds
         // the switches alone.
-        if (deps.layouts.arrangements.length > 1) body.appendChild(grid)
-        const syncRows = SYNC_ROWS.filter((row) => deps.layouts.sync.includes(row.key))
+        if (drawn.grid) body.appendChild(grid)
+        const syncRows = drawn.switches ? SYNC_ROWS.filter((row) => deps.layouts.sync.includes(row.key)) : []
         if (syncRows.length > 0) body.appendChild(menuHeading(t()('layouts.syncInLayout')))
         const flags = projected.sync
         const syncAvailable = deps.commands.available('widget.layout.setSync')
@@ -141,7 +153,10 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
     const code = projected.arrangement
     trigger.querySelector('.qc-arrangement')?.replaceWith(arrangementGlyph(code, deps.icons))
     name(trigger, `${t()('layouts.setup')}: ${arrangementName(t(), code, arrangementOf(code)?.label ?? code)}`)
-    if (live && live.tag === deps.i18n.tag()) {
+    const drawn = parts()
+    trigger.hidden = !drawn.grid && !drawn.switches
+    if (trigger.hidden) menu?.close()
+    if (live && live.tag === deps.i18n.tag() && live.parts === partsKey()) {
       const arrangeable = deps.commands.available('widget.layout.setArrangement')
       for (const tile of live.tiles) {
         tile.setAttribute('aria-checked', String(tile.dataset.arrangement === code))
@@ -154,7 +169,8 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
       }
       return
     }
-    // A new language rewrites every word, so the menu is built again, keeping the reader's place.
+    // A new language rewrites every word, and a policy that moved changes which parts are drawn, so
+    // the menu is built again, keeping the reader's place.
     const controls = menu ? [...menu.element.querySelectorAll<HTMLElement>('[data-qc-item], [role="switch"]')] : []
     const focused = menu?.element.contains(document.activeElement) ? controls.indexOf(document.activeElement as HTMLElement) : -1
     const scrollBody = menu?.element.querySelector<HTMLElement>('.qc-menu-body')

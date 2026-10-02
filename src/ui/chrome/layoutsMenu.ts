@@ -17,7 +17,7 @@
 import { isApplePlatform } from '../../platform'
 import type { LayoutMeta } from '../../resources'
 import type { LayoutChanges } from '../../widget/layoutChanges'
-import { type ChromeContext } from './context'
+import { shows, type ChromeContext } from './context'
 import { switchRow } from './dialog'
 import { button, h, name, reglyph, replace } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
@@ -56,6 +56,9 @@ export function relativeTime(tag: string, updatedAt: number, now: number = Date.
   if (mins < 24 * 60) return rtf.format(-Math.round(mins / 60), 'hour')
   return rtf.format(-Math.round(mins / (24 * 60)), 'day')
 }
+
+/** The commands the menu's rows run. */
+const MENU_COMMANDS = ['widget.layout.save', 'widget.layout.autosave', 'widget.layout.rename', 'chart.data.download', 'widget.layout.create', 'widget.layout.load', 'widget.layout.open'] as const
 
 export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
   const t = (): ChromeContext['i18n']['t'] => deps.i18n.t
@@ -148,7 +151,13 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
       align: 'end',
       build(body, handle) {
         const current = saveLoad.current()
-        body.appendChild(
+        // The menu's groups, each drawn only with a row in it and a rule only between two drawn
+        // groups. A host that hides what its policy refuses leaves out a row whose command it refuses.
+        const groups: HTMLElement[][] = [[], [], [], []]
+        const add = (group: number, id: string, row: HTMLElement): void => {
+          if (shows(deps, id)) groups[group]!.push(row)
+        }
+        add(0, 'widget.layout.save',
           menuItem({
             text: t()('layouts.saveLayout'),
             hint: t()('layouts.hintSave', { modifier: t()(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl') }),
@@ -162,7 +171,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
             },
           }),
         )
-        body.appendChild(
+        add(0, 'widget.layout.autosave',
           switchRow({
             label: t()('layouts.autosave'),
             checked: deps.autosave.get(),
@@ -176,7 +185,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
             },
           }),
         )
-        body.appendChild(
+        add(0, 'widget.layout.save',
           menuItem({
             text: t()('layouts.makeCopyRow'),
             icon: deps.icons.glyph(ICONS.clone, { size: 28 }),
@@ -191,7 +200,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
               }),
           }),
         )
-        body.appendChild(
+        add(0, 'widget.layout.rename',
           menuItem({
             text: t()('layouts.renameRow'),
             icon: deps.icons.glyph(ICONS.pencil, { size: 28 }),
@@ -209,7 +218,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
         // The active chart's loaded bars as a file. A chart-scoped command, so it writes the chart
         // the trader is looking at and the access policy refuses it from here exactly as it would
         // from a host toolbar; a chart holding no bars leaves the row disabled.
-        body.appendChild(
+        add(0, 'chart.data.download',
           menuItem({
             text: t()('layouts.downloadDataRow'),
             icon: deps.icons.glyph(ICONS.download, { size: 28 }),
@@ -221,8 +230,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
           }),
         )
         // Making a new layout is set apart from the verbs on the one that is open.
-        body.appendChild(menuSeparator())
-        body.appendChild(
+        add(1, 'widget.layout.create',
           menuItem({
             text: t()('layouts.createNewRow'),
             icon: deps.icons.glyph(ICONS.plusThin, { size: 28 }),
@@ -239,8 +247,8 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
               }),
           }),
         )
-        body.appendChild(menuSeparator())
-        body.appendChild(menuHeading(t()('layouts.recentlyUsed')))
+        // The recent layouts open through the load command, so they go with it.
+        if (shows(deps, 'widget.layout.load')) groups[2]!.push(menuHeading(t()('layouts.recentlyUsed')))
         const recents = h('div', { class: 'qc-layouts-recents' })
         // The rows the catalog holds, painted now; the listing each open asks for repaints them.
         // Before the store's first answer the line says it is loading, or why it could not list.
@@ -259,10 +267,9 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
         }
         showRecents()
         paintRecents = showRecents
-        body.appendChild(recents)
+        if (shows(deps, 'widget.layout.load')) groups[2]!.push(recents)
         void deps.catalog?.refresh().catch(() => undefined)
-        body.appendChild(menuSeparator())
-        body.appendChild(
+        add(3, 'widget.layout.open',
           menuItem({
             text: t()('layouts.openLayoutRow'),
             icon: deps.icons.glyph(ICONS.folder, { size: 28 }),
@@ -275,6 +282,10 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
             },
           }),
         )
+        groups.filter((group) => group.length > 0).forEach((group, index) => {
+          if (index > 0) body.appendChild(menuSeparator())
+          body.append(...group)
+        })
       },
       onClose: () => {
         menu = null
@@ -300,6 +311,9 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
     title.setAttribute('aria-disabled', String(!offer))
     trigger.setAttribute('aria-label', t()('layouts.manage'))
     trigger.title = t()('layouts.manage')
+    // A menu every row of which the host hides is not offered.
+    trigger.hidden = !MENU_COMMANDS.some((id) => shows(deps, id))
+    if (trigger.hidden) menu?.close()
   }
 
   const sync = (): void => {

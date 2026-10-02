@@ -25,7 +25,7 @@ import {
   type TimeframeRestrictions,
   type TimeframeUnit,
 } from '../../timeframe'
-import { activeChart, type ChromeContext } from './context'
+import { activeChart, shows, type ChromeContext } from './context'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { button, h, items, name, replace, setDisabled } from './dom'
 import { ICONS } from '../controls/icons'
@@ -65,6 +65,9 @@ export function mountTimeframePicker(deps: TimeframePickerDeps): TimeframePicker
     if (id === 'chart.timeframe.set') return allowedTimeframes([token], deps.restrictions()).length > 0
     return deps.commands.available(id)
   }
+  /** Whether a token is drawn: the active one always, another unless the host hides what its policy
+   *  refuses and the policy refuses that token's command. A saved chip stays saved either way. */
+  const listed = (token: string, active: string): boolean => token === active || shows(deps, timeframeCommand(token).id)
   const pick = (token: string): void => {
     const { id, arg } = timeframeCommand(token)
     deps.commands.execute(id, arg)
@@ -76,7 +79,7 @@ export function mountTimeframePicker(deps: TimeframePickerDeps): TimeframePicker
     const list = [...(saved.includes(active) ? saved : [...saved, active])].sort((a, b) => timeframeOrder(a) - timeframeOrder(b))
     replace(
       chips,
-      ...list.map((token) => {
+      ...list.filter((token) => listed(token, active)).map((token) => {
         const chip = button({
           label: timeframeLabel(t(), token),
           text: timeframeChipLabel(token),
@@ -92,7 +95,9 @@ export function mountTimeframePicker(deps: TimeframePickerDeps): TimeframePicker
     name(caret, t()('timeframe.all'))
     // Only when what the list SHOWS has moved: this runs on every chart state change, which on a
     // streaming chart is many times a second.
-    const shape = `${active}|${saved.join(',')}|${deps.store.custom().join(',')}|${[...collapsed].join(',')}`
+    const candidates = deps.timeframes.list ?? [...TIMEFRAME_PRESET_TOKENS, ...deps.store.custom()]
+    const hidden = candidates.filter((token) => !listed(token, active))
+    const shape = `${active}|${saved.join(',')}|${deps.store.custom().join(',')}|${[...collapsed].join(',')}|${hidden.join(',')}`
     if (shape === listShape) return
     listShape = shape
     menu?.refresh()
@@ -110,12 +115,15 @@ export function mountTimeframePicker(deps: TimeframePickerDeps): TimeframePicker
         const saved = deps.store.saved()
         const custom = deps.store.custom()
         const groupOf = (token: string): TimeframeUnit => timeframeGroupUnit(parseTimeframe(token)?.unit ?? 'd')
-        const listed = deps.timeframes.list
+        const offeredList = deps.timeframes.list
         let drawn = 0
         TIMEFRAME_PRESETS.forEach((group) => {
-          const offered = listed ? listed.filter((token) => groupOf(token) === group.unit) : [...group.tokens, ...custom.filter((c) => groupOf(c) === group.unit)]
+          const offered = offeredList ? offeredList.filter((token) => groupOf(token) === group.unit) : [...group.tokens, ...custom.filter((c) => groupOf(c) === group.unit)]
           if (offered.length === 0) return
-          const tokens = allowedTimeframes(offered, deps.restrictions()).sort((a, b) => timeframeOrder(a) - timeframeOrder(b))
+          const allowed = allowedTimeframes(offered, deps.restrictions()).sort((a, b) => timeframeOrder(a) - timeframeOrder(b))
+          const tokens = allowed.filter((token) => listed(token, active))
+          // A group whose every row the host hides is not drawn, heading and rule included.
+          if (allowed.length > 0 && tokens.length === 0) return
           if (drawn++ > 0) body.appendChild(h('div', { class: 'qc-separator', role: 'separator' }))
           const isCollapsed = collapsed.has(group.unit)
           const heading = h('button', { type: 'button', class: 'qc-tf-group', 'data-qc-item': '', tabindex: '-1', 'aria-expanded': String(!isCollapsed) }, h('span', {}, t()(TIMEFRAME_UNIT_NAME[group.unit])), deps.icons.glyph(isCollapsed ? ICONS.chevronDown : ICONS.chevronUp, { size: 18 }))

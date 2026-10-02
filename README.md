@@ -1149,6 +1149,48 @@ The library reads `features` and `ui` once, when the widget is created. A key or
 plane does not take throws a `TypeError` naming its path before anything mounts. The package's
 `dist/feature-manifest.json` lists every flag in its `features` and `ui` blocks.
 
+### Refused controls
+
+By default the chart's own controls draw what your access policy refuses disabled, which suits an
+offer the viewer can unlock. `access.refused: 'hide'` leaves it out instead, for a chart that simply
+does not offer it:
+
+```ts
+import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+declare const session: { may(feature: string): boolean }
+
+createChart({
+  container,
+  datafeed,
+  access: {
+    refused: 'hide',
+    command: (id) => id !== 'chart.replay.start' || session.may('replay'),
+    drawingTool: (tool) => tool !== 'brush' && tool !== 'highlighter',
+    indicator: (id) => id !== 'vwap',
+  },
+})
+```
+
+With `'hide'`, a refused drawing tool is not in its group's flyout, on the favorites bar or in the
+glyph picker; a section, a group or a favorites bar it leaves empty goes with it, and a group's face
+that would wear a refused tool wears the first one the group still offers. A refused indicator is
+not in the indicator browser. A control or menu row whose command the policy refuses is not drawn
+(top bar, bottom bar, menus, the drawing toolbar and the selection's bar, the navigation cluster,
+the replay transport, legend row controls and the level menu), and a rule left with nothing beside it
+goes too. A picker always keeps its current choice: the chosen style, timeframe, timezone or scale
+is listed even when its command is refused.
+
+Only a refusal hides. A permitted command that cannot run now (nothing to undo, no bars loaded,
+nothing selected) is drawn disabled as before. The policy is asked whenever the chrome syncs (a
+change on the active chart, a change to the command registry) and whenever a menu or flyout opens,
+so a policy that follows your session moves the controls with it. Nothing stored is rewritten: a
+viewer's favorite keeps its star and returns to the favorites bar once you permit the tool again,
+and drawings and indicators already on the chart render exactly as they do under a refusal by
+default. The keyboard, `widget.commands` and the chart handles refuse exactly as they do with
+`'disable'`. A value other than `'disable'` or `'hide'` is a setup error that `createChart` throws.
+
 ### Your own interface
 
 The widget supports three ways to present a chart, over the same behavior and the same commands.
@@ -1396,7 +1438,8 @@ null when `ui: { topBar: false }` removes the bar, which is what to check before
 you would have nowhere to put.
 
 Every control acts through the command registry and reflects `commands.available`, so a command
-your access policy refuses renders disabled and does nothing. The saved-layouts menu runs the
+your access policy refuses renders disabled and does nothing, or is not drawn with
+`access.refused: 'hide'`. The saved-layouts menu runs the
 layout verbs `widget.layout.save`, `rename`, `load`, `open`, `delete`, `create` and `autosave`; what a
 verb did reports through the `layout` event and what it refused through `saveConflict`. Copy image
 reports through the `image` event (a refused copy falls back to a download). Each control has a flag
@@ -2280,9 +2323,10 @@ with its weak and strong strengths; stay in drawing mode; lock all; the eye that
 indicators, or both; drawing sync, shown only in a layout of more than one chart; the remove menu,
 which names what each row takes and carries the locked-item policy; and the favorites star. Each
 group button wears the tool it last armed, and every action is a `chart.drawings.*` command
-through the registry: a control renders disabled, never hidden, while the registry would not run
-its command (a tool or verb your access policy refuses, a selection verb with nothing selected,
-the Image tool without an asset port), and a command the policy refuses answers `denied` from the
+through the registry: a control renders disabled while the registry would not run its command (a
+tool or verb your access policy refuses, a selection verb with nothing selected, the Image tool
+without an asset port), and with `access.refused: 'hide'` a tool or verb the policy refuses is left
+out instead (see Refused controls), and a command the policy refuses answers `denied` from the
 toolbar as from anywhere else, including `chart.drawings.arm` for a refused tool. An image is
 placed through `chart.drawings.placeImage`, from the picker or a system-clipboard paste over the
 chart. Every flyout, palette and dialog a surface opens sits inside the chart root and closes with

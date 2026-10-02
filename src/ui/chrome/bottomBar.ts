@@ -6,7 +6,7 @@ import { RANGE_PRESETS, rangePresetTip } from '../../ranges'
 import { DEFAULT_SUBSESSION } from '../../sessionModel'
 import { rangeTimeframe } from '../../widget/timeframes'
 import { EXCHANGE_TIMEZONE, formatClock, timezoneListing, tzOffsetLabel } from '../../timezones'
-import { activeChart, commandLabel, type ChromeContext } from './context'
+import { activeChart, commandLabel, shows, type ChromeContext } from './context'
 import { button, h, name, replace, setDisabled, stopPointer } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { ICONS } from '../controls/icons'
@@ -89,6 +89,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
         const active = activeChart(deps).timezone()
         for (const row of rows) {
           const id = timezoneCommand(row.id)
+          if (row.id !== active && !shows(deps, id)) continue
           body.appendChild(
             menuItem({
               text: row.label,
@@ -123,6 +124,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
         const active = activeChart(deps).subsession()
         body.appendChild(menuHeading(t()('chrome.sessionsHeading')))
         for (const option of [{ id: 'extended', command: 'chart.subsession.extended' }, { id: 'regular', command: 'chart.subsession.regular' }] as const) {
+          if (option.id !== active && !shows(deps, option.command)) continue
           body.appendChild(
             menuItem({
               text: commandLabel(deps, option.command),
@@ -147,7 +149,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
     const chart = activeChart(deps)
     replace(
       ranges,
-      ...RANGE_PRESETS.map((preset) => {
+      ...RANGE_PRESETS.filter((preset) => shows(deps, `chart.range.${preset.key}`)).map((preset) => {
         const id = `chart.range.${preset.key}`
         const chip = button({ label: rangePresetTip(t(), { ...preset, tf: rangeTimeframe(preset.tf, deps.timeframes) }), text: preset.key, className: 'qc-toolbar-button qc-range-chip', pressed: chart.rangePreset() === preset.key, onClick: () => deps.commands.execute(id) })
         setDisabled(chip, !deps.commands.available(id))

@@ -20,6 +20,7 @@ import { createChartCommandScope, createCommandRegistry, type CommandRegistry } 
 import { createEmitter, type WidgetEvents } from './events'
 import { createSearchController, memoryRecents, type RecentsPort, type SearchController } from '../search'
 import { deriveCapabilities, resolveFeatures, resolveUi } from './planes'
+import { validateAccess } from './access'
 import { resolveOfferedStyles } from './styles'
 import { offeredTimeframe, resolveOfferedTimeframes } from './timeframes'
 import { layoutChoices, openingArrangement, resolveOfferedLayouts } from './arrangements'
@@ -116,6 +117,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   let disposed = false
   const events = createEmitter<WidgetEvents>()
   const features = resolveFeatures(options.features)
+  // How the controls present a refusal is checked with the rest of the setup: a value the chart
+  // does not take is an error, never a chart that quietly draws refusals some other way.
+  validateAccess(options.access)
   // The styles every chart of this widget offers, checked before anything mounts: a list or an
   // opening style the host got wrong is a setup error, never a chart quietly on another style.
   const styles = resolveOfferedStyles(options.styles, options.style)

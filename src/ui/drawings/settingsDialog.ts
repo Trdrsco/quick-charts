@@ -13,6 +13,7 @@ import { drawingTools, type DrawingAssetPort } from '../../drawings/index'
 import type { DrawingPresets } from '../../drawings'
 import { openDialog } from './dialog'
 import { button, el, focusFirst, menuKeys } from './dom'
+import { tidyRules } from '../chrome/dom'
 import { dialogTabs, openPopover } from './fields'
 import { coordinateRows, firstTabFor, styleRows, tableRows, tabsFor, textRows, visibilityRows, TAB_LABEL, type RowsContext, type SettingsTab } from './settingsRows'
 import { openTemplateDeleteDialog, openTemplateNameDialog } from './templateDialog'
@@ -33,6 +34,9 @@ export interface SettingsDialogDeps {
   run(command: string, arg?: unknown): boolean
   /** Whether the registry would run a command now. */
   available(command: string): boolean
+  /** Whether the template menu draws a row for a command at all: false for a command the policy
+   *  refuses when the host hides what it refuses. Every row is drawn without it. */
+  shown?(command: string): boolean
   /** The session ended: Ok committed it, or Cancel, Escape or a close restored the snapshot. */
   onClose?(outcome: 'commit' | 'cancel'): void
 }
@@ -178,6 +182,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     const rowOf = (text: string, command: string, onPick: () => void): HTMLButtonElement => {
       const b = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-menu-row', role: 'menuitem' }, el('span', { class: 'qc-menu-icon' }), el('span', { class: 'qc-menu-label', text }))
       b.disabled = !deps.available(command)
+      b.hidden = !(deps.shown?.(command) ?? true)
       b.addEventListener('click', () => {
         closeMenu?.()
         onPick()
@@ -207,8 +212,14 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
           },
         }),
       )
+      const remove = rowEl.querySelector<HTMLElement>('.qc-drawing-star')
+      if (remove) remove.hidden = !(deps.shown?.('chart.drawings.template.remove') ?? true)
+      rowEl.hidden = !(deps.shown?.('chart.drawings.template.apply') ?? true)
       menu.appendChild(rowEl)
     }
+    // A row left out leaves the menu, and a rule with nothing on one side of it goes with it.
+    for (const row of [...menu.children]) if ((row as HTMLElement).hidden) row.remove()
+    tidyRules(menu, (child) => !child.hidden)
     const unkeys = menuKeys(menu, () => [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')])
     closeMenu = openPopover(dialog.box, template, menu, 'below', () => {
       unkeys()
