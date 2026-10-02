@@ -22,6 +22,7 @@ import { createSearchController, memoryRecents, type RecentsPort, type SearchCon
 import { deriveCapabilities, resolveFeatures, resolveUi } from './planes'
 import { validateAccess } from './access'
 import { resolveOfferedStyles } from './styles'
+import { resolveOfferedDrawingTools } from './drawingTools'
 import { offeredTimeframe, resolveOfferedTimeframes } from './timeframes'
 import { layoutChoices, openingArrangement, resolveOfferedLayouts } from './arrangements'
 import type { Capabilities, ChartWidgetOptions } from './options'
@@ -133,6 +134,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // wrong is a setup error, never a layout quietly on another arrangement.
   const layouts = resolveOfferedLayouts(options.layouts, options.layoutSync, options.layout?.arrangement)
   const arrangementCode = openingArrangement(layouts, options.layout?.arrangement)
+  // The drawing tools likewise: a list naming no tool, or one twice, is a setup error, never a
+  // rail quietly short of what the host meant to offer.
+  const drawingTools = resolveOfferedDrawingTools(options.drawingTools)
   const ui = resolveUi(options.ui, features, {
     styleCount: styles.list.length,
     timeframeCount: timeframes.list?.length,
@@ -369,6 +373,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           timeframe: init?.timeframe ?? options.timeframe,
           style: init?.style ?? options.style,
           styles: styles.list,
+          drawingTools,
           timeframes,
           compares: init?.compares,
           onSymbolInfo: (info) => {

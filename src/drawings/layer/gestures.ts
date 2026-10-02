@@ -104,6 +104,8 @@ export interface GestureContext {
   cursorCss(): string
   /** Freeze or release the chart's own navigation and the container's touch action together. */
   lockPointer(locked: boolean): void
+  /** Whether a new drawing may be made as a copy of one of this type. */
+  copies(type: string): boolean
 }
 
 const isTransientArmed = (tool: string | null): tool is 'measure' | 'zoom' | 'eraser' => tool === 'measure' || tool === 'zoom' || tool === 'eraser'
@@ -330,8 +332,9 @@ export function bindGestures(ctx: GestureContext): () => void {
       }
       const hit = manager.hitTest(p)
       if (hit) {
-        // A Control- or Command-drag duplicates: the gesture grabs a fresh copy and moves that.
-        if ((e.ctrlKey || e.metaKey) && !editRefused('cloneDrag', hit.options, false)) {
+        // A Control- or Command-drag duplicates: the gesture grabs a fresh copy and moves that. A
+        // drawing whose tool may not be copied is moved itself, as a plain drag moves it.
+        if ((e.ctrlKey || e.metaKey) && !editRefused('cloneDrag', hit.options, false) && ctx.copies(hit.type)) {
           const copy = drawingTools.restore({ ...hit.toJSON(), id: ctx.nextId() })
           if (copy) {
             // The copy is a NEW drawing, so it takes the ownership a new drawing takes; the source

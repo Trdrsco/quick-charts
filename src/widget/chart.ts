@@ -56,6 +56,7 @@ import {
 import { frameRange, rangeSpanSeconds, scrolledPosition, zoomedBarSpacing, type RangeSpan } from '../ranges'
 import { attachSession } from './session'
 import { attachDrawingsPlane, type ChartDrawingsApi } from './drawings'
+import type { OfferedDrawingTools } from './drawingTools'
 import type { DrawingDocumentApi } from '../drawings/layer/types'
 import type { DrawingDocumentPort } from '../drawings/layer/documents'
 import { attachIndicatorsPlane, type IndicatorCatalog, type IndicatorsPlane } from './indicators'
@@ -317,6 +318,9 @@ export interface ChartInstanceDeps {
   style?: ChartStyleId
   /** The styles the widget offers, in the host's order. A style outside them is never set. */
   styles: readonly ChartStyleId[]
+  /** The drawing tools the widget offers, or null for every tool. A tool outside them is never
+   *  armed, and no copy of a drawing of it is made. */
+  drawingTools: OfferedDrawingTools
   /** The timeframes the widget offers. A timeframe outside them is never set. */
   timeframes: OfferedTimeframes
   /** The chart resolved a symbol: the widget re-derives its capability plane from it. */
@@ -860,6 +864,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     toolbarContainer: deps.externalDrawingToolbar ? null : undefined,
     favorites: deps.ui.drawingFavorites,
     access: deps.access,
+    offered: deps.drawingTools,
     commands: deps.commands,
     assets: deps.assets,
     theme: () => deps.theme.get(),

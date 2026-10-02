@@ -18,6 +18,8 @@ A menu that has no rows to show (nothing to remove, no saved layouts, loading) s
 
 Hosts choose how the chart's own controls present what the access policy refuses with `access.refused`: `'disable'` (the default) draws it disabled as before, and `'hide'` leaves it out, so a refused drawing tool is not in the rail's flyouts, on the favorites bar or in the glyph picker, a refused indicator is not in the indicator browser, and a control or menu row whose command is refused is not drawn, with an emptied section, group or rule going too. A permitted command that cannot run now stays drawn and disabled, the controls follow a policy that changes, nothing stored (favorites, drawings, indicators) is rewritten, and every other door refuses as before. Any other value is a setup error from `createChart`.
 
+Hosts choose which drawing tools a chart offers with `drawingTools`, a list of tool types; a tool left out is not in the rail's flyouts, on a group's face, on the favorites bar, on the rail (measure, zoom) or among the glyph picker's kinds, with an emptied section or group going too, and arming it or copying a drawing of it (clone, paste, a modifier-drag duplicate) is refused from every door. Drawings of it already on the chart render and stay fully editable and deletable, the eraser is always offered, a listed tool the access policy refuses follows `access.refused`, and nothing stored (favorites, a group's remembered face) is rewritten. An empty list, an unknown type and a repeated type are setup errors from `createChart`. The drawing layer takes `copies` to refuse a copy by type.
+
 ## 1.1.0
 
 The symbol search can name what it is limited to, with a host-painted mark, beside the asset-class filters (`search.scope`, `SearchScope`).

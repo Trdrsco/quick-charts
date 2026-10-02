@@ -233,6 +233,12 @@ export interface AttachDrawingsOptions {
    *  a cursor beside it would be a second claim about the same point. This layer writes the plot's
    *  cursor as an inline style, so it is the only place that can stand it down. */
   pointerSuppressed?: () => boolean
+  /** Whether a new drawing may be made as a copy of a drawing of this type. Clone, paste and a
+   *  modifier-drag duplicate each make a new drawing, so a host that does not offer a tool refuses
+   *  them for its drawings: clone and paste make nothing, `canPaste` answers false, and the drag
+   *  moves the drawing itself. Copying to the clipboard is never refused. Absent, every copy is
+   *  made. */
+  copies?: (type: string) => boolean
   events?: DrawingsEvents
 }
 

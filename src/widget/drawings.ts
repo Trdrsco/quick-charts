@@ -50,6 +50,7 @@ import { pushRecentGlyph } from '../ui/drawings/glyphPicker'
 import { closeOverlays } from '../ui/controls/overlays'
 import type { AccessPolicy } from './options'
 import { commandShown, drawingToolPermitted, drawingToolShown } from './access'
+import { drawingToolOffered, type OfferedDrawingTools } from './drawingTools'
 import type { CommandRegistry } from './commands'
 import { drawingCancelAvailable } from '../drawings/layer/attach'
 import { RECENT_COLOR_LIMIT } from '../ui/controls/color'
@@ -104,6 +105,8 @@ export interface DrawingVerbs {
   tableAddColumn(): void
   /** Whether the access policy permits arming a tool. */
   toolPermitted(tool: string): boolean
+  /** Whether the selection may be cloned: there is one, and the host offers its tool. */
+  canClone(): boolean
   /** Whether Cancel has an armed tool, placement, text edit or completed transient to clear. */
   canCancel(): boolean
   cancel(): void
@@ -176,6 +179,8 @@ export interface DrawingsDeps {
   toolbar: boolean
   favorites: boolean
   access?: AccessPolicy
+  /** The drawing tools the host offers. Absent or null, every tool. */
+  offered?: OfferedDrawingTools
   commands: CommandRegistry
   /** Where the image and glyph tools get their artwork, and how a picked file becomes a payload. */
   assets?: DrawingAssetPort
@@ -271,6 +276,9 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     // While replay is waiting to be told where to begin, the plot's own mark is the answer to where
     // a click lands. This layer owns the plot's cursor, so it is the one that stands it down.
     pointerSuppressed: () => deps.replayPhase() === 'arming',
+    // A clone, a paste and a modifier-drag duplicate each make a new drawing, so a tool the host's
+    // list leaves out is copied by none of them.
+    copies: (type) => drawingToolOffered(deps.offered ?? null, type),
     events,
   })
   const idBase = `${deps.chartId}-drawing`
@@ -287,11 +295,15 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
   events.onSaveConflict = ({ symbol, current }) =>
     deps.onSaveConflict({ symbol, current, message: deps.i18n.t(current ? 'host.saveConflict' : 'host.saveNotFound') })
 
-  /** A tool the access policy refuses is never armed, whichever door asked for it. */
-  const permitted = (tool: string | null): boolean => drawingToolPermitted(deps.access, tool)
-  // What the rail, the favorites bar, the glyph picker and the selection's bar draw: everything,
-  // unless the host hides what its policy refuses.
-  const toolShown = (tool: string): boolean => drawingToolShown(deps.access, tool)
+  /** Whether the host's list offers a tool. A tool it leaves out is never armed and never drawn,
+   *  and no copy of a drawing of it is made; drawings of it already on the chart stay editable. */
+  const offered = (tool: string | null): boolean => drawingToolOffered(deps.offered ?? null, tool)
+  /** A tool the list leaves out or the access policy refuses is never armed, whichever door asked
+   *  for it. */
+  const permitted = (tool: string | null): boolean => offered(tool) && drawingToolPermitted(deps.access, tool)
+  // What the rail, the favorites bar, the glyph picker and the selection's bar draw: every offered
+  // tool, unless the host hides what its policy refuses.
+  const toolShown = (tool: string): boolean => offered(tool) && drawingToolShown(deps.access, tool)
   const shown = (command: string): boolean => commandShown(deps.access, command)
 
   const run = (command: string, arg?: unknown): boolean => deps.commands.execute(command, arg).kind === 'ok'
@@ -575,6 +587,10 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       if (cells?.length) handle.updateProps({ cells: cells.map((row) => [...row, '']) })
     },
     toolPermitted: (tool) => permitted(tool),
+    canClone: () => {
+      const type = handle.selected()?.type
+      return type !== undefined && offered(type)
+    },
     canCancel: () => drawingCancelAvailable(handle),
     cancel: () => handle.armTool(null),
     commitEdit: () => handle.commitEdit(),
@@ -583,7 +599,8 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
   }
 
   // The public surface is the handle minus the five chart-owned verbs, with arming routed through
-  // the access policy. Built by hand so an untyped consumer finds exactly what the type names.
+  // the host's list and the access policy, and image placement through the list. Built by hand so
+  // an untyped consumer finds exactly what the type names.
   const {
     setSymbol: _s,
     setTimeframe: _t,
@@ -610,6 +627,11 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       ...rest,
       armTool: (type, props) => {
         if (permitted(type)) handle.armTool(type, props)
+      },
+      // A placed picture is a new image drawing, so a host whose list leaves the image tool out
+      // places none.
+      placeImage: (image) => {
+        if (offered('image')) handle.placeImage(image)
       },
     },
     setSymbol: (symbol) => {
