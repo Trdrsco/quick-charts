@@ -121,7 +121,7 @@ function tool<P extends Record<string, unknown>>(
   }
 }
 
-/** Display order of categories in the toolbar rail. */
+/** Display order of categories in the drawing toolbar. */
 export const TOOL_CATEGORIES: readonly ToolCategory[] = [
   'lines',
   'channels',

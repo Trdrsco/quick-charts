@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
-// The level menu's icon gutter, for the chart's own rows and for rows the chart did not write. Both
-// bring the SAME thing: an inert descriptor of shapes on the menu's 28 grid. The menu draws them in
-// the same cell through one builder, and it must actually PAINT: a descriptor sitting in data
-// changes nothing a viewer sees.
+// The context menu's icon gutter, for the chart's own rows and for rows the chart did not write.
+// Both bring the SAME thing: an inert descriptor of shapes on the menu's 28 grid. The menu draws
+// them in the same cell through one builder, and it must actually PAINT: a descriptor sitting in
+// data changes nothing a viewer sees.
 //
 // The contract is deliberately narrow and it is held by construction. Nodes are created and
 // attributes are written from an allowlist, so there is no markup path into this menu for a script,

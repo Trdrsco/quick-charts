@@ -2,13 +2,14 @@
 // `widget.refreshAccess()`: the host's way to say its access policy answers differently when nothing
 // on the chart changed (a viewer's plan changed mid-session). On a widget mounted the way a host
 // mounts it, a policy flipped with no other event reaches every surface that reads it once the host
-// calls this, and only then: the bars, the rail and its flyouts, the favorites bar, the glyph
-// picker, the legend's row controls, open menus and flyouts, and the indicator picker. Under `'hide'` a refused
-// control goes; under `'disable'` it stays, disabled. Nothing stored and nothing on the chart moves.
+// calls this, and only then: the bars, the drawing toolbar and its flyouts, the favorites bar, the
+// glyph picker, the legend's row controls, open menus and flyouts, and the indicator picker. Under
+// `'hide'` a refused control goes; under `'disable'` it stays, disabled. Nothing stored and nothing
+// on the chart moves.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
-import { buildRailGroups } from '../../src/drawings/index'
+import { buildDrawingToolbarGroups } from '../../src/drawings/index'
 import { memoryChartStorage } from '../../src/storage'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import type { AccessPolicy, ChartWidgetOptions } from '../../src/widget/options'
@@ -58,15 +59,15 @@ function livePolicy(refused: 'disable' | 'hide') {
 
 const REFUSED = ['disable', 'hide'] as const
 
-const trend = buildRailGroups().find((group) => group.id === 'trend')!
+const trend = buildDrawingToolbarGroups().find((group) => group.id === 'trend')!
 const firstTrendTool = trend.sections[0]!.tools[0]!.type
 const secondTrendTool = trend.sections[0]!.tools[1]!.type
 
 /** Whether a control is drawn: present and inside nothing hidden. */
 const drawn = (element: Element | null | undefined): boolean => !!element && !element.closest('[hidden]')
 const topButton = (container: HTMLElement, label: string): HTMLButtonElement => container.querySelector<HTMLButtonElement>(`.qc-topbar button[aria-label="${label}"]`)!
-const rail = (container: HTMLElement): HTMLElement => container.querySelector<HTMLElement>('.qc-drawing-toolbar-column')!
-const groupArrow = (container: HTMLElement, label: string): HTMLButtonElement => rail(container).querySelector<HTMLButtonElement>(`button[aria-label="${label} menu"]`)!
+const toolbar = (container: HTMLElement): HTMLElement => container.querySelector<HTMLElement>('.qc-drawing-toolbar-column')!
+const groupArrow = (container: HTMLElement, label: string): HTMLButtonElement => toolbar(container).querySelector<HTMLButtonElement>(`button[aria-label="${label} menu"]`)!
 const flyoutRow = (tool: string): HTMLButtonElement | null => document.querySelector<HTMLButtonElement>(`.qc-drawing-flyout [data-tool="${tool}"]`)
 const favorites = (container: HTMLElement): string[] =>
   [...container.querySelectorAll<HTMLElement>('[data-role="drawing-favorites"] .qc-drawing-favorite')].filter((b) => drawn(b)).map((b) => b.dataset.tool!)
@@ -106,7 +107,7 @@ describe('widget.refreshAccess', () => {
     }
   })
 
-  it('moves the rail, its groups and the favorites bar', async () => {
+  it('moves the drawing toolbar, its groups and the favorites bar', async () => {
     for (const refused of REFUSED) {
       const { access, denied } = livePolicy(refused)
       const { widget, container } = mount({ access })
@@ -116,7 +117,7 @@ describe('widget.refreshAccess', () => {
       denied.tools.add(firstTrendTool)
       denied.commands.add('chart.drawings.removeAll')
       widget.refreshAccess()
-      const remove = rail(container).querySelector<HTMLButtonElement>('button[aria-label="Remove drawings"]')
+      const remove = toolbar(container).querySelector<HTMLButtonElement>('button[aria-label="Remove drawings"]')
       expectRefused(refused, remove, `${refused}: remove`)
       const favorite = container.querySelector<HTMLButtonElement>(`[data-role="drawing-favorites"] .qc-drawing-favorite[data-tool="${firstTrendTool}"]`)
       expectRefused(refused, favorite, `${refused}: favorite`)
@@ -126,13 +127,13 @@ describe('widget.refreshAccess', () => {
       denied.commands.clear()
       widget.refreshAccess()
       expect(favorites(container)).toEqual([firstTrendTool])
-      expect(drawn(rail(container).querySelector('button[aria-label="Remove drawings"]'))).toBe(true)
+      expect(drawn(toolbar(container).querySelector('button[aria-label="Remove drawings"]'))).toBe(true)
       widget.dispose()
       document.body.replaceChildren()
     }
   })
 
-  it('re-reads a rail flyout that is open', async () => {
+  it('re-reads a drawing toolbar flyout that is open', async () => {
     for (const refused of REFUSED) {
       const { access, denied } = livePolicy(refused)
       const { widget, container } = mount({ access })

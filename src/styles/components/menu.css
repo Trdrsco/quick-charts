@@ -120,8 +120,8 @@
  * scrim left every surface beside it live: a press on the page's own header landed on that header
  * instead of dismissing the dialog, so the one gesture every modal answers to did nothing over most
  * of the screen. Fixed, a press anywhere outside the box closes it, which is what `aria-modal` on
- * the box already promises. The z-index is the level-menu's, for the same reason it is: nothing the
- * host stacks above its own page may paint over a surface that has taken the keyboard. */
+ * the box already promises. The z-index is the context menu's, for the same reason it is: nothing
+ * the host stacks above its own page may paint over a surface that has taken the keyboard. */
 [data-qc-theme] .qc-dialog-scrim {
   position: fixed;
   inset: 0;

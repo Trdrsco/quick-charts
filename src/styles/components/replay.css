@@ -2,7 +2,7 @@
  *
  * The row is in the root's own flow and positions nothing: it reserves 49px of the column between
  * the charts grid and the bottom range and timezone band (a 48px row under the pane's own hairline),
- * so the plot and the time axis stay unobscured and the drawing rail keeps its column beside it.
+ * so the plot and the time axis stay unobscured and the drawing toolbar keeps its column beside it.
  * Entry reserves that height and exit returns it. Everything inside is placed by the strip's logical
  * grid, so a right-to-left chart mirrors without a transform, and a long translation scrolls the
  * strip rather than overlapping a neighbour. */
@@ -163,8 +163,8 @@
   padding-inline: 12px 10px;
 }
 
-/* The starting points carry the same 28-grid marks the rail does, so the gutter is the mark's own
- * width; a list whose rows carry no mark keeps no gutter for one. */
+/* The starting points carry the same 28-grid marks the drawing toolbar does, so the gutter is the
+ * mark's own width; a list whose rows carry no mark keeps no gutter for one. */
 [data-qc-theme] .qc-replay-menu .qc-menu-icon {
   flex: 0 0 28px;
   width: 28px;

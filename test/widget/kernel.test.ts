@@ -78,7 +78,7 @@ describe('attribution', () => {
 
 describe('one formatter everywhere', () => {
   // A symbol with the Treasury format writes 110'16 on every surface: the main series' price format
-  // (the axis, the crosshair and the last-price label), the level menu, and a drawing label all
+  // (the axis, the crosshair and the last-price label), the context menu, and a drawing label all
   // read the ONE symbol formatter. The DOM-free proof is the formatter itself plus the source pins
   // that every surface writes through it; the drawings package proves its own port.
   const treasury = createPriceFormatter({ pricescale: 32, minmov: 1, fractional: true })
@@ -91,7 +91,7 @@ describe('one formatter everywhere', () => {
     expect(labels).toContain("Copy price 110'16")
   })
 
-  it('the series, the level menu, copy-price, the legend rows and the extension seam all write through it', () => {
+  it('the series, the context menu, copy-price, the legend rows and the extension seam all write through it', () => {
     expect(chartSrc).toContain("const priceFormat = { type: 'custom' as const, formatter: (price: number) => symbolFormatter.format(price), minMove: minMoveOf(format) }")
     expect(menuSrc).toContain('const priceText = deps.formatter().format(price)')
     expect(chartCommandsSrc).toContain('writeText(deps.formatter().format(level))')

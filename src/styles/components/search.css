@@ -276,8 +276,8 @@
   white-space: nowrap;
 }
 
-/* The source cell: what kind of market a row is and where its data comes from, then the venue's
- * mark, set against the row's end. */
+/* The source cell: what kind of market a row is and where its data comes from, then the mark of
+ * the venue or the data source, set against the row's end. */
 [data-qc-theme] .qc-search-source {
   display: inline-flex;
   flex: 0 0 auto;
@@ -286,7 +286,7 @@
   padding-inline-end: 20px;
 }
 
-[data-qc-theme] .qc-search-venue {
+[data-qc-theme] .qc-search-source-name {
   color: var(--qc-text-primary);
   font-size: var(--qc-text-fontSizeBase);
   line-height: 21px;
@@ -300,8 +300,8 @@
 }
 
 /* The source's mark: an 18px disc in a 20px cell. The package ships no brand artwork and fetches
- * none: a host paints the venue's own mark, or a provider's, and without one the source is written
- * in the one letter it is known by on the neutral fill. */
+ * none: a host paints the venue's own mark, or a data source's, and without one the source is
+ * written in the one letter it is known by on the neutral fill. */
 [data-qc-theme] .qc-search-mark {
   display: inline-flex;
   flex: 0 0 auto;
@@ -318,8 +318,8 @@
   border-radius: 50%;
 }
 
-/* A host's venue or provider mark IS the disc: the package's ground stands down under it, and the
- * artwork fills the round box. */
+/* A host's venue or data source mark IS the disc: the package's ground stands down under it, and
+ * the artwork fills the round box. */
 [data-qc-theme] .qc-search-mark[data-qc-host='true'] {
   background: none;
 }
@@ -377,11 +377,11 @@
   line-height: 21px;
 }
 
-[data-qc-theme] .qc-search-table .qc-search-venue {
+[data-qc-theme] .qc-search-table .qc-search-source-name {
   margin-inline-end: 8px;
 }
 
-/* COMPARE stacks the ticker over its description and the venue over the kind, on 52px rows, and
+/* COMPARE stacks the ticker over its description and the source over the kind, on 52px rows, and
  * keeps 6px of air at the list's two ends. */
 [data-qc-theme] .qc-search-dialog--compare .qc-search-row {
   height: 52px;

@@ -111,10 +111,10 @@ describe('the settings bar and its panels', () => {
   })
 })
 
-// The rail, its flyouts and the floating favorites strip, pinned to their geometry and recipes.
-// Values are read out of the recipe rather than
-// computed, because a test document has no cascade; the numbers are the pins.
-describe('the drawing rail and its favorites strip', () => {
+// The drawing toolbar, its flyouts and the floating favorites strip, pinned to their geometry and
+// recipes. Values are read out of the recipe rather than computed, because a test document has no
+// cascade; the numbers are the pins.
+describe('the drawing toolbar and its favorites strip', () => {
   const toolbar = readFileSync(`${recipes}/drawings-toolbar.css`, 'utf8')
   /** Every rule whose selector list carries exactly this widget-scoped selector, joined. The
    *  forced-colors block is left out: it answers a display mode, not the ordinary recipe. */
@@ -130,24 +130,24 @@ describe('the drawing rail and its favorites strip', () => {
     return found.map(([, , body]) => body).join(String.fromCharCode(10))
   }
 
-  it('holds the rail at 52px with flush 38px cells, a 34px inset square with a 6px corner and an 11px arrow strip', () => {
+  it('holds the toolbar at 52px with flush 38px cells, a 34px inset square with a 6px corner and an 11px arrow strip', () => {
     expect(rule('.qc-drawing-toolbar')).toMatch(/width:\s*52px/)
     // The cells stack flush, one every 38px; only a group rule parts them.
     expect(rule('.qc-drawing-toolbar-column')).not.toMatch(/gap:/)
     expect(rule('.qc-drawing-toolbar-end')).not.toMatch(/gap:/)
     expect(rule('.qc-drawing-toolbar-column')).toMatch(/padding:\s*6px 0/)
-    expect(rule('.qc-drawing-rail-button')).toMatch(/height:\s*38px/)
-    expect(rule('.qc-drawing-rail-button')).toMatch(/width:\s*100%/)
-    const wash = rule(".qc-drawing-rail-button::before")
+    expect(rule('.qc-drawing-toolbar-button')).toMatch(/height:\s*38px/)
+    expect(rule('.qc-drawing-toolbar-button')).toMatch(/width:\s*100%/)
+    const wash = rule(".qc-drawing-toolbar-button::before")
     expect(wash).toMatch(/width:\s*34px/)
     expect(wash).toMatch(/height:\s*34px/)
     expect(wash).toMatch(/border-radius:\s*var\(--qc-chrome-radius\)/)
-    expect(rule('.qc-drawing-rail-arrow')).toMatch(/width:\s*11px/)
-    expect(rule('.qc-drawing-rail-arrow')).toMatch(/inset-block:\s*2px/)
+    expect(rule('.qc-drawing-toolbar-arrow')).toMatch(/width:\s*11px/)
+    expect(rule('.qc-drawing-toolbar-arrow')).toMatch(/inset-block:\s*2px/)
   })
 
-  it('draws three separator recipes, so a flyout rule is not the rail width', () => {
-    // The rail's rule spans 36px of the rail with 6px above and below.
+  it('draws three separator recipes, so a flyout rule is not the toolbar width', () => {
+    // The toolbar's rule spans 36px of the toolbar with 6px above and below.
     expect(rule('.qc-drawing-divider')).toMatch(/width:\s*36px/)
     expect(rule('.qc-drawing-divider')).toMatch(/margin:\s*6px 0/)
     // A tool flyout's section rule and a menu's rule span the content area, 6px above and below.
@@ -169,16 +169,16 @@ describe('the drawing rail and its favorites strip', () => {
     expect(rule('.qc-drawing-menu-row--marked')).toMatch(/height:\s*40px/)
   })
 
-  it('keeps the armed rail tool on the neutral held fill and names an armed favorite by its glyph alone', () => {
-    const armed = rule(".qc-drawing-rail-button[data-qc-active='true']::before")
+  it('keeps the armed toolbar tool on the neutral held fill and names an armed favorite by its glyph alone', () => {
+    const armed = rule(".qc-drawing-toolbar-button[data-qc-active='true']::before")
     expect(armed).toMatch(/background:\s*var\(--qc-state-pressed\)/)
     expect(armed).not.toContain('--qc-state-accent')
     expect(armed).not.toContain('--qc-state-selected')
-    expect(rule(".qc-drawing-rail-button[data-qc-active='true']")).toMatch(/color:\s*var\(--qc-text-primary\)/)
+    expect(rule(".qc-drawing-toolbar-button[data-qc-active='true']")).toMatch(/color:\s*var\(--qc-text-primary\)/)
     // Under the pointer the held fill steps once more; a held mode inverts instead.
-    expect(rule(".qc-drawing-rail-button[data-qc-active='true']:hover::before")).toMatch(/background:\s*var\(--qc-state-pressedHover\)/)
-    expect(rule(".qc-drawing-rail-mode[data-qc-active='true']")).toMatch(/color:\s*var\(--qc-text-inverse\)/)
-    expect(rule(".qc-drawing-rail-mode[data-qc-active='true']::before")).toMatch(/background:\s*var\(--qc-control-on\)/)
+    expect(rule(".qc-drawing-toolbar-button[data-qc-active='true']:hover::before")).toMatch(/background:\s*var\(--qc-state-pressedHover\)/)
+    expect(rule(".qc-drawing-toolbar-mode[data-qc-active='true']")).toMatch(/color:\s*var\(--qc-text-inverse\)/)
+    expect(rule(".qc-drawing-toolbar-mode[data-qc-active='true']::before")).toMatch(/background:\s*var\(--qc-control-on\)/)
     // An armed favorite wears the accent on its glyph and no fill of its own.
     expect(rule(".qc-drawing-favorite[data-qc-active='true']")).toMatch(/color:\s*var\(--qc-state-accent\)/)
     expect(toolbar.slice(0, toolbar.indexOf('@media (forced-colors: active)'))).not.toContain(".qc-drawing-favorite[data-qc-active='true']::before")

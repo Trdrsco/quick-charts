@@ -1,5 +1,5 @@
-// The right-click level menu: the chart's own rows and their shortcuts. Shortcuts are key names as
-// they are printed on the keyboard and never translated; `{price}` is the pane's own value. The
+// The right-click context menu: the chart's own rows and their shortcuts. Shortcuts are key names
+// as they are printed on the keyboard and never translated; `{price}` is the pane's own value. The
 // rows an extension contributes for a level (an alert, an order) carry their own words.
 export const menu = {
   'menu.resetView': 'Reset chart view',

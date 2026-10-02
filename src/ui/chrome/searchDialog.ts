@@ -44,7 +44,7 @@ export interface SearchDialogDeps {
   /** What the search is limited to, named at the far edge of the class strip with the host's mark. */
   scope?: () => SearchScope | null
   /** The host's mark painters: the same value the legend paints its badge with. A row wears the
-   *  market's, and its source cell the venue's, or the data provider's where it names no venue.
+   *  market's, and its source cell the venue's, or the data source's where it names no venue.
    *  Where the host lent none, a row wears the neutral monogram and the source its initial on the
    *  package's own disc. */
   painters: MarkPainters
@@ -61,7 +61,7 @@ const PLACEMENTS: readonly { placement: ComparePlacement; label: ChartMessageKey
   { placement: 'new-pane', label: 'search.newPane' },
 ]
 
-/** One row the list can render: a search hit, a recent, a curated pick, or an added compare
+/** One row the list can render: a search hit, a recent, a curated pick, or an added comparison
  *  surfaced for removal. */
 export interface DialogRow {
   row: SymbolRow
@@ -80,10 +80,10 @@ export interface DialogRow {
  *  the same mark and the legend the same pair.
  *
  *  The source is the VENUE when the row names one, because that is the feed the row charts off,
- *  and the data provider otherwise. A row with neither says nothing rather than borrowing a name. */
+ *  and the data source otherwise. A row with neither says nothing rather than borrowing a name. */
 export function rowLabels(row: SymbolRow): { ticker: string; description: string; source: string } {
   const names = symbolNames(row)
-  return { ticker: names.mark, description: names.description, source: row.exchange || row.provider || '' }
+  return { ticker: names.mark, description: names.description, source: row.exchange || row.dataSource || '' }
 }
 
 /** The operators a search offers for the host's `spreads` option: every one by default, none with
@@ -404,15 +404,15 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           // In compare it steps aside under the pointer for the three placement verbs, because a
           // row a viewer is reaching for should offer what to DO rather than restate what it is.
           const source = h('span', { class: 'qc-search-source' })
-          source.appendChild(h('span', { class: 'qc-search-source-text' }, label.source ? h('span', { class: 'qc-search-venue' }, label.source) : null, h('span', { class: 'qc-search-kind' }, r.type)))
+          source.appendChild(h('span', { class: 'qc-search-source-text' }, label.source ? h('span', { class: 'qc-search-source-name' }, label.source) : null, h('span', { class: 'qc-search-kind' }, r.type)))
           if (label.source) {
-            // The source's mark: the venue's, or the provider's where the row names no venue,
+            // The source's mark: the venue's, or the data source's where the row names no venue,
             // through the host's hook. A host mark owns the box; without one the initial stands.
             const sourceMark = h('span', { class: 'qc-search-mark', 'aria-hidden': 'true' })
             const dropSource = r.exchange
               ? deps.painters.venue?.({ exchange: r.exchange, host: sourceMark, size: SOURCE_MARK_SIZE })
-              : r.provider
-                ? deps.painters.provider?.({ provider: r.provider, host: sourceMark, size: SOURCE_MARK_SIZE })
+              : r.dataSource
+                ? deps.painters.dataSource?.({ dataSource: r.dataSource, host: sourceMark, size: SOURCE_MARK_SIZE })
                 : undefined
             if (typeof dropSource === 'function') {
               sourceMark.dataset.qcHost = 'true'

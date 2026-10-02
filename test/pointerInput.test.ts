@@ -48,7 +48,7 @@ describe('pan, pinch and axis scaling belong to the chart, and are borrowed rath
   })
 })
 
-describe('press and hold is the touch way into the level menu', () => {
+describe('press and hold is the touch way into the context menu', () => {
   it('one finger, held still, for the measured interval', () => {
     expect(LONG_PRESS_MS).toBe(450)
     expect(LONG_PRESS_DRIFT_PX).toBe(10)
@@ -108,7 +108,8 @@ describe('drawing placement is the chart’s own gesture', () => {
   })
   it('an armed tool owns the touch surface until it is disarmed', () => {
     // The chart reads the layer's own armed tool rather than a flag of its own, so arming from any
-    // door (the rail, a host command, a keyboard shortcut) stands the hold down the same way.
+    // door (the drawing toolbar, a host command, a keyboard shortcut) stands the hold down the same
+    // way.
     expect(chartSrc).toContain('toolArmed: () => drawings.handle?.activeTool() != null')
   })
 })

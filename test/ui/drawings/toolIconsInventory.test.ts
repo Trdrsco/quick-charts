@@ -51,8 +51,8 @@ describe('the chrome glyphs', () => {
     expect(ownIcons().icon('magnet').getAttribute('aria-hidden')).toBe('true')
   })
 
-  // The rail's own marks. Each is drawn on the same 28 grid the tool miniatures beside it use, so
-  // a utility button and a tool button read at one weight in one row.
+  // The drawing toolbar's own marks. Each is drawn on the same 28 grid the tool miniatures beside
+  // it use, so a utility button and a tool button read at one weight in one row.
   it.each(['magnet', 'magnetStrong', 'lockOpen', 'lockClosed', 'drawingsShown', 'drawingsHidden', 'pin', 'pinOn', 'ruler', 'zoomIn', 'trash28', 'sync', 'cursorCross', 'cursorDot', 'cursorArrow'] as const)(
     '%s is drawn on the 28 grid',
     (name) => {
@@ -71,7 +71,7 @@ describe('the chrome glyphs', () => {
     expect(ICONS.eraser.viewBox).toBe('0 0 29 31')
     expect(ICONS.eraser.size).toBe(31)
     expect(Math.round(31 * ICONS.eraser.aspect!)).toBe(29)
-    // The rail arrow is a filled chevron on a 10 by 16 grid, drawn 4 by 7.
+    // The drawing toolbar's arrow is a filled chevron on a 10 by 16 grid, drawn 4 by 7.
     expect(ICONS.chevronRight16.viewBox).toBe('0 0 10 16')
     expect(bodyOf(ICONS.chevronRight16)).toContain('fill="currentColor"')
     expect(ICONS.chevronRight16.size).toBe(7)

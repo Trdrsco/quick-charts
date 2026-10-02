@@ -48,7 +48,7 @@ const STATE = {
 const SURFACES: readonly Surface[] = [
   { name: 'top toolbar', files: ['topbar.css'], classes: ['qc-topbar', 'qc-symbol-pill', 'qc-layouts'], states: [STATE.hover, STATE.disabled] },
   { name: 'bottom toolbar', files: ['bottombar.css'], classes: ['qc-bottombar', 'qc-range-chip', 'qc-clock', 'qc-nav'], states: [STATE.hover] },
-  { name: 'drawing toolbar', files: ['drawings-toolbar.css'], classes: ['qc-drawing-toolbar', 'qc-drawing-rail-button', 'qc-drawing-flyout', 'qc-drawing-favorites'], states: [STATE.hover, STATE.focus, STATE.on, STATE.disabled, STATE.expanded, STATE.pressed, STATE.checked, STATE.active] },
+  { name: 'drawing toolbar', files: ['drawings-toolbar.css'], classes: ['qc-drawing-toolbar', 'qc-drawing-toolbar-button', 'qc-drawing-flyout', 'qc-drawing-favorites'], states: [STATE.hover, STATE.focus, STATE.on, STATE.disabled, STATE.expanded, STATE.pressed, STATE.checked, STATE.active] },
   { name: 'buttons and controls', files: ['chrome.css'], classes: ['qc-toolbar-button', 'qc-switch', 'qc-tabs', 'qc-tab'], states: [STATE.hover, STATE.pressed, STATE.expanded, STATE.disabled, STATE.checked, STATE.selected] },
   { name: 'dialogs', files: ['menu.css', 'search.css', 'indicators.css', 'layouts.css'], classes: ['qc-dialog', 'qc-dialog-scrim', 'qc-search-dialog', 'qc-picker-dialog', 'qc-settings-dialog', 'qc-layouts-open'], states: [STATE.hover, STATE.selected, STATE.disabled] },
   { name: 'menus', files: ['menu.css', 'bottombar.css', 'drawings-toolbar.css'], classes: ['qc-menu-panel', 'qc-menu-row', 'qc-tz-menu', 'qc-drawing-menu'], states: [STATE.hover, STATE.checked, STATE.disabled] },

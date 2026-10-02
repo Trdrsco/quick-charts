@@ -13,16 +13,16 @@ import type { ChartMessageKey } from '../i18n/en'
 import { drawingTools, type DrawingTool } from './tools'
 
 /** One heading inside a group's flyout and the tools under it. */
-export interface RailSection {
+export interface DrawingToolbarSection {
   label: ChartMessageKey
   tools: DrawingTool[]
 }
 
 /** One toolbar button: its stable id, its heading, and the sections its flyout shows. */
-export interface RailGroup {
+export interface DrawingToolbarGroup {
   id: string
   label: ChartMessageKey
-  sections: RailSection[]
+  sections: DrawingToolbarSection[]
 }
 
 /** The arrow marks ride with the plain arrow line in the shapes group's Arrows section. */
@@ -57,7 +57,7 @@ interface GroupPlan {
 
 /** The toolbar's seven groups and their sections, in display order. This is the product decision the
  *  registry cannot express: which categories share a button, and where the moved types land. */
-export const RAIL_PLAN: readonly GroupPlan[] = [
+export const DRAWING_TOOLBAR_PLAN: readonly GroupPlan[] = [
   {
     id: 'trend',
     label: 'drawing.groupTrend',
@@ -122,13 +122,13 @@ const isTypeSection = (section: SectionPlan): section is TypeSection => 'types' 
 
 /** Build the toolbar from the tool catalog. An empty section and a group left with none are dropped,
  *  so a catalog trimmed by configuration never shows a button that opens on nothing. */
-export function buildRailGroups(catalog = drawingTools): RailGroup[] {
+export function buildDrawingToolbarGroups(catalog = drawingTools): DrawingToolbarGroup[] {
   const toolsOf = (section: SectionPlan): DrawingTool[] =>
     isTypeSection(section)
       ? section.types.map((type) => catalog.get(type)).filter((tool): tool is DrawingTool => !!tool)
       : catalog.byCategory(section.category).filter((tool) => !(section.exclude ?? []).includes(tool.type))
 
-  return RAIL_PLAN.map((group) => ({
+  return DRAWING_TOOLBAR_PLAN.map((group) => ({
     id: group.id,
     label: group.label,
     sections: group.sections.map((section) => ({ label: section.label, tools: toolsOf(section) })).filter((section) => section.tools.length > 0),
@@ -137,7 +137,7 @@ export function buildRailGroups(catalog = drawingTools): RailGroup[] {
 
 /** Which group holds a tool, or null when no group shows it. The toolbar highlights that button while
  *  the tool is armed. */
-export function groupOfTool(groups: readonly RailGroup[], type: string | null): string | null {
+export function groupOfTool(groups: readonly DrawingToolbarGroup[], type: string | null): string | null {
   if (!type) return null
   return groups.find((group) => group.sections.some((section) => section.tools.some((tool) => tool.type === type)))?.id ?? null
 }
@@ -145,7 +145,7 @@ export function groupOfTool(groups: readonly RailGroup[], type: string | null): 
 /** Each toolbar button wears its last-picked tool's glyph, so the toolbar keeps that face across
  *  reloads. This resolves the face: the remembered tool when the group still shows it, else the
  *  group's first tool, else null for a group whose tools carry no glyph. */
-export function railFaceOf(group: RailGroup, lastTools: Readonly<Record<string, string>>): string | null {
+export function drawingToolbarFaceOf(group: DrawingToolbarGroup, lastTools: Readonly<Record<string, string>>): string | null {
   const remembered = lastTools[group.id]
   if (remembered && group.sections.some((section) => section.tools.some((tool) => tool.type === remembered))) return remembered
   return group.sections[0]?.tools[0]?.type ?? null
@@ -153,8 +153,8 @@ export function railFaceOf(group: RailGroup, lastTools: Readonly<Record<string, 
 
 /** Remember the tool a group was last used to arm. Returns a NEW record, so a caller stores the
  *  result rather than mutating what it was handed. A tool no group shows changes nothing. */
-export function rememberRailTool(
-  groups: readonly RailGroup[],
+export function rememberDrawingToolbarTool(
+  groups: readonly DrawingToolbarGroup[],
   lastTools: Readonly<Record<string, string>>,
   type: string,
 ): Record<string, string> {

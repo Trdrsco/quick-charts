@@ -56,16 +56,16 @@ const SURFACE: Record<string, string> = {
   MAGNET_STRENGTHS: 'object',
   toggleMagnet: 'function',
 
-  // The rail's structure.
+  // The drawing toolbar's structure.
   ARROW_TYPES: 'object',
   BRUSH_TYPES: 'object',
   CARD_TYPES: 'object',
   GLYPH_TYPES: 'object',
-  RAIL_PLAN: 'object',
-  buildRailGroups: 'function',
+  DRAWING_TOOLBAR_PLAN: 'object',
+  buildDrawingToolbarGroups: 'function',
   groupOfTool: 'function',
-  railFaceOf: 'function',
-  rememberRailTool: 'function',
+  drawingToolbarFaceOf: 'function',
+  rememberDrawingToolbarTool: 'function',
 
   // What the eye blanks: the chart's own drawings and indicators, and the layers extensions
   // contribute, listed by hideOrder between them and all.

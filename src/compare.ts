@@ -1,8 +1,8 @@
-// COMPARE — other symbols beside the charted one, drawn as a study rather than as a second chart (a
-// STUDY: legend-managed, three placements, removable from the legend or the dialog). This module
-// owns the data a compare draws: an indicator computes from the chart's own
-// bars, a compare fetches ANOTHER symbol's bars through the same ChartDatafeed and follows its
-// stream.
+// COMPARE: other symbols beside the charted one. Each comparison is a series on the chart rather
+// than a second chart, managed like an indicator: from the legend, at one of three placements,
+// removable from the legend or the dialog. This module owns the data a comparison draws: an
+// indicator computes from the chart's own bars, a comparison fetches ANOTHER symbol's bars through
+// the same ChartDatafeed and follows its stream.
 //
 // The three placements are the dialog's three verbs:
 //   'same-percent'  — a line on the MAIN pane's shared (right) scale. The renderer's Percentage
@@ -10,10 +10,10 @@
 //                     host flips the scale mode rather than this module computing percent series:
 //                     one axis, every series on it in %.
 //   'new-scale'     — a line on the main pane bound to the LEFT scale, absolute prices. The module
-//                     shows the left scale while any such compare lives and hides it again after.
+//                     shows the left scale while any such comparison lives and hides it after.
 //   'new-pane'      — a line on its own pane with its own scale, the non-price-study placement.
 //
-// ALIGNMENT: the time scale unions every series' timepoints, so a compare with bars outside the
+// ALIGNMENT: the time scale unions every series' timepoints, so a comparison with bars outside the
 // main series' window would EXTEND the axis, which is
 // deliberately out of scope. Bars are therefore CLIPPED to the main window the host reports, and
 // re-clipped as that window grows (scroll-back). Missing buckets stay missing — gaps are truth,
@@ -30,14 +30,14 @@ export interface CompareSymbol {
   title: string
 }
 
-/** One active compare, as hosts read it (legend rows, dialogs, serialization). */
+/** One active comparison, as hosts read it (legend rows, dialogs, serialization). */
 export interface CompareEntry {
   symbol: string
   placement: ComparePlacement
   color: string
   visible: boolean
   /** Style beyond the palette color, absent until a settings edit sets it (2 / solid are the
-   *  series defaults). Carried here so a styled compare round-trips through the snapshot. */
+   *  series defaults). Carried here so a styled comparison round-trips through the snapshot. */
   lineWidth?: number
   lineStyle?: 'solid' | 'dashed' | 'dotted'
 }
@@ -57,7 +57,7 @@ export interface CompareSnapshot {
 }
 
 /** The compare line palette, in assignment order. Assigned by first
- *  unused slot, so removing a compare frees its color for the next one. */
+ *  unused slot, so removing a comparison frees its color for the next one. */
 export const COMPARE_COLORS: readonly string[] = ['#2962ff', '#f23645', '#089981', '#ff9800', '#9c27b0', '#00bcd4']
 
 /** First palette color not already worn; wraps past the palette by reuse (better a repeat than an
@@ -67,7 +67,7 @@ export function pickCompareColor(used: readonly string[], palette: readonly stri
 }
 
 /** Clip bars to the main series' window (inclusive). Null window ⇒ nothing renders yet — the main
- *  series has no bars, and a compare must never be the thing that gives the axis its range. */
+ *  series has no bars, and a comparison must never be the thing that gives the axis its range. */
 export function clipToWindow(bars: readonly FeedBar[], window: { from: number; to: number } | null): FeedBar[] {
   if (!window) return []
   return bars.filter((b) => b.t >= window.from && b.t <= window.to)
@@ -86,11 +86,11 @@ export interface CompareDeps {
   /** The chart's CURRENT timeframe — read per fetch, never captured. */
   tf(): string
   /** The MAIN series' loaded bar window (epoch seconds, inclusive), or null before first paint.
-   *  The module clips every compare to it; the host calls `sync()` whenever it changes shape. */
+   *  The module clips every comparison to it; the host calls `sync()` whenever it changes shape. */
   mainWindow(): { from: number; to: number } | null
   /** How many bars a fresh compare asks for when the main window is not yet known. */
   seedCountBack?: number
-  /** Entries changed (add/remove/visibility/color) or a compare's latest value moved — hosts
+  /** Entries changed (add/remove/visibility/color) or a comparison's latest value moved — hosts
    *  re-render their legend from `list()` / `latest()`. */
   onChange?(): void
 }
@@ -105,15 +105,15 @@ export interface CompareHandle {
    *  never serialized and never touching `visible`, so a timeframe switch that suppresses a
    *  compare cannot flip the viewer's eye state. */
   suppress(symbol: string, on: boolean): void
-  /** Restyle one compare's line (a settings edit). Omitted fields keep their current value;
+  /** Restyle one comparison's line (a settings edit). Omitted fields keep their current value;
    *  `priceLabel` is the price-scale label+line pair. Identical values are a no-op (no notify). */
   restyle(symbol: string, style: { color?: string; lineWidth?: number; lineStyle?: 'solid' | 'dashed' | 'dotted'; priceLabel?: boolean }): void
   list(): CompareEntry[]
-  /** The latest clipped close for one compare, or null (no bars in window / unknown symbol). */
+  /** The latest clipped close for one comparison, or null (no bars in window / unknown symbol). */
   latest(symbol: string): number | null
-  /** The pane the compare's series currently lives on (0 = the main pane), or null for an unknown
-   *  symbol — how a host places the compare's legend row in the right pane's group. Read live from
-   *  the series, because 'new-pane' indices shift as other panes come and go. */
+  /** The pane the comparison's series currently lives on (0 = the main pane), or null for an
+   *  unknown symbol — how a host places the comparison's legend row in the right pane's group. Read
+   *  live from the series, because 'new-pane' indices shift as other panes come and go. */
   paneIndexOf(symbol: string): number | null
   /** Percent change across the clipped window (last close vs the window's FIRST in-window close —
    *  the loaded-window approximation of the percent scale's first-visible-bar base), or null with
@@ -125,7 +125,7 @@ export interface CompareHandle {
    *  reshaped nothing): re-clip, and fetch older compare history only where the window now starts
    *  earlier than anything already asked for. */
   sync(): void
-  /** The chart's timeframe changed: every compare refetches at the new bucket size. */
+  /** The chart's timeframe changed: every comparison refetches at the new bucket size. */
   setTimeframe(): void
   serialize(): CompareSnapshot[]
   /** Replace the whole set from a snapshot (restore path). Unknown placements are dropped. */
@@ -144,7 +144,7 @@ interface Slot {
   /** Earliest time already fetched, so a window growing older knows what to page in. */
   oldest: number | null
   /** Earliest time already ASKED for, set when the ask leaves rather than when it answers. A
-   *  window that begins before what the feed served, because the compare's history is shorter
+   *  window that begins before what the feed served, because the comparison's history is shorter
    *  than the main series', is asked about once, not on every repaint. Null while the only ask
    *  was a count-back seed, which names no start. */
   askedFrom: number | null
@@ -226,7 +226,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
       notify()
       return true
     } catch {
-      // A compare that cannot load stays empty rather than tearing the chart down — the legend's
+      // A comparison that cannot load stays empty rather than tearing the chart down — the legend's
       // null value is the honest signal, matching the indicator pipeline's advisory posture. The
       // page was not held, and the caller's bookkeeping must not record it as asked.
       return false

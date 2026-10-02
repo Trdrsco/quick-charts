@@ -2,12 +2,12 @@
 // synchronization contracts:
 //
 //   symbol     a symbol change lands on every chart in the layout
-//   interval   a timeframe change lands on every chart in the layout
+//   timeframe  a timeframe change lands on every chart in the layout
 //   crosshair  the crosshair is mirrored across every chart in the layout
 //   time       clicking a chart shows the same moment on every chart in the layout
 //   dateRange  a visible-range change lands on every chart in the layout
 //
-// Symbol, interval and date range REPLAY a change onto every chart; crosshair mirrors
+// Symbol, timeframe and date range REPLAY a change onto every chart; crosshair mirrors
 // continuously; time fires on click, centering every chart on the clicked moment. The whole layout
 // serializes as ONE content blob.
 //
@@ -33,13 +33,30 @@ import { fallbackArrangement, LAYOUT_SYNC_KEYS } from './arrangements'
 /** Which changes replay across the layout. All off by default. */
 export interface LayoutSyncFlags {
   symbol: boolean
-  interval: boolean
+  timeframe: boolean
   crosshair: boolean
   time: boolean
   dateRange: boolean
 }
 
-const SYNC_OFF: LayoutSyncFlags = { symbol: false, interval: false, crosshair: false, time: false, dateRange: false }
+const SYNC_OFF: LayoutSyncFlags = { symbol: false, timeframe: false, crosshair: false, time: false, dateRange: false }
+
+/** The five switches of a stated set, each at its stated value or off. The layout holds these and
+ *  nothing else, so a key outside them never rides into a saved layout. */
+const syncSwitches = (stated: Partial<LayoutSyncFlags>): LayoutSyncFlags =>
+  Object.fromEntries(LAYOUT_SYNC_KEYS.map((key) => [key, stated[key] ?? SYNC_OFF[key]])) as unknown as LayoutSyncFlags
+
+/** The sync flags a layout blob states, or null when one is missing or not a boolean. Layout
+ *  content written by Quick Charts 1.x names the timeframe switch `interval`: the reader takes that
+ *  key where `timeframe` is absent, and the writer states `timeframe`, so the next save carries
+ *  the name this build reads. */
+function readSyncFlags(value: unknown): LayoutSyncFlags | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const stated = value as Record<string, unknown>
+  const read: Record<string, unknown> = { ...stated, timeframe: 'timeframe' in stated ? stated.timeframe : stated.interval }
+  if (LAYOUT_SYNC_KEYS.some((key) => typeof read[key] !== 'boolean')) return null
+  return Object.fromEntries(LAYOUT_SYNC_KEYS.map((key) => [key, read[key]])) as unknown as LayoutSyncFlags
+}
 
 /** The layout's save/load surface: the same open-resource rule the chart applies to a saved chart,
  *  over the layouts family. A layout is its own resource, separate from the charts inside it, and
@@ -214,7 +231,7 @@ interface CarriedLayout {
 
 export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
   const slots: LayoutSlot[] = []
-  let flags: LayoutSyncFlags = { ...SYNC_OFF, ...(deps.sync ?? {}) }
+  let flags: LayoutSyncFlags = syncSwitches(deps.sync ?? {})
   /** The switches the viewer may not change, and the value each holds: the host's own. */
   const fixedSync: readonly (keyof LayoutSyncFlags)[] = deps.syncOffered ? LAYOUT_SYNC_KEYS.filter((key) => !deps.syncOffered!.includes(key)) : []
   const fixedFlags: LayoutSyncFlags = { ...flags }
@@ -364,7 +381,7 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
         if (!applying) emitActive()
       }))
     slot.unsubscribes.push(handle.on('timeframe', () => {
-        if (flags.interval) fanOut(index(), (other) => other.setTimeframe(handle.timeframe()))
+        if (flags.timeframe) fanOut(index(), (other) => other.setTimeframe(handle.timeframe()))
         if (!applying) deps.onChange()
       }))
   }
@@ -634,15 +651,14 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     if (!arrangement) throw new Error(`unknown arrangement code ${String(c.arrangement)}`)
     if (charts.length !== arrangement.count) throw new Error('layout chart count does not match arrangement')
     if (!validGeometry(c.geometry, arrangement.rects)) throw new Error('invalid layout geometry')
-    const sync = c.sync && typeof c.sync === 'object' ? c.sync as Record<string, unknown> : null
-    const keys = LAYOUT_SYNC_KEYS
-    if (!sync || keys.some((key) => typeof sync[key] !== 'boolean')) throw new Error('invalid layout sync flags')
+    const sync = readSyncFlags(c.sync)
+    if (!sync) throw new Error('invalid layout sync flags')
     if (!Number.isInteger(c.active) || (c.active as number) < 0 || (c.active as number) >= charts.length) throw new Error('invalid active chart')
     return {
       arrangement,
       identity: { namespace: identity.namespace, next: identity.next as number },
       geometry: (c.geometry as PaneRect[]).map((rect) => ({ ...rect })),
-      sync: Object.fromEntries(keys.map((key) => [key, sync[key]])) as unknown as LayoutSyncFlags,
+      sync,
       active: c.active as number,
       charts: charts as LayoutPlan['charts'],
     }
@@ -744,7 +760,7 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
       // A switch the viewer may not change keeps its value; a call that names only such switches
       // changes nothing and reports nothing.
       if (fixedSync.length > 0 && Object.keys(partial).every((key) => fixedSync.includes(key as keyof LayoutSyncFlags))) return
-      flags = holdFixed({ ...flags, ...partial })
+      flags = holdFixed(syncSwitches({ ...flags, ...partial }))
       deps.onChange()
       emitCommitted()
     },

@@ -99,7 +99,7 @@ const TOOLS: readonly (readonly [type: string, category: string])[] = [
   ['xabcd_pattern', 'patterns'],
 ]
 
-/** The 14 categories in the toolbar rail's display order, each with its tool count. */
+/** The 14 categories in the drawing toolbar's display order, each with its tool count. */
 const CATEGORIES: readonly (readonly [category: string, count: number])[] = [
   ['lines', 10],
   ['channels', 4],
@@ -127,7 +127,7 @@ describe('the 90 tools', () => {
     expect(TOOLS.length).toBe(90)
   })
 
-  it('pins the 14 categories in rail order, and the count under each', () => {
+  it('pins the 14 categories in drawing toolbar order, and the count under each', () => {
     expect([...TOOL_CATEGORIES]).toEqual(CATEGORIES.map(([c]) => c))
     for (const [category, count] of CATEGORIES) expect(drawingTools.byCategory(category as never).length, category).toBe(count)
     expect(CATEGORIES.reduce((n, [, c]) => n + c, 0)).toBe(90)

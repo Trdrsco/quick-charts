@@ -8,7 +8,7 @@
 // What each surface is, and how it is reached here:
 //   axis, crosshair and last-price label   the main series' price format: a custom formatter over the
 //                                          symbol formatter and the symbol's own smallest move
-//   level menu and copy-price              the context-menu rows the widget composes from formatted text
+//   context menu and copy-price            the context-menu rows the widget composes from formatted text
 //   drawing labels                         the drawing seam's price-format port, on an axis pill
 //   indicator price plots                  the study scale's fallback format, the same shape as the axis
 //   exported image                         the renderer's own screenshot, which paints the axis above
@@ -72,7 +72,7 @@ describe('for every fixture symbol', () => {
         expect(priceFormat.minMove).toBe(c.format.minmov / c.format.pricescale)
       })
 
-      it('the level menu quotes the price in the same text, and copy-price writes it', () => {
+      it('the context menu quotes the price in the same text, and copy-price writes it', () => {
         for (const { value, display } of c.prices) {
           const rows = chartContextMenu({ priceText: formatter.format(value), symbol: c.symbol, indicatorCount: 0, drawingCount: 0 })
           const labels = rows.map((r) => (r.kind === 'item' ? r.label : ''))

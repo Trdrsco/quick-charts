@@ -790,8 +790,8 @@ describe('the chart wires the plane where the contract says it does', () => {
     expect(chartSrc).toContain('ext: extensions.host.serialize()')
     const restoreAt = chartSrc.indexOf('extensions.host.restore(parsed.ext)')
     expect(restoreAt).toBeGreaterThan(-1)
-    // Last in the restore body: the symbol, timeframe, scale and compares are the world the state
-    // describes, so they must already be on screen.
+    // Last in the restore body: the symbol, timeframe, scale and comparisons are the world the
+    // state describes, so they must already be on screen.
     expect(chartSrc.slice(chartSrc.indexOf('compare?.restore(parsed.compares)'), restoreAt).trim().length).toBeGreaterThan(0)
   })
 

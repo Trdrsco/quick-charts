@@ -142,7 +142,7 @@ describe('the chrome composition', () => {
     const second = mount()
     const state = {
       arrangement: '2v', geometry: [{ x: 0, y: 0, w: 1, h: 0.5 }, { x: 0, y: 0.5, w: 1, h: 0.5 }],
-      sync: { symbol: false, interval: true, crosshair: false, time: false, dateRange: false }, active: 0, maximized: 0,
+      sync: { symbol: false, timeframe: true, crosshair: false, time: false, dateRange: false }, active: 0, maximized: 0,
     } as const
     first.doors.layoutChanged(state)
     expect(first.root.querySelector('[aria-label="Layout setup: 2 rows"]')).not.toBeNull()

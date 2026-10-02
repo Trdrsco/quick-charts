@@ -1157,10 +1157,10 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
         widget.layout.saveLoad.detach()
         equal(widget.layout.saveLoad.current(), null, 'detach forgets the binding')
         // ── the templates and drawings families, through the adapter contract ──
-        const templates = adapter.templates('study')
-        const study = await templates.create({ name: 'Bands', content: '{}' })
-        assert(study.kind === 'ok', 'a template creates')
-        const stale = await templates.update({ id: study.ref.id, revision: 'stale' }, { name: 'Bands', content: '{"x":1}' })
+        const templates = adapter.templates('indicator')
+        const template = await templates.create({ name: 'Bands', content: '{}' })
+        assert(template.kind === 'ok', 'a template creates')
+        const stale = await templates.update({ id: template.ref.id, revision: 'stale' }, { name: 'Bands', content: '{"x":1}' })
         equal(stale.kind, 'conflict', 'a template write at a stale revision conflicts')
         equal((await templates.update({ id: 'missing', revision: '1' }, { name: 'x', content: '' })).kind, 'not-found', 'a missing template is not-found')
         const local = (symbol: string, chartId: string): DrawingResourceContext => ({ version: 1, kind: 'chart-local', layoutId: 'desk', chartId, symbol })
@@ -1672,7 +1672,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'compare.placement',
-    title: 'a compare adds at each placement, reads back, and removes',
+    title: 'compare adds a comparison at each placement, reads it back, and removes it',
     needs: ['compare'],
     async run(ctx) {
       const { widget, chart, feed } = await ctx.mount({ symbol: 'ALPHA', features: { compareSymbols: [{ symbol: 'BETA', title: 'Beta' }] } })
@@ -1682,18 +1682,18 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       chart.compare.add('BETA', { placement: 'same-percent' })
       await ctx.settle()
       await ctx.settle()
-      equal(chart.compare.list().length, 1, 'one compare')
+      equal(chart.compare.list().length, 1, 'one comparison')
       equal(chart.compare.list()[0]?.placement, 'same-percent', 'at the asked placement')
       assert(feed.historyCalls.some((c) => c.symbol === 'BETA'), 'the compared symbol was fetched')
       chart.compare.add('BETA', { placement: 'new-pane' })
       await ctx.settle()
-      equal(chart.compare.list()[0]?.placement, 'new-pane', 're-placing moves the compare')
+      equal(chart.compare.list()[0]?.placement, 'new-pane', 're-placing moves the comparison')
       chart.compare.add('GAMMA', { placement: 'new-scale' })
       await ctx.settle()
       await ctx.settle()
-      equal(chart.compare.list().length, 2, 'two compares')
+      equal(chart.compare.list().length, 2, 'two comparisons')
       chart.compare.setVisible('GAMMA', false)
-      equal(chart.compare.list().find((c) => c.symbol === 'GAMMA')?.visible, false, 'a compare hides')
+      equal(chart.compare.list().find((c) => c.symbol === 'GAMMA')?.visible, false, 'a comparison hides')
       equal(widget.commands.execute('chart.compare.remove', 'GAMMA').kind, 'ok', 'remove runs through its command')
       equal(chart.compare.list().length, 1, 'one left')
       chart.compare.remove('BETA')
@@ -1769,7 +1769,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'styles.switch',
-    title: 'every style switches without a refetch and keeps the indicators, the scale and the compares',
+    title: 'every style switches without a refetch and keeps the indicators, the scale and the comparisons',
     needs: ['compare'],
     async run(ctx) {
       const { chart, feed } = await ctx.mount({ symbol: 'ALPHA', indicators: [smaInstance('sma-1')] })
@@ -1789,12 +1789,12 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       equal(refetched.length, 0, 'the charted symbol is not refetched across seven styles')
       equal(chart.indicators.get().length, 1, 'indicator kept')
       equal(chart.scaleMode(), 'percent', 'scale kept')
-      equal(chart.compare.list().length, 1, 'compare kept')
+      equal(chart.compare.list().length, 1, 'comparison kept')
       equal(heard.length, CHART_STYLES.length - 1, 'one event per switch')
     },
   },
   {
-    id: 'styles.switch.compares-not-refetched',
+    id: 'styles.switch.comparisons-not-refetched',
     title: 'a style switch keeps the compared series without refetching their history',
     needs: ['compare'],
     async run(ctx) {
@@ -1805,7 +1805,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       chart.setStyle('line')
       await ctx.settle()
       const extra = feed.historyCalls.slice(history).map((c) => `${c.symbol} ${c.tf}`)
-      equal(extra.length, 0, `no compare refetch on a style switch (asked: ${extra.join('; ')})`)
+      equal(extra.length, 0, `no comparison refetch on a style switch (asked: ${extra.join('; ')})`)
     },
   },
   {

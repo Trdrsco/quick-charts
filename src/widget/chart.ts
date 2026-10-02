@@ -2,7 +2,7 @@
 // drives it through.
 //
 // A widget hosts one or many of these. Everything a chart owns lives in a plane of its own — data,
-// indicators, drawings, compare, replay, session, marks, extensions, the legend, the level menu —
+// indicators, drawings, compare, replay, session, marks, extensions, the legend, the context menu —
 // and this file is the wiring between them plus the handle they add up to. The rule that shapes it:
 // a plane never reaches into another plane's state, it asks this file, and this file owns the
 // mutable truth (the symbol, the timeframe, the style, the bars, the scale) that more than one
@@ -279,11 +279,11 @@ export interface ChartInstanceDeps {
   active(): boolean
   /** The pane element this chart fills. The chart creates its own boxes inside it. */
   container: HTMLElement
-  /** The widget's layer on the document body, themed as the root is. The level menu mounts here
+  /** The widget's layer on the document body, themed as the root is. The context menu mounts here
    *  rather than in this pane's own chrome: it stands over every pane and over whatever the page
    *  stacks around the widget, at viewport coordinates. */
   layer: HTMLElement
-  /** An external widget-level rail replaces the internal per-chart rail. */
+  /** An external widget-level drawing toolbar replaces the internal per-chart drawing toolbar. */
   externalDrawingToolbar?: boolean
   datafeed: ChartDatafeed
   saveLoad: ChartSaveLoadAdapter | null
@@ -370,7 +370,7 @@ export interface ChartInstance {
   /** The layout's chart count moved: the surfaces that read it re-render. */
   layoutChanged(): void
   /** The host's access policy may answer differently: every surface of this chart that reads it
-   *  (the legend's row controls, the level menu if open, the navigation cluster, the drawing
+   *  (the legend's row controls, the context menu if open, the navigation cluster, the drawing
    *  surfaces) reads it again. Nothing stored and nothing drawn on the chart changes. */
   refreshAccess(): void
   /** Run the contributed row bound to a press, at the level under a viewport point on THIS chart.
@@ -444,7 +444,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  null while unknown: the range presets withhold nothing on an unknown depth. */
   let earliestBarSecs: number | null = null
   /** THE price formatter: one per symbol, in the chart's language. The price scale, the crosshair
-   *  and last-price labels, the legend rows, the level menu, the drawing labels, the study scales
+   *  and last-price labels, the legend rows, the context menu, the drawing labels, the study scales
    *  and the extension seam all write through it, so no surface carries its own precision. */
   let symbolFormatter: PriceFormatter = createPriceFormatter(UNRESOLVED_PRICE_FORMAT, { locale: i18n.tag() })
   /** Increments on every symbol or timeframe switch and at dispose; stale async work checks it. */
@@ -460,8 +460,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   /** The level the open menu was raised at, so a copy runs on that and not on wherever the pointer
    *  wandered to while the menu was up. */
   let menuLevel: number | null = null
-  /** The standing drawing choices. ONE copy: the layer consults it through a getter, and a rail or
-   *  a host control changes it through `setDrawingPreferences`, so nothing can drift out of step. */
+  /** The standing drawing choices. ONE copy: the layer consults it through a getter, and a drawing
+   *  toolbar or a host control changes it through `setDrawingPreferences`, so nothing can drift out
+   *  of step. */
   let drawingPrefs: DrawingPreferences = readDrawingPreferences()
 
   // ── The appearance ladder. Floor: the built-in defaults, tinted by the mode's series pair, with
@@ -1014,7 +1015,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     setTouchAction: (value) => {
       gestures.style.touchAction = value
     },
-    // A contributed layer rides the same eye the rail drives, through the drawing plane's verbs.
+    // A contributed layer rides the same eye the drawing toolbar drives, through the drawing
+    // plane's verbs.
     hideState: () => drawings.verbs?.hide() ?? { mode: 'drawings', on: false },
     setHide: (state) => drawings.verbs?.setHide(state),
     hideLayersChanged: () => drawings.syncHideLayers(),
@@ -1127,7 +1129,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     )
     if (volumeInstance()) paintVolume()
     indicators.recompute()
-    // Compares clip to the main window, so every reshape re-clips them here: paintAll is the one
+    // Comparisons clip to the main window, so every reshape re-clips them here: paintAll is the one
     // choke point every load, scroll-back, snapshot and replay path exits by.
     compare?.sync()
     // An extension sees what is DRAWN. A bar the active subsession filters out is not on screen,
@@ -1544,10 +1546,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // ── The handle ───────────────────────────────────────────────────────────────────────────────
   function setStyle(next: ChartStyleId): void {
     if (disposed || next === style || !deps.styles.includes(next)) return
-    // A style switch is presentation. The loaded bars, the indicators, the drawings, the compares,
-    // the scale and the visible range all survive it, and nothing refetches: only the visible
-    // series is replaced, and the same bar model is painted into the new one. Everything with a
-    // long life is bound to the anchor, so nothing else here is torn down.
+    // A style switch is presentation. The loaded bars, the indicators, the drawings, the
+    // comparisons, the scale and the visible range all survive it, and nothing refetches: only the
+    // visible series is replaced, and the same bar model is painted into the new one. Everything
+    // with a long life is bound to the anchor, so nothing else here is torn down.
     const keep = chart.timeScale().getVisibleLogicalRange()
     const previous = series
     style = next
@@ -1607,8 +1609,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // The saved appearance applies as a RUNTIME layer: a viewer's saved look beats the host's
     // constructor values, exactly the precedence the option contract states.
     if (parsed.appearance) handle.applyAppearance({ appearance: parsed.appearance })
-    // Compares restore AFTER the scale: the blob's own scale is the truth of how it was saved, so
-    // the policy only re-arms the flip-back for compares the restore brings in.
+    // Comparisons restore AFTER the scale: the blob's own scale is the truth of how it was saved,
+    // so the policy only re-arms the flip-back for comparisons the restore brings in.
     compare?.restore(parsed.compares)
     // In COMBINED mode the blob carries the drawings that were on the chart, so restoring it puts
     // them back; in separate mode it carries none and the drawings family is their only path.

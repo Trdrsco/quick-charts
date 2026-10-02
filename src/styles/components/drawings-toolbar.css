@@ -1,9 +1,9 @@
-/* The drawing toolbar: the rail down the chart's inline-start edge, its split cells, its flyouts
+/* The drawing toolbar: the column down the chart's inline-start edge, its split cells, its flyouts
  * and menus, and the favorites bar. Every rule is scoped to the widget root like the rest of the
  * package stylesheet, every value comes from a generated custom property, and geometry is stated
- * with logical properties so the rail flips with the reading direction.
+ * with logical properties so the toolbar flips with the reading direction.
  *
- * The chrome layer is inert. The rail is a surface the pointer must stop at, so it opts in as a
+ * The chrome layer is inert. The toolbar is a surface the pointer must stop at, so it opts in as a
  * whole; the gaps between its buttons must not let a drag through to the canvas underneath. */
 
 [data-qc-theme].qc-drawing-toolbar-host {
@@ -32,7 +32,7 @@
   pointer-events: auto;
 }
 
-/* The chart and its overlays share a reserved content box. Only the rail reaches back into the
+/* The chart and its overlays share a reserved content box. Only the toolbar reaches back into the
  * leading column, so axis labels and drawing coordinates never pass underneath its buttons. */
 [data-qc-theme] .qc-chrome[data-qc-drawing-toolbar='true'] .qc-drawing-toolbar {
   inset-inline-start: -52px;
@@ -72,7 +72,7 @@
   width: 100%;
 }
 
-[data-qc-theme] .qc-drawing-rail-button {
+[data-qc-theme] .qc-drawing-toolbar-button {
   position: relative;
   z-index: 0;
   display: flex;
@@ -87,8 +87,8 @@
   border-radius: var(--qc-chrome-radius);
 }
 
-/* Keep the full rail as the hit area; the inset square is only its visual feedback. */
-[data-qc-theme] .qc-drawing-rail-button::before {
+/* Keep the full toolbar width as the hit area; the inset square is only its visual feedback. */
+[data-qc-theme] .qc-drawing-toolbar-button::before {
   position: absolute;
   z-index: -1;
   inset-block-start: 50%;
@@ -102,64 +102,64 @@
   transition: background-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
-[data-qc-theme] .qc-drawing-rail-button:hover,
-[data-qc-theme] .qc-drawing-rail-button:active,
-[data-qc-theme] .qc-drawing-rail-button:focus-visible {
+[data-qc-theme] .qc-drawing-toolbar-button:hover,
+[data-qc-theme] .qc-drawing-toolbar-button:active,
+[data-qc-theme] .qc-drawing-toolbar-button:focus-visible {
   color: var(--qc-text-primary);
   background: none;
 }
 
 /* The tool's inset square and the arrow's strip share the hover fill, so where they meet no seam
  * forms. */
-[data-qc-theme] .qc-drawing-rail-button:hover::before,
-[data-qc-theme] .qc-drawing-rail-button:focus-visible::before,
-[data-qc-theme] .qc-drawing-rail-button:active::before {
+[data-qc-theme] .qc-drawing-toolbar-button:hover::before,
+[data-qc-theme] .qc-drawing-toolbar-button:focus-visible::before,
+[data-qc-theme] .qc-drawing-toolbar-button:active::before {
   background: var(--qc-state-hover);
 }
 
-[data-qc-theme] .qc-drawing-rail-button[data-qc-active='true'] {
+[data-qc-theme] .qc-drawing-toolbar-button[data-qc-active='true'] {
   color: var(--qc-text-primary);
   background: none;
 }
 
-/* The armed tool wears a NEUTRAL inset wash and the primary ink, the pinned rail recipe. The
- * accent-tinted selected role belongs to a chosen row, not to a tool the rail is holding. */
-[data-qc-theme] .qc-drawing-rail-button[data-qc-active='true']::before {
+/* The armed tool wears a NEUTRAL inset wash and the primary ink, the pinned toolbar recipe. The
+ * accent-tinted selected role belongs to a chosen row, not to a tool the toolbar is holding. */
+[data-qc-theme] .qc-drawing-toolbar-button[data-qc-active='true']::before {
   background: var(--qc-state-pressed);
 }
 
-[data-qc-theme] .qc-drawing-rail-button[data-qc-active='true']:hover::before {
+[data-qc-theme] .qc-drawing-toolbar-button[data-qc-active='true']:hover::before {
   background: var(--qc-state-pressedHover);
 }
 
-/* A mode the rail holds, staying in drawing mode or showing the favorites bar, inverts: the on fill
- * behind the inverse ink, a step apart under the pointer. */
-[data-qc-theme] .qc-drawing-rail-mode[data-qc-active='true'] {
+/* A mode the toolbar holds, staying in drawing mode or showing the favorites bar, inverts: the on
+ * fill behind the inverse ink, a step apart under the pointer. */
+[data-qc-theme] .qc-drawing-toolbar-mode[data-qc-active='true'] {
   color: var(--qc-text-inverse);
 }
 
-[data-qc-theme] .qc-drawing-rail-mode[data-qc-active='true']::before {
+[data-qc-theme] .qc-drawing-toolbar-mode[data-qc-active='true']::before {
   background: var(--qc-control-on);
 }
 
-[data-qc-theme] .qc-drawing-rail-mode[data-qc-active='true']:hover::before {
+[data-qc-theme] .qc-drawing-toolbar-mode[data-qc-active='true']:hover::before {
   background: var(--qc-control-onHover);
 }
 
-[data-qc-theme] .qc-drawing-rail-button:focus-visible {
+[data-qc-theme] .qc-drawing-toolbar-button:focus-visible {
   outline-offset: -3px;
 }
 
-[data-qc-theme] .qc-drawing-rail-button[disabled] {
+[data-qc-theme] .qc-drawing-toolbar-button[disabled] {
   color: var(--qc-text-disabled);
   background: none;
 }
 
-[data-qc-theme] .qc-drawing-rail-button[disabled]::before {
+[data-qc-theme] .qc-drawing-toolbar-button[disabled]::before {
   background: none;
 }
 
-[data-qc-theme] .qc-drawing-rail-arrow {
+[data-qc-theme] .qc-drawing-toolbar-arrow {
   position: absolute;
   inset-block: 2px;
   inset-inline-end: 0;
@@ -172,7 +172,7 @@
   color: var(--qc-chrome-caret);
   background: none;
   border: 0;
-  /* Rounded on the inboard side only. The strip ends flush against the rail's own edge, so a
+  /* Rounded on the inboard side only. The strip ends flush against the toolbar's own edge, so a
    * radius there would round a corner that has nothing to round away from. */
   border-start-start-radius: 4px;
   border-end-start-radius: 4px;
@@ -183,40 +183,40 @@
 }
 
 /* The chevron turns to face the panel: pointing out at where the flyout will appear while closed,
- * back at the rail once it is open. */
-[data-qc-theme] .qc-drawing-rail-arrow svg {
+ * back at the toolbar once it is open. */
+[data-qc-theme] .qc-drawing-toolbar-arrow svg {
   transition: transform var(--qc-motion-durationSlower) var(--qc-motion-easingSpring);
 }
 
-[data-qc-theme] .qc-drawing-rail-arrow[aria-expanded='true'] svg {
+[data-qc-theme] .qc-drawing-toolbar-arrow[aria-expanded='true'] svg {
   transform: rotate(180deg);
 }
 
-[data-qc-theme] [dir='rtl'] .qc-drawing-rail-arrow svg,
-[data-qc-theme][dir='rtl'] .qc-drawing-rail-arrow svg {
+[data-qc-theme] [dir='rtl'] .qc-drawing-toolbar-arrow svg,
+[data-qc-theme][dir='rtl'] .qc-drawing-toolbar-arrow svg {
   transform: scaleX(-1);
 }
 
-[data-qc-theme] [dir='rtl'] .qc-drawing-rail-arrow[aria-expanded='true'] svg,
-[data-qc-theme][dir='rtl'] .qc-drawing-rail-arrow[aria-expanded='true'] svg {
+[data-qc-theme] [dir='rtl'] .qc-drawing-toolbar-arrow[aria-expanded='true'] svg,
+[data-qc-theme][dir='rtl'] .qc-drawing-toolbar-arrow[aria-expanded='true'] svg {
   transform: scaleX(-1) rotate(180deg);
 }
 
-[data-qc-theme] .qc-drawing-cell:hover .qc-drawing-rail-arrow,
-[data-qc-theme] .qc-drawing-rail-arrow:focus-visible,
-[data-qc-theme] .qc-drawing-rail-arrow[aria-expanded='true'] {
+[data-qc-theme] .qc-drawing-cell:hover .qc-drawing-toolbar-arrow,
+[data-qc-theme] .qc-drawing-toolbar-arrow:focus-visible,
+[data-qc-theme] .qc-drawing-toolbar-arrow[aria-expanded='true'] {
   opacity: 1;
 }
 
 /* The arrow keeps its caret ink; its strip takes the hover fill under the pointer and while its
  * flyout is open. */
-[data-qc-theme] .qc-drawing-rail-arrow:hover,
-[data-qc-theme] .qc-drawing-rail-arrow[aria-expanded='true'] {
+[data-qc-theme] .qc-drawing-toolbar-arrow:hover,
+[data-qc-theme] .qc-drawing-toolbar-arrow[aria-expanded='true'] {
   background: var(--qc-state-hover);
 }
 
-/* Three rules, three recipes. The RAIL's spans 36px of the rail with 6px above and below. A tool
- * flyout's section rule and a menu's rule span the content area inside the panel's 6px side
+/* Three rules, three recipes. The TOOLBAR's spans 36px of the toolbar with 6px above and below. A
+ * tool flyout's section rule and a menu's rule span the content area inside the panel's 6px side
  * padding, with 6px above and below. */
 [data-qc-theme] .qc-drawing-divider {
   flex: 0 0 auto;
@@ -508,11 +508,11 @@
 /* Forced colors: a row or tab the viewer has chosen reads as the system highlight, since the
  * accent fill it wears otherwise is discarded. */
 @media (forced-colors: active) {
-  [data-qc-theme] .qc-drawing-rail-button[data-qc-active='true'] {
+  [data-qc-theme] .qc-drawing-toolbar-button[data-qc-active='true'] {
     color: HighlightText;
   }
 
-  [data-qc-theme] .qc-drawing-rail-button[data-qc-active='true']::before,
+  [data-qc-theme] .qc-drawing-toolbar-button[data-qc-active='true']::before,
   [data-qc-theme] .qc-drawing-favorite[data-qc-active='true']::before {
     background: Highlight;
     forced-color-adjust: none;

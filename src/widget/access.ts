@@ -74,8 +74,8 @@ export function commandShown(access: AccessPolicy | undefined, id: string): bool
   return !hidesRefused(access) || commandPermitted(access, id)
 }
 
-/** Whether the chart's own controls draw a drawing tool: in the rail's flyouts, as a group's face,
- *  on the favorites bar and in the glyph picker. */
+/** Whether the chart's own controls draw a drawing tool: in the drawing toolbar's flyouts, as a
+ *  group's face, on the favorites bar and in the glyph picker. */
 export function drawingToolShown(access: AccessPolicy | undefined, tool: string): boolean {
   return !hidesRefused(access) || drawingToolPermitted(access, tool)
 }

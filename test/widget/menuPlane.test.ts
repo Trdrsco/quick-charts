@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// The level menu as the chart mounts it, over a real registry: a row is offered exactly when its
+// The context menu as the chart mounts it, over a real registry: a row is offered exactly when its
 // command would run, and picking it runs that command and nothing else. The paste row is the one
 // whose presence follows chart state (a copied drawing on the clipboard), so it is the row pinned.
 import { afterEach, describe, expect, it } from 'vitest'
@@ -47,7 +47,7 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-describe('the level menu over the registry', () => {
+describe('the context menu over the registry', () => {
   it('names a command for every row it renders, including paste', () => {
     expect(MENU_COMMAND.paste).toBe('chart.drawings.paste')
     expect(MENU_COMMAND.settings).toBeUndefined()

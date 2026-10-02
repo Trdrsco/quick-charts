@@ -19,7 +19,7 @@ describe('the drawing preference record', () => {
       stayInDrawingMode: true,
       removeLocked: true,
       syncAcrossPanes: false,
-      railTools: { trend: 'ray' },
+      drawingToolbarTools: { trend: 'ray' },
       favorites: { tools: ['ray'], visible: false, position: { x: 4, y: 8 } },
     }
     expect(parseDrawingPreferences(serializeDrawingPreferences(wanted))).toEqual(wanted)
@@ -37,8 +37,8 @@ describe('the drawing preference record', () => {
     expect(parsed.stayInDrawingMode).toBe(DEFAULT_DRAWING_PREFERENCES.stayInDrawingMode)
   })
 
-  it('keeps only string entries out of a rail-tool record written by something else', () => {
-    expect(parseDrawingPreferences(JSON.stringify({ railTools: { trend: 'ray', shapes: 7, glyphs: null } })).railTools).toEqual({
+  it('keeps only string entries out of a toolbar-tool record written by something else', () => {
+    expect(parseDrawingPreferences(JSON.stringify({ drawingToolbarTools: { trend: 'ray', shapes: 7, glyphs: null } })).drawingToolbarTools).toEqual({
       trend: 'ray',
     })
   })

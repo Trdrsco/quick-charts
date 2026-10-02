@@ -1,12 +1,12 @@
-// The drawing product models: the rail's shape, the eye, the pointer, the magnet, what a sweep
-// takes, the favorites, and what copying and typing do. Every one of these was a condition inside a
-// React component before; a test can reach them now, which is the point of moving them.
+// The drawing product models: the drawing toolbar's shape, the eye, the pointer, the magnet, what a
+// sweep takes, the favorites, and what copying and typing do. Every one of these was a condition
+// inside a React component before; a test can reach them now, which is the point of moving them.
 import { describe, expect, it } from 'vitest'
 import {
   ARROW_TYPES,
   blanks,
   BRUSH_TYPES,
-  buildRailGroups,
+  buildDrawingToolbarGroups,
   cancelText,
   CARD_TYPES,
   chooseHideMode,
@@ -35,9 +35,9 @@ import {
   MAX_FAVORITE_TOOLS,
   opensTextEditor,
   pruneFavorites,
-  railFaceOf,
-  RAIL_PLAN,
-  rememberRailTool,
+  drawingToolbarFaceOf,
+  DRAWING_TOOLBAR_PLAN,
+  rememberDrawingToolbarTool,
   removableDrawings,
   removeRows,
   toggleFavorite,
@@ -50,12 +50,12 @@ import {
   type HideState,
 } from '../../src/drawings/index'
 
-describe('the rail', () => {
-  const groups = buildRailGroups()
+describe('the drawing toolbar', () => {
+  const groups = buildDrawingToolbarGroups()
 
   it('has the seven groups the plan names, in order', () => {
     expect(groups.map((g) => g.id)).toEqual(['trend', 'fib-gann', 'patterns', 'forecast', 'shapes', 'annotation', 'glyphs'])
-    expect(RAIL_PLAN).toHaveLength(7)
+    expect(DRAWING_TOOLBAR_PLAN).toHaveLength(7)
   })
 
   it('shows every catalog tool exactly once, apart from Measure, which is a pointer mode', () => {
@@ -93,7 +93,7 @@ describe('the rail', () => {
   })
 
   it('drops a section, and a group, that a trimmed catalog leaves empty', () => {
-    const empty = buildRailGroups({ ...drawingTools, get: () => undefined, byCategory: () => [] })
+    const empty = buildDrawingToolbarGroups({ ...drawingTools, get: () => undefined, byCategory: () => [] })
     expect(empty).toEqual([])
   })
 
@@ -105,18 +105,18 @@ describe('the rail', () => {
 
   it('wears the last-picked tool per group, and the first tool before anything is picked', () => {
     const trend = groups[0]!
-    expect(railFaceOf(trend, {})).toBe(trend.sections[0]!.tools[0]!.type)
-    expect(railFaceOf(trend, { trend: 'ray' })).toBe('ray')
+    expect(drawingToolbarFaceOf(trend, {})).toBe(trend.sections[0]!.tools[0]!.type)
+    expect(drawingToolbarFaceOf(trend, { trend: 'ray' })).toBe('ray')
     // A remembered tool the group no longer shows falls back rather than leaving a blank button.
-    expect(railFaceOf(trend, { trend: 'not_a_tool' })).toBe(trend.sections[0]!.tools[0]!.type)
+    expect(drawingToolbarFaceOf(trend, { trend: 'not_a_tool' })).toBe(trend.sections[0]!.tools[0]!.type)
   })
 
   it('remembers a pick against its own group and leaves the record it was handed alone', () => {
     const before = { shapes: 'rectangle' }
-    const after = rememberRailTool(groups, before, 'ray')
+    const after = rememberDrawingToolbarTool(groups, before, 'ray')
     expect(after).toEqual({ shapes: 'rectangle', trend: 'ray' })
     expect(before).toEqual({ shapes: 'rectangle' })
-    expect(rememberRailTool(groups, before, 'measure')).toEqual(before)
+    expect(rememberDrawingToolbarTool(groups, before, 'measure')).toEqual(before)
   })
 })
 

@@ -143,7 +143,7 @@ export const THEME_ROLES = [
   { id: 'text.fontSizeMicro', family: 'text', kind: 'length', description: 'Size of the smallest chip and hint text.' },
 
   // ── chrome: the surfaces and borders of the chart's own controls ────────────────────────────
-  { id: 'chrome.surface', family: 'chrome', kind: 'color', description: 'The fill of toolbars, rails, bars, and panels.' },
+  { id: 'chrome.surface', family: 'chrome', kind: 'color', description: 'The fill of toolbars, bars, and panels.' },
   { id: 'chrome.surfaceRaised', family: 'chrome', kind: 'color', description: 'The fill of a control sitting on a chrome surface, such as a button or field.' },
   { id: 'chrome.border', family: 'chrome', kind: 'color', description: 'The ordinary border of a control or panel.' },
   { id: 'chrome.borderStrong', family: 'chrome', kind: 'color', description: 'A border or divider that must stay visible at a glance.', contrast: [{ over: 'chrome.surface', min: 3 }] },
@@ -265,7 +265,7 @@ export const THEME_ROLES = [
   { id: 'motion.durationBase', family: 'motion', kind: 'duration', description: 'An ordinary transition: a modal dialog and its backdrop opening and closing, and the replay row entering and leaving.' },
   { id: 'motion.durationModerate', family: 'motion', kind: 'duration', description: 'A control moving to its new state, such as a switch knob sliding.' },
   { id: 'motion.durationSlow', family: 'motion', kind: 'duration', description: 'A small mark settling, such as a disclosure caret turning or a checkbox filling.' },
-  { id: 'motion.durationSlower', family: 'motion', kind: 'duration', description: 'A larger mark turning, such as the drawing rail\'s chevron.' },
+  { id: 'motion.durationSlower', family: 'motion', kind: 'duration', description: 'A larger mark turning, such as the drawing toolbar\'s chevron.' },
   { id: 'motion.easingStandard', family: 'motion', kind: 'easing', description: 'The timing of an ordinary transition: a modal dialog box, the replay row, a caret dip, a checkbox fill.' },
   { id: 'motion.easingOut', family: 'motion', kind: 'easing', description: 'The timing of a motion that settles as it ends: a modal backdrop fading, a switch knob sliding.' },
   { id: 'motion.easingLinear', family: 'motion', kind: 'easing', description: 'The timing of a color or opacity change under the pointer.' },

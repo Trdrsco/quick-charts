@@ -16,14 +16,14 @@ export type SymbolMarkPainter = (request: { symbol: string; host: HTMLElement; s
 /** Paints the mark of the venue a market lists on, the same way. */
 export type VenueMarkPainter = (request: { exchange: string; host: HTMLElement; size: number }) => (() => void) | void
 
-/** Paints the mark of a data provider, where a row names a provider rather than a venue. */
-export type ProviderMarkPainter = (request: { provider: string; host: HTMLElement; size: number }) => (() => void) | void
+/** Paints the mark of a data source, where a row names a data source rather than a venue. */
+export type DataSourceMarkPainter = (request: { dataSource: string; host: HTMLElement; size: number }) => (() => void) | void
 
 /** Every painter the host lent, as the chart carries them: null where it lent none. */
 export interface MarkPainters {
   readonly symbol: SymbolMarkPainter | null
   readonly venue: VenueMarkPainter | null
-  readonly provider: ProviderMarkPainter | null
+  readonly dataSource: DataSourceMarkPainter | null
 }
 
 /** The host's hooks, as an entry point takes them. Each is the host's to lend or withhold, and
@@ -44,9 +44,9 @@ export interface MarkPainterHooks {
    *  into and the size of the box, and returns a disposer; absent, a venue wears its initial on the
    *  neutral disc the package draws itself. */
   venueMark?: VenueMarkPainter
-  /** The host's mark for the data provider a row names where it names no venue, painted in that
-   *  row's source cell the same way. Absent, the provider wears its initial on the neutral disc. */
-  providerMark?: ProviderMarkPainter
+  /** The host's mark for the data source a row names where it names no venue, painted in that
+   *  row's source cell the same way. Absent, a data source wears its initial on a neutral disc. */
+  dataSourceMark?: DataSourceMarkPainter
 }
 
 /** The one place a host's optional hooks become the value the chart carries. Every entry point
@@ -55,6 +55,6 @@ export function resolveMarkPainters(hooks: MarkPainterHooks): MarkPainters {
   return {
     symbol: hooks.symbolMark ?? null,
     venue: hooks.venueMark ?? null,
-    provider: hooks.providerMark ?? null,
+    dataSource: hooks.dataSourceMark ?? null,
   }
 }

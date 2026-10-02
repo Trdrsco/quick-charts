@@ -56,9 +56,9 @@ export function themeBlock(mode: string, theme: Readonly<Record<string, string |
 /** The cascade layers the stylesheet declares. The built-in mode blocks sit in the tokens layer
  *  and every recipe in the chart layer, so a host decides where its own CSS stands by declaring
  *  the order once, before any product stylesheet loads. The names and their relative order are
- *  public: a host writes them into its ordering statement, and a later product declares its own
- *  layers after them. */
-export const STYLE_LAYERS = { tokens: 'trdrs.tokens', chart: 'trdrs.chart' } as const
+ *  public: a host writes them into its ordering statement, after its reset and before its own
+ *  overrides. */
+export const STYLE_LAYERS = { tokens: 'quickcharts.tokens', chart: 'quickcharts.chart' } as const
 
 /** The statement this stylesheet opens with: the layers it uses, in order. It never names a host
  *  layer, because the host owns the complete ordering and this sheet only takes its place in it. */
@@ -67,7 +67,7 @@ export const LAYER_ORDER_STATEMENT = `@layer ${STYLE_LAYERS.tokens}, ${STYLE_LAY
 /** The ordering a host declares in its first stylesheet, before any product CSS: its own reset
  *  first, the product layers, then the layer its intentional overrides live in. Documented, not
  *  emitted: a product that wrote a host layer would be deciding the host's cascade for it. */
-export const HOST_LAYER_ORDER = `@layer reset, ${STYLE_LAYERS.tokens}, ${STYLE_LAYERS.chart}, trdrs.platform, host;`
+export const HOST_LAYER_ORDER = `@layer reset, ${STYLE_LAYERS.tokens}, ${STYLE_LAYERS.chart}, host;`
 
 /** What every duration role resolves to while the reader prefers reduced motion. */
 export const REDUCED_MOTION_DURATION = '0ms'

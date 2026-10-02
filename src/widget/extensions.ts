@@ -63,7 +63,7 @@ export interface ExtensionsDeps {
   disposed(): boolean
   /** Sets the one touch-action write the chart makes, when an extension locks pan and zoom. */
   setTouchAction(value: string): void
-  /** The rail's eye, for the layers extensions contribute to it. */
+  /** The drawing toolbar's eye, for the layers extensions contribute to it. */
   hideState(): HideState
   setHide(state: HideState): void
   hideLayersChanged(): void

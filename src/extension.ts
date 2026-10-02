@@ -132,7 +132,7 @@ export interface ChartExtensionIcon {
   paths: readonly ChartExtensionIconPath[]
 }
 
-/** A row an extension adds to the chart's level menu. It carries its own action: the chart routes
+/** A row an extension adds to the chart's context menu. It carries its own action: the chart routes
  *  nothing, so a contributed row cannot collide with a built-in id. */
 export interface ChartExtensionMenuItem {
   id: string
@@ -148,9 +148,9 @@ export interface ChartExtensionMenuItem {
   run(): void
 }
 
-/** A layer an extension draws that the rail's eye can blank. It joins the eye's menu after the
- *  chart's own layers and before "Hide all", which blanks it too, and it wears the layer's own two
- *  marks on the eye while it is the chosen subject. */
+/** A layer an extension draws that the drawing toolbar's eye can blank. It joins the eye's menu
+ *  after the chart's own layers and before "Hide all", which blanks it too, and it wears the
+ *  layer's own two marks on the eye while it is the chosen subject. */
 export interface ChartExtensionHideLayer {
   /** Unique within one chart; the mode the hide command names for this layer. */
   id: string
@@ -164,7 +164,8 @@ export interface ChartExtensionHideLayer {
 }
 
 /** The chart's side of a contributed layer: read whether it is blanked and flip it, through the
- *  same eye the rail drives, so a switch on the extension's own surface and the eye agree. */
+ *  same eye the drawing toolbar drives, so a switch on the extension's own surface and the eye
+ *  agree. */
 export interface ChartExtensionHideLayerHandle {
   hidden(): boolean
   setHidden(hidden: boolean): void
@@ -199,7 +200,7 @@ export interface ChartExtensionContext {
   overlay: HTMLElement
   /** The widget's layer on the document body, themed as the root is. A popover that must stand
    *  over every pane and over whatever the page stacks around the widget mounts HERE, at viewport
-   *  coordinates; the level menu does the same. */
+   *  coordinates; the context menu does the same. */
   layer: HTMLElement
   /** The chart's effective canvas palette: the mode's resolved theme with any applied appearance
    *  overrides on top, projected onto the values a canvas draws with. */
@@ -286,8 +287,8 @@ export interface ChartExtensionHostDeps {
    *  same menu, keyboard and host-automation surfaces as a built-in verb, and is refused by the same
    *  access policy. */
   registerCommand(command: ChartExtensionCommand): () => void
-  /** What the rail's eye is doing, and the one writer that changes it. A contributed layer's
-   *  handle reads and flips through these, so it can never disagree with the eye. */
+  /** What the drawing toolbar's eye is doing, and the one writer that changes it. A contributed
+   *  layer's handle reads and flips through these, so it can never disagree with the eye. */
   hideState(): HideState
   setHide(state: HideState): void
   /** The set of contributed layers changed: the eye re-lists them and re-applies its state. */

@@ -20,8 +20,8 @@ import {
   DEFAULT_HIDE_STATE,
   blanks,
   isBuiltInHideMode,
-  rememberRailTool,
-  buildRailGroups,
+  rememberDrawingToolbarTool,
+  buildDrawingToolbarGroups,
   toggleFavorite,
   type CursorMode,
   type DrawingAssetPort,
@@ -140,7 +140,8 @@ export interface DrawingsLayer {
   /** The set of contributed layers changed: re-apply what the eye is doing to the layers that
    *  exist now, releasing a subject that is gone, and re-list the eye's menu. */
   syncHideLayers(): void
-  /** Private shared-rail transfer. It changes only the armed tool, never selection or gestures. */
+  /** Private shared drawing toolbar transfer. It changes only the armed tool, never selection or
+   *  gestures. */
   applyToolIntent(arg: unknown): void
   rebindIdentity(id: string): void
   destroy(): void
@@ -195,7 +196,7 @@ export interface DrawingsDeps {
   hideLayers(): readonly ChartExtensionHideLayer[]
   /** Charts in the layout, for the sync control. */
   chartCount(): number
-  /** The external rail selected a tool for the layout rather than for one pane. */
+  /** The external drawing toolbar selected a tool for the layout rather than for one pane. */
   onSharedToolIntent?(arg: unknown): void
   /** Placement/cancel changed this pane's armed tool. */
   onToolState?(tool: string | null): void
@@ -249,7 +250,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     indicators: { hidden: 'drawing.statusIndicatorsHidden', shown: 'drawing.statusIndicatorsShown' },
     all: { hidden: 'drawing.statusAllHidden', shown: 'drawing.statusAllShown' },
   }
-  const groups = buildRailGroups()
+  const groups = buildDrawingToolbarGroups()
 
   // The surfaces wire to the layer's events through a mutable events object: the layer needs its
   // events at construction and the surfaces need the layer's handle, so filling the object after
@@ -303,8 +304,8 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
   /** A tool the list leaves out or the access policy refuses is never armed, whichever door asked
    *  for it. */
   const permitted = (tool: string | null): boolean => offered(tool) && drawingToolPermitted(deps.access, tool)
-  // What the rail, the favorites bar, the glyph picker and the selection's bar draw: every offered
-  // tool, unless the host hides what its policy refuses.
+  // What the drawing toolbar, the favorites bar, the glyph picker and the selection's bar draw:
+  // every offered tool, unless the host hides what its policy refuses.
   const toolShown = (tool: string): boolean => offered(tool) && drawingToolShown(deps.access, tool)
   const shown = (command: string): boolean => commandShown(deps.access, command)
 
@@ -339,7 +340,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
           removeLocked: p.removeLocked,
           counts: handle.counts(),
           indicatorCount: deps.indicators.count(),
-          railTools: p.railTools,
+          drawingToolbarTools: p.drawingToolbarTools,
           favorites: p.favorites,
           recentGlyphs: p.recentGlyphs,
           layoutCharts: deps.chartCount(),
@@ -515,7 +516,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       }
       handle.armTool(tool, props)
       if (tool) {
-        const patch: Partial<DrawingPreferences> = { railTools: rememberRailTool(groups, prefs().railTools, tool) }
+        const patch: Partial<DrawingPreferences> = { drawingToolbarTools: rememberDrawingToolbarTool(groups, prefs().drawingToolbarTools, tool) }
         const glyph = props && typeof props.glyph === 'string' ? props.glyph : null
         if (glyph) patch.recentGlyphs = pushRecentGlyph(prefs().recentGlyphs, glyph)
         write(patch)

@@ -777,8 +777,8 @@ describe('a style switch', () => {
     expect(visible?.options.lastValueVisible).toBe(true)
   })
 
-  it('is presentation only: nothing refetches, and the compares, indicators and visible range survive it', async () => {
-    // The compare's history is shorter than the main window, the case that tempts a repaint to
+  it('is presentation only: nothing refetches, and the comparisons, indicators and visible range survive it', async () => {
+    // The comparison's history is shorter than the main window, the case that tempts a repaint to
     // re-ask the feed for a span it already answered.
     const feed = scriptedFeed({ history: (symbol) => Promise.resolve({ bars: symbol === 'NQ' ? bars(2, 1_700_000_180) : bars(5), noData: false }) })
     const { handle, renderer } = mountChart(feed.feed, { features: { compare: true } })

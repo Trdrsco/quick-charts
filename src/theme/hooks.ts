@@ -37,7 +37,7 @@ export const STYLE_HOOKS = [
   },
   {
     className: 'qc-drawing-toolbar',
-    purpose: 'The drawing rail beside the plot.',
+    purpose: 'The drawing toolbar beside the plot.',
     states: [{ attribute: 'aria-orientation', description: 'vertical beside the plot, horizontal in a host row.' }],
     customization: ['background-color', 'border', 'padding', 'gap', 'box-shadow'],
   },

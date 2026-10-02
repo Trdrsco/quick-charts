@@ -7,7 +7,7 @@
 // rewritten because a control is not drawn. Every other door refuses exactly as it does by default.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
-import { buildRailGroups } from '../../src/drawings/index'
+import { buildDrawingToolbarGroups } from '../../src/drawings/index'
 import { createChartI18n } from '../../src/i18n'
 import { mountMenu } from '../../src/contextMenuUi'
 import { createIconDiagnostics } from '../../src/ui/icons/draw'
@@ -59,15 +59,15 @@ function livePolicy(refused: 'disable' | 'hide' | undefined, start: { commands?:
   return { access, denied }
 }
 
-const groups = buildRailGroups()
+const groups = buildDrawingToolbarGroups()
 const trend = groups.find((group) => group.id === 'trend')!
 const channels = trend.sections.find((section) => section.label === 'drawing.sectionChannels')!.tools.map((tool) => tool.type)
 const firstTrendTool = trend.sections[0]!.tools[0]!.type
 const shapes = groups.find((group) => group.id === 'shapes')!
 const allShapes = shapes.sections.flatMap((section) => section.tools.map((tool) => tool.type))
 
-const rail = (container: HTMLElement): HTMLElement => container.querySelector<HTMLElement>('.qc-drawing-toolbar-column')!
-const groupArrow = (container: HTMLElement, label: string): HTMLButtonElement => rail(container).querySelector<HTMLButtonElement>(`button[aria-label="${label} menu"]`)!
+const toolbar = (container: HTMLElement): HTMLElement => container.querySelector<HTMLElement>('.qc-drawing-toolbar-column')!
+const groupArrow = (container: HTMLElement, label: string): HTMLButtonElement => toolbar(container).querySelector<HTMLButtonElement>(`button[aria-label="${label} menu"]`)!
 /** Open a group's flyout and read its section headings and its tool rows. */
 const flyout = (container: HTMLElement, label: string): { sections: string[]; tools: string[]; disabled: string[] } => {
   groupArrow(container, label).click()
@@ -116,7 +116,7 @@ describe("drawing tools under refused: 'hide'", () => {
     for (const tool of [...channels, firstTrendTool]) expect(read.tools).not.toContain(tool)
     expect(read.disabled).toEqual([])
     // The group's face wears the first tool it still offers.
-    const face = groupArrow(container, 'Trend tools').closest('.qc-drawing-cell')!.querySelector<HTMLButtonElement>('.qc-drawing-rail-button')!
+    const face = groupArrow(container, 'Trend tools').closest('.qc-drawing-cell')!.querySelector<HTMLButtonElement>('.qc-drawing-toolbar-button')!
     groupArrow(container, 'Trend tools').click()
     const first = document.querySelector('.qc-drawing-flyout [data-tool] .qc-menu-label')!.textContent
     groupArrow(container, 'Trend tools').click()
@@ -232,11 +232,11 @@ describe("command controls under refused: 'hide'", () => {
     expect(widget.commands.execute('chart.replay.start').kind).toBe('denied')
   })
 
-  it('keeps a state-unavailable rail control drawn and disabled', async () => {
+  it('keeps a state-unavailable toolbar control drawn and disabled', async () => {
     const { access } = livePolicy('hide')
     const { container } = mount({ access })
     await settle()
-    const remove = rail(container).querySelector<HTMLButtonElement>('button[aria-label="Remove drawings"]')!
+    const remove = toolbar(container).querySelector<HTMLButtonElement>('button[aria-label="Remove drawings"]')!
     expect(drawn(remove)).toBe(true)
     expect(remove.disabled).toBe(true)
   })
@@ -246,13 +246,13 @@ describe("command controls under refused: 'hide'", () => {
     const { widget, container } = mount({ access })
     await settle()
     expect(drawn(topButton(container, 'Bar replay'))).toBe(true)
-    expect(drawn(rail(container).querySelector('button[aria-label="Remove drawings"]'))).toBe(true)
+    expect(drawn(toolbar(container).querySelector('button[aria-label="Remove drawings"]'))).toBe(true)
     denied.commands.add('chart.replay.start')
     denied.commands.add('chart.drawings.removeAll')
     widget.refreshAccess()
     await settle()
     expect(drawn(topButton(container, 'Bar replay'))).toBe(false)
-    expect(drawn(rail(container).querySelector('button[aria-label="Remove drawings"]'))).toBe(false)
+    expect(drawn(toolbar(container).querySelector('button[aria-label="Remove drawings"]'))).toBe(false)
     denied.commands.clear()
     widget.activeChart().setTimeframe('5m')
     await settle()
@@ -269,7 +269,7 @@ describe("command controls under refused: 'hide'", () => {
     expect(shown[shown.length - 1]!.classList.contains('qc-separator')).toBe(false)
   })
 
-  it('leaves a refused row out of the level menu', () => {
+  it('leaves a refused row out of the context menu', () => {
     const host = document.body.appendChild(document.createElement('div'))
     const strings = createChartI18n()
     const icons = createIconResolver({ document, direction: () => 'ltr', diagnostics: createIconDiagnostics() })

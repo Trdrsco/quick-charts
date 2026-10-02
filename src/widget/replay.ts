@@ -436,7 +436,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
         else if (event.bar.t === last.t) master = [...master.slice(0, -1), event.bar]
       }
       // A snapshot (or current-bar replacement) can retire the reserved parent while its history
-      // request is still pending. Release that known-obsolete flight now; a stalled provider must
+      // request is still pending. Release that known-obsolete flight now; a stalled feed must
       // not prevent the replacement parent from being requested. Unrelated appends retain it.
       if (stepping && master[stepping.targetCursor - 1] !== stepping.parent) invalidateStep()
       sync()

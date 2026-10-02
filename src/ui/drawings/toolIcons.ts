@@ -1,7 +1,7 @@
 // One miniature per drawing tool, keyed by registry type: the glyph a toolbar row, a favorites
-// button and a rail face wear. Every miniature sits on a 28 grid with hairline strokes and small
-// anchor rings marking the clicks that place the tool, all in currentColor, so the stylesheet's
-// ink decides the color and one set serves both modes.
+// button and a drawing toolbar face wear. Every miniature sits on a 28 grid with hairline strokes
+// and small anchor rings marking the clicks that place the tool, all in currentColor, so the
+// stylesheet's ink decides the color and one set serves both modes.
 //
 // The three glyph-family tools (emoji, sticker, icon) and the transient measure tool have no row
 // of their own: the glyph group opens a picker and measure is a toolbar action, so neither has a

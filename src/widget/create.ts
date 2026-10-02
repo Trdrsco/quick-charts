@@ -111,10 +111,10 @@ export interface ChartWidget {
   chrome: ChartChrome
   /** Ask the access policy again, now. The chart's own controls read `access` whenever they sync
    *  and whenever a menu opens; call this when the policy's answers changed with nothing on the
-   *  chart changing (a viewer's plan changed mid-session). Every control, menu row, rail tool and
-   *  group, the favorites bar, the glyph picker, the legend's row controls and every menu, flyout
-   *  and dialog that is open (the indicator picker among them) read the policy again: shown or
-   *  left out under `access.refused`, enabled or disabled. Listeners of `commands.onChange` hear
+   *  chart changing (a viewer's plan changed mid-session). Every control, menu row, drawing toolbar
+   *  tool and group, the favorites bar, the glyph picker, the legend's row controls and every menu,
+   *  flyout and dialog that is open (the indicator picker among them) read the policy again: shown
+   *  or left out under `access.refused`, enabled or disabled. Listeners of `commands.onChange` hear
    *  it too, so a host's own controls can read `commands.available` again. Nothing stored and
    *  nothing on the chart changes. Inert after `dispose`. */
   refreshAccess(): void
@@ -148,7 +148,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   const layouts = resolveOfferedLayouts(options.layouts, options.layoutSync, options.layout?.arrangement)
   const arrangementCode = openingArrangement(layouts, options.layout?.arrangement)
   // The drawing tools likewise: a list naming no tool, or one twice, is a setup error, never a
-  // rail quietly short of what the host meant to offer.
+  // drawing toolbar quietly short of what the host meant to offer.
   const drawingTools = resolveOfferedDrawingTools(options.drawingTools)
   // The built-in indicators likewise, with the instances the host mounts: a list the host got wrong,
   // or a mount instance outside it, is a setup error, never a study quietly dropped.
@@ -325,8 +325,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   const layoutChanged = (): void => {
     for (const instance of instances.values()) instance.layoutChanged()
   }
-  /** One external rail intent follows the pointer into a pane. The owning layer reports completion
-   * back, so one-shot tools clear while Stay and Eraser remain armed. */
+  /** One external drawing toolbar intent follows the pointer into a pane. The owning layer reports
+   * completion back, so one-shot tools clear while Stay and Eraser remain armed. */
   let sharedDrawingIntent: unknown = null
   let sharedDrawingOwner: string | null = null
   const toolOf = (arg: unknown): string | null | undefined =>
@@ -631,10 +631,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     on: (name, callback) => events.on(name, callback),
     refreshAccess() {
       if (disposed) return
-      // The registry's listeners first: the rails, the favorites bars, the selection's bars, the
-      // navigation clusters and the host's own controls. Then what no registry change reaches: each
-      // chart's legend and level menu, the bars at once, and every overlay open in the widget's root
-      // and layer, which re-reads in place or opens again from its control.
+      // The registry's listeners first: the drawing toolbars, the favorites bars, the selection's
+      // bars, the navigation clusters and the host's own controls. Then what no registry change
+      // reaches: each chart's legend and context menu, the bars at once, and every overlay open in
+      // the widget's root and layer, which re-reads in place or opens again from its control.
       commandHandle.changed()
       for (const instance of instances.values()) instance.refreshAccess()
       chrome.refreshAccess()

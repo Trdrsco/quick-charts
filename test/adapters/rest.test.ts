@@ -39,11 +39,11 @@ const local: DrawingResourceContext = { version: 1, kind: 'chart-local', layoutI
 
 describe('the wire contract', () => {
   it('states a version, and addresses four collections relative to a base URL', () => {
-    expect(REST_WIRE_VERSION).toBe(1)
+    expect(REST_WIRE_VERSION).toBe(2)
     expect(restCollectionPath({ family: 'charts' })).toBe('/charts')
     expect(restCollectionPath({ family: 'layouts' })).toBe('/layouts')
     expect(restCollectionPath({ family: 'drawings' })).toBe('/drawings')
-    expect(restCollectionPath({ family: 'templates', kind: 'study' })).toBe('/templates/study')
+    expect(restCollectionPath({ family: 'templates', kind: 'indicator' })).toBe('/templates/indicator')
     expect(restItemPath({ family: 'charts' }, 'a/b')).toBe('/charts/a%2Fb')
   })
 
@@ -67,7 +67,7 @@ describe('the adapter asks the host for exactly what the contract names', () => 
   it('makes no request until a verb is called, and none of its own ever', async () => {
     const { request, sent } = recorder(() => ({ status: 200, text: '{"items":[]}' }))
     const adapter = createRestSaveLoadAdapter({ baseUrl: BASE, request })
-    adapter.templates('study')
+    adapter.templates('indicator')
     adapter.drawings(local)
     expect(sent).toEqual([])
     await adapter.charts.list()
@@ -248,7 +248,7 @@ describe('the adapter holds nothing of the host\'s', () => {
     const adapter = createRestSaveLoadAdapter({ baseUrl: BASE, request: recorder().request })
     expect(adapter.drawings(local)).toBe(adapter.drawings({ ...local }))
     expect(adapter.drawings(local)).not.toBe(adapter.drawings({ ...local, symbol: 'NQ' }))
-    expect(adapter.templates('study')).toBe(adapter.templates('study'))
-    expect(adapter.templates('study')).not.toBe(adapter.templates('drawing'))
+    expect(adapter.templates('indicator')).toBe(adapter.templates('indicator'))
+    expect(adapter.templates('indicator')).not.toBe(adapter.templates('drawing'))
   })
 })

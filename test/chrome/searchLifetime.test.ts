@@ -19,12 +19,12 @@ afterEach(() => {
 const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve() }
 const settle = async () => { await vi.advanceTimersByTimeAsync(250) }
 
-function mount(provider: ChartDatafeed['search'] | ChartDatafeed) {
+function mount(feed: ChartDatafeed['search'] | ChartDatafeed) {
   const w = fakeWidget()
   const root = document.body.appendChild(document.createElement('div'))
   const panes = root.appendChild(document.createElement('div'))
   const doors = emptyDoors()
-  const datafeed: ChartDatafeed = typeof provider === 'function' ? { search: provider, resolve: async () => null, history: async () => ({ bars: [], noData: true }), subscribeBars: () => () => {} } : provider
+  const datafeed: ChartDatafeed = typeof feed === 'function' ? { search: feed, resolve: async () => null, history: async () => ({ bars: [], noData: true }), subscribeBars: () => () => {} } : feed
   const chrome = mountChrome({ root, layer: document.body.appendChild(document.createElement('div')), panes, widget: w.widget, i18n: w.i18n, features: w.features, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future', 'crypto'] }), autosave: w.autosave, layoutChanges: w.layoutChanges, icons: w.icons, styles: w.ctx.styles, timeframes: w.ctx.timeframes, layouts: w.ctx.layouts, doors, painters: resolveMarkPainters({}) })
   cleanup.push(() => { chrome.dispose(); w.dispose() })
   const open = (mode: 'search' | 'compare' | 'change-symbol' = 'search', changeFrom?: string) => {
@@ -70,7 +70,7 @@ it('reopens all three accumulated pages immediately without a page-zero truncati
   expect(search).toHaveBeenCalledTimes(calls)
 })
 
-it('does not reuse a disposed widget cache with a new provider', async () => {
+it('does not reuse a disposed widget cache with a new feed', async () => {
   const first = mount(async () => ({ hits: [row('A')], hasMore: false }))
   first.open(); await settle()
   first.chrome.dispose()
@@ -148,7 +148,7 @@ it('cancels a compare query when returning to its non-search empty view', async 
   expect(pending).toHaveLength(2)
 })
 
-it('retires timers and doors, and uses a fresh cache even with the same provider object', async () => {
+it('retires timers and doors, and uses a fresh cache even with the same feed object', async () => {
   let principal = 'A'
   const search = vi.fn(async () => ({ hits: [row(principal)], hasMore: false }))
   const first = mount(search)

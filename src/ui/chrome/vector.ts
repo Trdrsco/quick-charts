@@ -1,4 +1,4 @@
-// One builder for every glyph the level menu draws, the chart's own and a host's, from the SAME
+// One builder for every glyph the context menu draws, the chart's own and a host's, from the SAME
 // descriptor: shapes on a 28-unit grid, each one path data plus a closed set of paint values. There
 // is no second icon contract and no markup path. Nodes are CREATED and attributes are written by
 // name from the allowlists below, so a descriptor has nowhere to carry a script, an event handler,

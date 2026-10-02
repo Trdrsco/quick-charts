@@ -163,7 +163,7 @@ describe('the plane through the registry', () => {
     expect(prefs().stayInDrawingMode).toBe(true)
     byLabel(chrome, 'Trend line').click()
     expect(plane.api!.activeTool()).toBe('trend_line')
-    expect(prefs().railTools).toEqual({ trend: 'trend_line' })
+    expect(prefs().drawingToolbarTools).toEqual({ trend: 'trend_line' })
     drag(gestures, [100, 100], [300, 200])
     expect(plane.api!.activeTool()).toBe('trend_line') // stay in mode held it
     expect(chrome.querySelector<HTMLElement>('[data-role="drawing-settings-bar"]')!.hidden).toBe(false)
