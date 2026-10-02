@@ -11,7 +11,7 @@ export const range: Translation<typeof source> = {
   'range.oneYear': '1 ปี',
   'range.fiveYears': '5 ปี',
   'range.all': 'ข้อมูลทั้งหมด',
-  'range.tip': '{range} · แท่ง {interval}',
+  'range.tip': '{range} · แท่ง {timeframe}',
   'range.zoomIn': 'ขยาย',
   'range.zoomOut': 'ย่อ',
   'range.scrollLeft': 'เลื่อนไปทางซ้าย',

@@ -43,7 +43,7 @@ const BAND_ROLE: Readonly<Record<Exclude<SessionState, 'open'>, ThemeRoleId>> = 
  *  model, merged into runs, and drawn as full-height rects UNDER the main series (zOrder bottom).
  *  Re-renders with every chart paint, so it tracks pan/zoom for free. An UNKNOWN model (null)
  *  never bands: drawing nothing is the only honest render before the symbol resolves. A continuous
- *  market never bands (it is always open), and bands render on INTRADAY intervals only: a daily or
+ *  market never bands (it is always open), and bands render on INTRADAY timeframes only: a daily or
  *  larger bar spans whole sessions, so classifying its single timestamp would shade entire days by
  *  whichever session that instant fell in. */
 export interface SessionBandsPrimitive {

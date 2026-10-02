@@ -172,7 +172,7 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
       // question the transport is already showing.
       onClick: () => commands.execute(activeChart(deps).replay.phase() !== 'off' ? 'chart.replay.exit' : 'chart.replay.start'),})
     replay.dataset.qcLabel = 'drop'
-    // Replay is a mode the chart stays in, not one interval chosen among several, so its "on"
+    // Replay is a mode the chart stays in, not one timeframe chosen among several, so its "on"
     // reads at full emphasis rather than as the quiet wash a chosen chip wears.
     replay.dataset.qcMode = 'held'
     start.appendChild(replay)

@@ -2,8 +2,8 @@
 //
 // The legend itself owns no chart state. It reports an intent, this module turns that intent into a
 // call on the plane that owns the state, and the resulting recompute pushes fresh rows back. The
-// row list is ONE list, indicator rows followed by compare rows, so a compare row and a study row
-// cannot end up rendered by two different passes and disagree.
+// row list is ONE list, indicator rows followed by compare rows, so a compare row and an indicator
+// row cannot end up rendered by two different passes and disagree.
 //
 // The READING is this module's other half. It follows the crosshair straight off the renderer, not
 // off the chart's sync bus: a layout mirroring one chart's crosshair onto another mutes that bus to
@@ -30,11 +30,11 @@ import type { CommandRegistry } from './commands'
 import type { MarkPainters } from '../markPainters'
 import type { IconResolver } from '../ui/icons/resolver'
 
-/** The compare-row id prefix. A compare row and a study row share one list, so the prefix is what
- *  tells the two apart without a second lookup. */
+/** The compare-row id prefix. A compare row and an indicator row share one list, so the prefix is
+ *  what tells the two apart without a second lookup. */
 export const COMPARE_ROW_PREFIX = 'cmp:'
 
-/** Host-owned activity, displayed with studies but never saved as an indicator or plotted. */
+/** Host-owned activity, displayed with indicators but never saved as an indicator or plotted. */
 export interface ChartLegendRow {
   id: string
   title: string
@@ -155,7 +155,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
   const paneRemembered = new Map<string, number>()
   const paneKeys = (): Record<number, string> => {
     const keys: Record<number, string> = { 0: 'main' }
-    for (const [id, pane] of Object.entries(deps.indicators.renderer.paneOf())) if (pane > 0) keys[pane] = `study:${id}`
+    for (const [id, pane] of Object.entries(deps.indicators.renderer.paneOf())) if (pane > 0) keys[pane] = `indicator:${id}`
     for (const entry of deps.compare?.api.list() ?? []) {
       const pane = deps.compare!.handle.paneIndexOf(entry.symbol)
       if (pane !== null && pane > 0) keys[pane] = `compare:${entry.symbol}`
@@ -294,7 +294,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     legend?.setChips([
       ...deps.indicators.chipsAt(hovered).map(row => {
         const paneIndex = paneOf[row.id] ?? 0
-        const remembered = paneRemembered.get(`study:${row.id}`)
+        const remembered = paneRemembered.get(`indicator:${row.id}`)
         return {
           ...row,
           paneIndex,

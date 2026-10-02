@@ -1,6 +1,6 @@
 // The timeframe picker a page opens on its own, away from any chart: a backtester's timeframe
-// field, an alert's interval. It is the same grouped list the chart's timeframe caret drops, built
-// by the same code over the same presets, groups, labels and custom composer, so an interval reads
+// field, an alert's timeframe. It is the same grouped list the chart's timeframe caret drops, built
+// by the same code over the same presets, groups, labels and custom composer, so a timeframe reads
 // here exactly as it reads once it is on a chart. It acts on nothing: it hands the pick back.
 //
 // Two frames: a drop-down under a control the page owns, and a bare card inside a box the page
@@ -9,7 +9,7 @@
 // offered timeframes, what its feed and symbol serve, the mode, the language and the glyphs.
 //
 // It carries no saved chips and no stars: those are the viewer's quick-select row on a chart, kept
-// by the chart's storage, and a field that asks for one interval has no row to put them in. A
+// by the chart's storage, and a field that asks for one timeframe has no row to put them in. A
 // composed custom timeframe is handed back like a row's pick and is not kept.
 import { createChartI18n, readingDirection, type ChartI18n } from '../../i18n'
 import { createThemeController, type ThemeControllerOptions } from '../../theme/controller'

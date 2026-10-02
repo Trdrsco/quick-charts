@@ -123,8 +123,8 @@ const REPLAY_PAGE_BARS = 2_000
 /** The most bars one ask for a range preset's span may name. */
 const SPAN_PAGE_MAX_BARS = 4_000
 
-/** The bars a preset's span covers at its interval, with room past the paging trigger so framing
- *  the span does not start a page at once. Null for a span with no length, or an interval with no
+/** The bars a preset's span covers at its timeframe, with room past the paging trigger so framing
+ *  the span does not start a page at once. Null for a span with no length, or a timeframe with no
  *  bar width. */
 function barsForSpan(span: RangeSpan, tf: string): number | null {
   const secs = rangeSpanSeconds(span, Math.floor(Date.now() / 1000))
@@ -394,7 +394,7 @@ const SCALE_KEY = 'quickcharts.scale.v1'
 const PRICE_AXIS_KEY = 'quickcharts.priceAxis.v1'
 const HIDDEN_KEY = 'quickcharts.indHidden.v1'
 const REPLAY_SPEED_KEY = 'quickcharts.replaySpeed.v1'
-const REPLAY_INTERVAL_KEY = 'quickcharts.replayIv.v1'
+const REPLAY_TIMEFRAME_KEY = 'quickcharts.replayTf.v1'
 const TIMEZONE_KEY = 'quickcharts.timezone.v1'
 const SUBSESSION_KEY = 'quickcharts.subsession.v1'
 
@@ -429,7 +429,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let unsubscribe: (() => void) | null = null
   let noMoreHistory = false
   let paging = false
-  /** How many bars the next load's first page asks for: a preset that switches the interval sizes
+  /** How many bars the next load's first page asks for: a preset that switches the timeframe sizes
    *  it to its span, so the first paint can frame the whole span. */
   let firstPageBars = SNAPSHOT_BARS
   let ready = false
@@ -444,8 +444,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  null while unknown: the range presets withhold nothing on an unknown depth. */
   let earliestBarSecs: number | null = null
   /** THE price formatter: one per symbol, in the chart's language. The price scale, the crosshair
-   *  and last-price labels, the legend rows, the context menu, the drawing labels, the study scales
-   *  and the extension seam all write through it, so no surface carries its own precision. */
+   *  and last-price labels, the legend rows, the context menu, the drawing labels, the indicator
+   *  scales and the extension seam all write through it, so no surface carries its own
+   *  precision. */
   let symbolFormatter: PriceFormatter = createPriceFormatter(UNRESOLVED_PRICE_FORMAT, { locale: i18n.tag() })
   /** Increments on every symbol or timeframe switch and at dispose; stale async work checks it. */
   let epoch = 0
@@ -542,7 +543,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const baselineLevel = createBaselineLevel({ paneHeight: () => chart.paneSize().height })
   if (style === 'baseline') baselineLevel.follow(series)
   // THE VOLUME HISTOGRAM IS THE `volume` INDICATOR'S BODY, not chart furniture. The catalog carries
-  // the study (its MA plots pin to this same band's scale); the bars themselves are drawn here,
+  // the indicator (its MA plots pin to this same band's scale); the bars themselves are drawn here,
   // because they are per-bar chart data rather than a computed series. So the presence of a
   // non-hidden `volume` instance is what shows them, and its `colorPrevClose` input is what colours
   // them. Drawn unconditionally, they were a second volume nobody could remove: bars at the foot of
@@ -556,8 +557,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   /** The showing `volume` instance, or null when none is configured or it is hidden. */
   const volumeInstance = (): IndicatorInstance | null =>
     indicators.list().find((i) => i.definition.manifest.id === 'volume' && !indicators.isHidden(i.id)) ?? null
-  /** Bar colours: the study's own rule when it asks for it (this close against the PREVIOUS one),
-   *  else the chart's up/down by the bar's own body. */
+  /** Bar colours: the indicator's own rule when it asks for it (this close against the PREVIOUS
+   *  one), else the chart's up/down by the bar's own body. */
   const volumeColors = (bars: readonly FeedBar[]): string[] => {
     const inst = volumeInstance()
     const prevClose = (inst?.inputs?.colorPrevClose ?? inst?.definition.manifest.inputs?.colorPrevClose?.default ?? 0) === 1
@@ -568,7 +569,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       return ref == null || b.c >= ref ? up : down
     })
   }
-  /** Show or hide the band with the study, and repaint its bars when it appears or its rule moves. */
+  /** Show or hide the band with the indicator, and repaint its bars when it appears or its rule
+   *  moves. */
   const syncVolume = (): void => {
     const on = volumeInstance() != null
     volume.applyOptions({ visible: on })
@@ -635,8 +637,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     holdFrame = window.requestAnimationFrame(attempt)
   }
 
-  /** The style series when it is candle-shaped. A study that recolors bar bodies needs a series that
-   *  has bodies; the other five styles answer null rather than a series that cannot take the paint. */
+  /** The style series when it is candle-shaped. An indicator that recolors bar bodies needs a
+   *  series that has bodies; the other five styles answer null rather than a series that cannot
+   *  take the paint. */
   const candleSeries = (): ISeriesApi<'Candlestick'> | null =>
     style === 'candles' || style === 'hollow' ? (series as ISeriesApi<'Candlestick'>) : null
 
@@ -769,8 +772,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const indicators: IndicatorsPlane = attachIndicatorsPlane({
     chart,
     candleSeries,
-    // A study drawn over bars the active subsession hides would not line up with the series beside
-    // it, so it computes over the painted model rather than the loaded one.
+    // An indicator drawn over bars the active subsession hides would not line up with the series
+    // beside it, so it computes over the painted model rather than the loaded one.
     bars: () => shownBars(),
     i18n,
     formatter: () => symbolFormatter,
@@ -947,9 +950,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // away for the length of a question, never hand one back that was never there.
     setCrosshair: (visible) =>
       chart.applyOptions({ crosshair: { mode: visible && deps.features.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden } }),
-    // The feed's own grains: a chart never offers, or fetches, an interval its feed cannot serve.
+    // The feed's own grains: a chart never offers, or fetches, a timeframe its feed cannot serve.
     resolutions: () => deps.capabilities().resolutions,
-    persist: (key, value) => storage.set(key === 'speed' ? REPLAY_SPEED_KEY : REPLAY_INTERVAL_KEY, value),
+    persist: (key, value) => storage.set(key === 'speed' ? REPLAY_SPEED_KEY : REPLAY_TIMEFRAME_KEY, value),
     onChange: () => {
       const state = replay.snapshot()
       countdown?.refresh()
@@ -966,7 +969,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       events.emit('replay', state)
     },
     initialSpeed: coerceReplaySpeed(storage.get(REPLAY_SPEED_KEY) ?? deps.preferences.replaySpeed),
-    initialInterval: storage.get(REPLAY_INTERVAL_KEY) ?? deps.preferences.replayInterval ?? 'auto',
+    initialGrain: storage.get(REPLAY_TIMEFRAME_KEY) ?? deps.preferences.replayTimeframe ?? 'auto',
   })
 
   const countdownClock = createCountdownClock(() => Date.now() / 1000, datafeed.serverTime?.bind(datafeed))
@@ -1395,7 +1398,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         if (disposed || myEpoch !== epoch || !info) return
         symbolInfo = info
         setSymbolFormat(info.format)
-        indicators.recompute() // study scales and rows re-read the formatter
+        indicators.recompute() // indicator scales and rows re-read the formatter
         session.adopt(info)
         legend.setHeader(symbol, tf)
         legend.setDot(session.state())
@@ -1910,7 +1913,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       // The span reads at the preset's own timeframe, or, when the widget does not offer it, at the
       // nearest coarser timeframe it offers, else the largest it offers.
       const target = rangeTimeframe(preset.tf, deps.timeframes)
-      // Switching the interval reloads: the model is cleared synchronously and the new page is
+      // Switching the timeframe reloads: the model is cleared synchronously and the new page is
       // still away, so framing here would measure an empty series and the arriving history would
       // fit content instead of the span. The intent waits for that load's first paint.
       if (target !== tf) {

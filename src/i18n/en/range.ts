@@ -12,7 +12,7 @@ export const range = {
   'range.fiveYears': '5 Years',
   'range.all': 'All data',
   /** A preset's tooltip: what it frames, and the bars it frames it in. */
-  'range.tip': '{range} · {interval} bars',
+  'range.tip': '{range} · {timeframe} bars',
   'range.zoomIn': 'Zoom in',
   'range.zoomOut': 'Zoom out',
   'range.scrollLeft': 'Scroll left',

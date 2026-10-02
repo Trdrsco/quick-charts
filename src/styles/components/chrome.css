@@ -99,8 +99,8 @@
   background: var(--qc-state-hover);
 }
 
-/* A chosen interval or a held toggle takes the pressed fill, a step past hover; a door whose menu is
- * open fills its whole cell, square, in the hover fill. */
+/* A chosen timeframe or a held toggle takes the pressed fill, a step past hover; a door whose menu
+ * is open fills its whole cell, square, in the hover fill. */
 [data-qc-theme] .qc-toolbar-button[aria-pressed='true'],
 [data-qc-theme] .qc-toolbar-button[aria-expanded='true'],
 [data-qc-theme] .qc-toolbar-button[data-qc-active='true'] {

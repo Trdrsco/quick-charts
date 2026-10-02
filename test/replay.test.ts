@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds } from '../src/replay'
+import { autoTimeframeFor, composeFormingBar, REPLAY_SPEEDS, subTimeframesFor, tfSeconds } from '../src/replay'
 
 // The shared replay vocabulary — one definition for every replay host, so two replays can never
 // disagree about what '4h auto on a daily chart' means or how a forming bar composes.
 
-describe('the interval vocabulary', () => {
+describe('the timeframe vocabulary', () => {
   it('tfSeconds knows the wire tokens replay meets and refuses the rest', () => {
     expect(tfSeconds('1m')).toBe(60)
     expect(tfSeconds('4h')).toBe(14400)
@@ -12,28 +12,28 @@ describe('the interval vocabulary', () => {
     expect(tfSeconds('100t')).toBe(0) // ticks are too fine to subdivide meaningfully
   })
 
-  it('offers the chart\'s own unit group and the one below, and the chart interval with them', () => {
+  it('offers the chart\'s own unit group and the one below, and the chart timeframe with them', () => {
     // A minute chart: the second rung, and the minute itself.
-    expect(subIntervalsFor('1m').map((s) => s.tf)).toEqual(['1s', '1m'])
+    expect(subTimeframesFor('1m').map((s) => s.tf)).toEqual(['1s', '1m'])
     // An hour chart: seconds, every minute rung that divides an hour, and the hour itself.
-    expect(subIntervalsFor('1h').map((s) => s.tf)).toEqual(['1s', '1m', '3m', '5m', '10m', '15m', '30m', '1h'])
+    expect(subTimeframesFor('1h').map((s) => s.tf)).toEqual(['1s', '1m', '3m', '5m', '10m', '15m', '30m', '1h'])
     // A daily: hours and the day. Minutes are a group too far — a day played a minute at a time is
     // 1,440 updates per bar, which is why the list stops at the group below.
-    expect(subIntervalsFor('1d').map((s) => s.tf)).toEqual(['1h', '2h', '3h', '4h', '1d'])
+    expect(subTimeframesFor('1d').map((s) => s.tf)).toEqual(['1h', '2h', '3h', '4h', '1d'])
     // Evenly, so a rung leaving a remainder is not offered.
-    expect(subIntervalsFor('45m').map((s) => s.tf)).not.toContain('30m')
+    expect(subTimeframesFor('45m').map((s) => s.tf)).not.toContain('30m')
     // A week or a month plays in whole days and nothing else.
-    expect(subIntervalsFor('1w').map((s) => s.tf)).toEqual(['1d'])
-    expect(subIntervalsFor('3mo').map((s) => s.tf)).toEqual(['1d'])
+    expect(subTimeframesFor('1w').map((s) => s.tf)).toEqual(['1d'])
+    expect(subTimeframesFor('3mo').map((s) => s.tf)).toEqual(['1d'])
   })
 
-  it('auto takes the COARSEST interval offered, which is the chart\'s own', () => {
-    expect(autoIntervalFor('1d')?.tf).toBe('1d')
-    expect(autoIntervalFor('1h')?.tf).toBe('1h')
-    expect(autoIntervalFor('1m')?.tf).toBe('1m')
+  it('auto takes the COARSEST timeframe offered, which is the chart\'s own', () => {
+    expect(autoTimeframeFor('1d')?.tf).toBe('1d')
+    expect(autoTimeframeFor('1h')?.tf).toBe('1h')
+    expect(autoTimeframeFor('1m')?.tf).toBe('1m')
     // A timeframe that is not itself a rung has no rung of its own, so auto takes the coarsest that
     // divides it.
-    expect(autoIntervalFor('45m')?.tf).toBe('15m')
+    expect(autoTimeframeFor('45m')?.tf).toBe('15m')
   })
 
   it('the speed table is descending and starts at the fastest', () => {

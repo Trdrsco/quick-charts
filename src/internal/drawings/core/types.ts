@@ -1,5 +1,5 @@
 import type { Time } from 'lightweight-charts'
-import type { IntervalContext, IntervalVisibility } from './visibility'
+import type { TimeframeContext, TimeframeVisibility } from './visibility'
 import { DEFAULT_VISIBILITY } from './visibility'
 
 /** How the host writes a price: the symbol's own formatter, injected so every drawing label,
@@ -65,8 +65,8 @@ export interface DrawingOptions {
   visible: boolean
   locked: boolean
   zIndex: number
-  /** Which chart intervals the drawing shows on (independent of the manual `visible` switch). */
-  visibility: IntervalVisibility
+  /** Which chart timeframes the drawing shows on (independent of the manual `visible` switch). */
+  visibility: TimeframeVisibility
 }
 
 export const DEFAULT_OPTIONS: DrawingOptions = {
@@ -149,8 +149,8 @@ export interface IDrawing {
   /** True once the drawing has its full anchor set (placement complete, all values finite). */
   isValid(): boolean
 
-  /** The chart's current interval (the manager broadcasts it on timeframe changes). */
-  setIntervalContext(context: IntervalContext): void
+  /** The chart's current timeframe (the manager broadcasts it on timeframe changes). */
+  setTimeframeContext(context: TimeframeContext): void
   /** Chart-wide hide-all switch (transient view state — never serialized). */
   setGlobalHidden(hidden: boolean): void
   /** The symbol's smallest price move (tick-denominated readouts); null omits those readouts. */
@@ -160,7 +160,7 @@ export interface IDrawing {
   setPriceFormatter(format: PriceFormatPort | null): void
   /** Where glyph artwork comes from (the manager broadcasts it); null draws glyphs as text. */
   setGlyphSource(source: GlyphSourcePort | null): void
-  /** Manual `visible` switch AND hide-all AND the per-interval rule, combined. */
+  /** Manual `visible` switch AND hide-all AND the per-timeframe rule, combined. */
   isVisibleNow(): boolean
 
   testHit(point: Point, viewport: Viewport): boolean

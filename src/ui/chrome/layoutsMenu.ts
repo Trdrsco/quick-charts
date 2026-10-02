@@ -4,7 +4,7 @@
 // three most recent layouts with the stars they share with the dialog, and Open layout, the Layouts
 // dialog. The dialogs themselves are the chrome's (`layoutDialogs`), and whether there is something
 // to save is the widget's (`layoutChanges`), so hiding this menu leaves both working. A saved layout
-// is listed by what it shows: the market and interval of its active chart at the last save, or its
+// is listed by what it shows: the market and timeframe of its active chart at the last save, or its
 // age where its store kept neither. Every verb is a widget command (`widget.layout.save`, `rename`,
 // `load`, `open`, `delete`, `create`, `autosave`), so a policy that forbids layout writes disables
 // the rows here and refuses them from every other door; the menu hears what a verb did through the
@@ -235,8 +235,8 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
             text: t()('layouts.createNewRow'),
             icon: deps.icons.glyph(ICONS.plusThin, { size: 28 }),
             disabled: !can('widget.layout.create'),
-            // A new layout by the name it is given: the market and interval on screen, nothing else
-            // of the open layout, and the open one left as it was saved.
+            // A new layout by the name it is given: the market and timeframe on screen, nothing
+            // else of the open layout, and the open one left as it was saved.
             onSelect: () =>
               askName({
                 title: 'layouts.createTitle',

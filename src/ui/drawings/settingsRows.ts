@@ -2,7 +2,7 @@
 // from the drawing's own props and the settings capabilities on `@trdrs/quickcharts/drawings`; this
 // module turns those facts into fields. A row exists only where the prop exists and the tool's
 // paint honors it, so the dialog never shows a control that does nothing.
-import type { DrawingStyle, IDrawing, IntervalVisibility } from '../../internal/drawings/index'
+import type { DrawingStyle, IDrawing, TimeframeVisibility } from '../../internal/drawings/index'
 import { alphaOf, withAlpha } from '../../internal/drawings/index'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import {
@@ -66,7 +66,7 @@ const PROFILE_LEVELS: readonly { label: ChartMessageKey; key: 'poc' | 'vah' | 'v
   { label: 'drawing.valueAreaLow', key: 'val' },
 ]
 const FONT_SIZES = ['10', '11', '12', '14', '16', '20', '24', '28', '32', '40'] as const
-const VISIBILITY_ROWS: readonly { key: keyof IntervalVisibility; label: ChartMessageKey; max: number }[] = [
+const VISIBILITY_ROWS: readonly { key: keyof TimeframeVisibility; label: ChartMessageKey; max: number }[] = [
   { key: 'seconds', label: 'drawing.unitSeconds', max: 59 },
   { key: 'minutes', label: 'drawing.unitMinutes', max: 59 },
   { key: 'hours', label: 'drawing.unitHours', max: 24 },
@@ -91,7 +91,7 @@ export interface RowsContext {
   patchStyle(patch: Partial<DrawingStyle>): void
   patchProps(patch: Record<string, unknown>): void
   patchQuiet(patch: Record<string, unknown>): void
-  patchVisibility(patch: Partial<IntervalVisibility>): void
+  patchVisibility(patch: Partial<TimeframeVisibility>): void
   patchAnchor(index: number, anchor: { time?: unknown; price?: number }): void
 }
 
@@ -460,8 +460,8 @@ export function coordinateRows(ctx: RowsContext): HTMLElement[] {
 }
 
 /** The Visibility page: the ticks switch and one range row per bucket. A drawing switched off on
- *  every interval would be gone for good (it paints nothing and takes no hit), so the last enabled
- *  interval is pinned on. */
+ *  every timeframe would be gone for good (it paints nothing and takes no hit), so the last enabled
+ *  timeframe is pinned on. */
 export function visibilityRows(ctx: RowsContext): HTMLElement[] {
   const { t, drawing } = ctx
   const visibility = drawing.options.visibility ?? DEFAULT_VISIBILITY
@@ -472,6 +472,6 @@ export function visibilityRows(ctx: RowsContext): HTMLElement[] {
     const range = visibility[key] as { on: boolean; from: number; to: number }
     out.push(visibilityRangeRow(t, ctx.icons, { label: t(text), range, max, disabled: pinned(range.on), onChange: (next) => ctx.patchVisibility({ [key]: next }) }))
   }
-  if (enabled === 1) out.push(el('span', { class: 'qc-muted qc-drawing-note', text: t('drawing.intervalPinnedNote') }))
+  if (enabled === 1) out.push(el('span', { class: 'qc-muted qc-drawing-note', text: t('drawing.timeframePinnedNote') }))
   return out
 }

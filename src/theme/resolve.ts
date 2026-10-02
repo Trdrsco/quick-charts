@@ -9,8 +9,9 @@
 // a replacement. An entry that fails validation is dropped and reported; it never reaches the
 // resolved theme, and it never removes the built-in value it failed to replace.
 //
-// Chart appearance is a separate ladder. Series, grid, and study appearance overrides are resolved
-// by the chart's own override tree, above whatever the theme says, and are not merged here.
+// Chart appearance is a separate ladder. Series, grid, and indicator appearance overrides are
+// resolved by the chart's own override tree, above whatever the theme says, and are not merged
+// here.
 import { BUILT_IN_THEMES } from './palettes'
 import type { CustomThemes, SemanticTheme, ThemeMode } from './schema'
 import { validateCustomThemes, type ThemeDiagnostic } from './validate'

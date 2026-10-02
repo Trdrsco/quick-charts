@@ -1,6 +1,6 @@
 // The field primitives the settings surfaces are built from: a labeled row, a checkbox row, a
 // dropdown, a number field with its stepper, the color swatch button, a line-end picker, the
-// dialog's tab strip, and one interval-visibility row. Each builds real elements, reads its words
+// dialog's tab strip, and one timeframe-visibility row. Each builds real elements, reads its words
 // from the chart's language, and reports a value; none holds chart state.
 //
 // The palette, the custom color editor and the opacity slider are not built here. They are the
@@ -306,7 +306,7 @@ export function dialogTabs(tabs: readonly string[], value: string, labels: (id: 
   return strip
 }
 
-/** One interval-visibility bucket: the checkbox in the label cell, then from, a two-thumb range,
+/** One timeframe-visibility bucket: the checkbox in the label cell, then from, a two-thumb range,
  *  and to. The from and to writes clamp against each other, so the boxes can never cross. */
 export function visibilityRangeRow(
   t: ChartTranslate,

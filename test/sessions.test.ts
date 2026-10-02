@@ -41,7 +41,7 @@ describe('createSessionBands — an unknown model draws NOTHING (the promise the
   it('a continuous market never bands', () => {
     expect(draw(PERP)).not.toHaveBeenCalled()
   })
-  it('a daily or larger interval never bands', () => {
+  it('a daily or larger timeframe never bands', () => {
     expect(draw(CME, false)).not.toHaveBeenCalled()
   })
   it('a session with closures and bars: paints', () => {

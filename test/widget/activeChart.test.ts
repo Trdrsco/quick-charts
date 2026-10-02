@@ -328,7 +328,7 @@ describe('a layout is its own saved resource', () => {
     const saved = await plane.api.saveLoad.save('Pair')
     expect(saved.kind).toBe('ok')
     expect((await adapter.layouts.list()).map((r) => r.name)).toEqual(['Pair'])
-    // The listing names what the layout shows: the active chart's market and interval.
+    // The listing names what the layout shows: the active chart's market and timeframe.
     expect((await adapter.layouts.list()).map(({ symbol, timeframe }) => ({ symbol, timeframe }))).toEqual([{ symbol: 'ES', timeframe: '1D' }])
     expect(await adapter.charts.list()).toEqual([])
     const held = plane.api.saveLoad.current()!

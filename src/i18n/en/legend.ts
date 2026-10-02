@@ -11,8 +11,8 @@ export const legend = {
    *  its percentage. Both arrive already written, sign included. */
   'legend.change': '{change} ({percent}%)',
   'legend.indicatorSettings': 'Indicator settings',
-  'legend.showRows': 'Show study rows',
-  'legend.hideRows': 'Hide study rows',
+  'legend.showRows': 'Show indicator rows',
+  'legend.hideRows': 'Hide indicator rows',
   'legend.restorePane': 'Restore pane',
   'legend.collapsePane': 'Collapse pane',
   'legend.maximizePane': 'Maximize pane',

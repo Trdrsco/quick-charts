@@ -123,7 +123,7 @@ describe('the layout setup menu', () => {
     cleanup.push(() => (setup.destroy(), w.dispose()))
     setup.element.click()
     const switches = [...w.overlays.querySelectorAll<HTMLButtonElement>('[role="switch"]')]
-    expect(switches.map((s) => s.getAttribute('aria-label'))).toEqual(['Sync symbol', 'Sync interval', 'Sync crosshair', 'Sync time', 'Sync date range'])
+    expect(switches.map((s) => s.getAttribute('aria-label'))).toEqual(['Sync symbol', 'Sync timeframe', 'Sync crosshair', 'Sync time', 'Sync date range'])
     // A sync flag says how the NEXT split behaves, so setting it while one chart is up is the whole
     // point of setting it. Gated on a split already existing, every switch would be dead in the
     // state a viewer is usually in, and the menu would offer five controls that do nothing.
@@ -252,7 +252,7 @@ describe('the flyout widths', () => {
   })
 
   it('holds the pinned width table for every chrome flyout', () => {
-    expect(FLYOUT_WIDTH).toEqual({ timeframe: 192, chartStyle: 270, arrangement: 428, layouts: 197, layoutsSort: 234, timezone: 251, session: 176, replayStart: 177, replayInterval: 196 })
+    expect(FLYOUT_WIDTH).toEqual({ timeframe: 192, chartStyle: 270, arrangement: 428, layouts: 197, layoutsSort: 234, timezone: 251, session: 176, replayStart: 177, replayTimeframe: 196 })
   })
 })
 
@@ -325,7 +325,7 @@ describe('the saved-layouts menu', () => {
     expect(w.overlays.querySelector('[role="switch"]')).toBe(toggle)
   })
 
-  it('writes a recent layout as its name over the market and interval its active chart showed', async () => {
+  it('writes a recent layout as its name over the market and timeframe its active chart showed', async () => {
     const store = layoutStore([{ id: 'a', revision: '1', name: 'Desk', symbol: 'BTCUSDC', timeframe: '1h', updatedAt: Date.now() - 5 * 60_000 }])
     const { w, menu } = mountLayouts({ store })
     menu.element.querySelector<HTMLButtonElement>('.qc-layouts-caret')!.click()

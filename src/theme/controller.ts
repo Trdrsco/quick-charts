@@ -19,7 +19,7 @@ export type ThemeChangeListener = (theme: SemanticTheme, mode: ThemeMode) => voi
 export interface ThemeController {
   /** The mode in effect. */
   mode(): ThemeMode
-  /** Switch modes. The chart keeps its symbol, timeframe, range, drawings, and studies. */
+  /** Switch modes. The chart keeps its symbol, timeframe, range, drawings, and indicators. */
   setMode(mode: ThemeMode): void
   /** The complete resolved theme in effect. */
   get(): SemanticTheme

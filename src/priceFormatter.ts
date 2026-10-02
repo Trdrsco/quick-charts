@@ -1,5 +1,5 @@
 // The one Quick Charts PRICE FORMATTER. Every price a chart writes comes through here: the price
-// scale, the OHLC legend, the crosshair, drawing labels, marks, study price plots and exported
+// scale, the OHLC legend, the crosshair, drawing labels, marks, indicator price plots and exported
 // image text, plus a host's own surfaces through the public factory. One resolved formatter per
 // symbol means a layout cannot draw one market's prices at another's precision.
 //

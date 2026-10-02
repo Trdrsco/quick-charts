@@ -3,10 +3,10 @@
 // replaced by a fake. What is pinned here is that the legend is the CHART's: the identity and the
 // venue it shows are the ones `resolve()` answered, every price it writes comes out of the chart's
 // one symbol formatter, the reading follows the crosshair and falls back to the last painted bar,
-// each chart of a layout keeps its own reading, a study takes a row with its own controls, and a
-// replay window is read at its cursor and at its edges.
+// each chart of a layout keeps its own reading, an indicator takes a row with its own controls, and
+// a replay window is read at its cursor and at its edges.
 //
-// Independent chart tiles are distinct from renderer study panes; both lifecycles are tested.
+// Independent chart tiles are distinct from renderer indicator panes; both lifecycles are tested.
 import { CHART_STYLES } from '../../src/widget/styles'
 import { ALL_TIMEFRAMES_OFFERED } from '../../src/widget/timeframes'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -120,7 +120,7 @@ it('keeps inactive-tile compare readings independent and routes a keyboard row a
   second!.compare.add('NQ', { placement: 'new-scale' })
   await expect.poll(() => container.querySelectorAll('[data-legend-row="cmp:NQ"]').length).toBe(2)
   const legends = container.querySelectorAll<HTMLElement>('.qc-legend')
-  const value = (index: number) => legends[index]!.querySelector('[data-role="legend-study-value"]')!.textContent
+  const value = (index: number) => legends[index]!.querySelector('[data-role="legend-indicator-value"]')!.textContent
   renderers[offset + 1]!.fireCrosshair(bars[1]!.t)
   expect(widget.layout.active()).toBe(0)
   expect(value(0)).toBe('4501.25')
@@ -410,7 +410,7 @@ describe('the reading follows the crosshair, and each chart keeps its own', () =
   })
 })
 
-describe('study rows', () => {
+describe('indicator rows', () => {
   it('keeps price-scale controls out of the legend and places list collapse after its rows', async () => {
     const { container, handle } = mountChart(scriptedFeed())
     await settle()
@@ -422,7 +422,7 @@ describe('study rows', () => {
     expect(mainRows.nextElementSibling).toBe(toggle)
   })
 
-  it('collapses the row list without losing study nodes, values or instances', async () => {
+  it('collapses the row list without losing indicator nodes, values or instances', async () => {
     const { container, handle, renderer } = mountChart(scriptedFeed({ bars: series(30) }))
     await settle()
     handle.indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find(d => d.id === 'sma')! })
@@ -450,7 +450,7 @@ describe('study rows', () => {
     expect(document.activeElement).toBe(eye)
   })
 
-  it('places a study row in its actual renderer pane, separate from overlay rows', async () => {
+  it('places an indicator row in its actual renderer pane, separate from overlay rows', async () => {
     const { container, handle } = mountChart(scriptedFeed({ bars: series(40) }))
     await settle()
     handle.indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'sma')! })
@@ -486,7 +486,7 @@ describe('study rows', () => {
     expect(rows(container)).toHaveLength(0)
   })
 
-  it('reads a study’s row at the hovered bar, and back at the last one when the pointer leaves', async () => {
+  it('reads an indicator’s row at the hovered bar, and back at the last one when the pointer leaves', async () => {
     const bars = series(30)
     const { container, handle, renderer } = mountChart(scriptedFeed({ bars }))
     await settle()
@@ -500,7 +500,7 @@ describe('study rows', () => {
     expect(rows(container)[0]!.textContent).toBe(latest)
   })
 
-  it('turns the volume band on with the study and off with its remove', async () => {
+  it('turns the volume band on with the indicator and off with its remove', async () => {
     const { container, handle, renderer } = mountChart(scriptedFeed())
     await settle()
     const band = () => renderer.series.find((s) => s.options.priceScaleId === 'volume')!
@@ -515,7 +515,7 @@ describe('study rows', () => {
   })
 })
 
-describe('a pane-placed study’s own lifecycle', () => {
+describe('a pane-placed indicator’s own lifecycle', () => {
   it('repositions pane rows and price-axis insets on renderer resize, then releases observers', async () => {
     const callbacks: (() => void)[] = []
     const disconnect = vi.fn()
@@ -538,7 +538,7 @@ describe('a pane-placed study’s own lifecycle', () => {
     instance.dispose()
     expect(disconnect).toHaveBeenCalled()
   })
-  it('restores the same study height after an earlier study is removed and its index shifts', async () => {
+  it('restores the same indicator height after an earlier indicator is removed and its index shifts', async () => {
     const { container, handle, renderer } = mountChart(scriptedFeed({ bars: series(40) }))
     await settle()
     const definition = BUILT_IN_INDICATORS.find(d => d.id === 'rsi')!
@@ -556,7 +556,7 @@ describe('a pane-placed study’s own lifecycle', () => {
     row.querySelector<HTMLButtonElement>('button[title="Restore pane"]')!.click()
     expect(renderer.paneHeights[1]).toBe(230)
   })
-  it('brings a row with collapse and maximize, and takes them away with the study', async () => {
+  it('brings a row with collapse and maximize, and takes them away with the indicator', async () => {
     const { container, handle } = mountChart(scriptedFeed({ bars: series(40) }))
     await settle()
     handle.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
@@ -657,12 +657,12 @@ describe('a replay window', () => {
     await settle() // the compared symbol resolves its own display format
     const row = container.querySelector<HTMLElement>('[data-legend-row="cmp:NQ"]')!
     expect(row.closest('[data-legend-pane]')?.getAttribute('data-legend-pane')).toBe('1')
-    expect(row.querySelector('[data-role="legend-study-value"]')?.textContent).toBe('4500.50')
+    expect(row.querySelector('[data-role="legend-indicator-value"]')?.textContent).toBe('4500.50')
     handle.replay.start(bars[3]!.t)
     renderer.fireCrosshair(bars[7]!.t)
-    expect(row.querySelector('[data-role="legend-study-value"]')?.textContent).toBe('4500.75')
+    expect(row.querySelector('[data-role="legend-indicator-value"]')?.textContent).toBe('4500.75')
     renderer.fireCrosshair(bars[0]!.t - 1)
-    expect(row.querySelector('[data-role="legend-study-value"]')?.textContent).toBe('')
+    expect(row.querySelector('[data-role="legend-indicator-value"]')?.textContent).toBe('')
     handle.compare.remove('NQ')
     await new Promise(resolve => setTimeout(resolve, 260))
     expect(container.querySelector('[data-legend-row="cmp:NQ"]')).toBeNull()
@@ -709,7 +709,7 @@ describe('a replay window', () => {
     expect(partText(container, 'legend-change')).toBe('')
   })
 
-  it('says so in the interval while replay runs', async () => {
+  it('says so in the timeframe while replay runs', async () => {
     const { container, handle } = mountChart(scriptedFeed({ bars: series(8) }), { features: { replay: true } })
     await settle()
     handle.replay.start()

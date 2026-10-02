@@ -46,7 +46,7 @@ describe('saved chart content: appearance', () => {
     const parsed = parseChartContent(legacy)
     expect(parsed.appearance).toBeUndefined()
     // Everything else the blob states still restores, and a format that carried no instance list
-    // reads back as a chart with no studies rather than as a refusal.
+    // reads back as a chart with no indicators rather than as a refusal.
     expect(parsed.timeframe).toBe('5m')
     expect(parsed.indicators).toEqual([])
   })

@@ -586,19 +586,19 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
   add({
-    id: 'chart.replay.setInterval',
+    id: 'chart.replay.setTimeframe',
     scope: 'chart',
-    label: 'command.replayInterval',
+    label: 'command.replayTimeframe',
     available: () => handle.replay.state().on,
     execute: (arg) => {
-      if (typeof arg === 'string' && arg) handle.replay.setInterval(arg)
+      if (typeof arg === 'string' && arg) handle.replay.setTimeframe(arg)
     },
   })
 
   // ── Timeframe and range presets. The grammar and the preset registries are the chart's own
   // timeframe module, beside this one, so a host binding a toolbar or an automation adapter binds
   // the same names the chart uses.
-  // One command per preset token the widget offers, plus the open-ended setter a custom interval
+  // One command per preset token the widget offers, plus the open-ended setter a custom timeframe
   // uses, which refuses a token the widget does not offer. Availability
   // is the intersection the capability plane already knows: a token the feed or the symbol cannot
   // serve is refused here rather than sent and rejected.

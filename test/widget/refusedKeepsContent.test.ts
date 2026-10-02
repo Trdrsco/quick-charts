@@ -3,10 +3,10 @@
 // dropped because of it. On a widget mounted the way a host mounts it, under both `access.refused`
 // values: an indicator whose definition the policy refuses, once on the chart, edits through
 // `indicators.set`, `chart.indicators.update` and the settings dialog, survives an edit of any other
-// study, and removes from every door, while a new instance of it is still refused. A drawing whose
-// tool the policy refuses selects, restyles, locks, hides and deletes as any drawing does, and is
-// not copied into a new one. A restore (a saved chart, a layout load, an undo or a redo, a drawings
-// document) puts back what the policy refuses, and a save after it still carries it.
+// indicator, and removes from every door, while a new instance of it is still refused. A drawing
+// whose tool the policy refuses selects, restyles, locks, hides and deletes as any drawing does,
+// and is not copied into a new one. A restore (a saved chart, a layout load, an undo or a redo, a
+// drawings document) puts back what the policy refuses, and a save after it still carries it.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
@@ -85,7 +85,7 @@ describe('an indicator the policy refuses, already on the chart', () => {
     }
   })
 
-  it('survives an edit of another study, by command and by set', async () => {
+  it('survives an edit of another indicator, by command and by set', async () => {
     for (const refused of REFUSED) {
       const { widget } = await withRefusedVwap(refused)
       const other = held(widget, 'other')
@@ -110,7 +110,7 @@ describe('an indicator the policy refuses, already on the chart', () => {
     expect(ids(widget)).toEqual(['kept', 'other'])
   })
 
-  it('keeps an edit that would move it, or another study, onto a refused definition as it stands', async () => {
+  it('keeps an edit that would move it, or another indicator, onto a refused definition as it stands', async () => {
     const { widget, denied } = await withRefusedVwap('hide')
     denied.indicators.add('obv')
     const api = widget.activeChart().indicators
@@ -250,7 +250,7 @@ describe('content the policy refuses, put back by a restore', { timeout: 20_000 
   }
   const refusing = (refused: 'disable' | 'hide'): AccessPolicy => ({ refused, indicator: (id) => id !== 'vwap', drawingTool: (tool) => tool !== 'trend_line' })
   const drawingIds = (chart: ReturnType<ChartWidget['activeChart']>): string[] => chart.drawings!.export().map((d) => d.id)
-  const savedStudies = (content: string): string[] => (JSON.parse(content) as { indicators: { definition: string }[] }).indicators.map((i) => i.definition)
+  const savedIndicators = (content: string): string[] => (JSON.parse(content) as { indicators: { definition: string }[] }).indicators.map((i) => i.definition)
 
   it('comes back whole from a saved chart, and a save after it still carries it', async () => {
     const saved = await savedContent()
@@ -261,7 +261,7 @@ describe('content the policy refuses, put back by a restore', { timeout: 20_000 
       await settle()
       expect(ids(widget), refused).toEqual(['kept', 'other'])
       expect(drawingIds(widget.activeChart()), refused).toEqual(['line', 'box'])
-      expect(savedStudies(widget.activeChart().saveLoad.serialize().content), refused).toEqual(['vwap', 'sma'])
+      expect(savedIndicators(widget.activeChart().saveLoad.serialize().content), refused).toEqual(['vwap', 'sma'])
       // Restored, it is content like any other: it edits and removes.
       const current = held(widget, 'kept')
       expect(widget.commands.execute('chart.indicators.update', { ...current, inputs: { ...current.inputs, period: 7 } }).kind, refused).toBe('ok')
@@ -282,7 +282,7 @@ describe('content the policy refuses, put back by a restore', { timeout: 20_000 
     expect(ids(widget)).toEqual(['kept', 'other'])
     expect(drawingIds(widget.activeChart())).toEqual(['line', 'box'])
     const layout = JSON.parse(widget.layout.serialize().content) as { charts: { content: string }[] }
-    expect(savedStudies(layout.charts[0]!.content)).toEqual(['vwap', 'sma'])
+    expect(savedIndicators(layout.charts[0]!.content)).toEqual(['vwap', 'sma'])
   })
 
   it('stays through an undo of another change, and comes back on an undo of its own removal', async () => {

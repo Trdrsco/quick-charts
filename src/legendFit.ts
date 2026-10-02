@@ -11,7 +11,7 @@
 //      bar alone. A close-only chart style (line, area, baseline, step line) paints no open, high
 //      or low in the first place, so it reads compact from the start without measuring anything.
 //   3. The pane goes SLIM and sheds context. Under `SLIM_WIDTH` the venue leaves the header. The
-//      interval stays: one chart of a layout has no other place to say what interval it is on.
+//      timeframe stays: one chart of a layout has no other place to say what timeframe it is on.
 //
 // Step 2 LATCHES. Hiding three marks makes the reading narrower, which would make it fit, which
 // would bring them back, which would overflow again: a measurement that acts on its own result

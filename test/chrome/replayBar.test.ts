@@ -1,9 +1,9 @@
 // @vitest-environment happy-dom
 // The replay transport: its controls read the replay state and route every press through a
-// command, the starting point arms a chart click, the speed and interval menus set through
+// command, the starting point arms a chart click, the speed and timeframe menus set through
 // commands, and the date picker's arithmetic is exact.
 import { afterEach, describe, expect, it } from 'vitest'
-import { intervalWords, mountReplayTransport, speedWords } from '../../src/ui/chrome/replayBar'
+import { timeframeWords, mountReplayTransport, speedWords } from '../../src/ui/chrome/replayBar'
 import { openDatePicker, parseTimeOfDay, parseYmd, ymd } from '../../src/ui/chrome/datePicker'
 import { buttonNames, fakeChart, fakeWidget, press } from './harness'
 
@@ -44,7 +44,7 @@ function mount(options: { access?: (id: string) => boolean } = {}) {
 }
 
 describe('the replay bar', () => {
-  it.each(['Select starting point', 'Replay speed', 'Update interval'])('%s toggles its panel and teardown removes an open panel', (label) => {
+  it.each(['Select starting point', 'Replay speed', 'Update timeframe'])('%s toggles its panel and teardown removes an open panel', (label) => {
     const { root, bar } = mount()
     const trigger = root.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!
     for (let repeat = 0; repeat < 3; repeat++) {
@@ -65,12 +65,12 @@ describe('the replay bar', () => {
     const bar = root.querySelector('.qc-replay')!
     expect(bar.getAttribute('role')).toBe('toolbar')
     expect(bar.classList.contains('qc-surface')).toBe(false)
-    expect(buttonNames(bar)).toEqual(['Select bar', 'Select starting point', 'Step back one bar', 'Play', 'Step forward one bar', 'Replay speed', 'Update interval', 'Jump to the live edge', 'Exit replay'])
+    expect(buttonNames(bar)).toEqual(['Select bar', 'Select starting point', 'Step back one bar', 'Play', 'Step forward one bar', 'Replay speed', 'Update timeframe', 'Jump to the live edge', 'Exit replay'])
     expect(bar.querySelector('.qc-replay-speed .qc-button-text')!.textContent).toBe('10x')
     // The GRAIN, not the mode: `auto` on the session resolves to a token and the control wears it
-    // as the toolbar's chip writes an interval, so a viewer reads how far each update moves rather
+    // as the toolbar's chip writes a timeframe, so a viewer reads how far each update moves rather
     // than who chose it.
-    expect(bar.querySelector('.qc-replay-interval .qc-button-text')!.textContent).toBe('15m')
+    expect(bar.querySelector('.qc-replay-timeframe .qc-button-text')!.textContent).toBe('15m')
     const strip = bar.querySelector('.qc-replay-command-strip')!
     expect(strip.querySelector('.qc-replay-controls')).not.toBeNull()
     expect(strip.lastElementChild?.classList.contains('qc-replay-exit')).toBe(true)
@@ -195,9 +195,9 @@ describe('the replay bar', () => {
     expect(speedWords(w.i18n.t, 0.2)).toBe('1 update per 5 seconds')
   })
 
-  it('the interval menu lists the finer grains and the auto switch, each through the command', () => {
+  it('the timeframe menu lists the finer grains and the auto switch, each through the command', () => {
     const { root, chart, w } = mount()
-    root.querySelector<HTMLButtonElement>('button[aria-label="Update interval"]')!.click()
+    root.querySelector<HTMLButtonElement>('button[aria-label="Update timeframe"]')!.click()
     const panel = root.querySelector<HTMLElement>('.qc-menu-panel')!
     const rows = [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]')]
     expect(rows.map((r) => r.textContent)).toEqual(['1 Second', '1 Minute', '5 Minutes', '15 Minutes', '1 Hour'])
@@ -207,13 +207,13 @@ describe('the replay bar', () => {
     const marks = [...body.children].map((e) => (e.classList.contains('qc-separator') ? '|' : e.getAttribute('role') === 'menuitemradio' ? e.textContent : 'x'))
     expect(marks).toEqual(['x', '1 Second', '|', '1 Minute', '5 Minutes', '15 Minutes', '|', '1 Hour', '|', 'x'])
     rows[2]!.click()
-    expect(chart.calls).toContain('replay:interval:5m')
-    root.querySelector<HTMLButtonElement>('button[aria-label="Update interval"]')!.click()
+    expect(chart.calls).toContain('replay:timeframe:5m')
+    root.querySelector<HTMLButtonElement>('button[aria-label="Update timeframe"]')!.click()
     const auto = root.querySelector<HTMLButtonElement>('[role="switch"]')!
     expect(auto.getAttribute('aria-checked')).toBe('false')
     auto.click()
-    expect(chart.calls).toContain('replay:interval:auto')
-    expect(intervalWords(w.i18n.t, '1h')).toBe('1 Hour')
+    expect(chart.calls).toContain('replay:timeframe:auto')
+    expect(timeframeWords(w.i18n.t, '1h')).toBe('1 Hour')
   })
 
   it('the starting-point menu offers bar, date, the first available date and random; random restarts inside the loaded window', () => {
@@ -280,7 +280,7 @@ describe('the reserved row', () => {
 
   it('anchors every flyout to its own control in the overlay layer, above the row', () => {
     const { root, chrome } = mount()
-    for (const label of ['Select starting point', 'Replay speed', 'Update interval']) {
+    for (const label of ['Select starting point', 'Replay speed', 'Update timeframe']) {
       const trigger = root.querySelector<HTMLButtonElement>(`.qc-replay button[aria-label="${label}"]`)!
       trigger.click()
       const panel = chrome.querySelector<HTMLElement>('.qc-menu-panel')!

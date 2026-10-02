@@ -65,7 +65,7 @@ describe('viewport time→x for anchors between bars of the current grid', () =>
 
   it('places a between-bars time proportionally ACROSS a session gap, not at a phantom bar count', () => {
     // 1h bars with a 48h weekend gap after index 2. A time 12h into the gap lands a quarter of the
-    // way between bars 2 and 3 — uniform-interval math would put it 12 whole bars to the right.
+    // way between bars 2 and 3 — uniform-step math would put it 12 whole bars to the right.
     const times = [T0, T0 + 3600, T0 + 7200, T0 + 7200 + 48 * 3600, T0 + 7200 + 49 * 3600]
     const { chart, series } = stubPair(times)
     const vp = viewportOf(chart, series)!
@@ -102,7 +102,7 @@ describe('viewport time→x for anchors between bars of the current grid', () =>
   it('answers a whitespace x with an extrapolated time, never the left-edge bar', () => {
     // timeAt in right-offset whitespace: coordinateToTime is null there, the logical is fractional,
     // and routing it through logicalToCoordinate would answer 0 → the LEFT edge bar's time. The
-    // data-based inverse must extrapolate on the trailing interval instead.
+    // data-based inverse must extrapolate on the trailing step instead.
     const { chart, series } = stubPair()
     const vp = viewportOf(chart, series)!
     const xPast = xOfLogical(N - 1 + 5.5) // 5.5 bars past the last bar

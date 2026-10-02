@@ -1,6 +1,6 @@
 // The floating settings bar for the selected drawing: templates first, then the controls the tool
 // actually has (a glyph mark carries no stroke, so it gets no color, width or style), the settings
-// gear, lock, delete, and the More menu with the stacking moves and the interval presets as
+// gear, lock, delete, and the More menu with the stacking moves and the timeframe presets as
 // hover-opened submenus, then clone, copy and hide. Grip-draggable anywhere over the chart; where
 // it sits is a preference. Every action is a command through the registry.
 import type { LineStyle } from '../../internal/drawings/index'
@@ -268,7 +268,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
         const at = deps.stackPosition()
         return menuOf(t('drawing.visualOrder'), 'narrow', ...ORDER_MOVES.map((move) => menuRow(t(move.label), () => deps.run(move.command), { disabled: move.dead(at), command: move.command })))
       }
-      return menuOf(t('drawing.visibilityOnIntervals'), 'wide', ...VISIBILITY_PRESETS.map((v) => menuRow(t(v.label), () => deps.run('chart.drawings.visibility', v.preset), { command: 'chart.drawings.visibility' })))
+      return menuOf(t('drawing.visibilityOnTimeframes'), 'wide', ...VISIBILITY_PRESETS.map((v) => menuRow(t(v.label), () => deps.run('chart.drawings.visibility', v.preset), { command: 'chart.drawings.visibility' })))
     }
     const arm = (kind: 'order' | 'visibility' | null, row?: HTMLElement): void => {
       cancelClose()
@@ -303,7 +303,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       t('drawing.moreActions'),
       'wide',
       submenuRow('order', t('drawing.visualOrder'), 'layers'),
-      submenuRow('visibility', t('drawing.visibilityOnIntervals')),
+      submenuRow('visibility', t('drawing.visibilityOnTimeframes')),
       separator(),
       plain(menuRow(t('drawing.clone'), () => deps.run('chart.drawings.clone'), { icon: deps.icons.icon('clone'), hint: t('drawing.hintClone', { modifier: modifier() }), command: 'chart.drawings.clone' })),
       plain(menuRow(t('drawing.copy'), () => deps.run('chart.drawings.copy'), { spacer: true, hint: t('drawing.hintCopy', { modifier: modifier() }), command: 'chart.drawings.copy' })),

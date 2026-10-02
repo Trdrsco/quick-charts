@@ -313,7 +313,7 @@ export class FibChannel extends Drawing<FibProps> {
   }
 }
 
-/** Vertical lines at Fibonacci-sequence multiples of the base interval. */
+/** Vertical lines at Fibonacci-sequence multiples of the base span. */
 export class FibTimeZone extends Drawing<FibProps> {
   readonly type = 'fib_timezone'
 

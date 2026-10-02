@@ -1,5 +1,5 @@
 // Range presets and the navigation step rules: the nine presets the bottom bar offers (each a
-// visible span plus the interval that span reads best at), whether a preset is offered for a
+// visible span plus the timeframe that span reads best at), whether a preset is offered for a
 // symbol whose history starts late, the framing math that sets a pane's visible window for a
 // span, and the zoom and scroll steps the on-chart navigation cluster applies. Pure over a
 // structural time-scale target, so a host and a test frame the same way without a chart.
@@ -60,7 +60,7 @@ export function rangeAvailable(preset: RangePreset, earliestBarSecs: number | nu
 
 /** A preset's tooltip: what it frames, and the bars it frames it in. */
 export function rangePresetTip(t: ChartTranslate, preset: RangePreset): string {
-  return t('range.tip', { range: t(preset.label), interval: timeframeLabel(t, preset.tf) })
+  return t('range.tip', { range: t(preset.label), timeframe: timeframeLabel(t, preset.tf) })
 }
 
 /** The part of a chart the framing needs: a time scale that takes a logical range. */
@@ -70,7 +70,7 @@ export interface RangeFrameTarget {
 
 /** Frame a pane on a span, anchored on its LAST REAL bar: a series also carries a future
  *  whitespace horizon for right-margin drawing, so fitting to content would frame a screen of
- *  empty space. The bar count comes from the pane's own interval, because the same span is a
+ *  empty space. The bar count comes from the pane's own timeframe, because the same span is a
  *  different number of bars on a one-minute pane than on a daily one. An empty series, or a token
  *  the grammar cannot read, frames nothing rather than a bogus window. */
 export function frameRange(chart: RangeFrameTarget, series: { data(): readonly unknown[] }, span: RangeSpan, tf: string, nowSecs: number = Math.floor(Date.now() / 1000)): void {

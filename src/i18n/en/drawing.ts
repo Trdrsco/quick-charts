@@ -120,7 +120,7 @@ export const drawing = {
   'drawing.more': 'More',
   'drawing.moreActions': 'More drawing actions',
   'drawing.visualOrder': 'Visual order',
-  'drawing.visibilityOnIntervals': 'Visibility on intervals',
+  'drawing.visibilityOnTimeframes': 'Visibility on timeframes',
   'drawing.clone': 'Clone',
   'drawing.copy': 'Copy',
   'drawing.modifierControl': 'Ctrl',
@@ -142,10 +142,10 @@ export const drawing = {
   'drawing.sendToBack': 'Send to back',
   'drawing.bringForward': 'Bring forward',
   'drawing.sendBackward': 'Send backward',
-  'drawing.visCurrentAndAbove': 'Current interval and above',
-  'drawing.visCurrentAndBelow': 'Current interval and below',
-  'drawing.visCurrentOnly': 'Current interval only',
-  'drawing.visAll': 'All intervals',
+  'drawing.visCurrentAndAbove': 'Current timeframe and above',
+  'drawing.visCurrentAndBelow': 'Current timeframe and below',
+  'drawing.visCurrentOnly': 'Current timeframe only',
+  'drawing.visAll': 'All timeframes',
 
   // The template dialogs: naming a new template, and confirming a delete.
   'drawing.saveTemplate': 'Save drawing template',
@@ -314,7 +314,7 @@ export const drawing = {
   'drawing.coordBar': '#{n} (bar)',
   'drawing.coordPriceBar': '#{n} (price, bar)',
 
-  // The Visibility page: which intervals paint the drawing.
+  // The Visibility page: which timeframes paint the drawing.
   'drawing.unitTicks': 'Ticks',
   'drawing.unitSeconds': 'Seconds',
   'drawing.unitMinutes': 'Minutes',
@@ -322,7 +322,7 @@ export const drawing = {
   'drawing.unitDays': 'Days',
   'drawing.unitWeeks': 'Weeks',
   'drawing.unitMonths': 'Months',
-  'drawing.intervalPinnedNote': 'A drawing stays on at least one interval, so it can always be reached again.',
+  'drawing.timeframePinnedNote': 'A drawing stays on at least one timeframe, so it can always be reached again.',
 
   // The color palette: swatches, the custom color panel, the opacity row.
   'drawing.colorSwatch': 'Color {hex}',

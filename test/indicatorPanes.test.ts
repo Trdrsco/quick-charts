@@ -1,10 +1,11 @@
 // Pane arithmetic: how many panes a chart holds after indicators come and go.
 //
-// A study placed in its own pane gets `chart.panes().length` as its index, which is only correct
-// while the pane list is accurate. Every way of getting this wrong is invisible: an extra pane is
-// not an error, it is a pane, and the renderer simply divides the chart's height by one more than
-// it should. The study lands in the last pane, squeezed toward the renderer's minimum, and the
-// symptom a viewer sees is a legend row offering to restore a pane nobody collapsed.
+// An indicator placed in its own pane gets `chart.panes().length` as its index, which is only
+// correct while the pane list is accurate. Every way of getting this wrong is invisible: an extra
+// pane is not an error, it is a pane, and the renderer simply divides the chart's height by one
+// more than it should. The indicator lands in the last pane, squeezed toward the renderer's
+// minimum, and the symptom a viewer sees is a legend row offering to restore a pane nobody
+// collapsed.
 import { describe, expect, it } from 'vitest'
 import type { IChartApi } from 'lightweight-charts'
 import { attachIndicators } from '../src/indicatorRenderer'
@@ -54,7 +55,7 @@ const overlay: IndicatorPlots = {
   title: 'Average',
   plots: [{ key: 'ma', type: 'line', color: '#fff', data: [{ time: 1 as never, value: 1 }] }],
 }
-const study: IndicatorPlots = {
+const oscillator: IndicatorPlots = {
   placement: 'pane',
   title: 'Oscillator',
   plots: [{ key: 'osc', type: 'line', color: '#fff', data: [{ time: 1 as never, value: 1 }] }],
@@ -64,13 +65,13 @@ function renderer(chart: IChartApi) {
   return attachIndicators(chart, { candles: () => null, neutral: () => '#888' })
 }
 
-describe('one pane-placed study means exactly one study pane', () => {
+describe('one pane-placed indicator means exactly one indicator pane', () => {
   it('after the first paint', () => {
     const { chart, paneCount } = fakeChart()
     const r = renderer(chart)
     r.render('sma-20', overlay)
-    r.render('osc-1', study)
-    expect(paneCount()).toBe(2) // the price pane and the study's
+    r.render('osc-1', oscillator)
+    expect(paneCount()).toBe(2) // the price pane and the indicator's
   })
 
   it('after a recompute paints the same shapes again', () => {
@@ -79,42 +80,42 @@ describe('one pane-placed study means exactly one study pane', () => {
     const r = renderer(chart)
     for (let i = 0; i < 3; i++) {
       r.render('sma-20', overlay)
-      r.render('osc-1', study)
+      r.render('osc-1', oscillator)
     }
     expect(paneCount()).toBe(2)
   })
 
-  it('after a reshape rebuilds the study from scratch', () => {
+  it('after a reshape rebuilds the indicator from scratch', () => {
     // A re-published script or a definition swap under the same id rebuilds the entry. The old
     // pane has to go with it, or the new series is placed one pane too far down.
     const { chart, paneCount } = fakeChart()
     const r = renderer(chart)
     r.render('sma-20', overlay)
-    r.render('osc-1', study)
-    r.render('osc-1', { ...study, plots: [...study.plots, { key: 'sig', type: 'line', color: '#0f0', data: [] }] })
+    r.render('osc-1', oscillator)
+    r.render('osc-1', { ...oscillator, plots: [...oscillator.plots, { key: 'sig', type: 'line', color: '#0f0', data: [] }] })
     expect(paneCount()).toBe(2)
     expect(r.paneOf()['osc-1']).toBe(1)
   })
 
-  it('after the study goes unavailable and comes back', () => {
-    // The feed loses volume, or a subsession filter empties the window: the study is removed and
-    // later restored. It must come back to the same pane, not to a new one below the last.
+  it('after the indicator goes unavailable and comes back', () => {
+    // The feed loses volume, or a subsession filter empties the window: the indicator is removed
+    // and later restored. It must come back to the same pane, not to a new one below the last.
     const { chart, paneCount } = fakeChart()
     const r = renderer(chart)
     r.render('sma-20', overlay)
-    r.render('osc-1', study)
-    r.render('osc-1', { ...study, unavailable: 'no volume' })
+    r.render('osc-1', oscillator)
+    r.render('osc-1', { ...oscillator, unavailable: 'no volume' })
     expect(paneCount()).toBe(1) // the pane goes with it
-    r.render('osc-1', study)
+    r.render('osc-1', oscillator)
     expect(paneCount()).toBe(2)
     expect(r.paneOf()['osc-1']).toBe(1)
   })
 
   it('even when a pane was left behind before it was placed', () => {
     // The case this exists for. A pane nobody swept counts the same as a real one, so the
-    // study is placed BELOW it: three panes for one study, the study squeezed into the last of
-    // them and an empty pane keeping its share of the height. The index has to be counted from a
-    // pane list that holds only panes something is using.
+    // indicator is placed BELOW it: three panes for one indicator, the indicator squeezed into the
+    // last of them and an empty pane keeping its share of the height. The index has to be counted
+    // from a pane list that holds only panes something is using.
     const { chart, paneCount } = fakeChart()
     const stray = chart.addSeries(null as never, {}, 1) // a pane created, then emptied and not swept
     chart.removeSeries(stray)
@@ -122,16 +123,16 @@ describe('one pane-placed study means exactly one study pane', () => {
 
     const r = renderer(chart)
     r.render('sma-20', overlay)
-    r.render('osc-1', study)
+    r.render('osc-1', oscillator)
     expect(paneCount()).toBe(2) // the leftover is gone, not counted
-    expect(r.paneOf()['osc-1']).toBe(1) // and the study is not one pane too low
+    expect(r.paneOf()['osc-1']).toBe(1) // and the indicator is not one pane too low
   })
 
-  it('and the study never lands below the last pane', () => {
+  it('and the indicator never lands below the last pane', () => {
     const { chart } = fakeChart()
     const r = renderer(chart)
     r.render('sma-20', overlay)
-    r.render('osc-1', study)
+    r.render('osc-1', oscillator)
     expect(r.paneOf()['osc-1']).toBe(1)
   })
 })
@@ -141,9 +142,9 @@ describe('one pane-placed study means exactly one study pane', () => {
 // The renderer above is exercised directly, one render call at a time. The plane is what the widget
 // actually drives, and it decides how many times the renderer is called per mount: `set` prunes
 // then recomputes, every tick recomputes again, and a definition that cannot be computed yet is
-// skipped rather than rendered. A mount that rendered a pane study twice would leave a pane behind
-// the same way, so the count is pinned here too, over the same fake chart.
-describe('the widget plane places one study pane and keeps it there', () => {
+// skipped rather than rendered. A mount that rendered a pane indicator twice would leave a pane
+// behind the same way, so the count is pinned here too, over the same fake chart.
+describe('the widget plane places one indicator pane and keeps it there', () => {
   const planeDeps = (chart: IChartApi, feed: { bars: readonly FeedBar[] }) => ({
     chart,
     candleSeries: () => null,
@@ -185,8 +186,8 @@ describe('the widget plane places one study pane and keeps it there', () => {
 
   it('and across a mount that starts before the bars arrive', () => {
     // The widget mounts and recomputes before the feed has answered, then again once it has. The
-    // empty round draws nothing, so it must place nothing: a pane created for a study with no data
-    // is a pane the real study is then placed below.
+    // empty round draws nothing, so it must place nothing: a pane created for an indicator with no
+    // data is a pane the real indicator is then placed below.
     const { chart, paneCount } = fakeChart()
     const feed: { bars: readonly FeedBar[] } = { bars: [] }
     const plane = attachIndicatorsPlane(planeDeps(chart, feed))
@@ -203,7 +204,7 @@ describe('the widget plane places one study pane and keeps it there', () => {
     plane.destroy()
   })
 
-  it('and when the study is hidden and shown again', () => {
+  it('and when the indicator is hidden and shown again', () => {
     // Hiding takes the series down but keeps the legend row. Showing it again must return it to
     // its own pane, not to a new one below whatever is left.
     const { chart, paneCount } = fakeChart()

@@ -29,7 +29,7 @@ export interface ChromeContext {
   /** The main-series styles the widget offers, which are the style picker's rows. */
   styles: OfferedChartStyles
   /** The timeframes the widget offers, which bound the timeframe picker's chips and rows and the
-   *  interval a range preset reads at. */
+   *  timeframe a range preset reads at. */
   timeframes: OfferedTimeframes
   /** The arrangements and sync switches the widget offers, which are the layout setup menu's tiles
    *  and switches. */

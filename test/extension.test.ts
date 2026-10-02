@@ -420,7 +420,7 @@ describe('a failing extension is its own problem', () => {
     expect(state.lines.size).toBe(0)
   })
 
-  it('a menu provider that throws contributes nothing and the menu still opens', () => {
+  it('a menu builder that throws contributes nothing and the menu still opens', () => {
     const { deps } = fakeChart()
     const host = createExtensionHost(deps, [
       {

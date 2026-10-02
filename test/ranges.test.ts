@@ -11,7 +11,7 @@ const t = createChartI18n().t
 const NOW = Date.UTC(2026, 6, 13, 12) / 1000
 
 describe('the nine presets', () => {
-  it('are nine, in bar order, each with a parsable interval and a catalog name', () => {
+  it('are nine, in bar order, each with a parsable timeframe and a catalog name', () => {
     expect(RANGE_PRESETS.map((r) => r.key)).toEqual(['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y', '5Y', 'All'])
     for (const r of RANGE_PRESETS) {
       expect(parseTimeframe(r.tf), r.key).not.toBeNull()
@@ -26,7 +26,7 @@ describe('the nine presets', () => {
     expect(rangeSpanSeconds('all', NOW)).toBeNull()
   })
 
-  it('writes the tooltip from the preset name and its interval', () => {
+  it('writes the tooltip from the preset name and its timeframe', () => {
     expect(rangePresetTip(t, RANGE_PRESETS[0]!)).toBe('1 Day · 1 Minute bars')
     expect(rangePresetTip(t, RANGE_PRESETS[8]!)).toBe('All data · 1 Month bars')
   })
@@ -73,7 +73,7 @@ describe('framing a range on a pane', () => {
     expect(c.calls[0]!.to).toBe(103) // 99 (last real) + 4, not 139
   })
 
-  it("reads the span in the pane's own interval", () => {
+  it("reads the span in the pane's own timeframe", () => {
     const min = chart()
     frameRange(min.api, series(2000, 10), DAY, '1m', NOW)
     const hour = chart()
@@ -98,7 +98,7 @@ describe('framing a range on a pane', () => {
     expect(c.calls[0]).toEqual({ from: -1, to: 305 })
   })
 
-  it('an empty series, or an unreadable interval, frames nothing rather than a bogus window', () => {
+  it('an empty series, or an unreadable timeframe, frames nothing rather than a bogus window', () => {
     const empty = chart()
     frameRange(empty.api, series(0, 30), DAY, '1m', NOW)
     expect(empty.calls).toHaveLength(0)

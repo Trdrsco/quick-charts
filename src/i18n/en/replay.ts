@@ -1,5 +1,5 @@
 // The bar-replay bar: the starting-point split button and its menu, the date picker, the
-// transport, the speed and update-interval menus, and the exit. A speed option ('1x'), the bar
+// transport, the speed and update-timeframe menus, and the exit. A speed option ('1x'), the bar
 // counter's figures and a timeframe token are data and carry no words.
 export const replay = {
   /** Pane-local watermark and legend status title. */
@@ -43,12 +43,12 @@ export const replay = {
   'replay.speed': 'Replay speed',
   'replay.updatesPerSecond': { one: '{count} update per second', other: '{count} updates per second' },
   'replay.oneUpdatePerSeconds': { one: '1 update per {count} second', other: '1 update per {count} seconds' },
-  // The update interval.
-  'replay.interval': 'Update interval',
-  'replay.intervalHelp': 'How much time each replay update advances. Finer than the chart interval, each bar forms from real finer bars.',
+  // The update timeframe.
+  'replay.timeframe': 'Update timeframe',
+  'replay.timeframeHelp': 'How much time each replay update advances. Finer than the chart timeframe, each bar forms from real finer bars.',
   /** Why the control is unavailable: this timeframe has nothing finer to form its bars from. */
-  'replay.intervalNone': 'No finer interval for this chart interval',
-  /** The interval option that picks the grain itself, rather than a named token. */
+  'replay.timeframeNone': 'No finer timeframe for this chart timeframe',
+  /** The timeframe option that picks the grain itself, rather than a named token. */
   'replay.auto': 'Auto',
-  'replay.autoSelectInterval': 'Auto select interval',
+  'replay.autoSelectTimeframe': 'Auto select timeframe',
 } as const

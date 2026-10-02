@@ -1,7 +1,7 @@
 // quickcharts/drawings — the public drawing API.
 //
 // Drawings are the one part of the chart with enough surface of its own to earn a subpath: a
-// catalog of 90 tools, a persistence codec, per-interval visibility, the magnet, and the product
+// catalog of 90 tools, a persistence codec, per-timeframe visibility, the magnet, and the product
 // models a toolbar is built from. A host that never draws never imports any of it, and one that
 // does gets it under a name that says what it is.
 //
@@ -66,9 +66,9 @@ export {
   sameDrawingContext,
 } from './document'
 
-// ── Per-interval visibility ─────────────────────────────────────────────────────────────────────
-export type { IntervalBucket, IntervalContext, IntervalVisibility, VisibilityPreset, VisibilityRange } from '../internal/drawings/index'
-export { DEFAULT_VISIBILITY, normalizeVisibility, parseIntervalContext, visibilityPreset, visibleAt } from '../internal/drawings/index'
+// ── Per-timeframe visibility ────────────────────────────────────────────────────────────────────
+export type { TimeframeBucket, TimeframeContext, TimeframeVisibility, VisibilityPreset, VisibilityRange } from '../internal/drawings/index'
+export { DEFAULT_VISIBILITY, normalizeVisibility, parseTimeframeContext, visibilityPreset, visibleAt } from '../internal/drawings/index'
 
 // ── The magnet ──────────────────────────────────────────────────────────────────────────────────
 export { magnetSnap, snapToBar } from '../internal/drawings/index'

@@ -100,7 +100,7 @@ type Raise = (widget: ChartWidget, container: HTMLElement) => Promise<string[][]
 const SURFACES: readonly [string, Raise][] = [
   ['the bars at rest', async () => [unhosted()]],
   [
-    'the legend with a study on the price pane and one in a pane of its own',
+    'the legend with an indicator on the price pane and one in a pane of its own',
     async (widget) => {
       widget.activeChart().indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'sma')! })
       widget.activeChart().indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
@@ -292,7 +292,7 @@ describe('a factory that fails costs one glyph its artwork', () => {
     const settings = document.querySelector('button[aria-label="Chart settings"]')!
     expect(settings.querySelector('svg')).not.toBeNull()
     expect(settings.querySelector('[data-host-icon]')).toBeNull()
-    // Each study's gear draws the same icon again; the failure is still one record.
+    // Each indicator's gear draws the same icon again; the failure is still one record.
     widget.activeChart().indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'sma')! })
     widget.activeChart().indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
     await settle()
@@ -312,7 +312,7 @@ describe('a factory that fails costs one glyph its artwork', () => {
     const shared = hostIcon('settings')({ document, width: 28, height: 28, direction: 'ltr' })
     const { widget } = await mount({ icons: { settings: () => shared } })
     expect(shared.closest('button')?.getAttribute('aria-label')).toBe('Chart settings')
-    // A study's gear asks for the same icon and is handed the element the top bar holds.
+    // An indicator's gear asks for the same icon and is handed the element the top bar holds.
     widget.activeChart().indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'sma')! })
     await settle()
     expect(document.querySelector('button[aria-label="Indicator settings"] svg')).not.toBeNull()

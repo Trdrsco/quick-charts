@@ -189,7 +189,7 @@ export interface DrawingsDeps {
   /** The standing preference record, read live, and the one way to write it. */
   preferences(): DrawingPreferences
   setPreferences(next: DrawingPreferences): void
-  /** The studies the eye reaches: how many there are, and the blanket over them. */
+  /** The indicators the eye reaches: how many there are, and the blanket over them. */
   indicators: { count(): number; setAllHidden(hidden: boolean): void }
   /** The layers extensions offered the eye, read live: they list after the chart's own and
    *  `all` blanks them too. */

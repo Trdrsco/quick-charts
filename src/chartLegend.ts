@@ -1,5 +1,5 @@
 // The chart's legend: a quiet framework-free strip over the plot area. The header carries the
-// market the chart is on as the datafeed resolved it (its display name, the interval, its venue),
+// market the chart is on as the datafeed resolved it (its display name, the timeframe, its venue),
 // a market-status dot, the bar being read (open, high, low, close and the change against the
 // previous close); beneath it sits one row per
 // indicator instance (title, value, per-row controls: settings gear, pane collapse/maximize for
@@ -38,7 +38,7 @@ export interface LegendChip {
   id: string
   title: string
   /** The instance's inputs, already worded as `(2, Close)`. It stands quiet after the title, so the
-   *  title carries the study's short mark alone and never repeats the period or the source. */
+   *  title carries the indicator's short mark alone and never repeats the period or the source. */
   inputs?: string
   value: string | null
   /** The value's ink: the instance's effective primary plot colour, so the reading and the line it
@@ -62,8 +62,8 @@ export interface LegendChip {
   /** The TITLE is a button (a compare row's change-symbol door) — needs `onTitle`. */
   titleButton?: boolean
   /** The market this row charts, when the row IS a market: the head of the row wears its mark, the
-   *  same one the header's identity wears, through the same host hook. A study is not a market and
-   *  leaves this unset. */
+   *  same one the header's identity wears, through the same host hook. An indicator is not a market
+   *  and leaves this unset. */
   mark?: string
   /** Where the row's data comes from, written after the title. A narrow pane sheds it: the venue is
    *  the first thing worth losing when the row has to choose between saying where a price came from
@@ -85,7 +85,7 @@ export interface LegendIdentity {
   name: string
   /** The charted symbol itself, behind the display name. */
   symbol: string
-  /** The interval, already worded (a running replay says so). */
+  /** The timeframe, already worded (a running replay says so). */
   timeframe: string
   exchange: string
 }
@@ -367,7 +367,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     venueText.className = 'qc-legend-venue qc-legend-row-venue'
     const value = document.createElement('span')
     value.className = 'qc-legend-value'
-    value.dataset.role = 'legend-study-value'
+    value.dataset.role = 'legend-indicator-value'
     const gear = chipButton(controls.icons.glyph(ICONS.legendSettings, { size: 18 }), '', () => {
       const r = gear.getBoundingClientRect()
       controls.onSettings?.(chip.id, { x: r.x, y: r.y, w: r.width, h: r.height })
@@ -391,11 +391,11 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         chip = next
         row.dataset.qcHidden = String(chip.hidden)
         row.title = chip.description ?? ''
-        // A market row leads with its own mark; a study has none and the head of the row closes up.
-        // The mark goes through the SAME host hook the header's does, so a host that supplies
-        // artwork supplies it everywhere a market is named, and one that does not gets the package's
-        // monogram in both places. Repainted only when the market changes: a host's mark may be an
-        // image, and tearing one down every tick would flicker.
+        // A market row leads with its own mark; an indicator has none and the head of the row
+        // closes up. The mark goes through the SAME host hook the header's does, so a host that
+        // supplies artwork supplies it everywhere a market is named, and one that does not gets the
+        // package's monogram in both places. Repainted only when the market changes: a host's mark
+        // may be an image, and tearing one down every tick would flicker.
         rowMark.element.hidden = !chip.mark
         if (!chip.mark) {
           dropMark?.()

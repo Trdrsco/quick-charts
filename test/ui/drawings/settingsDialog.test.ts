@@ -181,7 +181,7 @@ describe('the dialog', () => {
     expect((table.drawing.props.cells as string[][])[0]!.length).toBe(cells[0]!.length + 1)
   })
 
-  it('pins the last enabled interval on the Visibility page', () => {
+  it('pins the last enabled timeframe on the Visibility page', () => {
     const { dialog, tab, drawing } = rig('rectangle')
     tab('Visibility').click()
     const checks = () => [...dialog.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
@@ -193,7 +193,7 @@ describe('the dialog', () => {
     expect(visibility.months.on).toBe(false)
     const ticks = dialog.querySelector<HTMLInputElement>('input[type="checkbox"]')!
     expect(ticks.disabled).toBe(true)
-    expect(dialog.textContent).toContain('A drawing stays on at least one interval')
+    expect(dialog.textContent).toContain('A drawing stays on at least one timeframe')
   })
 
   it('the footer template menu saves the current setup under a name, applies the default, and removes a saved one', async () => {

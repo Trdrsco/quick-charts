@@ -24,7 +24,7 @@ import type {
   Viewport,
 } from './types'
 import { DEFAULT_OPTIONS, DEFAULT_STYLE } from './types'
-import type { IntervalContext } from './visibility'
+import type { TimeframeContext } from './visibility'
 import { normalizeVisibility, visibleAt } from './visibility'
 import type { BarSource, SourceBar } from './bars'
 import { DrawingPaneView } from '../render/pane-view'
@@ -72,12 +72,12 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
   }
   const firstTime = data.length > 0 ? numTime(0) : null
   const lastTime = data.length > 0 ? numTime(lastIndex) : null
-  // Leading/trailing bar intervals extrapolate beyond the loaded range: past the last bar is a
+  // Leading/trailing bar steps extrapolate beyond the loaded range: past the last bar is a
   // projection into empty future space, before the first is unloaded history.
   const prevTime = numTime(lastIndex - 1)
-  const trailInterval = lastTime !== null && prevTime !== null && lastTime > prevTime ? lastTime - prevTime : null
+  const trailStep = lastTime !== null && prevTime !== null && lastTime > prevTime ? lastTime - prevTime : null
   const secondTime = numTime(1)
-  const leadInterval = firstTime !== null && secondTime !== null && secondTime > firstTime ? secondTime - firstTime : null
+  const leadStep = firstTime !== null && secondTime !== null && secondTime > firstTime ? secondTime - firstTime : null
 
   const logicalOfTime = (time: Time): number | null => {
     // A time that IS a bar of the current grid takes the library's exact mapping. This also covers
@@ -88,11 +88,11 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
       if (logical !== null) return logical
     }
     if (typeof time !== 'number' || firstTime === null || lastTime === null) return null
-    if (time >= lastTime) return trailInterval === null ? lastIndex : lastIndex + (time - lastTime) / trailInterval
-    if (time <= firstTime) return leadInterval === null ? 0 : (time - firstTime) / leadInterval
-    // Between bars: binary-search the straddling pair and interpolate inside it. Bar intervals are
+    if (time >= lastTime) return trailStep === null ? lastIndex : lastIndex + (time - lastTime) / trailStep
+    if (time <= firstTime) return leadStep === null ? 0 : (time - firstTime) / leadStep
+    // Between bars: binary-search the straddling pair and interpolate inside it. Bar steps are
     // NOT uniform (session gaps), so proportional placement within the one straddling pair is the
-    // only mapping that keeps a finer-grid anchor in place — counting bars at a fixed interval from
+    // only mapping that keeps a finer-grid anchor in place — counting bars at a fixed step from
     // either end would shift it by every gap in between.
     let lo = 0
     let hi = lastIndex
@@ -110,13 +110,13 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
   }
 
   // The inverse, from the same data: fractional logicals interpolate between their neighbouring
-  // bars' times, out-of-range logicals extrapolate on the edge interval. Never routed through
+  // bars' times, out-of-range logicals extrapolate on the edge step. Never routed through
   // `logicalToCoordinate` — a fractional input there answers 0, and `coordinateToTime(0)` then
   // returns the LEFT EDGE bar's time: a silently wrong answer rather than a null.
   const timeOfLogicalIndex = (logical: number): Time | null => {
     if (firstTime === null || lastTime === null) return null
-    if (logical >= lastIndex) return trailInterval === null ? (lastTime as Time) : ((lastTime + (logical - lastIndex) * trailInterval) as Time)
-    if (logical <= 0) return leadInterval === null ? (firstTime as Time) : ((firstTime + logical * leadInterval) as Time)
+    if (logical >= lastIndex) return trailStep === null ? (lastTime as Time) : ((lastTime + (logical - lastIndex) * trailStep) as Time)
+    if (logical <= 0) return leadStep === null ? (firstTime as Time) : ((firstTime + logical * leadStep) as Time)
     const i = Math.floor(logical)
     const tLo = numTime(i)
     const tHi = numTime(i + 1)
@@ -196,7 +196,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   protected _options: DrawingOptions
   protected _props: P
   protected _state: DrawingState = 'normal'
-  private _intervalContext: IntervalContext = null
+  private _timeframeContext: TimeframeContext = null
   private _globalHidden = false
   private _barSource: BarSource | null = null
 
@@ -341,8 +341,8 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this.requestUpdate()
   }
 
-  setIntervalContext(context: IntervalContext): void {
-    this._intervalContext = context
+  setTimeframeContext(context: TimeframeContext): void {
+    this._timeframeContext = context
     this.requestUpdate()
   }
 
@@ -403,7 +403,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   }
 
   isVisibleNow(): boolean {
-    return !this._globalHidden && this._options.visible && visibleAt(this._options.visibility, this._intervalContext)
+    return !this._globalHidden && this._options.visible && visibleAt(this._options.visibility, this._timeframeContext)
   }
 
   applyProps(patch: Partial<P>): void {

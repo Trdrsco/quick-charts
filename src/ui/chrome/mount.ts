@@ -59,7 +59,7 @@ export interface ChromeDeps {
   features: ResolvedFeatures
   /** Which of the chart's own controls render. */
   ui: ResolvedUi
-  /** Where the viewer's own choices about the chrome live: favorite and custom intervals, starred
+  /** Where the viewer's own choices about the chrome live: favorite and custom timeframes, starred
    *  layouts and indicators, the layouts' sort. None of them is layout content, so a write here
    *  never marks the layout changed. */
   storage: ChartStorage

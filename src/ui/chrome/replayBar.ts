@@ -1,5 +1,5 @@
 // The bar-replay transport: the starting-point split button (select a bar on the chart, select a
-// date, a random bar), step back, play or pause, step forward, the speed menu, the update-interval
+// date, a random bar), step back, play or pause, step forward, the speed menu, the update-timeframe
 // menu, go live, the bar counter, and exit. Mounted once in the widget's reserved row while its
 // presentation owner is replaying; every control states an intent by that chart's command id, so a
 // host that forbids a replay verb cannot reach it by clicking the bar.
@@ -53,8 +53,8 @@ export function speedWords(t: ChartI18n['t'], speed: number): string {
   return speed >= 1 ? t('replay.updatesPerSecond', { count: speed }) : t('replay.oneUpdatePerSeconds', { count: Math.round(1 / speed) })
 }
 
-/** A finer interval's name: whole days, hours or minutes, by its nominal seconds. */
-export function intervalWords(t: ChartI18n['t'], token: string): string {
+/** A finer timeframe's name: whole days, hours or minutes, by its nominal seconds. */
+export function timeframeWords(t: ChartI18n['t'], token: string): string {
   const sec = tfSeconds(token)
   if (sec === 0) return token
   return timeframeLabel(t, token)
@@ -249,39 +249,39 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
     }))
   }
 
-  const intervalButton = button({ label: t()('replay.interval'), text: '', className: 'qc-toolbar-button qc-replay-interval', onClick: () => toggleMenu(intervalButton, openIntervalMenu) })
-  intervalButton.setAttribute('aria-haspopup', 'menu')
-  const openIntervalMenu = (): void => {
+  const timeframeButton = button({ label: t()('replay.timeframe'), text: '', className: 'qc-toolbar-button qc-replay-timeframe', onClick: () => toggleMenu(timeframeButton, openTimeframeMenu) })
+  timeframeButton.setAttribute('aria-haspopup', 'menu')
+  const openTimeframeMenu = (): void => {
     const menu: Closable = hold(openMenu({
       host: deps.chrome,
-      anchor: intervalButton,
-      label: t()('replay.interval'),
+      anchor: timeframeButton,
+      label: t()('replay.timeframe'),
       role: 'dialog',
       className: 'qc-replay-menu',
-      width: FLYOUT_WIDTH.replayInterval,
+      width: FLYOUT_WIDTH.replayTimeframe,
       placement: 'up',
       onClose: () => open.delete(menu),
       build(body, menu) {
-        const heading = menuHeading(t()('replay.interval'))
-        heading.title = t()('replay.intervalHelp')
+        const heading = menuHeading(t()('replay.timeframe'))
+        heading.title = t()('replay.timeframeHelp')
         body.appendChild(heading)
-        const current = handle.replay.interval()
+        const current = handle.replay.timeframe()
         const rows: { token: string; row: HTMLButtonElement }[] = []
         // A rule between UNIT groups, as the timeframe picker draws one: seconds, minutes, hours and
         // days are different orders of magnitude, and a flat run of them reads as one list where the
         // jump from 30 minutes to 1 hour is the same size as the jump from 3 to 5.
         let previousUnit: string | null = null
-        for (const token of handle.replay.subIntervals()) {
+        for (const token of handle.replay.subTimeframes()) {
           const unit = timeframeGroupUnit(parseTimeframe(token)?.unit ?? 'd')
           if (previousUnit !== null && unit !== previousUnit) body.appendChild(menuSeparator())
           previousUnit = unit
           const row = menuItem({
-            text: intervalWords(t(), token),
+            text: timeframeWords(t(), token),
             role: 'menuitemradio',
             checked: current === token,
             onSelect: () => {
               menu.close()
-              commands.execute('chart.replay.setInterval', token)
+              commands.execute('chart.replay.setTimeframe', token)
             },
           })
           rows.push({ token, row })
@@ -290,16 +290,16 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
         body.appendChild(menuSeparator())
         body.appendChild(
           switchRow({
-            label: t()('replay.autoSelectInterval'),
+            label: t()('replay.autoSelectTimeframe'),
             checked: current === 'auto',
             onChange: (on) => {
               // Switching auto off keeps the grain auto would have chosen, as the first explicit
               // one, so the menu never claims a grain replay is not using.
-              const first = handle.replay.subIntervals()[0]
-              commands.execute('chart.replay.setInterval', on ? 'auto' : (first ?? 'auto'))
+              const first = handle.replay.subTimeframes()[0]
+              commands.execute('chart.replay.setTimeframe', on ? 'auto' : (first ?? 'auto'))
               // The rows take the new choice in place: a rebuild would swap the switch just pressed
               // for a new one already at its end, and the knob would jump, not slide.
-              const now = handle.replay.interval()
+              const now = handle.replay.timeframe()
               for (const entry of rows) entry.row.setAttribute('aria-checked', String(now === entry.token))
             },
           }),
@@ -315,7 +315,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
   const controls = h('span', { class: 'qc-replay-controls' },
     h('span', { class: 'qc-replay-group' }, startButton, startMenuButton),
     rule(),
-    stepBack, playPause, stepForward, speedButton, intervalButton,
+    stepBack, playPause, stepForward, speedButton, timeframeButton,
     rule(),
     goLive,
   )
@@ -335,24 +335,24 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
     stepForward.hidden = !shown('chart.replay.stepForward')
     goLive.hidden = !shown('chart.replay.goLive')
     speedButton.hidden = !shown('chart.replay.setSpeed')
-    intervalButton.hidden = !shown('chart.replay.setInterval')
+    timeframeButton.hidden = !shown('chart.replay.setTimeframe')
     exit.hidden = !shown('chart.replay.exit')
     setDisabled(stepBack, !commands.available('chart.replay.stepBack') || state.cursor <= 2)
     setDisabled(playPause, !commands.available(playing ? 'chart.replay.pause' : 'chart.replay.play') || (!playing && atLive))
     setDisabled(stepForward, !commands.available('chart.replay.stepForward') || atLive)
     setDisabled(goLive, !commands.available('chart.replay.goLive') || atLive)
     setDisabled(speedButton, !commands.available('chart.replay.setSpeed'))
-    const intervals = handle.replay.subIntervals()
-    const noGrain = intervals.length === 0
-    setDisabled(intervalButton, noGrain || !commands.available('chart.replay.setInterval'))
+    const grains = handle.replay.subTimeframes()
+    const noGrain = grains.length === 0
+    setDisabled(timeframeButton, noGrain || !commands.available('chart.replay.setTimeframe'))
     retext(speedButton, t()('replay.speed'), `${state.speed}x`)
-    // The control wears the interval REPLAY IS USING, resolving `auto` to the grain it picked. A
+    // The control wears the timeframe REPLAY IS USING, resolving `auto` to the grain it picked. A
     // control reading "Auto" says which mode it is in and leaves the viewer to guess what that
     // chose; the token answers both at once. It is written as the toolbar's own chip writes an
-    // interval, and the menu spells each one out. With no grain at all the name says why, because
+    // timeframe, and the menu spells each one out. With no grain at all the name says why, because
     // a greyed control with no reason reads as broken rather than as inapplicable here.
-    const resolved = handle.replay.resolvedInterval()
-    retext(intervalButton, noGrain ? t()('replay.intervalNone') : t()('replay.interval'), noGrain ? t()('replay.auto') : timeframeChipLabel(resolved))
+    const resolved = handle.replay.resolvedTimeframe()
+    retext(timeframeButton, noGrain ? t()('replay.timeframeNone') : t()('replay.timeframe'), noGrain ? t()('replay.auto') : timeframeChipLabel(resolved))
     setDisabled(exit, !commands.available('chart.replay.exit'))
     reconcilePicking()
     // Labels follow the language: a sync runs on every relabel as well as on every state change.

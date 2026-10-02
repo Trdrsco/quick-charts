@@ -123,7 +123,7 @@ export interface DatafeedSearchOptions {
 
 /** A feed's coarse, feed-LEVEL capability declaration. Everything optional and the method itself
  *  optional: an ABSENT declaration means unconstrained, and a feed must only
- *  declare what is true — a finite `resolutions` list from a feed that serves any interval would
+ *  declare what is true — a finite `resolutions` list from a feed that serves any timeframe would
  *  be a lie the chart then enforces. Symbol-level truth (price format, resolutions, session) stays
  *  on {@link SymbolInfo}. */
 export interface DatafeedConfig {

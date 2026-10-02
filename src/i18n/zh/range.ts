@@ -11,7 +11,7 @@ export const range: Translation<typeof source> = {
   'range.oneYear': '1年',
   'range.fiveYears': '5年',
   'range.all': '全部数据',
-  'range.tip': '{range} · {interval}K线',
+  'range.tip': '{range} · {timeframe}K线',
   'range.zoomIn': '放大',
   'range.zoomOut': '缩小',
   'range.scrollLeft': '向左滚动',

@@ -1380,7 +1380,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
         revision: 3,
         entries: [
           drawingEntry('good'),
-          { ...drawingEntry('orphan'), source: 'no-such-study' },
+          { ...drawingEntry('orphan'), source: 'no-such-indicator' },
           { ...drawingEntry('no-pane'), pane: 'no-such-pane' },
           { ...drawingEntry('grouped'), group: 'gone' },
         ],
@@ -1703,14 +1703,14 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
   },
   {
     id: 'indicators.families',
-    title: 'an overlay and a pane study mount, report, hide, show and remove through the handle',
+    title: 'an overlay and a pane indicator mount, report, hide, show and remove through the handle',
     async run(ctx) {
       const { chart, root } = await ctx.mount({ symbol: 'ALPHA' })
       const canvases = root.querySelectorAll('canvas').length
       const events: string[] = []
       chart.on('indicator', (e) => events.push(`${e.kind}:${e.id}`))
       equal(chart.indicators.add(smaInstance('sma-1')), true, 'overlay added')
-      equal(chart.indicators.add(rsiInstance('rsi-1')), true, 'pane study added')
+      equal(chart.indicators.add(rsiInstance('rsi-1')), true, 'pane indicator added')
       equal(chart.indicators.get().length, 2, 'two instances')
       // Pane canvases arrive on the renderer's layout pass. Wait for that observable result
       // with a deadline, rather than assuming two 25ms settle windows cover a loaded browser.
@@ -1718,7 +1718,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       while (root.querySelectorAll('canvas').length <= canvases && Date.now() < paneDeadline) {
         await ctx.settle()
       }
-      assert(root.querySelectorAll('canvas').length > canvases, 'a pane study adds a pane')
+      assert(root.querySelectorAll('canvas').length > canvases, 'a pane indicator adds a pane')
       chart.indicators.hide('rsi-1')
       equal(JSON.stringify(chart.indicators.hidden()), JSON.stringify(['rsi-1']), 'hidden reads the eye')
       chart.indicators.show('rsi-1')

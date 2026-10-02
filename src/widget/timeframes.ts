@@ -35,7 +35,7 @@ export function offeredTimeframe(token: string, offered: OfferedTimeframes): str
 }
 
 /** The timeframe a range preset reads its span at: the preset's own when it is offered, else the
- *  smallest offered timeframe at or above it, else the largest offered. A coarser interval keeps
+ *  smallest offered timeframe at or above it, else the largest offered. A coarser timeframe keeps
  *  the span to a bounded number of bars, which is why a coarser one is preferred over a finer. */
 export function rangeTimeframe(token: string, offered: OfferedTimeframes): string {
   if (offersTimeframe(offered, token) || !offered.list) return token

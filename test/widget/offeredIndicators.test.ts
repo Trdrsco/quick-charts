@@ -69,7 +69,7 @@ describe('builtInIndicators: setup', () => {
   it('is a setup error for a non-list, an empty list, an unknown id and a repeated id', () => {
     expect(() => mount({ builtInIndicators: 'sma' as never })).toThrow(TypeError)
     expect(() => mount({ builtInIndicators: [] })).toThrow(TypeError)
-    expect(() => mount({ builtInIndicators: ['sma', 'no_such_study'] })).toThrow(/no_such_study/)
+    expect(() => mount({ builtInIndicators: ['sma', 'no_such_indicator'] })).toThrow(/no_such_indicator/)
     expect(() => mount({ builtInIndicators: [7 as never] })).toThrow(TypeError)
     expect(() => mount({ builtInIndicators: ['sma', 'sma'] })).toThrow(/more than once/)
   })
@@ -116,7 +116,7 @@ describe('a built-in left out is absent from the picker', () => {
         collections: [{ id: 'mine', label: 'Mine', group: 'Personal' }],
         list: async (request) => {
           requests.push(request.builtInIds)
-          return { kind: 'ok', items: [{ id: 'host-1', title: 'Host study', actions: [{ id: 'open', label: 'Open' }], primaryAction: 'open' }] }
+          return { kind: 'ok', items: [{ id: 'host-1', title: 'Host indicator', actions: [{ id: 'open', label: 'Open' }], primaryAction: 'open' }] }
         },
         act: async () => ({ kind: 'ok' }),
       },
@@ -217,7 +217,7 @@ describe('an instance of a built-in left out stays whole', () => {
     expect(ids(widget)).toEqual([])
   })
 
-  it('is not copied onto a new pane, which copies the studies the first chart offers', async () => {
+  it('is not copied onto a new pane, which copies the indicators the first chart offers', async () => {
     const { widget } = await withSavedVwap()
     widget.activeChart().indicators.add(instance('s', 'sma'))
     widget.layout.setArrangement('2h')

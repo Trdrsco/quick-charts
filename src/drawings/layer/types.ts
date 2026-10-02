@@ -189,7 +189,7 @@ export interface AttachDrawingsOptions {
    *  the keyboard verbs stay scoped to this widget instead of the whole page. */
   container: HTMLElement
   symbol: string
-  /** Timeframe token ('5m', '1d', ...), which drives per-interval drawing visibility. */
+  /** Timeframe token ('5m', '1d', ...), which drives per-timeframe drawing visibility. */
   timeframe?: string
   /** SEPARATE-drawing persistence: which drawing-resource context a symbol's document is keyed by,
    *  and the store for that context. Absent is the COMBINED mode: the layer keeps its documents in
@@ -293,7 +293,7 @@ export interface DrawingsHandle {
   stackPosition(): { atFront: boolean; atBack: boolean }
   /** Hide the selection (its own `visible` switch) and deselect it. */
   hideSelected(): void
-  /** Apply one of the quick per-interval visibility rules to the selection, against the current
+  /** Apply one of the quick per-timeframe visibility rules to the selection, against the current
    *  timeframe. */
   setVisibilityPreset(preset: VisibilityPreset): void
   /** Drop a ready picture onto the chart, centred in view, selected. */

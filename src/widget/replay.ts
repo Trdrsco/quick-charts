@@ -5,9 +5,9 @@
 // repaints; Go live and exit catch the paint up. Every consumer of the painted bars (indicators,
 // legend values, session bands, the drawings' bar source) rides the replayed view for free.
 //
-// Sub-bar FORMING: with an update interval finer than the chart's timeframe, the current bar forms
+// Sub-bar FORMING: with an update timeframe finer than the chart's timeframe, the current bar forms
 // progressively from REAL finer bars fetched over the parent's window through the SAME datafeed
-// seam as every other read, never from synthesized ticks. 'Auto' picks the largest sub-interval
+// seam as every other read, never from synthesized ticks. 'Auto' picks the largest sub-timeframe
 // giving at least four updates per bar; a fetch the feed cannot answer falls back to a whole-bar
 // advance, gracefully.
 //
@@ -15,7 +15,7 @@
 // does about a historical view is its own rule.
 import type { IChartApi } from 'lightweight-charts'
 import type { ChartDatafeed, FeedBar } from '../datafeed'
-import { composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from '../replay'
+import { composeFormingBar, REPLAY_SPEEDS, subTimeframesFor, tfSeconds, type ReplaySpeed } from '../replay'
 
 /** The bar-replay surface a host drives. */
 export interface ChartReplayApi {
@@ -32,16 +32,16 @@ export interface ChartReplayApi {
   setSpeed(speed: ReplaySpeed): void
   /** Jump the cursor to the live edge. Playback pauses; replay stays on. */
   goLive(): void
-  /** The update grain: `auto`, or one of the finer timeframe tokens `subIntervals()` lists. */
-  interval(): string
+  /** The update grain: `auto`, or one of the finer timeframe tokens `subTimeframes()` lists. */
+  timeframe(): string
   /** Set the grain. A token the chart timeframe cannot form from is refused. */
-  setInterval(token: string): void
+  setTimeframe(token: string): void
   /** The grain updates actually use, with `auto` resolved to the token it chose. Empty when the
    *  chart's timeframe has nothing finer to form from, so updates advance whole bars. */
-  resolvedInterval(): string
+  resolvedTimeframe(): string
   /** The finer timeframe tokens the chart timeframe can form bars from; empty means whole-bar
    *  updates only. */
-  subIntervals(): readonly string[]
+  subTimeframes(): readonly string[]
   state(): { on: boolean; playing: boolean; cursor: number; total: number; speed: ReplaySpeed }
   /** Where replay stands as a viewer reads it, rather than as a pair of booleans.
    *
@@ -73,7 +73,7 @@ export interface ReplayPlane {
   snapshot(): { on: boolean; playing: boolean; cursor: number; total: number }
   /** The persisted preference values, for the chart to write through its storage. */
   speed(): ReplaySpeed
-  interval(): string
+  timeframe(): string
   destroy(): void
 }
 
@@ -108,13 +108,13 @@ export interface ReplayDeps {
    *  and then advance whole-bar anyway. */
   resolutions(): readonly string[] | null
   /** Persist a preference the viewer just changed. */
-  persist(key: 'speed' | 'interval', value: string): void
+  persist(key: 'speed' | 'timeframe', value: string): void
   /** The cursor moved, entered or left. The chart's chrome mounts and unmounts the transport bar
    *  from this, so the plane owns no DOM. */
   onChange(): void
   /** Initial preference values. */
   initialSpeed: ReplaySpeed
-  initialInterval: string
+  initialGrain: string
 }
 
 /** Coerce a stored replay speed to one the transport offers. */
@@ -131,8 +131,8 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
   let arming = false
   let timer: ReturnType<typeof setInterval> | null = null
   let speed: ReplaySpeed = deps.initialSpeed
-  let autoInterval = deps.initialInterval === 'auto'
-  let manualInterval: string | null = autoInterval ? null : deps.initialInterval
+  let autoGrain = deps.initialGrain === 'auto'
+  let manualGrain: string | null = autoGrain ? null : deps.initialGrain
   let subs: FeedBar[] | null = null
   let formK = 0
   let stepping: { targetCursor: number; parent: FeedBar | undefined } | null = null
@@ -147,22 +147,22 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
    *  SERVED by the feed. A feed that declares nothing restricts nothing. */
   const grains = (): { tf: string; sec: number }[] => {
     const served = deps.resolutions()
-    const ladder = subIntervalsFor(deps.timeframe())
+    const ladder = subTimeframesFor(deps.timeframe())
     return served && served.length > 0 ? ladder.filter((s) => served.includes(s.tf)) : ladder
   }
 
-  const effectiveInterval = (): { tf: string; sec: number } | null => {
+  const effectiveGrain = (): { tf: string; sec: number } | null => {
     const available = grains()
-    // Auto is the COARSEST grain on offer, which is the chart's own interval whenever that is a
+    // Auto is the COARSEST grain on offer, which is the chart's own timeframe whenever that is a
     // rung: replay advances a whole bar per update until a viewer asks for something finer.
-    if (autoInterval) return available.length ? available[available.length - 1]! : null
-    return available.find((s) => s.tf === manualInterval) ?? null
+    if (autoGrain) return available.length ? available[available.length - 1]! : null
+    return available.find((s) => s.tf === manualGrain) ?? null
   }
 
   const sync = (): void => {
     deps.onChange()
   }
-  const currentInterval = (): string => (autoInterval ? 'auto' : (manualInterval ?? 'auto'))
+  const currentGrain = (): string => (autoGrain ? 'auto' : (manualGrain ?? 'auto'))
   const paintCursor = (): void => {
     if (!master) return
     deps.paint(master.slice(0, cursor))
@@ -209,17 +209,17 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
   /** The forming parent's sub-bars over its window, or null when the feed cannot provide at least
    *  two (one sub-bar has no forming value) — the caller then advances whole-bar. */
   const fetchSubs = async (parentIdx: number): Promise<FeedBar[] | null> => {
-    const interval = effectiveInterval()
-    if (!master || !interval) return null
-    // The chart's OWN interval is a legitimate choice, and it means whole-bar updates. There is
+    const grain = effectiveGrain()
+    if (!master || !grain) return null
+    // The chart's OWN timeframe is a legitimate choice, and it means whole-bar updates. There is
     // nothing finer to ask the feed for, so no request is spent finding that out.
-    if (interval.sec >= tfSeconds(deps.timeframe())) return null
+    if (grain.sec >= tfSeconds(deps.timeframe())) return null
     const parent = master[parentIdx]
     if (!parent) return null
     const from = parent.t
     const to = parent.t + tfSeconds(deps.timeframe()) - 1
     try {
-      const page = await deps.datafeed.history(deps.symbol(), interval.tf, { from, to })
+      const page = await deps.datafeed.history(deps.symbol(), grain.tf, { from, to })
       const found = page.bars.filter((b) => b.t >= from && b.t <= to)
       return found.length >= 2 ? found : null
     } catch {
@@ -228,7 +228,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
   }
 
   /** One replay UPDATE: the next sub-step of a forming bar, or the next whole bar (starting its
-   *  forming when the interval and the feed allow). Async because forming fetches; re-entrancy
+   *  forming when the timeframe and the feed allow). Async because forming fetches; re-entrancy
    *  guarded so a fast timer never double-advances over one fetch. */
   const stepForward = (): void => {
     void (async () => {
@@ -256,19 +256,19 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
         const epoch = generation
         const symbol = deps.symbol()
         const timeframe = deps.timeframe()
-        const grain = currentInterval()
+        const grain = currentGrain()
         // A WHOLE-BAR update does not cross an async boundary: its public step and cursor stay
-        // synchronous. That is the default path now that auto is the chart's own interval, so an
+        // synchronous. That is the default path now that auto is the chart's own timeframe, so an
         // await here would put a microtask under every ordinary press of step forward. Only an
         // actual finer-history request needs deferred admission.
-        const chosen = effectiveInterval()
+        const chosen = effectiveGrain()
         const wholeBar = !chosen || chosen.sec >= tfSeconds(deps.timeframe())
         const found = wholeBar ? null : await fetchSubs(targetCursor - 1)
         // A non-null master is not proof this response belongs to the current replay. The old
         // request may finish after a seek, grain change, teardown or restart. Identity also fences
         // a replaced parent in a fresh snapshot, even when its array index is unchanged.
         if (destroyed || deps.disposed() || stepping !== flight || generation !== epoch ||
-          deps.symbol() !== symbol || deps.timeframe() !== timeframe || currentInterval() !== grain ||
+          deps.symbol() !== symbol || deps.timeframe() !== timeframe || currentGrain() !== grain ||
           !master || cursor !== targetCursor - 1 || master[targetCursor - 1] !== parent) return
         cursor = targetCursor
         if (found) {
@@ -383,28 +383,28 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
       paintCursor()
       sync()
     },
-    interval: currentInterval,
+    timeframe: currentGrain,
     // What `auto` actually RESOLVED to, so a surface can say the grain rather than the mode. Empty
     // when the chart's timeframe has nothing finer to form from and updates advance whole bars.
-    resolvedInterval: () => effectiveInterval()?.tf ?? '',
-    setInterval(token) {
-      if (token === currentInterval()) return
+    resolvedTimeframe: () => effectiveGrain()?.tf ?? '',
+    setTimeframe(token) {
+      if (token === currentGrain()) return
       if (token === 'auto') {
-        autoInterval = true
+        autoGrain = true
       } else {
         // A grain the chart timeframe cannot form from is refused rather than stored: the next
         // update would fall back to whole bars and the menu would claim a grain it never used.
         if (!grains().some((s) => s.tf === token)) return
-        autoInterval = false
-        manualInterval = token
+        autoGrain = false
+        manualGrain = token
       }
       invalidateStep()
-      deps.persist('interval', currentInterval())
+      deps.persist('timeframe', currentGrain())
       subs = null // the next update re-fetches at the new grain
       formK = 0
       sync()
     },
-    subIntervals: () => grains().map((s) => s.tf),
+    subTimeframes: () => grains().map((s) => s.tf),
     state: () => ({ on: master !== null, playing, cursor, total: master?.length ?? deps.bars().length, speed }),
     // An OPEN QUESTION outranks a running session. Re-arming mid-replay to choose a different start
     // puts the plot back to taking a click, and every surface that answers to the picker — the
@@ -445,7 +445,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
     abandon,
     snapshot: () => ({ on: master !== null, playing, cursor: master === null ? deps.bars().length : cursor, total: master?.length ?? deps.bars().length }),
     speed: () => speed,
-    interval: currentInterval,
+    timeframe: currentGrain,
     destroy() {
       destroyed = true
       abandon()

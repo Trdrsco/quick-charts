@@ -40,10 +40,10 @@ const SURFACE: Record<string, string> = {
   reviseDrawingDocument: 'function',
   sameDrawingContext: 'function',
 
-  // Per-interval visibility.
+  // Per-timeframe visibility.
   DEFAULT_VISIBILITY: 'object',
   normalizeVisibility: 'function',
-  parseIntervalContext: 'function',
+  parseTimeframeContext: 'function',
   visibilityPreset: 'function',
   visibleAt: 'function',
 

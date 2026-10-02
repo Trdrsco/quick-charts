@@ -72,7 +72,8 @@ const SAVE_NEEDED_MS = 1_000
  *  A slot is live for as long as the widget is. A host appends its own node and takes that node back
  *  out again; the slot itself belongs to the chart and is never removed or replaced. */
 export interface ChartChrome {
-  /** Transient host activity in this chart's native study list. Does not affect chart content. */
+  /** Transient host activity in this chart's native indicator list. Does not affect chart
+   *  content. */
   legendRows(chartId: string, rows: readonly import('./legend').ChartLegendRow[]): void
   /** One named place in the top bar. Null when the top bar is hidden, which is the answer a host
    *  checks before composing a door it would have nowhere to put. */
@@ -151,7 +152,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // drawing toolbar quietly short of what the host meant to offer.
   const drawingTools = resolveOfferedDrawingTools(options.drawingTools)
   // The built-in indicators likewise, with the instances the host mounts: a list the host got wrong,
-  // or a mount instance outside it, is a setup error, never a study quietly dropped.
+  // or a mount instance outside it, is a setup error, never an indicator quietly dropped.
   const builtInIndicators = resolveOfferedIndicators(options.builtInIndicators, options.indicators)
   // The range presets and the display timezones likewise: a key or a zone the host got wrong, or
   // one named twice, is a setup error, never a bottom bar quietly short of what the host meant.
@@ -501,7 +502,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   if (initialActive) activateCommands(initialActive.id)
 
   // ── Theme. A change repaints the root's custom properties and every chart's canvas in one pass,
-  // and the chart keeps its symbol, timeframe, range, drawings and studies across it.
+  // and the chart keeps its symbol, timeframe, range, drawings and indicators across it.
   const unsubscribeTheme = theme.onChange((resolved, mode) => {
     if (disposed) return
     paintThemeRoot(root, mode, resolved)
@@ -697,7 +698,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     i18n,
     features,
     ui,
-    // What the chrome keeps is the viewer's own choices about it (favorite and custom intervals,
+    // What the chrome keeps is the viewer's own choices about it (favorite and custom timeframes,
     // starred layouts and indicators, how the layouts sort), which change no layout, so it reads and
     // writes the host's store directly rather than through the save-needed funnel.
     storage: backing,

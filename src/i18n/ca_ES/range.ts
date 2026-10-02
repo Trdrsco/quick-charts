@@ -11,7 +11,7 @@ export const range: Translation<typeof source> = {
   'range.oneYear': '1 any',
   'range.fiveYears': '5 anys',
   'range.all': 'Totes les dades',
-  'range.tip': '{range} · barres de {interval}',
+  'range.tip': '{range} · barres de {timeframe}',
   'range.zoomIn': 'Amplia',
   'range.zoomOut': 'Redueix',
   'range.scrollLeft': 'Desplaça a l’esquerra',

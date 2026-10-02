@@ -11,7 +11,7 @@
 //                     one axis, every series on it in %.
 //   'new-scale'     — a line on the main pane bound to the LEFT scale, absolute prices. The module
 //                     shows the left scale while any such comparison lives and hides it after.
-//   'new-pane'      — a line on its own pane with its own scale, the non-price-study placement.
+//   'new-pane'      — a line on its own pane with its own scale, where a pane indicator goes.
 //
 // ALIGNMENT: the time scale unions every series' timepoints, so a comparison with bars outside the
 // main series' window would EXTEND the axis, which is
@@ -101,7 +101,7 @@ export interface CompareHandle {
   add(symbol: string, opts: { placement: ComparePlacement; color?: string; visible?: boolean }): void
   remove(symbol: string): void
   setVisible(symbol: string, visible: boolean): void
-  /** A host-side hide ANDed with the eye (interval visibility, a plot-visibility override) —
+  /** A host-side hide ANDed with the eye (timeframe visibility, a plot-visibility override) —
    *  never serialized and never touching `visible`, so a timeframe switch that suppresses a
    *  compare cannot flip the viewer's eye state. */
   suppress(symbol: string, on: boolean): void

@@ -49,7 +49,7 @@ export const STYLE_HOOKS = [
   },
   {
     className: 'qc-legend',
-    purpose: 'The legend over the plot: the symbol, its reading and each study row.',
+    purpose: 'The legend over the plot: the symbol, its reading and each indicator row.',
     states: [],
     customization: ['background-color', 'border', 'border-radius', 'padding', 'box-shadow', 'inset'],
   },

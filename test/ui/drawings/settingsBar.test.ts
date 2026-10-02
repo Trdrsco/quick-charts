@@ -210,7 +210,7 @@ describe('the settings bar', () => {
     expect(byLabel('More drawing actions').innerHTML).toContain('M7.5 13a1.5 1.5 0 1 0 0 3') // three dots in a row
     byLabel('More drawing actions').click()
     const menu = rows(popover())
-    expect(menu.map((r) => r.textContent)).toEqual(['Visual order', 'Visibility on intervals', 'CloneCtrl + Drag', 'CopyCtrl + C', 'Hide'])
+    expect(menu.map((r) => r.textContent)).toEqual(['Visual order', 'Visibility on timeframes', 'CloneCtrl + Drag', 'CopyCtrl + C', 'Hide'])
     expect(menu.map((r) => r.getAttribute('aria-haspopup'))).toEqual(['menu', 'menu', null, null, null])
     // A submenu row points at where its panel appears; a row without a mark of its own takes a
     // spacer so the labels share a column; a leaf row carries no arrow.
@@ -230,7 +230,7 @@ describe('the settings bar', () => {
     byLabel('More drawing actions').click()
     hover(rows(popover())[1]!, 'mouseenter')
     const presets = rows(popovers()[1])
-    expect(presets.map((r) => r.textContent)).toEqual(['Current interval and above', 'Current interval and below', 'Current interval only', 'All intervals'])
+    expect(presets.map((r) => r.textContent)).toEqual(['Current timeframe and above', 'Current timeframe and below', 'Current timeframe only', 'All timeframes'])
     presets[2]!.click()
     expect(ran[1]).toEqual(['chart.drawings.visibility', 'current-only'])
     expect(popovers()).toHaveLength(0)

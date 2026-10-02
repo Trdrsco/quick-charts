@@ -214,7 +214,7 @@ export interface ChartPreferences {
   hiddenIndicators: readonly string[]
   replaySpeed: ReplaySpeed
   /** The replay update grain: `auto` or a finer timeframe token. */
-  replayInterval: string
+  replayTimeframe: string
   /** The standing drawing choices: cursor, magnet, stay-in-mode, favorites, per-group toolbar
    *  tools. The drawing models own what each one means; the chart only persists the record. */
   drawings: DrawingPreferences
@@ -422,8 +422,8 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  leaves none of them, the chips are the first five listed tokens, and the viewer's stored chips
    *  are kept unchanged for a chart that offers them. The picker is not shown when one timeframe is
    *  offered, since there is nothing to choose. `ui.topBar.timeframes: false` hides the picker on
-   *  its own terms. A range preset whose interval is left out reads its span at the smallest listed
-   *  timeframe at or above that interval, else at the largest listed.
+   *  its own terms. A range preset whose timeframe is left out reads its span at the smallest
+   *  listed timeframe at or above that timeframe, else at the largest listed.
    *
    *  A saved layout, saved chart or stored preference that names a token outside the list opens on
    *  the SMALLEST listed timeframe, and the rest of it restores. An empty list, a token the grammar
@@ -448,7 +448,7 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  menu, shortcut or host control reaches it, `chart.range.set` ignores its key, and the bottom
    *  bar draws no button for it. An empty list offers no preset: the bottom bar keeps its clock,
    *  timezone picker and session view, and `chart.range.set` still takes an explicit window.
-   *  `ui.bottomBar: false` removes the whole bar. A preset whose interval `timeframes` leaves out
+   *  `ui.bottomBar: false` removes the whole bar. A preset whose timeframe `timeframes` leaves out
    *  reads its span at the nearest coarser timeframe the chart offers. A non-list, a key that names
    *  no preset and a repeated key are setup errors thrown from `createChart`. */
   ranges?: readonly string[]
@@ -566,7 +566,7 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  `indicatorPicker` listing is handed only the offered ids. Every
    *  door that would add one refuses: `chart.indicators.add` answers `denied`, `indicators.add`
    *  adds nothing, `indicators.set` leaves out an instance of it the chart does not already hold,
-   *  and a new pane a re-tile adds copies the first chart's studies without it. There is no
+   *  and a new pane a re-tile adds copies the first chart's indicators without it. There is no
    *  duplicate verb for an indicator; adding a second instance is adding.
    *
    *  Instances of a built-in left out that are already on the chart (from a saved chart or layout,

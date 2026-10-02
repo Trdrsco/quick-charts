@@ -21,7 +21,7 @@ const row = (text: string, root: ParentNode = document): HTMLButtonElement => ro
 
 function open(extra: Partial<TimeframePickerOptions> = {}) {
   const anchor = document.body.appendChild(document.createElement('button'))
-  anchor.textContent = 'Interval'
+  anchor.textContent = 'Timeframe'
   const events: string[] = []
   const handle = openTimeframePicker({
     anchor,
@@ -55,7 +55,7 @@ describe('the timeframe picker a page opens on its own', () => {
     expect(rows().filter((r) => r.getAttribute('aria-checked') === 'true').map((r) => r.textContent)).toEqual(['15 Minutes'])
     expect(document.activeElement).toBe(row('15 Minutes'))
     expect(anchor.getAttribute('aria-expanded')).toBe('true')
-    // No saved chips and no stars: a field asks for one interval and keeps no quick-select row.
+    // No saved chips and no stars: a field asks for one timeframe and keeps no quick-select row.
     expect(document.querySelector('.qc-tf-side')).toBeNull()
     expect(document.querySelector('.qc-tf-chip')).toBeNull()
   })

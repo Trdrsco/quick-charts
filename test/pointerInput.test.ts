@@ -49,7 +49,7 @@ describe('pan, pinch and axis scaling belong to the chart, and are borrowed rath
 })
 
 describe('press and hold is the touch way into the context menu', () => {
-  it('one finger, held still, for the measured interval', () => {
+  it('one finger, held still, for the measured hold', () => {
     expect(LONG_PRESS_MS).toBe(450)
     expect(LONG_PRESS_DRIFT_PX).toBe(10)
     expect(longPressArms({ touches: 1, toolArmed: false })).toBe(true)

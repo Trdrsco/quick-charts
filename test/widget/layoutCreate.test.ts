@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
-// Creating a layout: one chart on the market and interval on screen, with none of the open layout's
-// studies, saved under the name it was given, while the layout that was open keeps what it saved.
+// Creating a layout: one chart on the market and timeframe on screen, with none of the open
+// layout's indicators, saved under the name it was given, while the layout that was open keeps what
+// it saved.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
@@ -64,7 +65,7 @@ describe('creating a layout', () => {
     expect(widget.activeChart().timeframe()).toBe('5m')
     expect(widget.activeChart().indicators.get()).toEqual([])
 
-    // The layout that was open still holds its two charts and its study.
+    // The layout that was open still holds its two charts and its indicator.
     const kept = await saveLoad.layouts.load(desk.id)
     expect(kept).not.toBeNull()
     const content = JSON.parse(kept!.body.content) as { charts: { content: string }[] }

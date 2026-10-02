@@ -121,7 +121,7 @@ const SURFACE: Record<string, string> = {
   midpoint: 'function',
   normalizeVisibility: 'function',
   parseDrawingsStore: 'function',
-  parseIntervalContext: 'function',
+  parseTimeframeContext: 'function',
   primeImageBitmap: 'function',
   restoreDrawings: 'function',
   segmentTextAngle: 'function',
@@ -129,7 +129,7 @@ const SURFACE: Record<string, string> = {
   snapToBar: 'function',
   toolRegistry: 'object',
   viewportOf: 'function',
-  // The quick per-interval visibility rules.
+  // The quick per-timeframe visibility rules.
   visibilityPreset: 'function',
   visibleAt: 'function',
   volumeProfile: 'function',

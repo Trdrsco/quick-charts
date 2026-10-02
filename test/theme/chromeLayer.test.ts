@@ -110,7 +110,7 @@ describe('the legend keeps the measured responsive bands', () => {
 describe('the widget root fills whatever box a host gives it', () => {
   // Hosts hand a widget its space in one of two ways, and a chart that only understands one of them
   // is sized by an accident of the host's CSS rather than by the host's intent. Both failures are
-  // silent: the chart renders, just short, and its study panes get squeezed to the renderer's
+  // silent: the chart renders, just short, and its indicator panes get squeezed to the renderer's
   // minimum without anything erroring.
   it('the root carries BOTH the percentage and the flex share', () => {
     const root = rule('[data-qc-theme].qc-root')

@@ -698,11 +698,11 @@ describe('the low-level document operations', () => {
       version: 1,
       context: port(adapter).context('ES'),
       revision: 1,
-      entries: [{ id: 'in-study', source: 'rsi-14', pane: 'rsi-14', type: 'rectangle', state: { id: 'in-study', type: 'rectangle' } }],
+      entries: [{ id: 'in-indicator', source: 'rsi-14', pane: 'rsi-14', type: 'rectangle', state: { id: 'in-indicator', type: 'rectangle' } }],
       groups: [],
       tombstones: [],
     })
-    expect(outcome).toEqual({ kind: 'ok', applied: 0, rejected: [{ id: 'in-study', reason: 'foreign-pane' }] })
+    expect(outcome).toEqual({ kind: 'ok', applied: 0, rejected: [{ id: 'in-indicator', reason: 'foreign-pane' }] })
     expect(handle.count()).toBe(0)
     handle.destroy()
     container.remove()
@@ -722,10 +722,10 @@ describe('the low-level document operations', () => {
       documents: port(adapter),
       surface: { sources: () => ['main', 'rsi-14'], panes: () => ['main', 'rsi-14'] },
     })
-    // A row this layer does not draw: the study pane's, applied by the host and refused by this
+    // A row this layer does not draw: the indicator pane's, applied by the host and refused by this
     // layer, so it is in the document and never on this screen.
-    const study = { id: 'in-study', source: 'rsi-14', pane: 'rsi-14', type: 'rectangle', state: { id: 'in-study', type: 'rectangle' } }
-    handle.documents.apply({ version: 1, context: port(adapter).context('ES'), revision: 1, entries: [study], groups: [], tombstones: [] })
+    const paneRow = { id: 'in-indicator', source: 'rsi-14', pane: 'rsi-14', type: 'rectangle', state: { id: 'in-indicator', type: 'rectangle' } }
+    handle.documents.apply({ version: 1, context: port(adapter).context('ES'), revision: 1, entries: [paneRow], groups: [], tombstones: [] })
     handle.armTool('trend_line')
     drag(container, [100, 100], [300, 200])
     await settle()
@@ -733,14 +733,14 @@ describe('the low-level document operations', () => {
     const store = adapter.drawings(port(adapter).context('ES'))
     const row = (await store.list())[0]!
     const stored = (await store.load(row.id))!
-    // The viewer's line joins the document; the study pane's row survives it, byte for byte, and
-    // nothing is buried. A deletion here would take a drawing the viewer can still see.
+    // The viewer's line joins the document; the indicator pane's row survives it, byte for byte,
+    // and nothing is buried. A deletion here would take a drawing the viewer can still see.
     expect(stored.body.tombstones).toEqual([])
     expect(stored.body.entries.map((e) => [e.id, e.source, e.pane])).toEqual([
-      ['in-study', 'rsi-14', 'rsi-14'],
+      ['in-indicator', 'rsi-14', 'rsi-14'],
       [handle.export()[0]!.id, 'main', 'main'],
     ])
-    expect(stored.body.entries[0]).toEqual(study)
+    expect(stored.body.entries[0]).toEqual(paneRow)
     handle.destroy()
     container.remove()
   })

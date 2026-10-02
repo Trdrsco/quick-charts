@@ -134,7 +134,7 @@ describe('the stylesheet stands the readouts down on the state the legend writes
     expect(CSS).not.toContain("data-qc-compact='true'] .qc-legend-change")
   })
 
-  it('hides the venue and its separator together under slim, and keeps the interval', () => {
+  it('hides the venue and its separator together under slim, and keeps the timeframe', () => {
     expect(CSS).toContain("[data-qc-slim='true'] [data-role='legend-exchange']")
     expect(CSS).toContain("[data-qc-slim='true'] [data-role='legend-exchange-sep']")
     expect(CSS).not.toContain("[data-qc-slim='true'] [data-role='legend-timeframe']")

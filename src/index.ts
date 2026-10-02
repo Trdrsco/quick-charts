@@ -108,7 +108,7 @@ export type {
   ChartExtensionIconPath,
   ChartExtensionMenuContext,
   ChartExtensionMenuItem,
-  ChartExtensionMenuProvider,
+  ChartExtensionMenuBuilder,
   ChartExtensionPane,
   ChartExtensionPriceLine,
   ChartExtensionReplayState,
@@ -153,7 +153,7 @@ export { createSessionBands, SESSION_DOT, SESSION_LABEL, type SessionBandsPrimit
 export type { OpenResource, ResourceLoadOutcome, ResourceRemoveOutcome, ResourceSaveOutcome } from './openResource'
 export { ARRANGEMENTS, LAYOUT_MENU_ROWS, arrangementOf, type Arrangement, type PaneRect } from './layoutGrid'
 export { openInputsEditor } from './inputsEditor'
-export { autoIntervalFor, composeFormingBar, REPLAY_SPEEDS, subIntervalsFor, tfSeconds, type ReplaySpeed } from './replay'
+export { autoTimeframeFor, composeFormingBar, REPLAY_SPEEDS, subTimeframesFor, tfSeconds, type ReplaySpeed } from './replay'
 export {
   attachDrawings,
   placeableByWidget,
@@ -252,15 +252,15 @@ export {
 // ── The executable theme contract ─────────────────────────────────────────────────────────────
 // Quick Charts ships complete light and dark UI. A host selects a mode, optionally overrides the
 // semantic palette for either mode, and switches at runtime through one controller; the chart keeps
-// its symbol, timeframe, range, drawings and studies across the switch. `THEME_ROLES` is the public
-// role inventory the palettes and the generated stylesheet are built from, and the same list is
-// published as `dist/theme-manifest.json`.
+// its symbol, timeframe, range, drawings and indicators across the switch. `THEME_ROLES` is the
+// public role inventory the palettes and the generated stylesheet are built from, and the same list
+// is published as `dist/theme-manifest.json`.
 //
 // The stylesheet is a separate asset: import `@trdrs/quickcharts/styles.css` once. The chart injects no
 // styles from JavaScript, and its custom-property names and component selectors are private.
 //
 // Chart appearance is the other ladder: `ChartOverrides.appearance` names specific series, grid and
-// study visuals and wins over the broad palette wherever both could reach the same pixel.
+// indicator visuals and wins over the broad palette wherever both could reach the same pixel.
 export { createThemeController } from './theme/controller'
 export { THEME_ROLES } from './theme/schema'
 // The canvas projection: what an extension's `ctx.theme()` answers, and the one mapping from a
@@ -285,7 +285,7 @@ export type { ThemeDiagnostic, ThemeDiagnosticCode } from './theme/validate'
 // exactly as it mounts its own definition, and reads its name through the chart's ChartI18n.
 export { BUILT_IN_INDICATORS, type BuiltInIndicator, type IndicatorCategory } from './builtInIndicators'
 
-// ── The symbol price format a study scale falls back to ──────────────────────────────────────
+// ── The symbol price format an indicator scale falls back to ─────────────────────────────────
 // The renderer's `symbolPriceFormat` option names this shape; a host composing the renderer
 // itself supplies it from its own symbol formatter.
 export type { SymbolPriceFormat } from './indicatorRenderer'
@@ -360,7 +360,7 @@ export { createSearchController, isSymbolPair, looksLikeSpread, matchSegments, m
 // The search as a dialog, for a page that needs a market picked away from a chart.
 export type { MountedSymbolSearch, SymbolSearchCache, SymbolSearchHandle, SymbolSearchOptions } from './ui/chrome/openSymbolSearch'
 export { createSymbolSearchCache, mountSymbolSearch, openSymbolSearch } from './ui/chrome/openSymbolSearch'
-// The timeframe list as a drop-down or a card, for a page that needs an interval picked away from
+// The timeframe list as a drop-down or a card, for a page that needs a timeframe picked away from
 // a chart.
 export type { MountedTimeframePicker, TimeframePickerHandle, TimeframePickerOptions } from './ui/chrome/openTimeframePicker'
 export { mountTimeframePicker, openTimeframePicker } from './ui/chrome/openTimeframePicker'
