@@ -78,7 +78,9 @@ export function mountContextMenu(
 
 /** The menu over the widget's own resolver, so its glyphs wear what every other control of the
  *  widget wears and a failed drawing is reported where the widget's others are. */
-export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => void, strings: ChartI18n, icons: IconResolver): ContextMenuHandle {
+/** `shown` says whether a built-in row is drawn at all; a row it turns away leaves its group, and an
+ *  emptied group draws no rule. */
+export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => void, strings: ChartI18n, icons: IconResolver, shown: (id: ChartMenuAction) => boolean = () => true): ContextMenuHandle {
   // A full-viewport backdrop closes the menu on any press elsewhere, and swallows the browser's own
   // menu so a second right-click re-aims ours rather than stacking the native one on top.
   const backdrop = document.createElement('div')
@@ -166,7 +168,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
     const view: Placed[] = extra.filter((row) => row.group === 'view').map((row) => ({ kind: 'item', extra: row }))
     const groups: (ChartMenuRow | Placed)[][] = []
     for (const group of chartContextMenuGroups({ ...ctx, t: ctx.t ?? strings.t })) {
-      groups.push(group.rows)
+      groups.push(group.rows.filter((row) => row.kind !== 'item' || shown(row.id)))
       if (group.slot === 'clipboard') groups.push(level)
       if (group.slot === 'remove') groups.push(view)
     }

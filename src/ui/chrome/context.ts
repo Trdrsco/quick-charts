@@ -11,6 +11,8 @@ import type { IconResolver } from '../icons/resolver'
 import type { OfferedChartStyles } from '../../widget/styles'
 import type { OfferedTimeframes } from '../../widget/timeframes'
 import type { OfferedLayouts } from '../../widget/arrangements'
+import type { AccessPolicy } from '../../widget/options'
+import { commandShown } from '../../widget/access'
 
 export interface ChromeContext {
   i18n: ChartI18n
@@ -29,7 +31,15 @@ export interface ChromeContext {
   /** The arrangements and sync switches the widget offers, which are the layout setup menu's tiles
    *  and switches. */
   layouts: OfferedLayouts
+  /** The host's access policy. The registry already refuses what it refuses; the chrome reads it
+   *  only to know whether a refused control is drawn disabled or left out. */
+  access?: AccessPolicy
 }
+
+/** Whether the chrome draws a control or a menu row for this command. Every one is drawn unless
+ *  the policy refuses the command and the host hides what it refuses; a permitted command that
+ *  cannot run now is drawn disabled, as before. */
+export const shows = (ctx: ChromeContext, id: string): boolean => commandShown(ctx.access, id)
 
 /** The chart the chrome acts on: the active one. */
 export const activeChart = (ctx: ChromeContext): ChartHandle => ctx.widget.activeChart()

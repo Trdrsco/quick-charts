@@ -61,6 +61,8 @@ export interface GlyphPickerDeps {
   available(): boolean
   /** Whether the access policy permits the glyph tool of a kind. */
   toolAllowed(kind: GlyphKind): boolean
+  /** Whether the picker draws a kind's tab and grid at all. Every kind is drawn without it. */
+  toolShown?(kind: GlyphKind): boolean
   onPick(kind: GlyphKind, glyph: string): void
 }
 
@@ -256,7 +258,13 @@ export function mountGlyphPicker(input: GlyphPickerDeps): GlyphPickerHandle {
 
   const renderKinds = (): void => {
     kinds.replaceChildren()
-    for (const k of ['emoji', 'sticker', 'icon'] as const) {
+    // A kind the picker does not draw has no tab, and the picker opens on the first kind it draws.
+    const drawn = (['emoji', 'sticker', 'icon'] as const).filter((k) => deps.toolShown?.(k) ?? true)
+    if (drawn.length > 0 && !drawn.includes(kind)) {
+      kind = drawn[0]!
+      activeCategory = categories()[0]?.id ?? ''
+    }
+    for (const k of drawn) {
       const b = el('button', { type: 'button', class: 'qc-button qc-drawing-glyph-kind', role: 'tab', id: `${deps.idBase}-kind-${k}`, 'aria-controls': `${deps.idBase}-grid`, 'aria-selected': String(k === kind), text: t(KIND_LABEL[k]) })
       if (k === kind) grid.setAttribute('aria-labelledby', b.id)
       b.addEventListener('click', () => {
@@ -285,6 +293,12 @@ export function mountGlyphPicker(input: GlyphPickerDeps): GlyphPickerHandle {
       // What a reopen costs: the recents row, which a pick may have changed, and the gates on the
       // cells already mounted. The grid itself is kept.
       deps = { ...deps, recents }
+      const before = kind
+      renderKinds()
+      if (kind !== before) {
+        renderStrip()
+        showKind()
+      }
       renderRecents()
       const disabled = !deps.available() || !deps.toolAllowed(kind)
       for (const b of cellsOf(panelFor(kind).element)) b.disabled = disabled

@@ -101,6 +101,9 @@ export interface LegendDeps {
   painters: MarkPainters
   /** Draws the legend's glyphs: the host's drawing for each icon, or the chart's own. */
   icons: IconResolver
+  /** Whether a row's control for a command is drawn: false for a command the policy refuses when
+   *  the host hides what it refuses. Every control is drawn without it. */
+  shown?(command: string): boolean
 }
 
 /** The index of the bar a moment stands on: the last bar at or before `time`, the last bar of all
@@ -285,13 +288,27 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     legend?.setValueShaped(deps.valueShaped())
     legend?.setQuote(deps.legendValues ? reading() : null)
     const paneOf = deps.indicators.renderer.paneOf()
+    // A row's eye and its remove are commands: a host that hides what its policy refuses leaves out
+    // the ones it refuses, and the row itself stays, since it names what the chart shows.
+    const shown = (command: string): boolean => deps.shown?.(command) ?? true
     legend?.setChips([
       ...deps.indicators.chipsAt(hovered).map(row => {
         const paneIndex = paneOf[row.id] ?? 0
         const remembered = paneRemembered.get(`study:${row.id}`)
-        return { ...row, paneIndex, maximized: remembered !== undefined && !row.collapsed && (deps.chart.panes()[paneIndex]?.getHeight() ?? 0) > remembered }
+        return {
+          ...row,
+          paneIndex,
+          maximized: remembered !== undefined && !row.collapsed && (deps.chart.panes()[paneIndex]?.getHeight() ?? 0) > remembered,
+          ...(shown(row.hidden ? 'chart.indicators.show' : 'chart.indicators.hide') ? {} : { hideable: false }),
+          ...(shown('chart.indicators.remove') ? {} : { removable: false }),
+        }
       }),
-      ...(deps.compare?.chips(hovered) ?? []).map(row => ({ ...row, paneIndex: deps.compare!.handle.paneIndexOf(row.id.slice(COMPARE_ROW_PREFIX.length)) ?? 0 })),
+      ...(deps.compare?.chips(hovered) ?? []).map(row => ({
+        ...row,
+        paneIndex: deps.compare!.handle.paneIndexOf(row.id.slice(COMPARE_ROW_PREFIX.length)) ?? 0,
+        ...(shown('chart.compare.setVisible') ? {} : { hideable: false }),
+        ...(shown('chart.compare.remove') ? {} : { removable: false }),
+      })),
       ...[...hostRows].map(([id, row]) => ({
         id, title: row.title, inputs: row.inputs, value: null, note: row.status,
         description: row.description, settingsLabel: row.settingsLabel,

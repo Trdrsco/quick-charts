@@ -115,6 +115,28 @@ export function setDisabled(element: HTMLElement, disabled: boolean): void {
   else element.removeAttribute('aria-disabled')
 }
 
+/** Draw a row's rules only between two groups that each show something. A rule with nothing shown
+ *  before it since the last rule drawn, or nothing shown after it, is hidden, so a group whose
+ *  controls are all hidden leaves no rule hanging. `shown` says whether a child that is not a rule
+ *  shows anything. */
+export function tidyRules(row: HTMLElement, shown: (child: HTMLElement) => boolean): void {
+  let shownSince = false
+  let pending: HTMLElement | null = null
+  for (const child of row.children) {
+    if (!(child instanceof HTMLElement)) continue
+    if (child.classList.contains('qc-separator')) {
+      child.hidden = true
+      if (shownSince && !pending) pending = child
+      shownSince = false
+      continue
+    }
+    if (!shown(child)) continue
+    if (pending) pending.hidden = false
+    pending = null
+    shownSince = true
+  }
+}
+
 /** Update a button's visible text and accessible name together. */
 export function retext(element: HTMLElement, label: string, text?: string): void {
   name(element, label)

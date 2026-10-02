@@ -60,6 +60,9 @@ export interface MenuDeps {
   extensions(): ChartExtensionHost | null
   /** The level the open menu was raised at, handed to the copy-price command. */
   setLevel(price: number | null): void
+  /** Whether a built-in row's command is drawn: false for a command the policy refuses when the
+   *  host hides what it refuses. Every row is drawn without it. */
+  shown?(command: string): boolean
 }
 
 export function attachMenuPlane(deps: MenuDeps): MenuPlane {
@@ -71,6 +74,10 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     },
     deps.i18n,
     deps.icons,
+    (id) => {
+      const command = MENU_COMMAND[id]
+      return command === undefined || (deps.shown?.(command) ?? true)
+    },
   )
 
   /** The level under a viewport point, snapped to the symbol's own grid: the price a row names is

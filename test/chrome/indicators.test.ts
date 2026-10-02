@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { filterDefinitions, freshInstanceId, openIndicatorPicker } from '../../src/ui/chrome/indicatorPicker'
 import { openIndicatorSettings } from '../../src/ui/chrome/indicatorSettings'
 import { readColor } from '../../src/ui/controls/color'
-import { indicatorPermitted } from '../../src/widget/indicators'
+import { indicatorPermitted } from '../../src/widget/access'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import { fakeWidget, press } from './harness'
 
