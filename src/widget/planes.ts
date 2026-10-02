@@ -37,6 +37,8 @@ const TOP_BAR_KEYS: { readonly [K in keyof Required<TopBarUi>]: KeyShape } = {
   replay: 'flag',
   history: 'flag',
   layouts: 'flag',
+  layoutSetup: 'flag',
+  savedLayouts: 'flag',
   settings: { theme: 'flag' } satisfies { readonly [K in keyof Required<SettingsMenuUi>]: KeyShape },
   fullscreen: 'flag',
   image: 'flag',
@@ -124,7 +126,8 @@ export interface ResolvedUi {
   indicatorsButton: boolean
   replayButton: boolean
   historyButtons: boolean
-  layoutMenus: boolean
+  layoutSetup: boolean
+  savedLayouts: boolean
   settingsMenu: boolean
   settingsTheme: boolean
   fullscreenButton: boolean
@@ -144,6 +147,21 @@ export interface ResolvedUi {
   indicatorSettings: boolean
 }
 
+/** What the widget offers, as far as it decides which controls are drawn. Each is absent where the
+ *  widget restricts nothing, which draws the control. */
+export interface OfferedControls {
+  /** How many chart styles are offered. The style picker needs two or more. */
+  styleCount?: number
+  /** How many timeframes the host listed. The timeframe picker needs two or more. */
+  timeframeCount?: number
+  /** Whether the layout setup menu has anything to choose: an arrangement to change to, or a sync
+   *  switch over a layout of several charts. */
+  layoutChoices?: boolean
+  /** Whether the host saves layouts. The saved-layouts menu saves, opens and lists them, so it is
+   *  drawn only over a store. */
+  layoutStore?: boolean
+}
+
 /** A presentation value that is not `false` shows its control: `true`, an object naming some of
  *  its parts, and an omitted key all do. */
 const shown = (value: boolean | object | undefined): boolean => value !== false
@@ -152,11 +170,9 @@ const shown = (value: boolean | object | undefined): boolean => value !== false
  *  control is drawn only where the surface around it is drawn and the behavior it presents exists,
  *  and a door is drawn only where the dialog it opens is, so every resolved control can do what it
  *  shows. Nothing here changes a behavior: that is `resolveFeatures`, and it is not read back. A key
- *  the plane does not take throws. The style picker needs more than one offered style to choose
- *  between, so a `styleCount` below two leaves it out whatever `ui` says, and the timeframe picker
- *  likewise needs more than one offered timeframe, which a `timeframeCount` below two denies.
- *  Absent, every style and every timeframe is offered. */
-export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatures, styleCount?: number, timeframeCount?: number): ResolvedUi {
+ *  the plane does not take throws. A picker needs something to choose between, so what the widget
+ *  offers can leave one out whatever `ui` says; see {@link OfferedControls}. */
+export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatures, offered: OfferedControls = {}): ResolvedUi {
   checkKeys('ui', config, UI_KEYS)
   const bar = config?.topBar
   const topBar = shown(bar)
@@ -172,12 +188,15 @@ export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatur
     topBar,
     symbolPill: inBar('symbol') && symbolSearch,
     compareButton: inBar('compare') && features.compare,
-    timeframePicker: inBar('timeframes') && (timeframeCount === undefined || timeframeCount > 1),
-    stylePicker: inBar('styles') && (styleCount === undefined || styleCount > 1),
+    timeframePicker: inBar('timeframes') && (offered.timeframeCount === undefined || offered.timeframeCount > 1),
+    stylePicker: inBar('styles') && (offered.styleCount === undefined || offered.styleCount > 1),
     indicatorsButton: inBar('indicators') && indicatorPicker,
     replayButton: inBar('replay') && features.replay,
     historyButtons: inBar('history') && features.history,
-    layoutMenus: inBar('layouts'),
+    // `layouts` hides both layout menus, and each menu's own flag can hide it alone, never show it
+    // where `layouts` hid it.
+    layoutSetup: inBar('layouts') && inBar('layoutSetup') && offered.layoutChoices !== false,
+    savedLayouts: inBar('layouts') && inBar('savedLayouts') && offered.layoutStore !== false,
     settingsMenu,
     settingsTheme: settingsMenu && (typeof settings !== 'object' || shown(settings.theme)),
     fullscreenButton: inBar('fullscreen'),

@@ -3,7 +3,8 @@ import { symbolNames } from '../../symbolLabel'
 // indicators button, the replay button, undo and redo, then the layout setup menu, the
 // saved-layouts menu, the settings menu, fullscreen and the image menu. Every control is present by
 // feature flag and acts through the command registry; the bar re-reads the active chart on every
-// change it hears.
+// change it hears. The saved-layouts menu stands only over a layouts store; without one, its
+// Download chart data row joins the image menu.
 import type { ChartSaveLoadAdapter } from '../../resources'
 import type { ChartStorage } from '../../storage'
 import type { AccessPolicy, ChartPreferences } from '../../widget/options'
@@ -13,6 +14,7 @@ import type { ResolvedUi } from '../../widget/planes'
 import { activeChart, commandLabel, type ChromeContext } from './context'
 import { button, h, name, setDisabled, stopPointer } from './dom'
 import { ICONS } from '../controls/icons'
+import { FLYOUT_WIDTH } from './flyoutGeometry'
 import { mountLayoutSetup, type LayoutSetupHandle } from './layoutSetup'
 import { mountLayoutsMenu, type LayoutsMenuHandle } from './layoutsMenu'
 import type { LayoutCatalog } from './layoutCatalog'
@@ -194,15 +196,23 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
   // ── Layouts ─────────────────────────────────────────────────────────────────────────────────
   let layoutSetup: LayoutSetupHandle | null = null
   let layoutsMenu: LayoutsMenuHandle | null = null
-  if (ui.layoutMenus) {
+  if (ui.layoutSetup) {
     layoutSetup = mountLayoutSetup(deps)
-    layoutsMenu = mountLayoutsMenu({ ...deps, catalog: deps.layoutCatalog, autosave: deps.autosave, notify: deps.notify, listing: deps.layoutListing, dialogs: deps.layoutDialogs, changes: deps.layoutChanges })
-    end.append(layoutSetup.element, layoutsMenu.element)
-    if (ui.settingsMenu || ui.fullscreenButton || ui.imageMenu) end.appendChild(separator())
-    syncers.push(() => layoutSetup!.sync(), () => layoutsMenu!.sync())
-    disposers.push(() => layoutSetup!.destroy(), () => layoutsMenu!.destroy())
+    end.append(layoutSetup.element)
+    syncers.push(() => layoutSetup!.sync())
+    disposers.push(() => layoutSetup!.destroy())
   }
+  if (ui.savedLayouts) {
+    layoutsMenu = mountLayoutsMenu({ ...deps, catalog: deps.layoutCatalog, autosave: deps.autosave, notify: deps.notify, listing: deps.layoutListing, dialogs: deps.layoutDialogs, changes: deps.layoutChanges })
+    end.append(layoutsMenu.element)
+    syncers.push(() => layoutsMenu!.sync())
+    disposers.push(() => layoutsMenu!.destroy())
+  }
+  if ((layoutSetup || layoutsMenu) && (ui.settingsMenu || ui.fullscreenButton || ui.imageMenu)) end.appendChild(separator())
   end.appendChild(slot('afterLayouts'))
+  // Download chart data lives in the saved-layouts menu. A host that saves no layouts has no such
+  // menu, so the row joins the image menu, which then exports the chart as a picture or as data.
+  const dataInImageMenu = !deps.widget.capabilities().saveLoad.layouts
 
   // ── Settings, fullscreen, image ─────────────────────────────────────────────────────────────
   let settings: SettingsMenuHandle | null = null
@@ -232,7 +242,8 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
       anchor: image!,
       label: t()('chrome.image'),
       className: 'qc-image-menu',
-      width: 168,
+      // With the data row it opens as wide as the saved-layouts menu that otherwise holds the row.
+      width: dataInImageMenu ? FLYOUT_WIDTH.layouts : 168,
       align: 'end',
       build(body, handle) {
         body.appendChild(
@@ -260,6 +271,22 @@ export function mountTopBar(deps: TopBarDeps): TopBarHandle {
             },
           }),
         )
+        // The active chart's loaded bars as a file, where no saved-layouts menu carries the row. A
+        // chart-scoped command, so the access policy refuses it here as it would anywhere, and a
+        // chart holding no bars leaves the row disabled.
+        if (dataInImageMenu) {
+          body.appendChild(
+            menuItem({
+              text: t()('layouts.downloadDataRow'),
+              icon: deps.icons.glyph(ICONS.download),
+              disabled: !commands.available('chart.data.download'),
+              onSelect: () => {
+                handle.close()
+                commands.execute('chart.data.download')
+              },
+            }),
+          )
+        }
       },
       onClose: () => {
         imageMenu = null

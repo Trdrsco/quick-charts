@@ -994,6 +994,59 @@ token opens on `1m`. An empty list, a token the grammar cannot read, a repeated 
 beside a list are setup errors that `createChart` throws. `customTimeframes` is the switch, and
 `preferences.customTimeframes` is the list of custom tokens a first-run viewer starts with.
 
+### Offered layouts
+
+By default a chart offers all 55 arrangements (`ARRANGEMENTS`) and lets the viewer change every
+sync switch. `layouts` names the arrangement codes you offer, and the layout opens on
+`layout.arrangement` or else on the first code you list. `layoutSync` names the sync switches the
+viewer may change:
+
+```ts
+import { createChart, type ChartDatafeed, type ChartSaveLoadAdapter } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+declare const saveLoad: ChartSaveLoadAdapter
+
+// A single chart: no layout setup menu, and no re-tile from any door.
+createChart({ container, datafeed, layouts: ['s'] })
+
+// One chart, two side by side or a 2x2 grid, with the crosshair always synced and symbol sync the
+// only switch the viewer changes.
+createChart({ container, datafeed, layouts: ['s', '2h', '4'], layoutSync: ['symbol'], layout: { sync: { crosshair: true } } })
+
+// Every arrangement, with the layout setup menu kept and the saved-layouts menu hidden.
+createChart({ container, datafeed, saveLoad, ui: { topBar: { savedLayouts: false } } })
+```
+
+The layout setup menu shows only the arrangements you list, in its own rows by chart count, and
+leaves out a row with none of them. An arrangement you leave out has no tile, and
+`widget.layout.setArrangement` and its command ignore it. With one arrangement offered there is
+nothing to choose, so the menu is not shown, unless that arrangement holds several charts and a
+sync switch is offered, in which case the menu holds the switches alone. A switch you leave out holds
+the value `layout.sync` gives it, or off: the menu does not show it, `widget.layout.setSync` and its
+command leave it as it is, and a saved layout cannot change it. An empty `layoutSync` fixes every
+switch.
+
+A saved layout whose arrangement you left out opens on the offered arrangement with the most charts
+not above the saved count, the first one listed winning a tie. When every offered arrangement holds
+more charts, it opens on the one with the fewest, and the extra panes clone the first chart as a
+re-tile does. The saved charts past the ones shown are not dropped. The layout carries them with the
+saved arrangement and its divider positions, and a save writes them back unchanged beside the shown
+charts as they are now: a host offering only `['s']` opens a saved 4-chart layout as one chart, and
+after it saves, a host offering every arrangement still opens all four. A re-tile is a new
+arrangement and ends the carry, as it tears down the charts it has no pane for. A saved active chart
+among the hidden ones leaves the first chart active, and the sync switches restore as saved, apart
+from those `layoutSync` leaves out. An empty `layouts`, an unknown or repeated code, a
+`layout.arrangement` outside the list, and an unknown or repeated sync switch are setup errors that
+`createChart` throws.
+
+`ui.topBar.layouts: false` hides the layout setup menu and the saved-layouts menu together;
+`ui.topBar.layoutSetup: false` and `ui.topBar.savedLayouts: false` hide one of them, and neither
+shows a menu `layouts: false` hid. The saved-layouts menu saves, opens and lists layouts, so it is
+shown only with a layouts store (`saveLoad.layouts`). Without one, its Download chart data row joins
+the image menu beside Download image and Copy image, the way an export menu offers a chart as a
+picture or as data.
+
 ### Events
 
 Typed maps, one per scope. Every subscription returns its unsubscribe and is inert after
@@ -1237,16 +1290,17 @@ chrome is painted from it and renders nothing without it.
   date runs `chart.replay.startFirst`: the chart pages the feed's history back to its oldest bar,
   within the 20,000 bars one session holds, and starts there. Undo and
   redo step back and forward through the active chart's own content, and each names the change it
-  would move. Layout setup offers the 55
-  arrangements and the five sync switches; the saved-layouts menu saves, copies, renames, opens and
-  deletes layouts through `saveLoad.layouts` and marks unsaved changes, with an autosave switch.
+  would move. Layout setup offers the arrangements and sync switches the chart offers (by default
+  the 55 arrangements and the five sync switches); the saved-layouts menu, shown with a layouts
+  store, saves, copies, renames, opens and deletes layouts through `saveLoad.layouts` and marks
+  unsaved changes, with an autosave switch and Download chart data.
   Chart settings edits appearance, grid and session shading, the price-scale mode and the theme
   mode, and its Reset defaults row runs `chart.appearance.reset`, which drops the viewer's own
   appearance edits and returns the price scale to normal so the chart reads as the theme and your
   constructor options paint it. `ui: { topBar: { settings: { theme: false } } }` removes its Theme
   section and leaves the rest of the menu, for a host that offers the theme choice in its own
-  settings; the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, and Copy image where the browser can) close
-  the bar.
+  settings; the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, Copy image where the browser can, and
+  Download chart data when there is no layouts store) close the bar.
 - **The bottom bar.** The range presets, the clock in the display zone with the timezone list
   (UTC and the exchange choice first), and the session view for a symbol that trades outside
   regular hours.

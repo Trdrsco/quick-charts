@@ -12,6 +12,8 @@ Hosts choose which chart styles a chart offers with `styles`, in the order the s
 
 Hosts choose which timeframes a chart offers with `timeframes`, presets or other tokens, and can switch custom timeframes off with `customTimeframes: false`; a timeframe left out has no command and no chip or row in the picker, `setTimeframe` ignores it, the picker is not shown for a single timeframe, and a saved layout naming a timeframe left out opens on the smallest offered one.
 
+Hosts choose which layouts a chart offers with `layouts`, a list of arrangement codes, and which sync switches the viewer may change with `layoutSync`; an arrangement left out has no tile and the setter ignores it, the layout setup menu is not shown when there is nothing to choose, a switch left out holds the host's `layout.sync` value, and a saved layout naming an arrangement left out opens on the offered one with the most charts not above its count while carrying the charts it does not show, so a re-save keeps them. `ui.topBar.layoutSetup` and `ui.topBar.savedLayouts` hide one of the two layout menus. Without a layouts store the saved-layouts menu is not shown, and Download chart data sits in the image menu.
+
 A menu that has no rows to show (nothing to remove, no saved layouts, loading) states it at the rows' own size and inset, in the muted ink.
 
 ## 1.1.0

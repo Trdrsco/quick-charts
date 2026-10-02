@@ -16,6 +16,7 @@ import type { Capabilities } from './options'
 import type { LayoutSyncFlags } from './layout'
 import type { LayoutChanges } from './layoutChanges'
 import type { ChartWidget } from './create'
+import type { OfferedLayouts } from './arrangements'
 
 /** The viewer's layout autosave switch, read by the commands and shown by the chrome. */
 export interface AutosavePreference {
@@ -32,6 +33,11 @@ export interface WidgetCommandDeps {
   canSaveLayout(): boolean
   /** The layout's private maximize toggle, over its active tile. */
   toggleMaximize(): void
+  /** The arrangements and sync switches the widget offers. */
+  layouts: OfferedLayouts
+  /** Start a new layout from one chart's content, on the arrangement the widget opens a one-chart
+   *  layout on. */
+  startLayout(content: string): void
   /** Ask a never-saved layout's name in the chrome's name dialog. False when no chrome took it, which
    *  leaves the save a no-op rather than a nameless write. */
   nameLayout(): boolean
@@ -167,12 +173,13 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
   })
   // A sync flag is a standing preference for the layout, not an action on the charts open right
   // now: setting it while one chart is up is what decides how the next split behaves. Gating it on
-  // a split already existing would leave every switch dead in the state a viewer is usually in.
+  // a split already existing would leave every switch dead in the state a viewer is usually in. It
+  // is unavailable only where the widget offers no switch to change.
   add({
     id: 'widget.layout.setSync',
     scope: 'widget',
     label: 'command.layoutSync',
-    available: () => true,
+    available: () => deps.layouts.sync.length > 0,
     execute: (arg) => {
       if (arg && typeof arg === 'object') widget.layout.setSync(arg as Partial<LayoutSyncFlags>)
     },
@@ -209,11 +216,13 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
     available: split,
     execute: () => deps.toggleMaximize(),
   })
+  // A widget that offers one arrangement has none to change to. An arrangement it does not offer is
+  // ignored, as the layout's own setter ignores it.
   add({
     id: 'widget.layout.setArrangement',
     scope: 'widget',
     label: 'command.layoutArrangement',
-    available: always,
+    available: () => deps.layouts.arrangements.length > 1,
     execute: (arg) => {
       if (typeof arg === 'string' && arg) widget.layout.setArrangement(arg)
     },
@@ -309,13 +318,14 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
    *  shows, with none of the open layout's studies, comparisons, authored look or extension state,
    *  saved as a layout of its own. Drawings kept beside the chart in their own documents stay with
    *  their market; drawings kept in the chart's content start empty. The binding detaches FIRST, so
-   *  nothing written to the tiles on the way can land on the layout that was open. */
+   *  nothing written to the tiles on the way can land on the layout that was open. Where the widget
+   *  does not offer the single chart, the layout opens on the arrangement a one-chart layout falls
+   *  back to, its other panes cloning the new chart. */
   const create = async (name: string): Promise<void> => {
     const content = JSON.parse(widget.activeChart().saveLoad.serialize().content) as Record<string, unknown>
     const fresh = JSON.stringify({ ...content, indicators: [], compares: [], appearance: {}, ext: {}, ...('drawings' in content ? { drawings: [] } : {}) })
     widget.layout.saveLoad.detach()
-    widget.layout.setArrangement('s')
-    widget.charts()[0]!.saveLoad.restore(fresh)
+    deps.startLayout(fresh)
     await save(name, true)
   }
   add({

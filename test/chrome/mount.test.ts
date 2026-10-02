@@ -38,7 +38,7 @@ function mount(options: { features?: FeatureConfig; ui?: UiConfig; locale?: stri
   document.body.appendChild(root)
   const doors = emptyDoors()
   const layer = document.body.appendChild(document.createElement('div'))
-  const chrome = mountChrome({ root, layer, toolbarContainer: options.toolbarContainer, panes, widget: w.widget, i18n, features: w.features, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future'] }), autosave: w.autosave, layoutChanges: w.layoutChanges, icons: w.icons, styles: w.ctx.styles, timeframes: w.ctx.timeframes, doors, painters: resolveMarkPainters({}) })
+  const chrome = mountChrome({ root, layer, toolbarContainer: options.toolbarContainer, panes, widget: w.widget, i18n, features: w.features, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future'] }), autosave: w.autosave, layoutChanges: w.layoutChanges, icons: w.icons, styles: w.ctx.styles, timeframes: w.ctx.timeframes, layouts: w.ctx.layouts, doors, painters: resolveMarkPainters({}) })
   cleanup.push(() => (chrome.dispose(), w.dispose()))
   return { w, root, panes, doors, chrome, i18n, layer }
 }
