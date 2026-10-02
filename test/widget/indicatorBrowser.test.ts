@@ -30,8 +30,11 @@ describe('the real widget owns one indicator picker', () => {
     expect(list.mock.calls[0]?.[0]).toMatchObject({ collection: 'saved' })
     expect(document.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).toContain('Saved studies')
     document.querySelector<HTMLButtonElement>('.qc-dialog-close')!.click()
+    // Asked again while the first is still leaving, the browser opens a fresh one at once.
     widget.commands.execute('chart.indicators.open', { collection: 'missing' })
-    expect(document.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).not.toContain('Saved studies')
+    const open = document.querySelectorAll('.qc-dialog-scrim[data-state="open"] .qc-picker-dialog')
+    expect(open).toHaveLength(1)
+    expect(open[0]!.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).not.toContain('Saved studies')
   })
   it('shares the toolbar and command modal, rereads the active pane on each Add, and keeps replay bounded', async () => {
     const { widget, container } = mount()

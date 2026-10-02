@@ -56,7 +56,9 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
     icons: deps.icons,
     role: 'drawing-image-picker',
     width: 420,
-    onClose: () => {
+    // The picker stops taking a paste as it begins to close, and the Image tool can open it again
+    // while the leaving one finishes its exit.
+    onClosing: () => {
       document.removeEventListener('paste', onPaste)
       deps.onClose?.()
     },

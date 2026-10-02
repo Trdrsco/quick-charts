@@ -60,7 +60,9 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     icons: deps.icons,
     role: 'drawing-settings',
     width: 380,
-    onClose: () => {
+    // Escape, the corner close or a press outside ends the session as the dialog begins to close,
+    // so the drawing is back as it was before the exit motion starts rather than after it.
+    onClosing: () => {
       if (settled) return
       cancel()
     },

@@ -394,7 +394,9 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
       if (destroyed) return
       destroyed = true
       releasePicking()
-      for (const handle of [...open]) handle.close()
+      // The date dialog leaves the way the row does: with its exit motion when the row animates out,
+      // at once when the row is torn down.
+      for (const handle of [...open]) handle.close({ animate })
       offStrings()
 
       // The exit lasts as long as the duration role the stylesheet's transition reads, which is zero

@@ -11,7 +11,7 @@ import { timeframeChipLabel } from '../../timeframe'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import type { LayoutMeta } from '../../resources'
 import { shows, type ChromeContext } from './context'
-import { dialogTitle, emptyState, openDialog } from './dialog'
+import { dialogTitle, emptyState, openDialog, type DialogHandle } from './dialog'
 import { button, h, reglyph, replace } from './dom'
 import { FLYOUT_WIDTH } from './flyoutGeometry'
 import type { LayoutCatalog } from './layoutCatalog'
@@ -73,8 +73,8 @@ export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {
   const can = (id: string): boolean => commands.available(id)
   /** The name dialog up at a time. */
   let asking: ReturnType<typeof openNameDialog> | null = null
-  /** The Layouts dialog's own refresh and close, while it is up. */
-  let browser: { close(): void } | null = null
+  /** The Layouts dialog, while it is up. */
+  let browser: DialogHandle | null = null
   /** Stops the open Layouts dialog hearing the catalog. */
   let closeBrowser = (): void => undefined
   const raising = new Set<() => void>()
@@ -84,7 +84,9 @@ export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {
 
   const askName = (question: NameQuestion): void => {
     raise()
-    asking?.close()
+    // A new question replaces the one standing rather than being a dismissal of it, so the old box
+    // goes at once instead of fading under the new one's entrance.
+    asking?.close({ animate: false })
     asking = openNameDialog({
       host: deps.overlays,
       t: t(),
@@ -245,16 +247,16 @@ export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {
         render()
         redraw = render
         closeBrowser = catalog.onChange(render)
-        browser = {
-          close: () => handle.close(),
-        }
+        browser = handle
         // The rows in hand stand while the store is asked again; its answer repaints them.
         void catalog.refresh().catch(() => {
           deps.notify('error', t()('layouts.errList'))
         })
       },
       initialFocus: (box) => box.querySelector<HTMLElement>('.qc-layouts-search-input'),
-      onClose: () => {
+      // The dialog lets go of the catalog and its slot as it begins to close, so a Layouts dialog
+      // asked for during the exit opens at once and the leaving one never unsubscribes it.
+      onClosing: () => {
         closeBrowser()
         browser = null
       },
@@ -289,8 +291,8 @@ export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {
     destroy() {
       raising.clear()
       offLayout()
-      browser?.close()
-      asking?.close()
+      browser?.close({ animate: false })
+      asking?.close({ animate: false })
     },
   }
 }

@@ -5,6 +5,8 @@
 // the same access policy the widget uses; only the renderer is absent, because these fixtures run
 // under happy-dom, which has no canvas.
 import { vi } from 'vitest'
+import { EXIT_EVENT_GRACE_MS } from '../../src/ui/chrome/motion'
+import { DARK_THEME } from '../../src/theme/palettes'
 import { createEmitter, type ChartEvents, type HistoryEventState, type WidgetEvents } from '../../src/widget/events'
 import type { HistoryChange } from '../../src/widget/history'
 import { createCommandRegistry, type CommandRegistry } from '../../src/widget/commands'
@@ -632,3 +634,10 @@ export function buttonNames(root: ParentNode): string[] {
 
 /** Let queued microtasks and a macrotask run, so debounced syncs and promised outcomes land. */
 export const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0))
+
+/** How long a closing modal dialog keeps its pixels under the built-in palettes: the base motion
+ *  duration, and the grace the chrome waits for the box's own transition end. */
+export const DIALOG_EXIT_MS = Number.parseFloat(DARK_THEME['motion.durationBase']) + EXIT_EVENT_GRACE_MS
+
+/** Run a faked clock past a modal dialog's exit, so a dialog that was closed has left the page. */
+export const pastDialogExit = (): Promise<unknown> => vi.advanceTimersByTimeAsync(DIALOG_EXIT_MS)
