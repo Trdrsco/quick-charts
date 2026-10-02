@@ -154,7 +154,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
 
-  // ── The level menu's own verbs ──────────────────────────────────────────────────────────────
+  // ── The context menu's own verbs ────────────────────────────────────────────────────────────
   add({
     id: 'chart.price.copy',
     scope: 'chart',

@@ -26,7 +26,7 @@ function rig(over: Partial<ToolbarState> = {}, options: { refuse?: string[]; den
     removeLocked: false,
     counts: { total: 0, locked: 0 },
     indicatorCount: 0,
-    railTools: {},
+    drawingToolbarTools: {},
     favorites: DEFAULT_FAVORITES,
     recentGlyphs: [],
     layoutCharts: 1,
@@ -56,7 +56,7 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-describe('the rail', () => {
+describe('the drawing toolbar', () => {
   it('keeps the brush and highlighter faces visibly active while their tool is armed', () => {
     const { state, toolbar, byLabel } = rig()
     for (const tool of ['brush', 'highlighter']) {
@@ -72,21 +72,22 @@ describe('the rail', () => {
   })
   it('renders the cursor, seven groups with their arrows, the actions, and the favorites star, and no sync on one chart', () => {
     const { buttons, chrome } = rig()
-    const rail = chrome.querySelector('[data-role="drawing-toolbar"]')!
-    expect(rail.getAttribute('role')).toBe('toolbar')
-    expect(rail.getAttribute('aria-orientation')).toBe('vertical')
-    expect(rail.getAttribute('aria-label')).toBe('Drawing tools')
+    const surface = chrome.querySelector('[data-role="drawing-toolbar"]')!
+    expect(surface.getAttribute('role')).toBe('toolbar')
+    expect(surface.getAttribute('aria-orientation')).toBe('vertical')
+    expect(surface.getAttribute('aria-label')).toBe('Drawing tools')
     // cursor (2) + seven groups (14) + measure + zoom + magnet (2) + stay + lock + eye (2) + remove (2) + favorites
     expect(buttons()).toHaveLength(27)
     expect(buttons().filter((b) => b.getAttribute('aria-label') === 'Sync drawings across the layout')).toHaveLength(0)
   })
 
-  it('orders the cursor, the seven groups and the actions, separated by three short rail rules', () => {
+  it('orders the cursor, the seven groups and the actions, separated by three short toolbar rules', () => {
     const { chrome } = rig()
     const column = chrome.querySelector<HTMLElement>('.qc-drawing-toolbar-column')!
-    // Every entry in the rail's own order: the face's accessible name, or the rule between groups.
+    // Every entry in the toolbar's own order: the face's accessible name, or the rule between
+    // groups.
     const order = [...column.children].flatMap((child) =>
-      child.classList.contains('qc-separator') ? ['rule'] : [...child.querySelectorAll<HTMLElement>('.qc-drawing-rail-button')].map((b) => b.getAttribute('aria-label')!),
+      child.classList.contains('qc-separator') ? ['rule'] : [...child.querySelectorAll<HTMLElement>('.qc-drawing-toolbar-button')].map((b) => b.getAttribute('aria-label')!),
     )
     expect(order).toEqual([
       'Cursor',
@@ -109,11 +110,12 @@ describe('the rail', () => {
       'Remove drawings',
       'Favorite drawing tools toolbar',
     ])
-    // The rail's rules are the SHORT ones; a flyout's section rule and a menu's rule are their own.
+    // The toolbar's rules are the SHORT ones; a flyout's section rule and a menu's rule are their
+    // own.
     expect([...column.querySelectorAll('.qc-separator')].every((r) => r.classList.contains('qc-drawing-divider'))).toBe(true)
   })
 
-  it('gives a flyout section rule and a menu rule their own recipe, not the rail width', () => {
+  it('gives a flyout section rule and a menu rule their own recipe, not the toolbar width', () => {
     const { byLabel, popover } = rig({ counts: { total: 2, locked: 1 } })
     byLabel('Trend tools menu').click()
     const sectionRules = [...popover()!.querySelectorAll('.qc-separator')]
@@ -145,7 +147,7 @@ describe('the rail', () => {
     const { byLabel, ran, state, toolbar } = rig()
     byLabel('Trend line').click()
     expect(ran).toEqual([['chart.drawings.arm', 'trend_line']])
-    state.railTools = { trend: 'ray' }
+    state.drawingToolbarTools = { trend: 'ray' }
     toolbar.render()
     expect(byLabel('Ray')).toBeTruthy()
     byLabel('Ray').click()
@@ -314,7 +316,7 @@ describe('a group flyout', () => {
     expect(popover()).toBeNull()
   })
 
-  it('renders a control whose command the registry refuses disabled, never hidden, on the rail and in its menus', () => {
+  it('renders a control whose command the registry refuses disabled, never hidden, on the toolbar and in its menus', () => {
     const { buttons, byLabel, popover, state, toolbar } = rig({ counts: { total: 2, locked: 0 } }, { deny: ['chart.drawings.arm', 'chart.drawings.magnet', 'chart.drawings.removeAll'] })
     expect(buttons()).toHaveLength(27)
     expect(byLabel('Cursor').disabled).toBe(true)
@@ -360,7 +362,7 @@ describe('a group flyout', () => {
         if (row) return row
         arrow.click()
       }
-      throw new Error('no Image row on the rail')
+      throw new Error('no Image row on the toolbar')
     }
     expect(imageRow(rig({}, { deny: ['chart.drawings.placeImage'] })).disabled).toBe(true)
     document.body.replaceChildren()
@@ -375,7 +377,7 @@ describe('a group flyout', () => {
     expect(rows[0]!.disabled).toBe(true)
     expect(rows[1]!.disabled).toBe(true)
     expect(rows[2]!.disabled).toBe(false)
-    state.railTools = { trend: 'info_line' }
+    state.drawingToolbarTools = { trend: 'info_line' }
     toolbar.render()
     expect(byLabel('Info line').disabled).toBe(false)
   })
@@ -407,16 +409,16 @@ describe('a group flyout', () => {
 })
 
 describe('the keyboard', () => {
-  it('roves focus over the rail with the arrow keys and lands on the first row of an open menu', () => {
+  it('roves focus over the toolbar with the arrow keys and lands on the first row of an open menu', () => {
     const { chrome, byLabel, buttons, popover } = rig()
-    const rail = chrome.querySelector<HTMLElement>('[data-role="drawing-toolbar"]')!
+    const surface = chrome.querySelector<HTMLElement>('[data-role="drawing-toolbar"]')!
     const first = buttons()[0]!
     expect(first.tabIndex).toBe(0)
     expect(buttons()[1]!.tabIndex).toBe(-1)
     first.focus()
-    rail.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+    surface.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
     expect(document.activeElement).toBe(buttons()[1])
-    rail.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }))
+    surface.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }))
     expect(document.activeElement).toBe(buttons()[buttons().length - 1])
     byLabel('Hide menu').click()
     const rows = [...popover()!.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
@@ -447,7 +449,7 @@ describe('the keyboard', () => {
       icons: ownIcons(),
       chrome,
       t: live,
-      state: () => ({ activeTool: null, cursor: 'cross', magnet: 'off', stayInDrawingMode: false, allLocked: false, hide: DEFAULT_HIDE_STATE, hideLayers: [], sync: true, removeLocked: false, counts: { total: 0, locked: 0 }, indicatorCount: 0, railTools: {}, favorites: DEFAULT_FAVORITES, recentGlyphs: [], layoutCharts: 1 }),
+      state: () => ({ activeTool: null, cursor: 'cross', magnet: 'off', stayInDrawingMode: false, allLocked: false, hide: DEFAULT_HIDE_STATE, hideLayers: [], sync: true, removeLocked: false, counts: { total: 0, locked: 0 }, indicatorCount: 0, drawingToolbarTools: {}, favorites: DEFAULT_FAVORITES, recentGlyphs: [], layoutCharts: 1 }),
       run: () => true,
       available: () => true,
       toolAllowed: () => true,
@@ -455,8 +457,8 @@ describe('the keyboard', () => {
     })
     await strings.setLocale('fr-CA')
     toolbar.relabel()
-    const rail = chrome.querySelector('[data-role="drawing-toolbar"]')!
-    expect(rail.getAttribute('aria-label')).toBe('Outils de dessin')
+    const surface = chrome.querySelector('[data-role="drawing-toolbar"]')!
+    expect(surface.getAttribute('aria-label')).toBe('Outils de dessin')
     toolbar.destroy()
     expect(chrome.children).toHaveLength(0)
   })

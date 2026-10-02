@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // The symbol search dialog: the row model in each mode, the keyboard (arrows move the highlight,
 // Enter acts, Escape closes), the class strip, the spread operators, and the verbs, every one a
-// command: a pick sets the symbol, a compare adds at a placement, an added row removes.
+// command: a pick sets the symbol, a compare pick adds at a placement, an added row removes.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { dialogRows, openSearchDialog, rowLabels } from '../../src/ui/chrome/searchDialog'
 import type { ChartDatafeed, SymbolRow } from '../../src/datafeed'
@@ -43,7 +43,7 @@ const settle = async (): Promise<void> => {
 
 function open(
   mode: 'search' | 'compare' | 'change-symbol',
-  extra: { access?: (id: string) => boolean; classes?: string[]; scope?: SearchScope; onPick?(s: string): void; changeFrom?: string; catalog?: readonly SymbolRow[]; venueMark?: MarkHook<'exchange'>; providerMark?: MarkHook<'provider'> } = {},
+  extra: { access?: (id: string) => boolean; classes?: string[]; scope?: SearchScope; onPick?(s: string): void; changeFrom?: string; catalog?: readonly SymbolRow[]; venueMark?: MarkHook<'exchange'>; dataSourceMark?: MarkHook<'dataSource'> } = {},
 ) {
   const w = fakeWidget({ access: extra.access ? { command: extra.access } : undefined })
   const dialog = openSearchDialog({
@@ -92,8 +92,8 @@ describe('how a row is written', () => {
   })
 
   it('names the venue as the source, and the publisher only where there is no venue', () => {
-    expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: 'CME', type: 'future', provider: 'pyth' }).source).toBe('CME')
-    expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: '', type: 'future', provider: 'pyth' }).source).toBe('pyth')
+    expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: 'CME', type: 'future', dataSource: 'pyth' }).source).toBe('CME')
+    expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: '', type: 'future', dataSource: 'pyth' }).source).toBe('pyth')
     expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: '', type: 'future' }).source).toBe('')
   })
 })
@@ -301,21 +301,21 @@ describe('compare and change-symbol modes', () => {
     expect(w.chart.calls).toContain('compare:remove:NQ')
   })
 
-  it('paints each source through the host: the venue where the row names one, else the provider', async () => {
+  it('paints each source through the host: the venue where the row names one, else the data source', async () => {
     const painted: string[] = []
     const dropped: string[] = []
     const paint =
       (kind: string) =>
       (request: { host: HTMLElement; size: number } & Record<string, unknown>) => {
-        const name = String(request.exchange ?? request.provider)
+        const name = String(request.exchange ?? request.dataSource)
         painted.push(`${kind}:${name}:${request.size}`)
         request.host.appendChild(document.createElement('img'))
         return () => dropped.push(name)
       }
     const { input, rows } = open('search', {
-      catalog: [...CATALOG, { symbol: 'GOLD', name: 'Gold spot', exchange: '', type: 'metal', provider: 'pyth' }],
+      catalog: [...CATALOG, { symbol: 'GOLD', name: 'Gold spot', exchange: '', type: 'metal', dataSource: 'pyth' }],
       venueMark: paint('venue'),
-      providerMark: paint('provider'),
+      dataSourceMark: paint('dataSource'),
     })
     input.value = 'O'
     input.dispatchEvent(new Event('input'))
@@ -329,7 +329,7 @@ describe('compare and change-symbol modes', () => {
     expect(es.dataset.qcHost).toBe('true')
     expect(es.querySelector('img')).not.toBeNull()
     expect(es.textContent).toBe('')
-    expect(painted).toEqual(expect.arrayContaining(['provider:pyth:18', 'venue:CME:18']))
+    expect(painted).toEqual(expect.arrayContaining(['dataSource:pyth:18', 'venue:CME:18']))
     // Each rebuild releases every box the last one painted.
     expect(dropped).toContain('pyth')
   })

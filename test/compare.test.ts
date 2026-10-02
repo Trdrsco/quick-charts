@@ -1,6 +1,6 @@
 // The COMPARE module. What is pinned here is the contract this package promises: three placements
 // with the dialog's own semantics, bars clipped to the main window (extending the time scale is out
-// of scope, so a compare must never stretch the axis), palette assignment that frees colors on
+// of scope, so a comparison must never stretch the axis), palette assignment that frees colors on
 // removal, snapshot round-trips that drop junk, and a live path that can only touch the newest bar.
 // The chart and the datafeed are fakes; the code under test is the real module.
 import { describe, expect, it, vi } from 'vitest'
@@ -25,7 +25,7 @@ describe('the pure rules', () => {
   it('clips inclusively to the main window, and renders nothing before the main paints', () => {
     const bars = [bar(10), bar(20), bar(30), bar(40)]
     expect(clipToWindow(bars, { from: 20, to: 30 }).map((b) => b.t)).toEqual([20, 30])
-    // A compare must never be the thing that gives the axis its range.
+    // A comparison must never be the thing that gives the axis its range.
     expect(clipToWindow(bars, null)).toEqual([])
   })
 
@@ -118,7 +118,7 @@ function harness(
   return { handle, series, chartOptions, calls, subs, unsubs, win, onChange }
 }
 
-describe('adding a compare', () => {
+describe('adding a comparison', () => {
   it('does not revive an obsolete subscription when timeframe changes away and back', async () => {
     const { chart } = fakeChart()
     const { feed, subs } = fakeFeed({ NQ: [bar(10, 100), bar(20, 110)] })
@@ -229,7 +229,7 @@ describe('adding a compare', () => {
   })
 })
 
-describe('the left scale belongs to new-scale compares alone', () => {
+describe('the left scale belongs to new-scale comparisons alone', () => {
   it('shows while one lives and hides when the last leaves', async () => {
     const h = harness({ NQ: [bar(20)] })
     h.handle.add('NQ', { placement: 'new-scale' })
@@ -318,7 +318,7 @@ describe('sync follows the main window', () => {
     h.handle.sync() // a repaint while the page is in flight
     expect(h.calls).toHaveLength(2)
     await flush()
-    // The failed span is not held: the compare is still short, and the legend's value is honest.
+    // The failed span is not held: the comparison is still short, and the legend's value is honest.
     expect((h.series[0]!.s.data as unknown[]).length).toBe(2)
     // The next sync over the same window asks the same span again, and this time it lands.
     h.handle.sync()
@@ -334,7 +334,7 @@ describe('sync follows the main window', () => {
 })
 
 describe('timeframe re-key', () => {
-  it('blanks and refetches every compare', async () => {
+  it('blanks and refetches every comparison', async () => {
     const h = harness({ NQ: [bar(20)], ES: [bar(30)] })
     h.handle.add('NQ', { placement: 'same-percent' })
     h.handle.add('ES', { placement: 'new-pane' })
@@ -405,7 +405,7 @@ describe('teardown', () => {
     expect(h.series).toHaveLength(0)
   })
 
-  it('a stale fetch that lands after removal must not resurrect the compare', async () => {
+  it('a stale fetch that lands after removal must not resurrect the comparison', async () => {
     const h = harness({ NQ: [bar(20)] })
     h.handle.add('NQ', { placement: 'same-percent' })
     h.handle.remove('NQ') // before the fetch resolves

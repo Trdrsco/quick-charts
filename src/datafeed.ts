@@ -21,15 +21,15 @@ export interface FeedBar {
   v: number
 }
 
-/** A symbol-search result row. `provider`/`via` carry the data-source truth a UI may attribute —
- *  a row names a provider ONLY when that provider actually publishes the symbol's data. */
+/** A symbol-search result row. `exchange` names the venue the market lists on. `dataSource` names
+ *  where the market's data comes from, and a row names one only when that source publishes the
+ *  symbol's data. The row's source cell shows the venue, or the data source for a row with none. */
 export interface SymbolRow {
   symbol: string
   name: string
   exchange: string
   type: string
-  provider?: string | null
-  via?: string | null
+  dataSource?: string | null
   /** What the market is priced in, when the feed knows it here. A PAIR market writes itself as
    *  `BASE / QUOTE` wherever it is named, and a ticker alone cannot say what the quote is; a row
    *  without it keeps the name the feed sent instead. `resolve()` states the same fact for the

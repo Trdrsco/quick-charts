@@ -112,7 +112,7 @@ describe('the exclusion ledger against package code', () => {
     // grew anywhere else in the source.
     const outsideTheSeam = Object.fromEntries(Object.entries(CODE).filter(([file]) => !file.startsWith('/src/internal/drawings/')))
     expect(sweep(outsideTheSeam, DUPLICATE_SNAP)).toEqual([])
-    // The level menu snaps a pointed-at price to the symbol grid; that is the one place the chart
+    // The context menu snaps a pointed-at price to the symbol grid; that is the one place the chart
     // rounds a price to a step, and it is not the magnet.
     const gridRounding = scanFiles(outsideTheSeam, /Math\.round\([^)]*\/\s*(step|tick|minMove)\)/)
     expect(gridRounding.map((o) => o.file)).toEqual(['/src/widget/menu.ts'])

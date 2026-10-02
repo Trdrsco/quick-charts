@@ -48,7 +48,7 @@ export interface ChartLegendRow {
 const HOST_ROW_PREFIX = 'host:'
 
 export interface LegendPlane {
-  /** Push the current reading: the bar being read, then the rows (indicators, then compares). */
+  /** Push the current reading: the bar being read, then the rows (indicators, then comparisons). */
   push(): void
   setHeader(symbol: string, tf: string): void
   setDot(state: SessionState | null): void

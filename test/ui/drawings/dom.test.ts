@@ -127,7 +127,7 @@ describe('dismissal and direction', () => {
     expect(panel.style.left).toBe('0px')
   })
 
-  it.each(['ltr', 'rtl'])('places an external rail flyout against its physical anchor inside widget bounds in %s', (dir) => {
+  it.each(['ltr', 'rtl'])('places an external drawing toolbar flyout against its physical anchor inside widget bounds in %s', (dir) => {
     const box = el('div', { dir })
     const anchor = el('button')
     const panel = el('div')

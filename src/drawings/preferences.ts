@@ -33,7 +33,7 @@ export interface DrawingPreferences {
   /** A NEW drawing is replicated to every pane charting the same symbol. */
   syncAcrossPanes: boolean
   /** Each toolbar group's last-picked tool, so the button keeps that face. Keyed by group id. */
-  railTools: Readonly<Record<string, string>>
+  drawingToolbarTools: Readonly<Record<string, string>>
   favorites: FavoritesState
   /** Where the selected drawing's settings bar was dragged to; null takes its default place. */
   settingsBarPosition: FavoritesPosition | null
@@ -50,7 +50,7 @@ export const DEFAULT_DRAWING_PREFERENCES: DrawingPreferences = {
   stayInDrawingMode: false,
   removeLocked: false,
   syncAcrossPanes: true,
-  railTools: {},
+  drawingToolbarTools: {},
   favorites: DEFAULT_FAVORITES,
   settingsBarPosition: null,
   recentGlyphs: [],
@@ -85,7 +85,9 @@ const favoritesOf = (value: unknown): FavoritesState => {
 
 /** Read a stored record. TOTAL: anything unreadable, and any field that is missing or not what it
  *  claims, falls back to its default rather than throwing. A preference document is the one piece
- *  of state a chart must never fail to open on. */
+ *  of state a chart must never fail to open on. A record written by Quick Charts 1.x keeps each
+ *  group's last-picked tool under `railTools`, which is read where `drawingToolbarTools` is absent;
+ *  the writer states `drawingToolbarTools`, so the next write carries the name this build reads. */
 export function parseDrawingPreferences(raw: string | null | undefined): DrawingPreferences {
   let parsed: unknown = null
   try {
@@ -102,7 +104,7 @@ export function parseDrawingPreferences(raw: string | null | undefined): Drawing
     stayInDrawingMode: bool(value.stayInDrawingMode, DEFAULT_DRAWING_PREFERENCES.stayInDrawingMode),
     removeLocked: bool(value.removeLocked, DEFAULT_DRAWING_PREFERENCES.removeLocked),
     syncAcrossPanes: bool(value.syncAcrossPanes, DEFAULT_DRAWING_PREFERENCES.syncAcrossPanes),
-    railTools: stringRecord(value.railTools),
+    drawingToolbarTools: stringRecord('drawingToolbarTools' in value ? value.drawingToolbarTools : value.railTools),
     favorites: favoritesOf(value.favorites),
     settingsBarPosition: positionOf(value.settingsBarPosition),
     recentGlyphs: Array.isArray(value.recentGlyphs) ? value.recentGlyphs.filter((g): g is string => typeof g === 'string').slice(0, RECENT_GLYPHS_MAX) : [],

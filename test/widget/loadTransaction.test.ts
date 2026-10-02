@@ -360,7 +360,7 @@ describe('containing layout safety', () => {
     // A partial layout can load, but it cannot certify a child it did not fully restore.
     const partial = await adapter.layouts.create({
       name: 'Partial',
-      content: JSON.stringify({ v: 2, identity: { namespace: 'layout:saved-partial', next: 2 }, arrangement: 's', geometry: arrangementOf('s')!.rects, sync: { symbol: false, interval: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: [{ id: 'layout:saved-partial:chart:1', content: JSON.stringify({ v: CHART_CONTENT_VERSION, symbol: 'NQ', indicators: [] }) }] }),
+      content: JSON.stringify({ v: 2, identity: { namespace: 'layout:saved-partial', next: 2 }, arrangement: 's', geometry: arrangementOf('s')!.rects, sync: { symbol: false, timeframe: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: [{ id: 'layout:saved-partial:chart:1', content: JSON.stringify({ v: CHART_CONTENT_VERSION, symbol: 'NQ', indicators: [] }) }] }),
     })
     if (partial.kind !== 'ok') throw new Error('unreachable')
     expect((await layout.api.saveLoad.load(partial.ref.id)).kind).toBe('ok')
@@ -390,7 +390,7 @@ describe('containing layout safety', () => {
     expect(() => layout.handles()[0]!.saveLoad.restore(serializeChartContent(contentOf('CL', '1h')))).toThrow()
     failures[0]!.length = 0
     failures[1]!.push('NQ', 'ES')
-    const content = JSON.stringify({ v: 2, identity: { namespace: 'layout:saved-siblings', next: 3 }, arrangement: '2v', geometry: arrangementOf('2v')!.rects, sync: { symbol: false, interval: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: ['NQ', 'NQ'].map((symbol, index) => ({ id: `layout:saved-siblings:chart:${index + 1}`, content: serializeChartContent(contentOf(symbol, '1h')) })) })
+    const content = JSON.stringify({ v: 2, identity: { namespace: 'layout:saved-siblings', next: 3 }, arrangement: '2v', geometry: arrangementOf('2v')!.rects, sync: { symbol: false, timeframe: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: ['NQ', 'NQ'].map((symbol, index) => ({ id: `layout:saved-siblings:chart:${index + 1}`, content: serializeChartContent(contentOf(symbol, '1h')) })) })
     const b = await adapter.layouts.create({ name: 'B', content })
     if (b.kind !== 'ok') throw new Error('unreachable')
     expect((await layout.api.saveLoad.load(b.ref.id)).kind).toBe('invalid')
@@ -403,7 +403,7 @@ describe('containing layout safety', () => {
 
 describe('a saved layout is read whole, nested charts included, before a tile moves', () => {
   const layoutContent = (arrangement: string, charts: { symbol: string; tf: string; content: string }[]): string =>
-    JSON.stringify({ v: 2, identity: { namespace: `layout:saved-${arrangement}`, next: charts.length + 1 }, arrangement, geometry: arrangementOf(arrangement)?.rects ?? [], sync: { symbol: true, interval: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: charts.map((chart, index) => ({ id: `layout:saved-${arrangement}:chart:${index + 1}`, ...chart })) })
+    JSON.stringify({ v: 2, identity: { namespace: `layout:saved-${arrangement}`, next: charts.length + 1 }, arrangement, geometry: arrangementOf(arrangement)?.rects ?? [], sync: { symbol: true, timeframe: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: charts.map((chart, index) => ({ id: `layout:saved-${arrangement}:chart:${index + 1}`, ...chart })) })
 
   /** `failOn` names the symbols every chart this layout builds refuses. Naming the symbol a load
    *  brings AND the one the layout holds is what makes the apply fail part-way and the rollback
@@ -534,11 +534,11 @@ describe('a saved layout is read whole, nested charts included, before a tile mo
     const layout = plane(memorySaveLoadAdapter(), [], undefined, (state) => states.push(state))
     layout.api.setArrangement('2h')
     layout.api.setActive(1)
-    layout.api.setSync({ interval: true })
+    layout.api.setSync({ timeframe: true })
     expect(states.at(-1)).toEqual({
       arrangement: '2h',
       geometry: arrangementOf('2h')!.rects,
-      sync: { symbol: false, interval: true, crosshair: false, time: false, dateRange: false },
+      sync: { symbol: false, timeframe: true, crosshair: false, time: false, dateRange: false },
       active: 1,
       maximized: null,
     })
@@ -548,7 +548,7 @@ describe('a saved layout is read whole, nested charts included, before a tile mo
 
   it.each([
     ['v1', JSON.stringify({ v: 1, arrangement: 's', charts: [] })],
-    ['malformed v2 geometry', JSON.stringify({ v: 2, arrangement: 's', geometry: [{ x: 0, y: 0, w: 2, h: 1 }], sync: { symbol: false, interval: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: [{ symbol: 'NQ', tf: '1h', content: serializeChartContent(contentOf('NQ', '1h')) }] })],
+    ['malformed v2 geometry', JSON.stringify({ v: 2, arrangement: 's', geometry: [{ x: 0, y: 0, w: 2, h: 1 }], sync: { symbol: false, timeframe: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: [{ symbol: 'NQ', tf: '1h', content: serializeChartContent(contentOf('NQ', '1h')) }] })],
   ])('refuses %s without mutation or save-target rebinding', async (_label, content) => {
     const adapter = memorySaveLoadAdapter()
     const changes: string[] = []
@@ -573,7 +573,7 @@ describe('a saved layout is read whole, nested charts included, before a tile mo
     const savedA = await layout.api.saveLoad.save('A')
     expect(savedA.kind).toBe('ok')
     const boundToA = layout.api.saveLoad.current()!
-    const badChild = JSON.stringify({ v: 2, arrangement: '2v', geometry: arrangementOf('2v')!.rects, sync: { symbol: false, interval: false, crosshair: false, time: false, dateRange: false }, active: 1, charts: [{ symbol: 'NQ', tf: '1h', content: UNSUPPORTED }, { symbol: 'ES', tf: '5m', content: serializeChartContent(contentOf('ES', '5m')) }] })
+    const badChild = JSON.stringify({ v: 2, arrangement: '2v', geometry: arrangementOf('2v')!.rects, sync: { symbol: false, timeframe: false, crosshair: false, time: false, dateRange: false }, active: 1, charts: [{ symbol: 'NQ', tf: '1h', content: UNSUPPORTED }, { symbol: 'ES', tf: '5m', content: serializeChartContent(contentOf('ES', '5m')) }] })
     const b = await adapter.layouts.create({ name: 'B', content: badChild })
     if (b.kind !== 'ok') throw new Error('unreachable')
     changes.length = 0
@@ -701,7 +701,7 @@ describe('a saved layout is read whole, nested charts included, before a tile mo
     const layout = plane(adapter, changes)
     await layout.api.saveLoad.save('A')
     const a = layout.api.saveLoad.current()!.ref
-    const bad = JSON.stringify({ v: 2, arrangement: '2v', geometry: arrangementOf('2v')!.rects, sync: { symbol: false, interval: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: [{ symbol: 'NQ', tf: '1h', content: MALFORMED }, { symbol: 'ES', tf: '5m', content: serializeChartContent(contentOf('ES', '5m')) }] })
+    const bad = JSON.stringify({ v: 2, arrangement: '2v', geometry: arrangementOf('2v')!.rects, sync: { symbol: false, timeframe: false, crosshair: false, time: false, dateRange: false }, active: 0, charts: [{ symbol: 'NQ', tf: '1h', content: MALFORMED }, { symbol: 'ES', tf: '5m', content: serializeChartContent(contentOf('ES', '5m')) }] })
     const b = await adapter.layouts.create({ name: 'B', content: bad })
     if (b.kind !== 'ok') throw new Error('unreachable')
     changes.length = 0

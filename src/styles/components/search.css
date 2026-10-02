@@ -300,8 +300,8 @@
 }
 
 /* The source's mark: an 18px disc in a 20px cell. The package ships no brand artwork and fetches
- * none: a host paints the venue's own mark, or a provider's, and without one the source is written
- * in the one letter it is known by on the neutral fill. */
+ * none: a host paints the venue's own mark, or a data source's, and without one the source is
+ * written in the one letter it is known by on the neutral fill. */
 [data-qc-theme] .qc-search-mark {
   display: inline-flex;
   flex: 0 0 auto;
@@ -318,8 +318,8 @@
   border-radius: 50%;
 }
 
-/* A host's venue or provider mark IS the disc: the package's ground stands down under it, and the
- * artwork fills the round box. */
+/* A host's venue or data source mark IS the disc: the package's ground stands down under it, and
+ * the artwork fills the round box. */
 [data-qc-theme] .qc-search-mark[data-qc-host='true'] {
   background: none;
 }

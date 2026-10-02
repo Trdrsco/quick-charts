@@ -8,7 +8,7 @@ import { ARRANGEMENTS, arrangementOf } from '../layoutGrid'
 import type { LayoutSyncFlags } from './layout'
 
 /** Every sync switch, in the order the layout setup menu lists them. */
-export const LAYOUT_SYNC_KEYS: readonly (keyof LayoutSyncFlags)[] = ['symbol', 'interval', 'crosshair', 'time', 'dateRange']
+export const LAYOUT_SYNC_KEYS: readonly (keyof LayoutSyncFlags)[] = ['symbol', 'timeframe', 'crosshair', 'time', 'dateRange']
 
 /** The arrangements and sync switches a widget offers. `arrangements` is the host's list in its own
  *  order, or every code in catalog order; `named` says which. `sync` is the switches the viewer may

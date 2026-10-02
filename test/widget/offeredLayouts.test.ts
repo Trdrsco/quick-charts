@@ -275,14 +275,14 @@ describe('a saved layout whose arrangement is not offered', () => {
 describe('the sync switches a widget offers', () => {
   it('leave the others at the host value: hidden, refused by setSync, and not moved by a saved layout', async () => {
     const saved = await savedFour()
-    const { widget, container } = mount({ layoutSync: ['symbol', 'interval'], layout: { arrangement: '2h', sync: { time: true } } })
+    const { widget, container } = mount({ layoutSync: ['symbol', 'timeframe'], layout: { arrangement: '2h', sync: { time: true } } })
     expect(setupMenu(container).switches).toEqual(['Sync symbol', 'Sync interval'])
     widget.layout.setSync({ time: false, crosshair: true })
-    expect(widget.layout.sync()).toEqual({ symbol: false, interval: false, crosshair: false, time: true, dateRange: false })
+    expect(widget.layout.sync()).toEqual({ symbol: false, timeframe: false, crosshair: false, time: true, dateRange: false })
     expect(widget.commands.execute('widget.layout.setSync', { symbol: true, time: false }).kind).toBe('ok')
-    expect(widget.layout.sync()).toEqual({ symbol: true, interval: false, crosshair: false, time: true, dateRange: false })
+    expect(widget.layout.sync()).toEqual({ symbol: true, timeframe: false, crosshair: false, time: true, dateRange: false })
     widget.layout.restore(saved)
-    expect(widget.layout.sync()).toEqual({ symbol: false, interval: false, crosshair: false, time: true, dateRange: false })
+    expect(widget.layout.sync()).toEqual({ symbol: false, timeframe: false, crosshair: false, time: true, dateRange: false })
   })
 
   it('may be none, which fixes every switch and leaves the command unavailable', () => {
@@ -306,5 +306,6 @@ describe('a layouts option the host got wrong', () => {
   it('is a repeated code', () => refuse({ layouts: ['s', '2h', 's'] }, 'layouts names "s" more than once'))
   it('is an opening arrangement outside the list', () => refuse({ layouts: ['s', '2h'], layout: { arrangement: '4' } }, 'layout.arrangement "4" is not one of the offered layouts: s, 2h'))
   it('is an unknown sync switch', () => refuse({ layoutSync: ['symbol', 'zoom' as never] }, 'layoutSync names "zoom", which is not a sync switch'))
+  it('names the timeframe switch interval', () => refuse({ layoutSync: ['interval' as never] }, 'layoutSync names "interval", which is not a sync switch; it takes symbol, timeframe, crosshair, time, dateRange'))
   it('is a repeated sync switch', () => refuse({ layoutSync: ['time', 'time'] }, 'layoutSync names "time" more than once'))
 })

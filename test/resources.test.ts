@@ -130,12 +130,12 @@ describe('the four resource families', () => {
     await adapter.charts.create(chart('One'))
     await adapter.layouts.create({ name: 'Four up', content: 'layout' })
     await adapter.drawings(everyChart('ESZ2026')).create(withLine(everyChart('ESZ2026'), 'd1'))
-    await adapter.templates('study').create({ name: 'My RSI', content: 'study' })
+    await adapter.templates('indicator').create({ name: 'My RSI', content: 'indicator' })
 
     expect(await adapter.charts.list()).toHaveLength(1)
     expect(await adapter.layouts.list()).toHaveLength(1)
     expect(await adapter.drawings(everyChart('ESZ2026')).list()).toHaveLength(1)
-    expect(await adapter.templates('study').list()).toHaveLength(1)
+    expect(await adapter.templates('indicator').list()).toHaveLength(1)
     expect(await adapter.templates('drawing').list()).toHaveLength(0)
   })
 
@@ -156,11 +156,11 @@ describe('the four resource families', () => {
     expect(read?.body.context).toEqual(oneChart('ESZ2026', 'c1'))
   })
 
-  it('carries a drawing template tool onto its listing row and leaves study rows without one', async () => {
+  it('carries a drawing template tool onto its listing row and leaves indicator rows without one', async () => {
     const adapter = memorySaveLoadAdapter()
     await adapter.templates('drawing').create({ name: 'Thick', tool: 'trend-line', content: 't' })
-    await adapter.templates('study').create({ name: 'Fast', content: 's' })
+    await adapter.templates('indicator').create({ name: 'Fast', content: 's' })
     expect((await adapter.templates('drawing').list())[0]?.tool).toBe('trend-line')
-    expect('tool' in ((await adapter.templates('study').list())[0] ?? {})).toBe(false)
+    expect('tool' in ((await adapter.templates('indicator').list())[0] ?? {})).toBe(false)
   })
 })

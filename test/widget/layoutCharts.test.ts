@@ -122,7 +122,7 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     expect(widget.commands.list().find((spec) => spec.id === 'chart.style.line')?.shortcut).toBeUndefined()
   })
 
-  it('mounts only the active chart rail externally, closes its flyouts on activation, and follows layout changes', () => {
+  it('mounts only the drawing toolbar of the active chart externally, closes its flyouts on activation, and follows layout changes', () => {
     const container = document.createElement('div')
     const host = document.createElement('aside')
     document.body.append(container, host)
@@ -132,25 +132,25 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     expect(toolbars(container)).toHaveLength(0)
     expect(container.querySelector('[data-qc-drawing-toolbar]')).toBeNull()
     expect(toolbars(host)).toHaveLength(1)
-    const firstRail = toolbars(host)[0]!
-    // The arrow opens the chart's menu in the widget's own layer on the document body: the rail
+    const firstToolbar = toolbars(host)[0]!
+    // The arrow opens the chart's menu in the widget's own layer on the document body: the toolbar
     // stands outside the widget, and its flyout stands over whatever the host puts beside it.
-    const arrow = firstRail.querySelector<HTMLButtonElement>('.qc-drawing-rail-arrow')!
+    const arrow = firstToolbar.querySelector<HTMLButtonElement>('.qc-drawing-toolbar-arrow')!
     arrow.click()
     expect(document.querySelector('.qc-layer > [data-role="drawing-popover"]')).not.toBeNull()
     expect(container.querySelector('[data-role="drawing-popover"]')).toBeNull()
     expect(host.querySelector('[data-role="drawing-popover"]')).toBeNull()
     widget.layout.setActive(1)
     expect(document.querySelector('[data-role="drawing-popover"]')).toBeNull()
-    expect(firstRail.isConnected).toBe(false)
+    expect(firstToolbar.isConnected).toBe(false)
     expect(toolbars(host)).toHaveLength(1)
-    const secondRail = toolbars(host)[0]!
-    secondRail.querySelector<HTMLButtonElement>('button[aria-label="Measure"]')!.click()
+    const secondToolbar = toolbars(host)[0]!
+    secondToolbar.querySelector<HTMLButtonElement>('button[aria-label="Measure"]')!.click()
     expect(second!.drawings?.activeTool()).toBe('measure')
     expect(first!.drawings?.activeTool()).not.toBe('measure')
     widget.layout.setActive(0)
-    expect(toolbars(host)).toEqual([firstRail])
-    expect(firstRail.querySelector('[aria-label="Measure"]')?.getAttribute('data-qc-active')).not.toBe('true')
+    expect(toolbars(host)).toEqual([firstToolbar])
+    expect(firstToolbar.querySelector('[aria-label="Measure"]')?.getAttribute('data-qc-active')).not.toBe('true')
     widget.layout.setActive(1)
     const saved = widget.layout.serialize().content
     widget.layout.setArrangement('s')
@@ -159,12 +159,12 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     widget.layout.restore(saved)
     expect(widget.layout.active()).toBe(1)
     expect(toolbars(host)).toHaveLength(1)
-    expect(toolbars(host)[0]).not.toBe(secondRail)
+    expect(toolbars(host)[0]).not.toBe(secondToolbar)
     expect(syncOf(toolbars(host)[0]!)).not.toBeNull()
     expect(toolbars(container)).toHaveLength(0)
-    const restoredRail = toolbars(host)[0]
+    const restoredToolbar = toolbars(host)[0]
     widget.layout.restore(saved)
-    expect(toolbars(host)).toEqual([restoredRail])
+    expect(toolbars(host)).toEqual([restoredToolbar])
   })
 
   it('tells each pane\'s extensions whether it is the active chart, at mount and on every activation', () => {
@@ -203,7 +203,7 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     expect(heard[second!.id]).toEqual([true])
   })
 
-  it('transfers the shared rail tool before another pane consumes its first pointer', () => {
+  it('transfers the shared drawing toolbar tool before another pane consumes its first pointer', () => {
     const container = document.createElement('div')
     const host = document.createElement('aside')
     document.body.append(container, host)
@@ -212,11 +212,11 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     const [first, second] = widget.charts()
     const panes = container.querySelectorAll<HTMLElement>('.qc-pane')
     const gestureSurfaces = container.querySelectorAll<HTMLElement>('.qc-gestures')
-    const rail = () => host.querySelector<HTMLElement>('[data-role="drawing-toolbar"]')!
+    const toolbar = () => host.querySelector<HTMLElement>('[data-role="drawing-toolbar"]')!
     const pointer = (target: EventTarget, type: string, x: number, y: number) =>
       target.dispatchEvent(new PointerEvent(type, { bubbles: true, pointerId: 7, button: 0, clientX: x, clientY: y }))
 
-    rail().querySelector<HTMLButtonElement>('button[aria-label="Trend line"]')!.click()
+    toolbar().querySelector<HTMLButtonElement>('button[aria-label="Trend line"]')!.click()
     expect(first!.drawings?.activeTool()).toBe('trend_line')
     let toolAtTargetPointer: string | null = null
     gestureSurfaces[1]!.addEventListener('pointerdown', () => { toolAtTargetPointer = second!.drawings?.activeTool() ?? null })
@@ -235,8 +235,8 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     expect(first!.drawings?.activeTool()).toBeNull()
     expect(first!.drawings?.export()).toHaveLength(0)
 
-    rail().querySelector<HTMLButtonElement>('button[aria-label="Stay in drawing mode"]')!.click()
-    rail().querySelector<HTMLButtonElement>('button[aria-label="Trend line"]')!.click()
+    toolbar().querySelector<HTMLButtonElement>('button[aria-label="Stay in drawing mode"]')!.click()
+    toolbar().querySelector<HTMLButtonElement>('button[aria-label="Trend line"]')!.click()
     pointer(gestureSurfaces[1]!, 'pointerdown', 130, 130)
     expect(second!.drawings?.activeTool()).toBe('trend_line')
     panes[1]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true }))
@@ -246,7 +246,7 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     expect(first!.drawings?.activeTool()).toBeNull()
 
     // The intent belongs to the layout, so retiring its current pane hands it to the survivor.
-    rail().querySelector<HTMLButtonElement>('button[aria-label="Trend line"]')!.click()
+    toolbar().querySelector<HTMLButtonElement>('button[aria-label="Trend line"]')!.click()
     pointer(gestureSurfaces[1]!, 'pointerdown', 150, 150)
     expect(second!.drawings?.activeTool()).toBe('trend_line')
     widget.layout.setArrangement('s')
@@ -254,7 +254,7 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     expect(first!.drawings?.activeTool()).toBe('trend_line')
   })
 
-  it('keeps built-in drawing rails pane-local', () => {
+  it('keeps built-in drawing toolbars pane-local', () => {
     const container = document.createElement('div')
     document.body.append(container)
     const widget = createChart({ container, datafeed, symbol: 'ES', timeframe: '1m', layout: { arrangement: '2v' } })
@@ -268,7 +268,7 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     expect(first!.drawings?.activeTool()).toBe('trend_line')
   })
 
-  it.each(['2v', '2h', '4'] as const)('anchors the external rail flyout beside its trigger and within the viewport across active panes in %s', (arrangement) => {
+  it.each(['2v', '2h', '4'] as const)('anchors the external drawing toolbar flyout beside its trigger and within the viewport across active panes in %s', (arrangement) => {
     const container = document.createElement('div')
     const host = document.createElement('aside')
     document.body.append(host, container)
@@ -314,9 +314,10 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
         return { arrow, panel: document.querySelector<HTMLElement>('[data-role="drawing-popover"]')! }
       }
 
-      // A pixel clear of the rail it opened from, not floated off it: the cell's right edge plus one
-      // is where the panel's left edge goes, so the two read as one control opening sideways rather
-      // than as a panel hovering beside a button. Level with its trigger, whichever pane is active.
+      // A pixel clear of the toolbar it opened from, not floated off it: the cell's right edge plus
+      // one is where the panel's left edge goes, so the two read as one control opening sideways
+      // rather than as a panel hovering beside a button. Level with its trigger, whichever pane is
+      // active.
       let { panel } = open()
       expect(panel.parentElement).toBe(layer)
       expect([panel.style.left, panel.style.top]).toEqual(['49px', '90px'])
@@ -371,19 +372,19 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     }
   })
 
-  it('keeps a standalone internal rail flyout in its own chart bounds', () => {
+  it('keeps a standalone internal drawing toolbar flyout in its own chart bounds', () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
     const widget = createChart({ container, datafeed, symbol: 'ES', timeframe: '1m', layout: { arrangement: '2v' } })
     mounted.push(widget)
-    const secondRail = toolbars(container)[1]!
-    const chrome = secondRail.closest<HTMLElement>('.qc-chrome')!
-    secondRail.querySelector<HTMLButtonElement>('.qc-drawing-rail-arrow')!.click()
+    const secondToolbar = toolbars(container)[1]!
+    const chrome = secondToolbar.closest<HTMLElement>('.qc-chrome')!
+    secondToolbar.querySelector<HTMLButtonElement>('.qc-drawing-toolbar-arrow')!.click()
     expect(chrome.querySelector<HTMLElement>('[data-role="drawing-popover"]')?.parentElement).toBe(chrome)
     expect(container.querySelector<HTMLElement>('.qc-overlays')!.querySelector('[data-role="drawing-popover"]')).toBeNull()
   })
 
-  it('themes and relabels the separate rail and releases its child and shortcuts at disposal', async () => {
+  it('themes and relabels the separate drawing toolbar and releases its child and shortcuts at disposal', async () => {
     const container = document.createElement('div')
     const host = document.createElement('aside')
     const owned = document.createElement('span')
@@ -401,7 +402,7 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     expect(surface.dir).toBe('rtl')
     expect(toolbars(host)[0]!.getAttribute('aria-label')).toBe('Tools (ar)')
     let calls = 0
-    widget.commands.register({ id: 'test.rail', scope: 'widget', label: 'command.viewReset', shortcut: 'Alt+KeyR', available: () => true, execute: () => { calls++ } })
+    widget.commands.register({ id: 'test.toolbar', scope: 'widget', label: 'command.viewReset', shortcut: 'Alt+KeyR', available: () => true, execute: () => { calls++ } })
     const press = () => surface.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyR', altKey: true, bubbles: true, cancelable: true }))
     press()
     expect(calls).toBe(1)
@@ -415,7 +416,7 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     expect(host.hasAttribute('data-qc-theme')).toBe(false)
   })
 
-  it.each([{ features: { drawings: false } }, { ui: { drawingToolbar: false } }])('leaves external host content alone without a rail: %o', (planes) => {
+  it.each([{ features: { drawings: false } }, { ui: { drawingToolbar: false } }])('leaves external host content alone without a drawing toolbar: %o', (planes) => {
     const container = document.createElement('div')
     const host = document.createElement('aside')
     const widget = createChart({ container, drawingToolbarContainer: host, datafeed, ...planes })
@@ -431,9 +432,9 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     const widget = createChart({ container, datafeed, symbol: 'ES', timeframe: '1m', layout: { arrangement: '2h' } })
     mounted.push(widget)
     expect(widget.charts()).toHaveLength(2)
-    const rails = toolbars(container)
-    expect(rails).toHaveLength(2)
-    expect(rails.map((r) => syncOf(r) !== null)).toEqual([true, true])
+    const shown = toolbars(container)
+    expect(shown).toHaveLength(2)
+    expect(shown.map((r) => syncOf(r) !== null)).toEqual([true, true])
   })
 
   it('shows no switch on one chart, and the switch follows charts added and removed through the layout', () => {
@@ -636,11 +637,11 @@ describe('custom multi-chart geometry', () => {
   })
 })
 
-// The level menu stands over the whole page: every pane is its own stacking context and the host
+// The context menu stands over the whole page: every pane is its own stacking context and the host
 // may stack its own chrome above the widget, so the menu mounts on a layer the widget keeps on the
 // document body, themed as the root is and taken down with it.
 describe('the widget layer on the document body', () => {
-  it('exists beside the root with the same theme, hosts the level menu, and goes at dispose', () => {
+  it('exists beside the root with the same theme, hosts the context menu, and goes at dispose', () => {
     const container = document.createElement('div')
     document.body.append(container)
     const widget = createChart({ container, datafeed, symbol: 'ES', timeframe: '1m' })

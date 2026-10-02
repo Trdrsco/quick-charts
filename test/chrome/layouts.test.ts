@@ -69,7 +69,7 @@ describe('the layout setup menu', () => {
     focusedSwitch.focus()
     const state: LayoutModelState = {
       arrangement: '2h', geometry: [{ x: 0, y: 0, w: 0.4, h: 1 }, { x: 0.4, y: 0, w: 0.6, h: 1 }],
-      sync: { symbol: true, interval: false, crosshair: true, time: false, dateRange: true }, active: 1, maximized: 1,
+      sync: { symbol: true, timeframe: false, crosshair: true, time: false, dateRange: true }, active: 1, maximized: 1,
     }
     setup.sync(state)
     expect(setup.element.getAttribute('aria-label')).toBe('Layout setup: 2 columns')
@@ -123,8 +123,8 @@ describe('the layout setup menu', () => {
     // state a viewer is usually in, and the menu would offer five controls that do nothing.
     expect(switches.some((s) => s.disabled)).toBe(false)
     switches[1]!.click()
-    expect(w.widgetCalls).toContain('sync:{"interval":true}')
-    expect(w.widget.layout.sync().interval).toBe(true)
+    expect(w.widgetCalls).toContain('sync:{"timeframe":true}')
+    expect(w.widget.layout.sync().timeframe).toBe(true)
   })
 
   it('the sync switches stand down when the access policy refuses the command', () => {

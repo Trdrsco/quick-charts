@@ -3,10 +3,10 @@
 // behind them are the chart's own and change freely.
 //
 // A meaning the chart draws at more than one optical size is one icon: `delete` is the row's
-// eighteen-pixel trash and the rail's twenty-eight-pixel one, so a host's drawing for it stands in
-// both, sized to each box. The chart styles, the drawing tools and the layout arrangements take
-// their ids from their own registries. The product's own mark in the plot's corner is not in the
-// inventory: it is the chart's signature, not a control's glyph.
+// eighteen-pixel trash and the drawing toolbar's twenty-eight-pixel one, so a host's drawing for it
+// stands in both, sized to each box. The chart styles, the drawing tools and the layout
+// arrangements take their ids from their own registries. The product's own mark in the plot's
+// corner is not in the inventory: it is the chart's signature, not a control's glyph.
 import { CHART_STYLES, type ChartStyleId } from '../../widget/styles'
 import { COMPARE_EMPTY_MARK, ICONS, OPERATOR_GLYPHS, SEARCH_EMPTY_MARK, STYLE_ICONS, type Glyph } from '../controls/icons'
 import { TOOL_ICONS, type MiniatureTool } from '../drawings/toolIcons'
@@ -70,7 +70,7 @@ const CONTROL_ICONS = byMeaning({
   chevronDown: [ICONS.chevronDown, ICONS.chevronDown18],
   chevronLeft: [ICONS.chevronLeft],
   chevronRight: [ICONS.chevronRight],
-  // The rail's arrow, pointing where the flyout it opens will stand.
+  // The drawing toolbar's arrow, pointing where the flyout it opens will stand.
   flyout: [ICONS.chevronRight16],
   submenu: [ICONS.submenuArrow],
   more: [ICONS.kebab],
@@ -96,7 +96,7 @@ const CONTROL_ICONS = byMeaning({
   selectDate: [ICONS.calendar],
   firstAvailable: [ICONS.firstAvailable],
   randomBar: [ICONS.randomBar],
-  // The drawing rail, its menus, the favorites bar and the drawing settings.
+  // The drawing toolbar, its menus, the favorites bar and the drawing settings.
   cursorCross: [ICONS.cursorCross],
   cursorDot: [ICONS.cursorDot],
   cursorArrow: [ICONS.cursorArrow],

@@ -72,7 +72,7 @@ export interface LegendChip {
   /** The direction the row's VALUE moved, when the value is a move rather than a level. A change
    *  reads in the market's own two colours; a price is a fact and takes the row's ink. */
   tone?: 'up' | 'down'
-  /** The row carries a remove control (compares and indicators are legend-removable). */
+  /** The row carries a remove control (comparisons and indicators are legend-removable). */
   removable?: boolean
   /** The remove control's spoken name; the compare wording when absent. */
   removeLabel?: string
@@ -110,7 +110,7 @@ export interface LegendControls {
   onSettings?(id: string, rect: { x: number; y: number; w: number; h: number }): void
   /** A pane row's collapse/maximize/restore control. */
   onPaneOp?(id: string, op: 'collapse' | 'maximize' | 'restore'): void
-  /** A `titleButton` row's title was tapped (a compare's change-symbol). */
+  /** A `titleButton` row's title was tapped (a comparison's change-symbol). */
   onTitle?(id: string): void
   /** A `removable` row's remove control was tapped. */
   onRemove?(id: string): void

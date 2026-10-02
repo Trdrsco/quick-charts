@@ -1,10 +1,11 @@
 // Compare: other symbols beside the charted one, clipped to the main bar model.
 //
 // Three placements, and each answers a different question about the comparison. `same-percent`
-// shares the main scale and flips it to percent while any such compare lives, which is how two
+// shares the main scale and flips it to percent while any such comparison lives, which is how two
 // markets at different price levels are read against each other; `new-scale` binds the LEFT scale
-// so a compare keeps its absolute prices; `new-pane` takes a pane of its own. The scale flip is a LOAN: the mode the viewer held is restored when the
-// last same-percent compare leaves, and an explicit scale pick cancels the loan outright.
+// so a comparison keeps its absolute prices; `new-pane` takes a pane of its own. The scale flip is
+// a LOAN: the mode the viewer held is restored when the last same-percent comparison leaves, and an
+// explicit scale pick cancels the loan outright.
 //
 // One add and one remove pair serve every door — the public api, the dialog, the legend's remove —
 // so the loan can never depend on which door was used.
@@ -24,7 +25,7 @@ export interface ChartCompareApi {
   remove(symbol: string): void
   setVisible(symbol: string, visible: boolean): void
   list(): CompareEntry[]
-  /** Latest in-window close for one compare, or null. */
+  /** Latest in-window close for one comparison, or null. */
   latest(symbol: string): number | null
   /** The host-supplied curated quick-add list, for the compare dialog. */
   symbols(): CompareSymbol[]
@@ -34,10 +35,10 @@ export interface ChartCompareApi {
 export interface ComparePlane {
   api: ChartCompareApi
   handle: CompareHandle
-  /** The legend rows for the current compares. */
+  /** The legend rows for the current comparisons. */
   chips(time?: number | null): LegendChip[]
   /** Open the search dialog: the legend's compare door, or a row's change-symbol. The dialog is
-   *  the widget chrome's; this plane supplies the pick that re-keys a compare in place. */
+   *  the widget chrome's; this plane supplies the pick that re-keys a comparison in place. */
   openDialog(mode: 'compare' | 'change-symbol', changeFrom?: string): void
   /** Follow a timeframe switch. */
   setTimeframe(): void
@@ -76,9 +77,9 @@ export interface CompareDeps {
   maintainTimeline?(write: () => void): void
 }
 
-/** How long a burst of compare ticks is collected before the rows are rebuilt. Every compare's
- *  live bar notifies, and re-rendering the legend per tick would be churn for a value the eye
- *  cannot follow. */
+/** How long a burst of comparison ticks is collected before the rows are rebuilt. Every
+ *  comparison's live bar notifies, and re-rendering the legend per tick would be churn for a value
+ *  the eye cannot follow. */
 const CHIP_THROTTLE_MS = 250
 
 export function attachComparePlane(deps: CompareDeps): ComparePlane {
@@ -127,7 +128,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     deps.onEvent(handle.list())
   }
 
-  /** A compared symbol writes its last value in ITS OWN price format, resolved once per compare
+  /** A compared symbol writes its last value in ITS OWN price format, resolved once per comparison
    *  through the same datafeed seam. Until that resolve lands (or when the feed knows nothing) the
    *  row carries no value rather than one written at another market's precision. */
   const formats = new Map<string, { info: SymbolInfo | null }>()
@@ -194,7 +195,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     openDialog(mode, changeFrom) {
       if (deps.disposed() || !deps.enabled) return
       deps.openSearch(mode, changeFrom, (next) => {
-        // A change-symbol pick re-keys the compare in place: the placement, color and visibility
+        // A change-symbol pick re-keys the comparison in place: the placement, color and visibility
         // the row had carry over to the new symbol, so the viewer swapped a market, not a row.
         if (!changeFrom || next === changeFrom || next === deps.symbol()) return
         const current = handle.list().find((e) => e.symbol === changeFrom)

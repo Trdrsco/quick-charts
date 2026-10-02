@@ -1,24 +1,26 @@
-// The drawing toolbar: the rail down the chart's inline-start edge. One button per tool group,
+// The drawing toolbar: the column down the chart's inline-start edge. One button per tool group,
 // each with a flyout of the group's sections; the cursor with its modes and the eraser; measure
 // and zoom; the magnet with its strengths; stay-in-drawing-mode; lock all; the eye with its
 // subjects; drawing sync in a layout; the remove menu that names what it takes; and the favorites
-// star. WHAT is on the rail comes from the models on `@trdrs/quickcharts/drawings`; this module is the
-// rail's presentation over them, and every action it takes is a command through the registry, so
-// a verb the host hides or refuses is refused here too. A control the registry would not run is
-// drawn disabled; one the host's policy refuses is left out instead when the host hides what it
-// refuses, and a section, group or rule it empties goes with it.
+// star. WHAT is on the toolbar comes from the models on `@trdrs/quickcharts/drawings`; this module
+// is the toolbar's presentation over them, and every action it takes is a command through the
+// registry, so a verb the host hides or refuses is refused here too. A control the registry would
+// not run is drawn disabled; one the host's policy refuses is left out instead when the host hides
+// what it refuses, and a section, group or rule it empties goes with it.
 //
-// The rail renders from a state getter and re-renders on demand. Flyouts are built when they open
-// and torn down when they close, so the toolbar's own DOM stays the buttons a reader can count.
+// The toolbar renders from a state getter and re-renders on demand. Flyouts are built when they
+// open and torn down when they close, so the toolbar's own DOM stays the buttons a reader can
+// count.
 import type { ChartTranslate } from '../../i18n'
 import { toolName } from '../../i18n'
 import {
-  buildRailGroups,
+  buildDrawingToolbarGroups,
   chooseHideMode,
   chooseMagnetStrength,
   CURSOR_LABELS,
   CURSOR_MODES,
   cursorButtonArmed,
+  drawingToolbarFaceOf,
   groupOfTool,
   HIDE_LABELS,
   hideOrder,
@@ -27,19 +29,18 @@ import {
   isFavorite,
   MAGNET_LABELS,
   MAGNET_STRENGTHS,
-  railFaceOf,
   removableDrawings,
   removeRows,
   toggleMagnet,
   TRANSIENT_LABELS,
   type CursorMode,
   type DrawingCounts,
+  type DrawingToolbarGroup,
   type BuiltInHideMode,
   type FavoritesState,
   type HideMode,
   type HideState,
   type MagnetMode,
-  type RailGroup,
 } from '../../drawings/index'
 import type { ChartExtensionHideLayer } from '../../extension'
 import { buildGlyph } from '../chrome/vector'
@@ -51,7 +52,7 @@ import type { IconName } from '../controls/icons'
 import { panelHostFor } from './overlays'
 import type { IconResolver } from '../icons/resolver'
 
-/** Everything the rail renders from, read live at every render. */
+/** Everything the toolbar renders from, read live at every render. */
 export interface ToolbarState {
   activeTool: string | null
   cursor: CursorMode
@@ -66,7 +67,7 @@ export interface ToolbarState {
   removeLocked: boolean
   counts: DrawingCounts
   indicatorCount: number
-  railTools: Readonly<Record<string, string>>
+  drawingToolbarTools: Readonly<Record<string, string>>
   favorites: FavoritesState
   recentGlyphs: readonly string[]
   /** Charts in the layout; the sync control exists only past one. */
@@ -74,9 +75,9 @@ export interface ToolbarState {
 }
 
 export interface ToolbarDeps {
-  /** The chrome subtree the rail mounts into, and the box its flyouts stay within. */
+  /** The chrome subtree the toolbar mounts into, and the box its flyouts stay within. */
   chrome: HTMLElement
-  /** Separate mounting space, or null to keep the rail detached until its chart is active. */
+  /** Separate mounting space, or null to keep the toolbar detached until its chart is active. */
   container?: HTMLElement | null
   t: ChartTranslate
   /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
@@ -85,7 +86,7 @@ export interface ToolbarDeps {
   /** Run a command through the registry. Answers whether it ran. */
   run(command: string, arg?: unknown): boolean
   /** Whether the registry would run a command now. A control whose command is denied or
-   *  unavailable renders disabled, never hidden, so the rail keeps its shape. */
+   *  unavailable renders disabled, never hidden, so the toolbar keeps its shape. */
   available(command: string): boolean
   /** Whether the access policy permits arming a tool. A refused tool renders disabled. */
   toolAllowed(type: string): boolean
@@ -101,7 +102,7 @@ export interface ToolbarDeps {
 }
 
 export interface ToolbarHandle {
-  /** Move the rail and close any flyout belonging to its previous placement. */
+  /** Move the toolbar and close any flyout belonging to its previous placement. */
   mount(container: HTMLElement | null): void
   /** Re-render from the current state. */
   render(): void
@@ -120,24 +121,24 @@ const HIDE_ICON: Record<BuiltInHideMode, { shown: IconName; hidden: IconName }> 
 
 export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   const { t } = deps
-  const groups: RailGroup[] = buildRailGroups()
+  const groups: DrawingToolbarGroup[] = buildDrawingToolbarGroups()
   const shown = (command: string): boolean => deps.shown?.(command) ?? true
   const toolShown = (type: string): boolean => deps.toolShown?.(type) ?? true
-  /** A group as the rail draws it: the tools it draws, leaving out a section with none. A group
+  /** A group as the toolbar draws it: the tools it draws, leaving out a section with none. A group
    *  left with no section is not drawn, and its face wears the first tool it draws when the one
    *  the viewer last armed there is left out. */
-  const drawnGroup = (group: RailGroup): RailGroup => ({
+  const drawnGroup = (group: DrawingToolbarGroup): DrawingToolbarGroup => ({
     ...group,
     sections: group.sections.map((section) => ({ ...section, tools: section.tools.filter((tool) => toolShown(tool.type)) })).filter((section) => section.tools.length > 0),
   })
-  const rail = el('div', { class: 'qc-surface qc-drawing-toolbar', role: 'toolbar', 'aria-orientation': 'vertical', 'aria-label': t('drawing.toolbar'), 'data-role': 'drawing-toolbar' })
-  ownPointer(rail)
+  const toolbar = el('div', { class: 'qc-surface qc-drawing-toolbar', role: 'toolbar', 'aria-orientation': 'vertical', 'aria-label': t('drawing.toolbar'), 'data-role': 'drawing-toolbar' })
+  ownPointer(toolbar)
   const column = el('div', { class: 'qc-drawing-toolbar-column' })
-  rail.appendChild(column)
+  toolbar.appendChild(column)
 
   /** The one open flyout's closer. Opening another closes it first: a swap, not a stack. */
   let closeFlyout: (() => void) | null = null
-  /** The coordinate plane a flyout mounts into. Internal rails use their chart chrome; the
+  /** The coordinate plane a flyout mounts into. An internal toolbar uses its chart chrome; the
    * package-created external surface resolves to the widget plane without changing its target. */
   let panelHost = deps.chrome
   const closeOpen = (): void => {
@@ -191,20 +192,20 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   /** A split entry: the face button acts, the arrow opens the flyout. */
   const cell = (face: HTMLButtonElement, arrow: HTMLButtonElement | null): HTMLElement => {
     const box = el('div', { class: 'qc-drawing-cell' }, face)
-    face.classList.add('qc-drawing-rail-button')
+    face.classList.add('qc-drawing-toolbar-button')
     if (arrow) {
-      arrow.classList.add('qc-drawing-rail-arrow')
+      arrow.classList.add('qc-drawing-toolbar-arrow')
       arrow.setAttribute('aria-haspopup', 'menu')
       arrow.setAttribute('aria-expanded', 'false')
       box.appendChild(arrow)
     }
     return box
   }
-  /** A rule, in the recipe of the surface that draws it: the rail's short hairline between groups,
-   *  a tool flyout's section rule across the panel's content area, or a menu's rule across the same
-   *  content area. One width for all three read as the rail's everywhere it was not. */
-  const divider = (where: 'rail' | 'flyout' | 'menu' = 'rail'): HTMLElement =>
-    el('div', { class: `qc-separator qc-drawing-${where === 'rail' ? 'divider' : where === 'flyout' ? 'flyout-rule' : 'menu-rule'}`, role: 'separator' })
+  /** A rule, in the recipe of the surface that draws it: the toolbar's short hairline between
+   *  groups, a tool flyout's section rule across the panel's content area, or a menu's rule across
+   *  the same content area. One width for all three read as the toolbar's everywhere it was not. */
+  const divider = (where: 'toolbar' | 'flyout' | 'menu' = 'toolbar'): HTMLElement =>
+    el('div', { class: `qc-separator qc-drawing-${where === 'toolbar' ? 'divider' : where === 'flyout' ? 'flyout-rule' : 'menu-rule'}`, role: 'separator' })
 
   // ── Cursor ──────────────────────────────────────────────────────────────────────────────────
   const cursorFace = button({ class: 'qc-button', label: t('drawing.cursor'), onClick: () => deps.run('chart.drawings.arm', null) })
@@ -227,9 +228,9 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   // ── Tool groups ─────────────────────────────────────────────────────────────────────────────
   const groupFaces = new Map<string, { face: HTMLButtonElement; arrow: HTMLButtonElement }>()
   let glyphPicker: ReturnType<typeof mountGlyphPicker> | null = null
-  const openGroup = (group: RailGroup, anchor: HTMLElement): void => {
+  const openGroup = (group: DrawingToolbarGroup, anchor: HTMLElement): void => {
     if (group.id === 'glyphs') {
-      // One picker for the life of the rail. Its grid is the most expensive thing the toolbar
+      // One picker for the life of the toolbar. Its grid is the most expensive thing the toolbar
       // builds, so a close detaches it and the next open brings the same cells back.
       glyphPicker ??= mountGlyphPicker({
         t,
@@ -299,7 +300,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     face.addEventListener('click', () => {
       // The face arms the tool it wears. The glyph group is the exception: a glyph tool is nothing
       // without a chosen glyph, so its face opens the picker as its arrow does.
-      const faceTool = railFaceOf(drawnGroup(group), deps.state().railTools)
+      const faceTool = drawingToolbarFaceOf(drawnGroup(group), deps.state().drawingToolbarTools)
       if (group.id === 'glyphs' || !faceTool) {
         openGroup(group, arrow)
         return
@@ -340,7 +341,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       ),
     )
   })
-  const stay = button({ class: 'qc-button qc-drawing-rail-mode', label: t('drawing.stayInDrawingMode'), onClick: () => deps.run('chart.drawings.stayInMode', !deps.state().stayInDrawingMode) })
+  const stay = button({ class: 'qc-button qc-drawing-toolbar-mode', label: t('drawing.stayInDrawingMode'), onClick: () => deps.run('chart.drawings.stayInMode', !deps.state().stayInDrawingMode) })
   const lockAll = button({ class: 'qc-button', label: t('drawing.lockAll'), onClick: () => deps.run('chart.drawings.lockAll', !deps.state().allLocked) })
   column.append(cell(magnetFace, magnetArrow), cell(stay, null), cell(lockAll, null))
 
@@ -412,10 +413,10 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   column.append(cell(removeFace, removeArrow))
 
   // ── Favorites, pinned to the end ────────────────────────────────────────────────────────────
-  const favorites = button({ class: 'qc-button qc-drawing-rail-mode', label: t('drawing.favToolsBar'), title: t('drawing.favTools'), onClick: () => deps.run('chart.drawings.favoritesBar', !deps.state().favorites.visible) })
+  const favorites = button({ class: 'qc-button qc-drawing-toolbar-mode', label: t('drawing.favToolsBar'), title: t('drawing.favTools'), onClick: () => deps.run('chart.drawings.favoritesBar', !deps.state().favorites.visible) })
   column.append(el('div', { class: 'qc-drawing-toolbar-end' }, cell(favorites, null)))
 
-  const unrove = rovingFocus(rail, () => [...column.querySelectorAll<HTMLElement>('button')].filter((b) => !b.closest('[hidden]')), 'vertical')
+  const unrove = rovingFocus(toolbar, () => [...column.querySelectorAll<HTMLElement>('button')].filter((b) => !b.closest('[hidden]')), 'vertical')
 
   const setActive = (b: HTMLElement, active: boolean): void => {
     b.dataset.qcActive = String(active)
@@ -447,7 +448,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       // The armed tool takes the face immediately, even before the remembered preference writes.
       const faceTool = activeGroup === group.id && s.activeTool && toolShown(s.activeTool)
         ? s.activeTool
-        : railFaceOf(drawn, s.railTools)
+        : drawingToolbarFaceOf(drawn, s.drawingToolbarTools)
       // Every tool outside the glyph family carries its own miniature, which its group's face wears;
       // the glyph family's face is its own mark and opens the picker.
       entry.face.replaceChildren(...[group.id === 'glyphs' ? deps.icons.icon('groupGlyphs') : faceTool ? deps.icons.tool(faceTool) : null].filter((face) => face !== null))
@@ -491,7 +492,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
     gate(eyeArrow, 'chart.drawings.hide')
     if (s.layoutCharts > 1) {
       if (!syncButton) {
-        syncButton = button({ class: 'qc-button qc-drawing-rail-button', label: t('drawing.syncLabel'), icon: deps.icons.icon('sync'), onClick: () => deps.run('chart.drawings.sync', !deps.state().sync) })
+        syncButton = button({ class: 'qc-button qc-drawing-toolbar-button', label: t('drawing.syncLabel'), icon: deps.icons.icon('sync'), onClick: () => deps.run('chart.drawings.sync', !deps.state().sync) })
         syncCell.appendChild(syncButton)
       }
       syncButton.title = t(s.sync ? 'drawing.syncOnHelp' : 'drawing.syncOffHelp')
@@ -521,7 +522,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
   }
 
   const relabel = (): void => {
-    rail.setAttribute('aria-label', t('drawing.toolbar'))
+    toolbar.setAttribute('aria-label', t('drawing.toolbar'))
     relabelButton(cursorFace, t('drawing.cursor'))
     relabelButton(cursorArrow, t('drawing.cursorMenu'))
     for (const group of groups) relabelButton(groupFaces.get(group.id)!.arrow, t('drawing.groupMenu', { group: t(group.label) }))
@@ -540,11 +541,11 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
 
   const mount = (container: HTMLElement | null): void => {
     const nextPanelHost = panelHostFor(container, deps.chrome)
-    if (rail.parentElement === container && panelHost === nextPanelHost) return
+    if (toolbar.parentElement === container && panelHost === nextPanelHost) return
     closeOpen()
     panelHost = nextPanelHost
-    rail.remove()
-    container?.appendChild(rail)
+    toolbar.remove()
+    container?.appendChild(toolbar)
     render()
   }
   mount(deps.container === undefined ? deps.chrome : deps.container)
@@ -558,7 +559,7 @@ export function mountDrawingToolbar(deps: ToolbarDeps): ToolbarHandle {
       unrove()
       glyphPicker?.destroy()
       glyphPicker = null
-      rail.remove()
+      toolbar.remove()
     },
   }
 }

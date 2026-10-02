@@ -188,8 +188,7 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
             name: String(col(raw.description, i) ?? symbol),
             exchange: String(col(raw['exchange-listed'], i) ?? group),
             type: String(col(raw.type, i) ?? ''),
-            provider: null,
-            via: null,
+            dataSource: null,
           })
         }
       }
@@ -240,8 +239,7 @@ export function createUdfDatafeed(options: UdfDatafeedOptions): ChartDatafeed {
         name: r.description ?? r.symbol ?? '',
         exchange: r.exchange ?? '',
         type: r.type ?? '',
-        provider: null,
-        via: null,
+        dataSource: null,
       }))
       return { hits, hasMore: false }
     },

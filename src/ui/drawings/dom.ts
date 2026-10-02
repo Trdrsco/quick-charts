@@ -237,8 +237,8 @@ export function placePanel(panel: HTMLElement, anchor: HTMLElement, box: HTMLEle
     top = a.bottom - b.top + gap
     if (top + h > b.height) top = Math.max(0, a.top - b.top - h - gap)
   }
-  // The anchor may sit just outside an explicitly selected host (an external rail beside its
-  // widget). Clamp the result to that host without changing which chart owns the action.
+  // The anchor may sit just outside an explicitly selected host (an external drawing toolbar beside
+  // its widget). Clamp the result to that host without changing which chart owns the action.
   left = Math.max(0, Math.min(left, b.width - w))
   top = Math.max(0, Math.min(top, b.height - h))
   panel.style.left = `${Math.round(left)}px`

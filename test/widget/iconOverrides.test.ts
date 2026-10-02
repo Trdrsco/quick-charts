@@ -166,7 +166,7 @@ const SURFACES: readonly [string, Raise][] = [
     },
   ],
   [
-    'the drawing rail and every menu it opens',
+    'the drawing toolbar and every menu it opens',
     async () => {
       const seen: string[][] = [unhosted()]
       await sweepPopups('[data-role="drawing-toolbar"]', seen)

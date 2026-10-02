@@ -1,10 +1,10 @@
 // Every glyph the chart's own surfaces wear: the top bar, the legend, the dialogs, the drawing
-// rail and its bars. Inline SVG markup in `currentColor`, so a recipe's ink is the glyph's ink and
-// the package ships no asset and fetches nothing. Each glyph carries the grid it was drawn on, so a
-// surface names the glyph and its size and never a viewBox. One object drawn for two optical sizes
-// is two glyphs: the bare name is the common one and its twin carries its grid (`trash` on 18 is
-// every row's, `trash28` is the rail's face). The tool miniatures live in the drawings'
-// `toolIcons`, the layout arrangements in the chrome's `arrangementGlyphs`.
+// toolbar and its bars. Inline SVG markup in `currentColor`, so a recipe's ink is the glyph's ink
+// and the package ships no asset and fetches nothing. Each glyph carries the grid it was drawn on,
+// so a surface names the glyph and its size and never a viewBox. One object drawn for two optical
+// sizes is two glyphs: the bare name is the common one and its twin carries its grid (`trash` on 18
+// is every row's, `trash28` is the drawing toolbar's face). The tool miniatures live in the
+// drawings' `toolIcons`, the layout arrangements in the chrome's `arrangementGlyphs`.
 
 /** One glyph: its own grid and the inner markup drawn on it. */
 export interface Glyph {
@@ -222,7 +222,7 @@ export const ICONS = {
   ruler: { viewBox: '0 0 28 28', body: '<path fill="currentColor" fill-rule="evenodd" transform="rotate(-45 14 14)" d="M2 9.75a1.5 1.5 0 0 0-1.5 1.5v5.5a1.5 1.5 0 0 0 1.5 1.5h24a1.5 1.5 0 0 0 1.5-1.5v-5.5a1.5 1.5 0 0 0-1.5-1.5zm0 1h3v2.5h1v-2.5h3.25v3.9h1v-3.9h3.25v2.5h1v-2.5h3.25v3.9h1v-3.9H22v2.5h1v-2.5h3a.5.5 0 0 1 .5.5v5.5a.5.5 0 0 1-.5.5H2a.5.5 0 0 1-.5-.5v-5.5a.5.5 0 0 1 .5-.5z"/>' },
   zoomIn: { viewBox: '0 0 28 28', body: '<path fill="currentColor" d="M17.646 18.354l4 4 .708-.708-4-4z"/><path fill="currentColor" d="M12.5 21a8.5 8.5 0 1 1 0-17 8.5 8.5 0 0 1 0 17zm0-1a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15z"/><path fill="currentColor" d="M9 13h7v-1H9z"/><path fill="currentColor" d="M13 16V9h-1v7z"/>' },
   groupGlyphs: { viewBox: '0 0 28 28', body: '<path fill="currentColor" d="M4.05 14a9.95 9.95 0 1 1 19.9 0 9.95 9.95 0 0 1-19.9 0ZM14 3a11 11 0 1 0 0 22 11 11 0 0 0 0-22Zm-3 13.03a.5.5 0 0 1 .64.3 2.5 2.5 0 0 0 4.72 0 .5.5 0 0 1 .94.34 3.5 3.5 0 0 1-6.6 0 .5.5 0 0 1 .3-.64Zm.5-4.53a1 1 0 1 0 0 2 1 1 0 0 0 0-2Zm5 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"/>' },
-  // The rail arrow: a filled chevron on a 10 by 16 grid, drawn 4 by 7 in the strip.
+  // The drawing toolbar's arrow: a filled chevron on a 10 by 16 grid, drawn 4 by 7 in the strip.
   chevronRight16: { viewBox: '0 0 10 16', aspect: 4 / 7, size: 7, body: '<path fill="currentColor" d="M.6 1.4l1.4-1.4 8 8-8 8-1.4-1.4 6.389-6.532-6.389-6.668z"/>' },
   // Six dots on an 8 by 12 grid, each PAINTED in currentColor: the svg the glyph is wrapped in
   // carries `fill="none"`, so a rect with no fill of its own is a grip nobody can see.
@@ -242,8 +242,8 @@ export const ICONS = {
   textTee: { size: 15, aspect: 13 / 15, viewBox: '0 0 13 15', body: '<path stroke="currentColor" d="M4 14.5h2.5m2.5 0H6.5m0 0V.5m0 0h-5a1 1 0 0 0-1 1V4m6-3.5h5a1 1 0 0 1 1 1V4"/>' },
   // A tool's star in a flyout: an outline at rest and a filled star once saved, on an 18 grid.
   star: { viewBox: '0 0 18 18', body: '<path stroke="currentColor" d="M9 2.13l1.903 3.855.116.236.26.038 4.255.618-3.079 3.001-.188.184.044.259.727 4.237-3.805-2L9 12.434l-.233.122-3.805 2.001.727-4.237.044-.26-.188-.183-3.079-3.001 4.255-.618.26-.038.116-.236L9 2.13z"/>' },
-  // The favorites bar's toggle on the rail: one outlined star in either state, the state carried by
-  // the button's fill.
+  // The favorites bar's toggle on the drawing toolbar: one outlined star in either state, the state
+  // carried by the button's fill.
   favoritesBar: { viewBox: '0 0 28 28', body: '<path fill="currentColor" fill-rule="evenodd" d="m17.13 9.74 7.37.9-5.44 5.06L20.4 23 14 19.38 7.6 23l1.34-7.3-5.44-5.06 7.37-.9L14 3l3.13 6.74Zm5.11 1.63-4.26 3.97 1.04 5.74L14 18.24l-5.02 2.84 1.04-5.74-4.26-3.97 5.79-.7L14 5.37l2.45 5.3 5.8.7Z"/>' },
   starFilled: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M9 1l2.35 4.76 5.26.77-3.8 3.7.9 5.24L9 13l-4.7 2.47.9-5.23-3.8-3.71 5.25-.77L9 1z"/>' },
   trash28: { viewBox: '0 0 28 28', body: '<path fill="currentColor" d="M18 7h5v1h-2.01l-1.33 14.64a1.5 1.5 0 0 1-1.5 1.36H9.84a1.5 1.5 0 0 1-1.49-1.36L7.01 8H5V7h5V6c0-1.1.9-2 2-2h4a2 2 0 0 1 2 2v1Zm-6-2a1 1 0 0 0-1 1v1h6V6a1 1 0 0 0-1-1h-4ZM8.02 8l1.32 14.54a.5.5 0 0 0 .5.46h8.33a.5.5 0 0 0 .5-.46L19.99 8H8.02Z"/>' },

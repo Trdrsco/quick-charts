@@ -46,8 +46,8 @@ import type { OfferedTimezones } from '../../widget/offeredTimezones'
 
 export interface ChromeDeps {
   root: HTMLElement
-  /** The widget's own layer on the document body, painted as the root is: where an external rail's
-   *  flyouts stand, so nothing the host stacks beside the widget can cover them. */
+  /** The widget's own layer on the document body, painted as the root is: where an external drawing
+   *  toolbar's flyouts stand, so nothing the host stacks beside the widget can cover them. */
   layer: HTMLElement
   toolbarContainer?: HTMLElement
   drawingToolbarContainer?: HTMLElement
@@ -236,10 +236,10 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
     paintThemeRoot(surface, widget.theme.mode(), widget.theme.get())
     surface.setAttribute('dir', readingDirection(i18n))
     deps.drawingToolbarContainer.appendChild(surface)
-    // The rail lives outside the widget, so its flyouts do too: they stand in the widget's layer on
-    // the document body, over whatever the host stacks beside the widget (a dock below the chart),
-    // placed beside the physical trigger and kept within the viewport, whichever chart tile owns
-    // the active command scope.
+    // The drawing toolbar lives outside the widget, so its flyouts do too: they stand in the
+    // widget's layer on the document body, over whatever the host stacks beside the widget (a dock
+    // below the chart), placed beside the physical trigger and kept within the viewport, whichever
+    // chart tile owns the active command scope.
     const releasePanelHost = bindPanelHost(surface, deps.layer)
     let active = widget.activeChart()
     deps.mountDrawingToolbar?.(active, surface)
@@ -256,7 +256,8 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       widget.theme.onChange((theme, mode) => paintThemeRoot(surface, mode, theme)),
       i18n.onChange(() => surface.setAttribute('dir', readingDirection(i18n))),
       () => surface.remove(),
-      // A flyout still open in the layer closes with the rail, taking its document listeners.
+      // A flyout still open in the layer closes with the drawing toolbar, taking its document
+      // listeners.
       () => closeOverlays(deps.layer),
       releasePanelHost,
     )

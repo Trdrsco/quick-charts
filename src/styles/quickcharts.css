@@ -81,8 +81,8 @@
   background: var(--qc-state-pressed);
 }
 
-/* A held button wears the neutral held fill in the primary ink, the held state the toolbars and the
- * rail show too. */
+/* A held button wears the neutral held fill in the primary ink, the held state the top bar, the
+ * bottom bar and the drawing toolbar show too. */
 [data-qc-theme] .qc-button[aria-pressed='true'],
 [data-qc-theme] .qc-button[data-qc-active='true'] {
   color: var(--qc-text-primary);
@@ -365,8 +365,8 @@
   display: contents;
 }
 
-/* An external rail's flyout stands here, over anything the page stacks beside the widget and under
- * the widget's own dialogs. */
+/* An external drawing toolbar's flyout stands here, over anything the page stacks beside the widget
+ * and under the widget's own dialogs. */
 [data-qc-theme].qc-layer > .qc-drawing-popover {
   position: fixed;
   z-index: 2147483001;
@@ -792,7 +792,7 @@
   height: 14px;
 }
 
-/* A compare's own name is a door to symbol search, so it is a button. It reads as text and takes
+/* A comparison's own name is a door to symbol search, so it is a button. It reads as text and takes
  * the same wash box the market's name does, never a rule under the words. */
 [data-qc-theme] .qc-legend-title {
   width: auto;
@@ -859,7 +859,7 @@
 /* The drawing toolbar, the selected drawing's surfaces and their fields are recipes of their own
  * under styles/components/drawings-*.css, which the build concatenates after this file. */
 
-/* Level menu ----------------------------------------------------------------------------------- */
+/* Context menu --------------------------------------------------------------------------------- */
 
 [data-qc-theme] .qc-menu-backdrop {
   position: fixed;
@@ -879,7 +879,7 @@
   pointer-events: auto;
 }
 
-/* The level menu's rows restate the row rhythm: 32px tall, square-cornered and running edge to
+/* The context menu's rows restate the row rhythm: 32px tall, square-cornered and running edge to
  * edge of the box (the surface's clip rounds them off), the glyph 6px from the label and 20px of
  * room at the end for a chord. */
 [data-qc-theme] .qc-menu .qc-menu-row {

@@ -77,7 +77,7 @@ export interface UiConfig {
   topBar?: boolean | TopBarUi
   /** The bottom bar: range presets, the clock, the timezone picker and the session view. */
   bottomBar?: boolean
-  /** The drawing rail: the tool groups, cursor, measure and zoom, magnet, lock, the eye, sync,
+  /** The drawing toolbar: the tool groups, cursor, measure and zoom, magnet, lock, the eye, sync,
    *  remove and the favorites star. */
   drawingToolbar?: boolean
   /** The floating favorite-tools bar. */
@@ -86,7 +86,7 @@ export interface UiConfig {
   legend?: boolean | LegendUi
   /** The on-chart navigation cluster: zoom, scroll and reset. */
   navigation?: boolean
-  /** The chart's own right-click level menu. */
+  /** The chart's own right-click context menu. */
   contextMenu?: boolean
   /** The replay transport row: play, pause, step, speed and exit. */
   replayTransport?: boolean
@@ -180,9 +180,9 @@ export interface AccessPolicy {
   indicator?(id: string): boolean
   /** How the chart's own controls present what the predicates refuse. `'disable'` (the default)
    *  draws a refused control disabled, which suits an offer the viewer can unlock. `'hide'` leaves
-   *  it out: a refused drawing tool is not in the rail's flyouts, on the favorites bar or in the
-   *  glyph picker, and a section or group it empties goes with it; a refused indicator is not in
-   *  the indicator picker; and a control or menu row whose command is refused is not drawn.
+   *  it out: a refused drawing tool is not in the drawing toolbar's flyouts, on the favorites bar
+   *  or in the glyph picker, and a section or group it empties goes with it; a refused indicator is
+   *  not in the indicator picker; and a control or menu row whose command is refused is not drawn.
    *
    *  Only a refusal hides. A permitted command that cannot run now (nothing to undo, no bars
    *  loaded, nothing selected) is still drawn disabled. Like the predicates it is read whenever a
@@ -215,8 +215,8 @@ export interface ChartPreferences {
   replaySpeed: ReplaySpeed
   /** The replay update grain: `auto` or a finer timeframe token. */
   replayInterval: string
-  /** The standing drawing choices: cursor, magnet, stay-in-mode, favorites, per-group rail tools.
-   *  The drawing models own what each one means; the chart only persists the record. */
+  /** The standing drawing choices: cursor, magnet, stay-in-mode, favorites, per-group toolbar
+   *  tools. The drawing models own what each one means; the chart only persists the record. */
   drawings: DrawingPreferences
   /** The timeframe tokens the top bar shows as quick-select chips. */
   savedTimeframes: readonly string[]
@@ -497,7 +497,7 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  An empty list, an unknown code, a repeated code and a `layout.arrangement` outside the list
    *  are setup errors thrown from `createChart`. */
   layouts?: readonly string[]
-  /** The sync switches the viewer may change (`symbol`, `interval`, `crosshair`, `time`,
+  /** The sync switches the viewer may change (`symbol`, `timeframe`, `crosshair`, `time`,
    *  `dateRange`). Absent, every one. A switch left out holds the value `layout.sync` gives it, or
    *  off: the layout setup menu does not show it, `widget.layout.setSync` and its command leave it
    *  as it is, and a saved layout cannot change it. An empty list fixes every switch and leaves the
@@ -506,11 +506,12 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   layoutSync?: readonly (keyof LayoutSyncFlags)[]
   /** The drawing tools the chart offers, by the type `access.drawingTool` and the `tool.<type>`
    *  icon ids use: any type `drawingTools.all()` lists, `zoom` or `eraser`. Absent, every tool is
-   *  offered. The order given does not matter: the rail keeps its own groups and sections.
+   *  offered. The order given does not matter: the drawing toolbar keeps its own groups and
+   *  sections.
    *
    *  A tool left out stays off this chart for creating drawings, and every place a tool is chosen
    *  leaves it out: its group's flyout, a group's face (which wears the first tool the group
-   *  offers), the favorites bar and the rail (`measure`, `zoom`). A section
+   *  offers), the favorites bar and the drawing toolbar (`measure`, `zoom`). A section
    *  or group it empties goes with it. The glyph picker's kinds are the `emoji`, `sticker` and
    *  `icon` tools, and a kind left out has no tab. `chart.drawings.arm`, `armTool`, `placeImage` and
    *  an image pasted over the chart refuse it. A copy of a drawing of it is refused too, since a

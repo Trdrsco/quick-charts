@@ -394,7 +394,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   }
   let fullscreenActive = false
   let arrangement = 's'
-  let sync: LayoutSyncFlags = { symbol: false, interval: false, crosshair: false, time: false, dateRange: false }
+  let sync: LayoutSyncFlags = { symbol: false, timeframe: false, crosshair: false, time: false, dateRange: false }
   let open: OpenResource | null = null
   const widgetCalls: string[] = []
   /** The chrome's name-prompt door, filled by a mounted saved-layouts menu exactly as the real

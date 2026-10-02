@@ -3,7 +3,7 @@
 // a newer query, prefetch), the recents port a host backs with its own storage, and the pure rules
 // a result list applies (the recents promotion, the match highlight, and the spread-expression
 // offer). The datafeed's `search` is the only source; completed pages may be reused within one
-// widget/feed lifetime, never globally or across providers. The chart never invents a row.
+// widget/feed lifetime, never globally or across feeds. The chart never invents a row.
 import type { ChartDatafeed, DatafeedSearchOptions, SymbolRow } from './datafeed'
 import type { ChartMessageKey } from './i18n/en'
 

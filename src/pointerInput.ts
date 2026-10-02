@@ -28,7 +28,7 @@ export function pointerLock(locked: boolean): PointerLockState {
 }
 
 /** How long a finger rests before the chart treats the press as a right-click. Measured against the
- *  platform hold that raises a level menu: long enough not to fire during a flick-scroll, short
+ *  platform hold that raises a context menu: long enough not to fire during a flick-scroll, short
  *  enough that a deliberate hold does not feel ignored. */
 export const LONG_PRESS_MS = 450
 

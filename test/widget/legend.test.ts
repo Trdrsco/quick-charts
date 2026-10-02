@@ -103,7 +103,7 @@ it.each([true, false])('keeps the default Compare door in the toolbar only (show
   const row = container.querySelector<HTMLElement>('[data-legend-row="cmp:NQ"]')!
   expect(row).not.toBeNull()
   expect(row.querySelector<HTMLButtonElement>('button[aria-label="Change symbol"]')!.hidden).toBe(false)
-  row.querySelector<HTMLButtonElement>('button[aria-label="Remove compare"]')!.click()
+  row.querySelector<HTMLButtonElement>('button[aria-label="Remove comparison"]')!.click()
   expect(widget.activeChart().compare.list()).toEqual([])
 })
 
@@ -125,7 +125,7 @@ it('keeps inactive-tile compare readings independent and routes a keyboard row a
   expect(widget.layout.active()).toBe(0)
   expect(value(0)).toBe('4501.25')
   expect(value(1)).toBe('4500.25')
-  const remove = legends[1]!.querySelector<HTMLButtonElement>('button[aria-label="Remove compare"]')!
+  const remove = legends[1]!.querySelector<HTMLButtonElement>('button[aria-label="Remove comparison"]')!
   remove.focus()
   remove.click() // keyboard button activation does not send pointerdown
   expect(first!.compare.list().map(entry => entry.symbol)).toEqual(['NQ'])

@@ -106,10 +106,10 @@ export interface DrawingsMeta extends ResourceRef {
   updatedAt: number
 }
 
-export type TemplateKind = 'study' | 'drawing' | 'palette'
+export type TemplateKind = 'indicator' | 'drawing' | 'palette'
 
 /** A named template's listing row. `tool` scopes DRAWING templates to their tool (a trend-line
- *  template is meaningless on a rectangle); study and palette templates carry no tool. */
+ *  template is meaningless on a rectangle); indicator and palette templates carry no tool. */
 export interface TemplateMeta extends ResourceRef {
   name: string
   tool?: string

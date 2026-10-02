@@ -1,4 +1,4 @@
-// The level menu on the chart's own right-click, and the rules for raising it.
+// The context menu on the chart's own right-click, and the rules for raising it.
 //
 // Its rows come from `chartContextMenu`, so an embedder's chart offers what a richer host's does
 // minus what this chart cannot serve. Every built-in row runs through the command registry rather
@@ -106,7 +106,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
       {
         priceText,
         symbol: deps.symbol(),
-        // The level menu's paste row is live exactly when the paste command would run (a copied
+        // The context menu's paste row is live exactly when the paste command would run (a copied
         // drawing on the clipboard, the verb permitted). It offers no settings row: the settings
         // dialog belongs to the selected drawing's own surfaces, which the drawing plane mounts
         // and the chart.drawings.* commands drive.

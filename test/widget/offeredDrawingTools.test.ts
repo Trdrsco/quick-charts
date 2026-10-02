@@ -6,7 +6,7 @@
 // viewer stored is rewritten, and the list composes with the access policy.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
-import { buildRailGroups, DEFAULT_DRAWING_PREFERENCES, drawingTools, type DrawingPreferences } from '../../src/drawings/index'
+import { buildDrawingToolbarGroups, DEFAULT_DRAWING_PREFERENCES, drawingTools, type DrawingPreferences } from '../../src/drawings/index'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import type { ChartWidgetOptions } from '../../src/widget/options'
 import { drag } from '../drawings/fakeChart'
@@ -47,17 +47,17 @@ function mount(options: Partial<ChartWidgetOptions> = {}) {
 
 const prefs = (patch: Partial<DrawingPreferences>): Partial<ChartWidgetOptions> => ({ preferences: { drawings: { ...DEFAULT_DRAWING_PREFERENCES, ...patch } } })
 
-const groups = buildRailGroups()
+const groups = buildDrawingToolbarGroups()
 const trend = groups.find((group) => group.id === 'trend')!
 const lines = trend.sections.find((section) => section.label === 'drawing.sectionLines')!.tools.map((tool) => tool.type)
 const channels = trend.sections.find((section) => section.label === 'drawing.sectionChannels')!.tools.map((tool) => tool.type)
 
 const GROUP_LABELS = ['Trend tools', 'Fibonacci & Gann', 'Patterns', 'Forecast & measure', 'Shapes', 'Text & notes', 'Emojis & stickers']
 
-const rail = (container: HTMLElement): HTMLElement => container.querySelector<HTMLElement>('.qc-drawing-toolbar-column')!
-const railButton = (container: HTMLElement, label: string): HTMLButtonElement | null => rail(container).querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)
-const groupArrow = (container: HTMLElement, label: string): HTMLButtonElement => railButton(container, `${label} menu`)!
-const groupFace = (container: HTMLElement, label: string): HTMLButtonElement => groupArrow(container, label).closest('.qc-drawing-cell')!.querySelector<HTMLButtonElement>('.qc-drawing-rail-button')!
+const toolbar = (container: HTMLElement): HTMLElement => container.querySelector<HTMLElement>('.qc-drawing-toolbar-column')!
+const toolbarButton = (container: HTMLElement, label: string): HTMLButtonElement | null => toolbar(container).querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)
+const groupArrow = (container: HTMLElement, label: string): HTMLButtonElement => toolbarButton(container, `${label} menu`)!
+const groupFace = (container: HTMLElement, label: string): HTMLButtonElement => groupArrow(container, label).closest('.qc-drawing-cell')!.querySelector<HTMLButtonElement>('.qc-drawing-toolbar-button')!
 /** Open a group's flyout and read its section headings and its tool rows. */
 const flyout = (container: HTMLElement, label: string): { sections: string[]; tools: string[]; disabled: string[] } => {
   groupArrow(container, label).click()
@@ -106,7 +106,7 @@ describe('drawingTools: setup', () => {
     const { widget, container } = mount()
     await settle()
     expect(flyout(container, 'Trend tools').tools).toEqual(trend.sections.flatMap((section) => section.tools.map((tool) => tool.type)))
-    expect(drawn(railButton(container, 'Measure'))).toBe(true)
+    expect(drawn(toolbarButton(container, 'Measure'))).toBe(true)
     expect(widget.commands.execute('chart.drawings.arm', 'rectangle').kind).toBe('ok')
   })
 })
@@ -121,18 +121,18 @@ describe('a tool left out is absent where a tool is chosen', () => {
     expect(read.disabled).toEqual([])
     for (const label of GROUP_LABELS.filter((label) => label !== 'Trend tools')) expect(drawn(groupArrow(container, label)), label).toBe(false)
     // Measure and zoom are tools of the list; the eraser is always offered.
-    expect(drawn(railButton(container, 'Measure'))).toBe(false)
-    expect(drawn(railButton(container, 'Zoom in'))).toBe(false)
-    railButton(container, 'Cursor menu')!.click()
+    expect(drawn(toolbarButton(container, 'Measure'))).toBe(false)
+    expect(drawn(toolbarButton(container, 'Zoom in'))).toBe(false)
+    toolbarButton(container, 'Cursor menu')!.click()
     expect([...document.querySelectorAll('[role="menuitemradio"]')].map((row) => row.textContent)).toContain('Eraser')
   })
 
   it('puts the first offered tool on a group face whose remembered tool is left out, and keeps the memory', async () => {
-    const { widget, container } = mount({ drawingTools: [channels[0]!, channels[1]!], ...prefs({ railTools: { trend: lines[0]! } }) })
+    const { widget, container } = mount({ drawingTools: [channels[0]!, channels[1]!], ...prefs({ drawingToolbarTools: { trend: lines[0]! } }) })
     await settle()
     const first = drawingTools.get(channels[0]!)!.name
     expect(groupFace(container, 'Trend tools').getAttribute('aria-label')).toBe(first)
-    expect(widget.activeChart().drawingPreferences().railTools).toEqual({ trend: lines[0] })
+    expect(widget.activeChart().drawingPreferences().drawingToolbarTools).toEqual({ trend: lines[0] })
   })
 
   it('leaves a starred tool off the favorites bar and keeps its star', async () => {
@@ -161,13 +161,13 @@ describe('a tool left out is absent where a tool is chosen', () => {
     expect(drawn(groupArrow(none.container, 'Emojis & stickers'))).toBe(false)
   })
 
-  it('offers nothing that creates with the eraser alone, and keeps the rail for removing', async () => {
+  it('offers nothing that creates with the eraser alone, and keeps the toolbar for removing', async () => {
     const { widget, container } = mount({ drawingTools: ['eraser'] })
     await settle()
     for (const label of GROUP_LABELS) expect(drawn(groupArrow(container, label)), label).toBe(false)
-    expect(drawn(railButton(container, 'Measure'))).toBe(false)
-    expect(drawn(railButton(container, 'Remove drawings'))).toBe(true)
-    expect(drawn(railButton(container, 'Remove menu'))).toBe(true)
+    expect(drawn(toolbarButton(container, 'Measure'))).toBe(false)
+    expect(drawn(toolbarButton(container, 'Remove drawings'))).toBe(true)
+    expect(drawn(toolbarButton(container, 'Remove menu'))).toBe(true)
     expect(widget.commands.execute('chart.drawings.arm', 'eraser').kind).toBe('ok')
     expect(widget.activeChart().drawings!.activeTool()).toBe('eraser')
   })
@@ -241,7 +241,7 @@ describe('drawings of a tool left out stay whole', () => {
     expect(api.count()).toBe(0)
 
     await placed(widget, 'trend_line', 'two')
-    railButton(container, 'Remove menu')!.click()
+    toolbarButton(container, 'Remove menu')!.click()
     const row = [...document.querySelectorAll<HTMLButtonElement>('.qc-drawing-menu [role="menuitem"]')].find((b) => /drawing/i.test(b.textContent ?? ''))!
     expect(row.disabled).toBe(false)
     row.click()
@@ -249,7 +249,7 @@ describe('drawings of a tool left out stay whole', () => {
     expect(api.count()).toBe(0)
 
     await placed(widget, 'trend_line', 'three')
-    expect(drawn(railButton(container, 'Remove drawings'))).toBe(true)
+    expect(drawn(toolbarButton(container, 'Remove drawings'))).toBe(true)
     expect(widget.commands.execute('chart.drawings.arm', 'eraser').kind).toBe('ok')
     expect(widget.commands.execute('chart.drawings.removeAll').kind).toBe('ok')
     expect(api.count()).toBe(0)

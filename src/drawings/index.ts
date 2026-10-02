@@ -80,15 +80,15 @@ export type { MagnetMode } from './magnetModel'
 export {
   ARROW_TYPES,
   BRUSH_TYPES,
-  buildRailGroups,
+  buildDrawingToolbarGroups,
   CARD_TYPES,
+  DRAWING_TOOLBAR_PLAN,
+  drawingToolbarFaceOf,
   GLYPH_TYPES,
   groupOfTool,
-  RAIL_PLAN,
-  railFaceOf,
-  rememberRailTool,
-} from './railModel'
-export type { RailGroup, RailSection } from './railModel'
+  rememberDrawingToolbarTool,
+} from './drawingToolbarModel'
+export type { DrawingToolbarGroup, DrawingToolbarSection } from './drawingToolbarModel'
 
 // ── What the eye blanks ─────────────────────────────────────────────────────────────────────────
 export { blanks, CHART_HIDE_LAYERS, chooseHideMode, DEFAULT_HIDE_STATE, HIDE_LABELS, hideOrder, hideRowActive, isBuiltInHideMode, toggleHide } from './hideModel'

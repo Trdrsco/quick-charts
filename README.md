@@ -211,7 +211,7 @@ What the adapter honors of the protocol:
 
 Symbology is the set of display facts that decide how a market's prices are written. Your datafeed
 owns them (`resolve` answers with `SymbolInfo`), and one package formatter uses them everywhere a
-price appears: the price scale, the crosshair and last-price labels, the legend, the level menu,
+price appears: the price scale, the crosshair and last-price labels, the legend, the context menu,
 every drawing label, study scales, and the extension seam. Precision comes from the symbol, never
 from the size of the price, so the same market reads at the same width on every surface. A study
 that declares its own precision keeps it; every other value writes through the symbol formatter.
@@ -415,7 +415,7 @@ const adapter = memorySaveLoadAdapter()
 const controller = new AbortController()
 
 await adapter.layouts.list(controller.signal)
-await adapter.templates('study').list()
+await adapter.templates('indicator').list()
 const context = { version: 1, kind: 'symbol-global', symbol: 'ESZ2026' } as const
 await adapter.drawings(context).create(emptyDrawingDocument(context))
 
@@ -676,9 +676,9 @@ tile.
 
 ### Templates
 
-`adapter.templates(kind)` is a store per kind: `'study'` for indicator settings, `'drawing'` for a
-drawing tool's look, and `'palette'` for chart appearance. A drawing template carries the `tool` it
-belongs to, because a trend-line template means nothing on a rectangle. Their content is opaque,
+`adapter.templates(kind)` is a store per kind: `'indicator'` for indicator settings, `'drawing'` for
+a drawing tool's look, and `'palette'` for chart appearance. A drawing template carries the `tool`
+it belongs to, because a trend-line template means nothing on a rectangle. Their content is opaque,
 like a chart's.
 
 ### Viewer settings
@@ -863,7 +863,7 @@ widget.dispose() // teardown; every handle and subscription is inert afterwards
 The widget paints the main series and volume, applies live updates by the bar rules above, pages
 older history in as the viewer scrolls left (stopping at the feed's `noData`), persists the viewer's
 preferences through `ChartStorage`, runs configured indicator instances through the manifest
-pipeline, and mounts the drawing layer, the legend and the level menu.
+pipeline, and mounts the drawing layer, the legend and the context menu.
 
 When older main or comparison history extends the renderer's shared timeline, the chart retains
 the latest fractional logical window, spacing and permitted off-data padding. Its compensating
@@ -885,12 +885,13 @@ toolbar available in fullscreen. Without `toolbarContainer`, the toolbar sits ab
 part of the default composition. When horizontal space is limited, the toolbar scrolls without
 dropping controls from the keyboard order.
 
-`drawingToolbarContainer` supplies separate host space for a single drawing rail. The package
+`drawingToolbarContainer` supplies separate host space for a single drawing toolbar. The package
 fills that space's height with its own themed child, follows the active chart when a layout
-changes, and removes the child on disposal. An external rail leaves the full chart width for the
-canvas; without the option, each chart keeps its internal rail and reserved leading column.
-Drawing flyouts stay beside the external rail within the widget's bounds regardless of the active
-pane. Switching charts closes an open flyout before the rail targets the newly active chart.
+changes, and removes the child on disposal. An external drawing toolbar leaves the full chart width
+for the canvas; without the option, each chart keeps its internal drawing toolbar and reserved
+leading column. Drawing flyouts stay beside the external drawing toolbar within the widget's bounds
+regardless of the active pane. Switching charts closes an open flyout before the drawing toolbar
+targets the newly active chart.
 Include this container in the custom fullscreen target alongside the chart and top toolbar.
 
 ### Widget and chart
@@ -1052,7 +1053,7 @@ picture or as data.
 By default a chart offers every drawing tool. `drawingTools` names the tools you offer, by the type
 `access.drawingTool` and the `tool.<type>` icon ids use: a type `drawingTools.all()` lists (from
 `@trdrs/quickcharts/drawings`), `zoom` or `eraser`. The order you give does not matter, because the
-rail keeps its own groups and sections:
+drawing toolbar keeps its own groups and sections:
 
 ```ts
 import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
@@ -1068,14 +1069,14 @@ createChart({ container, datafeed, drawingTools: ['eraser'] })
 
 A tool you leave out is not drawn anywhere a tool is chosen: not in its group's flyout, not as a
 group's face, which wears the first tool the group offers, not on the favorites bar, and not on the
-rail for `measure` and `zoom`. A section or group it empties goes with it. The glyph picker's kinds
-are the `emoji`, `sticker` and `icon` tools, so a kind you leave out has no tab, and leaving out all
-three removes the glyph group. Every door that would arm it refuses: `chart.drawings.arm` answers
-`denied`, and `armTool`, `placeImage` and an image pasted over the chart place nothing. A copy is a
-new drawing, so a drawing of a tool you leave out is not copied into another: `chart.drawings.clone`
-and `chart.drawings.paste` are unavailable for it, `clone` and `paste` make nothing, and a
-Control- or Command-drag moves the drawing instead of duplicating it. Copying it to the clipboard is
-not refused, so it pastes on a chart that offers its tool.
+drawing toolbar for `measure` and `zoom`. A section or group it empties goes with it. The glyph
+picker's kinds are the `emoji`, `sticker` and `icon` tools, so a kind you leave out has no tab, and
+leaving out all three removes the glyph group. Every door that would arm it refuses:
+`chart.drawings.arm` answers `denied`, and `armTool`, `placeImage` and an image pasted over the
+chart place nothing. A copy is a new drawing, so a drawing of a tool you leave out is not copied
+into another: `chart.drawings.clone` and `chart.drawings.paste` are unavailable for it, `clone` and
+`paste` make nothing, and a Control- or Command-drag moves the drawing instead of duplicating it.
+Copying it to the clipboard is not refused, so it pastes on a chart that offers its tool.
 
 Drawings of a tool you leave out that are already on the chart, from a saved chart or layout, a
 drawings document or another host, render and stay fully editable. They select, restyle through the
@@ -1322,9 +1323,9 @@ glyph picker; a section, a group or a favorites bar it leaves empty goes with it
 that would wear a refused tool wears the first one the group still offers. A refused indicator is
 not in the indicator picker. A control or menu row whose command the policy refuses is not drawn
 (top bar, bottom bar, menus, the drawing toolbar and the selection's bar, the navigation cluster,
-the replay transport, legend row controls and the level menu), and a rule left with nothing beside it
-goes too. A picker always keeps its current choice: the chosen style, timeframe, timezone or scale
-is listed even when its command is refused.
+the replay transport, legend row controls and the context menu), and a rule left with nothing beside
+it goes too. A picker always keeps its current choice: the chosen style, timeframe, timezone or
+scale is listed even when its command is refused.
 
 Only a refusal hides. A permitted command that cannot run now (nothing to undo, no bars loaded,
 nothing selected) is drawn disabled as before. The policy is asked whenever the chrome syncs (a
@@ -1379,7 +1380,7 @@ Every surface that reads the policy reads it again at once: the top and bottom b
 controls, the drawing toolbar's tools and groups, the favorites bar, the selection's bar, the
 navigation cluster, the replay transport and the legend's row controls, shown or left out as
 `access.refused` says and enabled or disabled. A menu, flyout or dialog that is open reads it too:
-the bars' menus, the level menu, the indicator picker and the saved layouts dialog rebuild their
+the bars' menus, the context menu, the indicator picker and the saved layouts dialog rebuild their
 rows in place, and a drawing toolbar flyout (the glyph picker among them) or a selection bar panel
 opens again from its control, or closes when that control is now left out or disabled. Listeners of `widget.commands.onChange`
 hear it as well, so a control of your own can read `commands.available` again. Nothing stored
@@ -1914,7 +1915,7 @@ same values:
 | `motion.durationBase` | `150ms` | A modal dialog and its backdrop opening and closing, and the replay row entering and leaving. |
 | `motion.durationModerate` | `250ms` | A control moving to its new state, such as a switch knob sliding. |
 | `motion.durationSlow` | `350ms` | A small mark settling, such as a disclosure caret turning or a checkbox filling. |
-| `motion.durationSlower` | `500ms` | A larger mark turning, such as the drawing rail's chevron. |
+| `motion.durationSlower` | `500ms` | A larger mark turning, such as the drawing toolbar's chevron. |
 | `motion.easingStandard` | `ease` | A modal dialog box, the replay row, a caret dip, a checkbox fill. |
 | `motion.easingOut` | `ease-out` | A modal backdrop fading, a switch knob sliding. |
 | `motion.easingLinear` | `linear` | A color or opacity change under the pointer. |
@@ -1951,23 +1952,23 @@ once.
 ### Cascade layers
 
 The stylesheet declares two cascade layers and puts everything it contains in them: the built-in
-palettes in `trdrs.tokens`, every recipe in `trdrs.chart`. Nothing in it is unlayered. It marks a
-declaration `!important` only where a later layer or an inline palette must not undo it: an
-element's `hidden` attribute, the zero motion durations under a reduced-motion preference, and the
-missing focus ring of a search field, which shows its focus by its caret. Your first stylesheet must
-declare the complete order before any product stylesheet loads, because a layer's position is fixed
-by the first statement that names it:
+palettes in `quickcharts.tokens`, every recipe in `quickcharts.chart`. Nothing in it is unlayered.
+It marks a declaration `!important` only where a later layer or an inline palette must not undo it:
+an element's `hidden` attribute, the zero motion durations under a reduced-motion preference, and
+the missing focus ring of a search field, which shows its focus by its caret. Your first stylesheet
+must declare the complete order before any product stylesheet loads, because a layer's position is
+fixed by the first statement that names it:
 
 ```css
-@layer reset, trdrs.tokens, trdrs.chart, trdrs.platform, host;
+@layer reset, quickcharts.tokens, quickcharts.chart, host;
 ```
 
 Put your reset in `reset`. A reset left unlayered outranks every layered rule and strips the
 chart's controls of their borders and grounds. Put an intentional override of a supported hook in
-`host`, or leave it unlayered; either wins over the chart's recipe. A chart-only host declares only
-`reset`, the two chart layers and `host`; `trdrs.platform` is the layer a later product declares
-for itself. Inline styles the chart writes for measured geometry outrank any stylesheet rule, and
-a rule marked `!important` reverses layer order, so neither is a way to restyle the chart.
+`host`, or leave it unlayered; either wins over the chart's recipe. Layers of your own product go
+between `quickcharts.chart` and `host`. Inline styles the chart writes for measured geometry
+outrank any stylesheet rule, and a rule marked `!important` reverses layer order, so neither is a
+way to restyle the chart.
 
 ### Supported styling hooks
 
@@ -1979,7 +1980,7 @@ applying in any release. Removing a hook, a state or a customization is a breaki
 | Hook | Purpose | States | Customization |
 |---|---|---|---|
 | `.qc-topbar` | The top toolbar: symbol search, timeframe, chart style, indicators, layouts, replay and the widget menus. | | background-color, border, padding, gap, box-shadow |
-| `.qc-drawing-toolbar` | The drawing rail beside the plot. | `aria-orientation`: vertical beside the plot, horizontal in a host row. | background-color, border, padding, gap, box-shadow |
+| `.qc-drawing-toolbar` | The drawing toolbar beside the plot. | `aria-orientation`: vertical beside the plot, horizontal in a host row. | background-color, border, padding, gap, box-shadow |
 | `.qc-bottombar` | The bottom bar: range shortcuts, the session clock and the timezone. | | background-color, border, padding, gap, box-shadow |
 | `.qc-legend` | The legend over the plot: the symbol, its reading and each study row. | | background-color, border, border-radius, padding, box-shadow, inset |
 | `.qc-menu-panel` | A floating menu opened from a toolbar control. | `hidden`: present while the menu is closed. | background-color, border, border-radius, padding, box-shadow |
@@ -2037,23 +2038,24 @@ opens in those colors on any theme.
 
 ## Compare
 
-Every chart can draw OTHER symbols beside its own. A compare is study-like: legend-managed, three
-placements, persisted in the chart content blob. `same-percent` shares the
-main price scale and flips it to percent while any such compare lives (the prior scale mode comes
-back when the last one leaves); `new-scale` binds the LEFT scale with absolute prices (the left
-axis exists only while such a compare does); `new-pane` takes a pane of its own. Compared bars
-clip to the main series window, so a compare never extends the time axis. `features.compareSymbols` supplies
-a curated quick-add list for the compare dialog; `compare.symbols()` reads it back.
+Compare draws OTHER symbols beside a chart's own. Each comparison is managed like an indicator:
+from the legend, at one of three placements, persisted in the chart content blob. `same-percent`
+shares the main price scale and flips it to percent while any such comparison lives (the prior
+scale mode comes back when the last one leaves); `new-scale` binds the LEFT scale with absolute
+prices (the left axis exists only while such a comparison does); `new-pane` takes a pane of its
+own. Compared bars clip to the main series window, so a comparison never extends the time axis.
+`features.compareSymbols` supplies a curated quick-add list for the compare dialog;
+`compare.symbols()` reads it back.
 
 The widget's standard Compare door lives in the top bar, and `ui: { topBar: { compare: false } }`
 hides it. The legend header does not duplicate that door. Commands and comparison-row actions remain
-available when the top-bar door is hidden, and `features: { compare: false }` removes comparing
-altogether. The built-in dialog's search rows add at any of the three placements, curated `compareSymbols` rows sit
-above results, and the ADDED section removes. Each compare takes a legend row whose title reopens
-the dialog in change-symbol mode (the pick re-keys the compare in place), with an eye and a remove
-beside the value (% under `same-percent`, the last close otherwise). In a layout, compares belong to
-each chart of their own (`widget.activeChart().compare`) and ride the layout blob with the rest of
-that chart's content.
+available when the top-bar door is hidden, and `features: { compare: false }` removes compare
+altogether. The built-in dialog's search rows add at any of the three placements, curated
+`compareSymbols` rows sit above results, and the ADDED section removes. Each comparison takes a
+legend row whose title reopens the dialog in change-symbol mode (the pick re-keys the comparison in
+place), with an eye and a remove beside the value (% under `same-percent`, the last close
+otherwise). In a layout, each chart holds its own comparisons (`widget.activeChart().compare`), and
+they ride the layout blob with the rest of that chart's content.
 
 ```ts
 import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
@@ -2213,7 +2215,7 @@ host's own search surface subscribes to the same state.
 The widget prefetches the default catalog and reuses completed pages across search, compare and
 change-symbol dialogs. Each opening owns its query, class filter and pending work. Closing it
 discards late results without clearing completed pages. Locale changes and widget disposal clear
-the widget cache. A replacement widget never inherits a previous provider's cache.
+the widget cache. A replacement widget starts with a cache of its own.
 
 Completed reuse holds at most 32 queries and 5,000 rows, evicting least-recent entries. Retained
 multi-page results reopen without a first-page refetch. Eviction does not truncate an active
@@ -2443,10 +2445,10 @@ The `size` is the chart's, not a suggestion: the box is already laid out, and pa
 you were given is what lines the marks up down a list. The chart ships no artwork and fetches none,
 so without this every mark is the neutral monogram it draws itself.
 
-`venueMark` and `providerMark` paint the source at the end of every symbol search and compare row
-the same way: the venue a market lists on, or the data provider where a row names no venue. Each
-receives the name the row writes (`exchange` or `provider`), the element and the size, and returns
-a disposer. Without them a source wears its initial on a neutral disc.
+`venueMark` and `dataSourceMark` paint the source at the end of every symbol search and compare
+row the same way: the venue a market lists on, or the data source where a row names no venue. Each
+receives the name the row writes (`exchange` or `dataSource`), the element and the size, and
+returns a disposer. Without them a source wears its initial on a neutral disc.
 
 ```ts
 import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
@@ -2490,7 +2492,7 @@ re-tile, a restore. Pointing your own surface at a chart moves no chart's symbol
 concepts stay separate: each chart keeps charting what it charts, and one of them is the one you are
 looking at.
 
-Five sync toggles fan changes across the charts: `symbol`, `interval` and `dateRange` replay a
+Five sync toggles fan changes across the charts: `symbol`, `timeframe` and `dateRange` replay a
 change onto every chart, `crosshair` mirrors continuously by time, and `time` centers every chart on
 a clicked moment. The whole layout serializes as ONE opaque content blob (arrangement, sync flags,
 durable chart-entity identities, active chart, every chart's own content), so a saved multi-chart
@@ -2567,9 +2569,9 @@ const saved = drawings?.export() // the persistence wire format (SerializedDrawi
 note(`${selected?.type ?? 'nothing'} selected, ${saved?.length ?? 0} drawings`)
 ```
 
-### The toolbar
+### The drawing toolbar
 
-The toolbar is the rail down the chart's leading edge. Its buttons are the cursor with its three
+The drawing toolbar runs down the chart's leading edge. Its buttons are the cursor with its three
 pointer modes and the eraser; seven tool groups, each opening a flyout of the group's sections
 with a star on every row that lands the tool on the favorites bar; Measure and Zoom; the magnet
 with its weak and strong strengths; stay in drawing mode; lock all; the eye that hides drawings,
@@ -2646,14 +2648,14 @@ Everything about drawings a host builds its own UI from is one subpath. A host t
 never imports any of it.
 
 ```ts
-import { buildRailGroups, drawingTools, parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from '@trdrs/quickcharts/drawings'
+import { buildDrawingToolbarGroups, drawingTools, parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from '@trdrs/quickcharts/drawings'
 
 // The catalog: 90 tools in 14 categories, read-only.
 const trendLine = drawingTools.get('trend_line')
 const fibs = drawingTools.byCategory('fibonacci')
 
-// The rail's own structure, as data: seven groups, their sections, and a catalog key per heading.
-for (const group of buildRailGroups()) {
+// The drawing toolbar as data: seven groups, their sections, and a catalog key per heading.
+for (const group of buildDrawingToolbarGroups()) {
   for (const section of group.sections) note(`${group.id}/${section.label}: ${section.tools.length}`)
 }
 
@@ -2663,10 +2665,10 @@ const drawings = restoreDrawings(store['ES'] ?? [])
 localStorage.setItem('acme.chart.drawings', serializeDrawingsStore(store))
 ```
 
-The subpath carries the workflow models too: what the rail's eye blanks (`HideMode`, which reaches
-chart-owned drawings and indicators and nothing else), the cursor modes and the two transient
-tools, the magnet policy over `magnetSnap`, the remove menu, favorites over a `FavoritesPort`, the
-standing preference record, and per-tool defaults and named templates over
+The subpath carries the workflow models too: what the drawing toolbar's eye blanks (`HideMode`,
+which reaches chart-owned drawings and indicators and nothing else), the cursor modes and the two
+transient tools, the magnet policy over `magnetSnap`, the remove menu, favorites over a
+`FavoritesPort`, the standing preference record, and per-tool defaults and named templates over
 `ChartSaveLoadAdapter.templates('drawing')`. Each is a pure function or a plain record, so a host
 builds its own controls without reimplementing the decisions behind them.
 
@@ -2738,7 +2740,7 @@ What to know:
 
 ## Extensions
 
-An extension is host code that draws on the chart, adds rows to its level menu, offers commands,
+An extension is host code that draws on the chart, adds rows to its context menu, offers commands,
 and stores viewer state in the chart's own save blob. The chart attaches it at mount, pushes its
 changes at it, and takes it down at teardown, along with everything it drew.
 
@@ -2792,9 +2794,9 @@ What to know:
   layer on the document body, painted with the widget's theme: a menu or an editor mounted there at
   viewport coordinates stands over every pane and over whatever the page stacks around the widget,
   which the pane's own overlay cannot promise. `ctx.symbolTitle()` is the name symbology gives the
-  charted market, the name the legend and the level menu print; `ctx.chart.symbol()` stays the
+  charted market, the name the legend and the context menu print; `ctx.chart.symbol()` stays the
   ticker an action is sent for. `ctx.painters` carries the mark painters you supplied as `.symbol`,
-  `.venue` and `.provider`, so a surface that names a market paints it with the same mark the
+  `.venue` and `.dataSource`, so a surface that names a market paints it with the same mark the
   legend and the search rows wear rather than shipping artwork of its own; a painter you did not
   supply is `null`, and the surface writes the name alone.
 - **A contributed row may bring its own glyph.** `ChartExtensionMenuItem.icon` is a
@@ -2809,19 +2811,20 @@ What to know:
   default), an action on the price the pointer landed on, placed under Copy price and Paste; or
   `view`, a switch over what the chart shows, placed under the remove rows. Rows keep the order
   they were contributed in within their group.
-- **A drawn layer can join the rail's eye.** `ctx.contributeHideLayer({ id, label, icon, apply })`
-  lists the layer in the eye's menu after the chart's own drawings and indicators and before
-  "Hide all", which blanks it with them. `label` carries the row's wording in both states, `icon`
-  the two marks the eye wears while the layer is its subject, and `apply(hidden)` is called with
-  the current state at contribution and on every change. The handle reads `hidden()`, flips
-  `setHidden()` through the same eye the rail drives, and `remove()` withdraws the layer.
+- **A drawn layer can join the drawing toolbar's eye.**
+  `ctx.contributeHideLayer({ id, label, icon, apply })` lists the layer in the eye's menu after the
+  chart's own drawings and indicators and before "Hide all", which blanks it with them. `label`
+  carries the row's wording in both states, `icon` the two marks the eye wears while the layer is
+  its subject, and `apply(hidden)` is called with the current state at contribution and on every
+  change. The handle reads `hidden()`, flips `setHidden()` through the same eye the drawing toolbar
+  drives, and `remove()` withdraws the layer.
 - **A printed chord is a real binding.** `ChartExtensionMenuItem.shortcut` prints on the row and
   answers to the key. The chart's dispatcher offers a press no built-in verb claims to the rows your
-  provider contributes for the level under the pointer and runs that row's own `run`, the same call
-  the click makes. The press acts on the tile the pointer is inside, active or not; outside every
-  tile, on a point with no readable level, while the viewer is typing, or while a modal holds the
-  keyboard, the key is left to your page. A row your provider withholds claims no key, and a row
-  carries one chord.
+  `contributeContextMenu` callback returns for the level under the pointer and runs that row's own
+  `run`, the same call the click makes. The press acts on the tile the pointer is inside, active or
+  not; outside every tile, on a point with no readable level, while the viewer is typing, or while
+  a modal holds the keyboard, the key is left to your page. A row your callback withholds claims no
+  key, and a row carries one chord.
 - **A glyph is bounded, and a refusal is free.** Up to 8 shapes, each up to 2048 characters of path
   data with every number in it finite, and an `outline` stroke width above 0 and up to 8. A shape
   outside that is dropped and the rest of the glyph still draws; a descriptor outside it draws

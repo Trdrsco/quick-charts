@@ -27,6 +27,6 @@ export const legend = {
   // The compare surface's legend side: the header door and the compare chips' verbs. The dialog
   // both open belongs to the search family (search.ts).
   'legend.changeSymbol': 'Change symbol',
-  'legend.removeCompare': 'Remove compare',
+  'legend.removeCompare': 'Remove comparison',
   'legend.removeIndicator': 'Remove indicator',
 } as const

@@ -1,4 +1,4 @@
-// Touch input the chart owns at every width: one finger held still raises the same level menu a
+// Touch input the chart owns at every width: one finger held still raises the same context menu a
 // right-click does, so an embedder gets press-and-hold without writing any of it.
 //
 // The gesture stands down while a drawing tool is armed (the press IS the drawing gesture) and the
@@ -19,7 +19,7 @@ export interface PointerDeps {
   toolArmed(): boolean
   /** True once the chart is down. */
   disposed(): boolean
-  /** Raise the level menu at a viewport point. */
+  /** Raise the context menu at a viewport point. */
   raiseAt(clientX: number, clientY: number): void
 }
 

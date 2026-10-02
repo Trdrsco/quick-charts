@@ -36,7 +36,7 @@ it('does not reuse an abandoned A flight after A to B to A', async () => {
   expect(next.state().hits).toEqual([row('CURRENT-A')])
 })
 
-it('isolates class/query keys even when a delimiter appears in the provider values', async () => {
+it('isolates class/query keys even when a delimiter appears in the feed values', async () => {
   const o = owner({ search: async (q, opts) => page(JSON.stringify([q, opts?.cls])) })
   const first = o.create().controller
   first.search('B|C', 'A'); await tick(); first.dispose()
@@ -86,9 +86,9 @@ it('drops late pages from a closed session and retries the uncompleted offset on
   expect(f.calls[2]!.opts?.offset).toBe(1)
 })
 
-it('never retains failures and recovers from synchronous provider throws', async () => {
+it('never retains failures and recovers from synchronous feed throws', async () => {
   let fail = true
-  const o = owner({ search: () => { if (fail) throw new Error('provider'); return Promise.resolve(page('OK')) } })
+  const o = owner({ search: () => { if (fail) throw new Error('feed'); return Promise.resolve(page('OK')) } })
   o.prefetch(); await flush()
   const first = o.create().controller
   first.search('A'); await tick()
@@ -101,7 +101,7 @@ it('never retains failures and recovers from synchronous provider throws', async
   expect(second.state().hits).toEqual([row('OK')])
 })
 
-it('does not schedule provider work after a subscriber disposes the session', async () => {
+it('does not schedule feed work after a subscriber disposes the session', async () => {
   const search = vi.fn(async () => page('UNREACHABLE'))
   const o = owner({ search }), c = o.create().controller
   c.subscribe(() => c.dispose())

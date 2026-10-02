@@ -221,6 +221,12 @@ describe('the cascade layers', () => {
     expect(order.indexOf(STYLE_LAYERS.tokens)).toBeLessThan(order.indexOf(STYLE_LAYERS.chart))
     expect(order[order.length - 1]).toBe('host')
   })
+
+  it('names its layers in its own namespace, the names a host writes into its ordering statement', () => {
+    expect(STYLE_LAYERS).toEqual({ tokens: 'quickcharts.tokens', chart: 'quickcharts.chart' })
+    expect(LAYER_ORDER_STATEMENT).toBe('@layer quickcharts.tokens, quickcharts.chart;')
+    expect(HOST_LAYER_ORDER).toBe('@layer reset, quickcharts.tokens, quickcharts.chart, host;')
+  })
 })
 
 describe('generated-artifact drift', () => {

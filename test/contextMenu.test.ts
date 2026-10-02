@@ -20,7 +20,7 @@ const base: ChartMenuContext = {
 const labels = (c: Partial<ChartMenuContext> = {}) =>
   chartContextMenu({ ...base, ...c }).map((r) => (r.kind === 'separator' ? '—' : r.label))
 
-describe('the level menu, in its own order', () => {
+describe('the context menu, in its own order', () => {
   it('reads top to bottom in one fixed order, with chart rows alone', () => {
     expect(labels()).toEqual([
       'Reset chart view',
@@ -59,7 +59,7 @@ describe('counts and state', () => {
 
 })
 
-// A host that cannot serve a row must not show it: the widget's level menu never offers Settings
+// A host that cannot serve a row must not show it: the widget's context menu never offers Settings
 // (the settings dialog belongs to the selected drawing's own surfaces) and offers Paste only while
 // the paste command would run.
 describe('a host that cannot serve a row does not show it', () => {
