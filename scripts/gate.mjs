@@ -25,6 +25,8 @@ const STEPS = [
   { id: 'supply-chain', run: ['node', 'scripts/check-supply-chain.mjs'] },
   { id: 'notices', run: ['node', 'scripts/build-third-party-notices.mjs', '--check'] },
   { id: 'docs', run: ['node', 'scripts/check-docs.mjs'] },
+  // Reads the registry and the public tags, so the gate needs the network here as in the clean room.
+  { id: 'release-records', run: ['node', 'scripts/check-release-records.mjs'] },
   { id: 'clean-room', slow: true, run: ['node', 'clean-room/run.mjs'] },
   { id: 'browser', slow: true, run: ['pnpm', 'run', 'test:browser'] },
 ]

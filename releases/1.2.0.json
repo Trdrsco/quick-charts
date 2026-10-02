@@ -1,0 +1,91 @@
+{
+  "status": "accepted-with-explicit-owner-waiver",
+  "recorded_at": "2026-10-01T18:49:36Z",
+  "candidate": {
+    "package": "@trdrs/quickcharts",
+    "version": "1.2.0",
+    "source_commit": "cb26403c2e41fdf4040076fed6deb0e3fca2affa",
+    "tarball_sha256": "d3de9d341d2104012bfe15bb627634387eb9fb42feb22de62324bc17130b5368",
+    "tar_stream_sha256": "9ce5943fa001d69aee3e1e15633c07d7e81eb58be476e60e87b9ea156d859362",
+    "rehearsal": {
+      "result": "pass",
+      "source_commit": "cb26403c2e41fdf4040076fed6deb0e3fca2affa",
+      "summary_sha256": "9f766000e167d536b278f15a0647ecce000364e08c140cebc7914bf786c31ef8",
+      "dossier_hashes_sha256": "c57cb657f3a3e9d92feff1c04736b8139f9c7ac7b99978b93696780b59a95ee3",
+      "retained_dossier": "quick-charts-release/.release/1.2.0",
+      "unit_tests_passed": 3510,
+      "clean_room_checks_passed": 42,
+      "automated_browser_engines": ["chromium", "firefox", "webkit"]
+    },
+    "ci": {
+      "url": "https://github.com/Trdrsco/quick-charts/actions/runs/36897810367",
+      "result": "success"
+    }
+  },
+  "first_host": {
+    "repository": "Trdrsco/trdrs-app",
+    "source_commit": "72c00734a73a84ed9cfbc97fcc2b21d7783d00ef",
+    "candidate_override": "release-candidates/trdrs-quickcharts-1.2.0.tgz",
+    "ci": {
+      "url": "https://github.com/Trdrsco/trdrs-app/actions/runs/36899012579",
+      "result": "success",
+      "checks": [
+        "static",
+        "unit",
+        "build",
+        "all ten browser-test shards"
+      ]
+    },
+    "local_unit_tests": {
+      "passed": 2552,
+      "failed": 0
+    },
+    "local_browser_tests": {
+      "result": "success",
+      "passed_without_retry": 116,
+      "passed_after_retry": 1,
+      "retry_note": "One chart boot timed out during concurrent local checks; its retry passed."
+    }
+  },
+  "inspection": {
+    "export_map": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "license_and_notices": "inspected",
+    "generated_feature_theme_and_rest_manifests": "inspected"
+  },
+  "manual_acceptance": {
+    "accessibility": "not performed",
+    "advertised_browser_and_device_acceptance": "not performed",
+    "owner_waiver": {
+      "owner": "Dylan",
+      "recorded_at": "2026-10-01T18:49:36Z",
+      "statement": "Waived by owner (Dylan) for this exact candidate.",
+      "scope": "Explicitly waives the unperformed manual accessibility and advertised browser/device acceptance checks for this exact candidate in response to the release waiver question."
+    },
+    "note": "Automated browser conformance is not a manual accessibility or device acceptance check."
+  },
+  "release_approval": {
+    "approver": "Joey",
+    "reported_by": "Dylan",
+    "npm_publish_environment_approval": {
+      "approved_by": "dylanworrall",
+      "approved_deployment_queued_at": "2026-10-01T20:32:08Z",
+      "workflow": "https://github.com/Trdrsco/quick-charts/actions/runs/36909842627",
+      "result": "success"
+    }
+  },
+  "registry_verification": {
+    "version": "1.2.0",
+    "tarball_sha256": "d3de9d341d2104012bfe15bb627634387eb9fb42feb22de62324bc17130b5368",
+    "accepted_candidate_bytes_match": true,
+    "fresh_exact_version_install": "pass",
+    "npm_audit_signatures": "pass: 18 verified registry signatures and 9 verified attestations",
+    "fresh_consumer_browser_conformance": {
+      "result": "pass",
+      "engines": ["chromium", "firefox", "webkit"],
+      "tests_passed": 3,
+      "retries": 0
+    }
+  }
+}

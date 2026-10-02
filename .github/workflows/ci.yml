@@ -53,6 +53,8 @@ jobs:
         run: node scripts/build-third-party-notices.mjs --check
       - name: documents
         run: node scripts/check-docs.mjs
+      - name: release records
+        run: node scripts/check-release-records.mjs
 
   tests:
     runs-on: ubuntu-latest

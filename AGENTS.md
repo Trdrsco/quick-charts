@@ -49,8 +49,9 @@ Follow [RELEASING.md](RELEASING.md). The points an agent gets wrong:
   patch.
 - Tag `v<version>` only on the `main` commit that holds every change the release carries, after
   its CI passed. A tag publishes nothing, and a tag that was pushed is never moved.
-- `release.yml` is dispatched on the tag with the candidate's SHA-256 and an HTTPS link to the
-  first host's acceptance record. The record is committed as `release-acceptance-<version>.json`.
+- The acceptance record, `releases/<version>.json`, merges before the tag; `release.yml` refuses a
+  tag without a complete one. Dispatch it on the tag with the candidate's SHA-256, which must equal
+  the record's. The publication facts follow in their own pull request after publishing.
 - The owner approves the `npm-publish` environment. An agent never publishes.
 
 ## Where to look

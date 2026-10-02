@@ -12,8 +12,8 @@
 //   checkout      the working tree is clean and the commit is recorded
 //   install       `pnpm install --frozen-lockfile`
 //   gate          `node scripts/gate.mjs`: the candidate build, the type check, the tests, the
-//                 candidate pin, the supply-chain scan, the notices check, the documentation check
-//                 and the clean room
+//                 candidate pin, the supply-chain scan, the notices check, the documentation check,
+//                 the release records check and the clean room
 //   pack          the deterministic pack, re-run on its own, compared file for file and by tar
 //                 stream hash with the committed pin
 //   clean-room    `node clean-room/run.mjs`: the TypeScript, JavaScript and Vite consumers and
