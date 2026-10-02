@@ -1,0 +1,80 @@
+{
+  "date": "2026-10-02",
+  "packageName": "@trdrs/quickcharts",
+  "version": "1.3.0",
+  "releaseCommit": "18b1611accd90fe41b66e9a71d8a4b0141384621",
+  "tarballSha256": "cc7b9647d1960daa256adc76f65df9eca96b349165c3044bbbfc8874b2f38003",
+  "tarStreamSha256": "3abf536abc49aa3d028c520286819da35ab5e88285300341f8186dfc32079f46",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/36964246687",
+    "unitTestsPassed": 3735,
+    "typecheck": "pass",
+    "candidatePin": "pass",
+    "supplyChain": "pass",
+    "notices": "pass",
+    "documents": "pass",
+    "cleanConsumers": "pass",
+    "browsers": {
+      "chromium": {
+        "playwright": "1.61.0",
+        "passed": 42,
+        "skipped": 0,
+        "failed": 0
+      },
+      "firefox": {
+        "playwright": "1.61.0",
+        "passed": 42,
+        "skipped": 0,
+        "failed": 0
+      },
+      "webkit": {
+        "playwright": "1.61.0",
+        "passed": 42,
+        "skipped": 0,
+        "failed": 0
+      }
+    },
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "11d3c8bab8fdb20dbf377a52717d2794f7aeffd3b0a2664812a591fa3c37a74a",
+      "dossierHashesSha256": "0491d4f9a260d7a10ceca12e6a38c869ea4fd6206838007c58dcb3983299ad10",
+      "installTestChecksPassed": 22
+    }
+  },
+  "firstHost": {
+    "baselineCommit": "b1b93b13f334e61c300ba5fb4d41481a3e17b866",
+    "testedCommit": "b88495ee666e6e1106b28a158d80303f006c1ff4",
+    "acceptanceRecord": "https://github.com/Trdrsco/trdrs-app/blob/86f4ad20892f407565fb5170fb4fc4fdd8a6d955/release-acceptance-1.3.0.json",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/36967273860",
+    "workingTree": "1.3.0 adoption on every pin and the Platform version matrix; exact tarball installed through a temporary pnpm override",
+    "typecheckTasksPassed": 20,
+    "unitTestsPassed": 2774,
+    "appBrowserTests": "all ten CI browser-test shards passed",
+    "productionBuild": "pass",
+    "packageChecks": "pass",
+    "localization": "pass",
+    "deadCode": "pass",
+    "documents": "pass"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/36967479820",
+    "registryTarballSha256": "cc7b9647d1960daa256adc76f65df9eca96b349165c3044bbbfc8874b2f38003",
+    "distTagLatest": "1.3.0",
+    "provenance": "SLSA v1 provenance names refs/tags/v1.3.0, .github/workflows/release.yml and commit 18b1611accd90fe41b66e9a71d8a4b0141384621",
+    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserConformance": {
+      "result": "pass",
+      "engines": ["chromium", "firefox", "webkit"],
+      "testsPassed": 3,
+      "retries": 0
+    }
+  },
+  "ci": "GitHub-hosted runners; the browser suite runs in the Playwright 1.61.0 image; separate protected upload of the tested tarball"
+}
