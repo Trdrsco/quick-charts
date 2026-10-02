@@ -465,6 +465,34 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  layout setup menu the arrangements alone. An unknown or repeated switch is a setup error thrown
    *  from `createChart`. */
   layoutSync?: readonly (keyof LayoutSyncFlags)[]
+  /** The drawing tools the chart offers, by the type `access.drawingTool` and the `tool.<type>`
+   *  icon ids use: any type `drawingTools.all()` lists, `zoom` or `eraser`. Absent, every tool is
+   *  offered. The order given does not matter: the rail keeps its own groups and sections.
+   *
+   *  A tool left out is not a tool of this chart for creating drawings. It is not drawn anywhere a
+   *  tool is chosen: not in its group's flyout, not as a group's face (which wears the first tool
+   *  the group offers), not on the favorites bar and not on the rail (`measure`, `zoom`). A section
+   *  or group it empties goes with it. The glyph picker's kinds are the `emoji`, `sticker` and
+   *  `icon` tools, and a kind left out has no tab. `chart.drawings.arm`, `armTool`, `placeImage` and
+   *  an image pasted over the chart refuse it. A copy of a drawing of it is refused too, since a
+   *  copy is a new drawing: `chart.drawings.clone` and `chart.drawings.paste` are unavailable for
+   *  one, `clone` and `paste` make nothing, and a modifier-drag moves the drawing instead of
+   *  duplicating it. Copying one to the clipboard, to paste on a chart that offers it, is not
+   *  refused.
+   *
+   *  Drawings of a tool left out that are already on the chart (from a saved chart or layout, a
+   *  drawings document or another host) render and stay fully editable: they select, restyle
+   *  through the selection's bar and the settings dialog, lock, hide and delete as any drawing
+   *  does. The eraser is always offered, listed or not, because it removes rather than creates, so
+   *  `['eraser']` is a chart whose viewers keep and remove what is on it and make nothing new.
+   *
+   *  It composes with `access`: a tool is offered when it is listed AND the policy permits it, and a
+   *  listed tool the policy refuses is drawn as `access.refused` says. Nothing stored is rewritten:
+   *  a starred tool left out keeps its star, and a group's remembered face is kept, for a chart that
+   *  offers them. `features.drawings: false` removes drawing altogether whatever the list says. An
+   *  empty list, a type that names no tool and a repeated type are setup errors thrown from
+   *  `createChart`. */
+  drawingTools?: readonly string[]
   /** Where the drawings are stored: with the chart's own saved content (the default) or in their
    *  own documents through the adapter's drawings family. */
   drawingPersistence?: DrawingPersistenceOptions

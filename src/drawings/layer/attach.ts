@@ -304,6 +304,9 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     changed()
   }
 
+  /** Whether a new drawing may be made as a copy of one of this type. */
+  const copies = (type: string): boolean => options.copies?.(type) ?? true
+
   // ── The gesture context ─────────────────────────────────────────────────────────────────────
   const ctx: GestureContext = {
     chart,
@@ -334,6 +337,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     clearTransients,
     cursorCss: () => (options.pointerSuppressed?.() ? 'none' : cursorCssFor(workflow().cursor, options.ink?.() ?? 'currentColor')),
     lockPointer,
+    copies,
   }
 
   // ── Selection edits ─────────────────────────────────────────────────────────────────────────
@@ -359,7 +363,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   }
 
   const placeCopy = (source: SerializedDrawing): boolean => {
-    if (locked()) return false
+    if (locked() || !copies(source.type)) return false
     const copy = drawingTools.restore({ ...source, id: nextId(), anchors: shiftedAnchors(source.anchors, viewportOf(chart, series)) })
     if (!copy) return false
     stampNewScope(copy, chartId, workflow().syncAcrossPanes)
@@ -552,7 +556,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       if (sel) clipboard = sel.toJSON()
     },
     paste: () => (clipboard ? placeCopy(clipboard) : false),
-    canPaste: () => clipboard !== null && !locked(),
+    canPaste: () => clipboard !== null && !locked() && copies(clipboard.type),
     bringToFront: () => restack('bringToFront'),
     sendToBack: () => restack('sendToBack'),
     bringForward: () => restack('bringForward'),

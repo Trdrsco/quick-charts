@@ -22,6 +22,8 @@ export interface RigOptions {
   symbol?: string
   /** Whether the host has taken the pointer over for a gesture of its own. */
   pointerSuppressed?: () => boolean
+  /** Whether a new drawing may be made as a copy of one of a type. */
+  copies?: (type: string) => boolean
 }
 
 export function rig(options: RigOptions = {}): Rig {
@@ -42,6 +44,7 @@ export function rig(options: RigOptions = {}): Rig {
     ...(options.chartId ? { chartId: options.chartId } : {}),
     ...(options.execute ? { execute: options.execute } : {}),
     ...(options.pointerSuppressed ? { pointerSuppressed: options.pointerSuppressed } : {}),
+    ...(options.copies ? { copies: options.copies } : {}),
     events: {
       onToolChange: (type) => events.tools.push(type),
       onSelectionChange: (id) => events.selections.push(id),

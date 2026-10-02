@@ -100,6 +100,7 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; ui
     ui: resolveUi({ legend: false, contextMenu: false, navigation: false, ...options.ui }, resolveFeatures({ drawings: false, replay: false, sessions: false, ...options.features })),
     compareSymbols: [],
     styles: CHART_STYLES,
+    drawingTools: null,
     timeframes: ALL_TIMEFRAMES_OFFERED,
     indicators: [],
     indicatorCatalog: createIndicatorCatalog(),

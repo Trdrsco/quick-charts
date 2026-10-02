@@ -1047,6 +1047,50 @@ shown only with a layouts store (`saveLoad.layouts`). Without one, its Download 
 the image menu beside Download image and Copy image, the way an export menu offers a chart as a
 picture or as data.
 
+### Offered drawing tools
+
+By default a chart offers every drawing tool. `drawingTools` names the tools you offer, by the type
+`access.drawingTool` and the `tool.<type>` icon ids use: a type `drawingTools.all()` lists (from
+`@trdrs/quickcharts/drawings`), `zoom` or `eraser`. The order you give does not matter, because the
+rail keeps its own groups and sections:
+
+```ts
+import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+// Lines, levels and a ruler: no shapes, patterns, notes or glyphs.
+createChart({ container, datafeed, drawingTools: ['trend_line', 'horizontal_line', 'fib_retracement', 'measure'] })
+
+// A chart whose viewers keep and remove the drawings on it and make nothing new.
+createChart({ container, datafeed, drawingTools: ['eraser'] })
+```
+
+A tool you leave out is not drawn anywhere a tool is chosen: not in its group's flyout, not as a
+group's face, which wears the first tool the group offers, not on the favorites bar, and not on the
+rail for `measure` and `zoom`. A section or group it empties goes with it. The glyph picker's kinds
+are the `emoji`, `sticker` and `icon` tools, so a kind you leave out has no tab, and leaving out all
+three removes the glyph group. Every door that would arm it refuses: `chart.drawings.arm` answers
+`denied`, and `armTool`, `placeImage` and an image pasted over the chart place nothing. A copy is a
+new drawing, so a drawing of a tool you leave out is not copied into another: `chart.drawings.clone`
+and `chart.drawings.paste` are unavailable for it, `clone` and `paste` make nothing, and a
+Control- or Command-drag moves the drawing instead of duplicating it. Copying it to the clipboard is
+not refused, so it pastes on a chart that offers its tool.
+
+Drawings of a tool you leave out that are already on the chart, from a saved chart or layout, a
+drawings document or another host, render and stay fully editable. They select, restyle through the
+selection's settings bar and the settings dialog, lock, hide and delete exactly as any drawing does:
+from the settings bar, the eraser, the remove menu and the Delete key. The eraser is always offered,
+listed or not, because it removes drawings rather than making them, which is why `['eraser']` is the
+way to offer no tool that creates one.
+
+The list composes with your access policy: a tool is offered when you list it and the policy permits
+it, and a listed tool the policy refuses is drawn as `access.refused` says (see Refused controls).
+Nothing stored is rewritten: a starred tool you leave out keeps its star and returns to the favorites
+bar on a chart that offers it, and a group's remembered face is kept the same way.
+`features.drawings: false` removes drawing altogether, whatever the list says. An empty list, a type
+that names no tool and a repeated type are setup errors that `createChart` throws.
+
 ### Events
 
 Typed maps, one per scope. Every subscription returns its unsubscribe and is inert after
@@ -2327,7 +2371,8 @@ through the registry: a control renders disabled while the registry would not ru
 tool or verb your access policy refuses, a selection verb with nothing selected, the Image tool
 without an asset port), and with `access.refused: 'hide'` a tool or verb the policy refuses is left
 out instead (see Refused controls), and a command the policy refuses answers `denied` from the
-toolbar as from anywhere else, including `chart.drawings.arm` for a refused tool. An image is
+toolbar as from anywhere else, including `chart.drawings.arm` for a refused tool. A tool your
+`drawingTools` list leaves out is not on the toolbar at all (see Offered drawing tools). An image is
 placed through `chart.drawings.placeImage`, from the picker or a system-clipboard paste over the
 chart. Every flyout, palette and dialog a surface opens sits inside the chart root and closes with
 it, and the eye and lock all announce their state through a live region. Lock all also makes Paste
@@ -2380,6 +2425,11 @@ const layer = attachDrawings({ chart, series, container, symbol: 'ES' })
 layer.armTool('rectangle')
 layer.destroy()
 ```
+
+A layer you mount yourself arms whatever you arm. Its `copies` option answers whether a new drawing
+may be made as a copy of a drawing of a type: return false for a tool you do not offer, and clone,
+paste and a Control- or Command-drag duplicate make nothing for its drawings, `canPaste` answers
+false, and the drag moves the drawing itself.
 
 ### `@trdrs/quickcharts/drawings`
 
