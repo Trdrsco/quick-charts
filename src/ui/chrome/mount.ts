@@ -41,6 +41,8 @@ import type { OfferedChartStyles } from '../../widget/styles'
 import type { OfferedTimeframes } from '../../widget/timeframes'
 import type { OfferedLayouts } from '../../widget/arrangements'
 import type { OfferedIndicators } from '../../widget/offeredIndicators'
+import type { OfferedRanges } from '../../widget/offeredRanges'
+import type { OfferedTimezones } from '../../widget/offeredTimezones'
 
 export interface ChromeDeps {
   root: HTMLElement
@@ -72,6 +74,10 @@ export interface ChromeDeps {
   access?: AccessPolicy
   /** The built-in indicators the widget offers. */
   builtInIndicators?: OfferedIndicators
+  /** The range presets the widget offers. */
+  ranges?: OfferedRanges
+  /** The display timezones the widget offers. */
+  timezones?: OfferedTimezones
   /** The host's mark painters, passed to every surface that names a market or a source. */
   painters: MarkPainters
   indicatorPicker?: IndicatorPickerSource
@@ -113,7 +119,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   const { root, widget, i18n, features, ui } = deps
   const overlays = h('div', { class: 'qc-overlays' })
   root.appendChild(overlays)
-  const ctx: ChromeContext = { i18n, commands: widget.commands, overlays, widget, icons: deps.icons, styles: deps.styles, timeframes: deps.timeframes, layouts: deps.layouts, access: deps.access, builtInIndicators: deps.builtInIndicators }
+  const ctx: ChromeContext = { i18n, commands: widget.commands, overlays, widget, icons: deps.icons, styles: deps.styles, timeframes: deps.timeframes, layouts: deps.layouts, access: deps.access, builtInIndicators: deps.builtInIndicators, ranges: deps.ranges, timezones: deps.timezones }
   const disposers: (() => void)[] = []
   let disposed = false
   let searchDialog: DialogHandle | null = null

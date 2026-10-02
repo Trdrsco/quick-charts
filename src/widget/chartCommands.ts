@@ -27,7 +27,8 @@ import { offersTimeframe, type OfferedTimeframes } from './timeframes'
 import { REPLAY_SPEEDS } from '../replay'
 import { allowedTimeframes, TIMEFRAME_PRESETS, timeframeLabel } from '../timeframe'
 import { rangeAvailable, RANGE_PRESETS, type RangePreset } from '../ranges'
-import { isTimezoneChoice, TIMEZONES, EXCHANGE_TIMEZONE } from '../timezones'
+import { TIMEZONES, EXCHANGE_TIMEZONE } from '../timezones'
+import { offersTimezone, type OfferedTimezones } from './offeredTimezones'
 
 /** The catalog key each chart style's command wears. */
 const STYLE_LABEL: Record<ChartStyleId, ChartMessageKey> = {
@@ -56,6 +57,12 @@ export interface ChartCommandDeps {
   /** The timeframes the widget offers. A preset left out has no command, and the open-ended setter
    *  refuses a token left out. */
   timeframes: OfferedTimeframes
+  /** The range presets the widget offers. Absent, every preset. A preset left out has no command,
+   *  and the open-ended setter ignores its key. */
+  ranges?: readonly RangePreset[]
+  /** The display timezones the widget offers, or null (or absent) for every choice. A choice left
+   *  out has no command, and the open-ended setter refuses it. */
+  timezones?: OfferedTimezones
   /** Whether the widget offers a definition for adding: false for a built-in the host's list
    *  leaves out. */
   indicatorOffered?(definition: IndicatorInstance['definition']): boolean
@@ -626,11 +633,13 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       if (typeof arg === 'string' && arg && offersTimeframe(deps.timeframes, arg) && servable(arg)) handle.setTimeframe(arg)
     },
   })
-  // One command per range preset. A preset whose span reaches further back than the chart holds is
-  // unavailable rather than framed onto data that is not there.
-  const presetByKey = new Map<string, RangePreset>(RANGE_PRESETS.map((preset) => [preset.key, preset]))
+  // One command per range preset the widget offers, so a preset the host left out is reachable from
+  // no door at all. A preset whose span reaches further back than the chart holds is unavailable
+  // rather than framed onto data that is not there.
+  const offeredRanges = deps.ranges ?? RANGE_PRESETS
+  const presetByKey = new Map<string, RangePreset>(RANGE_PRESETS.filter((preset) => offeredRanges.includes(preset)).map((preset) => [preset.key, preset]))
   const framePreset = (preset: RangePreset): void => deps.frame(preset)
-  for (const preset of RANGE_PRESETS) {
+  for (const preset of presetByKey.values()) {
     add({
       // The preset's key IS its chip's text and stays as written in every language, so it is the
       // command id too; the tooltip's words are the catalog's.
@@ -648,7 +657,8 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     label: 'command.rangeSet',
     available: () => handle.visibleRange() !== null,
     execute: (arg) => {
-      // A preset id frames through the chart's own rule; an explicit window is set as given.
+      // An offered preset's key frames through the chart's own rule, and any other key is ignored;
+      // an explicit window is set as given.
       if (typeof arg === 'string') {
         const preset = presetByKey.get(arg)
         if (preset && rangeAvailable(preset, deps.earliestBar())) framePreset(preset)
@@ -660,7 +670,10 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       }
     },
   })
+  // One command per timezone choice the widget offers, and the open-ended setter refuses the rest.
+  const zoneOffered = (choice: string): boolean => offersTimezone(deps.timezones ?? null, choice)
   for (const zone of TIMEZONES) {
+    if (!zoneOffered(zone.id)) continue
     add({
       id: `chart.timezone.${zone.id}`,
       scope: 'chart',
@@ -670,20 +683,22 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       execute: () => handle.setTimezone(zone.id),
     })
   }
-  add({
-    id: 'chart.timezone.exchange',
-    scope: 'chart',
-    label: 'command.timezoneSet',
-    available: () => handle.timezone() !== EXCHANGE_TIMEZONE,
-    execute: () => handle.setTimezone(EXCHANGE_TIMEZONE),
-  })
+  if (zoneOffered(EXCHANGE_TIMEZONE)) {
+    add({
+      id: 'chart.timezone.exchange',
+      scope: 'chart',
+      label: 'command.timezoneSet',
+      available: () => handle.timezone() !== EXCHANGE_TIMEZONE,
+      execute: () => handle.setTimezone(EXCHANGE_TIMEZONE),
+    })
+  }
   add({
     id: 'chart.timezone.set',
     scope: 'chart',
     label: 'command.timezoneSet',
     available: always,
     execute: (arg) => {
-      if (typeof arg === 'string' && isTimezoneChoice(arg)) handle.setTimezone(arg)
+      if (typeof arg === 'string' && zoneOffered(arg)) handle.setTimezone(arg)
     },
   })
 

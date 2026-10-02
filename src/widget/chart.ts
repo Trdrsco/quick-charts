@@ -58,6 +58,8 @@ import { attachSession } from './session'
 import { attachDrawingsPlane, type ChartDrawingsApi } from './drawings'
 import type { OfferedDrawingTools } from './drawingTools'
 import { indicatorOffered, type OfferedIndicators } from './offeredIndicators'
+import type { OfferedRanges } from './offeredRanges'
+import { offeredTimezone, offersTimezone, type OfferedTimezones } from './offeredTimezones'
 import type { DrawingDocumentApi } from '../drawings/layer/types'
 import type { DrawingDocumentPort } from '../drawings/layer/documents'
 import { attachIndicatorsPlane, type IndicatorCatalog, type IndicatorsPlane } from './indicators'
@@ -79,7 +81,6 @@ import { registerChartCommands } from './chartCommands'
 import { attachCountdown, createCountdownClock, type CountdownLayer } from './countdown'
 import {
   DEFAULT_TIMEZONE,
-  isTimezoneChoice,
   makeCrosshairTimeFormatter,
   makeTickMarkFormatter,
   resolveDisplayTimezone,
@@ -216,7 +217,7 @@ export interface ChartHandle {
    *  follow whatever venue the symbol resolves to. */
   timezone(): string
   /** Set the choice. A value the chart's registry does not carry is refused, because the axis
-   *  formatters could not label a tick with it. */
+   *  formatters could not label a tick with it, and so is one the widget does not offer. */
   setTimezone(choice: string): void
   /** The zone the choice resolves to for the symbol on screen: the chosen IANA id, or the exchange
    *  zone the resolved symbol declared. Null while `exchange` is chosen and no symbol has resolved. */
@@ -325,6 +326,11 @@ export interface ChartInstanceDeps {
   /** The built-in indicators the widget offers, or null (or absent) for every built-in. One left out
    *  is never added; an instance of it already on the chart stays. */
   builtInIndicators?: OfferedIndicators
+  /** The range presets the widget offers, or absent for every preset. One left out has no command. */
+  ranges?: OfferedRanges
+  /** The display timezones the widget offers, or null (or absent) for every choice. A choice outside
+   *  them is never set, and a stored one outside them opens on the first offered. */
+  timezones?: OfferedTimezones
   /** The timeframes the widget offers. A timeframe outside them is never set. */
   timeframes: OfferedTimeframes
   /** The chart resolved a symbol: the widget re-derives its capability plane from it. */
@@ -1756,8 +1762,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       // The CHOICE is what a host sets and what persists: an IANA id, or `exchange` to follow
       // whatever venue the symbol resolves to. A choice outside the chart's registry is refused
       // rather than written, because a zone the formatters cannot honor would silently mislabel
-      // every axis tick.
-      if (disposed || choice === timezoneChoice || !isTimezoneChoice(choice)) return
+      // every axis tick. A choice the widget does not offer is refused the same way.
+      if (disposed || choice === timezoneChoice || !offersTimezone(deps.timezones ?? null, choice)) return
       timezoneChoice = choice
       storage.set(TIMEZONE_KEY, choice)
       applyTimezone()
@@ -1879,6 +1885,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     handle,
     styles: deps.styles,
     timeframes: deps.timeframes,
+    ranges: deps.ranges,
+    timezones: deps.timezones ?? null,
     indicatorOffered: (definition) => indicatorOffered(deps.builtInIndicators ?? null, definition),
     features: deps.features,
     ui: deps.ui,
@@ -1966,10 +1974,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   /** The viewer's timezone choice, or the chart's default. A stored value outside the registry is
-   *  ignored rather than honored: the formatters could not label an axis with it. */
+   *  ignored rather than honored: the formatters could not label an axis with it. One outside the
+   *  zones the widget offers opens on the first offered, and stays stored as it is until the viewer
+   *  chooses, so a chart that offers it again opens on it. */
   function readTimezoneChoice(): string {
-    const stored = storage.get(TIMEZONE_KEY) ?? deps.preferences.timezone
-    return stored && isTimezoneChoice(stored) ? stored : DEFAULT_TIMEZONE
+    return offeredTimezone(storage.get(TIMEZONE_KEY) ?? deps.preferences.timezone, deps.timezones ?? null)
   }
 
   function readSubsession(): ActiveSubsession {

@@ -24,6 +24,8 @@ import { validateAccess } from './access'
 import { resolveOfferedStyles } from './styles'
 import { resolveOfferedDrawingTools } from './drawingTools'
 import { resolveOfferedIndicators } from './offeredIndicators'
+import { resolveOfferedRanges } from './offeredRanges'
+import { resolveOfferedTimezones } from './offeredTimezones'
 import { offeredTimeframe, resolveOfferedTimeframes } from './timeframes'
 import { layoutChoices, openingArrangement, resolveOfferedLayouts } from './arrangements'
 import type { Capabilities, ChartWidgetOptions } from './options'
@@ -151,6 +153,10 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // The built-in indicators likewise, with the instances the host mounts: a list the host got wrong,
   // or a mount instance outside it, is a setup error, never a study quietly dropped.
   const builtInIndicators = resolveOfferedIndicators(options.builtInIndicators, options.indicators)
+  // The range presets and the display timezones likewise: a key or a zone the host got wrong, or
+  // one named twice, is a setup error, never a bottom bar quietly short of what the host meant.
+  const ranges = resolveOfferedRanges(options.ranges)
+  const timezones = resolveOfferedTimezones(options.timezones)
   const ui = resolveUi(options.ui, features, {
     styleCount: styles.list.length,
     timeframeCount: timeframes.list?.length,
@@ -389,6 +395,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           styles: styles.list,
           drawingTools,
           builtInIndicators,
+          ranges,
+          timezones,
           timeframes,
           compares: init?.compares,
           onSymbolInfo: (info) => {
@@ -704,6 +712,8 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     indicatorPicker: options.indicatorPicker,
     access: options.access,
     builtInIndicators,
+    ranges,
+    timezones,
     autosave,
     layoutChanges,
     icons,

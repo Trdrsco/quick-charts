@@ -202,7 +202,7 @@ export interface ChartPreferences {
   style: ChartStyleId
   scaleMode: ScaleMode
   /** The display timezone: an IANA id from the chart's registry, or `exchange` to follow whatever
-   *  venue the symbol resolves to. */
+   *  venue the symbol resolves to. One that `timezones` leaves out opens on the first listed. */
   timezone: string
   /** Which subsession intraday bars are shown for. A symbol with no extended hours has one, so a
    *  stored `extended` on such a symbol falls back rather than filtering to nothing. */
@@ -437,6 +437,35 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  This switch is not `preferences.customTimeframes`, which is the list of custom tokens a
    *  first-run viewer starts with. */
   customTimeframes?: boolean
+  /** The range presets the chart's bottom bar offers, by the key `RANGE_PRESETS` gives each
+   *  (`1D`, `5D`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `5Y`, `All`), in this order. Absent, all nine
+   *  are offered in their own order.
+   *
+   *  A preset left out is not a range of this chart: it has no `chart.range.<key>` command, so no
+   *  menu, shortcut or host control reaches it, `chart.range.set` ignores its key, and the bottom
+   *  bar draws no button for it. An empty list offers no preset: the bottom bar keeps its clock,
+   *  timezone picker and session view, and `chart.range.set` still takes an explicit window.
+   *  `ui.bottomBar: false` removes the whole bar. A preset whose interval `timeframes` leaves out
+   *  reads its span at the nearest coarser timeframe the chart offers. A non-list, a key that names
+   *  no preset and a repeated key are setup errors thrown from `createChart`. */
+  ranges?: readonly string[]
+  /** The display timezones the chart offers: zone ids `TIMEZONES` lists, and `exchange` for the
+   *  charted symbol's own zone. Absent, every zone and the exchange choice are offered. The
+   *  timezone picker keeps its own order (UTC, the exchange choice, then every zone by its current
+   *  offset); the order given decides only which choice is first.
+   *
+   *  A choice left out is not a timezone of this chart: it has no `chart.timezone.<id>` command (or
+   *  `chart.timezone.exchange`), `chart.timezone.set` and `setTimezone` ignore it, and the picker
+   *  lists no row for it. With one choice offered the picker is not shown, since there is nothing to
+   *  choose, and the bottom bar's clock still reads the time in that zone.
+   *
+   *  A chart opens on the viewer's stored choice, else `preferences.timezone`, when the list offers
+   *  it, and otherwise on the FIRST choice listed. A stored choice outside the list is not
+   *  rewritten until the viewer chooses, so a chart that offers it again opens on it. The exported
+   *  registry (`TIMEZONES`, `isTimezoneChoice`, `timezoneListing`) is never filtered. A non-list,
+   *  an empty list, an id that names no zone and a repeated id are setup errors thrown from
+   *  `createChart`. */
+  timezones?: readonly string[]
   /** The multi-chart arrangement. One chart when omitted. */
   layout?: LayoutOptions
   /** The arrangement codes the chart offers (`ARRANGEMENTS`). Absent, all 55 are offered. The

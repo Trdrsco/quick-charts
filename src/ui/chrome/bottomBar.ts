@@ -1,10 +1,13 @@
-// The bottom bar: the nine range presets as chips, the live clock in the display zone, the
-// timezone picker (UTC and the exchange choice pinned first, then every zone by offset), and the
-// session-view picker, offered only for a symbol that trades outside regular hours. Every chip and
-// row is a command, so a preset deeper than the feed's history is disabled rather than sent.
+// The bottom bar: the range presets the widget offers as chips, the live clock in the display zone,
+// the timezone picker (UTC and the exchange choice pinned first, then every zone by offset, each
+// one the widget offers), and the session-view picker, offered only for a symbol that trades
+// outside regular hours. Every chip and row is a command, so a preset deeper than the feed's
+// history is disabled rather than sent. With one timezone offered there is nothing to choose: the
+// clock reads that zone with no picker behind it.
 import { RANGE_PRESETS, rangePresetTip } from '../../ranges'
 import { DEFAULT_SUBSESSION } from '../../sessionModel'
 import { rangeTimeframe } from '../../widget/timeframes'
+import { offersTimezone } from '../../widget/offeredTimezones'
 import { EXCHANGE_TIMEZONE, formatClock, timezoneListing, tzOffsetLabel } from '../../timezones'
 import { activeChart, commandLabel, shows, type ChromeContext } from './context'
 import { button, h, name, replace, setDisabled, stopPointer } from './dom'
@@ -29,13 +32,19 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
   const clock = h('span', { class: 'qc-clock' })
   const offset = h('span', { class: 'qc-clock-offset' })
   const tzTrigger = button({ label: t()('timezone.title'), className: 'qc-toolbar-button qc-tz-trigger', onClick: () => toggleMenu(tzTrigger, openTimezones) })
-  tzTrigger.append(clock, offset)
   tzTrigger.setAttribute('aria-haspopup', 'listbox')
   tzTrigger.setAttribute('aria-expanded', 'false')
+  const zones = deps.timezones ?? null
+  const offeredRanges = deps.ranges ?? RANGE_PRESETS
+  // One offered zone leaves nothing to choose, so the clock stands on its own instead of opening a
+  // picker of one row.
+  const fixedZone = zones !== null && zones.length === 1
+  const clockFace = fixedZone ? h('span', { class: 'qc-tz-clock' }, clock, offset) : tzTrigger
+  if (!fixedZone) tzTrigger.append(clock, offset)
   const sessionTrigger = button({ label: t()('chrome.session'), text: '', className: 'qc-toolbar-button qc-session-trigger', onClick: () => toggleMenu(sessionTrigger, openSessions) })
   sessionTrigger.setAttribute('aria-haspopup', 'menu')
   sessionTrigger.setAttribute('aria-expanded', 'false')
-  element.append(ranges, h('div', { class: 'qc-bottombar-end' }, tzTrigger, sessionTrigger))
+  element.append(ranges, h('div', { class: 'qc-bottombar-end' }, clockFace, sessionTrigger))
   let tzMenu: MenuHandle | null = null
   let sessionMenu: MenuHandle | null = null
 
@@ -73,7 +82,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
   start()
 
   const openTimezones = (): void => {
-    const rows = timezoneListing(t(), { withExchange: true })
+    const rows = timezoneListing(t(), { withExchange: offersTimezone(zones, EXCHANGE_TIMEZONE) }).filter((row) => offersTimezone(zones, row.id))
     const current = activeChart(deps).timezone()
     tzMenu = openMenu({
       host: deps.overlays,
@@ -149,7 +158,7 @@ export function mountBottomBar(deps: ChromeContext): BottomBarHandle {
     const chart = activeChart(deps)
     replace(
       ranges,
-      ...RANGE_PRESETS.filter((preset) => shows(deps, `chart.range.${preset.key}`)).map((preset) => {
+      ...offeredRanges.filter((preset) => shows(deps, `chart.range.${preset.key}`)).map((preset) => {
         const id = `chart.range.${preset.key}`
         const chip = button({ label: rangePresetTip(t(), { ...preset, tf: rangeTimeframe(preset.tf, deps.timeframes) }), text: preset.key, className: 'qc-toolbar-button qc-range-chip', pressed: chart.rangePreset() === preset.key, onClick: () => deps.commands.execute(id) })
         setDisabled(chip, !deps.commands.available(id))
