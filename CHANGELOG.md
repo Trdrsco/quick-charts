@@ -1,5 +1,53 @@
 # @trdrs/quickcharts
 
+## 2.0.0
+
+The names a host writes against are the chart's own words: the stylesheet's cascade layers, the data source a symbol search row names, the timeframe sync switch, the indicator template kind and the drawing toolbar's models. Layouts and drawing preferences that 1.x saved open in 2.0, and the next save writes them under the 2.0 names.
+
+### Upgrading to 2.0
+
+Declare the cascade layers under their 2.0 names in your first stylesheet, before any product stylesheet loads. Layers of your own product go between `quickcharts.chart` and `host`:
+
+```css
+@layer reset, quickcharts.tokens, quickcharts.chart, host;
+```
+
+Then replace each 1.x name with its 2.0 name:
+
+| 1.x | 2.0 |
+| --- | --- |
+| cascade layer `trdrs.tokens` | `quickcharts.tokens` |
+| cascade layer `trdrs.chart` | `quickcharts.chart` |
+| `SymbolRow.provider` | `SymbolRow.dataSource` |
+| `providerMark` on `ChartWidgetOptions` and `SymbolSearchOptions` | `dataSourceMark` |
+| `ProviderMarkPainter`, called with `{ provider, host, size }` | `DataSourceMarkPainter`, called with `{ dataSource, host, size }` |
+| `MarkPainters.provider`, which an extension reads as `ctx.painters.provider` | `MarkPainters.dataSource`, read as `ctx.painters.dataSource` |
+| `LayoutSyncFlags.interval`, in `layout.sync`, `layoutSync`, `widget.layout.sync()`, `widget.layout.setSync` and the `widget.layout.setSync` command | `LayoutSyncFlags.timeframe` |
+| `TemplateKind` `'study'` | `'indicator'` |
+| `RestTemplateKind` `'study'` | `'indicator'` |
+| REST paths `/templates/study` and `/templates/study/{id}` | `/templates/indicator` and `/templates/indicator/{id}` |
+| `info.version` `1` in `dist/rest-openapi.json` | `2` |
+| `RAIL_PLAN` | `DRAWING_TOOLBAR_PLAN` |
+| `buildRailGroups` | `buildDrawingToolbarGroups` |
+| `RailGroup` | `DrawingToolbarGroup` |
+| `RailSection` | `DrawingToolbarSection` |
+| `railFaceOf` | `drawingToolbarFaceOf` |
+| `rememberRailTool` | `rememberDrawingToolbarTool` |
+| `DrawingPreferences.railTools` | `DrawingPreferences.drawingToolbarTools` |
+
+Delete `via` from the rows your feed's `search` returns. A row names the venue its market lists on in `exchange` and where its data comes from in `dataSource`, and its source cell shows the venue, or the data source for a row with no venue, each with the host's mark from `venueMark` or `dataSourceMark`.
+
+A `layoutSync` list that names `interval` is a setup error from `createChart`; name `timeframe`.
+
+What 1.x saved opens in 2.0:
+
+- A saved layout's `interval` sync switch is read as `timeframe`, and the next save of that layout writes `timeframe`.
+- A stored drawing preference record's `railTools` is read as `drawingToolbarTools`, and the next write of the record states `drawingToolbarTools`.
+- Template content carries no kind, so every template loads as saved. A store that keeps templates by kind serves what it holds under `study` as `indicator`: a service behind the REST adapter answers `/templates/indicator`, and a `ChartSaveLoadAdapter` of your own answers `templates('indicator')`.
+- Rows your own `RecentsPort` stored keep the fields they were stored with: map a stored `provider` to `dataSource` as your port reads them back.
+
+The remove control on a comparison's legend row is named Remove comparison.
+
 ## 1.3.0
 
 Hosts choose which chart styles, timeframes, layouts, drawing tools, built-in indicators, range presets and display timezones a chart offers, how the chart presents what the access policy refuses, and can open the timeframe list away from a chart. Every motion value is a theme role. Content already on a chart, or restored to it, stays when the access policy refuses creating it.
