@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// A range load: a range preset that changes the interval reloads the chart, so its span is a
+// A range load: a range preset that changes the timeframe reloads the chart, so its span is a
 // pending intent that frames the load's first paint instead of measuring an empty series.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChart } from '../../src/widget/create'
@@ -59,7 +59,7 @@ function mount(feed: ChartDatafeed, timeframe: string) {
 }
 
 describe('a range preset and the load it may trigger', () => {
-  it('frames a same-interval preset immediately, against the data already on screen', async () => {
+  it('frames a same-timeframe preset immediately, against the data already on screen', async () => {
     const { feed } = framingFeed(async () => ({ bars: series(200, 60), noData: false }))
     const { widget, renderer } = mount(feed, '1m')
     await settle()
@@ -73,7 +73,7 @@ describe('a range preset and the load it may trigger', () => {
     expect(widget.activeChart().rangePreset()).toBeNull()
   })
 
-  it('holds a changed-interval preset until its load paints, then frames the requested span rather than fitting content', async () => {
+  it('holds a changed-timeframe preset until its load paints, then frames the requested span rather than fitting content', async () => {
     const page = deferred<HistoryPage>()
     const { feed, asks } = framingFeed(async (_symbol, tf) => (tf === '1m' ? page.promise : { bars: series(120, 1_800), noData: false }))
     const { widget, renderer } = mount(feed, '30m')
@@ -149,7 +149,7 @@ describe('a range preset and the load it may trigger', () => {
     await settle()
     expect(renderer.logicalWrites).toEqual([])
 
-    // The chart still answers: a later same-interval preset frames what is on screen.
+    // The chart still answers: a later same-timeframe preset frames what is on screen.
     const { feed: served } = framingFeed(async () => ({ bars: series(200, 60), noData: false }))
     const second = mount(served, '1m')
     await settle()
@@ -157,7 +157,7 @@ describe('a range preset and the load it may trigger', () => {
     expect(second.renderer.logicalWrites).toEqual([{ from: 0, to: 203 }])
   })
 
-  it('leaves replay before it frames, so the span belongs to the reloaded interval', async () => {
+  it('leaves replay before it frames, so the span belongs to the reloaded timeframe', async () => {
     const { feed } = framingFeed(async (_symbol, tf) => ({ bars: tf === '1m' ? series(2_000, 60) : series(120, 1_800), noData: false }))
     const { widget, renderer } = mount(feed, '30m')
     await settle()

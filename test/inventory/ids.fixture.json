@@ -459,7 +459,7 @@
       "chart.replay.goLive",
       "chart.replay.pause",
       "chart.replay.play",
-      "chart.replay.setInterval",
+      "chart.replay.setTimeframe",
       "chart.replay.setSpeed",
       "chart.replay.start",
       "chart.replay.startFirst",

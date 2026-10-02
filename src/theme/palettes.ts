@@ -1,21 +1,20 @@
 // The built-in light and dark palettes: the only place in the package where a theme color is
 // written as a literal. Every other module reads a role.
 //
-// These values are the package's own. They were chosen against a measured study of how a complete
-// chart UI has to hold up in both modes, and what that study settled: a light ink of
-// `rgb(15, 15, 15)` and a dark ink of `rgb(219, 219, 219)`, a dark panel ground of
+// These values are the package's own, chosen for a complete chart UI that holds up in both modes:
+// a light ink of `rgb(15, 15, 15)` and a dark ink of `rgb(219, 219, 219)`, a dark panel ground of
 // `rgb(31, 31, 31)`, a 6px panel radius, and floating-surface shadows of
-// `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and `rgba(0, 0, 0, 0.4)` in dark. Evidence informed
-// them; it does not own them, and this file is where they live.
+// `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and `rgba(0, 0, 0, 0.4)` in dark. This file is where
+// they live.
 //
 // Readability is a gate, not a preference. Where a value cannot reach the WCAG 2.2 AA ratio the
 // role's `contrast` rules require, on every ground the recipes draw it over, what stands here is
 // the hue-preserving value that does, and `theme/contrast.test.ts` recomputes every ratio on each
 // run. That is why light `status.positive` is not `rgb(8, 153, 129)`, which reads at 3.57 to 1 on
 // white (dark mode keeps that value, which reads at 4.62 to 1 on the dark panel), and why the muted
-// ink is `#636363` in light and `#9c9c9c` in dark rather than the study's `rgb(140, 140, 140)`,
+// ink is `#636363` in light and `#9c9c9c` in dark rather than a mid grey of `rgb(140, 140, 140)`,
 // which falls short of 4.5 to 1 over the dark selected fill a search or menu row wears. It is also
-// why the dark match highlight is `#5280ff` rather than the study's `#2962ff`, which reads at 3.36
+// why the dark match highlight is `#5280ff` rather than light mode's `#2962ff`, which reads at 3.36
 // to 1 on the dark panel; light mode keeps `#2962ff`, which clears 4.5 to 1 on white. The accent
 // is a mark and never words, and the focus ring keeps its value in each mode. The selected fill is
 // a step of the neutral grey ramp, and the selection tint is a blue at an alpha.

@@ -2,35 +2,35 @@ import { describe, expect, it } from 'vitest'
 import {
   DEFAULT_VISIBILITY,
   normalizeVisibility,
-  parseIntervalContext,
+  parseTimeframeContext,
   visibilityPreset,
   visibleAt,
 } from '../../../src/internal/drawings/core/visibility'
 
-describe('parseIntervalContext — timeframe tokens to buckets', () => {
+describe('parseTimeframeContext — timeframe tokens to buckets', () => {
   it('maps the platform timeframe vocabulary', () => {
-    expect(parseIntervalContext('1t')).toEqual({ bucket: 'ticks', value: 1 })
-    expect(parseIntervalContext('1000t')).toEqual({ bucket: 'ticks', value: 1000 })
-    expect(parseIntervalContext('30s')).toEqual({ bucket: 'seconds', value: 30 })
-    expect(parseIntervalContext('45m')).toEqual({ bucket: 'minutes', value: 45 })
-    expect(parseIntervalContext('4h')).toEqual({ bucket: 'hours', value: 4 })
-    expect(parseIntervalContext('1d')).toEqual({ bucket: 'days', value: 1 })
-    expect(parseIntervalContext('1w')).toEqual({ bucket: 'weeks', value: 1 })
-    expect(parseIntervalContext('3mo')).toEqual({ bucket: 'months', value: 3 })
+    expect(parseTimeframeContext('1t')).toEqual({ bucket: 'ticks', value: 1 })
+    expect(parseTimeframeContext('1000t')).toEqual({ bucket: 'ticks', value: 1000 })
+    expect(parseTimeframeContext('30s')).toEqual({ bucket: 'seconds', value: 30 })
+    expect(parseTimeframeContext('45m')).toEqual({ bucket: 'minutes', value: 45 })
+    expect(parseTimeframeContext('4h')).toEqual({ bucket: 'hours', value: 4 })
+    expect(parseTimeframeContext('1d')).toEqual({ bucket: 'days', value: 1 })
+    expect(parseTimeframeContext('1w')).toEqual({ bucket: 'weeks', value: 1 })
+    expect(parseTimeframeContext('3mo')).toEqual({ bucket: 'months', value: 3 })
   })
 
   it('rolls oversized values into the bucket viewers expect', () => {
-    expect(parseIntervalContext('90m')).toEqual({ bucket: 'hours', value: 1.5 })
-    expect(parseIntervalContext('120s')).toEqual({ bucket: 'minutes', value: 2 })
+    expect(parseTimeframeContext('90m')).toEqual({ bucket: 'hours', value: 1.5 })
+    expect(parseTimeframeContext('120s')).toEqual({ bucket: 'minutes', value: 2 })
   })
 
   it('returns null for unknown tokens (drawings then always show)', () => {
-    expect(parseIntervalContext('')).toBeNull()
-    expect(parseIntervalContext('nonsense')).toBeNull()
+    expect(parseTimeframeContext('')).toBeNull()
+    expect(parseTimeframeContext('nonsense')).toBeNull()
   })
 })
 
-describe('visibleAt — the per-interval rule', () => {
+describe('visibleAt — the per-timeframe rule', () => {
   it('defaults show everywhere', () => {
     expect(visibleAt(DEFAULT_VISIBILITY, { bucket: 'minutes', value: 5 })).toBe(true)
     expect(visibleAt(DEFAULT_VISIBILITY, { bucket: 'ticks', value: 100 })).toBe(true)
@@ -74,7 +74,7 @@ describe('normalizeVisibility — deep copies with defaults', () => {
   })
 })
 
-describe('visibilityPreset — the quick rules against the current interval', () => {
+describe('visibilityPreset — the quick rules against the current timeframe', () => {
   it('"current and above" keeps the current bucket from its value up, coarser buckets whole, finer off', () => {
     const v = visibilityPreset('current-and-above', { bucket: 'minutes', value: 30 })
     expect(v.minutes).toEqual({ on: true, from: 30, to: 59 })
@@ -96,11 +96,11 @@ describe('visibilityPreset — the quick rules against the current interval', ()
   })
 
   it('"current only" pins the bucket value; a fractional context rounds OUTWARD so the chart satisfies its own rule', () => {
-    const v = visibilityPreset('current-only', parseIntervalContext('90m')) // → hours 1.5
+    const v = visibilityPreset('current-only', parseTimeframeContext('90m')) // → hours 1.5
     expect(v.hours).toEqual({ on: true, from: 1, to: 2 })
     expect(v.minutes.on).toBe(false)
     expect(v.days.on).toBe(false)
-    expect(visibleAt(v, parseIntervalContext('90m'))).toBe(true)
+    expect(visibleAt(v, parseTimeframeContext('90m'))).toBe(true)
   })
 
   it('ticks as the current bucket stays on under every rule; "all" and a null context degrade to everything', () => {

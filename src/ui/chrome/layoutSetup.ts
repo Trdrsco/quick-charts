@@ -40,7 +40,7 @@ export function arrangementGlyph(code: string, icons: IconResolver): HTMLElement
 /** The five sync rows: the flag, the row's word, its tooltip, and the switch's own name. */
 const SYNC_ROWS: readonly { key: keyof LayoutSyncFlags; label: ChartMessageKey; tip: ChartMessageKey; toggle: ChartMessageKey }[] = [
   { key: 'symbol', label: 'layouts.syncSymbol', tip: 'layouts.syncSymbolTip', toggle: 'layouts.syncSymbolToggle' },
-  { key: 'timeframe', label: 'layouts.syncInterval', tip: 'layouts.syncIntervalTip', toggle: 'layouts.syncIntervalToggle' },
+  { key: 'timeframe', label: 'layouts.syncTimeframe', tip: 'layouts.syncTimeframeTip', toggle: 'layouts.syncTimeframeToggle' },
   { key: 'crosshair', label: 'layouts.syncCrosshair', tip: 'layouts.syncCrosshairTip', toggle: 'layouts.syncCrosshairToggle' },
   { key: 'time', label: 'layouts.syncTime', tip: 'layouts.syncTimeTip', toggle: 'layouts.syncTimeToggle' },
   { key: 'dateRange', label: 'layouts.syncDateRange', tip: 'layouts.syncDateRangeTip', toggle: 'layouts.syncDateRangeToggle' },

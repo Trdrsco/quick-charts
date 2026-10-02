@@ -76,7 +76,7 @@ export function fakeChart(options: FakeChartOptions = {}) {
     replay: { on: false, playing: false, cursor: 0, total: 0, speed: 10 as ReplaySpeed },
     /** The picker is live: a click on the plot would name the bar replay starts from. */
     arming: false,
-    interval: 'auto',
+    replayTimeframe: 'auto',
     appearance: { appearance: { ...DEFAULT_OVERRIDES.appearance } } as ChartOverrides,
     visible: { from: 0, to: 100 },
     rangePreset: null as string | null,
@@ -267,18 +267,18 @@ export function fakeChart(options: FakeChartOptions = {}) {
         calls.push('replay:goLive')
         events.emit('replay', state.replay)
       },
-      interval: () => state.interval,
+      timeframe: () => state.replayTimeframe,
       // `auto` resolves to a grain, as the real plane's does: the control draws the token, not the
       // mode, so a spec that only set the mode would never see what it renders.
-      resolvedInterval: () => (state.interval === 'auto' ? '15m' : state.interval),
-      setInterval(token) {
-        state.interval = token
-        calls.push(`replay:interval:${token}`)
+      resolvedTimeframe: () => (state.replayTimeframe === 'auto' ? '15m' : state.replayTimeframe),
+      setTimeframe(token) {
+        state.replayTimeframe = token
+        calls.push(`replay:timeframe:${token}`)
         events.emit('replay', state.replay)
       },
       // Grains spanning three UNIT groups, as a real hour chart's do, so a spec sees the rules the
       // menu draws between them.
-      subIntervals: () => ['1s', '1m', '5m', '15m', '1h'],
+      subTimeframes: () => ['1s', '1m', '5m', '15m', '1h'],
       state: () => state.replay,
     },
     history: {

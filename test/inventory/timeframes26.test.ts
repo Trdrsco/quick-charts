@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
-// The 26 preset timeframes as release inventory, with capability-filtered custom intervals beside them.
-// timeframe.test.ts proves the grammar; this file pins the preset
-// registry: the five groups and their tokens, that every token reads, labels and measures through the
-// grammar, that the capability filter keeps or drops each one, and that each preset is a chart command.
+// The 26 preset timeframes as release inventory, with capability-filtered custom timeframes beside
+// them. timeframe.test.ts proves the grammar; this file pins the preset registry: the five groups
+// and their tokens, that every token reads, labels and measures through the grammar, that the
+// capability filter keeps or drops each one, and that each preset is a chart command.
 import { describe, expect, it } from 'vitest'
 import {
   allowedTimeframes,

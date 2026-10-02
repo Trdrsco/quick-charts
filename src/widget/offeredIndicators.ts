@@ -2,8 +2,8 @@
 // the host's list. A built-in outside the offered set stays off this chart: the indicator
 // picker leaves it out, and every door that would add one (the picker, `chart.indicators.add`,
 // `indicators.add` and `indicators.set` on a chart handle, a new pane copying the first one's
-// studies) refuses. Instances of it already on the chart are untouched: they render, edit, hide and
-// remove exactly as any other instance does, and a saved chart, a layout or an undo step that
+// indicators) refuses. Instances of it already on the chart are untouched: they render, edit, hide
+// and remove exactly as any other instance does, and a saved chart, a layout or an undo step that
 // carries one puts it back. A definition is matched by its `manifest.id`, the id `access.indicator`
 // receives; a definition whose id names no built-in is the host's own and is never filtered.
 import { BUILT_IN_INDICATORS } from '../builtInIndicators'

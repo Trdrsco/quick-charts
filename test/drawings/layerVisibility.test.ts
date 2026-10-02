@@ -111,7 +111,7 @@ describe('a hidden drawing through the session', () => {
     expect(visibility(b)).toEqual([true])
   })
 
-  it('keeps the eye and the interval visibility apart from one drawing being hidden', () => {
+  it('keeps the eye and the timeframe visibility apart from one drawing being hidden', () => {
     const r = make()
     r.handle.armTool('rectangle')
     drag(r.container, [10, 10], [100, 100])

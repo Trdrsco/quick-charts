@@ -21,7 +21,7 @@ export const FLYOUT_WIDTH = {
   session: 176,
   /** The replay row's starting-point choices, opening upward. */
   replayStart: 177,
-  /** The replay row's update-interval list. The speed list opens at the same width and grows to fit
-   *  its rates. */
-  replayInterval: 196,
+  /** The replay row's update-timeframe list. The speed list opens at the same width and grows to
+   *  fit its rates. */
+  replayTimeframe: 196,
 } as const

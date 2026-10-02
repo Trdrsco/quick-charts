@@ -169,7 +169,7 @@ export function createDocuments(deps: DocumentsDeps): Documents {
 
   /** Replace what this layer draws and keep everything else exactly as the document states it.
    *
-   *  The kept rows are the point: a study pane's drawing, another chart's row inside a shared
+   *  The kept rows are the point: an indicator pane's drawing, another chart's row inside a shared
    *  document, a row this build cannot read, and a row whose group was deleted are all live
    *  entries this layer never had on screen. Dropping them here would bury them, because a save
    *  states the whole document and every id it no longer lists is a deletion. So they are carried

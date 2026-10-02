@@ -71,17 +71,17 @@ export const layouts = {
   'layouts.arrangement': 'Chart arrangement',
   'layouts.syncInLayout': 'Sync in layout',
   'layouts.syncSymbol': 'Symbol',
-  'layouts.syncInterval': 'Interval',
+  'layouts.syncTimeframe': 'Timeframe',
   'layouts.syncCrosshair': 'Crosshair',
   'layouts.syncTime': 'Time',
   'layouts.syncDateRange': 'Date range',
   'layouts.syncSymbolTip': 'Symbol changes on all charts within the layout',
-  'layouts.syncIntervalTip': 'Interval changes on all charts within the layout',
+  'layouts.syncTimeframeTip': 'Timeframe changes on all charts within the layout',
   'layouts.syncCrosshairTip': 'Crosshair is synced across all charts within the layout',
   'layouts.syncTimeTip': 'When a chart is clicked, all charts within the layout display the same point of time',
   'layouts.syncDateRangeTip': 'Date range changes on all charts within the layout',
   'layouts.syncSymbolToggle': 'Sync symbol',
-  'layouts.syncIntervalToggle': 'Sync interval',
+  'layouts.syncTimeframeToggle': 'Sync timeframe',
   'layouts.syncCrosshairToggle': 'Sync crosshair',
   'layouts.syncTimeToggle': 'Sync time',
   'layouts.syncDateRangeToggle': 'Sync date range',
@@ -120,9 +120,9 @@ export const layouts = {
   'layouts.loading': 'Loading',
   'layouts.emptyNone': 'No saved layouts yet.',
   'layouts.openLayoutRow': 'Open layout…',
-  /** A saved layout's second line: the market and interval its active chart showed at the last save,
-   *  written as the toolbar writes them (`BTCUSDC`, `1h`). */
-  'layouts.listingFacts': '{symbol}, {interval}',
+  /** A saved layout's second line: the market and timeframe its active chart showed at the last
+   *  save, written as the toolbar writes them (`BTCUSDC`, `1h`). */
+  'layouts.listingFacts': '{symbol}, {timeframe}',
   /** A saved layout's line in the Layouts dialog: what it shows, then when it was last saved. */
   'layouts.listingDated': '{facts} ({date})',
   // The Layouts dialog.

@@ -276,7 +276,7 @@ describe('the sync switches a widget offers', () => {
   it('leave the others at the host value: hidden, refused by setSync, and not moved by a saved layout', async () => {
     const saved = await savedFour()
     const { widget, container } = mount({ layoutSync: ['symbol', 'timeframe'], layout: { arrangement: '2h', sync: { time: true } } })
-    expect(setupMenu(container).switches).toEqual(['Sync symbol', 'Sync interval'])
+    expect(setupMenu(container).switches).toEqual(['Sync symbol', 'Sync timeframe'])
     widget.layout.setSync({ time: false, crosshair: true })
     expect(widget.layout.sync()).toEqual({ symbol: false, timeframe: false, crosshair: false, time: true, dateRange: false })
     expect(widget.commands.execute('widget.layout.setSync', { symbol: true, time: false }).kind).toBe('ok')

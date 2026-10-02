@@ -97,7 +97,7 @@ describe('the saved indicator schema', () => {
     ['array inputs', [{ id: 'x', definition: 'sma', inputs: [] }]],
     ['non-finite input', [{ id: 'x', definition: 'sma', inputs: { length: null } }]],
     ['non-string title', [{ id: 'x', definition: 'sma', title: null }]],
-    ['context-dependent color', [{ id: 'x', definition: 'sma', color: 'var(--study)' }]],
+    ['context-dependent color', [{ id: 'x', definition: 'sma', color: 'var(--indicator)' }]],
     ['null overrides', [{ id: 'x', definition: 'sma', overrides: null }]],
     ['unknown override', [{ id: 'x', definition: 'sma', overrides: { obsolete: true } }]],
     ['non-record plots', [{ id: 'x', definition: 'sma', overrides: { plots: [] } }]],
@@ -120,8 +120,8 @@ describe('the saved indicator schema', () => {
   it('runs no compatibility reader below the one format that has stored charts in the wild', () => {
     expect(() => parseChartContent(JSON.stringify({ v: 2, symbol: 'ES', tf: '5m', hidden: [] }))).toThrow(/unsupported chart content version 2/)
     // The one exception is the format whose appearance was the RESOLVED tree: those charts exist in
-    // stores, and they read back with no studies and no appearance rather than freezing at the look
-    // they were drawn in.
+    // stores, and they read back with no indicators and no appearance rather than freezing at the
+    // look they were drawn in.
     const old = parseChartContent(JSON.stringify({ v: 3, symbol: 'ES', tf: '5m', hidden: [], appearance: { upColor: '#26a69a' } }))
     expect(old.indicators).toEqual([])
     expect(old.appearance).toBeUndefined()
@@ -320,7 +320,7 @@ function mountWidget(options: {
 }
 
 describe('chart and layout persistence', () => {
-  it('a chart load replaces mount defaults and restores Volume like any other study', () => {
+  it('a chart load replaces mount defaults and restores Volume like any other indicator', () => {
     const { chart } = mountWidget({ indicators: [{ id: 'seed', definition: builtIn('sma') }] })
     chart.saveLoad.restore(serializeChartContent(contentOf([])))
     expect(chart.indicators.get()).toEqual([])

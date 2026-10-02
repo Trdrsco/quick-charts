@@ -228,7 +228,7 @@ describe('the offered-timeframe rules', () => {
     expect(offeredTimeframe('7m', resolveOfferedTimeframes(undefined, undefined))).toBe('7m')
   })
 
-  it('map a range preset interval to the nearest coarser offered one, else the largest', () => {
+  it('map a range preset timeframe to the nearest coarser offered one, else the largest', () => {
     expect(rangeTimeframe('1m', listed)).toBe('5m')
     expect(rangeTimeframe('2h', listed)).toBe('1d')
     expect(rangeTimeframe('1mo', listed)).toBe('1d')

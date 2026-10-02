@@ -3,7 +3,7 @@ import { COLLAPSED_H, isCollapsed, MAIN_MIN_H, planPaneOp, type PaneState } from
 
 // The chart's height is fixed by its container, so every plan must CONSERVE the total: a plan that
 // hands the renderer a different sum makes it redistribute on its own, which is how pane sizing
-// drifts a few px per op until a study pane silently vanishes.
+// drifts a few px per op until an indicator pane silently vanishes.
 const sum = (h: Record<number, number>) => Object.values(h).reduce((s, v) => s + v, 0)
 const applied = (state: PaneState, apply: Record<number, number>) => ({ ...state.heights, ...apply })
 

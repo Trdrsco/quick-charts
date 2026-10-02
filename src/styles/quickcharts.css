@@ -251,8 +251,8 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* A hidden study keeps its ink and stands the WHOLE row back, controls included, so the row reads
- * as switched off rather than as a different kind of row. */
+/* A hidden indicator keeps its ink and stands the WHOLE row back, controls included, so the row
+ * reads as switched off rather than as a different kind of row. */
 [data-qc-theme] .qc-legend-row[data-qc-hidden='true'] {
   opacity: 0.5;
 }
@@ -472,7 +472,7 @@
 }
 
 /* The market and its facts stand as one 24px band, in the legend's ink at a size up from the
- * chrome's: the mark, the name 4px past it, then the interval and the venue, each in a 12px cell
+ * chrome's: the mark, the name 4px past it, then the timeframe and the venue, each in a 12px cell
  * that carries its separating dot. The reading beside it wraps whole to its own line, so the two
  * are separate hover targets and only the band under the pointer takes the chip. */
 [data-qc-theme] .qc-legend-identity {
@@ -542,7 +542,8 @@
   background: var(--qc-state-pressed);
 }
 
-/* The interval and the venue, each behind its own separator dot, in the name's own ink and size. */
+/* The timeframe and the venue, each behind its own separator dot, in the name's own ink and
+ * size. */
 [data-qc-theme] .qc-legend-fact {
   white-space: nowrap;
 }
@@ -605,8 +606,8 @@
 
 /* Step 3: a slim pane sheds the venue and its separator, in the header and in every market row
  * under it — one answer for the whole legend, because a row that kept its venue while the header
- * above it dropped one would read as two different markets. The interval stays, because one chart
- * of a layout has nowhere else to say what interval it is on. */
+ * above it dropped one would read as two different markets. The timeframe stays, because one chart
+ * of a layout has nowhere else to say what timeframe it is on. */
 [data-qc-theme] .qc-legend[data-qc-slim='true'] [data-role='legend-exchange'],
 [data-qc-theme] .qc-legend[data-qc-slim='true'] [data-role='legend-exchange-sep'],
 [data-qc-theme] .qc-legend[data-qc-slim='true'] .qc-legend-row-venue {
@@ -678,7 +679,7 @@
   opacity: 1;
 }
 
-/* A hidden study says so whether or not the pointer is on it, so its eye stands on its own. */
+/* A hidden indicator says so whether or not the pointer is on it, so its eye stands on its own. */
 [data-qc-theme] .qc-legend-row[data-qc-hidden='true'] .qc-legend-eye {
   opacity: 1;
 }
@@ -697,8 +698,8 @@
   margin-inline: -4px;
   padding-inline: 4px;
   color: var(--qc-text-primary);
-  /* The study rows are their own stack over the plot, not part of the header band, so they take the
-   * ordinary weight rather than the header's. */
+  /* The indicator rows are their own stack over the plot, not part of the header band, so they take
+   * the ordinary weight rather than the header's. */
   font-weight: 400;
   border-radius: 4px;
   pointer-events: auto;
@@ -812,7 +813,7 @@
   height: 18px;
 }
 
-/* The rows' own toggler, standing under the stack. It carries the study/compare rows away and
+/* The rows' own toggler, standing under the stack. It carries the indicator/compare rows away and
  * leaves the identity and the reading in place. Its box is set here, AFTER the shared action
  * recipe, because it is the one action that is not a row control and does not take that geometry. */
 [data-qc-theme] .qc-legend-collapse {

@@ -1,4 +1,4 @@
-// Folding a feed's own bars into a coarser interval it does not serve.
+// Folding a feed's own bars into a coarser timeframe it does not serve.
 //
 // A feed answers the grains its venue records. A chart may want one it does not: a venue that keeps
 // 15-minute bars records every 45-minute bar too, just not under that name. Folding is exact, so

@@ -47,7 +47,7 @@ interface Entry {
   shapeKey: string
 }
 
-/** The symbol's price format, as a study scale falls back to it when the manifest declares no
+/** The symbol's price format, as an indicator scale falls back to it when the manifest declares no
  *  precision: the formatter writes the scale labels, `minMove` is the symbol's smallest move, and
  *  `key` changes whenever either does so the scale re-applies. */
 export interface SymbolPriceFormat {
@@ -78,8 +78,8 @@ export function attachIndicators(
   chart: IChartApi,
   options?: {
     candles?: () => ISeriesApi<'Candlestick'> | null
-    /** The symbol's price format for studies that declare no precision. A host that supplies none
-     *  leaves those scales on the library's own default formatting. */
+    /** The symbol's price format for indicators that declare no precision. A host that supplies
+     *  none leaves those scales on the library's own default formatting. */
     symbolPriceFormat?: () => SymbolPriceFormat
     /** The undirected ink a level line takes when the manifest declares no color of its own. Read
      *  live, so a theme switch repaints the levels with everything else; the built-in dark palette's
@@ -198,7 +198,7 @@ function shapeKeyOf(built: IndicatorPlots): string {
  *  series, and wire the fill/shade painters. Overlays use the main pane (0); a pane-placed group
  *  gets a fresh pane appended at the bottom (every plot in the group shares it). */
 function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): Entry {
-  const paneIndex = built.placement === 'pane' ? studyPaneIndex(chart) : 0
+  const paneIndex = built.placement === 'pane' ? indicatorPaneIndex(chart) : 0
   // "Labels on price scale" (the standard output toggle, default ON): each visible value-carrying
   // plot shows its last value on the scale. Marker anchors never label.
   const labels = built.display?.labelsOnPriceScale !== false
@@ -360,8 +360,8 @@ function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: Sym
     }
     entry.priceLines = createLevels(host, built.levels ?? [], neutral)
   }
-  // A manifest precision is the study's own declaration; without one the plots are values on the
-  // symbol's price grid and take the symbol formatter, never a fixed decimal count.
+  // A manifest precision is the indicator's own declaration; without one the plots are values on
+  // the symbol's price grid and take the symbol formatter, never a fixed decimal count.
   const precision = built.precision ?? null
   const precisionKey = precision !== null ? `manifest:${precision}` : symbolFormat ? `symbol:${symbolFormat.key}` : null
   if (precisionKey !== entry.precisionKey) {
@@ -431,18 +431,18 @@ function safeRemove(chart: IChartApi, series: Series): void {
   }
 }
 
-/** Where the next pane-placed study goes.
+/** Where the next pane-placed indicator goes.
  *
  *  The bottom of the chart, but "the bottom" has to be counted from a pane list that holds only
  *  panes something is actually using. A pane nobody has swept is indistinguishable from a real one
- *  in the count, so every study after it is placed one pane too low and the renderer divides the
- *  chart's height by one more than it should: the study lands in the last pane, squeezed toward
- *  the minimum, while an empty pane keeps its share of the height. Nothing errors, so the symptom
- *  reaches a viewer as a legend row offering to restore a pane nobody collapsed.
+ *  in the count, so every indicator after it is placed one pane too low and the renderer divides
+ *  the chart's height by one more than it should: the indicator lands in the last pane, squeezed
+ *  toward the minimum, while an empty pane keeps its share of the height. Nothing errors, so the
+ *  symptom reaches a viewer as a legend row offering to restore a pane nobody collapsed.
  *
  *  Sweeping first makes the count mean what it is read as. It costs one pass over the panes and it
  *  is the only place the index is decided, so no caller has to remember to do it. */
-function studyPaneIndex(chart: IChartApi): number {
+function indicatorPaneIndex(chart: IChartApi): number {
   sweepEmptyPanes(chart)
   return chart.panes().length
 }

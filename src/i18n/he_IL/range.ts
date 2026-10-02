@@ -11,7 +11,7 @@ export const range: Translation<typeof source> = {
   'range.oneYear': '1 שנה',
   'range.fiveYears': '5 שנים',
   'range.all': 'כל הנתונים',
-  'range.tip': '{range} · נרות של {interval}',
+  'range.tip': '{range} · נרות של {timeframe}',
   'range.zoomIn': 'זום פנימה',
   'range.zoomOut': 'זום החוצה',
   'range.scrollLeft': 'גלילה שמאלה',

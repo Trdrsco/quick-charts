@@ -3,7 +3,7 @@
 // toolbar, favorites bar and settings bar in a chrome box, the standing preferences behind them,
 // and every verb reached through the real command registry with the chart's own registrations.
 // What is pinned is the wiring: a toolbar press changes the preference the chart persists, the
-// eye blanks drawings and studies, a refused command is refused from the glass, and the keyboard
+// eye blanks drawings and indicators, a refused command is refused from the glass, and the keyboard
 // goes through the same door.
 import { CHART_STYLES } from '../../src/widget/styles'
 import { ALL_TIMEFRAMES_OFFERED } from '../../src/widget/timeframes'
@@ -169,7 +169,7 @@ describe('the plane through the registry', () => {
     expect(chrome.querySelector<HTMLElement>('[data-role="drawing-settings-bar"]')!.hidden).toBe(false)
   })
 
-  it('the eye blanks drawings, then studies, then both, and the settings bar follows the selection', () => {
+  it('the eye blanks drawings, then indicators, then both, and the settings bar follows the selection', () => {
     const { chrome, plane, indicatorsHidden, gestures, run } = make()
     run('chart.drawings.arm', 'rectangle')
     drag(gestures, [10, 10], [100, 100])

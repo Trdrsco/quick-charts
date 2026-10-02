@@ -7,7 +7,7 @@ function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
 }
 
-/** Vertical lines repeating rightward at the interval the two anchors span. */
+/** Vertical lines repeating rightward at the span between the two anchors. */
 export class CyclicLines extends Drawing {
   readonly type = 'cyclic_lines'
 

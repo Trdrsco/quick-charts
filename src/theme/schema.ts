@@ -63,9 +63,9 @@ export const THEME_ROLES = [
   { id: 'canvas.paneBorder', family: 'canvas', kind: 'color', description: 'The divider between stacked panes and around the plot area.' },
 
   // ── series: direction, before any chart appearance override ─────────────────────────────────
-  { id: 'series.up', family: 'series', kind: 'color', description: 'A rising value: up volume, a rising study tint, a positive series default.' },
-  { id: 'series.down', family: 'series', kind: 'color', description: 'A falling value: down volume, a falling study tint, a negative series default.' },
-  { id: 'series.neutral', family: 'series', kind: 'color', description: 'A series or level with no direction, such as a study level line.' },
+  { id: 'series.up', family: 'series', kind: 'color', description: 'A rising value: up volume, a rising indicator tint, a positive series default.' },
+  { id: 'series.down', family: 'series', kind: 'color', description: 'A falling value: down volume, a falling indicator tint, a negative series default.' },
+  { id: 'series.neutral', family: 'series', kind: 'color', description: 'A series or level with no direction, such as an indicator level line.' },
 
   // ── scale: grid, axes, crosshair, and session shading ───────────────────────────────────────
   { id: 'scale.grid', family: 'scale', kind: 'color', description: 'The grid lines drawn across the plot area.' },

@@ -10,7 +10,7 @@
 // settings bar render from the layer rather than from state of their own.
 import type { Time } from 'lightweight-charts'
 import { bundledGlyphSource } from '../emoji'
-import { DrawingManager, parseIntervalContext, restoreDrawings, viewportOf, visibilityPreset } from '../../internal/drawings/index'
+import { DrawingManager, parseTimeframeContext, restoreDrawings, viewportOf, visibilityPreset } from '../../internal/drawings/index'
 import type { IDrawing, SerializedDrawing, SourceBar } from '../../internal/drawings/index'
 import type { ResourceRef } from '../../resources'
 import { drawingTools } from '../tools'
@@ -110,7 +110,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   const manager = new DrawingManager()
   manager.setGlyphSource(options.glyphSource ?? bundledGlyphSource)
   manager.attach(chart, series)
-  manager.setIntervalContext(parseIntervalContext(options.timeframe ?? ''))
+  manager.setTimeframeContext(parseTimeframeContext(options.timeframe ?? ''))
 
   // Data feed for data-driven drawings, memoized by (length, last bar time) so live ticks refresh
   // it without rebuilding the array on every paint.
@@ -577,7 +577,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     setVisibilityPreset(preset) {
       const sel = selection()
       if (!sel) return
-      sel.updateOptions({ visibility: visibilityPreset(preset, parseIntervalContext(timeframe)) })
+      sel.updateOptions({ visibility: visibilityPreset(preset, parseTimeframeContext(timeframe)) })
       persist()
       changed()
     },
@@ -644,7 +644,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     },
     setTimeframe(tf) {
       timeframe = tf
-      manager.setIntervalContext(parseIntervalContext(tf))
+      manager.setTimeframeContext(parseTimeframeContext(tf))
     },
     setTick: (tick) => manager.setTickSize(tick),
     setPriceFormatter: (format) => manager.setPriceFormatter(format),

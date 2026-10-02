@@ -173,9 +173,10 @@ export interface ChartExtensionHideLayerHandle {
   remove(): void
 }
 
-/** Asked on every raise, so rows can depend on the level that was pressed. Returning an empty list
- *  contributes nothing and costs nothing. */
-export type ChartExtensionMenuProvider = (context: ChartExtensionMenuContext) => readonly ChartExtensionMenuItem[]
+/** Builds an extension's context menu rows. The chart calls it on every raise with that moment's
+ *  context, so the rows can depend on the level that was pressed. An empty list contributes nothing
+ *  and costs nothing. */
+export type ChartExtensionMenuBuilder = (context: ChartExtensionMenuContext) => readonly ChartExtensionMenuItem[]
 
 /** A named action an extension offers the host. The minimal shape: an id, a label, whether it can
  *  run now, and how to run it. */
@@ -232,7 +233,7 @@ export interface ChartExtensionContext {
   onActiveChange(callback: (active: boolean) => void): () => void
   /** The chart is going away. Fires before the handle's own `detach()`. */
   onDispose(callback: () => void): () => void
-  contributeContextMenu(provider: ChartExtensionMenuProvider): () => void
+  contributeContextMenu(build: ChartExtensionMenuBuilder): () => void
   contributeCommands(commands: readonly ChartExtensionCommand[]): () => void
   contributeHideLayer(layer: ChartExtensionHideLayer): ChartExtensionHideLayerHandle
 }
@@ -339,7 +340,7 @@ interface Attached {
   /** Flipped at detach: every context method reads it and stands down. */
   live: boolean
   lanes: Lanes
-  menuProviders: Set<ChartExtensionMenuProvider>
+  menuBuilders: Set<ChartExtensionMenuBuilder>
   /** The layers this extension offered the eye, by id. */
   hideLayers: Map<string, ChartExtensionHideLayer>
   /** The unregister the chart's command registry answered for each command this extension
@@ -438,7 +439,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       }
     }
     clearLanes(record.lanes)
-    record.menuProviders.clear()
+    record.menuBuilders.clear()
     if (record.hideLayers.size) {
       record.hideLayers.clear()
       notifyHideLayers()
@@ -468,7 +469,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       handle: { detach: () => {} },
       live: true,
       lanes: newLanes(),
-      menuProviders: new Set(),
+      menuBuilders: new Set(),
       hideLayers: new Map(),
       commands: new Map(),
       priceLines: new Set(),
@@ -556,11 +557,11 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
           record.lanes.dispose.delete(callback)
         }
       },
-      contributeContextMenu(provider) {
+      contributeContextMenu(build) {
         if (!record.live) return () => {}
-        record.menuProviders.add(provider)
+        record.menuBuilders.add(build)
         return () => {
-          record.menuProviders.delete(provider)
+          record.menuBuilders.delete(build)
         }
       },
       contributeCommands(commands) {
@@ -666,11 +667,11 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       if (!hostLive) return []
       const rows: ChartExtensionMenuItem[] = []
       for (const record of liveRecords()) {
-        for (const provider of [...record.menuProviders]) {
+        for (const build of [...record.menuBuilders]) {
           try {
-            rows.push(...provider(context))
+            rows.push(...build(context))
           } catch {
-            /* a provider that throws contributes nothing, and the menu still opens */
+            /* a builder that throws contributes nothing, and the menu still opens */
           }
         }
       }

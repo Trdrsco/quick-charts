@@ -29,7 +29,7 @@ const CATALOG: readonly CatalogRow[] = [
 /** The smallest price move a row's format declares: the grid its deterministic closes land on. */
 const tickOf = (row: CatalogRow): number => row.format.minmov / row.format.pricescale
 
-/** The intervals this feed serves, as wire tokens, and their bucket length in seconds. */
+/** The timeframes this feed serves, as wire tokens, and their bucket length in seconds. */
 const RESOLUTIONS: Readonly<Record<string, number>> = { '1m': 60, '5m': 300, '15m': 900, '1h': 3600, '4h': 14400, '1d': 86400 }
 
 /** Feed inception: no bar exists before this bucket, so a countBack that reaches past it is the
@@ -69,14 +69,14 @@ const bucketOf = (t: number, step: number): number => Math.floor((t - ORIGIN) / 
 
 export interface MemoryDatafeedOptions {
   /** Milliseconds between live updates; 0 disables the timer (snapshots still arrive). */
-  liveIntervalMs?: number
+  liveTickMs?: number
   /** The clock, for tests that pin time. Epoch seconds. */
   now?: () => number
 }
 
 export function memoryDatafeed(options: MemoryDatafeedOptions = {}): ChartDatafeed {
   const now = options.now ?? (() => Math.floor(Date.now() / 1000))
-  const liveIntervalMs = options.liveIntervalMs ?? 1000
+  const liveTickMs = options.liveTickMs ?? 1000
   const rowOf = (symbol: string): CatalogRow | null => CATALOG.find((r) => r.symbol === symbol.toUpperCase()) ?? null
   const stepOf = (tf: string): number => {
     const step = RESOLUTIONS[tf]
@@ -146,7 +146,7 @@ export function memoryDatafeed(options: MemoryDatafeedOptions = {}): ChartDatafe
       for (let i = Math.max(0, last - 49); i <= last; i++) snapshot.push(barAt(row, step, i))
       handlers.onBars({ kind: 'snapshot', bars: snapshot })
       handlers.onStatus?.('live')
-      if (liveIntervalMs <= 0) return () => undefined
+      if (liveTickMs <= 0) return () => undefined
       let tick = 0
       const timer = setInterval(() => {
         tick += 1
@@ -157,7 +157,7 @@ export function memoryDatafeed(options: MemoryDatafeedOptions = {}): ChartDatafe
         const wobble = ((hash(row.symbol, i * 31 + tick) - 0.5) * (bar.h - bar.l)) / 2
         const c = Math.round((bar.c + wobble) / tickOf(row)) * tickOf(row)
         handlers.onBars({ kind: 'bar', bar: { ...bar, c, h: Math.max(bar.h, c), l: Math.min(bar.l, c) } })
-      }, liveIntervalMs)
+      }, liveTickMs)
       return () => clearInterval(timer)
     },
 

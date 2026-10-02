@@ -60,10 +60,10 @@ const SORT_LABEL = {
   'modified-desc': 'layouts.sortModifiedDesc',
 } as const satisfies Record<LayoutSort, string>
 
-/** What a saved layout shows: the market and interval its active chart showed when it was last
+/** What a saved layout shows: the market and timeframe its active chart showed when it was last
  *  saved, as the toolbar wrote them, or null where its store kept neither. */
 export function listingFacts(t: ChartTranslate, row: LayoutMeta): string | null {
-  return row.symbol ? (row.timeframe ? t('layouts.listingFacts', { symbol: row.symbol, interval: timeframeChipLabel(row.timeframe) }) : row.symbol) : null
+  return row.symbol ? (row.timeframe ? t('layouts.listingFacts', { symbol: row.symbol, timeframe: timeframeChipLabel(row.timeframe) }) : row.symbol) : null
 }
 
 export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {

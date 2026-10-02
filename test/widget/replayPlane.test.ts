@@ -7,7 +7,7 @@ import { tfSeconds } from '../../src/replay'
 const bar = (t: number, c = 100): FeedBar => ({ t, o: c, h: c + 1, l: c - 1, c, v: 10 })
 const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve() }
 
-function fixture(initialTimeframe = '1h', served: readonly string[] | null = null, initialInterval = 'auto') {
+function fixture(initialTimeframe = '1h', served: readonly string[] | null = null, initialGrain = 'auto') {
   // Bars spaced by the timeframe's own seconds, so a fixture reads the same at any grain.
   const step = tfSeconds(initialTimeframe) || 3600
   const bars = Array.from({ length: 10 }, (_, i) => bar(i * step, 100 + i))
@@ -31,7 +31,7 @@ function fixture(initialTimeframe = '1h', served: readonly string[] | null = nul
     symbol: () => symbol, timeframe: () => timeframe, bars: () => bars,
     paint, clearSlice: vi.fn(), visible: () => true, enabled: true,
     disposed: () => disposed, setHeader: vi.fn(), setCrosshair: crosshair, resolutions: () => served, persist: vi.fn(), onChange: change,
-    initialSpeed: 10, initialInterval,
+    initialSpeed: 10, initialGrain,
   }
   const plane = attachReplayPlane(deps)
   const resolve = (index: number) => {
@@ -43,7 +43,7 @@ function fixture(initialTimeframe = '1h', served: readonly string[] | null = nul
 }
 
 describe('replay finer-history ownership', () => {
-  /** A session ASKING for a finer grain. Auto is the chart's own interval, which advances whole
+  /** A session ASKING for a finer grain. Auto is the chart's own timeframe, which advances whole
    *  bars and fetches nothing, so a spec about finer HISTORY has to name the grain it wants. */
   const forming = (): ReturnType<typeof fixture> => fixture('1h', null, '15m')
 
@@ -51,8 +51,8 @@ describe('replay finer-history ownership', () => {
     // The FINEST rung on the ladder offers only ITSELF, which means whole-bar updates. There is
     // nothing to fetch, so the step never crosses an async boundary.
     const f = fixture('1s')
-    expect(f.plane.api.subIntervals()).toEqual(['1s'])
-    expect(f.plane.api.resolvedInterval()).toBe('1s')
+    expect(f.plane.api.subTimeframes()).toEqual(['1s'])
+    expect(f.plane.api.resolvedTimeframe()).toBe('1s')
     f.plane.api.start(f.bars[2]!.t)
     f.paint.mockClear()
     f.plane.api.stepForward()
@@ -70,7 +70,7 @@ describe('replay finer-history ownership', () => {
       expect(f.requests).toHaveLength(1)
       switch (transition) {
         case 'rewind': f.plane.api.stepBack(); break
-        case 'grain': f.plane.api.setInterval('5m'); break
+        case 'grain': f.plane.api.setTimeframe('5m'); break
         case 'live': f.plane.api.goLive(); break
         case 'restart': f.plane.api.exit(); f.plane.api.start(18000); break
         case 'destroy': f.plane.destroy(); break
@@ -134,10 +134,10 @@ describe('replay finer-history ownership', () => {
     f.plane.destroy()
   })
 
-  it('does not invalidate a current request for an unsupported interval', async () => {
+  it('does not invalidate a current request for an unsupported timeframe', async () => {
     const f = forming()
     f.plane.api.start(7200); f.plane.api.stepForward()
-    f.plane.api.setInterval('4h')
+    f.plane.api.setTimeframe('4h')
     f.paint.mockClear()
     f.resolve(0); await flush()
     expect(f.paint).toHaveBeenCalledTimes(1)
@@ -182,7 +182,7 @@ describe('replay finer-history ownership', () => {
     f.plane.api.stepForward()
     const parentTime = f.requests[0]!.from
     expect(f.plane.api.state().cursor).toBe(paintedCursor)
-    if (transition === 'grain') f.plane.api.setInterval('5m')
+    if (transition === 'grain') f.plane.api.setTimeframe('5m')
     else f.plane.absorb({ kind: 'snapshot', bars: f.bars.map((b) => ({ ...b, c: b.c + 10 })) })
     f.resolve(0); await flush()
     expect(f.plane.api.state().cursor).toBe(paintedCursor)
@@ -194,10 +194,10 @@ describe('replay finer-history ownership', () => {
     f.plane.destroy()
   })
 
-  it('keeps pending history when selecting the current interval', async () => {
+  it('keeps pending history when selecting the current timeframe', async () => {
     const f = forming()
     f.plane.api.start(7200); f.plane.api.stepForward()
-    f.plane.api.setInterval('15m') // the one it is already on: no change, so nothing to invalidate
+    f.plane.api.setTimeframe('15m') // the one it is already on: no change, so nothing to invalidate
     f.paint.mockClear()
     f.resolve(0); await flush()
     expect(f.paint).toHaveBeenCalledTimes(1)
@@ -276,11 +276,11 @@ describe('the replay phases', () => {
   })
 
   it('offers only the grains the FEED serves, and never fetches one it does not', () => {
-    // A feed serving minutes and nothing finer leaves a minute chart with only its OWN interval, so
-    // updates advance whole bars rather than spending a request per step to be told no.
+    // A feed serving minutes and nothing finer leaves a minute chart with only its OWN timeframe,
+    // so updates advance whole bars rather than spending a request per step to be told no.
     const f = fixture('1m', ['1m', '5m'])
-    expect(f.plane.api.subIntervals()).toEqual(['1m'])
-    expect(f.plane.api.resolvedInterval()).toBe('1m')
+    expect(f.plane.api.subTimeframes()).toEqual(['1m'])
+    expect(f.plane.api.resolvedTimeframe()).toBe('1m')
     f.plane.api.start(f.bars[2]!.t)
     f.plane.api.stepForward()
     expect(f.requests).toHaveLength(0)
@@ -288,22 +288,22 @@ describe('the replay phases', () => {
 
     // The same chart on a feed that serves seconds can form from them.
     const g = fixture('1m', ['1s', '1m'])
-    expect(g.plane.api.subIntervals()).toEqual(['1s', '1m'])
-    g.plane.api.setInterval('1s')
-    expect(g.plane.api.resolvedInterval()).toBe('1s')
+    expect(g.plane.api.subTimeframes()).toEqual(['1s', '1m'])
+    g.plane.api.setTimeframe('1s')
+    expect(g.plane.api.resolvedTimeframe()).toBe('1s')
     f.plane.destroy()
     g.plane.destroy()
   })
 
-  it('takes the chart\'s own interval as auto, and a finer grain only when asked', () => {
+  it('takes the chart\'s own timeframe as auto, and a finer grain only when asked', () => {
     const f = fixture('1m')
-    expect(f.plane.api.subIntervals()).toEqual(['1s', '1m'])
+    expect(f.plane.api.subTimeframes()).toEqual(['1s', '1m'])
     // Auto is the coarsest on offer, which is the chart's own: whole-bar updates until asked
     // otherwise.
-    expect(f.plane.api.interval()).toBe('auto')
-    expect(f.plane.api.resolvedInterval()).toBe('1m')
-    f.plane.api.setInterval('1s')
-    expect(f.plane.api.resolvedInterval()).toBe('1s')
+    expect(f.plane.api.timeframe()).toBe('auto')
+    expect(f.plane.api.resolvedTimeframe()).toBe('1m')
+    f.plane.api.setTimeframe('1s')
+    expect(f.plane.api.resolvedTimeframe()).toBe('1s')
     f.plane.destroy()
   })
 

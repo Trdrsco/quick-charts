@@ -1,6 +1,6 @@
 /* The settings field primitives: rows, checkbox rows, selects, number fields with their steppers,
  * swatches and the palette, the custom color panel, the opacity slider, line-end pickers, the
- * dialog tab strip and the interval-visibility rows. Every color a control paints with is either
+ * dialog tab strip and the timeframe-visibility rows. Every color a control paints with is either
  * a generated custom property or the drawing's own value, carried in `--qcd-swatch`. */
 
 [data-qc-theme] .qc-drawing-row {

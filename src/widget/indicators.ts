@@ -43,7 +43,8 @@ export function indicatorMarkOf(inst: IndicatorInstance, t: ChartTranslate): str
 }
 
 /** The compact input readout that follows the mark, e.g. "(2, Close)". An enum resolves its index to
- *  its own option, title-cased; a number prints as it stands. Empty when the study takes no input. */
+ *  its own option, title-cased; a number prints as it stands. Empty when the indicator takes no
+ *  input. */
 export function indicatorInputsOf(inst: IndicatorInstance): string {
   const inputs = inst.definition.manifest.inputs
   if (!inputs) return ''
@@ -59,7 +60,8 @@ export function indicatorInputsOf(inst: IndicatorInstance): string {
 }
 
 /** The color a saved per-type default pinned on the primary plot, if it pinned one. A pinned color
- *  is the viewer's own standing choice for that study, so it wins and consumes no palette slot. */
+ *  is the viewer's own standing choice for that indicator, so it wins and consumes no palette
+ *  slot. */
 function pinnedColor(instance: IndicatorInstance): string | undefined {
   const primary = Object.keys(instance.definition.manifest.plots)[0]
   return primary ? instance.overrides?.plots?.[primary]?.color : undefined
@@ -146,7 +148,8 @@ export function collapsedReadings(
 
 /** Live ticks arrive many times a second, and a full recompute per tick multiplies by every
  *  configured instance. Structural paints recompute immediately; the MID-BAR tick path is capped
- *  at this interval, with a trailing run so the final tick of a burst still lands. */
+ *  at one recompute per this many milliseconds, with a trailing run so the final tick of a burst
+ *  still lands. */
 const TICK_CAP_MS = 1000
 
 /** The indicator plane over one chart. */
@@ -181,7 +184,7 @@ export interface IndicatorsPlane {
   /** Record what a pane command did, which is what makes a row read collapsed. The widget calls
    *  this as it applies a collapse, restore or maximize; heights alone never decide. */
   setPaneCollapsed(paneIndex: number, collapsed: boolean): void
-  /** The drawing toolbar's eye: blank every study for the session without touching the hidden
+  /** The drawing toolbar's eye: blank every indicator for the session without touching the hidden
    *  set the save blob carries. */
   setAllHidden(hidden: boolean): void
   allHidden(): boolean
@@ -200,9 +203,10 @@ export interface IndicatorsPlane {
 
 export interface IndicatorsDeps {
   chart: IChartApi
-  /** The main series when it is candle-shaped, so a study that recolors bar bodies can reach it.
-   *  Null under a bar, line, area, baseline or step-line style: those have no body to recolor, and
-   *  answering with a series that cannot take the paint would be worse than answering with none. */
+  /** The main series when it is candle-shaped, so an indicator that recolors bar bodies can reach
+   *  it. Null under a bar, line, area, baseline or step-line style: those have no body to recolor,
+   *  and answering with a series that cannot take the paint would be worse than answering with
+   *  none. */
   candleSeries(): ISeriesApi<'Candlestick'> | null
   bars(): readonly FeedBar[]
   i18n: ChartI18n
@@ -212,7 +216,7 @@ export interface IndicatorsDeps {
   formatKey(): string
   /** The smallest move the symbol's format declares. */
   minMove(): number
-  /** The theme in effect: a study with no declared color takes the neutral series ink. */
+  /** The theme in effect: an indicator with no declared color takes the neutral series ink. */
   canvas(): CanvasTheme
   access?: AccessPolicy
   /** The built-in indicators the host offers, or null (or absent) for every built-in. */
@@ -249,7 +253,7 @@ export function createIndicatorCatalog(): IndicatorCatalog {
 
 export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   let instances: IndicatorInstance[] = []
-  /** The eye's blanket over every study: view state, never persisted. */
+  /** The eye's blanket over every indicator: view state, never persisted. */
   let allHidden = false
   let chips: LegendChip[] = []
   /** Each drawn instance's first plot, kept so a hovered reading is a lookup rather than a second
@@ -257,9 +261,9 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   let readings = new Map<string, { data: readonly unknown[]; precision?: number }>()
   let lastRecompute = 0
   let trailer: ReturnType<typeof setTimeout> | null = null
-  /** The study identities this widget's own collapse and maximize commands put at the floor. This is
-   *  the authority on what is collapsed; heights only corroborate. Per chart and in memory: a
-   *  collapsed pane is a viewing posture, and nothing in the save blob carries it. */
+  /** The indicator identities this widget's own collapse and maximize commands put at the floor.
+   *  This is the authority on what is collapsed; heights only corroborate. Per chart and in memory:
+   *  a collapsed pane is a viewing posture, and nothing in the save blob carries it. */
   const commandedIds = new Set<string>()
   /** Consecutive readings at the floor, per row, for a collapse nobody commanded. */
   let floorStreaks: Record<string, number> = {}
@@ -281,7 +285,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
 
   const renderer = attachIndicators(deps.chart, {
     candles: deps.candleSeries,
-    // A study that declares no precision writes its scale through the symbol formatter, so a
+    // An indicator that declares no precision writes its scale through the symbol formatter, so a
     // moving average on a Treasury reads in thirty-seconds like the bars beside it.
     symbolPriceFormat: () => ({ key: deps.formatKey(), formatter: (price) => deps.formatter().format(price), minMove: deps.minMove() }),
     neutral: () => deps.canvas().neutral,
@@ -435,8 +439,8 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       const statusLine = built.display?.valuesInStatusLine !== false
       nextReadings.set(inst.id, { data: statusLine ? data : [], ...(precision != null ? { precision } : {}) })
       const value = statusLine ? latestPlotValue(data) : null
-      // A study that declares its precision writes its row at that precision; one that does not is
-      // a value on the symbol's own price grid and writes through the symbol formatter.
+      // An indicator that declares its precision writes its row at that precision; one that does
+      // not is a value on the symbol's own price grid and writes through the symbol formatter.
       next.push({ ...base, value: value == null ? null : precision != null ? createPriceFormatter({ pricescale: 10 ** precision, minmov: 1 }, { locale: deps.i18n.tag() }).format(value) : formatter.format(value), hidden: false })
     }
     chips = next

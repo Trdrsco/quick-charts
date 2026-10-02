@@ -70,7 +70,7 @@ function fakeChart() {
       if (i >= 0) series.splice(i, 1)
     },
     applyOptions: (o: Record<string, unknown>) => void chartOptions.push(o),
-    panes: () => [{}, {}], // pane 0 (price) + pane 1 (an existing study pane)
+    panes: () => [{}, {}], // pane 0 (price) + pane 1 (an existing indicator pane)
   }
   return { chart: chart as unknown as IChartApi, series, chartOptions }
 }

@@ -18,10 +18,10 @@ export interface Timeframe {
   readonly unit: TimeframeUnit
 }
 
-/** Every unit, smallest first: the custom-interval picker's unit rows and the sort order. */
+/** Every unit, smallest first: the custom-timeframe picker's unit rows and the sort order. */
 export const TIMEFRAME_UNITS: readonly TimeframeUnit[] = ['t', 's', 'm', 'h', 'd', 'w', 'mo']
 
-/** The inclusive per-unit count ceiling. A token past it parses as null, so a custom-interval
+/** The inclusive per-unit count ceiling. A token past it parses as null, so a custom-timeframe
  *  input disables Add and a feed is never asked for it. */
 export const TIMEFRAME_MAX: Readonly<Record<TimeframeUnit, number>> = { t: 1000, s: 3600, m: 1440, h: 168, d: 365, w: 52, mo: 120 }
 
@@ -68,7 +68,7 @@ export function timeframeSeconds(tf: Timeframe): number {
 }
 
 /** True for a sub-daily token (ticks, seconds, minutes, hours). Session bands and the
- *  regular-hours filter engage on intraday intervals only, because a daily or larger bar spans
+ *  regular-hours filter engage on intraday timeframes only, because a daily or larger bar spans
  *  whole sessions. A token the grammar cannot read is NOT intraday: mis-shading a chart is worse
  *  than not shading it. */
 export function isIntradayTimeframe(token: string): boolean {
@@ -116,11 +116,11 @@ export const TIMEFRAME_PRESETS: readonly TimeframeGroup[] = [
   { unit: 'd', tokens: ['1d', '1w', '1mo', '3mo', '6mo', '12mo'] },
 ]
 
-/** Every preset token across the groups. A custom interval that already exists as a preset is
+/** Every preset token across the groups. A custom timeframe that already exists as a preset is
  *  refused rather than listed twice. */
 export const TIMEFRAME_PRESET_TOKENS: ReadonlySet<string> = new Set(TIMEFRAME_PRESETS.flatMap((g) => g.tokens))
 
-/** The unit's own name in the chart catalog: a picker group's heading and the custom-interval
+/** The unit's own name in the chart catalog: a picker group's heading and the custom-timeframe
  *  unit rows. */
 export const TIMEFRAME_UNIT_NAME: Readonly<Record<TimeframeUnit, ChartMessageKey>> = {
   t: 'timeframe.unitTicks',
@@ -153,8 +153,8 @@ export function timeframeLabel(t: ChartTranslate, token: string): string {
   return t(TIMEFRAME_COUNT_NAME[tf.unit], { count: tf.count })
 }
 
-/** What a symbol and its feed declare about the intervals they serve. Both lists are optional and
- *  an EMPTY list is no restriction: a feed or symbol that serves any interval says nothing rather
+/** What a symbol and its feed declare about the timeframes they serve. Both lists are optional and
+ *  an EMPTY list is no restriction: a feed or symbol that serves any timeframe says nothing rather
  *  than listing everything. `supportedResolutions` is the symbol's own list (`SymbolInfo`);
  *  `resolutions` is the feed-level list (`DatafeedConfig`). A token must pass every list given. */
 export interface TimeframeRestrictions {

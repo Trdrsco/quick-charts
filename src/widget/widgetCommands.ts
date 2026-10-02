@@ -314,13 +314,13 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
       await deps.removeLayout({ id: ref.id, revision: ref.revision })
     },
   })
-  /** A new layout by the name it is given: one chart on the market and interval the active chart
-   *  shows, with none of the open layout's studies, comparisons, authored look or extension state,
-   *  saved as a layout of its own. Drawings kept beside the chart in their own documents stay with
-   *  their market; drawings kept in the chart's content start empty. The binding detaches FIRST, so
-   *  nothing written to the tiles on the way can land on the layout that was open. Where the widget
-   *  does not offer the single chart, the layout opens on the arrangement a one-chart layout falls
-   *  back to, its other panes cloning the new chart. */
+  /** A new layout by the name it is given: one chart on the market and timeframe the active chart
+   *  shows, with none of the open layout's indicators, comparisons, authored look or extension
+   *  state, saved as a layout of its own. Drawings kept beside the chart in their own documents
+   *  stay with their market; drawings kept in the chart's content start empty. The binding detaches
+   *  FIRST, so nothing written to the tiles on the way can land on the layout that was open. Where
+   *  the widget does not offer the single chart, the layout opens on the arrangement a one-chart
+   *  layout falls back to, its other panes cloning the new chart. */
   const create = async (name: string): Promise<void> => {
     const content = JSON.parse(widget.activeChart().saveLoad.serialize().content) as Record<string, unknown>
     const fresh = JSON.stringify({ ...content, indicators: [], compares: [], appearance: {}, ext: {}, ...('drawings' in content ? { drawings: [] } : {}) })

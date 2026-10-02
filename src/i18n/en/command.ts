@@ -82,7 +82,7 @@ export const command = {
   'command.drawingBringForward': 'Bring drawing forward',
   'command.drawingSendBackward': 'Send drawing backward',
   'command.drawingHideSelected': 'Hide drawing',
-  'command.drawingVisibility': 'Drawing visibility on intervals',
+  'command.drawingVisibility': 'Drawing visibility on timeframes',
   'command.drawingSettings': 'Drawing settings',
   'command.drawingCommitEdit': 'Apply drawing settings',
   'command.drawingPlaceImage': 'Place image',
@@ -109,7 +109,7 @@ export const command = {
   'command.replayStepBack': 'Step back',
   'command.replayGoLive': 'Replay to the live edge',
   'command.replaySpeed': 'Replay speed',
-  'command.replayInterval': 'Replay update interval',
+  'command.replayTimeframe': 'Replay update timeframe',
 
   'command.timeframeSet': 'Timeframe',
   /** Which subsession intraday bars are shown for. A symbol with no extended hours offers only

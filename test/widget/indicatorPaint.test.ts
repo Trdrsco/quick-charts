@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-// The default study color. Minting is the ONE moment a color is dealt: the palette rotates so two
-// studies added one after another never share a hue, and a restore, a hide, a theme change or a
-// recompute carries whatever the instances already hold. An explicit color and a pinned saved
+// The default indicator color. Minting is the ONE moment a color is dealt: the palette rotates so
+// two indicators added one after another never share a hue, and a restore, a hide, a theme change
+// or a recompute carries whatever the instances already hold. An explicit color and a pinned saved
 // default both win and take no slot.
 import { describe, expect, it } from 'vitest'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
@@ -36,7 +36,7 @@ function indicatorPlane(canvasNeutral = '#888') {
 
 const colorsOf = (plane: ReturnType<typeof indicatorPlane>['plane']): (string | undefined)[] => plane.list().map((i) => i.color)
 
-describe('the default study color', () => {
+describe('the default indicator color', () => {
   it('deals successive palette colors to repeated adds and wraps after ten', () => {
     const { plane } = indicatorPlane()
     for (let index = 0; index < 11; index++) {
@@ -75,7 +75,7 @@ describe('the default study color', () => {
     plane.destroy()
   })
 
-  it('does not recolor a study on hide, show or a theme change', () => {
+  it('does not recolor an indicator on hide, show or a theme change', () => {
     const { plane, retheme } = indicatorPlane()
     plane.add({ id: 'sma-1', definition: builtIn('sma') })
     plane.add({ id: 'ema-1', definition: builtIn('ema') })

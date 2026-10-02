@@ -41,7 +41,7 @@ export class FillBetweenPrimitive implements ISeriesPrimitive<Time> {
   private lower: readonly PlotPoint[] = []
   private colors: readonly (string | null)[] | undefined
   /** Nothing until the first `setData`, which every render path makes before a draw. A tint chosen
-   *  here would be a second study default with no owner. */
+   *  here would be a second indicator default with no owner. */
   private color = 'transparent'
 
   attached(param: SeriesAttachedParameter<Time>): void {

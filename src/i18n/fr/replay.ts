@@ -34,9 +34,9 @@ export const replay: Translation<typeof source> = {
   'replay.speed': 'Replay speed',
   'replay.updatesPerSecond': { one: '{count} update per second', many: '{count} updates per second', other: '{count} updates per second' },
   'replay.oneUpdatePerSeconds': { one: '1 update per {count} second', many: '1 update per {count} seconds', other: '1 update per {count} seconds' },
-  'replay.interval': 'Update interval',
-  'replay.intervalHelp': 'How much time each replay update advances. Finer than the chart interval, each bar forms from real finer bars.',
-  'replay.intervalNone': 'No finer interval for this chart interval',
+  'replay.timeframe': 'Update timeframe',
+  'replay.timeframeHelp': 'How much time each replay update advances. Finer than the chart timeframe, each bar forms from real finer bars.',
+  'replay.timeframeNone': 'No finer timeframe for this chart timeframe',
   'replay.auto': 'Auto',
-  'replay.autoSelectInterval': 'Auto select interval',
+  'replay.autoSelectTimeframe': 'Auto select timeframe',
 }

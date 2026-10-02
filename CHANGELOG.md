@@ -2,7 +2,9 @@
 
 ## 2.0.0
 
-The names a host writes against are the chart's own words: the stylesheet's cascade layers, the data source a symbol search row names, the timeframe sync switch, the indicator template kind and the drawing toolbar's models. Layouts and drawing preferences that 1.x saved open in 2.0, and the next save writes them under the 2.0 names.
+A major version may rename or remove public names, and its upgrading guide lists each one, old to new, with how saved state carries over. 2.0 names everything a host writes against in the chart's own words: the stylesheet's cascade layers, the data source a symbol search row names, timeframe for every timeframe, indicator for every indicator, the drawing toolbar's models and the context menu's row builder. What 1.x saved opens in 2.0, and the next save writes it under the 2.0 names.
+
+Every modal dialog opens and closes with the modal motion, as the symbol search and chart settings do: the indicator browser, the indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and every drawing dialog (drawing settings, the image picker and the template prompts) fade their backdrop in and fade and scale their box from `motion.scaleEnter` over `motion.durationBase`. A closing dialog stops taking input and returns focus at once, and under a reduced-motion preference it closes at once.
 
 ### Upgrading to 2.0
 
@@ -23,10 +25,24 @@ Then replace each 1.x name with its 2.0 name:
 | `ProviderMarkPainter`, called with `{ provider, host, size }` | `DataSourceMarkPainter`, called with `{ dataSource, host, size }` |
 | `MarkPainters.provider`, which an extension reads as `ctx.painters.provider` | `MarkPainters.dataSource`, read as `ctx.painters.dataSource` |
 | `LayoutSyncFlags.interval`, in `layout.sync`, `layoutSync`, `widget.layout.sync()`, `widget.layout.setSync` and the `widget.layout.setSync` command | `LayoutSyncFlags.timeframe` |
+| `ChartReplayApi.interval()` | `ChartReplayApi.timeframe()` |
+| `ChartReplayApi.setInterval(token)` | `ChartReplayApi.setTimeframe(token)` |
+| `ChartReplayApi.resolvedInterval()` | `ChartReplayApi.resolvedTimeframe()` |
+| `ChartReplayApi.subIntervals()` | `ChartReplayApi.subTimeframes()` |
+| command `chart.replay.setInterval` | `chart.replay.setTimeframe` |
+| `ChartPreferences.replayInterval` | `ChartPreferences.replayTimeframe` |
+| `autoIntervalFor` | `autoTimeframeFor` |
+| `subIntervalsFor` | `subTimeframesFor` |
+| `IntervalVisibility` | `TimeframeVisibility` |
+| `IntervalBucket` | `TimeframeBucket` |
+| `IntervalContext` | `TimeframeContext` |
+| `parseIntervalContext` | `parseTimeframeContext` |
+| `IDrawing.setIntervalContext(context)` | `IDrawing.setTimeframeContext(context)` |
 | `TemplateKind` `'study'` | `'indicator'` |
 | `RestTemplateKind` `'study'` | `'indicator'` |
 | REST paths `/templates/study` and `/templates/study/{id}` | `/templates/indicator` and `/templates/indicator/{id}` |
 | `info.version` `1` in `dist/rest-openapi.json` | `2` |
+| `data-role="legend-study-value"` on an indicator row's value | `data-role="legend-indicator-value"` |
 | `RAIL_PLAN` | `DRAWING_TOOLBAR_PLAN` |
 | `buildRailGroups` | `buildDrawingToolbarGroups` |
 | `RailGroup` | `DrawingToolbarGroup` |
@@ -34,6 +50,25 @@ Then replace each 1.x name with its 2.0 name:
 | `railFaceOf` | `drawingToolbarFaceOf` |
 | `rememberRailTool` | `rememberDrawingToolbarTool` |
 | `DrawingPreferences.railTools` | `DrawingPreferences.drawingToolbarTools` |
+| `ChartExtensionMenuProvider`, which `contributeContextMenu` takes | `ChartExtensionMenuBuilder` |
+
+A dictionary of your own (`ChartCustomLocale`, `ChartDictionary`) uses the 2.0 catalog keys and placeholders:
+
+| 1.x | 2.0 |
+| --- | --- |
+| `layouts.syncInterval` | `layouts.syncTimeframe` |
+| `layouts.syncIntervalTip` | `layouts.syncTimeframeTip` |
+| `layouts.syncIntervalToggle` | `layouts.syncTimeframeToggle` |
+| `replay.interval` | `replay.timeframe` |
+| `replay.intervalHelp` | `replay.timeframeHelp` |
+| `replay.intervalNone` | `replay.timeframeNone` |
+| `replay.autoSelectInterval` | `replay.autoSelectTimeframe` |
+| `command.replayInterval` | `command.replayTimeframe` |
+| `drawing.visibilityOnIntervals` | `drawing.visibilityOnTimeframes` |
+| `drawing.intervalPinnedNote` | `drawing.timeframePinnedNote` |
+| `{interval}` in `range.tip` and `layouts.listingFacts` | `{timeframe}` |
+
+Every English string about a timeframe says timeframe, and each language writes its own word for timeframe in the layout sync switch. `legend.showRows` and `legend.hideRows` read Show indicator rows and Hide indicator rows in every language, and the remove control on a comparison's legend row is named Remove comparison.
 
 Delete `via` from the rows your feed's `search` returns. A row names the venue its market lists on in `exchange` and where its data comes from in `dataSource`, and its source cell shows the venue, or the data source for a row with no venue, each with the host's mark from `venueMark` or `dataSourceMark`.
 
@@ -43,12 +78,10 @@ What 1.x saved opens in 2.0:
 
 - A saved layout's `interval` sync switch is read as `timeframe`, and the next save of that layout writes `timeframe`.
 - A stored drawing preference record's `railTools` is read as `drawingToolbarTools`, and the next write of the record states `drawingToolbarTools`.
+- The replay update timeframe a viewer picked, stored under `quickcharts.replayIv.v1`, is read where `quickcharts.replayTf.v1` holds nothing, and the next pick is written under `quickcharts.replayTf.v1`.
+- A drawing's per-timeframe visibility is stored by bucket (`ticks`, `seconds`, `minutes`, `hours`, `days`, `weeks`, `months`) and loads as saved.
 - Template content carries no kind, so every template loads as saved. A store that keeps templates by kind serves what it holds under `study` as `indicator`: a service behind the REST adapter answers `/templates/indicator`, and a `ChartSaveLoadAdapter` of your own answers `templates('indicator')`.
 - Rows your own `RecentsPort` stored keep the fields they were stored with: map a stored `provider` to `dataSource` as your port reads them back.
-
-The remove control on a comparison's legend row is named Remove comparison.
-
-Every modal dialog opens and closes with the modal motion, as the symbol search and chart settings do: the indicator browser, the indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and every drawing dialog (drawing settings, the image picker and the template prompts) fade their backdrop in and fade and scale their box from `motion.scaleEnter` over `motion.durationBase`. A closing dialog stops taking input and returns focus at once, and under a reduced-motion preference it closes at once.
 
 ## 1.3.0
 

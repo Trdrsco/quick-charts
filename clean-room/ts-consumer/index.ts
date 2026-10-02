@@ -59,7 +59,7 @@ export function mountChart(el: HTMLElement): ChartWidget {
 // the server clock, and a save/load round trip. Not executed here (node has no DOM for the
 // widget; the render smoke covers it), but every call below must type-check as a consumer's would.
 export async function exerciseFakes(): Promise<void> {
-  const feed = memoryDatafeed({ liveIntervalMs: 0, now: () => 1_700_000_000 + 3600 * 24 })
+  const feed = memoryDatafeed({ liveTickMs: 0, now: () => 1_700_000_000 + 3600 * 24 })
   const config = await feed.config?.()
   if (!config?.resolutions?.includes('5m')) throw new Error('the fake feed must serve 5m')
   const info = await feed.resolve('ESZ2026')

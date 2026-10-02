@@ -24,17 +24,17 @@ function mount(options: Partial<ChartWidgetOptions> = {}) {
 describe('the real widget owns one indicator picker', () => {
   it('opens a declared host collection directly and falls back safely for an unknown collection', async () => {
     const list = vi.fn(async (_request: { collection: string }) => ({ kind: 'ok' as const, items: [] }))
-    const { widget } = mount({ indicatorPicker: { collections: [{ id: 'saved', label: 'Saved studies' }], list, act: async () => ({ kind: 'ok' }) } })
+    const { widget } = mount({ indicatorPicker: { collections: [{ id: 'saved', label: 'Saved indicators' }], list, act: async () => ({ kind: 'ok' }) } })
     widget.commands.execute('chart.indicators.open', { collection: 'saved' })
     await vi.waitFor(() => expect(list).toHaveBeenCalled())
     expect(list.mock.calls[0]?.[0]).toMatchObject({ collection: 'saved' })
-    expect(document.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).toContain('Saved studies')
+    expect(document.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).toContain('Saved indicators')
     document.querySelector<HTMLButtonElement>('.qc-dialog-close')!.click()
     // Asked again while the first is still leaving, the browser opens a fresh one at once.
     widget.commands.execute('chart.indicators.open', { collection: 'missing' })
     const open = document.querySelectorAll('.qc-dialog-scrim[data-state="open"] .qc-picker-dialog')
     expect(open).toHaveLength(1)
-    expect(open[0]!.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).not.toContain('Saved studies')
+    expect(open[0]!.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).not.toContain('Saved indicators')
   })
   it('shares the toolbar and command modal, rereads the active pane on each Add, and keeps replay bounded', async () => {
     const { widget, container } = mount()

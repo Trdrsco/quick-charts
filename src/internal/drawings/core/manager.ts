@@ -13,7 +13,7 @@ import type {
 } from './types'
 import type { AnyDrawing } from './drawing'
 import { viewportOf } from './drawing'
-import type { IntervalContext } from './visibility'
+import type { TimeframeContext } from './visibility'
 import type { BarSource } from './bars'
 
 /**
@@ -28,7 +28,7 @@ export class DrawingManager {
   private _selectedId: string | null = null
   private _chart: IChartApi | null = null
   private _series: ISeriesApi<SeriesType> | null = null
-  private _intervalContext: IntervalContext = null
+  private _timeframeContext: TimeframeContext = null
   private _allHidden = false
   private _barSource: BarSource | null = null
   private _tickSize: number | null = null
@@ -62,10 +62,10 @@ export class DrawingManager {
     for (const drawing of this._drawings.values()) drawing.setGlyphSource(source)
   }
 
-  /** Broadcast the chart's interval so per-interval visibility rules apply. */
-  setIntervalContext(context: IntervalContext): void {
-    this._intervalContext = context
-    for (const drawing of this._drawings.values()) drawing.setIntervalContext(context)
+  /** Broadcast the chart's timeframe so per-timeframe visibility rules apply. */
+  setTimeframeContext(context: TimeframeContext): void {
+    this._timeframeContext = context
+    for (const drawing of this._drawings.values()) drawing.setTimeframeContext(context)
   }
 
   /** Chart-wide hide-all: every drawing (and its axis pills) disappears until toggled back. */
@@ -113,7 +113,7 @@ export class DrawingManager {
     // Every IDrawing is a Drawing subclass (the registry only makes those); the store needs the
     // class type because attaching requires the series-primitive surface.
     const concrete = drawing as AnyDrawing
-    concrete.setIntervalContext(this._intervalContext)
+    concrete.setTimeframeContext(this._timeframeContext)
     concrete.setGlobalHidden(this._allHidden)
     concrete.setBarSource(this._barSource)
     concrete.setTickSize(this._tickSize)

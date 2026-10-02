@@ -174,8 +174,8 @@ export const feed: ChartDatafeed = {
 ```
 
 Declare only what is **true**. Absent method / absent field / empty list = unconstrained, so a feed that
-serves any interval must not declare a finite `resolutions` list, because the widget then enforces it.
-The UDF adapter declares automatically from the server's own `/config` (and only ever declares
+serves any timeframe must not declare a finite `resolutions` list, because the widget then enforces
+it. The UDF adapter declares automatically from the server's own `/config` (and only ever declares
 timeframes it would actually serve).
 
 ## The UDF on-ramp
@@ -212,9 +212,10 @@ What the adapter honors of the protocol:
 Symbology is the set of display facts that decide how a market's prices are written. Your datafeed
 owns them (`resolve` answers with `SymbolInfo`), and one package formatter uses them everywhere a
 price appears: the price scale, the crosshair and last-price labels, the legend, the context menu,
-every drawing label, study scales, and the extension seam. Precision comes from the symbol, never
-from the size of the price, so the same market reads at the same width on every surface. A study
-that declares its own precision keeps it; every other value writes through the symbol formatter.
+every drawing label, indicator scales, and the extension seam. Precision comes from the symbol,
+never from the size of the price, so the same market reads at the same width on every surface. An
+indicator that declares its own precision keeps it; every other value writes through the symbol
+formatter.
 
 `PriceFormat` expresses every supported form in five facts:
 
@@ -365,7 +366,7 @@ changes, and a menu with Save, an Autosave switch, Make a copy, Rename, Download
 new layout, the layouts used most recently, and Open layout: the Layouts dialog, with search, a sort
 by name or by date modified, a star that keeps a layout at the top, and delete behind a
 confirmation. The sort and the stars are the viewer's, kept in the widget's `ChartStorage`. Each
-saved layout is listed by the market and interval its active chart showed when
+saved layout is listed by the market and timeframe its active chart showed when
 it was saved, or by its age where the store kept neither.
 
 Every row runs a command (`widget.layout.save`, `rename`, `load`, `open`, `delete`, `create`, `autosave`,
@@ -532,8 +533,8 @@ remain in step while the menu is open; transient tile maximize does not change t
 names.
 
 Growing a layout keeps every existing chart instance and initializes each new tile from pane 0's
-safe presentation: symbol, timeframe, style, studies and comparisons. Mutable study configuration
-is copied per tile; replay, session state and saved-chart identity are not copied.
+safe presentation: symbol, timeframe, style, indicators and comparisons. Mutable indicator
+configuration is copied per tile; replay, session state and saved-chart identity are not copied.
 
 `load` answers rather than rejecting. Five kinds, told apart without reading a message:
 
@@ -983,7 +984,7 @@ delete, and there is no custom-timeframe composer. The viewer's saved chips show
 them. When you list none of them, the chips are your five smallest timeframes, and the viewer's
 stored chips stay stored for a chart that offers them. With one timeframe offered the picker is not
 shown. `ui.topBar.timeframes: false` hides the picker on its own terms. A range preset whose
-interval you leave out reads its span at your nearest coarser timeframe, or at your largest when
+timeframe you leave out reads its span at your nearest coarser timeframe, or at your largest when
 none is coarser. Within what you offer, the feed's `resolutions` and the symbol's
 `supportedResolutions` still apply: a chip the feed or the symbol does not serve is disabled, and
 the picker's list leaves its row out.
@@ -1106,7 +1107,7 @@ declare const datafeed: ChartDatafeed
 // Moving averages and RSI only.
 createChart({ container, datafeed, builtInIndicators: ['sma', 'ema', 'rsi'] })
 
-// A chart that opens with a study it offers.
+// A chart that opens with an indicator it offers.
 const sma = BUILT_IN_INDICATORS.find((definition) => definition.id === 'sma')!
 createChart({ container, datafeed, builtInIndicators: ['sma'], indicators: [{ id: 'sma-1', definition: sma }] })
 ```
@@ -1115,7 +1116,7 @@ A built-in you leave out is not listed in the indicator picker: not among the bu
 among the favorites, and not in search results. Every door that would add one refuses:
 `chart.indicators.add` (from the picker, the keyboard or your own control) answers `denied`,
 `indicators.add` adds nothing, `indicators.set` leaves out an instance of it the chart does not
-already hold, and a new pane that a re-tile adds copies the first chart's studies without it. The
+already hold, and a new pane that a re-tile adds copies the first chart's indicators without it. The
 chart has no verb that duplicates an indicator, so a second instance is an add like any other.
 
 Instances of a built-in you leave out that are already on the chart, from a saved chart or layout,
@@ -1155,7 +1156,7 @@ A preset you leave out has no `chart.range.<key>` command, so no menu, shortcut 
 reaches it, `chart.range.set` ignores its key, and the bottom bar draws no button for it. An empty
 list offers none, which is how you keep the rest of the bottom bar without range buttons;
 `ui.bottomBar: false` removes the whole bar. `chart.range.set` still takes an explicit
-`{ from, to }` window either way. A preset whose interval your `timeframes` leave out reads its
+`{ from, to }` window either way. A preset whose timeframe your `timeframes` leave out reads its
 span at your nearest coarser timeframe, as it does without a list. A non-list, a key that names no
 preset and a repeated key are setup errors that `createChart` throws.
 
@@ -1345,11 +1346,11 @@ without them. An indicator whose definition `access.indicator` refuses, once on 
 before the policy changed, or put back by a restore), renders and stays fully editable and
 removable:
 `indicators.set`, `chart.indicators.update` and the settings dialog edit it, an edit of any other
-study keeps it, and an edit that would move it, or another study, onto a refused definition leaves
-that study as it stands. A new instance of a refused definition is still left out by every door. A
-drawing whose tool `access.drawingTool` refuses selects, restyles, locks, hides and deletes as any
-drawing does; a copy is a new drawing, so it is not cloned, pasted or duplicated by a Control- or
-Command-drag, while copying it to the clipboard is not refused.
+indicator keeps it, and an edit that would move it, or another indicator, onto a refused definition
+leaves that indicator as it stands. A new instance of a refused definition is still left out by
+every door. A drawing whose tool `access.drawingTool` refuses selects, restyles, locks, hides and
+deletes as any drawing does; a copy is a new drawing, so it is not cloned, pasted or duplicated by a
+Control- or Command-drag, while copying it to the clipboard is not refused.
 
 ### A policy that changes
 
@@ -1475,7 +1476,7 @@ its name, or Add. Without a source, the picker has only shipped built-ins and Fa
 import type { IndicatorPickerSource } from '@trdrs/quickcharts'
 
 const indicatorPicker: IndicatorPickerSource = {
-  collections: [{ id: 'saved', label: 'Saved studies' }],
+  collections: [{ id: 'saved', label: 'Saved indicators' }],
   async list({ collection, query, builtInIds }, signal) {
     if (signal.aborted) return { kind: 'unavailable', message: 'Content unavailable.' }
     return {
@@ -1522,7 +1523,7 @@ chrome is painted from it and renders nothing without it.
 - **The top bar.** The symbol pill opens the symbol search for the active chart; the compare door
   opens it in compare mode. The timeframe picker shows the saved timeframes as chips and a list of
   the timeframes the chart offers (by default the 26 presets in five groups), each row savable as a
-  chip, with a composer for a custom interval under the unit's ceiling while custom timeframes are
+  chip, with a composer for a custom timeframe under the unit's ceiling while custom timeframes are
   offered. The style picker lists the styles the chart offers. Indicators opens the picker
   over the 23 built-in definitions, and the legend's gear opens the settings dialog for an instance
   (inputs, style, visibility). Bar replay enters and leaves replay for the active chart; entering
@@ -1557,7 +1558,7 @@ chrome is painted from it and renders nothing without it.
   replay entry can claim the row. Chart notices report a feed that cannot serve the symbol, an
   image that could not be copied, or a save the store refused.
 
-Undo and redo step through the chart's own content: the symbol, the interval, the style, the price
+Undo and redo step through the chart's own content: the symbol, the timeframe, the style, the price
 scale and whether it frames itself, the appearance a viewer authored, the comparisons, the
 indicators and the drawings. A step is one reading of that content, so a step back puts the whole
 reading back rather than reversing a single verb, and the two controls name the change they would
@@ -1696,8 +1697,8 @@ is a factory that returns a fresh `<svg>` element. An id you leave out keeps the
 as a `TypeError` when the widget is created.
 
 An id names what a glyph means, not one control. `settings` is the top bar's settings button, a
-study's gear in the legend and the drawing settings bar's gear, so one drawing stands in all three.
-Drawing tools take `tool.<type>`, chart styles `style.<style>` and layout arrangements
+indicator's gear in the legend and the drawing settings bar's gear, so one drawing stands in all
+three. Drawing tools take `tool.<type>`, chart styles `style.<style>` and layout arrangements
 `layout.<code>`, from the registries the rest of the API uses.
 
 ```ts
@@ -1795,12 +1796,12 @@ void withMarks
   the symbol's formatter. Hover selects a bar; leaving restores the latest painted reading. Replay
   does not expose bars beyond its cursor. Missing metadata leaves the supplied symbol unchanged.
   Legend and search rows wear your `symbolMark`, or a decorative monogram without one.
-  Study and separate-pane comparison rows follow their renderer panes. Stable row controls retain
-  focus during value updates. Study values read the first plot, using declared precision or the
-  symbol formatter; Volume reads bar volume using resolved volume precision. The row-list toggle,
-  study eye and pane collapse are independent controls. Pane restore remembers study identity
-  across pane removal. The status control opens session details, retains an unknown-session state
-  and is hidden during replay. Price-scale chips use the same commands as `setScaleMode`.
+  Indicator and separate-pane comparison rows follow their renderer panes. Stable row controls
+  retain focus during value updates. Indicator values read the first plot, using declared precision
+  or the symbol formatter; Volume reads bar volume using resolved volume precision. The row-list
+  toggle, indicator eye and pane collapse are independent controls. Pane restore remembers indicator
+  identity across pane removal. The status control opens session details, retains an unknown-session
+  state and is hidden during replay. Price-scale chips use the same commands as `setScaleMode`.
 - **An interface language** (`locale`, English by default), one of the 21 the package ships.
   `BUILT_IN_LOCALES` lists them for a picker: each carries its stable code, its canonical BCP 47
   `tag`, its reading direction (`ar` and `he_IL` are `rtl`), and its endonym. The chart's own chrome
@@ -1892,9 +1893,9 @@ theme.resetCustom()
 stop()
 ```
 
-Switching modes keeps the symbol, timeframe, visible range, drawings and studies the chart already
-has. A palette you supply is a tint rather than a replacement: a role you do not name keeps its
-built-in value for that mode.
+Switching modes keeps the symbol, timeframe, visible range, drawings and indicators the chart
+already has. A palette you supply is a tint rather than a replacement: a role you do not name keeps
+its built-in value for that mode.
 
 ### Roles
 
@@ -1985,7 +1986,7 @@ applying in any release. Removing a hook, a state or a customization is a breaki
 | `.qc-topbar` | The top toolbar: symbol search, timeframe, chart style, indicators, layouts, replay and the widget menus. | | background-color, border, padding, gap, box-shadow |
 | `.qc-drawing-toolbar` | The drawing toolbar beside the plot. | `aria-orientation`: vertical beside the plot, horizontal in a host row. | background-color, border, padding, gap, box-shadow |
 | `.qc-bottombar` | The bottom bar: range shortcuts, the session clock and the timezone. | | background-color, border, padding, gap, box-shadow |
-| `.qc-legend` | The legend over the plot: the symbol, its reading and each study row. | | background-color, border, border-radius, padding, box-shadow, inset |
+| `.qc-legend` | The legend over the plot: the symbol, its reading and each indicator row. | | background-color, border, border-radius, padding, box-shadow, inset |
 | `.qc-menu-panel` | A floating menu opened from a toolbar control. | `hidden`: present while the menu is closed. | background-color, border, border-radius, padding, box-shadow |
 | `.qc-dialog` | A modal dialog: settings, search, layouts and the drawing editors. | `data-role`: which dialog this is, in the chart's own vocabulary. | background-color, border, border-radius, padding, box-shadow, max-width |
 
@@ -2017,8 +2018,8 @@ problem. Configuration errors never reach a render.
 ### Theme and appearance are two ladders
 
 The theme palette is the broad brand surface. Chart appearance is the specific one: series colors,
-candle anatomy, grid visibility and study visuals in `ChartOverrides.appearance`. Where both could
-affect the same pixel, appearance wins.
+candle anatomy, grid visibility and indicator visuals in `ChartOverrides.appearance`. Where both
+could affect the same pixel, appearance wins.
 
 Theme palette precedence, lowest first:
 
@@ -2079,10 +2080,10 @@ compare.remove('NQ') // the scale mode the viewer held comes back
 
 ## Timeframes
 
-A timeframe token names a bar interval: a count and a unit, `1m`, `4h`, `1d`, `3mo`, `500t`. The
-units are ticks (`t`), seconds (`s`), minutes (`m`), hours (`h`), days (`d`), weeks (`w`) and
-months (`mo`), and each unit has a ceiling (`TIMEFRAME_MAX`). A token outside the grammar parses
-as null, and the chart never asks a feed for it.
+A timeframe token names how much one bar spans: a count and a unit, `1m`, `4h`, `1d`, `3mo`, `500t`.
+The units are ticks (`t`), seconds (`s`), minutes (`m`), hours (`h`), days (`d`), weeks (`w`) and
+months (`mo`), and each unit has a ceiling (`TIMEFRAME_MAX`). A token outside the grammar parses as
+null, and the chart never asks a feed for it.
 
 ```ts
 import { formatTimeframe, isIntradayTimeframe, parseTimeframe, timeframeSeconds } from '@trdrs/quickcharts'
@@ -2190,7 +2191,7 @@ if (equity) {
 
 ## Ranges
 
-`RANGE_PRESETS` lists the nine range presets, each a visible span and the interval it reads best
+`RANGE_PRESETS` lists the nine range presets, each a visible span and the timeframe it reads best
 at: `1D` over one-minute bars through `All` over monthly bars. `rangeAvailable` withholds a preset
 deeper than the history a symbol has, and `frameRange` sets a pane's visible window for a span,
 anchored on the last real bar so a future whitespace horizon never frames as empty space. The
@@ -2378,9 +2379,9 @@ catalog.dispose()
 
 ### The timeframe picker, away from a chart
 
-A page that asks for an interval where no chart is mounted (a backtest's timeframe, an alert's
-interval) opens the list the chart's timeframe caret drops: the same unit groups, rows, labels and
-custom composer, built by the same code, so an interval reads there exactly as it reads on a chart.
+A page that asks for a timeframe where no chart is mounted (a backtest's timeframe, an alert's
+timeframe) opens the list the chart's timeframe caret drops: the same unit groups, rows, labels and
+custom composer, built by the same code, so a timeframe reads there exactly as it reads on a chart.
 `openTimeframePicker` drops it from a control you own, which gets `aria-expanded` while it is open
 and focus back when it closes; `mountTimeframePicker` builds it bare into a box you own and
 position, as a card on a phone. Picking a row, or composing a custom timeframe, hands the token to
@@ -2397,7 +2398,7 @@ do not serve is left out, and the composer does not offer one. `theme`, `locale`
 reaches it outside any chart in either mode.
 
 It carries no saved chips and no stars, and keeps nothing: the chips are a chart's quick-select row,
-stored with the chart's preferences, and a field that asks for one interval has no row to put them
+stored with the chart's preferences, and a field that asks for one timeframe has no row to put them
 in. A composed timeframe is handed back and not added to any list. The drop-down takes the keyboard
 as the chart's does (arrow keys, Home and End rove the rows; Escape and a press outside close
 it) and moves as every menu does.
@@ -2405,13 +2406,13 @@ it) and moves as every menu does.
 ```ts
 import { mountTimeframePicker, openTimeframePicker } from '@trdrs/quickcharts'
 
-declare const intervalField: HTMLButtonElement
-declare const intervalBox: HTMLElement
+declare const timeframeField: HTMLButtonElement
+declare const timeframeBox: HTMLElement
 declare const backtest: { timeframe: string; setTimeframe(timeframe: string): void }
 
-intervalField.addEventListener('click', () => {
+timeframeField.addEventListener('click', () => {
   const picker = openTimeframePicker({
-    anchor: intervalField,
+    anchor: timeframeField,
     timeframe: backtest.timeframe,
     resolutions: ['1m', '5m', '15m', '1h', '4h', '1d'], // what the feed serves
     theme: { mode: 'light' },
@@ -2421,18 +2422,18 @@ intervalField.addEventListener('click', () => {
 })
 
 const card = mountTimeframePicker({
-  container: intervalBox,
+  container: timeframeBox,
   timeframes: ['5m', '15m', '1h', '4h', '1d'],
   timeframe: '1h',
   onPick: (timeframe) => backtest.setTimeframe(timeframe),
-  onClose: () => intervalBox.remove(),
+  onClose: () => timeframeBox.remove(),
 })
 card.focus()
 ```
 
 ### The legend
 
-Every chart carries its own legend over its plot: an identity row naming the market, the interval
+Every chart carries its own legend over its plot: an identity row naming the market, the timeframe
 and the venue, and a values row carrying the hovered bar's O H L C and its move against the previous
 close. The numbers are written through that chart's own formatter, so a level in the legend is the
 level its price axis writes, and they follow the pointer while the crosshair is on the plot and the
@@ -2603,7 +2604,7 @@ chosen.
 Selecting a drawing shows the settings bar: templates, the stroke color with its opacity, the
 background for tools that have one, the text color and font size for text tools, thickness and
 line style, the settings gear, lock, delete, and a More menu with the stacking moves, the
-per-interval visibility presets, clone, copy and hide. Every edit persists at once and becomes the
+per-timeframe visibility presets, clone, copy and hide. Every edit persists at once and becomes the
 tool's default for the next drawing of that type. The settings dialog opens from the gear with
 Inputs, Style, Text, Table, Coordinates and Visibility pages as the tool has them; its edits apply
 live, Cancel restores the drawing, and Ok commits the session as one edit.
@@ -2850,7 +2851,7 @@ What to know:
   re-attaches it on every switch, so a market-scoped overlay cannot carry one market's drawing onto
   another's bars.
 - **A failing extension is its own problem.** A throw in `attach` drops that extension and the
-  chart still mounts; a throw in a subscriber, a menu provider, a command or a teardown is
+  chart still mounts; a throw in a subscriber, a menu builder, a command or a teardown is
   contained.
 - **Layouts attach per chart.** A widget hands its shared options to every chart it tiles, so each
   chart gets its own attachment, its own context and its own state slot.
@@ -2878,7 +2879,7 @@ Every claim in this document maps to a test or a generated artifact in the packa
   and the tarball, and the third-party notices are held by the boundary tests and
   `THIRD-PARTY-NOTICES.md`.
 
-## Versioning & deprecation
+## Versioning
 
 - **SemVer, enforced at the gate.** The public surface is pinned by an API-surface test (every
   exported name and its runtime kind), the shipped type declarations are compiled against by a
@@ -2890,8 +2891,8 @@ Every claim in this document maps to a test or a generated artifact in the packa
   and fields (`config` and `serverTime` are the pattern): an existing
   implementation keeps compiling, and the widget treats absence as "unconstrained / not supported".
   Your integration never breaks by standing still within a major.
-- **Deprecation runs a full major.** A deprecated export keeps working for the remainder of the
-  current major, is marked `@deprecated` in the types with its replacement named in the note (your
-  editor flags every call site), and is removed only in the next major, never silently.
+- **A major version may rename or remove public names.** Its upgrading guide in
+  [CHANGELOG.md](CHANGELOG.md) lists each one, old to new, with how saved state carries over: what
+  the previous major saved still opens, and the next save writes the current names.
 - **The wire timeframe grammar is stable vocabulary.** `<N><unit>` with units `t s m h d w mo`.
   Extensions may add units; an existing token never changes meaning.

@@ -9,10 +9,10 @@
 // named by file.
 //
 // The documented exceptions are exceptions by kind rather than by oversight. The compare palette
-// and the built-in study colors are a chart's own data colors, which a host overrides per instance
-// and a mode does not re-resolve. The color control's swatches are the set of colors the chart
-// OFFERS a viewer rather than any color it paints itself: the viewer's pick becomes a drawing or
-// indicator property, the same ten hues and ten greys stand in both modes, and no role resolves
+// and the built-in indicator colors are a chart's own data colors, which a host overrides per
+// instance and a mode does not re-resolve. The color control's swatches are the set of colors the
+// chart OFFERS a viewer rather than any color it paints itself: the viewer's pick becomes a drawing
+// or indicator property, the same ten hues and ten greys stand in both modes, and no role resolves
 // them. Each exception is a named, exported palette in a file whose whole job is to state one.
 import { describe, expect, it } from 'vitest'
 import { offenderText, scanFiles } from '../boundary/scan'

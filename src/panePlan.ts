@@ -12,7 +12,7 @@
 export const COLLAPSED_H = 30
 
 /** The main pane never shrinks below this, whatever a maximize asks for: an unreadable price pane
- *  is worse than an unmaximized study. */
+ *  is worse than an unmaximized indicator. */
 export const MAIN_MIN_H = 80
 
 export type PaneOp = { kind: 'collapse'; pane: number } | { kind: 'maximize'; pane: number } | { kind: 'restore'; pane: number }
@@ -53,7 +53,7 @@ export function planPaneOp(state: PaneState, op: PaneOp): PanePlan {
 
   if (op.kind === 'maximize') {
     const cur = heights[target]!
-    // Give the target every pixel the OTHER study panes are not using at their collapsed floor,
+    // Give the target every pixel the OTHER indicator panes are not using at their collapsed floor,
     // plus whatever the main pane can spare above its own floor.
     const others = Object.entries(heights).filter(([i]) => Number(i) !== 0 && Number(i) !== target)
     const apply: Record<number, number> = {}

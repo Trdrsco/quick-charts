@@ -95,7 +95,7 @@
 }
 
 [data-qc-theme] .qc-replay-speed,
-[data-qc-theme] .qc-replay-interval {
+[data-qc-theme] .qc-replay-timeframe {
   justify-content: center;
   min-width: 38px;
   font-variant-numeric: tabular-nums;

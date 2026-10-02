@@ -248,8 +248,8 @@ export function hasExtendedHours(model: SessionModel): boolean {
 
 /** The bar filter for the active subsession: under `regular`, on a symbol with extended hours,
  *  keep the bars whose open falls in regular hours; otherwise nothing is filtered (null). For
- *  intraday intervals only: a daily bar spans whole sessions, so a caller applies the filter on
- *  intraday intervals and shows every daily bar. */
+ *  intraday timeframes only: a daily bar spans whole sessions, so a caller applies the filter on
+ *  intraday timeframes and shows every daily bar. */
 export function subsessionBarFilter(model: SessionModel, active: ActiveSubsession): ((epochSecs: number) => boolean) | null {
   if (active !== 'regular' || !hasExtendedHours(model)) return null
   return (epochSecs) => sessionStateAt(model, epochSecs) === 'open'
@@ -373,7 +373,7 @@ const weekdayFormatters = new Map<string, Intl.DateTimeFormat>()
  *  written in: a date part, so it comes from Intl rather than the catalog. */
 export function sessionTimeline(model: SessionModel, epochSecs: number, tag: string): SessionTimeline {
   const { day, minute } = localAt(model, epochSecs)
-  // Every stretch edge that falls inside the day is a boundary; the state of each interval
+  // Every stretch edge that falls inside the day is a boundary; the state of each stretch
   // between boundaries is read at its first minute.
   const bounds = new Set<number>([0, MINUTES_PER_DAY])
   const schedules = [model.regular, ...model.extended.map((e) => e.schedule)]

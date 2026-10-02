@@ -1,12 +1,13 @@
 // @vitest-environment happy-dom
 // Viewer state Quick Charts 1.x saved opens in this build. The fixture is what 1.3.0 wrote: a
-// layout whose timeframe sync switch is named `interval`, and a drawing preference record whose
-// per-group toolbar tools sit under `railTools`. Each is read under its 1.x name where the current
-// name is absent, and the next write states the current name alone.
+// layout whose timeframe sync switch is named `interval`, a drawing preference record whose
+// per-group toolbar tools sit under `railTools`, the replay update timeframe under the storage key
+// 1.x kept it in, and a drawing set to show on one timeframe. Each is read under its 1.x name where
+// the current name is absent, and the next write states the current name alone.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import saved from '../fixtures/saved-1.x.json'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
-import { drawingTools, parseDrawingPreferences, serializeDrawingPreferences } from '../../src/drawings/index'
+import { drawingTools, parseDrawingPreferences, parseDrawingsStore, parseTimeframeContext, restoreDrawings, serializeDrawingPreferences } from '../../src/drawings/index'
 import { memoryChartStorage } from '../../src/storage'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import type { ChartWidgetOptions } from '../../src/widget/options'
@@ -123,5 +124,52 @@ describe('a drawing preference record Quick Charts 1.x saved', () => {
     const stored = JSON.parse(storage.get(key)!) as Record<string, unknown>
     expect(stored.drawingToolbarTools).toEqual(SAVED_TOOLBAR_TOOLS)
     expect(Object.keys(stored)).not.toContain('railTools')
+  })
+})
+
+describe('the replay update timeframe Quick Charts 1.x stored', () => {
+  /** The storage key this build keeps the replay update timeframe under. */
+  const REPLAY_TIMEFRAME_KEY = 'quickcharts.replayTf.v1'
+  const withReplay = { features: { sessions: false, compare: false } }
+
+  it('is stored under its 1.x key', () => {
+    expect(saved.replayPreference).toEqual({ key: 'quickcharts.replayIv.v1', value: '1m' })
+  })
+
+  it('opens replay on the stored timeframe', async () => {
+    const { key, value } = saved.replayPreference
+    const { widget } = mount({ storage: memoryChartStorage({ [key]: value }), ...withReplay })
+    await settle()
+    expect(widget.activeChart().replay.timeframe()).toBe('1m')
+  })
+
+  it('writes the next pick under the current key alone, which the next chart reads first', async () => {
+    const { key, value } = saved.replayPreference
+    const storage = memoryChartStorage({ [key]: value })
+    const { widget } = mount({ storage, ...withReplay })
+    await settle()
+    widget.activeChart().replay.setTimeframe('auto')
+    expect(storage.get(REPLAY_TIMEFRAME_KEY)).toBe('auto')
+    expect(storage.get(key)).toBe(value)
+    const next = mount({ storage, ...withReplay })
+    await settle()
+    expect(next.widget.activeChart().replay.timeframe()).toBe('auto')
+  })
+})
+
+describe('a drawing Quick Charts 1.x stored with a per-timeframe visibility', () => {
+  const restore = () => restoreDrawings(parseDrawingsStore(saved.drawingsStore).ES ?? [])[0]!
+
+  it('shows on the timeframe it was set to and on no other', () => {
+    const line = restore()
+    line.setTimeframeContext(parseTimeframeContext('1h'))
+    expect(line.isVisibleNow()).toBe(true)
+    line.setTimeframeContext(parseTimeframeContext('5m'))
+    expect(line.isVisibleNow()).toBe(false)
+  })
+
+  it('writes the same visibility record back', () => {
+    const stored = JSON.parse(saved.drawingsStore) as { ES: { options: { visibility: unknown } }[] }
+    expect(restore().toJSON().options.visibility).toEqual(stored.ES[0]!.options.visibility)
   })
 })

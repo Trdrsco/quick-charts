@@ -336,8 +336,8 @@ describe('a group flyout', () => {
     const remove = [...popover()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
     expect(remove.map((r) => r.disabled)).toEqual([true])
     expect(popover()!.querySelector<HTMLButtonElement>('[role="switch"]')!.disabled).toBe(false)
-    // With studies on the chart, the row that takes both needs both commands; only the row that
-    // takes studies alone is live while removing drawings is refused.
+    // With indicators on the chart, the row that takes both needs both commands; only the row that
+    // takes indicators alone is live while removing drawings is refused.
     state.indicatorCount = 1
     toolbar.render()
     byLabel('Remove menu').click()

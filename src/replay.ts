@@ -1,6 +1,6 @@
 // The bar-replay vocabulary — the pure decision layer every replay host shares: the speed table,
-// seconds-per-bar for the wire tf tokens replay meets, and the update-interval ladder (which
-// finer intervals can FORM a chart bar, and which one 'Auto' picks). The mechanism that consumes
+// seconds-per-bar for the wire tf tokens replay meets, and the update-timeframe ladder (which
+// finer timeframes can FORM a chart bar, and which one 'Auto' picks). The mechanism that consumes
 // this differs by host — the chart replays whole bars over its own series; a richer host may
 // form bars progressively from finer fetches — but the vocabulary must be ONE, or two replays
 // disagree about what '4h auto on a daily chart' means.
@@ -22,8 +22,8 @@ export function tfSeconds(tf: string): number {
   return timeframeSeconds(parsed)
 }
 
-/** The update-interval ladder, by unit group, coarsest group last. A rung is a wire tf token and its
- *  nominal seconds. */
+/** The update-timeframe ladder, by unit group, coarsest group last. A rung is a wire tf token and
+ *  its nominal seconds. */
 const GRAIN_GROUPS: { unit: 's' | 'm' | 'h' | 'd'; rungs: { tf: string; sec: number }[] }[] = [
   { unit: 's', rungs: [{ tf: '1s', sec: 1 }] },
   { unit: 'm', rungs: [1, 3, 5, 10, 15, 30].map((n) => ({ tf: `${n}m`, sec: n * 60 })) },
@@ -33,18 +33,18 @@ const GRAIN_GROUPS: { unit: 's' | 'm' | 'h' | 'd'; rungs: { tf: string; sec: num
 
 const DAY_RUNG = { tf: '1d', sec: 86400 }
 
-/** The update intervals a chart timeframe offers.
+/** The update timeframes a chart timeframe offers.
  *
- *  A rung qualifies when it divides the chart's interval evenly and is no coarser than it, drawn
+ *  A rung qualifies when it divides the chart's timeframe evenly and is no coarser than it, drawn
  *  from the chart's OWN unit group and the group below it. That bound is what keeps the list
  *  readable: every minute rung divides a day evenly, but a day played a minute at a time is 1,440
  *  updates per bar, so a daily chart offers hours. Seconds join any intraday chart, which is how a
  *  minute chart gets a grain at all. A week or a month plays in whole days and nothing else.
  *
- *  The chart's own interval is ON the list when it is a rung, and choosing it is how a viewer asks
+ *  The chart's own timeframe is ON the list when it is a rung, and choosing it is how a viewer asks
  *  for whole-bar updates. A timeframe that is not a rung (17m, say) simply has no rung of its own,
  *  and the list is whatever divides it. */
-export function subIntervalsFor(chartTf: string): { tf: string; sec: number }[] {
+export function subTimeframesFor(chartTf: string): { tf: string; sec: number }[] {
   const parsed = parseTimeframe(chartTf)
   const parent = tfSeconds(chartTf)
   if (!parsed || !parent) return []
@@ -58,10 +58,10 @@ export function subIntervalsFor(chartTf: string): { tf: string; sec: number }[] 
     .sort((a, b) => a.sec - b.sec)
 }
 
-/** Auto = the COARSEST interval on offer, which is the chart's own whenever that is a rung. Replay
+/** Auto = the COARSEST timeframe on offer, which is the chart's own whenever that is a rung. Replay
  *  then advances a whole bar per update until a viewer asks for a finer grain. */
-export function autoIntervalFor(chartTf: string): { tf: string; sec: number } | null {
-  const offered = subIntervalsFor(chartTf)
+export function autoTimeframeFor(chartTf: string): { tf: string; sec: number } | null {
+  const offered = subTimeframesFor(chartTf)
   return offered.length ? offered[offered.length - 1]! : null
 }
 

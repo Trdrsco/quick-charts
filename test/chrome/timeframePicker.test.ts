@@ -193,7 +193,7 @@ describe('the timeframe list', () => {
     expect(count.value).toBe('3')
     down.click()
     expect(count.value).toBe('2')
-    // A count is a multiplier: there is no zeroth interval and no negative one, so the floor holds
+    // A count is a multiplier: there is no zeroth timeframe and no negative one, so the floor holds
     // however many times the step is pressed.
     down.click()
     down.click()
