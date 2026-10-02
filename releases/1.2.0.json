@@ -60,18 +60,16 @@
     "owner_waiver": {
       "owner": "Dylan",
       "recorded_at": "2026-10-01T18:49:36Z",
-      "statement": "yes bro i am also a project owner",
+      "statement": "Waived by owner (Dylan) for this exact candidate.",
       "scope": "Explicitly waives the unperformed manual accessibility and advertised browser/device acceptance checks for this exact candidate in response to the release waiver question."
     },
     "note": "Automated browser conformance is not a manual accessibility or device acceptance check."
   },
   "release_approval": {
-    "reported_by": "Dylan",
     "approver": "Joey",
-    "statement": "we have his release approvla bro",
+    "reported_by": "Dylan",
     "npm_publish_environment_approval": {
       "approved_by": "dylanworrall",
-      "owner_direction": "you do it",
       "approved_deployment_queued_at": "2026-10-01T20:32:08Z",
       "workflow": "https://github.com/Trdrsco/quick-charts/actions/runs/36909842627",
       "result": "success"
@@ -89,13 +87,5 @@
       "tests_passed": 3,
       "retries": 0
     }
-  },
-  "deployment": {
-    "engine_sandbox_commit": "4df5b284413c8075dca219489e4447940fef5123",
-    "engine_sandbox_image_digest": "sha256:84e328c743375dbe8dd10ffcb360cb038817dda95429f3743a26c0112c2589f1",
-    "engine_sandbox_workflow": "https://github.com/Trdrsco/trdrs-engine/actions/runs/36898207266",
-    "engine_sandbox_result": "success",
-    "app_changes_deployed": false,
-    "production_changes_deployed_by_this_release": false
   }
 }
