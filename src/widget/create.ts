@@ -23,6 +23,7 @@ import { deriveCapabilities, resolveFeatures, resolveUi } from './planes'
 import { validateAccess } from './access'
 import { resolveOfferedStyles } from './styles'
 import { resolveOfferedDrawingTools } from './drawingTools'
+import { resolveOfferedIndicators } from './offeredIndicators'
 import { offeredTimeframe, resolveOfferedTimeframes } from './timeframes'
 import { layoutChoices, openingArrangement, resolveOfferedLayouts } from './arrangements'
 import type { Capabilities, ChartWidgetOptions } from './options'
@@ -147,6 +148,9 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // The drawing tools likewise: a list naming no tool, or one twice, is a setup error, never a
   // rail quietly short of what the host meant to offer.
   const drawingTools = resolveOfferedDrawingTools(options.drawingTools)
+  // The built-in indicators likewise, with the instances the host mounts: a list the host got wrong,
+  // or a mount instance outside it, is a setup error, never a study quietly dropped.
+  const builtInIndicators = resolveOfferedIndicators(options.builtInIndicators, options.indicators)
   const ui = resolveUi(options.ui, features, {
     styleCount: styles.list.length,
     timeframeCount: timeframes.list?.length,
@@ -384,6 +388,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           style: init?.style ?? options.style,
           styles: styles.list,
           drawingTools,
+          builtInIndicators,
           timeframes,
           compares: init?.compares,
           onSymbolInfo: (info) => {
@@ -698,6 +703,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     painters,
     indicatorPicker: options.indicatorPicker,
     access: options.access,
+    builtInIndicators,
     autosave,
     layoutChanges,
     icons,

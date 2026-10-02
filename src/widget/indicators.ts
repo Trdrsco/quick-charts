@@ -19,6 +19,7 @@ import { isCollapsed } from '../panePlan'
 import type { CanvasTheme } from '../theme/renderer'
 import type { AccessPolicy, IndicatorDefinition, IndicatorInstance } from './options'
 import { indicatorPermitted } from './access'
+import { indicatorOffered, type OfferedIndicators } from './offeredIndicators'
 import type { IndicatorEvent } from './events'
 import { restoreIndicatorInstance, type SavedIndicator } from './saveLoad'
 
@@ -153,9 +154,11 @@ export interface IndicatorsPlane {
   renderer: IndicatorsRenderer
   /** The configured instances. */
   list(): readonly IndicatorInstance[]
-  /** Replace the list. Removed ids tear down and panes sweep. */
+  /** Replace the list. Removed ids tear down and panes sweep. An instance the chart does not hold
+   *  whose built-in the host's list leaves out is not added; one it holds stays editable. */
   set(next: readonly IndicatorInstance[]): void
-  /** Add one, unless the access policy refuses it. Answers whether it was added. */
+  /** Add one, unless the host's list leaves its built-in out or the access policy refuses it.
+   *  Answers whether it was added. */
   add(instance: IndicatorInstance): boolean
   remove(id: string): void
   /** Patch one instance's inputs. */
@@ -209,6 +212,8 @@ export interface IndicatorsDeps {
   /** The theme in effect: a study with no declared color takes the neutral series ink. */
   canvas(): CanvasTheme
   access?: AccessPolicy
+  /** The built-in indicators the host offers, or null (or absent) for every built-in. */
+  offered?: OfferedIndicators
   /** True once the chart is down. */
   disposed(): boolean
   /** The rows changed: the legend and the compare rows are pushed together by the chart. */
@@ -322,6 +327,21 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   }
 
   const permitted = (inst: IndicatorInstance): boolean => indicatorPermitted(deps.access, inst.definition)
+  /** Whether the host's list offers an instance's definition for adding. */
+  const offered = (inst: IndicatorInstance): boolean => indicatorOffered(deps.offered ?? null, inst.definition)
+
+  /** What a replacement list keeps under the host's list. An instance of an offered definition is
+   *  kept. One of a built-in the list leaves out is an add when the chart does not hold its id, and
+   *  is left out; when the chart holds it, it is an edit and kept, unless the edit would move it
+   *  onto that left-out definition from another, in which case the instance stays as it stands.
+   *  Nothing already on the chart is dropped because of the list. */
+  const admitted = (next: readonly IndicatorInstance[]): IndicatorInstance[] =>
+    next.flatMap((instance) => {
+      if (offered(instance)) return [instance]
+      const held = instances.find((i) => i.id === instance.id)
+      if (!held) return []
+      return [held.definition.manifest.id === instance.definition.manifest.id ? instance : held]
+    })
 
   /** Replace and report structural differences. Restore/rollback arrivals are changes, not user
    *  adds. A rollback bypasses current policy so it can put back exactly what the chart held. */
@@ -424,10 +444,13 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   return {
     renderer,
     list: () => instances,
-    set: (next) => replace(next, 'added'),
+    set: (next) => {
+      deps.catalog.carry(next)
+      replace(admitted(next), 'added')
+    },
     add(instance) {
       deps.catalog.carry([instance])
-      if (!permitted(instance)) return false
+      if (!offered(instance) || !permitted(instance)) return false
       // The ONE add path: the package picker, a host's `indicators.add` and the operator all land
       // here, so all three deal from the same palette in the same order.
       const minted = withMintedColor(instance)

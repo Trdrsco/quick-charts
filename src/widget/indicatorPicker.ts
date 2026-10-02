@@ -45,7 +45,9 @@ export interface IndicatorPickerBuiltInState {
 
 export interface IndicatorPickerSource {
   collections: readonly IndicatorPickerCollection[]
-  /** The host supplies localized text. A new query or collection aborts the previous read. */
+  /** The host supplies localized text. A new query or collection aborts the previous read.
+   *  `builtInIds` are the built-ins the browser lists: every one, or those `builtInIndicators`
+   *  offers. */
   list(request: { collection: string; query: string; builtInIds: readonly string[] }, signal: AbortSignal): Promise<
     | { kind: 'ok'; items: readonly IndicatorPickerItem[]; builtIns?: readonly IndicatorPickerBuiltInState[] }
     | { kind: 'unavailable'; message: string }

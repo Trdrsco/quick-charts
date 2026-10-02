@@ -519,6 +519,31 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   indicatorPicker?: IndicatorPickerSource
   /** Indicator instances on the chart at mount. */
   indicators?: IndicatorInstance[]
+  /** The built-in indicators the chart offers, by the definition id `access.indicator` receives:
+   *  any id `BUILT_IN_INDICATORS` lists, such as `sma`. Absent, every built-in is offered. The order
+   *  given does not matter: the indicator browser keeps its own.
+   *
+   *  A built-in left out is not one this chart adds. The indicator browser does not list it: not
+   *  among the built-ins, not among the favorites (a starred one keeps its star in storage), not in
+   *  search results, and the host's `indicatorPicker` listing is handed only the offered ids. Every
+   *  door that would add one refuses: `chart.indicators.add` answers `denied`, `indicators.add`
+   *  adds nothing, `indicators.set` leaves out an instance of it the chart does not already hold,
+   *  and a new pane a re-tile adds copies the first chart's studies without it. There is no
+   *  duplicate verb for an indicator; adding a second instance is adding.
+   *
+   *  Instances of a built-in left out that are already on the chart (from a saved chart or layout,
+   *  an undo step or another host sharing the store) render and stay fully editable and removable:
+   *  the settings dialog, `chart.indicators.update`, the legend's eye and remove, remove all and
+   *  `indicators.remove` all work on them, and an edit that would move one onto another left-out
+   *  built-in keeps it as it stands. Nothing saved is rewritten because of the list.
+   *
+   *  A definition whose `manifest.id` names no built-in is the host's own and is never filtered, nor
+   *  is what an `indicatorPicker` source lists. It composes with `access`: a built-in is offered
+   *  when it is listed AND the policy permits it, and a listed one the policy refuses is drawn as
+   *  `access.refused` says. A non-list, an empty list, an id that names no built-in, a repeated id
+   *  and an `indicators` instance whose built-in is not listed are setup errors thrown from
+   *  `createChart`. */
+  builtInIndicators?: readonly string[]
   /** A built-in interface language for the chart's chrome and its date formatting. */
   locale?: ChartLocaleCode
   /** A host-owned localization adapter. When supplied it replaces `locale`, and the host owns its
