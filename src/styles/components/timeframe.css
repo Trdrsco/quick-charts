@@ -331,3 +331,23 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* The same list with no drop-down around it, for a page that holds the picker in a box of its own:
+ * a phone's card, where the card IS the picker. It fills that box, the rows scroll inside it, and the
+ * composer stays pinned below them. The box is the page's, so the card paints no surface of its own. */
+[data-qc-theme].qc-tf-card {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  color: var(--qc-text-primary);
+  font-family: var(--qc-text-fontFamily);
+  font-size: var(--qc-text-fontSizeBase);
+}
+
+[data-qc-theme].qc-tf-card > .qc-tf-menu {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+}

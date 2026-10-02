@@ -198,6 +198,10 @@ const SURFACE: Record<string, string> = {
   createSymbolSearchCache: 'function',
   mountSymbolSearch: 'function',
   openSymbolSearch: 'function',
+  // Additive (minor): the chart's timeframe list as a surface a page opens away from a chart, as a
+  // drop-down under its own control or a card in a box it owns.
+  mountTimeframePicker: 'function',
+  openTimeframePicker: 'function',
   // ── The widget kernel ───────────────────────────────────────────────────────────────────────
   // The widget kernel. `createChart` answers a `ChartWidget` that hosts one or many `ChartHandle`s;
   // its four configuration planes, its command registry, its two event maps and its layout, theme,
