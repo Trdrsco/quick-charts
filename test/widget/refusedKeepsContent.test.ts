@@ -5,7 +5,8 @@
 // `indicators.set`, `chart.indicators.update` and the settings dialog, survives an edit of any other
 // study, and removes from every door, while a new instance of it is still refused. A drawing whose
 // tool the policy refuses selects, restyles, locks, hides and deletes as any drawing does, and is
-// not copied into a new one.
+// not copied into a new one. A restore (a saved chart, a layout load, an undo or a redo, a drawings
+// document) puts back what the policy refuses, and a save after it still carries it.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
@@ -228,5 +229,101 @@ describe('a drawing whose tool the policy refuses, already on the chart', () => 
     await placed(widget, 'rectangle', 'in')
     expect(widget.commands.execute('chart.drawings.clone').kind).toBe('ok')
     expect(api.count()).toBe(4)
+  })
+})
+
+describe('content the policy refuses, put back by a restore', () => {
+  /** Saved content written by a chart that permits everything: a VWAP and an SMA, a trend line and
+   *  a rectangle. */
+  async function savedContent(): Promise<{ chart: string; layout: string }> {
+    const { widget } = mount({ indicators: [instance('kept', 'vwap'), instance('other', 'sma')] })
+    await settle()
+    await placed(widget, 'trend_line', 'line')
+    await placed(widget, 'rectangle', 'box')
+    const chart = widget.activeChart().saveLoad.serialize().content
+    const layout = widget.layout.serialize().content
+    widget.dispose()
+    document.body.replaceChildren()
+    return { chart, layout }
+  }
+  const refusing = (refused: 'disable' | 'hide'): AccessPolicy => ({ refused, indicator: (id) => id !== 'vwap', drawingTool: (tool) => tool !== 'trend_line' })
+  const drawingIds = (chart: ReturnType<ChartWidget['activeChart']>): string[] => chart.drawings!.export().map((d) => d.id)
+  const savedStudies = (content: string): string[] => (JSON.parse(content) as { indicators: { definition: string }[] }).indicators.map((i) => i.definition)
+
+  it('comes back whole from a saved chart, and a save after it still carries it', async () => {
+    const saved = await savedContent()
+    for (const refused of REFUSED) {
+      const { widget } = mount({ access: refusing(refused) })
+      await settle()
+      widget.activeChart().saveLoad.restore(saved.chart)
+      await settle()
+      expect(ids(widget), refused).toEqual(['kept', 'other'])
+      expect(drawingIds(widget.activeChart()), refused).toEqual(['line', 'box'])
+      expect(savedStudies(widget.activeChart().saveLoad.serialize().content), refused).toEqual(['vwap', 'sma'])
+      // Restored, it is content like any other: it edits and removes.
+      const current = held(widget, 'kept')
+      expect(widget.commands.execute('chart.indicators.update', { ...current, inputs: { ...current.inputs, period: 7 } }).kind, refused).toBe('ok')
+      expect(held(widget, 'kept').inputs?.period, refused).toBe(7)
+      widget.activeChart().indicators.remove('kept')
+      expect(ids(widget), refused).toEqual(['other'])
+      widget.dispose()
+      document.body.replaceChildren()
+    }
+  })
+
+  it('comes back from a layout load', async () => {
+    const saved = await savedContent()
+    const { widget } = mount({ access: refusing('hide') })
+    await settle()
+    widget.layout.restore(saved.layout)
+    await settle()
+    expect(ids(widget)).toEqual(['kept', 'other'])
+    expect(drawingIds(widget.activeChart())).toEqual(['line', 'box'])
+    const layout = JSON.parse(widget.layout.serialize().content) as { charts: { content: string }[] }
+    expect(savedStudies(layout.charts[0]!.content)).toEqual(['vwap', 'sma'])
+  })
+
+  it('stays through an undo of another change, and comes back on an undo of its own removal', async () => {
+    for (const refused of REFUSED) {
+      const { widget } = await withRefusedVwap(refused)
+      const api = widget.activeChart().indicators
+      api.remove('other')
+      await settle()
+      expect(widget.commands.execute('chart.history.undo').kind, refused).toBe('ok')
+      await settle()
+      expect(ids(widget), refused).toEqual(['kept', 'other'])
+      api.remove('kept')
+      await settle()
+      expect(ids(widget), refused).toEqual(['other'])
+      expect(widget.commands.execute('chart.history.undo').kind, refused).toBe('ok')
+      await settle()
+      expect(ids(widget), refused).toEqual(['kept', 'other'])
+      expect(widget.commands.execute('chart.history.redo').kind, refused).toBe('ok')
+      await settle()
+      expect(ids(widget), refused).toEqual(['other'])
+      widget.dispose()
+      document.body.replaceChildren()
+    }
+  })
+
+  it('puts back a drawing of a refused tool, or of a tool the host does not offer, through every restore', async () => {
+    const saved = await savedContent()
+    const offered = drawingTools.all().map((tool) => tool.type).filter((type) => type !== 'rectangle')
+    const { widget } = mount({ access: refusing('disable'), drawingTools: offered })
+    await settle()
+    const chart = widget.activeChart()
+    chart.saveLoad.restore(saved.chart)
+    await settle()
+    expect(drawingIds(chart)).toEqual(['line', 'box'])
+    expect(widget.commands.execute('chart.drawings.removeAll').kind).toBe('ok')
+    await settle()
+    expect(drawingIds(chart)).toEqual([])
+    expect(widget.commands.execute('chart.history.undo').kind).toBe('ok')
+    await settle()
+    expect(drawingIds(chart)).toEqual(['line', 'box'])
+    const document_ = chart.drawings!.export()
+    chart.drawings!.restore([])
+    chart.drawings!.restore(document_)
+    expect(drawingIds(chart)).toEqual(['line', 'box'])
   })
 })

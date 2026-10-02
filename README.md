@@ -1336,9 +1336,13 @@ and drawings and indicators already on the chart render exactly as they do under
 default. The keyboard, `widget.commands` and the chart handles refuse exactly as they do with
 `'disable'`. A value other than `'disable'` or `'hide'` is a setup error that `createChart` throws.
 
-Under either value the policy refuses creating content, never what is already on the chart. An
-indicator whose definition `access.indicator` refuses, once on the chart (added before the policy
-changed, or put back by an undo), renders and stays fully editable and removable:
+Under either value the policy refuses creating content, never what is already on the chart or in
+saved content: it refuses adding, never restoring. A saved chart, a layout load, an undo or a redo,
+a drawings document and shared drawing storage put back every indicator and drawing they carry,
+those the policy refuses included, so a load followed by a save never rewrites a viewer's content
+without them. An indicator whose definition `access.indicator` refuses, once on the chart (added
+before the policy changed, or put back by a restore), renders and stays fully editable and
+removable:
 `indicators.set`, `chart.indicators.update` and the settings dialog edit it, an edit of any other
 study keeps it, and an edit that would move it, or another study, onto a refused definition leaves
 that study as it stands. A new instance of a refused definition is still left out by every door. A

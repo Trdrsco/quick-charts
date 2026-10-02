@@ -164,16 +164,19 @@ export interface AccessPolicy {
   command?(id: string): boolean
   /** Whether a drawing tool id may be armed. Placing an image (`placeImage`, the picker, a paste)
    *  asks it for `image`. A copy is a new drawing, so a drawing of a refused tool is not cloned,
-   *  pasted or duplicated by a modifier-drag. Drawings of a refused tool already on the chart stay
-   *  whole: they select, restyle, lock, hide and delete as any drawing does. */
+   *  pasted or duplicated by a modifier-drag. A restore (a saved chart, a layout load, an undo, a
+   *  drawings document) puts drawings of a refused tool back like any other, and on the chart they
+   *  stay whole: they select, restyle, lock, hide and delete as any drawing does. */
   drawingTool?(id: string): boolean
   /** Whether an indicator definition may be added, asked by its DEFINITION id (`manifest.id`; a
    *  built-in's is the catalog id the picker lists, such as `sma`), never by an instance id. Every
-   *  door asks the same id: the picker row, `indicators.add`, `indicators.set` for an instance the
-   *  chart does not hold, and a restore. An instance of a refused definition the chart already
-   *  holds stays whole: `indicators.set` and `chart.indicators.update` edit it, an edit that would
-   *  move it onto a refused definition leaves it as it stands, and every remove door removes it.
-   *  A definition that declares no id is not gated. */
+   *  door that adds asks the same id: the picker row, `indicators.add`, and `indicators.set` for an
+   *  instance the chart does not hold. The policy refuses adding, never restoring: a saved chart, a
+   *  layout load, an undo or a redo puts an instance of a refused definition back like any other.
+   *  An instance of a refused definition the chart holds stays whole: `indicators.set` and
+   *  `chart.indicators.update` edit it, an edit that would move it onto a refused definition leaves
+   *  it as it stands, and every remove door removes it. A definition that declares no id is not
+   *  gated. */
   indicator?(id: string): boolean
   /** How the chart's own controls present what the predicates refuse. `'disable'` (the default)
    *  draws a refused control disabled, which suits an offer the viewer can unlock. `'hide'` leaves
