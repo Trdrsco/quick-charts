@@ -49,6 +49,8 @@ describe('the repository policy files', () => {
       expect(packed, file).not.toContain(file)
     }
     for (const file of ['README.md', 'CHANGELOG.md', 'LICENSE', 'NOTICE', 'THIRD-PARTY-NOTICES.md']) expect(packed).toContain(file)
+    // The acceptance records merge before the tag, so they never change the candidate's bytes.
+    expect(packed.filter((file) => file.startsWith('releases/'))).toEqual([])
   })
 
   it('agree on the facts they share', () => {

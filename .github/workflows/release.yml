@@ -4,11 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       artifact_sha256:
-        description: SHA-256 of the candidate accepted by the first host
-        required: true
-        type: string
-      first_host_evidence:
-        description: HTTPS link to the accepted first-host check record for this candidate
+        description: SHA-256 of the candidate that releases/<version>.json accepts
         required: true
         type: string
 
@@ -37,10 +33,11 @@ jobs:
           cache: pnpm
       - name: Pin npm
         run: npm install --global npm@12.1.0
-      - name: Verify release identity
+      # The tagged commit must hold a complete acceptance record that names the dispatched digest
+      # and a release commit the tag descends from; without it nothing below runs.
+      - name: Verify release identity and acceptance record
         env:
           EXPECTED_DIGEST: ${{ inputs.artifact_sha256 }}
-          FIRST_HOST_EVIDENCE: ${{ inputs.first_host_evidence }}
         run: |
           node scripts/release-policy.mjs identity
           git fetch --no-tags origin main
@@ -51,11 +48,10 @@ jobs:
           pnpm exec playwright install --with-deps chromium firefox webkit
       - name: Rehearse the exact candidate
         run: node scripts/release-rehearsal.mjs
-      - name: Bind tested bytes to first-host acceptance
+      - name: Bind tested bytes to the acceptance record
         id: candidate
         env:
           EXPECTED_DIGEST: ${{ inputs.artifact_sha256 }}
-          FIRST_HOST_EVIDENCE: ${{ inputs.first_host_evidence }}
         run: node scripts/release-policy.mjs artifact
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

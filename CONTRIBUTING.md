@@ -66,11 +66,12 @@ or newer. The published package itself runs on Node 20 and newer, as `engines` s
 | `pnpm build:manifest` | Regenerates the feature manifest from the source. |
 | `pnpm build:rest-openapi` | Regenerates `dist/rest-openapi.json` from the wire contract. |
 | `pnpm build:notices` | Regenerates `THIRD-PARTY-NOTICES.md` from the installed packages. |
-| `pnpm gate` | The whole gate, the steps CI runs: build, type check, tests, the candidate pin, the supply-chain scan, the notices, the documents, the clean room and the browser suite. |
+| `pnpm gate` | The whole gate, the steps CI runs: build, type check, tests, the candidate pin, the supply-chain scan, the notices, the documents, the release records, the clean room and the browser suite. |
 | `pnpm gate --fast` | The same without the clean room and the browser suite. |
 | `pnpm clean-room` | Installs the packed tarball into three fresh projects and drives it there. |
 | `pnpm check:supply-chain` | Reads the tree, the packed file list and every line ever added to the history for a secret, an address, a private host or a private package. |
 | `pnpm check:docs` | Holds every document to the documentation style. |
+| `pnpm check:release-records` | Proves every published or tagged version has its acceptance record in `releases/`, and every registry tarball equals the candidate its record accepts. |
 
 The generated files are committed. A pull request that changes a source of a generated file
 regenerates it in the same commit; the tests compare the committed file with the rendering.

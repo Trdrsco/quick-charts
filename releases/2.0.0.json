@@ -38,7 +38,13 @@
       "result": "pass",
       "summarySha256": "d69eba45256916fc3e881defef2e71aee0ffd7b65dd4dc04691fcf90293bd1be",
       "dossierHashesSha256": "51db62e88eff03d203b5fc3ff8d926904294334c48d23a59ac9aa5e3c2ef465c",
-      "installTestChecksPassed": 22
+      "installTestChecksPassed": 22,
+      "dossierRetained": false,
+      "dossierNote": "The workstation rehearsal dossier was deleted by mistake during cleanup and is not retained. The two hashes above were taken before its deletion.",
+      "retainedEvidence": {
+        "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37043196321",
+        "statement": "The release workflow's validate job re-ran the rehearsal on 34ff92e76279980fb135ad5526d22acdbfca5fa4: PASS, 3776 unit tests, clean-room conformance 42 passed, and it bound the same tarball 1863ebf16286fb5844be70fafa665eee0d50cd41364394eb6237a6a489b375bb."
+      }
     }
   },
   "firstHost": {

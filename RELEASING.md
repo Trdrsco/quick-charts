@@ -26,13 +26,18 @@ Registry publishing access is separate from repository access. Do not grant it t
    acceptance, or an explicit owner waiver. A waiver does not establish screen-reader or device
    support; automated conformance alone does not prove those results.
 4. Run `pnpm rehearsal` from a clean checkout. Keep the complete dossier and its artifact hashes.
-5. Create `v<version>` on the accepted main commit. A tag alone publishes nothing.
+5. Write the acceptance record, `releases/<version>.json`, with every field
+   [releases/README.md](releases/README.md) requires, and merge it through a pull request. The
+   record is not packed, so the candidate bytes do not change.
+6. Create `v<version>` on the main commit that holds the record. A tag alone publishes nothing.
 
 ## Publication
 
 Dispatch `release.yml` on the exact release tag, supplying the SHA-256 of the candidate accepted
-by the first host and an HTTPS link to that host's acceptance record. The validation job verifies
-the tag, version and main ancestry, rehearses the candidate and refuses a digest mismatch.
+by the first host. The validation job refuses to continue unless the tagged commit holds
+`releases/<version>.json`, the record is complete, its version is the package version, its
+release commit is the tagged commit or an ancestor of it, and the dispatched SHA-256, the record
+and the rehearsed tarball name the same bytes. It also verifies the tag, version and main ancestry.
 
 The owner reads that evidence and approves the `npm-publish` environment. Self-approval is allowed.
 The publishing job downloads the validated tarball, verifies its digest again and publishes that
@@ -48,6 +53,11 @@ Keep publishing credentials out of this repository and its logs.
 After publication, install the exact registry version in a fresh project, run its browser check,
 and verify provenance. The first host adopts that exact version through its own checked dependency
 change. Publication never deploys or automatically upgrades the first host.
+
+Then record the publication facts: add the `publication` section to `releases/<version>.json`
+with the release run, the registry integrity, the registry tarball SHA-256 and the provenance log
+index, and merge it through a pull request. `pnpm check:release-records` fails once a version has
+been on the registry for seven days without them.
 
 ## Recovery
 
