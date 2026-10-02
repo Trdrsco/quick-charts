@@ -155,7 +155,8 @@ export interface IndicatorsPlane {
   /** The configured instances. */
   list(): readonly IndicatorInstance[]
   /** Replace the list. Removed ids tear down and panes sweep. An instance the chart does not hold
-   *  whose built-in the host's list leaves out is not added; one it holds stays editable. */
+   *  whose built-in the host's list leaves out, or whose definition the access policy refuses, is
+   *  not added; one it holds stays editable. */
   set(next: readonly IndicatorInstance[]): void
   /** Add one, unless the host's list leaves its built-in out or the access policy refuses it.
    *  Answers whether it was added. */
@@ -330,27 +331,28 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   /** Whether the host's list offers an instance's definition for adding. */
   const offered = (inst: IndicatorInstance): boolean => indicatorOffered(deps.offered ?? null, inst.definition)
 
-  /** What a replacement list keeps under the host's list. An instance of an offered definition is
-   *  kept. One of a built-in the list leaves out is an add when the chart does not hold its id, and
-   *  is left out; when the chart holds it, it is an edit and kept, unless the edit would move it
-   *  onto that left-out definition from another, in which case the instance stays as it stands.
-   *  Nothing already on the chart is dropped because of the list. */
+  /** What a replacement list keeps under the host's list and the access policy. An instance whose
+   *  definition is offered and permitted is kept. One the list leaves out or the policy refuses is
+   *  an add when the chart does not hold its id, and is left out; when the chart holds it, it is an
+   *  edit and kept, unless the edit would move it onto that definition from another, in which case
+   *  the instance stays as it stands. Nothing already on the chart is dropped by a restriction. */
   const admitted = (next: readonly IndicatorInstance[]): IndicatorInstance[] =>
     next.flatMap((instance) => {
-      if (offered(instance)) return [instance]
+      if (offered(instance) && permitted(instance)) return [instance]
       const held = instances.find((i) => i.id === instance.id)
       if (!held) return []
       return [held.definition.manifest.id === instance.definition.manifest.id ? instance : held]
     })
 
   /** Replace and report structural differences. Restore/rollback arrivals are changes, not user
-   *  adds. A rollback bypasses current policy so it can put back exactly what the chart held. */
-  const replace = (next: readonly IndicatorInstance[], arrival: 'added' | 'changed', applyPolicy = true): void => {
+   *  adds. The caller decides what the list holds: `set` admits it first, a restore filters its
+   *  records, and a rollback puts back exactly what the chart held. */
+  const replace = (next: readonly IndicatorInstance[], arrival: 'added' | 'changed'): void => {
     const before = instances
     // Carry what the host supplied even when today's policy refuses it. The predicate is live: if
     // that policy later permits the definition, a saved record can resolve and ask it again.
     deps.catalog.carry(next)
-    instances = applyPolicy ? next.filter(permitted) : [...next]
+    instances = [...next]
     renderer.prune(new Set(instances.map((instance) => instance.id)))
     recompute()
     const afterIds = new Set(instances.map((instance) => instance.id))
@@ -497,10 +499,10 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
         }
         restored.push(instance)
       }
-      replace(restored, 'changed', false)
+      replace(restored, 'changed')
       return { dropped }
     },
-    restoreHeld: (held) => replace(held, 'changed', false),
+    restoreHeld: (held) => replace(held, 'changed'),
     setPaneCollapsed(paneIndex, collapsed) {
       if (paneIndex <= 0) return // the price pane never collapses
       for (const [id, pane] of Object.entries(renderer.paneOf())) if (pane === paneIndex) {

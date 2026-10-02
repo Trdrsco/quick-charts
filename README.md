@@ -1280,6 +1280,16 @@ and drawings and indicators already on the chart render exactly as they do under
 default. The keyboard, `widget.commands` and the chart handles refuse exactly as they do with
 `'disable'`. A value other than `'disable'` or `'hide'` is a setup error that `createChart` throws.
 
+Under either value the policy refuses creating content, never what is already on the chart. An
+indicator whose definition `access.indicator` refuses, once on the chart (added before the policy
+changed, or put back by an undo), renders and stays fully editable and removable:
+`indicators.set`, `chart.indicators.update` and the settings dialog edit it, an edit of any other
+study keeps it, and an edit that would move it, or another study, onto a refused definition leaves
+that study as it stands. A new instance of a refused definition is still left out by every door. A
+drawing whose tool `access.drawingTool` refuses selects, restyles, locks, hides and deletes as any
+drawing does; a copy is a new drawing, so it is not cloned, pasted or duplicated by a Control- or
+Command-drag, while copying it to the clipboard is not refused.
+
 ### A policy that changes
 
 The predicates are asked live: every door that runs a command, arms a tool or adds an indicator asks
