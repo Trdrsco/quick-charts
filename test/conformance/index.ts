@@ -580,14 +580,14 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
     title: 'the widget and its active chart answer the documented surface, and ready resolves once data paints',
     async run(ctx) {
       const { widget, chart } = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m' })
-      for (const member of ['ready', 'activeChart', 'charts', 'chart', 'locale', 'setLocale', 'capabilities', 'search', 'on', 'dispose'] as const) {
+      for (const member of ['ready', 'activeChart', 'charts', 'chart', 'locale', 'setLocale', 'capabilities', 'search', 'refreshAccess', 'on', 'dispose'] as const) {
         equal(typeof widget[member], 'function', `widget.${member}`)
       }
-      for (const member of ['layout', 'theme', 'commands', 'recents', 'image', 'fullscreen'] as const) assert(widget[member], `widget.${member}`)
-      for (const member of ['symbol', 'setSymbol', 'timeframe', 'setTimeframe', 'style', 'setStyle', 'visibleRange', 'setVisibleRange', 'logicalRange', 'setLogicalRange', 'scroll', 'zoom', 'reset', 'goLive', 'scaleMode', 'setScaleMode', 'timezone', 'setTimezone', 'displayTimezone', 'marketStatus', 'subsession', 'setSubsession', 'hasExtendedHours', 'appearance', 'applyAppearance', 'formatter', 'on'] as const) {
+      for (const member of ['layout', 'theme', 'commands', 'recents', 'image', 'fullscreen', 'chrome'] as const) assert(widget[member], `widget.${member}`)
+      for (const member of ['symbol', 'setSymbol', 'symbolInfo', 'timeframe', 'setTimeframe', 'style', 'setStyle', 'visibleRange', 'rangePreset', 'setVisibleRange', 'logicalRange', 'setLogicalRange', 'scroll', 'zoom', 'reset', 'goLive', 'scaleMode', 'setScaleMode', 'timezone', 'setTimezone', 'displayTimezone', 'marketStatus', 'subsession', 'setSubsession', 'hasExtendedHours', 'drawingPreferences', 'setDrawingPreferences', 'appearance', 'applyAppearance', 'formatter', 'on'] as const) {
         equal(typeof chart[member], 'function', `chart.${member}`)
       }
-      for (const member of ['indicators', 'compare', 'replay', 'saveLoad', 'sync'] as const) assert(chart[member], `chart.${member}`)
+      for (const member of ['indicators', 'compare', 'replay', 'history', 'saveLoad', 'sync'] as const) assert(chart[member], `chart.${member}`)
       equal(chart.symbol(), 'ALPHA', 'the mounted symbol')
       equal(chart.timeframe(), '5m', 'the mounted timeframe')
       equal(widget.charts().length, 1, 'one chart in the default layout')

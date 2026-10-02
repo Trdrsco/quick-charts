@@ -436,8 +436,9 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
   add({ id: 'chart.drawings.lock', scope: 'chart', label: 'command.drawingLock', available: withSelection, execute: (arg) => drawings()?.setLocked(arg === true) })
-  // A clone or a paste is a new drawing, so a drawing of a tool the host does not offer has
-  // neither: the layer refuses the copy, and these answer unavailable for it.
+  // A clone or a paste is a new drawing, so a drawing of a tool the host does not offer or the
+  // access policy refuses has neither: the layer refuses the copy, and these answer unavailable
+  // for it.
   add({ id: 'chart.drawings.clone', scope: 'chart', label: 'command.drawingClone', available: () => withEditableSelection() && (verbs()?.canClone() ?? false), execute: () => drawings()?.clone() })
   add({ id: 'chart.drawings.copy', scope: 'chart', label: 'command.drawingCopy', shortcut: 'Ctrl+KeyC', available: withSelection, execute: () => drawings()?.copy() })
   add({ id: 'chart.drawings.paste', scope: 'chart', label: 'command.drawingPaste', shortcut: 'Ctrl+KeyV', available: () => on() && drawings()!.canPaste(), execute: () => void drawings()?.paste() })

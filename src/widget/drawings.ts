@@ -105,7 +105,8 @@ export interface DrawingVerbs {
   tableAddColumn(): void
   /** Whether the access policy permits arming a tool. */
   toolPermitted(tool: string): boolean
-  /** Whether the selection may be cloned: there is one, and the host offers its tool. */
+  /** Whether the selection may be cloned: there is one, the host offers its tool and the access
+   *  policy permits it. */
   canClone(): boolean
   /** Whether Cancel has an armed tool, placement, text edit or completed transient to clear. */
   canCancel(): boolean
@@ -277,8 +278,9 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     // a click lands. This layer owns the plot's cursor, so it is the one that stands it down.
     pointerSuppressed: () => deps.replayPhase() === 'arming',
     // A clone, a paste and a modifier-drag duplicate each make a new drawing, so a tool the host's
-    // list leaves out is copied by none of them.
-    copies: (type) => drawingToolOffered(deps.offered ?? null, type),
+    // list leaves out or the access policy refuses is copied by none of them. Asked live, so a
+    // policy that changes moves with it.
+    copies: (type) => drawingToolOffered(deps.offered ?? null, type) && drawingToolPermitted(deps.access, type),
     events,
   })
   const idBase = `${deps.chartId}-drawing`
@@ -589,7 +591,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     toolPermitted: (tool) => permitted(tool),
     canClone: () => {
       const type = handle.selected()?.type
-      return type !== undefined && offered(type)
+      return type !== undefined && permitted(type)
     },
     canCancel: () => drawingCancelAvailable(handle),
     cancel: () => handle.armTool(null),
