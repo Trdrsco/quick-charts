@@ -395,9 +395,6 @@ const PRICE_AXIS_KEY = 'quickcharts.priceAxis.v1'
 const HIDDEN_KEY = 'quickcharts.indHidden.v1'
 const REPLAY_SPEED_KEY = 'quickcharts.replaySpeed.v1'
 const REPLAY_TIMEFRAME_KEY = 'quickcharts.replayTf.v1'
-/** The key Quick Charts 1.x kept the replay update timeframe under. It is read where
- *  `REPLAY_TIMEFRAME_KEY` holds nothing; the current key is the one written. */
-const REPLAY_TIMEFRAME_1X_KEY = 'quickcharts.replayIv.v1'
 const TIMEZONE_KEY = 'quickcharts.timezone.v1'
 const SUBSESSION_KEY = 'quickcharts.subsession.v1'
 
@@ -972,7 +969,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       events.emit('replay', state)
     },
     initialSpeed: coerceReplaySpeed(storage.get(REPLAY_SPEED_KEY) ?? deps.preferences.replaySpeed),
-    initialGrain: storage.get(REPLAY_TIMEFRAME_KEY) ?? storage.get(REPLAY_TIMEFRAME_1X_KEY) ?? deps.preferences.replayTimeframe ?? 'auto',
+    initialGrain: storage.get(REPLAY_TIMEFRAME_KEY) ?? deps.preferences.replayTimeframe ?? 'auto',
   })
 
   const countdownClock = createCountdownClock(() => Date.now() / 1000, datafeed.serverTime?.bind(datafeed))

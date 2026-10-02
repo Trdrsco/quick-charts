@@ -294,6 +294,33 @@ describe('the sync switches a widget offers', () => {
   })
 })
 
+describe('the sync switches a saved layout states', () => {
+  it('open a switch the layout leaves out at the value the widget started with, and read only the five names', async () => {
+    const saved = JSON.parse(await savedFour()) as { sync: Record<string, boolean> }
+    delete saved.sync.timeframe
+    saved.sync.interval = false
+    const { widget } = mount({ layout: { arrangement: '2h', sync: { timeframe: true } } })
+    widget.layout.restore(JSON.stringify(saved))
+    expect(widget.layout.sync()).toEqual({ symbol: false, timeframe: true, crosshair: true, time: false, dateRange: false })
+    expect(Object.keys(JSON.parse(widget.layout.serialize().content).sync)).toEqual(['symbol', 'timeframe', 'crosshair', 'time', 'dateRange'])
+  })
+
+  it('refuse a switch stated as anything but a boolean, and keep the layout on screen', async () => {
+    const saved = JSON.parse(await savedFour()) as { sync: Record<string, unknown> }
+    saved.sync = { ...saved.sync, timeframe: 'yes' }
+    const { widget } = mount({ layout: { arrangement: '2h' } })
+    expect(() => widget.layout.restore(JSON.stringify(saved))).toThrow(/invalid layout sync flags/)
+    expect(widget.layout.arrangement()).toBe('2h')
+  })
+
+  it('hold the five switches alone: a caller naming another key moves no switch and saves none', () => {
+    const { widget } = mount({ layout: { arrangement: '2h' } })
+    expect(widget.commands.execute('widget.layout.setSync', { interval: true }).kind).toBe('ok')
+    expect(widget.layout.sync()).toEqual({ symbol: false, timeframe: false, crosshair: false, time: false, dateRange: false })
+    expect(Object.keys(JSON.parse(widget.layout.serialize().content).sync)).toEqual(['symbol', 'timeframe', 'crosshair', 'time', 'dateRange'])
+  })
+})
+
 describe('a layouts option the host got wrong', () => {
   const refuse = (options: Partial<ChartWidgetOptions>, message: string): void => {
     const container = document.body.appendChild(document.createElement('div'))

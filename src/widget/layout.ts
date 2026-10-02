@@ -46,16 +46,14 @@ const SYNC_OFF: LayoutSyncFlags = { symbol: false, timeframe: false, crosshair: 
 const syncSwitches = (stated: Partial<LayoutSyncFlags>): LayoutSyncFlags =>
   Object.fromEntries(LAYOUT_SYNC_KEYS.map((key) => [key, stated[key] ?? SYNC_OFF[key]])) as unknown as LayoutSyncFlags
 
-/** The sync flags a layout blob states, or null when one is missing or not a boolean. Layout
- *  content written by Quick Charts 1.x names the timeframe switch `interval`: the reader takes that
- *  key where `timeframe` is absent, and the writer states `timeframe`, so the next save carries
- *  the name this build reads. */
-function readSyncFlags(value: unknown): LayoutSyncFlags | null {
+/** The sync switches a layout blob states. A switch the blob leaves out takes its value from
+ *  `defaults`, the switches the layout started with. A blob with no sync record, or with a switch
+ *  stated as anything but a boolean, is refused with null. */
+function readSyncFlags(value: unknown, defaults: LayoutSyncFlags): LayoutSyncFlags | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null
   const stated = value as Record<string, unknown>
-  const read: Record<string, unknown> = { ...stated, timeframe: 'timeframe' in stated ? stated.timeframe : stated.interval }
-  if (LAYOUT_SYNC_KEYS.some((key) => typeof read[key] !== 'boolean')) return null
-  return Object.fromEntries(LAYOUT_SYNC_KEYS.map((key) => [key, read[key]])) as unknown as LayoutSyncFlags
+  if (LAYOUT_SYNC_KEYS.some((key) => key in stated && typeof stated[key] !== 'boolean')) return null
+  return Object.fromEntries(LAYOUT_SYNC_KEYS.map((key) => [key, key in stated ? stated[key] : defaults[key]])) as unknown as LayoutSyncFlags
 }
 
 /** The layout's save/load surface: the same open-resource rule the chart applies to a saved chart,
@@ -651,7 +649,7 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     if (!arrangement) throw new Error(`unknown arrangement code ${String(c.arrangement)}`)
     if (charts.length !== arrangement.count) throw new Error('layout chart count does not match arrangement')
     if (!validGeometry(c.geometry, arrangement.rects)) throw new Error('invalid layout geometry')
-    const sync = readSyncFlags(c.sync)
+    const sync = readSyncFlags(c.sync, fixedFlags)
     if (!sync) throw new Error('invalid layout sync flags')
     if (!Number.isInteger(c.active) || (c.active as number) < 0 || (c.active as number) >= charts.length) throw new Error('invalid active chart')
     return {

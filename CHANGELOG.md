@@ -2,7 +2,7 @@
 
 ## 2.0.0
 
-A major version may rename or remove public names, and its upgrading guide lists each one, old to new, with how saved state carries over. 2.0 names everything a host writes against in the chart's own words: the stylesheet's cascade layers, the data source a symbol search row names, timeframe for every timeframe, indicator for every indicator, the drawing toolbar's models and the context menu's row builder. What 1.x saved opens in 2.0, and the next save writes it under the 2.0 names.
+A major version may rename or remove public names, and its upgrading guide lists each one, old to new, with how saved state carries over. 2.0 names everything a host writes against in the chart's own words: the stylesheet's cascade layers, the data source a symbol search row names, timeframe for every timeframe, indicator for every indicator, the drawing toolbar's models and the context menu's row builder. Saved state is read under the 2.0 names alone, and the guide lists what 1.x saved that opens at its default.
 
 Every modal dialog opens and closes with the modal motion, as the symbol search and chart settings do: the indicator browser, the indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and every drawing dialog (drawing settings, the image picker and the template prompts) fade their backdrop in and fade and scale their box from `motion.scaleEnter` over `motion.durationBase`. A closing dialog stops taking input and returns focus at once, and under a reduced-motion preference it closes at once.
 
@@ -74,14 +74,15 @@ Delete `via` from the rows your feed's `search` returns. A row names the venue i
 
 A `layoutSync` list that names `interval` is a setup error from `createChart`; name `timeframe`.
 
-What 1.x saved opens in 2.0:
+Saved state is read under the 2.0 names alone. What 1.x saved under these names opens at its default:
 
-- A saved layout's `interval` sync switch is read as `timeframe`, and the next save of that layout writes `timeframe`.
-- A stored drawing preference record's `railTools` is read as `drawingToolbarTools`, and the next write of the record states `drawingToolbarTools`.
-- The replay update timeframe a viewer picked, stored under `quickcharts.replayIv.v1`, is read where `quickcharts.replayTf.v1` holds nothing, and the next pick is written under `quickcharts.replayTf.v1`.
-- A drawing's per-timeframe visibility is stored by bucket (`ticks`, `seconds`, `minutes`, `hours`, `days`, `weeks`, `months`) and loads as saved.
-- Template content carries no kind, so every template loads as saved. A store that keeps templates by kind serves what it holds under `study` as `indicator`: a service behind the REST adapter answers `/templates/indicator`, and a `ChartSaveLoadAdapter` of your own answers `templates('indicator')`.
-- Rows your own `RecentsPort` stored keep the fields they were stored with: map a stored `provider` to `dataSource` as your port reads them back.
+- a saved layout's timeframe sync switch, saved as `sync.interval`: the value `layout.sync` gives it, else off;
+- each drawing toolbar group's remembered tool, stored as `railTools` in the drawing preference record `quickcharts.drawingPrefs.v1`: the group's first tool;
+- the replay update timeframe, stored under `quickcharts.replayIv.v1`: `preferences.replayTimeframe`, else `auto`.
+
+Hosts that keep templates by kind file them under `indicator`: the chart asks `templates('indicator')`, and the REST adapter asks `/templates/indicator`.
+
+A `RecentsPort` of yours that stores rows stores `dataSource`, the field the source cell reads.
 
 ## 1.3.0
 
