@@ -199,8 +199,8 @@ const indicatorPlane = (access?: AccessPolicy) => {
   return { plane, events, catalog }
 }
 
-describe('catalog resolution and policy filtering', () => {
-  it('counts unknown and denied definitions as dropped and reports restore arrivals as changes', () => {
+describe('catalog resolution and the access policy', () => {
+  it('counts only unknown definitions as dropped, restores a refused one, and reports restore arrivals as changes', () => {
     const { plane, events } = indicatorPlane({ indicator: (id) => id !== 'rsi' })
     plane.set([{ id: 'old', definition: builtIn('volume') }])
     events.length = 0
@@ -210,9 +210,9 @@ describe('catalog resolution and policy filtering', () => {
         { id: 'rsi-1', definition: 'rsi' },
         { id: 'gone-1', definition: 'not-installed' },
       ]),
-    ).toEqual({ dropped: 2 })
-    expect(plane.list().map((instance) => instance.id)).toEqual(['sma-1'])
-    expect(events).toEqual(['removed:old', 'changed:sma-1'])
+    ).toEqual({ dropped: 1 })
+    expect(plane.list().map((instance) => instance.id)).toEqual(['sma-1', 'rsi-1'])
+    expect(events).toEqual(['removed:old', 'changed:sma-1', 'changed:rsi-1'])
     plane.destroy()
   })
 
@@ -226,16 +226,14 @@ describe('catalog resolution and policy filtering', () => {
     expect(restoreIndicatorInstance({ id: 'host-2', definition: 'host.average' }, catalog.resolve)?.definition).toBe(host)
   })
 
-  it('remembers a host definition while policy denies its seed, then asks the live policy again', () => {
-    let permitted = false
+  it('remembers a host definition the policy refused to add, so a saved record naming it restores', () => {
     const host: IndicatorDefinition = {
       manifest: { id: 'host.average', pane: 'overlay', plots: { value: { kind: 'line' } } },
       compute: () => ({ value: [] }),
     }
-    const { plane } = indicatorPlane({ indicator: () => permitted })
+    const { plane } = indicatorPlane({ indicator: () => false })
     plane.set([{ id: 'seed', definition: host }])
     expect(plane.list()).toEqual([])
-    permitted = true
     expect(plane.restore([{ id: 'restored', definition: 'host.average' }])).toEqual({ dropped: 0 })
     expect(plane.list()[0]!.definition).toBe(host)
     plane.destroy()
@@ -432,7 +430,7 @@ describe('chart and layout persistence', () => {
     expect(widget.charts()).toHaveLength(2)
   })
 
-  it('unknown and denied definitions share one dropped notice and cannot certify unsafe recovery', async () => {
+  it('an unknown definition is the dropped notice and cannot certify unsafe recovery; a refused one is restored', async () => {
     const adapter = memorySaveLoadAdapter()
     const backing = memoryChartStorage()
     let failWrites = false
@@ -471,9 +469,9 @@ describe('chart and layout persistence', () => {
     const partial = await adapter.charts.create({ name: 'Partial', symbol: 'CL', timeframe: '5m', content: partialContent })
     if (partial.kind !== 'ok') throw new Error('unreachable')
     expect((await mountedPolicy.chart.saveLoad.load(partial.ref.id)).kind).toBe('ok')
-    expect(mountedPolicy.chart.indicators.get().map((instance) => instance.id)).toEqual(['sma-1'])
+    expect(mountedPolicy.chart.indicators.get().map((instance) => instance.id)).toEqual(['sma-1', 'rsi-1'])
     expect(mountedPolicy.container.querySelector('.qc-toast-text')?.textContent).toBe(
-      createChartI18n().t('toast.indicatorsNotCarried', { count: 2 }),
+      createChartI18n().t('toast.indicatorsNotCarried', { count: 1 }),
     )
     expect(mountedPolicy.chart.saveLoad.notSaving()).toBe(true)
 

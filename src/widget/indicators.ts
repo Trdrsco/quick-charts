@@ -171,8 +171,10 @@ export interface IndicatorsPlane {
   setHidden(ids: readonly string[]): void
   toggleHidden(id: string): void
   isHidden(id: string): boolean
-  /** Replace the list from saved records. Unknown and policy-denied definitions are omitted and
-   *  counted so the caller can report partial application and withhold recovery certification. */
+  /** Replace the list from saved records. A restore puts back content, it never adds, so an
+   *  instance whose definition the access policy refuses is restored like any other. A record whose
+   *  definition the chart cannot resolve is omitted and counted so the caller can report partial
+   *  application and withhold recovery certification. */
   restore(saved: readonly SavedIndicator[]): { dropped: number }
   /** Restore the exact live list after a failed load, including anonymous host definitions. */
   restoreHeld(instances: readonly IndicatorInstance[]): void
@@ -345,12 +347,12 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     })
 
   /** Replace and report structural differences. Restore/rollback arrivals are changes, not user
-   *  adds. The caller decides what the list holds: `set` admits it first, a restore filters its
-   *  records, and a rollback puts back exactly what the chart held. */
+   *  adds. The caller decides what the list holds: `set` admits it first, a restore keeps every
+   *  record it resolves, and a rollback puts back exactly what the chart held. */
   const replace = (next: readonly IndicatorInstance[], arrival: 'added' | 'changed'): void => {
     const before = instances
-    // Carry what the host supplied even when today's policy refuses it. The predicate is live: if
-    // that policy later permits the definition, a saved record can resolve and ask it again.
+    // Carry what the host supplied even when today's policy refuses it, so a saved record naming
+    // that definition resolves when it is restored.
     deps.catalog.carry(next)
     instances = [...next]
     renderer.prune(new Set(instances.map((instance) => instance.id)))
@@ -493,7 +495,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       let dropped = 0
       for (const record of saved) {
         const instance = restoreIndicatorInstance(record, deps.catalog.resolve)
-        if (!instance || !permitted(instance)) {
+        if (!instance) {
           dropped++
           continue
         }
