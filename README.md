@@ -1746,8 +1746,8 @@ before costs that one glyph its artwork. The control draws the chart's own glyph
 `icons` covers the chart's own controls. The emoji, sticker and icon glyphs a drawing places come
 through the asset port, and a chart extension draws its rows and layers from the
 `ChartExtensionIcon` descriptors it contributes. The product's mark in the plot's corner is not an
-icon. `mountContextMenu`, `openSymbolSearch` and `mountSymbolSearch` take the same `icons` for a menu
-or search you mount without a widget.
+icon. `mountContextMenu`, `openSymbolSearch`, `mountSymbolSearch`, `openTimeframePicker` and
+`mountTimeframePicker` take the same `icons` for a menu, search or picker you mount without a widget.
 
 ### Neutral marks
 
@@ -2367,6 +2367,60 @@ const card = mountSymbolSearch({ container: pickerBox, datafeed: searchFeed, cac
 card.focus()
 card.dispose()
 catalog.dispose()
+```
+
+### The timeframe picker, away from a chart
+
+A page that asks for an interval where no chart is mounted (a backtest's timeframe, an alert's
+interval) opens the list the chart's timeframe caret drops: the same unit groups, rows, labels and
+custom composer, built by the same code, so an interval reads there exactly as it reads on a chart.
+`openTimeframePicker` drops it from a control you own, which gets `aria-expanded` while it is open
+and focus back when it closes; `mountTimeframePicker` builds it bare into a box you own and
+position, as a card on a phone. Picking a row, or composing a custom timeframe, hands the token to
+`onPick`, because there is no chart here to set. The drop-down then closes; the card calls
+`onClose`, your cue to close its box.
+
+It takes what you already give a chart. `timeframe` is the value it opens on, checked and focused,
+and a custom value sits in its unit's group. `timeframes` and `customTimeframes` offer exactly what
+they offer a chart (see Offered timeframes), with the same setup errors, thrown before anything
+mounts, plus one for a `timeframe` the grammar cannot read. `resolutions` and
+`supportedResolutions` say what your feed and the symbol serve: as in the chart's list, a row they
+do not serve is left out, and the composer does not offer one. `theme`, `locale` (or a prepared
+`i18n`) and `icons` paint it as they paint a chart, on a theme root of its own, so the stylesheet
+reaches it outside any chart in either mode.
+
+It carries no saved chips and no stars, and keeps nothing: the chips are a chart's quick-select row,
+stored with the chart's preferences, and a field that asks for one interval has no row to put them
+in. A composed timeframe is handed back and not added to any list. The drop-down takes the keyboard
+as the chart's does (arrow keys, Home and End rove the rows; Escape and a press outside close
+it) and moves as every menu does.
+
+```ts
+import { mountTimeframePicker, openTimeframePicker } from '@trdrs/quickcharts'
+
+declare const intervalField: HTMLButtonElement
+declare const intervalBox: HTMLElement
+declare const backtest: { timeframe: string; setTimeframe(timeframe: string): void }
+
+intervalField.addEventListener('click', () => {
+  const picker = openTimeframePicker({
+    anchor: intervalField,
+    timeframe: backtest.timeframe,
+    resolutions: ['1m', '5m', '15m', '1h', '4h', '1d'], // what the feed serves
+    theme: { mode: 'light' },
+    onPick: (timeframe) => backtest.setTimeframe(timeframe),
+  })
+  void picker // picker.close() closes it from outside; Escape and a press outside close it too
+})
+
+const card = mountTimeframePicker({
+  container: intervalBox,
+  timeframes: ['5m', '15m', '1h', '4h', '1d'],
+  timeframe: '1h',
+  onPick: (timeframe) => backtest.setTimeframe(timeframe),
+  onClose: () => intervalBox.remove(),
+})
+card.focus()
 ```
 
 ### The legend

@@ -361,6 +361,10 @@ export { createSearchController, isSymbolPair, looksLikeSpread, matchSegments, m
 // The search as a dialog, for a page that needs a market picked away from a chart.
 export type { MountedSymbolSearch, SymbolSearchCache, SymbolSearchHandle, SymbolSearchOptions } from './ui/chrome/openSymbolSearch'
 export { createSymbolSearchCache, mountSymbolSearch, openSymbolSearch } from './ui/chrome/openSymbolSearch'
+// The timeframe list as a drop-down or a card, for a page that needs an interval picked away from
+// a chart.
+export type { MountedTimeframePicker, TimeframePickerHandle, TimeframePickerOptions } from './ui/chrome/openTimeframePicker'
+export { mountTimeframePicker, openTimeframePicker } from './ui/chrome/openTimeframePicker'
 
 // ── The drawing workflow's host inputs ────────────────────────────────────────────────────────
 // The drawing API is its own entrypoint (`@trdrs/quickcharts/drawings`), and everything about drawings
