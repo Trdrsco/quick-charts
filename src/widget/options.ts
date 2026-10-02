@@ -120,8 +120,16 @@ export interface TopBarUi {
   replay?: boolean
   /** Undo and redo. */
   history?: boolean
-  /** The layout setup menu and the saved-layouts menu. */
+  /** The layout setup menu and the saved-layouts menu. `false` hides both, whatever `layoutSetup`
+   *  and `savedLayouts` say. */
   layouts?: boolean
+  /** The layout setup menu: the arrangement grid and the sync switches. Not shown when the widget
+   *  offers nothing to choose there (see `ChartWidgetOptions.layouts`). */
+  layoutSetup?: boolean
+  /** The saved-layouts menu: the layout's name with Save, and the menu that saves, copies, renames,
+   *  creates and opens layouts. Not shown without a layouts store (`saveLoad.layouts`), since every
+   *  row saves or reads one; Download chart data then sits in the image menu. */
+  savedLayouts?: boolean
   /** The chart settings menu. `false` removes it; an object hides part of it. */
   settings?: boolean | SettingsMenuUi
   /** The fullscreen button. */
@@ -271,7 +279,9 @@ export interface DrawingPersistenceOptions {
 
 /** The multi-chart arrangement the widget opens with. */
 export interface LayoutOptions {
-  /** An arrangement code from the catalog (default `s`, one chart). Unknown codes throw. */
+  /** An arrangement code from the catalog (default `s`, one chart, or the first of
+   *  `ChartWidgetOptions.layouts` when the host lists them). Unknown codes throw, and with `layouts`
+   *  the code must be one of them. */
   arrangement?: string
   /** Per-chart starting symbol and timeframe, index-aligned to the arrangement's panes. A timeframe
    *  must be one the widget offers. */
@@ -408,6 +418,39 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   customTimeframes?: boolean
   /** The multi-chart arrangement. One chart when omitted. */
   layout?: LayoutOptions
+  /** The arrangement codes the chart offers (`ARRANGEMENTS`). Absent, all 55 are offered. The
+   *  layout opens on `layout.arrangement`, else on the first code listed. The layout setup menu
+   *  keeps its own rows by chart count and shows only the listed arrangements, and the order given
+   *  breaks ties when a saved layout falls back (below).
+   *
+   *  An arrangement left out is not an arrangement of this chart: no tile shows it, and
+   *  `widget.layout.setArrangement` and the `widget.layout.setArrangement` command ignore it. With
+   *  one arrangement offered the layout setup menu is not shown, since there is nothing to choose,
+   *  unless that arrangement holds several charts and a sync switch is offered (`layoutSync`): the
+   *  menu then holds the switches alone. `['s']` is a single chart with no layout setup menu.
+   *  `ui.topBar.layoutSetup: false` hides the menu on its own terms.
+   *
+   *  A saved layout whose arrangement is left out opens on the offered arrangement with the most
+   *  charts not above the saved layout's count, the first listed winning a tie. When every offered
+   *  arrangement holds more charts, it opens on the one with the fewest, and the panes past the
+   *  saved charts are filled as a re-tile fills new panes, from the first chart. Saved charts past
+   *  the ones shown are not dropped: the layout carries them, with the saved arrangement and its
+   *  divider positions, and a save of it writes them back unchanged beside the shown charts as they
+   *  are now, so a chart that offers the saved arrangement again opens all of them. A re-tile the
+   *  viewer or the host makes is a new arrangement, and what was carried goes with the charts it
+   *  tears down. A saved active chart among the hidden ones leaves the first chart active. Sync
+   *  switches restore as saved, apart from those `layoutSync` leaves out.
+   *
+   *  An empty list, an unknown code, a repeated code and a `layout.arrangement` outside the list
+   *  are setup errors thrown from `createChart`. */
+  layouts?: readonly string[]
+  /** The sync switches the viewer may change (`symbol`, `interval`, `crosshair`, `time`,
+   *  `dateRange`). Absent, every one. A switch left out holds the value `layout.sync` gives it, or
+   *  off: the layout setup menu does not show it, `widget.layout.setSync` and its command leave it
+   *  as it is, and a saved layout cannot change it. An empty list fixes every switch and leaves the
+   *  layout setup menu the arrangements alone. An unknown or repeated switch is a setup error thrown
+   *  from `createChart`. */
+  layoutSync?: readonly (keyof LayoutSyncFlags)[]
   /** Where the drawings are stored: with the chart's own saved content (the default) or in their
    *  own documents through the adapter's drawings family. */
   drawingPersistence?: DrawingPersistenceOptions

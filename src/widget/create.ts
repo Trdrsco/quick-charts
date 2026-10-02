@@ -22,6 +22,7 @@ import { createSearchController, memoryRecents, type RecentsPort, type SearchCon
 import { deriveCapabilities, resolveFeatures, resolveUi } from './planes'
 import { resolveOfferedStyles } from './styles'
 import { offeredTimeframe, resolveOfferedTimeframes } from './timeframes'
+import { layoutChoices, openingArrangement, resolveOfferedLayouts } from './arrangements'
 import type { Capabilities, ChartWidgetOptions } from './options'
 import { DRAWING_CONTEXT_VERSION, type DrawingContextKind, type DrawingResourceContext } from '../drawings/document'
 import type { ChartDrawingPersistence } from './chart'
@@ -124,7 +125,16 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     { name: 'timeframe', token: options.timeframe },
     ...(options.layout?.charts ?? []).map((chart, i) => ({ name: `layout.charts[${i}].timeframe`, token: chart?.timeframe })),
   ])
-  const ui = resolveUi(options.ui, features, styles.list.length, timeframes.list?.length)
+  // The arrangements and sync switches likewise: a list or an opening arrangement the host got
+  // wrong is a setup error, never a layout quietly on another arrangement.
+  const layouts = resolveOfferedLayouts(options.layouts, options.layoutSync, options.layout?.arrangement)
+  const arrangementCode = openingArrangement(layouts, options.layout?.arrangement)
+  const ui = resolveUi(options.ui, features, {
+    styleCount: styles.list.length,
+    timeframeCount: timeframes.list?.length,
+    layoutChoices: layoutChoices(layouts),
+    layoutStore: !!options.saveLoad?.layouts,
+  })
   const iconDiagnostics = createIconDiagnostics()
   const i18n: ChartI18n = options.i18n ?? createChartI18n(options.locale)
   // Every glyph the widget draws goes through this one resolver, so a host's drawing for an icon
@@ -278,7 +288,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // mounting then cannot ask the layout how many charts there are: until the layout exists, the
   // count is what the arrangement will build, and after it the layout's own tally.
   let layoutBuilt = false
-  const configuredCharts = (): number => arrangementOf(options.layout?.arrangement ?? 's')?.count ?? 1
+  const configuredCharts = (): number => arrangementOf(arrangementCode)?.count ?? 1
   // While the layout rebuilds itself for a new arrangement, the chart being built is not in its
   // tally yet, so the arrangement's own count is the floor.
   const chartCount = (): number => (layoutBuilt ? Math.max(layout.handles().length, arrangementOf(layout.api.arrangement())?.count ?? 1) : configuredCharts())
@@ -302,9 +312,11 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     container: panes,
     adapter: options.saveLoad ?? null,
     i18n,
-    arrangement: options.layout?.arrangement,
+    arrangement: arrangementCode,
     charts: options.layout?.charts,
     sync: options.layout?.sync,
+    arrangements: layouts.named ? layouts.arrangements : undefined,
+    syncOffered: options.layoutSync === undefined ? undefined : layouts.sync,
     identitySeed: persistence.layoutId,
     timeframeOf: (token) => offeredTimeframe(token, timeframes),
     createChart(element, init, _index, chartKey) {
@@ -627,7 +639,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // behavior, kept here so it runs whatever controls the chrome draws. It subscribes before the chrome
   // does, so the saved-layouts menu reads an answer that already heard the same event.
   const layoutChanges = trackLayoutChanges({ widget, commands, autosave, events })
-  const unregisterCommands = registerWidgetCommands({ commands, widget, theme, i18n, capabilities, canSaveLayout: layout.canSave, toggleMaximize: layout.toggleMaximize, nameLayout: () => doors.nameLayout(), openLayouts: () => doors.openLayouts(), removeLayout: layout.removeResource, autosave, layoutChanges, events })
+  const unregisterCommands = registerWidgetCommands({ commands, widget, theme, i18n, capabilities, canSaveLayout: layout.canSave, toggleMaximize: layout.toggleMaximize, layouts, startLayout: layout.startNew,nameLayout: () => doors.nameLayout(), openLayouts: () => doors.openLayouts(), removeLayout: layout.removeResource, autosave, layoutChanges, events })
 
   // ── The default chrome: the top bar, the bottom bar, the dialogs and the notices, driven only by
   // the registry, the planes and the event maps. It fills the doors the charts already hold.
@@ -661,6 +673,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
     icons,
     styles,
     timeframes,
+    layouts,
     doors,
   })
 

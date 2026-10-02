@@ -1,7 +1,9 @@
 // The layout setup menu: a button wearing the active arrangement's glyph, opening the thirteen-row
 // grid of the 55 arrangements (rows labeled by chart count, radio semantics) over the five sync
 // switches. It edits a code and five flags through the widget's layout commands; the layout owns
-// what they do.
+// what they do. Where the host offers fewer, the grid shows the offered arrangements alone, a row
+// with none of them is not drawn, a single arrangement leaves the grid out, and only the offered
+// switches are drawn, under no heading when there are none.
 import { arrangementName } from '../../i18n'
 import type { ChartMessageKey } from '../../i18n'
 import { arrangementOf, LAYOUT_MENU_ROWS } from '../../layoutGrid'
@@ -44,6 +46,12 @@ const SYNC_ROWS: readonly { key: keyof LayoutSyncFlags; label: ChartMessageKey; 
   { key: 'dateRange', label: 'layouts.syncDateRange', tip: 'layouts.syncDateRangeTip', toggle: 'layouts.syncDateRangeToggle' },
 ]
 
+/** The menu's rows for what the widget offers: each row keeps its catalog codes the widget offers,
+ *  in catalog order, and a row left with none is not drawn. */
+export function offeredRows(offered: readonly string[]): readonly { label: string; codes: readonly string[] }[] {
+  return LAYOUT_MENU_ROWS.map((row) => ({ label: row.label, codes: row.codes.filter((code) => offered.includes(code)) })).filter((row) => row.codes.length > 0)
+}
+
 export interface LayoutSetupHandle {
   element: HTMLButtonElement
   sync(state?: LayoutModelState): void
@@ -76,7 +84,8 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
         const current = projected.arrangement
         const built: NonNullable<typeof live> = { tag: deps.i18n.tag(), tiles: [], switches: [] }
         const grid = h('div', { class: 'qc-layout-grid', role: 'radiogroup', 'aria-label': t()('layouts.arrangement') })
-        LAYOUT_MENU_ROWS.forEach((row, ri) => {
+        const rows = offeredRows(deps.layouts.arrangements)
+        rows.forEach((row, ri) => {
           const line = h('div', { class: 'qc-layout-row' }, h('span', { class: 'qc-layout-count qc-muted' }, numbers().format(Number(row.label))))
           const tiles = h('span', { class: 'qc-layout-tiles' })
           for (const code of row.codes) {
@@ -95,13 +104,16 @@ export function mountLayoutSetup(deps: ChromeContext): LayoutSetupHandle {
           }
           line.appendChild(tiles)
           grid.appendChild(line)
-          if (ri < LAYOUT_MENU_ROWS.length - 1) grid.appendChild(h('div', { class: 'qc-separator', role: 'separator' }))
+          if (ri < rows.length - 1) grid.appendChild(h('div', { class: 'qc-separator', role: 'separator' }))
         })
-        body.appendChild(grid)
-        body.appendChild(menuHeading(t()('layouts.syncInLayout')))
+        // One offered arrangement is nothing to choose, so the grid is left out and the menu holds
+        // the switches alone.
+        if (deps.layouts.arrangements.length > 1) body.appendChild(grid)
+        const syncRows = SYNC_ROWS.filter((row) => deps.layouts.sync.includes(row.key))
+        if (syncRows.length > 0) body.appendChild(menuHeading(t()('layouts.syncInLayout')))
         const flags = projected.sync
         const syncAvailable = deps.commands.available('widget.layout.setSync')
-        for (const row of SYNC_ROWS) {
+        for (const row of syncRows) {
           const switchLine = switchRow({
             label: t()(row.label),
             hint: t()(row.tip),

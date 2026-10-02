@@ -28,6 +28,7 @@ import type { IndicatorInstance } from './options'
 import type { CompareEntry } from '../compare'
 import { chartRecoveryReceipt, parseChartContent } from './saveLoad'
 import { symbolNames } from '../symbolLabel'
+import { fallbackArrangement, LAYOUT_SYNC_KEYS } from './arrangements'
 
 /** Which changes replay across the layout. All off by default. */
 export interface LayoutSyncFlags {
@@ -66,12 +67,13 @@ export interface LayoutSaveLoadApi {
 export interface LayoutApi {
   arrangement(): string
   /** Re-tile. Surviving charts keep their state; new charts clone pane 0's safe presentation;
-   *  excess charts are torn down. */
+   *  excess charts are torn down. An arrangement the widget does not offer is ignored. */
   setArrangement(code: string): void
   /** The index of the active chart. */
   active(): number
   setActive(index: number): void
   sync(): LayoutSyncFlags
+  /** Set sync switches. A switch the widget does not offer keeps its value. */
   setSync(partial: Partial<LayoutSyncFlags>): void
   /** The chart standing alone, or null while every chart is tiled. Presentation, not content: a
    *  maximize is a way of LOOKING at a layout, so it rides no blob and a re-tile clears it. */
@@ -150,6 +152,11 @@ export interface LayoutDeps {
   /** The timeframe a restored chart opens on for the token its layout names: the token when the
    *  widget offers it, else the widget's first offered timeframe. Absent, the token as named. */
   timeframeOf?(token: string): string
+  /** The arrangement codes the widget offers, in the host's order. Absent, every arrangement. */
+  arrangements?: readonly string[]
+  /** The sync switches the viewer may change. Absent, every switch. The others keep the value
+   *  `sync` gives them. */
+  syncOffered?: readonly (keyof LayoutSyncFlags)[]
   /** Stable document seed when the host has one. Absent means this widget's identities are session-only. */
   identitySeed?: string
   /** Tear one chart down. */
@@ -181,12 +188,43 @@ export interface LayoutPlane {
   toggleMaximize(): void
   /** Whether a tile fills the layout now. */
   maximized(): boolean
+  /** Start a new layout from one chart's content: re-tile to one chart, restore `content` into it,
+   *  then re-tile to the arrangement the widget opens a one-chart layout on, whose other panes clone
+   *  that chart as any re-tile clones pane 0. Nothing a restore carried survives it. */
+  startNew(content: string): void
   destroy(): void
+}
+
+/** One chart entry of layout content, as the content holds it. */
+interface LayoutChartEntry {
+  id: string
+  symbol?: unknown
+  tf?: unknown
+  content?: unknown
+}
+
+/** What a restore carries when the saved arrangement is not offered and the arrangement shown holds
+ *  fewer charts: the saved arrangement, its geometry, and the saved charts past the ones shown, kept
+ *  exactly as they were read. */
+interface CarriedLayout {
+  arrangement: string
+  geometry: PaneRect[]
+  charts: LayoutChartEntry[]
 }
 
 export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
   const slots: LayoutSlot[] = []
   let flags: LayoutSyncFlags = { ...SYNC_OFF, ...(deps.sync ?? {}) }
+  /** The switches the viewer may not change, and the value each holds: the host's own. */
+  const fixedSync: readonly (keyof LayoutSyncFlags)[] = deps.syncOffered ? LAYOUT_SYNC_KEYS.filter((key) => !deps.syncOffered!.includes(key)) : []
+  const fixedFlags: LayoutSyncFlags = { ...flags }
+  const holdFixed = (next: LayoutSyncFlags): LayoutSyncFlags => {
+    for (const key of fixedSync) next[key] = fixedFlags[key]
+    return next
+  }
+  const offersArrangement = (code: string): boolean => !deps.arrangements || deps.arrangements.includes(code)
+  /** The saved charts a restore could not show, carried into every serialize until a re-tile. */
+  let carried: CarriedLayout | null = null
   let active = 0
   let removed = false
   /** True while the bus replays a change onto sibling charts. Their echoes are dropped, so a symbol
@@ -385,7 +423,18 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     if (failure) throw failure
   }
 
-  const applyArrangement = (next: Arrangement, cloneNew = true, identities?: readonly string[]): unknown => {
+  /** Pane 0's safe presentation, read and deep-copied whole: what a new pane clones. */
+  const templateOf = (handle: ChartHandle): ChartPresentationTemplate => ({
+    symbol: handle.symbol(),
+    timeframe: handle.timeframe(),
+    style: handle.style(),
+    indicators: cloneIndicators(handle.indicators.get()),
+    compares: handle.compare.list().map((entry) => ({ ...entry })),
+  })
+
+  /** Re-tile to `next`, building `build` panes of it: all of them, unless a restore fills the rest
+   *  itself. */
+  const applyArrangement = (next: Arrangement, cloneNew = true, identities?: readonly string[], build = next.count): unknown => {
     cancelDrag?.()
     // A retile can destroy an unsafe child's controller. Keep that provenance on the containing
     // resource before any slot goes; recreating its partial snapshot is not a recovery. Only a
@@ -398,13 +447,7 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     const cloneFrom = cloneNew ? slots[0]?.handle : undefined
     // Read and deep-copy the whole source before committing any layout field. A host-defined
     // indicator object may carry throwing accessors; refusing that snapshot leaves tiling intact.
-    const template = cloneFrom ? {
-      symbol: cloneFrom.symbol(),
-      timeframe: cloneFrom.timeframe(),
-      style: cloneFrom.style(),
-      indicators: cloneIndicators(cloneFrom.indicators.get()),
-      compares: cloneFrom.compare.list().map((entry) => ({ ...entry })),
-    } satisfies ChartPresentationTemplate : undefined
+    const template = cloneFrom ? templateOf(cloneFrom) : undefined
     arrangement = next
     rects = next.rects.map((rect) => ({ ...rect }))
     maximized = null
@@ -413,12 +456,12 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     // unsubscribe, instance dispose and element removal still runs, and a cleanup exception cannot
     // leave arrangement fields claiming a count the slot list no longer has.
     let cleanupFailure: unknown
-    while (slots.length > next.count) {
+    while (slots.length > build) {
       try { destroySlot(slots.pop()!) } catch (error) { cleanupFailure ??= error }
     }
     const added: LayoutSlot[] = []
     try {
-      while (slots.length < next.count) {
+      while (slots.length < build) {
         const slot = createSlot(template ? cloneTemplate(template) : deps.charts?.[slots.length], identities?.[slots.length])
         slots.push(slot)
         added.push(slot)
@@ -565,7 +608,7 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     sync: LayoutSyncFlags
     active: number
     identity: { namespace: string; next: number }
-    charts: { id: string; symbol?: unknown; tf?: unknown; content?: unknown }[]
+    charts: LayoutChartEntry[]
   }
 
   const readLayoutContent = (content: string): LayoutPlan => {
@@ -592,7 +635,7 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     if (charts.length !== arrangement.count) throw new Error('layout chart count does not match arrangement')
     if (!validGeometry(c.geometry, arrangement.rects)) throw new Error('invalid layout geometry')
     const sync = c.sync && typeof c.sync === 'object' ? c.sync as Record<string, unknown> : null
-    const keys: (keyof LayoutSyncFlags)[] = ['symbol', 'interval', 'crosshair', 'time', 'dateRange']
+    const keys = LAYOUT_SYNC_KEYS
     if (!sync || keys.some((key) => typeof sync[key] !== 'boolean')) throw new Error('invalid layout sync flags')
     if (!Number.isInteger(c.active) || (c.active as number) < 0 || (c.active as number) >= charts.length) throw new Error('invalid active chart')
     return {
@@ -608,18 +651,26 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
   const applyLayoutContent = (plan: LayoutPlan): void => {
     recoveries = []
     complete = false
+    // A saved arrangement the widget does not offer opens on the offered one with the most charts
+    // not above its count, else the one with the fewest. The saved charts past the ones shown are
+    // carried whole, so a save of this layout still holds them; extra panes clone the first chart,
+    // as any re-tile clones pane 0.
+    const shown = offersArrangement(plan.arrangement.code) ? plan.arrangement : arrangementOf(fallbackArrangement(plan.arrangement.count, deps.arrangements!))!
+    const kept = Math.min(shown.count, plan.charts.length)
+    const entries = plan.charts.slice(0, kept)
     // Saved children carry their own complete content. Do not provisionally clone pane 0 here:
     // that would start its compare/feed work before the saved child replaces it.
-    const cleanupFailure = applyArrangement(plan.arrangement, false, plan.charts.map((entry) => entry.id))
+    const cleanupFailure = applyArrangement(shown, false, entries.map((entry) => entry.id), kept)
+    carried = kept < plan.charts.length ? { arrangement: plan.arrangement.code, geometry: plan.geometry.map((rect) => ({ ...rect })), charts: plan.charts.slice(kept) } : null
     entityNamespace = plan.identity.namespace
     nextEntity = plan.identity.next
-    rects = plan.geometry.map((rect) => ({ ...rect }))
-    flags = { ...plan.sync }
+    rects = (shown === plan.arrangement ? plan.geometry : shown.rects).map((rect) => ({ ...rect }))
+    flags = holdFixed({ ...plan.sync })
     // Replay each chart's blob with the bus muted: a restore is placement, never a sync event.
     applying = true
     try {
       for (let i = 0; i < slots.length; i++) {
-        const entry = plan.charts[i]
+        const entry = entries[i]
         if (!entry) continue
         if (typeof entry.content === 'string') {
           const child = slots[i]!.handle.saveLoad
@@ -631,10 +682,14 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
           if (typeof entry.tf === 'string' && entry.tf) slots[i]!.handle.setTimeframe(deps.timeframeOf?.(entry.tf) ?? entry.tf)
         }
       }
+      if (slots.length < shown.count) {
+        const template = templateOf(slots[0]!.handle)
+        while (slots.length < shown.count) slots.push(createSlot(cloneTemplate(template)))
+      }
     } finally {
       applying = false
     }
-    active = plan.active
+    active = plan.active < kept ? plan.active : 0
     maximized = null
     for (let i = 0; i < slots.length; i++) place(slots[i]!.element, i)
     paintActive()
@@ -643,10 +698,21 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     // layout puts a different market under it, and a host that is not told keeps the one it left.
     emitActive()
     complete =
-      plan.charts.length === slots.length &&
-      recoveries.length === slots.length
+      slots.length === shown.count &&
+      recoveries.length === kept
     // The candidate is coherent before teardown failure is surfaced. The outer restore catches
     // this and runs its ordinary content rollback, so a failed shrink never reports a load success.
+    if (cleanupFailure) throw cleanupFailure
+  }
+
+  /** A re-tile the viewer or the host asked for: the layout is now the one they chose, so nothing a
+   *  restore carried rides it any further. */
+  const retile = (next: Arrangement): void => {
+    carried = null
+    const cleanupFailure = applyArrangement(next)
+    paintDividers()
+    deps.onChange()
+    emitCommitted()
     if (cleanupFailure) throw cleanupFailure
   }
 
@@ -656,11 +722,8 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
       if (removed || code === arrangement.code) return
       const next = arrangementOf(code)
       if (!next) throw new Error(`unknown arrangement code ${code}`)
-      const cleanupFailure = applyArrangement(next)
-      paintDividers()
-      deps.onChange()
-      emitCommitted()
-      if (cleanupFailure) throw cleanupFailure
+      if (!offersArrangement(code)) return
+      retile(next)
     },
     active: () => active,
     setActive: (index) => setActive(index),
@@ -678,23 +741,29 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
     sync: () => ({ ...flags }),
     setSync(partial) {
       if (removed) return
-      flags = { ...flags, ...partial }
+      // A switch the viewer may not change keeps its value; a call that names only such switches
+      // changes nothing and reports nothing.
+      if (fixedSync.length > 0 && Object.keys(partial).every((key) => fixedSync.includes(key as keyof LayoutSyncFlags))) return
+      flags = holdFixed({ ...flags, ...partial })
       deps.onChange()
       emitCommitted()
     },
     serialize() {
+      const charts: LayoutChartEntry[] = slots.map((slot) => {
+        const s = slot.handle.saveLoad.serialize()
+        return { id: slot.entityId, symbol: s.symbol, tf: s.timeframe, content: s.content }
+      })
+      // A layout carrying saved charts it does not show writes the saved arrangement and geometry
+      // with every chart: the shown ones as they are now, the rest exactly as they were read.
       return {
         content: JSON.stringify({
           v: LAYOUT_CONTENT_VERSION,
-          arrangement: arrangement.code,
-          geometry: rects,
+          arrangement: carried ? carried.arrangement : arrangement.code,
+          geometry: carried ? carried.geometry : rects,
           sync: flags,
           active,
           identity: { namespace: entityNamespace, next: nextEntity },
-          charts: slots.map((slot) => {
-            const s = slot.handle.saveLoad.serialize()
-            return { id: slot.entityId, symbol: s.symbol, tf: s.timeframe, content: s.content }
-          }),
+          charts: carried ? [...charts, ...carried.charts] : charts,
         }),
       }
     },
@@ -766,6 +835,18 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
      *  third door onto one behavior rather than a second implementation of it. */
     toggleMaximize: () => toggleMaximize(active),
     maximized: () => maximized !== null,
+    startNew(content) {
+      if (removed) return
+      const single = arrangementOf('s')!
+      if (arrangement.code !== single.code) retile(single)
+      else if (carried) {
+        carried = null
+        deps.onChange()
+      }
+      slots[0]!.handle.saveLoad.restore(content)
+      const opening = deps.arrangements ? arrangementOf(fallbackArrangement(1, deps.arrangements))! : single
+      if (opening.code !== arrangement.code) retile(opening)
+    },
     destroy() {
       if (removed) return
       removed = true

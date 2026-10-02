@@ -99,6 +99,8 @@ const COVERAGE: Readonly<Record<string, Probe | { provedBy: string }>> = {
   'topBar.replay': named('Bar replay'),
   'topBar.history': named('Undo', true),
   'topBar.layouts': named('Manage layouts'),
+  'topBar.layoutSetup': named('Layout setup', true),
+  'topBar.savedLayouts': named('Manage layouts'),
   'topBar.settings': named('Chart settings'),
   'topBar.settings.theme': async (container) => {
     container.querySelector<HTMLButtonElement>('button[aria-label="Chart settings"]')!.click()
@@ -246,6 +248,16 @@ describe('resolving the planes', () => {
     expect([noBar.bottomBar, noBar.legend, noBar.symbolSearch, noBar.indicatorPicker]).toEqual([true, true, true, true])
     const some = resolveUi({ topBar: { image: false, settings: { theme: false } } }, features)
     expect([some.topBar, some.imageMenu, some.settingsMenu, some.settingsTheme, some.fullscreenButton]).toEqual([true, false, true, false, true])
+  })
+
+  it('hides both layout menus with layouts: false, and one of them with its own flag, never showing what layouts hid', () => {
+    const pick = (ui: ReturnType<typeof resolveUi>) => [ui.layoutSetup, ui.savedLayouts]
+    expect(pick(resolveUi({ topBar: { layouts: false } }, features))).toEqual([false, false])
+    expect(pick(resolveUi({ topBar: { layouts: false, layoutSetup: true, savedLayouts: true } }, features))).toEqual([false, false])
+    expect(pick(resolveUi({ topBar: { layoutSetup: false } }, features))).toEqual([false, true])
+    expect(pick(resolveUi({ topBar: { savedLayouts: false } }, features))).toEqual([true, false])
+    expect(pick(resolveUi(undefined, features, { layoutStore: false }))).toEqual([true, false])
+    expect(pick(resolveUi(undefined, features, { layoutChoices: false }))).toEqual([false, true])
   })
 
   it('draws no control over a behavior the features turned off', () => {

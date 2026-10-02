@@ -10,6 +10,7 @@ import type { ChartHandle } from '../../widget/chart'
 import type { IconResolver } from '../icons/resolver'
 import type { OfferedChartStyles } from '../../widget/styles'
 import type { OfferedTimeframes } from '../../widget/timeframes'
+import type { OfferedLayouts } from '../../widget/arrangements'
 
 export interface ChromeContext {
   i18n: ChartI18n
@@ -25,6 +26,9 @@ export interface ChromeContext {
   /** The timeframes the widget offers, which bound the timeframe picker's chips and rows and the
    *  interval a range preset reads at. */
   timeframes: OfferedTimeframes
+  /** The arrangements and sync switches the widget offers, which are the layout setup menu's tiles
+   *  and switches. */
+  layouts: OfferedLayouts
 }
 
 /** The chart the chrome acts on: the active one. */
