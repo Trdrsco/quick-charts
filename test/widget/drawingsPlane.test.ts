@@ -352,6 +352,17 @@ describe('the plane through the registry', () => {
     expect(able.plane.api!.export()[0]?.type).toBe('image')
   })
 
+  it('places no image through the api while the access policy refuses the image tool', () => {
+    const image: PlacedImage = { dataUrl: 'data:image/png;base64,AA', width: 64, height: 48, opacity: 1 }
+    const port: DrawingAssetPort = { intakeImage: async () => ({ ok: true, asset: { ...image, downscaled: false } }), glyphSource: () => null }
+    const refused = make({ assets: port, refuseTool: 'image' })
+    refused.plane.api!.placeImage(image)
+    expect(refused.plane.api!.count()).toBe(0)
+    const able = make({ assets: port })
+    able.plane.api!.placeImage(image)
+    expect(able.plane.api!.count()).toBe(1)
+  })
+
   it('carries the snapshot, not the preview, in every document write while the settings dialog is open', () => {
     const { chrome, gestures, run, plane } = make()
     run('chart.drawings.arm', 'trend_line')

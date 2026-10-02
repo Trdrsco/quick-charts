@@ -93,6 +93,9 @@ export interface ChromeHandle {
   topBarSlot(name: TopBarSlot): HTMLElement | null
   /** A control of the host's own, made as one of the bar's. */
   toolbarButton(options: ToolbarButtonOptions): ToolbarButton
+  /** The host's access policy may answer differently: the bars and the replay transport read it
+   *  again now, rather than on the next change to the active chart. */
+  refreshAccess(): void
   dispose(): void
 }
 
@@ -386,6 +389,12 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   return {
     topBarSlot: (name) => topBar?.slot(name) ?? null,
     toolbarButton: (options) => createToolbarButton(options, deps.icons),
+    refreshAccess() {
+      if (disposed) return
+      topBar?.sync()
+      bottomBar?.sync()
+      replayBar?.sync()
+    },
     dispose() {
       disposed = true
       for (const off of disposers.splice(0)) off()

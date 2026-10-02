@@ -79,8 +79,10 @@ export function mountContextMenu(
 /** The menu over the widget's own resolver, so its glyphs wear what every other control of the
  *  widget wears and a failed drawing is reported where the widget's others are. */
 /** `shown` says whether a built-in row is drawn at all; a row it turns away leaves its group, and an
- *  emptied group draws no rule. */
-export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => void, strings: ChartI18n, icons: IconResolver, shown: (id: ChartMenuAction) => boolean = () => true): ContextMenuHandle {
+ *  emptied group draws no rule. `refresh` rebuilds an open menu's rows where they stand, asking
+ *  `shown` again, for a change the menu cannot observe on its own (the host's access policy
+ *  answering differently); a closed menu stays closed. */
+export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => void, strings: ChartI18n, icons: IconResolver, shown: (id: ChartMenuAction) => boolean = () => true): ContextMenuHandle & { refresh(): void } {
   // A full-viewport backdrop closes the menu on any press elsewhere, and swallows the browser's own
   // menu so a second right-click re-aims ours rather than stacking the native one on top.
   const backdrop = document.createElement('div')
@@ -210,6 +212,9 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
       box.style.top = `${Math.max(8, Math.min(at.clientY, window.innerHeight - h - 8))}px`
     },
     close,
+    refresh() {
+      if (openCtx) fill(openCtx, openExtra)
+    },
     destroy() {
       unsubscribe()
       window.removeEventListener('keydown', onKey)

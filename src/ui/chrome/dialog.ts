@@ -42,6 +42,9 @@ export interface DialogOptions {
   build(body: HTMLElement, dialog: DialogHandle): void
   /** The control that takes focus on open. Default the first focusable. */
   initialFocus?(body: HTMLElement): HTMLElement | null
+  /** Re-read what the box shows, in place, for a change the dialog cannot observe on its own (the
+   *  host's access policy answering differently). A dialog without one is left as it is. */
+  refresh?(): void
   /** The dialog has begun closing and is no longer interactive, before any exit motion finishes. */
   onClosing?(): void
   onClose?(): void
@@ -149,7 +152,8 @@ export function openDialog(options: DialogOptions): DialogHandle {
     scrim.getBoundingClientRect()
     scrim.dataset.state = 'open'
   }
-  untrack = trackOverlay(options.host, close)
+  const refresh = options.refresh
+  untrack = trackOverlay(options.host, close, refresh ? () => { if (isOpen) refresh() } : undefined)
   document.addEventListener('keydown', onKey, true)
   const target = options.initialFocus?.(box) ?? focusables(box)[0] ?? null
   target?.focus()

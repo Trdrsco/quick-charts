@@ -93,8 +93,10 @@ export function numberInput(
 const openPanels: HTMLElement[] = []
 
 /** A floating panel beside its anchor inside the chart box, closed on an outside press or Escape.
- *  Returns its close, which the caller runs when the surface that opened it goes. */
-export function openPopover(box: HTMLElement, anchor: HTMLElement, content: HTMLElement, mode: PanelPlacement, onClose?: () => void, place: HTMLElement = anchor): () => void {
+ *  Returns its close, which the caller runs when the surface that opened it goes. `refresh` is how
+ *  the panel re-reads what it lists for a change it cannot observe on its own (the host's access
+ *  policy answering differently); a panel without one is left as it is. */
+export function openPopover(box: HTMLElement, anchor: HTMLElement, content: HTMLElement, mode: PanelPlacement, onClose?: () => void, place: HTMLElement = anchor, refresh?: () => void): () => void {
   const panel = el('div', { class: 'qc-overlay qc-drawing-popover', 'data-role': 'drawing-popover' }, content)
   ownPointer(panel)
   box.appendChild(panel)
@@ -123,7 +125,7 @@ export function openPopover(box: HTMLElement, anchor: HTMLElement, content: HTML
     onClose?.()
   }
   // The box's own teardown closes whatever is still open, so no document listener outlives it.
-  const untrack = trackOverlay(box, close)
+  const untrack = trackOverlay(box, close, refresh)
   const undismiss = dismissOnOutside(
     panel,
     anchor,
@@ -140,6 +142,19 @@ export function openPopover(box: HTMLElement, anchor: HTMLElement, content: HTML
   document.addEventListener('scroll', reposition, true)
   anchor.setAttribute('aria-expanded', 'true')
   return close
+}
+
+/** Raise a popover again from the control that opened it, so what it lists is built afresh by that
+ *  control's own open: how a panel built once re-reads the host's access policy. A control that is
+ *  now gone, hidden or disabled leaves the panel closed. The keyboard stays where it was: focus
+ *  inside the old panel moves into the new one, and focus anywhere else is not taken. */
+export function reopenPopover(close: () => void, content: HTMLElement, control: () => HTMLElement | null | undefined): void {
+  const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const inside = !!focused && content.contains(focused)
+  close()
+  const anchor = control()
+  if (anchor?.isConnected && !anchor.closest('[hidden]') && !(anchor instanceof HTMLButtonElement && anchor.disabled)) anchor.click()
+  if (!inside && focused?.isConnected) focused.focus({ preventScroll: true })
 }
 
 /** The stroke rendered as segments: a bar for solid, four dashes, or a run of square dots, at the

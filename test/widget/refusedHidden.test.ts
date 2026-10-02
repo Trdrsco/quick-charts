@@ -59,12 +59,6 @@ function livePolicy(refused: 'disable' | 'hide' | undefined, start: { commands?:
   return { access, denied }
 }
 
-/** The registry tells every listener when the registered set moves, which is one of the paths the
- *  chrome syncs on. A host whose session changed has its own reasons to register; this stands in. */
-const nudge = (widget: ChartWidget): void => {
-  widget.commands.register({ id: `host.nudge.${Math.random()}`, scope: 'widget', label: 'command.historyUndo', labelText: 'Nudge', available: () => true, execute: () => undefined })
-}
-
 const groups = buildRailGroups()
 const trend = groups.find((group) => group.id === 'trend')!
 const channels = trend.sections.find((section) => section.label === 'drawing.sectionChannels')!.tools.map((tool) => tool.type)
@@ -147,16 +141,16 @@ describe("drawing tools under refused: 'hide'", () => {
     const favorites = (): string[] => [...container.querySelectorAll<HTMLElement>('[data-role="drawing-favorites"] .qc-drawing-favorite')].map((b) => b.dataset.tool!)
     expect(favorites()).toEqual([firstTrendTool, channels[0]])
     denied.tools.add(firstTrendTool)
-    nudge(widget)
+    widget.refreshAccess()
     await settle()
     expect(favorites()).toEqual([channels[0]])
     denied.tools.add(channels[0]!)
-    nudge(widget)
+    widget.refreshAccess()
     await settle()
     // Nothing left to draw: the bar goes, its stars kept.
     expect(container.querySelector<HTMLElement>('[data-role="drawing-favorites"]')!.hidden).toBe(true)
     denied.tools.clear()
-    nudge(widget)
+    widget.refreshAccess()
     await settle()
     expect(favorites()).toEqual([firstTrendTool, channels[0]])
   })
@@ -247,7 +241,7 @@ describe("command controls under refused: 'hide'", () => {
     expect(remove.disabled).toBe(true)
   })
 
-  it('follows a policy that changes, on the paths that sync the chrome', async () => {
+  it('follows a policy that changes, when the host says so and on the paths that sync the chrome', async () => {
     const { access, denied } = livePolicy('hide')
     const { widget, container } = mount({ access })
     await settle()
@@ -255,7 +249,7 @@ describe("command controls under refused: 'hide'", () => {
     expect(drawn(rail(container).querySelector('button[aria-label="Remove drawings"]'))).toBe(true)
     denied.commands.add('chart.replay.start')
     denied.commands.add('chart.drawings.removeAll')
-    nudge(widget)
+    widget.refreshAccess()
     await settle()
     expect(drawn(topButton(container, 'Bar replay'))).toBe(false)
     expect(drawn(rail(container).querySelector('button[aria-label="Remove drawings"]'))).toBe(false)

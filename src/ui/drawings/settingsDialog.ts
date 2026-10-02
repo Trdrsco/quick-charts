@@ -14,7 +14,7 @@ import type { DrawingPresets } from '../../drawings'
 import { openDialog } from './dialog'
 import { button, el, focusFirst, menuKeys } from './dom'
 import { tidyRules } from '../chrome/dom'
-import { dialogTabs, openPopover } from './fields'
+import { dialogTabs, openPopover, reopenPopover } from './fields'
 import { coordinateRows, firstTabFor, styleRows, tableRows, tabsFor, textRows, visibilityRows, TAB_LABEL, type RowsContext, type SettingsTab } from './settingsRows'
 import { openTemplateDeleteDialog, openTemplateNameDialog } from './templateDialog'
 import type { IconResolver } from '../icons/resolver'
@@ -221,10 +221,11 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     for (const row of [...menu.children]) if ((row as HTMLElement).hidden) row.remove()
     tidyRules(menu, (child) => !child.hidden)
     const unkeys = menuKeys(menu, () => [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')])
-    closeMenu = openPopover(dialog.box, template, menu, 'below', () => {
+    const close = openPopover(dialog.box, template, menu, 'below', () => {
       unkeys()
       closeMenu = null
-    })
+    }, template, () => reopenPopover(close, menu, () => template))
+    closeMenu = close
     focusFirst(menu)
   })
   dialog.footer.append(

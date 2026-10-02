@@ -8,7 +8,7 @@ import { THEME_MODES, type ThemeMode } from '../../theme/schema'
 import { activeChart, commandLabel, shows, type ChromeContext } from './context'
 import type { ResolvedUi } from '../../widget/planes'
 import { dialogTitle, fieldRow, openDialog, switchRow, type DialogHandle } from './dialog'
-import { button, h, name } from './dom'
+import { button, h, name, setDisabled } from './dom'
 import { ICONS, STYLE_ICONS, type Glyph } from '../controls/icons'
 import { createColorControl, readColor, type ColorControlHandle } from '../controls/color'
 import { openInlinePanel } from '../controls/inlinePanel'
@@ -51,6 +51,8 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
   const settingsId = ++nextSettingsId
   let dialog: DialogHandle | null = null
   let content: HTMLElement | null = null
+  /** The open dialog's reset control, which reads the policy as the pages do. */
+  let reset: HTMLButtonElement | null = null
   let activePage: SettingsPage = 'appearance'
   let committed = false
   let initial: { appearance: ChartOverrides['appearance']; scale: ScaleMode; theme: ThemeMode } | null = null
@@ -82,6 +84,10 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
 
   const refresh = (): void => {
     if (!dialog?.open() || !content) return
+    if (reset) {
+      reset.hidden = !shows(deps, 'chart.appearance.reset')
+      setDisabled(reset, !deps.commands.available('chart.appearance.reset'))
+    }
     retireControls()
     content.replaceChildren()
     buildContent(content)
@@ -249,7 +255,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
       build(box, handle) {
         content = h('div', { class: 'qc-dialog-body qc-chart-settings-body' })
         const footer = h('div', { class: 'qc-chart-settings-footer' })
-        const reset = button({
+        reset = button({
           label: commandLabel(deps, 'chart.appearance.reset'),
           text: commandLabel(deps, 'chart.appearance.reset'),
           className: 'qc-chart-settings-reset',
@@ -285,6 +291,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
       onClose: () => {
         retireControls()
         content = null
+        reset = null
         dialog = null
         initial = null
         trigger.setAttribute('aria-expanded', 'false')

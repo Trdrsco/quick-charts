@@ -20,6 +20,10 @@ Hosts choose how the chart's own controls present what the access policy refuses
 
 Hosts choose which drawing tools a chart offers with `drawingTools`, a list of tool types; a tool left out is not in the rail's flyouts, on a group's face, on the favorites bar, on the rail (measure, zoom) or among the glyph picker's kinds, with an emptied section or group going too, and arming it or copying a drawing of it (clone, paste, a modifier-drag duplicate) is refused from every door. Drawings of it already on the chart render and stay fully editable and deletable, the eraser is always offered, a listed tool the access policy refuses follows `access.refused`, and nothing stored (favorites, a group's remembered face) is rewritten. An empty list, an unknown type and a repeated type are setup errors from `createChart`. The drawing layer takes `copies` to refuse a copy by type.
 
+Hosts tell a chart that the access policy answers differently with `widget.refreshAccess()`: every control, rail tool and group, the favorites bar, the glyph picker, the legend's row controls and every open menu, flyout and dialog (the indicator browser among them) read the policy again at once, `commands.onChange` listeners hear it, and nothing stored or on the chart changes.
+
+The public `placeImage` on a chart's drawings asks the access policy for the `image` tool, as arming it and `chart.drawings.placeImage` do; it placed an image the policy refused.
+
 ## 1.1.0
 
 The symbol search can name what it is limited to, with a host-painted mark, beside the asset-class filters (`search.scope`, `SearchScope`).

@@ -59,9 +59,13 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
   let loading = false
   let available = !source
   let offLocale = (): void => {}
+  // The rows as they stand, drawn again: what a change to the host's access policy asks for. The
+  // host's listing is not asked again, since the policy is read where the rows are drawn.
+  let redraw = (): void => {}
   const cancel = (): void => { generation++; controller?.abort(); controller = null; busy = false }
   return openDialog({
     host: deps.overlays, label: t('picker.title'), className: 'qc-picker-dialog', width: 840,
+    refresh: () => redraw(),
     onClose: () => { cancel(); offLocale() },
     build(box, dialog) {
       const input = h('input', { type: 'search', class: 'qc-picker-search', role: 'searchbox', 'aria-label': t('picker.search'), placeholder: t('picker.search'), autocomplete: 'off', spellcheck: 'false' })
@@ -219,7 +223,8 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
       })
       box.append(h('div', { class: 'qc-picker-header' }, h('span', { class: 'qc-title' }, t('picker.title')), close), h('div', { class: 'qc-picker-searchbar' }, searchGlyph(deps.icons), input), h('div', { class: 'qc-picker-body' }, nav, h('div', { class: 'qc-picker-content' }, h('div', { class: 'qc-picker-tabs' }, h('span', { class: 'qc-picker-tab' }, t('picker.title'))), list, status)))
       renderNavigation()
-      offLocale = deps.i18n.onChange(() => {
+      redraw = render
+      offLocale =deps.i18n.onChange(() => {
         if (!dialog.open()) return
         box.setAttribute('aria-label', t('picker.title'))
         box.querySelector('.qc-title')!.textContent = t('picker.title')

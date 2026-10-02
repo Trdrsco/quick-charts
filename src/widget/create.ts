@@ -47,6 +47,7 @@ import type { TopBarSlot } from '../ui/chrome/topBar'
 import { createIndicatorCatalog } from './indicators'
 import { resolveMarkPainters } from '../markPainters'
 import { registerLayer } from '../ui/controls/layer'
+import { refreshOverlays } from '../ui/controls/overlays'
 
 /** Every mounted chart gets one id, so an extension attached to two charts of a layout can tell
  *  them apart and key its own per-chart state. Stable for the chart's life, never reused. */
@@ -105,6 +106,15 @@ export interface ChartWidget {
   /** The chrome's host slots. A host that composes its own doors puts them here rather than beside
    *  the chart, so a service the chart does not own still reads as part of the same toolbar. */
   chrome: ChartChrome
+  /** Ask the access policy again, now. The chart's own controls read `access` whenever they sync
+   *  and whenever a menu opens; call this when the policy's answers changed with nothing on the
+   *  chart changing (a viewer's plan changed mid-session). Every control, menu row, rail tool and
+   *  group, the favorites bar, the glyph picker, the legend's row controls and every menu, flyout
+   *  and dialog that is open (the indicator browser among them) read the policy again: shown or
+   *  left out under `access.refused`, enabled or disabled. Listeners of `commands.onChange` hear
+   *  it too, so a host's own controls can read `commands.available` again. Nothing stored and
+   *  nothing on the chart changes. Inert after `dispose`. */
+  refreshAccess(): void
   on<K extends keyof WidgetEvents>(name: K, callback: WidgetEvents[K]): () => void
   /** Tear down every chart, subscription, timer and DOM resource. Idempotent, and every handle and
    *  subscription is inert afterwards. */
@@ -606,6 +616,17 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
       iconDiagnostics: () => iconDiagnostics.list(),
     },
     on: (name, callback) => events.on(name, callback),
+    refreshAccess() {
+      if (disposed) return
+      // The registry's listeners first: the rails, the favorites bars, the selection's bars, the
+      // navigation clusters and the host's own controls. Then what no registry change reaches: each
+      // chart's legend and level menu, the bars at once, and every overlay open in the widget's root
+      // and layer, which re-reads in place or opens again from its control.
+      commandHandle.changed()
+      for (const instance of instances.values()) instance.refreshAccess()
+      chrome.refreshAccess()
+      refreshOverlays([root, layer])
+    },
     dispose() {
       if (disposed) return
       disposed = true

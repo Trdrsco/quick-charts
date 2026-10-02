@@ -198,7 +198,7 @@ export function openMenu(options: MenuOptions): MenuHandle {
   if (footer && options.footer) options.footer(footer, handle)
   if (!isOpen || byAnchor.get(anchor) !== handle) return handle
   host.appendChild(element)
-  untrack = trackOverlay(host, close)
+  untrack = trackOverlay(host, close, () => handle.refresh())
   anchor.setAttribute('aria-expanded', 'true')
   reposition()
   const list = items(element)

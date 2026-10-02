@@ -14,7 +14,7 @@ import { TOOL_COLOR_CHANNELS } from '../../drawings/capabilities'
 import { isApplePlatform } from '../../platform'
 import { button, dragUntilRelease, el, focusFirst, followHostSize, menuKeys, ownPointer, paintedPosition, rovingFocus } from './dom'
 import { tidyRules } from '../chrome/dom'
-import { openPopover } from './fields'
+import { openPopover, reopenPopover } from './fields'
 import { createColorPalette } from '../controls/color'
 import { OWN_WORDS_TOOLS } from '../../drawings/capabilities'
 import type { IconName } from '../controls/icons'
@@ -121,6 +121,9 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     const wasOpen = anchor.getAttribute('aria-expanded') === 'true'
     closeOpen()
     if (wasOpen) return
+    // The bar is rebuilt on every render, so a panel re-reads the host's policy by opening again
+    // from whichever control now stands for the one it hung off.
+    const control = anchor.dataset.qcControl
     const close = openPopover(deps.chrome, anchor, content, placement, () => {
       if (closePanel === close) {
         markOpen(false)
@@ -129,7 +132,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
         panelControl = null
       }
       onClose?.()
-    })
+    }, anchor, () => reopenPopover(close, content, () => (control ? controls.querySelector<HTMLElement>(`[data-qc-control='${control}']`) : null)))
     closePanel = close
     panelFor = deps.selected()?.id ?? null
     panelControl = anchor.dataset.qcControl ?? null

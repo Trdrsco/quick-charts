@@ -110,6 +110,8 @@ export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {
 
   const openBrowser = (catalog: LayoutCatalog): void => {
     let query = ''
+    /** The rows drawn again from the catalog in hand, for a policy that moved. */
+    let redraw = (): void => undefined
     const collator = new Intl.Collator(deps.i18n.tag(), { sensitivity: 'base', numeric: true })
     /** The rows in the viewer's order: starred first, then by name or by when each was saved. */
     const ordered = (list: readonly LayoutMeta[]): LayoutMeta[] => {
@@ -126,6 +128,7 @@ export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {
       label: t()('layouts.dialogTitle'),
       className: 'qc-layouts-dialog',
       width: 480,
+      refresh: () => redraw(),
       build(box, handle) {
         const input = h('input', { type: 'text', class: 'qc-layouts-search-input', 'aria-label': t()('layouts.search'), placeholder: t()('layouts.search'), autocomplete: 'off', spellcheck: 'false' })
         const field = h('div', { class: 'qc-layouts-search' }, deps.icons.glyph(ICONS.search, { size: 28, className: 'qc-layouts-search-mark' }), input)
@@ -240,6 +243,7 @@ export function mountLayoutDialogs(deps: LayoutDialogsDeps): LayoutDialogs {
         })
         box.append(dialogTitle(t()('layouts.dialogTitle'), t()('layouts.close'), () => handle.close(), deps.icons), field, columns, h('div', { class: 'qc-layouts-body' }, list))
         render()
+        redraw = render
         closeBrowser = catalog.onChange(render)
         browser = {
           close: () => handle.close(),
