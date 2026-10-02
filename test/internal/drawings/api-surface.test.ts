@@ -1,5 +1,5 @@
 // The seam's own surface inventory. This is an INTERNAL source module bundled into quickcharts, so
-// a diff here is not a SemVer event: it is an accident check. The 90 tool classes are what the
+// a diff here is not a SemVer event: it is an accident check. Each of the 90 tools has a class the
 // registry builds drawings from, and dropping one silently would take a tool off the chart, so
 // every export is named and a loss fails loudly here.
 //
@@ -129,14 +129,14 @@ const SURFACE: Record<string, string> = {
   snapToBar: 'function',
   toolRegistry: 'object',
   viewportOf: 'function',
-  // Additive (minor): the quick per-interval visibility rules, 2026-08-22.
+  // The quick per-interval visibility rules.
   visibilityPreset: 'function',
   visibleAt: 'function',
   volumeProfile: 'function',
   withAlpha: 'function',
 }
 
-describe('@trdrs/chart-drawings API surface pin', () => {
+describe('internal drawing module API surface pin', () => {
   it('exports exactly the pinned names', () => {
     expect(Object.keys(api).sort()).toEqual(Object.keys(SURFACE).sort())
   })

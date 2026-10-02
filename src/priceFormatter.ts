@@ -37,7 +37,7 @@ export interface PriceFormatterOptions {
 export interface PriceFormatter {
   /** The price as the symbol writes it. */
   format(price: number): string
-  /** The number a user typed, or null when the text is not a price in this symbol's format. */
+  /** The number a viewer typed, or null when the text is not a price in this symbol's format. */
   parse(text: string): number | null
   /** How many digits `format` writes after the decimal sign. 0 for a fractional format, which
    *  writes none; the widest band's width for a variable-tick format, so a column sized from it

@@ -174,7 +174,7 @@ describe("drawing tools under refused: 'hide'", () => {
 })
 
 describe("indicators under refused: 'hide'", () => {
-  it('leaves a refused definition out of the browser, where disable draws it disabled', async () => {
+  it('leaves a refused definition out of the picker, where disable draws it disabled', async () => {
     for (const refused of ['disable', 'hide'] as const) {
       const { access } = livePolicy(refused, { indicators: ['sma'] })
       const { widget } = mount({ access })

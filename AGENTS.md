@@ -4,8 +4,7 @@ A guide and a rule set for agents working in this repository. The code is the so
 the documents below point at it.
 
 Quick Charts (`@trdrs/quickcharts` on npm) is a public, Apache-2.0 browser charting library. It
-draws over the datafeed and storage a host supplies, and includes no market data, trading,
-accounts, execution or hosting.
+draws over the datafeed and storage a host supplies, and everything around the chart is the host's.
 
 ## Rules
 

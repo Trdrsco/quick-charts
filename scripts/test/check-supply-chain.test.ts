@@ -84,15 +84,15 @@ describe('each rule reports its seeded value from the tree', () => {
 
   it('proprietary: a private package in what a consumer receives, not in the source the build inlines', () => {
     write('src/index.ts', "export * from './internal/drawings/index'\n")
-    write('test/a.test.ts', "import '@trdrs/chart-drawings'\n")
-    write('dist/index.js', "import '@trdrs/broker'\n")
-    write('README.md', 'Install `@trdrs/chart-engine` beside it.\n')
-    write('package.json', JSON.stringify({ name: '@trdrs/quickcharts', dependencies: { '@trdrs/broker': 'workspace:^' }, devDependencies: { '@trdrs/chart-drawings': 'workspace:^' } }))
+    write('test/a.test.ts', "import '@trdrs/private-dev-example'\n")
+    write('dist/index.js', "import '@trdrs/private-example'\n")
+    write('README.md', 'Install `@trdrs/private-example` beside it.\n')
+    write('package.json', JSON.stringify({ name: '@trdrs/quickcharts', dependencies: { '@trdrs/private-example': 'workspace:^' }, devDependencies: { '@trdrs/private-dev-example': 'workspace:^' } }))
     const { hits } = check(root, noPacked)
     // The manifest is judged structurally: the devDependency the build inlines is not a finding,
     // and the installable block is reported once, not per line of text.
     expect(keys(hits)).toEqual(['README.md:1:proprietary', 'dist/index.js:1:proprietary', 'package.json:0:proprietary'])
-    expect(hits.find((h) => h.file.endsWith('package.json'))?.what).toBe('dependencies names @trdrs/broker')
+    expect(hits.find((h) => h.file.endsWith('package.json'))?.what).toBe('dependencies names @trdrs/private-example')
   })
 
   it('allows the selected public chart name but rejects a similarly prefixed private package', () => {
@@ -103,7 +103,7 @@ describe('each rule reports its seeded value from the tree', () => {
   })
 
   it('proprietary is a present-tense rule: a private name in an old README revision is not a leak', () => {
-    const history = [{ commit: 'b'.repeat(40), file: 'README.md', line: 1, text: "import { mount } from '@trdrs/account-manager'" }]
+    const history = [{ commit: 'b'.repeat(40), file: 'README.md', line: 1, text: "import { mount } from '@trdrs/private-example'" }]
     expect(check(root, { packed: () => [], history: () => history }).hits).toEqual([])
   })
 })

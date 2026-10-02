@@ -3,10 +3,10 @@
 // `DrawingTemplates` owns what the two kinds MEAN over the revisioned template contract. This
 // module is the layer's adapter around it: the family is read once into memory, every reader
 // answers from that copy at once, and every write updates the copy and then goes up. A refused or
-// failed write leaves the copy as the trader last saw it and the next write carries the
+// failed write leaves the copy as the viewer last saw it and the next write carries the
 // correction; nothing here retries, because the next edit is the retry.
 //
-// The cache belongs to the STORE, not to one chart. Defaults and templates are the trader's, so
+// The cache belongs to the STORE, not to one chart. Defaults and templates are the viewer's, so
 // every layer reading the same template store shares one copy: a default remembered on one chart
 // is what the next placement on another chart starts from, and a template saved or deleted anywhere
 // is in every menu at once. The copy lives as long as a layer holds it and goes when the last one

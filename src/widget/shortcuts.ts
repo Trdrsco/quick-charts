@@ -145,7 +145,7 @@ export interface ShortcutTile {
  *  is the layout's active tile, because the level a contributed row would name is read from that
  *  tile's own price scale and no other tile has it. The pointer outside every tile answers null and
  *  the press is left for the page: there is no level to act at, and silently retargeting the active
- *  tile would seed an order at a price the trader never pointed to. Later tiles win an overlap,
+ *  tile would act at a price the viewer never pointed to. Later tiles win an overlap,
  *  which is the tile drawn on top. */
 export function tileAtPoint(tiles: readonly ShortcutTile[], point: ShortcutPoint | null): string | null {
   if (!point) return null

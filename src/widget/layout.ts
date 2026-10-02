@@ -787,7 +787,7 @@ export function createLayoutPlane(deps: LayoutDeps): LayoutPlane {
           applyLayoutContent(readLayoutContent(held))
         } catch (rollback) {
           // The layout is on neither content now. That is a different answer from a clean refusal
-          // and it is reported as one, rather than left for the trader to notice; and until the
+          // and it is reported as one, rather than left for the viewer to notice; and until the
           // layout holds a whole content again, nothing it shows is written anywhere.
           openLayout.stopSaving()
           throw new ResourceRollbackError(error, rollback)

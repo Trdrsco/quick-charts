@@ -46,7 +46,7 @@ export interface ManifestFill {
 export type IndicatorCategory = 'ma' | 'band' | 'osc' | 'vol'
 
 /** A built-in's declarative manifest: identity, placement, category, and its inputs, plots,
- *  levels and fills. Every trader-visible word is elsewhere: names and descriptions are catalog
+ *  levels and fills. Every viewer-visible word is elsewhere: names and descriptions are catalog
  *  keys on the definition, and `tag` is the locale-neutral short mark (SMA, RSI, %R). */
 export interface IndicatorManifest {
   readonly id: string

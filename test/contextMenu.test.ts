@@ -8,7 +8,7 @@ import { BUILT_IN_THEMES } from '../src/theme/palettes'
 const css = authoredStylesheet()
 
 // The menu's shape is pinned here: its order, its wording, and which rows exist at all. A level
-// menu that quietly grows or reorders a row is a menu a trader has to re-read every time.
+// menu that quietly grows or reorders a row is a menu a viewer has to re-read every time.
 
 const base: ChartMenuContext = {
   priceText: '4,512.25',
@@ -21,7 +21,7 @@ const labels = (c: Partial<ChartMenuContext> = {}) =>
   chartContextMenu({ ...base, ...c }).map((r) => (r.kind === 'separator' ? '—' : r.label))
 
 describe('the level menu, in its own order', () => {
-  it('reads top to bottom in one fixed order, with nothing about an account in it', () => {
+  it('reads top to bottom in one fixed order, with chart rows alone', () => {
     expect(labels()).toEqual([
       'Reset chart view',
       '—',
@@ -32,9 +32,8 @@ describe('the level menu, in its own order', () => {
     ])
   })
 
-  // The orders a level can hold are an account's business and an alert is an application's: the
-  // chart's model has no row for either, and no field that could ask for one. An extension
-  // contributes those rows for the level.
+  // Order and alert rows are a host's own, contributed for the level by an extension: the chart's
+  // model has no row for either, and no field that could ask for one.
   it('offers no order or alert row and knows no order or alert field', () => {
     expect(labels().some((l) => /^(Buy|Sell) /.test(l))).toBe(false)
     expect(labels().some((l) => l.startsWith('Add order'))).toBe(false)

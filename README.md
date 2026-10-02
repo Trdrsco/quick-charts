@@ -1,9 +1,8 @@
 # @trdrs/quickcharts
 
-Quick Charts is a charting library that draws over the datafeed and the storage you supply. The chart
-consumes the `ChartDatafeed` interface and never a concrete backend, so your feed drives it without a
-change to the chart. It does not include market data, trading, accounts, execution, community, news
-or hosting: the host supplies data and storage, and the chart draws.
+Quick Charts is a datafeed-driven charting library with drawings, indicators, layouts and replay.
+It draws over the datafeed and the storage you supply: the chart consumes the `ChartDatafeed`
+interface, so your feed drives it without a change to the chart.
 
 ## Install
 
@@ -21,8 +20,8 @@ runtime. Use default peer resolution; do not suppress peer checks.
 Quick Charts is licensed under the Apache License 2.0: see `LICENSE` and `NOTICE`. Because the
 renderer is *your* dependency, its own Apache-2.0 NOTICE
 obligations attach to **your** bundle: `THIRD-PARTY-NOTICES.md` in this package spells out exactly
-what to carry and how. The chart includes no trading, accounts or executions; an application that
-trades composes those outside the chart, through the extension seam below.
+what to carry and how. An application composes its own features on the chart through the extension
+seam below.
 
 Quickstart, the smallest working chart (see [The widget](#the-widget) for the full options). The
 stylesheet import is not optional: it carries the chart's layout as well as its look, and without it
@@ -44,9 +43,8 @@ await widget.ready()
 Implement `ChartDatafeed` (see `datafeed.ts`). Required methods: `search`, `resolve`, `history`,
 `subscribeBars`. Optional: `serverTime` (countdown skew correction) and `config` (a feed-level
 capability declaration, described [below](#capability-declaration-config-optional)). The datafeed serves
-symbol metadata, bars and bar updates and nothing else: a quote board (last, change, volume) or a
-top-of-book is not a chart concern, and your host fans quotes to its own consumers from its own
-source.
+symbol metadata, bars and bar updates; your host serves quotes (last, change, volume, the top of
+book) to its own consumers from its own source.
 
 When `appearance.countdown` is enabled, a live streaming time bar replaces the native last-value
 label with one price-and-time label. The price uses the resolved symbol formatter. Replay, stale,
@@ -303,8 +301,8 @@ symbolNames({ symbol: 'NASDAQ:AAPL', name: 'Apple Inc', exchange: 'NASDAQ', type
 symbolNames('HYPERLIQUID:ETH').mark // 'ETH', before the symbol resolves
 ```
 
-Symbology is display truth, not trading truth. It carries no order quantity, price step, lot size,
-or pip value. Your broker integration owns those, and a broker's execution grid can differ from a
+Symbology is display truth: how the chart writes a market's prices. Execution facts, such as lot
+size and pip value, stay with your trading integration, and its execution grid can differ from the
 chart's display grid.
 
 If your data comes from a UDF server, map its `/symbols` answer without collapsing the facts:
@@ -322,14 +320,14 @@ info?.dataStatus // 'streaming'
 
 Quick Charts persists two different kinds of thing, and the difference decides where each one lives.
 
-Saved charts, layouts, drawing documents and templates are **entities**: a user names them, opens
+Saved charts, layouts, drawing documents and templates are **entities**: a viewer names them, opens
 them in two tabs, and can lose them. They have identity and versions, and they live on the
 save/load adapter you supply. Viewer preferences (the last symbol and timeframe, the scale mode, the
 replay speed) are **flat settings**: they need no identity, and they live on the small `ChartStorage`
 port beside it.
 
 The chart never writes on its own. It tells you when a save would be worth making, through the
-`saveNeeded` event, and it runs a write only when a user asks for one through the built-in UI or
+`saveNeeded` event, and it runs a write only when a viewer asks for one through the built-in UI or
 when you call a save method yourself.
 
 ### What a saved entity carries
@@ -428,8 +426,9 @@ outcome.kind // 'not-found'
 
 An aborted call rejects with an error named `AbortError` and changes nothing.
 
-`memorySaveLoadAdapter` persists nothing. Use it for tests, server rendering and an intentionally
-ephemeral embed, and implement the same contract over your own backend for durable storage.
+`memorySaveLoadAdapter` keeps everything in memory for the life of the page. Use it for tests,
+server rendering and an intentionally ephemeral embed, and implement the same contract over your
+own backend for durable storage.
 
 ### The REST adapter and its wire contract
 
@@ -447,10 +446,11 @@ const restSaves = createRestSaveLoadAdapter({
 await restSaves.layouts.list()
 ```
 
-You supply two values and nothing else. `baseUrl` is where you mounted the routes, and `request` is
-how a request is made. Authorization, cookies, CORS, retries, timeouts and tenancy stay in your
-request function, because their consequences are yours: the adapter holds no credential, no token
-store, no header policy and no default origin, and it makes no request until you call a verb.
+You supply two values. `baseUrl` is where you mounted the routes, and `request` is how a request is
+made. Authorization, cookies, CORS, retries, timeouts and tenancy stay in your request function,
+because their consequences are yours: the adapter builds each request from `baseUrl` and hands it to
+your function, which adds the credentials and headers your service needs, and it makes a request
+only when you call a verb.
 
 Your service serves four collections under that base URL. Every path below is relative to it.
 
@@ -587,13 +587,13 @@ switch (opened.kind) {
 A load that a later load supersedes is `cancelled`, with no signal of your own involved, and only
 the later load binds. This includes a later load begun synchronously by a chart callback during
 application. A widget disposed while the store is still answering answers the same way. That is
-what keeps a slow answer for the chart a user has left from landing on the chart they are looking
+what keeps a slow answer for the chart a viewer has left from landing on the chart they are looking
 at.
 
 Where a body fails after part of it has been applied, the chart puts back the content it held. If
 that fails too the chart is holding neither, and it stops saving: `saveLoad.notSaving()` reports it,
 `save` answers `not-saving` and writes nothing, the built-in layouts menu says so on the toolbar and
-stands its Save and its autosave down, and the sentence for the trader arrives on `saveConflict`.
+stands its Save and its autosave down, and the sentence for the viewer arrives on `saveConflict`.
 
 Saving starts again when a load lands, and only then: a whole content out of the store, applied in
 full, under the resource it came from. `save(name, { asNew: true })` stays available throughout, and
@@ -623,7 +623,7 @@ Complete recovery requires every typed appearance leaf with a valid concrete col
 in combined mode, a drawings array. Separate-mode chart content does not need that array.
 
 Hydration and rollback do not emit `saveNeeded` for their own storage writes. An event already
-queued by a user edit is preserved. A late save result does not replace a newer load's binding;
+queued by a viewer's edit is preserved. A late save result does not replace a newer load's binding;
 the built-in commands announce a saved layout only while that result is still current.
 
 ### Drawings: combined or separate
@@ -681,13 +681,13 @@ drawing tool's look, and `'palette'` for chart appearance. A drawing template ca
 belongs to, because a trend-line template means nothing on a rectangle. Their content is opaque,
 like a chart's.
 
-### User settings
+### Viewer settings
 
 The widget keeps the viewer's flat preferences in a `ChartStorage`. Every key is an opaque string in
 the `quickcharts.` namespace, and every value is an opaque string; a store routes or scopes them and
-reads neither. The default is an in-memory store that lasts the page; supply your own to keep them
-per device or per account. A browser store is a few lines you write; it is not part of the package,
-because a device-local default is not a persistence architecture:
+treats both as opaque. The default is an in-memory store that lasts the page; supply your own to
+keep them per device or per viewer. A browser store is a few lines you write and own, so where
+preferences live stays your decision:
 
 ```ts
 import { memoryChartStorage, type ChartStorage } from '@trdrs/quickcharts'
@@ -710,7 +710,7 @@ live on the saved-resource adapter above, never here.
 A conflict means someone else wrote the same entity after the copy on screen was read. The chart
 never resolves that by overwriting. It reports the case with a sentence from its own catalog and the
 ref that stands now, and leaves the decision to you: reload and lose the local edit, save a copy
-under a new name, or show the user both.
+under a new name, or show the viewer both.
 
 Reach the report in two places. A verb you called answers a typed `conflict` outcome. A write the
 widget made for the viewer, through the built-in UI or its own drawing sync, arrives on the
@@ -875,7 +875,7 @@ the maintenance span or either endpoint. Public range methods and built-in navig
 enter that same epoch, so every supported navigation door has the same precedence.
 
 `toolbarContainer` optionally supplies a separate element for the top toolbar, such as a space
-between a host's navigation and account controls. The widget appends one package-owned, themed
+between a host's navigation and its other controls. The widget appends one package-owned, themed
 child there; it never clears or styles the supplied element. The toolbar follows the widget's
 theme, language and active chart, and its child is removed at disposal. The toolbar's menus and
 dialogs open in the widget's layer on the document body, at viewport coordinates, so each menu
@@ -1095,7 +1095,7 @@ that names no tool and a repeated type are setup errors that `createChart` throw
 
 By default a chart offers every built-in indicator. `builtInIndicators` names the built-ins you
 offer, by the definition id `access.indicator` receives: an id `BUILT_IN_INDICATORS` lists, such as
-`sma`. The order you give does not matter, because the indicator browser keeps its own:
+`sma`. The order you give does not matter, because the indicator picker keeps its own:
 
 ```ts
 import { BUILT_IN_INDICATORS, createChart, type ChartDatafeed } from '@trdrs/quickcharts'
@@ -1110,9 +1110,9 @@ const sma = BUILT_IN_INDICATORS.find((definition) => definition.id === 'sma')!
 createChart({ container, datafeed, builtInIndicators: ['sma'], indicators: [{ id: 'sma-1', definition: sma }] })
 ```
 
-A built-in you leave out is not listed in the indicator browser: not among the built-ins, not
+A built-in you leave out is not listed in the indicator picker: not among the built-ins, not
 among the favorites, and not in search results. Every door that would add one refuses:
-`chart.indicators.add` (from the browser, the keyboard or your own control) answers `denied`,
+`chart.indicators.add` (from the picker, the keyboard or your own control) answers `denied`,
 `indicators.add` adds nothing, `indicators.set` leaves out an instance of it the chart does not
 already hold, and a new pane that a re-tile adds copies the first chart's studies without it. The
 chart has no verb that duplicates an indicator, so a second instance is an add like any other.
@@ -1270,10 +1270,10 @@ over it is absent. A control you hide in `ui` is the only thing that changes. Th
 Two presentation flags also close the one command whose only job is opening their dialog.
 `ui.symbolSearch: false` removes the search dialog and `chart.symbol.search`, while
 `chart.symbol.set` still changes the symbol. `ui.indicatorPicker: false` removes the indicator
-browser and `chart.indicators.open`, while `chart.indicators.add` still adds an indicator.
+picker and `chart.indicators.open`, while `chart.indicators.add` still adds an indicator.
 
-Neither plane is authorization. A hidden control's command still answers to `access`, and no flag
-supplies a capability the datafeed lacks: a feed with no search keeps every search door closed.
+Authorization belongs to `access`: a hidden control's command still answers to it, and a flag
+reaches only what the datafeed can do, so a feed with no search keeps every search door closed.
 
 ```ts
 import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
@@ -1320,7 +1320,7 @@ createChart({
 With `'hide'`, a refused drawing tool is not in its group's flyout, on the favorites bar or in the
 glyph picker; a section, a group or a favorites bar it leaves empty goes with it, and a group's face
 that would wear a refused tool wears the first one the group still offers. A refused indicator is
-not in the indicator browser. A control or menu row whose command the policy refuses is not drawn
+not in the indicator picker. A control or menu row whose command the policy refuses is not drawn
 (top bar, bottom bar, menus, the drawing toolbar and the selection's bar, the navigation cluster,
 the replay transport, legend row controls and the level menu), and a rule left with nothing beside it
 goes too. A picker always keeps its current choice: the chosen style, timeframe, timezone or scale
@@ -1379,7 +1379,7 @@ Every surface that reads the policy reads it again at once: the top and bottom b
 controls, the drawing toolbar's tools and groups, the favorites bar, the selection's bar, the
 navigation cluster, the replay transport and the legend's row controls, shown or left out as
 `access.refused` says and enabled or disabled. A menu, flyout or dialog that is open reads it too:
-the bars' menus, the level menu, the indicator browser and the saved layouts dialog rebuild their
+the bars' menus, the level menu, the indicator picker and the saved layouts dialog rebuild their
 rows in place, and a drawing toolbar flyout (the glyph picker among them) or a selection bar panel
 opens again from its control, or closes when that control is now left out or disabled. Listeners of `widget.commands.onChange`
 hear it as well, so a control of your own can read `commands.available` again. Nothing stored
@@ -1430,14 +1430,15 @@ The chart's own dialogs still open from their commands while its bars are hidden
 them in the widget's layer on the document, and `widget.layout.save` asks a layout that was never
 saved for its name. Hide a dialog in `ui` when your interface provides its own.
 
-The library does not export its internal components, replace its renderer, or take markup for its
-controls. The class names under the widget's root are private, apart from the styling hooks listed
+The library draws its own controls over its own renderer and keeps its internal components to
+itself. The class names under the widget's root are private, apart from the styling hooks listed
 under Theme.
 
 ### Fullscreen and image
 
-Chart-root fullscreen fills the screen with the widget's own element. It never takes over your
-application shell, which is a different thing from a fit-to-container layout your CSS owns.
+Chart-root fullscreen fills the screen with the widget's own element, or with the
+`fullscreen.target` you name; your application shell and any fit-to-container layout stay in your
+CSS.
 
 ```ts
 import { type ChartWidget } from '@trdrs/quickcharts'
@@ -1456,18 +1457,18 @@ async function shareable(widget: ChartWidget): Promise<void> {
 identity and the attribution you configured through `image`. Nothing is uploaded, shared or stored:
 you receive a blob and decide.
 
-### Indicator browser content
+### Indicator picker content
 
-The Indicators button and `commands.execute('chart.indicators.open')` open the same browser.
+The Indicators button and `commands.execute('chart.indicators.open')` open the same picker.
 Pass `{ collection: 'saved' }` as the command argument to open a declared host collection directly.
-An unknown collection falls back to the shipped catalog. Reopening an already open browser keeps its current selection and query.
+An unknown collection falls back to the shipped catalog. Reopening an already open picker keeps its current selection and query.
 It lists the 23 shipped definitions, with search and Favorites. Add creates a new instance on the
-currently active chart and keeps the browser open. Favorites use your `ChartStorage` port.
+currently active chart and keeps the picker open. Favorites use your `ChartStorage` port.
 
 Supply `ChartWidgetOptions.indicatorPicker` to include additional localized collections and rows
-in that browser. You supply data and opaque actions, not DOM, indicator definitions, or a renderer.
+in that picker. You supply data and opaque actions, not DOM, indicator definitions, or a renderer.
 Built-in annotations can add favorite state, counts and actions; they cannot replace a definition,
-its name, or Add. Without a source, the browser has only shipped built-ins and Favorites.
+its name, or Add. Without a source, the picker has only shipped built-ins and Favorites.
 
 ```ts
 import type { IndicatorPickerSource } from '@trdrs/quickcharts'
@@ -1492,10 +1493,10 @@ const indicatorPicker: IndicatorPickerSource = {
 }
 ```
 
-The source receives the collection, query and the shipped definition ids the browser lists (only
+The source receives the collection, query and the shipped definition ids the picker lists (only
 those `builtInIndicators` offers, when you name a list). Its own collections and rows are never
-filtered by that list. It owns filtering and any
-service limits; the browser does not promise an unlimited catalog or implement paging for you.
+filtered by that list. It owns filtering, paging and any
+service limits; the picker lists what it answers.
 Collection ids `builtin` and `favorites`, and action ids `add` and `favorite`, are reserved.
 Item ids cannot collide with shipped definition ids or these reserved ids. Duplicate ids,
 malformed rows and missing primary actions refuse the response; the shipped catalog remains usable.
@@ -1504,7 +1505,7 @@ name a localized navigation group and use `layout: 'list'` for name/secondary-ac
 An absent count stays blank. Omit `favorite` to omit that action on a contributed item.
 
 A favorite action receives the requested next boolean. Successful actions refresh the current
-collection unless they return `close: true`. Refusals and exceptions keep the browser open with
+collection unless they return `close: true`. Refusals and exceptions keep the picker open with
 plain text, never rendered markup. Icons reuse `ChartExtensionIcon`; invalid icons draw no glyph.
 The host localizes contributed labels and messages; the chart localizes its own controls.
 
@@ -1745,15 +1746,16 @@ before costs that one glyph its artwork. The control draws the chart's own glyph
 
 `icons` covers the chart's own controls. The emoji, sticker and icon glyphs a drawing places come
 through the asset port, and a chart extension draws its rows and layers from the
-`ChartExtensionIcon` descriptors it contributes. The product's mark in the plot's corner is not an
-icon. `mountContextMenu`, `openSymbolSearch`, `mountSymbolSearch`, `openTimeframePicker` and
-`mountTimeframePicker` take the same `icons` for a menu, search or picker you mount without a widget.
+`ChartExtensionIcon` descriptors it contributes. The product's mark in the plot's corner is the
+chart's own artwork, outside `icons`. `mountContextMenu`, `openSymbolSearch`, `mountSymbolSearch`,
+`openTimeframePicker` and `mountTimeframePicker` take the same `icons` for a menu, search or picker
+you mount without a widget.
 
 ### Neutral marks
 
 Serve `marks` and `timescaleMarks` from your datafeed and the chart draws them. A mark is a note
 about a moment: its color is a semantic theme role rather than a literal, its words are yours, and
-the chart neither interprets nor acts on it.
+the chart draws it as given.
 
 ```ts
 import { type BarMark, type ChartDatafeed } from '@trdrs/quickcharts'
@@ -1791,7 +1793,7 @@ void withMarks
   display name, venue, timeframe, OHLC and change against the previous painted close. Prices use
   the symbol's formatter. Hover selects a bar; leaving restores the latest painted reading. Replay
   does not expose bars beyond its cursor. Missing metadata leaves the supplied symbol unchanged.
-  Legend and search use a decorative monogram; they do not fetch symbol logos or infer a provider.
+  Legend and search rows wear your `symbolMark`, or a decorative monogram without one.
   Study and separate-pane comparison rows follow their renderer panes. Stable row controls retain
   focus during value updates. Study values read the first plot, using declared precision or the
   symbol formatter; Volume reads bar volume using resolved volume precision. The row-list toggle,
@@ -2023,7 +2025,7 @@ Chart appearance precedence, lowest first:
 
 1. the built-in appearance for the selected mode;
 2. the constructor's `appearance` partial;
-3. restored user appearance;
+3. restored viewer appearance;
 4. runtime `chart.applyAppearance` patches.
 
 Resetting custom palettes returns the chart to the built-in mode and leaves saved chart appearance
@@ -2067,7 +2069,7 @@ compare.add('CL', { placement: 'new-pane' })
 compare.setVisible('CL', false)
 const active = compare.list() // [{ symbol, placement, color, visible }]
 note(`NQ last: ${compare.latest('NQ') ?? '-'}`)
-compare.remove('NQ') // the scale mode the trader held comes back
+compare.remove('NQ') // the scale mode the viewer held comes back
 ```
 
 ## Timeframes
@@ -2605,7 +2607,7 @@ Text-bearing tools open an inline editor where the text sits, in the drawing's o
 placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd
 with Enter commits, Escape cancels, and a press on the chart commits.
 
-Templates are named setups a trader saves from either surface and applies on demand. They and
+Templates are named setups a viewer saves from either surface and applies on demand. They and
 the remembered defaults ride `ChartSaveLoadAdapter.templates('drawing')`, so a host that keeps
 saved charts on a server keeps these there too. Same-tool default changes are written in issue
 order, and a delayed read or failed write does not replace the newest local choice. Store work is
@@ -2672,7 +2674,7 @@ What a lock refuses is the library's own. A host locks and unlocks through the d
 reads what they answer: `chart.drawings.lock` holds one drawing where it stands,
 `chart.drawings.lockAll` suspends the whole chart, and every editing command answers `ok` or
 `unavailable` for the state the chart is actually in, so a control built on those outcomes says
-exactly what the chart will accept. The gesture list below is what a trader meets.
+exactly what the chart will accept. The gesture list below is what a viewer meets.
 
 ```ts
 import { blanks, chooseHideMode, DEFAULT_HIDE_STATE, DrawingTemplates } from '@trdrs/quickcharts/drawings'
@@ -2707,9 +2709,9 @@ note(IMAGE_ACCEPT)
 
 What to know:
 
-- **The subpath is a subset, not a re-export.** The drawing classes, the model store and the
-  mutable registry stay inside the library. There is no door for a host-authored tool: tool
-  contribution belongs to the access-policy plane, not to a bare registration call.
+- **The subpath is a deliberate subset.** The drawing classes, the model store and the
+  mutable registry stay inside the library. A host chooses among the catalog's tools through
+  `drawingTools` and the access policy.
 - **Every tool places.** Fixed-anchor tools place by press-drag-release or click then click; an
   instant tool (the position tools) lands whole from one press; a multipoint tool adds a point per
   click until a double-click ends the run; a freehand tool captures the drag as a stroke; a
@@ -2730,7 +2732,7 @@ What to know:
   so anchors never drift apart); grab an anchor handle to reshape; hold Shift to constrain a
   two-point placement or an anchor drag to 45 degree rays; Ctrl-drag duplicates; the magnet pulls
   a placed or dragged anchor onto the bar's own open, high, low or close; a locked drawing
-  selects, takes the Delete and Clone a trader asks for by name, and refuses a move, a resize, a
+  selects, takes the Delete and Clone a viewer asks for by name, and refuses a move, a resize, a
   text edit, the eraser and a Ctrl-drag copy; lock all suspends every edit, Delete and Clone
   included, until it is released.
 

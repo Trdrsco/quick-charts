@@ -1,6 +1,6 @@
 // The timeframes a widget offers: every token the grammar reads when the host names no list, the
 // presets alone when the host switches custom timeframes off, or exactly the host's list. A token
-// outside the offered set is not a timeframe of this chart: no command reaches it, the setter
+// outside the offered set stays off this chart: no command reaches it, the setter
 // ignores it, and a stored or restored one opens on the first offered timeframe.
 import { parseTimeframe, TIMEFRAME_PRESET_TOKENS, timeframeOrder, timeframeSeconds } from '../timeframe'
 

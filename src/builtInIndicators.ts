@@ -1,4 +1,4 @@
-// The built-in indicators as the chart ships them: the chart-indicators seam's registry, typed at
+// The built-in indicators as the chart ships them: the internal indicator module's registry, typed at
 // this boundary against the widget's own definition contract and the chart's catalog keys. The
 // seam declares its manifest grammar in its own terms, so the spread below is the compile-time
 // proof that every built-in IS an IndicatorDefinition; the catalog-key narrowing is proven by the

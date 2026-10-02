@@ -44,8 +44,8 @@ if (spec.placement !== 'pane') fail('walker placement wrong')
 if (spec.plots[0].data.length !== 2) fail('histogram should drop the null, not bridge it')
 if (spec.plots[0].data[1].color !== '#f00') fail('histogram sign-coloring wrong')
 
-// The parity modules execute from the shipped artifact: pane planning conserves height, the
-// session classifier answers, and the scale-mode coercion fails closed.
+// The pane, session and scale modules execute from the shipped artifact: pane planning conserves
+// height, the session classifier answers, and the scale-mode coercion fails closed.
 const plan = planPaneOp({ heights: { 0: 300, 1: 100 }, remembered: {} }, { kind: 'collapse', pane: 1 })
 if (plan.apply[1] === undefined || plan.apply[0] + plan.apply[1] !== 400) fail('pane plan does not conserve height')
 if (sessionStateAt(parseSessionModel({ timezone: 'Etc/UTC', session: '24x7' }), 1_700_000_000) !== 'open') fail('a continuous session must always be open')

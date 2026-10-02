@@ -1,12 +1,11 @@
 // Where THIS PACKAGE'S WIDGET persists a viewer's flat preferences: the sticky symbol and timeframe,
 // the scale mode, the legend's hidden studies, the replay speed. A pluggable seam so a host chooses
 // the backing store: an in-memory store (the default, and the right one for SSR, tests and an
-// ephemeral embed), or a host-supplied adapter that writes to the host's own per-user backend. A
-// browser's localStorage is one such adapter a host may write in a few lines; it is not part of
-// this package, because a device-local default is not the public persistence architecture and must
-// never become a client's authority. The WIDGET only ever calls this narrow surface, so its
-// preference persistence is fully redirectable. Saved charts, layouts, drawings and templates are
-// NOT preferences: they are revisioned resources on `ChartSaveLoadAdapter` (resources.ts).
+// ephemeral embed), or a host-supplied adapter that writes to the host's own per-viewer backend. A
+// browser's localStorage is one such adapter, a few lines a host writes and owns, so the host stays
+// the authority for where its viewers' preferences live. The WIDGET only ever calls this narrow
+// surface, so its preference persistence is fully redirectable. Saved charts, layouts, drawings and
+// templates are revisioned resources of their own, on `ChartSaveLoadAdapter` (resources.ts).
 //
 // Keys are opaque strings in the package's own `quickcharts.` namespace; values are opaque strings
 // (JSON the chart owns). An adapter must treat both as opaque — no parsing, no per-key logic — so

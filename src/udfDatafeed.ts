@@ -1,9 +1,9 @@
 // A ChartDatafeed over a UDF (Universal Data Feed) HTTP server — the trivial-onboarding adapter. UDF is a
 // plain REST protocol (/config, /symbol_info, /search, /symbols, /history, /time); anyone with a UDF
-// endpoint gets a working chart by pointing this adapter at it, with zero custom code. The protocol's
-// /quotes surface is not a chart concern and this adapter does not read it. UDF is
+// endpoint gets a working chart by pointing this adapter at it, with zero custom code. The adapter
+// reads the routes above, and the protocol's /quotes route stays with the host. UDF is
 // POLL-based (no push), so live updates poll /history for the newest bar — for true real-time a backend
-// implements ChartDatafeed directly (as the engine reference implementation does over SSE). This adapter
+// implements ChartDatafeed directly over a push transport such as server-sent events. This adapter
 // is the low-effort on-ramp.
 //
 // Conformance posture (the adapter's obligations, not the server's):
@@ -58,7 +58,7 @@ interface UdfConfig {
 /** Defaults for a server WITHOUT /config. Resolutions are the protocol's own documented defaults.
  *  Search deliberately deviates from the spec's default (`supports_group_request: true`): group mode
  *  needs a group vocabulary, and with no /config there are no exchanges to enumerate — /search is
- *  the only workable path for a config-less server, and it was this adapter's historical behaviour. */
+ *  the only workable path for a config-less server. */
 const CONFIGLESS_DEFAULTS: UdfConfig = {
   supportsSearch: true,
   supportsGroupRequest: false,

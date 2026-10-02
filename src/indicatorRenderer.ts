@@ -111,7 +111,7 @@ export function attachIndicators(
         return
       }
       let entry = entries.get(id)
-      // A structural reshape (plot count/kind/placement changed — a re-published script, a
+      // A structural reshape (plot count/kind/placement changed — a re-published manifest, a
       // definition swap under the same id) rebuilds from scratch: feeding mismatched series would
       // silently drop the new plots or style the wrong ones.
       if (entry && entry.shapeKey !== shapeKeyOf(built)) {

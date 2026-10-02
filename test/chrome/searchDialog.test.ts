@@ -66,7 +66,7 @@ function open(
 
 describe('how a row is written', () => {
   it('writes a pair market as its pair in both cells, whatever prose the feed sent with it', () => {
-    // The venue prefix is routing identity and never reaches a cell. "Ethereum perpetual" names the
+    // The venue prefix is feed identity and never reaches a cell. "Ethereum perpetual" names the
     // contract and leaves out the one fact the row is short of, what it is priced in, so the pair
     // wins wherever the feed states a currency: closed up as the mark, the way the pill wears it,
     // and spaced as the description, the way the legend does.
@@ -191,7 +191,7 @@ describe('search mode', () => {
     const { dialog } = open('search', {
       classes: ['future', 'crypto'],
       scope: {
-        label: 'Northwind Brokerage',
+        label: 'Northwind Watchlist',
         mark: ({ host, size }) => {
           painted.push(size)
           host.appendChild(document.createElement('img'))
@@ -203,19 +203,19 @@ describe('search mode', () => {
     const strip = dialog.element.querySelector<HTMLElement>('.qc-search-classes')!
     const badge = strip.lastElementChild as HTMLElement
     expect(badge.classList.contains('qc-search-scope')).toBe(true)
-    expect(badge.getAttribute('aria-label')).toBe('Northwind Brokerage')
-    expect(badge.textContent).toBe('Northwind Brokerage')
+    expect(badge.getAttribute('aria-label')).toBe('Northwind Watchlist')
+    expect(badge.textContent).toBe('Northwind Watchlist')
     expect(badge.querySelector('img')).not.toBeNull()
     expect(painted).toEqual([18])
-    // The scope is not a listing venue: the venue painter is never asked for it.
-    expect(exchanges).not.toContain('Northwind Brokerage')
+    // The scope wears its own mark: the venue painter is never asked for it.
+    expect(exchanges).not.toContain('Northwind Watchlist')
   })
 
   it('keeps the scope mark while results render, then releases it with the surface', async () => {
     const disposed = vi.fn()
     const { dialog } = open('search', {
       scope: {
-        label: 'Northwind Brokerage',
+        label: 'Northwind Watchlist',
         mark: ({ host }) => {
           host.appendChild(document.createElement('img'))
           return () => {
@@ -236,7 +236,7 @@ describe('search mode', () => {
   })
 
   it('writes the scope initial when the host lends no mark', () => {
-    const { dialog } = open('search', { scope: { label: 'paper' } })
+    const { dialog } = open('search', { scope: { label: 'portfolio' } })
     const badge = dialog.element.querySelector<HTMLElement>('.qc-search-scope')!
     expect(badge.querySelector('.qc-search-scope-mark')!.textContent).toBe('P')
   })

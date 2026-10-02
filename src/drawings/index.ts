@@ -5,11 +5,10 @@
 // models a toolbar is built from. A host that never draws never imports any of it, and one that
 // does gets it under a name that says what it is.
 //
-// This is a DELIBERATE SUBSET of the internal drawing source module, not a re-export of it. The
-// drawing classes, the manager, the renderer and the mutable registry stay inside the library: a
-// consumer reads the catalog, restores through the codec, and drives the workflow through the
-// models here. Host-authored tools are not part of this surface; tool contribution belongs to the
-// access-policy plane, and a registration door nobody can build a tool for would be dead API.
+// This is a DELIBERATE SUBSET of the internal drawing source module. The drawing classes, the
+// manager, the renderer and the mutable registry stay inside the library: a consumer reads the
+// catalog, restores through the codec, and drives the workflow through the models here. A host
+// chooses among the catalog's tools through `drawingTools` and the access policy.
 //
 // The sibling `../drawings.ts` is the library's own attach layer over the same source module. It is
 // internal, and the widget mounts it; nothing here re-exports it.

@@ -1,10 +1,10 @@
 # Security policy
 
-Quick Charts runs in your page with the data and the ports you supply. It makes no network request
-of its own, stores nothing outside the storage port you give it, and carries no credential. A
-security report is about the library's own code: the way it handles the data a datafeed returns,
-the documents a save/load adapter returns, the assets a user pastes or picks, and the DOM it
-renders into.
+Quick Charts runs in your page with the data and the ports you supply. Every request it makes goes
+through a datafeed or adapter you supply, everything it stores goes to the storage port you give
+it, and every credential stays in your code. A security report is about the library's own code:
+the way it handles the data a datafeed returns, the documents a save/load adapter returns, the
+assets a viewer pastes or picks, and the DOM it renders into.
 
 ## Report a vulnerability
 

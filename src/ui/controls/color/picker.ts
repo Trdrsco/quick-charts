@@ -16,7 +16,7 @@ import { CUSTOM_COLOR_FALLBACK, GREY_RAMP, hexOf, hexToHsv, hsvToHex, isHex, rea
 const clamp01 = (n: number): number => Math.min(1, Math.max(0, n))
 
 /** How many mixed colours the panel keeps, newest first: three rows of the grid less the cell the
- *  plus stands in. A trader reaching past thirty is reaching for the mixer, not for a memory. */
+ *  plus stands in. A viewer reaching past thirty is reaching for the mixer, not for a memory. */
 export const RECENT_COLOR_LIMIT = 29
 
 export interface ControlHandle<E extends HTMLElement = HTMLElement> {
@@ -34,7 +34,7 @@ export interface OpacityHandle extends ControlHandle {
 }
 
 /** The opacity control: a range over a track that fades into the color, beside the same value as a
- *  figure the trader may type over. Both carry the percent and both report the fraction, so which
+ *  figure the viewer may type over. Both carry the percent and both report the fraction, so which
  *  one a hand reaches for is the only difference between them. */
 export function createOpacitySlider(t: ChartTranslate, color: string, value: number, onChange: (v: number) => void): OpacityHandle {
   const track = el('input', { type: 'range', min: '0', max: '100', class: 'qc-drawing-opacity', 'aria-label': t('drawing.opacity') }) as HTMLInputElement
@@ -104,7 +104,7 @@ export function createCustomColorPicker(t: ChartTranslate, initial: string, onAd
   strip.appendChild(stripDot)
 
   /** Repaint from the HSV state. A paint that follows typing leaves the field as typed, so a
-   *  half-typed hex is never overwritten under the trader's hands. */
+   *  half-typed hex is never overwritten under the viewer's hands. */
   const paint = (typed = false): void => {
     const h = hex()
     swatch.style.setProperty('--qcd-swatch', h)
@@ -244,7 +244,7 @@ export interface PaletteHandle extends ControlHandle {
  *  and the opacity beneath. The plus does not grow the panel: it turns it over to the mixer, so
  *  the surface holding it never changes size under the pointer.
  *
- *  A block is a group of rows that stand together. The greys and the ten bases are what a trader
+ *  A block is a group of rows that stand together. The greys and the ten bases are what a viewer
  *  reaches for first; the ramps are a second reading of the same ten. */
 export function createColorPalette(t: ChartTranslate, options: PaletteOptions): PaletteHandle {
   let value = options.value
@@ -283,7 +283,7 @@ export function createColorPalette(t: ChartTranslate, options: PaletteOptions): 
   markActive()
 
   // The plus stands in the remembered row, in the next free cell: it is one of the colours a
-  // trader reaches along, not a control parked under them.
+  // viewer reaches along, not a control parked under them.
   const plus = button({ class: 'qc-drawing-swatch qc-drawing-swatch-plus', label: t('drawing.customColor') })
   plus.setAttribute('aria-haspopup', 'true')
   const remembered = el('div', { class: 'qc-drawing-swatch-block' })

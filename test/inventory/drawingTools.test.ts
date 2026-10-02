@@ -1,4 +1,4 @@
-// Every registered drawing tool through its whole life: each of the 90 drawing tools is tested for
+// Every registered drawing tool through its whole life: each of the 90 tools is tested for
 // registration, construction, serialization, restore, and attach/detach, with focused geometry or
 // rendering tests for each tool family where a generic test is insufficient.
 //

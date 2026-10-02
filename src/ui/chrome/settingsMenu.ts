@@ -1,4 +1,4 @@
-// The chart settings dialog: a TradingView-shaped settings room with a section rail, a scrollable
+// The chart settings dialog: a settings room with a section rail, a scrollable
 // page and a fixed action row. Changes preview on the chart while the dialog is open; Cancel, the
 // close button, Escape and the backdrop all restore the state the viewer opened it with.
 import type { ChartMessageKey } from '../../i18n'

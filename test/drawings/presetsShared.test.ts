@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// Tool defaults and named templates belong to the trader, not to one chart. Two layers reading the
+// Tool defaults and named templates belong to the viewer, not to one chart. Two layers reading the
 // same template store answer from one cache, so a default remembered on chart A is what chart B
 // places with next, and a template saved or deleted on either shows in both menus. Separate stores
 // stay separate, hydration never lands over a newer local edit, and the cache outlives one layer

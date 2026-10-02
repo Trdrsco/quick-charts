@@ -40,7 +40,7 @@ describe('the packed artifact bundles its internal seams', () => {
     const dts = packedText('dist/index.d.ts')
     if (dts === null) return
     expect(specifiers(dts).filter((s) => s.startsWith('@trdrs/'))).toEqual([])
-    expect(dts).not.toMatch(/@trdrs\/chart-indicators|@trdrs\/chart-drawings/)
+    expect(dts).not.toMatch(/@trdrs\/(?!quickcharts(?:\/|[^a-zA-Z0-9_.-]|$))/)
   })
 
   it('imports at runtime only what the manifest declares a consumer installs', () => {

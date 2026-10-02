@@ -1,5 +1,5 @@
-/* Chart settings follows the same centered, two-column layout as TradingView: a fixed title and
- * footer around a section rail and one roomy settings page. */
+/* Chart settings is a centered, two-column dialog: a fixed title and footer around a section rail
+ * and one roomy settings page. */
 [data-qc-theme] .qc-chart-settings-dialog {
   box-sizing: border-box;
   height: min(612px, calc(100vh - 32px));
@@ -127,8 +127,8 @@
   border-radius: 4px;
 }
 
-/* TradingView uses compact square checks in this dialog. Keep the existing accessible switch role
- * while painting it as the same control and placing it before the label. */
+/* This dialog paints its switches as compact square checks before the label, and each keeps the
+ * accessible switch role. */
 [data-qc-theme] .qc-settings-menu .qc-switch-row {
   display: flex;
   flex-direction: row-reverse;

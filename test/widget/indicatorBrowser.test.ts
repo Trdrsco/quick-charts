@@ -21,7 +21,7 @@ function mount(options: Partial<ChartWidgetOptions> = {}) {
   return { widget, container }
 }
 
-describe('the real widget owns one indicator browser', () => {
+describe('the real widget owns one indicator picker', () => {
   it('opens a declared host collection directly and falls back safely for an unknown collection', async () => {
     const list = vi.fn(async (_request: { collection: string }) => ({ kind: 'ok' as const, items: [] }))
     const { widget } = mount({ indicatorPicker: { collections: [{ id: 'saved', label: 'Saved studies' }], list, act: async () => ({ kind: 'ok' }) } })
@@ -100,7 +100,7 @@ describe('the real widget owns one indicator browser', () => {
     // Switching to Arabic imports its dictionaries on first use, which takes seconds on a cold, busy
     // worker; the default five seconds timed this test out under CI load.
   }, 20_000)
-  it('disables package Add when its command is denied without disabling the browser', () => {
+  it('disables package Add when its command is denied without disabling the picker', () => {
     const { widget } = mount({ access: { command: (id) => id !== 'chart.indicators.add' } })
     expect(widget.commands.execute('chart.indicators.open').kind).toBe('ok')
     const add = document.querySelector<HTMLButtonElement>('[data-picker-add="sma"]')!
@@ -108,7 +108,7 @@ describe('the real widget owns one indicator browser', () => {
     add.click()
     expect(widget.activeChart().indicators.get()).toHaveLength(0)
   })
-  it('retains the historical geometry, sticky headings, nested hover and keyboard-visible actions using root-scoped logical recipes', () => {
+  it('keeps the pinned geometry, sticky headings, nested hover and keyboard-visible actions using root-scoped logical recipes', () => {
     const css = authoredStylesheet()
     expect(css).toMatch(/\.qc-picker-dialog\s*\{[^}]*height: 638px/)
     expect(css).not.toMatch(/\.qc-picker-dialog\s*\{[^}]*border-radius:/)

@@ -18,8 +18,8 @@ export const MAGNET_LABELS: Readonly<Record<Exclude<MagnetMode, 'off'>, ChartMes
   strong: 'drawing.magnetStrong',
 }
 
-/** The toolbar button. It is a plain on/off switch over the LAST strength the trader chose, so a
- *  trader who set strong gets strong back when they turn the magnet on again. */
+/** The toolbar button. It is a plain on/off switch over the LAST strength the viewer chose, so a
+ *  viewer who set strong gets strong back when they turn the magnet on again. */
 export function toggleMagnet(mode: MagnetMode, lastStrength: Exclude<MagnetMode, 'off'> = 'weak'): MagnetMode {
   return mode === 'off' ? lastStrength : 'off'
 }

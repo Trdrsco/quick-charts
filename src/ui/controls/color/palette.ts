@@ -1,12 +1,12 @@
 // The color arithmetic behind every palette and custom editor in the chart: hex and HSV both ways,
 // the opaque base of a value that carries alpha, and the swatch grid. The grid's ten hues and ten
-// greys are stated as the values the historical picker painted, because a palette is a chosen set
-// of colors rather than a formula: deriving the hues from angles moved eight of the ten off their
-// pinned values. The five shade rows still derive, by mixing each hue toward white and black.
+// greys are stated as values, because a palette is a chosen set of colors rather than a formula:
+// deriving the hues from angles would move eight of the ten off their pinned values. The five
+// shade rows derive, by mixing each hue toward white and black.
 //
 // These are the only literal colors outside `theme/palettes.ts` and the documented series
 // defaults, and they belong here rather than in a theme role: they are the set the chart OFFERS a
-// trader to choose from, the same in light and dark, and a pick becomes a drawing or indicator
+// viewer to choose from, the same in light and dark, and a pick becomes a drawing or indicator
 // property rather than anything a mode re-resolves. `theme/literals.test.ts` names this file as
 // that exemption and pins its count.
 import { parseCssColor } from '../../../theme/color'
@@ -97,7 +97,7 @@ export const HUE_RAMPS: readonly (readonly string[])[] = [
 /** The default the custom editor opens on when the current value is not a color it can read. */
 export const CUSTOM_COLOR_FALLBACK = '#4c98fb'
 
-/** The palette as the panel lays it out: the greys and the bases stand together as what a trader
+/** The palette as the panel lays it out: the greys and the bases stand together as what a viewer
  *  reaches for first, and the ramps stand as their own block under a gap. Ten columns throughout,
  *  every cell a `#rrggbb`. */
 export const SWATCH_BLOCKS: readonly (readonly (readonly string[])[])[] = [[GREY_RAMP, HUE_BASES], HUE_RAMPS]

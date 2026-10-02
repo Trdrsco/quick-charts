@@ -1,16 +1,16 @@
-// The exclusion ledger, as a source and packed-artifact scan. No app React component, Tailwind,
-// @trdrs/ui, engine client, private product import, hard-coded storage key, or default trdrs URL
-// belongs in Quick Charts; no legacy tick-plus-precision contract, magnitude-based price formatter,
-// duplicate snap implementation, Object Tree placeholder, configurable or branding watermark, app account control,
-// or app-shell fullscreen command survives in the package; and neither the source nor the packed
-// output carries the retired `trades` hide mode or its position/order override writes.
+// The exclusion ledger, as a source and packed-artifact scan. Quick Charts may carry no React
+// component, Tailwind, private package import, host data client, hard-coded storage key or default
+// trdrs URL; no tick-plus-precision contract, magnitude-based price formatter, duplicate snap
+// implementation, Object Tree placeholder, configurable or branding watermark, sign-in or profile
+// control, or document-level fullscreen command; and neither the source nor the packed output may
+// carry a `trades` hide mode or its position/order override writes.
 //
-// forbiddenVocabulary.test.ts holds the import boundary, the retired API names and the two words of the
-// legacy symbology contract (the float tick and its precision field); noDefaultTrdrsUrl the URLs and
-// credentials; theme/packaging the stylesheet. This file holds the rest of the ledger, one named shape
-// per line, judged against package CODE (comments stripped, the catalogs left out) and, for the retired
-// hide mode, against every packed JavaScript file as well. Every pattern names what it catches, so an
-// offender reads as a finding rather than a regex.
+// forbiddenVocabulary.test.ts holds the import boundary, the forbidden API names and the two words of
+// a tick-plus-precision symbology contract (the float tick and its precision field); noDefaultTrdrsUrl
+// the URLs and credentials; theme/packaging the stylesheet. This file holds the rest of the ledger,
+// one named shape per line, judged against package CODE (comments stripped, the catalogs left out)
+// and, for the `trades` hide mode, against every packed JavaScript file as well. Every pattern names
+// what it catches, so an offender reads as a finding rather than a regex.
 import { describe, expect, it } from 'vitest'
 import { CHART_SOURCES, isSourceMap, offenderText, packedFileList, packedText, scanFiles, scanLines } from './scan'
 
@@ -41,9 +41,8 @@ const APP_FRAMEWORK: readonly Shape[] = [
   // JSX writes `className="..."` or `className={...}`; the chrome's DOM helpers assign `element.className`.
   { name: 'a JSX class attribute', pattern: /\bclassName=(?=[{"'])/ },
   { name: 'a Tailwind directive or config', pattern: /@apply\b|\btailwind/i },
-  { name: 'the first-party design system', pattern: /@trdrs\/ui\b/ },
-  { name: 'an engine client', pattern: /@trdrs\/(engine-client|engine-wire|chart-engine)\b|\bengineApi\b|\bmarketStream\b/ },
-  { name: 'a private product organ', pattern: /@trdrs\/(broker|order-ticket|account-manager|chart-trading|watchlist|news|community|library|i18n)\b/ },
+  { name: 'a private package', pattern: /@trdrs\/(?!quickcharts(?:\/|[^a-zA-Z0-9_.-]|$))/ },
+  { name: 'a host data client', pattern: /\bengineApi\b|\bmarketStream\b/ },
 ]
 
 // ── Storage: every viewer key flows through the port; the package assumes no browser store ─────────
@@ -53,7 +52,7 @@ const BROWSER_STORAGE: readonly Shape[] = [
 ]
 
 // ── Symbology: the datafeed's five facts, never a precision guessed from the price ─────────────────
-const LEGACY_SYMBOLOGY: readonly Shape[] = [
+const GUESSED_PRECISION: readonly Shape[] = [
   { name: 'a magnitude ternary choosing decimals', pattern: /\b(price|value|last|close|p|v)\s*(<|>=?)\s*\d+(\.\d+)?\s*\?\s*\d+\s*:\s*\d+/ },
   { name: 'a locale number formatter writing a price', pattern: /\btoLocaleString\s*\(|maximumFractionDigits|minimumFractionDigits/ },
   { name: 'a significant-figure cap', pattern: /\btoPrecision\s*\(/ },
@@ -66,10 +65,10 @@ const DUPLICATE_SNAP: readonly Shape[] = [
   { name: 'a magnet implementation outside the seam', pattern: /\bfunction\s+magnet[A-Za-z]*\s*\(/ },
 ]
 
-// ── The V1 exclusions and the app-shell controls ──────────────────────────────────────────────────
-const V1_EXCLUSIONS: readonly Shape[] = [
+// ── The excluded chrome and the shell controls ────────────────────────────────────────────────────
+const EXCLUDED_CHROME: readonly Shape[] = [
   { name: 'an Object Tree', pattern: /Object Tree|\bobjectTree\b/ },
-  { name: 'an account or profile control', pattern: /\b(logout|signOut|signIn|accountMenu|profileMenu|userMenu|avatar)\b/i },
+  { name: 'a sign-in or profile control', pattern: /\b(logout|signOut|signIn|accountMenu|profileMenu|userMenu|avatar)\b/i },
   { name: 'a document-level fullscreen call', pattern: /document\.(documentElement|body)\.requestFullscreen\s*\(/ },
 ]
 
@@ -79,8 +78,8 @@ const watermarkViolations = (files: Record<string, string>) => scanFiles(files, 
   .filter((o) => o.file !== '/src/chartLegend.ts' || /watermark/i.test(o.text.replace(REPLAY_INDICATOR_TOKEN, '')))
   .map(offenderText)
 
-// ── The retired trades hide mode and the override writes that served it ───────────────────────────
-const RETIRED_TRADES: readonly Shape[] = [
+// ── The trades hide mode and the override writes that would serve it ──────────────────────────────
+const TRADES_HIDE_MODE: readonly Shape[] = [
   { name: 'the trades hide mode', pattern: /\bhideTrades\b|\bshowTrades\b|['"]trades['"]/ },
   { name: 'a position or order visibility override write', pattern: /\b(positionsVisible|ordersVisible|showPositions|showOrders|tradingOverlay|positionLines|orderLines)\b/ },
 ]
@@ -96,7 +95,7 @@ describe('the exclusion ledger against package code', () => {
     expect(stripped).not.toContain('block')
   })
 
-  it('carries no app framework, design system, engine client or private product', () => {
+  it('carries no app framework, private package or host data client', () => {
     expect(sweep(CODE, APP_FRAMEWORK)).toEqual([])
   })
 
@@ -105,7 +104,7 @@ describe('the exclusion ledger against package code', () => {
   })
 
   it('keeps every magnitude formatter and locale number writer out of the price path', () => {
-    expect(sweep(CODE, LEGACY_SYMBOLOGY)).toEqual([])
+    expect(sweep(CODE, GUESSED_PRECISION)).toEqual([])
   })
 
   it('keeps one snap: the magnet in the drawing seam, and one level grid in the chart', () => {
@@ -119,8 +118,8 @@ describe('the exclusion ledger against package code', () => {
     expect(gridRounding.map((o) => o.file)).toEqual(['/src/widget/menu.ts'])
   })
 
-  it('carries no Object Tree, account control or document-level fullscreen', () => {
-    expect(sweep(CODE, V1_EXCLUSIONS)).toEqual([])
+  it('carries no Object Tree, profile control or document-level fullscreen', () => {
+    expect(sweep(CODE, EXCLUDED_CHROME)).toEqual([])
   })
 
   it('limits watermark vocabulary to the fixed replay-only indicator, never configuration or branding', () => {
@@ -135,7 +134,7 @@ describe('the exclusion ledger against package code', () => {
   })
 
   it('carries neither the trades hide mode nor its override writes', () => {
-    expect(sweep(CODE, RETIRED_TRADES)).toEqual([])
+    expect(sweep(CODE, TRADES_HIDE_MODE)).toEqual([])
   })
 })
 
@@ -151,7 +150,7 @@ describe('the exclusion ledger against the packed artifact', () => {
     for (const path of packed) {
       const text = packedText(path)
       if (text === null) continue
-      for (const shape of RETIRED_TRADES) offenders.push(...scanLines(path, text, shape.pattern).map((o) => `${shape.name}: ${o.file}:${o.line}`))
+      for (const shape of TRADES_HIDE_MODE) offenders.push(...scanLines(path, text, shape.pattern).map((o) => `${shape.name}: ${o.file}:${o.line}`))
     }
     expect(offenders).toEqual([])
   })

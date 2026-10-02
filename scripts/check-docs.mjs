@@ -64,7 +64,7 @@ const VOCABULARY = [
     re: /\btrdrs\.co\b|\btrdrsco[\w-]*\.fly\.dev\b|\blocalhost:8080\b|127\.0\.0\.1:8080|trdrs_sk_/,
     message: 'a trdrs host, credential or engine default in client-facing documentation',
   },
-  { id: 'private-package', re: /@trdrs\/(?!quickcharts(?:\/|[^a-zA-Z0-9_.-]|$))/, message: 'a private package name; a reader installs @trdrs/quickcharts and no private organ' },
+  { id: 'private-package', re: /@trdrs\/(?!quickcharts(?:\/|[^a-zA-Z0-9_.-]|$))/, message: 'a private package name; a reader installs @trdrs/quickcharts alone' },
   { id: 'em-dash', re: /—/, message: 'em dash; rewrite the sentence' },
   // The copyright, registered and trademark signs are pictographic to Unicode but are legal text.
   { id: 'emoji', re: /(?![©®™])\p{Extended_Pictographic}/u, message: 'emoji' },

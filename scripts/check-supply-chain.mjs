@@ -23,8 +23,8 @@
 //   private-host   trdrs domains, Fly hostnames, private DNS suffixes, and the local engine port
 //   proprietary    a private workspace package named in what a consumer receives: the packed
 //                  files, the package documents, and the manifest's installable dependency blocks.
-//                  The package SOURCE may import the two internal seams the build inlines; the
-//                  built files may not name them, and the boundary fixtures prove the bundle.
+//                  The internal drawing and indicator modules are source under src/internal, and
+//                  the boundary fixtures prove the bundle names no private package.
 //
 // Exclusions are exact files with a reason (EXCLUSIONS), never a directory or a glob; each is
 // checked to exist, and a listed file that no longer exists is a configuration error (exit 2) so
@@ -58,10 +58,9 @@ export const RULES = [
   { id: 'private-host', what: 'a trdrs domain', re: /\btrdrs\.co\b|\btrdrsco[\w-]*\.fly\.dev\b/ },
   { id: 'private-host', what: 'a Fly or private DNS host', re: /\b[a-z0-9-]+\.fly\.dev\b|\b[a-z0-9-]+\.internal\b(?=[:/\s'"`,)]|$)/ },
   { id: 'private-host', what: 'the local engine port', re: /localhost:8080|127\.0\.0\.1:8080/ },
-  // Present only: which private packages the chart ONCE named is a fact of this monorepo's
-  // history that the public repository's history import decides; what a consumer receives today
-  // is what this rule judges. The manifest is read structurally (INSTALLABLE), never as text,
-  // because its devDependencies name the two seams the build inlines.
+  // Present only: this rule judges what a consumer receives, so the history walk leaves it out.
+  // The manifest is read structurally (INSTALLABLE), never as text: only the blocks a consumer's
+  // installer follows are judged.
   { id: 'proprietary', what: 'a private workspace package', re: /@trdrs\/(?!quickcharts(?:\/|[^a-zA-Z0-9_.-]|$))/, where: 'shipped', history: false },
 ]
 

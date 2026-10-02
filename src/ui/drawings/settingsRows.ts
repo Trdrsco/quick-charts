@@ -78,7 +78,7 @@ const VISIBILITY_ROWS: readonly { key: keyof IntervalVisibility; label: ChartMes
 type FibLevel = { value: number; visible: boolean; color?: string; text?: string }
 
 /** What every row builder reads and writes. `patchStyle` and `patchProps` apply live and rebuild
- *  the page; `patchQuiet` applies without a rebuild, for a field the trader is typing into. */
+ *  the page; `patchQuiet` applies without a rebuild, for a field the viewer is typing into. */
 export interface RowsContext {
   t: ChartTranslate
   /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
@@ -261,7 +261,8 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
     out.push(toggleRow(t('drawing.developingPoc'), !!props.developingPoc, (v) => ctx.patchProps({ developingPoc: v })), toggleRow(t('drawing.developingVa'), !!props.developingVa, (v) => ctx.patchProps({ developingVa: v })))
   }
   if (sect('source')) {
-    // The four price-source tokens are the vocabulary a script writes them in, shown as written.
+    // The four price-source tokens are the vocabulary an indicator manifest writes them in, shown
+    // as written.
     out.push(row(t('drawing.source'), dropdown(t('drawing.source'), ['close', 'open', 'hl2', 'hlc3'] as const, props.source as 'close', (v) => v, (v) => ctx.patchProps({ source: v }))))
   }
   if (sect('mode')) out.push(row(t('drawing.mode'), dropdown(t('drawing.mode'), ['bars', 'open', 'high', 'low', 'close', 'hl2'] as const, props.mode as 'bars', label(t, MODE_LABEL), (v) => ctx.patchProps({ mode: v }))))
@@ -390,7 +391,7 @@ export function tableRows(ctx: RowsContext): HTMLElement[] {
   const props = drawing.props as { cells: string[][]; headerRow?: boolean }
   const cells = props.cells
   // The grid as the drawing holds it NOW. Typing into a cell replaces the whole array, so the next
-  // field a trader moves to writes from the current grid: reading the copy this page was built from
+  // field a viewer moves to writes from the current grid: reading the copy this page was built from
   // would put the cell they just left back the way it was.
   const liveCells = (): string[][] => {
     const held = (drawing.props as { cells?: string[][] }).cells

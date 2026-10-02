@@ -4,7 +4,7 @@
 // name from the allowlists below, so a descriptor has nowhere to carry a script, an event handler,
 // a colour, a URL or an attribute nobody named, however it is written.
 //
-// The bounds exist because a menu raise builds a glyph per row while the trader waits, and because
+// The bounds exist because a menu raise builds a glyph per row while the viewer waits, and because
 // turning a payload away has to cost less than drawing it would. A descriptor outside them draws
 // nothing and the row still paints.
 //

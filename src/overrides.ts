@@ -1,8 +1,8 @@
 // The chart's override tree — every host-tunable visual of the chart itself in ONE typed structure,
-// package-owned and engine-free (the same law as ChartDatafeed). A host passes a partial and
+// package-owned and backend-free (the same rule as ChartDatafeed). A host passes a partial and
 // mergeOverrides() deep-fills the defaults. `appearance.*` is the candle canvas: what a chart
-// draws for the market. Anything drawn for an account is an extension's own look, held beside
-// this tree by the host that composes both, never inside it.
+// draws for the market. What an extension draws on top wears the extension's own look, held
+// beside this tree by the host that composes both.
 export interface ChartOverrides {
   appearance: {
     background: string
@@ -22,16 +22,17 @@ export interface ChartOverrides {
   }
 }
 
-/** The brand palette, single-sourced: any surface that speaks for trdrs reads these (the trading
- *  extension's buy line among them), and a rebrand edits two strings. The pair does not reach the
- *  candle bodies; see the note on DEFAULT_OVERRIDES for why. */
+/** The brand palette, single-sourced: a host's own surfaces on the chart read these (an
+ *  extension's lines among them), and a rebrand edits two strings. The candle bodies keep their
+ *  own pair; see the note on DEFAULT_OVERRIDES for why. */
 export const BRAND_UP = '#4c98fb'
 export const BRAND_DOWN = '#f23645'
 
-// The shipped default IS the owner's own chart, copied leaf for leaf off his account (// 2026-08-20): a warm paper canvas with teal/orange candles ringed and wicked in solid black.
+// The shipped default is a warm paper canvas with teal/orange candles ringed and wicked in solid
+// black.
 //
-// The CANVAS does not track BRAND_UP/BRAND_DOWN, and that is the point rather than a miss: candles
-// are the market, and the brand pair marks what speaks for trdrs on top of it.
+// The CANVAS keeps its own pair apart from BRAND_UP/BRAND_DOWN on purpose: candles are the market,
+// and the brand pair marks what a host draws on top of it.
 //
 // `background` is LIGHT, and it is the one leaf here that changes what the rest of the chart must
 // cope with. The ink drawn over the plot (the legend, the countdown) is the theme's text.onCanvas
@@ -42,9 +43,9 @@ export const DEFAULT_OVERRIDES: ChartOverrides = {
     background: '#ece7c0',
     upColor: '#26a69a',
     downColor: '#ffa726',
-    // Candle anatomy: solid black ring and wick, the SAME ink both directions — not a shade of the
-    // body color the way the old brand-pair defaults were. On a paper canvas the black is what
-    // separates a candle from the background, and that job does not change with direction.
+    // Candle anatomy: solid black ring and wick, the SAME ink both directions. On a paper canvas
+    // the black is what separates a candle from the background, and that job does not change with
+    // direction.
     borderUpColor: '#000000',
     borderDownColor: '#000000',
     wickUpColor: '#000000',

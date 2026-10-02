@@ -1,8 +1,8 @@
 // The persisted drawings STORE codec: one JSON document per surface holding every symbol's
 // serialized drawings — `{ [symbol]: SerializedDrawing[] }`. This codec is the cross-surface
-// compatibility contract: the trdrs app's chart panel and the quickcharts widget host both
-// persist through it, so a store written by one loads in the other and a saved store survives a
-// host migration. Keep it boring and total: parsing tolerates anything (malformed JSON, a
+// compatibility contract: every host that persists drawings through it, the widget among them,
+// reads a store any other wrote, so a saved store survives a move between hosts. Keep it boring
+// and total: parsing tolerates anything (malformed JSON, a
 // non-object root, a junk bucket → the empty store / a dropped bucket, never a throw), and
 // serializing drops empty buckets so a store never accumulates dead symbol keys.
 import { toolRegistry } from './registry'

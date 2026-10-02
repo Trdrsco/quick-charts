@@ -107,7 +107,7 @@ export function createDocuments(deps: DocumentsDeps): Documents {
   const docs = new Map<string, DrawingsBody>()
   /** The ref each stored document was last seen at (null = known absent, absent = not read yet). */
   const refs = new Map<string, ResourceRef | null>()
-  /** Symbols the trader edited this session: a hydration landing after an edit never replaces
+  /** Symbols the viewer edited this session: a hydration landing after an edit never replaces
    *  in-hand work. */
   const touched = new Set<string>()
   const pending = new Set<string>()

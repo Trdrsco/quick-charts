@@ -4,9 +4,9 @@
 // implementing one object: the chart is the product, a backend is the implementation. Types are
 // self-contained on purpose — the interface must not drag a backend SDK into the chart's dependency
 // surface. The symbol metadata `resolve` answers with is the symbology contract in `symbology.ts`;
-// the datafeed carries that type rather than restating it. Quotes (a board's last, change and
-// volume, or a top-of-book) are not a chart concern and have no place on this seam: a host fans
-// them to its own quote consumers from its own source.
+// the datafeed carries that type rather than restating it. The seam carries symbol metadata, bars
+// and bar updates; a host serves quotes (a board's last, change and volume, or a top-of-book) to
+// its own consumers from its own source.
 import type { SymbolInfo } from './symbology'
 import type { BarMark, TimescaleMark } from './marks'
 
@@ -89,7 +89,7 @@ export interface SubscribeHandlers {
 export class FeedUnavailableError extends Error {
   constructor(
     message = 'market data unavailable',
-    /** The server's typed refusal (e.g. feed_requires_connection / feed_capacity / feed_displaced),
+    /** The server's typed refusal (e.g. not_entitled / feed_down),
      *  when it sent one — lets the host name the actual cause instead of a generic "unavailable". */
     readonly code: string | null = null,
   ) {
@@ -122,7 +122,7 @@ export interface DatafeedSearchOptions {
 }
 
 /** A feed's coarse, feed-LEVEL capability declaration. Everything optional and the method itself
- *  optional: an ABSENT declaration means unconstrained (today's behavior), and a feed must only
+ *  optional: an ABSENT declaration means unconstrained, and a feed must only
  *  declare what is true — a finite `resolutions` list from a feed that serves any interval would
  *  be a lie the chart then enforces. Symbol-level truth (price format, resolutions, session) stays
  *  on {@link SymbolInfo}. */
@@ -166,7 +166,7 @@ export interface ChartDatafeed {
   earliestBar?(symbol: string): Promise<number | null>
   /** OPTIONAL neutral bar marks over a window (epoch seconds, inclusive of both ends). A mark is a
    *  note about a moment: its color is a theme role, its words are the host's, and the chart
-   *  neither interprets nor acts on it. Omit it entirely when the feed serves none. */
+   *  draws it as given. Omit it entirely when the feed serves none. */
   marks?(symbol: string, from: number, to: number, resolution: string): Promise<readonly BarMark[]>
   /** OPTIONAL neutral time-scale marks over the same window. */
   timescaleMarks?(symbol: string, from: number, to: number, resolution: string): Promise<readonly TimescaleMark[]>

@@ -183,7 +183,7 @@ describe('UdfDatafeed — /config conformance', () => {
   })
 })
 
-describe('UdfDatafeed.config — the seam-level capability declaration (B2B-5)', () => {
+describe('UdfDatafeed.config — the seam-level capability declaration', () => {
   it('declares the server’s resolutions as wire tf tokens, omitting what the grammar can’t express', async () => {
     const { df } = feed({ '/config': { supports_search: true, supported_resolutions: ['1', '60', 'D', '2H', 'X'] } })
     expect(await df.config!()).toEqual({ resolutions: ['1m', '1h', '1d'] })

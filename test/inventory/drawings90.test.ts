@@ -1,4 +1,4 @@
-// The 90 drawing registrations as explicit release inventory. The registry is read at runtime; the
+// The 90 tools as explicit release inventory. The registry is read at runtime; the
 // list here is the pin. A tool added,
 // renamed, or moved between categories changes this file on purpose, in the same commit, and the
 // diff is the release note.
@@ -117,7 +117,7 @@ const CATEGORIES: readonly (readonly [category: string, count: number])[] = [
   ['content', 5],
 ]
 
-describe('the 90 drawing registrations', () => {
+describe('the 90 tools', () => {
   it('pins every registered tool type and its category, sorted', () => {
     const registered = drawingTools
       .all()

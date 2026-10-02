@@ -1,8 +1,8 @@
 // No default points at trdrs.
-// The free chart's only network access is through URLs or adapters the host supplies, so no chart
+// Quick Charts reaches the network only through URLs or adapters the host supplies, so no chart
 // source, manifest, README quickstart, test fixture, or packed file may carry a trdrs URL, a
-// credential, a session, a tenant key, or a production API route. This is already true; the
-// fixture pins it so the first commit that breaks it is the one that fails.
+// credential, a session, a tenant key, or a production API route. The fixture pins it so the first
+// commit that breaks it is the one that fails.
 import { describe, expect, it } from 'vitest'
 import { CHART_FIXTURES, CHART_SOURCES, isSourceMap, offenderText, packedFileList, packedText, scanFiles, scanLines } from './scan'
 

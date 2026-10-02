@@ -1,7 +1,7 @@
 // How a symbol is WRITTEN on screen: one rule, three faces, kept in one file so they cannot drift.
 // The toolbar pill wears the compact mark, the legend wears the title, and a search row wears the
-// mark beside the description. Every face drops the venue prefix, which is routing identity rather
-// than anything a trader reads, and every surface that names a market, in this package or over it,
+// mark beside the description. Every face drops the venue prefix, which is feed identity rather
+// than anything a viewer reads, and every surface that names a market, in this package or over it,
 // reads the same faces from `symbolNames`.
 import type { SymbolRow } from './datafeed'
 import type { SymbolInfo } from './symbology'

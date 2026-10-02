@@ -17,7 +17,7 @@ const body = (name: string, timeframe = '5m'): ChartBody => ({ name, symbol: 'ES
 const t = createChartI18n().t
 
 describe('openResourceController', () => {
-  it('keeps command readiness false for the lifetime of a pending user load', async () => {
+  it('keeps command readiness false for the lifetime of a pending viewer load', async () => {
     const adapter = memorySaveLoadAdapter()
     const chosen = await adapter.charts.create(body('Chosen'))
     if (chosen.kind !== 'ok') throw new Error('unreachable')
@@ -307,7 +307,7 @@ describe('openResourceController', () => {
     })
     expect((await open.save(body('A recovered', '1d'), { asNew: true })).kind).toBe('ok')
     // The copy did what it is for: A is untouched at the revision it stood at, and what was on
-    // screen is somewhere the trader can get at it.
+    // screen is somewhere the viewer can get at it.
     expect((await adapter.charts.load(a.id))!.body.timeframe).toBe('5m')
     expect((await adapter.charts.load(a.id))!.ref.revision).toBe(a.revision)
     expect((await adapter.charts.list()).map((r) => r.name).sort()).toEqual(['A', 'A recovered', 'B', 'C'])

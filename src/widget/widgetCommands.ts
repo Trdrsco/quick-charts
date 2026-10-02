@@ -1,7 +1,7 @@
 // The widget-scoped built-ins: theme, language, fullscreen, image, and the layout's own verbs.
 //
 // They are commands for the same reason the chart's verbs are: a host toolbar, a keyboard binding
-// and an operator adapter should reach them the same way, and the access policy should be able to
+// and an automation adapter should reach them the same way, and the access policy should be able to
 // refuse them once rather than at each door. The layout's save, rename, open, delete and detach are
 // here too, so a saved-layouts menu is a consumer of the registry like any other surface, and a
 // policy that forbids layout writes forbids them from every door.

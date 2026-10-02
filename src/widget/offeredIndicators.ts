@@ -1,6 +1,6 @@
 // The built-in indicators a widget offers: every built-in when the host names no list, or exactly
-// the host's list. A built-in outside the offered set is not one this chart ADDS: the indicator
-// browser does not list it, and every door that would add one (the browser, `chart.indicators.add`,
+// the host's list. A built-in outside the offered set stays off this chart: the indicator
+// picker leaves it out, and every door that would add one (the picker, `chart.indicators.add`,
 // `indicators.add` and `indicators.set` on a chart handle, a new pane copying the first one's
 // studies) refuses. Instances of it already on the chart are untouched: they render, edit, hide and
 // remove exactly as any other instance does, and a saved chart, a layout or an undo step that

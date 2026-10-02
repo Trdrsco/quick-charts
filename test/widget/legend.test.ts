@@ -72,18 +72,18 @@ it('keeps host activity in the native legend across status updates without creat
   const chart = widget.activeChart()
   chart.indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find(definition => definition.id === 'sma')! })
   const manage = vi.fn()
-  const activity = { id: 'strategy:one', title: 'TrendVol', status: 'running', settingsLabel: 'Manage strategy', onSettings: manage }
+  const activity = { id: 'scanner:one', title: 'Breakout scanner', status: 'running', settingsLabel: 'Manage scanner', onSettings: manage }
   widget.chrome.legendRows(chart.id, [activity])
-  const row = container.querySelector<HTMLElement>('[data-legend-row="host:strategy:one"]')!
+  const row = container.querySelector<HTMLElement>('[data-legend-row="host:scanner:one"]')!
   expect(row.closest('.qc-legend')).not.toBeNull()
   expect(container.querySelectorAll('[data-legend-row]')).toHaveLength(2)
   expect(chart.indicators.get()).toHaveLength(1)
   expect(row.textContent).toContain('running')
-  expect([...row.querySelectorAll('button')].filter(button => !button.hidden).map(button => button.getAttribute('aria-label'))).toEqual(['Manage strategy'])
-  row.querySelector<HTMLButtonElement>('button[aria-label="Manage strategy"]')!.click()
+  expect([...row.querySelectorAll('button')].filter(button => !button.hidden).map(button => button.getAttribute('aria-label'))).toEqual(['Manage scanner'])
+  row.querySelector<HTMLButtonElement>('button[aria-label="Manage scanner"]')!.click()
   expect(manage).toHaveBeenCalledOnce()
   widget.chrome.legendRows(chart.id, [{ ...activity, status: 'Paused · Feed disconnected' }])
-  expect(container.querySelector('[data-legend-row="host:strategy:one"]')).toBe(row)
+  expect(container.querySelector('[data-legend-row="host:scanner:one"]')).toBe(row)
   expect(row.textContent).toContain('Paused · Feed disconnected')
   widget.chrome.legendRows(chart.id, [])
   expect(row.isConnected).toBe(false)

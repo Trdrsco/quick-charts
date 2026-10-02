@@ -1,8 +1,7 @@
-// The README is the B2B contract a third party implements from — so its TypeScript blocks are
+// The README is the contract a third party implements from, so its TypeScript blocks are
 // executable claims: every fenced ```ts block must TYPE-CHECK against the package's real exports.
-// This is the closure gate for the finding where the README documented a broker method that did not
-// exist (an implementer following it wrote a non-compiling adapter). A README edit that drifts from
-// the types now breaks the build instead of mis-teaching the first integration.
+// A README edit that drifts from the types breaks the build instead of mis-teaching an
+// integration.
 //
 // The README arrives through Vite's `?raw` and the compiler runs on TypeScript's own `ts.sys` — this
 // package is browser-typed on purpose, so the test adds no node types to its surface.
@@ -13,7 +12,7 @@ import readme from '../README.md?raw'
 const blocks = [...readme.matchAll(/```ts\r?\n([\s\S]*?)```/g)].map((m) => m[1]!)
 
 /** This test file's directory, then the package root — derived from the module URL so no node:path.
- *  Decoded (a Windows "Joe D" path URL-encodes its space) and drive-letter-normalized. */
+ *  Decoded (a Windows path URL-encodes a space in it) and drive-letter-normalized. */
 const testDir = decodeURIComponent(new URL('.', import.meta.url).pathname).replace(/^\/([A-Za-z]:)/, '$1')
 const pkgRoot = testDir.replace(/\/test\/?$/, '')
 

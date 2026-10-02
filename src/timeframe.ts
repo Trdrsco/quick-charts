@@ -5,10 +5,7 @@
 // inside Quick Charts: the UDF mapping, replay, the session filter and the range presets read it,
 // and a host that hands the chart a token it cannot parse gets null, never a guess.
 //
-// The grammar is identical to the trdrs engine's wire grammar (the same token pattern, ceilings
-// and nominal seconds), and scripts/test/timeframe-grammar.test.ts pins the two against each other
-// so they cannot drift: a token the chart accepts must be one an engine-backed feed accepts. The
-// chart imports nothing from that wire; the grammar is stated here in full.
+// The grammar is stated here in full: the token pattern, the ceilings and the nominal seconds.
 import type { ChartTranslate } from './i18n'
 import type { ChartMessageKey } from './i18n/en'
 

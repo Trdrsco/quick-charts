@@ -1,8 +1,8 @@
-// The COMPARE organ. What is pinned here is the contract this package promises: three placements
+// The COMPARE module. What is pinned here is the contract this package promises: three placements
 // with the dialog's own semantics, bars clipped to the main window (extending the time scale is out
 // of scope, so a compare must never stretch the axis), palette assignment that frees colors on
 // removal, snapshot round-trips that drop junk, and a live path that can only touch the newest bar.
-// The chart and the datafeed are fakes; the code under test is the real organ.
+// The chart and the datafeed are fakes; the code under test is the real module.
 import { describe, expect, it, vi } from 'vitest'
 import { attachCompare, clipToWindow, COMPARE_COLORS, pickCompareColor, readCompareAt, seriesTargetOf } from '../src/compare'
 import type { BarsEvent, ChartDatafeed, FeedBar, SubscribeHandlers } from '../src/datafeed'

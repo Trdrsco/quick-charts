@@ -3,7 +3,7 @@
 // Three placements, and each answers a different question about the comparison. `same-percent`
 // shares the main scale and flips it to percent while any such compare lives, which is how two
 // markets at different price levels are read against each other; `new-scale` binds the LEFT scale
-// so a compare keeps its absolute prices; `new-pane` takes a pane of its own. The scale flip is a LOAN: the mode the trader held is restored when the
+// so a compare keeps its absolute prices; `new-pane` takes a pane of its own. The scale flip is a LOAN: the mode the viewer held is restored when the
 // last same-percent compare leaves, and an explicit scale pick cancels the loan outright.
 //
 // One add and one remove pair serve every door — the public api, the dialog, the legend's remove —
@@ -45,7 +45,7 @@ export interface ComparePlane {
   sync(): void
   serialize(): unknown
   restore(state: unknown): void
-  /** Forget the loan: an explicit scale pick is the trader overriding it. */
+  /** Forget the loan: an explicit scale pick is the viewer overriding it. */
   releaseScaleLoan(): void
   destroy(): void
 }
@@ -97,7 +97,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
   })
   if (deps.maintainTimeline) maintainCompareTimeline(handle, deps.maintainTimeline)
 
-  /** The scale the trader held before same-percent forced percent. Null while no flip is on loan. */
+  /** The scale the viewer held before same-percent forced percent. Null while no flip is on loan. */
   let scaleBeforeCompare: ScaleMode | null = null
   const scalePolicy = (): void => {
     if (handle.hasSamePercent()) {
@@ -195,7 +195,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
       if (deps.disposed() || !deps.enabled) return
       deps.openSearch(mode, changeFrom, (next) => {
         // A change-symbol pick re-keys the compare in place: the placement, color and visibility
-        // the row had carry over to the new symbol, so the trader swapped a market, not a row.
+        // the row had carry over to the new symbol, so the viewer swapped a market, not a row.
         if (!changeFrom || next === changeFrom || next === deps.symbol()) return
         const current = handle.list().find((e) => e.symbol === changeFrom)
         if (!current || handle.list().some((e) => e.symbol === next)) return

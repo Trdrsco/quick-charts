@@ -1,10 +1,10 @@
 // Decoded bitmaps, shared between whoever chose the picture and the drawing that paints it.
 //
 // A data URL is not a bitmap: handing one to an <img> costs a base64 parse plus a decode, and that
-// work happens asynchronously. So a freshly placed image used to appear a beat AFTER the click that
-// placed it, even though the picker had already decoded the identical payload a moment earlier to
-// show its preview. Priming the result here means the drawing finds a ready bitmap and paints it on
-// the very first frame.
+// work happens asynchronously, so an unprimed image would appear a beat AFTER the click that placed
+// it, even though the picker already decoded the identical payload a moment earlier to show its
+// preview. Priming the result here means the drawing finds a ready bitmap and paints it on the very
+// first frame.
 //
 // Keyed by the data URL itself, which is exactly the identity that matters: the same payload is the
 // same picture, and two drawings sharing one image share one decode.

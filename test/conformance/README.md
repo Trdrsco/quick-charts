@@ -12,8 +12,8 @@ control in a top-bar slot, and a host's drawings for the chart's icons.
 
 The module imports `@trdrs/quickcharts` and `@trdrs/quickcharts/drawings` and nothing else. It observes only what
 a consumer can observe: the widget's answers, its events, the theme root attribute the theme manifest
-publishes, ARIA roles and accessible names, and element identity. It is a test-only path: it is not
-exported by the package and never packed.
+publishes, ARIA roles and accessible names, and element identity. It is a test-only path, outside
+the package's exports and its packed files.
 
 ## Importing it
 
@@ -39,25 +39,25 @@ What each host declares:
 |---|---|---|---|
 | The workspace build | nothing: every plane mounts | nothing: `createChart` takes every option | both, over the browser shim |
 | The clean-room consumers | nothing: every plane mounts | nothing: `createChart` takes every option | both, over the browser shim |
-| The app mount | nothing: every plane mounts | `theme` (the app composes every chart in the shell's mode with the app palette) and `drawingPersistence` (the app keeps drawings in a separate symbol-global document whenever it has an adapter) | neither: a real browser refuses without a gesture |
+| An application mount | nothing: every plane mounts | what the application decides for every chart it mounts, for example `theme` (an application that composes every chart in its own mode and palette) and `drawingPersistence` (an application that keeps drawings in a separate symbol-global document) | neither: a real browser refuses without a gesture |
 
 So the workspace and clean-room hosts run `theme.two-instances` and `persistence.drawings.mode`,
-and the app host reports both skipped with those two reasons.
+and an application host that fixes those two reports both skipped with those two reasons.
 
-The app host is the one whose `createWidget` is a production door rather than the package
-constructor. What a caller of that door decides rides through from the check's options: the
-symbol, timeframe, features, the presentation, the icons, access, indicators, layout, preferences,
-the feed and the save/load adapter. What the app decides for every chart it mounts stands as the app mounts it: its theme, its
-language, where the viewer's preferences live, how drawings persist, the image line, the fullscreen
-frame, the search recents, the drawing assets and the extensions. A check observing one of those
-planes observes the app's real choice, and where its expectation differs it fails naming the value
-the app mounted; the spec reports that as a finding against the composition or the check, never as
-a skip. The engine is mocked at the network edge, with the revisioned `/api/charts` families in
-memory, so a check that mounts without an adapter of its own saves through the app's engine
-adapter. Every mount gets its own mount id, so no check reads another's stored preferences. The
-app page fetches no script off the box: its payment surfaces load Stripe's script only when a
-trader opens one, so a check that balances the widget's document listeners counts only the
-widget's.
+An application host's `createWidget` is a production door rather than the package constructor.
+What a caller of that door decides rides through from the check's options: the symbol, timeframe,
+features, the presentation, the icons, access, indicators, layout, preferences, the feed and the
+save/load adapter. What the application decides for every chart it mounts stands as the
+application mounts it: its theme, its language, where the viewer's preferences live, how drawings
+persist, the image line, the fullscreen frame, the search recents, the drawing assets and the
+extensions. A check observing one of those planes observes the application's real choice, and
+where its expectation differs it fails naming the value the application mounted; the
+application's suite reports that as a finding against the composition or the check, never as a
+skip. A check that mounts without an adapter of its own saves through the application's adapter,
+so the application's suite serves that adapter's backend from memory. An application host gives
+every mount its own storage scope, so no check reads another's stored preferences, and a check
+that balances the widget's document listeners counts every listener on the document, so the page
+adds none of its own while the checks run.
 
 ## The host contract
 

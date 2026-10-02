@@ -492,8 +492,8 @@ describe('extensions cannot see each other', () => {
   it('certifies only canonical serialized state, without restricting tolerant extension application', () => {
     const { deps } = fakeChart()
     let marksHidden = false
-    // The trading extension's declared state contract: a typed boolean patch, not replacement.
-    const host = createExtensionHost(deps, [{ id: 'trading', attach: () => ({
+    // An extension's declared state contract: a typed boolean patch, not replacement.
+    const host = createExtensionHost(deps, [{ id: 'marks', attach: () => ({
       detach() {},
       serialize: () => ({ marksHidden }),
       restore(state) {
@@ -501,12 +501,12 @@ describe('extensions cannot see each other', () => {
         if (typeof hidden === 'boolean') marksHidden = hidden
       },
     }) }])
-    expect(host.restore({ trading: { marksHidden: true } })).toBe(true)
+    expect(host.restore({ marks: { marksHidden: true } })).toBe(true)
     expect(host.restore({})).toBe(false)
-    expect(host.restore({ trading: {} })).toBe(false)
-    expect(host.restore({ trading: { marksHidden: 'false' } })).toBe(false)
+    expect(host.restore({ marks: {} })).toBe(false)
+    expect(host.restore({ marks: { marksHidden: 'false' } })).toBe(false)
     expect(marksHidden).toBe(true)
-    expect(host.restore({ trading: { marksHidden: false }, unknown: { opaque: 1 } })).toBe(true)
+    expect(host.restore({ marks: { marksHidden: false }, unknown: { opaque: 1 } })).toBe(true)
   })
 
   it('compares JSON-normalized structures, while accepting noncanonical defaults without certifying them', () => {
@@ -717,14 +717,14 @@ describe('the contract is neutral by construction, not by intention', () => {
     for (const specifier of specifiers) {
       expect(specifier === 'lightweight-charts' || specifier.startsWith('./'), specifier).toBe(true)
     }
-    // No workspace package at all — the free chart's seam cannot acquire a private dependency by
+    // No workspace package at all: the Quick Charts seam cannot acquire a private dependency by
     // way of one convenient type.
     expect(code).not.toMatch(/@trdrs\//)
   })
 
-  it('names no account, broker, order, execution or money concept anywhere in the contract', () => {
-    // The seam is the one place a trading concept would enter the free chart under a generic name,
-    // and the whole product boundary rests on it not happening.
+  it('names no trading or money concept anywhere in the contract', () => {
+    // The seam is the one place a trading concept would enter Quick Charts under a generic name,
+    // and the whole product boundary rests on keeping it out.
     const banned =
       /\b(broker|account|position|order|execution|fill|trade|trading|money|currency|pnl|profit|balance|margin|qty|quantity|side|buy|sell|instrument)\w*/i
     const hit = banned.exec(code)

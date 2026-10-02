@@ -25,7 +25,7 @@ describe('the manifest names the product for a registry reader', () => {
     const origin = manifest.repository.url.replace(/^git\+/, '').replace(/\.git$/, '')
     expect(manifest.bugs.url).toBe(`${origin}/issues`)
     expect(manifest.homepage).toMatch(/^https:\/\//)
-    // Route-neutral: no trdrs address is selected yet, so the homepage names no trdrs route.
+    // Route-neutral: the homepage is the repository's own page, never a product route.
     expect(manifest.homepage).not.toMatch(/trdrs\.co/)
   })
 

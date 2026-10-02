@@ -92,7 +92,7 @@ export interface OpenResourceController<Meta, Body extends { name: string }> {
   detach(): void
   /** Save `body`: an update of the open resource at its held revision, or a create for a copy and
    *  for a destination holding nothing open. While `notSaving`, only `asNew` is allowed through,
-   *  because a create writes over nothing and puts what is on screen somewhere the trader can get
+   *  because a create writes over nothing and puts what is on screen somewhere the viewer can get
    *  at it; it does not end the state, because writing a screen down is no evidence that the screen
    *  is whole. Anything else answers `not-saving` and touches the store not at all. */
   save(body: Body, opts?: { asNew?: boolean; signal?: AbortSignal }): Promise<ResourceSaveOutcome<Meta>>
@@ -166,7 +166,7 @@ export function openResourceController<Meta, Body extends { name: string }>(deps
       const store = storeOrThrow()
       const asNew = opts?.asNew === true
       // The one write a half-applied screen is allowed: it creates, so the resource this destination
-      // is bound to is left standing whole and the trader keeps what is on screen. It is a rescue,
+      // is bound to is left standing whole and the viewer keeps what is on screen. It is a rescue,
       // not a recovery: the row it writes holds that same unproven screen.
       if (notSaving() && !asNew) return { kind: 'not-saving', message: deps.t()('host.notSaving') }
       const mine = ++generation
@@ -218,7 +218,7 @@ export function openResourceController<Meta, Body extends { name: string }>(deps
             // destination could not take this body, and the binding it already held stands.
             if (isAbort(error)) return { kind: 'cancelled' }
             // A refusal the destination could not undo is still a refusal, and it still binds
-            // nothing, but the screen it left behind is not the one the trader had: saying
+            // nothing, but the screen it left behind is not the one the viewer had: saying
             // "nothing changed" there would be a lie a host would repeat. Nothing writes through
             // the binding until the screen holds a whole content again.
             if (error instanceof ResourceRollbackError) {

@@ -88,7 +88,7 @@ describe('createLocaleRegistry', () => {
 
 describe('messages', () => {
   it('format fills {name} slots, writes numbers in the language, and leaves an unknown slot visible', () => {
-    expect(format('Hello {name}', { name: 'Joe' })).toBe('Hello Joe')
+    expect(format('Hello {name}', { name: 'Ada' })).toBe('Hello Ada')
     expect(format('{n} alerts', { n: 3 })).toBe('3 alerts')
     expect(format('{n} alerts', { n: 1234.5 }, (v) => numberFormat('de').format(v))).toBe('1.234,5 alerts')
     expect(format('{missing} stays', {})).toBe('{missing} stays')
@@ -139,7 +139,7 @@ const de: Translation<typeof source> = {
 describe('createTranslator', () => {
   it('reads the translation, picks plural forms by the language, and writes numbers in it', () => {
     const t = createTranslator(source, de, 'de')
-    expect(t('toy.hello', { name: 'Joe' })).toBe('Hallo Joe')
+    expect(t('toy.hello', { name: 'Ada' })).toBe('Hallo Ada')
     expect(t('toy.alerts', { count: 1 })).toBe('1 Alarm')
     expect(t('toy.alerts', { count: 1234 })).toBe('1.234 Alarme')
   })

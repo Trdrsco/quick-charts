@@ -3,7 +3,7 @@
 // on the chart changed (a viewer's plan changed mid-session). On a widget mounted the way a host
 // mounts it, a policy flipped with no other event reaches every surface that reads it once the host
 // calls this, and only then: the bars, the rail and its flyouts, the favorites bar, the glyph
-// picker, the legend's row controls, open menus and flyouts, and the indicator browser. Under `'hide'` a refused
+// picker, the legend's row controls, open menus and flyouts, and the indicator picker. Under `'hide'` a refused
 // control goes; under `'disable'` it stays, disabled. Nothing stored and nothing on the chart moves.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
@@ -180,7 +180,7 @@ describe('widget.refreshAccess', () => {
     }
   })
 
-  it('re-reads the indicator browser that is open', async () => {
+  it('re-reads the indicator picker that is open', async () => {
     for (const refused of REFUSED) {
       const { access, denied } = livePolicy(refused)
       const { widget } = mount({ access })

@@ -1,5 +1,5 @@
 // The saved-chart blob's appearance field, which is the difference between a chart that follows the
-// app's theme and one frozen at the look it happened to have the first time it autosaved. The
+// host's theme and one frozen at the look it happened to have the first time it autosaved. The
 // format functions are pure over their arguments, so the contract is testable without a chart.
 import { describe, expect, it } from 'vitest'
 import { CHART_CONTENT_VERSION, parseChartContent, serializeChartContent, type ChartContent } from '../../src/widget/saveLoad'

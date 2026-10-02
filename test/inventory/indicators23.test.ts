@@ -44,7 +44,7 @@ const CATEGORIES = {
 }
 
 /** The plot families the built-ins exercise, by id. A family with no member is listed empty on purpose:
- *  the walker supports it, and the day-one catalog uses no such plot. */
+ *  the walker supports it, and the built-in catalog uses no such plot. */
 const FAMILIES = {
   histogram: ['macd'],
   area: [] as string[],

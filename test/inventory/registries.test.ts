@@ -1,12 +1,12 @@
 // @vitest-environment happy-dom
-// The V1 registries pinned by stable id, from the package's own source: seven styles, 23 built-in
-// indicators, 90 drawings, 55 layouts, 26 preset timeframes, and 60 timezone choices.
+// The registries pinned by stable id, from the package's own source: seven styles, 23 built-in
+// indicators, 90 tools, 55 layouts, 26 preset timeframes, and 60 timezone choices.
 //
 // ids.fixture.json is the sorted record of every registry the feature manifest publishes, the built-in
 // locales, the theme roles and the command registry included. Every block below reads a registry as the
 // package exports it and compares it to the fixture, so an id added, renamed or dropped anywhere fails
 // here until the fixture moves with it in the same commit: an unapproved catalog change is a readable
-// diff, never a count that drifted. counts.baseline.json still reads the six day-one literals off their
+// diff, never a count that drifted. counts.baseline.json reads the six registry literals off their
 // source files; the cross-check at the end keeps the two records agreeing.
 //
 // happy-dom is here for the command census alone: the chrome harness registers the chart and widget
@@ -90,7 +90,7 @@ describe('the registry ids, from the package source', () => {
     })
   }
 
-  it('agrees with the six day-one counts the baseline reads off the source literals', () => {
+  it('agrees with the six counts the baseline reads off the source literals', () => {
     for (const [registry, name] of Object.entries(BASELINE_NAMES) as [Registry, string][]) {
       const row = baseline.registries.find((r) => r.registry === name)
       expect(row, name).toBeDefined()

@@ -443,7 +443,7 @@
 }
 
 /* The readout is a FIELD beside the track: outlined rather than washed, because it is a number a
- * trader types over and not a chip the panel is showing them. */
+ * viewer types over and not a chip the panel is showing them. */
 [data-qc-theme] .qc-drawing-opacity-field {
   position: relative;
   flex: 0 0 auto;

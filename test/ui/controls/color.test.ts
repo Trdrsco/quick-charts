@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-// The one color control, and the palette it paints. The values and the geometry are pinned to the
-// picker the app carried before the chart owned it: ten greys, ten hues, six stated ramps over
+// The one color control, and the palette it paints. The values and the geometry are pinned:
+// ten greys, ten hues, six stated ramps over
 // them, 17px cells, and a custom editor with a hex field, a saturation and value square and a hue
 // strip. The control reports typed edits and is updated and destroyed explicitly; it never opens
 // the operating system's own color dialog, and no consumer keeps a second implementation.
@@ -34,10 +34,10 @@ afterEach(() => {
 })
 
 describe('the pinned palette', () => {
-  it('paints the grey ramp and the ten hues the historical picker painted', () => {
+  it('paints the pinned grey ramp and ten hues', () => {
     expect(GREY_RAMP).toEqual(['#ffffff', '#dbdbdb', '#b8b8b8', '#9c9c9c', '#808080', '#636363', '#4a4a4a', '#2e2e2e', '#0f0f0f', '#000000'])
     expect(HUE_BASES).toEqual(['#f23645', '#ff9800', '#ffeb3b', '#4caf50', '#089981', '#00bcd4', '#2962ff', '#673ab7', '#9c27b0', '#e91e63'])
-    // Two blocks: what a trader reaches for first, then the ramps as a second reading of the ten.
+    // Two blocks: what a viewer reaches for first, then the ramps as a second reading of the ten.
     expect(SWATCH_BLOCKS).toHaveLength(2)
     expect(SWATCH_BLOCKS[0]).toEqual([GREY_RAMP, HUE_BASES])
     expect(SWATCH_BLOCKS[1]).toBe(HUE_RAMPS)
@@ -147,7 +147,7 @@ describe('the custom editor', () => {
     expect(captured).toEqual([7])
     strip.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 7, bubbles: true }))
     expect(released).toEqual([7])
-    // A drag is one edit at most: nothing is reported until the trader commits it.
+    // A drag is one edit at most: nothing is reported until the viewer commits it.
     expect(added).toEqual([])
     // A move after the release is ignored, so an unmounted editor can report nothing.
     const after = editor.element.querySelector('.qc-drawing-hue')!.getAttribute('aria-valuenow')

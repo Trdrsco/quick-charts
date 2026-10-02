@@ -75,7 +75,7 @@ export interface ToolDefinition {
   anchors: number
   /** Default style overrides for new drawings of this tool (e.g. a highlighter's fill). */
   style?: Partial<DrawingStyle>
-  /** Tool renders user text — the host opens its text editor right after placement. */
+  /** Tool renders the viewer's text — the host opens its text editor right after placement. */
   hasText?: boolean
   /** How anchors are gathered: drag-captured stroke, or click-to-add points (double-click ends).
    *  Omitted = the fixed `anchors` count. */

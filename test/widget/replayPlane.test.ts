@@ -299,7 +299,7 @@ describe('the replay phases', () => {
     const f = fixture('1m')
     expect(f.plane.api.subIntervals()).toEqual(['1s', '1m'])
     // Auto is the coarsest on offer, which is the chart's own: whole-bar updates until asked
-    // otherwise, the way the reference behaves.
+    // otherwise.
     expect(f.plane.api.interval()).toBe('auto')
     expect(f.plane.api.resolvedInterval()).toBe('1m')
     f.plane.api.setInterval('1s')

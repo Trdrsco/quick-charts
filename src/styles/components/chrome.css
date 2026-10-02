@@ -124,7 +124,7 @@
 }
 
 /* A HELD MODE is not a chosen option. A chip chosen among its siblings takes the quiet pressed
- * wash above; a mode the chart is IN until the trader leaves it says so the way this product says
+ * wash above; a mode the chart is IN until the viewer leaves it says so the way this product says
  * "on" everywhere else, in the emphasis fill with the ink cut out of it. */
 [data-qc-theme] .qc-toolbar-button[data-qc-mode='held'][aria-pressed='true'] {
   color: var(--qc-text-inverse);

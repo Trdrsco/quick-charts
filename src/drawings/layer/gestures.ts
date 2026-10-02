@@ -229,7 +229,7 @@ export function bindGestures(ctx: GestureContext): () => void {
   /** Measure and zoom completion, shared by drag-release and the second click.
    *
    *  Both tools run ONCE: the action completes here and the tool releases with it, whatever Stay in
-   *  Drawing Mode says, because the trader asked to measure this rather than to keep measuring.
+   *  Drawing Mode says, because the viewer asked to measure this rather than to keep measuring.
    *  Releasing hands the chart its own pan and zoom back, so the next drag navigates. The measure
    *  readout stays on screen until that next gesture clears it; the zoom box becomes the range. */
   const completeTransient = (draft: Draft, tool: 'measure' | 'zoom', at: Px): void => {

@@ -1,8 +1,7 @@
 // The network-denied WebView guest: Quick Charts as one local page a native host loads from its own
-// files and drives over a typed bridge (public-chart-library-boundary-plan.md PCL-6: "Prove the
-// chart can be bundled into a network-denied local WebView guest without importing any first-party
-// app, session, service URL, or trading code. This is artifact proof, not approval of a public
-// mobile API").
+// files and drives over a typed bridge. It proves the chart bundles into a network-denied local
+// WebView guest from its public surface alone; the guest is a build artifact, kept out of the
+// published package.
 //
 // This entry imports the chart's public surface and nothing else. It publishes one frozen global
 // the host reaches through its WebView bridge: the constructor, the drawing catalog, the built-in

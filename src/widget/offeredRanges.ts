@@ -1,6 +1,6 @@
 // The range presets a widget offers: every preset in `RANGE_PRESETS` when the host names no list,
-// or exactly the host's list, in the host's order. A preset outside the offered set is not a range
-// of this chart: it has no `chart.range.<key>` command, `chart.range.set` ignores its key, and the
+// or exactly the host's list, in the host's order. A preset outside the offered set stays off this
+// chart: it has no `chart.range.<key>` command, `chart.range.set` ignores its key, and the
 // bottom bar draws no button for it. An empty list is a chart with no range buttons: the bottom bar
 // keeps its clock, timezone and session controls, and `chart.range.set` still takes an explicit
 // window.

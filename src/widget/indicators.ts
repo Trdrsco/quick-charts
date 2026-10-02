@@ -346,7 +346,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       return [held.definition.manifest.id === instance.definition.manifest.id ? instance : held]
     })
 
-  /** Replace and report structural differences. Restore/rollback arrivals are changes, not user
+  /** Replace and report structural differences. Restore/rollback arrivals are changes, not viewer
    *  adds. The caller decides what the list holds: `set` admits it first, a restore keeps every
    *  record it resolves, and a rollback puts back exactly what the chart held. */
   const replace = (next: readonly IndicatorInstance[], arrival: 'added' | 'changed'): void => {
@@ -455,8 +455,8 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     add(instance) {
       deps.catalog.carry([instance])
       if (!offered(instance) || !permitted(instance)) return false
-      // The ONE add path: the package picker, a host's `indicators.add` and the operator all land
-      // here, so all three deal from the same palette in the same order.
+      // The ONE add path: the package picker, a host's `indicators.add` and an automation adapter
+      // all land here, so all three deal from the same palette in the same order.
       const minted = withMintedColor(instance)
       instances = [...instances.filter((i) => i.id !== minted.id), minted]
       recompute()

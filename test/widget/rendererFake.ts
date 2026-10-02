@@ -29,7 +29,7 @@ export interface FakeRenderer {
   chartOptions: Record<string, unknown>[]
   /** The visible logical range the chart reports; a test moves it and fires the subscribers. */
   logicalRange: { from: number; to: number } | null
-  /** Every logical-range write, so tests can distinguish maintenance from user movement. */
+  /** Every logical-range write, so tests can distinguish maintenance from viewer movement. */
   logicalWrites: { from: number; to: number }[]
   /** The visible timestamp range the renderer reports to date-range synchronization. */
   timeRange: { from: number; to: number } | null

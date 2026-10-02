@@ -10,29 +10,27 @@ import { describe, expect, it } from 'vitest'
 import * as api from '../src/index'
 
 const SURFACE: Record<string, string> = {
-  // Unchanged by the extension seam, on purpose: `ChartExtension` and its context, handle, series
+  // The extension seam adds no runtime export: `ChartExtension` and its context, handle, series
   // capabilities, menu rows and command specs are TYPES only. A host writes an object against them
   // and hands it to `ChartWidgetOptions.extensions`; every runtime piece stays inside the chart,
   // which is exactly what lets the chart take back whatever an extension drew. The clean-room
   // consumer compiles those declarations.
-  // The free chart's runtime surface holds chart behavior only: nothing here draws, plans or
-  // places anything for an account. Chart-native trading is @trdrs/chart-trading's own surface,
-  // mounted through the extension seam.
-  // Additive (minor): the multi-chart arrangement catalog, 2026-08-22. The layout HOST is no longer
-  // a constructor of its own: a widget always has a layout, reached as `widget.layout`.
+  // The Quick Charts runtime surface holds chart behavior only; a host's own surfaces on the chart
+  // mount through the extension seam.
+  // The multi-chart arrangement catalog. A widget always has a layout, reached as `widget.layout`.
   ARRANGEMENTS: 'object',
   LAYOUT_MENU_ROWS: 'object',
   arrangementOf: 'function',
-  // Additive (minor): the icon inventory a host draws the chart's glyphs against, 2026-09-23.
+  // The icon inventory a host draws the chart's glyphs against.
   CHART_ICON_IDS: 'object',
   MIRRORED_ICONS: 'object',
-  // Additive (minor): COMPARE — other symbols beside the charted one, 2026-08-28.
+  // COMPARE: other symbols beside the charted one.
   attachCompare: 'function',
   clipToWindow: 'function',
   COMPARE_COLORS: 'object',
   pickCompareColor: 'function',
   seriesTargetOf: 'function',
-  // Additive (minor): the interface language — the widget's own catalog over its own localization runtime, 2026-08-25.
+  // The interface language: the widget's own catalog over its own localization runtime.
   BUILT_IN_LOCALES: 'object',
   createChartI18n: 'function',
   chartDictionaries: 'object',
@@ -86,13 +84,13 @@ const SURFACE: Record<string, string> = {
   tfToUdfResolution: 'function',
   udfResolutionToTf: 'function',
   // ── Symbology, the price formatter and the revisioned resource contract ─────────────────────
-  // Additive (minor): symbology and its one price formatter, the UDF symbology mapping, and the
+  // Symbology and its one price formatter, the UDF symbology mapping, and the
   // revisioned saved-resource contract with its in-memory reference store.
   ResourceAbortError: 'function',
   createPriceFormatter: 'function',
   memorySaveLoadAdapter: 'function',
   symbolNames: 'function',
-  // Additive (minor): the drawings document — where one lives, what it holds, and the pure rules
+  // The drawings document: where one lives, what it holds, and the pure rules
   // a host needs to read or merge one itself.
   DRAWING_CONTEXT_VERSION: 'number',
   DRAWING_DOCUMENT_VERSION: 'number',
@@ -109,7 +107,7 @@ const SURFACE: Record<string, string> = {
   udfPriceFormat: 'function',
   udfSymbolInfo: 'function',
   // ── The executable theme contract ───────────────────────────────────────────────────────────
-  // Additive (minor): the executable theme contract. `THEME_ROLES` is the public semantic role
+  // The executable theme contract. `THEME_ROLES` is the public semantic role
   // inventory; `createThemeController` is the one runtime surface for mode selection, custom
   // palettes and change subscriptions. Everything else the theme system exposes is type-only, so
   // the clean-room consumer compiling the shipped declarations is its gate.
@@ -117,16 +115,16 @@ const SURFACE: Record<string, string> = {
   createThemeController: 'function',
   canvasTheme: 'function',
   // ── The built-in indicators ─────────────────────────────────────────────────────────────────
-  // Additive (minor): the 23 built-in indicator definitions, bundled from the chart-indicators
-  // seam, as one ordered registry. `BuiltInIndicator` and `IndicatorCategory` are types.
+  // The 23 built-in indicator definitions, bundled from the internal indicator module as one
+  // ordered registry. `BuiltInIndicator` and `IndicatorCategory` are types.
   BUILT_IN_INDICATORS: 'object',
   // ── Timeframes, timezones, sessions, ranges and search ──────────────────────────────────────
-  // Additive (minor): the timeframe grammar and its 26 presets, the 60 display timezones and
+  // The timeframe grammar and its 26 presets, the 60 display timezones and
   // their formatters, the session model and market status over a symbol's own session metadata,
   // the nine range presets with the framing and navigation step rules, and the search controller
   // with its recents port and list rules. The shapes (Timeframe, SessionModel, MarketStatus,
-  // RangePreset, SearchState, RecentsPort) are types. The session model replaces the per-class
-  // session model: sessionStateAt, nextSessionChange and sessionTimeline answer over a symbol's
+  // RangePreset, SearchState, RecentsPort) are types. In the session model, sessionStateAt,
+  // nextSessionChange and sessionTimeline answer over a symbol's
   // own facts, and the active-subsession rules (DEFAULT_SUBSESSION, hasExtendedHours,
   // subsessionBarFilter) answer over a symbol's named subsessions.
   TIMEFRAME_MAX: 'object',
@@ -193,12 +191,12 @@ const SURFACE: Record<string, string> = {
   promoteRecent: 'function',
   spreadExpression: 'function',
   spreadSearchQuery: 'function',
-  // Additive (minor): the search as a surface a page opens away from a chart, 2026-09-19 — over a
+  // The search as a surface a page opens away from a chart, over a
   // dialog or a box the page owns, with a catalog it can keep warm between opens.
   createSymbolSearchCache: 'function',
   mountSymbolSearch: 'function',
   openSymbolSearch: 'function',
-  // Additive (minor): the chart's timeframe list as a surface a page opens away from a chart, as a
+  // The chart's timeframe list as a surface a page opens away from a chart, as a
   // drop-down under its own control or a card in a box it owns.
   mountTimeframePicker: 'function',
   openTimeframePicker: 'function',
@@ -209,10 +207,8 @@ const SURFACE: Record<string, string> = {
   // declarations is their gate. What is runtime here is the style vocabulary, the bar-series
   // algebra, and the image composition a host may reuse over its own bitmaps.
   //
-  // Breaking (major) in the same landing: the standalone layout constructor, the one-shot theme
-  // resolver and the constructor callback bag are gone, with no alias. A widget always has a
-  // layout, a theme is a controller, and events are subscriptions. Their names are recorded in
-  // the package boundary tests, which prove they are absent from the public API.
+  // A widget always has a layout, a theme is a controller, and events are subscriptions; the
+  // package boundary tests hold the names the public API leaves out.
   CHART_STYLES: 'object',
   coerceChartStyle: 'function',
   isChartStyle: 'function',

@@ -1,5 +1,5 @@
 // The drawing tools a widget offers: every tool when the host names no list, or exactly the host's
-// list. A tool outside the offered set is not a tool of this chart for CREATING drawings: no
+// list. A tool outside the offered set stays off this chart for CREATING drawings: no
 // control draws it, every door that would arm it refuses, and no copy of a drawing of it is made.
 // Drawings of it that are already on the chart are untouched: they render, select, edit, lock, hide
 // and delete exactly as any other drawing does, so a chart never strands what a viewer cannot make.

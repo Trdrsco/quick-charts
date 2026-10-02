@@ -1,15 +1,14 @@
 // The dependency boundary:
-// the free chart's tarball may not depend, directly or through anything else, on a package a reader
+// the Quick Charts tarball may not depend, directly or through anything else, on a package a reader
 // cannot install. What a reader receives is one artifact and one peer, and this fixture reads the
 // manifest to say so.
 //
-// Two layers, kept apart on purpose. The AS-BUILT pins say exactly what the manifest holds today,
-// so a change is a conscious event and the target blocks cannot rot against a tree that moved. The
-// TARGET blocks are the gate itself, written in full. Nothing here fakes a pass.
+// Two layers, kept apart on purpose. The first pins exactly what the manifest holds, so a change is
+// a conscious event. The second is the gate itself, written in full. Nothing here fakes a pass.
 import { describe, expect, it } from 'vitest'
 import { chartManifest, directDependencies } from './scan'
 
-/** Names the free chart may never carry, in any dependency block. */
+/** Names Quick Charts may never carry, in any dependency block. */
 const FORBIDDEN = /@trdrs\//
 
 describe('the direct dependency set, as built', () => {
@@ -32,8 +31,8 @@ describe('the direct dependency set, as built', () => {
   })
 })
 
-// TARGET. Each block is the acceptance gate in full.
-describe('the free chart dependency boundary (target)', () => {
+// The gate. Each block is the acceptance gate in full.
+describe('the Quick Charts dependency boundary', () => {
   it('names no private package in any dependency block', () => {
     const m = chartManifest()
     const every = [
@@ -45,7 +44,7 @@ describe('the free chart dependency boundary (target)', () => {
     expect(every.filter((name) => FORBIDDEN.test(name))).toEqual([])
   })
 
-  it('ships the selected public artifact without separate organ installs', () => {
+  it('ships the selected public artifact as one install', () => {
     const m = chartManifest()
     expect(m.name).toBe('@trdrs/quickcharts')
     expect(m.publishConfig?.access).toBe('public')

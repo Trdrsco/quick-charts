@@ -1454,7 +1454,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
     title: 'a load answers by kind: the body, a body that cannot be read, an id the store does not hold, a store that could not be reached, or a load that was abandoned',
     async run(ctx) {
       // The five are told apart by `kind` alone. A host that had to read a message to know whether
-      // its own service was down would be reading copy written for a trader.
+      // its own service was down would be reading copy written for a viewer.
       let unreachable = ''
       const adapter = hostSaveLoadAdapter({ failFor: (id) => (id === unreachable ? new Error('the host service could not be reached') : null) })
       const { chart } = await ctx.mount({ symbol: 'ALPHA', timeframe: '5m', saveLoad: adapter })

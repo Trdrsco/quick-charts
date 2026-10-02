@@ -3,7 +3,7 @@
 //
 // Both are pure functions of one resolved theme, which is what keeps a mode switch atomic. The
 // widget calls them together, writes the attribute and the properties on its own root element, and
-// pushes the canvas values into the chart engine in the same pass. Nothing here reads or writes a
+// pushes the canvas values into the renderer in the same pass. Nothing here reads or writes a
 // document: this module is a mapping, so it is testable without a DOM and safe on a server.
 //
 // The custom-property names are private. A host styles Quick Charts through role ids, not by

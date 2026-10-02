@@ -194,7 +194,7 @@ describe('the painter builds nodes, and writes only the attributes it names', ()
 })
 
 // The bounds. They are what makes a refusal cheaper than the drawing it refuses: a raise builds one
-// glyph per row while the trader waits, so the work a contribution may ask for is capped, and a
+// glyph per row while the viewer waits, so the work a contribution may ask for is capped, and a
 // descriptor beyond the cap is turned away before any of it is read.
 describe('the descriptor is validated before it is drawn', () => {
   it('accepts a glyph sitting on every bound', () => {

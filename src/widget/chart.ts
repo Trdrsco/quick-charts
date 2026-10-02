@@ -154,7 +154,7 @@ export function resolveInitialTf(sticky: string, declared: readonly string[] | u
 }
 
 /** Pane-composition primitives: the raw mirrors a layout syncs charts with. Subscriptions report
- *  USER-driven changes only, so a chart being driven through the setters never re-reports the
+ *  VIEWER-driven changes only, so a chart being driven through the setters never re-reports the
  *  change and two mirrored charts cannot echo each other into a loop. Times are the feed's unix
  *  seconds. */
 export interface ChartPaneSyncApi {
@@ -1894,7 +1894,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     resetAppearance,
     t: () => i18n.t,
     // What is PAINTED, which is the replay slice while replay is on: the data export writes what
-    // the trader can see and never a bar the cursor has not revealed.
+    // the viewer can see and never a bar the cursor has not revealed.
     bars: () => shownBars(),
     // The feed's own statement of how deep its history goes, never the oldest bar that happens to
     // be loaded: the chart opens on a short window, and a preset judged against that would be
@@ -1964,7 +1964,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         load()
         // The first reading is taken here rather than at construction: the negotiation above moves
         // the timeframe with no event and no key write, and a reading taken before it would make
-        // the trader's first change look like a timeframe change and offer to undo the negotiation.
+        // the viewer's first change look like a timeframe change and offer to undo the negotiation.
         history.seed()
       })
   } else {

@@ -1,6 +1,6 @@
 import type { ChartExtensionIcon } from '../extension'
 
-/** Localized metadata for one optional collection in the chart-owned indicator browser. */
+/** Localized metadata for one optional collection in the chart-owned indicator picker. */
 export interface IndicatorPickerCollection {
   /** Stable opaque id. `builtin` and `favorites` belong to the chart. */
   id: string
@@ -11,7 +11,7 @@ export interface IndicatorPickerCollection {
   layout?: 'table' | 'list'
 }
 
-/** A host action is an opaque verb, not an indicator definition or executable chart script. */
+/** A host action is an opaque verb: the source's `act` runs it, and the chart only names it. */
 export interface IndicatorPickerAction {
   /** Unique within its row. `add` and `favorite` belong to the chart. */
   id: string
@@ -46,7 +46,7 @@ export interface IndicatorPickerBuiltInState {
 export interface IndicatorPickerSource {
   collections: readonly IndicatorPickerCollection[]
   /** The host supplies localized text. A new query or collection aborts the previous read.
-   *  `builtInIds` are the built-ins the browser lists: every one, or those `builtInIndicators`
+   *  `builtInIds` are the built-ins the picker lists: every one, or those `builtInIndicators`
    *  offers. */
   list(request: { collection: string; query: string; builtInIds: readonly string[] }, signal: AbortSignal): Promise<
     | { kind: 'ok'; items: readonly IndicatorPickerItem[]; builtIns?: readonly IndicatorPickerBuiltInState[] }

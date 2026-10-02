@@ -2,7 +2,7 @@
 // The workspace host of the conformance suite: every check in test/conformance/index.ts, run against
 // `createChart` from the package source under happy-dom, with the browser shim standing in for the
 // canvas the renderer needs. The same module runs in the clean-room consumer over the packed tarball
-// and in the app's browser suite over the app's own composition; this host is the one that runs on
+// and in an application's browser suite over its own composition; this host is the one that runs on
 // every `pnpm test`.
 //
 // The host declares what it can stand in for: a Fullscreen API on the root and an image-taking

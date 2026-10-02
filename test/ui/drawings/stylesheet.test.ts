@@ -53,8 +53,7 @@ describe('the drawing recipes', () => {
   })
 })
 
-// The selected drawing's bar and the panels it opens, pinned to the geometry and recipes the
-// historical first-party bar resolved to.
+// The selected drawing's bar and the panels it opens, pinned to their geometry and recipes.
 describe('the settings bar and its panels', () => {
   const settings = readFileSync(`${recipes}/drawings-settings.css`, 'utf8')
   const fields = readFileSync(`${recipes}/drawings-fields.css`, 'utf8')
@@ -107,13 +106,13 @@ describe('the settings bar and its panels', () => {
     expect(track).toMatch(/border:\s*1px solid var\(--qcd-swatch\)/)
     expect(track).toMatch(/repeating-conic-gradient\(from 270deg, var\(--qcd-check\)/)
     expect(track).toMatch(/8px 8px/)
-    // The readout is a field a trader may type over, so it is outlined rather than washed.
+    // The readout is a field a viewer may type over, so it is outlined rather than washed.
     expect(body(fields, /\.qc-drawing-opacity-readout/)).toMatch(/border:\s*1px solid var\(--qc-chrome-grip\)/)
   })
 })
 
-// The rail, its flyouts and the floating favorites strip, pinned to the geometry and the recipes
-// the historical first-party rail resolved to. Values are read out of the recipe rather than
+// The rail, its flyouts and the floating favorites strip, pinned to their geometry and recipes.
+// Values are read out of the recipe rather than
 // computed, because a test document has no cascade; the numbers are the pins.
 describe('the drawing rail and its favorites strip', () => {
   const toolbar = readFileSync(`${recipes}/drawings-toolbar.css`, 'utf8')

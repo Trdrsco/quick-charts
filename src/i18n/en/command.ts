@@ -1,6 +1,6 @@
 // The command registry's own words: what a menu row, a shortcut list or a host's own automation calls
 // each built-in verb. Every command the chart registers names a key here, so a host that renders
-// the registry renders it in the trader's language without writing a word of its own.
+// the registry renders it in the viewer's language without writing a word of its own.
 //
 // A key is one surface and one name, like every other catalog in this package; a command's ID is a
 // dotted path (`chart.style.candles`) and is not a key, because an id is a contract and a key is a
@@ -58,7 +58,7 @@ export const command = {
 
   'command.drawingsRemoveAll': 'Remove drawings',
   'command.drawingDeleteSelected': 'Delete selected drawing',
-  /** Arm a drawing tool. The tool is the argument, so the ninety tools share one command. */
+  /** Arm a drawing tool. The tool is the argument, so the 90 tools share one command. */
   'command.drawingArm': 'Drawing tool',
   // The toolbar's switches and menus. Each takes its value as the argument.
   'command.drawingCursor': 'Cursor mode',

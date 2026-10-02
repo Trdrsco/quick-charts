@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // Measure and Zoom: the two tools that keep nothing. Each one runs ONCE. The action completes on
 // the release of a drag or on the second click, and the tool disarms there whatever Stay in
-// Drawing Mode says, because the trader asked to measure this, not to keep measuring. Disarming
+// Drawing Mode says, because the viewer asked to measure this, not to keep measuring. Disarming
 // hands the chart its own pan and zoom back, so the next drag navigates. The measure readout stays
 // on screen until that next gesture, and Escape clears it too. Neither tool ever leaves a drawing
 // behind.

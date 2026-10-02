@@ -81,7 +81,7 @@ describe('every control in the chrome layer takes its own pointer events back', 
 })
 
 describe('the legend keeps the measured responsive bands', () => {
-  it('uses the baseline header, row, action and list-toggle geometry', () => {
+  it('uses the measured header, row, action and list-toggle geometry', () => {
     expect(lastRule('[data-qc-theme] .qc-legend')).toContain('top: 4px')
     const header = rule('[data-qc-theme] .qc-legend-header')
     expect(header).toContain('flex-wrap: wrap')
@@ -131,7 +131,7 @@ describe('the widget root fills whatever box a host gives it', () => {
 })
 
 describe('replay reserves a responsive row instead of floating over a chart', () => {
-  it('takes one baseline-height flex row and never carries the retired absolute recipe', () => {
+  it('takes one fixed-height flex row and never an absolute recipe', () => {
     const replay = rule('[data-qc-theme] .qc-replay')
     expect(replay).toContain('flex: 0 0 49px')
     expect(replay).toContain('height: 49px')

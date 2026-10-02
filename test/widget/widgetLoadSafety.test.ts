@@ -28,7 +28,7 @@ function mount(adapter = memorySaveLoadAdapter(), storage?: ChartStorage, drawin
   return widget
 }
 
-it('keeps layout write commands unavailable while a user load owns selection', async () => {
+it('keeps layout write commands unavailable while a viewer load owns selection', async () => {
   const adapter = memorySaveLoadAdapter()
   const w = mount(adapter)
   await w.layout.saveLoad.save('Chosen')
@@ -56,7 +56,7 @@ it('keeps layout write commands unavailable while a user load owns selection', a
   expect(w.commands.available('widget.layout.save')).toBe(true)
 })
 
-it('a host-created initial layout updates the package toolbar without another user interaction', async () => {
+it('a host-created initial layout updates the package toolbar without another viewer interaction', async () => {
   vi.useFakeTimers()
   const w = mount()
   await vi.advanceTimersByTimeAsync(1000)
@@ -342,7 +342,7 @@ it('deleting another row preserves the current binding and dirty content', async
   expect(document.querySelector<HTMLElement>('.qc-layouts-name')!.dataset.qcDirty).toBe('true')
 })
 
-it.each([false, true])('real chart and layout hydration preserve only prior user dirtiness (%s)', async (dirty) => {
+it.each([false, true])('real chart and layout hydration preserve only prior viewer dirtiness (%s)', async (dirty) => {
   vi.useFakeTimers()
   const w = mount()
   await vi.advanceTimersByTimeAsync(1000)

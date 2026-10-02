@@ -194,8 +194,8 @@ async function sync(check) {
 }
 
 // ── what still reads English ─────────────────────────────────────────────────────────────────────
-/** Values that legitimately match English everywhere: product names, codes, bare placeholders. */
-const SAME_EVERYWHERE = /^(\{\w+\}|trdrs|Trader Copier|Rithmic|TastyTrade|Tradovate|Stripe|Discord|Telegram|Google|OK|Admin|Pro|Free|Trader|JSON|AI|FX|[^A-Za-z]*)$/
+/** Values that legitimately match English everywhere: codes and bare placeholders. */
+const SAME_EVERYWHERE = /^(\{\w+\}|OK|JSON|AI|FX|[^A-Za-z]*)$/
 
 async function stillEnglish(cat, code) {
   const out = []
@@ -250,9 +250,7 @@ async function todo() {
 /** Core concepts a translator must render the same way everywhere; read from the catalogs, so the
  *  glossary is never a document to maintain. */
 const CONCEPTS = [
-  ['chart', 'timeframe.title'], ['chart', 'account.positions'], ['chart', 'account.orders'],
-  ['chart', 'lines.takeProfit'], ['chart', 'lines.stopLoss'], ['chart', 'session.open'],
-  ['chart', 'drawing.cursor'],
+  ['chart', 'timeframe.title'], ['chart', 'session.open'], ['chart', 'drawing.cursor'],
 ]
 
 async function glossary() {

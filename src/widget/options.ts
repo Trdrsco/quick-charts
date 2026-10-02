@@ -9,10 +9,10 @@
 //   access        which commands, drawing tools and indicators the host permits.
 //   preferences   the viewer's own values, persisted through the storage port.
 //
-// A hidden control is not authorization and not a disabled behavior: hiding a control removes that
-// control alone, and the command behind it still runs for whoever else calls it, subject to the
-// access policy. A disabled feature is the one that removes behavior. An absent port is not a
-// preference: a feed with no search does not become a viewer who dislikes searching. Keeping the
+// Hiding a control removes that control alone: the command behind it still runs for whoever else
+// calls it, subject to the access policy, which is the plane that authorizes. A disabled feature
+// is the one that removes behavior. An absent port is a capability the chart lacks, kept apart from
+// the viewer's preferences, which hold only what the viewer chose. Keeping the
 // five apart is what lets the widget answer "can this run" and "is this drawn" without asking
 // either question in another plane's vocabulary.
 import type { ChartDatafeed } from '../datafeed'
@@ -96,7 +96,7 @@ export interface UiConfig {
    *  and `chart.symbol.search`. Off, the symbol still changes through `chart.symbol.set`. The
    *  compare dialog belongs to `features.compare`. */
   symbolSearch?: boolean
-  /** The indicator browser, and its doors: the Indicators button and `chart.indicators.open`. Off,
+  /** The indicator picker, and its doors: the Indicators button and `chart.indicators.open`. Off,
    *  indicators are still added through `chart.indicators.add`. */
   indicatorPicker?: boolean
   /** The full indicator settings dialog. Off, the legend's gear opens the inputs-only editor, and
@@ -182,7 +182,7 @@ export interface AccessPolicy {
    *  draws a refused control disabled, which suits an offer the viewer can unlock. `'hide'` leaves
    *  it out: a refused drawing tool is not in the rail's flyouts, on the favorites bar or in the
    *  glyph picker, and a section or group it empties goes with it; a refused indicator is not in
-   *  the indicator browser; and a control or menu row whose command is refused is not drawn.
+   *  the indicator picker; and a control or menu row whose command is refused is not drawn.
    *
    *  Only a refusal hides. A permitted command that cannot run now (nothing to undo, no bars
    *  loaded, nothing selected) is still drawn disabled. Like the predicates it is read whenever a
@@ -280,7 +280,7 @@ export interface ImageOptions {
 }
 
 /** ── DRAWING PERSISTENCE ─────────────────────────────────────────────────────────────────────
- *  Where the trader's drawings are stored. Two modes, and the host picks one HERE, at construction:
+ *  Where the viewer's drawings are stored. Two modes, and the host picks one HERE, at construction:
  *
  *    combined  (the default) the drawings ride the chart's own saved content, so saving a chart or
  *              a layout saves the drawings that are on it.
@@ -338,8 +338,8 @@ export interface IndicatorInstance {
   overrides?: IndicatorOverrides
 }
 
-/** The set of symbols a search answers from, as the host names it: a portfolio, a broker, a
- *  watchlist or any other scope its datafeed applies. `mark` paints the scope's own mark into the
+/** The set of symbols a search answers from, as the host names it: a portfolio, a watchlist or
+ *  any other scope its datafeed applies. `mark` paints the scope's own mark into the
  *  box the chart owns and returns what takes it down; absent, the scope wears its initial. */
 export interface SearchScope {
   readonly label: string
@@ -399,7 +399,7 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   /** The main-series styles the chart offers, in this order. Absent, every style in `CHART_STYLES`
    *  is offered and the picker groups them by family.
    *
-   *  A style left out is not a style of this chart: it has no `chart.style.<id>` command, so no
+   *  A style left out stays off this chart: it has no `chart.style.<id>` command, so no
    *  menu, shortcut or host control reaches it, and `setStyle` ignores it. The picker lists the
    *  offered styles in the order given, and is not shown when one style is offered, since there is
    *  nothing to choose. `ui.topBar.styles: false` hides the picker on its own terms.
@@ -414,7 +414,7 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  preset or not (`2m`). The order given does not matter: the picker lists each unit's group
    *  smallest first.
    *
-   *  A token left out is not a timeframe of this chart. A preset left out has no
+   *  A token left out stays off this chart. A preset left out has no
    *  `chart.timeframe.<token>` command, `chart.timeframe.set` and `setTimeframe` ignore a token
    *  left out, and the picker shows no chip and no row for it. A group with no listed token is not
    *  shown, a listed token beyond the presets sits in its unit's group, and there is no
@@ -444,7 +444,7 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  (`1D`, `5D`, `1M`, `3M`, `6M`, `YTD`, `1Y`, `5Y`, `All`), in this order. Absent, all nine
    *  are offered in their own order.
    *
-   *  A preset left out is not a range of this chart: it has no `chart.range.<key>` command, so no
+   *  A preset left out stays off this chart: it has no `chart.range.<key>` command, so no
    *  menu, shortcut or host control reaches it, `chart.range.set` ignores its key, and the bottom
    *  bar draws no button for it. An empty list offers no preset: the bottom bar keeps its clock,
    *  timezone picker and session view, and `chart.range.set` still takes an explicit window.
@@ -457,7 +457,7 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  timezone picker keeps its own order (UTC, the exchange choice, then every zone by its current
    *  offset); the order given decides only which choice is first.
    *
-   *  A choice left out is not a timezone of this chart: it has no `chart.timezone.<id>` command (or
+   *  A choice left out stays off this chart: it has no `chart.timezone.<id>` command (or
    *  `chart.timezone.exchange`), `chart.timezone.set` and `setTimezone` ignore it, and the picker
    *  lists no row for it. With one choice offered the picker is not shown, since there is nothing to
    *  choose, and the bottom bar's clock still reads the time in that zone.
@@ -476,7 +476,7 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  keeps its own rows by chart count and shows only the listed arrangements, and the order given
    *  breaks ties when a saved layout falls back (below).
    *
-   *  An arrangement left out is not an arrangement of this chart: no tile shows it, and
+   *  An arrangement left out stays off this chart: no tile shows it, and
    *  `widget.layout.setArrangement` and the `widget.layout.setArrangement` command ignore it. With
    *  one arrangement offered the layout setup menu is not shown, since there is nothing to choose,
    *  unless that arrangement holds several charts and a sync switch is offered (`layoutSync`): the
@@ -508,9 +508,9 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
    *  icon ids use: any type `drawingTools.all()` lists, `zoom` or `eraser`. Absent, every tool is
    *  offered. The order given does not matter: the rail keeps its own groups and sections.
    *
-   *  A tool left out is not a tool of this chart for creating drawings. It is not drawn anywhere a
-   *  tool is chosen: not in its group's flyout, not as a group's face (which wears the first tool
-   *  the group offers), not on the favorites bar and not on the rail (`measure`, `zoom`). A section
+   *  A tool left out stays off this chart for creating drawings, and every place a tool is chosen
+   *  leaves it out: its group's flyout, a group's face (which wears the first tool the group
+   *  offers), the favorites bar and the rail (`measure`, `zoom`). A section
    *  or group it empties goes with it. The glyph picker's kinds are the `emoji`, `sticker` and
    *  `icon` tools, and a kind left out has no tab. `chart.drawings.arm`, `armTool`, `placeImage` and
    *  an image pasted over the chart refuse it. A copy of a drawing of it is refused too, since a
@@ -552,17 +552,17 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   access?: AccessPolicy
   /** Initial viewer preferences, for a first-run chart. A stored value wins once there is one. */
   preferences?: Partial<ChartPreferences>
-  /** Optional localized content and actions in the chart-owned indicator browser. */
+  /** Optional localized content and actions in the chart-owned indicator picker. */
   indicatorPicker?: IndicatorPickerSource
   /** Indicator instances on the chart at mount. */
   indicators?: IndicatorInstance[]
   /** The built-in indicators the chart offers, by the definition id `access.indicator` receives:
    *  any id `BUILT_IN_INDICATORS` lists, such as `sma`. Absent, every built-in is offered. The order
-   *  given does not matter: the indicator browser keeps its own.
+   *  given does not matter: the indicator picker keeps its own.
    *
-   *  A built-in left out is not one this chart adds. The indicator browser does not list it: not
-   *  among the built-ins, not among the favorites (a starred one keeps its star in storage), not in
-   *  search results, and the host's `indicatorPicker` listing is handed only the offered ids. Every
+   *  A built-in left out stays off this chart. The indicator picker leaves it out of the built-ins,
+   *  the favorites (a starred one keeps its star in storage) and the search results, and the host's
+   *  `indicatorPicker` listing is handed only the offered ids. Every
    *  door that would add one refuses: `chart.indicators.add` answers `denied`, `indicators.add`
    *  adds nothing, `indicators.set` leaves out an instance of it the chart does not already hold,
    *  and a new pane a re-tile adds copies the first chart's studies without it. There is no

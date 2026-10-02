@@ -3,14 +3,13 @@
 // order, verbatim labels, shortcuts, and which rows carry a checkmark rather than a changing label.
 //
 // The model is pure so the same rows serve every host: this library's embedders render it with
-// their own chrome, and the app renders it with ours. Nothing here knows about React, the DOM, or
+// their own chrome, and the widget renders it with its own. Nothing here knows about React, the DOM, or
 // how a row is painted; a host maps `id` to its own handler and `icon` to its own glyph.
 //
 // A row's `id` is what a host acts on and its `label` is what a viewer reads, so the language only
 // ever reaches the label: pass `t` for the widget's language, and the rows read English without it.
-// The symbol and the level a row quotes are the pane's own values. Rows that act on an account
-// (the orders a level can hold) or on an application service (an alert) are not the chart's: an
-// extension contributes them for the level, and the painter appends them below these.
+// The symbol and the level a row quotes are the pane's own values. A host's own rows for the level
+// (an alert, for example) come from an extension, and the painter appends them below these.
 import { isApplePlatform } from './platform'
 import { englishChartStrings, type ChartTranslate } from './i18n'
 

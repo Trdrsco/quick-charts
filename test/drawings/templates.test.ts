@@ -99,7 +99,7 @@ describe('a tool default', () => {
     expect(await t.defaultFor('trend_line')).toEqual({ style: { lineColor: '#00ff00' } })
   })
 
-  it('never shows up in the template list a trader picks from', async () => {
+  it('never shows up in the template list a viewer picks from', async () => {
     const t = templates()
     await t.rememberDefault('trend_line', { style: { lineWidth: 3 } })
     await t.save('trend_line', 'Named', { style: { lineWidth: 5 } })

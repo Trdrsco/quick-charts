@@ -6,8 +6,8 @@
 // - Input keys ARE the instance's stored keys (`period` plus params), so a persisted instance feeds
 //   straight in; a missing key falls back to the manifest default. The labels a settings surface
 //   shows live in `inputTitles`.
-// - A source input is an enum over PRICE_SOURCES: the index is the stored value, the same way a
-//   script's source input serializes.
+// - A source input is an enum over PRICE_SOURCES: the index is the stored value, the same way any
+//   manifest's source input serializes.
 // - The PRIMARY plot declares no color: it takes the instance's color. Secondary plots (signal
 //   lines, +DI/-DI, smoothed companions, flip arrows) declare their palette accents.
 // - Compute returns per-plot arrays aligned 1:1 to the bars, NaN in the warm-up (the walker maps

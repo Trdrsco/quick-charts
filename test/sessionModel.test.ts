@@ -30,7 +30,7 @@ const model = (source: Parameters<typeof parseSessionModel>[0]): SessionModel =>
   return m
 }
 
-// The served shapes (the engine's symbol info): CME Globex, US equities, spot FX, a perp.
+// The served shapes (a feed's symbol info): CME Globex, US equities, spot FX, a perp.
 const CME = model({ timezone: 'America/Chicago', session: '1700-1600:23456' })
 const EQUITY = model({ timezone: 'America/New_York', session: '0930-1600' })
 const EQUITY_EXTENDED = model({
@@ -322,7 +322,7 @@ describe('market status', () => {
 })
 
 describe('the served equity shape: regular, extended, premarket and postmarket with early-close corrections', () => {
-  // The engine serves an equity exactly like this (regular equals the weekly session, its
+  // A feed serves an equity exactly like this (regular equals the weekly session, its
   // corrections equal the symbol's, and every subsession that closes early names the day).
   const EQUITY_SERVED = model({
     timezone: 'America/New_York',

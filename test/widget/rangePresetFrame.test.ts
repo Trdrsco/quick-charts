@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// R16 range load: a range preset that changes the interval reloads the chart, so its span is a
+// A range load: a range preset that changes the interval reloads the chart, so its span is a
 // pending intent that frames the load's first paint instead of measuring an empty series.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChart } from '../../src/widget/create'

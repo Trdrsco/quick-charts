@@ -12,7 +12,7 @@
 // chrome's layout catalog, which already holds the store's listing when the menu opens.
 //
 // A layout holding content it could not put back is written nowhere: the name on the toolbar says
-// so, Save and the autosave stand down, and Make a copy stays on so the trader can put what is on
+// so, Save and the autosave stand down, and Make a copy stays on so the viewer can put what is on
 // screen somewhere of its own. Opening a saved layout is what starts the saving again.
 import { isApplePlatform } from '../../platform'
 import type { LayoutMeta } from '../../resources'
@@ -123,7 +123,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
   }
   /** The layout holds content it could not put back. Nothing writes it back over the layout it is
    *  bound to, so the rows that would try are off and the name says why; Make a copy stays on,
-   *  because a copy writes over nothing, and a trader who has work on screen should be able to keep
+   *  because a copy writes over nothing, and a viewer who has work on screen should be able to keep
    *  it. Only opening a saved layout turns the rest back on. */
   const notSaving = (): boolean => saveLoad.notSaving()
 
@@ -216,7 +216,7 @@ export function mountLayoutsMenu(deps: LayoutsMenuDeps): LayoutsMenuHandle {
           }),
         )
         // The active chart's loaded bars as a file. A chart-scoped command, so it writes the chart
-        // the trader is looking at and the access policy refuses it from here exactly as it would
+        // the viewer is looking at and the access policy refuses it from here exactly as it would
         // from a host toolbar; a chart holding no bars leaves the row disabled.
         add(0, 'chart.data.download',
           menuItem({

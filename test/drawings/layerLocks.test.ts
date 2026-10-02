@@ -2,7 +2,7 @@
 // What a drawing's own lock protects, and what it does not. The lock pins the object where it
 // stands: nothing may move it, reshape it, retype its text, erase it under the eraser or duplicate
 // it out from under a drag, and it still selects, because selecting is the way back to unlocking
-// it. A deliberate delete or duplicate the trader asked for by name still acts, so the toolbar
+// it. A deliberate delete or duplicate the viewer asked for by name still acts, so the toolbar
 // button, the menu row and the key never say they did something they did not do. Lock all is the
 // other lock: it suspends the whole chart, including those deliberate actions and anything new
 // arriving on a paste.

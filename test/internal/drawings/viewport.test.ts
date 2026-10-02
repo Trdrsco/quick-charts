@@ -55,9 +55,9 @@ describe('viewport time→x for anchors between bars of the current grid', () =>
   })
 
   it('maps a time HALFWAY between two bars — a finer-grid anchor after a timeframe switch', () => {
-    // The regression this suite exists for: an anchor placed on 30m sits at :30 past the hour on an
-    // hourly chart, the library resolves neither the time nor the fractional logical, and the old
-    // visible-range calibration was dead in every real frame — the drawing painted nothing.
+    // The case this suite exists for: an anchor placed on 30m sits at :30 past the hour on an
+    // hourly chart, where the library resolves neither the time nor the fractional logical, so the
+    // viewport places it between the two bars itself.
     const { chart, series } = stubPair()
     const vp = viewportOf(chart, series)!
     expect(vp.xOf((T0 + 50 * BAR + BAR / 2) as Time)).toBeCloseTo(xOfLogical(50.5), 6)

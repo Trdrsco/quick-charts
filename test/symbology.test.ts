@@ -1,6 +1,6 @@
 // The symbology contract itself: what a resolved symbol carries, and what it must never carry.
-// The exclusions are the load-bearing half. A quote field here would make the free chart a quote
-// board; a broker field here would make a display grid look like an execution grid. The two
+// The exclusions are the load-bearing half. A quote field here would make Quick Charts a quote
+// board; an execution field here would make a display grid look like an execution grid. The two
 // grids are allowed to differ.
 import { describe, expect, it } from 'vitest'
 import type { SymbolInfo } from '../src/symbology'
@@ -98,7 +98,7 @@ describe('what symbology refuses to own', () => {
     }
   })
 
-  it('declares no broker execution fact', () => {
+  it('declares no execution fact', () => {
     for (const word of [/\bminTick\b/, /\bquantity/i, /\blotSize\b/, /\bpipValue\b/, /\bmarginRequirement\b/]) {
       expect(declarations, String(word)).not.toMatch(word)
     }
