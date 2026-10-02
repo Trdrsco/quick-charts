@@ -404,7 +404,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           // In compare it steps aside under the pointer for the three placement verbs, because a
           // row a viewer is reaching for should offer what to DO rather than restate what it is.
           const source = h('span', { class: 'qc-search-source' })
-          source.appendChild(h('span', { class: 'qc-search-source-text' }, label.source ? h('span', { class: 'qc-search-venue' }, label.source) : null, h('span', { class: 'qc-search-kind' }, r.type)))
+          source.appendChild(h('span', { class: 'qc-search-source-text' }, label.source ? h('span', { class: 'qc-search-source-name' }, label.source) : null, h('span', { class: 'qc-search-kind' }, r.type)))
           if (label.source) {
             // The source's mark: the venue's, or the data source's where the row names no venue,
             // through the host's hook. A host mark owns the box; without one the initial stands.
