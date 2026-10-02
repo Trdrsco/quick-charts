@@ -14,7 +14,7 @@ import { openResourceController, ResourceRollbackError } from '../../src/openRes
 import { createChartI18n } from '../../src/i18n'
 import type { LayoutModelState } from '../../src/widget/layout'
 import { FLYOUT_WIDTH } from '../../src/ui/chrome/flyoutGeometry'
-import { fakeWidget, press, settle, type FakeWidgetOptions } from './harness'
+import { fakeWidget, pastDialogExit, press, settle, type FakeWidgetOptions } from './harness'
 import { attachShortcuts } from '../../src/widget/shortcuts'
 import { ownIcons } from '../ownIcons'
 
@@ -22,7 +22,13 @@ let cleanup: (() => void)[] = []
 afterEach(() => {
   for (const fn of cleanup.splice(0)) fn()
   document.body.replaceChildren()
+  vi.useRealTimers()
 })
+
+/** A clock the test runs past a dialog's exit motion, while promised outcomes still settle. */
+const clockForDialogExits = (): void => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+}
 
 describe('the layout setup menu', () => {
   it('draws a glyph for every arrangement, mirrored where the catalog mirrors', () => {
@@ -433,6 +439,7 @@ describe('the saved-layouts menu', () => {
   })
 
   it('names the layout, marks it dirty on a change, and saves a never-saved layout under a typed name through the command', async () => {
+    clockForDialogExits()
     const { w, menu } = mountLayouts()
     const nameLabel = menu.element.querySelector<HTMLElement>('.qc-layouts-name')!
     const title = menu.element.querySelector<HTMLButtonElement>('.qc-layouts-title')!
@@ -466,6 +473,7 @@ describe('the saved-layouts menu', () => {
     expect(verb.disabled).toBe(false)
     verb.click()
     await settle()
+    await pastDialogExit()
     expect(w.overlays.querySelector('.qc-prompt')).toBeNull()
     expect(w.widget.layout.saveLoad.save).toHaveBeenCalledWith('Desk', { asNew: true })
     expect(nameLabel.textContent).toBe('Desk')
@@ -473,6 +481,7 @@ describe('the saved-layouts menu', () => {
   })
 
   it('renames the open layout and creates a new one through the name dialog, each by its command', async () => {
+    clockForDialogExits()
     const store = layoutStore([{ id: 'a', revision: '1', name: 'layout a', updatedAt: Date.now() }])
     const { w, menu } = mountLayouts({ store })
     const menuRow = (text: string): HTMLButtonElement => [...w.overlays.querySelectorAll<HTMLButtonElement>('.qc-layouts-menu .qc-menu-row')].find((r) => r.querySelector('.qc-menu-label')?.textContent === text)!
@@ -515,12 +524,14 @@ describe('the saved-layouts menu', () => {
     field.dispatchEvent(new Event('input'))
     verb.click()
     expect(run).toHaveBeenCalledWith('widget.layout.create', 'Swing')
+    await pastDialogExit()
     expect(w.overlays.querySelector('.qc-prompt')).toBeNull()
     // Cancel and the cross close without a word to the store.
     menu.element.querySelector<HTMLButtonElement>('.qc-layouts-caret')!.click()
     menuRow('Rename…').click()
     run.mockClear()
     w.overlays.querySelector<HTMLButtonElement>('.qc-prompt-actions .qc-button--secondary')!.click()
+    await pastDialogExit()
     expect(w.overlays.querySelector('.qc-prompt')).toBeNull()
     expect(run).not.toHaveBeenCalled()
   })

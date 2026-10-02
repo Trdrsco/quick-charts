@@ -1,5 +1,6 @@
 // The frame a drawing dialog stands in. The modal shell every chrome surface opens owns the scrim,
-// the centring, the focus trap, Escape and giving focus back to whatever had it; this adds the two
+// the centring, the focus trap, Escape, the modal motion and giving focus back to whatever had it;
+// this adds the two
 // things a drawing dialog needs on top, and nothing else: a header the viewer can drag, so a dialog
 // never hides the drawing it is editing, and a body and footer the caller fills.
 import { dialogTitle, openDialog as openModal } from '../chrome/dialog'
@@ -19,6 +20,9 @@ export interface DialogOptions {
   /** A stable role name for tests and hosts, written as `data-role`. */
   role: string
   width?: number
+  /** The dialog has begun closing and takes no more input, before its exit motion finishes. */
+  onClosing?(): void
+  /** The dialog has left the page. */
   onClose?(): void
 }
 
@@ -29,7 +33,8 @@ export interface DialogHandle {
   footer: HTMLElement
   /** The box itself, for a caller that sizes or classes it. */
   box: HTMLElement
-  close(): void
+  /** Close with the modal motion, or at once with `animate: false`. */
+  close(options?: { animate?: boolean }): void
 }
 
 /** Let the header carry the box. The offset is remembered for the dialog's own life only. */
@@ -80,13 +85,15 @@ export function openDialog(options: DialogOptions): DialogHandle {
       stopDrag = dragBy(header, element)
       element.append(header, body, footer)
     },
-    onClose: () => {
+    // The drag and whatever the dialog opened over itself (a palette, a menu, a template prompt) go
+    // as the dialog begins to close, so nothing answers the viewer from a box that no longer takes
+    // input and no document listener outlives the box it belonged to.
+    onClosing: () => {
       stopDrag()
-      // Whatever the dialog opened over itself (a palette, a menu) goes with it, so no document
-      // listener outlives the box it belonged to.
       if (box) closeOverlays(box)
-      options.onClose?.()
+      options.onClosing?.()
     },
+    onClose: () => options.onClose?.(),
   })
   return { body, footer, box: modal.element, close: modal.close }
 }

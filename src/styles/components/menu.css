@@ -141,7 +141,7 @@
   font-size: var(--qc-text-fontSizeBase);
 }
 
-/* The modal motion, for a dialog that opens and closes with it (the scrim carries `data-state`):
+/* The modal motion, which every modal dialog opens and closes with (its scrim carries `data-state`):
  * the backdrop fades in, and the box fades in and grows from the entrance scale, over one duration.
  * Closing runs the same motion in reverse. Under a reduced-motion preference the duration is zero,
  * so both are instant. */

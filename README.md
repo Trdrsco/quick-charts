@@ -1922,12 +1922,15 @@ same values:
 | `motion.easingSpring` | `cubic-bezier(0.175, 0.885, 0.32, 1.275)` | A caret or chevron turning with a slight overshoot. |
 | `motion.scaleEnter` | `0.97` | The scale a modal dialog box grows from as it opens. |
 
-A modal dialog, such as the symbol search or chart settings, opens with its backdrop fading in over
+Every modal dialog the chart opens (the symbol search, chart settings, the indicator browser and
+indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and the
+drawing settings, image picker and template prompts) opens with its backdrop fading in over
 `motion.durationBase` on `motion.easingOut`, and its box fading in and growing from
 `motion.scaleEnter` to full size over `motion.durationBase` on `motion.easingStandard`. It closes
 with the same motion reversed. A closing dialog stops taking input and returns focus at once, and the
 chart removes it when the same `motion.durationBase` has elapsed, so a duration you set times both
-the transition and the removal.
+the transition and the removal. A dialog opened over another moves on its own and closes first, and
+a dialog the chart replaces or tears down goes at once.
 
 A duration takes a CSS duration such as `200ms` or `0.2s`; an easing takes any CSS timing function,
 such as `ease-in-out`, `steps(4)` or `cubic-bezier(0.2, 0, 0, 1)`; a scale takes a unitless factor

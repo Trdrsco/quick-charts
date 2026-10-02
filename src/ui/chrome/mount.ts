@@ -194,7 +194,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
     if (!ui.indicatorPicker || indicatorDialog?.open()) return
     indicatorDialog = openIndicatorPicker({ ...ctx, storage: deps.storage, indicatorPicker: deps.indicatorPicker, initialCollection })
   }
-  disposers.push(() => { indicatorDialog?.close(); deps.doors.showIndicatorPicker = () => undefined })
+  disposers.push(() => { indicatorDialog?.close({ animate: false }); deps.doors.showIndicatorPicker = () => undefined })
 
   // ── The doors. The charts held this object before the chrome existed; filling it in place is
   // what makes their knocks land here from now on.

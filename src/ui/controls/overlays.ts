@@ -11,9 +11,10 @@
 // own: the host's access policy answering differently. The widget's owner refreshes every such
 // overlay inside its own elements in one call, and an overlay that registered none is left as is.
 
-/** Anything a host can close. */
+/** Anything a host can close. One with an exit motion finishes at once when asked not to animate;
+ *  one without ignores the request. */
 export interface Closable {
-  close(): void
+  close(options?: { animate?: boolean }): void
 }
 
 const open = new WeakMap<Element, Set<() => void>>()

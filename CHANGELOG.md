@@ -48,6 +48,8 @@ What 1.x saved opens in 2.0:
 
 The remove control on a comparison's legend row is named Remove comparison.
 
+Every modal dialog opens and closes with the modal motion, as the symbol search and chart settings do: the indicator browser, the indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and every drawing dialog (drawing settings, the image picker and the template prompts) fade their backdrop in and fade and scale their box from `motion.scaleEnter` over `motion.durationBase`. A closing dialog stops taking input and returns focus at once, and under a reduced-motion preference it closes at once.
+
 ## 1.3.0
 
 Hosts choose which chart styles, timeframes, layouts, drawing tools, built-in indicators, range presets and display timezones a chart offers, how the chart presents what the access policy refuses, and can open the timeframe list away from a chart. Every motion value is a theme role. Content already on a chart, or restored to it, stays when the access policy refuses creating it.

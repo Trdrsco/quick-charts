@@ -1,12 +1,20 @@
-// The modal dialog every chrome surface opens: the symbol search, the indicator picker, the
-// indicator settings, the saved-layouts browser, the replay date picker. One primitive, so each of
-// them traps focus, closes and restores focus the same way.
+// The modal dialog every chrome surface opens: the symbol search, the chart settings, the indicator
+// picker, the indicator settings, the saved-layouts browser, the name and confirm prompts, the
+// replay date picker, and every drawing dialog. One primitive, so each of them traps focus, moves,
+// closes and restores focus the same way.
 //
 // A dialog is a scrim over the layer it mounts into with a box centered in it, so the package
 // stylesheet reaches it and a host ancestor's transform changes nothing. It carries
 // `role="dialog"` and `aria-modal`, names itself, traps Tab inside its own focusables, closes on
 // Escape and on a press on the scrim, returns focus to whatever had it before it opened, and
 // registers with its host so the host's owner can close it at teardown.
+//
+// Every dialog opens and closes with the modal motion: the backdrop fades and the box fades and
+// scales from `motion.scaleEnter`, both over `motion.durationBase`. It is the primitive's behavior
+// rather than an option, so no surface can open without it. A close keeps the box on screen, inert,
+// for exactly that duration, which is zero under a reduced-motion preference. Teardown, a dialog
+// replaced by another finish at once with `close({ animate: false })`, and so does every dialog the
+// host's owner closes in one call at teardown.
 import { h, stopPointer } from './dom'
 import { focusables } from '../controls/dom'
 import { layerFor } from '../controls/layer'
@@ -27,10 +35,6 @@ export interface DialogOptions {
   /** The accessible name. The surface renders its own visible title. */
   label: string
   className?: string
-  /** Open and close with the modal motion: the backdrop fades and the box fades and scales from
-   *  `motion.scaleEnter`, both over `motion.durationBase`. Closing keeps the box on screen, inert,
-   *  for exactly that duration. */
-  animated?: boolean
   /** A stable `data-role` a host test can find the dialog by. */
   role?: string
   /** What the box is to a reader. A question that must be answered before anything else can happen
@@ -56,7 +60,7 @@ export function openDialog(options: DialogOptions): DialogHandle {
   if (options.width) box.style.width = `${options.width}px`
   stopPointer(box)
   scrim.appendChild(box)
-  if (options.animated) scrim.dataset.state = 'opening'
+  scrim.dataset.state = 'opening'
 
   let isOpen = true
   const previouslyFocused = document.activeElement as HTMLElement | null
@@ -87,7 +91,7 @@ export function openDialog(options: DialogOptions): DialogHandle {
     previouslyFocused?.focus?.()
     // The exit lasts as long as the duration role the stylesheet's transition reads, which is zero
     // under a reduced-motion preference: then the dialog goes at once.
-    const exitMs = options.animated && closeOptions?.animate !== false ? motionDurationMs(scrim, 'motion.durationBase') : 0
+    const exitMs = closeOptions?.animate !== false ? motionDurationMs(scrim, 'motion.durationBase') : 0
     if (exitMs <= 0) {
       remove()
       return
@@ -146,14 +150,16 @@ export function openDialog(options: DialogOptions): DialogHandle {
   // the widget can paint over a question that must be answered; the host itself where a root was
   // built without a layer.
   ;(layerFor(options.host) ?? options.host).appendChild(scrim)
-  if (options.animated) {
-    // Commit the visible start frame now rather than waiting on rAF, which a hidden tab may pause.
-    // The next style change can then transition without ever leaving a dialog permanently hidden.
-    scrim.getBoundingClientRect()
-    scrim.dataset.state = 'open'
-  }
+  // Commit the visible start frame now rather than waiting on rAF, which a hidden tab may pause.
+  // The next style change can then transition without ever leaving a dialog permanently hidden.
+  // The entrance plays once, here: a dialog that re-reads or relabels what it shows does so in
+  // place, so it never runs again.
+  scrim.getBoundingClientRect()
+  scrim.dataset.state = 'open'
   const refresh = options.refresh
-  untrack = trackOverlay(options.host, close, refresh ? () => { if (isOpen) refresh() } : undefined)
+  // The host's owner closes what is still open at teardown, or with the surface the dialog stood
+  // over, and nothing it closes there keeps pixels or a timer past that call.
+  untrack = trackOverlay(options.host, () => close({ animate: false }), refresh ? () => { if (isOpen) refresh() } : undefined)
   document.addEventListener('keydown', onKey, true)
   const target = options.initialFocus?.(box) ?? focusables(box)[0] ?? null
   target?.focus()

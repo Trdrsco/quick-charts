@@ -69,7 +69,8 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
   return openDialog({
     host: deps.overlays, label: t('picker.title'), className: 'qc-picker-dialog', width: 840,
     refresh: () => redraw(),
-    onClose: () => { cancel(); offLocale() },
+    // The host's listing is abandoned as the dialog begins to close, not when its exit ends.
+    onClosing: () => { cancel(); offLocale() },
     build(box, dialog) {
       const input = h('input', { type: 'search', class: 'qc-picker-search', role: 'searchbox', 'aria-label': t('picker.search'), placeholder: t('picker.search'), autocomplete: 'off', spellcheck: 'false' })
       const nav = h('nav', { class: 'qc-picker-nav', 'aria-label': t('picker.collections') })
