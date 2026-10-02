@@ -43,6 +43,17 @@
   font-variant-numeric: tabular-nums lining-nums;
 }
 
+/* With one zone offered the clock stands alone, in the trigger's own cell and inset. */
+[data-qc-theme] .qc-bottombar .qc-tz-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 38px;
+  padding: 0 6px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
 [data-qc-theme] .qc-clock {
   font-variant-numeric: tabular-nums;
 }

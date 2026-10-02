@@ -1133,6 +1133,62 @@ permits it, and a listed one the policy refuses is drawn as `access.refused` say
 controls). A non-list, an empty list, an id that names no built-in, a repeated id and an
 `indicators` instance whose built-in you do not list are setup errors that `createChart` throws.
 
+### Offered ranges
+
+By default the bottom bar offers every range preset in `RANGE_PRESETS`, from `1D` to `All`.
+`ranges` names the presets you offer by their keys, in the order the bottom bar draws them:
+
+```ts
+import { createChart, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+// A day, a week's worth of sessions and a year, in this order.
+createChart({ container, datafeed, ranges: ['1D', '5D', '1Y'] })
+
+// No range buttons: the bottom bar keeps its clock, timezone picker and session view.
+createChart({ container, datafeed, ranges: [] })
+```
+
+A preset you leave out has no `chart.range.<key>` command, so no menu, shortcut or host control
+reaches it, `chart.range.set` ignores its key, and the bottom bar draws no button for it. An empty
+list offers none, which is how you keep the rest of the bottom bar without range buttons;
+`ui.bottomBar: false` removes the whole bar. `chart.range.set` still takes an explicit
+`{ from, to }` window either way. A preset whose interval your `timeframes` leave out reads its
+span at your nearest coarser timeframe, as it does without a list. A non-list, a key that names no
+preset and a repeated key are setup errors that `createChart` throws.
+
+### Offered timezones
+
+By default the timezone picker offers every zone in `TIMEZONES` and the exchange choice.
+`timezones` names the choices you offer: zone ids, and `exchange` (`EXCHANGE_TIMEZONE`) for the
+charted symbol's own zone. The picker keeps its own order (UTC, the exchange choice, then every
+zone by its current offset); the order you give decides only which choice comes first:
+
+```ts
+import { createChart, EXCHANGE_TIMEZONE, type ChartDatafeed } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+// The exchange's own time, New York or London, opening on the exchange's time for a first-run viewer.
+createChart({ container, datafeed, timezones: [EXCHANGE_TIMEZONE, 'America/New_York', 'Europe/London'] })
+
+// Always Tokyo time: no picker, and the clock reads Tokyo.
+createChart({ container, datafeed, timezones: ['Asia/Tokyo'] })
+```
+
+A choice you leave out has no `chart.timezone.<id>` command (`chart.timezone.exchange` for the
+exchange choice), `chart.timezone.set` and `setTimezone` ignore it, and the picker lists no row for
+it. With one choice offered the picker is not shown, since there is nothing to choose, and the
+bottom bar's clock still reads the time in that zone.
+
+A chart opens on the viewer's stored choice, else on `preferences.timezone`, when you list it, and
+otherwise on the first choice you list. A stored choice you leave out is not rewritten: it stays
+stored until the viewer picks another zone, so a chart that offers it again opens on it. The
+exported registry is not filtered: `TIMEZONES`, `isTimezoneChoice` and `timezoneListing` answer
+the full set for code of your own. A non-list, an empty list, an id that names no zone and a
+repeated id are setup errors that `createChart` throws.
+
 ### Events
 
 Typed maps, one per scope. Every subscription returns its unsubscribe and is inert after
@@ -1480,9 +1536,9 @@ chrome is painted from it and renders nothing without it.
   section and leaves the rest of the menu, for a host that offers the theme choice in its own
   settings; the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, Copy image where the browser can, and
   Download chart data when there is no layouts store) close the bar.
-- **The bottom bar.** The range presets, the clock in the display zone with the timezone list
-  (UTC and the exchange choice first), and the session view for a symbol that trades outside
-  regular hours.
+- **The bottom bar.** The range presets the chart offers, the clock in the display zone with the
+  list of the timezones it offers (UTC and the exchange choice first), and the session view for a
+  symbol that trades outside regular hours.
 - **Around the charts.** A navigation cluster (zoom, scroll, reset) sits at the bottom of each
   pane, and past one tile it carries a sixth control that fills the layout with the active tile or
   gives the layout back, over `widget.layout.toggleMaximize`, the same verb the Alt press on a tile

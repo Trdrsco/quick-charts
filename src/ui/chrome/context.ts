@@ -12,6 +12,8 @@ import type { OfferedChartStyles } from '../../widget/styles'
 import type { OfferedTimeframes } from '../../widget/timeframes'
 import type { OfferedLayouts } from '../../widget/arrangements'
 import type { OfferedIndicators } from '../../widget/offeredIndicators'
+import type { OfferedRanges } from '../../widget/offeredRanges'
+import type { OfferedTimezones } from '../../widget/offeredTimezones'
 import type { AccessPolicy } from '../../widget/options'
 import { commandShown } from '../../widget/access'
 
@@ -38,6 +40,12 @@ export interface ChromeContext {
   /** The built-in indicators the widget offers, or null (or absent) for every built-in: the ones
    *  the indicator browser lists. */
   builtInIndicators?: OfferedIndicators
+  /** The range presets the widget offers, in the order the bottom bar draws them, or absent for
+   *  every preset. */
+  ranges?: OfferedRanges
+  /** The display timezones the widget offers, or null (or absent) for every choice: the timezone
+   *  picker's rows. */
+  timezones?: OfferedTimezones
 }
 
 /** Whether the chrome draws a control or a menu row for this command. Every one is drawn unless
