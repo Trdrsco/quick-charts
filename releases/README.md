@@ -86,9 +86,10 @@ the provenance attestation the registry serves at `dist.attestations.url`.
 
 ## The coverage check
 
-`pnpm check:release-records` runs in the gate and in CI. It fails when a version on the registry or
-a `v<version>` tag has no record, when a registry tarball differs from the candidate its record
-accepts, or when a version has been on the registry for seven days without its publication facts.
+`node scripts/check-release-records.mjs` runs in the gate and in CI. It fails when a version on the
+registry or a `v<version>` tag has no record, when a registry tarball differs from the candidate
+its record accepts, or when a version has been on the registry for seven days without its
+publication facts.
 Tag `v1.0.2` has no record: its release run was cancelled and the version was never published.
 
 ## Records that predate the rules

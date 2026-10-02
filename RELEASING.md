@@ -56,8 +56,8 @@ change. Publication never deploys or automatically upgrades the first host.
 
 Then record the publication facts: add the `publication` section to `releases/<version>.json`
 with the release run, the registry integrity, the registry tarball SHA-256 and the provenance log
-index, and merge it through a pull request. `pnpm check:release-records` fails once a version has
-been on the registry for seven days without them.
+index, and merge it through a pull request. `node scripts/check-release-records.mjs` fails once a
+version has been on the registry for seven days without them.
 
 ## Recovery
 

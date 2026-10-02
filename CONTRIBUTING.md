@@ -71,7 +71,7 @@ or newer. The published package itself runs on Node 20 and newer, as `engines` s
 | `pnpm clean-room` | Installs the packed tarball into three fresh projects and drives it there. |
 | `pnpm check:supply-chain` | Reads the tree, the packed file list and every line ever added to the history for a secret, an address, a private host or a private package. |
 | `pnpm check:docs` | Holds every document to the documentation style. |
-| `pnpm check:release-records` | Proves every published or tagged version has its acceptance record in `releases/`, and every registry tarball equals the candidate its record accepts. |
+| `node scripts/check-release-records.mjs` | Proves every published or tagged version has its acceptance record in `releases/`, and every registry tarball equals the candidate its record accepts. |
 
 The generated files are committed. A pull request that changes a source of a generated file
 regenerates it in the same commit; the tests compare the committed file with the rendering.

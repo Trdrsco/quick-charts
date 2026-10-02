@@ -84,7 +84,6 @@
     "check:notices": "node scripts/build-third-party-notices.mjs --check",
     "check:supply-chain": "node scripts/check-supply-chain.mjs",
     "check:docs": "node scripts/check-docs.mjs",
-    "check:release-records": "node scripts/check-release-records.mjs",
     "check:i18n": "node scripts/i18n.mjs check",
     "clean-room": "node clean-room/run.mjs",
     "rehearsal": "node scripts/release-rehearsal.mjs",

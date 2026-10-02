@@ -1,4 +1,5 @@
-// The release record coverage check: `pnpm check:release-records`, run by the gate and by CI.
+// The release record coverage check: `node scripts/check-release-records.mjs`, run by the gate and
+// by CI.
 //
 // Every Quick Charts version a stranger can install or check out has its acceptance record in
 // `releases/<version>.json`. This check reads the public truth and holds the folder to it:
