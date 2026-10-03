@@ -80,6 +80,8 @@ Saved state is read under the 2.0 names alone. What 1.x saved under these names 
 - each drawing toolbar group's remembered tool, stored as `railTools` in the drawing preference record `quickcharts.drawingPrefs.v1`: the group's first tool;
 - the replay update timeframe, stored under `quickcharts.replayIv.v1`: `preferences.replayTimeframe`, else `auto`.
 
+2.0 stores the replay update timeframe under `quickcharts.replayTf.v1`. A `ChartStorage` that routes keys by name, to keep some per device for example, routes `quickcharts.replayTf.v1` where it routed `quickcharts.replayIv.v1`.
+
 Hosts that keep templates by kind file them under `indicator`: the chart asks `templates('indicator')`, and the REST adapter asks `/templates/indicator`.
 
 A `RecentsPort` of yours that stores rows stores `dataSource`, the field the source cell reads.
