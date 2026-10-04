@@ -95,7 +95,7 @@
     "lightweight-charts": "^5.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "1.61.0",
+    "@playwright/test": "1.63.0",
     "fancy-canvas": "2.1.0",
     "happy-dom": "^20.13.2",
     "lightweight-charts": "5.2.0",
