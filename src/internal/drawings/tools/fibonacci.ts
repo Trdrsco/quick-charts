@@ -1,4 +1,4 @@
-import type { Point, Viewport } from '../core/types'
+import type { ControlPoint, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { angleOf, distanceToSegment, extendSegment, midpoint } from '../core/geometry'
 import { applyStroke, dashPattern, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
@@ -740,6 +740,17 @@ export class FibWedge extends Drawing<FibProps> {
         )
       }
     }
+  }
+
+  /** The third handle stands at the end of the second ray: that ray runs as long as the first, at
+   *  the third anchor's angle, so the anchor's own distance from the apex paints nothing and a
+   *  handle at it would float off the ray's end as the first ray changes length. */
+  override getControlPoints(viewport: Viewport): ControlPoint[] {
+    const points = super.getControlPoints(viewport)
+    const geo = this.geometry(viewport)
+    if (!geo) return points
+    const end = { x: geo.apex.x + Math.cos(geo.a2) * geo.radius, y: geo.apex.y + Math.sin(geo.a2) * geo.radius }
+    return points.map((point) => (point.index === 2 ? { ...point, ...end } : point))
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
