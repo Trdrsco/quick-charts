@@ -14,7 +14,7 @@ const MAX_URLS = 96
 
 /** Fetches the bundled artwork once and resolves when it has arrived. */
 export function loadBundledArtwork(): Promise<void> {
-  artwork ??= import('./emoji-artwork.json').then((module) => {
+  artwork ??= import('./emojiArtwork').then((module) => {
     drawings = module.default
     const waiting = [...arrivals]
     arrivals.clear()
