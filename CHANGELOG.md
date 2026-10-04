@@ -1,14 +1,18 @@
 # @trdrs/quickcharts
 
+## 2.0.1
+
+Drawing by touch, and handles that stay on their drawings. No public name changes.
+
+A finger draws, selects and moves drawings as surely as a pointer does. A touch takes a drawing it lands within a thumb's reach of and grabs a handle from a thumb's width away; a tap that wobbles stays a tap; a drawing a touch presses moves once the finger clearly sets off; the second touch of a placement brings its live point to the finger at once; and the crosshair stands on the point a finger places or drags, its lines and scale labels clear of the finger. A touch the drawing layer takes is claimed from the page's scroll as it begins, and a gesture the browser takes away ends where it stands. A mouse and a pen keep their behavior.
+
+Every handle stands where its drawing paints what the handle moves, so none stays behind as the drawing's other handles move it: a long or short position's stop on the box's far edge beside the target, a flat top/bottom's flat side at that side's end, a fib wedge's third handle at the end of its second ray, and an ellipse's third handle on the ellipse at its centre.
+
 ## 2.0.0
 
 A major version may rename or remove public names, and its upgrading guide lists each one, old to new, with how saved state carries over. 2.0 names everything a host writes against in the chart's own words: the stylesheet's cascade layers, the data source a symbol search row names, timeframe for every timeframe, indicator for every indicator, the drawing toolbar's models and the context menu's row builder. Saved state is read under the 2.0 names alone, and the guide lists what 1.x saved that opens at its default.
 
 Every modal dialog opens and closes with the modal motion, as the symbol search and chart settings do: the indicator browser, the indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and every drawing dialog (drawing settings, the image picker and the template prompts) fade their backdrop in and fade and scale their box from `motion.scaleEnter` over `motion.durationBase`. A closing dialog stops taking input and returns focus at once, and under a reduced-motion preference it closes at once.
-
-A finger draws, selects and moves drawings as surely as a pointer does. A touch takes a drawing it lands within a thumb's reach of and grabs a handle from a thumb's width away; a tap that wobbles stays a tap; a drawing a touch presses moves once the finger clearly sets off; the second touch of a placement brings its live point to the finger at once; and the crosshair stands on the point a finger places or drags, its lines and scale labels clear of the finger. A touch the drawing layer takes is claimed from the page's scroll as it begins, and a gesture the browser takes away ends where it stands. A mouse and a pen keep their behavior.
-
-Every handle stands where its drawing paints what the handle moves, so none stays behind as the drawing's other handles move it: a long or short position's stop on the box's far edge beside the target, a flat top/bottom's flat side at that side's end, a fib wedge's third handle at the end of its second ray, and an ellipse's third handle on the ellipse at its centre.
 
 ### Upgrading to 2.0
 
