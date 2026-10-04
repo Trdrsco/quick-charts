@@ -1798,6 +1798,7 @@ The direction is the widget's when the glyph is drawn. When a language change tu
 chart asks each factory again for every glyph it drew, a `toolbarButton` glyph included, and puts
 the new drawing in place of the old one. A factory that refuses the new direction leaves the
 previous drawing standing and records the failure.
+
 `chartIconArtwork(id)` answers the chart's own drawings of an icon as markup, for a host that draws
 the chart's icons outside it: a toolbar of its own, or a native view. Each drawing carries its grid,
 its body with every ink on `currentColor`, and the whole drawing as one standalone `<svg>`. An icon
