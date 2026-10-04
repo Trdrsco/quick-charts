@@ -12,19 +12,82 @@
 export interface PointerLockState {
   /** lightweight-charts' pan. */
   handleScroll: boolean
-  /** lightweight-charts' wheel zoom, pinch and axis scaling. */
-  handleScale: boolean
+  /** lightweight-charts' wheel zoom and axis scaling, moving together. The renderer's own pinch is
+   *  off in either state: the chart drives the pinch itself, and reads this lock to know when. */
+  handleScale: RendererScale
   /** The CSS touch-action the chart container wears; '' hands the browser its defaults back. */
   touchAction: string
+}
+
+/** The renderer's scale handling, flag by flag. */
+export interface RendererScale {
+  mouseWheel: boolean
+  pinch: false
+  axisPressedMouseMove: boolean
+  axisDoubleClickReset: boolean
 }
 
 /** The one lock every in-chart drag applies, and releases by asking for the other one. Stated once
  *  so a surface cannot half-restore the chart (the classic residue: navigation back, touch-action
  *  still 'none', and the chart no longer scrollable by finger). */
 export function pointerLock(locked: boolean): PointerLockState {
-  return locked
-    ? { handleScroll: false, handleScale: false, touchAction: 'none' }
-    : { handleScroll: true, handleScale: true, touchAction: '' }
+  const on = !locked
+  return {
+    handleScroll: on,
+    handleScale: { mouseWheel: on, pinch: false, axisPressedMouseMove: on, axisDoubleClickReset: on },
+    touchAction: locked ? 'none' : '',
+  }
+}
+
+/** Whether the renderer's scale options leave scaling open to the viewer: false while a lock holds
+ *  the pointer. The lock writes every scale flag together, so the wheel's flag answers for all. */
+export function scalingOpen(handleScale: boolean | { mouseWheel?: boolean }): boolean {
+  return typeof handleScale === 'boolean' ? handleScale : handleScale.mouseWheel !== false
+}
+
+/** The bar spacing a pinch asks for: the spacing it began with, times how far the fingers now stand
+ *  apart over how far apart they began. Proportional, so the bars spread exactly as the fingers do;
+ *  the renderer clamps the result to its own least and greatest spacing. */
+export function pinchSpacing(startSpacing: number, startDistance: number, distance: number): number {
+  if (!(startDistance > 0) || !(distance > 0)) return startSpacing
+  return startSpacing * (distance / startDistance)
+}
+
+/** Where a pinch began: the bar spacing, the point under the fingers' midpoint as a fractional bar,
+ *  and the fingers' distance. */
+export interface PinchStart {
+  spacing: number
+  anchor: number
+  distance: number
+}
+
+/** The plot a pinch spreads across: its width and the renderer's least and greatest bar spacing. */
+export interface PinchPlot {
+  width: number
+  minSpacing: number
+  maxSpacing: number
+}
+
+// The renderer's own mapping, which both rules below invert: a visible logical range from `from` to
+// `to` draws `width / (to - from + 1)` pixels to a bar, and bar `i` at `width - (to - i + 0.5) *
+// spacing - 1`. Every pinch frame is computed from where the pinch began and where the fingers are,
+// and never from what the renderer reports back, because a write reaches it only on its next frame.
+
+/** The pinch's start, read off the visible logical range and the midpoint `x` in plot pixels. */
+export function pinchStart(range: { from: number; to: number }, width: number, x: number, distance: number): PinchStart | null {
+  const count = range.to - range.from + 1
+  if (!(count > 0) || !(width > 0) || !(distance > 0)) return null
+  const spacing = width / count
+  return { spacing, anchor: range.to + 0.5 - (width - 1 - x) / spacing, distance }
+}
+
+/** The visible logical range that puts the anchor under the fingers' midpoint `x` at the spacing the
+ *  fingers ask for, clamped first to the renderer's own bounds so it draws exactly that spacing. One
+ *  write moves the spacing and the scroll together. */
+export function pinchRange(start: PinchStart, x: number, distance: number, plot: PinchPlot): { from: number; to: number } {
+  const spacing = Math.min(plot.maxSpacing, Math.max(plot.minSpacing, pinchSpacing(start.spacing, start.distance, distance)))
+  const to = start.anchor - 0.5 + (plot.width - 1 - x) / spacing
+  return { from: to + 1 - plot.width / spacing, to }
 }
 
 /** How long a finger rests on a scale before the chart treats the press as a right-click. Measured
@@ -59,10 +122,12 @@ export function longPressCancels(a: { touches: number; fromX: number; fromY: num
   return Math.abs(a.x - a.fromX) > LONG_PRESS_DRIFT_PX || Math.abs(a.y - a.fromY) > LONG_PRESS_DRIFT_PX
 }
 
-// Pinch and axis-scale dragging are the renderer's own gestures: the chart enables them and gets out
-// of the way. What this package owns about them is exactly the lock above — an in-chart drag
-// suspends pinch and axis scaling for its duration and hands both back — and the rule that a second
-// finger ends a one-finger gesture instead of being folded into it. Both are pinned in
+// Axis-scale dragging is the renderer's own gesture: the chart enables it and gets out of the way.
+// The pinch is the chart's: the renderer's pinch moves the bar spacing by about half the change in
+// the fingers' distance, which reads as slow, so the chart drives it proportionally by the rule
+// above. What else this package owns about them is the lock above (an in-chart drag suspends
+// scaling, the chart's pinch included, for its duration and hands it back) and the rule that a
+// second finger ends a one-finger gesture instead of being folded into it. Both are pinned in
 // test/pointerInput.test.ts against these functions and the widget's own extension capabilities.
 // How far a press may wander and still be a tap on a CONTROL is a rule of whoever draws the
 // control (an extension's own), not the chart's.

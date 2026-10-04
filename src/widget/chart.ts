@@ -68,6 +68,7 @@ import { attachComparePlane, type ChartCompareApi } from './compare'
 import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './replay'
 import { attachExtensionsPlane } from './extensions'
 import { attachLegendPlane, type ChartLegendRow } from './legend'
+import { attachPinch } from './pinch'
 import { watchPlotArea, type PlotArea } from './plotArea'
 import { attachMenuPlane } from './menu'
 import { commandShown } from './access'
@@ -1135,6 +1136,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   navigationRoot.addEventListener('mouseup', onNativeDragEnd, { passive: true })
   navigationRoot.addEventListener('pointerup', onNativeDragEnd, { passive: true })
   navigationRoot.addEventListener('pointercancel', onNativeDragEnd, { passive: true })
+  const pinch = attachPinch({ chart, target: gestures })
 
   /** Apply a data-only rewrite without changing where the viewer is looking. Every current main
    * candle is a candidate so the range owner can choose one at the visible left edge, including
@@ -2134,6 +2136,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       countdownClock.destroy()
       pointer?.destroy()
       ranges.stopGlide()
+      pinch.destroy()
       plotArea.destroy()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
       // off. Detaching after the renderer is gone would leave their teardown reaching into nothing.

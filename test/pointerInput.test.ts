@@ -8,18 +8,40 @@
 // navigation) it is pinned against the source of the two modules that own it, the way this package
 // pins its other rules that no runtime assertion can reach.
 import { describe, expect, it } from 'vitest'
-import { holdRaisesMenu, longPressArms, longPressCancels, pointerLock, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
+import { holdRaisesMenu, longPressArms, longPressCancels, pinchSpacing, pointerLock, scalingOpen, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
 import { placeableByWidget } from '../src/drawings'
 import extensionsSrc from '../src/widget/extensions.ts?raw'
 import pointerSrc from '../src/widget/pointer.ts?raw'
 import chartSrc from '../src/widget/chart.ts?raw'
 
 describe('pan, pinch and axis scaling belong to the chart, and are borrowed rather than taken', () => {
-  it('a drag suspends pan, zoom, pinch and axis scaling together, and hands all of them back', () => {
+  it('a drag suspends pan, zoom and axis scaling together, and hands all of them back', () => {
     // One rule, both directions. The residue this prevents is the half-restore: navigation back on
-    // while the container still refuses touch, leaving a chart no finger can scroll.
-    expect(pointerLock(true)).toEqual({ handleScroll: false, handleScale: false, touchAction: 'none' })
-    expect(pointerLock(false)).toEqual({ handleScroll: true, handleScale: true, touchAction: '' })
+    // while the container still refuses touch, leaving a chart no finger can scroll. The renderer's
+    // own pinch is off either way: the chart pinches by itself, and reads this lock to know when.
+    expect(pointerLock(true)).toEqual({
+      handleScroll: false,
+      handleScale: { mouseWheel: false, pinch: false, axisPressedMouseMove: false, axisDoubleClickReset: false },
+      touchAction: 'none',
+    })
+    expect(pointerLock(false)).toEqual({
+      handleScroll: true,
+      handleScale: { mouseWheel: true, pinch: false, axisPressedMouseMove: true, axisDoubleClickReset: true },
+      touchAction: '',
+    })
+    expect(scalingOpen(pointerLock(true).handleScale)).toBe(false)
+    expect(scalingOpen(pointerLock(false).handleScale)).toBe(true)
+    expect(scalingOpen(true)).toBe(true)
+    expect(scalingOpen(false)).toBe(false)
+  })
+
+  it('a pinch spreads the bars exactly as far as the fingers spread', () => {
+    // The renderer's own pinch moves the spacing by about half the change in the fingers' distance,
+    // so twice as far apart zoomed only about 1.65 times. Proportional: twice as far, twice as wide.
+    expect(pinchSpacing(8, 100, 200)).toBe(16)
+    expect(pinchSpacing(8, 100, 50)).toBe(4)
+    expect(pinchSpacing(8, 100, 100)).toBe(8)
+    expect(pinchSpacing(8, 0, 100)).toBe(8)
   })
 
   it('the chart applies that one rule rather than its own pair of flags', () => {
@@ -29,12 +51,16 @@ describe('pan, pinch and axis scaling belong to the chart, and are borrowed rath
     expect(chartSrc).toContain('gestures.style.touchAction = value')
   })
 
-  it('the chart opens with the renderer’s navigation ON — pan, wheel zoom, pinch and axis drag', () => {
+  it('the chart opens released: the renderer’s pan, wheel zoom and axis drag on, and the chart’s own pinch attached', () => {
     // A chart that mounted with either flag off would be a chart nobody can move, and no runtime
-    // assertion in this package would notice.
+    // assertion in this package would notice. The renderer is created with its defaults, and the
+    // extension plane applies the released lock as it attaches, which turns the renderer's pinch off
+    // for the chart's own.
     const created = chartSrc.slice(chartSrc.indexOf('createRenderer(gestures, {'), chartSrc.indexOf('const anchor:'))
     expect(created).not.toContain('handleScroll')
     expect(created).not.toContain('handleScale')
+    expect(extensionsSrc).toContain('series.lockPanZoom(false)')
+    expect(chartSrc).toContain('attachPinch({ chart, target: gestures })')
   })
 
   it('an in-chart drag borrows the lock through one capability, and the chart alone applies it', () => {

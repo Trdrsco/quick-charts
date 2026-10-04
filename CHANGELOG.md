@@ -12,6 +12,8 @@ The return to the live edge glides: `goLive`, its command and `Alt+L` ease the v
 
 A chart reads whether its view sits back from the live edge: `awayFromLiveEdge()` and the `liveEdge` event, reported once per change, with a glide under way and bar replay reading as returned. `plotArea()` and the `plotArea` event give the main pane's plot in the pixels of the host's element, so a control floating over the bars stays beside the price scale as it widens.
 
+Two fingers zoom proportionally: the bars spread exactly as far as the fingers do, and the point under the fingers stays under them as they travel. A pan one finger began before the second landed stays a pan, and a drawing that holds the pointer holds the pinch off.
+
 ## 2.0.1
 
 Drawing by touch, and handles that stay on their drawings. No public name changes.

@@ -133,6 +133,9 @@ export function attachExtensionsPlane(deps: ExtensionsDeps): ExtensionsPlane {
       deps.setTouchAction(state.touchAction)
     },
   }
+  // The renderer opens in the released state through the same rule: pan, wheel zoom and axis
+  // scaling on, and its own pinch off, because the chart drives the pinch itself.
+  series.lockPanZoom(false)
 
   const host = createExtensionHost(
     {
