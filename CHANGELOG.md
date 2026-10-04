@@ -1,5 +1,13 @@
 # @trdrs/quickcharts
 
+## 2.1.0
+
+Long press for the crosshair, and emoji artwork that loads the first time the chart draws an emoji. No public name changes.
+
+A finger held still on the plot is the crosshair's: the crosshair stands at the finger and follows it until the next tap, and the chart does not pan meanwhile. Held on a price scale or the time scale, it raises the chart's context menu, as a right-click does.
+
+The bundled emoji artwork is a chunk of its own, which the chart imports the first time it draws an emoji, so a chart that never shows one never loads it, and the main bundle does not carry it. Until it arrives an emoji draws as text, then takes its artwork in place, in the glyph picker and on the chart. A chart given an `assets.glyphSource` never loads it.
+
 ## 2.0.1
 
 Drawing by touch, and handles that stay on their drawings. No public name changes.
@@ -7,10 +15,6 @@ Drawing by touch, and handles that stay on their drawings. No public name change
 A finger draws, selects and moves drawings as surely as a pointer does. A touch takes a drawing it lands within a thumb's reach of and grabs a handle from a thumb's width away; a tap that wobbles stays a tap; a drawing a touch presses moves once the finger clearly sets off; the second touch of a placement brings its live point to the finger at once; and the crosshair stands on the point a finger places or drags, its lines and scale labels clear of the finger. A touch the drawing layer takes is claimed from the page's scroll as it begins, and a gesture the browser takes away ends where it stands. A mouse and a pen keep their behavior.
 
 Every handle stands where its drawing paints what the handle moves, so none stays behind as the drawing's other handles move it: a long or short position's stop on the box's far edge beside the target, a flat top/bottom's flat side at that side's end, a fib wedge's third handle at the end of its second ray, and an ellipse's third handle on the ellipse at its centre.
-
-A finger held still on the plot is the crosshair's: the crosshair stands at the finger and follows it until the next tap, and the chart does not pan meanwhile. Held on a price scale or the time scale, it raises the chart's context menu, as a right-click does.
-
-The bundled emoji artwork is a chunk of its own, which the chart imports the first time it draws an emoji, so a chart that never shows one never loads it, and the main bundle does not carry it. Until it arrives an emoji draws as text, then takes its artwork in place, in the glyph picker and on the chart. A chart given an `assets.glyphSource` never loads it.
 
 ## 2.0.0
 
