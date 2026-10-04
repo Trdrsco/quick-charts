@@ -1,4 +1,4 @@
-import type { DrawingStyle, Point, Viewport } from '../core/types'
+import type { ControlPoint, DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { moneyText } from '../core/money'
 import { distanceToSegment } from '../core/geometry'
@@ -209,6 +209,15 @@ export class LongPosition extends Drawing<PositionProps> {
       // the text colour belongs to the tags alone.
       paintLabel(ctx, this.formatPrice(entry.price), { x: z.right + 6, y: z.entryY }, { ...this.style, textColor: this.style.lineColor })
     }
+  }
+
+  /** The stop's handle stands on the box's far edge beside the target's, where the stop's level is
+   *  painted: the box's edges are the entry's time and the target's, and the stop's own time paints
+   *  nothing, so a handle at it would stay behind as the box's width changes. */
+  override getControlPoints(viewport: Viewport): ControlPoint[] {
+    const points = super.getControlPoints(viewport)
+    const edge = points.find((point) => point.index === 1)
+    return edge ? points.map((point) => (point.index === 2 ? { ...point, x: edge.x } : point)) : points
   }
 
   testHit(point: Point, viewport: Viewport): boolean {

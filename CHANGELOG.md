@@ -8,6 +8,8 @@ Every modal dialog opens and closes with the modal motion, as the symbol search 
 
 A finger draws, selects and moves drawings as surely as a pointer does. A touch takes a drawing it lands within a thumb's reach of and grabs a handle from a thumb's width away; a tap that wobbles stays a tap; a drawing a touch presses moves once the finger clearly sets off; the second touch of a placement brings its live point to the finger at once; and the crosshair stands on the point a finger places or drags, its lines and scale labels clear of the finger. A touch the drawing layer takes is claimed from the page's scroll as it begins, and a gesture the browser takes away ends where it stands. A mouse and a pen keep their behavior.
 
+Every handle stands where its drawing paints what the handle moves, so none stays behind as the drawing's other handles move it: a long or short position's stop on the box's far edge beside the target, a flat top/bottom's flat side at that side's end, a fib wedge's third handle at the end of its second ray, and an ellipse's third handle on the ellipse at its centre.
+
 ### Upgrading to 2.0
 
 Declare the cascade layers under their 2.0 names in your first stylesheet, before any product stylesheet loads. Layers of your own product go between `quickcharts.chart` and `host`:

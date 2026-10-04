@@ -1,4 +1,4 @@
-import type { Point, Viewport } from '../core/types'
+import type { ControlPoint, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment, extendSegment } from '../core/geometry'
 import { applyStroke, dashPattern, fillPaint, paintLabel, strokeSegment } from '../render/canvas'
@@ -155,6 +155,15 @@ export class FlatTopBottom extends Drawing<ChannelProps> {
     strokeSegment(ctx, b.slope.a, b.slope.b)
     strokeSegment(ctx, b.flat.a, b.flat.b)
     if (this.props.text) paintLabel(ctx, this.props.text, { x: b.slope.a.x + 6, y: b.slope.a.y - 12 }, this.style)
+  }
+
+  /** The flat side's handle stands at the flat side's end under the second anchor: the flat side
+   *  spans the sloped side's times at the third anchor's price, and that anchor's own time paints
+   *  nothing, so a handle at it would drift off the side as the sloped side moves. */
+  override getControlPoints(viewport: Viewport): ControlPoint[] {
+    const points = super.getControlPoints(viewport)
+    const end = points.find((point) => point.index === 1)
+    return end ? points.map((point) => (point.index === 2 ? { ...point, x: end.x } : point)) : points
   }
 
   testHit(point: Point, viewport: Viewport): boolean {

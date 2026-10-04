@@ -1,4 +1,4 @@
-import type { Point, Viewport } from '../core/types'
+import type { ControlPoint, Point, Viewport } from '../core/types'
 import { Drawing, type AnyDrawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
 import { applyStroke, fillPaint, paintLabel } from '../render/canvas'
@@ -284,6 +284,15 @@ export class Ellipse extends Drawing<RoundShapeProps> {
     }
     ctx.stroke()
     if (this.props.text) paintLabel(ctx, this.props.text, geo.center, this.style, { align: 'center' })
+  }
+
+  /** The third handle stands on the ellipse at its centre's time, where the vertical radius it
+   *  drags meets the outline: the anchor's own time paints nothing, so a handle at it would stay
+   *  behind as the diameter moves. */
+  override getControlPoints(viewport: Viewport): ControlPoint[] {
+    const points = super.getControlPoints(viewport)
+    const geo = this.geometry(viewport)
+    return geo ? points.map((point) => (point.index === 2 ? { ...point, x: geo.center.x } : point)) : points
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
