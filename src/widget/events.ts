@@ -15,6 +15,7 @@ import type { CompareEntry } from '../compare'
 import type { ChartStyleId } from './styles'
 import type { HistoryChange } from './history'
 import type { LogicalRange, TimeRange } from './ranges'
+import type { PlotArea } from './plotArea'
 import type { ChartHandle } from './chart'
 
 /** A saved-resource refusal, including layout API calls and commands. The widget never
@@ -107,6 +108,8 @@ export interface ChartEvents {
   /** The view left the live edge or came back to it: true while it sits back from it. Reported only
    *  when the answer changes, so a scroll that stays away says nothing more. */
   liveEdge(away: boolean): void
+  /** The main pane's plot moved or resized within the host's element. */
+  plotArea(area: PlotArea): void
   /** The chosen range preset changed, or navigation left the preset view. */
   rangePreset(key: string | null): void
   /** A load, a page back or a live snapshot reshaped the bar series. */

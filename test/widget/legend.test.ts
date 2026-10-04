@@ -202,6 +202,7 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; ui
     id: `chart-${mounted.length + 1}`,
     active: () => true,
     container,
+    hostContainer: container,
     layer: document.body,
     datafeed: feed,
     saveLoad: null,

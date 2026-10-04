@@ -920,7 +920,7 @@ function drive(widget: ChartWidget): void {
 }
 ```
 
-### The live edge
+### The live edge and the plot
 
 `goLive()` glides the view back to the live edge on an easing curve, moving it sideways only: the
 zoom and the price scale stay as they are. From far back it steps in to a width and a half first, so
@@ -931,17 +931,32 @@ stops it where it stands. Under a reduced-motion preference it goes in one step.
 `awayFromLiveEdge()` says whether the view sits back from the live edge, and the `liveEdge` event
 reports each change, so a control offering the way back shows exactly while there is somewhere to go
 back from. A glide under way reads as returned from its first frame, and bar replay, which has its
-own way back, reads as returned throughout:
+own way back, reads as returned throughout. `plotArea()` and the `plotArea` event give the main
+pane's plot in the pixels of the element you handed the widget, as the four distances an absolutely
+positioned element takes, so a control floating over the bars stays beside the price scale as it
+widens:
 
 ```ts
 import { type ChartHandle } from '@trdrs/quickcharts'
 
 function backToLive(chart: ChartHandle, button: HTMLButtonElement): () => void {
+  const place = (): void => {
+    const plot = chart.plotArea()
+    if (!plot) return
+    button.style.right = `${plot.right + 8}px`
+    button.style.bottom = `${plot.bottom + 8}px`
+  }
   button.onclick = () => chart.goLive()
   button.hidden = !chart.awayFromLiveEdge()
-  return chart.on('liveEdge', (away) => {
+  place()
+  const offEdge = chart.on('liveEdge', (away) => {
     button.hidden = !away
   })
+  const offPlot = chart.on('plotArea', place)
+  return () => {
+    offEdge()
+    offPlot()
+  }
 }
 ```
 
@@ -1240,7 +1255,7 @@ function watch(widget: ChartWidget): () => void {
 
 Widget events: `ready`, `activeChart`, `theme`, `locale`, `saveNeeded`, `saveConflict`,
 `fullscreen`, `dispose`. Chart events: `symbol`, `timeframe`, `style`, `visibleRange`,
-`logicalRange`, `liveEdge`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`,
+`logicalRange`, `liveEdge`, `plotArea`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`,
 `drawing`, `replay`, `compare`, `history`.
 
 ### Commands
