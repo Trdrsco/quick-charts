@@ -1,10 +1,12 @@
 // @vitest-environment happy-dom
 // The way back to the live edge, end to end through one chart: the return glides there on an easing
 // curve without touching the zoom, steps in first from far back, and stops where it stands for a
-// press; and the chart reads whether the view sits back from the edge and reports each change once.
+// press; the chart reads whether the view sits back from the edge and reports each change once; and
+// it reports the main pane's plot in the pixels of the host's own element as the plot moves.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChart } from '../../src/widget/create'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
+import type { PlotArea } from '../../src/widget/plotArea'
 import { renderers, type FakeRenderer } from './rendererFake'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
@@ -139,5 +141,43 @@ describe('the way back to the live edge', () => {
     // No glide to report on, so the renderer's own report of the move is what brings the answer.
     renderer.fireLogicalRange()
     expect(heard).toEqual([true, false])
+  })
+})
+
+describe('the plot area', () => {
+  /** A box the layout engine would have measured. */
+  const box = (left: number, top: number, width: number, height: number): DOMRect =>
+    ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect
+
+  it('reports the main pane’s plot in the host’s pixels, and again only when it moves', async () => {
+    const { chart, renderer, container } = await mount()
+    const heard: PlotArea[] = []
+    chart.on('plotArea', (area) => heard.push(area))
+    // A 600 by 400 host; the chart starts 40px down, under a top bar; the plot is 540 by 300, beside
+    // a 60px right price scale and above a time scale and anything beneath it.
+    vi.spyOn(container, 'getBoundingClientRect').mockReturnValue(box(0, 0, 600, 400))
+    vi.spyOn(renderer.chart.chartElement(), 'getBoundingClientRect').mockReturnValue(box(0, 40, 600, 360))
+    vi.spyOn(renderer.chart.panes()[0]!.getHTMLElement()!, 'getBoundingClientRect').mockReturnValue(box(0, 40, 600, 300))
+    renderer.plotSize = { width: 540, height: 300 }
+    renderer.fireSize()
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
+    const first = { top: 40, right: 60, bottom: 60, left: 0, width: 540, height: 300 }
+    expect(heard).toEqual([first])
+    expect(chart.plotArea()).toEqual(first)
+
+    // The price scale grows a digit: the plot narrows, and the area says so once.
+    renderer.plotSize = { width: 528, height: 300 }
+    renderer.fireSize()
+    renderer.fireSize()
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
+    expect(heard).toEqual([first, { ...first, right: 72, width: 528 }])
+    renderer.fireSize()
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)))
+    expect(heard).toHaveLength(2)
+  })
+
+  it('reads null before the chart has laid out', async () => {
+    const { chart } = await mount()
+    expect(chart.plotArea()).toBeNull()
   })
 })

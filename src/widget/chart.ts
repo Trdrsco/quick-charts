@@ -68,6 +68,7 @@ import { attachComparePlane, type ChartCompareApi } from './compare'
 import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './replay'
 import { attachExtensionsPlane } from './extensions'
 import { attachLegendPlane, type ChartLegendRow } from './legend'
+import { watchPlotArea, type PlotArea } from './plotArea'
 import { attachMenuPlane } from './menu'
 import { commandShown } from './access'
 import { symbolNames } from '../symbolLabel'
@@ -218,6 +219,9 @@ export interface ChartHandle {
    *  returned from its first frame, and bar replay, which has its own way back, reads as returned
    *  throughout. The `liveEdge` event reports each change. */
   awayFromLiveEdge(): boolean
+  /** Where the main pane draws its bars, in the pixels of the element the host handed the widget,
+   *  or null before the chart has laid out. The `plotArea` event reports each change. */
+  plotArea(): PlotArea | null
   scaleMode(): ScaleMode
   setScaleMode(mode: ScaleMode): void
   /** The viewer's display-timezone CHOICE: an IANA id from the chart's registry, or `exchange` to
@@ -286,6 +290,8 @@ export interface ChartInstanceDeps {
   active(): boolean
   /** The pane element this chart fills. The chart creates its own boxes inside it. */
   container: HTMLElement
+  /** The element the host handed the widget: the box the plot area is reported in. */
+  hostContainer: HTMLElement
   /** The widget's layer on the document body, themed as the root is. The context menu mounts here
    *  rather than in this pane's own chrome: it stands over every pane and over whatever the page
    *  stacks around the widget, at viewport coordinates. */
@@ -1543,6 +1549,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     if (replay.active()) ranges.stopGlide()
     followLiveEdge()
   })
+  const plotArea = watchPlotArea({ chart, host: deps.hostContainer, changed: (area: PlotArea) => events.emit('plotArea', area) })
 
   chart.timeScale().subscribeVisibleLogicalRangeChange((reported) => {
     // Every move of the view, the muted and maintained ones included, can carry it across the edge.
@@ -1814,6 +1821,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       followLiveEdge()
       return awayFromLive
     },
+    plotArea: () => plotArea.current(),
     scaleMode: () => scaleMode,
     setScaleMode(mode) {
       applyScaleMode(mode)
@@ -2126,6 +2134,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       countdownClock.destroy()
       pointer?.destroy()
       ranges.stopGlide()
+      plotArea.destroy()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
       // off. Detaching after the renderer is gone would leave their teardown reaching into nothing.
       extensions.destroy()

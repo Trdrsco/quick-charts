@@ -87,6 +87,7 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; ui
     painters: resolveMarkPainters({}),
     active: () => true,
     container,
+    hostContainer: container,
     layer: document.body,
     datafeed: feed,
     saveLoad: null,

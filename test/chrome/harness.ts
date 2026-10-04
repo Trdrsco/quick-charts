@@ -134,6 +134,7 @@ export function fakeChart(options: FakeChartOptions = {}) {
     reset: () => { setRangePreset(null); calls.push('reset') },
     goLive: () => calls.push('goLive'),
     awayFromLiveEdge: () => false,
+    plotArea: () => null,
     scaleMode: () => state.scale,
     setScaleMode(mode) {
       state.scale = mode
