@@ -1,10 +1,12 @@
-// Touch input the chart owns at every width: one finger held still raises the same context menu a
-// right-click does, so an embedder gets press-and-hold without writing any of it.
+// Touch input the chart owns at every width: one finger held still on a price scale or the time
+// scale raises the same context menu a right-click does, so an embedder gets press-and-hold without
+// writing any of it. Held on the plot, the finger is the crosshair's: the renderer's tracking mode
+// takes the hold, and this module leaves it alone.
 //
 // The gesture stands down while a drawing tool is armed (the press IS the drawing gesture) and the
 // moment a second finger lands (that is a pinch, which is navigation). The rules themselves live
 // in `pointerInput.ts`; this module is the wiring.
-import { longPressArms, longPressCancels, LONG_PRESS_MS } from '../pointerInput'
+import { holdRaisesMenu, longPressArms, longPressCancels, LONG_PRESS_MS } from '../pointerInput'
 
 export interface PointerPlane {
   /** Cancel an armed press. Called at teardown, so a chart removed mid-press fires nothing. */
@@ -21,6 +23,9 @@ export interface PointerDeps {
   disposed(): boolean
   /** Raise the context menu at a viewport point. */
   raiseAt(clientX: number, clientY: number): void
+  /** The plot area's left, right and bottom edges in viewport coordinates, or null while the chart
+   *  has no plot to measure. */
+  plotArea(): { left: number; right: number; bottom: number } | null
 }
 
 export function attachPointerPlane(deps: PointerDeps): PointerPlane {
@@ -42,7 +47,9 @@ export function attachPointerPlane(deps: PointerDeps): PointerPlane {
       y,
       timer: setTimeout(() => {
         hold = null
-        if (!deps.disposed()) deps.raiseAt(x, y)
+        if (deps.disposed()) return
+        const plot = deps.plotArea()
+        if (plot && holdRaisesMenu({ x, y, plot })) deps.raiseAt(x, y)
       }, LONG_PRESS_MS),
     }
   }
