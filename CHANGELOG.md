@@ -8,6 +8,10 @@ A finger held still on the plot is the crosshair's: the crosshair stands at the 
 
 The bundled emoji artwork is a chunk of its own, which the chart imports the first time it draws an emoji, so a chart that never shows one never loads it, and the main bundle does not carry it. Until it arrives an emoji draws as text, then takes its artwork in place, in the glyph picker and on the chart. A chart given an `assets.glyphSource` never loads it.
 
+The return to the live edge glides: `goLive`, its command and `Alt+L` ease the view home sideways over about half a second, keeping the zoom and the price scale as they are. From far back the view steps in to a width and a half first, and a touch, a drag, a wheel or any other navigation stops it where it stands. Under a reduced-motion preference it goes in one step.
+
+A chart reads whether its view sits back from the live edge: `awayFromLiveEdge()` and the `liveEdge` event, reported once per change, with a glide under way and bar replay reading as returned.
+
 ## 2.0.1
 
 Drawing by touch, and handles that stay on their drawings. No public name changes.

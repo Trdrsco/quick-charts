@@ -209,8 +209,15 @@ export interface ChartHandle {
   zoom(factor: number): void
   /** Fit the loaded data. */
   reset(): void
-  /** Return to the live edge, keeping the current span. */
+  /** Return to the live edge, keeping the current span: a glide that eases into place, moving the
+   *  view sideways and never the zoom. A touch, a drag, a wheel or any other navigation ends it
+   *  where it stands. */
   goLive(): void
+  /** Whether the view sits back from the live edge, scrolled more than a bar behind its resting
+   *  place, which is what a control offering the way back reads. A glide under way reads as
+   *  returned from its first frame, and bar replay, which has its own way back, reads as returned
+   *  throughout. The `liveEdge` event reports each change. */
+  awayFromLiveEdge(): boolean
   scaleMode(): ScaleMode
   setScaleMode(mode: ScaleMode): void
   /** The viewer's display-timezone CHOICE: an IANA id from the chart's registry, or `exchange` to
@@ -698,6 +705,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const beginNavigation = (): void => {
     navigationEpoch++
     maintenanceRange = null
+    ranges.stopGlide()
     releaseMirror()
     setRangePreset(null)
   }
@@ -733,7 +741,14 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const timeClickSubs = new Set<(time: number) => void>()
   const rangeSubs = new Set<(range: TimeRange) => void>()
 
-  const ranges: RangeApi = createRangeApi({ chart, disposed: disposedFn, muted, mirrored })
+  const ranges: RangeApi = createRangeApi({
+    chart,
+    disposed: disposedFn,
+    muted,
+    mirrored,
+    onGlide: () => followLiveEdge(),
+    reducedMotion: () => gestures.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+  })
   let unregisterRangeMirror = (): void => undefined
 
   /** Resolve the viewer's timezone CHOICE against the symbol on screen and re-label the axis and
@@ -1087,6 +1102,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
   let nativeDragActive = false
   const onNativeDragStart = (event: MouseEvent | PointerEvent): void => {
+    // A press on the chart takes the view from the glide back to the live edge, as a hand stops a
+    // sliding page, before it has moved at all.
+    ranges.stopGlide()
     if (event.button === 0) nativeDragActive = true
   }
   const onNativeDragMove = (event: MouseEvent | PointerEvent): void => {
@@ -1501,7 +1519,34 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     })
   }
 
+  // ── The live edge. Whether the view sits back from it is the chart's to read: the renderer's
+  // scroll position against its resting place, a glide under way and a replay all bear on it, and
+  // a host reading only the visible range could not tell them apart. Reported when it changes.
+  /** How far behind its resting place the view may sit, in bars, and still read as at the edge. */
+  const LIVE_EDGE_SLACK_BARS = 1
+  let awayFromLive = false
+  const readAwayFromLive = (): boolean => {
+    if (disposed || ranges.gliding() || replay.active()) return false
+    const s = chart.timeScale()
+    if (s.getVisibleLogicalRange() === null) return false
+    return s.scrollPosition() < s.options().rightOffset - LIVE_EDGE_SLACK_BARS
+  }
+  function followLiveEdge(): void {
+    if (disposed) return
+    const away = readAwayFromLive()
+    if (away === awayFromLive) return
+    awayFromLive = away
+    events.emit('liveEdge', away)
+  }
+  events.on('replay', () => {
+    // Replay moves the view itself from its first step, so a glide still under way gives it up.
+    if (replay.active()) ranges.stopGlide()
+    followLiveEdge()
+  })
+
   chart.timeScale().subscribeVisibleLogicalRangeChange((reported) => {
+    // Every move of the view, the muted and maintained ones included, can carry it across the edge.
+    followLiveEdge()
     if (syncMuted) {
       const maintenance = currentMaintenance()
       if (maintenance && reported) finishMaintenanceReport('logical')
@@ -1764,6 +1809,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     goLive: () => {
       beginNavigation()
       ranges.goLive()
+    },
+    awayFromLiveEdge: () => {
+      followLiveEdge()
+      return awayFromLive
     },
     scaleMode: () => scaleMode,
     setScaleMode(mode) {
@@ -2076,6 +2125,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       countdown = null
       countdownClock.destroy()
       pointer?.destroy()
+      ranges.stopGlide()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
       // off. Detaching after the renderer is gone would leave their teardown reaching into nothing.
       extensions.destroy()

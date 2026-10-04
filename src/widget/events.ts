@@ -104,6 +104,9 @@ export interface ChartEvents {
   visibleRange(range: TimeRange): void
   /** The visible logical (bar index) range moved. */
   logicalRange(range: LogicalRange): void
+  /** The view left the live edge or came back to it: true while it sits back from it. Reported only
+   *  when the answer changes, so a scroll that stays away says nothing more. */
+  liveEdge(away: boolean): void
   /** The chosen range preset changed, or navigation left the preset view. */
   rangePreset(key: string | null): void
   /** A load, a page back or a live snapshot reshaped the bar series. */

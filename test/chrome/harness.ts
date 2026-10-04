@@ -133,6 +133,7 @@ export function fakeChart(options: FakeChartOptions = {}) {
     zoom: (factor) => calls.push(`zoom:${factor}`),
     reset: () => { setRangePreset(null); calls.push('reset') },
     goLive: () => calls.push('goLive'),
+    awayFromLiveEdge: () => false,
     scaleMode: () => state.scale,
     setScaleMode(mode) {
       state.scale = mode
