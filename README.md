@@ -256,6 +256,18 @@ formatter.parse('110.5') // null, because that symbol does not write decimals
 formatter.precision() // 0, because a fractional format writes no decimal digits
 ```
 
+A surface with no DOM at all, a native view or a server, imports the same formatter from
+`@trdrs/quickcharts/format`. The entry carries the formatter and its types and nothing that names a
+window, a document or a DOM type, so it loads anywhere JavaScript runs and writes a price exactly as
+the chart's axis does:
+
+```ts
+import { createPriceFormatter, type PriceFormat } from '@trdrs/quickcharts/format'
+
+const bonds: PriceFormat = { pricescale: 128, minmov: 1, minmove2: 4, fractional: true }
+createPriceFormatter(bonds).format(110.515625) // "110'16'2"
+```
+
 A ladder changes width by band, because the symbol declared those bands:
 
 ```ts
