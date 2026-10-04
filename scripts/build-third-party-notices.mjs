@@ -35,7 +35,7 @@ export const NOTICES_FILE = 'THIRD-PARTY-NOTICES.md'
  *  for: a version bump makes the rendering fail loudly (see `statementFor`) until someone re-reads
  *  the repository, which is the point. */
 export const REPOSITORY_STATEMENTS = {
-  'lightweight-charts@5.2.0': {
+  'lightweight-charts@5.2.1': {
     /** The repository's NOTICE file, reproduced character for character (the copyright sign is
      *  the Cyrillic letter the file uses). The npm tarball packs only `dist`, so the notice is
      *  carried from the repository. */

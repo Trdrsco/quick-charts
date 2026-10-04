@@ -10,8 +10,8 @@ The emoji SVG graphics are from [Twemoji](https://github.com/jdecked/twemoji), c
 
 | Package | Version | License | Reached through |
 |---|---|---|---|
-| `fancy-canvas` | 2.1.0 | MIT | `lightweight-charts@5.2.0` |
-| `lightweight-charts` | 5.2.0 | Apache-2.0 | peer dependency |
+| `fancy-canvas` | 2.1.0 | MIT | `lightweight-charts@5.2.1` |
+| `lightweight-charts` | 5.2.1 | Apache-2.0 | peer dependency |
 
 ## fancy-canvas 2.1.0
 
@@ -43,7 +43,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## lightweight-charts 5.2.0
+## lightweight-charts 5.2.1
 
 - License: Apache-2.0
 - Repository: https://github.com/tradingview/lightweight-charts
@@ -51,7 +51,7 @@ SOFTWARE.
 
 The package README states an attribution requirement beside the license: present the text of its NOTICE file and a link to https://www.tradingview.com/ on a page of your website or application that your users can reach. The package's `attributionLogo` chart option is one documented way to satisfy the link.
 
-The NOTICE file of lightweight-charts 5.2.0, reproduced verbatim from https://github.com/tradingview/lightweight-charts/blob/master/NOTICE:
+The NOTICE file of lightweight-charts 5.2.1, reproduced verbatim from https://github.com/tradingview/lightweight-charts/blob/master/NOTICE:
 
 ```
 TradingView Lightweight Charts™
