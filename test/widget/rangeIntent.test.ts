@@ -100,7 +100,8 @@ describe('range intent and mirror origin', () => {
       publish({ from: 10, to: 20 })
     })
     vi.spyOn(renderer!.chart.timeScale(), 'fitContent').mockImplementation(() => publish({ from: 30, to: 40 }))
-    vi.spyOn(renderer!.chart.timeScale(), 'scrollToRealTime').mockImplementation(() => publish({ from: 50, to: 60 }))
+    // At rest the return to the live edge is one write of the resting position, which publishes.
+    vi.spyOn(renderer!.chart.timeScale(), 'scrollToPosition').mockImplementation(() => publish({ from: 50, to: 60 }))
     first!.setLogicalRange({ from: -5, to: 15 })
     first!.reset()
     first!.goLive()

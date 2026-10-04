@@ -25,6 +25,8 @@ export interface FakeSeries {
 export interface FakeRenderer {
   chart: IChartApi
   series: FakeSeries[]
+  /** The options the chart was created with. */
+  created: Record<string, unknown>
   /** Every options object the chart itself was handed, in order. */
   chartOptions: Record<string, unknown>[]
   /** The visible logical range the chart reports; a test moves it and fires the subscribers. */
@@ -35,6 +37,14 @@ export interface FakeRenderer {
   timeRange: { from: number; to: number } | null
   /** The renderer's current horizontal spacing. */
   barSpacing: number
+  /** The scroll position: bars between the newest bar and the right edge. It rests at the right
+   *  offset, and a write through the time scale moves it; a test reports the move with
+   *  `fireLogicalRange`, as it does for the range itself. */
+  scroll: number
+  /** The main pane's plot size; zero until a test lays one out. */
+  plotSize: { width: number; height: number }
+  /** Reports the time scale as resized, the way a price scale growing a digit does. */
+  fireSize(): void
   /** The width each price scale reports, so chrome that insets past one can be tested. */
   scaleWidths: { left: number; right: number }
   /** The options each price scale holds, as the chart wrote them; `autoScale` is whether it frames. */
@@ -64,14 +74,22 @@ export function fakeRenderer(): FakeRenderer {
   const timeSubs = new Set<(range: unknown) => void>()
   const crosshairSubs = new Set<(param: unknown) => void>()
   const clickSubs = new Set<(param: unknown) => void>()
+  const sizeSubs = new Set<() => void>()
+  const chartElement = document.createElement('div')
   const state: FakeRenderer = {
     chart: null as unknown as IChartApi,
     series,
+    created: {},
     chartOptions,
     logicalRange: null,
     logicalWrites: [],
     timeRange: null,
     barSpacing: 8,
+    scroll: 4,
+    plotSize: { width: 0, height: 0 },
+    fireSize: () => {
+      for (const cb of sizeSubs) cb()
+    },
     scaleWidths: { left: 0, right: 0 },
     priceScaleOptions: {},
     fireLogicalRange: () => {
@@ -135,8 +153,8 @@ export function fakeRenderer(): FakeRenderer {
     unsubscribeVisibleLogicalRangeChange: (cb: (range: unknown) => void) => void logicalSubs.delete(cb),
     subscribeVisibleTimeRangeChange: (cb: (range: unknown) => void) => void timeSubs.add(cb),
     unsubscribeVisibleTimeRangeChange: (cb: (range: unknown) => void) => void timeSubs.delete(cb),
-    subscribeSizeChange: () => undefined,
-    unsubscribeSizeChange: () => undefined,
+    subscribeSizeChange: (cb: () => void) => void sizeSubs.add(cb),
+    unsubscribeSizeChange: (cb: () => void) => void sizeSubs.delete(cb),
     getVisibleLogicalRange: () => state.logicalRange,
     setVisibleLogicalRange: (range: { from: number; to: number }) => {
       state.logicalRange = range
@@ -156,8 +174,10 @@ export function fakeRenderer(): FakeRenderer {
     applyOptions: (options: { barSpacing?: number }) => {
       if (options.barSpacing !== undefined) state.barSpacing = options.barSpacing
     },
-    scrollPosition: () => 0,
-    scrollToPosition: () => undefined,
+    scrollPosition: () => state.scroll,
+    scrollToPosition: (position: number) => {
+      state.scroll = position
+    },
     scrollToRealTime: () => undefined,
     timeToCoordinate: (time: number) => {
       const index = timeScale.timeToIndex(time)
@@ -174,7 +194,7 @@ export function fakeRenderer(): FakeRenderer {
       const index = timeline.indexOf(Number(time))
       return index < 0 ? null : index
     },
-    width: () => 0,
+    width: () => state.plotSize.width,
     // A REAL band, because chrome that has to stay clear of the time axis measures it here. Zero
     // would let a recipe that covers the axis pass.
     height: () => AXIS_HEIGHT,
@@ -253,12 +273,14 @@ export function fakeRenderer(): FakeRenderer {
     subscribeDblClick: () => undefined,
     unsubscribeDblClick: () => undefined,
     applyOptions: (next: Record<string, unknown>) => void chartOptions.push(next),
-    options: () => ({ layout: {}, timeScale: { barSpacing: 8 } }),
+    // What the chart was created with and every option it applied since, in order, the way the
+    // renderer answers its own options.
+    options: () => Object.assign({ layout: {}, timeScale: { barSpacing: 8 } }, state.created, ...chartOptions),
     setCrosshairPosition: () => undefined,
     clearCrosshairPosition: () => undefined,
     takeScreenshot: () => document.createElement('canvas'),
-    chartElement: () => document.createElement('div'),
-    paneSize: () => ({ width: 0, height: 0 }),
+    chartElement: () => chartElement,
+    paneSize: () => ({ ...state.plotSize }),
     resize: () => undefined,
     autoSizeActive: () => true,
     remove: () => {
@@ -281,8 +303,9 @@ export function fakeRenderer(): FakeRenderer {
  */
 export const renderers: FakeRenderer[] = []
 
-export function createFakeChart(): IChartApi {
+export function createFakeChart(_element?: HTMLElement, options?: Record<string, unknown>): IChartApi {
   const renderer = fakeRenderer()
+  renderer.created = options ?? {}
   renderers.push(renderer)
   return renderer.chart
 }

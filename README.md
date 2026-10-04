@@ -920,6 +920,31 @@ function drive(widget: ChartWidget): void {
 }
 ```
 
+### The live edge
+
+`goLive()` glides the view back to the live edge on an easing curve, moving it sideways only: the
+zoom and the price scale stay as they are. From far back it steps in to a width and a half first, so
+the return reads the same from any distance, and a touch, a drag, a wheel or any other navigation
+stops it where it stands. Under a reduced-motion preference it goes in one step. `Alt+L` and the
+`chart.view.goLive` command run the same glide.
+
+`awayFromLiveEdge()` says whether the view sits back from the live edge, and the `liveEdge` event
+reports each change, so a control offering the way back shows exactly while there is somewhere to go
+back from. A glide under way reads as returned from its first frame, and bar replay, which has its
+own way back, reads as returned throughout:
+
+```ts
+import { type ChartHandle } from '@trdrs/quickcharts'
+
+function backToLive(chart: ChartHandle, button: HTMLButtonElement): () => void {
+  button.onclick = () => chart.goLive()
+  button.hidden = !chart.awayFromLiveEdge()
+  return chart.on('liveEdge', (away) => {
+    button.hidden = !away
+  })
+}
+```
+
 ### Chart styles
 
 `candles`, `hollow`, `bars`, `line`, `area`, `baseline`, `stepline`, listed as `CHART_STYLES`. A
@@ -1215,8 +1240,8 @@ function watch(widget: ChartWidget): () => void {
 
 Widget events: `ready`, `activeChart`, `theme`, `locale`, `saveNeeded`, `saveConflict`,
 `fullscreen`, `dispose`. Chart events: `symbol`, `timeframe`, `style`, `visibleRange`,
-`logicalRange`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`, `drawing`,
-`replay`, `compare`, `history`.
+`logicalRange`, `liveEdge`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`,
+`drawing`, `replay`, `compare`, `history`.
 
 ### Commands
 
