@@ -1798,6 +1798,20 @@ The direction is the widget's when the glyph is drawn. When a language change tu
 chart asks each factory again for every glyph it drew, a `toolbarButton` glyph included, and puts
 the new drawing in place of the old one. A factory that refuses the new direction leaves the
 previous drawing standing and records the failure.
+`chartIconArtwork(id)` answers the chart's own drawings of an icon as markup, for a host that draws
+the chart's icons outside it: a toolbar of its own, or a native view. Each drawing carries its grid,
+its body with every ink on `currentColor`, and the whole drawing as one standalone `<svg>`. An icon
+the chart draws at more than one size answers each, on its own grid, so you pick the one that suits
+your box; the drawing toolbar's are on a 28 grid. It answers the chart's own artwork whatever `icons`
+draws instead. An illustration drawn in the theme's roles answers none.
+
+```ts
+import { chartIconArtwork } from '@trdrs/quickcharts'
+
+const [trendLine] = chartIconArtwork('tool.trend_line')
+const toolButton = document.createElement('button')
+toolButton.innerHTML = trendLine!.svg // the chart's own trend line, in the button's ink
+```
 
 The chart mirrors the glyphs in `MIRRORED_ICONS` for a right-to-left language whatever artwork they
 wear, so draw their left-to-right form. The line-end icons are drawn for a line's left end, and the

@@ -108,7 +108,8 @@ describe('one path draws every glyph', () => {
   it('writes svg markup only in the chart’s own drawings', () => {
     const writers = modules.filter(({ text }) => /<svg\s/.test(text)).map(({ path }) => path)
     // The glyph drawer and the resolver draw the tables; the layout setup draws an arrangement its
-    // host has not drawn, after asking the resolver.
-    expect(writers.sort()).toEqual(['ui/chrome/dom.ts', 'ui/chrome/layoutSetup.ts', 'ui/icons/resolver.ts'])
+    // host has not drawn, after asking the resolver; and the catalog writes the published artwork as
+    // markup a host draws outside the chart, never into it.
+    expect(writers.sort()).toEqual(['ui/chrome/dom.ts', 'ui/chrome/layoutSetup.ts', 'ui/icons/catalog.ts', 'ui/icons/resolver.ts'])
   })
 })

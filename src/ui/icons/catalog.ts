@@ -185,6 +185,44 @@ for (const code of ARRANGEMENT_CODES) ICON_OF.set(arrangementGlyphs.get(code)!, 
 /** The icon a glyph draws, when a host may draw it instead. */
 export const iconOf = (mark: Glyph): ChartIconId | undefined => ICON_OF.get(mark)
 
+/** The chart's own drawing of an icon, as markup a host draws without the chart: a toolbar of its
+ *  own, a native view. */
+export interface ChartIconArtwork {
+  /** The grid the drawing is on. */
+  viewBox: string
+  /** The markup inside the svg, every ink on `currentColor`. */
+  body: string
+  /** The whole drawing as one standalone svg: the grid, no fill of its own (as the chart draws it),
+   *  and the body. */
+  svg: string
+}
+
+/** The drawings behind each id, as published glyphs. */
+const GLYPHS_OF = new Map<string, readonly Glyph[]>([
+  ...Object.entries(CONTROL_ICONS),
+  ...CHART_STYLES.map((style): [string, readonly Glyph[]] => [`style.${style}`, [STYLE_ICONS[style]]]),
+  ...MINIATURE_TOOLS.map((type): [string, readonly Glyph[]] => [`tool.${type}`, [toolGlyphs.get(type)!]]),
+  ...ARRANGEMENT_CODES.map((code): [string, readonly Glyph[]] => [`layout.${code}`, [arrangementGlyphs.get(code)!]]),
+])
+
+/** A drawing that stands on its own: its inks are `currentColor` or its own, never a role of the
+ *  chart's theme and never a class the chart's stylesheet switches. */
+const standsAlone = (mark: Glyph): boolean => !/var\(--|class=/.test(mark.body)
+
+/** Every drawing the chart paints for an icon, in the order its controls use them, each on its own
+ *  grid, so a host picks the one whose grid suits its box (the drawing toolbar's are on a 28 grid).
+ *  The chart's own artwork, whatever a host's `icons` draw instead. An icon the chart draws in its
+ *  theme's roles, an illustration, answers none, and so does an id it does not draw. */
+export function chartIconArtwork(id: ChartIconId): readonly ChartIconArtwork[] {
+  const glyphs = GLYPHS_OF.get(id) ?? []
+  if (!glyphs.every(standsAlone)) return []
+  return glyphs.map((mark) => ({
+    viewBox: mark.viewBox,
+    body: mark.body,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${mark.viewBox}" fill="none">${mark.body}</svg>`,
+  }))
+}
+
 /** Refuse a host's drawings the chart would otherwise read wrongly: an id nothing in the interface
  *  draws, or a drawing that is not a factory. A refused key is an error rather than something
  *  skipped, because a skipped key is artwork the host believes is standing and a viewer never sees. */
