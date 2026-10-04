@@ -32,6 +32,7 @@
     ".": "./src/index.ts",
     "./drawings": "./src/drawings/index.ts",
     "./adapters/rest": "./src/adapters/rest/index.ts",
+    "./format": "./src/format.ts",
     "./styles.css": "./dist/quickcharts.css"
   },
   "files": [
@@ -65,6 +66,10 @@
       "./adapters/rest": {
         "types": "./dist/adapters/rest.d.ts",
         "import": "./dist/adapters/rest.js"
+      },
+      "./format": {
+        "types": "./dist/format.d.ts",
+        "import": "./dist/format.js"
       },
       "./styles.css": "./dist/quickcharts.css"
     }

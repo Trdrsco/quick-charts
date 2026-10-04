@@ -36,8 +36,14 @@ export interface RangeApi {
   zoom(factor: number): void
   /** Fit the loaded data. */
   reset(): void
-  /** Return to the live edge, keeping the current span. */
+  /** Return to the live edge, keeping the current span: a glide that eases into place, moving the
+   *  view sideways and never the zoom. */
   goLive(): void
+  /** Package-private: whether the glide back to the live edge is under way. */
+  gliding(): boolean
+  /** Package-private: end the glide where it stands. Every other way of moving the view calls this
+   *  first, so the glide never contends with a hand or with another verb. */
+  stopGlide(): void
   /** Center the window on a moment, keeping the current span. */
   centerOn(time: number): void
   /** Package-private layout mirror. Never expose through ChartHandle. */
@@ -53,7 +59,22 @@ export interface RangeDeps {
   /** Marks a layout-mirrored time-range write. Its accepted renderer report is suppressed even
    * when the renderer delivers it after the setter returns. */
   mirrored(write: () => void): void
+  /** Hears the glide back to the live edge begin and end, so what reads the view's place follows
+   *  it. */
+  onGlide?(): void
+  /** Whether the viewer asked for reduced motion: the return to the live edge is then one step. */
+  reducedMotion?(): boolean
 }
+
+/** The glide back to the live edge: how long it eases, and the reach it starts from. A view further
+ *  back than `GLIDE_JUMP_WIDTHS` visible widths first steps to `GLIDE_FROM_WIDTHS` widths away, so
+ *  the glide reads the same from any distance and pages no history on the way. */
+export const GLIDE_MS = 520
+const GLIDE_JUMP_WIDTHS = 2
+const GLIDE_FROM_WIDTHS = 1.5
+
+/** Quick at first and settling into place, the way a released scroll comes to rest. */
+export const glideEase = (t: number): number => 1 - (1 - t) ** 3
 
 interface RangeMirror {
   setVisibleRange(range: TimeRange): void
@@ -123,6 +144,8 @@ export function restoreTimelineContinuity(
 
 export function createRangeApi(deps: RangeDeps): RangeApi {
   const scale = () => deps.chart.timeScale()
+  /** The glide's pending frame, or null when no glide is under way. */
+  let glide: number | null = null
 
   const api: RangeApi = {
     visibleRange() {
@@ -172,7 +195,48 @@ export function createRangeApi(deps: RangeDeps): RangeApi {
     },
     goLive() {
       if (deps.disposed()) return
-      scale().scrollToRealTime()
+      api.stopGlide()
+      // The renderer's own return is a straight-line move over a fixed time, which reads as a blur
+      // from far back. The glide drives the scroll position itself, one frame at a time on an
+      // easing curve. Only the position moves: the bar spacing, which is the zoom, is never written.
+      const s = scale()
+      const target = s.options().rightOffset
+      const range = s.getVisibleLogicalRange()
+      const width = range ? range.to - range.from : 0
+      let from = s.scrollPosition()
+      const animate = typeof requestAnimationFrame === 'function' && !(deps.reducedMotion?.() ?? false)
+      if (!animate || !(width > 0) || Math.abs(target - from) < 0.01) {
+        s.scrollToPosition(target, false)
+        return
+      }
+      if (Math.abs(target - from) > GLIDE_JUMP_WIDTHS * width) {
+        from = target - Math.sign(target - from) * GLIDE_FROM_WIDTHS * width
+        s.scrollToPosition(from, false)
+      }
+      const start = performance.now()
+      const step = (now: number): void => {
+        if (glide === null) return
+        if (deps.disposed()) {
+          api.stopGlide()
+          return
+        }
+        const t = Math.min(1, Math.max(0, (now - start) / GLIDE_MS))
+        s.scrollToPosition(from + (target - from) * glideEase(t), false)
+        if (t >= 1) {
+          api.stopGlide()
+          return
+        }
+        glide = requestAnimationFrame(step)
+      }
+      glide = requestAnimationFrame(step)
+      deps.onGlide?.()
+    },
+    gliding: () => glide !== null,
+    stopGlide() {
+      if (glide === null) return
+      cancelAnimationFrame(glide)
+      glide = null
+      deps.onGlide?.()
     },
     centerOn(time) {
       if (deps.disposed()) return

@@ -256,6 +256,18 @@ formatter.parse('110.5') // null, because that symbol does not write decimals
 formatter.precision() // 0, because a fractional format writes no decimal digits
 ```
 
+A surface with no DOM at all, a native view or a server, imports the same formatter from
+`@trdrs/quickcharts/format`. The entry carries the formatter and its types and nothing that names a
+window, a document or a DOM type, so it loads anywhere JavaScript runs and writes a price exactly as
+the chart's axis does:
+
+```ts
+import { createPriceFormatter, type PriceFormat } from '@trdrs/quickcharts/format'
+
+const bonds: PriceFormat = { pricescale: 128, minmov: 1, minmove2: 4, fractional: true }
+createPriceFormatter(bonds).format(110.515625) // "110'16'2"
+```
+
 A ladder changes width by band, because the symbol declared those bands:
 
 ```ts
@@ -920,6 +932,49 @@ function drive(widget: ChartWidget): void {
 }
 ```
 
+### The live edge and the plot
+
+`goLive()` glides the view back to the live edge on an easing curve, moving it sideways only: the
+zoom and the price scale stay as they are. From far back it steps in to a width and a half first, so
+the return reads the same from any distance, and a touch, a drag, a wheel or any other navigation
+stops it where it stands. Under a reduced-motion preference it goes in one step. `Alt+L` and the
+`chart.view.goLive` command run the same glide.
+
+`awayFromLiveEdge()` says whether the view sits back from the live edge, and the `liveEdge` event
+reports each change, so a control offering the way back shows exactly while there is somewhere to go
+back from. A glide under way reads as returned from its first frame, and bar replay, which has its
+own way back, reads as returned throughout. `plotArea()` and the `plotArea` event give the main
+pane's plot in the pixels of the element you handed the widget, as the four distances an absolutely
+positioned element takes, so a control floating over the bars stays beside the price scale as it
+widens:
+
+```ts
+import { type ChartHandle } from '@trdrs/quickcharts'
+
+function backToLive(chart: ChartHandle, button: HTMLButtonElement): () => void {
+  const place = (): void => {
+    const plot = chart.plotArea()
+    if (!plot) return
+    button.style.right = `${plot.right + 8}px`
+    button.style.bottom = `${plot.bottom + 8}px`
+  }
+  button.onclick = () => chart.goLive()
+  button.hidden = !chart.awayFromLiveEdge()
+  place()
+  const offEdge = chart.on('liveEdge', (away) => {
+    button.hidden = !away
+  })
+  const offPlot = chart.on('plotArea', place)
+  return () => {
+    offEdge()
+    offPlot()
+  }
+}
+```
+
+On a touch screen two fingers zoom proportionally: the bars spread exactly as far as the fingers
+do, and the point under the fingers stays under them as they travel.
+
 ### Chart styles
 
 `candles`, `hollow`, `bars`, `line`, `area`, `baseline`, `stepline`, listed as `CHART_STYLES`. A
@@ -1215,8 +1270,8 @@ function watch(widget: ChartWidget): () => void {
 
 Widget events: `ready`, `activeChart`, `theme`, `locale`, `saveNeeded`, `saveConflict`,
 `fullscreen`, `dispose`. Chart events: `symbol`, `timeframe`, `style`, `visibleRange`,
-`logicalRange`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`, `drawing`,
-`replay`, `compare`, `history`.
+`logicalRange`, `liveEdge`, `plotArea`, `dataLoaded`, `feedStatus`, `scaleMode`, `timezone`, `indicator`,
+`drawing`, `replay`, `compare`, `history`.
 
 ### Commands
 

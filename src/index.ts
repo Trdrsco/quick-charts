@@ -69,6 +69,7 @@ export type { CommandRegistry, CommandResult, CommandScope, CommandSpec } from '
 
 // Typed event maps. Every subscription returns its unsubscribe and is inert after `dispose()`.
 export type { ChartEvents, DrawingEvent, HistoryEventState, ImageEvent, IndicatorEvent, LayoutEvent, ReplayEventState, SaveConflictInfo, WidgetEvents } from './widget/events'
+export type { PlotArea } from './widget/plotArea'
 
 // The seven main-series styles. A style switch is presentation: nothing refetches, and the
 // indicators, drawings, comparisons, scale and visible range all survive it.
