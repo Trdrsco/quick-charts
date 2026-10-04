@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-04",
+  "packageName": "@trdrs/quickcharts",
+  "version": "2.1.0",
+  "releaseCommit": "2300d009d8cd3a80bacac78586f6768178314a0a",
+  "tarballSha256": "6c9cfaf3916cef2cd7fdcfaa95281ac913a56f7d4fdeddcd7f22c409251721c5",
+  "tarStreamSha256": "581d2af91221a670a6c03cf408373875758833e9ff4e28a369f4c0d1a66527ea",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37229140887",
+    "unitTestsPassed": 3830,
+    "cleanRoomChecksPassed": 42,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "18dcdd2a825ca8f46499acd1386cee8b5e568b2c036f5b3d52c3e55f1d12fa1f",
+      "dossierHashesSha256": "1eeec134a409a56edda11cb6b3092f72ffbe7729625d66478bb84604c761c130",
+      "installTestChecksPassed": 22,
+      "dossierRetained": true
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "b52cf1d98a38d18baa13148cf1a25b898ff31bdc",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/37228965724",
+    "result": "pass",
+    "workingTree": "2.1.0 on every pin and the Platform version matrix; exact tarball installed through a temporary pnpm override"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Told that his 2.0.1 \"Waive and publish\" go did not carry over to 2.1.0, and that on his go his release agent would cut 2.1.0, run its checks and the app's CI, then publish it, Joey answered: \"Go ahead. Do it. For me. Go.\"",
+    "recordedAt": "2026-10-04T19:33:45Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false
+  }
+}
