@@ -8,6 +8,17 @@ updates:
     groups:
       build-tooling:
         patterns: ['tsup', 'typescript', 'vitest', 'happy-dom']
+    # A major version of the build tooling changes what the build and the tests rest on, so it is
+    # upgraded as a planned change; minor and patch releases still arrive here.
+    ignore:
+      - dependency-name: 'tsup'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'vitest'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'happy-dom'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: /
