@@ -8,7 +8,7 @@
 // navigation) it is pinned against the source of the two modules that own it, the way this package
 // pins its other rules that no runtime assertion can reach.
 import { describe, expect, it } from 'vitest'
-import { longPressArms, longPressCancels, pointerLock, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
+import { holdRaisesMenu, longPressArms, longPressCancels, pointerLock, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
 import { placeableByWidget } from '../src/drawings'
 import extensionsSrc from '../src/widget/extensions.ts?raw'
 import pointerSrc from '../src/widget/pointer.ts?raw'
@@ -78,6 +78,14 @@ describe('press and hold is the touch way into the context menu', () => {
 
   it('a second finger landing mid-hold ends it, in-place, whatever the drift', () => {
     expect(longPressCancels({ touches: 2, fromX: 100, fromY: 100, x: 100, y: 100 })).toBe(true)
+  })
+
+  it('asks for the menu on a scale, and leaves a hold on the plot to the crosshair', () => {
+    const plot = { left: 40, right: 340, bottom: 500 }
+    expect(holdRaisesMenu({ x: 200, y: 250, plot })).toBe(false)
+    expect(holdRaisesMenu({ x: 360, y: 250, plot })).toBe(true)
+    expect(holdRaisesMenu({ x: 20, y: 250, plot })).toBe(true)
+    expect(holdRaisesMenu({ x: 200, y: 520, plot })).toBe(true)
   })
 
   it('the chart binds the hold itself, passively, and raises the same menu a right-click does', () => {

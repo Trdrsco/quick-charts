@@ -27,9 +27,9 @@ export function pointerLock(locked: boolean): PointerLockState {
     : { handleScroll: true, handleScale: true, touchAction: '' }
 }
 
-/** How long a finger rests before the chart treats the press as a right-click. Measured against the
- *  platform hold that raises a context menu: long enough not to fire during a flick-scroll, short
- *  enough that a deliberate hold does not feel ignored. */
+/** How long a finger rests on a scale before the chart treats the press as a right-click. Measured
+ *  against the platform hold that raises a context menu: long enough not to fire during a
+ *  flick-scroll, short enough that a deliberate hold does not feel ignored. */
 export const LONG_PRESS_MS = 450
 
 /** How far that finger may travel first. A thumb rolls on its contact patch while it presses, so
@@ -41,6 +41,15 @@ export const LONG_PRESS_DRIFT_PX = 10
  *  and never on a control the finger is about to tap. */
 export function longPressArms(a: { touches: number; toolArmed: boolean; onControl?: boolean }): boolean {
   return a.touches === 1 && !a.toolArmed && a.onControl !== true
+}
+
+/** Whether a finger's hold at a point asks for the context menu: on a price scale or the time scale,
+ *  outside the plot. On the plot a hold is the crosshair's: the renderer's tracking mode stands the
+ *  crosshair at the finger and follows it until the next tap, so the finger reads values where it
+ *  rests, the frequent job, and the scales are where it asks for the chart's options. `plot` is the
+ *  plot area's left, right and bottom edges in the point's own coordinates. */
+export function holdRaisesMenu(a: { x: number; y: number; plot: { left: number; right: number; bottom: number } }): boolean {
+  return a.x < a.plot.left || a.x > a.plot.right || a.y > a.plot.bottom
 }
 
 /** Whether an armed hold is abandoned before it fires: the finger travelled, lifted, or was joined

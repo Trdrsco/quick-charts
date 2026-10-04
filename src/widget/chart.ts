@@ -1056,6 +1056,14 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         toolArmed: () => drawings.handle?.activeTool() != null,
         disposed: disposedFn,
         raiseAt: (x, y) => menu.raiseAt(x, y),
+        // The plot spans the time scale's width, beside the left price scale and above the time
+        // scale, so whatever lies outside it is a scale.
+        plotArea: () => {
+          const box = gestures.getBoundingClientRect()
+          const left = box.left + chart.priceScale('left').width()
+          const time = chart.timeScale()
+          return { left, right: left + time.width(), bottom: box.bottom - time.height() }
+        },
       })
     : null
 
