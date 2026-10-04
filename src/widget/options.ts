@@ -368,6 +368,15 @@ export interface SearchDisplayOptions {
   classSelection?: 'single' | 'multiple'
 }
 
+/** How the chart answers a finger, beyond what every chart does. */
+export interface TouchOptions {
+  /** A one-finger drag on the main pane that sets off mostly vertically releases the price scale's
+   *  framing, as a drag on the price scale does, and the price follows the finger as the time does.
+   *  A drag that sets off sideways keeps the bars framed. A double-tap on the price scale frames
+   *  them again. Off by default: a drag moves the time alone while the price scale frames itself. */
+  verticalDrag?: boolean
+}
+
 /** Everything needed to construct a widget. `container` and `datafeed` are the two hard
  *  requirements; every other field has a working default. */
 export interface ChartWidgetOptions extends MarkPainterHooks {
@@ -613,4 +622,6 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   /** Neutral bar marks and time-scale marks from the datafeed. On by default; `false` draws none
    *  even from a feed that serves them. */
   marks?: boolean
+  /** How the chart answers a finger, beyond what every chart does. */
+  touch?: TouchOptions
 }

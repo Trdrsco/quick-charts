@@ -53,6 +53,61 @@ export function pinchSpacing(startSpacing: number, startDistance: number, distan
   return startSpacing * (distance / startDistance)
 }
 
+/** Where a pinch began: the bar spacing, the point under the fingers' midpoint as a fractional bar,
+ *  and the fingers' distance. */
+export interface PinchStart {
+  spacing: number
+  anchor: number
+  distance: number
+}
+
+/** The plot a pinch spreads across: its width and the renderer's least and greatest bar spacing. */
+export interface PinchPlot {
+  width: number
+  minSpacing: number
+  maxSpacing: number
+}
+
+// The renderer's own mapping, which both rules below invert: a visible logical range from `from` to
+// `to` draws `width / (to - from + 1)` pixels to a bar, and bar `i` at `width - (to - i + 0.5) *
+// spacing - 1`. Every pinch frame is computed from where the pinch began and where the fingers are,
+// and never from what the renderer reports back, because a write reaches it only on its next frame.
+
+/** The pinch's start, read off the visible logical range and the midpoint `x` in plot pixels. */
+export function pinchStart(range: { from: number; to: number }, width: number, x: number, distance: number): PinchStart | null {
+  const count = range.to - range.from + 1
+  if (!(count > 0) || !(width > 0) || !(distance > 0)) return null
+  const spacing = width / count
+  return { spacing, anchor: range.to + 0.5 - (width - 1 - x) / spacing, distance }
+}
+
+/** The visible logical range that puts the anchor under the fingers' midpoint `x` at the spacing the
+ *  fingers ask for, clamped first to the renderer's own bounds so it draws exactly that spacing. One
+ *  write moves the spacing and the scroll together. */
+export function pinchRange(start: PinchStart, x: number, distance: number, plot: PinchPlot): { from: number; to: number } {
+  const spacing = Math.min(plot.maxSpacing, Math.max(plot.minSpacing, pinchSpacing(start.spacing, start.distance, distance)))
+  const to = start.anchor - 0.5 + (plot.width - 1 - x) / spacing
+  return { from: to + 1 - plot.width / spacing, to }
+}
+
+/** How far a finger travels, across and down together, before the renderer treats it as a drag, and
+ *  how long it may rest first before the renderer takes it as a hold instead: the renderer's own
+ *  thresholds. At that first drag move the renderer decides, once, whether the drag moves the price. */
+export const RENDERER_DRAG_START_PX = 5
+export const RENDERER_LONG_TAP_MS = 240
+
+/** Whether a drag setting off by `dx` and `dy` means the price: mostly vertical, by a clear margin,
+ *  so a sideways pan with a wobble in it keeps the price framed. */
+export function dragMeansPrice(dx: number, dy: number): boolean {
+  return Math.abs(dy) > 1.5 * Math.abs(dx)
+}
+
+/** Whether the renderer's scroll options leave a finger's drag open: false while a lock holds the
+ *  pointer, which writes every scroll flag together. */
+export function scrollOpen(handleScroll: boolean | { horzTouchDrag?: boolean }): boolean {
+  return typeof handleScroll === 'boolean' ? handleScroll : handleScroll.horzTouchDrag !== false
+}
+
 /** A flick's coast: the fastest it may leave the finger, in pixels a millisecond; how much of its
  *  speed it keeps each millisecond; the speed at which it has come to rest; how soon after its last
  *  move a lifting finger still throws, so a finger that stopped before it lifted throws nothing; and

@@ -20,6 +20,8 @@ A finger held on the plot scrubs the crosshair for as long as it stays down: the
 
 A flick of one finger coasts the chart calmly: the throw leaves the finger at no more than two pixels a millisecond and slows smoothly to rest within about a second, and a touch or any other navigation stops it where it stands.
 
+`touch.verticalDrag` lets a one-finger drag on the main pane move the price as well as the time: a drag that sets off mostly vertically releases the price scale's framing, as a drag on the price scale does, and a double-tap on the price scale frames the bars again. A drag that sets off sideways keeps them framed. It is off unless the host turns it on.
+
 ## 2.0.1
 
 Drawing by touch, and handles that stay on their drawings. No public name changes.

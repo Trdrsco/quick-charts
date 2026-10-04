@@ -45,13 +45,18 @@ export function attachFling(deps: FlingDeps): Fling {
     if (typeof requestAnimationFrame !== 'function') return
     let last = performance.now()
     let travelling = speed
+    // Read once, on the first frame, and carried from there: a write reaches the renderer only on its
+    // next frame, so reading the position back each frame could answer with the frame before.
+    let position: number | null = null
     const step = (now: number): void => {
       if (frame === null) return
       const s = scale()
+      position ??= s.scrollPosition()
       const next = flingStep(travelling, Math.max(0, now - last))
       last = now
       travelling = next.speed
-      s.scrollToPosition(s.scrollPosition() + next.moved, false)
+      position += next.moved
+      s.scrollToPosition(position, false)
       if (Math.abs(travelling) * s.options().barSpacing < FLING_REST_PX_PER_MS) {
         frame = null
         return

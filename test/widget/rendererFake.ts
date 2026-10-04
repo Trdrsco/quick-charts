@@ -194,7 +194,7 @@ export function fakeRenderer(): FakeRenderer {
       const index = timeline.indexOf(Number(time))
       return index < 0 ? null : index
     },
-    width: () => 0,
+    width: () => state.plotSize.width,
     // A REAL band, because chrome that has to stay clear of the time axis measures it here. Zero
     // would let a recipe that covers the axis pass.
     height: () => AXIS_HEIGHT,
@@ -273,7 +273,9 @@ export function fakeRenderer(): FakeRenderer {
     subscribeDblClick: () => undefined,
     unsubscribeDblClick: () => undefined,
     applyOptions: (next: Record<string, unknown>) => void chartOptions.push(next),
-    options: () => ({ layout: {}, timeScale: { barSpacing: 8 } }),
+    // What the chart was created with and every option it applied since, in order, the way the
+    // renderer answers its own options.
+    options: () => Object.assign({ layout: {}, timeScale: { barSpacing: 8 } }, state.created, ...chartOptions),
     setCrosshairPosition: () => undefined,
     clearCrosshairPosition: () => undefined,
     takeScreenshot: () => document.createElement('canvas'),

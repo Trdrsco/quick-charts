@@ -974,7 +974,10 @@ function backToLive(chart: ChartHandle, button: HTMLButtonElement): () => void {
 
 On a touch screen two fingers zoom proportionally: the bars spread exactly as far as the fingers
 do, and the point under the fingers stays under them as they travel. A finger held on the plot
-scrubs the crosshair while it stays down, and a flick coasts the chart calmly to rest.
+scrubs the crosshair while it stays down, and a flick coasts the chart calmly to rest. With
+`touch: { verticalDrag: true }`, a one-finger drag on the main pane that sets off mostly vertically
+releases the price scale's framing, as a drag on the price scale does, so the price follows the
+finger; a double-tap on the price scale frames the bars again. It is off unless you turn it on.
 
 ### Chart styles
 
