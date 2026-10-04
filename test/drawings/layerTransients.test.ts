@@ -18,7 +18,7 @@ const make = (options?: Parameters<typeof rig>[0]): Rig => {
 /** Whether the chart's own navigation is free, as the last lock the layer applied left it. */
 const navigable = (r: Rig): boolean => {
   const last = r.fake.applied[r.fake.applied.length - 1]
-  return last?.handleScroll === true && last?.handleScale === true
+  return last?.handleScroll === true && (last?.handleScale as { mouseWheel?: boolean } | undefined)?.mouseWheel === true
 }
 const escape = (r: Rig): void => {
   r.container.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))

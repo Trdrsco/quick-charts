@@ -960,6 +960,9 @@ function backToLive(chart: ChartHandle, button: HTMLButtonElement): () => void {
 }
 ```
 
+On a touch screen two fingers zoom proportionally: the bars spread exactly as far as the fingers
+do, and the point under the fingers stays under them as they travel.
+
 ### Chart styles
 
 `candles`, `hollow`, `bars`, `line`, `area`, `baseline`, `stepline`, listed as `CHART_STYLES`. A

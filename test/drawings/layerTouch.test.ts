@@ -97,7 +97,7 @@ describe('a touch on a drawing', () => {
     const stood = r.handle.export()[0]!.anchors
     window.dispatchEvent(pointer('pointermove', 320, 150, TOUCH))
     expect(r.handle.export()[0]!.anchors).toEqual(stood)
-    expect(r.fake.applied.at(-1)).toMatchObject({ handleScroll: true, handleScale: true })
+    expect(r.fake.applied.at(-1)).toMatchObject({ handleScroll: true, handleScale: { mouseWheel: true, pinch: false } })
   })
 })
 
