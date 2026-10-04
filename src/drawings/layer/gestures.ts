@@ -32,6 +32,22 @@ const MOVE_EPSILON_PX = 2
 const HANDLE_GRAB_PX = 11
 /** Grab radius around a scale grip (an image corner). */
 const GRIP_GRAB_PX = 9
+
+// A FINGER IS NOT A POINTER TIP. A touch covers a pad of skin, wobbles as it lands and lifts, and
+// hides the point it presses, so a touch press reads the chart more generously than a mouse does:
+// it takes a drawing it lands near rather than on, grabs a handle from a thumb's width away, lets a
+// tap wobble without turning into a drag, moves a drawing only once the finger has clearly set off,
+// and shows the point it places or drags through the crosshair, whose lines and scale labels stand
+// clear of the finger. A mouse and a pen keep the exact values above.
+
+/** Pixels around a touch that still take a drawing the touch did not land on. */
+const TOUCH_REACH_PX = 14
+/** Grab radius around an anchor handle or a grip, for a touch. */
+const TOUCH_GRAB_PX = 22
+/** Pixels of travel that turn an opening touch into a drag. */
+const TOUCH_PLACE_DRAG_PX = 12
+/** Pixels of travel before a touch on a drawing moves it. */
+const TOUCH_MOVE_PX = 6
 /** A freehand stroke keeps a point every this many pixels of travel. */
 const STROKE_STEP_PX = 3
 
@@ -154,12 +170,49 @@ export function bindGestures(ctx: GestureContext): () => void {
     return magnetSnap(chart, series, p, mode) ?? raw
   }
 
+  /** Whether the gesture under way is a finger's. */
+  let touching = false
+
+  /** The drawing a press at `p` takes: the one under it, or for a touch the nearest one within the
+   *  finger's reach, read ring by ring outward. */
+  const hitAt = (p: Px): IDrawing | null => {
+    const under = manager.hitTest(p)
+    if (under || !touching) return under
+    for (const radius of [TOUCH_REACH_PX / 2, TOUCH_REACH_PX]) {
+      for (let k = 0; k < 8; k++) {
+        const angle = (k * Math.PI) / 4
+        const near = manager.hitTest({ x: p.x + radius * Math.cos(angle), y: p.y + radius * Math.sin(angle) })
+        if (near) return near
+      }
+    }
+    return null
+  }
+
+  /** The crosshair stands on the point a finger places or drags, its lines and scale labels clear
+   *  of the finger that hides the point itself. A mouse needs no help to see its own pointer. */
+  const showPoint = (anchor: Anchor | null): void => {
+    if (!touching || !anchor) return
+    try {
+      chart.setCrosshairPosition(anchor.price, anchor.time as Time, series)
+    } catch {
+      /* a point off the series' data */
+    }
+  }
+  const hidePoint = (): void => {
+    if (!touching) return
+    try {
+      chart.clearCrosshairPosition()
+    } catch {
+      /* no crosshair to clear */
+    }
+  }
+
   /** Nearest anchor handle of a drawing within the grab radius. */
   const anchorHit = (drawing: IDrawing, p: Px): number | null => {
     const vp = viewport()
     if (!vp) return null
     let best: number | null = null
-    let bestD = HANDLE_GRAB_PX
+    let bestD = touching ? TOUCH_GRAB_PX : HANDLE_GRAB_PX
     for (const cp of drawing.getControlPoints(vp)) {
       const d = Math.hypot(cp.x - p.x, cp.y - p.y)
       if (d <= bestD) {
@@ -251,6 +304,7 @@ export function bindGestures(ctx: GestureContext): () => void {
 
   const onDown = (e: PointerEvent): void => {
     if (e.button !== 0) return
+    touching = e.pointerType === 'touch'
     // A press while the inline editor is open belongs to the editor, which commits itself on it.
     if (ctx.textEditOpen()) return
     wearCursor(ctx.cursorCss())
@@ -264,7 +318,7 @@ export function bindGestures(ctx: GestureContext): () => void {
 
     if (tool === 'eraser') {
       if (ctx.locked()) return
-      const hit = manager.hitTest(p)
+      const hit = hitAt(p)
       if (hit && !editRefused('erase', hit.options, false)) {
         manager.remove(hit.id)
         ctx.persist()
@@ -311,7 +365,8 @@ export function bindGestures(ctx: GestureContext): () => void {
         const vp = viewport()
         if (vp) {
           // Scale grips (an image's corners) take precedence over anchor handles.
-          const grip = sel.resizeHandles(vp).findIndex((g) => Math.hypot(g.x - p.x, g.y - p.y) <= GRIP_GRAB_PX)
+          const gripReach = touching ? TOUCH_GRAB_PX : GRIP_GRAB_PX
+          const grip = sel.resizeHandles(vp).findIndex((g) => Math.hypot(g.x - p.x, g.y - p.y) <= gripReach)
           if (grip !== -1) {
             startDrag('resize', sel, grip, p)
             return
@@ -330,7 +385,7 @@ export function bindGestures(ctx: GestureContext): () => void {
           return
         }
       }
-      const hit = manager.hitTest(p)
+      const hit = hitAt(p)
       if (hit) {
         // A Control- or Command-drag duplicates: the gesture grabs a fresh copy and moves that. A
         // drawing whose tool may not be copied is moved itself, as a plain drag moves it.
@@ -357,7 +412,13 @@ export function bindGestures(ctx: GestureContext): () => void {
     }
 
     // ---- Armed tool: place ----
-    if (ctx.draft) return // mid-placement: the matching release advances the anchor
+    if (ctx.draft) {
+      // Mid-placement the matching release advances the anchor. A finger that lifted between its
+      // taps left nothing for the preview to follow, so the next touch brings the live point to
+      // where it lands at once.
+      if (touching) followDraft(ctx.draft, p, e.shiftKey)
+      return
+    }
     if (ctx.locked()) return
     const def = drawingTools.get(tool)
     if (!def) return
@@ -395,6 +456,7 @@ export function bindGestures(ctx: GestureContext): () => void {
     }
     manager.add(drawing)
     ctx.draft = { drawing, required, placed: 1, downX: p.x, downY: p.y, pendingDrag: true, hasText: !!def.hasText, mode, lastX: p.x, lastY: p.y }
+    showPoint(anchor)
     if (mode === 'fixed' && required === 1) completePlacement(ctx.draft, p)
   }
 
@@ -407,12 +469,25 @@ export function bindGestures(ctx: GestureContext): () => void {
     return first ? constrain45(first, p) : p
   }
 
+  /** Bring a placement's live point to `p`, magnet and Shift as a drag of it would. */
+  const followDraft = (draft: Draft, p: Px, shift: boolean): void => {
+    const live = constrainedEnd(draft, p, shift)
+    const anchor = isTransientArmed(ctx.armed()) ? anchorAt(live) : snappedAnchorAt(live, shift)
+    if (anchor) draft.drawing.updateAnchor(draft.drawing.anchors.length - 1, anchor)
+    showPoint(anchor)
+  }
+
   const onMove = (e: PointerEvent): void => {
     const p = localXY(e)
     const drag = ctx.drag
     if (drag) {
       let { x, y } = p
-      if (!drag.moved && Math.abs(x - drag.grabX) + Math.abs(y - drag.grabY) > MOVE_EPSILON_PX) drag.moved = true
+      if (!drag.moved) {
+        const travel = Math.abs(x - drag.grabX) + Math.abs(y - drag.grabY)
+        // A finger settles as it lands: a drawing it pressed stays put until it clearly sets off.
+        if (touching && travel <= TOUCH_MOVE_PX) return
+        if (travel > MOVE_EPSILON_PX) drag.moved = true
+      }
       const vp = viewport()
       if (!vp) return
       if (drag.mode === 'resize' && drag.anchorIndex !== null) {
@@ -427,6 +502,7 @@ export function bindGestures(ctx: GestureContext): () => void {
         }
         const anchor = snappedAnchorAt({ x, y }, e.shiftKey)
         if (anchor) drag.drawing.updateAnchor(drag.anchorIndex, anchor)
+        showPoint(anchor)
         return
       }
       // Rigid translation: one whole-bar shift for every anchor.
@@ -462,9 +538,7 @@ export function bindGestures(ctx: GestureContext): () => void {
         return
       }
       // Shift constrains a two-point placement's live end against its first anchor.
-      const live = constrainedEnd(draft, p, e.shiftKey)
-      const anchor = isTransientArmed(ctx.armed()) ? anchorAt(live) : snappedAnchorAt(live, e.shiftKey)
-      if (anchor) draft.drawing.updateAnchor(draft.drawing.anchors.length - 1, anchor)
+      followDraft(draft, p, e.shiftKey)
       return
     }
 
@@ -481,30 +555,40 @@ export function bindGestures(ctx: GestureContext): () => void {
   }
   const onLeave = (): void => ctx.setHovered(null)
 
+  /** Pixels of travel that turn an opening press into a drag, a finger's or a pointer's. */
+  const placeSlop = (): number => (touching ? TOUCH_PLACE_DRAG_PX : PLACE_DRAG_PX)
+
+  /** End a grab: keep what it moved, drop a copy it never moved, or land an unmoved press inside a
+   *  table in its cell. */
+  const endDrag = (drag: Drag): void => {
+    ctx.drag = null
+    freezePan(!!ctx.armed()) // an armed tool keeps the chart frozen; the cursor releases it
+    // A modified press that duplicated but never moved leaves no copy behind.
+    if (drag.cloned && !drag.moved) manager.remove(drag.drawing.id)
+    // An unmoved press inside a table lands in a cell: type right there.
+    if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.drawing.type === 'table') {
+      const vp = viewport()
+      const table = drag.drawing as IDrawing & {
+        cellAt?: (point: Px, viewport: Viewport) => { row: number; col: number; rect: { x: number; y: number; width: number; height: number } } | null
+      }
+      const cell = vp && table.cellAt ? table.cellAt({ x: drag.grabX, y: drag.grabY }, vp) : null
+      if (cell) {
+        ctx.openCellEdit(drag.drawing, cell)
+        return
+      }
+    }
+    if (drag.moved || drag.cloned) {
+      ctx.persist()
+      ctx.changed()
+    }
+  }
+
   const onUp = (e: PointerEvent): void => {
     const p = localXY(e)
+    hidePoint()
     const drag = ctx.drag
     if (drag) {
-      ctx.drag = null
-      freezePan(!!ctx.armed()) // an armed tool keeps the chart frozen; the cursor releases it
-      // A modified press that duplicated but never moved leaves no copy behind.
-      if (drag.cloned && !drag.moved) manager.remove(drag.drawing.id)
-      // An unmoved press inside a table lands in a cell: type right there.
-      if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.drawing.type === 'table') {
-        const vp = viewport()
-        const table = drag.drawing as IDrawing & {
-          cellAt?: (point: Px, viewport: Viewport) => { row: number; col: number; rect: { x: number; y: number; width: number; height: number } } | null
-        }
-        const cell = vp && table.cellAt ? table.cellAt({ x: drag.grabX, y: drag.grabY }, vp) : null
-        if (cell) {
-          ctx.openCellEdit(drag.drawing, cell)
-          return
-        }
-      }
-      if (drag.moved || drag.cloned) {
-        ctx.persist()
-        ctx.changed()
-      }
+      endDrag(drag)
       return
     }
 
@@ -513,7 +597,7 @@ export function bindGestures(ctx: GestureContext): () => void {
     const tool = ctx.armed()
 
     if (tool === 'measure' || tool === 'zoom') {
-      const moved = Math.abs(p.x - draft.downX) + Math.abs(p.y - draft.downY) > 4
+      const moved = Math.abs(p.x - draft.downX) + Math.abs(p.y - draft.downY) > (touching ? TOUCH_PLACE_DRAG_PX : 4)
       if (!moved && draft.pendingDrag) {
         // A click, not a drag: the preview keeps tracking the pointer until the second click.
         draft.pendingDrag = false
@@ -540,7 +624,7 @@ export function bindGestures(ctx: GestureContext): () => void {
       // The opening press released in place fixed its point on the way down; the preview keeps
       // tracking. Every later release fixes the live point and appends the next preview, and a
       // double-click ends the run.
-      if (draft.pendingDrag && Math.abs(p.x - draft.downX) + Math.abs(p.y - draft.downY) <= PLACE_DRAG_PX) {
+      if (draft.pendingDrag && Math.abs(p.x - draft.downX) + Math.abs(p.y - draft.downY) <= placeSlop()) {
         draft.pendingDrag = false
         return
       }
@@ -557,7 +641,7 @@ export function bindGestures(ctx: GestureContext): () => void {
     const snapped = snappedAnchorAt(constrainedEnd(draft, p, e.shiftKey), e.shiftKey)
     const lastIndex = draft.drawing.anchors.length - 1
     if (snapped) draft.drawing.updateAnchor(lastIndex, snapped)
-    const moved = Math.abs(p.x - draft.downX) + Math.abs(p.y - draft.downY) > PLACE_DRAG_PX
+    const moved = Math.abs(p.x - draft.downX) + Math.abs(p.y - draft.downY) > placeSlop()
     // The opening press released in place is a CLICK: keep tracking; the next click fixes the end.
     if (draft.pendingDrag && !moved) {
       draft.pendingDrag = false
@@ -571,6 +655,22 @@ export function bindGestures(ctx: GestureContext): () => void {
       const next = snapped ?? draft.drawing.anchors[lastIndex]!
       draft.drawing.appendAnchor({ ...next })
     }
+  }
+
+  /** The browser took the touch away mid-gesture: a grab ends where it stands, and a placement
+   *  waits for the next press, as a tap would have left it. */
+  const onCancel = (): void => {
+    hidePoint()
+    if (ctx.drag) endDrag(ctx.drag)
+    else if (ctx.draft) ctx.draft.pendingDrag = false
+  }
+
+  /** A browser settles whether a touch scrolls the page as the touch begins, just after the press
+   *  that started it. A touch the layer took there (a placement, a drawing, one of its handles) is
+   *  claimed for the layer, so the drag is the drawing's to the end; any other touch stays the
+   *  page's and the chart's. */
+  const onTouchStart = (e: TouchEvent): void => {
+    if (ctx.drag || ctx.draft) e.preventDefault()
   }
 
   /** A double-click ends a multipoint run, and reopens the inline editor on a text drawing. */
@@ -603,17 +703,21 @@ export function bindGestures(ctx: GestureContext): () => void {
   // the chart keeps tracking, and the release is never lost outside (losing it would strand a
   // frozen pan and a half-moved drawing).
   container.addEventListener('pointerdown', onDown)
+  container.addEventListener('touchstart', onTouchStart, { passive: false })
   container.addEventListener('pointermove', onHover)
   container.addEventListener('pointerleave', onLeave)
   container.addEventListener('dblclick', onDblClick)
   window.addEventListener('pointermove', onMove)
   window.addEventListener('pointerup', onUp)
+  window.addEventListener('pointercancel', onCancel)
   return () => {
     container.removeEventListener('pointerdown', onDown)
+    container.removeEventListener('touchstart', onTouchStart)
     container.removeEventListener('pointermove', onHover)
     container.removeEventListener('pointerleave', onLeave)
     container.removeEventListener('dblclick', onDblClick)
     window.removeEventListener('pointermove', onMove)
     window.removeEventListener('pointerup', onUp)
+    window.removeEventListener('pointercancel', onCancel)
   }
 }
