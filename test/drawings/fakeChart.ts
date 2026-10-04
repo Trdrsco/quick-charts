@@ -23,6 +23,8 @@ export interface FakeChart {
   applied: Record<string, unknown>[]
   /** The last visible range a zoom set. */
   visibleRange: { from: number; to: number } | null
+  /** Every crosshair the layer stood at a point, and null for each it cleared. */
+  crosshair: ({ price: number; time: number } | null)[]
   /** The pixel a time sits at, and the pixel a price sits at. */
   xOf(time: number): number
   yOf(price: number): number
@@ -49,6 +51,7 @@ export function fakeChart(options: FakeChartOptions = {}): FakeChart {
     series: null as unknown as ISeriesApi<SeriesType>,
     applied,
     visibleRange: null,
+    crosshair: [],
     xOf: (time) => ((time - startTime) / step) * spacing,
     yOf: (price) => ((top - price) / (top - bottom)) * height,
     priceAt: (y) => top - (y / height) * (top - bottom),
@@ -81,6 +84,12 @@ export function fakeChart(options: FakeChartOptions = {}): FakeChart {
       applied.push(o)
     },
     priceScale: () => ({ width: () => 0, applyOptions: () => undefined }),
+    setCrosshairPosition: (price: number, time: Time) => {
+      state.crosshair.push({ price, time: Number(time) })
+    },
+    clearCrosshairPosition: () => {
+      state.crosshair.push(null)
+    },
     panes: () => [],
     remove: () => undefined,
   } as unknown as IChartApi
