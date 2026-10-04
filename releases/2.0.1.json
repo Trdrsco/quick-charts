@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-04",
+  "packageName": "@trdrs/quickcharts",
+  "version": "2.0.1",
+  "releaseCommit": "66a6f037ed4a3347752b9e10d816a46c13c54681",
+  "tarballSha256": "6a1bc3215ce36c2a0cd4666cf57f000335eaacfdec54685ef43a4ec923193ac5",
+  "tarStreamSha256": "fb08b47b6c953dcf7221d4410cb8bc263d430e7e0fb4b747b737a9c60ea74034",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37221978318",
+    "unitTestsPassed": 3825,
+    "cleanRoomChecksPassed": 42,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "3812e43c465dbd6c4f499f337cb5b45357f4e8ec6af26b08ed45f650fa0d52cc",
+      "dossierHashesSha256": "cdfb33bb978efe4cb8e61478bf3e7c481513a0e20020229956a4f6a2505d527c",
+      "installTestChecksPassed": 22,
+      "dossierRetained": true
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "d5e5a898f74582b29cedd5ae1688af623566bbb8",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/37223043181",
+    "result": "pass",
+    "workingTree": "2.0.1 on every pin and the Platform version matrix; exact tarball installed through a temporary pnpm override"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Asked whether he waives the manual accessibility and device checks as he did for 1.3.0 and 2.0.0, and whether he authorizes publishing 2.0.1 to npm with his release agent approving the npm-publish environment once release validation passes, Joey selected \"Waive and publish (Recommended)\".",
+    "recordedAt": "2026-10-04T17:47:19Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false
+  }
+}
