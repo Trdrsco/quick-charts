@@ -96,12 +96,6 @@ export function pinchRange(start: PinchStart, x: number, distance: number, plot:
 export const RENDERER_DRAG_START_PX = 5
 export const RENDERER_LONG_TAP_MS = 240
 
-/** Whether a drag setting off by `dx` and `dy` means the price: mostly vertical, by a clear margin,
- *  so a sideways pan with a wobble in it keeps the price framed. */
-export function dragMeansPrice(dx: number, dy: number): boolean {
-  return Math.abs(dy) > 1.5 * Math.abs(dx)
-}
-
 /** Whether the renderer's scroll options leave a finger's drag open: false while a lock holds the
  *  pointer, which writes every scroll flag together. */
 export function scrollOpen(handleScroll: boolean | { horzTouchDrag?: boolean }): boolean {

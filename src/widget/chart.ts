@@ -71,7 +71,7 @@ import { attachExtensionsPlane } from './extensions'
 import { attachLegendPlane, type ChartLegendRow } from './legend'
 import { attachFling } from './fling'
 import { attachPinch } from './pinch'
-import { attachVerticalDrag } from './verticalDrag'
+import { attachFreePan } from './freePan'
 import { watchPlotArea, type PlotArea } from './plotArea'
 import { attachMenuPlane } from './menu'
 import { commandShown } from './access'
@@ -296,8 +296,8 @@ export interface ChartInstanceDeps {
   container: HTMLElement
   /** The element the host handed the widget: the box the plot area is reported in. */
   hostContainer: HTMLElement
-  /** Whether a mostly vertical drag on the main pane releases the price scale's framing. */
-  verticalDrag?: boolean
+  /** Whether a finger's drag or pinch releases the main price scale's framing, for a chart placed by hand. */
+  freePan?: boolean
   /** The widget's layer on the document body, themed as the root is. The context menu mounts here
    *  rather than in this pane's own chrome: it stands over every pane and over whatever the page
    *  stacks around the widget, at viewport coordinates. */
@@ -1151,8 +1151,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   navigationRoot.addEventListener('pointerup', onNativeDragEnd, { passive: true })
   navigationRoot.addEventListener('pointercancel', onNativeDragEnd, { passive: true })
   const pinch = attachPinch({ chart, target: gestures })
-  const verticalDrag = deps.verticalDrag
-    ? attachVerticalDrag({
+  const freePan = deps.freePan
+    ? attachFreePan({
         chart,
         target: gestures,
         framing: () => priceAxisPolicy() === 'auto',
@@ -1840,6 +1840,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
     goLive: () => {
       beginNavigation()
+      // Back to now, on a chart the viewer places by hand: the price is framed again as well, from
+      // the tap, and follows the window home as the time glides. Framing is the renderer's own, so
+      // it lands exactly where a fresh view of the live edge would.
+      if (deps.freePan) applyPriceAxisPolicy('auto')
       ranges.goLive()
     },
     awayFromLiveEdge: () => {
@@ -2161,7 +2165,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       ranges.stopGlide()
       fling.destroy()
       pinch.destroy()
-      verticalDrag?.destroy()
+      freePan?.destroy()
       plotArea.destroy()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
       // off. Detaching after the renderer is gone would leave their teardown reaching into nothing.
