@@ -25,6 +25,8 @@ export interface FakeSeries {
 export interface FakeRenderer {
   chart: IChartApi
   series: FakeSeries[]
+  /** The options the chart was created with. */
+  created: Record<string, unknown>
   /** Every options object the chart itself was handed, in order. */
   chartOptions: Record<string, unknown>[]
   /** The visible logical range the chart reports; a test moves it and fires the subscribers. */
@@ -77,6 +79,7 @@ export function fakeRenderer(): FakeRenderer {
   const state: FakeRenderer = {
     chart: null as unknown as IChartApi,
     series,
+    created: {},
     chartOptions,
     logicalRange: null,
     logicalWrites: [],
@@ -298,8 +301,9 @@ export function fakeRenderer(): FakeRenderer {
  */
 export const renderers: FakeRenderer[] = []
 
-export function createFakeChart(): IChartApi {
+export function createFakeChart(_element?: HTMLElement, options?: Record<string, unknown>): IChartApi {
   const renderer = fakeRenderer()
+  renderer.created = options ?? {}
   renderers.push(renderer)
   return renderer.chart
 }

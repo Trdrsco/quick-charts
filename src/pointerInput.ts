@@ -53,6 +53,39 @@ export function pinchSpacing(startSpacing: number, startDistance: number, distan
   return startSpacing * (distance / startDistance)
 }
 
+/** A flick's coast: the fastest it may leave the finger, in pixels a millisecond; how much of its
+ *  speed it keeps each millisecond; the speed at which it has come to rest; how soon after its last
+ *  move a lifting finger still throws, so a finger that stopped before it lifted throws nothing; and
+ *  how much of the drag's end the throw is measured over. Two pixels a millisecond, keeping 0.995
+ *  of it each millisecond, coasts at most about 400 pixels and is at rest within about a second. */
+export const FLING_MAX_PX_PER_MS = 2
+export const FLING_DAMPING_PER_MS = 0.995
+export const FLING_REST_PX_PER_MS = 0.02
+export const FLING_RELEASE_MS = 50
+export const FLING_SAMPLE_MS = 80
+
+/** The speed a lifting finger throws the view at, in scroll-position bars a millisecond: how fast the
+ *  view itself moved over the drag's last moments, capped at the fastest throw for the bar spacing.
+ *  Zero when the finger stood still before it lifted, or the view did not move. */
+export function flingSpeed(samples: readonly { t: number; position: number }[], releasedAt: number, spacing: number): number {
+  const last = samples[samples.length - 1]
+  if (!last || !(spacing > 0) || releasedAt - last.t > FLING_RELEASE_MS) return 0
+  const first = samples.find((s) => s.t >= last.t - FLING_SAMPLE_MS) ?? last
+  const elapsed = last.t - first.t
+  if (!(elapsed > 0)) return 0
+  const speed = (last.position - first.position) / elapsed
+  const max = FLING_MAX_PX_PER_MS / spacing
+  return Math.sign(speed) * Math.min(Math.abs(speed), max)
+}
+
+/** One frame of the coast: how far the view moves over `elapsed` milliseconds setting out at `speed`,
+ *  and the speed it ends the frame at. Exact for any frame length, so a slow frame carries the view
+ *  no further than two quick ones would. */
+export function flingStep(speed: number, elapsed: number): { moved: number; speed: number } {
+  const keep = Math.pow(FLING_DAMPING_PER_MS, elapsed)
+  return { moved: (speed * (keep - 1)) / Math.log(FLING_DAMPING_PER_MS), speed: speed * keep }
+}
+
 /** How long a finger rests on a scale before the chart treats the press as a right-click. Measured
  *  against the platform hold that raises a context menu: long enough not to fire during a
  *  flick-scroll, short enough that a deliberate hold does not feel ignored. */
@@ -71,9 +104,9 @@ export function longPressArms(a: { touches: number; toolArmed: boolean; onContro
 
 /** Whether a finger's hold at a point asks for the context menu: on a price scale or the time scale,
  *  outside the plot. On the plot a hold is the crosshair's: the renderer's tracking mode stands the
- *  crosshair at the finger and follows it until the next tap, so the finger reads values where it
- *  rests, the frequent job, and the scales are where it asks for the chart's options. `plot` is the
- *  plot area's left, right and bottom edges in the point's own coordinates. */
+ *  crosshair at the finger and follows it while the finger stays down, so the finger reads values
+ *  where it rests, the frequent job, and the scales are where it asks for the chart's options.
+ *  `plot` is the plot area's left, right and bottom edges in the point's own coordinates. */
 export function holdRaisesMenu(a: { x: number; y: number; plot: { left: number; right: number; bottom: number } }): boolean {
   return a.x < a.plot.left || a.x > a.plot.right || a.y > a.plot.bottom
 }
