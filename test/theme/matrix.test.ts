@@ -11,6 +11,7 @@
 // recipes actually draw, never eyeballed.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createChart, createChartI18n, type ChartDatafeed, type ChartWidget } from '../../src/index'
+import { loadBundledArtwork } from '../../src/drawings/emoji'
 import { compositeOver, contrastRatio, parseCssColor } from '../../src/theme/color'
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import { resolveSemanticTheme } from '../../src/theme/resolve'
@@ -201,6 +202,10 @@ async function censusIn(mode: 'light' | 'dark', locale = 'en'): Promise<{ widget
   // the census against the chunk.
   const i18n = createChartI18n()
   await i18n.setLocale(locale)
+  // The emoji artwork is a chunk of its own, and a picker opened before it lands wears its emoji as
+  // text where one opened after wears their artwork: the census waits for it, so every census
+  // counts the same finished surfaces.
+  await loadBundledArtwork()
   const widget = createChart({
     container,
     datafeed: feed,

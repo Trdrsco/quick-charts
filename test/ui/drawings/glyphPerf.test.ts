@@ -4,13 +4,18 @@
 // opening frame mounts a bounded number of them with the rest arriving a budget per frame. The
 // counter here is the document's own createElement, so the measure is the real node cost rather
 // than a claim about it.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
+import { loadBundledArtwork } from '../../../src/drawings/emoji'
 import { EMOJI_CATEGORIES, ICON_CATEGORIES } from '../../../src/drawings/glyphs'
 import { CELL_BUDGET, mountGlyphPicker } from '../../../src/ui/drawings/glyphPicker'
 
 const t = createChartI18n().t
 const GATES = { idBase: 'c1-glyphs', available: () => true, toolAllowed: () => true }
+
+// The cost measured is a picker's with the bundled artwork in hand, so no swap of text for
+// artwork lands inside a count.
+beforeAll(() => loadBundledArtwork())
 
 /** Every element the document builds while `run` executes. */
 const pendingFrames = new Map<number, FrameRequestCallback>()
