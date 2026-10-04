@@ -569,7 +569,10 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       await ctx.settle()
       const picker = ctx.document.querySelector('[role="dialog"][aria-label="Glyph picker"]')
       assert(picker, 'the glyph picker opens')
-      const image = picker.querySelector('img')
+      // The artwork is a chunk of its own, fetched as the picker draws its first emoji: the picker
+      // shows the emoji as text until it lands, then swaps it in.
+      let image = picker.querySelector('img')
+      for (const until = Date.now() + 10_000; !image && Date.now() < until; image = picker.querySelector('img')) await ctx.settle()
       assert(image, 'the default picker renders emoji artwork')
       assert(image.getAttribute('src')?.startsWith('data:image/svg+xml'), 'the image comes from bundled bytes')
       equal(image.getAttribute('alt'), '', 'the button names its decorative artwork')

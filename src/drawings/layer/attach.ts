@@ -9,7 +9,7 @@
 // and never holds a second copy, and it reports every change through its events so a toolbar and a
 // settings bar render from the layer rather than from state of their own.
 import type { Time } from 'lightweight-charts'
-import { bundledGlyphSource } from '../emoji'
+import { bundledGlyphSource, onBundledArtwork } from '../emoji'
 import { DrawingManager, parseTimeframeContext, restoreDrawings, viewportOf, visibilityPreset } from '../../internal/drawings/index'
 import type { IDrawing, SerializedDrawing, SourceBar } from '../../internal/drawings/index'
 import type { ResourceRef } from '../../resources'
@@ -109,6 +109,9 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
 
   const manager = new DrawingManager()
   manager.setGlyphSource(options.glyphSource ?? bundledGlyphSource)
+  // An emoji painted before the bundled artwork arrived painted as text: hand every drawing the
+  // source again as it lands, which repaints them with the artwork.
+  const stopArtwork = options.glyphSource ? null : onBundledArtwork(() => manager.setGlyphSource(bundledGlyphSource))
   manager.attach(chart, series)
   manager.setTimeframeContext(parseTimeframeContext(options.timeframe ?? ''))
 
@@ -657,6 +660,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     destroy() {
       if (destroyed) return
       destroyed = true
+      stopArtwork?.()
       identityRebinders.delete(handle)
       canCancelByHandle.delete(handle)
       cancelDraft()

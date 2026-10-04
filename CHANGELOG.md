@@ -10,6 +10,8 @@ Every handle stands where its drawing paints what the handle moves, so none stay
 
 A finger held still on the plot is the crosshair's: the crosshair stands at the finger and follows it until the next tap, and the chart does not pan meanwhile. Held on a price scale or the time scale, it raises the chart's context menu, as a right-click does.
 
+The bundled emoji artwork is a chunk of its own, which the chart imports the first time it draws an emoji, so a chart that never shows one never loads it, and the main bundle does not carry it. Until it arrives an emoji draws as text, then takes its artwork in place, in the glyph picker and on the chart. A chart given an `assets.glyphSource` never loads it.
+
 ## 2.0.0
 
 A major version may rename or remove public names, and its upgrading guide lists each one, old to new, with how saved state carries over. 2.0 names everything a host writes against in the chart's own words: the stylesheet's cascade layers, the data source a symbol search row names, timeframe for every timeframe, indicator for every indicator, the drawing toolbar's models and the context menu's row builder. Saved state is read under the 2.0 names alone, and the guide lists what 1.x saved that opens at its default.

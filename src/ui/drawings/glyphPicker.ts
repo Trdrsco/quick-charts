@@ -6,11 +6,12 @@
 //
 // Emoji cells use bundled artwork or the host's override, as an image, because
 // platform emoji fonts cannot be trusted; a null answer draws the glyph as text. Icon glyphs are
-// always text, so the drawing's own tint carries over.
+// always text, so the drawing's own tint carries over. Bundled artwork is fetched the first time an
+// emoji is drawn, and the emoji the picker drew as text meanwhile take it where they stand.
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import { EMOJI_CATEGORIES, ICON_CATEGORIES, isEmojiGlyph, type GlyphCategory } from '../../drawings/glyphs'
 import { button, el, rovingFocus } from './dom'
-import { bundledGlyphSource } from '../../drawings/emoji'
+import { bundledGlyphSource, onBundledArtwork } from '../../drawings/emoji'
 
 export type GlyphKind = 'emoji' | 'sticker' | 'icon'
 
@@ -98,11 +99,15 @@ export function mountGlyphPicker(input: GlyphPickerDeps): GlyphPickerHandle {
   const categories = (): readonly GlyphCategory[] => (kind === 'icon' ? ICON_CATEGORIES : EMOJI_CATEGORIES)
   const label = (c: GlyphCategory): string => (CATEGORY_LABEL[c.id] ? t(CATEGORY_LABEL[c.id]!) : c.id)
 
+  /** The artwork for a glyph, or null while there is none to show. */
+  const art = (glyph: string): HTMLElement | null => {
+    const url = (deps.glyphSource ?? bundledGlyphSource)(glyph)
+    return url ? el('img', { class: 'qc-drawing-glyph-art', src: url, alt: '', draggable: 'false' }) : null
+  }
+
   const face = (glyph: string): HTMLElement | string => {
     if (kind === 'icon' || !isEmojiGlyph(glyph)) return glyph
-    const url = (deps.glyphSource ?? bundledGlyphSource)(glyph)
-    if (!url) return glyph
-    return el('img', { class: 'qc-drawing-glyph-art', src: url, alt: '', draggable: 'false' })
+    return art(glyph) ?? glyph
   }
 
   const cell = (glyph: string, name: string): HTMLButtonElement => {
@@ -280,6 +285,24 @@ export function mountGlyphPicker(input: GlyphPickerDeps): GlyphPickerHandle {
     }
   }
 
+  // As the bundled artwork lands, the emoji set's cells swap their text for it in place, mounted on
+  // screen or kept behind another set, and the strip and recents redraw when they show emoji.
+  const stopArtwork = deps.glyphSource
+    ? () => undefined
+    : onBundledArtwork(() => {
+        const emoji = panels.get('emoji')
+        for (const b of emoji ? cellsOf(emoji.element) : []) {
+          const text = b.firstChild
+          if (text?.nodeType !== Node.TEXT_NODE) continue
+          const image = art(text.textContent ?? '')
+          if (image) text.replaceWith(image)
+        }
+        if (kind !== 'icon') {
+          renderStrip()
+          renderRecents()
+        }
+      })
+
   const unroveStrip = rovingFocus(strip, () => [...strip.querySelectorAll<HTMLElement>('[role="tab"]')], 'horizontal')
   const unroveKinds = rovingFocus(kinds, () => [...kinds.querySelectorAll<HTMLElement>('[role="tab"]')], 'horizontal')
   const unroveGrid = rovingFocus(grid, () => cellsOf(grid), 'both')
@@ -307,6 +330,7 @@ export function mountGlyphPicker(input: GlyphPickerDeps): GlyphPickerHandle {
     destroy() {
       if (frame !== null && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(frame)
       frame = null
+      stopArtwork()
       unroveStrip()
       unroveKinds()
       unroveGrid()

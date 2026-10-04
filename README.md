@@ -2628,8 +2628,10 @@ The image and glyph tools reach your host through `ChartWidgetOptions.assets`. `
 turns a picked file into a payload within the caps and answers a refusal as a code the chart
 resolves through its own catalog; `glyphSource` answers the artwork URL an emoji or sticker draws
 with, or null to draw the glyph as text. Emoji artwork from Twemoji is bundled and works without
-an asset port or external requests. Omit `glyphSource` to use it. Without the port the image tool
-does not open. Keep the Twemoji credit in `THIRD-PARTY-NOTICES.md` accessible in your product.
+an asset port or external requests. Omit `glyphSource` to use it. It is a chunk of its own, which
+the chart imports the first time it draws an emoji, so a chart that never shows one never loads
+it; until it arrives an emoji draws as text, then takes its artwork in place. A chart given a
+`glyphSource` never loads it. Without the port the image tool does not open. Keep the Twemoji credit in `THIRD-PARTY-NOTICES.md` accessible in your product.
 
 The layer is also mountable on its own lightweight-charts pair, without the widget:
 

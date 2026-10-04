@@ -1,8 +1,10 @@
 // @vitest-environment happy-dom
 // The glyph picker: recents first, every category under its heading, artwork from the asset port
-// where it answers, the kind strip, and a pick that names the kind and the glyph.
+// where it answers and the bundled artwork once it arrives, the kind strip, and a pick that names the
+// kind and the glyph.
 import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
+import { loadBundledArtwork } from '../../../src/drawings/emoji'
 import { EMOJI_CATEGORIES, ICON_CATEGORIES, isEmojiGlyph } from '../../../src/drawings/glyphs'
 import { mountGlyphPicker, pushRecentGlyph, RECENT_GLYPHS_MAX, type GlyphKind } from '../../../src/ui/drawings/glyphPicker'
 
@@ -36,10 +38,21 @@ describe('the glyph data', () => {
 const GATES = { idBase: 'c1-glyphs', available: () => true, toolAllowed: () => true }
 
 describe('the picker', () => {
-  it('uses bundled artwork without a host port, including flags and keycaps', () => {
+  it('draws emoji as text until the bundled artwork arrives, then swaps it into the cells it drew, flags and keycaps included', async () => {
     const picker = mountGlyphPicker({ t, recents: ['🇺🇸', '1️⃣'], ...GATES, onPick: () => undefined })
     document.body.appendChild(picker.root)
-    const images = [...picker.root.querySelectorAll<HTMLImageElement>('.qc-drawing-glyph-art')]
+    const art = () => [...picker.root.querySelectorAll<HTMLImageElement>('.qc-drawing-glyph-art')]
+    expect(art()).toEqual([])
+    const first = picker.root.querySelector('.qc-drawing-glyph-panel .qc-drawing-glyph-cell')!
+    expect(first.textContent).toBe(EMOJI_CATEGORIES[0]!.glyphs[0])
+    // The emoji set waits behind the icons as the artwork lands, and has it on the way back.
+    picker.root.querySelector<HTMLButtonElement>('#c1-glyphs-kind-icon')!.click()
+    await loadBundledArtwork()
+    expect(art()).toEqual([])
+    picker.root.querySelector<HTMLButtonElement>('#c1-glyphs-kind-emoji')!.click()
+    expect(first.isConnected).toBe(true)
+    expect(first.querySelector('.qc-drawing-glyph-art')).not.toBeNull()
+    const images = art()
     expect(images.length).toBeGreaterThan(2)
     for (const image of images) expect(image.getAttribute('src')).toMatch(/^data:image\/svg\+xml/)
     picker.destroy()
