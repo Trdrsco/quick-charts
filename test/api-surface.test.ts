@@ -23,6 +23,7 @@ const SURFACE: Record<string, string> = {
   arrangementOf: 'function',
   // The icon inventory a host draws the chart's glyphs against.
   CHART_ICON_IDS: 'object',
+  chartIconArtwork: 'function',
   MIRRORED_ICONS: 'object',
   // COMPARE: other symbols beside the charted one.
   attachCompare: 'function',

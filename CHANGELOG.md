@@ -22,6 +22,8 @@ A flick of one finger coasts the chart calmly: the throw leaves the finger at no
 
 `touch.freePan` makes the chart a canvas under the finger: a one-finger drag on the plot releases the main price scale's framing, as a drag on the price scale does, so the price follows the finger as freely as the time and nothing re-frames while the viewer pans, flicks or pinches, and a pinch zooms the time and leaves the price where it stands. A double-tap on the price scale, a new symbol or timeframe, and `goLive` frame the bars again. It is off unless the host turns it on.
 
+`chartIconArtwork(id)` answers the chart's own drawings of an icon as standalone svg markup on `currentColor`, each on its own grid, so a host draws the same icons the chart does in a toolbar of its own or a native view. It answers the chart's artwork whatever `icons` draws instead; an illustration drawn in the theme's roles answers none.
+
 ## 2.0.1
 
 Drawing by touch, and handles that stay on their drawings. No public name changes.
