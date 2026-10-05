@@ -1,10 +1,10 @@
 // Export-map delivery and SSR-safe import of every entrypoint: CSP-safe static stylesheet use, no
-// runtime style injection, no remote assets. The published export map names five entries; every one
-// has to be a file the tarball carries, and all four JavaScript entries have to load in a plain Node
+// runtime style injection, no remote assets. The published export map names six entries; every one
+// has to be a file the tarball carries, and all five JavaScript entries have to load in a plain Node
 // process with no window and no document, because a server-rendered host imports the package long
-// before any chart mounts. The format entry goes further: nothing reachable from it may name a
-// window, a document or a DOM type at all, so a host with no DOM imports it as it is. The dist
-// blocks are vacuous until a build has run, like the other packed fixtures.
+// before any chart mounts. The format and glyphs entries go further: nothing reachable from either may
+// name a window, a document or a DOM type at all, so a host with no DOM imports them as they are. The
+// dist blocks are vacuous until a build has run, like the other packed fixtures.
 import { execFileSync } from 'node:child_process'
 import ts from 'typescript'
 import { describe, expect, it } from 'vitest'
@@ -21,9 +21,9 @@ const target = (entry: ExportEntry, condition: 'import' | 'types'): string | nul
 const built = packedText('dist/index.js') !== null
 
 describe('the export map', () => {
-  it('names the same five entries in the workspace map and the published map', () => {
-    expect(Object.keys(workspace).sort()).toEqual(['.', './adapters/rest', './drawings', './format', './styles.css'])
-    expect(Object.keys(published).sort()).toEqual(['.', './adapters/rest', './drawings', './format', './styles.css'])
+  it('names the same six entries in the workspace map and the published map', () => {
+    expect(Object.keys(workspace).sort()).toEqual(['.', './adapters/rest', './drawings', './format', './glyphs', './styles.css'])
+    expect(Object.keys(published).sort()).toEqual(['.', './adapters/rest', './drawings', './format', './glyphs', './styles.css'])
   })
 
   it('points every published entry at a dist file, with declarations beside each JavaScript entry', () => {
@@ -35,6 +35,8 @@ describe('the export map', () => {
     expect(target(published['./adapters/rest']!, 'types')).toBe('./dist/adapters/rest.d.ts')
     expect(target(published['./format']!, 'import')).toBe('./dist/format.js')
     expect(target(published['./format']!, 'types')).toBe('./dist/format.d.ts')
+    expect(target(published['./glyphs']!, 'import')).toBe('./dist/glyphs.js')
+    expect(target(published['./glyphs']!, 'types')).toBe('./dist/glyphs.d.ts')
     expect(published['./styles.css']).toBe('./dist/quickcharts.css')
   })
 
@@ -79,11 +81,16 @@ describe('SSR-safe import', () => {
     expect(importInNode('dist/format.js', 'createPriceFormatter')).toBe('function')
   })
 
+  it('the glyphs entry loads the same way, and its emoji list is an object', () => {
+    if (!built) return
+    expect(importInNode('dist/glyphs.js', 'EMOJI_CATEGORIES')).toBe('object')
+  })
+
   it('no entry touches the document at import time', () => {
     if (!built) return
     // Module-level code that reads `document` or `window` is what breaks a server import; a reference
     // inside a function body is fine and is what the mount does.
-    for (const file of ['dist/index.js', 'dist/drawings.js', 'dist/adapters/rest.js', 'dist/format.js']) {
+    for (const file of ['dist/index.js', 'dist/drawings.js', 'dist/adapters/rest.js', 'dist/format.js', 'dist/glyphs.js']) {
       const text = packedText(file)!
       const topLevel = text
         .split('\n')
@@ -93,12 +100,18 @@ describe('SSR-safe import', () => {
   })
 })
 
-describe('the format entry is platform-neutral', () => {
-  it('reaches only the formatter and the symbology it reads, and typechecks with no DOM library', () => {
+/** Each platform-neutral entry, the modules it may reach, and the file it builds to. */
+const NEUTRAL = [
+  { name: 'format', source: 'src/format.ts', reaches: ['src/format.ts', 'src/priceFormatter.ts', 'src/symbology.ts'], built: 'dist/format.js' },
+  { name: 'glyphs', source: 'src/glyphs.ts', reaches: ['src/drawings/glyphs.ts', 'src/glyphs.ts'], built: 'dist/glyphs.js' },
+]
+
+describe.each(NEUTRAL)('the $name entry is platform-neutral', ({ source, reaches, built: file }) => {
+  it('reaches only its own modules, and typechecks with no DOM library', () => {
     // The compiler walks every module the entry reaches. Given the language library alone, a
     // `window`, a `document` or a DOM type anywhere on that walk is a compile error, so an empty
     // diagnostic list is the proof, and the walk itself names what the entry carries.
-    const program = ts.createProgram([`${CHART_DIR}/src/format.ts`], {
+    const program = ts.createProgram([`${CHART_DIR}/${source}`], {
       target: ts.ScriptTarget.ES2022,
       module: ts.ModuleKind.ESNext,
       moduleResolution: ts.ModuleResolutionKind.Bundler,
@@ -109,11 +122,11 @@ describe('the format entry is platform-neutral', () => {
     })
     const reached = program
       .getSourceFiles()
-      .map((file) => file.fileName.replace(/\\/g, '/'))
-      .filter((file) => !file.includes('/node_modules/'))
-      .map((file) => file.slice(CHART_DIR.replace(/\\/g, '/').length + 1))
+      .map((sourceFile) => sourceFile.fileName.replace(/\\/g, '/'))
+      .filter((path) => !path.includes('/node_modules/'))
+      .map((path) => path.slice(CHART_DIR.replace(/\\/g, '/').length + 1))
       .sort()
-    expect(reached).toEqual(['src/format.ts', 'src/priceFormatter.ts', 'src/symbology.ts'])
+    expect(reached).toEqual(reaches)
     const problems = ts.getPreEmitDiagnostics(program).map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'))
     expect(problems).toEqual([])
   })
@@ -122,14 +135,14 @@ describe('the format entry is platform-neutral', () => {
     if (!built) return
     // The entry and every chunk it imports, followed through the import statements esbuild writes.
     const seen = new Set<string>()
-    const visit = (file: string): void => {
-      if (seen.has(file)) return
-      seen.add(file)
-      const text = packedText(file)
-      expect(text, file).not.toBeNull()
+    const visit = (path: string): void => {
+      if (seen.has(path)) return
+      seen.add(path)
+      const text = packedText(path)
+      expect(text, path).not.toBeNull()
       for (const [, next] of text!.matchAll(/from\s+["']\.\/([^"']+)["']/g)) visit(`dist/${next}`)
     }
-    visit('dist/format.js')
-    for (const file of seen) expect(packedText(file)!, file).not.toMatch(/\b(window|document|navigator|HTMLElement)\b/)
+    visit(file)
+    for (const path of seen) expect(packedText(path)!, path).not.toMatch(/\b(window|document|navigator|HTMLElement)\b/)
   })
 })

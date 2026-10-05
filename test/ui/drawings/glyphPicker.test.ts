@@ -25,6 +25,13 @@ describe('the glyph data', () => {
     for (const g of ICON_CATEGORIES.flatMap((c) => c.glyphs).filter((g) => g.includes('︎'))) expect(isEmojiGlyph(g), g).toBe(false)
   })
 
+  it('heads every category with a catalog key the chart’s language reads', () => {
+    for (const category of [...EMOJI_CATEGORIES, ...ICON_CATEGORIES]) {
+      expect(category.heading.startsWith('drawing.glyphCat'), category.id).toBe(true)
+      expect(t(category.heading), category.id).not.toBe(category.heading)
+    }
+  })
+
   it('keeps recents newest first within the cap', () => {
     let recents: string[] = []
     for (let i = 0; i < RECENT_GLYPHS_MAX + 3; i++) recents = pushRecentGlyph(recents, `g${i}`)

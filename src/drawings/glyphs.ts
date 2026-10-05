@@ -4,9 +4,28 @@
 // a code point would otherwise take color-emoji presentation. Artwork is the host's: an emoji cell
 // draws the URL the asset port answers for the glyph, or the glyph as text when it answers null.
 
+/** The catalog key of a category's heading. */
+export type GlyphHeading =
+  | 'drawing.glyphCatSmileys'
+  | 'drawing.glyphCatNature'
+  | 'drawing.glyphCatFood'
+  | 'drawing.glyphCatActivity'
+  | 'drawing.glyphCatTravel'
+  | 'drawing.glyphCatObjects'
+  | 'drawing.glyphCatSymbols'
+  | 'drawing.glyphCatFlags'
+  | 'drawing.glyphCatIconArrows'
+  | 'drawing.glyphCatIconCurrency'
+  | 'drawing.glyphCatIconGestures'
+  | 'drawing.glyphCatIconNature'
+  | 'drawing.glyphCatIconSpecial'
+  | 'drawing.glyphCatIconSymbols'
+
 export interface GlyphCategory {
-  /** The scroll-spy anchor and the catalog heading's id. */
+  /** The category's stable id: the scroll-spy anchor. */
   id: string
+  /** The catalog key of the category's heading, so a host labels it in the chart's language. */
+  heading: GlyphHeading
   /** The category tab's face. */
   face: string
   glyphs: readonly string[]
@@ -15,6 +34,7 @@ export interface GlyphCategory {
 export const EMOJI_CATEGORIES: readonly GlyphCategory[] = [
   {
     id: 'smileys',
+    heading: 'drawing.glyphCatSmileys',
     face: '😀',
     glyphs: [
       '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙',
@@ -36,6 +56,7 @@ export const EMOJI_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'nature',
+    heading: 'drawing.glyphCatNature',
     face: '🐻',
     glyphs: [
       '🐵','🐒','🦍','🦧','🐶','🐕','🦮','🐕‍🦺','🐩','🐺','🦊','🦝','🐱','🐈','🐈‍⬛','🦁','🐯','🐅','🐆','🐴',
@@ -49,6 +70,7 @@ export const EMOJI_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'food',
+    heading: 'drawing.glyphCatFood',
     face: '🍔',
     glyphs: [
       '🍇','🍈','🍉','🍊','🍋','🍌','🍍','🥭','🍎','🍏','🍐','🍑','🍒','🍓','🫐','🥝','🍅','🫒','🥥','🥑',
@@ -62,6 +84,7 @@ export const EMOJI_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'activity',
+    heading: 'drawing.glyphCatActivity',
     face: '⚽',
     glyphs: [
       '🎃','🎄','🎆','🎇','🧨','✨','🎈','🎉','🎊','🎋','🎍','🎎','🎏','🎐','🎑','🧧','🎀','🎁','🎗️','🎟️',
@@ -73,6 +96,7 @@ export const EMOJI_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'travel',
+    heading: 'drawing.glyphCatTravel',
     face: '🚀',
     glyphs: [
       '🌍','🌎','🌏','🌐','🗺️','🗾','🧭','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🏟️','🏛️','🏗️','🧱',
@@ -89,6 +113,7 @@ export const EMOJI_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'objects',
+    heading: 'drawing.glyphCatObjects',
     face: '💡',
     glyphs: [
       '👓','🕶️','🥽','🥼','🦺','👔','👕','👖','🧣','🧤','🧥','🧦','👗','👘','🥻','🩱','🩲','🩳','👙','👚',
@@ -108,6 +133,7 @@ export const EMOJI_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'symbols',
+    heading: 'drawing.glyphCatSymbols',
     face: '❤️',
     glyphs: [
       '🏧','🚮','🚰','♿','🚹','🚺','🚻','🚼','🚾','🛂','🛃','🛄','🛅','⚠️','🚸','⛔','🚫','🚳','🚭','🚯',
@@ -126,6 +152,7 @@ export const EMOJI_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'flags',
+    heading: 'drawing.glyphCatFlags',
     face: '🏁',
     glyphs: [
       '🏁','🚩','🎌','🏴','🏳️','🏳️‍🌈','🏳️‍⚧️','🏴‍☠️','🇪🇺','🇺🇳','🇦🇨','🇹🇦','🇩🇬','🇪🇦','🇮🇨','🇦🇩','🇦🇪','🇦🇫','🇦🇬','🇦🇮',
@@ -149,6 +176,7 @@ export const EMOJI_CATEGORIES: readonly GlyphCategory[] = [
 export const ICON_CATEGORIES: readonly GlyphCategory[] = [
   {
     id: 'icon-arrows',
+    heading: 'drawing.glyphCatIconArrows',
     face: '→',
     glyphs: [
       '‹','›','«','»','←','→','↑','↓','↖','↗','↘','↙','↔','↕','⇐','⇒','⇑','⇓','⇄','⇅',
@@ -157,6 +185,7 @@ export const ICON_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'icon-currency',
+    heading: 'drawing.glyphCatIconCurrency',
     face: '$',
     glyphs: [
       '€','£','$','₹','¥','₽','₩','₿','₺',
@@ -164,6 +193,7 @@ export const ICON_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'icon-gestures',
+    heading: 'drawing.glyphCatIconGestures',
     face: '☺︎',
     glyphs: [
       '☺︎','☹︎','☻','👍︎','👎︎','☝︎','☞','☜','☟','✌︎','✍︎','✋︎','🚹︎','🚺︎',
@@ -171,6 +201,7 @@ export const ICON_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'icon-nature',
+    heading: 'drawing.glyphCatIconNature',
     face: '❀',
     glyphs: [
       '☘︎','❀','✿','☀︎','☾','❄︎','❧',
@@ -178,6 +209,7 @@ export const ICON_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'icon-objects',
+    heading: 'drawing.glyphCatObjects',
     face: '⚙︎',
     glyphs: [
       '⌂','⚙︎','⌚︎','⏳︎','⌛︎','☂︎','☕︎','☎︎','⌨︎','🖥︎','💻︎','📱︎','📷︎','🎥︎','🖼︎','🔍︎','⌕','💡︎','🔦︎','🕯︎',
@@ -187,6 +219,7 @@ export const ICON_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'icon-special',
+    heading: 'drawing.glyphCatIconSpecial',
     face: '💩︎',
     glyphs: [
       '💩︎',
@@ -194,6 +227,7 @@ export const ICON_CATEGORIES: readonly GlyphCategory[] = [
   },
   {
     id: 'icon-symbols',
+    heading: 'drawing.glyphCatIconSymbols',
     face: '★',
     glyphs: [
       '♥','❤︎','♡','★','☆','✦','✧','✓','✔','✗','✘','☑︎','☒','⟳','⟲','⚑','⚐','⊕','⊖','⊗',

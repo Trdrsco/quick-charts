@@ -24,6 +24,8 @@ A flick of one finger coasts the chart calmly: the throw leaves the finger at no
 
 `chartIconArtwork(id)` answers the chart's own drawings of an icon as standalone svg markup on `currentColor`, each on its own grid, so a host draws the same icons the chart does in a toolbar of its own or a native view. It answers the chart's artwork whatever `icons` draws instead; an illustration drawn in the theme's roles answers none.
 
+`@trdrs/quickcharts/glyphs` carries the glyph picker's lists on their own, free of any DOM name: `EMOJI_CATEGORIES` and `ICON_CATEGORIES`, each category with the catalog key of its `heading`, and `isEmojiGlyph`, so a picker of the host's own offers the same glyphs and arms a glyph tool through `chart.drawings.arm` with `{ tool, props: { glyph } }`.
+
 ## 2.0.1
 
 Drawing by touch, and handles that stay on their drawings. No public name changes.

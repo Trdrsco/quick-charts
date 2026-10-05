@@ -15,25 +15,6 @@ import { bundledGlyphSource, onBundledArtwork } from '../../drawings/emoji'
 
 export type GlyphKind = 'emoji' | 'sticker' | 'icon'
 
-/** The category HEADING for each set's id. The id stays the anchor in every language. */
-const CATEGORY_LABEL: Record<string, ChartMessageKey> = {
-  smileys: 'drawing.glyphCatSmileys',
-  nature: 'drawing.glyphCatNature',
-  food: 'drawing.glyphCatFood',
-  activity: 'drawing.glyphCatActivity',
-  travel: 'drawing.glyphCatTravel',
-  objects: 'drawing.glyphCatObjects',
-  symbols: 'drawing.glyphCatSymbols',
-  flags: 'drawing.glyphCatFlags',
-  'icon-arrows': 'drawing.glyphCatIconArrows',
-  'icon-currency': 'drawing.glyphCatIconCurrency',
-  'icon-gestures': 'drawing.glyphCatIconGestures',
-  'icon-nature': 'drawing.glyphCatIconNature',
-  'icon-objects': 'drawing.glyphCatObjects',
-  'icon-special': 'drawing.glyphCatIconSpecial',
-  'icon-symbols': 'drawing.glyphCatIconSymbols',
-}
-
 const KIND_LABEL: Record<GlyphKind, ChartMessageKey> = {
   emoji: 'drawing.kindEmojis',
   sticker: 'drawing.kindStickers',
@@ -97,7 +78,8 @@ export function mountGlyphPicker(input: GlyphPickerDeps): GlyphPickerHandle {
   root.append(strip, grid, empty, kinds)
 
   const categories = (): readonly GlyphCategory[] => (kind === 'icon' ? ICON_CATEGORIES : EMOJI_CATEGORIES)
-  const label = (c: GlyphCategory): string => (CATEGORY_LABEL[c.id] ? t(CATEGORY_LABEL[c.id]!) : c.id)
+  // The category's heading in the chart's language; its id stays the anchor in every language.
+  const label = (c: GlyphCategory): string => t(c.heading)
 
   /** The artwork for a glyph, or null while there is none to show. */
   const art = (glyph: string): HTMLElement | null => {
