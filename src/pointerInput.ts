@@ -90,6 +90,18 @@ export function pinchRange(start: PinchStart, x: number, distance: number, plot:
   return { from: to + 1 - plot.width / spacing, to }
 }
 
+/** How far a finger travels, across and down together, before the renderer treats it as a drag, and
+ *  how long it may rest first before the renderer takes it as a hold instead: the renderer's own
+ *  thresholds. At that first drag move the renderer decides, once, whether the drag moves the price. */
+export const RENDERER_DRAG_START_PX = 5
+export const RENDERER_LONG_TAP_MS = 240
+
+/** Whether the renderer's scroll options leave a finger's drag open: false while a lock holds the
+ *  pointer, which writes every scroll flag together. */
+export function scrollOpen(handleScroll: boolean | { horzTouchDrag?: boolean }): boolean {
+  return typeof handleScroll === 'boolean' ? handleScroll : handleScroll.horzTouchDrag !== false
+}
+
 /** A flick's coast: the fastest it may leave the finger, in pixels a millisecond; how much of its
  *  speed it keeps each millisecond; the speed at which it has come to rest; how soon after its last
  *  move a lifting finger still throws, so a finger that stopped before it lifted throws nothing; and

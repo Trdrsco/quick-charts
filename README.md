@@ -976,6 +976,13 @@ On a touch screen two fingers zoom proportionally: the bars spread exactly as fa
 do, and the point under the fingers stays under them as they travel. A finger held on the plot
 scrubs the crosshair while it stays down, and a flick coasts the chart calmly to rest.
 
+With `touch: { freePan: true }` the chart is a canvas under the finger: a one-finger drag on the plot
+releases the main price scale's framing, as a drag on the price scale does, so the price follows the
+finger as freely as the time and nothing re-frames while the viewer pans, flicks or pinches. A pinch
+zooms the time and leaves the price where it stands. A double-tap on the price scale, a new symbol or
+timeframe, and `goLive()` frame the bars again; `goLive()` frames them from the tap, and the price
+follows the window home as the time glides. It is off unless you turn it on.
+
 ### Chart styles
 
 `candles`, `hollow`, `bars`, `line`, `area`, `baseline`, `stepline`, listed as `CHART_STYLES`. A

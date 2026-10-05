@@ -368,6 +368,17 @@ export interface SearchDisplayOptions {
   classSelection?: 'single' | 'multiple'
 }
 
+/** How the chart answers a finger, beyond what every chart does. */
+export interface TouchOptions {
+  /** The chart as a canvas under the finger: a one-finger drag on the plot releases the main price
+   *  scale's framing, as a drag on the price scale does, so the price follows the finger as freely
+   *  as the time, and nothing re-frames while the viewer pans, flicks or pinches; a pinch zooms the
+   *  time and leaves the price where it stands. A double-tap on the price scale, a new market or
+   *  timeframe, and `goLive` frame the bars again. Off by default: a drag moves the time alone while
+   *  the price scale frames the bars on screen. */
+  freePan?: boolean
+}
+
 /** Everything needed to construct a widget. `container` and `datafeed` are the two hard
  *  requirements; every other field has a working default. */
 export interface ChartWidgetOptions extends MarkPainterHooks {
@@ -613,4 +624,6 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   /** Neutral bar marks and time-scale marks from the datafeed. On by default; `false` draws none
    *  even from a feed that serves them. */
   marks?: boolean
+  /** How the chart answers a finger, beyond what every chart does. */
+  touch?: TouchOptions
 }
