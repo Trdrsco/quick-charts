@@ -314,6 +314,18 @@ symbolNames({ symbol: 'NASDAQ:AAPL', name: 'Apple Inc', exchange: 'NASDAQ', type
 symbolNames('HYPERLIQUID:ETH').mark // 'ETH', before the symbol resolves
 ```
 
+`@trdrs/quickcharts/symbols` carries the same rule on its own, `symbolNames` and `bareTicker`, with
+nothing that names a window, a document or a DOM type, so a view of your own with no DOM, a native
+search list among them, names a market exactly as the chart does. `bareTicker` is the ticker inside
+a feed symbol, its venue prefix shed:
+
+```ts
+import { bareTicker, symbolNames } from '@trdrs/quickcharts/symbols'
+
+symbolNames({ symbol: 'HYPERLIQUID:BTC', name: 'Bitcoin perpetual', exchange: 'Hyperliquid', type: 'crypto', currencyCode: 'USDC' }).title // 'BTC / USDC'
+bareTicker('CME:ES1!') // 'ES1!'
+```
+
 Symbology is display truth: how the chart writes a market's prices. Execution facts, such as lot
 size and pip value, stay with your trading integration, and its execution grid can differ from the
 chart's display grid.

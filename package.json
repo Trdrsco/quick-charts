@@ -34,6 +34,7 @@
     "./adapters/rest": "./src/adapters/rest/index.ts",
     "./format": "./src/format.ts",
     "./glyphs": "./src/glyphs.ts",
+    "./symbols": "./src/symbols.ts",
     "./styles.css": "./dist/quickcharts.css"
   },
   "files": [
@@ -75,6 +76,10 @@
       "./glyphs": {
         "types": "./dist/glyphs.d.ts",
         "import": "./dist/glyphs.js"
+      },
+      "./symbols": {
+        "types": "./dist/symbols.d.ts",
+        "import": "./dist/symbols.js"
       },
       "./styles.css": "./dist/quickcharts.css"
     }

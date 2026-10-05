@@ -22,6 +22,8 @@ A flick of one finger coasts the chart calmly: the throw leaves the finger at no
 
 `@trdrs/quickcharts/glyphs` carries the glyph picker's lists on their own, free of any DOM name: `EMOJI_CATEGORIES` and `ICON_CATEGORIES`, each category with the catalog key of its `heading`, and `isEmojiGlyph`, so a picker of the host's own offers the same glyphs and arms a glyph tool through `chart.drawings.arm` with `{ tool, props: { glyph } }`.
 
+`@trdrs/quickcharts/symbols` carries the symbol naming rule on its own, free of any DOM name: `symbolNames`, with its `SymbolNames` type, and `bareTicker`, so a view of the host's own with no DOM names a market as the chart's pill, legend and search rows do.
+
 ## 2.1.0
 
 Long press for the crosshair, and emoji artwork that loads the first time the chart draws an emoji. No public name changes.
