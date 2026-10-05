@@ -1,8 +1,8 @@
 // Export-map delivery and SSR-safe import of every entrypoint: CSP-safe static stylesheet use, no
-// runtime style injection, no remote assets. The published export map names six entries; every one
-// has to be a file the tarball carries, and all five JavaScript entries have to load in a plain Node
+// runtime style injection, no remote assets. The published export map names seven entries; every one
+// has to be a file the tarball carries, and all six JavaScript entries have to load in a plain Node
 // process with no window and no document, because a server-rendered host imports the package long
-// before any chart mounts. The format and glyphs entries go further: nothing reachable from either may
+// before any chart mounts. The format, glyphs and symbols entries go further: nothing reachable from one may
 // name a window, a document or a DOM type at all, so a host with no DOM imports them as they are. The
 // dist blocks are vacuous until a build has run, like the other packed fixtures.
 import { execFileSync } from 'node:child_process'
@@ -21,9 +21,9 @@ const target = (entry: ExportEntry, condition: 'import' | 'types'): string | nul
 const built = packedText('dist/index.js') !== null
 
 describe('the export map', () => {
-  it('names the same six entries in the workspace map and the published map', () => {
-    expect(Object.keys(workspace).sort()).toEqual(['.', './adapters/rest', './drawings', './format', './glyphs', './styles.css'])
-    expect(Object.keys(published).sort()).toEqual(['.', './adapters/rest', './drawings', './format', './glyphs', './styles.css'])
+  it('names the same seven entries in the workspace map and the published map', () => {
+    expect(Object.keys(workspace).sort()).toEqual(['.', './adapters/rest', './drawings', './format', './glyphs', './styles.css', './symbols'])
+    expect(Object.keys(published).sort()).toEqual(['.', './adapters/rest', './drawings', './format', './glyphs', './styles.css', './symbols'])
   })
 
   it('points every published entry at a dist file, with declarations beside each JavaScript entry', () => {
@@ -37,6 +37,8 @@ describe('the export map', () => {
     expect(target(published['./format']!, 'types')).toBe('./dist/format.d.ts')
     expect(target(published['./glyphs']!, 'import')).toBe('./dist/glyphs.js')
     expect(target(published['./glyphs']!, 'types')).toBe('./dist/glyphs.d.ts')
+    expect(target(published['./symbols']!, 'import')).toBe('./dist/symbols.js')
+    expect(target(published['./symbols']!, 'types')).toBe('./dist/symbols.d.ts')
     expect(published['./styles.css']).toBe('./dist/quickcharts.css')
   })
 
@@ -86,11 +88,16 @@ describe('SSR-safe import', () => {
     expect(importInNode('dist/glyphs.js', 'EMOJI_CATEGORIES')).toBe('object')
   })
 
+  it('the symbols entry loads the same way, and its naming rule is a function', () => {
+    if (!built) return
+    expect(importInNode('dist/symbols.js', 'symbolNames')).toBe('function')
+  })
+
   it('no entry touches the document at import time', () => {
     if (!built) return
     // Module-level code that reads `document` or `window` is what breaks a server import; a reference
     // inside a function body is fine and is what the mount does.
-    for (const file of ['dist/index.js', 'dist/drawings.js', 'dist/adapters/rest.js', 'dist/format.js', 'dist/glyphs.js']) {
+    for (const file of ['dist/index.js', 'dist/drawings.js', 'dist/adapters/rest.js', 'dist/format.js', 'dist/glyphs.js', 'dist/symbols.js']) {
       const text = packedText(file)!
       const topLevel = text
         .split('\n')
@@ -104,6 +111,9 @@ describe('SSR-safe import', () => {
 const NEUTRAL = [
   { name: 'format', source: 'src/format.ts', reaches: ['src/format.ts', 'src/priceFormatter.ts', 'src/symbology.ts'], built: 'dist/format.js' },
   { name: 'glyphs', source: 'src/glyphs.ts', reaches: ['src/drawings/glyphs.ts', 'src/glyphs.ts'], built: 'dist/glyphs.js' },
+  // The naming rule reads the search row and symbol shapes as types alone, so their modules are on the
+  // walk and nothing of theirs is in the build.
+  { name: 'symbols', source: 'src/symbols.ts', reaches: ['src/datafeed.ts', 'src/marks.ts', 'src/symbolLabel.ts', 'src/symbology.ts', 'src/symbols.ts'], built: 'dist/symbols.js' },
 ]
 
 describe.each(NEUTRAL)('the $name entry is platform-neutral', ({ source, reaches, built: file }) => {

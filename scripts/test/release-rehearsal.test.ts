@@ -97,8 +97,8 @@ describe('the summary', () => {
 })
 
 describe('the contract constants', () => {
-  it('holds the six public entries the export map documents', () => {
-    expect(PUBLIC_ENTRIES).toEqual(['.', './drawings', './adapters/rest', './format', './glyphs', './styles.css'])
+  it('holds the seven public entries the export map documents', () => {
+    expect(PUBLIC_ENTRIES).toEqual(['.', './drawings', './adapters/rest', './format', './glyphs', './symbols', './styles.css'])
   })
 
   it('names the five owner gates: license, visibility, registry ownership, website address, publication', () => {
