@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-05",
+  "packageName": "@trdrs/quickcharts",
+  "version": "2.3.0",
+  "releaseCommit": "f96652efeef6f683edfeabddf807d85ead54a51c",
+  "tarballSha256": "7ba77f71cc60fcc2ffed7e7a40734016e9347ab154750d0b7305465ce484b618",
+  "tarStreamSha256": "b296b48ecc0469777dd69a28c3fb528a79245ea9a6b85332668f99cce51f8b13",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37259458268",
+    "unitTestsPassed": 3880,
+    "cleanRoomChecksPassed": 42,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "8f84ff27bd9af56679fe123ee32fe3ac8e390f26043fada3b487a42b824500fe",
+      "dossierHashesSha256": "3c6f1bb2a3d2024f04acbc837dcf8db07c86c5ebb4315f38c9fc6de6326171ef",
+      "installTestChecksPassed": 25,
+      "dossierRetained": true
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "3e2fa04e07097bd1935540d1f0bd78c19218543b",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/37259256993",
+    "result": "pass",
+    "workingTree": "2.3.0 on every pin and the Platform version matrix; exact tarball installed through a temporary pnpm override"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Asked whether to release 2.3.0, which carries the symbols entry the phone session needs, with his release agent running the same checks, approving the npm publish on his behalf and telling the phone session when it is on npm, Joey answered: \"Yeah, two point three is good.\"",
+    "recordedAt": "2026-10-05T03:21:55Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false
+  }
+}
