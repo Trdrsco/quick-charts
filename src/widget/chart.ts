@@ -19,6 +19,7 @@ import {
   createChart as createRenderer,
   HistogramSeries,
   LineSeries,
+  TrackingModeExitMode,
   type IChartApi,
   type ISeriesApi,
   type SeriesType,
@@ -539,6 +540,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       horzLines: { color: canvas().grid, visible: eff.appearance.grid },
     },
     crosshair: { mode: deps.features.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden },
+    // A finger held on the plot scrubs the crosshair for as long as it stays down, and lifting it
+    // takes the crosshair away, so the next one-finger drag pans: the way a native chart reads.
+    trackingMode: { exitMode: TrackingModeExitMode.OnTouchEnd },
     rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.08 } },
     timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 8, minBarSpacing: 0.5 },
   })
