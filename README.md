@@ -2651,6 +2651,24 @@ const saved = drawings?.export() // the persistence wire format (SerializedDrawi
 note(`${selected?.type ?? 'nothing'} selected, ${saved?.length ?? 0} drawings`)
 ```
 
+`@trdrs/quickcharts/glyphs` carries the glyph picker's lists on their own, with nothing that names a
+window, a document or a DOM type, so a picker of your own, a native view among them, offers the same
+glyphs the chart's picker does: `EMOJI_CATEGORIES` and `ICON_CATEGORIES`, each category with its
+`id`, the catalog key of its `heading` and its `glyphs`, and `isEmojiGlyph`. The command arms a glyph
+tool with the glyph its next placement draws:
+
+```ts
+import { createChartI18n, type ChartWidget } from '@trdrs/quickcharts'
+import { EMOJI_CATEGORIES } from '@trdrs/quickcharts/glyphs'
+
+const { t } = createChartI18n()
+for (const category of EMOJI_CATEGORIES) note(`${t(category.heading)}: ${category.glyphs.length} emoji`)
+
+function armEmoji(widget: ChartWidget, glyph: string): void {
+  widget.commands.execute('chart.drawings.arm', { tool: 'emoji', props: { glyph } })
+}
+```
+
 ### The drawing toolbar
 
 The drawing toolbar runs down the chart's leading edge. Its buttons are the cursor with its three

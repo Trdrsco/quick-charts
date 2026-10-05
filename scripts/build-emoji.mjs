@@ -3,7 +3,11 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
+// The catalog's glyphs are its single-quoted strings. Comments are dropped first: an apostrophe in
+// prose would otherwise pair with the next quote and read the strings between them as text.
 const catalog = readFileSync(`${root}/src/drawings/glyphs.ts`, 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '')
 const isEmoji = glyph => !glyph.includes('\u{fe0e}') && /\p{Extended_Pictographic}|\p{Regional_Indicator}|⃣/u.test(glyph)
 const stemOf = glyph => {
   const points = [...glyph].map(ch => ch.codePointAt(0))
