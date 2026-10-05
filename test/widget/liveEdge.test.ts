@@ -4,6 +4,7 @@
 // press; the chart reads whether the view sits back from the edge and reports each change once; and
 // it reports the main pane's plot in the pixels of the host's own element as the plot moves.
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { TrackingModeExitMode } from 'lightweight-charts'
 import { createChart } from '../../src/widget/create'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
 import type { PlotArea } from '../../src/widget/plotArea'
@@ -179,5 +180,15 @@ describe('the plot area', () => {
   it('reads null before the chart has laid out', async () => {
     const { chart } = await mount()
     expect(chart.plotArea()).toBeNull()
+  })
+})
+
+describe('touch on the renderer', () => {
+  it('ends the crosshair as the finger lifts', async () => {
+    const { renderer } = await mount()
+    // A held finger scrubs the crosshair only while it stays down, so the next drag pans.
+    expect(renderer.created).toMatchObject({
+      trackingMode: { exitMode: TrackingModeExitMode.OnTouchEnd },
+    })
   })
 })
