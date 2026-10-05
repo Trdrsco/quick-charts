@@ -184,11 +184,13 @@ describe('the plot area', () => {
 })
 
 describe('touch on the renderer', () => {
-  it('ends the crosshair as the finger lifts', async () => {
+  it('ends the crosshair as the finger lifts, and leaves the coast of a flick to the chart', async () => {
     const { renderer } = await mount()
-    // A held finger scrubs the crosshair only while it stays down, so the next drag pans.
+    // A held finger scrubs the crosshair only while it stays down, so the next drag pans; the
+    // renderer's own momentum, which threw a flick thousands of pixels, is off for the chart's calmer one.
     expect(renderer.created).toMatchObject({
       trackingMode: { exitMode: TrackingModeExitMode.OnTouchEnd },
+      kineticScroll: { touch: false, mouse: false },
     })
   })
 })
