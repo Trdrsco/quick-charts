@@ -42,5 +42,17 @@
     "manualAcceptancePerformed": false,
     "screenReaderSupportMeasured": false,
     "safariDeviceSupportMeasured": false
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37254080323",
+    "npmPublishApproval": "approved for Joey by his release agent, on his authorization, after the validation job passed",
+    "registryIntegrity": "sha512-GCSaZVYBZI4jPGNObKHItNOdH/r3pB6rAmfBYycnuN5xDGrogJ/+jJ1mA1FHjJDzHWLpu+cnoM1i8LPWHmHYvA==",
+    "registryTarballSha256": "9919fa81ee775795c83c531994d007b6a7a0fee8b3bbf988d062e5a2ffec3291",
+    "provenanceLogIndex": 3080485415,
+    "distTagLatest": "2.2.0",
+    "provenance": "SLSA v1 provenance names refs/tags/v2.2.0, .github/workflows/release.yml and commit 3764a158063aa705553e7dd473ed0a7dbba3f47d",
+    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": "not run on the release workstation, where the owner does not allow browser runs; the registry tarball is byte for byte the candidate whose clean-room browser conformance passed 42 of 42 in the release run's validate job",
+    "githubRelease": "https://github.com/Trdrsco/quick-charts/releases/tag/v2.2.0"
   }
 }
