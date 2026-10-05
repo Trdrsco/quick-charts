@@ -18,6 +18,8 @@ Two fingers zoom proportionally: the bars spread exactly as far as the fingers d
 
 A finger held on the plot scrubs the crosshair for as long as it stays down: the crosshair follows the finger, and lifting it takes the crosshair away, so the next one-finger drag pans the chart.
 
+A flick of one finger coasts the chart calmly: the throw leaves the finger at no more than two pixels a millisecond and slows smoothly to rest within about a second, and a touch or any other navigation stops it where it stands.
+
 ## 2.0.1
 
 Drawing by touch, and handles that stay on their drawings. No public name changes.

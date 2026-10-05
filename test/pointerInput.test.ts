@@ -8,7 +8,7 @@
 // navigation) it is pinned against the source of the two modules that own it, the way this package
 // pins its other rules that no runtime assertion can reach.
 import { describe, expect, it } from 'vitest'
-import { holdRaisesMenu, longPressArms, longPressCancels, pinchSpacing, pointerLock, scalingOpen, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
+import { flingSpeed, flingStep, holdRaisesMenu, longPressArms, longPressCancels, pinchSpacing, pointerLock, scalingOpen, FLING_MAX_PX_PER_MS, LONG_PRESS_DRIFT_PX, LONG_PRESS_MS } from '../src/pointerInput'
 import { placeableByWidget } from '../src/drawings'
 import extensionsSrc from '../src/widget/extensions.ts?raw'
 import pointerSrc from '../src/widget/pointer.ts?raw'
@@ -42,6 +42,19 @@ describe('pan, pinch and axis scaling belong to the chart, and are borrowed rath
     expect(pinchSpacing(8, 100, 50)).toBe(4)
     expect(pinchSpacing(8, 100, 100)).toBe(8)
     expect(pinchSpacing(8, 0, 100)).toBe(8)
+  })
+
+  it('a flick throws at the view’s own last speed, capped, and coasts the same whatever the frame rate', () => {
+    const samples = [{ t: 0, position: 10 }, { t: 40, position: 8 }, { t: 80, position: 6 }]
+    // Two bars over the last eighty milliseconds, at eight pixels a bar.
+    expect(flingSpeed(samples, 85, 8)).toBeCloseTo(-0.05, 9)
+    expect(flingSpeed(samples, 200, 8)).toBe(0)
+    expect(flingSpeed([{ t: 0, position: 0 }, { t: 10, position: -100 }], 12, 8)).toBeCloseTo(-FLING_MAX_PX_PER_MS / 8, 9)
+    const once = flingStep(0.2, 16)
+    const half = flingStep(0.2, 8)
+    const twice = flingStep(half.speed, 8)
+    expect(half.moved + twice.moved).toBeCloseTo(once.moved, 9)
+    expect(twice.speed).toBeCloseTo(once.speed, 12)
   })
 
   it('the chart applies that one rule rather than its own pair of flags', () => {

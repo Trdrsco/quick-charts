@@ -69,6 +69,7 @@ import { attachComparePlane, type ChartCompareApi } from './compare'
 import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './replay'
 import { attachExtensionsPlane } from './extensions'
 import { attachLegendPlane, type ChartLegendRow } from './legend'
+import { attachFling } from './fling'
 import { attachPinch } from './pinch'
 import { watchPlotArea, type PlotArea } from './plotArea'
 import { attachMenuPlane } from './menu'
@@ -543,6 +544,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // A finger held on the plot scrubs the crosshair for as long as it stays down, and lifting it
     // takes the crosshair away, so the next one-finger drag pans: the way a native chart reads.
     trackingMode: { exitMode: TrackingModeExitMode.OnTouchEnd },
+    // The renderer's own momentum throws a flick as fast as seven pixels a millisecond and coasts
+    // it thousands of pixels; the chart coasts a flick itself, calmly.
+    kineticScroll: { touch: false, mouse: false },
     rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.08 } },
     timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 8, minBarSpacing: 0.5 },
   })
@@ -717,6 +721,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     navigationEpoch++
     maintenanceRange = null
     ranges.stopGlide()
+    fling.stop()
     releaseMirror()
     setRangePreset(null)
   }
@@ -760,6 +765,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     onGlide: () => followLiveEdge(),
     reducedMotion: () => gestures.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   })
+  const fling = attachFling({ chart, target: gestures })
   let unregisterRangeMirror = (): void => undefined
 
   /** Resolve the viewer's timezone CHOICE against the symbol on screen and re-label the axis and
@@ -1114,8 +1120,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let nativeDragActive = false
   const onNativeDragStart = (event: MouseEvent | PointerEvent): void => {
     // A press on the chart takes the view from the glide back to the live edge, as a hand stops a
-    // sliding page, before it has moved at all.
+    // sliding page, before it has moved at all. A coasting flick stops the same way.
     ranges.stopGlide()
+    fling.stop()
     if (event.button === 0) nativeDragActive = true
   }
   const onNativeDragMove = (event: MouseEvent | PointerEvent): void => {
@@ -2140,6 +2147,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       countdownClock.destroy()
       pointer?.destroy()
       ranges.stopGlide()
+      fling.destroy()
       pinch.destroy()
       plotArea.destroy()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing
