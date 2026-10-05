@@ -48,7 +48,7 @@ const chartDir = repo
 
 /** The public subpaths of the artifact. The install test holds the installed manifest to exactly
  *  these keys. */
-export const PUBLIC_ENTRIES = ['.', './drawings', './adapters/rest', './styles.css']
+export const PUBLIC_ENTRIES = ['.', './drawings', './adapters/rest', './format', './glyphs', './styles.css']
 
 /** The gates only the owner closes. The summary lists each one as `owner`, never as a pass. */
 export const OWNER_GATES = [
@@ -247,6 +247,12 @@ const toolCount = typeof drawings.drawingTools?.all === 'function' ? drawings.dr
 check('drawings-entry', toolCount >= 90 && typeof drawings.parseDrawingsStore === 'function', 'the drawings catalog holds ' + toolCount + ' tools')
 const rest = await import('@trdrs/quickcharts/adapters/rest')
 check('rest-entry', typeof rest.createRestSaveLoadAdapter === 'function' && typeof rest.RestSaveLoadError === 'function', 'the REST adapter constructor and error class are exported')
+const format = await import('@trdrs/quickcharts/format')
+const formatted = typeof format.createPriceFormatter === 'function' ? format.createPriceFormatter({ pricescale: 100, minmov: 1 }).format(1.5) : null
+check('format-entry', formatted === '1.50', 'the format entry formats 1.5 at two decimals as ' + formatted)
+const glyphs = await import('@trdrs/quickcharts/glyphs')
+const emojiCount = Array.isArray(glyphs.EMOJI_CATEGORIES) ? glyphs.EMOJI_CATEGORIES.length : -1
+check('glyphs-entry', emojiCount > 0 && Array.isArray(glyphs.ICON_CATEGORIES) && typeof glyphs.isEmojiGlyph === 'function', 'the glyphs entry lists ' + emojiCount + ' emoji categories, the icon categories and the emoji test')
 
 let requestsAtConstruction = 0
 const counting = rest.createRestSaveLoadAdapter({ baseUrl: 'https://saves.example.com/v1', request: async () => { requestsAtConstruction++; return { status: 200, text: async () => '{"items":[]}' } } })
@@ -338,7 +344,7 @@ async function installTest({ tarball, manifestPath, log, note }) {
     const probe = JSON.parse(probeOut.trim().split('\n').pop())
 
     // The shipped declarations, with skipLibCheck off: a consumer's compiler reads them whole.
-    writeFileSync(join(scratch, 'types.ts'), ["import { createChart, createPriceFormatter } from '@trdrs/quickcharts'", "import { drawingTools } from '@trdrs/quickcharts/drawings'", "import { createRestSaveLoadAdapter } from '@trdrs/quickcharts/adapters/rest'", "import '@trdrs/quickcharts/styles.css'", 'export const shape: [typeof createChart, typeof createPriceFormatter, typeof drawingTools, typeof createRestSaveLoadAdapter] = [createChart, createPriceFormatter, drawingTools, createRestSaveLoadAdapter]', ''].join('\n'))
+    writeFileSync(join(scratch, 'types.ts'), ["import { createChart, createPriceFormatter } from '@trdrs/quickcharts'", "import { drawingTools } from '@trdrs/quickcharts/drawings'", "import { createRestSaveLoadAdapter } from '@trdrs/quickcharts/adapters/rest'", "import { createPriceFormatter as formatEntry } from '@trdrs/quickcharts/format'", "import { EMOJI_CATEGORIES, type GlyphCategory } from '@trdrs/quickcharts/glyphs'", "import '@trdrs/quickcharts/styles.css'", 'export const shape: [typeof createChart, typeof createPriceFormatter, typeof drawingTools, typeof createRestSaveLoadAdapter, typeof formatEntry, readonly GlyphCategory[]] = [createChart, createPriceFormatter, drawingTools, createRestSaveLoadAdapter, formatEntry, EMOJI_CATEGORIES]', ''].join('\n'))
     writeFileSync(join(scratch, 'tsconfig.json'), `${JSON.stringify({ compilerOptions: { target: 'ES2022', module: 'ESNext', moduleResolution: 'Bundler', strict: true, noEmit: true, skipLibCheck: false, lib: ['ES2022', 'DOM'] }, files: ['types.ts'] }, null, 2)}\n`)
     await step(['node', q(join(repo, 'node_modules', 'typescript', 'bin', 'tsc')), '-p', 'tsconfig.json'])
 
