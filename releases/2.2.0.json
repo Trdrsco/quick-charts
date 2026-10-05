@@ -1,0 +1,46 @@
+{
+  "date": "2026-10-05",
+  "packageName": "@trdrs/quickcharts",
+  "version": "2.2.0",
+  "releaseCommit": "e840f49b8b06e92468bceb4f26bfd705766c250f",
+  "tarballSha256": "9919fa81ee775795c83c531994d007b6a7a0fee8b3bbf988d062e5a2ffec3291",
+  "tarStreamSha256": "878c4a9458b75774d89837cf1be7c40fab2c0d4bd4d8d423db3f593bed993325",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37250657706",
+    "unitTestsPassed": 3876,
+    "cleanRoomChecksPassed": 42,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "d31db90b9fe36d0bcbac1370917b30390f3f2f8119a17c1ea927079d6059e9d4",
+      "dossierHashesSha256": "96716c1e0fe93f8be446047ff4c51540d014a587b92158507f263df1e3b49312",
+      "installTestChecksPassed": 24,
+      "dossierRetained": true
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "2ae3e99983d004f0f3f3b6b830fd6f133f89bcac",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/37248841601",
+    "result": "pass",
+    "workingTree": "2.2.0 on every pin and the Platform version matrix; exact tarball installed through a temporary pnpm override. The tarball was built from e4a02ca; the release commit adds only a rehearsal script change and builds byte for byte the same tarball."
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Asked how to get the Quick Charts work the phone app needs released, Joey said: \"You have full permission to uh, do whatever you need to get this pushed over and everything. Just align with the other agent real quick.\" The plan agreed with the phone session was to land the work, release 2.2.0 with his release agent approving the npm publish, and move the app to the registry release. Told later that once the rehearsal passed his release agent would write the release records, tag, publish under his go and verify npm, he answered: \"Okay, sounds good. Do it.\"",
+    "recordedAt": "2026-10-04T23:25:25Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false
+  }
+}
