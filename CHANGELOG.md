@@ -1,12 +1,8 @@
 # @trdrs/quickcharts
 
-## 2.1.0
+## 2.2.0
 
-Long press for the crosshair, and emoji artwork that loads the first time the chart draws an emoji. No public name changes.
-
-A finger held still on the plot is the crosshair's: the crosshair stands at the finger and follows it until the next tap, and the chart does not pan meanwhile. Held on a price scale or the time scale, it raises the chart's context menu, as a right-click does.
-
-The bundled emoji artwork is a chunk of its own, which the chart imports the first time it draws an emoji, so a chart that never shows one never loads it, and the main bundle does not carry it. Until it arrives an emoji draws as text, then takes its artwork in place, in the glyph picker and on the chart. A chart given an `assets.glyphSource` never loads it.
+The way back to the live edge and the plot a host control floats over, touch that follows the hand, and the formatter, the glyph lists and the icon artwork for hosts that draw their own. No public name changes.
 
 The return to the live edge glides: `goLive`, its command and `Alt+L` ease the view home sideways over about half a second, keeping the zoom and the price scale as they are. From far back the view steps in to a width and a half first, and a touch, a drag, a wheel or any other navigation stops it where it stands. Under a reduced-motion preference it goes in one step.
 
@@ -25,6 +21,14 @@ A flick of one finger coasts the chart calmly: the throw leaves the finger at no
 `chartIconArtwork(id)` answers the chart's own drawings of an icon as standalone svg markup on `currentColor`, each on its own grid, so a host draws the same icons the chart does in a toolbar of its own or a native view. It answers the chart's artwork whatever `icons` draws instead; an illustration drawn in the theme's roles answers none.
 
 `@trdrs/quickcharts/glyphs` carries the glyph picker's lists on their own, free of any DOM name: `EMOJI_CATEGORIES` and `ICON_CATEGORIES`, each category with the catalog key of its `heading`, and `isEmojiGlyph`, so a picker of the host's own offers the same glyphs and arms a glyph tool through `chart.drawings.arm` with `{ tool, props: { glyph } }`.
+
+## 2.1.0
+
+Long press for the crosshair, and emoji artwork that loads the first time the chart draws an emoji. No public name changes.
+
+A finger held still on the plot is the crosshair's: the crosshair stands at the finger and follows it until the next tap, and the chart does not pan meanwhile. Held on a price scale or the time scale, it raises the chart's context menu, as a right-click does.
+
+The bundled emoji artwork is a chunk of its own, which the chart imports the first time it draws an emoji, so a chart that never shows one never loads it, and the main bundle does not carry it. Until it arrives an emoji draws as text, then takes its artwork in place, in the glyph picker and on the chart. A chart given an `assets.glyphSource` never loads it.
 
 ## 2.0.1
 
