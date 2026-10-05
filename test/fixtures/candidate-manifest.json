@@ -1,5 +1,5 @@
 {
-  "tarSha256": "11be801facf41974d5e215a288cf020a4281f1b103fbb9ecf58d29a712688109",
+  "tarSha256": "7bc87c4529bd9abdc2370f4ed6013ef7f601873b338f1df262cd293a8297a1c6",
   "files": {
     "CHANGELOG.md": "cca70e6a094b138f87e841397a2e7298d43a0713803a641edde2b5e3c6696fb6",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -29,8 +29,8 @@
     "dist/drawings.d.ts": "a63ebda97b72a86cbf5eb2d387d12147283c3c4f3a32880db987828109cee2f3",
     "dist/drawings.js": "57a55f8789c34af80313d6d83bca3850a2f89438247d976a329324916f158559",
     "dist/drawings.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
-    "dist/emojiArtwork-TOXF67FH.js": "431c2ff8554ae3ae72b83b13557a5815975f9ea86a33307a68409633dc7d0eb0",
-    "dist/emojiArtwork-TOXF67FH.js.map": "1af67489fc6d052a79d18201cad36ecf2b9c70647ac9e974a325475b2fa9e19b",
+    "dist/emojiArtwork-W7OS62EV.js": "fbcd725a9802d68421999bf412a278f02eefe4a42a04264a6c129b01f009d197",
+    "dist/emojiArtwork-W7OS62EV.js.map": "588b22673d7ad9d2596a8e68b133944dd3c23a06ef71e989850b91b5c180566a",
     "dist/es-5ZXIPVOB.js": "cec4a3b665f7a1167b0941110c617c178dcbe1846594a7bc6d94b258c8249f75",
     "dist/es-5ZXIPVOB.js.map": "bb132780249eda8d28ff8ca1a526ea4e75521e7ba73320682eb042fc25afa181",
     "dist/feature-manifest.json": "c245e70c677326ddf83c3598fd7b9a8788181ffcc43254bd24af12d310ef31d2",
@@ -48,7 +48,7 @@
     "dist/id_ID-CYJRMXPC.js": "f235f9f719800a145e0930eb51bab50bc43c0fbfd07fa24858947e138cb06d17",
     "dist/id_ID-CYJRMXPC.js.map": "bf0240866002da96835229f26f155535ee2a7ce4f44922f09084ffc8f10635d9",
     "dist/index.d.ts": "a97586c1f109ba455b7316b52c27fe0d71b2e6a675c2c349c560372ec4e1c51c",
-    "dist/index.js": "a9539dd1fb8b47244f9c02ad7f75ee0aff14139e9a9c954cc065073695f012c8",
+    "dist/index.js": "f9beab84b95768a9d2d4f5399acfddf7748fcc3547ffbd94b571d11e137782db",
     "dist/index.js.map": "e734e93969f0f0b6d5e594f84eec917655cdd793a6f1da259f54b0e0f2378a34",
     "dist/it-KTX4SG5P.js": "60167d76664ddc840f8135456e61cd5a31ba48007ba33e0ba473d3db37d59b85",
     "dist/it-KTX4SG5P.js.map": "0c01656c5c783ec765d8681bdb0305f8574ab22f7d64f8376aeca6bc3d304875",
