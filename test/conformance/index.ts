@@ -626,6 +626,9 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
     async run(ctx) {
       const shown = await ctx.mount({ symbol: 'ALPHA' })
       const hidden = await ctx.mount({ symbol: 'ALPHA', ui: { topBar: false, bottomBar: false, drawingToolbar: false, navigation: false, legend: false } })
+      // A command that needs a visible window answers unavailable until the renderer has laid the
+      // window out, which a loaded browser may still owe either chart, so both have one first.
+      for (const until = Date.now() + 10_000; (!shown.chart.visibleRange() || !hidden.chart.visibleRange()) && Date.now() < until; ) await ctx.settle()
       const availability = (widget: ChartWidget): string =>
         widget.commands
           .list()
