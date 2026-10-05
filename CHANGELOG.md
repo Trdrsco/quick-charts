@@ -14,6 +14,8 @@ A chart reads whether its view sits back from the live edge: `awayFromLiveEdge()
 
 Two fingers zoom proportionally: the bars spread exactly as far as the fingers do, and the point under the fingers stays under them as they travel. A pan one finger began before the second landed stays a pan, and a drawing that holds the pointer holds the pinch off.
 
+`@trdrs/quickcharts/format` carries the price formatter and its types alone, with nothing that names a window, a document or a DOM type, so a native view or a server writes a price exactly as the chart's axis does.
+
 ## 2.0.1
 
 Drawing by touch, and handles that stay on their drawings. No public name changes.
