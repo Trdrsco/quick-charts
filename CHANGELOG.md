@@ -1,5 +1,11 @@
 # @trdrs/quickcharts
 
+## 2.3.0
+
+The symbol naming rule for hosts that name markets in views of their own. No public name changes.
+
+`@trdrs/quickcharts/symbols` carries the symbol naming rule on its own, free of any DOM name: `symbolNames`, with its `SymbolNames` type, and `bareTicker`, so a view of the host's own with no DOM names a market as the chart's pill, legend and search rows do.
+
 ## 2.2.0
 
 The way back to the live edge and the plot a host control floats over, touch that follows the hand, and the formatter, the glyph lists and the icon artwork for hosts that draw their own. No public name changes.
@@ -21,8 +27,6 @@ A flick of one finger coasts the chart calmly: the throw leaves the finger at no
 `chartIconArtwork(id)` answers the chart's own drawings of an icon as standalone svg markup on `currentColor`, each on its own grid, so a host draws the same icons the chart does in a toolbar of its own or a native view. It answers the chart's artwork whatever `icons` draws instead; an illustration drawn in the theme's roles answers none.
 
 `@trdrs/quickcharts/glyphs` carries the glyph picker's lists on their own, free of any DOM name: `EMOJI_CATEGORIES` and `ICON_CATEGORIES`, each category with the catalog key of its `heading`, and `isEmojiGlyph`, so a picker of the host's own offers the same glyphs and arms a glyph tool through `chart.drawings.arm` with `{ tool, props: { glyph } }`.
-
-`@trdrs/quickcharts/symbols` carries the symbol naming rule on its own, free of any DOM name: `symbolNames`, with its `SymbolNames` type, and `bareTicker`, so a view of the host's own with no DOM names a market as the chart's pill, legend and search rows do.
 
 ## 2.1.0
 
