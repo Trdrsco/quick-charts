@@ -58,6 +58,7 @@ export type {
   SettingsMenuUi,
   ThemeOptions,
   TopBarUi,
+  TouchOptions,
   UiConfig,
 } from './widget/options'
 

@@ -368,6 +368,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           id,
           container: element,
           hostContainer: options.container,
+          freePan: options.touch?.freePan === true,
           layer,
           datafeed: options.datafeed,
           externalDrawingToolbar: !!options.drawingToolbarContainer,
