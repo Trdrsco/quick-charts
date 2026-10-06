@@ -43,7 +43,8 @@ import { createEmitter, type ChartEvents, type SaveConflictInfo } from './events
 import type { AccessPolicy, Capabilities, ChartPreferences, IndicatorInstance } from './options'
 import type { ResolvedFeatures, ResolvedUi } from './planes'
 import type { IconResolver } from '../ui/icons/resolver'
-import { addStyleSeries, offeredStyle, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
+import { addStyleSeries, fadedStyleOptions, offeredStyle, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
+import { startStyleMorph, type StyleMorph } from './styleMorph'
 import { createBaselineLevel } from './baselineLevel'
 import { offeredTimeframe, offersTimeframe, rangeTimeframe, type OfferedTimeframes } from './timeframes'
 import {
@@ -299,6 +300,8 @@ export interface ChartInstanceDeps {
   hostContainer: HTMLElement
   /** Whether a finger's drag or pinch releases the main price scale's framing, for a chart placed by hand. */
   freePan?: boolean
+  /** Whether a change between a bar style and a close style morphs rather than switches at once. */
+  styleMorph?: boolean
   /** The widget's layer on the document body, themed as the root is. The context menu mounts here
    *  rather than in this pane's own chrome: it stands over every pane and over whatever the page
    *  stacks around the widget, at viewport coordinates. */
@@ -578,6 +581,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     return added
   }
   let series: ISeriesApi<SeriesType> = addMainSeries(style)
+  /** A morph between a bar style and a close style under way, and the series of bars it draws. */
+  let morph: { run: StyleMorph; bars: ISeriesApi<SeriesType> } | null = null
   // The Baseline style's base is a screen level, not a price, so it is re-derived while that style
   // is the one on screen and never written into saved content.
   const baselineLevel = createBaselineLevel({ paneHeight: () => chart.paneSize().height })
@@ -775,13 +780,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const timeClickSubs = new Set<(time: number) => void>()
   const rangeSubs = new Set<(range: TimeRange) => void>()
 
+  /** Whether the viewer asked for less motion: every glide and morph then lands in one step. */
+  const reducedMotion = (): boolean => gestures.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   const ranges: RangeApi = createRangeApi({
     chart,
     disposed: disposedFn,
     muted,
     mirrored,
     onGlide: () => followLiveEdge(),
-    reducedMotion: () => gestures.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
+    reducedMotion,
   })
   /** A chart that holds its view throws no flick, so its coast is one that never starts. */
   const still: Fling = { stop: () => undefined, destroy: () => undefined }
@@ -1203,9 +1210,12 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     const painted = shownBars()
     const values = painted.map((b) => ({ time: b.t as UTCTimestamp, value: b.c }))
     anchor.setData(values)
-    series.setData(
-      (shaped ? values : painted.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }))) as never,
-    )
+    // A morph that brings bars back draws them itself, folded, until it ends.
+    if (morph?.bars !== series) {
+      series.setData(
+        (shaped ? values : painted.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }))) as never,
+      )
+    }
     if (volumeInstance()) paintVolume()
     indicators.recompute()
     // Comparisons clip to the main window, so every reshape re-clips them here: paintAll is the one
@@ -1658,7 +1668,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // visible series is replaced, and the same bar model is painted into the new one. Everything
     // with a long life is bound to the anchor, so nothing else here is torn down.
     const keep = chart.timeScale().getVisibleLogicalRange()
+    morph?.run.finish()
     const previous = series
+    const previousStyle = style
     style = next
     storage.set(STYLE_KEY, next)
     series = addMainSeries(next)
@@ -1666,13 +1678,42 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     countdown?.seriesChanged(previous)
     extensions.visibleSeriesReplaced()
     applyPriceFormat()
-    try {
-      chart.removeSeries(previous)
-    } catch {
-      /* the renderer already dropped it */
+    const remove = (leaving: ISeriesApi<SeriesType>): void => {
+      try {
+        chart.removeSeries(leaving)
+      } catch {
+        /* the renderer already dropped it */
+      }
     }
+    // Between a style drawn from bars and one drawn from closes the change can morph: the bars fold
+    // into their closes as the line comes in, or unfold out of them as it goes. Both series stand
+    // until the morph ends, and the one leaving goes then.
+    const folding = valueShaped(next) && !valueShaped(previousStyle)
+    const unfolding = !valueShaped(next) && valueShaped(previousStyle)
+    const morphing = !!deps.styleMorph && (folding || unfolding) && !reducedMotion()
+    if (!morphing) remove(previous)
     paintAll()
     if (keep) chart.timeScale().setVisibleLogicalRange(keep)
+    if (morphing) {
+      const bars = folding ? previous : series
+      const line = folding ? series : previous
+      const lineStyle = folding ? next : previousStyle
+      const entry = {
+        bars,
+        run: startStyleMorph({
+          bars,
+          fadeLine: (alpha) => line.applyOptions(fadedStyleOptions(lineStyle, paint(), alpha)),
+          shown: shownBars,
+          direction: folding ? 'fold' : 'unfold',
+          done: () => {
+            if (morph === entry) morph = null
+            remove(previous)
+            if (folding) line.applyOptions(styleOptions(lineStyle, paint()))
+          },
+        }),
+      }
+      morph = entry
+    }
     events.emit('style', next)
   }
 
@@ -2182,6 +2223,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       countdownClock.destroy()
       pointer?.destroy()
       ranges.stopGlide()
+      morph?.run.finish()
       fling.destroy()
       pinch?.destroy()
       freePan?.destroy()

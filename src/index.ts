@@ -60,6 +60,7 @@ export type {
   ThemeOptions,
   TopBarUi,
   TouchOptions,
+  TransitionOptions,
   UiConfig,
 } from './widget/options'
 

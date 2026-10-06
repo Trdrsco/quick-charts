@@ -402,6 +402,16 @@ export interface TouchOptions {
   freePan?: boolean
 }
 
+/** Changes the chart animates rather than makes at once. Each is off unless the host turns it on,
+ *  and under a reduced-motion preference each change is made at once. */
+export interface TransitionOptions {
+  /** A change between a style drawn from whole bars (candles, hollow candles, bars) and one drawn
+   *  from closes (line, area, baseline, step line) morphs over half a second, easing in and out:
+   *  each bar's open, high and low slide into its close as the line comes in through the closes,
+   *  and back. */
+  style?: boolean
+}
+
 /** Everything needed to construct a widget. `container` and `datafeed` are the two hard
  *  requirements; every other field has a working default. */
 export interface ChartWidgetOptions extends MarkPainterHooks {
@@ -649,4 +659,6 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   marks?: boolean
   /** How the chart answers a finger, beyond what every chart does. */
   touch?: TouchOptions
+  /** Changes the chart animates rather than makes at once. */
+  transitions?: TransitionOptions
 }

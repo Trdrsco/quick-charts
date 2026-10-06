@@ -10,6 +10,8 @@ Bar replay starts where the viewer chose: a bar picked in view keeps its place a
 
 `ui.crosshair` chooses what the crosshair draws: `false` draws neither its lines nor its labels, and a `CrosshairUi` object hides the horizontal line (`horizontal: false`) or the time and the price on the scales (`labels: false`), or draws the lines solid (`solid: true`). The crosshair still follows the pointer, and `sync.onCrosshair` still reports it.
 
+`transitions.style` morphs a change between a style drawn from whole bars and one drawn from closes over half a second: each bar's open, high and low slide into its close as the line comes in through the closes, and back out of it as the line goes. It is off unless the host turns it on, and under a reduced-motion preference the change is made at once.
+
 ## 2.3.0
 
 The symbol naming rule for hosts that name markets in views of their own. No public name changes.

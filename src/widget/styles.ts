@@ -151,6 +151,33 @@ export function styleOptions(style: ChartStyleId, paint: StylePaint): Record<str
   }
 }
 
+/** A style drawn from closes, its lines and fills at `alpha` of their own strength: what a morph
+ *  between a bar style and a close style shows of the close style as it comes in or goes. A bar
+ *  style has nothing to fade, so its own options come back. */
+export function fadedStyleOptions(style: ChartStyleId, paint: StylePaint, alpha: number): Record<string, unknown> {
+  const a = Math.min(1, Math.max(0, alpha))
+  const up = paint.appearance.upColor
+  const down = paint.appearance.downColor
+  switch (style) {
+    case 'line':
+    case 'stepline':
+      return { color: withAlpha(paint.canvas.neutral, a) }
+    case 'area':
+      return { lineColor: withAlpha(up, a), topColor: withAlpha(up, 0.28 * a), bottomColor: withAlpha(up, 0.04 * a) }
+    case 'baseline':
+      return {
+        topLineColor: withAlpha(up, a),
+        bottomLineColor: withAlpha(down, a),
+        topFillColor1: withAlpha(up, 0.28 * a),
+        topFillColor2: withAlpha(up, 0.04 * a),
+        bottomFillColor1: withAlpha(down, 0.04 * a),
+        bottomFillColor2: withAlpha(down, 0.28 * a),
+      }
+    default:
+      return styleOptions(style, paint)
+  }
+}
+
 /** One undirected line: the mode's neutral ink, because a close-only line has no direction to
  *  carry. */
 function lineOptions(paint: StylePaint): Record<string, unknown> {
