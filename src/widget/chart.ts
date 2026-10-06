@@ -553,7 +553,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // A chart that holds its view takes no drag, wheel, pinch or scale gesture from the renderer.
     handleScroll: deps.features.navigation,
     handleScale: deps.features.navigation,
-    rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.08 } },
+    rightPriceScale: { visible: deps.ui.priceScale, borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.08 } },
     timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 8, minBarSpacing: 0.5 },
   })
 
@@ -565,7 +565,14 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     priceLineVisible: false,
     crosshairMarkerVisible: false,
   })
-  let series: ISeriesApi<SeriesType> = addStyleSeries(chart, style, paint())
+  /** The main series for a style. With no price scale, nothing points at one, so the last price
+   *  draws no line across the plot and no label. */
+  const addMainSeries = (id: ChartStyleId): ISeriesApi<SeriesType> => {
+    const added = addStyleSeries(chart, id, paint())
+    if (!deps.ui.priceScale) added.applyOptions({ priceLineVisible: false, lastValueVisible: false })
+    return added
+  }
+  let series: ISeriesApi<SeriesType> = addMainSeries(style)
   // The Baseline style's base is a screen level, not a price, so it is re-derived while that style
   // is the one on screen and never written into saved content.
   const baselineLevel = createBaselineLevel({ paneHeight: () => chart.paneSize().height })
@@ -1649,7 +1656,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     const previous = series
     style = next
     storage.set(STYLE_KEY, next)
-    series = addStyleSeries(chart, next, paint())
+    series = addMainSeries(next)
     baselineLevel.follow(next === 'baseline' ? series : null)
     countdown?.seriesChanged(previous)
     extensions.visibleSeriesReplaced()

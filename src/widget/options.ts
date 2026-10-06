@@ -107,6 +107,9 @@ export interface UiConfig {
   /** The full indicator settings dialog. Off, the legend's gear opens the inputs-only editor, and
    *  `chart.indicators.update` still changes an indicator. */
   indicatorSettings?: boolean
+  /** The price scale at the plot's right. Off, the bars span the chart's whole width, and the last
+   *  price's line, which points at its label on the scale, goes with it. */
+  priceScale?: boolean
 }
 
 /** The top bar's own controls. */
