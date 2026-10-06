@@ -1036,6 +1036,21 @@ preference that names a style you left out opens on the first style in `styles`,
 restores. An empty list, an id outside `CHART_STYLES`, a repeated id and a `style` outside the list
 are setup errors that `createChart` throws.
 
+With `transitions: { style: true }` a change between a style drawn from whole bars (candles, hollow
+candles, bars) and one drawn from closes (line, area, baseline, step line) morphs over half a second,
+easing in and out: each bar's open, high and low slide into its close as the line comes in through
+the closes, and back out of it as the line goes. A change within either family is made at once, and
+so is every change under a reduced-motion preference. It is off unless you turn it on.
+
+```ts
+import { createChart, type ChartDatafeed, type TransitionOptions } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+const transitions: TransitionOptions = { style: true }
+createChart({ container, datafeed, transitions })
+```
+
 ### Offered timeframes
 
 By default a chart offers the 26 presets (`TIMEFRAME_PRESETS`) and lets the viewer compose custom

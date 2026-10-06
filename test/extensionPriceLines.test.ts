@@ -123,6 +123,6 @@ describe('extension price lines', () => {
     expect(setStyle).toContain('series = addMainSeries(next)')
     expect(chartSrc).toContain('const added = addStyleSeries(chart, id, paint())')
     expect(setStyle).toContain('extensions.visibleSeriesReplaced()')
-    expect(setStyle.indexOf('extensions.visibleSeriesReplaced()')).toBeLessThan(setStyle.indexOf('chart.removeSeries(previous)'))
+    expect(setStyle.indexOf('extensions.visibleSeriesReplaced()')).toBeLessThan(setStyle.indexOf('remove(previous)'))
   })
 })
