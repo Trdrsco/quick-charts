@@ -59,6 +59,7 @@ export const UI_KEYS: { readonly [K in keyof Required<UiConfig>]: KeyShape } = {
   symbolSearch: 'flag',
   indicatorPicker: 'flag',
   indicatorSettings: 'flag',
+  priceScale: 'flag',
 }
 
 /** Every flag path of a plane, in declaration order: a node is a flag of its own and then its
@@ -148,6 +149,7 @@ export interface ResolvedUi {
   symbolSearch: boolean
   indicatorPicker: boolean
   indicatorSettings: boolean
+  priceScale: boolean
 }
 
 /** What the widget offers, as far as it decides which controls are drawn. Each is absent where the
@@ -217,6 +219,7 @@ export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatur
     symbolSearch,
     indicatorPicker,
     indicatorSettings: shown(config?.indicatorSettings),
+    priceScale: shown(config?.priceScale),
   }
 }
 

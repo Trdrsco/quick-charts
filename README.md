@@ -1880,6 +1880,9 @@ void withMarks
 
 - **Scale modes.** `chart.setScaleMode('log' | 'percent' | 'indexed' | 'normal')`, persisted
   through `ChartStorage`, and reachable as commands.
+- **The price scale** (shown by default; `ui: { priceScale: false }` hides it). Without it the bars
+  span the chart's whole width, and the last price draws no line across the plot and no label, since
+  nothing on screen points at one.
 - **Session bands** (on by default; `features.sessions: false` opts out). Every stretch outside
   regular hours shades under the bars, driven by the session model built from the symbol's own
   `session`, `sessionHolidays`, `corrections` and `subsessions` in `resolve()`'s answer (see
