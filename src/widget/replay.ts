@@ -117,6 +117,10 @@ export interface ReplayDeps {
   initialGrain: string
 }
 
+/** How long a bar chosen in view keeps the place it was chosen at before the view glides it to the
+ *  replay's edge: long enough for the cut to read where the pick was made. */
+const START_HOLD_MS = 250
+
 /** Coerce a stored replay speed to one the transport offers. */
 export function coerceReplaySpeed(raw: unknown): ReplaySpeed {
   const n = Number(raw)
@@ -138,6 +142,14 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
   let stepping: { targetCursor: number; parent: FeedBar | undefined } | null = null
   let generation = 0
   let destroyed = false
+  /** The glide that takes a chosen bar from where it was chosen to the replay's edge, while it waits. */
+  let glide: ReturnType<typeof setTimeout> | null = null
+  const stopGlide = (): void => {
+    if (glide) {
+      clearTimeout(glide)
+      glide = null
+    }
+  }
   const invalidateStep = (): void => {
     generation += 1
     stepping = null
@@ -165,15 +177,39 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
   const currentGrain = (): string => (autoGrain ? 'auto' : (manualGrain ?? 'auto'))
   const paintCursor = (): void => {
     if (!master) return
+    stopGlide()
     deps.paint(master.slice(0, cursor))
     deps.chart.timeScale().scrollToRealTime() // keep the forming edge in view as the cursor advances
   }
   /** Repaint with the cursor's LAST bar partially formed from its played sub-bars. */
   const paintForming = (): void => {
     if (!master || !subs) return
+    stopGlide()
     const parent = master[cursor - 1]!
     deps.paint([...master.slice(0, cursor - 1), composeFormingBar(parent, subs, formK)])
     deps.chart.timeScale().scrollToRealTime()
+  }
+  /** Paint the start a viewer chose. A bar chosen in view keeps its place: the bars after it leave
+   *  the plot where they stood, and after a beat the view glides it to the replay's edge. Left to
+   *  itself the renderer keeps the view's distance from the LAST bar, so cutting bars off the end
+   *  would move every bar on the plot at once. A bar chosen out of view comes to the edge at once. */
+  const paintStart = (): void => {
+    if (!master) return
+    const scale = deps.chart.timeScale()
+    const shown = scale.getVisibleRange()
+    const view = scale.getVisibleLogicalRange()
+    const chosen = master[cursor - 1]!.t
+    const from = shown?.from
+    const to = shown?.to
+    if (!view || typeof from !== 'number' || typeof to !== 'number' || chosen < from || chosen > to) return paintCursor()
+    stopGlide()
+    deps.paint(master.slice(0, cursor))
+    // The bars left keep their indices, so the range the viewer chose from frames them as it did.
+    scale.setVisibleLogicalRange(view)
+    glide = setTimeout(() => {
+      glide = null
+      if (master && !destroyed && !deps.disposed()) scale.scrollToRealTime()
+    }, START_HOLD_MS)
   }
   const stopTimer = (): void => {
     if (timer) {
@@ -287,6 +323,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
 
   function abandon(): void {
     invalidateStep()
+    stopGlide()
     if (!master) return
     stopTimer()
     playing = false
@@ -322,7 +359,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
       const idx = master.findIndex((b) => b.t >= atSec)
       cursor = Math.max(2, (idx === -1 ? master.length - 1 : idx) + 1)
       deps.setHeader(true)
-      paintCursor()
+      paintStart()
       sync()
     },
     exit() {

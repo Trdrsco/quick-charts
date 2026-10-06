@@ -18,8 +18,16 @@ function fixture(initialTimeframe = '1h', served: readonly string[] | null = nul
   let symbol = 'A'
   let timeframe = initialTimeframe
   let disposed = false
+  // The renderer's time scale, as replay reads and moves it. Nothing is in view unless a spec says so.
+  type Range = { from: number; to: number }
+  const scale = {
+    scrollToRealTime: vi.fn(),
+    getVisibleRange: vi.fn((): Range | null => null),
+    getVisibleLogicalRange: vi.fn((): Range | null => null),
+    setVisibleLogicalRange: vi.fn((_range: Range) => undefined),
+  }
   const deps: ReplayDeps = {
-    chart: { timeScale: () => ({ scrollToRealTime: vi.fn() }) } as unknown as IChartApi,
+    chart: { timeScale: () => scale } as unknown as IChartApi,
     datafeed: {
       search: async () => ({ hits: [], hasMore: false }), resolve: async () => null,
       history: (_s, _tf, range) => {
@@ -38,7 +46,7 @@ function fixture(initialTimeframe = '1h', served: readonly string[] | null = nul
     const request = requests[index]!
     request.resolve({ bars: [bar(request.from, 900), bar(request.from + 900, 901)], noData: false })
   }
-  return { plane, bars, requests, paint, change, crosshair, resolve,
+  return { plane, bars, requests, paint, change, crosshair, resolve, scale,
     symbol: () => { symbol = 'B' }, timeframe: () => { timeframe = '4h' }, disposed: () => { disposed = true } }
 }
 
@@ -257,6 +265,62 @@ describe('the replay phases', () => {
     expect(state.on).toBe(true)
     expect(f.change).toHaveBeenCalledTimes(1)
     f.plane.destroy()
+  })
+
+  it('keeps a bar chosen in view where it was chosen, then glides it to the edge', () => {
+    vi.useFakeTimers()
+    try {
+      const f = fixture()
+      f.scale.getVisibleRange.mockReturnValue({ from: f.bars[2]!.t, to: f.bars[9]!.t })
+      f.scale.getVisibleLogicalRange.mockReturnValue({ from: 2, to: 12 })
+      f.plane.api.start(f.bars[5]!.t)
+      expect(f.paint).toHaveBeenLastCalledWith(f.bars.slice(0, 6))
+      // The bars after the chosen one leave the plot where they stood: the view is the one chosen from.
+      expect(f.scale.setVisibleLogicalRange).toHaveBeenCalledWith({ from: 2, to: 12 })
+      expect(f.scale.scrollToRealTime).not.toHaveBeenCalled()
+      vi.advanceTimersByTime(1000)
+      expect(f.scale.scrollToRealTime).toHaveBeenCalledTimes(1)
+      f.plane.destroy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('brings a bar chosen out of view to the edge at once', () => {
+    const f = fixture()
+    f.scale.getVisibleRange.mockReturnValue({ from: f.bars[6]!.t, to: f.bars[9]!.t })
+    f.scale.getVisibleLogicalRange.mockReturnValue({ from: 6, to: 12 })
+    f.plane.api.start(f.bars[2]!.t)
+    expect(f.scale.setVisibleLogicalRange).not.toHaveBeenCalled()
+    expect(f.scale.scrollToRealTime).toHaveBeenCalledTimes(1)
+    f.plane.destroy()
+  })
+
+  it('drops the waiting glide when the session ends or a step takes the view first', () => {
+    vi.useFakeTimers()
+    try {
+      const inView = () => {
+        const f = fixture()
+        f.scale.getVisibleRange.mockReturnValue({ from: f.bars[2]!.t, to: f.bars[9]!.t })
+        f.scale.getVisibleLogicalRange.mockReturnValue({ from: 2, to: 12 })
+        f.plane.api.start(f.bars[5]!.t)
+        return f
+      }
+      const ended = inView()
+      ended.plane.api.exit()
+      vi.advanceTimersByTime(1000)
+      expect(ended.scale.scrollToRealTime).not.toHaveBeenCalled()
+      ended.plane.destroy()
+
+      const stepped = inView()
+      stepped.plane.api.stepForward()
+      expect(stepped.scale.scrollToRealTime).toHaveBeenCalledTimes(1)
+      vi.advanceTimersByTime(1000)
+      expect(stepped.scale.scrollToRealTime).toHaveBeenCalledTimes(1)
+      stepped.plane.destroy()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('takes the crosshair away for the length of the question and hands it back after', () => {
