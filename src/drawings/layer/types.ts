@@ -213,6 +213,9 @@ export interface AttachDrawingsOptions {
   /** This chart's identity for drawings bound to one chart (sync off). Absent, every drawing is
    *  shared and the sync switch has nothing to bind to. */
   chartId?: string
+  /** Whether the chart's view moves by hand. A drawing gesture holds the chart's pan and zoom while
+   *  it runs, and gives them back as it ends only to a chart that has them. Default true. */
+  navigable?: boolean
   /** Bar reader for data-driven drawings (a restored anchored VWAP still computes). */
   bars?: () => readonly FeedBar[]
   /** Where glyph artwork comes from, from the host's drawing asset port. Per layer, so two charts

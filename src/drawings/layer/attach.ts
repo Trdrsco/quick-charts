@@ -154,7 +154,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   /** The one lock every in-chart gesture applies: the chart's pan and zoom and the container's
    *  touch action move together, so a finger drawing a line never scrolls the page under it. */
   const lockPointer = (locked: boolean): void => {
-    const lock = pointerLock(locked)
+    const lock = pointerLock(locked, options.navigable ?? true)
     chart.applyOptions({ handleScroll: lock.handleScroll, handleScale: lock.handleScale })
     container.style.touchAction = lock.touchAction
   }

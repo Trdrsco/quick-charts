@@ -58,6 +58,8 @@ export interface ExtensionsDeps {
   formatter(): ChartPriceFormatter
   /** Whether this chart is the widget's active chart. */
   active(): boolean
+  /** Whether the chart's view moves by hand: a released lock gives back only the navigation it has. */
+  navigable: boolean
   commands: CommandRegistry
   extensions: readonly ChartExtension[]
   disposed(): boolean
@@ -128,7 +130,7 @@ export function attachExtensionsPlane(deps: ExtensionsDeps): ExtensionsPlane {
       if (deps.disposed()) return
       // ONE rule for every in-chart drag: navigation and the container's touch action move
       // together, so a released gesture cannot leave the chart half-frozen.
-      const state = pointerLock(locked)
+      const state = pointerLock(locked, deps.navigable)
       deps.chart.applyOptions({ handleScroll: state.handleScroll, handleScale: state.handleScale })
       deps.setTouchAction(state.touchAction)
     },

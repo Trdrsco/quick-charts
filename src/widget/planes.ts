@@ -26,6 +26,7 @@ export const FEATURE_KEYS: { readonly [K in keyof Required<FeatureConfig>]: KeyS
   history: 'flag',
   sessions: 'flag',
   crosshair: 'flag',
+  navigation: 'flag',
 }
 
 const TOP_BAR_KEYS: { readonly [K in keyof Required<TopBarUi>]: KeyShape } = {
@@ -100,6 +101,7 @@ export interface ResolvedFeatures {
   history: boolean
   sessions: boolean
   crosshair: boolean
+  navigation: boolean
 }
 
 /** Fill the feature plane. Every flag defaults on. A key the plane does not take throws. */
@@ -113,6 +115,7 @@ export function resolveFeatures(config?: FeatureConfig): ResolvedFeatures {
     history: on(config?.history),
     sessions: on(config?.sessions),
     crosshair: on(config?.crosshair),
+    navigation: on(config?.navigation),
   }
 }
 
@@ -207,7 +210,7 @@ export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatur
     legend,
     legendValues: inLegend('values'),
     marketStatus: inLegend('marketStatus'),
-    navigation: shown(config?.navigation),
+    navigation: features.navigation && shown(config?.navigation),
     contextMenu: shown(config?.contextMenu),
     replayTransport: features.replay && shown(config?.replayTransport),
     toasts: shown(config?.toasts),

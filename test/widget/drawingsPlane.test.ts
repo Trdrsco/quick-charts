@@ -55,6 +55,7 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     icons: ownIcons(),
     chart: fake.chart,
     series: fake.series,
+    navigable: true,
     container: gestures,
     chrome,
     chartId: 'chart-1',

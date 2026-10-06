@@ -995,6 +995,13 @@ zooms the time and leaves the price where it stands. A double-tap on the price s
 timeframe, and `goLive()` frame the bars again; `goLive()` frames them from the tap, and the price
 follows the window home as the time glides. It is off unless you turn it on.
 
+With `features: { navigation: false }` the chart holds its view: no drag, flick, pinch or wheel moves
+it, a scale takes no drag or double-tap, and the zoom and scroll commands and their keys are
+unavailable, so the navigation cluster is not drawn whatever `ui.navigation` says. The view stays
+where the chart frames it: on the live edge, at a range preset or at a window you set. `goLive()`
+and `reset()` still frame it, and the crosshair still follows a pointer or a held finger. It is on
+unless you turn it off.
+
 ### Chart styles
 
 `candles`, `hollow`, `bars`, `line`, `area`, `baseline`, `stepline`, listed as `CHART_STYLES`. A

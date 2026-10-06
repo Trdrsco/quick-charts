@@ -29,9 +29,10 @@ export interface RendererScale {
 
 /** The one lock every in-chart drag applies, and releases by asking for the other one. Stated once
  *  so a surface cannot half-restore the chart (the classic residue: navigation back, touch-action
- *  still 'none', and the chart no longer scrollable by finger). */
-export function pointerLock(locked: boolean): PointerLockState {
-  const on = !locked
+ *  still 'none', and the chart no longer scrollable by finger). Released, a chart whose view does
+ *  not move by hand (`navigable` false) keeps its pan and zoom off. */
+export function pointerLock(locked: boolean, navigable = true): PointerLockState {
+  const on = !locked && navigable
   return {
     handleScroll: on,
     handleScale: { mouseWheel: on, pinch: false, axisPressedMouseMove: on, axisDoubleClickReset: on },
