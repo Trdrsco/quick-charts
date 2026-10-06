@@ -2582,6 +2582,23 @@ pointing; the crosshair SYNC lane is untouched either way. The reading also give
 the identity first, then holds the close and the change alone rather than covering the candles it
 describes.
 
+`ui.crosshair` chooses what the crosshair draws while it follows the pointer. `false` draws neither
+its lines nor its labels. A `CrosshairUi` object hides some of its parts: `horizontal: false` leaves
+one vertical line through the bar under the pointer, the way a finger reads a small chart, and
+`labels: false` writes neither the time nor the price on the scales. `solid: true` draws the lines
+solid; they are dashed unless you name it. `sync.onCrosshair` reports the crosshair whatever it
+draws.
+
+```ts
+import { createChart, type ChartDatafeed, type CrosshairUi } from '@trdrs/quickcharts'
+
+declare const datafeed: ChartDatafeed
+
+// One solid vertical line through the bar under the pointer, with nothing written on the scales.
+const crosshair: CrosshairUi = { horizontal: false, labels: false, solid: true }
+createChart({ container, datafeed, ui: { crosshair } })
+```
+
 ## Multi-chart layouts
 
 A widget always has a layout, reached as `widget.layout`, and it tiles N charts over the widget root

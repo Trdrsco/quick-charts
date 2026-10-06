@@ -9,6 +9,7 @@
 // by what a viewer or a screen reader finds it by. The rest proves a hidden top bar leaves its doors
 // in place: the search dialog, the saved-layout dialogs and autosave.
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CrosshairMode } from 'lightweight-charts'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
@@ -138,6 +139,14 @@ const COVERAGE: Readonly<Record<string, Probe | { provedBy: string }>> = {
   indicatorSettings: { provedBy: 'this file: a hidden settings dialog leaves the legend gear to the inputs editor' },
   // The scale is the renderer's own, so it is read off the options the chart created the renderer with.
   priceScale: () => (lastRenderer().created.rightPriceScale as { visible?: unknown }).visible === true,
+  // So is the crosshair: its lines and labels are the renderer's own.
+  crosshair: () => (lastRenderer().created.crosshair as { mode?: unknown }).mode === CrosshairMode.Normal,
+  'crosshair.horizontal': () => (lastRenderer().created.crosshair as { horzLine: { visible: boolean } }).horzLine.visible,
+  'crosshair.labels': () => {
+    const { vertLine, horzLine } = lastRenderer().created.crosshair as { vertLine: { labelVisible: boolean }; horzLine: { labelVisible: boolean } }
+    return vertLine.labelVisible && horzLine.labelVisible
+  },
+  'crosshair.solid': { provedBy: 'crosshairParts.test.ts: the lines are solid only when solid is named, and dashed by default' },
 }
 
 describe('every control flag is accounted for on screen', () => {
@@ -240,8 +249,10 @@ describe('a hidden transport leaves replay to the commands', () => {
 describe('resolving the planes', () => {
   const features = resolveFeatures()
 
-  it('draws every control by default', () => {
-    expect(Object.values(resolveUi(undefined, features)).every(Boolean)).toBe(true)
+  it('draws every control by default, and the crosshair dashed', () => {
+    const { crosshairSolid, ...controls } = resolveUi(undefined, features)
+    expect(Object.values(controls).every(Boolean)).toBe(true)
+    expect(crosshairSolid).toBe(false)
   })
 
   it('hides a control inside a hidden surface, and only the controls a node names', () => {

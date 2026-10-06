@@ -19,6 +19,7 @@ import {
   createChart as createRenderer,
   HistogramSeries,
   LineSeries,
+  LineStyle,
   TrackingModeExitMode,
   type IChartApi,
   type ISeriesApi,
@@ -543,7 +544,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       vertLines: { color: canvas().grid, visible: eff.appearance.grid },
       horzLines: { color: canvas().grid, visible: eff.appearance.grid },
     },
-    crosshair: { mode: deps.features.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden },
+    crosshair: {
+      mode: deps.ui.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden,
+      vertLine: { labelVisible: deps.ui.crosshairLabels, ...(deps.ui.crosshairSolid ? { style: LineStyle.Solid } : {}) },
+      horzLine: { visible: deps.ui.crosshairHorizontal, labelVisible: deps.ui.crosshairLabels, ...(deps.ui.crosshairSolid ? { style: LineStyle.Solid } : {}) },
+    },
     // A finger held on the plot scrubs the crosshair for as long as it stays down, and lifting it
     // takes the crosshair away, so the next one-finger drag pans: the way a native chart reads.
     trackingMode: { exitMode: TrackingModeExitMode.OnTouchEnd },
@@ -997,7 +1002,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // A chart whose crosshair the host switched OFF keeps it off: replay may take the crosshair
     // away for the length of a question, never hand one back that was never there.
     setCrosshair: (visible) =>
-      chart.applyOptions({ crosshair: { mode: visible && deps.features.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden } }),
+      chart.applyOptions({ crosshair: { mode: visible && deps.ui.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden } }),
     // The feed's own grains: a chart never offers, or fetches, a timeframe its feed cannot serve.
     resolutions: () => deps.capabilities().resolutions,
     persist: (key, value) => storage.set(key === 'speed' ? REPLAY_SPEED_KEY : REPLAY_TIMEFRAME_KEY, value),

@@ -110,6 +110,21 @@ export interface UiConfig {
   /** The price scale at the plot's right. Off, the bars span the chart's whole width, and the last
    *  price's line, which points at its label on the scale, goes with it. */
   priceScale?: boolean
+  /** The crosshair's lines and the labels it writes on the scales. `false` draws none; an object
+   *  hides some of them or draws them solid. The crosshair still follows the pointer, and
+   *  `sync.onCrosshair` still reports it. */
+  crosshair?: boolean | CrosshairUi
+}
+
+/** The crosshair's own parts. */
+export interface CrosshairUi {
+  /** The horizontal line through the price under the pointer. Without it the crosshair is one
+   *  vertical line through the bar under the pointer, the way a finger reads a small chart. */
+  horizontal?: boolean
+  /** The time and the price the crosshair writes on the scales. */
+  labels?: boolean
+  /** Solid lines rather than dashed ones. */
+  solid?: boolean
 }
 
 /** The top bar's own controls. */
