@@ -1,6 +1,8 @@
 # @trdrs/quickcharts
 
-## Unreleased
+## 2.4.0
+
+Bar replay that starts where the viewer chose, and a chart a host can hold in place, show without its price scale, give a crosshair of chosen parts, and morph between bar and close styles. No public name changes.
 
 Bar replay starts where the viewer chose: a bar picked in view keeps its place as the bars after it leave the plot, and after a beat the view glides it to the replay's edge. A bar chosen out of view, from a date, comes to the edge at once.
 
