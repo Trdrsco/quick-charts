@@ -1,5 +1,9 @@
 # @trdrs/quickcharts
 
+## Unreleased
+
+Bar replay starts where the viewer chose: a bar picked in view keeps its place as the bars after it leave the plot, and after a beat the view glides it to the replay's edge. A bar chosen out of view, from a date, comes to the edge at once.
+
 ## 2.3.0
 
 The symbol naming rule for hosts that name markets in views of their own. No public name changes.
