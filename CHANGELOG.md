@@ -6,6 +6,8 @@ Bar replay starts where the viewer chose: a bar picked in view keeps its place a
 
 `features.navigation` holds the view where the chart frames it. Off, no drag, flick, pinch or wheel moves the view, a scale takes no drag or double-tap, the zoom and scroll commands and their keys are unavailable, and the navigation cluster is not drawn, while `goLive`, `reset` and the crosshair still work. It is on unless the host turns it off.
 
+`ui.priceScale` shows the price scale at the plot's right. Hidden, the bars span the chart's whole width, and the last price draws no line across the plot and no label. It is shown unless the host hides it.
+
 ## 2.3.0
 
 The symbol naming rule for hosts that name markets in views of their own. No public name changes.

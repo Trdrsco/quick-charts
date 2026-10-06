@@ -15,7 +15,7 @@ import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
 import type { FeatureConfig, UiConfig } from '../../src/widget/options'
 import { FEATURE_KEYS, flagPaths, resolveFeatures, resolveUi, UI_KEYS } from '../../src/widget/planes'
-import { fakePriceAt } from './rendererFake'
+import { fakePriceAt, lastRenderer } from './rendererFake'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('lightweight-charts')>()
@@ -136,6 +136,8 @@ const COVERAGE: Readonly<Record<string, Probe | { provedBy: string }>> = {
     return has('.qc-picker-dialog')(document)
   },
   indicatorSettings: { provedBy: 'this file: a hidden settings dialog leaves the legend gear to the inputs editor' },
+  // The scale is the renderer's own, so it is read off the options the chart created the renderer with.
+  priceScale: () => (lastRenderer().created.rightPriceScale as { visible?: unknown }).visible === true,
 }
 
 describe('every control flag is accounted for on screen', () => {
