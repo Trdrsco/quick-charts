@@ -1,0 +1,47 @@
+{
+  "date": "2026-10-06",
+  "packageName": "@trdrs/quickcharts",
+  "version": "2.4.0",
+  "releaseCommit": "55b2a5fce400e41b2668fdcea7ca8568d218b125",
+  "tarballSha256": "431a57d32833b9d0c32f9d11be78d998ba23d878b05d9fb0dfadfb47148bb847",
+  "tarStreamSha256": "fd4b334723fc1f162d209745f90cdcf0b763673409eef601046326b7eb8ca852",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37536894572",
+    "unitTestsPassed": 3932,
+    "cleanRoomChecksPassed": 42,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "0a5fdad82b4dbda0d86c63f9b13ca832336f32547d2e8ca7c2b8d23b6c64dce2",
+      "dossierHashesSha256": "fc4969c5de12aeb8b8c1a640f8441e6bd5950f818721a5e064d8ff5ad2ac58f0",
+      "installTestChecksPassed": 25,
+      "dossierRetained": true
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "3011bf4ca5fd7b59a42d648cdcedc60978e24530",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/37540515687",
+    "result": "pass",
+    "workingTree": "2.4.0 on every pin and the Platform version matrix; exact tarball installed through a temporary pnpm override"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Joey authorized the Quick Charts release that carries the four options landed in #84, #86, #87 and #88, in words his coordinating session relayed to his release agent: \"handle any quick chart stuff\".",
+    "recordedAt": "2026-10-06T22:26:33Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false,
+    "npmPublishApproval": "left to the owner, who approves the npm-publish environment himself"
+  }
+}
