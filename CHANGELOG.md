@@ -8,6 +8,8 @@ Bar replay starts where the viewer chose: a bar picked in view keeps its place a
 
 `ui.priceScale` shows the price scale at the plot's right. Hidden, the bars span the chart's whole width, and the last price draws no line across the plot and no label. It is shown unless the host hides it.
 
+`ui.crosshair` chooses what the crosshair draws: `false` draws neither its lines nor its labels, and a `CrosshairUi` object hides the horizontal line (`horizontal: false`) or the time and the price on the scales (`labels: false`), or draws the lines solid (`solid: true`). The crosshair still follows the pointer, and `sync.onCrosshair` still reports it.
+
 ## 2.3.0
 
 The symbol naming rule for hosts that name markets in views of their own. No public name changes.

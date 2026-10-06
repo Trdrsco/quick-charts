@@ -10,7 +10,7 @@ import type { ChartDatafeed, DatafeedConfig } from '../datafeed'
 import type { ChartSaveLoadAdapter } from '../resources'
 import type { SymbolInfo } from '../symbology'
 import type { ChartExtension } from '../extension'
-import type { Capabilities, FeatureConfig, LegendUi, SettingsMenuUi, TopBarUi, UiConfig } from './options'
+import type { Capabilities, CrosshairUi, FeatureConfig, LegendUi, SettingsMenuUi, TopBarUi, UiConfig } from './options'
 
 /** What one configuration key takes: a flag, a list, or a node that is a flag or an object of its
  *  own keys. */
@@ -60,6 +60,7 @@ export const UI_KEYS: { readonly [K in keyof Required<UiConfig>]: KeyShape } = {
   indicatorPicker: 'flag',
   indicatorSettings: 'flag',
   priceScale: 'flag',
+  crosshair: { horizontal: 'flag', labels: 'flag', solid: 'flag' } satisfies { readonly [K in keyof Required<CrosshairUi>]: KeyShape },
 }
 
 /** Every flag path of a plane, in declaration order: a node is a flag of its own and then its
@@ -150,6 +151,11 @@ export interface ResolvedUi {
   indicatorPicker: boolean
   indicatorSettings: boolean
   priceScale: boolean
+  /** Whether the crosshair draws at all, and which of its parts. */
+  crosshair: boolean
+  crosshairHorizontal: boolean
+  crosshairLabels: boolean
+  crosshairSolid: boolean
 }
 
 /** What the widget offers, as far as it decides which controls are drawn. Each is absent where the
@@ -189,6 +195,9 @@ export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatur
   const inLegend = (key: keyof LegendUi): boolean => legend && (typeof legendConfig !== 'object' || shown(legendConfig[key]))
   const symbolSearch = shown(config?.symbolSearch)
   const indicatorPicker = shown(config?.indicatorPicker)
+  const crosshairConfig = config?.crosshair
+  const crosshair = features.crosshair && shown(crosshairConfig)
+  const inCrosshair = (key: keyof CrosshairUi): boolean => crosshair && (typeof crosshairConfig !== 'object' || shown(crosshairConfig[key]))
   return {
     topBar,
     symbolPill: inBar('symbol') && symbolSearch,
@@ -220,6 +229,11 @@ export function resolveUi(config: UiConfig | undefined, features: ResolvedFeatur
     indicatorPicker,
     indicatorSettings: shown(config?.indicatorSettings),
     priceScale: shown(config?.priceScale),
+    crosshair,
+    crosshairHorizontal: inCrosshair('horizontal'),
+    crosshairLabels: inCrosshair('labels'),
+    // Solid is the one part that is off unless named: a crosshair is dashed by default.
+    crosshairSolid: crosshair && typeof crosshairConfig === 'object' && crosshairConfig.solid === true,
   }
 }
 

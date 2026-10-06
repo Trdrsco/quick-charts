@@ -88,11 +88,12 @@ describe('the built manifest against the source registries', () => {
     for (const row of built.features) expect(row.default, row.id).toBe(true)
   })
 
-  it('ui: every control flag of the presentation plane by its path, each on by default', () => {
+  it('ui: every control flag of the presentation plane by its path, each on by default but the crosshair drawn solid', () => {
     if (!built) return
     expect(ids(built.ui)).toEqual(flagPaths(UI_KEYS).sort())
     expect(ids(built.ui)).toContain('topBar.settings.theme')
-    for (const row of built.ui) expect(row.default, row.id).toBe(true)
+    // Solid crosshair lines are a style a host names; every other flag is on unless it turns it off.
+    for (const row of built.ui) expect(row.default, row.id).toBe(row.id !== 'crosshair.solid')
   })
 
   it('icons: every icon a host may draw, once each in catalog order, the mirrored ones marked', () => {

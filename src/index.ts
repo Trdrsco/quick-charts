@@ -46,6 +46,7 @@ export type {
   Capabilities,
   ChartPreferences,
   ChartWidgetOptions,
+  CrosshairUi,
   FeatureConfig,
   SearchDisplayOptions,
   SearchScope,

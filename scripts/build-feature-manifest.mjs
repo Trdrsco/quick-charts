@@ -23,7 +23,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { Window } from 'happy-dom'
 
 import { BROWSER_GLOBALS, installBrowserShim } from './browserShim.ts'
-import { FEATURE_KEYS, flagPaths, UI_KEYS } from '../src/widget/planes.ts'
+import { FEATURE_KEYS, flagPaths, resolveFeatures, resolveUi, UI_KEYS } from '../src/widget/planes.ts'
 
 const pkgRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const manifestPath = join(pkgRoot, 'package.json')
@@ -42,6 +42,16 @@ const root = await import(pathToFileURL(join(pkgRoot, 'dist/index.js')).href)
 const drawings = await import(pathToFileURL(join(pkgRoot, 'dist/drawings.js')).href)
 
 const byId = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+
+/** The configuration that names one flag path: `topBar.settings.theme` is
+ *  `{ topBar: { settings: { theme: value } } }`. */
+const naming = (path, value) => path.split('.').reduceRight((inner, key) => ({ [key]: inner }), value)
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b)
+
+/** Each plane as a host that passes nothing gets it. A flag defaults on when naming it on changes
+ *  nothing there. */
+const noFeatures = resolveFeatures()
+const noUi = resolveUi(undefined, noFeatures)
 
 /** The command registry, read off one mounted widget. */
 function commandsOf() {
@@ -76,13 +86,13 @@ const manifest = {
   timeframes: root.TIMEFRAME_PRESETS.flatMap((g) => g.tokens.map((id) => ({ id, unit: g.unit }))),
   timezones: root.TIMEZONES.map((z) => ({ id: z.id, city: z.city })),
   commands: commandsOf(),
-  // Every flag of each plane defaults on, which is what a host that passes nothing gets.
+  // Each flag with its default, read from the planes the way a host that passes nothing gets them.
   features: flagPaths(FEATURE_KEYS)
     .sort()
-    .map((id) => ({ id, default: true })),
+    .map((id) => ({ id, default: same(resolveFeatures(naming(id, true)), noFeatures) })),
   ui: flagPaths(UI_KEYS)
     .sort()
-    .map((id) => ({ id, default: true })),
+    .map((id) => ({ id, default: same(resolveUi(naming(id, true), noFeatures), noUi) })),
   // In catalog order; a glyph the chart mirrors for a right-to-left language says so.
   icons: root.CHART_ICON_IDS.map((id) => ({ id, ...(root.MIRRORED_ICONS.has(id) ? { mirrored: true } : {}) })),
   themes: {
