@@ -48,6 +48,7 @@ function plane(extension: ChartExtension) {
   let disposed = false
   const deps: ExtensionsDeps = {
     chartId: 'c',
+    navigable: true,
     painters: resolveMarkPainters({}),
     active: () => true,
     chart: { timeScale: () => ({ timeToCoordinate: () => null, coordinateToTime: () => null }), priceScale: () => ({ width: () => 60 }), applyOptions() {} } as unknown as IChartApi,

@@ -150,6 +150,8 @@ export interface DrawingsLayer {
 export interface DrawingsDeps {
   chart: IChartApi
   series: ISeriesApi<SeriesType>
+  /** Whether the chart's view moves by hand. */
+  navigable: boolean
   /** The gesture box the layer draws into. */
   container: HTMLElement
   /** The inert chrome subtree the surfaces mount into. */
@@ -259,6 +261,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
   const handle = attachDrawings({
     chart: deps.chart,
     series: deps.series,
+    navigable: deps.navigable,
     container: deps.container,
     symbol: deps.symbol,
     timeframe: deps.timeframe,

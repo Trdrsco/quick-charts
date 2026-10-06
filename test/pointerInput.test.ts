@@ -58,29 +58,31 @@ describe('pan, pinch and axis scaling belong to the chart, and are borrowed rath
   })
 
   it('the chart applies that one rule rather than its own pair of flags', () => {
-    expect(extensionsSrc).toContain('const state = pointerLock(locked)')
+    expect(extensionsSrc).toContain('const state = pointerLock(locked, deps.navigable)')
     expect(extensionsSrc).toContain('deps.chart.applyOptions({ handleScroll: state.handleScroll, handleScale: state.handleScale })')
     expect(extensionsSrc).toContain('deps.setTouchAction(state.touchAction)')
     expect(chartSrc).toContain('gestures.style.touchAction = value')
   })
 
-  it('the chart opens released: the renderer’s pan, wheel zoom and axis drag on, and the chart’s own pinch attached', () => {
+  it('the chart opens released: the renderer’s pan, wheel zoom and axis drag follow features.navigation, and the chart’s own pinch attached', () => {
     // A chart that mounted with either flag off would be a chart nobody can move, and no runtime
-    // assertion in this package would notice. The renderer is created with its defaults, and the
-    // extension plane applies the released lock as it attaches, which turns the renderer's pinch off
-    // for the chart's own.
+    // assertion in this package would notice. The renderer is created with both flags exactly as
+    // `features.navigation` says, and the extension plane applies the released lock as it attaches,
+    // which turns the renderer's pinch off for the chart's own.
     const created = chartSrc.slice(chartSrc.indexOf('createRenderer(gestures, {'), chartSrc.indexOf('const anchor:'))
-    expect(created).not.toContain('handleScroll')
-    expect(created).not.toContain('handleScale')
+    expect(created).toContain('handleScroll: deps.features.navigation,')
+    expect(created).toContain('handleScale: deps.features.navigation,')
     expect(extensionsSrc).toContain('series.lockPanZoom(false)')
-    expect(chartSrc).toContain('attachPinch({ chart, target: gestures })')
+    expect(chartSrc).toContain('deps.features.navigation ? attachPinch({ chart, target: gestures }) : null')
   })
 
   it('an in-chart drag borrows the lock through one capability, and the chart alone applies it', () => {
     // The extension plane is the one door to the lock: an overlay asks `lockPanZoom`, and the flags
-    // and the touch action move together inside the chart. No other site in the package writes the
-    // renderer's navigation flags, and the chart makes exactly one touch-action write.
-    const widgetSrc = extensionsSrc + chartSrc + pointerSrc
+    // and the touch action move together inside the chart. Past the renderer's creation, no other
+    // site in the package writes the renderer's navigation flags, and the chart makes exactly one
+    // touch-action write.
+    const created = chartSrc.slice(chartSrc.indexOf('createRenderer(gestures, {'), chartSrc.indexOf('const anchor:'))
+    const widgetSrc = extensionsSrc + chartSrc.replace(created, '') + pointerSrc
     expect(widgetSrc.match(/handleScroll:/g)!.length).toBe(1)
     expect(widgetSrc.match(/handleScale:/g)!.length).toBe(1)
     expect(widgetSrc.match(/\.touchAction =/g)!.length).toBe(1)

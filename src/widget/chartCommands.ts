@@ -135,11 +135,13 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   add({ id: 'chart.view.reset', scope: 'chart', label: 'command.viewReset', shortcut: 'Alt+KeyR', available: always, execute: () => handle.reset() })
   add({ id: 'chart.view.goLive', scope: 'chart', label: 'command.viewGoLive', shortcut: 'Alt+KeyL', available: always, execute: () => handle.goLive() })
   // Zoom and scroll are the chart's own step rules, so a keyboard, a button and a host call all
-  // move by exactly the same amount and stop at the same floor.
-  add({ id: 'chart.view.zoomIn', scope: 'chart', label: 'command.viewZoomIn', shortcut: 'Equal', available: always, execute: () => deps.zoom('in') })
-  add({ id: 'chart.view.zoomOut', scope: 'chart', label: 'command.viewZoomOut', shortcut: 'Minus', available: always, execute: () => deps.zoom('out') })
-  add({ id: 'chart.view.scrollLeft', scope: 'chart', label: 'command.viewScrollLeft', shortcut: 'ArrowLeft', available: always, execute: () => deps.scroll('left') })
-  add({ id: 'chart.view.scrollRight', scope: 'chart', label: 'command.viewScrollRight', shortcut: 'ArrowRight', available: always, execute: () => deps.scroll('right') })
+  // move by exactly the same amount and stop at the same floor. They are navigation, so a chart that
+  // holds its view takes neither.
+  const navigable = (): boolean => features.navigation
+  add({ id: 'chart.view.zoomIn', scope: 'chart', label: 'command.viewZoomIn', shortcut: 'Equal', available: navigable, execute: () => deps.zoom('in') })
+  add({ id: 'chart.view.zoomOut', scope: 'chart', label: 'command.viewZoomOut', shortcut: 'Minus', available: navigable, execute: () => deps.zoom('out') })
+  add({ id: 'chart.view.scrollLeft', scope: 'chart', label: 'command.viewScrollLeft', shortcut: 'ArrowLeft', available: navigable, execute: () => deps.scroll('left') })
+  add({ id: 'chart.view.scrollRight', scope: 'chart', label: 'command.viewScrollRight', shortcut: 'ArrowRight', available: navigable, execute: () => deps.scroll('right') })
 
   // ── The loaded bars, as a file. A local write of what is already on screen: no history request
   // and no server export. An empty chart has nothing to write and the command is unavailable, which

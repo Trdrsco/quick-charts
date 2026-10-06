@@ -69,7 +69,7 @@ import { attachComparePlane, type ChartCompareApi } from './compare'
 import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './replay'
 import { attachExtensionsPlane } from './extensions'
 import { attachLegendPlane, type ChartLegendRow } from './legend'
-import { attachFling } from './fling'
+import { attachFling, type Fling } from './fling'
 import { attachPinch } from './pinch'
 import { attachFreePan } from './freePan'
 import { watchPlotArea, type PlotArea } from './plotArea'
@@ -550,6 +550,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // The renderer's own momentum throws a flick as fast as seven pixels a millisecond and coasts
     // it thousands of pixels; the chart coasts a flick itself, calmly.
     kineticScroll: { touch: false, mouse: false },
+    // A chart that holds its view takes no drag, wheel, pinch or scale gesture from the renderer.
+    handleScroll: deps.features.navigation,
+    handleScale: deps.features.navigation,
     rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.08 } },
     timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 8, minBarSpacing: 0.5 },
   })
@@ -768,7 +771,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     onGlide: () => followLiveEdge(),
     reducedMotion: () => gestures.ownerDocument.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false,
   })
-  const fling = attachFling({ chart, target: gestures })
+  /** A chart that holds its view throws no flick, so its coast is one that never starts. */
+  const still: Fling = { stop: () => undefined, destroy: () => undefined }
+  const fling = deps.features.navigation ? attachFling({ chart, target: gestures }) : still
   let unregisterRangeMirror = (): void => undefined
 
   /** Resolve the viewer's timezone CHOICE against the symbol on screen and re-label the axis and
@@ -902,6 +907,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const drawings = attachDrawingsPlane({
     chart,
     series: anchor,
+    navigable: deps.features.navigation,
     container: gestures,
     chrome,
     chartId: deps.id,
@@ -1027,6 +1033,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const extensions = attachExtensionsPlane({
     chartId: deps.id,
     chart,
+    navigable: deps.features.navigation,
     series: () => anchor,
     visible: () => series,
     gestures,
@@ -1150,8 +1157,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   navigationRoot.addEventListener('mouseup', onNativeDragEnd, { passive: true })
   navigationRoot.addEventListener('pointerup', onNativeDragEnd, { passive: true })
   navigationRoot.addEventListener('pointercancel', onNativeDragEnd, { passive: true })
-  const pinch = attachPinch({ chart, target: gestures })
-  const freePan = deps.freePan
+  const pinch = deps.features.navigation ? attachPinch({ chart, target: gestures }) : null
+  const freePan = deps.freePan && deps.features.navigation
     ? attachFreePan({
         chart,
         target: gestures,
@@ -2164,7 +2171,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       pointer?.destroy()
       ranges.stopGlide()
       fling.destroy()
-      pinch.destroy()
+      pinch?.destroy()
       freePan?.destroy()
       plotArea.destroy()
       // Extensions come down FIRST, while the chart they drew on is still there to take the drawing

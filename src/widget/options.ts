@@ -61,6 +61,11 @@ export interface FeatureConfig {
    *  what a touch surface does. The crosshair SYNC lane is untouched: a host mirroring a moment
    *  across a layout still gets its events. */
   crosshair?: boolean
+  /** Moving the view by hand: dragging, flicking and pinching the plot, the wheel, dragging and
+   *  double-tapping the scales, and the zoom and scroll commands with their keys. Off holds the view
+   *  where the chart frames it, on the live edge, a range preset or a window the host sets, while the
+   *  crosshair still follows a pointer or a held finger. */
+  navigation?: boolean
 }
 
 /** ── UI ──────────────────────────────────────────────────────────────────────────────────────

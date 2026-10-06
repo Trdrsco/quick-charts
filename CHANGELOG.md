@@ -4,6 +4,8 @@
 
 Bar replay starts where the viewer chose: a bar picked in view keeps its place as the bars after it leave the plot, and after a beat the view glides it to the replay's edge. A bar chosen out of view, from a date, comes to the edge at once.
 
+`features.navigation` holds the view where the chart frames it. Off, no drag, flick, pinch or wheel moves the view, a scale takes no drag or double-tap, the zoom and scroll commands and their keys are unavailable, and the navigation cluster is not drawn, while `goLive`, `reset` and the crosshair still work. It is on unless the host turns it off.
+
 ## 2.3.0
 
 The symbol naming rule for hosts that name markets in views of their own. No public name changes.
