@@ -92,8 +92,8 @@ describe('how a row is written', () => {
   })
 
   it('names the venue as the source, and the publisher only where there is no venue', () => {
-    expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: 'CME', type: 'future', dataSource: 'pyth' }).source).toBe('CME')
-    expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: '', type: 'future', dataSource: 'pyth' }).source).toBe('pyth')
+    expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: 'CME', type: 'future', dataSource: 'feed' }).source).toBe('CME')
+    expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: '', type: 'future', dataSource: 'feed' }).source).toBe('feed')
     expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: '', type: 'future' }).source).toBe('')
   })
 })
@@ -313,7 +313,7 @@ describe('compare and change-symbol modes', () => {
         return () => dropped.push(name)
       }
     const { input, rows } = open('search', {
-      catalog: [...CATALOG, { symbol: 'GOLD', name: 'Gold spot', exchange: '', type: 'metal', dataSource: 'pyth' }],
+      catalog: [...CATALOG, { symbol: 'GOLD', name: 'Gold spot', exchange: '', type: 'metal', dataSource: 'feed' }],
       venueMark: paint('venue'),
       dataSourceMark: paint('dataSource'),
     })
@@ -329,9 +329,9 @@ describe('compare and change-symbol modes', () => {
     expect(es.dataset.qcHost).toBe('true')
     expect(es.querySelector('img')).not.toBeNull()
     expect(es.textContent).toBe('')
-    expect(painted).toEqual(expect.arrayContaining(['dataSource:pyth:18', 'venue:CME:18']))
+    expect(painted).toEqual(expect.arrayContaining(['dataSource:feed:18', 'venue:CME:18']))
     // Each rebuild releases every box the last one painted.
-    expect(dropped).toContain('pyth')
+    expect(dropped).toContain('feed')
   })
 
   it('writes a source as its initial where the host paints no mark', async () => {
