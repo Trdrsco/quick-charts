@@ -3,10 +3,11 @@
 // layout, a drawings document or a drawing list written by a chart that drew one still carries it.
 // Each loads without it, and quietly: the card is skipped as a drawing of any type the catalog does
 // not hold is, nothing throws and no notice is shown, and every drawing beside it loads exactly as
-// it was saved. The next save writes the chart without it.
+// it was saved. The next save writes the chart without it, while a drawings document keeps it as it
+// was written, unread, and names it unreadable when it is applied.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
-import { DRAWING_CONTEXT_VERSION, DRAWING_DOCUMENT_VERSION, type DrawingResourceContext } from '../../src/drawings/document'
+import { DRAWING_CONTEXT_VERSION, DRAWING_DOCUMENT_VERSION, liveDrawingEntries, type DrawingResourceContext } from '../../src/drawings/document'
 import { drawingTools, parseDrawingsStore, restoreDrawings, serializeDrawingsStore, type IDrawing, type SerializedDrawing } from '../../src/drawings/index'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { createChart, type ChartWidget } from '../../src/widget/create'
@@ -120,5 +121,29 @@ describe('a save that carries a content card', () => {
     await settle()
     expect(widget.activeChart().drawings!.export()).toEqual([line, box])
     expect(document.querySelector('.qc-toast')).toBeNull()
+  })
+
+  it('names it unreadable when a drawings document is reloaded, and a write keeps it in the document as it was written', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const [line, card, box] = savedDrawings()
+    const context: DrawingResourceContext = { version: DRAWING_CONTEXT_VERSION, kind: 'symbol-global', symbol: 'ES' }
+    const entries = [line, card, box].map((row) => ({ id: row.id, source: 'main', pane: 'main', type: row.type, state: row }))
+    const store = adapter.drawings(context)
+    expect((await store.create({ version: DRAWING_DOCUMENT_VERSION, context, revision: 1, entries, groups: [], tombstones: [] })).kind).toBe('ok')
+
+    const widget = mount(adapter, { drawingPersistence: { mode: 'separate', scope: 'symbol-global' } })
+    await settle()
+    const chart = widget.activeChart()
+    expect(await chart.drawingResources!.reload()).toEqual({ kind: 'ok', applied: 2, rejected: [{ id: 'card', reason: 'unreadable' }] })
+    expect(chart.drawings!.export()).toEqual([line, box])
+
+    // The viewer clears the chart: the line and the rectangle are deleted, and the card, which the
+    // chart never drew, stays in the document as it was written.
+    chart.drawings!.clearAll(true)
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    await settle()
+    const written = (await store.load((await store.list())[0]!.id))!.body
+    expect(liveDrawingEntries(written)).toEqual([entries[1]])
+    expect(written.tombstones.map((tombstone) => tombstone.id).sort()).toEqual(['box', 'line'])
   })
 })
