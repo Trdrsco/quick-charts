@@ -2891,6 +2891,11 @@ the letters' color, size, weight and slant on a Label row, then the border and, 
 that shade their legs, the background, which `fillBackground` switches off and on keeping its
 color. A three drives pattern stands on seven points, its reversal after the third drive the last.
 
+An Elliott wave count writes its labels in its wave's color, as its `degree` writes them: the
+fifteen degrees from `supermillennium` to `minuscule` (`ELLIOTT_DEGREES`) stand in five threes,
+each three ringed, in parentheses and bare, in roman numerals or figures and in capitals or small
+letters. `showWave` switches the wave through its pivots, and the labels stand without it.
+
 Text-bearing tools open an inline editor where the text sits, in the drawing's own type. A fresh
 placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd
 with Enter commits, Escape cancels, and a press on the chart commits.

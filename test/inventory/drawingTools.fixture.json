@@ -404,8 +404,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#3d85c6",
+        "lineWidth": 2,
+        "lineStyle": "solid"
+      },
+      "props": [
+        "degree",
+        "showWave"
+      ]
     },
     {
       "type": "elliott_double_combo",
@@ -414,8 +421,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#6aa84f",
+        "lineWidth": 2,
+        "lineStyle": "solid"
+      },
+      "props": [
+        "degree",
+        "showWave"
+      ]
     },
     {
       "type": "elliott_impulse_wave",
@@ -424,8 +438,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#3d85c6",
+        "lineWidth": 2,
+        "lineStyle": "solid"
+      },
+      "props": [
+        "degree",
+        "showWave"
+      ]
     },
     {
       "type": "elliott_triangle_wave",
@@ -434,8 +455,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#ff9800",
+        "lineWidth": 2,
+        "lineStyle": "solid"
+      },
+      "props": [
+        "degree",
+        "showWave"
+      ]
     },
     {
       "type": "elliott_triple_combo",
@@ -444,8 +472,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#6aa84f",
+        "lineWidth": 2,
+        "lineStyle": "solid"
+      },
+      "props": [
+        "degree",
+        "showWave"
+      ]
     },
     {
       "type": "ellipse",

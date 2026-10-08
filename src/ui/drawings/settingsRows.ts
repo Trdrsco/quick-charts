@@ -2,8 +2,8 @@
 // from the drawing's own props and the settings capabilities on `@trdrs/quickcharts/drawings`; this
 // module turns those facts into fields. A row exists only where the prop exists and the tool's
 // paint honors it, so the dialog never shows a control that does nothing.
-import type { DrawingStyle, IDrawing, TimeframeVisibility } from '../../internal/drawings/index'
-import { alphaOf, withAlpha } from '../../internal/drawings/index'
+import type { DrawingStyle, ElliottDegree, IDrawing, TimeframeVisibility } from '../../internal/drawings/index'
+import { alphaOf, ELLIOTT_DEGREES, withAlpha } from '../../internal/drawings/index'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import {
   BAR_ONLY_COORDS,
@@ -13,7 +13,6 @@ import {
   IMAGE_ERROR_MESSAGES,
   INERT_PROPS,
   INPUT_PROPS,
-  LABELED_PATTERNS,
   NO_DASH,
   NO_LINE_DECOR,
   NO_COORDINATES_TAB,
@@ -28,7 +27,7 @@ import { createOpacitySlider } from '../controls/color'
 import { humanSize } from './imagePicker'
 import type { IconResolver } from '../icons/resolver'
 import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
-import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, strokedLevelRows } from './levelRows'
+import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, strokedLevelRows, thicknessSelect } from './levelRows'
 
 export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Table' | 'Coordinates' | 'Visibility'
 
@@ -65,6 +64,23 @@ const SIDE_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.left', cent
 const UPDOWN_LABEL: Record<string, ChartMessageKey> = { up: 'drawing.up', down: 'drawing.down' }
 const ROWS_LAYOUT_LABEL: Record<string, ChartMessageKey> = { number: 'drawing.rowsByNumber', ticks: 'drawing.ticksPerRow' }
 const PROFILE_VOLUME_LABEL: Record<string, ChartMessageKey> = { updown: 'drawing.upDown', total: 'drawing.total', delta: 'drawing.delta' }
+const DEGREE_LABEL: Record<ElliottDegree, ChartMessageKey> = {
+  supermillennium: 'drawing.degreeSupermillennium',
+  millennium: 'drawing.degreeMillennium',
+  submillennium: 'drawing.degreeSubmillennium',
+  grandSupercycle: 'drawing.degreeGrandSupercycle',
+  supercycle: 'drawing.degreeSupercycle',
+  cycle: 'drawing.degreeCycle',
+  primary: 'drawing.degreePrimary',
+  intermediate: 'drawing.degreeIntermediate',
+  minor: 'drawing.degreeMinor',
+  minute: 'drawing.degreeMinute',
+  minuette: 'drawing.degreeMinuette',
+  subminuette: 'drawing.degreeSubminuette',
+  micro: 'drawing.degreeMicro',
+  submicro: 'drawing.degreeSubmicro',
+  minuscule: 'drawing.degreeMinuscule',
+}
 const MODE_LABEL: Record<string, ChartMessageKey> = { bars: 'drawing.bars', open: 'drawing.modeLineOpen', high: 'drawing.modeLineHigh', low: 'drawing.modeLineLow', close: 'drawing.modeLineClose', hl2: 'drawing.modeLineHl2' }
 const PROFILE_LEVELS: readonly { label: ChartMessageKey; key: 'poc' | 'vah' | 'val' }[] = [
   { label: 'drawing.pointOfControl', key: 'poc' },
@@ -118,7 +134,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'pattern'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'elliott' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -164,6 +180,11 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   three_drives: 'pattern',
   triangle_pattern: 'pattern',
   head_and_shoulders: 'pattern',
+  elliott_impulse_wave: 'elliott',
+  elliott_correction: 'elliott',
+  elliott_triangle_wave: 'elliott',
+  elliott_double_combo: 'elliott',
+  elliott_triple_combo: 'elliott',
 }
 
 /** A held weight or slant is a toggle of the field's box, pressed while it holds. */
@@ -345,6 +366,26 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
       row(t('drawing.border'), stroke('drawing.border')),
     )
     if (has('fillBackground')) out.push(background())
+  } else if (layout === 'elliott') {
+    // One color for the wave and its labels, the wave's switch and thickness, and the degree that
+    // writes the labels.
+    out.push(
+      row(
+        t('drawing.color'),
+        swatchButton(t, box, {
+          label: t('drawing.color'),
+          value: style.lineColor,
+          onPick: (c) => {
+            const alpha = alphaOf(style.lineColor)
+            ctx.patchStyle({ lineColor: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(style.lineColor),
+          onOpacity: (v) => ctx.patchStyle({ lineColor: withAlpha(style.lineColor, v) }),
+        }),
+      ),
+      checkRow(t('drawing.wave'), props.showWave !== false, (v) => ctx.patchProps({ showWave: v }), [thicknessSelect(ctx, style.lineWidth, (v) => ctx.patchStyle({ lineWidth: v }))]),
+      row(t('drawing.degree'), dropdown(icons, box, t('drawing.degree'), ELLIOTT_DEGREES, props.degree as ElliottDegree, label(t, DEGREE_LABEL), (v) => ctx.patchProps({ degree: v }), 'medium')),
+    )
   } else {
     out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine'), ...ends()), extend('drawing.extendLeftLine', 'drawing.extendRightLine'), background())
   }
@@ -436,9 +477,6 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   toggle('reverse', 'drawing.reverse')
   toggle('fullCircles', 'drawing.fullCircles')
   toggle('coeffsAsPercents', 'drawing.coeffsAsPercents')
-  if (LABELED_PATTERNS.has(type) && tab === 'Style') {
-    out.push(row(t('drawing.label'), swatchButton(t, box, { label: t('drawing.label'), value: style.textColor, onPick: (c) => ctx.patchStyle({ textColor: c }), opacity: alphaOf(style.textColor), onOpacity: (v) => ctx.patchStyle({ textColor: withAlpha(style.textColor, v) }) }), fontSize()))
-  }
   toggle('background', 'drawing.background')
   toggle('extendLines', 'drawing.extendLines')
   toggle('showMiddle', 'drawing.middleLine')

@@ -81,20 +81,9 @@ export const OWN_WORDS_TOOLS: ReadonlySet<string> = new Set(['long_position', 's
 /** Tools whose floating bar carries a font-size control (their ink is type, not lines). */
 export const FONT_TOOLS: ReadonlySet<string> = new Set(['text', 'note', 'comment', 'callout', 'table', 'price_label', 'signpost'])
 
-/** Pattern/wave tools with circled vertex labels — the Style tab gets a Label styling row. */
-export const LABELED_PATTERNS: ReadonlySet<string> = new Set([
-  'xabcd_pattern',
-  'cypher_pattern',
-  'abcd_pattern',
-  'triangle_pattern',
-  'head_and_shoulders',
-  'three_drives',
-  'elliott_impulse_wave',
-  'elliott_correction',
-  'elliott_triangle_wave',
-  'elliott_double_combo',
-  'elliott_triple_combo',
-])
+/** The chart patterns, whose letters stand in pills: their Style page carries a Label row for the
+ *  letters' color, size, weight and slant. */
+export const LABELED_PATTERNS: ReadonlySet<string> = new Set(['xabcd_pattern', 'cypher_pattern', 'abcd_pattern', 'triangle_pattern', 'head_and_shoulders', 'three_drives'])
 
 /** Prop keys a tool carries (via a shared props type) but whose paint ignores them — their rows
  *  stay hidden so the modal never shows a control that does nothing. */

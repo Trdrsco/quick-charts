@@ -102,6 +102,9 @@ const points = (n: number): string[] => Array.from({ length: n }, (_, i) => `#${
 /** A pattern's Style page: its letters, its border and, where it shades its legs, its background. */
 const patternStyle = (shaded: boolean): string[] => ['Label: color select(12) toggle toggle', 'Border: colorWithThickness', ...(shaded ? ['[x] Background: color'] : [])]
 
+/** A wave count's Style page: its color, its wave's switch and thickness, and its degree. */
+const WAVE_STYLE = ['Color: color', '[x] Wave: mark(thickness)', 'Degree: select(Intermediate)']
+
 /** Every tool of the line, shape, curve, leveled and pattern families: its pages, and the rows of
  *  each page. */
 const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; Coordinates?: string[] }> = {
@@ -235,6 +238,11 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; 
   three_drives: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(false), Coordinates: points(7) },
   triangle_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(4) },
   head_and_shoulders: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(7) },
+  elliott_impulse_wave: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: WAVE_STYLE, Coordinates: points(6) },
+  elliott_correction: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: WAVE_STYLE, Coordinates: points(4) },
+  elliott_triangle_wave: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: WAVE_STYLE, Coordinates: points(6) },
+  elliott_double_combo: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: WAVE_STYLE, Coordinates: points(4) },
+  elliott_triple_combo: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: WAVE_STYLE, Coordinates: points(6) },
 }
 
 describe('the pages and rows of the line, shape, curve, leveled and pattern tools', () => {

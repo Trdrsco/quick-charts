@@ -1,7 +1,8 @@
 // @vitest-environment happy-dom
-// The pattern tools' settings beyond their rows: the sizes their letters are offered in, what the
-// Label row and the Background row write, and the look a new drawing of each pattern starts with.
-// Their rows themselves are pinned in settingsFamilies.test.ts.
+// The pattern tools' and the wave counts' settings beyond their rows: the sizes a pattern's letters
+// are offered in, what the Label row and the Background row write, a count's degrees and what its
+// rows write, and the look a new drawing of each starts with. Their rows themselves are pinned in
+// settingsFamilies.test.ts.
 import { afterEach, describe, expect, it } from 'vitest'
 import { drawingTools } from '../../../src/drawings/index'
 import { anchors, choices, pick, rig } from './settingsRig'
@@ -41,6 +42,41 @@ describe('a pattern', () => {
   })
 })
 
+describe('a wave count', () => {
+  it('offers its fifteen degrees, largest first, holding intermediate, and writes the one picked', () => {
+    const { dialog, drawing, page } = rig('elliott_impulse_wave')
+    expect(choices(dialog, select(page(), 'Degree'))).toEqual([
+      'Supermillennium',
+      'Millennium',
+      'Submillennium',
+      'Grand supercycle',
+      'Supercycle',
+      'Cycle',
+      'Primary',
+      'Intermediate',
+      'Minor',
+      'Minute',
+      'Minuette',
+      'Subminuette',
+      'Micro',
+      'Submicro',
+      'Minuscule',
+    ])
+    expect(select(page(), 'Degree').textContent).toBe('Intermediate')
+    pick(dialog, select(page(), 'Degree'), 'Grand supercycle')
+    expect(drawing.props.degree).toBe('grandSupercycle')
+  })
+
+  it('writes its color, its wave’s switch and its wave’s thickness', () => {
+    const { dialog, drawing, page } = rig('elliott_correction')
+    expect(page().querySelector('[aria-label="Color"]')).not.toBeNull()
+    page().querySelector<HTMLInputElement>('input[aria-label="Wave"]')!.click()
+    expect(drawing.props.showWave).toBe(false)
+    pick(dialog, select(page(), 'Thickness'), 'Thickness 4px')
+    expect(drawing.style.lineWidth).toBe(4)
+  })
+})
+
 describe('what a new pattern starts with', () => {
   const fresh = (type: string) => drawingTools.create(type, 'x', anchors(drawingTools.get(type)!.anchors))!
 
@@ -71,6 +107,21 @@ describe('what a new pattern starts with', () => {
     expect(restored.anchors).toHaveLength(7)
     expect(restored.anchors[6]).toEqual({ time: 460, price: 100 })
     expect(restored.isValid()).toBe(true)
+  })
+
+  it('draws each wave count in its color at 2px, its wave on, at intermediate degree', () => {
+    const colors: Record<string, string> = {
+      elliott_impulse_wave: '#3d85c6',
+      elliott_correction: '#3d85c6',
+      elliott_triangle_wave: '#ff9800',
+      elliott_double_combo: '#6aa84f',
+      elliott_triple_combo: '#6aa84f',
+    }
+    for (const [type, color] of Object.entries(colors)) {
+      const d = fresh(type)
+      expect([d.style.lineColor, d.style.lineWidth, d.style.lineStyle], type).toEqual([color, 2, 'solid'])
+      expect(d.props, type).toEqual({ showWave: true, degree: 'intermediate' })
+    }
   })
 
   it('reads no words a saved pattern carries, and so offers no Text page', () => {

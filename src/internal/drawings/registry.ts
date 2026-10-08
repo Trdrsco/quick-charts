@@ -142,6 +142,9 @@ const patternLook = (hue: string, shaded: boolean): Partial<DrawingStyle> => ({
 /** A leveled fib's factory look: its levels drawn solid at 2px, their labels at 12px. */
 const FIB_LOOK: Partial<DrawingStyle> = { lineWidth: 2, lineStyle: 'solid', fontSize: 12 }
 
+/** A wave count's look: its line and its labels in one color, the line 2px and solid. */
+const waveLook = (color: string): Partial<DrawingStyle> => ({ lineColor: color, lineWidth: 2, lineStyle: 'solid' })
+
 /** Display order of categories in the drawing toolbar. */
 export const TOOL_CATEGORIES: readonly ToolCategory[] = [
   'lines',
@@ -223,11 +226,11 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(HeadAndShoulders, { type: 'head_and_shoulders', name: 'Head and shoulders', category: 'patterns', anchors: 7, style: patternLook('#089981', true) }),
 
   // Elliott waves
-  tool(ElliottImpulse, { type: 'elliott_impulse_wave', name: 'Elliott impulse (12345)', category: 'elliott', anchors: 6 }),
-  tool(ElliottCorrection, { type: 'elliott_correction', name: 'Elliott correction (ABC)', category: 'elliott', anchors: 4 }),
-  tool(ElliottTriangle, { type: 'elliott_triangle_wave', name: 'Elliott triangle (ABCDE)', category: 'elliott', anchors: 6 }),
-  tool(ElliottDoubleCombo, { type: 'elliott_double_combo', name: 'Elliott double combo (WXY)', category: 'elliott', anchors: 4 }),
-  tool(ElliottTripleCombo, { type: 'elliott_triple_combo', name: 'Elliott triple combo (WXYXZ)', category: 'elliott', anchors: 6 }),
+  tool(ElliottImpulse, { type: 'elliott_impulse_wave', name: 'Elliott impulse (12345)', category: 'elliott', anchors: 6, style: waveLook('#3d85c6') }),
+  tool(ElliottCorrection, { type: 'elliott_correction', name: 'Elliott correction (ABC)', category: 'elliott', anchors: 4, style: waveLook('#3d85c6') }),
+  tool(ElliottTriangle, { type: 'elliott_triangle_wave', name: 'Elliott triangle (ABCDE)', category: 'elliott', anchors: 6, style: waveLook('#ff9800') }),
+  tool(ElliottDoubleCombo, { type: 'elliott_double_combo', name: 'Elliott double combo (WXY)', category: 'elliott', anchors: 4, style: waveLook('#6aa84f') }),
+  tool(ElliottTripleCombo, { type: 'elliott_triple_combo', name: 'Elliott triple combo (WXYXZ)', category: 'elliott', anchors: 6, style: waveLook('#6aa84f') }),
 
   // Cycles
   tool(CyclicLines, { type: 'cyclic_lines', name: 'Cyclic lines', category: 'cycles', anchors: 2 }),
