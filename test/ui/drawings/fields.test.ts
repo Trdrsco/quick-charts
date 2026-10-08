@@ -55,12 +55,29 @@ describe('rows and toggles', () => {
 
   it('a dropdown stores the id and shows the label', () => {
     const picked: string[] = []
-    const select = dropdown('Extend', ['None', 'Left'] as const, 'Left', (v) => (v === 'None' ? 'Do not' : 'To the left'), (v) => picked.push(v))
+    const box = dropdown(icons, 'Extend', ['None', 'Left'] as const, 'Left', (v) => (v === 'None' ? 'Do not' : 'To the left'), (v) => picked.push(v))
+    const select = box.querySelector('select')!
     expect(select.value).toBe('Left')
     expect([...select.options].map((o) => o.textContent)).toEqual(['Do not', 'To the left'])
     select.value = 'None'
     select.dispatchEvent(new Event('change'))
     expect(picked).toEqual(['None'])
+  })
+
+  it('a dropdown and a line-end picker end their box with the 18px chevron, hidden from a reader', () => {
+    const box = dropdown(icons, 'Extend', ['None', 'Left'] as const, 'Left', (v) => v, () => undefined)
+    expect(box.classList.contains('qc-select')).toBe(true)
+    // The select comes first, so the chevron follows it as the slot at the end of the box.
+    expect(box.firstElementChild!.matches('select.qc-field')).toBe(true)
+    const chevron = box.lastElementChild!
+    expect(chevron.classList.contains('qc-select-chevron')).toBe(true)
+    expect(chevron.getAttribute('aria-hidden')).toBe('true')
+    expect(chevron.querySelector('svg')!.getAttribute('height')).toBe('18')
+    // A list button lays the same slot out after its face, and names itself as the face does.
+    const end = lineEndButton(t, icons, box, 'left', 'arrow', () => undefined)
+    expect(end.lastElementChild!.classList.contains('qc-select-chevron')).toBe(true)
+    expect(end.getAttribute('aria-haspopup')).toBe('listbox')
+    expect(end.getAttribute('aria-label')).toBe('Left end')
   })
 
   it('a number field steps by its step within its bounds and rounds float dust away', () => {

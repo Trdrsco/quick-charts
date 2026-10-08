@@ -241,20 +241,18 @@
   padding-inline: 0;
 }
 
+/* A row that holds fields stands 42px, the drawing settings' row: the chart's 34px field box with
+ * room above and below it. */
 [data-qc-theme] .qc-settings-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 30px;
+  min-height: 42px;
 }
 
-[data-qc-theme] .qc-settings-row .qc-field {
-  padding: 2px 4px;
-  font-size: var(--qc-text-fontSizeSmall);
-}
-
+[data-qc-theme] .qc-settings-page .qc-field-row,
 [data-qc-theme] .qc-settings-page .qc-inputs-row {
-  min-height: 30px;
+  min-height: 42px;
 }
 
 /* THE PICKER ON A NARROW SCREEN. The dialog is a two-column reading room — a 200px rail of

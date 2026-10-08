@@ -7,7 +7,9 @@
 // the focus ring and the strong border, are held to 3 to 1 under WCAG 1.4.11. `text.disabled`
 // declares no rule: WCAG exempts an inactive user interface component from a contrast minimum.
 // `chrome.fieldBorder` declares none either: a field's mark and prompt already name it, and 1.4.11
-// asks 3 to 1 only of what a component needs in order to be identified.
+// asks 3 to 1 only of what a component needs in order to be identified. `control.fieldEdge` and
+// `control.fieldEdgeHover` declare none for the same reason; `control.fieldInvalid` does, because
+// its edge is how a field shows that it refuses its value.
 //
 // A palette edit that drops a value below its threshold fails here with the measured ratio in the
 // message, so the fix is a value rather than a waiver.
@@ -27,6 +29,7 @@ describe('WCAG 2.2 contrast in both built-in modes', () => {
     expect(GATED.map((r) => r.id).sort()).toEqual([
       'chrome.borderStrong',
       'chrome.caret',
+      'control.fieldInvalid',
       'control.mark',
       'control.on',
       'illustration.accent',

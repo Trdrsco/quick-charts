@@ -38,14 +38,8 @@
   cursor: default;
 }
 
-[data-qc-theme] .qc-drawing-select,
-[data-qc-theme] .qc-drawing-input,
-[data-qc-theme] .qc-drawing-number {
-  height: 34px;
-  padding: 0 10px;
-  font-size: var(--qc-text-fontSizeBase);
-}
-
+/* The text fields, selects and number fields are the chart's 34px field box; these rules give them
+ * their widths alone. */
 [data-qc-theme] .qc-drawing-select {
   min-width: 140px;
 }
@@ -58,19 +52,26 @@
   width: 100%;
 }
 
+/* The text area grows from four lines, its words 8px in from every side of its box. */
 [data-qc-theme] .qc-drawing-textarea {
   width: 100%;
+  height: auto;
   min-height: 80px;
   margin-top: 4px;
-  padding: 8px 10px;
-  font-size: var(--qc-text-fontSizeBase);
+  padding: 7px;
   resize: vertical;
 }
 
-/* The number field owns the last 26px of its box for the stepper, revealed on hover or focus. */
+/* The number field gives the end of its box to the steppers: a 22 by 28 column 2px in from the edge,
+ * revealed on hover or focus. The pointer on a stepper is on the field, so the edge steps up there
+ * too, at the weight of the field's own pointer state. */
 [data-qc-theme] .qc-drawing-number-wrap {
   position: relative;
   display: inline-flex;
+}
+
+[data-qc-theme] :where(.qc-drawing-number-wrap:hover) > .qc-field {
+  border-color: var(--qc-control-fieldEdgeHover);
 }
 
 [data-qc-theme] .qc-drawing-number-wrap[data-width='short'] {
@@ -87,7 +88,7 @@
 
 [data-qc-theme] .qc-drawing-number {
   width: 100%;
-  padding-inline-end: 28px;
+  padding-inline-end: 26px;
   font-variant-numeric: tabular-nums;
   appearance: textfield;
 }
@@ -100,11 +101,10 @@
 
 [data-qc-theme] .qc-drawing-steppers {
   position: absolute;
-  top: 50%;
-  inset-inline-end: 4px;
+  inset-block: 3px;
+  inset-inline-end: 3px;
   display: none;
   flex-direction: column;
-  transform: translateY(-50%);
 }
 
 [data-qc-theme] .qc-drawing-number-wrap:hover .qc-drawing-steppers,
@@ -117,7 +117,7 @@
   align-items: center;
   justify-content: center;
   width: 22px;
-  height: 13px;
+  height: 14px;
   padding: 0;
   color: var(--qc-text-muted);
   background: none;
@@ -253,6 +253,9 @@
   border-radius: 4px;
 }
 
+/* The hex field and the opacity readout are the field box at the mixer's compact 26px: the same edge
+ * and pointer step and the same ring, with the corner and the inset scaled to their height. The hex
+ * field's box is the wrap around its mark and its input. */
 [data-qc-theme] .qc-drawing-hex-wrap {
   display: flex;
   flex: 0 0 auto;
@@ -261,20 +264,26 @@
   min-width: 0;
   height: 26px;
   padding: 0 5px;
-  border: 1px solid var(--qc-chrome-grip);
-  border-radius: 4px;
+  border: 1px solid var(--qc-control-fieldEdge);
+  border-radius: 6px;
+  transition: border-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear), box-shadow var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-drawing-hex-wrap > .qc-muted {
   flex: 0 0 7px;
 }
 
-/* A field says it has the keyboard on its OWN box: its edge turns the ring colour, one line on the
- * field's exact edge following its corner. A ring the browser draws would sit square outside a
- * rounded field and belong to nothing. */
+[data-qc-theme] .qc-drawing-hex-wrap:hover,
+[data-qc-theme] .qc-drawing-opacity-readout:hover {
+  border-color: var(--qc-control-fieldEdgeHover);
+}
+
+/* A field says it has the keyboard on its own box: a 2px ring over the edge, the edge itself and the
+ * pixel inside it, following the corner. The wrap rings while the caret is anywhere inside it. */
 [data-qc-theme] .qc-drawing-hex-wrap:focus-within,
-[data-qc-theme] .qc-drawing-opacity-readout:focus-visible {
+[data-qc-theme] .qc-drawing-opacity-readout:focus {
   border-color: var(--qc-state-focusRing);
+  box-shadow: inset 0 0 0 1px var(--qc-state-focusRing);
 }
 
 [data-qc-theme] .qc-drawing-hex {
@@ -442,8 +451,8 @@
   cursor: pointer;
 }
 
-/* The readout is a FIELD beside the track: outlined rather than washed, because it is a number a
- * viewer types over and not a chip the panel is showing them. */
+/* The readout is a FIELD beside the track: edged rather than washed, because it is a number a viewer
+ * types over and not a chip the panel is showing them. */
 [data-qc-theme] .qc-drawing-opacity-field {
   position: relative;
   flex: 0 0 auto;
@@ -457,9 +466,10 @@
   font: inherit;
   font-variant-numeric: tabular-nums;
   background: none;
-  border: 1px solid var(--qc-chrome-grip);
-  border-radius: 4px;
+  border: 1px solid var(--qc-control-fieldEdge);
+  border-radius: 6px;
   outline: none;
+  transition: border-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear), box-shadow var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 /* The unit sits in the room the field keeps at its end, so a typed number never runs under it. */
@@ -544,13 +554,11 @@
   background: var(--qcd-swatch, currentColor);
 }
 
+/* A line-end picker is a list button: the end's glyph, then the chevron's slot, 2px in from the edge. */
 [data-qc-theme] .qc-drawing-line-end {
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  padding: 0;
+  padding: 0 2px;
   cursor: pointer;
 }
 
@@ -728,11 +736,19 @@
   font-size: var(--qc-text-fontSizeSmall);
 }
 
-/* Forced colors: a swatch IS its color, so it keeps it, with a system border to stand on. */
+/* Forced colors: a swatch IS its color, so it keeps it, with a system border to stand on. The mixer's
+ * compact fields ring their focus in the system highlight, as every field does. */
 @media (forced-colors: active) {
   [data-qc-theme] .qc-drawing-swatch,
   [data-qc-theme] .qc-drawing-color-strip {
     forced-color-adjust: none;
     border: 1px solid ButtonText;
+  }
+
+  [data-qc-theme] .qc-drawing-hex-wrap:focus-within,
+  [data-qc-theme] .qc-drawing-opacity-readout:focus {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    box-shadow: inset 0 0 0 1px Highlight;
   }
 }

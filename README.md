@@ -2019,6 +2019,26 @@ inventory, and the built-in palettes and the generated stylesheet are built from
 property names are private, so a color, a size or a radius is always set through a role. The
 class names inside the stylesheet are private too, except the supported hooks below.
 
+### Fields
+
+Every text field, select, number field and color well the chart draws in its dialogs and settings
+is one box: 34px tall, a 1px edge with an 8px corner around a clear ground, and its words at 14 on
+18, 8px in from the edge. A select ends in an 18px chevron. Four roles in the `control` family
+paint the box, and the focus ring is `state.focusRing`:
+
+| Role | Light | Dark | What it paints |
+|---|---|---|---|
+| `control.fieldEdge` | `#dbdbdb` | `#575757` | The edge of a field at rest. |
+| `control.fieldEdgeHover` | `#a8a8a8` | `#707070` | The edge of a field under the pointer. |
+| `control.fieldInvalid` | `#f23645` | `#f23645` | The edge and the focus ring of a field holding a value it refuses. |
+| `control.fieldFill` | `#f2f2f2` | `#2e2e2e` | The ground of a field that is read-only or disabled. |
+
+Focus draws a 2px ring over the edge, the edge itself and the pixel inside it, so the ring follows
+the corner and a dialog that scrolls never clips it. A number past its bounds or off its step turns
+the edge `control.fieldInvalid` once the viewer leaves the field, so a number on its way to a valid
+one never turns red while it is typed. The symbol search field draws its own outline in
+`chrome.fieldBorder`.
+
 ### Motion
 
 Every duration, timing function and motion scale the chart uses is a role in the `motion` family,
@@ -2074,7 +2094,8 @@ The stylesheet declares two cascade layers and puts everything it contains in th
 palettes in `quickcharts.tokens`, every recipe in `quickcharts.chart`. Nothing in it is unlayered.
 It marks a declaration `!important` only where a later layer or an inline palette must not undo it:
 an element's `hidden` attribute, the zero motion durations under a reduced-motion preference, and
-the missing focus ring of a search field, which shows its focus by its caret. Your first stylesheet
+the focus outline a field leaves off, because a field shows its focus on its own box: the ring over
+its edge, or the caret in a search field. Your first stylesheet
 must declare the complete order before any product stylesheet loads, because a layer's position is
 fixed by the first statement that names it:
 

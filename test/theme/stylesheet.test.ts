@@ -175,6 +175,28 @@ describe('the scoped stylesheet', () => {
     expect(structural).not.toMatch(/transition-(duration|timing-function)/)
   })
 
+  it('rings a field on its own box, never beside it, and keeps the refused state a rule of its own', () => {
+    const rules = [...structural.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, head, body]) => ({ selectors: head!.split(',').map((s) => s.trim()), body: body! }))
+    // The outline every focused control wears would draw a second ring outside a field's own, so
+    // every field stands out of it, held against a host's focus rule from a later layer.
+    const optOut = rules.find((rule) => rule.body.includes('outline: none !important'))!
+    for (const field of ['.qc-field', '.qc-name-input', '.qc-drawing-hex', '.qc-drawing-opacity-readout', '.qc-search-input']) {
+      expect(optOut.selectors, field).toContain(`[data-qc-theme] ${field}:focus-visible`)
+    }
+    // The ring lies over the box's own edge in the focus role: the edge and the pixel inside it.
+    const ring = rules.find((rule) => rule.selectors.includes('[data-qc-theme] .qc-field:not(button):focus'))!
+    expect(ring.selectors).toContain('[data-qc-theme] .qc-field:focus-visible')
+    expect(ring.body).toMatch(/border-color: var\(--qc-state-focusRing\)/)
+    expect(ring.body).toMatch(/box-shadow: inset 0 0 0 1px var\(--qc-state-focusRing\)/)
+    const nameBox = rules.find((rule) => rule.selectors.includes('[data-qc-theme] .qc-name-box:focus-within'))!
+    expect(nameBox.body).toMatch(/box-shadow: inset 0 0 0 1px var\(--qc-state-focusRing\)/)
+    // Only a value the chart refuses turns a field red, and the chart says so with `aria-invalid`; a
+    // native constraint (a bound or a step the chart clamps or rounds to) never paints the edge.
+    expect(rules.filter((rule) => rule.selectors.some((selector) => /:(user-)?invalid\b/.test(selector)))).toEqual([])
+    const refused = rules.find((rule) => rule.selectors.includes("[data-qc-theme] .qc-field[aria-invalid='true']"))!
+    expect(refused.body).toMatch(/border-color: var\(--qc-control-fieldInvalid\)/)
+  })
+
   it('declares one custom property per role in each mode block, and reads only those', () => {
     for (const mode of THEME_MODES) {
       const block = themeBlock(mode, BUILT_IN_THEMES[mode])

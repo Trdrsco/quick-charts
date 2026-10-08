@@ -54,7 +54,12 @@ const SURFACES: readonly Surface[] = [
   { name: 'dialogs', files: ['menu.css', 'search.css', 'indicators.css', 'layouts.css'], classes: ['qc-dialog', 'qc-dialog-scrim', 'qc-search-dialog', 'qc-picker-dialog', 'qc-settings-dialog', 'qc-layouts-open'], states: [STATE.hover, STATE.selected, STATE.disabled] },
   { name: 'menus', files: ['menu.css', 'bottombar.css', 'drawings-toolbar.css'], classes: ['qc-menu-panel', 'qc-menu-row', 'qc-tz-menu', 'qc-drawing-menu'], states: [STATE.hover, STATE.checked, STATE.disabled] },
   { name: 'popovers', files: ['status.css', 'drawings-toolbar.css', 'timeframe.css', 'replay.css'], classes: ['qc-status-popup', 'qc-drawing-popover', 'qc-tf-row', 'qc-replay'], states: [STATE.hover] },
-  { name: 'fields', files: ['chrome.css', 'drawings-fields.css', 'search.css', 'timeframe.css'], classes: ['qc-field-row', 'qc-drawing-input', 'qc-drawing-select', 'qc-search-input', 'qc-tf-composer'], states: [STATE.placeholder, ':focus'] },
+  {
+    name: 'fields',
+    files: ['quickcharts.css', 'chrome.css', 'menu.css', 'drawings-fields.css', 'search.css', 'timeframe.css'],
+    classes: ['qc-field', 'qc-select', 'qc-select-chevron', 'qc-name-box', 'qc-field-row', 'qc-drawing-input', 'qc-drawing-select', 'qc-drawing-hex-wrap', 'qc-drawing-opacity-readout', 'qc-search-input', 'qc-tf-composer'],
+    states: [STATE.placeholder, ':focus', ':focus-within', STATE.hover, ':disabled', '[readonly]', "[aria-invalid='true']", STATE.expanded],
+  },
   { name: 'settings menu', files: ['settings.css'], classes: ['qc-settings-menu', 'qc-settings-row'], states: [] },
   { name: 'legend', files: ['quickcharts.css'], classes: ['qc-legend', 'qc-legend-row', 'qc-legend-action', 'qc-session-dot'], states: ["[data-qc-hidden='true']", "[data-qc-session='open']", "[data-qc-session='closed']"] },
   { name: 'panes and scales', files: ['quickcharts.css'], classes: ['qc-pane', 'qc-panes', 'qc-gestures'], states: [STATE.on] },
@@ -93,6 +98,11 @@ const INHERITED_PAIRS: readonly { ink: string; ground: string[]; min: number }[]
   { ink: 'status.info', ground: ['chrome.surface'], min: 4.5 },
   { ink: 'state.focusRing', ground: ['chrome.surface'], min: 3 },
   { ink: 'state.focusRing', ground: ['canvas.background'], min: 3 },
+  // A field rings its focus, and turns a refused value's edge, on the dialog it stands in; the words
+  // of a field that cannot be edited stand on the read-only fill.
+  { ink: 'state.focusRing', ground: ['overlay.surface'], min: 3 },
+  { ink: 'control.fieldInvalid', ground: ['overlay.surface'], min: 3 },
+  { ink: 'text.primary', ground: ['control.fieldFill'], min: 4.5 },
   { ink: 'chrome.borderStrong', ground: ['chrome.surface'], min: 3 },
   { ink: 'drawing.text', ground: ['canvas.background'], min: 4.5 },
 ]

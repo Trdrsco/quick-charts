@@ -2,13 +2,17 @@
 // a validated patch. Two surfaces build on it. `buildInputFields` is the field set alone, which the
 // chrome's indicator settings dialog renders on its Inputs tab; `openInputsEditor` is the compact
 // popover the legend gear opens when no settings dialog serves the chart, applied as a whole on
-// Enter or Apply. Same chrome discipline as every chart editor: package-owned vanilla DOM in the
+// Enter or Apply, and the legend opens it over the widget's own resolver through
+// `mountInputsEditor`. Same chrome discipline as every chart editor: package-owned vanilla DOM in the
 // chrome subtree, self-removing, pointer events stopped, painted through `.qc-*` recipes. The
 // popover's position is its one inline write, because the gear it hangs from is wherever the
 // legend put it. Pre-render: the caller receives a validated input patch and the chart owns the
 // recompute.
-import { createChartI18n, type ChartI18n } from './i18n'
+import { createChartI18n, readingDirection, type ChartI18n } from './i18n'
 import type { ManifestInput } from './indicatorModel'
+import { selectField } from './ui/controls/select'
+import { createIconDiagnostics } from './ui/icons/draw'
+import { createIconResolver, type IconResolver } from './ui/icons/resolver'
 
 /** A rendered field set: the rows to mount, the validated patch they hold, and the first field. */
 export interface InputFields {
@@ -25,8 +29,10 @@ const titleOf = (key: string, titles?: Readonly<Record<string, string>>): string
   titles?.[key] ?? key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase())
 
 /** One row per declared input: a number field bounded by the declaration, or a select over an
- *  enum's options. Every field is labeled by its row, so a screen reader names it. */
+ *  enum's options with its chevron drawn through `icons`. Every field is labeled by its row, so a
+ *  screen reader names it. */
 export function buildInputFields(
+  icons: IconResolver,
   inputs: Readonly<Record<string, ManifestInput>>,
   current: Readonly<Record<string, number>>,
   titles?: Readonly<Record<string, string>>,
@@ -50,7 +56,7 @@ export function buildInputFields(
       })
       select.value = String(current[key] ?? spec.default)
       fields.set(key, select)
-      row.appendChild(select)
+      row.appendChild(selectField(select, icons))
     } else {
       const input = document.createElement('input')
       input.type = 'number'
@@ -83,6 +89,8 @@ export function buildInputFields(
   }
 }
 
+/** The compact editor beside `rect` inside `container`, its glyphs drawn from the chart's own
+ *  artwork. */
 export function openInputsEditor(
   container: HTMLElement,
   rect: { x: number; y: number; w: number; h: number },
@@ -92,6 +100,21 @@ export function openInputsEditor(
   /** The chart's language: the two actions re-label if it changes while the editor is open. A
    *  field's name and an enum's options are the manifest's own vocabulary and are not translated. */
   strings: ChartI18n = createChartI18n(),
+): void {
+  const icons = createIconResolver({ document: container.ownerDocument, direction: () => readingDirection(strings), diagnostics: createIconDiagnostics() })
+  mountInputsEditor(container, rect, inputs, current, onApply, strings, icons)
+}
+
+/** The compact editor over the widget's own resolver, so its glyphs wear what every other control of
+ *  the widget wears and a failed drawing is reported where the widget's others are. */
+export function mountInputsEditor(
+  container: HTMLElement,
+  rect: { x: number; y: number; w: number; h: number },
+  inputs: Readonly<Record<string, ManifestInput>>,
+  current: Readonly<Record<string, number>>,
+  onApply: (patch: Record<string, number>) => void,
+  strings: ChartI18n,
+  icons: IconResolver,
 ): void {
   const host = container.getBoundingClientRect()
   const el = document.createElement('div')
@@ -106,7 +129,7 @@ export function openInputsEditor(
     unsubscribe()
     el.remove()
   }
-  const fields = buildInputFields(inputs, current)
+  const fields = buildInputFields(icons, inputs, current)
   for (const row of fields.rows) el.appendChild(row)
 
   const apply = (): void => {

@@ -252,16 +252,15 @@
   gap: 8px;
 }
 
+/* The date and the time are the chart's 34px field boxes, the date taking the room the time leaves. */
 [data-qc-theme] .qc-date-field {
   flex: 1 1 auto;
   min-width: 0;
-  padding: 6px 8px;
   font-variant-numeric: tabular-nums;
 }
 
 [data-qc-theme] .qc-date-time {
   flex: 0 0 74px;
-  padding: 6px 8px;
   font-variant-numeric: tabular-nums;
 }
 

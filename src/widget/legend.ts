@@ -15,7 +15,7 @@ import type { IChartApi, MouseEventParams } from 'lightweight-charts'
 import { mountChartLegend, type ChartLegend, type LegendQuote } from '../chartLegend'
 import type { FeedBar } from '../datafeed'
 import type { ChartI18n } from '../i18n'
-import { openInputsEditor } from '../inputsEditor'
+import { mountInputsEditor } from '../inputsEditor'
 import { manifestInputDefaults } from '../indicatorModel'
 import { COLLAPSED_H, planPaneOp } from '../panePlan'
 import type { PriceFormatter } from '../priceFormatter'
@@ -217,13 +217,14 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       if (deps.openIndicatorSettings(id)) return
       const inst = deps.indicators.list().find((i) => i.id === id)
       if (!inst) return
-      openInputsEditor(
+      mountInputsEditor(
         deps.chrome,
         rect,
         inst.definition.manifest.inputs ?? {},
         { ...manifestInputDefaults(inst.definition.manifest), ...inst.inputs },
         (patch) => deps.indicators.patchInputs(id, patch),
         deps.i18n,
+        deps.icons,
       )
     },
     onPaneOp: (id, op) => {

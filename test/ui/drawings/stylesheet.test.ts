@@ -93,7 +93,7 @@ describe('the settings bar and its panels', () => {
     expect(body(settings, /\.qc-drawing-bar-row \.qc-menu-icon:empty/)).toMatch(/width:\s*28px/)
   })
 
-  it('draws the opacity thumb as a 12px disc the pointer can take, beside a washed readout', () => {
+  it('draws the opacity thumb as a 12px disc the pointer can take, beside an edged readout', () => {
     for (const thumb of [/-webkit-slider-thumb/, /-moz-range-thumb/]) {
       const rule = body(fields, thumb)
       expect(rule).toMatch(/width:\s*12px/)
@@ -106,8 +106,42 @@ describe('the settings bar and its panels', () => {
     expect(track).toMatch(/border:\s*1px solid var\(--qcd-swatch\)/)
     expect(track).toMatch(/repeating-conic-gradient\(from 270deg, var\(--qcd-check\)/)
     expect(track).toMatch(/8px 8px/)
-    // The readout is a field a viewer may type over, so it is outlined rather than washed.
-    expect(body(fields, /\.qc-drawing-opacity-readout/)).toMatch(/border:\s*1px solid var\(--qc-chrome-grip\)/)
+    // The readout is a field a viewer may type over, so it is edged rather than washed: the field's
+    // own edge at the mixer's compact 26px, its corner scaled to that height, a step up under the
+    // pointer, and the field's ring on focus, over the edge and in the focus color.
+    const readout = body(fields, /\.qc-drawing-opacity-readout\s*$/m)
+    expect(readout).toMatch(/height:\s*26px/)
+    expect(readout).toMatch(/border:\s*1px solid var\(--qc-control-fieldEdge\)/)
+    expect(readout).toMatch(/border-radius:\s*6px/)
+    expect(readout).not.toMatch(/chrome-grip/)
+    expect(body(fields, /\.qc-drawing-opacity-readout:hover\s*$/m)).toMatch(/border-color:\s*var\(--qc-control-fieldEdgeHover\)/)
+    const ring = body(fields, /\.qc-drawing-opacity-readout:focus\s*$/m)
+    expect(ring).toMatch(/border-color:\s*var\(--qc-state-focusRing\)/)
+    expect(ring).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--qc-state-focusRing\)/)
+  })
+
+  it('holds the hex field to the same compact field box, ringed while the caret is inside it', () => {
+    const hex = body(fields, /\.qc-drawing-hex-wrap\s*$/m)
+    expect(hex).toMatch(/height:\s*26px/)
+    expect(hex).toMatch(/border:\s*1px solid var\(--qc-control-fieldEdge\)/)
+    expect(hex).toMatch(/border-radius:\s*6px/)
+    expect(body(fields, /\.qc-drawing-hex-wrap:hover,/)).toMatch(/border-color:\s*var\(--qc-control-fieldEdgeHover\)/)
+    const ring = body(fields, /\.qc-drawing-hex-wrap:focus-within,/)
+    expect(ring).toMatch(/border-color:\s*var\(--qc-state-focusRing\)/)
+    expect(ring).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--qc-state-focusRing\)/)
+  })
+
+  it('gives a number field its steppers in a 22 by 28 column inside the box, 2px in from the edge', () => {
+    const column = body(fields, /\.qc-drawing-steppers\s*$/m)
+    expect(column).toMatch(/inset-block:\s*3px/)
+    expect(column).toMatch(/inset-inline-end:\s*3px/)
+    const stepper = body(fields, /\.qc-drawing-stepper\s*$/m)
+    expect(stepper).toMatch(/width:\s*22px/)
+    expect(stepper).toMatch(/height:\s*14px/)
+    // The text stops short of the column, and the pointer on a stepper steps the field's edge up at
+    // no more weight than the field's own pointer state, so focus and a refused value still win.
+    expect(body(fields, /\.qc-drawing-number\s*$/m)).toMatch(/padding-inline-end:\s*26px/)
+    expect(body(fields, /:where\(\.qc-drawing-number-wrap:hover\) > \.qc-field/)).toMatch(/border-color:\s*var\(--qc-control-fieldEdgeHover\)/)
   })
 })
 

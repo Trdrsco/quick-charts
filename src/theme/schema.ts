@@ -147,7 +147,7 @@ export const THEME_ROLES = [
   { id: 'chrome.surfaceRaised', family: 'chrome', kind: 'color', description: 'The fill of a control sitting on a chrome surface, such as a button or field.' },
   { id: 'chrome.border', family: 'chrome', kind: 'color', description: 'The ordinary border of a control or panel.' },
   { id: 'chrome.borderStrong', family: 'chrome', kind: 'color', description: 'A border or divider that must stay visible at a glance.', contrast: [{ over: 'chrome.surface', min: 3 }] },
-  { id: 'chrome.fieldBorder', family: 'chrome', kind: 'color', description: 'The outline of a text field, such as the symbol search field. The field\'s mark and prompt name it, so the outline is not its only sign.' },
+  { id: 'chrome.fieldBorder', family: 'chrome', kind: 'color', description: 'The outline of the symbol search field. The field\'s mark and prompt name it, so the outline is not its only sign.' },
   { id: 'chrome.caret', family: 'chrome', kind: 'color', description: 'The ink of the arrow that opens a control\'s menu or flyout.', contrast: [{ over: 'chrome.surface', min: 3 }] },
   { id: 'chrome.grip', family: 'chrome', kind: 'color', description: 'The dots of a drag handle on a floating toolbar.' },
   // No contrast rule: the thumb says where a list is, and the wheel, the drag and the keyboard
@@ -201,7 +201,7 @@ export const THEME_ROLES = [
   },
   { id: 'state.selection', family: 'state', kind: 'color', description: 'The tint over selected content.' },
 
-  // ── control: switches, checkboxes, and radios ───────────────────────────────────────────────
+  // ── control: switches, checkboxes, radios, and fields ───────────────────────────────────────
   // The emphasis fill is neutral in both modes, the strong end of the grey ramp: a control that is on,
   // a chosen row, a held mode and the primary action all wear it. The mark a control carries is cut
   // from the surface end of the ramp.
@@ -231,6 +231,24 @@ export const THEME_ROLES = [
       { over: 'control.onPressed', min: 3 },
     ],
   },
+  // A field is a box of its own: a text field, a select, a number field or a color well. Its edge
+  // declares no contrast rule, as `chrome.fieldBorder` declares none: the field's label names it, so
+  // the edge is not what identifies it. The invalid edge is how a refused value shows, so it reads
+  // as a non-text indicator on both surfaces a field stands on. The ring a focused field wears is
+  // `state.focusRing`.
+  { id: 'control.fieldEdge', family: 'control', kind: 'color', description: 'The edge of a text field, a select, a number field or a color well at rest.' },
+  { id: 'control.fieldEdgeHover', family: 'control', kind: 'color', description: 'The edge of a field under the pointer.' },
+  {
+    id: 'control.fieldInvalid',
+    family: 'control',
+    kind: 'color',
+    description: 'The edge and the focus ring of a field holding a value it refuses.',
+    contrast: [
+      { over: 'overlay.surface', min: 3 },
+      { over: 'chrome.surface', min: 3 },
+    ],
+  },
+  { id: 'control.fieldFill', family: 'control', kind: 'color', description: 'The fill of a field that is read-only or disabled.' },
 
   // ── status: feedback, including market session status ───────────────────────────────────────
   { id: 'status.positive', family: 'status', kind: 'color', description: 'A positive value or a successful outcome in chart chrome.', contrast: [{ over: 'chrome.surface', min: 4.5 }] },
