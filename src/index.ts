@@ -166,6 +166,7 @@ export {
   type DrawingDocumentApi,
   type DrawingDocumentPort,
   type DrawingDocumentRefusal,
+  type DrawingInks,
   type DrawingOwner,
   type DrawingPresets,
   type DrawingReadOutcome,

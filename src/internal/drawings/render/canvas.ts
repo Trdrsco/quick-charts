@@ -225,23 +225,31 @@ export function paintTextBlock(
   return box
 }
 
-const HANDLE_RADIUS = 4.5
-
-/** Paint the anchor handles for a selected/editing drawing. */
+/** Paint a selected drawing's handles, one on each point's pixel, filled with the chart's ground
+ *  so a handle covers what it stands on. A round handle is 11px across, its ring 1.5px wide; a
+ *  square one is 13px across with corners rounded at 4, its ring 2px wide. */
 export function paintHandles(
   ctx: CanvasRenderingContext2D,
   points: readonly Point[],
-  accent: string,
+  inks: { ring: string; center: string },
+  shape: 'circle' | 'square' = 'circle',
 ): void {
   ctx.save()
   ctx.setLineDash([])
-  ctx.lineWidth = 1.5
+  ctx.fillStyle = inks.center
+  ctx.strokeStyle = inks.ring
   for (const p of points) {
+    const x = Math.round(p.x) + 0.5
+    const y = Math.round(p.y) + 0.5
     ctx.beginPath()
-    ctx.arc(p.x, p.y, HANDLE_RADIUS, 0, Math.PI * 2)
-    ctx.fillStyle = '#ffffff'
+    if (shape === 'square') {
+      ctx.lineWidth = 2
+      ctx.roundRect(x - 5.5, y - 5.5, 11, 11, 3)
+    } else {
+      ctx.lineWidth = 1.5
+      ctx.arc(x, y, 5, 0, Math.PI * 2)
+    }
     ctx.fill()
-    ctx.strokeStyle = accent
     ctx.stroke()
   }
   ctx.restore()

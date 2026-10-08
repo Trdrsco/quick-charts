@@ -29,6 +29,7 @@ import type { TimeframeContext } from './visibility'
 import { normalizeVisibility, visibleAt } from './visibility'
 import type { BarSource, SourceBar } from './bars'
 import { layoutTextBlock, type TextBlock, type TextDraft, type TextEditFrame } from './textEntry'
+import { DEFAULT_INKS, type DrawingInks } from './inks'
 import { DrawingPaneView } from '../render/pane-view'
 import { drawing as englishWords } from '../../../i18n/en/drawing'
 
@@ -677,6 +678,24 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   /** The words an empty drawing shows: the host's, or the catalog's English where none is set. */
   protected textPlaceholder(): string {
     return this._placeholder?.() ?? englishWords['drawing.addText']
+  }
+
+  private _inks: (() => DrawingInks) | null = null
+
+  /** Where the chart's own inks come from: the host's theme, read as the drawing paints. */
+  setInks(source: (() => DrawingInks) | null): void {
+    this._inks = source
+    this.requestUpdate()
+  }
+
+  /** The chart's own inks: the host theme's, or the built-in light theme's where none is set. */
+  inks(): DrawingInks {
+    return this._inks?.() ?? DEFAULT_INKS
+  }
+
+  /** The shape of this drawing's selection handles. */
+  handleShape(): 'circle' | 'square' {
+    return 'circle'
   }
 
   /** The words this drawing shows, in lines: the open edit's draft or the committed words. The

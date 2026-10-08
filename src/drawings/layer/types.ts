@@ -1,7 +1,7 @@
 // The drawing layer's contracts: what a host hands `attachDrawings`, what it gets back, and the
 // events the layer reports. Everything here is a type; the behavior lives in the sibling modules.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
-import type { DrawingStyle, GlyphSourcePort, IDrawing, LineStyle, SerializedDrawing, TextDraft, TextEditFrame, VisibilityPreset } from '../../internal/drawings/index'
+import type { DrawingInks, DrawingStyle, GlyphSourcePort, IDrawing, LineStyle, SerializedDrawing, TextDraft, TextEditFrame, VisibilityPreset } from '../../internal/drawings/index'
 import type { ResourceRef, ResourceStore, TemplateBody, TemplateMeta } from '../../resources'
 import type { DrawingResourceContext, DrawingsBody } from '../document'
 import type { DrawingDocumentPort, DrawingOwner } from './documents'
@@ -256,6 +256,10 @@ export interface AttachDrawingsOptions {
   /** The words a drawing that types on the chart shows while it holds none, read as it paints: the
    *  chart passes its catalog's, in the viewer's language. Absent, the catalog's English. */
   placeholder?: () => string
+  /** The chart's own inks drawings paint with where their tools take no color of their own (a
+   *  handle's ring and center, words in the chart's ink, a quiet edge), read as they paint: the
+   *  chart passes its theme's. Absent, the built-in light theme's. */
+  inks?: () => DrawingInks
   /** Whether the HOST has taken the pointer over for a gesture of its own. While it has, this layer
    *  paints no pointer glyph at all: the host is drawing the mark that says where a click lands, and
    *  a cursor beside it would be a second claim about the same point. This layer writes the plot's

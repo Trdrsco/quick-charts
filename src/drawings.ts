@@ -21,4 +21,4 @@ export type {
   TextEditSession,
   TextInlineEdit,
 } from './drawings/layer/types'
-export type { TextDraft, TextEditFrame } from './internal/drawings/index'
+export type { DrawingInks, TextDraft, TextEditFrame } from './internal/drawings/index'

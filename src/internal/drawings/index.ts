@@ -39,6 +39,7 @@ export { cachedImageBitmap, primeImageBitmap } from './render/imageCache'
 export { ToolRegistry, toolRegistry, TOOL_CATEGORIES } from './registry'
 export type { InlineTextRules, ToolDefinition } from './registry'
 export type { TextBlock, TextDraft, TextEditFrame, TextLine } from './core/textEntry'
+export type { DrawingInks } from './core/inks'
 export { parseDrawingsStore, serializeDrawingsStore, restoreDrawings } from './store'
 
 export * from './tools/lines'

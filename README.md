@@ -2044,7 +2044,9 @@ among the others `THEME_ROLES` lists:
 Every ink is held to the WCAG 2.2 AA ratio on each ground it is drawn over, so the light status
 inks are the darkest steps of their hues that still read at 4.5 to 1 on white, the dark red reads at
 4.5 to 1 on the dialog ground, and the muted ink reads at 4.5 to 1 over the hover and selected fills
-of a menu row. `drawing.line` and `drawing.selected` are `#2962ff` in both modes.
+of a menu row. `drawing.line` is `#2962ff` in both modes; `drawing.selected`, the ring of a selected
+drawing's handles, is `#2962ff` light and `#1e53e5` dark, around a center of `drawing.handle`, the
+chart's own ground.
 
 ### Fields
 

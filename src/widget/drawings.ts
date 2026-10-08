@@ -17,6 +17,7 @@ import { drawingTools, type ToolPreset } from '../drawings/index'
 import { rebindDrawingIdentity } from '../drawings/layer/attach'
 import { presetOf, presetPropsFor } from '../drawings/layer/presets'
 import { SAVED_LOOK_PROPS } from '../drawings/capabilities'
+import { drawingInksOf } from '../internal/drawings/core/inks'
 import type { ReplayPhase } from './replay'
 import {
   DEFAULT_HIDE_STATE,
@@ -299,6 +300,8 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     ink: () => deps.theme()['text.primary'],
     // What an empty text shows, in the viewer's language as it paints.
     placeholder: () => live('drawing.addText'),
+    // The handles and the inks a drawing takes from the chart, in the theme it paints under.
+    inks: () => drawingInksOf(deps.theme()),
     // While replay is waiting to be told where to begin, the plot's own mark is the answer to where
     // a click lands. This layer owns the plot's cursor, so it is the one that stands it down.
     pointerSuppressed: () => deps.replayPhase() === 'arming',

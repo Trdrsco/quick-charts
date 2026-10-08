@@ -115,6 +115,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   const manager = new DrawingManager()
   manager.setGlyphSource(options.glyphSource ?? bundledGlyphSource)
   if (options.placeholder) manager.setTextPlaceholder(options.placeholder)
+  if (options.inks) manager.setInks(options.inks)
   // An emoji painted before the bundled artwork arrived painted as text: hand every drawing the
   // source again as it lands, which repaints them with the artwork.
   const stopArtwork = options.glyphSource ? null : onBundledArtwork(() => manager.setGlyphSource(bundledGlyphSource))
