@@ -89,7 +89,6 @@ const CHANNEL = ['textAtStart'] as const
 const PATTERN = ['pillRadius'] as const
 const WAVE = ['pillRadius', 'labelPills'] as const
 const PROFILE = ['outline'] as const
-const POSITION = ['savedWords'] as const
 const METER = ['labelTextStyle'] as const
 
 /** The props that keep a version 2 save's look as it was saved, where its tool's pages offer no
@@ -130,8 +129,6 @@ export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
   callout: ['borderWidth'],
   price_note: SAVED_LOOK,
   signpost: SAVED_LOOK,
-  long_position: POSITION,
-  short_position: POSITION,
   price_range: METER,
   date_range: METER,
   date_and_price_range: ['extendLeft', 'extendRight', ...METER],

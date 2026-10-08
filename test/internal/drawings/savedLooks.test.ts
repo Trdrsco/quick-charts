@@ -408,10 +408,9 @@ describe('format-2 forecasting tools', () => {
 
   it('shows a position’s tags at rest, compact tags reading their offsets alone', () => {
     const plan = restored(format2('long_position', [[100, 200], [300, 280], [300, 160]], { textColor: '#ffffff' }, POSITION))
-    expect(plan.props).toMatchObject({ alwaysShowStats: true, savedWords: true })
-    expect(texts(plan).slice(0, 3)).toEqual(['Target: 80.00 (40.00%), Amount: 1400.00', 'Stop: 40.00 (20.00%), Amount: 800.00', 'Closed PnL: -200.00, Qty: 5.00, Risk/Reward Ratio: 2.00'])
-    ;(plan as unknown as { setTickSize(t: number): void }).setTickSize(0.25)
-    expect(texts(plan)[0]).toBe('Target: 80.00 (40.00%), 320, Amount: 1400.00')
+    expect(plan.props).toMatchObject({ alwaysShowStats: true })
+    // The tags write in the chart's own words, as a new position's do.
+    expect(texts(plan).slice(0, 3)).toEqual(['Target: 80.00 (40.00%), Amount: 1400.00', 'Stop: 40.00 (20.00%), Amount: 800.00', 'Closed P&L: -200.00, Qty: 5.00, Risk/Reward Ratio: 2.00'])
     const compact = restored(format2('long_position', [[100, 200], [300, 280], [300, 160]], { textColor: '#ffffff' }, { ...POSITION, compact: true }))
     expect(texts(compact)[0]).toBe('80.00 (40.00%)')
     const { leverage: _leverage, ...older } = POSITION

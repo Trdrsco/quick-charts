@@ -1358,7 +1358,6 @@
         "qtyPrecision",
         "risk",
         "riskDisplay",
-        "savedWords",
         "showPrices",
         "stats",
         "stopColor"
@@ -1809,7 +1808,6 @@
         "qtyPrecision",
         "risk",
         "riskDisplay",
-        "savedWords",
         "showPrices",
         "stats",
         "stopColor"
