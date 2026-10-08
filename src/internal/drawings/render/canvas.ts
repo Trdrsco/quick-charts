@@ -1,4 +1,5 @@
 import type { DrawingStyle, LineStyle, Point } from '../core/types'
+import { DARK_THEME } from '../../../theme/palettes'
 
 /** Dash pattern for a line style, scaled so dashes stay legible at any width. */
 export function dashPattern(style: LineStyle, width: number): number[] {
@@ -29,11 +30,15 @@ export function strokeSegment(ctx: CanvasRenderingContext2D, a: Point, b: Point)
   ctx.stroke()
 }
 
+/** The family drawings paint their words in: the chart's own font stack, the one the built-in themes
+ *  give the chrome and the scales. */
+export const DRAWING_FONT_FAMILY = DARK_THEME['text.fontFamily']
+
 /** The CSS font string for a drawing's text channel. */
 export function fontOf(style: DrawingStyle): string {
   const weight = style.bold ? '600 ' : ''
   const slant = style.italic ? 'italic ' : ''
-  return `${slant}${weight}${style.fontSize}px ui-sans-serif, system-ui, sans-serif`
+  return `${slant}${weight}${style.fontSize}px ${DRAWING_FONT_FAMILY}`
 }
 
 export interface LabelOptions {
