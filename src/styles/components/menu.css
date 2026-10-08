@@ -37,8 +37,9 @@
 
 /* A chosen row inverts, the emphasis fill behind the inverse ink, and carries nothing else: no
  * accent tint, no decorative dot. The row's own `aria-checked` is what a reader is told. A row that
- * IS a switch is not a choice among rows: its track says it is on, and the row stays as it is. */
-[data-qc-theme] .qc-menu-row[aria-checked='true']:not([role='switch']) {
+ * IS a switch or a checkbox is not a choice among rows: its track or its box says it is on, and the
+ * row stays as it is. */
+[data-qc-theme] .qc-menu-row[aria-checked='true']:not([role='switch']):not([role='menuitemcheckbox']) {
   color: var(--qc-text-inverse);
   background: var(--qc-control-on);
 }

@@ -112,6 +112,40 @@ test.describe('a list button\'s list', () => {
     expect(Math.abs(list.top - button.bottom)).toBeLessThanOrEqual(1)
   })
 
+  test("a list of switches ticks each row with the settings rows' own checkbox and never inverts a ticked row", async ({ page }) => {
+    await mount(page)
+    await openSettings(page, 'long_position', 'Style')
+    await openList(page, 'Stats')
+    const rows = await page.evaluate(() => {
+      const menu = document.querySelector('[aria-label="Stats"][role="menu"]')!
+      const panel = getComputedStyle(menu.closest('.qc-drawing-popover')!).backgroundColor
+      const shared = document.querySelector<HTMLInputElement>('[data-role="drawing-settings"] label.qc-drawing-toggle > input')!
+      return [...menu.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].map((row) => {
+        const box = row.querySelector<HTMLInputElement>(':scope > input')
+        return {
+          ticked: row.getAttribute('aria-checked') === 'true',
+          box: box?.className ?? null,
+          shared: shared.className,
+          boxTicked: box?.checked ?? null,
+          boxGround: box ? getComputedStyle(box).backgroundColor : null,
+          ground: getComputedStyle(row).backgroundColor,
+          ink: getComputedStyle(row).color,
+          panel,
+        }
+      })
+    })
+    expect(rows.filter((r) => r.ticked).length).toBeGreaterThan(0)
+    expect(rows.filter((r) => !r.ticked).length).toBeGreaterThan(0)
+    for (const r of rows) {
+      expect(r.box).toBe(r.shared)
+      expect(r.boxTicked).toBe(r.ticked)
+      expect(['rgba(0, 0, 0, 0)', r.panel]).toContain(r.ground)
+    }
+    // A ticked row reads in the same ink as a clear one; its box, not the row, says it is on.
+    expect(new Set(rows.map((r) => r.ink)).size).toBe(1)
+    expect(rows.find((r) => r.ticked)!.boxGround).not.toBe(rows.find((r) => !r.ticked)!.boxGround)
+  })
+
   test('a list of choices wider than its button stays inside the viewport at its edge', async ({ page }) => {
     await mount(page)
     await openSettings(page, 'regression_trend', 'Inputs')

@@ -154,9 +154,10 @@ export interface MultiChoice {
   onChange(checked: boolean): void
 }
 
-/** Several switches behind one list button: each choice is a checkbox row of its own, the list
- *  stays open while the viewer ticks, and the button reads the choices that are on, or the empty
- *  word when none is. */
+/** Several switches behind one list button: each choice is a row holding the checkbox every
+ *  settings row wears, the list stays open while the viewer ticks, and the button reads the choices
+ *  that are on, or the empty word when none is. A ticked row is not a picked choice: its box says it
+ *  is on, and the row keeps the list's ground. */
 export function multiDropdown(icons: IconResolver, box: HTMLElement, props: { label: string; empty: string; choices: readonly MultiChoice[]; width?: SelectWidth; asWritten?: boolean }): HTMLButtonElement {
   const checked = props.choices.map((c) => c.checked)
   // The face runs the choices on as one phrase, each after the first in lower case, unless the
@@ -176,12 +177,16 @@ export function multiDropdown(icons: IconResolver, box: HTMLElement, props: { la
     }
     const menu = el('div', { class: 'qc-drawing-menu qc-drawing-list', role: 'menu', 'aria-label': props.label })
     props.choices.forEach((choice, i) => {
-      const mark = el('input', { type: 'checkbox', class: 'qc-checkbox', tabindex: '-1', 'aria-hidden': 'true' }) as HTMLInputElement
-      mark.checked = checked[i]!
+      // The row is the switch a reader and the keyboard reach, so its box is no stop of its own: a
+      // press on the box keeps the keyboard off it and lands on the row, which takes the keyboard.
+      const mark = checkbox(choice.label, checked[i]!, () => undefined)
+      mark.tabIndex = -1
+      mark.setAttribute('aria-hidden', 'true')
+      mark.addEventListener('mousedown', (event) => event.preventDefault())
       const item = el(
         'div',
         { class: 'qc-menu-row qc-drawing-list-row qc-drawing-list-row--check', role: 'menuitemcheckbox', tabindex: '-1', 'aria-checked': String(checked[i]) },
-        el('span', { class: 'qc-drawing-check-cell' }, mark),
+        mark,
         el('span', { class: 'qc-menu-label', text: choice.label }),
       )
       const toggle = (): void => {
@@ -191,7 +196,10 @@ export function multiDropdown(icons: IconResolver, box: HTMLElement, props: { la
         face.textContent = summary()
         choice.onChange(checked[i]!)
       }
-      item.addEventListener('click', toggle)
+      item.addEventListener('click', () => {
+        toggle()
+        item.focus({ preventScroll: true })
+      })
       item.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return
         event.preventDefault()

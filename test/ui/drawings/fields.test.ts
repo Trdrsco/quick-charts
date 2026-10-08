@@ -125,6 +125,44 @@ describe('rows and toggles', () => {
     expect(host.querySelector('[role="menu"]')).not.toBeNull()
   })
 
+  it("a list of switches' row holds the settings rows' own checkbox, in the row itself, and a ticked row is never inverted", () => {
+    const host = box()
+    const field = multiDropdown(icons, host, {
+      label: 'Stats',
+      empty: 'Hidden',
+      choices: [
+        { label: 'Price range', checked: true, onChange: () => undefined },
+        { label: 'Bars range', checked: false, onChange: () => undefined },
+      ],
+    })
+    host.appendChild(field)
+    field.click()
+    // The box a settings row wears: the same element and classes as a checkbox row's.
+    const shared = toggleRow('Middle point', true, () => undefined).querySelector('input')!
+    for (const item of host.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')) {
+      const mark = item.querySelector<HTMLInputElement>(':scope > input')!
+      expect(mark).not.toBeNull()
+      expect(mark.type).toBe('checkbox')
+      expect(mark.className).toBe(shared.className)
+      expect(mark.checked).toBe(item.getAttribute('aria-checked') === 'true')
+      // The row is the switch a reader and the keyboard reach; its box is no stop of its own.
+      expect(mark.getAttribute('aria-hidden')).toBe('true')
+      expect(mark.tabIndex).toBe(-1)
+      expect(item.querySelector('.qc-drawing-check-cell')).toBeNull()
+    }
+    // A press on the box ticks the row once and gives the row the keyboard.
+    const second = host.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')[1]!
+    second.querySelector<HTMLInputElement>('input')!.click()
+    expect(second.getAttribute('aria-checked')).toBe('true')
+    expect(second.querySelector<HTMLInputElement>('input')!.checked).toBe(true)
+    expect(document.activeElement).toBe(second)
+    expect(field.textContent).toBe('Price range, bars range')
+    // A row that is a checkbox is not a choice among rows: the inversion leaves it alone.
+    const sheet = authoredStylesheet().replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(sheet).toContain(".qc-menu-row[aria-checked='true']:not([role='switch']):not([role='menuitemcheckbox'])")
+    expect(sheet).not.toMatch(/\.qc-menu-row\[aria-checked='true'\]:not\(\[role='switch'\]\)\s*\{/)
+  })
+
   it("a list of choices stands at least as wide as its button and grows to its longest choice; a list of switches is the button's width", () => {
     const host = box()
     const choices = dropdown(icons, host, 'Source', ['close', 'ohlc4'] as const, 'close', (v) => (v === 'close' ? 'Close' : '(O + H + L + C)/4'), () => undefined)

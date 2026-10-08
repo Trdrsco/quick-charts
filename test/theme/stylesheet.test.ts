@@ -58,8 +58,9 @@ describe('the scoped stylesheet', () => {
   })
 
   it('inverts a chosen menu row, with no accent dot and no substitute check mark', () => {
-    // A row that is itself a switch is not a choice among rows: only its track fills.
-    const checked = structural.match(/\[data-qc-theme\] \.qc-menu-row\[aria-checked='true'\]:not\(\[role='switch'\]\) \{[^}]+\}/s)?.[0]
+    // A row that is itself a switch or a checkbox is not a choice among rows: only its track or its
+    // box fills.
+    const checked = structural.match(/\[data-qc-theme\] \.qc-menu-row\[aria-checked='true'\]:not\(\[role='switch'\]\):not\(\[role='menuitemcheckbox'\]\) \{[^}]+\}/s)?.[0]
     expect(structural).not.toMatch(/\.qc-menu-row\[aria-checked='true'\] \{/)
     expect(checked).toContain('background: var(--qc-control-on)')
     expect(checked).toContain('color: var(--qc-text-inverse)')
