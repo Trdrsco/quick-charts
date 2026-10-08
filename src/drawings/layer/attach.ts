@@ -12,7 +12,7 @@ import type { Time } from 'lightweight-charts'
 import { bundledGlyphSource, onBundledArtwork } from '../emoji'
 import { DrawingManager, parseTimeframeContext, restoreDrawings, viewportOf, visibilityPreset } from '../../internal/drawings/index'
 import type { IDrawing, InlineTextRules, SerializedDrawing, SourceBar, TextEditFrame } from '../../internal/drawings/index'
-import { inlineTextRules } from './inlineText'
+import { inlineTextRules, settingsOnDoubleClick } from './inlineText'
 import type { ResourceRef } from '../../resources'
 import { drawingTools } from '../tools'
 import { editRefused } from '../lockModel'
@@ -343,7 +343,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     if (textEdit?.id === drawing.id) return
     endPendingEdit()
     const value = typeof drawing.props.text === 'string' ? drawing.props.text : ''
-    if (fresh && value === '' && rules.removeEmptyOnDeselect) wordless.add(drawing.id)
+    if (fresh && value === '' && rules.whenEmpty !== 'keep') wordless.add(drawing.id)
     drawing.textEditing = true
     drawing.setTextDraft({ value, selectionStart: value.length, selectionEnd: value.length, composition: null, caret: true }, (frame) => {
       for (const listener of frameListeners) listener(frame)
@@ -382,7 +382,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
             if (textEdit === session) drawing.setTextDraft(draft)
           },
           doubleClick: () => {
-            if (textEdit !== session || openedBy !== 'click' || !rules.doubleClickOpensSettings) return false
+            if (textEdit !== session || openedBy !== 'click' || !settingsOnDoubleClick(drawing)) return false
             commitTextEdit(drawing.textDraft?.value ?? value)
             openSettings()
             return true
@@ -401,12 +401,22 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     options.execute?.(SETTINGS_COMMAND)
   }
 
-  /** Commit an inline edit: the words exactly as typed, the drawing still selected. */
+  /** Commit an inline edit: the words exactly as typed, the drawing still selected. A drawing of a
+   *  tool that removes an empty drawing as its edit ends goes instead, when the edit left it
+   *  empty. */
   const commitInline = (session: TextEditSession, value: string): void => {
     const drawing = manager.get(session.id)
     closeTextEdit(false)
     if (!drawing) return
-    if (value === '' && inlineTextRules(drawing)?.removeEmptyOnDeselect) wordless.add(drawing.id)
+    const whenEmpty = inlineTextRules(drawing)?.whenEmpty
+    if (value === '' && whenEmpty === 'commit') {
+      wordless.delete(drawing.id)
+      manager.remove(drawing.id)
+      persist()
+      changed()
+      return
+    }
+    if (value === '' && whenEmpty === 'deselect') wordless.add(drawing.id)
     else wordless.delete(drawing.id)
     if (drawing.props.text !== value) drawing.applyProps({ text: value })
     persist()
@@ -587,7 +597,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   const dropWordless = (id: string): void => {
     if (destroyed || replacing) return
     const drawing = manager.get(id)
-    if (!drawing || manager.selected()?.id === id || drawing.props.text !== '' || !inlineTextRules(drawing)?.removeEmptyOnDeselect) return
+    if (!drawing || manager.selected()?.id === id || drawing.props.text !== '' || inlineTextRules(drawing)?.whenEmpty !== 'deselect') return
     wordless.delete(id)
     manager.remove(id)
     persist()

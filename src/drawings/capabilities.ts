@@ -126,7 +126,7 @@ export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
   bars_pattern: ['candles'],
   fixed_range_volume_profile: PROFILE,
   anchored_volume_profile: PROFILE,
-  callout: ['borderWidth'],
+  callout: ['borderWidth', ...SAVED_LOOK],
   text: SAVED_LOOK,
   comment: SAVED_LOOK,
   note: SAVED_LOOK,

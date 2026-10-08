@@ -254,6 +254,7 @@
       },
       "props": [
         "borderWidth",
+        "savedLook",
         "text",
         "wordWrap",
         "wordWrapWidth"

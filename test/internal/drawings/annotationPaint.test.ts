@@ -89,12 +89,9 @@ describe('a note', () => {
 })
 
 describe('a callout and a price label', () => {
-  it('draws a callout’s border and its tether at the drawing’s width', () => {
+  it('borders a callout’s box and its tail in one stroke at the drawing’s width', () => {
     const d = make('callout', [at(100, 300), at(200, 200)], { text: 'Hi' })
-    expect(named(painted(d), 'stroke').map((c) => [c.strokeStyle, c.lineWidth])).toEqual([
-      ['#0097a7', 2],
-      ['#0097a7', 2],
-    ])
+    expect(named(painted(d), 'stroke').map((c) => [c.strokeStyle, c.lineWidth])).toEqual([['#0097a7', 2]])
   })
 
   it('fills a price label’s pill in its fill, borders it in its stroke, and writes the price bold', () => {

@@ -73,12 +73,13 @@ import { GlyphMark, IconMark, ImageNote, StickerMark } from './tools/content'
  *  an invisible field laid over them takes the keys; Escape and a press elsewhere keep the words
  *  exactly as typed. */
 export interface InlineTextRules {
-  /** A click on the drawing while it is selected types into its words, the caret after the last. */
+  /** A click on the drawing's words while it is selected types into them, the caret after the
+   *  last. */
   clickToType: boolean
-  /** A double-click on the drawing opens its settings rather than its words. */
-  doubleClickOpensSettings: boolean
-  /** A drawing left without words stays while it is selected and is removed once it is not. */
-  removeEmptyOnDeselect: boolean
+  /** What becomes of a drawing left without words: `deselect` keeps it while it is selected and
+   *  removes it once it is not, `commit` removes it as the edit that left it empty ends, and `keep`
+   *  keeps it, its words being optional. */
+  whenEmpty: 'deselect' | 'commit' | 'keep'
 }
 
 export interface ToolDefinition {
@@ -94,6 +95,9 @@ export interface ToolDefinition {
   /** The tool types its words on the chart, under these rules. Absent, its words are typed in an
    *  editor box of their own. */
   inlineText?: InlineTextRules
+  /** A double-click on one of the tool's drawings opens its settings, never an editor of its
+   *  words. */
+  settingsOnDoubleClick?: boolean
   /** While the tool is armed, the drawing a click would place follows the pointer. */
   previewed?: boolean
   /** How anchors are gathered: drag-captured stroke, or click-to-add points (double-click ends).
@@ -119,6 +123,7 @@ interface ToolMeta {
   style?: Partial<DrawingStyle>
   hasText?: boolean
   inlineText?: InlineTextRules
+  settingsOnDoubleClick?: boolean
   previewed?: boolean
   placement?: 'freehand' | 'multipoint' | 'instant'
   capturesBars?: boolean
@@ -292,7 +297,8 @@ const DEFINITIONS: ToolDefinition[] = [
     category: 'annotation',
     anchors: 1,
     hasText: true,
-    inlineText: { clickToType: true, doubleClickOpensSettings: true, removeEmptyOnDeselect: true },
+    inlineText: { clickToType: true, whenEmpty: 'deselect' },
+    settingsOnDoubleClick: true,
     style: { textColor: '#2962ff', fontSize: 14, fillColor: '#2962ff', fillOpacity: 0.25, lineColor: '#707070' },
   }),
   tool(Note, {
@@ -301,7 +307,8 @@ const DEFINITIONS: ToolDefinition[] = [
     category: 'annotation',
     anchors: 2,
     hasText: true,
-    inlineText: { clickToType: true, doubleClickOpensSettings: true, removeEmptyOnDeselect: true },
+    inlineText: { clickToType: true, whenEmpty: 'deselect' },
+    settingsOnDoubleClick: true,
     style: { lineColor: '#dbdbdb', textColor: '#dbdbdb', fontSize: 14, fillColor: '#2e2e2e', fillOpacity: 1 },
   }),
   tool(Comment, {
@@ -310,10 +317,20 @@ const DEFINITIONS: ToolDefinition[] = [
     category: 'annotation',
     anchors: 1,
     hasText: true,
-    inlineText: { clickToType: true, doubleClickOpensSettings: true, removeEmptyOnDeselect: true },
+    inlineText: { clickToType: true, whenEmpty: 'deselect' },
+    settingsOnDoubleClick: true,
     style: { textColor: '#ffffff', fontSize: 16, fillColor: '#2962ff', fillOpacity: 1, lineColor: '#2962ff' },
   }),
-  tool(Callout, { type: 'callout', name: 'Callout', category: 'annotation', anchors: 2, hasText: true, style: { textColor: '#ffffff', fontSize: 14, fillColor: '#0097a7', fillOpacity: 0.7, lineColor: '#0097a7', lineWidth: 2 } }),
+  tool(Callout, {
+    type: 'callout',
+    name: 'Callout',
+    category: 'annotation',
+    anchors: 2,
+    hasText: true,
+    inlineText: { clickToType: true, whenEmpty: 'commit' },
+    settingsOnDoubleClick: true,
+    style: { textColor: '#ffffff', fontSize: 14, fillColor: '#0097a7', fillOpacity: 0.7, lineColor: '#0097a7', lineWidth: 2 },
+  }),
   tool(PriceLabel, { type: 'price_label', name: 'Price label', category: 'annotation', anchors: 1, style: { textColor: '#ffffff', fontSize: 14, bold: true, fillColor: '#2962ff', fillOpacity: 1, lineColor: '#2962ff' } }),
   tool(ArrowMarkUp, { type: 'arrow_up', name: 'Arrow mark up', category: 'annotation', anchors: 1, style: { lineColor: '#089981', textColor: '#089981', fontSize: 14 } }),
   tool(ArrowMarkDown, { type: 'arrow_down', name: 'Arrow mark down', category: 'annotation', anchors: 1, style: { lineColor: '#cc2f3c', textColor: '#cc2f3c', fontSize: 14 } }),
@@ -327,7 +344,8 @@ const DEFINITIONS: ToolDefinition[] = [
     category: 'annotation',
     anchors: 1,
     hasText: true,
-    inlineText: { clickToType: true, doubleClickOpensSettings: true, removeEmptyOnDeselect: true },
+    inlineText: { clickToType: true, whenEmpty: 'deselect' },
+    settingsOnDoubleClick: true,
     previewed: true,
     style: { lineColor: '#2962ff', fontSize: 12 },
   }),

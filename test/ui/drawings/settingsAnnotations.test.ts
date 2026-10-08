@@ -161,7 +161,7 @@ describe('what a new drawing of each tool starts with', () => {
     expect([comment.text, comment.size, comment.fill, comment.line]).toEqual(['#ffffff', 16, '#2962ff 1', '#2962ff'])
     const callout = look('callout')
     expect([callout.text, callout.size, callout.fill, callout.line, callout.width]).toEqual(['#ffffff', 14, '#0097a7 0.7', '#0097a7', 2])
-    expect(callout.props).toEqual({ text: '', wordWrap: false, wordWrapWidth: 200, borderWidth: null })
+    expect(callout.props).toEqual({ text: '', wordWrap: false, wordWrapWidth: 200, borderWidth: null, savedLook: null })
     const label = look('price_label')
     expect([label.text, label.size, label.bold, label.fill, label.line]).toEqual(['#ffffff', 14, true, '#2962ff 1', '#2962ff'])
   })

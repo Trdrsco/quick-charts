@@ -580,68 +580,253 @@ export class Comment extends Drawing<CommentProps> {
   }
 }
 
-/** A callout's words wrap at a width while wrap is on. */
+/** A callout's words, whether they wrap and at what width, its border's width, and a format-2
+ *  save's look. */
 export type CalloutProps = TextProps & {
   wordWrap: boolean
   wordWrapWidth: number
   /** The box's border at this width; null takes the drawing's stroke width. */
   borderWidth: number | null
+  /** A format-2 callout's look, its box's top-left on its second point and a line tying the box to
+   *  its first, painted as format 2 did until the callout's settings change. */
+  savedLook: SavedLook
+}
+
+/** How far a callout's words stand in from its box's left edge, how far its first line's box
+ *  stands under its top (which sets a line's tallest letters 10px under it), the room the box keeps
+ *  past the words across and down, the radius of its corners, and how far its tail's root runs
+ *  each way along the box from the middle of a side, or from a corner. */
+const CALLOUT_PAD_LEFT = 10
+const CALLOUT_LINE_TOP = 9
+const CALLOUT_ROOM = 20
+const CALLOUT_RADIUS = 6
+const CALLOUT_TAIL = 8
+
+type BoxSide = 'top' | 'right' | 'bottom' | 'left'
+type BoxCorner = 'top-left' | 'top-right' | 'bottom-right' | 'bottom-left'
+
+/** A callout's tail: where it leaves the box, the two points of its root on the box's outline in
+ *  the order a clockwise walk round the box meets them, and its tip. */
+interface CalloutTail {
+  root: BoxSide | BoxCorner
+  from: Point
+  to: Point
+  tip: Point
+}
+
+/** The tail from a box to a tip: from the middle of the side the tip lies beyond, its root 8px
+ *  each way along it, or from the corner the tip lies beyond both sides of, its root 8px along each
+ *  side from the corner. A tip inside the box has no tail. */
+function calloutTail(box: Box, tip: Point): CalloutTail | null {
+  const l = box.x
+  const t = box.y
+  const r = box.x + box.width
+  const b = box.y + box.height
+  const across = tip.x < l ? 'left' : tip.x > r ? 'right' : null
+  const down = tip.y < t ? 'top' : tip.y > b ? 'bottom' : null
+  const k = Math.min(CALLOUT_RADIUS, box.width / 2, box.height / 2)
+  const w = Math.max(0, Math.min(CALLOUT_TAIL, box.width / 2 - k, box.height / 2 - k))
+  const c = Math.min(CALLOUT_TAIL, box.width, box.height)
+  const cx = l + box.width / 2
+  const cy = t + box.height / 2
+  const tail = (root: BoxSide | BoxCorner, from: Point, to: Point): CalloutTail => ({ root, from, to, tip })
+  if (down === 'top' && across === 'left') return tail('top-left', { x: l, y: t + c }, { x: l + c, y: t })
+  if (down === 'top' && across === 'right') return tail('top-right', { x: r - c, y: t }, { x: r, y: t + c })
+  if (down === 'bottom' && across === 'right') return tail('bottom-right', { x: r, y: b - c }, { x: r - c, y: b })
+  if (down === 'bottom' && across === 'left') return tail('bottom-left', { x: l + c, y: b }, { x: l, y: b - c })
+  if (down === 'top') return tail('top', { x: cx - w, y: t }, { x: cx + w, y: t })
+  if (down === 'bottom') return tail('bottom', { x: cx + w, y: b }, { x: cx - w, y: b })
+  if (across === 'right') return tail('right', { x: r, y: cy - w }, { x: r, y: cy + w })
+  if (across === 'left') return tail('left', { x: l, y: cy + w }, { x: l, y: cy - w })
+  return null
+}
+
+/** Trace a callout's box with its corners rounded at 6 and its tail let into its outline: one path
+ *  that one stroke and one fill cover. */
+function traceCallout(ctx: CanvasRenderingContext2D, box: Box, tail: CalloutTail | null): void {
+  const l = box.x
+  const t = box.y
+  const r = box.x + box.width
+  const b = box.y + box.height
+  const k = Math.min(CALLOUT_RADIUS, box.width / 2, box.height / 2)
+  const at = tail?.root
+  const out = (): void => {
+    ctx.lineTo(tail!.from.x, tail!.from.y)
+    ctx.lineTo(tail!.tip.x, tail!.tip.y)
+    ctx.lineTo(tail!.to.x, tail!.to.y)
+  }
+  // The walk starts just past the top-left corner, or where a tail from that corner meets the top.
+  if (at === 'top-left') ctx.moveTo(tail!.to.x, tail!.to.y)
+  else ctx.moveTo(l + k, t)
+  if (at === 'top') out()
+  if (at === 'top-right') out()
+  else ctx.arcTo(r, t, r, t + k, k)
+  if (at === 'right') out()
+  if (at === 'bottom-right') out()
+  else ctx.arcTo(r, b, r - k, b, k)
+  if (at === 'bottom') out()
+  if (at === 'bottom-left') out()
+  else ctx.arcTo(l, b, l, b - k, k)
+  if (at === 'left') out()
+  if (at === 'top-left') out()
+  else ctx.arcTo(l, t, l + k, t, k)
+  ctx.closePath()
+}
+
+/** Whether a point lies in the triangle a tail makes. */
+function inTail(p: Point, tail: CalloutTail): boolean {
+  const side = (a: Point, b: Point): number => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x)
+  const d1 = side(tail.from, tail.tip)
+  const d2 = side(tail.tip, tail.to)
+  const d3 = side(tail.to, tail.from)
+  return (d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0)
 }
 
 /**
- * Callout: a box tied to a target. The first point is what it points at and the second where the box
- * stands; the tether and the box's border take the drawing's stroke at its width, the box its fill.
+ * Callout: words in a box with a tail to what they speak of. The first point is the tail's tip and
+ * the second the middle of the box's right edge, the box standing to its left, centred on it up and
+ * down. The words stand 10px in from the box's left on lines `fontSize` tall, so the box is its
+ * widest line, or the wrap width while wrap is on, and 20px wide, and 20px more than its lines tall.
+ * The tail leaves the box from the middle of the side its tip lies beyond, or from the corner it
+ * lies beyond both sides of. Box and tail are one shape in the drawing's fill, bordered in its
+ * stroke color, the border stroked under the fill so its outer half shows. An empty callout shows
+ * its placeholder at half strength. Selected, it shows a handle on each point; a drag on the box
+ * moves the box alone, and a click on the box of the selected callout types.
  */
 export class Callout extends Drawing<CalloutProps> {
   readonly type: string = 'callout'
 
   protected override defaultProps(): CalloutProps {
-    return { text: '', wordWrap: false, wordWrapWidth: 200, borderWidth: null }
+    return { text: '', wordWrap: false, wordWrapWidth: 200, borderWidth: null, savedLook: null }
   }
 
-  /** A format-2 callout bordered its box at 1px. */
+  /** A format-2 callout stood its box's top-left on its second point, tied to its first by a line,
+   *  and bordered the box at 1px; it paints so until its settings change. */
   protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
-    this._props = { ...this._props, borderWidth: 1 }
+    this._props = { ...this._props, borderWidth: 1, savedLook: {} }
+  }
+
+  override applyProps(patch: Partial<CalloutProps>): void {
+    super.applyProps(endSavedLook(patch))
   }
 
   requiredAnchors(): number {
     return 2
   }
 
-  protected words(): string {
+  /** The box, the words in it, and the tail's tip. */
+  protected place(viewport: Viewport): (WordsPlace & { tip: Point; wrapWidth: number | null }) | null {
+    const [pointed, boxed] = this.anchors
+    const tip = pointed && this.anchorToPixel(pointed, viewport)
+    const at = boxed && this.anchorToPixel(boxed, viewport)
+    if (!tip || !at) return null
+    const wrapWidth = this.props.wordWrap ? this.props.wordWrapWidth : null
+    const { block, placeholder } = this.shownWords(lineMeasure(this.style), wrapWidth)
+    const shown = placeholder ?? block
+    if (this.props.savedLook) {
+      const lineHeight = Math.round(this.style.fontSize * 1.35)
+      const box = { x: at.x, y: at.y, width: (wrapWidth ?? shown.width) + 12, height: shown.lines.length * lineHeight + 12 }
+      return { box, x: box.x + 6, y: box.y + 6, lineHeight, block, placeholder, tip, wrapWidth }
+    }
+    const lineHeight = this.style.fontSize
+    const width = (wrapWidth ?? shown.width) + CALLOUT_ROOM
+    const height = shown.lines.length * lineHeight + CALLOUT_ROOM
+    const box = { x: at.x - width, y: at.y - height / 2, width, height }
+    return { box, x: box.x + CALLOUT_PAD_LEFT, y: box.y + CALLOUT_LINE_TOP, lineHeight, block, placeholder, tip, wrapWidth }
+  }
+
+  /** A format-2 callout's words, wrapped as format 2 wrapped them. */
+  private savedWords(): string {
     const text = this.props.text || ' '
     return this.props.wordWrap ? wrapText(text, this.style, this.props.wordWrapWidth) : text
   }
 
-  protected boxAt(viewport: Viewport): Box | null {
-    const at = this.anchors[1]
-    if (!at) return null
-    const p = this.anchorToPixel(at, viewport)
-    if (!p) return null
-    const { width, height } = measureTextBlock(this.words(), this.style)
-    return { x: p.x, y: p.y, width: width + 12, height: height + 12 }
-  }
-
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const target = this.anchors[0] && this.anchorToPixel(this.anchors[0], viewport)
-    const box = this.boxAt(viewport)
-    if (!target || !box) return
-    ctx.save()
-    applyStroke(ctx, { ...this.style, lineStyle: 'solid' })
-    strokeSegment(ctx, target, edgeToward(box, target))
-    ctx.restore()
-    paintTextBlock(ctx, this.words(), box, this.style, {
-      background: fillPaint(this.style) ?? undefined,
-      borderColor: this.style.lineColor,
-      borderWidth: this.props.borderWidth ?? this.style.lineWidth,
+    const at = this.place(viewport)
+    if (!at) return
+    const draft = this.textDraft
+    const fill = fillPaint(this.style) ?? 'transparent'
+    const borderWidth = this.props.borderWidth ?? this.style.lineWidth
+    if (this.props.savedLook) {
+      ctx.save()
+      applyStroke(ctx, { ...this.style, lineStyle: 'solid' })
+      strokeSegment(ctx, at.tip, edgeToward(at.box, at.tip))
+      ctx.restore()
+      if (!draft) {
+        paintTextBlock(ctx, this.savedWords(), at.box, this.style, { background: fill, borderColor: this.style.lineColor, borderWidth })
+        return
+      }
+      ctx.save()
+      ctx.setLineDash([])
+      ctx.beginPath()
+      ctx.roundRect(at.box.x, at.box.y, at.box.width, at.box.height, 4)
+      ctx.fillStyle = fill
+      ctx.fill()
+      if (borderWidth > 0) {
+        ctx.strokeStyle = this.style.lineColor
+        ctx.lineWidth = borderWidth
+        ctx.stroke()
+      }
+      ctx.restore()
+    } else {
+      ctx.save()
+      ctx.setLineDash([])
+      ctx.beginPath()
+      traceCallout(ctx, at.box, calloutTail(at.box, at.tip))
+      // The border goes under the fill, which covers its inner half.
+      if (borderWidth > 0) {
+        ctx.strokeStyle = this.style.lineColor
+        ctx.lineWidth = borderWidth
+        ctx.stroke()
+      }
+      ctx.fillStyle = fill
+      ctx.fill()
+      ctx.restore()
+    }
+    paintTextEntry(ctx, {
+      x: at.x,
+      y: at.y,
+      width: at.wrapWidth ?? (at.placeholder ?? at.block).width,
+      lineHeight: at.lineHeight,
+      font: fontOf(this.style),
+      color: this.style.textColor,
+      align: 'left',
+      block: at.block,
+      placeholder: at.placeholder ? { block: at.placeholder, alpha: PLACEHOLDER_ALPHA } : null,
+      draft,
+      measure: lineMeasure(this.style),
     })
   }
 
+  override textFrame(viewport: Viewport): TextEditFrame | null {
+    const at = this.place(viewport)
+    if (!at) return null
+    return { ...wordsFrame(at, fontOf(this.style), 'left', at.wrapWidth ?? (at.placeholder ?? at.block).width), wrapWidth: at.wrapWidth }
+  }
+
+  /** A drag on the box moves the box alone; one on the tail moves the whole callout. */
+  override grabbedAnchors(point: Point, viewport: Viewport): number[] | null {
+    const at = this.place(viewport)
+    return at && inBox(point, at.box) ? [1] : null
+  }
+
+  /** The words are the box's. */
+  override wordsAt(point: Point, viewport: Viewport): boolean {
+    const at = this.place(viewport)
+    return !!at && inBox(point, at.box)
+  }
+
+  /** An empty callout shows its placeholder in its own box, so it needs no hint above it. */
+  override paintTextHint(): void {}
+
   testHit(point: Point, viewport: Viewport): boolean {
-    const box = this.boxAt(viewport)
-    if (box && inBox(point, box)) return true
-    const target = this.anchors[0] && this.anchorToPixel(this.anchors[0], viewport)
-    return !!target && !!box && distanceToSegment(point, target, edgeToward(box, target)) <= Math.max(6, this.style.lineWidth / 2 + 4)
+    const at = this.place(viewport)
+    if (!at) return false
+    if (inBox(point, at.box)) return true
+    if (this.props.savedLook) return distanceToSegment(point, at.tip, edgeToward(at.box, at.tip)) <= Math.max(6, this.style.lineWidth / 2 + 4)
+    const tail = calloutTail(at.box, at.tip)
+    if (!tail) return false
+    return inTail(point, tail) || distanceToSegment(point, tail.from, tail.tip) <= 4 || distanceToSegment(point, tail.to, tail.tip) <= 4
   }
 }
 

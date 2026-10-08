@@ -20,7 +20,7 @@ import { drawingTools, type DrawingTool } from '../tools'
 import { editRefused } from '../lockModel'
 import { toolAfterPlacement } from '../cursorModel'
 import { stampNewScope } from './scope'
-import { inlineTextRules } from './inlineText'
+import { inlineTextRules, settingsOnDoubleClick } from './inlineText'
 import { constrain45, instantPositionAnchors, barsShifted, type Px } from './geometry'
 import type { DrawingsWorkflow } from './types'
 import { presetPropsFor, type PresetCache } from './presets'
@@ -768,7 +768,8 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (ctx.drag || ctx.draft) e.preventDefault()
   }
 
-  /** A double-click ends a multipoint run, and reopens the inline editor on a text drawing. */
+  /** A double-click ends a multipoint run, opens the settings of a drawing whose tool opens them so,
+   *  and opens the editor of any other drawing's words. */
   const onDblClick = (e: MouseEvent): void => {
     if (ctx.locked()) return
     const draft = ctx.draft
@@ -788,9 +789,9 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (ctx.armed()) return
     const p = localXY(e)
     const hit = manager.hitTest(p)
-    // A tool that types its words on the chart opens its settings on a double-click. A click of the
-    // double-click may have begun an edit of the words; it ends keeping them as they are.
-    if (hit && inlineTextRules(hit)?.doubleClickOpensSettings) {
+    // A click of the double-click may have begun an edit of the words; it ends keeping them as they
+    // are.
+    if (hit && settingsOnDoubleClick(hit)) {
       ctx.endTextEdit()
       manager.select(hit.id)
       ctx.openSettings()

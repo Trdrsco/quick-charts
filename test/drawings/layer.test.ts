@@ -147,9 +147,8 @@ describe('placing a fixed tool', () => {
   it('a tool that types in a box opens its editor as it lands, and an empty commit removes it', async () => {
     vi.useFakeTimers()
     const { container, handle, events } = make()
-    handle.armTool('callout')
+    handle.armTool('content_card')
     click(container, 100, 100)
-    click(container, 160, 140)
     expect(handle.count()).toBe(1)
     vi.runAllTimers()
     const session = handle.textEdit()
@@ -497,6 +496,85 @@ describe('a text typed on the chart', () => {
     click(r.container, 225, 205)
     vi.runOnlyPendingTimers()
     expect(r.handle.textEdit()?.id).toBe(drawing.id)
+  })
+
+  /** Place a callout with its tail's tip at (100, 300) and its box's right edge on (300, 200). */
+  const placeCallout = (r: Rig) => {
+    r.handle.armTool('callout')
+    click(r.container, 100, 300)
+    window.dispatchEvent(pointer('pointermove', 280, 210))
+    click(r.container, 300, 200)
+    const drawing = r.handle.selectedDrawing()!
+    vi.runOnlyPendingTimers()
+    return { drawing, session: r.handle.textEdit()! }
+  }
+
+  it('a callout places on two clicks, its tip then its box, and opens its words after the second', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('callout')
+    click(r.container, 100, 300)
+    window.dispatchEvent(pointer('pointermove', 280, 210))
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 300, 200)
+    vi.runOnlyPendingTimers()
+    const session = r.handle.textEdit()!
+    expect(session.inline).toBeDefined()
+    expect(session.fresh).toBe(true)
+    expect(r.handle.selectedDrawing()!.anchors.map((a) => r.fake.xOf(Number(a.time)))).toEqual([100, 300])
+  })
+
+  it('a callout whose edit ends without words goes at once: one never typed in, and one whose words were cleared', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const fresh = placeCallout(r)
+    r.handle.cancelText()
+    expect(r.handle.selectedDrawing()).toBeNull()
+    expect(r.handle.counts().total).toBe(0)
+    expect(fresh.drawing.props.text).toBe('')
+    const { drawing } = placeCallout(r)
+    r.handle.commitText('Hi')
+    expect(r.handle.export().map((d) => d.props?.text)).toEqual(['Hi'])
+    r.handle.editSelectedText()
+    vi.runOnlyPendingTimers()
+    r.handle.textEdit()!.inline!.update(caretAt(''))
+    r.handle.cancelText()
+    expect(r.handle.counts().total).toBe(0)
+    expect(r.handle.export()).toEqual([])
+    expect(drawing.props.text).toBe('Hi')
+  })
+
+  it('a drag on a callout’s box moves its box alone, a drag on its tail moves the whole callout', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const { drawing } = placeCallout(r)
+    r.handle.commitText('Hi')
+    const before = drawing.anchors.map((a) => ({ ...a }))
+    // Inside the box, which stands left of (300, 200), clear of the handle on its right edge.
+    drag(r.container, [280, 205], [280, 245])
+    expect(drawing.anchors[0]).toEqual(before[0])
+    expect(drawing.anchors[1]!.price).not.toBe(before[1]!.price)
+    const box = { ...drawing.anchors[1]! }
+    // On the tail, halfway from its root at the box's bottom-left corner to its tip at (100, 300).
+    drag(r.container, [184, 276], [184, 286])
+    expect(drawing.anchors[0]!.price).not.toBe(before[0]!.price)
+    expect(drawing.anchors[1]!.price).not.toBe(box.price)
+  })
+
+  it('a click on the box of a selected callout types, and a double-click opens its settings', () => {
+    vi.useFakeTimers()
+    const commands: string[] = []
+    const r = make({ execute: (command) => (commands.push(command), true) })
+    const { drawing } = placeCallout(r)
+    r.handle.commitText('Hi')
+    click(r.container, 280, 205)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.id).toBe(drawing.id)
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 280, clientY: 205, bubbles: true }))
+    expect(commands).toEqual(['chart.drawings.settings'])
+    expect(r.handle.textEdit()).toBeNull()
+    expect(drawing.props.text).toBe('Hi')
   })
 
   /** What the layer attaches to the series and takes off it, by drawing id. */
