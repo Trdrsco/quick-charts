@@ -261,9 +261,11 @@ export const ICONS = {
   lineThickness2: { viewBox: '0 0 18 2', size: 2, aspect: 9, body: '<rect width="18" height="2" rx="1" fill="currentColor"/>' },
   lineThickness3: { viewBox: '0 0 18 3', size: 3, aspect: 6, body: '<rect width="18" height="3" rx="1.5" fill="currentColor"/>' },
   lineThickness4: { viewBox: '0 0 18 4', size: 4, aspect: 4.5, body: '<rect width="18" height="4" rx="2" fill="currentColor"/>' },
-  // A line's two end styles, drawn for its left end: the right end wears the same glyph mirrored.
-  lineEndNormal: { viewBox: '0 0 28 28', body: '<path stroke="currentColor" d="M8.5 13.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm0 0H24"/>' },
-  lineEndArrow: { viewBox: '0 0 28 28', body: '<path stroke="currentColor" d="M4.5 13.5H24m-19.5 0L8 17m-3.5-3.5L8 10"/>' },
+  // A line's two end styles, drawn for its left end with a one-pixel line on the 13.5 axis that runs
+  // to 24: the plain end is a 2px ring the line leaves from, and the arrow's two barbs open from
+  // its tip at 4.5 to 3.5px back and up and down. The right end wears the same glyph mirrored.
+  lineEndNormal: { viewBox: '0 0 28 28', body: '<circle cx="6.5" cy="13.5" r="2" fill="none" stroke="currentColor"/><line x1="8.5" y1="13.5" x2="24" y2="13.5" stroke="currentColor"/>' },
+  lineEndArrow: { viewBox: '0 0 28 28', body: '<g stroke="currentColor"><line x1="24" y1="13.5" x2="4.5" y2="13.5"/><line x1="4.5" y1="13.5" x2="8" y2="10"/><line x1="4.5" y1="13.5" x2="8" y2="17"/></g>' },
   // A menu row that opens a submenu points at where it will appear.
   submenuArrow: { viewBox: '0 0 24 24', body: '<path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' },
   close18: { viewBox: '0 0 18 18', body: '<path d="M4.5 4.5l9 9M13.5 4.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' },
