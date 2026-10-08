@@ -186,6 +186,7 @@ export const drawing = {
   'drawing.opacity': 'Opacity',
   'drawing.transparency': 'Transparency',
   'drawing.label': 'Label',
+  'drawing.labelColor': 'Label color',
   'drawing.labels': 'Labels',
   'drawing.left': 'Left',
   'drawing.center': 'Center',

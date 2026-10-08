@@ -118,7 +118,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -142,7 +142,17 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   fib_retracement: 'fib',
   fib_trend_ext: 'fib',
   fib_channel: 'fibChannel',
+  xabcd_pattern: 'pattern',
+  cypher_pattern: 'pattern',
+  abcd_pattern: 'pattern',
+  three_drives: 'pattern',
+  triangle_pattern: 'pattern',
+  head_and_shoulders: 'pattern',
 }
+
+/** A held weight or slant is a toggle of the field's box, pressed while it holds. */
+const fontToggle = (icons: IconResolver, on: boolean, icon: 'textBold' | 'textItalic', name: string, onClick: () => void): HTMLButtonElement =>
+  button({ class: 'qc-field qc-drawing-font-toggle', label: name, icon: icons.icon(icon, 28), pressed: on, onClick })
 
 /** A line's stats, in the order the Stats list offers them. */
 const STATS: readonly { key: string; label: ChartMessageKey }[] = [
@@ -252,6 +262,29 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
     )
   } else if (layout === 'shape') {
     out.push(row(t('drawing.border'), stroke('drawing.border')), background())
+  } else if (layout === 'pattern') {
+    // The letters' color, size, weight and slant on one row, then the border and, where the
+    // pattern shades its legs, the background.
+    out.push(
+      row(
+        t('drawing.label'),
+        swatchButton(t, box, {
+          label: t('drawing.labelColor'),
+          value: style.textColor,
+          onPick: (c) => {
+            const alpha = alphaOf(style.textColor)
+            ctx.patchStyle({ textColor: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(style.textColor),
+          onOpacity: (v) => ctx.patchStyle({ textColor: withAlpha(style.textColor, v) }),
+        }),
+        dropdown(icons, box, t('drawing.fontSize'), TEXT_SIZES, String(style.fontSize) as (typeof TEXT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) })),
+        fontToggle(icons, style.bold, 'textBold', t('drawing.bold'), () => ctx.patchStyle({ bold: !style.bold })),
+        fontToggle(icons, style.italic, 'textItalic', t('drawing.italic'), () => ctx.patchStyle({ italic: !style.italic })),
+      ),
+      row(t('drawing.border'), stroke('drawing.border')),
+    )
+    if (has('fillBackground')) out.push(background())
   } else {
     out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine'), ...ends()), extend('drawing.extendLeftLine', 'drawing.extendRightLine'), background())
   }
@@ -515,9 +548,6 @@ export function textRows(ctx: RowsContext): HTMLElement[] {
   const { t, drawing, box, icons } = ctx
   const props = drawing.props as Record<string, unknown>
   const style = drawing.style
-  /** A held weight or slant is a toggle of the field's box, pressed while it holds. */
-  const fontToggle = (on: boolean, icon: 'textBold' | 'textItalic', name: string, onClick: () => void): HTMLButtonElement =>
-    button({ class: 'qc-field qc-drawing-font-toggle', label: name, icon: icons.icon(icon, 28), pressed: on, onClick })
   const area = el('textarea', { class: 'qc-field qc-drawing-textarea', spellcheck: 'false', placeholder: t('drawing.addText'), 'aria-label': t('drawing.tabText') }) as HTMLTextAreaElement
   area.value = String(props.text ?? '')
   area.addEventListener('input', () => ctx.patchQuiet({ text: area.value }))
@@ -534,8 +564,8 @@ export function textRows(ctx: RowsContext): HTMLElement[] {
         onOpacity: (v) => ctx.patchStyle({ textColor: withAlpha(style.textColor, v) }),
       }),
       dropdown(icons, box, t('drawing.fontSize'), TEXT_SIZES, String(style.fontSize) as (typeof TEXT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) })),
-      fontToggle(style.bold, 'textBold', t('drawing.bold'), () => ctx.patchStyle({ bold: !style.bold })),
-      fontToggle(style.italic, 'textItalic', t('drawing.italic'), () => ctx.patchStyle({ italic: !style.italic })),
+      fontToggle(icons, style.bold, 'textBold', t('drawing.bold'), () => ctx.patchStyle({ bold: !style.bold })),
+      fontToggle(icons, style.italic, 'textItalic', t('drawing.italic'), () => ctx.patchStyle({ italic: !style.italic })),
     ),
     fullRow(area),
   ]

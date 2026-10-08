@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
-// The settings pages of the line, shape, curve and leveled tools, row by row: which pages each tool
-// gets, every row's label, the kind of every control in it and the value it opens on, the choices
+// The settings pages of the line, shape, curve, leveled and pattern tools, row by row: which pages
+// each tool gets, every row's label, the kind of every control in it and the value it opens on, the choices
 // each list offers in their order, and the look and setup a new drawing of each tool starts with.
 //
 // Each page is read as row signatures; settingsRig.ts says how.
@@ -55,7 +55,14 @@ const fibStyle = (retracement: boolean): string[] => [
   ...(retracement ? ['[ ] Fib levels based on log scale'] : []),
 ]
 
-/** Every tool of the line, shape, curve and leveled families: its pages, and the rows of each page. */
+/** The Coordinates page of a tool placed on so many points. */
+const points = (n: number): string[] => Array.from({ length: n }, (_, i) => `#${i + 1} (price, bar): number number`)
+
+/** A pattern's Style page: its letters, its border and, where it shades its legs, its background. */
+const patternStyle = (shaded: boolean): string[] => ['Label: color select(12) toggle toggle', 'Border: colorWithThickness', ...(shaded ? ['[x] Background: color'] : [])]
+
+/** Every tool of the line, shape, curve, leveled and pattern families: its pages, and the rows of
+ *  each page. */
 const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; Coordinates?: string[] }> = {
   trend_line: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], Style: lineStyle("Don't extend", 'Hidden', 'Right', '[ ]'), Text: LINE_TEXT, Coordinates: TWO_POINTS },
   ray: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], Style: lineStyle('Extend right line', 'Hidden', 'Right', '[ ]'), Text: LINE_TEXT, Coordinates: TWO_POINTS },
@@ -129,9 +136,15 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; 
   fib_retracement: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: fibStyle(true), Coordinates: TWO_POINTS },
   fib_trend_ext: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: fibStyle(true), Coordinates: THREE_POINTS },
   fib_channel: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: fibStyle(false), Coordinates: THREE_POINTS },
+  xabcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
+  cypher_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
+  abcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(false), Coordinates: points(4) },
+  three_drives: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(false), Coordinates: points(7) },
+  triangle_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(4) },
+  head_and_shoulders: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(7) },
 }
 
-describe('the pages and rows of the line, shape, curve and leveled tools', () => {
+describe('the pages and rows of the line, shape, curve, leveled and pattern tools', () => {
   for (const [type, expected] of Object.entries(PAGES)) {
     it(type, () => {
       const { tabs, show, page } = rig(type)

@@ -154,6 +154,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.opacity': 'Opacity',
   'drawing.transparency': 'Transparency',
   'drawing.label': 'Label',
+  'drawing.labelColor': 'Label color',
   'drawing.labels': 'Labels',
   'drawing.left': 'Left',
   'drawing.center': 'Center',

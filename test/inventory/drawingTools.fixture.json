@@ -13,10 +13,14 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": [
-        "text"
-      ]
+      "style": {
+        "lineColor": "#089981",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#ffffff",
+        "fontSize": 12
+      },
+      "props": []
     },
     {
       "type": "anchored_volume_profile",
@@ -304,10 +308,16 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.12
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#ffffff",
+        "fontSize": 12,
+        "fillColor": "#2962ff",
+        "fillOpacity": 0.15
       },
       "props": [
-        "text"
+        "fillBackground"
       ]
     },
     {
@@ -395,9 +405,7 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": [
-        "text"
-      ]
+      "props": []
     },
     {
       "type": "elliott_double_combo",
@@ -407,9 +415,7 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": [
-        "text"
-      ]
+      "props": []
     },
     {
       "type": "elliott_impulse_wave",
@@ -419,9 +425,7 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": [
-        "text"
-      ]
+      "props": []
     },
     {
       "type": "elliott_triangle_wave",
@@ -431,9 +435,7 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": [
-        "text"
-      ]
+      "props": []
     },
     {
       "type": "elliott_triple_combo",
@@ -443,9 +445,7 @@
       "hasText": false,
       "capturesBars": false,
       "style": null,
-      "props": [
-        "text"
-      ]
+      "props": []
     },
     {
       "type": "ellipse",
@@ -897,10 +897,16 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.12
+        "lineColor": "#089981",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#ffffff",
+        "fontSize": 12,
+        "fillColor": "#089981",
+        "fillOpacity": 0.15
       },
       "props": [
-        "text"
+        "fillBackground"
       ]
     },
     {
@@ -1446,14 +1452,18 @@
     {
       "type": "three_drives",
       "category": "patterns",
-      "anchors": 6,
+      "anchors": 7,
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": [
-        "text"
-      ]
+      "style": {
+        "lineColor": "#673ab7",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#ffffff",
+        "fontSize": 12
+      },
+      "props": []
     },
     {
       "type": "time_cycles",
@@ -1563,10 +1573,16 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.12
+        "lineColor": "#673ab7",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#ffffff",
+        "fontSize": 12,
+        "fillColor": "#673ab7",
+        "fillOpacity": 0.15
       },
       "props": [
-        "text"
+        "fillBackground"
       ]
     },
     {
@@ -1599,10 +1615,16 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.12
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#ffffff",
+        "fontSize": 12,
+        "fillColor": "#2962ff",
+        "fillOpacity": 0.15
       },
       "props": [
-        "text"
+        "fillBackground"
       ]
     }
   ]

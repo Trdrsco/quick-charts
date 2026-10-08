@@ -128,6 +128,17 @@ const LINE_LOOK: Partial<DrawingStyle> = { lineColor: '#2962ff', lineWidth: 2, l
  *  its words in the hue at 14px. */
 const shapeLook = (hue: string): Partial<DrawingStyle> => ({ lineColor: hue, lineWidth: 2, lineStyle: 'solid', fillColor: hue, fillOpacity: 0.2, textColor: hue, fontSize: 14 })
 
+/** A pattern's factory look: a 2px border in its hue and its letters white at 12px, and where it
+ *  shades its legs, a background of the hue at fifteen percent. */
+const patternLook = (hue: string, shaded: boolean): Partial<DrawingStyle> => ({
+  lineColor: hue,
+  lineWidth: 2,
+  lineStyle: 'solid',
+  textColor: '#ffffff',
+  fontSize: 12,
+  ...(shaded ? { fillColor: hue, fillOpacity: 0.15 } : {}),
+})
+
 /** A leveled fib's factory look: its levels drawn solid at 2px, their labels at 12px. */
 const FIB_LOOK: Partial<DrawingStyle> = { lineWidth: 2, lineStyle: 'solid', fontSize: 12 }
 
@@ -204,12 +215,12 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(GannFan, { type: 'gannbox_fan', name: 'Gann fan', category: 'gann', anchors: 2 }),
 
   // Patterns
-  tool(XabcdPattern, { type: 'xabcd_pattern', name: 'XABCD pattern', category: 'patterns', anchors: 5, style: { fillOpacity: 0.12 } }),
-  tool(CypherPattern, { type: 'cypher_pattern', name: 'Cypher pattern', category: 'patterns', anchors: 5, style: { fillOpacity: 0.12 } }),
-  tool(AbcdPattern, { type: 'abcd_pattern', name: 'ABCD pattern', category: 'patterns', anchors: 4 }),
-  tool(ThreeDrivesPattern, { type: 'three_drives', name: 'Three drives pattern', category: 'patterns', anchors: 6 }),
-  tool(TrianglePattern, { type: 'triangle_pattern', name: 'Triangle pattern', category: 'patterns', anchors: 4, style: { fillOpacity: 0.12 } }),
-  tool(HeadAndShoulders, { type: 'head_and_shoulders', name: 'Head and shoulders', category: 'patterns', anchors: 7, style: { fillOpacity: 0.12 } }),
+  tool(XabcdPattern, { type: 'xabcd_pattern', name: 'XABCD pattern', category: 'patterns', anchors: 5, style: patternLook('#2962ff', true) }),
+  tool(CypherPattern, { type: 'cypher_pattern', name: 'Cypher pattern', category: 'patterns', anchors: 5, style: patternLook('#2962ff', true) }),
+  tool(AbcdPattern, { type: 'abcd_pattern', name: 'ABCD pattern', category: 'patterns', anchors: 4, style: patternLook('#089981', false) }),
+  tool(ThreeDrivesPattern, { type: 'three_drives', name: 'Three drives pattern', category: 'patterns', anchors: 7, style: patternLook('#673ab7', false) }),
+  tool(TrianglePattern, { type: 'triangle_pattern', name: 'Triangle pattern', category: 'patterns', anchors: 4, style: patternLook('#673ab7', true) }),
+  tool(HeadAndShoulders, { type: 'head_and_shoulders', name: 'Head and shoulders', category: 'patterns', anchors: 7, style: patternLook('#089981', true) }),
 
   // Elliott waves
   tool(ElliottImpulse, { type: 'elliott_impulse_wave', name: 'Elliott impulse (12345)', category: 'elliott', anchors: 6 }),

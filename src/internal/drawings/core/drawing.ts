@@ -223,7 +223,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     props: Partial<P> = {},
   ) {
     this.id = id
-    this._anchors = anchors.map((a) => ({ ...a }))
+    this._anchors = this.upgradeAnchors(anchors.map((a) => ({ ...a })))
     this._style = { ...DEFAULT_STYLE, ...style }
     this._options = normalizeOptions(options)
     this._props = { ...this.defaultProps(), ...this.upgradeProps(props) }
@@ -240,6 +240,13 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
    *  fields (runs during construction). */
   protected upgradeProps(props: Partial<P>): Partial<P> {
     return props
+  }
+
+  /** Saved anchors as this tool reads them now: a tool that gained a point completes a drawing saved
+   *  without it, so the drawing keeps its shape. Must not read instance fields (runs during
+   *  construction). */
+  protected upgradeAnchors(anchors: Anchor[]): Anchor[] {
+    return anchors
   }
 
   // ============ ISeriesPrimitive ============
@@ -599,7 +606,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   }
 
   fromJSON(data: SerializedDrawing): void {
-    this._anchors = data.anchors.map((a) => ({ ...a }))
+    this._anchors = this.upgradeAnchors(data.anchors.map((a) => ({ ...a })))
     this._style = { ...DEFAULT_STYLE, ...data.style }
     this._options = normalizeOptions(data.options)
     this._props = { ...this.defaultProps(), ...this.upgradeProps((data.props ?? {}) as Partial<P>) }

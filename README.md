@@ -2853,6 +2853,11 @@ swing points in a stroke of its own (`trendLine`, `trendLineColor`, `trendLineWi
 `textVAlign` put them, and with `levelsOnLogScale` divide the swing by log price while the price
 scale is logarithmic, which `Viewport.logScale` reports.
 
+The pattern tools are read by their letters and carry no words of their own: their Style page sets
+the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
+that shade their legs, the background, which `fillBackground` switches off and on keeping its
+color. A three drives pattern stands on seven points, its reversal after the third drive the last.
+
 Text-bearing tools open an inline editor where the text sits, in the drawing's own type. A fresh
 placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd
 with Enter commits, Escape cancels, and a press on the chart commits.
