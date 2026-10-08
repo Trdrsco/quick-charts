@@ -52,7 +52,7 @@ const PAGES: Record<string, { tabs: string[]; first: string[]; Text?: string[]; 
     Text: ['full: select(12) toggle toggle', 'full: textarea'],
     Coordinates: ['#1 (vertical position %, bar): number number'],
   },
-  table: { tabs: ['Style', 'Table', 'Visibility'], first: ['Background: color', 'Border: color', 'Text: color select(14)', 'Text alignment: select(Left)'] },
+  table: { tabs: ['Style', 'Visibility'], first: ['Background: color', 'Border: color', 'Text: color select(14)', 'Text alignment: select(Left)'] },
   arrow_up: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], first: ['Arrow: color'], Text: markText(14), Coordinates: ONE_POINT },
   arrow_down: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], first: ['Arrow: color'], Text: markText(14), Coordinates: ONE_POINT },
   arrow_marker: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], first: ['Color: color'], Text: markText(16), Coordinates: TWO_POINTS },

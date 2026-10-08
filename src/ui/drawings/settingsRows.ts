@@ -30,13 +30,12 @@ import type { IconResolver } from '../icons/resolver'
 import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
 import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, levelLines, opacityTrack, strokedLevelRows, thicknessSelect } from './levelRows'
 
-export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Table' | 'Coordinates' | 'Visibility'
+export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Coordinates' | 'Visibility'
 
 export const TAB_LABEL: Record<SettingsTab, ChartMessageKey> = {
   Inputs: 'drawing.tabInputs',
   Style: 'drawing.tabStyle',
   Text: 'drawing.tabText',
-  Table: 'drawing.tabTable',
   Coordinates: 'drawing.tabCoordinates',
   Visibility: 'drawing.tabVisibility',
 }
@@ -50,7 +49,6 @@ export function tabsFor(drawing: IDrawing): SettingsTab[] {
   if ((INPUT_PROPS[drawing.type] ?? []).length > 0) out.push('Inputs')
   if (!NO_STYLE_TAB.has(drawing.type)) out.push('Style')
   if (typeof props.text === 'string' && !inert.includes('text')) out.push('Text')
-  if (Array.isArray(props.cells)) out.push('Table')
   if (!NO_COORDINATES_TAB.has(drawing.type)) out.push('Coordinates')
   out.push('Visibility')
   return out
@@ -1263,55 +1261,6 @@ function textBoxRows(ctx: RowsContext): HTMLElement[] {
     ]
   }
   return [row(t('drawing.background'), fill), row(t('drawing.border'), border)]
-}
-
-/** The Table page: the header switch, every cell, and the row and column controls. */
-export function tableRows(ctx: RowsContext): HTMLElement[] {
-  const { t, drawing } = ctx
-  const props = drawing.props as { cells: string[][]; headerRow?: boolean }
-  const cells = props.cells
-  // The grid as the drawing holds it NOW. Typing into a cell replaces the whole array, so the next
-  // field a viewer moves to writes from the current grid: reading the copy this page was built from
-  // would put the cell they just left back the way it was.
-  const liveCells = (): string[][] => {
-    const held = (drawing.props as { cells?: string[][] }).cells
-    return Array.isArray(held) ? held : cells
-  }
-  const rows = cells.length
-  const cols = cells[0]?.length ?? 0
-  const grid = el('div', { class: 'qc-drawing-table' })
-  cells.forEach((line, r) => {
-    const lineEl = el('div', { class: 'qc-drawing-table-row' })
-    line.forEach((value, c) => {
-      lineEl.appendChild(
-        textField(value, t('drawing.tableCell', { row: r + 1, col: c + 1 }), (v) => {
-          const next = liveCells().map((x, ri) => (ri === r ? x.map((cell, ci) => (ci === c ? v : cell)) : x))
-          ctx.patchQuiet({ cells: next })
-        }),
-      )
-    })
-    grid.appendChild(lineEl)
-  })
-  const actions = el(
-    'div',
-    { class: 'qc-drawing-table-actions' },
-    button({
-      class: 'qc-button',
-      label: t('drawing.addRow'),
-      text: t('drawing.addRow'),
-      onClick: () => ctx.patchProps({ cells: [...liveCells(), Array.from({ length: liveCells()[0]?.length ?? cols }, () => '')] }),
-    }),
-    button({ class: 'qc-button', label: t('drawing.removeRow'), text: t('drawing.removeRow'), disabled: rows <= 1, onClick: () => ctx.patchProps({ cells: liveCells().slice(0, -1) }) }),
-    button({ class: 'qc-button', label: t('drawing.addColumn'), text: t('drawing.addColumn'), onClick: () => ctx.patchProps({ cells: liveCells().map((line) => [...line, '']) }) }),
-    button({
-      class: 'qc-button',
-      label: t('drawing.removeColumn'),
-      text: t('drawing.removeColumn'),
-      disabled: cols <= 1,
-      onClick: () => ctx.patchProps({ cells: liveCells().map((line) => line.slice(0, -1)) }),
-    }),
-  )
-  return [toggleRow(t('drawing.headerRow'), !!props.headerRow, (v) => ctx.patchProps({ headerRow: v })), grid, actions]
 }
 
 /** The Coordinates page: one row per anchor, as price and bar index, bar alone for the

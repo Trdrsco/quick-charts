@@ -136,10 +136,12 @@ export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
 
 /** Prop keys a tool carries that its pages do not set: a trend angle's shared line keys, which it
  *  draws only as a save carries them; a content card's words and link, which the host sets or the
- *  viewer types on the chart; and the props that keep a version 2 save's look as it was saved. */
+ *  viewer types on the chart; a table's cells and header band, which stand on the chart and in a
+ *  save; and the props that keep a version 2 save's look as it was saved. */
 export const INERT_PROPS: Record<string, readonly string[]> = {
   trend_angle: ['text', 'leftEnd', 'rightEnd', 'showDateTimeRange', 'showAngle'],
   content_card: ['text', 'url'],
+  table: ['cells', 'headerRow'],
   ...SAVED_LOOK_PROPS,
 }
 

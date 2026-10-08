@@ -1075,37 +1075,6 @@
   border-color: var(--qc-control-onPressed);
 }
 
-/* A row of cells wider than the dialog slides sideways under the pointer already on it; a bar
- * beneath it would be chrome the table does not own. */
-[data-qc-theme] .qc-drawing-table {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-[data-qc-theme] .qc-drawing-table::-webkit-scrollbar {
-  display: none;
-}
-
-[data-qc-theme] .qc-drawing-table-row {
-  display: flex;
-  gap: 4px;
-}
-
-[data-qc-theme] .qc-drawing-table-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding-top: 4px;
-}
-
-[data-qc-theme] .qc-drawing-table-actions .qc-button {
-  padding: 4px 8px;
-  font-size: var(--qc-text-fontSizeSmall);
-}
-
 /* Forced colors: a swatch IS its color, so it keeps it, with a system border to stand on. The color
  * popover's compact fields edge their focus in the system highlight. */
 @media (forced-colors: active) {

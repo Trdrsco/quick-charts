@@ -161,7 +161,6 @@ export const drawing = {
   'drawing.tabInputs': 'Inputs',
   'drawing.tabStyle': 'Style',
   'drawing.tabText': 'Text',
-  'drawing.tabTable': 'Table',
   'drawing.tabCoordinates': 'Coordinates',
   'drawing.tabVisibility': 'Visibility',
   'drawing.template': 'Template',
@@ -444,13 +443,9 @@ export const drawing = {
   'drawing.textPlaceholder': 'Text',
   'drawing.textEditor': 'Drawing text',
 
-  // The Table page.
-  'drawing.headerRow': 'Header row',
-  'drawing.tableCell': 'Cell {row},{col}',
+  // A table's row and column, as the settings bar adds them.
   'drawing.addRow': 'Add row',
-  'drawing.removeRow': 'Remove row',
   'drawing.addColumn': 'Add column',
-  'drawing.removeColumn': 'Remove column',
 
   // The Coordinates page: one row per anchor, numbered.
   'drawing.coordBar': '#{n} (bar)',

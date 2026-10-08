@@ -56,7 +56,8 @@ describe('the pages a tool gets', () => {
     expect(tabsFor(text)).toEqual(['Text', 'Visibility'])
     expect(firstTabFor(text)).toBe('Text')
     const table = drawingTools.create('table', 'c', anchors(1))!
-    expect(tabsFor(table)).toEqual(['Style', 'Table', 'Visibility'])
+    // A table's cells, rows and columns stand on the chart, so its dialog is its look and where it shows.
+    expect(tabsFor(table)).toEqual(['Style', 'Visibility'])
     const profile = drawingTools.create('fixed_range_volume_profile', 'd', anchors(2))!
     expect(tabsFor(profile)).toEqual(['Inputs', 'Style', 'Coordinates', 'Visibility'])
   })
@@ -243,7 +244,7 @@ describe('the dialog', () => {
     expect(position.labels()).toEqual(expect.arrayContaining(['Risk', 'Account size', 'Lot size', 'Entry price', 'Leverage', 'QTY precision']))
   })
 
-  it('the Text page edits the words quietly, and the Table page grows the grid', () => {
+  it('the Text page edits the words quietly', () => {
     const text = rig('text', { text: 'Hi' })
     const area = text.dialog.querySelector<HTMLTextAreaElement>('textarea')!
     area.value = 'Hi there'
@@ -253,11 +254,6 @@ describe('the dialog', () => {
     const first = text.dialog.querySelector('.qc-drawing-row-full')!
     expect([...first.children].map((c) => c.getAttribute('aria-label'))).toEqual(['Text color', 'Font size', 'Bold', 'Italic'])
     expect(text.labels()).toEqual(expect.arrayContaining(['Background']))
-    const table = rig('table')
-    table.tab('Table').click()
-    const cells = table.drawing.props.cells as string[][]
-    table.dialog.querySelector<HTMLButtonElement>('button[aria-label="Add column"]')!.click()
-    expect((table.drawing.props.cells as string[][])[0]!.length).toBe(cells[0]!.length + 1)
   })
 
   it('pins the last enabled timeframe on the Visibility page', () => {

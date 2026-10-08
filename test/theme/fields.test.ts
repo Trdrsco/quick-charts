@@ -96,14 +96,9 @@ function fibSettingsIn(root: HTMLElement, available = true): HTMLElement {
   return root.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
 }
 
-/** A text field of a drawing settings page: the first cell of a table's grid. */
-function textFieldIn(root: HTMLElement, available = true): HTMLInputElement {
-  const drawing = drawingTools.create('table', 't1', [{ time: 1000 as never, price: 100 }])!
-  const dialog = openSettingsDialog({ chrome: root, t, icons: ownIcons(), drawing, presets: createPresets(null), idBase: 'c2-drawing-settings', run: () => true, available: () => available })
-  closers.push(() => dialog.close())
-  const box = root.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
-  ;[...box.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === 'Table')!.click()
-  return box.querySelector<HTMLInputElement>('.qc-drawing-input')!
+/** A field of a drawing settings page that takes typing: the value of a retracement's first level. */
+function typedFieldIn(root: HTMLElement, available = true): HTMLInputElement {
+  return fibSettingsIn(root, available).querySelector<HTMLInputElement>('.qc-drawing-number')!
 }
 
 /** A list button that ends in the chevron: one whose face is words, not a mark. */
@@ -134,10 +129,10 @@ for (const mode of THEME_MODES) {
       expect(painted(input).outlineStyle).toBe('none')
     })
 
-    it('stands a drawing text field, select and number field on their edge, and rings each with the keyboard', () => {
+    it('stands a drawing number field and select on their edge, and rings each with the keyboard', () => {
       const root = rootIn(mode)
       const dialog = fibSettingsIn(root)
-      const fields = [textFieldIn(rootIn(mode)), ...['.qc-drawing-number', WORDS_SELECT].map((selector) => dialog.querySelector<HTMLElement>(selector)!)]
+      const fields = ['.qc-drawing-number', WORDS_SELECT].map((selector) => dialog.querySelector<HTMLElement>(selector)!)
       for (const field of fields) {
         blur()
         const rest = painted(field)
@@ -155,7 +150,7 @@ for (const mode of THEME_MODES) {
 
     it('turns a refused value the invalid color, at rest and ringed', () => {
       const root = rootIn(mode)
-      const field = textFieldIn(root)
+      const field = typedFieldIn(root)
       field.setAttribute('aria-invalid', 'true')
       blur()
       expect(painted(field).borderTopColor).toBe(theme['control.fieldInvalid'])
@@ -167,7 +162,7 @@ for (const mode of THEME_MODES) {
 
     it('stands a field that cannot be used on the read-only fill, its edge at rest and its words in the disabled ink', () => {
       const root = rootIn(mode)
-      const field = textFieldIn(root, false)
+      const field = typedFieldIn(root, false)
       expect(field.disabled).toBe(true)
       const rest = painted(field)
       expect(rest.backgroundColor).toBe(theme['control.fieldFill'])
@@ -217,14 +212,14 @@ describe('a host palette', () => {
     expect(painted(box).borderTopColor).toBe('#123456')
     input.focus()
     expect(painted(box).boxShadow).toBe(ring('#654321'))
-    const field = textFieldIn(root)
+    const field = typedFieldIn(root)
     blur()
     expect(painted(field).borderTopColor).toBe('#123456')
     field.focus()
     expect(painted(field).borderTopColor).toBe('#654321')
     field.setAttribute('aria-invalid', 'true')
     expect(painted(field).boxShadow).toBe(ring('#a1b2c3'))
-    const refused = textFieldIn(rootIn('dark', custom), false)
+    const refused = typedFieldIn(rootIn('dark', custom), false)
     expect(painted(refused).backgroundColor).toBe('#0d0e0f')
   })
 })

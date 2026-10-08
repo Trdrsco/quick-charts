@@ -28,7 +28,7 @@ import { ownsEscape, pushEscapeOwner } from '../controls/escape'
 import { selectChevron } from '../controls/select'
 import { provideColorMemory, type ColorMemory } from '../controls/color'
 import { dialogTabs, openPopover, reopenPopover } from './fields'
-import { coordinateRows, firstTabFor, styleRows, tableRows, tabsFor, textRows, visibilityRows, TAB_LABEL, type RowsContext, type SettingsTab } from './settingsRows'
+import { coordinateRows, firstTabFor, styleRows, tabsFor, textRows, visibilityRows, TAB_LABEL, type RowsContext, type SettingsTab } from './settingsRows'
 import { openTemplateDeleteDialog, openTemplateNameDialog } from './templateDialog'
 import type { IconResolver } from '../icons/resolver'
 
@@ -182,7 +182,6 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     Inputs: ['chart.drawings.style', 'chart.drawings.props'],
     Style: ['chart.drawings.style', 'chart.drawings.props'],
     Text: ['chart.drawings.style', 'chart.drawings.props'],
-    Table: ['chart.drawings.props'],
     Coordinates: ['chart.drawings.props'],
     Visibility: ['chart.drawings.visibility'],
   }
@@ -219,7 +218,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
   const renderPage = (): void => {
     ctx.tab = tab
     const rows =
-      tab === 'Style' || tab === 'Inputs' ? styleRows(ctx) : tab === 'Text' ? textRows(ctx) : tab === 'Table' ? tableRows(ctx) : tab === 'Coordinates' ? coordinateRows(ctx) : visibilityRows(ctx)
+      tab === 'Style' || tab === 'Inputs' ? styleRows(ctx) : tab === 'Text' ? textRows(ctx) : tab === 'Coordinates' ? coordinateRows(ctx) : visibilityRows(ctx)
     page.replaceChildren(...rows)
     page.dataset.tab = tab
     if (!PAGE_COMMANDS[tab].every((command) => deps.available(command))) {
