@@ -129,6 +129,7 @@ export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
   callout: ['borderWidth'],
   text: SAVED_LOOK,
   comment: SAVED_LOOK,
+  note: SAVED_LOOK,
   price_note: SAVED_LOOK,
   signpost: SAVED_LOOK,
   price_range: METER,

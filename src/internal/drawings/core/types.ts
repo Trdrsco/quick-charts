@@ -203,6 +203,10 @@ export interface IDrawing {
   textFrame(viewport: Viewport): TextEditFrame | null
   /** Where the words an empty drawing shows come from, read as it paints. */
   setTextPlaceholder(source: (() => string) | null): void
+  /** The anchors a drag that grabs the drawing at a point moves: null for all of them. */
+  grabbedAnchors(point: Point, viewport: Viewport): number[] | null
+  /** Whether a point is on the drawing's words, where a click on the selected drawing types. */
+  wordsAt(point: Point, viewport: Viewport): boolean
 
   getViewport(): Viewport | null
   requestUpdate(): void

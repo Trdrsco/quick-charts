@@ -1379,6 +1379,7 @@
         "borderColor",
         "drawBorder",
         "fillBackground",
+        "savedLook",
         "text"
       ]
     },

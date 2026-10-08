@@ -698,6 +698,17 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     return 'circle'
   }
 
+  /** The anchors a drag that grabs this drawing at a point moves: null for all of them, as a drag
+   *  of the whole drawing does. */
+  grabbedAnchors(_point: Point, _viewport: Viewport): number[] | null {
+    return null
+  }
+
+  /** Whether a point is on this drawing's words, where a click on the selected drawing types. */
+  wordsAt(point: Point, viewport: Viewport): boolean {
+    return this.testHit(point, viewport)
+  }
+
   /** The words this drawing shows, in lines: the open edit's draft or the committed words. The
    *  placeholder stands in their place only while both are empty, so words emptied during an edit
    *  show nothing until the edit ends. */

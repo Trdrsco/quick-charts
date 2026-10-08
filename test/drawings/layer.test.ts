@@ -147,7 +147,7 @@ describe('placing a fixed tool', () => {
   it('a tool that types in a box opens its editor as it lands, and an empty commit removes it', async () => {
     vi.useFakeTimers()
     const { container, handle, events } = make()
-    handle.armTool('note')
+    handle.armTool('callout')
     click(container, 100, 100)
     click(container, 160, 140)
     expect(handle.count()).toBe(1)
@@ -423,6 +423,80 @@ describe('a text typed on the chart', () => {
     r.handle.commitText('')
     click(r.container, 700, 350)
     expect(await gone(r, drawing.id)).toBe(true)
+  })
+
+  /** Place a note with its point at (100, 200) and its label at (200, 200), its words committed. */
+  const placeNote = (r: Rig, words = 'Hi') => {
+    r.handle.armTool('note')
+    click(r.container, 100, 200)
+    const drawing = r.handle.selectedDrawing() ?? null
+    click(r.container, 200, 200)
+    vi.runOnlyPendingTimers()
+    r.handle.commitText(words)
+    return drawing ?? r.handle.selectedDrawing()!
+  }
+
+  it('a note places on two clicks, its handles showing between them, and opens its words after the second', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('note')
+    click(r.container, 100, 200)
+    expect(r.handle.count()).toBe(0)
+    window.dispatchEvent(pointer('pointermove', 180, 220))
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 200, 200)
+    vi.runOnlyPendingTimers()
+    const session = r.handle.textEdit()!
+    expect(session.inline).toBeDefined()
+    expect(r.handle.selectedDrawing()!.anchors.map((a) => r.fake.xOf(Number(a.time)))).toEqual([100, 200])
+  })
+
+  it('a right-click while a note is half placed takes it back, puts the tool down and keeps the menu shut', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('note')
+    click(r.container, 100, 200)
+    r.container.dispatchEvent(pointer('pointerdown', 150, 210, { button: 2 }))
+    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    let reached = false
+    r.container.addEventListener('contextmenu', () => (reached = true))
+    r.container.dispatchEvent(menu)
+    expect([menu.defaultPrevented, reached]).toEqual([true, false])
+    expect(r.handle.activeTool()).toBeNull()
+    expect(r.handle.counts().total).toBe(0)
+    // A later right-click is the chart's own again.
+    const later = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    r.container.dispatchEvent(pointer('pointerdown', 150, 210, { button: 2 }))
+    r.container.dispatchEvent(later)
+    expect(later.defaultPrevented).toBe(false)
+  })
+
+  it('a drag on a note’s box moves its label alone, a drag on its line moves the whole note', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const drawing = placeNote(r)
+    const before = drawing.anchors.map((a) => ({ ...a }))
+    // Inside the box, clear of the label's handle on its left edge.
+    drag(r.container, [225, 205], [225, 265])
+    expect(drawing.anchors[0]).toEqual(before[0])
+    expect(drawing.anchors[1]!.price).not.toBe(before[1]!.price)
+    const label = { ...drawing.anchors[1]! }
+    // On the line, now from (100, 200) to (200, 260).
+    drag(r.container, [150, 230], [150, 270])
+    expect(drawing.anchors[0]!.price).not.toBe(before[0]!.price)
+    expect(drawing.anchors[1]!.price).not.toBe(label.price)
+  })
+
+  it('a click on the box of a selected note types, and a click on its line does not', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const drawing = placeNote(r)
+    click(r.container, 140, 200)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 225, 205)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.id).toBe(drawing.id)
   })
 })
 

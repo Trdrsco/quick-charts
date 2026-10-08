@@ -233,15 +233,39 @@ export type LabelBoxProps = TextProps & {
 
 const LABEL_BOX: LabelBoxProps = { text: '', fillBackground: true, drawBorder: false, borderColor: '#4a4a4a' }
 
+/** A note's label, and a format-2 save's look. */
+export type NoteProps = LabelBoxProps & {
+  /** A format-2 note's look, its label's top-left on its second point, painted as format 2 did
+   *  until the note's settings change. */
+  savedLook: SavedLook
+}
+
+/** How far a note's words stand in from its box's left and top edges, the room the box keeps past
+ *  them across and down, the radius of its corners and of the dot on the point it notes, and the
+ *  shadow it casts. */
+const NOTE_PAD_LEFT = 8
+const NOTE_PAD_TOP = 6
+const NOTE_ROOM_ACROSS = 16
+const NOTE_ROOM_DOWN = 12
+const NOTE_RADIUS = 4
+const NOTE_DOT = 3.5
+const NOTE_SHADOW = { color: 'rgba(0, 0, 0, 0.5)', blur: 6, offsetY: 2 }
+
 /**
- * Note: a label tied to the point it notes. The first point is what it notes and the second where
- * its label stands, the label's top-left; a line in the drawing's stroke color runs between them.
+ * Note: a label tied to the point it notes. The first point is what it notes, marked by a dot in
+ * the drawing's stroke color; the second is where the label stands, the left edge of its box
+ * centred on it. A one pixel line in the stroke color runs between them while they part. The box
+ * is the drawing's fill with corners rounded at 4 and a soft shadow under it, its words 8px in and
+ * 6px down on lines `fontSize` tall, so it is its widest line and 16px wide and 12px more than its
+ * lines tall, growing evenly up and down. Selected, it shows a handle on each point; a drag on the
+ * box moves the label alone, a drag on the line moves the whole note, and a click on the box of the
+ * selected note types.
  */
-export class Note extends Drawing<LabelBoxProps> {
+export class Note extends Drawing<NoteProps> {
   readonly type = 'note'
 
-  protected override defaultProps(): LabelBoxProps {
-    return { ...LABEL_BOX }
+  protected override defaultProps(): NoteProps {
+    return { ...LABEL_BOX, savedLook: null }
   }
 
   /** A note saved on one point keeps that point and gains its label there, the label's top-left on
@@ -250,48 +274,146 @@ export class Note extends Drawing<LabelBoxProps> {
     return anchors.length === 1 ? [anchors[0]!, { ...anchors[0]! }] : anchors
   }
 
-  /** A format-2 note showed its background and its border, the border in its stroke color. */
+  /** A format-2 note showed its background and its border, the border in its stroke color, its
+   *  label's top-left on its second point; it paints so until its settings change. */
   protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
-    this._props = { ...this._props, fillBackground: true, drawBorder: true, borderColor: this._style.lineColor }
+    this._props = { ...this._props, fillBackground: true, drawBorder: true, borderColor: this._style.lineColor, savedLook: {} }
+  }
+
+  override applyProps(patch: Partial<NoteProps>): void {
+    super.applyProps(endSavedLook(patch))
   }
 
   requiredAnchors(): number {
     return 2
   }
 
-  protected label(viewport: Viewport): Box | null {
-    const at = this.anchors[1]
-    if (!at) return null
-    const p = this.anchorToPixel(at, viewport)
-    if (!p) return null
-    const { width, height } = measureTextBlock(this.props.text || ' ', this.style)
-    return { x: p.x, y: p.y, width: width + 12, height: height + 12 }
+  /** The label's box and its words, and the two points. */
+  protected place(viewport: Viewport): (WordsPlace & { target: Point; label: Point }) | null {
+    const [noted, at] = this.anchors
+    const target = noted && this.anchorToPixel(noted, viewport)
+    const label = at && this.anchorToPixel(at, viewport)
+    if (!target || !label) return null
+    const { block, placeholder } = this.shownWords(lineMeasure(this.style))
+    const shown = placeholder ?? block
+    if (this.props.savedLook) {
+      const lineHeight = Math.round(this.style.fontSize * 1.35)
+      const box = { x: label.x, y: label.y, width: shown.width + 12, height: shown.lines.length * lineHeight + 12 }
+      return { box, x: box.x + 6, y: box.y + 6, lineHeight, block, placeholder, target, label }
+    }
+    const lineHeight = this.style.fontSize
+    const width = Math.round(shown.width) + NOTE_ROOM_ACROSS
+    const height = shown.lines.length * lineHeight + NOTE_ROOM_DOWN
+    const box = { x: Math.round(label.x), y: Math.round(label.y - height / 2), width, height }
+    return { box, x: box.x + NOTE_PAD_LEFT, y: box.y + NOTE_PAD_TOP, lineHeight, block, placeholder, target, label }
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const target = this.anchors[0] && this.anchorToPixel(this.anchors[0], viewport)
-    const label = this.label(viewport)
-    if (!target || !label) return
-    // The line shows while the label stands off its point.
-    const edge = edgeToward(label, target)
-    if (edge.x !== target.x || edge.y !== target.y) {
+    const at = this.place(viewport)
+    if (!at) return
+    const draft = this.textDraft
+    const background = this.props.fillBackground ? (fillPaint(this.style) ?? undefined) : undefined
+    const borderColor = this.props.drawBorder ? this.props.borderColor : undefined
+    if (this.props.savedLook) {
+      // The line shows while the label stands off its point.
+      const edge = edgeToward(at.box, at.target)
+      if (edge.x !== at.target.x || edge.y !== at.target.y) {
+        ctx.save()
+        applyStroke(ctx, { ...this.style, lineWidth: 1, lineStyle: 'solid' })
+        strokeSegment(ctx, at.target, edge)
+        ctx.restore()
+      }
+      if (!draft) {
+        paintTextBlock(ctx, this.props.text || ' ', at.box, this.style, { background, borderColor, align: wordsAlign(this.props) })
+        return
+      }
+    } else {
+      const tx = Math.round(at.target.x)
+      const ty = Math.round(at.target.y)
+      const lx = Math.round(at.label.x)
+      const ly = Math.round(at.label.y)
       ctx.save()
-      applyStroke(ctx, { ...this.style, lineWidth: 1, lineStyle: 'solid' })
-      strokeSegment(ctx, target, edge)
+      ctx.setLineDash([])
+      if (tx !== lx || ty !== ly) {
+        // The line rides its points' pixels, so a level line is one pixel tall.
+        ctx.strokeStyle = this.style.lineColor
+        ctx.lineWidth = 1
+        ctx.beginPath()
+        ctx.moveTo(tx + 0.5, ty + 0.5)
+        ctx.lineTo(lx + 0.5, ly + 0.5)
+        ctx.stroke()
+      }
+      ctx.fillStyle = this.style.lineColor
+      ctx.beginPath()
+      ctx.arc(tx, ty, NOTE_DOT, 0, Math.PI * 2)
+      ctx.fill()
       ctx.restore()
     }
-    paintTextBlock(ctx, this.props.text || ' ', label, this.style, {
-      background: this.props.fillBackground ? (fillPaint(this.style) ?? undefined) : undefined,
-      borderColor: this.props.drawBorder ? this.props.borderColor : undefined,
-      align: wordsAlign(this.props),
+    if (background || borderColor) {
+      ctx.save()
+      ctx.setLineDash([])
+      ctx.beginPath()
+      if (this.props.savedLook) ctx.roundRect(at.box.x, at.box.y, at.box.width, at.box.height, 4)
+      else ctx.roundRect(at.box.x, at.box.y, at.box.width, at.box.height, NOTE_RADIUS)
+      if (background) {
+        if (!this.props.savedLook) {
+          ctx.shadowColor = NOTE_SHADOW.color
+          ctx.shadowBlur = NOTE_SHADOW.blur
+          ctx.shadowOffsetY = NOTE_SHADOW.offsetY
+        }
+        ctx.fillStyle = background
+        ctx.fill()
+        ctx.shadowColor = 'transparent'
+      }
+      if (borderColor) {
+        ctx.strokeStyle = borderColor
+        ctx.lineWidth = 1
+        ctx.stroke()
+      }
+      ctx.restore()
+    }
+    paintTextEntry(ctx, {
+      x: at.x,
+      y: at.y,
+      width: (at.placeholder ?? at.block).width,
+      lineHeight: at.lineHeight,
+      font: fontOf(this.style),
+      color: this.style.textColor,
+      align: this.props.savedLook ? wordsAlign(this.props) : 'left',
+      block: at.block,
+      placeholder: at.placeholder ? { block: at.placeholder, alpha: PLACEHOLDER_ALPHA } : null,
+      draft,
+      measure: lineMeasure(this.style),
     })
   }
 
+  override textFrame(viewport: Viewport): TextEditFrame | null {
+    const at = this.place(viewport)
+    return at ? wordsFrame(at, fontOf(this.style), this.props.savedLook ? wordsAlign(this.props) : 'left') : null
+  }
+
+  /** A drag on the box moves the label alone; the line and the dot move the whole note. */
+  override grabbedAnchors(point: Point, viewport: Viewport): number[] | null {
+    const at = this.place(viewport)
+    return at && inBox(point, at.box) ? [1] : null
+  }
+
+  /** The words are the box's. */
+  override wordsAt(point: Point, viewport: Viewport): boolean {
+    const at = this.place(viewport)
+    return !!at && inBox(point, at.box)
+  }
+
+  /** An empty note shows its placeholder in its own box, so it needs no hint above it. */
+  override paintTextHint(): void {}
+
   testHit(point: Point, viewport: Viewport): boolean {
-    const label = this.label(viewport)
-    if (label && inBox(point, label)) return true
-    const target = this.anchors[0] && this.anchorToPixel(this.anchors[0], viewport)
-    return !!target && !!label && distanceToSegment(point, target, edgeToward(label, target)) <= 6
+    const at = this.place(viewport)
+    if (!at) return false
+    if (inBox(point, at.box)) return true
+    if (Math.hypot(point.x - at.target.x, point.y - at.target.y) <= NOTE_DOT + 3) return true
+    const edge = this.props.savedLook ? edgeToward(at.box, at.target) : at.label
+    return distanceToSegment(point, at.target, edge) <= 6
   }
 }
 

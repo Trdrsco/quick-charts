@@ -171,7 +171,8 @@ describe('what a new drawing of each tool starts with', () => {
     expect([note.line, note.text, note.size, note.fill, note.anchors]).toEqual(['#dbdbdb', '#dbdbdb', 14, '#2e2e2e 1', 2])
     const pin = look('pin')
     expect([pin.line, pin.text, pin.size, pin.fill]).toEqual(['#2962ff', '#dbdbdb', 14, '#2e2e2e 1'])
-    for (const l of [note, pin]) expect(l.props).toEqual({ text: '', fillBackground: true, drawBorder: false, borderColor: '#4a4a4a' })
+    expect(note.props).toEqual({ text: '', fillBackground: true, drawBorder: false, borderColor: '#4a4a4a', savedLook: null })
+    expect(pin.props).toEqual({ text: '', fillBackground: true, drawBorder: false, borderColor: '#4a4a4a' })
   })
 
   it('opens a price note blue with a white tag above its line', () => {
@@ -216,7 +217,7 @@ describe('what a new drawing of each tool starts with', () => {
     const text = toolRegistry.restore(saved('text', { text: 'Hi', align: 'center' }))!
     expect(text.props).toEqual({ text: 'Hi', align: 'center', fillBackground: true, drawBorder: false, wordWrap: false, wordWrapWidth: 200, savedLook: {} })
     const note = toolRegistry.restore(saved('note', { text: 'Hi', align: 'left' }))!
-    expect(note.props).toEqual({ text: 'Hi', align: 'left', fillBackground: true, drawBorder: true, borderColor: note.style.lineColor })
+    expect(note.props).toEqual({ text: 'Hi', align: 'left', fillBackground: true, drawBorder: true, borderColor: note.style.lineColor, savedLook: {} })
     expect(note.anchors).toEqual([anchors(1)[0], anchors(1)[0]])
   })
 })

@@ -292,7 +292,15 @@ const DEFINITIONS: ToolDefinition[] = [
     inlineText: { clickToType: true, doubleClickOpensSettings: true, removeEmptyOnDeselect: true },
     style: { textColor: '#2962ff', fontSize: 14, fillColor: '#2962ff', fillOpacity: 0.25, lineColor: '#707070' },
   }),
-  tool(Note, { type: 'note', name: 'Note', category: 'annotation', anchors: 2, hasText: true, style: { lineColor: '#dbdbdb', textColor: '#dbdbdb', fontSize: 14, fillColor: '#2e2e2e', fillOpacity: 1 } }),
+  tool(Note, {
+    type: 'note',
+    name: 'Note',
+    category: 'annotation',
+    anchors: 2,
+    hasText: true,
+    inlineText: { clickToType: true, doubleClickOpensSettings: true, removeEmptyOnDeselect: true },
+    style: { lineColor: '#dbdbdb', textColor: '#dbdbdb', fontSize: 14, fillColor: '#2e2e2e', fillOpacity: 1 },
+  }),
   tool(Comment, {
     type: 'comment',
     name: 'Comment',

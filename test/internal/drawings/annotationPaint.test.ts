@@ -76,15 +76,15 @@ describe('a text', () => {
 })
 
 describe('a note', () => {
-  it('runs a line in its stroke color from its point to its label, the label’s border in a color of its own', () => {
+  it('runs a line in its stroke color from its point to its label and dots its point, the label’s border in a color of its own', () => {
     const d = make('note', [at(100, 300), at(200, 200)], { text: 'Hi' })
     const calls = painted(d)
     expect(named(calls, 'stroke').map((c) => c.strokeStyle)).toEqual(['#dbdbdb'])
-    expect(named(calls, 'fill').map((c) => c.fillStyle)).toEqual(['rgba(46, 46, 46, 1)'])
+    expect(named(calls, 'fill').map((c) => c.fillStyle)).toEqual(['#dbdbdb', 'rgba(46, 46, 46, 1)'])
     d.applyProps({ drawBorder: true, fillBackground: false })
     const bordered = painted(d)
     expect(named(bordered, 'stroke').map((c) => c.strokeStyle)).toEqual(['#dbdbdb', '#4a4a4a'])
-    expect(named(bordered, 'fill')).toEqual([])
+    expect(named(bordered, 'fill').map((c) => c.fillStyle)).toEqual(['#dbdbdb'])
   })
 })
 

@@ -82,6 +82,9 @@ export interface Drag {
   cloned?: boolean
   /** The grabbed drawing was already the selection when the press began. */
   selectedBefore?: boolean
+  /** The anchors a move carries, where the drawing moves only some of them for a grab there (a
+   *  note's label); absent, it carries them all. */
+  only?: readonly number[]
 }
 
 /** What the gestures read and write. The attach module owns every field. */
@@ -312,7 +315,30 @@ export function bindGestures(ctx: GestureContext): () => void {
     }
   }
 
+  /** A right-click that took back a half-placed drawing keeps the chart's menu shut for its own
+   *  menu event, and for no later one. */
+  let menuShut: ((e: Event) => void) | null = null
+  const reopenMenu = (): void => {
+    if (menuShut) container.removeEventListener('contextmenu', menuShut, true)
+    menuShut = null
+  }
+
   const onDown = (e: PointerEvent): void => {
+    reopenMenu()
+    // A right-click while a drawing is half placed takes it back and puts the tool down.
+    if (e.button === 2 && ctx.draft) {
+      manager.remove(ctx.draft.drawing.id)
+      ctx.draft = null
+      ctx.clearTransients()
+      ctx.setArmed(null)
+      menuShut = (menu: Event) => {
+        menu.preventDefault()
+        menu.stopPropagation()
+        reopenMenu()
+      }
+      container.addEventListener('contextmenu', menuShut, true)
+      return
+    }
     if (e.button !== 0) return
     touching = e.pointerType === 'touch'
     // A press while the inline editor is open belongs to the editor, which commits itself on it.
@@ -416,7 +442,13 @@ export function bindGestures(ctx: GestureContext): () => void {
         const selectedBefore = sel?.id === hit.id
         if (!selectedBefore) manager.select(hit.id)
         if (!editRefused('move', hit.options, false)) startDrag('move', hit, null, p)
-        if (ctx.drag) ctx.drag.selectedBefore = selectedBefore
+        if (ctx.drag) {
+          ctx.drag.selectedBefore = selectedBefore
+          // A drawing may move only some of its anchors for a grab where it is pressed.
+          const vp = viewport()
+          const only = vp ? hit.grabbedAnchors(p, vp) : null
+          if (only) ctx.drag.only = only
+        }
         return
       }
       manager.deselect()
@@ -467,6 +499,8 @@ export function bindGestures(ctx: GestureContext): () => void {
       return
     }
     manager.add(drawing)
+    // A tool that types on the chart shows its points' handles while its later points are placed.
+    if (required > 1 && inlineTextRules(drawing)) drawing.setState('editing')
     ctx.draft = { drawing, required, placed: 1, downX: p.x, downY: p.y, pendingDrag: true, hasText: !!def.hasText, mode, lastX: p.x, lastY: p.y }
     showPoint(anchor)
     if (mode === 'fixed' && required === 1) completePlacement(ctx.draft, p)
@@ -527,7 +561,7 @@ export function bindGestures(ctx: GestureContext): () => void {
       const dxBars = barsShifted(dx, spacing)
       for (let i = 0; i < drag.origPixels.length; i++) {
         const op = drag.origPixels[i]
-        if (!op) continue
+        if (!op || (drag.only && !drag.only.includes(i))) continue
         const ol = drag.origLogicals[i]
         const t = ol !== null && spacing !== null ? vp.timeOfLogical(ol + dxBars) : vp.timeAt(op.x + dx)
         const price = vp.priceAt(op.y + dy)
@@ -589,11 +623,14 @@ export function bindGestures(ctx: GestureContext): () => void {
         return
       }
     }
-    // An unmoved click on a drawing that was already selected types into its words, for a tool
-    // that types them on the chart; the click that selected it only selects it.
+    // An unmoved click on the words of a drawing that was already selected types into them, for a
+    // tool that types them on the chart; the click that selected it only selects it.
     if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.selectedBefore && inlineTextRules(drag.drawing)?.clickToType && !editRefused('editText', drag.drawing.options, ctx.locked())) {
-      ctx.openTextEdit(drag.drawing, drag.grabX, drag.grabY, false, 'click')
-      return
+      const vp = viewport()
+      if (vp && drag.drawing.wordsAt({ x: drag.grabX, y: drag.grabY }, vp)) {
+        ctx.openTextEdit(drag.drawing, drag.grabX, drag.grabY, false, 'click')
+        return
+      }
     }
     if (drag.moved || drag.cloned) {
       ctx.persist()
@@ -738,6 +775,7 @@ export function bindGestures(ctx: GestureContext): () => void {
   window.addEventListener('pointerup', onUp)
   window.addEventListener('pointercancel', onCancel)
   return () => {
+    reopenMenu()
     container.removeEventListener('pointerdown', onDown)
     container.removeEventListener('touchstart', onTouchStart)
     container.removeEventListener('pointermove', onHover)
