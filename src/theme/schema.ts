@@ -147,7 +147,7 @@ export const THEME_ROLES = [
   { id: 'chrome.surfaceRaised', family: 'chrome', kind: 'color', description: 'The fill of a control sitting on a chrome surface, such as a button or field.' },
   { id: 'chrome.border', family: 'chrome', kind: 'color', description: 'The ordinary border of a control or panel.' },
   { id: 'chrome.borderStrong', family: 'chrome', kind: 'color', description: 'A border or divider that must stay visible at a glance.', contrast: [{ over: 'chrome.surface', min: 3 }] },
-  { id: 'chrome.fieldBorder', family: 'chrome', kind: 'color', description: 'The outline of a text field, such as the symbol search field. The field\'s mark and prompt name it, so the outline is not its only sign.' },
+  { id: 'chrome.fieldBorder', family: 'chrome', kind: 'color', description: 'The outline of the symbol search field. The field\'s mark and prompt name it, so the outline is not its only sign.' },
   { id: 'chrome.caret', family: 'chrome', kind: 'color', description: 'The ink of the arrow that opens a control\'s menu or flyout.', contrast: [{ over: 'chrome.surface', min: 3 }] },
   { id: 'chrome.grip', family: 'chrome', kind: 'color', description: 'The dots of a drag handle on a floating toolbar.' },
   // No contrast rule: the thumb says where a list is, and the wheel, the drag and the keyboard

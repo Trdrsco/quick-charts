@@ -21,6 +21,7 @@ export const search: Translation<typeof source> = {
   'search.compareEmpty': 'No symbols here yet. Why not add some?',
   'search.allClasses': 'All',
   'search.classFilter': 'Asset class',
+  'search.limitToScope': 'จำกัดการค้นหาเฉพาะ {scope}',
   'search.opDivision': 'การหาร',
   'search.opSubtraction': 'การลบ',
   'search.opAddition': 'การบวก',

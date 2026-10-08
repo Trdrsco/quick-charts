@@ -15,7 +15,7 @@
 // the viewer's preferences, which hold only what the viewer chose. Keeping the
 // five apart is what lets the widget answer "can this run" and "is this drawn" without asking
 // either question in another plane's vocabulary.
-import type { ChartDatafeed } from '../datafeed'
+import type { ChartDatafeed, DatafeedSearchOptions, SearchPage } from '../datafeed'
 import type { ChartStorage } from '../storage'
 import type { ChartSaveLoadAdapter } from '../resources'
 import type { DrawingContextKind } from '../drawings/document'
@@ -361,12 +361,28 @@ export interface IndicatorInstance {
   overrides?: IndicatorOverrides
 }
 
-/** The set of symbols a search answers from, as the host names it: a portfolio, a watchlist or
- *  any other scope its datafeed applies. `mark` paints the scope's own mark into the
- *  box the chart owns and returns what takes it down; absent, the scope wears its initial. */
+/** A part of the catalog the viewer can limit the symbol search to, as the host names it: a
+ *  portfolio, a watchlist, or any other set of symbols the host can search within. The symbol
+ *  search offers it as a toggle chip at the far edge of the asset-class strip, wearing `mark` and
+ *  `label`. While the chip is on, the dialog searches with `search` and lists `recents`; while it is
+ *  off, it searches the datafeed and lists the chart's recents. */
 export interface SearchScope {
+  /** The scope's name, written on the chip. */
   readonly label: string
+  /** Paints the scope's own mark into the 18px box the chart owns at the chip's leading edge, and
+   *  returns what takes it down. Absent, the chip wears the label's initial. */
   readonly mark?: (request: { host: HTMLElement; size: number }) => (() => void) | void
+  /** Searches within the scope while the chip is on. The chart's search controller asks it exactly
+   *  as it asks the datafeed's `search`: the query after the debounce, the selected classes as
+   *  `cls` or `classes`, a page at a time through `limit` and `offset`, and a newer question
+   *  retiring an older one's answer. It answers a page as the datafeed does, `hasMore` exact. */
+  search(query: string, options?: DatafeedSearchOptions): Promise<SearchPage>
+  /** The recent picks the dialog lists while the chip is on, and where it records a pick made then,
+   *  beside the chart's recents, which record every pick in either state. Absent, the dialog lists
+   *  no recents while the chip is on. */
+  readonly recents?: RecentsPort
+  /** Whether the chip is on when the dialog opens. Default true. */
+  readonly on?: boolean
 }
 
 /** How the symbol search offers its class filter and its spread operators. Every field is optional,
@@ -639,16 +655,18 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   image?: ImageOptions
   /** The symbol picker's host inputs. The chart owns the search controller (its debounce, cache and
    *  cancellation); a host supplies only what it alone knows: where the viewer's recent symbols
-   *  live, what its feed's asset classes are called, and how the classes and the spread operators
-   *  are offered. Absent, recents last the page, a class's filter chip wears the class token as
-   *  written, and the search offers its default class strip and operators. */
+   *  live, what its feed's asset classes are called, how the classes and the spread operators are
+   *  offered, and a scope the viewer can limit the search to. Absent, recents last the page, a
+   *  class's filter chip wears the class token as written, and the search offers its default class
+   *  strip and operators and no scope. */
   search?: SearchDisplayOptions & {
     recents?: RecentsPort
     /** Display names for the asset-class tokens the feed's `config()` declares in `classes`. */
     classNames?: Readonly<Record<string, string>>
-    /** What the search is limited to, named at the far edge of the asset-class strip. Read each
-     *  time the dialog opens; null names nothing. It only labels the scope: your datafeed's
-     *  `searchSymbols` decides what is found. */
+    /** A part of the catalog the viewer can limit the symbol search to, offered as a toggle chip at
+     *  the far edge of the asset-class strip. Read each time the dialog opens; null offers none.
+     *  The compare dialog, adding a comparison or changing one, offers no scope and searches the
+     *  datafeed. */
     scope?: () => SearchScope | null
   }
   /** Where the image and glyph drawing tools get their artwork, and how a picked file becomes a
