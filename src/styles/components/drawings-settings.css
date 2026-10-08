@@ -312,7 +312,7 @@
 }
 
 /* The page strip: the tabs at 16 on 24, 12px apart, over a 4px track as wide as the page; the bar
- * standing on the track under the shown page slides to the next one. A tab under the pointer that
+ * standing on the track under the shown page glides to the next one. A tab under the pointer that
  * is not shown dims to the muted ink. */
 [data-qc-theme] .qc-drawing-tabs-slot {
   position: relative;
@@ -385,7 +385,7 @@
 }
 
 [data-qc-theme] .qc-drawing-tabs[data-qc-placed='true'] > .qc-drawing-tab-bar {
-  transition: transform var(--qc-motion-durationFast) var(--qc-motion-easingStandard), width var(--qc-motion-durationFast) var(--qc-motion-easingStandard);
+  transition: transform var(--qc-motion-durationGlide) var(--qc-motion-easingInOut), width var(--qc-motion-durationGlide) var(--qc-motion-easingInOut);
 }
 
 /* The body scrolls the page alone, and keeps room for a short one. */
@@ -413,8 +413,8 @@
 }
 
 /* The footer: the Template list button at the start, Cancel and Ok 12px apart at the end, all 34px
- * with an 8px corner. Cancel is an outline of the emphasis fill that takes the fill under the
- * pointer; Ok wears it. */
+ * with an 8px corner. Cancel is outlined in the outline role and takes the emphasis fill under the
+ * pointer; Ok wears the fill. */
 [data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-dialog-footer {
   gap: 0;
   padding: 16px 20px;
@@ -451,13 +451,14 @@
 }
 
 [data-qc-theme] .qc-drawing-cancel {
-  color: var(--qc-control-on);
-  border-color: var(--qc-control-on);
+  color: var(--qc-control-outline);
+  border-color: var(--qc-control-outline);
 }
 
 [data-qc-theme] .qc-drawing-cancel:hover:not([disabled]) {
   color: var(--qc-text-inverse);
   background: var(--qc-control-on);
+  border-color: var(--qc-control-on);
 }
 
 [data-qc-theme] .qc-drawing-cancel:active:not([disabled]) {
@@ -578,6 +579,11 @@
 
 [data-qc-theme] .qc-drawing-list-row--bar {
   justify-content: center;
+}
+
+/* The chosen thickness or style is cut from the emphasis fill in the ink of a mark. */
+[data-qc-theme] .qc-drawing-mark-list .qc-drawing-list-row[aria-selected='true'] {
+  color: var(--qc-control-onInk);
 }
 
 /* The bands' opacity: a 148px track 10px tall on a 5px corner that fades from nothing into the

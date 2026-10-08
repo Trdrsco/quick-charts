@@ -104,6 +104,12 @@
   cursor: pointer;
 }
 
+/* A list button's edge steps further under the pointer than another field's, below the states that
+ * outrank the pointer: a field that cannot be used, a refused value and the keyboard's ring. */
+[data-qc-theme] .qc-drawing-select:hover:not(:disabled):not([aria-invalid='true']):not(:focus-visible) {
+  border-color: var(--qc-control-selectEdgeHover);
+}
+
 [data-qc-theme] .qc-drawing-select[data-width='medium'] {
   width: 150px;
 }
@@ -473,7 +479,7 @@
 }
 
 [data-qc-theme] .qc-drawing-opacity:not([data-qc-dragging='true']) .qc-drawing-opacity-knob {
-  transition: inset-inline-start var(--qc-motion-durationFast) var(--qc-motion-easingStandard);
+  transition: inset-inline-start var(--qc-motion-durationGlide) var(--qc-motion-easingStandard);
 }
 
 [data-qc-theme] .qc-drawing-opacity:focus-visible::after {
@@ -803,7 +809,7 @@
 
 [data-qc-theme] .qc-drawing-segment[aria-checked='true'] {
   z-index: 1;
-  color: var(--qc-text-inverse);
+  color: var(--qc-control-onInk);
   background: var(--qc-control-on);
   border-color: var(--qc-control-on);
 }
@@ -861,6 +867,10 @@
 [data-qc-theme] .qc-drawing-line-ends .qc-drawing-list-row {
   position: relative;
   outline: none;
+}
+
+[data-qc-theme] .qc-drawing-line-ends .qc-drawing-list-row[aria-selected='true'] {
+  color: var(--qc-control-onInk);
 }
 
 [data-qc-theme] .qc-drawing-line-ends .qc-drawing-list-row:not([aria-selected='true']):hover {

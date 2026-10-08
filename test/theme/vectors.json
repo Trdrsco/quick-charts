@@ -91,8 +91,20 @@
         "value": "#4a4a4a"
       },
       {
+        "property": "--qc-control-onInk",
+        "value": "#ffffff"
+      },
+      {
         "property": "--qc-control-onPressed",
         "value": "#707070"
+      },
+      {
+        "property": "--qc-control-outline",
+        "value": "#2e2e2e"
+      },
+      {
+        "property": "--qc-control-selectEdgeHover",
+        "value": "#a8a8a8"
       },
       {
         "property": "--qc-drawing-fill",
@@ -135,6 +147,10 @@
         "value": "90ms"
       },
       {
+        "property": "--qc-motion-durationGlide",
+        "value": "100ms"
+      },
+      {
         "property": "--qc-motion-durationModerate",
         "value": "250ms"
       },
@@ -145,6 +161,10 @@
       {
         "property": "--qc-motion-durationSlower",
         "value": "500ms"
+      },
+      {
+        "property": "--qc-motion-easingInOut",
+        "value": "ease-in-out"
       },
       {
         "property": "--qc-motion-easingLinear",
@@ -461,8 +481,20 @@
         "value": "#dbdbdb"
       },
       {
+        "property": "--qc-control-onInk",
+        "value": "#000000"
+      },
+      {
         "property": "--qc-control-onPressed",
         "value": "#8c8c8c"
+      },
+      {
+        "property": "--qc-control-outline",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-control-selectEdgeHover",
+        "value": "#808080"
       },
       {
         "property": "--qc-drawing-fill",
@@ -505,6 +537,10 @@
         "value": "90ms"
       },
       {
+        "property": "--qc-motion-durationGlide",
+        "value": "100ms"
+      },
+      {
         "property": "--qc-motion-durationModerate",
         "value": "250ms"
       },
@@ -515,6 +551,10 @@
       {
         "property": "--qc-motion-durationSlower",
         "value": "500ms"
+      },
+      {
+        "property": "--qc-motion-easingInOut",
+        "value": "ease-in-out"
       },
       {
         "property": "--qc-motion-easingLinear",

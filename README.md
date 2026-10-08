@@ -2035,6 +2035,8 @@ among the others `THEME_ROLES` lists:
 | `text.link` | `#2962ff` | `#5b9cf6` | A text link. |
 | `state.hover` | `#f2f2f2` | `#2e2e2e` | The fill under the pointer. |
 | `state.pressed` | `#ebebeb` | `#3d3d3d` | The fill while the pointer is down. |
+| `control.outline` | `#2e2e2e` | `#ffffff` | The edge and the words of an outlined button at rest, such as a dialog's Cancel. |
+| `control.onInk` | `#ffffff` | `#000000` | A mark cut from the emphasis fill: a chosen thickness, line style or line end. |
 | `status.positive` | `#078671` | `#089981` | A gain or a success. |
 | `status.negative` | `#df323f` | `#f34452` | A loss or a failure. |
 | `status.warning` | `#ac6600` | `#ff9800` | A condition to notice before acting. |
@@ -2048,13 +2050,14 @@ of a menu row. `drawing.line` and `drawing.selected` are `#2962ff` in both modes
 
 Every text field, select, number field and color well the chart draws in its dialogs and settings
 is one box: 34px tall, a 1px edge with an 8px corner around a clear ground, and its words at 14 on
-18, 8px in from the edge. A select ends in an 18px chevron in `chrome.caret`. Four roles in the
+18, 8px in from the edge. A select ends in an 18px chevron in `chrome.caret`. Five roles in the
 `control` family paint the box, and the focus ring is `state.focusRing`:
 
 | Role | Light | Dark | What it paints |
 |---|---|---|---|
 | `control.fieldEdge` | `#dbdbdb` | `#575757` | The edge of a field at rest. |
 | `control.fieldEdgeHover` | `#a8a8a8` | `#707070` | The edge of a field under the pointer. |
+| `control.selectEdgeHover` | `#a8a8a8` | `#808080` | The edge of a list button under the pointer, such as a select on a drawing's settings page. |
 | `control.fieldInvalid` | `#f23645` | `#f23645` | The edge and the focus ring of a field holding a value it refuses. |
 | `control.fieldFill` | `#f2f2f2` | `#2e2e2e` | The ground of a field that is read-only or disabled. |
 
@@ -2077,10 +2080,12 @@ same values:
 | `motion.durationModerate` | `250ms` | A control moving to its new state, such as a switch knob sliding. |
 | `motion.durationSlow` | `350ms` | A small mark settling, such as a disclosure caret turning or a checkbox filling. |
 | `motion.durationSlower` | `500ms` | A larger mark turning, such as the drawing toolbar's chevron. |
+| `motion.durationGlide` | `100ms` | A mark gliding to a new place, such as a dialog's tab bar or an opacity knob. |
 | `motion.easingStandard` | `ease` | A modal dialog box, the replay row, a caret dip, a checkbox fill. |
 | `motion.easingOut` | `ease-out` | A modal backdrop fading, a switch knob sliding. |
 | `motion.easingLinear` | `linear` | A color or opacity change under the pointer. |
 | `motion.easingSpring` | `cubic-bezier(0.175, 0.885, 0.32, 1.275)` | A caret or chevron turning with a slight overshoot. |
+| `motion.easingInOut` | `ease-in-out` | A dialog's tab bar sliding to the page shown. |
 | `motion.scaleEnter` | `0.97` | The scale a modal dialog box grows from as it opens. |
 
 Every modal dialog the chart opens (the symbol search, chart settings, the indicator browser and

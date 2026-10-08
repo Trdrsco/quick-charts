@@ -113,9 +113,12 @@ export const LIGHT_THEME: SemanticTheme = {
   'control.off': '#9c9c9c',
   'control.offHover': '#8c8c8c',
   'control.offPressed': '#b8b8b8',
+  'control.outline': '#2e2e2e',
+  'control.onInk': '#ffffff',
   'control.mark': '#ffffff',
   'control.fieldEdge': '#dbdbdb',
   'control.fieldEdgeHover': '#a8a8a8',
+  'control.selectEdgeHover': '#a8a8a8',
   'control.fieldInvalid': '#f23645',
   'control.fieldFill': '#f2f2f2',
 
@@ -145,10 +148,12 @@ export const LIGHT_THEME: SemanticTheme = {
   'motion.durationModerate': '250ms',
   'motion.durationSlow': '350ms',
   'motion.durationSlower': '500ms',
+  'motion.durationGlide': '100ms',
   'motion.easingStandard': 'ease',
   'motion.easingOut': 'ease-out',
   'motion.easingLinear': 'linear',
   'motion.easingSpring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  'motion.easingInOut': 'ease-in-out',
   'motion.scaleEnter': '0.97',
 }
 
@@ -220,9 +225,12 @@ export const DARK_THEME: SemanticTheme = {
   'control.off': '#636363',
   'control.offHover': '#707070',
   'control.offPressed': '#636363',
+  'control.outline': '#ffffff',
+  'control.onInk': '#000000',
   'control.mark': '#2e2e2e',
   'control.fieldEdge': '#575757',
   'control.fieldEdgeHover': '#707070',
+  'control.selectEdgeHover': '#808080',
   'control.fieldInvalid': '#f23645',
   'control.fieldFill': '#2e2e2e',
 
@@ -252,10 +260,12 @@ export const DARK_THEME: SemanticTheme = {
   'motion.durationModerate': '250ms',
   'motion.durationSlow': '350ms',
   'motion.durationSlower': '500ms',
+  'motion.durationGlide': '100ms',
   'motion.easingStandard': 'ease',
   'motion.easingOut': 'ease-out',
   'motion.easingLinear': 'linear',
   'motion.easingSpring': 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  'motion.easingInOut': 'ease-in-out',
   'motion.scaleEnter': '0.97',
 }
 

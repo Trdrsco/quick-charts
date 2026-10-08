@@ -129,7 +129,7 @@ for (const mode of THEME_MODES) {
       expect(controls.paddingTop).toBe('8px')
     })
 
-    it('ends with the footer: the Template list button, then Cancel as an outline of the emphasis fill and Ok wearing it', () => {
+    it('ends with the footer: the Template list button, then Cancel outlined in the outline role and Ok wearing the emphasis fill', () => {
       const dialog = trendLineDialogIn(mode)
       const footer = painted(dialog.querySelector('.qc-drawing-dialog-footer')!)
       expect(footer.paddingTop).toBe('16px')
@@ -141,8 +141,8 @@ for (const mode of THEME_MODES) {
       expect(template.borderTopColor).toBe(theme['control.fieldEdge'])
       const [cancel, ok] = [...dialog.querySelectorAll<HTMLElement>('.qc-drawing-footer-button')]
       const outline = painted(cancel!)
-      expect(outline.borderTopColor).toBe(theme['control.on'])
-      expect(outline.color).toBe(theme['control.on'])
+      expect(outline.borderTopColor).toBe(theme['control.outline'])
+      expect(outline.color).toBe(theme['control.outline'])
       expect(outline.fontSize).toBe('16px')
       expect(outline.height).toBe('34px')
       expect(outline.borderTopLeftRadius).toBe('8px')
