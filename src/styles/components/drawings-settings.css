@@ -193,30 +193,70 @@
   max-height: calc(100% - 16px);
 }
 
-[data-qc-theme] .qc-drawing-dialog-header {
+/* The header: the name at 20 on 28 in a 68px band 20px in, then what the dialog adds after it (the
+ * settings dialog's pencil), and the close 34px at the far end, 3px past the padding so its mark
+ * lines up with the page's edge. The header is the handle the dialog is carried by. */
+[data-qc-theme] .qc-drawing-dialog .qc-drawing-dialog-header {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 14px 8px;
-  cursor: move;
+  justify-content: flex-start;
+  gap: 0;
+  height: 68px;
+  padding: 0 20px;
+  cursor: grab;
   user-select: none;
 }
 
 [data-qc-theme] .qc-drawing-dialog-title {
+  min-width: 0;
   overflow: hidden;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+[data-qc-theme] .qc-drawing-dialog .qc-dialog-close {
+  flex: 0 0 34px;
+  margin-inline-start: auto;
+  margin-inline-end: -3px;
+  border-radius: 8px;
+}
+
+/* The body 20px in from the sides; a drop box stands 8px under the header. */
 [data-qc-theme] .qc-drawing-dialog-body {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 4px;
   min-height: 0;
-  padding: 0 14px 8px;
+  padding: 0 20px;
   overflow-y: auto;
+}
+
+[data-qc-theme] .qc-drawing-dialog-body > .qc-drawing-drop {
+  margin-top: 8px;
+}
+
+/* The image picker's transparency: its name at the start and its 180px track at the end of a 46px
+ * line, each 10px down the line's 26px middle, 24px above the footer. */
+[data-qc-theme] .qc-drawing-picker-opacity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding: 10px 0;
+}
+
+[data-qc-theme] .qc-drawing-picker-opacity > * {
+  margin-top: 10px;
+}
+
+[data-qc-theme] .qc-drawing-picker-opacity > .qc-drawing-band-opacity {
+  flex: 0 0 180px;
+  width: 180px;
+  margin-top: 10px;
 }
 
 /* A drawing dialog's footer: what it leads with at the start (the settings dialog's Template list
@@ -252,25 +292,7 @@
   max-width: calc(100% - 16px);
 }
 
-/* The header: the name at 20 on 28, the pencil 5px after it in a 34px cell, and the close 34px at
- * the far end, 3px past the padding so its mark lines up with the page's edge. The header is the
- * handle the dialog is carried by. */
-[data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-dialog-header {
-  flex: 0 0 auto;
-  justify-content: flex-start;
-  gap: 0;
-  height: 68px;
-  padding: 0 20px;
-  cursor: grab;
-}
-
-[data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-dialog-title {
-  min-width: 0;
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 28px;
-}
-
+/* The settings dialog's pencil stands 5px after the name in a 34px cell. */
 [data-qc-theme] .qc-drawing-rename {
   display: flex;
   flex: 0 0 34px;
@@ -289,13 +311,6 @@
 
 [data-qc-theme] .qc-drawing-rename:hover {
   background: var(--qc-state-hover);
-}
-
-[data-qc-theme] .qc-drawing-settings-dialog .qc-dialog-close {
-  flex: 0 0 34px;
-  margin-inline-start: auto;
-  margin-inline-end: -3px;
-  border-radius: 8px;
 }
 
 /* Renaming, the header is the name's field alone, as wide as the header and in the name's own type. */

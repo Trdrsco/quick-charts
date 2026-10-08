@@ -75,9 +75,9 @@ describe('the image picker', () => {
     expect(dialog.textContent).toContain('640 x 480')
     const preview = dialog.querySelector<HTMLImageElement>('.qc-drawing-drop-preview')!
     expect(preview.hidden).toBe(false)
-    const figure = dialog.querySelector<HTMLInputElement>('.qc-drawing-opacity-readout')!
-    figure.value = '40'
-    figure.dispatchEvent(new Event('input'))
+    const track = dialog.querySelector<HTMLInputElement>('.qc-drawing-picker-opacity input[type="range"]')!
+    track.value = '40'
+    track.dispatchEvent(new Event('input'))
     const ok = dialog.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!
     expect(ok.disabled).toBe(false)
     ok.click()

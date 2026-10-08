@@ -188,6 +188,20 @@ for (const mode of THEME_MODES) {
       expect(cancel.color).toBe(theme['control.outline'])
       // Nothing stands before them: the footer lays them at its end.
       expect(picker.querySelector('.qc-drawing-dialog-footer')!.firstElementChild!.getAttribute('aria-label')).toBe('Cancel')
+      // Over them, the settings dialog's header and a body 20px in: the drop box 8px under the
+      // header, and the transparency's name and 180px track on a line of their own, in the primary ink.
+      expect(picker.style.width).toBe('380px')
+      const header = painted(picker.querySelector('.qc-drawing-dialog-header')!)
+      expect(header.height).toBe('68px')
+      expect(header.paddingLeft).toBe('20px')
+      const title = painted(picker.querySelector('.qc-drawing-dialog-title')!)
+      expect([title.fontSize, title.fontWeight, title.lineHeight]).toEqual(['20px', '600', '28px'])
+      expect(painted(picker.querySelector('.qc-drawing-dialog-body')!).paddingLeft).toBe('20px')
+      expect(painted(picker.querySelector('.qc-drawing-drop')!).marginTop).toBe('8px')
+      const line = picker.querySelector<HTMLElement>('.qc-drawing-picker-opacity')!
+      expect(painted(line).marginBottom).toBe('24px')
+      expect(painted(line.querySelector('span')!).color).toBe(theme['text.primary'])
+      expect(painted(line.querySelector('input[type="range"]')!).width).toBe('180px')
     })
 
     it('stands over an undimmed chart, and opens and leaves at once', () => {

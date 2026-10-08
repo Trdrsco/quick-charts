@@ -331,6 +331,33 @@ test.describe('the image picker', () => {
     expect(picker.buttons.map(metrics)).toEqual(settings.buttons.map(metrics))
     expect(picker.buttons[0]!.edge).toBe(settings.buttons[0]!.edge)
   })
+
+  test("stands a 380px card under the settings dialog's header, its drop box 8px under it and its transparency's 180px track at the end of its own line", async ({ page }) => {
+    await mount(page, true)
+    await page.evaluate(() => (window as unknown as { widget: { commands: { execute(id: string, arg?: unknown): unknown } } }).widget.commands.execute('chart.drawings.arm', 'image'))
+    await expect(page.locator('[data-role="drawing-image-picker"]')).toBeVisible()
+    await page.waitForFunction(() => {
+      const box = document.querySelector<HTMLElement>('[data-role="drawing-image-picker"]')!
+      return Math.abs(box.getBoundingClientRect().width - box.offsetWidth) < 0.01
+    })
+    const parts = await page.evaluate(() => {
+      const box = document.querySelector('[data-role="drawing-image-picker"]')!
+      const card = box.getBoundingClientRect()
+      const at = (selector: string): number[] => {
+        const r = box.querySelector(selector)!.getBoundingClientRect()
+        return [r.left - card.left, r.top - card.top, r.width, r.height].map((v) => Math.round(v))
+      }
+      const title = getComputedStyle(box.querySelector('.qc-drawing-dialog-title')!)
+      return { width: card.width, header: at('.qc-drawing-dialog-header'), title: [title.fontSize, title.fontWeight, title.lineHeight], zone: at('.qc-drawing-drop'), track: at('.qc-drawing-picker-opacity input'), footer: at('.qc-drawing-dialog-footer') }
+    })
+    expect(parts.width).toBe(380)
+    expect(parts.header).toEqual([0, 0, 380, 68])
+    expect(parts.title).toEqual(['20px', '600', '28px'])
+    expect(parts.zone).toEqual([20, 76, 340, 190])
+    expect(parts.track.slice(0, 1)).toEqual([180])
+    expect(parts.track.slice(2)).toEqual([180, 10])
+    expect(parts.footer[3]).toBe(67)
+  })
 })
 
 test.describe('a list button\'s list', () => {
