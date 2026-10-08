@@ -210,7 +210,7 @@ const DEFINITIONS: ToolDefinition[] = [
 
   // Gann
   tool(GannBox, { type: 'gannbox', name: 'Gann box', category: 'gann', anchors: 2, style: { lineColor: 'rgba(21, 56, 153, 0.8)', lineWidth: 2, lineStyle: 'solid', fontSize: 12 } }),
-  tool(GannSquare, { type: 'gannbox_square', name: 'Gann square', category: 'gann', anchors: 2 }),
+  tool(GannSquare, { type: 'gannbox_square', name: 'Gann square', category: 'gann', anchors: 2, style: FIB_LOOK }),
   tool(GannSquareFixed, { type: 'gannbox_fixed', name: 'Gann square fixed', category: 'gann', anchors: 2 }),
   tool(GannFan, { type: 'gannbox_fan', name: 'Gann fan', category: 'gann', anchors: 2 }),
 

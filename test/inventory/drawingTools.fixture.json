@@ -891,7 +891,8 @@
       "capturesBars": false,
       "style": null,
       "props": [
-        "background",
+        "backgroundOpacity",
+        "fillBackground",
         "levels",
         "showLabels"
       ]
@@ -905,9 +906,12 @@
       "capturesBars": false,
       "style": null,
       "props": [
-        "background",
+        "arcs",
+        "backgroundOpacity",
+        "fans",
+        "fillBackground",
         "levels",
-        "showLabels"
+        "reverse"
       ]
     },
     {
@@ -917,10 +921,19 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
+        "arcs",
+        "backgroundOpacity",
+        "fans",
+        "fillBackground",
         "levels",
+        "reverse",
+        "scaleRatio",
         "showLabels"
       ]
     },

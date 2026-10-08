@@ -6,8 +6,8 @@
 // level switched off keeps its value and color, its field greyed and its well dimmed until it is
 // switched back on. The one color shows the color every level shares, or a well split in two while
 // they differ; picking there gives every level the color picked.
-import type { DrawingStyle, FibChannelProps, FibLevel, FibRetracementProps, FibTrendProps, LineStyle } from '../../internal/drawings/index'
-import { alphaOf, fibLevelColor, MIXED_LEVEL_COLORS, sharedLevelColor, withAlpha } from '../../internal/drawings/index'
+import type { DrawingStyle, FibChannelProps, FibLevel, FibRetracementProps, FibTrendProps, GannLine, GannRatioLine, LineStyle } from '../../internal/drawings/index'
+import { alphaOf, fanRatioText, fibLevelColor, gannRatioText, MIXED_LEVEL_COLORS, sharedLevelColor, withAlpha } from '../../internal/drawings/index'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import { el, menuKeys } from './dom'
 import { checkbox, checkRow, dropdown, fullRow, groupGap, multiDropdown, numberInput, openPopover, row, sectionTitle, swatchButton, toggleRow } from './fields'
@@ -461,4 +461,96 @@ export function boxLevelRows(ctx: RowsContext, kind: 'speedFan' | 'gannBox'): HT
   }
   out.push(toggle('reverse', 'drawing.reverse'))
   return out
+}
+
+/** A switch with words of its own, for one cell of a gann grid: its box and its place or its ratio,
+ *  78px across so every well in the grid stands in line. */
+function ratioSwitch(words: string, name: string, on: boolean, onChange: (v: boolean) => void): HTMLElement {
+  return el('label', { class: 'qc-drawing-toggle qc-drawing-ratio-switch' }, checkbox(name, on, onChange), el('span', { text: words }))
+}
+
+/** The sets of lines a gann square holds, and the names their cells give their switch and stroke. */
+type SquareKey = 'levels' | 'fans' | 'arcs'
+const SQUARE_NAMES: Record<SquareKey, { on: ChartMessageKey; color: ChartMessageKey }> = {
+  levels: { on: 'drawing.levelOn', color: 'drawing.levelColor' },
+  fans: { on: 'drawing.fanOn', color: 'drawing.fanColor' },
+  arcs: { on: 'drawing.arcOn', color: 'drawing.arcColor' },
+}
+
+/** One line of a gann square: its switch, named by its place or its ratio, and its stroke's color and
+ *  thickness. Switching it off dims its stroke in place and writes quietly. */
+function squareCell(ctx: RowsContext, key: SquareKey, line: GannLine | GannRatioLine, index: number): HTMLElement[] {
+  const { t, box } = ctx
+  const words = 'x' in line ? gannRatioText(line) : String(index)
+  const names = SQUARE_NAMES[key]
+  const patch = (next: Partial<GannLine>, quiet: boolean): void => {
+    const lines = (liveLevels(ctx, key) as unknown as GannLine[]).map((l, j) => (j === index ? { ...l, ...next } : l))
+    if (quiet) ctx.patchQuiet({ [key]: lines })
+    else ctx.patchProps({ [key]: lines })
+  }
+  const stroke = swatchButton(t, box, { label: t(names.color, { n: words }), value: line.color, onPick: (c) => patch({ color: c }, false), thickness: line.width, onThickness: (w) => patch({ width: w }, false) })
+  stroke.dataset.qcDim = String(!line.visible)
+  const toggle = ratioSwitch(words, t(names.on, { n: words }), line.visible, (on) => {
+    stroke.dataset.qcDim = String(!on)
+    patch({ visible: on }, true)
+  })
+  return [toggle, stroke]
+}
+
+/** A gann square's set of lines under its section, two to a line, and the room the set keeps after
+ *  it. */
+function squareGrid(ctx: RowsContext, key: SquareKey, title: ChartMessageKey): HTMLElement[] {
+  const lines = liveLevels(ctx, key) as unknown as (GannLine | GannRatioLine)[]
+  const out: HTMLElement[] = [sectionTitle(ctx.t(title))]
+  for (let i = 0; i < lines.length; i += 2) {
+    const line = fullRow(...squareCell(ctx, key, lines[i]!, i), ...(i + 1 < lines.length ? squareCell(ctx, key, lines[i + 1]!, i + 1) : []))
+    line.classList.add('qc-drawing-ratio-row')
+    out.push(line)
+  }
+  out.push(groupGap())
+  return out
+}
+
+/** A gann square's Style page: its grid, its fans and its arcs, each set under its section; one
+ *  color for every line; the bands between its arcs; and which corner it counts from. */
+export function gannSquareRows(ctx: RowsContext): HTMLElement[] {
+  const { t, drawing } = ctx
+  return [
+    ...squareGrid(ctx, 'levels', 'drawing.levels'),
+    ...squareGrid(ctx, 'fans', 'drawing.fans'),
+    ...squareGrid(ctx, 'arcs', 'drawing.arcs'),
+    oneColorRow(ctx, ['levels', 'fans', 'arcs']),
+    bandsRow(ctx),
+    toggleRow(t('drawing.reverse'), !!drawing.props.reverse, (v) => ctx.patchProps({ reverse: v })),
+  ]
+}
+
+/** A gann fan's Style page: its rays one to a line, each its switch named by its ratio and its
+ *  stroke's color, thickness and style; one color for every ray; the bands; and the rays' labels. */
+export function gannFanRows(ctx: RowsContext): HTMLElement[] {
+  const { t, drawing, box } = ctx
+  const rays = liveLevels(ctx).map((level, index) => {
+    const words = fanRatioText(level.value)
+    const patch = (next: Partial<FibLevel>, quiet: boolean): void => {
+      const levels = liveLevels(ctx).map((l, j) => (j === index ? { ...l, ...next } : l))
+      if (quiet) ctx.patchQuiet({ levels })
+      else ctx.patchProps({ levels })
+    }
+    const stroke = swatchButton(t, box, {
+      label: t('drawing.fanColor', { n: words }),
+      value: fibLevelColor(level, index),
+      onPick: (c) => patch({ color: c }, false),
+      thickness: level.width ?? drawing.style.lineWidth,
+      onThickness: (w) => patch({ width: w }, false),
+      lineStyle: level.style ?? drawing.style.lineStyle,
+      onLineStyle: (s) => patch({ style: s }, false),
+    })
+    stroke.dataset.qcDim = String(!level.visible)
+    const toggle = ratioSwitch(words, t('drawing.fanOn', { n: words }), level.visible, (on) => {
+      stroke.dataset.qcDim = String(!on)
+      patch({ visible: on }, true)
+    })
+    return fullRow(toggle, stroke)
+  })
+  return [...rays, oneColorRow(ctx), bandsRow(ctx), toggleRow(t('drawing.labels'), !!drawing.props.showLabels, (v) => ctx.patchProps({ showLabels: v }))]
 }

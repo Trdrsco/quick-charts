@@ -2874,6 +2874,18 @@ switches its construction in place: `original`, `schiff`, `modified_schiff` or `
 A fib spiral winds clockwise out from its first point, and `counterclockwise` winds it the other
 way.
 
+A gann square and a gann square fixed draw a grid of six lines at their fifths (`levels`), fan
+lines from the corner they count from out to their far sides (`fans`) and arcs about that corner
+(`arcs`), each line its switch, its color and its width, a fan line or an arc at its ratio of the
+square's unit, `x` along the time side for `y` along the price side. Their pages set each set
+under its section, two to a line; the bands between arcs follow `fillBackground` and
+`backgroundOpacity`, and `reverse` counts from the other corner. A gann square holds its second
+corner at `scaleRatio` price for every bar between its corners, a ratio it takes from the pane
+when it is first drawn so it opens square, and typing a Price/bar ratio moves the corner to it; with
+`showLabels` it reads its price and bar ranges and their ratio under it. A square fixed stays
+square on the pane whatever its scale. A gann fan draws its rays at their price-to-time ratios, 1/8
+to 8/1, each in its own stroke, with the bands between them and each ray's ratio at its end.
+
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
 the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
 that shade their legs, the background, which `fillBackground` switches off and on keeping its

@@ -28,7 +28,7 @@ import { createOpacitySlider } from '../controls/color'
 import { humanSize } from './imagePicker'
 import type { IconResolver } from '../icons/resolver'
 import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
-import { boxLevelRows, fibRows, strokedLevelRows } from './levelRows'
+import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, strokedLevelRows } from './levelRows'
 
 export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Table' | 'Coordinates' | 'Visibility'
 
@@ -118,7 +118,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'pattern'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -150,6 +150,9 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   pitchfan: 'pitchfan',
   fib_speed_resist_fan: 'speedFan',
   gannbox: 'gannBox',
+  gannbox_square: 'gannSquare',
+  gannbox_fixed: 'gannFixed',
+  gannbox_fan: 'gannFan',
   pitchfork: 'pitchfork',
   schiff_pitchfork: 'pitchfork',
   schiff_pitchfork_modified: 'pitchfork',
@@ -178,6 +181,38 @@ const STATS: readonly { key: string; label: ChartMessageKey }[] = [
 ]
 const STATS_POSITION_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.left', center: 'drawing.center', right: 'drawing.right', auto: 'drawing.auto' }
 
+/** A gann square's price per bar, which typing holds its second corner at, and its ranges and ratio
+ *  with their size, weight and slant. A square not yet drawn on a pane has no price per bar to show;
+ *  the field steps by a tenth of the ratio's leading place, and no lower than one step. */
+function squareRatioRows(ctx: RowsContext): HTMLElement[] {
+  const { t, icons, box, drawing } = ctx
+  const style = drawing.style
+  const ratio = drawing.props.scaleRatio
+  const perBar = typeof ratio === 'number' && ratio > 0 ? ratio : null
+  const step = perBar === null ? undefined : 10 ** (Math.floor(Math.log10(perBar)) - 1)
+  return [
+    row(
+      t('drawing.priceBarRatio'),
+      numberInput(t, icons, {
+        label: t('drawing.priceBarRatio'),
+        value: perBar ?? NaN,
+        decimals: 7,
+        step,
+        min: step,
+        width: 'field',
+        onChange: (v) => {
+          if (v > 0) ctx.patchProps({ scaleRatio: v })
+        },
+      }),
+    ),
+    checkRow(t('drawing.rangesAndRatio'), !!drawing.props.showLabels, (v) => ctx.patchProps({ showLabels: v }), [
+      dropdown(icons, box, t('drawing.fontSize'), TEXT_SIZES, String(style.fontSize) as (typeof TEXT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) })),
+      fontToggle(icons, style.bold, 'textBold', t('drawing.bold'), () => ctx.patchStyle({ bold: !style.bold })),
+      fontToggle(icons, style.italic, 'textItalic', t('drawing.italic'), () => ctx.patchStyle({ italic: !style.italic })),
+    ]),
+  ]
+}
+
 /** A pitchfork's Style row: the construction its median takes, switched in place. */
 const forkStyleRow = (ctx: RowsContext): HTMLElement =>
   row(ctx.t('drawing.rowStyle'), dropdown(ctx.icons, ctx.box, ctx.t('drawing.rowStyle'), ['original', 'schiff', 'modified_schiff', 'inside'] as const, ctx.drawing.props.variant as 'original', label(ctx.t, VARIANT_LABEL), (v) => ctx.patchProps({ variant: v })))
@@ -189,6 +224,9 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
   if (layout === 'timeZone' || layout === 'trendTime' || layout === 'circles' || layout === 'arcs' || layout === 'wedge' || layout === 'pitchfan') return strokedLevelRows(ctx, layout)
   if (layout === 'speedFan' || layout === 'gannBox') return boxLevelRows(ctx, layout)
   if (layout === 'pitchfork') return [...strokedLevelRows(ctx, 'pitchfork'), forkStyleRow(ctx)]
+  if (layout === 'gannSquare') return [...gannSquareRows(ctx), ...squareRatioRows(ctx)]
+  if (layout === 'gannFixed') return gannSquareRows(ctx)
+  if (layout === 'gannFan') return gannFanRows(ctx)
   const { t, drawing, box, icons } = ctx
   const props = drawing.props as Record<string, unknown>
   const style = drawing.style

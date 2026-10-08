@@ -532,6 +532,29 @@
   margin-inline-start: 40px;
 }
 
+/* A gann grid: two lines to a 34px line, 8px between lines and 8px above the first, each line its
+ * switch with its place or its ratio, 78px across so every well stands in line, then its well 8px
+ * after; the second line 48px after the first's well. A fan's rays stand one to a 50px line. */
+[data-qc-theme] .qc-drawing-page > .qc-drawing-ratio-row {
+  min-height: 34px;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+[data-qc-theme] .qc-drawing-page > :not(.qc-drawing-ratio-row) + .qc-drawing-ratio-row {
+  margin-top: 8px;
+}
+
+[data-qc-theme] .qc-drawing-ratio-row > :nth-child(3) {
+  margin-inline-start: 40px;
+}
+
+[data-qc-theme] .qc-drawing-ratio-switch {
+  flex: 0 0 78px;
+  min-width: 0;
+  min-height: 34px;
+}
+
 [data-qc-theme] .qc-drawing-swatch-button[data-qc-dim='true'] {
   background: var(--qc-control-fieldFill);
 }

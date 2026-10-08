@@ -171,6 +171,24 @@ describe('the settings bar', () => {
     ])
   })
 
+  it('a color pick recolors every set of levels a gann box or a gann square holds', () => {
+    const pick = (type: string, props: Record<string, unknown>): unknown => {
+      const { byLabel, ran, popover } = rig(selection({ type, hasText: false }), props)
+      byLabel('Drawing color').click()
+      popover()!.querySelector<HTMLButtonElement>('[aria-label="Color #000000"]')!.click()
+      return ran.at(-1)
+    }
+    expect(pick('gannbox', { priceLevels: [{ value: 0, visible: true, color: '#111111' }], timeLevels: [{ value: 1, visible: true, color: '#222222' }] })).toEqual([
+      'chart.drawings.props',
+      { priceLevels: [{ value: 0, visible: true, color: '#000000' }], timeLevels: [{ value: 1, visible: true, color: '#000000' }] },
+    ])
+    const line = (color: string) => ({ visible: true, color, width: 2 })
+    expect(pick('gannbox_square', { levels: [line('#111111')], fans: [{ x: 1, y: 1, ...line('#222222') }], arcs: [{ x: 1, y: 0, ...line('#333333') }] })).toEqual([
+      'chart.drawings.props',
+      { levels: [line('#000000')], fans: [{ x: 1, y: 1, ...line('#000000') }], arcs: [{ x: 1, y: 0, ...line('#000000') }] },
+    ])
+  })
+
   it('the thickness and line style menus mark the current value and restyle, drawn with the bar glyphs', () => {
     const { byLabel, ran, popover, rows } = rig(selection())
     // The thickness mark is an 18 by N bar, on the control and in every row of its menu.

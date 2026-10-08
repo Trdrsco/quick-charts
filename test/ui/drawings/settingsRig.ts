@@ -4,6 +4,7 @@
 // A page is read as a list of row signatures: `Label: kinds` for a labelled row, `[x] Label` for a
 // checkbox row, `[x] Label: kinds` for a row whose label is a checkbox, `full: kinds` for a row
 // across both columns, `## Title` for a section and `gap` for the room a group keeps after it.
+// Among a row's kinds, a switch with words of its own reads `[x] words`.
 import { createChartI18n } from '../../../src/i18n'
 import { drawingTools } from '../../../src/drawings/index'
 import { createPresets } from '../../../src/drawings/layer/presets'
@@ -34,6 +35,7 @@ export function kind(control: Element): string {
   if (control.matches('.qc-drawing-select--mark')) return `mark(${control.getAttribute('data-mark')})`
   if (control.matches('.qc-drawing-band-opacity')) return 'opacity'
   if (control.matches('input[type="checkbox"]')) return `check(${(control as HTMLInputElement).checked ? 'x' : ' '})`
+  if (control.matches('label.qc-drawing-toggle')) return `${(control.querySelector('input') as HTMLInputElement).checked ? '[x]' : '[ ]'} ${control.textContent}`
   if (control.matches('.qc-drawing-select[role="combobox"]')) return `select(${control.textContent})`
   if (control.matches('.qc-drawing-select')) return `multi(${control.textContent})`
   if (control.matches('.qc-drawing-number-wrap')) return 'number'

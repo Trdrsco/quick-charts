@@ -205,13 +205,16 @@ describe('the leveled families', () => {
 
   it('the gann boxes divide the box on the gann ratios, and the fan draws the gann angles', () => {
     for (const type of ['gannbox_square', 'gannbox_fixed']) {
-      expect(levels(type, 2).map((l) => l.value), type).toEqual([0, 0.25, 0.382, 0.5, 0.618, 0.75, 1])
+      const props = live(drawingTools.create(type, type, anchorsFor(fake, 2))).props
+      expect((props.levels as unknown[]).length, type).toBe(6)
+      expect((props.fans as { x: number; y: number }[]).map((f) => `${f.x}x${f.y}`), type).toEqual(['8x1', '5x1', '4x1', '3x1', '2x1', '1x1', '1x2', '1x3', '1x4', '1x5', '1x8'])
+      expect((props.arcs as { x: number; y: number }[]).map((a) => `${a.x}x${a.y}`), type).toEqual(['1x0', '1x1', '1.5x0', '2x0', '2x1', '3x0', '3x1', '4x0', '4x1', '5x0', '5x1'])
     }
     for (const type of ['gannbox', 'fib_speed_resist_fan']) {
       const props = live(drawingTools.create(type, type, anchorsFor(fake, 2))).props
       for (const key of ['priceLevels', 'timeLevels']) expect((props[key] as { value: number }[]).map((l) => l.value), `${type} ${key}`).toEqual([0, 0.25, 0.382, 0.5, 0.618, 0.75, 1])
     }
-    expect(levels('gannbox_fan', 2).map((l) => l.value)).toEqual([8, 4, 3, 2, 1, 1 / 2, 1 / 3, 1 / 4, 1 / 8])
+    expect(levels('gannbox_fan', 2).map((l) => l.value)).toEqual([1 / 8, 1 / 4, 1 / 3, 1 / 2, 1, 2, 3, 4, 8])
   })
 })
 

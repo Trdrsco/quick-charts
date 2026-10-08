@@ -206,14 +206,16 @@ export function multiDropdown(icons: IconResolver, box: HTMLElement, props: { la
 
 /** A number field with its own up and down steppers, clamped to the bounds, rounded to the finer of
  *  the step's precision and the value's own, so float steps never accumulate dust and a step never
- *  rounds away a digit the value carries. */
+ *  rounds away a digit the value carries. A field given `decimals` writes its value with exactly
+ *  that many, before a step and after it. */
 export function numberInput(
   t: ChartTranslate,
   icons: IconResolver,
-  props: { label: string; value: number; onChange: (v: number) => void; step?: number; min?: number; max?: number; width?: 'short' | 'medium' | 'field' | 'wide' },
+  props: { label: string; value: number; onChange: (v: number) => void; step?: number; min?: number; max?: number; decimals?: number; width?: 'short' | 'medium' | 'field' | 'wide' },
 ): HTMLElement {
   const input = el('input', { type: 'number', class: 'qc-field qc-drawing-number', 'aria-label': props.label }) as HTMLInputElement
-  input.value = Number.isFinite(props.value) ? String(props.value) : ''
+  const written = (v: number): string => (props.decimals === undefined ? String(v) : v.toFixed(props.decimals))
+  input.value = Number.isFinite(props.value) ? written(props.value) : ''
   input.step = props.step === undefined ? 'any' : String(props.step)
   if (props.min !== undefined) input.min = String(props.min)
   if (props.max !== undefined) input.max = String(props.max)
@@ -229,9 +231,9 @@ export function numberInput(
     if (props.min !== undefined) v = Math.max(props.min, v)
     if (props.max !== undefined) v = Math.min(props.max, v)
     const decimalsOf = (n: number): number => String(n).split('.')[1]?.length ?? 0
-    const decimals = Math.max(decimalsOf(s), decimalsOf(Number(input.value) || 0))
+    const decimals = props.decimals ?? Math.max(decimalsOf(s), decimalsOf(Number(input.value) || 0))
     const next = Number(v.toFixed(decimals))
-    input.value = String(next)
+    input.value = written(next)
     props.onChange(next)
   }
   const steppers = el(

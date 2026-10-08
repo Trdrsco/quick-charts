@@ -218,8 +218,9 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     deps.run('chart.drawings.style', patch)
   }
 
-  /** The sets of levels a leveled tool holds: its levels, or a box's price and time divisions. */
-  const LEVEL_KEYS = ['levels', 'priceLevels', 'timeLevels'] as const
+  /** The sets of levels a leveled tool holds: its levels, a box's price and time divisions, or a gann
+   *  square's fans and arcs beside its grid. */
+  const LEVEL_KEYS = ['levels', 'priceLevels', 'timeLevels', 'fans', 'arcs'] as const
   /** Recolor every level of every set the selected drawing holds, in one move. */
   const recolorLevels = (color: (level: { color?: string }) => string): void => {
     const props = deps.selectedProps()

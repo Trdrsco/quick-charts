@@ -75,6 +75,27 @@ const forkStyle = (construction: string): string[] => [
   `Style: select(${construction})`,
 ]
 
+/** A gann square's set of lines under its section, two to a line, each its switch with its place or
+ *  its ratio and its stroke, from which of them are shown, then the room the set keeps after it. */
+const squareGrid = (title: string, cells: [string, boolean][]): string[] => {
+  const cell = ([words, on]: [string, boolean]): string => `${on ? '[x]' : '[ ]'} ${words} colorWithThickness`
+  const lines = [`## ${title}`]
+  for (let i = 0; i < cells.length; i += 2) lines.push(`full: ${cells.slice(i, i + 2).map(cell).join(' ')}`)
+  return [...lines, 'gap']
+}
+const shownCell = (words: string): [string, boolean] => [words, true]
+
+/** A gann square's Style page: its grid, its fans with 2x1, 1x1 and 1x2 shown, its arcs, the one
+ *  color, the bands and Reverse. */
+const SQUARE_STYLE = [
+  ...squareGrid('Levels', ['0', '1', '2', '3', '4', '5'].map(shownCell)),
+  ...squareGrid('Fans', ['8x1', '5x1', '4x1', '3x1', '2x1', '1x1', '1x2', '1x3', '1x4', '1x5', '1x8'].map((w): [string, boolean] => [w, ['2x1', '1x1', '1x2'].includes(w)])),
+  ...squareGrid('Arcs', ['1x0', '1x1', '1.5x0', '2x0', '2x1', '3x0', '3x1', '4x0', '4x1', '5x0', '5x1'].map(shownCell)),
+  'Use one color: color',
+  BANDS(true),
+  '[ ] Reverse',
+]
+
 /** The Coordinates page of a tool placed on so many points. */
 const points = (n: number): string[] => Array.from({ length: n }, (_, i) => `#${i + 1} (price, bar): number number`)
 
@@ -197,6 +218,17 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; 
   schiff_pitchfork: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Schiff'), Coordinates: THREE_POINTS },
   schiff_pitchfork_modified: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Modified Schiff'), Coordinates: THREE_POINTS },
   inside_pitchfork: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Inside'), Coordinates: THREE_POINTS },
+  gannbox_square: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: [...SQUARE_STYLE, 'Price/bar ratio: number', '[x] Ranges and ratio: select(12) toggle toggle'],
+    Coordinates: TWO_POINTS,
+  },
+  gannbox_fixed: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: SQUARE_STYLE, Coordinates: TWO_POINTS },
+  gannbox_fan: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: [...['1/8', '1/4', '1/3', '1/2', '1/1', '2/1', '3/1', '4/1', '8/1'].map((w) => `full: [x] ${w} colorWithThickness`), 'Use one color: color', BANDS(true), '[x] Labels'],
+    Coordinates: TWO_POINTS,
+  },
   xabcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   cypher_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   abcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(false), Coordinates: points(4) },

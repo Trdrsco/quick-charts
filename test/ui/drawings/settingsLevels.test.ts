@@ -185,6 +185,53 @@ describe('a pitchfork', () => {
   })
 })
 
+describe('a gann square and a gann fan', () => {
+  it('name each line’s switch and stroke by its place or its ratio, and switch a line on in place', () => {
+    const { drawing, page } = rig('gannbox_square')
+    expect(control(page(), 'Level 0')).not.toBeNull()
+    expect(control(page(), 'Arc 1.5x0 color')).not.toBeNull()
+    expect(control(page(), 'Fan 8x1 color').dataset.qcDim).toBe('true')
+    control(page(), 'Fan 8x1').click()
+    expect((drawing.props.fans as { visible: boolean }[])[0]!.visible).toBe(true)
+    expect(control(page(), 'Fan 8x1 color').dataset.qcDim).toBe('false')
+  })
+
+  it('show one color for every line of a square, the split well while they differ', () => {
+    const { drawing, page, show } = rig('gannbox_fixed')
+    expect(control(page(), 'Use one color').dataset.qcMixed).toBe('true')
+    for (const key of ['levels', 'fans', 'arcs']) drawing.applyProps({ [key]: (drawing.props[key] as { color: string }[]).map((l) => ({ ...l, color: '#123456' })) })
+    show('Coordinates')
+    show('Style')
+    expect(control(page(), 'Use one color').dataset.qcMixed).toBeUndefined()
+  })
+
+  it('offer a square its price per bar, and its ranges’ switch, size, weight and slant', () => {
+    const { dialog, drawing, page } = rig('gannbox_square')
+    // Not yet drawn on a pane, the square has no price per bar to show.
+    expect((control(page(), 'Price/bar ratio') as HTMLInputElement).value).toBe('')
+    expect(choices(dialog, list(page(), 'Font size'))).toEqual(['8', '10', '11', '12', '14', '16', '18', '20', '22', '24', '28', '32', '40'])
+    pick(dialog, list(page(), 'Font size'), '16')
+    expect(drawing.style.fontSize).toBe(16)
+    control(page(), 'Bold').click()
+    expect(drawing.style.bold).toBe(true)
+    control(page(), 'Ranges and ratio').click()
+    expect(drawing.props.showLabels).toBe(false)
+  })
+
+  it('write a square’s price per bar with seven decimals', () => {
+    const { drawing, page } = rig('gannbox_square')
+    drawing.applyProps({ scaleRatio: 33.360546 })
+    control(page(), 'Reverse').click()
+    expect((control(page(), 'Price/bar ratio') as HTMLInputElement).value).toBe('33.3605460')
+  })
+
+  it('name a fan’s rays by their ratios, each in a stroke with its own thickness and style', () => {
+    const { page } = rig('gannbox_fan')
+    expect([...page().querySelectorAll('.qc-drawing-ratio-switch')].map((s) => s.textContent)).toEqual(['1/8', '1/4', '1/3', '1/2', '1/1', '2/1', '3/1', '4/1', '8/1'])
+    expect(control(page(), 'Fan 1/8 color').querySelector('.qc-drawing-stroke')).not.toBeNull()
+  })
+})
+
 /** The look and setup each leveled tool opens with. */
 describe('what a new leveled drawing starts with', () => {
   const fresh = (type: string) => drawingTools.create(type, 'x', anchors(drawingTools.get(type)!.anchors))!
@@ -239,6 +286,56 @@ describe('what a new leveled drawing starts with', () => {
     const d = fresh('fib_spiral')
     expect([d.style.lineColor, d.style.lineWidth, d.style.lineStyle]).toEqual(['#00bcd4', 2, 'solid'])
     expect(d.props).toEqual({ counterclockwise: false })
+  })
+
+  it('opens a gann square and a fixed one on six grid lines, eleven fans and eleven arcs, and a gann fan on nine rays', () => {
+    type Line = { x?: number; y?: number; color: string; visible: boolean; width: number }
+    const ratio = (l: Line): string => `${l.x}x${l.y}`
+    for (const type of ['gannbox_square', 'gannbox_fixed']) {
+      const d = fresh(type)
+      expect((d.props.levels as Line[]).map((l) => [l.color, l.visible, l.width]), type).toEqual(['#808080', '#ff9800', '#00bcd4', '#4caf50', '#089981', '#808080'].map((c) => [c, true, 2]))
+      expect((d.props.fans as Line[]).map((l) => [ratio(l), l.color, l.visible, l.width]), type).toEqual([
+        ['8x1', '#b39ddb', false, 2],
+        ['5x1', '#f23645', false, 2],
+        ['4x1', '#808080', false, 2],
+        ['3x1', '#ff9800', false, 2],
+        ['2x1', '#00bcd4', true, 2],
+        ['1x1', '#4caf50', true, 2],
+        ['1x2', '#089981', true, 2],
+        ['1x3', '#089981', false, 2],
+        ['1x4', '#2962ff', false, 2],
+        ['1x5', '#9575cd', false, 2],
+        ['1x8', '#b39ddb', false, 2],
+      ])
+      expect((d.props.arcs as Line[]).map((l) => [ratio(l), l.color, l.visible, l.width]), type).toEqual([
+        ['1x0', '#ff9800', true, 2],
+        ['1x1', '#ff9800', true, 2],
+        ['1.5x0', '#ff9800', true, 2],
+        ['2x0', '#00bcd4', true, 2],
+        ['2x1', '#00bcd4', true, 2],
+        ['3x0', '#4caf50', true, 2],
+        ['3x1', '#4caf50', true, 2],
+        ['4x0', '#089981', true, 2],
+        ['4x1', '#089981', true, 2],
+        ['5x0', '#2962ff', true, 2],
+        ['5x1', '#2962ff', true, 2],
+      ])
+      expect(d.props, type).toMatchObject({ fillBackground: true, backgroundOpacity: 0.2, reverse: false })
+    }
+    expect(fresh('gannbox_square').props).toMatchObject({ scaleRatio: null, showLabels: true })
+    expect([fresh('gannbox_square').style.fontSize, fresh('gannbox_square').style.bold, fresh('gannbox_square').style.italic]).toEqual([12, false, false])
+    expect((fresh('gannbox_fan').props.levels as { value: number; color: string; visible: boolean; width: number }[]).map((l) => [l.value, l.color, l.visible, l.width])).toEqual([
+      [1 / 8, '#ff9800', true, 2],
+      [1 / 4, '#089981', true, 2],
+      [1 / 3, '#4caf50', true, 2],
+      [1 / 2, '#089981', true, 2],
+      [1, '#00bcd4', true, 2],
+      [2, '#2962ff', true, 2],
+      [3, '#9c27b0', true, 2],
+      [4, '#e91e63', true, 2],
+      [8, '#f23645', true, 2],
+    ])
+    expect(fresh('gannbox_fan').props).toMatchObject({ fillBackground: true, backgroundOpacity: 0.2, showLabels: true })
   })
 
   it('opens the four pitchforks on one ladder of nine pairs, the half and the tines shown, with a red median', () => {

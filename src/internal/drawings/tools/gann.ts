@@ -1,28 +1,9 @@
-import type { Point, Viewport } from '../core/types'
+import type { Anchor, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment, extendSegment } from '../core/geometry'
 import { applyStroke, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 import { boxDivisions, levelBox, paintBoxLabels, priceY, timeX, upgradeBoxLevels, type BoxLevelsProps, type LevelBox } from './boxLevels'
 import { fibLevelColor, type FibLevel } from './fibonacci'
-
-export type GannProps = {
-  levels: FibLevel[]
-  showLabels: boolean
-  background: boolean
-}
-
-const BOX_FRACTIONS: FibLevel[] = [
-  { value: 0, visible: true },
-  { value: 0.25, visible: true },
-  { value: 0.382, visible: true },
-  { value: 0.5, visible: true },
-  { value: 0.618, visible: true },
-  { value: 0.75, visible: true },
-  { value: 1, visible: true },
-]
-
-/** The classic fan ratios (price units per time unit). */
-const FAN_RATIOS = [8, 4, 3, 2, 1, 1 / 2, 1 / 3, 1 / 4, 1 / 8]
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -138,165 +119,395 @@ export class GannBox extends Drawing<GannBoxProps> {
   }
 }
 
-/** A box spanned by two corners with ratio lines dividing both axes, the body of the gann squares. */
-export abstract class GannLevelBox extends Drawing<GannProps> {
+/** A gann square's line: shown or not, in its color at its width. */
+export type GannLine = { visible: boolean; color: string; width: number }
 
-  protected override defaultProps(): GannProps {
-    return { levels: BOX_FRACTIONS.map((l) => ({ ...l })), showLabels: true, background: true }
+/** A gann square's fan line or arc, at a ratio of the square's unit: `x` units along its time side
+ *  for `y` along its price side. */
+export type GannRatioLine = GannLine & { x: number; y: number }
+
+/** A gann square's lines: a grid of six lines across it and down it at its fifths, fan lines from
+ *  its first corner at their ratios, arcs about that corner as long as their ratios, the bands
+ *  between neighbouring arcs, and which corner it counts from. */
+export type GannSquareProps = {
+  levels: GannLine[]
+  fans: GannRatioLine[]
+  arcs: GannRatioLine[]
+  fillBackground: boolean
+  backgroundOpacity: number
+  /** Count from the second corner rather than the first. */
+  reverse: boolean
+}
+
+/** A gann square held to a price per bar: its price side spans `scaleRatio` for every bar its time
+ *  side spans, a ratio taken from the pane when it is first drawn so it opens square. Its price and
+ *  bar ranges and their ratio read under it, in the drawing's text size, weight and slant, while
+ *  `showLabels` is on. */
+export type GannRatioSquareProps = GannSquareProps & {
+  scaleRatio: number | null
+  showLabels: boolean
+}
+
+const line = (color: string, visible: boolean): GannLine => ({ visible, color, width: 2 })
+const ratio = (x: number, y: number, color: string, visible: boolean): GannRatioLine => ({ x, y, visible, color, width: 2 })
+
+/** The six grid lines, from the first corner's edges to the far ones. */
+const SQUARE_LEVELS = (): GannLine[] => ['#808080', '#ff9800', '#00bcd4', '#4caf50', '#089981', '#808080'].map((c) => line(c, true))
+
+/** The eleven fan lines, flattest first: 2x1, 1x1 and 1x2 shown. */
+const SQUARE_FANS = (): GannRatioLine[] => [
+  ratio(8, 1, '#b39ddb', false),
+  ratio(5, 1, '#f23645', false),
+  ratio(4, 1, '#808080', false),
+  ratio(3, 1, '#ff9800', false),
+  ratio(2, 1, '#00bcd4', true),
+  ratio(1, 1, '#4caf50', true),
+  ratio(1, 2, '#089981', true),
+  ratio(1, 3, '#089981', false),
+  ratio(1, 4, '#2962ff', false),
+  ratio(1, 5, '#9575cd', false),
+  ratio(1, 8, '#b39ddb', false),
+]
+
+/** The eleven arcs, nearest first, every one shown. */
+const SQUARE_ARCS = (): GannRatioLine[] => [
+  ratio(1, 0, '#ff9800', true),
+  ratio(1, 1, '#ff9800', true),
+  ratio(1.5, 0, '#ff9800', true),
+  ratio(2, 0, '#00bcd4', true),
+  ratio(2, 1, '#00bcd4', true),
+  ratio(3, 0, '#4caf50', true),
+  ratio(3, 1, '#4caf50', true),
+  ratio(4, 0, '#089981', true),
+  ratio(4, 1, '#089981', true),
+  ratio(5, 0, '#2962ff', true),
+  ratio(5, 1, '#2962ff', true),
+]
+
+const SQUARE_PROPS = (): GannSquareProps => ({ levels: SQUARE_LEVELS(), fans: SQUARE_FANS(), arcs: SQUARE_ARCS(), fillBackground: true, backgroundOpacity: 0.2, reverse: false })
+
+/** A gann ratio as its row and its label write it: so many units along the time side for so many
+ *  along the price side. */
+export const gannRatioText = (r: { x: number; y: number }): string => `${r.x}x${r.y}`
+
+/** Whether a saved set of square lines has the shape a square reads: each a color and a width. */
+const isSquareLines = (lines: unknown): boolean => Array.isArray(lines) && lines.every((l) => typeof l?.color === 'string' && typeof l?.width === 'number')
+
+/** The props a saved square keeps: the ones it reads in the shape it reads them, and its background
+ *  switch under its earlier name. */
+function squareProps<P extends GannSquareProps>(saved: Partial<P>, defaults: P): Partial<P> {
+  const from = saved as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  for (const key of Object.keys(defaults)) {
+    if (!(key in from)) continue
+    if ((key === 'levels' || key === 'fans' || key === 'arcs') && !isSquareLines(from[key])) continue
+    out[key] = from[key]
   }
+  if (typeof from.background === 'boolean' && !('fillBackground' in from)) out.fillBackground = from.background
+  return out as Partial<P>
+}
 
+/** A square's frame: its sides, the corner it counts from and the one across from it, and its unit,
+ *  a fifth of each side. */
+type SquareFrame = { origin: Point; ux: number; uy: number; left: number; right: number; top: number; bottom: number }
+
+/** The square's arcs nearest first, each with its radius in units. */
+const shownArcs = (arcs: readonly GannRatioLine[]): { arc: GannRatioLine; r: number }[] =>
+  arcs
+    .filter((a) => a.visible)
+    .map((arc) => ({ arc, r: Math.hypot(arc.x, arc.y) }))
+    .filter((a) => a.r > 0)
+    .sort((p, q) => p.r - q.r)
+
+/** A gann square: a grid at fifths, fan lines and arcs from its first corner, all inside the square,
+ *  and the bands between its arcs. */
+export abstract class GannSquareBase<P extends GannSquareProps> extends Drawing<P> {
   requiredAnchors(): number {
     return 2
   }
 
-  protected frame(viewport: Viewport): { a: Point; b: Point } | null {
+  /** The two corners the square stands between, on the pane. */
+  protected corners(viewport: Viewport): { a: Point; b: Point } | null {
     const [a, b] = this.anchorPixels(viewport)
-    if (!a || !b) return null
+    if (!a || !b || a.x === b.x || a.y === b.y) return null
     return { a, b }
+  }
+
+  protected frame(viewport: Viewport): SquareFrame | null {
+    const c = this.corners(viewport)
+    if (!c) return null
+    const [origin, far] = this.props.reverse ? [c.b, c.a] : [c.a, c.b]
+    return {
+      origin,
+      ux: (far.x - origin.x) / 5,
+      uy: (far.y - origin.y) / 5,
+      left: Math.min(c.a.x, c.b.x),
+      right: Math.max(c.a.x, c.b.x),
+      top: Math.min(c.a.y, c.b.y),
+      bottom: Math.max(c.a.y, c.b.y),
+    }
+  }
+
+  /** A point of the square: `x` units along its time side and `y` along its price side from the
+   *  corner it counts from. */
+  protected at(f: SquareFrame, x: number, y: number): Point {
+    return { x: f.origin.x + f.ux * x, y: f.origin.y + f.uy * y }
+  }
+
+  /** A fan line's end: where its ratio meets the square's far sides. */
+  protected fanEnd(f: SquareFrame, fan: GannRatioLine): Point {
+    const scale = 5 / Math.max(fan.x, fan.y)
+    return this.at(f, fan.x * scale, fan.y * scale)
+  }
+
+  /** Trace an arc about the square's first corner: an ellipse through its ratio's length on both
+   *  sides, which the square's own edges cut to a quarter. */
+  protected traceArc(ctx: CanvasRenderingContext2D, f: SquareFrame, r: number, back = false): void {
+    ctx.ellipse(f.origin.x, f.origin.y, Math.abs(f.ux) * r, Math.abs(f.uy) * r, 0, back ? Math.PI * 2 : 0, back ? 0 : Math.PI * 2, back)
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const f = this.frame(viewport)
     if (!f) return
-    const { a, b } = f
-    const visible = this.props.levels.filter((l) => l.visible)
-    if (this.props.background) {
-      ctx.save()
-      ctx.fillStyle = withAlpha(this.style.lineColor, 0.05)
-      ctx.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y))
-      ctx.restore()
+    const { props } = this
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(f.left, f.top, f.right - f.left, f.bottom - f.top)
+    ctx.clip()
+    const arcs = shownArcs(props.arcs)
+    if (props.fillBackground && props.backgroundOpacity > 0) {
+      // Each band reaches from the arc inside it out to its own arc, in its own arc's color.
+      arcs.forEach(({ arc, r }, i) => {
+        ctx.fillStyle = withAlpha(arc.color, props.backgroundOpacity)
+        ctx.beginPath()
+        this.traceArc(ctx, f, r)
+        if (i > 0) this.traceArc(ctx, f, arcs[i - 1]!.r, true)
+        ctx.fill()
+      })
     }
-    for (const [i, level] of visible.entries()) {
-      const color = fibLevelColor(level, i)
-      ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = color
-      // Horizontal division…
-      const y = a.y + (b.y - a.y) * level.value
-      strokeSegment(ctx, { x: a.x, y }, { x: b.x, y })
-      // …and the matching vertical division.
-      const x = a.x + (b.x - a.x) * level.value
-      strokeSegment(ctx, { x, y: a.y }, { x, y: b.y })
-      ctx.restore()
-      if (this.props.showLabels) {
-        paintLabel(ctx, String(level.value), { x: Math.min(a.x, b.x) - 6, y }, { ...this.style, textColor: color }, { align: 'right' })
-      }
+    for (const { arc, r } of arcs) {
+      applyStroke(ctx, { ...this.style, lineColor: arc.color, lineWidth: arc.width, lineStyle: 'solid' })
+      ctx.beginPath()
+      this.traceArc(ctx, f, r)
+      ctx.stroke()
     }
+    props.levels.forEach((level, i) => {
+      if (!level.visible) return
+      applyStroke(ctx, { ...this.style, lineColor: level.color, lineWidth: level.width, lineStyle: 'solid' })
+      const p = this.at(f, i, i)
+      strokeSegment(ctx, { x: f.left, y: p.y }, { x: f.right, y: p.y })
+      strokeSegment(ctx, { x: p.x, y: f.top }, { x: p.x, y: f.bottom })
+    })
+    for (const fan of props.fans) {
+      if (!fan.visible || Math.max(fan.x, fan.y) <= 0) continue
+      applyStroke(ctx, { ...this.style, lineColor: fan.color, lineWidth: fan.width, lineStyle: 'solid' })
+      strokeSegment(ctx, f.origin, this.fanEnd(f, fan))
+    }
+    ctx.restore()
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
     const f = this.frame(viewport)
     if (!f) return false
-    const { a, b } = f
     const tolerance = hitTolerance(this.style.lineWidth)
-    const inX = point.x >= Math.min(a.x, b.x) - tolerance && point.x <= Math.max(a.x, b.x) + tolerance
-    const inY = point.y >= Math.min(a.y, b.y) - tolerance && point.y <= Math.max(a.y, b.y) + tolerance
-    if (!inX || !inY) return false
-    for (const level of this.props.levels) {
+    if (point.x < f.left - tolerance || point.x > f.right + tolerance || point.y < f.top - tolerance || point.y > f.bottom + tolerance) return false
+    for (const [i, level] of this.props.levels.entries()) {
       if (!level.visible) continue
-      const y = a.y + (b.y - a.y) * level.value
-      if (inX && Math.abs(point.y - y) <= tolerance) return true
-      const x = a.x + (b.x - a.x) * level.value
-      if (inY && Math.abs(point.x - x) <= tolerance) return true
+      const p = this.at(f, i, i)
+      if (Math.abs(point.y - p.y) <= tolerance || Math.abs(point.x - p.x) <= tolerance) return true
     }
-    return false
+    for (const fan of this.props.fans) {
+      if (fan.visible && Math.max(fan.x, fan.y) > 0 && distanceToSegment(point, f.origin, this.fanEnd(f, fan)) <= tolerance) return true
+    }
+    // An arc is an ellipse about the first corner: a point is on it where its distance in units is
+    // the arc's length.
+    const ux = Math.abs(f.ux) || 1
+    const uy = Math.abs(f.uy) || 1
+    const units = Math.hypot((point.x - f.origin.x) / ux, (point.y - f.origin.y) / uy)
+    return shownArcs(this.props.arcs).some(({ r }) => Math.abs(units - r) <= tolerance / Math.min(ux, uy))
   }
 }
 
-/** Gann square: the box plus its corner-to-corner diagonals. */
-export class GannSquare extends GannLevelBox {
-  override readonly type = 'gannbox_square'
+/** Gann square: a square in price per bar, its second corner held at the ratio's price for the bars
+ *  between its corners, reading its ranges and ratio under it. */
+export class GannSquare extends GannSquareBase<GannRatioSquareProps> {
+  readonly type = 'gannbox_square'
+
+  protected override defaultProps(): GannRatioSquareProps {
+    return { ...SQUARE_PROPS(), scaleRatio: null, showLabels: true }
+  }
+
+  protected override upgradeProps(props: Partial<GannRatioSquareProps>): Partial<GannRatioSquareProps> {
+    return squareProps(props, this.defaultProps())
+  }
+
+  override setAnchors(anchors: Anchor[]): void {
+    super.setAnchors(anchors)
+    this.holdRatio()
+  }
+
+  override updateAnchor(index: number, anchor: Anchor): void {
+    super.updateAnchor(index, anchor)
+    this.holdRatio()
+  }
+
+  override applyProps(patch: Partial<GannRatioSquareProps>): void {
+    super.applyProps(patch)
+    if ('scaleRatio' in patch) this.holdRatio()
+  }
+
+  /** The price per bar the pane shows a square at now: the price a run of bars as wide as the
+   *  square's time side spans when stood upright from its first corner. */
+  private paneRatio(viewport: Viewport, a: Anchor, b: Anchor, bars: number): number | null {
+    const pa = this.anchorToPixel(a, viewport)
+    const pb = this.anchorToPixel(b, viewport)
+    if (!pa || !pb) return null
+    const up = viewport.priceAt(pa.y - Math.abs(pb.x - pa.x))
+    return up === null ? null : Math.abs(up - a.price) / Math.abs(bars)
+  }
+
+  /** Hold the second corner on the ratio: at its own bar, as far above or below the first corner as
+   *  the ratio sets for the bars between them. A square first drawn before it has a ratio takes the
+   *  pane's, so it opens square. */
+  private holdRatio(): void {
+    const viewport = this.getViewport()
+    const [a, b] = this.anchors
+    if (!viewport || !a || !b) return
+    const bars = viewport.barsBetween(a.time, b.time)
+    if (bars === null || bars === 0) return
+    let perBar = this.props.scaleRatio
+    if (perBar === null || !(perBar > 0)) {
+      perBar = this.paneRatio(viewport, a, b, bars)
+      if (perBar === null || !(perBar > 0)) return
+      super.applyProps({ scaleRatio: perBar })
+    }
+    const price = a.price + (b.price < a.price ? -1 : 1) * perBar * Math.abs(bars)
+    if (price !== b.price) super.updateAnchor(1, { ...b, price })
+  }
 
   override paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     super.paint(ctx, viewport)
+    if (!this.props.showLabels) return
     const f = this.frame(viewport)
-    if (!f) return
-    const { a, b } = f
-    ctx.save()
-    applyStroke(ctx, this.style)
-    strokeSegment(ctx, a, b)
-    strokeSegment(ctx, { x: a.x, y: b.y }, { x: b.x, y: a.y })
-    ctx.restore()
-  }
-
-  override testHit(point: Point, viewport: Viewport): boolean {
-    if (super.testHit(point, viewport)) return true
-    const f = this.frame(viewport)
-    if (!f) return false
-    const tolerance = hitTolerance(this.style.lineWidth)
-    return (
-      distanceToSegment(point, f.a, f.b) <= tolerance ||
-      distanceToSegment(point, { x: f.a.x, y: f.b.y }, { x: f.b.x, y: f.a.y }) <= tolerance
-    )
+    const [a, b] = this.anchors
+    const bars = a && b ? viewport.barsBetween(a.time, b.time) : null
+    if (!f || !a || !b || bars === null || bars === 0) return
+    const range = Math.abs(b.price - a.price)
+    const perBar = Number((range / Math.abs(bars)).toFixed(7))
+    const text = `${this.formatPrice(range)}, ${Math.round(Math.abs(bars))} bars, ${perBar}`
+    const ink = this.props.levels[0]?.color ?? this.style.lineColor
+    paintLabel(ctx, text, { x: (f.left + f.right) / 2, y: f.bottom + 4 }, { ...this.style, textColor: ink }, { align: 'center', baseline: 'top' })
   }
 }
 
-/** Gann square from a single origin: a square grid sized by one price/time unit. */
-export class GannSquareFixed extends GannLevelBox {
-  override readonly type = 'gannbox_fixed'
+/** Gann square fixed: a square on the pane whatever its scale, the longer drag setting both sides. */
+export class GannSquareFixed extends GannSquareBase<GannSquareProps> {
+  readonly type = 'gannbox_fixed'
 
-  override requiredAnchors(): number {
-    return 2
+  protected override defaultProps(): GannSquareProps {
+    return SQUARE_PROPS()
   }
 
-  protected override frame(viewport: Viewport): { a: Point; b: Point } | null {
+  protected override upgradeProps(props: Partial<GannSquareProps>): Partial<GannSquareProps> {
+    return squareProps(props, this.defaultProps())
+  }
+
+  protected override corners(viewport: Viewport): { a: Point; b: Point } | null {
     const [a, b] = this.anchorPixels(viewport)
     if (!a || !b) return null
-    // Fixed variant squares the frame: the larger drag axis sets both dimensions.
     const size = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y))
-    return {
-      a,
-      b: { x: a.x + Math.sign(b.x - a.x || 1) * size, y: a.y + Math.sign(b.y - a.y || 1) * size },
-    }
+    if (size === 0) return null
+    return { a, b: { x: a.x + Math.sign(b.x - a.x || 1) * size, y: a.y + Math.sign(b.y - a.y || 1) * size } }
   }
 }
 
-/** The 1x1…8x1 fan rays from an origin, scaled by the drag vector's unit. */
-export class GannFan extends Drawing<GannProps> {
+/** A gann fan's settings: its rays at their price-to-time ratios, each in its own stroke, the bands
+ *  between neighbouring rays, and each ray's ratio read at its end. */
+export type GannFanProps = {
+  levels: FibLevel[]
+  fillBackground: boolean
+  backgroundOpacity: number
+  showLabels: boolean
+}
+
+/** The nine fan ratios, price units per time unit, flattest first. */
+const FAN_LEVELS = (): FibLevel[] =>
+  (
+    [
+      [1 / 8, '#ff9800'],
+      [1 / 4, '#089981'],
+      [1 / 3, '#4caf50'],
+      [1 / 2, '#089981'],
+      [1, '#00bcd4'],
+      [2, '#2962ff'],
+      [3, '#9c27b0'],
+      [4, '#e91e63'],
+      [8, '#f23645'],
+    ] as const
+  ).map(([value, color]) => ({ value, visible: true, color, width: 2, style: 'solid' }))
+
+/** A fan ratio as its row and its label write it: 1/8 to 8/1. */
+export const fanRatioText = (value: number): string => (value >= 1 ? `${Math.round(value)}/1` : `1/${Math.round(1 / value)}`)
+
+/** The 1/8 to 8/1 fan rays from an origin, scaled by the drag's price and time spans. */
+export class GannFan extends Drawing<GannFanProps> {
   readonly type = 'gannbox_fan'
 
-  protected override defaultProps(): GannProps {
-    return {
-      levels: FAN_RATIOS.map((value) => ({ value, visible: true })),
-      showLabels: true,
-      background: false,
-    }
+  protected override defaultProps(): GannFanProps {
+    return { levels: FAN_LEVELS(), fillBackground: true, backgroundOpacity: 0.2, showLabels: true }
+  }
+
+  /** A fan saved with its background switch as `background` reads it as `fillBackground`. */
+  protected override upgradeProps(props: Partial<GannFanProps>): Partial<GannFanProps> {
+    const from = props as Record<string, unknown>
+    const out: Record<string, unknown> = {}
+    for (const key of Object.keys(this.defaultProps())) if (key in from) out[key] = from[key]
+    if (typeof from.background === 'boolean' && !('fillBackground' in from)) out.fillBackground = from.background
+    return out as Partial<GannFanProps>
   }
 
   requiredAnchors(): number {
     return 2
   }
 
-  protected rays(viewport: Viewport): { ratio: number; color: string; a: Point; b: Point }[] {
+  protected rays(viewport: Viewport): { level: FibLevel; color: string; a: Point; b: Point }[] {
     const [p1, p2] = this.anchorPixels(viewport)
     if (!p1 || !p2 || p1.x === p2.x || p1.y === p2.y) return []
     const dx = p2.x - p1.x
     const dy = p2.y - p1.y
     return this.props.levels
-      .filter((l) => l.visible)
-      .map((l, i) => {
-        const through = { x: p1.x + dx, y: p1.y + dy * l.value }
-        const seg = extendSegment(p1, through, viewport.width, viewport.height, false, true)
-        return { ratio: l.value, color: fibLevelColor(l, i), a: p1, b: seg.b }
-      })
+      .map((level, i) => ({ level, color: fibLevelColor(level, i) }))
+      .filter((e) => e.level.visible && e.level.value > 0)
+      .map((e) => ({ ...e, a: p1, b: extendSegment(p1, { x: p1.x + dx, y: p1.y + dy * e.level.value }, viewport.width, viewport.height, false, true).b }))
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    for (const ray of this.rays(viewport)) {
+    const rays = this.rays(viewport)
+    if (this.props.fillBackground && this.props.backgroundOpacity > 0) {
+      // Each band reaches from the flatter ray beside it to its own, in its own ray's color.
+      const ordered = [...rays].sort((p, q) => p.level.value - q.level.value)
+      for (let i = 1; i < ordered.length; i++) {
+        ctx.save()
+        ctx.fillStyle = withAlpha(ordered[i]!.color, this.props.backgroundOpacity)
+        ctx.beginPath()
+        ctx.moveTo(ordered[i]!.a.x, ordered[i]!.a.y)
+        ctx.lineTo(ordered[i - 1]!.b.x, ordered[i - 1]!.b.y)
+        ctx.lineTo(ordered[i]!.b.x, ordered[i]!.b.y)
+        ctx.closePath()
+        ctx.fill()
+        ctx.restore()
+      }
+    }
+    for (const ray of rays) {
       ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = ray.color
+      applyStroke(ctx, { ...this.style, lineColor: ray.color, lineWidth: ray.level.width ?? this.style.lineWidth, lineStyle: ray.level.style ?? this.style.lineStyle })
       strokeSegment(ctx, ray.a, ray.b)
       ctx.restore()
-      if (this.props.showLabels) {
-        const label = ray.ratio >= 1 ? `${ray.ratio}/1` : `1/${Math.round(1 / ray.ratio)}`
-        paintLabel(ctx, label, { x: ray.b.x - 8, y: ray.b.y }, { ...this.style, textColor: ray.color }, { align: 'right' })
-      }
+      if (this.props.showLabels) paintLabel(ctx, fanRatioText(ray.level.value), { x: ray.b.x - 8, y: ray.b.y }, { ...this.style, textColor: ray.color }, { align: 'right' })
     }
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
-    const tolerance = hitTolerance(this.style.lineWidth)
-    return this.rays(viewport).some((ray) => distanceToSegment(point, ray.a, ray.b) <= tolerance)
+    return this.rays(viewport).some((ray) => distanceToSegment(point, ray.a, ray.b) <= hitTolerance(ray.level.width ?? this.style.lineWidth))
   }
 }
