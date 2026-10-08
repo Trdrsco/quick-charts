@@ -405,6 +405,25 @@ describe('a text typed on the chart', () => {
     expect(r.handle.textEdit()).toBeNull()
     expect(drawing.textDraft).toBeNull()
   })
+
+  it('a comment types on the chart the same way: one click opens it, a click on it selected types, and one left empty goes', async () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('comment')
+    click(r.container, 200, 200)
+    const drawing = r.handle.selectedDrawing()!
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.inline).toBeDefined()
+    r.handle.commitText('Look here')
+    expect(r.handle.export().map((d) => d.props?.text)).toEqual(['Look here'])
+    // The bubble stands above and to the right of its point; a click inside it types.
+    click(r.container, 220, 180)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.id).toBe(drawing.id)
+    r.handle.commitText('')
+    click(r.container, 700, 350)
+    expect(await gone(r, drawing.id)).toBe(true)
+  })
 })
 
 describe('the transient tools', () => {

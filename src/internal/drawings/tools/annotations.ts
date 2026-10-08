@@ -295,38 +295,134 @@ export class Note extends Drawing<LabelBoxProps> {
   }
 }
 
-/** Comment: words in a bubble whose tail drops to the point it comments on, the bubble in the
- *  drawing's fill and bordered in its stroke color. */
-export class Comment extends Drawing<TextProps> {
+/** A comment's words, and a format-2 save's look. */
+export type CommentProps = TextProps & {
+  /** A format-2 comment's look, a box above and to the right of its point with a tail down to it,
+   *  painted as format 2 did until the comment's settings change. */
+  savedLook: SavedLook
+}
+
+/** How far a comment's words stand in from its bubble's edges, the radius of the bubble's three
+ *  round corners, and the near-square corner on its point. */
+const COMMENT_PAD = 13
+const COMMENT_RADIUS = 21
+const COMMENT_POINT_CORNER = 2
+/** The alpha the placeholder of a drawing that types in a box of its own paints at. */
+const PLACEHOLDER_ALPHA = 0.5
+
+/** Where a drawing's words stand in their box: the first line's box, the line height, the words
+ *  and the placeholder in lines. */
+interface WordsPlace {
+  box: Box
+  x: number
+  y: number
+  lineHeight: number
+  block: TextBlock
+  placeholder: TextBlock | null
+}
+
+/** The frame an editor lays its field over, for words placed in a box. */
+function wordsFrame(at: WordsPlace, font: string, align: 'left' | 'center' = 'left', width = (at.placeholder ?? at.block).width): TextEditFrame {
+  return { x: at.x, y: at.y, width, lines: (at.placeholder ?? at.block).lines.length, lineHeight: at.lineHeight, font, align, wrapWidth: null, angle: 0 }
+}
+
+/**
+ * Comment: words in a bubble whose bottom-left corner is the point it comments on. The bubble is
+ * the drawing's fill bordered in its stroke color, its other three corners rounded at 21 whatever
+ * its size; its words stand 13px in from every edge on lines `fontSize` tall, and it grows right
+ * with its widest line and up with each line, the corner on the point never moving. An empty
+ * comment shows its placeholder at half strength. Selected, it shows one handle, on its point, and
+ * a press on it types.
+ */
+export class Comment extends Drawing<CommentProps> {
   readonly type = 'comment'
 
-  protected override defaultProps(): TextProps {
-    return { text: '' }
+  protected override defaultProps(): CommentProps {
+    return { text: '', savedLook: null }
   }
 
-  protected override upgradeProps(props: Partial<TextProps>): Partial<TextProps> {
+  protected override upgradeProps(props: Partial<CommentProps>): Partial<CommentProps> {
     return withoutAlign(props)
+  }
+
+  /** A format-2 comment was a box above and to the right of its point, a tail dropping to it; it
+   *  paints so until its settings change. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, savedLook: {} }
+  }
+
+  override applyProps(patch: Partial<CommentProps>): void {
+    super.applyProps(endSavedLook(patch))
   }
 
   requiredAnchors(): number {
     return 1
   }
 
-  /** The bubble stands above and to the right of its point. */
-  protected bubble(viewport: Viewport): { box: Box; point: Point } | null {
+  /** The bubble and its words: the bubble's pixels run from the one left of the point to the one
+   *  below it. A saved look stands its box above and to the right of the point. */
+  protected place(viewport: Viewport): (WordsPlace & { point: Point }) | null {
     const anchor = this.anchors[0]
     if (!anchor) return null
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return null
-    const { width, height } = measureTextBlock(this.props.text || ' ', this.style)
-    return { box: { x: p.x + 10, y: p.y - 14 - height - 12, width: width + 12, height: height + 12 }, point: p }
+    const { block, placeholder } = this.shownWords(lineMeasure(this.style))
+    const shown = placeholder ?? block
+    if (this.props.savedLook) {
+      const lineHeight = Math.round(this.style.fontSize * 1.35)
+      const width = shown.width + 12
+      const height = shown.lines.length * lineHeight + 12
+      const box = { x: p.x + 10, y: p.y - 14 - height, width, height }
+      return { box, x: box.x + 6, y: box.y + 6, lineHeight, block, placeholder, point: p }
+    }
+    const lineHeight = this.style.fontSize
+    const width = Math.round(shown.width) + COMMENT_PAD * 2
+    const height = shown.lines.length * lineHeight + COMMENT_PAD * 2
+    const box = { x: Math.round(p.x) - 1, y: Math.round(p.y) + 1 - height, width, height }
+    return { box, x: box.x + COMMENT_PAD, y: box.y + COMMENT_PAD, lineHeight, block, placeholder, point: p }
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const b = this.bubble(viewport)
-    if (!b) return
+    const at = this.place(viewport)
+    if (!at) return
+    const draft = this.textDraft
     const fill = fillPaint(this.style) ?? 'transparent'
-    const box = paintTextBlock(ctx, this.props.text || ' ', b.box, this.style, { background: fill, borderColor: this.style.lineColor })
+    if (this.props.savedLook && !draft) {
+      const box = paintTextBlock(ctx, this.props.text || ' ', at.box, this.style, { background: fill, borderColor: this.style.lineColor })
+      this.paintSavedTail(ctx, box, at.point, fill)
+      return
+    }
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.fillStyle = fill
+    ctx.strokeStyle = this.style.lineColor
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    if (this.props.savedLook) ctx.roundRect(at.box.x, at.box.y, at.box.width, at.box.height, 4)
+    // The border's pixel rides the bubble's edge, so the path stands half a pixel in.
+    else ctx.roundRect(at.box.x + 0.5, at.box.y + 0.5, at.box.width - 1, at.box.height - 1, [COMMENT_RADIUS, COMMENT_RADIUS, COMMENT_RADIUS, COMMENT_POINT_CORNER])
+    ctx.fill()
+    ctx.stroke()
+    ctx.restore()
+    if (this.props.savedLook) this.paintSavedTail(ctx, at.box, at.point, fill)
+    const measure = lineMeasure(this.style)
+    paintTextEntry(ctx, {
+      x: at.x,
+      y: at.y,
+      width: (at.placeholder ?? at.block).width,
+      lineHeight: at.lineHeight,
+      font: fontOf(this.style),
+      color: this.style.textColor,
+      align: 'left',
+      block: at.block,
+      placeholder: at.placeholder ? { block: at.placeholder, alpha: PLACEHOLDER_ALPHA } : null,
+      draft,
+      measure,
+    })
+  }
+
+  /** A format-2 comment's tail, from its box down to its point. */
+  private paintSavedTail(ctx: CanvasRenderingContext2D, box: Box, point: Point, fill: string): void {
     ctx.save()
     ctx.fillStyle = fill
     ctx.strokeStyle = this.style.lineColor
@@ -334,7 +430,7 @@ export class Comment extends Drawing<TextProps> {
     ctx.setLineDash([])
     ctx.beginPath()
     ctx.moveTo(box.x + 8, box.y + box.height)
-    ctx.lineTo(b.point.x, b.point.y)
+    ctx.lineTo(point.x, point.y)
     ctx.lineTo(box.x + 24, box.y + box.height)
     ctx.closePath()
     ctx.fill()
@@ -342,9 +438,23 @@ export class Comment extends Drawing<TextProps> {
     ctx.restore()
   }
 
+  override textFrame(viewport: Viewport): TextEditFrame | null {
+    const at = this.place(viewport)
+    return at ? wordsFrame(at, fontOf(this.style)) : null
+  }
+
+  /** An empty comment shows its placeholder in its own bubble, so it needs no hint above it. */
+  override paintTextHint(): void {}
+
+  /** Over a selected comment the pointer reads as typing, which a press there does. */
+  protected override cursorAt(point: Point, viewport: Viewport): string | null {
+    const at = this.place(viewport)
+    return this.state === 'selected' && at && inBox(point, at.box, 0) ? 'text' : null
+  }
+
   testHit(point: Point, viewport: Viewport): boolean {
-    const b = this.bubble(viewport)
-    return !!b && inBox(point, b.box)
+    const at = this.place(viewport)
+    return !!at && inBox(point, at.box)
   }
 }
 

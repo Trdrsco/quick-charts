@@ -295,6 +295,7 @@
         "lineColor": "#2962ff"
       },
       "props": [
+        "savedLook",
         "text"
       ]
     },
