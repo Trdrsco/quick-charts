@@ -17,7 +17,9 @@
 // why the dark match highlight is `#5280ff` rather than light mode's `#2962ff`, which reads at 3.36
 // to 1 on the dark panel; light mode keeps `#2962ff`, which clears 4.5 to 1 on white. The accent
 // is a mark and never words, and the focus ring keeps its value in each mode. The selected fill is
-// a step of the neutral grey ramp, and the selection tint is a blue at an alpha.
+// a step of the neutral grey ramp, and the selection tint is a blue at an alpha. A field's edge is a
+// step of the same ramp and steps once more under the pointer; the edge of a refused value is one
+// red in both modes, which reads at the non-text ratio on white and on both dark surfaces.
 //
 // The illustration roles are the one set drawn from a cooler grey: an empty state's art is not a
 // control, so it does not have to sit on the ramp the controls share.
@@ -105,6 +107,10 @@ export const LIGHT_THEME: SemanticTheme = {
   'control.offHover': '#8c8c8c',
   'control.offPressed': '#b8b8b8',
   'control.mark': '#ffffff',
+  'control.fieldEdge': '#dbdbdb',
+  'control.fieldEdgeHover': '#a8a8a8',
+  'control.fieldInvalid': '#f23645',
+  'control.fieldFill': '#f2f2f2',
 
   'status.positive': '#067a67',
   'status.negative': '#cc2f3c',
@@ -208,6 +214,10 @@ export const DARK_THEME: SemanticTheme = {
   'control.offHover': '#707070',
   'control.offPressed': '#636363',
   'control.mark': '#2e2e2e',
+  'control.fieldEdge': '#575757',
+  'control.fieldEdgeHover': '#707070',
+  'control.fieldInvalid': '#f23645',
+  'control.fieldFill': '#2e2e2e',
 
   'status.positive': '#089981',
   'status.negative': '#f7525f',

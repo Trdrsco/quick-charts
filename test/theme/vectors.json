@@ -51,6 +51,22 @@
         "value": "#ffffff"
       },
       {
+        "property": "--qc-control-fieldEdge",
+        "value": "#dbdbdb"
+      },
+      {
+        "property": "--qc-control-fieldEdgeHover",
+        "value": "#a8a8a8"
+      },
+      {
+        "property": "--qc-control-fieldFill",
+        "value": "#f2f2f2"
+      },
+      {
+        "property": "--qc-control-fieldInvalid",
+        "value": "#f23645"
+      },
+      {
         "property": "--qc-control-mark",
         "value": "#ffffff"
       },
@@ -403,6 +419,22 @@
       {
         "property": "--qc-chrome-surfaceRaised",
         "value": "#2e2e2e"
+      },
+      {
+        "property": "--qc-control-fieldEdge",
+        "value": "#575757"
+      },
+      {
+        "property": "--qc-control-fieldEdgeHover",
+        "value": "#707070"
+      },
+      {
+        "property": "--qc-control-fieldFill",
+        "value": "#2e2e2e"
+      },
+      {
+        "property": "--qc-control-fieldInvalid",
+        "value": "#f23645"
       },
       {
         "property": "--qc-control-mark",
