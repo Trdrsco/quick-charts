@@ -3,7 +3,7 @@
 // chart's language, and carries its accessible name.
 import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
-import { dialogTabs, dropdown, lineEndButton, numberInput, row, strokeSegments, swatchButton, toggleRow, visibilityRangeRow } from '../../../src/ui/drawings/fields'
+import { checkRow, dialogTabs, dropdown, lineEndButton, multiDropdown, numberInput, row, strokeSegments, swatchButton, toggleRow, visibilityRangeRow } from '../../../src/ui/drawings/fields'
 import { createColorPalette, createCustomColorPicker, createOpacitySlider, hexOf, hexToHsv, hsvToHex, SWATCH_BLOCKS } from '../../../src/ui/controls/color'
 import { ownIcons } from '../../ownIcons'
 
@@ -53,29 +53,88 @@ describe('rows and toggles', () => {
     expect(off.querySelector('input')!.disabled).toBe(true)
   })
 
-  it('a dropdown stores the id and shows the label', () => {
+  it('a check row makes its label the checkbox and keeps its controls beside it', () => {
+    const changed: boolean[] = []
+    const control = document.createElement('button')
+    const r = checkRow('Background', true, (v) => changed.push(v), [control])
+    document.body.appendChild(r)
+    const label = r.querySelector<HTMLElement>('.qc-drawing-row-label')!
+    expect(label.matches('label.qc-drawing-toggle')).toBe(true)
+    expect(label.textContent).toBe('Background')
+    expect(r.querySelector('.qc-drawing-row-controls')!.firstElementChild).toBe(control)
+    label.querySelector('input')!.click()
+    expect(changed).toEqual([false])
+  })
+
+  it('a dropdown shows the label, lists the choices under it with the current one chosen, and stores the id', () => {
     const picked: string[] = []
-    const box = dropdown(icons, 'Extend', ['None', 'Left'] as const, 'Left', (v) => (v === 'None' ? 'Do not' : 'To the left'), (v) => picked.push(v))
-    const select = box.querySelector('select')!
-    expect(select.value).toBe('Left')
-    expect([...select.options].map((o) => o.textContent)).toEqual(['Do not', 'To the left'])
-    select.value = 'None'
-    select.dispatchEvent(new Event('change'))
+    const host = box()
+    const field = dropdown(icons, host, 'Extend', ['None', 'Left'] as const, 'Left', (v) => (v === 'None' ? 'Do not' : 'To the left'), (v) => picked.push(v), 'wide')
+    host.appendChild(field)
+    expect(field.getAttribute('role')).toBe('combobox')
+    expect(field.getAttribute('aria-label')).toBe('Extend')
+    expect(field.dataset.width).toBe('wide')
+    expect(field.textContent).toBe('To the left')
+    field.click()
+    expect(field.getAttribute('aria-expanded')).toBe('true')
+    const options = [...host.querySelectorAll<HTMLElement>('[role="listbox"] [role="option"]')]
+    expect(options.map((o) => [o.textContent, o.getAttribute('aria-selected')])).toEqual([
+      ['Do not', 'false'],
+      ['To the left', 'true'],
+    ])
+    // The keyboard lands on the current value.
+    expect(document.activeElement).toBe(options[1])
+    options[0]!.click()
+    expect(picked).toEqual(['None'])
+    expect(host.querySelector('[role="listbox"]')).toBeNull()
+    expect(field.getAttribute('aria-expanded')).toBe('false')
+    // Picking the value it holds reports nothing.
+    field.click()
+    host.querySelectorAll<HTMLElement>('[role="option"]')[1]!.click()
     expect(picked).toEqual(['None'])
   })
 
-  it('a dropdown and a line-end picker end their box with the 18px chevron, hidden from a reader', () => {
-    const box = dropdown(icons, 'Extend', ['None', 'Left'] as const, 'Left', (v) => v, () => undefined)
-    expect(box.classList.contains('qc-select')).toBe(true)
-    // The select comes first, so the chevron follows it as the slot at the end of the box.
-    expect(box.firstElementChild!.matches('select.qc-field')).toBe(true)
-    const chevron = box.lastElementChild!
+  it('a multiple list reads the choices that are on, stays open while they are ticked, and reports each', () => {
+    const reports: [string, boolean][] = []
+    const host = box()
+    const field = multiDropdown(icons, host, {
+      label: 'Stats',
+      empty: 'Hidden',
+      choices: [
+        { label: 'Price range', checked: false, onChange: (v) => reports.push(['price', v]) },
+        { label: 'Bars range', checked: true, onChange: (v) => reports.push(['bars', v]) },
+      ],
+    })
+    host.appendChild(field)
+    expect(field.getAttribute('aria-haspopup')).toBe('menu')
+    expect(field.textContent).toBe('Bars range')
+    field.click()
+    const items = [...host.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
+    expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual(['false', 'true'])
+    items[0]!.click()
+    expect(reports).toEqual([['price', true]])
+    expect(items[0]!.getAttribute('aria-checked')).toBe('true')
+    expect(items[0]!.querySelector<HTMLInputElement>('input')!.checked).toBe(true)
+    // Every choice after the first reads in the middle of a sentence.
+    expect(field.textContent).toBe('Price range, bars range')
+    items[1]!.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))
+    items[0]!.click()
+    expect(reports).toEqual([['price', true], ['bars', false], ['price', false]])
+    expect(field.textContent).toBe('Hidden')
+    expect(host.querySelector('[role="menu"]')).not.toBeNull()
+  })
+
+  it('a list button ends its face with the 18px chevron, hidden from a reader; a line end wears its mark alone', () => {
+    const host = box()
+    const field = dropdown(icons, host, 'Extend', ['None', 'Left'] as const, 'Left', (v) => v, () => undefined)
+    expect(field.classList.contains('qc-field')).toBe(true)
+    const chevron = field.lastElementChild!
     expect(chevron.classList.contains('qc-select-chevron')).toBe(true)
     expect(chevron.getAttribute('aria-hidden')).toBe('true')
     expect(chevron.querySelector('svg')!.getAttribute('height')).toBe('18')
-    // A list button lays the same slot out after its face, and names itself as the face does.
-    const end = lineEndButton(t, icons, box, 'left', 'arrow', () => undefined)
-    expect(end.lastElementChild!.classList.contains('qc-select-chevron')).toBe(true)
+    const end = lineEndButton(t, icons, host, 'left', 'arrow', () => undefined)
+    expect(end.querySelector('.qc-select-chevron')).toBeNull()
+    expect(end.querySelectorAll('svg')).toHaveLength(1)
     expect(end.getAttribute('aria-haspopup')).toBe('listbox')
     expect(end.getAttribute('aria-label')).toBe('Left end')
   })

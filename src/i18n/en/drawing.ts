@@ -156,6 +156,8 @@ export const drawing = {
 
   // The settings dialog: its title, its pages, and its footer.
   'drawing.settingsTitle': '{tool} settings',
+  'drawing.rename': 'Rename',
+  'drawing.name': 'Name',
   'drawing.tabInputs': 'Inputs',
   'drawing.tabStyle': 'Style',
   'drawing.tabText': 'Text',

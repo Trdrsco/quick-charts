@@ -244,31 +244,229 @@
   margin: 6px 0 4px;
 }
 
+/* The settings dialog: a card at least 380px wide that grows to the widest page it shows, its
+ * header, the page strip, the page and the footer stacked. */
 [data-qc-theme] .qc-drawing-settings-dialog {
-  width: min(380px, calc(100% - 16px));
-  max-height: min(560px, calc(100% - 16px));
+  width: max-content;
+  min-width: min(380px, calc(100% - 16px));
+  max-width: calc(100% - 16px);
 }
 
-[data-qc-theme] .qc-drawing-page {
+/* The header: the name at 20 on 28, the pencil 5px after it in a 34px cell, and the close 34px at
+ * the far end, 3px past the padding so its mark lines up with the page's edge. The header is the
+ * handle the dialog is carried by. */
+[data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-dialog-header {
+  flex: 0 0 auto;
+  justify-content: flex-start;
+  gap: 0;
+  height: 68px;
+  padding: 0 20px;
+  cursor: grab;
+}
+
+[data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-dialog-title {
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+[data-qc-theme] .qc-drawing-rename {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: 2px;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  margin-inline-start: 5px;
+  padding: 0;
+  color: var(--qc-text-primary);
+  background: none;
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-drawing-rename:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-drawing-settings-dialog .qc-dialog-close {
+  flex: 0 0 34px;
+  margin-inline-start: auto;
+  margin-inline-end: -3px;
+  border-radius: 8px;
+}
+
+/* Renaming, the header is the name's field alone, as wide as the header and in the name's own type. */
+[data-qc-theme] .qc-drawing-dialog-header[data-qc-renaming='true'] > :not(.qc-drawing-rename-field) {
+  display: none;
+}
+
+[data-qc-theme] .qc-drawing-rename-field {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+/* The page strip: the tabs at 16 on 24, 12px apart, over a 4px track as wide as the page; the bar
+ * standing on the track under the shown page slides to the next one. A tab under the pointer that
+ * is not shown dims to the muted ink. */
+[data-qc-theme] .qc-drawing-tabs-slot {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0 20px;
+}
+
+[data-qc-theme] .qc-drawing-tabs-track {
+  position: absolute;
+  inset-inline: 20px;
+  bottom: 0;
+  height: 4px;
+  background: var(--qc-overlay-separator);
+  border-radius: 2px;
+}
+
+[data-qc-theme] .qc-drawing-tabs {
+  position: relative;
+  display: inline-flex;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-drawing-tab {
+  position: relative;
+  margin: 0 12px;
+  padding: 0 0 8px;
+  color: var(--qc-text-primary);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  background: none;
+  border: 0;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-drawing-tab:first-of-type {
+  margin-inline-start: 0;
+}
+
+[data-qc-theme] .qc-drawing-tab:last-of-type {
+  margin-inline-end: 0;
+}
+
+[data-qc-theme] .qc-drawing-tab:not([aria-selected='true']):hover {
+  color: var(--qc-text-muted);
+}
+
+/* The keyboard's ring stands 10px out to either side of the label and over the bar's height. */
+[data-qc-theme] .qc-drawing-tab:focus-visible::after {
+  position: absolute;
+  inset: -2px -10px 0;
+  border: 2px solid var(--qc-state-focusRing);
+  border-radius: 8px;
+  content: '';
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-drawing-tab-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: var(--qc-control-on);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-drawing-tabs[data-qc-placed='true'] > .qc-drawing-tab-bar {
+  transition: transform var(--qc-motion-durationFast) var(--qc-motion-easingStandard), width var(--qc-motion-durationFast) var(--qc-motion-easingStandard);
+}
+
+/* The body scrolls the page alone, and keeps room for a short one. */
+[data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-dialog-body {
+  display: block;
+  min-height: 145px;
+  padding: 0;
+}
+
+/* The page: a two-column grid inside 16px by 20px, the labels' column as wide as the widest label
+ * and its 20px gap, the controls' column the rest. Everything on the page that is not a labelled
+ * row stands across both columns. */
+[data-qc-theme] .qc-drawing-page {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  padding: 16px 20px;
+}
+
+[data-qc-theme] .qc-drawing-page > :not(.qc-drawing-row) {
+  grid-column: 1 / -1;
+}
+
+[data-qc-theme] .qc-drawing-page > .qc-button {
+  justify-self: start;
+}
+
+/* The footer: the Template list button at the start, Cancel and Ok 12px apart at the end, all 34px
+ * with an 8px corner. Cancel is an outline of the emphasis fill that takes the fill under the
+ * pointer; Ok wears it. */
+[data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-dialog-footer {
+  gap: 0;
+  padding: 16px 20px;
 }
 
 [data-qc-theme] .qc-drawing-template-button {
-  display: flex;
+  display: inline-flex;
+  flex: 0 0 auto;
   align-items: center;
-  gap: 4px;
+  width: 100px;
+  padding: 0 2px 0 8px;
+  cursor: pointer;
 }
 
-[data-qc-theme] .qc-drawing-caret {
-  display: flex;
-  transition: transform var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
+[data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-footer-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 11px;
+  font-size: 16px;
+  line-height: 24px;
+  border-radius: 8px;
 }
 
-[data-qc-theme] .qc-drawing-template-button[aria-expanded='true'] .qc-drawing-caret {
-  transform: rotate(180deg);
+[data-qc-theme] .qc-drawing-footer-button + .qc-drawing-footer-button {
+  margin-inline-start: 12px;
+}
+
+[data-qc-theme] .qc-drawing-cancel {
+  color: var(--qc-control-on);
+  border-color: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-drawing-cancel:hover:not([disabled]) {
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-drawing-cancel:active:not([disabled]) {
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-onPressed);
+  border-color: var(--qc-control-onPressed);
+}
+
+/* The lists the dialog opens stand on a 10px corner; the Template menu is as wide as its words. */
+[data-qc-theme] .qc-drawing-popover--list {
+  border-radius: 10px;
+}
+
+[data-qc-theme] .qc-drawing-template-menu {
+  width: max-content;
 }
 
 [data-qc-theme] .qc-drawing-note {

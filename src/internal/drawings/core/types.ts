@@ -67,6 +67,8 @@ export interface DrawingOptions {
   zIndex: number
   /** Which chart timeframes the drawing shows on (independent of the manual `visible` switch). */
   visibility: TimeframeVisibility
+  /** The name the viewer gave the drawing. Absent, the drawing is called by its tool's name. */
+  name?: string
 }
 
 export const DEFAULT_OPTIONS: DrawingOptions = {

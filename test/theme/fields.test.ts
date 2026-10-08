@@ -161,14 +161,16 @@ for (const mode of THEME_MODES) {
       expect(rest.color).toBe(theme['text.muted'])
     })
 
-    it('ends a select with the 18px chevron in the caret ink, in its 20 by 28 slot 2px in from the edge', () => {
+    it('ends a list button with the 18px chevron in the caret ink, in its 20 by 28 slot 2px in from the edge', () => {
       const root = rootIn(mode)
-      const slot = fibSettingsIn(root).querySelector<HTMLElement>('.qc-select > .qc-select-chevron')!
+      const field = fibSettingsIn(root).querySelector<HTMLElement>('.qc-drawing-select')!
+      const slot = field.querySelector<HTMLElement>(':scope > .qc-select-chevron')!
       const style = painted(slot)
       expect(style.color).toBe(theme['chrome.caret'])
       expect(style.width).toBe('20px')
       expect(style.height).toBe('28px')
-      expect(style.getPropertyValue('inset-inline-end')).toBe('3px')
+      expect(painted(field).paddingRight).toBe('2px')
+      expect(field.lastElementChild).toBe(slot)
       expect(slot.querySelector('svg')!.getAttribute('height')).toBe('18')
     })
 

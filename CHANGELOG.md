@@ -6,6 +6,8 @@ Every text field, select, number field and color well in the chart's dialogs and
 
 The built-in palettes retune their dialog and status colors: the veil behind a light modal is `rgba(156, 156, 156, 0.5)`, a select's chevron and a flyout's arrow read in `chrome.caret` (`#707070` light, `#8c8c8c` dark), the muted ink is `#6a6a6a` light and `#9b9b9b` dark, the status inks are `#078671`, `#df323f` and `#ac6600` in light and `#089981`, `#f34452` and `#ff9800` in dark, and `drawing.line` and `drawing.selected` are `#2962ff` in both modes. Every ink reads at the WCAG 2.2 AA ratio on each ground it is drawn over.
 
+The drawing settings dialog is a card at least 380px wide under a 68px header that carries the drawing's name at 20px, a pencil that renames it in place, and the close; a page strip of 16px tabs over a 4px track, the shown page carried by a bar that slides to the next; a two-column page whose labels share one column and whose rows stand 50px; list buttons that open their choices under them, several at once where a row takes several; and a footer with the Template list button, Cancel and Ok. `DrawingOptions.name` holds the name a viewer gives a drawing, saved with it, and a drawing without one is called by its tool's name.
+
 ## 2.4.0
 
 Bar replay that starts where the viewer chose, and a chart a host can hold in place, show without its price scale, give a crosshair of chosen parts, and morph between bar and close styles. No public name changes.

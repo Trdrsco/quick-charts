@@ -79,6 +79,65 @@ describe('the dialog', () => {
     expect(dialog.querySelectorAll('.qc-drawing-row')).toHaveLength(2) // one row per anchor
   })
 
+  it('heads itself with the name of the drawing and a pencil that renames it in place', () => {
+    const a = rig('trend_line')
+    const header = a.dialog.querySelector<HTMLElement>('.qc-drawing-dialog-header')!
+    const heading = header.querySelector<HTMLElement>('.qc-drawing-dialog-title')!
+    expect(heading.textContent).toBe('Trend line')
+    const pencil = header.querySelector<HTMLButtonElement>('button[aria-label="Rename"]')!
+    expect(heading.nextElementSibling).toBe(pencil)
+    pencil.click()
+    // Renaming, the header is the name's field alone, holding the name with all of it selected.
+    expect(header.dataset.qcRenaming).toBe('true')
+    const field = header.querySelector<HTMLInputElement>('input[aria-label="Name"]')!
+    expect(field.value).toBe('Trend line')
+    expect(document.activeElement).toBe(field)
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 'Trend line'.length])
+    field.value = 'Support'
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    expect(header.dataset.qcRenaming).toBeUndefined()
+    expect(heading.textContent).toBe('Support')
+    expect(a.dialog.getAttribute('aria-label')).toBe('Support settings')
+    expect(a.drawing.options.name).toBe('Support')
+    // Escape puts the name back and leaves the dialog open.
+    pencil.click()
+    const again = header.querySelector<HTMLInputElement>('input[aria-label="Name"]')!
+    again.value = 'Resistance'
+    again.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(heading.textContent).toBe('Support')
+    expect(a.out).toEqual([])
+    expect(a.drawing.options.name).toBe('Support')
+    // The name is part of the session: Cancel restores the drawing unnamed.
+    a.dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
+    expect(a.drawing.options.name).toBeUndefined()
+    // A name emptied, or the tool's own, leaves the drawing called by its tool.
+    const b = rig('ray')
+    const pen = b.dialog.querySelector<HTMLButtonElement>('button[aria-label="Rename"]')!
+    pen.click()
+    const blank = b.dialog.querySelector<HTMLInputElement>('input[aria-label="Name"]')!
+    blank.value = '  '
+    blank.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    expect(b.drawing.options.name).toBeUndefined()
+    expect(b.dialog.querySelector('.qc-drawing-dialog-title')!.textContent).toBe('Ray')
+  })
+
+  it('keeps the page strip out of the scrolling body, moves its bar to the page shown, and lands the keyboard in its first field', () => {
+    const { dialog, tab } = rig('trend_line')
+    const strip = dialog.querySelector<HTMLElement>('.qc-drawing-tabs-slot')!
+    expect(strip.nextElementSibling!.classList.contains('qc-drawing-dialog-body')).toBe(true)
+    const bar = strip.querySelector<HTMLElement>('.qc-drawing-tab-bar')!
+    expect(bar.getAttribute('aria-hidden')).toBe('true')
+    tab('Coordinates').click()
+    // The same strip and bar stand, so the bar slides rather than being drawn again.
+    expect(strip.querySelector('.qc-drawing-tab-bar')).toBe(bar)
+    expect(tab('Coordinates').tabIndex).toBe(0)
+    expect(tab('Style').tabIndex).toBe(-1)
+    const first = dialog.querySelector<HTMLInputElement>('[role="tabpanel"] input')!
+    expect(document.activeElement).toBe(first)
+    tab('Style').click()
+    expect(dialog.querySelector('[role="tabpanel"]')!.getAttribute('data-tab')).toBe('Style')
+  })
+
   it('applies edits live, restores them on Cancel, and commits on Ok', () => {
     const a = rig('trend_line')
     const middle = [...a.dialog.querySelectorAll<HTMLElement>('.qc-drawing-toggle')].find((x) => x.textContent === 'Middle point')!

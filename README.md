@@ -2803,7 +2803,11 @@ line style, the settings gear, lock, delete, and a More menu with the stacking m
 per-timeframe visibility presets, clone, copy and hide. Every edit persists at once and becomes the
 tool's default for the next drawing of that type. The settings dialog opens from the gear with
 Inputs, Style, Text, Table, Coordinates and Visibility pages as the tool has them; its edits apply
-live, Cancel restores the drawing, and Ok commits the session as one edit.
+live, Cancel restores the drawing, and Ok commits the session as one edit. Its header carries the
+drawing's name, the tool's own until the viewer renames it with the pencil beside it; the name is
+`DrawingOptions.name`, saved with the drawing, and Cancel restores it with the rest. A page shown
+puts the keyboard in its first field, and the dialog keeps its top edge where it opened as pages of
+other sizes come and go.
 
 Text-bearing tools open an inline editor where the text sits, in the drawing's own type. A fresh
 placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd

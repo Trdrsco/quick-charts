@@ -126,6 +126,8 @@ export const drawing: Translation<typeof source> = {
   'drawing.deleteTemplateTitle': 'Delete this template?',
   'drawing.deleteTemplateBody': 'Doing this will permanently delete your "{name}" drawing template.',
   'drawing.settingsTitle': '{tool} settings',
+  'drawing.rename': 'Rename',
+  'drawing.name': 'Name',
   'drawing.tabInputs': 'Inputs',
   'drawing.tabStyle': 'Style',
   'drawing.tabText': 'Text',

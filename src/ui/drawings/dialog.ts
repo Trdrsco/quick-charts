@@ -11,8 +11,10 @@ import type { IconResolver } from '../icons/resolver'
 export interface DialogOptions {
   /** The chrome subtree the dialog mounts into. */
   container: HTMLElement
-  /** The accessible name and the header's text. */
+  /** The accessible name, and the header's text unless `heading` says otherwise. */
   title: string
+  /** The header's text, where it differs from the accessible name. */
+  heading?: string
   /** The close control's accessible name. */
   closeLabel: string
   /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
@@ -27,6 +29,10 @@ export interface DialogOptions {
 }
 
 export interface DialogHandle {
+  /** The header: the heading, then the close control. */
+  header: HTMLElement
+  /** The heading's own element, for a caller that relabels it. */
+  heading: HTMLElement
   /** The body the caller fills. */
   body: HTMLElement
   /** The footer the caller fills, in reading order. */
@@ -41,7 +47,7 @@ export interface DialogHandle {
 function dragBy(header: HTMLElement, box: HTMLElement): () => void {
   let dragging: { dx: number; dy: number } | null = null
   header.addEventListener('pointerdown', (event) => {
-    if ((event.target as HTMLElement).closest('button')) return
+    if ((event.target as HTMLElement).closest('button, input')) return
     const rect = box.getBoundingClientRect()
     dragging = { dx: event.clientX - rect.left, dy: event.clientY - rect.top }
     event.preventDefault()
@@ -69,6 +75,11 @@ export function openDialog(options: DialogOptions): DialogHandle {
   const body = el('div', { class: 'qc-drawing-dialog-body' })
   const footer = el('div', { class: 'qc-drawing-dialog-footer' })
   let box: HTMLElement | null = null
+  let closeBox: () => void = () => undefined
+  const header = dialogTitle(options.heading ?? options.title, options.closeLabel, () => closeBox(), options.icons)
+  header.classList.add('qc-drawing-dialog-header')
+  const heading = header.querySelector<HTMLElement>('.qc-title')!
+  heading.classList.add('qc-drawing-dialog-title')
   let stopDrag: () => void = () => undefined
   const modal = openModal({
     host: options.container,
@@ -78,10 +89,8 @@ export function openDialog(options: DialogOptions): DialogHandle {
     ...(options.width === undefined ? {} : { width: options.width }),
     build(element, dialog) {
       box = element
+      closeBox = () => dialog.close()
       ownPointer(element)
-      const header = dialogTitle(options.title, options.closeLabel, () => dialog.close(), options.icons)
-      header.classList.add('qc-drawing-dialog-header')
-      header.querySelector('.qc-title')?.classList.add('qc-drawing-dialog-title')
       stopDrag = dragBy(header, element)
       element.append(header, body, footer)
     },
@@ -95,5 +104,5 @@ export function openDialog(options: DialogOptions): DialogHandle {
     },
     onClose: () => options.onClose?.(),
   })
-  return { body, footer, box: modal.element, close: modal.close }
+  return { header, heading, body, footer, box: modal.element, close: modal.close }
 }

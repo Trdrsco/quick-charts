@@ -38,10 +38,124 @@
   cursor: default;
 }
 
-/* The text fields, selects and number fields are the chart's 34px field box; these rules give them
- * their widths alone. */
+/* On a settings page a row lays out nothing of its own: its label and its controls are the grid's
+ * two cells, each 50px tall around a 34px control. A label stands 20px clear of the controls and
+ * wraps rather than cutting a word short; the controls stand 8px apart. */
+[data-qc-theme] .qc-drawing-page > .qc-drawing-row {
+  display: contents;
+}
+
+[data-qc-theme] .qc-drawing-page .qc-drawing-row-label {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 50px;
+  padding: 8px 20px 8px 0;
+  overflow: visible;
+  color: var(--qc-text-primary);
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+[data-qc-theme] .qc-drawing-page .qc-drawing-row-controls {
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+  min-height: 50px;
+  padding: 8px 0;
+}
+
+/* A checkbox row: the 18px box 8px before its words, across both columns in a 50px row. */
+[data-qc-theme] .qc-drawing-page > .qc-drawing-toggle {
+  min-height: 50px;
+}
+
+[data-qc-theme] .qc-drawing-row-full {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+  padding: 8px 0;
+}
+
+/* A section title: 11px capitals in the muted ink, in a 32px row. */
+[data-qc-theme] .qc-drawing-page > .qc-drawing-section {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0;
+  letter-spacing: normal;
+}
+
+[data-qc-theme] .qc-drawing-group-gap {
+  height: 16px;
+}
+
+/* The text fields, list buttons and number fields are the chart's 34px field box; these rules give
+ * them their widths and lay a list button's face out: its words 8px in, cut short with an ellipsis,
+ * then the chevron's slot 2px from the end. */
 [data-qc-theme] .qc-drawing-select {
-  min-width: 140px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  width: 100px;
+  padding: 0 2px 0 7px;
+  text-align: start;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-drawing-select[data-width='medium'] {
+  width: 150px;
+}
+
+[data-qc-theme] .qc-drawing-select[data-width='wide'] {
+  width: 180px;
+}
+
+[data-qc-theme] .qc-drawing-select-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline-end: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A list's rows: 32px, the words 8px in; a row with a mark carries the 28px mark 4px in and its
+ * name 6px after it; a row with a checkbox carries the 18px box in a 28px cell 4px in and its name
+ * 4px after the cell. The chosen row inverts. */
+[data-qc-theme] .qc-drawing-list {
+  min-width: 0;
+}
+
+[data-qc-theme] .qc-drawing-list-row {
+  height: 32px;
+  gap: 0;
+  padding: 0 8px;
+  border-radius: 6px;
+}
+
+[data-qc-theme] .qc-drawing-list-row--mark {
+  gap: 6px;
+  padding: 0 14px 0 4px;
+}
+
+[data-qc-theme] .qc-drawing-list-row--check {
+  gap: 4px;
+  padding: 0 8px 0 4px;
+}
+
+[data-qc-theme] .qc-drawing-check-cell {
+  display: flex;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  padding-inline-end: 2px;
+}
+
+/* The row takes the press, so the box it shows never toggles on its own as well. */
+[data-qc-theme] .qc-drawing-check-cell > .qc-checkbox {
+  pointer-events: none;
 }
 
 [data-qc-theme] .qc-drawing-input[data-width='short'] {
@@ -52,14 +166,14 @@
   width: 100%;
 }
 
-/* The text area grows from four lines, its words 8px in from every side of its box. */
+/* The text area is the field box 100px tall across the page, its words 8px in from the sides and
+ * 5px from the top. */
 [data-qc-theme] .qc-drawing-textarea {
   width: 100%;
-  height: auto;
-  min-height: 80px;
-  margin-top: 4px;
-  padding: 7px;
-  resize: vertical;
+  height: 100px;
+  margin: 0;
+  padding: 4px 7px;
+  resize: none;
 }
 
 /* The number field gives the end of its box to the steppers: a 22 by 28 column 2px in from the edge,
@@ -80,6 +194,10 @@
 
 [data-qc-theme] .qc-drawing-number-wrap[data-width='medium'] {
   width: 84px;
+}
+
+[data-qc-theme] .qc-drawing-number-wrap[data-width='field'] {
+  width: 100px;
 }
 
 [data-qc-theme] .qc-drawing-number-wrap[data-width='wide'] {
@@ -119,11 +237,12 @@
   width: 22px;
   height: 14px;
   padding: 0;
-  color: var(--qc-text-muted);
+  color: var(--qc-chrome-caret);
   background: none;
   border: 0;
-  border-radius: var(--qc-chrome-radius);
+  border-radius: 4px;
   cursor: pointer;
+  transition: color var(--qc-motion-durationSlow) var(--qc-motion-easingStandard), background-color var(--qc-motion-durationSlow) var(--qc-motion-easingStandard);
 }
 
 [data-qc-theme] .qc-drawing-stepper[data-up='true'] svg {
@@ -132,7 +251,7 @@
 
 [data-qc-theme] .qc-drawing-stepper:hover {
   color: var(--qc-text-primary);
-  background: var(--qc-state-hover);
+  background: var(--qc-state-pressed);
 }
 
 /* Swatches: a ten-wide grid of squares, the plus cell, and the custom panel it opens in place. */
@@ -369,7 +488,8 @@
 /* Black and white are the poles of the value axis the square fades between, and the two the
  * opacity knob is drawn from. They are color arithmetic, not theme roles: every mode has them. */
 [data-qc-theme] .qc-drawing-custom,
-[data-qc-theme] .qc-drawing-opacity-row {
+[data-qc-theme] .qc-drawing-opacity-row,
+[data-qc-theme] .qc-drawing-dual {
   --qcd-angle-0: 0deg;
   --qcd-black: hsl(var(--qcd-angle-0) 0% 0%);
   --qcd-white: hsl(var(--qcd-angle-0) 0% 100%);
@@ -494,6 +614,20 @@
   cursor: pointer;
 }
 
+/* On a settings page the swatch button is the 34px field with a 6px corner around its 24px well, 4px
+ * in; with a stroke the preview stands 8px after the well and 3px clear of the end, 75px in all. */
+[data-qc-theme] .qc-drawing-page .qc-drawing-swatch-button {
+  flex: 0 0 auto;
+  gap: 8px;
+  min-width: 34px;
+  padding: 0 4px;
+  border-radius: 6px;
+}
+
+[data-qc-theme] .qc-drawing-page .qc-drawing-swatch-button > .qc-drawing-stroke {
+  margin-inline-end: 3px;
+}
+
 [data-qc-theme] .qc-drawing-well {
   display: block;
   width: 24px;
@@ -554,11 +688,14 @@
   background: var(--qcd-swatch, currentColor);
 }
 
-/* A line-end picker is a list button: the end's glyph, then the chevron's slot, 2px in from the edge. */
+/* A line-end picker is a 34px field whose face is the end's own 28px mark. */
 [data-qc-theme] .qc-drawing-line-end {
   display: flex;
+  flex: 0 0 34px;
   align-items: center;
-  padding: 0 2px;
+  justify-content: center;
+  width: 34px;
+  padding: 0;
   cursor: pointer;
 }
 
@@ -568,74 +705,15 @@
   transform: scaleX(-1);
 }
 
-/* The dialog's page strip: equal tabs, each with its own rail segment, the active one bright. */
-[data-qc-theme] .qc-drawing-tabs {
-  display: flex;
-  align-items: stretch;
-  padding-bottom: 8px;
-}
-
-[data-qc-theme] .qc-drawing-tab {
-  display: flex;
-  flex: 1 1 0;
-  flex-direction: column;
-  gap: 6px;
-  padding: 2px 0 0;
-  color: var(--qc-text-muted);
-  font: inherit;
-  font-weight: 500;
-  background: none;
-  border: 0;
-  cursor: pointer;
-}
-
-[data-qc-theme] .qc-drawing-tab:hover {
-  color: var(--qc-text-secondary);
-}
-
-[data-qc-theme] .qc-drawing-tab[aria-selected='true'] {
-  color: var(--qc-text-primary);
-}
-
-[data-qc-theme] .qc-drawing-tab-rail {
-  height: 2px;
-  background: var(--qc-chrome-border);
-}
-
-[data-qc-theme] .qc-drawing-tab:first-child .qc-drawing-tab-rail {
-  border-start-start-radius: 2px;
-  border-end-start-radius: 2px;
-}
-
-[data-qc-theme] .qc-drawing-tab:last-child .qc-drawing-tab-rail {
-  border-start-end-radius: 2px;
-  border-end-end-radius: 2px;
-}
-
-[data-qc-theme] .qc-drawing-tab[aria-selected='true'] .qc-drawing-tab-rail {
-  background: var(--qc-text-primary);
-}
-
-/* One visibility bucket: the checkbox beside the word, then from, the two-thumb range, and to. */
-[data-qc-theme] .qc-drawing-visibility-row {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 12px;
-  align-items: center;
-  min-height: 50px;
-}
-
-[data-qc-theme] .qc-drawing-visibility-controls {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
+/* One visibility bucket: the checkbox and the name as the label, then from, the two-thumb range and
+ * to. The range is a 10px track 100px wide, 9px after from and 8px before to, its span between the
+ * two thumbs filled. */
 [data-qc-theme] .qc-drawing-dual {
   position: relative;
-  flex: 1 1 auto;
-  min-width: 96px;
-  height: 16px;
+  flex: 0 0 100px;
+  width: 100px;
+  height: 12px;
+  margin-inline-start: 1px;
 }
 
 [data-qc-theme] .qc-drawing-dual-track {
@@ -643,18 +721,22 @@
   inset-inline: 0;
   top: 50%;
   height: 10px;
-  background: var(--qc-chrome-border);
+  background: var(--qc-state-pressed);
   border-radius: 5px;
   transform: translateY(-50%);
 }
 
+/* The span the thumbs travel: the track less half a thumb at either end. */
+[data-qc-theme] .qc-drawing-dual-span {
+  position: absolute;
+  inset: 0 6px;
+}
+
 [data-qc-theme] .qc-drawing-dual-fill {
   position: absolute;
-  top: 50%;
-  height: 10px;
-  background: var(--qc-text-secondary);
-  border-radius: 5px;
-  transform: translateY(-50%);
+  top: 0;
+  bottom: 0;
+  background: var(--qc-text-primary);
 }
 
 [data-qc-theme] .qc-drawing-dual-input {
@@ -668,22 +750,29 @@
   pointer-events: none;
 }
 
+/* The two-thumb range's thumbs are the opacity knob: a dark disc with a 2px light rim, drawn from
+ * the two poles so they read at both ends of the track in either mode. */
 [data-qc-theme] .qc-drawing-dual-input::-webkit-slider-thumb {
   width: 12px;
   height: 12px;
-  background: var(--qc-text-primary);
-  border: 2px solid var(--qc-chrome-surface);
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
   border-radius: 50%;
+  box-shadow: 0 1px 2px hsl(var(--qcd-angle-0) 0% 0% / 0.5);
+  cursor: pointer;
   appearance: none;
   pointer-events: auto;
 }
 
 [data-qc-theme] .qc-drawing-dual-input::-moz-range-thumb {
-  width: 10px;
-  height: 10px;
-  background: var(--qc-text-primary);
-  border: 2px solid var(--qc-chrome-surface);
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
   border-radius: 50%;
+  box-shadow: 0 1px 2px hsl(var(--qcd-angle-0) 0% 0% / 0.5);
+  cursor: pointer;
   pointer-events: auto;
 }
 
