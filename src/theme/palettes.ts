@@ -2,24 +2,31 @@
 // written as a literal. Every other module reads a role.
 //
 // These values are the package's own, chosen for a complete chart UI that holds up in both modes:
-// a light ink of `rgb(15, 15, 15)` and a dark ink of `rgb(219, 219, 219)`, a dark panel ground of
-// `rgb(31, 31, 31)`, a 6px panel radius, and floating-surface shadows of
-// `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and `rgba(0, 0, 0, 0.4)` in dark. This file is where
-// they live.
+// a light ink of `rgb(15, 15, 15)` and a dark ink of `rgb(219, 219, 219)`, a dialog and menu ground
+// of white and of `rgb(31, 31, 31)`, a header rule of `#ebebeb` and `#4a4a4a`, a hover fill of
+// `#f2f2f2` and `#2e2e2e`, a pressed fill of `#ebebeb` and `#3d3d3d`, the arrow that opens a menu in
+// `#707070` and `#8c8c8c`, a link of `#2962ff` and `#5b9cf6`, a 6px panel radius, floating-surface
+// shadows of `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and `rgba(0, 0, 0, 0.4)` in dark, and a modal
+// veil of `rgba(156, 156, 156, 0.5)` in light and `rgba(0, 0, 0, 0.5)` in dark. The drawing stroke
+// and selection roles are `#2962ff` in both modes. This file is where they live.
 //
 // Readability is a gate, not a preference. Where a value cannot reach the WCAG 2.2 AA ratio the
 // role's `contrast` rules require, on every ground the recipes draw it over, what stands here is
-// the hue-preserving value that does, and `theme/contrast.test.ts` recomputes every ratio on each
-// run. That is why light `status.positive` is not `rgb(8, 153, 129)`, which reads at 3.57 to 1 on
-// white (dark mode keeps that value, which reads at 4.62 to 1 on the dark panel), and why the muted
-// ink is `#636363` in light and `#9c9c9c` in dark rather than a mid grey of `rgb(140, 140, 140)`,
-// which falls short of 4.5 to 1 over the dark selected fill a search or menu row wears. It is also
-// why the dark match highlight is `#5280ff` rather than light mode's `#2962ff`, which reads at 3.36
-// to 1 on the dark panel; light mode keeps `#2962ff`, which clears 4.5 to 1 on white. The accent
-// is a mark and never words, and the focus ring keeps its value in each mode. The selected fill is
-// a step of the neutral grey ramp, and the selection tint is a blue at an alpha. A field's edge is a
-// step of the same ramp and steps once more under the pointer; the edge of a refused value is one
-// red in both modes, which reads at the non-text ratio on white and on both dark surfaces.
+// the hue-preserving value nearest to it that does, and `theme/contrast.test.ts` and
+// `chrome/contrast.test.ts` recompute every ratio on each run. The status inks are a green of
+// `#089981`, a red of `#f23645` and an orange of `#ff9800`. On white the green reads at 3.57 to 1,
+// the red at 3.90 and the orange at 2.16, so light mode darkens each just far enough to reach 4.5:
+// `#078671`, `#df323f` and `#ac6600`. Dark mode keeps the green and the orange, which clear 4.5 on
+// the dark panel; its red is `#f34452`, because `#f23645` reads at 4.23 to 1 on the dark dialog
+// ground an error notice stands on. The muted ink is a mid grey, `#707070` in light and `#8c8c8c` in
+// dark, held to 4.5 to 1 over the hover and selected fills a menu row wears: those greys reach 4.15
+// and 3.76 over the selected fill, so the muted ink is `#6a6a6a` in light and `#9b9b9b` in dark.
+// The dark match highlight is `#5280ff` rather than light mode's `#2962ff`, which reads at 3.36 to 1
+// on the dark panel; light mode keeps `#2962ff`, which clears 4.5 to 1 on white. The accent is a
+// mark and never words, and the focus ring keeps its value in each mode. The selected fill is a step
+// of the neutral grey ramp, and the selection tint is a blue at an alpha. A field's edge is a step
+// of the same ramp and steps once more under the pointer; the edge of a refused value is one red in
+// both modes, which reads at the non-text ratio on white and on both dark surfaces.
 //
 // The illustration roles are the one set drawn from a cooler grey: an empty state's art is not a
 // control, so it does not have to sit on the ramp the controls share.
@@ -61,7 +68,7 @@ export const LIGHT_THEME: SemanticTheme = {
 
   'text.primary': '#0f0f0f',
   'text.secondary': '#4a4a4a',
-  'text.muted': '#636363',
+  'text.muted': '#6a6a6a',
   'text.disabled': '#b8b8b8',
   'text.inverse': '#ffffff',
   'text.link': '#2962ff',
@@ -79,7 +86,7 @@ export const LIGHT_THEME: SemanticTheme = {
   'chrome.border': '#ebebeb',
   'chrome.borderStrong': '#8c8c8c',
   'chrome.fieldBorder': '#dbdbdb',
-  'chrome.caret': '#0f0f0f',
+  'chrome.caret': '#707070',
   'chrome.grip': '#b8b8b8',
   'chrome.scrollThumb': '#9c9c9c',
   'chrome.radius': '6px',
@@ -88,7 +95,7 @@ export const LIGHT_THEME: SemanticTheme = {
   'overlay.surface': '#ffffff',
   'overlay.separator': '#ebebeb',
   'overlay.shadow': '0 2px 4px rgba(0, 0, 0, 0.2)',
-  'overlay.scrim': 'rgba(0, 0, 0, 0.35)',
+  'overlay.scrim': 'rgba(156, 156, 156, 0.5)',
 
   'state.accent': '#2962ff',
   'state.hover': '#f2f2f2',
@@ -112,9 +119,9 @@ export const LIGHT_THEME: SemanticTheme = {
   'control.fieldInvalid': '#f23645',
   'control.fieldFill': '#f2f2f2',
 
-  'status.positive': '#067a67',
-  'status.negative': '#cc2f3c',
-  'status.warning': '#8a5a00',
+  'status.positive': '#078671',
+  'status.negative': '#df323f',
+  'status.warning': '#ac6600',
   'status.info': '#1160c4',
   'status.loading': '#787b86',
   'status.sessionPreMarket': '#4c98fb',
@@ -168,7 +175,7 @@ export const DARK_THEME: SemanticTheme = {
 
   'text.primary': '#dbdbdb',
   'text.secondary': '#b8b8b8',
-  'text.muted': '#9c9c9c',
+  'text.muted': '#9b9b9b',
   'text.disabled': '#575757',
   'text.inverse': '#0f0f0f',
   'text.link': '#5b9cf6',
@@ -220,8 +227,8 @@ export const DARK_THEME: SemanticTheme = {
   'control.fieldFill': '#2e2e2e',
 
   'status.positive': '#089981',
-  'status.negative': '#f7525f',
-  'status.warning': '#f5a623',
+  'status.negative': '#f34452',
+  'status.warning': '#ff9800',
   'status.info': '#68a5ff',
   'status.loading': '#787b86',
   'status.sessionPreMarket': '#4c98fb',
@@ -234,11 +241,11 @@ export const DARK_THEME: SemanticTheme = {
   'illustration.accent': '#1976d2',
   'illustration.accentInk': '#d1d4dc',
 
-  'drawing.line': '#4c98fb',
-  'drawing.fill': 'rgba(76, 152, 251, 0.15)',
+  'drawing.line': '#2962ff',
+  'drawing.fill': 'rgba(41, 98, 255, 0.15)',
   'drawing.text': '#dbdbdb',
   'drawing.handle': '#0f0f0f',
-  'drawing.selected': '#4c98fb',
+  'drawing.selected': '#2962ff',
 
   'motion.durationFast': '90ms',
   'motion.durationBase': '150ms',

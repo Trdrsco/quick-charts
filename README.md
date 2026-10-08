@@ -2019,12 +2019,37 @@ inventory, and the built-in palettes and the generated stylesheet are built from
 property names are private, so a color, a size or a radius is always set through a role. The
 class names inside the stylesheet are private too, except the supported hooks below.
 
+### The built-in palettes
+
+The two built-in palettes paint every dialog, menu and popover the chart opens from these roles,
+among the others `THEME_ROLES` lists:
+
+| Role | Light | Dark | What it paints |
+|---|---|---|---|
+| `overlay.surface` | `#ffffff` | `#1f1f1f` | The ground of a dialog, menu or popover. |
+| `overlay.separator` | `#ebebeb` | `#4a4a4a` | The rule under a dialog header and over its footer, and between menu groups. |
+| `overlay.scrim` | `rgba(156, 156, 156, 0.5)` | `rgba(0, 0, 0, 0.5)` | The veil behind a modal dialog. |
+| `text.primary` | `#0f0f0f` | `#dbdbdb` | The ink of rows, labels and values. |
+| `text.muted` | `#6a6a6a` | `#9b9b9b` | A section title, a hint, a placeholder. |
+| `chrome.caret` | `#707070` | `#8c8c8c` | The chevron of a select and the arrow that opens a flyout. |
+| `text.link` | `#2962ff` | `#5b9cf6` | A text link. |
+| `state.hover` | `#f2f2f2` | `#2e2e2e` | The fill under the pointer. |
+| `state.pressed` | `#ebebeb` | `#3d3d3d` | The fill while the pointer is down. |
+| `status.positive` | `#078671` | `#089981` | A gain or a success. |
+| `status.negative` | `#df323f` | `#f34452` | A loss or a failure. |
+| `status.warning` | `#ac6600` | `#ff9800` | A condition to notice before acting. |
+
+Every ink is held to the WCAG 2.2 AA ratio on each ground it is drawn over, so the light status
+inks are the darkest steps of their hues that still read at 4.5 to 1 on white, the dark red reads at
+4.5 to 1 on the dialog ground, and the muted ink reads at 4.5 to 1 over the hover and selected fills
+of a menu row. `drawing.line` and `drawing.selected` are `#2962ff` in both modes.
+
 ### Fields
 
 Every text field, select, number field and color well the chart draws in its dialogs and settings
 is one box: 34px tall, a 1px edge with an 8px corner around a clear ground, and its words at 14 on
-18, 8px in from the edge. A select ends in an 18px chevron. Four roles in the `control` family
-paint the box, and the focus ring is `state.focusRing`:
+18, 8px in from the edge. A select ends in an 18px chevron in `chrome.caret`. Four roles in the
+`control` family paint the box, and the focus ring is `state.focusRing`:
 
 | Role | Light | Dark | What it paints |
 |---|---|---|---|
@@ -2034,9 +2059,9 @@ paint the box, and the focus ring is `state.focusRing`:
 | `control.fieldFill` | `#f2f2f2` | `#2e2e2e` | The ground of a field that is read-only or disabled. |
 
 Focus draws a 2px ring over the edge, the edge itself and the pixel inside it, so the ring follows
-the corner and a dialog that scrolls never clips it. A number past its bounds or off its step turns
-the edge `control.fieldInvalid` once the viewer leaves the field, so a number on its way to a valid
-one never turns red while it is typed. The symbol search field draws its own outline in
+the corner and a dialog that scrolls never clips it. Only a value the chart refuses turns the edge
+`control.fieldInvalid`; a number past its bounds or off its step is clamped or rounded, so its
+field never turns red. The symbol search field draws its own outline in
 `chrome.fieldBorder`.
 
 ### Motion
