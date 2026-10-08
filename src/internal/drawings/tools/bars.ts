@@ -1,61 +1,136 @@
-import type { Point, Viewport } from '../core/types'
+import type { LineStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
-import { barsInRange, linearRegression } from '../core/bars'
-import { distanceToSegment } from '../core/geometry'
+import { barPrice, barsInRange, linearRegression, type BarPriceSource, type SourceBar } from '../core/bars'
+import { distanceToSegment, extendSegment } from '../core/geometry'
 import { alphaOf, applyStroke, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
 }
 
+/** A regression line's stroke: shown or not, its color, width and style. */
+type RegressionLine = { show: boolean; color: string; width: number; style: LineStyle }
+
+/** A regression trend's inputs and its lines' strokes. */
 export type RegressionProps = {
+  /** How many standard deviations the upper band stands from the line; the lower band's count is
+   *  signed, so a band below the line is a negative count. */
   upperDeviation: number
   lowerDeviation: number
   useUpper: boolean
   useLower: boolean
-  source: 'close' | 'open' | 'hl2' | 'hlc3'
+  /** The price of each bar the line is fitted through. */
+  source: BarPriceSource
+  /** The line through the bars and the two bands, each shown or not in a stroke of its own. */
+  baseLine: boolean
+  baseColor: string
+  baseWidth: number
+  baseStyle: LineStyle
+  upLine: boolean
+  upColor: string
+  upWidth: number
+  upStyle: LineStyle
+  downLine: boolean
+  downColor: string
+  downWidth: number
+  downStyle: LineStyle
+  /** Run the line and the bands on past both ends, to the pane's edges. */
+  extendLines: boolean
+  /** Read the correlation of the bars with the line under its end. */
+  showPearsons: boolean
 }
 
+const REGRESSION_PROPS: RegressionProps = {
+  upperDeviation: 2,
+  lowerDeviation: -2,
+  useUpper: true,
+  useLower: true,
+  source: 'close',
+  baseLine: true,
+  baseColor: 'rgba(242, 54, 69, 0.3)',
+  baseWidth: 1,
+  baseStyle: 'dashed',
+  upLine: true,
+  upColor: 'rgba(41, 98, 255, 0.3)',
+  upWidth: 2,
+  upStyle: 'solid',
+  downLine: true,
+  downColor: 'rgba(41, 98, 255, 0.3)',
+  downWidth: 2,
+  downStyle: 'solid',
+  extendLines: false,
+  showPearsons: true,
+}
+
+/** The body between the line and each band, in the band's color at this share of its opacity. */
+const BAND_BODY = 0.3
+
 /**
- * Regression trend: least-squares line over the closes between the two anchors, with bands a
- * configurable number of standard deviations away. Recomputes live as bars arrive.
+ * Regression trend: least-squares line over the chosen price of the bars between the two anchors,
+ * with bands a set number of standard deviations from it. Recomputes live as bars arrive.
  */
 export class RegressionTrend extends Drawing<RegressionProps> {
   readonly type = 'regression_trend'
 
   protected override defaultProps(): RegressionProps {
-    return { upperDeviation: 2, lowerDeviation: 2, useUpper: true, useLower: true, source: 'close' }
+    return { ...REGRESSION_PROPS }
+  }
+
+  /** A trend saved before its lines had strokes of their own counted its lower deviation down from
+   *  the line. */
+  protected override upgradeProps(props: Partial<RegressionProps>): Partial<RegressionProps> {
+    if ('baseLine' in props || typeof props.lowerDeviation !== 'number') return props
+    return { ...props, lowerDeviation: -props.lowerDeviation }
   }
 
   requiredAnchors(): number {
     return 2
   }
 
-  protected lines(viewport: Viewport): { base: [Point, Point]; upper?: [Point, Point]; lower?: [Point, Point] } | null {
+  /** The fit over the bars between the anchors, and its correlation with them. */
+  protected fit(): { range: SourceBar[]; slope: number; intercept: number; sigma: number; pearson: number } | null {
     const [a, b] = this.anchors
     if (!a || !b) return null
     const range = barsInRange(this.bars(), a.time, b.time)
     const fit = linearRegression(range, this.props.source)
     if (!fit) return null
-    const first = range[0]
-    const last = range[range.length - 1]
+    return { range, ...fit, pearson: pearsonOf(range, this.props.source) }
+  }
+
+  protected lines(viewport: Viewport): { base: [Point, Point]; upper?: [Point, Point]; lower?: [Point, Point]; pearson: number } | null {
+    const fit = this.fit()
+    if (!fit) return null
+    const first = fit.range[0]!
+    const last = fit.range[fit.range.length - 1]!
     const lineAt = (offset: number): [Point, Point] | null => {
       const y1 = viewport.yOf(fit.intercept + offset)
-      const y2 = viewport.yOf(fit.intercept + fit.slope * (range.length - 1) + offset)
+      const y2 = viewport.yOf(fit.intercept + fit.slope * (fit.range.length - 1) + offset)
       const x1 = viewport.xOf(first.time)
       const x2 = viewport.xOf(last.time)
       if (y1 === null || y2 === null || x1 === null || x2 === null) return null
-      return [
-        { x: x1, y: y1 },
-        { x: x2, y: y2 },
-      ]
+      const a = { x: x1, y: y1 }
+      const b = { x: x2, y: y2 }
+      if (!this.props.extendLines) return [a, b]
+      const run = extendSegment(a, b, viewport.width, viewport.height, true, true)
+      return [run.a, run.b]
     }
     const base = lineAt(0)
     if (!base) return null
     return {
       base,
       upper: this.props.useUpper ? (lineAt(fit.sigma * this.props.upperDeviation) ?? undefined) : undefined,
-      lower: this.props.useLower ? (lineAt(-fit.sigma * this.props.lowerDeviation) ?? undefined) : undefined,
+      lower: this.props.useLower ? (lineAt(fit.sigma * this.props.lowerDeviation) ?? undefined) : undefined,
+      pearson: fit.pearson,
+    }
+  }
+
+  /** The strokes of the line and its two bands, as the props set them. */
+  protected strokes(): { base: RegressionLine; up: RegressionLine; down: RegressionLine } {
+    const p = this.props
+    return {
+      base: { show: p.baseLine, color: p.baseColor, width: p.baseWidth, style: p.baseStyle },
+      up: { show: p.upLine, color: p.upColor, width: p.upWidth, style: p.upStyle },
+      down: { show: p.downLine, color: p.downColor, width: p.downWidth, style: p.downStyle },
     }
   }
 
@@ -65,27 +140,36 @@ export class RegressionTrend extends Drawing<RegressionProps> {
       this.paintUnavailable(ctx, viewport)
       return
     }
-    if (lines.upper && lines.lower) {
+    const strokes = this.strokes()
+    const body = (band: [Point, Point] | undefined, color: string): void => {
+      if (!band) return
       ctx.save()
-      ctx.fillStyle = withAlpha(this.style.lineColor, 0.08)
+      ctx.fillStyle = withAlpha(color, alphaOf(color) * BAND_BODY)
       ctx.beginPath()
-      ctx.moveTo(lines.upper[0].x, lines.upper[0].y)
-      ctx.lineTo(lines.upper[1].x, lines.upper[1].y)
-      ctx.lineTo(lines.lower[1].x, lines.lower[1].y)
-      ctx.lineTo(lines.lower[0].x, lines.lower[0].y)
+      ctx.moveTo(lines.base[0].x, lines.base[0].y)
+      ctx.lineTo(lines.base[1].x, lines.base[1].y)
+      ctx.lineTo(band[1].x, band[1].y)
+      ctx.lineTo(band[0].x, band[0].y)
       ctx.closePath()
       ctx.fill()
       ctx.restore()
     }
-    applyStroke(ctx, this.style)
-    strokeSegment(ctx, lines.base[0], lines.base[1])
-    for (const band of [lines.upper, lines.lower]) {
-      if (!band) continue
+    body(lines.upper, strokes.up.color)
+    body(lines.lower, strokes.down.color)
+    const draw = (line: [Point, Point] | undefined, stroke: RegressionLine): void => {
+      if (!line || !stroke.show) return
       ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.globalAlpha = 0.7
-      strokeSegment(ctx, band[0], band[1])
+      applyStroke(ctx, { ...this.style, lineColor: stroke.color, lineWidth: stroke.width, lineStyle: stroke.style })
+      strokeSegment(ctx, line[0], line[1])
       ctx.restore()
+    }
+    draw(lines.upper, strokes.up)
+    draw(lines.lower, strokes.down)
+    draw(lines.base, strokes.base)
+    if (this.props.showPearsons && Number.isFinite(lines.pearson)) {
+      // The correlation reads under the lowest line's end, in the base line's hue.
+      const end = (lines.lower ?? lines.base)[1]
+      paintLabel(ctx, lines.pearson.toFixed(4), { x: end.x, y: end.y + 4 }, { ...this.style, textColor: withAlpha(strokes.base.color, 1) }, { align: 'center', baseline: 'top' })
     }
   }
 
@@ -106,16 +190,43 @@ export class RegressionTrend extends Drawing<RegressionProps> {
 
   testHit(point: Point, viewport: Viewport): boolean {
     const lines = this.lines(viewport)
-    const tolerance = hitTolerance(this.style.lineWidth)
     if (!lines) {
       const [pa, pb] = this.anchorPixels(viewport)
-      return !!pa && !!pb && distanceToSegment(point, pa, pb) <= tolerance
+      return !!pa && !!pb && distanceToSegment(point, pa, pb) <= hitTolerance(this.style.lineWidth)
     }
-    for (const line of [lines.base, lines.upper, lines.lower]) {
-      if (line && distanceToSegment(point, line[0], line[1]) <= tolerance) return true
-    }
-    return false
+    const strokes = this.strokes()
+    const parts: [[Point, Point] | undefined, RegressionLine][] = [
+      [lines.base, strokes.base],
+      [lines.upper, strokes.up],
+      [lines.lower, strokes.down],
+    ]
+    return parts.some(([line, stroke]) => !!line && stroke.show && distanceToSegment(point, line[0], line[1]) <= hitTolerance(stroke.width))
   }
+}
+
+/** The correlation of the bars' chosen price with their order, from -1 to 1. */
+function pearsonOf(bars: readonly SourceBar[], source: BarPriceSource): number {
+  const n = bars.length
+  if (n < 2) return Number.NaN
+  let sumX = 0
+  let sumY = 0
+  for (let i = 0; i < n; i++) {
+    sumX += i
+    sumY += barPrice(bars[i]!, source)
+  }
+  const meanX = sumX / n
+  const meanY = sumY / n
+  let covariance = 0
+  let varX = 0
+  let varY = 0
+  for (let i = 0; i < n; i++) {
+    const dx = i - meanX
+    const dy = barPrice(bars[i]!, source) - meanY
+    covariance += dx * dy
+    varX += dx * dx
+    varY += dy * dy
+  }
+  return varX > 0 && varY > 0 ? covariance / Math.sqrt(varX * varY) : Number.NaN
 }
 
 /** A captured bar (relative form) inside a bars-pattern/ghost-feed payload. */

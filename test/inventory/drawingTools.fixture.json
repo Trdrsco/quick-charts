@@ -364,13 +364,28 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.08
+        "lineColor": "#089981",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#089981",
+        "fillOpacity": 0.2,
+        "textColor": "#089981",
+        "fontSize": 14
       },
       "props": [
         "extendLeft",
         "extendRight",
-        "showMiddle",
-        "text"
+        "fillBackground",
+        "leftEnd",
+        "pricesBold",
+        "pricesColor",
+        "pricesFontSize",
+        "pricesItalic",
+        "rightEnd",
+        "showPrices",
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -858,13 +873,28 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.08
+        "lineColor": "#ff9800",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#ff9800",
+        "fillOpacity": 0.2,
+        "textColor": "#ff9800",
+        "fontSize": 14
       },
       "props": [
         "extendLeft",
         "extendRight",
-        "showMiddle",
-        "text"
+        "fillBackground",
+        "leftEnd",
+        "pricesBold",
+        "pricesColor",
+        "pricesFontSize",
+        "pricesItalic",
+        "rightEnd",
+        "showPrices",
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -1208,13 +1238,22 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.08
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#2962ff",
+        "fillOpacity": 0.2,
+        "textColor": "#2962ff",
+        "fontSize": 14
       },
       "props": [
         "extendLeft",
         "extendRight",
-        "showMiddle",
-        "text"
+        "fillBackground",
+        "levels",
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -1413,10 +1452,27 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 1,
+        "lineStyle": "solid"
+      },
       "props": [
+        "baseColor",
+        "baseLine",
+        "baseStyle",
+        "baseWidth",
+        "downColor",
+        "downLine",
+        "downStyle",
+        "downWidth",
+        "extendLines",
         "lowerDeviation",
+        "showPearsons",
         "source",
+        "upColor",
+        "upLine",
+        "upStyle",
+        "upWidth",
         "upperDeviation",
         "useLower",
         "useUpper"

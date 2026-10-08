@@ -2,8 +2,8 @@
 // from the drawing's own props and the settings capabilities on `@trdrs/quickcharts/drawings`; this
 // module turns those facts into fields. A row exists only where the prop exists and the tool's
 // paint honors it, so the dialog never shows a control that does nothing.
-import type { DrawingStyle, ElliottDegree, IDrawing, TimeframeVisibility } from '../../internal/drawings/index'
-import { alphaOf, ELLIOTT_DEGREES, withAlpha } from '../../internal/drawings/index'
+import type { BarPriceSource, DrawingStyle, ElliottDegree, IDrawing, LineStyle, TimeframeVisibility } from '../../internal/drawings/index'
+import { alphaOf, BAR_PRICE_SOURCES, ELLIOTT_DEGREES, withAlpha } from '../../internal/drawings/index'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import {
   BAR_ONLY_COORDS,
@@ -27,7 +27,7 @@ import { createOpacitySlider } from '../controls/color'
 import { humanSize } from './imagePicker'
 import type { IconResolver } from '../icons/resolver'
 import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
-import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, strokedLevelRows, thicknessSelect } from './levelRows'
+import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, levelLines, strokedLevelRows, thicknessSelect } from './levelRows'
 
 export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Table' | 'Coordinates' | 'Visibility'
 
@@ -81,6 +81,19 @@ const DEGREE_LABEL: Record<ElliottDegree, ChartMessageKey> = {
   submicro: 'drawing.degreeSubmicro',
   minuscule: 'drawing.degreeMinuscule',
 }
+const SOURCE_LABEL: Record<BarPriceSource, ChartMessageKey> = {
+  open: 'drawing.sourceOpen',
+  high: 'drawing.sourceHigh',
+  low: 'drawing.sourceLow',
+  close: 'drawing.sourceClose',
+  volume: 'drawing.sourceVolume',
+  hl2: 'drawing.sourceHl2',
+  hlc3: 'drawing.sourceHlc3',
+  ohlc4: 'drawing.sourceOhlc4',
+  hlcc4: 'drawing.sourceHlcc4',
+}
+/** The tools whose words stand above, inside or below their body. */
+const INSIDE_ACROSS: ReadonlySet<string> = new Set(['rectangle', 'parallel_channel', 'flat_top_bottom', 'disjoint_channel'])
 const MODE_LABEL: Record<string, ChartMessageKey> = { bars: 'drawing.bars', open: 'drawing.modeLineOpen', high: 'drawing.modeLineHigh', low: 'drawing.modeLineLow', close: 'drawing.modeLineClose', hl2: 'drawing.modeLineHl2' }
 const PROFILE_LEVELS: readonly { label: ChartMessageKey; key: 'poc' | 'vah' | 'val' }[] = [
   { label: 'drawing.pointOfControl', key: 'poc' },
@@ -134,7 +147,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'elliott' | 'pattern'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'elliott' | 'regression' | 'parallel' | 'channel' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -185,6 +198,10 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   elliott_triangle_wave: 'elliott',
   elliott_double_combo: 'elliott',
   elliott_triple_combo: 'elliott',
+  regression_trend: 'regression',
+  parallel_channel: 'parallel',
+  flat_top_bottom: 'channel',
+  disjoint_channel: 'channel',
 }
 
 /** A held weight or slant is a toggle of the field's box, pressed while it holds. */
@@ -366,6 +383,50 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
       row(t('drawing.border'), stroke('drawing.border')),
     )
     if (has('fillBackground')) out.push(background())
+  } else if (layout === 'regression') {
+    // The line through the bars and its two bands, each its switch and its stroke, then whether
+    // they run on past both ends and whether the correlation reads.
+    const line = (key: 'base' | 'up' | 'down', text: ChartMessageKey): HTMLElement => {
+      const color = String(props[`${key}Color`])
+      return checkRow(t(text), props[`${key}Line`] !== false, (v) => ctx.patchProps({ [`${key}Line`]: v }), [
+        swatchButton(t, box, {
+          label: t(text),
+          value: color,
+          onPick: (c) => {
+            const alpha = alphaOf(color)
+            ctx.patchProps({ [`${key}Color`]: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(color),
+          onOpacity: (v) => ctx.patchProps({ [`${key}Color`]: withAlpha(color, v) }),
+          thickness: Number(props[`${key}Width`]),
+          onThickness: (v) => ctx.patchProps({ [`${key}Width`]: v }),
+          lineStyle: props[`${key}Style`] as LineStyle,
+          onLineStyle: (v) => ctx.patchProps({ [`${key}Style`]: v }),
+        }),
+      ])
+    }
+    out.push(line('base', 'drawing.base'), line('up', 'drawing.up'), line('down', 'drawing.down'), toggle('extendLines', 'drawing.extendLines'), toggle('showPearsons', 'drawing.pearsonsR'))
+  } else if (layout === 'parallel') {
+    out.push(...levelLines(ctx), extend('drawing.extendLeftLine', 'drawing.extendRightLine'), background())
+  } else if (layout === 'channel') {
+    // The sides' prices in a text style of their own: their size, weight and slant wait for the
+    // switch.
+    const on = props.showPrices === true
+    const size = dropdown(icons, box, t('drawing.fontSize'), TEXT_SIZES, String(props.pricesFontSize) as (typeof TEXT_SIZES)[number], (v) => v, (v) => ctx.patchProps({ pricesFontSize: Number(v) }))
+    const bold = fontToggle(icons, props.pricesBold === true, 'textBold', t('drawing.bold'), () => ctx.patchProps({ pricesBold: props.pricesBold !== true }))
+    const italic = fontToggle(icons, props.pricesItalic === true, 'textItalic', t('drawing.italic'), () => ctx.patchProps({ pricesItalic: props.pricesItalic !== true }))
+    for (const control of [size, bold, italic]) control.disabled = !on
+    out.push(
+      row(t('drawing.rowLine'), stroke('drawing.rowLine'), ...ends()),
+      extend('drawing.extendLeftLine', 'drawing.extendRightLine'),
+      checkRow(t('drawing.prices'), on, (v) => ctx.patchProps({ showPrices: v }), [
+        swatchButton(t, box, { label: t('drawing.pricesColor'), value: String(props.pricesColor), onPick: (c) => ctx.patchProps({ pricesColor: c }) }),
+        size,
+        bold,
+        italic,
+      ]),
+      background(),
+    )
   } else if (layout === 'elliott') {
     // One color for the wave and its labels, the wave's switch and thickness, and the degree that
     // writes the labels.
@@ -544,11 +605,6 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
     }
     out.push(toggleRow(t('drawing.developingPoc'), !!props.developingPoc, (v) => ctx.patchProps({ developingPoc: v })), toggleRow(t('drawing.developingVa'), !!props.developingVa, (v) => ctx.patchProps({ developingVa: v })))
   }
-  if (sect('source')) {
-    // The four price-source tokens are the vocabulary an indicator manifest writes them in, shown
-    // as written.
-    out.push(row(t('drawing.source'), dropdown(ctx.icons, ctx.box, t('drawing.source'), ['close', 'open', 'hl2', 'hlc3'] as const, props.source as 'close', (v) => v, (v) => ctx.patchProps({ source: v }))))
-  }
   if (sect('mode')) out.push(row(t('drawing.mode'), dropdown(ctx.icons, ctx.box, t('drawing.mode'), ['bars', 'open', 'high', 'low', 'close', 'hl2'] as const, props.mode as 'bars', label(t, MODE_LABEL), (v) => ctx.patchProps({ mode: v }))))
   toggle('mirrored', 'drawing.mirrored')
   toggle('flipped', 'drawing.flipped')
@@ -575,10 +631,14 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
     )
   }
   if (sect('upperDeviation')) {
+    // How far each band stands from the line in standard deviations, the lower one counted down,
+    // whether each band shows, and the price the line is fitted through.
     out.push(
-      sectionTitle(t('drawing.sectionDeviation')),
-      row(t('drawing.upper'), checkbox(t('drawing.useUpperDeviation'), !!props.useUpper, (v) => ctx.patchProps({ useUpper: v })), numberInput(t, ctx.icons, { label: t('drawing.upper'), value: Number(props.upperDeviation), step: 0.5, onChange: (v) => ctx.patchProps({ upperDeviation: v }) })),
-      row(t('drawing.lower'), checkbox(t('drawing.useLowerDeviation'), !!props.useLower, (v) => ctx.patchProps({ useLower: v })), numberInput(t, ctx.icons, { label: t('drawing.lower'), value: Number(props.lowerDeviation), step: 0.5, onChange: (v) => ctx.patchProps({ lowerDeviation: v }) })),
+      row(t('drawing.upperDeviation'), numberInput(t, ctx.icons, { label: t('drawing.upperDeviation'), value: Number(props.upperDeviation), step: 0.5, width: 'field', onChange: (v) => ctx.patchProps({ upperDeviation: v }) })),
+      row(t('drawing.lowerDeviation'), numberInput(t, ctx.icons, { label: t('drawing.lowerDeviation'), value: Number(props.lowerDeviation), step: 0.5, width: 'field', onChange: (v) => ctx.patchProps({ lowerDeviation: v }) })),
+      toggleRow(t('drawing.useUpperDeviation'), !!props.useUpper, (v) => ctx.patchProps({ useUpper: v })),
+      toggleRow(t('drawing.useLowerDeviation'), !!props.useLower, (v) => ctx.patchProps({ useLower: v })),
+      row(t('drawing.source'), dropdown(ctx.icons, ctx.box, t('drawing.source'), BAR_PRICE_SOURCES, props.source as BarPriceSource, label(t, SOURCE_LABEL), (v) => ctx.patchProps({ source: v }))),
     )
   }
   if (sect('accountSize')) {
@@ -668,7 +728,7 @@ export function textRows(ctx: RowsContext): HTMLElement[] {
     out.push(
       row(
         t('drawing.textAlignment'),
-        dropdown(icons, box, t('drawing.textAlignment'), ['top', 'middle', 'bottom'] as const, props.textVAlign as 'top', label(t, drawing.type === 'rectangle' ? BOX_ACROSS_LABEL : ACROSS_LABEL), (v) => ctx.patchProps({ textVAlign: v })),
+        dropdown(icons, box, t('drawing.textAlignment'), ['top', 'middle', 'bottom'] as const, props.textVAlign as 'top', label(t, INSIDE_ACROSS.has(drawing.type) ? BOX_ACROSS_LABEL : ACROSS_LABEL), (v) => ctx.patchProps({ textVAlign: v })),
         dropdown(icons, box, t('drawing.textAlignment'), ['left', 'center', 'right'] as const, props.textHAlign as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ textHAlign: v })),
       ),
     )
@@ -745,6 +805,7 @@ export function coordinateRows(ctx: RowsContext): HTMLElement[] {
   const priceOnly = PRICE_ONLY_COORDS.has(drawing.type)
   return drawing.anchors.map((anchor, i) => {
     if (drawing.type === 'trend_angle' && i === 1) return angleRow(ctx)
+    if (drawing.type === 'parallel_channel' && i === 2) return priceOffsetRow(ctx)
     const bar = viewport?.logicalOf(anchor.time)
     const controls: HTMLElement[] = []
     if (!barOnly) controls.push(numberInput(t, ctx.icons, { label: t('drawing.coordPriceBar', { n: i + 1 }), value: anchor.price, width: 'field', onChange: (v) => ctx.patchAnchor(i, { price: v }) }))
@@ -762,6 +823,36 @@ export function coordinateRows(ctx: RowsContext): HTMLElement[] {
     )
     return row(t(barOnly ? 'drawing.coordBar' : priceOnly ? 'drawing.coordPrice' : 'drawing.coordPriceBar', { n: i + 1 }), ...controls)
   })
+}
+
+/** A parallel channel's offset: the price its parallel stands from the baseline at the third point's
+ *  bar, the baseline run on through its own two points bar by bar. Typing one moves the parallel to
+ *  it at that bar. */
+function priceOffsetRow(ctx: RowsContext): HTMLElement {
+  const { t, drawing } = ctx
+  const viewport = drawing.getViewport()
+  const [a, b, c] = drawing.anchors
+  const barOf = (time: unknown): number => {
+    const logical = viewport?.logicalOf(time as never)
+    return logical === null || logical === undefined ? Number(time) : logical
+  }
+  const baseAt = (time: unknown): number => {
+    if (!a || !b) return NaN
+    const span = barOf(b.time) - barOf(a.time)
+    return span === 0 ? a.price : a.price + ((b.price - a.price) * (barOf(time) - barOf(a.time))) / span
+  }
+  const offset = c ? c.price - baseAt(c.time) : NaN
+  return row(
+    t('drawing.priceOffset'),
+    numberInput(t, ctx.icons, {
+      label: t('drawing.priceOffset'),
+      value: Number.isFinite(offset) ? Number(offset.toFixed(8)) : NaN,
+      width: 'field',
+      onChange: (v) => {
+        if (c) ctx.patchAnchor(2, { price: baseAt(c.time) + v })
+      },
+    }),
+  )
 }
 
 /** A line's angle in degrees, counted up from the horizontal, as the pane draws it. */

@@ -2886,6 +2886,23 @@ when it is first drawn so it opens square, and typing a Price/bar ratio moves th
 square on the pane whatever its scale. A gann fan draws its rays at their price-to-time ratios, 1/8
 to 8/1, each in its own stroke, with the bands between them and each ray's ratio at its end.
 
+A regression trend fits its line through the `source` of the bars between its points: a bar's
+open, high, low, close or volume, or one of the averages `hl2`, `hlc3`, `ohlc4` and `hlcc4`
+(`BAR_PRICE_SOURCES`). Its bands stand `upperDeviation` and `lowerDeviation` standard deviations
+from it, the lower counted down, each shown by `useUpper` and `useLower`; the line and each band
+switch and stroke on their own (`baseLine`, `upLine`, `downLine` with their colors, widths and
+styles), `extendLines` runs them to the pane's edges, and `showPearsons` reads the correlation
+under them.
+
+A parallel channel draws its levels at ratios of its width, 0 its baseline and 1 the parallel through
+its third point, each level its switch, its value and its own stroke, over its body between 0 and 1.
+A flat top/bottom and a disjoint channel end their sides as `leftEnd` and `rightEnd` set and read
+each side's prices at its ends with `showPrices`, in `pricesColor`, `pricesFontSize`,
+`pricesBold` and `pricesItalic`. A channel's `fillBackground` switches its body, and its words
+stand above it, inside it or below it with `textVAlign`, at its start, middle or end with
+`textHAlign`. A parallel channel's Coordinates page writes its third point as the price its
+parallel stands from the baseline.
+
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
 the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
 that shade their legs, the background, which `fillBackground` switches off and on keeping its

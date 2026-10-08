@@ -107,7 +107,13 @@ const WAVE_STYLE = ['Color: color', '[x] Wave: mark(thickness)', 'Degree: select
 
 /** Every tool of the line, shape, curve, leveled and pattern families: its pages, and the rows of
  *  each page. */
-const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; Coordinates?: string[] }> = {
+/** A channel's Text page: its words' color, size, weight and slant, its words, and where they stand. */
+const CHANNEL_TEXT = ['full: color select(14) toggle toggle', 'full: textarea', 'Text alignment: select(Top) select(Left)']
+
+/** A flat top/bottom's and a disjoint channel's Style page. */
+const CHANNEL_STYLE = ['Line: colorWithThickness lineEnd lineEnd', "Extend: multi(Don't extend)", '[ ] Prices: color select(12) toggle toggle', '[x] Background: color']
+
+const PAGES: Record<string, { tabs: string[]; Style: string[]; Inputs?: string[]; Text?: string[]; Coordinates?: string[] }> = {
   trend_line: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], Style: lineStyle("Don't extend", 'Hidden', 'Right', '[ ]'), Text: LINE_TEXT, Coordinates: TWO_POINTS },
   ray: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], Style: lineStyle('Extend right line', 'Hidden', 'Right', '[ ]'), Text: LINE_TEXT, Coordinates: TWO_POINTS },
   info_line: {
@@ -232,6 +238,20 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; 
     Style: [...['1/8', '1/4', '1/3', '1/2', '1/1', '2/1', '3/1', '4/1', '8/1'].map((w) => `full: [x] ${w} colorWithThickness`), 'Use one color: color', BANDS(true), '[x] Labels'],
     Coordinates: TWO_POINTS,
   },
+  regression_trend: {
+    tabs: ['Inputs', 'Style', 'Coordinates', 'Visibility'],
+    Inputs: ['Upper Deviation: number', 'Lower Deviation: number', '[x] Use Upper Deviation', '[x] Use Lower Deviation', 'Source: select(Close)'],
+    Style: ['[x] Base: colorWithThickness', '[x] Up: colorWithThickness', '[x] Down: colorWithThickness', '[ ] Extend lines', "[x] Pearson's R"],
+    Coordinates: ['#1 (bar): number', '#2 (bar): number'],
+  },
+  parallel_channel: {
+    tabs: ['Style', 'Text', 'Coordinates', 'Visibility'],
+    Style: [...levelLines([false, true, false, true, false, true, false]), "Extend: multi(Don't extend)", '[x] Background: color'],
+    Text: CHANNEL_TEXT,
+    Coordinates: [...TWO_POINTS, 'Price offset: number'],
+  },
+  flat_top_bottom: { tabs: ['Style', 'Text', 'Visibility'], Style: CHANNEL_STYLE, Text: CHANNEL_TEXT },
+  disjoint_channel: { tabs: ['Style', 'Text', 'Visibility'], Style: CHANNEL_STYLE, Text: CHANNEL_TEXT },
   xabcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   cypher_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   abcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(false), Coordinates: points(4) },
@@ -251,7 +271,7 @@ describe('the pages and rows of the line, shape, curve, leveled and pattern tool
       const { tabs, show, page } = rig(type)
       expect(tabs()).toEqual(expected.tabs)
       expect(signature(page())).toEqual(expected.Style)
-      for (const tab of ['Text', 'Coordinates'] as const) {
+      for (const tab of ['Inputs', 'Text', 'Coordinates'] as const) {
         if (!expected[tab]) continue
         show(tab)
         expect(signature(page()), `${type} ${tab}`).toEqual(expected[tab])

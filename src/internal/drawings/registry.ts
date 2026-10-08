@@ -142,6 +142,10 @@ const patternLook = (hue: string, shaded: boolean): Partial<DrawingStyle> => ({
 /** A leveled fib's factory look: its levels drawn solid at 2px, their labels at 12px. */
 const FIB_LOOK: Partial<DrawingStyle> = { lineWidth: 2, lineStyle: 'solid', fontSize: 12 }
 
+/** A channel's look: its sides, its body at a fifth and its words in its hue, the sides 2px and the
+ *  words 14px. */
+const channelLook = (hue: string): Partial<DrawingStyle> => ({ lineColor: hue, lineWidth: 2, lineStyle: 'solid', fillColor: hue, fillOpacity: 0.2, textColor: hue, fontSize: 14 })
+
 /** A wave count's look: its line and its labels in one color, the line 2px and solid. */
 const waveLook = (color: string): Partial<DrawingStyle> => ({ lineColor: color, lineWidth: 2, lineStyle: 'solid' })
 
@@ -187,10 +191,10 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(DoubleCurve, { type: 'double_curve', name: 'Double curve', category: 'shapes', anchors: 4, style: shapeLook('#673ab7') }),
 
   // Channels
-  tool(RegressionTrend, { type: 'regression_trend', name: 'Regression trend', category: 'channels', anchors: 2 }),
-  tool(ParallelChannel, { type: 'parallel_channel', name: 'Parallel channel', category: 'channels', anchors: 3, style: { fillOpacity: 0.08 } }),
-  tool(FlatTopBottom, { type: 'flat_top_bottom', name: 'Flat top/bottom', category: 'channels', anchors: 3, style: { fillOpacity: 0.08 } }),
-  tool(DisjointChannel, { type: 'disjoint_channel', name: 'Disjoint channel', category: 'channels', anchors: 4, style: { fillOpacity: 0.08 } }),
+  tool(RegressionTrend, { type: 'regression_trend', name: 'Regression trend', category: 'channels', anchors: 2, style: { lineWidth: 1, lineStyle: 'solid' } }),
+  tool(ParallelChannel, { type: 'parallel_channel', name: 'Parallel channel', category: 'channels', anchors: 3, style: channelLook('#2962ff') }),
+  tool(FlatTopBottom, { type: 'flat_top_bottom', name: 'Flat top/bottom', category: 'channels', anchors: 3, style: channelLook('#ff9800') }),
+  tool(DisjointChannel, { type: 'disjoint_channel', name: 'Disjoint channel', category: 'channels', anchors: 4, style: channelLook('#089981') }),
 
   // Fibonacci
   tool(FibRetracement, { type: 'fib_retracement', name: 'Fib retracement', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),

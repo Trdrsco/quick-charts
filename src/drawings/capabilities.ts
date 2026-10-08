@@ -92,8 +92,9 @@ export const INERT_PROPS: Record<string, readonly string[]> = {
 }
 
 /** Tools whose points are drawn from their shape rather than typed: a turned box, an arc, an
- *  ellipse, a polygon of any count of points and a fib wedge have no Coordinates tab. */
-export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge'])
+ *  ellipse, a polygon of any count of points, a fib wedge, a flat top/bottom and a disjoint channel
+ *  have no Coordinates tab. */
+export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel'])
 
 /** Tools that span every bar at one price: the Coordinates tab hides the bar field. */
 export const PRICE_ONLY_COORDS: ReadonlySet<string> = new Set(['horizontal_line'])
