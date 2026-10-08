@@ -6,6 +6,8 @@
 
 Every field in the chart's dialogs and settings other than a search field is one box, whether a text field, a select, a number field or a color well: 34px tall with an 8px corner and a 1px edge in the `control.fieldEdge` role, which steps to `control.fieldEdgeHover` under the pointer, a 2px focus ring in `state.focusRing` drawn over the edge, an edge and ring in `control.fieldInvalid` for a value the field refuses, and a `control.fieldFill` ground when the field is read-only or disabled. A select ends in an 18px chevron, and both built-in palettes carry the four new roles. A search field keeps its own outline in `chrome.fieldBorder`.
 
+A drawing's settings dialog follows the pointer while its header is held, over the dialog as well as beside it, and lets go on the release wherever it lands, on a cancelled press, or when the window loses focus.
+
 ### Upgrading to 3.0
 
 Give each `SearchScope` its `search`: the search within the scope, asked as your datafeed's `search` is. Your datafeed's `search` answers what the viewer reaches with the chip off, so a limit it applied on its own while a scope named it moves into the scope's `search`. Recents your page listed only while that limit stood go in the scope's `recents`; leave `recents` out and the list leads with none while the chip is on. A scope that should open off sets `on: false`. A datafeed that is always limited leaves the chip nothing to turn off, so it offers no scope.
