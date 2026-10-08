@@ -94,6 +94,8 @@ export interface ToolDefinition {
   /** The tool types its words on the chart, under these rules. Absent, its words are typed in an
    *  editor box of their own. */
   inlineText?: InlineTextRules
+  /** While the tool is armed, the drawing a click would place follows the pointer. */
+  previewed?: boolean
   /** How anchors are gathered: drag-captured stroke, or click-to-add points (double-click ends).
    *  Omitted = the fixed `anchors` count. */
   placement?: 'freehand' | 'multipoint' | 'instant'
@@ -117,6 +119,7 @@ interface ToolMeta {
   style?: Partial<DrawingStyle>
   hasText?: boolean
   inlineText?: InlineTextRules
+  previewed?: boolean
   placement?: 'freehand' | 'multipoint' | 'instant'
   capturesBars?: boolean
 }
@@ -318,7 +321,16 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(FlagMark, { type: 'flag', name: 'Flag mark', category: 'annotation', anchors: 1, style: { lineColor: '#2962ff' } }),
   tool(PriceNote, { type: 'price_note', name: 'Price note', category: 'annotation', anchors: 2, hasText: true, style: { lineColor: '#2962ff', textColor: '#2962ff', fontSize: 14 } }),
   tool(Pin, { type: 'pin', name: 'Pin', category: 'annotation', anchors: 1, hasText: true, style: { lineColor: '#2962ff', textColor: '#dbdbdb', fontSize: 14, fillColor: '#2e2e2e', fillOpacity: 1 } }),
-  tool(Signpost, { type: 'signpost', name: 'Signpost', category: 'annotation', anchors: 1, hasText: true, style: { lineColor: '#2962ff', fontSize: 12 } }),
+  tool(Signpost, {
+    type: 'signpost',
+    name: 'Signpost',
+    category: 'annotation',
+    anchors: 1,
+    hasText: true,
+    inlineText: { clickToType: true, doubleClickOpensSettings: true, removeEmptyOnDeselect: true },
+    previewed: true,
+    style: { lineColor: '#2962ff', fontSize: 12 },
+  }),
   tool(TableNote, { type: 'table', name: 'Table', category: 'annotation', anchors: 1, style: { fillColor: '#0f0f0f', fillOpacity: 1, lineColor: '#575757', textColor: '#dbdbdb', fontSize: 14 } }),
 
   // Brushes & multi-point shapes

@@ -207,6 +207,8 @@ export interface IDrawing {
   grabbedAnchors(point: Point, viewport: Viewport): number[] | null
   /** Whether a point is on the drawing's words, where a click on the selected drawing types. */
   wordsAt(point: Point, viewport: Viewport): boolean
+  /** Move an anchor by its handle: to the point, unless the tool holds a handle to a line. */
+  dragAnchorTo(index: number, anchor: Anchor): void
 
   getViewport(): Viewport | null
   requestUpdate(): void

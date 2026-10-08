@@ -498,6 +498,51 @@ describe('a text typed on the chart', () => {
     vi.runOnlyPendingTimers()
     expect(r.handle.textEdit()?.id).toBe(drawing.id)
   })
+
+  /** What the layer attaches to the series and takes off it, by drawing id. */
+  const watchSeries = (r: Rig) => {
+    const attached: string[] = []
+    const detached: string[] = []
+    const series = r.fake.series as unknown as { attachPrimitive(p: { id: string }): void; detachPrimitive(p: { id: string }): void }
+    series.attachPrimitive = (p) => void attached.push(p.id)
+    series.detachPrimitive = (p) => void detached.push(p.id)
+    return { attached, detached }
+  }
+
+  it('a signpost previews where a click would place it while its tool is armed, and the click places it and opens its words', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const { attached, detached } = watchSeries(r)
+    r.handle.armTool('signpost')
+    r.container.dispatchEvent(pointer('pointermove', 200, 200))
+    r.container.dispatchEvent(pointer('pointermove', 220, 210))
+    // One preview, following the pointer, and never a kept drawing.
+    expect(attached).toHaveLength(1)
+    expect(r.handle.export()).toEqual([])
+    click(r.container, 220, 210)
+    expect(detached).toEqual([attached[0]])
+    expect(attached).toHaveLength(2)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.inline).toBeDefined()
+    r.handle.commitText('Here')
+    expect(r.handle.export().map((d) => [d.type, d.props?.text])).toEqual([['signpost', 'Here']])
+  })
+
+  it('a signpost’s preview goes as the pointer leaves the chart and as its tool is put down', () => {
+    const r = make()
+    const { attached, detached } = watchSeries(r)
+    r.handle.armTool('signpost')
+    r.container.dispatchEvent(pointer('pointermove', 200, 200))
+    r.container.dispatchEvent(new PointerEvent('pointerleave'))
+    expect(detached).toEqual([attached[0]])
+    r.container.dispatchEvent(pointer('pointermove', 200, 200))
+    expect(attached).toHaveLength(2)
+    r.handle.armTool(null)
+    expect(detached).toEqual(attached)
+    // No tool, no preview.
+    r.container.dispatchEvent(pointer('pointermove', 210, 200))
+    expect(attached).toHaveLength(2)
+  })
 })
 
 describe('the transient tools', () => {

@@ -160,13 +160,15 @@ describe('a signpost', () => {
     expect([d.props.position, Number(d.anchors[0]!.time)]).toEqual([25, 170])
   })
 
-  it('writes its words in the ink that reads on its plate', () => {
+  it('outlines its plate and writes its words in the chart’s inks, and fills the plate in its stroke color with its emoji shown', () => {
     const d = post()
     d.updateAnchor(0, at(150, 250))
-    const plate = named(painted(d), 'fill').at(-1)!
-    expect(plate.fillStyle).toBe('#2962ff')
-    expect(named(painted(d), 'fillText').map((c) => [c.args[0], c.fillStyle])).toEqual([['Hi', '#ffffff']])
+    expect(named(painted(d), 'fill')).toEqual([])
+    expect(named(painted(d), 'fillText').map((c) => [c.args[0], c.fillStyle])).toEqual([['Hi', '#0f0f0f']])
+    d.applyProps({ showImage: true })
+    expect(named(painted(d), 'fill').map((c) => c.fillStyle)).toEqual(['#2962ff'])
+    expect(named(painted(d), 'fillText').at(-1)!.fillStyle).toBe('#ffffff')
     d.updateStyle({ lineColor: '#ffeb3b' })
-    expect(named(painted(d), 'fillText')[0]!.fillStyle).toBe('#000000')
+    expect(named(painted(d), 'fillText').at(-1)!.fillStyle).toBe('#000000')
   })
 })

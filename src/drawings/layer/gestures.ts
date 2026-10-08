@@ -15,7 +15,7 @@
 // The handlers close over one context the attach module builds, so the state they share (the
 // draft, the drag, the armed tool) has one owner.
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
-import { magnetSnap, viewportOf, type Anchor, type IDrawing, type Viewport } from '../../internal/drawings/index'
+import { magnetSnap, toolRegistry, viewportOf, type Anchor, type IDrawing, type Viewport } from '../../internal/drawings/index'
 import { drawingTools, type DrawingTool } from '../tools'
 import { editRefused } from '../lockModel'
 import { toolAfterPlacement } from '../cursorModel'
@@ -123,6 +123,8 @@ export interface GestureContext {
   endTextEdit(): void
   /** Ask for the selected drawing's settings. */
   openSettings(): void
+  /** The gestures hear here that the armed tool changed; they set it as they bind. */
+  toolChanged?: () => void
   setHovered(id: string | null): void
   persist(): void
   changed(): void
@@ -323,8 +325,41 @@ export function bindGestures(ctx: GestureContext): () => void {
     menuShut = null
   }
 
+  /** The drawing a click would place, under the pointer while a tool that previews is armed: a
+   *  transient drawing, never the viewer's. */
+  let preview: IDrawing | null = null
+  const dropPreview = (): void => {
+    if (!preview) return
+    ctx.transient.delete(preview.id)
+    manager.remove(preview.id)
+    preview = null
+  }
+  const followPreview = (p: Px): void => {
+    const tool = ctx.armed()
+    if (!tool || ctx.draft || ctx.drag || ctx.locked() || !toolRegistry.get(tool)?.previewed) {
+      dropPreview()
+      return
+    }
+    const anchor = snappedAnchorAt(p, false)
+    if (!anchor) return
+    // A preview of another tool, or one a cleared screen took away, makes room for a new one.
+    if (preview && (preview.type !== tool || !manager.get(preview.id))) dropPreview()
+    if (preview) {
+      preview.updateAnchor(0, anchor)
+      return
+    }
+    const def = drawingTools.get(tool)
+    const drawing = def ? create(def, [anchor]) : null
+    if (!drawing) return
+    preview = drawing
+    ctx.transient.add(drawing.id)
+    manager.add(drawing)
+  }
+  ctx.toolChanged = dropPreview
+
   const onDown = (e: PointerEvent): void => {
     reopenMenu()
+    dropPreview()
     // A right-click while a drawing is half placed takes it back and puts the tool down.
     if (e.button === 2 && ctx.draft) {
       manager.remove(ctx.draft.drawing.id)
@@ -547,7 +582,7 @@ export function bindGestures(ctx: GestureContext): () => void {
           if (other) ({ x, y } = constrain45(other, { x, y }))
         }
         const anchor = snappedAnchorAt({ x, y }, e.shiftKey)
-        if (anchor) drag.drawing.updateAnchor(drag.anchorIndex, anchor)
+        if (anchor) drag.drawing.dragAnchorTo(drag.anchorIndex, anchor)
         showPoint(anchor)
         return
       }
@@ -596,10 +631,15 @@ export function bindGestures(ctx: GestureContext): () => void {
    *  container rather than the window, so a pointer over the toolbar or the host page reports
    *  nothing. */
   const onHover = (e: PointerEvent): void => {
+    // A mouse previews what a click would place; a finger presses where it means to.
+    if (ctx.armed() && e.pointerType !== 'touch') followPreview(localXY(e))
     if (ctx.drag || ctx.draft || ctx.armed()) return
     ctx.setHovered(manager.hitTest(localXY(e))?.id ?? null)
   }
-  const onLeave = (): void => ctx.setHovered(null)
+  const onLeave = (): void => {
+    dropPreview()
+    ctx.setHovered(null)
+  }
 
   /** Pixels of travel that turn an opening press into a drag, a finger's or a pointer's. */
   const placeSlop = (): number => (touching ? TOUCH_PLACE_DRAG_PX : PLACE_DRAG_PX)
@@ -776,6 +816,8 @@ export function bindGestures(ctx: GestureContext): () => void {
   window.addEventListener('pointercancel', onCancel)
   return () => {
     reopenMenu()
+    dropPreview()
+    ctx.toolChanged = undefined
     container.removeEventListener('pointerdown', onDown)
     container.removeEventListener('touchstart', onTouchStart)
     container.removeEventListener('pointermove', onHover)

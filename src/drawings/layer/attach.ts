@@ -247,6 +247,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     if (armed === type) return
     armed = type
     if (!type) presetProps = null
+    // A preview of the tool that was armed goes with it.
+    ctx.toolChanged?.()
     // Pan and zoom freeze while a tool is armed: a drag must draw, not scroll the chart.
     lockPointer(!!type)
     events.onToolChange?.(type)

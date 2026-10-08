@@ -709,6 +709,11 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     return this.testHit(point, viewport)
   }
 
+  /** Move an anchor by its handle: to the point, unless the tool holds a handle to a line. */
+  dragAnchorTo(index: number, anchor: Anchor): void {
+    this.updateAnchor(index, anchor)
+  }
+
   /** The words this drawing shows, in lines: the open edit's draft or the committed words. The
    *  placeholder stands in their place only while both are empty, so words emptied during an edit
    *  show nothing until the edit ends. */

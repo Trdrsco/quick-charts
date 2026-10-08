@@ -1002,11 +1002,23 @@ export type SignpostProps = TextProps & {
   savedLook: SavedLook
 }
 
+/** How far a signpost's post stops short of its bar, the room its plate keeps past its words across
+ *  and down, its corners' radius, and its post's ink. */
+const POST_GAP = 4
+const PLATE_ROOM_ACROSS = 18
+const PLATE_ROOM_DOWN = 11
+const PLATE_RADIUS = 6
+const POST_INK = '#808080'
+
 /**
- * Signpost: a plate on a pole, planted on a bar. The pole stands on the bar's high, or on its low
- * for a plate below the bar, and the plate stands its position's share of the pane's height away,
- * so it keeps its height over the bar as the price scale moves. The plate is the drawing's stroke
- * color, its words in white or black, whichever reads on it.
+ * Signpost: a plate on a post, planted on a bar. The plate's bottom-centre is the signpost's
+ * point, standing its position's share of the pane's height above the bar's high or below its low,
+ * so it keeps its height over the bar as the price scale moves. A one pixel post runs from four
+ * pixels off the bar to the plate. The plate is an outline in the chart's edge ink with corners
+ * rounded at 6, its words centred in the chart's text ink on lines a quarter taller than their
+ * size, so it is its widest line and 18px wide and 11px more than its lines tall, growing up. With
+ * its emoji shown, the plate is the drawing's stroke color and leads with the emoji. Selected, it
+ * shows a square handle on its point, which moves the plate up and down over its bar.
  */
 export class Signpost extends Drawing<SignpostProps> {
   readonly type = 'signpost'
@@ -1130,65 +1142,127 @@ export class Signpost extends Drawing<SignpostProps> {
     super.updateAnchor(0, stood.anchor)
   }
 
-  /** The plate's box, its contents' sizes and its pole's ends. */
-  protected plate(viewport: Viewport): { box: Box; foot: Point; top: Point; emoji: number; words: { width: number; height: number } } | null {
+  /** The plate's box and its words, its emoji, and its post's column and ends. */
+  protected plate(viewport: Viewport): { box: Box; words: WordsPlace; emoji: { x: number; y: number; size: number } | null; post: { x: number; from: number; to: number } | null } | null {
     const stand = this.stand(viewport)
     if (!stand) return null
+    const { block, placeholder } = this.shownWords(lineMeasure(this.style))
+    const shown = placeholder ?? block
+    const lineHeight = Math.round(this.style.fontSize * 1.25)
     const emoji = this.props.showImage && this.props.emoji ? Math.round(this.style.fontSize * 1.4) : 0
-    const words = this.props.text ? measureTextBlock(this.props.text, this.style) : { width: 0, height: 0 }
-    const gap = emoji && words.width ? 4 : 0
-    const width = Math.max(8, emoji + gap + words.width) + 12
-    const height = Math.max(emoji, words.height || Math.round(this.style.fontSize * 1.35)) + 8
-    const box = { x: stand.plate.x - width / 2, y: stand.above ? stand.plate.y - height : stand.plate.y, width, height }
-    return { box, foot: stand.foot, top: stand.plate, emoji, words }
+    const gap = emoji && shown.width ? 4 : 0
+    const content = emoji + gap + shown.width
+    const textHeight = shown.lines.length * lineHeight
+    const inner = Math.max(emoji, textHeight)
+    const width = Math.round(content + PLATE_ROOM_ACROSS)
+    const height = inner + PLATE_ROOM_DOWN
+    const ax = Math.round(stand.plate.x)
+    const ay = Math.round(stand.plate.y)
+    // The plate's bottom row is its point's.
+    const box = { x: ax - Math.floor(width / 2), y: ay - height + 1, width, height }
+    const start = ax - content / 2
+    const top = box.y + PLATE_ROOM_DOWN / 2
+    const words = { box, x: start + emoji + gap, y: top + (inner - textHeight) / 2, lineHeight, block, placeholder }
+    const footY = Math.round(stand.foot.y)
+    const span = stand.above ? { from: ay + 1, to: footY - POST_GAP + 1 } : { from: footY + POST_GAP, to: box.y }
+    return {
+      box,
+      words,
+      emoji: emoji ? { x: start, y: top + (inner - emoji) / 2, size: emoji } : null,
+      post: span.to > span.from ? { x: ax + 0.5, ...span } : null,
+    }
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    if (this.props.savedLook) {
+    if (this.props.savedLook && !this.textDraft) {
       this.paintSavedLook(ctx, viewport)
       return
     }
     const plate = this.plate(viewport)
     if (!plate) return
-    const { box } = plate
-    const color = this.style.lineColor
+    const { box, words } = plate
+    const inks = this.inks()
+    const filled = !!plate.emoji
     ctx.save()
     ctx.setLineDash([])
-    ctx.strokeStyle = color
-    ctx.fillStyle = color
     ctx.lineWidth = 1
+    if (plate.post) {
+      ctx.strokeStyle = POST_INK
+      ctx.beginPath()
+      ctx.moveTo(plate.post.x, plate.post.from)
+      ctx.lineTo(plate.post.x, plate.post.to)
+      ctx.stroke()
+    }
+    // The outline's pixel rides the plate's edge, so the path stands half a pixel in.
     ctx.beginPath()
-    ctx.moveTo(plate.foot.x, plate.foot.y)
-    ctx.lineTo(plate.top.x, plate.top.y)
+    ctx.roundRect(box.x + 0.5, box.y + 0.5, box.width - 1, box.height - 1, PLATE_RADIUS)
+    if (filled) {
+      ctx.fillStyle = this.style.lineColor
+      ctx.fill()
+    }
+    ctx.strokeStyle = filled ? this.style.lineColor : inks.edge
     ctx.stroke()
-    ctx.beginPath()
-    ctx.arc(plate.foot.x, plate.foot.y, 2.5, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.beginPath()
-    ctx.roundRect(box.x, box.y, box.width, box.height, 4)
-    ctx.fill()
     ctx.restore()
-    let x = box.x + 6
     if (plate.emoji) {
-      const y = box.y + (box.height - plate.emoji) / 2
+      const { x, y, size } = plate.emoji
       const url = this.glyphUrl(this.props.emoji)
       const art = url ? glyphArtwork(url, () => this.requestUpdate()) : null
-      if (art) ctx.drawImage(art, x, y, plate.emoji, plate.emoji)
+      if (art) ctx.drawImage(art, x, y, size, size)
       else {
         ctx.save()
-        ctx.font = `${plate.emoji}px ui-sans-serif, system-ui, sans-serif`
+        ctx.font = `${size}px ui-sans-serif, system-ui, sans-serif`
         ctx.textBaseline = 'top'
         ctx.textAlign = 'left'
         ctx.fillStyle = '#000000'
         ctx.fillText(this.props.emoji, x, y)
         ctx.restore()
       }
-      x += plate.emoji + 4
     }
-    if (this.props.text) {
-      paintTextBlock(ctx, this.props.text, { x, y: box.y + (box.height - plate.words.height) / 2 }, { ...this.style, textColor: inkOn(color) }, { padding: 0 })
-    }
+    paintTextEntry(ctx, {
+      x: words.x,
+      y: words.y,
+      width: (words.placeholder ?? words.block).width,
+      lineHeight: words.lineHeight,
+      font: fontOf(this.style),
+      color: filled ? inkOn(this.style.lineColor) : inks.text,
+      align: 'center',
+      block: words.block,
+      placeholder: words.placeholder ? { block: words.placeholder, alpha: PLACEHOLDER_ALPHA } : null,
+      draft: this.textDraft,
+      measure: lineMeasure(this.style),
+    })
   }
+
+  override textFrame(viewport: Viewport): TextEditFrame | null {
+    const plate = this.plate(viewport)
+    return plate ? wordsFrame(plate.words, fontOf(this.style), 'center') : null
+  }
+
+  /** The signpost's handle is square. */
+  override handleShape(): 'circle' | 'square' {
+    return 'square'
+  }
+
+  /** Its handle moves the plate up and down over its bar: the bar stays. */
+  override dragAnchorTo(index: number, anchor: Anchor): void {
+    const current = this.anchors[index]
+    this.updateAnchor(index, current && !this.props.savedLook ? { time: current.time, price: anchor.price } : anchor)
+  }
+
+  /** The words are the plate's. */
+  override wordsAt(point: Point, viewport: Viewport): boolean {
+    if (this.props.savedLook) return this.testHit(point, viewport)
+    const plate = this.plate(viewport)
+    return !!plate && inBox(point, plate.box)
+  }
+
+  /** Over the plate of a selected signpost the pointer reads as typing, which a press there does. */
+  protected override cursorAt(point: Point, viewport: Viewport): string | null {
+    return this.state === 'selected' && this.wordsAt(point, viewport) ? 'text' : null
+  }
+
+  /** An empty signpost shows its placeholder on its own plate, so it needs no hint above it. */
+  override paintTextHint(): void {}
 
   testHit(point: Point, viewport: Viewport): boolean {
     if (this.props.savedLook) {
@@ -1197,7 +1271,8 @@ export class Signpost extends Drawing<SignpostProps> {
     }
     const plate = this.plate(viewport)
     if (!plate) return false
-    return inBox(point, plate.box) || distanceToSegment(point, plate.foot, plate.top) <= 5
+    if (inBox(point, plate.box)) return true
+    return !!plate.post && Math.abs(point.x - plate.post.x) <= 5 && point.y >= plate.post.from - 2 && point.y <= plate.post.to + 2
   }
 }
 
