@@ -1,6 +1,8 @@
 # @trdrs/quickcharts
 
-## Unreleased
+## 3.0.0
+
+A search scope the viewer turns on and off, one box for the chart's dialog fields, and a drawing dialog that follows its drag. Each `SearchScope` carries the search within it, a required `search`, so a host that offers a scope upgrades as the guide below says. No public name changes.
 
 `search.scope` offers a part of the catalog the viewer can limit the symbol search to, as a toggle chip at the far edge of the class strip wearing the scope's `mark` and `label`, and a `SearchScope` carries the search within it: `search`, which is required, `recents` and `on`. The chip is on each time the dialog opens, unless the scope sets `on: false`. While it is on, the dialog searches with the scope's `search`, which the chart's search controller asks exactly as it asks the datafeed's (the query after the debounce, the selected classes, a page at a time, and a newer question retiring an older one's answer), and the list leads with the scope's `recents`, or with none. While it is off, the dialog searches the datafeed and leads with the chart's recents. Pressing the chip asks the other source the query and classes the dialog holds, and an answer that arrives for the state the viewer left is dropped. A pick is recorded in `search.recents` either way, and in the scope's `recents` while the chip is on. The chip is a toggle button (`aria-pressed`) in the strip's tab order after the class chips, which form a labelled group of their own beside it, and its accessible name says what a press does in every built-in language (`search.limitToScope`). The compare dialog, adding a comparison or changing one, offers no scope.
 
