@@ -1,5 +1,5 @@
 {
-  "tarSha256": "a0d895fa741e1632b0094d548855ce94e10f7237d5d680f9cdf3a9ba427e085b",
+  "tarSha256": "14d322f436d4166f615f501701356ea1bf3c8bb8b3af565d43a0cb943512b917",
   "files": {
     "CHANGELOG.md": "b080732b81cda6410e88fd12376b46d37a5073ff3ee62e0633a1f137c0e63cb7",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -49,8 +49,8 @@
     "dist/id_ID-U2UY7QZL.js": "d328b5cbc81ae4ddc89fc006e6133d1c97abee952086c29bf2cab2eece80a6bc",
     "dist/id_ID-U2UY7QZL.js.map": "a45e957d25e0244f7cfc77230bbc47d3c063713c1c31c3502a75d73807710b5e",
     "dist/index.d.ts": "c8bf9e81b7db6b255582961141f8d48d12af1e3605ff5d7b660d1a976d26a5ac",
-    "dist/index.js": "253a01b20de597122c87529e33ad2ec287d6c366a935bd5150b49b99f226a9d3",
-    "dist/index.js.map": "656f054d1bb0ffb6cb9bcdf46f0a7f9ca12afb6551a2ee9cd7a1716a1f7ca313",
+    "dist/index.js": "831c80ea4d8242e6aea92df12aab24878a988881b7cdc52eb4b4f3772ee77a6e",
+    "dist/index.js.map": "006187e56f2f567771fa46ba4353351dc27f93224fce108e5bef2745b563a315",
     "dist/it-GWM5O23U.js": "48f4837916b13ed456008003acfb808d1b5a76b1ef99682d4737573cb545abc9",
     "dist/it-GWM5O23U.js.map": "4b46d7ded2aa864c293767aaee1767c1163aa051090bfb669f8b25db47091712",
     "dist/ja-EBOCZODG.js": "720d482b641298727b993391e1a97db0d77f493e45bec1aaecef1d786d4130e0",
@@ -63,7 +63,7 @@
     "dist/pl-2BKELKNG.js.map": "5f3adb06fee287ab7208132130e01c9faa4f04320d3b87dcefef4de810e545ee",
     "dist/pt-JUJVMTRL.js": "a679de1be48cbbb31ceec9b647b23a6034d0756608bb82a1e1cfcbab4ee0e395",
     "dist/pt-JUJVMTRL.js.map": "36e41ea460631ab07665bfb5e44f256f3cd8daf488d49f7233b001da50f126c2",
-    "dist/quickcharts.css": "50845286fc4866b3cdf6c223b8340c9652aed23a40e596624a43fe61675b6770",
+    "dist/quickcharts.css": "e50338724ada74e91a22c7e0268b584d0c9cdd8541fadd4596612dca6a802856",
     "dist/resources-C0cYryO9.d.ts": "729dc0178d1339273c71a1cd46d30692c74c00f38dead5e86f7406e46fd03daa",
     "dist/rest-openapi.json": "ae2df6fd409291c3f812974bea560ca6414ac15f0686d0dcd8c52b3e3d9fb0c1",
     "dist/ru-QXED7VQS.js": "126e6e0b95e12c4a1c49322d457d366bbe1a12e735ad9abb2ad61fdf1cea79b3",

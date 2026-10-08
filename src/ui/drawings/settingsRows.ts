@@ -1334,7 +1334,7 @@ function vwapInputs(ctx: RowsContext): HTMLElement[] {
     ])
   return [
     sectionTitle(t('drawing.bandsSettings')),
-    row(t('drawing.bandsMode'), dropdown(icons, box, t('drawing.bandsMode'), ['stdev', 'percent'] as const, props.bandsMode as 'stdev', label(t, BANDS_MODE_LABEL), (v) => ctx.patchProps({ bandsMode: v }), 'medium')),
+    row(t('drawing.bandsMode'), dropdown(icons, box, t('drawing.bandsMode'), ['stdev', 'percent'] as const, props.bandsMode as 'stdev', label(t, BANDS_MODE_LABEL), (v) => ctx.patchProps({ bandsMode: v }))),
     band(0),
     band(1),
     band(2),

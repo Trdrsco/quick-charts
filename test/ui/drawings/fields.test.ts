@@ -6,6 +6,7 @@ import { createChartI18n } from '../../../src/i18n'
 import { checkRow, dialogTabs, dropdown, lineEndButton, multiDropdown, numberInput, row, strokeSegments, swatchButton, toggleRow, visibilityRangeRow } from '../../../src/ui/drawings/fields'
 import { createColorPalette, createCustomColorPicker, createOpacitySlider, hexOf, hexToHsv, hsvToHex, SWATCH_BLOCKS } from '../../../src/ui/controls/color'
 import { ownIcons } from '../../ownIcons'
+import { authoredStylesheet } from '../../theme/stylesheetSource'
 
 const t = createChartI18n().t
 const icons = ownIcons()
@@ -122,6 +123,26 @@ describe('rows and toggles', () => {
     expect(reports).toEqual([['price', true], ['bars', false], ['price', false]])
     expect(field.textContent).toBe('Hidden')
     expect(host.querySelector('[role="menu"]')).not.toBeNull()
+  })
+
+  it("a list of choices stands at least as wide as its button and grows to its longest choice; a list of switches is the button's width", () => {
+    const host = box()
+    const choices = dropdown(icons, host, 'Source', ['close', 'ohlc4'] as const, 'close', (v) => (v === 'close' ? 'Close' : '(O + H + L + C)/4'), () => undefined)
+    const switches = multiDropdown(icons, host, { label: 'Extend', empty: "Don't extend", choices: [{ label: 'Extend left line', checked: false, onChange: () => undefined }] })
+    host.append(choices, switches)
+    for (const b of [choices, switches]) Object.defineProperty(b, 'offsetWidth', { configurable: true, value: 100 })
+    choices.click()
+    const listbox = host.querySelector<HTMLElement>('[role="listbox"]')!
+    expect(listbox.style.minWidth).toBe('100px')
+    expect(listbox.style.width).toBe('')
+    choices.click()
+    switches.click()
+    const menu = host.querySelector<HTMLElement>('[role="menu"]')!
+    expect(menu.style.width).toBe('100px')
+    expect(menu.style.minWidth).toBe('')
+    // The list's own width is its content's: the floor and the switches' width are the button's.
+    const sheet = authoredStylesheet().replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(sheet).toMatch(/\.qc-drawing-menu\.qc-drawing-select-list\s*\{[^}]*width:\s*max-content/)
   })
 
   it('a list button ends its face with the 18px chevron, hidden from a reader; a line end wears its mark alone', () => {

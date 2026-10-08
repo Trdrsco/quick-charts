@@ -129,9 +129,11 @@
 
 /* A list's rows: 32px, the words at 14 on 18 and 8px in; a row with a mark carries the 28px mark 4px
  * in and its name 6px after it; a row with a checkbox carries the 18px box in a 28px cell 4px in and
- * its name 4px after the cell. The chosen row inverts. A list button's list is as wide as the
- * button, however narrow. */
+ * its name 4px after the cell. The chosen row inverts. A list button's list is as wide as its
+ * longest row, never narrower than the button that opened it (the button sets that floor, and a
+ * list of switches is held to the button's own width). */
 [data-qc-theme] .qc-drawing-menu.qc-drawing-select-list {
+  width: max-content;
   min-width: 0;
 }
 

@@ -95,10 +95,12 @@ function listButton(icons: IconResolver, label: string, text: string, width: Sel
   return b
 }
 
-/** A list the button opens stands as wide as the button, directly under it. */
+/** A list the button opens hangs flush under it. A list of switches stands as wide as the button; a
+ *  list of choices stands at least as wide as the button and as wide as its longest choice, so no
+ *  choice is cut short. */
 function openList(box: HTMLElement, anchor: HTMLButtonElement, list: HTMLElement, rows: () => HTMLElement[], onClose: () => void): () => void {
   list.classList.add('qc-drawing-select-list')
-  if (anchor.offsetWidth > 0) list.style.width = `${anchor.offsetWidth}px`
+  if (anchor.offsetWidth > 0) list.style[list.getAttribute('role') === 'menu' ? 'width' : 'minWidth'] = `${anchor.offsetWidth}px`
   const unkeys = menuKeys(list, rows)
   return openPopover(box, anchor, list, 'below', () => {
     unkeys()
@@ -107,8 +109,8 @@ function openList(box: HTMLElement, anchor: HTMLButtonElement, list: HTMLElement
 }
 
 /** One value of a few, as a list button in the chart's field box: the value is the id the drawing
- *  stores, the label is what the row reads. The list opens under the button, as wide as it, with
- *  the current value inverted, and closes on a pick. */
+ *  stores, the label is what the row reads. The list opens flush under the button, at least as wide
+ *  as it and as wide as its longest choice, with the current value inverted, and closes on a pick. */
 export function dropdown<T extends string>(
   icons: IconResolver,
   box: HTMLElement,
