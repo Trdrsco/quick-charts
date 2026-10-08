@@ -152,11 +152,48 @@ for (const mode of THEME_MODES) {
       expect(filled.getPropertyValue('margin-inline-start')).toBe('12px')
     })
 
+    it('stands over an undimmed chart, and opens and leaves at once', () => {
+      const dialog = trendLineDialogIn(mode)
+      const scrim = dialog.parentElement!
+      expect(scrim.classList.contains('qc-dialog-scrim')).toBe(true)
+      expect(scrim.dataset.qcVeil).toBe('none')
+      expect(painted(scrim).backgroundColor).toBe('transparent')
+      // No motion state: the box is shown as it opens, and nothing fades or grows.
+      expect(scrim.dataset.state).toBeUndefined()
+      expect(painted(dialog).opacity).not.toBe('0')
+    })
+
+    it('hangs the Template menu on the backdrop under its button, sized to its words, the button ringed while it is open', () => {
+      const dialog = trendLineDialogIn(mode)
+      const button = dialog.querySelector<HTMLButtonElement>('.qc-drawing-template-button')!
+      button.click()
+      expect(button.getAttribute('aria-expanded')).toBe('true')
+      const ringed = painted(button)
+      expect(ringed.borderTopColor).toBe(theme['state.focusRing'])
+      expect(ringed.boxShadow).toBe(`inset 0 0 0 1px ${theme['state.focusRing']}`)
+      const panel = dialog.parentElement!.querySelector<HTMLElement>('.qc-drawing-popover--list')!
+      expect(dialog.contains(panel)).toBe(false)
+      const look = painted(panel)
+      expect(look.borderTopLeftRadius).toBe('10px')
+      expect(look.backgroundColor).toBe(theme['overlay.surface'])
+      const menu = painted(panel.querySelector('[role="menu"]')!)
+      expect(menu.minWidth).toBe('0')
+      expect(menu.width).toBe('max-content')
+      expect(menu.paddingTop).toBe('6px')
+      expect(menu.paddingLeft).toBe('6px')
+      const row = painted(panel.querySelector('[role="menuitem"]')!)
+      expect(row.height).toBe('32px')
+      expect(row.paddingLeft).toBe('8px')
+      expect(row.lineHeight).toBe('18px')
+      expect(row.borderTopLeftRadius).toBe('6px')
+      expect(row.color).toBe(theme['text.primary'])
+    })
+
     it('opens its lists on a 10px corner under the control, the chosen row inverted', () => {
       const dialog = trendLineDialogIn(mode)
       const select = [...dialog.querySelectorAll<HTMLButtonElement>('.qc-drawing-select')].find((b) => b.getAttribute('role') === 'combobox')!
       select.click()
-      const panel = dialog.querySelector<HTMLElement>('.qc-drawing-popover--list')!
+      const panel = dialog.parentElement!.querySelector<HTMLElement>('.qc-drawing-popover--list')!
       expect(painted(panel).borderTopLeftRadius).toBe('10px')
       const chosen = painted(panel.querySelector('[aria-selected="true"]')!)
       expect(chosen.backgroundColor).toBe(theme['control.on'])

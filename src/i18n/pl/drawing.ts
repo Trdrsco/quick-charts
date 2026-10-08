@@ -135,7 +135,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.tabCoordinates': 'Coordinates',
   'drawing.tabVisibility': 'Visibility',
   'drawing.template': 'Template',
-  'drawing.saveAs': 'Save as...',
+  'drawing.saveAs': 'Save as…',
   'drawing.applyDefaults': 'Apply defaults',
   'drawing.cancel': 'Cancel',
   'drawing.ok': 'Ok',

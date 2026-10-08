@@ -94,7 +94,7 @@ export interface RowsContext {
   t: ChartTranslate
   /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
   icons: IconResolver
-  /** The chrome box popovers stay within. */
+  /** Where the rows' lists and panels stand: the dialog's backdrop, so they may hang past its edge. */
   box: HTMLElement
   drawing: IDrawing
   tab: SettingsTab

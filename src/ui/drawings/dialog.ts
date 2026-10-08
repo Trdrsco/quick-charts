@@ -22,6 +22,10 @@ export interface DialogOptions {
   /** A stable role name for tests and hosts, written as `data-role`. */
   role: string
   width?: number
+  /** Whether the backdrop dims what stands behind the dialog, and whether the dialog opens and
+   *  closes on the modal motion. Both on unless the surface turns them off. */
+  veil?: boolean
+  motion?: boolean
   /** The dialog has begun closing and takes no more input, before its exit motion finishes. */
   onClosing?(): void
   /** The dialog has left the page. */
@@ -39,6 +43,9 @@ export interface DialogHandle {
   footer: HTMLElement
   /** The box itself, for a caller that sizes or classes it. */
   box: HTMLElement
+  /** Where the dialog's own lists and panels stand: the backdrop the box stands on, which covers
+   *  the viewport, so a list may hang past the box's edge. */
+  layer: HTMLElement
   /** Close with the modal motion, or at once with `animate: false`. */
   close(options?: { animate?: boolean }): void
 }
@@ -87,6 +94,8 @@ export function openDialog(options: DialogOptions): DialogHandle {
     className: 'qc-drawing-dialog',
     role: options.role,
     ...(options.width === undefined ? {} : { width: options.width }),
+    ...(options.veil === undefined ? {} : { veil: options.veil }),
+    ...(options.motion === undefined ? {} : { motion: options.motion }),
     build(element, dialog) {
       box = element
       closeBox = () => dialog.close()
@@ -100,9 +109,10 @@ export function openDialog(options: DialogOptions): DialogHandle {
     onClosing: () => {
       stopDrag()
       if (box) closeOverlays(box)
+      if (box?.parentElement) closeOverlays(box.parentElement)
       options.onClosing?.()
     },
     onClose: () => options.onClose?.(),
   })
-  return { header, heading, body, footer, box: modal.element, close: modal.close }
+  return { header, heading, body, footer, box: modal.element, layer: modal.element.parentElement ?? modal.element, close: modal.close }
 }

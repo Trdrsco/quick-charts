@@ -68,7 +68,8 @@ function signature(page: HTMLElement): string[] {
 /** The choices a list button offers, in their order. */
 function choices(dialog: HTMLElement, button: HTMLElement): string[] {
   button.click()
-  const list = dialog.querySelector<HTMLElement>('.qc-drawing-popover:last-of-type [role="listbox"], .qc-drawing-popover:last-of-type [role="menu"]')!
+  // A list hangs on the dialog's backdrop, past the box.
+  const list = dialog.parentElement!.querySelector<HTMLElement>('.qc-drawing-popover:last-of-type [role="listbox"], .qc-drawing-popover:last-of-type [role="menu"]')!
   const out = [...list.querySelectorAll<HTMLElement>('[role="option"], [role="menuitemcheckbox"]')].map((o) => o.textContent ?? '')
   button.click()
   return out
@@ -229,13 +230,13 @@ describe('what the rows write', () => {
     const { dialog, drawing, page } = rig('trend_line')
     const stats = page().querySelectorAll<HTMLElement>('.qc-drawing-select')[1]!
     stats.click()
-    const items = [...dialog.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
+    const items = [...dialog.parentElement!.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
     items[2]!.click()
     items[5]!.click()
     expect(drawing.props.showPipsChange).toBe(true)
     expect(drawing.props.showAngle).toBe(true)
     expect(stats.textContent).toBe('Change in pips, angle')
-    expect(dialog.querySelector('[role="menu"]')).not.toBeNull()
+    expect(dialog.parentElement!.querySelector('[role="menu"]')).not.toBeNull()
   })
 
   it('switches a background and a middle line on and off, keeping their colors', () => {

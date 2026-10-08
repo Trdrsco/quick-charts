@@ -132,6 +132,12 @@
   pointer-events: auto;
 }
 
+/* A dialog that edits what it stands over leaves it undimmed: the backdrop still takes the press
+ * that closes the dialog, and paints nothing. */
+[data-qc-theme] .qc-dialog-scrim[data-qc-veil='none'] {
+  background: transparent;
+}
+
 [data-qc-theme] .qc-dialog {
   display: flex;
   flex-direction: column;
