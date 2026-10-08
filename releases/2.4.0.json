@@ -43,5 +43,14 @@
     "screenReaderSupportMeasured": false,
     "safariDeviceSupportMeasured": false,
     "npmPublishApproval": "left to the owner, who approves the npm-publish environment himself"
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37542043342",
+    "npmPublishApproval": "approved from the joeydangelo account after the validation job passed, with the comment \"Approved by Joey: publish Quick Charts 2.4.0.\"",
+    "registryIntegrity": "sha512-pKyrt3M2BVCuOeAW4pf/ZMSfBT+Frh4r7qh46V7IREapVB799cj5b3IlJpDvnt6xvQuwNJNtUnBXlkWMgkjmcw==",
+    "registryTarballSha256": "431a57d32833b9d0c32f9d11be78d998ba23d878b05d9fb0dfadfb47148bb847",
+    "provenanceLogIndex": 3118329390,
+    "provenance": "SLSA v1 provenance names refs/tags/v2.4.0, .github/workflows/release.yml and commit fc228cc7d1e25ef8e9c744ce26344301c72a2c2c, with the registry tarball's sha512 as its subject",
+    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation"
   }
 }
