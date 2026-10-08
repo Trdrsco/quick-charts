@@ -181,15 +181,10 @@
   cursor: default;
 }
 
-/* A value the field refuses turns its edge the invalid color. A native constraint, a number past its
- * bounds or off its step, says so once the viewer has left the field, so a number on its way to a
- * valid one never turns red while it is typed. `:user-invalid` stands in a rule of its own, so a
- * browser that does not read it drops that rule alone. */
+/* A value the chart refuses turns the field's edge the invalid color, and only that: the chart says
+ * so with `aria-invalid`. A number past a field's bounds or off its step is a value the chart clamps
+ * or rounds, not one it refuses, so the field never turns red for it. */
 [data-qc-theme] .qc-field[aria-invalid='true'] {
-  border-color: var(--qc-control-fieldInvalid);
-}
-
-[data-qc-theme] .qc-field:user-invalid:not(:focus) {
   border-color: var(--qc-control-fieldInvalid);
 }
 

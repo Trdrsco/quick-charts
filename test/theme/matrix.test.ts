@@ -58,7 +58,7 @@ const SURFACES: readonly Surface[] = [
     name: 'fields',
     files: ['quickcharts.css', 'chrome.css', 'menu.css', 'drawings-fields.css', 'search.css', 'timeframe.css'],
     classes: ['qc-field', 'qc-select', 'qc-select-chevron', 'qc-name-box', 'qc-field-row', 'qc-drawing-input', 'qc-drawing-select', 'qc-drawing-hex-wrap', 'qc-drawing-opacity-readout', 'qc-search-input', 'qc-tf-composer'],
-    states: [STATE.placeholder, ':focus', ':focus-within', STATE.hover, ':disabled', '[readonly]', "[aria-invalid='true']", ':user-invalid', STATE.expanded],
+    states: [STATE.placeholder, ':focus', ':focus-within', STATE.hover, ':disabled', '[readonly]', "[aria-invalid='true']", STATE.expanded],
   },
   { name: 'settings menu', files: ['settings.css'], classes: ['qc-settings-menu', 'qc-settings-row'], states: [] },
   { name: 'legend', files: ['quickcharts.css'], classes: ['qc-legend', 'qc-legend-row', 'qc-legend-action', 'qc-session-dot'], states: ["[data-qc-hidden='true']", "[data-qc-session='open']", "[data-qc-session='closed']"] },

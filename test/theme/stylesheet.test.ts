@@ -190,14 +190,11 @@ describe('the scoped stylesheet', () => {
     expect(ring.body).toMatch(/box-shadow: inset 0 0 0 1px var\(--qc-state-focusRing\)/)
     const nameBox = rules.find((rule) => rule.selectors.includes('[data-qc-theme] .qc-name-box:focus-within'))!
     expect(nameBox.body).toMatch(/box-shadow: inset 0 0 0 1px var\(--qc-state-focusRing\)/)
-    // A browser that cannot read a selector drops the whole rule it stands in, so the native refused
-    // state shares a rule with nothing, and holds off while the field has the keyboard.
-    const refused = rules.filter((rule) => rule.selectors.some((selector) => selector.includes(':user-invalid')))
-    expect(refused.length).toBeGreaterThan(0)
-    for (const rule of refused) {
-      expect(rule.selectors).toHaveLength(1)
-      expect(rule.selectors[0]).toContain(':not(:focus)')
-    }
+    // Only a value the chart refuses turns a field red, and the chart says so with `aria-invalid`; a
+    // native constraint (a bound or a step the chart clamps or rounds to) never paints the edge.
+    expect(rules.filter((rule) => rule.selectors.some((selector) => /:(user-)?invalid\b/.test(selector)))).toEqual([])
+    const refused = rules.find((rule) => rule.selectors.includes("[data-qc-theme] .qc-field[aria-invalid='true']"))!
+    expect(refused.body).toMatch(/border-color: var\(--qc-control-fieldInvalid\)/)
   })
 
   it('declares one custom property per role in each mode block, and reads only those', () => {

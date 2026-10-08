@@ -1,5 +1,5 @@
 {
-  "tarSha256": "80565c805d18c7ed272ac5a21bf73c24159a95d57b2b79b9084173c71668382e",
+  "tarSha256": "d3179e1bdd08a8d6a40bdacd97ba3d79e7a115f5c9eb9260d42130b3c528f08f",
   "files": {
     "CHANGELOG.md": "064263c1f71730d720060310e54da892fc8644ee56f3dd8cf3034ed26145c95e",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -63,7 +63,7 @@
     "dist/pl-ADNVRP55.js.map": "ba719131a51ac1e8ab1af38d6c3291ee8823b33075958263a2f922956eeb2cc0",
     "dist/pt-OL2DR3DO.js": "f650143da81d55fbfc0f7d6297881c5a3342aadaf55cb4232e52ebed32dabbd7",
     "dist/pt-OL2DR3DO.js.map": "b5853adce5a1041d0deca7f775a4d4b30833359bc7dd697957fc1af69a61854b",
-    "dist/quickcharts.css": "e60095233d6bc0f83069781d523c1920f13a0a3e09d9bbaeafa8cb3b009032c8",
+    "dist/quickcharts.css": "99f9673e2f8cb583d97385f712bee87cab35dd30c5f5ecad66bc04222626bdf5",
     "dist/resources-C0cYryO9.d.ts": "729dc0178d1339273c71a1cd46d30692c74c00f38dead5e86f7406e46fd03daa",
     "dist/rest-openapi.json": "ae2df6fd409291c3f812974bea560ca6414ac15f0686d0dcd8c52b3e3d9fb0c1",
     "dist/ru-V6YFEPAF.js": "fce0111e02c22c6b6742232379d23efb044efc6088d2fb51e6a9b81c3f0d23d9",
