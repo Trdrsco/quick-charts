@@ -5,7 +5,7 @@
 // never hides the drawing it is editing, and a body and footer the caller fills.
 import { dialogTitle, openDialog as openModal } from '../chrome/dialog'
 import { closeOverlays } from '../controls/overlays'
-import { el, ownPointer } from './dom'
+import { dragUntilRelease, el, ownPointer } from './dom'
 import type { IconResolver } from '../icons/resolver'
 
 export interface DialogOptions {
@@ -22,6 +22,10 @@ export interface DialogOptions {
   /** A stable role name for tests and hosts, written as `data-role`. */
   role: string
   width?: number
+  /** Whether the backdrop dims what stands behind the dialog, and whether the dialog opens and
+   *  closes on the modal motion. Both on unless the surface turns them off. */
+  veil?: boolean
+  motion?: boolean
   /** The dialog has begun closing and takes no more input, before its exit motion finishes. */
   onClosing?(): void
   /** The dialog has left the page. */
@@ -39,35 +43,42 @@ export interface DialogHandle {
   footer: HTMLElement
   /** The box itself, for a caller that sizes or classes it. */
   box: HTMLElement
+  /** Where the dialog's own lists and panels stand: the backdrop the box stands on, which covers
+   *  the viewport, so a list may hang past the box's edge. */
+  layer: HTMLElement
   /** Close with the modal motion, or at once with `animate: false`. */
   close(options?: { animate?: boolean }): void
 }
 
-/** Let the header carry the box. The offset is remembered for the dialog's own life only. */
+/** Let the header carry the box, through the one drag every floating surface here uses, so the
+ *  drag hears the moves and the release over the box that the box keeps from the chart. The offset
+ *  is remembered for the dialog's own life only. Returns the stop for a drag the dialog's closing
+ *  interrupts. */
 function dragBy(header: HTMLElement, box: HTMLElement): () => void {
-  let dragging: { dx: number; dy: number } | null = null
+  let stop: (() => void) | null = null
   header.addEventListener('pointerdown', (event) => {
     if ((event.target as HTMLElement).closest('button, input')) return
+    stop?.()
     const rect = box.getBoundingClientRect()
-    dragging = { dx: event.clientX - rect.left, dy: event.clientY - rect.top }
+    const dx = event.clientX - rect.left
+    const dy = event.clientY - rect.top
+    stop = dragUntilRelease(
+      (move) => {
+        const x = Math.max(0, Math.min(move.clientX - dx, window.innerWidth - box.offsetWidth))
+        const y = Math.max(0, Math.min(move.clientY - dy, window.innerHeight - box.offsetHeight))
+        box.style.position = 'fixed'
+        box.style.left = `${Math.round(x)}px`
+        box.style.top = `${Math.round(y)}px`
+      },
+      () => {
+        stop = null
+      },
+    )
     event.preventDefault()
   })
-  const onMove = (event: PointerEvent): void => {
-    if (!dragging) return
-    const x = Math.max(0, Math.min(event.clientX - dragging.dx, window.innerWidth - box.offsetWidth))
-    const y = Math.max(0, Math.min(event.clientY - dragging.dy, window.innerHeight - box.offsetHeight))
-    box.style.position = 'fixed'
-    box.style.left = `${Math.round(x)}px`
-    box.style.top = `${Math.round(y)}px`
-  }
-  const onUp = (): void => {
-    dragging = null
-  }
-  window.addEventListener('pointermove', onMove)
-  window.addEventListener('pointerup', onUp)
   return () => {
-    window.removeEventListener('pointermove', onMove)
-    window.removeEventListener('pointerup', onUp)
+    stop?.()
+    stop = null
   }
 }
 
@@ -87,6 +98,8 @@ export function openDialog(options: DialogOptions): DialogHandle {
     className: 'qc-drawing-dialog',
     role: options.role,
     ...(options.width === undefined ? {} : { width: options.width }),
+    ...(options.veil === undefined ? {} : { veil: options.veil }),
+    ...(options.motion === undefined ? {} : { motion: options.motion }),
     build(element, dialog) {
       box = element
       closeBox = () => dialog.close()
@@ -100,9 +113,10 @@ export function openDialog(options: DialogOptions): DialogHandle {
     onClosing: () => {
       stopDrag()
       if (box) closeOverlays(box)
+      if (box?.parentElement) closeOverlays(box.parentElement)
       options.onClosing?.()
     },
     onClose: () => options.onClose?.(),
   })
-  return { header, heading, body, footer, box: modal.element, close: modal.close }
+  return { header, heading, body, footer, box: modal.element, layer: modal.element.parentElement ?? modal.element, close: modal.close }
 }

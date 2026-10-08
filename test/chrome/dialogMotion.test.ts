@@ -3,8 +3,9 @@
 // duration role the stylesheet's transition reads, a host's palette retunes both at once, and a
 // duration of zero (what the stylesheet resolves every duration to under a reduced-motion
 // preference) closes at once. The motion is the dialog primitive's own behavior, so every surface
-// that opens a modal dialog opens and closes with it. Nothing in the chrome carries a duration of
-// its own.
+// that opens a modal dialog opens and closes with it, except the drawing settings, which edit the
+// drawing they stand over and so open in place: at once, over an undimmed chart. Nothing in the
+// chrome carries a duration of its own.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -247,10 +248,6 @@ const DIALOGS: readonly [string, (host: HTMLElement) => Opened][] = [
     const close = openImagePicker({ container: host, t, icons: ownIcons(), assets: refusingPort, canPlace: () => true, onConfirm: () => undefined })
     return { box: boxIn(host, 'drawing-image-picker'), close }
   }],
-  ['the drawing settings', (host) => {
-    const handle = drawingSettingsIn(host)
-    return { box: boxIn(host, 'drawing-settings'), close: () => handle.close() }
-  }],
   ['the drawing template name prompt', (host) => {
     const close = openTemplateNameDialog({ container: host, t, icons: ownIcons() }, () => undefined)
     return { box: boxIn(host, 'drawing-template-name'), close }
@@ -287,6 +284,35 @@ describe('every modal dialog opens and closes with the modal motion', () => {
   }
 })
 
+describe('the drawing settings open in place', () => {
+  it('appear at once over a backdrop that dims nothing, and leave at once', () => {
+    const host = themed()
+    const handle = drawingSettingsIn(host)
+    const box = boxIn(host, 'drawing-settings')
+    const scrim = box.closest<HTMLElement>('.qc-dialog-scrim')!
+    expect(scrim.dataset.state).toBeUndefined()
+    expect(scrim.dataset.qcVeil).toBe('none')
+    expect(box.contains(document.activeElement)).toBe(true)
+    handle.close()
+    expect(scrim.isConnected).toBe(false)
+  })
+
+  it('still close on a press on the backdrop, and on Escape, at once', () => {
+    const host = themed()
+    const outcomes: string[] = []
+    drawingSettingsIn(host, (outcome) => outcomes.push(outcome))
+    const scrim = boxIn(host, 'drawing-settings').closest<HTMLElement>('.qc-dialog-scrim')!
+    scrim.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    expect(scrim.isConnected).toBe(false)
+    expect(outcomes).toEqual(['cancel'])
+    drawingSettingsIn(host, (outcome) => outcomes.push(outcome))
+    const again = boxIn(host, 'drawing-settings').closest<HTMLElement>('.qc-dialog-scrim')!
+    escape()
+    expect(again.isConnected).toBe(false)
+    expect(outcomes).toEqual(['cancel', 'cancel'])
+  })
+})
+
 describe('a dialog over another', () => {
   it('a template name prompt over the drawing settings moves on its own and leaves first', async () => {
     const host = themed()
@@ -301,25 +327,24 @@ describe('a dialog over another', () => {
     const promptScrim = prompt.closest<HTMLElement>('.qc-dialog-scrim')!
     expect(promptScrim).not.toBe(settingsScrim)
     expect(promptScrim.dataset.state).toBe('open')
+    expect(promptScrim.dataset.qcVeil).toBeUndefined()
     expect(prompt.contains(document.activeElement)).toBe(true)
 
     // Escape answers the prompt alone: it leaves on the motion and gives focus back inside the
     // settings, which stay open and untouched.
     escape()
     expect(promptScrim.dataset.state).toBe('closing')
-    expect(settingsScrim.dataset.state).toBe('open')
+    expect(settingsScrim.isConnected).toBe(true)
     expect(document.activeElement).toBe(opener)
     await vi.advanceTimersByTimeAsync(DIALOG_EXIT_MS)
     expect(promptScrim.isConnected).toBe(false)
     expect(settingsScrim.isConnected).toBe(true)
     expect(outcomes).toEqual([])
 
-    // The next Escape closes the settings, which end their session as they begin to leave.
+    // The next Escape closes the settings, at once, ending their session.
     escape()
-    expect(settingsScrim.dataset.state).toBe('closing')
-    expect(outcomes).toEqual(['cancel'])
-    await vi.advanceTimersByTimeAsync(DIALOG_EXIT_MS)
     expect(settingsScrim.isConnected).toBe(false)
+    expect(outcomes).toEqual(['cancel'])
   })
 
   it('a confirm over the saved-layouts browser leaves first, and the browser stays', async () => {
@@ -347,7 +372,7 @@ describe('a dialog over another', () => {
     const promptScrim = boxIn(host, 'drawing-template-name').closest<HTMLElement>('.qc-dialog-scrim')!
     handle.close()
     expect(promptScrim.isConnected).toBe(false)
-    expect(settings.closest<HTMLElement>('.qc-dialog-scrim')!.dataset.state).toBe('closing')
+    expect(settings.isConnected).toBe(false)
     expect(document.activeElement).toBe(trigger)
   })
 

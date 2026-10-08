@@ -2085,13 +2085,15 @@ same values:
 
 Every modal dialog the chart opens (the symbol search, chart settings, the indicator browser and
 indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and the
-drawing settings, image picker and template prompts) opens with its backdrop fading in over
+drawing image picker and template prompts) opens with its backdrop fading in over
 `motion.durationBase` on `motion.easingOut`, and its box fading in and growing from
 `motion.scaleEnter` to full size over `motion.durationBase` on `motion.easingStandard`. It closes
 with the same motion reversed. A closing dialog stops taking input and returns focus at once, and the
 chart removes it when the same `motion.durationBase` has elapsed, so a duration you set times both
 the transition and the removal. A dialog opened over another moves on its own and closes first, and
-a dialog the chart replaces or tears down goes at once.
+a dialog the chart replaces or tears down goes at once. The drawing settings dialog edits the drawing
+it stands over, so it opens in place: it appears and leaves at once, and its backdrop dims nothing
+while still taking the press that closes it.
 
 A duration takes a CSS duration such as `200ms` or `0.2s`; an easing takes any CSS timing function,
 such as `ease-in-out`, `steps(4)` or `cubic-bezier(0.2, 0, 0, 1)`; a scale takes a unitless factor
@@ -2807,7 +2809,24 @@ live, Cancel restores the drawing, and Ok commits the session as one edit. Its h
 drawing's name, the tool's own until the viewer renames it with the pencil beside it; the name is
 `DrawingOptions.name`, saved with the drawing, and Cancel restores it with the rest. A page shown
 puts the keyboard in its first field, and the dialog keeps its top edge where it opened as pages of
-other sizes come and go.
+other sizes come and go. Its lists hang under the controls that open them, past the dialog's edge
+where they need to. The Template menu saves the current setup under a name, applies a saved one,
+or applies the tool's defaults: its own look and setup, put on the drawing at once, with its words
+kept.
+
+The line tools' Style page carries the stroke with its two ends, the extensions, the middle point,
+the price labels and, under Info, the stats a line reads (price range, percent change, the change
+counted in the symbol's smallest price move, bars, date and time range, angle), where they stand
+(left, center, right, or auto, which keeps them inside the pane), and whether they show always or
+only while the line is selected. A horizontal line offers its price label, a vertical line its time
+label, a cross line both. A rectangle offers its extensions, its border, a middle line with a stroke
+of its own and its background; every other shape its border and background; a curve its stroke and
+ends, its extensions along the tangents it ends on, and its background. A background switched off
+keeps its color and opacity for when it is switched back on. The Text page sets the words' color,
+size, weight and slant on one line over the words, and where the tool places them, where they stand:
+above, on or below a line, above, inside or below a box, along it from left to right, and for a
+vertical line whether they read across it or run up it. `NO_COORDINATES_TAB` names the tools whose
+points are drawn rather than typed, and `PRICE_ONLY_COORDS` the levels that span every bar.
 
 Text-bearing tools open an inline editor where the text sits, in the drawing's own type. A fresh
 placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd

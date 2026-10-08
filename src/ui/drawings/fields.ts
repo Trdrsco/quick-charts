@@ -97,6 +97,7 @@ function listButton(icons: IconResolver, label: string, text: string, width: Sel
 
 /** A list the button opens stands as wide as the button, directly under it. */
 function openList(box: HTMLElement, anchor: HTMLButtonElement, list: HTMLElement, rows: () => HTMLElement[], onClose: () => void): () => void {
+  list.classList.add('qc-drawing-select-list')
   if (anchor.offsetWidth > 0) list.style.width = `${anchor.offsetWidth}px`
   const unkeys = menuKeys(list, rows)
   return openPopover(box, anchor, list, 'below', () => {

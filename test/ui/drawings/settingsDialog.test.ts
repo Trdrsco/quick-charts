@@ -162,13 +162,14 @@ describe('the dialog', () => {
     expect(ok.disabled).toBe(true)
     expect(a.dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.disabled).toBe(false)
     a.dialog.querySelector<HTMLButtonElement>('button[aria-label="Template"]')!.click()
-    const rows = [...a.dialog.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    // The menu hangs on the dialog's backdrop, past the box, under the button that opened it.
+    const rows = [...a.chrome.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
     expect(rows.map((r) => [r.textContent, r.disabled])).toEqual([
-      ['Save as...', true],
+      ['Save as…', true],
       ['Apply defaults', false],
       ['Dashed', false],
     ])
-    expect(a.dialog.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.disabled).toBe(true)
+    expect(a.chrome.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.disabled).toBe(true)
     // The disabled Ok cannot be pressed; were the commit refused at the door, the session ends as a cancel.
     const middle = [...a.dialog.querySelectorAll<HTMLElement>('.qc-drawing-toggle')].find((x) => x.textContent === 'Middle point')!
     const before = a.drawing.props.middlePoint
@@ -232,7 +233,10 @@ describe('the dialog', () => {
     area.value = 'Hi there'
     area.dispatchEvent(new Event('input'))
     expect(text.drawing.props.text).toBe('Hi there')
-    expect(text.labels()).toEqual(expect.arrayContaining(['Color', 'Size', 'Weight', 'Background']))
+    // The words' color, size, weight and slant stand on one line over the words.
+    const first = text.dialog.querySelector('.qc-drawing-row-full')!
+    expect([...first.children].map((c) => c.getAttribute('aria-label'))).toEqual(['Text color', 'Font size', 'Bold', 'Italic'])
+    expect(text.labels()).toEqual(expect.arrayContaining(['Background']))
     const table = rig('table')
     table.tab('Table').click()
     const cells = table.drawing.props.cells as string[][]
@@ -261,16 +265,16 @@ describe('the dialog', () => {
     await presets.saveTemplate('ray', 'Dashed', { style: { lineStyle: 'dashed' } })
     const template = dialog.querySelector<HTMLButtonElement>('button[aria-label="Template"]')!
     template.click()
-    const rows = [...dialog.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-    expect(rows.map((r) => r.textContent)).toEqual(['Save as...', 'Apply defaults', 'Dashed'])
+    const rows = [...chrome.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+    expect(rows.map((r) => r.textContent)).toEqual(['Save as…', 'Apply defaults', 'Dashed'])
     // A template applies through the registry onto the selection, which is this drawing.
     rows[2]!.click()
     expect(ran[0]).toEqual(['chart.drawings.template.apply', 'Dashed'])
     template.click()
-    ;[...dialog.querySelectorAll<HTMLElement>('[role="menuitem"]')][1]!.click()
+    ;[...chrome.querySelectorAll<HTMLElement>('[role="menuitem"]')][1]!.click()
     expect(ran[1]).toEqual(['chart.drawings.template.apply', null])
     template.click()
-    ;[...dialog.querySelectorAll<HTMLElement>('[role="menuitem"]')][0]!.click()
+    ;[...chrome.querySelectorAll<HTMLElement>('[role="menuitem"]')][0]!.click()
     // The name dialog stands on the settings dialog's own box, so it closes with it.
     const nameDialog = dialog.querySelector<HTMLElement>('[data-role="drawing-template-name"]')!
     const input = nameDialog.querySelector<HTMLInputElement>('input')!
@@ -279,7 +283,7 @@ describe('the dialog', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     expect(ran[2]).toEqual(['chart.drawings.template.save', 'Mine'])
     template.click()
-    dialog.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.click()
+    chrome.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.click()
     dialog.querySelector<HTMLButtonElement>('[data-role="drawing-template-delete"] button[aria-label="Delete"]')!.click()
     expect(ran[3]).toEqual(['chart.drawings.template.remove', 'Dashed'])
     expect(chrome.querySelector('[data-role="drawing-template-delete"]')).toBeNull()

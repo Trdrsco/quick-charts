@@ -9,12 +9,13 @@
 // Escape and on a press on the scrim, returns focus to whatever had it before it opened, and
 // registers with its host so the host's owner can close it at teardown.
 //
-// Every dialog opens and closes with the modal motion: the backdrop fades and the box fades and
-// scales from `motion.scaleEnter`, both over `motion.durationBase`. It is the primitive's behavior
-// rather than an option, so no surface can open without it. A close keeps the box on screen, inert,
+// A dialog opens and closes with the modal motion: the backdrop fades and the box fades and scales
+// from `motion.scaleEnter`, both over `motion.durationBase`. A close keeps the box on screen, inert,
 // for exactly that duration, which is zero under a reduced-motion preference. Teardown, a dialog
 // replaced by another finish at once with `close({ animate: false })`, and so does every dialog the
-// host's owner closes in one call at teardown.
+// host's owner closes in one call at teardown. A dialog that edits what it stands over, such as the
+// drawing settings, opens in place: it appears and leaves at once, and its backdrop dims nothing,
+// while still taking the press that closes the dialog.
 import { h, stopPointer } from './dom'
 import { focusables } from '../controls/dom'
 import { layerFor } from '../controls/layer'
@@ -42,6 +43,12 @@ export interface DialogOptions {
   ariaRole?: 'dialog' | 'alertdialog'
   /** The box's width in CSS pixels; the stylesheet clamps it to the layer. */
   width?: number
+  /** Whether the backdrop dims what stands behind the box. Off, the backdrop paints nothing and
+   *  still takes the press that closes the dialog. On unless the surface turns it off. */
+  veil?: boolean
+  /** Whether the dialog opens and closes on the modal motion. Off, it appears and leaves at once. On
+   *  unless the surface turns it off. */
+  motion?: boolean
   /** Fill the box. */
   build(body: HTMLElement, dialog: DialogHandle): void
   /** The control that takes focus on open. Default the first focusable. */
@@ -60,7 +67,9 @@ export function openDialog(options: DialogOptions): DialogHandle {
   if (options.width) box.style.width = `${options.width}px`
   stopPointer(box)
   scrim.appendChild(box)
-  scrim.dataset.state = 'opening'
+  const motion = options.motion !== false
+  if (options.veil === false) scrim.dataset.qcVeil = 'none'
+  if (motion) scrim.dataset.state = 'opening'
 
   let isOpen = true
   const previouslyFocused = document.activeElement as HTMLElement | null
@@ -91,7 +100,7 @@ export function openDialog(options: DialogOptions): DialogHandle {
     previouslyFocused?.focus?.()
     // The exit lasts as long as the duration role the stylesheet's transition reads, which is zero
     // under a reduced-motion preference: then the dialog goes at once.
-    const exitMs = closeOptions?.animate !== false ? motionDurationMs(scrim, 'motion.durationBase') : 0
+    const exitMs = motion && closeOptions?.animate !== false ? motionDurationMs(scrim, 'motion.durationBase') : 0
     if (exitMs <= 0) {
       remove()
       return
@@ -154,8 +163,10 @@ export function openDialog(options: DialogOptions): DialogHandle {
   // The next style change can then transition without ever leaving a dialog permanently hidden.
   // The entrance plays once, here: a dialog that re-reads or relabels what it shows does so in
   // place, so it never runs again.
-  scrim.getBoundingClientRect()
-  scrim.dataset.state = 'open'
+  if (motion) {
+    scrim.getBoundingClientRect()
+    scrim.dataset.state = 'open'
+  }
   const refresh = options.refresh
   // The host's owner closes what is still open at teardown, or with the surface the dialog stood
   // over, and nothing it closes there keeps pixels or a timer past that call.

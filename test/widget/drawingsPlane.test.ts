@@ -518,14 +518,17 @@ describe('the plane through the registry', () => {
     byLabel(chrome, 'Drawing settings').click()
     const dialog = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
     dialog.querySelector<HTMLButtonElement>('button[aria-label="Template"]')!.click()
-    expect(dialog.querySelector('[data-role="drawing-popover"]')).toBeTruthy()
+    // The dialog's lists hang on its backdrop, so they may run past its edge.
+    const backdrop = dialog.parentElement!
+    expect(backdrop.querySelector('[data-role="drawing-popover"]')).toBeTruthy()
+    expect(dialog.querySelector('[data-role="drawing-popover"]')).toBeNull()
     expect(openOverlays(chrome)).toBe(1)
-    expect(openOverlays(dialog)).toBe(1)
+    expect(openOverlays(backdrop)).toBe(1)
     expect(live.length).toBeGreaterThan(0)
     r.dispose()
     rigs = []
     expect(openOverlays(chrome)).toBe(0)
-    expect(openOverlays(dialog)).toBe(0)
+    expect(openOverlays(backdrop)).toBe(0)
     expect(document.querySelector('[data-role="drawing-settings"]')).toBeNull()
     expect(document.querySelector('[data-role="drawing-popover"]')).toBeNull()
     expect(live.map((x) => `${x.target}:${x.type}`)).toEqual([])
@@ -643,5 +646,51 @@ describe('an image pasted over the chart', () => {
     answer({ ok: false, error: 'unreadable' })
     await settle()
     expect(chrome.querySelector('.qc-drawing-status')?.textContent ?? '').toBe('')
+  })
+})
+
+describe('the settings dialog over the plane', () => {
+  it('Apply defaults puts the tool’s own look and setup back at once, in the dialog and on the chart, keeping the words', () => {
+    const { chrome, gestures, run, plane } = make()
+    run('chart.drawings.arm', 'trend_line')
+    drag(gestures, [100, 100], [300, 200])
+    run('chart.drawings.style', { lineWidth: 4, lineColor: '#ff0000' })
+    run('chart.drawings.props', { middlePoint: true, text: 'Note' })
+    expect(run('chart.drawings.settings')).toBe('ok')
+    const dialog = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+    const middle = (): HTMLInputElement => [...dialog.querySelectorAll<HTMLElement>('label.qc-drawing-toggle')].find((x) => x.textContent === 'Middle point')!.querySelector('input')!
+    expect(middle().checked).toBe(true)
+    dialog.querySelector<HTMLButtonElement>('.qc-drawing-template-button')!.click()
+    ;[...chrome.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((r) => r.textContent === 'Apply defaults')!.click()
+    // On the chart at once: the selection is the drawing the dialog edits.
+    expect(plane.api!.selected()).toMatchObject({ lineColor: '#2962ff', lineWidth: 2, lineStyle: 'solid', textColor: '#2962ff', fontSize: 14 })
+    // In the dialog at once: the page reads the drawing again.
+    expect(middle().checked).toBe(false)
+    const stroke = dialog.querySelector<HTMLElement>('.qc-drawing-stroke-seg')!
+    expect(stroke.style.height).toBe('2px')
+    // The words are the drawing's own, not its look, so they stay.
+    ;[...dialog.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === 'Text')!.click()
+    expect(dialog.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('Note')
+  })
+
+  it('Cancel after Apply defaults puts back the drawing as it stood before the dialog opened', () => {
+    const { chrome, gestures, run, plane } = make()
+    run('chart.drawings.arm', 'rectangle')
+    drag(gestures, [100, 100], [300, 200])
+    run('chart.drawings.style', { lineWidth: 3, lineColor: '#ff0000', fillOpacity: 0.5 })
+    run('chart.drawings.props', { middleLine: true })
+    run('chart.drawings.settings')
+    const dialog = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+    dialog.querySelector<HTMLButtonElement>('.qc-drawing-template-button')!.click()
+    ;[...chrome.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((r) => r.textContent === 'Apply defaults')!.click()
+    expect(plane.api!.selected()).toMatchObject({ lineColor: '#9c27b0', lineWidth: 2, fillColor: '#9c27b0', fillOpacity: 0.2 })
+    dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
+    expect(chrome.querySelector('[data-role="drawing-settings"]')).toBeNull()
+    expect(plane.api!.selected()).toMatchObject({ lineColor: '#ff0000', lineWidth: 3, fillOpacity: 0.5 })
+    // The setup came back too: the dialog reopened reads the middle line still on.
+    run('chart.drawings.settings')
+    const reopened = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+    const middle = [...reopened.querySelectorAll<HTMLElement>('.qc-drawing-row--checked')].find((row) => row.textContent?.startsWith('Middle line'))!
+    expect(middle.querySelector('input')!.checked).toBe(true)
   })
 })

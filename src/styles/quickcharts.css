@@ -240,7 +240,7 @@
 }
 
 [data-qc-theme] .qc-select-chevron > svg {
-  transition: rotate var(--qc-motion-durationSlow) var(--qc-motion-easingSpring);
+  transition: rotate var(--qc-motion-durationSlow) var(--qc-motion-easingStandard);
 }
 
 [data-qc-theme] [aria-expanded='true'] > .qc-select-chevron > svg {

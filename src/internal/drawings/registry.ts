@@ -121,6 +121,13 @@ function tool<P extends Record<string, unknown>>(
   }
 }
 
+/** A line tool's factory look: a 2px stroke and its words in one blue, the words at 14px. */
+const LINE_LOOK: Partial<DrawingStyle> = { lineColor: '#2962ff', lineWidth: 2, lineStyle: 'solid', textColor: '#2962ff', fontSize: 14 }
+
+/** A shape's factory look in one hue: a 2px border, a background of the same hue at a fifth, and
+ *  its words in the hue at 14px. */
+const shapeLook = (hue: string): Partial<DrawingStyle> => ({ lineColor: hue, lineWidth: 2, lineStyle: 'solid', fillColor: hue, fillOpacity: 0.2, textColor: hue, fontSize: 14 })
+
 /** Display order of categories in the drawing toolbar. */
 export const TOOL_CATEGORIES: readonly ToolCategory[] = [
   'lines',
@@ -141,26 +148,26 @@ export const TOOL_CATEGORIES: readonly ToolCategory[] = [
 
 const DEFINITIONS: ToolDefinition[] = [
   // Lines
-  tool(TrendLine, { type: 'trend_line', name: 'Trend line', category: 'lines', anchors: 2 }),
-  tool(Ray, { type: 'ray', name: 'Ray', category: 'lines', anchors: 2 }),
-  tool(InfoLine, { type: 'info_line', name: 'Info line', category: 'lines', anchors: 2 }),
-  tool(ExtendedLine, { type: 'extended', name: 'Extended line', category: 'lines', anchors: 2 }),
-  tool(TrendAngle, { type: 'trend_angle', name: 'Trend angle', category: 'lines', anchors: 2 }),
-  tool(HorizontalLine, { type: 'horizontal_line', name: 'Horizontal line', category: 'lines', anchors: 1 }),
-  tool(HorizontalRay, { type: 'horizontal_ray', name: 'Horizontal ray', category: 'lines', anchors: 1 }),
-  tool(VerticalLine, { type: 'vertical_line', name: 'Vertical line', category: 'lines', anchors: 1 }),
-  tool(CrossLine, { type: 'cross_line', name: 'Cross line', category: 'lines', anchors: 1 }),
-  tool(Arrow, { type: 'arrow', name: 'Arrow', category: 'lines', anchors: 2 }),
+  tool(TrendLine, { type: 'trend_line', name: 'Trend line', category: 'lines', anchors: 2, style: LINE_LOOK }),
+  tool(Ray, { type: 'ray', name: 'Ray', category: 'lines', anchors: 2, style: LINE_LOOK }),
+  tool(InfoLine, { type: 'info_line', name: 'Info line', category: 'lines', anchors: 2, style: LINE_LOOK }),
+  tool(ExtendedLine, { type: 'extended', name: 'Extended line', category: 'lines', anchors: 2, style: LINE_LOOK }),
+  tool(TrendAngle, { type: 'trend_angle', name: 'Trend angle', category: 'lines', anchors: 2, style: { ...LINE_LOOK, fontSize: 12 } }),
+  tool(HorizontalLine, { type: 'horizontal_line', name: 'Horizontal line', category: 'lines', anchors: 1, style: { ...LINE_LOOK, fontSize: 12 } }),
+  tool(HorizontalRay, { type: 'horizontal_ray', name: 'Horizontal ray', category: 'lines', anchors: 1, style: { ...LINE_LOOK, fontSize: 12 } }),
+  tool(VerticalLine, { type: 'vertical_line', name: 'Vertical line', category: 'lines', anchors: 1, style: LINE_LOOK }),
+  tool(CrossLine, { type: 'cross_line', name: 'Cross line', category: 'lines', anchors: 1, style: LINE_LOOK }),
+  tool(Arrow, { type: 'arrow', name: 'Arrow', category: 'lines', anchors: 2, style: LINE_LOOK }),
 
   // Shapes
-  tool(Rectangle, { type: 'rectangle', name: 'Rectangle', category: 'shapes', anchors: 2 }),
-  tool(RotatedRectangle, { type: 'rotated_rectangle', name: 'Rotated rectangle', category: 'shapes', anchors: 3 }),
-  tool(Ellipse, { type: 'ellipse', name: 'Ellipse', category: 'shapes', anchors: 3 }),
-  tool(Circle, { type: 'circle', name: 'Circle', category: 'shapes', anchors: 2 }),
-  tool(Triangle, { type: 'triangle', name: 'Triangle', category: 'shapes', anchors: 3 }),
-  tool(Arc, { type: 'arc', name: 'Arc', category: 'shapes', anchors: 3 }),
-  tool(Curve, { type: 'curve', name: 'Curve', category: 'shapes', anchors: 3 }),
-  tool(DoubleCurve, { type: 'double_curve', name: 'Double curve', category: 'shapes', anchors: 4 }),
+  tool(Rectangle, { type: 'rectangle', name: 'Rectangle', category: 'shapes', anchors: 2, style: shapeLook('#9c27b0') }),
+  tool(RotatedRectangle, { type: 'rotated_rectangle', name: 'Rotated rectangle', category: 'shapes', anchors: 3, style: shapeLook('#4caf50') }),
+  tool(Ellipse, { type: 'ellipse', name: 'Ellipse', category: 'shapes', anchors: 3, style: shapeLook('#f23645') }),
+  tool(Circle, { type: 'circle', name: 'Circle', category: 'shapes', anchors: 2, style: shapeLook('#ff9800') }),
+  tool(Triangle, { type: 'triangle', name: 'Triangle', category: 'shapes', anchors: 3, style: shapeLook('#089981') }),
+  tool(Arc, { type: 'arc', name: 'Arc', category: 'shapes', anchors: 3, style: shapeLook('#e91e63') }),
+  tool(Curve, { type: 'curve', name: 'Curve', category: 'shapes', anchors: 3, style: shapeLook('#2962ff') }),
+  tool(DoubleCurve, { type: 'double_curve', name: 'Double curve', category: 'shapes', anchors: 4, style: shapeLook('#673ab7') }),
 
   // Channels
   tool(RegressionTrend, { type: 'regression_trend', name: 'Regression trend', category: 'channels', anchors: 2 }),
@@ -252,7 +259,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand' }),
   tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: 'rgba(245, 166, 35, 0.35)', lineWidth: 20 } }),
   tool(PathLine, { type: 'path', name: 'Path', category: 'shapes', anchors: 2, placement: 'multipoint' }),
-  tool(Polyline, { type: 'polyline', name: 'Polyline', category: 'shapes', anchors: 2, placement: 'multipoint', style: { fillOpacity: 0.1 } }),
+  tool(Polyline, { type: 'polyline', name: 'Polyline', category: 'shapes', anchors: 2, placement: 'multipoint', style: shapeLook('#00bcd4') }),
 
   // Measurement
   tool(PriceRange, { type: 'price_range', name: 'Price range', category: 'measurement', anchors: 2 }),

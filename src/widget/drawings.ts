@@ -15,6 +15,7 @@ import type { ISeriesApi, IChartApi, SeriesType } from 'lightweight-charts'
 import { attachDrawings, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow, type PlacedImage, type TextEditSession } from '../drawings'
 import { drawingTools, type ToolPreset } from '../drawings/index'
 import { rebindDrawingIdentity } from '../drawings/layer/attach'
+import { presetOf } from '../drawings/layer/presets'
 import type { ReplayPhase } from './replay'
 import {
   DEFAULT_HIDE_STATE,
@@ -56,14 +57,15 @@ import { drawingCancelAvailable } from '../drawings/layer/attach'
 import { RECENT_COLOR_LIMIT, type ColorMemory } from '../ui/controls/color'
 import type { IconResolver } from '../ui/icons/resolver'
 
-/** A tool's default look: the style and props the tool itself opens with. It is NOT the look the
- *  layer remembers, because that is rewritten by every edit: the moment a viewer changes a colour it
- *  IS that colour, and resetting to it would put back exactly what they are trying to leave. The
- *  reset writes through the ordinary edit path, so what is remembered for the next drawing of the
- *  tool becomes this look too. */
+/** A tool's default look: the style and props the tool itself opens with, less its content, so the
+ *  words, the cells and the picture a drawing carries stay as they are. It is NOT the look the layer
+ *  remembers, because that is rewritten by every edit: the moment a viewer changes a colour it IS
+ *  that colour, and resetting to it would put back exactly what they are trying to leave. The reset
+ *  writes through the ordinary edit path, so what is remembered for the next drawing of the tool
+ *  becomes this look too. */
 const defaultPreset = (type: string): ToolPreset | undefined => {
   const fresh = drawingTools.create(type, 'default', [])
-  return fresh ? { style: { ...fresh.style }, props: { ...fresh.props } } : undefined
+  return fresh ? presetOf(fresh) : undefined
 }
 
 const drawingToolOf = (arg: unknown): string | null | undefined =>

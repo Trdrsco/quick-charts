@@ -99,11 +99,19 @@ export const LABELED_PATTERNS: ReadonlySet<string> = new Set([
 /** Prop keys a tool carries (via a shared props type) but whose paint ignores them — their rows
  *  stay hidden so the modal never shows a control that does nothing. */
 export const INERT_PROPS: Record<string, readonly string[]> = {
+  trend_angle: ['text', 'leftEnd', 'rightEnd', 'showDateTimeRange', 'showAngle'],
   fib_timezone: ['showPrices', 'reverse', 'extendLeft', 'background'],
   fib_trend_time: ['showPrices', 'reverse', 'extendLeft', 'background'],
   fib_speed_resist_arcs: ['showPrices', 'reverse', 'extendLeft'],
   fib_circles: ['showPrices', 'reverse', 'extendLeft'],
 }
+
+/** Tools whose points are drawn from their shape rather than typed: a turned box, an arc, an
+ *  ellipse and a polygon of any count of points have no Coordinates tab. */
+export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse'])
+
+/** Tools that span every bar at one price: the Coordinates tab hides the bar field. */
+export const PRICE_ONLY_COORDS: ReadonlySet<string> = new Set(['horizontal_line'])
 
 /** Tools whose anchors are time-only — the Coordinates tab hides the price field. */
 export const BAR_ONLY_COORDS: ReadonlySet<string> = new Set([

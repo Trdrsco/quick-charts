@@ -70,8 +70,18 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#e91e63",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#e91e63",
+        "fillOpacity": 0.2,
+        "textColor": "#e91e63",
+        "fontSize": 14
+      },
+      "props": [
+        "fillBackground"
+      ]
     },
     {
       "type": "arrow",
@@ -80,8 +90,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 14
+      },
       "props": [
+        "alwaysShowStats",
         "extendLeft",
         "extendRight",
         "leftEnd",
@@ -91,10 +108,13 @@
         "showBarsRange",
         "showDateTimeRange",
         "showPercentChange",
+        "showPipsChange",
         "showPriceLabels",
         "showPriceRange",
         "statsPosition",
-        "text"
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -180,8 +200,17 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#ff9800",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#ff9800",
+        "fillOpacity": 0.2,
+        "textColor": "#ff9800",
+        "fontSize": 14
+      },
       "props": [
+        "fillBackground",
         "text"
       ]
     },
@@ -221,7 +250,13 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 14
+      },
       "props": [
         "showPrice",
         "showTime"
@@ -234,8 +269,22 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#2962ff",
+        "fillOpacity": 0.2,
+        "textColor": "#2962ff",
+        "fontSize": 14
+      },
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "fillBackground",
+        "leftEnd",
+        "rightEnd"
+      ]
     },
     {
       "type": "cyclic_lines",
@@ -321,8 +370,22 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#673ab7",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#673ab7",
+        "fillOpacity": 0.2,
+        "textColor": "#673ab7",
+        "fontSize": 14
+      },
+      "props": [
+        "extendLeft",
+        "extendRight",
+        "fillBackground",
+        "leftEnd",
+        "rightEnd"
+      ]
     },
     {
       "type": "elliott_correction",
@@ -391,8 +454,17 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#f23645",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#f23645",
+        "fillOpacity": 0.2,
+        "textColor": "#f23645",
+        "fontSize": 14
+      },
       "props": [
+        "fillBackground",
         "text"
       ]
     },
@@ -416,8 +488,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 14
+      },
       "props": [
+        "alwaysShowStats",
         "extendLeft",
         "extendRight",
         "leftEnd",
@@ -427,10 +506,13 @@
         "showBarsRange",
         "showDateTimeRange",
         "showPercentChange",
+        "showPipsChange",
         "showPriceLabels",
         "showPriceRange",
         "statsPosition",
-        "text"
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -802,10 +884,18 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 12
+      },
       "props": [
         "showPrice",
-        "text"
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -815,10 +905,18 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 12
+      },
       "props": [
         "showPrice",
-        "text"
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -855,8 +953,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 14
+      },
       "props": [
+        "alwaysShowStats",
         "extendLeft",
         "extendRight",
         "leftEnd",
@@ -866,10 +971,13 @@
         "showBarsRange",
         "showDateTimeRange",
         "showPercentChange",
+        "showPipsChange",
         "showPriceLabels",
         "showPriceRange",
         "statsPosition",
-        "text"
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -1015,9 +1123,17 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.1
+        "lineColor": "#00bcd4",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#00bcd4",
+        "fillOpacity": 0.2,
+        "textColor": "#00bcd4",
+        "fontSize": 14
       },
-      "props": []
+      "props": [
+        "fillBackground"
+      ]
     },
     {
       "type": "price_label",
@@ -1066,8 +1182,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 14
+      },
       "props": [
+        "alwaysShowStats",
         "extendLeft",
         "extendRight",
         "leftEnd",
@@ -1077,10 +1200,13 @@
         "showBarsRange",
         "showDateTimeRange",
         "showPercentChange",
+        "showPipsChange",
         "showPriceLabels",
         "showPriceRange",
         "statsPosition",
-        "text"
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -1090,12 +1216,26 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#9c27b0",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#9c27b0",
+        "fillOpacity": 0.2,
+        "textColor": "#9c27b0",
+        "fontSize": 14
+      },
       "props": [
         "extendLeft",
         "extendRight",
+        "fillBackground",
         "middleLine",
-        "text"
+        "middleLineColor",
+        "middleLineStyle",
+        "middleLineWidth",
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -1121,8 +1261,18 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#4caf50",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#4caf50",
+        "fillOpacity": 0.2,
+        "textColor": "#4caf50",
+        "fontSize": 14
+      },
+      "props": [
+        "fillBackground"
+      ]
     },
     {
       "type": "schiff_pitchfork",
@@ -1285,8 +1435,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 12
+      },
       "props": [
+        "alwaysShowStats",
         "extendLeft",
         "extendRight",
         "leftEnd",
@@ -1296,10 +1453,13 @@
         "showBarsRange",
         "showDateTimeRange",
         "showPercentChange",
+        "showPipsChange",
         "showPriceLabels",
         "showPriceRange",
         "statsPosition",
-        "text"
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -1309,8 +1469,15 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 14
+      },
       "props": [
+        "alwaysShowStats",
         "extendLeft",
         "extendRight",
         "leftEnd",
@@ -1320,10 +1487,13 @@
         "showBarsRange",
         "showDateTimeRange",
         "showPercentChange",
+        "showPipsChange",
         "showPriceLabels",
         "showPriceRange",
         "statsPosition",
-        "text"
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -1333,8 +1503,18 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#089981",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#089981",
+        "fillOpacity": 0.2,
+        "textColor": "#089981",
+        "fontSize": 14
+      },
+      "props": [
+        "fillBackground"
+      ]
     },
     {
       "type": "triangle_pattern",
@@ -1357,10 +1537,19 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "textColor": "#2962ff",
+        "fontSize": 14
+      },
       "props": [
         "showTime",
-        "text"
+        "text",
+        "textHAlign",
+        "textOrientation",
+        "textVAlign"
       ]
     },
     {

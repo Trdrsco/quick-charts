@@ -12,6 +12,10 @@
 // what was typed, and Escape puts the name back without closing the dialog. The name is part of the
 // session, so Cancel restores it as well. The dialog keeps its top edge where it opened while a page
 // of another height or width is shown, and a page shown lands the keyboard in its first field.
+//
+// The dialog edits the drawing it stands over, so it opens in place over an undimmed chart: no
+// veil, and no motion in or out. Its lists and panels stand on the backdrop rather than in the box,
+// so a list hangs past the dialog's edge under the control that opened it.
 import type { DrawingStyle, IDrawing, TimeframeVisibility, SerializedDrawing } from '../../internal/drawings/index'
 import type { ChartTranslate } from '../../i18n'
 import { toolName } from '../../i18n'
@@ -73,6 +77,8 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     closeLabel: t('drawing.close'),
     icons: deps.icons,
     role: 'drawing-settings',
+    veil: false,
+    motion: false,
     // Escape, the corner close or a press outside ends the session as the dialog begins to close,
     // so the drawing is back as it was before the exit motion starts rather than after it.
     onClosing: () => {
@@ -183,7 +189,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
   const ctx: RowsContext = {
     t,
     icons: deps.icons,
-    box: dialog.box,
+    box: dialog.layer,
     drawing,
     tab,
     ...(deps.assets ? { assets: deps.assets } : {}),
@@ -250,8 +256,10 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     selectChevron(deps.icons),
   ) as HTMLButtonElement
   let closeMenu: (() => void) | null = null
-  /** A template applies through the registry onto the selection, which is this drawing; the
-   *  document keeps the session's snapshot until Ok, so Cancel still restores it. */
+  /** A template applies through the registry onto the selection, which is this drawing, and the
+   *  page shows what it set at once; the document keeps the session's snapshot until Ok, so Cancel
+   *  still restores it. Apply defaults is the tool's own look and setup, the words and the name
+   *  kept. */
   const applyTemplate = (name: string | null): void => {
     deps.run('chart.drawings.template.apply', name)
     renderPage()
@@ -304,7 +312,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     for (const row of [...menu.children]) if ((row as HTMLElement).hidden) row.remove()
     tidyRules(menu, (child) => !child.hidden)
     const unkeys = menuKeys(menu, () => [...menu.querySelectorAll<HTMLElement>('[role="menuitem"]')])
-    const close = openPopover(dialog.box, template, menu, 'below', () => {
+    const close = openPopover(dialog.layer, template, menu, 'below', () => {
       unkeys()
       closeMenu = null
     }, template, () => reopenPopover(close, menu, () => template), { gap: 0, className: 'qc-drawing-popover--list' })
