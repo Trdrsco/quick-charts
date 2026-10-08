@@ -106,10 +106,10 @@ describe('the settings bar', () => {
   // stroke that is always solid offers no dash; a fill is offered only where the paint encloses.
   it.each([
     ['brush', ['Drawing color', 'Background color', 'Line thickness'], ['Line style']],
-    ['callout', ['Background color', 'Text color', 'Font size'], ['Drawing color', 'Line thickness']],
-    ['comment', ['Background color', 'Text color', 'Font size'], ['Drawing color', 'Line thickness']],
+    ['callout', ['Drawing color', 'Background color', 'Text color', 'Font size', 'Line thickness'], ['Line style']],
+    ['comment', ['Drawing color', 'Background color', 'Text color', 'Font size'], ['Line thickness']],
     ['note', ['Drawing color', 'Text color', 'Font size'], ['Background color']],
-    ['price_label', ['Background color', 'Text color', 'Font size'], ['Drawing color', 'Line thickness', 'Line style']],
+    ['price_label', ['Drawing color', 'Background color', 'Text color', 'Font size'], ['Line thickness', 'Line style']],
     ['signpost', ['Drawing color', 'Font size'], ['Line thickness', 'Line style']],
     ['curve', ['Drawing color', 'Background color', 'Line thickness', 'Line style'], []],
     ['double_curve', ['Drawing color', 'Background color', 'Line thickness', 'Line style'], []],

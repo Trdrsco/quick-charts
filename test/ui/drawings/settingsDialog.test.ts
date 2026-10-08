@@ -53,10 +53,10 @@ describe('the pages a tool gets', () => {
     expect(tabsFor(line)).toEqual(['Style', 'Text', 'Coordinates', 'Visibility'])
     expect(firstTabFor(line)).toBe('Style')
     const text = drawingTools.create('text', 'b', anchors(1))!
-    expect(tabsFor(text)).toEqual(['Text', 'Coordinates', 'Visibility'])
+    expect(tabsFor(text)).toEqual(['Text', 'Visibility'])
     expect(firstTabFor(text)).toBe('Text')
     const table = drawingTools.create('table', 'c', anchors(1))!
-    expect(tabsFor(table)).toEqual(['Style', 'Table', 'Coordinates', 'Visibility'])
+    expect(tabsFor(table)).toEqual(['Style', 'Table', 'Visibility'])
     const profile = drawingTools.create('fixed_range_volume_profile', 'd', anchors(2))!
     expect(tabsFor(profile)).toEqual(['Inputs', 'Style', 'Coordinates', 'Visibility'])
   })

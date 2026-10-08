@@ -98,6 +98,17 @@ export function paintArrowHead(
 
 let measurer: CanvasRenderingContext2D | null = null
 
+/** How wide a line of words reads in a style's type, measured without a live rendering context. */
+function lineMeasure(style: DrawingStyle): (line: string) => number {
+  if (!measurer && typeof document !== 'undefined') {
+    measurer = document.createElement('canvas').getContext('2d')
+  }
+  const m = measurer
+  if (!m) return (line) => line.length * style.fontSize * 0.6
+  m.font = fontOf(style)
+  return (line) => m.measureText(line).width
+}
+
 /** Measure a text block (newline-aware) without a live rendering context. */
 export function measureTextBlock(
   text: string,
@@ -105,22 +116,58 @@ export function measureTextBlock(
 ): { width: number; height: number; lineHeight: number } {
   const lines = text.split('\n')
   const lineHeight = Math.round(style.fontSize * 1.35)
-  if (!measurer && typeof document !== 'undefined') {
-    measurer = document.createElement('canvas').getContext('2d')
-  }
+  const measure = lineMeasure(style)
   let width = 0
-  if (measurer) {
-    measurer.font = fontOf(style)
-    for (const line of lines) width = Math.max(width, measurer.measureText(line).width)
-  } else {
-    for (const line of lines) width = Math.max(width, line.length * style.fontSize * 0.6)
-  }
+  for (const line of lines) width = Math.max(width, measure(line))
   return { width, height: lines.length * lineHeight, lineHeight }
+}
+
+/** The words broken into lines no wider than `width` pixels in the style's type: each line breaks
+ *  at its spaces, and a word wider than the width breaks where it must. */
+export function wrapText(text: string, style: DrawingStyle, width: number): string {
+  if (!(width > 0)) return text
+  const measure = lineMeasure(style)
+  const lines: string[] = []
+  for (const paragraph of text.split('\n')) {
+    let line = ''
+    for (const word of paragraph.split(' ')) {
+      const joined = line ? `${line} ${word}` : word
+      if (measure(joined) <= width) {
+        line = joined
+        continue
+      }
+      if (line) lines.push(line)
+      let rest = word
+      while (rest.length > 1 && measure(rest) > width) {
+        let cut = rest.length - 1
+        while (cut > 1 && measure(rest.slice(0, cut)) > width) cut--
+        lines.push(rest.slice(0, cut))
+        rest = rest.slice(cut)
+      }
+      line = rest
+    }
+    lines.push(line)
+  }
+  return lines.join('\n')
+}
+
+/** The ink that reads on a color: black on a light one, white on a dark one, parted where the two
+ *  contrast with it equally. */
+export function inkOn(color: string): string {
+  const m = withAlpha(color, 1).match(/^rgba\(\s*([\d.]+),\s*([\d.]+),\s*([\d.]+)/)
+  if (!m) return '#ffffff'
+  const [r, g, b] = [m[1], m[2], m[3]].map((v) => {
+    const c = Number(v) / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }) as [number, number, number]
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.179 ? '#000000' : '#ffffff'
 }
 
 export interface TextBlockOptions {
   background?: string
   borderColor?: string
+  /** The border's width; 1 unless given. */
+  borderWidth?: number
   padding?: number
   align?: 'left' | 'center'
 }
@@ -152,7 +199,7 @@ export function paintTextBlock(
     }
     if (borderColor) {
       ctx.strokeStyle = borderColor
-      ctx.lineWidth = 1
+      ctx.lineWidth = opts.borderWidth ?? 1
       ctx.stroke()
     }
   }

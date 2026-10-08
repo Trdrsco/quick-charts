@@ -234,8 +234,8 @@ describe('the forecasting, content and table families', () => {
     expect(drawingTools.get('ghost_feed')!.capturesBars).toBe(true)
   })
 
-  it('a table opens as a two by two grid with a header row', () => {
-    expect(props('table')).toMatchObject({ cells: [['', ''], ['', '']], headerRow: true })
+  it('a table opens as a three by three grid, its words to the left and no header band', () => {
+    expect(props('table')).toMatchObject({ cells: [['', '', ''], ['', '', ''], ['', '', '']], headerRow: false, textHAlign: 'left' })
   })
 
   it('the glyph marks carry a glyph and a size, and an image its data, opacity and width', () => {

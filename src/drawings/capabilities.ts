@@ -35,9 +35,9 @@ export const FILLABLE: ReadonlySet<string> = new Set([
   'double_curve',
 ])
 
-/** No stroke channel at all (glyph/image marks; ghost feed and the volume profiles carry their
- *  own color props; the text tool's ink is its text channel) — no color/width/line-style
- *  controls. */
+/** No stroke channel at all: the glyph and image marks, the ghost feed and the volume profiles,
+ *  which carry their own colors, the positions, and the text tool, whose ink is its words. No
+ *  color, width or line style control. */
 export const NO_STROKE: ReadonlySet<string> = new Set([
   'emoji',
   'sticker',
@@ -48,9 +48,6 @@ export const NO_STROKE: ReadonlySet<string> = new Set([
   'text',
   'long_position',
   'short_position',
-  'callout',
-  'comment',
-  'price_label',
 ])
 
 /** Stroke color applies but width/line-style don't (sized by their own geometry or fixed ink,
@@ -61,16 +58,16 @@ export const NO_LINE_DECOR: ReadonlySet<string> = new Set([
   'icon',
   'arrow_up',
   'arrow_down',
-  'callout',
+  'price_label',
   'comment',
   'note',
   'table',
   'signpost',
 ])
 
-/** Annotation text tools: no Style tab at all — color/size/weight/background/border live on the
- *  Text tab (border applies where the tool draws one). */
-export const NO_STYLE_TAB: ReadonlySet<string> = new Set(['text', 'note', 'comment', 'callout'])
+/** The text tools whose words are the whole drawing: no Style tab, the words' look, their background
+ *  and their border on the Text tab. */
+export const NO_STYLE_TAB: ReadonlySet<string> = new Set(['text', 'comment', 'callout'])
 
 /** Tools that write words of their own and carry none of the viewer's: a plan's target, P&L and
  *  stop tags. Their bar offers the text colour, because those words take it, and nothing that
@@ -92,9 +89,9 @@ export const INERT_PROPS: Record<string, readonly string[]> = {
 
 /** Tools whose points are drawn from their shape rather than typed: a turned box, an arc, an
  *  ellipse, a polygon of any count of points, a fib wedge, a flat top/bottom, a disjoint channel, a
- *  sector, a bars pattern, a position and an anchored VWAP have no Coordinates tab: a position's
- *  points are its entry, target and stop prices on its Inputs page. */
-export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel', 'sector', 'bars_pattern', 'long_position', 'short_position', 'anchored_vwap'])
+ *  sector, a bars pattern, a position, an anchored VWAP, a text and a table have no Coordinates
+ *  tab: a position's points are its entry, target and stop prices on its Inputs page. */
+export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel', 'sector', 'bars_pattern', 'long_position', 'short_position', 'anchored_vwap', 'text', 'table'])
 
 /** Tools that span every bar at one price: the Coordinates tab hides the bar field. */
 export const PRICE_ONLY_COORDS: ReadonlySet<string> = new Set(['horizontal_line'])
@@ -133,7 +130,7 @@ export const TOOL_COLOR_CHANNELS: Record<string, readonly ToolColorChannel[]> = 
   ],
 }
 
-export const NO_DASH: ReadonlySet<string> = new Set(['highlighter', 'brush', 'price_range', 'date_range', 'date_and_price_range'])
+export const NO_DASH: ReadonlySet<string> = new Set(['highlighter', 'brush', 'price_range', 'date_range', 'date_and_price_range', 'callout'])
 
 /** Prop keys that belong on a separate Inputs tab: what a drawing computes with, kept apart from
  *  how it looks.

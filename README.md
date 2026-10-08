@@ -2916,6 +2916,20 @@ reads its rows' volumes beside them with `showValues` and its point of control a
 area bounds on the price scale with `showLabelsOnPriceScale`. A range meter reads the stats its
 switches choose in a label of its own color, size and background.
 
+A text's box switches its background (`fillBackground`) and its border (`drawBorder`, in the
+drawing's stroke color) on their own, and with `wordWrap` its words wrap at `wordWrapWidth` pixels;
+a callout's words wrap the same way inside a border at the drawing's width. A note ties a label to
+the point it notes: its first point is that point, its second the label's, with a line between them
+in the drawing's stroke color and the label's border in `borderColor`; a pin's words stand in a box
+of the same kind under its marker. A price note runs a line from its price to a tag that reads it,
+the tag in a text style and colors of its own (`labelTextColor`, `labelFontSize`, `labelBold`,
+`labelItalic`, `labelBackgroundColor`, `labelBorderColor`), its words along the line where
+`textVAlign` and `textHAlign` stand them. A signpost stands on its bar's high, or its low for a
+plate below the bar, its plate `position` percent of the pane's height away, so the plate keeps its
+height over the bar as the price scale moves; with `showImage` the plate leads with its `emoji`,
+and its words read in white or black, whichever reads on the plate. A table stands its cells' words
+at their left, middle or right with `textHAlign`, its border and grid in the drawing's stroke color.
+
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
 the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
 that shade their legs, the background, which `fillBackground` switches off and on keeping its

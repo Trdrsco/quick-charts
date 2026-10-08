@@ -555,6 +555,27 @@
   min-height: 34px;
 }
 
+/* A signpost's emoji: a field-sized button wearing the glyph's artwork, or the glyph itself where
+ * the artwork has not come. */
+[data-qc-theme] .qc-drawing-emoji-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+}
+
+[data-qc-theme] .qc-drawing-emoji-button .qc-drawing-glyph-art {
+  width: 22px;
+  height: 22px;
+}
+
+[data-qc-theme] .qc-drawing-emoji-face {
+  font-size: 20px;
+  line-height: 1;
+}
+
 [data-qc-theme] .qc-drawing-swatch-button[data-qc-dim='true'] {
   background: var(--qc-control-fieldFill);
 }

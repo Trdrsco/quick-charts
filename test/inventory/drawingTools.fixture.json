@@ -154,7 +154,11 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#cc2f3c",
+        "textColor": "#cc2f3c",
+        "fontSize": 14
+      },
       "props": [
         "text"
       ]
@@ -166,7 +170,12 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#1e53e5",
+        "textColor": "#1e53e5",
+        "fontSize": 16,
+        "bold": true
+      },
       "props": [
         "text"
       ]
@@ -178,7 +187,11 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#089981",
+        "textColor": "#089981",
+        "fontSize": 14
+      },
       "props": [
         "text"
       ]
@@ -218,11 +231,17 @@
       "hasText": true,
       "capturesBars": false,
       "style": {
-        "fillColor": "#1b1f27",
-        "fillOpacity": 0.95
+        "textColor": "#ffffff",
+        "fontSize": 14,
+        "fillColor": "#0097a7",
+        "fillOpacity": 0.7,
+        "lineColor": "#0097a7",
+        "lineWidth": 2
       },
       "props": [
-        "text"
+        "text",
+        "wordWrap",
+        "wordWrapWidth"
       ]
     },
     {
@@ -254,11 +273,13 @@
       "hasText": true,
       "capturesBars": false,
       "style": {
-        "fillColor": "#1b1f27",
-        "fillOpacity": 0.95
+        "textColor": "#ffffff",
+        "fontSize": 16,
+        "fillColor": "#2962ff",
+        "fillOpacity": 1,
+        "lineColor": "#2962ff"
       },
       "props": [
-        "align",
         "text"
       ]
     },
@@ -936,7 +957,9 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff"
+      },
       "props": []
     },
     {
@@ -1302,16 +1325,21 @@
     {
       "type": "note",
       "category": "annotation",
-      "anchors": 1,
+      "anchors": 2,
       "placement": null,
       "hasText": true,
       "capturesBars": false,
       "style": {
-        "fillColor": "#1b1f27",
-        "fillOpacity": 0.95
+        "lineColor": "#dbdbdb",
+        "textColor": "#dbdbdb",
+        "fontSize": 14,
+        "fillColor": "#2e2e2e",
+        "fillOpacity": 1
       },
       "props": [
-        "align",
+        "borderColor",
+        "drawBorder",
+        "fillBackground",
         "text"
       ]
     },
@@ -1358,8 +1386,17 @@
       "placement": null,
       "hasText": true,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "textColor": "#dbdbdb",
+        "fontSize": 14,
+        "fillColor": "#2e2e2e",
+        "fillOpacity": 1
+      },
       "props": [
+        "borderColor",
+        "drawBorder",
+        "fillBackground",
         "text"
       ]
     },
@@ -1434,7 +1471,14 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "textColor": "#ffffff",
+        "fontSize": 14,
+        "bold": true,
+        "fillColor": "#2962ff",
+        "fillOpacity": 1,
+        "lineColor": "#2962ff"
+      },
       "props": []
     },
     {
@@ -1444,9 +1488,21 @@
       "placement": null,
       "hasText": true,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "textColor": "#2962ff",
+        "fontSize": 14
+      },
       "props": [
-        "text"
+        "labelBackgroundColor",
+        "labelBold",
+        "labelBorderColor",
+        "labelFontSize",
+        "labelItalic",
+        "labelTextColor",
+        "text",
+        "textHAlign",
+        "textVAlign"
       ]
     },
     {
@@ -1698,8 +1754,14 @@
       "placement": null,
       "hasText": true,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "fontSize": 12
+      },
       "props": [
+        "emoji",
+        "position",
+        "showImage",
         "text"
       ]
     },
@@ -1738,14 +1800,18 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillColor": "#1b1f27",
-        "fillOpacity": 0.95
+        "fillColor": "#0f0f0f",
+        "fillOpacity": 1,
+        "lineColor": "#575757",
+        "textColor": "#dbdbdb",
+        "fontSize": 14
       },
       "props": [
         "cells",
         "colWidths",
         "headerRow",
-        "rowHeights"
+        "rowHeights",
+        "textHAlign"
       ]
     },
     {
@@ -1755,10 +1821,19 @@
       "placement": null,
       "hasText": true,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "textColor": "#2962ff",
+        "fontSize": 14,
+        "fillColor": "#2962ff",
+        "fillOpacity": 0.25,
+        "lineColor": "#707070"
+      },
       "props": [
-        "align",
-        "text"
+        "drawBorder",
+        "fillBackground",
+        "text",
+        "wordWrap",
+        "wordWrapWidth"
       ]
     },
     {

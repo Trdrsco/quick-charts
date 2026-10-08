@@ -24,6 +24,22 @@ export function barsInRange(bars: readonly SourceBar[], a: Time, b: Time): Sourc
   })
 }
 
+/** The bar at a time, or null where the feed has none. The feed runs in time order. */
+export function barAt(bars: readonly SourceBar[], time: Time): SourceBar | null {
+  const t = Number(time)
+  if (!Number.isFinite(t)) return null
+  let lo = 0
+  let hi = bars.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    const at = Number(bars[mid]!.time)
+    if (at === t) return bars[mid]!
+    if (at < t) lo = mid + 1
+    else hi = mid - 1
+  }
+  return null
+}
+
 /** The values of a bar a data-driven tool can compute over: its open, high, low or close, its
  *  volume, or an average of its prices: `hl2` (H + L)/2, `hlc3` (H + L + C)/3, `ohlc4`
  *  (O + H + L + C)/4 and `hlcc4` (H + L + C + C)/4. */
