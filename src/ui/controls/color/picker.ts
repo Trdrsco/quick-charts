@@ -373,7 +373,6 @@ export function createColorPalette(t: ChartTranslate, options: PaletteOptions): 
   // The plus stands after the mixed colors, in the next free cell: it is one more place a viewer's
   // colors come from, not a control parked under them.
   const plus = button({ class: 'qc-drawing-swatch-plus', label: t('drawing.addCustomColor'), onClick: () => openMixer() })
-  plus.setAttribute('aria-haspopup', 'true')
   let mixed: readonly string[] | null = null
   let mixedBlock = blockOf([plus], 'qc-drawing-swatch-block qc-drawing-swatch-block--mixed')
   grid.appendChild(mixedBlock)

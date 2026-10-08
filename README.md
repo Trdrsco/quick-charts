@@ -2814,6 +2814,14 @@ where they need to. The Template menu saves the current setup under a name, appl
 or applies the tool's defaults: its own look and setup, put on the drawing at once, with its words
 kept.
 
+A color in the dialog opens its popover under the button that holds it: the offered colors, the
+colors the viewer added with the plus after them, and the opacity, and for a stroke its thickness
+and line style. Every choice applies at once and the popover stays up for the next one; Escape
+returns to the button. The plus opens a custom color editor that takes a hex of three or six digits
+or a pick on its saturation and brightness area and hue strip. A color added there joins the
+viewer's own, newest first, kept with the drawing preferences in `ChartStorage`, and the settings
+bar's palette offers them too.
+
 The line tools' Style page carries the stroke with its two ends, the extensions, the middle point,
 the price labels and, under Info, the stats a line reads (price range, percent change, the change
 counted in the symbol's smallest price move, bars, date and time range, angle), where they stand
