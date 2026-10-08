@@ -127,6 +127,37 @@ describe('dismissal and direction', () => {
     expect(panel.style.left).toBe('0px')
   })
 
+  it('keeps the whole height of a panel that fits, holding only a taller one to the room left', () => {
+    const rect = (x: number, y: number, w: number, h: number) => () => ({ left: x, top: y, right: x + w, bottom: y + h, width: w, height: h, x, y, toJSON: () => ({}) }) as DOMRect
+    const box = el('div')
+    const anchor = el('button')
+    const panel = el('div')
+    box.append(anchor, panel)
+    document.body.appendChild(box)
+    box.getBoundingClientRect = rect(0, 0, 1280, 720)
+    Object.defineProperty(panel, 'offsetWidth', { configurable: true, value: 248 })
+    Object.defineProperty(panel, 'offsetHeight', { configurable: true, value: 318 })
+    // Under its button with 2px to spare at the box's end: the panel keeps all 318px.
+    anchor.getBoundingClientRect = rect(500, 366, 34, 34)
+    placePanel(panel, anchor, box, 'below', 0)
+    expect(panel.style.top).toBe('400px')
+    expect(panel.style.maxHeight).toBe('320px')
+    // No room under it: it turns over above its button, whole.
+    anchor.getBoundingClientRect = rect(500, 700, 34, 20)
+    placePanel(panel, anchor, box, 'below', 0)
+    expect(panel.style.top).toBe('382px')
+    expect(Number.parseFloat(panel.style.maxHeight)).toBeGreaterThanOrEqual(318)
+    // At the box's right edge it moves left to stay inside, never narrowing.
+    anchor.getBoundingClientRect = rect(1200, 100, 34, 34)
+    placePanel(panel, anchor, box, 'below', 0)
+    expect(panel.style.left).toBe(`${1280 - 248}px`)
+    // A panel taller than the box is held to the box and scrolls.
+    Object.defineProperty(panel, 'offsetHeight', { configurable: true, value: 900 })
+    placePanel(panel, anchor, box, 'below', 0)
+    expect(panel.style.top).toBe('0px')
+    expect(panel.style.maxHeight).toBe('720px')
+  })
+
   it.each(['ltr', 'rtl'])('places an external drawing toolbar flyout against its physical anchor inside widget bounds in %s', (dir) => {
     const box = el('div', { dir })
     const anchor = el('button')

@@ -88,6 +88,145 @@ async function openList(page: Page, name: string): Promise<{ button: Box; list: 
   }, name)
 }
 
+interface PopoverReading {
+  rect: Box
+  viewport: { width: number; height: number }
+  /** The ancestors whose overflow cuts the popover. */
+  clippedBy: string[]
+  /** Swatches in the palette's first row, and whether the last of them stands inside the popover. */
+  columns: number
+  lastInside: boolean
+  scrollsAcross: boolean
+  scrollsDown: boolean
+  maxWidth: string
+  /** The popover carries a stroke's Line style row, the widest of its rows. */
+  stroke: boolean
+}
+
+/** Open the color popover of the `index`th color button named `name` (in the dialog, or on the
+ *  settings bar for a `[data-qc-control]` name) and read it against the viewport and its ancestors. */
+async function openColor(page: Page, name: string, index = 0): Promise<PopoverReading> {
+  const before = await page.locator('.qc-drawing-popover').count()
+  const opener = name.startsWith('[') ? page.locator(`.qc-drawing-settings-bar ${name}`) : page.locator(`[data-role="drawing-settings"] button[aria-label="${name}"]`).nth(index)
+  await opener.click()
+  await expect(page.locator('.qc-drawing-popover')).toHaveCount(before + 1)
+  return page.evaluate(() => {
+    const panel = [...document.querySelectorAll<HTMLElement>('.qc-drawing-popover')].pop()!
+    const r = panel.getBoundingClientRect()
+    const clippedBy: string[] = []
+    for (let el = panel.parentElement; el; el = el.parentElement) {
+      const style = getComputedStyle(el)
+      if (style.overflowX === 'visible' && style.overflowY === 'visible') continue
+      const c = el.getBoundingClientRect()
+      if (r.left < c.left - 0.5 || r.top < c.top - 0.5 || r.right > c.right + 0.5 || r.bottom > c.bottom + 0.5) clippedBy.push(String(el.className))
+    }
+    const cells = [...panel.querySelectorAll<HTMLElement>('.qc-drawing-palette button')]
+    const top = cells[0]!.getBoundingClientRect().top
+    const row = cells.filter((cell) => Math.abs(cell.getBoundingClientRect().top - top) < 1)
+    return {
+      rect: { left: r.left, top: r.top, right: r.right, bottom: r.bottom, width: r.width, height: r.height },
+      viewport: { width: document.documentElement.clientWidth, height: document.documentElement.clientHeight },
+      clippedBy,
+      columns: row.length,
+      lastInside: row[row.length - 1]!.getBoundingClientRect().right <= r.right - 0.5,
+      scrollsAcross: panel.scrollWidth > panel.clientWidth,
+      scrollsDown: panel.scrollHeight > panel.clientHeight,
+      maxWidth: getComputedStyle(panel).maxWidth,
+      stroke: !!panel.querySelector('.qc-drawing-stroke-section--style'),
+    }
+  })
+}
+
+/** The popover keeps its whole width and grid, inside the viewport, cut by nothing. Its width is
+ *  the palette's 248px, or 250px under a stroke's Line style row. */
+function expectWhole(p: PopoverReading): void {
+  expect(p.rect.width).toBeCloseTo(p.stroke ? 250 : 248, 0)
+  expect(p.maxWidth).toBe('none')
+  expect(p.columns).toBe(10)
+  expect(p.lastInside).toBe(true)
+  expect(p.scrollsAcross).toBe(false)
+  expect(p.scrollsDown).toBe(false)
+  expect(p.clippedBy).toEqual([])
+  expect(p.rect.left).toBeGreaterThanOrEqual(0)
+  expect(p.rect.top).toBeGreaterThanOrEqual(0)
+  expect(p.rect.right).toBeLessThanOrEqual(p.viewport.width)
+  expect(p.rect.bottom).toBeLessThanOrEqual(p.viewport.height)
+}
+
+test.describe('the color popover', () => {
+  for (const [type, names] of [
+    ['fib_retracement', ['Level 1 color', 'Level 2 color', 'Use one color', 'Trend line']],
+    ['pitchfork', ['Use one color', 'Median']],
+    ['gannbox_fan', ['Use one color']],
+    ['fib_timezone', ['Use one color']],
+    ['trend_line', ['Line']],
+  ] as const) {
+    for (const edge of ['open', 'left', 'right'] as const) {
+      test(`${type}: every swatch's popover stands whole with the dialog ${edge === 'open' ? 'where it opens' : `at the viewport's ${edge} edge`}`, async ({ page }) => {
+        await mount(page)
+        await openSettings(page, type, 'Style')
+        if (edge !== 'open') await moveDialog(page, edge)
+        for (const name of names) {
+          expectWhole(await openColor(page, name))
+          await page.keyboard.press('Escape')
+          await expect(page.locator('[data-role="drawing-settings"] .qc-drawing-popover, .qc-dialog-scrim > .qc-drawing-popover')).toHaveCount(0)
+        }
+      })
+    }
+  }
+
+  test('a popover with only a sliver of room under its button keeps its whole height rather than scrolling', async ({ page }) => {
+    await mount(page)
+    await openSettings(page, 'trend_line', 'Style')
+    const whole = await openColor(page, 'Line')
+    await page.keyboard.press('Escape')
+    // Stand the dialog so the button's bottom leaves the popover two pixels more than it needs.
+    await page.evaluate((height) => {
+      const box = document.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+      const button = box.querySelector<HTMLElement>('button[aria-label="Line"]')!
+      const target = document.documentElement.clientHeight - height - 2
+      const shift = target - button.getBoundingClientRect().bottom
+      const top = box.getBoundingClientRect().top
+      box.style.position = 'fixed'
+      box.style.left = '40px'
+      box.style.top = `${top + shift}px`
+    }, whole.rect.height)
+    const tight = await openColor(page, 'Line')
+    expectWhole(tight)
+    expect(tight.rect.height).toBeCloseTo(whole.rect.height, 0)
+  })
+
+  test("the settings bar's color panels stand whole at either edge of the chart", async ({ page }) => {
+    await mount(page)
+    await page.evaluate(() => {
+      const w = window as unknown as {
+        quickcharts: { drawingTools: { create(t: string, id: string, a: unknown[]): { toJSON(): unknown } } }
+        widget: { activeChart(): { drawings: { restore(list: unknown[]): void; select(id: string): void } } }
+      }
+      const start = 1_700_000_000 + 600 * 60
+      const chart = w.widget.activeChart()
+      chart.drawings.restore([w.quickcharts.drawingTools.create('rectangle', 'bar-rect', [{ time: start, price: 150 }, { time: start + 480, price: 152 }]).toJSON()])
+      chart.drawings.select('bar-rect')
+    })
+    const bar = page.locator('.qc-drawing-settings-bar')
+    await expect(bar).toBeVisible()
+    for (const edge of ['open', 'left', 'right'] as const) {
+      if (edge !== 'open') {
+        await page.evaluate((edge) => {
+          const el = document.querySelector<HTMLElement>('.qc-drawing-settings-bar')!
+          const host = el.parentElement!.getBoundingClientRect()
+          el.style.left = edge === 'left' ? '0px' : `${host.width - el.offsetWidth}px`
+        }, edge)
+      }
+      for (const control of ['color', 'fill', 'text']) {
+        expectWhole(await openColor(page, `[data-qc-control="${control}"]`))
+        await page.keyboard.press('Escape')
+        await expect(page.locator('.qc-drawing-popover')).toHaveCount(0)
+      }
+    }
+  })
+})
+
 test.describe('a list button\'s list', () => {
   test('a list of choices opens flush under its button, at least as wide as it and as wide as its longest choice', async ({ page }) => {
     await mount(page)

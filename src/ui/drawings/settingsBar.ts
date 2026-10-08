@@ -117,7 +117,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     panelFor = null
     panelControl = null
   }
-  const openPanel = (anchor: HTMLElement, content: HTMLElement, placement: 'below' | 'below-end' = 'below', onClose?: () => void): void => {
+  const openPanel = (anchor: HTMLElement, content: HTMLElement, placement: 'below' | 'below-end' = 'below', onClose?: () => void, className?: string): void => {
     const wasOpen = anchor.getAttribute('aria-expanded') === 'true'
     closeOpen()
     if (wasOpen) return
@@ -132,7 +132,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
         panelControl = null
       }
       onClose?.()
-    }, anchor, () => reopenPopover(close, content, () => (control ? controls.querySelector<HTMLElement>(`[data-qc-control='${control}']`) : null)))
+    }, anchor, () => reopenPopover(close, content, () => (control ? controls.querySelector<HTMLElement>(`[data-qc-control='${control}']`) : null)), className ? { className } : {})
     closePanel = close
     panelFor = deps.selected()?.id ?? null
     panelControl = anchor.dataset.qcControl ?? null
@@ -390,8 +390,9 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       )
     }
 
-    /** A color panel on the bar. Choosing a colour is the whole of what the panel is for, so the
-     *  choice closes it; moving the opacity is not a choice and leaves it standing. */
+    /** A color panel on the bar, the dialog's color popover in width: as wide as its palette
+     *  wherever it opens. Choosing a colour is the whole of what the panel is for, so the choice
+     *  closes it; moving the opacity is not a choice and leaves it standing. */
     const colorPanel = (control: HTMLElement, spec: { value: string; onPick: (c: string) => void; opacity: number; onOpacity: (v: number) => void }): void => {
       openPanel(
         control,
@@ -405,6 +406,9 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
           opacity: spec.opacity,
           onOpacity: spec.onOpacity,
         }).element,
+        'below',
+        undefined,
+        'qc-drawing-popover--color',
       )
     }
     if (hasStroke) {
