@@ -99,14 +99,18 @@ export function paintArrowHead(
 let measurer: CanvasRenderingContext2D | null = null
 
 /** How wide a line of words reads in a style's type, measured without a live rendering context. */
-function lineMeasure(style: DrawingStyle): (line: string) => number {
+export function lineMeasure(style: DrawingStyle): (line: string) => number {
   if (!measurer && typeof document !== 'undefined') {
     measurer = document.createElement('canvas').getContext('2d')
   }
   const m = measurer
   if (!m) return (line) => line.length * style.fontSize * 0.6
-  m.font = fontOf(style)
-  return (line) => m.measureText(line).width
+  const font = fontOf(style)
+  // The measurer is shared, so each measure states its own type.
+  return (line) => {
+    if (m.font !== font) m.font = font
+    return m.measureText(line).width
+  }
 }
 
 /** Measure a text block (newline-aware) without a live rendering context. */

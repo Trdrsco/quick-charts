@@ -1885,6 +1885,7 @@
       "props": [
         "drawBorder",
         "fillBackground",
+        "savedLook",
         "text",
         "wordWrap",
         "wordWrapWidth"

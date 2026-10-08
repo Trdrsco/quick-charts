@@ -1,11 +1,13 @@
 import type { SeriesAttachedParameter, Time } from 'lightweight-charts'
 
-import type { Anchor, DrawingStyle, Point, Viewport } from '../core/types'
+import type { Anchor, ControlPoint, DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { barAt } from '../core/bars'
 import { distanceToSegment, midpoint, segmentTextAngle } from '../core/geometry'
-import { applyStroke, fillPaint, inkOn, measureTextBlock, paintLabel, paintTextBlock, strokeSegment, withAlpha, wrapText } from '../render/canvas'
+import { applyStroke, fillPaint, fontOf, inkOn, lineMeasure, measureTextBlock, paintLabel, paintTextBlock, strokeSegment, withAlpha, wrapText } from '../render/canvas'
 import { endSavedLook, type SavedLook } from '../core/savedLook'
+import type { TextBlock, TextEditFrame } from '../core/textEntry'
+import { paintTextEntry, paintWordsFrame } from '../render/textEntry'
 import { glyphArtwork } from '../render/glyphArtwork'
 import type { TextHAlign, TextVAlign } from './lines'
 
@@ -48,53 +50,176 @@ export type TextBoxProps = TextProps & {
   /** Whether the words wrap at `wordWrapWidth` pixels; off, each line runs its own length. */
   wordWrap: boolean
   wordWrapWidth: number
+  /** A format-2 text's look, its words six pixels into a box rounded at four, painted as format 2
+   *  did until the text's settings change. */
+  savedLook: SavedLook
 }
 
-/** Free text at a chart point, the point its box's top-left. */
+/** How far a text's words stand in from its point, and how much room its box keeps past the words
+ *  across and down. */
+const TEXT_INSET = 2
+const TEXT_ROOM = 5
+/** The pixel a caret after the last word takes, which a box with words keeps for it. */
+const CARET_ROOM = 1
+/** The alpha the placeholder paints at, and the frame while an edit holds no words. */
+const EMPTY_ALPHA = 0.4
+
+/** Where a text's words stand and the box they make. */
+interface TextPlace {
+  /** The first line box's top-left. */
+  x: number
+  y: number
+  lineHeight: number
+  /** The width the lines align within. */
+  width: number
+  align: 'left' | 'center'
+  block: TextBlock
+  /** The placeholder in lines, where it shows. */
+  placeholder: TextBlock | null
+  wrapWidth: number | null
+  box: Box
+}
+
+/**
+ * Free text at a chart point: the point is its box's top-left, and the words stand two pixels in,
+ * one line to each `fontSize` pixels. The box takes the widest line, the pixel a caret after it
+ * takes, and five pixels more across and down. An empty text shows its placeholder at 40%. While
+ * selected a two pixel frame stands just outside the box in the words' color, at 40% while an
+ * edit shows the placeholder; the text has no handles, and a drag anywhere on it moves it.
+ */
 export class TextLabel extends Drawing<TextBoxProps> {
   readonly type: string = 'text'
 
   protected override defaultProps(): TextBoxProps {
-    return { text: '', fillBackground: false, drawBorder: false, wordWrap: false, wordWrapWidth: 200 }
+    return { text: '', fillBackground: false, drawBorder: false, wordWrap: false, wordWrapWidth: 200, savedLook: null }
   }
 
-  /** A format-2 text showed its background wherever its fill did. */
+  /** A format-2 text showed its background wherever its fill did, its words six pixels into a box
+   *  rounded at four at a line height of 1.35; it paints so until its settings change. */
   protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
-    this._props = { ...this._props, fillBackground: true }
+    this._props = { ...this._props, fillBackground: true, savedLook: {} }
+  }
+
+  override applyProps(patch: Partial<TextBoxProps>): void {
+    super.applyProps(endSavedLook(patch))
   }
 
   requiredAnchors(): number {
     return 1
   }
 
-  /** The words as the box reads them, wrapped while wrap is on. */
-  protected words(): string {
-    const text = this.props.text || ' '
-    return this.props.wordWrap ? wrapText(text, this.style, this.props.wordWrapWidth) : text
-  }
-
-  protected box(viewport: Viewport): Box | null {
+  protected place(viewport: Viewport): TextPlace | null {
     const anchor = this.anchors[0]
     if (!anchor) return null
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return null
-    const { width, height } = measureTextBlock(this.words(), this.style)
-    return { x: p.x, y: p.y, width: width + 12, height: height + 12 }
+    const wrapWidth = this.props.wordWrap ? this.props.wordWrapWidth : null
+    const { block, placeholder } = this.shownWords(lineMeasure(this.style), wrapWidth)
+    const shown = placeholder ?? block
+    const align = wordsAlign(this.props)
+    if (this.props.savedLook) {
+      const lineHeight = Math.round(this.style.fontSize * 1.35)
+      const width = wrapWidth ?? shown.width
+      return {
+        x: p.x + 6,
+        y: p.y + 6,
+        lineHeight,
+        width,
+        align,
+        block,
+        placeholder,
+        wrapWidth,
+        box: { x: p.x, y: p.y, width: width + 12, height: shown.lines.length * lineHeight + 12 },
+      }
+    }
+    const x = Math.round(p.x)
+    const y = Math.round(p.y)
+    const lineHeight = this.style.fontSize
+    const words = wrapWidth ?? (placeholder ? placeholder.width : block.width + CARET_ROOM)
+    return {
+      x: x + TEXT_INSET,
+      y: y + TEXT_INSET,
+      lineHeight,
+      width: placeholder ? placeholder.width : (wrapWidth ?? block.width),
+      align,
+      block,
+      placeholder,
+      wrapWidth,
+      box: { x, y, width: Math.floor(words) + TEXT_ROOM, height: shown.lines.length * lineHeight + TEXT_ROOM },
+    }
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const box = this.box(viewport)
-    if (!box) return
-    paintTextBlock(ctx, this.words(), box, this.style, {
-      background: this.props.fillBackground ? (fillPaint(this.style) ?? undefined) : undefined,
-      borderColor: this.props.drawBorder ? this.style.lineColor : undefined,
-      align: wordsAlign(this.props),
-    })
+    const at = this.place(viewport)
+    if (!at) return
+    const draft = this.textDraft
+    const background = this.props.fillBackground ? (fillPaint(this.style) ?? undefined) : undefined
+    const borderColor = this.props.drawBorder ? this.style.lineColor : undefined
+    if (this.props.savedLook && !draft) {
+      const text = this.props.text || ' '
+      paintTextBlock(ctx, this.props.wordWrap ? wrapText(text, this.style, this.props.wordWrapWidth) : text, at.box, this.style, { background, borderColor, align: at.align })
+    } else {
+      if (background || borderColor) {
+        ctx.save()
+        ctx.setLineDash([])
+        ctx.beginPath()
+        if (this.props.savedLook) ctx.roundRect(at.box.x, at.box.y, at.box.width, at.box.height, 4)
+        else ctx.rect(at.box.x, at.box.y, at.box.width, at.box.height)
+        if (background) {
+          ctx.fillStyle = background
+          ctx.fill()
+        }
+        if (borderColor) {
+          ctx.strokeStyle = borderColor
+          ctx.lineWidth = 1
+          ctx.stroke()
+        }
+        ctx.restore()
+      }
+      paintTextEntry(ctx, {
+        x: at.x,
+        y: at.y,
+        width: at.width,
+        lineHeight: at.lineHeight,
+        font: fontOf(this.style),
+        color: this.style.textColor,
+        align: at.align,
+        block: at.block,
+        placeholder: at.placeholder ? { block: at.placeholder, alpha: EMPTY_ALPHA } : null,
+        draft,
+        measure: lineMeasure(this.style),
+      })
+    }
+    if (this.state === 'selected' || this.state === 'editing') paintWordsFrame(ctx, at.box, this.style.textColor, draft && at.placeholder ? EMPTY_ALPHA : 1)
   }
 
+  override textFrame(viewport: Viewport): TextEditFrame | null {
+    const at = this.place(viewport)
+    if (!at) return null
+    return {
+      x: at.x,
+      y: at.y,
+      width: at.width,
+      lines: (at.placeholder ?? at.block).lines.length,
+      lineHeight: at.lineHeight,
+      font: fontOf(this.style),
+      align: at.align,
+      wrapWidth: at.wrapWidth,
+      angle: 0,
+    }
+  }
+
+  /** No handles: the frame says the text is selected, and a drag anywhere on it moves it. */
+  override getControlPoints(_viewport: Viewport): ControlPoint[] {
+    return []
+  }
+
+  /** An empty text shows its placeholder in its own box, so it needs no hint above it. */
+  override paintTextHint(): void {}
+
   testHit(point: Point, viewport: Viewport): boolean {
-    const box = this.box(viewport)
-    return !!box && inBox(point, box)
+    const at = this.place(viewport)
+    return !!at && inBox(point, at.box)
   }
 }
 

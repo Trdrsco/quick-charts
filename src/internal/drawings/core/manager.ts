@@ -35,6 +35,7 @@ export class DrawingManager {
   private _currencyCode: string | null = null
   private _priceFormat: PriceFormatPort | null = null
   private _glyphSource: GlyphSourcePort | null = null
+  private _placeholder: (() => string) | null = null
   private readonly _listeners = new Map<DrawingEventType, Set<DrawingEventCallback>>()
 
   /** Host bar feed, broadcast to every drawing (data-driven tools read it at paint time). */
@@ -67,6 +68,13 @@ export class DrawingManager {
   setGlyphSource(source: GlyphSourcePort | null): void {
     this._glyphSource = source
     for (const drawing of this._drawings.values()) drawing.setGlyphSource(source)
+  }
+
+  /** Where the words an empty drawing shows come from, broadcast to every drawing: the host's
+   *  catalog, read as each paints. */
+  setTextPlaceholder(source: (() => string) | null): void {
+    this._placeholder = source
+    for (const drawing of this._drawings.values()) drawing.setTextPlaceholder(source)
   }
 
   /** Broadcast the chart's timeframe so per-timeframe visibility rules apply. */
@@ -127,6 +135,7 @@ export class DrawingManager {
     concrete.setCurrencyCode(this._currencyCode)
     concrete.setPriceFormatter(this._priceFormat)
     concrete.setGlyphSource(this._glyphSource)
+    if (this._placeholder) concrete.setTextPlaceholder(this._placeholder)
     this._drawings.set(concrete.id, concrete)
     this._order.push(concrete.id)
     this._series?.attachPrimitive(concrete)

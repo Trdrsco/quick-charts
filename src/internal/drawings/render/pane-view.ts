@@ -49,5 +49,7 @@ export class DrawingPaneView implements IPrimitivePaneView, IPrimitivePaneRender
         ctx.restore()
       }
     })
+    // An editor laid over the words follows them wherever this paint stood them.
+    drawing.noteTextFrame(viewport)
   }
 }

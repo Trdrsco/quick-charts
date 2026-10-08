@@ -28,7 +28,9 @@ import { DEFAULT_OPTIONS, DEFAULT_STYLE, SERIAL_VERSION } from './types'
 import type { TimeframeContext } from './visibility'
 import { normalizeVisibility, visibleAt } from './visibility'
 import type { BarSource, SourceBar } from './bars'
+import { layoutTextBlock, type TextBlock, type TextDraft, type TextEditFrame } from './textEntry'
 import { DrawingPaneView } from '../render/pane-view'
+import { drawing as englishWords } from '../../../i18n/en/drawing'
 
 function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
   return { ...DEFAULT_OPTIONS, ...patch, visibility: normalizeVisibility(patch.visibility) }
@@ -622,6 +624,72 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   textHintAnchor(): { x: number; y: number; angle: number } | null {
     const r = this._textHint
     return r ? { x: r.cx, y: r.cy, angle: r.angle } : null
+  }
+
+  // ============ Words typed on the chart ============
+
+  private _textDraft: TextDraft | null = null
+  private _onTextFrame: ((frame: TextEditFrame | null) => void) | null = null
+  private _textFrameKey: string | null = null
+  private _placeholder: (() => string) | null = null
+
+  /** The draft an open inline edit shows on this drawing (transient view state, never serialized):
+   *  a tool that types on the chart paints these words, their selection and the caret in place of
+   *  its committed words. */
+  get textDraft(): TextDraft | null {
+    return this._textDraft
+  }
+
+  /** Show an inline edit's draft, or end it with null. `onFrame` hears where the words stand each
+   *  time a repaint moves them, until the edit ends. */
+  setTextDraft(draft: TextDraft | null, onFrame?: (frame: TextEditFrame | null) => void): void {
+    this._textDraft = draft
+    if (onFrame) this._onTextFrame = onFrame
+    if (!draft) {
+      this._onTextFrame = null
+      this._textFrameKey = null
+    }
+    this.requestUpdate()
+  }
+
+  /** Where this drawing's words stand, for an editor laid over them; null for a tool that does not
+   *  type on the chart. */
+  textFrame(_viewport: Viewport): TextEditFrame | null {
+    return null
+  }
+
+  /** After each paint: an open edit hears where the words stand whenever that moved. */
+  noteTextFrame(viewport: Viewport): void {
+    if (!this._onTextFrame || !this._textDraft) return
+    const frame = this.textFrame(viewport)
+    const key = JSON.stringify(frame)
+    if (key === this._textFrameKey) return
+    this._textFrameKey = key
+    this._onTextFrame(frame)
+  }
+
+  /** Where the words an empty drawing shows come from: the host's catalog, read as it paints. */
+  setTextPlaceholder(source: (() => string) | null): void {
+    this._placeholder = source
+    this.requestUpdate()
+  }
+
+  /** The words an empty drawing shows: the host's, or the catalog's English where none is set. */
+  protected textPlaceholder(): string {
+    return this._placeholder?.() ?? englishWords['drawing.addText']
+  }
+
+  /** The words this drawing shows, in lines: the open edit's draft or the committed words. The
+   *  placeholder stands in their place only while both are empty, so words emptied during an edit
+   *  show nothing until the edit ends. */
+  protected shownWords(measure: (line: string) => number, wrapWidth: number | null = null): { block: TextBlock; placeholder: TextBlock | null } {
+    const own = (this._props as Record<string, unknown>).text
+    const committed = typeof own === 'string' ? own : ''
+    const value = this._textDraft?.value ?? committed
+    return {
+      block: layoutTextBlock(value, measure, wrapWidth),
+      placeholder: value === '' && committed === '' ? layoutTextBlock(this.textPlaceholder(), measure) : null,
+    }
   }
 
   abstract testHit(point: Point, viewport: Viewport): boolean

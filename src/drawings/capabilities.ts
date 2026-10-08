@@ -127,6 +127,7 @@ export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
   fixed_range_volume_profile: PROFILE,
   anchored_volume_profile: PROFILE,
   callout: ['borderWidth'],
+  text: SAVED_LOOK,
   price_note: SAVED_LOOK,
   signpost: SAVED_LOOK,
   price_range: METER,

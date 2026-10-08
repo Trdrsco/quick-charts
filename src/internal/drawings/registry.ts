@@ -68,6 +68,19 @@ import { BarsPattern, GhostFeed, RegressionTrend } from './tools/bars'
 import { AnchoredVolumeProfile, AnchoredVwap, FixedRangeVolumeProfile } from './tools/volume'
 import { GlyphMark, IconMark, ImageNote, StickerMark } from './tools/content'
 
+/** How a tool that types its words on the chart answers the pointer and an empty draft. The
+ *  drawing paints the words as they are typed, with their caret, selection and placeholder, while
+ *  an invisible field laid over them takes the keys; Escape and a press elsewhere keep the words
+ *  exactly as typed. */
+export interface InlineTextRules {
+  /** A click on the drawing while it is selected types into its words, the caret after the last. */
+  clickToType: boolean
+  /** A double-click on the drawing opens its settings rather than its words. */
+  doubleClickOpensSettings: boolean
+  /** A drawing left without words stays while it is selected and is removed once it is not. */
+  removeEmptyOnDeselect: boolean
+}
+
 export interface ToolDefinition {
   type: string
   name: string
@@ -78,6 +91,9 @@ export interface ToolDefinition {
   style?: Partial<DrawingStyle>
   /** Tool renders the viewer's text — the host opens its text editor right after placement. */
   hasText?: boolean
+  /** The tool types its words on the chart, under these rules. Absent, its words are typed in an
+   *  editor box of their own. */
+  inlineText?: InlineTextRules
   /** How anchors are gathered: drag-captured stroke, or click-to-add points (double-click ends).
    *  Omitted = the fixed `anchors` count. */
   placement?: 'freehand' | 'multipoint' | 'instant'
@@ -100,6 +116,7 @@ interface ToolMeta {
   anchors: number
   style?: Partial<DrawingStyle>
   hasText?: boolean
+  inlineText?: InlineTextRules
   placement?: 'freehand' | 'multipoint' | 'instant'
   capturesBars?: boolean
 }
@@ -266,7 +283,15 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(IconMark, { type: 'icon', name: 'Icon', category: 'content', anchors: 1, style: { lineColor: '#2962ff' } }),
 
   // Annotation
-  tool(TextLabel, { type: 'text', name: 'Text', category: 'annotation', anchors: 1, hasText: true, style: { textColor: '#2962ff', fontSize: 14, fillColor: '#2962ff', fillOpacity: 0.25, lineColor: '#707070' } }),
+  tool(TextLabel, {
+    type: 'text',
+    name: 'Text',
+    category: 'annotation',
+    anchors: 1,
+    hasText: true,
+    inlineText: { clickToType: true, doubleClickOpensSettings: true, removeEmptyOnDeselect: true },
+    style: { textColor: '#2962ff', fontSize: 14, fillColor: '#2962ff', fillOpacity: 0.25, lineColor: '#707070' },
+  }),
   tool(Note, { type: 'note', name: 'Note', category: 'annotation', anchors: 2, hasText: true, style: { lineColor: '#dbdbdb', textColor: '#dbdbdb', fontSize: 14, fillColor: '#2e2e2e', fillOpacity: 1 } }),
   tool(Comment, { type: 'comment', name: 'Comment', category: 'annotation', anchors: 1, hasText: true, style: { textColor: '#ffffff', fontSize: 16, fillColor: '#2962ff', fillOpacity: 1, lineColor: '#2962ff' } }),
   tool(Callout, { type: 'callout', name: 'Callout', category: 'annotation', anchors: 2, hasText: true, style: { textColor: '#ffffff', fontSize: 14, fillColor: '#0097a7', fillOpacity: 0.7, lineColor: '#0097a7', lineWidth: 2 } }),
