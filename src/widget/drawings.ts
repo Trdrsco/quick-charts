@@ -297,6 +297,8 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     // The keyboard verbs go through the registry, so the access policy gates them like every door.
     execute: (command, arg) => deps.commands.execute(command, arg).kind === 'ok',
     ink: () => deps.theme()['text.primary'],
+    // What an empty text shows, in the viewer's language as it paints.
+    placeholder: () => live('drawing.addText'),
     // While replay is waiting to be told where to begin, the plot's own mark is the answer to where
     // a click lands. This layer owns the plot's cursor, so it is the one that stands it down.
     pointerSuppressed: () => deps.replayPhase() === 'arming',

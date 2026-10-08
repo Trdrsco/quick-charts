@@ -176,7 +176,10 @@ export {
   type DrawingsWorkflow,
   type PlacedImage,
   type SelectedDrawing,
+  type TextDraft,
+  type TextEditFrame,
   type TextEditSession,
+  type TextInlineEdit,
 } from './drawings'
 export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
 export {

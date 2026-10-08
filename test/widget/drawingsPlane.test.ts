@@ -455,18 +455,47 @@ describe('the plane through the registry', () => {
     expect(gestures.style.touchAction).toBe('')
   })
 
-  it('the inline text editor mounts on a text placement and commits into the drawing', () => {
+  it('a text placement opens the field over its words, and Escape commits them as typed, the text still selected', () => {
     vi.useFakeTimers()
     const { chrome, gestures, run, plane } = make()
     run('chart.drawings.arm', 'text')
     click(gestures, 100, 100)
-    vi.runAllTimers()
-    const area = chrome.querySelector<HTMLTextAreaElement>('textarea')!
+    vi.runOnlyPendingTimers()
+    const area = chrome.querySelector<HTMLTextAreaElement>('textarea[data-qc-editor="inline"]')!
     expect(area).toBeTruthy()
-    area.value = 'Breakout'
-    area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }))
+    expect(area.placeholder).toBe('Add text')
+    expect(document.activeElement).toBe(area)
+    area.value = 'Hello world\nline2\n'
+    area.dispatchEvent(new Event('input', { bubbles: true }))
+    // The words change on the drawing only as they commit.
+    expect(plane.api!.export()).toEqual([])
+    area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(chrome.querySelector('textarea')).toBeNull()
-    expect(plane.api!.export()[0]?.props?.text).toBe('Breakout')
+    expect(plane.api!.export()[0]?.props?.text).toBe('Hello world\nline2\n')
+    expect(plane.api!.selected()?.type).toBe('text')
+    expect(document.activeElement).toBe(gestures)
+  })
+
+  it('a press on the chart commits the words and deselects the text, removing one left empty', async () => {
+    vi.useFakeTimers()
+    const { chrome, gestures, run, plane } = make()
+    run('chart.drawings.arm', 'text')
+    click(gestures, 100, 100)
+    vi.runOnlyPendingTimers()
+    const area = chrome.querySelector<HTMLTextAreaElement>('textarea')!
+    area.value = 'Kept'
+    area.dispatchEvent(new Event('input', { bubbles: true }))
+    click(gestures, 600, 300)
+    expect(chrome.querySelector('textarea')).toBeNull()
+    expect(plane.api!.selected()).toBeNull()
+    expect(plane.api!.export().map((d) => d.props?.text)).toEqual(['Kept'])
+    run('chart.drawings.arm', 'text')
+    click(gestures, 300, 100)
+    vi.runOnlyPendingTimers()
+    click(gestures, 600, 300)
+    await Promise.resolve()
+    expect(plane.api!.export().map((d) => d.props?.text)).toEqual(['Kept'])
+    expect(plane.api!.counts().total).toBe(1)
   })
 
   it('shows the sync switch in a layout and binds a new drawing to this chart when sync is off', () => {

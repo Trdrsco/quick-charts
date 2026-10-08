@@ -20,6 +20,7 @@ import { drawingTools, type DrawingTool } from '../tools'
 import { editRefused } from '../lockModel'
 import { toolAfterPlacement } from '../cursorModel'
 import { stampNewScope } from './scope'
+import { inlineTextRules } from './inlineText'
 import { constrain45, instantPositionAnchors, barsShifted, type Px } from './geometry'
 import type { DrawingsWorkflow } from './types'
 import { presetPropsFor, type PresetCache } from './presets'
@@ -79,6 +80,8 @@ export interface Drag {
   /** A Control- or Command-drag duplicate: the drag moves a fresh copy, and an unmoved release
    *  discards it. */
   cloned?: boolean
+  /** The grabbed drawing was already the selection when the press began. */
+  selectedBefore?: boolean
 }
 
 /** What the gestures read and write. The attach module owns every field. */
@@ -109,9 +112,14 @@ export interface GestureContext {
   drag: Drag | null
   transient: Set<string>
   textEditOpen(): boolean
-  /** Open the inline editor on a drawing's text, deferred past the gesture. */
-  openTextEdit(drawing: IDrawing, x: number, y: number, fresh: boolean): void
+  /** Open the inline editor on a drawing's text, deferred past the gesture: as part of placing the
+   *  drawing, from a click on it, or from a command. */
+  openTextEdit(drawing: IDrawing, x: number, y: number, fresh: boolean, how?: 'placement' | 'click' | 'command'): void
   openCellEdit(drawing: IDrawing, cell: { row: number; col: number; rect: { x: number; y: number; width: number; height: number } }): void
+  /** End the open or opening text edit, keeping what an inline edit typed. */
+  endTextEdit(): void
+  /** Ask for the selected drawing's settings. */
+  openSettings(): void
   setHovered(id: string | null): void
   persist(): void
   changed(): void
@@ -266,9 +274,11 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (drawingTools.get(draft.drawing.type)?.capturesBars) (draft.drawing as unknown as { capture?: () => void }).capture?.()
     finalize()
     manager.select(draft.drawing.id)
+    // The edit opens before the persist, so a drawing that is nothing until it holds words is not
+    // written while it holds none.
+    if (draft.hasText) ctx.openTextEdit(draft.drawing, at.x, at.y, true, 'placement')
     ctx.persist()
-    if (draft.hasText) ctx.openTextEdit(draft.drawing, at.x, at.y, true)
-    else ctx.changed()
+    if (!draft.hasText) ctx.changed()
   }
 
   const addTransient = (type: string, anchors: Anchor[], style?: Parameters<typeof drawingTools.create>[3]): IDrawing | null => {
@@ -403,8 +413,10 @@ export function bindGestures(ctx: GestureContext): () => void {
           }
         }
         // Selecting a locked drawing is allowed, so it can be inspected and unlocked.
-        if (!sel || sel.id !== hit.id) manager.select(hit.id)
+        const selectedBefore = sel?.id === hit.id
+        if (!selectedBefore) manager.select(hit.id)
         if (!editRefused('move', hit.options, false)) startDrag('move', hit, null, p)
+        if (ctx.drag) ctx.drag.selectedBefore = selectedBefore
         return
       }
       manager.deselect()
@@ -577,6 +589,12 @@ export function bindGestures(ctx: GestureContext): () => void {
         return
       }
     }
+    // An unmoved click on a drawing that was already selected types into its words, for a tool
+    // that types them on the chart; the click that selected it only selects it.
+    if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.selectedBefore && inlineTextRules(drag.drawing)?.clickToType && !editRefused('editText', drag.drawing.options, ctx.locked())) {
+      ctx.openTextEdit(drag.drawing, drag.grabX, drag.grabY, false, 'click')
+      return
+    }
     if (drag.moved || drag.cloned) {
       ctx.persist()
       ctx.changed()
@@ -690,13 +708,22 @@ export function bindGestures(ctx: GestureContext): () => void {
       }
       return
     }
-    if (ctx.armed() || ctx.textEditOpen()) return
+    if (ctx.armed()) return
     const p = localXY(e)
     const hit = manager.hitTest(p)
+    // A tool that types its words on the chart opens its settings on a double-click. A click of the
+    // double-click may have begun an edit of the words; it ends keeping them as they are.
+    if (hit && inlineTextRules(hit)?.doubleClickOpensSettings) {
+      ctx.endTextEdit()
+      manager.select(hit.id)
+      ctx.openSettings()
+      return
+    }
+    if (ctx.textEditOpen()) return
     if (!hit || editRefused('editText', hit.options, false)) return
     if (!drawingTools.get(hit.type)?.hasText) return
     manager.select(hit.id)
-    ctx.openTextEdit(hit, p.x, p.y, false)
+    ctx.openTextEdit(hit, p.x, p.y, false, 'click')
   }
 
   // The press starts on the container, but move and release bind to the WINDOW: a drag that leaves

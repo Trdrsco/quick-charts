@@ -1,11 +1,44 @@
 /* The inline text editor over the pane, the glyph picker and the image picker. */
 
-/* The editor sits at the drawing's own text position in the drawing's own type; its size follows
- * the content and is written by the editor, because it is measured text. The ring is the focus
- * role, so it reads as the field it is without a fill hiding the chart. */
+/* The text editor over the pane. Its place, size and type are written by the editor, because they
+ * are the words' own. */
 [data-qc-theme] .qc-drawing-text-editor {
   position: absolute;
   z-index: 8;
+  margin: 0;
+  resize: none;
+  pointer-events: auto;
+}
+
+/* Over a drawing that types its words on the chart, the field is seen by nobody: the chart paints
+ * the words, the caret, the selection and the placeholder, and the field only takes the keys. It
+ * lies exactly over the painted words, 2px of padding around their block, in their own type with
+ * nothing of its own (no spacing, features or decoration) that would part its caret from them. */
+[data-qc-theme] .qc-drawing-text-editor[data-qc-editor='inline'] {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: none;
+  padding: 2px;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  color: inherit;
+  font-feature-settings: normal;
+  font-kerning: auto;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-indent: 0;
+  text-transform: none;
+  background: none;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  opacity: 0;
+}
+
+/* Over any other drawing, the editor is a box at the drawing's own text position in the drawing's
+ * own type, its size following the content. The ring is the focus role, so it reads as the field it
+ * is without a fill hiding the chart. */
+[data-qc-theme] .qc-drawing-text-editor[data-qc-editor='box'] {
   padding: 3px 6px;
   overflow: hidden;
   text-align: center;
@@ -15,11 +48,9 @@
   border-radius: 2px;
   outline: none;
   box-shadow: 0 0 0 1px var(--qc-state-focusRing);
-  resize: none;
-  pointer-events: auto;
 }
 
-[data-qc-theme] .qc-drawing-text-editor::placeholder {
+[data-qc-theme] .qc-drawing-text-editor[data-qc-editor='box']::placeholder {
   color: var(--qc-text-muted);
 }
 

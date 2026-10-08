@@ -11,7 +11,8 @@
 import type { Time } from 'lightweight-charts'
 import { bundledGlyphSource, onBundledArtwork } from '../emoji'
 import { DrawingManager, parseTimeframeContext, restoreDrawings, viewportOf, visibilityPreset } from '../../internal/drawings/index'
-import type { IDrawing, SerializedDrawing, SourceBar } from '../../internal/drawings/index'
+import type { IDrawing, InlineTextRules, SerializedDrawing, SourceBar, TextEditFrame } from '../../internal/drawings/index'
+import { inlineTextRules } from './inlineText'
 import type { ResourceRef } from '../../resources'
 import { drawingTools } from '../tools'
 import { editRefused } from '../lockModel'
@@ -58,6 +59,10 @@ const KEY_COMMANDS = {
   copy: 'chart.drawings.copy',
   paste: 'chart.drawings.paste',
 } as const
+
+/** The command a double-click on a drawing that types its words on the chart runs through the
+ *  door: its settings. */
+const SETTINGS_COMMAND = 'chart.drawings.settings'
 
 let idSeq = 0
 const nextId = (): string => `dww-${idSeq++}-${Date.now() % 1e9}`
@@ -109,6 +114,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
 
   const manager = new DrawingManager()
   manager.setGlyphSource(options.glyphSource ?? bundledGlyphSource)
+  if (options.placeholder) manager.setTextPlaceholder(options.placeholder)
   // An emoji painted before the bundled artwork arrived painted as text: hand every drawing the
   // source again as it lands, which repaints them with the artwork.
   const stopArtwork = options.glyphSource ? null : onBundledArtwork(() => manager.setGlyphSource(bundledGlyphSource))
@@ -141,6 +147,12 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   let allLocked = false
   let hovered: string | null = null
   let textEdit: TextEditSession | null = null
+  /** Drawings of a tool that removes an empty drawing, holding no words: none is the viewer's until
+   *  it holds words, so no document and no history step carries it. */
+  const wordless = new Set<string>()
+  /** While the screen is replaced wholesale, a drawing the selection leaves is not judged: the
+   *  screen that replaces it decides what stays. */
+  let replacing = false
   const transient = new Set<string>()
   /** Drawings the viewer hid during this layer's life, by id: what an import hides again. */
   const hiddenThisSession = new Set<string>()
@@ -159,11 +171,12 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     container.style.touchAction = lock.touchAction
   }
 
-  /** The drawings on screen that are the viewer's: never a transient readout, never a draft. */
+  /** The drawings on screen that are the viewer's: never a transient readout, never a draft, never
+   *  a text that holds no words. */
   const kept = (): SerializedDrawing[] =>
     manager
       .export()
-      .filter((d) => d.id !== ctx.draft?.drawing.id && !transient.has(d.id))
+      .filter((d) => d.id !== ctx.draft?.drawing.id && !transient.has(d.id) && !wordless.has(d.id))
       .map((d) => previewing.get(d.id) ?? d)
 
   const owner: DrawingOwner = options.surface?.owner ?? { source: 'main', pane: 'main' }
@@ -190,9 +203,20 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     closeTextEdit(false)
     clearTransients()
     previewing.clear()
-    manager.clear()
+    clearScreen()
     importList(list)
     if (selectedId && manager.get(selectedId)) manager.select(selectedId)
+  }
+
+  /** Take every drawing off the screen, the words nobody wrote with them. */
+  const clearScreen = (): void => {
+    replacing = true
+    try {
+      manager.clear()
+    } finally {
+      replacing = false
+      wordless.clear()
+    }
   }
 
   const importList = (list: readonly SerializedDrawing[]): void => {
@@ -239,17 +263,50 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   }
 
   // ── Inline text ─────────────────────────────────────────────────────────────────────────────
+  // A drawing whose tool types its words on the chart shows the edit from the moment it opens: its
+  // draft is the committed words with the caret after them, so the first paint after the press is
+  // already the edit's. The session, which mounts the field that takes the keys, follows once the
+  // gesture has ended. Committing keeps the words exactly as typed, empty included, and the edit's
+  // drawing stays selected; a drawing of a tool that removes an empty drawing goes when the
+  // selection leaves it without words.
   const setTextEdit = (session: TextEditSession | null): void => {
     textEdit = session
     events.onTextEdit?.(session)
   }
 
+  /** An inline edit whose drawing already shows its draft, waiting for its gesture to end. */
+  let pendingEdit: { drawing: IDrawing; timer: ReturnType<typeof setTimeout> } | null = null
+  /** How the open inline edit was opened: a double-click that began with the click that opened it
+   *  is the viewer asking for the drawing's settings. */
+  let openedBy: 'placement' | 'click' | 'command' | null = null
+  const frameListeners = new Set<(frame: TextEditFrame | null) => void>()
+
+  /** End an inline edit's draft on its drawing without committing anything. */
+  const endDraft = (drawing: IDrawing | undefined): void => {
+    frameListeners.clear()
+    openedBy = null
+    if (!drawing) return
+    drawing.textEditing = false
+    drawing.setTextDraft(null)
+  }
+
+  /** Drop an inline edit that has not opened yet: its drawing shows its words again. */
+  const endPendingEdit = (): void => {
+    const pending = pendingEdit
+    if (!pending) return
+    pendingEdit = null
+    clearTimeout(pending.timer)
+    endDraft(pending.drawing)
+  }
+
   /** Close the editor. A fresh placement cancelled or committed empty is removed with it. */
   const closeTextEdit = (removeFresh: boolean): void => {
+    endPendingEdit()
     const session = textEdit
     if (!session) return
     const drawing = manager.get(session.id)
     setTextEdit(null)
+    if (session.inline) endDraft(drawing)
     if (drawing) {
       drawing.textEditing = false
       drawing.requestUpdate()
@@ -257,7 +314,12 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     }
   }
 
-  const openTextEdit = (drawing: IDrawing, x: number, y: number, fresh: boolean, cell?: TextEditSession['cell']): void => {
+  const openTextEdit = (drawing: IDrawing, x: number, y: number, fresh: boolean, how: 'placement' | 'click' | 'command', cell?: TextEditSession['cell']): void => {
+    const rules = cell ? null : inlineTextRules(drawing)
+    if (rules) {
+      openInlineEdit(drawing, x, y, fresh, how, rules)
+      return
+    }
     // Deferred past the placement gesture: an editor mounted DURING the press is blurred at once
     // by the browser's own focus handling, and a blur commits.
     setTimeout(() => {
@@ -272,9 +334,89 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     }, 0)
   }
 
+  const openInlineEdit = (drawing: IDrawing, x: number, y: number, fresh: boolean, how: 'placement' | 'click' | 'command', rules: InlineTextRules): void => {
+    // One edit at a time: an edit open elsewhere keeps what was typed in it.
+    if (textEdit && textEdit.id !== drawing.id) cancelTextEdit()
+    if (textEdit?.id === drawing.id) return
+    endPendingEdit()
+    const value = typeof drawing.props.text === 'string' ? drawing.props.text : ''
+    if (fresh && value === '' && rules.removeEmptyOnDeselect) wordless.add(drawing.id)
+    drawing.textEditing = true
+    drawing.setTextDraft({ value, selectionStart: value.length, selectionEnd: value.length, composition: null, caret: true }, (frame) => {
+      for (const listener of frameListeners) listener(frame)
+    })
+    // Deferred past the gesture: a field focused DURING the press loses the focus to the press's
+    // own default at once.
+    const timer = setTimeout(() => {
+      if (pendingEdit?.drawing !== drawing) return
+      pendingEdit = null
+      if (destroyed || !manager.get(drawing.id)) {
+        endDraft(drawing)
+        return
+      }
+      const s = drawing.style
+      const session: TextEditSession = {
+        id: drawing.id,
+        x,
+        y,
+        value,
+        fresh,
+        color: s.textColor,
+        fontSize: s.fontSize,
+        bold: s.bold,
+        italic: s.italic,
+        angle: 0,
+        inline: {
+          frame: () => {
+            const vp = viewportOf(chart, series)
+            return vp ? drawing.textFrame(vp) : null
+          },
+          onFrame: (listener) => {
+            frameListeners.add(listener)
+            return () => void frameListeners.delete(listener)
+          },
+          update: (draft) => {
+            if (textEdit === session) drawing.setTextDraft(draft)
+          },
+          doubleClick: () => {
+            if (textEdit !== session || openedBy !== 'click' || !rules.doubleClickOpensSettings) return false
+            commitTextEdit(drawing.textDraft?.value ?? value)
+            openSettings()
+            return true
+          },
+        },
+      }
+      openedBy = how
+      setTextEdit(session)
+    }, 0)
+    pendingEdit = { drawing, timer }
+  }
+
+  /** Ask for the selected drawing's settings through the door. Standalone, the layer has no
+   *  settings of its own to open. */
+  const openSettings = (): void => {
+    options.execute?.(SETTINGS_COMMAND)
+  }
+
+  /** Commit an inline edit: the words exactly as typed, the drawing still selected. */
+  const commitInline = (session: TextEditSession, value: string): void => {
+    const drawing = manager.get(session.id)
+    closeTextEdit(false)
+    if (!drawing) return
+    if (value === '' && inlineTextRules(drawing)?.removeEmptyOnDeselect) wordless.add(drawing.id)
+    else wordless.delete(drawing.id)
+    if (drawing.props.text !== value) drawing.applyProps({ text: value })
+    persist()
+    changed()
+  }
+
   const commitTextEdit = (value: string): void => {
     const session = textEdit
     if (!session) return
+    if (session.inline) {
+      commitInline(session, value)
+      return
+    }
     const drawing = manager.get(session.id)
     const target: TextEditTarget = { id: session.id, fresh: session.fresh, ...(session.cell ? { cell: session.cell } : {}) }
     const commit = commitText(target, value)
@@ -298,9 +440,16 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     changed()
   }
 
+  /** Cancel the open edit. An inline edit keeps what was typed, as Escape keeps it: its words are
+   *  already on the chart. */
   const cancelTextEdit = (): void => {
+    endPendingEdit()
     const session = textEdit
     if (!session) return
+    if (session.inline) {
+      commitInline(session, manager.get(session.id)?.textDraft?.value ?? session.value)
+      return
+    }
     const outcome = cancelText({ id: session.id, fresh: session.fresh })
     closeTextEdit(outcome.kind === 'remove')
     if (outcome.kind === 'remove') persist()
@@ -328,8 +477,10 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     drag: null as Drag | null,
     transient,
     textEditOpen: () => textEdit !== null,
-    openTextEdit: (drawing, x, y, fresh) => openTextEdit(drawing, x, y, fresh),
-    openCellEdit: (drawing, cell) => openTextEdit(drawing, cell.rect.x + cell.rect.width / 2, cell.rect.y + cell.rect.height / 2, false, { row: cell.row, col: cell.col }),
+    openTextEdit: (drawing, x, y, fresh, how = 'click') => openTextEdit(drawing, x, y, fresh, how),
+    openCellEdit: (drawing, cell) => openTextEdit(drawing, cell.rect.x + cell.rect.width / 2, cell.rect.y + cell.rect.height / 2, false, 'click', { row: cell.row, col: cell.col }),
+    endTextEdit: () => cancelTextEdit(),
+    openSettings,
     setHovered: (id) => {
       if (id === hovered) return
       hovered = id
@@ -408,9 +559,35 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     }
   }
 
+  /** The drawing the selection last stood on, so a selection that moves on knows what it left. */
+  let selectedId: string | null = null
   const selectionChanged = (): void => {
-    events.onSelectionChange?.(manager.selected()?.id ?? null)
+    const now = manager.selected()?.id ?? null
+    const left = selectedId
+    selectedId = now
+    if (left && left !== now) leaveSelection(left)
+    events.onSelectionChange?.(now)
     changed()
+  }
+
+  /** The selection left a drawing: an inline edit open on it keeps what was typed, and a drawing of
+   *  a tool that removes an empty drawing goes when it holds no words. That is judged once the
+   *  work that moved the selection is done, so a drawing the selection left because it was being
+   *  removed is already gone. */
+  const leaveSelection = (id: string): void => {
+    if (replacing) return
+    if (pendingEdit?.drawing.id === id) endPendingEdit()
+    if (textEdit?.id === id && textEdit.inline) commitInline(textEdit, manager.get(id)?.textDraft?.value ?? textEdit.value)
+    queueMicrotask(() => dropWordless(id))
+  }
+
+  const dropWordless = (id: string): void => {
+    if (destroyed || replacing) return
+    const drawing = manager.get(id)
+    if (!drawing || manager.selected()?.id === id || drawing.props.text !== '' || !inlineTextRules(drawing)?.removeEmptyOnDeselect) return
+    wordless.delete(id)
+    manager.remove(id)
+    persist()
   }
   const offs = [
     manager.on('drawing:selected', selectionChanged),
@@ -531,7 +708,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     },
     count: () => kept().length,
     counts() {
-      const all = manager.all().filter((d) => !transient.has(d.id) && d.id !== ctx.draft?.drawing.id)
+      const all = manager.all().filter((d) => !transient.has(d.id) && d.id !== ctx.draft?.drawing.id && !wordless.has(d.id))
       return { total: all.length, locked: all.filter((d) => d.options.locked).length }
     },
     updateStyle: (patch) => edit((d) => d.updateStyle(patch)),
@@ -627,7 +804,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       const vp = viewportOf(chart, series)
       const hint = sel.textHintAnchor()
       const first = vp && sel.anchors[0] ? sel.anchorToPixel(sel.anchors[0], vp) : null
-      openTextEdit(sel, hint?.x ?? first?.x ?? 0, hint?.y ?? first?.y ?? 0, false)
+      openTextEdit(sel, hint?.x ?? first?.x ?? 0, hint?.y ?? first?.y ?? 0, false, 'command')
     },
     commitText: commitTextEdit,
     cancelText: cancelTextEdit,
@@ -638,10 +815,13 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       cancelDraft()
       cancelTextEdit()
       clearTransients()
+      // A text left without words goes with the selection before the symbol's document goes up.
+      const left = manager.selected()?.id ?? null
+      manager.deselect()
+      if (left) dropWordless(left)
       documents.sync(symbol, kept())
       documents.flush() // the old symbol's pending edit goes up before the switch
-      manager.deselect()
-      manager.clear()
+      clearScreen()
       symbol = next
       documents.bumpEpoch()
       importList(documents.listFor(next))
@@ -684,15 +864,15 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       }
     },
   }
-  canCancelByHandle.set(handle, () => !destroyed && (ctx.draft !== null || armed !== null || textEdit !== null || transient.size > 0))
+  canCancelByHandle.set(handle, () => !destroyed && (ctx.draft !== null || armed !== null || textEdit !== null || pendingEdit !== null || transient.size > 0))
   identityRebinders.set(handle, (id) => {
     if (destroyed || id === chartId) return
+    closeTextEdit(false)
     documents.sync(symbol, kept())
     documents.flush()
     chartId = id
     documents.rebind()
-    manager.deselect()
-    manager.clear()
+    clearScreen()
     documents.hydrate(symbol)
   })
   return handle

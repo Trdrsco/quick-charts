@@ -1,7 +1,7 @@
 // The drawing layer's contracts: what a host hands `attachDrawings`, what it gets back, and the
 // events the layer reports. Everything here is a type; the behavior lives in the sibling modules.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
-import type { DrawingStyle, GlyphSourcePort, IDrawing, LineStyle, SerializedDrawing, VisibilityPreset } from '../../internal/drawings/index'
+import type { DrawingStyle, GlyphSourcePort, IDrawing, LineStyle, SerializedDrawing, TextDraft, TextEditFrame, VisibilityPreset } from '../../internal/drawings/index'
 import type { ResourceRef, ResourceStore, TemplateBody, TemplateMeta } from '../../resources'
 import type { DrawingResourceContext, DrawingsBody } from '../document'
 import type { DrawingDocumentPort, DrawingOwner } from './documents'
@@ -71,6 +71,26 @@ export interface TextEditSession {
   angle: number
   /** Set when the edit targets one table cell instead of the drawing's `text` prop. */
   cell?: { row: number; col: number }
+  /** Set when the drawing types its words on the chart: it paints them as they are typed, so the
+   *  editor is an invisible field laid exactly over them. Absent, the editor shows the words. */
+  inline?: TextInlineEdit
+}
+
+/** The live side of an edit on a drawing that types its words on the chart. The drawing paints the
+ *  words, their caret, their selection and their placeholder; the editor takes the keys in a field
+ *  nobody sees, reports what it holds, and follows the words wherever a repaint stands them. The
+ *  words commit through `commitText`, kept exactly as typed. */
+export interface TextInlineEdit {
+  /** Where the words stand now: the field's place, size and type, in pane-local pixels. */
+  frame(): TextEditFrame | null
+  /** Hear the words move or resize as the chart repaints. Answers the unsubscribe. */
+  onFrame(listener: (frame: TextEditFrame | null) => void): () => void
+  /** Show what the field holds on the chart: the words typed so far, the selection, the run an
+   *  input method is composing, and whether the caret is lit. */
+  update(draft: TextDraft): void
+  /** A double-click that began with the click that opened this edit landed in the field. Answers
+   *  whether it opened the drawing's settings, which ends the edit, rather than selecting a word. */
+  doubleClick(): boolean
 }
 
 /** A picture ready to place: what the image picker or a paste hands the layer. */
@@ -233,6 +253,9 @@ export interface AttachDrawingsOptions {
   /** The ink the dot cursor's ring is drawn in, read when the cursor is set: the chart passes its
    *  text role, so the ring follows the theme. */
   ink?: () => string
+  /** The words a drawing that types on the chart shows while it holds none, read as it paints: the
+   *  chart passes its catalog's, in the viewer's language. Absent, the catalog's English. */
+  placeholder?: () => string
   /** Whether the HOST has taken the pointer over for a gesture of its own. While it has, this layer
    *  paints no pointer glyph at all: the host is drawing the mark that says where a click lands, and
    *  a cursor beside it would be a second claim about the same point. This layer writes the plot's
