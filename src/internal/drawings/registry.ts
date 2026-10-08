@@ -193,14 +193,14 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(FibRetracement, { type: 'fib_retracement', name: 'Fib retracement', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
   tool(FibExtension, { type: 'fib_trend_ext', name: 'Trend-based fib extension', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
   tool(FibChannel, { type: 'fib_channel', name: 'Fib channel', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
-  tool(FibTimeZone, { type: 'fib_timezone', name: 'Fib time zone', category: 'fibonacci', anchors: 2 }),
-  tool(FibSpeedFan, { type: 'fib_speed_resist_fan', name: 'Fib speed resistance fan', category: 'fibonacci', anchors: 2 }),
-  tool(FibTimeExtension, { type: 'fib_trend_time', name: 'Trend-based fib time', category: 'fibonacci', anchors: 3 }),
-  tool(FibCircles, { type: 'fib_circles', name: 'Fib circles', category: 'fibonacci', anchors: 2 }),
+  tool(FibTimeZone, { type: 'fib_timezone', name: 'Fib time zone', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
+  tool(FibSpeedFan, { type: 'fib_speed_resist_fan', name: 'Fib speed resistance fan', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
+  tool(FibTimeExtension, { type: 'fib_trend_time', name: 'Trend-based fib time', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
+  tool(FibCircles, { type: 'fib_circles', name: 'Fib circles', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
   tool(FibSpiral, { type: 'fib_spiral', name: 'Fib spiral', category: 'fibonacci', anchors: 2 }),
-  tool(FibArcs, { type: 'fib_speed_resist_arcs', name: 'Fib speed resistance arcs', category: 'fibonacci', anchors: 2 }),
-  tool(FibWedge, { type: 'fib_wedge', name: 'Fib wedge', category: 'fibonacci', anchors: 3 }),
-  tool(Pitchfan, { type: 'pitchfan', name: 'Pitchfan', category: 'fibonacci', anchors: 3 }),
+  tool(FibArcs, { type: 'fib_speed_resist_arcs', name: 'Fib speed resistance arcs', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
+  tool(FibWedge, { type: 'fib_wedge', name: 'Fib wedge', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
+  tool(Pitchfan, { type: 'pitchfan', name: 'Pitchfan', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
 
   // Pitchforks
   tool(Pitchfork, { type: 'pitchfork', name: 'Pitchfork', category: 'pitchforks', anchors: 3 }),
@@ -209,7 +209,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(InsidePitchfork, { type: 'inside_pitchfork', name: 'Inside pitchfork', category: 'pitchforks', anchors: 3 }),
 
   // Gann
-  tool(GannBox, { type: 'gannbox', name: 'Gann box', category: 'gann', anchors: 2 }),
+  tool(GannBox, { type: 'gannbox', name: 'Gann box', category: 'gann', anchors: 2, style: { lineColor: 'rgba(21, 56, 153, 0.8)', lineWidth: 2, lineStyle: 'solid', fontSize: 12 } }),
   tool(GannSquare, { type: 'gannbox_square', name: 'Gann square', category: 'gann', anchors: 2 }),
   tool(GannSquareFixed, { type: 'gannbox_fixed', name: 'Gann square fixed', category: 'gann', anchors: 2 }),
   tool(GannFan, { type: 'gannbox_fan', name: 'Gann fan', category: 'gann', anchors: 2 }),

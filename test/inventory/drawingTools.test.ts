@@ -188,7 +188,7 @@ describe('the leveled families', () => {
     const fib = levels('fib_retracement', 2)
     expect(fib.map((l) => l.value)).toEqual(expect.arrayContaining([0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618]))
     for (const l of fib) expect(typeof l.visible).toBe('boolean')
-    for (const type of ['fib_trend_ext', 'fib_channel', 'fib_timezone', 'fib_speed_resist_fan', 'fib_trend_time', 'fib_circles', 'fib_speed_resist_arcs', 'fib_wedge', 'pitchfan']) {
+    for (const type of ['fib_trend_ext', 'fib_channel', 'fib_timezone', 'fib_trend_time', 'fib_circles', 'fib_speed_resist_arcs', 'fib_wedge', 'pitchfan']) {
       expect(levels(type, drawingTools.get(type)!.anchors).length, type).toBeGreaterThan(0)
     }
   })
@@ -204,8 +204,12 @@ describe('the leveled families', () => {
   })
 
   it('the gann boxes divide the box on the gann ratios, and the fan draws the gann angles', () => {
-    for (const type of ['gannbox', 'gannbox_square', 'gannbox_fixed']) {
+    for (const type of ['gannbox_square', 'gannbox_fixed']) {
       expect(levels(type, 2).map((l) => l.value), type).toEqual([0, 0.25, 0.382, 0.5, 0.618, 0.75, 1])
+    }
+    for (const type of ['gannbox', 'fib_speed_resist_fan']) {
+      const props = live(drawingTools.create(type, type, anchorsFor(fake, 2))).props
+      for (const key of ['priceLevels', 'timeLevels']) expect((props[key] as { value: number }[]).map((l) => l.value), `${type} ${key}`).toEqual([0, 0.25, 0.382, 0.5, 0.618, 0.75, 1])
     }
     expect(levels('gannbox_fan', 2).map((l) => l.value)).toEqual([8, 4, 3, 2, 1, 1 / 2, 1 / 3, 1 / 4, 1 / 8])
   })

@@ -2853,6 +2853,19 @@ swing points in a stroke of its own (`trendLine`, `trendLineColor`, `trendLineWi
 `textVAlign` put them, and with `levelsOnLogScale` divide the swing by log price while the price
 scale is logarithmic, which `Viewport.logScale` reports.
 
+A time zone, a trend-based time, fib circles, speed resistance arcs, a fib wedge and a pitchfan
+stand their levels one to a line, each level its switch, its value and its own stroke: a level's
+`width` and `style` draw it apart from the drawing's own. A time zone and a trend-based time label
+their lines where `labelsHAlign` and `labelsVAlign` put them along and across the pane; a circle
+fib reads its ratios as percents with `coeffsAsPercents`; an arc fib closes its arcs into circles
+with `fullCircles`; the trend-based time, the circles, the arcs and the wedge draw a trend line in a
+stroke of its own, and a pitchfan its median (`medianColor`, `medianWidth`, `medianStyle`). A
+speed resistance fan and a gann box divide their box on `priceLevels` across it and `timeLevels`
+down it, each side's labels switched on their own; a fan draws a grid at the divisions in a stroke
+of its own, and a gann box shades its price and time bands on their own switches and draws its
+angles corner to corner in `anglesColor`. `reverse` counts a box's divisions from the other
+corner.
+
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
 the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
 that shade their legs, the background, which `fillBackground` switches off and on keeping its

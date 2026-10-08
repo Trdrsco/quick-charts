@@ -2,6 +2,7 @@ import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment, extendSegment } from '../core/geometry'
 import { applyStroke, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { boxDivisions, levelBox, paintBoxLabels, priceY, timeX, upgradeBoxLevels, type BoxLevelsProps, type LevelBox } from './boxLevels'
 import { fibLevelColor, type FibLevel } from './fibonacci'
 
 export type GannProps = {
@@ -27,9 +28,118 @@ function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
 }
 
+/** A gann box: price divisions across the box and time divisions down it, each in its own color, the
+ *  bands between price divisions and between time divisions each switched and faded on its own, the
+ *  box's angles in a color of their own, and each division's labels. */
+export type GannBoxProps = BoxLevelsProps & {
+  fillPriceBackground: boolean
+  priceBackgroundOpacity: number
+  fillTimeBackground: boolean
+  timeBackgroundOpacity: number
+  angles: boolean
+  anglesColor: string
+}
+
 /** Box spanned by two corners with ratio lines dividing both axes. */
-export class GannBox extends Drawing<GannProps> {
+export class GannBox extends Drawing<GannBoxProps> {
   readonly type: string = 'gannbox'
+
+  protected override defaultProps(): GannBoxProps {
+    return {
+      priceLevels: boxDivisions(),
+      timeLevels: boxDivisions(),
+      showLeftLabels: true,
+      showRightLabels: true,
+      showTopLabels: true,
+      showBottomLabels: true,
+      fillPriceBackground: true,
+      priceBackgroundOpacity: 0.2,
+      fillTimeBackground: true,
+      timeBackgroundOpacity: 0.2,
+      angles: false,
+      anglesColor: '#9c9c9c',
+      reverse: false,
+    }
+  }
+
+  protected override upgradeProps(props: Partial<GannBoxProps>): Partial<GannBoxProps> {
+    const saved = upgradeBoxLevels(props) as Partial<GannBoxProps> & { background?: unknown; showLabels?: unknown }
+    const out: Record<string, unknown> = {}
+    const defaults = this.defaultProps()
+    for (const key of Object.keys(defaults)) if (key in saved) out[key] = (saved as Record<string, unknown>)[key]
+    // A box saved with one set of levels and one background divided both sides by those levels and
+    // shaded the whole box: it reads them as its price and time divisions and both its bands.
+    if (Array.isArray(saved.priceLevels) && !('timeLevels' in saved)) out.timeLevels = saved.priceLevels.map((l) => ({ ...l }))
+    if (typeof saved.background === 'boolean' && !('fillPriceBackground' in saved)) out.fillPriceBackground = out.fillTimeBackground = saved.background
+    if (typeof saved.showLabels === 'boolean' && !('showLeftLabels' in saved)) out.showLeftLabels = out.showRightLabels = out.showTopLabels = out.showBottomLabels = saved.showLabels
+    return out as Partial<GannBoxProps>
+  }
+
+  requiredAnchors(): number {
+    return 2
+  }
+
+  protected box(viewport: Viewport): LevelBox | null {
+    const [a, b] = this.anchorPixels(viewport)
+    if (!a || !b) return null
+    return levelBox(a, b, this.props.reverse)
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const box = this.box(viewport)
+    if (!box) return
+    const { props } = this
+    // The bands: between neighbouring price divisions across the box, and between neighbouring time
+    // divisions down it, each band in the color of the division that closes it.
+    const bands = (levels: FibLevel[], opacity: number, at: (v: number) => number, rect: (p: number, q: number) => [number, number, number, number]): void => {
+      const shown = levels.map((level, i) => ({ level, color: fibLevelColor(level, i) })).filter((e) => e.level.visible).sort((p, q) => p.level.value - q.level.value)
+      for (let i = 1; i < shown.length; i++) {
+        ctx.fillStyle = withAlpha(shown[i]!.color, opacity)
+        ctx.fillRect(...rect(at(shown[i - 1]!.level.value), at(shown[i]!.level.value)))
+      }
+    }
+    if (props.fillPriceBackground && props.priceBackgroundOpacity > 0) bands(props.priceLevels, props.priceBackgroundOpacity, (v) => priceY(box, v), (p, q) => [box.left, Math.min(p, q), box.right - box.left, Math.abs(q - p)])
+    if (props.fillTimeBackground && props.timeBackgroundOpacity > 0) bands(props.timeLevels, props.timeBackgroundOpacity, (v) => timeX(box, v), (p, q) => [Math.min(p, q), box.top, Math.abs(q - p), box.bottom - box.top])
+    props.priceLevels.forEach((level, i) => {
+      if (!level.visible) return
+      ctx.save()
+      applyStroke(ctx, { ...this.style, lineColor: fibLevelColor(level, i) })
+      strokeSegment(ctx, { x: box.left, y: priceY(box, level.value) }, { x: box.right, y: priceY(box, level.value) })
+      ctx.restore()
+    })
+    props.timeLevels.forEach((level, i) => {
+      if (!level.visible) return
+      ctx.save()
+      applyStroke(ctx, { ...this.style, lineColor: fibLevelColor(level, i) })
+      strokeSegment(ctx, { x: timeX(box, level.value), y: box.top }, { x: timeX(box, level.value), y: box.bottom })
+      ctx.restore()
+    })
+    if (props.angles) {
+      ctx.save()
+      applyStroke(ctx, { ...this.style, lineColor: props.anglesColor })
+      strokeSegment(ctx, { x: box.left, y: box.top }, { x: box.right, y: box.bottom })
+      strokeSegment(ctx, { x: box.left, y: box.bottom }, { x: box.right, y: box.top })
+      ctx.restore()
+    }
+    paintBoxLabels(ctx, this.style, props, box, fibLevelColor)
+  }
+
+  testHit(point: Point, viewport: Viewport): boolean {
+    const box = this.box(viewport)
+    if (!box) return false
+    const tolerance = hitTolerance(this.style.lineWidth)
+    const inX = point.x >= box.left - tolerance && point.x <= box.right + tolerance
+    const inY = point.y >= box.top - tolerance && point.y <= box.bottom + tolerance
+    if (!inX || !inY) return false
+    if (this.props.priceLevels.some((l) => l.visible && Math.abs(point.y - priceY(box, l.value)) <= tolerance)) return true
+    if (this.props.timeLevels.some((l) => l.visible && Math.abs(point.x - timeX(box, l.value)) <= tolerance)) return true
+    if (!this.props.angles) return false
+    return distanceToSegment(point, { x: box.left, y: box.top }, { x: box.right, y: box.bottom }) <= tolerance || distanceToSegment(point, { x: box.left, y: box.bottom }, { x: box.right, y: box.top }) <= tolerance
+  }
+}
+
+/** A box spanned by two corners with ratio lines dividing both axes, the body of the gann squares. */
+export abstract class GannLevelBox extends Drawing<GannProps> {
 
   protected override defaultProps(): GannProps {
     return { levels: BOX_FRACTIONS.map((l) => ({ ...l })), showLabels: true, background: true }
@@ -94,7 +204,7 @@ export class GannBox extends Drawing<GannProps> {
 }
 
 /** Gann square: the box plus its corner-to-corner diagonals. */
-export class GannSquare extends GannBox {
+export class GannSquare extends GannLevelBox {
   override readonly type = 'gannbox_square'
 
   override paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -122,7 +232,7 @@ export class GannSquare extends GannBox {
 }
 
 /** Gann square from a single origin: a square grid sized by one price/time unit. */
-export class GannSquareFixed extends GannBox {
+export class GannSquareFixed extends GannLevelBox {
   override readonly type = 'gannbox_fixed'
 
   override requiredAnchors(): number {

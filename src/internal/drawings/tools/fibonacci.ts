@@ -1,8 +1,9 @@
 import type { ControlPoint, DrawingStyle, LineStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { angleOf, distanceToSegment, extendSegment, midpoint } from '../core/geometry'
-import { applyStroke, dashPattern, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { applyStroke, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 import type { TextHAlign, TextVAlign } from './lines'
+import { boxDivisions, levelBox, paintBoxLabels, priceY, timeX, upgradeBoxLevels, type BoxLevelsProps, type LevelBox } from './boxLevels'
 
 /** One retracement/extension level. Color falls back to the shared palette by position. */
 export type FibLevel = {
@@ -11,17 +12,10 @@ export type FibLevel = {
   color?: string
   /** The level's own words, which it carries where its tool shows them. */
   text?: string
-}
-
-export type FibProps = {
-  levels: FibLevel[]
-  extendLeft: boolean
-  extendRight: boolean
-  showPrices: boolean
-  showLevels: boolean
-  /** Swap which anchor is level 0 / level 1. */
-  reverse: boolean
-  background: boolean
+  /** The level's own stroke width and style, where its tool draws each level in a stroke of its
+   *  own; without them it takes the drawing's. */
+  width?: number
+  style?: LineStyle
 }
 
 /** Level palette keyed by common ratios; anything else falls back by index. */
@@ -85,40 +79,7 @@ const FIB_LEVELS: readonly FibLevel[] = [
   { value: 4.764, visible: false, color: '#089981' },
 ]
 
-const RATIO_FRACTIONS: FibLevel[] = [
-  { value: 0.25, visible: true },
-  { value: 0.382, visible: true },
-  { value: 0.5, visible: true },
-  { value: 0.618, visible: true },
-  { value: 0.75, visible: true },
-  { value: 1, visible: true },
-]
-
-const TIME_SEQUENCE = [0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89]
-const TIME_RATIOS: FibLevel[] = [
-  { value: 0, visible: true },
-  { value: 0.382, visible: true },
-  { value: 0.618, visible: true },
-  { value: 1, visible: true },
-  { value: 1.382, visible: true },
-  { value: 1.618, visible: true },
-  { value: 2, visible: true },
-  { value: 2.618, visible: false },
-]
-
 const GOLDEN_RATIO = 1.618033988749895
-
-function fibDefaults(levels: FibLevel[]): FibProps {
-  return {
-    levels: levels.map((l) => ({ ...l })),
-    extendLeft: false,
-    extendRight: false,
-    showPrices: true,
-    showLevels: true,
-    reverse: false,
-    background: true,
-  }
-}
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -443,22 +404,108 @@ export class FibChannel extends Drawing<FibChannelProps> {
   }
 }
 
+/** A level's stroke: its own color, and its own width and style where it carries them. */
+function levelStroke(style: Readonly<DrawingStyle>, level: FibLevel, color: string): DrawingStyle {
+  return { ...style, lineColor: color, lineWidth: level.width ?? style.lineWidth, lineStyle: level.style ?? style.lineStyle }
+}
+
+/** The props a converted fib keeps from a save: the ones it reads, its background switch under
+ *  either name, and nothing it no longer draws. */
+function knownProps<P extends Record<string, unknown>>(props: Partial<P>, defaults: P): Partial<P> {
+  const upgraded = upgradeBackground(props as Partial<P & { fillBackground: boolean }>) as Record<string, unknown>
+  const out: Record<string, unknown> = {}
+  for (const key of Object.keys(defaults)) if (key in upgraded) out[key] = upgraded[key]
+  return out as Partial<P>
+}
+
+/** Levels drawn one to a line: each level its own color, width and style. */
+const strokedLevels = (levels: readonly [value: number, color: string, visible: boolean][], width: number): FibLevel[] =>
+  levels.map(([value, color, visible]) => ({ value, visible, color, width, style: 'solid' }))
+
+/** Where a vertical level's label stands: before, on or after its line, and at the pane's top, middle
+ *  or bottom. */
+function verticalLabelPlace(h: TextHAlign, v: TextVAlign, x: number, height: number): Placement {
+  const at = { x: h === 'left' ? x - 4 : h === 'right' ? x + 4 : x, y: v === 'top' ? 4 : v === 'bottom' ? height - 4 : height / 2 }
+  return { at, align: h === 'left' ? 'right' : h === 'right' ? 'left' : 'center', baseline: v === 'top' ? 'top' : v === 'bottom' ? 'bottom' : 'middle' }
+}
+
+/** A vertical level as a tool paints it: the level, its color and its x. */
+type VerticalLevel = { level: FibLevel; color: string; x: number }
+
+/** What a time fib paints its vertical levels with: the bands between them, the lines in their own
+ *  strokes, and each level's label. */
+function paintVerticalLevels(
+  ctx: CanvasRenderingContext2D,
+  drawing: { style: Readonly<DrawingStyle>; props: Readonly<{ showLevels: boolean; labelsHAlign: TextHAlign; labelsVAlign: TextVAlign; fillBackground: boolean; backgroundOpacity: number }> },
+  levels: readonly VerticalLevel[],
+  viewport: Viewport,
+): void {
+  const { props, style } = drawing
+  if (props.fillBackground && props.backgroundOpacity > 0) {
+    const ordered = [...levels].sort((a, b) => a.x - b.x)
+    for (let i = 0; i < ordered.length - 1; i++) {
+      ctx.fillStyle = withAlpha(ordered[i + 1]!.color, props.backgroundOpacity)
+      ctx.fillRect(ordered[i]!.x, 0, ordered[i + 1]!.x - ordered[i]!.x, viewport.height)
+    }
+  }
+  for (const entry of levels) {
+    ctx.save()
+    applyStroke(ctx, levelStroke(style, entry.level, entry.color))
+    strokeSegment(ctx, { x: entry.x, y: 0 }, { x: entry.x, y: viewport.height })
+    ctx.restore()
+    if (props.showLevels) {
+      const place = verticalLabelPlace(props.labelsHAlign, props.labelsVAlign, entry.x, viewport.height)
+      paintLabel(ctx, String(entry.level.value), place.at, { ...style, textColor: entry.color }, { align: place.align, baseline: place.baseline })
+    }
+  }
+}
+
+/** A time zone's levels and their labels: vertical lines at its sequence's multiples of the span
+ *  between its points, each labelled with its multiple where `labelsHAlign` and `labelsVAlign` put
+ *  it, and the bands between them. */
+export type FibTimeZoneProps = {
+  levels: FibLevel[]
+  showLevels: boolean
+  labelsHAlign: TextHAlign
+  labelsVAlign: TextVAlign
+  fillBackground: boolean
+  backgroundOpacity: number
+}
+
+const TIME_ZONE_LEVELS = strokedLevels(
+  [
+    [0, '#808080', true],
+    [1, '#2962ff', true],
+    [2, '#2962ff', true],
+    [3, '#2962ff', true],
+    [5, '#2962ff', true],
+    [8, '#2962ff', true],
+    [13, '#2962ff', true],
+    [21, '#2962ff', true],
+    [34, '#2962ff', true],
+    [55, '#2962ff', true],
+    [89, '#2962ff', true],
+  ],
+  2,
+)
+
 /** Vertical lines at Fibonacci-sequence multiples of the base span. */
-export class FibTimeZone extends Drawing<FibProps> {
+export class FibTimeZone extends Drawing<FibTimeZoneProps> {
   readonly type = 'fib_timezone'
 
-  protected override defaultProps(): FibProps {
-    return {
-      ...fibDefaults(TIME_SEQUENCE.map((n) => ({ value: n, visible: true }))),
-      background: false,
-    }
+  protected override defaultProps(): FibTimeZoneProps {
+    return { levels: TIME_ZONE_LEVELS.map((l) => ({ ...l })), showLevels: true, labelsHAlign: 'right', labelsVAlign: 'bottom', fillBackground: false, backgroundOpacity: 0.2 }
+  }
+
+  protected override upgradeProps(props: Partial<FibTimeZoneProps>): Partial<FibTimeZoneProps> {
+    return knownProps(props, this.defaultProps())
   }
 
   requiredAnchors(): number {
     return 2
   }
 
-  protected xs(viewport: Viewport): { level: FibLevel; color: string; x: number }[] {
+  protected xs(viewport: Viewport): VerticalLevel[] {
     const [p1, p2] = this.anchorPixels(viewport)
     if (!p1 || !p2) return []
     const unit = p2.x - p1.x
@@ -469,135 +516,155 @@ export class FibTimeZone extends Drawing<FibProps> {
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    for (const entry of this.xs(viewport)) {
-      ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = entry.color
-      strokeSegment(ctx, { x: entry.x, y: 0 }, { x: entry.x, y: viewport.height })
-      ctx.restore()
-      if (this.props.showLevels) {
-        paintLabel(ctx, String(entry.level.value), { x: entry.x + 4, y: viewport.height - 12 }, { ...this.style, textColor: entry.color })
-      }
-    }
+    paintVerticalLevels(ctx, this, this.xs(viewport), viewport)
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
-    const tolerance = hitTolerance(this.style.lineWidth)
-    return this.xs(viewport).some((e) => Math.abs(point.x - e.x) <= tolerance)
+    return this.xs(viewport).some((e) => Math.abs(point.x - e.x) <= hitTolerance(e.level.width ?? this.style.lineWidth))
   }
 }
 
-/** Fan rays from the first anchor through ratio points of the spanned box's far edge. */
-export class FibSpeedFan extends Drawing<FibProps> {
-  readonly type = 'fib_speed_resist_fan'
-
-  protected override defaultProps(): FibProps {
-    return fibDefaults(RATIO_FRACTIONS)
-  }
-
-  requiredAnchors(): number {
-    return 2
-  }
-
-  protected rays(viewport: Viewport): { level: FibLevel; color: string; a: Point; b: Point }[] {
-    const [p1, p2] = this.anchorPixels(viewport)
-    if (!p1 || !p2 || p1.x === p2.x) return []
-    return this.props.levels
-      .map((level, i) => ({ level, color: fibLevelColor(level, i) }))
-      .filter((e) => e.level.visible)
-      .map((e) => {
-        const through = { x: p2.x, y: p1.y + (p2.y - p1.y) * e.level.value }
-        const seg = extendSegment(p1, through, viewport.width, viewport.height, false, true)
-        return { ...e, a: p1, b: seg.b }
-      })
-  }
-
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const [p1, p2] = this.anchorPixels(viewport)
-    if (!p1 || !p2) return
-    ctx.save()
-    applyStroke(ctx, this.style)
-    ctx.globalAlpha = 0.45
-    ctx.setLineDash(dashPattern('dashed', this.style.lineWidth))
-    ctx.strokeRect(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y), Math.abs(p2.x - p1.x), Math.abs(p2.y - p1.y))
-    ctx.restore()
-    for (const ray of this.rays(viewport)) {
-      ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = ray.color
-      strokeSegment(ctx, ray.a, ray.b)
-      ctx.restore()
-      if (this.props.showLevels || this.props.showPrices || ray.level.text) {
-        const y = p1.y + (p2.y - p1.y) * ray.level.value
-        const price = viewport.priceAt(y)
-        const parts = [
-          ray.level.text || null,
-          this.props.showLevels ? String(ray.level.value) : null,
-          this.props.showPrices && price !== null ? `(${this.formatPrice(price)})` : null,
-        ].filter((s): s is string => s !== null)
-        paintLabel(ctx, parts.join(' '), { x: p2.x + 6, y }, { ...this.style, textColor: ray.color })
-      }
-    }
-  }
-
-  testHit(point: Point, viewport: Viewport): boolean {
-    const tolerance = hitTolerance(this.style.lineWidth)
-    return this.rays(viewport).some((ray) => distanceToSegment(point, ray.a, ray.b) <= tolerance)
-  }
+/** A tool's trend line through its points, in a stroke of its own, switched on and off. */
+export type FibTrendProps = {
+  trendLine: boolean
+  trendLineColor: string
+  trendLineWidth: number
+  trendLineStyle: LineStyle
 }
+
+/** A trend line's stroke. */
+const trendStroke = (style: Readonly<DrawingStyle>, props: Readonly<FibTrendProps>): DrawingStyle => ({
+  ...style,
+  lineColor: props.trendLineColor,
+  lineWidth: props.trendLineWidth,
+  lineStyle: props.trendLineStyle,
+})
+
+/** Stroke a trend line through points, where it is switched on. */
+function paintTrend(ctx: CanvasRenderingContext2D, style: Readonly<DrawingStyle>, props: Readonly<FibTrendProps>, points: readonly Point[]): void {
+  if (!props.trendLine || points.length < 2) return
+  ctx.save()
+  applyStroke(ctx, trendStroke(style, props))
+  for (let i = 0; i < points.length - 1; i++) strokeSegment(ctx, points[i]!, points[i + 1]!)
+  ctx.restore()
+}
+
+/** Whether a point is on a trend line through points, where it is switched on. */
+function hitsTrend(point: Point, props: Readonly<FibTrendProps>, points: readonly Point[]): boolean {
+  if (!props.trendLine) return false
+  const tolerance = hitTolerance(props.trendLineWidth)
+  for (let i = 0; i < points.length - 1; i++) if (distanceToSegment(point, points[i]!, points[i + 1]!) <= tolerance) return true
+  return false
+}
+
+/** A trend-based time fib: a time zone projected from the third point by the first swing's span,
+ *  drawn with its trend line. */
+export type FibTimeExtensionProps = FibTimeZoneProps & FibTrendProps
+
+const TIME_RATIO_LEVELS = strokedLevels(
+  [
+    [0, '#808080', true],
+    [0.382, '#f23645', true],
+    [0.5, '#81c784', false],
+    [0.618, '#4caf50', true],
+    [1, '#089981', true],
+    [1.382, '#00bcd4', true],
+    [1.618, '#808080', true],
+    [2, '#2962ff', true],
+    [2.382, '#e91e63', true],
+    [2.618, '#9c27b0', true],
+    [3, '#673ab7', true],
+  ],
+  2,
+)
+
+const DASHED_TREND: FibTrendProps = { trendLine: true, trendLineColor: '#808080', trendLineWidth: 2, trendLineStyle: 'dashed' }
 
 /** Vertical time ratios of the first swing projected from the third anchor. */
-export class FibTimeExtension extends Drawing<FibProps> {
+export class FibTimeExtension extends Drawing<FibTimeExtensionProps> {
   readonly type = 'fib_trend_time'
 
-  protected override defaultProps(): FibProps {
-    return { ...fibDefaults(TIME_RATIOS), background: false }
+  protected override defaultProps(): FibTimeExtensionProps {
+    return { levels: TIME_RATIO_LEVELS.map((l) => ({ ...l })), ...DASHED_TREND, showLevels: true, labelsHAlign: 'right', labelsVAlign: 'bottom', fillBackground: true, backgroundOpacity: 0.2 }
+  }
+
+  protected override upgradeProps(props: Partial<FibTimeExtensionProps>): Partial<FibTimeExtensionProps> {
+    return knownProps(props, this.defaultProps())
   }
 
   requiredAnchors(): number {
     return 3
   }
 
-  protected xs(viewport: Viewport): { level: FibLevel; color: string; x: number }[] {
+  protected xs(viewport: Viewport): VerticalLevel[] {
     const [p1, p2, p3] = this.anchorPixels(viewport)
     if (!p1 || !p2 || !p3) return []
     const unit = p2.x - p1.x
     if (unit === 0) return []
-    return this.props.levels
-      .map((level, i) => ({ level, color: fibLevelColor(level, i), x: p3.x + unit * level.value }))
-      .filter((e) => e.level.visible)
+    return this.props.levels.map((level, i) => ({ level, color: fibLevelColor(level, i), x: p3.x + unit * level.value })).filter((e) => e.level.visible)
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    for (const entry of this.xs(viewport)) {
-      ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = entry.color
-      strokeSegment(ctx, { x: entry.x, y: 0 }, { x: entry.x, y: viewport.height })
-      ctx.restore()
-      if (this.props.showLevels) {
-        paintLabel(ctx, String(entry.level.value), { x: entry.x + 4, y: viewport.height - 12 }, { ...this.style, textColor: entry.color })
-      }
-    }
+    paintVerticalLevels(ctx, this, this.xs(viewport), viewport)
+    paintTrend(ctx, this.style, this.props, this.anchorPixels(viewport).filter((p): p is Point => p !== null))
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
-    const tolerance = hitTolerance(this.style.lineWidth)
-    return this.xs(viewport).some((e) => Math.abs(point.x - e.x) <= tolerance)
+    if (this.xs(viewport).some((e) => Math.abs(point.x - e.x) <= hitTolerance(e.level.width ?? this.style.lineWidth))) return true
+    return hitsTrend(point, this.props, this.anchorPixels(viewport).filter((p): p is Point => p !== null))
   }
 }
 
-/** Concentric circles at ratio multiples of the anchor distance. */
-export type FibCirclesProps = FibProps & {
-  /** Label the ratios as percentages (0.618 → 62%). */
+/** The ring levels of a circle or arc fib: each ratio of its trend line's length, with its trend
+ *  line, its labels reading the ratio or its percent, and the bands between rings. */
+export type FibRingProps = FibTrendProps & {
+  levels: FibLevel[]
+  showLevels: boolean
+  fillBackground: boolean
+  backgroundOpacity: number
+}
+
+export type FibCirclesProps = FibRingProps & {
+  /** Label the ratios as percentages (0.618 → 61.8%). */
   coeffsAsPercents: boolean
 }
 
+const RING_LEVELS: readonly [number, string, boolean][] = [
+  [0.236, '#f23645', true],
+  [0.382, '#ff9800', true],
+  [0.5, '#089981', true],
+  [0.618, '#4caf50', true],
+  [0.786, '#00bcd4', true],
+  [1, '#808080', true],
+  [1.618, '#2962ff', true],
+  [2.618, '#e91e63', true],
+  [3.618, '#2962ff', true],
+  [4.236, '#e91e63', true],
+  [4.618, '#f23645', true],
+]
+
+/** Fill the band between two rings around a center, an outer ring's color at an opacity. */
+function fillRing(ctx: CanvasRenderingContext2D, center: Point, inner: number, outer: number, color: string, opacity: number, from = 0, to = Math.PI * 2): void {
+  ctx.save()
+  ctx.fillStyle = withAlpha(color, opacity)
+  ctx.beginPath()
+  ctx.arc(center.x, center.y, outer, from, to)
+  ctx.arc(center.x, center.y, inner, to, from, true)
+  ctx.closePath()
+  ctx.fill()
+  ctx.restore()
+}
+
+/** Circles about the first point at ratios of the trend line's length. */
 export class FibCircles extends Drawing<FibCirclesProps> {
   readonly type = 'fib_circles'
 
   protected override defaultProps(): FibCirclesProps {
-    return { ...fibDefaults(RATIO_FRACTIONS.concat([{ value: 1.618, visible: true }])), coeffsAsPercents: false }
+    return { levels: strokedLevels(RING_LEVELS, 2), ...DASHED_TREND, showLevels: true, coeffsAsPercents: false, fillBackground: true, backgroundOpacity: 0.2 }
+  }
+
+  protected override upgradeProps(props: Partial<FibCirclesProps>): Partial<FibCirclesProps> {
+    return knownProps(props, this.defaultProps())
   }
 
   requiredAnchors(): number {
@@ -609,21 +676,23 @@ export class FibCircles extends Drawing<FibCirclesProps> {
     if (!p1 || !p2) return
     const base = Math.hypot(p2.x - p1.x, p2.y - p1.y)
     if (base === 0) return
-    for (const [i, level] of this.props.levels.entries()) {
-      if (!level.visible) continue
-      const color = fibLevelColor(level, i)
+    const shown = this.props.levels.map((level, i) => ({ level, color: fibLevelColor(level, i), r: base * level.value })).filter((e) => e.level.visible && e.r > 0)
+    if (this.props.fillBackground && this.props.backgroundOpacity > 0) {
+      const ordered = [...shown].sort((a, b) => a.r - b.r)
+      for (let i = 0; i < ordered.length; i++) fillRing(ctx, p1, i === 0 ? 0 : ordered[i - 1]!.r, ordered[i]!.r, ordered[i]!.color, this.props.backgroundOpacity)
+    }
+    for (const entry of shown) {
       ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = color
+      applyStroke(ctx, levelStroke(this.style, entry.level, entry.color))
       ctx.beginPath()
-      ctx.arc(p1.x, p1.y, base * level.value, 0, Math.PI * 2)
+      ctx.arc(p1.x, p1.y, entry.r, 0, Math.PI * 2)
       ctx.stroke()
       ctx.restore()
       if (this.props.showLevels) {
-        const label = this.props.coeffsAsPercents ? `${Math.round(level.value * 100)}%` : String(level.value)
-        paintLabel(ctx, label, { x: p1.x + base * level.value + 4, y: p1.y }, { ...this.style, textColor: color })
+        paintLabel(ctx, levelValueText(entry.level.value, this.props.coeffsAsPercents), { x: p1.x + entry.r + 4, y: p1.y }, { ...this.style, textColor: entry.color })
       }
     }
+    paintTrend(ctx, this.style, this.props, [p1, p2])
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -632,30 +701,27 @@ export class FibCircles extends Drawing<FibCirclesProps> {
     const base = Math.hypot(p2.x - p1.x, p2.y - p1.y)
     if (base === 0) return false
     const d = Math.hypot(point.x - p1.x, point.y - p1.y)
-    const tolerance = hitTolerance(this.style.lineWidth)
-    return this.props.levels.some((l) => l.visible && Math.abs(d - base * l.value) <= tolerance)
+    if (this.props.levels.some((l) => l.visible && Math.abs(d - base * l.value) <= hitTolerance(l.width ?? this.style.lineWidth))) return true
+    return hitsTrend(point, this.props, [p1, p2])
   }
 }
 
 /** Half-circle arcs at ratio radii, centered on the trend line's end and facing its origin. */
-export type FibArcsProps = FibProps & {
+export type FibArcsProps = FibRingProps & {
   /** Complete each arc into a full circle. */
   fullCircles: boolean
 }
 
+/** Arcs about the trend line's end at ratios of its length, bowed back toward its start. */
 export class FibArcs extends Drawing<FibArcsProps> {
   readonly type = 'fib_speed_resist_arcs'
 
   protected override defaultProps(): FibArcsProps {
-    return {
-      ...fibDefaults([
-        { value: 0.382, visible: true },
-        { value: 0.5, visible: true },
-        { value: 0.618, visible: true },
-        { value: 1, visible: true },
-      ]),
-      fullCircles: false,
-    }
+    return { levels: strokedLevels(RING_LEVELS, 2), ...DASHED_TREND, showLevels: true, fullCircles: false, fillBackground: true, backgroundOpacity: 0.2 }
+  }
+
+  protected override upgradeProps(props: Partial<FibArcsProps>): Partial<FibArcsProps> {
+    return knownProps(props, this.defaultProps())
   }
 
   requiredAnchors(): number {
@@ -669,29 +735,26 @@ export class FibArcs extends Drawing<FibArcsProps> {
     if (base === 0) return
     // The arcs bow back toward the origin: a half circle perpendicular to the trend segment.
     const back = angleOf(p2, p1)
-    ctx.save()
-    applyStroke(ctx, this.style)
-    ctx.globalAlpha = 0.45
-    ctx.setLineDash(dashPattern('dashed', this.style.lineWidth))
-    strokeSegment(ctx, p1, p2)
-    ctx.restore()
-    for (const [i, level] of this.props.levels.entries()) {
-      if (!level.visible) continue
-      const color = fibLevelColor(level, i)
+    const [from, to] = this.props.fullCircles ? [0, Math.PI * 2] : [back - Math.PI / 2, back + Math.PI / 2]
+    const shown = this.props.levels.map((level, i) => ({ level, color: fibLevelColor(level, i), r: base * level.value })).filter((e) => e.level.visible && e.r > 0)
+    if (this.props.fillBackground && this.props.backgroundOpacity > 0) {
+      const ordered = [...shown].sort((a, b) => a.r - b.r)
+      for (let i = 0; i < ordered.length; i++) fillRing(ctx, p2, i === 0 ? 0 : ordered[i - 1]!.r, ordered[i]!.r, ordered[i]!.color, this.props.backgroundOpacity, from, to)
+    }
+    for (const entry of shown) {
       ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = color
+      applyStroke(ctx, levelStroke(this.style, entry.level, entry.color))
       ctx.beginPath()
-      if (this.props.fullCircles) ctx.arc(p2.x, p2.y, base * level.value, 0, Math.PI * 2)
-      else ctx.arc(p2.x, p2.y, base * level.value, back - Math.PI / 2, back + Math.PI / 2)
+      ctx.arc(p2.x, p2.y, entry.r, from, to)
       ctx.stroke()
       ctx.restore()
       if (this.props.showLevels) {
-        const lx = p2.x + Math.cos(back) * base * level.value
-        const ly = p2.y + Math.sin(back) * base * level.value
-        paintLabel(ctx, String(level.value), { x: lx, y: ly - 8 }, { ...this.style, textColor: color }, { align: 'center' })
+        const lx = p2.x + Math.cos(back) * entry.r
+        const ly = p2.y + Math.sin(back) * entry.r
+        paintLabel(ctx, String(entry.level.value), { x: lx, y: ly - 8 }, { ...this.style, textColor: entry.color }, { align: 'center' })
       }
     }
+    paintTrend(ctx, this.style, this.props, [p1, p2])
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -700,8 +763,328 @@ export class FibArcs extends Drawing<FibArcsProps> {
     const base = Math.hypot(p2.x - p1.x, p2.y - p1.y)
     if (base === 0) return false
     const d = Math.hypot(point.x - p2.x, point.y - p2.y)
+    if (this.props.levels.some((l) => l.visible && Math.abs(d - base * l.value) <= hitTolerance(l.width ?? this.style.lineWidth))) return true
+    return hitsTrend(point, this.props, [p1, p2])
+  }
+}
+
+/** A wedge's levels: arcs at ratios of its first ray's length between its two rays, with the rays
+ *  as its trend line, the arcs' labels, and the bands between arcs. */
+export type FibWedgeProps = FibTrendProps & {
+  levels: FibLevel[]
+  showLevels: boolean
+  fillBackground: boolean
+  backgroundOpacity: number
+}
+
+const WEDGE_LEVELS: readonly [number, string, boolean][] = [
+  [0.236, '#f23645', true],
+  [0.382, '#ff9800', true],
+  [0.5, '#4caf50', true],
+  [0.618, '#089981', true],
+  [0.786, '#00bcd4', true],
+  [1, '#808080', true],
+  [1.618, '#2962ff', false],
+  [2.618, '#f23645', false],
+  [3.618, '#673ab7', false],
+  [4.236, '#e91e63', false],
+  [4.618, '#e91e63', false],
+]
+
+/** Wedge: two rays from an apex with ratio arcs spanning the angle between them. */
+export class FibWedge extends Drawing<FibWedgeProps> {
+  readonly type = 'fib_wedge'
+
+  protected override defaultProps(): FibWedgeProps {
+    return { levels: strokedLevels(WEDGE_LEVELS, 2), trendLine: true, trendLineColor: '#808080', trendLineWidth: 2, trendLineStyle: 'solid', showLevels: true, fillBackground: true, backgroundOpacity: 0.2 }
+  }
+
+  protected override upgradeProps(props: Partial<FibWedgeProps>): Partial<FibWedgeProps> {
+    return knownProps(props, this.defaultProps())
+  }
+
+  requiredAnchors(): number {
+    return 3
+  }
+
+  /** The apex, the first ray's length, the rays' angles, and the arcs' sweep the short way between
+   *  the rays, as a clockwise run from `start` to `end`. */
+  protected geometry(viewport: Viewport): { apex: Point; radius: number; a1: number; a2: number; start: number; end: number; bisector: number } | null {
+    const [apex, p2, p3] = this.anchorPixels(viewport)
+    if (!apex || !p2 || !p3) return null
+    const radius = Math.hypot(p2.x - apex.x, p2.y - apex.y)
+    if (radius === 0) return null
+    const a1 = angleOf(apex, p2)
+    const a2 = angleOf(apex, p3)
+    const [start, end] = Math.sin(a2 - a1) < 0 ? [a2, a1] : [a1, a2]
+    const sweep = (((end - start) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
+    return { apex, radius, a1, a2, start, end: start + sweep, bisector: start + sweep / 2 }
+  }
+
+  /** The two rays, each as long as the first. */
+  protected rays(geo: { apex: Point; radius: number; a1: number; a2: number }): Point[][] {
+    const end = (a: number): Point => ({ x: geo.apex.x + Math.cos(a) * geo.radius, y: geo.apex.y + Math.sin(a) * geo.radius })
+    return [
+      [geo.apex, end(geo.a1)],
+      [geo.apex, end(geo.a2)],
+    ]
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const geo = this.geometry(viewport)
+    if (!geo) return
+    const shown = this.props.levels.map((level, i) => ({ level, color: fibLevelColor(level, i), r: geo.radius * level.value })).filter((e) => e.level.visible && e.r > 0)
+    if (this.props.fillBackground && this.props.backgroundOpacity > 0) {
+      const ordered = [...shown].sort((a, b) => a.r - b.r)
+      for (let i = 0; i < ordered.length; i++) fillRing(ctx, geo.apex, i === 0 ? 0 : ordered[i - 1]!.r, ordered[i]!.r, ordered[i]!.color, this.props.backgroundOpacity, geo.start, geo.end)
+    }
+    for (const entry of shown) {
+      ctx.save()
+      applyStroke(ctx, levelStroke(this.style, entry.level, entry.color))
+      ctx.beginPath()
+      ctx.arc(geo.apex.x, geo.apex.y, entry.r, geo.start, geo.end)
+      ctx.stroke()
+      ctx.restore()
+      if (this.props.showLevels) {
+        // Labels sit along the wedge's bisector, just past each arc.
+        const r = entry.r + 9
+        paintLabel(ctx, String(entry.level.value), { x: geo.apex.x + Math.cos(geo.bisector) * r, y: geo.apex.y + Math.sin(geo.bisector) * r }, { ...this.style, textColor: entry.color }, { align: 'center' })
+      }
+    }
+    for (const ray of this.rays(geo)) paintTrend(ctx, this.style, this.props, ray)
+  }
+
+  /** The third handle stands at the end of the second ray: that ray runs as long as the first, at
+   *  the third anchor's angle, so the anchor's own distance from the apex paints nothing and a
+   *  handle at it would float off the ray's end as the first ray changes length. */
+  override getControlPoints(viewport: Viewport): ControlPoint[] {
+    const points = super.getControlPoints(viewport)
+    const geo = this.geometry(viewport)
+    if (!geo) return points
+    const end = this.rays(geo)[1]![1]!
+    return points.map((point) => (point.index === 2 ? { ...point, ...end } : point))
+  }
+
+  testHit(point: Point, viewport: Viewport): boolean {
+    const geo = this.geometry(viewport)
+    if (!geo) return false
+    const d = Math.hypot(point.x - geo.apex.x, point.y - geo.apex.y)
+    const angle = Math.atan2(point.y - geo.apex.y, point.x - geo.apex.x)
+    const rel = (((angle - geo.start) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
+    if (rel <= geo.end - geo.start + 0.05 && this.props.levels.some((l) => l.visible && Math.abs(d - geo.radius * l.value) <= hitTolerance(l.width ?? this.style.lineWidth))) return true
+    return this.rays(geo).some((ray) => hitsTrend(point, this.props, ray))
+  }
+}
+
+/** A pitchfan's median and levels: the median from the first point through the middle of the other
+ *  two in a stroke of its own, rays through each level's point on either side of it, and the bands
+ *  between rays. */
+export type PitchfanProps = {
+  medianColor: string
+  medianWidth: number
+  medianStyle: LineStyle
+  levels: FibLevel[]
+  fillBackground: boolean
+  backgroundOpacity: number
+}
+
+const FORK_LEVELS: readonly [number, string, boolean][] = [
+  [0.25, '#ffb74d', false],
+  [0.382, '#81c784', false],
+  [0.5, '#00bcd4', true],
+  [0.618, '#089981', false],
+  [0.75, '#00bcd4', false],
+  [1, '#2962ff', true],
+  [1.5, '#9c27b0', false],
+  [1.75, '#e91e63', false],
+  [2, '#f77c80', false],
+]
+
+/** Fan of rays from the pitchfork origin through the fork's level points. */
+export class Pitchfan extends Drawing<PitchfanProps> {
+  readonly type = 'pitchfan'
+
+  protected override defaultProps(): PitchfanProps {
+    return { medianColor: '#f23645', medianWidth: 2, medianStyle: 'solid', levels: strokedLevels(FORK_LEVELS, 2), fillBackground: true, backgroundOpacity: 0.2 }
+  }
+
+  protected override upgradeProps(props: Partial<PitchfanProps>): Partial<PitchfanProps> {
+    const known = knownProps(props, this.defaultProps())
+    // The median stands on its own, so a level at zero draws nothing more.
+    if (Array.isArray(known.levels)) known.levels = known.levels.filter((l) => l.value !== 0)
+    return known
+  }
+
+  requiredAnchors(): number {
+    return 3
+  }
+
+  /** The ray from the origin through a point, to the pane's edge. */
+  protected rayThrough(origin: Point, through: Point, viewport: Viewport): { a: Point; b: Point } {
+    return { a: origin, b: extendSegment(origin, through, viewport.width, viewport.height, false, true).b }
+  }
+
+  /** The median and each visible level's two rays, one on either side of the median. */
+  protected fan(viewport: Viewport): { median: { a: Point; b: Point }; rays: { level: FibLevel; color: string; side: 1 | -1; a: Point; b: Point }[] } | null {
+    const [p1, p2, p3] = this.anchorPixels(viewport)
+    if (!p1 || !p2 || !p3) return null
+    const mid = midpoint(p2, p3)
+    if (mid.x === p1.x && mid.y === p1.y) return null
+    const rays: { level: FibLevel; color: string; side: 1 | -1; a: Point; b: Point }[] = []
+    this.props.levels.forEach((level, i) => {
+      if (!level.visible || level.value === 0) return
+      for (const side of [1, -1] as const) {
+        const k = level.value * side
+        rays.push({ level, color: fibLevelColor(level, i), side, ...this.rayThrough(p1, { x: mid.x + (p3.x - mid.x) * k, y: mid.y + (p3.y - mid.y) * k }, viewport) })
+      }
+    })
+    return { median: this.rayThrough(p1, mid, viewport), rays }
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const fan = this.fan(viewport)
+    if (!fan) return
+    if (this.props.fillBackground && this.props.backgroundOpacity > 0) {
+      for (const side of [1, -1] as const) {
+        const ordered = fan.rays.filter((r) => r.side === side).sort((a, b) => a.level.value - b.level.value)
+        let inner = fan.median
+        for (const ray of ordered) {
+          ctx.save()
+          ctx.fillStyle = withAlpha(ray.color, this.props.backgroundOpacity)
+          ctx.beginPath()
+          ctx.moveTo(ray.a.x, ray.a.y)
+          ctx.lineTo(inner.b.x, inner.b.y)
+          ctx.lineTo(ray.b.x, ray.b.y)
+          ctx.closePath()
+          ctx.fill()
+          ctx.restore()
+          inner = ray
+        }
+      }
+    }
+    for (const ray of fan.rays) {
+      ctx.save()
+      applyStroke(ctx, levelStroke(this.style, ray.level, ray.color))
+      strokeSegment(ctx, ray.a, ray.b)
+      ctx.restore()
+    }
+    ctx.save()
+    applyStroke(ctx, { ...this.style, lineColor: this.props.medianColor, lineWidth: this.props.medianWidth, lineStyle: this.props.medianStyle })
+    strokeSegment(ctx, fan.median.a, fan.median.b)
+    ctx.restore()
+  }
+
+  testHit(point: Point, viewport: Viewport): boolean {
+    const fan = this.fan(viewport)
+    if (!fan) return false
+    if (distanceToSegment(point, fan.median.a, fan.median.b) <= hitTolerance(this.props.medianWidth)) return true
+    return fan.rays.some((ray) => distanceToSegment(point, ray.a, ray.b) <= hitTolerance(ray.level.width ?? this.style.lineWidth))
+  }
+}
+
+/** A speed resistance fan: rays from its first point through each price division of the box's far
+ *  edge and each time division of its far side, the bands between rays, a grid at the divisions in
+ *  a stroke of its own, and each division's labels. */
+export type FibSpeedFanProps = BoxLevelsProps & {
+  fillBackground: boolean
+  backgroundOpacity: number
+  grid: boolean
+  gridColor: string
+  gridWidth: number
+  gridStyle: LineStyle
+}
+
+/** Fan rays from the first anchor through ratio points of the spanned box's far edge. */
+export class FibSpeedFan extends Drawing<FibSpeedFanProps> {
+  readonly type = 'fib_speed_resist_fan'
+
+  protected override defaultProps(): FibSpeedFanProps {
+    return {
+      priceLevels: boxDivisions(),
+      timeLevels: boxDivisions(),
+      showLeftLabels: true,
+      showRightLabels: true,
+      showTopLabels: true,
+      showBottomLabels: true,
+      fillBackground: true,
+      backgroundOpacity: 0.2,
+      grid: true,
+      gridColor: 'rgba(21, 56, 153, 0.8)',
+      gridWidth: 1,
+      gridStyle: 'solid',
+      reverse: false,
+    }
+  }
+
+  protected override upgradeProps(props: Partial<FibSpeedFanProps>): Partial<FibSpeedFanProps> {
+    return knownProps(upgradeBoxLevels(props), this.defaultProps())
+  }
+
+  requiredAnchors(): number {
+    return 2
+  }
+
+  protected box(viewport: Viewport): LevelBox | null {
+    const [a, b] = this.anchorPixels(viewport)
+    if (!a || !b || a.x === b.x || a.y === b.y) return null
+    return levelBox(a, b, this.props.reverse)
+  }
+
+  /** The fan's rays: a price division's through the far edge at its height, a time division's
+   *  through the far side at its place, each run to the pane's edge. */
+  protected rays(box: LevelBox, viewport: Viewport): { level: FibLevel; color: string; kind: 'price' | 'time'; a: Point; b: Point }[] {
+    const out: { level: FibLevel; color: string; kind: 'price' | 'time'; a: Point; b: Point }[] = []
+    const ray = (through: Point): { a: Point; b: Point } => ({ a: box.origin, b: extendSegment(box.origin, through, viewport.width, viewport.height, false, true).b })
+    this.props.priceLevels.forEach((level, i) => {
+      if (level.visible) out.push({ level, color: fibLevelColor(level, i), kind: 'price', ...ray({ x: box.far.x, y: priceY(box, level.value) }) })
+    })
+    this.props.timeLevels.forEach((level, i) => {
+      if (level.visible) out.push({ level, color: fibLevelColor(level, i), kind: 'time', ...ray({ x: timeX(box, level.value), y: box.far.y }) })
+    })
+    return out
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const box = this.box(viewport)
+    if (!box) return
+    const rays = this.rays(box, viewport)
+    if (this.props.fillBackground && this.props.backgroundOpacity > 0) {
+      for (const kind of ['price', 'time'] as const) {
+        const ordered = rays.filter((r) => r.kind === kind).sort((p, q) => p.level.value - q.level.value)
+        for (let i = 1; i < ordered.length; i++) {
+          ctx.save()
+          ctx.fillStyle = withAlpha(ordered[i]!.color, this.props.backgroundOpacity)
+          ctx.beginPath()
+          ctx.moveTo(box.origin.x, box.origin.y)
+          ctx.lineTo(ordered[i - 1]!.b.x, ordered[i - 1]!.b.y)
+          ctx.lineTo(ordered[i]!.b.x, ordered[i]!.b.y)
+          ctx.closePath()
+          ctx.fill()
+          ctx.restore()
+        }
+      }
+    }
+    if (this.props.grid) {
+      ctx.save()
+      applyStroke(ctx, { ...this.style, lineColor: this.props.gridColor, lineWidth: this.props.gridWidth, lineStyle: this.props.gridStyle })
+      for (const level of this.props.priceLevels) if (level.visible) strokeSegment(ctx, { x: box.left, y: priceY(box, level.value) }, { x: box.right, y: priceY(box, level.value) })
+      for (const level of this.props.timeLevels) if (level.visible) strokeSegment(ctx, { x: timeX(box, level.value), y: box.top }, { x: timeX(box, level.value), y: box.bottom })
+      ctx.restore()
+    }
+    for (const r of rays) {
+      ctx.save()
+      applyStroke(ctx, { ...this.style, lineColor: r.color })
+      strokeSegment(ctx, r.a, r.b)
+      ctx.restore()
+    }
+    paintBoxLabels(ctx, this.style, this.props, box, fibLevelColor)
+  }
+
+  testHit(point: Point, viewport: Viewport): boolean {
+    const box = this.box(viewport)
+    if (!box) return false
     const tolerance = hitTolerance(this.style.lineWidth)
-    return this.props.levels.some((l) => l.visible && Math.abs(d - base * l.value) <= tolerance)
+    return this.rays(box, viewport).some((r) => distanceToSegment(point, r.a, r.b) <= tolerance)
   }
 }
 
@@ -751,154 +1134,3 @@ export class FibSpiral extends Drawing {
   }
 }
 
-/** Fan of rays from the pitchfork origin through the fork's level points. */
-export class Pitchfan extends Drawing<FibProps> {
-  readonly type = 'pitchfan'
-
-  protected override defaultProps(): FibProps {
-    return fibDefaults([
-      { value: 0, visible: true },
-      { value: 0.25, visible: true },
-      { value: 0.5, visible: true },
-      { value: 0.75, visible: true },
-      { value: 1, visible: true },
-    ])
-  }
-
-  requiredAnchors(): number {
-    return 3
-  }
-
-  protected rays(viewport: Viewport): { level: FibLevel; color: string; a: Point; b: Point }[] {
-    const [p1, p2, p3] = this.anchorPixels(viewport)
-    if (!p1 || !p2 || !p3) return []
-    const mid = midpoint(p2, p3)
-    return this.props.levels
-      .map((level, i) => ({ level, color: fibLevelColor(level, i) }))
-      .filter((e) => e.level.visible)
-      .flatMap((e) => {
-        const offsets = e.level.value === 0 ? [0] : [e.level.value, -e.level.value]
-        return offsets.map((k) => {
-          const through = { x: mid.x + (p3.x - mid.x) * k, y: mid.y + (p3.y - mid.y) * k }
-          const seg = extendSegment(p1, through, viewport.width, viewport.height, false, true)
-          return { ...e, a: p1, b: seg.b }
-        })
-      })
-  }
-
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    for (const ray of this.rays(viewport)) {
-      ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = ray.color
-      strokeSegment(ctx, ray.a, ray.b)
-      ctx.restore()
-      if (this.props.showLevels) {
-        // Label near the ray's far end, pulled slightly back inside the pane.
-        const t = 0.92
-        paintLabel(
-          ctx,
-          String(ray.level.value),
-          { x: ray.a.x + (ray.b.x - ray.a.x) * t, y: ray.a.y + (ray.b.y - ray.a.y) * t - 8 },
-          { ...this.style, textColor: ray.color },
-          { align: 'center' },
-        )
-      }
-    }
-  }
-
-  testHit(point: Point, viewport: Viewport): boolean {
-    const tolerance = hitTolerance(this.style.lineWidth)
-    return this.rays(viewport).some((ray) => distanceToSegment(point, ray.a, ray.b) <= tolerance)
-  }
-}
-
-/** Wedge: two rays from an apex with ratio arcs spanning the angle between them. */
-export class FibWedge extends Drawing<FibProps> {
-  readonly type = 'fib_wedge'
-
-  protected override defaultProps(): FibProps {
-    return fibDefaults([
-      { value: 0.382, visible: true },
-      { value: 0.5, visible: true },
-      { value: 0.618, visible: true },
-      { value: 1, visible: true },
-    ])
-  }
-
-  requiredAnchors(): number {
-    return 3
-  }
-
-  protected geometry(viewport: Viewport): { apex: Point; radius: number; a1: number; a2: number } | null {
-    const [apex, p2, p3] = this.anchorPixels(viewport)
-    if (!apex || !p2 || !p3) return null
-    const radius = Math.hypot(p2.x - apex.x, p2.y - apex.y)
-    if (radius === 0) return null
-    return { apex, radius, a1: angleOf(apex, p2), a2: angleOf(apex, p3) }
-  }
-
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const geo = this.geometry(viewport)
-    if (!geo) return
-    applyStroke(ctx, this.style)
-    strokeSegment(ctx, geo.apex, { x: geo.apex.x + Math.cos(geo.a1) * geo.radius, y: geo.apex.y + Math.sin(geo.a1) * geo.radius })
-    strokeSegment(ctx, geo.apex, { x: geo.apex.x + Math.cos(geo.a2) * geo.radius, y: geo.apex.y + Math.sin(geo.a2) * geo.radius })
-    // Labels sit along the wedge's bisector, just past each arc.
-    const cross = Math.sin(geo.a2 - geo.a1)
-    const sweep = cross < 0 ? geo.a1 - geo.a2 : geo.a2 - geo.a1
-    const bisector = geo.a1 + (cross < 0 ? -1 : 1) * (Math.abs(sweep) / 2)
-    for (const [i, level] of this.props.levels.entries()) {
-      if (!level.visible) continue
-      const color = fibLevelColor(level, i)
-      ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = color
-      ctx.beginPath()
-      // Sweep the short way between the two rays.
-      ctx.arc(geo.apex.x, geo.apex.y, geo.radius * level.value, geo.a1, geo.a2, cross < 0)
-      ctx.stroke()
-      ctx.restore()
-      if (this.props.showLevels) {
-        const r = geo.radius * level.value + 9
-        paintLabel(
-          ctx,
-          String(level.value),
-          { x: geo.apex.x + Math.cos(bisector) * r, y: geo.apex.y + Math.sin(bisector) * r },
-          { ...this.style, textColor: color },
-          { align: 'center' },
-        )
-      }
-    }
-  }
-
-  /** The third handle stands at the end of the second ray: that ray runs as long as the first, at
-   *  the third anchor's angle, so the anchor's own distance from the apex paints nothing and a
-   *  handle at it would float off the ray's end as the first ray changes length. */
-  override getControlPoints(viewport: Viewport): ControlPoint[] {
-    const points = super.getControlPoints(viewport)
-    const geo = this.geometry(viewport)
-    if (!geo) return points
-    const end = { x: geo.apex.x + Math.cos(geo.a2) * geo.radius, y: geo.apex.y + Math.sin(geo.a2) * geo.radius }
-    return points.map((point) => (point.index === 2 ? { ...point, ...end } : point))
-  }
-
-  testHit(point: Point, viewport: Viewport): boolean {
-    const geo = this.geometry(viewport)
-    if (!geo) return false
-    const tolerance = hitTolerance(this.style.lineWidth)
-    const d = Math.hypot(point.x - geo.apex.x, point.y - geo.apex.y)
-    if (this.props.levels.some((l) => l.visible && Math.abs(d - geo.radius * l.value) <= tolerance)) {
-      // Constrain arc hits to the wedge's angular span (short way between the rays).
-      const angle = Math.atan2(point.y - geo.apex.y, point.x - geo.apex.x)
-      const norm = (x: number) => ((x % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)
-      const sweep = norm(geo.a2 - geo.a1) <= Math.PI ? norm(geo.a2 - geo.a1) : Math.PI * 2 - norm(geo.a2 - geo.a1)
-      const start = norm(geo.a2 - geo.a1) <= Math.PI ? geo.a1 : geo.a2
-      const rel = norm(angle - start)
-      if (rel <= sweep + 0.05) return true
-    }
-    const end1 = { x: geo.apex.x + Math.cos(geo.a1) * geo.radius, y: geo.apex.y + Math.sin(geo.a1) * geo.radius }
-    const end2 = { x: geo.apex.x + Math.cos(geo.a2) * geo.radius, y: geo.apex.y + Math.sin(geo.a2) * geo.radius }
-    return distanceToSegment(point, geo.apex, end1) <= tolerance || distanceToSegment(point, geo.apex, end2) <= tolerance
-  }
-}

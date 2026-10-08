@@ -28,7 +28,7 @@ import { createOpacitySlider } from '../controls/color'
 import { humanSize } from './imagePicker'
 import type { IconResolver } from '../icons/resolver'
 import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
-import { fibRows } from './levelRows'
+import { boxLevelRows, fibRows, strokedLevelRows } from './levelRows'
 
 export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Table' | 'Coordinates' | 'Visibility'
 
@@ -118,7 +118,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'pattern'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -142,6 +142,14 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   fib_retracement: 'fib',
   fib_trend_ext: 'fib',
   fib_channel: 'fibChannel',
+  fib_timezone: 'timeZone',
+  fib_trend_time: 'trendTime',
+  fib_circles: 'circles',
+  fib_speed_resist_arcs: 'arcs',
+  fib_wedge: 'wedge',
+  pitchfan: 'pitchfan',
+  fib_speed_resist_fan: 'speedFan',
+  gannbox: 'gannBox',
   xabcd_pattern: 'pattern',
   cypher_pattern: 'pattern',
   abcd_pattern: 'pattern',
@@ -169,6 +177,8 @@ const STATS_POSITION_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.l
  *  list stays open over a page that does not rebuild under it. */
 function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
   if (layout === 'fib' || layout === 'fibChannel') return fibRows(ctx, layout === 'fib')
+  if (layout === 'timeZone' || layout === 'trendTime' || layout === 'circles' || layout === 'arcs' || layout === 'wedge' || layout === 'pitchfan') return strokedLevelRows(ctx, layout)
+  if (layout === 'speedFan' || layout === 'gannBox') return boxLevelRows(ctx, layout)
   const { t, drawing, box, icons } = ctx
   const props = drawing.props as Record<string, unknown>
   const style = drawing.style

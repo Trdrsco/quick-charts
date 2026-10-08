@@ -59,6 +59,7 @@ const SURFACE: Record<string, string> = {
   FlatTopBottom: 'function',
   Forecast: 'function',
   GannBox: 'function',
+  GannLevelBox: 'function',
   GannFan: 'function',
   GannSquare: 'function',
   GannSquareFixed: 'function',

@@ -6,11 +6,11 @@
 // level switched off keeps its value and color, its field greyed and its well dimmed until it is
 // switched back on. The one color shows the color every level shares, or a well split in two while
 // they differ; picking there gives every level the color picked.
-import type { DrawingStyle, FibChannelProps, FibLevel, FibRetracementProps, LineStyle } from '../../internal/drawings/index'
+import type { DrawingStyle, FibChannelProps, FibLevel, FibRetracementProps, FibTrendProps, LineStyle } from '../../internal/drawings/index'
 import { alphaOf, fibLevelColor, MIXED_LEVEL_COLORS, sharedLevelColor, withAlpha } from '../../internal/drawings/index'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import { el, menuKeys } from './dom'
-import { checkbox, checkRow, dropdown, fullRow, groupGap, multiDropdown, numberInput, openPopover, row, swatchButton, toggleRow } from './fields'
+import { checkbox, checkRow, dropdown, fullRow, groupGap, multiDropdown, numberInput, openPopover, row, sectionTitle, swatchButton, toggleRow } from './fields'
 import type { RowsContext } from './settingsRows'
 
 const SIDE_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.left', center: 'drawing.center', right: 'drawing.right' }
@@ -130,62 +130,73 @@ export function opacityTrack(t: ChartTranslate, value: number, onChange: (v: num
   return track
 }
 
-/** The levels as the drawing holds them NOW. Every change replaces the whole array, so a control
- *  built before an earlier edit reads the current one rather than writing its own copy back and
- *  undoing what came between. */
-const liveLevels = (ctx: RowsContext): FibLevel[] => (Array.isArray(ctx.drawing.props.levels) ? (ctx.drawing.props.levels as FibLevel[]) : [])
+/** The levels a prop holds as the drawing holds them NOW. Every change replaces the whole array, so
+ *  a control built before an earlier edit reads the current one rather than writing its own copy
+ *  back and undoing what came between. */
+const liveLevels = (ctx: RowsContext, key = 'levels'): FibLevel[] => (Array.isArray(ctx.drawing.props[key]) ? (ctx.drawing.props[key] as FibLevel[]) : [])
+
+/** The names a grid gives its level's three controls: a tool's one set of levels, or a box's price
+ *  or time divisions. */
+type LevelNames = { on: ChartMessageKey; value: ChartMessageKey; color: ChartMessageKey }
+const LEVEL_NAMES: Record<string, LevelNames> = {
+  levels: { on: 'drawing.levelOn', value: 'drawing.levelValue', color: 'drawing.levelColor' },
+  priceLevels: { on: 'drawing.priceLevelOn', value: 'drawing.priceLevelValue', color: 'drawing.priceLevelColor' },
+  timeLevels: { on: 'drawing.timeLevelOn', value: 'drawing.timeLevelValue', color: 'drawing.timeLevelColor' },
+}
 
 /** One level's three controls: its switch, its value and its color. Switching a level off greys
  *  its field and dims its well in place, and the value writes quietly, so neither rebuilds the page
  *  under the keyboard. */
-function levelCell(ctx: RowsContext, level: FibLevel, index: number): HTMLElement[] {
+function levelCell(ctx: RowsContext, key: string, level: FibLevel, index: number): HTMLElement[] {
   const { t, box, icons } = ctx
   const n = index + 1
+  const names = LEVEL_NAMES[key] ?? LEVEL_NAMES.levels!
   const patch = (next: Partial<FibLevel>, quiet: boolean): void => {
-    const levels = liveLevels(ctx).map((l, j) => (j === index ? { ...l, ...next } : l))
-    if (quiet) ctx.patchQuiet({ levels })
-    else ctx.patchProps({ levels })
+    const levels = liveLevels(ctx, key).map((l, j) => (j === index ? { ...l, ...next } : l))
+    if (quiet) ctx.patchQuiet({ [key]: levels })
+    else ctx.patchProps({ [key]: levels })
   }
-  const value = numberInput(t, icons, { label: t('drawing.levelValue', { n }), value: level.value, step: 0.1, width: 'field', onChange: (v) => patch({ value: v }, true) })
+  const value = numberInput(t, icons, { label: t(names.value, { n }), value: level.value, step: 0.1, width: 'field', onChange: (v) => patch({ value: v }, true) })
   const color = fibLevelColor(level, index)
-  const well = swatchButton(t, box, { label: t('drawing.levelColor', { n }), value: color, onPick: (c) => patch({ color: c }, false) })
+  const well = swatchButton(t, box, { label: t(names.color, { n }), value: color, onPick: (c) => patch({ color: c }, false) })
   const shown = (on: boolean): void => {
     for (const control of value.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input, button')) control.disabled = !on
     well.dataset.qcDim = String(!on)
   }
   shown(level.visible)
-  const toggle = checkbox(t('drawing.levelOn', { n }), level.visible, (on) => {
+  const toggle = checkbox(t(names.on, { n }), level.visible, (on) => {
     shown(on)
     patch({ visible: on }, true)
   })
   return [toggle, value, well]
 }
 
-/** A fib's levels two to a line, in their order, and the room the grid keeps after it. */
-export function levelPairs(ctx: RowsContext): HTMLElement[] {
-  const levels = liveLevels(ctx)
+/** The levels a prop holds two to a line, in their order, and, where the grid ends a group, the
+ *  room it keeps after it. */
+export function levelPairs(ctx: RowsContext, key = 'levels', gap = true): HTMLElement[] {
+  const levels = liveLevels(ctx, key)
   const out: HTMLElement[] = []
   for (let i = 0; i < levels.length; i += 2) {
-    const line = fullRow(...levelCell(ctx, levels[i]!, i), ...(i + 1 < levels.length ? levelCell(ctx, levels[i + 1]!, i + 1) : []))
+    const line = fullRow(...levelCell(ctx, key, levels[i]!, i), ...(i + 1 < levels.length ? levelCell(ctx, key, levels[i + 1]!, i + 1) : []))
     line.classList.add('qc-drawing-level-row')
     out.push(line)
   }
-  out.push(groupGap())
+  if (gap) out.push(groupGap())
   return out
 }
 
 /** The one color every level takes: the color they share, or the split well while they differ. A
  *  pick gives every level the color, and the drawing's stroke with it, so the settings bar shows it
  *  too. */
-export function oneColorRow(ctx: RowsContext): HTMLElement {
+export function oneColorRow(ctx: RowsContext, keys: readonly string[] = ['levels']): HTMLElement {
   const { t, drawing, box } = ctx
-  const shared = sharedLevelColor(liveLevels(ctx))
+  const shared = sharedLevelColor(keys.flatMap((key) => liveLevels(ctx, key)))
   const well = swatchButton(t, box, {
     label: t('drawing.useOneColor'),
     value: shared ?? MIXED_LEVEL_COLORS[0],
     onPick: (c) => {
       drawing.updateStyle({ lineColor: c })
-      ctx.patchProps({ levels: liveLevels(ctx).map((l) => ({ ...l, color: c })) })
+      ctx.patchProps(Object.fromEntries(keys.map((key) => [key, liveLevels(ctx, key).map((l) => ({ ...l, color: c }))])))
     },
   })
   if (!shared) {
@@ -282,5 +293,170 @@ export function fibRows(ctx: RowsContext, retracement: boolean): HTMLElement[] {
     const logScale = drawing.getViewport()?.logScale === true
     out.push(toggleRow(t('drawing.levelsOnLogScale'), !!props.levelsOnLogScale, (v) => ctx.patchProps({ levelsOnLogScale: v }), !logScale))
   }
+  return out
+}
+
+/** One level on a line of its own: its switch, its value, and its stroke's color, thickness and
+ *  style. Switching it off greys its field and dims its stroke in place, and the value writes
+ *  quietly, so neither rebuilds the page under the keyboard. */
+function strokedLevelLine(ctx: RowsContext, level: FibLevel, index: number): HTMLElement {
+  const { t, box, icons, drawing } = ctx
+  const n = index + 1
+  const patch = (next: Partial<FibLevel>, quiet: boolean): void => {
+    const levels = liveLevels(ctx).map((l, j) => (j === index ? { ...l, ...next } : l))
+    if (quiet) ctx.patchQuiet({ levels })
+    else ctx.patchProps({ levels })
+  }
+  const value = numberInput(t, icons, { label: t('drawing.levelValue', { n }), value: level.value, step: 0.1, width: 'field', onChange: (v) => patch({ value: v }, true) })
+  const color = fibLevelColor(level, index)
+  const stroke = swatchButton(t, box, {
+    label: t('drawing.levelColor', { n }),
+    value: color,
+    onPick: (c) => patch({ color: c }, false),
+    thickness: level.width ?? drawing.style.lineWidth,
+    onThickness: (w) => patch({ width: w }, false),
+    lineStyle: level.style ?? drawing.style.lineStyle,
+    onLineStyle: (s) => patch({ style: s }, false),
+  })
+  const shown = (on: boolean): void => {
+    for (const control of value.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input, button')) control.disabled = !on
+    stroke.dataset.qcDim = String(!on)
+  }
+  shown(level.visible)
+  const toggle = checkbox(t('drawing.levelOn', { n }), level.visible, (on) => {
+    shown(on)
+    patch({ visible: on }, true)
+  })
+  return fullRow(toggle, value, stroke)
+}
+
+/** A fib's levels one to a line, in their order, each in a stroke of its own. */
+export function levelLines(ctx: RowsContext): HTMLElement[] {
+  return liveLevels(ctx).map((level, i) => strokedLevelLine(ctx, level, i))
+}
+
+/** A trend line's row: its switch, and its stroke. */
+export function trendRow(ctx: RowsContext): HTMLElement {
+  const { t, drawing, box } = ctx
+  const props = drawing.props as Partial<FibTrendProps>
+  const color = String(props.trendLineColor)
+  return checkRow(t('drawing.trendLine'), !!props.trendLine, (v) => ctx.patchProps({ trendLine: v }), [
+    swatchButton(t, box, {
+      label: t('drawing.trendLine'),
+      value: color,
+      onPick: (c) => {
+        const alpha = alphaOf(color)
+        ctx.patchProps({ trendLineColor: alpha < 1 ? withAlpha(c, alpha) : c })
+      },
+      opacity: alphaOf(color),
+      onOpacity: (v) => ctx.patchProps({ trendLineColor: withAlpha(color, v) }),
+      thickness: Number(props.trendLineWidth),
+      onThickness: (v) => ctx.patchProps({ trendLineWidth: v }),
+      lineStyle: props.trendLineStyle,
+      onLineStyle: (v) => ctx.patchProps({ trendLineStyle: v }),
+    }),
+  ])
+}
+
+/** A fork's median row: its stroke. */
+export function medianRow(ctx: RowsContext): HTMLElement {
+  const { t, drawing, box } = ctx
+  const props = drawing.props as { medianColor?: string; medianWidth?: number; medianStyle?: LineStyle }
+  const color = String(props.medianColor)
+  return row(
+    t('drawing.median'),
+    swatchButton(t, box, {
+      label: t('drawing.median'),
+      value: color,
+      onPick: (c) => {
+        const alpha = alphaOf(color)
+        ctx.patchProps({ medianColor: alpha < 1 ? withAlpha(c, alpha) : c })
+      },
+      opacity: alphaOf(color),
+      onOpacity: (v) => ctx.patchProps({ medianColor: withAlpha(color, v) }),
+      thickness: Number(props.medianWidth),
+      onThickness: (v) => ctx.patchProps({ medianWidth: v }),
+      lineStyle: props.medianStyle,
+      onLineStyle: (v) => ctx.patchProps({ medianStyle: v }),
+    }),
+  )
+}
+
+/** A time fib's Labels row: its switch, then where the labels stand along and across. */
+function timeLabelsRow(ctx: RowsContext): HTMLElement {
+  const { t, drawing, box, icons } = ctx
+  const props = drawing.props as { showLevels?: boolean; labelsHAlign?: 'left' | 'center' | 'right'; labelsVAlign?: 'top' | 'middle' | 'bottom' }
+  return checkRow(t('drawing.labels'), !!props.showLevels, (v) => ctx.patchProps({ showLevels: v }), [
+    dropdown(icons, box, t('drawing.labels'), ['left', 'center', 'right'] as const, props.labelsHAlign ?? 'right', label(t, SIDE_LABEL), (v) => ctx.patchProps({ labelsHAlign: v })),
+    dropdown(icons, box, t('drawing.labels'), ['top', 'middle', 'bottom'] as const, props.labelsVAlign ?? 'bottom', label(t, ACROSS_LABEL), (v) => ctx.patchProps({ labelsVAlign: v })),
+  ])
+}
+
+/** The Style page of a fib whose levels stand one to a line: its trend line or median where it has
+ *  one, the levels, the one color, the bands, and the rows of its own. */
+export function strokedLevelRows(ctx: RowsContext, kind: 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan'): HTMLElement[] {
+  const { t, drawing } = ctx
+  const props = drawing.props as Record<string, unknown>
+  const toggle = (key: string, text: ChartMessageKey): HTMLElement => toggleRow(t(text), !!props[key], (v) => ctx.patchProps({ [key]: v }))
+  const out: HTMLElement[] = []
+  if (kind === 'pitchfan') out.push(medianRow(ctx))
+  else if (kind !== 'timeZone') out.push(trendRow(ctx))
+  out.push(...levelLines(ctx), oneColorRow(ctx), bandsRow(ctx))
+  if (kind === 'timeZone' || kind === 'trendTime') out.push(timeLabelsRow(ctx))
+  if (kind === 'circles' || kind === 'arcs' || kind === 'wedge') out.push(toggle('showLevels', 'drawing.levels'))
+  if (kind === 'circles') out.push(toggle('coeffsAsPercents', 'drawing.coeffsAsPercents'))
+  if (kind === 'arcs') out.push(toggle('fullCircles', 'drawing.fullCircles'))
+  return out
+}
+
+/** A box fib's two sides of divisions, each under its section, two to a line, with the switches of
+ *  their labels and, for a gann box, each side's bands; then the one color for both sides, and the
+ *  rows of its own. */
+export function boxLevelRows(ctx: RowsContext, kind: 'speedFan' | 'gannBox'): HTMLElement[] {
+  const { t, drawing, box } = ctx
+  const props = drawing.props as Record<string, unknown>
+  const toggle = (key: string, text: ChartMessageKey): HTMLElement => toggleRow(t(text), !!props[key], (v) => ctx.patchProps({ [key]: v }))
+  const bands = (fill: string, opacity: string): HTMLElement =>
+    checkRow(t('drawing.background'), props[fill] !== false, (v) => ctx.patchProps({ [fill]: v }), [opacityTrack(t, Number(props[opacity] ?? 0.2), (v) => ctx.patchQuiet({ [opacity]: v }))])
+  const out: HTMLElement[] = [
+    sectionTitle(t('drawing.priceLevels')),
+    ...levelPairs(ctx, 'priceLevels', false),
+    toggle('showLeftLabels', 'drawing.leftLabels'),
+    toggle('showRightLabels', 'drawing.rightLabels'),
+  ]
+  if (kind === 'gannBox') out.push(bands('fillPriceBackground', 'priceBackgroundOpacity'))
+  out.push(groupGap(), sectionTitle(t('drawing.timeLevels')), ...levelPairs(ctx, 'timeLevels', false), toggle('showTopLabels', 'drawing.topLabels'), toggle('showBottomLabels', 'drawing.bottomLabels'))
+  if (kind === 'gannBox') out.push(bands('fillTimeBackground', 'timeBackgroundOpacity'))
+  out.push(groupGap(), oneColorRow(ctx, ['priceLevels', 'timeLevels']))
+  if (kind === 'speedFan') {
+    const color = String(props.gridColor)
+    out.push(
+      bandsRow(ctx),
+      checkRow(t('drawing.grid'), !!props.grid, (v) => ctx.patchProps({ grid: v }), [
+        swatchButton(t, box, {
+          label: t('drawing.grid'),
+          value: color,
+          onPick: (c) => {
+            const alpha = alphaOf(color)
+            ctx.patchProps({ gridColor: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(color),
+          onOpacity: (v) => ctx.patchProps({ gridColor: withAlpha(color, v) }),
+          thickness: Number(props.gridWidth),
+          onThickness: (v) => ctx.patchProps({ gridWidth: v }),
+          lineStyle: props.gridStyle as LineStyle,
+          onLineStyle: (v) => ctx.patchProps({ gridStyle: v }),
+        }),
+      ]),
+    )
+  } else {
+    const color = String(props.anglesColor)
+    out.push(
+      checkRow(t('drawing.angles'), !!props.angles, (v) => ctx.patchProps({ angles: v }), [
+        swatchButton(t, box, { label: t('drawing.angles'), value: color, onPick: (c) => ctx.patchProps({ anglesColor: c }) }),
+      ]),
+    )
+  }
+  out.push(toggle('reverse', 'drawing.reverse'))
   return out
 }

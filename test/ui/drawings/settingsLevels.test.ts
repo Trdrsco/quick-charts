@@ -122,6 +122,49 @@ describe('a fib retracement, extension and channel', () => {
   })
 })
 
+describe('a fib whose levels stand one to a line', () => {
+  it('offers a time zone its labels along and across its lines, holding right and bottom', () => {
+    const { dialog, page } = rig('fib_timezone')
+    const [along, across] = [...page().querySelectorAll<HTMLElement>('.qc-drawing-select[aria-label="Labels"]')]
+    expect(choices(dialog, along!)).toEqual(['Left', 'Center', 'Right'])
+    expect(choices(dialog, across!)).toEqual(['Top', 'Middle', 'Bottom'])
+    expect([along!.textContent, across!.textContent]).toEqual(['Right', 'Bottom'])
+  })
+
+  it('wells each level in its own stroke, and greys a level switched off in place', () => {
+    const { drawing, page } = rig('fib_trend_time')
+    const well = control(page(), 'Level 3 color')
+    expect(well.querySelector('.qc-drawing-stroke')).not.toBeNull()
+    expect(well.dataset.qcDim).toBe('true')
+    control(page(), 'Level 3').click()
+    expect((drawing.props.levels as { visible: boolean }[])[2]!.visible).toBe(true)
+    expect(control(page(), 'Level 3 color').dataset.qcDim).toBe('false')
+  })
+})
+
+describe('a speed resistance fan and a gann box', () => {
+  it('name each side’s divisions by their side', () => {
+    const { page } = rig('gannbox')
+    expect(control(page(), 'Price level 1')).not.toBeNull()
+    expect(control(page(), 'Time level 7 value')).not.toBeNull()
+    expect(control(page(), 'Time level 7 color')).not.toBeNull()
+  })
+
+  it('show one color for both sides, the color they share or the split well', () => {
+    const { drawing, page, show } = rig('fib_speed_resist_fan')
+    expect(control(page(), 'Use one color').dataset.qcMixed).toBe('true')
+    const recolor = (key: string): void => drawing.applyProps({ [key]: (drawing.props[key] as { color: string }[]).map((l) => ({ ...l, color: '#123456' })) })
+    recolor('priceLevels')
+    show('Coordinates')
+    show('Style')
+    expect(control(page(), 'Use one color').dataset.qcMixed).toBe('true')
+    recolor('timeLevels')
+    show('Coordinates')
+    show('Style')
+    expect(control(page(), 'Use one color').dataset.qcMixed).toBeUndefined()
+  })
+})
+
 /** The look and setup each leveled tool opens with. */
 describe('what a new leveled drawing starts with', () => {
   const fresh = (type: string) => drawingTools.create(type, 'x', anchors(drawingTools.get(type)!.anchors))!
@@ -157,6 +200,32 @@ describe('what a new leveled drawing starts with', () => {
       })
     }
     expect('trendLine' in fresh('fib_channel').props).toBe(false)
+  })
+
+  it('draws the one-to-a-line fibs and the pitchfan in their levels’ own colors and strokes', () => {
+    const levels = (type: string): [number, string, boolean, number | undefined][] =>
+      (fresh(type).props.levels as { value: number; color: string; visible: boolean; width?: number }[]).map((l) => [l.value, l.color, l.visible, l.width])
+    expect(levels('fib_timezone').map(([v, c]) => [v, c])).toEqual([0, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89].map((v) => [v, v === 0 ? '#808080' : '#2962ff']))
+    expect(levels('fib_trend_time').map(([v, , on]) => [v, on])).toEqual([[0, true], [0.382, true], [0.5, false], [0.618, true], [1, true], [1.382, true], [1.618, true], [2, true], [2.382, true], [2.618, true], [3, true]])
+    expect(levels('fib_circles').every(([, , , w]) => w === 2)).toBe(true)
+    expect(levels('fib_wedge').map(([, , on]) => on)).toEqual([true, true, true, true, true, true, false, false, false, false, false])
+    expect(levels('pitchfan').map(([v, c, on]) => [v, c, on])).toEqual([[0.25, '#ffb74d', false], [0.382, '#81c784', false], [0.5, '#00bcd4', true], [0.618, '#089981', false], [0.75, '#00bcd4', false], [1, '#2962ff', true], [1.5, '#9c27b0', false], [1.75, '#e91e63', false], [2, '#f77c80', false]])
+    expect(fresh('fib_timezone').props).toMatchObject({ showLevels: true, labelsHAlign: 'right', labelsVAlign: 'bottom', fillBackground: false, backgroundOpacity: 0.2 })
+    expect(fresh('fib_wedge').props).toMatchObject({ trendLine: true, trendLineColor: '#808080', trendLineWidth: 2, trendLineStyle: 'solid' })
+    expect(fresh('pitchfan').props).toMatchObject({ medianColor: '#f23645', medianWidth: 2, medianStyle: 'solid', fillBackground: true })
+  })
+
+  it('divides a fan and a gann box on seven divisions a side, with a fan’s grid and a box’s two sets of bands', () => {
+    for (const type of ['fib_speed_resist_fan', 'gannbox']) {
+      const d = fresh(type)
+      for (const key of ['priceLevels', 'timeLevels']) {
+        expect((d.props[key] as { value: number; color: string }[]).map((l) => [l.value, l.color]), `${type} ${key}`).toEqual([[0, '#808080'], [0.25, '#ff9800'], [0.382, '#00bcd4'], [0.5, '#4caf50'], [0.618, '#089981'], [0.75, '#2962ff'], [1, '#808080']])
+      }
+      expect(d.props, type).toMatchObject({ showLeftLabels: true, showRightLabels: true, showTopLabels: true, showBottomLabels: true, reverse: false })
+    }
+    expect(fresh('fib_speed_resist_fan').props).toMatchObject({ grid: true, gridColor: 'rgba(21, 56, 153, 0.8)', gridWidth: 1, gridStyle: 'solid', fillBackground: true })
+    expect(fresh('gannbox').props).toMatchObject({ fillPriceBackground: true, fillTimeBackground: true, angles: false, anglesColor: '#9c9c9c' })
+    expect(fresh('gannbox').style.lineColor).toBe('rgba(21, 56, 153, 0.8)')
   })
 
   it('keeps the bands of a fib saved with the background switch under its earlier name', () => {

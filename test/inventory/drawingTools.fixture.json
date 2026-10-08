@@ -547,16 +547,21 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
+        "backgroundOpacity",
         "coeffsAsPercents",
-        "extendLeft",
-        "extendRight",
+        "fillBackground",
         "levels",
-        "reverse",
         "showLevels",
-        "showPrices"
+        "trendLine",
+        "trendLineColor",
+        "trendLineStyle",
+        "trendLineWidth"
       ]
     },
     {
@@ -600,16 +605,21 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
-        "extendLeft",
-        "extendRight",
+        "backgroundOpacity",
+        "fillBackground",
         "fullCircles",
         "levels",
-        "reverse",
         "showLevels",
-        "showPrices"
+        "trendLine",
+        "trendLineColor",
+        "trendLineStyle",
+        "trendLineWidth"
       ]
     },
     {
@@ -619,15 +629,25 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
-        "extendLeft",
-        "extendRight",
-        "levels",
+        "backgroundOpacity",
+        "fillBackground",
+        "grid",
+        "gridColor",
+        "gridStyle",
+        "gridWidth",
+        "priceLevels",
         "reverse",
-        "showLevels",
-        "showPrices"
+        "showBottomLabels",
+        "showLeftLabels",
+        "showRightLabels",
+        "showTopLabels",
+        "timeLevels"
       ]
     },
     {
@@ -647,15 +667,18 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
-        "extendLeft",
-        "extendRight",
+        "backgroundOpacity",
+        "fillBackground",
+        "labelsHAlign",
+        "labelsVAlign",
         "levels",
-        "reverse",
-        "showLevels",
-        "showPrices"
+        "showLevels"
       ]
     },
     {
@@ -699,15 +722,22 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
-        "extendLeft",
-        "extendRight",
+        "backgroundOpacity",
+        "fillBackground",
+        "labelsHAlign",
+        "labelsVAlign",
         "levels",
-        "reverse",
         "showLevels",
-        "showPrices"
+        "trendLine",
+        "trendLineColor",
+        "trendLineStyle",
+        "trendLineWidth"
       ]
     },
     {
@@ -717,15 +747,20 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
-        "extendLeft",
-        "extendRight",
+        "backgroundOpacity",
+        "fillBackground",
         "levels",
-        "reverse",
         "showLevels",
-        "showPrices"
+        "trendLine",
+        "trendLineColor",
+        "trendLineStyle",
+        "trendLineWidth"
       ]
     },
     {
@@ -819,11 +854,26 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "rgba(21, 56, 153, 0.8)",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
-        "levels",
-        "showLabels"
+        "angles",
+        "anglesColor",
+        "fillPriceBackground",
+        "fillTimeBackground",
+        "priceBackgroundOpacity",
+        "priceLevels",
+        "reverse",
+        "showBottomLabels",
+        "showLeftLabels",
+        "showRightLabels",
+        "showTopLabels",
+        "timeBackgroundOpacity",
+        "timeLevels"
       ]
     },
     {
@@ -1134,15 +1184,18 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
-        "extendLeft",
-        "extendRight",
+        "backgroundOpacity",
+        "fillBackground",
         "levels",
-        "reverse",
-        "showLevels",
-        "showPrices"
+        "medianColor",
+        "medianStyle",
+        "medianWidth"
       ]
     },
     {

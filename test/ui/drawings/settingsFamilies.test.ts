@@ -55,6 +55,15 @@ const fibStyle = (retracement: boolean): string[] => [
   ...(retracement ? ['[ ] Fib levels based on log scale'] : []),
 ]
 
+/** A fib's levels one to a line, each in a stroke of its own, from whether each level is shown. */
+const levelLines = (shown: boolean[]): string[] => shown.map((on) => `full: check(${on ? 'x' : ' '}) number colorWithThickness`)
+const all = (n: number): boolean[] => Array.from({ length: n }, () => true)
+const TREND = '[x] Trend line: colorWithThickness'
+const BANDS = (on: boolean): string => `${on ? '[x]' : '[ ]'} Background: opacity`
+
+/** A box's seven divisions on one side, two to a line. */
+const BOX_GRID = [...Array.from({ length: 3 }, () => 'full: check(x) number color check(x) number color'), 'full: check(x) number color']
+
 /** The Coordinates page of a tool placed on so many points. */
 const points = (n: number): string[] => Array.from({ length: n }, (_, i) => `#${i + 1} (price, bar): number number`)
 
@@ -136,6 +145,42 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; 
   fib_retracement: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: fibStyle(true), Coordinates: TWO_POINTS },
   fib_trend_ext: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: fibStyle(true), Coordinates: THREE_POINTS },
   fib_channel: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: fibStyle(false), Coordinates: THREE_POINTS },
+  fib_timezone: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: [...levelLines(all(11)), 'Use one color: color', BANDS(false), '[x] Labels: select(Right) select(Bottom)'],
+    Coordinates: TWO_POINTS,
+  },
+  fib_trend_time: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: [TREND, ...levelLines([true, true, false, ...all(8)]), 'Use one color: color', BANDS(true), '[x] Labels: select(Right) select(Bottom)'],
+    Coordinates: THREE_POINTS,
+  },
+  fib_circles: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: [TREND, ...levelLines(all(11)), 'Use one color: color', BANDS(true), '[x] Levels', '[ ] Coeffs as percents'],
+    Coordinates: TWO_POINTS,
+  },
+  fib_speed_resist_arcs: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: [TREND, ...levelLines(all(11)), 'Use one color: color', BANDS(true), '[x] Levels', '[ ] Full circles'],
+    Coordinates: TWO_POINTS,
+  },
+  fib_wedge: { tabs: ['Style', 'Visibility'], Style: [TREND, ...levelLines([...all(6), false, false, false, false, false]), 'Use one color: color', BANDS(true), '[x] Levels'] },
+  pitchfan: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: ['Median: colorWithThickness', ...levelLines([false, false, true, false, false, true, false, false, false]), 'Use one color: color', BANDS(true)],
+    Coordinates: THREE_POINTS,
+  },
+  fib_speed_resist_fan: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: ['## Price levels', ...BOX_GRID, '[x] Left labels', '[x] Right labels', 'gap', '## Time levels', ...BOX_GRID, '[x] Top labels', '[x] Bottom labels', 'gap', 'Use one color: color', BANDS(true), '[x] Grid: colorWithThickness', '[ ] Reverse'],
+    Coordinates: TWO_POINTS,
+  },
+  gannbox: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: ['## Price levels', ...BOX_GRID, '[x] Left labels', '[x] Right labels', BANDS(true), 'gap', '## Time levels', ...BOX_GRID, '[x] Top labels', '[x] Bottom labels', BANDS(true), 'gap', 'Use one color: color', '[ ] Angles: color', '[ ] Reverse'],
+    Coordinates: TWO_POINTS,
+  },
   xabcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   cypher_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   abcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(false), Coordinates: points(4) },

@@ -218,19 +218,29 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     deps.run('chart.drawings.style', patch)
   }
 
+  /** The sets of levels a leveled tool holds: its levels, or a box's price and time divisions. */
+  const LEVEL_KEYS = ['levels', 'priceLevels', 'timeLevels'] as const
+  /** Recolor every level of every set the selected drawing holds, in one move. */
+  const recolorLevels = (color: (level: { color?: string }) => string): void => {
+    const props = deps.selectedProps()
+    const patch: Record<string, unknown> = {}
+    for (const key of LEVEL_KEYS) {
+      const levels = props?.[key]
+      if (Array.isArray(levels)) patch[key] = (levels as { color?: string }[]).map((l) => ({ ...l, color: color(l) }))
+    }
+    if (Object.keys(patch).length) deps.run('chart.drawings.props', patch)
+  }
   /** A stroke color pick recolors every level of a leveled tool in one move; per-level colors
    *  stay editable in the dialog. */
   const pickLineColor = (selected: SelectedDrawing, color: string): void => {
     const alpha = alphaOf(selected.lineColor)
     const next = alpha < 1 ? withAlpha(color, alpha) : color
     style({ lineColor: next })
-    const levels = deps.selectedProps()?.levels
-    if (Array.isArray(levels)) deps.run('chart.drawings.props', { levels: (levels as { color?: string }[]).map((l) => ({ ...l, color: next })) })
+    recolorLevels(() => next)
   }
   const pickLineOpacity = (selected: SelectedDrawing, v: number): void => {
     style({ lineColor: withAlpha(selected.lineColor, v) })
-    const levels = deps.selectedProps()?.levels
-    if (Array.isArray(levels)) deps.run('chart.drawings.props', { levels: (levels as { color?: string }[]).map((l) => ({ ...l, color: withAlpha(l.color ?? selected.lineColor, v) })) })
+    recolorLevels((l) => withAlpha(l.color ?? selected.lineColor, v))
   }
 
   /** The color buttons' face: the glyph over a strip in the drawing's color. The color is a stored
