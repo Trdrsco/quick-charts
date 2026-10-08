@@ -2,7 +2,19 @@
 
 ## Unreleased
 
-Every text field, select, number field and color well in the chart's dialogs and settings is one box: 34px tall with an 8px corner and a 1px edge in the `control.fieldEdge` role, which steps to `control.fieldEdgeHover` under the pointer, a 2px focus ring in `state.focusRing` drawn over the edge, an edge and ring in `control.fieldInvalid` for a value the field refuses, and a `control.fieldFill` ground when the field is read-only or disabled; a select ends in an 18px chevron, and both built-in palettes carry the four new roles.
+`search.scope` offers a part of the catalog the viewer can limit the symbol search to, as a toggle chip at the far edge of the class strip wearing the scope's `mark` and `label`, and a `SearchScope` carries the search within it: `search`, which is required, `recents` and `on`. The chip is on each time the dialog opens, unless the scope sets `on: false`. While it is on, the dialog searches with the scope's `search`, which the chart's search controller asks exactly as it asks the datafeed's (the query after the debounce, the selected classes, a page at a time, and a newer question retiring an older one's answer), and the list leads with the scope's `recents`, or with none. While it is off, the dialog searches the datafeed and leads with the chart's recents. Pressing the chip asks the other source the query and classes the dialog holds, and an answer that arrives for the state the viewer left is dropped. A pick is recorded in `search.recents` either way, and in the scope's `recents` while the chip is on. The chip is a toggle button (`aria-pressed`) in the strip's tab order after the class chips, which form a labelled group of their own beside it, and its accessible name says what a press does in every built-in language (`search.limitToScope`). The compare dialog, adding a comparison or changing one, offers no scope.
+
+Every field in the chart's dialogs and settings other than a search field is one box, whether a text field, a select, a number field or a color well: 34px tall with an 8px corner and a 1px edge in the `control.fieldEdge` role, which steps to `control.fieldEdgeHover` under the pointer, a 2px focus ring in `state.focusRing` drawn over the edge, an edge and ring in `control.fieldInvalid` for a value the field refuses, and a `control.fieldFill` ground when the field is read-only or disabled. A select ends in an 18px chevron, and both built-in palettes carry the four new roles. A search field keeps its own outline in `chrome.fieldBorder`.
+
+### Upgrading to 3.0
+
+Give each `SearchScope` its `search`: the search within the scope, asked as your datafeed's `search` is. Your datafeed's `search` answers what the viewer reaches with the chip off, so a limit it applied on its own while a scope named it moves into the scope's `search`. Recents your page listed only while that limit stood go in the scope's `recents`; leave `recents` out and the list leads with none while the chip is on. A scope that should open off sets `on: false`. A datafeed that is always limited leaves the chip nothing to turn off, so it offers no scope.
+
+A dictionary of your own (`ChartCustomLocale`, `ChartDictionary`) carries `search.limitToScope`, the chip's accessible name, with `{scope}` where the scope's label goes; one that arrives without it reads English for that key and reports it to `onMissing`.
+
+A palette of your own that sets `chrome.fieldBorder` to color the name prompt's field or a drawing setting's color well sets `control.fieldEdge` for them, and `control.fieldEdgeHover` for their edge under the pointer; `chrome.fieldBorder` outlines the symbol search field alone. A palette that leaves the four field roles out keeps the built-in ones.
+
+Nothing saved changes.
 
 ## 2.4.0
 

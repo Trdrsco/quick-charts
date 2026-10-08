@@ -4,6 +4,10 @@
 // returning the pick to whoever asked. The search itself is the chart's controller (debounce,
 // cache, cancellation, paging); the dialog renders its state and never invents a row.
 //
+// A host's scope is a second source for the symbol search: while its chip is on, the same
+// controller asks the scope's own search and the list leads with the scope's recents. Only the
+// source in force is asked and drawn, so an answer for the state the viewer left never lands.
+//
 // Keyboard: the field keeps focus; ArrowUp and ArrowDown move the active row (prefetching the
 // next page as the highlight nears the end); Enter acts on it, or on the top row before an arrow
 // has moved; Escape closes. The list is a listbox the field controls through
@@ -12,7 +16,7 @@
 import type { SearchClassNode, SymbolRow } from '../../datafeed'
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import type { CompareEntry, ComparePlacement, CompareSymbol } from '../../compare'
-import { isSymbolPair, looksLikeSpread, matchSegments, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery, type RecentsPort, type SearchClassFilter, type SearchSession, type SpreadOperator } from '../../search'
+import { isSymbolPair, looksLikeSpread, matchSegments, SPREAD_OPERATORS, spreadExpression, spreadSearchQuery, type RecentsPort, type SearchClassFilter, type SearchController, type SearchSession, type SpreadOperator } from '../../search'
 import type { CommandRegistry } from '../../widget/commands'
 import type { SearchDisplayOptions, SearchScope } from '../../widget/options'
 import type { SearchRequest } from './doors'
@@ -41,7 +45,8 @@ export interface SearchDialogDeps {
   classNames?: Readonly<Record<string, string>>
   /** How the host has the classes and the spread operators offered. Absent is the default search. */
   display?: SearchDisplayOptions
-  /** What the search is limited to, named at the far edge of the class strip with the host's mark. */
+  /** The scope the viewer can limit the symbol search to, offered as a toggle chip at the far edge
+   *  of the class strip. Read once as the surface is built; the compare family offers none. */
   scope?: () => SearchScope | null
   /** The host's mark painters: the same value the legend paints its badge with. A row wears the
    *  market's, and its source cell the venue's, or the data source's where it names no venue.
@@ -189,7 +194,17 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   // document never share one.
   const scope = chart ? chart.id : `pick-${(picks += 1)}`
   const listId = `qc-search-${scope}-list`
-  const search = deps.search.controller
+  // The host's scope belongs to the search that picks a market: the compare family, adding a
+  // comparison or changing one, searches the feed alone.
+  const searchScope = compare || mode === 'change-symbol' ? null : (deps.scope?.() ?? null)
+  // Two sources asked the same way: the feed, and the scope while its chip is on. The scope's
+  // session pages and debounces as the feed's does and keeps its own pages, which go with it.
+  const feedSession = deps.search
+  const scopeSession = searchScope ? feedSession.over(searchScope) : null
+  let scoped = scopeSession !== null && searchScope?.on !== false
+  /** The session in force: the only one asked and drawn. */
+  const session = (): SearchSession => (scoped && scopeSession ? scopeSession : feedSession)
+  const search = (): SearchController => session().controller
   // Search and pick list their markets as a table; the compare family lists them as cards.
   if (mode === 'search' || mode === 'pick') box.classList.add('qc-search-table')
   let query = request.changeFrom ?? ''
@@ -282,7 +297,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       for (const { row, top } of narrower) row.hidden = !selection.has(top)
       cls = selection.filter()
       active = -1
-      search.search(serverQuery(), cls)
+      search().search(serverQuery(), cls)
       render()
     }
     const classChip = (label: string, pressed: () => boolean, pick: () => void): HTMLButtonElement => {
@@ -290,27 +305,47 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       chips.push({ chip, pressed })
       return chip
     }
-    const searchScope = deps.scope?.() ?? null
+    // Pressing the scope chip asks the same query and classes of the other source. The source left
+    // behind retires its pending question first, so its answer is dropped wherever it is.
+    let scopeChip: HTMLButtonElement | null = null
+    const setScoped = (on: boolean): void => {
+      if (on === scoped) return
+      session().cancelPending()
+      scoped = on
+      scopeChip?.setAttribute('aria-pressed', String(on))
+      active = -1
+      search().search(serverQuery(), cls)
+      render()
+    }
     if (branches.length > 0 || searchScope) {
-      strip = h('div', { class: 'qc-search-classes', role: 'group', 'aria-label': t('search.classFilter') })
-      if (allShown && branches.length > 0) strip.appendChild(classChip(allLabel, () => selection.isAll(), () => selection.clear()))
-      for (const branch of branches) {
-        strip.appendChild(classChip(labelOf(branch.id), () => selection.has(branch.id), () => selection.pickTop(branch.id)))
-        if (branch.children.length === 0) continue
-        const row = h('div', { class: 'qc-search-classes qc-search-subclasses', role: 'group', 'aria-label': labelOf(branch.id) })
-        row.appendChild(classChip(allLabel, () => selection.has(branch.id) && !selection.narrowed(branch.id), () => selection.clearChildren(branch.id)))
-        for (const child of branch.children) row.appendChild(classChip(labelOf(child), () => selection.hasChild(branch.id, child), () => selection.pickChild(branch.id, child)))
-        row.hidden = !selection.has(branch.id)
-        narrower.push({ row, top: branch.id })
+      // One row: the classes' own labelled group, then the scope at the far edge. The scope is no
+      // class, so it stands beside the group rather than inside it.
+      strip = h('div', { class: 'qc-search-classes' })
+      if (branches.length > 0) {
+        const group = h('div', { class: 'qc-search-class-group', role: 'group', 'aria-label': t('search.classFilter') })
+        if (allShown) group.appendChild(classChip(allLabel, () => selection.isAll(), () => selection.clear()))
+        for (const branch of branches) {
+          group.appendChild(classChip(labelOf(branch.id), () => selection.has(branch.id), () => selection.pickTop(branch.id)))
+          if (branch.children.length === 0) continue
+          const row = h('div', { class: 'qc-search-classes qc-search-subclasses', role: 'group', 'aria-label': labelOf(branch.id) })
+          row.appendChild(classChip(allLabel, () => selection.has(branch.id) && !selection.narrowed(branch.id), () => selection.clearChildren(branch.id)))
+          for (const child of branch.children) row.appendChild(classChip(labelOf(child), () => selection.hasChild(branch.id, child), () => selection.pickChild(branch.id, child)))
+          row.hidden = !selection.has(branch.id)
+          narrower.push({ row, top: branch.id })
+        }
+        strip.appendChild(group)
       }
       if (searchScope) {
+        // A toggle chip wearing the host's mark and name. Its accessible name says what a press
+        // does; whether the limit stands is its pressed state.
         const mark = h('span', { class: 'qc-search-scope-mark', 'aria-hidden': 'true' })
         const drop = searchScope.mark?.({ host: mark, size: SOURCE_MARK_SIZE })
         if (typeof drop === 'function') {
           mark.dataset.qcHost = 'true'
           scopeMarkDisposer = drop
         } else if (mark.childNodes.length === 0) mark.textContent = searchScope.label.charAt(0).toUpperCase()
-        strip.appendChild(h('span', { class: 'qc-search-scope', 'aria-label': searchScope.label }, mark, h('span', {}, searchScope.label)))
+        scopeChip = button({ label: t('search.limitToScope', { scope: searchScope.label }), text: searchScope.label, icon: mark, className: 'qc-chip qc-search-scope', pressed: scoped, onClick: () => setScoped(!scoped) })
+        strip.appendChild(scopeChip)
       }
     }
 
@@ -328,12 +363,20 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       input.value = next
       showClear(next !== '')
       active = -1
-      if (compare && next.trim() === '') deps.search.cancelPending()
-      else search.search(serverQuery(), cls)
+      if (compare && next.trim() === '') session().cancelPending()
+      else search().search(serverQuery(), cls)
       render()
     }
 
-    const remember = (row: SymbolRow): void => deps.recents.promote(row)
+    // The recents the list leads with: the scope's own while its chip is on, none where it keeps
+    // none, and the chart's otherwise.
+    const recentRows = (): readonly SymbolRow[] => (scoped ? (searchScope?.recents?.list() ?? []) : deps.recents.list())
+    // Every pick is one of the viewer's recent symbols, and one made in the scope is the scope's too.
+    const remember = (row: SymbolRow): void => {
+      deps.recents.promote(row)
+      const own = scoped ? searchScope?.recents : undefined
+      if (own && own !== deps.recents) own.promote(row)
+    }
     const act = (entry: DialogRow, placement: ComparePlacement = 'same-percent'): void => {
       const row = entry.row
       if (compare) {
@@ -366,9 +409,9 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
 
     const render = (): void => {
       releaseMarks()
-      const state = search.state()
+      const state = search().state()
       const settled = state.query.trim() === serverQuery().trim()
-      rows = dialogRows({ mode, query, hits: settled ? state.hits : [], loading: state.loading || !settled, recents: deps.recents.list(), curated: deps.curated ?? [], added: chart?.compare.list() ?? [], spreads })
+      rows = dialogRows({ mode, query, hits: settled ? state.hits : [], loading: state.loading || !settled, recents: recentRows(), curated: deps.curated ?? [], added: chart?.compare.list() ?? [], spreads })
       active = Math.min(active, rows.length - 1)
       const emptyStack = compare && query.trim() === ''
       const addedCount = emptyStack ? (chart?.compare.list().length ?? 0) : 0
@@ -493,7 +536,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       if (e.key === 'ArrowDown') {
         e.preventDefault()
         if (rows.length === 0) return
-        if (search.state().hasMore && active >= rows.length - PREFETCH_MARGIN) search.loadMore()
+        if (search().state().hasMore && active >= rows.length - PREFETCH_MARGIN) search().loadMore()
         setActive(Math.min(active + 1, rows.length - 1))
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
@@ -507,10 +550,16 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     })
     // Paging: the sentinel below the last row pulls the next page as it scrolls into view, and
     // keeps pulling while it stays there as pages land, so the whole catalog is reachable.
-    observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver((entries) => entries.some((en) => en.isIntersecting) && search.loadMore(), { root: list }) : null
-    search.subscribe(render)
+    observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver((entries) => entries.some((en) => en.isIntersecting) && search().loadMore(), { root: list }) : null
+    // Each source draws only while it is the one in force.
+    for (const own of [feedSession, scopeSession]) own?.controller.subscribe(() => { if (session() === own) render() })
     render()
-    if (!compare || query.trim() !== '') search.search(serverQuery(), cls)
+    if (!compare || query.trim() !== '') {
+      // The feed's opening stands on the catalog the chart warmed before the dialog opened. The
+      // scope has none, and an opening is no keystroke, so its first question goes out at once.
+      if (scoped) session().searchNow(serverQuery(), cls)
+      else search().search(serverQuery(), cls)
+    }
     if (request.changeFrom) input.select()
     // The strip's chips reflect the selection the strip opened on.
     setDisabled(clear, false)
@@ -520,7 +569,8 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       scopeMarkDisposer?.()
       scopeMarkDisposer = null
       releaseMarks()
-      search.dispose()
+      feedSession.controller.dispose()
+      scopeSession?.controller.dispose()
       observer?.disconnect()
     },
   }
