@@ -50,5 +50,16 @@
     "screenReaderSupportMeasured": false,
     "safariDeviceSupportMeasured": false,
     "npmPublishApproval": "delegated by Joey to his coordinating session, which approves the npm-publish environment on his instruction (\"Approve it for me\") once the validation job passes"
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37852092891",
+    "npmPublishApproval": "approved for Joey by his coordinating session, on his instruction, after the validation job passed",
+    "registryIntegrity": "sha512-1FVdRrY37KZcNSIpdvQeJ3HdsId6nf7RGm9S1Ur1p8u5XEXz0TYF0skwrAdYD1okrRnjbg1tDwFIYPq1z/6NLg==",
+    "registryTarballSha256": "8867194fd28400a9adedbe3cbf4245470162098e385a4d132100357d9258194d",
+    "provenanceLogIndex": 3152531881,
+    "distTagLatest": "3.0.0",
+    "provenance": "SLSA v1 provenance names refs/tags/v3.0.0, .github/workflows/release.yml and commit 7576f6f3dbf40d8d1a04ef69ad75907ced4507da, with the registry tarball's sha512 as its subject",
+    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": "pass: a fresh project installed 3.0.0 from the registry and passed the browser conformance suite, 42 of 42 checks, in Chromium, Firefox and WebKit"
   }
 }
