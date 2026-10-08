@@ -219,16 +219,16 @@
   overflow-y: auto;
 }
 
+/* A drawing dialog's footer: what it leads with at the start (the settings dialog's Template list
+ * button), then Cancel and the primary action 12px apart at the end, all 34px with an 8px corner,
+ * over a 1px rule. Cancel is outlined in the outline role and takes the emphasis fill under the
+ * pointer; the primary action wears the fill. */
 [data-qc-theme] .qc-drawing-dialog-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
+  justify-content: flex-end;
+  padding: 16px 20px;
   border-top: 1px solid var(--qc-overlay-separator);
-}
-
-[data-qc-theme] .qc-drawing-dialog-footer .qc-button {
-  padding: 5px 12px;
 }
 
 [data-qc-theme] .qc-drawing-footer-gap {
@@ -412,14 +412,6 @@
   justify-self: start;
 }
 
-/* The footer: the Template list button at the start, Cancel and Ok 12px apart at the end, all 34px
- * with an 8px corner. Cancel is outlined in the outline role and takes the emphasis fill under the
- * pointer; Ok wears the fill. */
-[data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-dialog-footer {
-  gap: 0;
-  padding: 16px 20px;
-}
-
 [data-qc-theme] .qc-drawing-template-button {
   display: inline-flex;
   flex: 0 0 auto;
@@ -435,7 +427,7 @@
   box-shadow: inset 0 0 0 1px var(--qc-state-focusRing);
 }
 
-[data-qc-theme] .qc-drawing-settings-dialog .qc-drawing-footer-button {
+[data-qc-theme] .qc-drawing-footer-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;

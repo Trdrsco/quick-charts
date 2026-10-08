@@ -15,18 +15,20 @@ interface Box {
   height: number
 }
 
-/** Mount a chart filling the page, from the installed package, over the scripted feed. */
-async function mount(page: Page): Promise<void> {
+/** Mount a chart filling the page, from the installed package, over the scripted feed, with an
+ *  asset port that refuses every picture when `assets` is set, so the Image tool's picker opens. */
+async function mount(page: Page, assets = false): Promise<void> {
   await page.goto('/')
   await page.waitForFunction(() => typeof (window as unknown as { quickcharts?: unknown }).quickcharts === 'object')
-  await page.evaluate(() => {
+  await page.evaluate((assets) => {
     const { createChart, scriptedFeed } = (window as unknown as { quickcharts: { createChart(o: unknown): unknown; scriptedFeed(): unknown } }).quickcharts
     document.body.style.margin = '0'
     const container = document.createElement('div')
     container.style.cssText = 'position:fixed;inset:0'
     document.body.appendChild(container)
-    ;(window as unknown as { widget: unknown }).widget = createChart({ container, datafeed: scriptedFeed(), symbol: 'ALPHA', timeframe: '1m', theme: { mode: 'dark' } })
-  })
+    const port = { intakeImage: async () => ({ ok: false, error: 'unreadable' }), glyphSource: () => null }
+    ;(window as unknown as { widget: unknown }).widget = createChart({ container, datafeed: scriptedFeed(), symbol: 'ALPHA', timeframe: '1m', theme: { mode: 'dark' }, ...(assets ? { assets: port } : {}) })
+  }, assets)
   await page.waitForFunction(() => !!document.querySelector('[data-qc-theme] canvas'))
 }
 
@@ -224,6 +226,46 @@ test.describe('the color popover', () => {
         await expect(page.locator('.qc-drawing-popover')).toHaveCount(0)
       }
     }
+  })
+})
+
+test.describe('the image picker', () => {
+  test("ends with the settings dialog's footer: Cancel and Ok at the end, in the same footer buttons", async ({ page }) => {
+    await mount(page, true)
+    const read = (role: string) =>
+      page.evaluate((role) => {
+        const footer = document.querySelector(`[data-role="${role}"] .qc-drawing-dialog-footer`)!
+        const f = footer.getBoundingClientRect()
+        const buttons = [...footer.querySelectorAll<HTMLElement>('button[aria-label="Cancel"], button[aria-label="Ok"]')]
+        return {
+          justify: getComputedStyle(footer).justifyContent,
+          buttons: buttons.map((b) => {
+            const r = b.getBoundingClientRect()
+            const s = getComputedStyle(b)
+            return { label: b.getAttribute('aria-label'), fromEnd: Math.round(f.right - r.right), width: Math.round(r.width), height: r.height, radius: s.borderTopLeftRadius, size: s.fontSize, line: s.lineHeight, padding: s.padding, edge: s.borderTopColor, family: s.fontFamily }
+          }),
+        }
+      }, role)
+    await openSettings(page, 'trend_line', 'Style')
+    const settings = await read('drawing-settings')
+    await page.locator('[data-role="drawing-settings"] button[aria-label="Cancel"]').click()
+    await expect(page.locator('[data-role="drawing-settings"]')).toHaveCount(0)
+    await page.evaluate(() => (window as unknown as { widget: { commands: { execute(id: string, arg?: unknown): unknown } } }).widget.commands.execute('chart.drawings.arm', 'image'))
+    await expect(page.locator('[data-role="drawing-image-picker"]')).toBeVisible()
+    // The picker opens on the modal motion: read it once it stands at its full size.
+    await page.waitForFunction(() => {
+      const box = document.querySelector<HTMLElement>('[data-role="drawing-image-picker"]')!
+      return Math.abs(box.getBoundingClientRect().width - box.offsetWidth) < 0.01
+    })
+    const picker = await read('drawing-image-picker')
+    expect(picker.justify).toBe('flex-end')
+    expect(picker.buttons.map((b) => b.label)).toEqual(['Cancel', 'Ok'])
+    // Ok stands 20px in from the footer's end and Cancel 12px before it, as in the settings dialog.
+    expect(picker.buttons[1]!.fromEnd).toBe(20)
+    expect(picker.buttons[0]!.fromEnd).toBe(20 + picker.buttons[1]!.width + 12)
+    const metrics = (b: (typeof picker.buttons)[number]) => ({ width: b.width, height: b.height, radius: b.radius, size: b.size, line: b.line, padding: b.padding, family: b.family, fromEnd: b.fromEnd })
+    expect(picker.buttons.map(metrics)).toEqual(settings.buttons.map(metrics))
+    expect(picker.buttons[0]!.edge).toBe(settings.buttons[0]!.edge)
   })
 })
 

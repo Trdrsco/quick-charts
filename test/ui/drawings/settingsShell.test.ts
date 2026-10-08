@@ -15,6 +15,7 @@ import { THEME_MODES, THEME_ROLES, type ThemeMode } from '../../../src/theme/sch
 import { paintThemeRoot } from '../../../src/widget/theme'
 import { createChartI18n } from '../../../src/i18n'
 import { openSettingsDialog } from '../../../src/ui/drawings/settingsDialog'
+import { openImagePicker } from '../../../src/ui/drawings/imagePicker'
 import { createPresets } from '../../../src/drawings/layer/presets'
 import { drawingTools } from '../../../src/drawings/index'
 import { ownIcons } from '../../ownIcons'
@@ -150,6 +151,43 @@ for (const mode of THEME_MODES) {
       expect(filled.backgroundColor).toBe(theme['control.on'])
       expect(filled.color).toBe(theme['text.inverse'])
       expect(filled.getPropertyValue('margin-inline-start')).toBe('12px')
+    })
+
+    it("ends the image picker with the settings dialog's footer: Cancel and Ok at the end in the same footer buttons", () => {
+      const settings = trendLineDialogIn(mode)
+      const root = settings.closest<HTMLElement>('[data-qc-theme]')!
+      const close = openImagePicker({
+        container: root,
+        t,
+        icons: ownIcons(),
+        assets: { intakeImage: async () => ({ ok: false, error: 'unreadable' }), glyphSource: () => null },
+        canPlace: () => true,
+        onConfirm: () => undefined,
+      })
+      closers.push(close)
+      const picker = root.querySelector<HTMLElement>('[data-role="drawing-image-picker"]')!
+      const footer = painted(picker.querySelector('.qc-drawing-dialog-footer')!)
+      expect(footer.justifyContent).toBe('flex-end')
+      expect(footer.paddingTop).toBe('16px')
+      expect(footer.paddingRight).toBe('20px')
+      expect(footer.borderTopColor).toBe(theme['overlay.separator'])
+      const read = (dialog: HTMLElement): Record<string, string>[] =>
+        [...dialog.querySelectorAll<HTMLElement>('.qc-drawing-dialog-footer .qc-drawing-footer-button')].map((b) => {
+          const s = painted(b)
+          return { label: b.getAttribute('aria-label') ?? '', height: s.height, radius: s.borderTopLeftRadius, size: s.fontSize, line: s.lineHeight, padding: `${s.paddingTop} ${s.paddingRight}`, gap: s.getPropertyValue('margin-inline-start') }
+        })
+      // The same two buttons, in the same order, with the same metrics as the settings dialog's.
+      const ours = read(picker)
+      expect(ours.map((b) => b.label)).toEqual(['Cancel', 'Ok'])
+      expect(ours).toEqual(read(settings))
+      expect(ours[0]!.height).toBe('34px')
+      expect(ours[1]!.gap).toBe('12px')
+      // Cancel is outlined in the outline role, as the settings dialog's is.
+      const cancel = painted(picker.querySelector('.qc-drawing-cancel')!)
+      expect(cancel.borderTopColor).toBe(theme['control.outline'])
+      expect(cancel.color).toBe(theme['control.outline'])
+      // Nothing stands before them: the footer lays them at its end.
+      expect(picker.querySelector('.qc-drawing-dialog-footer')!.firstElementChild!.getAttribute('aria-label')).toBe('Cancel')
     })
 
     it('stands over an undimmed chart, and opens and leaves at once', () => {
