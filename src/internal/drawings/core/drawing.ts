@@ -9,6 +9,7 @@ import type {
   SeriesType,
   Time,
 } from 'lightweight-charts'
+import { PriceScaleMode } from 'lightweight-charts'
 
 import type {
   Anchor,
@@ -133,9 +134,18 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
     if (x0 !== null && barSpacing > 0) xAtLogical = (logical) => x0 + logical * barSpacing
   }
 
+  // The price scale's mode: a scale that cannot answer is read as linear.
+  let logScale = false
+  try {
+    logScale = series.priceScale().options().mode === PriceScaleMode.Logarithmic
+  } catch {
+    logScale = false
+  }
+
   return {
     width,
     height,
+    logScale,
     xOf: (time) => {
       const direct = ts.timeToCoordinate(time)
       if (direct !== null) return direct
@@ -216,13 +226,20 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this._anchors = anchors.map((a) => ({ ...a }))
     this._style = { ...DEFAULT_STYLE, ...style }
     this._options = normalizeOptions(options)
-    this._props = { ...this.defaultProps(), ...props }
+    this._props = { ...this.defaultProps(), ...this.upgradeProps(props) }
     this._paneViews = [new DrawingPaneView(this)]
   }
 
   /** Tool-specific defaults. Must not read instance fields (runs during construction). */
   protected defaultProps(): P {
     return {} as P
+  }
+
+  /** Saved props as this tool reads them now: a tool that renamed a prop maps the name it was saved
+   *  under to the one it reads, so a drawing saved before keeps its setting. Must not read instance
+   *  fields (runs during construction). */
+  protected upgradeProps(props: Partial<P>): Partial<P> {
+    return props
   }
 
   // ============ ISeriesPrimitive ============
@@ -585,7 +602,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this._anchors = data.anchors.map((a) => ({ ...a }))
     this._style = { ...DEFAULT_STYLE, ...data.style }
     this._options = normalizeOptions(data.options)
-    this._props = { ...this.defaultProps(), ...(data.props as Partial<P> | undefined) }
+    this._props = { ...this.defaultProps(), ...this.upgradeProps((data.props ?? {}) as Partial<P>) }
     this.scope = data.scope
     this.requestUpdate()
   }

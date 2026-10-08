@@ -1,79 +1,16 @@
 // @vitest-environment happy-dom
-// The settings pages of the line, shape and curve tools, row by row: which pages each tool gets,
-// every row's label, the kind of every control in it and the value it opens on, the choices each
-// list offers in their order, and the look and setup a new drawing of each tool starts with.
+// The settings pages of the line, shape, curve and leveled tools, row by row: which pages each tool
+// gets, every row's label, the kind of every control in it and the value it opens on, the choices
+// each list offers in their order, and the look and setup a new drawing of each tool starts with.
 //
-// A page is read as a list of row signatures: `Label: kinds` for a labelled row, `[x] Label` for a
-// checkbox row, `[x] Label: kinds` for a row whose label is a checkbox, `full: kinds` for a row
-// across both columns, `## Title` for a section and `gap` for the room a group keeps after it.
+// Each page is read as row signatures; settingsRig.ts says how.
 import { afterEach, describe, expect, it } from 'vitest'
-import { createChartI18n } from '../../../src/i18n'
 import { drawingTools } from '../../../src/drawings/index'
-import { createPresets } from '../../../src/drawings/layer/presets'
-import { openSettingsDialog } from '../../../src/ui/drawings/settingsDialog'
-import { ownIcons } from '../../ownIcons'
-
-const t = createChartI18n().t
-const anchors = (n: number) => Array.from({ length: n }, (_, i) => ({ time: (1000 + i * 60) as never, price: 100 + i }))
-
-function rig(type: string) {
-  const chrome = document.createElement('div')
-  document.body.appendChild(chrome)
-  const def = drawingTools.get(type)!
-  const drawing = drawingTools.create(type, 'd1', anchors(Math.max(1, def.anchors)))!
-  openSettingsDialog({ icons: ownIcons(), chrome, t, drawing, presets: createPresets(null), idBase: 'c1-drawing-settings', run: () => true, available: () => true })
-  const dialog = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
-  const tabs = (): string[] => [...dialog.querySelectorAll<HTMLElement>('[role="tab"]')].map((x) => x.textContent ?? '')
-  const show = (label: string): void => [...dialog.querySelectorAll<HTMLElement>('[role="tab"]')].find((x) => x.textContent === label)!.click()
-  const page = (): HTMLElement => dialog.querySelector<HTMLElement>('[role="tabpanel"]')!
-  return { chrome, dialog, drawing, tabs, show, page }
-}
+import { anchors, choices, rig, signature } from './settingsRig'
 
 afterEach(() => {
   document.body.replaceChildren()
 })
-
-/** What a control is, as the signature names it. */
-function kind(control: Element): string {
-  if (control.matches('.qc-drawing-swatch-button')) return control.querySelector('.qc-drawing-stroke') ? 'colorWithThickness' : 'color'
-  if (control.matches('.qc-drawing-line-end')) return 'lineEnd'
-  if (control.matches('.qc-drawing-select[role="combobox"]')) return `select(${control.textContent})`
-  if (control.matches('.qc-drawing-select')) return `multi(${control.textContent})`
-  if (control.matches('.qc-drawing-number-wrap')) return 'number'
-  if (control.matches('.qc-drawing-font-toggle')) return 'toggle'
-  if (control.matches('.qc-drawing-dual')) return 'range'
-  if (control.matches('textarea')) return 'textarea'
-  return control.tagName.toLowerCase()
-}
-
-const kinds = (cell: Element): string => [...cell.children].map(kind).join(' ')
-const ticked = (box: Element): string => ((box.querySelector('input') as HTMLInputElement).checked ? '[x]' : '[ ]')
-
-/** The page as row signatures. */
-function signature(page: HTMLElement): string[] {
-  return [...page.children].map((child) => {
-    if (child.matches('.qc-drawing-row--checked')) {
-      const label = child.querySelector('.qc-drawing-row-label')!
-      return `${ticked(label)} ${label.textContent}: ${kinds(child.querySelector('.qc-drawing-row-controls')!)}`
-    }
-    if (child.matches('.qc-drawing-row')) return `${child.querySelector('.qc-drawing-row-label')!.textContent}: ${kinds(child.querySelector('.qc-drawing-row-controls')!)}`
-    if (child.matches('label.qc-drawing-toggle')) return `${ticked(child)} ${child.textContent}`
-    if (child.matches('.qc-drawing-row-full')) return `full: ${kinds(child)}`
-    if (child.matches('.qc-drawing-section')) return `## ${child.textContent}`
-    if (child.matches('.qc-drawing-group-gap')) return 'gap'
-    return child.className
-  })
-}
-
-/** The choices a list button offers, in their order. */
-function choices(dialog: HTMLElement, button: HTMLElement): string[] {
-  button.click()
-  // A list hangs on the dialog's backdrop, past the box.
-  const list = dialog.parentElement!.querySelector<HTMLElement>('.qc-drawing-popover:last-of-type [role="listbox"], .qc-drawing-popover:last-of-type [role="menu"]')!
-  const out = [...list.querySelectorAll<HTMLElement>('[role="option"], [role="menuitemcheckbox"]')].map((o) => o.textContent ?? '')
-  button.click()
-  return out
-}
 
 const LINE_TEXT = ['full: color select(14) toggle toggle', 'full: textarea', 'Text alignment: select(Top) select(Center)']
 const TWO_POINTS = ['#1 (price, bar): number number', '#2 (price, bar): number number']
@@ -89,7 +26,36 @@ const lineStyle = (extend: string, stats: string, position: string, always: stri
   'gap',
 ]
 
-/** Every tool of the line, shape and curve families: its pages, and the rows of each page. */
+/** A fib's level grid, two levels to a line, from whether each level is shown, then the room the
+ *  grid keeps after it. */
+const levelGrid = (shown: boolean[]): string[] => {
+  const cell = (on: boolean): string => `check(${on ? 'x' : ' '}) number color`
+  const lines: string[] = []
+  for (let i = 0; i < shown.length; i += 2) lines.push(`full: ${[shown[i]!, shown[i + 1]].filter((v) => v !== undefined).map((v) => cell(!!v)).join(' ')}`)
+  return [...lines, 'gap']
+}
+
+/** The twenty-four levels of a retracement, an extension and a fib channel: eleven shown. */
+const FIB_SHOWN = Array.from({ length: 24 }, (_, i) => i < 11)
+const THREE_POINTS = [...TWO_POINTS, '#3 (price, bar): number number']
+
+const fibStyle = (retracement: boolean): string[] => [
+  ...(retracement ? ['[x] Trend line: colorWithThickness'] : []),
+  'Levels line: mark(thickness) mark(style)',
+  "Extend: multi(Don't extend)",
+  ...levelGrid(FIB_SHOWN),
+  'Use one color: color',
+  '[x] Background: opacity',
+  ...(retracement ? ['[ ] Reverse'] : []),
+  '[x] Prices',
+  '[x] Levels: select(Values)',
+  'Labels: select(Left) select(Middle)',
+  ...(retracement ? ['[x] Text: select(Center) select(Middle)'] : []),
+  'Font size: select(12)',
+  ...(retracement ? ['[ ] Fib levels based on log scale'] : []),
+]
+
+/** Every tool of the line, shape, curve and leveled families: its pages, and the rows of each page. */
 const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; Coordinates?: string[] }> = {
   trend_line: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], Style: lineStyle("Don't extend", 'Hidden', 'Right', '[ ]'), Text: LINE_TEXT, Coordinates: TWO_POINTS },
   ray: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], Style: lineStyle('Extend right line', 'Hidden', 'Right', '[ ]'), Text: LINE_TEXT, Coordinates: TWO_POINTS },
@@ -160,9 +126,12 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; 
     Style: ['Line: colorWithThickness lineEnd lineEnd', "Extend: multi(Don't extend)", '[ ] Background: color'],
     Coordinates: [...TWO_POINTS, '#3 (price, bar): number number', '#4 (price, bar): number number'],
   },
+  fib_retracement: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: fibStyle(true), Coordinates: TWO_POINTS },
+  fib_trend_ext: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: fibStyle(true), Coordinates: THREE_POINTS },
+  fib_channel: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: fibStyle(false), Coordinates: THREE_POINTS },
 }
 
-describe('the pages and rows of the line, shape and curve tools', () => {
+describe('the pages and rows of the line, shape, curve and leveled tools', () => {
   for (const [type, expected] of Object.entries(PAGES)) {
     it(type, () => {
       const { tabs, show, page } = rig(type)

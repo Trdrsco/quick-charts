@@ -1,14 +1,15 @@
-import type { ControlPoint, Point, Viewport } from '../core/types'
+import type { ControlPoint, DrawingStyle, LineStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { angleOf, distanceToSegment, extendSegment, midpoint } from '../core/geometry'
 import { applyStroke, dashPattern, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import type { TextHAlign, TextVAlign } from './lines'
 
 /** One retracement/extension level. Color falls back to the shared palette by position. */
 export type FibLevel = {
   value: number
   visible: boolean
   color?: string
-  /** Custom per-level caption, prefixed to the ratio in the level's label. */
+  /** The level's own words, which it carries where its tool shows them. */
   text?: string
 }
 
@@ -44,42 +45,44 @@ export function fibLevelColor(level: FibLevel, index: number): string {
   return level.color ?? LEVEL_COLORS[String(level.value)] ?? FALLBACK_COLORS[index % FALLBACK_COLORS.length]
 }
 
-const RETRACEMENT_LEVELS: FibLevel[] = [
-  { value: 0, visible: true },
-  { value: 0.236, visible: true },
-  { value: 0.382, visible: true },
-  { value: 0.5, visible: true },
-  { value: 0.618, visible: true },
-  { value: 0.786, visible: true },
-  { value: 1, visible: true },
-  { value: 1.618, visible: true },
-  { value: 2.618, visible: true },
-  { value: 3.618, visible: true },
-  { value: 4.236, visible: true },
-]
+/** The color a leveled tool's one-color control shows while its levels differ, and the second hue
+ *  its face pairs with it to say so. Picking a color there gives every level that color. */
+export const MIXED_LEVEL_COLORS: readonly [shown: string, paired: string] = ['#f7525f', '#22ab94']
 
-const EXTENSION_LEVELS: FibLevel[] = [
-  { value: 0, visible: true },
-  { value: 0.382, visible: true },
-  { value: 0.618, visible: true },
-  { value: 1, visible: true },
-  { value: 1.382, visible: true },
-  { value: 1.618, visible: true },
-  { value: 2.618, visible: true },
-  { value: 3.618, visible: false },
-  { value: 4.236, visible: false },
-]
+/** The one color every level of a leveled tool shares, or null while they differ. */
+export function sharedLevelColor(levels: readonly FibLevel[]): string | null {
+  if (!levels.length) return null
+  const colors = new Set(levels.map((level, i) => fibLevelColor(level, i).toLowerCase()))
+  return colors.size === 1 ? fibLevelColor(levels[0]!, 0) : null
+}
 
-const CHANNEL_LEVELS: FibLevel[] = [
-  { value: 0, visible: true },
-  { value: 0.25, visible: true },
-  { value: 0.382, visible: true },
-  { value: 0.5, visible: true },
-  { value: 0.618, visible: true },
-  { value: 0.75, visible: true },
-  { value: 1, visible: true },
-  { value: 1.618, visible: false },
-  { value: 2.618, visible: false },
+/** The twenty-four levels a retracement, an extension and a fib channel offer: the eleven classic
+ *  ratios shown, then thirteen more to switch on, each in its own color. */
+const FIB_LEVELS: readonly FibLevel[] = [
+  { value: 0, visible: true, color: '#808080' },
+  { value: 0.236, visible: true, color: '#f23645' },
+  { value: 0.382, visible: true, color: '#ff9800' },
+  { value: 0.5, visible: true, color: '#4caf50' },
+  { value: 0.618, visible: true, color: '#089981' },
+  { value: 0.786, visible: true, color: '#00bcd4' },
+  { value: 1, visible: true, color: '#808080' },
+  { value: 1.618, visible: true, color: '#2962ff' },
+  { value: 2.618, visible: true, color: '#f23645' },
+  { value: 3.618, visible: true, color: '#9c27b0' },
+  { value: 4.236, visible: true, color: '#e91e63' },
+  { value: 1.272, visible: false, color: '#ff9800' },
+  { value: 1.414, visible: false, color: '#f23645' },
+  { value: 2.272, visible: false, color: '#ff9800' },
+  { value: 2.414, visible: false, color: '#4caf50' },
+  { value: 2, visible: false, color: '#089981' },
+  { value: 3, visible: false, color: '#00bcd4' },
+  { value: 3.272, visible: false, color: '#808080' },
+  { value: 3.414, visible: false, color: '#2962ff' },
+  { value: 4, visible: false, color: '#f23645' },
+  { value: 4.272, visible: false, color: '#9c27b0' },
+  { value: 4.414, visible: false, color: '#e91e63' },
+  { value: 4.618, visible: false, color: '#ff9800' },
+  { value: 4.764, visible: false, color: '#089981' },
 ]
 
 const RATIO_FRACTIONS: FibLevel[] = [
@@ -121,23 +124,192 @@ function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
 }
 
+/** A fib's levels and what its labels read: each level's value as a ratio or as a percent, its
+ *  price, and where the label stands along the level's line (before it, at its middle, after it)
+ *  and across it (above it, on it, below it). */
+export type FibChannelProps = {
+  levels: FibLevel[]
+  extendLeft: boolean
+  extendRight: boolean
+  showLevels: boolean
+  coeffsAsPercents: boolean
+  showPrices: boolean
+  labelsHAlign: TextHAlign
+  labelsVAlign: TextVAlign
+  /** The bands between neighbouring levels, each in the color of the level that closes it, at
+   *  `backgroundOpacity`. Switched off, the bands keep their opacity for when they return. */
+  fillBackground: boolean
+  backgroundOpacity: number
+}
+
+/** A retracement's and an extension's own: the trend line through the swing points in a stroke of
+ *  its own, which swing point is level 0, a level's own words and where they stand on its line, and
+ *  levels that divide the swing by log price while the pane's price scale is logarithmic. */
+export type FibRetracementProps = FibChannelProps & {
+  trendLine: boolean
+  trendLineColor: string
+  trendLineWidth: number
+  trendLineStyle: LineStyle
+  reverse: boolean
+  showText: boolean
+  textHAlign: TextHAlign
+  textVAlign: TextVAlign
+  levelsOnLogScale: boolean
+}
+
+const CHANNEL_PROPS: Omit<FibChannelProps, 'levels'> = {
+  extendLeft: false,
+  extendRight: false,
+  showLevels: true,
+  coeffsAsPercents: false,
+  showPrices: true,
+  labelsHAlign: 'left',
+  labelsVAlign: 'middle',
+  fillBackground: true,
+  backgroundOpacity: 0.2,
+}
+
+const RETRACEMENT_PROPS: Omit<FibRetracementProps, 'levels'> = {
+  ...CHANNEL_PROPS,
+  trendLine: true,
+  trendLineColor: '#808080',
+  trendLineWidth: 2,
+  trendLineStyle: 'dashed',
+  reverse: false,
+  showText: true,
+  textHAlign: 'center',
+  textVAlign: 'middle',
+  levelsOnLogScale: false,
+}
+
+/** A saved fib that carries its background switch as `background` reads it as `fillBackground`. */
+function upgradeBackground<P extends { fillBackground: boolean }>(props: Partial<P>): Partial<P> {
+  const saved = props as Partial<P> & { background?: unknown }
+  if (!('background' in saved)) return props
+  const { background, ...rest } = saved
+  return ('fillBackground' in rest ? rest : { ...rest, fillBackground: background !== false }) as Partial<P>
+}
+
+/** A level's value as its label writes it: the ratio, or the ratio as a percent. */
+function levelValueText(value: number, asPercent: boolean): string {
+  return asPercent ? `${Number((value * 100).toFixed(4))}%` : String(value)
+}
+
+/** How a fib's words stand across a level's line: above it, on it, or below it. */
+const ACROSS_LEVEL: Record<TextVAlign, { dy: number; baseline: CanvasTextBaseline }> = {
+  top: { dy: -3, baseline: 'bottom' },
+  middle: { dy: 0, baseline: 'middle' },
+  bottom: { dy: 3, baseline: 'top' },
+}
+
+type Placement = { at: Point; align: CanvasTextAlign; baseline: CanvasTextBaseline }
+
+/** Where a level's label stands on a level line from `a` to `b`: before the line's start, at its
+ *  middle or after its end, and above, on or below it. */
+function labelPlace(h: TextHAlign, v: TextVAlign, a: Point, b: Point): Placement {
+  const across = ACROSS_LEVEL[v]
+  const [start, end] = a.x <= b.x ? [a, b] : [b, a]
+  if (h === 'left') return { at: { x: start.x - 4, y: start.y + across.dy }, align: 'right', baseline: across.baseline }
+  if (h === 'right') return { at: { x: end.x + 4, y: end.y + across.dy }, align: 'left', baseline: across.baseline }
+  const mid = midpoint(start, end)
+  return { at: { x: mid.x, y: mid.y + across.dy }, align: 'center', baseline: across.baseline }
+}
+
+/** Where a level's own words stand on its line from `a` to `b`: inside its start, at its middle or
+ *  inside its end, and above, on or below it. */
+function textPlace(h: TextHAlign, v: TextVAlign, a: Point, b: Point): Placement {
+  const across = ACROSS_LEVEL[v]
+  const [start, end] = a.x <= b.x ? [a, b] : [b, a]
+  if (h === 'left') return { at: { x: start.x + 4, y: start.y + across.dy }, align: 'left', baseline: across.baseline }
+  if (h === 'right') return { at: { x: end.x - 4, y: end.y + across.dy }, align: 'right', baseline: across.baseline }
+  const mid = midpoint(start, end)
+  return { at: { x: mid.x, y: mid.y + across.dy }, align: 'center', baseline: across.baseline }
+}
+
+/** A price a fraction of the way from one price to another: by price, or by log price where both
+ *  are positive and the levels divide the swing logarithmically. */
+function priceBetween(from: number, to: number, fraction: number, log: boolean): number {
+  if (log && from > 0 && to > 0) return Math.exp(Math.log(from) + (Math.log(to) - Math.log(from)) * fraction)
+  return from + (to - from) * fraction
+}
+
+/** One level as a tool paints it: the level, its color, its line on the pane and its price. */
+type LevelLine = { level: FibLevel; color: string; a: Point; b: Point; price: number }
+
+/** What a leveled fib paints its level lines from: its style, its props, and its price formatter. */
+type LevelLinePainter = {
+  style: Readonly<DrawingStyle>
+  props: Readonly<FibChannelProps & { showText?: boolean; textHAlign?: TextHAlign; textVAlign?: TextVAlign }>
+  format(price: number): string
+}
+
+/** The parts a horizontal or parallel leveled fib paints from its level lines: the bands, the lines
+ *  in the levels' stroke, and each level's label and words in its own color. */
+function paintLevelLines(ctx: CanvasRenderingContext2D, drawing: LevelLinePainter, lines: readonly LevelLine[]): void {
+  const { props, style } = drawing
+  if (props.fillBackground && props.backgroundOpacity > 0) {
+    const ordered = [...lines].sort((p, q) => p.level.value - q.level.value)
+    for (let i = 0; i < ordered.length - 1; i++) {
+      const from = ordered[i]!
+      const to = ordered[i + 1]!
+      ctx.fillStyle = withAlpha(to.color, props.backgroundOpacity)
+      ctx.beginPath()
+      ctx.moveTo(from.a.x, from.a.y)
+      ctx.lineTo(from.b.x, from.b.y)
+      ctx.lineTo(to.b.x, to.b.y)
+      ctx.lineTo(to.a.x, to.a.y)
+      ctx.closePath()
+      ctx.fill()
+    }
+  }
+  for (const line of lines) {
+    ctx.save()
+    applyStroke(ctx, { ...style, lineColor: line.color })
+    strokeSegment(ctx, line.a, line.b)
+    ctx.restore()
+  }
+  const ink = (color: string): DrawingStyle => ({ ...style, textColor: color })
+  for (const line of lines) {
+    const parts: string[] = []
+    if (props.showLevels) parts.push(levelValueText(line.level.value, props.coeffsAsPercents))
+    if (props.showPrices && Number.isFinite(line.price)) parts.push(`(${drawing.format(line.price)})`)
+    if (parts.length) {
+      const place = labelPlace(props.labelsHAlign, props.labelsVAlign, line.a, line.b)
+      paintLabel(ctx, parts.join(' '), place.at, ink(line.color), { align: place.align, baseline: place.baseline })
+    }
+    if (props.showText && line.level.text && props.textHAlign && props.textVAlign) {
+      const place = textPlace(props.textHAlign, props.textVAlign, line.a, line.b)
+      paintLabel(ctx, line.level.text, place.at, ink(line.color), { align: place.align, baseline: place.baseline })
+    }
+  }
+}
+
 /** Horizontal retracement levels between two swing points (level 0 at the second anchor). */
-export class FibRetracement extends Drawing<FibProps> {
+export class FibRetracement extends Drawing<FibRetracementProps> {
   readonly type: string = 'fib_retracement'
 
-  protected override defaultProps(): FibProps {
-    return fibDefaults(RETRACEMENT_LEVELS)
+  protected override defaultProps(): FibRetracementProps {
+    return { levels: FIB_LEVELS.map((l) => ({ ...l })), ...RETRACEMENT_PROPS }
+  }
+
+  protected override upgradeProps(props: Partial<FibRetracementProps>): Partial<FibRetracementProps> {
+    return upgradeBackground(props)
   }
 
   requiredAnchors(): number {
     return 2
   }
 
+  /** Whether the levels divide the swing by log price: asked for, and the pane's scale is log. */
+  protected logLevels(viewport: Viewport): boolean {
+    return this.props.levelsOnLogScale && viewport.logScale === true
+  }
+
   /** Price at a ratio (0 = second anchor, 1 = first; reverse swaps). */
-  protected priceAt(value: number): number {
+  protected priceAt(value: number, viewport: Viewport): number {
     const [a, b] = this.anchors
     const [from, to] = this.props.reverse ? [a, b] : [b, a]
-    return from.price + (to.price - from.price) * value
+    return priceBetween(from.price, to.price, value, this.logLevels(viewport))
   }
 
   protected span(viewport: Viewport): { minX: number; maxX: number } | null {
@@ -149,51 +321,55 @@ export class FibRetracement extends Drawing<FibProps> {
     }
   }
 
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    if (this.anchors.length < 2) return
+  /** The visible levels as lines across the span, in level order. */
+  protected levelLines(viewport: Viewport): LevelLine[] {
     const span = this.span(viewport)
-    if (!span) return
-    const visible = this.props.levels
-      .map((level, i) => ({ level, color: fibLevelColor(level, i) }))
-      .filter((e) => e.level.visible)
-      .map((e) => ({ ...e, y: viewport.yOf(this.priceAt(e.level.value)) }))
-      .filter((e): e is typeof e & { y: number } => e.y !== null)
-      .sort((a, b) => a.y - b.y)
+    if (!span) return []
+    const out: LevelLine[] = []
+    this.props.levels.forEach((level, i) => {
+      if (!level.visible) return
+      const price = this.priceAt(level.value, viewport)
+      const y = viewport.yOf(price)
+      if (y === null) return
+      out.push({ level, color: fibLevelColor(level, i), a: { x: span.minX, y }, b: { x: span.maxX, y }, price })
+    })
+    return out
+  }
 
-    if (this.props.background) {
-      for (let i = 0; i < visible.length - 1; i++) {
-        ctx.fillStyle = withAlpha(visible[i + 1].color, 0.07)
-        ctx.fillRect(span.minX, visible[i].y, span.maxX - span.minX, visible[i + 1].y - visible[i].y)
-      }
-    }
-    for (const entry of visible) {
+  /** The trend line's run through the swing points. */
+  protected trendPoints(viewport: Viewport): Point[] {
+    return this.anchorPixels(viewport).filter((p): p is Point => p !== null)
+  }
+
+  protected painter(): LevelLinePainter {
+    return { style: this.style, props: this.props, format: (price) => this.formatPrice(price) }
+  }
+
+  /** The trend line's stroke: its own color, thickness and style. */
+  protected trendStyle(): DrawingStyle {
+    return { ...this.style, lineColor: this.props.trendLineColor, lineWidth: this.props.trendLineWidth, lineStyle: this.props.trendLineStyle }
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.anchors.length < this.requiredAnchors()) return
+    paintLevelLines(ctx, this.painter(), this.levelLines(viewport))
+    if (this.props.trendLine) {
+      const points = this.trendPoints(viewport)
       ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = entry.color
-      strokeSegment(ctx, { x: span.minX, y: entry.y }, { x: span.maxX, y: entry.y })
+      applyStroke(ctx, this.trendStyle())
+      for (let i = 0; i < points.length - 1; i++) strokeSegment(ctx, points[i]!, points[i + 1]!)
       ctx.restore()
-      const parts: string[] = []
-      if (entry.level.text) parts.push(entry.level.text)
-      if (this.props.showLevels) parts.push(String(entry.level.value))
-      if (this.props.showPrices) parts.push(`(${this.formatPrice(this.priceAt(entry.level.value))})`)
-      if (parts.length) {
-        paintLabel(ctx, parts.join(' '), { x: span.minX - 6, y: entry.y }, { ...this.style, textColor: entry.color }, { align: 'right' })
-      }
     }
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
-    if (this.anchors.length < 2) return false
-    const span = this.span(viewport)
-    if (!span) return false
+    if (this.anchors.length < this.requiredAnchors()) return false
     const tolerance = hitTolerance(this.style.lineWidth)
-    if (point.x < span.minX - tolerance || point.x > span.maxX + tolerance) return false
-    for (const [i, level] of this.props.levels.entries()) {
-      void i
-      if (!level.visible) continue
-      const y = viewport.yOf(this.priceAt(level.value))
-      if (y !== null && Math.abs(point.y - y) <= tolerance) return true
-    }
+    if (this.levelLines(viewport).some((line) => distanceToSegment(point, line.a, line.b) <= tolerance)) return true
+    if (!this.props.trendLine) return false
+    const points = this.trendPoints(viewport)
+    const trendTolerance = hitTolerance(this.props.trendLineWidth)
+    for (let i = 0; i < points.length - 1; i++) if (distanceToSegment(point, points[i]!, points[i + 1]!) <= trendTolerance) return true
     return false
   }
 }
@@ -202,18 +378,15 @@ export class FibRetracement extends Drawing<FibProps> {
 export class FibExtension extends FibRetracement {
   override readonly type = 'fib_trend_ext'
 
-  protected override defaultProps(): FibProps {
-    return fibDefaults(EXTENSION_LEVELS)
-  }
-
   override requiredAnchors(): number {
     return 3
   }
 
-  protected override priceAt(value: number): number {
+  protected override priceAt(value: number, viewport: Viewport): number {
     const [a, b, c] = this.anchors
-    const delta = (b.price - a.price) * (this.props.reverse ? -1 : 1)
-    return c.price + delta * value
+    const sign = this.props.reverse ? -1 : 1
+    if (this.logLevels(viewport) && a.price > 0 && b.price > 0 && c.price > 0) return Math.exp(Math.log(c.price) + (Math.log(b.price) - Math.log(a.price)) * value * sign)
+    return c.price + (b.price - a.price) * sign * value
   }
 
   protected override span(viewport: Viewport): { minX: number; maxX: number } | null {
@@ -224,87 +397,44 @@ export class FibExtension extends FibRetracement {
       maxX: this.props.extendRight ? viewport.width : pc.x + Math.max(40, Math.abs(pb.x - pa.x)),
     }
   }
-
-  override paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    if (this.anchors.length < 3) return
-    super.paint(ctx, viewport)
-    // The defining swing, drawn faintly so the projection's source stays visible.
-    const [pa, pb, pc] = this.anchorPixels(viewport)
-    if (!pa || !pb || !pc) return
-    ctx.save()
-    applyStroke(ctx, this.style)
-    ctx.globalAlpha = 0.5
-    ctx.setLineDash(dashPattern('dashed', this.style.lineWidth))
-    strokeSegment(ctx, pa, pb)
-    strokeSegment(ctx, pb, pc)
-    ctx.restore()
-  }
-
-  override testHit(point: Point, viewport: Viewport): boolean {
-    if (this.anchors.length < 3) return false
-    return super.testHit(point, viewport)
-  }
 }
 
 /** Parallel channel whose offset repeats at ratio multiples. */
-export class FibChannel extends Drawing<FibProps> {
+export class FibChannel extends Drawing<FibChannelProps> {
   readonly type = 'fib_channel'
 
-  protected override defaultProps(): FibProps {
-    return fibDefaults(CHANNEL_LEVELS)
+  protected override defaultProps(): FibChannelProps {
+    return { levels: FIB_LEVELS.map((l) => ({ ...l })), ...CHANNEL_PROPS }
+  }
+
+  protected override upgradeProps(props: Partial<FibChannelProps>): Partial<FibChannelProps> {
+    return upgradeBackground(props)
   }
 
   requiredAnchors(): number {
     return 3
   }
 
-  protected lines(viewport: Viewport): { level: FibLevel; color: string; a: Point; b: Point }[] {
+  protected lines(viewport: Viewport): LevelLine[] {
     const [p1, p2, p3] = this.anchorPixels(viewport)
     if (!p1 || !p2 || !p3) return []
     const slopeT = (p3.x - p1.x) / ((p2.x - p1.x) || 1)
     const dy = p3.y - (p1.y + (p2.y - p1.y) * slopeT)
     const { extendLeft, extendRight } = this.props
-    return this.props.levels
-      .map((level, i) => ({ level, color: fibLevelColor(level, i) }))
-      .filter((e) => e.level.visible)
-      .map((e) => {
-        const a = { x: p1.x, y: p1.y + dy * e.level.value }
-        const b = { x: p2.x, y: p2.y + dy * e.level.value }
-        const seg = extendLeft || extendRight ? extendSegment(a, b, viewport.width, viewport.height, extendLeft, extendRight) : { a, b }
-        return { ...e, ...seg }
-      })
+    const out: LevelLine[] = []
+    this.props.levels.forEach((level, i) => {
+      if (!level.visible) return
+      const a = { x: p1.x, y: p1.y + dy * level.value }
+      const b = { x: p2.x, y: p2.y + dy * level.value }
+      const seg = extendLeft || extendRight ? extendSegment(a, b, viewport.width, viewport.height, extendLeft, extendRight) : { a, b }
+      // A level's price is where its line leaves the channel's first point.
+      out.push({ level, color: fibLevelColor(level, i), a: seg.a, b: seg.b, price: viewport.priceAt(a.y) ?? Number.NaN })
+    })
+    return out
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const lines = this.lines(viewport)
-    if (this.props.background) {
-      for (let i = 0; i < lines.length - 1; i++) {
-        ctx.fillStyle = withAlpha(lines[i + 1].color, 0.06)
-        ctx.beginPath()
-        ctx.moveTo(lines[i].a.x, lines[i].a.y)
-        ctx.lineTo(lines[i].b.x, lines[i].b.y)
-        ctx.lineTo(lines[i + 1].b.x, lines[i + 1].b.y)
-        ctx.lineTo(lines[i + 1].a.x, lines[i + 1].a.y)
-        ctx.closePath()
-        ctx.fill()
-      }
-    }
-    for (const line of lines) {
-      ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.strokeStyle = line.color
-      strokeSegment(ctx, line.a, line.b)
-      ctx.restore()
-      if (this.props.showLevels || this.props.showPrices || line.level.text) {
-        const price = viewport.priceAt(line.a.y)
-        const parts = [
-          line.level.text || null,
-          this.props.showLevels ? String(line.level.value) : null,
-          this.props.showPrices && price !== null ? `(${this.formatPrice(price)})` : null,
-        ].filter((s): s is string => s !== null)
-        paintLabel(ctx, parts.join(' '), { x: line.a.x - 6, y: line.a.y }, { ...this.style, textColor: line.color }, { align: 'right' })
-      }
-    }
+    paintLevelLines(ctx, { style: this.style, props: this.props, format: (price) => this.formatPrice(price) }, this.lines(viewport))
   }
 
   testHit(point: Point, viewport: Viewport): boolean {

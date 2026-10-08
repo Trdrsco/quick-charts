@@ -2828,6 +2828,18 @@ above, on or below a line, above, inside or below a box, along it from left to r
 vertical line whether they read across it or run up it. `NO_COORDINATES_TAB` names the tools whose
 points are drawn rather than typed, and `PRICE_ONLY_COORDS` the levels that span every bar.
 
+A retracement, a trend-based extension and a fib channel lay their levels out two to a line, each
+level its switch, its value and its color, under the thickness and style every level line is drawn
+in. The one color recolors every level at once, and shows the color the levels share or a split
+well while they differ. The bands between levels fill at `backgroundOpacity` while
+`fillBackground` holds them; `coeffsAsPercents` reads a level's ratio as a percent, and
+`labelsHAlign` and `labelsVAlign` stand the labels before, at the middle of or after the levels,
+above, on or below each line. A retracement and an extension draw their trend line through the
+swing points in a stroke of its own (`trendLine`, `trendLineColor`, `trendLineWidth`,
+`trendLineStyle`), stand each level's own words where `showText`, `textHAlign` and
+`textVAlign` put them, and with `levelsOnLogScale` divide the swing by log price while the price
+scale is logarithmic, which `Viewport.logScale` reports.
+
 Text-bearing tools open an inline editor where the text sits, in the drawing's own type. A fresh
 placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd
 with Enter commits, Escape cancels, and a press on the chart commits.

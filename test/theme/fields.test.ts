@@ -86,14 +86,28 @@ function nameBoxIn(root: HTMLElement): { box: HTMLElement; input: HTMLInputEleme
   return { box: dialog.element.querySelector<HTMLElement>('.qc-name-box')!, input: dialog.element.querySelector<HTMLInputElement>('.qc-name-input')! }
 }
 
-/** The drawing settings dialog for a Fibonacci retracement, whose levels carry a text field, a
- *  number field and a color well each. `available` false is a page whose commands are refused. */
+/** The drawing settings dialog for a Fibonacci retracement, whose levels carry a number field and a
+ *  color well each and whose labels are set by list buttons. `available` false is a page whose
+ *  commands are refused. */
 function fibSettingsIn(root: HTMLElement, available = true): HTMLElement {
   const drawing = drawingTools.create('fib_retracement', 'f1', [{ time: 1000 as never, price: 100 }, { time: 1060 as never, price: 110 }])!
   const dialog = openSettingsDialog({ chrome: root, t, icons: ownIcons(), drawing, presets: createPresets(null), idBase: 'c1-drawing-settings', run: () => true, available: () => available })
   closers.push(() => dialog.close())
   return root.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
 }
+
+/** A text field of a drawing settings page: the first cell of a table's grid. */
+function textFieldIn(root: HTMLElement, available = true): HTMLInputElement {
+  const drawing = drawingTools.create('table', 't1', [{ time: 1000 as never, price: 100 }])!
+  const dialog = openSettingsDialog({ chrome: root, t, icons: ownIcons(), drawing, presets: createPresets(null), idBase: 'c2-drawing-settings', run: () => true, available: () => available })
+  closers.push(() => dialog.close())
+  const box = root.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+  ;[...box.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === 'Table')!.click()
+  return box.querySelector<HTMLInputElement>('.qc-drawing-input')!
+}
+
+/** A list button that ends in the chevron: one whose face is words, not a mark. */
+const WORDS_SELECT = '.qc-drawing-select:not(.qc-drawing-select--mark)'
 
 for (const mode of THEME_MODES) {
   const theme = BUILT_IN_THEMES[mode]
@@ -123,7 +137,7 @@ for (const mode of THEME_MODES) {
     it('stands a drawing text field, select and number field on their edge, and rings each with the keyboard', () => {
       const root = rootIn(mode)
       const dialog = fibSettingsIn(root)
-      const fields = ['.qc-drawing-input', '.qc-drawing-number', '.qc-drawing-select'].map((selector) => dialog.querySelector<HTMLElement>(selector)!)
+      const fields = [textFieldIn(rootIn(mode)), ...['.qc-drawing-number', WORDS_SELECT].map((selector) => dialog.querySelector<HTMLElement>(selector)!)]
       for (const field of fields) {
         blur()
         const rest = painted(field)
@@ -141,7 +155,7 @@ for (const mode of THEME_MODES) {
 
     it('turns a refused value the invalid color, at rest and ringed', () => {
       const root = rootIn(mode)
-      const field = fibSettingsIn(root).querySelector<HTMLInputElement>('.qc-drawing-input')!
+      const field = textFieldIn(root)
       field.setAttribute('aria-invalid', 'true')
       blur()
       expect(painted(field).borderTopColor).toBe(theme['control.fieldInvalid'])
@@ -153,7 +167,7 @@ for (const mode of THEME_MODES) {
 
     it('stands a field that cannot be used on the read-only fill, its edge at rest and its words back', () => {
       const root = rootIn(mode)
-      const field = fibSettingsIn(root, false).querySelector<HTMLInputElement>('.qc-drawing-input')!
+      const field = textFieldIn(root, false)
       expect(field.disabled).toBe(true)
       const rest = painted(field)
       expect(rest.backgroundColor).toBe(theme['control.fieldFill'])
@@ -163,7 +177,7 @@ for (const mode of THEME_MODES) {
 
     it('ends a list button with the 18px chevron in the caret ink, in its 20 by 28 slot 2px in from the edge', () => {
       const root = rootIn(mode)
-      const field = fibSettingsIn(root).querySelector<HTMLElement>('.qc-drawing-select')!
+      const field = fibSettingsIn(root).querySelector<HTMLElement>(WORDS_SELECT)!
       const slot = field.querySelector<HTMLElement>(':scope > .qc-select-chevron')!
       const style = painted(slot)
       expect(style.color).toBe(theme['chrome.caret'])
@@ -203,14 +217,14 @@ describe('a host palette', () => {
     expect(painted(box).borderTopColor).toBe('#123456')
     input.focus()
     expect(painted(box).boxShadow).toBe(ring('#654321'))
-    const field = fibSettingsIn(root).querySelector<HTMLInputElement>('.qc-drawing-input')!
+    const field = textFieldIn(root)
     blur()
     expect(painted(field).borderTopColor).toBe('#123456')
     field.focus()
     expect(painted(field).borderTopColor).toBe('#654321')
     field.setAttribute('aria-invalid', 'true')
     expect(painted(field).boxShadow).toBe(ring('#a1b2c3'))
-    const refused = fibSettingsIn(rootIn('dark', custom), false).querySelector<HTMLInputElement>('.qc-drawing-input')!
+    const refused = textFieldIn(rootIn('dark', custom), false)
     expect(painted(refused).backgroundColor).toBe('#0d0e0f')
   })
 })

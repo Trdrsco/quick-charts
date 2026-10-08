@@ -116,6 +116,8 @@ export interface Viewport {
   logicalOf(time: Time): number | null
   /** The time at a bar index (null in whitespace beyond the loaded range). */
   timeOfLogical(logical: number): Time | null
+  /** Whether the pane's price scale is logarithmic. Absent, it is read as linear. */
+  logScale?: boolean
 }
 
 /** A draggable handle over an anchor, in pane-local CSS pixels. */

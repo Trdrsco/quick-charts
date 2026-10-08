@@ -512,3 +512,126 @@
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* A leveled tool's level grid: two levels to a 34px line, 8px between lines and 8px above the
+ * first, each level its 18px switch, its 100px value and its 34px well 8px apart, the second level
+ * 48px after the first's well. A level switched off keeps its well on the read-only fill,
+ * dimmed. */
+[data-qc-theme] .qc-drawing-page > .qc-drawing-level-row {
+  min-height: 34px;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+[data-qc-theme] .qc-drawing-page > :not(.qc-drawing-level-row) + .qc-drawing-level-row {
+  margin-top: 8px;
+}
+
+[data-qc-theme] .qc-drawing-level-row > :nth-child(4) {
+  margin-inline-start: 40px;
+}
+
+[data-qc-theme] .qc-drawing-swatch-button[data-qc-dim='true'] {
+  background: var(--qc-control-fieldFill);
+}
+
+[data-qc-theme] .qc-drawing-swatch-button[data-qc-dim='true'] > .qc-drawing-well {
+  opacity: 0.5;
+}
+
+/* The one color while the levels differ: the well split corner to corner between the color it
+ * offers and a second hue, so it reads as several colors rather than one. */
+[data-qc-theme] .qc-drawing-swatch-button[data-qc-mixed='true'] .qc-drawing-well-fill {
+  background: linear-gradient(to top right, var(--qcd-swatch) 50%, var(--qcd-paired) 50%);
+}
+
+/* A list button whose face is a mark: 76px around a 50px bar of the chosen thickness, or 34px
+ * around the chosen style's 28px mark. A thickness list stands 12px wider than its button, each
+ * choice its bar alone; a style list is as wide as its words. */
+[data-qc-theme] .qc-drawing-select--mark {
+  justify-content: center;
+  padding: 0;
+}
+
+[data-qc-theme] .qc-drawing-select--mark[data-mark='thickness'] {
+  width: 76px;
+}
+
+[data-qc-theme] .qc-drawing-select--mark[data-mark='style'] {
+  width: 34px;
+}
+
+[data-qc-theme] .qc-drawing-thickness-bar {
+  display: block;
+  flex: 0 0 auto;
+  width: 50px;
+  background: currentColor;
+}
+
+[data-qc-theme] .qc-drawing-mark-list[data-mark='thickness'] {
+  width: 88px;
+}
+
+[data-qc-theme] .qc-drawing-mark-list[data-mark='style'] {
+  width: max-content;
+}
+
+[data-qc-theme] .qc-drawing-list-row--bar {
+  justify-content: center;
+}
+
+/* The bands' opacity: a 148px track 10px tall on a 5px corner that fades from nothing into the
+ * drawings' line color over the checked ground the color popover's track stands on, inside a 1px
+ * edge of that color; its 12px knob is the popover's, a dark disc with a light rim, a pixel proud
+ * of the track above and below. */
+[data-qc-theme] .qc-drawing-band-opacity {
+  --qcd-angle-0: 0deg;
+  --qcd-black: hsl(var(--qcd-angle-0) 0% 0%);
+  --qcd-white: hsl(var(--qcd-angle-0) 0% 100%);
+  --qcd-check-hue: 224deg;
+  --qcd-check: hsl(var(--qcd-check-hue) 15% 19% / 0.4);
+  --qcd-ground: var(--qcd-black);
+  flex: 0 0 148px;
+  width: 148px;
+  height: 10px;
+  margin: 0;
+  background:
+    linear-gradient(to right, transparent, var(--qc-drawing-line)),
+    repeating-conic-gradient(from 270deg, var(--qcd-check) 0% 25%, transparent 0% 50%) 1px 50% / 8px 8px,
+    var(--qcd-ground);
+  border: 1px solid var(--qc-drawing-line);
+  border-radius: 5px;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+}
+
+[data-qc-theme='light'] .qc-drawing-band-opacity {
+  --qcd-ground: var(--qcd-white);
+}
+
+[data-qc-theme] .qc-drawing-band-opacity:focus-visible {
+  box-shadow: 0 0 0 2px var(--qc-state-focusRing);
+}
+
+[data-qc-theme] .qc-drawing-band-opacity::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
+  border-radius: 50%;
+  box-shadow: 0 1px 2px hsl(var(--qcd-angle-0) 0% 0% / 0.5);
+  cursor: pointer;
+  appearance: none;
+}
+
+[data-qc-theme] .qc-drawing-band-opacity::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
+  border-radius: 50%;
+  box-shadow: 0 1px 2px hsl(var(--qcd-angle-0) 0% 0% / 0.5);
+  cursor: pointer;
+}

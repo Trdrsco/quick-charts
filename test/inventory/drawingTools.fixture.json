@@ -522,13 +522,20 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
+        "backgroundOpacity",
+        "coeffsAsPercents",
         "extendLeft",
         "extendRight",
+        "fillBackground",
+        "labelsHAlign",
+        "labelsVAlign",
         "levels",
-        "reverse",
         "showLevels",
         "showPrices"
       ]
@@ -559,15 +566,31 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
+        "backgroundOpacity",
+        "coeffsAsPercents",
         "extendLeft",
         "extendRight",
+        "fillBackground",
+        "labelsHAlign",
+        "labelsVAlign",
         "levels",
+        "levelsOnLogScale",
         "reverse",
         "showLevels",
-        "showPrices"
+        "showPrices",
+        "showText",
+        "textHAlign",
+        "textVAlign",
+        "trendLine",
+        "trendLineColor",
+        "trendLineStyle",
+        "trendLineWidth"
       ]
     },
     {
@@ -642,15 +665,31 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
+        "backgroundOpacity",
+        "coeffsAsPercents",
         "extendLeft",
         "extendRight",
+        "fillBackground",
+        "labelsHAlign",
+        "labelsVAlign",
         "levels",
+        "levelsOnLogScale",
         "reverse",
         "showLevels",
-        "showPrices"
+        "showPrices",
+        "showText",
+        "textHAlign",
+        "textVAlign",
+        "trendLine",
+        "trendLineColor",
+        "trendLineStyle",
+        "trendLineWidth"
       ]
     },
     {

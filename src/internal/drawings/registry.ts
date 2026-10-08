@@ -128,6 +128,9 @@ const LINE_LOOK: Partial<DrawingStyle> = { lineColor: '#2962ff', lineWidth: 2, l
  *  its words in the hue at 14px. */
 const shapeLook = (hue: string): Partial<DrawingStyle> => ({ lineColor: hue, lineWidth: 2, lineStyle: 'solid', fillColor: hue, fillOpacity: 0.2, textColor: hue, fontSize: 14 })
 
+/** A leveled fib's factory look: its levels drawn solid at 2px, their labels at 12px. */
+const FIB_LOOK: Partial<DrawingStyle> = { lineWidth: 2, lineStyle: 'solid', fontSize: 12 }
+
 /** Display order of categories in the drawing toolbar. */
 export const TOOL_CATEGORIES: readonly ToolCategory[] = [
   'lines',
@@ -176,9 +179,9 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(DisjointChannel, { type: 'disjoint_channel', name: 'Disjoint channel', category: 'channels', anchors: 4, style: { fillOpacity: 0.08 } }),
 
   // Fibonacci
-  tool(FibRetracement, { type: 'fib_retracement', name: 'Fib retracement', category: 'fibonacci', anchors: 2 }),
-  tool(FibExtension, { type: 'fib_trend_ext', name: 'Trend-based fib extension', category: 'fibonacci', anchors: 3 }),
-  tool(FibChannel, { type: 'fib_channel', name: 'Fib channel', category: 'fibonacci', anchors: 3 }),
+  tool(FibRetracement, { type: 'fib_retracement', name: 'Fib retracement', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
+  tool(FibExtension, { type: 'fib_trend_ext', name: 'Trend-based fib extension', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
+  tool(FibChannel, { type: 'fib_channel', name: 'Fib channel', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
   tool(FibTimeZone, { type: 'fib_timezone', name: 'Fib time zone', category: 'fibonacci', anchors: 2 }),
   tool(FibSpeedFan, { type: 'fib_speed_resist_fan', name: 'Fib speed resistance fan', category: 'fibonacci', anchors: 2 }),
   tool(FibTimeExtension, { type: 'fib_trend_time', name: 'Trend-based fib time', category: 'fibonacci', anchors: 3 }),

@@ -204,13 +204,12 @@ describe('the dialog', () => {
     expect(out).toEqual(['cancel'])
   })
 
-  it('shows the fib levels with their colors, adds one, and hides the rows a tool ignores', () => {
+  it('lays the fib levels out two to a line with their colors, and hides the rows a tool ignores', () => {
     const { dialog, drawing, labels } = rig('fib_retracement')
     expect(labels()).toContain('Levels')
-    const before = (drawing.props.levels as unknown[]).length
-    dialog.querySelector<HTMLButtonElement>('button[aria-label="Add level"]')!.click()
-    expect((drawing.props.levels as unknown[]).length).toBe(before + 1)
-    expect(dialog.querySelectorAll('.qc-drawing-level')).toHaveLength(before + 1)
+    const levels = drawing.props.levels as { color: string }[]
+    expect(dialog.querySelectorAll('.qc-drawing-level-row')).toHaveLength(levels.length / 2)
+    expect(dialog.querySelector('button[aria-label="Level 2 color"] .qc-drawing-well-fill')!.getAttribute('style')).toContain(levels[1]!.color)
     const timezone = rig('fib_timezone')
     expect(timezone.labels()).not.toContain('Prices') // an inert prop shows no row
   })

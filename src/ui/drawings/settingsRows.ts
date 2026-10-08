@@ -28,6 +28,7 @@ import { createOpacitySlider } from '../controls/color'
 import { humanSize } from './imagePicker'
 import type { IconResolver } from '../icons/resolver'
 import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
+import { fibRows } from './levelRows'
 
 export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Table' | 'Coordinates' | 'Visibility'
 
@@ -115,9 +116,9 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
   return input
 }
 
-/** The Style page layouts the line, shape and curve tools share, by tool. A tool listed here gets
- *  exactly its layout's rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve'
+/** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
+ *  rows, in its layout's order; every other tool's page follows its props. */
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -138,6 +139,9 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   circle: 'shape',
   curve: 'curve',
   double_curve: 'curve',
+  fib_retracement: 'fib',
+  fib_trend_ext: 'fib',
+  fib_channel: 'fibChannel',
 }
 
 /** A line's stats, in the order the Stats list offers them. */
@@ -154,6 +158,7 @@ const STATS_POSITION_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.l
 /** The rows of a listed tool's Style page. A switch a viewer ticks in a list writes quietly, so the
  *  list stays open over a page that does not rebuild under it. */
 function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
+  if (layout === 'fib' || layout === 'fibChannel') return fibRows(ctx, layout === 'fib')
   const { t, drawing, box, icons } = ctx
   const props = drawing.props as Record<string, unknown>
   const style = drawing.style

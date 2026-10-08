@@ -301,6 +301,22 @@ export const drawing = {
   'drawing.removeLevel': 'Remove level {value}',
   'drawing.addLevel': 'Add level',
 
+  // A leveled tool's Style page: its trend line, the stroke of every level line, the level grid,
+  // the one color, the bands between levels, and what the labels read and where.
+  'drawing.trendLine': 'Trend line',
+  'drawing.levelsLine': 'Levels line',
+  'drawing.extendLinesLeft': 'Extend lines left',
+  'drawing.extendLinesRight': 'Extend lines right',
+  'drawing.levelOn': 'Level {n}',
+  'drawing.levelValue': 'Level {n} value',
+  'drawing.levelColor': 'Level {n} color',
+  'drawing.useOneColor': 'Use one color',
+  'drawing.backgroundOpacity': 'Background opacity',
+  'drawing.values': 'Values',
+  'drawing.percents': 'Percents',
+  'drawing.levelWords': 'Text',
+  'drawing.levelsOnLogScale': 'Fib levels based on log scale',
+
   // The Text page, and the in-place editor over the chart.
   'drawing.bold': 'Bold',
   'drawing.italic': 'Italic',
