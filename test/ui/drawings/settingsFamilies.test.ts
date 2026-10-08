@@ -192,6 +192,7 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; 
     Style: ['## Price levels', ...BOX_GRID, '[x] Left labels', '[x] Right labels', BANDS(true), 'gap', '## Time levels', ...BOX_GRID, '[x] Top labels', '[x] Bottom labels', BANDS(true), 'gap', 'Use one color: color', '[ ] Angles: color', '[ ] Reverse'],
     Coordinates: TWO_POINTS,
   },
+  fib_spiral: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: ['Line: colorWithThickness', '[ ] Counterclockwise'], Coordinates: TWO_POINTS },
   pitchfork: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Original'), Coordinates: THREE_POINTS },
   schiff_pitchfork: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Schiff'), Coordinates: THREE_POINTS },
   schiff_pitchfork_modified: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Modified Schiff'), Coordinates: THREE_POINTS },

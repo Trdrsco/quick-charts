@@ -279,6 +279,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.levelWords': 'Text',
   'drawing.levelsOnLogScale': 'Fib levels based on log scale',
   'drawing.median': 'Median',
+  'drawing.counterclockwise': 'Counterclockwise',
   'drawing.priceLevels': 'Price levels',
   'drawing.timeLevels': 'Time levels',
   'drawing.priceLevelOn': 'Price level {n}',

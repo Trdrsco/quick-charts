@@ -197,7 +197,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(FibSpeedFan, { type: 'fib_speed_resist_fan', name: 'Fib speed resistance fan', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
   tool(FibTimeExtension, { type: 'fib_trend_time', name: 'Trend-based fib time', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
   tool(FibCircles, { type: 'fib_circles', name: 'Fib circles', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
-  tool(FibSpiral, { type: 'fib_spiral', name: 'Fib spiral', category: 'fibonacci', anchors: 2 }),
+  tool(FibSpiral, { type: 'fib_spiral', name: 'Fib spiral', category: 'fibonacci', anchors: 2, style: { lineColor: '#00bcd4', lineWidth: 2, lineStyle: 'solid' } }),
   tool(FibArcs, { type: 'fib_speed_resist_arcs', name: 'Fib speed resistance arcs', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
   tool(FibWedge, { type: 'fib_wedge', name: 'Fib wedge', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
   tool(Pitchfan, { type: 'pitchfan', name: 'Pitchfan', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),

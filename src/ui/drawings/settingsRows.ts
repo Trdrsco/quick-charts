@@ -118,7 +118,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'pattern'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -154,6 +154,7 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   schiff_pitchfork: 'pitchfork',
   schiff_pitchfork_modified: 'pitchfork',
   inside_pitchfork: 'pitchfork',
+  fib_spiral: 'spiral',
   xabcd_pattern: 'pattern',
   cypher_pattern: 'pattern',
   abcd_pattern: 'pattern',
@@ -281,6 +282,8 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
     )
   } else if (layout === 'shape') {
     out.push(row(t('drawing.border'), stroke('drawing.border')), background())
+  } else if (layout === 'spiral') {
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine')), toggle('counterclockwise', 'drawing.counterclockwise'))
   } else if (layout === 'pattern') {
     // The letters' color, size, weight and slant on one row, then the border and, where the
     // pattern shades its legs, the background.

@@ -2871,6 +2871,8 @@ its own stroke, under its median's stroke (`medianColor`, `medianWidth`, `median
 the bands between pairs, each in its outer pair's color at `backgroundOpacity` while
 `fillBackground` is on. `extendLines` runs every line back past the fork's start, and `variant`
 switches its construction in place: `original`, `schiff`, `modified_schiff` or `inside`.
+A fib spiral winds clockwise out from its first point, and `counterclockwise` winds it the other
+way.
 
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
 the letters' color, size, weight and slant on a Label row, then the border and, for the patterns

@@ -1088,9 +1088,19 @@ export class FibSpeedFan extends Drawing<FibSpeedFanProps> {
   }
 }
 
+/** Which way a fib spiral winds out from its first point. */
+export type FibSpiralProps = {
+  /** Wind counterclockwise on the pane rather than clockwise. */
+  counterclockwise: boolean
+}
+
 /** Golden-ratio spiral wound from the first anchor out through the second. */
-export class FibSpiral extends Drawing {
+export class FibSpiral extends Drawing<FibSpiralProps> {
   readonly type = 'fib_spiral'
+
+  protected override defaultProps(): FibSpiralProps {
+    return { counterclockwise: false }
+  }
 
   requiredAnchors(): number {
     return 2
@@ -1103,12 +1113,14 @@ export class FibSpiral extends Drawing {
     if (target === 0) return null
     const growth = Math.log(GOLDEN_RATIO) / (Math.PI / 2)
     const baseAngle = angleOf(p1, p2)
+    // The pane's y runs down, so a growing angle turns clockwise on the pane.
+    const turn = this.props.counterclockwise ? -1 : 1
     const points: Point[] = []
     // Wind 2.5 turns inward and 1 turn outward around the anchor pair.
     for (let theta = -Math.PI * 5; theta <= Math.PI * 2; theta += Math.PI / 24) {
       const r = target * Math.exp(growth * theta)
       if (r < 0.5) continue
-      points.push({ x: p1.x + Math.cos(baseAngle + theta) * r, y: p1.y + Math.sin(baseAngle + theta) * r })
+      points.push({ x: p1.x + Math.cos(baseAngle + turn * theta) * r, y: p1.y + Math.sin(baseAngle + turn * theta) * r })
     }
     return points
   }

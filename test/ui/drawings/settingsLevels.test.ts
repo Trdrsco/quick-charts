@@ -235,6 +235,12 @@ describe('what a new leveled drawing starts with', () => {
     expect(fresh('pitchfan').props).toMatchObject({ medianColor: '#f23645', medianWidth: 2, medianStyle: 'solid', fillBackground: true })
   })
 
+  it('opens a fib spiral in cyan at 2px, winding clockwise', () => {
+    const d = fresh('fib_spiral')
+    expect([d.style.lineColor, d.style.lineWidth, d.style.lineStyle]).toEqual(['#00bcd4', 2, 'solid'])
+    expect(d.props).toEqual({ counterclockwise: false })
+  })
+
   it('opens the four pitchforks on one ladder of nine pairs, the half and the tines shown, with a red median', () => {
     for (const type of ['pitchfork', 'schiff_pitchfork', 'schiff_pitchfork_modified', 'inside_pitchfork']) {
       const d = fresh(type)

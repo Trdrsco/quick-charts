@@ -657,8 +657,14 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
-      "props": []
+      "style": {
+        "lineColor": "#00bcd4",
+        "lineWidth": 2,
+        "lineStyle": "solid"
+      },
+      "props": [
+        "counterclockwise"
+      ]
     },
     {
       "type": "fib_timezone",
