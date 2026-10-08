@@ -140,6 +140,8 @@ export interface IDrawing {
 
   setAnchors(anchors: Anchor[]): void
   updateAnchor(index: number, anchor: Anchor): void
+  /** The symbol's tick as the host stated it, or null without one. */
+  getTickSize?(): number | null
   appendAnchor(anchor: Anchor): void
   removeAnchor(index: number): void
   updateStyle(patch: Partial<DrawingStyle>): void
@@ -159,6 +161,10 @@ export interface IDrawing {
   setGlobalHidden(hidden: boolean): void
   /** The symbol's smallest price move (tick-denominated readouts); null omits those readouts. */
   setTickSize(tick: number | null): void
+  /** The currency the symbol is quoted in (an amount's unit); null where the host states none. */
+  setCurrencyCode(code: string | null): void
+  /** The currency the symbol is quoted in, or null where the host states none. */
+  getCurrencyCode?(): string | null
   /** The symbol's price formatter (the manager broadcasts it); null returns to the declared
    *  stand-in. */
   setPriceFormatter(format: PriceFormatPort | null): void

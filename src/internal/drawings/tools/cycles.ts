@@ -39,9 +39,19 @@ export class CyclicLines extends Drawing {
   }
 }
 
-/** Repeating semicircle arcs along the anchors' baseline — one hump per cycle. */
-export class TimeCycles extends Drawing {
+/** A time cycle's background switch: off, its humps keep their fill's color and opacity for when it
+ *  is switched back on. */
+export type TimeCyclesProps = {
+  fillBackground: boolean
+}
+
+/** Repeating semicircle arcs along the anchors' baseline, one hump per cycle. */
+export class TimeCycles extends Drawing<TimeCyclesProps> {
   readonly type = 'time_cycles'
+
+  protected override defaultProps(): TimeCyclesProps {
+    return { fillBackground: true }
+  }
 
   requiredAnchors(): number {
     return 2
@@ -58,7 +68,7 @@ export class TimeCycles extends Drawing {
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const geo = this.geometry(viewport)
     if (!geo) return
-    const fill = fillPaint(this.style)
+    const fill = this.props.fillBackground !== false ? fillPaint(this.style) : null
     if (fill) {
       ctx.save()
       ctx.fillStyle = fill

@@ -25,7 +25,6 @@ export const FILLABLE: ReadonlySet<string> = new Set([
   'triangle_pattern',
   'head_and_shoulders',
   'time_cycles',
-  'sector',
   'comment',
   'callout',
   'price_label',
@@ -92,9 +91,10 @@ export const INERT_PROPS: Record<string, readonly string[]> = {
 }
 
 /** Tools whose points are drawn from their shape rather than typed: a turned box, an arc, an
- *  ellipse, a polygon of any count of points, a fib wedge, a flat top/bottom and a disjoint channel
- *  have no Coordinates tab. */
-export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel'])
+ *  ellipse, a polygon of any count of points, a fib wedge, a flat top/bottom, a disjoint channel, a
+ *  sector, a bars pattern and a position have no Coordinates tab: a position's points are its
+ *  entry, target and stop prices on its Inputs page. */
+export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel', 'sector', 'bars_pattern', 'long_position', 'short_position'])
 
 /** Tools that span every bar at one price: the Coordinates tab hides the bar field. */
 export const PRICE_ONLY_COORDS: ReadonlySet<string> = new Set(['horizontal_line'])
@@ -142,7 +142,7 @@ export const INPUT_PROPS: Record<string, readonly string[]> = {
   fixed_range_volume_profile: ['rowsLayout', 'rowSize', 'volume', 'valueAreaVolume', 'extendRight'],
   anchored_volume_profile: ['rowsLayout', 'rowSize', 'volume', 'valueAreaVolume'],
   ghost_feed: ['averageHL', 'variance'],
-  long_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'compact'],
-  short_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'compact'],
+  long_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'qtyPrecision'],
+  short_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'qtyPrecision'],
   regression_trend: ['upperDeviation', 'lowerDeviation', 'useUpper', 'useLower', 'source'],
 }

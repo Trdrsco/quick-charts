@@ -650,6 +650,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       manager.setTimeframeContext(parseTimeframeContext(tf))
     },
     setTick: (tick) => manager.setTickSize(tick),
+    setCurrency: (code) => manager.setCurrencyCode(code),
     setPriceFormatter: (format) => manager.setPriceFormatter(format),
     export: kept,
     restore(list) {

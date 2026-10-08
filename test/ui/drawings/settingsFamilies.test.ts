@@ -107,6 +107,36 @@ const WAVE_STYLE = ['Color: color', '[x] Wave: mark(thickness)', 'Degree: select
 
 /** Every tool of the line, shape, curve, leveled and pattern families: its pages, and the rows of
  *  each page. */
+/** A position's Inputs page: its account, lots, risk and leverage, its entry, its target and stop as
+ *  ticks and a price, and how its quantity is written. */
+const POSITION_INPUTS = [
+  'Account size: number',
+  'Lot size: number',
+  'Risk: number select(%)',
+  'Entry price: number',
+  'Leverage: number',
+  '## Profit level',
+  'Ticks: number',
+  'Price: number',
+  '## Stop level',
+  'Ticks: number',
+  'Price: number',
+  'QTY precision: select(Default)',
+]
+
+/** A position's Style page, all the stats but the two levels' P&L shown. */
+const POSITION_STYLE = [
+  'Lines: colorWithThickness',
+  'Stop color: color',
+  'Target color: color',
+  'Text: color select(12)',
+  '[x] Price labels',
+  '## Info',
+  'Stats: multi(TP price offset, TP percent offset, TP tick offset, TP amount, Open/closed PL, Qty, Risk/reward ratio, SL price offset, SL percent offset, SL tick offset, SL amount)',
+  '[ ] Compact stats mode',
+  '[ ] Always show stats',
+]
+
 /** A channel's Text page: its words' color, size, weight and slant, its words, and where they stand. */
 const CHANNEL_TEXT = ['full: color select(14) toggle toggle', 'full: textarea', 'Text alignment: select(Top) select(Left)']
 
@@ -252,6 +282,24 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Inputs?: string[]
   },
   flat_top_bottom: { tabs: ['Style', 'Text', 'Visibility'], Style: CHANNEL_STYLE, Text: CHANNEL_TEXT },
   disjoint_channel: { tabs: ['Style', 'Text', 'Visibility'], Style: CHANNEL_STYLE, Text: CHANNEL_TEXT },
+  long_position: { tabs: ['Inputs', 'Style', 'Visibility'], Inputs: POSITION_INPUTS, Style: POSITION_STYLE },
+  short_position: { tabs: ['Inputs', 'Style', 'Visibility'], Inputs: POSITION_INPUTS, Style: POSITION_STYLE },
+  forecast: {
+    tabs: ['Style', 'Coordinates', 'Visibility'],
+    Style: [
+      'Line: colorWithThickness',
+      ...['Source text', 'Source background', 'Source border', 'Target text', 'Target background', 'Target border', 'Success text', 'Success background', 'Failure text', 'Failure background'].map((l) => `${l}: color`),
+    ],
+    Coordinates: TWO_POINTS,
+  },
+  sector: { tabs: ['Style', 'Visibility'], Style: ['Background: color color', 'Border: colorWithThickness'] },
+  bars_pattern: { tabs: ['Style', 'Visibility'], Style: ['Color: color', 'Mode: select(HL bars)', '[ ] Mirrored', '[ ] Flipped'] },
+  ghost_feed: {
+    tabs: ['Inputs', 'Style', 'Coordinates', 'Visibility'],
+    Inputs: ['Avg HL in minticks: number', 'Variance: number'],
+    Style: ['Candles: color color', '[x] Borders: color color', '[x] Wick: color', 'Transparency: opacity'],
+    Coordinates: TWO_POINTS,
+  },
   xabcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   cypher_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   abcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(false), Coordinates: points(4) },
@@ -263,6 +311,9 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Inputs?: string[]
   elliott_triangle_wave: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: WAVE_STYLE, Coordinates: points(6) },
   elliott_double_combo: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: WAVE_STYLE, Coordinates: points(4) },
   elliott_triple_combo: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: WAVE_STYLE, Coordinates: points(6) },
+  cyclic_lines: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: ['Lines: colorWithThickness'], Coordinates: TWO_POINTS },
+  sine_line: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: ['Lines: colorWithThickness'], Coordinates: TWO_POINTS },
+  time_cycles: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: ['Line: colorWithThickness', '[x] Background: color'], Coordinates: TWO_POINTS },
 }
 
 describe('the pages and rows of the line, shape, curve, leveled and pattern tools', () => {
@@ -386,6 +437,14 @@ describe('what a new drawing of each tool starts with', () => {
     expect(look('info_line').props).toMatchObject({ alwaysShowStats: true, statsPosition: 'center', showPipsChange: true, showDateTimeRange: true })
     expect(look('trend_line').props).toMatchObject({ statsPosition: 'right', alwaysShowStats: false, textVAlign: 'top', textHAlign: 'center' })
     expect(look('vertical_line').props).toMatchObject({ textOrientation: 'vertical', textVAlign: 'middle', showTime: true })
+  })
+
+  it('draws the cycles in their own hues at 2px, a time cycle’s humps shaded at half', () => {
+    expect([look('cyclic_lines').line, look('cyclic_lines').width]).toEqual(['#80ccdb', 2])
+    expect([look('sine_line').line, look('sine_line').width]).toEqual(['#159980', 2])
+    const cycles = look('time_cycles')
+    expect([cycles.line, cycles.width, cycles.fill]).toEqual(['#159980', 2, '#6aa84f 0.5'])
+    expect(cycles.props).toEqual({ fillBackground: true })
   })
 
   it('draws a shape in its own hue with a background at a fifth, a curve with its background off', () => {

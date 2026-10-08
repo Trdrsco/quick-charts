@@ -11,6 +11,9 @@ import * as api from '../../../src/internal/drawings/index'
 const SURFACE: Record<string, string> = {
   AbcdPattern: 'function',
   BAR_PRICE_SOURCES: 'object',
+  BARS_PATTERN_MODES: 'object',
+  POSITION_STATS: 'object',
+  QTY_PRECISIONS: 'object',
   AnchoredVolumeProfile: 'function',
   AnchoredVwap: 'function',
   Arc: 'function',

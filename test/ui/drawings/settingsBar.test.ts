@@ -126,7 +126,7 @@ describe('the settings bar', () => {
   // part of the plan rather than a line the viewer draws.
   it.each(['long_position', 'short_position'])('%s offers its own two zones and the word on the plan', (type) => {
     const { labels } = rig(selection({ type, hasText: true }), { profitColor: '#089981', stopColor: '#f23645' })
-    expect(labels()).toEqual(['Drawing templates', 'Text color', 'Target zone color', 'Stop zone color', 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
+    expect(labels()).toEqual(['Drawing templates', 'Text color', 'Target color', 'Stop color', 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
   })
 
   it('runs the settings, lock and delete commands, and names the lock by its state', () => {

@@ -81,7 +81,7 @@ const drawingToolOf = (arg: unknown): string | null | undefined =>
  *  presets). The public surface grows on demand, not by exposure. */
 export type ChartDrawingsApi = Omit<
   DrawingsHandle,
-  'setSymbol' | 'setTimeframe' | 'setTick' | 'setPriceFormatter' | 'destroy' | 'selectedDrawing' | 'commitEdit' | 'beginPreview' | 'endPreview' | 'textEdit' | 'commitText' | 'cancelText' | 'presets'
+  'setSymbol' | 'setTimeframe' | 'setTick' | 'setCurrency' | 'setPriceFormatter' | 'destroy' | 'selectedDrawing' | 'commitEdit' | 'beginPreview' | 'endPreview' | 'textEdit' | 'commitText' | 'cancelText' | 'presets'
 >
 
 /** The verbs the `chart.drawings.*` commands run that live above the layer: the standing
@@ -135,6 +135,8 @@ export interface DrawingsLayer {
   setTimeframe(timeframe: string): void
   /** Push the chart's tick grid and price formatter, after a resolve or a language switch. */
   setPricing(tick: number | null, format: (price: number) => string): void
+  /** Push the currency the symbol is quoted in, after a resolve. */
+  setCurrency(code: string | null): void
   /** Re-read every label after a language switch. */
   relabel(): void
   /** Re-render the surfaces after something they read moved (a preference, the layout). */
@@ -228,6 +230,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       setSymbol: () => undefined,
       setTimeframe: () => undefined,
       setPricing: () => undefined,
+      setCurrency: () => undefined,
       relabel: () => undefined,
       refresh: () => undefined,
       applyToolIntent: () => undefined,
@@ -620,6 +623,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     setSymbol: _s,
     setTimeframe: _t,
     setTick: _k,
+    setCurrency: _c,
     setPriceFormatter: _p,
     destroy: _d,
     armTool: _a,
@@ -655,6 +659,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       handle.setSymbol(symbol)
     },
     setTimeframe: (timeframe) => handle.setTimeframe(timeframe),
+    setCurrency: (code) => handle.setCurrency(code),
     setPricing: (tick, format) => {
       handle.setTick(tick)
       handle.setPriceFormatter(format)

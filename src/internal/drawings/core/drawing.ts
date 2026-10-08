@@ -395,6 +395,24 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this.requestUpdate()
   }
 
+  /** The symbol's tick as the host stated it, or null without one. */
+  getTickSize(): number | null {
+    return this.tickSize()
+  }
+
+  private _currencyCode: string | null = null
+
+  /** The currency the symbol is quoted in, the unit an amount is written in. */
+  setCurrencyCode(code: string | null): void {
+    this._currencyCode = code && code.trim() ? code.trim() : null
+    this.requestUpdate()
+  }
+
+  /** The currency the symbol is quoted in, or null where the host states none. */
+  getCurrencyCode(): string | null {
+    return this._currencyCode
+  }
+
   protected tickSize(): number | null {
     return this._tickSize
   }

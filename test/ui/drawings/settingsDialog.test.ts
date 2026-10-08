@@ -223,7 +223,7 @@ describe('the dialog', () => {
     expect(profile.labels()).toEqual(expect.arrayContaining(['Width %', 'Placement', 'Point of control']))
     const position = rig('long_position')
     position.tab('Inputs').click()
-    expect(position.labels()).toEqual(expect.arrayContaining(['Risk', 'Account size', 'Lot size', 'Leverage', 'Compact stats mode']))
+    expect(position.labels()).toEqual(expect.arrayContaining(['Risk', 'Account size', 'Lot size', 'Entry price', 'Leverage', 'QTY precision']))
   })
 
   it('the Text page edits the words quietly, and the Table page grows the grid', () => {

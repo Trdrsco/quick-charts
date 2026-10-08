@@ -222,14 +222,14 @@ describe('the forecasting, content and table families', () => {
   const fake = fakeChart()
   const props = (type: string) => live(drawingTools.create(type, type, anchorsFor(fake, drawingTools.get(type)!.anchors))).props
 
-  it('a position opens with a risk sheet: account, risk as a percent, one lot, no leverage', () => {
+  it('a position opens with a risk sheet: account, risk as a percent, one lot, leverage enough to leave the risk the cap', () => {
     for (const type of ['long_position', 'short_position']) {
-      expect(props(type), type).toMatchObject({ accountSize: 1000, risk: 25, riskDisplay: 'percent', lotSize: 1, leverage: 1, showPrices: true, compact: false })
+      expect(props(type), type).toMatchObject({ accountSize: 1000, risk: 25, riskDisplay: 'percent', lotSize: 1, leverage: 10000, qtyPrecision: 'default', showPrices: true, compact: false, alwaysShowStats: false })
     }
   })
 
   it('the bar-capturing tools start empty and capture on placement', () => {
-    expect(props('bars_pattern')).toMatchObject({ bars: [], mode: 'bars', mirrored: false, flipped: false })
+    expect(props('bars_pattern')).toMatchObject({ bars: [], mode: 'hl', mirrored: false, flipped: false })
     expect(drawingTools.get('bars_pattern')!.capturesBars).toBe(true)
     expect(drawingTools.get('ghost_feed')!.capturesBars).toBe(true)
   })

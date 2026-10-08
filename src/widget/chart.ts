@@ -1465,6 +1465,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     noMoreHistory = false
     feedStatus = null // the new subscription reports its own status; a stale one must not carry over
     symbolInfo = null
+    drawings.setCurrency(null)
     earliestBarSecs = null
     session.reset() // the next resolve states the new symbol's model, and unresolved never bands
     marks?.clear()
@@ -1484,6 +1485,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         if (disposed || myEpoch !== epoch || !info) return
         symbolInfo = info
         setSymbolFormat(info.format)
+        drawings.setCurrency(info.currencyCode ?? null)
         indicators.recompute() // indicator scales and rows re-read the formatter
         session.adopt(info)
         legend.setHeader(symbol, tf)

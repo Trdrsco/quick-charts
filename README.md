@@ -2903,6 +2903,12 @@ stand above it, inside it or below it with `textVAlign`, at its start, middle or
 `textHAlign`. A parallel channel's Coordinates page writes its third point as the price its
 parallel stands from the baseline.
 
+A sector shades the two halves of its slice, parted by the ray through its arc's middle, in `color1`
+and `color2` while `fillBackground` is on. A bars pattern paints its captured bars as `mode` says:
+`hl` their high-low ranges, `oc` their open-close ranges, or a line through each bar's close, open,
+high, low or `hl2`. A ghost feed's average candle span is held as a price and written on its page in
+the symbol's minimum ticks.
+
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
 the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
 that shade their legs, the background, which `fillBackground` switches off and on keeping its
@@ -2947,6 +2953,8 @@ layer.armTool('rectangle')
 layer.destroy()
 ```
 
+A layer you mount yourself is told the symbol's grid, formatter and currency through `setTick`,
+`setPriceFormatter` and `setCurrency`; a position offers its risk as an amount in that currency.
 A layer you mount yourself arms whatever you arm. Its `copies` option answers whether a new drawing
 may be made as a copy of a drawing of a type: return false for a tool you do not offer, and clone,
 paste and a Control- or Command-drag duplicate make nothing for its drawings, `canPaste` answers

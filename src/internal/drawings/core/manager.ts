@@ -32,6 +32,7 @@ export class DrawingManager {
   private _allHidden = false
   private _barSource: BarSource | null = null
   private _tickSize: number | null = null
+  private _currencyCode: string | null = null
   private _priceFormat: PriceFormatPort | null = null
   private _glyphSource: GlyphSourcePort | null = null
   private readonly _listeners = new Map<DrawingEventType, Set<DrawingEventCallback>>()
@@ -46,6 +47,12 @@ export class DrawingManager {
   setTickSize(tick: number | null): void {
     this._tickSize = tick
     for (const drawing of this._drawings.values()) drawing.setTickSize(tick)
+  }
+
+  /** The currency the symbol is quoted in, broadcast to every drawing (the unit of an amount). */
+  setCurrencyCode(code: string | null): void {
+    this._currencyCode = code
+    for (const drawing of this._drawings.values()) drawing.setCurrencyCode(code)
   }
 
   /** The symbol's price formatter, broadcast to every drawing: the one port every label, pill
@@ -117,6 +124,7 @@ export class DrawingManager {
     concrete.setGlobalHidden(this._allHidden)
     concrete.setBarSource(this._barSource)
     concrete.setTickSize(this._tickSize)
+    concrete.setCurrencyCode(this._currencyCode)
     concrete.setPriceFormatter(this._priceFormat)
     concrete.setGlyphSource(this._glyphSource)
     this._drawings.set(concrete.id, concrete)

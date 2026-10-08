@@ -64,10 +64,10 @@ describe('money is not a price', () => {
 
   it('a position tool writes its P&L and amounts as money and its level offsets through the price port', () => {
     expect(forecastingSrc).toContain('moneyText(s.pnl)')
-    expect(forecastingSrc).toContain('moneyText(s.amountAtTp)')
-    expect(forecastingSrc).toContain('moneyText(s.amountAtSl)')
+    expect(forecastingSrc).toContain('moneyText(amount)')
+    expect(forecastingSrc).toContain('moneyText(pl)')
     expect(forecastingSrc).not.toContain('this.formatPrice(s.pnl)')
-    expect(forecastingSrc).not.toContain('this.formatPrice(s.amountAt')
-    expect(forecastingSrc).toContain('return `${this.formatPrice(offset)} (${percent.toFixed(2)}%)${ticks}`')
+    expect(forecastingSrc).not.toContain('this.formatPrice(amount')
+    expect(forecastingSrc).toContain('head.push(this.formatPrice(offset))')
   })
 })

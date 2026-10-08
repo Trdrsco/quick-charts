@@ -237,16 +237,16 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(ElliottTripleCombo, { type: 'elliott_triple_combo', name: 'Elliott triple combo (WXYXZ)', category: 'elliott', anchors: 6, style: waveLook('#6aa84f') }),
 
   // Cycles
-  tool(CyclicLines, { type: 'cyclic_lines', name: 'Cyclic lines', category: 'cycles', anchors: 2 }),
-  tool(TimeCycles, { type: 'time_cycles', name: 'Time cycles', category: 'cycles', anchors: 2, style: { fillOpacity: 0.12 } }),
-  tool(SineLine, { type: 'sine_line', name: 'Sine line', category: 'cycles', anchors: 2 }),
+  tool(CyclicLines, { type: 'cyclic_lines', name: 'Cyclic lines', category: 'cycles', anchors: 2, style: { lineColor: '#80ccdb', lineWidth: 2, lineStyle: 'solid' } }),
+  tool(TimeCycles, { type: 'time_cycles', name: 'Time cycles', category: 'cycles', anchors: 2, style: { lineColor: '#159980', lineWidth: 2, lineStyle: 'solid', fillColor: '#6aa84f', fillOpacity: 0.5 } }),
+  tool(SineLine, { type: 'sine_line', name: 'Sine line', category: 'cycles', anchors: 2, style: { lineColor: '#159980', lineWidth: 2, lineStyle: 'solid' } }),
 
   // Forecasting & positions
-  tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3, placement: 'instant', style: { textColor: '#ffffff' } }),
-  tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3, placement: 'instant', style: { textColor: '#ffffff' } }),
-  tool(Forecast, { type: 'forecast', name: 'Position forecast', category: 'forecasting', anchors: 2 }),
-  tool(Sector, { type: 'sector', name: 'Sector', category: 'forecasting', anchors: 3, style: { fillOpacity: 0.2 } }),
-  tool(BarsPattern, { type: 'bars_pattern', name: 'Bars pattern', category: 'forecasting', anchors: 2, capturesBars: true }),
+  tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3, placement: 'instant', style: { lineColor: '#808080', lineWidth: 1, lineStyle: 'solid', textColor: '#ffffff', fontSize: 12 } }),
+  tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3, placement: 'instant', style: { lineColor: '#808080', lineWidth: 1, lineStyle: 'solid', textColor: '#ffffff', fontSize: 12 } }),
+  tool(Forecast, { type: 'forecast', name: 'Position forecast', category: 'forecasting', anchors: 2, style: { lineColor: '#2962ff', lineWidth: 2, lineStyle: 'solid' } }),
+  tool(Sector, { type: 'sector', name: 'Sector', category: 'forecasting', anchors: 3, style: { lineColor: '#9c9c9c', lineWidth: 2, lineStyle: 'solid' } }),
+  tool(BarsPattern, { type: 'bars_pattern', name: 'Bars pattern', category: 'forecasting', anchors: 2, capturesBars: true, style: { lineColor: '#2962ff' } }),
   tool(GhostFeed, { type: 'ghost_feed', name: 'Ghost feed', category: 'forecasting', anchors: 2, capturesBars: true }),
 
   // Volume

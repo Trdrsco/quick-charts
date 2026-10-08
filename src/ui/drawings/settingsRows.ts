@@ -3,7 +3,7 @@
 // module turns those facts into fields. A row exists only where the prop exists and the tool's
 // paint honors it, so the dialog never shows a control that does nothing.
 import type { BarPriceSource, DrawingStyle, ElliottDegree, IDrawing, LineStyle, TimeframeVisibility } from '../../internal/drawings/index'
-import { alphaOf, BAR_PRICE_SOURCES, ELLIOTT_DEGREES, withAlpha } from '../../internal/drawings/index'
+import { alphaOf, BAR_PRICE_SOURCES, BARS_PATTERN_MODES, ELLIOTT_DEGREES, POSITION_STATS, QTY_PRECISIONS, withAlpha } from '../../internal/drawings/index'
 import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import {
   BAR_ONLY_COORDS,
@@ -27,7 +27,7 @@ import { createOpacitySlider } from '../controls/color'
 import { humanSize } from './imagePicker'
 import type { IconResolver } from '../icons/resolver'
 import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
-import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, levelLines, strokedLevelRows, thicknessSelect } from './levelRows'
+import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, levelLines, opacityTrack, strokedLevelRows, thicknessSelect } from './levelRows'
 
 export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Table' | 'Coordinates' | 'Visibility'
 
@@ -94,7 +94,47 @@ const SOURCE_LABEL: Record<BarPriceSource, ChartMessageKey> = {
 }
 /** The tools whose words stand above, inside or below their body. */
 const INSIDE_ACROSS: ReadonlySet<string> = new Set(['rectangle', 'parallel_channel', 'flat_top_bottom', 'disjoint_channel'])
-const MODE_LABEL: Record<string, ChartMessageKey> = { bars: 'drawing.bars', open: 'drawing.modeLineOpen', high: 'drawing.modeLineHigh', low: 'drawing.modeLineLow', close: 'drawing.modeLineClose', hl2: 'drawing.modeLineHl2' }
+const MODE_LABEL: Record<string, ChartMessageKey> = {
+  hl: 'drawing.modeHlBars',
+  oc: 'drawing.modeOcBars',
+  close: 'drawing.modeLineClose',
+  open: 'drawing.modeLineOpen',
+  high: 'drawing.modeLineHigh',
+  low: 'drawing.modeLineLow',
+  hl2: 'drawing.modeLineHl2',
+}
+/** A position's stats, as its Stats list names them. */
+const POSITION_STAT_LABEL: Record<string, ChartMessageKey> = {
+  tpPriceOffset: 'drawing.statTpPriceOffset',
+  tpPercentOffset: 'drawing.statTpPercentOffset',
+  tpTickOffset: 'drawing.statTpTickOffset',
+  tpAmount: 'drawing.statTpAmount',
+  tpPL: 'drawing.statTpPl',
+  openClosePL: 'drawing.statOpenClosePl',
+  qty: 'drawing.statQty',
+  riskRewardRatio: 'drawing.statRiskRewardRatio',
+  slPriceOffset: 'drawing.statSlPriceOffset',
+  slPercentOffset: 'drawing.statSlPercentOffset',
+  slTickOffset: 'drawing.statSlTickOffset',
+  slAmount: 'drawing.statSlAmount',
+  slPL: 'drawing.statSlPl',
+}
+/** How a position's quantity is written, as its list names each way. */
+const QTY_PRECISION_LABEL: Record<string, ChartMessageKey> = { default: 'drawing.qtyDefault', '0': 'drawing.qtyInteger', '1': 'drawing.qtyOneDecimal' }
+
+/** A forecast's colors, each on a row of its own, in the order its page sets them. */
+const FORECAST_COLORS: readonly { key: string; label: ChartMessageKey }[] = [
+  { key: 'sourceTextColor', label: 'drawing.sourceText' },
+  { key: 'sourceBackColor', label: 'drawing.sourceBackground' },
+  { key: 'sourceBorderColor', label: 'drawing.sourceBorder' },
+  { key: 'targetTextColor', label: 'drawing.targetText' },
+  { key: 'targetBackColor', label: 'drawing.targetBackground' },
+  { key: 'targetBorderColor', label: 'drawing.targetBorder' },
+  { key: 'successTextColor', label: 'drawing.successText' },
+  { key: 'successBackColor', label: 'drawing.successBackground' },
+  { key: 'failureTextColor', label: 'drawing.failureText' },
+  { key: 'failureBackColor', label: 'drawing.failureBackground' },
+]
 const PROFILE_LEVELS: readonly { label: ChartMessageKey; key: 'poc' | 'vah' | 'val' }[] = [
   { label: 'drawing.pointOfControl', key: 'poc' },
   { label: 'drawing.valueAreaHigh', key: 'vah' },
@@ -147,7 +187,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'elliott' | 'regression' | 'parallel' | 'channel' | 'pattern'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'elliott' | 'lines' | 'cycles' | 'regression' | 'parallel' | 'channel' | 'forecast' | 'sector' | 'barsPattern' | 'position' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -198,6 +238,14 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   elliott_triangle_wave: 'elliott',
   elliott_double_combo: 'elliott',
   elliott_triple_combo: 'elliott',
+  long_position: 'position',
+  short_position: 'position',
+  forecast: 'forecast',
+  sector: 'sector',
+  bars_pattern: 'barsPattern',
+  cyclic_lines: 'lines',
+  sine_line: 'lines',
+  time_cycles: 'cycles',
   regression_trend: 'regression',
   parallel_channel: 'parallel',
   flat_top_bottom: 'channel',
@@ -358,6 +406,126 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
     )
   } else if (layout === 'shape') {
     out.push(row(t('drawing.border'), stroke('drawing.border')), background())
+  } else if (layout === 'position') {
+    // The lines, the two zones, the words' color and size, the levels' prices, then the stats the
+    // tags read and how they read them.
+    const zone = (key: 'stopColor' | 'profitColor', text: ChartMessageKey): HTMLElement => {
+      const value = String(props[key])
+      return row(
+        t(text),
+        swatchButton(t, box, {
+          label: t(text),
+          value,
+          onPick: (c) => {
+            const alpha = alphaOf(value)
+            ctx.patchProps({ [key]: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(value),
+          onOpacity: (v) => ctx.patchProps({ [key]: withAlpha(value, v) }),
+        }),
+      )
+    }
+    const shown = new Set(Array.isArray(props.stats) ? (props.stats as string[]) : [])
+    const liveStats = (): string[] => (Array.isArray(drawing.props.stats) ? (drawing.props.stats as string[]) : [])
+    out.push(
+      row(t('drawing.lines'), stroke('drawing.lines')),
+      zone('stopColor', 'drawing.stopColor'),
+      zone('profitColor', 'drawing.profitColor'),
+      row(
+        t('drawing.text'),
+        swatchButton(t, box, {
+          label: t('drawing.textColor'),
+          value: style.textColor,
+          onPick: (c) => {
+            const alpha = alphaOf(style.textColor)
+            ctx.patchStyle({ textColor: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(style.textColor),
+          onOpacity: (v) => ctx.patchStyle({ textColor: withAlpha(style.textColor, v) }),
+        }),
+        dropdown(icons, box, t('drawing.fontSize'), TEXT_SIZES, String(style.fontSize) as (typeof TEXT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) })),
+      ),
+      toggle('showPrices', 'drawing.priceLabels'),
+      sectionTitle(t('drawing.sectionInfo')),
+      row(
+        t('drawing.sectionStats'),
+        multiDropdown(icons, box, {
+          label: t('drawing.sectionStats'),
+          empty: t('drawing.statsHidden'),
+          asWritten: true,
+          choices: POSITION_STATS.map((stat) => ({
+            label: t(POSITION_STAT_LABEL[stat]!),
+            checked: shown.has(stat),
+            // The stats keep the list's order whichever way one is ticked.
+            onChange: (v: boolean) => {
+              const next = new Set(liveStats())
+              if (v) next.add(stat)
+              else next.delete(stat)
+              ctx.patchQuiet({ stats: POSITION_STATS.filter((s) => next.has(s)) })
+            },
+          })),
+        }),
+      ),
+      toggle('compact', 'drawing.compactStatsMode'),
+      toggle('alwaysShowStats', 'drawing.alwaysShowStats'),
+    )
+  } else if (layout === 'forecast') {
+    const color = (key: string, text: ChartMessageKey): HTMLElement => {
+      const value = String(props[key])
+      return row(
+        t(text),
+        swatchButton(t, box, {
+          label: t(text),
+          value,
+          onPick: (c) => {
+            const alpha = alphaOf(value)
+            ctx.patchProps({ [key]: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(value),
+          onOpacity: (v) => ctx.patchProps({ [key]: withAlpha(value, v) }),
+        }),
+      )
+    }
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine')), ...FORECAST_COLORS.map((c) => color(c.key, c.label)))
+  } else if (layout === 'sector') {
+    // The slice's two backgrounds, one for each half, and its border.
+    const fill = (key: 'color1' | 'color2'): HTMLButtonElement => {
+      const value = String(props[key])
+      return swatchButton(t, box, {
+        label: t(key === 'color1' ? 'drawing.backgroundFirst' : 'drawing.backgroundSecond'),
+        value,
+        onPick: (c) => {
+          const alpha = alphaOf(value)
+          ctx.patchProps({ [key]: alpha < 1 ? withAlpha(c, alpha) : c })
+        },
+        opacity: alphaOf(value),
+        onOpacity: (v) => ctx.patchProps({ [key]: withAlpha(value, v) }),
+      })
+    }
+    out.push(row(t('drawing.background'), fill('color1'), fill('color2')), row(t('drawing.border'), stroke('drawing.border')))
+  } else if (layout === 'barsPattern') {
+    out.push(
+      row(
+        t('drawing.color'),
+        swatchButton(t, box, {
+          label: t('drawing.color'),
+          value: style.lineColor,
+          onPick: (c) => {
+            const alpha = alphaOf(style.lineColor)
+            ctx.patchStyle({ lineColor: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(style.lineColor),
+          onOpacity: (v) => ctx.patchStyle({ lineColor: withAlpha(style.lineColor, v) }),
+        }),
+      ),
+      row(t('drawing.mode'), dropdown(icons, box, t('drawing.mode'), BARS_PATTERN_MODES, props.mode as (typeof BARS_PATTERN_MODES)[number], label(t, MODE_LABEL), (v) => ctx.patchProps({ mode: v }))),
+      toggle('mirrored', 'drawing.mirrored'),
+      toggle('flipped', 'drawing.flipped'),
+    )
+  } else if (layout === 'lines') {
+    out.push(row(t('drawing.lines'), stroke('drawing.lines')))
+  } else if (layout === 'cycles') {
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine')), background())
   } else if (layout === 'spiral') {
     out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine')), toggle('counterclockwise', 'drawing.counterclockwise'))
   } else if (layout === 'pattern') {
@@ -605,29 +773,22 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
     }
     out.push(toggleRow(t('drawing.developingPoc'), !!props.developingPoc, (v) => ctx.patchProps({ developingPoc: v })), toggleRow(t('drawing.developingVa'), !!props.developingVa, (v) => ctx.patchProps({ developingVa: v })))
   }
-  if (sect('mode')) out.push(row(t('drawing.mode'), dropdown(ctx.icons, ctx.box, t('drawing.mode'), ['bars', 'open', 'high', 'low', 'close', 'hl2'] as const, props.mode as 'bars', label(t, MODE_LABEL), (v) => ctx.patchProps({ mode: v }))))
-  toggle('mirrored', 'drawing.mirrored')
-  toggle('flipped', 'drawing.flipped')
-  if (sect('successBackColor')) {
-    out.push(
-      row(t('drawing.source'), swatch('sourceTextColor'), swatch('sourceBackColor'), swatch('sourceBorderColor')),
-      row(t('drawing.target'), swatch('targetTextColor'), swatch('targetBackColor'), swatch('targetBorderColor')),
-      row(t('drawing.success'), swatch('successTextColor'), swatch('successBackColor')),
-      row(t('drawing.failure'), swatch('failureTextColor'), swatch('failureBackColor')),
-    )
-  }
   if (sect('averageHL')) {
+    // The sketched candles' average span is written in the symbol's minimum ticks, cents where the
+    // host states no tick, and the drawing holds it as a price.
+    const tick = drawing.getTickSize?.() ?? null
+    const unit = tick !== null && tick > 0 ? tick : 0.01
     out.push(
-      row(t('drawing.avgHl'), numberInput(t, ctx.icons, { label: t('drawing.avgHl'), value: Number(props.averageHL), min: 0, max: 1_000_000, step: 0.5, onChange: (v) => ctx.patchProps({ averageHL: v }) })),
-      row(t('drawing.variance'), numberInput(t, ctx.icons, { label: t('drawing.variance'), value: Number(props.variance), min: 0, max: 100, step: 5, onChange: (v) => ctx.patchProps({ variance: v }) })),
+      row(t('drawing.avgHlMinticks'), numberInput(t, ctx.icons, { label: t('drawing.avgHlMinticks'), value: Math.round(Number(props.averageHL) / unit), min: 0, step: 1, width: 'field', onChange: (v) => ctx.patchProps({ averageHL: v * unit }) })),
+      row(t('drawing.variance'), numberInput(t, ctx.icons, { label: t('drawing.variance'), value: Number(props.variance), min: 0, max: 100, step: 5, width: 'field', onChange: (v) => ctx.patchProps({ variance: v }) })),
     )
   }
   if ('wickColor' in props && tab === 'Style') {
     out.push(
-      row(t('drawing.body'), swatch('upColor'), swatch('downColor')),
-      row(t('drawing.borders'), checkbox(t('drawing.drawBorders'), !!props.drawBorder, (v) => ctx.patchProps({ drawBorder: v })), swatch('borderUpColor'), swatch('borderDownColor')),
-      row(t('drawing.wick'), checkbox(t('drawing.drawWicks'), !!props.drawWick, (v) => ctx.patchProps({ drawWick: v })), swatch('wickColor')),
-      row(t('drawing.transparency'), createOpacitySlider(t, String(props.upColor), Number(props.transparency) / 100, (v) => ctx.patchQuiet({ transparency: Math.round(v * 100) })).element),
+      row(t('drawing.candles'), swatch('upColor'), swatch('downColor')),
+      checkRow(t('drawing.borders'), !!props.drawBorder, (v) => ctx.patchProps({ drawBorder: v }), [swatch('borderUpColor'), swatch('borderDownColor')]),
+      checkRow(t('drawing.wick'), !!props.drawWick, (v) => ctx.patchProps({ drawWick: v }), [swatch('wickColor')]),
+      row(t('drawing.transparency'), opacityTrack(t, 1 - Number(props.transparency) / 100, (v) => ctx.patchQuiet({ transparency: Math.round((1 - v) * 100) }))),
     )
   }
   if (sect('upperDeviation')) {
@@ -641,20 +802,7 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
       row(t('drawing.source'), dropdown(ctx.icons, ctx.box, t('drawing.source'), BAR_PRICE_SOURCES, props.source as BarPriceSource, label(t, SOURCE_LABEL), (v) => ctx.patchProps({ source: v }))),
     )
   }
-  if (sect('accountSize')) {
-    out.push(
-      sectionTitle(t('drawing.risk')),
-      row(t('drawing.accountSize'), numberInput(t, ctx.icons, { label: t('drawing.accountSize'), value: Number(props.accountSize), width: 'wide', onChange: (v) => ctx.patchProps({ accountSize: v }) })),
-      row(
-        t('drawing.risk'),
-        numberInput(t, ctx.icons, { label: t('drawing.risk'), value: Number(props.risk), onChange: (v) => ctx.patchProps({ risk: v }) }),
-        dropdown(ctx.icons, ctx.box, t('drawing.risk'), ['percent', 'money'] as const, props.riskDisplay as 'percent', (v) => (v === 'percent' ? '%' : '$'), (v) => ctx.patchProps({ riskDisplay: v })),
-      ),
-      row(t('drawing.lotSize'), numberInput(t, ctx.icons, { label: t('drawing.lotSize'), value: Number(props.lotSize), min: 0, step: 0.01, onChange: (v) => ctx.patchProps({ lotSize: v }) })),
-      row(t('drawing.leverage'), numberInput(t, ctx.icons, { label: t('drawing.leverage'), value: Number(props.leverage), min: 1, max: 500, step: 1, onChange: (v) => ctx.patchProps({ leverage: v }) })),
-      toggleRow(t('drawing.compactStatsMode'), !!props.compact, (v) => ctx.patchProps({ compact: v })),
-    )
-  }
+  if (sect('accountSize')) out.push(...positionInputs(ctx))
   const levels = Array.isArray(props.levels) ? (props.levels as FibLevel[]) : null
   if (levels && tab === 'Style') {
     // The levels as the drawing holds them NOW. Every change replaces the whole array, so a row
@@ -823,6 +971,48 @@ export function coordinateRows(ctx: RowsContext): HTMLElement[] {
     )
     return row(t(barOnly ? 'drawing.coordBar' : priceOnly ? 'drawing.coordPrice' : 'drawing.coordPriceBar', { n: i + 1 }), ...controls)
   })
+}
+
+/** A position's Inputs page: its account, lots, risk and leverage; its entry, and its target and stop
+ *  each as ticks from the entry and as a price; and how its quantity is written. Ticks are the
+ *  symbol's minimum ticks, cents where the host states no tick, and the risk's second unit is the
+ *  currency the symbol is quoted in. */
+function positionInputs(ctx: RowsContext): HTMLElement[] {
+  const { t, icons, box, drawing } = ctx
+  const props = drawing.props as Record<string, unknown>
+  const [entry, target, stop] = drawing.anchors
+  const tick = drawing.getTickSize?.() ?? null
+  const unit = tick !== null && tick > 0 ? tick : 0.01
+  const currency = drawing.getCurrencyCode?.() ?? null
+  const short = drawing.type === 'short_position'
+  const field = (text: ChartMessageKey, value: number, onChange: (v: number) => void, extra: { decimals?: number; step?: number; min?: number } = {}): HTMLElement =>
+    numberInput(t, icons, { label: t(text), value, width: 'field', onChange, ...extra })
+  /** A level, written as ticks from the entry and as a price; the target stands above a long's entry
+   *  and below a short's, the stop the other way. */
+  const level = (index: 1 | 2, anchor: typeof target): HTMLElement[] => {
+    const above = (index === 1) !== short
+    const ticks = entry && anchor ? Math.round(Math.abs(anchor.price - entry.price) / unit) : NaN
+    return [
+      row(t('drawing.ticks'), field('drawing.ticks', ticks, (v) => entry && ctx.patchAnchor(index, { price: entry.price + (above ? 1 : -1) * Math.abs(v) * unit }), { step: 1, min: 0 })),
+      row(t('drawing.price'), field('drawing.price', anchor ? anchor.price : NaN, (v) => ctx.patchAnchor(index, { price: v }))),
+    ]
+  }
+  return [
+    row(t('drawing.accountSize'), field('drawing.accountSize', Number(props.accountSize), (v) => ctx.patchProps({ accountSize: v }), { min: 0 })),
+    row(t('drawing.lotSize'), field('drawing.lotSize', Number(props.lotSize), (v) => ctx.patchProps({ lotSize: v }), { min: 0, step: 0.01 })),
+    row(
+      t('drawing.risk'),
+      field('drawing.risk', Number(props.risk), (v) => ctx.patchProps({ risk: v }), { decimals: 2, min: 0 }),
+      dropdown(icons, box, t('drawing.riskUnit'), ['percent', 'money'] as const, props.riskDisplay as 'percent', (v) => (v === 'percent' ? '%' : (currency ?? t('drawing.riskAmount'))), (v) => ctx.patchProps({ riskDisplay: v })),
+    ),
+    row(t('drawing.entryPrice'), field('drawing.entryPrice', entry ? entry.price : NaN, (v) => ctx.patchAnchor(0, { price: v }))),
+    row(t('drawing.leverage'), field('drawing.leverage', Number(props.leverage), (v) => ctx.patchProps({ leverage: v }), { decimals: 1, min: 1, step: 1 })),
+    sectionTitle(t('drawing.profitLevel')),
+    ...level(1, target),
+    sectionTitle(t('drawing.stopLevel')),
+    ...level(2, stop),
+    row(t('drawing.qtyPrecision'), dropdown(icons, box, t('drawing.qtyPrecision'), QTY_PRECISIONS, props.qtyPrecision as (typeof QTY_PRECISIONS)[number], (v) => (QTY_PRECISION_LABEL[v] ? t(QTY_PRECISION_LABEL[v]!) : t('drawing.qtyDecimals', { n: Number(v) })), (v) => ctx.patchProps({ qtyPrecision: v }))),
+  ]
 }
 
 /** A parallel channel's offset: the price its parallel stands from the baseline at the third point's

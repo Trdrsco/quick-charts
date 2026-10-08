@@ -155,12 +155,14 @@ export interface MultiChoice {
 /** Several switches behind one list button: each choice is a checkbox row of its own, the list
  *  stays open while the viewer ticks, and the button reads the choices that are on, or the empty
  *  word when none is. */
-export function multiDropdown(icons: IconResolver, box: HTMLElement, props: { label: string; empty: string; choices: readonly MultiChoice[]; width?: SelectWidth }): HTMLButtonElement {
+export function multiDropdown(icons: IconResolver, box: HTMLElement, props: { label: string; empty: string; choices: readonly MultiChoice[]; width?: SelectWidth; asWritten?: boolean }): HTMLButtonElement {
   const checked = props.choices.map((c) => c.checked)
+  // The face runs the choices on as one phrase, each after the first in lower case, unless the
+  // choices' words are to be read as written.
   const summary = (): string => {
     const on = props.choices.filter((_, i) => checked[i]).map((c) => c.label)
     if (!on.length) return props.empty
-    return on.map((text, i) => (i === 0 ? text : text.charAt(0).toLocaleLowerCase() + text.slice(1))).join(', ')
+    return on.map((text, i) => (i === 0 || props.asWritten ? text : text.charAt(0).toLocaleLowerCase() + text.slice(1))).join(', ')
   }
   const b = listButton(icons, props.label, summary(), props.width ?? 'wide', 'menu')
   const face = b.querySelector<HTMLElement>('.qc-drawing-select-value')!

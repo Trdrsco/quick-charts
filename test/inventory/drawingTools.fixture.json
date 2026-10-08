@@ -164,7 +164,9 @@
       "placement": null,
       "hasText": false,
       "capturesBars": true,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff"
+      },
       "props": [
         "bars",
         "flipped",
@@ -297,7 +299,11 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#80ccdb",
+        "lineWidth": 2,
+        "lineStyle": "solid"
+      },
       "props": []
     },
     {
@@ -904,7 +910,11 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#2962ff",
+        "lineWidth": 2,
+        "lineStyle": "solid"
+      },
       "props": [
         "failureBackColor",
         "failureTextColor",
@@ -1190,17 +1200,24 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "textColor": "#ffffff"
+        "lineColor": "#808080",
+        "lineWidth": 1,
+        "lineStyle": "solid",
+        "textColor": "#ffffff",
+        "fontSize": 12
       },
       "props": [
         "accountSize",
+        "alwaysShowStats",
         "compact",
         "leverage",
         "lotSize",
         "profitColor",
+        "qtyPrecision",
         "risk",
         "riskDisplay",
         "showPrices",
+        "stats",
         "stopColor"
       ]
     },
@@ -1552,9 +1569,15 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.2
+        "lineColor": "#9c9c9c",
+        "lineWidth": 2,
+        "lineStyle": "solid"
       },
-      "props": []
+      "props": [
+        "color1",
+        "color2",
+        "fillBackground"
+      ]
     },
     {
       "type": "short_position",
@@ -1564,17 +1587,24 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "textColor": "#ffffff"
+        "lineColor": "#808080",
+        "lineWidth": 1,
+        "lineStyle": "solid",
+        "textColor": "#ffffff",
+        "fontSize": 12
       },
       "props": [
         "accountSize",
+        "alwaysShowStats",
         "compact",
         "leverage",
         "lotSize",
         "profitColor",
+        "qtyPrecision",
         "risk",
         "riskDisplay",
         "showPrices",
+        "stats",
         "stopColor"
       ]
     },
@@ -1597,7 +1627,11 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineColor": "#159980",
+        "lineWidth": 2,
+        "lineStyle": "solid"
+      },
       "props": []
     },
     {
@@ -1668,9 +1702,15 @@
       "hasText": false,
       "capturesBars": false,
       "style": {
-        "fillOpacity": 0.12
+        "lineColor": "#159980",
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fillColor": "#6aa84f",
+        "fillOpacity": 0.5
       },
-      "props": []
+      "props": [
+        "fillBackground"
+      ]
     },
     {
       "type": "trend_angle",

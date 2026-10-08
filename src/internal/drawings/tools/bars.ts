@@ -244,9 +244,14 @@ export type BarsPatternProps = {
   mirrored: boolean
   /** Reflect the pattern horizontally (time axis). */
   flipped: boolean
-  /** 'bars' paints candle sticks; a price source paints the pattern as a line through it. */
-  mode: 'bars' | 'open' | 'high' | 'low' | 'close' | 'hl2'
+  /** `hl` paints each bar's high-low range and `oc` its open-close range; a price paints the
+   *  pattern as a line through it. */
+  mode: BarsPatternMode
 }
+
+/** The ways a bars pattern paints its bars, in the order its Mode list offers them. */
+export const BARS_PATTERN_MODES = ['hl', 'oc', 'close', 'open', 'high', 'low', 'hl2'] as const
+export type BarsPatternMode = (typeof BARS_PATTERN_MODES)[number]
 
 export type GhostFeedProps = {
   /** Average candle high-low span in price units; 0 = auto-seed from recent bars at placement. */
@@ -312,7 +317,12 @@ export class BarsPattern extends CapturedBarsDrawing<BarsPatternProps> {
   readonly type: string = 'bars_pattern'
 
   protected override defaultProps(): BarsPatternProps {
-    return { bars: [], mirrored: false, flipped: false, mode: 'bars' }
+    return { bars: [], mirrored: false, flipped: false, mode: 'hl' }
+  }
+
+  /** A pattern saved painting candle sticks paints its bars' ranges. */
+  protected override upgradeProps(props: Partial<BarsPatternProps>): Partial<BarsPatternProps> {
+    return (props.mode as string | undefined) === 'bars' ? { ...props, mode: 'hl' } : props
   }
 
   private priceOf(bar: CapturedBar): number {
@@ -341,8 +351,8 @@ export class BarsPattern extends CapturedBarsDrawing<BarsPatternProps> {
     const { seq, yAt } = this.sequence(f)
     const width = (f.x2 - f.x1) / seq.length
 
-    // The whole style surface is the one color (opacity riding in it) — no width/dash channel.
-    if (this.props.mode !== 'bars') {
+    // The whole style surface is the one color, its opacity riding in it, with no width or dash.
+    if (this.props.mode !== 'hl' && this.props.mode !== 'oc') {
       ctx.save()
       ctx.setLineDash([])
       ctx.strokeStyle = this.style.lineColor
@@ -361,22 +371,17 @@ export class BarsPattern extends CapturedBarsDrawing<BarsPatternProps> {
       return
     }
 
+    // Each bar its range as a bar: high to low, or open to close.
     const bodyW = Math.max(1.5, Math.min(9, width * 0.6))
+    const oc = this.props.mode === 'oc'
     ctx.save()
-    ctx.setLineDash([])
-    ctx.strokeStyle = this.style.lineColor
     ctx.fillStyle = this.style.lineColor
-    ctx.lineWidth = 1
     for (let i = 0; i < seq.length; i++) {
-      const bar = seq[i]
+      const bar = seq[i]!
       const cx = f.x1 + width * (i + 0.5)
-      const yO = yAt(bar.o)
-      const yC = yAt(bar.c)
-      ctx.beginPath()
-      ctx.moveTo(cx, yAt(bar.h))
-      ctx.lineTo(cx, yAt(bar.l))
-      ctx.stroke()
-      ctx.fillRect(cx - bodyW / 2, Math.min(yO, yC), bodyW, Math.max(1, Math.abs(yC - yO)))
+      const y1 = yAt(oc ? bar.o : bar.h)
+      const y2 = yAt(oc ? bar.c : bar.l)
+      ctx.fillRect(cx - bodyW / 2, Math.min(y1, y2), bodyW, Math.max(1, Math.abs(y2 - y1)))
     }
     ctx.restore()
   }
