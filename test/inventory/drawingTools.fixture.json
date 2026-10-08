@@ -1082,11 +1082,19 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
+        "backgroundOpacity",
         "extendLines",
+        "fillBackground",
         "levels",
+        "medianColor",
+        "medianStyle",
+        "medianWidth",
         "variant"
       ]
     },
@@ -1205,11 +1213,19 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
+        "backgroundOpacity",
         "extendLines",
+        "fillBackground",
         "levels",
+        "medianColor",
+        "medianStyle",
+        "medianWidth",
         "variant"
       ]
     },
@@ -1379,11 +1395,19 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
+        "backgroundOpacity",
         "extendLines",
+        "fillBackground",
         "levels",
+        "medianColor",
+        "medianStyle",
+        "medianWidth",
         "variant"
       ]
     },
@@ -1394,11 +1418,19 @@
       "placement": null,
       "hasText": false,
       "capturesBars": false,
-      "style": null,
+      "style": {
+        "lineWidth": 2,
+        "lineStyle": "solid",
+        "fontSize": 12
+      },
       "props": [
-        "background",
+        "backgroundOpacity",
         "extendLines",
+        "fillBackground",
         "levels",
+        "medianColor",
+        "medianStyle",
+        "medianWidth",
         "variant"
       ]
     },

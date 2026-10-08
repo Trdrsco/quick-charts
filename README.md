@@ -2866,6 +2866,12 @@ of its own, and a gann box shades its price and time bands on their own switches
 angles corner to corner in `anglesColor`. `reverse` counts a box's divisions from the other
 corner.
 
+A pitchfork stands its line pairs one to a line the same way, each pair its switch, its value and
+its own stroke, under its median's stroke (`medianColor`, `medianWidth`, `medianStyle`) and over
+the bands between pairs, each in its outer pair's color at `backgroundOpacity` while
+`fillBackground` is on. `extendLines` runs every line back past the fork's start, and `variant`
+switches its construction in place: `original`, `schiff`, `modified_schiff` or `inside`.
+
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
 the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
 that shade their legs, the background, which `fillBackground` switches off and on keeping its

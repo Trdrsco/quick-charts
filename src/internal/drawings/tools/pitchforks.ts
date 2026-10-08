@@ -1,41 +1,48 @@
-import type { Point, Viewport } from '../core/types'
+import type { DrawingStyle, LineStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment, midpoint } from '../core/geometry'
 import { applyStroke, strokeSegment, withAlpha } from '../render/canvas'
+import { fibLevelColor, type FibLevel } from './fibonacci'
 
-/** One additional line set at ±value of the fork's half-width (1 = the tines through p2/p3). */
-export type ForkLevel = {
-  value: number
-  visible: boolean
-  /** Per-set line color; the drawing's stroke color when omitted. */
-  color?: string
-}
+/** One pair of fork lines set at ±value of the fork's half-width (1 = the tines through p2/p3), in
+ *  its own color, and its own width and style where it carries them. */
+export type ForkLevel = FibLevel
 
 export type ForkVariant = 'original' | 'schiff' | 'modified_schiff' | 'inside'
 
 export type PitchforkProps = {
-  /** Which fork construction the median uses — switchable in place. */
+  /** Which fork construction the median uses, switchable in place. */
   variant: ForkVariant
-  /** Extend all lines left as well as right. */
+  /** Extend all lines back past the fork's start as well as onward. */
   extendLines: boolean
+  /** The median's own stroke. */
+  medianColor: string
+  medianWidth: number
+  medianStyle: LineStyle
   levels: ForkLevel[]
-  /** Background fill between visible line pairs. */
-  background: boolean
+  /** The bands between neighbouring line pairs, each in the color of the outer pair, at
+   *  `backgroundOpacity`. Switched off, the bands keep their opacity for when they return. */
+  fillBackground: boolean
+  backgroundOpacity: number
 }
 
-const DEFAULT_LEVELS: ForkLevel[] = [
-  { value: 0.25, visible: false },
-  { value: 0.5, visible: true },
-  { value: 0.75, visible: false },
-  { value: 1, visible: true },
-  { value: 1.5, visible: false },
-  { value: 2, visible: false },
+/** The nine line pairs a pitchfork offers: the half and the tines shown, seven more to switch on. */
+const FORK_LEVELS: readonly [number, string, boolean][] = [
+  [0.25, '#ffb74d', false],
+  [0.382, '#81c784', false],
+  [0.5, '#089981', true],
+  [0.618, '#089981', false],
+  [0.75, '#00bcd4', false],
+  [1, '#2962ff', true],
+  [1.5, '#9c27b0', false],
+  [1.75, '#e91e63', false],
+  [2, '#f77c80', false],
 ]
 
 interface ForkGeometry {
   /** Where the median line begins (the fork's handle end). */
   origin: Point
-  /** Midpoint of the p2→p3 segment — every level line is anchored relative to it. */
+  /** Midpoint of the p2→p3 segment, which every level line is placed from. */
   mid: Point
   /** Direction of all fork lines (origin → mid). */
   dir: Point
@@ -43,9 +50,17 @@ interface ForkGeometry {
   halfWidth: Point
 }
 
+/** A level's stroke: its own color, and its own width and style where it carries them. */
+const levelStroke = (style: Readonly<DrawingStyle>, level: ForkLevel, color: string): DrawingStyle => ({
+  ...style,
+  lineColor: color,
+  lineWidth: level.width ?? style.lineWidth,
+  lineStyle: level.style ?? style.lineStyle,
+})
+
 /**
- * The pitchfork family. All variants share one parametric fork — a median through `mid(p2,p3)`
- * plus level lines offset by multiples of the half-width — and differ only in where the median
+ * The pitchfork family. All variants share one parametric fork (a median through `mid(p2,p3)`
+ * plus level lines offset by multiples of the half-width) and differ only in where the median
  * originates.
  */
 export class Pitchfork extends Drawing<PitchforkProps> {
@@ -60,9 +75,21 @@ export class Pitchfork extends Drawing<PitchforkProps> {
     return {
       variant: this.defaultVariant(),
       extendLines: false,
-      levels: DEFAULT_LEVELS.map((l) => ({ ...l })),
-      background: true,
+      medianColor: '#f23645',
+      medianWidth: 2,
+      medianStyle: 'solid',
+      levels: FORK_LEVELS.map(([value, color, visible]) => ({ value, visible, color, width: 2, style: 'solid' })),
+      fillBackground: true,
+      backgroundOpacity: 0.2,
     }
+  }
+
+  /** A fork saved with its background switch as `background` reads it as `fillBackground`. */
+  protected override upgradeProps(props: Partial<PitchforkProps>): Partial<PitchforkProps> {
+    const saved = props as Partial<PitchforkProps> & { background?: unknown }
+    if (!('background' in saved)) return props
+    const { background, ...rest } = saved
+    return 'fillBackground' in rest ? rest : { ...rest, fillBackground: background !== false }
   }
 
   requiredAnchors(): number {
@@ -101,28 +128,29 @@ export class Pitchfork extends Drawing<PitchforkProps> {
     return { x: fork.mid.x + fork.halfWidth.x * value, y: fork.mid.y + fork.halfWidth.y * value }
   }
 
+  /** The visible line pairs, closest to the median first, each with its color. */
+  protected shownLevels(): { level: ForkLevel; color: string }[] {
+    return this.props.levels
+      .map((level, i) => ({ level, color: fibLevelColor(level, i) }))
+      .filter((e) => e.level.visible && e.level.value > 0)
+      .sort((p, q) => p.level.value - q.level.value)
+  }
+
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const fork = this.fork(viewport)
     if (!fork) return
-    const visible = this.props.levels.filter((l) => l.visible && l.value > 0)
+    const shown = this.shownLevels()
 
-    if (this.props.background && visible.length > 0) {
-      // Fill between each adjacent pair of visible level lines, mirrored above and below.
-      const sorted = [...visible].sort((a, b) => a.value - b.value)
-      const bands: [number, number][] = []
-      let prev = 0
-      for (const l of sorted) {
-        bands.push([prev, l.value])
-        prev = l.value
-      }
+    if (this.props.fillBackground && this.props.backgroundOpacity > 0) {
+      // Fill between each pair of neighbouring lines on either side of the median, in the color of
+      // the outer one.
       ctx.save()
-      for (let i = 0; i < bands.length; i++) {
-        const [from, to] = bands[i]
-        const alpha = 0.06 + 0.03 * (bands.length - i)
-        ctx.fillStyle = withAlpha(this.style.lineColor, alpha)
-        for (const sign of [1, -1]) {
-          const lineA = this.lineThrough(fork, this.levelPoint(fork, from * sign), viewport)
-          const lineB = this.lineThrough(fork, this.levelPoint(fork, to * sign), viewport)
+      for (const sign of [1, -1]) {
+        let inner = 0
+        for (const entry of shown) {
+          ctx.fillStyle = withAlpha(entry.color, this.props.backgroundOpacity)
+          const lineA = this.lineThrough(fork, this.levelPoint(fork, inner * sign), viewport)
+          const lineB = this.lineThrough(fork, this.levelPoint(fork, entry.level.value * sign), viewport)
           ctx.beginPath()
           ctx.moveTo(lineA.a.x, lineA.a.y)
           ctx.lineTo(lineA.b.x, lineA.b.y)
@@ -130,36 +158,37 @@ export class Pitchfork extends Drawing<PitchforkProps> {
           ctx.lineTo(lineB.a.x, lineB.a.y)
           ctx.closePath()
           ctx.fill()
+          inner = entry.level.value
         }
       }
       ctx.restore()
     }
 
-    applyStroke(ctx, this.style)
-    // Median: handle from the origin to mid, then onward along the fork.
-    const median = this.lineThrough(fork, fork.mid, viewport)
-    strokeSegment(ctx, this.props.extendLines ? median.a : fork.origin, median.b)
-    // Level lines above and below, each set in its own color when one is chosen.
-    for (const level of visible) {
+    // Level lines above and below, each pair in its own stroke.
+    for (const entry of shown) {
       ctx.save()
-      applyStroke(ctx, this.style)
-      if (level.color) ctx.strokeStyle = level.color
+      applyStroke(ctx, levelStroke(this.style, entry.level, entry.color))
       for (const sign of [1, -1]) {
-        const line = this.lineThrough(fork, this.levelPoint(fork, level.value * sign), viewport)
+        const line = this.lineThrough(fork, this.levelPoint(fork, entry.level.value * sign), viewport)
         strokeSegment(ctx, line.a, line.b)
       }
       ctx.restore()
     }
+    // The median, in its own stroke: from the origin to mid, then onward along the fork.
+    ctx.save()
+    applyStroke(ctx, { ...this.style, lineColor: this.props.medianColor, lineWidth: this.props.medianWidth, lineStyle: this.props.medianStyle })
+    const median = this.lineThrough(fork, fork.mid, viewport)
+    strokeSegment(ctx, this.props.extendLines ? median.a : fork.origin, median.b)
+    ctx.restore()
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
     const fork = this.fork(viewport)
     if (!fork) return false
-    const tolerance = Math.max(6, this.style.lineWidth / 2 + 4)
     const median = this.lineThrough(fork, fork.mid, viewport)
-    if (distanceToSegment(point, this.props.extendLines ? median.a : fork.origin, median.b) <= tolerance) return true
-    for (const level of this.props.levels) {
-      if (!level.visible || level.value <= 0) continue
+    if (distanceToSegment(point, this.props.extendLines ? median.a : fork.origin, median.b) <= Math.max(6, this.props.medianWidth / 2 + 4)) return true
+    for (const { level } of this.shownLevels()) {
+      const tolerance = Math.max(6, (level.width ?? this.style.lineWidth) / 2 + 4)
       for (const sign of [1, -1]) {
         const line = this.lineThrough(fork, this.levelPoint(fork, level.value * sign), viewport)
         if (distanceToSegment(point, line.a, line.b) <= tolerance) return true

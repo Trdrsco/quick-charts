@@ -203,10 +203,10 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(Pitchfan, { type: 'pitchfan', name: 'Pitchfan', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
 
   // Pitchforks
-  tool(Pitchfork, { type: 'pitchfork', name: 'Pitchfork', category: 'pitchforks', anchors: 3 }),
-  tool(SchiffPitchfork, { type: 'schiff_pitchfork', name: 'Schiff pitchfork', category: 'pitchforks', anchors: 3 }),
-  tool(ModifiedSchiffPitchfork, { type: 'schiff_pitchfork_modified', name: 'Modified Schiff pitchfork', category: 'pitchforks', anchors: 3 }),
-  tool(InsidePitchfork, { type: 'inside_pitchfork', name: 'Inside pitchfork', category: 'pitchforks', anchors: 3 }),
+  tool(Pitchfork, { type: 'pitchfork', name: 'Pitchfork', category: 'pitchforks', anchors: 3, style: FIB_LOOK }),
+  tool(SchiffPitchfork, { type: 'schiff_pitchfork', name: 'Schiff pitchfork', category: 'pitchforks', anchors: 3, style: FIB_LOOK }),
+  tool(ModifiedSchiffPitchfork, { type: 'schiff_pitchfork_modified', name: 'Modified Schiff pitchfork', category: 'pitchforks', anchors: 3, style: FIB_LOOK }),
+  tool(InsidePitchfork, { type: 'inside_pitchfork', name: 'Inside pitchfork', category: 'pitchforks', anchors: 3, style: FIB_LOOK }),
 
   // Gann
   tool(GannBox, { type: 'gannbox', name: 'Gann box', category: 'gann', anchors: 2, style: { lineColor: 'rgba(21, 56, 153, 0.8)', lineWidth: 2, lineStyle: 'solid', fontSize: 12 } }),

@@ -165,6 +165,26 @@ describe('a speed resistance fan and a gann box', () => {
   })
 })
 
+describe('a pitchfork', () => {
+  it('offers its four constructions, holds its own, and switches to another in place', () => {
+    const { dialog, drawing, page } = rig('schiff_pitchfork')
+    expect(choices(dialog, list(page(), 'Style'))).toEqual(['Original', 'Schiff', 'Modified Schiff', 'Inside'])
+    expect(chosen(dialog, list(page(), 'Style'))).toBe('Schiff')
+    pick(dialog, list(page(), 'Style'), 'Inside')
+    expect(drawing.props.variant).toBe('inside')
+    expect(list(page(), 'Style').textContent).toBe('Inside')
+  })
+
+  it('extends its lines on its switch and wells its median and each pair in a stroke of its own', () => {
+    const { drawing, page } = rig('pitchfork')
+    control(page(), 'Extend lines').click()
+    expect(drawing.props.extendLines).toBe(true)
+    expect(control(page(), 'Median').querySelector('.qc-drawing-stroke')).not.toBeNull()
+    expect(control(page(), 'Level 3 color').dataset.qcDim).toBe('false')
+    expect(control(page(), 'Level 1 color').dataset.qcDim).toBe('true')
+  })
+})
+
 /** The look and setup each leveled tool opens with. */
 describe('what a new leveled drawing starts with', () => {
   const fresh = (type: string) => drawingTools.create(type, 'x', anchors(drawingTools.get(type)!.anchors))!
@@ -213,6 +233,24 @@ describe('what a new leveled drawing starts with', () => {
     expect(fresh('fib_timezone').props).toMatchObject({ showLevels: true, labelsHAlign: 'right', labelsVAlign: 'bottom', fillBackground: false, backgroundOpacity: 0.2 })
     expect(fresh('fib_wedge').props).toMatchObject({ trendLine: true, trendLineColor: '#808080', trendLineWidth: 2, trendLineStyle: 'solid' })
     expect(fresh('pitchfan').props).toMatchObject({ medianColor: '#f23645', medianWidth: 2, medianStyle: 'solid', fillBackground: true })
+  })
+
+  it('opens the four pitchforks on one ladder of nine pairs, the half and the tines shown, with a red median', () => {
+    for (const type of ['pitchfork', 'schiff_pitchfork', 'schiff_pitchfork_modified', 'inside_pitchfork']) {
+      const d = fresh(type)
+      expect((d.props.levels as { value: number; color: string; visible: boolean; width: number }[]).map((l) => [l.value, l.color, l.visible, l.width]), type).toEqual([
+        [0.25, '#ffb74d', false, 2],
+        [0.382, '#81c784', false, 2],
+        [0.5, '#089981', true, 2],
+        [0.618, '#089981', false, 2],
+        [0.75, '#00bcd4', false, 2],
+        [1, '#2962ff', true, 2],
+        [1.5, '#9c27b0', false, 2],
+        [1.75, '#e91e63', false, 2],
+        [2, '#f77c80', false, 2],
+      ])
+      expect(d.props, type).toMatchObject({ extendLines: false, medianColor: '#f23645', medianWidth: 2, medianStyle: 'solid', fillBackground: true, backgroundOpacity: 0.2 })
+    }
   })
 
   it('divides a fan and a gann box on seven divisions a side, with a fan’s grid and a box’s two sets of bands', () => {

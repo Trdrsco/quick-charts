@@ -516,8 +516,8 @@
 
 /* A leveled tool's level grid: two levels to a 34px line, 8px between lines and 8px above the
  * first, each level its 18px switch, its 100px value and its 34px well 8px apart, the second level
- * 48px after the first's well. A level switched off keeps its well on the read-only fill,
- * dimmed. */
+ * 48px after the first's well. A level switched off keeps its well, and its stroke where it shows
+ * one, on the read-only fill, dimmed. */
 [data-qc-theme] .qc-drawing-page > .qc-drawing-level-row {
   min-height: 34px;
   margin-bottom: 8px;
@@ -536,7 +536,8 @@
   background: var(--qc-control-fieldFill);
 }
 
-[data-qc-theme] .qc-drawing-swatch-button[data-qc-dim='true'] > .qc-drawing-well {
+[data-qc-theme] .qc-drawing-swatch-button[data-qc-dim='true'] > .qc-drawing-well,
+[data-qc-theme] .qc-drawing-swatch-button[data-qc-dim='true'] > .qc-drawing-stroke {
   opacity: 0.5;
 }
 

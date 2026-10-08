@@ -392,14 +392,16 @@ function timeLabelsRow(ctx: RowsContext): HTMLElement {
   ])
 }
 
-/** The Style page of a fib whose levels stand one to a line: its trend line or median where it has
- *  one, the levels, the one color, the bands, and the rows of its own. */
-export function strokedLevelRows(ctx: RowsContext, kind: 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan'): HTMLElement[] {
+/** The Style page of a tool whose levels stand one to a line: a pitchfork's Extend lines switch, its
+ *  trend line or median where it has one, the levels, the one color, the bands, and the rows of its
+ *  own. */
+export function strokedLevelRows(ctx: RowsContext, kind: 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'pitchfork'): HTMLElement[] {
   const { t, drawing } = ctx
   const props = drawing.props as Record<string, unknown>
   const toggle = (key: string, text: ChartMessageKey): HTMLElement => toggleRow(t(text), !!props[key], (v) => ctx.patchProps({ [key]: v }))
   const out: HTMLElement[] = []
-  if (kind === 'pitchfan') out.push(medianRow(ctx))
+  if (kind === 'pitchfork') out.push(toggle('extendLines', 'drawing.extendLines'), medianRow(ctx))
+  else if (kind === 'pitchfan') out.push(medianRow(ctx))
   else if (kind !== 'timeZone') out.push(trendRow(ctx))
   out.push(...levelLines(ctx), oneColorRow(ctx), bandsRow(ctx))
   if (kind === 'timeZone' || kind === 'trendTime') out.push(timeLabelsRow(ctx))

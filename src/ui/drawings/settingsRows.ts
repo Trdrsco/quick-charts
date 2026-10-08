@@ -118,7 +118,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pattern'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -150,6 +150,10 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   pitchfan: 'pitchfan',
   fib_speed_resist_fan: 'speedFan',
   gannbox: 'gannBox',
+  pitchfork: 'pitchfork',
+  schiff_pitchfork: 'pitchfork',
+  schiff_pitchfork_modified: 'pitchfork',
+  inside_pitchfork: 'pitchfork',
   xabcd_pattern: 'pattern',
   cypher_pattern: 'pattern',
   abcd_pattern: 'pattern',
@@ -173,12 +177,17 @@ const STATS: readonly { key: string; label: ChartMessageKey }[] = [
 ]
 const STATS_POSITION_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.left', center: 'drawing.center', right: 'drawing.right', auto: 'drawing.auto' }
 
+/** A pitchfork's Style row: the construction its median takes, switched in place. */
+const forkStyleRow = (ctx: RowsContext): HTMLElement =>
+  row(ctx.t('drawing.rowStyle'), dropdown(ctx.icons, ctx.box, ctx.t('drawing.rowStyle'), ['original', 'schiff', 'modified_schiff', 'inside'] as const, ctx.drawing.props.variant as 'original', label(ctx.t, VARIANT_LABEL), (v) => ctx.patchProps({ variant: v })))
+
 /** The rows of a listed tool's Style page. A switch a viewer ticks in a list writes quietly, so the
  *  list stays open over a page that does not rebuild under it. */
 function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
   if (layout === 'fib' || layout === 'fibChannel') return fibRows(ctx, layout === 'fib')
   if (layout === 'timeZone' || layout === 'trendTime' || layout === 'circles' || layout === 'arcs' || layout === 'wedge' || layout === 'pitchfan') return strokedLevelRows(ctx, layout)
   if (layout === 'speedFan' || layout === 'gannBox') return boxLevelRows(ctx, layout)
+  if (layout === 'pitchfork') return [...strokedLevelRows(ctx, 'pitchfork'), forkStyleRow(ctx)]
   const { t, drawing, box, icons } = ctx
   const props = drawing.props as Record<string, unknown>
   const style = drawing.style
@@ -355,9 +364,6 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   toggle('showPrice', 'drawing.priceLabel')
   toggle('showTime', 'drawing.timeLabel')
   toggle('middleLine', 'drawing.middleLine')
-  if (sect('variant')) {
-    out.push(row(t('drawing.rowStyle'), dropdown(ctx.icons, ctx.box, t('drawing.rowStyle'), ['original', 'schiff', 'modified_schiff', 'inside'] as const, props.variant as 'original', label(t, VARIANT_LABEL), (v) => ctx.patchProps({ variant: v }))))
-  }
   if (sect('showPriceDelta')) {
     out.push(sectionTitle(t('drawing.sectionStats')))
     if (type !== 'date_range') {

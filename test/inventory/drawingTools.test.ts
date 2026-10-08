@@ -200,7 +200,7 @@ describe('the leveled families', () => {
       levels: levels(type, 3).map((l) => l.value),
     }))
     expect(variants.map((v) => v.variant)).toEqual(['original', 'schiff', 'modified_schiff', 'inside'])
-    for (const v of variants) expect(v.levels).toEqual([0.25, 0.5, 0.75, 1, 1.5, 2])
+    for (const v of variants) expect(v.levels).toEqual([0.25, 0.382, 0.5, 0.618, 0.75, 1, 1.5, 1.75, 2])
   })
 
   it('the gann boxes divide the box on the gann ratios, and the fan draws the gann angles', () => {

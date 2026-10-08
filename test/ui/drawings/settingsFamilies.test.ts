@@ -64,6 +64,17 @@ const BANDS = (on: boolean): string => `${on ? '[x]' : '[ ]'} Background: opacit
 /** A box's seven divisions on one side, two to a line. */
 const BOX_GRID = [...Array.from({ length: 3 }, () => 'full: check(x) number color check(x) number color'), 'full: check(x) number color']
 
+/** A pitchfork's Style page: its lines' extension, its median, its nine pairs with the half and the
+ *  tines shown, the one color, the bands, and its construction named in its Style list. */
+const forkStyle = (construction: string): string[] => [
+  '[ ] Extend lines',
+  'Median: colorWithThickness',
+  ...levelLines([false, false, true, false, false, true, false, false, false]),
+  'Use one color: color',
+  BANDS(true),
+  `Style: select(${construction})`,
+]
+
 /** The Coordinates page of a tool placed on so many points. */
 const points = (n: number): string[] => Array.from({ length: n }, (_, i) => `#${i + 1} (price, bar): number number`)
 
@@ -181,6 +192,10 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Text?: string[]; 
     Style: ['## Price levels', ...BOX_GRID, '[x] Left labels', '[x] Right labels', BANDS(true), 'gap', '## Time levels', ...BOX_GRID, '[x] Top labels', '[x] Bottom labels', BANDS(true), 'gap', 'Use one color: color', '[ ] Angles: color', '[ ] Reverse'],
     Coordinates: TWO_POINTS,
   },
+  pitchfork: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Original'), Coordinates: THREE_POINTS },
+  schiff_pitchfork: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Schiff'), Coordinates: THREE_POINTS },
+  schiff_pitchfork_modified: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Modified Schiff'), Coordinates: THREE_POINTS },
+  inside_pitchfork: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: forkStyle('Inside'), Coordinates: THREE_POINTS },
   xabcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   cypher_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },
   abcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(false), Coordinates: points(4) },
