@@ -120,11 +120,11 @@ export function lineStyleSelect(ctx: RowsContext, value: LineStyle, onChange: (v
   })
 }
 
-/** The opacity the bands between levels are filled at: a 148px track that fades into the drawings'
- *  fill color over a checked ground, its knob standing at the opacity. Moving it writes quietly, so
- *  the track keeps the pointer while it is dragged. */
-export function opacityTrack(t: ChartTranslate, value: number, onChange: (v: number) => void): HTMLInputElement {
-  const track = el('input', { type: 'range', min: '0', max: '100', step: '1', class: 'qc-drawing-band-opacity', 'aria-label': t('drawing.backgroundOpacity') }) as HTMLInputElement
+/** An opacity on a 148px track that fades into the drawings' fill color over a checked ground, its
+ *  knob standing at the opacity: the bands' between levels unless it is named for what else it
+ *  sets. Moving it writes quietly, so the track keeps the pointer while it is dragged. */
+export function opacityTrack(t: ChartTranslate, value: number, onChange: (v: number) => void, name: string = t('drawing.backgroundOpacity')): HTMLInputElement {
+  const track = el('input', { type: 'range', min: '0', max: '100', step: '1', class: 'qc-drawing-band-opacity', 'aria-label': name }) as HTMLInputElement
   track.value = String(Math.round(Math.min(1, Math.max(0, value)) * 100))
   track.addEventListener('input', () => onChange(Number(track.value) / 100))
   return track

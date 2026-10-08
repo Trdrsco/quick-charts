@@ -263,7 +263,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(ContentCard, { type: 'content_card', name: 'Content card', category: 'content', anchors: 1, hasText: true }),
   tool(GlyphMark, { type: 'emoji', name: 'Emoji', category: 'content', anchors: 1 }),
   tool(StickerMark, { type: 'sticker', name: 'Sticker', category: 'content', anchors: 1 }),
-  tool(IconMark, { type: 'icon', name: 'Icon', category: 'content', anchors: 1 }),
+  tool(IconMark, { type: 'icon', name: 'Icon', category: 'content', anchors: 1, style: { lineColor: '#2962ff' } }),
 
   // Annotation
   tool(TextLabel, { type: 'text', name: 'Text', category: 'annotation', anchors: 1, hasText: true, style: { textColor: '#2962ff', fontSize: 14, fillColor: '#2962ff', fillOpacity: 0.25, lineColor: '#707070' } }),
@@ -281,9 +281,9 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(TableNote, { type: 'table', name: 'Table', category: 'annotation', anchors: 1, style: { fillColor: '#0f0f0f', fillOpacity: 1, lineColor: '#575757', textColor: '#dbdbdb', fontSize: 14 } }),
 
   // Brushes & multi-point shapes
-  tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand' }),
-  tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: 'rgba(245, 166, 35, 0.35)', lineWidth: 20 } }),
-  tool(PathLine, { type: 'path', name: 'Path', category: 'shapes', anchors: 2, placement: 'multipoint' }),
+  tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: '#00bcd4', lineWidth: 2, lineStyle: 'solid', fillColor: '#00bcd4', fillOpacity: 0.5 } }),
+  tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: 'rgba(242, 54, 69, 0.2)', lineWidth: 20 } }),
+  tool(PathLine, { type: 'path', name: 'Path', category: 'shapes', anchors: 2, placement: 'multipoint', style: { lineColor: '#2962ff', lineWidth: 2, lineStyle: 'solid' } }),
   tool(Polyline, { type: 'polyline', name: 'Polyline', category: 'shapes', anchors: 2, placement: 'multipoint', style: shapeLook('#00bcd4') }),
 
   // Measurement

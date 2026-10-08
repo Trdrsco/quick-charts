@@ -25,8 +25,7 @@ import { button, el } from './dom'
 import { checkbox, checkRow, dropdown, fullRow, groupGap, lineEndButton, multiDropdown, numberInput, openPopover, row, sectionTitle, swatchButton, toggleRow, visibilityRangeRow } from './fields'
 import { mountGlyphPicker } from './glyphPicker'
 import { bundledGlyphSource } from '../../drawings/emoji'
-import { createOpacitySlider } from '../controls/color'
-import { humanSize } from './imagePicker'
+import { firstImageFile, humanSize } from './imagePicker'
 import type { IconResolver } from '../icons/resolver'
 import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
 import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, levelLines, opacityTrack, strokedLevelRows, thicknessSelect } from './levelRows'
@@ -57,8 +56,8 @@ export function tabsFor(drawing: IDrawing): SettingsTab[] {
   return out
 }
 
-/** The page a dialog opens on: Text for the annotation tools that have no Style page. */
-export const firstTabFor = (drawing: IDrawing): SettingsTab => (NO_STYLE_TAB.has(drawing.type) ? 'Text' : 'Style')
+/** The page a dialog opens on: Style, or the first page a tool without one has. */
+export const firstTabFor = (drawing: IDrawing): SettingsTab => (NO_STYLE_TAB.has(drawing.type) ? (tabsFor(drawing)[0] ?? 'Visibility') : 'Style')
 
 const EXTEND_LABEL: Record<string, ChartMessageKey> = { None: 'drawing.extendNone', Left: 'drawing.extendLeft', Right: 'drawing.extendRight', Both: 'drawing.extendBoth' }
 const VARIANT_LABEL: Record<string, ChartMessageKey> = { original: 'drawing.variantOriginal', schiff: 'drawing.variantSchiff', modified_schiff: 'drawing.variantModifiedSchiff', inside: 'drawing.variantInside' }
@@ -202,7 +201,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'elliott' | 'priceLabel' | 'note' | 'priceNote' | 'pin' | 'signpost' | 'table' | 'mark' | 'lines' | 'cycles' | 'regression' | 'parallel' | 'channel' | 'forecast' | 'sector' | 'barsPattern' | 'position' | 'vwap' | 'profile' | 'meter' | 'pattern'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'elliott' | 'brush' | 'path' | 'highlighter' | 'icon' | 'image' | 'priceLabel' | 'note' | 'priceNote' | 'pin' | 'signpost' | 'table' | 'mark' | 'lines' | 'cycles' | 'regression' | 'parallel' | 'channel' | 'forecast' | 'sector' | 'barsPattern' | 'position' | 'vwap' | 'profile' | 'meter' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -253,6 +252,11 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   elliott_triangle_wave: 'elliott',
   elliott_double_combo: 'elliott',
   elliott_triple_combo: 'elliott',
+  brush: 'brush',
+  path: 'path',
+  highlighter: 'highlighter',
+  icon: 'icon',
+  image: 'image',
   price_label: 'priceLabel',
   note: 'note',
   price_note: 'priceNote',
@@ -362,6 +366,64 @@ function emojiButton(ctx: RowsContext): HTMLButtonElement {
     })
   })
   return b
+}
+
+/** An image's page: its picture, chosen from the box the Image tool's picker chooses from, pressed or
+ *  dropped on, which shows the picture or says what the host takes, and how see-through the picture
+ *  is drawn. A picture the host cannot take says why under the box. */
+function imageRows(ctx: RowsContext): HTMLElement[] {
+  const { t, drawing } = ctx
+  const props = drawing.props as Record<string, unknown>
+  const file = el('input', { type: 'file', accept: IMAGE_ACCEPT, class: 'qc-drawing-file' }) as HTMLInputElement
+  file.hidden = true
+  const error = el('div', { class: 'qc-negative qc-drawing-note', role: 'status', 'aria-live': 'polite' })
+  error.hidden = true
+  const picture = typeof props.dataUrl === 'string' ? props.dataUrl : ''
+  const zone = button({ class: 'qc-drawing-drop', label: t('drawing.chooseImage'), disabled: !ctx.assets, onClick: () => file.click() })
+  if (picture) zone.append(el('img', { class: 'qc-drawing-drop-preview', src: picture, alt: '' }))
+  else {
+    zone.append(
+      el(
+        'span',
+        { class: 'qc-drawing-drop-words' },
+        el('span', { class: 'qc-drawing-drop-title', text: t('drawing.chooseImage') }),
+        el('span', { class: 'qc-secondary', text: t('drawing.imageFormats') }),
+        el('span', { class: 'qc-secondary', text: t('drawing.imageMaxSize') }),
+      ),
+    )
+  }
+  const take = (chosen: File | null): void => {
+    if (!chosen || !ctx.assets) return
+    void ctx.assets.intakeImage(chosen).then((result) => {
+      if (result.ok) {
+        error.hidden = true
+        ctx.patchProps({ dataUrl: result.asset.dataUrl })
+      } else {
+        error.textContent = t(IMAGE_ERROR_MESSAGES[result.error], { size: result.bytes === undefined ? '' : humanSize(result.bytes) })
+        error.hidden = false
+      }
+    })
+  }
+  file.addEventListener('change', () => {
+    const chosen = file.files?.[0] ?? null
+    file.value = ''
+    take(chosen)
+  })
+  zone.addEventListener('dragover', (e) => {
+    e.preventDefault()
+    zone.dataset.qcActive = 'true'
+  })
+  zone.addEventListener('dragleave', () => {
+    zone.dataset.qcActive = 'false'
+  })
+  zone.addEventListener('drop', (e) => {
+    e.preventDefault()
+    zone.dataset.qcActive = 'false'
+    take(firstImageFile(e.dataTransfer?.files))
+  })
+  const caption = row(t('drawing.image'), file)
+  caption.classList.add('qc-drawing-row--caption')
+  return [caption, zone, error, row(t('drawing.transparency'), opacityTrack(t, Number(props.opacity ?? 1), (v) => ctx.patchQuiet({ opacity: v }), t('drawing.transparency')))]
 }
 
 /** A pitchfork's Style row: the construction its median takes, switched in place. */
@@ -901,6 +963,20 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
     // A mark's one color, named for what it paints.
     const name: ChartMessageKey = drawing.type === 'flag' ? 'drawing.flag' : drawing.type === 'arrow_marker' ? 'drawing.color' : 'drawing.arrowMark'
     out.push(row(t(name), strokeSwatch(name)))
+  } else if (layout === 'brush') {
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine'), ...ends()), background())
+  } else if (layout === 'path') {
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine'), ...ends()))
+  } else if (layout === 'highlighter') {
+    // The marker's color with its see-through, and its width in pixels.
+    out.push(
+      row(t('drawing.rowLine'), strokeSwatch('drawing.rowLine')),
+      row(t('drawing.thickness'), dropdown(icons, box, t('drawing.thickness'), HIGHLIGHTER_WIDTHS.map(String), String(style.lineWidth), (v) => `${v}px`, (v) => ctx.patchStyle({ lineWidth: Number(v) }))),
+    )
+  } else if (layout === 'icon') {
+    out.push(row(t('drawing.color'), strokeSwatch('drawing.color')))
+  } else if (layout === 'image') {
+    out.push(...imageRows(ctx))
   } else if (layout === 'elliott') {
     // One color for the wave and its labels, the wave's switch and thickness, and the degree that
     // writes the labels.
@@ -1003,40 +1079,6 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   toggle('extendLines', 'drawing.extendLines')
   toggle('showMiddle', 'drawing.middleLine')
   toggle('showLabels', 'drawing.labels')
-  if (sect('glyph')) {
-    out.push(
-      row(t('drawing.glyph'), textField(String(props.glyph ?? ''), t('drawing.glyph'), (v) => ctx.patchQuiet({ glyph: v }))),
-      row(t('drawing.size'), numberInput(t, ctx.icons, { label: t('drawing.size'), value: Number(props.size), min: 10, max: 120, step: 1, onChange: (v) => ctx.patchProps({ size: v }) })),
-    )
-  }
-  if (sect('dataUrl')) {
-    const file = el('input', { type: 'file', accept: IMAGE_ACCEPT, class: 'qc-drawing-file' }) as HTMLInputElement
-    file.hidden = true
-    const error = el('div', { class: 'qc-negative qc-drawing-note' })
-    error.hidden = true
-    const choose = button({ class: 'qc-button', label: t(props.dataUrl ? 'drawing.replaceEllipsis' : 'drawing.chooseEllipsis'), text: t(props.dataUrl ? 'drawing.replaceEllipsis' : 'drawing.chooseEllipsis'), onClick: () => file.click(), disabled: !ctx.assets })
-    file.addEventListener('change', () => {
-      const chosen = file.files?.[0]
-      file.value = ''
-      if (!chosen || !ctx.assets) return
-      void ctx.assets.intakeImage(chosen).then((result) => {
-        if (result.ok) {
-          error.hidden = true
-          ctx.patchProps({ dataUrl: result.asset.dataUrl })
-        } else {
-          error.textContent = t(IMAGE_ERROR_MESSAGES[result.error], { size: result.bytes === undefined ? '' : humanSize(result.bytes) })
-          error.hidden = false
-        }
-      })
-    })
-    out.push(
-      row(t('drawing.image'), choose, file),
-      error,
-      row(t('drawing.width'), numberInput(t, ctx.icons, { label: t('drawing.width'), value: Number(props.width), min: 24, max: 800, step: 1, onChange: (v) => ctx.patchProps({ width: v }) })),
-      row(t('drawing.opacity'), createOpacitySlider(t, 'currentColor', Number(props.opacity ?? 1), (v) => ctx.patchQuiet({ opacity: v })).element),
-    )
-  }
-  if (sect('url')) out.push(row(t('drawing.link'), textField(String(props.url ?? ''), t('drawing.link'), (v) => ctx.patchQuiet({ url: v }), { wide: true })))
   if (sect('rowsLayout')) {
     // How the profile divides the range, what each row reads, the value area's share, and whether
     // the profile runs on with new bars.

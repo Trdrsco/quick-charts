@@ -2930,6 +2930,14 @@ height over the bar as the price scale moves; with `showImage` the plate leads w
 and its words read in white or black, whichever reads on the plate. A table stands its cells' words
 at their left, middle or right with `textHAlign`, its border and grid in the drawing's stroke color.
 
+A brush fills the area its stroke closes back to its start while `fillBackground` is on, and a brush
+and a path head their ends with arrows as `leftEnd` and `rightEnd` say, a path with an arrow at its
+last point at first. A highlighter's width is in pixels, 8 to 96 on its page. The emoji, the sticker
+and the content card have no settings beyond their visibility: a glyph's size is set by its grips on
+the chart, and a content card's words and link (`text`, `url`) are the host's to set or the viewer's
+to type on the chart. An icon's page sets its tint, and an image's page chooses its picture from a
+box that names the formats and the size the intake takes, and sets how see-through it is drawn.
+
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
 the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
 that shade their legs, the background, which `fillBackground` switches off and on keeping its

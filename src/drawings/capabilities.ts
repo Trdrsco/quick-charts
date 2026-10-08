@@ -65,9 +65,10 @@ export const NO_LINE_DECOR: ReadonlySet<string> = new Set([
   'signpost',
 ])
 
-/** The text tools whose words are the whole drawing: no Style tab, the words' look, their background
- *  and their border on the Text tab. */
-export const NO_STYLE_TAB: ReadonlySet<string> = new Set(['text', 'comment', 'callout'])
+/** Tools with no Style tab: the text tools whose words are the whole drawing, the words' look, their
+ *  background and their border on their Text tab, and the emoji, the sticker and the content card,
+ *  whose only setting is their visibility. */
+export const NO_STYLE_TAB: ReadonlySet<string> = new Set(['text', 'comment', 'callout', 'emoji', 'sticker', 'content_card'])
 
 /** Tools that write words of their own and carry none of the viewer's: a plan's target, P&L and
  *  stop tags. Their bar offers the text colour, because those words take it, and nothing that
@@ -81,17 +82,20 @@ export const FONT_TOOLS: ReadonlySet<string> = new Set(['text', 'note', 'comment
  *  letters' color, size, weight and slant. */
 export const LABELED_PATTERNS: ReadonlySet<string> = new Set(['xabcd_pattern', 'cypher_pattern', 'abcd_pattern', 'triangle_pattern', 'head_and_shoulders', 'three_drives'])
 
-/** Prop keys a tool carries (via a shared props type) but whose paint ignores them — their rows
- *  stay hidden so the modal never shows a control that does nothing. */
+/** Prop keys a tool carries that its pages do not set: a trend angle's shared line keys, which its
+ *  paint ignores, and a content card's words and link, which the host sets or the viewer types on
+ *  the chart. */
 export const INERT_PROPS: Record<string, readonly string[]> = {
   trend_angle: ['text', 'leftEnd', 'rightEnd', 'showDateTimeRange', 'showAngle'],
+  content_card: ['text', 'url'],
 }
 
 /** Tools whose points are drawn from their shape rather than typed: a turned box, an arc, an
  *  ellipse, a polygon of any count of points, a fib wedge, a flat top/bottom, a disjoint channel, a
- *  sector, a bars pattern, a position, an anchored VWAP, a text and a table have no Coordinates
- *  tab: a position's points are its entry, target and stop prices on its Inputs page. */
-export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel', 'sector', 'bars_pattern', 'long_position', 'short_position', 'anchored_vwap', 'text', 'table'])
+ *  sector, a bars pattern, a position, an anchored VWAP, a text, a table, the strokes, the glyphs, a
+ *  content card and an image have no Coordinates tab: a position's points are its entry, target
+ *  and stop prices on its Inputs page. */
+export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel', 'sector', 'bars_pattern', 'long_position', 'short_position', 'anchored_vwap', 'text', 'table', 'brush', 'highlighter', 'path', 'emoji', 'sticker', 'content_card', 'icon', 'image'])
 
 /** Tools that span every bar at one price: the Coordinates tab hides the bar field. */
 export const PRICE_ONLY_COORDS: ReadonlySet<string> = new Set(['horizontal_line'])

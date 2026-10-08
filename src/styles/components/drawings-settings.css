@@ -555,6 +555,21 @@
   min-height: 34px;
 }
 
+/* An image's page: its caption across the page over the box that chooses the picture, 8px above it. */
+[data-qc-theme] .qc-drawing-page > .qc-drawing-row--caption > .qc-drawing-row-label {
+  grid-column: 1 / -1;
+  min-height: 0;
+  padding: 0;
+}
+
+[data-qc-theme] .qc-drawing-page > .qc-drawing-row--caption > .qc-drawing-row-controls {
+  display: none;
+}
+
+[data-qc-theme] .qc-drawing-page > .qc-drawing-drop {
+  margin-top: 8px;
+}
+
 /* A signpost's emoji: a field-sized button wearing the glyph's artwork, or the glyph itself where
  * the artwork has not come. */
 [data-qc-theme] .qc-drawing-emoji-button {

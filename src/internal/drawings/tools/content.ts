@@ -191,7 +191,7 @@ export class GlyphMark extends Drawing<GlyphProps> {
   readonly type: string = 'emoji'
 
   protected override defaultProps(): GlyphProps {
-    return { glyph: '😀', size: 28 }
+    return { glyph: '😀', size: 72 }
   }
 
   requiredAnchors(): number {
@@ -272,7 +272,7 @@ export class StickerMark extends GlyphMark {
   override readonly type = 'sticker'
 
   protected override defaultProps(): GlyphProps {
-    return { glyph: '👍', size: 44 }
+    return { glyph: '👍', size: 72 }
   }
 }
 
@@ -280,7 +280,7 @@ export class IconMark extends GlyphMark {
   override readonly type = 'icon'
 
   protected override defaultProps(): GlyphProps {
-    return { glyph: '★', size: 24 }
+    return { glyph: '★', size: 40 }
   }
 
   protected override tintsWithStroke(): boolean {
