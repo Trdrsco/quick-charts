@@ -22,6 +22,7 @@ import { button, el, focusFirst, menuKeys } from './dom'
 import { tidyRules } from '../chrome/dom'
 import { ownsEscape, pushEscapeOwner } from '../controls/escape'
 import { selectChevron } from '../controls/select'
+import { provideColorMemory, type ColorMemory } from '../controls/color'
 import { dialogTabs, openPopover, reopenPopover } from './fields'
 import { coordinateRows, firstTabFor, styleRows, tableRows, tabsFor, textRows, visibilityRows, TAB_LABEL, type RowsContext, type SettingsTab } from './settingsRows'
 import { openTemplateDeleteDialog, openTemplateNameDialog } from './templateDialog'
@@ -47,6 +48,8 @@ export interface SettingsDialogDeps {
   shown?(command: string): boolean
   /** The session ended: Ok committed it, or Cancel, Escape or a close restored the snapshot. */
   onClose?(outcome: 'commit' | 'cancel'): void
+  /** The colors this viewer mixed, which every color popover the dialog opens offers and adds to. */
+  colors?: ColorMemory
 }
 
 export interface SettingsDialogHandle {
@@ -78,6 +81,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     },
   })
   dialog.box.classList.add('qc-drawing-settings-dialog')
+  if (deps.colors) provideColorMemory(dialog.box, deps.colors)
 
   // The rename: the pencil stands beside the name and turns the header into the name's field.
   const pencil = button({ class: 'qc-drawing-rename', label: t('drawing.rename'), icon: deps.icons.icon('pencil', 28), disabled: !deps.available('chart.drawings.props') })

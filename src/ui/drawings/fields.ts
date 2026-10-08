@@ -10,13 +10,15 @@
 //
 // The palette, the custom color editor and the opacity slider are not built here. They are the
 // package's one shared control in `ui/controls/color`, which the chart settings menu and the
-// indicator editors mount from the same modules; this file keeps only the drawing-domain framing
-// around it, including the thickness and line-style rows a drawing's color popover also carries.
+// indicator editors mount from the same modules; this file composes the drawing's color popover
+// around it: the palette, then the Thickness and Line style rows a stroke adds, hanging under the
+// swatch button that opened it.
 import type { LineStyle } from '../../internal/drawings/index'
 import { alphaOf, withAlpha } from '../../internal/drawings/index'
 import type { ChartTranslate } from '../../i18n'
-import { createColorControl, type ColorControlHandle } from '../controls/color'
-import { button, dismissOnOutside, el, menuKeys, ownPointer, placePanel, type PanelPlacement } from './dom'
+import { colorMemoryFor, createColorPalette, hexOf } from '../controls/color'
+import { isRtl } from '../controls/dom'
+import { button, dismissOnOutside, el, focusFirst, menuKeys, ownPointer, placePanel, type PanelPlacement } from './dom'
 import { trackOverlay } from '../controls/overlays'
 import { selectChevron } from '../controls/select'
 import type { IconResolver } from '../icons/resolver'
@@ -245,10 +247,118 @@ export function numberInput(
  *  earlier one, so the parent stays up while its child is used. */
 const openPanels: HTMLElement[] = []
 
-/** How a popover stands against its anchor: the room between them, and a class the panel wears. */
+/** How a popover stands against its anchor: the room between them, a class the panel wears, whether
+ *  it hangs free of the box it is mounted in, and which control it answers to. */
 export interface PopoverOptions {
   gap?: number
   className?: string
+  /** Hang the panel from its anchor in the viewport rather than holding it inside the box it is
+   *  mounted in: under the anchor with their inline-start edges level, turned over the anchor where
+   *  the viewport has no room under it, and held inside the viewport. The box clips nothing the
+   *  panel shows. */
+  hang?: boolean
+  /** The control the panel answers to now, where the surface that opened it may put a new control
+   *  in the opener's place while the panel stays up (a page rebuilt under it): a press on it is not
+   *  a press outside, it carries `aria-expanded`, a hanging panel hangs from it, and Escape gives it
+   *  the keyboard back. */
+  anchor?: () => HTMLElement
+}
+
+/** An open popover: its close, and its placement, run again for a change it cannot observe. */
+interface PopoverHandle {
+  close(): void
+  reposition(): void
+}
+
+/** The viewport's box, less any scrollbar. A document without a layout engine measures nothing
+ *  there, so the window's own size stands in. */
+const viewport = (): { width: number; height: number } => ({
+  width: document.documentElement.clientWidth || window.innerWidth,
+  height: document.documentElement.clientHeight || window.innerHeight,
+})
+
+/** Place a panel that hangs from its anchor, in the viewport's coordinates, while it stands inside
+ *  `box` in the DOM: its position is written in the box's own coordinates, its padding box as it is
+ *  scrolled, and kept exact rather than rounded, so the panel's edge stays level with the anchor's. */
+function hangPanel(panel: HTMLElement, anchor: HTMLElement, box: HTMLElement, gap: number): void {
+  const view = viewport()
+  const a = anchor.getBoundingClientRect()
+  const w = panel.offsetWidth
+  const h = panel.offsetHeight
+  const left = Math.max(0, Math.min(isRtl(box) ? a.right - w : a.left, view.width - w))
+  let top = a.bottom + gap
+  if (top + h > view.height) top = Math.max(0, a.top - gap - h)
+  top = Math.max(0, Math.min(top, view.height - h))
+  const b = box.getBoundingClientRect()
+  panel.style.left = `${left - b.left - box.clientLeft + box.scrollLeft}px`
+  panel.style.top = `${top - b.top - box.clientTop + box.scrollTop}px`
+  panel.style.maxHeight = `${Math.max(120, view.height - top)}px`
+}
+
+function mountPopover(
+  box: HTMLElement,
+  anchor: HTMLElement,
+  content: HTMLElement,
+  mode: PanelPlacement,
+  onClose: (() => void) | undefined,
+  place: HTMLElement,
+  refresh: (() => void) | undefined,
+  options: PopoverOptions,
+): PopoverHandle {
+  const anchorNow = (): HTMLElement => options.anchor?.() ?? anchor
+  const panel = el('div', { class: `qc-overlay qc-drawing-popover${options.className ? ` ${options.className}` : ''}`, 'data-role': 'drawing-popover' }, content)
+  ownPointer(panel)
+  box.appendChild(panel)
+  openPanels.push(panel)
+  const insideChild = (target: Node): boolean => openPanels.slice(openPanels.indexOf(panel) + 1).some((p) => p.contains(target))
+  let closed = false
+  const reposition = (): void => {
+    if (closed) return
+    if (!options.hang) {
+      if (place.isConnected) placePanel(panel, place, box, mode, options.gap)
+      return
+    }
+    const at = anchorNow()
+    if (at.isConnected) hangPanel(panel, at, box, options.gap ?? 0)
+  }
+  reposition()
+  const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(reposition) : null
+  resize?.observe(box)
+  resize?.observe(place)
+  // A hanging panel follows its own size as well: one that turns over to other content keeps
+  // hanging from its anchor, and turns to the other side of it when it no longer fits.
+  if (options.hang) resize?.observe(panel)
+  const close = (): void => {
+    if (closed) return
+    closed = true
+    openPanels.splice(openPanels.indexOf(panel), 1)
+    resize?.disconnect()
+    window.removeEventListener('resize', reposition)
+    document.removeEventListener('scroll', reposition, true)
+    untrack()
+    undismiss()
+    panel.remove()
+    anchorNow().setAttribute('aria-expanded', 'false')
+    onClose?.()
+  }
+  // The box's own teardown closes whatever is still open, so no document listener outlives it.
+  const untrack = trackOverlay(box, close, refresh)
+  const undismiss = dismissOnOutside(
+    panel,
+    null,
+    () => {
+      close()
+      anchorNow().focus({ preventScroll: true })
+    },
+    (target) => anchorNow().contains(target) || insideChild(target),
+  )
+  window.addEventListener('resize', reposition)
+  // The observer owns element-only reflows (a flex sibling docking or yielding); capture reaches
+  // scrollable host ancestors because scroll does not bubble. No timeout or viewport heuristic
+  // owns placement: every report re-reads the real anchor and chosen bounds.
+  document.addEventListener('scroll', reposition, true)
+  anchorNow().setAttribute('aria-expanded', 'true')
+  return { close, reposition }
 }
 
 /** A floating panel beside its anchor inside the chart box, closed on an outside press or Escape.
@@ -265,51 +375,7 @@ export function openPopover(
   refresh?: () => void,
   options: PopoverOptions = {},
 ): () => void {
-  const panel = el('div', { class: `qc-overlay qc-drawing-popover${options.className ? ` ${options.className}` : ''}`, 'data-role': 'drawing-popover' }, content)
-  ownPointer(panel)
-  box.appendChild(panel)
-  openPanels.push(panel)
-  const insideChild = (target: Node): boolean => openPanels.slice(openPanels.indexOf(panel) + 1).some((p) => p.contains(target))
-  let closed = false
-  const reposition = (): void => {
-    if (closed || !place.isConnected) return
-    placePanel(panel, place, box, mode, options.gap)
-  }
-  reposition()
-  const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(reposition) : null
-  resize?.observe(box)
-  resize?.observe(place)
-  const close = (): void => {
-    if (closed) return
-    closed = true
-    openPanels.splice(openPanels.indexOf(panel), 1)
-    resize?.disconnect()
-    window.removeEventListener('resize', reposition)
-    document.removeEventListener('scroll', reposition, true)
-    untrack()
-    undismiss()
-    panel.remove()
-    anchor.setAttribute('aria-expanded', 'false')
-    onClose?.()
-  }
-  // The box's own teardown closes whatever is still open, so no document listener outlives it.
-  const untrack = trackOverlay(box, close, refresh)
-  const undismiss = dismissOnOutside(
-    panel,
-    anchor,
-    () => {
-      close()
-      anchor.focus({ preventScroll: true })
-    },
-    insideChild,
-  )
-  window.addEventListener('resize', reposition)
-  // The observer owns element-only reflows (a flex sibling docking or yielding); capture reaches
-  // scrollable host ancestors because scroll does not bubble. No timeout or viewport heuristic
-  // owns placement: every report re-reads the real anchor and chosen bounds.
-  document.addEventListener('scroll', reposition, true)
-  anchor.setAttribute('aria-expanded', 'true')
-  return close
+  return mountPopover(box, anchor, content, mode, onClose, place, refresh, options).close
 }
 
 /** Raise a popover again from the control that opened it, so what it lists is built afresh by that
@@ -325,12 +391,18 @@ export function reopenPopover(close: () => void, content: HTMLElement, control: 
   if (!inside && focused?.isConnected) focused.focus({ preventScroll: true })
 }
 
+/** The line styles the Line style row offers, in its order: solid, dashed, dotted. */
+const LINE_STYLES: readonly LineStyle[] = ['solid', 'dashed', 'dotted']
+
+/** How heavy a thickness mark or a stroke preview draws a width: a width up to four as itself, and a
+ *  tool's own wider scale brought down to one to eight pixels. */
+const markWeight = (thickness: number): number =>
+  thickness > 4 ? Math.max(1, Math.min(8, Math.round(thickness / 12))) : Math.max(1, Math.min(4, Math.round(thickness)))
+
 /** The stroke rendered as segments: a bar for solid, four dashes, or a run of square dots, at the
  *  thickness. Divs rather than a dashed stroke, so the pattern never clips at an edge. */
 export function strokeSegments(thickness: number, lineStyle: LineStyle = 'solid', color?: string): HTMLElement {
-  const t = thickness > 4
-    ? Math.max(1, Math.min(8, Math.round(thickness / 12)))
-    : Math.max(1, Math.min(4, Math.round(thickness)))
+  const t = markWeight(thickness)
   let segs: { w: number; h: number }[]
   if (lineStyle === 'dotted') {
     const side = t + 1
@@ -356,68 +428,266 @@ export interface SwatchButtonOptions {
   /** Explicit opacity model. Omitted, the slider edits the alpha carried inside the color value. */
   opacity?: number
   onOpacity?(value: number): void
-  /** Wired, the face grows a stroke preview and the popover gains the thickness row. */
+  /** Wired, the face grows a stroke preview and the popover gains the Thickness row. */
   thickness?: number
   /** A tool with its own width scale, such as the highlighter, supplies its actual pixel choices. */
   thicknessChoices?: readonly number[]
   onThickness?(value: number): void
-  /** Wired, the popover gains the line-style row. */
+  /** Wired, the popover gains the Line style row. */
   lineStyle?: LineStyle
   onLineStyle?(value: LineStyle): void
 }
 
-/** The color-with-thickness control: the shared color control, and for a stroke, the stroke drawn
- *  at its own thickness beside it. Its panel carries the palette, the opacity, and the stroke rows
- *  a drawing adds. The drawing surface owns the commit: every edit here patches at once, so the
- *  undo boundary stays the one the drawing document already keeps. */
+/** What a swatch button stands for, as its face and its popover show it. */
+interface SwatchState {
+  value: string
+  alpha: number
+  thickness: number | undefined
+  lineStyle: LineStyle | undefined
+}
+
+const stateOf = (options: SwatchButtonOptions): SwatchState => ({
+  value: options.value,
+  alpha: options.opacity ?? alphaOf(options.value),
+  thickness: options.thickness,
+  lineStyle: options.lineStyle,
+})
+
+const editsStroke = (options: SwatchButtonOptions): boolean => options.thickness !== undefined && options.onThickness !== undefined
+
+/** What each swatch button was built with, so a popover that outlives its button (a page rebuilt
+ *  under it) reads the button the page put in its place. */
+const builtWith = new WeakMap<HTMLButtonElement, SwatchButtonOptions>()
+
+/** The close of the popover a swatch button holds open, so the button closes what it opened. */
+const holding = new WeakMap<HTMLButtonElement, () => void>()
+
+/** A swatch button's face: the well holds the color at its opacity over the checkerboard, and a
+ *  stroke's preview draws the stroke at its thickness and style after it. */
+function paintFace(b: HTMLButtonElement, state: SwatchState, stroke: boolean): void {
+  const fill = b.querySelector<HTMLElement>('.qc-drawing-well-fill')!
+  fill.style.setProperty('--qcd-swatch', hexOf(state.value))
+  fill.style.opacity = String(state.alpha)
+  if (!stroke) return
+  b.querySelector('.qc-drawing-stroke')?.remove()
+  b.appendChild(strokeSegments(state.thickness ?? 1, state.lineStyle, state.value))
+}
+
+/** The color button of a settings page: a well holding the color and, for a stroke, the stroke drawn
+ *  at its own thickness beside it. It opens the color popover under itself and closes it again. The
+ *  drawing surface owns the commit: every edit in the popover patches at once, so the undo boundary
+ *  stays the one the drawing document already keeps. */
 export function swatchButton(t: ChartTranslate, box: HTMLElement, options: SwatchButtonOptions): HTMLButtonElement {
-  const alpha = options.opacity ?? alphaOf(options.value)
-  const hasStroke = options.thickness !== undefined && options.onThickness !== undefined
-  const control: ColorControlHandle = createColorControl(t, {
-    label: options.label,
-    value: options.value,
-    opacity: alpha,
-    // A pick keeps the alpha the value carries. Picking a color leaves a panel that also edits
-    // thickness and style open, because those edits usually come together.
-    onPick: (c) => options.onPick(options.onOpacity ? c : alpha < 1 ? withAlpha(c, alpha) : c),
-    onOpacity: options.onOpacity ?? ((v) => options.onPick(withAlpha(options.value, v))),
-    closeOnPick: !hasStroke && !options.onLineStyle,
-    extraRows: (content) => strokeRows(t, content, options),
-    openPanel: (anchor, content, onClosed) => openPopover(box, anchor, content, 'below', onClosed, anchor, undefined, { gap: 0 }),
+  const b = el('button', { type: 'button', class: 'qc-field qc-drawing-swatch-button', 'aria-label': options.label, 'aria-haspopup': 'dialog', 'aria-expanded': 'false' }, el('span', { class: 'qc-drawing-well' }, el('span', { class: 'qc-drawing-well-fill' }))) as HTMLButtonElement
+  paintFace(b, stateOf(options), editsStroke(options))
+  builtWith.set(b, options)
+  b.addEventListener('click', () => {
+    const open = holding.get(b)
+    if (open) open()
+    else openColorPopover(t, box, b)
   })
-  const b = control.element
-  if (hasStroke) b.appendChild(strokeSegments(options.thickness!, options.lineStyle, options.value))
   return b
 }
 
-/** The thickness and line-style rows a drawing's color panel carries below the palette. */
-function strokeRows(t: ChartTranslate, content: HTMLElement, options: SwatchButtonOptions): void {
-  const hasStroke = options.thickness !== undefined && options.onThickness !== undefined
-  if (hasStroke) {
-    const rowEl = el('div', { class: 'qc-drawing-option-row', role: 'group', 'aria-label': t('drawing.thickness') })
-    for (const w of options.thicknessChoices ?? [1, 2, 3, 4]) {
-      const opt = button({ class: 'qc-button qc-drawing-option', label: t('drawing.thicknessValue', { n: w }), onClick: () => options.onThickness!(w) })
-      opt.appendChild(strokeSegments(w))
-      if (options.thickness === w) opt.dataset.qcActive = 'true'
-      rowEl.appendChild(opt)
+/** The swatch buttons in `box` named `label`, in page order: how a rebuilt page's button is found
+ *  in its predecessor's place. */
+const named = (box: HTMLElement, label: string): HTMLButtonElement[] =>
+  [...box.querySelectorAll<HTMLButtonElement>('.qc-drawing-swatch-button')].filter((b) => b.getAttribute('aria-label') === label)
+
+/** The color popover a swatch button opens under itself, hanging free of the dialog it stands in:
+ *  the palette with the colors this viewer mixed and the opacity, then for a stroke the Thickness
+ *  and Line style rows. Every choice applies to the drawing at once and the popover stays up for
+ *  the next one; Escape, a press outside or the button itself closes it. The plus turns it over to
+ *  the custom editor, which stands alone in it until a color is added.
+ *
+ *  An edit may rebuild the page the button stands on. The popover then answers to the button in its
+ *  place, the same-named button in the same order, and reads what that button holds; when no button
+ *  stands there any more, the popover closes. */
+function openColorPopover(t: ChartTranslate, box: HTMLElement, opener: HTMLButtonElement): void {
+  let anchor = opener
+  let options = builtWith.get(opener)!
+  let state = stateOf(options)
+  const stroke = editsStroke(options)
+  const label = opener.getAttribute('aria-label') ?? ''
+  const ordinal = named(box, label).indexOf(opener)
+
+  const follow = (): void => {
+    if (anchor.isConnected) {
+      paintFace(anchor, state, stroke)
+      return
     }
-    content.append(el('span', { class: 'qc-muted', text: t('drawing.thickness') }), rowEl)
+    const next = named(box, label)[ordinal]
+    const nextOptions = next ? builtWith.get(next) : undefined
+    if (!next || !nextOptions) {
+      handle.close()
+      return
+    }
+    holding.delete(anchor)
+    anchor = next
+    options = nextOptions
+    state = stateOf(options)
+    holding.set(anchor, handle.close)
+    anchor.setAttribute('aria-expanded', 'true')
+    palette.update(state.value, state.alpha)
+    thickness?.check(state.thickness)
+    lineStyle?.check(state.lineStyle)
+    handle.reposition()
   }
+  const edit = (apply: () => void): void => {
+    apply()
+    follow()
+  }
+
+  const palette = createColorPalette(t, {
+    value: state.value,
+    recents: colorMemoryFor(box),
+    opacity: state.alpha,
+    // A pick keeps the opacity the value carries, unless the consumer holds the opacity apart.
+    onPick: (c) =>
+      edit(() => {
+        const next = options.onOpacity || state.alpha >= 1 ? c : withAlpha(c, state.alpha)
+        options.onPick(next)
+        state = { ...state, value: next }
+      }),
+    onOpacity: (v) =>
+      edit(() => {
+        if (options.onOpacity) {
+          options.onOpacity(v)
+          state = { ...state, alpha: v }
+          return
+        }
+        const next = withAlpha(state.value, v)
+        options.onPick(next)
+        state = { ...state, value: next, alpha: v }
+      }),
+    onMixing: (mixing) => {
+      for (const section of sections) section.hidden = mixing
+    },
+  })
+
+  const sections: HTMLElement[] = []
+  let thickness: SegmentsHandle<number> | null = null
+  if (stroke) {
+    thickness = segments({
+      label: t('drawing.thickness'),
+      choices: options.thicknessChoices ?? [1, 2, 3, 4],
+      value: state.thickness,
+      name: (w) => t('drawing.thicknessValue', { n: w }),
+      mark: thicknessMark,
+      onPick: (w) =>
+        edit(() => {
+          options.onThickness?.(w)
+          state = { ...state, thickness: w }
+        }),
+    })
+    sections.push(el('div', { class: 'qc-drawing-stroke-section' }, el('div', { class: 'qc-drawing-section-title', text: t('drawing.thickness') }), thickness.element))
+  }
+  let lineStyle: SegmentsHandle<LineStyle> | null = null
   if (options.lineStyle !== undefined && options.onLineStyle) {
     const names: Record<LineStyle, string> = { solid: t('drawing.lineSolid'), dashed: t('drawing.lineDashed'), dotted: t('drawing.lineDotted') }
-    const rowEl = el('div', { class: 'qc-drawing-option-row', role: 'group', 'aria-label': t('drawing.lineStyle') })
-    for (const s of ['solid', 'dashed', 'dotted'] as const) {
-      const opt = button({ class: 'qc-button qc-drawing-option', label: t('drawing.lineStyleValue', { name: names[s] }), onClick: () => options.onLineStyle!(s) })
-      opt.appendChild(strokeSegments(options.thickness ?? 1, s))
-      if (options.lineStyle === s) opt.dataset.qcActive = 'true'
-      rowEl.appendChild(opt)
-    }
-    content.append(el('span', { class: 'qc-muted', text: t('drawing.lineStyle') }), rowEl)
+    lineStyle = segments({
+      label: t('drawing.lineStyle'),
+      choices: LINE_STYLES,
+      value: state.lineStyle,
+      name: (s) => t('drawing.lineStyleValue', { name: names[s] }),
+      mark: lineStyleMark,
+      wide: true,
+      onPick: (s) =>
+        edit(() => {
+          options.onLineStyle?.(s)
+          state = { ...state, lineStyle: s }
+        }),
+    })
+    sections.push(el('div', { class: 'qc-drawing-stroke-section qc-drawing-stroke-section--style' }, el('div', { class: 'qc-drawing-section-title', text: t('drawing.lineStyle') }), lineStyle.element))
   }
+
+  const content = el('div', { class: 'qc-drawing-color-popover' }, palette.element, ...sections)
+  const handle = mountPopover(
+    box,
+    opener,
+    content,
+    'below',
+    () => {
+      palette.destroy()
+      holding.delete(anchor)
+    },
+    opener,
+    undefined,
+    { gap: 0, hang: true, anchor: () => anchor, className: 'qc-drawing-popover--color' },
+  )
+  holding.set(anchor, handle.close)
+  focusFirst(content)
+}
+
+/** A thickness segment's mark: a line across the segment, as heavy as the width it stands for. */
+function thicknessMark(width: number): HTMLElement {
+  const mark = el('span', { class: 'qc-drawing-thickness-mark', 'aria-hidden': 'true' })
+  mark.style.height = `${markWeight(width)}px`
+  return mark
+}
+
+/** A line style segment's mark on its 30 by 24 cell: one line, four dashes, or a run of six dots. */
+function lineStyleMark(style: LineStyle): HTMLElement {
+  const count = style === 'dotted' ? 6 : style === 'dashed' ? 4 : 1
+  const mark = el('span', { class: 'qc-drawing-style-mark', 'data-style': style, 'aria-hidden': 'true' })
+  for (let i = 0; i < count; i++) mark.appendChild(el('span', { class: 'qc-drawing-style-seg' }))
+  return mark
+}
+
+interface SegmentsHandle<T> {
+  element: HTMLElement
+  /** Show a choice as the one made, without reporting it. */
+  check(value: T | undefined): void
+}
+
+/** One choice of a few as a row of joined segments, each a radio wearing its mark: the one made is
+ *  filled, and the row is one stop for the keyboard, whose arrows move along it and whose Enter or
+ *  Space makes the choice under it. */
+function segments<T>(props: { label: string; choices: readonly T[]; value: T | undefined; name(v: T): string; mark(v: T): HTMLElement; onPick(v: T): void; wide?: boolean }): SegmentsHandle<T> {
+  const group = el('div', { class: 'qc-drawing-segments', role: 'radiogroup', 'aria-label': props.label })
+  const items = props.choices.map((choice) => {
+    const item = el('button', { type: 'button', class: `qc-drawing-segment${props.wide ? ' qc-drawing-segment--wide' : ''}`, role: 'radio', 'aria-label': props.name(choice) }, props.mark(choice))
+    item.addEventListener('click', () => {
+      check(choice)
+      props.onPick(choice)
+    })
+    group.appendChild(item)
+    return { choice, item }
+  })
+  const rove = (to: HTMLElement | undefined): void => {
+    for (const { item } of items) item.tabIndex = item === to ? 0 : -1
+  }
+  const check = (value: T | undefined): void => {
+    for (const { choice, item } of items) item.setAttribute('aria-checked', String(choice === value))
+    const focused = items.find(({ item }) => item === document.activeElement)?.item
+    rove(focused ?? items.find(({ choice }) => choice === value)?.item ?? items[0]?.item)
+  }
+  group.addEventListener('focusin', (event) => {
+    const item = items.find(({ item }) => item === event.target)?.item
+    if (item) rove(item)
+  })
+  group.addEventListener('keydown', (event) => {
+    const at = items.findIndex(({ item }) => item === document.activeElement)
+    if (at < 0) return
+    const rtl = isRtl(group)
+    let to: number
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') to = at + ((event.key === 'ArrowRight') !== rtl ? 1 : -1)
+    else if (event.key === 'ArrowDown') to = at + 1
+    else if (event.key === 'ArrowUp') to = at - 1
+    else if (event.key === 'Home') to = 0
+    else if (event.key === 'End') to = items.length - 1
+    else return
+    event.preventDefault()
+    const target = items[(to + items.length) % items.length]!.item
+    rove(target)
+    target.focus({ preventScroll: true })
+  })
+  check(props.value)
+  return { element: group, check }
 }
 
 /** A line-end picker for one side: a 34px field whose face is the current end drawn as its own
- *  28px mark, and whose list offers the two ends by mark and name. */
+ *  28px mark, and whose list, as wide as its rows, offers the two ends by mark and name under it. */
 export function lineEndButton(t: ChartTranslate, icons: IconResolver, box: HTMLElement, side: 'left' | 'right', value: 'normal' | 'arrow', onChange: (v: 'normal' | 'arrow') => void): HTMLButtonElement {
   // Each style is one glyph drawn for the left end; the stylesheet mirrors the right end's.
   const face = (v: 'normal' | 'arrow'): SVGSVGElement => icons.icon(v === 'normal' ? 'lineEndNormal' : 'lineEndArrow')
@@ -431,7 +701,7 @@ export function lineEndButton(t: ChartTranslate, icons: IconResolver, box: HTMLE
       close()
       return
     }
-    const list = el('div', { class: 'qc-drawing-menu qc-drawing-list', role: 'listbox', 'aria-label': b.getAttribute('aria-label') ?? '', 'data-qc-end': side })
+    const list = el('div', { class: 'qc-drawing-menu qc-drawing-list qc-drawing-line-ends', role: 'listbox', 'aria-label': b.getAttribute('aria-label') ?? '', 'data-qc-end': side })
     for (const v of ['normal', 'arrow'] as const) {
       const opt = el('button', { type: 'button', class: 'qc-menu-row qc-drawing-list-row qc-drawing-list-row--mark', role: 'option', 'aria-selected': String(v === value) }, face(v))
       opt.appendChild(el('span', { class: 'qc-menu-label', text: t(v === 'normal' ? 'drawing.lineEndNormal' : 'drawing.lineEndArrow') }))

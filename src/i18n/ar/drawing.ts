@@ -282,7 +282,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.unitMonths': 'Months',
   'drawing.timeframePinnedNote': 'A drawing stays on at least one timeframe, so it can always be reached again.',
   'drawing.colorSwatch': 'Color {hex}',
-  'drawing.customColor': 'Custom color',
+  'drawing.addCustomColor': 'Add custom color',
   'drawing.saturationValue': 'Saturation and brightness',
   'drawing.hue': 'Hue',
   'drawing.hexColor': 'Hex color',

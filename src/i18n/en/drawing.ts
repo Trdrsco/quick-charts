@@ -328,7 +328,7 @@ export const drawing = {
 
   // The color palette: swatches, the custom color panel, the opacity row.
   'drawing.colorSwatch': 'Color {hex}',
-  'drawing.customColor': 'Custom color',
+  'drawing.addCustomColor': 'Add custom color',
   'drawing.saturationValue': 'Saturation and brightness',
   'drawing.hue': 'Hue',
   'drawing.hexColor': 'Hex color',

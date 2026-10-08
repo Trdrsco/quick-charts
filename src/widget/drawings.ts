@@ -53,7 +53,7 @@ import { commandShown, drawingToolPermitted, drawingToolShown } from './access'
 import { drawingToolOffered, type OfferedDrawingTools } from './drawingTools'
 import type { CommandRegistry } from './commands'
 import { drawingCancelAvailable } from '../drawings/layer/attach'
-import { RECENT_COLOR_LIMIT } from '../ui/controls/color'
+import { RECENT_COLOR_LIMIT, type ColorMemory } from '../ui/controls/color'
 import type { IconResolver } from '../ui/icons/resolver'
 
 /** A tool's default look: the style and props the tool itself opens with. It is NOT the look the
@@ -379,6 +379,13 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       onMove: (position) => write({ favorites: { ...prefs().favorites, position } }),
     })
   }
+  /** The colors this viewer mixed, kept in the preference record, which the settings bar's palettes
+   *  and the settings dialog's color popovers offer and add to alike. Newest first, and a color
+   *  mixed again moves back to the front rather than standing twice. */
+  const colors: ColorMemory = {
+    list: () => prefs().recentColors,
+    add: (hex) => write({ recentColors: [hex, ...prefs().recentColors.filter((c) => c !== hex)].slice(0, RECENT_COLOR_LIMIT) }),
+  }
   settingsBar = mountSettingsBar({
     chrome: deps.chrome,
     t: t(),
@@ -392,9 +399,8 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     stackPosition: () => handle.stackPosition(),
     position: () => prefs().settingsBarPosition,
     onMove: (position) => write({ settingsBarPosition: position }),
-    recentColors: () => prefs().recentColors,
-    // Newest first, and a colour mixed again moves back to the front rather than sitting twice.
-    onMixColor: (hex) => write({ recentColors: [hex, ...prefs().recentColors.filter((c) => c !== hex)].slice(0, RECENT_COLOR_LIMIT) }),
+    recentColors: colors.list,
+    onMixColor: colors.add,
   })
 
   const renderAll = (): void => {
@@ -560,6 +566,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
         run,
         available,
         shown,
+        colors,
         onClose: () => {
           handle.endPreview()
           dialog = null

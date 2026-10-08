@@ -159,18 +159,18 @@ describe('rows and toggles', () => {
   it('an opacity slider reports a fraction, and its field takes one typed', () => {
     const out: number[] = []
     const slider = createOpacitySlider(t, '#ff0000', 0.25, (v) => out.push(v)).element
-    const [track, figure] = [...slider.querySelectorAll('input')]
-    expect(track!.value).toBe('25')
-    expect(figure!.value).toBe('25')
-    track!.value = '60'
-    track!.dispatchEvent(new Event('input'))
-    expect(out).toEqual([0.6])
-    expect(figure!.value).toBe('60')
+    const track = slider.querySelector<HTMLElement>('[role="slider"]')!
+    const figure = slider.querySelector<HTMLInputElement>('input')!
+    expect(track.getAttribute('aria-valuenow')).toBe('25')
+    expect(figure.value).toBe('25')
+    track.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp' }))
+    expect(out).toEqual([0.35])
+    expect(figure.value).toBe('35')
     // The field holds the range as it is typed, so a hundred is the most a hand can reach.
-    figure!.value = '200'
-    figure!.dispatchEvent(new Event('input'))
-    expect(out).toEqual([0.6, 1])
-    expect(track!.value).toBe('100')
+    figure.value = '200'
+    figure.dispatchEvent(new Event('input'))
+    expect(out).toEqual([0.35, 1])
+    expect(track.getAttribute('aria-valuenow')).toBe('100')
   })
 })
 
@@ -205,10 +205,11 @@ describe('the palette', () => {
     const hex = panel.querySelector<HTMLInputElement>('.qc-drawing-hex')!
     const add = panel.querySelector<HTMLButtonElement>('.qc-drawing-add')!
     expect(hex.value).toBe('4c98fb')
-    expect(add.disabled).toBe(false)
     hex.value = '08'
     hex.dispatchEvent(new Event('input'))
-    expect(add.disabled).toBe(true)
+    add.click()
+    expect(added).toEqual([])
+    expect(hex.getAttribute('aria-invalid')).toBe('true')
     hex.value = 'ff8800'
     hex.dispatchEvent(new Event('input'))
     add.click()
@@ -224,11 +225,14 @@ describe('the swatch button', () => {
     const control = swatchButton(t, b, { label: 'Highlighter', value: '#ffcc00', onPick: () => {}, thickness: 20, thicknessChoices: [8, 12, 20, 32, 48, 64, 80, 96], onThickness: (width) => picks.push(width) })
     b.appendChild(control)
     control.click()
-    const options = [...b.querySelectorAll<HTMLButtonElement>('.qc-drawing-option')]
+    const options = [...b.querySelectorAll<HTMLButtonElement>('.qc-drawing-segment')]
     expect(options.map((option) => option.getAttribute('aria-label'))).toEqual([8, 12, 20, 32, 48, 64, 80, 96].map((width) => `Thickness ${width}px`))
-    expect(options[2]!.dataset.qcActive).toBe('true')
+    expect(options[2]!.getAttribute('aria-checked')).toBe('true')
+    // A scale wider than four draws each mark brought down to one to eight pixels.
+    expect(options.map((option) => option.querySelector<HTMLElement>('.qc-drawing-thickness-mark')!.style.height)).toEqual(['1px', '1px', '2px', '3px', '4px', '5px', '7px', '8px'])
     options[7]!.click()
     expect(picks).toEqual([96])
+    expect(options[7]!.getAttribute('aria-checked')).toBe('true')
   })
   it('opens its popover with the palette and, for a stroke, the thickness and style rows', () => {
     const b = box()
@@ -248,7 +252,8 @@ describe('the swatch button', () => {
     button.click()
     const popover = b.querySelector<HTMLElement>('[data-role="drawing-popover"]')!
     expect(button.getAttribute('aria-expanded')).toBe('true')
-    expect(popover.querySelectorAll('.qc-drawing-option')).toHaveLength(7)
+    expect(popover.querySelectorAll('.qc-drawing-segment')).toHaveLength(7)
+    expect([...popover.querySelectorAll('[role="radiogroup"]')].map((g) => g.getAttribute('aria-label'))).toEqual(['Thickness', 'Line style'])
     popover.querySelector<HTMLButtonElement>('[aria-label="Thickness 4px"]')!.click()
     popover.querySelector<HTMLButtonElement>('[aria-label="Line style Dashed line"]')!.click()
     expect(picks).toEqual([
@@ -256,19 +261,36 @@ describe('the swatch button', () => {
       ['style', 'dashed'],
     ])
     expect(b.querySelector('[data-role="drawing-popover"]')).toBeTruthy() // stroke edits keep it open
+    // The face follows what the popover set, on a surface that does not rebuild the button.
+    const dashes = button.querySelectorAll<HTMLElement>('.qc-drawing-stroke-seg')
+    expect(dashes).toHaveLength(4)
+    expect(dashes[0]!.style.height).toBe('4px')
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     expect(b.querySelector('[data-role="drawing-popover"]')).toBeNull()
+    expect(document.activeElement).toBe(button)
   })
 
-  it('a plain swatch closes on a pick and keeps the alpha the value carried', () => {
+  it('a plain swatch keeps the alpha the value carried, stays up for the opacity, and closes from its button', () => {
     const b = box()
     const picks: string[] = []
     const button = swatchButton(t, b, { label: 'Color', value: 'rgba(1, 2, 3, 0.5)', onPick: (c) => picks.push(c) })
     b.appendChild(button)
     button.click()
+    const popover = b.querySelector<HTMLElement>('[data-role="drawing-popover"]')!
+    expect(popover.querySelector('.qc-drawing-stroke-section')).toBeNull()
+    expect(popover.querySelector<HTMLElement>('[role="slider"]')!.getAttribute('aria-valuenow')).toBe('50')
     b.querySelector<HTMLButtonElement>('[aria-label="Color #000000"]')!.click()
     expect(picks).toEqual(['rgba(0, 0, 0, 0.5)'])
+    expect(b.querySelector('[data-role="drawing-popover"]')).toBe(popover)
+    // The opacity is the alpha of the color just picked.
+    popover.querySelector<HTMLElement>('[role="slider"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'End' }))
+    expect(picks).toEqual(['rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 1)'])
+    const fill = button.querySelector<HTMLElement>('.qc-drawing-well-fill')!
+    expect(fill.style.getPropertyValue('--qcd-swatch')).toBe('#000000')
+    expect(fill.style.opacity).toBe('1')
+    button.click()
     expect(b.querySelector('[data-role="drawing-popover"]')).toBeNull()
+    expect(button.getAttribute('aria-expanded')).toBe('false')
   })
 
   it('the stroke preview draws one bar, four dashes, or a run of dots', () => {

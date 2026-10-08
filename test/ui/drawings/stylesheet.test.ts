@@ -93,42 +93,38 @@ describe('the settings bar and its panels', () => {
     expect(body(settings, /\.qc-drawing-bar-row \.qc-menu-icon:empty/)).toMatch(/width:\s*28px/)
   })
 
-  it('draws the opacity thumb as a 12px disc the pointer can take, beside an edged readout', () => {
-    for (const thumb of [/-webkit-slider-thumb/, /-moz-range-thumb/]) {
-      const rule = body(fields, thumb)
-      expect(rule).toMatch(/width:\s*12px/)
-      expect(rule).toMatch(/cursor:\s*pointer/)
-    }
-    // The track is a checked ground fading into the color, edged in that same color: the check is
-    // what says see-through, on an 8px tile.
+  it('draws the opacity as a 10px track faded over the check, a 12px knob riding it, beside an edged figure', () => {
+    // The track is a checked ground fading into the color inside an edge of that same color: the
+    // check is what says see-through, on an 8px tile.
     const track = body(fields, /\.qc-drawing-opacity\s*$/m)
     expect(track).toMatch(/height:\s*10px/)
-    expect(track).toMatch(/border:\s*1px solid var\(--qcd-swatch\)/)
     expect(track).toMatch(/repeating-conic-gradient\(from 270deg, var\(--qcd-check\)/)
     expect(track).toMatch(/8px 8px/)
-    // The readout is a field a viewer may type over, so it is edged rather than washed: the field's
-    // own edge at the mixer's compact 26px, its corner scaled to that height, a step up under the
-    // pointer, and the field's ring on focus, over the edge and in the focus color.
-    const readout = body(fields, /\.qc-drawing-opacity-readout\s*$/m)
-    expect(readout).toMatch(/height:\s*26px/)
-    expect(readout).toMatch(/border:\s*1px solid var\(--qc-control-fieldEdge\)/)
-    expect(readout).toMatch(/border-radius:\s*6px/)
-    expect(readout).not.toMatch(/chrome-grip/)
-    expect(body(fields, /\.qc-drawing-opacity-readout:hover\s*$/m)).toMatch(/border-color:\s*var\(--qc-control-fieldEdgeHover\)/)
-    const ring = body(fields, /\.qc-drawing-opacity-readout:focus\s*$/m)
-    expect(ring).toMatch(/border-color:\s*var\(--qc-state-focusRing\)/)
-    expect(ring).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--qc-state-focusRing\)/)
+    expect(body(fields, /\.qc-drawing-opacity-fade\s*$/m)).toMatch(/border:\s*1px solid var\(--qcd-swatch\)/)
+    // The knob is a disc drawn from the two poles, so it reads at both ends of the fade.
+    const knob = body(fields, /\.qc-drawing-opacity-knob\s*$/m)
+    expect(knob).toMatch(/width:\s*12px/)
+    expect(knob).toMatch(/background:\s*var\(--qcd-black\)/)
+    expect(knob).toMatch(/border:\s*2px solid var\(--qcd-white\)/)
+    // The figure is a field a viewer may type over, so it is edged rather than washed: the field's
+    // own edge at the popover's compact 26px on a 4px corner, which turns the focus color while the
+    // field has the keyboard.
+    const figure = body(fields, /\.qc-drawing-opacity-readout,/)
+    expect(figure).toMatch(/height:\s*26px/)
+    expect(figure).toMatch(/border:\s*1px solid var\(--qc-control-fieldEdge\)/)
+    expect(figure).toMatch(/border-radius:\s*4px/)
+    expect(body(fields, /\.qc-drawing-opacity-readout\s*$/m)).toMatch(/width:\s*47px/)
+    expect(body(fields, /\.qc-drawing-opacity-readout:focus,/)).toMatch(/border-color:\s*var\(--qc-state-focusRing\)/)
   })
 
-  it('holds the hex field to the same compact field box, ringed while the caret is inside it', () => {
-    const hex = body(fields, /\.qc-drawing-hex-wrap\s*$/m)
+  it('holds the hex field to the same compact field box, edged in the invalid color for a hex it refuses', () => {
+    const hex = body(fields, /\.qc-drawing-hex\s*$/m)
     expect(hex).toMatch(/height:\s*26px/)
+    expect(hex).toMatch(/width:\s*68px/)
     expect(hex).toMatch(/border:\s*1px solid var\(--qc-control-fieldEdge\)/)
-    expect(hex).toMatch(/border-radius:\s*6px/)
-    expect(body(fields, /\.qc-drawing-hex-wrap:hover,/)).toMatch(/border-color:\s*var\(--qc-control-fieldEdgeHover\)/)
-    const ring = body(fields, /\.qc-drawing-hex-wrap:focus-within,/)
-    expect(ring).toMatch(/border-color:\s*var\(--qc-state-focusRing\)/)
-    expect(ring).toMatch(/box-shadow:\s*inset 0 0 0 1px var\(--qc-state-focusRing\)/)
+    expect(hex).toMatch(/border-radius:\s*4px/)
+    expect(body(fields, /\.qc-drawing-hex:focus\s*$/m)).toMatch(/border-color:\s*var\(--qc-state-focusRing\)/)
+    expect(body(fields, /\.qc-drawing-hex\[aria-invalid='true'\]/)).toMatch(/border-color:\s*var\(--qc-control-fieldInvalid\)/)
   })
 
   it('gives a number field its steppers in a 22 by 28 column inside the box, 2px in from the edge', () => {
