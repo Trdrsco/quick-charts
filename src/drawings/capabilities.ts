@@ -110,7 +110,7 @@ export const INERT_PROPS: Record<string, readonly string[]> = {
  *  ellipse and a polygon of any count of points have no Coordinates tab. */
 export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse'])
 
-/** Tools that span every bar at one price — the Coordinates tab hides the bar field. */
+/** Tools that span every bar at one price: the Coordinates tab hides the bar field. */
 export const PRICE_ONLY_COORDS: ReadonlySet<string> = new Set(['horizontal_line'])
 
 /** Tools whose anchors are time-only — the Coordinates tab hides the price field. */
