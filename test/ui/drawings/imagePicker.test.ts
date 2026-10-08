@@ -54,7 +54,7 @@ describe('the image picker', () => {
     const { dialog, closed } = rig(okPort)
     expect(dialog.getAttribute('role')).toBe('dialog')
     expect(dialog.getAttribute('aria-modal')).toBe('true')
-    expect(dialog.textContent).toContain('JPG or PNG')
+    expect(dialog.textContent).toContain('JPG, PNG or WEBP')
     expect(dialog.textContent).toContain('Max size 2MB')
     const ok = dialog.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!
     expect(ok.disabled).toBe(true)

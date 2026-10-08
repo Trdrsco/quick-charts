@@ -21,11 +21,12 @@ describe('what the Image tool accepts', () => {
     expect(checkImageFile({ type: 'image/png', size: 500_000 })).toBeNull()
   })
 
-  it('refuses every other format, WEBP included', () => {
-    for (const type of ['image/webp', 'image/gif', 'image/svg+xml', 'application/pdf', ''])
+  it('takes WEBP, which the intake stores as a PNG or a JPEG, and refuses every other format', () => {
+    expect(checkImageFile({ type: 'image/webp', size: 500_000 })).toBeNull()
+    for (const type of ['image/gif', 'image/svg+xml', 'application/pdf', ''])
       expect(checkImageFile({ type, size: 1000 })?.error, type).toBe('wrong-type')
-    expect(IMAGE_ACCEPT).toBe('image/jpeg,image/png')
-    expect([...IMAGE_TYPES]).toEqual(['image/jpeg', 'image/png'])
+    expect(IMAGE_ACCEPT).toBe('image/jpeg,image/png,image/webp')
+    expect([...IMAGE_TYPES]).toEqual(['image/jpeg', 'image/png', 'image/webp'])
   })
 
   it('refuses over the byte cap and hands back the SIZE, because a silent drop reads as a broken tool', () => {

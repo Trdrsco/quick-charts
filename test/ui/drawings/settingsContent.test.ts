@@ -47,7 +47,7 @@ describe('the pages and rows of the strokes and the content tools', () => {
   it('reads on an image’s box what it takes, as the Image tool’s picker does', () => {
     const { page } = rig('image')
     const box = page().querySelector<HTMLButtonElement>('.qc-drawing-drop')!
-    expect([...box.querySelectorAll('.qc-drawing-drop-words > span')].map((l) => l.textContent)).toEqual(['Choose image', 'JPG or PNG', 'Max size 2MB'])
+    expect([...box.querySelectorAll('.qc-drawing-drop-words > span')].map((l) => l.textContent)).toEqual(['Choose image', 'JPG, PNG or WEBP', 'Max size 2MB'])
     // Without a host to take a picture, the box chooses nothing.
     expect(box.disabled).toBe(true)
   })

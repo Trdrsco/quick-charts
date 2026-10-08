@@ -3034,7 +3034,9 @@ adapter they last the page.
 
 The image and glyph tools reach your host through `ChartWidgetOptions.assets`. `intakeImage`
 turns a picked file into a payload within the caps and answers a refusal as a code the chart
-resolves through its own catalog; `glyphSource` answers the artwork URL an emoji or sticker draws
+resolves through its own catalog. The payload's `dataUrl` is always a PNG or a JPEG, whatever the
+picked file was, so a saved chart opens everywhere: decode a WEBP and re-encode it on a canvas, as a
+PNG where it has transparency and a JPEG otherwise; `glyphSource` answers the artwork URL an emoji or sticker draws
 with, or null to draw the glyph as text. Emoji artwork from Twemoji is bundled and works without
 an asset port or external requests. Omit `glyphSource` to use it. It is a chunk of its own, which
 the chart imports the first time it draws an emoji, so a chart that never shows one never loads
@@ -3106,8 +3108,9 @@ const preset = await templates.defaultFor('trend_line')
 ```
 
 Image-backed and glyph tools reach the host through one explicit asset port. The library owns the
-rules (JPG or PNG, 2 MB, a 2000 px longest edge, downscaled rather than refused) and names each
-refusal with a code that resolves through the chart's own catalog; the host owns the bytes.
+rules (a JPG, a PNG or a WEBP, stored as a PNG or a JPEG, 2 MB, a 2000 px longest edge, downscaled
+rather than refused) and names each refusal with a code that resolves through the chart's own
+catalog; the host owns the bytes.
 
 ```ts
 import { checkImageFile, fittedSize, IMAGE_ACCEPT, type DrawingAssetPort } from '@trdrs/quickcharts/drawings'
@@ -3117,7 +3120,8 @@ const assets: DrawingAssetPort = {
     const bad = checkImageFile(file)
     if (bad) return { ok: false, ...bad }
     const { width, height } = fittedSize(1200, 900)
-    return { ok: true, asset: { dataUrl: await myBackend.read(file), width, height, downscaled: false } }
+    // A PNG or a JPEG whatever the picked file was: a WEBP is re-encoded before it is stored.
+    return { ok: true, asset: { dataUrl: await myBackend.pngOrJpeg(file), width, height, downscaled: false } }
   },
   // Optional: glyphSource replaces the bundled emoji artwork.
   // glyphSource: (glyph) => myBackend.emojiUrl(glyph),

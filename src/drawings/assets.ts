@@ -6,9 +6,11 @@ import type { ChartMessageKey } from '../i18n/en'
 export const IMAGE_MAX_BYTES = 2 * 1024 * 1024
 /** Longest edge, in pixels. A larger picture is downscaled rather than refused. */
 export const IMAGE_MAX_EDGE = 2000
-export const IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png']
+/** The pictures the intake takes: a JPG, a PNG or a WEBP. A WEBP is stored re-encoded, as a PNG or a
+ *  JPEG, so a saved chart opens in every browser. */
+export const IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp']
 /** The `accept` attribute for a file input, kept beside the types it mirrors. */
-export const IMAGE_ACCEPT = 'image/jpeg,image/png'
+export const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp'
 
 /** Why an intake failed. A CODE, not a sentence: the host renders it through the catalog, so the
  *  reason reaches a viewer in their own language and no English lives in the port. */
@@ -24,7 +26,7 @@ export const IMAGE_ERROR_MESSAGES: Readonly<Record<ImageIntakeError, ChartMessag
 
 /** A picture that is ready to store on a drawing. */
 export interface ImageAsset {
-  /** A data URL sized within the caps. */
+  /** A PNG or JPEG data URL sized within the caps, whatever the picked file was. */
   dataUrl: string
   width: number
   height: number
@@ -38,7 +40,9 @@ export type ImageIntakeResult = { ok: true; asset: ImageAsset } | { ok: false; e
 export interface DrawingAssetPort {
   /** Validate a picked file and turn it into a payload within the caps, or say why it cannot be
    *  used. The host owns the decode and the resample; `checkImageFile` and `fitScale` below are the
-   *  library's rules it applies. */
+   *  library's rules it applies. The stored `dataUrl` is always a PNG or a JPEG, whatever the picked
+   *  file was, so a saved chart opens everywhere: a WEBP is decoded and re-encoded on a canvas, as a
+   *  PNG where it has transparency and a JPEG otherwise. */
   intakeImage(file: File): Promise<ImageIntakeResult>
   /** Optional replacement for the bundled Twemoji artwork. Artwork for one emoji or sticker glyph, as a URL the canvas can draw, or null to fall back to
    *  drawing the glyph as text. Icon marks always stay text: their ink is tinted by the stroke

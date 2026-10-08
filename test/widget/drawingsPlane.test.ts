@@ -582,7 +582,7 @@ describe('an image pasted over the chart', () => {
 
   it('says what went wrong for each way the port can refuse, in the words the chart owns', async () => {
     const refusals = [
-      ['wrong-type', 'That file is not a JPG or PNG. Pick one of those two formats.'],
+      ['wrong-type', 'That file is not a JPG, PNG or WEBP. Pick one of those three formats.'],
       ['too-large', 'The limit is 2MB.'],
       ['unreadable', 'That file could not be read. Try picking it again.'],
       ['undecodable', 'That image could not be opened. It may be damaged.'],
