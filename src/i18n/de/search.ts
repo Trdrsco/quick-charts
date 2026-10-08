@@ -21,6 +21,7 @@ export const search: Translation<typeof source> = {
   'search.compareEmpty': 'No symbols here yet. Why not add some?',
   'search.allClasses': 'All',
   'search.classFilter': 'Asset class',
+  'search.limitToScope': 'Suche auf {scope} beschränken',
   'search.opDivision': 'Division',
   'search.opSubtraction': 'Subtraktion',
   'search.opAddition': 'Addition',

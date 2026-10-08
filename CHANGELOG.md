@@ -1,5 +1,17 @@
 # @trdrs/quickcharts
 
+## Unreleased
+
+`search.scope` offers a part of the catalog the viewer can limit the symbol search to, as a toggle chip at the far edge of the class strip wearing the scope's `mark` and `label`, and a `SearchScope` carries the search within it: `search`, which is required, `recents` and `on`. The chip is on each time the dialog opens, unless the scope sets `on: false`. While it is on, the dialog searches with the scope's `search`, which the chart's search controller asks exactly as it asks the datafeed's (the query after the debounce, the selected classes, a page at a time, and a newer question retiring an older one's answer), and the list leads with the scope's `recents`, or with none. While it is off, the dialog searches the datafeed and leads with the chart's recents. Pressing the chip asks the other source the query and classes the dialog holds, and an answer that arrives for the state the viewer left is dropped. A pick is recorded in `search.recents` either way, and in the scope's `recents` while the chip is on. The chip is a toggle button (`aria-pressed`) in the strip's tab order after the class chips, which form a labelled group of their own beside it, and its accessible name says what a press does in every built-in language (`search.limitToScope`). The compare dialog, adding a comparison or changing one, offers no scope.
+
+### Upgrading to 3.0
+
+Give each `SearchScope` its `search`: the search within the scope, asked as your datafeed's `search` is. Your datafeed's `search` answers what the viewer reaches with the chip off, so a limit it applied on its own while a scope named it moves into the scope's `search`. Recents your page listed only while that limit stood go in the scope's `recents`; leave `recents` out and the list leads with none while the chip is on. A scope that should open off sets `on: false`. A datafeed that is always limited leaves the chip nothing to turn off, so it offers no scope.
+
+A dictionary of your own (`ChartCustomLocale`, `ChartDictionary`) carries `search.limitToScope`, the chip's accessible name, with `{scope}` where the scope's label goes; one that arrives without it reads English for that key and reports it to `onMissing`.
+
+Nothing saved changes.
+
 ## 2.4.0
 
 Bar replay that starts where the viewer chose, and a chart a host can hold in place, show without its price scale, give a crosshair of chosen parts, and morph between bar and close styles. No public name changes.

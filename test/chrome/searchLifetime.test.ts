@@ -5,6 +5,7 @@ import { mountChrome } from '../../src/ui/chrome/mount'
 import { emptyDoors } from '../../src/ui/chrome/doors'
 import { memoryChartStorage } from '../../src/storage'
 import type { ChartDatafeed, SearchPage, SymbolRow } from '../../src/datafeed'
+import type { SearchScope } from '../../src/widget/options'
 import { fakeWidget, press } from './harness'
 import { resolveMarkPainters } from '../../src/markPainters'
 
@@ -19,13 +20,13 @@ afterEach(() => {
 const flush = async () => { for (let i = 0; i < 10; i++) await Promise.resolve() }
 const settle = async () => { await vi.advanceTimersByTimeAsync(250) }
 
-function mount(feed: ChartDatafeed['search'] | ChartDatafeed) {
+function mount(feed: ChartDatafeed['search'] | ChartDatafeed, scope?: () => SearchScope | null) {
   const w = fakeWidget()
   const root = document.body.appendChild(document.createElement('div'))
   const panes = root.appendChild(document.createElement('div'))
   const doors = emptyDoors()
   const datafeed: ChartDatafeed = typeof feed === 'function' ? { search: feed, resolve: async () => null, history: async () => ({ bars: [], noData: true }), subscribeBars: () => () => {} } : feed
-  const chrome = mountChrome({ root, layer: document.body.appendChild(document.createElement('div')), panes, widget: w.widget, i18n: w.i18n, features: w.features, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future', 'crypto'] }), autosave: w.autosave, layoutChanges: w.layoutChanges, icons: w.icons, styles: w.ctx.styles, timeframes: w.ctx.timeframes, layouts: w.ctx.layouts, doors, painters: resolveMarkPainters({}) })
+  const chrome = mountChrome({ root, layer: document.body.appendChild(document.createElement('div')), panes, widget: w.widget, i18n: w.i18n, features: w.features, ui: w.ui, storage: memoryChartStorage(), preferences: {}, saveLoad: null, datafeed, feedConfig: () => ({ classes: ['future', 'crypto'] }), ...(scope ? { scope } : {}), autosave: w.autosave, layoutChanges: w.layoutChanges, icons: w.icons, styles: w.ctx.styles, timeframes: w.ctx.timeframes, layouts: w.ctx.layouts, doors, painters: resolveMarkPainters({}) })
   cleanup.push(() => { chrome.dispose(); w.dispose() })
   const open = (mode: 'search' | 'compare' | 'change-symbol' = 'search', changeFrom?: string) => {
     doors.openSearch({ mode, chart: w.chart.handle, changeFrom, ...(mode === 'change-symbol' ? { onPick: () => {} } : {}) })
@@ -177,4 +178,33 @@ it('fences a pending prefetch across locale invalidation', async () => {
   expect(current.rows()).toEqual([])
   pending[1]!({ hits: [row('NEW-LOCALE')], hasMore: false }); await settle()
   expect(current.rows()).toEqual(['NEW-LOCALE'])
+})
+
+it('reads the scope at each opening, on again each time, and keeps its pages apart from the widget catalog', async () => {
+  const feed = vi.fn(async () => ({ hits: [row('WARM')], hasMore: false }))
+  let label = 'First'
+  const scoped = vi.fn(async () => ({ hits: [row(label.toUpperCase())], hasMore: false }))
+  const scope = vi.fn((): SearchScope => ({ label, search: scoped }))
+  const m = mount(feed, scope)
+  await flush()
+  const chip = () => [...m.root.querySelectorAll<HTMLButtonElement>('.qc-search-scope')].at(-1)!
+  const first = m.open()
+  expect(scope).toHaveBeenCalledTimes(1)
+  await flush()
+  expect(first.rows()).toEqual(['FIRST'])
+  // Off, the widget's warmed catalog answers at once.
+  chip().click()
+  expect(first.rows()).toEqual(['WARM'])
+  first.close()
+  label = 'Second'
+  const second = m.open()
+  expect(scope).toHaveBeenCalledTimes(2)
+  expect(chip().getAttribute('aria-pressed')).toBe('true')
+  expect(chip().getAttribute('aria-label')).toBe('Limit search to Second')
+  // The first opening's scope pages went with it: nothing stands in for the new scope's answer.
+  expect(second.rows()).toEqual([])
+  await flush()
+  expect(second.rows()).toEqual(['SECOND'])
+  expect(feed).toHaveBeenCalledTimes(1)
+  expect(scoped).toHaveBeenCalledTimes(2)
 })

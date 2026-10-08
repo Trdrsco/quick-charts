@@ -1,7 +1,7 @@
 // Symbol search: the dialog family's titles, input, sections, compare placements, the asset-class
-// filter strip, and the spread operators. A class's own name comes from the host, whose feed
-// defines the classes, and data-source attribution is the host's too; symbols, names and venues
-// are data.
+// filter strip with the scope chip at its edge, and the spread operators. A class's own name comes
+// from the host, whose feed defines the classes; a scope's name and data-source attribution are the
+// host's too; symbols, names and venues are data.
 export const search = {
   'search.title': 'Symbol search',
   'search.compareTitle': 'Compare symbols',
@@ -27,6 +27,9 @@ export const search = {
   // The asset-class filter strip: the chip for every class, and the strip's own name.
   'search.allClasses': 'All',
   'search.classFilter': 'Asset class',
+  /** The scope chip's accessible name: what pressing it does. `{scope}` is the host's name for the
+   *  scope, which the chip shows; whether the limit stands is the chip's pressed state. */
+  'search.limitToScope': 'Limit search to {scope}',
   // The spread operators' names, each for the arithmetic it inserts, and the strip's toggle.
   'search.opDivision': 'Division',
   'search.opSubtraction': 'Subtraction',
