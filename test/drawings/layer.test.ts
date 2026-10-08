@@ -175,7 +175,7 @@ describe('placing a fixed tool', () => {
   it('refuses an unknown tool loudly and arms every registered tool', () => {
     const { handle } = make()
     expect(() => handle.armTool('not-a-tool')).toThrow(/unknown tool/)
-    for (const type of ['brush', 'path', 'long_position', 'content_card', 'measure', 'zoom', 'eraser']) expect(() => handle.armTool(type)).not.toThrow()
+    for (const type of ['brush', 'path', 'long_position', 'note', 'measure', 'zoom', 'eraser']) expect(() => handle.armTool(type)).not.toThrow()
   })
 
   it('a placed drawing takes the tool default the presets remember', async () => {

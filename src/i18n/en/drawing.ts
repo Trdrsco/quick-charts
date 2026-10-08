@@ -3,7 +3,7 @@
 // and dialog with every property row on it, the color palette, the glyph picker, the image
 // picker, the template dialogs, and the inline text editor.
 //
-// The 90 tool NAMES are not here. They live in `tools` beside this file and are read through
+// The 89 tool NAMES are not here. They live in `tools` beside this file and are read through
 // `toolName`, so a tool is named once and translated once wherever it appears. What is here is
 // everything around them.
 //
@@ -239,7 +239,6 @@ export const drawing = {
   'drawing.image': 'Image',
   'drawing.replaceEllipsis': 'Replace...',
   'drawing.chooseEllipsis': 'Choose...',
-  'drawing.link': 'Link',
   'drawing.rowsLayout': 'Rows layout',
   'drawing.rowsByNumber': 'Number of rows',
   'drawing.ticksPerRow': 'Ticks per row',

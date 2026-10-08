@@ -48,10 +48,6 @@
   width: 96px;
 }
 
-[data-qc-theme] .qc-drawing-input[data-width='wide'] {
-  width: 100%;
-}
-
 /* The text area grows from four lines, its words 8px in from every side of its box. */
 [data-qc-theme] .qc-drawing-textarea {
   width: 100%;

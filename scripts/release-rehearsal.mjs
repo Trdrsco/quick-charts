@@ -244,7 +244,7 @@ const root = await import('@trdrs/quickcharts')
 check('root-entry', typeof root.createChart === 'function' && typeof root.createPriceFormatter === 'function', 'createChart and createPriceFormatter are functions')
 const drawings = await import('@trdrs/quickcharts/drawings')
 const toolCount = typeof drawings.drawingTools?.all === 'function' ? drawings.drawingTools.all().length : -1
-check('drawings-entry', toolCount >= 90 && typeof drawings.parseDrawingsStore === 'function', 'the drawings catalog holds ' + toolCount + ' tools')
+check('drawings-entry', toolCount >= 89 && typeof drawings.parseDrawingsStore === 'function', 'the drawings catalog holds ' + toolCount + ' tools')
 const rest = await import('@trdrs/quickcharts/adapters/rest')
 check('rest-entry', typeof rest.createRestSaveLoadAdapter === 'function' && typeof rest.RestSaveLoadError === 'function', 'the REST adapter constructor and error class are exported')
 const format = await import('@trdrs/quickcharts/format')

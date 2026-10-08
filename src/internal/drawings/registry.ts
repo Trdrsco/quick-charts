@@ -65,7 +65,7 @@ import {
 import { CyclicLines, SineLine, TimeCycles } from './tools/cycles'
 import { BarsPattern, GhostFeed, RegressionTrend } from './tools/bars'
 import { AnchoredVolumeProfile, AnchoredVwap, FixedRangeVolumeProfile } from './tools/volume'
-import { ContentCard, GlyphMark, IconMark, ImageNote, StickerMark } from './tools/content'
+import { GlyphMark, IconMark, ImageNote, StickerMark } from './tools/content'
 
 export interface ToolDefinition {
   type: string
@@ -228,7 +228,6 @@ const DEFINITIONS: ToolDefinition[] = [
 
   // Content
   tool(ImageNote, { type: 'image', name: 'Image', category: 'content', anchors: 1 }),
-  tool(ContentCard, { type: 'content_card', name: 'Content card', category: 'content', anchors: 1, hasText: true }),
   tool(GlyphMark, { type: 'emoji', name: 'Emoji', category: 'content', anchors: 1 }),
   tool(StickerMark, { type: 'sticker', name: 'Sticker', category: 'content', anchors: 1 }),
   tool(IconMark, { type: 'icon', name: 'Icon', category: 'content', anchors: 1 }),

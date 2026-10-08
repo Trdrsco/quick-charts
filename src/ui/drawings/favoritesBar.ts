@@ -3,7 +3,7 @@
 // renders from the same favorites state the toolbar reads, so the two can never disagree about
 // what is starred.
 import type { ChartTranslate } from '../../i18n'
-import { clampFavoritesPosition, drawingTools, favoritesBarShown, type FavoritesPosition, type FavoritesState } from '../../drawings/index'
+import { clampFavoritesPosition, drawingTools, favoritesBarShown, pruneFavorites, type FavoritesPosition, type FavoritesState } from '../../drawings/index'
 import { toolName } from '../../i18n'
 import { button, dragUntilRelease, el, followHostSize, ownPointer, paintedPosition, rovingFocus } from './dom'
 import type { IconResolver } from '../icons/resolver'
@@ -23,7 +23,7 @@ export interface FavoritesBarDeps {
   /** Whether the access policy permits a tool. A refused tool renders disabled. */
   toolAllowed(tool: string): boolean
   /** Whether the bar draws a starred tool at all. A tool it leaves out keeps its star, and the bar
-   *  draws it again once this says so. Every starred tool is drawn without it. */
+   *  draws it again once this says so. Without it, every starred tool the catalog holds is drawn. */
   toolShown?(tool: string): boolean
   /** The bar was dragged: persist where it landed. */
   onMove(position: FavoritesPosition): void
@@ -84,8 +84,10 @@ export function mountFavoritesBar(deps: FavoritesBarDeps): FavoritesBarHandle {
   const unfollow = followHostSize(deps.chrome, place)
 
   const render = (): void => {
-    const state = deps.favorites()
-    // The starred tools the bar draws. The favorites themselves are never rewritten here.
+    // The starred tools the bar draws: those the catalog holds and the host shows. A star on a type
+    // the catalog does not hold draws nothing, so it never keeps an empty bar standing. The favorites
+    // themselves are never rewritten here.
+    const state = pruneFavorites(deps.favorites(), (type) => drawingTools.has(type))
     const listed = state.tools.filter((type) => deps.toolShown?.(type) ?? true)
     const shown = favoritesBarShown({ ...state, tools: listed })
     bar.hidden = !shown

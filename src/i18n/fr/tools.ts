@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': 'Profil de volume à plage fixe',
   'tool.anchored_volume_profile': 'Profil de volume ancré',
   'tool.image': 'Image',
-  'tool.content_card': 'Carte de contenu',
   'tool.emoji': 'Émoji',
   'tool.sticker': 'Autocollant',
   'tool.icon': 'Icône',

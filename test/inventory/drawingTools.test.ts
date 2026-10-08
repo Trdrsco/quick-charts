@@ -1,8 +1,8 @@
-// Every registered drawing tool through its whole life: each of the 90 tools is tested for
+// Every registered drawing tool through its whole life: each of the 89 tools is tested for
 // registration, construction, serialization, restore, and attach/detach, with focused geometry or
 // rendering tests for each tool family where a generic test is insufficient.
 //
-// drawings90.test.ts pins the catalog; this file builds every tool from it, round-trips it through the
+// drawings89.test.ts pins the catalog; this file builds every tool from it, round-trips it through the
 // public codec, attaches and detaches it through the manager the layer uses, and paints it once over the
 // fake renderer, so a tool that constructs but cannot be restored, attached or drawn is named by type.
 // drawingTools.fixture.json records each tool's placement facts and default props; the family blocks at
@@ -156,7 +156,7 @@ describe('every registered tool', () => {
         .map((t) => t.type)
         .sort(),
     )
-    expect(fixture.tools).toHaveLength(90)
+    expect(fixture.tools).toHaveLength(89)
   })
 })
 

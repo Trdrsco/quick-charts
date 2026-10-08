@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': 'פרופיל מחזור בטווח קבוע',
   'tool.anchored_volume_profile': 'פרופיל מחזור מעוגן',
   'tool.image': 'תמונה',
-  'tool.content_card': 'כרטיס תוכן',
   'tool.emoji': 'אימוג\'י',
   'tool.sticker': 'מדבקה',
   'tool.icon': 'אייקון',

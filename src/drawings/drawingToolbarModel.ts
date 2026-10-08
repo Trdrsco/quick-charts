@@ -3,7 +3,7 @@
 // The toolbar is one button per tool GROUP; each group opens a flyout whose sections gather the
 // related registry categories under a heading. Categories alone do not give that shape: the arrow
 // marks belong beside the arrow line rather than with the annotations, the brushes lead the shapes,
-// and the image and content cards sit under Content rather than with the glyph marks. Those moves
+// and the image sits under Content rather than with the glyph marks. Those moves
 // are the product's, so they live here as data rather than as conditions inside a component.
 //
 // Everything is catalog KEYS, never words: the toolbar is built once from the registry while the
@@ -31,8 +31,8 @@ export const ARROW_TYPES: readonly string[] = ['arrow_marker', 'arrow', 'arrow_u
 export const BRUSH_TYPES: readonly string[] = ['brush', 'highlighter']
 /** The glyph marks get a group of their own. */
 export const GLYPH_TYPES: readonly string[] = ['emoji', 'sticker', 'icon']
-/** Image and content cards make a Content section under Text and notes. */
-export const CARD_TYPES: readonly string[] = ['image', 'content_card']
+/** The image makes the Content section under Text and notes. */
+export const CARD_TYPES: readonly string[] = ['image']
 
 /** A section built from whole categories, minus the types that moved elsewhere. */
 interface CategorySection {

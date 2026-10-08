@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': 'مخطط الحجم لنطاق ثابت',
   'tool.anchored_volume_profile': 'مخطط الحجم المثبّت',
   'tool.image': 'صورة',
-  'tool.content_card': 'بطاقة محتوى',
   'tool.emoji': 'رمز تعبيري',
   'tool.sticker': 'ملصق',
   'tool.icon': 'أيقونة',

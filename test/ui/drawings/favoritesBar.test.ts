@@ -59,6 +59,17 @@ describe('the favorites bar', () => {
     expect(root.hidden).toBe(true)
   })
 
+  it('draws no arm for a starred type the catalog does not hold, and hides when it is the only star', () => {
+    // A content card starred by a chart that drew one is such a type.
+    const { root, state, bar } = rig({ tools: ['content_card', 'rectangle'], visible: true, position: null })
+    expect(root.hidden).toBe(false)
+    expect([...root.querySelectorAll<HTMLElement>('.qc-drawing-favorite')].map((b) => b.dataset.tool)).toEqual(['rectangle'])
+    state.favorites = { tools: ['content_card'], visible: true, position: null }
+    bar.render()
+    expect(root.hidden).toBe(true)
+    expect(root.querySelectorAll('button')).toHaveLength(0)
+  })
+
   it('arms a tool, releases the armed one, and marks it', () => {
     const { root, state, bar, armed } = rig({ tools: ['trend_line'], visible: true, position: null })
     root.querySelector<HTMLElement>('.qc-drawing-favorite')!.click()

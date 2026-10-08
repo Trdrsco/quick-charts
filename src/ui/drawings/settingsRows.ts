@@ -97,8 +97,8 @@ export interface RowsContext {
 
 const label = (t: ChartTranslate, table: Record<string, ChartMessageKey>) => (value: string): string => (table[value] ? t(table[value]!) : value)
 
-const textField = (value: string, ariaLabel: string, onInput: (v: string) => void, options: { placeholder?: string; wide?: boolean } = {}): HTMLInputElement => {
-  const input = el('input', { class: 'qc-field qc-drawing-input', 'aria-label': ariaLabel, 'data-width': options.wide ? 'wide' : 'short', placeholder: options.placeholder }) as HTMLInputElement
+const textField = (value: string, ariaLabel: string, onInput: (v: string) => void, options: { placeholder?: string } = {}): HTMLInputElement => {
+  const input = el('input', { class: 'qc-field qc-drawing-input', 'aria-label': ariaLabel, 'data-width': 'short', placeholder: options.placeholder }) as HTMLInputElement
   input.value = value
   input.addEventListener('input', () => onInput(input.value))
   return input
@@ -230,7 +230,6 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
       row(t('drawing.opacity'), createOpacitySlider(t, 'currentColor', Number(props.opacity ?? 1), (v) => ctx.patchQuiet({ opacity: v })).element),
     )
   }
-  if (sect('url')) out.push(row(t('drawing.link'), textField(String(props.url ?? ''), t('drawing.link'), (v) => ctx.patchQuiet({ url: v }), { wide: true })))
   if (sect('rowsLayout')) {
     out.push(
       row(t('drawing.rowsLayout'), dropdown(ctx.icons, t('drawing.rowsLayout'), ['number', 'ticks'] as const, props.rowsLayout as 'number', label(t, ROWS_LAYOUT_LABEL), (v) => ctx.patchProps({ rowsLayout: v }))),

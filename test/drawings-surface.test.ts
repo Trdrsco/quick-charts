@@ -5,7 +5,7 @@
 //
 // The pin is also the boundary proof. The internal drawing seam exports far more than this: the
 // `Drawing` base class, the `DrawingManager`, the pane views, the mutable `ToolRegistry`, and every
-// class of the 90 tools. None of them are here, and the second test says so by name.
+// class of the 89 tools. None of them are here, and the second test says so by name.
 import { describe, expect, it } from 'vitest'
 import * as api from '../src/drawings/index'
 import * as seam from '../src/internal/drawings/index'
@@ -170,6 +170,6 @@ describe('@trdrs/quickcharts/drawings API surface pin', () => {
   it('hands back frozen tool rows, so a consumer cannot edit the catalog through one', () => {
     const tool = api.drawingTools.get('trend_line')!
     expect(Object.isFrozen(tool)).toBe(true)
-    expect(api.drawingTools.all()).toHaveLength(90)
+    expect(api.drawingTools.all()).toHaveLength(89)
   })
 })

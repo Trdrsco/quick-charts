@@ -67,7 +67,6 @@ export const tools = {
   'tool.fixed_range_volume_profile': 'Fixed range volume profile',
   'tool.anchored_volume_profile': 'Anchored volume profile',
   'tool.image': 'Image',
-  'tool.content_card': 'Content card',
   'tool.emoji': 'Emoji',
   'tool.sticker': 'Sticker',
   'tool.icon': 'Icon',

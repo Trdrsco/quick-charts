@@ -1,5 +1,5 @@
-// The 90 tools as explicit release inventory. The registry is read at runtime; the
-// list here is the pin. A tool added,
+// The 89 tools as explicit release inventory. The registry is read at runtime; the
+// list here is the pin. A tool added, removed,
 // renamed, or moved between categories changes this file on purpose, in the same commit, and the
 // diff is the release note.
 import { TOOL_CATEGORIES, drawingTools } from '@trdrs/quickcharts/drawings'
@@ -20,7 +20,6 @@ const TOOLS: readonly (readonly [type: string, category: string])[] = [
   ['callout', 'annotation'],
   ['circle', 'shapes'],
   ['comment', 'annotation'],
-  ['content_card', 'content'],
   ['cross_line', 'lines'],
   ['curve', 'shapes'],
   ['cyclic_lines', 'cycles'],
@@ -114,23 +113,23 @@ const CATEGORIES: readonly (readonly [category: string, count: number])[] = [
   ['measurement', 4],
   ['shapes', 12],
   ['annotation', 13],
-  ['content', 5],
+  ['content', 4],
 ]
 
-describe('the 90 tools', () => {
+describe('the 89 tools', () => {
   it('pins every registered tool type and its category, sorted', () => {
     const registered = drawingTools
       .all()
       .map((t) => [t.type, t.category] as const)
       .sort((a, b) => a[0].localeCompare(b[0]))
     expect(registered).toEqual(TOOLS)
-    expect(TOOLS.length).toBe(90)
+    expect(TOOLS.length).toBe(89)
   })
 
   it('pins the 14 categories in drawing toolbar order, and the count under each', () => {
     expect([...TOOL_CATEGORIES]).toEqual(CATEGORIES.map(([c]) => c))
     for (const [category, count] of CATEGORIES) expect(drawingTools.byCategory(category as never).length, category).toBe(count)
-    expect(CATEGORIES.reduce((n, [, c]) => n + c, 0)).toBe(90)
+    expect(CATEGORIES.reduce((n, [, c]) => n + c, 0)).toBe(89)
   })
 
   it('registers every type once and under a listed category', () => {

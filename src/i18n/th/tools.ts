@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': 'โปรไฟล์ปริมาณช่วงคงที่',
   'tool.anchored_volume_profile': 'โปรไฟล์ปริมาณแบบตรึงจุด',
   'tool.image': 'รูปภาพ',
-  'tool.content_card': 'การ์ดเนื้อหา',
   'tool.emoji': 'อีโมจิ',
   'tool.sticker': 'สติกเกอร์',
   'tool.icon': 'ไอคอน',
