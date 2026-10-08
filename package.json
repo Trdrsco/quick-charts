@@ -1,6 +1,6 @@
 {
   "name": "@trdrs/quickcharts",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "description": "Quick Charts: a datafeed-driven charting library with drawings, indicators, layouts and replay over host-supplied data and storage ports.",
   "keywords": [
     "charts",
