@@ -1,5 +1,9 @@
 # @trdrs/quickcharts
 
+## Unreleased
+
+Every text field, select, number field and color well in the chart's dialogs and settings is one box: 34px tall with an 8px corner and a 1px edge in the `control.fieldEdge` role, which steps to `control.fieldEdgeHover` under the pointer, a 2px focus ring in `state.focusRing` drawn over the edge, an edge and ring in `control.fieldInvalid` for a value the field refuses, and a `control.fieldFill` ground when the field is read-only or disabled; a select ends in an 18px chevron, and both built-in palettes carry the four new roles.
+
 ## 2.4.0
 
 Bar replay that starts where the viewer chose, and a chart a host can hold in place, show without its price scale, give a crosshair of chosen parts, and morph between bar and close styles. No public name changes.
