@@ -63,6 +63,7 @@ const VARIANT_LABEL: Record<string, ChartMessageKey> = { original: 'drawing.vari
 const SIDE_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.left', center: 'drawing.center', right: 'drawing.right' }
 const UPDOWN_LABEL: Record<string, ChartMessageKey> = { up: 'drawing.up', down: 'drawing.down' }
 const ROWS_LAYOUT_LABEL: Record<string, ChartMessageKey> = { number: 'drawing.rowsByNumber', ticks: 'drawing.ticksPerRow' }
+const BANDS_MODE_LABEL: Record<string, ChartMessageKey> = { stdev: 'drawing.bandsStdev', percent: 'drawing.bandsPercent' }
 const PROFILE_VOLUME_LABEL: Record<string, ChartMessageKey> = { updown: 'drawing.upDown', total: 'drawing.total', delta: 'drawing.delta' }
 const DEGREE_LABEL: Record<ElliottDegree, ChartMessageKey> = {
   supermillennium: 'drawing.degreeSupermillennium',
@@ -135,10 +136,22 @@ const FORECAST_COLORS: readonly { key: string; label: ChartMessageKey }[] = [
   { key: 'failureTextColor', label: 'drawing.failureText' },
   { key: 'failureBackColor', label: 'drawing.failureBackground' },
 ]
-const PROFILE_LEVELS: readonly { label: ChartMessageKey; key: 'poc' | 'vah' | 'val' }[] = [
-  { label: 'drawing.pointOfControl', key: 'poc' },
-  { label: 'drawing.valueAreaHigh', key: 'vah' },
-  { label: 'drawing.valueAreaLow', key: 'val' },
+/** A volume profile's lines, in the order its Style page sets them. */
+const PROFILE_LINES: readonly { label: ChartMessageKey; on: string; key: string }[] = [
+  { label: 'drawing.vah', on: 'vahVisible', key: 'vah' },
+  { label: 'drawing.val', on: 'valVisible', key: 'val' },
+  { label: 'drawing.poc', on: 'pocVisible', key: 'poc' },
+  { label: 'drawing.developingPoc', on: 'developingPoc', key: 'developingPoc' },
+  { label: 'drawing.developingVa', on: 'developingVa', key: 'developingVa' },
+]
+/** A range meter's stats, as its Stats list names them, by the axis each measures. */
+const METER_STATS: readonly { key: string; label: ChartMessageKey; price: boolean }[] = [
+  { key: 'showPriceRange', label: 'drawing.priceRange', price: true },
+  { key: 'showPercentChange', label: 'drawing.percentChange', price: true },
+  { key: 'showPipsChange', label: 'drawing.changeInPips', price: true },
+  { key: 'showBarsRange', label: 'drawing.barsRange', price: false },
+  { key: 'showDateTimeRange', label: 'drawing.dateTimeRange', price: false },
+  { key: 'showVolume', label: 'drawing.volume', price: false },
 ]
 const FONT_SIZES = ['10', '11', '12', '14', '16', '20', '24', '28', '32', '40'] as const
 /** The sizes the Text page offers a drawing's words. */
@@ -187,7 +200,7 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
 
 /** The Style page layouts the tools share, by tool. A tool listed here gets exactly its layout's
  *  rows, in its layout's order; every other tool's page follows its props. */
-type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'elliott' | 'lines' | 'cycles' | 'regression' | 'parallel' | 'channel' | 'forecast' | 'sector' | 'barsPattern' | 'position' | 'pattern'
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve' | 'fib' | 'fibChannel' | 'timeZone' | 'trendTime' | 'circles' | 'arcs' | 'wedge' | 'pitchfan' | 'speedFan' | 'gannBox' | 'pitchfork' | 'spiral' | 'gannSquare' | 'gannFixed' | 'gannFan' | 'elliott' | 'lines' | 'cycles' | 'regression' | 'parallel' | 'channel' | 'forecast' | 'sector' | 'barsPattern' | 'position' | 'vwap' | 'profile' | 'meter' | 'pattern'
 const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   trend_line: 'line',
   ray: 'line',
@@ -238,6 +251,12 @@ const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
   elliott_triangle_wave: 'elliott',
   elliott_double_combo: 'elliott',
   elliott_triple_combo: 'elliott',
+  anchored_vwap: 'vwap',
+  fixed_range_volume_profile: 'profile',
+  anchored_volume_profile: 'profile',
+  price_range: 'meter',
+  date_range: 'meter',
+  date_and_price_range: 'meter',
   long_position: 'position',
   short_position: 'position',
   forecast: 'forecast',
@@ -406,6 +425,166 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
     )
   } else if (layout === 'shape') {
     out.push(row(t('drawing.border'), stroke('drawing.border')), background())
+  } else if (layout === 'vwap') {
+    // The average's line, each band's lines on their switches with the first band's body between
+    // its two, and the average's price on the scale.
+    const band = (side: 'upperBands' | 'lowerBands', index: number): HTMLElement => {
+      const n = index + 1
+      const text = t(side === 'upperBands' ? 'drawing.upperBand' : 'drawing.lowerBand', { n })
+      const live = (): Record<string, unknown>[] => (Array.isArray(drawing.props[side]) ? (drawing.props[side] as Record<string, unknown>[]) : [])
+      const line = live()[index] ?? {}
+      const patch = (next: Record<string, unknown>): void => ctx.patchProps({ [side]: live().map((l, j) => (j === index ? { ...l, ...next } : l)) })
+      const color = String(line.color)
+      return checkRow(text, line.visible === true, (v) => patch({ visible: v }), [
+        swatchButton(t, box, {
+          label: text,
+          value: color,
+          onPick: (c) => {
+            const alpha = alphaOf(color)
+            patch({ color: alpha < 1 ? withAlpha(c, alpha) : c })
+          },
+          opacity: alphaOf(color),
+          onOpacity: (v) => patch({ color: withAlpha(color, v) }),
+          thickness: Number(line.width),
+          onThickness: (v) => patch({ width: v }),
+          lineStyle: line.style as LineStyle,
+          onLineStyle: (v) => patch({ style: v }),
+        }),
+      ])
+    }
+    out.push(
+      row(t('drawing.vwap'), stroke('drawing.vwap')),
+      band('lowerBands', 0),
+      band('upperBands', 0),
+      checkRow(t('drawing.bandBackground', { n: 1 }), props.fillBackground !== false, (v) => ctx.patchProps({ fillBackground: v }), [
+        swatchButton(t, box, {
+          label: t('drawing.bandBackground', { n: 1 }),
+          value: style.fillColor,
+          onPick: (c) => ctx.patchStyle({ fillColor: c }),
+          opacity: style.fillOpacity,
+          onOpacity: (v) => ctx.patchStyle({ fillOpacity: v }),
+        }),
+      ]),
+      band('lowerBands', 1),
+      band('upperBands', 1),
+      band('lowerBands', 2),
+      band('upperBands', 2),
+      toggle('showPriceLabel', 'drawing.priceLabel'),
+    )
+  } else if (layout === 'profile') {
+    // The histogram and its values, its width and edge, its rows' colors in and out of the value
+    // area, its lines each on a switch in a stroke of its own, and the box behind it.
+    const well = (key: string, text: ChartMessageKey): HTMLButtonElement => {
+      const value = String(props[key])
+      return swatchButton(t, box, {
+        label: t(text),
+        value,
+        onPick: (c) => {
+          const alpha = alphaOf(value)
+          ctx.patchProps({ [key]: alpha < 1 ? withAlpha(c, alpha) : c })
+        },
+        opacity: alphaOf(value),
+        onOpacity: (v) => ctx.patchProps({ [key]: withAlpha(value, v) }),
+      })
+    }
+    out.push(
+      toggle('showProfile', 'drawing.volumeProfile'),
+      checkRow(t('drawing.values'), props.showValues === true, (v) => ctx.patchProps({ showValues: v }), [well('valuesColor', 'drawing.valuesColor')]),
+      row(t('drawing.widthPercent'), numberInput(t, icons, { label: t('drawing.widthPercent'), value: Number(props.widthPercent), min: 5, max: 100, step: 5, width: 'field', onChange: (v) => ctx.patchProps({ widthPercent: v }) })),
+      row(t('drawing.placement'), dropdown(icons, box, t('drawing.placement'), ['right', 'left'] as const, props.placement as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ placement: v }))),
+      row(t('drawing.upVolume'), well('upColor', 'drawing.upVolume')),
+      row(t('drawing.downVolume'), well('downColor', 'drawing.downVolume')),
+      row(t('drawing.valueAreaUp'), well('valueAreaUpColor', 'drawing.valueAreaUp')),
+      row(t('drawing.valueAreaDown'), well('valueAreaDownColor', 'drawing.valueAreaDown')),
+      ...PROFILE_LINES.map((line) => {
+        const color = String(props[`${line.key}Color`])
+        return checkRow(t(line.label), props[line.on] === true, (v) => ctx.patchProps({ [line.on]: v }), [
+          swatchButton(t, box, {
+            label: t(line.label),
+            value: color,
+            onPick: (c) => {
+              const alpha = alphaOf(color)
+              ctx.patchProps({ [`${line.key}Color`]: alpha < 1 ? withAlpha(c, alpha) : c })
+            },
+            opacity: alphaOf(color),
+            onOpacity: (v) => ctx.patchProps({ [`${line.key}Color`]: withAlpha(color, v) }),
+            thickness: Number(props[`${line.key}Width`]),
+            onThickness: (v) => ctx.patchProps({ [`${line.key}Width`]: v }),
+            lineStyle: props[`${line.key}Style`] as LineStyle,
+            onLineStyle: (v) => ctx.patchProps({ [`${line.key}Style`]: v }),
+          }),
+        ])
+      }),
+      row(t('drawing.histogramBox'), well('boxColor', 'drawing.histogramBox')),
+    )
+    if (drawing.type === 'anchored_volume_profile') out.push(toggle('showLabelsOnPriceScale', 'drawing.labelsOnPriceScale'))
+  } else if (layout === 'meter') {
+    // The arrows' stroke, the span's background and border, how far it runs, the stats its label
+    // reads, and the label's words and background.
+    const price = drawing.type !== 'date_range'
+    const time = drawing.type !== 'price_range'
+    const labelWell = (key: string, text: ChartMessageKey): HTMLButtonElement => {
+      const value = String(props[key])
+      return swatchButton(t, box, {
+        label: t(text),
+        value,
+        onPick: (c) => {
+          const alpha = alphaOf(value)
+          ctx.patchProps({ [key]: alpha < 1 ? withAlpha(c, alpha) : c })
+        },
+        opacity: alphaOf(value),
+        onOpacity: (v) => ctx.patchProps({ [key]: withAlpha(value, v) }),
+      })
+    }
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine')))
+    if (drawing.type === 'date_and_price_range') {
+      const color = String(props.borderColor)
+      out.push(
+        checkRow(t('drawing.border'), props.drawBorder === true, (v) => ctx.patchProps({ drawBorder: v }), [
+          swatchButton(t, box, {
+            label: t('drawing.border'),
+            value: color,
+            onPick: (c) => ctx.patchProps({ borderColor: c }),
+            thickness: Number(props.borderWidth),
+            onThickness: (v) => ctx.patchProps({ borderWidth: v }),
+          }),
+        ]),
+      )
+    }
+    out.push(background())
+    if (drawing.type === 'price_range') out.push(extend('drawing.extendLeft', 'drawing.extendRight'))
+    if (drawing.type === 'date_range') {
+      out.push(
+        row(
+          t('drawing.extend'),
+          multiDropdown(icons, box, {
+            label: t('drawing.extend'),
+            empty: t('drawing.extendNone'),
+            choices: [
+              { label: t('drawing.extendTop'), checked: !!props.extendTop, onChange: (v) => ctx.patchQuiet({ extendTop: v }) },
+              { label: t('drawing.extendBottom'), checked: !!props.extendBottom, onChange: (v) => ctx.patchQuiet({ extendBottom: v }) },
+            ],
+          }),
+        ),
+      )
+    }
+    out.push(
+      sectionTitle(t('drawing.sectionInfo')),
+      row(
+        t('drawing.sectionStats'),
+        multiDropdown(icons, box, {
+          label: t('drawing.sectionStats'),
+          empty: t('drawing.statsHidden'),
+          choices: METER_STATS.filter((s) => (s.price ? price : time)).map((s) => ({ label: t(s.label), checked: !!props[s.key], onChange: (v: boolean) => ctx.patchQuiet({ [s.key]: v }) })),
+        }),
+      ),
+      row(
+        t('drawing.label'),
+        labelWell('labelColor', 'drawing.labelColor'),
+        dropdown(icons, box, t('drawing.fontSize'), TEXT_SIZES, String(props.labelFontSize) as (typeof TEXT_SIZES)[number], (v) => v, (v) => ctx.patchProps({ labelFontSize: Number(v) })),
+      ),
+      checkRow(t('drawing.labelBackground'), props.fillLabelBackground !== false, (v) => ctx.patchProps({ fillLabelBackground: v }), [labelWell('labelBackgroundColor', 'drawing.labelBackground')]),
+    )
   } else if (layout === 'position') {
     // The lines, the two zones, the words' color and size, the levels' prices, then the stats the
     // tags read and how they read them.
@@ -626,6 +805,7 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
 export function styleRows(ctx: RowsContext): HTMLElement[] {
   const layout = STYLE_LAYOUTS[ctx.drawing.type]
   if (layout && ctx.tab === 'Style') return layoutRows(ctx, layout)
+  if (ctx.drawing.type === 'anchored_vwap' && ctx.tab === 'Inputs') return vwapInputs(ctx)
   const { t, drawing, box, tab } = ctx
   const type = drawing.type
   const props = drawing.props as Record<string, unknown>
@@ -675,20 +855,6 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   toggle('showPrice', 'drawing.priceLabel')
   toggle('showTime', 'drawing.timeLabel')
   toggle('middleLine', 'drawing.middleLine')
-  if (sect('showPriceDelta')) {
-    out.push(sectionTitle(t('drawing.sectionStats')))
-    if (type !== 'date_range') {
-      out.push(toggleRow(t('drawing.priceChange'), !!props.showPriceDelta, (v) => ctx.patchProps({ showPriceDelta: v })), toggleRow(t('drawing.percentChange'), !!props.showPercent, (v) => ctx.patchProps({ showPercent: v })))
-    }
-    if (type !== 'price_range') {
-      out.push(
-        toggleRow(t('drawing.bars'), !!props.showBars, (v) => ctx.patchProps({ showBars: v })),
-        toggleRow(t('drawing.dateTimeRange'), !!props.showTimeSpan, (v) => ctx.patchProps({ showTimeSpan: v })),
-        toggleRow(t('drawing.volume'), !!props.showVolume, (v) => ctx.patchProps({ showVolume: v })),
-      )
-    }
-    out.push(toggleRow(t('drawing.extend'), !!props.extend, (v) => ctx.patchProps({ extend: v })))
-  }
   if (sect('showPriceRange')) {
     out.push(
       sectionTitle(t('drawing.sectionInfo')),
@@ -745,33 +911,15 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   }
   if (sect('url')) out.push(row(t('drawing.link'), textField(String(props.url ?? ''), t('drawing.link'), (v) => ctx.patchQuiet({ url: v }), { wide: true })))
   if (sect('rowsLayout')) {
+    // How the profile divides the range, what each row reads, the value area's share, and whether
+    // the profile runs on with new bars.
     out.push(
       row(t('drawing.rowsLayout'), dropdown(ctx.icons, ctx.box, t('drawing.rowsLayout'), ['number', 'ticks'] as const, props.rowsLayout as 'number', label(t, ROWS_LAYOUT_LABEL), (v) => ctx.patchProps({ rowsLayout: v }))),
-      row(t('drawing.rowSize'), numberInput(t, ctx.icons, { label: t('drawing.rowSize'), value: Number(props.rowSize), min: 1, max: 400, step: 1, onChange: (v) => ctx.patchProps({ rowSize: v }) })),
+      row(t('drawing.rowSize'), numberInput(t, ctx.icons, { label: t('drawing.rowSize'), value: Number(props.rowSize), min: 1, max: 1000, step: 1, width: 'field', onChange: (v) => ctx.patchProps({ rowSize: v }) })),
       row(t('drawing.volume'), dropdown(ctx.icons, ctx.box, t('drawing.volume'), ['updown', 'total', 'delta'] as const, props.volume as 'updown', label(t, PROFILE_VOLUME_LABEL), (v) => ctx.patchProps({ volume: v }))),
-      row(t('drawing.valueAreaVolume'), numberInput(t, ctx.icons, { label: t('drawing.valueAreaVolume'), value: Number(props.valueAreaVolume), min: 0, max: 95, step: 5, onChange: (v) => ctx.patchProps({ valueAreaVolume: v }) })),
+      row(t('drawing.valueAreaVolume'), numberInput(t, ctx.icons, { label: t('drawing.valueAreaVolume'), value: Number(props.valueAreaVolume), min: 0, max: 100, step: 5, width: 'field', onChange: (v) => ctx.patchProps({ valueAreaVolume: v }) })),
     )
-    if ('extendRight' in props) out.push(toggleRow(t('drawing.extendRight'), !!props.extendRight, (v) => ctx.patchProps({ extendRight: v })))
-  }
-  if ('rowsLayout' in props && tab === 'Style') {
-    out.push(
-      row(t('drawing.widthPercent'), numberInput(t, ctx.icons, { label: t('drawing.widthPercent'), value: Number(props.widthPercent), min: 5, max: 100, step: 5, onChange: (v) => ctx.patchProps({ widthPercent: v }) })),
-      row(t('drawing.placement'), dropdown(ctx.icons, ctx.box, t('drawing.placement'), ['left', 'right'] as const, props.placement as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ placement: v }))),
-      row(t('drawing.upDownVolume'), swatch('upColor'), swatch('downColor')),
-      row(t('drawing.valueAreaUpDown'), swatch('valueAreaUpColor'), swatch('valueAreaDownColor')),
-    )
-    for (const level of PROFILE_LEVELS) {
-      out.push(
-        row(
-          t(level.label),
-          checkbox(t('drawing.rowVisible', { name: t(level.label) }), !!props[`${level.key}Visible`], (v) => ctx.patchProps({ [`${level.key}Visible`]: v })),
-          swatch(`${level.key}Color`),
-          dropdown(ctx.icons, ctx.box, t('drawing.thickness'), ['1', '2', '3', '4'] as const, String(Math.min(4, Number(props[`${level.key}Width`]) || 1)) as '1', (v) => `${v}px`, (v) => ctx.patchProps({ [`${level.key}Width`]: Number(v) })),
-          dropdown(ctx.icons, ctx.box, t('drawing.lineStyle'), ['solid', 'dashed', 'dotted'] as const, props[`${level.key}Style`] as 'solid', (v) => t(v === 'solid' ? 'drawing.lineSolid' : v === 'dashed' ? 'drawing.lineDashed' : 'drawing.lineDotted'), (v) => ctx.patchProps({ [`${level.key}Style`]: v })),
-        ),
-      )
-    }
-    out.push(toggleRow(t('drawing.developingPoc'), !!props.developingPoc, (v) => ctx.patchProps({ developingPoc: v })), toggleRow(t('drawing.developingVa'), !!props.developingVa, (v) => ctx.patchProps({ developingVa: v })))
+    if ('extendRight' in props) out.push(toggleRow(t('drawing.profileExtendRight'), !!props.extendRight, (v) => ctx.patchProps({ extendRight: v })))
   }
   if (sect('averageHL')) {
     // The sketched candles' average span is written in the symbol's minimum ticks, cents where the
@@ -971,6 +1119,36 @@ export function coordinateRows(ctx: RowsContext): HTMLElement[] {
     )
     return row(t(barOnly ? 'drawing.coordBar' : priceOnly ? 'drawing.coordPrice' : 'drawing.coordPriceBar', { n: i + 1 }), ...controls)
   })
+}
+
+/** An anchored VWAP's Inputs page: how its bands stand off it and which of them are calculated, at
+ *  what multiples, and the price it weighs. */
+function vwapInputs(ctx: RowsContext): HTMLElement[] {
+  const { t, icons, box, drawing } = ctx
+  const props = drawing.props as Record<string, unknown>
+  const live = (key: 'bandMultipliers' | 'bandsOn'): unknown[] => (Array.isArray(drawing.props[key]) ? (drawing.props[key] as unknown[]) : [])
+  const multipliers = live('bandMultipliers') as number[]
+  const on = live('bandsOn') as boolean[]
+  const band = (index: number): HTMLElement =>
+    checkRow(t('drawing.bandsMultiplier', { n: index + 1 }), on[index] === true, (v) => ctx.patchProps({ bandsOn: live('bandsOn').map((b, j) => (j === index ? v : b)) }), [
+      numberInput(t, icons, {
+        label: t('drawing.bandsMultiplier', { n: index + 1 }),
+        value: Number(multipliers[index]),
+        min: 0,
+        step: 0.5,
+        width: 'field',
+        onChange: (v) => ctx.patchProps({ bandMultipliers: live('bandMultipliers').map((m, j) => (j === index ? v : m)) }),
+      }),
+    ])
+  return [
+    sectionTitle(t('drawing.bandsSettings')),
+    row(t('drawing.bandsMode'), dropdown(icons, box, t('drawing.bandsMode'), ['stdev', 'percent'] as const, props.bandsMode as 'stdev', label(t, BANDS_MODE_LABEL), (v) => ctx.patchProps({ bandsMode: v }), 'medium')),
+    band(0),
+    band(1),
+    band(2),
+    groupGap(),
+    row(t('drawing.source'), dropdown(icons, box, t('drawing.source'), BAR_PRICE_SOURCES, props.source as BarPriceSource, label(t, SOURCE_LABEL), (v) => ctx.patchProps({ source: v }))),
+  ]
 }
 
 /** A position's Inputs page: its account, lots, risk and leverage; its entry, and its target and stop

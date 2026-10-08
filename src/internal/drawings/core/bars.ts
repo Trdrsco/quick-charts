@@ -85,6 +85,15 @@ export function linearRegression(
   return { slope, intercept, sigma: Math.sqrt(variance / n) }
 }
 
+/** A volume written compactly: 12.4M, 3.2K. */
+export function volumeText(volume: number): string {
+  const size = Math.abs(volume)
+  if (size >= 1e9) return `${(volume / 1e9).toFixed(2)}B`
+  if (size >= 1e6) return `${(volume / 1e6).toFixed(2)}M`
+  if (size >= 1e3) return `${(volume / 1e3).toFixed(1)}K`
+  return String(Math.round(volume))
+}
+
 export interface VolumeBin {
   priceLow: number
   priceHigh: number

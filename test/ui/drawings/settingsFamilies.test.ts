@@ -137,6 +137,33 @@ const POSITION_STYLE = [
   '[ ] Always show stats',
 ]
 
+/** A volume profile's Inputs page; a fixed range runs on with new bars on its own switch. */
+const profileInputs = (fixed: boolean): string[] => ['Rows Layout: select(Number Of Rows)', 'Row Size: number', 'Volume: select(Up/Down)', 'Value Area Volume: number', ...(fixed ? ['[x] Extend Right'] : [])]
+
+/** A volume profile's Style page; an anchored one grows from the right and reads its lines on the
+ *  price scale. */
+const profileStyle = (anchored: boolean): string[] => [
+  '[x] Volume profile',
+  '[ ] Values: color',
+  'Width (% of the box): number',
+  `Placement: select(${anchored ? 'Right' : 'Left'})`,
+  'Up Volume: color',
+  'Down Volume: color',
+  'Value Area Up: color',
+  'Value Area Down: color',
+  '[ ] VAH: colorWithThickness',
+  '[ ] VAL: colorWithThickness',
+  '[x] POC: colorWithThickness',
+  '[ ] Developing POC: colorWithThickness',
+  '[ ] Developing VA: colorWithThickness',
+  'Histogram Box: color',
+  ...(anchored ? ['[x] Labels on price scale'] : []),
+]
+
+/** A range meter's Style page, from what it carries before its stats and what its stats read. */
+const meterStyle = (before: string[], stats: string): string[] => ['Line: colorWithThickness', ...before, '## Info', `Stats: multi(${stats})`, 'Label: color select(12)', '[x] Label background: color']
+const METER_TEXT = ['full: color select(12) toggle toggle', 'full: textarea']
+
 /** A channel's Text page: its words' color, size, weight and slant, its words, and where they stand. */
 const CHANNEL_TEXT = ['full: color select(14) toggle toggle', 'full: textarea', 'Text alignment: select(Top) select(Left)']
 
@@ -298,6 +325,51 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Inputs?: string[]
     tabs: ['Inputs', 'Style', 'Coordinates', 'Visibility'],
     Inputs: ['Avg HL in minticks: number', 'Variance: number'],
     Style: ['Candles: color color', '[x] Borders: color color', '[x] Wick: color', 'Transparency: opacity'],
+    Coordinates: TWO_POINTS,
+  },
+  anchored_vwap: {
+    tabs: ['Inputs', 'Style', 'Visibility'],
+    Inputs: ['## Bands Settings', 'Bands Calculation Mode: select(Standard Deviation)', '[x] Bands Multiplier #1: number', '[ ] Bands Multiplier #2: number', '[ ] Bands Multiplier #3: number', 'gap', 'Source: select((H + L + C)/3)'],
+    Style: [
+      'VWAP: colorWithThickness',
+      '[x] Lower band #1: colorWithThickness',
+      '[x] Upper band #1: colorWithThickness',
+      '[x] Background #1: color',
+      '[x] Lower band #2: colorWithThickness',
+      '[x] Upper band #2: colorWithThickness',
+      '[x] Lower band #3: colorWithThickness',
+      '[x] Upper band #3: colorWithThickness',
+      '[ ] Price label',
+    ],
+  },
+  fixed_range_volume_profile: {
+    tabs: ['Inputs', 'Style', 'Coordinates', 'Visibility'],
+    Inputs: profileInputs(true),
+    Style: profileStyle(false),
+    Coordinates: ['#1 (bar): number', '#2 (bar): number'],
+  },
+  anchored_volume_profile: {
+    tabs: ['Inputs', 'Style', 'Coordinates', 'Visibility'],
+    Inputs: profileInputs(false),
+    Style: profileStyle(true),
+    Coordinates: ['#1 (bar): number'],
+  },
+  price_range: {
+    tabs: ['Style', 'Text', 'Coordinates', 'Visibility'],
+    Style: meterStyle(['[x] Background: color', "Extend: multi(Don't extend)"], 'Price range, percent change, change in pips'),
+    Text: METER_TEXT,
+    Coordinates: TWO_POINTS,
+  },
+  date_range: {
+    tabs: ['Style', 'Text', 'Coordinates', 'Visibility'],
+    Style: meterStyle(['[x] Background: color', "Extend: multi(Don't extend)"], 'Bars range, date/time range, volume'),
+    Text: METER_TEXT,
+    Coordinates: TWO_POINTS,
+  },
+  date_and_price_range: {
+    tabs: ['Style', 'Text', 'Coordinates', 'Visibility'],
+    Style: meterStyle(['[ ] Border: colorWithThickness', '[x] Background: color'], 'Price range, percent change, change in pips, bars range, date/time range, volume'),
+    Text: METER_TEXT,
     Coordinates: TWO_POINTS,
   },
   xabcd_pattern: { tabs: ['Style', 'Coordinates', 'Visibility'], Style: patternStyle(true), Coordinates: points(5) },

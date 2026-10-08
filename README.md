@@ -2909,6 +2909,13 @@ and `color2` while `fillBackground` is on. A bars pattern paints its captured ba
 high, low or `hl2`. A ghost feed's average candle span is held as a price and written on its page in
 the symbol's minimum ticks.
 
+An anchored VWAP weighs the `source` of every bar since its point by the bar's volume, and stands
+its bands off the average by `bandMultipliers` standard deviations or, with `bandsMode`
+`percent`, percents of it, each band calculated while its `bandsOn` switch is on. A volume profile
+reads its rows' volumes beside them with `showValues` and its point of control and shown value
+area bounds on the price scale with `showLabelsOnPriceScale`. A range meter reads the stats its
+switches choose in a label of its own color, size and background.
+
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
 the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
 that shade their legs, the background, which `fillBackground` switches off and on keeping its

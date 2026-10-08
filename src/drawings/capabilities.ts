@@ -92,9 +92,9 @@ export const INERT_PROPS: Record<string, readonly string[]> = {
 
 /** Tools whose points are drawn from their shape rather than typed: a turned box, an arc, an
  *  ellipse, a polygon of any count of points, a fib wedge, a flat top/bottom, a disjoint channel, a
- *  sector, a bars pattern and a position have no Coordinates tab: a position's points are its
- *  entry, target and stop prices on its Inputs page. */
-export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel', 'sector', 'bars_pattern', 'long_position', 'short_position'])
+ *  sector, a bars pattern, a position and an anchored VWAP have no Coordinates tab: a position's
+ *  points are its entry, target and stop prices on its Inputs page. */
+export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel', 'sector', 'bars_pattern', 'long_position', 'short_position', 'anchored_vwap'])
 
 /** Tools that span every bar at one price: the Coordinates tab hides the bar field. */
 export const PRICE_ONLY_COORDS: ReadonlySet<string> = new Set(['horizontal_line'])
@@ -145,4 +145,5 @@ export const INPUT_PROPS: Record<string, readonly string[]> = {
   long_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'qtyPrecision'],
   short_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'qtyPrecision'],
   regression_trend: ['upperDeviation', 'lowerDeviation', 'useUpper', 'useLower', 'source'],
+  anchored_vwap: ['source', 'bandsMode', 'bandMultipliers', 'bandsOn'],
 }

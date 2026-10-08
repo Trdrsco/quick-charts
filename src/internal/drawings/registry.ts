@@ -146,6 +146,10 @@ const FIB_LOOK: Partial<DrawingStyle> = { lineWidth: 2, lineStyle: 'solid', font
  *  words 14px. */
 const channelLook = (hue: string): Partial<DrawingStyle> => ({ lineColor: hue, lineWidth: 2, lineStyle: 'solid', fillColor: hue, fillOpacity: 0.2, textColor: hue, fontSize: 14 })
 
+/** A range meter's look: its arrows in their color at 2px over a blue span at fifteen percent, the
+ *  viewer's words blue at 12px. */
+const meterLook = (line: string): Partial<DrawingStyle> => ({ lineColor: line, lineWidth: 2, lineStyle: 'solid', fillColor: '#2962ff', fillOpacity: 0.15, textColor: '#2962ff', fontSize: 12 })
+
 /** A wave count's look: its line and its labels in one color, the line 2px and solid. */
 const waveLook = (color: string): Partial<DrawingStyle> => ({ lineColor: color, lineWidth: 2, lineStyle: 'solid' })
 
@@ -250,7 +254,7 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(GhostFeed, { type: 'ghost_feed', name: 'Ghost feed', category: 'forecasting', anchors: 2, capturesBars: true }),
 
   // Volume
-  tool(AnchoredVwap, { type: 'anchored_vwap', name: 'Anchored VWAP', category: 'volume', anchors: 1 }),
+  tool(AnchoredVwap, { type: 'anchored_vwap', name: 'Anchored VWAP', category: 'volume', anchors: 1, style: { lineColor: '#1e88e5', lineWidth: 1, lineStyle: 'solid', fillColor: '#4caf50', fillOpacity: 0.05 } }),
   tool(FixedRangeVolumeProfile, { type: 'fixed_range_volume_profile', name: 'Fixed range volume profile', category: 'volume', anchors: 2 }),
   tool(AnchoredVolumeProfile, { type: 'anchored_volume_profile', name: 'Anchored volume profile', category: 'volume', anchors: 1 }),
 
@@ -283,9 +287,9 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(Polyline, { type: 'polyline', name: 'Polyline', category: 'shapes', anchors: 2, placement: 'multipoint', style: shapeLook('#00bcd4') }),
 
   // Measurement
-  tool(PriceRange, { type: 'price_range', name: 'Price range', category: 'measurement', anchors: 2 }),
-  tool(DateRange, { type: 'date_range', name: 'Date range', category: 'measurement', anchors: 2 }),
-  tool(DatePriceRange, { type: 'date_and_price_range', name: 'Date and price range', category: 'measurement', anchors: 2 }),
+  tool(PriceRange, { type: 'price_range', name: 'Price range', category: 'measurement', anchors: 2, style: meterLook('rgba(79, 87, 107, 1)') }),
+  tool(DateRange, { type: 'date_range', name: 'Date range', category: 'measurement', anchors: 2, style: meterLook('#2962ff') }),
+  tool(DatePriceRange, { type: 'date_and_price_range', name: 'Date and price range', category: 'measurement', anchors: 2, style: meterLook('#2962ff') }),
   tool(Measure, { type: 'measure', name: 'Measure', category: 'measurement', anchors: 2 }),
 ]
 
