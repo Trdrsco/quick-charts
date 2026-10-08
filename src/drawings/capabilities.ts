@@ -82,12 +82,68 @@ export const FONT_TOOLS: ReadonlySet<string> = new Set(['text', 'note', 'comment
  *  letters' color, size, weight and slant. */
 export const LABELED_PATTERNS: ReadonlySet<string> = new Set(['xabcd_pattern', 'cypher_pattern', 'abcd_pattern', 'triangle_pattern', 'head_and_shoulders', 'three_drives'])
 
-/** Prop keys a tool carries that its pages do not set: a trend angle's shared line keys, which its
- *  paint ignores, and a content card's words and link, which the host sets or the viewer types on
- *  the chart. */
+const SAVED_LOOK = ['savedLook'] as const
+const FIB_LABELS = ['bandsByPane', 'wordsInLabels', 'labelsAtStart'] as const
+const FORK = ['shadedBands'] as const
+const CHANNEL = ['textAtStart'] as const
+const PATTERN = ['pillRadius'] as const
+const WAVE = ['pillRadius', 'labelPills'] as const
+const PROFILE = ['outline'] as const
+const POSITION = ['savedWords'] as const
+const METER = ['labelTextStyle'] as const
+
+/** The props that keep a version 2 save's look as it was saved, where its tool's pages offer no
+ *  control for it. They are the drawing's own: its tool's remembered default and the templates
+ *  saved from it leave them out. */
+export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
+  regression_trend: ['bodyColor'],
+  parallel_channel: CHANNEL,
+  flat_top_bottom: CHANNEL,
+  disjoint_channel: CHANNEL,
+  fib_retracement: FIB_LABELS,
+  fib_trend_ext: FIB_LABELS,
+  fib_channel: FIB_LABELS,
+  fib_circles: ['roundPercents'],
+  fib_speed_resist_fan: SAVED_LOOK,
+  pitchfan: SAVED_LOOK,
+  pitchfork: FORK,
+  schiff_pitchfork: FORK,
+  schiff_pitchfork_modified: FORK,
+  inside_pitchfork: FORK,
+  gannbox: ['tint'],
+  gannbox_square: SAVED_LOOK,
+  gannbox_fixed: SAVED_LOOK,
+  xabcd_pattern: PATTERN,
+  cypher_pattern: PATTERN,
+  abcd_pattern: PATTERN,
+  triangle_pattern: PATTERN,
+  head_and_shoulders: PATTERN,
+  three_drives: PATTERN,
+  elliott_impulse_wave: WAVE,
+  elliott_correction: WAVE,
+  elliott_triangle_wave: WAVE,
+  elliott_double_combo: WAVE,
+  elliott_triple_combo: WAVE,
+  bars_pattern: ['candles'],
+  fixed_range_volume_profile: PROFILE,
+  anchored_volume_profile: PROFILE,
+  callout: ['borderWidth'],
+  price_note: SAVED_LOOK,
+  signpost: SAVED_LOOK,
+  long_position: POSITION,
+  short_position: POSITION,
+  price_range: METER,
+  date_range: METER,
+  date_and_price_range: ['extendLeft', 'extendRight', ...METER],
+}
+
+/** Prop keys a tool carries that its pages do not set: a trend angle's shared line keys, which it
+ *  draws only as a save carries them; a content card's words and link, which the host sets or the
+ *  viewer types on the chart; and the props that keep a version 2 save's look as it was saved. */
 export const INERT_PROPS: Record<string, readonly string[]> = {
   trend_angle: ['text', 'leftEnd', 'rightEnd', 'showDateTimeRange', 'showAngle'],
   content_card: ['text', 'url'],
+  ...SAVED_LOOK_PROPS,
 }
 
 /** Tools whose points are drawn from their shape rather than typed: a turned box, an arc, an

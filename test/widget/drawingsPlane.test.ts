@@ -9,7 +9,7 @@ import { CHART_STYLES } from '../../src/widget/styles'
 import { ALL_TIMEFRAMES_OFFERED } from '../../src/widget/timeframes'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChartI18n } from '../../src/i18n'
-import { DEFAULT_DRAWING_PREFERENCES, type DrawingPreferences } from '../../src/drawings/index'
+import { DEFAULT_DRAWING_PREFERENCES, DEFAULT_OPTIONS, DEFAULT_STYLE, type DrawingPreferences } from '../../src/drawings/index'
 import type { ChartExtensionHideLayer } from '../../src/extension'
 import { createCommandRegistry } from '../../src/widget/commands'
 import { registerChartCommands } from '../../src/widget/chartCommands'
@@ -671,6 +671,23 @@ describe('the settings dialog over the plane', () => {
     // The words are the drawing's own, not its look, so they stay.
     ;[...dialog.querySelectorAll<HTMLElement>('[role="tab"]')].find((tab) => tab.textContent === 'Text')!.click()
     expect(dialog.querySelector<HTMLTextAreaElement>('textarea')!.value).toBe('Note')
+  })
+
+  it('Apply defaults puts the tool’s own look whole on a drawing saved at v 2, and an edit to it remembers no part of its saved look', async () => {
+    const { run, plane } = make()
+    const levels = [0, 0.5, 1].map((value) => ({ value, visible: true }))
+    plane.handle!.restore([{ v: 2, id: 'old', type: 'fib_retracement', anchors: [{ time: 100 as never, price: 280 }, { time: 300 as never, price: 120 }], style: { ...DEFAULT_STYLE }, options: { ...DEFAULT_OPTIONS }, props: { levels, extendLeft: false, extendRight: false, showPrices: true, showLevels: true, reverse: false, background: true } }])
+    plane.handle!.select('old')
+    expect(plane.handle!.selectedDrawing()!.props).toMatchObject({ bandsByPane: true, wordsInLabels: true, labelsAtStart: true, trendLine: false })
+    // An edit remembers the setup for the next fib, and a template keeps it, without the saved look.
+    run('chart.drawings.style', { lineWidth: 3 })
+    expect(plane.handle!.presets.defaultFor('fib_retracement').props).not.toHaveProperty('bandsByPane')
+    plane.verbs!.saveTemplate('Mine')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const mine = plane.handle!.presets.templatesFor('fib_retracement').find((t) => t.name === 'Mine')!
+    expect(mine.props).not.toHaveProperty('labelsAtStart')
+    run('chart.drawings.template.apply', null)
+    expect(plane.handle!.selectedDrawing()!.props).toMatchObject({ bandsByPane: false, wordsInLabels: false, labelsAtStart: false, trendLine: true })
   })
 
   it('Cancel after Apply defaults puts back the drawing as it stood before the dialog opened', () => {

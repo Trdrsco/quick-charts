@@ -1,7 +1,8 @@
 import type { ControlPoint, DrawingStyle, LineStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { angleOf, distanceToSegment, extendSegment, midpoint } from '../core/geometry'
-import { applyStroke, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { alphaOf, applyStroke, dashPattern, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { endSavedLook, savedLevels, type SavedLook } from '../core/savedLook'
 import type { TextHAlign, TextVAlign } from './lines'
 import { boxDivisions, levelBox, paintBoxLabels, priceY, timeX, upgradeBoxLevels, type BoxLevelsProps, type LevelBox } from './boxLevels'
 
@@ -101,6 +102,13 @@ export type FibChannelProps = {
    *  `backgroundOpacity`. Switched off, the bands keep their opacity for when they return. */
   fillBackground: boolean
   backgroundOpacity: number
+  /** Each band takes the color of the level below it on the pane, in place of the level that
+   *  closes it. */
+  bandsByPane: boolean
+  /** A level's words lead its label, before its ratio and price, in place of standing on its line. */
+  wordsInLabels: boolean
+  /** Each label stands 6px before its level line's first point instead, read toward it. */
+  labelsAtStart: boolean
 }
 
 /** A retracement's and an extension's own: the trend line through the swing points in a stroke of
@@ -128,6 +136,9 @@ const CHANNEL_PROPS: Omit<FibChannelProps, 'levels'> = {
   labelsVAlign: 'middle',
   fillBackground: true,
   backgroundOpacity: 0.2,
+  bandsByPane: false,
+  wordsInLabels: false,
+  labelsAtStart: false,
 }
 
 const RETRACEMENT_PROPS: Omit<FibRetracementProps, 'levels'> = {
@@ -209,7 +220,7 @@ type LevelLinePainter = {
 function paintLevelLines(ctx: CanvasRenderingContext2D, drawing: LevelLinePainter, lines: readonly LevelLine[]): void {
   const { props, style } = drawing
   if (props.fillBackground && props.backgroundOpacity > 0) {
-    const ordered = [...lines].sort((p, q) => p.level.value - q.level.value)
+    const ordered = props.bandsByPane ? [...lines].sort((p, q) => p.a.y - q.a.y) : [...lines].sort((p, q) => p.level.value - q.level.value)
     for (let i = 0; i < ordered.length - 1; i++) {
       const from = ordered[i]!
       const to = ordered[i + 1]!
@@ -232,13 +243,14 @@ function paintLevelLines(ctx: CanvasRenderingContext2D, drawing: LevelLinePainte
   const ink = (color: string): DrawingStyle => ({ ...style, textColor: color })
   for (const line of lines) {
     const parts: string[] = []
+    if (props.wordsInLabels && line.level.text) parts.push(line.level.text)
     if (props.showLevels) parts.push(levelValueText(line.level.value, props.coeffsAsPercents))
     if (props.showPrices && Number.isFinite(line.price)) parts.push(`(${drawing.format(line.price)})`)
     if (parts.length) {
-      const place = labelPlace(props.labelsHAlign, props.labelsVAlign, line.a, line.b)
+      const place: Placement = props.labelsAtStart ? { at: { x: line.a.x - 6, y: line.a.y }, align: 'right', baseline: 'middle' } : labelPlace(props.labelsHAlign, props.labelsVAlign, line.a, line.b)
       paintLabel(ctx, parts.join(' '), place.at, ink(line.color), { align: place.align, baseline: place.baseline })
     }
-    if (props.showText && line.level.text && props.textHAlign && props.textVAlign) {
+    if (!props.wordsInLabels && props.showText && line.level.text && props.textHAlign && props.textVAlign) {
       const place = textPlace(props.textHAlign, props.textVAlign, line.a, line.b)
       paintLabel(ctx, line.level.text, place.at, ink(line.color), { align: place.align, baseline: place.baseline })
     }
@@ -255,6 +267,12 @@ export class FibRetracement extends Drawing<FibRetracementProps> {
 
   protected override upgradeProps(props: Partial<FibRetracementProps>): Partial<FibRetracementProps> {
     return upgradeBackground(props)
+  }
+
+  /** A format-2 fib drew no trend line, its bands at 7%, each in the color of the level below it on
+   *  the pane, and its labels before its levels' left ends with a level's words before its ratio. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, trendLine: false, backgroundOpacity: 0.07, bandsByPane: true, wordsInLabels: true, labelsAtStart: true }
   }
 
   requiredAnchors(): number {
@@ -339,6 +357,13 @@ export class FibRetracement extends Drawing<FibRetracementProps> {
 export class FibExtension extends FibRetracement {
   override readonly type = 'fib_trend_ext'
 
+  /** A format-2 extension drew its swing dashed in its own stroke at half its opacity. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    super.keepSavedLook(saved)
+    const { lineColor, lineWidth } = this._style
+    this._props = { ...this._props, trendLine: true, trendLineColor: withAlpha(lineColor, alphaOf(lineColor) * 0.5), trendLineWidth: lineWidth, trendLineStyle: 'dashed' }
+  }
+
   override requiredAnchors(): number {
     return 3
   }
@@ -372,6 +397,12 @@ export class FibChannel extends Drawing<FibChannelProps> {
     return upgradeBackground(props)
   }
 
+  /** A format-2 fib channel drew its bands at 6%, and its labels before its levels' first points
+   *  with a level's words before its ratio. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, backgroundOpacity: 0.06, wordsInLabels: true, labelsAtStart: true }
+  }
+
   requiredAnchors(): number {
     return 3
   }
@@ -388,8 +419,10 @@ export class FibChannel extends Drawing<FibChannelProps> {
       const a = { x: p1.x, y: p1.y + dy * level.value }
       const b = { x: p2.x, y: p2.y + dy * level.value }
       const seg = extendLeft || extendRight ? extendSegment(a, b, viewport.width, viewport.height, extendLeft, extendRight) : { a, b }
-      // A level's price is where its line leaves the channel's first point.
-      out.push({ level, color: fibLevelColor(level, i), a: seg.a, b: seg.b, price: viewport.priceAt(a.y) ?? Number.NaN })
+      // A level's price is where its line leaves the channel's first point, or where its label
+      // stands where the labels stand at the lines' starts.
+      const priced = this.props.labelsAtStart ? seg.a : a
+      out.push({ level, color: fibLevelColor(level, i), a: seg.a, b: seg.b, price: viewport.priceAt(priced.y) ?? Number.NaN })
     })
     return out
   }
@@ -501,6 +534,12 @@ export class FibTimeZone extends Drawing<FibTimeZoneProps> {
     return knownProps(props, this.defaultProps())
   }
 
+  /** A format-2 time zone drew no bands and its labels to the right of its lines at the pane's
+   *  foot. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, fillBackground: false, labelsHAlign: 'right', labelsVAlign: 'bottom' }
+  }
+
   requiredAnchors(): number {
     return 2
   }
@@ -592,6 +631,12 @@ export class FibTimeExtension extends Drawing<FibTimeExtensionProps> {
     return knownProps(props, this.defaultProps())
   }
 
+  /** A format-2 trend-based time fib drew no trend line, no bands, and its labels to the right of its
+   *  lines at the pane's foot. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, trendLine: false, fillBackground: false, labelsHAlign: 'right', labelsVAlign: 'bottom' }
+  }
+
   requiredAnchors(): number {
     return 3
   }
@@ -627,6 +672,8 @@ export type FibRingProps = FibTrendProps & {
 export type FibCirclesProps = FibRingProps & {
   /** Label the ratios as percentages (0.618 → 61.8%). */
   coeffsAsPercents: boolean
+  /** A percent reads to the whole number (0.618 → 62%). */
+  roundPercents: boolean
 }
 
 const RING_LEVELS: readonly [number, string, boolean][] = [
@@ -660,11 +707,16 @@ export class FibCircles extends Drawing<FibCirclesProps> {
   readonly type = 'fib_circles'
 
   protected override defaultProps(): FibCirclesProps {
-    return { levels: strokedLevels(RING_LEVELS, 2), ...DASHED_TREND, showLevels: true, coeffsAsPercents: false, fillBackground: true, backgroundOpacity: 0.2 }
+    return { levels: strokedLevels(RING_LEVELS, 2), ...DASHED_TREND, showLevels: true, coeffsAsPercents: false, roundPercents: false, fillBackground: true, backgroundOpacity: 0.2 }
   }
 
   protected override upgradeProps(props: Partial<FibCirclesProps>): Partial<FibCirclesProps> {
     return knownProps(props, this.defaultProps())
+  }
+
+  /** A format-2 circle fib drew no trend line, no bands, and its percents to the whole number. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, trendLine: false, fillBackground: false, roundPercents: true }
   }
 
   requiredAnchors(): number {
@@ -689,7 +741,8 @@ export class FibCircles extends Drawing<FibCirclesProps> {
       ctx.stroke()
       ctx.restore()
       if (this.props.showLevels) {
-        paintLabel(ctx, levelValueText(entry.level.value, this.props.coeffsAsPercents), { x: p1.x + entry.r + 4, y: p1.y }, { ...this.style, textColor: entry.color })
+        const label = this.props.coeffsAsPercents && this.props.roundPercents ? `${Math.round(entry.level.value * 100)}%` : levelValueText(entry.level.value, this.props.coeffsAsPercents)
+        paintLabel(ctx, label, { x: p1.x + entry.r + 4, y: p1.y }, { ...this.style, textColor: entry.color })
       }
     }
     paintTrend(ctx, this.style, this.props, [p1, p2])
@@ -722,6 +775,13 @@ export class FibArcs extends Drawing<FibArcsProps> {
 
   protected override upgradeProps(props: Partial<FibArcsProps>): Partial<FibArcsProps> {
     return knownProps(props, this.defaultProps())
+  }
+
+  /** A format-2 arc fib drew its trend line dashed in its own stroke at 45% of its opacity, and no
+   *  bands. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    const { lineColor, lineWidth } = this._style
+    this._props = { ...this._props, trendLine: true, trendLineColor: withAlpha(lineColor, alphaOf(lineColor) * 0.45), trendLineWidth: lineWidth, trendLineStyle: 'dashed', fillBackground: false }
   }
 
   requiredAnchors(): number {
@@ -801,6 +861,12 @@ export class FibWedge extends Drawing<FibWedgeProps> {
 
   protected override upgradeProps(props: Partial<FibWedgeProps>): Partial<FibWedgeProps> {
     return knownProps(props, this.defaultProps())
+  }
+
+  /** A format-2 wedge drew its rays in its own stroke, and no bands. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    const { lineColor, lineWidth, lineStyle } = this._style
+    this._props = { ...this._props, trendLine: true, trendLineColor: lineColor, trendLineWidth: lineWidth, trendLineStyle: lineStyle, fillBackground: false }
   }
 
   requiredAnchors(): number {
@@ -886,6 +952,9 @@ export type PitchfanProps = {
   levels: FibLevel[]
   fillBackground: boolean
   backgroundOpacity: number
+  /** A format-2 pitchfan's levels and labels, painted as format 2 did until the fan's settings
+   *  change. */
+  savedLook: SavedLook
 }
 
 const FORK_LEVELS: readonly [number, string, boolean][] = [
@@ -900,12 +969,15 @@ const FORK_LEVELS: readonly [number, string, boolean][] = [
   [2, '#f77c80', false],
 ]
 
+/** The levels a format-2 pitchfan save that names none drew. */
+const SAVED_PITCHFAN_LEVELS: readonly FibLevel[] = [0, 0.25, 0.5, 0.75, 1].map((value) => ({ value, visible: true }))
+
 /** Fan of rays from the pitchfork origin through the fork's level points. */
 export class Pitchfan extends Drawing<PitchfanProps> {
   readonly type = 'pitchfan'
 
   protected override defaultProps(): PitchfanProps {
-    return { medianColor: '#f23645', medianWidth: 2, medianStyle: 'solid', levels: strokedLevels(FORK_LEVELS, 2), fillBackground: true, backgroundOpacity: 0.2 }
+    return { medianColor: '#f23645', medianWidth: 2, medianStyle: 'solid', levels: strokedLevels(FORK_LEVELS, 2), fillBackground: true, backgroundOpacity: 0.2, savedLook: null }
   }
 
   protected override upgradeProps(props: Partial<PitchfanProps>): Partial<PitchfanProps> {
@@ -913,6 +985,58 @@ export class Pitchfan extends Drawing<PitchfanProps> {
     // The median stands on its own, so a level at zero draws nothing more.
     if (Array.isArray(known.levels)) known.levels = known.levels.filter((l) => l.value !== 0)
     return known
+  }
+
+  /** A format-2 pitchfan drew a ray for each level in its own stroke and the level's palette color,
+   *  its zero level as the median, and each ray's ratio near its end. It paints so until its
+   *  settings change, and its present props hold the same levels, colors and stroke. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const look = { levels: Array.isArray(saved.levels) ? saved.levels : SAVED_PITCHFAN_LEVELS, showLevels: saved.showLevels !== false }
+    const levels = savedLevels(look)
+    const { lineColor, lineWidth, lineStyle } = this._style
+    const zero = levels.findIndex((l) => l.value === 0)
+    this._props = {
+      ...this._props,
+      medianColor: zero >= 0 ? fibLevelColor(levels[zero]!, zero) : lineColor,
+      medianWidth: lineWidth,
+      medianStyle: lineStyle,
+      levels: levels.flatMap((l, i) => (l.value === 0 ? [] : [{ value: l.value, visible: l.visible, color: fibLevelColor(l, i), width: lineWidth, style: lineStyle }])),
+      fillBackground: false,
+      savedLook: look,
+    }
+  }
+
+  override applyProps(patch: Partial<PitchfanProps>): void {
+    super.applyProps(endSavedLook(patch))
+  }
+
+  /** A saved look's rays: one for the zero level, a pair for each other, each run to the pane's
+   *  edge. */
+  protected savedRays(look: NonNullable<SavedLook>, viewport: Viewport): { value: number; color: string; a: Point; b: Point }[] {
+    const [p1, p2, p3] = this.anchorPixels(viewport)
+    if (!p1 || !p2 || !p3) return []
+    const mid = midpoint(p2, p3)
+    return savedLevels(look)
+      .map((level, i) => ({ level, color: fibLevelColor(level, i) }))
+      .filter((e) => e.level.visible)
+      .flatMap((e) => (e.level.value === 0 ? [0] : [e.level.value, -e.level.value]).map((k) => {
+        const through = { x: mid.x + (p3.x - mid.x) * k, y: mid.y + (p3.y - mid.y) * k }
+        return { value: e.level.value, color: e.color, a: p1, b: extendSegment(p1, through, viewport.width, viewport.height, false, true).b }
+      }))
+  }
+
+  protected paintSavedLook(ctx: CanvasRenderingContext2D, look: NonNullable<SavedLook>, viewport: Viewport): void {
+    for (const ray of this.savedRays(look, viewport)) {
+      ctx.save()
+      applyStroke(ctx, this.style)
+      ctx.strokeStyle = ray.color
+      strokeSegment(ctx, ray.a, ray.b)
+      ctx.restore()
+      if (look.showLevels !== false) {
+        const t = 0.92
+        paintLabel(ctx, String(ray.value), { x: ray.a.x + (ray.b.x - ray.a.x) * t, y: ray.a.y + (ray.b.y - ray.a.y) * t - 8 }, { ...this.style, textColor: ray.color }, { align: 'center' })
+      }
+    }
   }
 
   requiredAnchors(): number {
@@ -942,6 +1066,10 @@ export class Pitchfan extends Drawing<PitchfanProps> {
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.props.savedLook) {
+      this.paintSavedLook(ctx, this.props.savedLook, viewport)
+      return
+    }
     const fan = this.fan(viewport)
     if (!fan) return
     if (this.props.fillBackground && this.props.backgroundOpacity > 0) {
@@ -975,6 +1103,10 @@ export class Pitchfan extends Drawing<PitchfanProps> {
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
+    if (this.props.savedLook) {
+      const tolerance = hitTolerance(this.style.lineWidth)
+      return this.savedRays(this.props.savedLook, viewport).some((ray) => distanceToSegment(point, ray.a, ray.b) <= tolerance)
+    }
     const fan = this.fan(viewport)
     if (!fan) return false
     if (distanceToSegment(point, fan.median.a, fan.median.b) <= hitTolerance(this.props.medianWidth)) return true
@@ -992,7 +1124,12 @@ export type FibSpeedFanProps = BoxLevelsProps & {
   gridColor: string
   gridWidth: number
   gridStyle: LineStyle
+  /** A format-2 fan's levels and labels, painted as format 2 did until the fan's settings change. */
+  savedLook: SavedLook
 }
+
+/** The levels a format-2 speed fan save that names none drew. */
+const SAVED_SPEED_FAN_LEVELS: readonly FibLevel[] = [0.25, 0.382, 0.5, 0.618, 0.75, 1].map((value) => ({ value, visible: true }))
 
 /** Fan rays from the first anchor through ratio points of the spanned box's far edge. */
 export class FibSpeedFan extends Drawing<FibSpeedFanProps> {
@@ -1013,11 +1150,79 @@ export class FibSpeedFan extends Drawing<FibSpeedFanProps> {
       gridWidth: 1,
       gridStyle: 'solid',
       reverse: false,
+      savedLook: null,
     }
   }
 
   protected override upgradeProps(props: Partial<FibSpeedFanProps>): Partial<FibSpeedFanProps> {
     return knownProps(upgradeBoxLevels(props), this.defaultProps())
+  }
+
+  /** A format-2 fan drew its box dashed at 45% of its stroke, a ray from its first point through each
+   *  level's share of the box's height at its far side, and each level's ratio and price beside that
+   *  side. It paints so until its settings change, and its present props hold its price levels with
+   *  the time levels, the grid, the bands and the other sides' labels off. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const look = {
+      levels: Array.isArray(saved.levels) ? saved.levels : SAVED_SPEED_FAN_LEVELS,
+      showLevels: saved.showLevels !== false,
+      showPrices: saved.showPrices !== false,
+    }
+    this._props = {
+      ...this._props,
+      timeLevels: this._props.timeLevels.map((l) => ({ ...l, visible: false })),
+      grid: false,
+      fillBackground: false,
+      showLeftLabels: false,
+      showTopLabels: false,
+      showBottomLabels: false,
+      savedLook: look,
+    }
+  }
+
+  override applyProps(patch: Partial<FibSpeedFanProps>): void {
+    super.applyProps(endSavedLook(patch))
+  }
+
+  /** A saved look's rays, from the first point through each shown level's share of the box's height
+   *  at its far side, run to the pane's edge. */
+  protected savedRays(look: NonNullable<SavedLook>, viewport: Viewport): { level: FibLevel; color: string; y: number; a: Point; b: Point }[] {
+    const [p1, p2] = this.anchorPixels(viewport)
+    if (!p1 || !p2 || p1.x === p2.x) return []
+    return savedLevels(look)
+      .map((level, i) => ({ level, color: fibLevelColor(level, i) }))
+      .filter((e) => e.level.visible)
+      .map((e) => {
+        const y = p1.y + (p2.y - p1.y) * e.level.value
+        return { ...e, y, a: p1, b: extendSegment(p1, { x: p2.x, y }, viewport.width, viewport.height, false, true).b }
+      })
+  }
+
+  protected paintSavedLook(ctx: CanvasRenderingContext2D, look: NonNullable<SavedLook>, viewport: Viewport): void {
+    const [p1, p2] = this.anchorPixels(viewport)
+    if (!p1 || !p2) return
+    ctx.save()
+    applyStroke(ctx, this.style)
+    ctx.globalAlpha = 0.45
+    ctx.setLineDash(dashPattern('dashed', this.style.lineWidth))
+    ctx.strokeRect(Math.min(p1.x, p2.x), Math.min(p1.y, p2.y), Math.abs(p2.x - p1.x), Math.abs(p2.y - p1.y))
+    ctx.restore()
+    for (const ray of this.savedRays(look, viewport)) {
+      ctx.save()
+      applyStroke(ctx, this.style)
+      ctx.strokeStyle = ray.color
+      strokeSegment(ctx, ray.a, ray.b)
+      ctx.restore()
+      if (look.showLevels !== false || look.showPrices !== false || ray.level.text) {
+        const price = viewport.priceAt(ray.y)
+        const parts = [
+          ray.level.text || null,
+          look.showLevels !== false ? String(ray.level.value) : null,
+          look.showPrices !== false && price !== null ? `(${this.formatPrice(price)})` : null,
+        ].filter((s): s is string => s !== null)
+        paintLabel(ctx, parts.join(' '), { x: p2.x + 6, y: ray.y }, { ...this.style, textColor: ray.color })
+      }
+    }
   }
 
   requiredAnchors(): number {
@@ -1045,6 +1250,10 @@ export class FibSpeedFan extends Drawing<FibSpeedFanProps> {
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.props.savedLook) {
+      this.paintSavedLook(ctx, this.props.savedLook, viewport)
+      return
+    }
     const box = this.box(viewport)
     if (!box) return
     const rays = this.rays(box, viewport)
@@ -1081,9 +1290,10 @@ export class FibSpeedFan extends Drawing<FibSpeedFanProps> {
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
+    const tolerance = hitTolerance(this.style.lineWidth)
+    if (this.props.savedLook) return this.savedRays(this.props.savedLook, viewport).some((r) => distanceToSegment(point, r.a, r.b) <= tolerance)
     const box = this.box(viewport)
     if (!box) return false
-    const tolerance = hitTolerance(this.style.lineWidth)
     return this.rays(box, viewport).some((r) => distanceToSegment(point, r.a, r.b) <= tolerance)
   }
 }

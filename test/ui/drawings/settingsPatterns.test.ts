@@ -94,18 +94,18 @@ describe('what a new pattern starts with', () => {
       expect([d.style.lineColor, d.style.lineWidth, d.style.lineStyle, d.style.textColor, d.style.fontSize, d.style.bold, d.style.italic], type).toEqual([hue, 2, 'solid', '#ffffff', 12, false, false])
       if (shaded) {
         expect([d.style.fillColor, d.style.fillOpacity], type).toEqual([hue, 0.15])
-        expect(d.props, type).toEqual({ fillBackground: true })
-      } else expect(d.props, type).toEqual({})
+        expect(d.props, type).toEqual({ pillRadius: null, fillBackground: true })
+      } else expect(d.props, type).toEqual({ pillRadius: null })
     }
   })
 
-  it('places three drives on seven points, and completes one saved on six with the reversal after its third drive', () => {
+  it('places three drives on seven points, and completes one saved on six with its reversal on its third drive', () => {
     expect(drawingTools.get('three_drives')!.anchors).toBe(7)
     const points = [100, 160, 220, 280, 340, 400].map((time, i) => ({ time: time as never, price: i % 2 ? 120 : 100 }))
     const saved = { ...fresh('three_drives').toJSON(), anchors: points }
     const restored = drawingTools.restore(saved)!
     expect(restored.anchors).toHaveLength(7)
-    expect(restored.anchors[6]).toEqual({ time: 460, price: 100 })
+    expect(restored.anchors[6]).toEqual({ time: 400, price: 120 })
     expect(restored.isValid()).toBe(true)
   })
 
@@ -120,13 +120,14 @@ describe('what a new pattern starts with', () => {
     for (const [type, color] of Object.entries(colors)) {
       const d = fresh(type)
       expect([d.style.lineColor, d.style.lineWidth, d.style.lineStyle], type).toEqual([color, 2, 'solid'])
-      expect(d.props, type).toEqual({ showWave: true, degree: 'intermediate' })
+      expect(d.props, type).toEqual({ pillRadius: null, showWave: true, degree: 'intermediate', labelPills: false })
     }
   })
 
-  it('reads no words a saved pattern carries, and so offers no Text page', () => {
+  it('offers no words of its own, and keeps the words a save carries', () => {
+    expect('text' in fresh('xabcd_pattern').props).toBe(false)
     const saved = { ...fresh('xabcd_pattern').toJSON(), props: { fillBackground: true, text: 'Words' } }
     const restored = drawingTools.restore(saved)!
-    expect('text' in restored.props).toBe(false)
+    expect((restored.props as { text?: string }).text).toBe('Words')
   })
 })

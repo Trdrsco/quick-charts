@@ -7,7 +7,7 @@
 // fake renderer, so a tool that constructs but cannot be restored, attached or drawn is named by type.
 // drawingTools.fixture.json records each tool's placement facts and default props; the family blocks at
 // the end pin the values a generic pass cannot see.
-import { DrawingManager, type IDrawing } from '../../src/internal/drawings/index'
+import { DrawingManager, SERIAL_VERSION, type IDrawing } from '../../src/internal/drawings/index'
 import type { ISeriesApi, ISeriesPrimitive, SeriesType, Time } from 'lightweight-charts'
 import { describe, expect, it } from 'vitest'
 import { drawingTools } from '../../src/drawings/index'
@@ -107,7 +107,7 @@ describe('every registered tool', () => {
         const d = live(drawingTools.create(row.type, `id-${row.type}`, anchors, { lineColor: '#123456', lineWidth: 3 }))
         d.updateOptions({ locked: true, zIndex: 4 })
         const first = d.toJSON()
-        expect(first.v).toBe(2)
+        expect(first.v).toBe(SERIAL_VERSION)
         expect(first.type).toBe(row.type)
         const restored = live(drawingTools.restore(first))
         expect(restored.toJSON()).toEqual(first)

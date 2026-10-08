@@ -20,7 +20,7 @@ import { cancelText, commitText, type TextEditTarget } from '../editModel'
 import { pointerLock } from '../../pointerInput'
 import { createDocuments, drawingOf, type DrawingOwner } from './documents'
 import { liveDrawingEntries, liveDrawingGroups, sameDrawingContext, type DrawingsBody } from '../document'
-import { createPresets } from './presets'
+import { createPresets, presetPropsFor } from './presets'
 import { bindGestures, type Draft, type Drag, type GestureContext } from './gestures'
 
 const identityRebinders = new WeakMap<DrawingsHandle, (id: string) => void>()
@@ -593,7 +593,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       const preset = presets.defaultFor('image')
       const drawing = drawingTools.create('image', nextId(), [placed.anchor], preset.style)
       if (!drawing) return
-      if (preset.props) drawing.applyProps(preset.props)
+      if (preset.props) drawing.applyProps(presetPropsFor(drawing, preset.props))
       drawing.applyProps({ dataUrl: image.dataUrl, width: placed.width, opacity: image.opacity ?? 1 })
       stampNewScope(drawing, chartId, workflow().syncAcrossPanes)
       manager.add(drawing)

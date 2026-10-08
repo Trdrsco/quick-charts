@@ -196,6 +196,23 @@ describe('the dialog', () => {
     expect(dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.disabled).toBe(false)
   })
 
+  it('puts a gann square saved at format 2 back on Cancel, its points and its look as they were', () => {
+    const chrome = document.createElement('div')
+    document.body.appendChild(chrome)
+    const pane = { width: 800, height: 400, xOf: (time: unknown) => Number(time), yOf: (price: number) => 400 - price, timeAt: (x: number) => x as never, priceAt: (y: number) => 400 - y, barsBetween: (a: unknown, b: unknown) => (Number(b) - Number(a)) / 10, logicalOf: (time: unknown) => Number(time) / 10, timeOfLogical: (logical: number) => (logical * 10) as never }
+    const fresh = drawingTools.create('gannbox_square', 'g', [anchors(1)[0]!, { time: 300 as never, price: 120 }])!.toJSON()
+    const square = drawingTools.restore({ ...fresh, v: 2, anchors: [{ time: 100 as never, price: 280 }, { time: 300 as never, price: 120 }], props: { levels: [{ value: 0, visible: true }, { value: 1, visible: true }], showLabels: true, background: true } })!
+    ;(square as unknown as { getViewport(): typeof pane }).getViewport = () => pane
+    const before = square.toJSON()
+    openSettingsDialog({ icons: ownIcons(), chrome, t, drawing: square, presets: createPresets(null), idBase: 'c1-drawing-settings', run: () => true, available: () => true })
+    const dialog = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+    const reverse = [...dialog.querySelectorAll<HTMLElement>('.qc-drawing-toggle')].find((x) => x.textContent === 'Reverse')!
+    reverse.querySelector('input')!.click()
+    expect(square.props).toMatchObject({ savedLook: null, reverse: true })
+    dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
+    expect(square.toJSON()).toEqual(before)
+  })
+
   it('Escape cancels once, and a second close is inert', () => {
     const { dialog, out, handle } = rig('rectangle')
     dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))

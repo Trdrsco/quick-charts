@@ -230,10 +230,12 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
   const cancel = (): void => {
     if (settled) return
     settled = true
+    // The props go back before the points: a tool that holds its points by its props, as a gann
+    // square holds its ratio, takes the points back under the props they were saved with.
+    if (snapshot.props) drawing.applyProps(snapshot.props)
     drawing.setAnchors(snapshot.anchors)
     drawing.updateStyle(snapshot.style)
     drawing.updateOptions({ ...snapshot.options, name: snapshot.options.name })
-    if (snapshot.props) drawing.applyProps(snapshot.props)
     dialog.close()
     deps.onClose?.('cancel')
   }

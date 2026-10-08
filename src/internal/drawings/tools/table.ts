@@ -45,6 +45,18 @@ export class TableNote extends Drawing<TableProps> {
     }
   }
 
+  /** A format-2 table's columns stood 96px wide where it set no width, its border and grid took its
+   *  stroke color at 45%, and a save naming no cells or header was two by two with a header row. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    // A save naming no cells or header drew two by two with a header row.
+    if (!('cells' in saved)) this._props = { ...this._props, cells: [['', ''], ['', '']] }
+    if (!('headerRow' in saved)) this._props = { ...this._props, headerRow: true }
+    const cols = this._props.cells[0]?.length ?? 0
+    const colWidths = Array.from({ length: cols }, (_, c) => this._props.colWidths[c] ?? 96)
+    this._props = { ...this._props, colWidths }
+    this._style = { ...this._style, lineColor: withAlpha(this._style.lineColor, 0.45) }
+  }
+
   requiredAnchors(): number {
     return 1
   }

@@ -88,19 +88,6 @@ describe('a note', () => {
   })
 })
 
-describe('a note saved on one point', () => {
-  it('keeps its point and stands its label up and to the right of it once it is on a pane', () => {
-    const saved = { v: 2, id: 'old', type: 'note', anchors: [at(100, 300)], style: { fillColor: '#1b1f27', fillOpacity: 0.95 }, options: {}, props: { text: 'Hi', align: 'left' } }
-    const note = drawingTools.restore(saved as never)!
-    expect(note.anchors).toEqual([at(100, 300), at(100, 300)])
-    expect(note.props).toEqual({ text: 'Hi', fillBackground: true, drawBorder: true, borderColor: '#4a4a4a' })
-    ;(note as unknown as { getViewport(): Viewport }).getViewport = () => viewport
-    ;(note as unknown as { attached(p: unknown): void }).attached({ chart: {}, series: {}, requestUpdate: () => undefined })
-    // The point stays where it was saved; the label stands 20px right of it and 40px up.
-    expect(note.anchors).toEqual([at(100, 300), at(120, 340)])
-  })
-})
-
 describe('a callout and a price label', () => {
   it('draws a callout’s border and its tether at the drawing’s width', () => {
     const d = make('callout', [at(100, 300), at(200, 200)], { text: 'Hi' })

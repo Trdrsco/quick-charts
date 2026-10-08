@@ -16,17 +16,27 @@
 // drawing: it never writes the words, the cells, or the picture the edited drawing carried.
 import type { IDrawing } from '../../internal/drawings/index'
 import type { ResourceStore, TemplateBody, TemplateMeta } from '../../resources'
+import { SAVED_LOOK_PROPS } from '../capabilities'
 import { DEFAULT_PRESET_NAME, DrawingTemplates, type ToolPreset, type ToolTemplate } from '../templates'
 import type { DrawingPresets } from './types'
 
 /** Props that are the drawing's content rather than its setup. A remembered default drops them. */
 const CONTENT_PROPS: readonly string[] = ['text', 'cells', 'dataUrl', 'url']
 
-/** A drawing's setup as a preset: its style, and its props minus the content. */
-export function presetOf(drawing: Pick<IDrawing, 'style' | 'props'>): ToolPreset {
+/** A drawing's setup as a preset: its style, and its props minus the content and the props that
+ *  keep its own saved look. */
+export function presetOf(drawing: Pick<IDrawing, 'type' | 'style' | 'props'>): ToolPreset {
   const props: Record<string, unknown> = { ...drawing.props }
   for (const key of CONTENT_PROPS) delete props[key]
+  for (const key of SAVED_LOOK_PROPS[drawing.type] ?? []) delete props[key]
   return { style: { ...drawing.style }, props }
+}
+
+/** A preset's props as a drawing's tool reads them now: one written by an earlier format reads under
+ *  the keys and meanings its tool reads at present. */
+export function presetPropsFor(drawing: IDrawing, props: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  const read = (drawing as Partial<{ presetProps(p: Readonly<Record<string, unknown>>): Record<string, unknown> }>).presetProps
+  return read ? read.call(drawing, props) : { ...props }
 }
 
 /** The cache the layer holds: the public read surface plus the two verbs only the layer calls. */

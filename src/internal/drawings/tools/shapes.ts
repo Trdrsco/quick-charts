@@ -93,6 +93,11 @@ export class Rectangle extends Drawing<RectangleProps> {
     }
   }
 
+  /** A format-2 rectangle drew its middle line dashed in its own stroke's color and thickness. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, middleLineColor: this._style.lineColor, middleLineWidth: this._style.lineWidth, middleLineStyle: 'dashed' }
+  }
+
   requiredAnchors(): number {
     return 2
   }
@@ -404,6 +409,11 @@ export type CurveProps = BackgroundProps & {
 
 const CURVE_PROPS: CurveProps = { fillBackground: false, extendLeft: false, extendRight: false, leftEnd: 'normal', rightEnd: 'normal' }
 
+/** A format-2 curve filled its body wherever its fill showed. */
+function curveSavedLook(drawing: Curve | DoubleCurve): Partial<CurveProps> {
+  return { fillBackground: drawing.style.fillOpacity > 0 }
+}
+
 /** The straight runs an open curve extends by: from its first point back along the tangent it
  *  starts on, and from its last point on along the tangent it ends on, each to the pane's edge. */
 function curveExtensions(samples: Point[], viewport: Viewport, props: CurveProps): { a: Point; b: Point }[] {
@@ -458,6 +468,10 @@ export class Curve extends Drawing<CurveProps> {
     return { ...CURVE_PROPS }
   }
 
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, ...curveSavedLook(this) }
+  }
+
   requiredAnchors(): number {
     return 3
   }
@@ -488,6 +502,10 @@ export class DoubleCurve extends Drawing<CurveProps> {
 
   protected override defaultProps(): CurveProps {
     return { ...CURVE_PROPS }
+  }
+
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, ...curveSavedLook(this) }
   }
 
   requiredAnchors(): number {

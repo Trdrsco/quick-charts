@@ -24,6 +24,9 @@ export type PitchforkProps = {
    *  `backgroundOpacity`. Switched off, the bands keep their opacity for when they return. */
   fillBackground: boolean
   backgroundOpacity: number
+  /** The bands in the drawing's stroke color instead, the outermost at 9% and each one inward 3%
+   *  more. */
+  shadedBands: boolean
 }
 
 /** The nine line pairs a pitchfork offers: the half and the tines shown, seven more to switch on. */
@@ -81,6 +84,7 @@ export class Pitchfork extends Drawing<PitchforkProps> {
       levels: FORK_LEVELS.map(([value, color, visible]) => ({ value, visible, color, width: 2, style: 'solid' })),
       fillBackground: true,
       backgroundOpacity: 0.2,
+      shadedBands: false,
     }
   }
 
@@ -90,6 +94,14 @@ export class Pitchfork extends Drawing<PitchforkProps> {
     if (!('background' in saved)) return props
     const { background, ...rest } = saved
     return 'fillBackground' in rest ? rest : { ...rest, fillBackground: background !== false }
+  }
+
+  /** A format-2 fork drew its median and its lines in its own stroke, a line in its own color where
+   *  it carried one, and its bands in that stroke's color shaded by depth. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    const { lineColor, lineWidth, lineStyle } = this._style
+    const levels = this._props.levels.map((l): ForkLevel => ({ ...l, color: l.color ?? lineColor, width: lineWidth, style: lineStyle }))
+    this._props = { ...this._props, medianColor: lineColor, medianWidth: lineWidth, medianStyle: lineStyle, levels, shadedBands: true }
   }
 
   requiredAnchors(): number {
@@ -147,8 +159,8 @@ export class Pitchfork extends Drawing<PitchforkProps> {
       ctx.save()
       for (const sign of [1, -1]) {
         let inner = 0
-        for (const entry of shown) {
-          ctx.fillStyle = withAlpha(entry.color, this.props.backgroundOpacity)
+        for (const [i, entry] of shown.entries()) {
+          ctx.fillStyle = this.props.shadedBands ? withAlpha(this.style.lineColor, 0.06 + 0.03 * (shown.length - i)) : withAlpha(entry.color, this.props.backgroundOpacity)
           const lineA = this.lineThrough(fork, this.levelPoint(fork, inner * sign), viewport)
           const lineB = this.lineThrough(fork, this.levelPoint(fork, entry.level.value * sign), viewport)
           ctx.beginPath()

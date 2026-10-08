@@ -15,7 +15,7 @@ export type {
   ToolCategory,
   Viewport,
 } from './core/types'
-export { DEFAULT_OPTIONS, DEFAULT_STYLE } from './core/types'
+export { DEFAULT_OPTIONS, DEFAULT_STYLE, SERIAL_VERSION } from './core/types'
 
 export { Drawing, viewportOf } from './core/drawing'
 export { DrawingManager } from './core/manager'

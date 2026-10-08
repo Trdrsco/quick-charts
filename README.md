@@ -3141,6 +3141,12 @@ What to know:
   off) lives in the adapter's chart-bound scope for the symbol; a shared drawing lives in the
   symbol's scope, and a refused write merges the stored document over the layer's own before it
   writes again.
+- **A save keeps its look.** A drawing saves at `v: 3`. A save at `v: 2` restores with the look it
+  was saved with: its tool writes the values that paint it so and saves at `v: 3` with them, the
+  looks the tool's pages do not set riding in the props `INERT_PROPS` lists. A gann square, a gann
+  square fixed, a speed resistance fan, a pitchfan, a price note and a signpost saved at `v: 2`
+  paint as they were saved (`savedLook`) until their settings change. A host that writes drawings
+  itself writes `v: 3`.
 - **Keys run through the registry.** Delete and Backspace remove the selection, Escape cancels a
   placement, disarms, or closes the inline editor, and Ctrl (or Cmd) with C and V copy and paste a
   drawing. Each resolves to a `chart.drawings.*` command, so your access policy gates the keyboard

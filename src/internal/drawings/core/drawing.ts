@@ -24,7 +24,7 @@ import type {
   SerializedDrawing,
   Viewport,
 } from './types'
-import { DEFAULT_OPTIONS, DEFAULT_STYLE } from './types'
+import { DEFAULT_OPTIONS, DEFAULT_STYLE, SERIAL_VERSION } from './types'
 import type { TimeframeContext } from './visibility'
 import { normalizeVisibility, visibleAt } from './visibility'
 import type { BarSource, SourceBar } from './bars'
@@ -248,6 +248,25 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   protected upgradeAnchors(anchors: Anchor[]): Anchor[] {
     return anchors
   }
+
+  /** A preset's props as this tool reads them: a remembered default or a template written by an
+   *  earlier format names its setup under the keys and meanings that format read, and the tool reads
+   *  them as it reads a save's. */
+  presetProps(props: Readonly<Record<string, unknown>>): Record<string, unknown> {
+    return { ...this.upgradeProps({ ...props } as Partial<P>) } as Record<string, unknown>
+  }
+
+  /** Paint a save from an earlier format as it painted: the registry calls this once, as it restores
+   *  a save whose `v` is below the present format, after the props are upgraded. */
+  holdSavedLook(saved: SerializedDrawing): void {
+    this.keepSavedLook((saved.props ?? {}) as Readonly<Record<string, unknown>>)
+    this.requestUpdate()
+  }
+
+  /** A tool whose factory values, prop meanings or paint rules differ from the ones format 2 painted
+   *  with writes, from the props the save carries (`saved`, as written) and the style it restored
+   *  with, the values that paint the save as it painted. */
+  protected keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {}
 
   // ============ ISeriesPrimitive ============
 
@@ -612,7 +631,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   toJSON(): SerializedDrawing {
     const props = this._props as Record<string, unknown>
     return {
-      v: 2,
+      v: SERIAL_VERSION,
       id: this.id,
       type: this.type,
       anchors: this._anchors.map((a) => ({ ...a })),
@@ -629,6 +648,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this._options = normalizeOptions(data.options)
     this._props = { ...this.defaultProps(), ...this.upgradeProps((data.props ?? {}) as Partial<P>) }
     this.scope = data.scope
+    if (!(data.v >= SERIAL_VERSION)) this.keepSavedLook((data.props ?? {}) as Readonly<Record<string, unknown>>)
     this.requestUpdate()
   }
 }

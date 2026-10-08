@@ -22,7 +22,7 @@ import { toolAfterPlacement } from '../cursorModel'
 import { stampNewScope } from './scope'
 import { constrain45, instantPositionAnchors, barsShifted, type Px } from './geometry'
 import type { DrawingsWorkflow } from './types'
-import type { PresetCache } from './presets'
+import { presetPropsFor, type PresetCache } from './presets'
 
 /** Pixels of pointer travel that turn the opening press into a drag (vs a click then click). */
 const PLACE_DRAG_PX = 6
@@ -247,7 +247,7 @@ export function bindGestures(ctx: GestureContext): () => void {
     const preset = ctx.presets.defaultFor(tool.type)
     const drawing = drawingTools.create(tool.type, ctx.nextId(), anchors, preset.style)
     if (!drawing) return null
-    if (preset.props) drawing.applyProps(preset.props)
+    if (preset.props) drawing.applyProps(presetPropsFor(drawing, preset.props))
     const seeded = ctx.presetProps()
     if (seeded) drawing.applyProps(seeded)
     stampNewScope(drawing, ctx.chartId, ctx.workflow().syncAcrossPanes)

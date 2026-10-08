@@ -1,4 +1,5 @@
 import type { Anchor, DrawingOptions, DrawingStyle, SerializedDrawing, ToolCategory } from './core/types'
+import { SERIAL_VERSION } from './core/types'
 import type { AnyDrawing, Drawing } from './core/drawing'
 
 import {
@@ -336,12 +337,15 @@ export class ToolRegistry {
     return definition.create(id, anchors, { ...definition.style, ...styleOverrides })
   }
 
-  /** Rebuild a drawing from its serialized form; null for unknown types or malformed data. */
+  /** Rebuild a drawing from its serialized form; null for unknown types or malformed data. A save in
+   *  an earlier format keeps the look it was saved with. */
   restore(data: SerializedDrawing): AnyDrawing | null {
     const definition = this._tools.get(data.type)
     if (!definition || !Array.isArray(data.anchors)) return null
     try {
-      return definition.create(data.id, data.anchors, data.style, data.options, data.props)
+      const drawing = definition.create(data.id, data.anchors, data.style, data.options, data.props)
+      if (!(data.v >= SERIAL_VERSION)) drawing.holdSavedLook(data)
+      return drawing
     } catch {
       return null
     }

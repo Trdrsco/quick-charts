@@ -1,6 +1,6 @@
 import type { Point } from '../core/types'
 import { fontOf } from '../render/canvas'
-import { LabeledPolyline } from './patterns'
+import { LabeledPolyline, type PillProps } from './patterns'
 
 // The Elliott wave set: labeled zigzags whose vocabulary (numbers vs letters) IS the tool. The
 // degree of a count sets how its labels are written, and the color is the wave's and the labels'.
@@ -27,11 +27,14 @@ export const ELLIOTT_DEGREES = [
 export type ElliottDegree = (typeof ELLIOTT_DEGREES)[number]
 
 /** A wave count's settings: whether the wave line runs through its pivots, and its degree. */
-export type ElliottProps = {
+export type ElliottProps = PillProps & {
   /** The wave line through the pivots; off, the count stands on its labels alone. */
   showWave: boolean
   /** The degree of the count, which sets how each label is written. */
   degree: ElliottDegree
+  /** Each pivot's number or letter as written, in a pill as a pattern's letters stand, in place of
+   *  the degree's writing. */
+  labelPills: boolean
 }
 
 const UPPER_ROMAN: Record<string, string> = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV', '5': 'V' }
@@ -60,7 +63,13 @@ export function elliottLabel(base: string, degree: ElliottDegree): { text: strin
  *  from the leg that reaches it. */
 abstract class ElliottWave extends LabeledPolyline<ElliottProps> {
   protected override defaultProps(): ElliottProps {
-    return { showWave: true, degree: 'intermediate' }
+    return { pillRadius: null, showWave: true, degree: 'intermediate', labelPills: false }
+  }
+
+  /** A format-2 count drew its line and each pivot's number or letter in a pill. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    super.keepSavedLook(saved)
+    this._props = { ...this._props, showWave: true, labelPills: true }
   }
 
   protected override showsLine(): boolean {
@@ -68,6 +77,10 @@ abstract class ElliottWave extends LabeledPolyline<ElliottProps> {
   }
 
   protected override paintLabels(ctx: CanvasRenderingContext2D, points: Point[]): void {
+    if (this.props.labelPills) {
+      super.paintLabels(ctx, points)
+      return
+    }
     const labels = this.labels()
     ctx.save()
     ctx.setLineDash([])

@@ -89,6 +89,11 @@ export class Brush extends FreehandStroke<BrushProps> {
     return { fillBackground: false, leftEnd: 'normal', rightEnd: 'normal' }
   }
 
+  /** A format-2 brush filled its stroke's closed shape wherever its fill showed. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, fillBackground: this._style.fillOpacity > 0 }
+  }
+
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const points = this.points(viewport)
     if (points.length < 2) return

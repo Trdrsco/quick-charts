@@ -20,7 +20,9 @@
         "textColor": "#ffffff",
         "fontSize": 12
       },
-      "props": []
+      "props": [
+        "pillRadius"
+      ]
     },
     {
       "type": "anchored_volume_profile",
@@ -41,6 +43,7 @@
         "developingVaStyle",
         "developingVaWidth",
         "downColor",
+        "outline",
         "placement",
         "pocColor",
         "pocStyle",
@@ -208,6 +211,7 @@
       },
       "props": [
         "bars",
+        "candles",
         "flipped",
         "mirrored",
         "mode"
@@ -249,6 +253,7 @@
         "lineWidth": 2
       },
       "props": [
+        "borderWidth",
         "text",
         "wordWrap",
         "wordWrapWidth"
@@ -380,7 +385,8 @@
         "fillOpacity": 0.15
       },
       "props": [
-        "fillBackground"
+        "fillBackground",
+        "pillRadius"
       ]
     },
     {
@@ -403,11 +409,14 @@
         "borderColor",
         "borderWidth",
         "drawBorder",
+        "extendLeft",
+        "extendRight",
         "fillBackground",
         "fillLabelBackground",
         "labelBackgroundColor",
         "labelColor",
         "labelFontSize",
+        "labelTextStyle",
         "showBarsRange",
         "showDateTimeRange",
         "showPercentChange",
@@ -441,6 +450,7 @@
         "labelBackgroundColor",
         "labelColor",
         "labelFontSize",
+        "labelTextStyle",
         "showBarsRange",
         "showDateTimeRange",
         "showPercentChange",
@@ -478,6 +488,7 @@
         "rightEnd",
         "showPrices",
         "text",
+        "textAtStart",
         "textHAlign",
         "textVAlign"
       ]
@@ -520,6 +531,8 @@
       },
       "props": [
         "degree",
+        "labelPills",
+        "pillRadius",
         "showWave"
       ]
     },
@@ -537,6 +550,8 @@
       },
       "props": [
         "degree",
+        "labelPills",
+        "pillRadius",
         "showWave"
       ]
     },
@@ -554,6 +569,8 @@
       },
       "props": [
         "degree",
+        "labelPills",
+        "pillRadius",
         "showWave"
       ]
     },
@@ -571,6 +588,8 @@
       },
       "props": [
         "degree",
+        "labelPills",
+        "pillRadius",
         "showWave"
       ]
     },
@@ -588,6 +607,8 @@
       },
       "props": [
         "degree",
+        "labelPills",
+        "pillRadius",
         "showWave"
       ]
     },
@@ -673,15 +694,18 @@
       },
       "props": [
         "backgroundOpacity",
+        "bandsByPane",
         "coeffsAsPercents",
         "extendLeft",
         "extendRight",
         "fillBackground",
+        "labelsAtStart",
         "labelsHAlign",
         "labelsVAlign",
         "levels",
         "showLevels",
-        "showPrices"
+        "showPrices",
+        "wordsInLabels"
       ]
     },
     {
@@ -701,6 +725,7 @@
         "coeffsAsPercents",
         "fillBackground",
         "levels",
+        "roundPercents",
         "showLevels",
         "trendLine",
         "trendLineColor",
@@ -722,10 +747,12 @@
       },
       "props": [
         "backgroundOpacity",
+        "bandsByPane",
         "coeffsAsPercents",
         "extendLeft",
         "extendRight",
         "fillBackground",
+        "labelsAtStart",
         "labelsHAlign",
         "labelsVAlign",
         "levels",
@@ -739,7 +766,8 @@
         "trendLine",
         "trendLineColor",
         "trendLineStyle",
-        "trendLineWidth"
+        "trendLineWidth",
+        "wordsInLabels"
       ]
     },
     {
@@ -787,6 +815,7 @@
         "gridWidth",
         "priceLevels",
         "reverse",
+        "savedLook",
         "showBottomLabels",
         "showLeftLabels",
         "showRightLabels",
@@ -845,10 +874,12 @@
       },
       "props": [
         "backgroundOpacity",
+        "bandsByPane",
         "coeffsAsPercents",
         "extendLeft",
         "extendRight",
         "fillBackground",
+        "labelsAtStart",
         "labelsHAlign",
         "labelsVAlign",
         "levels",
@@ -862,7 +893,8 @@
         "trendLine",
         "trendLineColor",
         "trendLineStyle",
-        "trendLineWidth"
+        "trendLineWidth",
+        "wordsInLabels"
       ]
     },
     {
@@ -933,6 +965,7 @@
         "developingVaWidth",
         "downColor",
         "extendRight",
+        "outline",
         "placement",
         "pocColor",
         "pocStyle",
@@ -1000,6 +1033,7 @@
         "rightEnd",
         "showPrices",
         "text",
+        "textAtStart",
         "textHAlign",
         "textVAlign"
       ]
@@ -1055,7 +1089,8 @@
         "showRightLabels",
         "showTopLabels",
         "timeBackgroundOpacity",
-        "timeLevels"
+        "timeLevels",
+        "tint"
       ]
     },
     {
@@ -1087,7 +1122,8 @@
         "fans",
         "fillBackground",
         "levels",
-        "reverse"
+        "reverse",
+        "savedLook"
       ]
     },
     {
@@ -1109,6 +1145,7 @@
         "fillBackground",
         "levels",
         "reverse",
+        "savedLook",
         "scaleRatio",
         "showLabels"
       ]
@@ -1151,7 +1188,8 @@
         "fillOpacity": 0.15
       },
       "props": [
-        "fillBackground"
+        "fillBackground",
+        "pillRadius"
       ]
     },
     {
@@ -1292,6 +1330,7 @@
         "medianColor",
         "medianStyle",
         "medianWidth",
+        "shadedBands",
         "variant"
       ]
     },
@@ -1319,6 +1358,7 @@
         "qtyPrecision",
         "risk",
         "riskDisplay",
+        "savedWords",
         "showPrices",
         "stats",
         "stopColor"
@@ -1377,6 +1417,7 @@
         "fillBackground",
         "levels",
         "text",
+        "textAtStart",
         "textHAlign",
         "textVAlign"
       ]
@@ -1437,7 +1478,8 @@
         "levels",
         "medianColor",
         "medianStyle",
-        "medianWidth"
+        "medianWidth",
+        "savedLook"
       ]
     },
     {
@@ -1460,6 +1502,7 @@
         "medianColor",
         "medianStyle",
         "medianWidth",
+        "shadedBands",
         "variant"
       ]
     },
@@ -1519,6 +1562,7 @@
         "labelFontSize",
         "labelItalic",
         "labelTextColor",
+        "savedLook",
         "text",
         "textHAlign",
         "textVAlign"
@@ -1548,6 +1592,7 @@
         "labelBackgroundColor",
         "labelColor",
         "labelFontSize",
+        "labelTextStyle",
         "showBarsRange",
         "showDateTimeRange",
         "showPercentChange",
@@ -1636,6 +1681,7 @@
         "baseLine",
         "baseStyle",
         "baseWidth",
+        "bodyColor",
         "downColor",
         "downLine",
         "downStyle",
@@ -1693,6 +1739,7 @@
         "medianColor",
         "medianStyle",
         "medianWidth",
+        "shadedBands",
         "variant"
       ]
     },
@@ -1716,6 +1763,7 @@
         "medianColor",
         "medianStyle",
         "medianWidth",
+        "shadedBands",
         "variant"
       ]
     },
@@ -1761,6 +1809,7 @@
         "qtyPrecision",
         "risk",
         "riskDisplay",
+        "savedWords",
         "showPrices",
         "stats",
         "stopColor"
@@ -1780,6 +1829,7 @@
       "props": [
         "emoji",
         "position",
+        "savedLook",
         "showImage",
         "text"
       ]
@@ -1869,7 +1919,9 @@
         "textColor": "#ffffff",
         "fontSize": 12
       },
-      "props": []
+      "props": [
+        "pillRadius"
+      ]
     },
     {
       "type": "time_cycles",
@@ -1994,7 +2046,8 @@
         "fillOpacity": 0.15
       },
       "props": [
-        "fillBackground"
+        "fillBackground",
+        "pillRadius"
       ]
     },
     {
@@ -2036,7 +2089,8 @@
         "fillOpacity": 0.15
       },
       "props": [
-        "fillBackground"
+        "fillBackground",
+        "pillRadius"
       ]
     }
   ]

@@ -69,6 +69,11 @@ export class AnchoredVwap extends Drawing<AnchoredVwapProps> {
     }
   }
 
+  /** A format-2 VWAP drew its average alone, with no bands. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, bandsOn: this._props.bandsOn.map(() => false) }
+  }
+
   requiredAnchors(): number {
     return 1
   }
@@ -315,10 +320,41 @@ export type ProfileProps = {
   boxColor: string
   /** The point of control and the value area's shown bounds read on the price scale. */
   showLabelsOnPriceScale: boolean
+  /** The range's edges, dashed in grey at half its opacity. */
+  outline: boolean
 }
 
 /** The profile's levels: its rows, its point of control and its value area's bounds. */
 type ProfileLevels = { bins: VolumeBin[]; pocIndex: number; low: number; high: number; vaShare: number }
+
+/** What a format-2 profile save that names none of these settings drew with. */
+const SAVED_PROFILE: Partial<ProfileProps> & { extendRight: boolean } = {
+  rowsLayout: 'number',
+  rowSize: 24,
+  volume: 'updown',
+  valueAreaVolume: 70,
+  upColor: '#089981',
+  downColor: '#f23645',
+  valueAreaUpColor: '#089981',
+  valueAreaDownColor: '#f23645',
+  widthPercent: 30,
+  placement: 'left',
+  pocVisible: true,
+  pocColor: '#f23645',
+  pocWidth: 2,
+  pocStyle: 'solid',
+  vahVisible: true,
+  vahColor: '#787b86',
+  vahWidth: 1,
+  vahStyle: 'dashed',
+  valVisible: true,
+  valColor: '#787b86',
+  valWidth: 1,
+  valStyle: 'dashed',
+  developingPoc: false,
+  developingVa: false,
+  extendRight: false,
+}
 
 /** Shared volume-by-price histogram body; subclasses define the bar range and the x-span. */
 abstract class VolumeProfileBase<P extends ProfileProps & Record<string, unknown>> extends Drawing<P> {
@@ -397,6 +433,36 @@ abstract class VolumeProfileBase<P extends ProfileProps & Record<string, unknown
     return this._axisViews
   }
 
+  /** A format-2 profile drew its rows outside the value area at 30% of their colors' opacity and
+   *  inside it at 80%, its levels at 90%, its developing lines in its levels' colors at 70%, 1px
+   *  and dotted, held its value area to 95%, outlined its range, filled no box and read nothing on
+   *  the price scale. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const missing = Object.fromEntries(Object.entries(SAVED_PROFILE).filter(([key]) => !(key in saved) && key in this._props))
+    const p = { ...this._props, ...missing }
+    const at = (color: string, share: number): string => withAlpha(color, share * alphaOf(color))
+    this._props = {
+      ...p,
+      upColor: at(p.upColor, 0.3),
+      downColor: at(p.downColor, 0.3),
+      valueAreaUpColor: at(p.valueAreaUpColor, 0.8),
+      valueAreaDownColor: at(p.valueAreaDownColor, 0.8),
+      pocColor: at(p.pocColor, 0.9),
+      vahColor: at(p.vahColor, 0.9),
+      valColor: at(p.valColor, 0.9),
+      developingPocColor: at(p.pocColor, 0.7),
+      developingPocWidth: 1,
+      developingPocStyle: 'dotted',
+      developingVaColor: at(p.vahColor, 0.7),
+      developingVaWidth: 1,
+      developingVaStyle: 'dotted',
+      valueAreaVolume: Math.min(95, p.valueAreaVolume),
+      boxColor: withAlpha(p.boxColor, 0),
+      showLabelsOnPriceScale: false,
+      outline: true,
+    }
+  }
+
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const span = this.span(viewport)
     if (!span) return
@@ -407,6 +473,14 @@ abstract class VolumeProfileBase<P extends ProfileProps & Record<string, unknown
       ctx.save()
       ctx.fillStyle = p.boxColor
       ctx.fillRect(span.x1, 0, span.x2 - span.x1, viewport.height)
+      ctx.restore()
+    }
+    if (p.outline) {
+      ctx.save()
+      ctx.strokeStyle = withAlpha('#787b86', 0.5)
+      ctx.lineWidth = 1
+      ctx.setLineDash([4, 4])
+      ctx.strokeRect(span.x1, 0, span.x2 - span.x1, viewport.height)
       ctx.restore()
     }
     const l = this.levels(range)
@@ -567,6 +641,7 @@ export class FixedRangeVolumeProfile extends VolumeProfileBase<FixedProfileProps
       developingVaStyle: 'solid',
       boxColor: 'rgba(55, 166, 239, 0)',
       showLabelsOnPriceScale: true,
+      outline: false,
       extendRight: true,
     }
   }
@@ -633,6 +708,7 @@ export class AnchoredVolumeProfile extends VolumeProfileBase<ProfileProps> {
       developingVaStyle: 'solid',
       boxColor: 'rgba(38, 198, 218, 0.05)',
       showLabelsOnPriceScale: true,
+      outline: false,
     }
   }
 

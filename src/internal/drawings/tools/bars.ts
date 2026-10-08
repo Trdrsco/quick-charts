@@ -38,6 +38,9 @@ export type RegressionProps = {
   extendLines: boolean
   /** Read the correlation of the bars with the line under its end. */
   showPearsons: boolean
+  /** One body between the two bands in this color, drawn while both stand; null draws a body
+   *  between the line and each band in that band's color. */
+  bodyColor: string | null
 }
 
 const REGRESSION_PROPS: RegressionProps = {
@@ -60,6 +63,7 @@ const REGRESSION_PROPS: RegressionProps = {
   downStyle: 'solid',
   extendLines: false,
   showPearsons: true,
+  bodyColor: null,
 }
 
 /** The body between the line and each band, in the band's color at this share of its opacity. */
@@ -81,6 +85,30 @@ export class RegressionTrend extends Drawing<RegressionProps> {
   protected override upgradeProps(props: Partial<RegressionProps>): Partial<RegressionProps> {
     if ('baseLine' in props || typeof props.lowerDeviation !== 'number') return props
     return { ...props, lowerDeviation: -props.lowerDeviation }
+  }
+
+  /** A format-2 trend drew its line in its own stroke and its bands in it at seven tenths, one body
+   *  between both bands in its color at 8%, and no correlation. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    const { lineColor, lineWidth, lineStyle } = this._style
+    const band = withAlpha(lineColor, alphaOf(lineColor) * 0.7)
+    this._props = {
+      ...this._props,
+      baseLine: true,
+      baseColor: lineColor,
+      baseWidth: lineWidth,
+      baseStyle: lineStyle,
+      upLine: true,
+      upColor: band,
+      upWidth: lineWidth,
+      upStyle: lineStyle,
+      downLine: true,
+      downColor: band,
+      downWidth: lineWidth,
+      downStyle: lineStyle,
+      showPearsons: false,
+      bodyColor: withAlpha(lineColor, 0.08),
+    }
   }
 
   requiredAnchors(): number {
@@ -154,8 +182,21 @@ export class RegressionTrend extends Drawing<RegressionProps> {
       ctx.fill()
       ctx.restore()
     }
-    body(lines.upper, strokes.up.color)
-    body(lines.lower, strokes.down.color)
+    if (this.props.bodyColor === null) {
+      body(lines.upper, strokes.up.color)
+      body(lines.lower, strokes.down.color)
+    } else if (lines.upper && lines.lower) {
+      ctx.save()
+      ctx.fillStyle = this.props.bodyColor
+      ctx.beginPath()
+      ctx.moveTo(lines.upper[0].x, lines.upper[0].y)
+      ctx.lineTo(lines.upper[1].x, lines.upper[1].y)
+      ctx.lineTo(lines.lower[1].x, lines.lower[1].y)
+      ctx.lineTo(lines.lower[0].x, lines.lower[0].y)
+      ctx.closePath()
+      ctx.fill()
+      ctx.restore()
+    }
     const draw = (line: [Point, Point] | undefined, stroke: RegressionLine): void => {
       if (!line || !stroke.show) return
       ctx.save()
@@ -247,6 +288,9 @@ export type BarsPatternProps = {
   /** `hl` paints each bar's high-low range and `oc` its open-close range; a price paints the
    *  pattern as a line through it. */
   mode: BarsPatternMode
+  /** Each bar as a candle instead, its wick from high to low and its body from open to close. A
+   *  mode chosen ends it. */
+  candles: boolean
 }
 
 /** The ways a bars pattern paints its bars, in the order its Mode list offers them. */
@@ -317,12 +361,22 @@ export class BarsPattern extends CapturedBarsDrawing<BarsPatternProps> {
   readonly type: string = 'bars_pattern'
 
   protected override defaultProps(): BarsPatternProps {
-    return { bars: [], mirrored: false, flipped: false, mode: 'hl' }
+    return { bars: [], mirrored: false, flipped: false, mode: 'hl', candles: false }
   }
 
-  /** A pattern saved painting candle sticks paints its bars' ranges. */
+  /** A pattern saved painting candle sticks reads its bars' ranges as its mode, and paints its
+   *  candles. */
   protected override upgradeProps(props: Partial<BarsPatternProps>): Partial<BarsPatternProps> {
-    return (props.mode as string | undefined) === 'bars' ? { ...props, mode: 'hl' } : props
+    return (props.mode as string | undefined) === 'bars' ? { ...props, mode: 'hl', candles: true } : props
+  }
+
+  /** A format-2 pattern that named no mode painted candles. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    if (!('mode' in saved)) this._props = { ...this._props, candles: true }
+  }
+
+  override applyProps(patch: Partial<BarsPatternProps>): void {
+    super.applyProps('mode' in patch && !('candles' in patch) ? { ...patch, candles: false } : patch)
   }
 
   private priceOf(bar: CapturedBar): number {
@@ -352,7 +406,7 @@ export class BarsPattern extends CapturedBarsDrawing<BarsPatternProps> {
     const width = (f.x2 - f.x1) / seq.length
 
     // The whole style surface is the one color, its opacity riding in it, with no width or dash.
-    if (this.props.mode !== 'hl' && this.props.mode !== 'oc') {
+    if (this.props.mode !== 'hl' && this.props.mode !== 'oc' && !this.props.candles) {
       ctx.save()
       ctx.setLineDash([])
       ctx.strokeStyle = this.style.lineColor
@@ -371,8 +425,29 @@ export class BarsPattern extends CapturedBarsDrawing<BarsPatternProps> {
       return
     }
 
-    // Each bar its range as a bar: high to low, or open to close.
     const bodyW = Math.max(1.5, Math.min(9, width * 0.6))
+    if (this.props.candles) {
+      ctx.save()
+      ctx.setLineDash([])
+      ctx.strokeStyle = this.style.lineColor
+      ctx.fillStyle = this.style.lineColor
+      ctx.lineWidth = 1
+      for (let i = 0; i < seq.length; i++) {
+        const bar = seq[i]!
+        const cx = f.x1 + width * (i + 0.5)
+        const yO = yAt(bar.o)
+        const yC = yAt(bar.c)
+        ctx.beginPath()
+        ctx.moveTo(cx, yAt(bar.h))
+        ctx.lineTo(cx, yAt(bar.l))
+        ctx.stroke()
+        ctx.fillRect(cx - bodyW / 2, Math.min(yO, yC), bodyW, Math.max(1, Math.abs(yC - yO)))
+      }
+      ctx.restore()
+      return
+    }
+
+    // Each bar its range as a bar: high to low, or open to close.
     const oc = this.props.mode === 'oc'
     ctx.save()
     ctx.fillStyle = this.style.lineColor

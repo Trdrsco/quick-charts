@@ -3,7 +3,7 @@
 // across and along what carries it, a vertical line's label running up it, a background switched
 // off, a box's middle line in its own stroke, and a curve's extensions and ends.
 import { describe, expect, it } from 'vitest'
-import { drawingTools } from '../../../src/drawings/index'
+import { drawingTools, INERT_PROPS } from '../../../src/drawings/index'
 import type { IDrawing, Viewport } from '../../../src/internal/drawings/index'
 
 /** A pane 800 by 400 where a time is its own x and a price stands that far up from the bottom. */
@@ -109,9 +109,10 @@ describe('a label', () => {
     expect(calls.find((c) => c.name === 'fillText')!.args).toEqual(['Up', 204, 4])
   })
 
-  it('takes no place on a trend angle, which reads its angle instead', () => {
-    const angle = make('trend_angle', [[100, 100], [300, 200]], { text: 'Hidden words', leftEnd: 'arrow' })
-    expect(texts(painted(angle))).not.toContain('Hidden words')
+  it('is not offered on a trend angle, which reads its angle instead', () => {
+    const angle = make('trend_angle', [[100, 100], [300, 200]])
+    expect(INERT_PROPS.trend_angle).toEqual(expect.arrayContaining(['text', 'leftEnd', 'rightEnd']))
+    expect(texts(painted(angle))).toEqual(['27°'])
   })
 })
 

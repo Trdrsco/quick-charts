@@ -1,33 +1,48 @@
 import type { Anchor, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
-import { applyStroke, fontOf, withAlpha } from '../render/canvas'
+import { applyStroke, fontOf, paintLabel, withAlpha } from '../render/canvas'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
 }
 
+/** A pattern's pills: drawn at this radius, or growing with the letters' size where null. */
+export type PillProps = {
+  pillRadius: number | null
+}
+
 /** A shaded pattern's background switch: off, the shaded legs keep their fill's color and opacity
  *  for when it is switched back on. */
-export type PatternProps = {
+export type PatternProps = PillProps & {
   fillBackground: boolean
 }
 
 /**
  * Shared body of the pattern/wave tools: a polyline through every anchor with a lettered (or
  * numbered) pill at each vertex, the letters in the drawing's label ink, size, weight and slant.
- * Subclasses supply the label sequence and any extra ink. A pattern is read by its letters and
- * carries no words of its own.
+ * Subclasses supply the label sequence and any extra ink. A pattern is read by its letters, and its
+ * pages offer no words of its own; a save that carries words draws them above the pattern.
  */
-export abstract class LabeledPolyline<P extends Record<string, unknown> = Record<string, never>> extends Drawing<P> {
+export abstract class LabeledPolyline<P extends PillProps = PillProps> extends Drawing<P> {
   protected abstract labels(): readonly string[]
 
-  /** Words a saved pattern carries are not read: the pattern's letters are its words. */
+  protected override defaultProps(): P {
+    return { pillRadius: null } as P
+  }
+
+  /** A save's empty words are no words: a pattern carries words only where a save names some. */
   protected override upgradeProps(props: Partial<P>): Partial<P> {
-    if (!('text' in props)) return props
-    const { text: _text, ...rest } = props as Partial<P> & { text?: unknown }
+    const saved = props as Partial<P> & { text?: unknown }
+    if (!('text' in saved) || saved.text) return props
+    const { text: _text, ...rest } = saved
     void _text
     return rest as Partial<P>
+  }
+
+  /** A format-2 pattern drew its pills at 9px whatever its letters' size. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, pillRadius: 9 }
   }
 
   protected points(viewport: Viewport): (Point | null)[] {
@@ -56,6 +71,13 @@ export abstract class LabeledPolyline<P extends Record<string, unknown> = Record
     }
     this.paintExtras(ctx, points, viewport)
     this.paintLabels(ctx, points)
+    const text = (this.props as { text?: unknown }).text
+    if (typeof text === 'string' && text) {
+      // A point that repeats the one before it, as a completed six-point save's last does, adds no
+      // weight to where the words stand.
+      const distinct = points.filter((p, i) => i === 0 || p.x !== points[i - 1]!.x || p.y !== points[i - 1]!.y)
+      paintLabel(ctx, text, this.textHintPlacement(distinct), this.style, { align: 'center' })
+    }
   }
 
   /** The placement preview is the pattern itself: the zigzag grows labeled leg by leg. */
@@ -69,7 +91,7 @@ export abstract class LabeledPolyline<P extends Record<string, unknown> = Record
    *  side away from the leg that reaches it. */
   protected paintLabels(ctx: CanvasRenderingContext2D, points: Point[]): void {
     const labels = this.labels()
-    const radius = Math.max(9, Math.round(this.style.fontSize * 0.75))
+    const radius = this.props.pillRadius ?? Math.max(9, Math.round(this.style.fontSize * 0.75))
     ctx.save()
     ctx.setLineDash([])
     ctx.font = fontOf(this.style)
@@ -130,7 +152,7 @@ export class XabcdPattern extends LabeledPolyline<PatternProps> {
   readonly type: string = 'xabcd_pattern'
 
   protected override defaultProps(): PatternProps {
-    return { fillBackground: true }
+    return { pillRadius: null, fillBackground: true }
   }
 
   requiredAnchors(): number {
@@ -165,13 +187,11 @@ export class ThreeDrivesPattern extends LabeledPolyline {
     return 7
   }
 
-  /** A three drives saved on six points, without the reversal, completes with one: as far past the
-   *  third drive as the second retracement ran before it, back to that retracement's price. */
+  /** A three drives saved on six points, without the reversal, completes with its reversal at its
+   *  third drive, so it draws as it was saved until the reversal is dragged out. */
   protected override upgradeAnchors(anchors: Anchor[]): Anchor[] {
     if (anchors.length !== 6) return anchors
-    const [c, drive] = [anchors[4]!, anchors[5]!]
-    if (typeof c.time !== 'number' || typeof drive.time !== 'number') return anchors
-    return [...anchors, { time: (drive.time + (drive.time - c.time)) as Anchor['time'], price: c.price }]
+    return [...anchors, { ...anchors[5]! }]
   }
 
   protected labels(): readonly string[] {
@@ -214,7 +234,7 @@ export class TrianglePattern extends LabeledPolyline<PatternProps> {
   readonly type = 'triangle_pattern'
 
   protected override defaultProps(): PatternProps {
-    return { fillBackground: true }
+    return { pillRadius: null, fillBackground: true }
   }
 
   requiredAnchors(): number {
@@ -247,7 +267,7 @@ export class HeadAndShoulders extends LabeledPolyline<PatternProps> {
   readonly type = 'head_and_shoulders'
 
   protected override defaultProps(): PatternProps {
-    return { fillBackground: true }
+    return { pillRadius: null, fillBackground: true }
   }
 
   requiredAnchors(): number {

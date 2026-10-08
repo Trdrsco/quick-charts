@@ -35,14 +35,18 @@ export type RangeMeterProps = {
   /** The stats label's background. */
   fillLabelBackground: boolean
   labelBackgroundColor: string
+  /** The stats label takes the drawing's text weight and slant. */
+  labelTextStyle: boolean
 }
 
 /** A price range runs its span on to the pane's left or right edge. */
 export type PriceRangeProps = RangeMeterProps & { extendLeft: boolean; extendRight: boolean }
 /** A date range runs its span on to the pane's top or bottom. */
 export type DateRangeProps = RangeMeterProps & { extendTop: boolean; extendBottom: boolean }
-/** A date and price range draws its span's border on a switch, in a stroke of its own. */
-export type DatePriceRangeProps = RangeMeterProps & { drawBorder: boolean; borderColor: string; borderWidth: number }
+/** A date and price range draws its span's border on a switch, in a stroke of its own, and runs its
+ *  span on to the pane's left and right edges where a save carries that, which its pages do not
+ *  offer. */
+export type DatePriceRangeProps = RangeMeterProps & { drawBorder: boolean; borderColor: string; borderWidth: number; extendLeft: boolean; extendRight: boolean }
 
 const METER_PROPS: RangeMeterProps = {
   text: '',
@@ -57,6 +61,7 @@ const METER_PROPS: RangeMeterProps = {
   labelFontSize: 12,
   fillLabelBackground: true,
   labelBackgroundColor: 'rgba(46, 46, 46, 0.4)',
+  labelTextStyle: false,
 }
 
 /** The props a meter keeps from a save: its stats under their earlier names, and its one extension
@@ -145,6 +150,23 @@ abstract class RangeMeter<P extends RangeMeterProps> extends Drawing<P> {
   /** The span's border, where the meter draws one. */
   protected paintBorder(_ctx: CanvasRenderingContext2D, _r: { x: number; y: number; width: number; height: number }): void {}
 
+  /** A format-2 meter shaded its span in its stroke color at its fill's opacity, 8% at the least,
+   *  read no price moves, and wrote its stats in its own text style on a dark plate at 92%. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    const s = this._style
+    this._style = { ...s, fillColor: s.lineColor, fillOpacity: Math.max(0.08, s.fillOpacity) }
+    this._props = {
+      ...this._props,
+      fillBackground: true,
+      showPipsChange: false,
+      labelColor: s.textColor,
+      labelFontSize: s.fontSize,
+      fillLabelBackground: true,
+      labelBackgroundColor: withAlpha('#1b1f27', 0.92),
+      labelTextStyle: true,
+    }
+  }
+
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const px = this.pixels(viewport)
     if (!px) return
@@ -172,7 +194,8 @@ abstract class RangeMeter<P extends RangeMeterProps> extends Drawing<P> {
     const stats = this.stats(viewport)
     if (stats.length) {
       const label = box(a, b)
-      const ink: DrawingStyle = { ...this.style, textColor: this.props.labelColor, fontSize: this.props.labelFontSize, bold: false, italic: false }
+      const plain = !this.props.labelTextStyle
+      const ink: DrawingStyle = { ...this.style, textColor: this.props.labelColor, fontSize: this.props.labelFontSize, ...(plain ? { bold: false, italic: false } : {}) }
       paintLabel(ctx, stats.join('  ·  '), { x: label.x + label.width / 2, y: label.y + label.height + 16 }, ink, {
         align: 'center',
         ...(this.props.fillLabelBackground !== false ? { background: this.props.labelBackgroundColor } : {}),
@@ -263,11 +286,20 @@ export class DatePriceRange extends RangeMeter<DatePriceRangeProps> {
       drawBorder: false,
       borderColor: '#2962ff',
       borderWidth: 1,
+      extendLeft: false,
+      extendRight: false,
     }
   }
 
   protected override upgradeProps(props: Partial<DatePriceRangeProps>): Partial<DatePriceRangeProps> {
-    return upgradeMeter(props, [])
+    return upgradeMeter(props, ['extendLeft', 'extendRight'])
+  }
+
+  protected override span(a: Point, b: Point, viewport: Viewport): { x: number; y: number; width: number; height: number } {
+    const r = box(a, b)
+    const left = this.props.extendLeft ? 0 : r.x
+    const right = this.props.extendRight ? viewport.width : r.x + r.width
+    return { x: left, y: r.y, width: right - left, height: r.height }
   }
 
   protected override paintBorder(ctx: CanvasRenderingContext2D, r: { x: number; y: number; width: number; height: number }): void {

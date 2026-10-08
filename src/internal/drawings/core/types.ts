@@ -78,12 +78,18 @@ export const DEFAULT_OPTIONS: DrawingOptions = {
   visibility: DEFAULT_VISIBILITY,
 }
 
+/** The format a drawing saves in: its tool's present look. */
+export const SERIAL_VERSION = 3
+
 /**
  * Wire/persistence format. `props` carries the tool-specific payload — every tool round-trips
  * its COMPLETE state through this shape (the schema exists so nothing is ever dropped on save).
  */
 export interface SerializedDrawing {
-  v: 2
+  /** The format's version. A drawing saves at 3. A save at 2 carries the props and style of the
+   *  looks format 2 painted, and restores with that look: a tool whose factory values, prop
+   *  meanings or paint rules differ at 3 writes the values that paint the save as it painted. */
+  v: 2 | 3
   id: string
   type: string
   anchors: Anchor[]

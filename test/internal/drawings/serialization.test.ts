@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Time } from 'lightweight-charts'
 import { toolRegistry } from '../../../src/internal/drawings/registry'
 import type { Anchor, SerializedDrawing } from '../../../src/internal/drawings/core/types'
+import { SERIAL_VERSION } from '../../../src/internal/drawings/core/types'
 
 // Every registered tool must round-trip its COMPLETE state: create → toJSON → restore → toJSON
 // gives an identical document. This is the schema's contract — viewer text, extension flags, any
@@ -25,7 +26,7 @@ function mutatedProps(defaults: Record<string, unknown>): Record<string, unknown
   return out
 }
 
-describe('serialization v2 — every tool round-trips completely', () => {
+describe('serialization: every tool round-trips completely', () => {
   for (const def of toolRegistry.all()) {
     it(`${def.type} round-trips style, options, and props`, () => {
       const created = def.create(`id-${def.type}`, anchorsFor(def.anchors))
@@ -40,7 +41,7 @@ describe('serialization v2 — every tool round-trips completely', () => {
       }
 
       const first = created.toJSON()
-      expect(first.v).toBe(2)
+      expect(first.v).toBe(SERIAL_VERSION)
       expect(first.type).toBe(def.type)
 
       const restored = toolRegistry.restore(first)

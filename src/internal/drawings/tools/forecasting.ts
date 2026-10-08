@@ -2,7 +2,7 @@ import type { ControlPoint, DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { moneyText } from '../core/money'
 import { distanceToSegment } from '../core/geometry'
-import { applyStroke, fontOf, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { applyStroke, fillPaint, fontOf, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
 /** The hues a position opens its two zones in, until the viewer says otherwise. */
 const PROFIT = '#089981'
@@ -60,6 +60,9 @@ export type PositionProps = {
   compact: boolean
   /** The tags show at rest as well as while the position is hovered or selected. */
   alwaysShowStats: boolean
+  /** The tags write profit and loss as PnL and a level's tick count after a comma, as a format-2
+   *  save wrote them. */
+  savedWords: boolean
 }
 
 /** The stats a new position reads: all but the profit and loss at the target and the stop. */
@@ -104,7 +107,16 @@ export class LongPosition extends Drawing<PositionProps> {
       stats: [...DEFAULT_STATS],
       compact: false,
       alwaysShowStats: false,
+      savedWords: false,
     }
+  }
+
+  /** A format-2 position showed its tags whether or not it was selected and wrote them in its own
+   *  words; compact, its target and stop tags read their offsets alone; and a save naming no
+   *  leverage carried none. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const stats = saved.compact === true ? DEFAULT_STATS.filter((stat) => stat !== 'tpAmount' && stat !== 'slAmount') : [...DEFAULT_STATS]
+    this._props = { ...this._props, stats, alwaysShowStats: true, savedWords: true, ...('leverage' in saved ? {} : { leverage: 1 }) }
   }
 
   requiredAnchors(): number {
@@ -214,9 +226,11 @@ export class LongPosition extends Drawing<PositionProps> {
     const head: string[] = []
     if (shown(`${side}PriceOffset`)) head.push(this.formatPrice(offset))
     if (shown(`${side}PercentOffset`)) head.push(`(${percent.toFixed(2)}%)`)
-    if (shown(`${side}TickOffset`) && tick && tick > 0) head.push(String(Math.round(offset / tick)))
+    const ticks = shown(`${side}TickOffset`) && tick && tick > 0 ? String(Math.round(offset / tick)) : null
+    if (ticks !== null && !this.props.savedWords) head.push(ticks)
+    const offsets = ticks !== null && this.props.savedWords ? `${head.join(' ')}, ${ticks}` : head.join(' ')
     const parts: string[] = []
-    if (head.length) parts.push(compact ? head.join(' ') : `${side === 'tp' ? 'Target' : 'Stop'}: ${head.join(' ')}`)
+    if (offsets) parts.push(compact ? offsets : `${side === 'tp' ? 'Target' : 'Stop'}: ${offsets}`)
     if (shown(`${side}Amount`)) parts.push(compact ? moneyText(amount) : `Amount: ${moneyText(amount)}`)
     if (shown(`${side}PL`)) parts.push(compact ? moneyText(pl) : `P&L: ${moneyText(pl)}`)
     return parts.join(compact ? ' · ' : ', ')
@@ -227,7 +241,8 @@ export class LongPosition extends Drawing<PositionProps> {
     const shown = (stat: PositionStat): boolean => this.props.stats.includes(stat)
     const compact = this.props.compact
     const parts: string[] = []
-    if (shown('openClosePL')) parts.push(compact ? moneyText(s.pnl) : `${s.closed ? 'Closed P&L' : 'Open P&L'}: ${moneyText(s.pnl)}`)
+    const pnl = this.props.savedWords ? 'PnL' : 'P&L'
+    if (shown('openClosePL')) parts.push(compact ? moneyText(s.pnl) : `${s.closed ? 'Closed' : 'Open'} ${pnl}: ${moneyText(s.pnl)}`)
     if (shown('qty')) parts.push(compact ? this.qtyText(s.qty) : `Qty: ${this.qtyText(s.qty)}`)
     if (shown('riskRewardRatio')) parts.push(compact ? s.ratio.toFixed(2) : `Risk/Reward Ratio: ${s.ratio.toFixed(2)}`)
     return parts.join(compact ? ' · ' : ', ')
@@ -374,6 +389,14 @@ export class Forecast extends Drawing<ForecastProps> {
     }
   }
 
+  /** A format-2 forecast that named none of these colors drew its source tag blue, its target tag
+   *  and its success green. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const earlier: Partial<ForecastProps> = { sourceBackColor: '#2962ff', targetBackColor: PROFIT, targetBorderColor: PROFIT, successBackColor: PROFIT }
+    const missing = Object.fromEntries(Object.entries(earlier).filter(([key]) => !(key in saved)))
+    this._props = { ...this._props, ...missing }
+  }
+
   requiredAnchors(): number {
     return 2
   }
@@ -452,6 +475,12 @@ export class Sector extends Drawing<SectorProps> {
     return { color1: 'rgba(41, 98, 255, 0.2)', color2: 'rgba(156, 39, 176, 0.2)', fillBackground: true }
   }
 
+  /** A format-2 sector filled its slice in its background, one color across both halves. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    const fill = fillPaint(this._style)
+    this._props = fill ? { ...this._props, color1: fill, color2: fill, fillBackground: true } : { ...this._props, fillBackground: false }
+  }
+
   requiredAnchors(): number {
     return 3
   }
@@ -492,8 +521,12 @@ export class Sector extends Drawing<SectorProps> {
         ctx.closePath()
         ctx.fill()
       }
-      half(0, middle, this.props.color1)
-      half(middle, arc.samples.length - 1, this.props.color2)
+      // Halves of one color fill as one slice, with no seam between them.
+      if (this.props.color1 === this.props.color2) half(0, arc.samples.length - 1, this.props.color1)
+      else {
+        half(0, middle, this.props.color1)
+        half(middle, arc.samples.length - 1, this.props.color2)
+      }
     }
     applyStroke(ctx, this.style)
     ctx.beginPath()

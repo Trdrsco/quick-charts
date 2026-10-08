@@ -15,7 +15,8 @@ import type { ISeriesApi, IChartApi, SeriesType } from 'lightweight-charts'
 import { attachDrawings, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow, type PlacedImage, type TextEditSession } from '../drawings'
 import { drawingTools, type ToolPreset } from '../drawings/index'
 import { rebindDrawingIdentity } from '../drawings/layer/attach'
-import { presetOf } from '../drawings/layer/presets'
+import { presetOf, presetPropsFor } from '../drawings/layer/presets'
+import { SAVED_LOOK_PROPS } from '../drawings/capabilities'
 import type { ReplayPhase } from './replay'
 import {
   DEFAULT_HIDE_STATE,
@@ -65,7 +66,20 @@ import type { IconResolver } from '../ui/icons/resolver'
  *  becomes this look too. */
 const defaultPreset = (type: string): ToolPreset | undefined => {
   const fresh = drawingTools.create(type, 'default', [])
-  return fresh ? presetOf(fresh) : undefined
+  if (!fresh) return undefined
+  // The tool's own look sets the props that keep a saved look to their own values too, so a drawing
+  // restored with one takes the tool's look whole.
+  const preset = presetOf(fresh)
+  const own = fresh.props as Record<string, unknown>
+  for (const key of SAVED_LOOK_PROPS[type] ?? []) if (key in own) preset.props = { ...preset.props, [key]: own[key] }
+  return preset
+}
+
+/** A drawing's props as a template keeps them: without the props that keep its own saved look. */
+const withoutSavedLook = (type: string, props: Readonly<Record<string, unknown>>): Record<string, unknown> => {
+  const out: Record<string, unknown> = { ...props }
+  for (const key of SAVED_LOOK_PROPS[type] ?? []) delete out[key]
+  return out
 }
 
 const drawingToolOf = (arg: unknown): string | null | undefined =>
@@ -585,12 +599,12 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       const preset = name === null ? defaultPreset(drawing.type) : handle.presets.templatesFor(drawing.type).find((template) => template.name === name)
       if (!preset) return
       if (preset.style) handle.updateStyle(preset.style)
-      if (preset.props) handle.updateProps(preset.props)
+      if (preset.props) handle.updateProps(presetPropsFor(drawing, preset.props))
     },
     saveTemplate(name) {
       const drawing = handle.selectedDrawing()
       if (!drawing) return
-      void handle.presets.saveTemplate(drawing.type, name, { style: { ...drawing.style }, props: { ...drawing.props } })
+      void handle.presets.saveTemplate(drawing.type, name, { style: { ...drawing.style }, props: withoutSavedLook(drawing.type, drawing.props) })
     },
     removeTemplate(name) {
       const drawing = handle.selectedDrawing()

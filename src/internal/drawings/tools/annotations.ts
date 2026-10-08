@@ -4,7 +4,8 @@ import type { Anchor, DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { barAt } from '../core/bars'
 import { distanceToSegment, midpoint, segmentTextAngle } from '../core/geometry'
-import { applyStroke, fillPaint, inkOn, measureTextBlock, paintLabel, paintTextBlock, strokeSegment, wrapText } from '../render/canvas'
+import { applyStroke, fillPaint, inkOn, measureTextBlock, paintLabel, paintTextBlock, strokeSegment, withAlpha, wrapText } from '../render/canvas'
+import { endSavedLook, type SavedLook } from '../core/savedLook'
 import { glyphArtwork } from '../render/glyphArtwork'
 import type { TextHAlign, TextVAlign } from './lines'
 
@@ -23,7 +24,13 @@ function edgeToward(box: Box, target: Point): Point {
   return { x: Math.max(box.x, Math.min(target.x, box.x + box.width)), y: Math.max(box.y, Math.min(target.y, box.y + box.height)) }
 }
 
-/** A text block saved with an alignment of its words drops it: a block reads from its left. */
+/** How a block's words stand in it: from its left, or centered where a save carries a centered
+ *  alignment, which the block's pages do not offer. */
+function wordsAlign(props: Readonly<Record<string, unknown>>): 'left' | 'center' {
+  return props.align === 'center' ? 'center' : 'left'
+}
+
+/** A comment saved with an alignment of its words drops it: a comment's words read from its left. */
 function withoutAlign<P>(props: Partial<P>): Partial<P> {
   const saved = props as Partial<P> & { align?: unknown }
   if (!('align' in saved)) return props
@@ -51,11 +58,9 @@ export class TextLabel extends Drawing<TextBoxProps> {
     return { text: '', fillBackground: false, drawBorder: false, wordWrap: false, wordWrapWidth: 200 }
   }
 
-  /** A text saved with an alignment of its words reads from its left, its background showing
-   *  wherever its fill does, as such a text was drawn. */
-  protected override upgradeProps(props: Partial<TextBoxProps>): Partial<TextBoxProps> {
-    if (!('align' in props)) return props
-    return { fillBackground: true, ...withoutAlign(props) }
+  /** A format-2 text showed its background wherever its fill did. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, fillBackground: true }
   }
 
   requiredAnchors(): number {
@@ -83,6 +88,7 @@ export class TextLabel extends Drawing<TextBoxProps> {
     paintTextBlock(ctx, this.words(), box, this.style, {
       background: this.props.fillBackground ? (fillPaint(this.style) ?? undefined) : undefined,
       borderColor: this.props.drawBorder ? this.style.lineColor : undefined,
+      align: wordsAlign(this.props),
     })
   }
 
@@ -102,9 +108,6 @@ export type LabelBoxProps = TextProps & {
 
 const LABEL_BOX: LabelBoxProps = { text: '', fillBackground: true, drawBorder: false, borderColor: '#4a4a4a' }
 
-/** Where a note's label stands from a point it shares, in pixels: to the right and up. */
-const LABEL_OFFSET = { x: 20, y: 40 }
-
 /**
  * Note: a label tied to the point it notes. The first point is what it notes and the second where
  * its label stands, the label's top-left; a line in the drawing's stroke color runs between them.
@@ -116,31 +119,15 @@ export class Note extends Drawing<LabelBoxProps> {
     return { ...LABEL_BOX }
   }
 
-  /** A note saved on one point keeps that point and gains its label there, until a pane stands the
-   *  label off it. */
+  /** A note saved on one point keeps that point and gains its label there, the label's top-left on
+   *  the point as the note was drawn, until the label is moved off it. */
   protected override upgradeAnchors(anchors: Anchor[]): Anchor[] {
     return anchors.length === 1 ? [anchors[0]!, { ...anchors[0]! }] : anchors
   }
 
-  /** A note whose label stands on its point, as one saved on a single point does, stands the label
-   *  up and to the right of the point once it is on a pane, so the two are told apart and the line
-   *  between them shows. The point itself stays. */
-  override attached(params: SeriesAttachedParameter<Time>): void {
-    super.attached(params)
-    const [point, label] = this.anchors
-    const viewport = this.getViewport()
-    if (!point || !label || !viewport || label.time !== point.time || label.price !== point.price) return
-    const p = this.anchorToPixel(point, viewport)
-    const price = p ? viewport.priceAt(p.y - LABEL_OFFSET.y) : null
-    if (!p || price === null) return
-    this._anchors[1] = { time: viewport.timeAt(p.x + LABEL_OFFSET.x) ?? point.time, price }
-  }
-
-  /** A note saved with an alignment of its words reads from its left inside its background and its
-   *  border, as such a note was drawn. */
-  protected override upgradeProps(props: Partial<LabelBoxProps>): Partial<LabelBoxProps> {
-    if (!('align' in props)) return props
-    return { fillBackground: true, drawBorder: true, ...withoutAlign(props) }
+  /** A format-2 note showed its background and its border, the border in its stroke color. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, fillBackground: true, drawBorder: true, borderColor: this._style.lineColor }
   }
 
   requiredAnchors(): number {
@@ -160,13 +147,18 @@ export class Note extends Drawing<LabelBoxProps> {
     const target = this.anchors[0] && this.anchorToPixel(this.anchors[0], viewport)
     const label = this.label(viewport)
     if (!target || !label) return
-    ctx.save()
-    applyStroke(ctx, { ...this.style, lineWidth: 1, lineStyle: 'solid' })
-    strokeSegment(ctx, target, edgeToward(label, target))
-    ctx.restore()
+    // The line shows while the label stands off its point.
+    const edge = edgeToward(label, target)
+    if (edge.x !== target.x || edge.y !== target.y) {
+      ctx.save()
+      applyStroke(ctx, { ...this.style, lineWidth: 1, lineStyle: 'solid' })
+      strokeSegment(ctx, target, edge)
+      ctx.restore()
+    }
     paintTextBlock(ctx, this.props.text || ' ', label, this.style, {
       background: this.props.fillBackground ? (fillPaint(this.style) ?? undefined) : undefined,
       borderColor: this.props.drawBorder ? this.props.borderColor : undefined,
+      align: wordsAlign(this.props),
     })
   }
 
@@ -235,6 +227,8 @@ export class Comment extends Drawing<TextProps> {
 export type CalloutProps = TextProps & {
   wordWrap: boolean
   wordWrapWidth: number
+  /** The box's border at this width; null takes the drawing's stroke width. */
+  borderWidth: number | null
 }
 
 /**
@@ -245,7 +239,12 @@ export class Callout extends Drawing<CalloutProps> {
   readonly type: string = 'callout'
 
   protected override defaultProps(): CalloutProps {
-    return { text: '', wordWrap: false, wordWrapWidth: 200 }
+    return { text: '', wordWrap: false, wordWrapWidth: 200, borderWidth: null }
+  }
+
+  /** A format-2 callout bordered its box at 1px. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, borderWidth: 1 }
   }
 
   requiredAnchors(): number {
@@ -277,7 +276,7 @@ export class Callout extends Drawing<CalloutProps> {
     paintTextBlock(ctx, this.words(), box, this.style, {
       background: fillPaint(this.style) ?? undefined,
       borderColor: this.style.lineColor,
-      borderWidth: this.style.lineWidth,
+      borderWidth: this.props.borderWidth ?? this.style.lineWidth,
     })
   }
 
@@ -296,6 +295,11 @@ export class PriceLabel extends Drawing {
 
   requiredAnchors(): number {
     return 1
+  }
+
+  /** A format-2 price label filled its pill in its stroke color at 18%. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._style = { ...this._style, fillColor: this._style.lineColor, fillOpacity: 0.18 }
   }
 
   protected box(viewport: Viewport): Box | null {
@@ -432,6 +436,9 @@ export type PriceNoteProps = TextProps & {
   labelItalic: boolean
   labelBackgroundColor: string
   labelBorderColor: string
+  /** A format-2 note's look, a box reading the price over the words, tied to the price, painted as
+   *  format 2 did until the note's settings change. */
+  savedLook: SavedLook
 }
 
 /**
@@ -452,7 +459,42 @@ export class PriceNote extends Drawing<PriceNoteProps> {
       labelItalic: false,
       labelBackgroundColor: '#2962ff',
       labelBorderColor: '#2962ff',
+      savedLook: null,
     }
+  }
+
+  /** A format-2 price note was a box at its second point reading the first point's price over its
+   *  words, in the drawing's fill, bordered in its stroke color and tied to the price in its stroke.
+   *  It paints so until its settings change, and its tag's present props take the box's colors and
+   *  type. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    const s = this._style
+    this._props = {
+      ...this._props,
+      labelTextColor: s.textColor,
+      labelFontSize: s.fontSize,
+      labelBold: s.bold,
+      labelItalic: s.italic,
+      labelBackgroundColor: fillPaint(s) ?? withAlpha(s.lineColor, 0),
+      labelBorderColor: s.lineColor,
+      savedLook: {},
+    }
+  }
+
+  override applyProps(patch: Partial<PriceNoteProps>): void {
+    super.applyProps(endSavedLook(patch))
+  }
+
+  /** A saved look's box: at the second point, reading the first point's price over the words. */
+  protected savedBox(viewport: Viewport): { box: Box; text: string; target: Point } | null {
+    const [price, at] = this.anchors
+    const target = price && this.anchorToPixel(price, viewport)
+    const p = at && this.anchorToPixel(at, viewport)
+    if (!price || !target || !p) return null
+    const value = this.formatPrice(price.price)
+    const text = this.props.text ? `${value}\n${this.props.text}` : value
+    const { width, height } = measureTextBlock(text || ' ', this.style)
+    return { box: { x: p.x, y: p.y, width: width + 12, height: height + 12 }, text, target }
   }
 
   requiredAnchors(): number {
@@ -478,6 +520,14 @@ export class PriceNote extends Drawing<PriceNoteProps> {
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.props.savedLook) {
+      const saved = this.savedBox(viewport)
+      if (!saved) return
+      applyStroke(ctx, this.style)
+      strokeSegment(ctx, saved.target, edgeToward(saved.box, saved.target))
+      paintTextBlock(ctx, saved.text || ' ', saved.box, this.style, { background: fillPaint(this.style) ?? undefined, borderColor: this.style.lineColor })
+      return
+    }
     const [pa, pb] = this.anchorPixels(viewport)
     if (!pa || !pb) return
     ctx.save()
@@ -513,6 +563,10 @@ export class PriceNote extends Drawing<PriceNoteProps> {
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
+    if (this.props.savedLook) {
+      const saved = this.savedBox(viewport)
+      return !!saved && (inBox(point, saved.box) || distanceToSegment(point, saved.target, edgeToward(saved.box, saved.target)) <= 6)
+    }
     const [pa, pb] = this.anchorPixels(viewport)
     if (!pa || !pb) return false
     if (distanceToSegment(point, pa, pb) <= 6) return true
@@ -527,6 +581,12 @@ export class Pin extends Drawing<LabelBoxProps> {
 
   protected override defaultProps(): LabelBoxProps {
     return { ...LABEL_BOX }
+  }
+
+  /** A format-2 pin set its words on a dark plate at 95% with no border. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._style = { ...this._style, fillColor: '#1b1f27', fillOpacity: 0.95 }
+    this._props = { ...this._props, fillBackground: true, drawBorder: false }
   }
 
   requiredAnchors(): number {
@@ -580,6 +640,9 @@ export type SignpostProps = TextProps & {
    *  or below its low where it is negative. Null until the signpost is first stood on a pane, where
    *  the point it was placed at sets it. */
   position: number | null
+  /** A format-2 signpost's look, a dark plate over a stem planted at its point, painted as format 2
+   *  did until the signpost's settings change. */
+  savedLook: SavedLook
 }
 
 /**
@@ -592,11 +655,50 @@ export class Signpost extends Drawing<SignpostProps> {
   readonly type = 'signpost'
 
   protected override defaultProps(): SignpostProps {
-    return { text: '', showImage: false, emoji: '🙂', position: null }
+    return { text: '', showImage: false, emoji: '🙂', position: null, savedLook: null }
   }
 
   requiredAnchors(): number {
     return 1
+  }
+
+  /** A format-2 signpost was a dark plate bordered in its stroke color over a stem from its point,
+   *  a dot at its foot. It paints so until its settings change, its point where it was saved. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, savedLook: {} }
+  }
+
+  override applyProps(patch: Partial<SignpostProps>): void {
+    super.applyProps(endSavedLook(patch))
+  }
+
+  /** A saved look's plate: above the point, the stem's height over it. */
+  protected savedPlate(viewport: Viewport): { box: Box; p: Point } | null {
+    const anchor = this.anchors[0]
+    const p = anchor && super.anchorToPixel(anchor, viewport)
+    if (!p) return null
+    const { width, height } = measureTextBlock(this.props.text || ' ', this.style)
+    return { box: { x: p.x - (width + 12) / 2, y: p.y - 34 - height, width: width + 12, height: height + 12 }, p }
+  }
+
+  protected paintSavedLook(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const plate = this.savedPlate(viewport)
+    if (!plate) return
+    const { box, p } = plate
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.strokeStyle = this.style.lineColor
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(p.x, p.y)
+    ctx.lineTo(p.x, box.y + box.height)
+    ctx.stroke()
+    ctx.fillStyle = this.style.lineColor
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, 3, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+    paintTextBlock(ctx, this.props.text || ' ', { x: box.x, y: box.y }, this.style, { background: withAlpha('#1b1f27', 0.95), borderColor: this.style.lineColor })
   }
 
   /** A signpost first stood on a pane takes its position from the point it was placed at. */
@@ -604,7 +706,7 @@ export class Signpost extends Drawing<SignpostProps> {
     super.attached(params)
     const anchor = this.anchors[0]
     const viewport = this.getViewport()
-    if (this.props.position !== null || !anchor || !viewport) return
+    if (this.props.savedLook || this.props.position !== null || !anchor || !viewport) return
     const stood = this.standAt(anchor, viewport)
     if (!stood) return
     this._props = { ...this._props, position: stood.position }
@@ -641,8 +743,9 @@ export class Signpost extends Drawing<SignpostProps> {
     return { foot: { x, y: footY }, plate: { x, y: footY - (position / 100) * viewport.height }, above: position >= 0 }
   }
 
-  /** The handle stands where the plate meets its pole. */
+  /** The handle stands where the plate meets its pole, or at the point while the saved look stands. */
   override anchorToPixel(anchor: Anchor, viewport: Viewport): Point | null {
+    if (this.props.savedLook) return super.anchorToPixel(anchor, viewport)
     return this.stand(viewport, anchor)?.plate ?? null
   }
 
@@ -651,7 +754,7 @@ export class Signpost extends Drawing<SignpostProps> {
   override updateAnchor(index: number, anchor: Anchor): void {
     const current = this.anchors[0]
     const viewport = this.getViewport()
-    if (index !== 0 || !current) {
+    if (index !== 0 || !current || this.props.savedLook) {
       super.updateAnchor(index, anchor)
       return
     }
@@ -684,6 +787,10 @@ export class Signpost extends Drawing<SignpostProps> {
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.props.savedLook) {
+      this.paintSavedLook(ctx, viewport)
+      return
+    }
     const plate = this.plate(viewport)
     if (!plate) return
     const { box } = plate
@@ -727,6 +834,10 @@ export class Signpost extends Drawing<SignpostProps> {
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
+    if (this.props.savedLook) {
+      const saved = this.savedPlate(viewport)
+      return !!saved && inBox(point, saved.box)
+    }
     const plate = this.plate(viewport)
     if (!plate) return false
     return inBox(point, plate.box) || distanceToSegment(point, plate.foot, plate.top) <= 5

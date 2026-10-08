@@ -15,6 +15,13 @@ export type ChannelLabelProps = {
   text: string
   textVAlign: TextVAlign
   textHAlign: TextHAlign
+  /** The words stand over the first side's start instead, 6px in and 12px up. */
+  textAtStart: boolean
+}
+
+/** Paint a channel's words over its first side's start. */
+function paintWordsAtStart(ctx: CanvasRenderingContext2D, text: string, first: Segment, style: Readonly<DrawingStyle>): void {
+  paintLabel(ctx, text, { x: first.a.x + 6, y: first.a.y - 12 }, style)
 }
 
 /** A channel's background switch: off, the channel keeps its fill's color and opacity for when it
@@ -85,7 +92,7 @@ export class ParallelChannel extends Drawing<ParallelChannelProps> {
   readonly type = 'parallel_channel'
 
   protected override defaultProps(): ParallelChannelProps {
-    return { text: '', textVAlign: 'top', textHAlign: 'left', levels: PARALLEL_LEVELS.map((l) => ({ ...l })), extendLeft: false, extendRight: false, fillBackground: true }
+    return { text: '', textVAlign: 'top', textHAlign: 'left', textAtStart: false, levels: PARALLEL_LEVELS.map((l) => ({ ...l })), extendLeft: false, extendRight: false, fillBackground: true }
   }
 
   /** A channel saved with its middle line as `showMiddle` shows or hides its half level by it. */
@@ -95,6 +102,21 @@ export class ParallelChannel extends Drawing<ParallelChannelProps> {
     const { showMiddle, ...rest } = saved
     if ('levels' in rest) return rest
     return { ...rest, levels: PARALLEL_LEVELS.map((l) => (l.value === 0.5 ? { ...l, visible: showMiddle === true } : { ...l })) }
+  }
+
+  /** A format-2 channel drew its sides, and its middle where it showed one, in its own stroke, the
+   *  middle dashed, and its words over its first side's start. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const { lineColor, lineWidth, lineStyle } = this._style
+    const middle = saved.showMiddle === true
+    const levels = PARALLEL_LEVELS.map((l): FibLevel => ({
+      ...l,
+      visible: l.value === 0 || l.value === 1 || (l.value === 0.5 && middle),
+      color: lineColor,
+      width: lineWidth,
+      style: l.value === 0.5 ? 'dashed' : lineStyle,
+    }))
+    this._props = { ...this._props, levels, textAtStart: true }
   }
 
   requiredAnchors(): number {
@@ -131,7 +153,8 @@ export class ParallelChannel extends Drawing<ParallelChannelProps> {
       strokeSegment(ctx, line.a, line.b)
       ctx.restore()
     })
-    if (this.props.text) {
+    if (this.props.text && this.props.textAtStart) paintWordsAtStart(ctx, this.props.text, zero, this.style)
+    else if (this.props.text) {
       const [upper, lower] = upperOf(zero, one)
       const place = labelAt(upper, lower, this.props.textVAlign, this.props.textHAlign)
       paintLabel(ctx, this.props.text, place.at, this.style, { align: place.align, baseline: place.baseline })
@@ -178,6 +201,7 @@ const channelProps = (hue: string): ChannelProps => ({
   text: '',
   textVAlign: 'top',
   textHAlign: 'left',
+  textAtStart: false,
   fillBackground: true,
   extendLeft: false,
   extendRight: false,
@@ -218,7 +242,8 @@ function paintChannel(ctx: CanvasRenderingContext2D, drawing: { style: Readonly<
       paintLabel(ctx, drawing.format(right), { x: side.b.x + 4, y: side.b.y }, ink, { align: 'left' })
     })
   }
-  if (props.text) {
+  if (props.text && props.textAtStart) paintWordsAtStart(ctx, props.text, sides[0], style)
+  else if (props.text) {
     const [upper, lower] = upperOf(sides[0], sides[1])
     const place = labelAt(upper, lower, props.textVAlign, props.textHAlign)
     paintLabel(ctx, props.text, place.at, style, { align: place.align, baseline: place.baseline })
@@ -238,6 +263,11 @@ export class FlatTopBottom extends Drawing<ChannelProps> {
 
   protected override upgradeProps(props: Partial<ChannelProps>): Partial<ChannelProps> {
     return upgradeChannel(props)
+  }
+
+  /** A format-2 channel set its words over its first side's start. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, textAtStart: true }
   }
 
   requiredAnchors(): number {
@@ -297,6 +327,11 @@ export class DisjointChannel extends Drawing<ChannelProps> {
 
   protected override upgradeProps(props: Partial<ChannelProps>): Partial<ChannelProps> {
     return upgradeChannel(props)
+  }
+
+  /** A format-2 channel set its words over its first side's start. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, textAtStart: true }
   }
 
   requiredAnchors(): number {

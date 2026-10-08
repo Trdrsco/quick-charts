@@ -97,6 +97,7 @@ const SURFACE: Record<string, string> = {
   Rectangle: 'function',
   RegressionTrend: 'function',
   RotatedRectangle: 'function',
+  SERIAL_VERSION: 'number',
   SchiffPitchfork: 'function',
   Sector: 'function',
   ShortPosition: 'function',

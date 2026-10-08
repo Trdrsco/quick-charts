@@ -1,7 +1,8 @@
-import type { Anchor, Point, Viewport } from '../core/types'
+import type { Anchor, DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment, extendSegment } from '../core/geometry'
 import { applyStroke, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
+import { endSavedLook, savedLevels, type SavedLook } from '../core/savedLook'
 import { boxDivisions, levelBox, paintBoxLabels, priceY, timeX, upgradeBoxLevels, type BoxLevelsProps, type LevelBox } from './boxLevels'
 import { fibLevelColor, type FibLevel } from './fibonacci'
 
@@ -19,6 +20,18 @@ export type GannBoxProps = BoxLevelsProps & {
   timeBackgroundOpacity: number
   angles: boolean
   anglesColor: string
+  /** One fill over the whole box in this color, under its bands and divisions; null for none. */
+  tint: string | null
+}
+
+/** The levels a format-2 gann box, square or fixed square save that names none divided by. */
+const SAVED_BOX_LEVELS: readonly FibLevel[] = [0, 0.25, 0.382, 0.5, 0.618, 0.75, 1].map((value) => ({ value, visible: true }))
+
+/** Levels in the colors format 2 gave them: each shown level the palette's color for its place
+ *  among the shown ones. */
+function savedLevelColors(levels: readonly FibLevel[]): FibLevel[] {
+  let shown = 0
+  return levels.map((level, i) => ({ ...level, color: level.color ?? fibLevelColor(level, level.visible ? shown++ : i) }))
 }
 
 /** Box spanned by two corners with ratio lines dividing both axes. */
@@ -40,6 +53,7 @@ export class GannBox extends Drawing<GannBoxProps> {
       angles: false,
       anglesColor: '#9c9c9c',
       reverse: false,
+      tint: null,
     }
   }
 
@@ -56,6 +70,27 @@ export class GannBox extends Drawing<GannBoxProps> {
     return out as Partial<GannBoxProps>
   }
 
+  /** A format-2 box counted its divisions from its first corner, divided both its sides by one set of
+   *  levels in the colors format 2 gave them, labelled them before its left side alone, and drew a
+   *  tint of its stroke's color at 5% over the box in place of bands. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const levels = savedLevelColors(Array.isArray(saved.levels) ? savedLevels(saved) : SAVED_BOX_LEVELS)
+    const labels = saved.showLabels !== false
+    this._props = {
+      ...this._props,
+      priceLevels: levels,
+      timeLevels: levels.map((l) => ({ ...l })),
+      reverse: true,
+      showLeftLabels: labels,
+      showRightLabels: false,
+      showTopLabels: false,
+      showBottomLabels: false,
+      fillPriceBackground: false,
+      fillTimeBackground: false,
+      tint: saved.background === false ? null : withAlpha(this._style.lineColor, 0.05),
+    }
+  }
+
   requiredAnchors(): number {
     return 2
   }
@@ -70,6 +105,10 @@ export class GannBox extends Drawing<GannBoxProps> {
     const box = this.box(viewport)
     if (!box) return
     const { props } = this
+    if (props.tint) {
+      ctx.fillStyle = props.tint
+      ctx.fillRect(box.left, box.top, box.right - box.left, box.bottom - box.top)
+    }
     // The bands: between neighbouring price divisions across the box, and between neighbouring time
     // divisions down it, each band in the color of the division that closes it.
     const bands = (levels: FibLevel[], opacity: number, at: (v: number) => number, rect: (p: number, q: number) => [number, number, number, number]): void => {
@@ -137,6 +176,9 @@ export type GannSquareProps = {
   backgroundOpacity: number
   /** Count from the second corner rather than the first. */
   reverse: boolean
+  /** A format-2 square's box levels, labels and tint, painted as format 2 did until the square's
+   *  settings change. */
+  savedLook: SavedLook
 }
 
 /** A gann square held to a price per bar: its price side spans `scaleRatio` for every bar its time
@@ -184,7 +226,7 @@ const SQUARE_ARCS = (): GannRatioLine[] => [
   ratio(5, 1, '#2962ff', true),
 ]
 
-const SQUARE_PROPS = (): GannSquareProps => ({ levels: SQUARE_LEVELS(), fans: SQUARE_FANS(), arcs: SQUARE_ARCS(), fillBackground: true, backgroundOpacity: 0.2, reverse: false })
+const SQUARE_PROPS = (): GannSquareProps => ({ levels: SQUARE_LEVELS(), fans: SQUARE_FANS(), arcs: SQUARE_ARCS(), fillBackground: true, backgroundOpacity: 0.2, reverse: false, savedLook: null })
 
 /** A gann ratio as its row and its label write it: so many units along the time side for so many
  *  along the price side. */
@@ -207,6 +249,39 @@ function squareProps<P extends GannSquareProps>(saved: Partial<P>, defaults: P):
   return out as Partial<P>
 }
 
+/** A format-2 box between two corners: a tint of the stroke's color at 5% over it where its
+ *  background showed, each shown level dividing both its sides in the color format 2 gave it, and
+ *  each level's ratio before its left side where its labels showed. */
+function paintSavedBox(ctx: CanvasRenderingContext2D, style: Readonly<DrawingStyle>, look: NonNullable<SavedLook>, a: Point, b: Point): void {
+  const levels = savedLevels(look).filter((l) => l.visible)
+  if (look.background !== false) {
+    ctx.save()
+    ctx.fillStyle = withAlpha(style.lineColor, 0.05)
+    ctx.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y))
+    ctx.restore()
+  }
+  for (const [i, level] of levels.entries()) {
+    const color = fibLevelColor(level, i)
+    ctx.save()
+    applyStroke(ctx, style)
+    ctx.strokeStyle = color
+    const y = a.y + (b.y - a.y) * level.value
+    strokeSegment(ctx, { x: a.x, y }, { x: b.x, y })
+    const x = a.x + (b.x - a.x) * level.value
+    strokeSegment(ctx, { x, y: a.y }, { x, y: b.y })
+    ctx.restore()
+    if (look.showLabels !== false) paintLabel(ctx, String(level.value), { x: Math.min(a.x, b.x) - 6, y }, { ...style, textColor: color }, { align: 'right' })
+  }
+}
+
+/** Whether a point is on a format-2 box's divisions. */
+function hitsSavedBox(point: Point, tolerance: number, look: NonNullable<SavedLook>, a: Point, b: Point): boolean {
+  const inX = point.x >= Math.min(a.x, b.x) - tolerance && point.x <= Math.max(a.x, b.x) + tolerance
+  const inY = point.y >= Math.min(a.y, b.y) - tolerance && point.y <= Math.max(a.y, b.y) + tolerance
+  if (!inX || !inY) return false
+  return savedLevels(look).some((l) => l.visible && (Math.abs(point.y - (a.y + (b.y - a.y) * l.value)) <= tolerance || Math.abs(point.x - (a.x + (b.x - a.x) * l.value)) <= tolerance))
+}
+
 /** A square's frame: its sides, the corner it counts from and the one across from it, and its unit,
  *  a fifth of each side. */
 type SquareFrame = { origin: Point; ux: number; uy: number; left: number; right: number; top: number; bottom: number }
@@ -225,6 +300,29 @@ export abstract class GannSquareBase<P extends GannSquareProps> extends Drawing<
   requiredAnchors(): number {
     return 2
   }
+
+  /** A format-2 square was a box divided both ways by one set of levels, with a tint and its levels'
+   *  ratios before it. It paints so until its settings change. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const look = {
+      levels: Array.isArray(saved.levels) ? saved.levels : SAVED_BOX_LEVELS,
+      showLabels: saved.showLabels !== false,
+      background: saved.background !== false,
+    }
+    this._props = { ...this._props, savedLook: look }
+  }
+
+  override applyProps(patch: Partial<P>): void {
+    super.applyProps(endSavedLook(patch))
+  }
+
+  /** The box a saved look divides: the two corners, the fixed square's squared. */
+  protected savedBox(viewport: Viewport): { a: Point; b: Point } | null {
+    return this.corners(viewport)
+  }
+
+  /** What a saved look draws over its box beside its divisions. */
+  protected paintSavedExtras(_ctx: CanvasRenderingContext2D, _a: Point, _b: Point): void {}
 
   /** The two corners the square stands between, on the pane. */
   protected corners(viewport: Viewport): { a: Point; b: Point } | null {
@@ -267,6 +365,13 @@ export abstract class GannSquareBase<P extends GannSquareProps> extends Drawing<
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.props.savedLook) {
+      const box = this.savedBox(viewport)
+      if (!box) return
+      paintSavedBox(ctx, this.style, this.props.savedLook, box.a, box.b)
+      this.paintSavedExtras(ctx, box.a, box.b)
+      return
+    }
     const f = this.frame(viewport)
     if (!f) return
     const { props } = this
@@ -307,9 +412,13 @@ export abstract class GannSquareBase<P extends GannSquareProps> extends Drawing<
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
+    const tolerance = hitTolerance(this.style.lineWidth)
+    if (this.props.savedLook) {
+      const box = this.savedBox(viewport)
+      return !!box && (hitsSavedBox(point, tolerance, this.props.savedLook, box.a, box.b) || this.hitsSavedExtras(point, tolerance, box.a, box.b))
+    }
     const f = this.frame(viewport)
     if (!f) return false
-    const tolerance = hitTolerance(this.style.lineWidth)
     if (point.x < f.left - tolerance || point.x > f.right + tolerance || point.y < f.top - tolerance || point.y > f.bottom + tolerance) return false
     for (const [i, level] of this.props.levels.entries()) {
       if (!level.visible) continue
@@ -325,6 +434,11 @@ export abstract class GannSquareBase<P extends GannSquareProps> extends Drawing<
     const uy = Math.abs(f.uy) || 1
     const units = Math.hypot((point.x - f.origin.x) / ux, (point.y - f.origin.y) / uy)
     return shownArcs(this.props.arcs).some(({ r }) => Math.abs(units - r) <= tolerance / Math.min(ux, uy))
+  }
+
+  /** Whether a point is on what a saved look draws beside its divisions. */
+  protected hitsSavedExtras(_point: Point, _tolerance: number, _a: Point, _b: Point): boolean {
+    return false
   }
 }
 
@@ -356,6 +470,19 @@ export class GannSquare extends GannSquareBase<GannRatioSquareProps> {
     if ('scaleRatio' in patch) this.holdRatio()
   }
 
+  /** A format-2 square crossed its box corner to corner. */
+  protected override paintSavedExtras(ctx: CanvasRenderingContext2D, a: Point, b: Point): void {
+    ctx.save()
+    applyStroke(ctx, this.style)
+    strokeSegment(ctx, a, b)
+    strokeSegment(ctx, { x: a.x, y: b.y }, { x: b.x, y: a.y })
+    ctx.restore()
+  }
+
+  protected override hitsSavedExtras(point: Point, tolerance: number, a: Point, b: Point): boolean {
+    return distanceToSegment(point, a, b) <= tolerance || distanceToSegment(point, { x: a.x, y: b.y }, { x: b.x, y: a.y }) <= tolerance
+  }
+
   /** The price per bar the pane shows a square at now: the price a run of bars as wide as the
    *  square's time side spans when stood upright from its first corner. */
   private paneRatio(viewport: Viewport, a: Anchor, b: Anchor, bars: number): number | null {
@@ -370,6 +497,8 @@ export class GannSquare extends GannSquareBase<GannRatioSquareProps> {
    *  the ratio sets for the bars between them. A square first drawn before it has a ratio takes the
    *  pane's, so it opens square. */
   private holdRatio(): void {
+    // A format-2 square spans its corners freely while it paints as format 2 did.
+    if (this.props.savedLook) return
     const viewport = this.getViewport()
     const [a, b] = this.anchors
     if (!viewport || !a || !b) return
@@ -387,7 +516,7 @@ export class GannSquare extends GannSquareBase<GannRatioSquareProps> {
 
   override paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     super.paint(ctx, viewport)
-    if (!this.props.showLabels) return
+    if (!this.props.showLabels || this.props.savedLook) return
     const f = this.frame(viewport)
     const [a, b] = this.anchors
     const bars = a && b ? viewport.barsBetween(a.time, b.time) : null
@@ -464,6 +593,11 @@ export class GannFan extends Drawing<GannFanProps> {
     for (const key of Object.keys(this.defaultProps())) if (key in from) out[key] = from[key]
     if (typeof from.background === 'boolean' && !('fillBackground' in from)) out.fillBackground = from.background
     return out as Partial<GannFanProps>
+  }
+
+  /** A format-2 fan drew no bands and its rays in the colors format 2 gave them. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, levels: savedLevelColors(this._props.levels), fillBackground: false }
   }
 
   requiredAnchors(): number {

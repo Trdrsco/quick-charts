@@ -121,13 +121,15 @@ export class TrendLine extends Drawing<TrendLineProps> {
     return extendSegment(pa, pb, viewport.width, viewport.height, extendLeft, extendRight)
   }
 
-  /** Whether the line draws its ends and its own label: the trend angle reads its angle instead. */
-  protected hasEnds(): boolean {
-    return true
-  }
-
-  protected hasText(): boolean {
-    return true
+  /** A format-2 line showed its stats whether or not it was selected and counted no price moves; a
+   *  stats position counted its left and right from the first point, and a save naming none stood
+   *  them at the middle. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const position = (saved.statsPosition ?? 'center') as StatsPosition
+    const [a, b] = this._anchors
+    const flipped = !!a && !!b && Number(b.time) < Number(a.time)
+    const statsPosition: StatsPosition = flipped && position === 'left' ? 'right' : flipped && position === 'right' ? 'left' : position
+    this._props = { ...this._props, statsPosition, alwaysShowStats: true, showPipsChange: false }
   }
 
   /** The stats stand while the line is selected or edited, or always where the viewer asked. */
@@ -140,8 +142,8 @@ export class TrendLine extends Drawing<TrendLineProps> {
     if (!seg) return
     applyStroke(ctx, this.style)
     strokeSegment(ctx, seg.a, seg.b)
-    if (this.hasEnds() && this.props.leftEnd === 'arrow') paintArrowHead(ctx, seg.b, seg.a, this.style)
-    if (this.hasEnds() && this.props.rightEnd === 'arrow') paintArrowHead(ctx, seg.a, seg.b, this.style)
+    if (this.props.leftEnd === 'arrow') paintArrowHead(ctx, seg.b, seg.a, this.style)
+    if (this.props.rightEnd === 'arrow') paintArrowHead(ctx, seg.a, seg.b, this.style)
     this.paintProps(ctx, viewport)
     this.paintDecorations(ctx, viewport)
   }
@@ -179,7 +181,7 @@ export class TrendLine extends Drawing<TrendLineProps> {
     // anchor it is.
     const [left, right] = pa.x <= pb.x ? [pa, pb] : [pb, pa]
 
-    if (this.hasText() && this.props.text) {
+    if (this.props.text) {
       const along = this.props.textHAlign
       const at = along === 'left' ? left : along === 'right' ? right : midpoint(pa, pb)
       const across = ACROSS[this.props.textVAlign] ?? ACROSS.top
@@ -198,7 +200,7 @@ export class TrendLine extends Drawing<TrendLineProps> {
       const at = toRight(t)
       // The stats pill drops below its usual perch when a text label already sits above the line
       // where it stands.
-      const crowded = this.hasText() && !!this.props.text && this.props.textVAlign === 'top' && ((place === 'center' && this.props.textHAlign === 'center') || (t === 0.12 && this.props.textHAlign === 'left') || (t === 0.88 && this.props.textHAlign === 'right'))
+      const crowded = !!this.props.text && this.props.textVAlign === 'top' && ((place === 'center' && this.props.textHAlign === 'center') || (t === 0.12 && this.props.textHAlign === 'left') || (t === 0.88 && this.props.textHAlign === 'right'))
       ctx.save()
       ctx.translate(at.x, at.y)
       ctx.rotate(textAngle)
@@ -298,22 +300,23 @@ export class InfoLine extends TrendLine {
       alwaysShowStats: true,
     }
   }
+
+  /** A format-2 info line that named no percent change or span showed neither. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    super.keepSavedLook(saved)
+    const props: Partial<TrendLineProps> = {}
+    if (!('showPercentChange' in saved)) props.showPercentChange = false
+    if (!('showDateTimeRange' in saved)) props.showDateTimeRange = false
+    this._props = { ...this._props, ...props }
+  }
 }
 
-/** Trend line that reports its slope, with a horizontal reference arc at the origin. It carries no
- *  ends and no label of its own: the angle is its reading. */
+/** Trend line that reports its slope, with a horizontal reference arc at the origin. Its pages offer
+ *  no ends and no label, since the angle is its reading; a save that carries them draws them. */
 export class TrendAngle extends TrendLine {
   override readonly type = 'trend_angle'
 
-  protected override hasEnds(): boolean {
-    return false
-  }
-
-  protected override hasText(): boolean {
-    return false
-  }
-
-  /** A trend angle carries no label, so it invites none. */
+  /** A trend angle offers no label, so it invites none. */
   override paintTextHint(): void {}
 
   protected override paintDecorations(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -403,6 +406,11 @@ export class HorizontalLine extends Drawing<HorizontalLineProps> {
     return 0
   }
 
+  /** A format-2 line's label stood above its left side. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, textVAlign: 'top', textHAlign: 'left' }
+  }
+
   testHit(point: Point, viewport: Viewport): boolean {
     const y = viewport.yOf(this.anchors[0]?.price ?? NaN)
     if (y === null) return false
@@ -476,6 +484,11 @@ export class VerticalLine extends Drawing<VerticalLineProps> {
 
   requiredAnchors(): number {
     return 1
+  }
+
+  /** A format-2 line's label read across it, to its right at the top of the pane. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, textOrientation: 'horizontal', textVAlign: 'top', textHAlign: 'right' }
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {

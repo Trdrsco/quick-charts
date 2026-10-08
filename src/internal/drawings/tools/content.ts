@@ -194,6 +194,15 @@ export class GlyphMark extends Drawing<GlyphProps> {
     return { glyph: '😀', size: 72 }
   }
 
+  /** The size a format-2 save that names none drew its glyph at. */
+  protected savedSize(): number {
+    return 28
+  }
+
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    if (!('size' in saved)) this._props = { ...this._props, size: this.savedSize() }
+  }
+
   requiredAnchors(): number {
     return 1
   }
@@ -274,6 +283,10 @@ export class StickerMark extends GlyphMark {
   protected override defaultProps(): GlyphProps {
     return { glyph: '👍', size: 72 }
   }
+
+  protected override savedSize(): number {
+    return 44
+  }
 }
 
 export class IconMark extends GlyphMark {
@@ -281,6 +294,10 @@ export class IconMark extends GlyphMark {
 
   protected override defaultProps(): GlyphProps {
     return { glyph: '★', size: 40 }
+  }
+
+  protected override savedSize(): number {
+    return 24
   }
 
   protected override tintsWithStroke(): boolean {

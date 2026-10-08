@@ -97,6 +97,7 @@ describe('what a new trend and channel start with', () => {
       downStyle: 'solid',
       extendLines: false,
       showPearsons: true,
+      bodyColor: null,
     })
   })
 
