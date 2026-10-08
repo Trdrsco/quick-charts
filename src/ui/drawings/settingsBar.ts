@@ -414,16 +414,27 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     }
     if (FILLABLE.has(type)) {
       const fill = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), title: t('drawing.background') }), 'chart.drawings.style')
-      fill.appendChild(colorFace('bucket', selected.fillColor, selected.fillOpacity === 0))
+      fill.appendChild(colorFace('bucket', selected.fillColor, selected.fillOpacity === 0 || deps.selectedProps()?.fillBackground === false))
       fill.setAttribute('aria-haspopup', 'dialog')
       fill.setAttribute('aria-expanded', 'false')
       fill.dataset.qcControl = 'fill'
+      /** A background picked or faded here is one the viewer means to see, so a shape whose
+       *  background was switched off turns it back on. */
+      const showFill = (): void => {
+        if (deps.selectedProps()?.fillBackground === false) deps.run('chart.drawings.props', { fillBackground: true })
+      }
       fill.addEventListener('click', () =>
         colorPanel(fill, {
           value: selected.fillColor,
-          onPick: (c) => style({ fillColor: c, ...(selected.fillOpacity === 0 ? { fillOpacity: 0.12 } : {}) }),
+          onPick: (c) => {
+            style({ fillColor: c, ...(selected.fillOpacity === 0 ? { fillOpacity: 0.12 } : {}) })
+            showFill()
+          },
           opacity: selected.fillOpacity,
-          onOpacity: (v) => style({ fillOpacity: v }),
+          onOpacity: (v) => {
+            style({ fillOpacity: v })
+            showFill()
+          },
         }),
       )
       controls.appendChild(fill)

@@ -788,10 +788,23 @@
   align-items: center;
 }
 
-[data-qc-theme] .qc-drawing-weight {
-  width: 28px;
-  height: 28px;
+/* The weight and slant toggles: a 34px field with a 6px corner around the 28px mark, filled while
+ * held, the mark cut from the fill in the inverse ink. */
+[data-qc-theme] .qc-drawing-font-toggle {
+  display: flex;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
   padding: 0;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-drawing-font-toggle[aria-pressed='true'] {
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-onPressed);
+  border-color: var(--qc-control-onPressed);
 }
 
 /* A row of cells wider than the dialog slides sideways under the pointer already on it; a bar

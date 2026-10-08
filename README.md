@@ -2809,6 +2809,20 @@ drawing's name, the tool's own until the viewer renames it with the pencil besid
 puts the keyboard in its first field, and the dialog keeps its top edge where it opened as pages of
 other sizes come and go.
 
+The line tools' Style page carries the stroke with its two ends, the extensions, the middle point,
+the price labels and, under Info, the stats a line reads (price range, percent change, the change
+counted in the symbol's smallest price move, bars, date and time range, angle), where they stand
+(left, center, right, or auto, which keeps them inside the pane), and whether they show always or
+only while the line is selected. A horizontal line offers its price label, a vertical line its time
+label, a cross line both. A rectangle offers its extensions, its border, a middle line with a stroke
+of its own and its background; every other shape its border and background; a curve its stroke and
+ends, its extensions along the tangents it ends on, and its background. A background switched off
+keeps its color and opacity for when it is switched back on. The Text page sets the words' color,
+size, weight and slant on one line over the words, and where the tool places them, where they stand:
+above, on or below a line, above, inside or below a box, along it from left to right, and for a
+vertical line whether they read across it or run up it. `NO_COORDINATES_TAB` names the tools whose
+points are drawn rather than typed, and `PRICE_ONLY_COORDS` the levels that span every bar.
+
 Text-bearing tools open an inline editor where the text sits, in the drawing's own type. A fresh
 placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd
 with Enter commits, Escape cancels, and a press on the chart commits.

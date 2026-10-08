@@ -16,12 +16,14 @@ import {
   LABELED_PATTERNS,
   NO_DASH,
   NO_LINE_DECOR,
+  NO_COORDINATES_TAB,
   NO_STROKE,
   NO_STYLE_TAB,
+  PRICE_ONLY_COORDS,
   type DrawingAssetPort,
 } from '../../drawings/index'
 import { button, el } from './dom'
-import { checkbox, dropdown, fullRow, lineEndButton, numberInput, row, sectionTitle, swatchButton, toggleRow, visibilityRangeRow } from './fields'
+import { checkbox, checkRow, dropdown, fullRow, groupGap, lineEndButton, multiDropdown, numberInput, row, sectionTitle, swatchButton, toggleRow, visibilityRangeRow } from './fields'
 import { createOpacitySlider } from '../controls/color'
 import { humanSize } from './imagePicker'
 import type { IconResolver } from '../icons/resolver'
@@ -38,15 +40,18 @@ export const TAB_LABEL: Record<SettingsTab, ChartMessageKey> = {
   Visibility: 'drawing.tabVisibility',
 }
 
-/** The pages a drawing's dialog offers, in order. */
+/** The pages a drawing's dialog offers, in order. A tool whose words its paint ignores has no Text
+ *  page, and a tool whose points are not a reader's to type has no Coordinates page. */
 export function tabsFor(drawing: IDrawing): SettingsTab[] {
   const props = drawing.props as Record<string, unknown>
+  const inert = INERT_PROPS[drawing.type] ?? []
   const out: SettingsTab[] = []
   if ((INPUT_PROPS[drawing.type] ?? []).length > 0) out.push('Inputs')
   if (!NO_STYLE_TAB.has(drawing.type)) out.push('Style')
-  if (typeof props.text === 'string') out.push('Text')
+  if (typeof props.text === 'string' && !inert.includes('text')) out.push('Text')
   if (Array.isArray(props.cells)) out.push('Table')
-  out.push('Coordinates', 'Visibility')
+  if (!NO_COORDINATES_TAB.has(drawing.type)) out.push('Coordinates')
+  out.push('Visibility')
   return out
 }
 
@@ -66,6 +71,12 @@ const PROFILE_LEVELS: readonly { label: ChartMessageKey; key: 'poc' | 'vah' | 'v
   { label: 'drawing.valueAreaLow', key: 'val' },
 ]
 const FONT_SIZES = ['10', '11', '12', '14', '16', '20', '24', '28', '32', '40'] as const
+/** The sizes the Text page offers a drawing's words. */
+const TEXT_SIZES = ['8', '10', '11', '12', '14', '16', '18', '20', '22', '24', '28', '32', '40'] as const
+const ACROSS_LABEL: Record<string, ChartMessageKey> = { top: 'drawing.top', middle: 'drawing.middle', bottom: 'drawing.bottom' }
+/** A box's label stands above it, inside it or below it. */
+const BOX_ACROSS_LABEL: Record<string, ChartMessageKey> = { top: 'drawing.top', middle: 'drawing.inside', bottom: 'drawing.bottom' }
+const ORIENTATION_LABEL: Record<string, ChartMessageKey> = { horizontal: 'drawing.horizontal', vertical: 'drawing.vertical' }
 const VISIBILITY_ROWS: readonly { key: keyof TimeframeVisibility; label: ChartMessageKey; max: number }[] = [
   { key: 'seconds', label: 'drawing.unitSeconds', max: 59 },
   { key: 'minutes', label: 'drawing.unitMinutes', max: 59 },
@@ -104,9 +115,149 @@ const textField = (value: string, ariaLabel: string, onInput: (v: string) => voi
   return input
 }
 
-/** The Style and Inputs pages. Each row asks whether its prop belongs on this page and whether
- *  the tool's paint honors it. */
+/** The Style page layouts the line, shape and curve tools share, by tool. A tool listed here gets
+ *  exactly its layout's rows, in its layout's order; every other tool's page follows its props. */
+type StyleLayout = 'line' | 'level' | 'vertical' | 'cross' | 'box' | 'shape' | 'curve'
+const STYLE_LAYOUTS: Readonly<Record<string, StyleLayout>> = {
+  trend_line: 'line',
+  ray: 'line',
+  info_line: 'line',
+  extended: 'line',
+  arrow: 'line',
+  trend_angle: 'line',
+  horizontal_line: 'level',
+  horizontal_ray: 'level',
+  vertical_line: 'vertical',
+  cross_line: 'cross',
+  rectangle: 'box',
+  rotated_rectangle: 'shape',
+  arc: 'shape',
+  polyline: 'shape',
+  triangle: 'shape',
+  ellipse: 'shape',
+  circle: 'shape',
+  curve: 'curve',
+  double_curve: 'curve',
+}
+
+/** A line's stats, in the order the Stats list offers them. */
+const STATS: readonly { key: string; label: ChartMessageKey }[] = [
+  { key: 'showPriceRange', label: 'drawing.priceRange' },
+  { key: 'showPercentChange', label: 'drawing.percentChange' },
+  { key: 'showPipsChange', label: 'drawing.changeInPips' },
+  { key: 'showBarsRange', label: 'drawing.barsRange' },
+  { key: 'showDateTimeRange', label: 'drawing.dateTimeRange' },
+  { key: 'showAngle', label: 'drawing.angle' },
+]
+const STATS_POSITION_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.left', center: 'drawing.center', right: 'drawing.right', auto: 'drawing.auto' }
+
+/** The rows of a listed tool's Style page. A switch a viewer ticks in a list writes quietly, so the
+ *  list stays open over a page that does not rebuild under it. */
+function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
+  const { t, drawing, box, icons } = ctx
+  const props = drawing.props as Record<string, unknown>
+  const style = drawing.style
+  const inert = new Set(INERT_PROPS[drawing.type] ?? [])
+  const has = (key: string): boolean => key in props && !inert.has(key)
+  const toggle = (key: string, text: ChartMessageKey): HTMLElement => toggleRow(t(text), !!props[key], (v) => ctx.patchProps({ [key]: v }))
+  /** The stroke: its color, thickness and, unless the tool draws it solid alone, its line style. */
+  const stroke = (label: ChartMessageKey): HTMLButtonElement =>
+    swatchButton(t, box, {
+      label: t(label),
+      value: style.lineColor,
+      onPick: (c) => {
+        const alpha = alphaOf(style.lineColor)
+        ctx.patchStyle({ lineColor: alpha < 1 ? withAlpha(c, alpha) : c })
+      },
+      opacity: alphaOf(style.lineColor),
+      onOpacity: (v) => ctx.patchStyle({ lineColor: withAlpha(style.lineColor, v) }),
+      thickness: style.lineWidth,
+      onThickness: (v) => ctx.patchStyle({ lineWidth: v }),
+      ...(!NO_DASH.has(drawing.type) ? { lineStyle: style.lineStyle, onLineStyle: (v: DrawingStyle['lineStyle']) => ctx.patchStyle({ lineStyle: v }) } : {}),
+    })
+  const ends = (): HTMLElement[] =>
+    has('leftEnd')
+      ? [
+          lineEndButton(t, icons, box, 'left', props.leftEnd as 'normal' | 'arrow', (v) => ctx.patchProps({ leftEnd: v })),
+          lineEndButton(t, icons, box, 'right', props.rightEnd as 'normal' | 'arrow', (v) => ctx.patchProps({ rightEnd: v })),
+        ]
+      : []
+  const extend = (left: ChartMessageKey, right: ChartMessageKey): HTMLElement =>
+    row(
+      t('drawing.extend'),
+      multiDropdown(icons, box, {
+        label: t('drawing.extend'),
+        empty: t('drawing.extendNone'),
+        choices: [
+          { label: t(left), checked: !!props.extendLeft, onChange: (v) => ctx.patchQuiet({ extendLeft: v }) },
+          { label: t(right), checked: !!props.extendRight, onChange: (v) => ctx.patchQuiet({ extendRight: v }) },
+        ],
+      }),
+    )
+  const background = (): HTMLElement =>
+    checkRow(t('drawing.background'), props.fillBackground !== false, (v) => ctx.patchProps({ fillBackground: v }), [
+      swatchButton(t, box, {
+        label: t('drawing.backgroundColor'),
+        value: style.fillColor,
+        onPick: (c) => ctx.patchStyle({ fillColor: c, ...(style.fillOpacity === 0 ? { fillOpacity: 0.2 } : {}) }),
+        opacity: style.fillOpacity,
+        onOpacity: (v) => ctx.patchStyle({ fillOpacity: v }),
+      }),
+    ])
+  const out: HTMLElement[] = []
+  if (layout === 'line') {
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine'), ...ends()), extend('drawing.extendLeftLine', 'drawing.extendRightLine'), toggle('middlePoint', 'drawing.middlePoint'), toggle('showPriceLabels', 'drawing.priceLabels'))
+    const stats = STATS.filter((s) => has(s.key))
+    out.push(
+      sectionTitle(t('drawing.sectionInfo')),
+      row(
+        t('drawing.sectionStats'),
+        multiDropdown(icons, box, {
+          label: t('drawing.sectionStats'),
+          empty: t('drawing.statsHidden'),
+          choices: stats.map((s) => ({ label: t(s.label), checked: !!props[s.key], onChange: (v: boolean) => ctx.patchQuiet({ [s.key]: v }) })),
+        }),
+      ),
+      row(t('drawing.statsPosition'), dropdown(icons, box, t('drawing.statsPosition'), ['left', 'center', 'right', 'auto'] as const, props.statsPosition as 'left', label(t, STATS_POSITION_LABEL), (v) => ctx.patchProps({ statsPosition: v }), 'wide')),
+      toggle('alwaysShowStats', 'drawing.alwaysShowStats'),
+      groupGap(),
+    )
+  } else if (layout === 'level') {
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine')), toggle('showPrice', 'drawing.priceLabel'))
+  } else if (layout === 'vertical') {
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine')), toggle('showTime', 'drawing.timeLabel'))
+  } else if (layout === 'cross') {
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine')), toggle('showPrice', 'drawing.priceLabel'), toggle('showTime', 'drawing.timeLabel'))
+  } else if (layout === 'box') {
+    out.push(
+      extend('drawing.extendLeft', 'drawing.extendRight'),
+      row(t('drawing.border'), stroke('drawing.border')),
+      checkRow(t('drawing.middleLine'), !!props.middleLine, (v) => ctx.patchProps({ middleLine: v }), [
+        swatchButton(t, box, {
+          label: t('drawing.middleLine'),
+          value: String(props.middleLineColor),
+          onPick: (c) => ctx.patchProps({ middleLineColor: c }),
+          thickness: Number(props.middleLineWidth),
+          onThickness: (v) => ctx.patchProps({ middleLineWidth: v }),
+          lineStyle: props.middleLineStyle as DrawingStyle['lineStyle'],
+          onLineStyle: (v) => ctx.patchProps({ middleLineStyle: v }),
+        }),
+      ]),
+      background(),
+    )
+  } else if (layout === 'shape') {
+    out.push(row(t('drawing.border'), stroke('drawing.border')), background())
+  } else {
+    out.push(row(t('drawing.rowLine'), stroke('drawing.rowLine'), ...ends()), extend('drawing.extendLeftLine', 'drawing.extendRightLine'), background())
+  }
+  return out
+}
+
+/** The Style and Inputs pages. A tool with a shared layout gets its layout's rows; every other row
+ *  asks whether its prop belongs on this page and whether the tool's paint honors it. */
 export function styleRows(ctx: RowsContext): HTMLElement[] {
+  const layout = STYLE_LAYOUTS[ctx.drawing.type]
+  if (layout && ctx.tab === 'Style') return layoutRows(ctx, layout)
   const { t, drawing, box, tab } = ctx
   const type = drawing.type
   const props = drawing.props as Record<string, unknown>
@@ -352,29 +503,49 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   return out
 }
 
-/** The Text page: the text channel, the words themselves, alignment, and for the annotation tools
- *  that have no Style page, the background and border. */
+/** The Text page: the words' color, size, bold and italic on one line, the words themselves, where
+ *  they stand and which way they read where the tool places them, and for the annotation tools that
+ *  have no Style page, the background and border. */
 export function textRows(ctx: RowsContext): HTMLElement[] {
-  const { t, drawing, box } = ctx
+  const { t, drawing, box, icons } = ctx
   const props = drawing.props as Record<string, unknown>
   const style = drawing.style
-  const weight = (on: boolean, text: string, name: string, onClick: () => void): HTMLButtonElement => {
-    const b = button({ class: 'qc-button qc-drawing-weight', label: name, text, pressed: on, onClick })
-    if (on) b.dataset.qcActive = 'true'
-    return b
-  }
-  const area = el('textarea', { class: 'qc-field qc-drawing-textarea', rows: '4', spellcheck: 'false', placeholder: t('drawing.addText'), 'aria-label': t('drawing.tabText') }) as HTMLTextAreaElement
+  /** A held weight or slant is a toggle of the field's box, pressed while it holds. */
+  const fontToggle = (on: boolean, icon: 'textBold' | 'textItalic', name: string, onClick: () => void): HTMLButtonElement =>
+    button({ class: 'qc-field qc-drawing-font-toggle', label: name, icon: icons.icon(icon, 28), pressed: on, onClick })
+  const area = el('textarea', { class: 'qc-field qc-drawing-textarea', spellcheck: 'false', placeholder: t('drawing.addText'), 'aria-label': t('drawing.tabText') }) as HTMLTextAreaElement
   area.value = String(props.text ?? '')
   area.addEventListener('input', () => ctx.patchQuiet({ text: area.value }))
   const out: HTMLElement[] = [
-    row(t('drawing.color'), swatchButton(t, box, { label: t('drawing.textColor'), value: style.textColor, onPick: (c) => {
-      const alpha = alphaOf(style.textColor)
-      ctx.patchStyle({ textColor: alpha < 1 ? withAlpha(c, alpha) : c })
-    }, opacity: alphaOf(style.textColor), onOpacity: (v) => ctx.patchStyle({ textColor: withAlpha(style.textColor, v) }) })),
-    row(t('drawing.size'), dropdown(ctx.icons, ctx.box, t('drawing.size'), FONT_SIZES, String(style.fontSize) as (typeof FONT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) }))),
-    row(t('drawing.weight'), weight(style.bold, 'B', t('drawing.bold'), () => ctx.patchStyle({ bold: !style.bold })), weight(style.italic, 'I', t('drawing.italic'), () => ctx.patchStyle({ italic: !style.italic }))),
+    fullRow(
+      swatchButton(t, box, {
+        label: t('drawing.textColor'),
+        value: style.textColor,
+        onPick: (c) => {
+          const alpha = alphaOf(style.textColor)
+          ctx.patchStyle({ textColor: alpha < 1 ? withAlpha(c, alpha) : c })
+        },
+        opacity: alphaOf(style.textColor),
+        onOpacity: (v) => ctx.patchStyle({ textColor: withAlpha(style.textColor, v) }),
+      }),
+      dropdown(icons, box, t('drawing.fontSize'), TEXT_SIZES, String(style.fontSize) as (typeof TEXT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) })),
+      fontToggle(style.bold, 'textBold', t('drawing.bold'), () => ctx.patchStyle({ bold: !style.bold })),
+      fontToggle(style.italic, 'textItalic', t('drawing.italic'), () => ctx.patchStyle({ italic: !style.italic })),
+    ),
     fullRow(area),
   ]
+  if ('textVAlign' in props) {
+    out.push(
+      row(
+        t('drawing.textAlignment'),
+        dropdown(icons, box, t('drawing.textAlignment'), ['top', 'middle', 'bottom'] as const, props.textVAlign as 'top', label(t, drawing.type === 'rectangle' ? BOX_ACROSS_LABEL : ACROSS_LABEL), (v) => ctx.patchProps({ textVAlign: v })),
+        dropdown(icons, box, t('drawing.textAlignment'), ['left', 'center', 'right'] as const, props.textHAlign as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ textHAlign: v })),
+      ),
+    )
+  }
+  if ('textOrientation' in props) {
+    out.push(row(t('drawing.textOrientation'), dropdown(icons, box, t('drawing.textOrientation'), ['horizontal', 'vertical'] as const, props.textOrientation as 'horizontal', label(t, ORIENTATION_LABEL), (v) => ctx.patchProps({ textOrientation: v }))))
+  }
   if ('align' in props) out.push(row(t('drawing.alignment'), dropdown(ctx.icons, ctx.box, t('drawing.alignment'), ['left', 'center'] as const, props.align as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ align: v }))))
   if (NO_STYLE_TAB.has(drawing.type)) {
     out.push(row(t('drawing.background'), swatchButton(t, box, { label: t('drawing.background'), value: style.fillColor, onPick: (c) => ctx.patchStyle({ fillColor: c, ...(style.fillOpacity === 0 ? { fillOpacity: 0.95 } : {}) }), opacity: style.fillOpacity, onOpacity: (v) => ctx.patchStyle({ fillOpacity: v }) })))
@@ -434,17 +605,20 @@ export function tableRows(ctx: RowsContext): HTMLElement[] {
   return [toggleRow(t('drawing.headerRow'), !!props.headerRow, (v) => ctx.patchProps({ headerRow: v })), grid, actions]
 }
 
-/** The Coordinates page: one row per anchor, as price and bar index, or bar alone for the
- *  time-anchored tools. */
+/** The Coordinates page: one row per anchor, as price and bar index, bar alone for the
+ *  time-anchored tools, or price alone for a level that spans every bar. A trend angle's second
+ *  point is its angle: typing one turns the line about its first point and keeps its length. */
 export function coordinateRows(ctx: RowsContext): HTMLElement[] {
   const { t, drawing } = ctx
   const viewport = drawing.getViewport()
   const barOnly = BAR_ONLY_COORDS.has(drawing.type)
+  const priceOnly = PRICE_ONLY_COORDS.has(drawing.type)
   return drawing.anchors.map((anchor, i) => {
+    if (drawing.type === 'trend_angle' && i === 1) return angleRow(ctx)
     const bar = viewport?.logicalOf(anchor.time)
     const controls: HTMLElement[] = []
     if (!barOnly) controls.push(numberInput(t, ctx.icons, { label: t('drawing.coordPriceBar', { n: i + 1 }), value: anchor.price, width: 'field', onChange: (v) => ctx.patchAnchor(i, { price: v }) }))
-    controls.push(
+    if (!priceOnly) controls.push(
       numberInput(t, ctx.icons, {
         label: t('drawing.coordBar', { n: i + 1 }),
         value: bar === null || bar === undefined ? NaN : Math.round(bar),
@@ -456,8 +630,35 @@ export function coordinateRows(ctx: RowsContext): HTMLElement[] {
         },
       }),
     )
-    return row(t(barOnly ? 'drawing.coordBar' : 'drawing.coordPriceBar', { n: i + 1 }), ...controls)
+    return row(t(barOnly ? 'drawing.coordBar' : priceOnly ? 'drawing.coordPrice' : 'drawing.coordPriceBar', { n: i + 1 }), ...controls)
   })
+}
+
+/** A line's angle in degrees, counted up from the horizontal, as the pane draws it. */
+function angleRow(ctx: RowsContext): HTMLElement {
+  const { t, drawing } = ctx
+  const viewport = drawing.getViewport()
+  const [first, second] = drawing.anchors
+  const a = first && viewport ? drawing.anchorToPixel(first, viewport) : null
+  const b = second && viewport ? drawing.anchorToPixel(second, viewport) : null
+  const degrees = a && b ? -Math.atan2(b.y - a.y, b.x - a.x) * (180 / Math.PI) : NaN
+  return row(
+    t('drawing.angle'),
+    numberInput(t, ctx.icons, {
+      label: t('drawing.angle'),
+      value: Number.isFinite(degrees) ? Number(degrees.toFixed(2)) : NaN,
+      step: 1,
+      width: 'field',
+      onChange: (v) => {
+        if (!a || !b || !viewport) return
+        const length = Math.hypot(b.x - a.x, b.y - a.y)
+        const turn = (-v * Math.PI) / 180
+        const time = viewport.timeAt(a.x + length * Math.cos(turn))
+        const price = viewport.priceAt(a.y + length * Math.sin(turn))
+        if (time !== null && price !== null) ctx.patchAnchor(1, { time, price })
+      },
+    }),
+  )
 }
 
 /** The Visibility page: the ticks switch and one range row per bucket. A drawing switched off on

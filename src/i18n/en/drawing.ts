@@ -231,6 +231,12 @@ export const drawing = {
   'drawing.barsRange': 'Bars range',
   'drawing.angle': 'Angle',
   'drawing.statsPosition': 'Stats position',
+  'drawing.statsHidden': 'Hidden',
+  'drawing.changeInPips': 'Change in pips',
+  'drawing.alwaysShowStats': 'Always show stats',
+  'drawing.auto': 'Auto',
+  'drawing.extendLeftLine': 'Extend left line',
+  'drawing.extendRightLine': 'Extend right line',
   'drawing.direction': 'Direction',
   'drawing.prices': 'Prices',
   'drawing.levels': 'Levels',
@@ -296,11 +302,18 @@ export const drawing = {
   'drawing.addLevel': 'Add level',
 
   // The Text page, and the in-place editor over the chart.
-  'drawing.weight': 'Weight',
   'drawing.bold': 'Bold',
   'drawing.italic': 'Italic',
   'drawing.addText': 'Add text',
   'drawing.alignment': 'Alignment',
+  'drawing.textAlignment': 'Text alignment',
+  'drawing.top': 'Top',
+  'drawing.middle': 'Middle',
+  'drawing.bottom': 'Bottom',
+  'drawing.inside': 'Inside',
+  'drawing.textOrientation': 'Text orientation',
+  'drawing.horizontal': 'Horizontal',
+  'drawing.vertical': 'Vertical',
   'drawing.textPlaceholder': 'Text',
   'drawing.textEditor': 'Drawing text',
 
@@ -314,6 +327,7 @@ export const drawing = {
 
   // The Coordinates page: one row per anchor, numbered.
   'drawing.coordBar': '#{n} (bar)',
+  'drawing.coordPrice': '#{n} (price)',
   'drawing.coordPriceBar': '#{n} (price, bar)',
 
   // The Visibility page: which timeframes paint the drawing.

@@ -14,7 +14,7 @@ export function highlighterStrokeWidth(lineWidth: number): number {
 }
 
 /** Polyline through every anchor — the shared body of the freehand/multi-point family. */
-abstract class StrokeDrawing extends Drawing {
+abstract class StrokeDrawing<P extends Record<string, unknown> = Record<string, never>> extends Drawing<P> {
   requiredAnchors(): number {
     return 2
   }
@@ -125,9 +125,18 @@ export class PathLine extends StrokeDrawing {
   }
 }
 
+/** A polygon's background switch: off, the polygon keeps its fill's color and opacity unpainted. */
+export type PolylineProps = {
+  fillBackground: boolean
+}
+
 /** Click-placed polygon; closes and fills once it has three points. */
-export class Polyline extends StrokeDrawing {
+export class Polyline extends StrokeDrawing<PolylineProps> {
   override readonly type = 'polyline'
+
+  protected override defaultProps(): PolylineProps {
+    return { fillBackground: true }
+  }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const points = this.points(viewport)
@@ -136,7 +145,7 @@ export class Polyline extends StrokeDrawing {
     this.tracePath(ctx, points, false)
     if (points.length > 2) {
       ctx.closePath()
-      if (this.style.fillOpacity > 0) {
+      if (this.props.fillBackground !== false && this.style.fillOpacity > 0) {
         ctx.fillStyle = withAlpha(this.style.fillColor, this.style.fillOpacity)
         ctx.fill()
       }

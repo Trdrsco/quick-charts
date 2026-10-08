@@ -232,7 +232,10 @@ describe('the dialog', () => {
     area.value = 'Hi there'
     area.dispatchEvent(new Event('input'))
     expect(text.drawing.props.text).toBe('Hi there')
-    expect(text.labels()).toEqual(expect.arrayContaining(['Color', 'Size', 'Weight', 'Background']))
+    // The words' color, size, weight and slant stand on one line over the words.
+    const first = text.dialog.querySelector('.qc-drawing-row-full')!
+    expect([...first.children].map((c) => c.getAttribute('aria-label'))).toEqual(['Text color', 'Font size', 'Bold', 'Italic'])
+    expect(text.labels()).toEqual(expect.arrayContaining(['Background']))
     const table = rig('table')
     table.tab('Table').click()
     const cells = table.drawing.props.cells as string[][]
