@@ -4,6 +4,7 @@
 // drawing of each tool starts with. Their rows themselves are pinned in settingsFamilies.test.ts.
 import { afterEach, describe, expect, it } from 'vitest'
 import { drawingTools } from '../../../src/drawings/index'
+import type { Viewport } from '../../../src/internal/drawings/index'
 import { anchors, choices, chosen, pick, rig } from './settingsRig'
 
 afterEach(() => {
@@ -223,6 +224,34 @@ describe('a gann square and a gann fan', () => {
     drawing.applyProps({ scaleRatio: 33.360546 })
     control(page(), 'Reverse').click()
     expect((control(page(), 'Price/bar ratio') as HTMLInputElement).value).toBe('33.3605460')
+  })
+
+  it('hold a square’s second corner on the price per bar typed, and keep it as the corner is dragged', () => {
+    const { drawing, page } = rig('gannbox_square')
+    // A pane where a bar is a minute wide and a price stands that far up from the bottom.
+    const viewport: Viewport = {
+      width: 800,
+      height: 400,
+      xOf: (time) => Number(time) - 900,
+      yOf: (price) => 400 - price,
+      timeAt: (x) => (x + 900) as never,
+      priceAt: (y) => 400 - y,
+      barsBetween: (a, b) => (Number(b) - Number(a)) / 60,
+      logicalOf: (time) => Number(time) / 60,
+      timeOfLogical: (logical) => (logical * 60) as never,
+    }
+    ;(drawing as unknown as { getViewport(): Viewport }).getViewport = () => viewport
+    const field = control(page(), 'Price/bar ratio') as HTMLInputElement
+    field.value = '2'
+    field.dispatchEvent(new Event('change'))
+    // One bar out from the first corner, the second stands two above it.
+    expect(drawing.props.scaleRatio).toBe(2)
+    expect(drawing.anchors[1]).toEqual({ time: 1060, price: 102 })
+    // Dragged as the layer drags a corner, three bars out and below the first corner, it stands six
+    // below it: the drag keeps the ratio.
+    drawing.updateAnchor(1, { time: 1180 as never, price: 50 })
+    expect(drawing.anchors[1]).toEqual({ time: 1180, price: 94 })
+    expect(drawing.props.scaleRatio).toBe(2)
   })
 
   it('name a fan’s rays by their ratios, each in a stroke with its own thickness and style', () => {
