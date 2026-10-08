@@ -148,9 +148,13 @@ describe('the settings bar and its panels', () => {
     const stepper = body(fields, /\.qc-drawing-stepper\s*$/m)
     expect(stepper).toMatch(/width:\s*22px/)
     expect(stepper).toMatch(/height:\s*14px/)
-    // The text stops short of the column, and the pointer on a stepper steps the field's edge up at
-    // no more weight than the field's own pointer state, so focus and a refused value still win.
-    expect(body(fields, /\.qc-drawing-number\s*$/m)).toMatch(/padding-inline-end:\s*26px/)
+    // The words stop 2px short of the slot, which the field keeps whether its arrows show or not; a
+    // field that cannot be used keeps no slot and shows no arrows. The pointer on a stepper steps
+    // the field's edge up at no more weight than the field's own pointer state, so focus and a
+    // refused value still win.
+    expect(body(fields, /\.qc-drawing-number\s*$/m)).toMatch(/padding-inline-end:\s*28px/)
+    expect(body(fields, /\.qc-drawing-number:disabled\s*$/m)).toMatch(/padding-inline-end:\s*4px/)
+    expect(body(fields, /\.qc-drawing-number:disabled \+ \.qc-drawing-steppers/)).toMatch(/display:\s*none/)
     expect(body(fields, /:where\(\.qc-drawing-number-wrap:hover\) > \.qc-field/)).toMatch(/border-color:\s*var\(--qc-control-fieldEdgeHover\)/)
   })
 })

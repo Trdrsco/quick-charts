@@ -165,14 +165,14 @@ for (const mode of THEME_MODES) {
       expect(focused.boxShadow).toBe(ring(theme['control.fieldInvalid']))
     })
 
-    it('stands a field that cannot be used on the read-only fill, its edge at rest and its words back', () => {
+    it('stands a field that cannot be used on the read-only fill, its edge at rest and its words in the disabled ink', () => {
       const root = rootIn(mode)
       const field = textFieldIn(root, false)
       expect(field.disabled).toBe(true)
       const rest = painted(field)
       expect(rest.backgroundColor).toBe(theme['control.fieldFill'])
       expect(rest.borderTopColor).toBe(edge)
-      expect(rest.color).toBe(theme['text.muted'])
+      expect(rest.color).toBe(theme['text.disabled'])
     })
 
     it('ends a list button with the 18px chevron in the caret ink, in its 20 by 28 slot 2px in from the edge', () => {

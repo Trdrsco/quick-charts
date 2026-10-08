@@ -65,8 +65,9 @@ describe('a channel', () => {
     show('Coordinates')
     const field = control(page(), 'Price offset') as HTMLInputElement
     // The rig's points climb one a minute: the baseline through the first two reaches 102 at the
-    // third point's time, where the third point stands.
-    expect(field.value).toBe('0')
+    // third point's time, where the third point stands. An offset is a price, written in cents
+    // where the host states no tick.
+    expect(field.value).toBe('0.00')
     field.value = '5'
     field.dispatchEvent(new Event('change'))
     expect(drawing.anchors[2]!.price).toBe(107)

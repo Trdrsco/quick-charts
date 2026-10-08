@@ -39,9 +39,25 @@ export function toggleRow(label: string, value: boolean, onChange: (v: boolean) 
 }
 
 /** A row whose label is a checkbox: it switches what the controls beside it set, such as a
- *  background and its color, or a timeframe and its range. */
+ *  background and its color, or a timeframe and its range. While the switch is off, every well
+ *  beside it (a color's, or an emoji's) stands dimmed on the field's fill, as a switched-off level's
+ *  well does; it still opens, so a color can be chosen before the switch goes on. */
 export function checkRow(label: string, value: boolean, onChange: (v: boolean) => void, controls: readonly HTMLElement[], disabled = false): HTMLElement {
-  const toggle = toggleRow(label, value, onChange, disabled)
+  const well = '.qc-drawing-swatch-button, .qc-drawing-emoji-button'
+  const wells = controls.flatMap((c) => (c.matches(well) ? [c] : [...c.querySelectorAll<HTMLElement>(well)]))
+  const dim = (on: boolean): void => {
+    for (const well of wells) well.dataset.qcDim = String(!on)
+  }
+  dim(value)
+  const toggle = toggleRow(
+    label,
+    value,
+    (v) => {
+      dim(v)
+      onChange(v)
+    },
+    disabled,
+  )
   toggle.classList.add('qc-drawing-row-label')
   return el('div', { class: 'qc-drawing-row qc-drawing-row--checked' }, toggle, el('div', { class: 'qc-drawing-row-controls' }, ...controls))
 }

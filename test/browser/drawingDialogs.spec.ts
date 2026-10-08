@@ -229,6 +229,70 @@ test.describe('the color popover', () => {
   })
 })
 
+test.describe('the settings fields', () => {
+  test("read in the chart's own font on every page, no control falling back to the browser's", async ({ page }) => {
+    await mount(page)
+    const off: string[] = []
+    for (const type of ['long_position', 'fib_retracement', 'trend_line', 'image']) {
+      await openSettings(page, type)
+      const tabs = await page.locator('[data-role="drawing-settings"] [role="tab"]').allTextContents()
+      for (const tab of tabs) {
+        await page.locator('[data-role="drawing-settings"]').getByRole('tab', { name: tab, exact: true }).click()
+        off.push(
+          ...(await page.evaluate(() => {
+            const box = document.querySelector('[data-role="drawing-settings"]')!
+            const root = box.closest('[data-qc-theme]')!
+            const norm = (family: string): string => family.replace(/["'\s]/g, '').toLowerCase()
+            const stack = norm(getComputedStyle(root).getPropertyValue('--qc-text-fontFamily'))
+            return [...box.querySelectorAll<HTMLElement>('*')]
+              .filter((el) => !el.closest('svg') && norm(getComputedStyle(el).fontFamily) !== stack)
+              .map((el) => `${el.tagName.toLowerCase()}.${String(el.className).trim().split(/\s+/).join('.')}`)
+          })),
+        )
+      }
+      await page.locator('[data-role="drawing-settings"] button[aria-label="Cancel"]').click()
+    }
+    expect([...new Set(off)]).toEqual([])
+  })
+
+  test('a number field keeps 63px for its words and a 22 by 28 slot for its steppers, which a field that cannot be used gives up', async ({ page }) => {
+    await mount(page)
+    await openSettings(page, 'long_position', 'Inputs')
+    const entry = page.locator('[data-role="drawing-settings"] .qc-drawing-number-wrap').filter({ has: page.locator('input[aria-label="Entry price"]') })
+    await entry.hover()
+    const read = (wrap: typeof entry) =>
+      wrap.evaluate((el) => {
+        const box = el.getBoundingClientRect()
+        const input = el.querySelector('input')!
+        const s = getComputedStyle(input)
+        const slot = el.querySelector('.qc-drawing-steppers')!.getBoundingClientRect()
+        const px = (v: string): number => Number.parseFloat(v) || 0
+        return {
+          width: box.width,
+          height: box.height,
+          words: [px(s.borderLeftWidth) + px(s.paddingLeft), box.width - px(s.borderRightWidth) - px(s.paddingRight)],
+          slot: slot.width ? [slot.left - box.left, slot.top - box.top, slot.width, slot.height] : null,
+          size: s.fontSize,
+          line: s.lineHeight,
+        }
+      })
+    const field = await read(entry)
+    expect(field.width).toBe(100)
+    expect(field.height).toBe(34)
+    expect(field.words).toEqual([8, 71])
+    expect(field.slot).toEqual([75, 3, 22, 28])
+    expect([field.size, field.line]).toEqual(['14px', '18px'])
+    // A level switched off: its field keeps no slot and shows no steppers, its words running on.
+    await page.locator('[data-role="drawing-settings"] button[aria-label="Cancel"]').click()
+    await openSettings(page, 'fib_retracement', 'Style')
+    const off = page.locator('[data-role="drawing-settings"] .qc-drawing-number-wrap').filter({ has: page.locator('input:disabled') }).first()
+    await off.hover()
+    const disabled = await read(off)
+    expect(disabled.words).toEqual([8, 95])
+    expect(disabled.slot).toBeNull()
+  })
+})
+
 test.describe('the image picker', () => {
   test("ends with the settings dialog's footer: Cancel and Ok at the end, in the same footer buttons", async ({ page }) => {
     await mount(page, true)

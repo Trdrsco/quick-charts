@@ -400,7 +400,7 @@
  * row stands across both columns. */
 [data-qc-theme] .qc-drawing-page {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   padding: 16px 20px;
 }
 
@@ -508,9 +508,10 @@
 
 /* A leveled tool's level grid: two levels to a 34px line, 8px between lines and 8px above the
  * first, each level its 18px switch, its 100px value and its 34px well 8px apart, the second level
- * 48px after the first's well. A level switched off keeps its well, and its stroke where it shows
- * one, on the read-only fill, dimmed. */
+ * 48px after the first's well, the line 412px across whatever its levels hold. A level switched off
+ * keeps its well, and its stroke where it shows one, on the read-only fill, dimmed. */
 [data-qc-theme] .qc-drawing-page > .qc-drawing-level-row {
+  min-width: 412px;
   min-height: 34px;
   margin-bottom: 8px;
   padding: 0;
@@ -526,8 +527,10 @@
 
 /* A gann grid: two lines to a 34px line, 8px between lines and 8px above the first, each line its
  * switch with its place or its ratio, 78px across so every well stands in line, then its well 8px
- * after; the second line 48px after the first's well. A fan's rays stand one to a 50px line. */
+ * after; the second line 48px after the first's well, the line 412px across. A fan's rays stand one
+ * to a 50px line. */
 [data-qc-theme] .qc-drawing-page > .qc-drawing-ratio-row {
+  min-width: 412px;
   min-height: 34px;
   margin-bottom: 8px;
   padding: 0;
@@ -568,14 +571,24 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
+  width: 36px;
   height: 34px;
   padding: 0;
+  border-radius: 6px;
 }
 
 [data-qc-theme] .qc-drawing-emoji-button .qc-drawing-glyph-art {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
+}
+
+/* An emoji well beside a switch that is off stands dimmed on the field's fill, as a color well does. */
+[data-qc-theme] .qc-drawing-emoji-button[data-qc-dim='true'] {
+  background: var(--qc-control-fieldFill);
+}
+
+[data-qc-theme] .qc-drawing-emoji-button[data-qc-dim='true'] > * {
+  opacity: 0.5;
 }
 
 [data-qc-theme] .qc-drawing-emoji-face {

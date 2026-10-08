@@ -623,8 +623,9 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
       toggle('showPriceLabel', 'drawing.priceLabel'),
     )
   } else if (layout === 'profile') {
-    // The histogram and its values, its width and edge, its rows' colors in and out of the value
-    // area, its lines each on a switch in a stroke of its own, and the box behind it.
+    // The histogram's switch, and nested under it its values, its width and edge and its rows'
+    // colors in and out of the value area; then its lines each on a switch in a stroke of its own,
+    // and the box behind it.
     const well = (key: string, text: ChartMessageKey): HTMLButtonElement => {
       const value = String(props[key])
       return swatchButton(t, box, {
@@ -639,14 +640,16 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
       })
     }
     out.push(
-      toggle('showProfile', 'drawing.volumeProfile'),
-      checkRow(t('drawing.values'), props.showValues === true, (v) => ctx.patchProps({ showValues: v }), [well('valuesColor', 'drawing.valuesColor')]),
-      row(t('drawing.widthPercent'), numberInput(t, icons, { label: t('drawing.widthPercent'), value: Number(props.widthPercent), min: 5, max: 100, step: 5, width: 'field', onChange: (v) => ctx.patchProps({ widthPercent: v }) })),
-      row(t('drawing.placement'), dropdown(icons, box, t('drawing.placement'), ['right', 'left'] as const, props.placement as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ placement: v }))),
-      row(t('drawing.upVolume'), well('upColor', 'drawing.upVolume')),
-      row(t('drawing.downVolume'), well('downColor', 'drawing.downVolume')),
-      row(t('drawing.valueAreaUp'), well('valueAreaUpColor', 'drawing.valueAreaUp')),
-      row(t('drawing.valueAreaDown'), well('valueAreaDownColor', 'drawing.valueAreaDown')),
+      compact(toggle('showProfile', 'drawing.volumeProfile')),
+      ...[
+        checkRow(t('drawing.values'), props.showValues === true, (v) => ctx.patchProps({ showValues: v }), [well('valuesColor', 'drawing.valuesColor')]),
+        row(t('drawing.widthPercent'), numberInput(t, icons, { label: t('drawing.widthPercent'), value: Number(props.widthPercent), min: 5, max: 100, step: 5, width: 'field', onChange: (v) => ctx.patchProps({ widthPercent: v }) })),
+        row(t('drawing.placement'), dropdown(icons, box, t('drawing.placement'), ['right', 'left'] as const, props.placement as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ placement: v }))),
+        row(t('drawing.upVolume'), well('upColor', 'drawing.upVolume')),
+        row(t('drawing.downVolume'), well('downColor', 'drawing.downVolume')),
+        row(t('drawing.valueAreaUp'), well('valueAreaUpColor', 'drawing.valueAreaUp')),
+        row(t('drawing.valueAreaDown'), well('valueAreaDownColor', 'drawing.valueAreaDown')),
+      ].map(nested),
       ...PROFILE_LINES.map((line) => {
         const color = String(props[`${line.key}Color`])
         return checkRow(t(line.label), props[line.on] === true, (v) => ctx.patchProps({ [line.on]: v }), [
@@ -668,7 +671,7 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
       }),
       row(t('drawing.histogramBox'), well('boxColor', 'drawing.histogramBox')),
     )
-    if (drawing.type === 'anchored_volume_profile') out.push(toggle('showLabelsOnPriceScale', 'drawing.labelsOnPriceScale'))
+    if (drawing.type === 'anchored_volume_profile') out.push(compact(toggle('showLabelsOnPriceScale', 'drawing.labelsOnPriceScale')))
   } else if (layout === 'meter') {
     // The arrows' stroke, the span's background and border, how far it runs, the stats its label
     // reads, and the label's words and background.
@@ -735,6 +738,7 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
         dropdown(icons, box, t('drawing.fontSize'), TEXT_SIZES, String(props.labelFontSize) as (typeof TEXT_SIZES)[number], (v) => v, (v) => ctx.patchProps({ labelFontSize: Number(v) })),
       ),
       checkRow(t('drawing.labelBackground'), props.fillLabelBackground !== false, (v) => ctx.patchProps({ fillLabelBackground: v }), [labelWell('labelBackgroundColor', 'drawing.labelBackground')]),
+      groupGap(),
     )
   } else if (layout === 'position') {
     // The lines, the two zones, the words' color and size, the levels' prices, then the stats the
@@ -798,6 +802,7 @@ function layoutRows(ctx: RowsContext, layout: StyleLayout): HTMLElement[] {
       ),
       toggle('compact', 'drawing.compactStatsMode'),
       toggle('alwaysShowStats', 'drawing.alwaysShowStats'),
+      groupGap(),
     )
   } else if (layout === 'forecast') {
     const color = (key: string, text: ChartMessageKey): HTMLElement => {
@@ -1088,7 +1093,7 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
       row(t('drawing.volume'), dropdown(ctx.icons, ctx.box, t('drawing.volume'), ['updown', 'total', 'delta'] as const, props.volume as 'updown', label(t, PROFILE_VOLUME_LABEL), (v) => ctx.patchProps({ volume: v }))),
       row(t('drawing.valueAreaVolume'), numberInput(t, ctx.icons, { label: t('drawing.valueAreaVolume'), value: Number(props.valueAreaVolume), min: 0, max: 100, step: 5, width: 'field', onChange: (v) => ctx.patchProps({ valueAreaVolume: v }) })),
     )
-    if ('extendRight' in props) out.push(toggleRow(t('drawing.profileExtendRight'), !!props.extendRight, (v) => ctx.patchProps({ extendRight: v })))
+    if ('extendRight' in props) out.push(compact(toggleRow(t('drawing.profileExtendRight'), !!props.extendRight, (v) => ctx.patchProps({ extendRight: v }))))
   }
   if (sect('averageHL')) {
     // The sketched candles' average span is written in the symbol's minimum ticks, cents where the
@@ -1114,8 +1119,8 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
     out.push(
       row(t('drawing.upperDeviation'), numberInput(t, ctx.icons, { label: t('drawing.upperDeviation'), value: Number(props.upperDeviation), step: 0.5, width: 'field', onChange: (v) => ctx.patchProps({ upperDeviation: v }) })),
       row(t('drawing.lowerDeviation'), numberInput(t, ctx.icons, { label: t('drawing.lowerDeviation'), value: Number(props.lowerDeviation), step: 0.5, width: 'field', onChange: (v) => ctx.patchProps({ lowerDeviation: v }) })),
-      toggleRow(t('drawing.useUpperDeviation'), !!props.useUpper, (v) => ctx.patchProps({ useUpper: v })),
-      toggleRow(t('drawing.useLowerDeviation'), !!props.useLower, (v) => ctx.patchProps({ useLower: v })),
+      compact(toggleRow(t('drawing.useUpperDeviation'), !!props.useUpper, (v) => ctx.patchProps({ useUpper: v }))),
+      compact(toggleRow(t('drawing.useLowerDeviation'), !!props.useLower, (v) => ctx.patchProps({ useLower: v }))),
       row(t('drawing.source'), dropdown(ctx.icons, ctx.box, t('drawing.source'), BAR_PRICE_SOURCES, props.source as BarPriceSource, label(t, SOURCE_LABEL), (v) => ctx.patchProps({ source: v }))),
     )
   }
@@ -1161,6 +1166,33 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   return out
 }
 
+/** A row nested under the switch before it, its label 26px in. */
+function nested(rowElement: HTMLElement): HTMLElement {
+  rowElement.classList.add('qc-drawing-row--nested')
+  return rowElement
+}
+
+/** A checkbox row in a list of inputs, 34px tall rather than a setting's 50px. */
+function compact(toggle: HTMLElement): HTMLElement {
+  toggle.classList.add('qc-drawing-toggle--compact')
+  return toggle
+}
+
+/** The tools that are their words, whose text box stands 172px tall rather than 100px. */
+const TALL_TEXT: ReadonlySet<string> = new Set(['text', 'note', 'callout'])
+
+/** How many decimals a field writes a price with: the symbol's tick's, or cents where the host states
+ *  no tick, so a price reads as the chart writes it rather than with a float's dust. */
+function priceDecimals(drawing: IDrawing): number {
+  const tick = drawing.getTickSize?.() ?? null
+  if (tick === null || !(tick > 0)) return 2
+  for (let d = 0; d < 10; d++) {
+    const scaled = tick * 10 ** d
+    if (Math.abs(Math.round(scaled) - scaled) < 1e-9 * Math.max(1, scaled)) return d
+  }
+  return 10
+}
+
 /** The Text page: the words' look, the words themselves, where they stand and which way they read
  *  where the tool places them, and for the text tools without a Style page, their background and
  *  border. The words' look is one line: a comment's names itself Text and carries no weight or
@@ -1171,7 +1203,7 @@ export function textRows(ctx: RowsContext): HTMLElement[] {
   const props = drawing.props as Record<string, unknown>
   const style = drawing.style
   const type = drawing.type
-  const area = el('textarea', { class: 'qc-field qc-drawing-textarea', spellcheck: 'false', placeholder: t('drawing.addText'), 'aria-label': t('drawing.tabText') }) as HTMLTextAreaElement
+  const area = el('textarea', { class: 'qc-field qc-drawing-textarea', spellcheck: 'false', placeholder: t('drawing.addText'), 'aria-label': t('drawing.tabText'), 'data-size': TALL_TEXT.has(type) ? 'tall' : undefined }) as HTMLTextAreaElement
   area.value = String(props.text ?? '')
   area.addEventListener('input', () => ctx.patchQuiet({ text: area.value }))
   const color = swatchButton(t, box, {
@@ -1296,7 +1328,7 @@ export function coordinateRows(ctx: RowsContext): HTMLElement[] {
     if (drawing.type === 'signpost' && i === 0) return signpostRow(ctx)
     const bar = viewport?.logicalOf(anchor.time)
     const controls: HTMLElement[] = []
-    if (!barOnly) controls.push(numberInput(t, ctx.icons, { label: t('drawing.coordPriceBar', { n: i + 1 }), value: anchor.price, width: 'field', onChange: (v) => ctx.patchAnchor(i, { price: v }) }))
+    if (!barOnly) controls.push(numberInput(t, ctx.icons, { label: t('drawing.coordPriceBar', { n: i + 1 }), value: anchor.price, decimals: priceDecimals(drawing), width: 'field', onChange: (v) => ctx.patchAnchor(i, { price: v }) }))
     if (!priceOnly) controls.push(
       numberInput(t, ctx.icons, {
         label: t('drawing.coordBar', { n: i + 1 }),
@@ -1314,26 +1346,36 @@ export function coordinateRows(ctx: RowsContext): HTMLElement[] {
 }
 
 /** An anchored VWAP's Inputs page: how its bands stand off it and which of them are calculated, at
- *  what multiples, and the price it weighs. */
+ *  what multiples, each band on one line, and the price it weighs. Its title row stands a field
+ *  row's height. */
 function vwapInputs(ctx: RowsContext): HTMLElement[] {
   const { t, icons, box, drawing } = ctx
   const props = drawing.props as Record<string, unknown>
   const live = (key: 'bandMultipliers' | 'bandsOn'): unknown[] => (Array.isArray(drawing.props[key]) ? (drawing.props[key] as unknown[]) : [])
   const multipliers = live('bandMultipliers') as number[]
   const on = live('bandsOn') as boolean[]
-  const band = (index: number): HTMLElement =>
-    checkRow(t('drawing.bandsMultiplier', { n: index + 1 }), on[index] === true, (v) => ctx.patchProps({ bandsOn: live('bandsOn').map((b, j) => (j === index ? v : b)) }), [
+  /** A band on one line: its switch with its name, then its multiplier 8px after the name. */
+  const band = (index: number): HTMLElement => {
+    const name = t('drawing.bandsMultiplier', { n: index + 1 })
+    const switched = toggleRow(name, on[index] === true, (v) => ctx.patchProps({ bandsOn: live('bandsOn').map((b, j) => (j === index ? v : b)) }))
+    const line = fullRow(
+      switched,
       numberInput(t, icons, {
-        label: t('drawing.bandsMultiplier', { n: index + 1 }),
+        label: name,
         value: Number(multipliers[index]),
         min: 0,
         step: 0.5,
         width: 'field',
         onChange: (v) => ctx.patchProps({ bandMultipliers: live('bandMultipliers').map((m, j) => (j === index ? v : m)) }),
       }),
-    ])
+    )
+    line.classList.add('qc-drawing-band-row')
+    return line
+  }
+  const title = sectionTitle(t('drawing.bandsSettings'))
+  title.classList.add('qc-drawing-section--row')
   return [
-    sectionTitle(t('drawing.bandsSettings')),
+    title,
     row(t('drawing.bandsMode'), dropdown(icons, box, t('drawing.bandsMode'), ['stdev', 'percent'] as const, props.bandsMode as 'stdev', label(t, BANDS_MODE_LABEL), (v) => ctx.patchProps({ bandsMode: v }))),
     band(0),
     band(1),
@@ -1344,9 +1386,10 @@ function vwapInputs(ctx: RowsContext): HTMLElement[] {
 }
 
 /** A position's Inputs page: its account, lots, risk and leverage; its entry, and its target and stop
- *  each as ticks from the entry and as a price; and how its quantity is written. Ticks are the
- *  symbol's minimum ticks, cents where the host states no tick, and the risk's second unit is the
- *  currency the symbol is quoted in. */
+ *  each as ticks from the entry and as a price; and how its quantity is written, each group kept
+ *  apart by a gap. Ticks are the symbol's minimum ticks, cents where the host states no tick, the
+ *  prices are written at the symbol's precision, and the risk's second unit is the currency the
+ *  symbol is quoted in. */
 function positionInputs(ctx: RowsContext): HTMLElement[] {
   const { t, icons, box, drawing } = ctx
   const props = drawing.props as Record<string, unknown>
@@ -1355,6 +1398,7 @@ function positionInputs(ctx: RowsContext): HTMLElement[] {
   const unit = tick !== null && tick > 0 ? tick : 0.01
   const currency = drawing.getCurrencyCode?.() ?? null
   const short = drawing.type === 'short_position'
+  const prices = priceDecimals(drawing)
   const field = (text: ChartMessageKey, value: number, onChange: (v: number) => void, extra: { decimals?: number; step?: number; min?: number } = {}): HTMLElement =>
     numberInput(t, icons, { label: t(text), value, width: 'field', onChange, ...extra })
   /** A level, written as ticks from the entry and as a price; the target stands above a long's entry
@@ -1364,7 +1408,7 @@ function positionInputs(ctx: RowsContext): HTMLElement[] {
     const ticks = entry && anchor ? Math.round(Math.abs(anchor.price - entry.price) / unit) : NaN
     return [
       row(t('drawing.ticks'), field('drawing.ticks', ticks, (v) => entry && ctx.patchAnchor(index, { price: entry.price + (above ? 1 : -1) * Math.abs(v) * unit }), { step: 1, min: 0 })),
-      row(t('drawing.price'), field('drawing.price', anchor ? anchor.price : NaN, (v) => ctx.patchAnchor(index, { price: v }))),
+      row(t('drawing.price'), field('drawing.price', anchor ? anchor.price : NaN, (v) => ctx.patchAnchor(index, { price: v }), { decimals: prices })),
     ]
   }
   return [
@@ -1375,13 +1419,17 @@ function positionInputs(ctx: RowsContext): HTMLElement[] {
       field('drawing.risk', Number(props.risk), (v) => ctx.patchProps({ risk: v }), { decimals: 2, min: 0 }),
       dropdown(icons, box, t('drawing.riskUnit'), ['percent', 'money'] as const, props.riskDisplay as 'percent', (v) => (v === 'percent' ? '%' : (currency ?? t('drawing.riskAmount'))), (v) => ctx.patchProps({ riskDisplay: v })),
     ),
-    row(t('drawing.entryPrice'), field('drawing.entryPrice', entry ? entry.price : NaN, (v) => ctx.patchAnchor(0, { price: v }))),
+    row(t('drawing.entryPrice'), field('drawing.entryPrice', entry ? entry.price : NaN, (v) => ctx.patchAnchor(0, { price: v }), { decimals: prices })),
     row(t('drawing.leverage'), field('drawing.leverage', Number(props.leverage), (v) => ctx.patchProps({ leverage: v }), { decimals: 1, min: 1, step: 1 })),
+    groupGap(),
     sectionTitle(t('drawing.profitLevel')),
     ...level(1, target),
+    groupGap(),
     sectionTitle(t('drawing.stopLevel')),
     ...level(2, stop),
+    groupGap(),
     row(t('drawing.qtyPrecision'), dropdown(icons, box, t('drawing.qtyPrecision'), QTY_PRECISIONS, props.qtyPrecision as (typeof QTY_PRECISIONS)[number], (v) => (QTY_PRECISION_LABEL[v] ? t(QTY_PRECISION_LABEL[v]!) : t('drawing.qtyDecimals', { n: Number(v) })), (v) => ctx.patchProps({ qtyPrecision: v }))),
+    groupGap(),
   ]
 }
 
@@ -1406,7 +1454,8 @@ function priceOffsetRow(ctx: RowsContext): HTMLElement {
     t('drawing.priceOffset'),
     numberInput(t, ctx.icons, {
       label: t('drawing.priceOffset'),
-      value: Number.isFinite(offset) ? Number(offset.toFixed(8)) : NaN,
+      value: offset,
+      decimals: priceDecimals(drawing),
       width: 'field',
       onChange: (v) => {
         if (c) ctx.patchAnchor(2, { price: baseAt(c.time) + v })

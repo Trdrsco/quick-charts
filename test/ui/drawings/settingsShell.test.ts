@@ -117,7 +117,7 @@ for (const mode of THEME_MODES) {
       const dialog = trendLineDialogIn(mode)
       const page = painted(dialog.querySelector('.qc-drawing-page')!)
       expect(page.display).toBe('grid')
-      expect(page.gridTemplateColumns).toBe('auto 1fr')
+      expect(page.gridTemplateColumns).toBe('auto minmax(0, 1fr)')
       expect(page.paddingTop).toBe('16px')
       expect(page.paddingLeft).toBe('20px')
       expect(painted(dialog.querySelector('.qc-drawing-page > .qc-drawing-row')!).display).toBe('contents')

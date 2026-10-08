@@ -78,13 +78,33 @@
   padding: 8px 0;
 }
 
-/* A section title: 11px capitals in the muted ink, in a 32px row. */
+/* A section title: 11px capitals in the muted ink, in a 32px row, or in a field row's 50px where it
+ * heads a list of inputs. */
 [data-qc-theme] .qc-drawing-page > .qc-drawing-section {
   display: flex;
   align-items: center;
   height: 32px;
   padding: 0;
   letter-spacing: normal;
+}
+
+[data-qc-theme] .qc-drawing-page > .qc-drawing-section--row {
+  height: 50px;
+}
+
+/* A checkbox row in a list of inputs stands 34px, 8px around its box. */
+[data-qc-theme] .qc-drawing-page > .qc-drawing-toggle--compact {
+  min-height: 34px;
+}
+
+/* A row nested under the switch before it sets its label, or its labelling checkbox, 26px in. */
+[data-qc-theme] .qc-drawing-page > .qc-drawing-row--nested > .qc-drawing-row-label {
+  padding-inline-start: 26px;
+}
+
+/* A band on one line: its switch 16px before its name, then its multiplier 8px after the name. */
+[data-qc-theme] .qc-drawing-page > .qc-drawing-band-row > .qc-drawing-toggle {
+  gap: 16px;
 }
 
 [data-qc-theme] .qc-drawing-group-gap {
@@ -164,8 +184,8 @@
   width: 100%;
 }
 
-/* The text area is the field box 100px tall across the page, its words 8px in from the sides and
- * 5px from the top. */
+/* The text area is the field box 100px tall across the page, 172px for a tool that is its words (a
+ * text, a note, a callout), its words 8px in from the sides and 5px from the top. */
 [data-qc-theme] .qc-drawing-textarea {
   width: 100%;
   height: 100px;
@@ -174,9 +194,15 @@
   resize: none;
 }
 
-/* The number field gives the end of its box to the steppers: a 22 by 28 column 2px in from the edge,
- * revealed on hover or focus. The pointer on a stepper is on the field, so the edge steps up there
- * too, at the weight of the field's own pointer state. */
+[data-qc-theme] .qc-drawing-textarea[data-size='tall'] {
+  height: 172px;
+}
+
+/* The number field keeps the end of its box for its steppers whether they show or not: a 22 by 28
+ * slot 2px in from the edge, the words stopping 2px short of it, the arrows revealed on hover or
+ * focus. A field that cannot be used keeps no slot and shows no arrows, its words running to 4px
+ * from its edge. The pointer on a stepper is on the field, so the edge steps up there too, at the
+ * weight of the field's own pointer state. */
 [data-qc-theme] .qc-drawing-number-wrap {
   position: relative;
   display: inline-flex;
@@ -204,7 +230,7 @@
 
 [data-qc-theme] .qc-drawing-number {
   width: 100%;
-  padding-inline-end: 26px;
+  padding-inline-end: 28px;
   font-variant-numeric: tabular-nums;
   appearance: textfield;
 }
@@ -226,6 +252,14 @@
 [data-qc-theme] .qc-drawing-number-wrap:hover .qc-drawing-steppers,
 [data-qc-theme] .qc-drawing-number-wrap:focus-within .qc-drawing-steppers {
   display: flex;
+}
+
+[data-qc-theme] .qc-drawing-number:disabled {
+  padding-inline-end: 4px;
+}
+
+[data-qc-theme] .qc-drawing-number:disabled + .qc-drawing-steppers {
+  display: none;
 }
 
 [data-qc-theme] .qc-drawing-stepper {

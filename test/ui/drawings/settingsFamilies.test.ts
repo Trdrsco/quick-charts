@@ -115,13 +115,17 @@ const POSITION_INPUTS = [
   'Risk: number select(%)',
   'Entry price: number',
   'Leverage: number',
+  'gap',
   '## Profit level',
   'Ticks: number',
   'Price: number',
+  'gap',
   '## Stop level',
   'Ticks: number',
   'Price: number',
+  'gap',
   'QTY precision: select(Default)',
+  'gap',
 ]
 
 /** A position's Style page, all the stats but the two levels' P&L shown. */
@@ -135,6 +139,7 @@ const POSITION_STYLE = [
   'Stats: multi(TP price offset, TP percent offset, TP tick offset, TP amount, Open/closed PL, Qty, Risk/reward ratio, SL price offset, SL percent offset, SL tick offset, SL amount)',
   '[ ] Compact stats mode',
   '[ ] Always show stats',
+  'gap',
 ]
 
 /** A volume profile's Inputs page; a fixed range runs on with new bars on its own switch. */
@@ -161,7 +166,7 @@ const profileStyle = (anchored: boolean): string[] => [
 ]
 
 /** A range meter's Style page, from what it carries before its stats and what its stats read. */
-const meterStyle = (before: string[], stats: string): string[] => ['Line: colorWithThickness', ...before, '## Info', `Stats: multi(${stats})`, 'Label: color select(12)', '[x] Label background: color']
+const meterStyle = (before: string[], stats: string): string[] => ['Line: colorWithThickness', ...before, '## Info', `Stats: multi(${stats})`, 'Label: color select(12)', '[x] Label background: color', 'gap']
 const METER_TEXT = ['full: color select(12) toggle toggle', 'full: textarea']
 
 /** A channel's Text page: its words' color, size, weight and slant, its words, and where they stand. */
@@ -329,7 +334,7 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Inputs?: string[]
   },
   anchored_vwap: {
     tabs: ['Inputs', 'Style', 'Visibility'],
-    Inputs: ['## Bands Settings', 'Bands Calculation Mode: select(Standard Deviation)', '[x] Bands Multiplier #1: number', '[ ] Bands Multiplier #2: number', '[ ] Bands Multiplier #3: number', 'gap', 'Source: select((H + L + C)/3)'],
+    Inputs: ['## Bands Settings', 'Bands Calculation Mode: select(Standard Deviation)', 'full: [x] Bands Multiplier #1 number', 'full: [ ] Bands Multiplier #2 number', 'full: [ ] Bands Multiplier #3 number', 'gap', 'Source: select((H + L + C)/3)'],
     Style: [
       'VWAP: colorWithThickness',
       '[x] Lower band #1: colorWithThickness',
