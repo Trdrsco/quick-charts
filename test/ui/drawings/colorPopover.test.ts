@@ -21,6 +21,7 @@ import { createPresets } from '../../../src/drawings/layer/presets'
 import { drawingTools } from '../../../src/drawings/index'
 import type { ColorMemory } from '../../../src/ui/controls/color'
 import type { IDrawing } from '../../../src/internal/drawings/index'
+import { focusables } from '../../../src/ui/controls/dom'
 import { ownIcons } from '../../ownIcons'
 import { authoredStylesheet } from '../../theme/stylesheetSource'
 
@@ -84,8 +85,9 @@ function painted(element: Element): CSSStyleDeclaration {
   return getComputedStyle(element)
 }
 
-/** A trend line's settings dialog in a painted root: the dialog box, the drawing, and its Line button. */
-function trendLine(mode: ThemeMode = 'dark', colors?: ColorMemory): { box: HTMLElement; drawing: IDrawing; close(): void; line(): HTMLButtonElement } {
+/** A trend line's settings dialog in a painted root: the dialog box, the backdrop its panels stand
+ *  on, the drawing, and its Line button. */
+function trendLine(mode: ThemeMode = 'dark', colors?: ColorMemory): { box: HTMLElement; layer: HTMLElement; drawing: IDrawing; close(): void; line(): HTMLButtonElement } {
   const root = document.body.appendChild(document.createElement('div'))
   paintThemeRoot(root, mode, BUILT_IN_THEMES[mode])
   const drawing = drawingTools.create('trend_line', 'l1', [{ time: 1000 as never, price: 100 }, { time: 1060 as never, price: 110 }])!
@@ -93,10 +95,11 @@ function trendLine(mode: ThemeMode = 'dark', colors?: ColorMemory): { box: HTMLE
   const dialog = openSettingsDialog({ chrome: root, t, icons: ownIcons(), drawing, presets: createPresets(null), idBase: 'c1-drawing-settings', run: () => true, available: () => true, ...(colors ? { colors } : {}) })
   closers.push(() => dialog.close())
   const box = root.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
-  return { box, drawing, close: () => dialog.close(), line: () => box.querySelector<HTMLButtonElement>('.qc-drawing-swatch-button[aria-label="Line"]')! }
+  return { box, layer: box.parentElement!, drawing, close: () => dialog.close(), line: () => box.querySelector<HTMLButtonElement>('.qc-drawing-swatch-button[aria-label="Line"]')! }
 }
 
-const popoverIn = (box: HTMLElement): HTMLElement | null => box.querySelector<HTMLElement>('.qc-drawing-popover--color')
+/** The color popover open in the document, wherever the dialog stood it. */
+const popoverIn = (_box: HTMLElement): HTMLElement | null => document.querySelector<HTMLElement>('.qc-drawing-popover--color')
 const swatchOf = (popover: HTMLElement, hex: string): HTMLButtonElement => popover.querySelector<HTMLButtonElement>(`.qc-drawing-swatch[data-qc-color="${hex}"]`)!
 const segment = (popover: HTMLElement, label: string): HTMLButtonElement => popover.querySelector<HTMLButtonElement>(`.qc-drawing-segment[aria-label="${label}"]`)!
 
@@ -119,9 +122,13 @@ for (const mode of THEME_MODES) {
 
   describe(`${mode}: the color popover as it is painted`, () => {
     it('stands on the overlay ground on a 6px corner, its column 6px clear above and below, as wide as what it holds', () => {
-      const { box, line } = trendLine(mode)
+      const { box, layer, line } = trendLine(mode)
       line().click()
       const panel = popoverIn(box)!
+      // It stands on the backdrop the dialog's panels stand on, outside the dialog's box, so it hangs
+      // past the dialog's edge.
+      expect(panel.parentElement).toBe(layer)
+      expect(box.contains(panel)).toBe(false)
       const surface = painted(panel)
       expect(surface.backgroundColor).toBe(theme['overlay.surface'])
       expect(surface.borderTopLeftRadius).toBe(theme['chrome.radiusLarge'])
@@ -135,8 +142,9 @@ for (const mode of THEME_MODES) {
       const button = painted(line())
       expect(button.borderTopColor).toBe(theme['state.focusRing'])
       expect(button.boxShadow).toBe(`inset 0 0 0 1px ${theme['state.focusRing']}`)
-      // The dialog clips nothing it holds, so the popover hangs past its edges.
-      expect(painted(box).overflow).toBe('visible')
+      // The popover names itself after the button, as the dialog it is.
+      const dialog = panel.querySelector('.qc-drawing-color-popover')!
+      expect([dialog.getAttribute('role'), dialog.getAttribute('aria-label')]).toEqual(['dialog', 'Line'])
     })
 
     it('lays the palette 224px wide inside 6px by 12px, a ten-wide grid of 17px cells with 3px gutters', () => {
@@ -353,9 +361,9 @@ for (const mode of THEME_MODES) {
     })
 
     it('opens the line-end list as wide as its rows, its 32px rows wearing the 28px marks, the chosen one inverted', () => {
-      const { box } = trendLine(mode)
+      const { box, layer } = trendLine(mode)
       box.querySelector<HTMLButtonElement>('.qc-drawing-line-end')!.click()
-      const list = box.querySelector<HTMLElement>('.qc-drawing-line-ends')!
+      const list = layer.querySelector<HTMLElement>('.qc-drawing-line-ends')!
       const listbox = painted(list)
       expect(listbox.width).toBe('max-content')
       expect(listbox.minWidth).toBe('0')
@@ -443,6 +451,36 @@ describe('the color popover in the dialog', () => {
     expect(popoverIn(box)).toBeNull()
     line().click()
     expect(popoverIn(box)).not.toBeNull()
+  })
+
+  it('keeps Tab inside itself, wrapping at either end, where the dialog around it would take it away', () => {
+    const { box, line } = trendLine()
+    line().click()
+    const panel = popoverIn(box)!
+    const stops = focusables(panel)
+    // The grid, the opacity track and its figure, and one stop for each row.
+    expect(stops).toEqual([
+      swatchOf(panel, '#2962ff'),
+      panel.querySelector('.qc-drawing-opacity'),
+      panel.querySelector('.qc-drawing-opacity-readout'),
+      segment(panel, 'Thickness 2px'),
+      segment(panel, 'Line style Line'),
+    ])
+    const tab = (shiftKey = false): void => void document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }))
+    expect(document.activeElement).toBe(stops[0])
+    tab(true)
+    expect(document.activeElement).toBe(stops[4])
+    tab()
+    expect(document.activeElement).toBe(stops[0])
+    tab()
+    tab()
+    expect(document.activeElement).toBe(stops[2])
+    // Turned over to the editor, Tab goes round the editor's own stops.
+    panel.querySelector<HTMLButtonElement>('.qc-drawing-swatch-plus')!.click()
+    const editor = focusables(panel)
+    expect(editor[0]).toBe(panel.querySelector('.qc-drawing-hex'))
+    tab(true)
+    expect(document.activeElement).toBe(editor[editor.length - 1])
   })
 
   it('lands the keyboard on the chosen color; the arrows move over the grid and the segments, and only a press picks', () => {
@@ -533,42 +571,46 @@ describe('the color popover in the dialog', () => {
 })
 
 describe('where the popover stands', () => {
-  /** Give the elements the boxes a laid-out document would: the viewport, the dialog, the button,
-   *  and the popover's own size, then let the popover place itself again. */
-  function layout(box: HTMLElement, button: HTMLElement, at: { left: number; top: number }, view: { width: number; height: number }): HTMLElement {
-    Object.defineProperty(document.documentElement, 'clientWidth', { configurable: true, get: () => view.width })
-    Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, get: () => view.height })
-    const rect = (left: number, top: number, width: number, height: number): DOMRect => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect
-    box.getBoundingClientRect = () => rect(398, 339, 380, 597)
+  const rect = (left: number, top: number, width: number, height: number): DOMRect => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect
+
+  /** Give the elements the boxes a laid-out document would: the backdrop over the whole viewport,
+   *  the dialog on it, the button, and the popover's own size, then let the popover place itself
+   *  again. */
+  function layout(dialog: { box: HTMLElement; layer: HTMLElement }, button: HTMLElement, at: { left: number; top: number }, view: { width: number; height: number }): HTMLElement {
+    dialog.layer.getBoundingClientRect = () => rect(0, 0, view.width, view.height)
+    dialog.box.getBoundingClientRect = () => rect(398, 339, 380, 597)
     button.getBoundingClientRect = () => rect(at.left, at.top, 75, 34)
-    const panel = popoverIn(box)!
+    const panel = popoverIn(dialog.box)!
     Object.defineProperty(panel, 'offsetWidth', { configurable: true, value: 250 })
     Object.defineProperty(panel, 'offsetHeight', { configurable: true, value: 482 })
     window.dispatchEvent(new Event('resize'))
     return panel
   }
-  afterEach(() => {
-    delete (document.documentElement as unknown as Record<string, unknown>).clientWidth
-    delete (document.documentElement as unknown as Record<string, unknown>).clientHeight
-  })
 
-  it('hangs under its button, edges level, past the bottom of the dialog it opened from', () => {
-    const { box, line } = trendLine()
-    line().click()
-    const panel = layout(box, line(), { left: 522.75, top: 463 }, { width: 1249, height: 1277 })
-    // In the dialog's own coordinates: the button's left edge, and its bottom edge.
-    expect(panel.style.left).toBe('124.75px')
-    expect(panel.style.top).toBe('158px')
-    // 158 + 482 stands past the dialog's 597px, which clips nothing.
-    expect(158 + 482).toBeGreaterThan(597)
+  it('hangs directly under its button, flush with its start, past the bottom of the dialog it opened from', () => {
+    const dialog = trendLine()
+    dialog.line().click()
+    const panel = layout(dialog, dialog.line(), { left: 522.75, top: 463 }, { width: 1249, height: 1277 })
+    expect(panel.style.left).toBe('523px')
+    expect(panel.style.top).toBe('497px')
+    // 497 + 482 stands past the dialog's bottom edge at 339 + 597.
+    expect(497 + 482).toBeGreaterThan(339 + 597)
   })
 
   it('turns over its button where the viewport has no room under it, and keeps inside the viewport', () => {
-    const { box, line } = trendLine()
-    line().click()
-    const above = layout(box, line(), { left: 522.75, top: 600 }, { width: 1249, height: 900 })
-    expect(above.style.top).toBe(`${600 - 482 - 339}px`)
-    const right = layout(box, line(), { left: 1100, top: 300 }, { width: 1249, height: 1277 })
-    expect(right.style.left).toBe(`${1249 - 250 - 398}px`)
+    const dialog = trendLine()
+    dialog.line().click()
+    expect(layout(dialog, dialog.line(), { left: 522.75, top: 600 }, { width: 1249, height: 900 }).style.top).toBe(`${600 - 482}px`)
+    expect(layout(dialog, dialog.line(), { left: 1100, top: 300 }, { width: 1249, height: 1277 }).style.left).toBe(`${1249 - 250}px`)
+  })
+
+  it('stands against the button a rebuilt page put in its place', () => {
+    const dialog = trendLine()
+    dialog.line().click()
+    const panel = layout(dialog, dialog.line(), { left: 522.75, top: 463 }, { width: 1249, height: 1277 })
+    swatchOf(panel, '#f23645').click()
+    dialog.line().getBoundingClientRect = () => rect(560, 470, 75, 34)
+    window.dispatchEvent(new Event('resize'))
+    expect([panel.style.left, panel.style.top]).toEqual(['560px', '504px'])
   })
 })

@@ -87,7 +87,8 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
     },
   })
   dialog.box.classList.add('qc-drawing-settings-dialog')
-  if (deps.colors) provideColorMemory(dialog.box, deps.colors)
+  // The viewer's colors reach every color popover the dialog opens, on the backdrop its panels stand on.
+  if (deps.colors) provideColorMemory(dialog.layer, deps.colors)
 
   // The rename: the pencil stands beside the name and turns the header into the name's field.
   const pencil = button({ class: 'qc-drawing-rename', label: t('drawing.rename'), icon: deps.icons.icon('pencil', 28), disabled: !deps.available('chart.drawings.props') })

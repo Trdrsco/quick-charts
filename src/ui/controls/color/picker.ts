@@ -90,15 +90,21 @@ export function createOpacitySlider(t: ChartTranslate, color: string, value: num
     const along = isRtl(track) ? r.right - event.clientX : event.clientX - r.left
     return ((along - KNOB / 2) / Math.max(1, r.width - KNOB)) * 100
   }
+  /** The drag in flight, stopped without a release when the slider goes mid-drag. */
+  let stopDrag: (() => void) | null = null
   track.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return
     event.preventDefault()
     track.focus({ preventScroll: true })
+    stopDrag?.()
     track.dataset.qcDragging = 'true'
     set(under(event))
-    dragUntilRelease(
+    stopDrag = dragUntilRelease(
       (move) => set(under(move)),
-      () => delete track.dataset.qcDragging,
+      () => {
+        stopDrag = null
+        delete track.dataset.qcDragging
+      },
     )
   })
   track.addEventListener('keydown', (event) => {
@@ -155,6 +161,7 @@ export function createOpacitySlider(t: ChartTranslate, color: string, value: num
       paint()
     },
     destroy() {
+      stopDrag?.()
       element.remove()
     },
   }
@@ -220,6 +227,8 @@ export function createCustomColorPicker(t: ChartTranslate, initial: string, onAd
     commit()
   })
 
+  /** The drag in flight, stopped without a release when the editor goes mid-drag. */
+  let stopDrag: (() => void) | null = null
   /** A press on a slider takes its knob to the pointer and follows it until the release. `frame` is
    *  the box the knob travels, which for the strip is its track inside the ends. */
   const follow = (target: HTMLElement, frame: HTMLElement, onPos: (x: number, y: number) => void): void => {
@@ -233,9 +242,13 @@ export function createCustomColorPicker(t: ChartTranslate, initial: string, onAd
         onPos(isRtl(target) ? 1 - x : x, clamp01((e.clientY - r.top) / (r.height || 1)))
         paint()
       }
+      stopDrag?.()
       target.dataset.qcDragging = 'true'
       at(event)
-      dragUntilRelease(at, () => delete target.dataset.qcDragging)
+      stopDrag = dragUntilRelease(at, () => {
+        stopDrag = null
+        delete target.dataset.qcDragging
+      })
     })
   }
   follow(area, area, (x, y) => {
@@ -300,6 +313,7 @@ export function createCustomColorPicker(t: ChartTranslate, initial: string, onAd
       paint()
     },
     destroy() {
+      stopDrag?.()
       element.remove()
     },
   }

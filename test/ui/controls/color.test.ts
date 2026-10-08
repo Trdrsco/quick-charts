@@ -267,6 +267,19 @@ describe('the opacity', () => {
     expect(out).toEqual([0.5, 0, 1])
   })
 
+  it('stops a drag in flight when it goes, reporting nothing more', () => {
+    const out: number[] = []
+    const opacity = createOpacitySlider(t, '#ff0000', 1, (v) => out.push(v))
+    host().appendChild(opacity.element)
+    const track = opacity.element.querySelector<HTMLElement>('.qc-drawing-opacity')!
+    boxed(track, 100, 50, 112, 10)
+    track.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 156, clientY: 55, bubbles: true }))
+    opacity.destroy()
+    window.dispatchEvent(new PointerEvent('pointermove', { clientX: 106, clientY: 55 }))
+    window.dispatchEvent(new PointerEvent('pointerup', { clientX: 106, clientY: 55 }))
+    expect(out).toEqual([0.5])
+  })
+
   it('takes figures alone in its field, holds a hundred at most, steps on the arrows, and puts the value back on Enter', () => {
     const out: number[] = []
     const opacity = createOpacitySlider(t, '#ff0000', 0.25, (v) => out.push(v))

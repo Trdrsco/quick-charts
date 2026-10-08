@@ -17,7 +17,7 @@ import type { LineStyle } from '../../internal/drawings/index'
 import { alphaOf, withAlpha } from '../../internal/drawings/index'
 import type { ChartTranslate } from '../../i18n'
 import { colorMemoryFor, createColorPalette, hexOf } from '../controls/color'
-import { isRtl } from '../controls/dom'
+import { focusables, isRtl } from '../controls/dom'
 import { button, dismissOnOutside, el, focusFirst, menuKeys, ownPointer, placePanel, type PanelPlacement } from './dom'
 import { trackOverlay } from '../controls/overlays'
 import { selectChevron } from '../controls/select'
@@ -248,52 +248,28 @@ export function numberInput(
  *  earlier one, so the parent stays up while its child is used. */
 const openPanels: HTMLElement[] = []
 
-/** How a popover stands against its anchor: the room between them, a class the panel wears, whether
- *  it hangs free of the box it is mounted in, and which control it answers to. */
+/** How a popover stands against its anchor: the room between them, a class the panel wears, which
+ *  control it answers to, and whether it follows its own size. */
 export interface PopoverOptions {
   gap?: number
   className?: string
-  /** Hang the panel from its anchor in the viewport rather than holding it inside the box it is
-   *  mounted in: under the anchor with their inline-start edges level, turned over the anchor where
-   *  the viewport has no room under it, and held inside the viewport. The box clips nothing the
-   *  panel shows. */
-  hang?: boolean
   /** The control the panel answers to now, where the surface that opened it may put a new control
-   *  in the opener's place while the panel stays up (a page rebuilt under it): a press on it is not
-   *  a press outside, it carries `aria-expanded`, a hanging panel hangs from it, and Escape gives it
-   *  the keyboard back. */
+   *  in the opener's place while the panel stays up (a page rebuilt under it): the panel stands
+   *  against it, a press on it is not a press outside, it carries `aria-expanded`, and Escape gives
+   *  it the keyboard back. */
   anchor?: () => HTMLElement
+  /** The panel changes size while it is up, as one that turns over to other content does: it is
+   *  placed again when it does, so it stays against its anchor and turns to the other side of it
+   *  when it no longer fits. */
+  resizes?: boolean
 }
 
-/** An open popover: its close, and its placement, run again for a change it cannot observe. */
+/** An open popover: the panel, its close, and its placement, run again for a change it cannot
+ *  observe. */
 interface PopoverHandle {
+  panel: HTMLElement
   close(): void
   reposition(): void
-}
-
-/** The viewport's box, less any scrollbar. A document without a layout engine measures nothing
- *  there, so the window's own size stands in. */
-const viewport = (): { width: number; height: number } => ({
-  width: document.documentElement.clientWidth || window.innerWidth,
-  height: document.documentElement.clientHeight || window.innerHeight,
-})
-
-/** Place a panel that hangs from its anchor, in the viewport's coordinates, while it stands inside
- *  `box` in the DOM: its position is written in the box's own coordinates, its padding box as it is
- *  scrolled, and kept exact rather than rounded, so the panel's edge stays level with the anchor's. */
-function hangPanel(panel: HTMLElement, anchor: HTMLElement, box: HTMLElement, gap: number): void {
-  const view = viewport()
-  const a = anchor.getBoundingClientRect()
-  const w = panel.offsetWidth
-  const h = panel.offsetHeight
-  const left = Math.max(0, Math.min(isRtl(box) ? a.right - w : a.left, view.width - w))
-  let top = a.bottom + gap
-  if (top + h > view.height) top = Math.max(0, a.top - gap - h)
-  top = Math.max(0, Math.min(top, view.height - h))
-  const b = box.getBoundingClientRect()
-  panel.style.left = `${left - b.left - box.clientLeft + box.scrollLeft}px`
-  panel.style.top = `${top - b.top - box.clientTop + box.scrollTop}px`
-  panel.style.maxHeight = `${Math.max(120, view.height - top)}px`
 }
 
 function mountPopover(
@@ -307,6 +283,7 @@ function mountPopover(
   options: PopoverOptions,
 ): PopoverHandle {
   const anchorNow = (): HTMLElement => options.anchor?.() ?? anchor
+  const placeNow = (): HTMLElement => (options.anchor ? anchorNow() : place)
   const panel = el('div', { class: `qc-overlay qc-drawing-popover${options.className ? ` ${options.className}` : ''}`, 'data-role': 'drawing-popover' }, content)
   ownPointer(panel)
   box.appendChild(panel)
@@ -314,21 +291,15 @@ function mountPopover(
   const insideChild = (target: Node): boolean => openPanels.slice(openPanels.indexOf(panel) + 1).some((p) => p.contains(target))
   let closed = false
   const reposition = (): void => {
-    if (closed) return
-    if (!options.hang) {
-      if (place.isConnected) placePanel(panel, place, box, mode, options.gap)
-      return
-    }
-    const at = anchorNow()
-    if (at.isConnected) hangPanel(panel, at, box, options.gap ?? 0)
+    const at = placeNow()
+    if (closed || !at.isConnected) return
+    placePanel(panel, at, box, mode, options.gap)
   }
   reposition()
   const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(reposition) : null
   resize?.observe(box)
   resize?.observe(place)
-  // A hanging panel follows its own size as well: one that turns over to other content keeps
-  // hanging from its anchor, and turns to the other side of it when it no longer fits.
-  if (options.hang) resize?.observe(panel)
+  if (options.resizes) resize?.observe(panel)
   const close = (): void => {
     if (closed) return
     closed = true
@@ -359,7 +330,7 @@ function mountPopover(
   // owns placement: every report re-reads the real anchor and chosen bounds.
   document.addEventListener('scroll', reposition, true)
   anchorNow().setAttribute('aria-expanded', 'true')
-  return { close, reposition }
+  return { panel, close, reposition }
 }
 
 /** A floating panel beside its anchor inside the chart box, closed on an outside press or Escape.
@@ -495,11 +466,13 @@ export function swatchButton(t: ChartTranslate, box: HTMLElement, options: Swatc
 const named = (box: HTMLElement, label: string): HTMLButtonElement[] =>
   [...box.querySelectorAll<HTMLButtonElement>('.qc-drawing-swatch-button')].filter((b) => b.getAttribute('aria-label') === label)
 
-/** The color popover a swatch button opens under itself, hanging free of the dialog it stands in:
- *  the palette with the colors this viewer mixed and the opacity, then for a stroke the Thickness
- *  and Line style rows. Every choice applies to the drawing at once and the popover stays up for
- *  the next one; Escape, a press outside or the button itself closes it. The plus turns it over to
- *  the custom editor, which stands alone in it until a color is added.
+/** The color popover a swatch button opens directly under itself, on the box its panels stand on,
+ *  so it hangs past the edge of the dialog the button is in: the palette with the colors this viewer
+ *  mixed and the opacity, then for a stroke the Thickness and Line style rows. Every choice applies
+ *  to the drawing at once and the popover stays up for the next one; Escape, a press outside or the
+ *  button itself closes it. The plus turns it over to the custom editor, which stands alone in it
+ *  until a color is added. Tab moves through the popover's own stops and wraps, so the keyboard
+ *  stays in it until Escape gives it back to the button.
  *
  *  An edit may rebuild the page the button stands on. The popover then answers to the button in its
  *  place, the same-named button in the same order, and reads what that button holds; when no button
@@ -602,20 +575,33 @@ function openColorPopover(t: ChartTranslate, box: HTMLElement, opener: HTMLButto
     sections.push(el('div', { class: 'qc-drawing-stroke-section qc-drawing-stroke-section--style' }, el('div', { class: 'qc-drawing-section-title', text: t('drawing.lineStyle') }), lineStyle.element))
   }
 
-  const content = el('div', { class: 'qc-drawing-color-popover' }, palette.element, ...sections)
+  const content = el('div', { class: 'qc-drawing-color-popover', role: 'dialog', 'aria-label': label }, palette.element, ...sections)
+  // Tab is the popover's own: a dialog around it traps Tab within its own box, from the document,
+  // and would take the keyboard out of the popover, so the press is answered before it gets there.
+  const onTab = (event: KeyboardEvent): void => {
+    if (event.key !== 'Tab' || !handle.panel.contains(event.target as Node)) return
+    const stops = focusables(handle.panel)
+    if (!stops.length) return
+    event.preventDefault()
+    event.stopPropagation()
+    const at = stops.indexOf(document.activeElement as HTMLElement)
+    stops[(at + (event.shiftKey ? -1 : 1) + stops.length) % stops.length]!.focus({ preventScroll: true })
+  }
   const handle = mountPopover(
     box,
     opener,
     content,
     'below',
     () => {
+      window.removeEventListener('keydown', onTab, true)
       palette.destroy()
       holding.delete(anchor)
     },
     opener,
     undefined,
-    { gap: 0, hang: true, anchor: () => anchor, className: 'qc-drawing-popover--color' },
+    { gap: 0, anchor: () => anchor, resizes: true, className: 'qc-drawing-popover--color' },
   )
+  window.addEventListener('keydown', onTab, true)
   holding.set(anchor, handle.close)
   focusFirst(content)
 }

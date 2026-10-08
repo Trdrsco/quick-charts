@@ -258,14 +258,10 @@
 
 /* The color popover and the shared color control inside it.
  *
- * The popover hangs under the swatch button that opened it, a 6px corner on the overlay ground, its
- * column 6px clear of its top and bottom: the palette, then for a stroke the Thickness and Line style
- * rows. The settings dialog clips nothing it holds, so the popover stands past its edges. A color
- * button holding its popover open rings itself as a field with the keyboard does. */
-[data-qc-theme] .qc-dialog.qc-drawing-settings-dialog {
-  overflow: visible;
-}
-
+ * The popover hangs under the swatch button that opened it, as wide as what it holds, a 6px corner
+ * on the overlay ground, its column 6px clear of its top and bottom: the palette, then for a stroke
+ * the Thickness and Line style rows. A color button holding its popover open rings itself as a field
+ * with the keyboard does. */
 [data-qc-theme] .qc-drawing-popover--color {
   width: max-content;
 }
@@ -290,8 +286,13 @@
   padding: 6px 12px;
 }
 
-/* Inside a panel that pads already, the palette pads the rest of the way rather than again. */
-[data-qc-theme] .qc-inline-panel > .qc-drawing-palette {
+/* A palette that is a popover's whole content keeps the popover column's 6px inside its own, and
+ * inside a panel that pads already, the palette pads the rest of the way rather than again. */
+[data-qc-theme] .qc-drawing-popover > .qc-drawing-palette {
+  padding: 12px;
+}
+
+[data-qc-theme] .qc-inline-panel .qc-drawing-palette {
   padding: 6px;
 }
 
