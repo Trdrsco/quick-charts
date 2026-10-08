@@ -1,7 +1,7 @@
 {
   "$comment": [
     "The stable ids of every registry the feature manifest publishes, sorted, one array per registry",
-    "(seven styles, 23 built-in indicators, 90 tools, 55 layouts, 26 preset timeframes, 60 timezone",
+    "(seven styles, 23 built-in indicators, 89 tools, 55 layouts, 26 preset timeframes, 60 timezone",
     "choices; the built-in locales, the theme roles and the command registry ride beside them because the",
     "manifest publishes those too). registries.test.ts reads every registry from",
     "the package source and compares; an id added, renamed or dropped moves this file in the same commit."
@@ -55,7 +55,6 @@
       "callout",
       "circle",
       "comment",
-      "content_card",
       "cross_line",
       "curve",
       "cyclic_lines",

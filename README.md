@@ -2772,7 +2772,7 @@ re-tile opens in the current one.
 
 ## Drawings
 
-The widget ships with a complete drawing product, on by default: every one of the 90 tools places
+The widget ships with a complete drawing product, on by default: every one of the 89 tools places
 from the toolbar, the selected drawing gets a floating settings bar and a settings dialog, tool
 defaults and named templates ride the adapter's template family, and a symbol's drawings persist
 through the adapter's drawings family. Turn the whole layer off with `features.drawings: false`,
@@ -2896,7 +2896,7 @@ never imports any of it.
 ```ts
 import { buildDrawingToolbarGroups, drawingTools, parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from '@trdrs/quickcharts/drawings'
 
-// The catalog: 90 tools in 14 categories, read-only.
+// The catalog: 89 tools in 14 categories, read-only.
 const trendLine = drawingTools.get('trend_line')
 const fibs = drawingTools.byCategory('fibonacci')
 

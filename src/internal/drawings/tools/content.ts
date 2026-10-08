@@ -1,6 +1,5 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
-import { measureTextBlock, paintTextBlock, withAlpha } from '../render/canvas'
 import { cachedImageBitmap, primeImageBitmap } from '../render/imageCache'
 
 function inBox(p: Point, box: { x: number; y: number; width: number; height: number }, pad = 3): boolean {
@@ -127,55 +126,6 @@ export class ImageNote extends Drawing<ImageProps> {
   testHit(point: Point, viewport: Viewport): boolean {
     const f = this.frame(viewport)
     return !!f && inBox(point, f)
-  }
-}
-
-export type ContentCardProps = {
-  text: string
-  url: string
-}
-
-/** Quote/link card: body text with the source URL as its footer. */
-export class ContentCard extends Drawing<ContentCardProps> {
-  readonly type = 'content_card'
-
-  protected override defaultProps(): ContentCardProps {
-    return { text: '', url: '' }
-  }
-
-  requiredAnchors(): number {
-    return 1
-  }
-
-  protected body(): string {
-    const text = this.props.text || ' '
-    return this.props.url ? `${text}\n${this.props.url}` : text
-  }
-
-  protected box(viewport: Viewport): { x: number; y: number; width: number; height: number } | null {
-    const anchor = this.anchors[0]
-    if (!anchor) return null
-    const p = this.anchorToPixel(anchor, viewport)
-    if (!p) return null
-    const { width, height } = measureTextBlock(this.body(), this.style)
-    return { x: p.x, y: p.y, width: Math.max(140, width + 16), height: height + 16 }
-  }
-
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const anchor = this.anchors[0]
-    if (!anchor) return
-    const p = this.anchorToPixel(anchor, viewport)
-    if (!p) return
-    paintTextBlock(ctx, this.body(), p, this.style, {
-      background: withAlpha('#1b1f27', 0.95),
-      borderColor: this.style.lineColor,
-      padding: 8,
-    })
-  }
-
-  testHit(point: Point, viewport: Viewport): boolean {
-    const box = this.box(viewport)
-    return !!box && inBox(point, box)
   }
 }
 

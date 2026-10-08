@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': '固定范围成交量分布',
   'tool.anchored_volume_profile': '锚定成交量分布',
   'tool.image': '图片',
-  'tool.content_card': '内容卡片',
   'tool.emoji': '表情',
   'tool.sticker': '贴纸',
   'tool.icon': '图标',

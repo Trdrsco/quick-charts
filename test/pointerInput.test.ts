@@ -150,7 +150,7 @@ describe('drawing placement is the chart’s own gesture', () => {
     // know is refused, and that answer comes from the package rather than from an app catalog.
     expect(placeableByWidget('trend_line')).toBe(true)
     expect(placeableByWidget('long_position')).toBe(true)
-    expect(placeableByWidget('content_card')).toBe(true)
+    expect(placeableByWidget('note')).toBe(true)
     expect(placeableByWidget('brush')).toBe(true)
     expect(placeableByWidget('measure')).toBe(true)
     expect(placeableByWidget('not-a-tool')).toBe(false)

@@ -1,6 +1,6 @@
 // The public view of the drawing tool catalog.
 //
-// The internal seam registers its 90 tools in one mutable registry whose entries carry a factory
+// The internal seam registers its 89 tools in one mutable registry whose entries carry a factory
 // that builds a live drawing object. Neither the mutability nor the factory belongs on a public
 // surface: a consumer reads the catalog to build a picker and restores drawings through the codec,
 // and the drawing classes themselves are implementation. So this module publishes a READ-ONLY view

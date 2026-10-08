@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': 'Profil volum julat tetap',
   'tool.anchored_volume_profile': 'Profil volum bertambat',
   'tool.image': 'Imej',
-  'tool.content_card': 'Kad kandungan',
   'tool.emoji': 'Emoji',
   'tool.sticker': 'Pelekat',
   'tool.icon': 'Ikon',

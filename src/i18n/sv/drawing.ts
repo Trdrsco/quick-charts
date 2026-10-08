@@ -205,7 +205,6 @@ export const drawing: Translation<typeof source> = {
   'drawing.image': 'Image',
   'drawing.replaceEllipsis': 'Replace...',
   'drawing.chooseEllipsis': 'Choose...',
-  'drawing.link': 'Link',
   'drawing.rowsLayout': 'Rows layout',
   'drawing.rowsByNumber': 'Number of rows',
   'drawing.ticksPerRow': 'Ticks per row',
