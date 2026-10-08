@@ -745,6 +745,56 @@ describe('the low-level document operations', () => {
     container.remove()
   })
 
+  /** A drawing of a type the catalog does not hold, as a build whose catalog holds it writes one:
+   *  shaped as a drawing, and readable by that build alone. */
+  const unknownRow = (id: string, scope?: string) => ({
+    id,
+    source: 'main',
+    pane: 'main',
+    type: 'no_such_tool',
+    state: { v: 2, id, type: 'no_such_tool', anchors: [], ...(scope === undefined ? {} : { scope }) },
+  })
+
+  it('names a drawing of a type the catalog does not hold as unreadable, and applies the rest', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const a = make({ documents: sharedPort(adapter), chartId: 'chart-1' })
+    a.handle.armTool('rectangle')
+    drag(a.container, [10, 10], [100, 100])
+    await settle()
+    const good = a.handle.export()[0]!
+    a.handle.clearAll(true)
+    const outcome = a.handle.documents.apply({
+      version: 1,
+      context: sharedPort(adapter).context('ES'),
+      revision: 5,
+      entries: [{ id: good.id, source: 'main', pane: 'main', type: good.type, state: good }, unknownRow('unknown'), unknownRow('theirs', 'chart-2')],
+      groups: [],
+      tombstones: [],
+    })
+    // The other chart's row is that chart's whether or not this build can read it, so it is not named.
+    expect(outcome).toEqual({ kind: 'ok', applied: 1, rejected: [{ id: 'unknown', reason: 'unreadable' }] })
+    expect(a.handle.count()).toBe(1)
+    expect(a.handle.export().map((row) => row.id)).toEqual([good.id])
+  })
+
+  it('carries a drawing of a type the catalog does not hold through its next write, instead of burying it', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const a = make({ documents: sharedPort(adapter), chartId: 'chart-1' })
+    const unknown = unknownRow('unknown')
+    a.handle.documents.apply({ version: 1, context: sharedPort(adapter).context('ES'), revision: 1, entries: [unknown], groups: [], tombstones: [] })
+    expect(a.handle.count()).toBe(0)
+    a.handle.armTool('trend_line')
+    drag(a.container, [100, 100], [300, 200])
+    await settle()
+    await settle()
+    const stored = (await documentOf(adapter, sharedPort(adapter).context('ES')))!
+    // The viewer's line joins the document, and the row this build cannot read stays as it was
+    // written, so a build that reads it still finds it.
+    expect(stored.body.tombstones).toEqual([])
+    expect(stored.body.entries.map((entry) => entry.id)).toEqual(['unknown', a.handle.export()[0]!.id])
+    expect(stored.body.entries[0]).toEqual(unknown)
+  })
+
   it('drops an answer for the symbol that just left rather than landing it on the one that arrived', async () => {
     const adapter = memorySaveLoadAdapter()
     const a = make({ documents: port(adapter), chartId: 'c1' })

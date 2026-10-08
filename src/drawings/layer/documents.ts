@@ -19,6 +19,7 @@ import type { SerializedDrawing } from '../../internal/drawings/index'
 import type { DrawingEntry, DrawingResourceContext, DrawingsBody } from '../document'
 import { DRAWING_CONTEXT_VERSION, drawingBuried, emptyDrawingDocument, liveDrawingEntries, mergeDrawingDocuments, parseDrawingDocument, reviseDrawingDocument } from '../document'
 import type { DrawingsMeta, ResourceRef, ResourceStore } from '../../resources'
+import { drawingTools } from '../tools'
 import { ownsDrawing } from './scope'
 import { drawingDocumentCoordinator } from './documentCoordinator'
 
@@ -92,12 +93,20 @@ const entryOf = (row: SerializedDrawing, owner: DrawingOwner): DrawingEntry => (
   state: row,
 })
 
-/** The drawing inside an entry, when the entry carries one this build can read. */
-export const drawingOf = (entry: DrawingEntry): SerializedDrawing | null => {
+/** An entry's state when it is shaped as a drawing, an object with a string id and a string type,
+ *  whether or not this build can read it. Its scope says which chart it belongs to either way. */
+export const drawingShapeOf = (entry: DrawingEntry): SerializedDrawing | null => {
   const state = entry.state
   if (typeof state !== 'object' || state === null) return null
   const row = state as SerializedDrawing
   return typeof row.id === 'string' && typeof row.type === 'string' ? row : null
+}
+
+/** The drawing inside an entry, when the entry carries one this build can read: a drawing of a type
+ *  the catalog holds. Any other row is never painted here, and a write carries it as it stands. */
+export const drawingOf = (entry: DrawingEntry): SerializedDrawing | null => {
+  const row = drawingShapeOf(entry)
+  return row && drawingTools.has(row.type) ? row : null
 }
 
 export function createDocuments(deps: DocumentsDeps): Documents {

@@ -4,6 +4,8 @@
 
 The content card drawing tool (`content_card`) leaves the catalog, which holds 89 tools, and its row in the Content section of the Text and notes group, its `tool.content_card` icon, the Link field of its settings dialog and its two catalog strings go with it. A saved chart or layout, a drawings document or a drawing list that carries a content card loads without it, quietly: the card is skipped, as a drawing of any type the catalog does not hold is; nothing throws, no notice is shown, and every other drawing loads as it was saved. The next save writes the chart without the card. A content card a viewer starred draws no arm on the favorites bar, and a bar with no other star stays hidden.
 
+`DrawingDocumentApi.apply` and `reload`, a chart's `drawingResources`, name a drawing of a type the catalog does not hold among the drawings they do not attach, with the reason `unreadable`, and leave it out of `applied`. The chart does not paint it, and every write of the document carries it as it was written, so a build whose catalog holds that type still finds it.
+
 ### Upgrading to 4.0
 
 A major version may remove public names, and this guide lists each one. 4.0 removes the content card and the names that exist only for it, so drop each from what your page lists, offers or creates:
@@ -12,7 +14,7 @@ A major version may remove public names, and this guide lists each one. 4.0 remo
 - The icon id `tool.content_card`: `ChartIconId`, `CHART_ICON_IDS` and the feature manifest's `icons` leave it out, and an `icons` entry for it is a setup error from `createChart`.
 - The catalog keys `tool.content_card` and `drawing.link`: `ChartMessageKey` leaves both out, and so does a dictionary of your own (`ChartCustomLocale`, `ChartDictionary`). The chart reads neither.
 
-Saved state needs nothing from you: a save that carries a content card loads without it, as above. Drawing templates and tool defaults your store keeps for `content_card` stay there unread.
+Saved state needs nothing from you: a save that carries a content card loads without it, as above. A drawings document keeps its content cards as they were written, unread, and so do the drawing templates and tool defaults your store keeps for `content_card`.
 
 ## 3.0.0
 
