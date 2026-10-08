@@ -151,34 +151,18 @@
   padding-top: 0;
 }
 
-[data-qc-theme] .qc-search-scope {
-  display: inline-flex;
+/* The classes' own group in the strip: their chips, 4px apart, as one run the scope stands apart
+ * from. */
+[data-qc-theme] .qc-search-class-group {
+  display: flex;
   flex: 0 0 auto;
-  align-items: center;
-  gap: 7px;
-  height: 28px;
-  margin-inline-start: auto;
-  padding: 0 10px 0 6px;
-  color: var(--qc-text-primary);
-  font-size: var(--qc-text-fontSizeBase);
-  line-height: 18px;
-  background: var(--qc-state-hover);
-  border-radius: 14px;
-  white-space: nowrap;
+  gap: 4px;
 }
 
-[data-qc-theme] .qc-search-scope-mark {
-  display: inline-flex;
-  flex: 0 0 18px;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  overflow: hidden;
-}
-
-/* A class rests on the neutral fill, steps deeper under the pointer and deeper again while pressed. */
-[data-qc-theme] .qc-search-class {
+/* A class rests on the neutral fill, steps deeper under the pointer and deeper again while pressed.
+ * The scope chip is the same tab in the same states. */
+[data-qc-theme] .qc-search-class,
+[data-qc-theme] .qc-search-scope {
   flex: 0 0 auto;
   height: 28px;
   padding: 0 11px;
@@ -191,24 +175,50 @@
   white-space: nowrap;
 }
 
-[data-qc-theme] .qc-search-class:hover {
+[data-qc-theme] .qc-search-class:hover,
+[data-qc-theme] .qc-search-scope:hover {
   background: var(--qc-state-pressed);
   border-color: var(--qc-state-pressed);
 }
 
-[data-qc-theme] .qc-search-class:active {
+[data-qc-theme] .qc-search-class:active,
+[data-qc-theme] .qc-search-scope:active {
   background: var(--qc-state-pressedHover);
   border-color: var(--qc-state-pressedHover);
 }
 
 /* The chosen class INVERTS, under the pointer as at rest: one tab out of a row has to be
- * unmistakable at a glance, and a deeper step of the same fill would only be a louder hover. */
+ * unmistakable at a glance, and a deeper step of the same fill would only be a louder hover. A
+ * scope that limits the search inverts the same way. */
 [data-qc-theme] .qc-search-class[aria-pressed='true'],
 [data-qc-theme] .qc-search-class[aria-pressed='true']:hover,
-[data-qc-theme] .qc-search-class[aria-pressed='true']:active {
+[data-qc-theme] .qc-search-class[aria-pressed='true']:active,
+[data-qc-theme] .qc-search-scope[aria-pressed='true'],
+[data-qc-theme] .qc-search-scope[aria-pressed='true']:hover,
+[data-qc-theme] .qc-search-scope[aria-pressed='true']:active {
   color: var(--qc-text-inverse);
   background: var(--qc-control-on);
   border-color: var(--qc-control-on);
+}
+
+/* The scope stands at the far edge of the strip: the host's mark 6px in from the chip's leading
+ * edge and 7px before the scope's name. */
+[data-qc-theme] .qc-search-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-inline-start: auto;
+  padding-inline: 6px 10px;
+}
+
+[data-qc-theme] .qc-search-scope-mark {
+  display: inline-flex;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  overflow: hidden;
 }
 
 [data-qc-theme] .qc-search-list {

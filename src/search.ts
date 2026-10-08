@@ -111,6 +111,13 @@ export interface SearchSession {
   readonly controller: SearchController
   /** Retire the current query without searching the feed's empty catalog. */
   cancelPending(): void
+  /** Ask for a query as the controller's `search` does, but without the debounce: for a question a
+   *  surface asks on its own, such as its first one, where there is no typing to wait out. */
+  searchNow(query: string, cls?: SearchClassFilter): void
+  /** A session over another source, asked with this session's page size and debounce, so a surface
+   *  that searches two sources pages and waits the same way in both. Its completed pages are its
+   *  own: they are reused for its life and go when it is disposed. */
+  over(source: Pick<ChartDatafeed, 'search'>): SearchSession
 }
 
 export function createSearchController(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchControllerOptions = {}): SearchController {
@@ -218,6 +225,55 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
     return ask
   }
 
+  /** Ask for a query: a cached answer at once, else loading, then the feed after the debounce, or
+   *  at once for a question no keystroke asked. */
+  const searchFor = (query: string, asked: SearchClassFilter, immediate: boolean): void => {
+    if (disposed) return
+    const cls = settleFilter(asked)
+    clearTimeout(timer)
+    const nextKey = keyOf(query, cls, pageSize)
+    const unchanged = key === nextKey
+    if (!unchanged) {
+      cancelPending()
+    }
+    key = nextKey
+    filter = cls
+    const mine = key
+    const epoch = generation
+    const retained = cache.get(key)
+    // A normalized same-query edit still owns its active pages, even if reuse evicted them.
+    const cached = unchanged && current ? current : retained
+    current = cached
+    if (cached) {
+      emit({ query, ...classState(cls), hits: cached.hits, hasMore: cached.hasMore, loading: false, failed: false })
+      if (cached.pages > 1) return
+    } else {
+      emit({ query, ...classState(cls), loading: true, failed: false })
+    }
+    // A listener may close or replace this session during the loading notification.
+    if (disposed || generation !== epoch || key !== mine) return
+    const run = () => {
+      if (disposed || generation !== epoch || key !== mine) return
+      load(mine, query, cls)
+        .then((loaded) => {
+          if (disposed || generation !== epoch || key !== mine) return
+          // A continuation may have committed between first-page acceptance and this callback.
+          current = current && current.pages > loaded.pages ? current : loaded
+          emit({ hits: current.hits, hasMore: current.hasMore, loading: false, failed: false })
+        })
+        .catch(() => {
+          if (disposed || generation !== epoch || key !== mine) return
+          // A failure only surfaces when nothing cached stands in for it.
+          if (current) emit({ loading: false })
+          else emit({ hits: [], hasMore: false, loading: false, failed: true })
+        })
+    }
+    // Adopt a live prefetch immediately, including one that resolves before the debounce. A
+    // question no keystroke asked has no typing to wait out.
+    if (immediate || inflight.has(mine)) run()
+    else timer = setTimeout(run, debounceMs)
+  }
+
   const controller: SearchController = {
     state: () => state,
     subscribe(listener) {
@@ -228,49 +284,7 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
       }
     },
     search(query, asked = '') {
-      if (disposed) return
-      const cls = settleFilter(asked)
-      clearTimeout(timer)
-      const nextKey = keyOf(query, cls, pageSize)
-      const unchanged = key === nextKey
-      if (!unchanged) {
-        cancelPending()
-      }
-      key = nextKey
-      filter = cls
-      const mine = key
-      const epoch = generation
-      const retained = cache.get(key)
-      // A normalized same-query edit still owns its active pages, even if reuse evicted them.
-      const cached = unchanged && current ? current : retained
-      current = cached
-      if (cached) {
-        emit({ query, ...classState(cls), hits: cached.hits, hasMore: cached.hasMore, loading: false, failed: false })
-        if (cached.pages > 1) return
-      } else {
-        emit({ query, ...classState(cls), loading: true, failed: false })
-      }
-      // A listener may close or replace this session during the loading notification.
-      if (disposed || generation !== epoch || key !== mine) return
-      const run = () => {
-        if (disposed || generation !== epoch || key !== mine) return
-        load(mine, query, cls)
-          .then((loaded) => {
-            if (disposed || generation !== epoch || key !== mine) return
-            // A continuation may have committed between first-page acceptance and this callback.
-            current = current && current.pages > loaded.pages ? current : loaded
-            emit({ hits: current.hits, hasMore: current.hasMore, loading: false, failed: false })
-          })
-          .catch(() => {
-            if (disposed || generation !== epoch || key !== mine) return
-            // A failure only surfaces when nothing cached stands in for it.
-            if (current) emit({ loading: false })
-            else emit({ hits: [], hasMore: false, loading: false, failed: true })
-          })
-      }
-      // Adopt a live prefetch immediately, including one that resolves before the debounce.
-      if (inflight.has(mine)) run()
-      else timer = setTimeout(run, debounceMs)
+      searchFor(query, asked, false)
     },
     loadMore() {
       if (disposed || state.loading) return
@@ -314,7 +328,11 @@ function searchSession(datafeed: Pick<ChartDatafeed, 'search'>, options: SearchC
       onDispose()
     },
   }
-  return { controller, cancelPending }
+  const over = (source: Pick<ChartDatafeed, 'search'>): SearchSession => {
+    const own = completedCache()
+    return searchSession(source, options, own, () => own.clear())
+  }
+  return { controller, cancelPending, searchNow: (query, asked = '') => searchFor(query, asked, true), over }
 }
 
 /** How many recent picks a search surface lists. */

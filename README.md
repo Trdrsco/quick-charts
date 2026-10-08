@@ -1743,9 +1743,9 @@ reports through the `image` event (a refused copy falls back to a download). Eac
 in `ui`; hiding one removes the control and leaves its commands.
 
 ```ts
-import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'
+import { createChart, createUdfDatafeed, type ChartDatafeed } from '@trdrs/quickcharts'
 
-declare const portfolio: { name: string } | null
+declare const portfolio: { name: string; search: ChartDatafeed['search'] } | null
 
 const trimmed = createChart({
   container,
@@ -1753,7 +1753,7 @@ const trimmed = createChart({
   ui: { navigation: false, topBar: { layouts: false, image: false } },
   search: {
     classNames: { future: 'Futures', crypto: 'Crypto' },
-    scope: () => (portfolio ? { label: portfolio.name } : null),
+    scope: () => (portfolio ? { label: portfolio.name, search: portfolio.search } : null),
   },
   preferences: { savedTimeframes: ['1m', '15m', '1h', '1d'], layoutAutosave: true },
 })
@@ -1763,9 +1763,9 @@ trimmed.on('saveNeeded', () => note('the layout has unsaved changes'))
 The search dialog's class chips come from your datafeed's `config().classes`, named through
 `search.classNames`; a class you do not name wears its token. `search.spreads`,
 `search.allClasses` and `search.classSelection` choose how the classes and the spread operators are
-offered, as "Classes and spread operators" under Search describes. `search.scope` names what your
-search is limited to at the far edge of that strip, with the mark its `mark` paints; your datafeed
-decides what is found. The range presets read your
+offered, as "Classes and spread operators" under Search describes. `search.scope` offers a part of
+the catalog the viewer can limit the search to, as a chip at the far edge of that strip, as "A
+search scope" under Search describes. The range presets read your
 datafeed's optional `earliestBar(symbol)`: a preset deeper than the history you serve is disabled.
 
 ```ts
@@ -2452,6 +2452,75 @@ void multi
 ```
 
 `openSymbolSearch` and `mountSymbolSearch` take the same three options beside their `classes`.
+
+### A search scope
+
+`search.scope` offers a part of the catalog the viewer can limit the search to: a portfolio, a
+watchlist, or any other set of symbols you can search within. The symbol search shows it as a chip
+at the far edge of the class strip, wearing the scope's mark and label, and the chip is on each time
+the dialog opens unless the scope says `on: false`. `scope` is read each time the dialog opens, so
+it follows what your page has selected; null offers no chip.
+
+While the chip is on, the dialog searches with the scope's `search`, which the chart's search
+controller asks exactly as it asks your datafeed's: the query after the debounce, the selected
+classes as `cls` or `classes`, a page at a time through `limit` and `offset`, and a newer question
+retiring an older one's answer. Answer with a page, as your datafeed does. A dialog that opens with
+the chip on asks the scope at once, and the scope's completed pages are reused while the dialog is
+open and go when it closes: the widget's catalog cache holds your datafeed's pages alone. The list
+leads with the scope's `recents`, or with none when the scope keeps none. While the chip is off,
+the dialog searches your datafeed and leads with the chart's recents.
+
+Pressing the chip asks the other source the query and classes the dialog holds, and an answer that
+arrives for the state the viewer left is dropped. A pick is recorded in `search.recents` either way,
+and in the scope's `recents` too while the chip is on. The compare dialog, adding a comparison or
+changing one, offers no scope and searches your datafeed.
+
+| Field | What it is |
+|---|---|
+| `label` | The scope's name, written on the chip. |
+| `mark` | Paints the scope's mark into the chart's 18px box at the chip's leading edge, and returns what takes it down. Absent, the chip wears the label's initial. |
+| `search` | Searches within the scope, called as your datafeed's `search` is. Required. |
+| `recents` | The recent picks the list leads with while the chip is on, and where a pick made then is recorded too. Absent, the list leads with none. |
+| `on` | Whether the chip is on when the dialog opens. Default `true`. |
+
+The chip is a toggle button in the strip's tab order, after the class chips. `aria-pressed` says
+whether the search is limited, and its accessible name says what a press does: "Limit search to"
+and the scope's label, in the viewer's language.
+
+```ts
+import { createChart, createUdfDatafeed, memoryRecents, type SearchScope } from '@trdrs/quickcharts'
+
+declare const watchlist: { id: string; name: string; logo: string } | null
+
+const watchlistRecents = memoryRecents()
+
+const scoped = createChart({
+  container,
+  datafeed: createUdfDatafeed({ baseUrl: 'https://feed.example.com/udf' }),
+  search: {
+    scope: (): SearchScope | null => {
+      if (!watchlist) return null
+      const { id, name, logo } = watchlist
+      return {
+        label: name,
+        mark: ({ host, size }) => {
+          const image = document.createElement('img')
+          image.src = logo
+          image.alt = ''
+          image.width = size
+          image.height = size
+          host.append(image)
+          return () => image.remove()
+        },
+        // Asked as your datafeed is: the query, `cls` or `classes`, `limit` and `offset`.
+        search: (query, options) => myBackend.searchWatchlist(id, query, options),
+        recents: watchlistRecents,
+      }
+    },
+  },
+})
+void scoped
+```
 
 ### The picker, away from a chart
 

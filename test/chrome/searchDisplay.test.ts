@@ -292,7 +292,10 @@ describe('nested classes', () => {
     const [row] = s.subRows()
     expect(row!.getAttribute('role')).toBe('group')
     expect(row!.getAttribute('aria-label')).toBe('Spot')
-    expect(s.strip().getAttribute('role')).toBe('group')
+    // The strip's own chips are the labelled group the second row stands beneath.
+    const group = s.strip().querySelector<HTMLElement>(':scope > [role="group"]')!
+    expect(group.getAttribute('aria-label')).toBe('Asset class')
+    expect([...group.querySelectorAll('.qc-search-class')]).toEqual(s.topChips())
     // Hidden, the row's chips are out of the dialog's tab order.
     const reachable = (): string[] => focusables(s.box).filter((el) => el.classList.contains('qc-search-class')).map((el) => el.textContent ?? '')
     expect(reachable()).toEqual(['Any', 'Futures', 'Spot'])

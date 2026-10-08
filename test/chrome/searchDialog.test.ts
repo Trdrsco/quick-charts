@@ -1,14 +1,16 @@
 // @vitest-environment happy-dom
 // The symbol search dialog: the row model in each mode, the keyboard (arrows move the highlight,
-// Enter acts, Escape closes), the class strip, the spread operators, and the verbs, every one a
-// command: a pick sets the symbol, a compare pick adds at a placement, an added row removes.
+// Enter acts, Escape closes), the class strip, the scope chip, the spread operators, and the verbs,
+// every one a command: a pick sets the symbol, a compare pick adds at a placement, an added row
+// removes.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { dialogRows, openSearchDialog, rowLabels } from '../../src/ui/chrome/searchDialog'
-import type { ChartDatafeed, SymbolRow } from '../../src/datafeed'
+import type { ChartDatafeed, DatafeedSearchOptions, SearchPage, SymbolRow } from '../../src/datafeed'
 import type { SearchScope } from '../../src/widget/options'
 import { fakeWidget, press } from './harness'
-import { createSearchSessionOwner } from '../../src/search'
+import { createSearchSessionOwner, memoryRecents, type RecentsPort } from '../../src/search'
 import { resolveMarkPainters } from '../../src/markPainters'
+import { focusables } from '../../src/ui/controls/dom'
 
 const CATALOG: SymbolRow[] = [
   { symbol: 'ES', name: 'E-mini S&P 500', exchange: 'CME', type: 'future' },
@@ -43,19 +45,33 @@ const settle = async (): Promise<void> => {
 
 function open(
   mode: 'search' | 'compare' | 'change-symbol',
-  extra: { access?: (id: string) => boolean; classes?: string[]; scope?: SearchScope; onPick?(s: string): void; changeFrom?: string; catalog?: readonly SymbolRow[]; venueMark?: MarkHook<'exchange'>; dataSourceMark?: MarkHook<'dataSource'> } = {},
+  extra: {
+    access?: (id: string) => boolean
+    classes?: string[]
+    scope?: SearchScope | (() => SearchScope | null)
+    onPick?(s: string): void
+    changeFrom?: string
+    catalog?: readonly SymbolRow[]
+    /** The feed's own search, in place of the one over `catalog`. */
+    feedSearch?: ChartDatafeed['search']
+    recents?: RecentsPort
+    venueMark?: MarkHook<'exchange'>
+    dataSourceMark?: MarkHook<'dataSource'>
+  } = {},
 ) {
   const w = fakeWidget({ access: extra.access ? { command: extra.access } : undefined })
+  const feed = datafeed(extra.catalog)
+  const scope = extra.scope
   const dialog = openSearchDialog({
     host: w.overlays,
     i18n: w.i18n,
     icons: w.icons,
-    search: createSearchSessionOwner(datafeed(extra.catalog)).create(),
+    search: createSearchSessionOwner(extra.feedSearch ? { search: extra.feedSearch } : feed).create(),
     commands: w.commands,
-    recents: w.widget.recents,
+    recents: extra.recents ?? w.widget.recents,
     classes: () => extra.classes ?? null,
     classNames: { future: 'Futures' },
-    scope: () => extra.scope ?? null,
+    scope: typeof scope === 'function' ? scope : () => scope ?? null,
     curated: [{ symbol: 'NQ', title: 'Nasdaq' }],
     painters: resolveMarkPainters(extra),
     request: { mode, chart: w.chart.handle, changeFrom: extra.changeFrom, onPick: extra.onPick },
@@ -185,62 +201,6 @@ describe('search mode', () => {
     expect(strip.hidden).toBe(true)
   })
 
-  it('names the search scope and paints its host mark at the far edge of the class strip', () => {
-    const painted: number[] = []
-    const exchanges: string[] = []
-    const { dialog } = open('search', {
-      classes: ['future', 'crypto'],
-      scope: {
-        label: 'Northwind Watchlist',
-        mark: ({ host, size }) => {
-          painted.push(size)
-          host.appendChild(document.createElement('img'))
-          return () => undefined
-        },
-      },
-      venueMark: ({ exchange }) => { exchanges.push(exchange) },
-    })
-    const strip = dialog.element.querySelector<HTMLElement>('.qc-search-classes')!
-    const badge = strip.lastElementChild as HTMLElement
-    expect(badge.classList.contains('qc-search-scope')).toBe(true)
-    expect(badge.getAttribute('aria-label')).toBe('Northwind Watchlist')
-    expect(badge.textContent).toBe('Northwind Watchlist')
-    expect(badge.querySelector('img')).not.toBeNull()
-    expect(painted).toEqual([18])
-    // The scope wears its own mark: the venue painter is never asked for it.
-    expect(exchanges).not.toContain('Northwind Watchlist')
-  })
-
-  it('keeps the scope mark while results render, then releases it with the surface', async () => {
-    const disposed = vi.fn()
-    const { dialog } = open('search', {
-      scope: {
-        label: 'Northwind Watchlist',
-        mark: ({ host }) => {
-          host.appendChild(document.createElement('img'))
-          return () => {
-            disposed()
-            host.replaceChildren()
-          }
-        },
-      },
-    })
-    const badge = dialog.element.querySelector<HTMLElement>('.qc-search-scope')!
-    await settle()
-    expect(dialog.element.querySelectorAll('[role="option"]').length).toBeGreaterThan(0)
-    expect(badge.querySelector('img')).not.toBeNull()
-    expect(disposed).not.toHaveBeenCalled()
-    dialog.close()
-    await vi.waitFor(() => expect(disposed).toHaveBeenCalledTimes(1))
-    expect(disposed).toHaveBeenCalledTimes(1)
-  })
-
-  it('writes the scope initial when the host lends no mark', () => {
-    const { dialog } = open('search', { scope: { label: 'portfolio' } })
-    const badge = dialog.element.querySelector<HTMLElement>('.qc-search-scope')!
-    expect(badge.querySelector('.qc-search-scope-mark')!.textContent).toBe('P')
-  })
-
   it('shows the clear mark and its rule only over a query', async () => {
     const { input, dialog } = open('search')
     const clear = dialog.element.querySelector<HTMLButtonElement>('[aria-label="Clear"]')!
@@ -281,6 +241,273 @@ describe('search mode', () => {
     rows()[0]!.click()
     expect(w.chart.calls).toEqual([])
     expect(input.isConnected).toBe(true) // the dialog stays: nothing happened
+  })
+})
+
+/** What a scope holds: markets the feed lists under other tickers, so a row says which source
+ *  answered it. */
+const HELD: SymbolRow[] = [
+  { symbol: 'ESZ5', name: 'E-mini S&P 500 Dec', exchange: 'CME', type: 'future' },
+  { symbol: 'GCZ5', name: 'Gold Dec', exchange: 'COMEX', type: 'future' },
+]
+
+/** A scope over its own catalog that records every question it is asked. */
+function scopeOver(catalog: readonly SymbolRow[], extra: Partial<SearchScope> = {}): { scope: SearchScope; asks: { q: string; opts?: DatafeedSearchOptions }[] } {
+  const asks: { q: string; opts?: DatafeedSearchOptions }[] = []
+  const scope: SearchScope = {
+    label: 'Northwind Watchlist',
+    async search(q, opts) {
+      asks.push({ q, opts })
+      const needle = q.trim().toUpperCase()
+      return { hits: catalog.filter((r) => (!needle || r.symbol.includes(needle)) && (!opts?.cls || r.type === opts.cls)), hasMore: false }
+    },
+    ...extra,
+  }
+  return { scope, asks }
+}
+
+/** A search that answers when the test says, so an answer can arrive after the viewer moved on. */
+function heldSearch() {
+  const calls: { q: string; resolve(page: SearchPage): void }[] = []
+  return { calls, search: (q: string): Promise<SearchPage> => new Promise((resolve) => calls.push({ q, resolve })) }
+}
+
+const answer = (...symbols: string[]): SearchPage => ({ hits: symbols.map((symbol) => ({ symbol, name: symbol, exchange: 'X', type: 'future' })), hasMore: false })
+
+describe('the search scope', () => {
+  const chipOf = (dialog: { element: HTMLElement }): HTMLButtonElement | null => dialog.element.querySelector<HTMLButtonElement>('.qc-search-scope')
+  const symbols = (rows: () => HTMLElement[]): (string | undefined)[] => rows().map((r) => r.dataset.symbolRow)
+
+  it('opens on at the far edge of the class strip and asks the scope at once, never the feed', async () => {
+    const { scope, asks } = scopeOver(HELD)
+    const feedSearch = vi.fn(datafeed().search)
+    const { dialog, rows } = open('search', { classes: ['future', 'crypto'], scope, feedSearch })
+    const strip = dialog.element.querySelector<HTMLElement>('.qc-search-classes')!
+    const chip = chipOf(dialog)!
+    expect(strip.lastElementChild).toBe(chip)
+    expect(chip.getAttribute('aria-pressed')).toBe('true')
+    // An opening is no keystroke: the scope hears its first question before any debounce.
+    expect(asks).toEqual([{ q: '', opts: { limit: 50, cls: undefined } }])
+    await settle()
+    expect(symbols(rows)).toEqual(['ESZ5', 'GCZ5'])
+    expect(feedSearch).not.toHaveBeenCalled()
+  })
+
+  it('opens off when the scope says so, and searches the feed', async () => {
+    const { scope, asks } = scopeOver(HELD, { on: false })
+    const { dialog, rows } = open('search', { scope })
+    expect(chipOf(dialog)!.getAttribute('aria-pressed')).toBe('false')
+    await settle()
+    expect(symbols(rows)).toEqual(['ES', 'NQ', 'BTC/USD'])
+    expect(asks).toEqual([])
+  })
+
+  it('asks the same query and classes of the other source at each press', async () => {
+    const { scope, asks } = scopeOver(HELD)
+    const feed = datafeed()
+    const feedAsks: { q: string; opts?: DatafeedSearchOptions }[] = []
+    const { dialog, input, rows } = open('search', { classes: ['future', 'crypto'], scope, feedSearch: (q, opts) => (feedAsks.push({ q, opts }), feed.search(q, opts)) })
+    const chip = chipOf(dialog)!
+    await settle()
+    dialog.element.querySelectorAll<HTMLButtonElement>('.qc-search-class')[1]!.click()
+    input.value = 'e'
+    input.dispatchEvent(new Event('input'))
+    await settle()
+    expect(asks.at(-1)).toEqual({ q: 'e', opts: { limit: 50, cls: 'future' } })
+    expect(symbols(rows)).toEqual(['ESZ5'])
+    chip.click()
+    expect(chip.getAttribute('aria-pressed')).toBe('false')
+    await settle()
+    expect(feedAsks).toEqual([{ q: 'e', opts: { limit: 50, cls: 'future' } }])
+    expect(symbols(rows)).toEqual(['ES'])
+    // Back on, the scope's answer to the same question stands at once while it is asked again.
+    chip.click()
+    expect(chip.getAttribute('aria-pressed')).toBe('true')
+    expect(symbols(rows)).toEqual(['ESZ5'])
+  })
+
+  it('pages the scope a page at a time, as it pages the feed', async () => {
+    const wide: SymbolRow[] = Array.from({ length: 120 }, (_, i) => ({ symbol: `W${i}`, name: `W${i}`, exchange: 'X', type: 'future' }))
+    const search = vi.fn(async (_q: string, opts?: DatafeedSearchOptions): Promise<SearchPage> => {
+      const offset = opts?.offset ?? 0
+      return { hits: wide.slice(offset, offset + 50), hasMore: offset + 50 < wide.length }
+    })
+    const { input, rows } = open('search', { scope: { label: 'Wide', search } })
+    await settle()
+    expect(rows()).toHaveLength(50)
+    for (let i = 0; i < 45; i++) press(input, 'ArrowDown')
+    await settle()
+    expect(search).toHaveBeenLastCalledWith('', { limit: 50, cls: undefined, offset: 50 })
+    expect(rows()).toHaveLength(100)
+  })
+
+  it('drops an answer that arrives for the state the viewer left', async () => {
+    const feed = heldSearch()
+    const held = heldSearch()
+    const { dialog, rows } = open('search', { scope: { label: 'Northwind Watchlist', search: held.search }, feedSearch: feed.search })
+    const chip = chipOf(dialog)!
+    expect(held.calls.map((c) => c.q)).toEqual([''])
+    chip.click()
+    await settle()
+    expect(feed.calls.map((c) => c.q)).toEqual([''])
+    // The scope answers the question the viewer left after they left it.
+    held.calls[0]!.resolve(answer('LATE-SCOPE'))
+    await settle()
+    expect(symbols(rows)).toEqual([])
+    chip.click()
+    await settle()
+    expect(held.calls.map((c) => c.q)).toEqual(['', ''])
+    // And the feed, the other way.
+    feed.calls[0]!.resolve(answer('LATE-FEED'))
+    await settle()
+    expect(symbols(rows)).toEqual([])
+    held.calls[1]!.resolve(answer('SCOPED'))
+    await settle()
+    expect(symbols(rows)).toEqual(['SCOPED'])
+  })
+
+  it('lists the scope’s recents while on and the chart’s while off, and records a pick in the scope in both', async () => {
+    const chart = memoryRecents()
+    chart.promote(CATALOG[1]!)
+    const kept = memoryRecents()
+    kept.promote(HELD[1]!)
+    const { scope } = scopeOver(HELD, { recents: kept })
+    const first = open('search', { scope, recents: chart })
+    const chip = chipOf(first.dialog)!
+    await settle()
+    expect(symbols(first.rows)).toEqual(['GCZ5', 'ESZ5'])
+    chip.click()
+    await settle()
+    expect(symbols(first.rows)).toEqual(['NQ', 'ES', 'BTC/USD'])
+    chip.click()
+    expect(symbols(first.rows)).toEqual(['GCZ5', 'ESZ5'])
+    first.rows().find((r) => r.dataset.symbolRow === 'ESZ5')!.click()
+    expect(first.w.chart.calls).toContain('symbol:ESZ5')
+    expect(kept.list().map((r) => r.symbol)).toEqual(['ESZ5', 'GCZ5'])
+    expect(chart.list().map((r) => r.symbol)).toEqual(['ESZ5', 'NQ'])
+    // A pick with the chip off is the chart's alone.
+    const second = open('search', { scope, recents: chart })
+    chipOf(second.dialog)!.click()
+    await settle()
+    second.rows().find((r) => r.dataset.symbolRow === 'ES')!.click()
+    expect(chart.list().map((r) => r.symbol)).toEqual(['ES', 'ESZ5', 'NQ'])
+    expect(kept.list().map((r) => r.symbol)).toEqual(['ESZ5', 'GCZ5'])
+  })
+
+  it('lists no recents in a scope that keeps none, and records its picks in the chart’s', async () => {
+    const chart = memoryRecents()
+    chart.promote(CATALOG[1]!)
+    const { scope } = scopeOver(HELD)
+    const { rows } = open('search', { scope, recents: chart })
+    await settle()
+    expect(symbols(rows)).toEqual(['ESZ5', 'GCZ5'])
+    rows()[1]!.click()
+    expect(chart.list().map((r) => r.symbol)).toEqual(['GCZ5', 'NQ'])
+  })
+
+  it('is a toggle button after the classes in the tab order, named for what a press does', () => {
+    const { scope } = scopeOver(HELD)
+    const { dialog } = open('search', { classes: ['future', 'crypto'], scope })
+    const chip = chipOf(dialog)!
+    expect(chip.tagName).toBe('BUTTON')
+    expect(chip.type).toBe('button')
+    expect(chip.tabIndex).toBe(0)
+    expect(chip.getAttribute('aria-label')).toBe('Limit search to Northwind Watchlist')
+    expect(chip.title).toBe('Limit search to Northwind Watchlist')
+    expect(chip.querySelector('.qc-button-text')!.textContent).toBe('Northwind Watchlist')
+    // The classes are a labelled group of their own; the scope is no class and stands beside it.
+    const group = dialog.element.querySelector<HTMLElement>('[role="group"][aria-label="Asset class"]')!
+    expect(group.contains(chip)).toBe(false)
+    expect(chip.parentElement).toBe(group.parentElement)
+    const reachable = focusables(dialog.element).filter((el) => el.matches('.qc-search-class, .qc-search-scope'))
+    expect(reachable.map((el) => el.getAttribute('aria-label'))).toEqual(['All', 'Futures', 'crypto', 'Limit search to Northwind Watchlist'])
+    // A press keeps the focus where it is: the chip is never rebuilt under it.
+    chip.focus()
+    chip.click()
+    expect(document.activeElement).toBe(chip)
+    expect(chip.getAttribute('aria-pressed')).toBe('false')
+    chip.click()
+    expect(chip.getAttribute('aria-pressed')).toBe('true')
+    press(chip, 'Escape')
+    expect(dialog.open()).toBe(false)
+  })
+
+  it('offers no chip to a host without a scope, and searches the feed with the chart’s recents', async () => {
+    const chart = memoryRecents()
+    chart.promote(CATALOG[1]!)
+    const { dialog, rows } = open('search', { classes: ['future', 'crypto'], recents: chart })
+    expect(chipOf(dialog)).toBeNull()
+    await settle()
+    expect(symbols(rows)).toEqual(['NQ', 'ES', 'BTC/USD'])
+    // A scope of null at the opening is none either, and a strip with nothing in it is not drawn.
+    const none = open('search', { scope: () => null })
+    expect(chipOf(none.dialog)).toBeNull()
+    expect(none.dialog.element.querySelector('.qc-search-classes')).toBeNull()
+  })
+
+  it('offers no scope to the compare family, which searches the feed', async () => {
+    const read = vi.fn(() => scopeOver(HELD).scope)
+    const compare = open('compare', { scope: read })
+    expect(chipOf(compare.dialog)).toBeNull()
+    expect(compare.dialog.element.querySelector('.qc-search-classes')).toBeNull()
+    const rekey = open('change-symbol', { scope: read, classes: ['future'], changeFrom: 'ES', onPick: () => undefined })
+    expect(chipOf(rekey.dialog)).toBeNull()
+    await settle()
+    expect(symbols(rekey.rows)).toEqual(['ES'])
+    expect(read).not.toHaveBeenCalled()
+  })
+
+  it('paints the host’s mark inside the chip, and the venue painter is never asked for it', () => {
+    const painted: number[] = []
+    const exchanges: string[] = []
+    const { scope } = scopeOver(HELD, {
+      mark: ({ host, size }) => {
+        painted.push(size)
+        host.appendChild(document.createElement('img'))
+        return () => undefined
+      },
+    })
+    const { dialog } = open('search', { classes: ['future', 'crypto'], scope, venueMark: ({ exchange }) => { exchanges.push(exchange) } })
+    const chip = chipOf(dialog)!
+    const mark = chip.querySelector<HTMLElement>('.qc-search-scope-mark')!
+    expect(chip.firstElementChild).toBe(mark)
+    expect(mark.dataset.qcHost).toBe('true')
+    expect(mark.getAttribute('aria-hidden')).toBe('true')
+    expect(mark.querySelector('img')).not.toBeNull()
+    expect(painted).toEqual([18])
+    expect(exchanges).not.toContain('Northwind Watchlist')
+  })
+
+  it('keeps the scope’s mark through renders and presses, then releases it with the surface', async () => {
+    const disposed = vi.fn()
+    const { scope } = scopeOver(HELD, {
+      mark: ({ host }) => {
+        host.appendChild(document.createElement('img'))
+        return () => {
+          disposed()
+          host.replaceChildren()
+        }
+      },
+    })
+    const { dialog } = open('search', { scope })
+    const chip = chipOf(dialog)!
+    await settle()
+    chip.click()
+    await settle()
+    chip.click()
+    await settle()
+    expect(dialog.element.querySelectorAll('[role="option"]').length).toBeGreaterThan(0)
+    expect(chip.querySelector('img')).not.toBeNull()
+    expect(disposed).not.toHaveBeenCalled()
+    dialog.close()
+    await vi.waitFor(() => expect(disposed).toHaveBeenCalledTimes(1))
+    expect(disposed).toHaveBeenCalledTimes(1)
+  })
+
+  it('writes the label’s initial where the host lends no mark', () => {
+    const { scope } = scopeOver(HELD, { label: 'portfolio' })
+    const { dialog } = open('search', { scope })
+    expect(chipOf(dialog)!.querySelector('.qc-search-scope-mark')!.textContent).toBe('P')
   })
 })
 
