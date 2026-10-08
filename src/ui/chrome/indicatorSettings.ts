@@ -8,6 +8,7 @@ import type { BuiltInIndicator } from '../../builtInIndicators'
 import { buildInputFields } from '../../inputsEditor'
 import { createColorControl, readColor, type ColorControlHandle } from '../controls/color'
 import { openInlinePanel } from '../controls/inlinePanel'
+import { selectField } from '../controls/select'
 import type { ChartHandle } from '../../widget/chart'
 import type { IndicatorInstance } from '../../widget/options'
 import { indicatorTitleOf } from '../../widget/indicators'
@@ -40,7 +41,7 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): DialogHandle
   const overrides = cloneOverrides(instance.overrides)
   let hidden = chart.indicators.hidden().includes(instance.id)
   const inputs = manifest.inputs ?? {}
-  const fields = buildInputFields(inputs, { ...manifestInputDefaults(manifest), ...instance.inputs }, builtIn.inputTitles)
+  const fields = buildInputFields(deps.icons, inputs, { ...manifestInputDefaults(manifest), ...instance.inputs }, builtIn.inputTitles)
   const tabs = [...(Object.keys(inputs).length > 0 ? [{ id: 'inputs', label: t('settings.tabInputs') }] : []), { id: 'style', label: t('settings.tabStyle') }, { id: 'visibility', label: t('settings.tabVisibility') }]
   let tab = tabs[0]!.id
 
@@ -72,7 +73,7 @@ export function openIndicatorSettings(deps: IndicatorSettingsDeps): DialogHandle
     const el = h('select', { class: 'qc-field', 'aria-label': label })
     for (const o of options) el.appendChild(h('option', { value: o.value, selected: o.value === current }, o.text))
     el.addEventListener('change', () => onChange(el.value))
-    return el
+    return selectField(el, deps.icons)
   }
   const lineStyleOptions = (): { value: string; text: string }[] => [
     { value: 'solid', text: t('settings.lineStyleSolid') },

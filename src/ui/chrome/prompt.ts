@@ -84,7 +84,7 @@ export function openNameDialog(options: NameDialogOptions): DialogHandle {
       append(
         box,
         ...promptHead(t, options.icons, options.title, () => dialog.close()),
-        h('label', { class: 'qc-name-field' }, h('span', { class: 'qc-name-label' }, options.label), h('span', { class: 'qc-name-box' }, field)),
+        h('label', { class: 'qc-name-field' }, h('span', { class: 'qc-name-label' }, options.label), h('span', { class: 'qc-field qc-name-box' }, field)),
         h('div', { class: 'qc-prompt-actions' }, button({ label: t('layouts.cancel'), text: t('layouts.cancel'), className: 'qc-button--secondary', onClick: () => dialog.close() }), verb),
       )
     },

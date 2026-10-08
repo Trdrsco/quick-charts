@@ -111,14 +111,18 @@
   font-size: 14px;
 }
 
+/* A color here keeps its swatch: a 38 by 34 box on the raised fill, its well 3px in from the edge on
+ * a corner that follows the box's. The edge, its step under the pointer and the focus ring are the
+ * field's own, and a well that cannot be used stands on the read-only fill as every field does. */
 [data-qc-theme] .qc-settings-menu .qc-settings-row .qc-drawing-swatch-button {
   box-sizing: border-box;
   width: 38px;
   height: 34px;
   padding: 3px;
+}
+
+[data-qc-theme] .qc-settings-menu .qc-settings-row .qc-drawing-swatch-button:enabled {
   background: var(--qc-chrome-surfaceRaised);
-  border-color: var(--qc-chrome-fieldBorder);
-  border-radius: 6px;
 }
 
 [data-qc-theme] .qc-settings-menu .qc-settings-row .qc-drawing-well {

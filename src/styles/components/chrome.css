@@ -384,14 +384,3 @@
 [data-qc-theme] .qc-inline-panel {
   padding: 0 6px 6px;
 }
-
-/* The shared color control inside a chrome row is the drawing field at the row's own height. */
-[data-qc-theme] .qc-settings-row .qc-drawing-swatch-button {
-  height: 24px;
-  padding: 0 4px;
-}
-
-[data-qc-theme] .qc-settings-row .qc-drawing-well {
-  width: 20px;
-  height: 16px;
-}

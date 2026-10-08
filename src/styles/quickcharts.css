@@ -137,34 +137,145 @@
   border-color: var(--qc-state-pressed);
 }
 
+/* Fields -------------------------------------------------------------------------------------- */
+
+/* A field is one box wherever the chart draws it: a text field, a select, a number field or a color
+ * well. A 1px edge rounds an 8px corner around a clear ground, 34px tall, with its words at 14 on 18
+ * and 8px in from the outer edge. */
 [data-qc-theme] .qc-field {
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 7px;
   color: var(--qc-text-primary);
   font: inherit;
-  background: var(--qc-chrome-surfaceRaised);
-  border: 1px solid var(--qc-chrome-border);
-  border-radius: var(--qc-chrome-radius);
+  font-size: var(--qc-text-fontSizeBase);
+  line-height: 18px;
+  background: transparent;
+  border: 1px solid var(--qc-control-fieldEdge);
+  border-radius: 8px;
+  transition: border-color var(--qc-motion-durationFast) var(--qc-motion-easingLinear), box-shadow var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
 [data-qc-theme] .qc-field::placeholder {
   color: var(--qc-text-muted);
 }
 
+/* The states stand in the order they outrank one another: the pointer steps the edge up, a field that
+ * cannot be edited and a refused value each outrank the pointer, and focus outranks them all. */
+[data-qc-theme] .qc-field:hover {
+  border-color: var(--qc-control-fieldEdgeHover);
+}
+
+/* A field that cannot be edited stands on the read-only fill, its edge at rest under the pointer. A
+ * disabled one stands its words back too. */
+[data-qc-theme] .qc-field[readonly] {
+  background: var(--qc-control-fieldFill);
+  border-color: var(--qc-control-fieldEdge);
+}
+
+[data-qc-theme] .qc-field:disabled,
+[data-qc-theme] .qc-field[aria-disabled='true'] {
+  color: var(--qc-text-muted);
+  background: var(--qc-control-fieldFill);
+  border-color: var(--qc-control-fieldEdge);
+  cursor: default;
+}
+
+/* A value the field refuses turns its edge the invalid color. A native constraint, a number past its
+ * bounds or off its step, says so once the viewer has left the field, so a number on its way to a
+ * valid one never turns red while it is typed. `:user-invalid` stands in a rule of its own, so a
+ * browser that does not read it drops that rule alone. */
+[data-qc-theme] .qc-field[aria-invalid='true'] {
+  border-color: var(--qc-control-fieldInvalid);
+}
+
+[data-qc-theme] .qc-field:user-invalid:not(:focus) {
+  border-color: var(--qc-control-fieldInvalid);
+}
+
+/* Focus draws a 2px ring over the edge, the edge itself and the pixel inside it, so the ring follows
+ * the corner and stays inside the box, where no scrolling surface clips it. A text field, a select
+ * and a number field wear it whenever they have the keyboard; a color well and a list button wear it
+ * when the keyboard brought it to them, as every button does. A refused value rings in the invalid
+ * color. */
+[data-qc-theme] .qc-field:not(button):focus,
+[data-qc-theme] .qc-field:focus-visible {
+  border-color: var(--qc-state-focusRing);
+  box-shadow: inset 0 0 0 1px var(--qc-state-focusRing);
+}
+
+[data-qc-theme] .qc-field[aria-invalid='true']:not(button):focus,
+[data-qc-theme] .qc-field[aria-invalid='true']:focus-visible {
+  border-color: var(--qc-control-fieldInvalid);
+  box-shadow: inset 0 0 0 1px var(--qc-control-fieldInvalid);
+}
+
+/* A select draws its own chevron: the 18px mark in the muted ink, in a 20 by 28 slot 2px in from the
+ * end of the box. A native select gives up the slot's room and takes the press the slot lets
+ * through; a list button lays the slot out after its face and turns the mark while its list is open,
+ * keyed on its own state, so a list button inside some other open thing does not turn. */
+[data-qc-theme] .qc-select {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+[data-qc-theme] .qc-select > .qc-field {
+  flex: 1 1 auto;
+  padding-inline-end: 25px;
+  appearance: none;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-select-chevron {
+  display: flex;
+  flex: 0 0 20px;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 28px;
+  color: var(--qc-text-muted);
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-select > .qc-select-chevron {
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-end: 3px;
+}
+
+[data-qc-theme] .qc-select-chevron > svg {
+  transition: rotate var(--qc-motion-durationSlow) var(--qc-motion-easingSpring);
+}
+
+[data-qc-theme] [aria-expanded='true'] > .qc-select-chevron > svg {
+  rotate: 180deg;
+}
+
+[data-qc-theme] .qc-field:disabled ~ .qc-select-chevron,
+[data-qc-theme] .qc-field:disabled > .qc-select-chevron {
+  color: var(--qc-text-disabled);
+}
+
+/* Focus --------------------------------------------------------------------------------------- */
+
 [data-qc-theme] :focus-visible {
   outline: 2px solid var(--qc-state-focusRing);
   outline-offset: 1px;
 }
 
-/* A field inside its own box says it has the keyboard with the caret in it: the search fields, the
- * name field whose box turns the accent, and the two the color mixer carries. The ring that marks a
- * focused control would draw a second box inside the field's own, so those inputs stand out of it,
- * and hold that
- * against a host's focus rule from a later cascade layer too: an important declaration in an earlier
- * layer outranks a normal one in a later layer. */
+/* A field shows it has the keyboard on its own box: a search field by the caret in it, every other
+ * field by the ring its edge turns. The outline that marks a focused control would draw a second
+ * ring outside the field's own, so fields stand out of it, and hold that against a host's focus rule
+ * from a later cascade layer too: an important declaration in an earlier layer outranks a normal one
+ * in a later layer. */
 [data-qc-theme] .qc-search-input:focus-visible,
 [data-qc-theme] .qc-picker-search:focus-visible,
 [data-qc-theme] .qc-layouts-search-input:focus-visible,
+[data-qc-theme] .qc-field:focus-visible,
 [data-qc-theme] .qc-name-input:focus-visible,
-[data-qc-theme] .qc-drawing-hex:focus-visible {
+[data-qc-theme] .qc-drawing-hex:focus-visible,
+[data-qc-theme] .qc-drawing-opacity-readout:focus-visible {
   outline: none !important;
 }
 
@@ -936,15 +1047,14 @@
   gap: 8px;
 }
 
+/* The fields are the chart's own 34px boxes, so an input reads the same here as in the settings
+ * dialog: a number at the drawing settings' middle width, and a select no narrower. */
 [data-qc-theme] .qc-inputs-field {
-  width: 72px;
-  padding: 1px 4px;
-  font-size: var(--qc-text-fontSizeSmall);
+  width: 84px;
 }
 
 [data-qc-theme] .qc-inputs-select {
-  padding: 1px 2px;
-  font-size: var(--qc-text-fontSizeSmall);
+  min-width: 84px;
 }
 
 [data-qc-theme] .qc-inputs-actions {
@@ -982,8 +1092,16 @@
     background: Highlight;
   }
 
-  [data-qc-theme] .qc-button:disabled {
+  [data-qc-theme] .qc-button:disabled,
+  [data-qc-theme] .qc-field:disabled {
     color: GrayText;
+  }
+
+  /* A field rings its focus in the system highlight, drawn the way its own ring is drawn. */
+  [data-qc-theme] .qc-field:not(button):focus,
+  [data-qc-theme] .qc-field:focus-visible {
+    border-color: Highlight;
+    box-shadow: inset 0 0 0 1px Highlight;
   }
 
   [data-qc-theme] :focus-visible {

@@ -13,6 +13,7 @@ import type { ChartTranslate } from '../../i18n'
 import { createColorControl, type ColorControlHandle } from '../controls/color'
 import { button, dismissOnOutside, el, focusFirst, menuKeys, ownPointer, placePanel, type PanelPlacement } from './dom'
 import { trackOverlay } from '../controls/overlays'
+import { selectChevron, selectField } from '../controls/select'
 import type { IconResolver } from '../icons/resolver'
 
 /** A settings row: the label in a fixed column, the controls left-aligned beside it. */
@@ -38,14 +39,15 @@ export function checkbox(label: string, value: boolean, onChange: (v: boolean) =
   return input
 }
 
-/** An enumerated value as a native select styled as a chart field: the value is the id the drawing
- *  stores, the label is what the row reads. */
-export function dropdown<T extends string>(label: string, options: readonly T[], value: T, labels: (v: T) => string, onChange: (v: T) => void): HTMLSelectElement {
+/** An enumerated value as a native select in the chart's field box, its chevron at the end of the
+ *  box: the value is the id the drawing stores, the label is what the row reads. Answers the box;
+ *  the select is its first child. */
+export function dropdown<T extends string>(icons: IconResolver, label: string, options: readonly T[], value: T, labels: (v: T) => string, onChange: (v: T) => void): HTMLElement {
   const select = el('select', { class: 'qc-field qc-drawing-select', 'aria-label': label }) as HTMLSelectElement
   for (const option of options) select.appendChild(el('option', { value: option, text: labels(option) }))
   select.value = value
   select.addEventListener('change', () => onChange(select.value as T))
-  return select
+  return selectField(select, icons)
 }
 
 /** A number field with its own up and down steppers, clamped to the bounds, rounded to the step's
@@ -250,12 +252,13 @@ function strokeRows(t: ChartTranslate, content: HTMLElement, options: SwatchButt
   }
 }
 
-/** A line-end picker for one side: the face is the current end drawn as its own icon, and the
- *  menu offers the two ends by icon and name. */
+/** A line-end picker for one side: a list button whose face is the current end drawn as its own
+ *  icon, with the field's chevron after it, and whose list offers the two ends by icon and name. */
 export function lineEndButton(t: ChartTranslate, icons: IconResolver, box: HTMLElement, side: 'left' | 'right', value: 'normal' | 'arrow', onChange: (v: 'normal' | 'arrow') => void): HTMLButtonElement {
   // Each style is one glyph drawn for the left end; the stylesheet mirrors the right end's.
   const face = (v: 'normal' | 'arrow'): SVGSVGElement => icons.icon(v === 'normal' ? 'lineEndNormal' : 'lineEndArrow')
   const b = button({ class: 'qc-field qc-drawing-line-end', label: t(side === 'left' ? 'drawing.leftEnd' : 'drawing.rightEnd'), icon: face(value) })
+  b.appendChild(selectChevron(icons))
   b.dataset.qcEnd = side
   b.setAttribute('aria-haspopup', 'listbox')
   b.setAttribute('aria-expanded', 'false')

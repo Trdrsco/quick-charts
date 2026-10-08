@@ -115,7 +115,7 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   const inertKeys = new Set(INERT_PROPS[type] ?? [])
   const sect = (key: string): boolean => key in props && !inertKeys.has(key) && (inputKeys.has(key) ? tab === 'Inputs' : tab === 'Style')
   const out: HTMLElement[] = []
-  const fontSize = (): HTMLElement => dropdown(t('drawing.fontSize'), FONT_SIZES, String(style.fontSize) as (typeof FONT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) }))
+  const fontSize = (): HTMLElement => dropdown(ctx.icons, t('drawing.fontSize'), FONT_SIZES, String(style.fontSize) as (typeof FONT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) }))
   const toggle = (key: string, text: ChartMessageKey): void => {
     if (sect(key)) out.push(toggleRow(t(text), !!props[key], (v) => ctx.patchProps({ [key]: v })))
   }
@@ -149,7 +149,7 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   }
   if ('extendLeft' in props && sect('extendLeft')) {
     const value = props.extendLeft && props.extendRight ? 'Both' : props.extendLeft ? 'Left' : props.extendRight ? 'Right' : 'None'
-    out.push(row(t('drawing.extend'), dropdown(t('drawing.extend'), ['None', 'Left', 'Right', 'Both'] as const, value, label(t, EXTEND_LABEL), (v) => ctx.patchProps({ extendLeft: v === 'Left' || v === 'Both', extendRight: v === 'Right' || v === 'Both' }))))
+    out.push(row(t('drawing.extend'), dropdown(ctx.icons, t('drawing.extend'), ['None', 'Left', 'Right', 'Both'] as const, value, label(t, EXTEND_LABEL), (v) => ctx.patchProps({ extendLeft: v === 'Left' || v === 'Both', extendRight: v === 'Right' || v === 'Both' }))))
   }
   toggle('middlePoint', 'drawing.middlePoint')
   toggle('showPriceLabels', 'drawing.priceLabels')
@@ -157,7 +157,7 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   toggle('showTime', 'drawing.timeLabel')
   toggle('middleLine', 'drawing.middleLine')
   if (sect('variant')) {
-    out.push(row(t('drawing.rowStyle'), dropdown(t('drawing.rowStyle'), ['original', 'schiff', 'modified_schiff', 'inside'] as const, props.variant as 'original', label(t, VARIANT_LABEL), (v) => ctx.patchProps({ variant: v }))))
+    out.push(row(t('drawing.rowStyle'), dropdown(ctx.icons, t('drawing.rowStyle'), ['original', 'schiff', 'modified_schiff', 'inside'] as const, props.variant as 'original', label(t, VARIANT_LABEL), (v) => ctx.patchProps({ variant: v }))))
   }
   if (sect('showPriceDelta')) {
     out.push(el('div', { class: 'qc-dialog-heading', text: t('drawing.sectionStats') }))
@@ -181,10 +181,10 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
       toggleRow(t('drawing.barsRange'), !!props.showBarsRange, (v) => ctx.patchProps({ showBarsRange: v })),
       toggleRow(t('drawing.dateTimeRange'), !!props.showDateTimeRange, (v) => ctx.patchProps({ showDateTimeRange: v })),
       toggleRow(t('drawing.angle'), !!props.showAngle, (v) => ctx.patchProps({ showAngle: v })),
-      row(t('drawing.statsPosition'), dropdown(t('drawing.statsPosition'), ['left', 'center', 'right'] as const, props.statsPosition as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ statsPosition: v }))),
+      row(t('drawing.statsPosition'), dropdown(ctx.icons, t('drawing.statsPosition'), ['left', 'center', 'right'] as const, props.statsPosition as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ statsPosition: v }))),
     )
   }
-  if (sect('direction')) out.push(row(t('drawing.direction'), dropdown(t('drawing.direction'), ['up', 'down'] as const, props.direction as 'up', label(t, UPDOWN_LABEL), (v) => ctx.patchProps({ direction: v }))))
+  if (sect('direction')) out.push(row(t('drawing.direction'), dropdown(ctx.icons, t('drawing.direction'), ['up', 'down'] as const, props.direction as 'up', label(t, UPDOWN_LABEL), (v) => ctx.patchProps({ direction: v }))))
   toggle('showPrices', 'drawing.prices')
   toggle('showLevels', 'drawing.levels')
   toggle('reverse', 'drawing.reverse')
@@ -233,9 +233,9 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   if (sect('url')) out.push(row(t('drawing.link'), textField(String(props.url ?? ''), t('drawing.link'), (v) => ctx.patchQuiet({ url: v }), { wide: true })))
   if (sect('rowsLayout')) {
     out.push(
-      row(t('drawing.rowsLayout'), dropdown(t('drawing.rowsLayout'), ['number', 'ticks'] as const, props.rowsLayout as 'number', label(t, ROWS_LAYOUT_LABEL), (v) => ctx.patchProps({ rowsLayout: v }))),
+      row(t('drawing.rowsLayout'), dropdown(ctx.icons, t('drawing.rowsLayout'), ['number', 'ticks'] as const, props.rowsLayout as 'number', label(t, ROWS_LAYOUT_LABEL), (v) => ctx.patchProps({ rowsLayout: v }))),
       row(t('drawing.rowSize'), numberInput(t, ctx.icons, { label: t('drawing.rowSize'), value: Number(props.rowSize), min: 1, max: 400, step: 1, onChange: (v) => ctx.patchProps({ rowSize: v }) })),
-      row(t('drawing.volume'), dropdown(t('drawing.volume'), ['updown', 'total', 'delta'] as const, props.volume as 'updown', label(t, PROFILE_VOLUME_LABEL), (v) => ctx.patchProps({ volume: v }))),
+      row(t('drawing.volume'), dropdown(ctx.icons, t('drawing.volume'), ['updown', 'total', 'delta'] as const, props.volume as 'updown', label(t, PROFILE_VOLUME_LABEL), (v) => ctx.patchProps({ volume: v }))),
       row(t('drawing.valueAreaVolume'), numberInput(t, ctx.icons, { label: t('drawing.valueAreaVolume'), value: Number(props.valueAreaVolume), min: 0, max: 95, step: 5, onChange: (v) => ctx.patchProps({ valueAreaVolume: v }) })),
     )
     if ('extendRight' in props) out.push(toggleRow(t('drawing.extendRight'), !!props.extendRight, (v) => ctx.patchProps({ extendRight: v })))
@@ -243,7 +243,7 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   if ('rowsLayout' in props && tab === 'Style') {
     out.push(
       row(t('drawing.widthPercent'), numberInput(t, ctx.icons, { label: t('drawing.widthPercent'), value: Number(props.widthPercent), min: 5, max: 100, step: 5, onChange: (v) => ctx.patchProps({ widthPercent: v }) })),
-      row(t('drawing.placement'), dropdown(t('drawing.placement'), ['left', 'right'] as const, props.placement as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ placement: v }))),
+      row(t('drawing.placement'), dropdown(ctx.icons, t('drawing.placement'), ['left', 'right'] as const, props.placement as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ placement: v }))),
       row(t('drawing.upDownVolume'), swatch('upColor'), swatch('downColor')),
       row(t('drawing.valueAreaUpDown'), swatch('valueAreaUpColor'), swatch('valueAreaDownColor')),
     )
@@ -253,8 +253,8 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
           t(level.label),
           checkbox(t('drawing.rowVisible', { name: t(level.label) }), !!props[`${level.key}Visible`], (v) => ctx.patchProps({ [`${level.key}Visible`]: v })),
           swatch(`${level.key}Color`),
-          dropdown(t('drawing.thickness'), ['1', '2', '3', '4'] as const, String(Math.min(4, Number(props[`${level.key}Width`]) || 1)) as '1', (v) => `${v}px`, (v) => ctx.patchProps({ [`${level.key}Width`]: Number(v) })),
-          dropdown(t('drawing.lineStyle'), ['solid', 'dashed', 'dotted'] as const, props[`${level.key}Style`] as 'solid', (v) => t(v === 'solid' ? 'drawing.lineSolid' : v === 'dashed' ? 'drawing.lineDashed' : 'drawing.lineDotted'), (v) => ctx.patchProps({ [`${level.key}Style`]: v })),
+          dropdown(ctx.icons, t('drawing.thickness'), ['1', '2', '3', '4'] as const, String(Math.min(4, Number(props[`${level.key}Width`]) || 1)) as '1', (v) => `${v}px`, (v) => ctx.patchProps({ [`${level.key}Width`]: Number(v) })),
+          dropdown(ctx.icons, t('drawing.lineStyle'), ['solid', 'dashed', 'dotted'] as const, props[`${level.key}Style`] as 'solid', (v) => t(v === 'solid' ? 'drawing.lineSolid' : v === 'dashed' ? 'drawing.lineDashed' : 'drawing.lineDotted'), (v) => ctx.patchProps({ [`${level.key}Style`]: v })),
         ),
       )
     }
@@ -263,9 +263,9 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
   if (sect('source')) {
     // The four price-source tokens are the vocabulary an indicator manifest writes them in, shown
     // as written.
-    out.push(row(t('drawing.source'), dropdown(t('drawing.source'), ['close', 'open', 'hl2', 'hlc3'] as const, props.source as 'close', (v) => v, (v) => ctx.patchProps({ source: v }))))
+    out.push(row(t('drawing.source'), dropdown(ctx.icons, t('drawing.source'), ['close', 'open', 'hl2', 'hlc3'] as const, props.source as 'close', (v) => v, (v) => ctx.patchProps({ source: v }))))
   }
-  if (sect('mode')) out.push(row(t('drawing.mode'), dropdown(t('drawing.mode'), ['bars', 'open', 'high', 'low', 'close', 'hl2'] as const, props.mode as 'bars', label(t, MODE_LABEL), (v) => ctx.patchProps({ mode: v }))))
+  if (sect('mode')) out.push(row(t('drawing.mode'), dropdown(ctx.icons, t('drawing.mode'), ['bars', 'open', 'high', 'low', 'close', 'hl2'] as const, props.mode as 'bars', label(t, MODE_LABEL), (v) => ctx.patchProps({ mode: v }))))
   toggle('mirrored', 'drawing.mirrored')
   toggle('flipped', 'drawing.flipped')
   if (sect('successBackColor')) {
@@ -304,7 +304,7 @@ export function styleRows(ctx: RowsContext): HTMLElement[] {
       row(
         t('drawing.risk'),
         numberInput(t, ctx.icons, { label: t('drawing.risk'), value: Number(props.risk), onChange: (v) => ctx.patchProps({ risk: v }) }),
-        dropdown(t('drawing.risk'), ['percent', 'money'] as const, props.riskDisplay as 'percent', (v) => (v === 'percent' ? '%' : '$'), (v) => ctx.patchProps({ riskDisplay: v })),
+        dropdown(ctx.icons, t('drawing.risk'), ['percent', 'money'] as const, props.riskDisplay as 'percent', (v) => (v === 'percent' ? '%' : '$'), (v) => ctx.patchProps({ riskDisplay: v })),
       ),
       row(t('drawing.lotSize'), numberInput(t, ctx.icons, { label: t('drawing.lotSize'), value: Number(props.lotSize), min: 0, step: 0.01, onChange: (v) => ctx.patchProps({ lotSize: v }) })),
       row(t('drawing.leverage'), numberInput(t, ctx.icons, { label: t('drawing.leverage'), value: Number(props.leverage), min: 1, max: 500, step: 1, onChange: (v) => ctx.patchProps({ leverage: v }) })),
@@ -371,11 +371,11 @@ export function textRows(ctx: RowsContext): HTMLElement[] {
       const alpha = alphaOf(style.textColor)
       ctx.patchStyle({ textColor: alpha < 1 ? withAlpha(c, alpha) : c })
     }, opacity: alphaOf(style.textColor), onOpacity: (v) => ctx.patchStyle({ textColor: withAlpha(style.textColor, v) }) })),
-    row(t('drawing.size'), dropdown(t('drawing.size'), FONT_SIZES, String(style.fontSize) as (typeof FONT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) }))),
+    row(t('drawing.size'), dropdown(ctx.icons, t('drawing.size'), FONT_SIZES, String(style.fontSize) as (typeof FONT_SIZES)[number], (v) => v, (v) => ctx.patchStyle({ fontSize: Number(v) }))),
     row(t('drawing.weight'), weight(style.bold, 'B', t('drawing.bold'), () => ctx.patchStyle({ bold: !style.bold })), weight(style.italic, 'I', t('drawing.italic'), () => ctx.patchStyle({ italic: !style.italic }))),
     area,
   ]
-  if ('align' in props) out.push(row(t('drawing.alignment'), dropdown(t('drawing.alignment'), ['left', 'center'] as const, props.align as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ align: v }))))
+  if ('align' in props) out.push(row(t('drawing.alignment'), dropdown(ctx.icons, t('drawing.alignment'), ['left', 'center'] as const, props.align as 'left', label(t, SIDE_LABEL), (v) => ctx.patchProps({ align: v }))))
   if (NO_STYLE_TAB.has(drawing.type)) {
     out.push(row(t('drawing.background'), swatchButton(t, box, { label: t('drawing.background'), value: style.fillColor, onPick: (c) => ctx.patchStyle({ fillColor: c, ...(style.fillOpacity === 0 ? { fillOpacity: 0.95 } : {}) }), opacity: style.fillOpacity, onOpacity: (v) => ctx.patchStyle({ fillOpacity: v }) })))
     if (drawing.type !== 'text') {

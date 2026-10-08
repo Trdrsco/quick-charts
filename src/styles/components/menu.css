@@ -224,41 +224,34 @@
   line-height: 21px;
 }
 
-/* The field's box draws its outline, which steps up under the pointer and turns the accent, doubled
- * outward, while the caret is in it. */
+/* The name's box is the chart's field box around a bare input that fills it: the box draws the edge,
+ * which steps up under the pointer, and rings while the caret is in it. The ring is the field's own,
+ * over the edge and following whatever corner the box has. */
 [data-qc-theme] .qc-name-box {
   display: flex;
-  height: 34px;
-  box-sizing: border-box;
-  align-items: center;
-  border: 1px solid var(--qc-chrome-fieldBorder);
-  border-radius: var(--qc-chrome-radius);
-}
-
-[data-qc-theme] .qc-name-box:hover {
-  border-color: var(--qc-chrome-borderStrong);
+  align-items: stretch;
+  padding: 0;
 }
 
 [data-qc-theme] .qc-name-box:focus-within {
   border-color: var(--qc-state-focusRing);
+  box-shadow: inset 0 0 0 1px var(--qc-state-focusRing);
 }
 
 [data-qc-theme] .qc-name-input {
-  min-width: 0;
-  height: 24px;
   flex: 1 1 auto;
-  padding: 0 8px;
-  color: var(--qc-text-primary);
+  min-width: 0;
+  height: 100%;
+  padding: 0 7px;
+  color: inherit;
   font: inherit;
-  font-size: calc(var(--qc-text-fontSizeBase) + 2px);
-  line-height: 24px;
   background: none;
   border: 0;
   outline: none;
 }
 
 [data-qc-theme] .qc-name-input::placeholder {
-  color: var(--qc-text-disabled);
+  color: var(--qc-text-muted);
 }
 
 [data-qc-theme] .qc-prompt-actions {
@@ -337,4 +330,12 @@
 
 [data-qc-theme] .qc-dialog-actions .qc-button {
   padding: 4px 12px;
+}
+
+/* Forced colors: the name's box rings its focus in the system highlight, as every field does. */
+@media (forced-colors: active) {
+  [data-qc-theme] .qc-name-box:focus-within {
+    border-color: Highlight;
+    box-shadow: inset 0 0 0 1px Highlight;
+  }
 }
