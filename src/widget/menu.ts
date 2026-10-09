@@ -6,7 +6,7 @@
 // the menu exactly as it refuses from the keyboard. Contributed rows carry their own action and
 // ride below the built-ins, so a host cannot displace the chart's own order.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
-import { mountMenu } from '../contextMenuUi'
+import { mountMenu, type ContextMenuExtraRow } from '../contextMenuUi'
 import type { ChartMenuAction } from '../contextMenu'
 import type { ChartExtensionHost, ChartExtensionMenuItem } from '../extension'
 import type { ChartI18n } from '../i18n'
@@ -34,6 +34,10 @@ export const MENU_COMMAND: Partial<Record<ChartMenuAction, string>> = {
 export interface MenuPlane {
   /** Raise the menu at a viewport point. False when the point holds no readable level. */
   raiseAt(clientX: number, clientY: number): boolean
+  /** The rows the host contributes for the level under a viewport point, the table there named
+   *  where the press landed on one: what a drawing's own menu carries for the host. Empty where the
+   *  point holds no readable level or no host contributes. */
+  itemsAt(clientX: number, clientY: number, table: { cell: boolean } | null): readonly ChartExtensionMenuItem[]
   /** Run the contributed row bound to a press, at the level under a viewport point, WITHOUT
    *  raising the menu. False when the point holds no readable level or no contributed row claims
    *  the press. */
@@ -74,6 +78,19 @@ export interface MenuDeps {
   shown?(command: string): boolean
 }
 
+/** The drawing plane's side of a right-click: the menu of the drawing the press landed on, raised
+ *  with the rows a host contributes for the table there, if it is one. */
+export interface DrawingMenuDoor {
+  openMenuAt(clientX: number, clientY: number, extras?: (table: { cell: boolean } | null) => readonly ContextMenuExtraRow[]): boolean
+}
+
+/** Raise the menu a right-click at a viewport point asks for: the drawing's own where the press
+ *  landed on a drawing, carrying the rows the host contributes for the level and, on a table, for
+ *  the table, and the chart's anywhere else. False where neither rose. */
+export function raiseMenuAt(drawings: DrawingMenuDoor, menu: MenuPlane, clientX: number, clientY: number): boolean {
+  return drawings.openMenuAt(clientX, clientY, (table) => menu.itemsAt(clientX, clientY, table)) || menu.raiseAt(clientX, clientY)
+}
+
 export function attachMenuPlane(deps: MenuDeps): MenuPlane {
   const menu = mountMenu(
     deps.host,
@@ -104,11 +121,11 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     if (price == null) return false
     deps.setLevel(price)
     const priceText = deps.formatter().format(price)
+    const table = deps.table?.() ?? null
     // Contributed rows are asked for at the raise, so they can depend on the level pressed, and
     // they carry their own actions: the chart routes nothing on their behalf.
     const extra: readonly ChartExtensionMenuItem[] =
-      deps.extensions()?.menuItems({ price, priceText, symbol: deps.symbol(), name: deps.symbolName(), timeframe: deps.timeframe(), clientX, clientY }) ?? []
-    const table = deps.table?.() ?? null
+      deps.extensions()?.menuItems({ price, priceText, symbol: deps.symbol(), name: deps.symbolName(), timeframe: deps.timeframe(), clientX, clientY, ...(table ? { table } : {}) }) ?? []
     menu.open(
       { clientX, clientY },
       {
@@ -155,8 +172,18 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     return true
   }
 
+  const itemsAt = (clientX: number, clientY: number, table: { cell: boolean } | null): readonly ChartExtensionMenuItem[] => {
+    const host = deps.extensions()
+    if (!host) return []
+    const price = priceAt(clientY)
+    if (price == null) return []
+    const priceText = deps.formatter().format(price)
+    return host.menuItems({ price, priceText, symbol: deps.symbol(), name: deps.symbolName(), timeframe: deps.timeframe(), clientX, clientY, ...(table ? { table } : {}) })
+  }
+
   return {
     raiseAt,
+    itemsAt,
     runShortcutAt,
     close: () => menu.close(),
     refresh: () => menu.refresh(),

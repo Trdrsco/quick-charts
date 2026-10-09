@@ -101,6 +101,10 @@ export interface ChartExtensionMenuContext {
   /** Viewport coordinates of the press. */
   clientX: number
   clientY: number
+  /** The table the press landed on, and whether a cell of it is being typed in; absent where it
+   *  landed on none. A press on a drawing raises that drawing's own menu, which carries the rows a
+   *  host contributes here in the places the chart's menu gives them. */
+  table?: { cell: boolean }
 }
 
 /** One filled or stroked shape of a contributed glyph, on the menu's own 28-unit grid. Path data

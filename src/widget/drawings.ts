@@ -58,6 +58,7 @@ import { commandShown, drawingToolPermitted, drawingToolShown } from './access'
 import { drawingToolOffered, type OfferedDrawingTools } from './drawingTools'
 import type { CommandRegistry } from './commands'
 import { drawingCancelAvailable, menuDrawing } from '../drawings/layer/attach'
+import type { ContextMenuExtraRow } from '../contextMenuUi'
 import { RECENT_COLOR_LIMIT, type ColorMemory } from '../ui/controls/color'
 import type { IconResolver } from '../ui/icons/resolver'
 
@@ -169,9 +170,10 @@ export interface DrawingsLayer {
   relabel(): void
   /** Re-render the surfaces after something they read moved (a preference, the layout). */
   refresh(): void
-  /** Raise the menu of the drawing the last right-click landed on at a viewport point. False where
-   *  it landed on none, or the drawings feature is off. */
-  openMenuAt(clientX: number, clientY: number): boolean
+  /** Raise the menu of the drawing the last right-click landed on at a viewport point, with the
+   *  rows `extras` gives for the table there, if it is one. False where it landed on none, or the
+   *  drawings feature is off. */
+  openMenuAt(clientX: number, clientY: number, extras?: (table: { cell: boolean } | null) => readonly ContextMenuExtraRow[]): boolean
   /** The set of contributed layers changed: re-apply what the eye is doing to the layers that
    *  exist now, releasing a subject that is gone, and re-list the eye's menu. */
   syncHideLayers(): void
@@ -741,7 +743,12 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       settingsBar?.render()
     },
     refresh,
-    openMenuAt: (clientX, clientY) => (menuDrawing(handle) ? (settingsBar?.openMenuAt(clientX, clientY) ?? false) : false),
+    openMenuAt: (clientX, clientY, extras) => {
+      const target = menuDrawing(handle)
+      if (!target || !settingsBar) return false
+      const table = target instanceof TableNote ? { cell: !!target.editingCell } : null
+      return settingsBar.openMenuAt(clientX, clientY, extras?.(table) ?? [])
+    },
     syncHideLayers,
     applyToolIntent: (arg) => verbs.arm(arg),
     rebindIdentity(id) {

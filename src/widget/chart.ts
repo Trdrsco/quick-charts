@@ -75,7 +75,7 @@ import { attachFling, type Fling } from './fling'
 import { attachPinch } from './pinch'
 import { attachFreePan } from './freePan'
 import { watchPlotArea, type PlotArea } from './plotArea'
-import { attachMenuPlane } from './menu'
+import { attachMenuPlane, raiseMenuAt } from './menu'
 import { commandShown } from './access'
 import { symbolNames } from '../symbolLabel'
 import { attachPointerPlane } from './pointer'
@@ -1131,8 +1131,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   if (menu) {
     gestures.addEventListener('contextmenu', (e) => {
-      // A right-click on a drawing raises the drawing's own menu; anywhere else, the chart's.
-      if (drawings.openMenuAt(e.clientX, e.clientY) || menu.raiseAt(e.clientX, e.clientY)) e.preventDefault()
+      // A right-click on a drawing raises the drawing's own menu, with the rows a host contributes
+      // for the level and, on a table, for the table; anywhere else, the chart's.
+      if (raiseMenuAt(drawings, menu, e.clientX, e.clientY)) e.preventDefault()
     })
   }
 

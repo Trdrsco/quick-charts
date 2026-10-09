@@ -21,6 +21,8 @@ import type { IconName } from '../controls/icons'
 import { openTemplateDeleteDialog, openTemplateNameDialog } from './templateDialog'
 import type { IconResolver } from '../icons/resolver'
 import { HIGHLIGHTER_WIDTHS } from './highlighterWidth'
+import { buildGlyph } from '../chrome/vector'
+import type { ContextMenuExtraRow } from '../../contextMenuUi'
 
 const WIDTHS = [1, 2, 3, 4] as const
 const FONT_SIZES = [10, 12, 14, 16, 20, 24, 28, 32, 40]
@@ -116,8 +118,10 @@ export interface SettingsBarDeps {
 export interface SettingsBarHandle {
   render(): void
   /** Raise the selected drawing's own menu at a viewport point, as a right-click on the drawing
-   *  does. False without a selection. */
-  openMenuAt(clientX: number, clientY: number): boolean
+   *  does, with the rows a host contributes for the press: its level actions after the copies and
+   *  its view switches after Remove, where the chart's menu stands them after its clipboard and its
+   *  removes. False without a selection. */
+  openMenuAt(clientX: number, clientY: number, extra?: readonly ContextMenuExtraRow[]): boolean
   destroy(): void
 }
 
@@ -341,7 +345,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
    *  panel. The More menu carries the order and visibility submenus, the copies and Hide. The menu
    *  a right-click on the drawing raises carries a table's own edits first, then the templates, the
    *  order and visibility submenus, the copies, Lock, Hide, Remove and the settings. */
-  const drawingMenu = (kind: 'more' | 'context', selected: SelectedDrawing): { element: HTMLElement; closeSub(): void } => {
+  const drawingMenu = (kind: 'more' | 'context', selected: SelectedDrawing, extra: readonly ContextMenuExtraRow[] = []): { element: HTMLElement; closeSub(): void } => {
     let sub: { kind: Submenu; close: () => void } | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
     const cancelClose = (): void => {
@@ -416,6 +420,13 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       }
       table.push(separator())
     }
+    // A host's rows, each its own glyph and keys, a ticked switch wearing the check.
+    const contributed = (row: ContextMenuExtraRow): HTMLButtonElement => {
+      const glyph = row.checked ? deps.icons.icon('check') : buildGlyph(row.icon)
+      return plain(menuRow(row.label, () => row.run(), { ...(glyph ? { icon: glyph } : { spacer: true }), ...(row.shortcut ? { hint: row.shortcut } : {}) }))
+    }
+    const level = extra.filter((row) => row.group !== 'view').map(contributed)
+    const view = extra.filter((row) => row.group === 'view').map(contributed)
     const element = menuOf(
       t('drawing.drawingMenu'),
       'wide',
@@ -426,10 +437,12 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       separator(),
       clone,
       copy,
+      ...(level.length ? [separator(), ...level] : []),
       separator(),
       plain(menuRow(t(selected.locked ? 'drawing.unlock' : 'drawing.lock'), () => deps.run('chart.drawings.lock', !selected.locked), { icon: deps.icons.icon(selected.locked ? 'lockOpen' : 'lockClosed'), command: 'chart.drawings.lock' })),
       hide,
       plain(menuRow(t('drawing.remove'), () => deps.run('chart.drawings.deleteSelected'), { icon: deps.icons.icon('trash28'), hint: t('drawing.hintRemove'), command: 'chart.drawings.deleteSelected' })),
+      ...(view.length ? [separator(), ...view] : []),
       separator(),
       plain(menuRow(t('menu.settings'), () => deps.run('chart.drawings.settings'), { icon: deps.icons.icon('gear'), command: 'chart.drawings.settings' })),
     )
@@ -670,11 +683,11 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
   render()
   return {
     render,
-    openMenuAt(clientX, clientY) {
+    openMenuAt(clientX, clientY, extra = []) {
       const selected = deps.selected()
       if (!selected) return false
       closeOpen()
-      const menu = drawingMenu('context', selected)
+      const menu = drawingMenu('context', selected, extra)
       const close = openPopover(deps.chrome, pointAnchor(clientX, clientY), menu.element, 'below', () => {
         menu.closeSub()
         if (closePanel === close) {

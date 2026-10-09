@@ -22,9 +22,13 @@ import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import type { DrawingAssetPort } from '../../src/drawings/index'
 import type { PlacedImage } from '../../src/drawings'
 import { click, drag, fakeChart, pointer } from '../drawings/fakeChart'
+import type { ChartExtensionHost, ChartExtensionMenuContext, ChartExtensionMenuItem } from '../../src/extension'
+import { attachMenuPlane, raiseMenuAt } from '../../src/widget/menu'
+import { createPriceFormatter } from '../../src/priceFormatter'
 import { ownIcons } from '../ownIcons'
 
 interface Rig {
+  fake: ReturnType<typeof fakeChart>
   chrome: HTMLElement
   gestures: HTMLElement
   prefs: () => DrawingPreferences
@@ -114,6 +118,7 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     drawingVerbs: () => plane.verbs,
   })
   return {
+    fake,
     chrome,
     gestures,
     prefs: () => prefs,
@@ -553,6 +558,73 @@ describe('the plane through the registry', () => {
     expect(menu.querySelector('.qc-menu-label')?.textContent).toBe('Template')
     ;[...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((row) => row.textContent?.startsWith('Remove'))!.click()
     expect(plane.api!.counts().total).toBe(0)
+  })
+
+  it('carries a host’s rows into a drawing’s own menu at the chart menu’s places, the table named where the right-click lands on one', () => {
+    const { fake, chrome, gestures, run, plane } = make()
+    const asked: ChartExtensionMenuContext[] = []
+    const ran: string[] = []
+    const host = {
+      menuItems: (context: ChartExtensionMenuContext): ChartExtensionMenuItem[] => {
+        asked.push(context)
+        if (!context.table) return [{ id: 'host.level', label: 'Alert here', run: () => void ran.push('level') }]
+        return [
+          { id: 'host.table', label: context.table.cell ? 'Copy the cell' : 'Copy the table', run: () => void ran.push('table') },
+          { id: 'host.view', label: 'Show table grid', group: 'view', checked: true, run: () => void ran.push('view') },
+        ]
+      },
+    } as unknown as ChartExtensionHost
+    const commands = createCommandRegistry()
+    const menu = attachMenuPlane({
+      icons: ownIcons(),
+      chart: fake.chart,
+      series: () => fake.series,
+      gestures,
+      host: chrome,
+      i18n: createChartI18n(),
+      commands: commands.registry,
+      formatter: () => createPriceFormatter({ pricescale: 100, minmov: 1 }),
+      minMove: () => 0.01,
+      symbol: () => 'ES',
+      symbolName: () => 'ES / USD',
+      timeframe: () => '5m',
+      indicatorCount: () => 0,
+      drawingCount: () => plane.api!.count(),
+      extensions: () => host,
+      setLevel: () => undefined,
+    })
+    const rows = (): (string | null | undefined)[] =>
+      [...(chrome.querySelector('[role="menu"][aria-label="Drawing menu"]')?.children ?? [])].map((child) => (child.getAttribute('role') === 'separator' ? '-' : child.querySelector('.qc-menu-label')?.textContent))
+    run('chart.drawings.arm', 'table')
+    click(gestures, 100, 100)
+    plane.api!.deselect()
+    // A right-click on the table: the host is asked with the table named, its action rows follow
+    // the copies and its switches follow Remove, where the chart's menu stands them after its
+    // clipboard and its removes.
+    gestures.dispatchEvent(pointer('pointerdown', 150, 110, { button: 2 }))
+    expect(raiseMenuAt(plane, menu, 150, 110)).toBe(true)
+    expect(asked.at(-1)).toMatchObject({ table: { cell: false }, symbol: 'ES', clientX: 150, clientY: 110 })
+    expect(rows()).toEqual(['Add column to right', 'Add row below', '-', 'Template', 'Visual order', 'Visibility on timeframes', '-', 'Clone', 'Copy', '-', 'Copy the table', '-', 'Lock', 'Hide', 'Remove', '-', 'Show table grid', '-', 'Settings…'])
+    // A contributed switch wears the check, and a contributed row runs its own action.
+    const grid = [...chrome.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((row) => row.textContent === 'Show table grid')!
+    expect(grid.querySelector('.qc-menu-icon svg')).not.toBeNull()
+    ;[...chrome.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((row) => row.textContent === 'Copy the table')!.click()
+    expect(ran).toEqual(['table'])
+    // A right-click on another drawing carries the host's rows without a table.
+    run('chart.drawings.arm', 'trend_line')
+    click(gestures, 300, 300)
+    click(gestures, 500, 380)
+    plane.api!.deselect()
+    gestures.dispatchEvent(pointer('pointerdown', 400, 340, { button: 2 }))
+    expect(raiseMenuAt(plane, menu, 400, 340)).toBe(true)
+    expect(asked.at(-1)?.table).toBeUndefined()
+    expect(rows()).toContain('Alert here')
+    // On the chart's ground the chart's own menu rises, its rows as ever.
+    gestures.dispatchEvent(pointer('pointerdown', 900, 30, { button: 2 }))
+    expect(raiseMenuAt(plane, menu, 900, 30)).toBe(true)
+    expect(chrome.querySelector('[aria-label="Drawing menu"]')).toBeNull()
+    expect([...chrome.querySelectorAll('.qc-menu-row .qc-menu-label')].map((label) => label.textContent)).toContain('Alert here')
+    menu.destroy()
   })
 
   it('shows the sync switch in a layout and binds a new drawing to this chart when sync is off', () => {
