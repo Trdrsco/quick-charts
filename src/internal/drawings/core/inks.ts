@@ -13,11 +13,14 @@ export interface DrawingInks {
   text: string
   /** A quiet edge, such as a signpost plate's outline. */
   edge: string
+  /** The accent the chart marks what is being worked on with, such as the table cell being typed
+   *  in. */
+  accent: string
 }
 
 /** A theme's inks for drawings. */
-export function drawingInksOf(theme: Pick<SemanticTheme, 'drawing.selected' | 'drawing.handle' | 'drawing.text' | 'canvas.paneBorder'>): DrawingInks {
-  return { handleRing: theme['drawing.selected'], handleCenter: theme['drawing.handle'], text: theme['drawing.text'], edge: theme['canvas.paneBorder'] }
+export function drawingInksOf(theme: Pick<SemanticTheme, 'drawing.selected' | 'drawing.handle' | 'drawing.text' | 'canvas.paneBorder' | 'state.accent'>): DrawingInks {
+  return { handleRing: theme['drawing.selected'], handleCenter: theme['drawing.handle'], text: theme['drawing.text'], edge: theme['canvas.paneBorder'], accent: theme['state.accent'] }
 }
 
 /** The inks of a drawing no host gave a theme: the built-in light theme's. */

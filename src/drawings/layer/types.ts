@@ -91,6 +91,13 @@ export interface TextInlineEdit {
   /** A double-click that began with the click that opened this edit landed in the field. Answers
    *  whether it opened the drawing's settings, which ends the edit, rather than selecting a word. */
   doubleClick(): boolean
+  /** Tab, or Shift with Tab, in the field. Answers whether the edit moved on to the next place of
+   *  the drawing's words, or back to the one before, as a table's cells take turns; that commits
+   *  what was typed and opens a new edit there. Answering false leaves the key to the page. */
+  tab(backward: boolean): boolean
+  /** The viewer ended the edit from the field, with Escape or with Ctrl or Cmd and Enter: nothing
+   *  of the drawing stays marked as being typed in. The field commits its words after. */
+  finished(): void
 }
 
 /** A picture ready to place: what the image picker or a paste hands the layer. */

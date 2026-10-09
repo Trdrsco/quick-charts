@@ -10,8 +10,8 @@
 // settings bar render from the layer rather than from state of their own.
 import type { Time } from 'lightweight-charts'
 import { bundledGlyphSource, onBundledArtwork } from '../emoji'
-import { DrawingManager, parseTimeframeContext, restoreDrawings, viewportOf, visibilityPreset } from '../../internal/drawings/index'
-import type { IDrawing, InlineTextRules, SerializedDrawing, SourceBar, TextEditFrame } from '../../internal/drawings/index'
+import { DrawingManager, nextCell, parseTimeframeContext, restoreDrawings, TableNote, viewportOf, visibilityPreset } from '../../internal/drawings/index'
+import type { IDrawing, InlineTextRules, SerializedDrawing, SourceBar, TableCell, TextEditFrame } from '../../internal/drawings/index'
 import { inlineTextRules, settingsOnDoubleClick } from './inlineText'
 import type { ResourceRef } from '../../resources'
 import { drawingTools } from '../tools'
@@ -67,6 +67,12 @@ const SETTINGS_COMMAND = 'chart.drawings.settings'
 let idSeq = 0
 const nextId = (): string => `dww-${idSeq++}-${Date.now() % 1e9}`
 
+/** The drawing as a table, where it is one. */
+const tableOf = (drawing: IDrawing | null | undefined): TableNote | null => (drawing instanceof TableNote ? drawing : null)
+
+/** Whether two cells are one, or both no cell. */
+const sameCell = (a: TableCell | undefined, b: TableCell | undefined): boolean => (!a && !b) || (!!a && !!b && a.row === b.row && a.col === b.col)
+
 /** The drawing clipboard lasts the page and is shared by every layer on it, so a drawing copied
  *  on one chart pastes on another. */
 let clipboard: SerializedDrawing | null = null
@@ -75,6 +81,14 @@ let clipboard: SerializedDrawing | null = null
  * registers Cancel, so a completed Measure readout remains cancellable after the tool disarms
  * without publishing another drawing-session verb. */
 const canCancelByHandle = new WeakMap<DrawingsHandle, () => boolean>()
+
+/** The drawing the last right-click on a layer landed on, for the menu that follows it, kept off the
+ *  public handle as the cancel state is. */
+const menuDrawingByHandle = new WeakMap<DrawingsHandle, () => IDrawing | null>()
+
+export function menuDrawing(handle: DrawingsHandle): IDrawing | null {
+  return menuDrawingByHandle.get(handle)?.() ?? null
+}
 
 export function drawingCancelAvailable(handle: DrawingsHandle): boolean {
   return canCancelByHandle.get(handle)?.() ?? false
@@ -147,6 +161,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   let presetProps: Record<string, unknown> | null = null
   let allLocked = false
   let hovered: string | null = null
+  /** The drawing the last right-click landed on. */
+  let menuDrawingId: string | null = null
   let textEdit: TextEditSession | null = null
   /** Drawings of a tool that removes an empty drawing, holding no words: none is the viewer's until
    *  it holds words, so no document and no history step carries it. */
@@ -318,6 +334,10 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
   }
 
   const openTextEdit = (drawing: IDrawing, x: number, y: number, fresh: boolean, how: 'placement' | 'click' | 'command', cell?: TextEditSession['cell']): void => {
+    if (cell && tableOf(drawing)) {
+      openInlineEdit(drawing, x, y, fresh, how, null, cell)
+      return
+    }
     const rules = cell ? null : inlineTextRules(drawing)
     if (rules) {
       openInlineEdit(drawing, x, y, fresh, how, rules)
@@ -337,14 +357,18 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     }, 0)
   }
 
-  const openInlineEdit = (drawing: IDrawing, x: number, y: number, fresh: boolean, how: 'placement' | 'click' | 'command', rules: InlineTextRules): void => {
+  /** Open an inline edit of a drawing's words, or of one cell of a table's. */
+  const openInlineEdit = (drawing: IDrawing, x: number, y: number, fresh: boolean, how: 'placement' | 'click' | 'command', rules: InlineTextRules | null, cell?: TableCell): void => {
     // One edit at a time: an edit open elsewhere keeps what was typed in it.
-    if (textEdit && textEdit.id !== drawing.id) cancelTextEdit()
+    if (textEdit && (textEdit.id !== drawing.id || !sameCell(textEdit.cell, cell))) cancelTextEdit()
     if (textEdit?.id === drawing.id) return
     endPendingEdit()
-    const value = typeof drawing.props.text === 'string' ? drawing.props.text : ''
-    if (fresh && value === '' && rules.whenEmpty !== 'keep') wordless.add(drawing.id)
+    const table = cell ? tableOf(drawing) : null
+    if (cell && !table) return
+    const value = table && cell ? table.cellWords(cell) : typeof drawing.props.text === 'string' ? drawing.props.text : ''
+    if (rules && fresh && value === '' && rules.whenEmpty !== 'keep') wordless.add(drawing.id)
     drawing.textEditing = true
+    if (table && cell) table.editCell(cell)
     drawing.setTextDraft({ value, selectionStart: value.length, selectionEnd: value.length, composition: null, caret: true }, (frame) => {
       for (const listener of frameListeners) listener(frame)
     })
@@ -369,6 +393,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
         bold: s.bold,
         italic: s.italic,
         angle: 0,
+        ...(cell ? { cell } : {}),
         inline: {
           frame: () => {
             const vp = viewportOf(chart, series)
@@ -387,6 +412,16 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
             openSettings()
             return true
           },
+          tab: (backward) => {
+            if (textEdit !== session || !table || !cell) return false
+            const next = nextCell(table.props, cell, backward)
+            commitTextEdit(drawing.textDraft?.value ?? value)
+            if (manager.get(drawing.id)) openInlineEdit(drawing, x, y, false, 'command', null, next)
+            return true
+          },
+          finished: () => {
+            if (textEdit === session) table?.editCell(null)
+          },
         },
       }
       openedBy = how
@@ -403,11 +438,25 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
 
   /** Commit an inline edit: the words exactly as typed, the drawing still selected. A drawing of a
    *  tool that removes an empty drawing as its edit ends goes instead, when the edit left it
-   *  empty. */
+   *  empty. A table's cell takes its words and stays marked, so an edit of the table's rows and
+   *  columns can act on it. */
   const commitInline = (session: TextEditSession, value: string): void => {
     const drawing = manager.get(session.id)
     closeTextEdit(false)
     if (!drawing) return
+    const cell = session.cell
+    const table = cell ? tableOf(drawing) : null
+    if (table && cell) {
+      const cells = table.props.cells
+      if (cells[cell.row]?.[cell.col] !== undefined && cells[cell.row]![cell.col] !== value) {
+        const next = cells.map((row) => [...row])
+        next[cell.row]![cell.col] = value
+        table.applyProps({ cells: next })
+      }
+      persist()
+      changed()
+      return
+    }
     const whenEmpty = inlineTextRules(drawing)?.whenEmpty
     if (value === '' && whenEmpty === 'commit') {
       wordless.delete(drawing.id)
@@ -422,7 +471,6 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     persist()
     changed()
   }
-
   const commitTextEdit = (value: string): void => {
     const session = textEdit
     if (!session) return
@@ -493,6 +541,13 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     openTextEdit: (drawing, x, y, fresh, how = 'click') => openTextEdit(drawing, x, y, fresh, how),
     openCellEdit: (drawing, cell) => openTextEdit(drawing, cell.rect.x + cell.rect.width / 2, cell.rect.y + cell.rect.height / 2, false, 'click', { row: cell.row, col: cell.col }),
     endTextEdit: () => cancelTextEdit(),
+    noteMenuDrawing: (id) => {
+      menuDrawingId = id
+    },
+    releaseCell: () => {
+      if (textEdit?.cell) return
+      tableOf(manager.selected())?.editCell(null)
+    },
     openSettings,
     setHovered: (id) => {
       if (id === hovered) return
@@ -590,7 +645,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
    *  work that moved the selection is done, so a drawing the selection left because it was being
    *  removed is already gone. */
   const leaveSelection = (id: string): void => {
-    manager.get(id)?.setHoveredHandle(null)
+    manager.get(id)?.setPointer(null)
+    tableOf(manager.get(id))?.editCell(null)
     if (replacing) return
     if (pendingEdit?.drawing.id === id) endPendingEdit()
     if (textEdit?.id === id && textEdit.inline) commitInline(textEdit, manager.get(id)?.textDraft?.value ?? textEdit.value)
@@ -881,6 +937,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     },
   }
   canCancelByHandle.set(handle, () => !destroyed && (ctx.draft !== null || armed !== null || textEdit !== null || pendingEdit !== null || transient.size > 0))
+  menuDrawingByHandle.set(handle, () => (destroyed || menuDrawingId === null ? null : (manager.get(menuDrawingId) ?? null)))
   identityRebinders.set(handle, (id) => {
     if (destroyed || id === chartId) return
     closeTextEdit(false)

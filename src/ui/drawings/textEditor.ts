@@ -215,8 +215,12 @@ function mountInlineEditor(session: TextEditSession, inline: TextInlineEdit, dep
     if (e.isComposing || e.keyCode === 229) return
     if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) {
       e.preventDefault()
+      inline.finished()
       finish('commit')
+      return
     }
+    // Tab moves the edit on where the drawing's words take turns, as a table's cells do.
+    if (e.key === 'Tab' && !e.altKey && !e.ctrlKey && !e.metaKey && inline.tab(e.shiftKey)) e.preventDefault()
   })
   area.addEventListener('blur', () => {
     // The window losing the focus is not the viewer leaving the words: the focus comes back to the

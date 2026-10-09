@@ -51,6 +51,30 @@ const LINE_STYLE_GLYPH = 28
 /** The thickness marks by width, one per width the bar offers. */
 const THICKNESS_ICONS = { 1: 'lineThickness1', 2: 'lineThickness2', 3: 'lineThickness3', 4: 'lineThickness4' } as const satisfies Record<(typeof WIDTHS)[number], IconName>
 
+/** A control the bar may carry between its templates and its settings: a table's two edits, the
+ *  stroke's color, a mark's ink offered as its background, the fill, a price note's tag background,
+ *  the words' color and their size. */
+type BarControl = 'tableAddColumn' | 'tableAddRow' | 'line' | 'markFill' | 'fill' | 'labelFill' | 'text' | 'size'
+
+/** The controls a tool's bar carries, in their order, for the tools that lay out their own: the
+ *  words and the notes, the marks and the table. Every other tool's bar follows from what its paint
+ *  has. */
+const BAR_LAYOUTS: Readonly<Record<string, readonly BarControl[]>> = {
+  text: ['text', 'size'],
+  comment: ['text', 'fill', 'size'],
+  callout: ['text', 'fill', 'size'],
+  price_label: ['text', 'fill', 'size'],
+  note: ['line', 'fill', 'text'],
+  price_note: ['line', 'labelFill', 'text'],
+  signpost: ['size'],
+  pin: ['line', 'text', 'size'],
+  table: ['tableAddColumn', 'tableAddRow', 'line', 'fill', 'text'],
+  flag: ['markFill'],
+  arrow_marker: ['markFill', 'text'],
+  arrow_up: ['line', 'text'],
+  arrow_down: ['line', 'text'],
+}
+
 /** The thickness mark: an 18 by N bar with fully rounded ends, on the bar and in its menu. */
 function widthBar(icons: IconResolver, width: number): HTMLElement {
   const h = Math.max(1, Math.min(4, Math.round(width))) as keyof typeof THICKNESS_ICONS
@@ -383,13 +407,6 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     })
     controls.appendChild(templates)
 
-    if (selected.hasCells) {
-      controls.append(
-        gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.addRow'), text: t('drawing.addRowShort'), onClick: () => deps.run('chart.drawings.tableAddRow') }), 'chart.drawings.tableAddRow'),
-        gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.addColumn'), text: t('drawing.addColumnShort'), onClick: () => deps.run('chart.drawings.tableAddColumn') }), 'chart.drawings.tableAddColumn'),
-      )
-    }
-
     /** A color panel on the bar, the dialog's color popover in width: as wide as its palette
      *  wherever it opens. Choosing a colour is the whole of what the panel is for, so the choice
      *  closes it; moving the opacity is not a choice and leaves it standing. */
@@ -411,70 +428,99 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
         'qc-drawing-popover--color',
       )
     }
-    if (hasStroke) {
-      const color = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.drawingColor'), title: t('drawing.color') }), 'chart.drawings.style')
-      color.appendChild(colorFace('pencil16', selected.lineColor))
+
+    /** The bar's controls, each built on its own. */
+    const build: Record<BarControl, () => void> = {
+      // A table's own edits: a column right of the cell last typed in and a row below it, or at the
+      // table's ends where no cell is.
+      tableAddColumn: () => {
+        controls.appendChild(gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.addColumnRight'), title: t('drawing.addColumnRight'), icon: deps.icons.icon('tableAddColumn'), onClick: () => deps.run('chart.drawings.tableAddColumn') }), 'chart.drawings.tableAddColumn'))
+      },
+      tableAddRow: () => {
+        controls.appendChild(gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.addRowBelow'), title: t('drawing.addRowBelow'), icon: deps.icons.icon('tableAddRow'), onClick: () => deps.run('chart.drawings.tableAddRow') }), 'chart.drawings.tableAddRow'))
+      },
+      line: () => strokeColor('pencil16', 'drawing.drawingColor', 'drawing.color'),
+      // A mark's ink is its stroke color, which its bar offers as its background.
+      markFill: () => strokeColor('bucket', 'drawing.backgroundColor', 'drawing.background'),
+      fill: () => {
+        const fill = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), title: t('drawing.background') }), 'chart.drawings.style')
+        fill.appendChild(colorFace('bucket', selected.fillColor, selected.fillOpacity === 0 || deps.selectedProps()?.fillBackground === false))
+        fill.setAttribute('aria-haspopup', 'dialog')
+        fill.setAttribute('aria-expanded', 'false')
+        fill.dataset.qcControl = 'fill'
+        /** A background picked or faded here is one the viewer means to see, so a shape whose
+         *  background was switched off turns it back on. */
+        const showFill = (): void => {
+          if (deps.selectedProps()?.fillBackground === false) deps.run('chart.drawings.props', { fillBackground: true })
+        }
+        fill.addEventListener('click', () =>
+          colorPanel(fill, {
+            value: selected.fillColor,
+            onPick: (c) => {
+              style({ fillColor: c, ...(selected.fillOpacity === 0 ? { fillOpacity: 0.12 } : {}) })
+              showFill()
+            },
+            opacity: selected.fillOpacity,
+            onOpacity: (v) => {
+              style({ fillOpacity: v })
+              showFill()
+            },
+          }),
+        )
+        controls.appendChild(fill)
+      },
+      // A price note's tag wears a background of its own.
+      labelFill: () => propColor({ prop: 'labelBackgroundColor', icon: 'bucket', label: 'drawing.backgroundColor' }),
+      text: () => {
+        const text = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.textColor') }), 'chart.drawings.style')
+        text.appendChild(colorFace('textTee', selected.textColor))
+        text.setAttribute('aria-haspopup', 'dialog')
+        text.setAttribute('aria-expanded', 'false')
+        text.dataset.qcControl = 'text'
+        text.addEventListener('click', () =>
+          colorPanel(text, {
+            value: selected.textColor,
+            onPick: (c) => {
+              const alpha = alphaOf(selected.textColor)
+              style({ textColor: alpha < 1 ? withAlpha(c, alpha) : c })
+            },
+            opacity: alphaOf(selected.textColor),
+            onOpacity: (v) => style({ textColor: withAlpha(selected.textColor, v) }),
+          }),
+        )
+        controls.appendChild(text)
+      },
+      size: () => {
+        const size = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.fontSize'), text: String(selected.fontSize) }), 'chart.drawings.style')
+        size.setAttribute('aria-haspopup', 'menu')
+        size.setAttribute('aria-expanded', 'false')
+        size.dataset.qcControl = 'size'
+        size.addEventListener('click', () => openPanel(size, menuOf(t('drawing.fontSize'), 'content', ...FONT_SIZES.map((n) => menuRow(String(n), () => style({ fontSize: n }), { active: selected.fontSize === n })))))
+        controls.appendChild(size)
+      },
+    }
+
+    /** The stroke's color, worn with a glyph and a name of the tool's own. */
+    function strokeColor(icon: 'pencil16' | 'bucket', label: ChartMessageKey, title: ChartMessageKey): void {
+      const color = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t(label), title: t(title) }), 'chart.drawings.style')
+      color.appendChild(colorFace(icon, selected!.lineColor))
       color.setAttribute('aria-haspopup', 'dialog')
       color.setAttribute('aria-expanded', 'false')
       color.dataset.qcControl = 'color'
       color.addEventListener('click', () =>
         colorPanel(color, {
-          value: selected.lineColor,
-          onPick: (c) => pickLineColor(selected, c),
-          opacity: alphaOf(selected.lineColor),
-          onOpacity: (v) => pickLineOpacity(selected, v),
+          value: selected!.lineColor,
+          onPick: (c) => pickLineColor(selected!, c),
+          opacity: alphaOf(selected!.lineColor),
+          onOpacity: (v) => pickLineOpacity(selected!, v),
         }),
       )
       controls.appendChild(color)
     }
-    if (FILLABLE.has(type)) {
-      const fill = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), title: t('drawing.background') }), 'chart.drawings.style')
-      fill.appendChild(colorFace('bucket', selected.fillColor, selected.fillOpacity === 0 || deps.selectedProps()?.fillBackground === false))
-      fill.setAttribute('aria-haspopup', 'dialog')
-      fill.setAttribute('aria-expanded', 'false')
-      fill.dataset.qcControl = 'fill'
-      /** A background picked or faded here is one the viewer means to see, so a shape whose
-       *  background was switched off turns it back on. */
-      const showFill = (): void => {
-        if (deps.selectedProps()?.fillBackground === false) deps.run('chart.drawings.props', { fillBackground: true })
-      }
-      fill.addEventListener('click', () =>
-        colorPanel(fill, {
-          value: selected.fillColor,
-          onPick: (c) => {
-            style({ fillColor: c, ...(selected.fillOpacity === 0 ? { fillOpacity: 0.12 } : {}) })
-            showFill()
-          },
-          opacity: selected.fillOpacity,
-          onOpacity: (v) => {
-            style({ fillOpacity: v })
-            showFill()
-          },
-        }),
-      )
-      controls.appendChild(fill)
-    }
-    if (selected.hasText || FONT_TOOLS.has(type) || OWN_WORDS_TOOLS.has(type)) {
-      const text = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.textColor') }), 'chart.drawings.style')
-      text.appendChild(colorFace('textTee', selected.textColor))
-      text.setAttribute('aria-haspopup', 'dialog')
-      text.setAttribute('aria-expanded', 'false')
-      text.dataset.qcControl = 'text'
-      text.addEventListener('click', () =>
-        colorPanel(text, {
-          value: selected.textColor,
-          onPick: (c) => {
-            const alpha = alphaOf(selected.textColor)
-            style({ textColor: alpha < 1 ? withAlpha(c, alpha) : c })
-          },
-          opacity: alphaOf(selected.textColor),
-          onOpacity: (v) => style({ textColor: withAlpha(selected.textColor, v) }),
-        }),
-      )
-      controls.appendChild(text)
-    }
-    for (const channel of TOOL_COLOR_CHANNELS[type] ?? []) {
-      const current = typeof deps.selectedProps()?.[channel.prop] === 'string' ? String(deps.selectedProps()![channel.prop]) : selected.lineColor
+
+    /** A color the tool keeps in a prop of its own. */
+    function propColor(channel: { prop: string; icon: 'pencil16' | 'bucket' | 'textTee'; label: string }): void {
+      const current = typeof deps.selectedProps()?.[channel.prop] === 'string' ? String(deps.selectedProps()![channel.prop]) : selected!.lineColor
       const control = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t(channel.label as Parameters<typeof t>[0]) }), 'chart.drawings.style')
       control.appendChild(colorFace(channel.icon, current))
       control.setAttribute('aria-haspopup', 'dialog')
@@ -490,38 +536,45 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       )
       controls.appendChild(control)
     }
-    if (FONT_TOOLS.has(type) && type !== 'table') {
-      const size = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.fontSize'), text: String(selected.fontSize) }), 'chart.drawings.style')
-      size.setAttribute('aria-haspopup', 'menu')
-      size.setAttribute('aria-expanded', 'false')
-      size.dataset.qcControl = 'size'
-      size.addEventListener('click', () => openPanel(size, menuOf(t('drawing.fontSize'), 'content', ...FONT_SIZES.map((n) => menuRow(String(n), () => style({ fontSize: n }), { active: selected.fontSize === n })))))
-      controls.appendChild(size)
-    }
-    if (hasStroke && !NO_LINE_DECOR.has(type)) {
-      const widths: readonly number[] = type === 'highlighter' ? HIGHLIGHTER_WIDTHS : WIDTHS
-      const width = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.lineThickness'), title: t('drawing.thickness') }), 'chart.drawings.style')
-      width.append(widthBar(deps.icons, selected.lineWidth), el('span', { text: `${selected.lineWidth}px` }))
-      width.setAttribute('aria-haspopup', 'menu')
-      width.setAttribute('aria-expanded', 'false')
-      width.dataset.qcControl = 'width'
-      width.addEventListener('click', () =>
-        openPanel(width, menuOf(t('drawing.lineThickness'), 'content', ...widths.map((w) => menuRow(`${w}px`, () => style({ lineWidth: w }), { ...(type === 'highlighter' ? {} : { icon: widthBar(deps.icons, w) }), active: selected.lineWidth === w })))),
-      )
-      controls.appendChild(width)
-      if (!NO_DASH.has(type)) {
-        const current = LINE_STYLES.find((s) => s.id === selected.lineStyle) ?? LINE_STYLES[0]!
-        const lineStyle = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.lineStyle'), icon: deps.icons.icon(current.icon, LINE_STYLE_GLYPH) }), 'chart.drawings.style')
-        lineStyle.setAttribute('aria-haspopup', 'menu')
-        lineStyle.setAttribute('aria-expanded', 'false')
-        lineStyle.dataset.qcControl = 'lineStyle'
-        lineStyle.addEventListener('click', () =>
-          openPanel(
-            lineStyle,
-            menuOf(t('drawing.lineStyle'), 'content', ...LINE_STYLES.map((s) => menuRow(t(s.label), () => style({ lineStyle: s.id }), { icon: deps.icons.icon(s.icon, LINE_STYLE_GLYPH), active: selected.lineStyle === s.id }))),
-          ),
+
+    const layout = BAR_LAYOUTS[type]
+    if (layout) {
+      for (const control of layout) build[control]()
+    } else {
+      if (selected.hasCells) {
+        build.tableAddColumn()
+        build.tableAddRow()
+      }
+      if (hasStroke) build.line()
+      if (FILLABLE.has(type)) build.fill()
+      if (selected.hasText || FONT_TOOLS.has(type) || OWN_WORDS_TOOLS.has(type)) build.text()
+      for (const channel of TOOL_COLOR_CHANNELS[type] ?? []) propColor(channel)
+      if (FONT_TOOLS.has(type) && type !== 'table') build.size()
+      if (hasStroke && !NO_LINE_DECOR.has(type)) {
+        const widths: readonly number[] = type === 'highlighter' ? HIGHLIGHTER_WIDTHS : WIDTHS
+        const width = gate(button({ class: 'qc-button qc-drawing-bar-button qc-drawing-bar-wide', label: t('drawing.lineThickness'), title: t('drawing.thickness') }), 'chart.drawings.style')
+        width.append(widthBar(deps.icons, selected.lineWidth), el('span', { text: `${selected.lineWidth}px` }))
+        width.setAttribute('aria-haspopup', 'menu')
+        width.setAttribute('aria-expanded', 'false')
+        width.dataset.qcControl = 'width'
+        width.addEventListener('click', () =>
+          openPanel(width, menuOf(t('drawing.lineThickness'), 'content', ...widths.map((w) => menuRow(`${w}px`, () => style({ lineWidth: w }), { ...(type === 'highlighter' ? {} : { icon: widthBar(deps.icons, w) }), active: selected.lineWidth === w })))),
         )
-        controls.appendChild(lineStyle)
+        controls.appendChild(width)
+        if (!NO_DASH.has(type)) {
+          const current = LINE_STYLES.find((s) => s.id === selected.lineStyle) ?? LINE_STYLES[0]!
+          const lineStyle = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.lineStyle'), icon: deps.icons.icon(current.icon, LINE_STYLE_GLYPH) }), 'chart.drawings.style')
+          lineStyle.setAttribute('aria-haspopup', 'menu')
+          lineStyle.setAttribute('aria-expanded', 'false')
+          lineStyle.dataset.qcControl = 'lineStyle'
+          lineStyle.addEventListener('click', () =>
+            openPanel(
+              lineStyle,
+              menuOf(t('drawing.lineStyle'), 'content', ...LINE_STYLES.map((s) => menuRow(t(s.label), () => style({ lineStyle: s.id }), { icon: deps.icons.icon(s.icon, LINE_STYLE_GLYPH), active: selected.lineStyle === s.id }))),
+            ),
+          )
+          controls.appendChild(lineStyle)
+        }
       }
     }
 

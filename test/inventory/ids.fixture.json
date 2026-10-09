@@ -439,6 +439,8 @@
       "chart.drawings.sync",
       "chart.drawings.tableAddColumn",
       "chart.drawings.tableAddRow",
+      "chart.drawings.tableRemoveColumn",
+      "chart.drawings.tableRemoveRow",
       "chart.drawings.template.apply",
       "chart.drawings.template.remove",
       "chart.drawings.template.save",

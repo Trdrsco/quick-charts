@@ -483,6 +483,9 @@ export const ICONS = {
   },
   // Three rounded tiles, and a plus where the fourth would stand.
   template: { viewBox: '0 0 28 28', body: solid(frame(6, 6, 13, 13, 2) + frame(15, 6, 22, 13, 2) + frame(6, 15, 13, 22, 2) + line([15.5, 18.5], [21.5, 18.5], 1, 'round') + line([18.5, 15.5], [18.5, 21.5], 1, 'round')) },
+  // A table's own edits: a column added right of a line, and a row added below one.
+  tableAddColumn: { viewBox: '0 0 28 28', body: solid(line([8.5, 5], [8.5, 23]) + line([18.5, 9], [18.5, 20]) + line([13, 14.5], [24, 14.5])) },
+  tableAddRow: { viewBox: '0 0 28 28', body: solid(line([5, 8.5], [23, 8.5]) + line([14.5, 13], [14.5, 24]) + line([9, 18.5], [20, 18.5])) },
   layers: { viewBox: '0 0 28 28', body: solid(roundedPolygon(inset(LAYER, -1), 1) + polygon(LAYER, true) + polyline([[3.25, 16.92], [14, 23.43], [24.75, 16.8]])) },
   eyeCrossed: { viewBox: '0 0 28 28', body: solid(struckEye(SMALL_EYE_CENTRED, 14, 14, 7.85)) },
   pencil16: { size: 16, viewBox: '0 0 16 16', body: solid(pencil([0, 16], 20.8, 3.29, 2.47)) },

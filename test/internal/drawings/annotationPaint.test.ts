@@ -121,14 +121,17 @@ describe('a price note', () => {
 })
 
 describe('a table', () => {
-  it('stands each cell’s words at the left, the middle or the right of the cell', () => {
+  it('stands each cell’s words 9px in from its left, centred across it, or ending 9px in from its right', () => {
     const d = make('table', [at(100, 300)], { cells: [['a', 'b']] })
-    const first = (): Call => named(painted(d), 'fillText')[0]!
-    expect([first().args[1], first().textAlign]).toEqual([108, 'left'])
+    // With no document to measure in, a letter reads 0.6 of the type's 14px; the first cell runs
+    // from 100 to 220.
+    const letter = 14 * 0.6
+    const first = (): number => Number(named(painted(d), 'fillText')[0]!.args[1])
+    expect(first()).toBe(109)
     d.applyProps({ textHAlign: 'center' })
-    expect([first().args[1], first().textAlign]).toEqual([160, 'center'])
+    expect(first() + letter / 2).toBeCloseTo(160, 9)
     d.applyProps({ textHAlign: 'right' })
-    expect([first().args[1], first().textAlign]).toEqual([212, 'right'])
+    expect(first() + letter).toBeCloseTo(220 - 9, 9)
   })
 })
 

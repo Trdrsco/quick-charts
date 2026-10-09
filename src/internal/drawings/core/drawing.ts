@@ -699,8 +699,14 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     return 'circle'
   }
 
+  /** The shape its scale grips wear: null for the small square grips, or a handle's shape for a
+   *  drawing whose grips stand as its selection handles do. */
+  gripShape(): HandleShape | null {
+    return null
+  }
+
   private _hovered = false
-  private _hoveredHandle: number | null = null
+  private _pointer: Point | null = null
 
   /** Whether the pointer rests on this drawing (transient view state, never serialized). */
   get hovered(): boolean {
@@ -713,15 +719,16 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this.requestUpdate()
   }
 
-  /** The handle the pointer rests on, by its point's index, or null (transient view state, never
-   *  serialized). */
-  get hoveredHandle(): number | null {
-    return this._hoveredHandle
+  /** Where a mouse rests over the chart while this drawing is selected, or null (transient view
+   *  state, never serialized): its handle under the mouse stands out. */
+  get pointer(): Point | null {
+    return this._pointer
   }
 
-  setHoveredHandle(index: number | null): void {
-    if (this._hoveredHandle === index) return
-    this._hoveredHandle = index
+  setPointer(point: Point | null): void {
+    const was = this._pointer
+    if (was === point || (was && point && was.x === point.x && was.y === point.y)) return
+    this._pointer = point ? { x: point.x, y: point.y } : null
     this.requestUpdate()
   }
 

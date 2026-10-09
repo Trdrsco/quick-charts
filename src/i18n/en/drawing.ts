@@ -98,8 +98,6 @@ export const drawing = {
   'drawing.applyDefaultTemplate': 'Apply default drawing template',
   'drawing.removeTemplateNamed': 'Remove template {name}',
   'drawing.remove': 'Remove',
-  'drawing.addRowShort': '+ Row',
-  'drawing.addColumnShort': '+ Col',
   'drawing.drawingColor': 'Drawing color',
   'drawing.backgroundColor': 'Background color',
   'drawing.thickness': 'Thickness',
@@ -443,9 +441,12 @@ export const drawing = {
   'drawing.textPlaceholder': 'Text',
   'drawing.textEditor': 'Drawing text',
 
-  // A table's row and column, as the settings bar adds them.
-  'drawing.addRow': 'Add row',
-  'drawing.addColumn': 'Add column',
+  // A table's own edits on the chart: a column right of the cell last typed in and a row below it,
+  // and the removes of that cell's row and column.
+  'drawing.addColumnRight': 'Add column to right',
+  'drawing.addRowBelow': 'Add row below',
+  'drawing.removeRow': 'Remove row',
+  'drawing.removeColumn': 'Remove column',
 
   // The Coordinates page: one row per anchor, numbered.
   'drawing.coordBar': '#{n} (bar)',

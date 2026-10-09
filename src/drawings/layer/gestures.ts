@@ -121,6 +121,11 @@ export interface GestureContext {
   openCellEdit(drawing: IDrawing, cell: { row: number; col: number; rect: { x: number; y: number; width: number; height: number } }): void
   /** End the open or opening text edit, keeping what an inline edit typed. */
   endTextEdit(): void
+  /** A press of the chart leaves the table cell last typed in: nothing stays marked for an edit of
+   *  the table's rows and columns. */
+  releaseCell(): void
+  /** The drawing a right-click landed on, for the menu that follows it, or null. */
+  noteMenuDrawing(id: string | null): void
   /** Ask for the selected drawing's settings. */
   openSettings(): void
   /** The gestures hear here that the armed tool changed; they set it as they bind. */
@@ -374,7 +379,15 @@ export function bindGestures(ctx: GestureContext): () => void {
       container.addEventListener('contextmenu', menuShut, true)
       return
     }
+    // A right-click on a drawing selects it, so the menu that follows acts on it.
+    if (e.button === 2) {
+      const hit = ctx.armed() || ctx.locked() ? null : hitAt(localXY(e))
+      if (hit && manager.selected()?.id !== hit.id) manager.select(hit.id)
+      ctx.noteMenuDrawing(hit?.id ?? null)
+      return
+    }
     if (e.button !== 0) return
+    ctx.noteMenuDrawing(null)
     touching = e.pointerType === 'touch'
     // A press while the inline editor is open belongs to the editor, which commits itself on it.
     if (ctx.textEditOpen()) return
@@ -425,6 +438,7 @@ export function bindGestures(ctx: GestureContext): () => void {
         manager.deselect()
         return
       }
+      ctx.releaseCell()
       const sel = manager.selected()
       if (sel && !editRefused('resize', sel.options, false)) {
         // The "add text" hint above the selection becomes the editor in place.
@@ -637,12 +651,11 @@ export function bindGestures(ctx: GestureContext): () => void {
     const p = localXY(e)
     ctx.setHovered(manager.hitTest(p)?.id ?? null)
     // The selected drawing's handle under a mouse stands out; a finger has no resting pointer.
-    const selected = manager.selected()
-    selected?.setHoveredHandle(e.pointerType === 'touch' ? null : anchorHit(selected, p))
+    manager.selected()?.setPointer(e.pointerType === 'touch' ? null : p)
   }
   const onLeave = (): void => {
     dropPreview()
-    manager.selected()?.setHoveredHandle(null)
+    manager.selected()?.setPointer(null)
     ctx.setHovered(null)
   }
 
@@ -656,8 +669,9 @@ export function bindGestures(ctx: GestureContext): () => void {
     freezePan(!!ctx.armed()) // an armed tool keeps the chart frozen; the cursor releases it
     // A modified press that duplicated but never moved leaves no copy behind.
     if (drag.cloned && !drag.moved) manager.remove(drag.drawing.id)
-    // An unmoved press inside a table lands in a cell: type right there.
-    if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.drawing.type === 'table') {
+    // An unmoved press inside a table that was already selected lands in a cell: type right there.
+    // The press that selects a table only selects it.
+    if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.selectedBefore && drag.drawing.type === 'table' && !editRefused('editText', drag.drawing.options, ctx.locked())) {
       const vp = viewport()
       const table = drag.drawing as IDrawing & {
         cellAt?: (point: Px, viewport: Viewport) => { row: number; col: number; rect: { x: number; y: number; width: number; height: number } } | null

@@ -123,6 +123,8 @@ const CONTROL_ICONS = byMeaning({
   favoritesBar: [ICONS.favoritesBar],
   template: [ICONS.template],
   visualOrder: [ICONS.layers],
+  tableAddColumn: [ICONS.tableAddColumn],
+  tableAddRow: [ICONS.tableAddRow],
   lineColor: [ICONS.pencil16],
   fillColor: [ICONS.bucket],
   textColor: [ICONS.textTee],

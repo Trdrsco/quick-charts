@@ -229,47 +229,68 @@ export function paintTextBlock(
  *  or the small thin ring a mark shows on its point. */
 export type HandleShape = 'circle' | 'square' | 'small'
 
-/** How far the halo round a round handle under the pointer reaches from its middle, and its
- *  strength in the handle's ring ink. */
-const HANDLE_HALO = { radius: 9, alpha: 0.2 }
+/** The point of a list nearest a mouse, by its place in the list, within a reach; null for none. */
+export function hoveredIndex(points: readonly Point[], pointer: Point | null, reach: number): number | null {
+  if (!pointer) return null
+  let best: number | null = null
+  let bestD = reach
+  points.forEach((p, i) => {
+    const d = Math.hypot(p.x - pointer.x, p.y - pointer.y)
+    if (d <= bestD) {
+      bestD = d
+      best = i
+    }
+  })
+  return best
+}
 
-/** Paint a selected drawing's handles, one on each point's pixel, filled with the chart's ground
- *  so a handle covers what it stands on. A round handle is 11px across, its ring 1.5px wide, and
- *  the one under the pointer stands in a halo of its ring ink at 20% 18px across; a square one is
- *  13px across with corners rounded at 4, its ring 2px wide; a small one is a ring 8px across, 1px
- *  wide. */
+/** The halo round a handle under the pointer, in its ring ink at 20% and 3px wide: a ring on a
+ *  radius of 8 round a round handle, a square 16px across with corners rounded at 4.8 round a square
+ *  one. */
+const HANDLE_HALO = { radius: 8, half: 8, corner: 4.8, width: 3, alpha: 0.2 }
+
+/** Paint a drawing's handles, one on each point's pixel, filled with the chart's ground so a handle
+ *  covers what it stands on. Selected, a round handle is a ring of radius 5.5, 2px wide; a square
+ *  one is 11px across with corners rounded at 3.3, its ring 2px wide; a small one is a ring of
+ *  radius 3.5, 1px wide; and a round or square one under the pointer stands in a halo. The thin form
+ *  a hovered drawing shows is a ring of radius 6, or a square 12px across, 1px wide. */
 export function paintHandles(
   ctx: CanvasRenderingContext2D,
   points: readonly Point[],
   inks: { ring: string; center: string },
   shape: HandleShape = 'circle',
   hovered: number | null = null,
+  form: 'selected' | 'thin' = 'selected',
 ): void {
   ctx.save()
   ctx.setLineDash([])
   points.forEach((p, i) => {
     const x = Math.round(p.x) + 0.5
     const y = Math.round(p.y) + 0.5
-    if (i === hovered && shape === 'circle') {
+    if (i === hovered && shape !== 'small' && form === 'selected') {
       ctx.globalAlpha = HANDLE_HALO.alpha
-      ctx.fillStyle = inks.ring
+      ctx.strokeStyle = inks.ring
+      ctx.lineWidth = HANDLE_HALO.width
       ctx.beginPath()
-      ctx.arc(x, y, HANDLE_HALO.radius, 0, Math.PI * 2)
-      ctx.fill()
+      if (shape === 'square') ctx.roundRect(x - HANDLE_HALO.half, y - HANDLE_HALO.half, HANDLE_HALO.half * 2, HANDLE_HALO.half * 2, HANDLE_HALO.corner)
+      else ctx.arc(x, y, HANDLE_HALO.radius, 0, Math.PI * 2)
+      ctx.stroke()
       ctx.globalAlpha = 1
     }
+    const thin = form === 'thin'
     ctx.fillStyle = inks.center
     ctx.strokeStyle = inks.ring
     ctx.beginPath()
     if (shape === 'square') {
-      ctx.lineWidth = 2
-      ctx.roundRect(x - 5.5, y - 5.5, 11, 11, 3)
+      const half = thin ? 6 : 5.5
+      ctx.lineWidth = thin ? 1 : 2
+      ctx.roundRect(x - half, y - half, half * 2, half * 2, 3.3)
     } else if (shape === 'small') {
       ctx.lineWidth = 1
       ctx.arc(x, y, 3.5, 0, Math.PI * 2)
     } else {
-      ctx.lineWidth = 1.5
-      ctx.arc(x, y, 5, 0, Math.PI * 2)
+      ctx.lineWidth = thin ? 1 : 2
+      ctx.arc(x, y, thin ? 6 : 5.5, 0, Math.PI * 2)
     }
     ctx.fill()
     ctx.stroke()

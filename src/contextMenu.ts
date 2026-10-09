@@ -16,6 +16,10 @@ import { englishChartStrings, type ChartTranslate } from './i18n'
 /** Every action the menu can offer. A host handles the ids it supports and passes `has` flags for
  *  the rest — an unsupported action simply never becomes a row. */
 export type ChartMenuAction =
+  | 'table-add-column'
+  | 'table-add-row'
+  | 'table-remove-row'
+  | 'table-remove-column'
   | 'reset-view'
   | 'copy-price'
   | 'paste'
@@ -24,7 +28,7 @@ export type ChartMenuAction =
   | 'settings'
 
 /** The glyph a row wears, named rather than drawn — the host owns the artwork. */
-export type ChartMenuIcon = 'reset' | 'settings' | 'check'
+export type ChartMenuIcon = 'reset' | 'settings' | 'check' | 'table-add-column' | 'table-add-row' | 'delete'
 
 export type ChartMenuRow =
   | { kind: 'separator' }
@@ -52,14 +56,18 @@ export interface ChartMenuContext {
   canPaste?: boolean
   /** A settings surface exists to open. Default true; a host without one omits the row. */
   canSettings?: boolean
+  /** The level lies on a table. Its rows add a column right of the cell being typed in and a row
+   *  below it, or at the table's ends where no cell is, and with a cell, remove its row and its
+   *  column. Omitted where the level lies on none. */
+  table?: { cell: boolean }
   /** The widget's language for the row labels. Omitted ⇒ English. */
   t?: ChartTranslate
 }
 
 /** The menu's groups, top to bottom. A painter composing contributed rows places them by slot:
  *  rows that act on the level follow `clipboard`, and switches over what the chart shows follow
- *  `remove`. */
-export type ChartMenuSlot = 'view' | 'clipboard' | 'remove' | 'settings'
+ *  `remove`. A table under the level leads with its own two groups. */
+export type ChartMenuSlot = 'table' | 'tableCell' | 'view' | 'clipboard' | 'remove' | 'settings'
 
 export interface ChartMenuGroup {
   slot: ChartMenuSlot
@@ -80,7 +88,24 @@ export function chartContextMenuGroups(c: ChartMenuContext): ChartMenuGroup[] {
   if (c.indicatorCount > 0) remove.push({ kind: 'item', id: 'remove-indicators', label: t('menu.removeIndicators', { count: c.indicatorCount }) })
   if (c.drawingCount > 0) remove.push({ kind: 'item', id: 'remove-drawings', label: t('menu.removeDrawings', { count: c.drawingCount }) })
 
+  // A table under the level leads with its own rows: the adds, then the removes of the cell being
+  // typed in.
+  const table: ChartMenuRow[] = c.table
+    ? [
+        { kind: 'item', id: 'table-add-column', label: t('drawing.addColumnRight'), icon: 'table-add-column' },
+        { kind: 'item', id: 'table-add-row', label: t('drawing.addRowBelow'), icon: 'table-add-row' },
+      ]
+    : []
+  const tableCell: ChartMenuRow[] = c.table?.cell
+    ? [
+        { kind: 'item', id: 'table-remove-row', label: t('drawing.removeRow'), icon: 'delete' },
+        { kind: 'item', id: 'table-remove-column', label: t('drawing.removeColumn'), icon: 'delete' },
+      ]
+    : []
+
   return [
+    { slot: 'table', rows: table },
+    { slot: 'tableCell', rows: tableCell },
     { slot: 'view', rows: [{ kind: 'item', id: 'reset-view', label: t('menu.resetView'), shortcut: 'Alt + R', icon: 'reset' }] },
     { slot: 'clipboard', rows: clipboard },
     { slot: 'remove', rows: remove },

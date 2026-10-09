@@ -78,10 +78,12 @@ describe('the box editor', () => {
 /** Where the painted words stand: a 14px block at (102, 102), two lines, the widest 60px. */
 const FRAME: TextEditFrame = { x: 102, y: 102, width: 60, lines: 2, lineHeight: 14, font: '14px Inter, sans-serif', align: 'left', wrapWidth: null, angle: 0 }
 
-function inlineRig(options: { value?: string; frame?: TextEditFrame | null; doubleClick?: boolean } = {}) {
+function inlineRig(options: { value?: string; frame?: TextEditFrame | null; doubleClick?: boolean; tab?: boolean } = {}) {
   const drafts: TextDraft[] = []
   const listeners = new Set<(frame: TextEditFrame | null) => void>()
   let doubleClicks = 0
+  const tabs: boolean[] = []
+  let finished = 0
   const inline: TextInlineEdit = {
     frame: () => (options.frame === undefined ? FRAME : options.frame),
     onFrame: (listener) => {
@@ -93,9 +95,14 @@ function inlineRig(options: { value?: string; frame?: TextEditFrame | null; doub
       doubleClicks++
       return options.doubleClick ?? true
     },
+    tab: (backward) => {
+      tabs.push(backward)
+      return options.tab ?? false
+    },
+    finished: () => void finished++,
   }
   const r = rig({ value: options.value ?? 'Hi\nthere', inline })
-  return { ...r, drafts, last: () => drafts[drafts.length - 1]!, move: (frame: TextEditFrame | null) => listeners.forEach((l) => l(frame)), listeners, doubleClicks: () => doubleClicks }
+  return { ...r, drafts, last: () => drafts[drafts.length - 1]!, move: (frame: TextEditFrame | null) => listeners.forEach((l) => l(frame)), listeners, doubleClicks: () => doubleClicks, tabs, finished: () => finished }
 }
 
 describe('the inline field over words the chart paints', () => {
@@ -206,6 +213,26 @@ describe('the inline field over words the chart paints', () => {
     const again = inlineRig()
     again.area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
     expect(again.out).toEqual(['commit:Hi\nthere'])
+  })
+
+  it('tells the edit it is finished before Escape commits, so nothing stays marked as typed in', () => {
+    const { area, out, finished } = inlineRig()
+    area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect([finished(), out]).toEqual([1, ['commit:Hi\nthere']])
+  })
+
+  it('hands Tab and Shift with Tab to the edit, keeping the key where the edit moved on', () => {
+    const moved = inlineRig({ tab: true })
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    moved.area.dispatchEvent(tab)
+    const back = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true })
+    moved.area.dispatchEvent(back)
+    expect([moved.tabs, tab.defaultPrevented, back.defaultPrevented]).toEqual([[false, true], true, true])
+    document.body.replaceChildren()
+    const kept = inlineRig({ tab: false })
+    const plain = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true })
+    kept.area.dispatchEvent(plain)
+    expect([kept.tabs, plain.defaultPrevented]).toEqual([[false], false])
   })
 
   it('leaves a key an input method is composing with to the method', () => {

@@ -212,9 +212,9 @@ export interface IDrawing {
   /** Whether the pointer rests on the drawing. */
   readonly hovered: boolean
   setHovered(on: boolean): void
-  /** The handle the pointer rests on, by its point's index, or null. */
-  readonly hoveredHandle: number | null
-  setHoveredHandle(index: number | null): void
+  /** Where a mouse rests over the chart while the drawing is selected, or null. */
+  readonly pointer: Point | null
+  setPointer(point: Point | null): void
 
   getViewport(): Viewport | null
   requestUpdate(): void

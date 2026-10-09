@@ -358,7 +358,7 @@ const DEFINITIONS: ToolDefinition[] = [
     previewed: true,
     style: { lineColor: '#2962ff', fontSize: 12 },
   }),
-  tool(TableNote, { type: 'table', name: 'Table', category: 'annotation', anchors: 1, style: { fillColor: '#0f0f0f', fillOpacity: 1, lineColor: '#575757', textColor: '#dbdbdb', fontSize: 14 } }),
+  tool(TableNote, { type: 'table', name: 'Table', category: 'annotation', anchors: 1, settingsOnDoubleClick: true, style: { fillColor: '#0f0f0f', fillOpacity: 1, lineColor: '#575757', textColor: '#dbdbdb', fontSize: 14 } }),
 
   // Brushes & multi-point shapes
   tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: '#00bcd4', lineWidth: 2, lineStyle: 'solid', fillColor: '#00bcd4', fillOpacity: 0.5 } }),

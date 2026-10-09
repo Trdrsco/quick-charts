@@ -20,6 +20,10 @@ import { normalizeShortcut } from './shortcuts'
  *  renders (the settings dialog belongs to the selected drawing's own surfaces), so it maps to
  *  nothing and is refused as unknown rather than silently routed. */
 export const MENU_COMMAND: Partial<Record<ChartMenuAction, string>> = {
+  'table-add-column': 'chart.drawings.tableAddColumn',
+  'table-add-row': 'chart.drawings.tableAddRow',
+  'table-remove-row': 'chart.drawings.tableRemoveRow',
+  'table-remove-column': 'chart.drawings.tableRemoveColumn',
   'reset-view': 'chart.view.reset',
   'copy-price': 'chart.price.copy',
   paste: 'chart.drawings.paste',
@@ -62,6 +66,9 @@ export interface MenuDeps {
   extensions(): ChartExtensionHost | null
   /** The level the open menu was raised at, handed to the copy-price command. */
   setLevel(price: number | null): void
+  /** The table the right-click that raised the menu landed on, and whether a cell of it is marked;
+   *  null where it landed on none. */
+  table?(): { cell: boolean } | null
   /** Whether a built-in row's command is drawn: false for a command the policy refuses when the
    *  host hides what it refuses. Every row is drawn without it. */
   shown?(command: string): boolean
@@ -101,6 +108,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     // they carry their own actions: the chart routes nothing on their behalf.
     const extra: readonly ChartExtensionMenuItem[] =
       deps.extensions()?.menuItems({ price, priceText, symbol: deps.symbol(), name: deps.symbolName(), timeframe: deps.timeframe(), clientX, clientY }) ?? []
+    const table = deps.table?.() ?? null
     menu.open(
       { clientX, clientY },
       {
@@ -114,6 +122,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
         canSettings: false,
         indicatorCount: deps.indicatorCount(),
         drawingCount: deps.drawingCount(),
+        ...(table ? { table } : {}),
       },
       extra,
     )

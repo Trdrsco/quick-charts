@@ -84,6 +84,21 @@ describe('a host that cannot serve a row does not show it', () => {
   })
 })
 
+describe('a level on a table', () => {
+  it('leads with the table’s adds, and with a cell being typed in, removes of its row and column', () => {
+    const rows = (table: { cell: boolean }) => chartContextMenu({ ...base, table }).map((r) => (r.kind === 'item' ? [r.label, r.id, r.icon] : 'separator'))
+    expect(rows({ cell: false }).slice(0, 3)).toEqual([['Add column to right', 'table-add-column', 'table-add-column'], ['Add row below', 'table-add-row', 'table-add-row'], 'separator'])
+    expect(rows({ cell: true }).slice(0, 6)).toEqual([
+      ['Add column to right', 'table-add-column', 'table-add-column'],
+      ['Add row below', 'table-add-row', 'table-add-row'],
+      'separator',
+      ['Remove row', 'table-remove-row', 'delete'],
+      ['Remove column', 'table-remove-column', 'delete'],
+      'separator',
+    ])
+  })
+})
+
 describe('separators', () => {
   it('never opens, closes, or doubles on an empty group', () => {
     for (const c of [{}, { canPaste: false, canSettings: false }, { indicatorCount: 3 }]) {

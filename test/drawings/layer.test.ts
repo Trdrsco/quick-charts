@@ -6,6 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { attachDrawings } from '../../src/drawings'
 import { drawingTools } from '../../src/drawings/index'
+import { menuDrawing } from '../../src/drawings/layer/attach'
 import { viewportOf } from '../../src/internal/drawings/index'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { DRAWING_CONTEXT_VERSION, liveDrawingEntries, type DrawingResourceContext } from '../../src/drawings/document'
@@ -577,6 +578,87 @@ describe('a text typed on the chart', () => {
     expect(drawing.props.text).toBe('Hi')
   })
 
+  /** Place a table with its top-left at (100, 100): cells 120px wide and, empty, 31px tall. */
+  const placeTable = (r: Rig) => {
+    r.handle.armTool('table')
+    click(r.container, 100, 100)
+    return r.handle.selectedDrawing()! as ReturnType<Rig['handle']['selectedDrawing']> & { editingCell: { row: number; col: number } | null; props: { cells: string[][] } }
+  }
+
+  it('a table places on one click, selected, opening no editor; a click on a cell of the selected table types into it', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const table = placeTable(r)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    r.handle.deselect()
+    // The first click selects the table; the second, on the middle cell, types into it.
+    click(r.container, 280, 146)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 280, 146)
+    vi.runOnlyPendingTimers()
+    const session = r.handle.textEdit()!
+    expect([session.cell, !!session.inline, table.editingCell]).toEqual([{ row: 1, col: 1 }, true, { row: 1, col: 1 }])
+    session.inline!.update(caretAt('Cash'))
+    r.handle.commitText('Cash')
+    expect(table.props.cells[1]![1]).toBe('Cash')
+    // The cell stays marked for an edit of the rows and columns until the viewer leaves it.
+    expect(table.editingCell).toEqual({ row: 1, col: 1 })
+    r.container.dispatchEvent(pointer('pointerdown', 700, 400))
+    window.dispatchEvent(pointer('pointerup', 700, 400))
+    expect(table.editingCell).toBeNull()
+  })
+
+  it('Tab commits a cell and types on in the next, wrapping from the last cell to the first; Escape leaves the table selected and nothing marked', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const table = placeTable(r)
+    click(r.container, 400, 180)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.cell).toEqual({ row: 2, col: 2 })
+    r.handle.textEdit()!.inline!.update(caretAt('Last'))
+    expect(r.handle.textEdit()!.inline!.tab(false)).toBe(true)
+    vi.runOnlyPendingTimers()
+    expect(table.props.cells[2]![2]).toBe('Last')
+    expect([r.handle.textEdit()?.cell, table.editingCell]).toEqual([{ row: 0, col: 0 }, { row: 0, col: 0 }])
+    r.handle.textEdit()!.inline!.tab(true)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.cell).toEqual({ row: 2, col: 2 })
+    r.handle.textEdit()!.inline!.finished()
+    r.handle.commitText('Last')
+    expect([r.handle.textEdit(), table.editingCell, r.handle.selected()?.id]).toEqual([null, null, table.id])
+  })
+
+  it('a double-click on a table opens its settings', () => {
+    vi.useFakeTimers()
+    const commands: string[] = []
+    const r = make({ execute: (command) => (commands.push(command), true) })
+    placeTable(r)
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 280, clientY: 146, bubbles: true }))
+    expect(commands).toEqual(['chart.drawings.settings'])
+  })
+
+  it('a right-click selects the drawing it lands on for the menu that follows, and keeps a table’s cell marked', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const table = placeTable(r)
+    click(r.container, 280, 146)
+    vi.runOnlyPendingTimers()
+    expect(table.editingCell).toEqual({ row: 1, col: 1 })
+    r.handle.deselect()
+    expect(menuDrawing(r.handle)).toBeNull()
+    r.container.dispatchEvent(pointer('pointerdown', 280, 146, { button: 2 }))
+    expect([r.handle.selected()?.id, menuDrawing(r.handle)?.id]).toEqual([table.id, table.id])
+    // A right-click on the chart's ground names no drawing; a left press forgets the last one.
+    r.container.dispatchEvent(pointer('pointerdown', 700, 400, { button: 2 }))
+    expect(menuDrawing(r.handle)).toBeNull()
+    r.container.dispatchEvent(pointer('pointerdown', 280, 146, { button: 2 }))
+    r.container.dispatchEvent(pointer('pointerdown', 700, 400))
+    window.dispatchEvent(pointer('pointerup', 700, 400))
+    expect(menuDrawing(r.handle)).toBeNull()
+  })
+
   it('a pin places on one click and opens its words; one left without words stays, a pin with optional words', async () => {
     vi.useFakeTimers()
     const r = make()
@@ -647,20 +729,20 @@ describe('a text typed on the chart', () => {
     expect(r.handle.selectedDrawing()!.anchors.map((a) => r.fake.xOf(Number(a.time)))).toEqual([100, 200])
   })
 
-  it('stands the halo on the handle of the selected drawing under the pointer', () => {
+  it('tells the selected drawing where a mouse rests, so its handle under the mouse stands out', () => {
     vi.useFakeTimers()
     const r = make()
     r.handle.armTool('trend_line')
     drag(r.container, [100, 100], [300, 200])
     const drawing = r.handle.selectedDrawing()!
     r.container.dispatchEvent(pointer('pointermove', 301, 199))
-    expect(drawing.hoveredHandle).toBe(1)
-    r.container.dispatchEvent(pointer('pointermove', 200, 150))
-    expect(drawing.hoveredHandle).toBeNull()
+    expect(drawing.pointer).toEqual({ x: 301, y: 199 })
+    r.container.dispatchEvent(new PointerEvent('pointerleave'))
+    expect(drawing.pointer).toBeNull()
     r.container.dispatchEvent(pointer('pointermove', 99, 101))
-    expect(drawing.hoveredHandle).toBe(0)
+    expect(drawing.pointer).toEqual({ x: 99, y: 101 })
     r.handle.deselect()
-    expect(drawing.hoveredHandle).toBeNull()
+    expect(drawing.pointer).toBeNull()
   })
 
   /** What the layer attaches to the series and takes off it, by drawing id. */

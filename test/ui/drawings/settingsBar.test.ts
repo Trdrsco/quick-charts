@@ -89,9 +89,13 @@ describe('the settings bar', () => {
     const a = rig(selection({ type: 'emoji', hasText: false }))
     expect(a.labels()).toEqual(['Drawing templates', 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
     const b = rig(selection({ type: 'table', hasText: false, hasCells: true }))
-    expect(b.labels()).toEqual(['Drawing templates', 'Add row', 'Add column', 'Drawing color', 'Background color', 'Text color', 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
-    b.byLabel('Add row').click()
-    expect(b.ran).toEqual([['chart.drawings.tableAddRow', undefined]])
+    expect(b.labels()).toEqual(['Drawing templates', 'Add column to right', 'Add row below', 'Drawing color', 'Background color', 'Text color', 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
+    b.byLabel('Add row below').click()
+    b.byLabel('Add column to right').click()
+    expect(b.ran).toEqual([
+      ['chart.drawings.tableAddRow', undefined],
+      ['chart.drawings.tableAddColumn', undefined],
+    ])
     const c = rig(selection({ type: 'rectangle', hasText: false }))
     expect(c.labels()).toContain('Background color')
     const d = rig(selection({ type: 'text', hasText: true }))
@@ -106,11 +110,6 @@ describe('the settings bar', () => {
   // stroke that is always solid offers no dash; a fill is offered only where the paint encloses.
   it.each([
     ['brush', ['Drawing color', 'Background color', 'Line thickness'], ['Line style']],
-    ['callout', ['Drawing color', 'Background color', 'Text color', 'Font size', 'Line thickness'], ['Line style']],
-    ['comment', ['Drawing color', 'Background color', 'Text color', 'Font size'], ['Line thickness']],
-    ['note', ['Drawing color', 'Text color', 'Font size'], ['Background color']],
-    ['price_label', ['Drawing color', 'Background color', 'Text color', 'Font size'], ['Line thickness', 'Line style']],
-    ['signpost', ['Drawing color', 'Font size'], ['Line thickness', 'Line style']],
     ['curve', ['Drawing color', 'Background color', 'Line thickness', 'Line style'], []],
     ['double_curve', ['Drawing color', 'Background color', 'Line thickness', 'Line style'], []],
     ['price_range', ['Drawing color', 'Background color', 'Line thickness'], ['Line style']],
@@ -120,6 +119,33 @@ describe('the settings bar', () => {
     const { labels } = rig(selection({ type, hasText: false }))
     for (const control of offers) expect(labels(), `${type} offers ${control}`).toContain(control)
     for (const control of withholds) expect(labels(), `${type} withholds ${control}`).not.toContain(control)
+  })
+
+  // The words, the notes, the marks and the table lay out their own bars, control by control.
+  it.each([
+    ['text', ['Text color', 'Font size']],
+    ['comment', ['Text color', 'Background color', 'Font size']],
+    ['callout', ['Text color', 'Background color', 'Font size']],
+    ['price_label', ['Text color', 'Background color', 'Font size']],
+    ['note', ['Drawing color', 'Background color', 'Text color']],
+    ['price_note', ['Drawing color', 'Background color', 'Text color']],
+    ['signpost', ['Font size']],
+    ['pin', ['Drawing color', 'Text color', 'Font size']],
+    ['table', ['Add column to right', 'Add row below', 'Drawing color', 'Background color', 'Text color']],
+    ['flag', ['Background color']],
+    ['arrow_marker', ['Background color', 'Text color']],
+    ['arrow_up', ['Drawing color', 'Text color']],
+    ['arrow_down', ['Drawing color', 'Text color']],
+  ])('%s lays out its own bar', (type, own) => {
+    const { labels } = rig(selection({ type, hasText: true, hasCells: type === 'table' }))
+    expect(labels()).toEqual(['Drawing templates', ...own, 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
+  })
+
+  it('offers a mark’s ink as its background, and a price note’s tag background from its own prop', () => {
+    const flag = rig(selection({ type: 'flag', hasText: false }))
+    expect(flag.byLabel('Background color').dataset.qcControl).toBe('color')
+    const note = rig(selection({ type: 'price_note', hasText: true }), { labelBackgroundColor: '#2962ff' })
+    expect(note.byLabel('Background color').dataset.qcControl).toBe('labelBackgroundColor')
   })
 
   // A plan paints two zones, so it offers two fills of its own and no stroke: the entry rule is

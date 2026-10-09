@@ -1876,6 +1876,7 @@
         "colWidths",
         "headerRow",
         "rowHeights",
+        "savedLook",
         "textHAlign"
       ]
     },
