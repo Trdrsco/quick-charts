@@ -125,6 +125,30 @@ describe('rows and toggles', () => {
     expect(host.querySelector('[role="menu"]')).not.toBeNull()
   })
 
+  it("rings a list's row with the keyboard inside its own edge: a choice's or a switch's at its edge clear of its fill, a mark's 2px in", () => {
+    const sheet = authoredStylesheet().replace(/\/\*[\s\S]*?\*\//g, '')
+    const rules = [...sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selectors: m[1]!.split(',').map((s) => s.trim()), body: m[2]! }))
+    const body = (selector: string): string => rules.filter((r) => r.selectors.includes(selector)).map((r) => r.body).join('\n')
+    // No outline outside the row, where a list's rounded corners would cut it.
+    expect(body('[data-qc-theme] .qc-drawing-list .qc-drawing-list-row')).toMatch(/outline:\s*none/)
+    const choice = '[data-qc-theme] .qc-drawing-select-list:not(.qc-drawing-mark-list) .qc-drawing-list-row:focus-visible'
+    const ring = body(`${choice}::after`)
+    expect(ring).toMatch(/inset:\s*0/)
+    expect(ring).toMatch(/border-color:\s*var\(--qc-state-focusRing\)/)
+    expect(ring).toMatch(/border-radius:\s*6px/)
+    expect(ring).toMatch(/border-width:\s*2px/)
+    // 2px of the list's ground inside the ring, so it stands clear of a chosen row's fill.
+    const gap = body(`${choice}::before`)
+    expect(gap).toMatch(/inset:\s*2px/)
+    expect(gap).toMatch(/border-color:\s*var\(--qc-overlay-surface\)/)
+    expect(gap).toMatch(/border-radius:\s*4px/)
+    for (const marks of ['.qc-drawing-line-ends', '.qc-drawing-mark-list']) {
+      const inner = body(`[data-qc-theme] ${marks} .qc-drawing-list-row:focus-visible::after`)
+      expect(inner).toMatch(/inset:\s*2px/)
+      expect(inner).toMatch(/border-radius:\s*9px/)
+    }
+  })
+
   it("a list of switches' row holds the settings rows' own checkbox, in the row itself, and a ticked row is never inverted", () => {
     const host = box()
     const field = multiDropdown(icons, host, {

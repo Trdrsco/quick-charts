@@ -428,4 +428,36 @@ test.describe('a list button\'s list', () => {
     expect(list.left).toBeGreaterThanOrEqual(0)
     expect(list.right).toBeLessThanOrEqual(viewport.width)
   })
+
+  test('rings the row the keyboard is on inside its own edge, with no outline outside it', async ({ page }) => {
+    await mount(page)
+    await openSettings(page, 'regression_trend', 'Inputs')
+    // The arrows open the list from the keyboard, and the keyboard lands on the chosen row.
+    await page.locator('[data-role="drawing-settings"] button[aria-label="Source"][aria-haspopup]').focus()
+    await page.keyboard.press('ArrowDown')
+    await expect(page.locator('[aria-label="Source"][role="listbox"]')).toBeVisible()
+    await page.keyboard.press('ArrowDown')
+    const ring = await page.evaluate(() => {
+      const row = document.activeElement as HTMLElement
+      const r = row.getBoundingClientRect()
+      const after = getComputedStyle(row, '::after')
+      const before = getComputedStyle(row, '::before')
+      return {
+        role: row.getAttribute('role'),
+        outline: getComputedStyle(row).outlineStyle,
+        ring: [after.borderTopWidth, after.borderTopColor, after.borderTopLeftRadius],
+        ringSize: [Number.parseFloat(after.width) - r.width, Number.parseFloat(after.height) - r.height],
+        gap: [before.borderTopWidth, before.borderTopLeftRadius],
+        gapSize: [r.width - Number.parseFloat(before.width), r.height - Number.parseFloat(before.height)],
+      }
+    })
+    expect(ring.role).toBe('option')
+    expect(ring.outline).toBe('none')
+    // A 2px ring in the focus color on a 6px corner, as large as the row itself.
+    expect(ring.ring).toEqual(['2px', 'rgb(41, 98, 255)', '6px'])
+    for (const d of ring.ringSize) expect(Math.abs(d)).toBeLessThan(0.5)
+    // Inside it, 2px of the list's ground on a 4px corner, 2px in from every side.
+    expect(ring.gap).toEqual(['2px', '4px'])
+    for (const d of ring.gapSize) expect(Math.abs(d - 4)).toBeLessThan(0.5)
+  })
 })

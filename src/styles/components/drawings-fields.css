@@ -879,16 +879,42 @@
   height: 2px;
 }
 
-/* The line-end list is as wide as its rows. A row it does not hold dims its ink under the pointer,
- * and the keyboard rings a row 2px inside its edge on a 9px corner. */
+/* The line-end list is as wide as its rows. A row it does not hold dims its ink under the pointer. */
 [data-qc-theme] .qc-drawing-menu.qc-drawing-line-ends {
   width: max-content;
   min-width: 0;
 }
 
-[data-qc-theme] .qc-drawing-line-ends .qc-drawing-list-row {
+/* The keyboard rings a list's row inside the row's own edge, where the list's rounded corners cannot
+ * cut it. A row of a list of choices or of switches rings its edge on a 6px corner, with 2px of the
+ * list's ground inside the ring, so the ring stands clear of a chosen row's fill; a row of a list of
+ * marks (a line end, a thickness, a line style) rings 2px inside its edge on a 9px corner. */
+[data-qc-theme] .qc-drawing-list .qc-drawing-list-row {
   position: relative;
   outline: none;
+}
+
+[data-qc-theme] .qc-drawing-select-list:not(.qc-drawing-mark-list) .qc-drawing-list-row:focus-visible::before,
+[data-qc-theme] .qc-drawing-select-list:not(.qc-drawing-mark-list) .qc-drawing-list-row:focus-visible::after {
+  position: absolute;
+  z-index: 1;
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: 2px;
+  content: '';
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-drawing-select-list:not(.qc-drawing-mark-list) .qc-drawing-list-row:focus-visible::after {
+  inset: 0;
+  border-color: var(--qc-state-focusRing);
+  border-radius: 6px;
+}
+
+[data-qc-theme] .qc-drawing-select-list:not(.qc-drawing-mark-list) .qc-drawing-list-row:focus-visible::before {
+  inset: 2px;
+  border-color: var(--qc-overlay-surface);
+  border-radius: 4px;
 }
 
 [data-qc-theme] .qc-drawing-line-ends .qc-drawing-list-row[aria-selected='true'] {
@@ -899,7 +925,8 @@
   color: var(--qc-state-hoverInk);
 }
 
-[data-qc-theme] .qc-drawing-line-ends .qc-drawing-list-row:focus-visible::after {
+[data-qc-theme] .qc-drawing-line-ends .qc-drawing-list-row:focus-visible::after,
+[data-qc-theme] .qc-drawing-mark-list .qc-drawing-list-row:focus-visible::after {
   position: absolute;
   inset: 2px;
   z-index: 1;
