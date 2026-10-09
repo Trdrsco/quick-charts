@@ -145,19 +145,20 @@ describe('placing a fixed tool', () => {
     expect(handle.export()[0]?.anchors[0]?.price).toBe(bar.close)
   })
 
-  it('a tool that types in a box opens its editor as it lands, and an empty commit removes it', async () => {
+  it('a tool whose words are not typed on the chart types them in a box the command opens', () => {
     vi.useFakeTimers()
     const { container, handle, events } = make()
-    handle.armTool('content_card')
-    click(container, 100, 100)
-    expect(handle.count()).toBe(1)
+    handle.armTool('rectangle')
+    drag(container, [100, 100], [200, 160])
+    expect(handle.textEdit()).toBeNull()
+    handle.editSelectedText()
     vi.runAllTimers()
     const session = handle.textEdit()
-    expect(session?.fresh).toBe(true)
+    expect(session?.fresh).toBe(false)
     expect(session?.inline).toBeUndefined()
     expect(events.texts).toHaveLength(1)
-    handle.commitText('   ')
-    expect(handle.count()).toBe(0)
+    handle.commitText('Box')
+    expect(handle.export()[0]?.props?.text).toBe('Box')
     expect(handle.textEdit()).toBeNull()
   })
 
