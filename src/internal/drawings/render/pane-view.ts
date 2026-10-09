@@ -42,16 +42,21 @@ export class DrawingPaneView implements IPrimitivePaneView, IPrimitivePaneRender
           drawing.paintConstruction(ctx, viewport)
         }
         const state = drawing.state
+        const inks = drawing.inks()
+        const handleInks = { ring: inks.handleRing, center: inks.handleCenter }
         if (state === 'selected' || state === 'editing') {
+          // The invitation to type stands under the handles, so a handle on it stays whole.
+          if (drawing.isValid()) drawing.paintTextHint(ctx, viewport)
           const points = drawing.getControlPoints(viewport)
-          const inks = drawing.inks()
-          const handleInks = { ring: inks.handleRing, center: inks.handleCenter }
           if (points.length > 0) paintHandles(ctx, points, handleInks, drawing.handleShape(), hoveredIndex(points, drawing.pointer, HANDLE_REACH))
           const grips = drawing.resizeHandles(viewport)
           const gripShape = drawing.gripShape()
           if (grips.length > 0 && gripShape) paintHandles(ctx, grips, handleInks, gripShape, hoveredIndex(grips, drawing.pointer, GRIP_REACH))
           else if (grips.length > 0) paintResizeGrips(ctx, grips, drawing.style.lineColor)
-          if (drawing.isValid()) drawing.paintTextHint(ctx, viewport)
+        } else if (drawing.hovered && drawing.handlesOnHover() && drawing.isValid()) {
+          // A drawing that shows its handles under the pointer shows them thin until it is selected.
+          const points = drawing.getControlPoints(viewport)
+          if (points.length > 0) paintHandles(ctx, points, handleInks, drawing.handleShape(), null, 'thin')
         }
       } finally {
         ctx.restore()

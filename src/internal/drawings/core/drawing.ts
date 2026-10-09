@@ -31,7 +31,8 @@ import type { BarSource, SourceBar } from './bars'
 import { layoutTextBlock, type TextBlock, type TextDraft, type TextEditFrame } from './textEntry'
 import { DEFAULT_INKS, type DrawingInks } from './inks'
 import { DrawingPaneView } from '../render/pane-view'
-import type { HandleShape } from '../render/canvas'
+import { AxisBandView } from '../render/axis-view'
+import { withAlpha, type HandleShape } from '../render/canvas'
 import { drawing as englishWords } from '../../../i18n/en/drawing'
 
 function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
@@ -196,6 +197,25 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
  *  that reads precision off the price. */
 const UNRESOLVED_PRICE_TEXT: PriceFormatPort = (price) => price.toFixed(2)
 
+/** A time a drawing writes where its chart has no time formatter: its UTC date and time of day. */
+function plainTime(time: Time): string {
+  const t = Number(time)
+  if (!Number.isFinite(t)) return String(time)
+  const d = new Date(t * 1000)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`
+}
+
+/** A region on the pane a drawing invites a press in: its middle, the angle it turns by, and its
+ *  half sizes along and across that angle. */
+export interface HintRegion {
+  cx: number
+  cy: number
+  angle: number
+  halfW: number
+  halfH: number
+}
+
 export abstract class Drawing<P extends Record<string, unknown> = Record<string, never>>
   implements IDrawing, ISeriesPrimitive<Time>
 {
@@ -218,6 +238,8 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   private _series: ISeriesApi<SeriesType> | null = null
   private _requestUpdate: (() => void) | null = null
   private readonly _paneViews: IPrimitivePaneView[]
+  private readonly _priceBands: IPrimitivePaneView[]
+  private readonly _timeBands: IPrimitivePaneView[]
 
   constructor(
     id: string,
@@ -232,6 +254,8 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     this._options = normalizeOptions(options)
     this._props = { ...this.defaultProps(), ...this.upgradeProps(props) }
     this._paneViews = [new DrawingPaneView(this)]
+    this._priceBands = [new AxisBandView({ span: () => this.bandSpan('price') }, 'price')]
+    this._timeBands = [new AxisBandView({ span: () => this.bandSpan('time') }, 'time')]
   }
 
   /** Tool-specific defaults. Must not read instance fields (runs during construction). */
@@ -308,6 +332,45 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     return []
   }
 
+  priceAxisPaneViews(): readonly IPrimitivePaneView[] {
+    return this._priceBands
+  }
+
+  timeAxisPaneViews(): readonly IPrimitivePaneView[] {
+    return this._timeBands
+  }
+
+  /** The prices and times a selected drawing marks on the axes with a band across their span, in
+   *  the accent at a quarter; none by default. */
+  protected axisSpans(): { prices: readonly number[] | null; times: readonly Time[] | null } {
+    return { prices: null, times: null }
+  }
+
+  /** The band a selected drawing lays on an axis: the coordinates its marked prices or times stand
+   *  at, or null where it lays none. */
+  private bandSpan(axis: 'price' | 'time'): { coordinates: number[]; color: string } | null {
+    if ((this._state !== 'selected' && this._state !== 'editing') || !this.isVisibleNow()) return null
+    const viewport = this.getViewport()
+    if (!viewport) return null
+    const spans = this.axisSpans()
+    const raw = axis === 'price' ? (spans.prices ?? []).map((p) => viewport.yOf(p)) : (spans.times ?? []).map((t) => viewport.xOf(t))
+    const coordinates = raw.filter((c): c is number => c !== null && Number.isFinite(c))
+    return coordinates.length > 0 ? { coordinates, color: withAlpha(this.inks().accent, 0.25) } : null
+  }
+
+  /** A time as the chart writes it on its time axis: through the chart's own time formatter, or
+   *  its plain UTC date and time where the chart has none. */
+  protected formatTime(time: Time | undefined): string {
+    if (time === undefined) return ''
+    try {
+      const formatter = this._chart?.options().localization?.timeFormatter as ((t: Time) => string) | undefined
+      if (formatter) return formatter(time)
+    } catch {
+      /* a chart torn down */
+    }
+    return plainTime(time)
+  }
+
   hitTest(x: number, y: number): PrimitiveHoveredItem | null {
     if (!this.isVisibleNow()) return null
     const viewport = this.getViewport()
@@ -318,6 +381,12 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
       externalId: this.id,
       zOrder: 'normal',
     }
+  }
+
+  /** The cursor a point over the drawing wears: a handle's, its words', or null for the plain
+   *  pointer. */
+  cursorFor(point: Point, viewport: Viewport): string | null {
+    return this.cursorAt(point, viewport)
   }
 
   /** Position-specific hover cursor (a table divider's col-resize); null = the default pointer. */
@@ -556,7 +625,13 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
 
   resizeTo(_handleIndex: number, _point: Point, _viewport: Viewport): void {}
 
-  private _textHint: { cx: number; cy: number; angle: number; halfW: number; halfH: number } | null = null
+  private _textHint: HintRegion | null = null
+
+  /** Note where the invitation a paint just laid stands, where a press opens the words' editor; null
+   *  where none stands. */
+  protected noteTextHint(region: HintRegion | null): void {
+    this._textHint = region
+  }
 
   /** An inline text editor is open on this drawing (transient view state — never serialized). */
   textEditing = false
@@ -703,6 +778,12 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
    *  drawing whose grips stand as its selection handles do. */
   gripShape(): HandleShape | null {
     return null
+  }
+
+  /** Whether the drawing shows its handles, in their thin form, while the pointer rests on it
+   *  unselected; a press on one then moves its point and selects the drawing. */
+  handlesOnHover(): boolean {
+    return false
   }
 
   private _hovered = false

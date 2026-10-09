@@ -136,7 +136,8 @@ describe('press and hold is the touch way into the context menu', () => {
     // Passive listeners: the hold observes the gesture and never blocks the renderer's own pan.
     expect(pointerSrc.match(/\{ passive: true \}/g)!.length).toBe(4)
     // The right-click and the hold call ONE raise, so a finger can never be offered other rows.
-    expect(chartSrc.match(/menu\.raiseAt\(/g)!.length).toBe(2)
+    expect(chartSrc.match(/raiseMenuAt\(drawings, menu, /g)!.length).toBe(2)
+    expect(chartSrc).not.toMatch(/menu\.raiseAt\(/)
     // An armed hold cannot outlive the chart.
     expect(pointerSrc).toContain('cancel()')
     expect(chartSrc).toContain('pointer?.destroy()')

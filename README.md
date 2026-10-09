@@ -2888,8 +2888,10 @@ chosen.
 Selecting a drawing shows the settings bar: templates, the stroke color with its opacity, the
 background for tools that have one, the text color and font size for text tools, thickness and
 line style, the settings gear, lock, delete, and a More menu with the stacking moves, the
-per-timeframe visibility presets, clone, copy and hide. Every edit persists at once and becomes the
-tool's default for the next drawing of that type. The settings dialog opens from the gear with
+per-timeframe visibility presets, clone, copy and hide. A right-click on a drawing raises its own
+menu instead of the chart's: a table's edits first, then the templates, the stacking moves and the
+visibility presets as submenus, clone, copy, lock, hide, remove and the settings. Every edit persists
+at once and becomes the tool's default for the next drawing of that type. The settings dialog opens from the gear with
 Inputs, Style, Text, Table, Coordinates and Visibility pages as the tool has them; its edits apply
 live, Cancel restores the drawing, and Ok commits the session as one edit. Its header carries the
 drawing's name, the tool's own until the viewer renames it with the pencil beside it; the name is
@@ -2910,10 +2912,10 @@ bar's palette offers them too.
 
 The line tools' Style page carries the stroke with its two ends, the extensions, the middle point,
 the price labels and, under Info, the stats a line reads (price range, percent change, the change
-counted in the symbol's smallest price move, bars, date and time range, angle), where they stand
-(left, center, right, or auto, which keeps them inside the pane), and whether they show always or
-only while the line is selected. A horizontal line offers its price label, a vertical line its time
-label, a cross line both. A rectangle offers its extensions, its border, a middle line with a stroke
+counted in the symbol's smallest price move, bars, date and time range, its length on the pane,
+angle), where they stand (left, center, right, or auto, which keeps them inside the pane), and
+whether they show always or only while the line is selected. A horizontal line offers its price
+label, a vertical line its time label, a cross line both. A rectangle offers its extensions, its border, a middle line with a stroke
 of its own and its background; every other shape its border and background; a curve its stroke and
 ends, its extensions along the tangents it ends on, and its background. A background switched off
 keeps its color and opacity for when it is switched back on. The Text page sets the words' color,
@@ -2921,6 +2923,15 @@ size, weight and slant on one line over the words, and where the tool places the
 above, on or below a line, above, inside or below a box, along it from left to right, and for a
 vertical line whether they read across it or run up it. `NO_COORDINATES_TAB` names the tools whose
 points are drawn rather than typed, and `PRICE_ONLY_COORDS` the levels that span every bar.
+
+On the chart a line rests as its stroke. While the pointer rests on it its handles show thin, and a
+press on one moves that point and selects the line; two clicks place a line, its second point
+following the pointer between them. Selected, a line marks its points' prices and times on the
+axes, the times in the chart's own format, with a band across their span. A horizontal line's
+handle stands nine tenths of the way across the pane and a vertical line's nine tenths of the way
+down, and a drag of either sets both coordinates of its point. An info line stands its stats in a
+box beside its middle, a row for the price move, one for the span and one for the angle, and a
+trend angle marks its angle with a dotted level and an arc from its first point.
 
 A retracement, a trend-based extension and a fib channel lay their levels out two to a line, each
 level its switch, its value and its color, under the thickness and style every level line is drawn
@@ -3041,12 +3052,14 @@ ends; a pin keeps its place without words. `AttachDrawingsOptions.placeholder` n
 empty drawing shows and `AttachDrawingsOptions.inks` the chart's own inks (`DrawingInks`).
 
 A table types into the cell a click on the selected table lands in, Tab moving on to the next cell
-and from the last to the first. Its floating bar and the chart's menu over it add a column right of
-the cell last typed in and a row below it, or at the table's ends where no cell is, and the menu
-removes that cell's row and column (`chart.drawings.tableRemoveRow`,
-`chart.drawings.tableRemoveColumn`). A hovered grid line resizes its column or row, and the corners
-scale the table. The price label, the price note, the arrow marks, the arrow marker and the flag
-open no editor: their words, where they have any, are set in their settings, which a double-click
+and from the last to the first. Its floating bar and its menu add a column right of the cell last
+typed in and a row below it, or at the table's ends where no cell is, and its menu removes that
+cell's row and column (`chart.drawings.tableRemoveRow`, `chart.drawings.tableRemoveColumn`). A
+hovered grid line resizes its column or row, and the corners scale the table. A line types its
+words along it: a selected line without words invites them where they would stand, turned with the
+line, and a click there or on its words types them in place; a horizontal ray's words are set in
+its settings. The price label, the price note, the arrow marks, the arrow marker and the flag open
+no editor: their words, where they have any, are set in their settings, which a double-click
 opens. Any other text-bearing tool types in a box of its own: Ctrl or Cmd with Enter commits,
 Escape cancels, and a press on the chart commits.
 
@@ -3268,6 +3281,10 @@ What to know:
   default), an action on the price the pointer landed on, placed under Copy price and Paste; or
   `view`, a switch over what the chart shows, placed under the remove rows. Rows keep the order
   they were contributed in within their group.
+- **A right-click on a drawing carries your rows too.** It raises the drawing's own menu, and your
+  `level` rows stand under its Clone and Copy and your `view` rows under its Remove. On a table,
+  `ChartExtensionMenuContext.table` names it, and `table.cell` says whether a cell of it is being
+  typed in; anywhere else the context carries no `table`.
 - **A drawn layer can join the drawing toolbar's eye.**
   `ctx.contributeHideLayer({ id, label, icon, apply })` lists the layer in the eye's menu after the
   chart's own drawings and indicators and before "Hide all", which blanks it with them. `label`

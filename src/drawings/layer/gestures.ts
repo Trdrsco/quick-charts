@@ -127,7 +127,8 @@ export interface GestureContext {
   /** The drawing a right-click landed on, for the menu that follows it, or null. */
   noteMenuDrawing(id: string | null): void
   /** Ask for the selected drawing's settings. */
-  openSettings(): void
+  /** Open the selection's settings, on the Text page where the viewer asked from its words. */
+  openSettings(page?: 'Text'): void
   /** The gestures hear here that the armed tool changed; they set it as they bind. */
   toolChanged?: () => void
   setHovered(id: string | null): void
@@ -472,6 +473,17 @@ export function bindGestures(ctx: GestureContext): () => void {
       }
       const hit = hitAt(p)
       if (hit) {
+        // A drawing that shows its handles under the pointer moves the point of the handle a press
+        // lands on, and is selected by it, whether or not it was selected before.
+        const showsHandles = (hit as IDrawing & { handlesOnHover?: () => boolean }).handlesOnHover?.() === true
+        if (showsHandles && hit.id !== sel?.id && !e.ctrlKey && !e.metaKey && !editRefused('resize', hit.options, false)) {
+          const ai = anchorHit(hit, p)
+          if (ai !== null) {
+            manager.select(hit.id)
+            startDrag('anchor', hit, ai, p)
+            return
+          }
+        }
         // A Control- or Command-drag duplicates: the gesture grabs a fresh copy and moves that. A
         // drawing whose tool may not be copied is moved itself, as a plain drag moves it.
         if ((e.ctrlKey || e.metaKey) && !editRefused('cloneDrag', hit.options, false) && ctx.copies(hit.type)) {
@@ -548,8 +560,9 @@ export function bindGestures(ctx: GestureContext): () => void {
       return
     }
     manager.add(drawing)
-    // A tool that types on the chart shows its points' handles while its later points are placed.
-    if (required > 1 && inlineTextRules(drawing)) drawing.setState('editing')
+    // A tool that types on the chart, and a line, shows its points' handles and marks them on the
+    // axes while its later points are placed.
+    if (required > 1 && (inlineTextRules(drawing) || toolRegistry.get(drawing.type)?.category === 'lines')) drawing.setState('editing')
     ctx.draft = { drawing, required, placed: 1, downX: p.x, downY: p.y, pendingDrag: true, hasText: !!def.hasText, mode, lastX: p.x, lastY: p.y }
     showPoint(anchor)
     if (mode === 'fixed' && required === 1) completePlacement(ctx.draft, p)
@@ -813,7 +826,11 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (hit && settingsOnDoubleClick(hit)) {
       ctx.endTextEdit()
       manager.select(hit.id)
-      ctx.openSettings()
+      // Where the cursor reads as words (a drawing's words, a line's invitation, an arrow's selected
+      // body), the settings open on their Text page; anywhere else on the drawing, on its first.
+      const vp = viewport()
+      const cursor = vp ? (hit as IDrawing & { cursorFor?: (point: Px, viewport: Viewport) => string | null }).cursorFor?.(p, vp) : null
+      ctx.openSettings(cursor === 'text' ? 'Text' : undefined)
       return
     }
     if (ctx.textEditOpen()) return

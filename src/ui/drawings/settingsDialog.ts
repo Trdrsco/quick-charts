@@ -54,6 +54,9 @@ export interface SettingsDialogDeps {
   onClose?(outcome: 'commit' | 'cancel'): void
   /** The colors this viewer mixed, which every color popover the dialog opens offers and adds to. */
   colors?: ColorMemory
+  /** The page the dialog opens on, where the drawing has it: a double-click on a drawing's words
+   *  asks for its Text page. Its first page otherwise. */
+  tab?: SettingsTab
 }
 
 export interface SettingsDialogHandle {
@@ -67,7 +70,7 @@ export function openSettingsDialog(deps: SettingsDialogDeps): SettingsDialogHand
   const toolTitle = def ? toolName(t, def.type, def.name) : drawing.type
   /** What the drawing is called: the name the viewer gave it, or its tool's. */
   const nameOf = (): string => drawing.options.name || toolTitle
-  let tab: SettingsTab = firstTabFor(drawing)
+  let tab: SettingsTab = deps.tab && tabsFor(drawing).includes(deps.tab) ? deps.tab : firstTabFor(drawing)
   let settled = false
 
   const dialog = openDialog({

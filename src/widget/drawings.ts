@@ -49,6 +49,7 @@ import { mountFavoritesBar, type FavoritesBarHandle } from '../ui/drawings/favor
 import { mountSettingsBar, type SettingsBarHandle } from '../ui/drawings/settingsBar'
 import { mountTextEditor, type TextEditorHandle } from '../ui/drawings/textEditor'
 import { openSettingsDialog, type SettingsDialogHandle } from '../ui/drawings/settingsDialog'
+import type { SettingsTab } from '../ui/drawings/settingsRows'
 import { openImagePicker, firstImageFile, humanSize } from '../ui/drawings/imagePicker'
 import { pushRecentGlyph } from '../ui/drawings/glyphPicker'
 import { closeOverlays } from '../ui/controls/overlays'
@@ -57,6 +58,7 @@ import { commandShown, drawingToolPermitted, drawingToolShown } from './access'
 import { drawingToolOffered, type OfferedDrawingTools } from './drawingTools'
 import type { CommandRegistry } from './commands'
 import { drawingCancelAvailable, menuDrawing } from '../drawings/layer/attach'
+import type { ContextMenuExtraRow } from '../contextMenuUi'
 import { RECENT_COLOR_LIMIT, type ColorMemory } from '../ui/controls/color'
 import type { IconResolver } from '../ui/icons/resolver'
 
@@ -114,7 +116,8 @@ export interface DrawingVerbs {
   setRemoveLocked(on: boolean): void
   toggleFavorite(tool: string): void
   setFavoritesBar(on: boolean): void
-  openSettings(): void
+  /** Open the selected drawing's settings, on a page it has where one is named. */
+  openSettings(page?: SettingsTab): void
   /** Apply a named template to the selection, or the tool's default for null. */
   applyTemplate(name: string | null): void
   saveTemplate(name: string): void
@@ -167,6 +170,10 @@ export interface DrawingsLayer {
   relabel(): void
   /** Re-render the surfaces after something they read moved (a preference, the layout). */
   refresh(): void
+  /** Raise the menu of the drawing the last right-click landed on at a viewport point, with the
+   *  rows `extras` gives for the table there, if it is one. False where it landed on none, or the
+   *  drawings feature is off. */
+  openMenuAt(clientX: number, clientY: number, extras?: (table: { cell: boolean } | null) => readonly ContextMenuExtraRow[]): boolean
   /** The set of contributed layers changed: re-apply what the eye is doing to the layers that
    *  exist now, releasing a subject that is gone, and re-list the eye's menu. */
   syncHideLayers(): void
@@ -259,6 +266,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       setCurrency: () => undefined,
       relabel: () => undefined,
       refresh: () => undefined,
+      openMenuAt: () => false,
       applyToolIntent: () => undefined,
       rebindIdentity: () => undefined,
       destroy: () => undefined,
@@ -436,6 +444,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     onMove: (position) => write({ settingsBarPosition: position }),
     recentColors: colors.list,
     onMixColor: colors.add,
+    tableCell: () => !!selectedTable()?.editingCell,
   })
 
   const renderAll = (): void => {
@@ -604,7 +613,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     setRemoveLocked: (on) => write({ removeLocked: on }),
     toggleFavorite: (tool) => write({ favorites: toggleFavorite(prefs().favorites, tool) }),
     setFavoritesBar: (on) => write({ favorites: { ...prefs().favorites, visible: on } }),
-    openSettings() {
+    openSettings(page) {
       const drawing = handle.selectedDrawing()
       if (!drawing || dialog) return
       // The dialog previews on the drawing; the document carries the snapshot until Ok commits.
@@ -621,6 +630,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
         available,
         shown,
         colors,
+        ...(page ? { tab: page } : {}),
         onClose: () => {
           handle.endPreview()
           dialog = null
@@ -733,6 +743,12 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       settingsBar?.render()
     },
     refresh,
+    openMenuAt: (clientX, clientY, extras) => {
+      const target = menuDrawing(handle)
+      if (!target || !settingsBar) return false
+      const table = target instanceof TableNote ? { cell: !!target.editingCell } : null
+      return settingsBar.openMenuAt(clientX, clientY, extras?.(table) ?? [])
+    },
     syncHideLayers,
     applyToolIntent: (arg) => verbs.arm(arg),
     rebindIdentity(id) {
