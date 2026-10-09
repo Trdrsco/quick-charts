@@ -71,6 +71,22 @@
         "value": "#ffffff"
       },
       {
+        "property": "--qc-control-neutral",
+        "value": "#f2f2f2"
+      },
+      {
+        "property": "--qc-control-neutralHover",
+        "value": "#ebebeb"
+      },
+      {
+        "property": "--qc-control-neutralInk",
+        "value": "#000000"
+      },
+      {
+        "property": "--qc-control-neutralPressed",
+        "value": "#dbdbdb"
+      },
+      {
         "property": "--qc-control-off",
         "value": "#9c9c9c"
       },
@@ -459,6 +475,22 @@
       {
         "property": "--qc-control-mark",
         "value": "#2e2e2e"
+      },
+      {
+        "property": "--qc-control-neutral",
+        "value": "#2e2e2e"
+      },
+      {
+        "property": "--qc-control-neutralHover",
+        "value": "#3d3d3d"
+      },
+      {
+        "property": "--qc-control-neutralInk",
+        "value": "#ffffff"
+      },
+      {
+        "property": "--qc-control-neutralPressed",
+        "value": "#4a4a4a"
       },
       {
         "property": "--qc-control-off",

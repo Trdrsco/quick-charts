@@ -1,8 +1,8 @@
 // The bar-replay transport: the starting-point split button (select a bar on the chart, select a
-// date, a random bar), step back, play or pause, step forward, the speed menu, the update-timeframe
-// menu, go live, the bar counter, and exit. Mounted once in the widget's reserved row while its
-// presentation owner is replaying; every control states an intent by that chart's command id, so a
-// host that forbids a replay verb cannot reach it by clicking the bar.
+// date, the first available date, a random bar), step back, play or pause, step forward, the speed
+// menu, the update-timeframe menu, go live, the bar counter, and exit. Mounted once in the widget's
+// reserved row while its presentation owner is replaying; every control states an intent by that
+// chart's command id, so a host that forbids a replay verb cannot reach it by clicking the bar.
 import type { ChartI18n } from '../../i18n'
 import type { CommandExecutor } from '../../widget/commands'
 import type { ChartHandle } from '../../widget/chart'
@@ -17,6 +17,7 @@ import { menuHeading, menuItem, menuSeparator, openMenu, toggleMenu } from './me
 import { EXIT_EVENT_GRACE_MS, motionDurationMs } from './motion'
 import { switchRow } from './dialog'
 import type { Closable } from '../controls/overlays'
+import { ownsEscape, pushEscapeOwner } from '../controls/escape'
 import type { IconResolver } from '../icons/resolver'
 
 export interface ReplayTransportDeps {
@@ -71,6 +72,9 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
   let startMode: 'bar' | 'date' = 'bar'
   /** The subscription while the chart waits for a bar to be clicked, else null. */
   let picking: (() => void) | null = null
+  /** The waiting plot's claim on Escape. A surface opened over it since, a menu or the date dialog,
+   *  owns the press first, so closing that surface never also withdraws the question. */
+  let pickEscape: { token: object; release(): void } | null = null
   /** The menus and the date dialog this bar has open, so destroy closes them. */
   const open = new Set<Closable>()
   const hold = <T extends Closable>(handle: T): T => {
@@ -88,6 +92,8 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
   const releasePicking = (): void => {
     picking?.()
     picking = null
+    pickEscape?.release()
+    pickEscape = null
     document.removeEventListener('keydown', onPickKey, true)
   }
   /** Draw, and wire, exactly what the SESSION says. Select bar's held state IS the arming phase, so
@@ -99,6 +105,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
     const armed = handle.replay.phase() === 'arming'
     if (armed && !picking) {
       picking = handle.sync.onTimeClick((time) => startAt(time))
+      pickEscape = pushEscapeOwner()
       document.addEventListener('keydown', onPickKey, true)
     } else if (!armed && picking) {
       releasePicking()
@@ -106,19 +113,17 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
     startButton.setAttribute('aria-pressed', String(armed))
   }
   const onPickKey = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape') {
-      event.stopPropagation()
-      handle.replay.disarm()
-    }
+    if (event.key !== 'Escape' || (pickEscape && !ownsEscape(pickEscape.token))) return
+    event.stopPropagation()
+    handle.replay.disarm()
   }
   const armPick = (): void => {
     if (handle.replay.phase() === 'arming') handle.replay.disarm()
     else handle.replay.arm()
   }
   const pickDate = (): void => {
-    // The question moves into the dialog, so the plot stops taking it: two live ways to answer the
-    // same question would leave a stray click starting replay behind an open dialog.
-    handle.replay.disarm()
+    // The question stays open while the dialog asks it. The dialog's backdrop takes every press, so
+    // the plot cannot answer behind it, and Cancel leaves the question, and the row, as they were.
     const bars = deps.bars()
     const first = bars[0]
     const last = bars[bars.length - 1]
@@ -145,7 +150,7 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
       host: deps.chrome,
       anchor: startMenuButton,
       label: t()('replay.selectStartingPoint'),
-      className: 'qc-replay-menu',
+      className: 'qc-replay-menu qc-replay-start-menu',
       width: FLYOUT_WIDTH.replayStart,
       placement: 'up',
       onClose: () => open.delete(menu),
@@ -394,9 +399,8 @@ export function mountReplayTransport(deps: ReplayTransportDeps): ReplayTransport
       if (destroyed) return
       destroyed = true
       releasePicking()
-      // The date dialog leaves the way the row does: with its exit motion when the row animates out,
-      // at once when the row is torn down.
-      for (const handle of [...open]) handle.close({ animate })
+      // The menus and the date dialog go with the row, at once: none of them has an exit motion.
+      for (const handle of [...open]) handle.close({ animate: false })
       offStrings()
 
       // The exit lasts as long as the duration role the stylesheet's transition reads, which is zero

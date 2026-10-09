@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 // The replay transport: its controls read the replay state and route every press through a
-// command, the starting point arms a chart click, the speed and timeframe menus set through
-// commands, and the date picker's arithmetic is exact.
+// command, the starting point arms a chart click, the starting-point menu offers the four starting
+// points with the current one marked, a date chosen in the dialog starts replay through the start
+// command, and the speed and timeframe menus set through commands.
 import { afterEach, describe, expect, it } from 'vitest'
 import { timeframeWords, mountReplayTransport, speedWords } from '../../src/ui/chrome/replayBar'
-import { openDatePicker, parseTimeOfDay, parseYmd, ymd } from '../../src/ui/chrome/datePicker'
 import { buttonNames, fakeChart, fakeWidget, press } from './harness'
 
 let cleanup: (() => void)[] = []
@@ -16,14 +16,19 @@ afterEach(() => {
 /** The widget's own shape around the transport: a root column holding the charts grid, the overlay
  *  layer the pickers open into, and the bottom band. The row is placed the way the chrome places
  *  it, after the grid, because the transport does not mount itself anywhere. */
-function mount(options: { access?: (id: string) => boolean } = {}) {
+function mount(options: { access?: (id: string) => boolean; entry?: boolean } = {}) {
   const chart = fakeChart()
   const w = fakeWidget({ chart, access: options.access ? { command: options.access } : undefined })
   // A RUNNING session with the picker ARMED on top of it: the transport verbs are the ones a
   // session offers, and Select bar is held because a viewer re-arming to choose a different bar is
-  // the state this row spends most of its life in.
-  chart.handle.replay.start(1_700_000_000)
-  chart.handle.replay.arm()
+  // the state this row spends most of its life in. `entry` is replay just entered instead: the
+  // question is open and no session runs yet.
+  if (options.entry) {
+    chart.handle.replay.start()
+  } else {
+    chart.handle.replay.start(1_700_000_000)
+    chart.handle.replay.arm()
+  }
   const root = document.createElement('div')
   root.className = 'qc-root'
   const panes = document.createElement('div')
@@ -229,6 +234,76 @@ describe('the replay bar', () => {
     expect(at).toBeLessThanOrEqual(chart.bars[chart.bars.length - 1]!.t)
   })
 
+  it('the starting-point menu asks its question and marks the current starting point, Bar until Date… is chosen', () => {
+    const { root } = mount()
+    const openStart = (): HTMLElement => {
+      root.querySelector<HTMLButtonElement>('button[aria-label="Select starting point"]')!.click()
+      return root.querySelector<HTMLElement>('.qc-menu-panel')!
+    }
+    let panel = openStart()
+    expect(panel.classList.contains('qc-replay-start-menu')).toBe(true)
+    expect(panel.querySelector('.qc-menu-heading')!.textContent).toBe('Select starting point')
+    let rows = [...panel.querySelectorAll<HTMLButtonElement>('[data-qc-item]')]
+    // Each starting point wears its mark on the 28 grid; the two that are modes say which is current.
+    expect(rows.map((row) => row.querySelector('svg')!.getAttribute('width'))).toEqual(['28', '28', '28', '28'])
+    expect(rows.map((row) => row.getAttribute('aria-checked'))).toEqual(['true', 'false', null, null])
+    rows[1]!.click()
+    expect(root.querySelector<HTMLButtonElement>('.qc-replay-start')!.getAttribute('aria-label')).toBe('Select date')
+    root.querySelector<HTMLButtonElement>('[data-role="replay-date"] button[aria-label="Cancel"]')!.click()
+    panel = openStart()
+    rows = [...panel.querySelectorAll<HTMLButtonElement>('[data-qc-item]')]
+    expect(rows.map((row) => row.textContent)).toEqual(['Bar', 'Date…', 'First available date', 'Random bar'])
+    expect(rows.map((row) => row.getAttribute('aria-checked'))).toEqual(['false', 'true', null, null])
+  })
+
+  it('Date… asks for a moment in the loaded window, and Select starts replay there through the start command', () => {
+    const { root, chart } = mount()
+    root.querySelector<HTMLButtonElement>('button[aria-label="Select starting point"]')!.click()
+    const date = [...root.querySelectorAll<HTMLButtonElement>('.qc-menu-panel [data-qc-item]')].find((row) => row.textContent === 'Date…')!
+    date.click()
+    // The question stays open while the dialog asks it: its backdrop takes every press meanwhile.
+    expect(chart.calls).not.toContain('replay:disarm')
+    expect(chart.handle.replay.phase()).toBe('arming')
+    const dialog = root.querySelector<HTMLElement>('[data-role="replay-date"]')!
+    expect(dialog).not.toBeNull()
+    // The loaded window is 120 one-minute bars from 22:13:20 UTC on 14 November 2023, past midnight
+    // into the 15th, which the dialog opens on.
+    const field = dialog.querySelector<HTMLInputElement>('.qc-date-field')!
+    expect(field.value).toBe('2023-11-15')
+    const open = [...dialog.querySelectorAll<HTMLButtonElement>('.qc-date-day:not([disabled])')]
+    expect(open.map((day) => day.textContent)).toEqual(['14', '15'])
+    open[0]!.click()
+    const time = dialog.querySelector<HTMLInputElement>('.qc-date-time')!
+    time.value = '22:30'
+    time.dispatchEvent(new Event('input', { bubbles: true }))
+    dialog.querySelector<HTMLButtonElement>('button[aria-label="Select"]')!.click()
+    expect(chart.calls.at(-1)).toBe(`replay:start:${Date.UTC(2023, 10, 14, 22, 30) / 1000}`)
+    expect(root.querySelector('[data-role="replay-date"]')).toBeNull()
+  })
+
+  it('on entry, the date dialog leaves replay asking: Cancel and Escape close the dialog alone, and the next Escape withdraws the question', () => {
+    const { root, chart } = mount({ entry: true })
+    expect(chart.handle.replay.phase()).toBe('arming')
+    const openDate = (): HTMLElement => {
+      root.querySelector<HTMLButtonElement>('button[aria-label="Select starting point"]')!.click()
+      ;[...root.querySelectorAll<HTMLButtonElement>('.qc-menu-panel [data-qc-item]')].find((row) => row.textContent === 'Date…')!.click()
+      return root.querySelector<HTMLElement>('[data-role="replay-date"]')!
+    }
+    // The session never leaves the question while the dialog is up, so the chrome keeps the row.
+    openDate().querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
+    expect(root.querySelector('[data-role="replay-date"]')).toBeNull()
+    expect(chart.handle.replay.phase()).toBe('arming')
+    expect(chart.calls).not.toContain('replay:disarm')
+    // Escape answers the dialog over the plot first.
+    openDate()
+    press(document.activeElement ?? document.body, 'Escape')
+    expect(root.querySelector('[data-role="replay-date"]')).toBeNull()
+    expect(chart.handle.replay.phase()).toBe('arming')
+    expect(root.querySelector<HTMLButtonElement>('.qc-replay-start')!.getAttribute('aria-pressed')).toBe('true')
+    press(document.body, 'Escape')
+    expect(chart.calls).toContain('replay:disarm')
+  })
+
   it('the first available date asks the chart to walk back and start there, through its command', () => {
     const { root, chart } = mount()
     root.querySelector<HTMLButtonElement>('button[aria-label="Select starting point"]')!.click()
@@ -308,45 +383,14 @@ describe('the transport at teardown', () => {
     expect(root.querySelector('.qc-replay')).toBeNull()
   })
 
-})
-
-describe('the date picker', () => {
-  it('reads and writes UTC dates and times exactly', () => {
-    expect(ymd(0)).toBe('1970-01-01')
-    expect(parseYmd('2026-03-01')).toBe(Date.UTC(2026, 2, 1) / 1000)
-    expect(parseYmd('2026-3-1')).toBeNull()
-    expect(parseTimeOfDay('09:30')).toBe(34_200)
-    expect(parseTimeOfDay('')).toBe(0)
-    expect(parseTimeOfDay('25:99')).toBe(1439 * 60)
-  })
-
-  it('opens on the last loaded day, disables days outside the window, and selects date plus time', () => {
-    const w = fakeWidget()
-    cleanup.push(() => w.dispose())
-    const picked: number[] = []
-    const minSec = Date.UTC(2026, 1, 10) / 1000
-    const maxSec = Date.UTC(2026, 1, 20) / 1000
-    const dialog = openDatePicker({ host: w.overlays, i18n: w.i18n, icons: w.icons, minSec, maxSec, withTime: true, onSelect: (at) => picked.push(at) })
-    const field = dialog.element.querySelector<HTMLInputElement>('.qc-date-field')!
-    expect(field.value).toBe('2026-02-20')
-    const days = [...dialog.element.querySelectorAll<HTMLButtonElement>('.qc-date-day')]
-    expect(days.length).toBe(28)
-    expect(days[0]!.disabled).toBe(true) // the 1st is outside the window
-    expect(days[14]!.disabled).toBe(false)
-    // One tab stop for the grid: the selected day holds it, and the arrows walk days and weeks.
-    expect(days.filter((d) => d.getAttribute('tabindex') === '0').map((d) => d.textContent)).toEqual(['20'])
-    days[19]!.focus()
-    press(days[19]!, 'ArrowLeft')
-    expect(document.activeElement?.textContent).toBe('19')
-    press(document.activeElement!, 'ArrowUp')
-    expect(document.activeElement?.textContent).toBe('12')
-    days[14]!.click()
-    expect(field.value).toBe('2026-02-15')
-    const time = dialog.element.querySelector<HTMLInputElement>('.qc-date-time')!
-    time.value = '09:30'
-    time.dispatchEvent(new Event('input'))
-    dialog.element.querySelector<HTMLButtonElement>('button[aria-label="Select"]')!.click()
-    expect(picked).toEqual([Date.UTC(2026, 1, 15, 9, 30) / 1000])
-    expect(dialog.open()).toBe(false)
+  it('takes the date dialog with it at once, its time list included', () => {
+    const { root, bar } = mount()
+    root.querySelector<HTMLButtonElement>('button[aria-label="Select starting point"]')!.click()
+    ;[...root.querySelectorAll<HTMLButtonElement>('.qc-menu-panel [data-qc-item]')].find((row) => row.textContent === 'Date…')!.click()
+    root.querySelector<HTMLButtonElement>('[data-role="replay-date"] button[aria-label="Choose a time"]')!.click()
+    expect(root.querySelector('.qc-date-times')).not.toBeNull()
+    bar.destroy({ animate: true })
+    expect(root.querySelector('[data-role="replay-date"]')).toBeNull()
+    expect(root.querySelector('.qc-date-times')).toBeNull()
   })
 })

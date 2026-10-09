@@ -12,15 +12,34 @@ export const replay = {
   'replay.startDate': 'Date…',
   'replay.startFirst': 'First available date',
   'replay.startRandom': 'Random bar',
-  /** The hint while the chart waits for the click that picks the bar. */
   // The Select date dialog.
+  'replay.close': 'Close',
   'replay.startDateField': 'Replay start date',
   'replay.startTimeField': 'Replay start time (UTC, optional)',
   /** The two fields' format hints, shown as placeholders. */
   'replay.dateMask': 'YYYY-MM-DD',
   'replay.timeMask': 'HH:MM',
-  'replay.previousMonth': 'Previous month',
-  'replay.nextMonth': 'Next month',
+  /** The clock at the end of the time field, which lists the day in quarter hours. */
+  'replay.chooseTime': 'Choose a time',
+  /** The calendar's arrows, each naming the month, the year or the span of years it turns to. */
+  'replay.previousMonth': 'Previous month, {month}',
+  'replay.nextMonth': 'Next month, {month}',
+  'replay.previousYear': 'Previous year, {year}',
+  'replay.nextYear': 'Next year, {year}',
+  'replay.previousYears': 'Previous years, {years}',
+  'replay.nextYears': 'Next years, {years}',
+  /** The calendar's heading, naming what a press turns it to: the months of a year, a span of
+   *  years, or the days of a month. */
+  'replay.showMonths': 'Switch to months, {year}',
+  'replay.showYears': 'Switch to years, {years}',
+  'replay.showDates': 'Switch to dates, {month}',
+  /** A span of years by its first and its last. */
+  'replay.yearRange': '{from} - {to}',
+  /** The band over the months of a year and over a span of years. */
+  'replay.months': 'Months',
+  'replay.years': 'Years',
+  /** The chip that moves the choice to the first day the chart can replay from. */
+  'replay.firstAvailableDay': 'Select the first available day',
   'replay.cancel': 'Cancel',
   'replay.select': 'Select',
   /** The calendar's column heads, a two-letter form the dialog owns, Monday first. */

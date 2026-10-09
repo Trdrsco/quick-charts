@@ -1627,7 +1627,13 @@ chrome is painted from it and renders nothing without it.
   asks where to begin rather than choosing a starting bar. Its starting-point menu answers with a
   bar picked on the plot, a date, the first available date, or a random bar. The first available
   date runs `chart.replay.startFirst`: the chart pages the feed's history back to its oldest bar,
-  within the 20,000 bars one session holds, and starts there. Undo and
+  within the 20,000 bars one session holds, and starts there. A date opens Select date over the
+  undimmed chart, carried by its title: a date field, on an intraday chart a time field whose clock
+  lists the day in quarter hours, a calendar of the loaded window whose heading turns to the months
+  and the years, and a chip that moves the choice to the first available day. Picking moves the
+  choice and the dialog stays up; Select starts replay at the first bar at or after the date and
+  time, in UTC, and Cancel leaves replay asking where to start. The arrows walk the days, Page Up
+  and Page Down turn the month, Enter picks and Escape closes. Undo and
   redo step back and forward through the active chart's own content, and each names the change it
   would move. Layout setup offers the arrangements and sync switches the chart offers (by default
   the 55 arrangements and the five sync switches); the saved-layouts menu, shown with a layouts
@@ -2037,6 +2043,10 @@ among the others `THEME_ROLES` lists:
 | `state.pressed` | `#ebebeb` | `#3d3d3d` | The fill while the pointer is down. |
 | `control.outline` | `#2e2e2e` | `#ffffff` | The edge and the words of an outlined button at rest, such as a dialog's Cancel. |
 | `control.onInk` | `#ffffff` | `#000000` | A mark cut from the emphasis fill: a chosen thickness, line style or line end. |
+| `control.neutral` | `#f2f2f2` | `#2e2e2e` | The quiet fill: a dialog's shortcut chip, the band over a calendar's columns, a chosen month or year. |
+| `control.neutralHover` | `#ebebeb` | `#3d3d3d` | The quiet fill under the pointer. |
+| `control.neutralPressed` | `#dbdbdb` | `#4a4a4a` | The quiet fill while the pointer is down. |
+| `control.neutralInk` | `#000000` | `#ffffff` | The words on the quiet fill, and what a quiet control's words and mark brighten to under the pointer, such as a calendar's day. |
 | `status.positive` | `#078671` | `#089981` | A gain or a success. |
 | `status.negative` | `#df323f` | `#f34452` | A loss or a failure. |
 | `status.warning` | `#ac6600` | `#ff9800` | A condition to notice before acting. |
@@ -2044,7 +2054,8 @@ among the others `THEME_ROLES` lists:
 Every ink is held to the WCAG 2.2 AA ratio on each ground it is drawn over, so the light status
 inks are the darkest steps of their hues that still read at 4.5 to 1 on white, the dark red reads at
 4.5 to 1 on the dialog ground, and the muted ink reads at 4.5 to 1 over the hover and selected fills
-of a menu row. `drawing.line` and `drawing.selected` are `#2962ff` in both modes.
+of a menu row and over the quiet fill. `drawing.line` and `drawing.selected` are `#2962ff` in both
+modes.
 
 ### Fields
 
@@ -2089,16 +2100,16 @@ same values:
 | `motion.scaleEnter` | `0.97` | The scale a modal dialog box grows from as it opens. |
 
 Every modal dialog the chart opens (the symbol search, chart settings, the indicator browser and
-indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and the
-drawing image picker and template prompts) opens with its backdrop fading in over
+indicator settings, the saved-layouts browser, the name and confirm prompts, and the drawing image
+picker and template prompts) opens with its backdrop fading in over
 `motion.durationBase` on `motion.easingOut`, and its box fading in and growing from
 `motion.scaleEnter` to full size over `motion.durationBase` on `motion.easingStandard`. It closes
 with the same motion reversed. A closing dialog stops taking input and returns focus at once, and the
 chart removes it when the same `motion.durationBase` has elapsed, so a duration you set times both
 the transition and the removal. A dialog opened over another moves on its own and closes first, and
-a dialog the chart replaces or tears down goes at once. The drawing settings dialog edits the drawing
-it stands over, so it opens in place: it appears and leaves at once, and its backdrop dims nothing
-while still taking the press that closes it.
+a dialog the chart replaces or tears down goes at once. The drawing settings dialog and the replay
+date picker work on the chart they stand over, so they open in place: they appear and leave at once,
+and their backdrop dims nothing while still taking the press that closes them.
 
 A duration takes a CSS duration such as `200ms` or `0.2s`; an easing takes any CSS timing function,
 such as `ease-in-out`, `steps(4)` or `cubic-bezier(0.2, 0, 0, 1)`; a scale takes a unitless factor
