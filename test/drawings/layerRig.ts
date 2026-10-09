@@ -18,7 +18,7 @@ export interface RigOptions {
   documents?: Parameters<typeof attachDrawings>[0]['documents']
   templates?: Parameters<typeof attachDrawings>[0]['templates']
   chartId?: string
-  execute?: (command: string) => boolean
+  execute?: (command: string, arg?: unknown) => boolean
   symbol?: string
   /** Whether the host has taken the pointer over for a gesture of its own. */
   pointerSuppressed?: () => boolean

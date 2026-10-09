@@ -32,6 +32,9 @@ import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, levelLines, opacity
 
 export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Coordinates' | 'Visibility'
 
+/** Whether a value names a page a drawing's dialog may open on. */
+export const isSettingsTab = (value: unknown): value is SettingsTab => value === 'Inputs' || value === 'Style' || value === 'Text' || value === 'Coordinates' || value === 'Visibility'
+
 export const TAB_LABEL: Record<SettingsTab, ChartMessageKey> = {
   Inputs: 'drawing.tabInputs',
   Style: 'drawing.tabStyle',
@@ -296,6 +299,7 @@ const STATS: readonly { key: string; label: ChartMessageKey }[] = [
   { key: 'showPipsChange', label: 'drawing.changeInPips' },
   { key: 'showBarsRange', label: 'drawing.barsRange' },
   { key: 'showDateTimeRange', label: 'drawing.dateTimeRange' },
+  { key: 'showDistance', label: 'drawing.distance' },
   { key: 'showAngle', label: 'drawing.angle' },
 ]
 const STATS_POSITION_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.left', center: 'drawing.center', right: 'drawing.right', auto: 'drawing.auto' }

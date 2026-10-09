@@ -409,7 +409,8 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
           doubleClick: () => {
             if (textEdit !== session || openedBy !== 'click' || !settingsOnDoubleClick(drawing)) return false
             commitTextEdit(drawing.textDraft?.value ?? value)
-            openSettings()
+            // The double-click landed on the words being typed: their page.
+            openSettings('Text')
             return true
           },
           tab: (backward) => {
@@ -430,10 +431,11 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     pendingEdit = { drawing, timer }
   }
 
-  /** Ask for the selected drawing's settings through the door. Standalone, the layer has no
-   *  settings of its own to open. */
-  const openSettings = (): void => {
-    options.execute?.(SETTINGS_COMMAND)
+  /** Ask for the selected drawing's settings through the door, on the Text page where the viewer
+   *  asked from its words. Standalone, the layer has no settings of its own to open. */
+  const openSettings = (page?: 'Text'): void => {
+    if (page) options.execute?.(SETTINGS_COMMAND, page)
+    else options.execute?.(SETTINGS_COMMAND)
   }
 
   /** Commit an inline edit: the words exactly as typed, the drawing still selected. A drawing of a

@@ -7,6 +7,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { drawingTools } from '../../../src/drawings/index'
 import { anchors, choices, rig, signature } from './settingsRig'
+import { authoredStylesheet } from '../../theme/stylesheetSource'
 
 afterEach(() => {
   document.body.replaceChildren()
@@ -180,7 +181,7 @@ const PAGES: Record<string, { tabs: string[]; Style: string[]; Inputs?: string[]
   ray: { tabs: ['Style', 'Text', 'Coordinates', 'Visibility'], Style: lineStyle('Extend right line', 'Hidden', 'Right', '[ ]'), Text: LINE_TEXT, Coordinates: TWO_POINTS },
   info_line: {
     tabs: ['Style', 'Text', 'Coordinates', 'Visibility'],
-    Style: lineStyle("Don't extend", 'Price range, percent change, change in pips, bars range, date/time range, angle', 'Center', '[x]'),
+    Style: lineStyle("Don't extend", 'Price range, percent change, change in pips, bars range, date/time range, distance, angle', 'Center', '[x]'),
     Text: LINE_TEXT,
     Coordinates: TWO_POINTS,
   },
@@ -430,7 +431,7 @@ describe('the choices each list offers, in order', () => {
     expect(choices(dialog, left!)).toEqual(['Normal', 'Arrow'])
     const lists = [...page().querySelectorAll<HTMLElement>('.qc-drawing-select')]
     expect(choices(dialog, lists[0]!)).toEqual(['Extend left line', 'Extend right line'])
-    expect(choices(dialog, lists[1]!)).toEqual(['Price range', 'Percent change', 'Change in pips', 'Bars range', 'Date/time range', 'Angle'])
+    expect(choices(dialog, lists[1]!)).toEqual(['Price range', 'Percent change', 'Change in pips', 'Bars range', 'Date/time range', 'Distance', 'Angle'])
     expect(choices(dialog, lists[2]!)).toEqual(['Left', 'Center', 'Right', 'Auto'])
   })
 
@@ -463,11 +464,26 @@ describe('what the rows write', () => {
     stats.click()
     const items = [...dialog.parentElement!.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
     items[2]!.click()
-    items[5]!.click()
+    items[6]!.click()
     expect(drawing.props.showPipsChange).toBe(true)
     expect(drawing.props.showAngle).toBe(true)
     expect(stats.textContent).toBe('Change in pips, angle')
     expect(dialog.parentElement!.querySelector('[role="menu"]')).not.toBeNull()
+  })
+
+  it('offers a line’s seven stats in their order, its length on the pane among them, the list 236px tall', () => {
+    const { dialog, drawing, page } = rig('info_line')
+    page().querySelectorAll<HTMLElement>('.qc-drawing-select')[1]!.click()
+    const items = [...dialog.parentElement!.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
+    expect(items.map((item) => item.textContent)).toEqual(['Price range', 'Percent change', 'Change in pips', 'Bars range', 'Date/time range', 'Distance', 'Angle'])
+    items[5]!.click()
+    expect(drawing.props.showDistance).toBe(false)
+    // Seven rows 32px tall in a list padded 6px above and below.
+    const css = authoredStylesheet()
+    const rule = (selector: string): string => css.slice(css.indexOf(`${selector} {`), css.indexOf('}', css.indexOf(`${selector} {`)))
+    expect(rule('[data-qc-theme] .qc-drawing-list-row')).toContain('height: 32px')
+    expect(rule('[data-qc-theme] .qc-drawing-menu')).toContain('padding: 6px')
+    expect(items.length * 32 + 2 * 6).toBe(236)
   })
 
   it('switches a background and a middle line on and off, keeping their colors', () => {

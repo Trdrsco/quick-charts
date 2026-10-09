@@ -197,18 +197,22 @@ export const TOOL_CATEGORIES: readonly ToolCategory[] = [
   'content',
 ]
 
+/** A line types its words on the chart: a click on the invitation of a selected line, or on its
+ *  words, types them in place, and a line keeps its place without words. */
+const LINE_WORDS = { inlineText: { clickToType: true, whenEmpty: 'keep' }, settingsOnDoubleClick: true } as const
+
 const DEFINITIONS: ToolDefinition[] = [
   // Lines
-  tool(TrendLine, { type: 'trend_line', name: 'Trend line', category: 'lines', anchors: 2, style: LINE_LOOK }),
-  tool(Ray, { type: 'ray', name: 'Ray', category: 'lines', anchors: 2, style: LINE_LOOK }),
-  tool(InfoLine, { type: 'info_line', name: 'Info line', category: 'lines', anchors: 2, style: LINE_LOOK }),
-  tool(ExtendedLine, { type: 'extended', name: 'Extended line', category: 'lines', anchors: 2, style: LINE_LOOK }),
-  tool(TrendAngle, { type: 'trend_angle', name: 'Trend angle', category: 'lines', anchors: 2, style: { ...LINE_LOOK, fontSize: 12 } }),
-  tool(HorizontalLine, { type: 'horizontal_line', name: 'Horizontal line', category: 'lines', anchors: 1, style: { ...LINE_LOOK, fontSize: 12 } }),
-  tool(HorizontalRay, { type: 'horizontal_ray', name: 'Horizontal ray', category: 'lines', anchors: 1, style: { ...LINE_LOOK, fontSize: 12 } }),
-  tool(VerticalLine, { type: 'vertical_line', name: 'Vertical line', category: 'lines', anchors: 1, style: LINE_LOOK }),
-  tool(CrossLine, { type: 'cross_line', name: 'Cross line', category: 'lines', anchors: 1, style: LINE_LOOK }),
-  tool(Arrow, { type: 'arrow', name: 'Arrow', category: 'lines', anchors: 2, style: LINE_LOOK }),
+  tool(TrendLine, { type: 'trend_line', name: 'Trend line', category: 'lines', anchors: 2, style: LINE_LOOK, ...LINE_WORDS }),
+  tool(Ray, { type: 'ray', name: 'Ray', category: 'lines', anchors: 2, style: LINE_LOOK, ...LINE_WORDS }),
+  tool(InfoLine, { type: 'info_line', name: 'Info line', category: 'lines', anchors: 2, style: LINE_LOOK, ...LINE_WORDS }),
+  tool(ExtendedLine, { type: 'extended', name: 'Extended line', category: 'lines', anchors: 2, style: LINE_LOOK, ...LINE_WORDS }),
+  tool(TrendAngle, { type: 'trend_angle', name: 'Trend angle', category: 'lines', anchors: 2, settingsOnDoubleClick: true, style: { ...LINE_LOOK, fontSize: 12 } }),
+  tool(HorizontalLine, { type: 'horizontal_line', name: 'Horizontal line', category: 'lines', anchors: 1, style: { ...LINE_LOOK, fontSize: 12 }, ...LINE_WORDS }),
+  tool(HorizontalRay, { type: 'horizontal_ray', name: 'Horizontal ray', category: 'lines', anchors: 1, settingsOnDoubleClick: true, style: { ...LINE_LOOK, fontSize: 12 } }),
+  tool(VerticalLine, { type: 'vertical_line', name: 'Vertical line', category: 'lines', anchors: 1, style: LINE_LOOK, ...LINE_WORDS }),
+  tool(CrossLine, { type: 'cross_line', name: 'Cross line', category: 'lines', anchors: 1, settingsOnDoubleClick: true, style: LINE_LOOK }),
+  tool(Arrow, { type: 'arrow', name: 'Arrow', category: 'lines', anchors: 2, style: LINE_LOOK, ...LINE_WORDS }),
 
   // Shapes
   tool(Rectangle, { type: 'rectangle', name: 'Rectangle', category: 'shapes', anchors: 2, style: shapeLook('#9c27b0') }),

@@ -404,6 +404,11 @@ export class Note extends Drawing<NoteProps> {
     return !!at && inBox(point, at.box)
   }
 
+  /** Over the selected note's box the cursor reads as its words. */
+  protected override cursorAt(point: Point, viewport: Viewport): string | null {
+    return this.state === 'selected' && this.wordsAt(point, viewport) ? 'text' : null
+  }
+
   /** An empty note shows its placeholder in its own box, so it needs no hint above it. */
   override paintTextHint(): void {}
 

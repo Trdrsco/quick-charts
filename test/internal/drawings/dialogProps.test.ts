@@ -63,25 +63,26 @@ describe('a line’s stats', () => {
     const line = make('trend_line', [[100, 100], [300, 200]], { showPriceRange: true })
     expect(texts(painted(line))).toEqual([])
     line.setState('selected')
-    expect(texts(painted(line))).toEqual(['+100.00'])
+    expect(texts(painted(line))).toEqual(['100.00'])
     line.setState('normal')
     line.applyProps({ alwaysShowStats: true })
-    expect(texts(painted(line))).toEqual(['+100.00'])
+    expect(texts(painted(line))).toEqual(['100.00'])
   })
 
   it('count the change in the symbol’s smallest move, and leave the count out without one', () => {
     const line = make('info_line', [[100, 100], [300, 110]])
-    expect(texts(painted(line))[0]).not.toMatch(/\+20\b/)
+    expect(texts(painted(line))[0]).toBe('10.00 (10.00%)')
     line.setTickSize(0.5)
-    expect(texts(painted(line))[0]).toContain('+20')
+    expect(texts(painted(line))[0]).toBe('10.00 (10.00%), 20')
   })
 
   it('stand near the right end, or near the left one when auto finds no room on the right', () => {
     const line = make('trend_line', [[100, 100], [790, 100]], { showPriceRange: true, alwaysShowStats: true, statsPosition: 'auto' })
-    const at = (calls: Call[]): unknown[] => calls.find((c) => c.name === 'translate')!.args
-    expect(at(painted(line))[0]).toBeCloseTo(100 + 690 * 0.12)
+    // The box stands twelve pixels right of its point along the line.
+    const at = (calls: Call[]): unknown => calls.find((c) => c.name === 'roundRect')!.args[0]
+    expect(at(painted(line))).toBe(Math.round(100 + 690 * 0.12 + 12))
     line.applyProps({ statsPosition: 'right' })
-    expect(at(painted(line))[0]).toBeCloseTo(100 + 690 * 0.88)
+    expect(at(painted(line))).toBe(Math.round(100 + 690 * 0.88 + 12))
   })
 })
 
@@ -90,8 +91,9 @@ describe('a label', () => {
     const line = make('trend_line', [[100, 100], [300, 100]], { text: 'Hi', textVAlign: 'bottom', textHAlign: 'left' })
     const calls = painted(line)
     const text = calls.find((c) => c.name === 'fillText')!
-    expect(text.args.slice(1)).toEqual([0, 4])
-    expect(calls.find((c) => c.name === 'translate')!.args).toEqual([100, 300])
+    // Below the line: its middle half its size and four pixels more under the line, from the end.
+    expect(text.args.slice(1)).toEqual([0, 0])
+    expect(calls.find((c) => c.name === 'translate')!.args).toEqual([100, 311])
   })
 
   it('stands above, inside or below a box', () => {
@@ -106,13 +108,15 @@ describe('a label', () => {
     line.applyProps({ textOrientation: 'horizontal', textHAlign: 'right', textVAlign: 'top' })
     const calls = painted(line)
     expect(calls.some((c) => c.name === 'rotate')).toBe(false)
-    expect(calls.find((c) => c.name === 'fillText')!.args).toEqual(['Up', 204, 4])
+    // Four pixels right of the line, its middle eleven pixels down from the pane's top.
+    expect(calls.find((c) => c.name === 'translate')!.args).toEqual([204, 11])
+    expect(calls.find((c) => c.name === 'fillText')!.args).toEqual(['Up', 0, 0])
   })
 
   it('is not offered on a trend angle, which reads its angle instead', () => {
     const angle = make('trend_angle', [[100, 100], [300, 200]])
     expect(INERT_PROPS.trend_angle).toEqual(expect.arrayContaining(['text', 'leftEnd', 'rightEnd']))
-    expect(texts(painted(angle))).toEqual(['27°'])
+    expect(texts(painted(angle))).toEqual(['26.6°'])
   })
 })
 

@@ -126,6 +126,12 @@ export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
   bars_pattern: ['candles'],
   fixed_range_volume_profile: PROFILE,
   anchored_volume_profile: PROFILE,
+  trend_line: SAVED_LOOK,
+  ray: SAVED_LOOK,
+  info_line: SAVED_LOOK,
+  extended: SAVED_LOOK,
+  trend_angle: SAVED_LOOK,
+  arrow: SAVED_LOOK,
   callout: ['borderWidth', ...SAVED_LOOK],
   price_label: SAVED_LOOK,
   pin: SAVED_LOOK,
@@ -144,12 +150,12 @@ export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
   date_and_price_range: ['extendLeft', 'extendRight', ...METER],
 }
 
-/** Prop keys a tool carries that its pages do not set: a trend angle's shared line keys, which it
- *  draws only as a save carries them; a table's cells and header band, which stand on the chart and
- *  in a save; and the props that keep a version 2 save's look as it was saved. */
+/** Prop keys a tool carries that its pages do not set: a trend angle's shared line keys and stats,
+ *  which it draws only as a save carries them; a table's cells and header band, which stand on the
+ *  chart and in a save; and the props that keep a version 2 save's look as it was saved. */
 export const INERT_PROPS: Record<string, readonly string[]> = {
   ...SAVED_LOOK_PROPS,
-  trend_angle: ['text', 'leftEnd', 'rightEnd', 'showDateTimeRange', 'showAngle'],
+  trend_angle: ['text', 'leftEnd', 'rightEnd', 'showDateTimeRange', 'showDistance', 'showAngle', ...SAVED_LOOK],
   table: ['cells', 'headerRow', ...SAVED_LOOK],
 }
 
