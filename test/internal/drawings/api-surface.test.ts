@@ -128,6 +128,7 @@ const SURFACE: Record<string, string> = {
   linearRegression: 'function',
   magnetSnap: 'function',
   midpoint: 'function',
+  nextCell: 'function',
   normalizeVisibility: 'function',
   parseDrawingsStore: 'function',
   parseTimeframeContext: 'function',
@@ -145,6 +146,11 @@ const SURFACE: Record<string, string> = {
   visibleAt: 'function',
   volumeProfile: 'function',
   withAlpha: 'function',
+  // A table's row and column edits.
+  withColumn: 'function',
+  withRow: 'function',
+  withoutColumn: 'function',
+  withoutRow: 'function',
 }
 
 describe('internal drawing module API surface pin', () => {

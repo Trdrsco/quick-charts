@@ -15,11 +15,12 @@
 // The handlers close over one context the attach module builds, so the state they share (the
 // draft, the drag, the armed tool) has one owner.
 import type { IChartApi, ISeriesApi, SeriesType, Time } from 'lightweight-charts'
-import { magnetSnap, viewportOf, type Anchor, type IDrawing, type Viewport } from '../../internal/drawings/index'
+import { magnetSnap, toolRegistry, viewportOf, type Anchor, type IDrawing, type Viewport } from '../../internal/drawings/index'
 import { drawingTools, type DrawingTool } from '../tools'
 import { editRefused } from '../lockModel'
 import { toolAfterPlacement } from '../cursorModel'
 import { stampNewScope } from './scope'
+import { inlineTextRules, settingsOnDoubleClick } from './inlineText'
 import { constrain45, instantPositionAnchors, barsShifted, type Px } from './geometry'
 import type { DrawingsWorkflow } from './types'
 import { presetPropsFor, type PresetCache } from './presets'
@@ -79,6 +80,11 @@ export interface Drag {
   /** A Control- or Command-drag duplicate: the drag moves a fresh copy, and an unmoved release
    *  discards it. */
   cloned?: boolean
+  /** The grabbed drawing was already the selection when the press began. */
+  selectedBefore?: boolean
+  /** The anchors a move carries, where the drawing moves only some of them for a grab there (a
+   *  note's label); absent, it carries them all. */
+  only?: readonly number[]
 }
 
 /** What the gestures read and write. The attach module owns every field. */
@@ -109,9 +115,21 @@ export interface GestureContext {
   drag: Drag | null
   transient: Set<string>
   textEditOpen(): boolean
-  /** Open the inline editor on a drawing's text, deferred past the gesture. */
-  openTextEdit(drawing: IDrawing, x: number, y: number, fresh: boolean): void
+  /** Open the inline editor on a drawing's text, deferred past the gesture: as part of placing the
+   *  drawing, from a click on it, or from a command. */
+  openTextEdit(drawing: IDrawing, x: number, y: number, fresh: boolean, how?: 'placement' | 'click' | 'command'): void
   openCellEdit(drawing: IDrawing, cell: { row: number; col: number; rect: { x: number; y: number; width: number; height: number } }): void
+  /** End the open or opening text edit, keeping what an inline edit typed. */
+  endTextEdit(): void
+  /** A press of the chart leaves the table cell last typed in: nothing stays marked for an edit of
+   *  the table's rows and columns. */
+  releaseCell(): void
+  /** The drawing a right-click landed on, for the menu that follows it, or null. */
+  noteMenuDrawing(id: string | null): void
+  /** Ask for the selected drawing's settings. */
+  openSettings(): void
+  /** The gestures hear here that the armed tool changed; they set it as they bind. */
+  toolChanged?: () => void
   setHovered(id: string | null): void
   persist(): void
   changed(): void
@@ -266,9 +284,11 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (drawingTools.get(draft.drawing.type)?.capturesBars) (draft.drawing as unknown as { capture?: () => void }).capture?.()
     finalize()
     manager.select(draft.drawing.id)
+    // The edit opens before the persist, so a drawing that is nothing until it holds words is not
+    // written while it holds none.
+    if (draft.hasText) ctx.openTextEdit(draft.drawing, at.x, at.y, true, 'placement')
     ctx.persist()
-    if (draft.hasText) ctx.openTextEdit(draft.drawing, at.x, at.y, true)
-    else ctx.changed()
+    if (!draft.hasText) ctx.changed()
   }
 
   const addTransient = (type: string, anchors: Anchor[], style?: Parameters<typeof drawingTools.create>[3]): IDrawing | null => {
@@ -302,8 +322,72 @@ export function bindGestures(ctx: GestureContext): () => void {
     }
   }
 
+  /** A right-click that took back a half-placed drawing keeps the chart's menu shut for its own
+   *  menu event, and for no later one. */
+  let menuShut: ((e: Event) => void) | null = null
+  const reopenMenu = (): void => {
+    if (menuShut) container.removeEventListener('contextmenu', menuShut, true)
+    menuShut = null
+  }
+
+  /** The drawing a click would place, under the pointer while a tool that previews is armed: a
+   *  transient drawing, never the viewer's. */
+  let preview: IDrawing | null = null
+  const dropPreview = (): void => {
+    if (!preview) return
+    ctx.transient.delete(preview.id)
+    manager.remove(preview.id)
+    preview = null
+  }
+  const followPreview = (p: Px): void => {
+    const tool = ctx.armed()
+    if (!tool || ctx.draft || ctx.drag || ctx.locked() || !toolRegistry.get(tool)?.previewed) {
+      dropPreview()
+      return
+    }
+    const anchor = snappedAnchorAt(p, false)
+    if (!anchor) return
+    // A preview of another tool, or one a cleared screen took away, makes room for a new one.
+    if (preview && (preview.type !== tool || !manager.get(preview.id))) dropPreview()
+    if (preview) {
+      preview.updateAnchor(0, anchor)
+      return
+    }
+    const def = drawingTools.get(tool)
+    const drawing = def ? create(def, [anchor]) : null
+    if (!drawing) return
+    preview = drawing
+    ctx.transient.add(drawing.id)
+    manager.add(drawing)
+  }
+  ctx.toolChanged = dropPreview
+
   const onDown = (e: PointerEvent): void => {
+    reopenMenu()
+    dropPreview()
+    // A right-click while a drawing is half placed takes it back and puts the tool down.
+    if (e.button === 2 && ctx.draft) {
+      manager.remove(ctx.draft.drawing.id)
+      ctx.draft = null
+      ctx.clearTransients()
+      ctx.setArmed(null)
+      menuShut = (menu: Event) => {
+        menu.preventDefault()
+        menu.stopPropagation()
+        reopenMenu()
+      }
+      container.addEventListener('contextmenu', menuShut, true)
+      return
+    }
+    // A right-click on a drawing selects it, so the menu that follows acts on it.
+    if (e.button === 2) {
+      const hit = ctx.armed() || ctx.locked() ? null : hitAt(localXY(e))
+      if (hit && manager.selected()?.id !== hit.id) manager.select(hit.id)
+      ctx.noteMenuDrawing(hit?.id ?? null)
+      return
+    }
     if (e.button !== 0) return
+    ctx.noteMenuDrawing(null)
     touching = e.pointerType === 'touch'
     // A press while the inline editor is open belongs to the editor, which commits itself on it.
     if (ctx.textEditOpen()) return
@@ -354,6 +438,7 @@ export function bindGestures(ctx: GestureContext): () => void {
         manager.deselect()
         return
       }
+      ctx.releaseCell()
       const sel = manager.selected()
       if (sel && !editRefused('resize', sel.options, false)) {
         // The "add text" hint above the selection becomes the editor in place.
@@ -403,8 +488,16 @@ export function bindGestures(ctx: GestureContext): () => void {
           }
         }
         // Selecting a locked drawing is allowed, so it can be inspected and unlocked.
-        if (!sel || sel.id !== hit.id) manager.select(hit.id)
+        const selectedBefore = sel?.id === hit.id
+        if (!selectedBefore) manager.select(hit.id)
         if (!editRefused('move', hit.options, false)) startDrag('move', hit, null, p)
+        if (ctx.drag) {
+          ctx.drag.selectedBefore = selectedBefore
+          // A drawing may move only some of its anchors for a grab where it is pressed.
+          const vp = viewport()
+          const only = vp ? hit.grabbedAnchors(p, vp) : null
+          if (only) ctx.drag.only = only
+        }
         return
       }
       manager.deselect()
@@ -455,6 +548,8 @@ export function bindGestures(ctx: GestureContext): () => void {
       return
     }
     manager.add(drawing)
+    // A tool that types on the chart shows its points' handles while its later points are placed.
+    if (required > 1 && inlineTextRules(drawing)) drawing.setState('editing')
     ctx.draft = { drawing, required, placed: 1, downX: p.x, downY: p.y, pendingDrag: true, hasText: !!def.hasText, mode, lastX: p.x, lastY: p.y }
     showPoint(anchor)
     if (mode === 'fixed' && required === 1) completePlacement(ctx.draft, p)
@@ -501,7 +596,7 @@ export function bindGestures(ctx: GestureContext): () => void {
           if (other) ({ x, y } = constrain45(other, { x, y }))
         }
         const anchor = snappedAnchorAt({ x, y }, e.shiftKey)
-        if (anchor) drag.drawing.updateAnchor(drag.anchorIndex, anchor)
+        if (anchor) drag.drawing.dragAnchorTo(drag.anchorIndex, anchor)
         showPoint(anchor)
         return
       }
@@ -515,7 +610,7 @@ export function bindGestures(ctx: GestureContext): () => void {
       const dxBars = barsShifted(dx, spacing)
       for (let i = 0; i < drag.origPixels.length; i++) {
         const op = drag.origPixels[i]
-        if (!op) continue
+        if (!op || (drag.only && !drag.only.includes(i))) continue
         const ol = drag.origLogicals[i]
         const t = ol !== null && spacing !== null ? vp.timeOfLogical(ol + dxBars) : vp.timeAt(op.x + dx)
         const price = vp.priceAt(op.y + dy)
@@ -550,10 +645,19 @@ export function bindGestures(ctx: GestureContext): () => void {
    *  container rather than the window, so a pointer over the toolbar or the host page reports
    *  nothing. */
   const onHover = (e: PointerEvent): void => {
+    // A mouse previews what a click would place; a finger presses where it means to.
+    if (ctx.armed() && e.pointerType !== 'touch') followPreview(localXY(e))
     if (ctx.drag || ctx.draft || ctx.armed()) return
-    ctx.setHovered(manager.hitTest(localXY(e))?.id ?? null)
+    const p = localXY(e)
+    ctx.setHovered(manager.hitTest(p)?.id ?? null)
+    // The selected drawing's handle under a mouse stands out; a finger has no resting pointer.
+    manager.selected()?.setPointer(e.pointerType === 'touch' ? null : p)
   }
-  const onLeave = (): void => ctx.setHovered(null)
+  const onLeave = (): void => {
+    dropPreview()
+    manager.selected()?.setPointer(null)
+    ctx.setHovered(null)
+  }
 
   /** Pixels of travel that turn an opening press into a drag, a finger's or a pointer's. */
   const placeSlop = (): number => (touching ? TOUCH_PLACE_DRAG_PX : PLACE_DRAG_PX)
@@ -565,8 +669,9 @@ export function bindGestures(ctx: GestureContext): () => void {
     freezePan(!!ctx.armed()) // an armed tool keeps the chart frozen; the cursor releases it
     // A modified press that duplicated but never moved leaves no copy behind.
     if (drag.cloned && !drag.moved) manager.remove(drag.drawing.id)
-    // An unmoved press inside a table lands in a cell: type right there.
-    if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.drawing.type === 'table') {
+    // An unmoved press inside a table that was already selected lands in a cell: type right there.
+    // The press that selects a table only selects it.
+    if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.selectedBefore && drag.drawing.type === 'table' && !editRefused('editText', drag.drawing.options, ctx.locked())) {
       const vp = viewport()
       const table = drag.drawing as IDrawing & {
         cellAt?: (point: Px, viewport: Viewport) => { row: number; col: number; rect: { x: number; y: number; width: number; height: number } } | null
@@ -574,6 +679,15 @@ export function bindGestures(ctx: GestureContext): () => void {
       const cell = vp && table.cellAt ? table.cellAt({ x: drag.grabX, y: drag.grabY }, vp) : null
       if (cell) {
         ctx.openCellEdit(drag.drawing, cell)
+        return
+      }
+    }
+    // An unmoved click on the words of a drawing that was already selected types into them, for a
+    // tool that types them on the chart; the click that selected it only selects it.
+    if (!drag.moved && !drag.cloned && drag.mode === 'move' && drag.selectedBefore && inlineTextRules(drag.drawing)?.clickToType && !editRefused('editText', drag.drawing.options, ctx.locked())) {
+      const vp = viewport()
+      if (vp && drag.drawing.wordsAt({ x: drag.grabX, y: drag.grabY }, vp)) {
+        ctx.openTextEdit(drag.drawing, drag.grabX, drag.grabY, false, 'click')
         return
       }
     }
@@ -673,7 +787,8 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (ctx.drag || ctx.draft) e.preventDefault()
   }
 
-  /** A double-click ends a multipoint run, and reopens the inline editor on a text drawing. */
+  /** A double-click ends a multipoint run, opens the settings of a drawing whose tool opens them so,
+   *  and opens the editor of any other drawing's words. */
   const onDblClick = (e: MouseEvent): void => {
     if (ctx.locked()) return
     const draft = ctx.draft
@@ -690,13 +805,22 @@ export function bindGestures(ctx: GestureContext): () => void {
       }
       return
     }
-    if (ctx.armed() || ctx.textEditOpen()) return
+    if (ctx.armed()) return
     const p = localXY(e)
     const hit = manager.hitTest(p)
+    // A click of the double-click may have begun an edit of the words; it ends keeping them as they
+    // are.
+    if (hit && settingsOnDoubleClick(hit)) {
+      ctx.endTextEdit()
+      manager.select(hit.id)
+      ctx.openSettings()
+      return
+    }
+    if (ctx.textEditOpen()) return
     if (!hit || editRefused('editText', hit.options, false)) return
     if (!drawingTools.get(hit.type)?.hasText) return
     manager.select(hit.id)
-    ctx.openTextEdit(hit, p.x, p.y, false)
+    ctx.openTextEdit(hit, p.x, p.y, false, 'click')
   }
 
   // The press starts on the container, but move and release bind to the WINDOW: a drag that leaves
@@ -711,6 +835,9 @@ export function bindGestures(ctx: GestureContext): () => void {
   window.addEventListener('pointerup', onUp)
   window.addEventListener('pointercancel', onCancel)
   return () => {
+    reopenMenu()
+    dropPreview()
+    ctx.toolChanged = undefined
     container.removeEventListener('pointerdown', onDown)
     container.removeEventListener('touchstart', onTouchStart)
     container.removeEventListener('pointermove', onHover)

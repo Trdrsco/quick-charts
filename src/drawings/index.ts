@@ -28,6 +28,8 @@ export type {
   LineStyle,
   Point,
   SerializedDrawing,
+  TextDraft,
+  TextEditFrame,
   ToolCategory,
   Viewport,
 } from '../internal/drawings/index'

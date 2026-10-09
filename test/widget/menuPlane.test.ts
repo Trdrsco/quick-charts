@@ -10,14 +10,14 @@ import { attachMenuPlane, MENU_COMMAND } from '../../src/widget/menu'
 import { fakeChart } from '../drawings/fakeChart'
 import { ownIcons } from '../ownIcons'
 
-function rig(canPaste: boolean) {
+function rig(canPaste: boolean, table: { cell: boolean } | null = null) {
   const fake = fakeChart()
   const gestures = document.createElement('div')
   const chrome = document.createElement('div')
   document.body.append(gestures, chrome)
   const ran: string[] = []
   const registry = createCommandRegistry()
-  for (const id of ['chart.view.reset', 'chart.price.copy', 'chart.drawings.paste', 'chart.indicators.removeAll', 'chart.drawings.removeAll']) {
+  for (const id of ['chart.view.reset', 'chart.price.copy', 'chart.drawings.paste', 'chart.indicators.removeAll', 'chart.drawings.removeAll', 'chart.drawings.tableAddColumn', 'chart.drawings.tableAddRow', 'chart.drawings.tableRemoveRow', 'chart.drawings.tableRemoveColumn']) {
     registry.registry.register({ id, scope: 'chart', label: 'command.drawingPaste', available: () => id !== 'chart.drawings.paste' || canPaste, execute: () => void ran.push(id) })
   }
   const plane = attachMenuPlane({
@@ -37,6 +37,7 @@ function rig(canPaste: boolean) {
     drawingCount: () => 1,
     extensions: () => null,
     setLevel: () => undefined,
+    table: () => table,
   })
   const rows = () => [...chrome.querySelectorAll<HTMLButtonElement>('.qc-menu-row')]
   const row = (label: string) => rows().find((r) => r.querySelector('.qc-menu-label')?.textContent === label) ?? null
@@ -48,6 +49,17 @@ afterEach(() => {
 })
 
 describe('the context menu over the registry', () => {
+  it('leads with a table’s rows over a table, and picking one runs its command', () => {
+    const r = rig(true, { cell: true })
+    r.plane.raiseAt(20, 50)
+    expect(r.rows().slice(0, 4).map((row) => row.querySelector('.qc-menu-label')?.textContent)).toEqual(['Add column to right', 'Add row below', 'Remove row', 'Remove column'])
+    r.row('Remove column')!.click()
+    expect(r.ran).toEqual(['chart.drawings.tableRemoveColumn'])
+    const plain = rig(true, null)
+    plain.plane.raiseAt(20, 50)
+    expect(plain.row('Add row below')).toBeNull()
+  })
+
   it('names a command for every row it renders, including paste', () => {
     expect(MENU_COMMAND.paste).toBe('chart.drawings.paste')
     expect(MENU_COMMAND.settings).toBeUndefined()

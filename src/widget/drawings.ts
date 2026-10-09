@@ -17,6 +17,8 @@ import { drawingTools, type ToolPreset } from '../drawings/index'
 import { rebindDrawingIdentity } from '../drawings/layer/attach'
 import { presetOf, presetPropsFor } from '../drawings/layer/presets'
 import { SAVED_LOOK_PROPS } from '../drawings/capabilities'
+import { drawingInksOf } from '../internal/drawings/core/inks'
+import { TableNote, withColumn, withoutColumn, withoutRow, withRow, type TableCell, type TableProps } from '../internal/drawings/index'
 import type { ReplayPhase } from './replay'
 import {
   DEFAULT_HIDE_STATE,
@@ -54,7 +56,7 @@ import type { AccessPolicy } from './options'
 import { commandShown, drawingToolPermitted, drawingToolShown } from './access'
 import { drawingToolOffered, type OfferedDrawingTools } from './drawingTools'
 import type { CommandRegistry } from './commands'
-import { drawingCancelAvailable } from '../drawings/layer/attach'
+import { drawingCancelAvailable, menuDrawing } from '../drawings/layer/attach'
 import { RECENT_COLOR_LIMIT, type ColorMemory } from '../ui/controls/color'
 import type { IconResolver } from '../ui/icons/resolver'
 
@@ -117,8 +119,18 @@ export interface DrawingVerbs {
   applyTemplate(name: string | null): void
   saveTemplate(name: string): void
   removeTemplate(name: string): void
+  /** Add a row below the cell last typed in on the selected table, or at its bottom. */
   tableAddRow(): void
+  /** Add a column right of the cell last typed in on the selected table, or at its right end. */
   tableAddColumn(): void
+  /** Remove the row, or the column, of the cell last typed in on the selected table. */
+  tableRemoveRow(): void
+  tableRemoveColumn(): void
+  /** Whether the selected table has a cell last typed in whose row, or column, is not its last. */
+  tableCanRemove(what: 'row' | 'column'): boolean
+  /** The table the last right-click landed on, for the menu: whether a cell of it is marked. Null
+   *  where the right-click landed on no table. */
+  menuTable(): { cell: boolean } | null
   /** Whether the access policy permits arming a tool. */
   toolPermitted(tool: string): boolean
   /** Whether the selection may be cloned: there is one, the host offers its tool and the access
@@ -297,6 +309,10 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     // The keyboard verbs go through the registry, so the access policy gates them like every door.
     execute: (command, arg) => deps.commands.execute(command, arg).kind === 'ok',
     ink: () => deps.theme()['text.primary'],
+    // What an empty text shows, in the viewer's language as it paints.
+    placeholder: () => live('drawing.addText'),
+    // The handles and the inks a drawing takes from the chart, in the theme it paints under.
+    inks: () => drawingInksOf(deps.theme()),
     // While replay is waiting to be told where to begin, the plot's own mark is the answer to where
     // a click lands. This layer owns the plot's cursor, so it is the one that stands it down.
     pointerSuppressed: () => deps.replayPhase() === 'arming',
@@ -520,6 +536,25 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     else applyHide(hide)
   }
 
+  /** The selected drawing, where it is a table. */
+  const selectedTable = (): TableNote | null => {
+    const drawing = handle.selectedDrawing()
+    return drawing instanceof TableNote ? drawing : null
+  }
+  /** Edit the selected table's rows or columns around the cell last typed in, which an edit's
+   *  shift of the grid leaves unmarked. An edit that answers nothing changes nothing. */
+  const editTable = (edit: (table: TableNote, cell: TableCell | null) => Partial<TableProps> | null): void => {
+    const table = selectedTable()
+    if (!table) return
+    // An edit still open on a cell keeps what was typed in it first.
+    const session = handle.textEdit()
+    if (session) handle.commitText(table.textDraft?.value ?? session.value)
+    const patch = edit(table, table.editingCell)
+    if (!patch) return
+    table.editCell(null)
+    handle.updateProps(patch as Record<string, unknown>)
+  }
+
   const verbs: DrawingVerbs = {
     arm(arg) {
       const tool = drawingToolOf(arg)
@@ -611,12 +646,26 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       if (drawing) void handle.presets.removeTemplate(drawing.type, name)
     },
     tableAddRow() {
-      const cells = (handle.selectedDrawing()?.props as { cells?: string[][] } | undefined)?.cells
-      if (cells?.length) handle.updateProps({ cells: [...cells, cells[0]!.map(() => '')] })
+      editTable((table, cell) => withRow(table.props, cell?.row ?? null))
     },
     tableAddColumn() {
-      const cells = (handle.selectedDrawing()?.props as { cells?: string[][] } | undefined)?.cells
-      if (cells?.length) handle.updateProps({ cells: cells.map((row) => [...row, '']) })
+      editTable((table, cell) => withColumn(table.props, cell?.col ?? null))
+    },
+    tableRemoveRow() {
+      editTable((table, cell) => (cell ? withoutRow(table.props, cell.row) : null))
+    },
+    tableRemoveColumn() {
+      editTable((table, cell) => (cell ? withoutColumn(table.props, cell.col) : null))
+    },
+    menuTable() {
+      const table = menuDrawing(handle)
+      return table instanceof TableNote ? { cell: !!table.editingCell } : null
+    },
+    tableCanRemove(what) {
+      const table = selectedTable()
+      const cell = table?.editingCell
+      if (!table || !cell) return false
+      return what === 'row' ? table.props.cells.length > 1 : (table.props.cells[0]?.length ?? 0) > 1
     },
     toolPermitted: (tool) => permitted(tool),
     canClone: () => {

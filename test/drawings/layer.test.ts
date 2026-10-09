@@ -6,6 +6,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { attachDrawings } from '../../src/drawings'
 import { drawingTools } from '../../src/drawings/index'
+import { menuDrawing } from '../../src/drawings/layer/attach'
+import { viewportOf } from '../../src/internal/drawings/index'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { DRAWING_CONTEXT_VERSION, liveDrawingEntries, type DrawingResourceContext } from '../../src/drawings/document'
 import { click, drag, fakeChart, pointer } from './fakeChart'
@@ -143,18 +145,20 @@ describe('placing a fixed tool', () => {
     expect(handle.export()[0]?.anchors[0]?.price).toBe(bar.close)
   })
 
-  it('a text-bearing tool opens the inline editor as it lands, and an empty commit removes it', async () => {
+  it('a tool whose words are not typed on the chart types them in a box the command opens', () => {
     vi.useFakeTimers()
     const { container, handle, events } = make()
-    handle.armTool('text')
-    container.dispatchEvent(pointer('pointerdown', 100, 100))
-    expect(handle.count()).toBe(1)
+    handle.armTool('rectangle')
+    drag(container, [100, 100], [200, 160])
+    expect(handle.textEdit()).toBeNull()
+    handle.editSelectedText()
     vi.runAllTimers()
     const session = handle.textEdit()
-    expect(session?.fresh).toBe(true)
+    expect(session?.fresh).toBe(false)
+    expect(session?.inline).toBeUndefined()
     expect(events.texts).toHaveLength(1)
-    handle.commitText('   ')
-    expect(handle.count()).toBe(0)
+    handle.commitText('Box')
+    expect(handle.export()[0]?.props?.text).toBe('Box')
     expect(handle.textEdit()).toBeNull()
   })
 
@@ -189,6 +193,602 @@ describe('placing a fixed tool', () => {
     handle.armTool('rectangle')
     drag(container, [110, 10], [160, 60])
     expect(handle.export()[1]?.style.lineWidth).toBe(4)
+  })
+})
+
+describe('a text typed on the chart', () => {
+  const caretAt = (value: string, at = value.length) => ({ value, selectionStart: at, selectionEnd: at, composition: null, caret: true })
+  /** Whether a drawing is off the layer once the selection's leaving has been judged. */
+  const gone = async (r: Rig, id: string): Promise<boolean> => {
+    await Promise.resolve()
+    const selected = r.handle.selected()?.id ?? null
+    r.handle.select(id)
+    const absent = r.handle.selected()?.id !== id
+    if (selected && selected !== id) r.handle.select(selected)
+    return absent
+  }
+
+  /** Place a text with one press and release, and open its edit as the gesture ends. */
+  const place = (r: Rig, x = 100, y = 100) => {
+    r.handle.armTool('text')
+    click(r.container, x, y)
+    const drawing = r.handle.selectedDrawing()!
+    vi.runOnlyPendingTimers()
+    return { drawing, session: r.handle.textEdit()! }
+  }
+
+  it('shows its edit from the press that places it, opens the field once the gesture ends, and is no kept drawing while it holds no words', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('text')
+    r.container.dispatchEvent(pointer('pointerdown', 100, 100))
+    const drawing = r.handle.selectedDrawing()!
+    expect(drawing.textDraft).toEqual(caretAt(''))
+    expect(r.handle.textEdit()).toBeNull()
+    window.dispatchEvent(pointer('pointerup', 100, 100))
+    vi.runOnlyPendingTimers()
+    const session = r.handle.textEdit()!
+    expect(session.inline).toBeDefined()
+    expect(session.fresh).toBe(true)
+    expect(r.events.texts).toEqual([session])
+    // Nothing is written until the text holds words: no document entry, no count.
+    expect(r.handle.count()).toBe(0)
+    expect(r.handle.export()).toEqual([])
+    expect(r.handle.selected()?.id).toBe(drawing.id)
+  })
+
+  it('shows what the field holds without changing its words, and keeps the words exactly as typed on commit, the text still selected', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const { drawing, session } = place(r)
+    session.inline!.update({ value: 'Hello world', selectionStart: 6, selectionEnd: 11, composition: null, caret: false })
+    expect(drawing.textDraft?.value).toBe('Hello world')
+    expect(drawing.props.text).toBe('')
+    r.handle.commitText('Hello world\nline2\n')
+    expect(drawing.props.text).toBe('Hello world\nline2\n')
+    expect(drawing.textDraft).toBeNull()
+    expect(r.handle.textEdit()).toBeNull()
+    expect(r.handle.selected()?.id).toBe(drawing.id)
+    expect(r.handle.export().map((d) => d.props?.text)).toEqual(['Hello world\nline2\n'])
+  })
+
+  it('keeps a text left without words while it is selected and removes it once it is not', async () => {
+    vi.useFakeTimers()
+    const r = make()
+    const first = place(r)
+    r.handle.commitText('')
+    expect(r.handle.selected()?.id).toBe(first.drawing.id)
+    r.handle.deselect()
+    expect(await gone(r, first.drawing.id)).toBe(true)
+    // A text that held words and is emptied goes the same way, and is no kept drawing meanwhile.
+    const second = place(r, 300, 100)
+    r.handle.commitText('Hi')
+    expect(r.handle.count()).toBe(1)
+    r.handle.editSelectedText()
+    vi.runOnlyPendingTimers()
+    r.handle.commitText('')
+    expect(r.handle.count()).toBe(0)
+    expect(r.handle.selected()?.id).toBe(second.drawing.id)
+    r.container.dispatchEvent(pointer('pointerdown', 700, 300))
+    window.dispatchEvent(pointer('pointerup', 700, 300))
+    expect(await gone(r, second.drawing.id)).toBe(true)
+  })
+
+  it('a press elsewhere that the field has committed deselects the text, and selecting another drawing removes an empty one', async () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('horizontal_line')
+    r.container.dispatchEvent(pointer('pointerdown', 50, 300))
+    window.dispatchEvent(pointer('pointerup', 50, 300))
+    const line = r.handle.selected()!.id
+    const { drawing } = place(r)
+    r.handle.commitText('')
+    click(r.container, 400, 300)
+    expect(r.handle.selected()?.id).toBe(line)
+    expect(await gone(r, drawing.id)).toBe(true)
+  })
+
+  it('a click selects a text, and a click on the selected text types into it with the caret after its words', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const { drawing } = place(r)
+    r.handle.commitText('Hi')
+    r.handle.deselect()
+    click(r.container, 108, 108)
+    expect(r.handle.selected()?.id).toBe(drawing.id)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    expect(drawing.textDraft).toBeNull()
+    click(r.container, 108, 108)
+    expect(drawing.textDraft).toEqual(caretAt('Hi'))
+    vi.runOnlyPendingTimers()
+    const session = r.handle.textEdit()!
+    expect(session.inline).toBeDefined()
+    expect(session.fresh).toBe(false)
+  })
+
+  it('a drag on the selected text moves it and opens nothing', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const { drawing } = place(r)
+    r.handle.commitText('Hi')
+    const before = drawing.anchors[0]!.price
+    drag(r.container, [108, 108], [108, 160])
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    expect(drawing.anchors[0]!.price).not.toBe(before)
+  })
+
+  it('a double-click opens the text’s settings through the door, ending the edit its clicks began', () => {
+    vi.useFakeTimers()
+    const commands: string[] = []
+    const r = make({ execute: (command) => (commands.push(command), true) })
+    const { drawing } = place(r)
+    r.handle.commitText('Hi')
+    r.handle.deselect()
+    // The first click selects, the second opens an edit, and the double-click ends it for the settings.
+    click(r.container, 108, 108, { detail: 1 } as PointerEventInit)
+    click(r.container, 108, 108, { detail: 2 } as PointerEventInit)
+    expect(drawing.textDraft).not.toBeNull()
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 108, clientY: 108, bubbles: true }))
+    vi.runOnlyPendingTimers()
+    expect(commands).toEqual(['chart.drawings.settings'])
+    expect(drawing.textDraft).toBeNull()
+    expect(r.handle.textEdit()).toBeNull()
+    expect(r.handle.selected()?.id).toBe(drawing.id)
+    expect(drawing.props.text).toBe('Hi')
+  })
+
+  it('a double-click in the field opens the settings only when its first click opened the edit', () => {
+    vi.useFakeTimers()
+    const commands: string[] = []
+    const r = make({ execute: (command) => (commands.push(command), true) })
+    const placed = place(r)
+    expect(placed.session.inline!.doubleClick()).toBe(false)
+    r.handle.commitText('Hi')
+    click(r.container, 108, 108)
+    vi.runOnlyPendingTimers()
+    const session = r.handle.textEdit()!
+    session.inline!.update(caretAt('Hi there'))
+    expect(session.inline!.doubleClick()).toBe(true)
+    expect(commands).toEqual(['chart.drawings.settings'])
+    expect(placed.drawing.props.text).toBe('Hi there')
+    expect(r.handle.textEdit()).toBeNull()
+  })
+
+  it('cancelling keeps what was typed, as arming a tool does, and a text left empty goes with the selection', async () => {
+    vi.useFakeTimers()
+    const r = make()
+    const first = place(r)
+    first.session.inline!.update(caretAt('Kept'))
+    r.handle.cancelText()
+    expect(first.drawing.props.text).toBe('Kept')
+    const second = place(r, 300, 100)
+    second.session.inline!.update(caretAt('Typed'))
+    r.handle.armTool('trend_line')
+    expect(second.drawing.props.text).toBe('Typed')
+    r.handle.armTool(null)
+    const third = place(r, 500, 100)
+    r.handle.armTool('trend_line')
+    expect(await gone(r, third.drawing.id)).toBe(true)
+    expect(r.handle.export().map((d) => d.props?.text)).toEqual(['Kept', 'Typed'])
+  })
+
+  it('tells the field where the words stand, and again whenever a repaint moves them', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const { drawing, session } = place(r)
+    const frame = session.inline!.frame()!
+    expect(frame).toMatchObject({ x: 102, y: 102, lineHeight: 14, lines: 1, align: 'left', wrapWidth: null, angle: 0 })
+    const heard: unknown[] = []
+    session.inline!.onFrame((f) => heard.push(f))
+    // What the pane view does after each paint.
+    const repaint = (): void => (drawing as unknown as { noteTextFrame(v: unknown): void }).noteTextFrame(viewportOf(r.fake.chart, r.fake.series))
+    repaint()
+    repaint()
+    expect(heard).toHaveLength(1)
+    session.inline!.update(caretAt('one\ntwo'))
+    repaint()
+    expect(heard.at(-1)).toMatchObject({ lines: 2 })
+    r.handle.commitText('one\ntwo')
+    repaint()
+    expect(heard).toHaveLength(2)
+  })
+
+  it('a locked text selects and never types', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const { drawing } = place(r)
+    r.handle.commitText('Hi')
+    r.handle.setLocked(true)
+    click(r.container, 108, 108)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    expect(drawing.textDraft).toBeNull()
+  })
+
+  it('a comment types on the chart the same way: one click opens it, a click on it selected types, and one left empty goes', async () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('comment')
+    click(r.container, 200, 200)
+    const drawing = r.handle.selectedDrawing()!
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.inline).toBeDefined()
+    r.handle.commitText('Look here')
+    expect(r.handle.export().map((d) => d.props?.text)).toEqual(['Look here'])
+    // The bubble stands above and to the right of its point; a click inside it types.
+    click(r.container, 220, 180)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.id).toBe(drawing.id)
+    r.handle.commitText('')
+    click(r.container, 700, 350)
+    expect(await gone(r, drawing.id)).toBe(true)
+  })
+
+  /** Place a note with its point at (100, 200) and its label at (200, 200), its words committed. */
+  const placeNote = (r: Rig, words = 'Hi') => {
+    r.handle.armTool('note')
+    click(r.container, 100, 200)
+    const drawing = r.handle.selectedDrawing() ?? null
+    click(r.container, 200, 200)
+    vi.runOnlyPendingTimers()
+    r.handle.commitText(words)
+    return drawing ?? r.handle.selectedDrawing()!
+  }
+
+  it('a note places on two clicks, its handles showing between them, and opens its words after the second', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('note')
+    click(r.container, 100, 200)
+    expect(r.handle.count()).toBe(0)
+    window.dispatchEvent(pointer('pointermove', 180, 220))
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 200, 200)
+    vi.runOnlyPendingTimers()
+    const session = r.handle.textEdit()!
+    expect(session.inline).toBeDefined()
+    expect(r.handle.selectedDrawing()!.anchors.map((a) => r.fake.xOf(Number(a.time)))).toEqual([100, 200])
+  })
+
+  it('a right-click while a note is half placed takes it back, puts the tool down and keeps the menu shut', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('note')
+    click(r.container, 100, 200)
+    r.container.dispatchEvent(pointer('pointerdown', 150, 210, { button: 2 }))
+    const menu = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    let reached = false
+    r.container.addEventListener('contextmenu', () => (reached = true))
+    r.container.dispatchEvent(menu)
+    expect([menu.defaultPrevented, reached]).toEqual([true, false])
+    expect(r.handle.activeTool()).toBeNull()
+    expect(r.handle.counts().total).toBe(0)
+    // A later right-click is the chart's own again.
+    const later = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+    r.container.dispatchEvent(pointer('pointerdown', 150, 210, { button: 2 }))
+    r.container.dispatchEvent(later)
+    expect(later.defaultPrevented).toBe(false)
+  })
+
+  it('a drag on a note’s box moves its label alone, a drag on its line moves the whole note', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const drawing = placeNote(r)
+    const before = drawing.anchors.map((a) => ({ ...a }))
+    // Inside the box, clear of the label's handle on its left edge.
+    drag(r.container, [225, 205], [225, 265])
+    expect(drawing.anchors[0]).toEqual(before[0])
+    expect(drawing.anchors[1]!.price).not.toBe(before[1]!.price)
+    const label = { ...drawing.anchors[1]! }
+    // On the line, now from (100, 200) to (200, 260).
+    drag(r.container, [150, 230], [150, 270])
+    expect(drawing.anchors[0]!.price).not.toBe(before[0]!.price)
+    expect(drawing.anchors[1]!.price).not.toBe(label.price)
+  })
+
+  it('a click on the box of a selected note types, and a click on its line does not', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const drawing = placeNote(r)
+    click(r.container, 140, 200)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 225, 205)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.id).toBe(drawing.id)
+  })
+
+  /** Place a callout with its tail's tip at (100, 300) and its box's right edge on (300, 200). */
+  const placeCallout = (r: Rig) => {
+    r.handle.armTool('callout')
+    click(r.container, 100, 300)
+    window.dispatchEvent(pointer('pointermove', 280, 210))
+    click(r.container, 300, 200)
+    const drawing = r.handle.selectedDrawing()!
+    vi.runOnlyPendingTimers()
+    return { drawing, session: r.handle.textEdit()! }
+  }
+
+  it('a callout places on two clicks, its tip then its box, and opens its words after the second', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('callout')
+    click(r.container, 100, 300)
+    window.dispatchEvent(pointer('pointermove', 280, 210))
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 300, 200)
+    vi.runOnlyPendingTimers()
+    const session = r.handle.textEdit()!
+    expect(session.inline).toBeDefined()
+    expect(session.fresh).toBe(true)
+    expect(r.handle.selectedDrawing()!.anchors.map((a) => r.fake.xOf(Number(a.time)))).toEqual([100, 300])
+  })
+
+  it('a callout whose edit ends without words goes at once: one never typed in, and one whose words were cleared', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const fresh = placeCallout(r)
+    r.handle.cancelText()
+    expect(r.handle.selectedDrawing()).toBeNull()
+    expect(r.handle.counts().total).toBe(0)
+    expect(fresh.drawing.props.text).toBe('')
+    const { drawing } = placeCallout(r)
+    r.handle.commitText('Hi')
+    expect(r.handle.export().map((d) => d.props?.text)).toEqual(['Hi'])
+    r.handle.editSelectedText()
+    vi.runOnlyPendingTimers()
+    r.handle.textEdit()!.inline!.update(caretAt(''))
+    r.handle.cancelText()
+    expect(r.handle.counts().total).toBe(0)
+    expect(r.handle.export()).toEqual([])
+    expect(drawing.props.text).toBe('Hi')
+  })
+
+  it('a drag on a callout’s box moves its box alone, a drag on its tail moves the whole callout', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const { drawing } = placeCallout(r)
+    r.handle.commitText('Hi')
+    const before = drawing.anchors.map((a) => ({ ...a }))
+    // Inside the box, which stands left of (300, 200), clear of the handle on its right edge.
+    drag(r.container, [280, 205], [280, 245])
+    expect(drawing.anchors[0]).toEqual(before[0])
+    expect(drawing.anchors[1]!.price).not.toBe(before[1]!.price)
+    const box = { ...drawing.anchors[1]! }
+    // On the tail, halfway from its root at the box's bottom-left corner to its tip at (100, 300).
+    drag(r.container, [184, 276], [184, 286])
+    expect(drawing.anchors[0]!.price).not.toBe(before[0]!.price)
+    expect(drawing.anchors[1]!.price).not.toBe(box.price)
+  })
+
+  it('a click on the box of a selected callout types, and a double-click opens its settings', () => {
+    vi.useFakeTimers()
+    const commands: string[] = []
+    const r = make({ execute: (command) => (commands.push(command), true) })
+    const { drawing } = placeCallout(r)
+    r.handle.commitText('Hi')
+    click(r.container, 280, 205)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.id).toBe(drawing.id)
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 280, clientY: 205, bubbles: true }))
+    expect(commands).toEqual(['chart.drawings.settings'])
+    expect(r.handle.textEdit()).toBeNull()
+    expect(drawing.props.text).toBe('Hi')
+  })
+
+  /** Place a table with its top-left at (100, 100): cells 120px wide and, empty, 31px tall. */
+  const placeTable = (r: Rig) => {
+    r.handle.armTool('table')
+    click(r.container, 100, 100)
+    return r.handle.selectedDrawing()! as ReturnType<Rig['handle']['selectedDrawing']> & { editingCell: { row: number; col: number } | null; props: { cells: string[][] } }
+  }
+
+  it('a table places on one click, selected, opening no editor; a click on a cell of the selected table types into it', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const table = placeTable(r)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    r.handle.deselect()
+    // The first click selects the table; the second, on the middle cell, types into it.
+    click(r.container, 280, 146)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 280, 146)
+    vi.runOnlyPendingTimers()
+    const session = r.handle.textEdit()!
+    expect([session.cell, !!session.inline, table.editingCell]).toEqual([{ row: 1, col: 1 }, true, { row: 1, col: 1 }])
+    session.inline!.update(caretAt('Cash'))
+    r.handle.commitText('Cash')
+    expect(table.props.cells[1]![1]).toBe('Cash')
+    // The cell stays marked for an edit of the rows and columns until the viewer leaves it.
+    expect(table.editingCell).toEqual({ row: 1, col: 1 })
+    r.container.dispatchEvent(pointer('pointerdown', 700, 400))
+    window.dispatchEvent(pointer('pointerup', 700, 400))
+    expect(table.editingCell).toBeNull()
+  })
+
+  it('Tab commits a cell and types on in the next, wrapping from the last cell to the first; Escape leaves the table selected and nothing marked', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const table = placeTable(r)
+    click(r.container, 400, 180)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.cell).toEqual({ row: 2, col: 2 })
+    r.handle.textEdit()!.inline!.update(caretAt('Last'))
+    expect(r.handle.textEdit()!.inline!.tab(false)).toBe(true)
+    vi.runOnlyPendingTimers()
+    expect(table.props.cells[2]![2]).toBe('Last')
+    expect([r.handle.textEdit()?.cell, table.editingCell]).toEqual([{ row: 0, col: 0 }, { row: 0, col: 0 }])
+    r.handle.textEdit()!.inline!.tab(true)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.cell).toEqual({ row: 2, col: 2 })
+    r.handle.textEdit()!.inline!.finished()
+    r.handle.commitText('Last')
+    expect([r.handle.textEdit(), table.editingCell, r.handle.selected()?.id]).toEqual([null, null, table.id])
+  })
+
+  it('a double-click on a table opens its settings', () => {
+    vi.useFakeTimers()
+    const commands: string[] = []
+    const r = make({ execute: (command) => (commands.push(command), true) })
+    placeTable(r)
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 280, clientY: 146, bubbles: true }))
+    expect(commands).toEqual(['chart.drawings.settings'])
+  })
+
+  it('a right-click selects the drawing it lands on for the menu that follows, and keeps a table’s cell marked', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const table = placeTable(r)
+    click(r.container, 280, 146)
+    vi.runOnlyPendingTimers()
+    expect(table.editingCell).toEqual({ row: 1, col: 1 })
+    r.handle.deselect()
+    expect(menuDrawing(r.handle)).toBeNull()
+    r.container.dispatchEvent(pointer('pointerdown', 280, 146, { button: 2 }))
+    expect([r.handle.selected()?.id, menuDrawing(r.handle)?.id]).toEqual([table.id, table.id])
+    // A right-click on the chart's ground names no drawing; a left press forgets the last one.
+    r.container.dispatchEvent(pointer('pointerdown', 700, 400, { button: 2 }))
+    expect(menuDrawing(r.handle)).toBeNull()
+    r.container.dispatchEvent(pointer('pointerdown', 280, 146, { button: 2 }))
+    r.container.dispatchEvent(pointer('pointerdown', 700, 400))
+    window.dispatchEvent(pointer('pointerup', 700, 400))
+    expect(menuDrawing(r.handle)).toBeNull()
+  })
+
+  it('a pin places on one click and opens its words; one left without words stays, a pin with optional words', async () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('pin')
+    click(r.container, 200, 200)
+    const drawing = r.handle.selectedDrawing()!
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.inline).toBeDefined()
+    expect(r.handle.counts().total).toBe(1)
+    r.handle.cancelText()
+    r.handle.deselect()
+    expect(await gone(r, drawing.id)).toBe(false)
+    expect(r.handle.export().map((d) => [d.type, d.props?.text])).toEqual([['pin', '']])
+  })
+
+  it('a click on the box of a selected pin types, a click on its marker only selects it, and the pointer over it stands its box', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('pin')
+    click(r.container, 200, 200)
+    const drawing = r.handle.selectedDrawing()!
+    vi.runOnlyPendingTimers()
+    r.handle.commitText('Hi')
+    // The marker's head stands round (200.5, 182.5); the box over it ends 43.5px above its tip.
+    click(r.container, 200, 185)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 150, 140)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.id).toBe(drawing.id)
+    r.handle.commitText('Hi')
+    r.handle.deselect()
+    expect(drawing.hovered).toBe(false)
+    r.container.dispatchEvent(pointer('pointermove', 200, 185))
+    expect(drawing.hovered).toBe(true)
+    r.container.dispatchEvent(new PointerEvent('pointerleave'))
+    expect(drawing.hovered).toBe(false)
+  })
+
+  it.each([
+    ['price_label', [[200, 200]]],
+    ['price_note', [[100, 300], [200, 250]]],
+    ['flag', [[200, 200]]],
+    ['arrow_up', [[200, 200]]],
+    ['arrow_marker', [[100, 300], [200, 250]]],
+  ] as const)('a %s opens no editor as it lands, and a double-click opens its settings', (tool, points) => {
+    vi.useFakeTimers()
+    const commands: string[] = []
+    const r = make({ execute: (command) => (commands.push(command), true) })
+    r.handle.armTool(tool)
+    for (const [x, y] of points) click(r.container, x, y)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.counts().total).toBe(1)
+    expect(r.handle.textEdit()).toBeNull()
+    const [x, y] = points[0]!
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: x + 1, clientY: y - 1, bubbles: true }))
+    vi.runOnlyPendingTimers()
+    expect(commands).toEqual(['chart.drawings.settings'])
+    expect(r.handle.textEdit()).toBeNull()
+  })
+
+  it('an arrow marker places its tail on the first click and its tip on the second', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('arrow_marker')
+    click(r.container, 100, 300)
+    click(r.container, 200, 250)
+    expect(r.handle.selectedDrawing()!.anchors.map((a) => r.fake.xOf(Number(a.time)))).toEqual([100, 200])
+  })
+
+  it('tells the selected drawing where a mouse rests, so its handle under the mouse stands out', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('trend_line')
+    drag(r.container, [100, 100], [300, 200])
+    const drawing = r.handle.selectedDrawing()!
+    r.container.dispatchEvent(pointer('pointermove', 301, 199))
+    expect(drawing.pointer).toEqual({ x: 301, y: 199 })
+    r.container.dispatchEvent(new PointerEvent('pointerleave'))
+    expect(drawing.pointer).toBeNull()
+    r.container.dispatchEvent(pointer('pointermove', 99, 101))
+    expect(drawing.pointer).toEqual({ x: 99, y: 101 })
+    r.handle.deselect()
+    expect(drawing.pointer).toBeNull()
+  })
+
+  /** What the layer attaches to the series and takes off it, by drawing id. */
+  const watchSeries = (r: Rig) => {
+    const attached: string[] = []
+    const detached: string[] = []
+    const series = r.fake.series as unknown as { attachPrimitive(p: { id: string }): void; detachPrimitive(p: { id: string }): void }
+    series.attachPrimitive = (p) => void attached.push(p.id)
+    series.detachPrimitive = (p) => void detached.push(p.id)
+    return { attached, detached }
+  }
+
+  it('a signpost previews where a click would place it while its tool is armed, and the click places it and opens its words', () => {
+    vi.useFakeTimers()
+    const r = make()
+    const { attached, detached } = watchSeries(r)
+    r.handle.armTool('signpost')
+    r.container.dispatchEvent(pointer('pointermove', 200, 200))
+    r.container.dispatchEvent(pointer('pointermove', 220, 210))
+    // One preview, following the pointer, and never a kept drawing.
+    expect(attached).toHaveLength(1)
+    expect(r.handle.export()).toEqual([])
+    click(r.container, 220, 210)
+    expect(detached).toEqual([attached[0]])
+    expect(attached).toHaveLength(2)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.inline).toBeDefined()
+    r.handle.commitText('Here')
+    expect(r.handle.export().map((d) => [d.type, d.props?.text])).toEqual([['signpost', 'Here']])
+  })
+
+  it('a signpost’s preview goes as the pointer leaves the chart and as its tool is put down', () => {
+    const r = make()
+    const { attached, detached } = watchSeries(r)
+    r.handle.armTool('signpost')
+    r.container.dispatchEvent(pointer('pointermove', 200, 200))
+    r.container.dispatchEvent(new PointerEvent('pointerleave'))
+    expect(detached).toEqual([attached[0]])
+    r.container.dispatchEvent(pointer('pointermove', 200, 200))
+    expect(attached).toHaveLength(2)
+    r.handle.armTool(null)
+    expect(detached).toEqual(attached)
+    // No tool, no preview.
+    r.container.dispatchEvent(pointer('pointermove', 210, 200))
+    expect(attached).toHaveLength(2)
   })
 })
 

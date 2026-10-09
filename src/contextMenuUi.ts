@@ -11,7 +11,7 @@ import { chartContextMenuGroups, flattenMenuGroups, type ChartMenuAction, type C
 import type { ChartExtensionIcon } from './extension'
 import { createChartI18n, readingDirection, type ChartI18n } from './i18n'
 import { buildGlyph } from './ui/chrome/vector'
-import { CHECK_PATH, NUT_PATH, NUT_RING_PATH } from './ui/controls/icons'
+import { CHECK_PATH, ICONS as GLYPHS, NUT_PATH, NUT_RING_PATH } from './ui/controls/icons'
 import type { ChartIconId, ChartIcons } from './ui/icons/catalog'
 import { createIconDiagnostics } from './ui/icons/draw'
 import { createIconResolver, type IconResolver } from './ui/icons/resolver'
@@ -41,6 +41,9 @@ export interface ContextMenuHandle {
 /** The measured box width, which the viewport clamp needs as a number. */
 const MENU_W = 327
 
+/** The path data of a glyph drawn as one path. */
+const pathOf = (body: string): string => /\sd="([^"]+)"/.exec(body)?.[1] ?? ''
+
 /** The menu's own glyphs, as DESCRIPTORS on the same 28 grid a contributed one is drawn on, and
  *  inline so the package ships no asset dependency. They ride the one builder every glyph in this
  *  menu rides, which is what keeps the chart's rows and a host's rows a single icon contract rather
@@ -61,11 +64,15 @@ const ICONS: Record<ChartMenuIcon, ChartExtensionIcon> = {
     ],
   },
   check: { paths: [{ d: CHECK_PATH }] },
+  // The drawing toolbar's own glyphs for a table's edits and for removing, drawn once.
+  'table-add-column': { paths: [{ d: pathOf(GLYPHS.tableAddColumn.body) }] },
+  'table-add-row': { paths: [{ d: pathOf(GLYPHS.tableAddRow.body) }] },
+  delete: { paths: [{ d: pathOf(GLYPHS.trash28.body) }] },
 }
 
 /** The icon each of the menu's own glyphs draws, so a host's drawing for it stands here as it stands
  *  in every other control that means the same. */
-const MENU_ICON_IDS = { reset: 'reset', settings: 'settings', check: 'check' } as const satisfies Record<ChartMenuIcon, ChartIconId>
+const MENU_ICON_IDS = { reset: 'reset', settings: 'settings', check: 'check', 'table-add-column': 'tableAddColumn', 'table-add-row': 'tableAddRow', delete: 'delete' } as const satisfies Record<ChartMenuIcon, ChartIconId>
 
 /** `strings` is the chart's language: the rows are built through it every time the menu is raised,
  *  and an open menu re-labels in place if the language changes under it. `icons` are the host's

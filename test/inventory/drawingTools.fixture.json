@@ -163,6 +163,7 @@
         "fontSize": 14
       },
       "props": [
+        "savedLook",
         "text"
       ]
     },
@@ -180,6 +181,7 @@
         "bold": true
       },
       "props": [
+        "savedLook",
         "text"
       ]
     },
@@ -196,6 +198,7 @@
         "fontSize": 14
       },
       "props": [
+        "savedLook",
         "text"
       ]
     },
@@ -254,6 +257,7 @@
       },
       "props": [
         "borderWidth",
+        "savedLook",
         "text",
         "wordWrap",
         "wordWrapWidth"
@@ -295,6 +299,7 @@
         "lineColor": "#2962ff"
       },
       "props": [
+        "savedLook",
         "text"
       ]
     },
@@ -990,7 +995,9 @@
       "style": {
         "lineColor": "#2962ff"
       },
-      "props": []
+      "props": [
+        "savedLook"
+      ]
     },
     {
       "type": "flat_top_bottom",
@@ -1378,6 +1385,7 @@
         "borderColor",
         "drawBorder",
         "fillBackground",
+        "savedLook",
         "text"
       ]
     },
@@ -1443,6 +1451,7 @@
         "borderColor",
         "drawBorder",
         "fillBackground",
+        "savedLook",
         "text"
       ]
     },
@@ -1527,14 +1536,16 @@
         "fillOpacity": 1,
         "lineColor": "#2962ff"
       },
-      "props": []
+      "props": [
+        "savedLook"
+      ]
     },
     {
       "type": "price_note",
       "category": "annotation",
       "anchors": 2,
       "placement": null,
-      "hasText": true,
+      "hasText": false,
       "capturesBars": false,
       "style": {
         "lineColor": "#2962ff",
@@ -1865,6 +1876,7 @@
         "colWidths",
         "headerRow",
         "rowHeights",
+        "savedLook",
         "textHAlign"
       ]
     },
@@ -1885,6 +1897,7 @@
       "props": [
         "drawBorder",
         "fillBackground",
+        "savedLook",
         "text",
         "wordWrap",
         "wordWrapWidth"

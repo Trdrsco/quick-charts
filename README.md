@@ -2054,8 +2054,9 @@ among the others `THEME_ROLES` lists:
 Every ink is held to the WCAG 2.2 AA ratio on each ground it is drawn over, so the light status
 inks are the darkest steps of their hues that still read at 4.5 to 1 on white, the dark red reads at
 4.5 to 1 on the dialog ground, and the muted ink reads at 4.5 to 1 over the hover and selected fills
-of a menu row and over the quiet fill. `drawing.line` and `drawing.selected` are `#2962ff` in both
-modes.
+of a menu row and over the quiet fill. `drawing.line` is `#2962ff` in both modes; `drawing.selected`,
+the ring of a selected drawing's handles, is `#2962ff` light and `#1e53e5` dark, around a center of
+`drawing.handle`, the chart's own ground.
 
 ### Fields
 
@@ -3027,9 +3028,27 @@ fifteen degrees from `supermillennium` to `minuscule` (`ELLIOTT_DEGREES`) stand 
 each three ringed, in parentheses and bare, in roman numerals or figures and in capitals or small
 letters. `showWave` switches the wave through its pivots, and the labels stand without it.
 
-Text-bearing tools open an inline editor where the text sits, in the drawing's own type. A fresh
-placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd
-with Enter commits, Escape cancels, and a press on the chart commits.
+The text, the comment, the note, the signpost, the callout and the pin type their words on the
+chart. The drawing paints the words as they are typed, with their caret, selection and
+placeholder, while a field nobody sees, laid exactly over them in their own type and line height,
+takes the keys: the session's `inline` (`TextInlineEdit`) says where the words stand
+(`TextEditFrame`) and hears what the field holds (`TextDraft`). Enter and Shift with Enter break
+the line; Escape, Ctrl or Cmd with Enter, and a press elsewhere commit the words exactly as typed,
+the drawing still selected after Escape. A click on the words of the selected drawing types again,
+and a double-click opens its settings. A text, a comment, a note or a signpost left without words
+stays while it is selected and goes once it is not; a callout left without words goes as its edit
+ends; a pin keeps its place without words. `AttachDrawingsOptions.placeholder` names the words an
+empty drawing shows and `AttachDrawingsOptions.inks` the chart's own inks (`DrawingInks`).
+
+A table types into the cell a click on the selected table lands in, Tab moving on to the next cell
+and from the last to the first. Its floating bar and the chart's menu over it add a column right of
+the cell last typed in and a row below it, or at the table's ends where no cell is, and the menu
+removes that cell's row and column (`chart.drawings.tableRemoveRow`,
+`chart.drawings.tableRemoveColumn`). A hovered grid line resizes its column or row, and the corners
+scale the table. The price label, the price note, the arrow marks, the arrow marker and the flag
+open no editor: their words, where they have any, are set in their settings, which a double-click
+opens. Any other text-bearing tool types in a box of its own: Ctrl or Cmd with Enter commits,
+Escape cancels, and a press on the chart commits.
 
 Templates are named setups a viewer saves from either surface and applies on demand. They and
 the remembered defaults ride `ChartSaveLoadAdapter.templates('drawing')`, so a host that keeps
@@ -3147,8 +3166,9 @@ What to know:
 - **Every tool places.** Fixed-anchor tools place by press-drag-release or click then click; an
   instant tool (the position tools) lands whole from one press; a multipoint tool adds a point per
   click until a double-click ends the run; a freehand tool captures the drag as a stroke; a
-  text-bearing tool opens the inline editor as it lands. `armTool` **throws** only for a name the
-  catalog does not know, and `placeableByWidget(type)` answers in advance.
+  text-bearing tool opens the inline editor as it lands; a right-click while a drawing is half
+  placed takes it back and puts the tool down. `armTool` **throws** only for a name the catalog does
+  not know, and `placeableByWidget(type)` answers in advance.
 - **Persistence speaks a shared codec.** The store document (`{ [symbol]: SerializedDrawing[] }`,
   via `parseDrawingsStore`/`serializeDrawingsStore`) is the SAME document every host of the codec
   reads and writes, so drawings survive moving between hosts. A drawing bound to one chart (sync
@@ -3158,9 +3178,9 @@ What to know:
 - **A save keeps its look.** A drawing saves at `v: 3`. A save at `v: 2` restores with the look it
   was saved with: its tool writes the values that paint it so and saves at `v: 3` with them, the
   looks the tool's pages do not set riding in the props `INERT_PROPS` lists. A gann square, a gann
-  square fixed, a speed resistance fan, a pitchfan, a price note and a signpost saved at `v: 2`
-  paint as they were saved (`savedLook`) until their settings change. A host that writes drawings
-  itself writes `v: 3`.
+  square fixed, a speed resistance fan, a pitchfan, the text and annotation tools, the marks and a
+  table saved at `v: 2` paint as they were saved (`savedLook`) until their settings change. A host
+  that writes drawings itself writes `v: 3`.
 - **Keys run through the registry.** Delete and Backspace remove the selection, Escape cancels a
   placement, disarms, or closes the inline editor, and Ctrl (or Cmd) with C and V copy and paste a
   drawing. Each resolves to a `chart.drawings.*` command, so your access policy gates the keyboard
@@ -3172,7 +3192,8 @@ What to know:
   a placed or dragged anchor onto the bar's own open, high, low or close; a locked drawing
   selects, takes the Delete and Clone a viewer asks for by name, and refuses a move, a resize, a
   text edit, the eraser and a Ctrl-drag copy; lock all suspends every edit, Delete and Clone
-  included, until it is released.
+  included, until it is released. A right-click selects the drawing it lands on, so the menu that
+  follows acts on it, and the handle under a mouse stands out.
 
 ## Extensions
 

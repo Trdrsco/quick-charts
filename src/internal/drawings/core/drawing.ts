@@ -28,7 +28,11 @@ import { DEFAULT_OPTIONS, DEFAULT_STYLE, SERIAL_VERSION } from './types'
 import type { TimeframeContext } from './visibility'
 import { normalizeVisibility, visibleAt } from './visibility'
 import type { BarSource, SourceBar } from './bars'
+import { layoutTextBlock, type TextBlock, type TextDraft, type TextEditFrame } from './textEntry'
+import { DEFAULT_INKS, type DrawingInks } from './inks'
 import { DrawingPaneView } from '../render/pane-view'
+import type { HandleShape } from '../render/canvas'
+import { drawing as englishWords } from '../../../i18n/en/drawing'
 
 function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
   return { ...DEFAULT_OPTIONS, ...patch, visibility: normalizeVisibility(patch.visibility) }
@@ -622,6 +626,139 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   textHintAnchor(): { x: number; y: number; angle: number } | null {
     const r = this._textHint
     return r ? { x: r.cx, y: r.cy, angle: r.angle } : null
+  }
+
+  // ============ Words typed on the chart ============
+
+  private _textDraft: TextDraft | null = null
+  private _onTextFrame: ((frame: TextEditFrame | null) => void) | null = null
+  private _textFrameKey: string | null = null
+  private _placeholder: (() => string) | null = null
+
+  /** The draft an open inline edit shows on this drawing (transient view state, never serialized):
+   *  a tool that types on the chart paints these words, their selection and the caret in place of
+   *  its committed words. */
+  get textDraft(): TextDraft | null {
+    return this._textDraft
+  }
+
+  /** Show an inline edit's draft, or end it with null. `onFrame` hears where the words stand each
+   *  time a repaint moves them, until the edit ends. */
+  setTextDraft(draft: TextDraft | null, onFrame?: (frame: TextEditFrame | null) => void): void {
+    this._textDraft = draft
+    if (onFrame) this._onTextFrame = onFrame
+    if (!draft) {
+      this._onTextFrame = null
+      this._textFrameKey = null
+    }
+    this.requestUpdate()
+  }
+
+  /** Where this drawing's words stand, for an editor laid over them; null for a tool that does not
+   *  type on the chart. */
+  textFrame(_viewport: Viewport): TextEditFrame | null {
+    return null
+  }
+
+  /** After each paint: an open edit hears where the words stand whenever that moved. */
+  noteTextFrame(viewport: Viewport): void {
+    if (!this._onTextFrame || !this._textDraft) return
+    const frame = this.textFrame(viewport)
+    const key = JSON.stringify(frame)
+    if (key === this._textFrameKey) return
+    this._textFrameKey = key
+    this._onTextFrame(frame)
+  }
+
+  /** Where the words an empty drawing shows come from: the host's catalog, read as it paints. */
+  setTextPlaceholder(source: (() => string) | null): void {
+    this._placeholder = source
+    this.requestUpdate()
+  }
+
+  /** The words an empty drawing shows: the host's, or the catalog's English where none is set. */
+  protected textPlaceholder(): string {
+    return this._placeholder?.() ?? englishWords['drawing.addText']
+  }
+
+  private _inks: (() => DrawingInks) | null = null
+
+  /** Where the chart's own inks come from: the host's theme, read as the drawing paints. */
+  setInks(source: (() => DrawingInks) | null): void {
+    this._inks = source
+    this.requestUpdate()
+  }
+
+  /** The chart's own inks: the host theme's, or the built-in light theme's where none is set. */
+  inks(): DrawingInks {
+    return this._inks?.() ?? DEFAULT_INKS
+  }
+
+  /** The shape of this drawing's selection handles. */
+  handleShape(): HandleShape {
+    return 'circle'
+  }
+
+  /** The shape its scale grips wear: null for the small square grips, or a handle's shape for a
+   *  drawing whose grips stand as its selection handles do. */
+  gripShape(): HandleShape | null {
+    return null
+  }
+
+  private _hovered = false
+  private _pointer: Point | null = null
+
+  /** Whether the pointer rests on this drawing (transient view state, never serialized). */
+  get hovered(): boolean {
+    return this._hovered
+  }
+
+  setHovered(on: boolean): void {
+    if (this._hovered === on) return
+    this._hovered = on
+    this.requestUpdate()
+  }
+
+  /** Where a mouse rests over the chart while this drawing is selected, or null (transient view
+   *  state, never serialized): its handle under the mouse stands out. */
+  get pointer(): Point | null {
+    return this._pointer
+  }
+
+  setPointer(point: Point | null): void {
+    const was = this._pointer
+    if (was === point || (was && point && was.x === point.x && was.y === point.y)) return
+    this._pointer = point ? { x: point.x, y: point.y } : null
+    this.requestUpdate()
+  }
+
+  /** The anchors a drag that grabs this drawing at a point moves: null for all of them, as a drag
+   *  of the whole drawing does. */
+  grabbedAnchors(_point: Point, _viewport: Viewport): number[] | null {
+    return null
+  }
+
+  /** Whether a point is on this drawing's words, where a click on the selected drawing types. */
+  wordsAt(point: Point, viewport: Viewport): boolean {
+    return this.testHit(point, viewport)
+  }
+
+  /** Move an anchor by its handle: to the point, unless the tool holds a handle to a line. */
+  dragAnchorTo(index: number, anchor: Anchor): void {
+    this.updateAnchor(index, anchor)
+  }
+
+  /** The words this drawing shows, in lines: the open edit's draft or the committed words. The
+   *  placeholder stands in their place only while both are empty, so words emptied during an edit
+   *  show nothing until the edit ends. */
+  protected shownWords(measure: (line: string) => number, wrapWidth: number | null = null): { block: TextBlock; placeholder: TextBlock | null } {
+    const own = (this._props as Record<string, unknown>).text
+    const committed = typeof own === 'string' ? own : ''
+    const value = this._textDraft?.value ?? committed
+    return {
+      block: layoutTextBlock(value, measure, wrapWidth),
+      placeholder: value === '' && committed === '' ? layoutTextBlock(this.textPlaceholder(), measure) : null,
+    }
   }
 
   abstract testHit(point: Point, viewport: Viewport): boolean

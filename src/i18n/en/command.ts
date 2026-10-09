@@ -91,6 +91,8 @@ export const command = {
   'command.drawingTemplateRemove': 'Remove drawing template',
   'command.drawingTableAddRow': 'Add table row',
   'command.drawingTableAddColumn': 'Add table column',
+  'command.drawingTableRemoveRow': 'Remove table row',
+  'command.drawingTableRemoveColumn': 'Remove table column',
   /** Disarm the armed drawing tool. */
   'command.drawingCancel': 'Cancel drawing',
 

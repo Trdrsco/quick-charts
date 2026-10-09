@@ -1,6 +1,6 @@
 // What the text tools, the annotation tools and the table paint from their settings: a text's
 // background, border and wrapped words on their switches, a note's line to its point and its label's
-// own border, a callout's border at its width, a price label's pill, a price note's tag, a table's
+// own border, a callout's border at its width, a price label's body, a price note's tag, a table's
 // words where its alignment stands them, and a signpost's plate held its height over its bar.
 import { describe, expect, it } from 'vitest'
 import { drawingTools } from '../../../src/drawings/index'
@@ -76,32 +76,32 @@ describe('a text', () => {
 })
 
 describe('a note', () => {
-  it('runs a line in its stroke color from its point to its label, the label’s border in a color of its own', () => {
+  it('runs a line in its stroke color from its point to its label and dots its point, the label’s border in a color of its own', () => {
     const d = make('note', [at(100, 300), at(200, 200)], { text: 'Hi' })
     const calls = painted(d)
     expect(named(calls, 'stroke').map((c) => c.strokeStyle)).toEqual(['#dbdbdb'])
-    expect(named(calls, 'fill').map((c) => c.fillStyle)).toEqual(['rgba(46, 46, 46, 1)'])
+    expect(named(calls, 'fill').map((c) => c.fillStyle)).toEqual(['#dbdbdb', 'rgba(46, 46, 46, 1)'])
     d.applyProps({ drawBorder: true, fillBackground: false })
     const bordered = painted(d)
     expect(named(bordered, 'stroke').map((c) => c.strokeStyle)).toEqual(['#dbdbdb', '#4a4a4a'])
-    expect(named(bordered, 'fill')).toEqual([])
+    expect(named(bordered, 'fill').map((c) => c.fillStyle)).toEqual(['#dbdbdb'])
   })
 })
 
 describe('a callout and a price label', () => {
-  it('draws a callout’s border and its tether at the drawing’s width', () => {
+  it('borders a callout’s box and its tail in one stroke at the drawing’s width', () => {
     const d = make('callout', [at(100, 300), at(200, 200)], { text: 'Hi' })
-    expect(named(painted(d), 'stroke').map((c) => [c.strokeStyle, c.lineWidth])).toEqual([
-      ['#0097a7', 2],
-      ['#0097a7', 2],
-    ])
+    expect(named(painted(d), 'stroke').map((c) => [c.strokeStyle, c.lineWidth])).toEqual([['#0097a7', 2]])
   })
 
-  it('fills a price label’s pill in its fill, borders it in its stroke, and writes the price bold', () => {
+  it('fills a price label’s tail and body in its fill, strokes them in its stroke, dots its point and writes the price bold', () => {
     const d = make('price_label', [at(100, 250)])
     const calls = painted(d)
-    expect(named(calls, 'fill').map((c) => c.fillStyle)).toEqual(['rgba(41, 98, 255, 1)', 'rgba(41, 98, 255, 1)'])
-    expect(named(calls, 'stroke').map((c) => c.strokeStyle)).toEqual(['#2962ff', '#2962ff'])
+    expect(named(calls, 'fill').map((c) => c.fillStyle)).toEqual(['rgba(41, 98, 255, 1)', 'rgba(41, 98, 255, 1)', '#2962ff'])
+    expect(named(calls, 'stroke').map((c) => [c.strokeStyle, c.lineWidth])).toEqual([
+      ['#2962ff', 2],
+      ['#2962ff', 2],
+    ])
     const price = named(calls, 'fillText')[0]!
     expect([price.args[0], price.fillStyle, String(price.font).includes('600')]).toEqual(['250.00', '#ffffff', true])
   })
@@ -121,14 +121,17 @@ describe('a price note', () => {
 })
 
 describe('a table', () => {
-  it('stands each cell’s words at the left, the middle or the right of the cell', () => {
+  it('stands each cell’s words 9px in from its left, centred across it, or ending 9px in from its right', () => {
     const d = make('table', [at(100, 300)], { cells: [['a', 'b']] })
-    const first = (): Call => named(painted(d), 'fillText')[0]!
-    expect([first().args[1], first().textAlign]).toEqual([108, 'left'])
+    // With no document to measure in, a letter reads 0.6 of the type's 14px; the first cell runs
+    // from 100 to 220.
+    const letter = 14 * 0.6
+    const first = (): number => Number(named(painted(d), 'fillText')[0]!.args[1])
+    expect(first()).toBe(109)
     d.applyProps({ textHAlign: 'center' })
-    expect([first().args[1], first().textAlign]).toEqual([160, 'center'])
+    expect(first() + letter / 2).toBeCloseTo(160, 9)
     d.applyProps({ textHAlign: 'right' })
-    expect([first().args[1], first().textAlign]).toEqual([212, 'right'])
+    expect(first() + letter).toBeCloseTo(220 - 9, 9)
   })
 })
 
@@ -160,13 +163,15 @@ describe('a signpost', () => {
     expect([d.props.position, Number(d.anchors[0]!.time)]).toEqual([25, 170])
   })
 
-  it('writes its words in the ink that reads on its plate', () => {
+  it('outlines its plate and writes its words in the chart’s inks, and fills the plate in its stroke color with its emoji shown', () => {
     const d = post()
     d.updateAnchor(0, at(150, 250))
-    const plate = named(painted(d), 'fill').at(-1)!
-    expect(plate.fillStyle).toBe('#2962ff')
-    expect(named(painted(d), 'fillText').map((c) => [c.args[0], c.fillStyle])).toEqual([['Hi', '#ffffff']])
+    expect(named(painted(d), 'fill')).toEqual([])
+    expect(named(painted(d), 'fillText').map((c) => [c.args[0], c.fillStyle])).toEqual([['Hi', '#0f0f0f']])
+    d.applyProps({ showImage: true })
+    expect(named(painted(d), 'fill').map((c) => c.fillStyle)).toEqual(['#2962ff'])
+    expect(named(painted(d), 'fillText').at(-1)!.fillStyle).toBe('#ffffff')
     d.updateStyle({ lineColor: '#ffeb3b' })
-    expect(named(painted(d), 'fillText')[0]!.fillStyle).toBe('#000000')
+    expect(named(painted(d), 'fillText').at(-1)!.fillStyle).toBe('#000000')
   })
 })

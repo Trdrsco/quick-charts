@@ -126,7 +126,17 @@ export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
   bars_pattern: ['candles'],
   fixed_range_volume_profile: PROFILE,
   anchored_volume_profile: PROFILE,
-  callout: ['borderWidth'],
+  callout: ['borderWidth', ...SAVED_LOOK],
+  price_label: SAVED_LOOK,
+  pin: SAVED_LOOK,
+  flag: SAVED_LOOK,
+  arrow_up: SAVED_LOOK,
+  arrow_down: SAVED_LOOK,
+  arrow_marker: SAVED_LOOK,
+  table: SAVED_LOOK,
+  text: SAVED_LOOK,
+  comment: SAVED_LOOK,
+  note: SAVED_LOOK,
   price_note: SAVED_LOOK,
   signpost: SAVED_LOOK,
   price_range: METER,
@@ -138,9 +148,9 @@ export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
  *  draws only as a save carries them; a table's cells and header band, which stand on the chart and
  *  in a save; and the props that keep a version 2 save's look as it was saved. */
 export const INERT_PROPS: Record<string, readonly string[]> = {
-  trend_angle: ['text', 'leftEnd', 'rightEnd', 'showDateTimeRange', 'showAngle'],
-  table: ['cells', 'headerRow'],
   ...SAVED_LOOK_PROPS,
+  trend_angle: ['text', 'leftEnd', 'rightEnd', 'showDateTimeRange', 'showAngle'],
+  table: ['cells', 'headerRow', ...SAVED_LOOK],
 }
 
 /** Tools whose points are drawn from their shape rather than typed: a turned box, an arc, an

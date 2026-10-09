@@ -455,18 +455,85 @@ describe('the plane through the registry', () => {
     expect(gestures.style.touchAction).toBe('')
   })
 
-  it('the inline text editor mounts on a text placement and commits into the drawing', () => {
+  it('a text placement opens the field over its words, and Escape commits them as typed, the text still selected', () => {
     vi.useFakeTimers()
     const { chrome, gestures, run, plane } = make()
     run('chart.drawings.arm', 'text')
     click(gestures, 100, 100)
-    vi.runAllTimers()
-    const area = chrome.querySelector<HTMLTextAreaElement>('textarea')!
+    vi.runOnlyPendingTimers()
+    const area = chrome.querySelector<HTMLTextAreaElement>('textarea[data-qc-editor="inline"]')!
     expect(area).toBeTruthy()
-    area.value = 'Breakout'
-    area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true }))
+    expect(area.placeholder).toBe('Add text')
+    expect(document.activeElement).toBe(area)
+    area.value = 'Hello world\nline2\n'
+    area.dispatchEvent(new Event('input', { bubbles: true }))
+    // The words change on the drawing only as they commit.
+    expect(plane.api!.export()).toEqual([])
+    area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     expect(chrome.querySelector('textarea')).toBeNull()
-    expect(plane.api!.export()[0]?.props?.text).toBe('Breakout')
+    expect(plane.api!.export()[0]?.props?.text).toBe('Hello world\nline2\n')
+    expect(plane.api!.selected()?.type).toBe('text')
+    expect(document.activeElement).toBe(gestures)
+  })
+
+  it('a press on the chart commits the words and deselects the text, removing one left empty', async () => {
+    vi.useFakeTimers()
+    const { chrome, gestures, run, plane } = make()
+    run('chart.drawings.arm', 'text')
+    click(gestures, 100, 100)
+    vi.runOnlyPendingTimers()
+    const area = chrome.querySelector<HTMLTextAreaElement>('textarea')!
+    area.value = 'Kept'
+    area.dispatchEvent(new Event('input', { bubbles: true }))
+    click(gestures, 600, 300)
+    expect(chrome.querySelector('textarea')).toBeNull()
+    expect(plane.api!.selected()).toBeNull()
+    expect(plane.api!.export().map((d) => d.props?.text)).toEqual(['Kept'])
+    run('chart.drawings.arm', 'text')
+    click(gestures, 300, 100)
+    vi.runOnlyPendingTimers()
+    click(gestures, 600, 300)
+    await Promise.resolve()
+    expect(plane.api!.export().map((d) => d.props?.text)).toEqual(['Kept'])
+    expect(plane.api!.counts().total).toBe(1)
+  })
+
+  it('types a table’s cells on the chart, Tab moving on, and adds and removes rows and columns at the cell last typed in', () => {
+    vi.useFakeTimers()
+    const { chrome, gestures, run, plane } = make()
+    run('chart.drawings.arm', 'table')
+    click(gestures, 100, 100)
+    const cells = (): string[][] => plane.api!.export()[0]!.props!.cells as string[][]
+    // Appends where no cell is marked.
+    expect([run('chart.drawings.tableRemoveRow'), cells().length]).toEqual(['unavailable', 3])
+    run('chart.drawings.tableAddRow')
+    run('chart.drawings.tableAddColumn')
+    expect([cells().length, cells()[0]!.length]).toEqual([4, 4])
+    // The table is selected: a click on its first cell types there, and Tab moves on to the next.
+    click(gestures, 150, 110)
+    vi.runOnlyPendingTimers()
+    const area = chrome.querySelector<HTMLTextAreaElement>('textarea[data-qc-editor="inline"]')!
+    area.value = 'A1'
+    area.dispatchEvent(new Event('input', { bubbles: true }))
+    area.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }))
+    vi.runOnlyPendingTimers()
+    expect(cells()[0]!.slice(0, 2)).toEqual(['A1', ''])
+    const next = chrome.querySelector<HTMLTextAreaElement>('textarea[data-qc-editor="inline"]')!
+    next.value = 'B1'
+    next.dispatchEvent(new Event('input', { bubbles: true }))
+    // A row added while the second cell is typed in lands below its row; a column, right of it.
+    run('chart.drawings.tableAddRow')
+    expect(cells().map((row) => row[1])).toEqual(['B1', '', '', '', ''])
+    expect(chrome.querySelector('textarea')).toBeNull()
+    click(gestures, 280, 110)
+    vi.runOnlyPendingTimers()
+    run('chart.drawings.tableAddColumn')
+    expect(cells()[0]).toEqual(['A1', 'B1', '', '', ''])
+    // A remove takes the marked cell's row or column, never the last.
+    click(gestures, 280, 110)
+    vi.runOnlyPendingTimers()
+    expect(run('chart.drawings.tableRemoveColumn')).toBe('ok')
+    expect(cells()[0]).toEqual(['A1', '', '', ''])
   })
 
   it('shows the sync switch in a layout and binds a new drawing to this chart when sync is off', () => {

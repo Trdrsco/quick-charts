@@ -19,4 +19,6 @@ export type {
   PlacedImage,
   SelectedDrawing,
   TextEditSession,
+  TextInlineEdit,
 } from './drawings/layer/types'
+export type { DrawingInks, TextDraft, TextEditFrame } from './internal/drawings/index'

@@ -261,7 +261,7 @@ export const DARK_THEME: SemanticTheme = {
   'drawing.fill': 'rgba(41, 98, 255, 0.15)',
   'drawing.text': '#dbdbdb',
   'drawing.handle': '#0f0f0f',
-  'drawing.selected': '#2962ff',
+  'drawing.selected': '#1e53e5',
 
   'motion.durationFast': '90ms',
   'motion.durationBase': '150ms',

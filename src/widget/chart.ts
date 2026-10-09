@@ -1108,6 +1108,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         setLevel: (price) => {
           menuLevel = price
         },
+        table: () => drawings.verbs?.menuTable() ?? null,
       })
     : null
 

@@ -1,6 +1,7 @@
 import type { Time } from 'lightweight-charts'
 import type { TimeframeContext, TimeframeVisibility } from './visibility'
 import { DEFAULT_VISIBILITY } from './visibility'
+import type { TextDraft, TextEditFrame } from './textEntry'
 
 /** How the host writes a price: the symbol's own formatter, injected so every drawing label,
  *  pill and readout carries the market's declared precision. The drawings package never derives a
@@ -192,6 +193,28 @@ export interface IDrawing {
   textHintAnchor(): { x: number; y: number; angle: number } | null
   /** An inline text editor is open on this drawing — the hint stays hidden underneath it. */
   textEditing: boolean
+  /** The draft an open inline edit shows on a drawing that types its words on the chart. */
+  readonly textDraft: TextDraft | null
+  /** Show an inline edit's draft, or end it with null; `onFrame` hears where the words stand each
+   *  time a repaint moves them. */
+  setTextDraft(draft: TextDraft | null, onFrame?: (frame: TextEditFrame | null) => void): void
+  /** Where the drawing's words stand, for an editor laid over them; null for a tool that does not
+   *  type its words on the chart. */
+  textFrame(viewport: Viewport): TextEditFrame | null
+  /** Where the words an empty drawing shows come from, read as it paints. */
+  setTextPlaceholder(source: (() => string) | null): void
+  /** The anchors a drag that grabs the drawing at a point moves: null for all of them. */
+  grabbedAnchors(point: Point, viewport: Viewport): number[] | null
+  /** Whether a point is on the drawing's words, where a click on the selected drawing types. */
+  wordsAt(point: Point, viewport: Viewport): boolean
+  /** Move an anchor by its handle: to the point, unless the tool holds a handle to a line. */
+  dragAnchorTo(index: number, anchor: Anchor): void
+  /** Whether the pointer rests on the drawing. */
+  readonly hovered: boolean
+  setHovered(on: boolean): void
+  /** Where a mouse rests over the chart while the drawing is selected, or null. */
+  readonly pointer: Point | null
+  setPointer(point: Point | null): void
 
   getViewport(): Viewport | null
   requestUpdate(): void

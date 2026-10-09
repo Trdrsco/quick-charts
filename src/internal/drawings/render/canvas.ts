@@ -1,4 +1,5 @@
 import type { DrawingStyle, LineStyle, Point } from '../core/types'
+import { DARK_THEME } from '../../../theme/palettes'
 
 /** Dash pattern for a line style, scaled so dashes stay legible at any width. */
 export function dashPattern(style: LineStyle, width: number): number[] {
@@ -29,11 +30,15 @@ export function strokeSegment(ctx: CanvasRenderingContext2D, a: Point, b: Point)
   ctx.stroke()
 }
 
+/** The family drawings paint their words in: the chart's own font stack, the one the built-in themes
+ *  give the chrome and the scales. */
+export const DRAWING_FONT_FAMILY = DARK_THEME['text.fontFamily']
+
 /** The CSS font string for a drawing's text channel. */
 export function fontOf(style: DrawingStyle): string {
   const weight = style.bold ? '600 ' : ''
   const slant = style.italic ? 'italic ' : ''
-  return `${slant}${weight}${style.fontSize}px ui-sans-serif, system-ui, sans-serif`
+  return `${slant}${weight}${style.fontSize}px ${DRAWING_FONT_FAMILY}`
 }
 
 export interface LabelOptions {
@@ -99,14 +104,18 @@ export function paintArrowHead(
 let measurer: CanvasRenderingContext2D | null = null
 
 /** How wide a line of words reads in a style's type, measured without a live rendering context. */
-function lineMeasure(style: DrawingStyle): (line: string) => number {
+export function lineMeasure(style: DrawingStyle): (line: string) => number {
   if (!measurer && typeof document !== 'undefined') {
     measurer = document.createElement('canvas').getContext('2d')
   }
   const m = measurer
   if (!m) return (line) => line.length * style.fontSize * 0.6
-  m.font = fontOf(style)
-  return (line) => m.measureText(line).width
+  const font = fontOf(style)
+  // The measurer is shared, so each measure states its own type.
+  return (line) => {
+    if (m.font !== font) m.font = font
+    return m.measureText(line).width
+  }
 }
 
 /** Measure a text block (newline-aware) without a live rendering context. */
@@ -216,25 +225,76 @@ export function paintTextBlock(
   return box
 }
 
-const HANDLE_RADIUS = 4.5
+/** The shape of a drawing's selection handles: the round one most drawings show, a rounded square,
+ *  or the small thin ring a mark shows on its point. */
+export type HandleShape = 'circle' | 'square' | 'small'
 
-/** Paint the anchor handles for a selected/editing drawing. */
+/** The point of a list nearest a mouse, by its place in the list, within a reach; null for none. */
+export function hoveredIndex(points: readonly Point[], pointer: Point | null, reach: number): number | null {
+  if (!pointer) return null
+  let best: number | null = null
+  let bestD = reach
+  points.forEach((p, i) => {
+    const d = Math.hypot(p.x - pointer.x, p.y - pointer.y)
+    if (d <= bestD) {
+      bestD = d
+      best = i
+    }
+  })
+  return best
+}
+
+/** The halo round a handle under the pointer, in its ring ink at 20% and 3px wide: a ring on a
+ *  radius of 8 round a round handle, a square 16px across with corners rounded at 4.8 round a square
+ *  one. */
+const HANDLE_HALO = { radius: 8, half: 8, corner: 4.8, width: 3, alpha: 0.2 }
+
+/** Paint a drawing's handles, one on each point's pixel, filled with the chart's ground so a handle
+ *  covers what it stands on. Selected, a round handle is a ring of radius 5.5, 2px wide; a square
+ *  one is 11px across with corners rounded at 3.3, its ring 2px wide; a small one is a ring of
+ *  radius 3.5, 1px wide; and a round or square one under the pointer stands in a halo. The thin form
+ *  a hovered drawing shows is a ring of radius 6, or a square 12px across, 1px wide. */
 export function paintHandles(
   ctx: CanvasRenderingContext2D,
   points: readonly Point[],
-  accent: string,
+  inks: { ring: string; center: string },
+  shape: HandleShape = 'circle',
+  hovered: number | null = null,
+  form: 'selected' | 'thin' = 'selected',
 ): void {
   ctx.save()
   ctx.setLineDash([])
-  ctx.lineWidth = 1.5
-  for (const p of points) {
+  points.forEach((p, i) => {
+    const x = Math.round(p.x) + 0.5
+    const y = Math.round(p.y) + 0.5
+    if (i === hovered && shape !== 'small' && form === 'selected') {
+      ctx.globalAlpha = HANDLE_HALO.alpha
+      ctx.strokeStyle = inks.ring
+      ctx.lineWidth = HANDLE_HALO.width
+      ctx.beginPath()
+      if (shape === 'square') ctx.roundRect(x - HANDLE_HALO.half, y - HANDLE_HALO.half, HANDLE_HALO.half * 2, HANDLE_HALO.half * 2, HANDLE_HALO.corner)
+      else ctx.arc(x, y, HANDLE_HALO.radius, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.globalAlpha = 1
+    }
+    const thin = form === 'thin'
+    ctx.fillStyle = inks.center
+    ctx.strokeStyle = inks.ring
     ctx.beginPath()
-    ctx.arc(p.x, p.y, HANDLE_RADIUS, 0, Math.PI * 2)
-    ctx.fillStyle = '#ffffff'
+    if (shape === 'square') {
+      const half = thin ? 6 : 5.5
+      ctx.lineWidth = thin ? 1 : 2
+      ctx.roundRect(x - half, y - half, half * 2, half * 2, 3.3)
+    } else if (shape === 'small') {
+      ctx.lineWidth = 1
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2)
+    } else {
+      ctx.lineWidth = thin ? 1 : 2
+      ctx.arc(x, y, thin ? 6 : 5.5, 0, Math.PI * 2)
+    }
     ctx.fill()
-    ctx.strokeStyle = accent
     ctx.stroke()
-  }
+  })
   ctx.restore()
 }
 

@@ -494,8 +494,12 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       if (typeof arg === 'string') verbs()?.removeTemplate(arg)
     },
   })
+  // A table's rows and columns: an add lands next to the cell last typed in, or at the table's end;
+  // a remove takes that cell's row or column, and is there only while a cell is.
   add({ id: 'chart.drawings.tableAddRow', scope: 'chart', label: 'command.drawingTableAddRow', available: () => drawings()?.selected()?.hasCells ?? false, execute: () => verbs()?.tableAddRow() })
   add({ id: 'chart.drawings.tableAddColumn', scope: 'chart', label: 'command.drawingTableAddColumn', available: () => drawings()?.selected()?.hasCells ?? false, execute: () => verbs()?.tableAddColumn() })
+  add({ id: 'chart.drawings.tableRemoveRow', scope: 'chart', label: 'command.drawingTableRemoveRow', available: () => verbs()?.tableCanRemove('row') ?? false, execute: () => verbs()?.tableRemoveRow() })
+  add({ id: 'chart.drawings.tableRemoveColumn', scope: 'chart', label: 'command.drawingTableRemoveColumn', available: () => verbs()?.tableCanRemove('column') ?? false, execute: () => verbs()?.tableRemoveColumn() })
   // ── Compare ─────────────────────────────────────────────────────────────────────────────────
   add({
     id: 'chart.compare.open',
