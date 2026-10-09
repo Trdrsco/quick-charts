@@ -31,6 +31,7 @@ describe('WCAG 2.2 contrast in both built-in modes', () => {
       'chrome.caret',
       'control.fieldInvalid',
       'control.mark',
+      'control.neutralInk',
       'control.on',
       'control.onInk',
       'control.outline',

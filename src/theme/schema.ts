@@ -119,6 +119,7 @@ export const THEME_ROLES = [
       { over: 'chrome.surface', min: 4.5 },
       { over: 'state.selected', on: 'overlay.surface', min: 4.5 },
       { over: 'state.hover', on: 'overlay.surface', min: 4.5 },
+      { over: 'control.neutral', min: 4.5 },
     ],
   },
   { id: 'text.disabled', family: 'text', kind: 'color', description: 'Ink of a control that cannot be used. WCAG exempts an inactive control from a contrast minimum.' },
@@ -233,6 +234,25 @@ export const THEME_ROLES = [
     kind: 'color',
     description: 'A mark cut from the emphasis fill, and its name beside it: a chosen thickness, line style or line end.',
     contrast: [{ over: 'control.on', min: 3 }],
+  },
+  // The quiet fill is the step of the same ramp next to the surface: a chip that offers a shortcut,
+  // the band that heads a calendar's columns and a chosen month or year wear it, a step up under the
+  // pointer and another while pressed. Its ink is the strong end of the ramp, which is also what the
+  // words and mark of a quiet control brighten to under the pointer.
+  { id: 'control.neutral', family: 'control', kind: 'color', description: 'The quiet fill: a neutral action such as a dialog\'s shortcut chip, the band that heads a calendar\'s columns, and a chosen month or year.' },
+  { id: 'control.neutralHover', family: 'control', kind: 'color', description: 'The quiet fill under the pointer.' },
+  { id: 'control.neutralPressed', family: 'control', kind: 'color', description: 'The quiet fill while the pointer is down.' },
+  {
+    id: 'control.neutralInk',
+    family: 'control',
+    kind: 'color',
+    description: 'The words and mark on the quiet fill, and what a quiet control\'s words and mark brighten to under the pointer, such as a calendar\'s day or a dialog\'s close.',
+    contrast: [
+      { over: 'control.neutral', min: 4.5 },
+      { over: 'control.neutralHover', min: 4.5 },
+      { over: 'control.neutralPressed', min: 4.5 },
+      { over: 'state.hover', on: 'overlay.surface', min: 4.5 },
+    ],
   },
   {
     id: 'control.mark',

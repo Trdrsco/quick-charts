@@ -2037,6 +2037,10 @@ among the others `THEME_ROLES` lists:
 | `state.pressed` | `#ebebeb` | `#3d3d3d` | The fill while the pointer is down. |
 | `control.outline` | `#2e2e2e` | `#ffffff` | The edge and the words of an outlined button at rest, such as a dialog's Cancel. |
 | `control.onInk` | `#ffffff` | `#000000` | A mark cut from the emphasis fill: a chosen thickness, line style or line end. |
+| `control.neutral` | `#f2f2f2` | `#2e2e2e` | The quiet fill: a dialog's shortcut chip, the band over a calendar's columns, a chosen month or year. |
+| `control.neutralHover` | `#ebebeb` | `#3d3d3d` | The quiet fill under the pointer. |
+| `control.neutralPressed` | `#dbdbdb` | `#4a4a4a` | The quiet fill while the pointer is down. |
+| `control.neutralInk` | `#000000` | `#ffffff` | The words on the quiet fill, and what a quiet control's words and mark brighten to under the pointer, such as a calendar's day. |
 | `status.positive` | `#078671` | `#089981` | A gain or a success. |
 | `status.negative` | `#df323f` | `#f34452` | A loss or a failure. |
 | `status.warning` | `#ac6600` | `#ff9800` | A condition to notice before acting. |
@@ -2044,7 +2048,8 @@ among the others `THEME_ROLES` lists:
 Every ink is held to the WCAG 2.2 AA ratio on each ground it is drawn over, so the light status
 inks are the darkest steps of their hues that still read at 4.5 to 1 on white, the dark red reads at
 4.5 to 1 on the dialog ground, and the muted ink reads at 4.5 to 1 over the hover and selected fills
-of a menu row. `drawing.line` and `drawing.selected` are `#2962ff` in both modes.
+of a menu row and over the quiet fill. `drawing.line` and `drawing.selected` are `#2962ff` in both
+modes.
 
 ### Fields
 

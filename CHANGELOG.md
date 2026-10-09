@@ -85,6 +85,8 @@ Saved state needs nothing from you: a save that carries a content card loads wit
 
 A drawing saved by 3.x needs nothing from you: a save at `v: 2` restores with the look it was saved with, reading its earlier names and meanings as it restores, and saves at `v: 3`. A template or a tool default saved by 3.x applies the setup it names as its tool reads a save.
 
+`THEME_ROLES` gains the quiet fill in both built-in palettes: `control.neutral` (`#f2f2f2` light, `#2e2e2e` dark) under a dialog's shortcut chip, the band over a calendar's columns and a chosen month or year, `control.neutralHover` (`#ebebeb`, `#3d3d3d`) and `control.neutralPressed` (`#dbdbdb`, `#4a4a4a`) under the pointer and while pressed, and `control.neutralInk` (`#000000`, `#ffffff`) for the words on it and the words and mark a quiet control brightens to under the pointer.
+
 ## 3.0.0
 
 A search scope the viewer turns on and off, one box for the chart's dialog fields, and a drawing dialog that follows its drag. Each `SearchScope` carries the search within it, a required `search`, so a host that offers a scope upgrades as the guide below says. No public name changes.
