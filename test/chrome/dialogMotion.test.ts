@@ -3,9 +3,9 @@
 // duration role the stylesheet's transition reads, a host's palette retunes both at once, and a
 // duration of zero (what the stylesheet resolves every duration to under a reduced-motion
 // preference) closes at once. The motion is the dialog primitive's own behavior, so every surface
-// that opens a modal dialog opens and closes with it, except the drawing settings, which edit the
-// drawing they stand over and so open in place: at once, over an undimmed chart. Nothing in the
-// chrome carries a duration of its own.
+// that opens a modal dialog opens and closes with it, except the two that work on the chart they
+// stand over and so open in place, at once, over an undimmed chart: the drawing settings and the
+// replay date picker. Nothing in the chrome carries a duration of its own.
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -239,11 +239,6 @@ const DIALOGS: readonly [string, (host: HTMLElement) => Opened][] = [
     const dialog = openConfirmDialog({ host, t, icons: ownIcons(), title: 'Delete', body: 'Delete it?', verb: 'Delete', confirm: () => undefined })
     return { box: dialog.element, close: () => dialog.element.querySelector<HTMLButtonElement>('.qc-prompt-actions .qc-button--primary')!.click() }
   }],
-  ['go to date', (host) => {
-    const w = widgetFor()
-    const dialog = openDatePicker({ host, i18n: w.i18n, icons: w.icons, minSec: 1_700_000_000, maxSec: 1_700_864_000, withTime: false, onSelect: () => undefined })
-    return { box: dialog.element, close: escape }
-  }],
   ['the drawing image picker', (host) => {
     const close = openImagePicker({ container: host, t, icons: ownIcons(), assets: refusingPort, canPlace: () => true, onConfirm: () => undefined })
     return { box: boxIn(host, 'drawing-image-picker'), close }
@@ -310,6 +305,37 @@ describe('the drawing settings open in place', () => {
     escape()
     expect(again.isConnected).toBe(false)
     expect(outcomes).toEqual(['cancel', 'cancel'])
+  })
+})
+
+describe('the replay date picker opens in place', () => {
+  function datePickerIn(host: HTMLElement, onClose?: () => void) {
+    const w = widgetFor()
+    return openDatePicker({ host, i18n: w.i18n, icons: w.icons, minSec: 1_700_000_000, maxSec: 1_700_864_000, withTime: true, onSelect: () => undefined, ...(onClose ? { onClose } : {}) })
+  }
+
+  it('appears at once over a backdrop that dims nothing, with the keyboard in its date field, and leaves at once', () => {
+    const host = themed()
+    const dialog = datePickerIn(host)
+    const scrim = dialog.element.closest<HTMLElement>('.qc-dialog-scrim')!
+    expect(scrim.dataset.state).toBeUndefined()
+    expect(scrim.dataset.qcVeil).toBe('none')
+    expect(document.activeElement).toBe(dialog.element.querySelector('.qc-date-field'))
+    dialog.close()
+    expect(scrim.isConnected).toBe(false)
+  })
+
+  it('still closes on a press on the backdrop, and on Escape, at once', () => {
+    const host = themed()
+    const closed: true[] = []
+    const first = datePickerIn(host, () => closed.push(true))
+    const scrim = first.element.closest<HTMLElement>('.qc-dialog-scrim')!
+    scrim.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    expect(scrim.isConnected).toBe(false)
+    const again = datePickerIn(host, () => closed.push(true)).element.closest<HTMLElement>('.qc-dialog-scrim')!
+    escape()
+    expect(again.isConnected).toBe(false)
+    expect(closed).toEqual([true, true])
   })
 })
 

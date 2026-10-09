@@ -1627,7 +1627,13 @@ chrome is painted from it and renders nothing without it.
   asks where to begin rather than choosing a starting bar. Its starting-point menu answers with a
   bar picked on the plot, a date, the first available date, or a random bar. The first available
   date runs `chart.replay.startFirst`: the chart pages the feed's history back to its oldest bar,
-  within the 20,000 bars one session holds, and starts there. Undo and
+  within the 20,000 bars one session holds, and starts there. A date opens Select date over the
+  undimmed chart, carried by its title: a date field, on an intraday chart a time field whose clock
+  lists the day in quarter hours, a calendar of the loaded window whose heading turns to the months
+  and the years, and a chip that moves the choice to the first available day. Picking moves the
+  choice and the dialog stays up; Select starts replay at the first bar at or after the date and
+  time, in UTC, and Cancel leaves replay asking where to start. The arrows walk the days, Page Up
+  and Page Down turn the month, Enter picks and Escape closes. Undo and
   redo step back and forward through the active chart's own content, and each names the change it
   would move. Layout setup offers the arrangements and sync switches the chart offers (by default
   the 55 arrangements and the five sync switches); the saved-layouts menu, shown with a layouts
@@ -2094,16 +2100,16 @@ same values:
 | `motion.scaleEnter` | `0.97` | The scale a modal dialog box grows from as it opens. |
 
 Every modal dialog the chart opens (the symbol search, chart settings, the indicator browser and
-indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and the
-drawing image picker and template prompts) opens with its backdrop fading in over
+indicator settings, the saved-layouts browser, the name and confirm prompts, and the drawing image
+picker and template prompts) opens with its backdrop fading in over
 `motion.durationBase` on `motion.easingOut`, and its box fading in and growing from
 `motion.scaleEnter` to full size over `motion.durationBase` on `motion.easingStandard`. It closes
 with the same motion reversed. A closing dialog stops taking input and returns focus at once, and the
 chart removes it when the same `motion.durationBase` has elapsed, so a duration you set times both
 the transition and the removal. A dialog opened over another moves on its own and closes first, and
-a dialog the chart replaces or tears down goes at once. The drawing settings dialog edits the drawing
-it stands over, so it opens in place: it appears and leaves at once, and its backdrop dims nothing
-while still taking the press that closes it.
+a dialog the chart replaces or tears down goes at once. The drawing settings dialog and the replay
+date picker work on the chart they stand over, so they open in place: they appear and leave at once,
+and their backdrop dims nothing while still taking the press that closes them.
 
 A duration takes a CSS duration such as `200ms` or `0.2s`; an easing takes any CSS timing function,
 such as `ease-in-out`, `steps(4)` or `cubic-bezier(0.2, 0, 0, 1)`; a scale takes a unitless factor

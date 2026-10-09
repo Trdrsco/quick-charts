@@ -165,14 +165,14 @@ export const THEME_ROLES = [
   { id: 'overlay.scrim', family: 'overlay', kind: 'color', description: 'The backdrop that dims the chart behind a modal dialog.' },
 
   // ── state: hover, pressed, selected, focus, and selection ───────────────────────────────────
-  // The accent is a mark or a fill, never words: a chosen day, a selected tab's underline, an armed
-  // favorite's glyph, the focus ring. It is held to the non-text ratio on both surfaces; words in its
-  // hue read in `text.link` or `text.highlight`.
+  // The accent is a mark or a fill, never words: a selected tab's underline, an armed favorite's
+  // glyph, the focus ring. It is held to the non-text ratio on both surfaces; words in its hue read
+  // in `text.link` or `text.highlight`.
   {
     id: 'state.accent',
     family: 'state',
     kind: 'color',
-    description: 'The accent a mark, fill, or glyph wears: a chosen day, a selected tab, an armed favorite.',
+    description: 'The accent a mark, fill, or glyph wears: a selected tab, an armed favorite.',
     contrast: [
       { over: 'chrome.surface', min: 3 },
       { over: 'overlay.surface', min: 3 },
@@ -197,7 +197,7 @@ export const THEME_ROLES = [
     id: 'state.markInk',
     family: 'state',
     kind: 'color',
-    description: 'Ink on the accent or a filled state mark: a chosen day, the replay disc\'s cut-out.',
+    description: 'Ink on the accent or a filled state mark, such as the replay disc\'s cut-out.',
     contrast: [{ over: 'state.accent', min: 4.5 }],
   },
   { id: 'state.selection', family: 'state', kind: 'color', description: 'The tint over selected content.' },
