@@ -5,6 +5,7 @@
 // arithmetic, so each assertion names where a press landed in price and time.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { attachDrawings } from '../../src/drawings'
+import { drawingTools } from '../../src/drawings/index'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { DRAWING_CONTEXT_VERSION, liveDrawingEntries, type DrawingResourceContext } from '../../src/drawings/document'
 import { click, drag, fakeChart, pointer } from './fakeChart'
@@ -793,6 +794,62 @@ describe('the low-level document operations', () => {
     expect(stored.body.tombstones).toEqual([])
     expect(stored.body.entries.map((entry) => entry.id)).toEqual(['unknown', a.handle.export()[0]!.id])
     expect(stored.body.entries[0]).toEqual(unknown)
+  })
+
+  /** A rectangle as a document entry, its state written with the given fields. */
+  const rectangleRow = (id: string, fields: Record<string, unknown>) => ({
+    id,
+    source: 'main',
+    pane: 'main',
+    type: 'rectangle',
+    state: { v: 2, id, type: 'rectangle', ...fields },
+  })
+
+  it('attaches exactly the rows the catalog restores, and names every other one unreadable', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const a = make({ documents: sharedPort(adapter), chartId: 'chart-1' })
+    a.handle.armTool('rectangle')
+    drag(a.container, [10, 10], [100, 100])
+    await settle()
+    const good = a.handle.export()[0]!
+    a.handle.clearAll(true)
+    const entries = [
+      { id: good.id, source: 'main', pane: 'main', type: good.type, state: good },
+      // The catalog restores these two: what the rest of the state holds is the tool's to read.
+      rectangleRow('empty', { anchors: [] }),
+      rectangleRow('odd', { anchors: [null, 7], style: null, props: null }),
+      // The catalog restores none of these.
+      rectangleRow('loose', { anchors: 'not a list' }),
+      rectangleRow('anchorless', {}),
+      rectangleRow('blank', { anchors: [], options: null }),
+      unknownRow('unknown'),
+    ]
+    const outcome = a.handle.documents.apply({ version: 1, context: sharedPort(adapter).context('ES'), revision: 5, entries, groups: [], tombstones: [] })
+    expect(outcome).toEqual({
+      kind: 'ok',
+      applied: 3,
+      rejected: ['loose', 'anchorless', 'blank', 'unknown'].map((id) => ({ id, reason: 'unreadable' })),
+    })
+    // The rule is the catalog's own: a row is attached exactly when the catalog restores it.
+    const restored = entries.filter((entry) => drawingTools.restore(entry.state as never) !== null).map((entry) => entry.id)
+    expect(a.handle.export().map((row) => row.id)).toEqual(restored)
+  })
+
+  it('carries a row the catalog cannot restore through its next write, instead of burying it', async () => {
+    const adapter = memorySaveLoadAdapter()
+    const a = make({ documents: sharedPort(adapter), chartId: 'chart-1' })
+    const unread = [rectangleRow('loose', { anchors: 'not a list' }), rectangleRow('blank', { anchors: [], options: null })]
+    a.handle.documents.apply({ version: 1, context: sharedPort(adapter).context('ES'), revision: 1, entries: unread, groups: [], tombstones: [] })
+    expect(a.handle.count()).toBe(0)
+    a.handle.armTool('trend_line')
+    drag(a.container, [100, 100], [300, 200])
+    await settle()
+    await settle()
+    const stored = (await documentOf(adapter, sharedPort(adapter).context('ES')))!
+    // The viewer's line joins the document, and both rows stay as they were written.
+    expect(stored.body.tombstones).toEqual([])
+    expect(stored.body.entries.map((entry) => entry.id)).toEqual(['loose', 'blank', a.handle.export()[0]!.id])
+    expect(stored.body.entries.slice(0, 2)).toEqual(unread)
   })
 
   it('drops an answer for the symbol that just left rather than landing it on the one that arrived', async () => {

@@ -15,11 +15,10 @@
 // Writes are debounced onto idle time (an image-bearing document stringifies megabytes, never
 // inside a pointer gesture) and flushed on pagehide and destroy so a scheduled write survives the
 // tab closing under it.
-import type { SerializedDrawing } from '../../internal/drawings/index'
+import { toolRegistry, type SerializedDrawing } from '../../internal/drawings/index'
 import type { DrawingEntry, DrawingResourceContext, DrawingsBody } from '../document'
 import { DRAWING_CONTEXT_VERSION, drawingBuried, emptyDrawingDocument, liveDrawingEntries, mergeDrawingDocuments, parseDrawingDocument, reviseDrawingDocument } from '../document'
 import type { DrawingsMeta, ResourceRef, ResourceStore } from '../../resources'
-import { drawingTools } from '../tools'
 import { ownsDrawing } from './scope'
 import { drawingDocumentCoordinator } from './documentCoordinator'
 
@@ -102,11 +101,12 @@ export const drawingShapeOf = (entry: DrawingEntry): SerializedDrawing | null =>
   return typeof row.id === 'string' && typeof row.type === 'string' ? row : null
 }
 
-/** The drawing inside an entry, when the entry carries one this build can read: a drawing of a type
- *  the catalog holds. Any other row is never painted here, and a write carries it as it stands. */
+/** The drawing inside an entry, when the entry carries one this build can read: a drawing the
+ *  catalog restores, by the catalog's own rule. Any other row is never painted here, and a write
+ *  carries it as it stands. */
 export const drawingOf = (entry: DrawingEntry): SerializedDrawing | null => {
   const row = drawingShapeOf(entry)
-  return row && drawingTools.has(row.type) ? row : null
+  return row && toolRegistry.readable(row) ? row : null
 }
 
 export function createDocuments(deps: DocumentsDeps): Documents {
