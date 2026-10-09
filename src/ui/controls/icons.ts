@@ -429,6 +429,11 @@ export const ICONS = {
   firstAvailable: { viewBox: '0 0 28 28', body: solid(flagBanner() + box(8, 5, 9, 19.1) + ring(8.5, 21.5, 2.5) + box(11, 21, 22, 22)) },
   // A random bar: a four-pointed spark beside a dot.
   randomBar: { viewBox: '0 0 28 28', body: solid(polygon([[21, 1], [22.64, 5.36], [27, 7], [22.64, 8.64], [21, 13], [19.36, 8.64], [15, 7], [19.36, 5.36]]) + polygon([[21, 3.8], [21.9, 6.1], [24.2, 7], [21.9, 7.9], [21, 10.2], [20.1, 7.9], [17.8, 7], [20.1, 6.1]], true) + disc(8.5, 9.5, 1.5)) },
+  // The replay date picker's field marks: a page of days at the end of the date field, two posts
+  // through the top of its frame over a ruled heading and two rows of dates, and the clock that
+  // opens the time field's list, its hands from twelve to three.
+  calendarDays: { viewBox: '0 0 28 28', body: solid(frame(5, 6, 23, 23, 3) + box(9, 5, 10, 8) + box(18, 5, 19, 8) + box(6, 10, 22, 11) + box(8, 13, 10, 15) + box(13, 13, 15, 15) + box(18, 13, 20, 15) + box(8, 17, 10, 19) + box(13, 17, 15, 19) + box(18, 17, 20, 19)) },
+  clock: { viewBox: '0 0 28 28', body: solid(ring(14, 14, 9) + box(13, 9, 14, 15) + box(13, 14, 18, 15)) },
   // The saved-layouts menu's marks, at the hairline weight of the words beside them: a folder with
   // its tab, a pencil, one square lifted off another, and a plus as thin as a stroke of the text.
   folder: { viewBox: '0 0 28 28', body: solid(FOLDER) },
