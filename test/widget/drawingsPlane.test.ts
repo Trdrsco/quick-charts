@@ -21,7 +21,7 @@ import { memorySaveLoadAdapter } from '../../src/resources'
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import type { DrawingAssetPort } from '../../src/drawings/index'
 import type { PlacedImage } from '../../src/drawings'
-import { click, drag, fakeChart } from '../drawings/fakeChart'
+import { click, drag, fakeChart, pointer } from '../drawings/fakeChart'
 import { ownIcons } from '../ownIcons'
 
 interface Rig {
@@ -534,6 +534,25 @@ describe('the plane through the registry', () => {
     vi.runOnlyPendingTimers()
     expect(run('chart.drawings.tableRemoveColumn')).toBe('ok')
     expect(cells()[0]).toEqual(['A1', '', '', ''])
+  })
+
+  it('raises a drawing’s own menu where a right-click lands on it, and leaves the chart’s to the ground', () => {
+    const { chrome, gestures, run, plane } = make()
+    run('chart.drawings.arm', 'trend_line')
+    click(gestures, 100, 100)
+    click(gestures, 300, 200)
+    plane.api!.deselect()
+    gestures.dispatchEvent(pointer('pointerdown', 700, 50, { button: 2 }))
+    expect(plane.openMenuAt(700, 50)).toBe(false)
+    expect(chrome.querySelector('[role="menu"]')).toBeNull()
+    // The right-click selects the line it lands on, and its menu acts on it.
+    gestures.dispatchEvent(pointer('pointerdown', 200, 150, { button: 2 }))
+    expect(plane.openMenuAt(200, 150)).toBe(true)
+    expect(plane.api!.selected()?.type).toBe('trend_line')
+    const menu = chrome.querySelector<HTMLElement>('[role="menu"][aria-label="Drawing menu"]')!
+    expect(menu.querySelector('.qc-menu-label')?.textContent).toBe('Template')
+    ;[...menu.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((row) => row.textContent?.startsWith('Remove'))!.click()
+    expect(plane.api!.counts().total).toBe(0)
   })
 
   it('shows the sync switch in a layout and binds a new drawing to this chart when sync is off', () => {

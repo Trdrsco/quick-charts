@@ -167,6 +167,9 @@ export interface DrawingsLayer {
   relabel(): void
   /** Re-render the surfaces after something they read moved (a preference, the layout). */
   refresh(): void
+  /** Raise the menu of the drawing the last right-click landed on at a viewport point. False where
+   *  it landed on none, or the drawings feature is off. */
+  openMenuAt(clientX: number, clientY: number): boolean
   /** The set of contributed layers changed: re-apply what the eye is doing to the layers that
    *  exist now, releasing a subject that is gone, and re-list the eye's menu. */
   syncHideLayers(): void
@@ -259,6 +262,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       setCurrency: () => undefined,
       relabel: () => undefined,
       refresh: () => undefined,
+      openMenuAt: () => false,
       applyToolIntent: () => undefined,
       rebindIdentity: () => undefined,
       destroy: () => undefined,
@@ -436,6 +440,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     onMove: (position) => write({ settingsBarPosition: position }),
     recentColors: colors.list,
     onMixColor: colors.add,
+    tableCell: () => !!selectedTable()?.editingCell,
   })
 
   const renderAll = (): void => {
@@ -733,6 +738,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       settingsBar?.render()
     },
     refresh,
+    openMenuAt: (clientX, clientY) => (menuDrawing(handle) ? (settingsBar?.openMenuAt(clientX, clientY) ?? false) : false),
     syncHideLayers,
     applyToolIntent: (arg) => verbs.arm(arg),
     rebindIdentity(id) {

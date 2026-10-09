@@ -1131,7 +1131,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   if (menu) {
     gestures.addEventListener('contextmenu', (e) => {
-      if (menu.raiseAt(e.clientX, e.clientY)) e.preventDefault()
+      // A right-click on a drawing raises the drawing's own menu; anywhere else, the chart's.
+      if (drawings.openMenuAt(e.clientX, e.clientY) || menu.raiseAt(e.clientX, e.clientY)) e.preventDefault()
     })
   }
 

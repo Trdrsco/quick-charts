@@ -108,14 +108,31 @@ export interface SettingsBarDeps {
    *  mounts the bar, beside the position it already remembers. */
   recentColors(): readonly string[]
   onMixColor(hex: string): void
+  /** Whether a cell of the selected table is being typed in, so the drawing's menu offers to remove
+   *  its row and its column. Never, without it. */
+  tableCell?(): boolean
 }
 
 export interface SettingsBarHandle {
   render(): void
+  /** Raise the selected drawing's own menu at a viewport point, as a right-click on the drawing
+   *  does. False without a selection. */
+  openMenuAt(clientX: number, clientY: number): boolean
   destroy(): void
 }
 
+/** An anchor standing for a point on the page: a menu raised at a press hangs from it as a panel
+ *  hangs from its control, below and after the point and turned to fit. */
+function pointAnchor(clientX: number, clientY: number): HTMLElement {
+  const anchor = el('span', { 'aria-hidden': 'true' })
+  anchor.getBoundingClientRect = () => new DOMRect(clientX, clientY, 0, 0)
+  return anchor
+}
+
 type MenuWidth = 'content' | 'wide' | 'narrow'
+
+/** The submenus a drawing's menus open: its templates, its visual order and its visibility. */
+type Submenu = 'template' | 'order' | 'visibility'
 
 export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
   const { t } = deps
@@ -284,10 +301,48 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
   /** The modifier the hints name: the key this platform has, since the layer takes either. */
   const modifier = (): string => t(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl')
 
-  /** The More menu's submenus: one open at a time, raised beside the row the pointer is on and
-   *  kept up through the grace period while the pointer crosses from the row into the panel. */
-  const moreMenu = (): { element: HTMLElement; closeSub(): void } => {
-    let sub: { kind: 'order' | 'visibility'; close: () => void } | null = null
+  /** The rows a tool's templates offer: save the setup as a template, apply the tool's default,
+   *  then each saved template, applied by its row and removed by its trash. */
+  const templateItems = (type: string): HTMLElement[] => {
+    const saved = deps.presets.templatesFor(type)
+    const items: HTMLElement[] = [
+      menuRow(t('drawing.saveTemplateAs'), () => openTemplateNameDialog({ container: deps.chrome, t, icons: deps.icons }, (name) => deps.run('chart.drawings.template.save', name)), { command: 'chart.drawings.template.save' }),
+      menuRow(t('drawing.applyDefaultTemplate'), () => deps.run('chart.drawings.template.apply', null), { command: 'chart.drawings.template.apply' }),
+    ]
+    if (saved.length) items.push(separator())
+    for (const template of saved) {
+      const rowEl = el('div', { class: 'qc-drawing-flyout-row' })
+      rowEl.append(
+        menuRow(template.name, () => deps.run('chart.drawings.template.apply', template.name), { command: 'chart.drawings.template.apply' }),
+        button({
+          class: 'qc-drawing-star',
+          label: t('drawing.removeTemplateNamed', { name: template.name }),
+          title: t('drawing.remove'),
+          icon: deps.icons.icon('trash', 18),
+          disabled: !deps.available('chart.drawings.template.remove'),
+          onClick: () => {
+            closeOpen()
+            openTemplateDeleteDialog({ container: deps.chrome, t, icons: deps.icons }, template.name, () => deps.run('chart.drawings.template.remove', template.name))
+          },
+        }),
+      )
+      // A saved template is applied by its row and removed by its trash; a host that hides what
+      // its policy refuses leaves out the trash it refuses, and the template with its row.
+      const remove = rowEl.querySelector<HTMLElement>('.qc-drawing-star')
+      if (remove) remove.hidden = !shown('chart.drawings.template.remove')
+      rowEl.hidden = !shown('chart.drawings.template.apply')
+      items.push(rowEl)
+    }
+    return items
+  }
+
+  /** A drawing's menus, with their submenus: one open at a time, raised beside the row the pointer
+   *  is on and kept up through the grace period while the pointer crosses from the row into the
+   *  panel. The More menu carries the order and visibility submenus, the copies and Hide. The menu
+   *  a right-click on the drawing raises carries a table's own edits first, then the templates, the
+   *  order and visibility submenus, the copies, Lock, Hide, Remove and the settings. */
+  const drawingMenu = (kind: 'more' | 'context', selected: SelectedDrawing): { element: HTMLElement; closeSub(): void } => {
+    let sub: { kind: Submenu; close: () => void } | null = null
     let timer: ReturnType<typeof setTimeout> | null = null
     const cancelClose = (): void => {
       if (timer !== null) clearTimeout(timer)
@@ -302,14 +357,15 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       cancelClose()
       timer = setTimeout(closeSub, SUBMENU_GRACE_MS)
     }
-    const submenuOf = (kind: 'order' | 'visibility'): HTMLElement => {
+    const submenuOf = (kind: Submenu): HTMLElement => {
+      if (kind === 'template') return menuOf(t('drawing.drawingTemplates'), 'wide', ...templateItems(selected.type))
       if (kind === 'order') {
         const at = deps.stackPosition()
         return menuOf(t('drawing.visualOrder'), 'narrow', ...ORDER_MOVES.map((move) => menuRow(t(move.label), () => deps.run(move.command), { disabled: move.dead(at), command: move.command })))
       }
       return menuOf(t('drawing.visibilityOnTimeframes'), 'wide', ...VISIBILITY_PRESETS.map((v) => menuRow(t(v.label), () => deps.run('chart.drawings.visibility', v.preset), { command: 'chart.drawings.visibility' })))
     }
-    const arm = (kind: 'order' | 'visibility' | null, row?: HTMLElement): void => {
+    const arm = (kind: Submenu | null, row?: HTMLElement): void => {
       cancelClose()
       if (sub?.kind === kind) return
       sub?.close()
@@ -323,14 +379,14 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       })
       sub = { kind, close }
     }
-    const submenuRow = (kind: 'order' | 'visibility', label: string, icon?: IconName): HTMLButtonElement => {
+    const submenuRow = (kind: Submenu, label: string, icon?: IconName): HTMLButtonElement => {
       const row = menuRow(label, () => undefined, { ...(icon ? { icon: deps.icons.icon(icon) } : { spacer: true }), submenu: true })
       row.setAttribute('aria-haspopup', 'menu')
       row.addEventListener('mouseenter', () => arm(kind, row))
       row.addEventListener('mouseleave', scheduleClose)
       row.addEventListener('click', () => arm(kind, row))
       // A submenu every row of which is left out is not offered.
-      const commands = kind === 'order' ? ORDER_MOVES.map((move) => move.command) : ['chart.drawings.visibility']
+      const commands = kind === 'order' ? ORDER_MOVES.map((move) => move.command) : kind === 'template' ? ['chart.drawings.template.apply', 'chart.drawings.template.save'] : ['chart.drawings.visibility']
       if (!commands.some(shown)) row.hidden = true
       return row
     }
@@ -338,16 +394,44 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       b.addEventListener('mouseenter', () => arm(null))
       return b
     }
+    const order = submenuRow('order', t('drawing.visualOrder'), 'layers')
+    const visibility = submenuRow('visibility', t('drawing.visibilityOnTimeframes'))
+    const clone = plain(menuRow(t('drawing.clone'), () => deps.run('chart.drawings.clone'), { icon: deps.icons.icon('clone'), hint: t('drawing.hintClone', { modifier: modifier() }), command: 'chart.drawings.clone' }))
+    const copy = plain(menuRow(t('drawing.copy'), () => deps.run('chart.drawings.copy'), { spacer: true, hint: t('drawing.hintCopy', { modifier: modifier() }), command: 'chart.drawings.copy' }))
+    const hide = plain(menuRow(t('drawing.hide'), () => deps.run('chart.drawings.hideSelected'), { icon: deps.icons.icon('eyeCrossed'), command: 'chart.drawings.hideSelected' }))
+    if (kind === 'more') return { element: menuOf(t('drawing.moreActions'), 'wide', order, visibility, separator(), clone, copy, separator(), hide), closeSub }
+    // A table's own edits lead: its adds, then while a cell is being typed in, its removes.
+    const table: HTMLElement[] = []
+    if (selected.hasCells) {
+      table.push(
+        plain(menuRow(t('drawing.addColumnRight'), () => deps.run('chart.drawings.tableAddColumn'), { icon: deps.icons.icon('tableAddColumn'), command: 'chart.drawings.tableAddColumn' })),
+        plain(menuRow(t('drawing.addRowBelow'), () => deps.run('chart.drawings.tableAddRow'), { icon: deps.icons.icon('tableAddRow'), command: 'chart.drawings.tableAddRow' })),
+      )
+      if (deps.tableCell?.()) {
+        table.push(
+          separator(),
+          plain(menuRow(t('drawing.removeRow'), () => deps.run('chart.drawings.tableRemoveRow'), { icon: deps.icons.icon('trash28'), command: 'chart.drawings.tableRemoveRow' })),
+          plain(menuRow(t('drawing.removeColumn'), () => deps.run('chart.drawings.tableRemoveColumn'), { icon: deps.icons.icon('trash28'), command: 'chart.drawings.tableRemoveColumn' })),
+        )
+      }
+      table.push(separator())
+    }
     const element = menuOf(
-      t('drawing.moreActions'),
+      t('drawing.drawingMenu'),
       'wide',
-      submenuRow('order', t('drawing.visualOrder'), 'layers'),
-      submenuRow('visibility', t('drawing.visibilityOnTimeframes')),
+      ...table,
+      submenuRow('template', t('drawing.template')),
+      order,
+      visibility,
       separator(),
-      plain(menuRow(t('drawing.clone'), () => deps.run('chart.drawings.clone'), { icon: deps.icons.icon('clone'), hint: t('drawing.hintClone', { modifier: modifier() }), command: 'chart.drawings.clone' })),
-      plain(menuRow(t('drawing.copy'), () => deps.run('chart.drawings.copy'), { spacer: true, hint: t('drawing.hintCopy', { modifier: modifier() }), command: 'chart.drawings.copy' })),
+      clone,
+      copy,
       separator(),
-      plain(menuRow(t('drawing.hide'), () => deps.run('chart.drawings.hideSelected'), { icon: deps.icons.icon('eyeCrossed'), command: 'chart.drawings.hideSelected' })),
+      plain(menuRow(t(selected.locked ? 'drawing.unlock' : 'drawing.lock'), () => deps.run('chart.drawings.lock', !selected.locked), { icon: deps.icons.icon(selected.locked ? 'lockOpen' : 'lockClosed'), command: 'chart.drawings.lock' })),
+      hide,
+      plain(menuRow(t('drawing.remove'), () => deps.run('chart.drawings.deleteSelected'), { icon: deps.icons.icon('trash28'), hint: t('drawing.hintRemove'), command: 'chart.drawings.deleteSelected' })),
+      separator(),
+      plain(menuRow(t('menu.settings'), () => deps.run('chart.drawings.settings'), { icon: deps.icons.icon('gear'), command: 'chart.drawings.settings' })),
     )
     return { element, closeSub }
   }
@@ -377,38 +461,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     templates.setAttribute('aria-haspopup', 'menu')
     templates.setAttribute('aria-expanded', 'false')
     templates.dataset.qcControl = 'templates'
-    templates.addEventListener('click', () => {
-      const saved = deps.presets.templatesFor(type)
-      const items: HTMLElement[] = [
-        menuRow(t('drawing.saveTemplateAs'), () => openTemplateNameDialog({ container: deps.chrome, t, icons: deps.icons }, (name) => deps.run('chart.drawings.template.save', name)), { command: 'chart.drawings.template.save' }),
-        menuRow(t('drawing.applyDefaultTemplate'), () => deps.run('chart.drawings.template.apply', null), { command: 'chart.drawings.template.apply' }),
-      ]
-      if (saved.length) items.push(separator())
-      for (const template of saved) {
-        const rowEl = el('div', { class: 'qc-drawing-flyout-row' })
-        rowEl.append(
-          menuRow(template.name, () => deps.run('chart.drawings.template.apply', template.name), { command: 'chart.drawings.template.apply' }),
-          button({
-            class: 'qc-drawing-star',
-            label: t('drawing.removeTemplateNamed', { name: template.name }),
-            title: t('drawing.remove'),
-            icon: deps.icons.icon('trash', 18),
-            disabled: !deps.available('chart.drawings.template.remove'),
-            onClick: () => {
-              closeOpen()
-              openTemplateDeleteDialog({ container: deps.chrome, t, icons: deps.icons }, template.name, () => deps.run('chart.drawings.template.remove', template.name))
-            },
-          }),
-        )
-        // A saved template is applied by its row and removed by its trash; a host that hides what
-        // its policy refuses leaves out the trash it refuses, and the template with its row.
-        const remove = rowEl.querySelector<HTMLElement>('.qc-drawing-star')
-        if (remove) remove.hidden = !shown('chart.drawings.template.remove')
-        rowEl.hidden = !shown('chart.drawings.template.apply')
-        items.push(rowEl)
-      }
-      openPanel(templates, menuOf(t('drawing.drawingTemplates'), 'wide', ...items))
-    })
+    templates.addEventListener('click', () => openPanel(templates, menuOf(t('drawing.drawingTemplates'), 'wide', ...templateItems(type))))
     controls.appendChild(templates)
 
     /** A color panel on the bar, the dialog's color popover in width: as wide as its palette
@@ -605,7 +658,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     more.setAttribute('aria-expanded', 'false')
     more.dataset.qcControl = 'more'
     more.addEventListener('click', () => {
-      const menu = moreMenu()
+      const menu = drawingMenu('more', selected)
       openPanel(more, menu.element, 'below-end', menu.closeSub)
     })
     controls.appendChild(more)
@@ -617,6 +670,23 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
   render()
   return {
     render,
+    openMenuAt(clientX, clientY) {
+      const selected = deps.selected()
+      if (!selected) return false
+      closeOpen()
+      const menu = drawingMenu('context', selected)
+      const close = openPopover(deps.chrome, pointAnchor(clientX, clientY), menu.element, 'below', () => {
+        menu.closeSub()
+        if (closePanel === close) {
+          closePanel = null
+          panelFor = null
+        }
+      })
+      closePanel = close
+      panelFor = selected.id
+      focusFirst(menu.element)
+      return true
+    },
     destroy() {
       closeOpen()
       unfollow()

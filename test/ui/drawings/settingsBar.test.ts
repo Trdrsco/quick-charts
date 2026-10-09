@@ -28,7 +28,7 @@ const selection = (over: Partial<SelectedDrawing> = {}): SelectedDrawing => ({
   ...over,
 })
 
-function rig(selected: SelectedDrawing | null, props: Record<string, unknown> | null = null, deny: string[] = []) {
+function rig(selected: SelectedDrawing | null, props: Record<string, unknown> | null = null, deny: string[] = [], extra: { tableCell?: () => boolean } = {}) {
   const chrome = document.createElement('div')
   document.body.appendChild(chrome)
   const ran: [string, unknown][] = []
@@ -57,6 +57,7 @@ function rig(selected: SelectedDrawing | null, props: Record<string, unknown> | 
     onMixColor: (hex) => {
       mixed.unshift(hex)
     },
+    ...extra,
   })
   const root = chrome.querySelector<HTMLElement>('[data-role="drawing-settings-bar"]')!
   const labels = () => [...root.querySelectorAll<HTMLElement>('.qc-drawing-settings-controls button')].map((b) => b.getAttribute('aria-label'))
@@ -386,6 +387,67 @@ describe('the settings bar', () => {
     bar.render()
     expect(root.style.left).toBe('30px')
     expect(root.style.top).toBe('40px')
+  })
+})
+
+// The menu a right-click on a drawing raises, in its measured order: the templates, the visual
+// order and the visibility as submenus, the two copies with their keys, lock, hide and remove, and
+// the settings.
+describe('the drawing’s menu', () => {
+  const rowsOf = (menu: HTMLElement | null): (string | null | undefined)[] =>
+    [...(menu?.children ?? [])].map((child) => (child.getAttribute('role') === 'separator' ? '-' : child.querySelector('.qc-menu-label')?.textContent))
+  const hintOf = (menu: HTMLElement, label: string): string | null | undefined =>
+    [...menu.querySelectorAll('[role="menuitem"]')].find((row) => row.querySelector('.qc-menu-label')?.textContent === label)?.querySelector('.qc-menu-hint')?.textContent
+
+  it('raises at a point with its rows in their order, the copies and removal naming their keys', () => {
+    const { bar, popover } = rig(selection())
+    expect(bar.openMenuAt(200, 150)).toBe(true)
+    const menu = popover()!.querySelector<HTMLElement>('[role="menu"]')!
+    expect(rowsOf(menu)).toEqual(['Template', 'Visual order', 'Visibility on timeframes', '-', 'Clone', 'Copy', '-', 'Lock', 'Hide', 'Remove', '-', 'Settings…'])
+    expect([hintOf(menu, 'Clone'), hintOf(menu, 'Copy'), hintOf(menu, 'Remove')]).toEqual([expect.stringMatching(/ \+ Drag$/), expect.stringMatching(/ \+ C$/), 'Del'])
+    expect(menu.getAttribute('aria-label')).toBe('Drawing menu')
+  })
+
+  it('runs each verb through its command, and names the lock by the drawing’s state', () => {
+    const r = rig(selection())
+    for (const label of ['Lock', 'Hide', 'Remove', 'Settings…', 'Clone', 'Copy']) {
+      r.bar.openMenuAt(200, 150)
+      ;[...r.popover()!.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find((row) => row.textContent?.startsWith(label))!.click()
+    }
+    expect(r.ran).toEqual([
+      ['chart.drawings.lock', true],
+      ['chart.drawings.hideSelected', undefined],
+      ['chart.drawings.deleteSelected', undefined],
+      ['chart.drawings.settings', undefined],
+      ['chart.drawings.clone', undefined],
+      ['chart.drawings.copy', undefined],
+    ])
+    const locked = rig(selection({ locked: true }))
+    locked.bar.openMenuAt(200, 150)
+    expect(rowsOf(locked.popover()!.querySelector('[role="menu"]'))).toContain('Unlock')
+  })
+
+  it('leads with a table’s edits, and while a cell is being typed in, with its removes', () => {
+    const plain = rig(selection({ type: 'table', hasCells: true }))
+    plain.bar.openMenuAt(200, 150)
+    expect(rowsOf(plain.popover()!.querySelector('[role="menu"]')).slice(0, 4)).toEqual(['Add column to right', 'Add row below', '-', 'Template'])
+    const typing = rig(selection({ type: 'table', hasCells: true }), null, [], { tableCell: () => true })
+    typing.bar.openMenuAt(200, 150)
+    expect(rowsOf(typing.popover()!.querySelector('[role="menu"]')).slice(0, 7)).toEqual(['Add column to right', 'Add row below', '-', 'Remove row', 'Remove column', '-', 'Template'])
+  })
+
+  it('opens the templates beside their row', () => {
+    const r = rig(selection())
+    r.bar.openMenuAt(200, 150)
+    const row = [...r.popover()!.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((b) => b.textContent === 'Template')!
+    row.click()
+    const panels = r.popovers()
+    expect(panels).toHaveLength(2)
+    expect(r.rows(panels[1]).map((b) => b.textContent)).toEqual(['Save drawing template as...', 'Apply default drawing template'])
+  })
+
+  it('raises nothing without a selection', () => {
+    expect(rig(null).bar.openMenuAt(200, 150)).toBe(false)
   })
 })
 
