@@ -2,8 +2,8 @@
 # side by side. `checks` holds the build and the repository checks, `tests` splits the unit suite
 # across three runners, and `browser` runs the clean room and then the browser suite over the
 # consumer the clean room installed, in the Playwright image, whose browsers and system libraries
-# are already installed. The `gate` job is the one required check: it passes only when every other
-# job passed.
+# are already installed, and keeps that candidate with the run as the `quickcharts-candidate`
+# artifact. The `gate` job is the one required check: it passes only when every other job passed.
 #
 # A release is proven by the release workflow, which rehearses the exact tagged candidate, so a tag
 # push does not run this workflow again.
@@ -106,6 +106,23 @@ jobs:
         run: node clean-room/run.mjs
       - name: browser conformance
         run: pnpm run test:browser
+      # The tarball the clean room installed and the browser suite drove, kept with its manifest, so
+      # a release candidate is the tested file itself rather than a build of its own.
+      - name: candidate the clean room installed
+        run: |
+          tested=$(sha256sum clean-room/.artifacts/quickcharts.tgz | cut -d ' ' -f 1)
+          packed=$(sha256sum .candidate/trdrs-quickcharts-*.tgz | cut -d ' ' -f 1)
+          echo "candidate sha256 $packed"
+          test "$tested" = "$packed"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: quickcharts-candidate
+          path: |
+            .candidate/trdrs-quickcharts-*.tgz
+            .candidate/manifest.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
 
   gate:
     if: always()
