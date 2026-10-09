@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-09",
+  "packageName": "@trdrs/quickcharts",
+  "version": "4.0.0",
+  "releaseCommit": "ff0af5642ca6955a1844a9dc57a98d21648330a9",
+  "tarballSha256": "cd19f2bd2e9ed49884b115d279f92ddfad63e6884ff4aa7ba0e018e46d3ec14c",
+  "tarStreamSha256": "3bdedbe8d85ac55b80b3f81da74e00feea2cdeb32e6752d4a0533655301dd8e4",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37899113054",
+    "unitTestsPassed": 4599,
+    "cleanRoomChecksPassed": 42,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "5cf10bb6f14dcd771577b0264062668854558f512402f24f69d7e911c8c2c868",
+      "dossierHashesSha256": "ff0dcf088788bdf9748646e6901696bbd5f000623290ca56b3828acb454603e3",
+      "installTestChecksPassed": 25,
+      "dossierRetained": true
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "3cfbe9b8d519985c35e2c3874655bad869f2bdc5",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/37936977254",
+    "result": "pass",
+    "workingTree": "4.0.0 on every pin and the Platform version matrix; the exact candidate tarball, committed at release-candidates/trdrs-quickcharts-4.0.0.tgz, installed through a temporary root pnpm override"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "question": "Quick Charts 4.0.0's acceptance record needs your manual accessibility and advertised-browser acceptance, or an explicit waiver (as you gave for 3.0.0). Which do you want recorded?",
+    "statement": "Asked by his coordinating session whether to record his manual accessibility and advertised-browser acceptance for Quick Charts 4.0.0 or an explicit waiver, Joey chose \"Waive and authorize (Recommended)\", the option that read: \"Same as 3.0.0: I record your waiver of the manual accessibility and browser acceptance, quoted with its time. The automated conformance in Chromium, Firefox and WebKit still runs. A waiver doesn't claim screen-reader or device support.\"",
+    "recordedAt": "2026-10-09T13:18:49Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false,
+    "npmPublishApproval": "delegated by Joey to his coordinating session, which approves the npm-publish environment once the validation job passes. Asked \"When the release workflow reaches the npm-publish environment, may I approve it for you, as you had me do for 3.0.0?\", he chose \"Approve it for me (Recommended)\", the option that read: \"I approve the npm-publish environment once validation passes. Its tarball must match the accepted candidate byte for byte, which the workflow verifies.\""
+  },
+  "knownIssues": [
+    "The 4.0.0 notes name three constants that no public entry of 4.0.0 exports: BAR_PRICE_SOURCES (CHANGELOG.md and README.md), BARS_PATTERN_MODES (CHANGELOG.md and its Upgrading to 4.0 guide) and SERIAL_VERSION (the Upgrading to 4.0 guide). The notes also state each value they hold, so a host needs none of them. The candidate was accepted for publication as it is."
+  ]
+}
