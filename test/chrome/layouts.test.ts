@@ -31,9 +31,15 @@ const clockForDialogExits = (): void => {
 }
 
 describe('the layout setup menu', () => {
-  it('draws a glyph for every arrangement, mirrored where the catalog mirrors', () => {
+  it('draws a glyph for every arrangement from its own panes, one hollow a pane', () => {
     for (const a of ARRANGEMENTS) expect(arrangementGlyph(a.code, ownIcons()).querySelector('svg'), a.code).not.toBeNull()
-    expect(arrangementGlyph('3-1', ownIcons()).querySelector('svg')!.getAttribute('style')).toContain('matrix')
+    // Three panes over one and one over three are two drawings, neither of them a turned copy of the
+    // other: the frame's outline and a hollow for each of the four panes.
+    const hollows = (code: string): number => (arrangementGlyph(code, ownIcons()).querySelector('path')!.getAttribute('d')!.match(/M/g) ?? []).length
+    expect(hollows('3-1')).toBe(5)
+    expect(hollows('1-3')).toBe(5)
+    expect(arrangementGlyph('3-1', ownIcons()).querySelector('svg')!.getAttribute('style')).toBeNull()
+    expect(arrangementGlyph('3-1', ownIcons()).innerHTML).not.toBe(arrangementGlyph('1-3', ownIcons()).innerHTML)
     expect(arrangementGlyph('nope', ownIcons()).querySelector('svg')).toBeNull()
   })
 

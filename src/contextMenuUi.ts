@@ -11,6 +11,7 @@ import { chartContextMenuGroups, flattenMenuGroups, type ChartMenuAction, type C
 import type { ChartExtensionIcon } from './extension'
 import { createChartI18n, readingDirection, type ChartI18n } from './i18n'
 import { buildGlyph } from './ui/chrome/vector'
+import { CHECK_PATH, NUT_PATH, NUT_RING_PATH } from './ui/controls/icons'
 import type { ChartIconId, ChartIcons } from './ui/icons/catalog'
 import { createIconDiagnostics } from './ui/icons/draw'
 import { createIconResolver, type IconResolver } from './ui/icons/resolver'
@@ -45,19 +46,21 @@ const MENU_W = 327
  *  menu rides, which is what keeps the chart's rows and a host's rows a single icon contract rather
  *  than two that can drift apart. */
 const ICONS: Record<ChartMenuIcon, ChartExtensionIcon> = {
+  // Three quarters of a circle run back to a level line across its top, and the head the line ends in.
   reset: {
     paths: [
-      { d: 'M6.5 15A8.5 8.5 0 1 0 15 6.5H8.5', paint: 'outline' },
-      { d: 'M12 10L8.5 6.5 12 3', paint: 'outline' },
+      { d: 'M8.5 6.5H15A8.5 8.5 0 1 1 6.5 15', paint: 'outline' },
+      { d: 'M12 3 8.5 6.5 12 10', paint: 'outline' },
     ],
   },
+  // The settings mark's nut and ring.
   settings: {
     paths: [
-      { d: 'M18 14a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm-1 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z', rule: 'evenodd' },
-      { d: 'M8.5 5h11l5 9-5 9h-11l-5-9 5-9Zm-3.86 9L9.1 6h9.82l4.45 8-4.45 8H9.1l-4.45-8Z', rule: 'evenodd' },
+      { d: NUT_RING_PATH, rule: 'evenodd' },
+      { d: NUT_PATH, rule: 'evenodd' },
     ],
   },
-  check: { paths: [{ d: 'M22 9.06 11 20 6 14.7l1.09-1.02 3.94 4.16L20.94 8 22 9.06Z' }] },
+  check: { paths: [{ d: CHECK_PATH }] },
 }
 
 /** The icon each of the menu's own glyphs draws, so a host's drawing for it stands here as it stands

@@ -17,6 +17,7 @@ import type { ChartExtensionIcon } from '../../src/extension'
 import type { ChartMenuContext } from '../../src/contextMenu'
 import { authoredStylesheet } from '../theme/stylesheetSource'
 import { everyHostIcon } from '../ownIcons'
+import { CHECK_PATH } from '../../src/ui/controls/icons'
 
 const CTX: ChartMenuContext = { priceText: '5001.25', symbol: 'ESU6', indicatorCount: 0, drawingCount: 0, canPaste: false, canSettings: false }
 
@@ -104,7 +105,7 @@ describe('a contributed row draws its own glyph in the shared gutter', () => {
 
   it('a checked row shows the check rather than its own glyph, whoever contributed it', () => {
     const { glyphs } = raise([{ label: 'Hide marks', checked: true, icon: chevron, run: () => {} }])
-    expect(glyphs[glyphs.length - 1]!.querySelector('path')!.getAttribute('d')).toContain('M22 9.06')
+    expect(glyphs[glyphs.length - 1]!.querySelector('path')!.getAttribute('d')).toBe(CHECK_PATH)
   })
 })
 
@@ -119,7 +120,7 @@ describe('the chart draws its own glyphs the way it draws a contributed one', ()
     expect(svg).not.toBe(null)
     expect(svg.querySelectorAll('g').length).toBe(0)
     const paths = [...svg.querySelectorAll('path')]
-    expect(paths.map((p) => p.getAttribute('d'))).toEqual(['M6.5 15A8.5 8.5 0 1 0 15 6.5H8.5', 'M12 10L8.5 6.5 12 3'])
+    expect(paths.map((p) => p.getAttribute('d'))).toEqual(['M8.5 6.5H15A8.5 8.5 0 1 1 6.5 15', 'M12 3 8.5 6.5 12 10'])
     expect(paths.map((p) => p.getAttribute('stroke'))).toEqual(['currentColor', 'currentColor'])
     expect(paths.map((p) => p.getAttribute('fill'))).toEqual(['none', 'none'])
   })

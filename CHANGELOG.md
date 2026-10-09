@@ -8,6 +8,8 @@ The content card drawing tool (`content_card`) leaves the catalog, which holds 8
 
 A class chip in the symbol search narrows the recent picks the list leads with, as it narrows the feed's answer. With a class selected and nothing typed, the dialog lists only the recent picks whose `type` is that class or a narrower class offered beneath it. The All chip lists every recent pick, and the scope's own recents follow the same rule while its chip is on.
 
+The chart's own glyphs are drawn from lines, arcs, circles and walled outlines on their grids, each at the size, weight and place it stands at: the controls, the chart styles, the empty-state illustrations, the spread operators, the highlighter and fixed gann square miniatures, and the layout arrangements. `chartIconArtwork` answers these drawings. A layout arrangement's glyph is drawn from the arrangement's own panes, so each tile shows the split it opens (`12c4` shows four columns of three rows), and every arrangement stands on the one frame the 21 by 19 glyph holds. No icon id or public name changes.
+
 ### Upgrading to 4.0
 
 A major version may remove public names, and this guide lists each one. 4.0 removes the content card and the names that exist only for it, so drop each from what your page lists, offers or creates:
