@@ -141,6 +141,25 @@ describe('the settings bar', () => {
     expect(labels()).toEqual(['Drawing templates', ...own, 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
   })
 
+  // The lines' bars in their measured order: the line's color, its words' color, its thickness and
+  // its style. A trend angle reads its angle in its line's color and a cross line takes no words, so
+  // neither offers a words color.
+  it.each([
+    ['trend_line', true, true],
+    ['ray', true, true],
+    ['info_line', true, true],
+    ['extended', true, true],
+    ['arrow', true, true],
+    ['horizontal_line', true, true],
+    ['horizontal_ray', true, true],
+    ['vertical_line', true, true],
+    ['trend_angle', true, false],
+    ['cross_line', false, false],
+  ])('%s carries its line’s controls in their order', (type, hasText, words) => {
+    const { labels } = rig(selection({ type, hasText }))
+    expect(labels()).toEqual(['Drawing templates', 'Drawing color', ...(words ? ['Text color'] : []), 'Line thickness', 'Line style', 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
+  })
+
   it('offers a mark’s ink as its background, and a price note’s tag background from its own prop', () => {
     const flag = rig(selection({ type: 'flag', hasText: false }))
     expect(flag.byLabel('Background color').dataset.qcControl).toBe('color')

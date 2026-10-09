@@ -75,6 +75,10 @@ const BAR_LAYOUTS: Readonly<Record<string, readonly BarControl[]>> = {
   arrow_down: ['line', 'text'],
 }
 
+/** Tools whose words the bar offers no color for: a trend angle reads its angle in its line's
+ *  color and takes no words of its own. */
+const NO_WORDS_INK: ReadonlySet<string> = new Set(['trend_angle'])
+
 /** The thickness mark: an 18 by N bar with fully rounded ends, on the bar and in its menu. */
 function widthBar(icons: IconResolver, width: number): HTMLElement {
   const h = Math.max(1, Math.min(4, Math.round(width))) as keyof typeof THICKNESS_ICONS
@@ -547,7 +551,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       }
       if (hasStroke) build.line()
       if (FILLABLE.has(type)) build.fill()
-      if (selected.hasText || FONT_TOOLS.has(type) || OWN_WORDS_TOOLS.has(type)) build.text()
+      if ((selected.hasText && !NO_WORDS_INK.has(type)) || FONT_TOOLS.has(type) || OWN_WORDS_TOOLS.has(type)) build.text()
       for (const channel of TOOL_COLOR_CHANNELS[type] ?? []) propColor(channel)
       if (FONT_TOOLS.has(type) && type !== 'table') build.size()
       if (hasStroke && !NO_LINE_DECOR.has(type)) {
