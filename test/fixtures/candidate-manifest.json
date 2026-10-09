@@ -1,7 +1,7 @@
 {
-  "tarSha256": "f56714d869e1cb92b84a8861e6a76985412eeee41baef3fa2363c9f56d2a0338",
+  "tarSha256": "3bdedbe8d85ac55b80b3f81da74e00feea2cdeb32e6752d4a0533655301dd8e4",
   "files": {
-    "CHANGELOG.md": "757c558072157c5ac00e306a34af670e4791f0ffa5e8917579e7a67324630b3e",
+    "CHANGELOG.md": "381ad6443703dff7f1d7c0f09882aeb766b0cedbde83ef9fff1d36406c15b33e",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
     "NOTICE": "fdea87c69eb418e4a9e2f37b17bd70c0fa4474f6f8361b7981838fdf968f4678",
     "README.md": "e6f0e94f9b5b69ecb59430d29192ee8a7d2a40b82b87cf9c68361ca23871a1e5",
@@ -35,7 +35,7 @@
     "dist/emojiArtwork-W7OS62EV.js.map": "588b22673d7ad9d2596a8e68b133944dd3c23a06ef71e989850b91b5c180566a",
     "dist/es-CNQ3OJ6E.js": "c6e347d0e4f2af5ca7c9e4a9d789ff65e38a8add2d14d829f8f61572c96ec01c",
     "dist/es-CNQ3OJ6E.js.map": "3425a66fa71c188e25bab3d1d6b9bde13eda7037835642fadf57e5371bf2045d",
-    "dist/feature-manifest.json": "df07c594ce50cf0c47c5ecd4622d777b6cc39071edd5d4ae50595bb6b2dc904a",
+    "dist/feature-manifest.json": "fc15761e567fbb78dce8b67988078bd6ac881ed27372f902e19c783d7d786432",
     "dist/format.d.ts": "170f1cb2c2ab11a66a93d3ec82effc26935a979ca18bd7538e8171446eca162b",
     "dist/format.js": "bab66e243eed1d946b7a24b1a87aed96905d8fcf9c315da450d18ed9704971ca",
     "dist/format.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
@@ -86,6 +86,6 @@
     "dist/zh-2RJ5VNAI.js.map": "e9280b599cca0da576db7fc77bb778b95408c82595695ebed8fa14ef66969e62",
     "dist/zh_TW-XEBSACHU.js": "5706cb58349bced52391b09cff9b646903b62c3de662b3e8ce62571338c1c8a0",
     "dist/zh_TW-XEBSACHU.js.map": "cac4256b3a12f8650889b515aa7e4f7ea98bdf4cb342b01de7e6391912bb3034",
-    "package.json": "40204bc4f925c3f480ad1f02f20b5bac9f9f2431e30738a8f3455a7fe4e8b2d6"
+    "package.json": "e690c196c7d568e15b1827d7702316d7f97407089a41207fdc00e27fd9c41152"
   }
 }
