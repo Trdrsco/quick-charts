@@ -147,15 +147,20 @@ for (const mode of THEME_MODES) {
       expect([dialog.getAttribute('role'), dialog.getAttribute('aria-label')]).toEqual(['dialog', 'Line'])
     })
 
-    it('lays the palette 224px wide inside 6px by 12px, a ten-wide grid of 17px cells with 3px gutters', () => {
+    it('lays the palette 224px wide, 6px clear above and below and 12px either side, a ten-wide grid of 17px cells with 3px gutters', () => {
       const { box, line } = trendLine(mode)
       line().click()
       const panel = popoverIn(box)!
       const palette = painted(panel.querySelector('.qc-drawing-palette')!)
-      expect(palette.boxSizing).toBe('content-box')
       expect(palette.width).toBe('224px')
-      expect(palette.paddingTop).toBe('6px')
-      expect(palette.paddingLeft).toBe('12px')
+      // The room either side is margin and the palette states no box model of its own, so the 224px
+      // is its own box whichever box a page's rules size elements by.
+      const own = rule('[data-qc-theme] .qc-drawing-palette')
+      expect(own).toMatch(/margin-inline:\s*12px;/)
+      expect(own).toMatch(/padding-block:\s*6px;/)
+      expect(own).not.toMatch(/box-sizing|padding:|padding-inline|padding-left|padding-right/)
+      expect(rule('[data-qc-theme] .qc-drawing-popover > .qc-drawing-palette')).toMatch(/^\s*padding-block:\s*12px;\s*$/)
+      expect(rule('[data-qc-theme] .qc-inline-panel .qc-drawing-palette')).toMatch(/margin-inline:\s*6px;\s*padding-block:\s*6px;/)
       expect(painted(panel.querySelector('.qc-drawing-swatches')!).display).toBe('block')
       const blocks = [...panel.querySelectorAll('.qc-drawing-swatch-block')]
       expect(blocks).toHaveLength(3)

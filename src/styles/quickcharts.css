@@ -17,12 +17,35 @@
  * each chrome surface keeps its own recipes beside it.
  */
 
+/* The root states every inherited value the chart's measurements are built on: its box model, its
+ * font and size, and the line height, weight, spacing, alignment and wrapping its words are set in.
+ * The widget's root and its layer on the document body both carry it. The dialogs, menus and panels
+ * on that layer stand inside the page's body, which would hand them whatever the page sets there (a
+ * line height, a weight, letter spacing); stated here, none of it reaches anything the chart draws. */
 [data-qc-theme] {
   position: relative;
   box-sizing: border-box;
   color: var(--qc-text-primary);
   font-family: var(--qc-text-fontFamily);
   font-size: var(--qc-text-fontSizeBase);
+  font-style: normal;
+  font-weight: 400;
+  font-stretch: normal;
+  font-variant: normal;
+  font-feature-settings: normal;
+  font-variation-settings: normal;
+  font-kerning: auto;
+  line-height: normal;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: start;
+  text-indent: 0;
+  text-transform: none;
+  text-rendering: auto;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: normal;
+  hyphens: manual;
   background: var(--qc-canvas-background);
 }
 

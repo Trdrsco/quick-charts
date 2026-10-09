@@ -78,6 +78,7 @@ export const EXCLUSIONS = [
   ['scripts/test/check-supply-chain.test.ts', 'private-host', 'the fixture seeds the host shapes this file hunts'],
   ['scripts/test/release-rehearsal.test.ts', 'secret', 'the fixture seeds the registry-credential shapes the rehearsal refuses to run with'],
   ['scripts/test/release-rehearsal.test.ts', 'pii', 'the fixture seeds the npmrc home paths the rehearsal reads'],
+  ['test/browser/fixtures/preflight.css', 'pii', 'the third-party fixture keeps the copyright notice its MIT license requires, which names a contributor by their public address'],
 ]
 
 /** Historical paths that no longer exist: [commit, path, rule, reason]. Empty is the goal. */

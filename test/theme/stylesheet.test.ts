@@ -139,6 +139,28 @@ describe('the scoped stylesheet', () => {
     expect(selectors.filter((s) => s === '*')).toEqual([])
   })
 
+  it('states at its roots every inherited value its measurements are built on, so a page body reaches none of them', () => {
+    const root = structural.match(/\n\[data-qc-theme\] \{[^}]+\}/s)?.[0] ?? ''
+    for (const declaration of [
+      'box-sizing: border-box',
+      'font-family: var(--qc-text-fontFamily)',
+      'font-size: var(--qc-text-fontSizeBase)',
+      'font-style: normal',
+      'font-weight: 400',
+      'line-height: normal',
+      'letter-spacing: normal',
+      'word-spacing: normal',
+      'text-align: start',
+      'text-indent: 0',
+      'text-transform: none',
+      'white-space: normal',
+    ]) expect(root).toContain(declaration)
+    // Every box inherits that one model, so a page's unlayered rule sizing every element by its border
+    // box changes none of them.
+    expect(structural).toMatch(/\[data-qc-theme\] \*,\s*\[data-qc-theme\] \*::before,\s*\[data-qc-theme\] \*::after \{\s*box-sizing: inherit;\s*\}/)
+    expect(structural).not.toMatch(/box-sizing:\s*content-box/)
+  })
+
   it('fetches nothing at runtime: no import, no remote asset, no font download', () => {
     expect(css).not.toMatch(/@import/)
     expect(css).not.toMatch(/@font-face/)

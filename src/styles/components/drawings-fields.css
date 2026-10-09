@@ -303,25 +303,33 @@
   box-shadow: inset 0 0 0 1px var(--qc-state-focusRing);
 }
 
-/* The palette is 224px wide inside 6px by 12px: a ten-wide grid of 17px cells, each carrying its own
- * 3px gutter, in blocks that keep 6px under them (the greys and the ten hues; the six ramps; the
- * colors this viewer mixed with the plus after them), a 1px rule 12px clear of the blocks either
- * side, and the opacity under a 12px muted title. The blocks pull their outer gutters back off the
- * padding, and the rule and the title stand clear by their own margins, which take a block's in. */
+/* The palette is 224px wide, 6px clear of what stands above and below it and 12px clear of either
+ * side: a ten-wide grid of 17px cells, each carrying its own 3px gutter, in blocks that keep 6px
+ * under them (the greys and the ten hues; the six ramps; the colors this viewer mixed with the plus
+ * after them), a 1px rule 12px clear of the blocks either side, and the opacity under a 12px muted
+ * title. The blocks pull their outer gutters back past the palette's sides, and the rule and the
+ * title stand clear by their own margins, which take a block's in.
+ *
+ * The room either side is margin rather than padding, so the 224px is the palette's own box under
+ * either box model. A page's unlayered rule outranks any box-sizing this layered sheet could state,
+ * and a page that sizes every element by its border box would take padding out of the grid's 224px;
+ * margin it leaves alone, so the palette, and every surface sized to what it holds around it, keeps
+ * the whole grid. */
 [data-qc-theme] .qc-drawing-palette {
-  box-sizing: content-box;
   width: 224px;
-  padding: 6px 12px;
+  margin-inline: 12px;
+  padding-block: 6px;
 }
 
 /* A palette that is a popover's whole content keeps the popover column's 6px inside its own, and
- * inside a panel that pads already, the palette pads the rest of the way rather than again. */
+ * inside a panel that pads already, the palette stands the rest of the way in rather than again. */
 [data-qc-theme] .qc-drawing-popover > .qc-drawing-palette {
-  padding: 12px;
+  padding-block: 12px;
 }
 
 [data-qc-theme] .qc-inline-panel .qc-drawing-palette {
-  padding: 6px;
+  margin-inline: 6px;
+  padding-block: 6px;
 }
 
 [data-qc-theme] .qc-drawing-swatches {

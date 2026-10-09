@@ -2154,6 +2154,12 @@ between `quickcharts.chart` and `host`. Inline styles the chart writes for measu
 outrank any stylesheet rule, and a rule marked `!important` reverses layer order, so neither is a
 way to restyle the chart.
 
+The chart states its box model and every inherited text value its measurements are built on at
+each of its roots, among them the widget's root and its layer on the document body, where its
+dialogs, menus and panels stand. An unlayered rule of yours that sizes every element by its border
+box, or the font, line height, weight, letter spacing or alignment you set on your page's body,
+leaves each of those surfaces as it is measured.
+
 ### Supported styling hooks
 
 A hook is a block-level surface you may write a rule against. Each announces its state through an
