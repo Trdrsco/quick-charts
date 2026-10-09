@@ -299,19 +299,6 @@
       ]
     },
     {
-      "type": "content_card",
-      "category": "content",
-      "anchors": 1,
-      "placement": null,
-      "hasText": true,
-      "capturesBars": false,
-      "style": null,
-      "props": [
-        "text",
-        "url"
-      ]
-    },
-    {
       "type": "cross_line",
       "category": "lines",
       "anchors": 1,

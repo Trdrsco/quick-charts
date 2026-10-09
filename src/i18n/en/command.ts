@@ -58,7 +58,7 @@ export const command = {
 
   'command.drawingsRemoveAll': 'Remove drawings',
   'command.drawingDeleteSelected': 'Delete selected drawing',
-  /** Arm a drawing tool. The tool is the argument, so the 90 tools share one command. */
+  /** Arm a drawing tool. The tool is the argument, so the 89 tools share one command. */
   'command.drawingArm': 'Drawing tool',
   // The toolbar's switches and menus. Each takes its value as the argument.
   'command.drawingCursor': 'Cursor mode',

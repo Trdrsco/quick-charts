@@ -1,7 +1,7 @@
 // quickcharts/drawings — the public drawing API.
 //
 // Drawings are the one part of the chart with enough surface of its own to earn a subpath: a
-// catalog of 90 tools, a persistence codec, per-timeframe visibility, the magnet, and the product
+// catalog of 89 tools, a persistence codec, per-timeframe visibility, the magnet, and the product
 // models a toolbar is built from. A host that never draws never imports any of it, and one that
 // does gets it under a name that says what it is.
 //

@@ -22,7 +22,7 @@ describe('the tool miniatures', () => {
       .map((tool) => tool.type)
       .filter((type) => !NO_MINIATURE.has(type) && !Object.hasOwn(TOOL_ICONS, type))
     expect(missing).toEqual([])
-    expect(Object.keys(TOOL_ICONS)).toHaveLength(90 - NO_MINIATURE.size)
+    expect(Object.keys(TOOL_ICONS)).toHaveLength(89 - NO_MINIATURE.size)
   })
 
   it('draws in currentColor on a 28 grid, and answers nothing for a type without one', () => {

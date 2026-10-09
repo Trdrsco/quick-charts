@@ -18,7 +18,7 @@ import { editRefused } from '../lockModel'
 import { isTransientTool, type CursorMode } from '../cursorModel'
 import { cancelText, commitText, type TextEditTarget } from '../editModel'
 import { pointerLock } from '../../pointerInput'
-import { createDocuments, drawingOf, type DrawingOwner } from './documents'
+import { createDocuments, drawingOf, drawingShapeOf, type DrawingOwner } from './documents'
 import { liveDrawingEntries, liveDrawingGroups, sameDrawingContext, type DrawingsBody } from '../document'
 import { createPresets, presetPropsFor } from './presets'
 import { bindGestures, type Draft, type Drag, type GestureContext } from './gestures'
@@ -454,8 +454,11 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     const rejected: DrawingRejection[] = []
     const rows: SerializedDrawing[] = []
     for (const entry of liveDrawingEntries(document)) {
+      // Another chart's row is that chart's whether or not this build can read it, so whose it is
+      // is read from the state's shape, and only this chart's rows are judged.
+      const shape = drawingShapeOf(entry)
+      if (shape && !ownsDrawing(shape, chartId)) continue
       const row = drawingOf(entry)
-      if (row && !ownsDrawing(row, chartId)) continue
       const group = stated.get(entry.id)
       if (group !== undefined && !groups.has(group)) rejected.push({ id: entry.id, reason: 'deleted-group' })
       else if (!sources.has(entry.source)) rejected.push({ id: entry.id, reason: 'missing-source' })

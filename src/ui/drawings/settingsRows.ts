@@ -190,8 +190,8 @@ export interface RowsContext {
 
 const label = (t: ChartTranslate, table: Record<string, ChartMessageKey>) => (value: string): string => (table[value] ? t(table[value]!) : value)
 
-const textField = (value: string, ariaLabel: string, onInput: (v: string) => void, options: { placeholder?: string; wide?: boolean } = {}): HTMLInputElement => {
-  const input = el('input', { class: 'qc-field qc-drawing-input', 'aria-label': ariaLabel, 'data-width': options.wide ? 'wide' : 'short', placeholder: options.placeholder }) as HTMLInputElement
+const textField = (value: string, ariaLabel: string, onInput: (v: string) => void, options: { placeholder?: string } = {}): HTMLInputElement => {
+  const input = el('input', { class: 'qc-field qc-drawing-input', 'aria-label': ariaLabel, 'data-width': 'short', placeholder: options.placeholder }) as HTMLInputElement
   input.value = value
   input.addEventListener('input', () => onInput(input.value))
   return input

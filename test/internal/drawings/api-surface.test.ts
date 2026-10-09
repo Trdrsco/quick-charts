@@ -1,5 +1,5 @@
 // The seam's own surface inventory. This is an INTERNAL source module bundled into quickcharts, so
-// a diff here is not a SemVer event: it is an accident check. Each of the 90 tools has a class the
+// a diff here is not a SemVer event: it is an accident check. Each of the 89 tools has a class the
 // registry builds drawings from, and dropping one silently would take a tool off the chart, so
 // every export is named and a loss fails loudly here.
 //
@@ -27,7 +27,6 @@ const SURFACE: Record<string, string> = {
   CapturedBarsDrawing: 'function',
   Circle: 'function',
   Comment: 'function',
-  ContentCard: 'function',
   CrossLine: 'function',
   Curve: 'function',
   CyclicLines: 'function',

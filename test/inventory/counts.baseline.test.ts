@@ -1,5 +1,5 @@
 // The registry count baselines (seven chart
-// styles, 23 built-in indicators, 90 tools, 55 layouts, 26 preset timeframes, 60 timezones).
+// styles, 23 built-in indicators, 89 tools, 55 layouts, 26 preset timeframes, 60 timezones).
 // counts.baseline.json records each count with the file it is read from; this test reads
 // those files and counts again. Every registry lives in Quick Charts or one of its bundled seams;
 // a registry that moves updates the path in the baseline, and the count itself moves only by a
@@ -60,7 +60,7 @@ describe('the registry count baselines', () => {
       ['built-in indicators', 23],
       ['preset timeframes', 26],
       ['timezones', 60],
-      ['drawing tools', 90],
+      ['drawing tools', 89],
       ['layout arrangements', 55],
     ])
   })

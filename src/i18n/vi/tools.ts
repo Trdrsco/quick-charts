@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': 'Biểu đồ khối lượng theo vùng cố định',
   'tool.anchored_volume_profile': 'Biểu đồ khối lượng có điểm neo',
   'tool.image': 'Hình ảnh',
-  'tool.content_card': 'Thẻ nội dung',
   'tool.emoji': 'Emoji',
   'tool.sticker': 'Nhãn dán',
   'tool.icon': 'Biểu tượng',

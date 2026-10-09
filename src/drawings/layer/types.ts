@@ -125,7 +125,9 @@ export type DrawingRejectionReason =
   | 'foreign-pane'
   /** Its group was deleted. The row is not applied under a group that no longer exists. */
   | 'deleted-group'
-  /** Its state is not a drawing this build can read. */
+  /** Its state is not a drawing this build can read: no drawing at all, or one the catalog does not
+   *  restore (a type it does not hold, anchors that are not a list, or options that are null). The
+   *  row stays in the document as it was written. */
   | 'unreadable'
 
 export interface DrawingRejection {

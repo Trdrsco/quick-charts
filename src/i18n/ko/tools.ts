@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': '고정 범위 볼륨 프로파일',
   'tool.anchored_volume_profile': '앵커드 볼륨 프로파일',
   'tool.image': '이미지',
-  'tool.content_card': '콘텐츠 카드',
   'tool.emoji': '이모지',
   'tool.sticker': '스티커',
   'tool.icon': '아이콘',

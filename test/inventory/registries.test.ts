@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 // The registries pinned by stable id, from the package's own source: seven styles, 23 built-in
-// indicators, 90 tools, 55 layouts, 26 preset timeframes, and 60 timezone choices.
+// indicators, 89 tools, 55 layouts, 26 preset timeframes, and 60 timezone choices.
 //
 // ids.fixture.json is the sorted record of every registry the feature manifest publishes, the built-in
 // locales, the theme roles and the command registry included. Every block below reads a registry as the
@@ -51,7 +51,7 @@ const REGISTRIES: Record<Registry, () => string[]> = {
 const COUNTS: Record<Registry, number> = {
   styles: 7,
   indicators: 23,
-  drawings: 90,
+  drawings: 89,
   layouts: 55,
   timeframes: 26,
   timezones: 60,

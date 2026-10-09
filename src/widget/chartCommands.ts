@@ -359,7 +359,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     execute: () => verbs()?.cancel(),
   })
   // Arming a tool is ONE command taking the tool id (or `{ tool, props }` to seed the placement,
-  // as a picked glyph does): the 90 tools would otherwise be 90 near-identical
+  // as a picked glyph does): the 89 tools would otherwise be 89 near-identical
   // entries, and the access policy refuses per tool through `refuses`, so a refused tool answers
   // `denied` from this door as a refused command does.
   add({

@@ -180,10 +180,6 @@
   width: 96px;
 }
 
-[data-qc-theme] .qc-drawing-input[data-width='wide'] {
-  width: 100%;
-}
-
 /* The text area is the field box 100px tall across the page, 172px for a tool that is its words (a
  * text, a note, a callout), its words 8px in from the sides and 5px from the top. */
 [data-qc-theme] .qc-drawing-textarea {

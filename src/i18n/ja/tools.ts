@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': '固定期間出来高プロファイル',
   'tool.anchored_volume_profile': 'アンカー出来高プロファイル',
   'tool.image': '画像',
-  'tool.content_card': 'コンテンツカード',
   'tool.emoji': '絵文字',
   'tool.sticker': 'ステッカー',
   'tool.icon': 'アイコン',

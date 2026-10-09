@@ -67,7 +67,6 @@ export const tools: Translation<typeof source> = {
   'tool.fixed_range_volume_profile': 'Sabit aralık hacim profili',
   'tool.anchored_volume_profile': 'Sabitlenmiş hacim profili',
   'tool.image': 'Görsel',
-  'tool.content_card': 'İçerik kartı',
   'tool.emoji': 'Emoji',
   'tool.sticker': 'Çıkartma',
   'tool.icon': 'Simge',

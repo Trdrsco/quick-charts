@@ -66,7 +66,7 @@ import {
 import { CyclicLines, SineLine, TimeCycles } from './tools/cycles'
 import { BarsPattern, GhostFeed, RegressionTrend } from './tools/bars'
 import { AnchoredVolumeProfile, AnchoredVwap, FixedRangeVolumeProfile } from './tools/volume'
-import { ContentCard, GlyphMark, IconMark, ImageNote, StickerMark } from './tools/content'
+import { GlyphMark, IconMark, ImageNote, StickerMark } from './tools/content'
 
 export interface ToolDefinition {
   type: string
@@ -261,7 +261,6 @@ const DEFINITIONS: ToolDefinition[] = [
 
   // Content
   tool(ImageNote, { type: 'image', name: 'Image', category: 'content', anchors: 1 }),
-  tool(ContentCard, { type: 'content_card', name: 'Content card', category: 'content', anchors: 1, hasText: true }),
   tool(GlyphMark, { type: 'emoji', name: 'Emoji', category: 'content', anchors: 1 }),
   tool(StickerMark, { type: 'sticker', name: 'Sticker', category: 'content', anchors: 1 }),
   tool(IconMark, { type: 'icon', name: 'Icon', category: 'content', anchors: 1, style: { lineColor: '#2962ff' } }),
@@ -337,13 +336,20 @@ export class ToolRegistry {
     return definition.create(id, anchors, { ...definition.style, ...styleOverrides })
   }
 
-  /** Rebuild a drawing from its serialized form; null for unknown types or malformed data. A save in
+  /** Whether `restore` rebuilds a serialized drawing: the registry holds its type, its anchors are a
+   *  list, and its options are not null, since a drawing reads its options as it is built and absent
+   *  options take the defaults. Nothing else in the state is refused: what an anchor, the style or
+   *  the props hold is the tool's to read. */
+  readable(data: SerializedDrawing): boolean {
+    return this._tools.has(data.type) && Array.isArray(data.anchors) && data.options !== null
+  }
+
+  /** Rebuild a drawing from its serialized form; null for a state that is not `readable`. A save in
    *  an earlier format keeps the look it was saved with. */
   restore(data: SerializedDrawing): AnyDrawing | null {
-    const definition = this._tools.get(data.type)
-    if (!definition || !Array.isArray(data.anchors)) return null
+    if (!this.readable(data)) return null
     try {
-      const drawing = definition.create(data.id, data.anchors, data.style, data.options, data.props)
+      const drawing = this._tools.get(data.type)!.create(data.id, data.anchors, data.style, data.options, data.props)
       if (!(data.v >= SERIAL_VERSION)) drawing.holdSavedLook(data)
       return drawing
     } catch {

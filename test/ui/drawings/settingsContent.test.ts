@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // The settings pages of the strokes (the brush, the path and the highlighter) and of the content
-// tools (the emoji, the sticker, the content card, the icon and the image), row by row: which pages
-// each tool gets, every row's label, the kind of every control in it and the value it opens on, what
+// tools (the emoji, the sticker, the icon and the image), row by row: which pages each tool gets,
+// every row's label, the kind of every control in it and the value it opens on, what
 // the rows write, and the look and setup a new drawing of each tool starts with.
 //
 // Each page is read as row signatures; settingsRig.ts says how.
@@ -31,8 +31,8 @@ describe('the pages and rows of the strokes and the content tools', () => {
     })
   }
 
-  it('opens an emoji, a sticker and a content card on their Visibility page alone', () => {
-    for (const type of ['emoji', 'sticker', 'content_card']) {
+  it('opens an emoji and a sticker on their Visibility page alone', () => {
+    for (const type of ['emoji', 'sticker']) {
       const { tabs, page } = rig(type)
       expect(tabs(), type).toEqual(['Visibility'])
       expect(signature(page())[0], type).toBe('[x] Ticks')

@@ -2804,7 +2804,7 @@ re-tile opens in the current one.
 
 ## Drawings
 
-The widget ships with a complete drawing product, on by default: every one of the 90 tools places
+The widget ships with a complete drawing product, on by default: every one of the 89 tools places
 from the toolbar, the selected drawing gets a floating settings bar and a settings dialog, tool
 defaults and named templates ride the adapter's template family, and a symbol's drawings persist
 through the adapter's drawings family. Turn the whole layer off with `features.drawings: false`,
@@ -3001,10 +3001,9 @@ at their left, middle or right with `textHAlign`, its border and grid in the dra
 
 A brush fills the area its stroke closes back to its start while `fillBackground` is on, and a brush
 and a path head their ends with arrows as `leftEnd` and `rightEnd` say, a path with an arrow at its
-last point at first. A highlighter's width is in pixels, 8 to 96 on its page. The emoji, the sticker
-and the content card have no settings beyond their visibility: a glyph's size is set by its grips on
-the chart, and a content card's words and link (`text`, `url`) are the host's to set or the viewer's
-to type on the chart. An icon's page sets its tint, and an image's page chooses its picture from a
+last point at first. A highlighter's width is in pixels, 8 to 96 on its page. The emoji and the
+sticker have no settings beyond their visibility: a glyph's size is set by its grips on the chart. An
+icon's page sets its tint, and an image's page chooses its picture from a
 box that names the formats and the size the intake takes, and sets how see-through it is drawn.
 
 The pattern tools are read by their letters and carry no words of their own: their Style page sets
@@ -3068,7 +3067,7 @@ never imports any of it.
 ```ts
 import { buildDrawingToolbarGroups, drawingTools, parseDrawingsStore, restoreDrawings, serializeDrawingsStore } from '@trdrs/quickcharts/drawings'
 
-// The catalog: 90 tools in 14 categories, read-only.
+// The catalog: 89 tools in 14 categories, read-only.
 const trendLine = drawingTools.get('trend_line')
 const fibs = drawingTools.byCategory('fibonacci')
 

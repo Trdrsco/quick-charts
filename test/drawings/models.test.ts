@@ -79,7 +79,7 @@ describe('the drawing toolbar', () => {
     for (const type of BRUSH_TYPES) expect(geometric.tools.some((t) => t.type === type), type).toBe(false)
   })
 
-  it('puts the image and content cards under Content, and the glyph marks in their own group', () => {
+  it('puts the image under Content, and the glyph marks in their own group', () => {
     const content = groups.find((g) => g.id === 'annotation')!.sections[1]!
     expect(content.tools.map((t) => t.type)).toEqual([...CARD_TYPES])
     expect(groups.find((g) => g.id === 'glyphs')!.sections[0]!.tools.map((t) => t.type)).toEqual([...GLYPH_TYPES])

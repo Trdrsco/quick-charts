@@ -5,7 +5,7 @@
 // default search, asked of the feed exactly as before.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { offeredOperators, openSearchDialog } from '../../src/ui/chrome/searchDialog'
-import { classBranches, classSelection } from '../../src/ui/chrome/searchClasses'
+import { classAdmits, classBranches, classSelection } from '../../src/ui/chrome/searchClasses'
 import { openSymbolSearch } from '../../src/ui/chrome/openSymbolSearch'
 import type { ChartDatafeed, DatafeedSearchOptions, SearchClassNode, SymbolRow } from '../../src/datafeed'
 import type { SearchDisplayOptions } from '../../src/widget/options'
@@ -56,8 +56,10 @@ const settle = async (): Promise<void> => {
   await vi.advanceTimersByTimeAsync(250)
 }
 
-function open(options: { display?: SearchDisplayOptions; classes?: readonly (string | SearchClassNode)[]; mode?: 'search' | 'compare' } = {}) {
+function open(options: { display?: SearchDisplayOptions; classes?: readonly (string | SearchClassNode)[]; mode?: 'search' | 'compare'; recents?: readonly SymbolRow[] } = {}) {
   const w = fakeWidget()
+  // Promoted last to first, so the recents list reads in the order given.
+  for (const row of [...(options.recents ?? [])].reverse()) w.widget.recents.promote(row)
   const { feed, calls } = recordingFeed()
   const dialog = openSearchDialog({
     host: w.overlays,
@@ -356,6 +358,56 @@ describe('nested classes', () => {
     s.topChips()[2]!.click()
     expect(s.subRows().length).toBe(1)
     expect([...s.subRows()[0]!.querySelectorAll('.qc-search-class')].map((c) => c.textContent)).toEqual(['All', 'USDC'])
+  })
+})
+
+describe('recent picks under a class', () => {
+  const row = (symbol: string): SymbolRow => CATALOG.find((r) => r.symbol === symbol)!
+
+  it('lists only the recent picks in the selected class, as the feed is asked', async () => {
+    const s = open({ classes: ['future', 'usdt'], recents: [row('BTCUSDT'), row('ETHUSDT')] })
+    await settle()
+    expect(s.rows()).toEqual(['BTCUSDT', 'ETHUSDT', 'ES', 'NQ', 'BTCUSDC'])
+    // A class none of the recents is in lists only the feed's answer for it.
+    s.topChips()[1]!.click()
+    await settle()
+    expect(s.rows()).toEqual(['ES', 'NQ'])
+    s.topChips()[2]!.click()
+    await settle()
+    expect(s.rows()).toEqual(['BTCUSDT', 'ETHUSDT'])
+    s.topChips()[0]!.click()
+    await settle()
+    expect(s.rows()).toEqual(['BTCUSDT', 'ETHUSDT', 'ES', 'NQ', 'BTCUSDC'])
+  })
+
+  it('keeps a narrower class’s recents under its parent, and narrows them with a picked child', async () => {
+    const s = open({ classes: ['future', { id: 'spot', children: ['usdc', 'usdt'] }], recents: [row('BTCUSDC'), row('ES'), row('ETHUSDT')] })
+    await settle()
+    s.topChips()[2]!.click()
+    await settle()
+    expect(s.rows()).toEqual(['BTCUSDC', 'ETHUSDT', 'BTCUSDT'])
+    const sub = [...s.subRows()[0]!.querySelectorAll<HTMLButtonElement>('.qc-search-class')]
+    expect(sub.map((c) => c.textContent)).toEqual(['All', 'USDC', 'USDT'])
+    sub[2]!.click()
+    await settle()
+    expect(s.rows()).toEqual(['ETHUSDT', 'BTCUSDT'])
+  })
+
+  it('admits a row by its class: every class takes any, a named class its own and its children', () => {
+    const branches = classBranches(['future', { id: 'spot', children: ['usdc', 'usdt'] }])
+    expect(classAdmits(branches, '', 'anything')).toBe(true)
+    expect(classAdmits(branches, [], 'anything')).toBe(true)
+    expect(classAdmits(branches, 'future', 'future')).toBe(true)
+    expect(classAdmits(branches, 'future', 'usdt')).toBe(false)
+    expect(classAdmits(branches, 'spot', 'usdt')).toBe(true)
+    expect(classAdmits(branches, 'spot', 'spot')).toBe(true)
+    // A row of the parent class does not say it is the child the filter names.
+    expect(classAdmits(branches, 'usdt', 'spot')).toBe(false)
+    expect(classAdmits(branches, ['future', 'usdc'], 'usdc')).toBe(true)
+    expect(classAdmits(branches, ['future', 'usdc'], 'usdt')).toBe(false)
+    // A class the strip never offered admits only rows of that exact class.
+    expect(classAdmits(branches, 'crypto', 'crypto')).toBe(true)
+    expect(classAdmits(branches, 'crypto', 'usdt')).toBe(false)
   })
 })
 

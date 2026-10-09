@@ -21,7 +21,7 @@ import type { CommandRegistry } from '../../widget/commands'
 import type { SearchDisplayOptions, SearchScope } from '../../widget/options'
 import type { SearchRequest } from './doors'
 import { dialogTitle, emptyState, openDialog, type DialogHandle } from './dialog'
-import { classBranches, classSelection } from './searchClasses'
+import { classAdmits, classBranches, classSelection } from './searchClasses'
 import { append, button, h, name, reglyph, replace, setDisabled } from './dom'
 import { COMPARE_EMPTY_MARK, ICONS, OPERATOR_GLYPHS } from '../controls/icons'
 import { createSymbolBadge } from './symbolBadge'
@@ -369,8 +369,10 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     }
 
     // The recents the list leads with: the scope's own while its chip is on, none where it keeps
-    // none, and the chart's otherwise.
-    const recentRows = (): readonly SymbolRow[] => (scoped ? (searchScope?.recents?.list() ?? []) : deps.recents.list())
+    // none, and the chart's otherwise. Only those in the classes the strip selects are listed, so a
+    // class chip narrows the recents as it narrows the feed's answer.
+    const recentRows = (): readonly SymbolRow[] =>
+      (scoped ? (searchScope?.recents?.list() ?? []) : deps.recents.list()).filter((row) => classAdmits(branches, cls, row.type))
     // Every pick is one of the viewer's recent symbols, and one made in the scope is the scope's too.
     const remember = (row: SymbolRow): void => {
       deps.recents.promote(row)

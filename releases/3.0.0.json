@@ -1,0 +1,65 @@
+{
+  "date": "2026-10-08",
+  "packageName": "@trdrs/quickcharts",
+  "version": "3.0.0",
+  "releaseCommit": "f7d68375640582c4b7ab65965748c3c80f7d97e3",
+  "tarballSha256": "8867194fd28400a9adedbe3cbf4245470162098e385a4d132100357d9258194d",
+  "tarStreamSha256": "f5b543a634318120b12ecdd25f71de031656f5d45fb8d77536f6bf88a3505978",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37789456788",
+    "unitTestsPassed": 3984,
+    "cleanRoomChecksPassed": 42,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "aadfcd9eaa9b00a342ff8541aab770a115fc10f7893a34e334261f8e869a45ea",
+      "dossierHashesSha256": "540b0c19ce71786fca8d7bb27d3faf08ea92b6779cbd15031a033f8ea415dc42",
+      "installTestChecksPassed": 25,
+      "dossierRetained": true
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "ea0ea796ad0875bea837a9fe78a754ba713161b6",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/37849850961",
+    "result": "pass",
+    "workingTree": "3.0.0 on every pin and the Platform version matrix; exact tarball installed through a temporary pnpm override",
+    "earlierRun": {
+      "testedCommit": "bf3b10eb478d61bfb0158e0b94e3ce87e4e1a4ff",
+      "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/37843524110",
+      "result": "fail",
+      "cause": "two of the host's own tests failed on host bugs, an alerts listener race and a price grid in 32nds; the host fixed both, and the passing run above installed the same tarball"
+    }
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "question": "Quick Charts 3.0.0 (release commit f7d6837: the search scope with its required search, the dialog field box and the dialog drag fix) passed the gate, the clean room and browser conformance in Chromium, Firefox and WebKit, and the app is being run against it as the first host. Nobody has done a manual accessibility pass (screen reader, keyboard) or a manual check on the advertised browsers and devices. Do you waive that manual acceptance for 3.0.0 and authorize its publication, knowing a waiver does not establish screen-reader or device support?",
+    "statement": "Asked by his coordinating session whether he waives the manual accessibility and advertised-browser acceptance for Quick Charts 3.0.0, which nobody had performed, and authorizes its publication, knowing a waiver does not establish screen-reader or device support, Joey answered: \"I waive it and authorize publication\".",
+    "recordedAt": "2026-10-08T20:59:19Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false,
+    "npmPublishApproval": "delegated by Joey to his coordinating session, which approves the npm-publish environment on his instruction (\"Approve it for me\") once the validation job passes"
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37852092891",
+    "npmPublishApproval": "approved for Joey by his coordinating session, on his instruction, after the validation job passed",
+    "registryIntegrity": "sha512-1FVdRrY37KZcNSIpdvQeJ3HdsId6nf7RGm9S1Ur1p8u5XEXz0TYF0skwrAdYD1okrRnjbg1tDwFIYPq1z/6NLg==",
+    "registryTarballSha256": "8867194fd28400a9adedbe3cbf4245470162098e385a4d132100357d9258194d",
+    "provenanceLogIndex": 3152531881,
+    "distTagLatest": "3.0.0",
+    "provenance": "SLSA v1 provenance names refs/tags/v3.0.0, .github/workflows/release.yml and commit 7576f6f3dbf40d8d1a04ef69ad75907ced4507da, with the registry tarball's sha512 as its subject",
+    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": "pass: a fresh project installed 3.0.0 from the registry and passed the browser conformance suite, 42 of 42 checks, in Chromium, Firefox and WebKit"
+  }
+}

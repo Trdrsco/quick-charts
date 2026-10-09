@@ -59,6 +59,16 @@ export interface ClassSelection {
   filter(): SearchClassFilter
 }
 
+/** Whether a row whose class is `type` belongs under a filter, for the rows the dialog lists without
+ *  asking the feed, such as recent picks. Every class admits any row. Otherwise the row's class is
+ *  one the filter names, or a narrower class offered beneath a top-level class it names. A row whose
+ *  class is the parent of a child the filter names stays out: its class does not say it is the child. */
+export function classAdmits(branches: readonly ClassBranch[], filter: SearchClassFilter, type: string): boolean {
+  const named = typeof filter === 'string' ? (filter ? [filter] : []) : filter
+  if (named.length === 0) return true
+  return named.some((id) => id === type || (branches.find((b) => b.id === id)?.children.includes(type) ?? false))
+}
+
 /** The selection over a strip's branches. One class at a time with no All chip starts on the first
  *  class, because a choice of one with nothing to stand for every class always holds one. */
 export function classSelection(branches: readonly ClassBranch[], options: { multiple: boolean; all: boolean }): ClassSelection {

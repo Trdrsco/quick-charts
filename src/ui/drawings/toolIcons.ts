@@ -93,7 +93,6 @@ export const TOOL_ICONS = {
   signpost: '<circle cx="14" cy="11.5" r="9" stroke="currentColor" stroke-width="1.2"/><path d="M14 20.5V27" stroke="currentColor" stroke-width="1.2"/><path d="M14 6.2l1.5 3.1 3.4.4-2.5 2.3.6 3.4-3-1.7-3 1.7.6-3.4-2.5-2.3 3.4-.4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>',
   flag: '<path d="M5.5 23V5.5h16.7l-4.6 5.25 4.6 5.25H5.5" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>',
   image: '<rect x="3.5" y="4.5" width="21" height="19" rx="3.5" stroke="currentColor" stroke-width="1.2"/><circle cx="10" cy="10" r="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M4.2 21.5 9.3 15.1l3.3 4 M12.9 17.4 18 10.7l5.9 7.7" stroke="currentColor" stroke-width="1.2"/>',
-  content_card: '<rect x="4.5" y="5.5" width="19" height="17" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M4.5 11.5h19 M8 15.5h9 M8 18.5h6" stroke="currentColor" stroke-width="1.2"/>',
   pin: '<path d="M14 3.5a7.5 7.5 0 0 1 7.5 7.5c0 4.2-4.2 8.9-7.5 12.6C10.7 19.9 6.5 15.2 6.5 11A7.5 7.5 0 0 1 14 3.5Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><circle cx="14" cy="11" r="3" stroke="currentColor" stroke-width="1.2"/>',
 } satisfies Readonly<Record<string, string>>
 
