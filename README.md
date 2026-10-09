@@ -2985,8 +2985,8 @@ stand above it, inside it or below it with `textVAlign`, at its start, middle or
 parallel stands from the baseline.
 
 A sector shades the two halves of its slice, parted by the ray through its arc's middle, in `color1`
-and `color2` while `fillBackground` is on. A bars pattern paints its captured bars as `mode` says:
-`hl` their high-low ranges, `oc` their open-close ranges, or a line through each bar's close, open,
+and `color2` while `fillBackground` is on. A bars pattern paints its captured bars as `mode` says
+(`BARS_PATTERN_MODES`): `hl` their high-low ranges, `oc` their open-close ranges, or a line through each bar's close, open,
 high, low or `hl2`. A ghost feed's average candle span is held as a price and written on its page in
 the symbol's minimum ticks.
 
@@ -3175,7 +3175,7 @@ What to know:
   off) lives in the adapter's chart-bound scope for the symbol; a shared drawing lives in the
   symbol's scope, and a refused write merges the stored document over the layer's own before it
   writes again.
-- **A save keeps its look.** A drawing saves at `v: 3`. A save at `v: 2` restores with the look it
+- **A save keeps its look.** A drawing saves at `v: 3` (`SERIAL_VERSION`). A save at `v: 2` restores with the look it
   was saved with: its tool writes the values that paint it so and saves at `v: 3` with them, the
   looks the tool's pages do not set riding in the props `INERT_PROPS` lists. A gann square, a gann
   square fixed, a speed resistance fan, a pitchfan, the text and annotation tools, the marks and a

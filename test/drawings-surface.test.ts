@@ -16,11 +16,16 @@ const SURFACE: Record<string, string> = {
   drawingTools: 'object',
   TOOL_CATEGORIES: 'object',
 
-  // The drawing's own defaults, and the alpha channel of a style colour.
+  // The drawing's own defaults, the version it saves at, and the alpha channel of a style colour.
   DEFAULT_OPTIONS: 'object',
   DEFAULT_STYLE: 'object',
+  SERIAL_VERSION: 'number',
   alphaOf: 'function',
   withAlpha: 'function',
+
+  // The values a drawing's bar-reading props take.
+  BAR_PRICE_SOURCES: 'object',
+  BARS_PATTERN_MODES: 'object',
 
   // Persistence: the store codec.
   parseDrawingsStore: 'function',
