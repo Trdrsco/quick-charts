@@ -2912,11 +2912,10 @@ bar's palette offers them too.
 
 The line tools' Style page carries the stroke with its two ends, the extensions, the middle point,
 the price labels and, under Info, the stats a line reads (price range, percent change, the change
-counted in the symbol's smallest price move, bars, date and time range, angle), where they stand
-(left, center, right, or auto, which keeps them inside the pane), and whether they show always or
-only while the line is selected. An info line also reads its length on the pane (`showDistance`),
-which the Style page does not offer. A horizontal line offers its price label, a vertical line its
-time label, a cross line both. A rectangle offers its extensions, its border, a middle line with a stroke
+counted in the symbol's smallest price move, bars, date and time range, its length on the pane,
+angle), where they stand (left, center, right, or auto, which keeps them inside the pane), and
+whether they show always or only while the line is selected. A horizontal line offers its price
+label, a vertical line its time label, a cross line both. A rectangle offers its extensions, its border, a middle line with a stroke
 of its own and its background; every other shape its border and background; a curve its stroke and
 ends, its extensions along the tangents it ends on, and its background. A background switched off
 keeps its color and opacity for when it is switched back on. The Text page sets the words' color,
@@ -3282,6 +3281,10 @@ What to know:
   default), an action on the price the pointer landed on, placed under Copy price and Paste; or
   `view`, a switch over what the chart shows, placed under the remove rows. Rows keep the order
   they were contributed in within their group.
+- **A right-click on a drawing carries your rows too.** It raises the drawing's own menu, and your
+  `level` rows stand under its Clone and Copy and your `view` rows under its Remove. On a table,
+  `ChartExtensionMenuContext.table` names it, and `table.cell` says whether a cell of it is being
+  typed in; anywhere else the context carries no `table`.
 - **A drawn layer can join the drawing toolbar's eye.**
   `ctx.contributeHideLayer({ id, label, icon, apply })` lists the layer in the eye's menu after the
   chart's own drawings and indicators and before "Hide all", which blanks it with them. `label`
