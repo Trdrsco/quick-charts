@@ -8,6 +8,8 @@ A double-click on a drawing's words opens its settings on their Text page: on a 
 
 A right-click on a drawing raises the drawing's own menu, and a right-click anywhere else the chart's: a table's edits first, then Template, Visual order and Visibility on timeframes as submenus, Clone and Copy, Lock, Hide and Remove, and Settings…. The rows an extension contributes stand in it as they stand in the chart's: its `level` rows under Clone and Copy and its `view` rows under Remove, and on a table `ChartExtensionMenuContext.table` names the table and whether a cell of it is being typed in.
 
+`@trdrs/quickcharts/drawings` exports `BAR_PRICE_SOURCES`, `BARS_PATTERN_MODES` and `SERIAL_VERSION`, with the `BarPriceSource` and `BarsPatternMode` types: the sources a regression trend or an anchored VWAP reads, the modes a bars pattern paints in, and the version a drawing saves at, as the 4.0 upgrading guide names them.
+
 ## 4.0.0
 
 Settled settings dialogs and factory looks for every drawing tool, words typed on the chart, a rebuilt replay date picker, glyphs drawn as the chart's own artwork, recent picks narrowed by the selected class, and drawings the catalog cannot restore named as unreadable. 4.0 removes the content card and the catalog keys the settled dialogs do not read, and gives drawing props new names and meanings, so a host upgrades as the guide below says. A drawing saved by 3.x restores with the look it was saved with.

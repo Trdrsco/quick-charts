@@ -33,7 +33,11 @@ export type {
   ToolCategory,
   Viewport,
 } from '../internal/drawings/index'
-export { DEFAULT_OPTIONS, DEFAULT_STYLE } from '../internal/drawings/index'
+export { DEFAULT_OPTIONS, DEFAULT_STYLE, SERIAL_VERSION } from '../internal/drawings/index'
+// The values a drawing's bar-reading props take: the price a regression trend or an anchored VWAP
+// reads from each bar (`source`), and the way a bars pattern paints the bars it copies (`mode`).
+export { BAR_PRICE_SOURCES, BARS_PATTERN_MODES } from '../internal/drawings/index'
+export type { BarPriceSource, BarsPatternMode } from '../internal/drawings/index'
 // A drawing style's colour carries its own alpha, so reading and rewriting that channel is part of
 // working with one rather than a general colour utility.
 export { alphaOf, withAlpha } from '../internal/drawings/index'
