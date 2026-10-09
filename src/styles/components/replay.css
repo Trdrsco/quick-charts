@@ -132,6 +132,12 @@
   color: var(--qc-text-inverse);
 }
 
+/* The current starting point wears its mark and its words in the ink cut from the emphasis fill. */
+[data-qc-theme] .qc-replay-start-menu .qc-menu-row[aria-checked='true'],
+[data-qc-theme] .qc-replay-start-menu .qc-menu-row[aria-checked='true']:hover {
+  color: var(--qc-control-onInk);
+}
+
 [data-qc-theme] .qc-replay-menu .qc-menu-row--marked {
   height: 34px;
   padding-inline-start: 8px;
@@ -247,71 +253,402 @@
 }
 
 /* The date picker. */
-[data-qc-theme] .qc-date-fields {
+
+/* The card stands 302px wide over the undimmed chart: a 68px header, the fields, the calendar and the
+ * chip, and a 67px footer. The header carries the title at 20 on 28, which is the handle the card is
+ * carried by, and the close in a 34px cell whose mark stands 3px past the header's padding. */
+[data-qc-theme] .qc-date-header {
   display: flex;
-  gap: 8px;
+  flex: 0 0 auto;
+  align-items: center;
+  height: 68px;
+  padding: 0 20px;
 }
 
-/* The date and the time are the chart's 34px field boxes, the date taking the room the time leaves. */
-[data-qc-theme] .qc-date-field {
+[data-qc-theme] .qc-date-title {
   flex: 1 1 auto;
   min-width: 0;
-  font-variant-numeric: tabular-nums;
+  padding: 17px 0;
+  cursor: grab;
+  user-select: none;
 }
 
-[data-qc-theme] .qc-date-time {
-  flex: 0 0 74px;
-  font-variant-numeric: tabular-nums;
+[data-qc-theme] .qc-date-title-text {
+  display: block;
+  overflow: hidden;
+  color: var(--qc-text-primary);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-[data-qc-theme] .qc-date-nav {
+[data-qc-theme] .qc-date-dialog .qc-dialog-close {
+  flex: 0 0 34px;
+  margin-inline-end: -3px;
+  border-radius: 8px;
+}
+
+/* The body is a dialog body that sits 17px under the header, edge to edge, and scrolls only in a
+ * viewport shorter than the card. */
+[data-qc-theme] .qc-date-content {
+  gap: 0;
+  padding: 17px 0 0;
+}
+
+/* The fields stand side by side, 150px and 100px with 12px between, 16px over the calendar. Each is
+ * the chart's 34px field box with a 28px mark 3px in from its end, in the caret's ink and the field's
+ * own ink under the pointer: the date's page of days, and the clock that opens the time list. */
+[data-qc-theme] .qc-date-fields {
+  display: grid;
+  grid-template-columns: 150px 100px;
+  grid-template-rows: 34px;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 0 20px;
+}
+
+[data-qc-theme] .qc-date-box {
+  position: relative;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 0 2px;
 }
 
-[data-qc-theme] .qc-date-nav .qc-button {
-  display: inline-flex;
+[data-qc-theme] .qc-date-box > .qc-field {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding-inline-end: 33px;
+  font-variant-numeric: tabular-nums;
+}
+
+[data-qc-theme] .qc-date-box-mark {
+  position: absolute;
+  inset-block-start: 3px;
+  inset-inline-end: 3px;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
   height: 28px;
   padding: 0;
-  border-color: transparent;
+  color: var(--qc-chrome-caret);
+  background: none;
+  border: 0;
+  pointer-events: none;
 }
 
-[data-qc-theme] .qc-date-grid {
+[data-qc-theme] .qc-date-box:hover > .qc-date-box-mark {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-date-clock {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* The calendar: 286px on 8px margins, its 262px of content inside 12px, a 34px row of the arrows
+ * around the heading, a 22px band 12px either side, and a 226px view, the whole at least 332px tall.
+ * It reads left to right in every language, as a calendar's columns do. */
+[data-qc-theme] .qc-date-calendar {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  min-height: 332px;
+  margin: 0 8px;
+  padding: 1px 12px 15px;
+  direction: ltr;
+  user-select: none;
 }
 
-[data-qc-theme] .qc-date-row {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
+[data-qc-theme] .qc-date-nav {
+  display: flex;
+  flex: 0 0 34px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 3px;
 }
 
-[data-qc-theme] .qc-date-head {
+/* Every press in the calendar is a 34px cell on an 8px corner with its words at 16 on 24. Under the
+ * pointer it takes the hover fill and its words and mark brighten to the quiet ink; a day or a cell
+ * that cannot be chosen keeps the disabled ink and takes no fill. */
+[data-qc-theme] .qc-date-step,
+[data-qc-theme] .qc-date-heading,
+[data-qc-theme] .qc-date-day,
+[data-qc-theme] .qc-date-cell {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 24px;
+  height: 34px;
+  font-size: 16px;
+  line-height: 24px;
+  white-space: nowrap;
+  border-color: transparent;
+  border-radius: 8px;
+}
+
+[data-qc-theme] .qc-date-step {
+  flex: 0 0 34px;
+  width: 34px;
+  padding: 0;
+}
+
+[data-qc-theme] .qc-date-heading {
+  padding: 0 11px;
+}
+
+[data-qc-theme] .qc-date-dialog .qc-dialog-close:hover,
+[data-qc-theme] .qc-date-step:hover:not([disabled]),
+[data-qc-theme] .qc-date-heading:hover,
+[data-qc-theme] .qc-date-day:hover:not([disabled]):not([aria-selected='true']),
+[data-qc-theme] .qc-date-cell:hover:not([disabled]):not([aria-selected='true']) {
+  color: var(--qc-control-neutralInk);
+}
+
+/* The band over the grid, on the quiet fill: the weekdays spread across it in the muted ink, or the
+ * word for the months or the years. */
+[data-qc-theme] .qc-date-band {
+  display: flex;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: space-around;
+  margin: 12px 0;
+  padding: 2px 0;
+  color: var(--qc-text-muted);
+  font-size: 14px;
+  line-height: 18px;
+  background: var(--qc-control-neutral);
+  border-radius: 6px;
+}
+
+[data-qc-theme] .qc-date-view {
+  flex: 0 0 226px;
+}
+
+/* The days: weeks of seven 34px cells 4px apart, the first week against the end and the last against
+ * the start, so each column is one weekday and no day of another month stands in a gap. The chosen day
+ * is on the emphasis fill in the ink cut from it, and today wears a 2px bar under its number in the
+ * number's own ink. */
+[data-qc-theme] .qc-date-weeks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+[data-qc-theme] .qc-date-week {
+  display: flex;
+  justify-content: space-between;
+}
+
+[data-qc-theme] .qc-date-week:first-child {
+  justify-content: flex-end;
+}
+
+[data-qc-theme] .qc-date-week:last-child {
+  justify-content: flex-start;
+}
+
+[data-qc-theme] .qc-date-week:first-child > .qc-date-day + .qc-date-day,
+[data-qc-theme] .qc-date-week:last-child > .qc-date-day + .qc-date-day {
+  margin-inline-start: 4px;
 }
 
 [data-qc-theme] .qc-date-day {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 28px;
+  position: relative;
+  flex: 0 0 34px;
+  width: 34px;
   padding: 0;
-  font-variant-numeric: tabular-nums;
-  border-color: transparent;
 }
 
-[data-qc-theme] .qc-date-day[aria-selected='true'] {
-  color: var(--qc-state-markInk);
-  background: var(--qc-state-accent);
-  border-color: var(--qc-state-accent);
+[data-qc-theme] .qc-date-day[aria-selected='true']:not([disabled]) {
+  color: var(--qc-control-onInk);
+  background: var(--qc-control-on);
+  border-color: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-date-day[aria-current='date']::before {
+  position: absolute;
+  inset-inline: 6px;
+  top: 100%;
+  height: 2px;
+  margin-top: -6px;
+  background: currentColor;
+  border-radius: 1px;
+  content: '';
+}
+
+/* The months, three to a row 30px apart, and the years, four to a row 14px apart, 3px between
+ * columns. The chosen month or year stands on the quiet fill, a step up under the pointer. */
+[data-qc-theme] .qc-date-months,
+[data-qc-theme] .qc-date-years {
+  display: grid;
+  grid-auto-rows: 34px;
+  column-gap: 3px;
+}
+
+[data-qc-theme] .qc-date-months {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  row-gap: 30px;
+}
+
+[data-qc-theme] .qc-date-years {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  row-gap: 14px;
+}
+
+[data-qc-theme] .qc-date-row {
+  display: contents;
+}
+
+[data-qc-theme] .qc-date-cell {
+  min-width: 0;
+  padding: 0 11px;
+}
+
+[data-qc-theme] .qc-date-years .qc-date-cell {
+  padding: 0 4px;
+}
+
+[data-qc-theme] .qc-date-cell[aria-selected='true']:not([disabled]) {
+  color: var(--qc-control-neutralInk);
+  background: var(--qc-control-neutral);
+  border-color: var(--qc-control-neutral);
+}
+
+[data-qc-theme] .qc-date-cell[aria-selected='true']:not([disabled]):hover {
+  background: var(--qc-control-neutralHover);
+  border-color: var(--qc-control-neutralHover);
+}
+
+/* The chip under the calendar: 40px tall, its words at 16 on 24 and 15px in, centred and 10px over
+ * the footer, on the quiet fill a step up under the pointer and another while pressed. */
+[data-qc-theme] .qc-date-first-row {
+  display: flex;
+  justify-content: center;
+}
+
+[data-qc-theme] .qc-date-first {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  margin-bottom: 10px;
+  padding: 0 15px;
+  color: var(--qc-control-neutralInk);
+  font-size: 16px;
+  line-height: 24px;
+  white-space: nowrap;
+  background: var(--qc-control-neutral);
+  border-color: var(--qc-control-neutral);
+  border-radius: 8px;
+}
+
+[data-qc-theme] .qc-date-first:hover {
+  background: var(--qc-control-neutralHover);
+  border-color: var(--qc-control-neutralHover);
+}
+
+[data-qc-theme] .qc-date-first:active {
+  background: var(--qc-control-neutralPressed);
+  border-color: var(--qc-control-neutralPressed);
+}
+
+/* The footer under a 1px rule: Cancel and Select at its end, 34px tall and 12px apart, their words at
+ * 16 on 24 and 11px in. Cancel is outlined in the outline role and takes the emphasis fill under the
+ * pointer; Select wears the fill. */
+[data-qc-theme] .qc-date-footer {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  padding: 16px 20px;
+  border-top: 1px solid var(--qc-overlay-separator);
+}
+
+[data-qc-theme] .qc-date-footer .qc-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 34px;
+  padding: 0 11px;
+  font-size: 16px;
+  line-height: 24px;
+  white-space: nowrap;
+  border-radius: 8px;
+}
+
+[data-qc-theme] .qc-date-footer .qc-button + .qc-button {
+  margin-inline-start: 12px;
+}
+
+[data-qc-theme] .qc-date-cancel {
+  color: var(--qc-control-outline);
+  border-color: var(--qc-control-outline);
+}
+
+[data-qc-theme] .qc-date-cancel:hover:not([disabled]) {
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-on);
+  border-color: var(--qc-control-on);
+}
+
+[data-qc-theme] .qc-date-cancel:active:not([disabled]) {
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-onPressed);
+  border-color: var(--qc-control-onPressed);
+}
+
+/* The time list stands on the dialog's backdrop directly under the time field and as wide as it, at
+ * most 231px tall over a scroll of its own: the day in quarter hours on 32px rows with their words
+ * 12px in. The time the field holds is on the emphasis fill; the row under the pointer, or the one
+ * the keyboard walked to, takes the hover fill and dims its words. */
+[data-qc-theme] .qc-date-times {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  max-height: 231px;
+  overflow: hidden;
+}
+
+[data-qc-theme] .qc-date-times-body {
+  position: relative;
+}
+
+[data-qc-theme] .qc-date-times-rows {
+  padding: 6px 0;
+}
+
+[data-qc-theme] .qc-date-time-option {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding-block: 0;
+  padding-inline: 12px 10px;
+  color: var(--qc-text-primary);
+  font-size: 14px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  user-select: none;
+}
+
+[data-qc-theme] .qc-date-time-option:hover,
+[data-qc-theme] .qc-date-time-option[data-qc-active='true'] {
+  color: var(--qc-state-hoverInk);
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-date-time-option[aria-selected='true'] {
+  color: var(--qc-control-onInk);
+  background: var(--qc-control-on);
+}
+
+/* Forced colors: what is chosen in the calendar and the time list stands in the system highlight. */
+@media (forced-colors: active) {
+  [data-qc-theme] .qc-date-day[aria-selected='true'],
+  [data-qc-theme] .qc-date-cell[aria-selected='true'],
+  [data-qc-theme] .qc-date-time-option[aria-selected='true'] {
+    forced-color-adjust: none;
+    color: HighlightText;
+    background: Highlight;
+  }
 }

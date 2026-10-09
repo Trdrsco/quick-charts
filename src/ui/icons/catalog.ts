@@ -98,6 +98,9 @@ const CONTROL_ICONS = byMeaning({
   selectDate: [ICONS.calendar],
   firstAvailable: [ICONS.firstAvailable],
   randomBar: [ICONS.randomBar],
+  // The replay date picker's fields: the date's mark, and the clock that lists the times.
+  calendar: [ICONS.calendarDays],
+  clock: [ICONS.clock],
   // The drawing toolbar, its menus, the favorites bar and the drawing settings.
   cursorCross: [ICONS.cursorCross],
   cursorDot: [ICONS.cursorDot],

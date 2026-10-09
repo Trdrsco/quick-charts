@@ -323,14 +323,14 @@ describe('every recipe draws from the theme', () => {
 const groundStack = (ground: string): string[] => (ground.startsWith('state.') ? [ground, 'chrome.surface'] : [ground])
 
 /** Every ink the recipes state over a ground is measured at WCAG 2.2 AA in both built-in palettes
- *  and in the representative host palettes, the accent over the selected fill included: a value that
- *  slips under 4.5 to 1 fails here, not in a screen reader. */
+ *  and in the representative host palettes, a chosen day's ink over the emphasis fill included: a
+ *  value that slips under 4.5 to 1 fails here, not in a screen reader. */
 describe('WCAG 2.2 AA contrast, computed from the theme vectors', () => {
   const stated = statedPairs()
 
   it('finds the pairs the recipes state outright', () => {
     expect(stated.length).toBeGreaterThan(5)
-    expect(stated.some((p) => p.ink === 'state.markInk' && p.ground === 'state.accent')).toBe(true)
+    expect(stated.some((p) => p.ink === 'control.onInk' && p.ground === 'control.on')).toBe(true)
   })
 
   const themes: { name: string; theme: SemanticTheme }[] = [
