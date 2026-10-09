@@ -1,0 +1,35 @@
+/*
+ * A host page's own global rules, as an application built on a utility framework writes them beside
+ * its reset: the page fills the window, the body sets a font, a size and a line height of its own,
+ * every element is sized by its border box from an unlayered rule, and no scroll container paints
+ * a bar unless a later layer says it does. The chart's layer and the dialogs and panels standing on
+ * it are children of the body, so the body's values reach them by inheritance, and an unlayered
+ * rule outranks every rule the chart's layered stylesheet states.
+ */
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@layer reset {
+  * {
+    scrollbar-width: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
