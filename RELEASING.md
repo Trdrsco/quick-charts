@@ -16,8 +16,12 @@ Registry publishing access is separate from repository access. Do not grant it t
 
 ## Candidate acceptance
 
-1. Build and run `pnpm gate` from the exact release commit. This includes source and contract tests,
-   clean consumers and browser conformance over the packed artifact.
+1. Run the gate from the exact release commit: CI's run of that commit on `main` runs every step of
+   `pnpm gate`, including source and contract tests, clean consumers and browser conformance over
+   the packed artifact. Its `browser` job keeps the tarball the clean room installed, with its
+   manifest, as the `quickcharts-candidate` artifact (`gh run download <run> -n
+   quickcharts-candidate`). That tarball is the candidate, and its manifest names its SHA-256 and the
+   SHA-256 of its tar stream.
 2. Inspect the export map, declaration files, stylesheet, LICENSE, NOTICE and
    THIRD-PARTY-NOTICES.md. Check the generated dist/feature-manifest.json,
    dist/theme-manifest.json and dist/rest-openapi.json.
