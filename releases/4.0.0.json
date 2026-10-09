@@ -56,6 +56,7 @@
     "provenanceLogIndex": 3165693361,
     "distTagLatest": "4.0.0",
     "provenance": "SLSA v1 provenance names refs/tags/v4.0.0, .github/workflows/release.yml and commit 8f06ad703535fa29e0e9f0dcdbe8283337866e87, with the registry tarball's sha512 as its subject",
-    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation"
+    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": "pass: a fresh project installed 4.0.0 from the registry and passed the browser conformance suite, 42 of 42 checks, in Chromium 149.0.7827.55, Firefox 151.0 and WebKit 26.5"
   }
 }
