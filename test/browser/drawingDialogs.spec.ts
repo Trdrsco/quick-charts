@@ -267,6 +267,12 @@ test.describe('the settings fields', () => {
         const s = getComputedStyle(input)
         const slot = el.querySelector('.qc-drawing-steppers')!.getBoundingClientRect()
         const px = (v: string): number => Number.parseFloat(v) || 0
+        const probe = input.cloneNode() as HTMLInputElement
+        probe.removeAttribute('id')
+        probe.style.setProperty('line-height', '0', 'important')
+        el.append(probe)
+        const floor = px(getComputedStyle(probe).lineHeight)
+        probe.remove()
         return {
           width: box.width,
           height: box.height,
@@ -274,6 +280,7 @@ test.describe('the settings fields', () => {
           slot: slot.width ? [slot.left - box.left, slot.top - box.top, slot.width, slot.height] : null,
           size: s.fontSize,
           line: s.lineHeight,
+          floor,
         }
       })
     const field = await read(entry)
@@ -281,7 +288,8 @@ test.describe('the settings fields', () => {
     expect(field.height).toBe(34)
     expect(field.words).toEqual([8, 71])
     expect(field.slot).toEqual([75, 3, 22, 28])
-    expect([field.size, field.line]).toEqual(['14px', '18px'])
+    // An engine may raise a one-line input's line height to its font's normal line height, which the same field at 0 reads.
+    expect([field.size, field.line]).toEqual(['14px', `${Math.max(18, field.floor)}px`])
     // A level switched off: its field keeps no slot and shows no steppers, its words running on.
     await page.locator('[data-role="drawing-settings"] button[aria-label="Cancel"]').click()
     await openSettings(page, 'fib_retracement', 'Style')
