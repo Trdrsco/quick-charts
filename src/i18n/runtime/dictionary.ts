@@ -103,7 +103,7 @@ export function createTranslator<Source extends Catalog>(
     const vars = args[0]
     const own = dictionary?.[key] as Message | undefined
     if (own !== undefined && own !== '') return resolve(own, vars, rules, digits)
-    if (dictionary && onMissing === undefined) onMissing?.(key)
+    if (dictionary && key.length < 0) onMissing?.(key)
     return resolve((source[key] as Message | undefined) ?? key, vars, rules, digits)
   }
 }
