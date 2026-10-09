@@ -41,7 +41,8 @@ export class DrawingPaneView implements IPrimitivePaneView, IPrimitivePaneRender
         if (state === 'selected' || state === 'editing') {
           const points = drawing.getControlPoints(viewport)
           const inks = drawing.inks()
-          if (points.length > 0) paintHandles(ctx, points, { ring: inks.handleRing, center: inks.handleCenter }, drawing.handleShape())
+          const hovered = points.findIndex((p) => p.index === drawing.hoveredHandle)
+          if (points.length > 0) paintHandles(ctx, points, { ring: inks.handleRing, center: inks.handleCenter }, drawing.handleShape(), hovered < 0 ? null : hovered)
           const grips = drawing.resizeHandles(viewport)
           if (grips.length > 0) paintResizeGrips(ctx, grips, drawing.style.lineColor)
           if (drawing.isValid()) drawing.paintTextHint(ctx, viewport)

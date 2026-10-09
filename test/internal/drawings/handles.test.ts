@@ -1,6 +1,8 @@
 // A selected drawing's handles, held to measured pixels: a round handle is a ring 1.5px wide and
-// 11px across on its point's pixel, filled with the chart's ground; a square one is 13px across,
-// its ring 2px wide and its corners rounded at 4. Both take their inks from the chart's theme.
+// 11px across on its point's pixel, filled with the chart's ground, and the one under the pointer
+// stands in a halo of its ring ink at 20% that reaches 9px from its middle; a square one is 13px
+// across, its ring 2px wide and its corners rounded at 4; a mark's small one is a ring 1px wide of
+// radius 3.5. All take their inks from the chart's theme.
 import { describe, expect, it } from 'vitest'
 import { drawingTools } from '../../../src/drawings/index'
 import { paintHandles } from '../../../src/internal/drawings/render/canvas'
@@ -13,6 +15,7 @@ interface Call {
   fillStyle?: unknown
   strokeStyle?: unknown
   lineWidth?: unknown
+  alpha?: number
 }
 
 function recorder(): { ctx: CanvasRenderingContext2D; calls: Call[] } {
@@ -21,7 +24,7 @@ function recorder(): { ctx: CanvasRenderingContext2D; calls: Call[] } {
   const ctx = new Proxy({} as CanvasRenderingContext2D, {
     get: (_t, p) => {
       if (state.has(p)) return state.get(p)
-      return (...args: unknown[]) => calls.push({ name: String(p), args, fillStyle: state.get('fillStyle'), strokeStyle: state.get('strokeStyle'), lineWidth: state.get('lineWidth') })
+      return (...args: unknown[]) => calls.push({ name: String(p), args, fillStyle: state.get('fillStyle'), strokeStyle: state.get('strokeStyle'), lineWidth: state.get('lineWidth'), alpha: state.has('globalAlpha') ? Number(state.get('globalAlpha')) : 1 })
     },
     set: (_t, p, v) => {
       state.set(p, v)
@@ -54,6 +57,32 @@ describe('selection handles', () => {
     // The ring's two pixels stand at columns 552 and 553, and 563 and 564, as measured.
     expect(calls.filter((c) => c.name === 'roundRect').map((c) => c.args)).toEqual([[553, 695, 11, 11, 3]])
     expect(calls.filter((c) => c.name === 'stroke').map((c) => c.lineWidth)).toEqual([2])
+  })
+
+  it('stands the round handle under the pointer in a halo of its ring ink at 20%, 18px across', () => {
+    const { ctx, calls } = recorder()
+    paintHandles(ctx, [{ x: 118, y: 140 }, { x: 244, y: 80 }], { ring: '#1e53e5', center: '#0f0f0f' }, 'circle', 1)
+    // As measured, the halo reads #121d3a over the ground from 6px to 9px out of the hovered one.
+    expect(calls.filter((c) => c.name === 'arc').map((c) => c.args.slice(0, 3))).toEqual([
+      [118.5, 140.5, 5],
+      [244.5, 80.5, 9],
+      [244.5, 80.5, 5],
+    ])
+    expect(calls.filter((c) => c.name === 'fill').map((c) => [c.fillStyle, c.alpha])).toEqual([
+      ['#0f0f0f', 1],
+      ['#1e53e5', 0.2],
+      ['#0f0f0f', 1],
+    ])
+    expect([0x0f, 0x0f, 0x0f].map((g, i) => Math.round(g * 0.8 + [0x1e, 0x53, 0xe5][i]! * 0.2).toString(16))).toEqual(['12', '1d', '3a'])
+  })
+
+  it('rings a mark’s point with a small ring 1px wide, of radius 3.5', () => {
+    const { ctx, calls } = recorder()
+    paintHandles(ctx, [{ x: 558, y: 700 }], { ring: '#1e53e5', center: '#0f0f0f' }, 'small', 0)
+    // As measured, the ring reads half strength on columns 554, 555, 561 and 562 of row 700; a small
+    // ring under the pointer stands in no halo.
+    expect(calls.filter((c) => c.name === 'arc').map((c) => c.args.slice(0, 3))).toEqual([[558.5, 700.5, 3.5]])
+    expect(calls.filter((c) => c.name === 'stroke').map((c) => [c.strokeStyle, c.lineWidth])).toEqual([['#1e53e5', 1]])
   })
 
   it('takes its inks from the chart’s theme: the dark ring is #1e53e5 around the dark ground', () => {

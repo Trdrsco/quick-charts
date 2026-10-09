@@ -172,7 +172,7 @@ describe('what a new drawing of each tool starts with', () => {
     const pin = look('pin')
     expect([pin.line, pin.text, pin.size, pin.fill]).toEqual(['#2962ff', '#dbdbdb', 14, '#2e2e2e 1'])
     expect(note.props).toEqual({ text: '', fillBackground: true, drawBorder: false, borderColor: '#4a4a4a', savedLook: null })
-    expect(pin.props).toEqual({ text: '', fillBackground: true, drawBorder: false, borderColor: '#4a4a4a' })
+    expect(pin.props).toEqual({ text: '', fillBackground: true, drawBorder: false, borderColor: '#4a4a4a', savedLook: null })
   })
 
   it('opens a price note blue with a white tag above its line', () => {

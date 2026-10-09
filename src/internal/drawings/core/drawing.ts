@@ -31,6 +31,7 @@ import type { BarSource, SourceBar } from './bars'
 import { layoutTextBlock, type TextBlock, type TextDraft, type TextEditFrame } from './textEntry'
 import { DEFAULT_INKS, type DrawingInks } from './inks'
 import { DrawingPaneView } from '../render/pane-view'
+import type { HandleShape } from '../render/canvas'
 import { drawing as englishWords } from '../../../i18n/en/drawing'
 
 function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
@@ -694,8 +695,34 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   }
 
   /** The shape of this drawing's selection handles. */
-  handleShape(): 'circle' | 'square' {
+  handleShape(): HandleShape {
     return 'circle'
+  }
+
+  private _hovered = false
+  private _hoveredHandle: number | null = null
+
+  /** Whether the pointer rests on this drawing (transient view state, never serialized). */
+  get hovered(): boolean {
+    return this._hovered
+  }
+
+  setHovered(on: boolean): void {
+    if (this._hovered === on) return
+    this._hovered = on
+    this.requestUpdate()
+  }
+
+  /** The handle the pointer rests on, by its point's index, or null (transient view state, never
+   *  serialized). */
+  get hoveredHandle(): number | null {
+    return this._hoveredHandle
+  }
+
+  setHoveredHandle(index: number | null): void {
+    if (this._hoveredHandle === index) return
+    this._hoveredHandle = index
+    this.requestUpdate()
   }
 
   /** The anchors a drag that grabs this drawing at a point moves: null for all of them, as a drag

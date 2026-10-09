@@ -577,6 +577,92 @@ describe('a text typed on the chart', () => {
     expect(drawing.props.text).toBe('Hi')
   })
 
+  it('a pin places on one click and opens its words; one left without words stays, a pin with optional words', async () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('pin')
+    click(r.container, 200, 200)
+    const drawing = r.handle.selectedDrawing()!
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.inline).toBeDefined()
+    expect(r.handle.counts().total).toBe(1)
+    r.handle.cancelText()
+    r.handle.deselect()
+    expect(await gone(r, drawing.id)).toBe(false)
+    expect(r.handle.export().map((d) => [d.type, d.props?.text])).toEqual([['pin', '']])
+  })
+
+  it('a click on the box of a selected pin types, a click on its marker only selects it, and the pointer over it stands its box', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('pin')
+    click(r.container, 200, 200)
+    const drawing = r.handle.selectedDrawing()!
+    vi.runOnlyPendingTimers()
+    r.handle.commitText('Hi')
+    // The marker's head stands round (200.5, 182.5); the box over it ends 43.5px above its tip.
+    click(r.container, 200, 185)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()).toBeNull()
+    click(r.container, 150, 140)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.textEdit()?.id).toBe(drawing.id)
+    r.handle.commitText('Hi')
+    r.handle.deselect()
+    expect(drawing.hovered).toBe(false)
+    r.container.dispatchEvent(pointer('pointermove', 200, 185))
+    expect(drawing.hovered).toBe(true)
+    r.container.dispatchEvent(new PointerEvent('pointerleave'))
+    expect(drawing.hovered).toBe(false)
+  })
+
+  it.each([
+    ['price_label', [[200, 200]]],
+    ['price_note', [[100, 300], [200, 250]]],
+    ['flag', [[200, 200]]],
+    ['arrow_up', [[200, 200]]],
+    ['arrow_marker', [[100, 300], [200, 250]]],
+  ] as const)('a %s opens no editor as it lands, and a double-click opens its settings', (tool, points) => {
+    vi.useFakeTimers()
+    const commands: string[] = []
+    const r = make({ execute: (command) => (commands.push(command), true) })
+    r.handle.armTool(tool)
+    for (const [x, y] of points) click(r.container, x, y)
+    vi.runOnlyPendingTimers()
+    expect(r.handle.counts().total).toBe(1)
+    expect(r.handle.textEdit()).toBeNull()
+    const [x, y] = points[0]!
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: x + 1, clientY: y - 1, bubbles: true }))
+    vi.runOnlyPendingTimers()
+    expect(commands).toEqual(['chart.drawings.settings'])
+    expect(r.handle.textEdit()).toBeNull()
+  })
+
+  it('an arrow marker places its tail on the first click and its tip on the second', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('arrow_marker')
+    click(r.container, 100, 300)
+    click(r.container, 200, 250)
+    expect(r.handle.selectedDrawing()!.anchors.map((a) => r.fake.xOf(Number(a.time)))).toEqual([100, 200])
+  })
+
+  it('stands the halo on the handle of the selected drawing under the pointer', () => {
+    vi.useFakeTimers()
+    const r = make()
+    r.handle.armTool('trend_line')
+    drag(r.container, [100, 100], [300, 200])
+    const drawing = r.handle.selectedDrawing()!
+    r.container.dispatchEvent(pointer('pointermove', 301, 199))
+    expect(drawing.hoveredHandle).toBe(1)
+    r.container.dispatchEvent(pointer('pointermove', 200, 150))
+    expect(drawing.hoveredHandle).toBeNull()
+    r.container.dispatchEvent(pointer('pointermove', 99, 101))
+    expect(drawing.hoveredHandle).toBe(0)
+    r.handle.deselect()
+    expect(drawing.hoveredHandle).toBeNull()
+  })
+
   /** What the layer attaches to the series and takes off it, by drawing id. */
   const watchSeries = (r: Rig) => {
     const attached: string[] = []

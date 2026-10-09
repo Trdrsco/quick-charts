@@ -4,7 +4,7 @@ import type { Anchor, ControlPoint, DrawingStyle, Point, Viewport } from '../cor
 import { Drawing } from '../core/drawing'
 import { barAt } from '../core/bars'
 import { distanceToSegment, midpoint, segmentTextAngle } from '../core/geometry'
-import { applyStroke, fillPaint, fontOf, inkOn, lineMeasure, measureTextBlock, paintLabel, paintTextBlock, strokeSegment, withAlpha, wrapText } from '../render/canvas'
+import { applyStroke, fillPaint, fontOf, inkOn, lineMeasure, measureTextBlock, paintLabel, paintTextBlock, strokeSegment, withAlpha, wrapText, type HandleShape } from '../render/canvas'
 import { endSavedLook, type SavedLook } from '../core/savedLook'
 import type { TextBlock, TextEditFrame } from '../core/textEntry'
 import { paintTextEntry, paintWordsFrame } from '../render/textEntry'
@@ -830,79 +830,202 @@ export class Callout extends Drawing<CalloutProps> {
   }
 }
 
-/** Price label: its point's price in a pill whose tail points at it, the pill in the drawing's fill
- *  and bordered in its stroke color, the price in its text style. */
-export class PriceLabel extends Drawing {
+/** A mark whose present look differs from the one format 2 painted holds a format-2 save's look. */
+export type SavedLookProps = {
+  /** A format-2 save's look, painted as format 2 did until the drawing's settings change. */
+  savedLook: SavedLook
+}
+
+/** How a price label stands off its point: its body's outline from 9px right of it, its bottom 15px
+ *  above it, its corners rounded at 2.5, its price 10px in from each side; its tail's root on the
+ *  body's bottom from 14px to 21px right of the point; and the dot on the point. */
+const PRICE_LABEL = { right: 9, up: 15, radius: 2.5, pad: 10, tail: [14, 21], dot: 2 } as const
+
+/** A price tag's height for its type: 24px, or the type and 10px where that is taller, and how far
+ *  its words' baseline stands under its top. */
+const tagHeight = (fontSize: number): number => Math.max(24, fontSize + 10)
+const tagBaseline = (fontSize: number): number => Math.round(tagHeight(fontSize) / 2 + fontSize * 0.3)
+
+/** Price label: its point's price on a body up and to the right of the point, a tail from the
+ *  body's bottom to the point and a dot on it. Body and tail are the drawing's fill, stroked 2px in
+ *  its stroke color so each stands a pixel past its outline; the price is in the drawing's text
+ *  style. Selected, it shows a small ring on its point. */
+export class PriceLabel extends Drawing<SavedLookProps> {
   readonly type = 'price_label'
+
+  protected override defaultProps(): SavedLookProps {
+    return { savedLook: null }
+  }
 
   requiredAnchors(): number {
     return 1
   }
 
-  /** A format-2 price label filled its pill in its stroke color at 18%. */
+  /** A format-2 price label filled a pill centred on its point's right in its stroke color at 18%;
+   *  it paints so until its settings change. */
   protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
     this._style = { ...this._style, fillColor: this._style.lineColor, fillOpacity: 0.18 }
+    this._props = { ...this._props, savedLook: {} }
   }
 
-  protected box(viewport: Viewport): Box | null {
+  override applyProps(patch: Partial<SavedLookProps>): void {
+    super.applyProps(endSavedLook(patch))
+  }
+
+  /** The body's outline and the price, and the point. */
+  protected body(viewport: Viewport): { box: Box; text: string; point: Point } | null {
     const anchor = this.anchors[0]
     if (!anchor) return null
     const p = this.anchorToPixel(anchor, viewport)
     if (!p) return null
-    const { width, height } = measureTextBlock(this.formatPrice(anchor.price), this.style)
-    return { x: p.x + 12, y: p.y - (height + 12) / 2, width: width + 12, height: height + 12 }
+    const text = this.formatPrice(anchor.price)
+    if (this.props.savedLook) {
+      const { width, height } = measureTextBlock(text, this.style)
+      return { box: { x: p.x + 12, y: p.y - (height + 12) / 2, width: width + 12, height: height + 12 }, text, point: p }
+    }
+    const height = tagHeight(this.style.fontSize)
+    const width = lineMeasure(this.style)(text) + PRICE_LABEL.pad * 2
+    return { box: { x: p.x + PRICE_LABEL.right, y: p.y - PRICE_LABEL.up - height, width, height }, text, point: p }
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
-    const anchor = this.anchors[0]
-    if (!anchor) return
-    const p = this.anchorToPixel(anchor, viewport)
-    const box = this.box(viewport)
-    if (!p || !box) return
+    const at = this.body(viewport)
+    if (!at) return
+    const { box, point: p } = at
+    const fill = fillPaint(this.style) ?? 'transparent'
     ctx.save()
-    ctx.fillStyle = fillPaint(this.style) ?? 'transparent'
-    ctx.strokeStyle = this.style.lineColor
-    ctx.lineWidth = 1
     ctx.setLineDash([])
+    ctx.fillStyle = fill
+    ctx.strokeStyle = this.style.lineColor
+    if (this.props.savedLook) {
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(p.x, p.y)
+      ctx.lineTo(box.x, box.y + box.height / 2 - 5)
+      ctx.lineTo(box.x, box.y + box.height / 2 + 5)
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.roundRect(box.x, box.y, box.width, box.height, 4)
+      ctx.fill()
+      ctx.stroke()
+      ctx.restore()
+      paintTextBlock(ctx, at.text, { x: box.x, y: box.y }, this.style)
+      return
+    }
+    ctx.lineWidth = 2
+    const [from, to] = PRICE_LABEL.tail
     ctx.beginPath()
-    // The tail to the exact price, then the pill.
     ctx.moveTo(p.x, p.y)
-    ctx.lineTo(box.x, box.y + box.height / 2 - 5)
-    ctx.lineTo(box.x, box.y + box.height / 2 + 5)
+    ctx.lineTo(p.x + from, p.y - PRICE_LABEL.up)
+    ctx.lineTo(p.x + to, p.y - PRICE_LABEL.up)
     ctx.closePath()
     ctx.fill()
     ctx.stroke()
     ctx.beginPath()
-    ctx.roundRect(box.x, box.y, box.width, box.height, 4)
+    ctx.roundRect(box.x, box.y, box.width, box.height, PRICE_LABEL.radius)
     ctx.fill()
     ctx.stroke()
+    ctx.fillStyle = this.style.lineColor
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, PRICE_LABEL.dot, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.font = fontOf(this.style)
+    ctx.fillStyle = this.style.textColor
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(at.text, box.x + PRICE_LABEL.pad, box.y + tagBaseline(this.style.fontSize))
     ctx.restore()
-    paintTextBlock(ctx, this.formatPrice(anchor.price), { x: box.x, y: box.y }, this.style)
+  }
+
+  override handleShape(): HandleShape {
+    return this.props.savedLook ? 'circle' : 'small'
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
-    const box = this.box(viewport)
-    return !!box && inBox(point, box)
+    const at = this.body(viewport)
+    if (!at) return false
+    if (inBox(point, at.box, 2)) return true
+    // The tail, from the point up to the body.
+    const [from, to] = PRICE_LABEL.tail
+    const root = { x: at.point.x + (from + to) / 2, y: at.point.y - PRICE_LABEL.up }
+    return distanceToSegment(point, at.point, root) <= 5
   }
 }
 
 type MarkDirection = 'up' | 'down'
 
-abstract class ArrowMark extends Drawing<TextProps> {
+/** How an arrow mark stands on its point: its head half 10.5px across and 12px long from the tip,
+ *  its shaft half 5.5px across, running on to 22px from the tip. */
+const ARROW_MARK = { head: 10.5, headLength: 12, shaft: 5.5, length: 22 } as const
+
+/** An arrow mark: an arrow whose tip is on its point, in the drawing's stroke color, its words past
+ *  its tail. An up arrow hangs below its point, a down arrow stands above it. Selected, it shows a
+ *  small ring on its point. */
+abstract class ArrowMark extends Drawing<TextProps & SavedLookProps> {
   protected abstract direction(): MarkDirection
 
-  protected override defaultProps(): TextProps {
-    return { text: '' }
+  protected override defaultProps(): TextProps & SavedLookProps {
+    return { text: '', savedLook: null }
   }
 
   requiredAnchors(): number {
     return 1
   }
 
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+  /** A format-2 arrow mark was a chevron sized by its stroke width; it paints so until its settings
+   *  change. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, savedLook: {} }
+  }
+
+  override applyProps(patch: Partial<TextProps & SavedLookProps>): void {
+    super.applyProps(endSavedLook(patch))
+  }
+
+  /** The tip, and which way the arrow runs from it: 1 down the pane for an up arrow. */
+  private tip(viewport: Viewport): { x: number; y: number; sign: 1 | -1 } | null {
     const anchor = this.anchors[0]
-    if (!anchor) return
+    if (!anchor) return null
     const p = this.anchorToPixel(anchor, viewport)
+    if (!p) return null
+    return { x: Math.round(p.x) + 0.5, y: Math.round(p.y), sign: this.direction() === 'up' ? 1 : -1 }
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.props.savedLook) {
+      this.paintSaved(ctx, viewport)
+      return
+    }
+    const t = this.tip(viewport)
+    if (!t) return
+    const { head, headLength, shaft, length } = ARROW_MARK
+    const s = t.sign
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.fillStyle = this.style.lineColor
+    ctx.beginPath()
+    ctx.moveTo(t.x, t.y)
+    ctx.lineTo(t.x + head, t.y + s * headLength)
+    ctx.lineTo(t.x + shaft, t.y + s * headLength)
+    ctx.lineTo(t.x + shaft, t.y + s * length)
+    ctx.lineTo(t.x - shaft, t.y + s * length)
+    ctx.lineTo(t.x - shaft, t.y + s * headLength)
+    ctx.lineTo(t.x - head, t.y + s * headLength)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+    if (this.props.text) {
+      const { width, height } = measureTextBlock(this.props.text, this.style)
+      paintTextBlock(ctx, this.props.text, { x: t.x - (width + 12) / 2, y: s > 0 ? t.y + length + 4 : t.y - length - 4 - height - 12 }, this.style)
+    }
+  }
+
+  /** A format-2 arrow mark: a chevron its stroke width sized, its body running away from its tip. */
+  private paintSaved(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const anchor = this.anchors[0]
+    const p = anchor && this.anchorToPixel(anchor, viewport)
     if (!p) return
     const size = 7 + this.style.lineWidth * 2
     const up = this.direction() === 'up'
@@ -911,7 +1034,6 @@ abstract class ArrowMark extends Drawing<TextProps> {
     ctx.fillStyle = this.style.lineColor
     ctx.setLineDash([])
     ctx.beginPath()
-    // A chevron arrow: its tip at the anchor, its body running away from the price it marks.
     ctx.moveTo(p.x, p.y)
     ctx.lineTo(p.x - size, p.y + sign * size)
     ctx.lineTo(p.x - size / 2, p.y + sign * size)
@@ -928,15 +1050,26 @@ abstract class ArrowMark extends Drawing<TextProps> {
     }
   }
 
+  override handleShape(): HandleShape {
+    return this.props.savedLook ? 'circle' : 'small'
+  }
+
+  /** Its words are typed in its settings, so it shows no invitation to type on the chart. */
+  override paintTextHint(): void {}
+
   testHit(point: Point, viewport: Viewport): boolean {
-    const anchor = this.anchors[0]
-    if (!anchor) return false
-    const p = this.anchorToPixel(anchor, viewport)
-    if (!p) return false
-    const size = 7 + this.style.lineWidth * 2
-    const up = this.direction() === 'up'
-    const box = up ? { x: p.x - size, y: p.y, width: size * 2, height: size * 2 } : { x: p.x - size, y: p.y - size * 2, width: size * 2, height: size * 2 }
-    return inBox(point, box, 4)
+    if (this.props.savedLook) {
+      const anchor = this.anchors[0]
+      const p = anchor && this.anchorToPixel(anchor, viewport)
+      if (!p) return false
+      const size = 7 + this.style.lineWidth * 2
+      const up = this.direction() === 'up'
+      return inBox(point, up ? { x: p.x - size, y: p.y, width: size * 2, height: size * 2 } : { x: p.x - size, y: p.y - size * 2, width: size * 2, height: size * 2 }, 4)
+    }
+    const t = this.tip(viewport)
+    if (!t) return false
+    const { head, length } = ARROW_MARK
+    return inBox(point, { x: t.x - head, y: t.sign > 0 ? t.y : t.y - length, width: head * 2, height: length }, 3)
   }
 }
 
@@ -983,9 +1116,17 @@ export type PriceNoteProps = TextProps & {
   savedLook: SavedLook
 }
 
+/** How a price note's tag stands on its second point: its outline's near edge on the point, centred
+ *  on it, its corners rounded at 5, its price 8px in, and the outline 17px wider than its price,
+ *  rounded to a whole pixel; and the dot on its first point. */
+const PRICE_TAG = { radius: 5, pad: 8, room: 17, dot: 2.5 } as const
+
 /**
- * Price note: a line from a price to its tag. The first point is the price and the second the
- * line's other end, where the tag reading the first point's price stands; the words ride the line.
+ * Price note: a one pixel line from a price to its tag, in the drawing's stroke color. The first
+ * point is the price, marked by a dot; the second is the line's other end, where the tag reading
+ * the first point's price stands on the side away from the first, its outline stroked 2px in its
+ * border color so it stands a pixel past it. The note's own words ride the line, and are typed in
+ * its settings.
  */
 export class PriceNote extends Drawing<PriceNoteProps> {
   readonly type = 'price_note'
@@ -1049,16 +1190,16 @@ export class PriceNote extends Drawing<PriceNoteProps> {
     return { ...this.style, textColor: p.labelTextColor, fontSize: p.labelFontSize, bold: p.labelBold, italic: p.labelItalic }
   }
 
-  /** The tag at the line's second end, on the side away from the first. */
+  /** The tag's outline at the line's second end, on the side away from the first, and its price. */
   protected tag(viewport: Viewport): { box: Box; text: string } | null {
     const [pa, pb] = this.anchorPixels(viewport)
     const price = this.anchors[0]
     if (!pa || !pb || !price) return null
     const text = this.formatPrice(price.price)
-    const { width, height } = measureTextBlock(text, this.tagStyle())
-    const w = width + 12
-    const h = height + 8
-    return { box: { x: pb.x >= pa.x ? pb.x : pb.x - w, y: pb.y - h / 2, width: w, height: h }, text }
+    const style = this.tagStyle()
+    const width = Math.round(lineMeasure(style)(text) + PRICE_TAG.room)
+    const height = tagHeight(style.fontSize)
+    return { box: { x: pb.x >= pa.x ? pb.x : pb.x - width, y: pb.y - height / 2, width, height }, text }
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -1075,20 +1216,29 @@ export class PriceNote extends Drawing<PriceNoteProps> {
     ctx.save()
     applyStroke(ctx, { ...this.style, lineWidth: 1, lineStyle: 'solid' })
     strokeSegment(ctx, pa, pb)
+    ctx.fillStyle = this.style.lineColor
+    ctx.beginPath()
+    ctx.arc(pa.x, pa.y, PRICE_TAG.dot, 0, Math.PI * 2)
+    ctx.fill()
     ctx.restore()
     const tag = this.tag(viewport)
     if (tag) {
+      const style = this.tagStyle()
       ctx.save()
       ctx.setLineDash([])
       ctx.beginPath()
-      ctx.roundRect(tag.box.x, tag.box.y, tag.box.width, tag.box.height, 4)
+      ctx.roundRect(tag.box.x, tag.box.y, tag.box.width, tag.box.height, PRICE_TAG.radius)
       ctx.fillStyle = this.props.labelBackgroundColor
       ctx.fill()
       ctx.strokeStyle = this.props.labelBorderColor
-      ctx.lineWidth = 1
+      ctx.lineWidth = 2
       ctx.stroke()
+      ctx.font = fontOf(style)
+      ctx.fillStyle = style.textColor
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'alphabetic'
+      ctx.fillText(tag.text, tag.box.x + PRICE_TAG.pad, tag.box.y + tagBaseline(style.fontSize))
       ctx.restore()
-      paintLabel(ctx, tag.text, { x: tag.box.x + tag.box.width / 2, y: tag.box.y + tag.box.height / 2 }, this.tagStyle(), { align: 'center', baseline: 'middle' })
     }
     if (this.props.text) {
       // The words ride the line's slope; left and right are the screen's.
@@ -1104,6 +1254,9 @@ export class PriceNote extends Drawing<PriceNoteProps> {
     }
   }
 
+  /** Its words are typed in its settings, so it shows no invitation to type on the chart. */
+  override paintTextHint(): void {}
+
   testHit(point: Point, viewport: Viewport): boolean {
     if (this.props.savedLook) {
       const saved = this.savedBox(viewport)
@@ -1117,34 +1270,157 @@ export class PriceNote extends Drawing<PriceNoteProps> {
   }
 }
 
-/** Pin: a marker at a chart point in the drawing's stroke color, its words in a box under it. */
-export class Pin extends Drawing<LabelBoxProps> {
+/** A pin's box, and a format-2 save's look. */
+export type PinProps = LabelBoxProps & {
+  /** A format-2 pin's look, its words in a box under its marker shown at all times, painted as
+   *  format 2 did until the pin's settings change. */
+  savedLook: SavedLook
+}
+
+/** A pin's marker: the radius of its head, of the hole through the head, how far the head's middle
+ *  stands above the tip, and how far below the head's widest the curves of its sides bend from. */
+const PIN_MARKER = { head: 11.75, hole: 5, rise: 18, bend: 8 } as const
+/** A pin's box: its width, the width its words wrap at, how far they stand in from its left, how
+ *  far its first line's box stands under its top, the room it keeps past its lines down, the
+ *  radius of its corners, how far its bottom stands above the tip, and the pointer under it toward
+ *  the marker. */
+const PIN_BOX = { width: 236, wrap: 212, padLeft: 12, lineTop: 9, roomDown: 19, radius: 4, lift: 43.5, pointer: { half: 6.5, depth: 8 } } as const
+
+/**
+ * Pin: a map pin marker on a chart point in the drawing's stroke color, its words in a box above it.
+ * The marker is a round head with a hole through it and sides that curve in to a tip on the point.
+ * The box, the drawing's fill with corners rounded at 4 and a soft shadow, is 236px wide and
+ * centred over the marker, with a pointer under it toward the marker; it stands while the pin is
+ * hovered, selected or typed into, and grows up a line at a time. Its words stand 12px in, wrap at
+ * 212px and run on lines 1.35 times their size, and an empty pin shows its placeholder at half
+ * strength there. Selected, it shows a small ring on its point; a click on the box of the selected
+ * pin types, a click on its marker only selects it, and a pin left without words stays.
+ */
+export class Pin extends Drawing<PinProps> {
   readonly type = 'pin'
 
-  protected override defaultProps(): LabelBoxProps {
-    return { ...LABEL_BOX }
+  protected override defaultProps(): PinProps {
+    return { ...LABEL_BOX, savedLook: null }
   }
 
-  /** A format-2 pin set its words on a dark plate at 95% with no border. */
+  /** A format-2 pin set its words on a dark plate at 95% with no border, under its marker and shown
+   *  at all times; it paints so until its settings change. */
   protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
     this._style = { ...this._style, fillColor: '#1b1f27', fillOpacity: 0.95 }
-    this._props = { ...this._props, fillBackground: true, drawBorder: false }
+    this._props = { ...this._props, fillBackground: true, drawBorder: false, savedLook: {} }
+  }
+
+  override applyProps(patch: Partial<PinProps>): void {
+    super.applyProps(endSavedLook(patch))
   }
 
   requiredAnchors(): number {
     return 1
   }
 
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+  /** The marker's middle, tip and head on the point's pixel, and the pixel edge left of it, which
+   *  the box centres on. */
+  private marker(viewport: Viewport): { x: number; edge: number; tip: number; head: number } | null {
     const anchor = this.anchors[0]
-    if (!anchor) return
-    const p = this.anchorToPixel(anchor, viewport)
+    const p = anchor && this.anchorToPixel(anchor, viewport)
+    if (!p) return null
+    const edge = Math.round(p.x)
+    const tip = Math.round(p.y) + 0.5
+    return { x: edge + 0.5, edge, tip, head: tip - PIN_MARKER.rise }
+  }
+
+  /** Whether the box stands: while the pin is hovered, selected or typed into. */
+  private boxShown(): boolean {
+    return this.hovered || this.state === 'selected' || this.state === 'editing' || !!this.textDraft
+  }
+
+  /** The box and its words over the marker. */
+  protected place(viewport: Viewport): (WordsPlace & { tip: number; x0: number }) | null {
+    const m = this.marker(viewport)
+    if (!m) return null
+    const lineHeight = Math.round(this.style.fontSize * 1.35)
+    const { block, placeholder } = this.shownWords(lineMeasure(this.style), PIN_BOX.wrap)
+    const shown = placeholder ?? block
+    const height = shown.lines.length * lineHeight + PIN_BOX.roomDown
+    const bottom = m.tip - PIN_BOX.lift
+    const box = { x: m.edge - PIN_BOX.width / 2, y: bottom - height, width: PIN_BOX.width, height }
+    return { box, x: box.x + PIN_BOX.padLeft, y: box.y + PIN_BOX.lineTop, lineHeight, block, placeholder, tip: m.tip, x0: m.x }
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.props.savedLook) {
+      this.paintSaved(ctx, viewport)
+      return
+    }
+    const m = this.marker(viewport)
+    if (!m) return
+    const { head, hole, bend } = PIN_MARKER
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.fillStyle = this.style.lineColor
+    ctx.beginPath()
+    ctx.moveTo(m.x, m.tip)
+    ctx.quadraticCurveTo(m.x - head, m.head + bend, m.x - head, m.head)
+    ctx.arc(m.x, m.head, head, Math.PI, 0)
+    ctx.quadraticCurveTo(m.x + head, m.head + bend, m.x, m.tip)
+    ctx.closePath()
+    ctx.moveTo(m.x + hole, m.head)
+    ctx.arc(m.x, m.head, hole, 0, Math.PI * 2)
+    ctx.fill('evenodd')
+    ctx.restore()
+    if (!this.boxShown()) return
+    const at = this.place(viewport)
+    if (!at) return
+    const { box } = at
+    const { half, depth } = PIN_BOX.pointer
+    const bottom = box.y + box.height
+    const background = this.props.fillBackground ? fillPaint(this.style) : null
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.beginPath()
+    ctx.roundRect(box.x, box.y, box.width, box.height, PIN_BOX.radius)
+    ctx.moveTo(at.x0 - half, bottom)
+    ctx.lineTo(at.x0, bottom + depth)
+    ctx.lineTo(at.x0 + half, bottom)
+    ctx.closePath()
+    if (background) {
+      ctx.shadowColor = NOTE_SHADOW.color
+      ctx.shadowBlur = NOTE_SHADOW.blur
+      ctx.shadowOffsetY = NOTE_SHADOW.offsetY
+      ctx.fillStyle = background
+      ctx.fill()
+      ctx.shadowColor = 'transparent'
+    }
+    if (this.props.drawBorder) {
+      ctx.strokeStyle = this.props.borderColor
+      ctx.lineWidth = 1
+      ctx.stroke()
+    }
+    ctx.restore()
+    paintTextEntry(ctx, {
+      x: at.x,
+      y: at.y,
+      width: PIN_BOX.wrap,
+      lineHeight: at.lineHeight,
+      font: fontOf(this.style),
+      color: this.style.textColor,
+      align: 'left',
+      block: at.block,
+      placeholder: at.placeholder ? { block: at.placeholder, alpha: PLACEHOLDER_ALPHA } : null,
+      draft: this.textDraft,
+      measure: lineMeasure(this.style),
+    })
+  }
+
+  /** A format-2 pin: a smaller teardrop in its stroke color, its words in a box under it. */
+  private paintSaved(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const anchor = this.anchors[0]
+    const p = anchor && this.anchorToPixel(anchor, viewport)
     if (!p) return
     const r = 7
     ctx.save()
     ctx.setLineDash([])
     ctx.fillStyle = this.style.lineColor
-    // A teardrop: a round head and a tapered stem down to the point.
     ctx.beginPath()
     ctx.arc(p.x, p.y - r * 2, r, Math.PI * 0.85, Math.PI * 0.15)
     ctx.lineTo(p.x, p.y)
@@ -1164,12 +1440,45 @@ export class Pin extends Drawing<LabelBoxProps> {
     }
   }
 
+  override textFrame(viewport: Viewport): TextEditFrame | null {
+    const at = this.place(viewport)
+    return at ? { ...wordsFrame(at, fontOf(this.style), 'left', PIN_BOX.wrap), wrapWidth: PIN_BOX.wrap } : null
+  }
+
+  /** The words are the box's, while it stands. */
+  override wordsAt(point: Point, viewport: Viewport): boolean {
+    if (this.props.savedLook || !this.boxShown()) return false
+    const at = this.place(viewport)
+    return !!at && inBox(point, at.box, 0)
+  }
+
+  /** Over the box of a selected pin the pointer reads as typing, which a press there does. */
+  protected override cursorAt(point: Point, viewport: Viewport): string | null {
+    return this.state === 'selected' && this.wordsAt(point, viewport) ? 'text' : null
+  }
+
+  override handleShape(): HandleShape {
+    return this.props.savedLook ? 'circle' : 'small'
+  }
+
+  /** An empty pin shows its placeholder in its own box, so it needs no hint above it. */
+  override paintTextHint(): void {}
+
   testHit(point: Point, viewport: Viewport): boolean {
-    const anchor = this.anchors[0]
-    if (!anchor) return false
-    const p = this.anchorToPixel(anchor, viewport)
-    if (!p) return false
-    return inBox(point, { x: p.x - 9, y: p.y - 24, width: 18, height: 26 }, 3)
+    if (this.props.savedLook) {
+      const anchor = this.anchors[0]
+      const p = anchor && this.anchorToPixel(anchor, viewport)
+      return !!p && inBox(point, { x: p.x - 9, y: p.y - 24, width: 18, height: 26 }, 3)
+    }
+    const m = this.marker(viewport)
+    if (!m) return false
+    if (Math.hypot(point.x - m.x, point.y - m.head) <= PIN_MARKER.head + 2) return true
+    // The sides, narrowing from the head's widest to the tip.
+    const below = point.y - m.head
+    if (below >= 0 && point.y <= m.tip + 2 && Math.abs(point.x - m.x) <= PIN_MARKER.head * (1 - below / PIN_MARKER.rise) + 2) return true
+    if (!this.boxShown()) return false
+    const at = this.place(viewport)
+    return !!at && inBox(point, { ...at.box, height: at.box.height + PIN_BOX.pointer.depth }, 2)
   }
 }
 
@@ -1424,7 +1733,7 @@ export class Signpost extends Drawing<SignpostProps> {
   }
 
   /** The signpost's handle is square. */
-  override handleShape(): 'circle' | 'square' {
+  override handleShape(): HandleShape {
     return 'square'
   }
 
@@ -1461,93 +1770,215 @@ export class Signpost extends Drawing<SignpostProps> {
   }
 }
 
+/** An arrow marker's proportions to its length: where its head's back stands from its tail, half
+ *  its shaft's width at the head, half the head's width across its barbs, and half the width it
+ *  starts at, at its tail. */
+const ARROW_MARKER = { back: 0.755, shaft: 0.084, barbs: 0.157, tail: 1 } as const
+
 /**
- * Fat arrow between two anchors: the tip sits at the first, the tail sizes and aims it. Dragging the
- * tail grows the arrow or turns it to point another way. The words sit at the butt end, clear of the
- * arrow's body.
+ * Arrow marker: a filled arrow from its first point, its tail, to its second, its tip, in the
+ * drawing's stroke color. Its shaft widens from its tail to a broad head whose tip is the second
+ * point, every part in proportion to its length. The words sit at the tail, clear of the arrow,
+ * and are typed in its settings.
  */
-export class ArrowMarker extends Drawing<TextProps> {
+export class ArrowMarker extends Drawing<TextProps & SavedLookProps> {
   readonly type = 'arrow_marker'
 
-  protected override defaultProps(): TextProps {
-    return { text: '' }
+  protected override defaultProps(): TextProps & SavedLookProps {
+    return { text: '', savedLook: null }
+  }
+
+  /** A format-2 arrow marker's first point was its tip and its second its tail, a fat arrow with a
+   *  head as wide as a third of its length; its points turn to the present order and it paints so
+   *  until its settings change. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    const [tip, tail] = this._anchors
+    if (tip && tail) this._anchors = [tail, tip]
+    this._props = { ...this._props, savedLook: {} }
+  }
+
+  override applyProps(patch: Partial<TextProps & SavedLookProps>): void {
+    super.applyProps(endSavedLook(patch))
   }
 
   requiredAnchors(): number {
     return 2
   }
 
-  private geometry(viewport: Viewport): { tip: Point; tail: Point; len: number; w: number; angle: number } | null {
-    const [tip, tail] = this.anchorPixels(viewport)
-    if (!tip || !tail) return null
-    const len = Math.max(18, Math.hypot(tail.x - tip.x, tail.y - tip.y))
-    const w = Math.max(8, Math.min(46, len * 0.34))
-    return { tip, tail, len, w, angle: Math.atan2(tail.y - tip.y, tail.x - tip.x) }
+  /** The tail, the tip, the length between them and the direction from the tail to the tip. */
+  private geometry(viewport: Viewport): { tail: Point; tip: Point; length: number; angle: number } | null {
+    const [tail, tip] = this.anchorPixels(viewport)
+    if (!tail || !tip) return null
+    return { tail, tip, length: Math.hypot(tip.x - tail.x, tip.y - tail.y), angle: Math.atan2(tip.y - tail.y, tip.x - tail.x) }
+  }
+
+  /** The arrow's outline from its tail at the origin to its tip along +x. */
+  private outline(length: number): [number, number][] {
+    const back = length * ARROW_MARKER.back
+    const shaft = length * ARROW_MARKER.shaft
+    const barbs = length * ARROW_MARKER.barbs
+    const tail = Math.min(ARROW_MARKER.tail, shaft)
+    return [
+      [0, -tail],
+      [back, -shaft],
+      [back, -barbs],
+      [length, 0],
+      [back, barbs],
+      [back, shaft],
+      [0, tail],
+    ]
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.props.savedLook) {
+      this.paintSaved(ctx, viewport)
+      return
+    }
     const g = this.geometry(viewport)
     if (!g) return
     ctx.save()
     ctx.setLineDash([])
-    ctx.translate(g.tip.x, g.tip.y)
+    ctx.translate(g.tail.x, g.tail.y)
     ctx.rotate(g.angle)
     ctx.fillStyle = this.style.lineColor
     ctx.beginPath()
-    // The tip at the origin; the head, then the shaft running toward the tail along +x.
-    ctx.moveTo(0, 0)
-    ctx.lineTo(g.w, -g.w)
-    ctx.lineTo(g.w, -g.w / 2)
-    ctx.lineTo(g.len, -g.w / 2)
-    ctx.lineTo(g.len, g.w / 2)
-    ctx.lineTo(g.w, g.w / 2)
-    ctx.lineTo(g.w, g.w)
+    this.outline(g.length).forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)))
     ctx.closePath()
     ctx.fill()
     ctx.restore()
-    if (this.props.text) {
-      const { width, height } = measureTextBlock(this.props.text, this.style)
-      const boxW = width + 12
-      const boxH = height + 12
-      const above = g.tail.y <= g.tip.y
-      const y = above ? g.tail.y - boxH - 8 : g.tail.y + 8
-      paintTextBlock(ctx, this.props.text, { x: g.tail.x - boxW / 2, y }, this.style)
-    }
+    this.paintWords(ctx, g.tail, g.tip)
   }
 
-  /** The hint sits at the butt end where the words paint, never over the arrow's body. */
-  protected override textHintPlacement(points: Point[]): { x: number; y: number; angle: number } {
-    const tip = points[0]
-    const tail = points[1] ?? tip
+  /** The words at the tail, beyond it from the tip. */
+  private paintWords(ctx: CanvasRenderingContext2D, tail: Point, tip: Point): void {
+    if (!this.props.text) return
+    const { width, height } = measureTextBlock(this.props.text, this.style)
     const above = tail.y <= tip.y
-    return { x: tail.x, y: above ? tail.y - 18 : tail.y + 18, angle: 0 }
+    paintTextBlock(ctx, this.props.text, { x: tail.x - (width + 12) / 2, y: above ? tail.y - height - 12 - 8 : tail.y + 8 }, this.style)
   }
+
+  /** A format-2 arrow marker: a fat arrow whose head is as wide as a third of its length. */
+  private paintSaved(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const g = this.geometry(viewport)
+    if (!g) return
+    const len = Math.max(18, g.length)
+    const w = Math.max(8, Math.min(46, len * 0.34))
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.translate(g.tip.x, g.tip.y)
+    ctx.rotate(g.angle + Math.PI)
+    ctx.fillStyle = this.style.lineColor
+    ctx.beginPath()
+    ctx.moveTo(0, 0)
+    ctx.lineTo(w, -w)
+    ctx.lineTo(w, -w / 2)
+    ctx.lineTo(len, -w / 2)
+    ctx.lineTo(len, w / 2)
+    ctx.lineTo(w, w / 2)
+    ctx.lineTo(w, w)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+    this.paintWords(ctx, g.tail, g.tip)
+  }
+
+  /** Its words are typed in its settings, so it shows no invitation to type on the chart. */
+  override paintTextHint(): void {}
 
   testHit(point: Point, viewport: Viewport): boolean {
     const g = this.geometry(viewport)
     if (!g) return false
-    const dx = point.x - g.tip.x
-    const dy = point.y - g.tip.y
-    const cos = Math.cos(-g.angle)
-    const sin = Math.sin(-g.angle)
-    const rx = dx * cos - dy * sin
-    const ry = dx * sin + dy * cos
-    return rx >= -4 && rx <= g.len + 4 && Math.abs(ry) <= g.w + 4
+    // The point in the arrow's own frame: along it from the tail, and across it.
+    const dx = point.x - g.tail.x
+    const dy = point.y - g.tail.y
+    const along = dx * Math.cos(g.angle) + dy * Math.sin(g.angle)
+    const across = Math.abs(-dx * Math.sin(g.angle) + dy * Math.cos(g.angle))
+    if (this.props.savedLook) {
+      const w = Math.max(8, Math.min(46, Math.max(18, g.length) * 0.34))
+      return along >= -4 && along <= Math.max(18, g.length) + 4 && across <= w + 4
+    }
+    if (along < -4 || along > g.length + 4) return false
+    const back = g.length * ARROW_MARKER.back
+    const reach =
+      along <= back
+        ? ARROW_MARKER.tail + (g.length * ARROW_MARKER.shaft - ARROW_MARKER.tail) * Math.max(0, along / Math.max(back, 1))
+        : g.length * ARROW_MARKER.barbs * Math.max(0, (g.length - along) / Math.max(g.length - back, 1))
+    return across <= reach + 4
   }
 }
 
-/** Flag mark: a flag on a short pole at a chart point, in the drawing's stroke color. */
-export class FlagMark extends Drawing {
+/** A flag mark: its flag's ink, and a format-2 save's look. */
+export type FlagProps = SavedLookProps
+
+/** How a flag mark stands on its point: its pole runs up 20px from the point, and its flag, from
+ *  2px right of the pole to 19px, hangs 10px down from the pole's top, notched 3px in at the middle
+ *  of its far edge. */
+const FLAG = { pole: 20, from: 2, to: 19, height: 10, notch: 3 } as const
+
+/**
+ * Flag mark: a flag on a one pixel grey pole standing on a chart point, the flag in the drawing's
+ * stroke color. Selected, it shows a small ring on its point.
+ */
+export class FlagMark extends Drawing<FlagProps> {
   readonly type = 'flag'
+
+  protected override defaultProps(): FlagProps {
+    return { savedLook: null }
+  }
+
+  /** A format-2 flag stood on a 2px pole in its stroke color, a triangle for its flag; it paints so
+   *  until its settings change. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, savedLook: {} }
+  }
+
+  override applyProps(patch: Partial<FlagProps>): void {
+    super.applyProps(endSavedLook(patch))
+  }
 
   requiredAnchors(): number {
     return 1
   }
 
-  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+  /** The point's pixel. */
+  private foot(viewport: Viewport): Point | null {
     const anchor = this.anchors[0]
-    if (!anchor) return
-    const p = this.anchorToPixel(anchor, viewport)
+    const p = anchor && this.anchorToPixel(anchor, viewport)
+    return p ? { x: Math.round(p.x), y: Math.round(p.y) } : null
+  }
+
+  paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    if (this.props.savedLook) {
+      this.paintSaved(ctx, viewport)
+      return
+    }
+    const p = this.foot(viewport)
+    if (!p) return
+    const top = p.y - FLAG.pole
+    ctx.save()
+    ctx.setLineDash([])
+    ctx.strokeStyle = POST_INK
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(p.x + 0.5, top)
+    ctx.lineTo(p.x + 0.5, p.y)
+    ctx.stroke()
+    ctx.fillStyle = this.style.lineColor
+    ctx.beginPath()
+    ctx.moveTo(p.x + FLAG.from, top)
+    ctx.lineTo(p.x + FLAG.to, top)
+    ctx.lineTo(p.x + FLAG.to - FLAG.notch, top + FLAG.height / 2)
+    ctx.lineTo(p.x + FLAG.to, top + FLAG.height)
+    ctx.lineTo(p.x + FLAG.from, top + FLAG.height)
+    ctx.closePath()
+    ctx.fill()
+    ctx.restore()
+  }
+
+  /** A format-2 flag: a triangle on a 2px pole, both in the drawing's stroke color. */
+  private paintSaved(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
+    const anchor = this.anchors[0]
+    const p = anchor && this.anchorToPixel(anchor, viewport)
     if (!p) return
     const height = 22
     ctx.save()
@@ -1568,11 +1999,18 @@ export class FlagMark extends Drawing {
     ctx.restore()
   }
 
+  override handleShape(): HandleShape {
+    return this.props.savedLook ? 'circle' : 'small'
+  }
+
   testHit(point: Point, viewport: Viewport): boolean {
-    const anchor = this.anchors[0]
-    if (!anchor) return false
-    const p = this.anchorToPixel(anchor, viewport)
+    if (this.props.savedLook) {
+      const anchor = this.anchors[0]
+      const p = anchor && this.anchorToPixel(anchor, viewport)
+      return !!p && inBox(point, { x: p.x - 4, y: p.y - 24, width: 24, height: 26 })
+    }
+    const p = this.foot(viewport)
     if (!p) return false
-    return inBox(point, { x: p.x - 4, y: p.y - 24, width: 24, height: 26 })
+    return inBox(point, { x: p.x - 3, y: p.y - FLAG.pole, width: FLAG.to + 3, height: FLAG.height }, 2) || inBox(point, { x: p.x - 3, y: p.y - FLAG.pole, width: 7, height: FLAG.pole }, 2)
   }
 }

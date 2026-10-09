@@ -35,10 +35,15 @@ export interface TextEntryPaint {
  *  where its words paint with a middle baseline. */
 export const lineMiddle = (lineHeight: number): number => lineHeight / 2 + 1
 
+/** How tall the caret stands in a line: as tall as the words' type, or the line where that is
+ *  shorter. */
+const caretHeight = (font: string, lineHeight: number): number => Math.min(lineHeight, Number(/(\d+(?:\.\d+)?)px/.exec(font)?.[1]) || lineHeight)
+
 /** Paint a block of words, or its placeholder, and while an edit is open on it, its selection,
  *  composing run and caret. The pixels a run covers start at the pixel edge nearest its start and
  *  run through the pixel its end reaches; the composing run is underlined on its lines' last row of
- *  pixels; the caret is two pixels wide on its place and a line tall, in the words' color. */
+ *  pixels; the caret is two pixels wide on its place and as tall as the type, standing in the
+ *  middle of its line, in the words' color. */
 export function paintTextEntry(ctx: CanvasRenderingContext2D, p: TextEntryPaint): void {
   const draft = p.draft
   const shown = p.placeholder ? p.placeholder.block : p.block
@@ -76,7 +81,8 @@ export function paintTextEntry(ctx: CanvasRenderingContext2D, p: TextEntryPaint)
   }
   if (draft?.caret && draft.selectionStart === draft.selectionEnd) {
     const at = caretPlace(p.block, draft.selectionEnd, p.measure)
-    ctx.fillRect(Math.round(left(p.block, at.line) + at.x) - CARET_WIDTH / 2, lineTop(at.line), CARET_WIDTH, p.lineHeight)
+    const tall = caretHeight(p.font, p.lineHeight)
+    ctx.fillRect(Math.round(left(p.block, at.line) + at.x) - CARET_WIDTH / 2, lineTop(at.line) + Math.round((p.lineHeight - tall) / 2), CARET_WIDTH, tall)
   }
   ctx.restore()
 }

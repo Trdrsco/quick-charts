@@ -634,10 +634,15 @@ export function bindGestures(ctx: GestureContext): () => void {
     // A mouse previews what a click would place; a finger presses where it means to.
     if (ctx.armed() && e.pointerType !== 'touch') followPreview(localXY(e))
     if (ctx.drag || ctx.draft || ctx.armed()) return
-    ctx.setHovered(manager.hitTest(localXY(e))?.id ?? null)
+    const p = localXY(e)
+    ctx.setHovered(manager.hitTest(p)?.id ?? null)
+    // The selected drawing's handle under a mouse stands out; a finger has no resting pointer.
+    const selected = manager.selected()
+    selected?.setHoveredHandle(e.pointerType === 'touch' ? null : anchorHit(selected, p))
   }
   const onLeave = (): void => {
     dropPreview()
+    manager.selected()?.setHoveredHandle(null)
     ctx.setHovered(null)
   }
 

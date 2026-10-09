@@ -496,7 +496,9 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
     openSettings,
     setHovered: (id) => {
       if (id === hovered) return
+      if (hovered) manager.get(hovered)?.setHovered(false)
       hovered = id
+      if (id) manager.get(id)?.setHovered(true)
       events.onHover?.(id)
     },
     persist,
@@ -588,6 +590,7 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
    *  work that moved the selection is done, so a drawing the selection left because it was being
    *  removed is already gone. */
   const leaveSelection = (id: string): void => {
+    manager.get(id)?.setHoveredHandle(null)
     if (replacing) return
     if (pendingEdit?.drawing.id === id) endPendingEdit()
     if (textEdit?.id === id && textEdit.inline) commitInline(textEdit, manager.get(id)?.textDraft?.value ?? textEdit.value)

@@ -225,33 +225,55 @@ export function paintTextBlock(
   return box
 }
 
+/** The shape of a drawing's selection handles: the round one most drawings show, a rounded square,
+ *  or the small thin ring a mark shows on its point. */
+export type HandleShape = 'circle' | 'square' | 'small'
+
+/** How far the halo round a round handle under the pointer reaches from its middle, and its
+ *  strength in the handle's ring ink. */
+const HANDLE_HALO = { radius: 9, alpha: 0.2 }
+
 /** Paint a selected drawing's handles, one on each point's pixel, filled with the chart's ground
- *  so a handle covers what it stands on. A round handle is 11px across, its ring 1.5px wide; a
- *  square one is 13px across with corners rounded at 4, its ring 2px wide. */
+ *  so a handle covers what it stands on. A round handle is 11px across, its ring 1.5px wide, and
+ *  the one under the pointer stands in a halo of its ring ink at 20% 18px across; a square one is
+ *  13px across with corners rounded at 4, its ring 2px wide; a small one is a ring 8px across, 1px
+ *  wide. */
 export function paintHandles(
   ctx: CanvasRenderingContext2D,
   points: readonly Point[],
   inks: { ring: string; center: string },
-  shape: 'circle' | 'square' = 'circle',
+  shape: HandleShape = 'circle',
+  hovered: number | null = null,
 ): void {
   ctx.save()
   ctx.setLineDash([])
-  ctx.fillStyle = inks.center
-  ctx.strokeStyle = inks.ring
-  for (const p of points) {
+  points.forEach((p, i) => {
     const x = Math.round(p.x) + 0.5
     const y = Math.round(p.y) + 0.5
+    if (i === hovered && shape === 'circle') {
+      ctx.globalAlpha = HANDLE_HALO.alpha
+      ctx.fillStyle = inks.ring
+      ctx.beginPath()
+      ctx.arc(x, y, HANDLE_HALO.radius, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+    }
+    ctx.fillStyle = inks.center
+    ctx.strokeStyle = inks.ring
     ctx.beginPath()
     if (shape === 'square') {
       ctx.lineWidth = 2
       ctx.roundRect(x - 5.5, y - 5.5, 11, 11, 3)
+    } else if (shape === 'small') {
+      ctx.lineWidth = 1
+      ctx.arc(x, y, 3.5, 0, Math.PI * 2)
     } else {
       ctx.lineWidth = 1.5
       ctx.arc(x, y, 5, 0, Math.PI * 2)
     }
     ctx.fill()
     ctx.stroke()
-  }
+  })
   ctx.restore()
 }
 

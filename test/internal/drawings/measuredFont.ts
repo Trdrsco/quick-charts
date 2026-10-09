@@ -12,8 +12,20 @@ const ASCII_UNITS = [
   1524, 1026, 1010, 972, 752, 1074, 752, 1074,
 ]
 
-/** How wide a line reads at a size. */
-export const advance = (text: string, px: number): number => [...text].reduce((sum, c) => sum + (ASCII_UNITS[c.charCodeAt(0) - 32] ?? 1100), 0) * (px / 2048)
+/** Trebuchet MS Bold's advances for the same characters. */
+const BOLD_UNITS = [
+  617, 752, 751, 1200, 1200, 1401, 1446, 470, 752, 752, 885, 1200, 752, 752, 752, 799, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 1200, 752, 752, 1200, 1200,
+  1200, 897, 1578, 1297, 1219, 1253, 1316, 1165, 1195, 1375, 1400, 570, 1091, 1264, 1132, 1526, 1367, 1440, 1202, 1452, 1251, 1047, 1253, 1388, 1273, 1810, 1230, 1256,
+  1147, 823, 728, 823, 1200, 1200, 1200, 1091, 1191, 1048, 1189, 1177, 757, 1028, 1214, 611, 751, 1122, 604, 1760, 1209, 1159, 1193, 1196, 875, 882, 812, 1210, 1080,
+  1605, 1131, 1093, 1082, 888, 1200, 888, 1200,
+]
+
+/** How wide a line reads at a size, in the bold face where asked. */
+export const advance = (text: string, px: number, bold = false): number =>
+  [...text].reduce((sum, c) => sum + ((bold ? BOLD_UNITS : ASCII_UNITS)[c.charCodeAt(0) - 32] ?? 1100), 0) * (px / 2048)
+
+/** Whether a CSS font is the bold face: a weight of 600 or more picks Trebuchet MS Bold. */
+export const boldOf = (font: string): boolean => /\bbold\b|\b[6-9]00\b/.test(font)
 
 /** A CSS font's size in pixels. */
 export const pxOf = (font: string): number => Number(/(\d+(?:\.\d+)?)px/.exec(font)?.[1] ?? 14)
@@ -23,7 +35,7 @@ export function measureInTrebuchet(): void {
   const measurer = {
     font: '',
     measureText(this: { font: string }, text: string) {
-      return { width: advance(text, pxOf(this.font)) }
+      return { width: advance(text, pxOf(this.font), boldOf(this.font)) }
     },
   }
   HTMLCanvasElement.prototype.getContext = (() => measurer) as unknown as typeof HTMLCanvasElement.prototype.getContext
@@ -51,6 +63,7 @@ export interface PaintCall {
   alpha: number
   baseline: unknown
   align: unknown
+  font: unknown
   shadow: { color: unknown; blur: unknown; x: unknown; y: unknown }
 }
 
@@ -61,7 +74,7 @@ export function painted(d: IDrawing, viewport: Viewport = identityViewport): Pai
   const stack: Map<string | symbol, unknown>[] = []
   const ctx = new Proxy({} as CanvasRenderingContext2D, {
     get: (_t, p) => {
-      if (p === 'measureText') return (text: string) => ({ width: advance(text, pxOf(String(state.get('font') ?? ''))) })
+      if (p === 'measureText') return (text: string) => ({ width: advance(text, pxOf(String(state.get('font') ?? '')), boldOf(String(state.get('font') ?? ''))) })
       if (p === 'save') return () => void stack.push(new Map(state))
       if (p === 'restore') return () => void (state = stack.pop() ?? state)
       if (state.has(p)) return state.get(p)
@@ -75,6 +88,7 @@ export function painted(d: IDrawing, viewport: Viewport = identityViewport): Pai
           alpha: Number(state.get('globalAlpha')),
           baseline: state.get('textBaseline'),
           align: state.get('textAlign'),
+          font: state.get('font'),
           shadow: { color: state.get('shadowColor'), blur: state.get('shadowBlur'), x: state.get('shadowOffsetX'), y: state.get('shadowOffsetY') },
         })
       }

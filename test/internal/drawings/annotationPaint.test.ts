@@ -1,6 +1,6 @@
 // What the text tools, the annotation tools and the table paint from their settings: a text's
 // background, border and wrapped words on their switches, a note's line to its point and its label's
-// own border, a callout's border at its width, a price label's pill, a price note's tag, a table's
+// own border, a callout's border at its width, a price label's body, a price note's tag, a table's
 // words where its alignment stands them, and a signpost's plate held its height over its bar.
 import { describe, expect, it } from 'vitest'
 import { drawingTools } from '../../../src/drawings/index'
@@ -94,11 +94,14 @@ describe('a callout and a price label', () => {
     expect(named(painted(d), 'stroke').map((c) => [c.strokeStyle, c.lineWidth])).toEqual([['#0097a7', 2]])
   })
 
-  it('fills a price label’s pill in its fill, borders it in its stroke, and writes the price bold', () => {
+  it('fills a price label’s tail and body in its fill, strokes them in its stroke, dots its point and writes the price bold', () => {
     const d = make('price_label', [at(100, 250)])
     const calls = painted(d)
-    expect(named(calls, 'fill').map((c) => c.fillStyle)).toEqual(['rgba(41, 98, 255, 1)', 'rgba(41, 98, 255, 1)'])
-    expect(named(calls, 'stroke').map((c) => c.strokeStyle)).toEqual(['#2962ff', '#2962ff'])
+    expect(named(calls, 'fill').map((c) => c.fillStyle)).toEqual(['rgba(41, 98, 255, 1)', 'rgba(41, 98, 255, 1)', '#2962ff'])
+    expect(named(calls, 'stroke').map((c) => [c.strokeStyle, c.lineWidth])).toEqual([
+      ['#2962ff', 2],
+      ['#2962ff', 2],
+    ])
     const price = named(calls, 'fillText')[0]!
     expect([price.args[0], price.fillStyle, String(price.font).includes('600')]).toEqual(['250.00', '#ffffff', true])
   })

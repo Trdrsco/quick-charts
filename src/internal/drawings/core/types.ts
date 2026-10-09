@@ -209,6 +209,12 @@ export interface IDrawing {
   wordsAt(point: Point, viewport: Viewport): boolean
   /** Move an anchor by its handle: to the point, unless the tool holds a handle to a line. */
   dragAnchorTo(index: number, anchor: Anchor): void
+  /** Whether the pointer rests on the drawing. */
+  readonly hovered: boolean
+  setHovered(on: boolean): void
+  /** The handle the pointer rests on, by its point's index, or null. */
+  readonly hoveredHandle: number | null
+  setHoveredHandle(index: number | null): void
 
   getViewport(): Viewport | null
   requestUpdate(): void
