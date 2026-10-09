@@ -47,5 +47,16 @@
   },
   "knownIssues": [
     "The 4.0.0 notes name three constants that no public entry of 4.0.0 exports: BAR_PRICE_SOURCES (CHANGELOG.md and README.md), BARS_PATTERN_MODES (CHANGELOG.md and its Upgrading to 4.0 guide) and SERIAL_VERSION (the Upgrading to 4.0 guide). The notes also state each value they hold, so a host needs none of them. The candidate was accepted for publication as it is."
-  ]
+  ],
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37939092282",
+    "npmPublishApproval": "approved for Joey by his coordinating session, on his instruction, after the validation job passed",
+    "registryIntegrity": "sha512-ing6LjpujNxaA3orHXNt16G6YfiUjL7lZ8O7b3JA8Dg881iRndsgtDrApbSMKhw9UZiJl1TwKQww4I7dKEgXSQ==",
+    "registryTarballSha256": "cd19f2bd2e9ed49884b115d279f92ddfad63e6884ff4aa7ba0e018e46d3ec14c",
+    "provenanceLogIndex": 3165693361,
+    "distTagLatest": "4.0.0",
+    "provenance": "SLSA v1 provenance names refs/tags/v4.0.0, .github/workflows/release.yml and commit 8f06ad703535fa29e0e9f0dcdbe8283337866e87, with the registry tarball's sha512 as its subject",
+    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": "pass: a fresh project installed 4.0.0 from the registry and passed the browser conformance suite, 42 of 42 checks, in Chromium 149.0.7827.55, Firefox 151.0 and WebKit 26.5"
+  }
 }
