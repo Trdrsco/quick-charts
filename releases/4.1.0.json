@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-09",
+  "packageName": "@trdrs/quickcharts",
+  "version": "4.1.0",
+  "releaseCommit": "08a30d71db4a6aaac5d5e1a881efb7cb2144cd2d",
+  "tarballSha256": "46d3403f13603a3c3b6a2524345e7e3cb4cb0a3708e84d7d059fa64f22f98174",
+  "tarStreamSha256": "e947b50f2e28098bf40227f30b8d091f5a2e3ccda5b79c3eaa97d6213ed022dd",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/37993023842",
+    "candidateArtifact": "quickcharts-candidate, the tarball the run's clean room installed and its browser suite drove",
+    "unitTestsPassed": 4661,
+    "cleanRoomChecksPassed": 42,
+    "browserTestsPassed": 111,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "5d4b5a1268bf1b2e15f1904bb742e9b93945a520f97834de240f4671a0c461a3",
+      "dossierHashesSha256": "2825b8fbe78e663b6495e10f5693c5cf9c3631a5269511214e64aa5a1b0be430",
+      "installTestChecksPassed": 25,
+      "dossierRetained": true
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "3a4cff668f12deda7340c887f25060abb3983e30",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/37995024997",
+    "result": "pass",
+    "workingTree": "the exact candidate tarball, committed at release-candidates/trdrs-quickcharts-4.1.0.tgz, installed through a root pnpm override"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "question": "Quick Charts 4.1.0 had no manual screen-reader or device test; it passed automated conformance only (clean room 42/42, 111 browser tests, the app's first-host CI green). Waive manual accessibility and advertised-browser acceptance, and authorize publishing 4.1.0 to npm?",
+    "statement": "Asked by his coordinating session whether to waive the manual accessibility and advertised-browser acceptance for Quick Charts 4.1.0 and authorize its publication, Joey chose \"Waive and authorize (Recommended)\".",
+    "recordedAt": "2026-10-09T23:11:40Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false,
+    "npmPublishApproval": "delegated by Joey to his coordinating session, which approves the npm-publish environment once the validation job passes. Asked \"The npm-publish step needs the owner's approval in GitHub. Approve it yourself, or have me approve it for you?\", he chose \"Approve it for me (Recommended)\"."
+  }
+}
