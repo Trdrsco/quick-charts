@@ -15,7 +15,7 @@ export type {
   ToolCategory,
   Viewport,
 } from './core/types'
-export { DEFAULT_OPTIONS, DEFAULT_STYLE } from './core/types'
+export { DEFAULT_OPTIONS, DEFAULT_STYLE, SERIAL_VERSION } from './core/types'
 
 export { Drawing, viewportOf } from './core/drawing'
 export { DrawingManager } from './core/manager'
@@ -57,5 +57,5 @@ export * from './tools/cycles'
 export * from './tools/bars'
 export * from './tools/volume'
 export * from './tools/content'
-export type { BarSource, SourceBar, VolumeBin } from './core/bars'
-export { barsInRange, linearRegression, volumeProfile } from './core/bars'
+export type { BarPriceSource, BarSource, SourceBar, VolumeBin } from './core/bars'
+export { BAR_PRICE_SOURCES, barsInRange, linearRegression, volumeProfile } from './core/bars'

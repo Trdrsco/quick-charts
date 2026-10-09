@@ -6,6 +6,10 @@
 // following the pointer.
 import { afterEach, describe, expect, it } from 'vitest'
 import { openDialog } from '../../../src/ui/drawings/dialog'
+import { openSettingsDialog } from '../../../src/ui/drawings/settingsDialog'
+import { createChartI18n } from '../../../src/i18n'
+import { drawingTools } from '../../../src/drawings/index'
+import { createPresets } from '../../../src/drawings/layer/presets'
 import { ownIcons } from '../../ownIcons'
 
 const icons = ownIcons()
@@ -69,6 +73,22 @@ describe('the drawing dialog drag', () => {
     dialog.close({ animate: false })
     pointer('pointermove', document.body, 250, 250)
     expect([dialog.box.style.left, dialog.box.style.top]).toEqual(['30px', '30px'])
+  })
+
+  it('leaves the box where it is for a press in the name field the header turns into', () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const drawing = drawingTools.create('trend_line', 'd1', [{ time: 1000 as never, price: 100 }, { time: 1060 as never, price: 101 }])!
+    openSettingsDialog({ chrome: container, t: createChartI18n().t, icons, drawing, presets: createPresets(null), idBase: 'c1', run: () => true, available: () => true })
+    const box = container.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+    box.querySelector<HTMLButtonElement>('button[aria-label="Rename"]')!.click()
+    const field = box.querySelector<HTMLInputElement>('.qc-drawing-dialog-header input')!
+    const press = new PointerEvent('pointerdown', { clientX: 100, clientY: 100, bubbles: true, cancelable: true })
+    field.dispatchEvent(press)
+    // The press stays the field's own, to place the caret or select the words.
+    expect(press.defaultPrevented).toBe(false)
+    pointer('pointermove', document.body, 180, 180)
+    expect(box.style.position).toBe('')
   })
 
   it('leaves the box where it is for a press on the close control', () => {

@@ -1,7 +1,8 @@
-import type { ControlPoint, Point, Viewport } from '../core/types'
+import type { ControlPoint, DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { distanceToSegment } from '../core/geometry'
 import { applyStroke, paintArrowHead, withAlpha } from '../render/canvas'
+import type { LineEnd } from './lines'
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -14,7 +15,7 @@ export function highlighterStrokeWidth(lineWidth: number): number {
 }
 
 /** Polyline through every anchor — the shared body of the freehand/multi-point family. */
-abstract class StrokeDrawing extends Drawing {
+abstract class StrokeDrawing<P extends Record<string, unknown> = Record<string, never>> extends Drawing<P> {
   requiredAnchors(): number {
     return 2
   }
@@ -56,21 +57,47 @@ abstract class StrokeDrawing extends Drawing {
 
 /** Sampled points shape a freehand stroke, but are not individually editable handles. The whole
  * stroke remains selectable and movable by grabbing its ink. */
-abstract class FreehandStroke extends StrokeDrawing {
+abstract class FreehandStroke<P extends Record<string, unknown> = Record<string, never>> extends StrokeDrawing<P> {
   override getControlPoints(_viewport: Viewport): ControlPoint[] {
     return []
   }
 }
 
+/** A stroke's two ends, each plain or an arrow. */
+export type StrokeEndsProps = {
+  leftEnd: LineEnd
+  rightEnd: LineEnd
+}
+
+/** A brush's background switch, and its ends. */
+export type BrushProps = StrokeEndsProps & {
+  /** The area the stroke closes back to its start, filled in the drawing's fill. */
+  fillBackground: boolean
+}
+
+/** Arrow heads at a stroke's ends, its first point the left end and its last the right. */
+function paintEnds(ctx: CanvasRenderingContext2D, points: Point[], ends: StrokeEndsProps, style: DrawingStyle): void {
+  if (ends.leftEnd === 'arrow') paintArrowHead(ctx, points[1]!, points[0]!, style)
+  if (ends.rightEnd === 'arrow') paintArrowHead(ctx, points[points.length - 2]!, points[points.length - 1]!, style)
+}
+
 /** Freehand stroke captured while the pointer drags. */
-export class Brush extends FreehandStroke {
+export class Brush extends FreehandStroke<BrushProps> {
   readonly type: string = 'brush'
+
+  protected override defaultProps(): BrushProps {
+    return { fillBackground: false, leftEnd: 'normal', rightEnd: 'normal' }
+  }
+
+  /** A format-2 brush filled its stroke's closed shape wherever its fill showed. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, fillBackground: this._style.fillOpacity > 0 }
+  }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const points = this.points(viewport)
     if (points.length < 2) return
-    // The background channel fills the stroke's enclosed area (path closed back to the start).
-    if (this.style.fillOpacity > 0) {
+    if (this.props.fillBackground && this.style.fillOpacity > 0) {
       ctx.save()
       ctx.fillStyle = withAlpha(this.style.fillColor, this.style.fillOpacity)
       this.tracePath(ctx, points, true)
@@ -81,6 +108,7 @@ export class Brush extends FreehandStroke {
     applyStroke(ctx, this.style)
     this.tracePath(ctx, points, true)
     ctx.stroke()
+    paintEnds(ctx, points, this.props, this.style)
   }
 }
 
@@ -111,9 +139,13 @@ export class Highlighter extends FreehandStroke {
   }
 }
 
-/** Click-placed polyline with an arrow at its final point. */
-export class PathLine extends StrokeDrawing {
+/** Click-placed polyline, an arrow at its last point unless its ends say otherwise. */
+export class PathLine extends StrokeDrawing<StrokeEndsProps> {
   override readonly type = 'path'
+
+  protected override defaultProps(): StrokeEndsProps {
+    return { leftEnd: 'normal', rightEnd: 'arrow' }
+  }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const points = this.points(viewport)
@@ -121,13 +153,22 @@ export class PathLine extends StrokeDrawing {
     applyStroke(ctx, this.style)
     this.tracePath(ctx, points, false)
     ctx.stroke()
-    paintArrowHead(ctx, points[points.length - 2], points[points.length - 1], this.style)
+    paintEnds(ctx, points, this.props, this.style)
   }
 }
 
+/** A polygon's background switch: off, the polygon keeps its fill's color and opacity unpainted. */
+export type PolylineProps = {
+  fillBackground: boolean
+}
+
 /** Click-placed polygon; closes and fills once it has three points. */
-export class Polyline extends StrokeDrawing {
+export class Polyline extends StrokeDrawing<PolylineProps> {
   override readonly type = 'polyline'
+
+  protected override defaultProps(): PolylineProps {
+    return { fillBackground: true }
+  }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const points = this.points(viewport)
@@ -136,7 +177,7 @@ export class Polyline extends StrokeDrawing {
     this.tracePath(ctx, points, false)
     if (points.length > 2) {
       ctx.closePath()
-      if (this.style.fillOpacity > 0) {
+      if (this.props.fillBackground !== false && this.style.fillOpacity > 0) {
         ctx.fillStyle = withAlpha(this.style.fillColor, this.style.fillOpacity)
         ctx.fill()
       }

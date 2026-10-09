@@ -1,7 +1,9 @@
 // The Image tool's dialog, opened by arming the tool rather than after placing something: the
-// picture is chosen first and then dropped onto the chart. One dashed zone is both the click
-// target and the drop target, the format and size limits are stated inside it before a file is
-// chosen, a transparency slider sits beneath, and Ok stays disabled until there is a picture.
+// picture is chosen first and then dropped onto the chart. A 380px card under the settings dialog's
+// header: one dashed zone is both the click target and the drop target, the format and size limits
+// are stated inside it before a file is chosen, the transparency's track stands beneath it, and Ok
+// stays disabled until there is a picture. Its footer is the settings dialog's: Cancel and Ok at
+// the end, in the same footer buttons.
 //
 // The bytes are the host's: the file goes through the asset port's `intakeImage`, which owns the
 // decode and the resample, and a refusal comes back as a code this dialog resolves through the
@@ -11,7 +13,7 @@ import type { ChartTranslate } from '../../i18n'
 import type { PlacedImage } from '../../drawings'
 import { openDialog } from './dialog'
 import { button, el } from './dom'
-import { createOpacitySlider } from '../controls/color'
+import { opacityTrack } from './levelRows'
 import type { IconResolver } from '../icons/resolver'
 
 export interface ImagePickerDeps {
@@ -55,7 +57,7 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
     closeLabel: t('drawing.close'),
     icons: deps.icons,
     role: 'drawing-image-picker',
-    width: 420,
+    width: 380,
     // The picker stops taking a paste as it begins to close, and the Image tool can open it again
     // while the leaving one finishes its exit.
     onClosing: () => {
@@ -85,7 +87,7 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
   error.hidden = true
   const dims = el('div', { class: 'qc-secondary qc-drawing-note' })
   dims.hidden = true
-  const ok = button({ class: 'qc-button qc-button--primary', label: t('drawing.ok'), text: t('drawing.ok'), disabled: true })
+  const ok = button({ class: 'qc-button qc-button--primary qc-drawing-footer-button', label: t('drawing.ok'), text: t('drawing.ok'), disabled: true })
 
   const render = (): void => {
     const title = words.firstElementChild as HTMLElement
@@ -151,17 +153,24 @@ export function openImagePicker(deps: ImagePickerDeps): () => void {
     file,
     error,
     dims,
-    el('div', { class: 'qc-drawing-row' }, el('span', { class: 'qc-secondary qc-drawing-row-label', text: t('drawing.transparency') }), createOpacitySlider(t, SWATCH_TRACK, opacity, (v) => {
-      opacity = v
-      render()
-    }).element),
+    el(
+      'div',
+      { class: 'qc-drawing-picker-opacity' },
+      el('span', { text: t('drawing.transparency') }),
+      opacityTrack(
+        t,
+        opacity,
+        (v) => {
+          opacity = v
+          render()
+        },
+        t('drawing.transparency'),
+      ),
+    ),
   )
-  dialog.footer.append(button({ class: 'qc-button', label: t('drawing.cancel'), text: t('drawing.cancel'), onClick: () => dialog.close() }), ok)
+  dialog.footer.append(button({ class: 'qc-button qc-drawing-footer-button qc-drawing-cancel', label: t('drawing.cancel'), text: t('drawing.cancel'), onClick: () => dialog.close() }), ok)
   render()
   zone.focus({ preventScroll: true })
   return dialog.close
 }
 
-/** The neutral track the transparency slider fades into: not a drawing's own color, so the
- *  stylesheet's muted ink stands in through the custom property the slider sets. */
-const SWATCH_TRACK = 'currentColor'

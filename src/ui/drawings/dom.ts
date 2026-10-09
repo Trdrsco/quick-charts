@@ -208,7 +208,9 @@ export type PanelPlacement = 'side' | 'sidecar' | 'below' | 'below-end'
  *  room. A `sidecar` is a submenu: level with its row and flush to the row's outer edge, with no
  *  offset at all, so a pointer travelling from the row into the panel crosses nothing that would
  *  close it. Sizes are measured after the panel is in the DOM; the position is the one inline
- *  write, because a position is calculated geometry. */
+ *  write, because a position is calculated geometry. A panel's height is held to the room from its
+ *  top to the box's end, so a panel that fits keeps its whole height and only one taller than the
+ *  room scrolls. */
 export function placePanel(panel: HTMLElement, anchor: HTMLElement, box: HTMLElement, mode: PanelPlacement, gap = 2): void {
   // The widget's layer on the document body has no box of its own: what stands in it is placed at
   // viewport coordinates and kept within the viewport.
@@ -252,7 +254,7 @@ export function placePanel(panel: HTMLElement, anchor: HTMLElement, box: HTMLEle
   top = Math.max(0, Math.min(top, b.height - h))
   panel.style.left = `${Math.round(left)}px`
   panel.style.top = `${Math.round(top)}px`
-  panel.style.maxHeight = `${Math.max(120, b.height - top - 4)}px`
+  panel.style.maxHeight = `${Math.max(120, b.height - top)}px`
 }
 
 /** A menu's own keyboard: arrows move over its rows, Home and End jump, Escape is the caller's.

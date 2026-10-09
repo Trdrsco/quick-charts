@@ -517,6 +517,10 @@ export const ICONS = {
   lineEndArrow: { viewBox: '0 0 28 28', body: '<g stroke="currentColor"><line x1="24" y1="13.5" x2="4.5" y2="13.5"/><line x1="4.5" y1="13.5" x2="8" y2="10"/><line x1="4.5" y1="13.5" x2="8" y2="17"/></g>' },
   // A menu row that opens a submenu points at where it will appear.
   submenuArrow: { viewBox: '0 0 24 24', body: '<path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' },
+  // The Text page's weight and slant toggles: a capital B drawn heavy, and a slanted capital I with
+  // its serifs, each on the 28 grid.
+  textBold: { viewBox: '0 0 28 28', body: '<path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M9.5 6.5h5.25a3.75 3.75 0 0 1 0 7.5H9.5zM9.5 14h6a3.75 3.75 0 0 1 0 7.5h-6z"/>' },
+  textItalic: { viewBox: '0 0 28 28', body: '<path fill="none" stroke="currentColor" d="M12 6.5h7M9 21.5h7M15.5 6.5l-3 15"/>' },
   close18: { viewBox: '0 0 18 18', body: '<path d="M4.5 4.5l9 9M13.5 4.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' },
   chevronDown18: { viewBox: '0 0 18 18', body: solid(polyline([[4.4, 7.25], [9, 11.3], [13.6, 7.25]], 1.5)) },
   // The indicator picker's marks, on the grids its rows were drawn for.

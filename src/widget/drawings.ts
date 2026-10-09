@@ -15,6 +15,8 @@ import type { ISeriesApi, IChartApi, SeriesType } from 'lightweight-charts'
 import { attachDrawings, type DrawingsEvents, type DrawingsHandle, type DrawingsWorkflow, type PlacedImage, type TextEditSession } from '../drawings'
 import { drawingTools, type ToolPreset } from '../drawings/index'
 import { rebindDrawingIdentity } from '../drawings/layer/attach'
+import { presetOf, presetPropsFor } from '../drawings/layer/presets'
+import { SAVED_LOOK_PROPS } from '../drawings/capabilities'
 import type { ReplayPhase } from './replay'
 import {
   DEFAULT_HIDE_STATE,
@@ -53,17 +55,31 @@ import { commandShown, drawingToolPermitted, drawingToolShown } from './access'
 import { drawingToolOffered, type OfferedDrawingTools } from './drawingTools'
 import type { CommandRegistry } from './commands'
 import { drawingCancelAvailable } from '../drawings/layer/attach'
-import { RECENT_COLOR_LIMIT } from '../ui/controls/color'
+import { RECENT_COLOR_LIMIT, type ColorMemory } from '../ui/controls/color'
 import type { IconResolver } from '../ui/icons/resolver'
 
-/** A tool's default look: the style and props the tool itself opens with. It is NOT the look the
- *  layer remembers, because that is rewritten by every edit: the moment a viewer changes a colour it
- *  IS that colour, and resetting to it would put back exactly what they are trying to leave. The
- *  reset writes through the ordinary edit path, so what is remembered for the next drawing of the
- *  tool becomes this look too. */
+/** A tool's default look: the style and props the tool itself opens with, less its content, so the
+ *  words, the cells and the picture a drawing carries stay as they are. It is NOT the look the layer
+ *  remembers, because that is rewritten by every edit: the moment a viewer changes a colour it IS
+ *  that colour, and resetting to it would put back exactly what they are trying to leave. The reset
+ *  writes through the ordinary edit path, so what is remembered for the next drawing of the tool
+ *  becomes this look too. */
 const defaultPreset = (type: string): ToolPreset | undefined => {
   const fresh = drawingTools.create(type, 'default', [])
-  return fresh ? { style: { ...fresh.style }, props: { ...fresh.props } } : undefined
+  if (!fresh) return undefined
+  // The tool's own look sets the props that keep a saved look to their own values too, so a drawing
+  // restored with one takes the tool's look whole.
+  const preset = presetOf(fresh)
+  const own = fresh.props as Record<string, unknown>
+  for (const key of SAVED_LOOK_PROPS[type] ?? []) if (key in own) preset.props = { ...preset.props, [key]: own[key] }
+  return preset
+}
+
+/** A drawing's props as a template keeps them: without the props that keep its own saved look. */
+const withoutSavedLook = (type: string, props: Readonly<Record<string, unknown>>): Record<string, unknown> => {
+  const out: Record<string, unknown> = { ...props }
+  for (const key of SAVED_LOOK_PROPS[type] ?? []) delete out[key]
+  return out
 }
 
 const drawingToolOf = (arg: unknown): string | null | undefined =>
@@ -79,7 +95,7 @@ const drawingToolOf = (arg: unknown): string | null | undefined =>
  *  presets). The public surface grows on demand, not by exposure. */
 export type ChartDrawingsApi = Omit<
   DrawingsHandle,
-  'setSymbol' | 'setTimeframe' | 'setTick' | 'setPriceFormatter' | 'destroy' | 'selectedDrawing' | 'commitEdit' | 'beginPreview' | 'endPreview' | 'textEdit' | 'commitText' | 'cancelText' | 'presets'
+  'setSymbol' | 'setTimeframe' | 'setTick' | 'setCurrency' | 'setPriceFormatter' | 'destroy' | 'selectedDrawing' | 'commitEdit' | 'beginPreview' | 'endPreview' | 'textEdit' | 'commitText' | 'cancelText' | 'presets'
 >
 
 /** The verbs the `chart.drawings.*` commands run that live above the layer: the standing
@@ -133,6 +149,8 @@ export interface DrawingsLayer {
   setTimeframe(timeframe: string): void
   /** Push the chart's tick grid and price formatter, after a resolve or a language switch. */
   setPricing(tick: number | null, format: (price: number) => string): void
+  /** Push the currency the symbol is quoted in, after a resolve. */
+  setCurrency(code: string | null): void
   /** Re-read every label after a language switch. */
   relabel(): void
   /** Re-render the surfaces after something they read moved (a preference, the layout). */
@@ -226,6 +244,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       setSymbol: () => undefined,
       setTimeframe: () => undefined,
       setPricing: () => undefined,
+      setCurrency: () => undefined,
       relabel: () => undefined,
       refresh: () => undefined,
       applyToolIntent: () => undefined,
@@ -379,6 +398,13 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       onMove: (position) => write({ favorites: { ...prefs().favorites, position } }),
     })
   }
+  /** The colors this viewer mixed, kept in the preference record, which the settings bar's palettes
+   *  and the settings dialog's color popovers offer and add to alike. Newest first, and a color
+   *  mixed again moves back to the front rather than standing twice. */
+  const colors: ColorMemory = {
+    list: () => prefs().recentColors,
+    add: (hex) => write({ recentColors: [hex, ...prefs().recentColors.filter((c) => c !== hex)].slice(0, RECENT_COLOR_LIMIT) }),
+  }
   settingsBar = mountSettingsBar({
     chrome: deps.chrome,
     t: t(),
@@ -392,9 +418,8 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     stackPosition: () => handle.stackPosition(),
     position: () => prefs().settingsBarPosition,
     onMove: (position) => write({ settingsBarPosition: position }),
-    recentColors: () => prefs().recentColors,
-    // Newest first, and a colour mixed again moves back to the front rather than sitting twice.
-    onMixColor: (hex) => write({ recentColors: [hex, ...prefs().recentColors.filter((c) => c !== hex)].slice(0, RECENT_COLOR_LIMIT) }),
+    recentColors: colors.list,
+    onMixColor: colors.add,
   })
 
   const renderAll = (): void => {
@@ -560,6 +585,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
         run,
         available,
         shown,
+        colors,
         onClose: () => {
           handle.endPreview()
           dialog = null
@@ -573,12 +599,12 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       const preset = name === null ? defaultPreset(drawing.type) : handle.presets.templatesFor(drawing.type).find((template) => template.name === name)
       if (!preset) return
       if (preset.style) handle.updateStyle(preset.style)
-      if (preset.props) handle.updateProps(preset.props)
+      if (preset.props) handle.updateProps(presetPropsFor(drawing, preset.props))
     },
     saveTemplate(name) {
       const drawing = handle.selectedDrawing()
       if (!drawing) return
-      void handle.presets.saveTemplate(drawing.type, name, { style: { ...drawing.style }, props: { ...drawing.props } })
+      void handle.presets.saveTemplate(drawing.type, name, { style: { ...drawing.style }, props: withoutSavedLook(drawing.type, drawing.props) })
     },
     removeTemplate(name) {
       const drawing = handle.selectedDrawing()
@@ -611,6 +637,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     setSymbol: _s,
     setTimeframe: _t,
     setTick: _k,
+    setCurrency: _c,
     setPriceFormatter: _p,
     destroy: _d,
     armTool: _a,
@@ -646,6 +673,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       handle.setSymbol(symbol)
     },
     setTimeframe: (timeframe) => handle.setTimeframe(timeframe),
+    setCurrency: (code) => handle.setCurrency(code),
     setPricing: (tick, format) => {
       handle.setTick(tick)
       handle.setPriceFormatter(format)

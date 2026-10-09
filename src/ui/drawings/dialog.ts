@@ -11,8 +11,10 @@ import type { IconResolver } from '../icons/resolver'
 export interface DialogOptions {
   /** The chrome subtree the dialog mounts into. */
   container: HTMLElement
-  /** The accessible name and the header's text. */
+  /** The accessible name, and the header's text unless `heading` says otherwise. */
   title: string
+  /** The header's text, where it differs from the accessible name. */
+  heading?: string
   /** The close control's accessible name. */
   closeLabel: string
   /** Draws every glyph: the host's drawing for its icon, or the chart's own. */
@@ -20,6 +22,10 @@ export interface DialogOptions {
   /** A stable role name for tests and hosts, written as `data-role`. */
   role: string
   width?: number
+  /** Whether the backdrop dims what stands behind the dialog, and whether the dialog opens and
+   *  closes on the modal motion. Both on unless the surface turns them off. */
+  veil?: boolean
+  motion?: boolean
   /** The dialog has begun closing and takes no more input, before its exit motion finishes. */
   onClosing?(): void
   /** The dialog has left the page. */
@@ -27,12 +33,19 @@ export interface DialogOptions {
 }
 
 export interface DialogHandle {
+  /** The header: the heading, then the close control. */
+  header: HTMLElement
+  /** The heading's own element, for a caller that relabels it. */
+  heading: HTMLElement
   /** The body the caller fills. */
   body: HTMLElement
   /** The footer the caller fills, in reading order. */
   footer: HTMLElement
   /** The box itself, for a caller that sizes or classes it. */
   box: HTMLElement
+  /** Where the dialog's own lists and panels stand: the backdrop the box stands on, which covers
+   *  the viewport, so a list may hang past the box's edge. */
+  layer: HTMLElement
   /** Close with the modal motion, or at once with `animate: false`. */
   close(options?: { animate?: boolean }): void
 }
@@ -44,7 +57,7 @@ export interface DialogHandle {
 function dragBy(header: HTMLElement, box: HTMLElement): () => void {
   let stop: (() => void) | null = null
   header.addEventListener('pointerdown', (event) => {
-    if ((event.target as HTMLElement).closest('button')) return
+    if ((event.target as HTMLElement).closest('button, input')) return
     stop?.()
     const rect = box.getBoundingClientRect()
     const dx = event.clientX - rect.left
@@ -73,6 +86,11 @@ export function openDialog(options: DialogOptions): DialogHandle {
   const body = el('div', { class: 'qc-drawing-dialog-body' })
   const footer = el('div', { class: 'qc-drawing-dialog-footer' })
   let box: HTMLElement | null = null
+  let closeBox: () => void = () => undefined
+  const header = dialogTitle(options.heading ?? options.title, options.closeLabel, () => closeBox(), options.icons)
+  header.classList.add('qc-drawing-dialog-header')
+  const heading = header.querySelector<HTMLElement>('.qc-title')!
+  heading.classList.add('qc-drawing-dialog-title')
   let stopDrag: () => void = () => undefined
   const modal = openModal({
     host: options.container,
@@ -80,12 +98,12 @@ export function openDialog(options: DialogOptions): DialogHandle {
     className: 'qc-drawing-dialog',
     role: options.role,
     ...(options.width === undefined ? {} : { width: options.width }),
+    ...(options.veil === undefined ? {} : { veil: options.veil }),
+    ...(options.motion === undefined ? {} : { motion: options.motion }),
     build(element, dialog) {
       box = element
+      closeBox = () => dialog.close()
       ownPointer(element)
-      const header = dialogTitle(options.title, options.closeLabel, () => dialog.close(), options.icons)
-      header.classList.add('qc-drawing-dialog-header')
-      header.querySelector('.qc-title')?.classList.add('qc-drawing-dialog-title')
       stopDrag = dragBy(header, element)
       element.append(header, body, footer)
     },
@@ -95,9 +113,10 @@ export function openDialog(options: DialogOptions): DialogHandle {
     onClosing: () => {
       stopDrag()
       if (box) closeOverlays(box)
+      if (box?.parentElement) closeOverlays(box.parentElement)
       options.onClosing?.()
     },
     onClose: () => options.onClose?.(),
   })
-  return { body, footer, box: modal.element, close: modal.close }
+  return { header, heading, body, footer, box: modal.element, layer: modal.element.parentElement ?? modal.element, close: modal.close }
 }

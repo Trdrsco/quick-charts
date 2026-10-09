@@ -1,8 +1,8 @@
 // The color arithmetic behind every palette and custom editor in the chart: hex and HSV both ways,
-// the opaque base of a value that carries alpha, and the swatch grid. The grid's ten hues and ten
-// greys are stated as values, because a palette is a chosen set of colors rather than a formula:
-// deriving the hues from angles would move eight of the ten off their pinned values. The five
-// shade rows derive, by mixing each hue toward white and black.
+// a typed hex read as a color, the opaque base of a value that carries alpha, and the swatch grid.
+// The grid's ten hues and ten greys are stated as values, because a palette is a chosen set of
+// colors rather than a formula: deriving the hues from angles would move eight of the ten off their
+// pinned values. The six ramps under the hues are stated row by row for the same reason.
 //
 // These are the only literal colors outside `theme/palettes.ts` and the documented series
 // defaults, and they belong here rather than in a theme role: they are the set the chart OFFERS a
@@ -27,6 +27,14 @@ export const rgbToHex = (r: number, g: number, b: number): string => `#${to2(r)}
 
 /** Whether a string is a six-digit hex color, with or without its hash. */
 export const isHex = (s: string): boolean => /^#?[0-9a-f]{6}$/i.test(s)
+
+/** The `#rrggbb` a typed hex names: three or six hex digits, with or without the hash, a three-digit
+ *  value standing for each digit doubled. Anything else names no color, and answers null. */
+export function hexFromText(text: string): string | null {
+  const digits = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(text.trim())?.[1]?.toLowerCase()
+  if (!digits) return null
+  return `#${digits.length === 3 ? [...digits].map((d) => d + d).join('') : digits}`
+}
 
 /** `#rrggbb` to HSV. */
 export function hexToHsv(hex: string): Hsv {

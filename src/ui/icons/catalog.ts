@@ -57,6 +57,8 @@ const CONTROL_ICONS = byMeaning({
   remove: [ICONS.close18, ICONS.removeRow],
   delete: [ICONS.trash, ICONS.trash28],
   add: [ICONS.plus, ICONS.plusThin, ICONS.plus24],
+  bold: [ICONS.textBold],
+  italic: [ICONS.textItalic],
   search: [ICONS.search, ICONS.search24],
   clear: [ICONS.clear],
   open: [ICONS.folder],

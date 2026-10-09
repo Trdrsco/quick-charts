@@ -54,7 +54,7 @@ describe('the image picker', () => {
     const { dialog, closed } = rig(okPort)
     expect(dialog.getAttribute('role')).toBe('dialog')
     expect(dialog.getAttribute('aria-modal')).toBe('true')
-    expect(dialog.textContent).toContain('JPG or PNG')
+    expect(dialog.textContent).toContain('JPG, PNG or WEBP')
     expect(dialog.textContent).toContain('Max size 2MB')
     const ok = dialog.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!
     expect(ok.disabled).toBe(true)
@@ -75,9 +75,9 @@ describe('the image picker', () => {
     expect(dialog.textContent).toContain('640 x 480')
     const preview = dialog.querySelector<HTMLImageElement>('.qc-drawing-drop-preview')!
     expect(preview.hidden).toBe(false)
-    const slider = dialog.querySelector<HTMLInputElement>('input[type="range"]')!
-    slider.value = '40'
-    slider.dispatchEvent(new Event('input'))
+    const track = dialog.querySelector<HTMLInputElement>('.qc-drawing-picker-opacity input[type="range"]')!
+    track.value = '40'
+    track.dispatchEvent(new Event('input'))
     const ok = dialog.querySelector<HTMLButtonElement>('button[aria-label="Ok"]')!
     expect(ok.disabled).toBe(false)
     ok.click()

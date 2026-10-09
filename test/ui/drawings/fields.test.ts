@@ -3,9 +3,10 @@
 // chart's language, and carries its accessible name.
 import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
-import { dialogTabs, dropdown, lineEndButton, numberInput, row, strokeSegments, swatchButton, toggleRow, visibilityRangeRow } from '../../../src/ui/drawings/fields'
+import { checkRow, dialogTabs, dropdown, lineEndButton, multiDropdown, numberInput, row, strokeSegments, swatchButton, toggleRow, visibilityRangeRow } from '../../../src/ui/drawings/fields'
 import { createColorPalette, createCustomColorPicker, createOpacitySlider, hexOf, hexToHsv, hsvToHex, SWATCH_BLOCKS } from '../../../src/ui/controls/color'
 import { ownIcons } from '../../ownIcons'
+import { authoredStylesheet } from '../../theme/stylesheetSource'
 
 const t = createChartI18n().t
 const icons = ownIcons()
@@ -53,29 +54,170 @@ describe('rows and toggles', () => {
     expect(off.querySelector('input')!.disabled).toBe(true)
   })
 
-  it('a dropdown stores the id and shows the label', () => {
+  it('a check row makes its label the checkbox and keeps its controls beside it', () => {
+    const changed: boolean[] = []
+    const control = document.createElement('button')
+    const r = checkRow('Background', true, (v) => changed.push(v), [control])
+    document.body.appendChild(r)
+    const label = r.querySelector<HTMLElement>('.qc-drawing-row-label')!
+    expect(label.matches('label.qc-drawing-toggle')).toBe(true)
+    expect(label.textContent).toBe('Background')
+    expect(r.querySelector('.qc-drawing-row-controls')!.firstElementChild).toBe(control)
+    label.querySelector('input')!.click()
+    expect(changed).toEqual([false])
+  })
+
+  it('a dropdown shows the label, lists the choices under it with the current one chosen, and stores the id', () => {
     const picked: string[] = []
-    const box = dropdown(icons, 'Extend', ['None', 'Left'] as const, 'Left', (v) => (v === 'None' ? 'Do not' : 'To the left'), (v) => picked.push(v))
-    const select = box.querySelector('select')!
-    expect(select.value).toBe('Left')
-    expect([...select.options].map((o) => o.textContent)).toEqual(['Do not', 'To the left'])
-    select.value = 'None'
-    select.dispatchEvent(new Event('change'))
+    const host = box()
+    const field = dropdown(icons, host, 'Extend', ['None', 'Left'] as const, 'Left', (v) => (v === 'None' ? 'Do not' : 'To the left'), (v) => picked.push(v), 'wide')
+    host.appendChild(field)
+    expect(field.getAttribute('role')).toBe('combobox')
+    expect(field.getAttribute('aria-label')).toBe('Extend')
+    expect(field.dataset.width).toBe('wide')
+    expect(field.textContent).toBe('To the left')
+    field.click()
+    expect(field.getAttribute('aria-expanded')).toBe('true')
+    const options = [...host.querySelectorAll<HTMLElement>('[role="listbox"] [role="option"]')]
+    expect(options.map((o) => [o.textContent, o.getAttribute('aria-selected')])).toEqual([
+      ['Do not', 'false'],
+      ['To the left', 'true'],
+    ])
+    // The keyboard lands on the current value.
+    expect(document.activeElement).toBe(options[1])
+    options[0]!.click()
+    expect(picked).toEqual(['None'])
+    expect(host.querySelector('[role="listbox"]')).toBeNull()
+    expect(field.getAttribute('aria-expanded')).toBe('false')
+    // Picking the value it holds reports nothing.
+    field.click()
+    host.querySelectorAll<HTMLElement>('[role="option"]')[1]!.click()
     expect(picked).toEqual(['None'])
   })
 
-  it('a dropdown and a line-end picker end their box with the 18px chevron, hidden from a reader', () => {
-    const box = dropdown(icons, 'Extend', ['None', 'Left'] as const, 'Left', (v) => v, () => undefined)
-    expect(box.classList.contains('qc-select')).toBe(true)
-    // The select comes first, so the chevron follows it as the slot at the end of the box.
-    expect(box.firstElementChild!.matches('select.qc-field')).toBe(true)
-    const chevron = box.lastElementChild!
+  it('a multiple list reads the choices that are on, stays open while they are ticked, and reports each', () => {
+    const reports: [string, boolean][] = []
+    const host = box()
+    const field = multiDropdown(icons, host, {
+      label: 'Stats',
+      empty: 'Hidden',
+      choices: [
+        { label: 'Price range', checked: false, onChange: (v) => reports.push(['price', v]) },
+        { label: 'Bars range', checked: true, onChange: (v) => reports.push(['bars', v]) },
+      ],
+    })
+    host.appendChild(field)
+    expect(field.getAttribute('aria-haspopup')).toBe('menu')
+    expect(field.textContent).toBe('Bars range')
+    field.click()
+    const items = [...host.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
+    expect(items.map((i) => i.getAttribute('aria-checked'))).toEqual(['false', 'true'])
+    items[0]!.click()
+    expect(reports).toEqual([['price', true]])
+    expect(items[0]!.getAttribute('aria-checked')).toBe('true')
+    expect(items[0]!.querySelector<HTMLInputElement>('input')!.checked).toBe(true)
+    // Every choice after the first reads in the middle of a sentence.
+    expect(field.textContent).toBe('Price range, bars range')
+    items[1]!.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }))
+    items[0]!.click()
+    expect(reports).toEqual([['price', true], ['bars', false], ['price', false]])
+    expect(field.textContent).toBe('Hidden')
+    expect(host.querySelector('[role="menu"]')).not.toBeNull()
+  })
+
+  it("rings a list's row with the keyboard inside its own edge: a choice's or a switch's at its edge clear of its fill, a mark's 2px in", () => {
+    const sheet = authoredStylesheet().replace(/\/\*[\s\S]*?\*\//g, '')
+    const rules = [...sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selectors: m[1]!.split(',').map((s) => s.trim()), body: m[2]! }))
+    const body = (selector: string): string => rules.filter((r) => r.selectors.includes(selector)).map((r) => r.body).join('\n')
+    // No outline outside the row, where a list's rounded corners would cut it.
+    expect(body('[data-qc-theme] .qc-drawing-list .qc-drawing-list-row')).toMatch(/outline:\s*none/)
+    const choice = '[data-qc-theme] .qc-drawing-select-list:not(.qc-drawing-mark-list) .qc-drawing-list-row:focus-visible'
+    const ring = body(`${choice}::after`)
+    expect(ring).toMatch(/inset:\s*0/)
+    expect(ring).toMatch(/border-color:\s*var\(--qc-state-focusRing\)/)
+    expect(ring).toMatch(/border-radius:\s*6px/)
+    expect(ring).toMatch(/border-width:\s*2px/)
+    // 2px of the list's ground inside the ring, so it stands clear of a chosen row's fill.
+    const gap = body(`${choice}::before`)
+    expect(gap).toMatch(/inset:\s*2px/)
+    expect(gap).toMatch(/border-color:\s*var\(--qc-overlay-surface\)/)
+    expect(gap).toMatch(/border-radius:\s*4px/)
+    for (const marks of ['.qc-drawing-line-ends', '.qc-drawing-mark-list']) {
+      const inner = body(`[data-qc-theme] ${marks} .qc-drawing-list-row:focus-visible::after`)
+      expect(inner).toMatch(/inset:\s*2px/)
+      expect(inner).toMatch(/border-radius:\s*9px/)
+    }
+  })
+
+  it("a list of switches' row holds the settings rows' own checkbox, in the row itself, and a ticked row is never inverted", () => {
+    const host = box()
+    const field = multiDropdown(icons, host, {
+      label: 'Stats',
+      empty: 'Hidden',
+      choices: [
+        { label: 'Price range', checked: true, onChange: () => undefined },
+        { label: 'Bars range', checked: false, onChange: () => undefined },
+      ],
+    })
+    host.appendChild(field)
+    field.click()
+    // The box a settings row wears: the same element and classes as a checkbox row's.
+    const shared = toggleRow('Middle point', true, () => undefined).querySelector('input')!
+    for (const item of host.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')) {
+      const mark = item.querySelector<HTMLInputElement>(':scope > input')!
+      expect(mark).not.toBeNull()
+      expect(mark.type).toBe('checkbox')
+      expect(mark.className).toBe(shared.className)
+      expect(mark.checked).toBe(item.getAttribute('aria-checked') === 'true')
+      // The row is the switch a reader and the keyboard reach; its box is no stop of its own.
+      expect(mark.getAttribute('aria-hidden')).toBe('true')
+      expect(mark.tabIndex).toBe(-1)
+      expect(item.querySelector('.qc-drawing-check-cell')).toBeNull()
+    }
+    // A press on the box ticks the row once and gives the row the keyboard.
+    const second = host.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')[1]!
+    second.querySelector<HTMLInputElement>('input')!.click()
+    expect(second.getAttribute('aria-checked')).toBe('true')
+    expect(second.querySelector<HTMLInputElement>('input')!.checked).toBe(true)
+    expect(document.activeElement).toBe(second)
+    expect(field.textContent).toBe('Price range, bars range')
+    // A row that is a checkbox is not a choice among rows: the inversion leaves it alone.
+    const sheet = authoredStylesheet().replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(sheet).toContain(".qc-menu-row[aria-checked='true']:not([role='switch']):not([role='menuitemcheckbox'])")
+    expect(sheet).not.toMatch(/\.qc-menu-row\[aria-checked='true'\]:not\(\[role='switch'\]\)\s*\{/)
+  })
+
+  it("a list of choices stands at least as wide as its button and grows to its longest choice; a list of switches is the button's width", () => {
+    const host = box()
+    const choices = dropdown(icons, host, 'Source', ['close', 'ohlc4'] as const, 'close', (v) => (v === 'close' ? 'Close' : '(O + H + L + C)/4'), () => undefined)
+    const switches = multiDropdown(icons, host, { label: 'Extend', empty: "Don't extend", choices: [{ label: 'Extend left line', checked: false, onChange: () => undefined }] })
+    host.append(choices, switches)
+    for (const b of [choices, switches]) Object.defineProperty(b, 'offsetWidth', { configurable: true, value: 100 })
+    choices.click()
+    const listbox = host.querySelector<HTMLElement>('[role="listbox"]')!
+    expect(listbox.style.minWidth).toBe('100px')
+    expect(listbox.style.width).toBe('')
+    choices.click()
+    switches.click()
+    const menu = host.querySelector<HTMLElement>('[role="menu"]')!
+    expect(menu.style.width).toBe('100px')
+    expect(menu.style.minWidth).toBe('')
+    // The list's own width is its content's: the floor and the switches' width are the button's.
+    const sheet = authoredStylesheet().replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(sheet).toMatch(/\.qc-drawing-menu\.qc-drawing-select-list\s*\{[^}]*width:\s*max-content/)
+  })
+
+  it('a list button ends its face with the 18px chevron, hidden from a reader; a line end wears its mark alone', () => {
+    const host = box()
+    const field = dropdown(icons, host, 'Extend', ['None', 'Left'] as const, 'Left', (v) => v, () => undefined)
+    expect(field.classList.contains('qc-field')).toBe(true)
+    const chevron = field.lastElementChild!
     expect(chevron.classList.contains('qc-select-chevron')).toBe(true)
     expect(chevron.getAttribute('aria-hidden')).toBe('true')
     expect(chevron.querySelector('svg')!.getAttribute('height')).toBe('18')
-    // A list button lays the same slot out after its face, and names itself as the face does.
-    const end = lineEndButton(t, icons, box, 'left', 'arrow', () => undefined)
-    expect(end.lastElementChild!.classList.contains('qc-select-chevron')).toBe(true)
+    const end = lineEndButton(t, icons, host, 'left', 'arrow', () => undefined)
+    expect(end.querySelector('.qc-select-chevron')).toBeNull()
+    expect(end.querySelectorAll('svg')).toHaveLength(1)
     expect(end.getAttribute('aria-haspopup')).toBe('listbox')
     expect(end.getAttribute('aria-label')).toBe('Left end')
   })
@@ -100,18 +242,18 @@ describe('rows and toggles', () => {
   it('an opacity slider reports a fraction, and its field takes one typed', () => {
     const out: number[] = []
     const slider = createOpacitySlider(t, '#ff0000', 0.25, (v) => out.push(v)).element
-    const [track, figure] = [...slider.querySelectorAll('input')]
-    expect(track!.value).toBe('25')
-    expect(figure!.value).toBe('25')
-    track!.value = '60'
-    track!.dispatchEvent(new Event('input'))
-    expect(out).toEqual([0.6])
-    expect(figure!.value).toBe('60')
+    const track = slider.querySelector<HTMLElement>('[role="slider"]')!
+    const figure = slider.querySelector<HTMLInputElement>('input')!
+    expect(track.getAttribute('aria-valuenow')).toBe('25')
+    expect(figure.value).toBe('25')
+    track.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageUp' }))
+    expect(out).toEqual([0.35])
+    expect(figure.value).toBe('35')
     // The field holds the range as it is typed, so a hundred is the most a hand can reach.
-    figure!.value = '200'
-    figure!.dispatchEvent(new Event('input'))
-    expect(out).toEqual([0.6, 1])
-    expect(track!.value).toBe('100')
+    figure.value = '200'
+    figure.dispatchEvent(new Event('input'))
+    expect(out).toEqual([0.35, 1])
+    expect(track.getAttribute('aria-valuenow')).toBe('100')
   })
 })
 
@@ -146,10 +288,11 @@ describe('the palette', () => {
     const hex = panel.querySelector<HTMLInputElement>('.qc-drawing-hex')!
     const add = panel.querySelector<HTMLButtonElement>('.qc-drawing-add')!
     expect(hex.value).toBe('4c98fb')
-    expect(add.disabled).toBe(false)
     hex.value = '08'
     hex.dispatchEvent(new Event('input'))
-    expect(add.disabled).toBe(true)
+    add.click()
+    expect(added).toEqual([])
+    expect(hex.getAttribute('aria-invalid')).toBe('true')
     hex.value = 'ff8800'
     hex.dispatchEvent(new Event('input'))
     add.click()
@@ -165,11 +308,14 @@ describe('the swatch button', () => {
     const control = swatchButton(t, b, { label: 'Highlighter', value: '#ffcc00', onPick: () => {}, thickness: 20, thicknessChoices: [8, 12, 20, 32, 48, 64, 80, 96], onThickness: (width) => picks.push(width) })
     b.appendChild(control)
     control.click()
-    const options = [...b.querySelectorAll<HTMLButtonElement>('.qc-drawing-option')]
+    const options = [...b.querySelectorAll<HTMLButtonElement>('.qc-drawing-segment')]
     expect(options.map((option) => option.getAttribute('aria-label'))).toEqual([8, 12, 20, 32, 48, 64, 80, 96].map((width) => `Thickness ${width}px`))
-    expect(options[2]!.dataset.qcActive).toBe('true')
+    expect(options[2]!.getAttribute('aria-checked')).toBe('true')
+    // A scale wider than four draws each mark brought down to one to eight pixels.
+    expect(options.map((option) => option.querySelector<HTMLElement>('.qc-drawing-thickness-mark')!.style.height)).toEqual(['1px', '1px', '2px', '3px', '4px', '5px', '7px', '8px'])
     options[7]!.click()
     expect(picks).toEqual([96])
+    expect(options[7]!.getAttribute('aria-checked')).toBe('true')
   })
   it('opens its popover with the palette and, for a stroke, the thickness and style rows', () => {
     const b = box()
@@ -189,7 +335,8 @@ describe('the swatch button', () => {
     button.click()
     const popover = b.querySelector<HTMLElement>('[data-role="drawing-popover"]')!
     expect(button.getAttribute('aria-expanded')).toBe('true')
-    expect(popover.querySelectorAll('.qc-drawing-option')).toHaveLength(7)
+    expect(popover.querySelectorAll('.qc-drawing-segment')).toHaveLength(7)
+    expect([...popover.querySelectorAll('[role="radiogroup"]')].map((g) => g.getAttribute('aria-label'))).toEqual(['Thickness', 'Line style'])
     popover.querySelector<HTMLButtonElement>('[aria-label="Thickness 4px"]')!.click()
     popover.querySelector<HTMLButtonElement>('[aria-label="Line style Dashed line"]')!.click()
     expect(picks).toEqual([
@@ -197,19 +344,36 @@ describe('the swatch button', () => {
       ['style', 'dashed'],
     ])
     expect(b.querySelector('[data-role="drawing-popover"]')).toBeTruthy() // stroke edits keep it open
+    // The face follows what the popover set, on a surface that does not rebuild the button.
+    const dashes = button.querySelectorAll<HTMLElement>('.qc-drawing-stroke-seg')
+    expect(dashes).toHaveLength(4)
+    expect(dashes[0]!.style.height).toBe('4px')
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
     expect(b.querySelector('[data-role="drawing-popover"]')).toBeNull()
+    expect(document.activeElement).toBe(button)
   })
 
-  it('a plain swatch closes on a pick and keeps the alpha the value carried', () => {
+  it('a plain swatch keeps the alpha the value carried, stays up for the opacity, and closes from its button', () => {
     const b = box()
     const picks: string[] = []
     const button = swatchButton(t, b, { label: 'Color', value: 'rgba(1, 2, 3, 0.5)', onPick: (c) => picks.push(c) })
     b.appendChild(button)
     button.click()
+    const popover = b.querySelector<HTMLElement>('[data-role="drawing-popover"]')!
+    expect(popover.querySelector('.qc-drawing-stroke-section')).toBeNull()
+    expect(popover.querySelector<HTMLElement>('[role="slider"]')!.getAttribute('aria-valuenow')).toBe('50')
     b.querySelector<HTMLButtonElement>('[aria-label="Color #000000"]')!.click()
     expect(picks).toEqual(['rgba(0, 0, 0, 0.5)'])
+    expect(b.querySelector('[data-role="drawing-popover"]')).toBe(popover)
+    // The opacity is the alpha of the color just picked.
+    popover.querySelector<HTMLElement>('[role="slider"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'End' }))
+    expect(picks).toEqual(['rgba(0, 0, 0, 0.5)', 'rgba(0, 0, 0, 1)'])
+    const fill = button.querySelector<HTMLElement>('.qc-drawing-well-fill')!
+    expect(fill.style.getPropertyValue('--qcd-swatch')).toBe('#000000')
+    expect(fill.style.opacity).toBe('1')
+    button.click()
     expect(b.querySelector('[data-role="drawing-popover"]')).toBeNull()
+    expect(button.getAttribute('aria-expanded')).toBe('false')
   })
 
   it('the stroke preview draws one bar, four dashes, or a run of dots', () => {

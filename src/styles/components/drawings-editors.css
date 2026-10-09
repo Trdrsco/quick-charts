@@ -173,7 +173,7 @@
   color: var(--qc-text-primary);
   background: var(--qc-chrome-surfaceRaised);
   border: 1px dashed var(--qc-chrome-borderStrong);
-  border-radius: var(--qc-chrome-radiusLarge);
+  border-radius: 4px;
   cursor: pointer;
 }
 
@@ -189,16 +189,21 @@
   object-fit: contain;
 }
 
+/* The words a drop box states: its call at 16 on 24 with 8px around it and 8px under it, then the
+ * formats and the size at 14 on 21 in the secondary ink. */
 [data-qc-theme] .qc-drawing-drop-words {
   display: flex;
   flex-direction: column;
-  gap: 4px;
   align-items: center;
-  font-size: var(--qc-text-fontSizeSmall);
+  font-size: var(--qc-text-fontSizeBase);
+  line-height: 21px;
 }
 
 [data-qc-theme] .qc-drawing-drop-title {
-  font-size: var(--qc-text-fontSizeBase);
+  margin-bottom: 8px;
+  padding: 8px;
+  font-size: 16px;
+  line-height: 24px;
 }
 
 [data-qc-theme] .qc-drawing-file {

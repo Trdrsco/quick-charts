@@ -67,6 +67,8 @@ export interface DrawingOptions {
   zIndex: number
   /** Which chart timeframes the drawing shows on (independent of the manual `visible` switch). */
   visibility: TimeframeVisibility
+  /** The name the viewer gave the drawing. Absent, the drawing is called by its tool's name. */
+  name?: string
 }
 
 export const DEFAULT_OPTIONS: DrawingOptions = {
@@ -76,12 +78,18 @@ export const DEFAULT_OPTIONS: DrawingOptions = {
   visibility: DEFAULT_VISIBILITY,
 }
 
+/** The format a drawing saves in: its tool's present look. */
+export const SERIAL_VERSION = 3
+
 /**
  * Wire/persistence format. `props` carries the tool-specific payload — every tool round-trips
  * its COMPLETE state through this shape (the schema exists so nothing is ever dropped on save).
  */
 export interface SerializedDrawing {
-  v: 2
+  /** The format's version. A drawing saves at 3. A save at 2 carries the props and style of the
+   *  looks format 2 painted, and restores with that look: a tool whose factory values, prop
+   *  meanings or paint rules differ at 3 writes the values that paint the save as it painted. */
+  v: 2 | 3
   id: string
   type: string
   anchors: Anchor[]
@@ -114,6 +122,8 @@ export interface Viewport {
   logicalOf(time: Time): number | null
   /** The time at a bar index (null in whitespace beyond the loaded range). */
   timeOfLogical(logical: number): Time | null
+  /** Whether the pane's price scale is logarithmic. Absent, it is read as linear. */
+  logScale?: boolean
 }
 
 /** A draggable handle over an anchor, in pane-local CSS pixels. */
@@ -136,6 +146,8 @@ export interface IDrawing {
 
   setAnchors(anchors: Anchor[]): void
   updateAnchor(index: number, anchor: Anchor): void
+  /** The symbol's tick as the host stated it, or null without one. */
+  getTickSize?(): number | null
   appendAnchor(anchor: Anchor): void
   removeAnchor(index: number): void
   updateStyle(patch: Partial<DrawingStyle>): void
@@ -155,6 +167,10 @@ export interface IDrawing {
   setGlobalHidden(hidden: boolean): void
   /** The symbol's smallest price move (tick-denominated readouts); null omits those readouts. */
   setTickSize(tick: number | null): void
+  /** The currency the symbol is quoted in (an amount's unit); null where the host states none. */
+  setCurrencyCode(code: string | null): void
+  /** The currency the symbol is quoted in, or null where the host states none. */
+  getCurrencyCode?(): string | null
   /** The symbol's price formatter (the manager broadcasts it); null returns to the declared
    *  stand-in. */
   setPriceFormatter(format: PriceFormatPort | null): void

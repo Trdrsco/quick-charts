@@ -9,6 +9,7 @@ import type {
   SeriesType,
   Time,
 } from 'lightweight-charts'
+import { PriceScaleMode } from 'lightweight-charts'
 
 import type {
   Anchor,
@@ -23,7 +24,7 @@ import type {
   SerializedDrawing,
   Viewport,
 } from './types'
-import { DEFAULT_OPTIONS, DEFAULT_STYLE } from './types'
+import { DEFAULT_OPTIONS, DEFAULT_STYLE, SERIAL_VERSION } from './types'
 import type { TimeframeContext } from './visibility'
 import { normalizeVisibility, visibleAt } from './visibility'
 import type { BarSource, SourceBar } from './bars'
@@ -133,9 +134,18 @@ export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Vi
     if (x0 !== null && barSpacing > 0) xAtLogical = (logical) => x0 + logical * barSpacing
   }
 
+  // The price scale's mode: a scale that cannot answer is read as linear.
+  let logScale = false
+  try {
+    logScale = series.priceScale().options().mode === PriceScaleMode.Logarithmic
+  } catch {
+    logScale = false
+  }
+
   return {
     width,
     height,
+    logScale,
     xOf: (time) => {
       const direct = ts.timeToCoordinate(time)
       if (direct !== null) return direct
@@ -213,10 +223,10 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     props: Partial<P> = {},
   ) {
     this.id = id
-    this._anchors = anchors.map((a) => ({ ...a }))
+    this._anchors = this.upgradeAnchors(anchors.map((a) => ({ ...a })))
     this._style = { ...DEFAULT_STYLE, ...style }
     this._options = normalizeOptions(options)
-    this._props = { ...this.defaultProps(), ...props }
+    this._props = { ...this.defaultProps(), ...this.upgradeProps(props) }
     this._paneViews = [new DrawingPaneView(this)]
   }
 
@@ -224,6 +234,39 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   protected defaultProps(): P {
     return {} as P
   }
+
+  /** Saved props as this tool reads them now: a tool that renamed a prop maps the name it was saved
+   *  under to the one it reads, so a drawing saved before keeps its setting. Must not read instance
+   *  fields (runs during construction). */
+  protected upgradeProps(props: Partial<P>): Partial<P> {
+    return props
+  }
+
+  /** Saved anchors as this tool reads them now: a tool that gained a point completes a drawing saved
+   *  without it, so the drawing keeps its shape. Must not read instance fields (runs during
+   *  construction). */
+  protected upgradeAnchors(anchors: Anchor[]): Anchor[] {
+    return anchors
+  }
+
+  /** A preset's props as this tool reads them: a remembered default or a template written by an
+   *  earlier format names its setup under the keys and meanings that format read, and the tool reads
+   *  them as it reads a save's. */
+  presetProps(props: Readonly<Record<string, unknown>>): Record<string, unknown> {
+    return { ...this.upgradeProps({ ...props } as Partial<P>) } as Record<string, unknown>
+  }
+
+  /** Paint a save from an earlier format as it painted: the registry calls this once, as it restores
+   *  a save whose `v` is below the present format, after the props are upgraded. */
+  holdSavedLook(saved: SerializedDrawing): void {
+    this.keepSavedLook((saved.props ?? {}) as Readonly<Record<string, unknown>>)
+    this.requestUpdate()
+  }
+
+  /** A tool whose factory values, prop meanings or paint rules differ from the ones format 2 painted
+   *  with writes, from the props the save carries (`saved`, as written) and the style it restored
+   *  with, the values that paint the save as it painted. */
+  protected keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {}
 
   // ============ ISeriesPrimitive ============
 
@@ -369,6 +412,24 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   setTickSize(tick: number | null): void {
     this._tickSize = tick && tick > 0 ? tick : null
     this.requestUpdate()
+  }
+
+  /** The symbol's tick as the host stated it, or null without one. */
+  getTickSize(): number | null {
+    return this.tickSize()
+  }
+
+  private _currencyCode: string | null = null
+
+  /** The currency the symbol is quoted in, the unit an amount is written in. */
+  setCurrencyCode(code: string | null): void {
+    this._currencyCode = code && code.trim() ? code.trim() : null
+    this.requestUpdate()
+  }
+
+  /** The currency the symbol is quoted in, or null where the host states none. */
+  getCurrencyCode(): string | null {
+    return this._currencyCode
   }
 
   protected tickSize(): number | null {
@@ -570,7 +631,7 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   toJSON(): SerializedDrawing {
     const props = this._props as Record<string, unknown>
     return {
-      v: 2,
+      v: SERIAL_VERSION,
       id: this.id,
       type: this.type,
       anchors: this._anchors.map((a) => ({ ...a })),
@@ -582,11 +643,12 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
   }
 
   fromJSON(data: SerializedDrawing): void {
-    this._anchors = data.anchors.map((a) => ({ ...a }))
+    this._anchors = this.upgradeAnchors(data.anchors.map((a) => ({ ...a })))
     this._style = { ...DEFAULT_STYLE, ...data.style }
     this._options = normalizeOptions(data.options)
-    this._props = { ...this.defaultProps(), ...(data.props as Partial<P> | undefined) }
+    this._props = { ...this.defaultProps(), ...this.upgradeProps((data.props ?? {}) as Partial<P>) }
     this.scope = data.scope
+    if (!(data.v >= SERIAL_VERSION)) this.keepSavedLook((data.props ?? {}) as Readonly<Record<string, unknown>>)
     this.requestUpdate()
   }
 }

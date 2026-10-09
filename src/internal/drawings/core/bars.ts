@@ -24,17 +24,48 @@ export function barsInRange(bars: readonly SourceBar[], a: Time, b: Time): Sourc
   })
 }
 
-/** Price sources a data-driven tool can compute over. */
-export type BarPriceSource = 'close' | 'open' | 'hl2' | 'hlc3'
+/** The bar at a time, or null where the feed has none. The feed runs in time order. */
+export function barAt(bars: readonly SourceBar[], time: Time): SourceBar | null {
+  const t = Number(time)
+  if (!Number.isFinite(t)) return null
+  let lo = 0
+  let hi = bars.length - 1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    const at = Number(bars[mid]!.time)
+    if (at === t) return bars[mid]!
+    if (at < t) lo = mid + 1
+    else hi = mid - 1
+  }
+  return null
+}
+
+/** The values of a bar a data-driven tool can compute over: its open, high, low or close, its
+ *  volume, or an average of its prices: `hl2` (H + L)/2, `hlc3` (H + L + C)/3, `ohlc4`
+ *  (O + H + L + C)/4 and `hlcc4` (H + L + C + C)/4. */
+export type BarPriceSource = 'open' | 'high' | 'low' | 'close' | 'volume' | 'hl2' | 'hlc3' | 'ohlc4' | 'hlcc4'
+
+/** Every source, in the order a source list offers them. */
+export const BAR_PRICE_SOURCES: readonly BarPriceSource[] = ['open', 'high', 'low', 'close', 'volume', 'hl2', 'hlc3', 'ohlc4', 'hlcc4']
 
 export function barPrice(bar: SourceBar, source: BarPriceSource): number {
   switch (source) {
     case 'open':
       return bar.open
+    case 'high':
+      return bar.high
+    case 'low':
+      return bar.low
+    case 'volume':
+      return bar.volume ?? 0
     case 'hl2':
       return (bar.high + bar.low) / 2
     case 'hlc3':
       return (bar.high + bar.low + bar.close) / 3
+    case 'ohlc4':
+      return (bar.open + bar.high + bar.low + bar.close) / 4
+    case 'hlcc4':
+      return (bar.high + bar.low + bar.close * 2) / 4
     default:
       return bar.close
   }
@@ -68,6 +99,15 @@ export function linearRegression(
     variance += residual * residual
   }
   return { slope, intercept, sigma: Math.sqrt(variance / n) }
+}
+
+/** A volume written compactly: 12.4M, 3.2K. */
+export function volumeText(volume: number): string {
+  const size = Math.abs(volume)
+  if (size >= 1e9) return `${(volume / 1e9).toFixed(2)}B`
+  if (size >= 1e6) return `${(volume / 1e6).toFixed(2)}M`
+  if (size >= 1e3) return `${(volume / 1e3).toFixed(1)}K`
+  return String(Math.round(volume))
 }
 
 export interface VolumeBin {

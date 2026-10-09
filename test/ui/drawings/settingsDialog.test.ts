@@ -53,10 +53,11 @@ describe('the pages a tool gets', () => {
     expect(tabsFor(line)).toEqual(['Style', 'Text', 'Coordinates', 'Visibility'])
     expect(firstTabFor(line)).toBe('Style')
     const text = drawingTools.create('text', 'b', anchors(1))!
-    expect(tabsFor(text)).toEqual(['Text', 'Coordinates', 'Visibility'])
+    expect(tabsFor(text)).toEqual(['Text', 'Visibility'])
     expect(firstTabFor(text)).toBe('Text')
     const table = drawingTools.create('table', 'c', anchors(1))!
-    expect(tabsFor(table)).toEqual(['Style', 'Table', 'Coordinates', 'Visibility'])
+    // A table's cells, rows and columns stand on the chart, so its dialog is its look and where it shows.
+    expect(tabsFor(table)).toEqual(['Style', 'Visibility'])
     const profile = drawingTools.create('fixed_range_volume_profile', 'd', anchors(2))!
     expect(tabsFor(profile)).toEqual(['Inputs', 'Style', 'Coordinates', 'Visibility'])
   })
@@ -77,6 +78,65 @@ describe('the dialog', () => {
     expect(tab('Coordinates').getAttribute('aria-selected')).toBe('true')
     expect(page.getAttribute('aria-labelledby')).toBe(tab('Coordinates').id)
     expect(dialog.querySelectorAll('.qc-drawing-row')).toHaveLength(2) // one row per anchor
+  })
+
+  it('heads itself with the name of the drawing and a pencil that renames it in place', () => {
+    const a = rig('trend_line')
+    const header = a.dialog.querySelector<HTMLElement>('.qc-drawing-dialog-header')!
+    const heading = header.querySelector<HTMLElement>('.qc-drawing-dialog-title')!
+    expect(heading.textContent).toBe('Trend line')
+    const pencil = header.querySelector<HTMLButtonElement>('button[aria-label="Rename"]')!
+    expect(heading.nextElementSibling).toBe(pencil)
+    pencil.click()
+    // Renaming, the header is the name's field alone, holding the name with all of it selected.
+    expect(header.dataset.qcRenaming).toBe('true')
+    const field = header.querySelector<HTMLInputElement>('input[aria-label="Name"]')!
+    expect(field.value).toBe('Trend line')
+    expect(document.activeElement).toBe(field)
+    expect([field.selectionStart, field.selectionEnd]).toEqual([0, 'Trend line'.length])
+    field.value = 'Support'
+    field.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    expect(header.dataset.qcRenaming).toBeUndefined()
+    expect(heading.textContent).toBe('Support')
+    expect(a.dialog.getAttribute('aria-label')).toBe('Support settings')
+    expect(a.drawing.options.name).toBe('Support')
+    // Escape puts the name back and leaves the dialog open.
+    pencil.click()
+    const again = header.querySelector<HTMLInputElement>('input[aria-label="Name"]')!
+    again.value = 'Resistance'
+    again.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    expect(heading.textContent).toBe('Support')
+    expect(a.out).toEqual([])
+    expect(a.drawing.options.name).toBe('Support')
+    // The name is part of the session: Cancel restores the drawing unnamed.
+    a.dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
+    expect(a.drawing.options.name).toBeUndefined()
+    // A name emptied, or the tool's own, leaves the drawing called by its tool.
+    const b = rig('ray')
+    const pen = b.dialog.querySelector<HTMLButtonElement>('button[aria-label="Rename"]')!
+    pen.click()
+    const blank = b.dialog.querySelector<HTMLInputElement>('input[aria-label="Name"]')!
+    blank.value = '  '
+    blank.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    expect(b.drawing.options.name).toBeUndefined()
+    expect(b.dialog.querySelector('.qc-drawing-dialog-title')!.textContent).toBe('Ray')
+  })
+
+  it('keeps the page strip out of the scrolling body, moves its bar to the page shown, and lands the keyboard in its first field', () => {
+    const { dialog, tab } = rig('trend_line')
+    const strip = dialog.querySelector<HTMLElement>('.qc-drawing-tabs-slot')!
+    expect(strip.nextElementSibling!.classList.contains('qc-drawing-dialog-body')).toBe(true)
+    const bar = strip.querySelector<HTMLElement>('.qc-drawing-tab-bar')!
+    expect(bar.getAttribute('aria-hidden')).toBe('true')
+    tab('Coordinates').click()
+    // The same strip and bar stand, so the bar slides rather than being drawn again.
+    expect(strip.querySelector('.qc-drawing-tab-bar')).toBe(bar)
+    expect(tab('Coordinates').tabIndex).toBe(0)
+    expect(tab('Style').tabIndex).toBe(-1)
+    const first = dialog.querySelector<HTMLInputElement>('[role="tabpanel"] input')!
+    expect(document.activeElement).toBe(first)
+    tab('Style').click()
+    expect(dialog.querySelector('[role="tabpanel"]')!.getAttribute('data-tab')).toBe('Style')
   })
 
   it('applies edits live, restores them on Cancel, and commits on Ok', () => {
@@ -103,13 +163,14 @@ describe('the dialog', () => {
     expect(ok.disabled).toBe(true)
     expect(a.dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.disabled).toBe(false)
     a.dialog.querySelector<HTMLButtonElement>('button[aria-label="Template"]')!.click()
-    const rows = [...a.dialog.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    // The menu hangs on the dialog's backdrop, past the box, under the button that opened it.
+    const rows = [...a.chrome.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
     expect(rows.map((r) => [r.textContent, r.disabled])).toEqual([
-      ['Save as...', true],
+      ['Save as…', true],
       ['Apply defaults', false],
       ['Dashed', false],
     ])
-    expect(a.dialog.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.disabled).toBe(true)
+    expect(a.chrome.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.disabled).toBe(true)
     // The disabled Ok cannot be pressed; were the commit refused at the door, the session ends as a cancel.
     const middle = [...a.dialog.querySelectorAll<HTMLElement>('.qc-drawing-toggle')].find((x) => x.textContent === 'Middle point')!
     const before = a.drawing.props.middlePoint
@@ -136,6 +197,23 @@ describe('the dialog', () => {
     expect(dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.disabled).toBe(false)
   })
 
+  it('puts a gann square saved at format 2 back on Cancel, its points and its look as they were', () => {
+    const chrome = document.createElement('div')
+    document.body.appendChild(chrome)
+    const pane = { width: 800, height: 400, xOf: (time: unknown) => Number(time), yOf: (price: number) => 400 - price, timeAt: (x: number) => x as never, priceAt: (y: number) => 400 - y, barsBetween: (a: unknown, b: unknown) => (Number(b) - Number(a)) / 10, logicalOf: (time: unknown) => Number(time) / 10, timeOfLogical: (logical: number) => (logical * 10) as never }
+    const fresh = drawingTools.create('gannbox_square', 'g', [anchors(1)[0]!, { time: 300 as never, price: 120 }])!.toJSON()
+    const square = drawingTools.restore({ ...fresh, v: 2, anchors: [{ time: 100 as never, price: 280 }, { time: 300 as never, price: 120 }], props: { levels: [{ value: 0, visible: true }, { value: 1, visible: true }], showLabels: true, background: true } })!
+    ;(square as unknown as { getViewport(): typeof pane }).getViewport = () => pane
+    const before = square.toJSON()
+    openSettingsDialog({ icons: ownIcons(), chrome, t, drawing: square, presets: createPresets(null), idBase: 'c1-drawing-settings', run: () => true, available: () => true })
+    const dialog = chrome.querySelector<HTMLElement>('[data-role="drawing-settings"]')!
+    const reverse = [...dialog.querySelectorAll<HTMLElement>('.qc-drawing-toggle')].find((x) => x.textContent === 'Reverse')!
+    reverse.querySelector('input')!.click()
+    expect(square.props).toMatchObject({ savedLook: null, reverse: true })
+    dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
+    expect(square.toJSON()).toEqual(before)
+  })
+
   it('Escape cancels once, and a second close is inert', () => {
     const { dialog, out, handle } = rig('rectangle')
     dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
@@ -144,13 +222,12 @@ describe('the dialog', () => {
     expect(out).toEqual(['cancel'])
   })
 
-  it('shows the fib levels with their colors, adds one, and hides the rows a tool ignores', () => {
+  it('lays the fib levels out two to a line with their colors, and hides the rows a tool ignores', () => {
     const { dialog, drawing, labels } = rig('fib_retracement')
     expect(labels()).toContain('Levels')
-    const before = (drawing.props.levels as unknown[]).length
-    dialog.querySelector<HTMLButtonElement>('button[aria-label="Add level"]')!.click()
-    expect((drawing.props.levels as unknown[]).length).toBe(before + 1)
-    expect(dialog.querySelectorAll('.qc-drawing-level')).toHaveLength(before + 1)
+    const levels = drawing.props.levels as { color: string }[]
+    expect(dialog.querySelectorAll('.qc-drawing-level-row')).toHaveLength(levels.length / 2)
+    expect(dialog.querySelector('button[aria-label="Level 2 color"] .qc-drawing-well-fill')!.getAttribute('style')).toContain(levels[1]!.color)
     const timezone = rig('fib_timezone')
     expect(timezone.labels()).not.toContain('Prices') // an inert prop shows no row
   })
@@ -159,26 +236,24 @@ describe('the dialog', () => {
     const profile = rig('fixed_range_volume_profile')
     expect(profile.tab('Inputs').getAttribute('aria-selected')).toBe('false')
     profile.tab('Inputs').click()
-    expect(profile.labels()).toEqual(expect.arrayContaining(['Rows layout', 'Row size', 'Volume', 'Value area volume', 'Extend right']))
+    expect(profile.labels()).toEqual(expect.arrayContaining(['Rows Layout', 'Row Size', 'Volume', 'Value Area Volume', 'Extend Right']))
     profile.tab('Style').click()
-    expect(profile.labels()).toEqual(expect.arrayContaining(['Width %', 'Placement', 'Point of control']))
+    expect(profile.labels()).toEqual(expect.arrayContaining(['Width (% of the box)', 'Placement', 'POC']))
     const position = rig('long_position')
     position.tab('Inputs').click()
-    expect(position.labels()).toEqual(expect.arrayContaining(['Risk', 'Account size', 'Lot size', 'Leverage', 'Compact stats mode']))
+    expect(position.labels()).toEqual(expect.arrayContaining(['Risk', 'Account size', 'Lot size', 'Entry price', 'Leverage', 'QTY precision']))
   })
 
-  it('the Text page edits the words quietly, and the Table page grows the grid', () => {
+  it('the Text page edits the words quietly', () => {
     const text = rig('text', { text: 'Hi' })
     const area = text.dialog.querySelector<HTMLTextAreaElement>('textarea')!
     area.value = 'Hi there'
     area.dispatchEvent(new Event('input'))
     expect(text.drawing.props.text).toBe('Hi there')
-    expect(text.labels()).toEqual(expect.arrayContaining(['Color', 'Size', 'Weight', 'Background']))
-    const table = rig('table')
-    table.tab('Table').click()
-    const cells = table.drawing.props.cells as string[][]
-    table.dialog.querySelector<HTMLButtonElement>('button[aria-label="Add column"]')!.click()
-    expect((table.drawing.props.cells as string[][])[0]!.length).toBe(cells[0]!.length + 1)
+    // The words' color, size, weight and slant stand on one line over the words.
+    const first = text.dialog.querySelector('.qc-drawing-row-full')!
+    expect([...first.children].map((c) => c.getAttribute('aria-label'))).toEqual(['Text color', 'Font size', 'Bold', 'Italic'])
+    expect(text.labels()).toEqual(expect.arrayContaining(['Background']))
   })
 
   it('pins the last enabled timeframe on the Visibility page', () => {
@@ -202,16 +277,16 @@ describe('the dialog', () => {
     await presets.saveTemplate('ray', 'Dashed', { style: { lineStyle: 'dashed' } })
     const template = dialog.querySelector<HTMLButtonElement>('button[aria-label="Template"]')!
     template.click()
-    const rows = [...dialog.querySelectorAll<HTMLElement>('[role="menuitem"]')]
-    expect(rows.map((r) => r.textContent)).toEqual(['Save as...', 'Apply defaults', 'Dashed'])
+    const rows = [...chrome.querySelectorAll<HTMLElement>('[role="menuitem"]')]
+    expect(rows.map((r) => r.textContent)).toEqual(['Save as…', 'Apply defaults', 'Dashed'])
     // A template applies through the registry onto the selection, which is this drawing.
     rows[2]!.click()
     expect(ran[0]).toEqual(['chart.drawings.template.apply', 'Dashed'])
     template.click()
-    ;[...dialog.querySelectorAll<HTMLElement>('[role="menuitem"]')][1]!.click()
+    ;[...chrome.querySelectorAll<HTMLElement>('[role="menuitem"]')][1]!.click()
     expect(ran[1]).toEqual(['chart.drawings.template.apply', null])
     template.click()
-    ;[...dialog.querySelectorAll<HTMLElement>('[role="menuitem"]')][0]!.click()
+    ;[...chrome.querySelectorAll<HTMLElement>('[role="menuitem"]')][0]!.click()
     // The name dialog stands on the settings dialog's own box, so it closes with it.
     const nameDialog = dialog.querySelector<HTMLElement>('[data-role="drawing-template-name"]')!
     const input = nameDialog.querySelector<HTMLInputElement>('input')!
@@ -220,7 +295,7 @@ describe('the dialog', () => {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
     expect(ran[2]).toEqual(['chart.drawings.template.save', 'Mine'])
     template.click()
-    dialog.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.click()
+    chrome.querySelector<HTMLButtonElement>('[aria-label="Remove template Dashed"]')!.click()
     dialog.querySelector<HTMLButtonElement>('[data-role="drawing-template-delete"] button[aria-label="Delete"]')!.click()
     expect(ran[3]).toEqual(['chart.drawings.template.remove', 'Dashed'])
     expect(chrome.querySelector('[data-role="drawing-template-delete"]')).toBeNull()

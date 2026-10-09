@@ -138,10 +138,12 @@ const SURFACE: Record<string, string> = {
   INERT_PROPS: 'object',
   INPUT_PROPS: 'object',
   LABELED_PATTERNS: 'object',
+  NO_COORDINATES_TAB: 'object',
   NO_DASH: 'object',
   NO_LINE_DECOR: 'object',
   NO_STROKE: 'object',
   NO_STYLE_TAB: 'object',
+  PRICE_ONLY_COORDS: 'object',
 }
 
 describe('@trdrs/quickcharts/drawings API surface pin', () => {

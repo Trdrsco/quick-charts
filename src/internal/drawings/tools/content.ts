@@ -1,6 +1,7 @@
 import type { Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
 import { cachedImageBitmap, primeImageBitmap } from '../render/imageCache'
+import { glyphArtwork } from '../render/glyphArtwork'
 
 function inBox(p: Point, box: { x: number; y: number; width: number; height: number }, pad = 3): boolean {
   return (
@@ -135,17 +136,21 @@ export type GlyphProps = {
   size: number
 }
 
-/** Decoded artwork, keyed by URL. The cache is shared across instances on purpose: it is keyed
- *  by the URL a source produced, so two charts pointing at the same asset set reuse one decode
- *  and two pointing at different ones cannot collide. */
-const glyphImages = new Map<string, HTMLImageElement | 'loading' | 'failed'>()
-
 /** Shared body of the emoji/sticker/icon tools: one glyph rendered at a point. */
 export class GlyphMark extends Drawing<GlyphProps> {
   readonly type: string = 'emoji'
 
   protected override defaultProps(): GlyphProps {
-    return { glyph: '😀', size: 28 }
+    return { glyph: '😀', size: 72 }
+  }
+
+  /** The size a format-2 save that names none drew its glyph at. */
+  protected savedSize(): number {
+    return 28
+  }
+
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    if (!('size' in saved)) this._props = { ...this._props, size: this.savedSize() }
   }
 
   requiredAnchors(): number {
@@ -162,22 +167,9 @@ export class GlyphMark extends Drawing<GlyphProps> {
   }
 
   private glyphImage(): HTMLImageElement | null {
-    if (this.tintsWithStroke() || typeof Image === 'undefined') return null
+    if (this.tintsWithStroke()) return null
     const url = this.glyphUrl(this.props.glyph)
-    if (!url) return null
-    const cached = glyphImages.get(url)
-    if (cached instanceof HTMLImageElement) return cached
-    if (cached === undefined) {
-      glyphImages.set(url, 'loading')
-      const image = new Image()
-      image.onload = () => {
-        glyphImages.set(url, image)
-        this.requestUpdate()
-      }
-      image.onerror = () => glyphImages.set(url, 'failed')
-      image.src = url
-    }
-    return null
+    return url ? glyphArtwork(url, () => this.requestUpdate()) : null
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -239,7 +231,11 @@ export class StickerMark extends GlyphMark {
   override readonly type = 'sticker'
 
   protected override defaultProps(): GlyphProps {
-    return { glyph: '👍', size: 44 }
+    return { glyph: '👍', size: 72 }
+  }
+
+  protected override savedSize(): number {
+    return 44
   }
 }
 
@@ -247,7 +243,11 @@ export class IconMark extends GlyphMark {
   override readonly type = 'icon'
 
   protected override defaultProps(): GlyphProps {
-    return { glyph: '★', size: 24 }
+    return { glyph: '★', size: 40 }
+  }
+
+  protected override savedSize(): number {
+    return 24
   }
 
   protected override tintsWithStroke(): boolean {

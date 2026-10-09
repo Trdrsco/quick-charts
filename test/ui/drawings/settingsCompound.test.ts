@@ -1,9 +1,8 @@
 // @vitest-environment happy-dom
-// Editing more than one thing on a page. A table's cells and a fibonacci's levels are ARRAYS the
-// model replaces whole on every change, so each field derives its next value from the drawing as it
-// stands rather than from the copy its row was built with. Typing in one cell and then another,
-// adding a row after typing, or renaming a level and then editing another keeps every earlier edit,
-// and the input the viewer is in is never rebuilt underneath them.
+// Editing more than one thing on a page. A fibonacci's levels are an ARRAY the model replaces whole
+// on every change, so each field derives its next value from the drawing as it stands rather than
+// from the copy its row was built with. Giving a level a value and then switching another off keeps
+// every earlier edit, and the input the viewer is in is never rebuilt underneath them.
 import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
 import { drawingTools } from '../../../src/drawings/index'
@@ -49,7 +48,6 @@ function rig(type: string, props: Record<string, unknown> = {}) {
   return { chrome, drawing, dialog, handle, out, ran, tab, button, field, type: type_ }
 }
 
-const cellsOf = (drawing: { props: Record<string, unknown> }): string[][] => drawing.props.cells as string[][]
 const levelsOf = (drawing: { props: Record<string, unknown> }): { value: number; text?: string; visible: boolean }[] =>
   drawing.props.levels as { value: number; text?: string; visible: boolean }[]
 
@@ -57,93 +55,42 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-describe('a table with several cells edited in turn', () => {
-  it('keeps the first cell when the second is typed into', () => {
-    const r = rig('table')
-    r.tab('Table').click()
-    r.type('Cell 1,1', 'alpha')
-    r.type('Cell 1,2', 'beta')
-    expect(cellsOf(r.drawing)[0]!.slice(0, 2)).toEqual(['alpha', 'beta'])
-  })
-
-  it('keeps typed cells when a row and then a column are added', () => {
-    const r = rig('table')
-    r.tab('Table').click()
-    const columns = cellsOf(r.drawing)[0]!.length
-    r.type('Cell 1,1', 'alpha')
-    r.button('Add row').click()
-    expect(cellsOf(r.drawing)[0]![0]).toBe('alpha')
-
-    r.type('Cell 1,2', 'beta')
-    r.button('Add column').click()
-    expect(cellsOf(r.drawing)[0]!.slice(0, 2)).toEqual(['alpha', 'beta'])
-    expect(cellsOf(r.drawing)[0]).toHaveLength(columns + 1)
-  })
-
-  it('keeps a typed cell when the header switch is flipped, and rolls the whole session back on Cancel', () => {
-    const r = rig('table')
-    const before = cellsOf(r.drawing).map((line) => [...line])
-    r.tab('Table').click()
-    r.type('Cell 1,1', 'alpha')
-    r.dialog.querySelector<HTMLInputElement>('.qc-drawing-toggle input')!.click()
-    expect(cellsOf(r.drawing)[0]![0]).toBe('alpha')
-
-    r.handle.close()
-    expect(r.out).toEqual(['cancel'])
-    expect(cellsOf(r.drawing)).toEqual(before)
-  })
-
-  it('leaves the input the viewer is typing in exactly where it was', () => {
-    const r = rig('table')
-    r.tab('Table').click()
-    const first = r.field('Cell 1,1')
-    r.type('Cell 1,1', 'alpha')
-    r.type('Cell 1,2', 'beta')
-    expect(r.field('Cell 1,1')).toBe(first)
-    expect(first.value).toBe('alpha')
-  })
-
-  it('commits the whole session as one edit on Ok', () => {
-    const r = rig('table')
-    r.tab('Table').click()
-    r.type('Cell 1,1', 'alpha')
-    r.type('Cell 1,2', 'beta')
-    r.dialog.querySelector<HTMLButtonElement>('.qc-button--primary')!.click()
-    expect(r.ran.filter(([command]) => command === 'chart.drawings.commitEdit')).toHaveLength(1)
-    expect(r.out).toEqual(['commit'])
-    expect(cellsOf(r.drawing)[0]!.slice(0, 2)).toEqual(['alpha', 'beta'])
-  })
-})
-
 describe('a fibonacci with several levels edited in turn', () => {
-  it('keeps a level label when the next label is typed', () => {
+  /** A typed value, as a field reports one: on change. */
+  const enter = (r: ReturnType<typeof rig>, label: string, value: string): HTMLInputElement => {
+    const input = r.field(label)
+    input.value = value
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    return input
+  }
+
+  it('keeps a level value when the next value is typed, in the field the viewer is in', () => {
     const r = rig('fib_retracement')
-    const levels = levelsOf(r.drawing)
-    r.type(`Level ${levels[0]!.value} text`, 'first')
-    r.type(`Level ${levels[1]!.value} text`, 'second')
-    expect(levelsOf(r.drawing).slice(0, 2).map((l) => l.text)).toEqual(['first', 'second'])
+    const first = enter(r, 'Level 1 value', '0.1')
+    const second = enter(r, 'Level 2 value', '0.2')
+    expect(levelsOf(r.drawing).slice(0, 2).map((l) => l.value)).toEqual([0.1, 0.2])
+    expect(first.isConnected && second.isConnected).toBe(true)
   })
 
-  it('keeps a typed label when a level is toggled, renumbered or added afterwards', () => {
+  it('keeps a typed value when another level is switched off, and greys that level in place', () => {
     const r = rig('fib_retracement')
-    const levels = levelsOf(r.drawing)
-    r.type(`Level ${levels[0]!.value} text`, 'first')
-
-    const check = r.dialog.querySelector<HTMLInputElement>(`input[aria-label="Level ${levels[1]!.value} visible"]`)!
-    check.click()
-    expect(levelsOf(r.drawing)[0]?.text).toBe('first')
-    expect(levelsOf(r.drawing)[1]?.visible).toBe(!levels[1]!.visible)
-
-    r.type(`Level ${levels[2]!.value} text`, 'third')
-    r.dialog.querySelector<HTMLButtonElement>('button[aria-label="Add level"]')!.click()
-    expect(levelsOf(r.drawing).map((l) => l.text).slice(0, 3)).toEqual(['first', undefined, 'third'])
-    expect(levelsOf(r.drawing)).toHaveLength(levels.length + 1)
+    const first = enter(r, 'Level 1 value', '0.1')
+    r.field('Level 2').click()
+    expect(levelsOf(r.drawing)[0]?.value).toBe(0.1)
+    expect(levelsOf(r.drawing)[1]?.visible).toBe(false)
+    expect(first.isConnected).toBe(true)
+    expect(r.field('Level 2 value').disabled).toBe(true)
+    expect(r.button('Level 2 color').dataset.qcDim).toBe('true')
+    r.field('Level 2').click()
+    expect(r.field('Level 2 value').disabled).toBe(false)
+    expect(levelsOf(r.drawing)[1]?.visible).toBe(true)
   })
 
   it('rolls every level edit back on Cancel', () => {
     const r = rig('fib_retracement')
     const before = JSON.stringify(levelsOf(r.drawing))
-    r.type(`Level ${levelsOf(r.drawing)[0]!.value} text`, 'first')
+    enter(r, 'Level 1 value', '0.1')
+    r.field('Level 3').click()
     r.handle.close()
     expect(JSON.stringify(levelsOf(r.drawing))).toBe(before)
   })

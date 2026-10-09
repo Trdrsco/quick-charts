@@ -25,7 +25,6 @@ export const FILLABLE: ReadonlySet<string> = new Set([
   'triangle_pattern',
   'head_and_shoulders',
   'time_cycles',
-  'sector',
   'comment',
   'callout',
   'price_label',
@@ -36,9 +35,9 @@ export const FILLABLE: ReadonlySet<string> = new Set([
   'double_curve',
 ])
 
-/** No stroke channel at all (glyph/image marks; ghost feed and the volume profiles carry their
- *  own color props; the text tool's ink is its text channel) — no color/width/line-style
- *  controls. */
+/** No stroke channel at all: the glyph and image marks, the ghost feed and the volume profiles,
+ *  which carry their own colors, the positions, and the text tool, whose ink is its words. No
+ *  color, width or line style control. */
 export const NO_STROKE: ReadonlySet<string> = new Set([
   'emoji',
   'sticker',
@@ -49,9 +48,6 @@ export const NO_STROKE: ReadonlySet<string> = new Set([
   'text',
   'long_position',
   'short_position',
-  'callout',
-  'comment',
-  'price_label',
 ])
 
 /** Stroke color applies but width/line-style don't (sized by their own geometry or fixed ink,
@@ -62,16 +58,17 @@ export const NO_LINE_DECOR: ReadonlySet<string> = new Set([
   'icon',
   'arrow_up',
   'arrow_down',
-  'callout',
+  'price_label',
   'comment',
   'note',
   'table',
   'signpost',
 ])
 
-/** Annotation text tools: no Style tab at all — color/size/weight/background/border live on the
- *  Text tab (border applies where the tool draws one). */
-export const NO_STYLE_TAB: ReadonlySet<string> = new Set(['text', 'note', 'comment', 'callout'])
+/** Tools with no Style tab: the text tools whose words are the whole drawing, the words' look, their
+ *  background and their border on their Text tab, and the emoji and the sticker, whose only setting
+ *  is their visibility. */
+export const NO_STYLE_TAB: ReadonlySet<string> = new Set(['text', 'comment', 'callout', 'emoji', 'sticker'])
 
 /** Tools that write words of their own and carry none of the viewer's: a plan's target, P&L and
  *  stop tags. Their bar offers the text colour, because those words take it, and nothing that
@@ -81,29 +78,80 @@ export const OWN_WORDS_TOOLS: ReadonlySet<string> = new Set(['long_position', 's
 /** Tools whose floating bar carries a font-size control (their ink is type, not lines). */
 export const FONT_TOOLS: ReadonlySet<string> = new Set(['text', 'note', 'comment', 'callout', 'table', 'price_label', 'signpost'])
 
-/** Pattern/wave tools with circled vertex labels — the Style tab gets a Label styling row. */
-export const LABELED_PATTERNS: ReadonlySet<string> = new Set([
-  'xabcd_pattern',
-  'cypher_pattern',
-  'abcd_pattern',
-  'triangle_pattern',
-  'head_and_shoulders',
-  'three_drives',
-  'elliott_impulse_wave',
-  'elliott_correction',
-  'elliott_triangle_wave',
-  'elliott_double_combo',
-  'elliott_triple_combo',
-])
+/** The chart patterns, whose letters stand in pills: their Style page carries a Label row for the
+ *  letters' color, size, weight and slant. */
+export const LABELED_PATTERNS: ReadonlySet<string> = new Set(['xabcd_pattern', 'cypher_pattern', 'abcd_pattern', 'triangle_pattern', 'head_and_shoulders', 'three_drives'])
 
-/** Prop keys a tool carries (via a shared props type) but whose paint ignores them — their rows
- *  stay hidden so the modal never shows a control that does nothing. */
-export const INERT_PROPS: Record<string, readonly string[]> = {
-  fib_timezone: ['showPrices', 'reverse', 'extendLeft', 'background'],
-  fib_trend_time: ['showPrices', 'reverse', 'extendLeft', 'background'],
-  fib_speed_resist_arcs: ['showPrices', 'reverse', 'extendLeft'],
-  fib_circles: ['showPrices', 'reverse', 'extendLeft'],
+const SAVED_LOOK = ['savedLook'] as const
+const FIB_LABELS = ['bandsByPane', 'wordsInLabels', 'labelsAtStart'] as const
+const FORK = ['shadedBands'] as const
+const CHANNEL = ['textAtStart'] as const
+const PATTERN = ['pillRadius'] as const
+const WAVE = ['pillRadius', 'labelPills'] as const
+const PROFILE = ['outline'] as const
+const METER = ['labelTextStyle'] as const
+
+/** The props that keep a version 2 save's look as it was saved, where its tool's pages offer no
+ *  control for it. They are the drawing's own: its tool's remembered default and the templates
+ *  saved from it leave them out. */
+export const SAVED_LOOK_PROPS: Record<string, readonly string[]> = {
+  regression_trend: ['bodyColor'],
+  parallel_channel: CHANNEL,
+  flat_top_bottom: CHANNEL,
+  disjoint_channel: CHANNEL,
+  fib_retracement: FIB_LABELS,
+  fib_trend_ext: FIB_LABELS,
+  fib_channel: FIB_LABELS,
+  fib_circles: ['roundPercents'],
+  fib_speed_resist_fan: SAVED_LOOK,
+  pitchfan: SAVED_LOOK,
+  pitchfork: FORK,
+  schiff_pitchfork: FORK,
+  schiff_pitchfork_modified: FORK,
+  inside_pitchfork: FORK,
+  gannbox: ['tint'],
+  gannbox_square: SAVED_LOOK,
+  gannbox_fixed: SAVED_LOOK,
+  xabcd_pattern: PATTERN,
+  cypher_pattern: PATTERN,
+  abcd_pattern: PATTERN,
+  triangle_pattern: PATTERN,
+  head_and_shoulders: PATTERN,
+  three_drives: PATTERN,
+  elliott_impulse_wave: WAVE,
+  elliott_correction: WAVE,
+  elliott_triangle_wave: WAVE,
+  elliott_double_combo: WAVE,
+  elliott_triple_combo: WAVE,
+  bars_pattern: ['candles'],
+  fixed_range_volume_profile: PROFILE,
+  anchored_volume_profile: PROFILE,
+  callout: ['borderWidth'],
+  price_note: SAVED_LOOK,
+  signpost: SAVED_LOOK,
+  price_range: METER,
+  date_range: METER,
+  date_and_price_range: ['extendLeft', 'extendRight', ...METER],
 }
+
+/** Prop keys a tool carries that its pages do not set: a trend angle's shared line keys, which it
+ *  draws only as a save carries them; a table's cells and header band, which stand on the chart and
+ *  in a save; and the props that keep a version 2 save's look as it was saved. */
+export const INERT_PROPS: Record<string, readonly string[]> = {
+  trend_angle: ['text', 'leftEnd', 'rightEnd', 'showDateTimeRange', 'showAngle'],
+  table: ['cells', 'headerRow'],
+  ...SAVED_LOOK_PROPS,
+}
+
+/** Tools whose points are drawn from their shape rather than typed: a turned box, an arc, an
+ *  ellipse, a polygon of any count of points, a fib wedge, a flat top/bottom, a disjoint channel, a
+ *  sector, a bars pattern, a position, an anchored VWAP, a text, a table, the strokes, the glyphs
+ *  and an image have no Coordinates tab: a position's points are its entry, target and stop prices
+ *  on its Inputs page. */
+export const NO_COORDINATES_TAB: ReadonlySet<string> = new Set(['rotated_rectangle', 'arc', 'polyline', 'ellipse', 'fib_wedge', 'flat_top_bottom', 'disjoint_channel', 'sector', 'bars_pattern', 'long_position', 'short_position', 'anchored_vwap', 'text', 'table', 'brush', 'highlighter', 'path', 'emoji', 'sticker', 'icon', 'image'])
+
+/** Tools that span every bar at one price: the Coordinates tab hides the bar field. */
+export const PRICE_ONLY_COORDS: ReadonlySet<string> = new Set(['horizontal_line'])
 
 /** Tools whose anchors are time-only — the Coordinates tab hides the price field. */
 export const BAR_ONLY_COORDS: ReadonlySet<string> = new Set([
@@ -139,7 +187,7 @@ export const TOOL_COLOR_CHANNELS: Record<string, readonly ToolColorChannel[]> = 
   ],
 }
 
-export const NO_DASH: ReadonlySet<string> = new Set(['highlighter', 'brush', 'price_range', 'date_range', 'date_and_price_range'])
+export const NO_DASH: ReadonlySet<string> = new Set(['highlighter', 'brush', 'price_range', 'date_range', 'date_and_price_range', 'callout'])
 
 /** Prop keys that belong on a separate Inputs tab: what a drawing computes with, kept apart from
  *  how it looks.
@@ -148,7 +196,8 @@ export const INPUT_PROPS: Record<string, readonly string[]> = {
   fixed_range_volume_profile: ['rowsLayout', 'rowSize', 'volume', 'valueAreaVolume', 'extendRight'],
   anchored_volume_profile: ['rowsLayout', 'rowSize', 'volume', 'valueAreaVolume'],
   ghost_feed: ['averageHL', 'variance'],
-  long_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'compact'],
-  short_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'compact'],
+  long_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'qtyPrecision'],
+  short_position: ['accountSize', 'risk', 'riskDisplay', 'lotSize', 'leverage', 'qtyPrecision'],
   regression_trend: ['upperDeviation', 'lowerDeviation', 'useUpper', 'useLower', 'source'],
+  anchored_vwap: ['source', 'bandsMode', 'bandMultipliers', 'bandsOn'],
 }

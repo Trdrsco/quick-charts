@@ -221,6 +221,20 @@ export const THEME_ROLES = [
   { id: 'control.offHover', family: 'control', kind: 'color', description: 'The track of a switch that is off, under the pointer.' },
   { id: 'control.offPressed', family: 'control', kind: 'color', description: 'The track of a switch that is off, while the pointer is down.' },
   {
+    id: 'control.outline',
+    family: 'control',
+    kind: 'color',
+    description: 'The edge and the words of an outlined button at rest, such as a dialog\'s Cancel, which takes the emphasis fill under the pointer.',
+    contrast: [{ over: 'overlay.surface', min: 4.5 }],
+  },
+  {
+    id: 'control.onInk',
+    family: 'control',
+    kind: 'color',
+    description: 'A mark cut from the emphasis fill, and its name beside it: a chosen thickness, line style or line end.',
+    contrast: [{ over: 'control.on', min: 3 }],
+  },
+  {
     id: 'control.mark',
     family: 'control',
     kind: 'color',
@@ -238,6 +252,7 @@ export const THEME_ROLES = [
   // `state.focusRing`.
   { id: 'control.fieldEdge', family: 'control', kind: 'color', description: 'The edge of a text field, a select, a number field or a color well at rest.' },
   { id: 'control.fieldEdgeHover', family: 'control', kind: 'color', description: 'The edge of a field under the pointer.' },
+  { id: 'control.selectEdgeHover', family: 'control', kind: 'color', description: 'The edge of a list button under the pointer, such as a select on a drawing\'s settings page.' },
   {
     id: 'control.fieldInvalid',
     family: 'control',
@@ -284,10 +299,12 @@ export const THEME_ROLES = [
   { id: 'motion.durationModerate', family: 'motion', kind: 'duration', description: 'A control moving to its new state, such as a switch knob sliding.' },
   { id: 'motion.durationSlow', family: 'motion', kind: 'duration', description: 'A small mark settling, such as a disclosure caret turning or a checkbox filling.' },
   { id: 'motion.durationSlower', family: 'motion', kind: 'duration', description: 'A larger mark turning, such as the drawing toolbar\'s chevron.' },
+  { id: 'motion.durationGlide', family: 'motion', kind: 'duration', description: 'A mark gliding to a new place, such as a dialog\'s tab bar or an opacity knob.' },
   { id: 'motion.easingStandard', family: 'motion', kind: 'easing', description: 'The timing of an ordinary transition: a modal dialog box, the replay row, a caret dip, a checkbox fill.' },
   { id: 'motion.easingOut', family: 'motion', kind: 'easing', description: 'The timing of a motion that settles as it ends: a modal backdrop fading, a switch knob sliding.' },
   { id: 'motion.easingLinear', family: 'motion', kind: 'easing', description: 'The timing of a color or opacity change under the pointer.' },
   { id: 'motion.easingSpring', family: 'motion', kind: 'easing', description: 'The timing of a mark that turns with a slight overshoot, such as a caret or chevron.' },
+  { id: 'motion.easingInOut', family: 'motion', kind: 'easing', description: 'The timing of a mark that slides from one place to another, such as a dialog\'s tab bar.' },
   { id: 'motion.scaleEnter', family: 'motion', kind: 'scale', description: 'The scale a modal dialog box grows from as it opens and returns to as it closes.' },
 ] as const satisfies readonly ThemeRole[]
 

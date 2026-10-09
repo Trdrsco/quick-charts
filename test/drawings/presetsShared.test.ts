@@ -136,6 +136,19 @@ describe('two charts over one template store', () => {
   })
 })
 
+describe('a default remembered by an earlier format', () => {
+  it('places the next drawing with the setup it named, read as its tool reads it now', async () => {
+    const store = memorySaveLoadAdapter().templates('drawing')
+    // A regression trend's default as format 2 wrote it, its lower deviation counted down from the line.
+    await new DrawingTemplates(store).rememberDefault('regression_trend', { props: { upperDeviation: 3, lowerDeviation: 1, useUpper: true, useLower: true, source: 'close' } })
+    const r = make({ templates: store })
+    await settle()
+    r.handle.armTool('regression_trend')
+    drag(r.container, [10, 10], [100, 100])
+    expect(r.handle.selectedDrawing()!.props).toMatchObject({ upperDeviation: 3, lowerDeviation: -1, baseLine: true })
+  })
+})
+
 describe('the cache while the store is still answering', () => {
   it('keeps a default remembered during the first read rather than letting the read overwrite it', async () => {
     const store = memorySaveLoadAdapter().templates('drawing')

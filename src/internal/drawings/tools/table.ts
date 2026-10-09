@@ -5,14 +5,17 @@ import { fillPaint, fontOf, withAlpha } from '../render/canvas'
 export type TableProps = {
   /** Row-major cell text. The grid's shape IS this array's shape. */
   cells: string[][]
+  /** The first row banded as a header. */
   headerRow: boolean
+  /** Where each cell's words stand across it. */
+  textHAlign: 'left' | 'center' | 'right'
   /** Per-column widths / per-row heights in px; entries beyond the arrays use the defaults, so
    *  row/column appends never have to touch them. */
   colWidths: number[]
   rowHeights: number[]
 }
 
-const CELL_WIDTH = 96
+const CELL_WIDTH = 120
 const CELL_HEIGHT = 26
 const CELL_PAD = 8
 const MIN_COL = 28
@@ -31,13 +34,27 @@ export class TableNote extends Drawing<TableProps> {
   protected override defaultProps(): TableProps {
     return {
       cells: [
-        ['', ''],
-        ['', ''],
+        ['', '', ''],
+        ['', '', ''],
+        ['', '', ''],
       ],
-      headerRow: true,
+      headerRow: false,
+      textHAlign: 'left',
       colWidths: [],
       rowHeights: [],
     }
+  }
+
+  /** A format-2 table's columns stood 96px wide where it set no width, its border and grid took its
+   *  stroke color at 45%, and a save naming no cells or header was two by two with a header row. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    // A save naming no cells or header drew two by two with a header row.
+    if (!('cells' in saved)) this._props = { ...this._props, cells: [['', ''], ['', '']] }
+    if (!('headerRow' in saved)) this._props = { ...this._props, headerRow: true }
+    const cols = this._props.cells[0]?.length ?? 0
+    const colWidths = Array.from({ length: cols }, (_, c) => this._props.colWidths[c] ?? 96)
+    this._props = { ...this._props, colWidths }
+    this._style = { ...this._style, lineColor: withAlpha(this._style.lineColor, 0.45) }
   }
 
   requiredAnchors(): number {
@@ -100,7 +117,7 @@ export class TableNote extends Drawing<TableProps> {
     const { xs, ys } = this.offsets()
     ctx.save()
     ctx.setLineDash([])
-    // Card base + optional header band — the base paints from the background channel.
+    // The card's base in the drawing's fill, and the header band where the first row is one.
     const base = fillPaint(this.style)
     if (base) {
       ctx.fillStyle = base
@@ -114,8 +131,8 @@ export class TableNote extends Drawing<TableProps> {
       ctx.roundRect(f.x, f.y, f.width, ys[1], 4)
       ctx.fill()
     }
-    // Grid lines.
-    ctx.strokeStyle = withAlpha(this.style.lineColor, 0.45)
+    // The border and the grid lines in the drawing's stroke color.
+    ctx.strokeStyle = this.style.lineColor
     ctx.lineWidth = 1
     ctx.beginPath()
     ctx.roundRect(f.x, f.y, f.width, f.height, 4)
@@ -130,9 +147,11 @@ export class TableNote extends Drawing<TableProps> {
       ctx.lineTo(f.x + xs[c], f.y + f.height)
     }
     ctx.stroke()
-    // Cell text, clipped per cell.
+    // Each cell's words, clipped to the cell and standing across it as the alignment says.
     ctx.font = fontOf(this.style)
     ctx.textBaseline = 'middle'
+    const align = this.props.textHAlign ?? 'left'
+    ctx.textAlign = align
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const text = this.props.cells[r][c]
@@ -142,7 +161,8 @@ export class TableNote extends Drawing<TableProps> {
         ctx.rect(f.x + xs[c] + 1, f.y + ys[r] + 1, xs[c + 1] - xs[c] - 2, ys[r + 1] - ys[r] - 2)
         ctx.clip()
         ctx.fillStyle = this.style.textColor
-        ctx.fillText(text, f.x + xs[c] + CELL_PAD, f.y + (ys[r] + ys[r + 1]) / 2)
+        const x = align === 'left' ? f.x + xs[c] + CELL_PAD : align === 'right' ? f.x + xs[c + 1] - CELL_PAD : f.x + (xs[c] + xs[c + 1]) / 2
+        ctx.fillText(text, x, f.y + (ys[r] + ys[r + 1]) / 2)
         ctx.restore()
       }
     }

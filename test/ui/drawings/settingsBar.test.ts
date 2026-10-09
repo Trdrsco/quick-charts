@@ -106,10 +106,10 @@ describe('the settings bar', () => {
   // stroke that is always solid offers no dash; a fill is offered only where the paint encloses.
   it.each([
     ['brush', ['Drawing color', 'Background color', 'Line thickness'], ['Line style']],
-    ['callout', ['Background color', 'Text color', 'Font size'], ['Drawing color', 'Line thickness']],
-    ['comment', ['Background color', 'Text color', 'Font size'], ['Drawing color', 'Line thickness']],
+    ['callout', ['Drawing color', 'Background color', 'Text color', 'Font size', 'Line thickness'], ['Line style']],
+    ['comment', ['Drawing color', 'Background color', 'Text color', 'Font size'], ['Line thickness']],
     ['note', ['Drawing color', 'Text color', 'Font size'], ['Background color']],
-    ['price_label', ['Background color', 'Text color', 'Font size'], ['Drawing color', 'Line thickness', 'Line style']],
+    ['price_label', ['Drawing color', 'Background color', 'Text color', 'Font size'], ['Line thickness', 'Line style']],
     ['signpost', ['Drawing color', 'Font size'], ['Line thickness', 'Line style']],
     ['curve', ['Drawing color', 'Background color', 'Line thickness', 'Line style'], []],
     ['double_curve', ['Drawing color', 'Background color', 'Line thickness', 'Line style'], []],
@@ -126,7 +126,7 @@ describe('the settings bar', () => {
   // part of the plan rather than a line the viewer draws.
   it.each(['long_position', 'short_position'])('%s offers its own two zones and the word on the plan', (type) => {
     const { labels } = rig(selection({ type, hasText: true }), { profitColor: '#089981', stopColor: '#f23645' })
-    expect(labels()).toEqual(['Drawing templates', 'Text color', 'Target zone color', 'Stop zone color', 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
+    expect(labels()).toEqual(['Drawing templates', 'Text color', 'Target color', 'Stop color', 'Drawing settings', 'Lock drawing', 'Delete drawing', 'More drawing actions'])
   })
 
   it('runs the settings, lock and delete commands, and names the lock by its state', () => {
@@ -168,6 +168,24 @@ describe('the settings bar', () => {
     expect(ran).toEqual([
       ['chart.drawings.style', { lineColor: '#000000' }],
       ['chart.drawings.props', { levels: [{ value: 0.5, visible: true, color: '#000000' }] }],
+    ])
+  })
+
+  it('a color pick recolors every set of levels a gann box or a gann square holds', () => {
+    const pick = (type: string, props: Record<string, unknown>): unknown => {
+      const { byLabel, ran, popover } = rig(selection({ type, hasText: false }), props)
+      byLabel('Drawing color').click()
+      popover()!.querySelector<HTMLButtonElement>('[aria-label="Color #000000"]')!.click()
+      return ran.at(-1)
+    }
+    expect(pick('gannbox', { priceLevels: [{ value: 0, visible: true, color: '#111111' }], timeLevels: [{ value: 1, visible: true, color: '#222222' }] })).toEqual([
+      'chart.drawings.props',
+      { priceLevels: [{ value: 0, visible: true, color: '#000000' }], timeLevels: [{ value: 1, visible: true, color: '#000000' }] },
+    ])
+    const line = (color: string) => ({ visible: true, color, width: 2 })
+    expect(pick('gannbox_square', { levels: [line('#111111')], fans: [{ x: 1, y: 1, ...line('#222222') }], arcs: [{ x: 1, y: 0, ...line('#333333') }] })).toEqual([
+      'chart.drawings.props',
+      { levels: [line('#000000')], fans: [{ x: 1, y: 1, ...line('#000000') }], arcs: [{ x: 1, y: 0, ...line('#000000') }] },
     ])
   })
 

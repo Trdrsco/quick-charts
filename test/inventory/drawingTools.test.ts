@@ -7,7 +7,7 @@
 // fake renderer, so a tool that constructs but cannot be restored, attached or drawn is named by type.
 // drawingTools.fixture.json records each tool's placement facts and default props; the family blocks at
 // the end pin the values a generic pass cannot see.
-import { DrawingManager, type IDrawing } from '../../src/internal/drawings/index'
+import { DrawingManager, SERIAL_VERSION, type IDrawing } from '../../src/internal/drawings/index'
 import type { ISeriesApi, ISeriesPrimitive, SeriesType, Time } from 'lightweight-charts'
 import { describe, expect, it } from 'vitest'
 import { drawingTools } from '../../src/drawings/index'
@@ -107,7 +107,7 @@ describe('every registered tool', () => {
         const d = live(drawingTools.create(row.type, `id-${row.type}`, anchors, { lineColor: '#123456', lineWidth: 3 }))
         d.updateOptions({ locked: true, zIndex: 4 })
         const first = d.toJSON()
-        expect(first.v).toBe(2)
+        expect(first.v).toBe(SERIAL_VERSION)
         expect(first.type).toBe(row.type)
         const restored = live(drawingTools.restore(first))
         expect(restored.toJSON()).toEqual(first)
@@ -188,7 +188,7 @@ describe('the leveled families', () => {
     const fib = levels('fib_retracement', 2)
     expect(fib.map((l) => l.value)).toEqual(expect.arrayContaining([0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618]))
     for (const l of fib) expect(typeof l.visible).toBe('boolean')
-    for (const type of ['fib_trend_ext', 'fib_channel', 'fib_timezone', 'fib_speed_resist_fan', 'fib_trend_time', 'fib_circles', 'fib_speed_resist_arcs', 'fib_wedge', 'pitchfan']) {
+    for (const type of ['fib_trend_ext', 'fib_channel', 'fib_timezone', 'fib_trend_time', 'fib_circles', 'fib_speed_resist_arcs', 'fib_wedge', 'pitchfan']) {
       expect(levels(type, drawingTools.get(type)!.anchors).length, type).toBeGreaterThan(0)
     }
   })
@@ -200,14 +200,21 @@ describe('the leveled families', () => {
       levels: levels(type, 3).map((l) => l.value),
     }))
     expect(variants.map((v) => v.variant)).toEqual(['original', 'schiff', 'modified_schiff', 'inside'])
-    for (const v of variants) expect(v.levels).toEqual([0.25, 0.5, 0.75, 1, 1.5, 2])
+    for (const v of variants) expect(v.levels).toEqual([0.25, 0.382, 0.5, 0.618, 0.75, 1, 1.5, 1.75, 2])
   })
 
   it('the gann boxes divide the box on the gann ratios, and the fan draws the gann angles', () => {
-    for (const type of ['gannbox', 'gannbox_square', 'gannbox_fixed']) {
-      expect(levels(type, 2).map((l) => l.value), type).toEqual([0, 0.25, 0.382, 0.5, 0.618, 0.75, 1])
+    for (const type of ['gannbox_square', 'gannbox_fixed']) {
+      const props = live(drawingTools.create(type, type, anchorsFor(fake, 2))).props
+      expect((props.levels as unknown[]).length, type).toBe(6)
+      expect((props.fans as { x: number; y: number }[]).map((f) => `${f.x}x${f.y}`), type).toEqual(['8x1', '5x1', '4x1', '3x1', '2x1', '1x1', '1x2', '1x3', '1x4', '1x5', '1x8'])
+      expect((props.arcs as { x: number; y: number }[]).map((a) => `${a.x}x${a.y}`), type).toEqual(['1x0', '1x1', '1.5x0', '2x0', '2x1', '3x0', '3x1', '4x0', '4x1', '5x0', '5x1'])
     }
-    expect(levels('gannbox_fan', 2).map((l) => l.value)).toEqual([8, 4, 3, 2, 1, 1 / 2, 1 / 3, 1 / 4, 1 / 8])
+    for (const type of ['gannbox', 'fib_speed_resist_fan']) {
+      const props = live(drawingTools.create(type, type, anchorsFor(fake, 2))).props
+      for (const key of ['priceLevels', 'timeLevels']) expect((props[key] as { value: number }[]).map((l) => l.value), `${type} ${key}`).toEqual([0, 0.25, 0.382, 0.5, 0.618, 0.75, 1])
+    }
+    expect(levels('gannbox_fan', 2).map((l) => l.value)).toEqual([1 / 8, 1 / 4, 1 / 3, 1 / 2, 1, 2, 3, 4, 8])
   })
 })
 
@@ -215,20 +222,20 @@ describe('the forecasting, content and table families', () => {
   const fake = fakeChart()
   const props = (type: string) => live(drawingTools.create(type, type, anchorsFor(fake, drawingTools.get(type)!.anchors))).props
 
-  it('a position opens with a risk sheet: account, risk as a percent, one lot, no leverage', () => {
+  it('a position opens with a risk sheet: account, risk as a percent, one lot, leverage enough to leave the risk the cap', () => {
     for (const type of ['long_position', 'short_position']) {
-      expect(props(type), type).toMatchObject({ accountSize: 1000, risk: 25, riskDisplay: 'percent', lotSize: 1, leverage: 1, showPrices: true, compact: false })
+      expect(props(type), type).toMatchObject({ accountSize: 1000, risk: 25, riskDisplay: 'percent', lotSize: 1, leverage: 10000, qtyPrecision: 'default', showPrices: true, compact: false, alwaysShowStats: false })
     }
   })
 
   it('the bar-capturing tools start empty and capture on placement', () => {
-    expect(props('bars_pattern')).toMatchObject({ bars: [], mode: 'bars', mirrored: false, flipped: false })
+    expect(props('bars_pattern')).toMatchObject({ bars: [], mode: 'hl', mirrored: false, flipped: false })
     expect(drawingTools.get('bars_pattern')!.capturesBars).toBe(true)
     expect(drawingTools.get('ghost_feed')!.capturesBars).toBe(true)
   })
 
-  it('a table opens as a two by two grid with a header row', () => {
-    expect(props('table')).toMatchObject({ cells: [['', ''], ['', '']], headerRow: true })
+  it('a table opens as a three by three grid, its words to the left and no header band', () => {
+    expect(props('table')).toMatchObject({ cells: [['', '', ''], ['', '', ''], ['', '', '']], headerRow: false, textHAlign: 'left' })
   })
 
   it('the glyph marks carry a glyph and a size, and an image its data, opacity and width', () => {

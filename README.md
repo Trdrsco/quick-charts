@@ -2019,24 +2019,52 @@ inventory, and the built-in palettes and the generated stylesheet are built from
 property names are private, so a color, a size or a radius is always set through a role. The
 class names inside the stylesheet are private too, except the supported hooks below.
 
+### The built-in palettes
+
+The two built-in palettes paint every dialog, menu and popover the chart opens from these roles,
+among the others `THEME_ROLES` lists:
+
+| Role | Light | Dark | What it paints |
+|---|---|---|---|
+| `overlay.surface` | `#ffffff` | `#1f1f1f` | The ground of a dialog, menu or popover. |
+| `overlay.separator` | `#ebebeb` | `#4a4a4a` | The rule under a dialog header and over its footer, and between menu groups. |
+| `overlay.scrim` | `rgba(156, 156, 156, 0.5)` | `rgba(0, 0, 0, 0.5)` | The veil behind a modal dialog. |
+| `text.primary` | `#0f0f0f` | `#dbdbdb` | The ink of rows, labels and values. |
+| `text.muted` | `#6a6a6a` | `#9b9b9b` | A section title, a hint, a placeholder. |
+| `chrome.caret` | `#707070` | `#8c8c8c` | The chevron of a select and the arrow that opens a flyout. |
+| `text.link` | `#2962ff` | `#5b9cf6` | A text link. |
+| `state.hover` | `#f2f2f2` | `#2e2e2e` | The fill under the pointer. |
+| `state.pressed` | `#ebebeb` | `#3d3d3d` | The fill while the pointer is down. |
+| `control.outline` | `#2e2e2e` | `#ffffff` | The edge and the words of an outlined button at rest, such as a dialog's Cancel. |
+| `control.onInk` | `#ffffff` | `#000000` | A mark cut from the emphasis fill: a chosen thickness, line style or line end. |
+| `status.positive` | `#078671` | `#089981` | A gain or a success. |
+| `status.negative` | `#df323f` | `#f34452` | A loss or a failure. |
+| `status.warning` | `#ac6600` | `#ff9800` | A condition to notice before acting. |
+
+Every ink is held to the WCAG 2.2 AA ratio on each ground it is drawn over, so the light status
+inks are the darkest steps of their hues that still read at 4.5 to 1 on white, the dark red reads at
+4.5 to 1 on the dialog ground, and the muted ink reads at 4.5 to 1 over the hover and selected fills
+of a menu row. `drawing.line` and `drawing.selected` are `#2962ff` in both modes.
+
 ### Fields
 
 Every text field, select, number field and color well the chart draws in its dialogs and settings
 is one box: 34px tall, a 1px edge with an 8px corner around a clear ground, and its words at 14 on
-18, 8px in from the edge. A select ends in an 18px chevron. Four roles in the `control` family
-paint the box, and the focus ring is `state.focusRing`:
+18, 8px in from the edge. A select ends in an 18px chevron in `chrome.caret`. Five roles in the
+`control` family paint the box, and the focus ring is `state.focusRing`:
 
 | Role | Light | Dark | What it paints |
 |---|---|---|---|
 | `control.fieldEdge` | `#dbdbdb` | `#575757` | The edge of a field at rest. |
 | `control.fieldEdgeHover` | `#a8a8a8` | `#707070` | The edge of a field under the pointer. |
+| `control.selectEdgeHover` | `#a8a8a8` | `#808080` | The edge of a list button under the pointer, such as a select on a drawing's settings page. |
 | `control.fieldInvalid` | `#f23645` | `#f23645` | The edge and the focus ring of a field holding a value it refuses. |
 | `control.fieldFill` | `#f2f2f2` | `#2e2e2e` | The ground of a field that is read-only or disabled. |
 
 Focus draws a 2px ring over the edge, the edge itself and the pixel inside it, so the ring follows
-the corner and a dialog that scrolls never clips it. A number past its bounds or off its step turns
-the edge `control.fieldInvalid` once the viewer leaves the field, so a number on its way to a valid
-one never turns red while it is typed. The symbol search field draws its own outline in
+the corner and a dialog that scrolls never clips it. Only a value the chart refuses turns the edge
+`control.fieldInvalid`; a number past its bounds or off its step is clamped or rounded, so its
+field never turns red. The symbol search field draws its own outline in
 `chrome.fieldBorder`.
 
 ### Motion
@@ -2052,21 +2080,25 @@ same values:
 | `motion.durationModerate` | `250ms` | A control moving to its new state, such as a switch knob sliding. |
 | `motion.durationSlow` | `350ms` | A small mark settling, such as a disclosure caret turning or a checkbox filling. |
 | `motion.durationSlower` | `500ms` | A larger mark turning, such as the drawing toolbar's chevron. |
+| `motion.durationGlide` | `100ms` | A mark gliding to a new place, such as a dialog's tab bar or an opacity knob. |
 | `motion.easingStandard` | `ease` | A modal dialog box, the replay row, a caret dip, a checkbox fill. |
 | `motion.easingOut` | `ease-out` | A modal backdrop fading, a switch knob sliding. |
 | `motion.easingLinear` | `linear` | A color or opacity change under the pointer. |
 | `motion.easingSpring` | `cubic-bezier(0.175, 0.885, 0.32, 1.275)` | A caret or chevron turning with a slight overshoot. |
+| `motion.easingInOut` | `ease-in-out` | A dialog's tab bar sliding to the page shown. |
 | `motion.scaleEnter` | `0.97` | The scale a modal dialog box grows from as it opens. |
 
 Every modal dialog the chart opens (the symbol search, chart settings, the indicator browser and
 indicator settings, the saved-layouts browser, the name and confirm prompts, go to date, and the
-drawing settings, image picker and template prompts) opens with its backdrop fading in over
+drawing image picker and template prompts) opens with its backdrop fading in over
 `motion.durationBase` on `motion.easingOut`, and its box fading in and growing from
 `motion.scaleEnter` to full size over `motion.durationBase` on `motion.easingStandard`. It closes
 with the same motion reversed. A closing dialog stops taking input and returns focus at once, and the
 chart removes it when the same `motion.durationBase` has elapsed, so a duration you set times both
 the transition and the removal. A dialog opened over another moves on its own and closes first, and
-a dialog the chart replaces or tears down goes at once.
+a dialog the chart replaces or tears down goes at once. The drawing settings dialog edits the drawing
+it stands over, so it opens in place: it appears and leaves at once, and its backdrop dims nothing
+while still taking the press that closes it.
 
 A duration takes a CSS duration such as `200ms` or `0.2s`; an easing takes any CSS timing function,
 such as `ease-in-out`, `steps(4)` or `cubic-bezier(0.2, 0, 0, 1)`; a scale takes a unitless factor
@@ -2847,7 +2879,142 @@ line style, the settings gear, lock, delete, and a More menu with the stacking m
 per-timeframe visibility presets, clone, copy and hide. Every edit persists at once and becomes the
 tool's default for the next drawing of that type. The settings dialog opens from the gear with
 Inputs, Style, Text, Table, Coordinates and Visibility pages as the tool has them; its edits apply
-live, Cancel restores the drawing, and Ok commits the session as one edit.
+live, Cancel restores the drawing, and Ok commits the session as one edit. Its header carries the
+drawing's name, the tool's own until the viewer renames it with the pencil beside it; the name is
+`DrawingOptions.name`, saved with the drawing, and Cancel restores it with the rest. A page shown
+puts the keyboard in its first field, and the dialog keeps its top edge where it opened as pages of
+other sizes come and go. Its lists hang under the controls that open them, past the dialog's edge
+where they need to. The Template menu saves the current setup under a name, applies a saved one,
+or applies the tool's defaults: its own look and setup, put on the drawing at once, with its words
+kept.
+
+A color in the dialog opens its popover under the button that holds it: the offered colors, the
+colors the viewer added with the plus after them, and the opacity, and for a stroke its thickness
+and line style. Every choice applies at once and the popover stays up for the next one; Escape
+returns to the button. The plus opens a custom color editor that takes a hex of three or six digits
+or a pick on its saturation and brightness area and hue strip. A color added there joins the
+viewer's own, newest first, kept with the drawing preferences in `ChartStorage`, and the settings
+bar's palette offers them too.
+
+The line tools' Style page carries the stroke with its two ends, the extensions, the middle point,
+the price labels and, under Info, the stats a line reads (price range, percent change, the change
+counted in the symbol's smallest price move, bars, date and time range, angle), where they stand
+(left, center, right, or auto, which keeps them inside the pane), and whether they show always or
+only while the line is selected. A horizontal line offers its price label, a vertical line its time
+label, a cross line both. A rectangle offers its extensions, its border, a middle line with a stroke
+of its own and its background; every other shape its border and background; a curve its stroke and
+ends, its extensions along the tangents it ends on, and its background. A background switched off
+keeps its color and opacity for when it is switched back on. The Text page sets the words' color,
+size, weight and slant on one line over the words, and where the tool places them, where they stand:
+above, on or below a line, above, inside or below a box, along it from left to right, and for a
+vertical line whether they read across it or run up it. `NO_COORDINATES_TAB` names the tools whose
+points are drawn rather than typed, and `PRICE_ONLY_COORDS` the levels that span every bar.
+
+A retracement, a trend-based extension and a fib channel lay their levels out two to a line, each
+level its switch, its value and its color, under the thickness and style every level line is drawn
+in. The one color recolors every level at once, and shows the color the levels share or a split
+well while they differ. The bands between levels fill at `backgroundOpacity` while
+`fillBackground` holds them; `coeffsAsPercents` reads a level's ratio as a percent, and
+`labelsHAlign` and `labelsVAlign` stand the labels before, at the middle of or after the levels,
+above, on or below each line. A retracement and an extension draw their trend line through the
+swing points in a stroke of its own (`trendLine`, `trendLineColor`, `trendLineWidth`,
+`trendLineStyle`), stand each level's own words where `showText`, `textHAlign` and
+`textVAlign` put them, and with `levelsOnLogScale` divide the swing by log price while the price
+scale is logarithmic, which `Viewport.logScale` reports.
+
+A time zone, a trend-based time, fib circles, speed resistance arcs, a fib wedge and a pitchfan
+stand their levels one to a line, each level its switch, its value and its own stroke: a level's
+`width` and `style` draw it apart from the drawing's own. A time zone and a trend-based time label
+their lines where `labelsHAlign` and `labelsVAlign` put them along and across the pane; a circle
+fib reads its ratios as percents with `coeffsAsPercents`; an arc fib closes its arcs into circles
+with `fullCircles`; the trend-based time, the circles, the arcs and the wedge draw a trend line in a
+stroke of its own, and a pitchfan its median (`medianColor`, `medianWidth`, `medianStyle`). A
+speed resistance fan and a gann box divide their box on `priceLevels` across it and `timeLevels`
+down it, each side's labels switched on their own; a fan draws a grid at the divisions in a stroke
+of its own, and a gann box shades its price and time bands on their own switches and draws its
+angles corner to corner in `anglesColor`. `reverse` counts a box's divisions from the other
+corner.
+
+A pitchfork stands its line pairs one to a line the same way, each pair its switch, its value and
+its own stroke, under its median's stroke (`medianColor`, `medianWidth`, `medianStyle`) and over
+the bands between pairs, each in its outer pair's color at `backgroundOpacity` while
+`fillBackground` is on. `extendLines` runs every line back past the fork's start, and `variant`
+switches its construction in place: `original`, `schiff`, `modified_schiff` or `inside`.
+A fib spiral winds clockwise out from its first point, and `counterclockwise` winds it the other
+way.
+
+A gann square and a gann square fixed draw a grid of six lines at their fifths (`levels`), fan
+lines from the corner they count from out to their far sides (`fans`) and arcs about that corner
+(`arcs`), each line its switch, its color and its width, a fan line or an arc at its ratio of the
+square's unit, `x` along the time side for `y` along the price side. Their pages set each set
+under its section, two to a line; the bands between arcs follow `fillBackground` and
+`backgroundOpacity`, and `reverse` counts from the other corner. A gann square holds its second
+corner at `scaleRatio` price for every bar between its corners, a ratio it takes from the pane
+when it is first drawn so it opens square, and typing a Price/bar ratio moves the corner to it; with
+`showLabels` it reads its price and bar ranges and their ratio under it. A square fixed stays
+square on the pane whatever its scale. A gann fan draws its rays at their price-to-time ratios, 1/8
+to 8/1, each in its own stroke, with the bands between them and each ray's ratio at its end.
+
+A regression trend fits its line through the `source` of the bars between its points: a bar's
+open, high, low, close or volume, or one of the averages `hl2`, `hlc3`, `ohlc4` and `hlcc4`
+(`BAR_PRICE_SOURCES`). Its bands stand `upperDeviation` and `lowerDeviation` standard deviations
+from it, the lower counted down, each shown by `useUpper` and `useLower`; the line and each band
+switch and stroke on their own (`baseLine`, `upLine`, `downLine` with their colors, widths and
+styles), `extendLines` runs them to the pane's edges, and `showPearsons` reads the correlation
+under them.
+
+A parallel channel draws its levels at ratios of its width, 0 its baseline and 1 the parallel through
+its third point, each level its switch, its value and its own stroke, over its body between 0 and 1.
+A flat top/bottom and a disjoint channel end their sides as `leftEnd` and `rightEnd` set and read
+each side's prices at its ends with `showPrices`, in `pricesColor`, `pricesFontSize`,
+`pricesBold` and `pricesItalic`. A channel's `fillBackground` switches its body, and its words
+stand above it, inside it or below it with `textVAlign`, at its start, middle or end with
+`textHAlign`. A parallel channel's Coordinates page writes its third point as the price its
+parallel stands from the baseline.
+
+A sector shades the two halves of its slice, parted by the ray through its arc's middle, in `color1`
+and `color2` while `fillBackground` is on. A bars pattern paints its captured bars as `mode` says:
+`hl` their high-low ranges, `oc` their open-close ranges, or a line through each bar's close, open,
+high, low or `hl2`. A ghost feed's average candle span is held as a price and written on its page in
+the symbol's minimum ticks.
+
+An anchored VWAP weighs the `source` of every bar since its point by the bar's volume, and stands
+its bands off the average by `bandMultipliers` standard deviations or, with `bandsMode`
+`percent`, percents of it, each band calculated while its `bandsOn` switch is on. A volume profile
+reads its rows' volumes beside them with `showValues` and its point of control and shown value
+area bounds on the price scale with `showLabelsOnPriceScale`. A range meter reads the stats its
+switches choose in a label of its own color, size and background.
+
+A text's box switches its background (`fillBackground`) and its border (`drawBorder`, in the
+drawing's stroke color) on their own, and with `wordWrap` its words wrap at `wordWrapWidth` pixels;
+a callout's words wrap the same way inside a border at the drawing's width. A note ties a label to
+the point it notes: its first point is that point, its second the label's, with a line between them
+in the drawing's stroke color and the label's border in `borderColor`; a pin's words stand in a box
+of the same kind under its marker. A price note runs a line from its price to a tag that reads it,
+the tag in a text style and colors of its own (`labelTextColor`, `labelFontSize`, `labelBold`,
+`labelItalic`, `labelBackgroundColor`, `labelBorderColor`), its words along the line where
+`textVAlign` and `textHAlign` stand them. A signpost stands on its bar's high, or its low for a
+plate below the bar, its plate `position` percent of the pane's height away, so the plate keeps its
+height over the bar as the price scale moves; with `showImage` the plate leads with its `emoji`,
+and its words read in white or black, whichever reads on the plate. A table stands its cells' words
+at their left, middle or right with `textHAlign`, its border and grid in the drawing's stroke color.
+
+A brush fills the area its stroke closes back to its start while `fillBackground` is on, and a brush
+and a path head their ends with arrows as `leftEnd` and `rightEnd` say, a path with an arrow at its
+last point at first. A highlighter's width is in pixels, 8 to 96 on its page. The emoji and the
+sticker have no settings beyond their visibility: a glyph's size is set by its grips on the chart. An
+icon's page sets its tint, and an image's page chooses its picture from a
+box that names the formats and the size the intake takes, and sets how see-through it is drawn.
+
+The pattern tools are read by their letters and carry no words of their own: their Style page sets
+the letters' color, size, weight and slant on a Label row, then the border and, for the patterns
+that shade their legs, the background, which `fillBackground` switches off and on keeping its
+color. A three drives pattern stands on seven points, its reversal after the third drive the last.
+
+An Elliott wave count writes its labels in its wave's color, as its `degree` writes them: the
+fifteen degrees from `supermillennium` to `minuscule` (`ELLIOTT_DEGREES`) stand in five threes,
+each three ringed, in parentheses and bare, in roman numerals or figures and in capitals or small
+letters. `showWave` switches the wave through its pivots, and the labels stand without it.
 
 Text-bearing tools open an inline editor where the text sits, in the drawing's own type. A fresh
 placement committed empty is removed; an existing note committed empty is blanked. Ctrl or Cmd
@@ -2866,7 +3033,9 @@ adapter they last the page.
 
 The image and glyph tools reach your host through `ChartWidgetOptions.assets`. `intakeImage`
 turns a picked file into a payload within the caps and answers a refusal as a code the chart
-resolves through its own catalog; `glyphSource` answers the artwork URL an emoji or sticker draws
+resolves through its own catalog. The payload's `dataUrl` is always a PNG or a JPEG, whatever the
+picked file was, so a saved chart opens everywhere: decode a WEBP and re-encode it on a canvas, as a
+PNG where it has transparency and a JPEG otherwise; `glyphSource` answers the artwork URL an emoji or sticker draws
 with, or null to draw the glyph as text. Emoji artwork from Twemoji is bundled and works without
 an asset port or external requests. Omit `glyphSource` to use it. It is a chunk of its own, which
 the chart imports the first time it draws an emoji, so a chart that never shows one never loads
@@ -2883,6 +3052,8 @@ layer.armTool('rectangle')
 layer.destroy()
 ```
 
+A layer you mount yourself is told the symbol's grid, formatter and currency through `setTick`,
+`setPriceFormatter` and `setCurrency`; a position offers its risk as an amount in that currency.
 A layer you mount yourself arms whatever you arm. Its `copies` option answers whether a new drawing
 may be made as a copy of a drawing of a type: return false for a tool you do not offer, and clone,
 paste and a Control- or Command-drag duplicate make nothing for its drawings, `canPaste` answers
@@ -2936,8 +3107,9 @@ const preset = await templates.defaultFor('trend_line')
 ```
 
 Image-backed and glyph tools reach the host through one explicit asset port. The library owns the
-rules (JPG or PNG, 2 MB, a 2000 px longest edge, downscaled rather than refused) and names each
-refusal with a code that resolves through the chart's own catalog; the host owns the bytes.
+rules (a JPG, a PNG or a WEBP, stored as a PNG or a JPEG, 2 MB, a 2000 px longest edge, downscaled
+rather than refused) and names each refusal with a code that resolves through the chart's own
+catalog; the host owns the bytes.
 
 ```ts
 import { checkImageFile, fittedSize, IMAGE_ACCEPT, type DrawingAssetPort } from '@trdrs/quickcharts/drawings'
@@ -2947,7 +3119,8 @@ const assets: DrawingAssetPort = {
     const bad = checkImageFile(file)
     if (bad) return { ok: false, ...bad }
     const { width, height } = fittedSize(1200, 900)
-    return { ok: true, asset: { dataUrl: await myBackend.read(file), width, height, downscaled: false } }
+    // A PNG or a JPEG whatever the picked file was: a WEBP is re-encoded before it is stored.
+    return { ok: true, asset: { dataUrl: await myBackend.pngOrJpeg(file), width, height, downscaled: false } }
   },
   // Optional: glyphSource replaces the bundled emoji artwork.
   // glyphSource: (glyph) => myBackend.emojiUrl(glyph),
@@ -2971,6 +3144,12 @@ What to know:
   off) lives in the adapter's chart-bound scope for the symbol; a shared drawing lives in the
   symbol's scope, and a refused write merges the stored document over the layer's own before it
   writes again.
+- **A save keeps its look.** A drawing saves at `v: 3`. A save at `v: 2` restores with the look it
+  was saved with: its tool writes the values that paint it so and saves at `v: 3` with them, the
+  looks the tool's pages do not set riding in the props `INERT_PROPS` lists. A gann square, a gann
+  square fixed, a speed resistance fan, a pitchfan, a price note and a signpost saved at `v: 2`
+  paint as they were saved (`savedLook`) until their settings change. A host that writes drawings
+  itself writes `v: 3`.
 - **Keys run through the registry.** Delete and Backspace remove the selection, Escape cancels a
   placement, disarms, or closes the inline editor, and Ctrl (or Cmd) with C and V copy and paste a
   drawing. Each resolves to a `chart.drawings.*` command, so your access policy gates the keyboard

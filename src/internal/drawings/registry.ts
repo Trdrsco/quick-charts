@@ -1,4 +1,5 @@
 import type { Anchor, DrawingOptions, DrawingStyle, SerializedDrawing, ToolCategory } from './core/types'
+import { SERIAL_VERSION } from './core/types'
 import type { AnyDrawing, Drawing } from './core/drawing'
 
 import {
@@ -121,6 +122,38 @@ function tool<P extends Record<string, unknown>>(
   }
 }
 
+/** A line tool's factory look: a 2px stroke and its words in one blue, the words at 14px. */
+const LINE_LOOK: Partial<DrawingStyle> = { lineColor: '#2962ff', lineWidth: 2, lineStyle: 'solid', textColor: '#2962ff', fontSize: 14 }
+
+/** A shape's factory look in one hue: a 2px border, a background of the same hue at a fifth, and
+ *  its words in the hue at 14px. */
+const shapeLook = (hue: string): Partial<DrawingStyle> => ({ lineColor: hue, lineWidth: 2, lineStyle: 'solid', fillColor: hue, fillOpacity: 0.2, textColor: hue, fontSize: 14 })
+
+/** A pattern's factory look: a 2px border in its hue and its letters white at 12px, and where it
+ *  shades its legs, a background of the hue at fifteen percent. */
+const patternLook = (hue: string, shaded: boolean): Partial<DrawingStyle> => ({
+  lineColor: hue,
+  lineWidth: 2,
+  lineStyle: 'solid',
+  textColor: '#ffffff',
+  fontSize: 12,
+  ...(shaded ? { fillColor: hue, fillOpacity: 0.15 } : {}),
+})
+
+/** A leveled fib's factory look: its levels drawn solid at 2px, their labels at 12px. */
+const FIB_LOOK: Partial<DrawingStyle> = { lineWidth: 2, lineStyle: 'solid', fontSize: 12 }
+
+/** A channel's look: its sides, its body at a fifth and its words in its hue, the sides 2px and the
+ *  words 14px. */
+const channelLook = (hue: string): Partial<DrawingStyle> => ({ lineColor: hue, lineWidth: 2, lineStyle: 'solid', fillColor: hue, fillOpacity: 0.2, textColor: hue, fontSize: 14 })
+
+/** A range meter's look: its arrows in their color at 2px over a blue span at fifteen percent, the
+ *  viewer's words blue at 12px. */
+const meterLook = (line: string): Partial<DrawingStyle> => ({ lineColor: line, lineWidth: 2, lineStyle: 'solid', fillColor: '#2962ff', fillOpacity: 0.15, textColor: '#2962ff', fontSize: 12 })
+
+/** A wave count's look: its line and its labels in one color, the line 2px and solid. */
+const waveLook = (color: string): Partial<DrawingStyle> => ({ lineColor: color, lineWidth: 2, lineStyle: 'solid' })
+
 /** Display order of categories in the drawing toolbar. */
 export const TOOL_CATEGORIES: readonly ToolCategory[] = [
   'lines',
@@ -141,88 +174,88 @@ export const TOOL_CATEGORIES: readonly ToolCategory[] = [
 
 const DEFINITIONS: ToolDefinition[] = [
   // Lines
-  tool(TrendLine, { type: 'trend_line', name: 'Trend line', category: 'lines', anchors: 2 }),
-  tool(Ray, { type: 'ray', name: 'Ray', category: 'lines', anchors: 2 }),
-  tool(InfoLine, { type: 'info_line', name: 'Info line', category: 'lines', anchors: 2 }),
-  tool(ExtendedLine, { type: 'extended', name: 'Extended line', category: 'lines', anchors: 2 }),
-  tool(TrendAngle, { type: 'trend_angle', name: 'Trend angle', category: 'lines', anchors: 2 }),
-  tool(HorizontalLine, { type: 'horizontal_line', name: 'Horizontal line', category: 'lines', anchors: 1 }),
-  tool(HorizontalRay, { type: 'horizontal_ray', name: 'Horizontal ray', category: 'lines', anchors: 1 }),
-  tool(VerticalLine, { type: 'vertical_line', name: 'Vertical line', category: 'lines', anchors: 1 }),
-  tool(CrossLine, { type: 'cross_line', name: 'Cross line', category: 'lines', anchors: 1 }),
-  tool(Arrow, { type: 'arrow', name: 'Arrow', category: 'lines', anchors: 2 }),
+  tool(TrendLine, { type: 'trend_line', name: 'Trend line', category: 'lines', anchors: 2, style: LINE_LOOK }),
+  tool(Ray, { type: 'ray', name: 'Ray', category: 'lines', anchors: 2, style: LINE_LOOK }),
+  tool(InfoLine, { type: 'info_line', name: 'Info line', category: 'lines', anchors: 2, style: LINE_LOOK }),
+  tool(ExtendedLine, { type: 'extended', name: 'Extended line', category: 'lines', anchors: 2, style: LINE_LOOK }),
+  tool(TrendAngle, { type: 'trend_angle', name: 'Trend angle', category: 'lines', anchors: 2, style: { ...LINE_LOOK, fontSize: 12 } }),
+  tool(HorizontalLine, { type: 'horizontal_line', name: 'Horizontal line', category: 'lines', anchors: 1, style: { ...LINE_LOOK, fontSize: 12 } }),
+  tool(HorizontalRay, { type: 'horizontal_ray', name: 'Horizontal ray', category: 'lines', anchors: 1, style: { ...LINE_LOOK, fontSize: 12 } }),
+  tool(VerticalLine, { type: 'vertical_line', name: 'Vertical line', category: 'lines', anchors: 1, style: LINE_LOOK }),
+  tool(CrossLine, { type: 'cross_line', name: 'Cross line', category: 'lines', anchors: 1, style: LINE_LOOK }),
+  tool(Arrow, { type: 'arrow', name: 'Arrow', category: 'lines', anchors: 2, style: LINE_LOOK }),
 
   // Shapes
-  tool(Rectangle, { type: 'rectangle', name: 'Rectangle', category: 'shapes', anchors: 2 }),
-  tool(RotatedRectangle, { type: 'rotated_rectangle', name: 'Rotated rectangle', category: 'shapes', anchors: 3 }),
-  tool(Ellipse, { type: 'ellipse', name: 'Ellipse', category: 'shapes', anchors: 3 }),
-  tool(Circle, { type: 'circle', name: 'Circle', category: 'shapes', anchors: 2 }),
-  tool(Triangle, { type: 'triangle', name: 'Triangle', category: 'shapes', anchors: 3 }),
-  tool(Arc, { type: 'arc', name: 'Arc', category: 'shapes', anchors: 3 }),
-  tool(Curve, { type: 'curve', name: 'Curve', category: 'shapes', anchors: 3 }),
-  tool(DoubleCurve, { type: 'double_curve', name: 'Double curve', category: 'shapes', anchors: 4 }),
+  tool(Rectangle, { type: 'rectangle', name: 'Rectangle', category: 'shapes', anchors: 2, style: shapeLook('#9c27b0') }),
+  tool(RotatedRectangle, { type: 'rotated_rectangle', name: 'Rotated rectangle', category: 'shapes', anchors: 3, style: shapeLook('#4caf50') }),
+  tool(Ellipse, { type: 'ellipse', name: 'Ellipse', category: 'shapes', anchors: 3, style: shapeLook('#f23645') }),
+  tool(Circle, { type: 'circle', name: 'Circle', category: 'shapes', anchors: 2, style: shapeLook('#ff9800') }),
+  tool(Triangle, { type: 'triangle', name: 'Triangle', category: 'shapes', anchors: 3, style: shapeLook('#089981') }),
+  tool(Arc, { type: 'arc', name: 'Arc', category: 'shapes', anchors: 3, style: shapeLook('#e91e63') }),
+  tool(Curve, { type: 'curve', name: 'Curve', category: 'shapes', anchors: 3, style: shapeLook('#2962ff') }),
+  tool(DoubleCurve, { type: 'double_curve', name: 'Double curve', category: 'shapes', anchors: 4, style: shapeLook('#673ab7') }),
 
   // Channels
-  tool(RegressionTrend, { type: 'regression_trend', name: 'Regression trend', category: 'channels', anchors: 2 }),
-  tool(ParallelChannel, { type: 'parallel_channel', name: 'Parallel channel', category: 'channels', anchors: 3, style: { fillOpacity: 0.08 } }),
-  tool(FlatTopBottom, { type: 'flat_top_bottom', name: 'Flat top/bottom', category: 'channels', anchors: 3, style: { fillOpacity: 0.08 } }),
-  tool(DisjointChannel, { type: 'disjoint_channel', name: 'Disjoint channel', category: 'channels', anchors: 4, style: { fillOpacity: 0.08 } }),
+  tool(RegressionTrend, { type: 'regression_trend', name: 'Regression trend', category: 'channels', anchors: 2, style: { lineWidth: 1, lineStyle: 'solid' } }),
+  tool(ParallelChannel, { type: 'parallel_channel', name: 'Parallel channel', category: 'channels', anchors: 3, style: channelLook('#2962ff') }),
+  tool(FlatTopBottom, { type: 'flat_top_bottom', name: 'Flat top/bottom', category: 'channels', anchors: 3, style: channelLook('#ff9800') }),
+  tool(DisjointChannel, { type: 'disjoint_channel', name: 'Disjoint channel', category: 'channels', anchors: 4, style: channelLook('#089981') }),
 
   // Fibonacci
-  tool(FibRetracement, { type: 'fib_retracement', name: 'Fib retracement', category: 'fibonacci', anchors: 2 }),
-  tool(FibExtension, { type: 'fib_trend_ext', name: 'Trend-based fib extension', category: 'fibonacci', anchors: 3 }),
-  tool(FibChannel, { type: 'fib_channel', name: 'Fib channel', category: 'fibonacci', anchors: 3 }),
-  tool(FibTimeZone, { type: 'fib_timezone', name: 'Fib time zone', category: 'fibonacci', anchors: 2 }),
-  tool(FibSpeedFan, { type: 'fib_speed_resist_fan', name: 'Fib speed resistance fan', category: 'fibonacci', anchors: 2 }),
-  tool(FibTimeExtension, { type: 'fib_trend_time', name: 'Trend-based fib time', category: 'fibonacci', anchors: 3 }),
-  tool(FibCircles, { type: 'fib_circles', name: 'Fib circles', category: 'fibonacci', anchors: 2 }),
-  tool(FibSpiral, { type: 'fib_spiral', name: 'Fib spiral', category: 'fibonacci', anchors: 2 }),
-  tool(FibArcs, { type: 'fib_speed_resist_arcs', name: 'Fib speed resistance arcs', category: 'fibonacci', anchors: 2 }),
-  tool(FibWedge, { type: 'fib_wedge', name: 'Fib wedge', category: 'fibonacci', anchors: 3 }),
-  tool(Pitchfan, { type: 'pitchfan', name: 'Pitchfan', category: 'fibonacci', anchors: 3 }),
+  tool(FibRetracement, { type: 'fib_retracement', name: 'Fib retracement', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
+  tool(FibExtension, { type: 'fib_trend_ext', name: 'Trend-based fib extension', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
+  tool(FibChannel, { type: 'fib_channel', name: 'Fib channel', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
+  tool(FibTimeZone, { type: 'fib_timezone', name: 'Fib time zone', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
+  tool(FibSpeedFan, { type: 'fib_speed_resist_fan', name: 'Fib speed resistance fan', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
+  tool(FibTimeExtension, { type: 'fib_trend_time', name: 'Trend-based fib time', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
+  tool(FibCircles, { type: 'fib_circles', name: 'Fib circles', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
+  tool(FibSpiral, { type: 'fib_spiral', name: 'Fib spiral', category: 'fibonacci', anchors: 2, style: { lineColor: '#00bcd4', lineWidth: 2, lineStyle: 'solid' } }),
+  tool(FibArcs, { type: 'fib_speed_resist_arcs', name: 'Fib speed resistance arcs', category: 'fibonacci', anchors: 2, style: FIB_LOOK }),
+  tool(FibWedge, { type: 'fib_wedge', name: 'Fib wedge', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
+  tool(Pitchfan, { type: 'pitchfan', name: 'Pitchfan', category: 'fibonacci', anchors: 3, style: FIB_LOOK }),
 
   // Pitchforks
-  tool(Pitchfork, { type: 'pitchfork', name: 'Pitchfork', category: 'pitchforks', anchors: 3 }),
-  tool(SchiffPitchfork, { type: 'schiff_pitchfork', name: 'Schiff pitchfork', category: 'pitchforks', anchors: 3 }),
-  tool(ModifiedSchiffPitchfork, { type: 'schiff_pitchfork_modified', name: 'Modified Schiff pitchfork', category: 'pitchforks', anchors: 3 }),
-  tool(InsidePitchfork, { type: 'inside_pitchfork', name: 'Inside pitchfork', category: 'pitchforks', anchors: 3 }),
+  tool(Pitchfork, { type: 'pitchfork', name: 'Pitchfork', category: 'pitchforks', anchors: 3, style: FIB_LOOK }),
+  tool(SchiffPitchfork, { type: 'schiff_pitchfork', name: 'Schiff pitchfork', category: 'pitchforks', anchors: 3, style: FIB_LOOK }),
+  tool(ModifiedSchiffPitchfork, { type: 'schiff_pitchfork_modified', name: 'Modified Schiff pitchfork', category: 'pitchforks', anchors: 3, style: FIB_LOOK }),
+  tool(InsidePitchfork, { type: 'inside_pitchfork', name: 'Inside pitchfork', category: 'pitchforks', anchors: 3, style: FIB_LOOK }),
 
   // Gann
-  tool(GannBox, { type: 'gannbox', name: 'Gann box', category: 'gann', anchors: 2 }),
-  tool(GannSquare, { type: 'gannbox_square', name: 'Gann square', category: 'gann', anchors: 2 }),
+  tool(GannBox, { type: 'gannbox', name: 'Gann box', category: 'gann', anchors: 2, style: { lineColor: 'rgba(21, 56, 153, 0.8)', lineWidth: 2, lineStyle: 'solid', fontSize: 12 } }),
+  tool(GannSquare, { type: 'gannbox_square', name: 'Gann square', category: 'gann', anchors: 2, style: FIB_LOOK }),
   tool(GannSquareFixed, { type: 'gannbox_fixed', name: 'Gann square fixed', category: 'gann', anchors: 2 }),
   tool(GannFan, { type: 'gannbox_fan', name: 'Gann fan', category: 'gann', anchors: 2 }),
 
   // Patterns
-  tool(XabcdPattern, { type: 'xabcd_pattern', name: 'XABCD pattern', category: 'patterns', anchors: 5, style: { fillOpacity: 0.12 } }),
-  tool(CypherPattern, { type: 'cypher_pattern', name: 'Cypher pattern', category: 'patterns', anchors: 5, style: { fillOpacity: 0.12 } }),
-  tool(AbcdPattern, { type: 'abcd_pattern', name: 'ABCD pattern', category: 'patterns', anchors: 4 }),
-  tool(ThreeDrivesPattern, { type: 'three_drives', name: 'Three drives pattern', category: 'patterns', anchors: 6 }),
-  tool(TrianglePattern, { type: 'triangle_pattern', name: 'Triangle pattern', category: 'patterns', anchors: 4, style: { fillOpacity: 0.12 } }),
-  tool(HeadAndShoulders, { type: 'head_and_shoulders', name: 'Head and shoulders', category: 'patterns', anchors: 7, style: { fillOpacity: 0.12 } }),
+  tool(XabcdPattern, { type: 'xabcd_pattern', name: 'XABCD pattern', category: 'patterns', anchors: 5, style: patternLook('#2962ff', true) }),
+  tool(CypherPattern, { type: 'cypher_pattern', name: 'Cypher pattern', category: 'patterns', anchors: 5, style: patternLook('#2962ff', true) }),
+  tool(AbcdPattern, { type: 'abcd_pattern', name: 'ABCD pattern', category: 'patterns', anchors: 4, style: patternLook('#089981', false) }),
+  tool(ThreeDrivesPattern, { type: 'three_drives', name: 'Three drives pattern', category: 'patterns', anchors: 7, style: patternLook('#673ab7', false) }),
+  tool(TrianglePattern, { type: 'triangle_pattern', name: 'Triangle pattern', category: 'patterns', anchors: 4, style: patternLook('#673ab7', true) }),
+  tool(HeadAndShoulders, { type: 'head_and_shoulders', name: 'Head and shoulders', category: 'patterns', anchors: 7, style: patternLook('#089981', true) }),
 
   // Elliott waves
-  tool(ElliottImpulse, { type: 'elliott_impulse_wave', name: 'Elliott impulse (12345)', category: 'elliott', anchors: 6 }),
-  tool(ElliottCorrection, { type: 'elliott_correction', name: 'Elliott correction (ABC)', category: 'elliott', anchors: 4 }),
-  tool(ElliottTriangle, { type: 'elliott_triangle_wave', name: 'Elliott triangle (ABCDE)', category: 'elliott', anchors: 6 }),
-  tool(ElliottDoubleCombo, { type: 'elliott_double_combo', name: 'Elliott double combo (WXY)', category: 'elliott', anchors: 4 }),
-  tool(ElliottTripleCombo, { type: 'elliott_triple_combo', name: 'Elliott triple combo (WXYXZ)', category: 'elliott', anchors: 6 }),
+  tool(ElliottImpulse, { type: 'elliott_impulse_wave', name: 'Elliott impulse (12345)', category: 'elliott', anchors: 6, style: waveLook('#3d85c6') }),
+  tool(ElliottCorrection, { type: 'elliott_correction', name: 'Elliott correction (ABC)', category: 'elliott', anchors: 4, style: waveLook('#3d85c6') }),
+  tool(ElliottTriangle, { type: 'elliott_triangle_wave', name: 'Elliott triangle (ABCDE)', category: 'elliott', anchors: 6, style: waveLook('#ff9800') }),
+  tool(ElliottDoubleCombo, { type: 'elliott_double_combo', name: 'Elliott double combo (WXY)', category: 'elliott', anchors: 4, style: waveLook('#6aa84f') }),
+  tool(ElliottTripleCombo, { type: 'elliott_triple_combo', name: 'Elliott triple combo (WXYXZ)', category: 'elliott', anchors: 6, style: waveLook('#6aa84f') }),
 
   // Cycles
-  tool(CyclicLines, { type: 'cyclic_lines', name: 'Cyclic lines', category: 'cycles', anchors: 2 }),
-  tool(TimeCycles, { type: 'time_cycles', name: 'Time cycles', category: 'cycles', anchors: 2, style: { fillOpacity: 0.12 } }),
-  tool(SineLine, { type: 'sine_line', name: 'Sine line', category: 'cycles', anchors: 2 }),
+  tool(CyclicLines, { type: 'cyclic_lines', name: 'Cyclic lines', category: 'cycles', anchors: 2, style: { lineColor: '#80ccdb', lineWidth: 2, lineStyle: 'solid' } }),
+  tool(TimeCycles, { type: 'time_cycles', name: 'Time cycles', category: 'cycles', anchors: 2, style: { lineColor: '#159980', lineWidth: 2, lineStyle: 'solid', fillColor: '#6aa84f', fillOpacity: 0.5 } }),
+  tool(SineLine, { type: 'sine_line', name: 'Sine line', category: 'cycles', anchors: 2, style: { lineColor: '#159980', lineWidth: 2, lineStyle: 'solid' } }),
 
   // Forecasting & positions
-  tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3, placement: 'instant', style: { textColor: '#ffffff' } }),
-  tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3, placement: 'instant', style: { textColor: '#ffffff' } }),
-  tool(Forecast, { type: 'forecast', name: 'Position forecast', category: 'forecasting', anchors: 2 }),
-  tool(Sector, { type: 'sector', name: 'Sector', category: 'forecasting', anchors: 3, style: { fillOpacity: 0.2 } }),
-  tool(BarsPattern, { type: 'bars_pattern', name: 'Bars pattern', category: 'forecasting', anchors: 2, capturesBars: true }),
+  tool(LongPosition, { type: 'long_position', name: 'Long position', category: 'forecasting', anchors: 3, placement: 'instant', style: { lineColor: '#808080', lineWidth: 1, lineStyle: 'solid', textColor: '#ffffff', fontSize: 12 } }),
+  tool(ShortPosition, { type: 'short_position', name: 'Short position', category: 'forecasting', anchors: 3, placement: 'instant', style: { lineColor: '#808080', lineWidth: 1, lineStyle: 'solid', textColor: '#ffffff', fontSize: 12 } }),
+  tool(Forecast, { type: 'forecast', name: 'Position forecast', category: 'forecasting', anchors: 2, style: { lineColor: '#2962ff', lineWidth: 2, lineStyle: 'solid' } }),
+  tool(Sector, { type: 'sector', name: 'Sector', category: 'forecasting', anchors: 3, style: { lineColor: '#9c9c9c', lineWidth: 2, lineStyle: 'solid' } }),
+  tool(BarsPattern, { type: 'bars_pattern', name: 'Bars pattern', category: 'forecasting', anchors: 2, capturesBars: true, style: { lineColor: '#2962ff' } }),
   tool(GhostFeed, { type: 'ghost_feed', name: 'Ghost feed', category: 'forecasting', anchors: 2, capturesBars: true }),
 
   // Volume
-  tool(AnchoredVwap, { type: 'anchored_vwap', name: 'Anchored VWAP', category: 'volume', anchors: 1 }),
+  tool(AnchoredVwap, { type: 'anchored_vwap', name: 'Anchored VWAP', category: 'volume', anchors: 1, style: { lineColor: '#1e88e5', lineWidth: 1, lineStyle: 'solid', fillColor: '#4caf50', fillOpacity: 0.05 } }),
   tool(FixedRangeVolumeProfile, { type: 'fixed_range_volume_profile', name: 'Fixed range volume profile', category: 'volume', anchors: 2 }),
   tool(AnchoredVolumeProfile, { type: 'anchored_volume_profile', name: 'Anchored volume profile', category: 'volume', anchors: 1 }),
 
@@ -230,33 +263,33 @@ const DEFINITIONS: ToolDefinition[] = [
   tool(ImageNote, { type: 'image', name: 'Image', category: 'content', anchors: 1 }),
   tool(GlyphMark, { type: 'emoji', name: 'Emoji', category: 'content', anchors: 1 }),
   tool(StickerMark, { type: 'sticker', name: 'Sticker', category: 'content', anchors: 1 }),
-  tool(IconMark, { type: 'icon', name: 'Icon', category: 'content', anchors: 1 }),
+  tool(IconMark, { type: 'icon', name: 'Icon', category: 'content', anchors: 1, style: { lineColor: '#2962ff' } }),
 
   // Annotation
-  tool(TextLabel, { type: 'text', name: 'Text', category: 'annotation', anchors: 1, hasText: true }),
-  tool(Note, { type: 'note', name: 'Note', category: 'annotation', anchors: 1, hasText: true, style: { fillColor: '#1b1f27', fillOpacity: 0.95 } }),
-  tool(Comment, { type: 'comment', name: 'Comment', category: 'annotation', anchors: 1, hasText: true, style: { fillColor: '#1b1f27', fillOpacity: 0.95 } }),
-  tool(Callout, { type: 'callout', name: 'Callout', category: 'annotation', anchors: 2, hasText: true, style: { fillColor: '#1b1f27', fillOpacity: 0.95 } }),
-  tool(PriceLabel, { type: 'price_label', name: 'Price label', category: 'annotation', anchors: 1 }),
-  tool(ArrowMarkUp, { type: 'arrow_up', name: 'Arrow mark up', category: 'annotation', anchors: 1 }),
-  tool(ArrowMarkDown, { type: 'arrow_down', name: 'Arrow mark down', category: 'annotation', anchors: 1 }),
-  tool(ArrowMarker, { type: 'arrow_marker', name: 'Arrow marker', category: 'annotation', anchors: 2 }),
-  tool(FlagMark, { type: 'flag', name: 'Flag mark', category: 'annotation', anchors: 1 }),
-  tool(PriceNote, { type: 'price_note', name: 'Price note', category: 'annotation', anchors: 2, hasText: true }),
-  tool(Pin, { type: 'pin', name: 'Pin', category: 'annotation', anchors: 1, hasText: true }),
-  tool(Signpost, { type: 'signpost', name: 'Signpost', category: 'annotation', anchors: 1, hasText: true }),
-  tool(TableNote, { type: 'table', name: 'Table', category: 'annotation', anchors: 1, style: { fillColor: '#1b1f27', fillOpacity: 0.95 } }),
+  tool(TextLabel, { type: 'text', name: 'Text', category: 'annotation', anchors: 1, hasText: true, style: { textColor: '#2962ff', fontSize: 14, fillColor: '#2962ff', fillOpacity: 0.25, lineColor: '#707070' } }),
+  tool(Note, { type: 'note', name: 'Note', category: 'annotation', anchors: 2, hasText: true, style: { lineColor: '#dbdbdb', textColor: '#dbdbdb', fontSize: 14, fillColor: '#2e2e2e', fillOpacity: 1 } }),
+  tool(Comment, { type: 'comment', name: 'Comment', category: 'annotation', anchors: 1, hasText: true, style: { textColor: '#ffffff', fontSize: 16, fillColor: '#2962ff', fillOpacity: 1, lineColor: '#2962ff' } }),
+  tool(Callout, { type: 'callout', name: 'Callout', category: 'annotation', anchors: 2, hasText: true, style: { textColor: '#ffffff', fontSize: 14, fillColor: '#0097a7', fillOpacity: 0.7, lineColor: '#0097a7', lineWidth: 2 } }),
+  tool(PriceLabel, { type: 'price_label', name: 'Price label', category: 'annotation', anchors: 1, style: { textColor: '#ffffff', fontSize: 14, bold: true, fillColor: '#2962ff', fillOpacity: 1, lineColor: '#2962ff' } }),
+  tool(ArrowMarkUp, { type: 'arrow_up', name: 'Arrow mark up', category: 'annotation', anchors: 1, style: { lineColor: '#089981', textColor: '#089981', fontSize: 14 } }),
+  tool(ArrowMarkDown, { type: 'arrow_down', name: 'Arrow mark down', category: 'annotation', anchors: 1, style: { lineColor: '#cc2f3c', textColor: '#cc2f3c', fontSize: 14 } }),
+  tool(ArrowMarker, { type: 'arrow_marker', name: 'Arrow marker', category: 'annotation', anchors: 2, style: { lineColor: '#1e53e5', textColor: '#1e53e5', fontSize: 16, bold: true } }),
+  tool(FlagMark, { type: 'flag', name: 'Flag mark', category: 'annotation', anchors: 1, style: { lineColor: '#2962ff' } }),
+  tool(PriceNote, { type: 'price_note', name: 'Price note', category: 'annotation', anchors: 2, hasText: true, style: { lineColor: '#2962ff', textColor: '#2962ff', fontSize: 14 } }),
+  tool(Pin, { type: 'pin', name: 'Pin', category: 'annotation', anchors: 1, hasText: true, style: { lineColor: '#2962ff', textColor: '#dbdbdb', fontSize: 14, fillColor: '#2e2e2e', fillOpacity: 1 } }),
+  tool(Signpost, { type: 'signpost', name: 'Signpost', category: 'annotation', anchors: 1, hasText: true, style: { lineColor: '#2962ff', fontSize: 12 } }),
+  tool(TableNote, { type: 'table', name: 'Table', category: 'annotation', anchors: 1, style: { fillColor: '#0f0f0f', fillOpacity: 1, lineColor: '#575757', textColor: '#dbdbdb', fontSize: 14 } }),
 
   // Brushes & multi-point shapes
-  tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand' }),
-  tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: 'rgba(245, 166, 35, 0.35)', lineWidth: 20 } }),
-  tool(PathLine, { type: 'path', name: 'Path', category: 'shapes', anchors: 2, placement: 'multipoint' }),
-  tool(Polyline, { type: 'polyline', name: 'Polyline', category: 'shapes', anchors: 2, placement: 'multipoint', style: { fillOpacity: 0.1 } }),
+  tool(Brush, { type: 'brush', name: 'Brush', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: '#00bcd4', lineWidth: 2, lineStyle: 'solid', fillColor: '#00bcd4', fillOpacity: 0.5 } }),
+  tool(Highlighter, { type: 'highlighter', name: 'Highlighter', category: 'shapes', anchors: 2, placement: 'freehand', style: { lineColor: 'rgba(242, 54, 69, 0.2)', lineWidth: 20 } }),
+  tool(PathLine, { type: 'path', name: 'Path', category: 'shapes', anchors: 2, placement: 'multipoint', style: { lineColor: '#2962ff', lineWidth: 2, lineStyle: 'solid' } }),
+  tool(Polyline, { type: 'polyline', name: 'Polyline', category: 'shapes', anchors: 2, placement: 'multipoint', style: shapeLook('#00bcd4') }),
 
   // Measurement
-  tool(PriceRange, { type: 'price_range', name: 'Price range', category: 'measurement', anchors: 2 }),
-  tool(DateRange, { type: 'date_range', name: 'Date range', category: 'measurement', anchors: 2 }),
-  tool(DatePriceRange, { type: 'date_and_price_range', name: 'Date and price range', category: 'measurement', anchors: 2 }),
+  tool(PriceRange, { type: 'price_range', name: 'Price range', category: 'measurement', anchors: 2, style: meterLook('rgba(79, 87, 107, 1)') }),
+  tool(DateRange, { type: 'date_range', name: 'Date range', category: 'measurement', anchors: 2, style: meterLook('#2962ff') }),
+  tool(DatePriceRange, { type: 'date_and_price_range', name: 'Date and price range', category: 'measurement', anchors: 2, style: meterLook('#2962ff') }),
   tool(Measure, { type: 'measure', name: 'Measure', category: 'measurement', anchors: 2 }),
 ]
 
@@ -311,11 +344,14 @@ export class ToolRegistry {
     return this._tools.has(data.type) && Array.isArray(data.anchors) && data.options !== null
   }
 
-  /** Rebuild a drawing from its serialized form; null for a state that is not `readable`. */
+  /** Rebuild a drawing from its serialized form; null for a state that is not `readable`. A save in
+   *  an earlier format keeps the look it was saved with. */
   restore(data: SerializedDrawing): AnyDrawing | null {
     if (!this.readable(data)) return null
     try {
-      return this._tools.get(data.type)!.create(data.id, data.anchors, data.style, data.options, data.props)
+      const drawing = this._tools.get(data.type)!.create(data.id, data.anchors, data.style, data.options, data.props)
+      if (!(data.v >= SERIAL_VERSION)) drawing.holdSavedLook(data)
+      return drawing
     } catch {
       return null
     }

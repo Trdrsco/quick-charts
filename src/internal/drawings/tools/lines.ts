@@ -14,6 +14,17 @@ import { AxisLabel } from '../render/axis-view'
 
 export type LineEnd = 'normal' | 'arrow'
 
+/** Where a line's stats stand along it: near its left end, at its middle, near its right end, or
+ *  near the right end unless the pane leaves no room there, then near the left. */
+export type StatsPosition = 'left' | 'center' | 'right' | 'auto'
+
+/** Where a label stands across what carries it: above it, on it, or below it. A box's label stands
+ *  above it, inside it, or below it. */
+export type TextVAlign = 'top' | 'middle' | 'bottom'
+
+/** Where a label stands along what carries it. */
+export type TextHAlign = 'left' | 'center' | 'right'
+
 /** The two-point line family's full option set. Tool identity = these defaults. */
 export type TrendLineProps = {
   /** Free label rendered along the line (edited in the settings dialog's Text tab). */
@@ -26,13 +37,21 @@ export type TrendLineProps = {
   middlePoint: boolean
   /** Price pill beside each end point. */
   showPriceLabels: boolean
-  /** Stats readout items (price delta, percent change, bar count, span, slope angle). */
+  /** Stats readout items (price delta, percent change, the change counted in the symbol's smallest
+   *  price move, bar count, span, slope angle). The count shows only where the chart knows that
+   *  move. */
   showPriceRange: boolean
   showPercentChange: boolean
+  showPipsChange: boolean
   showBarsRange: boolean
   showDateTimeRange: boolean
   showAngle: boolean
-  statsPosition: 'left' | 'center' | 'right'
+  statsPosition: StatsPosition
+  /** The stats show whether or not the line is selected. Off, they show while it is. */
+  alwaysShowStats: boolean
+  /** Where the label stands across the line and along it. */
+  textVAlign: TextVAlign
+  textHAlign: TextHAlign
 }
 
 const LINE_PROPS: TrendLineProps = {
@@ -45,10 +64,22 @@ const LINE_PROPS: TrendLineProps = {
   showPriceLabels: false,
   showPriceRange: false,
   showPercentChange: false,
+  showPipsChange: false,
   showBarsRange: false,
   showDateTimeRange: false,
   showAngle: false,
-  statsPosition: 'center',
+  statsPosition: 'right',
+  alwaysShowStats: false,
+  textVAlign: 'top',
+  textHAlign: 'center',
+}
+
+/** How a label stands across a line it rides: its offset from the line and the edge of the text
+ *  that offset is measured to. */
+const ACROSS: Record<TextVAlign, { y: number; baseline: 'bottom' | 'middle' | 'top' }> = {
+  top: { y: -4, baseline: 'bottom' },
+  middle: { y: 0, baseline: 'middle' },
+  bottom: { y: 4, baseline: 'top' },
 }
 
 function hitTolerance(lineWidth: number): number {
@@ -88,6 +119,22 @@ export class TrendLine extends Drawing<TrendLineProps> {
     const { extendLeft, extendRight } = this.props
     if (!extendLeft && !extendRight) return { a: pa, b: pb }
     return extendSegment(pa, pb, viewport.width, viewport.height, extendLeft, extendRight)
+  }
+
+  /** A format-2 line showed its stats whether or not it was selected and counted no price moves; a
+   *  stats position counted its left and right from the first point, and a save naming none stood
+   *  them at the middle. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    const position = (saved.statsPosition ?? 'center') as StatsPosition
+    const [a, b] = this._anchors
+    const flipped = !!a && !!b && Number(b.time) < Number(a.time)
+    const statsPosition: StatsPosition = flipped && position === 'left' ? 'right' : flipped && position === 'right' ? 'left' : position
+    this._props = { ...this._props, statsPosition, alwaysShowStats: true, showPipsChange: false }
+  }
+
+  /** The stats stand while the line is selected or edited, or always where the viewer asked. */
+  protected statsShown(): boolean {
+    return this.props.alwaysShowStats || this.state !== 'normal'
   }
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
@@ -130,25 +177,34 @@ export class TrendLine extends Drawing<TrendLineProps> {
 
     // Text and stats ride the segment's angle — a label on a rising line slopes with it.
     const textAngle = segmentTextAngle(pa, pb)
+    // Left and right are the screen's: the end nearer the left edge is the left one, whichever
+    // anchor it is.
+    const [left, right] = pa.x <= pb.x ? [pa, pb] : [pb, pa]
 
     if (this.props.text) {
-      const mid = midpoint(pa, pb)
+      const along = this.props.textHAlign
+      const at = along === 'left' ? left : along === 'right' ? right : midpoint(pa, pb)
+      const across = ACROSS[this.props.textVAlign] ?? ACROSS.top
       ctx.save()
-      ctx.translate(mid.x, mid.y)
+      ctx.translate(at.x, at.y)
       ctx.rotate(textAngle)
-      paintLabel(ctx, this.props.text, { x: 0, y: -14 }, this.style, { align: 'center' })
+      paintLabel(ctx, this.props.text, { x: 0, y: across.y }, this.style, { align: along === 'left' ? 'left' : along === 'right' ? 'right' : 'center', baseline: across.baseline })
       ctx.restore()
     }
 
-    const stats = this.statsText(viewport)
+    const stats = this.statsShown() ? this.statsText(viewport) : null
     if (stats) {
-      const t = this.props.statsPosition === 'left' ? 0.12 : this.props.statsPosition === 'right' ? 0.88 : 0.5
-      // The stats pill drops below its usual perch when a text label already sits above the line.
-      const lift = this.props.text && this.props.statsPosition === 'center' ? -32 : -14
+      const place = this.props.statsPosition
+      const toRight = (f: number): Point => ({ x: left.x + (right.x - left.x) * f, y: left.y + (right.y - left.y) * f })
+      const t = place === 'left' ? 0.12 : place === 'center' ? 0.5 : place === 'auto' && toRight(0.88).x > viewport.width * 0.85 ? 0.12 : 0.88
+      const at = toRight(t)
+      // The stats pill drops below its usual perch when a text label already sits above the line
+      // where it stands.
+      const crowded = !!this.props.text && this.props.textVAlign === 'top' && ((place === 'center' && this.props.textHAlign === 'center') || (t === 0.12 && this.props.textHAlign === 'left') || (t === 0.88 && this.props.textHAlign === 'right'))
       ctx.save()
-      ctx.translate(pa.x + (pb.x - pa.x) * t, pa.y + (pb.y - pa.y) * t)
+      ctx.translate(at.x, at.y)
       ctx.rotate(textAngle)
-      paintLabel(ctx, stats, { x: 0, y: lift }, this.style, { align: 'center', background: withAlpha('#1b1f27', 0.92) })
+      paintLabel(ctx, stats, { x: 0, y: crowded ? -32 : -14 }, this.style, { align: 'center', background: withAlpha('#1b1f27', 0.92) })
       ctx.restore()
     }
   }
@@ -164,6 +220,14 @@ export class TrendLine extends Drawing<TrendLineProps> {
     if (this.props.showPercentChange) {
       const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
       parts.push(`${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`)
+    }
+    if (this.props.showPipsChange) {
+      // The count rides only on a host-stated move; without one the readout omits it.
+      const tick = this.tickSize()
+      if (tick !== null && tick > 0) {
+        const moves = Math.round(dPrice / tick)
+        parts.push(`${moves >= 0 ? '+' : ''}${moves}`)
+      }
     }
     if (this.props.showBarsRange) {
       const bars = viewport.barsBetween(a.time, b.time)
@@ -224,13 +288,36 @@ export class InfoLine extends TrendLine {
   override readonly type = 'info_line'
 
   protected override defaultProps(): TrendLineProps {
-    return { ...LINE_PROPS, showPriceRange: true, showBarsRange: true, showAngle: true }
+    return {
+      ...LINE_PROPS,
+      showPriceRange: true,
+      showPercentChange: true,
+      showPipsChange: true,
+      showBarsRange: true,
+      showDateTimeRange: true,
+      showAngle: true,
+      statsPosition: 'center',
+      alwaysShowStats: true,
+    }
+  }
+
+  /** A format-2 info line that named no percent change or span showed neither. */
+  protected override keepSavedLook(saved: Readonly<Record<string, unknown>>): void {
+    super.keepSavedLook(saved)
+    const props: Partial<TrendLineProps> = {}
+    if (!('showPercentChange' in saved)) props.showPercentChange = false
+    if (!('showDateTimeRange' in saved)) props.showDateTimeRange = false
+    this._props = { ...this._props, ...props }
   }
 }
 
-/** Trend line that reports its slope, with a horizontal reference arc at the origin. */
+/** Trend line that reports its slope, with a horizontal reference arc at the origin. Its pages offer
+ *  no ends and no label, since the angle is its reading; a save that carries them draws them. */
 export class TrendAngle extends TrendLine {
   override readonly type = 'trend_angle'
+
+  /** A trend angle offers no label, so it invites none. */
+  override paintTextHint(): void {}
 
   protected override paintDecorations(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const [pa, pb] = this.anchorPixels(viewport)
@@ -261,10 +348,13 @@ export class TrendAngle extends TrendLine {
 }
 
 export type HorizontalLineProps = {
-  /** Free label rendered above the line's left side. */
+  /** Free label the line carries. */
   text: string
   /** Price pill on the axis at the line's level. */
   showPrice: boolean
+  /** Where the label stands across the line and along it. */
+  textVAlign: TextVAlign
+  textHAlign: TextHAlign
 }
 
 /** Full-width horizontal line at one price. */
@@ -286,7 +376,7 @@ export class HorizontalLine extends Drawing<HorizontalLineProps> {
   ]
 
   protected override defaultProps(): HorizontalLineProps {
-    return { text: '', showPrice: true }
+    return { text: '', showPrice: true, textVAlign: 'middle', textHAlign: 'center' }
   }
 
   protected override axisViews(): readonly ISeriesPrimitiveAxisView[] {
@@ -300,16 +390,25 @@ export class HorizontalLine extends Drawing<HorizontalLineProps> {
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const y = viewport.yOf(this.anchors[0]?.price ?? NaN)
     if (y === null || !Number.isFinite(y)) return
+    const start = this.leftEdge(viewport)
     applyStroke(ctx, this.style)
-    strokeSegment(ctx, { x: this.leftEdge(viewport), y }, { x: viewport.width, y })
+    strokeSegment(ctx, { x: start, y }, { x: viewport.width, y })
     if (this.props.text) {
-      paintLabel(ctx, this.props.text, { x: this.leftEdge(viewport) + 8, y: y - 12 }, this.style)
+      const along = this.props.textHAlign
+      const across = ACROSS[this.props.textVAlign] ?? ACROSS.middle
+      const x = along === 'left' ? start + 4 : along === 'right' ? viewport.width - 4 : (start + viewport.width) / 2
+      paintLabel(ctx, this.props.text, { x, y: y + across.y }, this.style, { align: along === 'left' ? 'left' : along === 'right' ? 'right' : 'center', baseline: across.baseline })
     }
   }
 
   /** Where the line starts; the ray variant starts at its anchor. */
   protected leftEdge(_viewport: Viewport): number {
     return 0
+  }
+
+  /** A format-2 line's label stood above its left side. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, textVAlign: 'top', textHAlign: 'left' }
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
@@ -322,6 +421,10 @@ export class HorizontalLine extends Drawing<HorizontalLineProps> {
 /** Horizontal line from its anchor rightward. */
 export class HorizontalRay extends HorizontalLine {
   override readonly type = 'horizontal_ray'
+
+  protected override defaultProps(): HorizontalLineProps {
+    return { text: '', showPrice: true, textVAlign: 'bottom', textHAlign: 'center' }
+  }
 
   protected override leftEdge(viewport: Viewport): number {
     const anchor = this.anchors[0]
@@ -341,10 +444,16 @@ function timeText(time: unknown): string {
 }
 
 export type VerticalLineProps = {
-  /** Free label rendered beside the line's top. */
+  /** Free label the line carries. */
   text: string
   /** Timestamp pill on the time axis. */
   showTime: boolean
+  /** Where the label stands along the line (top, middle, bottom of the pane) and across it (to its
+   *  left, on it, to its right). */
+  textVAlign: TextVAlign
+  textHAlign: TextHAlign
+  /** Whether the label reads across the line or runs up it. */
+  textOrientation: 'horizontal' | 'vertical'
 }
 
 /** Full-height vertical line at one time. */
@@ -366,7 +475,7 @@ export class VerticalLine extends Drawing<VerticalLineProps> {
   ]
 
   protected override defaultProps(): VerticalLineProps {
-    return { text: '', showTime: true }
+    return { text: '', showTime: true, textVAlign: 'middle', textHAlign: 'center', textOrientation: 'vertical' }
   }
 
   protected override timeViews(): readonly ISeriesPrimitiveAxisView[] {
@@ -377,6 +486,11 @@ export class VerticalLine extends Drawing<VerticalLineProps> {
     return 1
   }
 
+  /** A format-2 line's label read across it, to its right at the top of the pane. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, textOrientation: 'horizontal', textVAlign: 'top', textHAlign: 'right' }
+  }
+
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const anchor = this.anchors[0]
     if (!anchor) return
@@ -384,9 +498,27 @@ export class VerticalLine extends Drawing<VerticalLineProps> {
     if (x === null) return
     applyStroke(ctx, this.style)
     strokeSegment(ctx, { x, y: 0 }, { x, y: viewport.height })
-    if (this.props.text) {
-      paintLabel(ctx, this.props.text, { x: x + 6, y: 14 }, this.style)
+    if (this.props.text) this.paintText(ctx, x, viewport.height)
+  }
+
+  /** The label at its place along the line and beside it. Running up the line, the label is turned
+   *  a quarter left, so the line's top is where its words end. */
+  private paintText(ctx: CanvasRenderingContext2D, x: number, height: number): void {
+    const { textVAlign: along, textHAlign: across } = this.props
+    const y = along === 'top' ? 4 : along === 'bottom' ? height - 4 : height / 2
+    if (this.props.textOrientation === 'horizontal') {
+      const at = across === 'left' ? x - 4 : across === 'right' ? x + 4 : x
+      paintLabel(ctx, this.props.text, { x: at, y }, this.style, { align: across === 'left' ? 'right' : across === 'right' ? 'left' : 'center', baseline: along === 'top' ? 'top' : along === 'bottom' ? 'bottom' : 'middle' })
+      return
     }
+    ctx.save()
+    ctx.translate(x, y)
+    ctx.rotate(-Math.PI / 2)
+    paintLabel(ctx, this.props.text, { x: 0, y: across === 'left' ? -4 : across === 'right' ? 4 : 0 }, this.style, {
+      align: along === 'top' ? 'right' : along === 'bottom' ? 'left' : 'center',
+      baseline: across === 'left' ? 'bottom' : across === 'right' ? 'top' : 'middle',
+    })
+    ctx.restore()
   }
 
   testHit(point: Point, viewport: Viewport): boolean {

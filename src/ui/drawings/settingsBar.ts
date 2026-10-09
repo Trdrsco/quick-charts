@@ -117,7 +117,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     panelFor = null
     panelControl = null
   }
-  const openPanel = (anchor: HTMLElement, content: HTMLElement, placement: 'below' | 'below-end' = 'below', onClose?: () => void): void => {
+  const openPanel = (anchor: HTMLElement, content: HTMLElement, placement: 'below' | 'below-end' = 'below', onClose?: () => void, className?: string): void => {
     const wasOpen = anchor.getAttribute('aria-expanded') === 'true'
     closeOpen()
     if (wasOpen) return
@@ -132,7 +132,7 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
         panelControl = null
       }
       onClose?.()
-    }, anchor, () => reopenPopover(close, content, () => (control ? controls.querySelector<HTMLElement>(`[data-qc-control='${control}']`) : null)))
+    }, anchor, () => reopenPopover(close, content, () => (control ? controls.querySelector<HTMLElement>(`[data-qc-control='${control}']`) : null)), className ? { className } : {})
     closePanel = close
     panelFor = deps.selected()?.id ?? null
     panelControl = anchor.dataset.qcControl ?? null
@@ -218,19 +218,30 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     deps.run('chart.drawings.style', patch)
   }
 
+  /** The sets of levels a leveled tool holds: its levels, a box's price and time divisions, or a gann
+   *  square's fans and arcs beside its grid. */
+  const LEVEL_KEYS = ['levels', 'priceLevels', 'timeLevels', 'fans', 'arcs'] as const
+  /** Recolor every level of every set the selected drawing holds, in one move. */
+  const recolorLevels = (color: (level: { color?: string }) => string): void => {
+    const props = deps.selectedProps()
+    const patch: Record<string, unknown> = {}
+    for (const key of LEVEL_KEYS) {
+      const levels = props?.[key]
+      if (Array.isArray(levels)) patch[key] = (levels as { color?: string }[]).map((l) => ({ ...l, color: color(l) }))
+    }
+    if (Object.keys(patch).length) deps.run('chart.drawings.props', patch)
+  }
   /** A stroke color pick recolors every level of a leveled tool in one move; per-level colors
    *  stay editable in the dialog. */
   const pickLineColor = (selected: SelectedDrawing, color: string): void => {
     const alpha = alphaOf(selected.lineColor)
     const next = alpha < 1 ? withAlpha(color, alpha) : color
     style({ lineColor: next })
-    const levels = deps.selectedProps()?.levels
-    if (Array.isArray(levels)) deps.run('chart.drawings.props', { levels: (levels as { color?: string }[]).map((l) => ({ ...l, color: next })) })
+    recolorLevels(() => next)
   }
   const pickLineOpacity = (selected: SelectedDrawing, v: number): void => {
     style({ lineColor: withAlpha(selected.lineColor, v) })
-    const levels = deps.selectedProps()?.levels
-    if (Array.isArray(levels)) deps.run('chart.drawings.props', { levels: (levels as { color?: string }[]).map((l) => ({ ...l, color: withAlpha(l.color ?? selected.lineColor, v) })) })
+    recolorLevels((l) => withAlpha(l.color ?? selected.lineColor, v))
   }
 
   /** The color buttons' face: the glyph over a strip in the drawing's color. The color is a stored
@@ -379,8 +390,9 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
       )
     }
 
-    /** A color panel on the bar. Choosing a colour is the whole of what the panel is for, so the
-     *  choice closes it; moving the opacity is not a choice and leaves it standing. */
+    /** A color panel on the bar, the dialog's color popover in width: as wide as its palette
+     *  wherever it opens. Choosing a colour is the whole of what the panel is for, so the choice
+     *  closes it; moving the opacity is not a choice and leaves it standing. */
     const colorPanel = (control: HTMLElement, spec: { value: string; onPick: (c: string) => void; opacity: number; onOpacity: (v: number) => void }): void => {
       openPanel(
         control,
@@ -394,6 +406,9 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
           opacity: spec.opacity,
           onOpacity: spec.onOpacity,
         }).element,
+        'below',
+        undefined,
+        'qc-drawing-popover--color',
       )
     }
     if (hasStroke) {
@@ -414,16 +429,27 @@ export function mountSettingsBar(deps: SettingsBarDeps): SettingsBarHandle {
     }
     if (FILLABLE.has(type)) {
       const fill = gate(button({ class: 'qc-button qc-drawing-bar-button', label: t('drawing.backgroundColor'), title: t('drawing.background') }), 'chart.drawings.style')
-      fill.appendChild(colorFace('bucket', selected.fillColor, selected.fillOpacity === 0))
+      fill.appendChild(colorFace('bucket', selected.fillColor, selected.fillOpacity === 0 || deps.selectedProps()?.fillBackground === false))
       fill.setAttribute('aria-haspopup', 'dialog')
       fill.setAttribute('aria-expanded', 'false')
       fill.dataset.qcControl = 'fill'
+      /** A background picked or faded here is one the viewer means to see, so a shape whose
+       *  background was switched off turns it back on. */
+      const showFill = (): void => {
+        if (deps.selectedProps()?.fillBackground === false) deps.run('chart.drawings.props', { fillBackground: true })
+      }
       fill.addEventListener('click', () =>
         colorPanel(fill, {
           value: selected.fillColor,
-          onPick: (c) => style({ fillColor: c, ...(selected.fillOpacity === 0 ? { fillOpacity: 0.12 } : {}) }),
+          onPick: (c) => {
+            style({ fillColor: c, ...(selected.fillOpacity === 0 ? { fillOpacity: 0.12 } : {}) })
+            showFill()
+          },
           opacity: selected.fillOpacity,
-          onOpacity: (v) => style({ fillOpacity: v }),
+          onOpacity: (v) => {
+            style({ fillOpacity: v })
+            showFill()
+          },
         }),
       )
       controls.appendChild(fill)

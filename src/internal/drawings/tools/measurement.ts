@@ -1,15 +1,7 @@
 import type { DrawingStyle, Point, Viewport } from '../core/types'
 import { Drawing } from '../core/drawing'
-import { barsInRange } from '../core/bars'
-import { applyStroke, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
-
-/** Compact volume readout (12.4M style). */
-function volumeText(volume: number): string {
-  if (volume >= 1e9) return `${(volume / 1e9).toFixed(2)}B`
-  if (volume >= 1e6) return `${(volume / 1e6).toFixed(2)}M`
-  if (volume >= 1e3) return `${(volume / 1e3).toFixed(1)}K`
-  return String(Math.round(volume))
-}
+import { barsInRange, volumeText } from '../core/bars'
+import { applyStroke, fillPaint, paintArrowHead, paintLabel, strokeSegment, withAlpha } from '../render/canvas'
 
 function box(a: Point, b: Point): { x: number; y: number; width: number; height: number } {
   return {
@@ -24,21 +16,80 @@ function inBox(p: Point, r: { x: number; y: number; width: number; height: numbe
   return p.x >= r.x - pad && p.x <= r.x + r.width + pad && p.y >= r.y - pad && p.y <= r.y + r.height + pad
 }
 
+/** What a range meter reads and how: the stats its label reads (a meter offers the ones its axes
+ *  measure), its span's background, its label's words and background, and the viewer's own words. */
 export type RangeMeterProps = {
-  /** The viewer's own word for the span, inside it. */
+  /** The viewer's own words, at the span's middle, in the drawing's text style. */
   text: string
-  /** Stats readout toggles; a meter only surfaces the ones its axes measure. */
-  showPriceDelta: boolean
-  showPercent: boolean
-  showBars: boolean
-  showTimeSpan: boolean
+  showPriceRange: boolean
+  showPercentChange: boolean
+  showPipsChange: boolean
+  showBarsRange: boolean
+  showDateTimeRange: boolean
   showVolume: boolean
-  /** Stretch the shaded span across the axis the meter doesn't measure. */
-  extend: boolean
+  /** The span's background, in the drawing's fill. */
+  fillBackground: boolean
+  /** The stats label's words: their color and size. */
+  labelColor: string
+  labelFontSize: number
+  /** The stats label's background. */
+  fillLabelBackground: boolean
+  labelBackgroundColor: string
+  /** The stats label takes the drawing's text weight and slant. */
+  labelTextStyle: boolean
 }
 
-/** Shared skeleton for the range meters: shaded span + measuring arrow + stats pill. */
-abstract class RangeMeter extends Drawing<RangeMeterProps> {
+/** A price range runs its span on to the pane's left or right edge. */
+export type PriceRangeProps = RangeMeterProps & { extendLeft: boolean; extendRight: boolean }
+/** A date range runs its span on to the pane's top or bottom. */
+export type DateRangeProps = RangeMeterProps & { extendTop: boolean; extendBottom: boolean }
+/** A date and price range draws its span's border on a switch, in a stroke of its own, and runs its
+ *  span on to the pane's left and right edges where a save carries that, which its pages do not
+ *  offer. */
+export type DatePriceRangeProps = RangeMeterProps & { drawBorder: boolean; borderColor: string; borderWidth: number; extendLeft: boolean; extendRight: boolean }
+
+const METER_PROPS: RangeMeterProps = {
+  text: '',
+  showPriceRange: false,
+  showPercentChange: false,
+  showPipsChange: false,
+  showBarsRange: false,
+  showDateTimeRange: false,
+  showVolume: false,
+  fillBackground: true,
+  labelColor: '#ffffff',
+  labelFontSize: 12,
+  fillLabelBackground: true,
+  labelBackgroundColor: 'rgba(46, 46, 46, 0.4)',
+  labelTextStyle: false,
+}
+
+/** The props a meter keeps from a save: its stats under their earlier names, and its one extension
+ *  as both of the sides it runs on to, where it runs on at all. */
+function upgradeMeter<P extends RangeMeterProps>(props: Partial<P>, sides: readonly (keyof P)[]): Partial<P> {
+  const saved = props as Partial<P> & { showPriceDelta?: boolean; showPercent?: boolean; showBars?: boolean; showTimeSpan?: boolean; extend?: boolean }
+  const out: Record<string, unknown> = { ...saved }
+  const renamed: [string, string][] = [
+    ['showPriceDelta', 'showPriceRange'],
+    ['showPercent', 'showPercentChange'],
+    ['showBars', 'showBarsRange'],
+    ['showTimeSpan', 'showDateTimeRange'],
+  ]
+  for (const [from, to] of renamed) {
+    if (from in out) {
+      if (!(to in out)) out[to] = out[from]
+      delete out[from]
+    }
+  }
+  if ('extend' in out) {
+    if (out.extend === true) for (const side of sides) if (!(side in out)) out[side as string] = true
+    delete out.extend
+  }
+  return out as Partial<P>
+}
+
+/** Shared skeleton for the range meters: shaded span, measuring arrows and the stats label. */
+abstract class RangeMeter<P extends RangeMeterProps> extends Drawing<P> {
   requiredAnchors(): number {
     return 2
   }
@@ -55,18 +106,9 @@ abstract class RangeMeter extends Drawing<RangeMeterProps> {
     return a && b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, angle: 0 } : super.textHintPlacement(points)
   }
 
-  protected paintSpan(ctx: CanvasRenderingContext2D, a: Point, b: Point, viewport: Viewport): void {
-    let r = box(a, b)
-    if (this.props.extend) {
-      // A price meter extends across time; a time meter extends across price.
-      r = this.measuresPrice()
-        ? { x: 0, y: r.y, width: viewport.width, height: r.height }
-        : { x: r.x, y: 0, width: r.width, height: viewport.height }
-    }
-    ctx.save()
-    ctx.fillStyle = withAlpha(this.style.lineColor, Math.max(0.08, this.style.fillOpacity))
-    ctx.fillRect(r.x, r.y, r.width, r.height)
-    ctx.restore()
+  /** The span as it is shaded: the box between the points, run on as the meter extends. */
+  protected span(a: Point, b: Point, _viewport: Viewport): { x: number; y: number; width: number; height: number } {
+    return box(a, b)
   }
 
   protected stats(viewport: Viewport): string[] {
@@ -76,17 +118,20 @@ abstract class RangeMeter extends Drawing<RangeMeterProps> {
     if (this.measuresPrice()) {
       const dPrice = b.price - a.price
       const pct = a.price !== 0 ? (dPrice / Math.abs(a.price)) * 100 : 0
+      const tick = this.tickSize()
       const parts: string[] = []
-      if (this.props.showPriceDelta) parts.push(`${dPrice >= 0 ? '+' : ''}${this.formatPrice(dPrice)}`)
-      if (this.props.showPercent) parts.push(`(${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`)
+      if (this.props.showPriceRange) parts.push(`${dPrice >= 0 ? '+' : ''}${this.formatPrice(dPrice)}`)
+      if (this.props.showPercentChange) parts.push(`(${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)`)
+      // A change in pips needs the host's tick; without one it is left out.
+      if (this.props.showPipsChange && tick && tick > 0) parts.push(String(Math.round(dPrice / tick)))
       if (parts.length) out.push(parts.join(' '))
     }
     if (this.measuresTime()) {
-      if (this.props.showBars) {
+      if (this.props.showBarsRange) {
         const bars = viewport.barsBetween(a.time, b.time)
         if (bars !== null) out.push(`${Math.round(bars)} bars`)
       }
-      if (this.props.showTimeSpan) {
+      if (this.props.showDateTimeRange) {
         const secs = Number(b.time) - Number(a.time)
         if (Number.isFinite(secs) && secs !== 0) out.push(spanText(Math.abs(secs)))
       }
@@ -102,11 +147,39 @@ abstract class RangeMeter extends Drawing<RangeMeterProps> {
   protected abstract measuresPrice(): boolean
   protected abstract measuresTime(): boolean
 
+  /** The span's border, where the meter draws one. */
+  protected paintBorder(_ctx: CanvasRenderingContext2D, _r: { x: number; y: number; width: number; height: number }): void {}
+
+  /** A format-2 meter shaded its span in its stroke color at its fill's opacity, 8% at the least,
+   *  read no price moves, and wrote its stats in its own text style on a dark plate at 92%. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    const s = this._style
+    this._style = { ...s, fillColor: s.lineColor, fillOpacity: Math.max(0.08, s.fillOpacity) }
+    this._props = {
+      ...this._props,
+      fillBackground: true,
+      showPipsChange: false,
+      labelColor: s.textColor,
+      labelFontSize: s.fontSize,
+      fillLabelBackground: true,
+      labelBackgroundColor: withAlpha('#1b1f27', 0.92),
+      labelTextStyle: true,
+    }
+  }
+
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const px = this.pixels(viewport)
     if (!px) return
     const { a, b } = px
-    this.paintSpan(ctx, a, b, viewport)
+    const r = this.span(a, b, viewport)
+    const fill = this.props.fillBackground !== false ? fillPaint(this.style) : null
+    if (fill) {
+      ctx.save()
+      ctx.fillStyle = fill
+      ctx.fillRect(r.x, r.y, r.width, r.height)
+      ctx.restore()
+    }
+    this.paintBorder(ctx, r)
     applyStroke(ctx, this.style)
     if (this.measuresPrice()) {
       const x = (a.x + b.x) / 2
@@ -120,15 +193,17 @@ abstract class RangeMeter extends Drawing<RangeMeterProps> {
     }
     const stats = this.stats(viewport)
     if (stats.length) {
-      const r = box(a, b)
-      paintLabel(ctx, stats.join('  ·  '), { x: r.x + r.width / 2, y: r.y + r.height + 16 }, this.style, {
+      const label = box(a, b)
+      const plain = !this.props.labelTextStyle
+      const ink: DrawingStyle = { ...this.style, textColor: this.props.labelColor, fontSize: this.props.labelFontSize, ...(plain ? { bold: false, italic: false } : {}) }
+      paintLabel(ctx, stats.join('  ·  '), { x: label.x + label.width / 2, y: label.y + label.height + 16 }, ink, {
         align: 'center',
-        background: withAlpha('#1b1f27', 0.92),
+        ...(this.props.fillLabelBackground !== false ? { background: this.props.labelBackgroundColor } : {}),
       })
     }
     if (this.props.text) {
-      const r = box(a, b)
-      paintLabel(ctx, this.props.text, { x: r.x + r.width / 2, y: r.y + r.height / 2 }, this.style, { align: 'center' })
+      const middle = box(a, b)
+      paintLabel(ctx, this.props.text, { x: middle.x + middle.width / 2, y: middle.y + middle.height / 2 }, this.style, { align: 'center' })
     }
   }
 
@@ -140,11 +215,22 @@ abstract class RangeMeter extends Drawing<RangeMeterProps> {
 }
 
 /** Vertical meter: price delta and % between two levels. */
-export class PriceRange extends RangeMeter {
+export class PriceRange extends RangeMeter<PriceRangeProps> {
   readonly type = 'price_range'
 
-  protected override defaultProps(): RangeMeterProps {
-    return { text: '', showPriceDelta: true, showPercent: true, showBars: false, showTimeSpan: false, showVolume: false, extend: false }
+  protected override defaultProps(): PriceRangeProps {
+    return { ...METER_PROPS, showPriceRange: true, showPercentChange: true, showPipsChange: true, showVolume: true, extendLeft: false, extendRight: false }
+  }
+
+  protected override upgradeProps(props: Partial<PriceRangeProps>): Partial<PriceRangeProps> {
+    return upgradeMeter(props, ['extendLeft', 'extendRight'])
+  }
+
+  protected override span(a: Point, b: Point, viewport: Viewport): { x: number; y: number; width: number; height: number } {
+    const r = box(a, b)
+    const left = this.props.extendLeft ? 0 : r.x
+    const right = this.props.extendRight ? viewport.width : r.x + r.width
+    return { x: left, y: r.y, width: right - left, height: r.height }
   }
 
   protected measuresPrice(): boolean {
@@ -157,11 +243,22 @@ export class PriceRange extends RangeMeter {
 }
 
 /** Horizontal meter: bar count and time span between two times. */
-export class DateRange extends RangeMeter {
+export class DateRange extends RangeMeter<DateRangeProps> {
   readonly type = 'date_range'
 
-  protected override defaultProps(): RangeMeterProps {
-    return { text: '', showPriceDelta: false, showPercent: false, showBars: true, showTimeSpan: true, showVolume: true, extend: false }
+  protected override defaultProps(): DateRangeProps {
+    return { ...METER_PROPS, showBarsRange: true, showDateTimeRange: true, showVolume: true, extendTop: false, extendBottom: false }
+  }
+
+  protected override upgradeProps(props: Partial<DateRangeProps>): Partial<DateRangeProps> {
+    return upgradeMeter(props, ['extendTop', 'extendBottom'])
+  }
+
+  protected override span(a: Point, b: Point, viewport: Viewport): { x: number; y: number; width: number; height: number } {
+    const r = box(a, b)
+    const top = this.props.extendTop ? 0 : r.y
+    const bottom = this.props.extendBottom ? viewport.height : r.y + r.height
+    return { x: r.x, y: top, width: r.width, height: bottom - top }
   }
 
   protected measuresPrice(): boolean {
@@ -174,11 +271,43 @@ export class DateRange extends RangeMeter {
 }
 
 /** Combined meter: price and time deltas of the spanned box. */
-export class DatePriceRange extends RangeMeter {
+export class DatePriceRange extends RangeMeter<DatePriceRangeProps> {
   readonly type = 'date_and_price_range'
 
-  protected override defaultProps(): RangeMeterProps {
-    return { text: '', showPriceDelta: true, showPercent: true, showBars: true, showTimeSpan: true, showVolume: true, extend: false }
+  protected override defaultProps(): DatePriceRangeProps {
+    return {
+      ...METER_PROPS,
+      showPriceRange: true,
+      showPercentChange: true,
+      showPipsChange: true,
+      showBarsRange: true,
+      showDateTimeRange: true,
+      showVolume: true,
+      drawBorder: false,
+      borderColor: '#2962ff',
+      borderWidth: 1,
+      extendLeft: false,
+      extendRight: false,
+    }
+  }
+
+  protected override upgradeProps(props: Partial<DatePriceRangeProps>): Partial<DatePriceRangeProps> {
+    return upgradeMeter(props, ['extendLeft', 'extendRight'])
+  }
+
+  protected override span(a: Point, b: Point, viewport: Viewport): { x: number; y: number; width: number; height: number } {
+    const r = box(a, b)
+    const left = this.props.extendLeft ? 0 : r.x
+    const right = this.props.extendRight ? viewport.width : r.x + r.width
+    return { x: left, y: r.y, width: right - left, height: r.height }
+  }
+
+  protected override paintBorder(ctx: CanvasRenderingContext2D, r: { x: number; y: number; width: number; height: number }): void {
+    if (!this.props.drawBorder) return
+    ctx.save()
+    applyStroke(ctx, { ...this.style, lineColor: this.props.borderColor, lineWidth: this.props.borderWidth, lineStyle: 'solid' })
+    ctx.strokeRect(r.x, r.y, r.width, r.height)
+    ctx.restore()
   }
 
   protected measuresPrice(): boolean {

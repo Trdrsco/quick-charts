@@ -1,7 +1,19 @@
-import type { ControlPoint, Point, Viewport } from '../core/types'
+import type { ControlPoint, LineStyle, Point, Viewport } from '../core/types'
 import { Drawing, type AnyDrawing } from '../core/drawing'
-import { distanceToSegment } from '../core/geometry'
-import { applyStroke, fillPaint, paintLabel } from '../render/canvas'
+import { distanceToSegment, extendSegment } from '../core/geometry'
+import { applyStroke, fillPaint, paintArrowHead, paintLabel } from '../render/canvas'
+import type { LineEnd, TextHAlign, TextVAlign } from './lines'
+
+/** A shape's background shows while it is switched on and its fill has any opacity. Switching it
+ *  off keeps the color and the opacity, so switching it back on returns the same fill. */
+export type BackgroundProps = {
+  fillBackground: boolean
+}
+
+/** The fill a shape paints, or null while its background is off. */
+function backgroundOf(drawing: AnyDrawing): string | null {
+  return drawing.props.fillBackground === false ? null : fillPaint(drawing.style)
+}
 
 function hitTolerance(lineWidth: number): number {
   return Math.max(6, lineWidth / 2 + 4)
@@ -39,7 +51,7 @@ function paintPolygon(
   ctx.moveTo(polygon[0].x, polygon[0].y)
   for (let i = 1; i < polygon.length; i++) ctx.lineTo(polygon[i].x, polygon[i].y)
   ctx.closePath()
-  const fill = fillPaint(drawing.style)
+  const fill = backgroundOf(drawing)
   if (fill) {
     ctx.fillStyle = fill
     ctx.fill()
@@ -47,13 +59,19 @@ function paintPolygon(
   ctx.stroke()
 }
 
-export type RectangleProps = {
-  /** Free label rendered centered inside the rectangle. */
+export type RectangleProps = BackgroundProps & {
+  /** Free label the box carries. */
   text: string
-  /** Dashed horizontal midline across the box. */
+  /** A horizontal line across the box at its middle, in its own color, width and style. */
   middleLine: boolean
+  middleLineColor: string
+  middleLineWidth: number
+  middleLineStyle: LineStyle
   extendLeft: boolean
   extendRight: boolean
+  /** Where the label stands: above the box, inside it or below it, and along it. */
+  textVAlign: TextVAlign
+  textHAlign: TextHAlign
 }
 
 /** Axis-aligned rectangle spanned by two corner anchors. */
@@ -61,7 +79,23 @@ export class Rectangle extends Drawing<RectangleProps> {
   readonly type = 'rectangle'
 
   protected override defaultProps(): RectangleProps {
-    return { text: '', middleLine: false, extendLeft: false, extendRight: false }
+    return {
+      text: '',
+      fillBackground: true,
+      middleLine: false,
+      middleLineColor: '#9c27b0',
+      middleLineWidth: 1,
+      middleLineStyle: 'dashed',
+      extendLeft: false,
+      extendRight: false,
+      textVAlign: 'middle',
+      textHAlign: 'center',
+    }
+  }
+
+  /** A format-2 rectangle drew its middle line dashed in its own stroke's color and thickness. */
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, middleLineColor: this._style.lineColor, middleLineWidth: this._style.lineWidth, middleLineStyle: 'dashed' }
   }
 
   requiredAnchors(): number {
@@ -98,8 +132,7 @@ export class Rectangle extends Drawing<RectangleProps> {
     if (this.props.middleLine) {
       const midY = (corners[0].y + corners[2].y) / 2
       ctx.save()
-      applyStroke(ctx, this.style)
-      ctx.setLineDash([4, 4])
+      applyStroke(ctx, { ...this.style, lineColor: this.props.middleLineColor, lineWidth: this.props.middleLineWidth, lineStyle: this.props.middleLineStyle })
       ctx.beginPath()
       ctx.moveTo(corners[0].x, midY)
       ctx.lineTo(corners[1].x, midY)
@@ -107,13 +140,18 @@ export class Rectangle extends Drawing<RectangleProps> {
       ctx.restore()
     }
     if (this.props.text) {
-      paintLabel(
-        ctx,
-        this.props.text,
-        { x: (corners[0].x + corners[2].x) / 2, y: (corners[0].y + corners[2].y) / 2 },
-        this.style,
-        { align: 'center' },
-      )
+      const top = Math.min(corners[0].y, corners[2].y)
+      const bottom = Math.max(corners[0].y, corners[2].y)
+      const left = Math.min(corners[0].x, corners[1].x)
+      const right = Math.max(corners[0].x, corners[1].x)
+      const along = this.props.textHAlign
+      const place = this.props.textVAlign
+      const x = along === 'left' ? left + 4 : along === 'right' ? right - 4 : (left + right) / 2
+      const y = place === 'top' ? top - 4 : place === 'bottom' ? bottom + 4 : (top + bottom) / 2
+      paintLabel(ctx, this.props.text, { x, y }, this.style, {
+        align: along === 'left' ? 'left' : along === 'right' ? 'right' : 'center',
+        baseline: place === 'top' ? 'bottom' : place === 'bottom' ? 'top' : 'middle',
+      })
     }
   }
 
@@ -122,7 +160,7 @@ export class Rectangle extends Drawing<RectangleProps> {
     if (!corners) return false
     const tolerance = hitTolerance(this.style.lineWidth)
     if (nearPolygonEdge(point, corners, tolerance, true)) return true
-    return this.style.fillOpacity > 0 && pointInPolygon(point, corners)
+    return backgroundOf(this) !== null && pointInPolygon(point, corners)
   }
 }
 
@@ -130,8 +168,12 @@ export class Rectangle extends Drawing<RectangleProps> {
  * Rectangle at an arbitrary angle: anchors 1–2 span one edge, anchor 3 sets the extrusion —
  * the rectangle extends perpendicular from the base edge through the third point.
  */
-export class RotatedRectangle extends Drawing {
+export class RotatedRectangle extends Drawing<BackgroundProps> {
   readonly type = 'rotated_rectangle'
+
+  protected override defaultProps(): BackgroundProps {
+    return { fillBackground: true }
+  }
 
   requiredAnchors(): number {
     return 3
@@ -161,13 +203,17 @@ export class RotatedRectangle extends Drawing {
     if (!corners) return false
     const tolerance = hitTolerance(this.style.lineWidth)
     if (nearPolygonEdge(point, corners, tolerance, true)) return true
-    return this.style.fillOpacity > 0 && pointInPolygon(point, corners)
+    return backgroundOf(this) !== null && pointInPolygon(point, corners)
   }
 }
 
 /** Three-corner polygon. */
-export class Triangle extends Drawing {
+export class Triangle extends Drawing<BackgroundProps> {
   readonly type = 'triangle'
+
+  protected override defaultProps(): BackgroundProps {
+    return { fillBackground: true }
+  }
 
   requiredAnchors(): number {
     return 3
@@ -183,12 +229,12 @@ export class Triangle extends Drawing {
     if (points.length < 3) return false
     const tolerance = hitTolerance(this.style.lineWidth)
     if (nearPolygonEdge(point, points, tolerance, true)) return true
-    return this.style.fillOpacity > 0 && pointInPolygon(point, points)
+    return backgroundOf(this) !== null && pointInPolygon(point, points)
   }
 }
 
-/** The free label a round shape carries, centered in it. */
-export type RoundShapeProps = {
+/** The free label a round shape carries, centered in it, and its background switch. */
+export type RoundShapeProps = BackgroundProps & {
   text: string
 }
 
@@ -197,7 +243,7 @@ export class Circle extends Drawing<RoundShapeProps> {
   readonly type = 'circle'
 
   protected override defaultProps(): RoundShapeProps {
-    return { text: '' }
+    return { text: '', fillBackground: true }
   }
 
   requiredAnchors(): number {
@@ -222,7 +268,7 @@ export class Circle extends Drawing<RoundShapeProps> {
     applyStroke(ctx, this.style)
     ctx.beginPath()
     ctx.arc(geo.center.x, geo.center.y, geo.radius, 0, Math.PI * 2)
-    const fill = fillPaint(this.style)
+    const fill = backgroundOf(this)
     if (fill) {
       ctx.fillStyle = fill
       ctx.fill()
@@ -236,7 +282,7 @@ export class Circle extends Drawing<RoundShapeProps> {
     if (!geo) return false
     const distance = Math.hypot(point.x - geo.center.x, point.y - geo.center.y)
     if (Math.abs(distance - geo.radius) <= hitTolerance(this.style.lineWidth)) return true
-    return this.style.fillOpacity > 0 && distance < geo.radius
+    return backgroundOf(this) !== null && distance < geo.radius
   }
 }
 
@@ -248,7 +294,7 @@ export class Ellipse extends Drawing<RoundShapeProps> {
   readonly type = 'ellipse'
 
   protected override defaultProps(): RoundShapeProps {
-    return { text: '' }
+    return { text: '', fillBackground: true }
   }
 
   requiredAnchors(): number {
@@ -277,7 +323,7 @@ export class Ellipse extends Drawing<RoundShapeProps> {
     applyStroke(ctx, this.style)
     ctx.beginPath()
     ctx.ellipse(geo.center.x, geo.center.y, geo.rx, geo.ry, 0, 0, Math.PI * 2)
-    const fill = fillPaint(this.style)
+    const fill = backgroundOf(this)
     if (fill) {
       ctx.fillStyle = fill
       ctx.fill()
@@ -304,7 +350,7 @@ export class Ellipse extends Drawing<RoundShapeProps> {
     const radial = Math.sqrt(nx * nx + ny * ny)
     const tolerance = hitTolerance(this.style.lineWidth) / Math.min(geo.rx, geo.ry)
     if (Math.abs(radial - 1) <= tolerance) return true
-    return this.style.fillOpacity > 0 && radial < 1
+    return backgroundOf(this) !== null && radial < 1
   }
 }
 
@@ -335,7 +381,7 @@ function sampleBezier(controls: readonly Point[], samples = 32): Point[] {
 function paintSampled(ctx: CanvasRenderingContext2D, drawing: AnyDrawing, samples: Point[]): void {
   if (samples.length < 2) return
   // The background channel fills the area the curve closes over (chord back to the start).
-  const fill = fillPaint(drawing.style)
+  const fill = backgroundOf(drawing)
   if (fill) {
     ctx.save()
     ctx.fillStyle = fill
@@ -353,6 +399,57 @@ function paintSampled(ctx: CanvasRenderingContext2D, drawing: AnyDrawing, sample
   ctx.stroke()
 }
 
+/** A curve's options: its background, and the ends and extensions of an open curve. */
+export type CurveProps = BackgroundProps & {
+  extendLeft: boolean
+  extendRight: boolean
+  leftEnd: LineEnd
+  rightEnd: LineEnd
+}
+
+const CURVE_PROPS: CurveProps = { fillBackground: false, extendLeft: false, extendRight: false, leftEnd: 'normal', rightEnd: 'normal' }
+
+/** A format-2 curve filled its body wherever its fill showed. */
+function curveSavedLook(drawing: Curve | DoubleCurve): Partial<CurveProps> {
+  return { fillBackground: drawing.style.fillOpacity > 0 }
+}
+
+/** The straight runs an open curve extends by: from its first point back along the tangent it
+ *  starts on, and from its last point on along the tangent it ends on, each to the pane's edge. */
+function curveExtensions(samples: Point[], viewport: Viewport, props: CurveProps): { a: Point; b: Point }[] {
+  const out: { a: Point; b: Point }[] = []
+  const n = samples.length
+  if (n < 2) return out
+  if (props.extendLeft) {
+    const run = extendSegment(samples[0], samples[1], viewport.width, viewport.height, true, false)
+    if (run) out.push({ a: run.a, b: samples[0] })
+  }
+  if (props.extendRight) {
+    const run = extendSegment(samples[n - 2], samples[n - 1], viewport.width, viewport.height, false, true)
+    if (run) out.push({ a: samples[n - 1], b: run.b })
+  }
+  return out
+}
+
+/** An open curve: its sampled path, its extensions, and an arrow at either end that asks for one. */
+function paintOpenCurve(ctx: CanvasRenderingContext2D, drawing: AnyDrawing, samples: Point[], viewport: Viewport, props: CurveProps): void {
+  paintSampled(ctx, drawing, samples)
+  const runs = curveExtensions(samples, viewport, props)
+  if (runs.length) {
+    applyStroke(ctx, drawing.style)
+    ctx.beginPath()
+    for (const run of runs) {
+      ctx.moveTo(run.a.x, run.a.y)
+      ctx.lineTo(run.b.x, run.b.y)
+    }
+    ctx.stroke()
+  }
+  const n = samples.length
+  if (n < 2) return
+  if (props.leftEnd === 'arrow') paintArrowHead(ctx, samples[1], samples[0], drawing.style)
+  if (props.rightEnd === 'arrow') paintArrowHead(ctx, samples[n - 2], samples[n - 1], drawing.style)
+}
+
 function hitSampled(point: Point, samples: Point[], tolerance: number): boolean {
   for (let i = 0; i < samples.length - 1; i++) {
     if (distanceToSegment(point, samples[i], samples[i + 1]) <= tolerance) return true
@@ -364,8 +461,16 @@ function hitSampled(point: Point, samples: Point[], tolerance: number): boolean 
  * Bend line: anchors 1–2 are the ends, anchor 3 is the bend — the curve passes THROUGH it
  * (the Bézier control is derived so the midpoint lands on the bend anchor).
  */
-export class Curve extends Drawing {
+export class Curve extends Drawing<CurveProps> {
   readonly type = 'curve'
+
+  protected override defaultProps(): CurveProps {
+    return { ...CURVE_PROPS }
+  }
+
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, ...curveSavedLook(this) }
+  }
 
   requiredAnchors(): number {
     return 3
@@ -380,18 +485,28 @@ export class Curve extends Drawing {
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const samples = this.samples(viewport)
-    if (samples) paintSampled(ctx, this, samples)
+    if (samples) paintOpenCurve(ctx, this, samples, viewport, this.props)
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
     const samples = this.samples(viewport)
-    return !!samples && hitSampled(point, samples, hitTolerance(this.style.lineWidth))
+    if (!samples) return false
+    const tolerance = hitTolerance(this.style.lineWidth)
+    return hitSampled(point, samples, tolerance) || curveExtensions(samples, viewport, this.props).some((run) => distanceToSegment(point, run.a, run.b) <= tolerance)
   }
 }
 
 /** S-curve: ends at anchors 1–2, shaped through the two bend anchors 3–4. */
-export class DoubleCurve extends Drawing {
+export class DoubleCurve extends Drawing<CurveProps> {
   readonly type = 'double_curve'
+
+  protected override defaultProps(): CurveProps {
+    return { ...CURVE_PROPS }
+  }
+
+  protected override keepSavedLook(_saved: Readonly<Record<string, unknown>>): void {
+    this._props = { ...this._props, ...curveSavedLook(this) }
+  }
 
   requiredAnchors(): number {
     return 4
@@ -414,18 +529,24 @@ export class DoubleCurve extends Drawing {
 
   paint(ctx: CanvasRenderingContext2D, viewport: Viewport): void {
     const samples = this.samples(viewport)
-    if (samples) paintSampled(ctx, this, samples)
+    if (samples) paintOpenCurve(ctx, this, samples, viewport, this.props)
   }
 
   testHit(point: Point, viewport: Viewport): boolean {
     const samples = this.samples(viewport)
-    return !!samples && hitSampled(point, samples, hitTolerance(this.style.lineWidth))
+    if (!samples) return false
+    const tolerance = hitTolerance(this.style.lineWidth)
+    return hitSampled(point, samples, tolerance) || curveExtensions(samples, viewport, this.props).some((run) => distanceToSegment(point, run.a, run.b) <= tolerance)
   }
 }
 
 /** Circular arc through a chord (anchors 1–2) bent to pass through anchor 3. */
-export class Arc extends Drawing {
+export class Arc extends Drawing<BackgroundProps> {
   readonly type = 'arc'
+
+  protected override defaultProps(): BackgroundProps {
+    return { fillBackground: true }
+  }
 
   requiredAnchors(): number {
     return 3

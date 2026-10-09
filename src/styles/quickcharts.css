@@ -32,6 +32,16 @@
   box-sizing: inherit;
 }
 
+/* Every control reads in the chart's font: a button, a field or a list takes the root's family rather
+ * than the browser's own control font, whatever words it shows or holds. A recipe that sets a size
+ * or a weight keeps it, and one that names a family of its own outranks this. */
+[data-qc-theme] button,
+[data-qc-theme] input,
+[data-qc-theme] select,
+[data-qc-theme] textarea {
+  font-family: inherit;
+}
+
 /* Surfaces ------------------------------------------------------------------------------------ */
 
 [data-qc-theme] .qc-surface {
@@ -167,7 +177,7 @@
 }
 
 /* A field that cannot be edited stands on the read-only fill, its edge at rest under the pointer. A
- * disabled one stands its words back too. */
+ * disabled one stands its words back too, in the disabled ink. */
 [data-qc-theme] .qc-field[readonly] {
   background: var(--qc-control-fieldFill);
   border-color: var(--qc-control-fieldEdge);
@@ -175,7 +185,7 @@
 
 [data-qc-theme] .qc-field:disabled,
 [data-qc-theme] .qc-field[aria-disabled='true'] {
-  color: var(--qc-text-muted);
+  color: var(--qc-text-disabled);
   background: var(--qc-control-fieldFill);
   border-color: var(--qc-control-fieldEdge);
   cursor: default;
@@ -205,7 +215,7 @@
   box-shadow: inset 0 0 0 1px var(--qc-control-fieldInvalid);
 }
 
-/* A select draws its own chevron: the 18px mark in the muted ink, in a 20 by 28 slot 2px in from the
+/* A select draws its own chevron: the 18px mark in the caret ink, in a 20 by 28 slot 2px in from the
  * end of the box. A native select gives up the slot's room and takes the press the slot lets
  * through; a list button lays the slot out after its face and turns the mark while its list is open,
  * keyed on its own state, so a list button inside some other open thing does not turn. */
@@ -229,7 +239,7 @@
   justify-content: center;
   width: 20px;
   height: 28px;
-  color: var(--qc-text-muted);
+  color: var(--qc-chrome-caret);
   pointer-events: none;
 }
 
@@ -240,7 +250,7 @@
 }
 
 [data-qc-theme] .qc-select-chevron > svg {
-  transition: rotate var(--qc-motion-durationSlow) var(--qc-motion-easingSpring);
+  transition: rotate var(--qc-motion-durationSlow) var(--qc-motion-easingStandard);
 }
 
 [data-qc-theme] [aria-expanded='true'] > .qc-select-chevron > svg {

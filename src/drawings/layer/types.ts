@@ -324,6 +324,9 @@ export interface DrawingsHandle {
   /** The symbol's smallest price move (tick-denominated readouts on measure-style drawings); null
    *  while the symbol is unresolved. */
   setTick(tick: number | null): void
+  /** The currency the symbol is quoted in: the unit a position's risk amount is offered in. Null
+   *  while the symbol is unresolved or states none. */
+  setCurrency(code: string | null): void
   /** The symbol's price formatter: every drawing label, pill and readout writes prices through it.
    *  Null returns the layer to the drawings package's declared stand-in. */
   setPriceFormatter(format: ((price: number) => string) | null): void
