@@ -1,14 +1,14 @@
-// The multi-chart arrangement catalog — 55 codes in 13 picker rows, decoded from
-// its own menu icons into unit-square pane rectangles.
+// The multi-chart arrangement catalog: 55 codes in 13 picker rows, each a set of unit-square pane
+// rectangles.
 // Geometry only: no DOM, no chart. The widget's layout turns a code into positioned chart elements;
-// a menu turns the rows into its picker. Splits are EVEN fractions — the picker icons draw
-// stylized proportions, but its product opens every arrangement at equal splits.
+// a menu turns the rows into its picker and draws each arrangement's glyph from its rectangles.
+// Splits are EVEN fractions, so every arrangement opens at equal splits.
 //
-// Code grammar (verified against the captured icon paths, not inferred):
+// Code grammar:
 //   `s` one pane · `Nh` N columns · `Nv` N rows · bare/`NcK` even grids (rows × columns)
 //   `Ns` one large left pane + N-1 stacked right (`Ns-l` mirrors: stack left, large right;
 //   `3r` is the same mirror at three) · `A-B` A panes across the top half, B across the bottom
-//   (`2-2` is the exception its icon draws: two panes atop two FULL-WIDTH rows) · `A-B-l/-r`
+//   (`2-2` is the exception: two panes atop two FULL-WIDTH rows) · `A-B-l/-r`
 //   are column forms: A full-height columns with a B-stack on the right (-l) or left (-r).
 // Pane order is deterministic for serialization: primaries left-to-right, stacks top-to-bottom.
 //

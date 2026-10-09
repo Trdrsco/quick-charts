@@ -207,7 +207,7 @@ describe('the settings bar', () => {
 
   it('the More menu is two submenus, then clone and copy with their hotkeys, then hide', () => {
     const { byLabel, ran, popover, popovers, rows } = rig(selection())
-    expect(byLabel('More drawing actions').innerHTML).toContain('M7.5 13a1.5 1.5 0 1 0 0 3') // three dots in a row
+    expect(byLabel('More drawing actions').innerHTML).toContain('M5 14.5A2.5 2.5 0 1 1 10 14.5') // three rings in a row
     byLabel('More drawing actions').click()
     const menu = rows(popover())
     expect(menu.map((r) => r.textContent)).toEqual(['Visual order', 'Visibility on timeframes', 'CloneCtrl + Drag', 'CopyCtrl + C', 'Hide'])

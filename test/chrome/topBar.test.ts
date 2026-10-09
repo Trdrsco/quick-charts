@@ -33,7 +33,7 @@ describe('the top bar', () => {
     const { bar } = mount()
     const replay = bar.element.querySelector<HTMLButtonElement>('button[aria-label="Bar replay"]')!
     const path = replay.querySelector('path')!
-    expect(path.getAttribute('d')).toBe('M13.5 20V9l-6 5.5 6 5.5zM21.5 20V9l-6 5.5 6 5.5z')
+    expect(path.getAttribute('d')).toBe('M13.5 9L13.5 20L7.5 14.5ZM21.5 9L21.5 20L15.5 14.5Z')
     expect(path.getAttribute('stroke')).toBe('currentColor')
   })
   it('stands undo and redo down on an empty history, and names each after the step it would move', () => {

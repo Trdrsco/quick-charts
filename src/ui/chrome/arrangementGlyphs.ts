@@ -1,68 +1,162 @@
-// The layout menu's arrangement glyphs, keyed by the arrangement codes of the ARRANGEMENTS catalog.
-// Each entry carries the original viewBox plus the svg INNER markup (the paths and rects only, the
-// outer <svg> tag stripped); where the original outer tag carried transform or fill attributes, the
-// body wraps them in a <g> so nothing is lost when it is injected into a fresh <svg> that restores
-// only the viewBox. A static, package-authored table, which is what makes the innerHTML write safe.
-// Never hand-edited: a glyph changes by regenerating the table.
+// The layout menu's arrangement glyphs, keyed by the arrangement codes of the ARRANGEMENTS catalog
+// and drawn from each arrangement's own panes. A glyph is a rounded frame one unit thick on the 21 by
+// 19 grid, with a one-unit wall wherever two panes meet: each pane is a hollow cut out of the frame's
+// face, set on the whole units nearest its share of the frame. Panes that would stand less than two
+// units across share one hollow instead, with its first walls at a three-unit pitch, each fainter
+// than the last, so that part of the glyph reads as many panes rather than counting them. The table
+// is built once from package-authored geometry, which is what makes the innerHTML write safe.
+import { ARRANGEMENTS, type PaneRect } from '../../layoutGrid'
+import { box, roundedBox } from '../controls/glyphGeometry'
 
 export interface ArrangementIcon { viewBox: string; body: string }
 
+/** The frame's outer box on the grid, and the corner radius of its outer edge. */
+const WIDTH = 19
+const HEIGHT = 17
+const RADIUS = 2.5
+
+/** The opacities of a shared hollow's fading walls, from the first to the last. */
+const FADE = [1, 0.7, 0.45, 0.22, 0.08]
+
+/** The unit a wall `t` of the way across a span stands on: the whole unit nearest its share, a half
+ *  going away from the middle so a glyph stays symmetrical. */
+function wallAt(t: number, span: number): number {
+  const exact = t * (span - 1)
+  const whole = Math.floor(exact)
+  if (Math.abs(exact - whole - 0.5) > 1e-9) return Math.round(exact)
+  return t < 0.5 ? whole : whole + 1
+}
+
+/** The hollow a pane leaves in the frame's face, its corners rounded where they meet the frame's. */
+function hollow(pane: PaneRect): { x0: number; y0: number; x1: number; y1: number; radii: number[] } {
+  const near = (a: number, b: number): boolean => Math.abs(a - b) < 1e-9
+  const right = pane.x + pane.w
+  const bottom = pane.y + pane.h
+  const inner = RADIUS - 1
+  return {
+    x0: wallAt(pane.x, WIDTH) + 1,
+    y0: wallAt(pane.y, HEIGHT) + 1,
+    x1: wallAt(right, WIDTH),
+    y1: wallAt(bottom, HEIGHT),
+    radii: [
+      near(pane.x, 0) && near(pane.y, 0) ? inner : 0,
+      near(right, 1) && near(pane.y, 0) ? inner : 0,
+      near(right, 1) && near(bottom, 1) ? inner : 0,
+      near(pane.x, 0) && near(bottom, 1) ? inner : 0,
+    ],
+  }
+}
+
+const solidPath = (d: string, opacity = 1): string => `<path fill="currentColor"${opacity < 1 ? ` opacity="${opacity}"` : ''} d="${d}"/>`
+
+type Hollow = ReturnType<typeof hollow>
+
+/** Panes too small to draw one by one, merged into the one hollow they share: a column stacked with
+ *  any pane less than two units tall, or a band run with any pane less than two units wide, is drawn
+ *  whole. Each merged hollow keeps the direction its walls run in, for the fading walls drawn across
+ *  it. */
+function merged(holes: readonly Hollow[]): { holes: Hollow[]; dense: { hole: Hollow; across: 'rows' | 'columns' }[] } {
+  const column = (h: Hollow): string => `r${h.x0}:${h.x1}`
+  const band = (h: Hollow): string => `c${h.y0}:${h.y1}`
+  const shortColumns = new Set(holes.filter((h) => h.y1 - h.y0 < 2).map(column))
+  const narrowBands = new Set(holes.filter((h) => h.x1 - h.x0 < 2).map(band))
+  const kept: Hollow[] = []
+  const groups = new Map<string, { hole: Hollow; across: 'rows' | 'columns' }>()
+  for (const h of holes) {
+    const across = shortColumns.has(column(h)) ? 'rows' : narrowBands.has(band(h)) ? 'columns' : null
+    if (!across) {
+      kept.push(h)
+      continue
+    }
+    const key = across === 'rows' ? column(h) : band(h)
+    const group = groups.get(key)
+    if (!group) {
+      groups.set(key, { hole: { ...h, radii: [...h.radii] }, across })
+      continue
+    }
+    const g = group.hole
+    g.x0 = Math.min(g.x0, h.x0)
+    g.y0 = Math.min(g.y0, h.y0)
+    g.x1 = Math.max(g.x1, h.x1)
+    g.y1 = Math.max(g.y1, h.y1)
+    g.radii = g.radii.map((r, i) => Math.max(r, h.radii[i]!))
+  }
+  const dense = [...groups.values()]
+  return { holes: [...kept, ...dense.map((d) => d.hole)], dense }
+}
+
+/** An arrangement's glyph from its panes. */
+function drawn(code: string): ArrangementIcon {
+  const panes = ARRANGEMENTS.find((a) => a.code === code)!.rects
+  const { holes, dense } = merged(panes.map(hollow))
+  let body = solidPath(roundedBox(0, 0, WIDTH, HEIGHT, RADIUS) + holes.map((h) => roundedBox(h.x0, h.y0, h.x1, h.y1, h.radii, true)).join(''))
+  // A merged hollow wears its first walls at a three-unit pitch, each fainter than the last.
+  for (const { hole, across } of dense) {
+    FADE.forEach((opacity, i) => {
+      const at = (across === 'rows' ? hole.y0 : hole.x0) + 2 + 3 * i
+      if (at + 1 > (across === 'rows' ? hole.y1 : hole.x1) - 1) return
+      body += solidPath(across === 'rows' ? box(hole.x0, at, hole.x1, at + 1) : box(at, hole.y0, at + 1, hole.y1), opacity)
+    })
+  }
+  return { viewBox: '-1 -1 21 19', body }
+}
+
 export const ARRANGEMENT_ICONS = {
-  's': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" d="M2.5 1C1.67 1 1 1.67 1 2.5v12c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5h-14ZM0 2.5A2.5 2.5 0 0 1 2.5 0h14A2.5 2.5 0 0 1 19 2.5v12a2.5 2.5 0 0 1-2.5 2.5h-14A2.5 2.5 0 0 1 0 14.5v-12Z"></path>' },
-  '2h': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v15H2.5A1.5 1.5 0 0 1 1 14.5v-12ZM10 16h6.5c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5H10v15ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '2v': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1h14c.83 0 1.5.67 1.5 1.5V8H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5V9H1Zm1.5-9A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '3h': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H6v15H2.5A1.5 1.5 0 0 1 1 14.5v-12ZM7 16h5V1H7v15Zm6-15v15h3.5c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5H13ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '3v': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1h14c.83 0 1.5.67 1.5 1.5V5H1V2.5ZM1 6v5h17V6H1Zm17 6H1v2.5c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5V12ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '3s': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v15H2.5A1.5 1.5 0 0 1 1 14.5v-12ZM10 16h6.5c.83 0 1.5-.67 1.5-1.5V9h-8v7Zm8-8V2.5c0-.83-.67-1.5-1.5-1.5H10v7h8ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '3r': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v7H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H9V9H1Zm9 7h6.5c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5H10v15ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '2-1': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v7H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5V9H1Zm17-1V2.5c0-.83-.67-1.5-1.5-1.5H10v7h8ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '1-2': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1h14c.83 0 1.5.67 1.5 1.5V8H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H9V9H1Zm9 7h6.5c.83 0 1.5-.67 1.5-1.5V9h-8v7ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '4': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v7H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H9V9H1Zm9 7h6.5c.83 0 1.5-.67 1.5-1.5V9h-8v7Zm8-8V2.5c0-.83-.67-1.5-1.5-1.5H10v7h8ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '4v': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1h14c.83 0 1.5.67 1.5 1.5V4H1V2.5ZM1 5v3h17V5H1Zm17 4H1v3h17V9Zm0 4H1v1.5c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5V13ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '4h': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H4v15H2.5A1.5 1.5 0 0 1 1 14.5v-12ZM5 16h4V1H5v15Zm5-15v15h4V1h-4Zm5 0v15h1.5c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5H15ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '4s': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v15H2.5A1.5 1.5 0 0 1 1 14.5v-12ZM10 16h6.5c.83 0 1.5-.67 1.5-1.5V12h-8v4Zm8-5V6h-8v5h8Zm0-6V2.5c0-.83-.67-1.5-1.5-1.5H10v4h8ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '4s-l': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M2 3.5C2 2.67 2.67 2 3.5 2H11v4H2V3.5ZM2 7v5h9V7H2Zm0 6v2.5c0 .83.67 1.5 1.5 1.5H11v-4H2Zm10 4h5.5c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5H12v15ZM3.5 1A2.5 2.5 0 0 0 1 3.5v12A2.5 2.5 0 0 0 3.5 18h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 17.5 1h-14Z"></path>' },
-  '1-3': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1h14c.83 0 1.5.67 1.5 1.5V8H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H6V9H1Zm6 7h5V9H7v7Zm6 0h3.5c.83 0 1.5-.67 1.5-1.5V9h-5v7ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '3-1': { viewBox: '-1 -1 21 19', body: '<g transform="matrix(1,0,0,-1,0,0)"><path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1h14c.83 0 1.5.67 1.5 1.5V8H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H6V9H1Zm6 7h5V9H7v7Zm6 0h3.5c.83 0 1.5-.67 1.5-1.5V9h-5v7ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path></g>' },
-  '2-2-l': { viewBox: '0 0 19 17', body: '<path fill="currentColor" fill-rule="evenodd" d="M2.5 1C1.67 1 1 1.67 1 2.5v12c0 .83.67 1.5 1.5 1.5H5V1zM10 16H6V1h4v15m1 0h5.5c.83 0 1.5-.67 1.5-1.5V9h-7zm7-8V2.5c0-.83-.67-1.5-1.5-1.5H11v7zM0 2.5A2.5 2.5 0 0 1 2.5 0h14A2.5 2.5 0 0 1 19 2.5v12a2.5 2.5 0 0 1-2.5 2.5h-14A2.5 2.5 0 0 1 0 14.5z"></path>' },
-  '2-2-r': { viewBox: '0 0 19 17', body: '<path fill="currentColor" fill-rule="evenodd" d="M16.5 1H14v15h2.5c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5M9 1h4v15H9V1M8 1H2.5C1.67 1 1 1.67 1 2.5V8h7zM1 9v5.5c0 .83.67 1.5 1.5 1.5H8V9zm1.5-9A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0z"></path>' },
-  '2-2': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v7H1V2.5ZM1 9v3h17V9H1Zm17-1V2.5c0-.83-.67-1.5-1.5-1.5H10v7h8Zm0 5H1v1.5c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5V13ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '1-4': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1h14c.83 0 1.5.67 1.5 1.5V8H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H4V9H1Zm4 7h4V9H5v7Zm5 0h4V9h-4v7Zm5 0h1.5c.83 0 1.5-.67 1.5-1.5V9h-3v7ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '5h': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M19 3.5c0-.83-.67-1.5-1.5-1.5H17v15h.5c.83 0 1.5-.67 1.5-1.5v-12Zm-17 12c0 .83.67 1.5 1.5 1.5H4V2h-.5C2.67 2 2 2.67 2 3.5v12ZM1.01 3.24A2.5 2.5 0 0 1 3.5 1h14A2.5 2.5 0 0 1 20 3.5v12a2.5 2.5 0 0 1-2.5 2.5h-14A2.5 2.5 0 0 1 1 15.5v-12l.01-.26ZM5 17h3V2H5v15Zm11 0h-3V2h3v15ZM12 2v15H9V2h3Z"></path>' },
-  '5v': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 3.5A2.5 2.5 0 0 1 3.5 1h14A2.5 2.5 0 0 1 20 3.5v12a2.5 2.5 0 0 1-2.5 2.5h-14A2.5 2.5 0 0 1 1 15.5v-12ZM3.5 2h14c.83 0 1.5.67 1.5 1.5V4H2v-.5C2 2.67 2.67 2 3.5 2ZM2 5v2h17V5H2Zm17 3H2v3h17V8Zm0 4H2v2h17v-2Zm0 3H2v.5c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5V15Z"></path>' },
-  '5s': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v15H2.5A1.5 1.5 0 0 1 1 14.5v-12ZM10 16h6.5c.83 0 1.5-.67 1.5-1.5V13h-8v3Zm8-4V9h-8v3h8Zm0-4V5h-8v3h8Zm0-4V2.5c0-.83-.67-1.5-1.5-1.5H10v3h8ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '5s-l': { viewBox: '-1 -1 21 19', body: '<g transform="matrix(-1,0,0,-1,0,0)"><path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v15H2.5A1.5 1.5 0 0 1 1 14.5v-12ZM10 16h6.5c.83 0 1.5-.67 1.5-1.5V13h-8v3Zm8-4V9h-8v3h8Zm0-4V5h-8v3h8Zm0-4V2.5c0-.83-.67-1.5-1.5-1.5H10v3h8ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path></g>' },
-  '2-3': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v7H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H6V9H1Zm6 7h5V9H7v7Zm6 0h3.5c.83 0 1.5-.67 1.5-1.5V9h-5v7Zm5-8V2.5c0-.83-.67-1.5-1.5-1.5H10v7h8ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '3-2': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M2 3.5C2 2.67 2.67 2 3.5 2H7v7H2V3.5ZM2 10v5.5c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5V10h-8v7h-1v-7H2Zm17-1V3.5c0-.83-.67-1.5-1.5-1.5H14v7h5Zm-6-7H8v7h5V2ZM3.5 1A2.5 2.5 0 0 0 1 3.5v12A2.5 2.5 0 0 0 3.5 18h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 17.5 1h-14Z"></path>' },
-  '4-1': { viewBox: '-1 -1 21 19', body: '<g transform="matrix(-1,0,0,-1,0,0)"><path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1h14c.83 0 1.5.67 1.5 1.5V8H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H4V9H1Zm4 7h4V9H5v7Zm5 0h4V9h-4v7Zm5 0h1.5c.83 0 1.5-.67 1.5-1.5V9h-3v7ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path></g>' },
-  '2-3-l': { viewBox: '0 0 19 17', body: '<path fill="currentColor" fill-rule="evenodd" d="M10 1H6v15h4V1m1 0v4h7V2.5c0-.83-.67-1.5-1.5-1.5zm7 5h-7v5h7zm0 6h-7v4h5.5c.83 0 1.5-.67 1.5-1.5zM2.5 1H5v15H2.5A1.5 1.5 0 0 1 1 14.5v-12C1 1.67 1.67 1 2.5 1m0-1A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0z"></path>' },
-  '2-3-r': { viewBox: '0 0 19 17', body: '<path fill="currentColor" fill-rule="evenodd" d="M16.5 1H14v15h2.5c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5M9 1h4v15H9V1M8 1H2.5C1.67 1 1 1.67 1 2.5V5h7zM1 6v5h7V6zm0 6v2.5c0 .83.67 1.5 1.5 1.5H8v-4zM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0z"></path>' },
-  '6': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H6v7H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H6V9H1Zm6 7h5V9H7v7Zm6 0h3.5c.83 0 1.5-.67 1.5-1.5V9h-5v7Zm5-8V2.5c0-.83-.67-1.5-1.5-1.5H13v7h5Zm-6-7H7v7h5V1ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '6h': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M2 3.5C2 2.67 2.67 2 3.5 2H4v15h-.5A1.5 1.5 0 0 1 2 15.5v-12ZM5 17h2V2H5v15ZM8 2v15h2V2H8Zm3 0v15h2V2h-2Zm3 0v15h2V2h-2Zm3 0v15h.5c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5H17ZM3.5 1A2.5 2.5 0 0 0 1 3.5v12A2.5 2.5 0 0 0 3.5 18h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 17.5 1h-14Z"></path>' },
-  '6v': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M1.5 4h18v1h-18V4Z"></path><path fill="currentColor" d="M2 7h18v1H2V7Z" opacity=".65"></path><path fill="currentColor" d="M1.5 10h18v1h-18v-1Z" opacity=".25"></path><path fill="currentColor" d="M1.5 13h18v1h-18v-1Z" opacity=".05"></path></g>' },
-  '6c': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v4H1V2.5ZM1 6v5h8V6H1Zm0 6v2.5c0 .83.67 1.5 1.5 1.5H9v-4H1Zm9 4h6.5c.83 0 1.5-.67 1.5-1.5V12h-8v4Zm8-5V6h-8v5h8Zm0-6V2.5c0-.83-.67-1.5-1.5-1.5H10v4h8ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '2-4': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 3.5A2.5 2.5 0 0 1 3.5 1h14A2.5 2.5 0 0 1 20 3.5v12a2.5 2.5 0 0 1-2.5 2.5h-14A2.5 2.5 0 0 1 1 15.5v-12ZM11 2h6.5c.83 0 1.5.67 1.5 1.5V9h-8V2Zm-1 0H3.5C2.67 2 2 2.67 2 3.5V9h8V2Zm-8 8v5.5c0 .83.67 1.5 1.5 1.5H5v-7H2Zm4 7h4v-7H6v7Zm5 0h4v-7h-4v7Zm5 0h1.5c.83 0 1.5-.67 1.5-1.5V10h-3v7Z"></path>' },
-  '4-2': { viewBox: '0 0 19 17', body: '<path fill="currentColor" fill-rule="evenodd" d="M15 1h1.5c.83 0 1.5.67 1.5 1.5v5h-3zm-1 0h-4v6.5h4zM9 1H5v6.5h4zM4 1H2.5C1.67 1 1 1.67 1 2.5v5h3zM1 8.5v6c0 .83.67 1.5 1.5 1.5H9V8.5H1m9 7.5h6.5c.83 0 1.5-.67 1.5-1.5v-6h-8zM0 2.5A2.5 2.5 0 0 1 2.5 0h14A2.5 2.5 0 0 1 19 2.5v12a2.5 2.5 0 0 1-2.5 2.5h-14A2.5 2.5 0 0 1 0 14.5z"></path>' },
-  '4-3': { viewBox: '0 0 19 17', body: '<path fill="currentColor" fill-rule="evenodd" d="M14 1h-4v7h4zm1 8h-2v7h3.5c.83 0 1.5-.67 1.5-1.5V9zm-3 7V9H7v7zM5 9h1v7H2.5A1.5 1.5 0 0 1 1 14.5V9h4m13-1V2.5c0-.83-.67-1.5-1.5-1.5H15v7zM1 8h3V1H2.5C1.67 1 1 1.67 1 2.5zm4 0h4V1H5zM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0z"></path>' },
-  '7h': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M4 17V2h1v15H4Z"></path><path fill="currentColor" d="M7 17V2h1v15H7Z" opacity=".85"></path><path fill="currentColor" d="M10 17V2h1v15h-1Z" opacity=".65"></path><path fill="currentColor" d="M13 17V2h1v15h-1Z" opacity=".25"></path><path fill="currentColor" d="M16 17V2h1v15h-1Z" opacity=".05"></path></g>' },
-  '7s': { viewBox: '0 0 19 17', body: '<g fill="currentColor"><path fill-rule="evenodd" d="M16.5 1h-14C1.67 1 1 1.67 1 2.5v12c0 .83.67 1.5 1.5 1.5h14c.83 0 1.5-.67 1.5-1.5v-12c0-.83-.67-1.5-1.5-1.5m-14-1A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0z"></path><path d="M9 3h9v1H9z"></path><path d="M9 17V1h1v16z"></path><path d="M9 6h9v1H9z" opacity=".65"></path><path d="M9 9h9v1H9z" opacity=".25"></path><path d="M9 12h9v1H9z" opacity=".05"></path></g>' },
-  '8': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H4v7H1V2.5ZM1 9v5.5c0 .83.67 1.5 1.5 1.5H4V9H1Zm4 7h4V9H5v7Zm5 0h4V9h-4v7Zm5 0h1.5c.83 0 1.5-.67 1.5-1.5V9h-3v7Zm3-8V2.5c0-.83-.67-1.5-1.5-1.5H15v7h3Zm-4-7h-4v7h4V1ZM9 1H5v7h4V1ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '8c': { viewBox: '-1 -1 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M1 2.5C1 1.67 1.67 1 2.5 1H9v3H1V2.5ZM1 5v3h8V5H1Zm0 4v3h8V9H1Zm0 4v1.5c0 .83.67 1.5 1.5 1.5H9v-3H1Zm9 3h6.5c.83 0 1.5-.67 1.5-1.5V13h-8v3Zm8-4V9h-8v3h8Zm0-4V5h-8v3h8Zm0-4V2.5c0-.83-.67-1.5-1.5-1.5H10v3h8ZM2.5 0A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0h-14Z"></path>' },
-  '8h': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M4 17V2h1v15H4Z"></path><path fill="currentColor" d="M7 17V2h1v15H7Z" opacity=".85"></path><path fill="currentColor" d="M10 17V2h1v15h-1Z" opacity=".65"></path><path fill="currentColor" d="M13 17V2h1v15h-1Z" opacity=".25"></path><path fill="currentColor" d="M16 17V2h1v15h-1Z" opacity=".05"></path></g>' },
-  '8v': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M1.5 4h18v1h-18V4Z"></path><path fill="currentColor" d="M2 7h18v1H2V7Z" opacity=".65"></path><path fill="currentColor" d="M1.5 10h18v1h-18v-1Z" opacity=".25"></path><path fill="currentColor" d="M1.5 13h18v1h-18v-1Z" opacity=".05"></path></g>' },
-  '9s': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M3.5 1A2.5 2.5 0 0 0 1 3.5v12A2.5 2.5 0 0 0 3.5 18h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 17.5 1h-14ZM7 2H3.5C2.67 2 2 2.67 2 3.5V6h5V2Zm1 0v4h5V2H8Zm0 5h5v5H8V7Zm-1 5V7H2v5h5Zm-5 1h5v4H3.5A1.5 1.5 0 0 1 2 15.5V13Zm6 0h5v4H8v-4Zm6 0v4h3.5c.83 0 1.5-.67 1.5-1.5V13h-5Zm5-1V7h-5v5h5ZM14 2v4h5V3.5c0-.83-.67-1.5-1.5-1.5H14Z"></path>' },
-  '5-4': { viewBox: '0 0 19 17', body: '<path fill="currentColor" fill-rule="evenodd" d="M7 1H4v7h3zm1 0v7h3V1zm4 0v7h3V1zm0 8h-2v7h4V9zm3 0h3v5.5c0 .83-.67 1.5-1.5 1.5H15zm1-8v7h2V2.5c0-.83-.67-1.5-1.5-1.5zM8 9H5v7h4V9zM2.5 1H3v7H1V2.5C1 1.67 1.67 1 2.5 1M1 9h3v7H2.5A1.5 1.5 0 0 1 1 14.5zm1.5-9A2.5 2.5 0 0 0 0 2.5v12A2.5 2.5 0 0 0 2.5 17h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 16.5 0z"></path>' },
-  '9h': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M4 17V2h1v15H4Z"></path><path fill="currentColor" d="M7 17V2h1v15H7Z" opacity=".85"></path><path fill="currentColor" d="M10 17V2h1v15h-1Z" opacity=".65"></path><path fill="currentColor" d="M13 17V2h1v15h-1Z" opacity=".25"></path><path fill="currentColor" d="M16 17V2h1v15h-1Z" opacity=".05"></path></g>' },
-  '9v': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M1.5 4h18v1h-18V4Z"></path><path fill="currentColor" d="M2 7h18v1H2V7Z" opacity=".65"></path><path fill="currentColor" d="M1.5 10h18v1h-18v-1Z" opacity=".25"></path><path fill="currentColor" d="M1.5 13h18v1h-18v-1Z" opacity=".05"></path></g>' },
-  '10c5': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M2 3.5C2 2.67 2.67 2 3.5 2H4v7H2V3.5ZM2 10v5.5c0 .83.67 1.5 1.5 1.5H4v-7H2Zm3 7h3v-7H5v7Zm4 0h3v-7H9v7Zm4 0h3v-7h-3v7Zm4 0h.5c.83 0 1.5-.67 1.5-1.5V10h-2v7Zm2-8V3.5c0-.83-.67-1.5-1.5-1.5H17v7h2Zm-3-7h-3v7h3V2Zm-4 0H9v7h3V2ZM8 2H5v7h3V2ZM3.5 1A2.5 2.5 0 0 0 1 3.5v12A2.5 2.5 0 0 0 3.5 18h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 17.5 1h-14Z"></path>' },
-  '10h': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M4 17V2h1v15H4Z"></path><path fill="currentColor" d="M7 17V2h1v15H7Z" opacity=".85"></path><path fill="currentColor" d="M10 17V2h1v15h-1Z" opacity=".65"></path><path fill="currentColor" d="M13 17V2h1v15h-1Z" opacity=".25"></path><path fill="currentColor" d="M16 17V2h1v15h-1Z" opacity=".05"></path></g>' },
-  '10v': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M1.5 4h18v1h-18V4Z"></path><path fill="currentColor" d="M2 7h18v1H2V7Z" opacity=".65"></path><path fill="currentColor" d="M1.5 10h18v1h-18v-1Z" opacity=".25"></path><path fill="currentColor" d="M1.5 13h18v1h-18v-1Z" opacity=".05"></path></g>' },
-  '12c6': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M2 3.5C2 2.67 2.67 2 3.5 2H4v7H2V3.5ZM2 10v5.5c0 .83.67 1.5 1.5 1.5H4v-7H2Zm3 7h2v-7H5v7Zm3 0h2v-7H8v7Zm3 0h2v-7h-2v7Zm3 0h2v-7h-2v7Zm3 0h.5c.83 0 1.5-.67 1.5-1.5V10h-2v7Zm2-8V3.5c0-.83-.67-1.5-1.5-1.5H17v7h2Zm-3-7h-2v7h2V2Zm-3 0h-2v7h2V2Zm-3 0H8v7h2V2ZM7 2H5v7h2V2ZM3.5 1A2.5 2.5 0 0 0 1 3.5v12A2.5 2.5 0 0 0 3.5 18h14a2.5 2.5 0 0 0 2.5-2.5v-12A2.5 2.5 0 0 0 17.5 1h-14Z"></path>' },
-  '12c4': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M2 3.5C2 2.67 2.67 2 3.5 2H7v3H2v1h5v3H2v1h5v3H2v1h5v3H3.5A1.5 1.5 0 0 1 2 15.5v-12ZM8 14v3h5v-3H8Zm6 0v3h3.5c.83 0 1.5-.67 1.5-1.5V14h-5Zm5-1h-5v-3h5v3Zm-6 0H8v-3h5v3ZM8 9h5V6H8v3Zm6 0h5V6h-5v3Zm-1-4H8V2h5v3Zm1 13H3.5A2.5 2.5 0 0 1 1 15.5v-12A2.5 2.5 0 0 1 3.5 1h14A2.5 2.5 0 0 1 20 3.5v12a2.5 2.5 0 0 1-2.5 2.5H14Zm0-13V2h3.5c.83 0 1.5.67 1.5 1.5V5h-5Z"></path>' },
-  '12h': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M4 17V2h1v15H4Z"></path><path fill="currentColor" d="M7 17V2h1v15H7Z" opacity=".85"></path><path fill="currentColor" d="M10 17V2h1v15h-1Z" opacity=".65"></path><path fill="currentColor" d="M13 17V2h1v15h-1Z" opacity=".25"></path><path fill="currentColor" d="M16 17V2h1v15h-1Z" opacity=".05"></path></g>' },
-  '14c7': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M19 10H2V9h17v1Z"></path><path fill="currentColor" d="M4 17V2h1v15H4Z"></path><path fill="currentColor" d="M7 17V2h1v15H7Z" opacity=".85"></path><path fill="currentColor" d="M10 17V2h1v15h-1Z" opacity=".65"></path><path fill="currentColor" d="M13 17V2h1v15h-1Z" opacity=".25"></path><path fill="currentColor" d="M16 18V2h1v16h-1Z" opacity=".05"></path></g>' },
-  '16c8': { viewBox: '0 0 21 19', body: '<g fill="none"><rect width="18" height="16" stroke="currentColor" rx="2" x="1.5" y="1.5"></rect><path fill="currentColor" d="M19 10H2V9h17v1Z"></path><path fill="currentColor" d="M4 17V2h1v15H4Z"></path><path fill="currentColor" d="M7 17V2h1v15H7Z" opacity=".85"></path><path fill="currentColor" d="M10 17V2h1v15h-1Z" opacity=".65"></path><path fill="currentColor" d="M13 17V2h1v15h-1Z" opacity=".25"></path><path fill="currentColor" d="M16 18V2h1v16h-1Z" opacity=".05"></path></g>' },
-  '16c4': { viewBox: '0 0 21 19', body: '<path fill="currentColor" fill-rule="evenodd" d="M3.5 2C2.67 2 2 2.67 2 3.5v12c0 .83.67 1.5 1.5 1.5H5v-3H2v-1h3v-3H2V9h3V6H2V5h3V2H3.5ZM6 14v3h4v-3H6Zm4-1H6v-3h4v3Zm1 1v3h4v-3h-4Zm4-1h-4v-3h4v3Zm1 1v3h1.5c.83 0 1.5-.67 1.5-1.5V14h-3Zm3-1h-3v-3h3v3Zm-8-4h4V6h-4v3Zm5-3v3h3V6h-3ZM6 9h4V6H6v3Zm0-4h4V2H6v3Zm10 13H3.5A2.5 2.5 0 0 1 1 15.5v-12A2.5 2.5 0 0 1 3.5 1h14A2.5 2.5 0 0 1 20 3.5v12a2.5 2.5 0 0 1-2.5 2.5H16Zm0-13V2h1.5c.83 0 1.5.67 1.5 1.5V5h-3Zm-1-3h-4v3h4V2Z"></path>' },
+  's': drawn('s'),
+  '2h': drawn('2h'),
+  '2v': drawn('2v'),
+  '3h': drawn('3h'),
+  '3v': drawn('3v'),
+  '3s': drawn('3s'),
+  '3r': drawn('3r'),
+  '2-1': drawn('2-1'),
+  '1-2': drawn('1-2'),
+  '4': drawn('4'),
+  '4v': drawn('4v'),
+  '4h': drawn('4h'),
+  '4s': drawn('4s'),
+  '4s-l': drawn('4s-l'),
+  '1-3': drawn('1-3'),
+  '3-1': drawn('3-1'),
+  '2-2-l': drawn('2-2-l'),
+  '2-2-r': drawn('2-2-r'),
+  '2-2': drawn('2-2'),
+  '1-4': drawn('1-4'),
+  '5h': drawn('5h'),
+  '5v': drawn('5v'),
+  '5s': drawn('5s'),
+  '5s-l': drawn('5s-l'),
+  '2-3': drawn('2-3'),
+  '3-2': drawn('3-2'),
+  '4-1': drawn('4-1'),
+  '2-3-l': drawn('2-3-l'),
+  '2-3-r': drawn('2-3-r'),
+  '6': drawn('6'),
+  '6h': drawn('6h'),
+  '6v': drawn('6v'),
+  '6c': drawn('6c'),
+  '2-4': drawn('2-4'),
+  '4-2': drawn('4-2'),
+  '4-3': drawn('4-3'),
+  '7h': drawn('7h'),
+  '7s': drawn('7s'),
+  '8': drawn('8'),
+  '8c': drawn('8c'),
+  '8h': drawn('8h'),
+  '8v': drawn('8v'),
+  '9s': drawn('9s'),
+  '5-4': drawn('5-4'),
+  '9h': drawn('9h'),
+  '9v': drawn('9v'),
+  '10c5': drawn('10c5'),
+  '10h': drawn('10h'),
+  '10v': drawn('10v'),
+  '12c6': drawn('12c6'),
+  '12c4': drawn('12c4'),
+  '12h': drawn('12h'),
+  '14c7': drawn('14c7'),
+  '16c8': drawn('16c8'),
+  '16c4': drawn('16c4'),
 } satisfies Readonly<Record<string, ArrangementIcon>>
 
 /** A layout arrangement that wears a glyph, by its code. */
