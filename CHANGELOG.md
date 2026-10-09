@@ -12,6 +12,8 @@ A right-click on a drawing raises the drawing's own menu, and a right-click anyw
 
 A settings dialog's panels stand whole over its controls on every page of every tool, and every color panel (the dialog's popovers, the settings bar's panels, and the palettes the chart and indicator settings expand) holds its whole ten-column palette on a page whose unlayered rule sizes every element by its border box. The font, line height, weight and spacing a page sets on its body reach nothing the chart draws.
 
+A dictionary of your own (`ChartCustomLocale`, `ChartDictionary`) carries every key of the major's first release, and a key the catalog gains within the major is optional in it: until your dictionary carries the key, the chart reads it in English and reports it to `onMissing`, and the next major makes it required. The catalog gains `drawing.distance`, `drawing.drawingMenu` and `drawing.hintRemove` in every built-in language (the Distance stat, the drawing menu's name and the shortcut its Remove row shows), each optional in a dictionary of your own.
+
 ## 4.0.0
 
 Settled settings dialogs and factory looks for every drawing tool, words typed on the chart, a rebuilt replay date picker, glyphs drawn as the chart's own artwork, recent picks narrowed by the selected class, and drawings the catalog cannot restore named as unreadable. 4.0 removes the content card and the catalog keys the settled dialogs do not read, and gives drawing props new names and meanings, so a host upgrades as the guide below says. A drawing saved by 3.x restores with the look it was saved with.

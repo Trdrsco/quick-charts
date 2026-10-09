@@ -16,13 +16,18 @@ import {
   type Translation,
 } from './runtime'
 import { en, type ChartMessageKey } from './en'
+import type { KeyAddedInMajor } from './additions'
 
 export { BUILT_IN_LOCALES } from './runtime'
 export type { ChartLocale, ChartLocaleCode } from './runtime'
 export type { ChartMessageKey } from './en'
 export type ChartTranslate = Translate<typeof en>
-/** The widget's catalog in one language: every key of the English source, in the same shape. */
-export type ChartDictionary = Translation<typeof en>
+/** The widget's catalog in one language, as a dictionary of your own supplies it: the keys of the
+ *  English source in the same shape, a string for a string and a plural for a plural. Every key of
+ *  the major's first release is required. A key the catalog gains within the major is optional:
+ *  until your dictionary carries it, the chart reads it in English and reports it to `onMissing`,
+ *  and the next major makes it required. Each built-in language carries every key. */
+export type ChartDictionary = Omit<Translation<typeof en>, KeyAddedInMajor> & Partial<Pick<Translation<typeof en>, KeyAddedInMajor>>
 
 /** A locale a host adds beyond the built-in inventory: its stable code, canonical BCP 47 tag,
  *  reading direction, endonym, and the dictionary chunk to fetch the first time it is chosen. */
@@ -34,8 +39,9 @@ export interface ChartI18nOptions {
   /** Locales registered beside the built-in inventory. A code or tag the inventory already holds
    *  is refused: the built-in dictionaries are not overridden through this door. */
   locales?: readonly ChartCustomLocale[]
-  /** Hears every key a loaded dictionary is missing; the text falls back to English. The typed
-   *  catalogs cannot miss a key, so this only ever reports a dictionary loaded from data. */
+  /** Hears every key a loaded dictionary is missing; the text falls back to English. A built-in
+   *  language carries every key, so this reports a dictionary of your own: one loaded from data,
+   *  or one without a key the catalog gained within the major. */
   onMissing?: (key: ChartMessageKey, locale: string) => void
 }
 
@@ -119,7 +125,10 @@ export function arrangementName(t: ChartTranslate, code: string, fallback: strin
 function inventory(custom: readonly ChartCustomLocale[]): { registry: LocaleRegistry<string>; dictionaries: DictionaryLoader<typeof en, string> } {
   if (custom.length === 0) return { registry: BUILT_IN_LOCALE_REGISTRY, dictionaries: chartDictionaries }
   const registry = createLocaleRegistry<string>([...BUILT_IN_LOCALES, ...custom], DEFAULT_LOCALE)
-  const own = createDictionaryLoader<typeof en, string>(en, Object.fromEntries(custom.map((l) => [l.code, l.dictionary])), DEFAULT_LOCALE)
+  // The translator reads English for any key a dictionary leaves out and reports it to `onMissing`,
+  // so a host's dictionary loads as a translation of the whole catalog whichever keys it carries.
+  const asTranslation = (load: ChartCustomLocale['dictionary']) => load as () => Promise<{ default: Translation<typeof en> }>
+  const own = createDictionaryLoader<typeof en, string>(en, Object.fromEntries(custom.map((l) => [l.code, asTranslation(l.dictionary)])), DEFAULT_LOCALE)
   return {
     registry,
     dictionaries: {
