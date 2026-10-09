@@ -6,6 +6,8 @@ The content card drawing tool (`content_card`) leaves the catalog, which holds 8
 
 `DrawingDocumentApi.apply` and `reload`, a chart's `drawingResources`, name every drawing the catalog does not restore among the drawings they do not attach, with the reason `unreadable`, and leave it out of `applied`: a drawing of a type the catalog does not hold, and one whose anchors are not a list or whose options are null. The chart does not paint it, and every write of the document carries it as it was written, so a build that reads it still finds it.
 
+A class chip in the symbol search narrows the recent picks the list leads with, as it narrows the feed's answer. With a class selected and nothing typed, the dialog lists only the recent picks whose `type` is that class or a narrower class offered beneath it. The All chip lists every recent pick, and the scope's own recents follow the same rule while its chip is on.
+
 ### Upgrading to 4.0
 
 A major version may remove public names, and this guide lists each one. 4.0 removes the content card and the names that exist only for it, so drop each from what your page lists, offers or creates:
