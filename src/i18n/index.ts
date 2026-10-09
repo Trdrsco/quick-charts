@@ -16,7 +16,6 @@ import {
   type Translation,
 } from './runtime'
 import { en, type ChartMessageKey } from './en'
-import type { KeyAddedInMajor } from './additions'
 
 export { BUILT_IN_LOCALES } from './runtime'
 export type { ChartLocale, ChartLocaleCode } from './runtime'
@@ -27,7 +26,7 @@ export type ChartTranslate = Translate<typeof en>
  *  the major's first release is required. A key the catalog gains within the major is optional:
  *  until your dictionary carries it, the chart reads it in English and reports it to `onMissing`,
  *  and the next major makes it required. Each built-in language carries every key. */
-export type ChartDictionary = Omit<Translation<typeof en>, KeyAddedInMajor> & Partial<Pick<Translation<typeof en>, KeyAddedInMajor>>
+export type ChartDictionary = Translation<typeof en>
 
 /** A locale a host adds beyond the built-in inventory: its stable code, canonical BCP 47 tag,
  *  reading direction, endonym, and the dictionary chunk to fetch the first time it is chosen. */
@@ -72,7 +71,7 @@ export function readingDirection(i18n: ChartI18n): 'ltr' | 'rtl' {
 /** One chunk per language the widget ships, every language in `BUILT_IN_LOCALES`, fetched the
  *  first time it is chosen. */
 export const chartDictionaries = createDictionaryLoader(en, {
-  de: () => import('./de'),
+  de: () => import('./de') as Promise<{ default: Translation<typeof en> }>,
   fr: () => import('./fr'),
   es: () => import('./es'),
   it: () => import('./it'),

@@ -311,9 +311,24 @@ async function pickerAtRest(page: Page): Promise<void> {
   })
 }
 
+/** Control: the entrance motion slowed to 2s, so a measurement taken before it ends reads a scaled box. */
+async function slowMotion(page: Page): Promise<void> {
+  await page.addStyleTag({ content: '[data-qc-theme] { --qc-motion-durationBase: 2000ms !important; }' })
+}
+
 test.describe('the image picker', () => {
+  test('control: a card measured without waiting for the motion reads its scaled box', async ({ page }) => {
+    await mount(page, true)
+    await slowMotion(page)
+    await page.evaluate(() => (window as unknown as { widget: { commands: { execute(id: string, arg?: unknown): unknown } } }).widget.commands.execute('chart.drawings.arm', 'image'))
+    await expect(page.locator('[data-role="drawing-image-picker"]')).toBeVisible()
+    const width = await page.evaluate(() => document.querySelector('[data-role="drawing-image-picker"]')!.getBoundingClientRect().width)
+    expect(width).toBe(380)
+  })
+
   test("ends with the settings dialog's footer: Cancel and Ok at the end, in the same footer buttons", async ({ page }) => {
     await mount(page, true)
+    await slowMotion(page)
     const read = (role: string) =>
       page.evaluate((role) => {
         const footer = document.querySelector(`[data-role="${role}"] .qc-drawing-dialog-footer`)!
@@ -348,6 +363,7 @@ test.describe('the image picker', () => {
 
   test("stands a 380px card under the settings dialog's header, its drop box 8px under it and its transparency's 180px track at the end of its own line", async ({ page }) => {
     await mount(page, true)
+    await slowMotion(page)
     await page.evaluate(() => (window as unknown as { widget: { commands: { execute(id: string, arg?: unknown): unknown } } }).widget.commands.execute('chart.drawings.arm', 'image'))
     await expect(page.locator('[data-role="drawing-image-picker"]')).toBeVisible()
     await pickerAtRest(page)

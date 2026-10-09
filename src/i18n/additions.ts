@@ -5,7 +5,6 @@
 export const KEYS_ADDED_IN_MAJOR = [
   'drawing.distance',
   'drawing.drawingMenu',
-  'drawing.hintRemove',
 ] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

@@ -22,5 +22,5 @@ import { picker } from './picker'
 import { settings } from './settings'
 import { toast } from './toast'
 
-const dict: Translation<typeof en> = { ...legend, ...tools, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search, ...drawing, ...command, ...chrome, ...history, ...picker, ...settings, ...toast }
+const dict: Omit<Translation<typeof en>, 'drawing.distance'> & Partial<Pick<Translation<typeof en>, 'drawing.distance'>> = { ...legend, ...tools, ...menu, ...replay, ...inputs, ...session, ...layouts, ...host, ...indicators, ...timeframe, ...timezone, ...range, ...status, ...search, ...drawing, ...command, ...chrome, ...history, ...picker, ...settings, ...toast }
 export default dict
