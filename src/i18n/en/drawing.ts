@@ -225,6 +225,7 @@ export const drawing = {
   'drawing.sectionInfo': 'Info',
   'drawing.priceRange': 'Price range',
   'drawing.barsRange': 'Bars range',
+  'drawing.distance': 'Distance',
   'drawing.angle': 'Angle',
   'drawing.statsPosition': 'Stats position',
   'drawing.statsHidden': 'Hidden',

@@ -296,6 +296,7 @@ const STATS: readonly { key: string; label: ChartMessageKey }[] = [
   { key: 'showPipsChange', label: 'drawing.changeInPips' },
   { key: 'showBarsRange', label: 'drawing.barsRange' },
   { key: 'showDateTimeRange', label: 'drawing.dateTimeRange' },
+  { key: 'showDistance', label: 'drawing.distance' },
   { key: 'showAngle', label: 'drawing.angle' },
 ]
 const STATS_POSITION_LABEL: Record<string, ChartMessageKey> = { left: 'drawing.left', center: 'drawing.center', right: 'drawing.right', auto: 'drawing.auto' }
