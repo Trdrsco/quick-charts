@@ -18,9 +18,7 @@ import { arrangementGlyphOf, iconOf } from '../icons/catalog'
 import type { IconResolver } from '../icons/resolver'
 
 /** One arrangement glyph at its native 21 by 19: the host's drawing for the arrangement when there
- *  is one, else the chart's own. A mirror matrix on the chart's body is hoisted onto the element,
- *  where CSS gives the flip a center origin; the same matrix on an inner group would run in user
- *  space and throw the art outside the view box. */
+ *  is one, else the chart's own, drawn from the arrangement's panes. */
 export function arrangementGlyph(code: string, icons: IconResolver): HTMLElement {
   const span = h('span', { class: 'qc-icon qc-arrangement', 'aria-hidden': 'true' })
   // A code the catalog does not carry draws nothing, for the host and for the chart alike.
@@ -32,8 +30,7 @@ export function arrangementGlyph(code: string, icons: IconResolver): HTMLElement
     span.append(hosted)
     return span
   }
-  const mirrored = /^<g transform="(matrix\([^"]+\))">([\s\S]*)<\/g>$/.exec(icon.body)
-  span.innerHTML = `<svg viewBox="${icon.viewBox}" width="21" height="19" aria-hidden="true"${mirrored ? ` style="transform: ${mirrored[1]}"` : ''}>${mirrored ? mirrored[2] : icon.body}</svg>`
+  span.innerHTML = `<svg viewBox="${icon.viewBox}" width="21" height="19" aria-hidden="true">${icon.body}</svg>`
   return span
 }
 
