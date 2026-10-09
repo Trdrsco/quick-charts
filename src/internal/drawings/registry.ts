@@ -303,12 +303,19 @@ export class ToolRegistry {
     return definition.create(id, anchors, { ...definition.style, ...styleOverrides })
   }
 
-  /** Rebuild a drawing from its serialized form; null for unknown types or malformed data. */
+  /** Whether `restore` rebuilds a serialized drawing: the registry holds its type, its anchors are a
+   *  list, and its options are not null, since a drawing reads its options as it is built and absent
+   *  options take the defaults. Nothing else in the state is refused: what an anchor, the style or
+   *  the props hold is the tool's to read. */
+  readable(data: SerializedDrawing): boolean {
+    return this._tools.has(data.type) && Array.isArray(data.anchors) && data.options !== null
+  }
+
+  /** Rebuild a drawing from its serialized form; null for a state that is not `readable`. */
   restore(data: SerializedDrawing): AnyDrawing | null {
-    const definition = this._tools.get(data.type)
-    if (!definition || !Array.isArray(data.anchors)) return null
+    if (!this.readable(data)) return null
     try {
-      return definition.create(data.id, data.anchors, data.style, data.options, data.props)
+      return this._tools.get(data.type)!.create(data.id, data.anchors, data.style, data.options, data.props)
     } catch {
       return null
     }

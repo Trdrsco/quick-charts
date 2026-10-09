@@ -4,7 +4,7 @@
 
 The content card drawing tool (`content_card`) leaves the catalog, which holds 89 tools, and its row in the Content section of the Text and notes group, its `tool.content_card` icon, the Link field of its settings dialog and its two catalog strings go with it. A saved chart or layout, a drawings document or a drawing list that carries a content card loads without it, quietly: the card is skipped, as a drawing of any type the catalog does not hold is; nothing throws, no notice is shown, and every other drawing loads as it was saved. The next save writes the chart without the card. A content card a viewer starred draws no arm on the favorites bar, and a bar with no other star stays hidden.
 
-`DrawingDocumentApi.apply` and `reload`, a chart's `drawingResources`, name a drawing of a type the catalog does not hold among the drawings they do not attach, with the reason `unreadable`, and leave it out of `applied`. The chart does not paint it, and every write of the document carries it as it was written, so a build whose catalog holds that type still finds it.
+`DrawingDocumentApi.apply` and `reload`, a chart's `drawingResources`, name every drawing the catalog does not restore among the drawings they do not attach, with the reason `unreadable`, and leave it out of `applied`: a drawing of a type the catalog does not hold, and one whose anchors are not a list or whose options are null. The chart does not paint it, and every write of the document carries it as it was written, so a build that reads it still finds it.
 
 ### Upgrading to 4.0
 
