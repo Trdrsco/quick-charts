@@ -1935,11 +1935,13 @@ void withMarks
   render can import it.
   A host with a language the package does not ship registers it through `createChartI18n(code,
   { locales })`: a `ChartCustomLocale` names the code, tag, direction and endonym and supplies the
-  dictionary chunk, a `ChartDictionary` typed against the English catalog so it cannot miss a key or
-  flatten a plural. A code or tag the built-in inventory already holds is refused. A dictionary that
-  arrives from data and misses a key reads English for that key and reports it to the `onMissing`
-  option. A host can also supply `i18n: ChartI18n` of its own to own its codes, tags, dictionaries,
-  loading, and fallback outright.
+  dictionary chunk, a `ChartDictionary` typed against the English catalog so it cannot flatten a
+  plural or miss a key of the major's first release. A key the catalog gains within a major is
+  optional in your dictionary: the chart reads it in English until your dictionary carries it and
+  reports it to the `onMissing` option, and the next major makes it required. A code or tag the
+  built-in inventory already holds is refused. A dictionary that arrives from data and misses a key
+  reads English for that key and reports it to `onMissing` too. A host can also supply
+  `i18n: ChartI18n` of its own to own its codes, tags, dictionaries, loading, and fallback outright.
   Every piece of the chart's own chrome speaks the language; symbols, prices and anything the
   datafeed says are data and pass through untranslated. A host composing the chrome modules itself
   hands them a `ChartI18n` from `createChartI18n(code)` and reads the chart's words for drawing
@@ -3367,6 +3369,10 @@ Every claim in this document maps to a test or a generated artifact in the packa
   and fields (`config` and `serverTime` are the pattern): an existing
   implementation keeps compiling, and the widget treats absence as "unconstrained / not supported".
   Your integration never breaks by standing still within a major.
+- **A key the catalog gains within a major is optional in a dictionary of your own.**
+  `ChartDictionary` requires every key of the major's first release. A key added since reads English
+  until your dictionary carries it, `onMissing` reports it, and the next major makes it required,
+  its upgrading guide listing each such key.
 - **A major version may rename or remove public names.** Its upgrading guide in
   [CHANGELOG.md](CHANGELOG.md) lists each one, old to new, with how saved state carries over: what
   the previous major saved still opens, and the next save writes the current names.
