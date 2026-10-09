@@ -71,6 +71,8 @@ or newer. The published package itself runs on Node 20 and newer, as `engines` s
 | `pnpm clean-room` | Installs the packed tarball into three fresh projects and drives it there. |
 | `pnpm check:supply-chain` | Reads the tree, the packed file list and every line ever added to the history for a secret, an address, a private host or a private package. |
 | `pnpm check:docs` | Holds every document to the documentation style. |
+| `pnpm i18n sync` | Regenerates every built-in language file, the source lock and the list of keys the catalog gained within the major from the English catalog. |
+| `pnpm i18n baseline` | Records the English catalog's keys as the major's baseline. A major version's release runs it, and it prints the keys that become required, which the upgrading guide lists. |
 | `node scripts/check-release-records.mjs` | Proves every published or tagged version has its acceptance record in `releases/`, and every registry tarball equals the candidate its record accepts. |
 
 The generated files are committed. A pull request that changes a source of a generated file

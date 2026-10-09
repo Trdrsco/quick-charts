@@ -46,7 +46,10 @@ when all of them pass. `CONTRIBUTING.md` lists every command.
 Follow [RELEASING.md](RELEASING.md). The points an agent gets wrong:
 
 - The version follows semantic versioning: a new public option is a minor version, a fix is a
-  patch.
+  patch. A catalog key added within a major is optional in a dictionary of your own, so it ships in
+  a minor version.
+- A major version's release runs `pnpm i18n baseline`, and its upgrading guide lists the keys that
+  baseline makes required.
 - Tag `v<version>` only on the `main` commit that holds every change the release carries, after
   its CI passed. A tag publishes nothing, and a tag that was pushed is never moved.
 - The acceptance record, `releases/<version>.json`, merges before the tag; `release.yml` refuses a
