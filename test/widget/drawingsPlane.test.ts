@@ -736,6 +736,31 @@ describe('an image pasted over the chart', () => {
 })
 
 describe('the settings dialog over the plane', () => {
+  it('opens on the page the command names where the drawing has it, and on its first page where it has not', () => {
+    const { chrome, gestures, run } = make()
+    const page = (): string | null | undefined => chrome.querySelector('[data-role="drawing-settings"] [role="tab"][aria-selected="true"]')?.textContent
+    const close = (): void => chrome.querySelector<HTMLButtonElement>('[data-role="drawing-settings"] .qc-dialog-close, [data-role="drawing-settings"] [aria-label="Close"]')?.click()
+    run('chart.drawings.arm', 'trend_line')
+    drag(gestures, [100, 100], [300, 200])
+    expect(run('chart.drawings.settings', 'Text')).toBe('ok')
+    expect(page()).toBe('Text')
+    close()
+    run('chart.drawings.settings')
+    expect(page()).toBe('Style')
+    close()
+    // A trend angle offers no Text page, so it opens on its first.
+    run('chart.drawings.arm', 'trend_angle')
+    drag(gestures, [100, 300], [300, 250])
+    run('chart.drawings.settings', 'Text')
+    expect(page()).toBe('Style')
+    close()
+    // A value that names no page opens the first.
+    run('chart.drawings.arm', 'trend_line')
+    drag(gestures, [400, 100], [600, 200])
+    run('chart.drawings.settings', 'Nowhere')
+    expect(page()).toBe('Style')
+  })
+
   it('Apply defaults puts the tool’s own look and setup back at once, in the dialog and on the chart, keeping the words', () => {
     const { chrome, gestures, run, plane } = make()
     run('chart.drawings.arm', 'trend_line')

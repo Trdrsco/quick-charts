@@ -49,6 +49,7 @@ import { mountFavoritesBar, type FavoritesBarHandle } from '../ui/drawings/favor
 import { mountSettingsBar, type SettingsBarHandle } from '../ui/drawings/settingsBar'
 import { mountTextEditor, type TextEditorHandle } from '../ui/drawings/textEditor'
 import { openSettingsDialog, type SettingsDialogHandle } from '../ui/drawings/settingsDialog'
+import type { SettingsTab } from '../ui/drawings/settingsRows'
 import { openImagePicker, firstImageFile, humanSize } from '../ui/drawings/imagePicker'
 import { pushRecentGlyph } from '../ui/drawings/glyphPicker'
 import { closeOverlays } from '../ui/controls/overlays'
@@ -114,7 +115,8 @@ export interface DrawingVerbs {
   setRemoveLocked(on: boolean): void
   toggleFavorite(tool: string): void
   setFavoritesBar(on: boolean): void
-  openSettings(): void
+  /** Open the selected drawing's settings, on a page it has where one is named. */
+  openSettings(page?: SettingsTab): void
   /** Apply a named template to the selection, or the tool's default for null. */
   applyTemplate(name: string | null): void
   saveTemplate(name: string): void
@@ -609,7 +611,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     setRemoveLocked: (on) => write({ removeLocked: on }),
     toggleFavorite: (tool) => write({ favorites: toggleFavorite(prefs().favorites, tool) }),
     setFavoritesBar: (on) => write({ favorites: { ...prefs().favorites, visible: on } }),
-    openSettings() {
+    openSettings(page) {
       const drawing = handle.selectedDrawing()
       if (!drawing || dialog) return
       // The dialog previews on the drawing; the document carries the snapshot until Ok commits.
@@ -626,6 +628,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
         available,
         shown,
         colors,
+        ...(page ? { tab: page } : {}),
         onClose: () => {
           handle.endPreview()
           dialog = null

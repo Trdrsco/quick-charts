@@ -32,6 +32,9 @@ import { boxLevelRows, fibRows, gannFanRows, gannSquareRows, levelLines, opacity
 
 export type SettingsTab = 'Inputs' | 'Style' | 'Text' | 'Coordinates' | 'Visibility'
 
+/** Whether a value names a page a drawing's dialog may open on. */
+export const isSettingsTab = (value: unknown): value is SettingsTab => value === 'Inputs' || value === 'Style' || value === 'Text' || value === 'Coordinates' || value === 'Visibility'
+
 export const TAB_LABEL: Record<SettingsTab, ChartMessageKey> = {
   Inputs: 'drawing.tabInputs',
   Style: 'drawing.tabStyle',

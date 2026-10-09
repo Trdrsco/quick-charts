@@ -127,7 +127,8 @@ export interface GestureContext {
   /** The drawing a right-click landed on, for the menu that follows it, or null. */
   noteMenuDrawing(id: string | null): void
   /** Ask for the selected drawing's settings. */
-  openSettings(): void
+  /** Open the selection's settings, on the Text page where the viewer asked from its words. */
+  openSettings(page?: 'Text'): void
   /** The gestures hear here that the armed tool changed; they set it as they bind. */
   toolChanged?: () => void
   setHovered(id: string | null): void
@@ -825,7 +826,11 @@ export function bindGestures(ctx: GestureContext): () => void {
     if (hit && settingsOnDoubleClick(hit)) {
       ctx.endTextEdit()
       manager.select(hit.id)
-      ctx.openSettings()
+      // Where the cursor reads as words (a drawing's words, a line's invitation, an arrow's selected
+      // body), the settings open on their Text page; anywhere else on the drawing, on its first.
+      const vp = viewport()
+      const cursor = vp ? (hit as IDrawing & { cursorFor?: (point: Px, viewport: Viewport) => string | null }).cursorFor?.(p, vp) : null
+      ctx.openSettings(cursor === 'text' ? 'Text' : undefined)
       return
     }
     if (ctx.textEditOpen()) return

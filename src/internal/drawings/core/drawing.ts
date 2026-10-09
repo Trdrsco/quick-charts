@@ -383,6 +383,12 @@ export abstract class Drawing<P extends Record<string, unknown> = Record<string,
     }
   }
 
+  /** The cursor a point over the drawing wears: a handle's, its words', or null for the plain
+   *  pointer. */
+  cursorFor(point: Point, viewport: Viewport): string | null {
+    return this.cursorAt(point, viewport)
+  }
+
   /** Position-specific hover cursor (a table divider's col-resize); null = the default pointer. */
   protected cursorAt(_point: Point, _viewport: Viewport): string | null {
     return null

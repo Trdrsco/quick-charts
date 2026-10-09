@@ -17,6 +17,7 @@ import type { ChartHandle } from './chart'
 import type { FeedBar } from '../datafeed'
 import { downloadBarsCsv } from './dataExport'
 import type { DrawingVerbs } from './drawings'
+import { isSettingsTab } from '../ui/drawings/settingsRows'
 import type { PlacedImage } from '../drawings'
 import { CURSOR_MODES, type CursorMode, type HideState, type MagnetMode, type VisibilityPreset } from '../drawings/index'
 import type { Capabilities, IndicatorInstance } from './options'
@@ -465,7 +466,9 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       if (arg === 'current-and-above' || arg === 'current-and-below' || arg === 'current-only' || arg === 'all') drawings()?.setVisibilityPreset(arg as VisibilityPreset)
     },
   })
-  add({ id: 'chart.drawings.settings', scope: 'chart', label: 'command.drawingSettings', available: withSelection, execute: () => verbs()?.openSettings() })
+  // The settings open on the page the argument names, where the selection has it: 'Text' for a
+  // double-click on a drawing's words.
+  add({ id: 'chart.drawings.settings', scope: 'chart', label: 'command.drawingSettings', available: withSelection, execute: (page) => verbs()?.openSettings(isSettingsTab(page) ? page : undefined) })
   add({ id: 'chart.drawings.commitEdit', scope: 'chart', label: 'command.drawingCommitEdit', available: withSelection, execute: () => verbs()?.commitEdit() })
   add({
     id: 'chart.drawings.template.apply',

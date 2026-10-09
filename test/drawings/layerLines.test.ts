@@ -190,6 +190,47 @@ describe('a line’s words', () => {
   })
 })
 
+describe('a double-click on a line’s words', () => {
+  it('opens the settings on their Text page: on its words, its invitation, or anywhere on a selected arrow', () => {
+    vi.useFakeTimers()
+    const asked: unknown[][] = []
+    const r = make({ execute: (command, page) => (asked.push(page === undefined ? [command] : [command, page]), true) })
+    const line = placeLine(r, [100, 200], [300, 200])
+    paintFrame(r, line)
+    // The invitation: its words' middle 11px above the line's middle.
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 200, clientY: 189, bubbles: true }))
+    // The line's body, beside its words.
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 130, clientY: 200, bubbles: true }))
+    r.handle.updateProps({ text: 'Hi' })
+    paintFrame(r, line)
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 200, clientY: 189, bubbles: true }))
+    expect(asked).toEqual([['chart.drawings.settings', 'Text'], ['chart.drawings.settings'], ['chart.drawings.settings', 'Text']])
+    asked.length = 0
+    r.handle.armTool('arrow')
+    click(r.container, 100, 300)
+    click(r.container, 300, 300)
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 150, clientY: 300, bubbles: true }))
+    expect(asked).toEqual([['chart.drawings.settings', 'Text']])
+  })
+})
+
+describe('a double-click on a note’s words', () => {
+  it('opens the settings on their Text page from its box, and on its first page from its line', () => {
+    vi.useFakeTimers()
+    const asked: unknown[][] = []
+    const r = make({ execute: (command, page) => (asked.push(page === undefined ? [command] : [command, page]), true) })
+    r.handle.armTool('note')
+    click(r.container, 100, 200)
+    click(r.container, 200, 200)
+    vi.runOnlyPendingTimers()
+    r.handle.commitText('Hi')
+    // Inside the box, clear of the label's handle on its left edge, then on the line to its point.
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 225, clientY: 205, bubbles: true }))
+    r.container.dispatchEvent(new MouseEvent('dblclick', { clientX: 150, clientY: 200, bubbles: true }))
+    expect(asked).toEqual([['chart.drawings.settings', 'Text'], ['chart.drawings.settings']])
+  })
+})
+
 describe('a double-click on a line', () => {
   it('opens its settings, the line selected', () => {
     const commands: string[] = []
