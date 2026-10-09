@@ -301,6 +301,16 @@ test.describe('the settings fields', () => {
   })
 })
 
+/** Wait until the image picker stands at rest. It opens on the modal motion, growing from the
+ *  entrance scale, so its painted box is its layout only once the box's own transitions have
+ *  finished; a painted size that happens to match the layout box is no such signal. */
+async function pickerAtRest(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    const box = document.querySelector<HTMLElement>('[data-role="drawing-image-picker"]')
+    return !!box && box.parentElement?.dataset.state === 'open' && box.getAnimations().length === 0
+  })
+}
+
 test.describe('the image picker', () => {
   test("ends with the settings dialog's footer: Cancel and Ok at the end, in the same footer buttons", async ({ page }) => {
     await mount(page, true)
@@ -324,11 +334,7 @@ test.describe('the image picker', () => {
     await expect(page.locator('[data-role="drawing-settings"]')).toHaveCount(0)
     await page.evaluate(() => (window as unknown as { widget: { commands: { execute(id: string, arg?: unknown): unknown } } }).widget.commands.execute('chart.drawings.arm', 'image'))
     await expect(page.locator('[data-role="drawing-image-picker"]')).toBeVisible()
-    // The picker opens on the modal motion: read it once it stands at its full size.
-    await page.waitForFunction(() => {
-      const box = document.querySelector<HTMLElement>('[data-role="drawing-image-picker"]')!
-      return Math.abs(box.getBoundingClientRect().width - box.offsetWidth) < 0.01
-    })
+    await pickerAtRest(page)
     const picker = await read('drawing-image-picker')
     expect(picker.justify).toBe('flex-end')
     expect(picker.buttons.map((b) => b.label)).toEqual(['Cancel', 'Ok'])
@@ -344,10 +350,7 @@ test.describe('the image picker', () => {
     await mount(page, true)
     await page.evaluate(() => (window as unknown as { widget: { commands: { execute(id: string, arg?: unknown): unknown } } }).widget.commands.execute('chart.drawings.arm', 'image'))
     await expect(page.locator('[data-role="drawing-image-picker"]')).toBeVisible()
-    await page.waitForFunction(() => {
-      const box = document.querySelector<HTMLElement>('[data-role="drawing-image-picker"]')!
-      return Math.abs(box.getBoundingClientRect().width - box.offsetWidth) < 0.01
-    })
+    await pickerAtRest(page)
     const parts = await page.evaluate(() => {
       const box = document.querySelector('[data-role="drawing-image-picker"]')!
       const card = box.getBoundingClientRect()
