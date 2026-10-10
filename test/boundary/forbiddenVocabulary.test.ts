@@ -22,10 +22,11 @@ interface Term {
 /** The forbidden vocabulary, grouped by the reason it is forbidden. Every pattern is judged against
  *  package code, never the catalogs. */
 const TARGET: Record<'trading' | 'symbology' | 'theme', { reason: string; terms: Term[] }> = {
-  // Symbology: SymbolInfo owns the price-format facts, and the datafeed serves bars, so a quote
-  // board and a quote callback stay out of it.
+  // Symbology: SymbolInfo owns the price-format facts, and the datafeed serves bars plus, at most,
+  // the charted symbol's own prices for the lines a chart draws from them (bid and ask, the previous
+  // close). A quote board, many symbols' quotes behind one call or callback, stays out of it.
   symbology: {
-    reason: 'SymbolInfo owns price-format facts; no L1 or quote-board API in Quick Charts',
+    reason: 'SymbolInfo owns price-format facts; no quote-board API in Quick Charts, only the charted symbol\'s own prices',
     terms: [
       { term: 'pricePrecision', pattern: /\bpricePrecision\b/ },
       { term: 'tick: on the symbol type', pattern: /^\s*tick\??:\s*number/ },
@@ -105,6 +106,14 @@ describe('the import boundary and the excluded chrome', () => {
       .filter((t) => lines(sourcesFor(), t.pattern).length > 0)
       .map((t) => t.term)
     expect(present).toEqual([])
+  })
+
+  it('lets the datafeed deliver one symbol\'s prices and never a board of them', () => {
+    // The one prices port takes the charted symbol alone; a list of symbols, or a second port,
+    // would make it the quote board the symbology group keeps out.
+    const ports = lines(CODE, /\bsubscribePrices\??\(/).filter((line) => line.startsWith('/src/datafeed.ts'))
+    expect(ports).toHaveLength(1)
+    expect(ports[0]).toMatch(/subscribePrices\?\(symbol: string, /)
   })
 })
 
