@@ -2,6 +2,7 @@
 // The top bar: what it renders from the active chart, which controls each presentation flag removes,
 // and that every press is a command: a denied command renders disabled and does nothing.
 import { afterEach, describe, expect, it } from 'vitest'
+import { chrome as de } from '../../src/i18n/de/chrome'
 import { mountTopBar, type TopBarHandle } from '../../src/ui/chrome/topBar'
 import { FLYOUT_WIDTH } from '../../src/ui/chrome/flyoutGeometry'
 import { symbolLabel } from '../../src/symbolLabel'
@@ -331,10 +332,9 @@ describe('the top bar', () => {
     it('rewrites the chips from the catalog on a language change rather than emptying them', async () => {
       const { bar, w } = mount()
       await w.i18n.setLocale('de')
-      // German has yet to be written for these two, so the words are still the English ones; what
-      // this holds is that the sync REWRITES them from the catalog instead of clearing the nodes.
-      expect(chip(bar, indicators)).toBe('Indicators')
-      expect(chip(bar, replay)).toBe('Replay')
+      // The sync REWRITES the chips from the German catalog instead of clearing the nodes.
+      expect(chip(bar, indicators)).toBe(de['chrome.indicators'])
+      expect(chip(bar, replay)).toBe(de['chrome.replayChip'])
       expect(bar.element.dataset.qcLabels).toBe('all')
     })
 

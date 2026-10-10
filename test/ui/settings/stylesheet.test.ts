@@ -88,9 +88,9 @@ describe('the chart settings measures', () => {
     expect(rule(settings, "[data-qc-theme] [data-disabled='true'] > * > .qc-drawing-toggle > span").opacity).toBe('0.5')
   })
 
-  it('writes a hint at 13 on 18 in the muted ink, and a tip as an 18px mark', () => {
+  it('writes a hint at 13 on 18 in the caption ink, and a tip as an 18px mark', () => {
     const hint = rule(settings, '[data-qc-theme] .qc-settings-hint')
-    expect([hint['font-size'], hint['line-height'], hint.color]).toEqual(['13px', '18px', 'var(--qc-text-muted)'])
+    expect([hint['font-size'], hint['line-height'], hint.color]).toEqual(['13px', '18px', 'var(--qc-text-caption)'])
     const tip = rule(settings, '[data-qc-theme] .qc-settings-tip')
     expect([tip.width, tip.height]).toEqual(['18px', '18px'])
     const line = rule(settings, '[data-qc-theme] .qc-dialog-scrim > .qc-settings-tooltip')

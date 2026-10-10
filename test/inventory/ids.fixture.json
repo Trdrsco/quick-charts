@@ -395,6 +395,7 @@
       "status.sessionOpen",
       "status.sessionPreMarket",
       "status.warning",
+      "text.caption",
       "text.disabled",
       "text.fontFamily",
       "text.fontSizeAxis",
