@@ -46,8 +46,8 @@ capability declaration, described [below](#capability-declaration-config-optiona
 symbol metadata, bars and bar updates; your host serves quotes (last, change, volume, the top of
 book) to its own consumers from its own source.
 
-When `appearance.countdown` is enabled, a live streaming time bar replaces the native last-value
-label with one price-and-time label. The price uses the resolved symbol formatter. Replay, stale,
+While the `priceLabels.countdown` setting is on, as it is by default, a live streaming time bar
+replaces the native last-value label with one price-and-time label. The price uses the resolved symbol formatter. Replay, stale,
 delayed or end-of-day data, tick bars, closed declared sessions and missing bars retain the native
 price label. `serverTime` corrects clock skew when available; absence or failure uses the client
 clock. Bar opens define fixed and calendar alignment, and declared session facts shorten only a
@@ -631,8 +631,8 @@ A layout also refuses writes while any child chart is not saving. A complete lay
 its children only after the whole content and layout binding commit, and detaches their previous
 standalone chart bindings. Partial content and copy saves do not establish recovery.
 
-A saved chart carries its symbol, timeframe, style, scale, appearance, comparisons, extension
-state, combined-mode drawings, and every indicator instance. Indicator definitions remain code in
+A saved chart carries its symbol, timeframe, style, scale, the chart settings a viewer chose,
+comparisons, extension state, combined-mode drawings, and every indicator instance. Indicator definitions remain code in
 your widget. The blob names each definition by `manifest.id` and carries the instance id, explicit
 inputs, color, title, overrides and hidden state. Loading replaces the full instance list, so the
 constructor's `indicators` are seeds only for a chart with no saved content. Definitions resolve
@@ -640,12 +640,14 @@ against the widget's built-ins and the host definitions that widget has carried.
 access-denied definition is left out with one counted notice while the remaining content lands. A
 definition of your own survives a save only when its manifest declares an `id`.
 
-The opaque version-4 reader validates the whole indicator list before changing a chart or layout.
+The opaque version-5 reader validates the whole indicator list before changing a chart or layout.
 Missing lists, duplicate instance ids and malformed inputs, titles, colors or overrides refuse the
 body as `invalid`; values are not silently filtered or normalized. A load that omits a definition
 because it is unavailable is partial and cannot clear an earlier `notSaving()` state.
-Complete recovery requires every typed appearance leaf with a valid concrete color value and,
-in combined mode, a drawings array. Separate-mode chart content does not need that array.
+Complete recovery requires a `settings` record whose every leaf holds a value its leaf can hold,
+every color a concrete one the renderer paints, and, in combined mode, a drawings array.
+Separate-mode chart content does not need that array. A version-4 blob reads its `appearance`
+record into the settings sections its leaves now live in.
 
 Hydration and rollback do not emit `saveNeeded` for their own storage writes. An event already
 queued by a viewer's edit is preserved. A late save result does not replace a newer load's binding;
@@ -1639,10 +1641,9 @@ chrome is painted from it and renders nothing without it.
   the 55 arrangements and the five sync switches); the saved-layouts menu, shown with a layouts
   store, saves, copies, renames, opens and deletes layouts through `saveLoad.layouts` and marks
   unsaved changes, with an autosave switch and Download chart data.
-  Chart settings edits appearance, grid and session shading, the price-scale mode and the theme
-  mode, and its Reset defaults row runs `chart.appearance.reset`, which drops the viewer's own
-  appearance edits and returns the price scale to normal so the chart reads as the theme and your
-  constructor options paint it. `ui: { topBar: { settings: { theme: false } } }` removes its Theme
+  Chart settings edits the chart settings, the price-scale mode and the theme mode, and its Apply
+  defaults row runs `chart.settings.reset`, which drops the viewer's own settings and returns the
+  price scale to normal so the chart reads as the theme and your `settings` option paint it. `ui: { topBar: { settings: { theme: false } } }` removes its Theme
   section and leaves the rest of the menu, for a host that offers the theme choice in its own
   settings; the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, Copy image where the browser can, and
   Download chart data when there is no layouts store) close the bar.
@@ -1662,7 +1663,7 @@ chrome is painted from it and renders nothing without it.
   image that could not be copied, or a save the store refused.
 
 Undo and redo step through the chart's own content: the symbol, the timeframe, the style, the price
-scale and whether it frames itself, the appearance a viewer authored, the comparisons, the
+scale and whether it frames itself, the chart settings a viewer authored, the comparisons, the
 indicators and the drawings. A step is one reading of that content, so a step back puts the whole
 reading back rather than reversing a single verb, and the two controls name the change they would
 move. Each chart keeps its own last 100 steps for as long as it is mounted. `chart.history.undo`
@@ -2203,30 +2204,81 @@ If a value you supply is not valid for the role it is written for, the chart kee
 value and reports it. Read `theme.diagnostics()` for the role, the code and a sentence naming the
 problem. Configuration errors never reach a render.
 
-### Theme and appearance are two ladders
+### Theme and chart settings are two ladders
 
-The theme palette is the broad brand surface. Chart appearance is the specific one: series colors,
-candle anatomy, grid visibility and indicator visuals in `ChartOverrides.appearance`. Where both
-could affect the same pixel, appearance wins.
+The theme palette is the broad brand surface. The chart settings are the specific one: one typed
+tree, `ChartSettings`, of every property a viewer tunes on a chart, from the candle anatomy and the
+line styles to the status line, the price labels, the time scale and the canvas. Where both could
+affect the same pixel, the settings win.
 
 Theme palette precedence, lowest first:
 
 1. the built-in palette for the selected mode;
 2. your custom palette for that mode.
 
-Chart appearance precedence, lowest first:
+Chart settings precedence, lowest first:
 
-1. the built-in appearance for the selected mode;
-2. the constructor's `appearance` partial;
-3. restored viewer appearance;
-4. runtime `chart.applyAppearance` patches.
+1. the theme's factory values for the mode in effect, `chartSettingsDefaults(theme)`;
+2. the constructor's `settings` partial;
+3. the viewer's own leaves: a restored chart, the settings dialog, and `chart.applySettings`.
 
-Resetting custom palettes returns the chart to the built-in mode and leaves saved chart appearance
+Resetting custom palettes returns the chart to the built-in mode and leaves saved chart settings
 alone.
 
-A saved chart carries the appearance leaves a viewer chose and no others, so a chart nobody restyled
-follows whatever theme the host gives it on the next load, and one whose owner picked candle colors
-opens in those colors on any theme.
+A saved chart carries the settings a viewer chose and no others, so a chart nobody restyled follows
+whatever theme the host gives it on the next load, and one whose owner picked candle colors opens in
+those colors on any theme.
+
+## Chart settings
+
+`chart.settings()` answers the effective tree; `chart.applySettings(partial)` layers a partial over
+the viewer's own leaves, ignoring a leaf the tree does not have or a value its leaf cannot hold; and
+`chart.resetSettings()` drops the viewer's leaves and returns the price scale to normal. The
+commands are `chart.settings.apply` with `{ settings }` and `chart.settings.reset`. A change is a
+content change: it marks the chart for saving and is a step of its history.
+
+```ts
+import type { ChartWidget } from '@trdrs/quickcharts'
+declare const widget: ChartWidget
+
+const chart = widget.activeChart()
+chart.applySettings({ candles: { upColor: '#26a69a' }, canvas: { marginRight: 20 } })
+chart.settings().candles.upColor // '#26a69a'
+widget.commands.execute('chart.settings.apply', { settings: { statusLine: { volume: true } } })
+chart.resetSettings()
+```
+
+The factory values change with the mode in six canvas colors only: the background, both grids,
+the watermark, and the scale text and lines, each read from its theme role. Every other color is
+the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands behind them:
+
+- `candles`, `hollowCandles` and `bars`: the body, borders and wick, each on its own switch and in
+  its own pair; coloring by the previous bar's close, written as each bar's own colors; thin bars
+  and the open tick (`hlcBars`).
+- `line`, `stepLine`, `area` and `baseline`: the line's color, style and width, the fills, and the
+  baseline's level as a percentage of the pane. A line or step line in a gradient (the factory
+  look) is stroked from its top color at the highest price on screen to its bottom color at the
+  lowest, and a baseline whose halves differ in width strokes each at its own.
+- `symbol`: the trading hours (`session`: `regular`, `extended` or `allHours`), which are the
+  chart's subsession, with the shading of the pre-market, post-market and overnight stretches; and
+  the precision every price is written at, through the chart's one formatter.
+- `statusLine`: the legend's mark, its title and whether the title is the name, the symbol or both,
+  the bar's values, its change and its volume, the indicator rows' titles, inputs and values, and a
+  backdrop of the chart's background at an opacity.
+- `priceLabels`: the countdown, labels kept apart, the symbol's last value, its dotted line (its
+  color, null to follow the last bar, and width) and its name, and each indicator's value and name.
+- `timeScale`: the crosshair label's date format (`CHART_DATE_FORMATS`), the weekday before it, and
+  a clock of 24 hours or of 12, which the axis times follow too.
+- `canvas`: the background, solid or a vertical gradient; each grid's switch, color and stroke; the
+  crosshair's color, stroke and width; the watermark's parts and ink; the scales' text and lines;
+  when the navigation buttons show; and the margins, the right one in bars.
+- `events`: a line at each trading day's start, in its own stroke.
+
+The leaves for the currency and unit box, the scale mode buttons, the price-to-bar ratio lock, the
+scale placement, the plus button, the previous close, the high and low and the bid and ask lines,
+the last day change, the extended-hours price labels, keeping the left edge across a timeframe
+change, a value style's price source and the pane buttons are stored and saved, and draw nothing
+yet.
 
 ## Compare
 
@@ -2351,8 +2403,9 @@ if (model) {
 parseSessionModel({ timezone: 'Etc/UTC', session: 'later' }) // null: the chart claims no session it cannot read
 ```
 
-Which named session a chart displays is its subsession, a per-chart preference
-with `regular` as the default. On a symbol with extended hours, `regular` filters intraday bars to
+Which named session a chart displays is its subsession, the chart's `symbol.session` setting, with
+`regular` as the factory value: `chart.subsession()` reads it and `chart.setSubsession()` writes it
+as the viewer's own. On a symbol with extended hours, `regular` filters intraday bars to
 regular hours and `extended` shows every bar; a symbol with one continuous session has nothing to
 filter.
 

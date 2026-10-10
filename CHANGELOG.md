@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+The chart settings: one typed tree, `ChartSettings`, of every property a viewer tunes on a chart, resolved as the theme's factory values, the host's `settings` option and the viewer's own leaves, and saved with the chart as the viewer's leaves alone. 5.0 replaces the appearance overrides with it, so a host upgrades as the guide below says.
+
+`chart.settings()` answers the effective tree, `chart.applySettings(partial)` layers a partial over the viewer's leaves and `chart.resetSettings()` drops them and returns the price scale to normal; the commands are `chart.settings.apply` with `{ settings }` and `chart.settings.reset`. A leaf the tree does not have, or a value its leaf cannot hold, is ignored. `chartSettingsDefaults(theme)`, `layerChartSettings`, `readPartialChartSettings`, `CHART_SETTINGS_SECTIONS`, `CHART_DATE_FORMATS` and `CHART_FACTORY_COLORS` export the factory values, the ladder and the reading every stored partial goes through.
+
+Every leaf with something behind it draws. The candle, hollow and bars families set the body, borders and wick, each on its own switch and in its own pair, color each bar by the previous bar's close, and draw thin bars and the open tick (`hlcBars`). The line and step line take a solid color or a vertical gradient, stroked from the top color at the highest price on screen to the bottom color at the lowest, the area its line and fills, and the baseline its lines, fills, a width for each half and its base level as a percentage of the pane. The symbol's precision writes every price through the chart's one formatter, so the axis, the legend, the countdown and the drawings agree. The status line shows or hides the legend's mark, its title (the name, the symbol, or both), the bar's values, its change and its volume, and the indicator rows' titles, inputs and values, over a backdrop of the chart's background at an opacity. The price labels keep labels apart, show the countdown, the symbol's last value, its dotted line in its own color and width, and its name, and write each indicator's value and name. The time scale writes the crosshair's date in one of nineteen formats (`chartDateSample` writes a format's sample, `formatChartDate` a date), with the weekday before it, on a clock of 24 hours or of 12 that the axis times follow too. The canvas sets the background, solid or a vertical gradient, each grid's switch, color and stroke, the crosshair's color, stroke and width, the watermark's ticker, interval and description in its own ink (the replay mark is its fourth part), the scales' text color and size and their lines, when the navigation buttons show, and the margins, the right one in bars. The events draw a line at each trading day's start in its own stroke (`sessionBreakTimes` finds them).
+
+The factory look is the reference dialog's: candles, borders and wicks in the series pair, a gradient line from `#d500f9` to `#00bce5`, an area in `#2962ff` over a fill at 28%, grids dotted at 20% of `#f2f2f2` in dark and `#2e2e2e` in light, the crosshair `#9c9c9c` dashed at 1px, scale text `#b8b8b8` in dark and `#0f0f0f` in light at 12px, scale lines at no opacity, margins of 10% and 8% and 10 bars, the countdown on, and regular trading hours. The palettes' `scale.grid`, `scale.text`, `scale.crosshair`, `scale.border` and the three session shading roles carry those values, `text.fontSizeAxis` sizes the legend's reading alone, and the theme gains `canvas.watermark`, `control.tipMark`, `control.tipMarkHover`, `overlay.tooltip` and `overlay.tooltipInk`. `CanvasTheme` gains `watermark`, and an extension's `theme()` answers the canvas under the settings in effect.
+
+The catalog gains `command.settingsApply`, `command.settingsReset`, `history.changeSettings`, `legend.volume` and `timezone.quarter` in every built-in language.
+
+### Upgrading to 5.0
+
+5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:
+
+- `ChartOverrides`, `PartialOverrides`, `DEFAULT_OVERRIDES`, `mergeOverrides` and `layerOverrides` go: read `ChartSettings`, `PartialChartSettings`, `chartSettingsDefaults(theme)` and `layerChartSettings` in their place. `BRAND_UP` and `BRAND_DOWN` keep their names and values.
+- The `appearance` option is `settings`, a `PartialChartSettings`. The old leaves live here:
+  - `upColor` and `downColor`: `candles.upColor` and `candles.downColor`, with the same pair in `hollowCandles`, `bars` and the baseline's `topLineColor` and `bottomLineColor`;
+  - `borderUpColor`, `borderDownColor`, `wickUpColor` and `wickDownColor`: the same leaves in `candles`, with `candles.borders` and `candles.wick` switching them;
+  - `background`: `canvas.background`;
+  - `grid`: `canvas.verticalGrid` and `canvas.horizontalGrid`;
+  - `countdown`: `priceLabels.countdown`;
+  - `sessions`: `symbol.session`, `extended` or `allHours` to shade the stretches outside regular hours.
+- `chart.appearance()` is `chart.settings()`, and `chart.applyAppearance({ appearance })` is `chart.applySettings(partial)`, with `chart.resetSettings()` beside it.
+- The commands `chart.appearance.apply` with `{ appearance }` and `chart.appearance.reset` are `chart.settings.apply` with `{ settings }` and `chart.settings.reset`.
+- The catalog keys `command.appearanceApply`, `command.appearanceReset` and `history.changeAppearance` are `command.settingsApply`, `command.settingsReset` and `history.changeSettings`, and the history step `appearance` is `settings` (`HistoryChange`).
+- A chart opens on regular hours. Its subsession is its `symbol.session` setting, saved with the chart: `chart.subsession()` reads it and `chart.setSubsession()` writes it as the viewer's own. A choice an earlier release stored under `quickcharts.subsession.v1` seeds a chart once, as the host's value, and the chart writes that key no more.
+- Chart content is version 5 and carries `settings`. A version-4 blob loads with its `appearance` record read into the settings as above, so saved charts need nothing from you.
+- `CanvasTheme` holds `watermark`, so code that builds one itself adds it.
+
 ## 4.1.0
 
 Line tools painted as measured, with their words typed along them and their points marked on the axes, a menu of every drawing's own, the bar price sources, the bars pattern modes and the serial version exported from the drawings entry, color panels and the chart's words that keep their measure under a host page's global rules, and a dictionary of your own that may leave out the keys the catalog gains within the major. No public name changes.
