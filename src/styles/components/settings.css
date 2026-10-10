@@ -1,9 +1,13 @@
-/* Chart settings is a centered, two-column dialog: a fixed title and footer around a section rail
- * and one roomy settings page. */
-[data-qc-theme] .qc-chart-settings-dialog {
+/* The chart settings dialog: a 750px card, as tall as the page it shows up to the viewport less
+ * 40px, with the drawing dialogs' header and footer around a body of two columns: the rail of pages,
+ * 226px with a 206px list 20px in, and the page beside it, which scrolls on its own. The page is the
+ * drawing dialogs' settings grid; these rules add what the chart's settings rows carry beyond it:
+ * checkbox rows with a hint or a tip, sub-rows, second lines of controls, the sliders and the tips. */
+[data-qc-theme] .qc-dialog.qc-chart-settings-dialog {
   box-sizing: border-box;
-  height: min(612px, calc(100vh - 32px));
-  max-height: min(612px, calc(100vh - 32px));
+  min-width: min(610px, calc(100% - 16px));
+  max-width: min(750px, calc(100% - 16px));
+  max-height: calc(100% - 40px);
   color: var(--qc-text-primary);
   background: var(--qc-overlay-surface);
   border: 0;
@@ -11,301 +15,451 @@
   box-shadow: var(--qc-overlay-shadow);
 }
 
-[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-title {
-  box-sizing: border-box;
-  min-height: 64px;
-  padding: 0 14px 0 19px;
+[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-close:hover {
+  background: var(--qc-state-hover);
 }
 
-[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-title .qc-title {
-  font-size: 20px;
-  font-weight: 600;
-  line-height: 28px;
-}
-
-[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-close {
-  width: 40px;
-  height: 40px;
-  border: 0;
-}
-
-[data-qc-theme] .qc-chart-settings-body {
+[data-qc-theme] .qc-chart-settings-dialog .qc-chart-settings-body {
   display: flex;
   flex: 1 1 auto;
   flex-direction: row;
-  gap: 0;
   min-height: 0;
   padding: 0;
   overflow: hidden;
 }
 
+/* The rail stands as tall as the page beside it and adds nothing to the body's height of its own, so
+ * a page shorter than the rail's tabs leaves the rail to scroll. */
 [data-qc-theme] .qc-chart-settings-nav {
   display: flex;
   flex: 0 0 226px;
   flex-direction: column;
-  gap: 2px;
   box-sizing: border-box;
-  padding: 10px;
-  border-inline-end: 1px solid var(--qc-overlay-separator);
+  width: 226px;
+  padding: 8px 0 8px 20px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  contain: size;
+  scrollbar-width: auto;
 }
 
+[data-qc-theme] .qc-chart-settings-nav::-webkit-scrollbar {
+  display: block;
+  width: 5px;
+}
+
+[data-qc-theme] .qc-chart-settings-nav::-webkit-scrollbar-thumb {
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background-color: var(--qc-chrome-scrollThumb);
+  background-clip: content-box;
+}
+
+[data-qc-theme] .qc-chart-settings-nav::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+@supports (-moz-appearance: none) {
+  [data-qc-theme] .qc-chart-settings-nav {
+    scrollbar-width: thin;
+    scrollbar-color: var(--qc-chrome-scrollThumb) transparent;
+  }
+}
+
+/* A page's tab: 206 by 40 on an 8px corner, its 28px icon 12px in and its name 4px after it at 14 on
+ * 18. The page shown and the tab under the pointer take the quiet fill and the strong ink; the page
+ * shown is named in bold. */
 [data-qc-theme] .qc-chart-settings-nav-item {
   display: flex;
-  gap: 10px;
+  flex: 0 0 40px;
+  gap: 4px;
   align-items: center;
-  width: 100%;
-  min-height: 40px;
-  padding: 0 12px;
-  color: var(--qc-text-secondary);
+  box-sizing: border-box;
+  width: 206px;
+  height: 40px;
+  padding: 0 16px 0 12px;
+  color: var(--qc-text-primary);
   font: inherit;
   font-size: 14px;
+  font-weight: 400;
+  line-height: 18px;
   text-align: start;
   background: transparent;
   border: 0;
   border-radius: 8px;
+  outline-offset: -2px;
   cursor: pointer;
 }
 
 [data-qc-theme] .qc-chart-settings-nav-item:hover {
-  color: var(--qc-text-primary);
+  color: var(--qc-control-neutralInk);
   background: var(--qc-state-hover);
 }
 
 [data-qc-theme] .qc-chart-settings-nav-item[aria-selected='true'] {
-  color: var(--qc-text-primary);
+  color: var(--qc-control-neutralInk);
   font-weight: 600;
-  background: var(--qc-state-selected);
+  background: var(--qc-control-neutral);
 }
 
-[data-qc-theme] .qc-chart-settings-panel {
+[data-qc-theme] .qc-chart-settings-nav-icon {
   display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+[data-qc-theme] .qc-chart-settings-nav-label {
   min-width: 0;
-  padding: 13px 20px 26px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The page: the settings grid 16px by 20px in, with 16px more under its last section. */
+[data-qc-theme] .qc-chart-settings-panel {
+  flex: 1 1 auto;
+  align-content: start;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 16px 20px 32px;
+  overflow-x: hidden;
   overflow-y: auto;
   outline: none;
 }
 
-[data-qc-theme] .qc-chart-settings-panel > .qc-menu-heading {
-  min-height: auto;
-  margin: 0 0 8px;
-  padding: 0;
+/* A section heading: 11px capitals in the muted ink in a 32px row, 16px clear of the section before. */
+[data-qc-theme] .qc-chart-settings-panel > .qc-settings-heading {
   color: var(--qc-text-muted);
-  font-size: 11px;
   font-weight: 400;
-  line-height: 24px;
-  letter-spacing: 0;
 }
 
-[data-qc-theme] .qc-settings-menu .qc-settings-row {
-  display: grid;
-  grid-template-columns: minmax(150px, 1fr) auto;
-  gap: 16px;
-  min-height: 44px;
-  padding: 0;
+[data-qc-theme] .qc-chart-settings-panel > .qc-settings-heading:not(:first-child) {
+  margin-top: 16px;
 }
 
-[data-qc-theme] .qc-settings-menu .qc-settings-row .qc-field-label {
-  color: var(--qc-text-secondary);
-  font-size: 14px;
-}
-
-/* A color here keeps its swatch: a 38 by 34 box on the raised fill, its well 3px in from the edge on
- * a corner that follows the box's. The edge, its step under the pointer and the focus ring are the
- * field's own, and a well that cannot be used stands on the read-only fill as every field does. */
-[data-qc-theme] .qc-settings-menu .qc-settings-row .qc-drawing-swatch-button {
+/* A checkbox row across both columns: the box, its words 8px after it, a tip 8px after the words,
+ * and a hint at 13 on 18 in the muted ink under the line, after which the next row stands 16px off. */
+[data-qc-theme] .qc-settings-check {
   box-sizing: border-box;
-  width: 38px;
-  height: 34px;
-  padding: 3px;
+  min-height: 50px;
+  padding: 8px 0;
 }
 
-[data-qc-theme] .qc-settings-menu .qc-settings-row .qc-drawing-swatch-button:enabled {
-  background: var(--qc-chrome-surfaceRaised);
-}
-
-[data-qc-theme] .qc-settings-menu .qc-settings-row .qc-drawing-well {
-  width: 28px;
-  height: 26px;
-  border-radius: 4px;
-}
-
-/* This dialog paints its switches as compact square checks before the label, and each keeps the
- * accessible switch role. */
-[data-qc-theme] .qc-settings-menu .qc-switch-row {
+[data-qc-theme] .qc-settings-check-line {
   display: flex;
-  flex-direction: row-reverse;
-  justify-content: flex-end;
-  gap: 10px;
-  min-height: 44px;
-  padding: 0;
-  color: var(--qc-text-secondary);
-  cursor: pointer;
-}
-
-[data-qc-theme] .qc-settings-menu .qc-switch {
-  width: 18px;
-  height: 18px;
-  box-sizing: border-box;
-  background: transparent;
-  border: 1px solid var(--qc-control-on);
-  border-radius: 3px;
-}
-
-[data-qc-theme] .qc-settings-menu .qc-switch:hover:not([disabled]) {
-  background: var(--qc-state-hover);
-}
-
-[data-qc-theme] .qc-settings-menu .qc-switch[aria-checked='true'] {
-  background: var(--qc-control-on);
-}
-
-[data-qc-theme] .qc-settings-menu .qc-switch-knob {
-  position: absolute;
-  top: 3px;
-  inset-inline-start: 6px;
-  width: 5px;
-  height: 9px;
-  box-sizing: border-box;
-  background: transparent;
-  border: solid var(--qc-control-mark);
-  border-width: 0 2px 2px 0;
-  border-radius: 0;
-  opacity: 0;
-  transform: rotate(45deg);
-  transition: opacity var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
-}
-
-[data-qc-theme] .qc-settings-menu .qc-switch[aria-checked='true'] .qc-switch-knob {
-  inset-inline-start: 6px;
-  opacity: 1;
-}
-
-[data-qc-theme] .qc-chart-settings-choices {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: min(100%, 360px);
-}
-
-[data-qc-theme] .qc-chart-settings-choice {
-  display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
-  min-height: 40px;
-  padding: 0 8px;
-  color: var(--qc-text-secondary);
-  font: inherit;
-  text-align: start;
-  background: transparent;
-  border: 0;
-  border-radius: 6px;
-  cursor: pointer;
+  min-height: 34px;
 }
 
-[data-qc-theme] .qc-chart-settings-choice:hover:not([disabled]) {
-  color: var(--qc-text-primary);
-  background: var(--qc-state-hover);
+[data-qc-theme] .qc-settings-hint {
+  color: var(--qc-text-muted);
+  font-size: 13px;
+  line-height: 18px;
 }
 
-[data-qc-theme] .qc-chart-settings-choice[disabled] {
-  color: var(--qc-text-disabled);
+[data-qc-theme] .qc-settings-check[data-hint='true'],
+[data-qc-theme] .qc-settings-hint-row {
+  margin-bottom: 16px;
+}
+
+[data-qc-theme] .qc-settings-hint-row {
+  margin-top: -8px;
+}
+
+/* A labelled row: its label cell stands its words, or its checkbox, level with the first line of
+ * controls, and the controls' cell stacks its lines 8px apart. */
+[data-qc-theme] .qc-chart-settings-panel .qc-settings-label {
+  gap: 8px;
+  align-items: flex-start;
+}
+
+[data-qc-theme] .qc-settings-label-text {
+  display: flex;
+  align-items: center;
+  min-height: 34px;
+}
+
+[data-qc-theme] .qc-chart-settings-panel .qc-settings-controls {
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+[data-qc-theme] .qc-settings-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+}
+
+/* A sub-row stands its box 26px in, level with the words of the row above, and 8px closer to it. */
+[data-qc-theme] .qc-settings-check[data-indent='true'] {
+  margin-top: -8px;
+  padding-inline-start: 26px;
+}
+
+[data-qc-theme] .qc-settings-row[data-indent='true'] > * {
+  margin-top: -8px;
+}
+
+[data-qc-theme] .qc-chart-settings-panel .qc-settings-row[data-indent='true'] > .qc-settings-label {
+  padding-inline-start: 26px;
+}
+
+/* A row that cannot be used stands its words back with its box. */
+[data-qc-theme] [data-disabled='true'] > * > .qc-drawing-toggle > span,
+[data-qc-theme] [data-disabled='true'] > * > .qc-settings-label-text {
+  opacity: 0.5;
+}
+
+[data-qc-theme] [data-disabled='true'] > * > .qc-drawing-toggle {
   cursor: default;
 }
 
-[data-qc-theme] .qc-chart-settings-radio {
-  position: relative;
-  flex: 0 0 auto;
-  box-sizing: border-box;
+/* A tip's mark: 18px in the tip ink, which steps up under the pointer. */
+[data-qc-theme] .qc-settings-tip {
+  display: inline-flex;
+  flex: 0 0 18px;
+  align-items: center;
+  justify-content: center;
   width: 18px;
   height: 18px;
-  border: 1px solid var(--qc-control-on);
+  margin-block: 8px;
+  padding: 0;
+  color: var(--qc-control-tipMark);
+  background: none;
+  border: 0;
   border-radius: 50%;
+  cursor: pointer;
+  transition: color var(--qc-motion-durationFast) var(--qc-motion-easingLinear);
 }
 
-[data-qc-theme] .qc-chart-settings-choice[aria-checked='true'] .qc-chart-settings-radio::after {
-  content: '';
-  position: absolute;
-  inset: 4px;
-  background: var(--qc-control-on);
-  border-radius: 50%;
+[data-qc-theme] .qc-settings-tip:hover,
+[data-qc-theme] .qc-settings-tip[aria-expanded='true'] {
+  color: var(--qc-control-tipMarkHover);
 }
 
-[data-qc-theme] .qc-chart-settings-footer {
-  display: flex;
-  flex: 0 0 64px;
-  align-items: center;
-  justify-content: space-between;
+/* A tip's line: 13 on 18 on the tooltip fill, 4px above its mark, never taking the pointer. */
+[data-qc-theme] .qc-dialog-scrim > .qc-settings-tooltip {
+  position: fixed;
+  z-index: 10;
   box-sizing: border-box;
-  padding: 0 18px;
-  border-top: 1px solid var(--qc-overlay-separator);
+  max-width: 310px;
+  padding: 3px 8px;
+  color: var(--qc-overlay-tooltipInk);
+  font-size: 13px;
+  line-height: 18px;
+  background: var(--qc-overlay-tooltip);
+  border-radius: 2px;
+  pointer-events: none;
 }
 
-[data-qc-theme] .qc-chart-settings-actions {
-  display: flex;
-  gap: 10px;
+/* A tip's card: 352px on a 16px corner, 16px in, its title and its words at 16 on 24 and the link at
+ * 14 on 18. */
+[data-qc-theme] .qc-drawing-popover.qc-settings-card-popover {
+  box-sizing: border-box;
+  width: 352px;
+  padding: 16px;
+  border-radius: 16px;
 }
 
-[data-qc-theme] .qc-chart-settings-footer .qc-button {
-  min-width: 62px;
-  height: 34px;
-  padding: 0 11px;
+[data-qc-theme] .qc-settings-card-title {
+  color: var(--qc-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+[data-qc-theme] .qc-settings-card-body {
+  color: var(--qc-text-primary);
+  font-size: 16px;
+  line-height: 24px;
+}
+
+[data-qc-theme] .qc-settings-card-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--qc-text-link);
   font-size: 14px;
-  line-height: 22px;
+  line-height: 18px;
+  text-decoration: none;
 }
 
-[data-qc-theme] .qc-chart-settings-footer .qc-chart-settings-reset {
+/* A color that follows the bars shows the bars' two colors, the up color in the top corner. */
+[data-qc-theme] .qc-drawing-swatch-button[data-qc-follows='true'] .qc-drawing-well-fill {
+  background: linear-gradient(to bottom left, var(--qc-series-up) 50%, var(--qc-series-down) 50%);
+}
+
+/* A line's thickness on its own: a 34px field wearing a 14px bar of the width. */
+[data-qc-theme] .qc-drawing-select--mark.qc-settings-width {
+  width: 34px;
+}
+
+[data-qc-theme] .qc-settings-width > .qc-drawing-thickness-bar {
+  width: 14px;
+}
+
+/* A number field and its unit, 9px after it. */
+[data-qc-theme] .qc-settings-number {
+  display: inline-flex;
+  gap: 9px;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-settings-suffix {
+  color: var(--qc-text-primary);
+  font-size: 14px;
+  line-height: 18px;
+}
+
+/* The sliders. The opacity is a 148 by 10 track on a 5px corner that fades from nothing into its color
+ * over the checked ground, inside a 1px edge of the color; the volume is a 136 by 6 track after its
+ * 18px speaker, 8px apart, filled in the on ink up to its knob. Both knobs are the color popover's, a
+ * 12px dark disc with a 2px light rim. Black and white are the poles of the value axis, not theme
+ * roles. */
+[data-qc-theme] .qc-settings-slider {
+  --qcd-angle-0: 0deg;
+  --qcd-black: hsl(var(--qcd-angle-0) 0% 0%);
+  --qcd-white: hsl(var(--qcd-angle-0) 0% 100%);
+  --qcd-check-hue: 224deg;
+  --qcd-check: hsl(var(--qcd-check-hue) 15% 19% / 0.4);
+  --qcd-ground: var(--qcd-black);
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+}
+
+[data-qc-theme='light'] .qc-settings-slider {
+  --qcd-ground: var(--qcd-white);
+}
+
+[data-qc-theme] .qc-settings-speaker {
+  flex: 0 0 18px;
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-settings-opacity,
+[data-qc-theme] .qc-settings-volume {
+  box-sizing: border-box;
+  margin: 0;
+  outline: none;
+  cursor: pointer;
+  appearance: none;
+}
+
+[data-qc-theme] .qc-settings-opacity {
+  flex: 0 0 148px;
+  width: 148px;
+  height: 10px;
+  background:
+    linear-gradient(to right, transparent, var(--qcd-swatch)),
+    repeating-conic-gradient(from 270deg, var(--qcd-check) 0% 25%, transparent 0% 50%) 1px 50% / 8px 8px,
+    var(--qcd-ground);
+  border: 1px solid var(--qcd-swatch);
+  border-radius: 5px;
+}
+
+[data-qc-theme] .qc-settings-volume {
+  flex: 0 0 136px;
+  width: 136px;
+  height: 6px;
+  background: linear-gradient(to right, var(--qc-control-on) var(--qcd-level), var(--qc-state-pressed) var(--qcd-level));
+  border-radius: 5px;
+}
+
+[data-qc-theme][dir='rtl'] .qc-settings-opacity,
+[data-qc-theme] [dir='rtl'] .qc-settings-opacity {
+  background:
+    linear-gradient(to left, transparent, var(--qcd-swatch)),
+    repeating-conic-gradient(from 270deg, var(--qcd-check) 0% 25%, transparent 0% 50%) right 1px top 50% / 8px 8px,
+    var(--qcd-ground);
+}
+
+[data-qc-theme][dir='rtl'] .qc-settings-volume,
+[data-qc-theme] [dir='rtl'] .qc-settings-volume {
+  background: linear-gradient(to left, var(--qc-control-on) var(--qcd-level), var(--qc-state-pressed) var(--qcd-level));
+}
+
+[data-qc-theme] .qc-settings-opacity::-webkit-slider-thumb,
+[data-qc-theme] .qc-settings-volume::-webkit-slider-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
+  border-radius: 50%;
+  box-shadow: var(--qc-overlay-shadow);
+  cursor: pointer;
+  appearance: none;
+}
+
+[data-qc-theme] .qc-settings-opacity::-moz-range-thumb,
+[data-qc-theme] .qc-settings-volume::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
+  border-radius: 50%;
+  box-shadow: var(--qc-overlay-shadow);
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-settings-opacity:focus-visible,
+[data-qc-theme] .qc-settings-volume:focus-visible {
+  box-shadow: 0 0 0 2px var(--qc-state-focusRing);
+}
+
+[data-qc-theme] .qc-settings-slider[data-disabled='true'] > * {
+  opacity: 0.5;
+}
+
+[data-qc-theme] .qc-settings-slider[data-disabled='true'] > input {
+  cursor: default;
+}
+
+/* The footer keeps its height whatever the page above it holds. */
+[data-qc-theme] .qc-chart-settings-dialog > .qc-chart-settings-footer {
+  flex: 0 0 auto;
+}
+
+/* The footer's Template menu opens over its button, as wide as its words. */
+[data-qc-theme] .qc-chart-settings-template-menu {
   min-width: 0;
 }
 
-[data-qc-theme] .qc-chart-settings-cancel,
-[data-qc-theme] .qc-chart-settings-ok {
-  min-width: 62px;
-}
-
-[data-qc-theme] .qc-chart-settings-nav {
-  scrollbar-width: none;
-}
-
-[data-qc-theme] .qc-chart-settings-nav::-webkit-scrollbar {
-  display: none;
-}
-
+/* A narrow layer stacks the rail over the page as a strip of tabs. */
 @media (max-width: 680px) {
-  [data-qc-theme] .qc-chart-settings-dialog {
+  [data-qc-theme] .qc-dialog.qc-chart-settings-dialog {
     width: calc(100% - 20px) !important;
-    height: calc(100vh - 20px);
+    min-width: 0;
     max-width: none;
-    max-height: none;
   }
 
-  [data-qc-theme] .qc-chart-settings-body {
+  [data-qc-theme] .qc-chart-settings-dialog .qc-chart-settings-body {
     flex-direction: column;
   }
 
   [data-qc-theme] .qc-chart-settings-nav {
     flex: 0 0 auto;
     flex-direction: row;
-    gap: 4px;
-    padding: 6px 10px 8px;
+    width: auto;
+    padding: 0 10px 8px;
     overflow-x: auto;
-    border-inline-end: 0;
-    border-bottom: 1px solid var(--qc-overlay-separator);
+    overflow-y: hidden;
+    contain: none;
   }
 
   [data-qc-theme] .qc-chart-settings-nav-item {
+    flex: 0 0 auto;
     width: auto;
-    min-width: max-content;
-    min-height: 36px;
-    padding: 0 10px;
   }
 
   [data-qc-theme] .qc-chart-settings-panel {
-    padding: 13px 16px 20px;
-  }
-
-  [data-qc-theme] .qc-chart-settings-footer {
-    padding: 0 12px;
+    padding: 16px;
   }
 }

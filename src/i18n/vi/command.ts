@@ -91,6 +91,7 @@ export const command: Translation<typeof source> = {
   'command.themeDark': 'Dark theme',
   'command.themeToggle': 'Switch theme',
   'command.themeSet': 'Set theme',
+  'command.settingsOpen': 'Cài đặt biểu đồ',
   'command.localeSet': 'Language',
   'command.fullscreenEnter': 'Fullscreen',
   'command.fullscreenExit': 'Exit fullscreen',

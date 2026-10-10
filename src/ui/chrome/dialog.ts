@@ -49,6 +49,10 @@ export interface DialogOptions {
   /** Whether the dialog opens and closes on the modal motion. Off, it appears and leaves at once. On
    *  unless the surface turns it off. */
   motion?: boolean
+  /** Whether the pointer passes the backdrop to what stands behind the box, so the chart under it
+   *  answers the pointer while the dialog is up and a press outside the box leaves the dialog open.
+   *  The keyboard stays the dialog's either way. Off unless the surface turns it on. */
+  passThrough?: boolean
   /** Fill the box. */
   build(body: HTMLElement, dialog: DialogHandle): void
   /** The control that takes focus on open. Default the first focusable. */
@@ -69,6 +73,7 @@ export function openDialog(options: DialogOptions): DialogHandle {
   scrim.appendChild(box)
   const motion = options.motion !== false
   if (options.veil === false) scrim.dataset.qcVeil = 'none'
+  if (options.passThrough) scrim.dataset.qcPass = 'true'
   if (motion) scrim.dataset.state = 'opening'
 
   let isOpen = true

@@ -20,6 +20,7 @@ import type { FeedBar } from './datafeed'
 import { blanks, type HideState } from './drawings/hideModel'
 import type { CanvasTheme } from './theme/renderer'
 import type { MarkPainters } from './markPainters'
+import type { ChartSettingsContribution } from './settings/contribution'
 
 /** Price display as an extension reads it — the chart's own formatter, so an overlay's label and the
  *  axis beside it can never disagree about what a number looks like. */
@@ -240,6 +241,10 @@ export interface ChartExtensionContext {
   contributeContextMenu(build: ChartExtensionMenuBuilder): () => void
   contributeCommands(commands: readonly ChartExtensionCommand[]): () => void
   contributeHideLayer(layer: ChartExtensionHideLayer): ChartExtensionHideLayerHandle
+  /** Add a page of the extension's own to the chart settings dialog, or rows to one of the chart's
+   *  pages. The dialog lists what the active chart's extensions contribute when it opens; the
+   *  returned function withdraws the contribution, and detach withdraws it either way. */
+  contributeSettings(contribution: ChartSettingsContribution): () => void
 }
 
 /** What an extension gives back at attach. `detach` is required; the two state methods are the
@@ -314,6 +319,8 @@ export interface ChartExtensionHost {
   menuItems(context: ChartExtensionMenuContext): readonly ChartExtensionMenuItem[]
   /** The layers every attached extension offers the eye, in contribution order. */
   hideLayers(): readonly ChartExtensionHideLayer[]
+  /** What every attached extension adds to the settings dialog, in contribution order. */
+  settingsContributions(): readonly ChartSettingsContribution[]
   /** Viewer state by extension id — the widget nests this under one key of its save blob. */
   serialize(): Record<string, unknown>
   /** Apply opaque state as usual, and report whether all registered saved state round-tripped.
@@ -347,6 +354,8 @@ interface Attached {
   menuBuilders: Set<ChartExtensionMenuBuilder>
   /** The layers this extension offered the eye, by id. */
   hideLayers: Map<string, ChartExtensionHideLayer>
+  /** What this extension added to the settings dialog. */
+  settings: Set<ChartSettingsContribution>
   /** The unregister the chart's command registry answered for each command this extension
    *  contributed, so a detach takes its verbs out of the one registry with it. */
   commands: Map<string, () => void>
@@ -444,6 +453,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     }
     clearLanes(record.lanes)
     record.menuBuilders.clear()
+    record.settings.clear()
     if (record.hideLayers.size) {
       record.hideLayers.clear()
       notifyHideLayers()
@@ -475,6 +485,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       lanes: newLanes(),
       menuBuilders: new Set(),
       hideLayers: new Map(),
+      settings: new Set(),
       commands: new Map(),
       priceLines: new Set(),
       primitives: new Set(),
@@ -566,6 +577,13 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
         record.menuBuilders.add(build)
         return () => {
           record.menuBuilders.delete(build)
+        }
+      },
+      contributeSettings(contribution) {
+        if (!record.live) return () => {}
+        record.settings.add(contribution)
+        return () => {
+          record.settings.delete(contribution)
         }
       },
       contributeCommands(commands) {
@@ -685,6 +703,10 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       if (!hostLive) return []
       return liveRecords().flatMap((record) => [...record.hideLayers.values()])
     },
+    settingsContributions() {
+      if (!hostLive) return []
+      return liveRecords().flatMap((record) => [...record.settings])
+    },
     serialize() {
       const out: Record<string, unknown> = {}
       for (const record of liveRecords()) {
@@ -733,6 +755,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     detach() {
       if (!hostLive) return
       hostLive = false
+      if (HOSTS.get(deps.chartId) === host) HOSTS.delete(deps.chartId)
       for (const record of [...attached]) {
         if (!record.live) continue
         // Dispose fires while the context is still live: a subscriber's last read must answer.
@@ -748,5 +771,17 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       attached.length = 0
     },
   }
+  HOSTS.set(deps.chartId, host)
   return host
+}
+
+/** Every live extension host, by the id of the chart it serves. A chart's id is unique within the
+ *  process, so the chart's own surfaces reach the contributions of the chart they act on by its id
+ *  alone. */
+const HOSTS = new Map<string, ChartExtensionHost>()
+
+/** What the extensions attached to a chart add to the settings dialog, in contribution order: none
+ *  for a chart that is gone or holds no extension. */
+export function settingsContributionsOf(chartId: string): readonly ChartSettingsContribution[] {
+  return HOSTS.get(chartId)?.settingsContributions() ?? []
 }

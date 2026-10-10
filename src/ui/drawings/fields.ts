@@ -174,7 +174,11 @@ export interface MultiChoice {
  *  settings row wears, the list stays open while the viewer ticks, and the button reads the choices
  *  that are on, or the empty word when none is. A ticked row is not a picked choice: its box says it
  *  is on, and the row keeps the list's ground. */
-export function multiDropdown(icons: IconResolver, box: HTMLElement, props: { label: string; empty: string; choices: readonly MultiChoice[]; width?: SelectWidth; asWritten?: boolean }): HTMLButtonElement {
+export function multiDropdown(
+  icons: IconResolver,
+  box: HTMLElement,
+  props: { label: string; empty: string; choices: readonly MultiChoice[]; width?: SelectWidth; asWritten?: boolean; onClose?(): void },
+): HTMLButtonElement {
   const checked = props.choices.map((c) => c.checked)
   // The face runs the choices on as one phrase, each after the first in lower case, unless the
   // choices' words are to be read as written.
@@ -226,6 +230,7 @@ export function multiDropdown(icons: IconResolver, box: HTMLElement, props: { la
     const rows = (): HTMLElement[] => [...menu.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')]
     close = openList(box, b, menu, rows, () => {
       close = null
+      props.onClose?.()
     })
     rows()[0]?.focus({ preventScroll: true })
   })
@@ -440,6 +445,10 @@ export interface SwatchButtonOptions {
   /** Wired, the popover gains the Line style row. */
   lineStyle?: LineStyle
   onLineStyle?(value: LineStyle): void
+  /** The face draws the stroke at its line style even where the popover sets no thickness. */
+  strokeFace?: boolean
+  /** The popover offers no opacity: the color is picked whole. */
+  withoutOpacity?: boolean
 }
 
 /** What a swatch button stands for, as its face and its popover show it. */
@@ -458,6 +467,9 @@ const stateOf = (options: SwatchButtonOptions): SwatchState => ({
 })
 
 const editsStroke = (options: SwatchButtonOptions): boolean => options.thickness !== undefined && options.onThickness !== undefined
+
+/** Whether the face draws the stroke beside the well. */
+const showsStroke = (options: SwatchButtonOptions): boolean => editsStroke(options) || options.strokeFace === true
 
 /** What each swatch button was built with, so a popover that outlives its button (a page rebuilt
  *  under it) reads the button the page put in its place. */
@@ -483,7 +495,7 @@ function paintFace(b: HTMLButtonElement, state: SwatchState, stroke: boolean): v
  *  stays the one the drawing document already keeps. */
 export function swatchButton(t: ChartTranslate, box: HTMLElement, options: SwatchButtonOptions): HTMLButtonElement {
   const b = el('button', { type: 'button', class: 'qc-field qc-drawing-swatch-button', 'aria-label': options.label, 'aria-haspopup': 'dialog', 'aria-expanded': 'false' }, el('span', { class: 'qc-drawing-well' }, el('span', { class: 'qc-drawing-well-fill' }))) as HTMLButtonElement
-  paintFace(b, stateOf(options), editsStroke(options))
+  paintFace(b, stateOf(options), showsStroke(options))
   builtWith.set(b, options)
   b.addEventListener('click', () => {
     const open = holding.get(b)
@@ -514,12 +526,13 @@ function openColorPopover(t: ChartTranslate, box: HTMLElement, opener: HTMLButto
   let options = builtWith.get(opener)!
   let state = stateOf(options)
   const stroke = editsStroke(options)
+  const face = showsStroke(options)
   const label = opener.getAttribute('aria-label') ?? ''
   const ordinal = named(box, label).indexOf(opener)
 
   const follow = (): void => {
     if (anchor.isConnected) {
-      paintFace(anchor, state, stroke)
+      paintFace(anchor, state, face)
       return
     }
     const next = named(box, label)[ordinal]
@@ -547,15 +560,14 @@ function openColorPopover(t: ChartTranslate, box: HTMLElement, opener: HTMLButto
   const palette = createColorPalette(t, {
     value: state.value,
     recents: colorMemoryFor(box),
-    opacity: state.alpha,
     // A pick keeps the opacity the value carries, unless the consumer holds the opacity apart.
     onPick: (c) =>
       edit(() => {
-        const next = options.onOpacity || state.alpha >= 1 ? c : withAlpha(c, state.alpha)
+        const next = options.onOpacity || options.withoutOpacity || state.alpha >= 1 ? c : withAlpha(c, state.alpha)
         options.onPick(next)
         state = { ...state, value: next }
       }),
-    onOpacity: (v) =>
+    ...(options.withoutOpacity ? {} : { opacity: state.alpha, onOpacity: (v: number) =>
       edit(() => {
         if (options.onOpacity) {
           options.onOpacity(v)
@@ -565,7 +577,7 @@ function openColorPopover(t: ChartTranslate, box: HTMLElement, opener: HTMLButto
         const next = withAlpha(state.value, v)
         options.onPick(next)
         state = { ...state, value: next, alpha: v }
-      }),
+      }) }),
     onMixing: (mixing) => {
       for (const section of sections) section.hidden = mixing
     },

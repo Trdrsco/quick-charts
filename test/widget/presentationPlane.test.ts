@@ -103,11 +103,7 @@ const COVERAGE: Readonly<Record<string, Probe | { provedBy: string }>> = {
   'topBar.layoutSetup': named('Layout setup', true),
   'topBar.savedLayouts': named('Manage layouts'),
   'topBar.settings': named('Chart settings'),
-  'topBar.settings.theme': async (container) => {
-    container.querySelector<HTMLButtonElement>('button[aria-label="Chart settings"]')!.click()
-    await settle()
-    return [...document.querySelectorAll('.qc-chart-settings-nav-item')].some((item) => item.textContent === 'Theme')
-  },
+  'topBar.settings.theme': { provedBy: 'ui/settings/dialog.test.ts: the key stays accepted, and the dialog carries no theme row whatever it says' },
   'topBar.fullscreen': named('Fullscreen'),
   'topBar.image': named('Chart image'),
   bottomBar: has('.qc-bottombar'),

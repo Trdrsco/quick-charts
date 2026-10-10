@@ -273,10 +273,10 @@ describe('what a factory is handed and what the chart keeps', () => {
     const svg = settings.querySelector('svg')!
     expect(svg.getAttribute('aria-hidden')).toBe('true')
     expect(svg.getAttribute('focusable')).toBe('false')
-    // Pressing it still opens the chart's own menu.
+    // Pressing it still opens the chart's own dialog.
     settings.click()
     await settle()
-    expect(document.querySelector('[role="dialog"] [data-settings-page="theme"]')).not.toBeNull()
+    expect(document.querySelector('[role="dialog"] [data-settings-page="canvas"]')).not.toBeNull()
   })
 })
 

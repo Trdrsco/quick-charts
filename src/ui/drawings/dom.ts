@@ -200,10 +200,11 @@ export function dismissOnOutside(panel: HTMLElement, anchor: HTMLElement | null,
 }
 
 /** Whether the chart reads right to left, from the root's own direction. */
-export type PanelPlacement = 'side' | 'sidecar' | 'below' | 'below-end'
+export type PanelPlacement = 'side' | 'sidecar' | 'below' | 'below-end' | 'above'
 
 /** Place a floating panel inside the chart's chrome box beside its anchor: to the inline end of
- *  the anchor for `side`, below it for `below` (its inline-end edges level for `below-end`),
+ *  the anchor for `side`, below it for `below` (its inline-end edges level for `below-end`), above
+ *  it with its inline-start edges level for `above`,
  *  clamped so the panel stays within the box and flipping to the other side when there is no
  *  room. A `sidecar` is a submenu: level with its row and flush to the row's outer edge, with no
  *  offset at all, so a pointer travelling from the row into the panel crosses nothing that would
@@ -241,6 +242,10 @@ export function placePanel(panel: HTMLElement, anchor: HTMLElement, box: HTMLEle
     const lift = Number.parseFloat(getComputedStyle(panel).paddingTop) || 0
     top = a.top - b.top - lift
     if (top + h > b.height) top = Math.max(0, b.height - h)
+  } else if (mode === 'above') {
+    left = rtl ? a.right - b.left - w : a.left - b.left
+    top = a.top - b.top - h - gap
+    if (top < 0) top = a.bottom - b.top + gap
   } else {
     const end = (mode === 'below-end') !== rtl
     left = end ? a.right - b.left - w : a.left - b.left

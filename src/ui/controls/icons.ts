@@ -297,6 +297,10 @@ const BACK_SHEET = 'M18.5 20V21.5A1 1 0 0 1 17.5 22.5H6.5A1 1 0 0 1 5.5 21.5V10.
  *  rounded bar walled one unit thick with ticks hanging from its top edge, every other one longer. */
 const RULER = frame(0.5, 9.75, 27.5, 18.25, 1.5) + [5, 13.5, 22].map((x) => box(x, 10.75, x + 1, 13.25)).join('') + [9.25, 17.75].map((x) => box(x, 10.75, x + 1, 14.65)).join('')
 
+/** A speaker on the 18 grid: a small box and the cone flaring out of it to the right, walled one
+ *  unit thick. */
+const SPEAKER = wall([[3, 6.5], [6, 6.5], [10, 3], [10, 15], [6, 11.5], [3, 11.5]], 0.5, 0)
+
 /** The visual order mark's top layer: a square seen corner on, flattened to a diamond. */
 const LAYER: Point[] = [[14, 6], [24, 11.7], [14, 17.3], [4, 11.7]]
 
@@ -538,6 +542,27 @@ export const ICONS = {
   search24: { viewBox: '0 0 24 24', body: '<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' },
   // The note beside a switch that needs a sentence.
   info: { viewBox: '0 0 18 18', body: solid(disc(9, 9, 8) + disc(9, 5, 1, true) + polygon([[7, 8], [10, 8], [10, 14], [8.5, 14], [8.5, 9.5], [7, 9.5]], true)) },
+  // The short tip beside a setting's label: a disc with a question mark cut through it, its hook
+  // turning over the top and down into the stem, and the dot under the stem.
+  question: { viewBox: '0 0 18 18', body: solid(disc(9, 9, 8) + arc(9, 6.75, 2.25, 180, 450, 1.5) + box(8.25, 9.75, 9.75, 11.25) + disc(9, 13.1, 1), 'evenodd') },
+  // A level's speaker: a box and the cone flaring out of it, walled one unit thick, and one wave
+  // standing off the cone's mouth. The muted speaker has no wave and a stroke across it.
+  speaker: { viewBox: '0 0 18 18', body: solid(SPEAKER + arc(10.5, 9, 2.9, -60, 60)) },
+  speakerMuted: { viewBox: '0 0 18 18', body: solid(SPEAKER + line([2.5, 14.5], [14, 3])) },
+  // The chart settings pages, on the rail's 28 grid. Symbol: two candles, the left one taller.
+  settingsSymbol: { viewBox: '0 0 28 28', body: candle(16, 7, 10, 18, 21, 5) + candle(8, 4, 7, 21, 24, 5) },
+  // Status line: the legend's rounded band over three lines of values, the lower two shorter.
+  settingsStatusLine: { viewBox: '0 0 28 28', body: solid(frame(5, 6, 23, 10.5, 2) + box(5, 14, 22, 15) + box(5, 18, 20, 19) + box(5, 22, 20, 23)) },
+  // Scales and lines: two axes leaving a small ring at their corner, the price axis up and the time
+  // axis right, each ending in an arrowhead.
+  settingsScales: {
+    viewBox: '0 0 28 28',
+    body: solid(ring(7.5, 21.5, 2) + line([7.5, 19.5], [7.5, 5.2]) + polyline([[4.5, 8.2], [7.5, 5.2], [10.5, 8.2]]) + line([9.5, 21.5], [23.8, 21.5]) + polyline([[20.8, 18.5], [23.8, 21.5], [20.8, 24.5]])),
+  },
+  // Canvas: a pencil lying corner to corner, its point at the lower left.
+  settingsCanvas: { viewBox: '0 0 28 28', body: solid(pencil([6, 22], 18.5, 2.8, 2)) },
+  // Events: a calendar page, its band under the top edge and its two rings standing up through it.
+  settingsEvents: { viewBox: '0 0 28 28', body: solid(frame(5, 6, 23, 22, 2.5) + box(6, 10, 22, 11) + box(9, 4, 10, 8) + box(18, 4, 19, 8)) },
 } as const satisfies Record<string, Glyph>
 
 export type IconName = keyof typeof ICONS

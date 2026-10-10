@@ -141,6 +141,15 @@ const CONTROL_ICONS = byMeaning({
   // Drawn for a line's left end; the right end wears the same drawing mirrored.
   lineEndNormal: [ICONS.lineEndNormal],
   lineEndArrow: [ICONS.lineEndArrow],
+  // The chart settings: its pages on the rail, and the marks its rows wear.
+  settingsSymbol: [ICONS.settingsSymbol],
+  settingsStatusLine: [ICONS.settingsStatusLine],
+  settingsScales: [ICONS.settingsScales],
+  settingsCanvas: [ICONS.settingsCanvas],
+  settingsEvents: [ICONS.settingsEvents],
+  tip: [ICONS.question],
+  volume: [ICONS.speaker],
+  volumeMuted: [ICONS.speakerMuted],
 })
 
 /** An icon of one of the chart's own controls. */

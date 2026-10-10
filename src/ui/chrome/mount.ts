@@ -36,6 +36,8 @@ import { createLayoutListStore } from './preferences'
 import type { LayoutChanges } from '../../widget/layoutChanges'
 import { mountTopBar, type TopBarHandle, type TopBarSlot } from './topBar'
 import { mountReplayTransport, type ReplayTransportHandle } from './replayBar'
+import { createChartSettingsDialog } from '../settings/dialog'
+import { ChartTemplates } from '../settings/templates'
 import type { MarkPainters } from '../../markPainters'
 import type { OfferedChartStyles } from '../../widget/styles'
 import type { OfferedTimeframes } from '../../widget/timeframes'
@@ -196,6 +198,18 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   }
   disposers.push(() => { indicatorDialog?.close({ animate: false }); deps.doors.showIndicatorPicker = () => undefined })
 
+  // The chart settings dialog is the chrome's, not the top bar's: the gear opens it, and so does the
+  // `chart.settings.open` command whether or not the bar shows the gear.
+  const settingsDialog = createChartSettingsDialog({ ...ctx, templates: deps.saveLoad ? new ChartTemplates(deps.saveLoad.templates('chart')) : null })
+  deps.doors.openSettings = (page) => settingsDialog.open(page)
+  disposers.push(
+    i18n.onChange(() => settingsDialog.sync()),
+    () => {
+      deps.doors.openSettings = () => false
+      settingsDialog.destroy()
+    },
+  )
+
   // ── The doors. The charts held this object before the chrome existed; filling it in place is
   // what makes their knocks land here from now on.
   deps.doors.openSearch = (request) => {
@@ -298,6 +312,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       layoutChanges: deps.layoutChanges,
       openSearch: () => deps.doors.openSearch({ mode: 'search', chart: widget.activeChart() }),
       notify,
+      settingsDialog,
     })
     if (deps.toolbarContainer) {
       // The host supplies space, never chart markup. This sibling surface has the same theme
@@ -404,6 +419,7 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
       topBar?.sync()
       bottomBar?.sync()
       replayBar?.sync()
+      settingsDialog.sync()
     },
     dispose() {
       disposed = true
