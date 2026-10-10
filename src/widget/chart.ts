@@ -97,7 +97,7 @@ import { attachFling, type Fling } from './fling'
 import { attachPinch } from './pinch'
 import { attachFreePan } from './freePan'
 import { watchPlotArea, type PlotArea } from './plotArea'
-import { attachMenuPlane, raiseMenuAt } from './menu'
+import { attachMenuPlane, levelAt, raiseMenuAt } from './menu'
 import { commandShown } from './access'
 import { symbolNames } from '../symbolLabel'
 import { attachPointerPlane } from './pointer'
@@ -1527,11 +1527,20 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
   })
 
+  /** Where the viewer's crosshair stands on the main pane's plot, from the pane's top left, or null
+   *  while it stands anywhere else. A crosshair a linked chart stands here follows another chart's
+   *  pointer, so it stands for none. */
+  let crosshairPoint: { x: number; y: number } | null = null
   // The plus follows the crosshair on the main pane, wherever that pane stands. The renderer reports
   // the move before it paints it, so the paint that moves the crosshair's label draws the plus there.
   chart.subscribeCrosshairMove((param) => {
-    scalePlus?.setPointer(param.point && (param.paneIndex ?? 0) === mainPane() ? param.point : null)
+    const point = param.point && (param.paneIndex ?? 0) === mainPane() ? param.point : null
+    scalePlus?.setPointer(point)
+    crosshairPoint = syncMuted ? null : point
   })
+  /** The price at the viewer's crosshair on the main pane's plot, while the chart draws a crosshair. */
+  const crosshairLevel = (): number | null =>
+    crosshairPoint && chart.options().crosshair?.mode !== CrosshairMode.Hidden ? levelAt(anchor, crosshairPoint.y, minMove()) : null
 
   // The watermark: the symbol written large behind the bars, in the parts the settings name.
   const watermark = attachWatermark({
@@ -2753,6 +2762,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       chart.timeScale().scrollToPosition(scrolledPosition(position, direction), false)
     },
     level: () => menuLevel,
+    crosshairLevel,
     formatter: () => symbolFormatter,
     compareOpen: (mode, changeFrom) => compare?.openDialog(mode, changeFrom),
     indicatorsOpen: (collection) => deps.doors.showIndicatorPicker(collection),

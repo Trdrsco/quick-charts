@@ -8,5 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { other: '移除{count}個指標' },
   'menu.removeDrawings': { other: '移除{count}個繪圖' },
   'menu.settings': '設定…',
-  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
+  'menu.drawHorizontalLine': '在{price}處繪製水平線',
 }

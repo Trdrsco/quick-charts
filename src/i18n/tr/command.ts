@@ -60,7 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'Çizim ayarları',
   'command.drawingCommitEdit': 'Çizim ayarlarını uygula',
   'command.drawingPlaceImage': 'Görsel yerleştir',
-  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
+  'command.drawingPlaceHorizontalLine': 'Yatay çizgi yerleştir',
   'command.drawingTemplateApply': 'Çizim şablonunu uygula',
   'command.drawingTemplateSave': 'Çizim şablonunu kaydet',
   'command.drawingTemplateRemove': 'Çizim şablonunu kaldır',

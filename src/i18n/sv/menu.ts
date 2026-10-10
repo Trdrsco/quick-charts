@@ -8,5 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { one: 'Ta bort {count} indikator', other: 'Ta bort {count} indikatorer' },
   'menu.removeDrawings': { one: 'Ta bort {count} ritning', other: 'Ta bort {count} ritningar' },
   'menu.settings': 'Inställningar…',
-  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
+  'menu.drawHorizontalLine': 'Rita horisontell linje vid {price}',
 }

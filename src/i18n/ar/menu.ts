@@ -8,5 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { zero: 'حذف {count} مؤشر', one: 'حذف {count} مؤشر', two: 'حذف {count} مؤشرين', few: 'حذف {count} مؤشرات', many: 'حذف {count} مؤشراً', other: 'حذف {count} مؤشر' },
   'menu.removeDrawings': { zero: 'حذف {count} رسم', one: 'حذف {count} رسم', two: 'حذف {count} رسمين', few: 'حذف {count} رسوم', many: 'حذف {count} رسماً', other: 'حذف {count} رسم' },
   'menu.settings': 'الإعدادات…',
-  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
+  'menu.drawHorizontalLine': 'رسم خط أفقي عند {price}',
 }

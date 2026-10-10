@@ -146,24 +146,42 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
   const panelId = `qc-chart-settings-panel-${dialogId}`
   const tabId = (page: string): string => `qc-chart-settings-tab-${dialogId}-${page}`
 
-  /** The rail's pages: the chart's own, with each contributed page after the one it names, or last. */
+  /** The rail's pages: the chart's own, each followed by the pages anchored on it, and each of those
+   *  by the pages anchored on it in turn, in contribution order. A contributed page's anchor is the
+   *  first id its `after` names that the rail holds, a chart page's or another contribution's, so the
+   *  order is read once every contribution is known and does not depend on which attached first. A
+   *  page whose `after` names no page the rail holds stands last, as do pages whose anchors name
+   *  only one another. */
   const pagesOf = (contributions: readonly ChartSettingsContribution[]): PageEntry[] => {
-    const pages: PageEntry[] = CHART_PAGES.map((page) => ({ id: page.id, chart: page.id, label: () => t()(page.label as ChartMessageKey) }))
+    const chartPages: PageEntry[] = CHART_PAGES.map((page) => ({ id: page.id, chart: page.id, label: () => t()(page.label as ChartMessageKey) }))
+    const ids = new Set(chartPages.map((page) => page.id))
+    const contributed: { entry: PageEntry; after: readonly string[] }[] = []
     for (const contribution of contributions) {
       if (!('page' in contribution.place)) continue
       const own = contribution.place.page
-      if (pages.some((page) => page.id === own.id)) continue
-      const entry: PageEntry = { id: own.id, label: () => own.label, contribution }
-      // A page placed after another contributed page that names the same chart page lands after it,
-      // so contributions keep their order.
-      let at = own.after ? pages.findIndex((page) => page.id === own.after) : -1
-      if (at < 0) {
-        pages.push(entry)
-        continue
-      }
-      while (pages[at + 1]?.contribution && 'page' in pages[at + 1]!.contribution!.place && (pages[at + 1]!.contribution!.place as { page: { after?: string } }).page.after === own.after) at++
-      pages.splice(at + 1, 0, entry)
+      // A later page of an id the rail already holds is left out.
+      if (ids.has(own.id)) continue
+      ids.add(own.id)
+      const after: readonly unknown[] = Array.isArray(own.after) ? own.after : own.after === undefined ? [] : [own.after]
+      contributed.push({ entry: { id: own.id, label: () => own.label, contribution }, after: after.filter((id): id is string => typeof id === 'string') })
     }
+    // The pages anchored on each page, in contribution order; `null` holds the pages that stand last.
+    const anchored = new Map<string | null, PageEntry[]>()
+    for (const { entry, after } of contributed) {
+      const anchor = after.find((id) => id !== entry.id && ids.has(id)) ?? null
+      anchored.set(anchor, [...(anchored.get(anchor) ?? []), entry])
+    }
+    const pages: PageEntry[] = []
+    const placed = new Set<string>()
+    const place = (entry: PageEntry): void => {
+      if (placed.has(entry.id)) return
+      placed.add(entry.id)
+      pages.push(entry)
+      for (const next of anchored.get(entry.id) ?? []) place(next)
+    }
+    for (const page of chartPages) place(page)
+    for (const page of anchored.get(null) ?? []) place(page)
+    for (const { entry } of contributed) place(entry)
     return pages
   }
 

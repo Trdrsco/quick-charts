@@ -60,7 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'Tetapan lukisan',
   'command.drawingCommitEdit': 'Guna tetapan lukisan',
   'command.drawingPlaceImage': 'Letakkan imej',
-  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
+  'command.drawingPlaceHorizontalLine': 'Letakkan garisan mendatar',
   'command.drawingTemplateApply': 'Guna templat lukisan',
   'command.drawingTemplateSave': 'Simpan templat lukisan',
   'command.drawingTemplateRemove': 'Buang templat lukisan',
