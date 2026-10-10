@@ -3,8 +3,8 @@
  * chart's own background, which each control stands on. */
 
 /* The auto-scale and logarithmic buttons at the foot of the scale: two 20x22 buttons 4px apart, a
- * letter each. Off, a button is a 1px outline on the chart's background; on, it is filled in the
- * text ink with its letter in the background. */
+ * letter each. Off, a button is a 1px outline on the chart's background; on, it is a held mode,
+ * filled in the emphasis fill a checked box wears with its letter in the inverse ink. */
 [data-qc-theme] .qc-scale-modes {
   position: absolute;
   z-index: 4;
@@ -36,9 +36,9 @@
 }
 
 [data-qc-theme] .qc-scale-mode[aria-pressed='true'] {
-  color: var(--qcd-chart-background, var(--qc-canvas-background));
-  background: var(--qc-text-primary);
-  border-color: var(--qc-text-primary);
+  color: var(--qc-text-inverse);
+  background: var(--qc-control-on);
+  border-color: var(--qc-control-on);
 }
 
 /* The box at the top of the scale naming what its prices are in: at least 64x26, four pixels in from
