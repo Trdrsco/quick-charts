@@ -53,6 +53,15 @@ export interface BarMark {
  *  shape, and what it means on a chart is the host's to say. */
 export type MarkIconId = 'mark.bolt' | 'mark.flag' | 'mark.star' | 'mark.clock' | 'mark.exclamation'
 
+/** How a time-scale mark's line is stroked: dashed is 5px drawn and 6px clear, dotted 1px drawn
+ *  and 4px clear. */
+export type MarkLineStyle = 'solid' | 'dashed' | 'dotted'
+
+/** A line through the whole pane at a time-scale mark's time. */
+export interface MarkLine {
+  style: MarkLineStyle
+}
+
 /** One mark under the time scale. */
 export interface TimescaleMark {
   id: string
@@ -67,4 +76,7 @@ export interface TimescaleMark {
    *  above the time scale and its inside the chart's background. Without one, or with an id the
    *  chart does not draw, the mark is a small dot near the foot of the pane. */
   icon?: MarkIconId
+  /** A 1px line in the mark's color through the whole pane at its time, drawn always and under the
+   *  bars, as a boundary is. Without one, the mark draws a line only while it is hovered. */
+  line?: MarkLine
 }

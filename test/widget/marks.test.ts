@@ -472,3 +472,50 @@ describe('the window the time-scale marks are asked for', () => {
     }
   })
 })
+
+describe('a time-scale mark’s line', () => {
+  it('runs 1px in its color through the whole pane at its time, under the bars, without a hover', () => {
+    const { primitive, paint } = rig({ marks: [{ id: 'a', time: 60, color: PURPLE, line: { style: 'dashed' } }], x: new Map([[60, 100]]) })
+    const calls = paint()
+    expect(named(calls, 'stroke')[0]).toMatchObject({ strokeStyle: '#ab47bc', lineWidth: 1, dash: [5, 6] })
+    expect([named(calls, 'moveTo')[0]!.args, named(calls, 'lineTo')[0]!.args]).toEqual([
+      [100.5, 0],
+      [100.5, 300],
+    ])
+    const views = primitive.paneViews() as { zOrder(): string }[]
+    expect(views.map((view) => view.zOrder())).toEqual(['bottom', 'top'])
+  })
+
+  it('strokes each style in its own pattern, and draws none for a style it does not know', () => {
+    const at = new Map([
+      [60, 100],
+      [120, 200],
+      [180, 300],
+      [240, 350],
+    ])
+    const { paint } = rig({
+      marks: [
+        { id: 'a', time: 60, color: 'info', line: { style: 'solid' } },
+        { id: 'b', time: 120, color: 'info', line: { style: 'dashed' } },
+        { id: 'c', time: 180, color: 'info', line: { style: 'dotted' } },
+        { id: 'd', time: 240, color: 'info', line: { style: 'wavy' as never } },
+      ],
+      x: at,
+    })
+    const strokes = named(paint(), 'stroke')
+    expect(strokes.map((call) => call.dash)).toEqual([[], [5, 6], [1, 4]])
+    expect(strokes.every((call) => call.strokeStyle === DARK_THEME['status.info'])).toBe(true)
+  })
+
+  it('draws a line for a mark past the last bar at its slot, and none for one off the pane', async () => {
+    const { layer, paint } = await plane({
+      marks: [
+        { id: 'a', time: 780, color: PURPLE, line: { style: 'dashed' } },
+        { id: 'b', time: 60 * 60, color: PURPLE, line: { style: 'dashed' } },
+      ],
+    })
+    const calls = paint()
+    expect(named(calls, 'moveTo').map((call) => call.args)).toEqual([[220.5, 0]])
+    layer.destroy()
+  })
+})

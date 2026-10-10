@@ -1,6 +1,7 @@
 // Drawing the neutral marks: the bar markers the renderer already understands, and a primitive that
-// draws the time-scale marks along the foot of the pane, each a glyph in a ring or a small dot. The
-// data contract they draw is `src/marks.ts`; nothing here interprets a mark, it only paints one.
+// draws the time-scale marks along the foot of the pane, each a glyph in a ring or a small dot, with
+// the line a mark names through the pane. The data contract they draw is `src/marks.ts`; nothing
+// here interprets a mark, it only paints one.
 import type { IChartApi, ISeriesApi, Logical, LogicalRange, SeriesMarker, SeriesType, Time, UTCTimestamp } from 'lightweight-charts'
 import { createSeriesMarkers, type ISeriesMarkersPluginApi } from 'lightweight-charts'
 import type { FeedBar } from '../datafeed'
@@ -8,7 +9,7 @@ import type { SemanticTheme, ThemeMode } from '../theme/schema'
 import { paintableColor } from '../settings/color'
 import { MARK_ICONS } from '../ui/controls/icons'
 import type { IconResolver } from '../ui/icons/resolver'
-import type { BarMark, MarkColor, MarkColorRole, MarkIconId, TimescaleMark } from '../marks'
+import type { BarMark, MarkColor, MarkColorRole, MarkIconId, MarkLineStyle, TimescaleMark } from '../marks'
 
 /** The color each theme role resolves through. */
 const ROLE_COLOR: Readonly<Record<MarkColorRole, (theme: SemanticTheme) => string>> = {
@@ -57,9 +58,10 @@ export function markersOf(marks: readonly BarMark[], theme: SemanticTheme, mode:
     }))
 }
 
-/** A primitive that draws the time-scale marks along the foot of the pane, and the hover line of the
- *  one under the pointer or held by a press. The renderer reads its marks and its theme through
- *  getters, so a refetch or a mode switch only has to poke it. */
+/** A primitive that draws the time-scale marks along the foot of the pane, the lines they name
+ *  through the pane under the bars, and the hover line of the one under the pointer or held by a
+ *  press. The renderers read the marks and the theme through getters, so a refetch or a mode switch
+ *  only has to poke it. */
 export interface TimescaleMarksPrimitive {
   paneViews(): unknown[]
   attached(param: { requestUpdate?: () => void }): void
@@ -97,8 +99,33 @@ const MARK_RING_WIDTH = 1.5
 const MARK_DOT_R = 3
 const MARK_DOT_INSET = 6
 const MARK_DOT_REACH = 6
-/** The dash a hovered mark's line runs up the pane with: 5px drawn, 6px clear. */
-const MARK_HOVER_DASH = [5, 6]
+/** The dash pattern of each line style a mark draws, at one pixel wide: a dash 5px drawn and 6px
+ *  clear, and a dot 1px drawn and 4px clear. A hovered mark's line is dashed. */
+const MARK_LINE_DASH: Readonly<Record<MarkLineStyle, readonly number[]>> = { solid: [], dashed: [5, 6], dotted: [1, 4] }
+const MARK_HOVER_DASH = MARK_LINE_DASH.dashed
+
+/** The line style a mark names, or null where it names none the chart draws. */
+const lineOf = (mark: TimescaleMark): MarkLineStyle | null => {
+  const style = mark.line && typeof mark.line === 'object' ? mark.line.style : null
+  return typeof style === 'string' && Object.hasOwn(MARK_LINE_DASH, style) ? style : null
+}
+
+/** One vertical line, `width` device pixels wide, down the whole of a bitmap at a CSS x. */
+function strokeDown(scope: BitmapScope, x: number, color: string, dash: readonly number[], bottom: number): void {
+  const ctx = scope.context
+  const width = Math.max(1, Math.round(scope.horizontalPixelRatio))
+  // A line of odd pixel width sits on a pixel's center, so it is crisp rather than smeared.
+  const at = Math.round(x * scope.horizontalPixelRatio) + (width % 2 ? 0.5 : 0)
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.lineWidth = width
+  ctx.setLineDash(dash.map((length) => length * scope.verticalPixelRatio))
+  ctx.beginPath()
+  ctx.moveTo(at, 0)
+  ctx.lineTo(at, bottom)
+  ctx.stroke()
+  ctx.restore()
+}
 /** How strongly a hovered ring's inside takes the mark's color over the background. */
 const MARK_HOVER_TINT = 0.15
 
@@ -246,22 +273,26 @@ export function createTimescaleMarks(deps: TimescaleMarksDeps): TimescaleMarksPr
   }
 
   /** A hovered mark's line: dashed in its color from the top of the pane down to its shape. */
-  const drawHoverLine = (scope: BitmapScope, p: Placed): void => {
-    const ctx = scope.context
-    const h = scope.horizontalPixelRatio
-    const v = scope.verticalPixelRatio
-    const width = Math.max(1, Math.round(h))
-    // A line of odd pixel width sits on a pixel's center, so it is crisp rather than smeared.
-    const at = Math.round(p.x * h) + (width % 2 ? 0.5 : 0)
-    ctx.save()
-    ctx.strokeStyle = p.color
-    ctx.lineWidth = width
-    ctx.setLineDash(MARK_HOVER_DASH.map((length) => length * v))
-    ctx.beginPath()
-    ctx.moveTo(at, 0)
-    ctx.lineTo(at, p.shapeTop * v)
-    ctx.stroke()
-    ctx.restore()
+  const drawHoverLine = (scope: BitmapScope, p: Placed): void => strokeDown(scope, p.x, p.color, MARK_HOVER_DASH, p.shapeTop * scope.verticalPixelRatio)
+
+  /** The lines the marks name, each through the whole pane at its mark's time, under the bars. */
+  const lines = {
+    draw(target: unknown) {
+      const list = deps.marks().filter((mark) => lineOf(mark) !== null)
+      if (list.length === 0) return
+      ;(target as { useBitmapCoordinateSpace(fn: (scope: BitmapScope) => void): void }).useBitmapCoordinateSpace((scope) => {
+        const ts = chart.timeScale()
+        const palette = deps.theme()
+        const mode = deps.mode()
+        const width = scope.bitmapSize.width / scope.horizontalPixelRatio
+        for (const mark of list) {
+          const slot = deps.slotOf(mark.time)
+          const x = slot === null ? null : ts.logicalToCoordinate(slot as Logical)
+          if (x == null || x < 0 || x > width) continue
+          strokeDown(scope, x, markColor(mark.color, palette, mode), MARK_LINE_DASH[lineOf(mark)!], scope.bitmapSize.height)
+        }
+      })
+    },
   }
 
   /** One glyph mark: the ring in the mark's color around the chart's background, tinted with its
@@ -332,7 +363,10 @@ export function createTimescaleMarks(deps: TimescaleMarksDeps): TimescaleMarksPr
   let requestUpdate: (() => void) | null = null
   return {
     paneViews() {
-      return [{ zOrder: () => 'top' as const, renderer: () => renderer }]
+      return [
+        { zOrder: () => 'bottom' as const, renderer: () => lines },
+        { zOrder: () => 'top' as const, renderer: () => renderer },
+      ]
     },
     attached(param) {
       requestUpdate = param?.requestUpdate ?? null
