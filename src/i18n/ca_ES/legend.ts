@@ -3,9 +3,9 @@ import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
   'legend.open': 'O',
-  'legend.high': 'H',
-  'legend.low': 'L',
-  'legend.close': 'C',
+  'legend.high': 'Màx',
+  'legend.low': 'Mín',
+  'legend.close': 'T',
   'legend.change': '{change} ({percent}%)',
   'legend.volume': 'Vol',
   'legend.indicatorSettings': 'Configuració de l’indicador',
@@ -22,5 +22,5 @@ export const legend: Translation<typeof source> = {
   'legend.scaleIndexed': '100',
   'legend.changeSymbol': 'Canvia el símbol',
   'legend.removeCompare': 'Elimina la comparació',
-  'legend.removeIndicator': 'Remove indicator',
+  'legend.removeIndicator': 'Elimina l’indicador',
 }

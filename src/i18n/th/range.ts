@@ -17,6 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': 'เลื่อนไปทางซ้าย',
   'range.scrollRight': 'เลื่อนไปทางขวา',
   'range.reset': 'รีเซ็ตมุมมองกราฟ',
-  'range.maximizeChart': 'Maximize chart',
-  'range.restoreChart': 'Restore chart',
+  'range.maximizeChart': 'ขยายกราฟเต็มพื้นที่',
+  'range.restoreChart': 'คืนขนาดกราฟ',
 }

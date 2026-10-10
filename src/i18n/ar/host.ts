@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'لا يوفر هذا المصدر بيانات الحجم',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'حُفظ في مكان آخر منذ أن فتحته. حمّل النسخة الأحدث قبل الحفظ.',
+  'host.saveNotFound': 'حُذف هذا في مكان آخر. احفظه مرة أخرى كعنصر جديد.',
+  'host.loadInvalid': 'تعذر فتح هذا. لم يتغير شيء على الشاشة.',
+  'host.loadUnavailable': 'تعذر الوصول إلى عملك المحفوظ. لم يتغير شيء على الشاشة.',
+  'host.loadNotRestored': 'تعذر فتح هذا، وتعذرت أيضاً استعادة ما كان على الشاشة. لن يحفظ الرسم البياني حتى تفتح رسماً بيانياً أو تخطيطاً محفوظاً. احفظ نسخة أولاً للاحتفاظ بما على الشاشة.',
+  'host.notSaving': 'الرسم البياني لا يحفظ. افتح رسماً بيانياً أو تخطيطاً محفوظاً للبدء من حالة معروفة. حفظ نسخة يحتفظ بما على الشاشة، لكن الرسم البياني سيظل لا يحفظ.',
 }

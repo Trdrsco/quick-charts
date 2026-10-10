@@ -2,12 +2,12 @@ import type { Translation } from '../runtime'
 import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
-  'legend.open': 'O',
-  'legend.high': 'H',
-  'legend.low': 'L',
-  'legend.close': 'C',
+  'legend.open': '始値',
+  'legend.high': '高値',
+  'legend.low': '安値',
+  'legend.close': '終値',
   'legend.change': '{change} ({percent}%)',
-  'legend.volume': 'Vol',
+  'legend.volume': '出来高',
   'legend.indicatorSettings': 'インジケーター設定',
   'legend.showRows': 'インジケーターの行を表示',
   'legend.hideRows': 'インジケーターの行を非表示',
@@ -22,5 +22,5 @@ export const legend: Translation<typeof source> = {
   'legend.scaleIndexed': '100',
   'legend.changeSymbol': '銘柄の変更',
   'legend.removeCompare': '比較を削除',
-  'legend.removeIndicator': 'Remove indicator',
+  'legend.removeIndicator': 'インジケーターを削除',
 }

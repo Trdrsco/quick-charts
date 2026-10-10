@@ -2,12 +2,12 @@ import type { Translation } from '../runtime'
 import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
-  'legend.open': 'O',
+  'legend.open': 'Ö',
   'legend.high': 'H',
   'legend.low': 'L',
-  'legend.close': 'C',
+  'legend.close': 'S',
   'legend.change': '{change} ({percent}%)',
-  'legend.volume': 'Vol',
+  'legend.volume': 'Vol.',
   'legend.indicatorSettings': 'Indikatorinställningar',
   'legend.showRows': 'Visa indikatorrader',
   'legend.hideRows': 'Dölj indikatorrader',
@@ -22,5 +22,5 @@ export const legend: Translation<typeof source> = {
   'legend.scaleIndexed': '100',
   'legend.changeSymbol': 'Byt symbol',
   'legend.removeCompare': 'Ta bort jämförelse',
-  'legend.removeIndicator': 'Remove indicator',
+  'legend.removeIndicator': 'Ta bort indikator',
 }

@@ -4,5 +4,5 @@ import type { timezone as source } from '../en/timezone'
 export const timezone: Translation<typeof source> = {
   'timezone.title': 'Часовой пояс графика',
   'timezone.exchange': 'Биржа',
-  'timezone.quarter': 'Q{quarter}',
+  'timezone.quarter': '{quarter} кв.',
 }

@@ -2,12 +2,12 @@ import type { Translation } from '../runtime'
 import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
-  'legend.open': 'O',
-  'legend.high': 'H',
-  'legend.low': 'L',
-  'legend.close': 'C',
+  'legend.open': '開',
+  'legend.high': '高',
+  'legend.low': '低',
+  'legend.close': '收',
   'legend.change': '{change} ({percent}%)',
-  'legend.volume': 'Vol',
+  'legend.volume': '成交量',
   'legend.indicatorSettings': '指標設定',
   'legend.showRows': '顯示指標列',
   'legend.hideRows': '隱藏指標列',
@@ -22,5 +22,5 @@ export const legend: Translation<typeof source> = {
   'legend.scaleIndexed': '100',
   'legend.changeSymbol': '變更商品',
   'legend.removeCompare': '移除比較',
-  'legend.removeIndicator': 'Remove indicator',
+  'legend.removeIndicator': '移除指標',
 }

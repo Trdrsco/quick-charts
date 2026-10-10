@@ -17,6 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': 'גלילה שמאלה',
   'range.scrollRight': 'גלילה ימינה',
   'range.reset': 'איפוס תצוגת הגרף',
-  'range.maximizeChart': 'Maximize chart',
-  'range.restoreChart': 'Restore chart',
+  'range.maximizeChart': 'הגדלת הגרף',
+  'range.restoreChart': 'שחזור הגרף',
 }
