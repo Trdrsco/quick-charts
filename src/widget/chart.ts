@@ -512,6 +512,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  epoch it was issued under, so a newer preset, a symbol switch, a refused load or disposal
    *  drops it rather than framing a picture nobody asked for. */
   let pendingFrame: { epoch: number; span: RangeSpan; tf: string } | null = null
+  /** A timeframe change made while the settings keep the left edge: the moment the view's left edge
+   *  stood at and how many bar slots it showed, held until that load's first paint stands the new
+   *  bars from the same moment in place of the default fit. Bound to its load epoch, as a preset is. */
+  let pendingLeftEdge: { epoch: number; time: number; slots: number } | null = null
   /** The level the open menu was raised at, so a copy runs on that and not on wherever the pointer
    *  wandered to while the menu was up. */
   let menuLevel: number | null = null
@@ -1817,6 +1821,46 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       })
   }
 
+  /** Stand the view's left edge at a moment, showing as many bar slots as before. History older than
+   *  the loaded bars is asked for first when the moment lies before them, in one ask; a feed at its
+   *  end, or one that fails, stands the view on the oldest bar held. */
+  function keepLeftEdge(edge: { epoch: number; time: number; slots: number }): void {
+    const place = (): void => {
+      const shown = shownBars()
+      if (shown.length === 0) return
+      let index = shown.findIndex((bar) => bar.t >= edge.time)
+      if (index < 0) index = shown.length - 1
+      chart.timeScale().setVisibleLogicalRange({ from: index, to: index + edge.slots })
+    }
+    const oldest = bars[0]
+    const parsed = parseTimeframe(tf)
+    if (!oldest || oldest.t <= edge.time || noMoreHistory || replay.active() || !parsed || parsed.unit === 't') {
+      place()
+      return
+    }
+    const short = Math.min(SPAN_PAGE_MAX_BARS, Math.ceil((oldest.t - edge.time) / timeframeSeconds(parsed)) + PAGE_TRIGGER_BARS)
+    paging = true
+    const myEpoch = epoch
+    void fetchOlder(oldest.t - 1, short)
+      .then(({ olderBars, end }) => {
+        if (disposed || myEpoch !== epoch) return
+        if (end) noMoreHistory = true
+        const older = olderBars.filter((bar) => bar.t < oldest.t)
+        if (older.length > 0) {
+          bars = [...older, ...bars]
+          paintAll()
+          refreshMarks()
+        }
+      })
+      .catch(() => {
+        /* transient; the view stands on the history already held */
+      })
+      .finally(() => {
+        if (myEpoch === epoch) paging = false
+        if (!disposed && myEpoch === epoch) place()
+      })
+  }
+
   /** Replay's first available date: page older history back to the feed's true beginning, or to the
    *  depth it states, prepending each page while holding the view, then start at the oldest bar held.
    *  A session already open is left first, because its window is fixed and paging under it would
@@ -1888,6 +1932,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     session.reset() // the next resolve states the new symbol's model, and unresolved never bands
     marks?.clear()
     setSymbolFormat(null) // until the next resolve, the declared stand-in
+    pendingLeftEdge = null // a left edge kept for an earlier load stands nothing on this one
     replay.abandon() // a replay window is symbol and timeframe bound; the switch invalidates it
     replaySlice = null // and its cursor slice with it: the new symbol paints from its own model
     legend.setHeader(symbol, tf)
@@ -1946,10 +1991,13 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         // what the viewer asked to see, so it frames this first paint instead of the default fit.
         const framing = pendingFrame?.epoch === myEpoch ? pendingFrame : null
         pendingFrame = null
+        const edge = pendingLeftEdge?.epoch === myEpoch ? pendingLeftEdge : null
+        pendingLeftEdge = null
         if (framing) {
           frameRange(chart, anchor, framing.span, framing.tf)
           fillSpan(framing.span, framing.tf)
-        } else chart.timeScale().fitContent()
+        } else if (edge) keepLeftEdge(edge)
+        else chart.timeScale().fitContent()
         holdAxisAfterFrame()
         refreshMarks()
         if (!ready) {
@@ -2304,6 +2352,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     setTimeframe(next) {
       if (disposed || next === tf || !offersTimeframe(deps.timeframes, next)) return
       setRangePreset(null)
+      // The view's left edge, read before the switch clears the bars, for the settings that keep it.
+      const edge = eff.timeScale.keepLeftEdge && historyPainted ? ranges.visibleRange() : null
+      const slots = edge ? ranges.logicalRange() : null
       tf = next
       storage.set(TF_KEY, next)
       drawings.setTimeframe(next)
@@ -2311,6 +2362,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       events.emit('timeframe', next)
       extensions.host.timeframeChanged(next)
       load()
+      pendingLeftEdge = edge && slots ? { epoch, time: edge.from, slots: Math.max(1, slots.to - slots.from) } : null
       compare?.setTimeframe()
     },
     style: () => style,

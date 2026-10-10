@@ -42,6 +42,8 @@ The currency and unit box (`priceScale.currencyAndUnit`) names what the symbol's
 
 The price-to-bar ratio lock (`priceScale.lockPriceToBarRatio`) holds the price one bar's width spans on a regular scale: engaging it with no `priceToBarRatio` takes the ratio on screen, to seven decimals, into the viewer's leaf, the scale stops framing itself, and every zoom of the time scale rescales the price axis by the same factor about its middle; a ratio of the viewer's own holds at once.
 
+Keeping the left edge (`timeScale.keepLeftEdge`) stands a new timeframe's bars from the moment the view's left edge stood at, with as many bar slots in view, asking the feed once for older bars when that moment lies before the first page, rather than fitting the loaded history. A range preset that changes the timeframe frames its own span as before.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:

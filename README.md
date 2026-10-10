@@ -2319,14 +2319,16 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   itself, and every zoom of the time scale rescales the price axis by the same factor about its
   middle. A scale that is not regular holds no ratio.
 - `timeScale`: the crosshair label's date format (`CHART_DATE_FORMATS`), the weekday before it, and
-  a clock of 24 hours or of 12, which the axis times follow too.
+  a clock of 24 hours or of 12, which the axis times follow too. With `keepLeftEdge`, a timeframe
+  change stands the new bars from the moment the view's left edge stood at, showing as many bar
+  slots, asking the feed once for older bars when that moment lies before the first page, in place
+  of fitting the loaded history.
 - `canvas`: the background, solid or a vertical gradient; each grid's switch, color and stroke; the
   crosshair's color, stroke and width; the watermark's parts and ink; the scales' text and lines;
   when the navigation buttons show; and the margins, the right one in bars.
 - `events`: a line at each trading day's start, in its own stroke.
 
-The leaves for the plus button, keeping the left edge across a timeframe change and the pane buttons are stored and
-saved, and draw nothing yet.
+The leaves for the plus button and the pane buttons are stored and saved, and draw nothing yet.
 
 ## Compare
 

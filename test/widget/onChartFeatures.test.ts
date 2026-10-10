@@ -403,6 +403,55 @@ describe('the price to bar ratio lock', () => {
   })
 })
 
+describe('keeping the left edge', () => {
+  /** Bars every timeframe's step apart up to one moment, served newest-last as a feed pages them. */
+  const END = Date.UTC(2026, 9, 6, 12) / 1000
+  const asks: { tf: string; to?: number; countBack?: number }[] = []
+  const stepped: ChartDatafeed['history'] = async (_symbol, tf, range) => {
+    asks.push({ tf, ...(range?.to !== undefined ? { to: range.to } : {}), ...(range?.countBack !== undefined ? { countBack: range.countBack } : {}) })
+    const step = tf === '5m' ? 300 : 60
+    const to = range?.to ?? END
+    const count = range?.countBack ?? 300
+    const last = Math.floor(to / step) * step
+    const out: FeedBar[] = []
+    for (let i = count - 1; i >= 0; i--) {
+      const at = last - i * step
+      out.push({ t: at, o: 1, h: 2, l: 0.5, c: 1.5, v: 1 })
+    }
+    return { bars: out, noData: false }
+  }
+
+  it('stands the new timeframe from the moment the old one stood, paging older bars in first', async () => {
+    asks.length = 0
+    const { chart, renderer } = await mount({ datafeed: feed({ history: stepped }), timeframe: '5m' })
+    const edge = END - 20 * 3600
+    renderer.timeRange = { from: edge, to: END }
+    renderer.logicalRange = { from: 60, to: 300 }
+    chart.applySettings({ timeScale: { keepLeftEdge: true } })
+    chart.setTimeframe('1m')
+    await settle()
+    // The first 1m page holds five hours; the edge is twenty hours back, so the first ask older reaches
+    // it (a view standing near the oldest bar may page on from there, as any view there does).
+    const older = asks.filter((ask) => ask.tf === '1m' && ask.to !== undefined)
+    expect(older.length).toBeGreaterThanOrEqual(1)
+    expect(older[0]!.countBack).toBeGreaterThanOrEqual(15 * 60)
+    const last = renderer.logicalWrites.at(-1)!
+    const anchorRows = renderer.series[0]!.data as { time: number }[]
+    expect(anchorRows[last.from]!.time).toBe(edge)
+    expect(last.to - last.from).toBe(240)
+  })
+
+  it('fits the new timeframe as before while the setting is off', async () => {
+    const { chart, renderer } = await mount({ datafeed: feed({ history: stepped }), timeframe: '5m' })
+    renderer.timeRange = { from: END - 3600, to: END }
+    renderer.logicalRange = { from: 280, to: 300 }
+    const writes = renderer.logicalWrites.length
+    chart.setTimeframe('1m')
+    await settle()
+    expect(renderer.logicalWrites.length).toBe(writes)
+  })
+})
+
 describe('the price and percentage label', () => {
   it('writes a change to two decimals with its sign', () => {
     expect(signedPercentText(0.0008, 'en')).toBe('+0.08%')
