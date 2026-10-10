@@ -3,11 +3,11 @@ import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
   'legend.open': 'O',
-  'legend.high': 'H',
-  'legend.low': 'L',
-  'legend.close': 'C',
+  'legend.high': 'Maks',
+  'legend.low': 'Min',
+  'legend.close': 'Z',
   'legend.change': '{change} ({percent}%)',
-  'legend.volume': 'Vol',
+  'legend.volume': 'Wol',
   'legend.indicatorSettings': 'Ustawienia wskaźnika',
   'legend.showRows': 'Pokaż wiersze wskaźników',
   'legend.hideRows': 'Ukryj wiersze wskaźników',
@@ -22,5 +22,5 @@ export const legend: Translation<typeof source> = {
   'legend.scaleIndexed': '100',
   'legend.changeSymbol': 'Zmień symbol',
   'legend.removeCompare': 'Usuń porównanie',
-  'legend.removeIndicator': 'Remove indicator',
+  'legend.removeIndicator': 'Usuń wskaźnik',
 }

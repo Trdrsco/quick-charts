@@ -2,12 +2,12 @@ import type { Translation } from '../runtime'
 import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
-  'legend.open': 'O',
-  'legend.high': 'H',
-  'legend.low': 'L',
-  'legend.close': 'C',
+  'legend.open': 'Mở',
+  'legend.high': 'Cao',
+  'legend.low': 'Thấp',
+  'legend.close': 'Đóng',
   'legend.change': '{change} ({percent}%)',
-  'legend.volume': 'Vol',
+  'legend.volume': 'KL',
   'legend.indicatorSettings': 'Cài đặt chỉ báo',
   'legend.showRows': 'Hiện các dòng chỉ báo',
   'legend.hideRows': 'Ẩn các dòng chỉ báo',
@@ -22,5 +22,5 @@ export const legend: Translation<typeof source> = {
   'legend.scaleIndexed': '100',
   'legend.changeSymbol': 'Thay đổi mã',
   'legend.removeCompare': 'Xóa so sánh',
-  'legend.removeIndicator': 'Remove indicator',
+  'legend.removeIndicator': 'Xóa chỉ báo',
 }
