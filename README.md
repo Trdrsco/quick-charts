@@ -2297,6 +2297,10 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   and values, and a backdrop of the chart's background at an opacity.
 - `priceLabels`: the countdown, labels kept apart, the symbol's last value, its dotted line (its
   color, null to follow the last bar, and width) and its name, and each indicator's value and name.
+  The previous session's close (on an intraday chart), the high and low of the bars in view, and
+  the bid and ask from the feed's prices each take a value box on the scale in their color, a tag
+  beside it ("High", "Low", "Bid", "Ask"), and a dotted line across the plot, each part on its own
+  switch. The high and low wear grey lines and navy labels while their color is null.
 - `timeScale`: the crosshair label's date format (`CHART_DATE_FORMATS`), the weekday before it, and
   a clock of 24 hours or of 12, which the axis times follow too.
 - `canvas`: the background, solid or a vertical gradient; each grid's switch, color and stroke; the
@@ -2305,9 +2309,8 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
 - `events`: a line at each trading day's start, in its own stroke.
 
 The leaves for the currency and unit box, the scale mode buttons, the price-to-bar ratio lock, the
-scale placement, the plus button, the previous close, the high and low and the bid and ask lines,
-the extended-hours price labels, keeping the left edge across a timeframe change and the pane
-buttons are stored and saved, and draw nothing yet.
+scale placement, the plus button, the extended-hours price labels, keeping the left edge across a
+timeframe change and the pane buttons are stored and saved, and draw nothing yet.
 
 ## Compare
 

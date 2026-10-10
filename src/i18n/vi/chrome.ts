@@ -15,4 +15,8 @@ export const chrome: Translation<typeof source> = {
   'chrome.sessionsHeading': 'Các phiên',
   'chrome.navigation': 'Điều hướng biểu đồ',
   'chrome.activeChart': '{symbol}, {timeframe}',
+  'chrome.scaleHigh': 'High',
+  'chrome.scaleLow': 'Low',
+  'chrome.scaleBid': 'Bid',
+  'chrome.scaleAsk': 'Ask',
 }

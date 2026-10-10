@@ -15,4 +15,8 @@ export const chrome: Translation<typeof source> = {
   'chrome.sessionsHeading': 'Séances',
   'chrome.navigation': 'Navigation dans le graphique',
   'chrome.activeChart': '{symbol}, {timeframe}',
+  'chrome.scaleHigh': 'High',
+  'chrome.scaleLow': 'Low',
+  'chrome.scaleBid': 'Bid',
+  'chrome.scaleAsk': 'Ask',
 }

@@ -15,4 +15,8 @@ export const chrome: Translation<typeof source> = {
   'chrome.sessionsHeading': '交易时段',
   'chrome.navigation': '图表导航',
   'chrome.activeChart': '{symbol}，{timeframe}',
+  'chrome.scaleHigh': 'High',
+  'chrome.scaleLow': 'Low',
+  'chrome.scaleBid': 'Bid',
+  'chrome.scaleAsk': 'Ask',
 }

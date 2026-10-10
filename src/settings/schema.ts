@@ -240,7 +240,8 @@ export interface ChartSettings {
     previousCloseLineWidth: number
     highLowValue: boolean
     highLowLine: boolean
-    /** Null follows the bar colors. */
+    /** One color for the high and low lines and labels, or null for the factory pair: grey lines
+     *  and navy labels. */
     highLowColor: string | null
     highLowLineWidth: number
     /** Bid and ask come from the datafeed's quotes. */

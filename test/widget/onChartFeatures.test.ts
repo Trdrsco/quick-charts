@@ -1,13 +1,16 @@
 // @vitest-environment happy-dom
 // The on-chart features the settings switch on, on a mounted chart: what each draws, where its data
 // comes from, and what it leaves alone while it is off.
-import { afterEach, describe, expect, it } from 'vitest'
-import { vi } from 'vitest'
+import { LineStyle } from 'lightweight-charts'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ChartDatafeed, FeedBar, SymbolPrices } from '../../src/datafeed'
+import { chartSettingsDefaults } from '../../src/settings/defaults'
 import type { PartialChartSettings } from '../../src/settings/schema'
 import type { PriceFormat, SymbolInfo } from '../../src/symbology'
+import { DARK_THEME } from '../../src/theme/palettes'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import type { UiConfig } from '../../src/widget/options'
+import { priceLevels, visibleRange } from '../../src/widget/priceLevels'
 import { barValue } from '../../src/widget/styles'
 import { lastRenderer, type FakeRenderer, type FakeSeries } from './rendererFake'
 
@@ -136,6 +139,87 @@ describe('the last day change', () => {
     const { chart, container } = await mount()
     chart.applySettings({ statusLine: { lastDayChange: true } })
     expect(dayChange(container).hidden).toBe(true)
+  })
+})
+
+/** The price lines on the style series, as the renderer holds their options. */
+const lines = (renderer: FakeRenderer): Record<string, unknown>[] =>
+  main(renderer).priceLines.map((line) => (line as { options(): Record<string, unknown> }).options())
+
+describe('the price levels', () => {
+  it('reads each level only while its setting asks, and finds the high and low in view', () => {
+    const settings = chartSettingsDefaults(DARK_THEME)
+    const facts = { intraday: true, previousClose: 10, range: { high: 12, low: 8 }, bid: 9.9, ask: 10.1 }
+    const tags = { high: 'High', low: 'Low', bid: 'Bid', ask: 'Ask' }
+    expect(priceLevels(settings, facts, tags)).toEqual([])
+    const on = { ...settings, priceLabels: { ...settings.priceLabels, previousCloseLine: true, highLowValue: true, bidAskValue: true, bidAskLine: true } }
+    expect(priceLevels(on, facts, tags).map((level) => [level.key, level.price, level.title, level.value, level.line])).toEqual([
+      ['previousClose', 10, '', false, true],
+      ['high', 12, 'High', true, false],
+      ['low', 8, 'Low', true, false],
+      ['ask', 10.1, 'Ask', true, true],
+      ['bid', 9.9, 'Bid', true, true],
+    ])
+    // The previous close is an intraday level.
+    expect(priceLevels(on, { ...facts, intraday: false }, tags).map((level) => level.key)).not.toContain('previousClose')
+    const bars = [1, 2, 3, 4].map((i) => ({ t: i, h: 10 + i, l: 10 - i }))
+    expect(visibleRange(bars, 2, 3)).toEqual({ high: 13, low: 7 })
+    expect(visibleRange(bars, 2, 3, (bar) => bar.h)).toEqual({ high: 13, low: 12 })
+    expect(visibleRange(bars, 5, 9)).toBeNull()
+  })
+
+  it('marks the previous close in its own color, the line dotted', async () => {
+    const midnight = Date.UTC(2026, 9, 6) / 1000
+    const bars: FeedBar[] = [
+      { t: midnight - 60, o: 100, h: 101, l: 99, c: 101, v: 1 },
+      { t: midnight, o: 101, h: 103, l: 100, c: 102, v: 1 },
+    ]
+    const { chart, renderer } = await mount({ datafeed: feed({ history: async () => ({ bars, noData: false }) }) })
+    expect(lines(renderer)).toEqual([])
+    chart.applySettings({ priceLabels: { previousCloseValue: true, previousCloseLine: true } })
+    expect(lines(renderer)).toEqual([
+      expect.objectContaining({ price: 101, color: '#555555', axisLabelColor: '#555555', axisLabelTextColor: '#ffffff', lineStyle: LineStyle.SparseDotted, lineWidth: 1, lineVisible: true, axisLabelVisible: true, title: '' }),
+    ])
+    chart.applySettings({ priceLabels: { previousCloseValue: false, previousCloseColor: '#123456', previousCloseLineWidth: 2 } })
+    expect(lines(renderer)).toEqual([expect.objectContaining({ color: '#123456', lineWidth: 2, axisLabelVisible: false })])
+    chart.applySettings({ priceLabels: { previousCloseLine: false } })
+    expect(lines(renderer)).toEqual([])
+  })
+
+  it('marks the high and low of the bars in view under their tags, and follows the view', async () => {
+    const { chart, renderer } = await mount()
+    renderer.timeRange = { from: BARS[10]!.t, to: BARS[19]!.t }
+    chart.applySettings({ priceLabels: { highLowValue: true, highLowLine: true } })
+    expect(lines(renderer)).toEqual([
+      expect.objectContaining({ price: BARS[19]!.h, title: 'High', color: '#808080', axisLabelColor: '#142e61', lineStyle: LineStyle.SparseDotted }),
+      expect.objectContaining({ price: BARS[10]!.l, title: 'Low', color: '#808080', axisLabelColor: '#142e61' }),
+    ])
+    renderer.timeRange = { from: BARS[0]!.t, to: BARS[5]!.t }
+    renderer.fireLogicalRange()
+    expect(lines(renderer).map((line) => line.price)).toEqual([BARS[5]!.h, BARS[0]!.l])
+    chart.applySettings({ priceLabels: { highLowColor: '#00ff00' } })
+    expect(lines(renderer)[0]).toMatchObject({ color: '#00ff00', axisLabelColor: '#00ff00' })
+  })
+
+  it('marks the bid and ask from the feed prices, and moves them to a new style series', async () => {
+    const { datafeed, push } = pricedFeed()
+    const { chart, renderer } = await mount({ datafeed })
+    chart.applySettings({ priceLabels: { bidAskValue: true, bidAskLine: true } })
+    expect(lines(renderer)).toEqual([])
+    push({ bid: 4528.5, ask: 4529.25 })
+    expect(lines(renderer)).toEqual([
+      expect.objectContaining({ price: 4529.25, title: 'Ask', color: '#f7525f', axisLabelColor: '#f7525f' }),
+      expect.objectContaining({ price: 4528.5, title: 'Bid', color: '#2962ff', axisLabelColor: '#2962ff' }),
+    ])
+    push({ bid: 4528.75 })
+    expect(lines(renderer)[1]).toMatchObject({ price: 4528.75 })
+    // A line alone wears no tag: the renderer writes a tag only beside a value box.
+    chart.applySettings({ priceLabels: { bidAskValue: false } })
+    expect(lines(renderer).map((line) => [line.title, line.axisLabelVisible])).toEqual([['', false], ['', false]])
+    const before = main(renderer)
+    chart.setStyle('line')
+    expect(before.priceLines).toEqual([])
+    expect(lines(renderer)).toHaveLength(2)
   })
 })
 

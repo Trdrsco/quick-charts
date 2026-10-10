@@ -2,6 +2,11 @@
 // The keys the catalog gained since 5.0.0, the first release of this major. A dictionary of
 // your own may leave each one out: until it carries the key, the chart reads it in English and
 // reports it to `onMissing`. The next major's baseline makes every one of them required.
-export const KEYS_ADDED_IN_MAJOR = [] as const
+export const KEYS_ADDED_IN_MAJOR = [
+  'chrome.scaleAsk',
+  'chrome.scaleBid',
+  'chrome.scaleHigh',
+  'chrome.scaleLow',
+] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

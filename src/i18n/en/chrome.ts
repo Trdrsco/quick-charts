@@ -23,4 +23,10 @@ export const chrome = {
   'chrome.navigation': 'Chart navigation',
   /** The active chart's identity as the toolbar reads it aloud; `{symbol}` and `{timeframe}` are data. */
   'chrome.activeChart': '{symbol}, {timeframe}',
+  /** The tags beside the price levels the price scale marks: the visible range's high and low, and
+   *  the bid and the ask. */
+  'chrome.scaleHigh': 'High',
+  'chrome.scaleLow': 'Low',
+  'chrome.scaleBid': 'Bid',
+  'chrome.scaleAsk': 'Ask',
 } as const

@@ -108,6 +108,7 @@ import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, t
 import { registerChartCommands } from './chartCommands'
 import { attachCountdown, createCountdownClock, type CountdownLayer } from './countdown'
 import { attachPrices, previousCloseFromBars, statedPreviousClose } from './prices'
+import { attachPriceLevels, visibleRange, type PriceLevelFacts, type PriceLevelsLayer } from './priceLevels'
 import {
   DEFAULT_TIMEZONE,
   makeCrosshairTimeFormatter,
@@ -1092,6 +1093,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     : null
 
   let countdown: CountdownLayer | null = null
+  let levels: PriceLevelsLayer | null = null
   const replay = attachReplayPlane({
     chart,
     datafeed,
@@ -1165,6 +1167,34 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     setInterval: (callback, delay) => window.setInterval(callback, delay),
     clearInterval: (timer) => window.clearInterval(timer as number),
   })
+
+  // The price levels the price labels settings mark: the previous close, the high and low in view,
+  // and the bid and ask. Each fact is read only while its setting asks for it.
+  levels = attachPriceLevels({
+    series: () => series,
+    settings: () => eff,
+    enabled: () => deps.ui.priceScale,
+    facts: () => {
+      const labels = eff.priceLabels
+      const intraday = isIntradayTimeframe(tf)
+      const live = labels.bidAskValue || labels.bidAskLine ? livePrices() : null
+      let range: PriceLevelFacts['range'] = null
+      if (labels.highLowValue || labels.highLowLine) {
+        const view = chart.timeScale().getVisibleRange()
+        if (view) range = visibleRange(shownBars(), view.from as number, view.to as number, valueShaped(style) ? drawnValue : undefined)
+      }
+      return {
+        intraday,
+        previousClose: intraday && (labels.previousCloseValue || labels.previousCloseLine) ? previousClose() : null,
+        range,
+        bid: live?.bid ?? null,
+        ask: live?.ask ?? null,
+      }
+    },
+    tags: () => ({ high: i18n.t('chrome.scaleHigh'), low: i18n.t('chrome.scaleLow'), bid: i18n.t('chrome.scaleBid'), ask: i18n.t('chrome.scaleAsk') }),
+  })
+  // The high and low are the bars in view, so a move of the view moves them.
+  chart.timeScale().subscribeVisibleLogicalRangeChange(() => levels?.refresh())
 
   const extensions = attachExtensionsPlane({
     chartId: deps.id,
@@ -1388,6 +1418,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // and an overlay placed against it would sit where there is nothing.
     extensions.host.barsChanged(painted)
     countdown?.refresh()
+    levels?.refresh()
     events.emit("dataLoaded", { bars: painted.length })
   }
 
@@ -1415,6 +1446,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     indicators.recomputeThrottled()
     extensions.host.barsChanged(shownBars())
     countdown?.refresh()
+    levels?.refresh()
   }
 
   /** Rebuild the formatter (a resolve, a symbol switch, a language switch) and push it to every
@@ -1484,6 +1516,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     extensions.host.themeChanged(settingsCanvas(c, eff))
     countdown?.restyled()
     prices.sync()
+    levels?.refresh()
   }
 
   /** New prices arrived for the symbol on screen: every surface that draws them repaints. */
@@ -1491,6 +1524,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     if (disposed) return
     legend.push()
     countdown?.refresh()
+    levels?.refresh()
   }
 
   /** Apply defaults: drop the viewer's OWN settings and put the price scale back to normal.
@@ -1897,6 +1931,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     series = addMainSeries(next)
     baselineLevel.follow(next === 'baseline' ? series : null)
     countdown?.seriesChanged(previous)
+    levels?.seriesChanged(previous)
     extensions.visibleSeriesReplaced()
     applyPriceFormat()
     const remove = (leaving: ISeriesApi<SeriesType>): void => {
@@ -2419,6 +2454,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       indicators.recompute()
       legend.setHeader(symbol, tf)
       drawings.relabel()
+      levels?.refresh()
     },
     layoutChanged() {
       drawings.refresh()
@@ -2460,6 +2496,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       replay.destroy()
       countdown?.destroy()
       countdown = null
+      levels?.destroy()
+      levels = null
       countdownClock.destroy()
       pointer?.destroy()
       ranges.stopGlide()

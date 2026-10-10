@@ -316,8 +316,14 @@ export interface ChartFactoryColors {
   sessionBreaks: string
   /** The previous session's close on the price scale. */
   previousClose: string
+  /** The visible range's high and low: their lines across the plot, and their labels on the scale,
+   *  while the setting names no color of its own. */
+  highLowLine: string
+  highLowLabel: string
   bid: string
   ask: string
+  /** The text on every colored value label the price scale wears, and on the tag beside it. */
+  scaleLabelText: string
   /** The last values of the pre-market, post-market and overnight stretches on the price scale. */
   preMarketLabel: string
   postMarketLabel: string
@@ -333,8 +339,11 @@ export const CHART_FACTORY_COLORS: Readonly<ChartFactoryColors> = Object.freeze(
   areaBottom: 'rgba(41, 98, 255, 0)',
   sessionBreaks: '#4985e7',
   previousClose: '#555555',
+  highLowLine: '#808080',
+  highLowLabel: '#142e61',
   bid: '#2962ff',
   ask: '#f7525f',
+  scaleLabelText: '#ffffff',
   preMarketLabel: '#fb8c00',
   postMarketLabel: '#2962ff',
   nightLabel: '#8e24aa',

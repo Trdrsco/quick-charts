@@ -228,8 +228,11 @@ export function fakeRenderer(): FakeRenderer {
       detachPrimitive: (p: unknown) => {
         record.primitives = record.primitives.filter((x) => x !== p)
       },
-      createPriceLine: (opts: unknown) => {
-        const line = { applyOptions: () => undefined, options: () => opts }
+      createPriceLine: (opts: Record<string, unknown>) => {
+        // The line's options as the renderer holds them: what it was created with and every write
+        // since, merged.
+        const held = { ...opts }
+        const line = { applyOptions: (next: Record<string, unknown>) => void Object.assign(held, next), options: () => held }
         record.priceLines.push(line)
         return line
       },
