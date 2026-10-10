@@ -3,39 +3,52 @@
 // interprets a mark, it only paints one.
 import type { IChartApi, ISeriesApi, SeriesMarker, SeriesType, Time, UTCTimestamp } from 'lightweight-charts'
 import { createSeriesMarkers, type ISeriesMarkersPluginApi } from 'lightweight-charts'
-import type { SemanticTheme } from '../theme/schema'
-import type { BarMark, MarkColorRole, TimescaleMark } from '../marks'
+import type { SemanticTheme, ThemeMode } from '../theme/schema'
+import { paintableColor } from '../settings/color'
+import type { BarMark, MarkColor, MarkColorRole, TimescaleMark } from '../marks'
 
-/** The role a mark's color resolves through. */
-function markColor(theme: SemanticTheme, role: MarkColorRole): string {
-  switch (role) {
-    case 'up':
-      return theme['series.up']
-    case 'down':
-      return theme['series.down']
-    case 'info':
-      return theme['status.info']
-    case 'warning':
-      return theme['status.warning']
-    case 'positive':
-      return theme['status.positive']
-    case 'negative':
-      return theme['status.negative']
-    case 'neutral':
-    default:
-      return theme['series.neutral']
+/** The color each theme role resolves through. */
+const ROLE_COLOR: Readonly<Record<MarkColorRole, (theme: SemanticTheme) => string>> = {
+  neutral: (theme) => theme['series.neutral'],
+  up: (theme) => theme['series.up'],
+  down: (theme) => theme['series.down'],
+  info: (theme) => theme['status.info'],
+  warning: (theme) => theme['status.warning'],
+  positive: (theme) => theme['status.positive'],
+  negative: (theme) => theme['status.negative'],
+}
+
+/** Whether a host's color can be painted, remembered per value so a repaint asks once. */
+const readable = new Map<string, boolean>()
+function canPaint(value: unknown): value is string {
+  if (typeof value !== 'string') return false
+  let known = readable.get(value)
+  if (known === undefined) {
+    if (readable.size >= 256) readable.clear()
+    known = paintableColor(value)
+    readable.set(value, known)
   }
+  return known
+}
+
+/** The color a mark wears in a mode: a role through the theme, or the pair's color for the mode.
+ *  A pair counts only when both of its colors can be painted, so a mark never reads in one mode
+ *  and fails in the other. Anything else, a single literal color among it, wears `neutral`. */
+export function markColor(color: MarkColor, theme: SemanticTheme, mode: ThemeMode): string {
+  if (typeof color === 'string') return (Object.hasOwn(ROLE_COLOR, color) ? ROLE_COLOR[color as MarkColorRole] : ROLE_COLOR.neutral)(theme)
+  if (color && typeof color === 'object' && canPaint(color.light) && canPaint(color.dark)) return mode === 'light' ? color.light : color.dark
+  return ROLE_COLOR.neutral(theme)
 }
 
 /** Project neutral marks onto the renderer's own marker shape. Pure, so the mapping is testable
  *  without a chart. */
-export function markersOf(marks: readonly BarMark[], theme: SemanticTheme): SeriesMarker<Time>[] {
+export function markersOf(marks: readonly BarMark[], theme: SemanticTheme, mode: ThemeMode): SeriesMarker<Time>[] {
   return [...marks]
     .sort((a, b) => a.time - b.time)
     .map((mark) => ({
       time: mark.time as UTCTimestamp,
       position: mark.placement === 'below' ? ('belowBar' as const) : ('aboveBar' as const),
-      color: markColor(theme, mark.color),
+      color: markColor(mark.color, theme, mode),
       shape: mark.shape ?? 'circle',
       text: mark.text,
     }))
@@ -59,6 +72,7 @@ export function createTimescaleMarks(
   chart: IChartApi,
   marks: () => readonly TimescaleMark[],
   theme: () => SemanticTheme,
+  mode: () => ThemeMode,
 ): TimescaleMarksPrimitive {
   const renderer = {
     draw(target: unknown) {
@@ -84,7 +98,7 @@ export function createTimescaleMarks(
           if (x == null) continue
           scope.context.beginPath()
           scope.context.arc(x * scope.horizontalPixelRatio, y, r, 0, Math.PI * 2)
-          scope.context.fillStyle = markColor(palette, mark.color)
+          scope.context.fillStyle = markColor(mark.color, palette, mode())
           scope.context.fill()
         }
       })
@@ -112,7 +126,7 @@ export function createTimescaleMarks(
 export interface MarksLayer {
   /** Fetch and draw both families for a window. A feed that serves neither draws neither. */
   refresh(window: { from: number; to: number } | null): void
-  /** Re-color what is drawn for a new theme, without re-fetching. */
+  /** Re-color what is drawn for a new theme or mode, without re-fetching. */
   repaint(): void
   /** Clear what is drawn (a symbol or timeframe switch). */
   clear(): void
@@ -126,6 +140,8 @@ export interface MarksDeps {
   symbol(): string
   timeframe(): string
   theme(): SemanticTheme
+  /** The mode in effect, which picks a color pair's side. */
+  mode(): ThemeMode
   /** The feed's bar-mark reader, or null when it serves none. */
   fetchBarMarks: ((symbol: string, from: number, to: number, resolution: string) => Promise<readonly BarMark[]>) | null
   /** The feed's time-scale-mark reader, or null when it serves none. */
@@ -141,12 +157,12 @@ export function attachMarks(deps: MarksDeps): MarksLayer {
   /** Increments on every clear and every refresh, so a page that lands late paints nothing. */
   let generation = 0
 
-  const axisPrimitive = createTimescaleMarks(deps.chart, () => axis, deps.theme)
+  const axisPrimitive = createTimescaleMarks(deps.chart, () => axis, deps.theme, deps.mode)
   deps.series().attachPrimitive(axisPrimitive as never)
 
   const applyBars = (): void => {
     if (deps.disposed()) return
-    const markers = markersOf(bars, deps.theme())
+    const markers = markersOf(bars, deps.theme(), deps.mode())
     if (!plugin) plugin = createSeriesMarkers(deps.series(), markers)
     else plugin.setMarkers(markers)
   }

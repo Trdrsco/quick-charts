@@ -1,8 +1,10 @@
 // Neutral marks: the host-supplied chart data contract for a note about a moment.
 //
-// A mark is a note about a moment. Its color is a semantic theme role rather than a literal, its
-// text is the host's own words, and the chart draws it as given. A host draws marks of its own
-// through the extension seam.
+// A mark is a note about a moment. Its color stays readable in both modes: it is a semantic theme
+// role, which the mode resolves, or a pair of colors the host chose, one for each mode. A single
+// color for both modes is not a mark color, because a color chosen for one background can vanish
+// on the other. The text is the host's own words, and the chart draws the mark as given. A host
+// draws marks of its own through the extension seam.
 //
 // The two families answer different questions. A BAR mark sits on a bar, above or below it, and
 // carries a letter or a short label. A TIME-SCALE mark sits under the axis and marks a session, an
@@ -14,6 +16,17 @@
 /** The theme roles a mark may wear. A host names a meaning and the mode resolves the color, so a
  *  mark stays readable when the viewer switches to light. */
 export type MarkColorRole = 'neutral' | 'up' | 'down' | 'info' | 'warning' | 'positive' | 'negative'
+
+/** A mark color of the host's own, one CSS color for each mode: the chart wears the one for the
+ *  mode in effect, so the host chooses a color readable on each background. */
+export interface MarkColorPair {
+  light: string
+  dark: string
+}
+
+/** A mark's color: a theme role, or a pair of colors with one for each mode. A single literal color
+ *  is refused, and a color the chart cannot read paints in the `neutral` role. */
+export type MarkColor = MarkColorRole | MarkColorPair
 
 /** Where a bar mark sits relative to its bar. */
 export type MarkPlacement = 'above' | 'below'
@@ -27,7 +40,7 @@ export interface BarMark {
   id: string
   /** Epoch SECONDS at the bar's bucket open, the same clock every bar uses. */
   time: number
-  color: MarkColorRole
+  color: MarkColor
   /** The letter or two the glyph carries. */
   text?: string
   /** The longer words a host would show beside the mark. Carried, never drawn by the chart. */
@@ -41,6 +54,6 @@ export interface TimescaleMark {
   id: string
   /** Epoch SECONDS. */
   time: number
-  color: MarkColorRole
+  color: MarkColor
   label?: string
 }

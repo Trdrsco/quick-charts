@@ -92,7 +92,7 @@ export type { ImageApi, ImageHeader, ImageTextRun, ImageTile } from './widget/im
 
 // Neutral marks: host-supplied chart data the feed serves through the two optional readers on
 // `ChartDatafeed`. A mark is a note about a moment, in the host's own words.
-export type { BarMark, MarkColorRole, MarkPlacement, MarkShape, TimescaleMark } from './marks'
+export type { BarMark, MarkColor, MarkColorPair, MarkColorRole, MarkPlacement, MarkShape, TimescaleMark } from './marks'
 export type { DataSourceMarkPainter, MarkPainters, SymbolMarkPainter, VenueMarkPainter } from './markPainters'
 
 export type { ChartCompareApi } from './widget/compare'

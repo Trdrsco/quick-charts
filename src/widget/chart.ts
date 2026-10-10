@@ -1117,6 +1117,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         symbol: () => symbol,
         timeframe: () => tf,
         theme: () => deps.theme.get(),
+        mode: () => deps.theme.mode(),
         fetchBarMarks: datafeed.marks ? (s, from, to, resolution) => datafeed.marks!(s, from, to, resolution) : null,
         fetchTimescaleMarks: datafeed.timescaleMarks ? (s, from, to, resolution) => datafeed.timescaleMarks!(s, from, to, resolution) : null,
         disposed: disposedFn,
