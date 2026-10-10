@@ -2305,6 +2305,10 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   switch. The high and low wear grey lines and navy labels while their color is null. On an
   intraday chart of regular hours, a newest bar in a pre-market, post-market or overnight stretch
   is left off the chart and its close is marked instead, in that stretch's label color.
+- `priceScale`: where the scales stand (`placement`): `left` stands the main series' scale on
+  the left, with its mode, its framing and every series of the main pane that shares it, and a
+  comparison on a scale of its own on the right; `right` and `auto` keep it on the right, with
+  such a comparison on the left.
 - `timeScale`: the crosshair label's date format (`CHART_DATE_FORMATS`), the weekday before it, and
   a clock of 24 hours or of 12, which the axis times follow too.
 - `canvas`: the background, solid or a vertical gradient; each grid's switch, color and stroke; the
@@ -2313,8 +2317,8 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
 - `events`: a line at each trading day's start, in its own stroke.
 
 The leaves for the currency and unit box, the scale mode buttons, the price-to-bar ratio lock, the
-scale placement, the plus button, keeping the left edge across a timeframe change and the pane
-buttons are stored and saved, and draw nothing yet.
+plus button, keeping the left edge across a timeframe change and the pane buttons are stored and
+saved, and draw nothing yet.
 
 ## Compare
 

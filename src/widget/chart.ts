@@ -15,6 +15,7 @@
 // series is the visible one, and switching styles replaces only that.
 import {
   CrosshairMode,
+  PriceScaleMode,
   createChart as createRenderer,
   HistogramSeries,
   LineSeries,
@@ -536,6 +537,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   })()
   const resolveSettings = (): ChartSettings => layerChartSettings(chartSettingsDefaults(deps.theme.get()), hostPartial, viewerPartial)
   let eff: ChartSettings = resolveSettings()
+  /** The side the main series' price scale stands on: the left when the scales are stacked on the
+   *  left, the right otherwise. A comparison on a scale of its own takes the other side. */
+  const scaleSideOf = (settings: ChartSettings): 'left' | 'right' => (settings.priceScale.placement === 'left' ? 'left' : 'right')
+  let scaleSide = scaleSideOf(eff)
   /** The subsession the trading-hours setting shows bars for. */
   const activeSubsession = (): ActiveSubsession => (eff.symbol.session === 'regular' ? 'regular' : 'extended')
   const paint = (): StylePaint => ({
@@ -568,6 +573,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     layout: Record<string, unknown>
     crosshair: Record<string, unknown>
     rightPriceScale: Record<string, unknown>
+    leftPriceScale: Record<string, unknown>
     timeScale: Record<string, unknown>
   }
   /** The right margin the time scale was last given. Writing it scrolls the view to that offset
@@ -588,9 +594,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // A chart that holds its view takes no drag, wheel, pinch or scale gesture from the renderer.
     handleScroll: deps.features.navigation,
     handleScale: deps.features.navigation,
-    rightPriceScale: { ...look.rightPriceScale, visible: deps.ui.priceScale },
+    rightPriceScale: { ...look.rightPriceScale, visible: deps.ui.priceScale && scaleSide === 'right' },
+    leftPriceScale: { ...look.leftPriceScale, visible: deps.ui.priceScale && scaleSide === 'left' },
+    // A series added without naming a scale stands on the main series' side.
+    defaultVisiblePriceScaleId: scaleSide,
     timeScale: { ...look.timeScale, timeVisible: true, secondsVisible: false, rightOffset: appliedRightOffset, barSpacing: 8, minBarSpacing: 0.5 },
   })
+
+  /** The main series' price scale, on whichever side it stands. */
+  const mainScale = (): ReturnType<IChartApi['priceScale']> => chart.priceScale(scaleSide)
 
   /** The anchor: an invisible line of closes on the main price scale. It exists so that everything
    *  with a long life can bind to ONE series and survive a style switch, and it draws nothing. */
@@ -686,7 +698,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     const colors = volumeColors(bars)
     volume.setData(bars.map((b, i) => ({ time: b.t as UTCTimestamp, value: b.v, color: colors[i]! })))
   }
-  if (scaleMode !== 'normal') chart.priceScale('right').applyOptions({ mode: PRICE_SCALE_MODE[scaleMode] })
+  if (scaleMode !== 'normal') mainScale().applyOptions({ mode: PRICE_SCALE_MODE[scaleMode] })
   /** The policy the viewer chose, held as intent until there are bars to hold. A manual axis with
    *  no bars behind it would keep the renderer's default bounds, and every bar of a market priced
    *  outside them would stand off the pane: a blank chart under a legend that reads the data. So the
@@ -701,7 +713,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  either way, and neither setting moves the other. Until the first history has framed, the
    *  answer is the held intent, since the renderer has not yet been asked to hold anything. */
   const priceAxisPolicy = (): PriceAxisPolicy =>
-    historyPainted && bars.length > 0 ? (chart.priceScale('right').options().autoScale ? 'auto' : 'manual') : heldPolicy
+    historyPainted && bars.length > 0 ? (mainScale().options().autoScale ? 'auto' : 'manual') : heldPolicy
 
   /** Move the policy and remember it. The exact bounds are deliberately not carried: they are this
    *  device's view of this market, and a saved chart states the POLICY the viewer chose. A manual
@@ -710,7 +722,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     if (disposed) return
     heldPolicy = next
     storage.set(PRICE_AXIS_KEY, next)
-    if (historyPainted && bars.length > 0) chart.priceScale('right').applyOptions({ autoScale: next === 'auto' })
+    if (historyPainted && bars.length > 0) mainScale().applyOptions({ autoScale: next === 'auto' })
   }
 
   /** The first paint of a history frames the market, and only then is a held manual policy handed
@@ -731,10 +743,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       holdFrame = null
       if (disposed || heldPolicy !== 'manual') return
       const shown = shownBars()
-      const range = chart.priceScale('right').getVisibleRange()
+      const range = mainScale().getVisibleRange()
       const framed = shown.length > 0 && range !== null && shown.some((b) => b.l <= range.to && b.h >= range.from)
       if (framed) {
-        chart.priceScale('right').applyOptions({ autoScale: false })
+        mainScale().applyOptions({ autoScale: false })
         return
       }
       if (--left > 0) holdFrame = window.requestAnimationFrame(attempt)
@@ -892,8 +904,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // second call, because the renderer turns framing back on as part of applying the mode and
     // would swallow an `autoScale` asked for in the same one.
     const held = priceAxisPolicy()
-    chart.priceScale('right').applyOptions({ mode: PRICE_SCALE_MODE[next] })
-    if (held === 'manual') chart.priceScale('right').applyOptions({ autoScale: false })
+    mainScale().applyOptions({ mode: PRICE_SCALE_MODE[next] })
+    if (held === 'manual') mainScale().applyOptions({ autoScale: false })
     storage.set(SCALE_KEY, next)
     events.emit('scaleMode', next)
   }
@@ -992,6 +1004,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         enabled: true,
         disposed: disposedFn,
         maintainTimeline,
+        mainScale: () => scaleSide,
         onChips: () => legend.push(),
         onEvent: (entries) => events.emit('compare', entries),
       })
@@ -1166,6 +1179,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       return signedPercentText((drawnValue(bar) - base) / base, i18n.tag())
     },
     look: () => ({ up: eff.candles.upColor, down: eff.candles.downColor, fontSize: eff.canvas.scaleTextSize }),
+    side: () => scaleSide,
     replaying: () => replay.active(),
     dataStatus: () => (feedStatus === 'live' ? deps.capabilities().dataStatus : null),
     session: () => session.model(),
@@ -1383,7 +1397,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         target: gestures,
         framing: () => priceAxisPolicy() === 'auto',
         // The same release a drag on the price scale makes, so the policy reads it the same way.
-        release: () => chart.priceScale('right').applyOptions({ autoScale: false }),
+        release: () => mainScale().applyOptions({ autoScale: false }),
       })
     : null
 
@@ -1519,6 +1533,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     eff = resolveSettings()
     const c = canvas()
     chart.applyOptions(lookOptions())
+    if (scaleSideOf(eff) !== scaleSide) moveScale(scaleSideOf(eff))
     // The right margin is the time scale's right offset, and writing it scrolls the view to it, so
     // it is written only when the setting moved.
     if (eff.canvas.marginRight !== before.rightOffset) {
@@ -1556,6 +1571,32 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     legend.push()
     countdown?.refresh()
     levels?.refresh()
+  }
+
+  /** Stand the main series' price scale on the other side. The scale's mode and framing go with it,
+   *  as does every series of the main pane that stood on it (the style series, the anchor, the
+   *  indicators drawn over the bars and a comparison sharing the scale); the side it left is
+   *  hidden, back at a regular framed scale, for a comparison on a scale of its own to take. */
+  function moveScale(next: 'left' | 'right'): void {
+    const previous = scaleSide
+    const held = mainScale().options()
+    scaleSide = next
+    chart.applyOptions({
+      defaultVisiblePriceScaleId: next,
+      [`${next}PriceScale`]: { visible: deps.ui.priceScale },
+      [`${previous}PriceScale`]: { visible: false },
+    })
+    // The renderer frames a scale again whenever its mode is written, so a held framing is written
+    // after the mode, in a second call.
+    mainScale().applyOptions({ mode: held.mode })
+    if (!held.autoScale) mainScale().applyOptions({ autoScale: false })
+    chart.priceScale(previous).applyOptions({ mode: PriceScaleMode.Normal, autoScale: true })
+    for (const each of chart.panes()[0]?.getSeries() ?? []) {
+      const id = each.options().priceScaleId
+      if (id === undefined || id === previous) each.applyOptions({ priceScaleId: next })
+    }
+    compare?.scaleMoved()
+    countdown?.restyled()
   }
 
   /** Apply defaults: drop the viewer's OWN settings and put the price scale back to normal.
@@ -1739,7 +1780,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // The axis frames the market that is about to arrive; a held manual policy returns once it has.
     if (holdFrame !== null) window.cancelAnimationFrame(holdFrame)
     holdFrame = null
-    chart.priceScale('right').applyOptions({ autoScale: true })
+    mainScale().applyOptions({ autoScale: true })
     pendingFrame = null // a preset issued against the previous load never frames this one
     noMoreHistory = false
     feedStatus = null // the new subscription reports its own status; a stale one must not carry over

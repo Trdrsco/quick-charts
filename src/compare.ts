@@ -74,11 +74,12 @@ export function clipToWindow(bars: readonly FeedBar[], window: { from: number; t
 }
 
 /** Placement → where the series goes. Pane index for 'new-pane' is resolved at add time (the
- *  chart's CURRENT pane count), matching the indicator renderer's rule. */
-export function seriesTargetOf(placement: ComparePlacement, paneCount: number): { paneIndex: number; priceScaleId?: string } {
+ *  chart's CURRENT pane count), matching the indicator renderer's rule. A 'new-scale' series takes
+ *  the side the main series does not stand on, the left unless named. */
+export function seriesTargetOf(placement: ComparePlacement, paneCount: number, secondScale: 'left' | 'right' = 'left'): { paneIndex: number; priceScaleId?: string } {
   if (placement === 'new-pane') return { paneIndex: paneCount }
-  if (placement === 'new-scale') return { paneIndex: 0, priceScaleId: 'left' }
-  return { paneIndex: 0 } // same-percent: the main pane's default (right) scale
+  if (placement === 'new-scale') return { paneIndex: 0, priceScaleId: secondScale }
+  return { paneIndex: 0 } // same-percent: the main pane's default scale, the main series' own
 }
 
 export interface CompareDeps {
@@ -90,6 +91,9 @@ export interface CompareDeps {
   mainWindow(): { from: number; to: number } | null
   /** How many bars a fresh compare asks for when the main window is not yet known. */
   seedCountBack?: number
+  /** The side the main series' price scale stands on; the right when absent. A 'new-scale'
+   *  comparison takes the other side. */
+  mainScale?(): 'left' | 'right'
   /** Entries changed (add/remove/visibility/color) or a comparison's latest value moved — hosts
    *  re-render their legend from `list()` / `latest()`. */
   onChange?(): void
@@ -127,6 +131,9 @@ export interface CompareHandle {
   sync(): void
   /** The chart's timeframe changed: every comparison refetches at the new bucket size. */
   setTimeframe(): void
+  /** The main series' price scale moved to the other side: every 'new-scale' comparison moves to
+   *  the side it left, and that side shows while one lives. */
+  scaleMoved(): void
   serialize(): CompareSnapshot[]
   /** Replace the whole set from a snapshot (restore path). Unknown placements are dropped. */
   restore(snapshot: readonly unknown[]): void
@@ -181,21 +188,26 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
 
   const notify = () => deps.onChange?.()
 
-  /** The left scale exists only while a 'new-scale' compare does — an empty left axis is chrome
-   *  with nothing to say. When it shows, it MIRRORS the right scale's border treatment: the
+  /** The side the main series stands on, and the second side a 'new-scale' compare takes. */
+  const mainSide = (): 'left' | 'right' => deps.mainScale?.() ?? 'right'
+  const secondSide = (): 'left' | 'right' => (mainSide() === 'right' ? 'left' : 'right')
+
+  /** The second scale exists only while a 'new-scale' compare does — an empty second axis is chrome
+   *  with nothing to say. When it shows, it MIRRORS the main scale's border treatment: the
    *  renderer's own left-scale default paints a purple-gray divider the right axis never wears,
    *  and the two scales must read as one chart. */
   const syncLeftScale = () => {
+    const key = secondSide() === 'left' ? 'leftPriceScale' : 'rightPriceScale'
     const wanted = [...slots.values()].some((s) => s.entry.placement === 'new-scale')
     if (!wanted) {
-      chart.applyOptions({ leftPriceScale: { visible: false } })
+      chart.applyOptions({ [key]: { visible: false } })
       return
     }
     try {
-      const right = chart.priceScale('right').options()
-      chart.applyOptions({ leftPriceScale: { visible: true, borderVisible: right.borderVisible, borderColor: right.borderColor } })
+      const main = chart.priceScale(mainSide()).options()
+      chart.applyOptions({ [key]: { visible: true, borderVisible: main.borderVisible, borderColor: main.borderColor } })
     } catch {
-      chart.applyOptions({ leftPriceScale: { visible: true } })
+      chart.applyOptions({ [key]: { visible: true } })
     }
   }
 
@@ -285,7 +297,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
   }
 
   const makeSeries = (entry: CompareEntry): ISeriesApi<'Line'> => {
-    const target = seriesTargetOf(entry.placement, chart.panes().length)
+    const target = seriesTargetOf(entry.placement, chart.panes().length, secondSide())
     return chart.addSeries(
       LineSeries,
       {
@@ -427,6 +439,13 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
         slot.series.setData([])
         seed(slot)
       }
+    },
+    scaleMoved() {
+      const side = secondSide()
+      for (const slot of slots.values()) {
+        if (slot.entry.placement === 'new-scale') slot.series.applyOptions({ priceScaleId: side })
+      }
+      syncLeftScale()
     },
     serialize: () => [...slots.values()].map((s) => ({ ...s.entry })),
     restore(snapshot) {

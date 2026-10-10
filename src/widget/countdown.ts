@@ -158,6 +158,9 @@ export interface CountdownDeps {
   percent?(): string | null
   /** The label's colors, up and down by the bar's own open, and its text size. */
   look(): { up: string; down: string; fontSize: number }
+  /** The side the series' price scale stands on: the label is square on the plot's side and
+   *  rounded on the other. The right when absent. */
+  side?(): 'left' | 'right'
   replaying(): boolean
   dataStatus(): DataStatus | null
   session(): SessionModel | null
@@ -278,15 +281,19 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
         const textWidth = Math.ceil(Math.max(...lines.map((line) => context.measureText?.(line.text).width ?? 0)))
         const width = Math.min(mediaSize.width - box.left, box.inset + textWidth + box.outer)
         const top = Math.max(0, Math.min(y - box.lineHeight / 2, mediaSize.height - box.height))
+        // On a left scale the plot is on the right, so the label mirrors.
+        const left = (deps.side?.() ?? 'right') === 'left'
         context.fillStyle = state.bar.c < state.bar.o ? look.down : look.up
         context.beginPath()
-        context.roundRect(box.left, top, width, box.height, [0, box.radius, box.radius, 0])
+        if (left) context.roundRect(mediaSize.width - box.left - width, top, width, box.height, [box.radius, 0, 0, box.radius])
+        else context.roundRect(box.left, top, width, box.height, [0, box.radius, box.radius, 0])
         context.fill()
-        context.textAlign = 'left'
+        context.textAlign = left ? 'right' : 'left'
         context.textBaseline = 'middle'
+        const x = left ? mediaSize.width - box.left - box.inset : box.left + box.inset
         lines.forEach((line, i) => {
           context.fillStyle = line.color
-          context.fillText(line.text, box.left + box.inset, top + box.lineHeight / 2 + i * box.pitch)
+          context.fillText(line.text, x, top + box.lineHeight / 2 + i * box.pitch)
         })
       })
     },

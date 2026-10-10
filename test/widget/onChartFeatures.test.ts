@@ -3,6 +3,7 @@
 // comes from, and what it leaves alone while it is off.
 import { LineStyle } from 'lightweight-charts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { seriesTargetOf } from '../../src/compare'
 import type { ChartDatafeed, FeedBar, SymbolPrices } from '../../src/datafeed'
 import { chartSettingsDefaults } from '../../src/settings/defaults'
 import type { PartialChartSettings } from '../../src/settings/schema'
@@ -249,6 +250,44 @@ describe('the extended-hours label', () => {
     // Showing the extended hours draws the bar itself, and its last value stands in its own label.
     chart.applySettings({ symbol: { session: 'extended' } })
     expect(lines(renderer)).toEqual([])
+  })
+})
+
+describe('the scales placement', () => {
+  it('stands the main series, the anchor and its framing on the left, and back', async () => {
+    const { chart, renderer } = await mount()
+    const options = (): Record<string, Record<string, unknown> | string> => renderer.chart.options() as never
+    chart.setScaleMode('log')
+    expect(main(renderer).options.priceScaleId).toBeUndefined()
+    chart.applySettings({ priceScale: { placement: 'left' } })
+    const onPane = renderer.series.filter((s) => s.paneIndex === 0 && s.options.priceScaleId !== 'volume')
+    expect(onPane.map((s) => s.options.priceScaleId)).toEqual(onPane.map(() => 'left'))
+    expect(options().leftPriceScale).toMatchObject({ visible: true })
+    expect(options().rightPriceScale).toMatchObject({ visible: false })
+    expect(options().defaultVisiblePriceScaleId).toBe('left')
+    // The scale mode travels with the scale; the side it left is a regular scale again.
+    expect(renderer.priceScaleOptions.left).toMatchObject({ mode: 1 })
+    expect(renderer.priceScaleOptions.right).toMatchObject({ mode: 0, autoScale: true })
+    // A new style series takes the main side too.
+    chart.setStyle('line')
+    expect(options().defaultVisiblePriceScaleId).toBe('left')
+    chart.applySettings({ priceScale: { placement: 'auto' } })
+    expect(main(renderer).options.priceScaleId).toBe('right')
+    expect(options().rightPriceScale).toMatchObject({ visible: true })
+    expect(options().leftPriceScale).toMatchObject({ visible: false })
+  })
+
+  it('opens on the left when the settings say so', async () => {
+    const { renderer } = await mount({ settings: { priceScale: { placement: 'left' } } })
+    expect(renderer.created.leftPriceScale).toMatchObject({ visible: true })
+    expect(renderer.created.rightPriceScale).toMatchObject({ visible: false })
+    expect(renderer.created.defaultVisiblePriceScaleId).toBe('left')
+  })
+
+  it('puts a comparison on a scale of its own on the side the main series left', () => {
+    expect(seriesTargetOf('new-scale', 1)).toEqual({ paneIndex: 0, priceScaleId: 'left' })
+    expect(seriesTargetOf('new-scale', 1, 'right')).toEqual({ paneIndex: 0, priceScaleId: 'right' })
+    expect(seriesTargetOf('same-percent', 1, 'right')).toEqual({ paneIndex: 0 })
   })
 })
 

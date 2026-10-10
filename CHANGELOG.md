@@ -34,6 +34,8 @@ The last value's "price and percentage" mode (`symbolValueMode: 'priceAndPercent
 
 On an intraday chart of regular hours, a symbol whose newest bar stands in a pre-market, post-market or overnight stretch marks that bar's close on the price scale in the stretch's label color (`preMarketLabelColor`, `postMarketLabelColor`, `nightLabelColor`), the value and the dotted line on the `extendedHoursValue` and `extendedHoursLine` switches.
 
+The scales placement (`priceScale.placement`) stands the main series' price scale on the left under `left`, carrying its mode, its framing and every series of the main pane that shares it, and a comparison on a scale of its own moves to the right; `right` and `auto` keep the main scale on the right and such a comparison on the left. A series added without naming a scale takes the main side, and the last value's drawn label mirrors on a left scale.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:
