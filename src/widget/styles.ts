@@ -17,7 +17,7 @@ import {
   type LineWidth,
   type SeriesType,
 } from 'lightweight-charts'
-import type { ChartSettings, ChartStrokeStyle, LineStyleSettings } from '../settings/schema'
+import type { ChartPriceSource, ChartSettings, ChartStrokeStyle, LineStyleSettings } from '../settings/schema'
 import type { CanvasTheme } from '../theme/renderer'
 
 /** The style vocabulary. Fixed at seven; a new one is a public API addition, not a config value. */
@@ -80,6 +80,46 @@ export function offeredStyle(raw: unknown, offered: readonly ChartStyleId[]): Ch
  *  OHLC values while it is on. */
 export function valueShaped(style: ChartStyleId): boolean {
   return style === 'line' || style === 'area' || style === 'baseline' || style === 'stepline'
+}
+
+/** The value a single-value style draws for one bar: one of its prices, or an average of them. */
+export function barValue(bar: { o: number; h: number; l: number; c: number }, source: ChartPriceSource): number {
+  switch (source) {
+    case 'open':
+      return bar.o
+    case 'high':
+      return bar.h
+    case 'low':
+      return bar.l
+    case 'hl2':
+      return (bar.h + bar.l) / 2
+    case 'hlc3':
+      return (bar.h + bar.l + bar.c) / 3
+    case 'ohlc4':
+      return (bar.o + bar.h + bar.l + bar.c) / 4
+    case 'hlcc4':
+      return (bar.h + bar.l + bar.c + bar.c) / 4
+    case 'close':
+    default:
+      return bar.c
+  }
+}
+
+/** Which bar value a style draws: a single-value style's own price source, and the close for a style
+ *  drawn from whole bars, whose last value is its close. */
+export function stylePriceSource(style: ChartStyleId, settings: ChartSettings): ChartPriceSource {
+  switch (style) {
+    case 'line':
+      return settings.line.priceSource
+    case 'stepline':
+      return settings.stepLine.priceSource
+    case 'area':
+      return settings.area.priceSource
+    case 'baseline':
+      return settings.baseline.priceSource
+    default:
+      return 'close'
+  }
 }
 
 /** A CSS color with an alpha applied, for a style faded in or out. Hex and rgb inputs are understood;

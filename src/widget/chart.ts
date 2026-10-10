@@ -50,7 +50,18 @@ import { createEmitter, type ChartEvents, type SaveConflictInfo } from './events
 import type { AccessPolicy, Capabilities, ChartPreferences, IndicatorInstance } from './options'
 import type { ResolvedFeatures, ResolvedUi } from './planes'
 import type { IconResolver } from '../ui/icons/resolver'
-import { addStyleSeries, fadedStyleOptions, offeredStyle, previousCloseColors, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
+import {
+  addStyleSeries,
+  barValue,
+  fadedStyleOptions,
+  offeredStyle,
+  previousCloseColors,
+  stylePriceSource,
+  styleOptions,
+  valueShaped,
+  type ChartStyleId,
+  type StylePaint,
+} from './styles'
 import { chartLookOptions, settingsCanvas } from './chartLook'
 import { createValueLine, type ValueLinePrimitive, type ValueLineStroke } from './valueLine'
 import { attachWatermark } from './watermark'
@@ -1104,6 +1115,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   countdown = attachCountdown({
     series: () => series,
     bars: () => shownBars(),
+    value: (bar) => drawnValue(bar),
     timeframe: () => tf,
     // The countdown is the second line of the symbol's last-value label, so it stands only where
     // that label does.
@@ -1304,17 +1316,25 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     })
   }
 
-  /** One painted bar as the style series takes it: a close for a close style, the whole bar for a
-   *  bar style, with its own colors when the style colors by the previous bar's close. */
+  /** The value the style series draws for a bar: the style's price source for a single-value style,
+   *  the close for a bar style. */
+  const drawnValue = (b: FeedBar): number => barValue(b, stylePriceSource(style, eff))
+  /** One painted bar as the style series takes it: the price source's value for a single-value
+   *  style, the whole bar for a bar style, with its own colors when the style colors by the previous
+   *  bar's close. */
   function seriesRow(b: FeedBar, previous: FeedBar | undefined, colors: ReturnType<typeof previousCloseColors>): Record<string, unknown> {
-    if (valueShaped(style)) return { time: b.t as UTCTimestamp, value: b.c }
+    if (valueShaped(style)) return { time: b.t as UTCTimestamp, value: drawnValue(b) }
     return { time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c, ...(colors ? colors(b, previous) : {}) }
   }
-  /** What the per-bar colors were last painted from, so a look change repaints the bars only when
-   *  their colors moved. */
+  /** What the series data was last painted from beside the bars themselves (the per-bar colors and
+   *  the price source), so a look change repaints the bars only when one of them moved. */
   let barColorsKey = ''
   const currentBarColorsKey = (): string =>
-    previousCloseColors(style, eff) ? JSON.stringify([style, style === 'bars' ? eff.bars : eff.candles]) : ''
+    JSON.stringify([
+      style,
+      stylePriceSource(style, eff),
+      previousCloseColors(style, eff) ? (style === 'bars' ? eff.bars : eff.candles) : null,
+    ])
 
   function paintAll(): void {
     const painted = shownBars()
@@ -1869,6 +1889,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
             }
           },
           shown: shownBars,
+          target: (bar) => barValue(bar, stylePriceSource(lineStyle, eff)),
           direction: folding ? 'fold' : 'unfold',
           done: () => {
             if (morph === entry) morph = null

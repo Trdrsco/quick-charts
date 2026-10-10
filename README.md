@@ -2265,8 +2265,9 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
 - `candles`, `hollowCandles` and `bars`: the body, borders and wick, each on its own switch and in
   its own pair; coloring by the previous bar's close, written as each bar's own colors; thin bars
   and the open tick (`hlcBars`).
-- `line`, `stepLine`, `area` and `baseline`: the line's color, style and width, the fills, and the
-  baseline's level as a percentage of the pane. A line or step line in a gradient (the factory
+- `line`, `stepLine`, `area` and `baseline`: the price source each bar is drawn from (its open,
+  high or low, its close, or one of their averages), the line's color, style and width, the fills,
+  and the baseline's level as a percentage of the pane. A line or step line in a gradient (the factory
   look) is stroked from its top color at the highest price on screen to its bottom color at the
   lowest, and a baseline whose halves differ in width strokes each at its own.
 - `symbol`: the trading hours (`session`: `regular`, `extended` or `allHours`), which are the
@@ -2287,8 +2288,7 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
 The leaves for the currency and unit box, the scale mode buttons, the price-to-bar ratio lock, the
 scale placement, the plus button, the previous close, the high and low and the bid and ask lines,
 the last day change, the extended-hours price labels, keeping the left edge across a timeframe
-change, a value style's price source and the pane buttons are stored and saved, and draw nothing
-yet.
+change and the pane buttons are stored and saved, and draw nothing yet.
 
 ## Compare
 

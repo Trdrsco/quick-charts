@@ -117,6 +117,9 @@ export function countdownText(seconds: number): string {
 export interface CountdownDeps {
   series(): ISeriesApi<SeriesType>
   bars(): readonly FeedBar[]
+  /** The value the series draws for a bar, which the label states and stands at: the close when
+   *  absent. */
+  value?(bar: FeedBar): number
   timeframe(): string
   enabled(): boolean
   /** Whether the series' own last-value label shows while no countdown stands in for it. */
@@ -218,7 +221,8 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
         const state = current()
         if (!state) return
         const series = deps.series()
-        const y = series.priceToCoordinate(state.bar.c)
+        const value = deps.value?.(state.bar) ?? state.bar.c
+        const y = series.priceToCoordinate(value)
         if (y === null) return
         const theme = deps.theme()
         const look = deps.look()
@@ -235,7 +239,7 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
         context.font = `${size}px ${theme['text.fontFamily']}`
         context.textAlign = 'center'
         context.textBaseline = 'middle'
-        context.fillText(deps.formatter().format(state.bar.c), mediaSize.width / 2, top + priceHeight / 2)
+        context.fillText(deps.formatter().format(value), mediaSize.width / 2, top + priceHeight / 2)
         context.fillText(countdownText(state.remaining), mediaSize.width / 2, top + priceHeight + countdownHeight / 2)
       })
     },

@@ -16,16 +16,16 @@ export function morphEase(t: number): number {
   return (1 - Math.cos(Math.PI * clamped)) / 2
 }
 
-/** A bar folded `fold` of the way into its close: 0 is the bar itself, and 1 is a bar that is its
- *  close alone. */
-export function foldBar(bar: FeedBar, fold: number): { time: UTCTimestamp; open: number; high: number; low: number; close: number } {
+/** A bar folded `fold` of the way into the value the line draws for it (its close unless named): 0
+ *  is the bar itself, and 1 is a bar that is that value alone. */
+export function foldBar(bar: FeedBar, fold: number, target: number = bar.c): { time: UTCTimestamp; open: number; high: number; low: number; close: number } {
   const keep = 1 - Math.min(1, Math.max(0, fold))
   return {
     time: bar.t as UTCTimestamp,
-    open: bar.c + (bar.o - bar.c) * keep,
-    high: bar.c + (bar.h - bar.c) * keep,
-    low: bar.c + (bar.l - bar.c) * keep,
-    close: bar.c,
+    open: target + (bar.o - target) * keep,
+    high: target + (bar.h - target) * keep,
+    low: target + (bar.l - target) * keep,
+    close: target + (bar.c - target) * keep,
   }
 }
 
@@ -36,6 +36,8 @@ export interface StyleMorphDeps {
   fadeLine(alpha: number): void
   /** The bars as painted now. */
   shown(): readonly FeedBar[]
+  /** The value the line draws for a bar, which the bars fold into: its close when absent. */
+  target?(bar: FeedBar): number
   /** `fold` takes the bars into their closes as the line comes in; `unfold` brings them back out
    *  as the line goes. */
   direction: 'fold' | 'unfold'
@@ -63,7 +65,7 @@ export function startStyleMorph(deps: StyleMorphDeps): StyleMorph {
   const draw = (t: number): void => {
     const p = morphEase(t)
     const fold = deps.direction === 'fold' ? p : 1 - p
-    deps.bars.setData(deps.shown().map((bar) => foldBar(bar, fold)) as never)
+    deps.bars.setData(deps.shown().map((bar) => foldBar(bar, fold, deps.target?.(bar) ?? bar.c)) as never)
     deps.fadeLine(fold)
   }
   const finish = (): void => {
