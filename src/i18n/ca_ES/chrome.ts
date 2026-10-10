@@ -2,17 +2,17 @@ import type { Translation } from '../runtime'
 import type { chrome as source } from '../en/chrome'
 
 export const chrome: Translation<typeof source> = {
-  'chrome.topBar': 'Chart toolbar',
-  'chrome.bottomBar': 'Chart footer',
-  'chrome.symbolSearch': 'Search symbol',
-  'chrome.compare': 'Compare or add symbol',
-  'chrome.chartStyle': 'Chart style',
-  'chrome.indicators': 'Indicators',
-  'chrome.replay': 'Bar replay',
-  'chrome.replayChip': 'Replay',
-  'chrome.image': 'Chart image',
-  'chrome.session': 'Trading session',
+  'chrome.topBar': 'Barra d’eines del gràfic',
+  'chrome.bottomBar': 'Peu del gràfic',
+  'chrome.symbolSearch': 'Cerca un símbol',
+  'chrome.compare': 'Compara o afegeix un símbol',
+  'chrome.chartStyle': 'Estil del gràfic',
+  'chrome.indicators': 'Indicadors',
+  'chrome.replay': 'Repetició de barres',
+  'chrome.replayChip': 'Repetició',
+  'chrome.image': 'Imatge del gràfic',
+  'chrome.session': 'Sessió de negociació',
   'chrome.sessionsHeading': 'Sessions',
-  'chrome.navigation': 'Chart navigation',
+  'chrome.navigation': 'Navegació del gràfic',
   'chrome.activeChart': '{symbol}, {timeframe}',
 }
