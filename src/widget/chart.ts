@@ -1366,13 +1366,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     return { left: scaleSide === 'left' ? 0 : gestures.clientWidth - width, top: 0, width, height, side: scaleSide }
   }
 
-  // The controls on the price scale: the auto-scale and logarithmic buttons at its foot, each a press
-  // of the chart's own verb.
+  // The controls on the price scale: the currency and unit box at its top, the auto-scale and
+  // logarithmic buttons at its foot, and the plus beside the crosshair's price, each a press of the
+  // chart's own verb.
   scaleControls = deps.ui.priceScale
     ? mountScaleControls({
         chrome,
         gestures,
         i18n,
+        icons: deps.icons,
         box: priceScaleBox,
         modeButtons: () => eff.priceScale.scaleModeButtons,
         unitBox: () => eff.priceScale.currencyAndUnit,
@@ -1386,8 +1388,24 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         toggleLogScale: () => {
           deps.commands.execute(scaleMode === 'log' ? 'chart.scale.normal' : 'chart.scale.log')
         },
+        // The plus opens the menu a right-click raises, so the rows a host contributes for a level
+        // are there too; without that menu, or a crosshair, there is nothing for it to open.
+        plusButton: () => eff.priceLabels.plusButton && menu !== null && deps.ui.crosshair,
+        priceText: (y) => {
+          const price = series.coordinateToPrice(y)
+          if (price == null || !Number.isFinite(price)) return null
+          const step = minMove()
+          return symbolFormatter.format(Math.round(price / step) * step)
+        },
+        openPriceMenu: (clientX, clientY) => {
+          menu?.raiseAt(clientX, clientY)
+        },
       })
     : null
+  // The plus follows the crosshair on the main pane.
+  chart.subscribeCrosshairMove((param) => {
+    scaleControls?.setCrosshair(param.point && (param.paneIndex ?? 0) === 0 ? param.point.y : null)
+  })
 
   // The watermark: the symbol written large behind the bars, in the parts the settings name.
   const watermark = attachWatermark({

@@ -563,6 +563,8 @@ export const ICONS = {
   settingsCanvas: { viewBox: '0 0 28 28', body: solid(pencil([6, 22], 18.5, 2.8, 2)) },
   // Events: a calendar page, its band under the top edge and its two rings standing up through it.
   settingsEvents: { viewBox: '0 0 28 28', body: solid(frame(5, 6, 23, 22, 2.5) + box(6, 10, 22, 11) + box(9, 4, 10, 8) + box(18, 4, 19, 8)) },
+  // The plus beside the crosshair's price: a ring with a plus standing in it, each stroke one unit.
+  priceLevelMenu: { viewBox: '0 0 18 18', body: solid(ring(9, 9, 6.5) + box(8.5, 5.5, 9.5, 12.5) + box(5.5, 8.5, 12.5, 9.5)) },
 } as const satisfies Record<string, Glyph>
 
 export type IconName = keyof typeof ICONS

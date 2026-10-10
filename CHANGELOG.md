@@ -44,6 +44,8 @@ The price-to-bar ratio lock (`priceScale.lockPriceToBarRatio`) holds the price o
 
 Keeping the left edge (`timeScale.keepLeftEdge`) stands a new timeframe's bars from the moment the view's left edge stood at, with as many bar slots in view, asking the feed once for older bars when that moment lies before the first page, rather than fitting the loaded history. A range preset that changes the timeframe frames its own span as before.
 
+The plus button (`priceLabels.plusButton`) stands beside the crosshair's price label while the crosshair is on the main pane, a ringed plus in a 24px rounded square, and opens that price's menu, the one a right-click raises there, with the rows an extension contributes for the level. The icon catalog gains `priceLevelMenu`, and the catalog `chrome.priceLevelMenu`.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:

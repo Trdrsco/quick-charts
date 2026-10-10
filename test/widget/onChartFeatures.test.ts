@@ -14,7 +14,7 @@ import type { UiConfig } from '../../src/widget/options'
 import { priceLevels, visibleRange } from '../../src/widget/priceLevels'
 import { signedPercentText } from '../../src/widget/prices'
 import { barValue } from '../../src/widget/styles'
-import { lastRenderer, type FakeRenderer, type FakeSeries } from './rendererFake'
+import { fakePriceAt, lastRenderer, type FakeRenderer, type FakeSeries } from './rendererFake'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('lightweight-charts')>()
@@ -449,6 +449,61 @@ describe('keeping the left edge', () => {
     chart.setTimeframe('1m')
     await settle()
     expect(renderer.logicalWrites.length).toBe(writes)
+  })
+})
+
+describe('the plus button', () => {
+  afterEach(() => fakePriceAt(null))
+
+  it('stands beside the crosshair price on the main pane and opens that price menu, host rows and all', async () => {
+    const run = vi.fn()
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const widget = createChart({
+      container,
+      datafeed: feed(),
+      symbol: 'ES',
+      timeframe: '1m',
+      theme: { mode: 'dark' },
+      features: { drawings: false, replay: false, compare: false },
+      ui: { contextMenu: true, topBar: false, bottomBar: false, toasts: false },
+      extensions: [
+        {
+          id: 'levels',
+          attach: (ctx) => (ctx.contributeContextMenu((at) => [{ id: 'mark', label: `Mark ${at.priceText}`, group: 'level', run }]), { detach: () => undefined }),
+        },
+      ],
+    })
+    mounted.push(widget)
+    const renderer = lastRenderer()
+    await settle()
+    renderer.scaleWidths.right = 60
+    renderer.paneHeights[0] = 300
+    const gestures = container.querySelector<HTMLElement>('.qc-gestures')!
+    Object.defineProperty(gestures, 'clientWidth', { value: 600, configurable: true })
+    fakePriceAt(() => 4510.25)
+    const plus = container.querySelector<HTMLButtonElement>('.qc-scale-plus')!
+    expect(plus.hidden).toBe(true)
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(plus.hidden).toBe(false)
+    expect([plus.style.left, plus.style.top]).toEqual(['515px', '108px'])
+    expect(plus.getAttribute('aria-label')).toBe('Actions at 4510.25')
+    plus.click()
+    const rows = [...document.querySelectorAll<HTMLElement>('.qc-menu-row')].map((row) => row.textContent)
+    expect(rows.some((text) => text?.includes('Mark 4510.25'))).toBe(true)
+    renderer.fireCrosshair(null)
+    expect(plus.hidden).toBe(true)
+    widget.activeChart().applySettings({ priceLabels: { plusButton: false } })
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(plus.hidden).toBe(true)
+  })
+
+  it('stands down without a context menu to open', async () => {
+    const { renderer, container } = await mount()
+    renderer.scaleWidths.right = 60
+    renderer.paneHeights[0] = 300
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(container.querySelector<HTMLElement>('.qc-scale-plus')!.hidden).toBe(true)
   })
 })
 

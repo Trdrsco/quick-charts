@@ -1,13 +1,17 @@
 // The controls that stand on the main price scale: the box at its top that names what prices are
-// in (the symbol's currency and unit), and the auto-scale and logarithmic buttons at its foot. Each
-// shows while the pointer is over the scale, always, or never, as the chart settings say, and each
-// press is the chart's own verb, so the buttons and every other door to the same state read alike.
+// in (the symbol's currency and unit), the auto-scale and logarithmic buttons at its foot, and the
+// plus beside the crosshair's price label, which opens that price's menu. The box and the buttons
+// show while the pointer is over the scale, always, or never, as the chart settings say; the plus
+// shows while the crosshair stands on the main pane. Each press is the chart's own verb, so the
+// controls and every other door to the same state read alike.
 //
 // The scale is drawn by the renderer, so these are DOM in the chart's chrome layer, placed over the
 // scale's box as the chart measures it. The chrome takes no pointer, so the pointer is watched on
 // the gesture box beneath it; the buttons take it back while it is over them.
 import type { ChartI18n } from '../../i18n'
 import type { ChartControlVisibility } from '../../settings/schema'
+import { ICONS } from '../controls/icons'
+import type { IconResolver } from '../icons/resolver'
 import { h, name, stopPointer } from './dom'
 
 /** The main price scale's box in the chrome's own pixels, and the side it stands on. */
@@ -25,6 +29,7 @@ export interface ScaleControlsDeps {
   /** The gesture box under the chrome, which hears the pointer. */
   gestures: HTMLElement
   i18n: ChartI18n
+  icons: IconResolver
   /** The main price scale's box, or null while the chart shows none. */
   box(): PriceScaleBox | null
   /** When the auto-scale and logarithmic buttons show. */
@@ -38,11 +43,19 @@ export interface ScaleControlsDeps {
   logScale(): boolean
   toggleAutoScale(): void
   toggleLogScale(): void
+  /** Whether the plus beside the crosshair's price shows: the setting, and a menu to open. */
+  plusButton(): boolean
+  /** The price at a height of the main pane, as the scale writes it, or null where none reads. */
+  priceText(y: number): string | null
+  /** Open the price level's menu at a viewport point, the price read off its height. */
+  openPriceMenu(clientX: number, clientY: number): void
 }
 
 export interface ScaleControls {
   /** Read the settings, the scale's state and its box again. */
   sync(): void
+  /** Where the crosshair stands on the main pane, from its top, or null while it is elsewhere. */
+  setCrosshair(y: number | null): void
   destroy(): void
 }
 
@@ -50,6 +63,8 @@ export interface ScaleControls {
 const BUTTON = { width: 20, height: 22, gap: 4, foot: 4 }
 /** The currency and unit box's inset from the scale's top and from its side away from the plot. */
 const UNIT_BOX = { inset: 4 }
+/** The plus beside the crosshair's price: its square, and its gap from the scale's edge. */
+const PLUS = { size: 24, gap: 1 }
 
 export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
   const t = deps.i18n.t
@@ -61,6 +76,42 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
   // The box names; it takes no pointer, so a drag that starts on it is a drag of the scale.
   const unit = h('div', { class: 'qc-scale-unit', 'data-role': 'scale-unit' })
   deps.chrome.appendChild(unit)
+  const plus = h('button', { type: 'button', class: 'qc-scale-plus', 'data-role': 'scale-plus' })
+  plus.appendChild(deps.icons.glyph(ICONS.priceLevelMenu, { size: 18 }))
+  plus.hidden = true
+  stopPointer(plus)
+  deps.chrome.appendChild(plus)
+  /** Where the crosshair stood on the main pane when it was last there, and whether the pointer is
+   *  on the plus itself, which takes the crosshair off the plot without taking the plus away. */
+  let crosshairY: number | null = null
+  let overPlus = false
+  plus.addEventListener('click', () => {
+    if (crosshairY === null) return
+    const rect = deps.gestures.getBoundingClientRect()
+    const own = plus.getBoundingClientRect()
+    deps.openPriceMenu(own.left + own.width / 2, rect.top + crosshairY)
+  })
+  plus.addEventListener('pointerenter', () => {
+    overPlus = true
+  })
+  plus.addEventListener('pointerleave', () => {
+    overPlus = false
+    syncPlus()
+  })
+  const syncPlus = (): void => {
+    const box = deps.box()
+    const y = crosshairY
+    if (!box || y === null || !deps.plusButton() || (y < box.top || y > box.top + box.height)) {
+      if (!overPlus) plus.hidden = true
+      return
+    }
+    plus.hidden = false
+    const left = box.side === 'right' ? box.left - PLUS.size - PLUS.gap : box.left + box.width + PLUS.gap
+    plus.style.left = `${Math.round(left)}px`
+    plus.style.top = `${Math.round(y - PLUS.size / 2)}px`
+    const price = deps.priceText(y)
+    name(plus, t('chrome.priceLevelMenu', { price: price ?? '' }))
+  }
   auto.addEventListener('click', () => {
     deps.toggleAutoScale()
     sync()
@@ -89,6 +140,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     modes.dataset.qcVisibility = visibility
     const shown = box !== null && visibility !== 'never' && (visibility === 'always' || overScale || overControls)
     modes.hidden = !shown
+    syncPlus()
     if (!box) {
       unit.hidden = true
       return
@@ -161,6 +213,13 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
 
   return {
     sync,
+    setCrosshair(y) {
+      // Off the main pane the crosshair names no price of the main series; the plus stays only
+      // while the pointer is on it.
+      if (y === null && overPlus) return
+      crosshairY = y
+      syncPlus()
+    },
     destroy() {
       offStrings()
       deps.gestures.removeEventListener('pointermove', onMove)
@@ -168,6 +227,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
       deps.gestures.removeEventListener('pointerleave', onLeave)
       modes.remove()
       unit.remove()
+      plus.remove()
     },
   }
 }

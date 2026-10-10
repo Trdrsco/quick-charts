@@ -8,6 +8,7 @@ export const KEYS_ADDED_IN_MAJOR = [
   'chrome.currencyAndUnit',
   'chrome.logScale',
   'chrome.logScaleMark',
+  'chrome.priceLevelMenu',
   'chrome.scaleAsk',
   'chrome.scaleBid',
   'chrome.scaleHigh',

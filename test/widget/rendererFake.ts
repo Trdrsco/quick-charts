@@ -59,8 +59,8 @@ export interface FakeRenderer {
   /** Every options object the time scale was handed after the chart was created, in order. */
   timeScaleOptions: Record<string, unknown>[]
   /** A crosshair report. Pass `x` when the surface under test reads the POINTER position rather
-   *  than the bar the renderer snapped to. */
-  fireCrosshair(time: number | null, x?: number): void
+   *  than the bar the renderer snapped to, and `y` for its height (0 when absent). */
+  fireCrosshair(time: number | null, x?: number, y?: number): void
   fireClick(time: number | null): void
   removed: boolean
 }
@@ -109,8 +109,8 @@ export function fakeRenderer(): FakeRenderer {
     paneHeights: {},
     panePrimitives: {},
     timeScaleOptions: [],
-    fireCrosshair: (time, x) => {
-      const point = x === undefined ? {} : { point: { x, y: 0 } }
+    fireCrosshair: (time, x, y) => {
+      const point = x === undefined ? {} : { point: { x, y: y ?? 0 } }
       for (const cb of crosshairSubs) cb(time === null ? { ...point } : { time, ...point })
     },
     fireClick: (time) => {

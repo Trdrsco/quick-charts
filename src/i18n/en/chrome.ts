@@ -39,4 +39,7 @@ export const chrome = {
   /** The box at the top of the price scale naming what its prices are in, when the symbol states
    *  both a currency and a unit; either alone is written as the feed states it. */
   'chrome.currencyAndUnit': '{currency} · {unit}',
+  /** The plus beside the crosshair's price label, which opens that price's menu; `{price}` is the
+   *  price as the scale writes it. */
+  'chrome.priceLevelMenu': 'Actions at {price}',
 } as const

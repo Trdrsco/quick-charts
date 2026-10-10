@@ -25,4 +25,5 @@ export const chrome: Translation<typeof source> = {
   'chrome.logScale': 'Logarithmic scale',
   'chrome.logScaleMark': 'L',
   'chrome.currencyAndUnit': '{currency} · {unit}',
+  'chrome.priceLevelMenu': 'Actions at {price}',
 }

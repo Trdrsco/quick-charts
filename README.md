@@ -2304,7 +2304,10 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   beside it ("High", "Low", "Bid", "Ask"), and a dotted line across the plot, each part on its own
   switch. The high and low wear grey lines and navy labels while their color is null. On an
   intraday chart of regular hours, a newest bar in a pre-market, post-market or overnight stretch
-  is left off the chart and its close is marked instead, in that stretch's label color.
+  is left off the chart and its close is marked instead, in that stretch's label color. The plus
+  button (`plusButton`) stands beside the crosshair's price label while the crosshair is on the
+  main pane, and opens the price's menu, the one a right-click raises there, with every `level`
+  row an extension contributes; a chart without its context menu shows none.
 - `priceScale`: where the scales stand (`placement`): `left` stands the main series' scale on
   the left, with its mode, its framing and every series of the main pane that shares it, and a
   comparison on a scale of its own on the right; `right` and `auto` keep it on the right, with
@@ -2328,7 +2331,7 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   when the navigation buttons show; and the margins, the right one in bars.
 - `events`: a line at each trading day's start, in its own stroke.
 
-The leaves for the plus button and the pane buttons are stored and saved, and draw nothing yet.
+The pane buttons' leaf is stored and saved, and draws nothing yet.
 
 ## Compare
 

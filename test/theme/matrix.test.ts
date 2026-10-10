@@ -63,7 +63,7 @@ const SURFACES: readonly Surface[] = [
   { name: 'chart settings', files: ['settings.css'], classes: ['qc-chart-settings-dialog', 'qc-chart-settings-nav-item', 'qc-settings-check', 'qc-settings-tip'], states: [STATE.hover, STATE.selected, STATE.expanded] },
   { name: 'legend', files: ['quickcharts.css'], classes: ['qc-legend', 'qc-legend-row', 'qc-legend-action', 'qc-session-dot'], states: ["[data-qc-hidden='true']", "[data-qc-session='open']", "[data-qc-session='closed']"] },
   { name: 'panes and scales', files: ['quickcharts.css'], classes: ['qc-pane', 'qc-panes', 'qc-gestures'], states: [STATE.on] },
-  { name: 'price scale controls', files: ['scale.css'], classes: ['qc-scale-modes', 'qc-scale-mode', 'qc-scale-unit'], states: [STATE.hover, STATE.pressed] },
+  { name: 'price scale controls', files: ['scale.css'], classes: ['qc-scale-modes', 'qc-scale-mode', 'qc-scale-unit', 'qc-scale-plus'], states: [STATE.hover, STATE.pressed] },
   { name: 'drawing settings and editors', files: ['drawings-settings.css', 'drawings-editors.css'], classes: ['qc-drawing-settings-bar', 'qc-drawing-dialog', 'qc-drawing-text-editor', 'qc-drawing-glyphs'], states: [STATE.hover, STATE.focus, STATE.expanded, STATE.pressed, STATE.selected, STATE.on, STATE.placeholder] },
   { name: 'loading state', files: ['search.css'], classes: ['qc-search-status', 'qc-search-sentinel'], states: [] },
   { name: 'empty state', files: ['search.css', 'drawings-editors.css'], classes: ['qc-search-status', 'qc-drawing-glyph-empty'], states: [] },
