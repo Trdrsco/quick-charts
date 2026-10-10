@@ -2,10 +2,10 @@ import type { Translation } from '../runtime'
 import type { toast as source } from '../en/toast'
 
 export const toast: Translation<typeof source> = {
-  'toast.dismiss': 'Dismiss',
-  'toast.feedUnavailable': 'No data for {symbol} from this feed.',
-  'toast.feedNoData': 'No data for {symbol} yet.',
-  'toast.imageCopyFallback': 'Could not copy the image. Saved a file instead.',
-  'toast.imageFailed': 'Could not capture the chart image.',
-  'toast.indicatorsNotCarried': { one: '{count} indicator in this saved chart is not available here and was left out.', other: '{count} indicators in this saved chart are not available here and were left out.' },
+  'toast.dismiss': 'Schließen',
+  'toast.feedUnavailable': 'Keine Daten für {symbol} aus diesem Feed.',
+  'toast.feedNoData': 'Noch keine Daten für {symbol}.',
+  'toast.imageCopyFallback': 'Das Bild konnte nicht kopiert werden. Stattdessen wurde eine Datei gespeichert.',
+  'toast.imageFailed': 'Das Chartbild konnte nicht erstellt werden.',
+  'toast.indicatorsNotCarried': { one: '{count} Indikator dieses gespeicherten Charts ist hier nicht verfügbar und wurde weggelassen.', other: '{count} Indikatoren dieses gespeicherten Charts sind hier nicht verfügbar und wurden weggelassen.' },
 }

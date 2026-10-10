@@ -2,10 +2,10 @@ import type { Translation } from '../runtime'
 import type { toast as source } from '../en/toast'
 
 export const toast: Translation<typeof source> = {
-  'toast.dismiss': 'Dismiss',
-  'toast.feedUnavailable': 'No data for {symbol} from this feed.',
-  'toast.feedNoData': 'No data for {symbol} yet.',
-  'toast.imageCopyFallback': 'Could not copy the image. Saved a file instead.',
-  'toast.imageFailed': 'Could not capture the chart image.',
-  'toast.indicatorsNotCarried': { other: '{count} indicators in this saved chart are not available here and were left out.' },
+  'toast.dismiss': 'Đóng',
+  'toast.feedUnavailable': 'Không có dữ liệu cho {symbol} từ nguồn này.',
+  'toast.feedNoData': 'Chưa có dữ liệu cho {symbol}.',
+  'toast.imageCopyFallback': 'Không thể sao chép hình ảnh. Đã lưu một tệp thay thế.',
+  'toast.imageFailed': 'Không thể chụp hình ảnh biểu đồ.',
+  'toast.indicatorsNotCarried': { other: '{count} chỉ báo trong biểu đồ đã lưu này không khả dụng ở đây và đã bị bỏ qua.' },
 }
