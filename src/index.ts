@@ -120,6 +120,17 @@ export type {
   ChartExtensionSeries,
   ChartPriceFormatter,
 } from './extension'
+// What an extension adds to the chart settings dialog, and the form it builds its rows with.
+export type {
+  ChartSettingsContribution,
+  ChartSettingsControls,
+  ChartSettingsForm,
+  ChartSettingsIconPainter,
+  ChartSettingsOption,
+  ChartSettingsPageId,
+  ChartSettingsRowHandle,
+  ChartSettingsTip,
+} from './settings/contribution'
 
 export type {
   ManifestInput,

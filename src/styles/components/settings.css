@@ -322,11 +322,12 @@
  * 12px dark disc with a 2px light rim. Black and white are the poles of the value axis, not theme
  * roles. */
 [data-qc-theme] .qc-settings-slider {
-  --qcs-angle-0: 0deg;
-  --qcs-black: hsl(var(--qcs-angle-0) 0% 0%);
-  --qcs-white: hsl(var(--qcs-angle-0) 0% 100%);
-  --qcs-check: hsl(224deg 15% 19% / 0.4);
-  --qcs-ground: var(--qcs-black);
+  --qcd-angle-0: 0deg;
+  --qcd-black: hsl(var(--qcd-angle-0) 0% 0%);
+  --qcd-white: hsl(var(--qcd-angle-0) 0% 100%);
+  --qcd-check-hue: 224deg;
+  --qcd-check: hsl(var(--qcd-check-hue) 15% 19% / 0.4);
+  --qcd-ground: var(--qcd-black);
   display: inline-flex;
   gap: 8px;
   align-items: center;
@@ -334,7 +335,7 @@
 }
 
 [data-qc-theme='light'] .qc-settings-slider {
-  --qcs-ground: var(--qcs-white);
+  --qcd-ground: var(--qcd-white);
 }
 
 [data-qc-theme] .qc-settings-speaker {
@@ -356,10 +357,10 @@
   width: 148px;
   height: 10px;
   background:
-    linear-gradient(to right, transparent, var(--qcs-color)),
-    repeating-conic-gradient(from 270deg, var(--qcs-check) 0% 25%, transparent 0% 50%) 1px 50% / 8px 8px,
-    var(--qcs-ground);
-  border: 1px solid var(--qcs-color);
+    linear-gradient(to right, transparent, var(--qcd-swatch)),
+    repeating-conic-gradient(from 270deg, var(--qcd-check) 0% 25%, transparent 0% 50%) 1px 50% / 8px 8px,
+    var(--qcd-ground);
+  border: 1px solid var(--qcd-swatch);
   border-radius: 5px;
 }
 
@@ -367,29 +368,29 @@
   flex: 0 0 136px;
   width: 136px;
   height: 6px;
-  background: linear-gradient(to right, var(--qc-control-on) var(--qcs-level), var(--qc-state-pressed) var(--qcs-level));
+  background: linear-gradient(to right, var(--qc-control-on) var(--qcd-level), var(--qc-state-pressed) var(--qcd-level));
   border-radius: 5px;
 }
 
 [data-qc-theme][dir='rtl'] .qc-settings-opacity,
 [data-qc-theme] [dir='rtl'] .qc-settings-opacity {
   background:
-    linear-gradient(to left, transparent, var(--qcs-color)),
-    repeating-conic-gradient(from 270deg, var(--qcs-check) 0% 25%, transparent 0% 50%) right 1px top 50% / 8px 8px,
-    var(--qcs-ground);
+    linear-gradient(to left, transparent, var(--qcd-swatch)),
+    repeating-conic-gradient(from 270deg, var(--qcd-check) 0% 25%, transparent 0% 50%) right 1px top 50% / 8px 8px,
+    var(--qcd-ground);
 }
 
 [data-qc-theme][dir='rtl'] .qc-settings-volume,
 [data-qc-theme] [dir='rtl'] .qc-settings-volume {
-  background: linear-gradient(to left, var(--qc-control-on) var(--qcs-level), var(--qc-state-pressed) var(--qcs-level));
+  background: linear-gradient(to left, var(--qc-control-on) var(--qcd-level), var(--qc-state-pressed) var(--qcd-level));
 }
 
 [data-qc-theme] .qc-settings-opacity::-webkit-slider-thumb,
 [data-qc-theme] .qc-settings-volume::-webkit-slider-thumb {
   width: 12px;
   height: 12px;
-  background: var(--qcs-black);
-  border: 2px solid var(--qcs-white);
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
   border-radius: 50%;
   box-shadow: var(--qc-overlay-shadow);
   cursor: pointer;
@@ -401,8 +402,8 @@
   box-sizing: border-box;
   width: 12px;
   height: 12px;
-  background: var(--qcs-black);
-  border: 2px solid var(--qcs-white);
+  background: var(--qcd-black);
+  border: 2px solid var(--qcd-white);
   border-radius: 50%;
   box-shadow: var(--qc-overlay-shadow);
   cursor: pointer;
@@ -419,6 +420,11 @@
 
 [data-qc-theme] .qc-settings-slider[data-disabled='true'] > input {
   cursor: default;
+}
+
+/* The footer keeps its height whatever the page above it holds. */
+[data-qc-theme] .qc-chart-settings-dialog > .qc-chart-settings-footer {
+  flex: 0 0 auto;
 }
 
 /* The footer's Template menu opens over its button, as wide as its words. */

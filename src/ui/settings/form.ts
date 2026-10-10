@@ -34,14 +34,12 @@ export interface SettingsFormDeps {
   layer: HTMLElement
   /** A row reported a change: the page is drawn again. */
   changed(): void
+  /** The color a swatch that follows the bars offers its popover first: the bars' up color. */
+  barColor: string
 }
 
 /** The widths a list button stands at by name, so a width the drawing fields know keeps their rule. */
 const NAMED_WIDTHS: Readonly<Record<number, 'short' | 'medium' | 'wide'>> = { 100: 'short', 150: 'medium', 180: 'wide' }
-
-/** The color a swatch shows while its row follows the bars: the well paints the bars' two colors
- *  instead, and this value only seeds the popover. */
-const FOLLOWS_BARS = '#808080'
 
 /** A tip's mark beside a label: a short line under the pointer, or a card on a press. */
 function tipButton(deps: SettingsFormDeps, tip: ChartSettingsTip): HTMLButtonElement {
@@ -103,7 +101,7 @@ function slider(deps: SettingsFormDeps, props: { label: string; value: number; k
   const input = el('input', { type: 'range', min: '0', max: '100', step: '1', 'aria-label': props.label }) as HTMLInputElement
   input.value = String(Math.round(Math.max(0, Math.min(1, props.value)) * 100))
   input.disabled = props.disabled
-  const paint = (): void => input.style.setProperty('--qcs-level', `${input.value}%`)
+  const paint = (): void => input.style.setProperty('--qcd-level', `${input.value}%`)
   paint()
   input.addEventListener('input', () => {
     paint()
@@ -116,7 +114,7 @@ function slider(deps: SettingsFormDeps, props: { label: string; value: number; k
     return el('span', { class: 'qc-settings-slider', 'data-disabled': props.disabled ? 'true' : undefined }, speaker, input)
   }
   input.className = 'qc-settings-opacity'
-  input.style.setProperty('--qcs-color', props.kind.opacity)
+  input.style.setProperty('--qcd-swatch', props.kind.opacity)
   return el('span', { class: 'qc-settings-slider', 'data-disabled': props.disabled ? 'true' : undefined }, input)
 }
 
@@ -156,7 +154,9 @@ class RowControls implements ChartSettingsControls {
     }
     const b = swatchButton(t, layer, {
       label,
-      value: control.color ?? FOLLOWS_BARS,
+      // A color that follows the bars paints the bars' two colors in its well; the up color only
+      // seeds its popover.
+      value: control.color ?? this.deps.barColor,
       onPick: (color) => report(() => control.onColor(color)),
       ...(control.lineWidth
         ? { thickness: control.lineWidth.value, thicknessChoices: control.lineWidth.options, onThickness: (width: number) => report(() => control.lineWidth!.onChange(width)) }

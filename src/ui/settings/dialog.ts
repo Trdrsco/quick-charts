@@ -197,7 +197,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
   const render = (s: Session): void => {
     const focused = document.activeElement instanceof HTMLElement && s.panel.contains(document.activeElement) ? document.activeElement.dataset.qcKey : undefined
     const entry = s.pages.find((page) => page.id === s.page) ?? s.pages[0]!
-    const formDeps: SettingsFormDeps = { t: t(), icons: deps.icons, layer: s.dialog.layer, changed: () => render(s) }
+    const formDeps: SettingsFormDeps = { t: t(), icons: deps.icons, layer: s.dialog.layer, changed: () => render(s), barColor: deps.widget.theme.get()['series.up'] }
     s.panel.replaceChildren()
     s.panel.dataset.page = entry.id
     s.panel.setAttribute('aria-labelledby', tabId(entry.id))
@@ -269,12 +269,17 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
   }
 
   /** Stand the dialog on screen for the page it shows: centred when it first opens, then holding its
-   *  top edge, raised only as far as a taller page needs to stay clear of the viewport's foot. */
+   *  top edge, raised only as far as a taller page needs to stay clear of the viewport's foot. A
+   *  dialog a host's stylesheet spreads across the whole window stands where that stylesheet puts it. */
   const place = (s: Session): void => {
     const box = s.dialog.box
     const height = box.offsetHeight
     const width = box.offsetWidth
     const viewport = { width: window.innerWidth, height: window.innerHeight }
+    if (width >= viewport.width) {
+      for (const property of ['position', 'left', 'top'] as const) box.style.removeProperty(property)
+      return
+    }
     let left: number
     let top: number
     if (!s.placed) {
@@ -516,8 +521,8 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       el('span', { class: 'qc-drawing-select-value', text: t()('drawing.template') }),
       selectChevron(deps.icons),
     ) as HTMLButtonElement
-    const cancelButton = button({ class: 'qc-button qc-drawing-footer-button qc-drawing-cancel qc-chart-settings-cancel', label: t()('drawing.cancel'), text: t()('drawing.cancel'), onClick: () => s && cancel(s) })
-    const okButton = button({ class: 'qc-button qc-button--primary qc-drawing-footer-button qc-chart-settings-ok', label: t()('drawing.ok'), text: t()('drawing.ok'), onClick: () => s && ok(s) })
+    const cancelButton = button({ class: 'qc-button qc-drawing-footer-button qc-drawing-cancel', label: t()('drawing.cancel'), text: t()('drawing.cancel'), onClick: () => s && cancel(s) })
+    const okButton = button({ class: 'qc-button qc-button--primary qc-drawing-footer-button', label: t()('drawing.ok'), text: t()('drawing.ok'), onClick: () => s && ok(s) })
     dialog.footer.append(template, el('span', { class: 'qc-drawing-footer-gap' }), cancelButton, okButton)
 
     const pages = pagesOf(contributions)

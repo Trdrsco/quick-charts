@@ -702,7 +702,8 @@ tile.
 ### Templates
 
 `adapter.templates(kind)` is a store per kind: `'indicator'` for indicator settings, `'drawing'` for
-a drawing tool's look, and `'palette'` for chart appearance. A drawing template carries the `tool`
+a drawing tool's look, `'chart'` for the chart settings a viewer saves from the settings dialog's
+Template menu, and `'palette'`, which the chart itself does not write. A drawing template carries the `tool`
 it belongs to, because a trend-line template means nothing on a rectangle. Their content is opaque,
 like a chart's.
 
@@ -1525,8 +1526,8 @@ container.before(undo, search)
 ```
 
 The chart's own dialogs still open from their commands while its bars are hidden.
-`chart.symbol.search`, `chart.indicators.open`, `chart.compare.open` and `widget.layout.open` raise
-them in the widget's layer on the document, and `widget.layout.save` asks a layout that was never
+`chart.symbol.search`, `chart.indicators.open`, `chart.compare.open`, `chart.settings.open` and
+`widget.layout.open` raise them in the widget's layer on the document, and `widget.layout.save` asks a layout that was never
 saved for its name. Hide a dialog in `ui` when your interface provides its own.
 
 The library draws its own controls over its own renderer and keeps its internal components to
@@ -1639,12 +1640,15 @@ chrome is painted from it and renders nothing without it.
   the 55 arrangements and the five sync switches); the saved-layouts menu, shown with a layouts
   store, saves, copies, renames, opens and deletes layouts through `saveLoad.layouts` and marks
   unsaved changes, with an autosave switch and Download chart data.
-  Chart settings edits appearance, grid and session shading, the price-scale mode and the theme
-  mode, and its Reset defaults row runs `chart.appearance.reset`, which drops the viewer's own
-  appearance edits and returns the price scale to normal so the chart reads as the theme and your
-  constructor options paint it. `ui: { topBar: { settings: { theme: false } } }` removes its Theme
-  section and leaves the rest of the menu, for a host that offers the theme choice in its own
-  settings; the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, Copy image where the browser can, and
+  Chart settings opens the chart settings dialog: the Symbol, Status line, Scales and lines,
+  Canvas and Events pages of the active chart's settings, and any page an extension adds. Every
+  change previews on the chart; Cancel, the close and Escape put back the viewer's settings, the
+  price-scale mode and the timezone as they were, and Ok keeps them. Its Template menu applies the
+  defaults (`chart.settings.reset`), saves the viewer's settings under a name in
+  `saveLoad.templates('chart')`, and lists the saved ones. `chart.settings.open` opens the same
+  dialog, on the page `{ page }` names, whether or not the bar shows the gear. The theme mode is not
+  among its pages: `ui: { topBar: { settings: { theme: false } } }` stays accepted and changes
+  nothing, and the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, Copy image where the browser can, and
   Download chart data when there is no layouts store) close the bar.
 - **The bottom bar.** The range presets the chart offers, the clock in the display zone with the
   list of the timezones it offers (UTC and the exchange choice first), and the session view for a
@@ -3300,6 +3304,16 @@ What to know:
   its subject, and `apply(hidden)` is called with the current state at contribution and on every
   change. The handle reads `hidden()`, flips `setHidden()` through the same eye the drawing toolbar
   drives, and `remove()` withdraws the layer.
+- **Your settings join the chart settings dialog.** `ctx.contributeSettings(contribution)` adds a
+  page of your own, placed after the chart page `place.page.after` names (or last), or rows inside
+  one of the chart's pages, placed before the first of the rows `place.before` names (or at its
+  end). The chart's rows are named by the leaf they edit, such as `background` on the Status line
+  page, and the sections it shows only in some contexts by their own names, such as `indicators`.
+  `build(form)` builds your rows with the form the chart builds its own with: headings, checkbox
+  rows with a hint or a tip, sub-rows, and colors, lists, numbers and sliders, so your rows are the
+  chart's in every measure. The dialog calls `open()` as it opens, `cancel(state)` with what `open`
+  answered when the viewer cancels, `commit()` on Ok and `applyDefaults()` from the Template menu.
+  The returned function withdraws the contribution, and detach withdraws it either way.
 - **A printed chord is a real binding.** `ChartExtensionMenuItem.shortcut` prints on the row and
   answers to the key. The chart's dispatcher offers a press no built-in verb claims to the rows your
   `contributeContextMenu` callback returns for the level under the pointer and runs that row's own
