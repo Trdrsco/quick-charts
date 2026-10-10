@@ -1111,6 +1111,19 @@
   margin: 6px 0;
 }
 
+/* The price menu the scale's plus opens: the context menu's box as wide as its widest row, so a
+ * label shows whole and ellipsizes only where the viewport cannot hold its row. A shortcut stands
+ * 10px after its label, in 12px. */
+[data-qc-theme] .qc-menu.qc-price-menu {
+  width: max-content;
+  max-width: calc(100vw - 16px);
+}
+
+[data-qc-theme] .qc-menu.qc-price-menu .qc-menu-hint {
+  padding-left: 4px;
+  font-size: 12px;
+}
+
 /* Indicator inputs ----------------------------------------------------------------------------- */
 
 [data-qc-theme] .qc-inputs {

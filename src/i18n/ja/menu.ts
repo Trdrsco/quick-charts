@@ -8,4 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { other: 'インジケーター{count}件を削除' },
   'menu.removeDrawings': { other: '描画{count}件を削除' },
   'menu.settings': '設定…',
+  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
 }

@@ -21,6 +21,7 @@ export const KEYS_ADDED_IN_MAJOR = [
   'history.changeMovePane',
   'legend.movePaneDown',
   'legend.movePaneUp',
+  'menu.drawHorizontalLine',
 ] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

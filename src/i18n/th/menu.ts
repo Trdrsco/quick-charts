@@ -8,4 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { other: 'นำอินดิเคเตอร์ออก {count} รายการ' },
   'menu.removeDrawings': { other: 'นำการวาดออก {count} รายการ' },
   'menu.settings': 'การตั้งค่า…',
+  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
 }

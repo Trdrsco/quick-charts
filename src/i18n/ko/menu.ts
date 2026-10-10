@@ -8,4 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { other: '지표 {count}개 제거' },
   'menu.removeDrawings': { other: '그리기 {count}개 제거' },
   'menu.settings': '설정…',
+  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
 }
