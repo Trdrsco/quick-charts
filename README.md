@@ -2313,7 +2313,11 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   scale between framing itself and holding where it was dragged, and "L" between a regular and a
   logarithmic scale, each the chart's own verb. The currency and unit box (`currencyAndUnit`)
   names what the symbol's prices are in (its `currencyCode` and `unitId`) at the top of the main
-  scale on the same terms, and shows nothing for a symbol that states neither.
+  scale on the same terms, and shows nothing for a symbol that states neither. The price-to-bar
+  ratio lock (`lockPriceToBarRatio`) holds the price one bar's width spans: engaging it with no
+  `priceToBarRatio` of its own takes the ratio on screen into that leaf, the scale stops framing
+  itself, and every zoom of the time scale rescales the price axis by the same factor about its
+  middle. A scale that is not regular holds no ratio.
 - `timeScale`: the crosshair label's date format (`CHART_DATE_FORMATS`), the weekday before it, and
   a clock of 24 hours or of 12, which the axis times follow too.
 - `canvas`: the background, solid or a vertical gradient; each grid's switch, color and stroke; the
@@ -2321,7 +2325,7 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   when the navigation buttons show; and the margins, the right one in bars.
 - `events`: a line at each trading day's start, in its own stroke.
 
-The leaves for the price-to-bar ratio lock, the plus button, keeping the left edge across a timeframe change and the pane buttons are stored and
+The leaves for the plus button, keeping the left edge across a timeframe change and the pane buttons are stored and
 saved, and draw nothing yet.
 
 ## Compare

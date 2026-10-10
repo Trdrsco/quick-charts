@@ -49,6 +49,8 @@ export interface FakeRenderer {
   scaleWidths: { left: number; right: number }
   /** The options each price scale holds, as the chart wrote them; `autoScale` is whether it frames. */
   priceScaleOptions: Record<string, Record<string, unknown>>
+  /** The price range each scale was set to by hand, which it then answers as its visible range. */
+  priceRanges: Record<string, { from: number; to: number }>
   fireLogicalRange(): void
   fireTimeRange(): void
   paneHeights: Record<number, number>
@@ -96,6 +98,7 @@ export function fakeRenderer(): FakeRenderer {
     },
     scaleWidths: { left: 0, right: 0 },
     priceScaleOptions: {},
+    priceRanges: {},
     fireLogicalRange: () => {
       for (const cb of logicalSubs) cb(state.logicalRange)
     },
@@ -144,11 +147,21 @@ export function fakeRenderer(): FakeRenderer {
     applyOptions: (next: Record<string, unknown>) => {
       const key = id ?? 'right'
       state.priceScaleOptions[key] = { ...state.priceScaleOptions[key], ...next }
+      // A scale that frames itself again lets go of a range set by hand.
+      if (next.autoScale === true) delete state.priceRanges[key]
     },
     options: () => ({ borderVisible: false, borderColor: '#000000', autoScale: true, ...state.priceScaleOptions[id ?? 'right'] }),
     // The framed price range: null until a series on this scale holds data, then the span of that
     // data, the way the real renderer answers once it has rendered a frame.
+    // Setting a range by hand stops the scale framing itself, as the renderer does.
+    setVisibleRange: (range: { from: number; to: number }) => {
+      const key = id ?? 'right'
+      state.priceScaleOptions[key] = { ...state.priceScaleOptions[key], autoScale: false }
+      state.priceRanges[key] = { ...range }
+    },
     getVisibleRange: () => {
+      const held = state.priceRanges[id ?? 'right']
+      if (held) return { ...held }
       const rows = series.filter((s) => s.options.priceScaleId !== 'volume').flatMap((s) => s.data as { high?: number; low?: number; value?: number; close?: number }[])
       const highs = rows.map((r) => r.high ?? r.value ?? r.close).filter((v): v is number => typeof v === 'number')
       const lows = rows.map((r) => r.low ?? r.value ?? r.close).filter((v): v is number => typeof v === 'number')

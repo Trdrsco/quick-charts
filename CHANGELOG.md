@@ -40,6 +40,8 @@ The scale mode buttons (`priceScale.scaleModeButtons`) stand at the foot of the 
 
 The currency and unit box (`priceScale.currencyAndUnit`) names what the symbol's prices are in, its `currencyCode` and `unitId`, in a box at least 64x26 four pixels inside the top of the main price scale, on the chart's background in a 1px border with a radius of 4, while the pointer is over the scale, always, or never; a symbol that states neither shows none. The catalog gains `chrome.currencyAndUnit`.
 
+The price-to-bar ratio lock (`priceScale.lockPriceToBarRatio`) holds the price one bar's width spans on a regular scale: engaging it with no `priceToBarRatio` takes the ratio on screen, to seven decimals, into the viewer's leaf, the scale stops framing itself, and every zoom of the time scale rescales the price axis by the same factor about its middle; a ratio of the viewer's own holds at once.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:

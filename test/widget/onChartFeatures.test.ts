@@ -370,6 +370,39 @@ describe('the currency and unit box', () => {
   })
 })
 
+describe('the price to bar ratio lock', () => {
+  it('takes the ratio on screen as it engages, and rescales the price axis with every zoom', async () => {
+    const { chart, renderer } = await mount()
+    const range = renderer.chart.priceScale('right').getVisibleRange()!
+    const live = Math.round(((range.to - range.from) / 300) * 8 * 1e7) / 1e7
+    chart.applySettings({ priceScale: { lockPriceToBarRatio: true } })
+    expect(chart.settings().priceScale.priceToBarRatio).toBe(live)
+    // The framing stops: the auto-scale button reads off.
+    expect(renderer.priceScaleOptions.right).toMatchObject({ autoScale: false })
+    const span = (): number => renderer.priceRanges.right!.to - renderer.priceRanges.right!.from
+    const before = span()
+    renderer.chart.timeScale().applyOptions({ barSpacing: 16 })
+    renderer.fireLogicalRange()
+    expect(span()).toBeCloseTo(before / 2, 6)
+    // A ratio of the viewer's own holds at once.
+    chart.applySettings({ priceScale: { priceToBarRatio: live * 2 } })
+    expect(span()).toBeCloseTo(before, 6)
+    // Unlocked, a zoom leaves the price axis where it is.
+    chart.applySettings({ priceScale: { lockPriceToBarRatio: false } })
+    renderer.chart.timeScale().applyOptions({ barSpacing: 4 })
+    renderer.fireLogicalRange()
+    expect(span()).toBeCloseTo(before, 6)
+  })
+
+  it('holds nothing on a scale that is not regular', async () => {
+    const { chart, renderer } = await mount()
+    chart.setScaleMode('log')
+    chart.applySettings({ priceScale: { lockPriceToBarRatio: true } })
+    expect(chart.settings().priceScale.priceToBarRatio).toBeNull()
+    expect(renderer.priceRanges.right).toBeUndefined()
+  })
+})
+
 describe('the price and percentage label', () => {
   it('writes a change to two decimals with its sign', () => {
     expect(signedPercentText(0.0008, 'en')).toBe('+0.08%')

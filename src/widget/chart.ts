@@ -1112,6 +1112,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let levels: PriceLevelsLayer | null = null
   /** The controls on the price scale, once mounted. */
   let scaleControls: ScaleControls | null = null
+  /** The bar spacing the price axis was last held for under the price-to-bar ratio lock. */
+  let ratioSpacing: number | null = null
   const replay = attachReplayPlane({
     chart,
     datafeed,
@@ -1237,6 +1239,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // The high and low are the bars in view, so a move of the view moves them.
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
     levels?.refresh()
+    // A zoom of the time scale under the lock rescales the price axis with it.
+    holdRatio()
     scaleControls?.sync()
   })
 
@@ -1567,11 +1571,23 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  up on their next draw. */
   function applyLook(): void {
     const before = {
+      locked: eff.priceScale.lockPriceToBarRatio,
+      ratio: eff.priceScale.priceToBarRatio,
       subsession: activeSubsession(),
       rightOffset: appliedRightOffset,
       indicatorLabels: `${eff.priceLabels.indicatorLabelName}:${eff.priceLabels.indicatorLabelValue}`,
     }
     eff = resolveSettings()
+    // The lock engaging with no ratio of its own takes the ratio the chart shows, as the viewer's
+    // own leaf, so it is what the lock holds from now and what the settings state.
+    const engaged = eff.priceScale.lockPriceToBarRatio && !before.locked
+    if (engaged && eff.priceScale.priceToBarRatio === null) {
+      const live = liveRatio()
+      if (live !== null) {
+        viewerPartial = mergePartialChartSettings(viewerPartial, { priceScale: { priceToBarRatio: live } })
+        eff = resolveSettings()
+      }
+    }
     const c = canvas()
     chart.applyOptions(lookOptions())
     if (scaleSideOf(eff) !== scaleSide) moveScale(scaleSideOf(eff))
@@ -1607,6 +1623,43 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     countdown?.restyled()
     prices.sync()
     levels?.refresh()
+    // A lock engaging, or a new ratio, holds the price axis at once; the framing stops with it.
+    if (engaged) applyPriceAxisPolicy('manual')
+    holdRatio(engaged || eff.priceScale.priceToBarRatio !== before.ratio)
+  }
+
+  /** The price-to-bar ratio the chart shows: the price one bar's width spans at the scale's slope,
+   *  to seven decimals, or null on a scale that is not regular or not laid out. */
+  function liveRatio(): number | null {
+    if (scaleMode !== 'normal') return null
+    const range = mainScale().getVisibleRange()
+    const height = chart.panes()[0]?.getHeight() ?? 0
+    const spacing = chart.timeScale().options().barSpacing
+    if (!range || !(height > 0) || !(spacing > 0)) return null
+    const ratio = ((range.to - range.from) / height) * spacing
+    return Number.isFinite(ratio) && ratio > 0 ? Math.round(ratio * 1e7) / 1e7 : null
+  }
+
+  /** Hold the price axis at the locked ratio for the bar spacing on screen, about the price in its
+   *  middle: a zoom of the time scale rescales the price axis by the same factor. Only a regular
+   *  scale holds a ratio. `force` holds it even when the spacing has not moved. */
+  function holdRatio(force = false): void {
+    const s = eff.priceScale
+    const ratio = s.priceToBarRatio
+    if (!s.lockPriceToBarRatio || ratio === null || !(ratio > 0) || scaleMode !== 'normal') {
+      ratioSpacing = null
+      return
+    }
+    const spacing = chart.timeScale().options().barSpacing
+    if (!force && spacing === ratioSpacing) return
+    const range = mainScale().getVisibleRange()
+    const height = chart.panes()[0]?.getHeight() ?? 0
+    if (!range || !(height > 0) || !(spacing > 0)) return
+    ratioSpacing = spacing
+    const span = (ratio / spacing) * height
+    const middle = (range.from + range.to) / 2
+    mainScale().setVisibleRange({ from: middle - span / 2, to: middle + span / 2 })
+    scaleControls?.sync()
   }
 
   /** New prices arrived for the symbol on screen: every surface that draws them repaints. */
