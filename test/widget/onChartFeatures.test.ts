@@ -16,7 +16,7 @@ import { priceLevels, visibleRange } from '../../src/widget/priceLevels'
 import { signedPercentText } from '../../src/widget/prices'
 import { barValue } from '../../src/widget/styles'
 import { paneActions, type PaneFacts } from '../../src/ui/chrome/paneButtons'
-import { labelFill } from '../../src/widget/scalePlus'
+import { labelFill, SCALE_PLUS_PRIMITIVE } from '../../src/widget/scalePlus'
 import { fakePriceAt, lastRenderer, type FakeRenderer, type FakeSeries } from './rendererFake'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
@@ -463,12 +463,11 @@ describe('keeping the left edge', () => {
 describe('the plus button', () => {
   afterEach(() => fakePriceAt(null))
 
-  /** The plus's primitive on the main series: the one that paints in the renderer's top layer. */
+  /** The plus's primitive on the main series, by the mark it carries. */
   const plusPrimitive = (renderer: FakeRenderer) =>
-    main(renderer).primitives.find((p) => {
-      const views = (p as { paneViews?: () => { zOrder(): string }[] }).paneViews?.()
-      return typeof (p as { hitTest?: unknown }).hitTest === 'function' && views?.[0]?.zOrder() === 'top'
-    }) as { paneViews(): { renderer(): { draw(target: unknown): void } }[] } | undefined
+    main(renderer).primitives.find((p) => (p as { [SCALE_PLUS_PRIMITIVE]?: true })[SCALE_PLUS_PRIMITIVE] === true) as
+      | { paneViews(): { renderer(): { draw(target: unknown): void } }[] }
+      | undefined
 
   /** One paint of the renderer's top layer on the main pane, the paint a crosshair move asks for.
    *  Answers the fills the plus was painted in. */
@@ -562,6 +561,29 @@ describe('the plus button', () => {
     renderer.fireCrosshair(BARS[5]!.t, 300, 200)
     paint(renderer)
     expect(plus.style.top).toBe('190px')
+  })
+
+  it('wears a pointer cursor on the plus and gives the box back its own off it', async () => {
+    const { renderer, gestures } = await mountWithMenus()
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    paint(renderer)
+    gestures.style.cursor = 'crosshair'
+    const move = (x: number, y: number): void => {
+      gestures.dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: y, pointerType: 'mouse', bubbles: true }))
+    }
+    // On the painted box (519 to 539 across, 110 to 131 down), the box wears the pointer.
+    move(529, 120)
+    expect(gestures.style.cursor).toBe('pointer')
+    move(530, 125)
+    expect(gestures.style.cursor).toBe('pointer')
+    // Off it, the box wears what it wore before.
+    move(300, 120)
+    expect(gestures.style.cursor).toBe('crosshair')
+    // A cursor another surface writes while the pointer is on the plus stands when it leaves.
+    move(529, 120)
+    gestures.style.cursor = 'grab'
+    move(300, 120)
+    expect(gestures.style.cursor).toBe('grab')
   })
 
   it('wears the one fill the renderer paints the crosshair labels in: the measured grey, on the price and the time label alike', async () => {

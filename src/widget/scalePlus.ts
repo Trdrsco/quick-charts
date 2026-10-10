@@ -15,7 +15,7 @@
 // the colour the chart hands it for the crosshair's label, so the plus wears whatever the label
 // wears. Each draw reports the box it painted, which is where the chrome stands its hit target and
 // where a press counts as a press of the plus.
-import { CrosshairMode, type IPrimitivePaneRenderer, type IPrimitivePaneView, type ISeriesApi, type ISeriesPrimitive, type PrimitiveHoveredItem, type SeriesType, type Time } from 'lightweight-charts'
+import { CrosshairMode, type IPrimitivePaneRenderer, type IPrimitivePaneView, type ISeriesApi, type ISeriesPrimitive, type SeriesType, type Time } from 'lightweight-charts'
 import { parseCssColor } from '../theme/color'
 
 /** The plus's box in the main pane's own CSS pixels, and the crosshair's height it stands at. */
@@ -134,6 +134,9 @@ interface BitmapScope {
   verticalPixelRatio: number
 }
 
+/** Marks the plus's primitive among a series' primitives, the chart's other painters among them. */
+export const SCALE_PLUS_PRIMITIVE: unique symbol = Symbol('quickcharts.scalePlus')
+
 export function attachScalePlus(deps: ScalePlusDeps): ScalePlusLayer {
   let disposed = false
   let requestUpdate: (() => void) | null = null
@@ -191,8 +194,12 @@ export function attachScalePlus(deps: ScalePlusDeps): ScalePlusLayer {
   // The top layer is the one the renderer paints with the crosshair, every time the crosshair moves.
   // One list for every paint, so the renderer keeps the views it wrapped.
   const views: readonly IPrimitivePaneView[] = [{ zOrder: () => 'top', renderer: () => renderer }]
-  const hit: PrimitiveHoveredItem = { cursorStyle: 'pointer', externalId: 'qc-scale-plus', zOrder: 'top' }
-  const primitive: ISeriesPrimitive<Time> = {
+  // No hit test: a primitive the renderer finds under the pointer makes its series the hovered one,
+  // which the renderer paints by another path, so the plus would leave the frame it stands in each
+  // time the pointer reached it. The chrome reads the pointer against the painted box instead, and
+  // gives the box its cursor.
+  const primitive: ISeriesPrimitive<Time> & { readonly [SCALE_PLUS_PRIMITIVE]: true } = {
+    [SCALE_PLUS_PRIMITIVE]: true,
     attached(param) {
       requestUpdate = param.requestUpdate
     },
@@ -200,12 +207,6 @@ export function attachScalePlus(deps: ScalePlusDeps): ScalePlusLayer {
       requestUpdate = null
     },
     paneViews: () => views,
-    // The renderer asks with the pointer the crosshair is moving to, before it paints the plus there:
-    // the plus stands on the crosshair's own row, so a pointer in its column is on it.
-    hitTest(x) {
-      const box = drawn
-      return box && x >= box.left && x < box.left + box.width ? hit : null
-    },
   }
   deps.series().attachPrimitive(primitive)
 

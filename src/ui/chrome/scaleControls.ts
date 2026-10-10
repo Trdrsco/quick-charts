@@ -248,9 +248,23 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     const y = event.clientY - rect.top
     return x >= box.left && x <= box.left + box.width && y >= box.top && y <= box.top + box.height
   }
+  /** The cursor the gesture box wore before the pointer reached the plus, while the plus wears its
+   *  own there; null while it does not. Another surface's cursor written meanwhile stands. */
+  let cursorBefore: string | null = null
+  const wearPlusCursor = (on: boolean): void => {
+    const style = deps.gestures.style
+    if (on && cursorBefore === null) {
+      cursorBefore = style.cursor
+      style.cursor = 'pointer'
+    } else if (!on && cursorBefore !== null) {
+      if (style.cursor === 'pointer') style.cursor = cursorBefore
+      cursorBefore = null
+    }
+  }
   const onMove = (event: PointerEvent): void => {
     // A finger does not hover: on touch the buttons show only when the settings keep them shown.
     if (event.pointerType === 'touch') return
+    wearPlusCursor(onPlus(event.clientX, event.clientY))
     const next = within(event)
     if (next === overScale) {
       // A drag on the scale releases its framing without a word to anyone, so the state is read
@@ -262,6 +276,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     sync()
   }
   const onLeave = (): void => {
+    wearPlusCursor(false)
     if (!overScale) return
     overScale = false
     sync()
@@ -288,6 +303,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     placePlus,
     destroy() {
       offStrings()
+      wearPlusCursor(false)
       deps.gestures.removeEventListener('pointermove', onMove)
       deps.gestures.removeEventListener('pointerup', onMove)
       deps.gestures.removeEventListener('pointerleave', onLeave)

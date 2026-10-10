@@ -189,14 +189,13 @@ describe('the plus beside the crosshair label', () => {
     ])
   })
 
-  it('takes the hover fill under the pointer and names a pointer cursor to the renderer', () => {
+  it('takes the hover fill under the pointer and claims no hover from the renderer', () => {
     const { layer, series, paint } = setup()
     layer.setPointer({ x: 1110, y: 398 })
     expect(paint().find((call) => call.op === 'fill')!.fill).toBe('rgb(99, 99, 99)')
-    expect(series.primitives[0]!.hitTest(1110, 398)).toMatchObject({ cursorStyle: 'pointer' })
-    // The renderer asks with the pointer it is about to paint the plus under, whatever its height.
-    expect(series.primitives[0]!.hitTest(1110, 440)).toMatchObject({ cursorStyle: 'pointer' })
-    expect(series.primitives[0]!.hitTest(1090, 398)).toBeNull()
+    // A hit would make the series the renderer's hovered one, painted by another path, and the plus
+    // would leave its frame each time the pointer reached it.
+    expect('hitTest' in series.primitives[0]!).toBe(false)
   })
 
   it('mirrors beside a left scale', () => {
