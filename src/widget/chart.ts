@@ -105,6 +105,7 @@ import { attachMarks } from './marks'
 import type { ChromeDoors } from '../ui/chrome/doors'
 import { mountNavControls } from '../ui/chrome/navControls'
 import { mountScaleControls, type PriceScaleBox, type ScaleControls } from '../ui/chrome/scaleControls'
+import { attachScalePlus, type ScalePlusLayer } from './scalePlus'
 import { mountPaneButtons, type PaneButtons } from '../ui/chrome/paneButtons'
 import { attachPaneOps, PANE_MOVE_COMMAND, type PaneMove } from './paneOps'
 import { paneIndexOf, paneTopIn } from '../paneGeometry'
@@ -1182,6 +1183,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let levels: PriceLevelsLayer | null = null
   /** The controls on the price scale, once mounted. */
   let scaleControls: ScaleControls | null = null
+  /** The plus beside the crosshair's price label, once attached. */
+  let scalePlus: ScalePlusLayer | null = null
   /** The buttons at the top right of each pane, once mounted. */
   let paneButtons: PaneButtons | null = null
   /** The bar spacing the price axis was last held for under the price-to-bar ratio lock. */
@@ -1438,14 +1441,13 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   // The controls on the price scale: the currency and unit box at its top, the auto-scale and
-  // logarithmic buttons at its foot, and the plus beside the crosshair's price, each a press of the
-  // chart's own verb.
+  // logarithmic buttons at its foot, and the door to the plus beside the crosshair's price, each a
+  // press of the chart's own verb.
   scaleControls = deps.ui.priceScale
     ? mountScaleControls({
         chrome,
         gestures,
         i18n,
-        icons: deps.icons,
         box: priceScaleBox,
         modeButtons: () => eff.priceScale.scaleModeButtons,
         unitBox: () => eff.priceScale.currencyAndUnit,
@@ -1459,14 +1461,23 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         toggleLogScale: () => {
           deps.commands.execute(scaleMode === 'log' ? 'chart.scale.normal' : 'chart.scale.log')
         },
-        // The plus opens the menu a right-click raises, so the rows a host contributes for a level
-        // are there too; without that menu, or a crosshair, there is nothing for it to open.
-        plusButton: () => eff.priceLabels.plusButton && menu !== null && deps.ui.crosshair,
-        openPriceMenu: (clientX, clientY) => {
-          menu?.raiseAt(clientX, clientY)
+        openPriceMenu: (anchor, keyboard) => {
+          menu?.raisePriceMenu(anchor, keyboard)
         },
       })
     : null
+  // The plus beside the crosshair's price label, painted by the renderer with the label. It opens
+  // the price menu, so it shows only where the chart has its menus.
+  scalePlus =
+    scaleControls && menu
+      ? attachScalePlus({
+          chart,
+          series: () => series,
+          enabled: () => eff.priceLabels.plusButton && deps.ui.crosshair,
+          side: () => scaleSide,
+          placed: (box) => scaleControls?.placePlus(box),
+        })
+      : null
   /** What lives in a pane, as the commands that remove it name it. */
   const paneContents = (index: number): { indicators: string[]; compares: string[] } => ({
     indicators: Object.entries(indicators.renderer.paneOf()).filter(([, pane]) => pane === index).map(([id]) => id),
@@ -1516,9 +1527,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
   })
 
-  // The plus follows the crosshair on the main pane, wherever that pane stands.
+  // The plus follows the crosshair on the main pane, wherever that pane stands. The renderer reports
+  // the move before it paints it, so the paint that moves the crosshair's label draws the plus there.
   chart.subscribeCrosshairMove((param) => {
-    scaleControls?.setCrosshair(param.point && (param.paneIndex ?? 0) === mainPane() ? mainPaneTop() + param.point.y : null)
+    scalePlus?.setPointer(param.point && (param.paneIndex ?? 0) === mainPane() ? param.point : null)
   })
 
   // The watermark: the symbol written large behind the bars, in the parts the settings name.
@@ -1755,6 +1767,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // The chrome's controls stand on the chart's own background.
     chrome.style.setProperty('--qcd-chart-background', eff.canvas.background)
     scaleControls?.sync()
+    scalePlus?.refresh()
     paneButtons?.sync()
     legend.push()
     extensions.host.themeChanged(settingsCanvas(c, eff))
@@ -2287,6 +2300,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     baselineLevel.follow(next === 'baseline' ? series : null)
     countdown?.seriesChanged(previous)
     levels?.seriesChanged(previous)
+    scalePlus?.seriesChanged(previous)
     extensions.visibleSeriesReplaced()
     applyPriceFormat()
     const remove = (leaving: ISeriesApi<SeriesType>): void => {
@@ -2859,6 +2873,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       unregisterCommands()
       baselineLevel.destroy()
       nav?.destroy()
+      scalePlus?.destroy()
       scaleControls?.destroy()
       paneButtons?.destroy()
       watermark.destroy()

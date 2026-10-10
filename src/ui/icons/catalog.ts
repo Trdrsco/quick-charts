@@ -155,8 +155,6 @@ const CONTROL_ICONS = byMeaning({
   tip: [ICONS.question],
   volume: [ICONS.speaker],
   volumeMuted: [ICONS.speakerMuted],
-  // The plus beside the crosshair's price, which opens the price level's menu.
-  priceLevelMenu: [ICONS.priceLevelMenu],
 })
 
 /** An icon of one of the chart's own controls. */

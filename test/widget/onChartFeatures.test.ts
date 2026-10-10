@@ -462,8 +462,40 @@ describe('keeping the left edge', () => {
 describe('the plus button', () => {
   afterEach(() => fakePriceAt(null))
 
-  it('stands beside the crosshair price on the main pane and opens that price menu, host rows and all', async () => {
-    const run = vi.fn()
+  /** The plus's primitive on the main series: the one that paints in the renderer's top layer. */
+  const plusPrimitive = (renderer: FakeRenderer) =>
+    main(renderer).primitives.find((p) => {
+      const views = (p as { paneViews?: () => { zOrder(): string }[] }).paneViews?.()
+      return typeof (p as { hitTest?: unknown }).hitTest === 'function' && views?.[0]?.zOrder() === 'top'
+    }) as { paneViews(): { renderer(): { draw(target: unknown): void } }[] } | undefined
+
+  /** One paint of the renderer's top layer on the main pane, the paint a crosshair move asks for.
+   *  Answers the fills the plus was painted in. */
+  const paint = (renderer: FakeRenderer, pane = { width: 540, height: 300 }): string[] => {
+    const fills: string[] = []
+    let fillStyle = ''
+    const context = {
+      set fillStyle(v: string) { fillStyle = v },
+      get fillStyle() { return fillStyle },
+      strokeStyle: '',
+      lineWidth: 1,
+      save: () => undefined,
+      restore: () => undefined,
+      beginPath: () => undefined,
+      roundRect: () => undefined,
+      fill: () => void fills.push(fillStyle),
+      arc: () => undefined,
+      stroke: () => undefined,
+      fillRect: () => undefined,
+    }
+    plusPrimitive(renderer)!.paneViews()[0]!.renderer().draw({
+      useBitmapCoordinateSpace: <T>(f: (scope: unknown) => T): T => f({ context, bitmapSize: pane, mediaSize: pane, horizontalPixelRatio: 1, verticalPixelRatio: 1 }),
+    })
+    return fills
+  }
+
+  async function mountWithMenus(options: { drawings?: boolean } = {}) {
+    const run = { mark: vi.fn(), order: vi.fn(), view: vi.fn() }
     const container = document.createElement('div')
     document.body.appendChild(container)
     const widget = createChart({
@@ -472,12 +504,22 @@ describe('the plus button', () => {
       symbol: 'ES',
       timeframe: '1m',
       theme: { mode: 'dark' },
-      features: { drawings: false, replay: false, compare: false },
+      features: { drawings: options.drawings ?? true, replay: false, compare: false },
       ui: { contextMenu: true, topBar: false, bottomBar: false, toasts: false },
       extensions: [
         {
-          id: 'levels',
-          attach: (ctx) => (ctx.contributeContextMenu((at) => [{ id: 'mark', label: `Mark ${at.priceText}`, group: 'level', run }]), { detach: () => undefined }),
+          id: 'marks',
+          attach: (ctx) => (
+            ctx.contributeContextMenu((at) => [
+              { id: 'mark', label: `Mark ${at.priceText}`, shortcut: 'Alt + M', group: 'level', run: run.mark },
+              { id: 'view', label: 'Show marks', group: 'view', run: run.view },
+            ]),
+            { detach: () => undefined }
+          ),
+        },
+        {
+          id: 'orders',
+          attach: (ctx) => (ctx.contributeContextMenu((at) => [{ id: 'order', label: `Order ${at.priceText}`, run: run.order }]), { detach: () => undefined }),
         },
       ],
     })
@@ -490,19 +532,117 @@ describe('the plus button', () => {
     Object.defineProperty(gestures, 'clientWidth', { value: 600, configurable: true })
     fakePriceAt(() => 4510.25)
     const plus = container.querySelector<HTMLButtonElement>('.qc-scale-plus')!
+    return { widget, renderer, container, gestures, plus, run }
+  }
+
+  /** The open price menu: each row's text, a rule as `|`. */
+  const priceMenu = (): string[] =>
+    [...document.querySelectorAll<HTMLElement>('.qc-menu.qc-price-menu > *')].map((el) => (el.classList.contains('qc-separator') ? '|' : el.textContent ?? ''))
+
+  const press = (target: HTMLElement, type: 'pointerdown' | 'pointerup', x: number, y: number): PointerEvent => {
+    const event = new PointerEvent(type, { clientX: x, clientY: y, button: 0, pointerId: 1, bubbles: true, cancelable: true })
+    target.dispatchEvent(event)
+    return event
+  }
+
+  it('paints the plus with the crosshair label and stands its button on the box that paint drew', async () => {
+    const { renderer, plus } = await mountWithMenus()
     expect(plus.hidden).toBe(true)
     renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    // The button waits for the paint that moves the label: a crosshair move alone places nothing.
+    expect(plus.hidden).toBe(true)
+    // The renderer's paint draws the plus in the label's own fill, on the label's rows, flush against
+    // the plot's edge, and the button stands on what it drew.
+    expect(paint(renderer)).toEqual(['rgb(219, 219, 219)'])
     expect(plus.hidden).toBe(false)
-    expect([plus.style.left, plus.style.top]).toEqual(['515px', '108px'])
+    expect([plus.style.left, plus.style.top, plus.style.width, plus.style.height]).toEqual(['519px', '110px', '21px', '21px'])
     expect(plus.getAttribute('aria-label')).toBe('Price actions')
-    plus.click()
-    const rows = [...document.querySelectorAll<HTMLElement>('.qc-menu-row')].map((row) => row.textContent)
-    expect(rows.some((text) => text?.includes('Mark 4510.25'))).toBe(true)
+    renderer.fireCrosshair(BARS[5]!.t, 300, 200)
+    paint(renderer)
+    expect(plus.style.top).toBe('190px')
+  })
+
+  it('puts the plus away while the crosshair is off the plot or the setting is off', async () => {
+    const { widget, renderer, plus } = await mountWithMenus()
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    paint(renderer)
+    expect(plus.hidden).toBe(false)
     renderer.fireCrosshair(null)
+    expect(paint(renderer)).toEqual([])
     expect(plus.hidden).toBe(true)
     widget.activeChart().applySettings({ priceLabels: { plusButton: false } })
     renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(paint(renderer)).toEqual([])
     expect(plus.hidden).toBe(true)
+  })
+
+  it('opens the price menu on the release of a press on the plus: the level rows by extension, then the horizontal line', async () => {
+    const { renderer, gestures, plus } = await mountWithMenus()
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    paint(renderer)
+    // The press is the plus's: the plot under it never hears it.
+    const plot = vi.fn()
+    gestures.addEventListener('pointerdown', plot)
+    const down = press(gestures, 'pointerdown', 530, 120)
+    expect(down.defaultPrevented).toBe(true)
+    expect(plot).not.toHaveBeenCalled()
+    expect(priceMenu()).toEqual([])
+    press(gestures, 'pointerup', 530, 120)
+    expect(priceMenu()).toEqual(['Mark 4510.25Alt + M', '|', 'Order 4510.25', '|', 'Draw horizontal line at 4510.25'])
+    // Its end meets the plus's end and its top the plus's foot.
+    const menu = document.querySelector<HTMLElement>('.qc-menu.qc-price-menu')!
+    expect(menu.style.top).toBe('131px')
+    expect(plus.getAttribute('aria-label')).toBe('Price actions')
+  })
+
+  it('opens from the keyboard with the focus on its first row', async () => {
+    const { renderer, plus } = await mountWithMenus()
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    paint(renderer)
+    plus.focus()
+    plus.click()
+    expect(priceMenu()[0]).toBe('Mark 4510.25Alt + M')
+    expect(document.activeElement?.textContent).toBe('Mark 4510.25Alt + M')
+  })
+
+  it('runs each row: a contributed row its own action, the horizontal line row the drawing command', async () => {
+    const { widget, renderer, gestures, run } = await mountWithMenus()
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    paint(renderer)
+    press(gestures, 'pointerdown', 530, 120)
+    press(gestures, 'pointerup', 530, 120)
+    const rows = [...document.querySelectorAll<HTMLButtonElement>('.qc-menu.qc-price-menu .qc-menu-row')]
+    rows[0]!.click()
+    expect(run.mark).toHaveBeenCalledTimes(1)
+    press(gestures, 'pointerdown', 530, 120)
+    press(gestures, 'pointerup', 530, 120)
+    ;[...document.querySelectorAll<HTMLButtonElement>('.qc-menu.qc-price-menu .qc-menu-row')].at(-1)!.click()
+    const drawn = widget.activeChart().drawings!.export()
+    expect(drawn).toHaveLength(1)
+    expect(drawn[0]!.type).toBe('horizontal_line')
+    expect(drawn[0]!.anchors[0]!.price).toBeCloseTo(4510.25)
+  })
+
+  it('leaves the horizontal line out where the chart draws nothing', async () => {
+    const { renderer, gestures } = await mountWithMenus({ drawings: false })
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    paint(renderer)
+    press(gestures, 'pointerdown', 530, 120)
+    press(gestures, 'pointerup', 530, 120)
+    expect(priceMenu()).toEqual(['Mark 4510.25Alt + M', '|', 'Order 4510.25'])
+  })
+
+  it('leaves the right-click menu as it is', async () => {
+    const { gestures } = await mountWithMenus()
+    gestures.dispatchEvent(new MouseEvent('contextmenu', { clientX: 300, clientY: 120, bubbles: true, cancelable: true }))
+    const menu = document.querySelector<HTMLElement>('.qc-menu')!
+    expect(menu.classList.contains('qc-price-menu')).toBe(false)
+    const rows = [...menu.querySelectorAll<HTMLElement>('.qc-menu-row')].map((row) => row.textContent)
+    expect(rows).toContain('Reset chart viewAlt + R')
+    expect(rows).toContain('Copy price 4510.25')
+    expect(rows).toContain('Mark 4510.25Alt + M')
+    expect(rows).toContain('Show marks')
+    expect(rows.some((text) => text?.startsWith('Draw horizontal line'))).toBe(false)
   })
 
   it('stands down without a context menu to open', async () => {
@@ -510,6 +650,7 @@ describe('the plus button', () => {
     renderer.scaleWidths.right = 60
     renderer.paneHeights[0] = 300
     renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(plusPrimitive(renderer)).toBeUndefined()
     expect(container.querySelector<HTMLElement>('.qc-scale-plus')!.hidden).toBe(true)
   })
 })
