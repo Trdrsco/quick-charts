@@ -68,8 +68,10 @@
 /* The plus beside the crosshair's price label is painted by the renderer with the label. Its button
  * stands over the painted box, at the size the chart writes: transparent, and taking no pointer, so
  * a pointer resting on the plus stays on the plot and keeps the crosshair. It carries the plus's
- * name and takes the keyboard. */
-[data-qc-theme] .qc-scale-plus {
+ * name and takes the keyboard. The chrome gives every button its pointer back, so this rule names
+ * the chrome as well and outranks that one: a button that took the pointer here would take it off
+ * the plot, the crosshair and the plus with it, and give it back once the plus was gone. */
+[data-qc-theme] .qc-chrome .qc-scale-plus {
   position: absolute;
   z-index: 4;
   box-sizing: border-box;
