@@ -400,6 +400,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     serverTime: false,
     marks: false,
     timescaleMarks: false,
+    prices: false,
     dataStatus: 'streaming',
     saveLoad: { charts: false, layouts: true, drawings: false, templates: false },
     imageCopy: true,

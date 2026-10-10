@@ -125,6 +125,7 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; ui
       serverTime: false,
       marks: false,
       timescaleMarks: false,
+      prices: false,
       dataStatus: 'streaming',
       saveLoad: { charts: false, layouts: false, drawings: false, templates: false },
       imageCopy: false,

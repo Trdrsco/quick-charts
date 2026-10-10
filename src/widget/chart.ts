@@ -107,6 +107,7 @@ import { closeOverlays } from '../ui/controls/overlays'
 import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
 import { attachCountdown, createCountdownClock, type CountdownLayer } from './countdown'
+import { attachPrices } from './prices'
 import {
   DEFAULT_TIMEZONE,
   makeCrosshairTimeFormatter,
@@ -945,6 +946,24 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     setSubsession: (active) => handle.applySettings({ symbol: { session: active } }),
   })
 
+  // The symbol's live prices from the datafeed's optional port, subscribed only while a setting draws
+  // something from them.
+  const prices = attachPrices({
+    datafeed,
+    symbol: () => symbol,
+    wanted: () => {
+      const labels = eff.priceLabels
+      return (
+        labels.bidAskValue ||
+        labels.bidAskLine ||
+        labels.symbolValueMode === 'priceAndPercent' ||
+        eff.statusLine.lastDayChange ||
+        ((labels.previousCloseValue || labels.previousCloseLine) && isIntradayTimeframe(tf))
+      )
+    },
+    changed: () => pricesChanged(),
+  })
+
   const compare = deps.features.compare
     ? attachComparePlane({
         chart,
@@ -1450,6 +1469,14 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     legend.push()
     extensions.host.themeChanged(settingsCanvas(c, eff))
     countdown?.restyled()
+    prices.sync()
+  }
+
+  /** New prices arrived for the symbol on screen: every surface that draws them repaints. */
+  function pricesChanged(): void {
+    if (disposed) return
+    legend.push()
+    countdown?.refresh()
   }
 
   /** Apply defaults: drop the viewer's OWN settings and put the price scale back to normal.
@@ -1648,6 +1675,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     legend.setHeader(symbol, tf)
     legend.setDot(null)
     nameSymbol()
+    // A new symbol's prices are subscribed for and the old one's end; a new timeframe may start or
+    // end the previous close's need for them.
+    prices.sync()
     paintAll()
     if (!symbol) return
     countdownClock.reset()
@@ -2407,6 +2437,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       pendingFrame = null
       unsubscribe?.()
       unsubscribe = null
+      prices.destroy()
       unregisterCommands()
       baselineLevel.destroy()
       nav?.destroy()

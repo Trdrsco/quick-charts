@@ -20,6 +20,10 @@ The theme mode leaves the dialog: `ui.topBar.settings.theme` stays accepted and 
 
 The theme gains `text.caption`, the ink of a dialog's section headings and of the hint lines under its settings.
 
+The line, step line, area and baseline draw each bar from their own `priceSource`: its open, high, low or close, or the average `hl2`, `hlc3`, `ohlc4` or `hlcc4`, and the last-value label and the morph from a bar style follow the same value.
+
+`ChartDatafeed.subscribePrices(symbol, { onPrices })` is an optional port for the prices one symbol stands at, `SymbolPrices`: its `bid`, `ask`, `last`, and `previousClose` or the `change` since it, any of which a delivery may leave out to keep its last value. The chart subscribes only while a setting draws them, and `Capabilities.prices` says whether the feed serves them.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:

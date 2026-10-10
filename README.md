@@ -43,8 +43,26 @@ await widget.ready()
 Implement `ChartDatafeed` (see `datafeed.ts`). Required methods: `search`, `resolve`, `history`,
 `subscribeBars`. Optional: `serverTime` (countdown skew correction) and `config` (a feed-level
 capability declaration, described [below](#capability-declaration-config-optional)). The datafeed serves
-symbol metadata, bars and bar updates; your host serves quotes (last, change, volume, the top of
-book) to its own consumers from its own source.
+symbol metadata, bars and bar updates.
+
+`subscribePrices(symbol, { onPrices })`, also optional, serves the prices one symbol stands at
+(`SymbolPrices`: `bid`, `ask`, `last`, and `previousClose` or the `change` since it) and returns the
+unsubscribe. A delivery may carry only what moved; a field it leaves out keeps its last value. The
+chart subscribes only while a setting draws the prices: the bid and ask labels and lines, the
+legend's change since the previous close, the previous close's label and line, and the percentage
+under the last value. Without the port the bid and ask draw nothing, and the previous close is the
+last regular-hours close of the trading day before the newest bar's, read off the bars.
+
+```ts
+import type { ChartDatafeed, SymbolPrices } from '@trdrs/quickcharts'
+declare const feed: ChartDatafeed
+declare function onBook(symbol: string, push: (prices: SymbolPrices) => void): () => void
+
+const withPrices: ChartDatafeed = {
+  ...feed,
+  subscribePrices: (symbol, { onPrices }) => onBook(symbol, onPrices),
+}
+```
 
 While the `priceLabels.countdown` setting is on, as it is by default, a live streaming time bar
 replaces the native last-value label with one price-and-time label. The price uses the resolved symbol formatter. Replay, stale,

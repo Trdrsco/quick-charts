@@ -14,6 +14,8 @@ export type {
   DatafeedConfig,
   DatafeedSearchOptions,
   SearchClassNode,
+  SymbolPrices,
+  PricesHandlers,
   ChartDatafeed,
 } from './datafeed'
 export { FeedUnavailableError, olderPageVerdict } from './datafeed'

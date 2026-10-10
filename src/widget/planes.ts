@@ -272,6 +272,7 @@ export function deriveCapabilities(inputs: CapabilityInputs): Capabilities {
   const feed = datafeed as ChartDatafeed & {
     marks?: unknown
     timescaleMarks?: unknown
+    subscribePrices?: unknown
   }
   return {
     resolutions: declared && declared.length > 0 ? declared : null,
@@ -281,6 +282,7 @@ export function deriveCapabilities(inputs: CapabilityInputs): Capabilities {
     serverTime: typeof datafeed.serverTime === 'function',
     marks: typeof feed.marks === 'function',
     timescaleMarks: typeof feed.timescaleMarks === 'function',
+    prices: typeof feed.subscribePrices === 'function',
     dataStatus: symbol?.dataStatus ?? null,
     saveLoad: {
       charts: !!saveLoad?.charts,

@@ -60,15 +60,21 @@ function sessionDayReach(model: SessionModel): number {
   return -earliest
 }
 
+/** The trading day an instant belongs to, as a number that orders the days (YYYYMMDD), read in the
+ *  exchange zone: a session that opens the previous evening counts toward the day it closes on. */
+export function tradingDayOf(model: SessionModel): (epochSecs: number) => number {
+  const reach = sessionDayReach(model) * 60
+  return (time) => {
+    const clock = zoneClock(model.timezone, new Date((time + reach) * 1000))
+    return clock.year * 10_000 + clock.month * 100 + clock.day
+  }
+}
+
 /** The bar times among `times` (ascending) that open a new trading day: each bar whose trading day,
  *  read in the exchange zone, differs from the bar before it. The first bar opens nothing, because
  *  the day before it is not on screen. */
 export function sessionBreakTimes(model: SessionModel, times: readonly number[]): number[] {
-  const reach = sessionDayReach(model) * 60
-  const dayOf = (time: number): number => {
-    const clock = zoneClock(model.timezone, new Date((time + reach) * 1000))
-    return clock.year * 10_000 + clock.month * 100 + clock.day
-  }
+  const dayOf = tradingDayOf(model)
   const breaks: number[] = []
   let previous: number | null = null
   for (const time of times) {

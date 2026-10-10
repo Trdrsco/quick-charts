@@ -5,8 +5,8 @@
 // self-contained on purpose — the interface must not drag a backend SDK into the chart's dependency
 // surface. The symbol metadata `resolve` answers with is the symbology contract in `symbology.ts`;
 // the datafeed carries that type rather than restating it. The seam carries symbol metadata, bars
-// and bar updates; a host serves quotes (a board's last, change and volume, or a top-of-book) to
-// its own consumers from its own source.
+// and bar updates, and, optionally, the prices one charted symbol stands at (its bid, ask, last and
+// the previous session's close), which the price labels and the legend draw.
 import type { SymbolInfo } from './symbology'
 import type { BarMark, TimescaleMark } from './marks'
 
@@ -81,6 +81,29 @@ export interface SubscribeHandlers {
   onBars(e: BarsEvent): void
   /** Feed status codes: 'live' | 'no-data' | server codes ('not_entitled', 'feed_down', …). */
   onStatus?(status: string): void
+}
+
+/** The prices a symbol stands at, as the feed states them. Every field is optional, because a feed
+ *  states what it knows: a market with no book has no bid or ask, and a feed may state the day's
+ *  change rather than the close it is measured from. */
+export interface SymbolPrices {
+  /** The best price a buyer bids. */
+  bid?: number
+  /** The best price a seller asks. */
+  ask?: number
+  /** The last traded price. */
+  last?: number
+  /** The close of the session before the current one. */
+  previousClose?: number
+  /** The change of `last` since the previous session's close, for a feed that states the change
+   *  rather than the close: the chart reads the close as `last - change`. */
+  change?: number
+}
+
+export interface PricesHandlers {
+  /** The prices as they stand now. A field a delivery leaves out keeps the value an earlier delivery
+   *  stated, so a feed may send only what moved. */
+  onPrices(prices: SymbolPrices): void
 }
 
 /** Thrown by `history` when the backend has NO feed configured for the symbol — a TERMINAL state
@@ -170,4 +193,11 @@ export interface ChartDatafeed {
   marks?(symbol: string, from: number, to: number, resolution: string): Promise<readonly BarMark[]>
   /** OPTIONAL neutral time-scale marks over the same window. */
   timescaleMarks?(symbol: string, from: number, to: number, resolution: string): Promise<readonly TimescaleMark[]>
+  /** OPTIONAL live prices for one symbol: its bid, ask, last and the previous session's close, as
+   *  {@link SymbolPrices} states them. Returns the unsubscribe. The chart subscribes only while a
+   *  setting draws them (the bid and ask labels, the legend's change since the previous close, the
+   *  previous close line, the last value's percentage) and unsubscribes when the symbol changes.
+   *  Without it, the bid and ask draw nothing, and the previous close is read off the bars. Omit it
+   *  entirely when the feed has none. */
+  subscribePrices?(symbol: string, handlers: PricesHandlers): () => void
 }

@@ -268,6 +268,8 @@ export interface Capabilities {
   /** The feed serves neutral bar marks / time-scale marks. */
   marks: boolean
   timescaleMarks: boolean
+  /** The feed serves a symbol's live prices: its bid, ask, last and previous close. */
+  prices: boolean
   /** How live the active symbol's data is; null until it resolves. */
   dataStatus: DataStatus | null
   /** Which saved-resource families the adapter carries. All false without an adapter. */
