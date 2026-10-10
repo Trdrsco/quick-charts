@@ -111,18 +111,25 @@ export function attachPrices(deps: PricesDeps): PricesPlane {
   }
 }
 
-const percentWriters = new Map<string, Intl.NumberFormat>()
+/** Per language: the writer of whole numbers, and the decimal sign and minus sign it writes. */
+const percentWriters = new Map<string, { whole: Intl.NumberFormat; decimal: string; minus: string }>()
 
 /** A change as a percentage of what it is measured from, to two decimals with its sign and the
- *  percent sign, in the reader's own digits: "+0.08%". Exported for tests. */
+ *  percent sign, in the reader's own digits and signs: "+0.08%". The two decimals are arithmetic,
+ *  hundredths of a point written after the reader's decimal sign, because a ratio has no symbology
+ *  and the only writer that sets a decimal width from a market's facts is the price formatter.
+ *  Exported for tests. */
 export function signedPercentText(fraction: number, tag: string): string {
   let writer = percentWriters.get(tag)
   if (!writer) {
-    writer = new Intl.NumberFormat(tag, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    const whole = new Intl.NumberFormat(tag)
+    const part = (value: number, type: string): string | undefined => whole.formatToParts(value).find((p) => p.type === type)?.value
+    writer = { whole, decimal: part(1.5, 'decimal') ?? '.', minus: part(-1, 'minusSign') ?? '-' }
     percentWriters.set(tag, writer)
   }
-  const points = Math.round(fraction * 10_000) / 100
-  return `${points > 0 ? '+' : ''}${writer.format(points === 0 ? 0 : points)}%`
+  const hundredths = Math.round(Math.abs(fraction) * 10_000)
+  const sign = hundredths === 0 ? '' : fraction > 0 ? '+' : writer.minus
+  return `${sign}${writer.whole.format(Math.floor(hundredths / 100))}${writer.decimal}${String(hundredths % 100).padStart(2, '0')}%`
 }
 
 /** The previous session's close the feed states: its own close, or its last less the change it
