@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': '全部隱藏',
   'drawing.showAll': '全部顯示',
   'drawing.syncLabel': '在版面配置中同步繪圖',
-  'drawing.syncOnHelp': '新繪圖會複製到版面配置中的所有圖表，並在選取相同代碼時顯示',
+  'drawing.syncOnHelp': '新繪圖會複製到版面配置中的所有圖表，並在選取相同商品時顯示',
   'drawing.syncOffHelp': '新繪圖只會保留在繪製它的圖表上',
   'drawing.removeMenu': '移除選單',
   'drawing.removeDrawings': '移除繪圖',

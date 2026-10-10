@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': 'Alle ausblenden',
   'drawing.showAll': 'Alle einblenden',
   'drawing.syncLabel': 'Zeichnungen im Layout synchronisieren',
-  'drawing.syncOnHelp': 'Neue Zeichnungen werden auf alle Charts im Layout übertragen und angezeigt, wenn dasselbe Tickersymbol gewählt ist',
+  'drawing.syncOnHelp': 'Neue Zeichnungen werden auf alle Charts im Layout übertragen und angezeigt, wenn dasselbe Symbol gewählt ist',
   'drawing.syncOffHelp': 'Neue Zeichnungen bleiben auf dem Chart, auf dem sie gezeichnet wurden',
   'drawing.removeMenu': 'Menü zum Entfernen',
   'drawing.removeDrawings': 'Zeichnungen entfernen',

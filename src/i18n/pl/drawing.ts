@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': 'Ukryj wszystko',
   'drawing.showAll': 'Pokaż wszystko',
   'drawing.syncLabel': 'Synchronizuj rysunki w układzie',
-  'drawing.syncOnHelp': 'Nowe rysunki są powielane na wszystkich wykresach układu i wyświetlane po wybraniu tego samego tickera',
+  'drawing.syncOnHelp': 'Nowe rysunki są powielane na wszystkich wykresach układu i wyświetlane po wybraniu tego samego symbolu',
   'drawing.syncOffHelp': 'Nowe rysunki pozostają na wykresie, na którym je narysowano',
   'drawing.removeMenu': 'Menu usuwania',
   'drawing.removeDrawings': 'Usuń rysunki',

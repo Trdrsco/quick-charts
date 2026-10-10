@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': 'すべて非表示',
   'drawing.showAll': 'すべて表示',
   'drawing.syncLabel': 'レイアウト内で描画を同期',
-  'drawing.syncOnHelp': '新しい描画はレイアウト内のすべてのチャートに複製され、同じティッカーを選択したときに表示されます',
+  'drawing.syncOnHelp': '新しい描画はレイアウト内のすべてのチャートに複製され、同じ銘柄を選択したときに表示されます',
   'drawing.syncOffHelp': '新しい描画は、描いたチャートにだけ残ります',
   'drawing.removeMenu': '削除メニュー',
   'drawing.removeDrawings': '描画を削除',

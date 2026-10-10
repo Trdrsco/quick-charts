@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': 'Ocultar tudo',
   'drawing.showAll': 'Mostrar tudo',
   'drawing.syncLabel': 'Sincronizar desenhos no layout',
-  'drawing.syncOnHelp': 'Novos desenhos são replicados em todos os gráficos do layout e exibidos quando o mesmo ticker é selecionado',
+  'drawing.syncOnHelp': 'Novos desenhos são replicados em todos os gráficos do layout e exibidos quando o mesmo símbolo é selecionado',
   'drawing.syncOffHelp': 'Novos desenhos permanecem no gráfico em que foram feitos',
   'drawing.removeMenu': 'Menu de remover',
   'drawing.removeDrawings': 'Remover desenhos',

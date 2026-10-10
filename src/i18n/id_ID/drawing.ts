@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': 'Sembunyikan semua',
   'drawing.showAll': 'Tampilkan semua',
   'drawing.syncLabel': 'Sinkronkan gambar di seluruh tata letak',
-  'drawing.syncOnHelp': 'Gambar baru disalin ke semua chart dalam tata letak dan ditampilkan saat ticker yang sama dipilih',
+  'drawing.syncOnHelp': 'Gambar baru disalin ke semua chart dalam tata letak dan ditampilkan saat simbol yang sama dipilih',
   'drawing.syncOffHelp': 'Gambar baru tetap berada di chart tempat gambar itu dibuat',
   'drawing.removeMenu': 'Menu hapus',
   'drawing.removeDrawings': 'Hapus gambar',

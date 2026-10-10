@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': 'ซ่อนทั้งหมด',
   'drawing.showAll': 'แสดงทั้งหมด',
   'drawing.syncLabel': 'ซิงค์การวาดทั่วทั้งเลย์เอาต์',
-  'drawing.syncOnHelp': 'การวาดใหม่จะถูกคัดลอกไปยังกราฟทั้งหมดในเลย์เอาต์ และแสดงเมื่อเลือกทิกเกอร์เดียวกัน',
+  'drawing.syncOnHelp': 'การวาดใหม่จะถูกคัดลอกไปยังกราฟทั้งหมดในเลย์เอาต์ และแสดงเมื่อเลือกสัญลักษณ์เดียวกัน',
   'drawing.syncOffHelp': 'การวาดใหม่จะอยู่บนกราฟที่วาดเท่านั้น',
   'drawing.removeMenu': 'เมนูนำออก',
   'drawing.removeDrawings': 'นำการวาดออก',

@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': 'Dölj alla',
   'drawing.showAll': 'Visa alla',
   'drawing.syncLabel': 'Synkronisera ritningar i layouten',
-  'drawing.syncOnHelp': 'Nya ritningar kopieras till alla diagram i layouten och visas när samma ticker är vald',
+  'drawing.syncOnHelp': 'Nya ritningar kopieras till alla diagram i layouten och visas när samma symbol är vald',
   'drawing.syncOffHelp': 'Nya ritningar stannar i diagrammet där de ritades',
   'drawing.removeMenu': 'Meny för att ta bort',
   'drawing.removeDrawings': 'Ta bort ritningar',

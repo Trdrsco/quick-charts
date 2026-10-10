@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': 'הסתרת הכול',
   'drawing.showAll': 'הצגת הכול',
   'drawing.syncLabel': 'סנכרון ציורים בכל הפריסה',
-  'drawing.syncOnHelp': 'ציורים חדשים משוכפלים לכל הגרפים בפריסה ומוצגים כשנבחר אותו טיקר',
+  'drawing.syncOnHelp': 'ציורים חדשים משוכפלים לכל הגרפים בפריסה ומוצגים כשנבחר אותו סימבול',
   'drawing.syncOffHelp': 'ציורים חדשים נשארים בגרף שבו צוירו',
   'drawing.removeMenu': 'תפריט הסרה',
   'drawing.removeDrawings': 'הסרת ציורים',

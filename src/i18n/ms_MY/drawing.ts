@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': 'Sembunyikan semua',
   'drawing.showAll': 'Tunjukkan semua',
   'drawing.syncLabel': 'Segerakkan lukisan merentas susun atur',
-  'drawing.syncOnHelp': 'Lukisan baharu disalin ke semua carta dalam susun atur dan ditunjukkan apabila ticker yang sama dipilih',
+  'drawing.syncOnHelp': 'Lukisan baharu disalin ke semua carta dalam susun atur dan ditunjukkan apabila simbol yang sama dipilih',
   'drawing.syncOffHelp': 'Lukisan baharu kekal pada carta tempat ia dilukis',
   'drawing.removeMenu': 'Menu buang',
   'drawing.removeDrawings': 'Buang lukisan',

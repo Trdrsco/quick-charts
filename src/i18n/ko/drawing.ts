@@ -49,7 +49,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.hideAll': '모두 숨기기',
   'drawing.showAll': '모두 표시',
   'drawing.syncLabel': '레이아웃 전체에서 그리기 동기화',
-  'drawing.syncOnHelp': '새 그리기는 레이아웃의 모든 차트에 복제되며 같은 티커를 선택하면 표시됩니다',
+  'drawing.syncOnHelp': '새 그리기는 레이아웃의 모든 차트에 복제되며 같은 심볼을 선택하면 표시됩니다',
   'drawing.syncOffHelp': '새 그리기는 그린 차트에만 남습니다',
   'drawing.removeMenu': '제거 메뉴',
   'drawing.removeDrawings': '그리기 제거',
