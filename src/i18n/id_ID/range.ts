@@ -17,6 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': 'Geser ke kiri',
   'range.scrollRight': 'Geser ke kanan',
   'range.reset': 'Reset tampilan chart',
-  'range.maximizeChart': 'Maximize chart',
-  'range.restoreChart': 'Restore chart',
+  'range.maximizeChart': 'Maksimalkan chart',
+  'range.restoreChart': 'Pulihkan chart',
 }

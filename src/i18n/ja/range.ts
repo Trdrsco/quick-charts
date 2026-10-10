@@ -17,6 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': '左へスクロール',
   'range.scrollRight': '右へスクロール',
   'range.reset': 'チャート表示をリセット',
-  'range.maximizeChart': 'Maximize chart',
-  'range.restoreChart': 'Restore chart',
+  'range.maximizeChart': 'チャートを最大化',
+  'range.restoreChart': 'チャートを元に戻す',
 }
