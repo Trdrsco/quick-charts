@@ -359,6 +359,27 @@ describe('what a host contributes', () => {
     expect(order.length).toBeGreaterThan(0)
   })
 
+  it('places the pages of extensions that name the same chart page in the order the extensions attach', () => {
+    const s = setup()
+    const page = (id: string, label: string): ChartSettingsContribution => ({ place: { page: { id, label, icon: () => () => undefined, after: 'canvas' } }, build: () => undefined })
+    // Attached first, though its id and its label sort last, and attached again on a symbol switch.
+    const zeta: ChartExtension = { id: 'zeta', scope: 'symbol', attach: (context) => (context.contributeSettings(page('zeta', 'Zeta')), { detach: () => undefined }) }
+    const alpha: ChartExtension = {
+      id: 'alpha',
+      attach: (context) => (context.contributeSettings(page('alpha', 'Alpha')), context.contributeSettings(page('beta', 'Beta')), { detach: () => undefined }),
+    }
+    const host = createExtensionHost({ chartId: 'chart-1' } as unknown as ChartExtensionHostDeps, [zeta, alpha])
+    cleanup.push(() => host.detach())
+    const placed = ['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Zeta', 'Alpha', 'Beta', 'Events']
+    s.dialog.open()
+    expect(pageLabels(s)).toEqual(placed)
+    s.dialog.toggle()
+    // An extension attached again keeps the place its first attachment took.
+    host.symbolChanged('NQ')
+    s.dialog.open()
+    expect(pageLabels(s)).toEqual(placed)
+  })
+
   it('cancels each contribution with what its open answered, and commits each on Ok', () => {
     const one = { open: vi.fn(() => ({ was: 1 })), cancel: vi.fn(), commit: vi.fn(), applyDefaults: vi.fn() }
     const first = setup()

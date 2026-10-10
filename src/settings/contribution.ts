@@ -98,7 +98,12 @@ export interface ChartSettingsContribution {
   /** Either a page of the host's own, placed after a chart page (or last), or rows appended to one
    *  of the chart's pages, before one of its rows (or at its end). `before` may name several rows or
    *  sections: the rows land before the first of them the page holds, so a placement survives a
-   *  section the page shows only in some contexts (the Status line page's `indicators`). */
+   *  section the page shows only in some contexts (the Status line page's `indicators`).
+   *
+   *  Pages that name the same chart page in `after` stand after it in the order their extensions
+   *  attach, which is the order of the widget's `extensions` (an extension attached again on a
+   *  symbol switch keeps its place), and one extension's pages in the order it contributes them.
+   *  Pages that name none stand last in the same order. */
   place:
     | { page: { id: string; label: string; icon: ChartSettingsIconPainter; after?: ChartSettingsPageId } }
     | { into: ChartSettingsPageId; before?: string | readonly string[] }
