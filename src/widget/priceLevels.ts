@@ -1,12 +1,15 @@
 // The price levels the price labels settings mark on the scale: the previous session's close, the
-// visible range's high and low, and the bid and ask. Each is a renderer price line on the style
+// visible range's high and low, the bid and ask, and the last price of a stretch outside regular
+// hours that the chart does not show. Each is a renderer price line on the style
 // series, so its value box stands on the price scale in the level's color, its tag ("High", "Bid")
 // stands beside it on the plot side, its dotted line runs across the plot, and the scale's "no
 // overlapping labels" setting stacks it with the last value's label like any other label there.
 //
 // A level is drawn only while its setting asks for it and its price is known: the previous close on
-// an intraday chart, the high and low of the bars in view, and the bid and ask from the datafeed's
-// prices. A level whose price moves is moved in place rather than drawn again.
+// an intraday chart, the high and low of the bars in view, the bid and ask from the datafeed's
+// prices, and on an intraday chart of regular hours, the close of the newest bar when it stands in a
+// pre-market, post-market or overnight stretch the chart leaves out, in that stretch's color. A
+// level whose price moves is moved in place rather than drawn again.
 import { LineStyle, type IPriceLine, type ISeriesApi, type SeriesType } from 'lightweight-charts'
 import type { ChartSettings } from '../settings/schema'
 import { CHART_FACTORY_COLORS } from '../theme/palettes'
@@ -22,7 +25,7 @@ export interface PriceLevelTags {
 
 /** One level as the settings and the prices ask for it. */
 export interface PriceLevel {
-  key: 'previousClose' | 'high' | 'low' | 'bid' | 'ask'
+  key: 'previousClose' | 'high' | 'low' | 'bid' | 'ask' | 'extendedHours'
   price: number
   /** The line's color, and the label's unless `labelColor` names another. */
   color: string
@@ -42,6 +45,9 @@ export interface PriceLevelFacts {
   range: { high: number; low: number } | null
   bid: number | null
   ask: number | null
+  /** The newest bar's close and the stretch outside regular hours it stands in, while the chart
+   *  leaves that stretch out; null otherwise. */
+  extendedHours: { price: number; stretch: 'pre' | 'after' | 'extended' } | null
 }
 
 /** The levels the settings ask for over the facts as they stand. Exported for tests. */
@@ -71,6 +77,20 @@ export function priceLevels(settings: ChartSettings, facts: PriceLevelFacts, tag
     const common = { value: labels.bidAskValue, line: labels.bidAskLine, width: 1 }
     if (facts.ask !== null) out.push({ key: 'ask', price: facts.ask, color: labels.askColor, labelColor: labels.askColor, title: tags.ask, ...common })
     if (facts.bid !== null) out.push({ key: 'bid', price: facts.bid, color: labels.bidColor, labelColor: labels.bidColor, title: tags.bid, ...common })
+  }
+  if ((labels.extendedHoursValue || labels.extendedHoursLine) && facts.intraday && facts.extendedHours) {
+    const stretch = facts.extendedHours.stretch
+    const color = stretch === 'pre' ? labels.preMarketLabelColor : stretch === 'after' ? labels.postMarketLabelColor : labels.nightLabelColor
+    out.push({
+      key: 'extendedHours',
+      price: facts.extendedHours.price,
+      color,
+      labelColor: color,
+      title: '',
+      value: labels.extendedHoursValue,
+      line: labels.extendedHoursLine,
+      width: 1,
+    })
   }
   return out
 }

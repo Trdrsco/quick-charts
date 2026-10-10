@@ -116,7 +116,7 @@ import {
   resolveDisplayTimezone,
 } from '../timezones'
 import { isIntradayTimeframe, parseTimeframe, timeframeSeconds } from '../timeframe'
-import type { ActiveSubsession, MarketStatus } from '../sessionModel'
+import { sessionStateAt, type ActiveSubsession, type MarketStatus } from '../sessionModel'
 import {
   DEFAULT_DRAWING_PREFERENCES,
   DRAWING_PREFERENCES_KEY,
@@ -1177,8 +1177,20 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     clearInterval: (timer) => window.clearInterval(timer as number),
   })
 
+  /** The newest loaded bar's close and the stretch outside regular hours it stands in, while the
+   *  trading hours leave that stretch off the chart; null otherwise, and throughout bar replay. */
+  const hiddenStretchClose = (): PriceLevelFacts['extendedHours'] => {
+    const model = session.model()
+    const filter = session.barFilter(tf)
+    const newest = bars[bars.length - 1]
+    if (replay.active() || !model || !filter || !newest || filter(newest.t)) return null
+    const state = sessionStateAt(model, newest.t)
+    return state === 'pre' || state === 'after' || state === 'extended' ? { price: newest.c, stretch: state } : null
+  }
+
   // The price levels the price labels settings mark: the previous close, the high and low in view,
-  // and the bid and ask. Each fact is read only while its setting asks for it.
+  // the bid and ask, and the last price of a stretch the chart leaves out. Each fact is read only
+  // while its setting asks for it.
   levels = attachPriceLevels({
     series: () => series,
     settings: () => eff,
@@ -1198,6 +1210,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         range,
         bid: live?.bid ?? null,
         ask: live?.ask ?? null,
+        extendedHours: intraday && (labels.extendedHoursValue || labels.extendedHoursLine) ? hiddenStretchClose() : null,
       }
     },
     tags: () => ({ high: i18n.t('chrome.scaleHigh'), low: i18n.t('chrome.scaleLow'), bid: i18n.t('chrome.scaleBid'), ask: i18n.t('chrome.scaleAsk') }),
@@ -1436,7 +1449,12 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // it on the next full repaint would show a bar that flickers in and back out, which reads as a
     // glitch rather than as a filter doing its job.
     const filter = session.barFilter(tf)
-    if (filter && !filter(b.t)) return
+    if (filter && !filter(b.t)) {
+      // The bar is left off the chart, but the price scale still marks the last price of the
+      // stretch it stands in.
+      levels?.refresh()
+      return
+    }
     const value = { time: b.t as UTCTimestamp, value: b.c }
     anchor.update(value)
     const colors = previousCloseColors(style, eff)

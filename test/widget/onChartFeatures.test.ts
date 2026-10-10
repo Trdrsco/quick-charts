@@ -150,7 +150,7 @@ const lines = (renderer: FakeRenderer): Record<string, unknown>[] =>
 describe('the price levels', () => {
   it('reads each level only while its setting asks, and finds the high and low in view', () => {
     const settings = chartSettingsDefaults(DARK_THEME)
-    const facts = { intraday: true, previousClose: 10, range: { high: 12, low: 8 }, bid: 9.9, ask: 10.1 }
+    const facts = { intraday: true, previousClose: 10, range: { high: 12, low: 8 }, bid: 9.9, ask: 10.1, extendedHours: null }
     const tags = { high: 'High', low: 'Low', bid: 'Bid', ask: 'Ask' }
     expect(priceLevels(settings, facts, tags)).toEqual([])
     const on = { ...settings, priceLabels: { ...settings.priceLabels, previousCloseLine: true, highLowValue: true, bidAskValue: true, bidAskLine: true } }
@@ -221,6 +221,34 @@ describe('the price levels', () => {
     chart.setStyle('line')
     expect(before.priceLines).toEqual([])
     expect(lines(renderer)).toHaveLength(2)
+  })
+})
+
+describe('the extended-hours label', () => {
+  it('marks the last price of a stretch the regular-hours chart leaves out, in that stretch color', async () => {
+    const stock: SymbolInfo = {
+      ...info,
+      ticker: 'AAPL',
+      session: '1430-2100',
+      timezone: 'Etc/UTC',
+      subsessions: [
+        { id: 'regular', description: 'Regular', session: '1430-2100' },
+        { id: 'premarket', description: 'Pre-market', session: '0900-1430' },
+        { id: 'postmarket', description: 'Post-market', session: '2100-2300' },
+      ],
+    }
+    const day = Date.UTC(2026, 9, 6) / 1000
+    const bar = (hour: number, c: number): FeedBar => ({ t: day + hour * 3600, o: c, h: c, l: c, c, v: 1 })
+    const bars = [bar(15, 100), bar(20, 101), bar(22, 104)]
+    const { chart, renderer } = await mount({ datafeed: feed({ resolve: async () => stock, history: async () => ({ bars, noData: false }) }), timeframe: '1h' })
+    // Regular hours by default: the post-market bar is left off and marked on the scale instead.
+    expect(main(renderer).data.map((row) => (row as { close: number }).close)).toEqual([100, 101])
+    expect(lines(renderer)).toEqual([expect.objectContaining({ price: 104, color: '#2962ff', axisLabelVisible: true, lineVisible: true, title: '' })])
+    chart.applySettings({ priceLabels: { postMarketLabelColor: '#abcdef', extendedHoursLine: false } })
+    expect(lines(renderer)).toEqual([expect.objectContaining({ color: '#abcdef', lineVisible: false })])
+    // Showing the extended hours draws the bar itself, and its last value stands in its own label.
+    chart.applySettings({ symbol: { session: 'extended' } })
+    expect(lines(renderer)).toEqual([])
   })
 })
 

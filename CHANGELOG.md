@@ -30,6 +30,8 @@ The price labels mark the previous session's close on an intraday chart, the hig
 
 The last value's "price and percentage" mode (`symbolValueMode: 'priceAndPercent'`) writes the change since the previous session's close under the price, to two decimals with its sign, and the countdown under that. The label is drawn as the renderer draws its own, one pixel inside the scale, square on the plot side and rounded on the other, 17px tall at 12px with 14px more for each line, in white with the countdown at 75%.
 
+On an intraday chart of regular hours, a symbol whose newest bar stands in a pre-market, post-market or overnight stretch marks that bar's close on the price scale in the stretch's label color (`preMarketLabelColor`, `postMarketLabelColor`, `nightLabelColor`), the value and the dotted line on the `extendedHoursValue` and `extendedHoursLine` switches.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:
