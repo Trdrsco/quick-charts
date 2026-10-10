@@ -1120,7 +1120,7 @@
 }
 
 [data-qc-theme] .qc-menu.qc-price-menu .qc-menu-hint {
-  padding-left: 4px;
+  padding-inline: 4px 0;
   font-size: 12px;
 }
 

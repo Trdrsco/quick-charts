@@ -175,7 +175,8 @@ export function attachScalePlus(deps: ScalePlusDeps): ScalePlusLayer {
     },
   }
   // The top layer is the one the renderer paints with the crosshair, every time the crosshair moves.
-  const view: IPrimitivePaneView = { zOrder: () => 'top', renderer: () => renderer }
+  // One list for every paint, so the renderer keeps the views it wrapped.
+  const views: readonly IPrimitivePaneView[] = [{ zOrder: () => 'top', renderer: () => renderer }]
   const hit: PrimitiveHoveredItem = { cursorStyle: 'pointer', externalId: 'qc-scale-plus', zOrder: 'top' }
   const primitive: ISeriesPrimitive<Time> = {
     attached(param) {
@@ -184,7 +185,7 @@ export function attachScalePlus(deps: ScalePlusDeps): ScalePlusLayer {
     detached() {
       requestUpdate = null
     },
-    paneViews: () => [view],
+    paneViews: () => views,
     // The renderer asks with the pointer the crosshair is moving to, before it paints the plus there:
     // the plus stands on the crosshair's own row, so a pointer in its column is on it.
     hitTest(x) {
