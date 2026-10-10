@@ -159,6 +159,57 @@ describe('the form', () => {
   })
 })
 
+describe('the tips', () => {
+  it('shows a hint\'s line over its mark under the pointer, and a card\'s title, words and link on a press', () => {
+    const s = setup()
+    cleanup.push(
+      contribute('chart-1', {
+        place: { page: { id: 'host', label: 'Host', icon: () => () => undefined } },
+        build(form) {
+          form.check({ id: 'oneClick', label: 'One click', checked: false, tip: { kind: 'hint', text: 'Places an order at once' }, onChange: () => undefined })
+          form.check({ id: 'marks', label: 'Marks', checked: true, tip: { kind: 'card', title: 'Your trades, mapped', body: 'Arrows where trades filled.', href: 'https://example.com/marks' }, onChange: () => undefined })
+          form.check({ id: 'sound', label: 'Sound', checked: true, onChange: () => undefined, controls: (c) => c.slider({ value: 0.5, kind: 'volume', onChange: () => undefined }) })
+        },
+      }),
+    )
+    s.dialog.open('host')
+    const hint = s.panel().querySelector<HTMLButtonElement>('[data-row="oneClick"] .qc-settings-tip')!
+    expect(hint.getAttribute('aria-label')).toBe('Places an order at once')
+    hint.dispatchEvent(new Event('pointerenter'))
+    expect(document.querySelector('[role="tooltip"]')!.textContent).toBe('Places an order at once')
+    hint.dispatchEvent(new Event('pointerleave'))
+    expect(document.querySelector('[role="tooltip"]')).toBeNull()
+    s.panel().querySelector<HTMLButtonElement>('[data-row="marks"] .qc-settings-tip')!.click()
+    const card = document.querySelector<HTMLElement>('.qc-settings-card')!
+    expect(card.querySelector('.qc-settings-card-title')!.textContent).toBe('Your trades, mapped')
+    expect(card.querySelector('.qc-settings-card-body')!.textContent).toBe('Arrows where trades filled.')
+    expect(card.querySelector('a')!.textContent).toBe('Learn more')
+    // A volume that can be used wears the speaker; the muted speaker stands in while it cannot.
+    const sound = s.panel().querySelector<HTMLElement>('[data-row="sound"] .qc-settings-slider')!
+    expect(sound.dataset.disabled).toBeUndefined()
+    expect(sound.querySelector<HTMLInputElement>('input')!.className).toBe('qc-settings-volume')
+  })
+})
+
+describe('the theme mode', () => {
+  it('keeps ui.topBar.settings.theme accepted, and no page carries a theme row whatever it says', () => {
+    for (const theme of [true, false]) {
+      const w = fakeWidget({ ui: { topBar: { settings: { theme } } } })
+      const dialog = createChartSettingsDialog({ ...w.ctx, templates: null })
+      cleanup.push(() => (dialog.destroy(), w.dispose()))
+      dialog.open()
+      const box = w.overlays.querySelector<HTMLElement>('.qc-chart-settings-dialog:not([aria-hidden="true"])')!
+      const pages = [...box.querySelectorAll<HTMLElement>('.qc-chart-settings-nav-item')]
+      expect(pages.map((tab) => tab.textContent)).toEqual(['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Events'])
+      for (const tab of pages) {
+        tab.click()
+        expect(box.textContent).not.toMatch(/Light theme|Dark theme/)
+      }
+      dialog.destroy()
+    }
+  })
+})
+
 describe('the chart\'s pages', () => {
   it('builds the Symbol page for the chart\'s style, then precision and timezone', () => {
     const s = setup()
