@@ -52,6 +52,10 @@ describe('the chart settings measures', () => {
     expect(rule(drawing, '[data-qc-theme] .qc-drawing-footer-button + .qc-drawing-footer-button')['margin-inline-start']).toBe('12px')
   })
 
+  it('rounds the close\'s hover fill 8px at the corners', () => {
+    expect(rule(settings, '[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-close')['border-radius']).toBe('8px')
+  })
+
   it('lays the rail out 226 wide with a 206px list of 40px tabs, the icon 28px and 4px before the name', () => {
     const rail = rule(settings, '[data-qc-theme] .qc-chart-settings-nav')
     expect(rail.width).toBe('226px')

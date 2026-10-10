@@ -15,6 +15,11 @@
   box-shadow: var(--qc-overlay-shadow);
 }
 
+/* The close: a 34px cell whose hover fill rounds 8px at the corners. */
+[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-close {
+  border-radius: 8px;
+}
+
 [data-qc-theme] .qc-chart-settings-dialog .qc-dialog-close:hover {
   background: var(--qc-state-hover);
 }
