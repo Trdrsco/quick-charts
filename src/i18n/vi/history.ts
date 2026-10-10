@@ -15,7 +15,7 @@ export const history: Translation<typeof source> = {
   'history.changeAddIndicator': 'thêm chỉ báo',
   'history.changeRemoveIndicator': 'xóa chỉ báo',
   'history.changeIndicator': 'thay đổi chỉ báo',
-  'history.changeMovePane': 'move pane',
+  'history.changeMovePane': 'di chuyển khung',
   'history.changeAddDrawing': 'thêm hình vẽ',
   'history.changeRemoveDrawing': 'xóa hình vẽ',
   'history.changeDrawing': 'thay đổi hình vẽ',

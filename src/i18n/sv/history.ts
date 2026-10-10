@@ -15,7 +15,7 @@ export const history: Translation<typeof source> = {
   'history.changeAddIndicator': 'tillägg av indikator',
   'history.changeRemoveIndicator': 'borttagning av indikator',
   'history.changeIndicator': 'ändring av indikator',
-  'history.changeMovePane': 'move pane',
+  'history.changeMovePane': 'flytt av ruta',
   'history.changeAddDrawing': 'tillägg av ritning',
   'history.changeRemoveDrawing': 'borttagning av ritning',
   'history.changeDrawing': 'ändring av ritning',

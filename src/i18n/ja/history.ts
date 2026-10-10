@@ -15,7 +15,7 @@ export const history: Translation<typeof source> = {
   'history.changeAddIndicator': 'インジケーターの追加',
   'history.changeRemoveIndicator': 'インジケーターの削除',
   'history.changeIndicator': 'インジケーターの変更',
-  'history.changeMovePane': 'move pane',
+  'history.changeMovePane': 'ペインの移動',
   'history.changeAddDrawing': '描画の追加',
   'history.changeRemoveDrawing': '描画の削除',
   'history.changeDrawing': '描画の変更',

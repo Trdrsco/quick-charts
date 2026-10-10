@@ -15,7 +15,7 @@ export const history: Translation<typeof source> = {
   'history.changeAddIndicator': 'penambahan penunjuk',
   'history.changeRemoveIndicator': 'pembuangan penunjuk',
   'history.changeIndicator': 'perubahan penunjuk',
-  'history.changeMovePane': 'move pane',
+  'history.changeMovePane': 'pengalihan anak tetingkap',
   'history.changeAddDrawing': 'penambahan lukisan',
   'history.changeRemoveDrawing': 'pembuangan lukisan',
   'history.changeDrawing': 'perubahan lukisan',
