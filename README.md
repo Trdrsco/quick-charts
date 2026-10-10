@@ -2328,10 +2328,11 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   of fitting the loaded history.
 - `canvas`: the background, solid or a vertical gradient; each grid's switch, color and stroke; the
   crosshair's color, stroke and width; the watermark's parts and ink; the scales' text and lines;
-  when the navigation buttons show; and the margins, the right one in bars.
+  when the navigation buttons show; when each pane's own buttons show (`paneButtons`): at a pane's
+  top right, delete it, collapse or open it, and maximize or restore it, through the same pane
+  operations the legend's rows run, the main pane carrying maximize alone while another pane
+  stands; and the margins, the right one in bars.
 - `events`: a line at each trading day's start, in its own stroke.
-
-The pane buttons' leaf is stored and saved, and draws nothing yet.
 
 ## Compare
 

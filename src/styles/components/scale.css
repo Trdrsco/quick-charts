@@ -89,3 +89,37 @@
 [data-qc-theme] .qc-scale-plus:hover {
   background: var(--qc-state-pressed);
 }
+
+/* The buttons at the top right of each pane, 4px below its top and 4px in from the plot's edge: 24px
+ * rounded squares 4px apart, a 1px border on the chart's background, a 15px line glyph in the text
+ * ink, the raised hover fill under the pointer. */
+[data-qc-theme] .qc-pane-buttons {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-pane-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  color: var(--qc-text-primary);
+  background: var(--qcd-chart-background, var(--qc-canvas-background));
+  border: 1px solid var(--qc-overlay-separator);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-pane-button:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-pane-button[aria-pressed='true'] {
+  background: var(--qc-state-pressed);
+}

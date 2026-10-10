@@ -26,4 +26,6 @@ export const chrome: Translation<typeof source> = {
   'chrome.logScaleMark': 'L',
   'chrome.currencyAndUnit': '{currency} · {unit}',
   'chrome.priceLevelMenu': 'Actions at {price}',
+  'chrome.paneButtons': 'Pane',
+  'chrome.deletePane': 'Delete pane',
 }

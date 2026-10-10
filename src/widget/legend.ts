@@ -20,7 +20,6 @@ import type { ChartSettings } from '../settings/schema'
 import type { ChartI18n } from '../i18n'
 import { mountInputsEditor } from '../inputsEditor'
 import { manifestInputDefaults } from '../indicatorModel'
-import { COLLAPSED_H, planPaneOp } from '../panePlan'
 import type { PriceFormatter } from '../priceFormatter'
 import { marketStatusTitle, type MarketStatus, type SessionModel, type SessionState } from '../sessionModel'
 import type { SymbolInfo } from '../symbology'
@@ -30,6 +29,7 @@ import type { MenuHandle } from '../ui/chrome/menu'
 import type { IndicatorsPlane } from './indicators'
 import type { ComparePlane } from './compare'
 import type { CommandRegistry } from './commands'
+import type { PaneOps } from './paneOps'
 import type { MarkPainters } from '../markPainters'
 import type { IconResolver } from '../ui/icons/resolver'
 
@@ -103,6 +103,8 @@ export interface LegendDeps {
   legendValues: boolean
   /** The chart settings in effect: the status line's parts, its backdrop and the replay mark. */
   settings(): ChartSettings
+  /** The panes' collapse, maximize and restore, which a pane row's controls run. */
+  paneOps: PaneOps
   /** The latest price and the previous session's close it is measured from, or null when either is
    *  unknown: what the change since the previous close reads. */
   dayChange?(): { price: number; previousClose: number } | null
@@ -191,19 +193,8 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     }
   }
 
-  /** Remembered pane heights for collapse, maximize and restore. */
   let destroyed = false
   const hostRows = new Map<string, ChartLegendRow>()
-  const paneRemembered = new Map<string, number>()
-  const paneKeys = (): Record<number, string> => {
-    const keys: Record<number, string> = { 0: 'main' }
-    for (const [id, pane] of Object.entries(deps.indicators.renderer.paneOf())) if (pane > 0) keys[pane] = `indicator:${id}`
-    for (const entry of deps.compare?.api.list() ?? []) {
-      const pane = deps.compare!.handle.paneIndexOf(entry.symbol)
-      if (pane !== null && pane > 0) keys[pane] = `compare:${entry.symbol}`
-    }
-    return keys
-  }
   let legend: ChartLegend | null = null
   /** The market-status popup while it is open, so teardown closes it. */
   let status: MenuHandle | null = null
@@ -283,32 +274,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     onPaneOp: (id, op) => {
       const paneIdx = deps.indicators.renderer.paneOf()[id]
       if (paneIdx === undefined || paneIdx === 0) return
-      const panes = deps.chart.panes()
-      const heights: Record<number, number> = {}
-      panes.forEach((p, i) => (heights[i] = p.getHeight()))
-      const keys = paneKeys()
-      const remembered: Record<number, number> = {}
-      for (const [index, key] of Object.entries(keys)) {
-        const height = paneRemembered.get(key)
-        if (height !== undefined) remembered[Number(index)] = height
-      }
-      const plan = planPaneOp({ heights, remembered }, { kind: op, pane: paneIdx })
-      paneRemembered.clear()
-      for (const [index, height] of Object.entries(plan.remembered)) {
-        const key = keys[Number(index)]
-        if (key) paneRemembered.set(key, height)
-      }
-      for (const [i, h] of Object.entries(plan.apply)) {
-        const index = Number(i)
-        panes[index]?.setHeight(h)
-        // The plan is the record of what the viewer asked for, so it is what the row reports. A
-        // maximize collapses every OTHER pane, which is why this reads the whole plan rather than
-        // just the pane the command named. Reading the heights back instead would be guesswork:
-        // a pane is born at the floor and rebalanced later, so short and collapsed look identical
-        // for the first frames of a pane's life.
-        if (index > 0) deps.indicators.setPaneCollapsed(index, h <= COLLAPSED_H)
-      }
-      deps.indicators.recompute()
+      deps.paneOps.run(paneIdx, op)
     },
   })
 
@@ -353,8 +319,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
 
   const paint = (): void => {
     if (destroyed) return
-    const alive = new Set(Object.values(paneKeys()))
-    for (const key of paneRemembered.keys()) if (!alive.has(key)) paneRemembered.delete(key)
+    deps.paneOps.prune()
     legend?.setLook(legendLook(deps.settings()))
     writeIdentity()
     legend?.setValueShaped(deps.valueShaped())
@@ -366,7 +331,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     legend?.setChips([
       ...deps.indicators.chipsAt(hovered).map(row => {
         const paneIndex = paneOf[row.id] ?? 0
-        const remembered = paneRemembered.get(`indicator:${row.id}`)
+        const remembered = deps.paneOps.remembered(`indicator:${row.id}`)
         return {
           ...row,
           indicator: true,

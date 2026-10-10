@@ -46,6 +46,8 @@ Keeping the left edge (`timeScale.keepLeftEdge`) stands a new timeframe's bars f
 
 The plus button (`priceLabels.plusButton`) stands beside the crosshair's price label while the crosshair is on the main pane, a ringed plus in a 24px rounded square, and opens that price's menu, the one a right-click raises there, with the rows an extension contributes for the level. The icon catalog gains `priceLevelMenu`, and the catalog `chrome.priceLevelMenu`.
 
+The pane buttons (`canvas.paneButtons`) stand at each pane's top right, 4px below its top and 4px in from the plot's edge, for the pane under the pointer, for every pane always, or never: 24px rounded squares 4px apart that delete the pane and what is in it, collapse it or open it, and maximize or restore it. They run the pane operations the legend's rows run, through one memory, and the remove verbs, so the policy that refuses a remove leaves its button out; the main pane carries maximize alone while another pane stands, collapsing every other open pane and giving back exactly those. The icons `paneCollapse`, `paneRestore` and `paneMaximize` gain the buttons' 15px drawings, and the catalog gains `chrome.paneButtons` and `chrome.deletePane`.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:

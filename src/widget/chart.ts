@@ -105,6 +105,8 @@ import { attachMarks } from './marks'
 import type { ChromeDoors } from '../ui/chrome/doors'
 import { mountNavControls } from '../ui/chrome/navControls'
 import { mountScaleControls, type PriceScaleBox, type ScaleControls } from '../ui/chrome/scaleControls'
+import { mountPaneButtons, type PaneButtons } from '../ui/chrome/paneButtons'
+import { attachPaneOps } from './paneOps'
 import { closeOverlays } from '../ui/controls/overlays'
 import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
@@ -938,6 +940,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     onChips: () => {
       syncVolume()
       legend.push()
+      paneButtons?.sync()
     },
     onEvent: (event) => events.emit('indicator', event),
     catalog: deps.indicatorCatalog,
@@ -1012,10 +1015,17 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         disposed: disposedFn,
         maintainTimeline,
         mainScale: () => scaleSide,
-        onChips: () => legend.push(),
+        onChips: () => {
+          legend.push()
+          paneButtons?.sync()
+        },
         onEvent: (entries) => events.emit('compare', entries),
       })
     : null
+
+  // Collapse, maximize and restore over the panes: one memory for the legend's row controls and the
+  // panes' own buttons.
+  const paneOps = attachPaneOps({ chart, indicators, compare })
 
   const legend = attachLegendPlane({
     commands: deps.commands,
@@ -1041,6 +1051,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     status: (nowSecs) => session.status(nowSecs),
     openIndicatorSettings: (id) => deps.doors.openIndicatorSettings(handle, id),
     legendValues: deps.ui.legendValues,
+    paneOps,
     settings: () => eff,
     dayChange: () => {
       const price = latestPrice()
@@ -1116,6 +1127,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let levels: PriceLevelsLayer | null = null
   /** The controls on the price scale, once mounted. */
   let scaleControls: ScaleControls | null = null
+  /** The buttons at the top right of each pane, once mounted. */
+  let paneButtons: PaneButtons | null = null
   /** The bar spacing the price axis was last held for under the price-to-bar ratio lock. */
   let ratioSpacing: number | null = null
   const replay = attachReplayPlane({
@@ -1243,6 +1256,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // The high and low are the bars in view, so a move of the view moves them.
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
     levels?.refresh()
+    paneButtons?.sync()
     // A zoom of the time scale under the lock rescales the price axis with it.
     holdRatio()
     scaleControls?.sync()
@@ -1402,6 +1416,49 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         },
       })
     : null
+  /** What lives in a pane, as the commands that remove it name it. */
+  const paneContents = (index: number): { indicators: string[]; compares: string[] } => ({
+    indicators: Object.entries(indicators.renderer.paneOf()).filter(([, pane]) => pane === index).map(([id]) => id),
+    compares: (compare?.api.list() ?? []).map((entry) => entry.symbol).filter((symbol) => compare?.handle.paneIndexOf(symbol) === index),
+  })
+
+  // The buttons at the top right of each pane: delete it, collapse or open it, maximize or restore
+  // it, through the pane operations the legend's rows run and the chart's own remove verbs.
+  paneButtons = mountPaneButtons({
+    chrome,
+    gestures,
+    i18n,
+    icons: deps.icons,
+    visibility: () => eff.canvas.paneButtons,
+    panes: () => {
+      const origin = gestures.getBoundingClientRect()
+      let top = 0
+      return chart.panes().map((pane, index) => {
+        const height = pane.getHeight()
+        const rect = pane.getHTMLElement()?.getBoundingClientRect()
+        // The pane's own box once it is laid out; until then its place by the heights above it.
+        const at = rect && rect.height > 0 ? rect.top - origin.top : top
+        top += height
+        return { index, top: at, height, collapsed: paneOps.collapsed(index), maximized: paneOps.maximized(index) }
+      })
+    },
+    insetEnd: () => chart.priceScale('right').width(),
+    removable: (index) => {
+      const contents = paneContents(index)
+      if (contents.indicators.length === 0 && contents.compares.length === 0) return false
+      return (contents.indicators.length === 0 || commandShown(deps.access, 'chart.indicators.remove')) && (contents.compares.length === 0 || commandShown(deps.access, 'chart.compare.remove'))
+    },
+    run: (index, action) => {
+      if (action === 'delete') {
+        const contents = paneContents(index)
+        for (const id of contents.indicators) deps.commands.execute('chart.indicators.remove', id)
+        for (const symbol of contents.compares) deps.commands.execute('chart.compare.remove', symbol)
+        return
+      }
+      paneOps.run(index, action === 'expand' ? 'restore' : action)
+    },
+  })
+
   // The plus follows the crosshair on the main pane.
   chart.subscribeCrosshairMove((param) => {
     scaleControls?.setCrosshair(param.point && (param.paneIndex ?? 0) === 0 ? param.point.y : null)
@@ -1640,6 +1697,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // The chrome's controls stand on the chart's own background.
     chrome.style.setProperty('--qcd-chart-background', eff.canvas.background)
     scaleControls?.sync()
+    paneButtons?.sync()
     legend.push()
     extensions.host.themeChanged(settingsCanvas(c, eff))
     countdown?.restyled()
@@ -2733,6 +2791,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       baselineLevel.destroy()
       nav?.destroy()
       scaleControls?.destroy()
+      paneButtons?.destroy()
       watermark.destroy()
       valueLines.clear()
       replay.destroy()

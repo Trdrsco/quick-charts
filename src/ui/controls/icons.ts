@@ -565,6 +565,20 @@ export const ICONS = {
   settingsEvents: { viewBox: '0 0 28 28', body: solid(frame(5, 6, 23, 22, 2.5) + box(6, 10, 22, 11) + box(9, 4, 10, 8) + box(18, 4, 19, 8)) },
   // The plus beside the crosshair's price: a ring with a plus standing in it, each stroke one unit.
   priceLevelMenu: { viewBox: '0 0 18 18', body: solid(ring(9, 9, 6.5) + box(8.5, 5.5, 9.5, 12.5) + box(5.5, 8.5, 12.5, 9.5)) },
+  // A pane's own buttons, on a 15 grid, one unit strokes. Collapse: two chevrons pointing at each
+  // other across the middle. Expand: the same two pointing apart.
+  paneCollapse15: { viewBox: '0 0 15 15', body: solid(polyline([[3.5, 3], [7.5, 6.5], [11.5, 3]]) + polyline([[3.5, 12], [7.5, 8.5], [11.5, 12]])) },
+  paneExpand15: { viewBox: '0 0 15 15', body: solid(polyline([[3.5, 6.5], [7.5, 3], [11.5, 6.5]]) + polyline([[3.5, 8.5], [7.5, 12], [11.5, 8.5]])) },
+  // Maximize: a frame's four corners, each bent round, the middle of every side left open.
+  paneMaximize15: {
+    viewBox: '0 0 15 15',
+    body: solid(
+      bend([[2.5, 6], [2.5, 2.5], [6, 2.5]], 1.5) +
+        bend([[9, 2.5], [12.5, 2.5], [12.5, 6]], 1.5) +
+        bend([[12.5, 9], [12.5, 12.5], [9, 12.5]], 1.5) +
+        bend([[6, 12.5], [2.5, 12.5], [2.5, 9]], 1.5),
+    ),
+  },
 } as const satisfies Record<string, Glyph>
 
 export type IconName = keyof typeof ICONS

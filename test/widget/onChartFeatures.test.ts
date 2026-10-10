@@ -5,6 +5,7 @@ import { LineStyle } from 'lightweight-charts'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { seriesTargetOf } from '../../src/compare'
 import type { ChartDatafeed, FeedBar, SymbolPrices } from '../../src/datafeed'
+import { BUILT_IN_INDICATORS } from '../../src/index'
 import { chartSettingsDefaults } from '../../src/settings/defaults'
 import type { PartialChartSettings } from '../../src/settings/schema'
 import type { PriceFormat, SymbolInfo } from '../../src/symbology'
@@ -504,6 +505,65 @@ describe('the plus button', () => {
     renderer.paneHeights[0] = 300
     renderer.fireCrosshair(BARS[5]!.t, 300, 120)
     expect(container.querySelector<HTMLElement>('.qc-scale-plus')!.hidden).toBe(true)
+  })
+})
+
+describe('the pane buttons', () => {
+  it('give each pane its buttons and run the legend pane operations and the remove verb', async () => {
+    const { chart, renderer, container } = await mount()
+    chart.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
+    await settle()
+    renderer.paneHeights[0] = 400
+    renderer.paneHeights[1] = 200
+    renderer.scaleWidths.right = 60
+    chart.applySettings({ canvas: { paneButtons: 'always' } })
+    const group = (pane: number): HTMLElement | null => container.querySelector<HTMLElement>(`.qc-pane-buttons[data-pane="${pane}"]`)
+    const actions = (pane: number): string[] => [...group(pane)!.querySelectorAll<HTMLElement>('.qc-pane-button')].map((b) => b.dataset.action!)
+    const press = (pane: number, action: string): void => group(pane)!.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)!.click()
+    expect(actions(0)).toEqual(['maximize'])
+    expect(actions(1)).toEqual(['delete', 'collapse', 'maximize'])
+    expect([group(1)!.style.top, group(1)!.style.right]).toEqual(['404px', '64px'])
+    expect(group(1)!.querySelector('[data-action="delete"]')!.getAttribute('aria-label')).toBe('Delete pane')
+    press(1, 'collapse')
+    expect(renderer.paneHeights[1]).toBe(30)
+    expect(actions(1)).toEqual(['delete', 'expand'])
+    press(1, 'expand')
+    expect(renderer.paneHeights[1]).toBe(200)
+    // The main pane maximizes by collapsing the others, and gives back exactly what it took.
+    press(0, 'maximize')
+    expect(renderer.paneHeights[1]).toBe(30)
+    expect(actions(0)).toEqual(['restore'])
+    press(0, 'restore')
+    expect(renderer.paneHeights[1]).toBe(200)
+    expect(actions(0)).toEqual(['maximize'])
+    press(1, 'delete')
+    expect(chart.indicators.get().map((i) => i.id)).not.toContain('rsi-1')
+    await settle()
+    expect(group(1)).toBeNull()
+    expect(group(0)).toBeNull()
+  })
+
+  it('show for the pane under the pointer, always, or never', async () => {
+    const { chart, renderer, container } = await mount()
+    chart.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
+    await settle()
+    renderer.paneHeights[0] = 400
+    renderer.paneHeights[1] = 200
+    chart.applySettings({ canvas: { marginTop: 11 } })
+    const gestures = container.querySelector<HTMLElement>('.qc-gestures')!
+    const group = (pane: number): HTMLElement => container.querySelector<HTMLElement>(`.qc-pane-buttons[data-pane="${pane}"]`)!
+    expect([group(0).hidden, group(1).hidden]).toEqual([true, true])
+    const move = (y: number): void => {
+      const event = new MouseEvent('pointermove', { bubbles: true, clientX: 10, clientY: y })
+      Object.defineProperty(event, 'pointerType', { value: 'mouse' })
+      gestures.dispatchEvent(event)
+    }
+    move(450)
+    expect([group(0).hidden, group(1).hidden]).toEqual([true, false])
+    move(100)
+    expect([group(0).hidden, group(1).hidden]).toEqual([false, true])
+    chart.applySettings({ canvas: { paneButtons: 'never' } })
+    expect([group(0).hidden, group(1).hidden]).toEqual([true, true])
   })
 })
 
