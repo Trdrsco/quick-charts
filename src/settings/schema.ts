@@ -62,6 +62,28 @@ export type ChartHoursFormat = '24' | '12'
 /** The chart's background: one color, or a vertical gradient from the top color to the bottom. */
 export type ChartBackgroundType = 'solid' | 'gradient'
 
+/** How a single-value line is colored: one color, or a vertical gradient from the top color at the
+ *  highest price on screen to the bottom color at the lowest. */
+export type ChartLineColorType = 'solid' | 'gradient'
+
+/** Which trading hours an intraday chart shows: regular hours alone, regular hours with the pre-
+ *  and post-market stretches, or every stretch the symbol trades including the overnight one. */
+export type ChartSessionHours = 'regular' | 'extended' | 'allHours'
+
+/** A single-value line style: the line and the step line share it. */
+export interface LineStyleSettings {
+  priceSource: ChartPriceSource
+  colorType: ChartLineColorType
+  /** The solid color. */
+  color: string
+  /** The gradient's color at the highest price on screen. */
+  gradientTopColor: string
+  /** The gradient's color at the lowest price on screen. */
+  gradientBottomColor: string
+  lineStyle: ChartStrokeStyle
+  lineWidth: number
+}
+
 /** The candle family: candles and hollow candles share it. */
 export interface CandleStyleSettings {
   /** Color each bar by its close against the previous bar's close, rather than against its own open. */
@@ -84,14 +106,14 @@ export interface ChartSettings {
   hollowCandles: Omit<CandleStyleSettings, 'colorOnPreviousClose'>
   bars: {
     colorOnPreviousClose: boolean
+    /** Draw high, low and close only: the open tick is left off. */
+    hlcBars: boolean
     upColor: string
     downColor: string
     thinBars: boolean
-    /** Draw the open tick. */
-    open: boolean
   }
-  line: { priceSource: ChartPriceSource; color: string; lineStyle: ChartStrokeStyle; lineWidth: number }
-  stepLine: { priceSource: ChartPriceSource; color: string; lineStyle: ChartStrokeStyle; lineWidth: number }
+  line: LineStyleSettings
+  stepLine: LineStyleSettings
   area: {
     priceSource: ChartPriceSource
     lineColor: string
@@ -104,17 +126,29 @@ export interface ChartSettings {
   baseline: {
     priceSource: ChartPriceSource
     topLineColor: string
+    topLineWidth: number
+    /** The fill above the base level: its color at the line, fading to the second at the base. */
     topFillColor1: string
     topFillColor2: string
     bottomLineColor: string
+    bottomLineWidth: number
+    /** The fill below the base level: its color at the base, deepening to the second at the line. */
     bottomFillColor1: string
     bottomFillColor2: string
-    lineWidth: number
     /** Where the base level stands, as a percentage of the pane's height from its foot. */
     baseLevelPercentage: number
   }
   /** Settings of the charted symbol that hold whatever its style. */
   symbol: {
+    /** Which trading hours an intraday chart shows. A stretch outside regular hours is shaded in its
+     *  own color below. */
+    session: ChartSessionHours
+    /** The shading over the pre-market stretch. */
+    preMarketColor: string
+    /** The shading over the post-market stretch. */
+    postMarketColor: string
+    /** The shading over the overnight stretch, under `allHours`. */
+    nightColor: string
     precision: ChartPricePrecision
   }
   /** The legend over the pane that names the symbol and states its values. */
@@ -129,6 +163,12 @@ export interface ChartSettings {
     volume: boolean
     /** The change since the previous session's close, from the datafeed's quotes. */
     lastDayChange: boolean
+    /** An indicator row's title. */
+    indicatorTitles: boolean
+    /** An indicator row's inputs, after its title. */
+    indicatorInputs: boolean
+    /** An indicator row's values. */
+    indicatorValues: boolean
     background: boolean
     /** The background's opacity, 0 to 100. */
     backgroundOpacity: number
@@ -158,6 +198,16 @@ export interface ChartSettings {
     symbolLineColor: string | null
     symbolLineWidth: number
     symbolValueMode: ChartLastValueMode
+    /** An indicator's name label on the price scale. */
+    indicatorLabelName: boolean
+    /** An indicator's value label on the price scale. */
+    indicatorLabelValue: boolean
+    /** The last value of the pre-market, post-market or overnight stretch on the price scale. */
+    extendedHoursValue: boolean
+    extendedHoursLine: boolean
+    preMarketLabelColor: string
+    postMarketLabelColor: string
+    nightLabelColor: string
     previousCloseValue: boolean
     previousCloseLine: boolean
     previousCloseColor: string
