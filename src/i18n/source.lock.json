@@ -49,6 +49,7 @@
     "command.drawingLockAll": "16776c569c",
     "command.drawingMagnet": "96a150e6d6",
     "command.drawingPaste": "3593012f7d",
+    "command.drawingPlaceHorizontalLine": "e54fde69df",
     "command.drawingPlaceImage": "535cd3de8d",
     "command.drawingProps": "8758629037",
     "command.drawingRemoveLockedPolicy": "06229629d4",

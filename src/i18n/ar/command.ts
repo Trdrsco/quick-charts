@@ -60,6 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'إعدادات الرسم',
   'command.drawingCommitEdit': 'تطبيق إعدادات الرسم',
   'command.drawingPlaceImage': 'وضع صورة',
+  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
   'command.drawingTemplateApply': 'تطبيق قالب الرسم',
   'command.drawingTemplateSave': 'حفظ قالب الرسم',
   'command.drawingTemplateRemove': 'حذف قالب الرسم',

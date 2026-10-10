@@ -16,6 +16,7 @@ export const KEYS_ADDED_IN_MAJOR = [
   'chrome.scaleHigh',
   'chrome.scaleLow',
   'chrome.scaleModes',
+  'command.drawingPlaceHorizontalLine',
   'command.marksRefresh',
   'history.changeMovePane',
   'legend.movePaneDown',

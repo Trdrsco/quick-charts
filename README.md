@@ -3041,8 +3041,10 @@ out instead (see Refused controls), and a command the policy refuses answers `de
 toolbar as from anywhere else, including `chart.drawings.arm` for a refused tool. A tool your
 `drawingTools` list leaves out is not on the toolbar at all (see Offered drawing tools). An image is
 placed through `chart.drawings.placeImage`, from the picker or a system-clipboard paste over the
-chart. Every flyout, palette and dialog a surface opens sits inside the chart root and closes with
-it, and the eye and lock all announce their state through a live region. Lock all also makes Paste
+chart, and a horizontal line at a price through `chart.drawings.placeHorizontalLine` with that
+price, which asks what arming the horizontal line asks and places nothing while lock all holds.
+Every flyout, palette and dialog a surface opens sits inside the chart root and closes with it, and
+the eye and lock all announce their state through a live region. Lock all also makes Paste
 unavailable, so a control never reports success for a drawing the layer refused.
 
 Arm the transient tools by name: `measure` draws a readout the next gesture clears, `zoom` sets

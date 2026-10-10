@@ -435,6 +435,7 @@
       "chart.drawings.lockAll",
       "chart.drawings.magnet",
       "chart.drawings.paste",
+      "chart.drawings.placeHorizontalLine",
       "chart.drawings.placeImage",
       "chart.drawings.props",
       "chart.drawings.removeAll",
