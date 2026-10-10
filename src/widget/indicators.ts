@@ -218,6 +218,10 @@ export interface IndicatorsDeps {
   minMove(): number
   /** The theme in effect: an indicator with no declared color takes the neutral series ink. */
   canvas(): CanvasTheme
+  /** What the price scale writes for every indicator: its name beside its value label, and the
+   *  value label itself. An instance that turns its own labels off keeps them off. Both labels
+   *  stand when absent. */
+  scaleLabels?(): { name: boolean; value: boolean }
   access?: AccessPolicy
   /** The built-in indicators the host offers, or null (or absent) for every built-in. */
   offered?: OfferedIndicators
@@ -431,7 +435,13 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
         continue
       }
       const manifest = overriddenManifest(def.manifest, inst.overrides)
-      const built = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? deps.canvas().neutral), inst.overrides)
+      const own = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? deps.canvas().neutral), inst.overrides)
+      const scale = deps.scaleLabels?.() ?? { name: false, value: true }
+      const built = {
+        ...own,
+        display: { ...own.display, labelsOnPriceScale: own.display?.labelsOnPriceScale !== false && scale.value },
+        ...(scale.name ? { scaleTitle: own.title } : {}),
+      }
       renderer.render(inst.id, built)
       const volume = def.manifest.id === 'volume'
       const data = volume ? bars.map(bar => ({ time: bar.t, value: bar.v })) : built.plots[0]?.data ?? []

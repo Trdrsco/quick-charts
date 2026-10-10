@@ -207,7 +207,7 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): En
   for (const plot of built.plots) {
     const labeled = labels && plot.visible !== false
     if (plot.type === 'histogram') {
-      series.push(chart.addSeries(HistogramSeries, { color: plot.color, priceLineVisible: false, lastValueVisible: labeled, visible: plot.visible !== false }, paneIndex))
+      series.push(chart.addSeries(HistogramSeries, { color: plot.color, priceLineVisible: false, lastValueVisible: labeled, title: built.scaleTitle ?? '', visible: plot.visible !== false }, paneIndex))
       markers.push(null)
       continue
     }
@@ -222,6 +222,7 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): En
             lineWidth: (plot.lineWidth ?? 2) as LineWidth,
             priceLineVisible: false,
             lastValueVisible: labeled,
+            title: built.scaleTitle ?? '',
             visible: plot.visible !== false,
           },
           paneIndex,
@@ -256,6 +257,7 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): En
           crosshairMarkerVisible: !asDots,
           priceLineVisible: false,
           lastValueVisible: plot.type === 'marker' ? false : labeled,
+          title: built.scaleTitle ?? '',
           visible: plot.visible !== false,
           // A volume-scale plot rides the chart's own volume band, not the price axis.
           ...(plot.scale === 'volume' ? { priceScaleId: 'volume', lastValueVisible: false } : {}),
@@ -289,7 +291,7 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): En
     shade,
     paintedTimes: new Set(),
     // Fingerprints start at the CREATED state so the first applyEntryStyles pass is a no-op.
-    styleKeys: built.plots.map((p) => styleKeyOf(p, labels)),
+    styleKeys: built.plots.map((p) => styleKeyOf(p, labels, built.scaleTitle)),
     levelsKey: JSON.stringify(built.levels ?? []),
     priceLines,
     precisionKey: null,
@@ -313,8 +315,8 @@ function createLevels(host: Series, levels: NonNullable<IndicatorPlots['levels']
 }
 
 /** A plot's visual fingerprint — the settings an instance can change on a live series. */
-function styleKeyOf(plot: IndicatorPlot, labels: boolean): string {
-  return JSON.stringify([plot.color, plot.lineWidth, plot.lineStyle, plot.visible !== false, plot.base, labels])
+function styleKeyOf(plot: IndicatorPlot, labels: boolean, title: string | undefined): string {
+  return JSON.stringify([plot.color, plot.lineWidth, plot.lineStyle, plot.visible !== false, plot.base, labels, title ?? ''])
 }
 
 /** Re-apply per-plot styling, levels, and precision when (and only when) their fingerprints moved —
@@ -323,7 +325,7 @@ function styleKeyOf(plot: IndicatorPlot, labels: boolean): string {
 function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: SymbolPriceFormat | null, neutral: string): void {
   const labels = built.display?.labelsOnPriceScale !== false
   built.plots.forEach((plot, i) => {
-    const key = styleKeyOf(plot, labels)
+    const key = styleKeyOf(plot, labels, built.scaleTitle)
     if (entry.styleKeys[i] === key) return
     entry.styleKeys[i] = key
     const s = entry.series[i]
@@ -331,11 +333,11 @@ function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: Sym
     const visible = plot.visible !== false
     const labeled = labels && visible && plot.type !== 'marker'
     if (plot.type === 'histogram') {
-      s.applyOptions({ color: plot.color, visible, lastValueVisible: labeled })
+      s.applyOptions({ color: plot.color, visible, lastValueVisible: labeled, title: built.scaleTitle ?? '' })
       return
     }
     if (plot.type === 'area') {
-      s.applyOptions({ topLineColor: plot.color, bottomLineColor: plot.color, lineWidth: (plot.lineWidth ?? 2) as LineWidth, visible, lastValueVisible: labeled } as never)
+      s.applyOptions({ topLineColor: plot.color, bottomLineColor: plot.color, lineWidth: (plot.lineWidth ?? 2) as LineWidth, visible, lastValueVisible: labeled, title: built.scaleTitle ?? '' } as never)
       return
     }
     // Lines, dot-lines, and marker anchors (marker glyph color travels with the marker data).
@@ -345,6 +347,7 @@ function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: Sym
       lineStyle: LEVEL_STYLE[plot.lineStyle ?? 'solid'] ?? LineStyle.Solid,
       visible,
       lastValueVisible: labeled,
+      title: built.scaleTitle ?? '',
     } as never)
   })
   const levelsKey = JSON.stringify(built.levels ?? [])

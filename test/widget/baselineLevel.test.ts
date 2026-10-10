@@ -15,6 +15,15 @@ describe('where the split sits', () => {
     expect(baselineSplitCoordinate(301)).toBe(150.5)
     for (const height of [0, -10, Number.NaN, Number.POSITIVE_INFINITY]) expect(baselineSplitCoordinate(height), String(height)).toBeNull()
   })
+
+  it('stands at the base level setting, as a percentage of the height from the foot, held to the pane', () => {
+    expect(baselineSplitCoordinate(400, 25)).toBe(300)
+    expect(baselineSplitCoordinate(400, 100)).toBe(0)
+    expect(baselineSplitCoordinate(400, 140)).toBe(0)
+    expect(baselineSplitCoordinate(400, -5)).toBe(400)
+    expect(baselineSplitCoordinate(400, Number.NaN)).toBe(200)
+    expect(baselinePriceToWrite({ height: 400, percent: 25, heldCoordinate: null, priceAt: (y) => 1000 - y })).toBe(700)
+  })
 })
 
 describe('the write decision', () => {

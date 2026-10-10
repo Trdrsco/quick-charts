@@ -899,6 +899,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     volumePrecision: () => symbolInfo?.volumePrecision ?? 0,
     minMove,
     canvas,
+    scaleLabels: () => ({ name: eff.priceLabels.indicatorLabelName, value: eff.priceLabels.indicatorLabelValue }),
     access: deps.access,
     offered: deps.builtInIndicators ?? null,
     disposed: disposedFn,
@@ -1394,7 +1395,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  (session bands, the value lines, marks, extensions reading the theme lane) pick the new values
    *  up on their next draw. */
   function applyLook(): void {
-    const before = { subsession: activeSubsession(), rightOffset: appliedRightOffset }
+    const before = {
+      subsession: activeSubsession(),
+      rightOffset: appliedRightOffset,
+      indicatorLabels: `${eff.priceLabels.indicatorLabelName}:${eff.priceLabels.indicatorLabelValue}`,
+    }
     eff = resolveSettings()
     const c = canvas()
     chart.applyOptions(lookOptions())
@@ -1408,7 +1413,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     if (formatKey() !== builtFormatKey) {
       setSymbolFormat(symbolFormat)
       indicators.recompute()
-    }
+    } else if (`${eff.priceLabels.indicatorLabelName}:${eff.priceLabels.indicatorLabelValue}` !== before.indicatorLabels) indicators.recompute()
     // The trading hours decide which intraday bars are shown, so a change repaints the model; a
     // change of the bar colors alone repaints the bars.
     if (activeSubsession() !== before.subsession) {

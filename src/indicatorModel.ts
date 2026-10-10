@@ -128,6 +128,8 @@ export interface IndicatorPlots {
   precision?: number
   /** The standard output toggles — absent flags default ON. */
   display?: { labelsOnPriceScale?: boolean; valuesInStatusLine?: boolean; inputsInStatusLine?: boolean }
+  /** The name written beside each plot's value label on the price scale. Absent writes none. */
+  scaleTitle?: string
   /** Set when the indicator can't be computed from the current feed (e.g. no volume) — no plots
    *  are drawn and the host may surface the note. */
   unavailable?: string
