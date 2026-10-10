@@ -50,6 +50,7 @@ describe('WCAG 2.2 contrast in both built-in modes', () => {
       'status.negative',
       'status.positive',
       'status.warning',
+      'text.caption',
       'text.highlight',
       'text.inverse',
       'text.link',

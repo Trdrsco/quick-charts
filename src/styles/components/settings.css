@@ -130,9 +130,9 @@
   outline: none;
 }
 
-/* A section heading: 11px capitals in the muted ink in a 32px row, 16px clear of the section before. */
+/* A section heading: 11px capitals in the caption ink in a 32px row, 16px clear of the section before. */
 [data-qc-theme] .qc-chart-settings-panel > .qc-settings-heading {
-  color: var(--qc-text-muted);
+  color: var(--qc-text-caption);
   font-weight: 400;
 }
 
@@ -156,7 +156,7 @@
 }
 
 [data-qc-theme] .qc-settings-hint {
-  color: var(--qc-text-muted);
+  color: var(--qc-text-caption);
   font-size: 13px;
   line-height: 18px;
 }

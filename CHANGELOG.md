@@ -18,6 +18,8 @@ The chart settings dialog shows the active chart's settings on five pages, Symbo
 
 The theme mode leaves the dialog: `ui.topBar.settings.theme` stays accepted and changes nothing. The catalog drops the keys of the dialog's earlier pages, `settings.sectionAppearance`, `settings.upCandles`, `settings.downCandles`, `settings.upBorders`, `settings.downBorders`, `settings.upWicks`, `settings.downWicks`, `settings.sectionDisplay`, `settings.gridLines`, `settings.sessionShading` and `settings.sectionTheme`, and a dictionary of your own leaves them out.
 
+The theme gains `text.caption`, the ink of a dialog's section headings and of the hint lines under its settings.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:

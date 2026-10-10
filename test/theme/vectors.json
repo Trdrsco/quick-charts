@@ -371,6 +371,10 @@
         "value": "#ac6600"
       },
       {
+        "property": "--qc-text-caption",
+        "value": "#707070"
+      },
+      {
         "property": "--qc-text-disabled",
         "value": "#b8b8b8"
       },
@@ -795,6 +799,10 @@
       {
         "property": "--qc-status-warning",
         "value": "#ff9800"
+      },
+      {
+        "property": "--qc-text-caption",
+        "value": "#8c8c8c"
       },
       {
         "property": "--qc-text-disabled",

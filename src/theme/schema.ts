@@ -123,6 +123,13 @@ export const THEME_ROLES = [
       { over: 'control.neutral', min: 4.5 },
     ],
   },
+  {
+    id: 'text.caption',
+    family: 'text',
+    kind: 'color',
+    description: "Ink of a dialog's section heading and of the hint line under a setting, which stand on the dialog's own surface and never under the pointer.",
+    contrast: [{ over: 'overlay.surface', min: 4.5 }],
+  },
   { id: 'text.disabled', family: 'text', kind: 'color', description: 'Ink of a control that cannot be used. WCAG exempts an inactive control from a contrast minimum.' },
   {
     id: 'text.inverse',
