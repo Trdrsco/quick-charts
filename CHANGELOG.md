@@ -54,6 +54,8 @@ A mark's color is a theme role or a `MarkColorPair`, `{ light, dark }`, one CSS 
 
 A time-scale mark that names an `icon` draws as a 21px ring in its color, its foot just above the time scale and the chart's background inside, around that glyph, and a mark without one stays a small dot. The icon catalog gains the glyphs a mark may name, each named for its shape: `mark.bolt`, `mark.flag`, `mark.star`, `mark.clock` and `mark.exclamation`, and a host's `icons` drawing for one stands in the ring. `line: { style }` draws a 1px `solid`, `dashed` (5px drawn, 6px clear) or `dotted` line in the mark's color through the whole pane at its time, under the bars. `MarkIconId`, `MarkLine` and `MarkLineStyle` are exported.
 
+A time-scale mark's `line: { style, color, width }` runs through the whole pane at its time under the bars, in its own color (a theme role or a light and dark pair) or its mark's, 1 to 4 CSS pixels wide.
+
 Hovering a time-scale mark, or pressing it with a finger or a pen, runs a dashed line in its color from the top of the pane down to it and tints its ring, and a mark with a `label` shows it in a tooltip above it on the theme's `overlay.tooltip` fill in `overlay.tooltipInk`. A mark without a label shows the line alone.
 
 A time-scale mark at a time after the last bar stands in the empty space after it, at the slot its time falls in, counted in the timeframe's bar interval on from the last bar, and a mark whose time falls between bars stands on the next bar. The chart asks `timescaleMarks` for the loaded window run on to the end of the view and as many bar intervals again as the view spans, and asks again once the view rests past what it asked for. Bar replay draws none after the last bar it shows.

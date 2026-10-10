@@ -64,6 +64,12 @@ export type MarkLineStyle = 'solid' | 'dashed' | 'dotted'
 /** A line through the whole pane at a time-scale mark's time. */
 export interface MarkLine {
   style: MarkLineStyle
+  /** The line's own color, by the same rule as a mark's: a theme role or a light and dark pair. A
+   *  line without one wears its mark's color. */
+  color?: MarkColor
+  /** The line's width in CSS pixels, a whole number from 1 to 4. A line without one, or with a width
+   *  outside that range, is 1px. */
+  width?: number
 }
 
 /** One mark under the time scale. */

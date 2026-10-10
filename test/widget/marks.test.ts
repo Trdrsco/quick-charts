@@ -486,6 +486,28 @@ describe('a time-scale mark’s line', () => {
     expect(views.map((view) => view.zOrder())).toEqual(['bottom', 'top'])
   })
 
+  it('wears its own color and width where it names them, and its mark\'s color at 1px where it does not', () => {
+    const at = new Map([
+      [60, 100],
+      [120, 200],
+      [180, 300],
+    ])
+    const { paint } = rig({
+      marks: [
+        { id: 'a', time: 60, color: 'negative', line: { style: 'dashed', color: { light: '#555555', dark: '#555555' }, width: 3 } },
+        { id: 'b', time: 120, color: 'negative', line: { style: 'dashed', color: 'info' } },
+        { id: 'c', time: 180, color: 'negative', line: { style: 'dashed', width: 7 } },
+      ],
+      x: at,
+    })
+    const strokes = named(paint(), 'stroke')
+    expect(strokes.map((call) => [call.strokeStyle, call.lineWidth])).toEqual([
+      ['#555555', 3],
+      [DARK_THEME['status.info'], 1],
+      [DARK_THEME['status.negative'], 1],
+    ])
+  })
+
   it('strokes each style in its own pattern, and draws none for a style it does not know', () => {
     const at = new Map([
       [60, 100],

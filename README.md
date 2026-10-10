@@ -1918,9 +1918,10 @@ A bar mark (`BarMark`) sits on its bar, above or below it, with a letter or two.
   just above the time scale and the chart's background inside, around a glyph of the icon catalog:
   `mark.bolt`, `mark.flag`, `mark.star`, `mark.clock` or `mark.exclamation`. Your `icons` drawing for
   one of those ids stands in the ring in place of the chart's own.
-- **Its line.** `line: { style }` draws a 1px line in its color through the whole pane at its time,
+- **Its line.** `line: { style, color, width }` draws a line through the whole pane at its time,
   always and under the bars: `solid`, `dashed` (5px drawn, 6px clear) or `dotted` (1px drawn, 4px
-  clear).
+  clear). `color` takes a theme role or a light and dark pair, as a mark's does, and a line without
+  one wears its mark's color; `width` is 1 to 4 CSS pixels, and 1 without it.
 - **Hovering it.** The pointer over a mark, or a finger or a pen pressing it, runs a dashed line in
   its color from the top of the pane down to it and tints its ring. A mark with a `label` shows it
   in a tooltip above the mark, and a mark without one shows the line alone. A press anywhere else

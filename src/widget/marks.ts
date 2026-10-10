@@ -112,11 +112,17 @@ const lineOf = (mark: TimescaleMark): MarkLineStyle | null => {
   return typeof style === 'string' && Object.hasOwn(MARK_LINE_DASH, style) ? style : null
 }
 
-/** One vertical line in a color and a dash, a CSS pixel wide, at a CSS x from the top of a bitmap
- *  down to `bottom` in its device pixels. */
-function strokeDown(scope: BitmapScope, x: number, color: string, dash: readonly number[], bottom: number): void {
+/** A line's width in CSS pixels: the whole number from 1 to 4 it names, and 1 otherwise. */
+const lineWidthOf = (mark: TimescaleMark): number => {
+  const width = mark.line?.width
+  return typeof width === 'number' && Number.isInteger(width) && width >= 1 && width <= 4 ? width : 1
+}
+
+/** One vertical line in a color and a dash, `cssWidth` CSS pixels wide, at a CSS x from the top of a
+ *  bitmap down to `bottom` in its device pixels. */
+function strokeDown(scope: BitmapScope, x: number, color: string, dash: readonly number[], bottom: number, cssWidth = 1): void {
   const ctx = scope.context
-  const width = Math.max(1, Math.round(scope.horizontalPixelRatio))
+  const width = Math.max(1, Math.round(cssWidth * scope.horizontalPixelRatio))
   // A line of odd pixel width sits on a pixel's center, so it is crisp rather than smeared.
   const at = Math.round(x * scope.horizontalPixelRatio) + (width % 2 ? 0.5 : 0)
   ctx.save()
@@ -290,7 +296,8 @@ export function createTimescaleMarks(deps: TimescaleMarksDeps): TimescaleMarksPr
           const slot = deps.slotOf(mark.time)
           const x = slot === null ? null : ts.logicalToCoordinate(slot as Logical)
           if (x == null || x < 0 || x > width) continue
-          strokeDown(scope, x, markColor(mark.color, palette, mode), MARK_LINE_DASH[lineOf(mark)!], scope.bitmapSize.height)
+          const ink = markColor(mark.line?.color ?? mark.color, palette, mode)
+          strokeDown(scope, x, ink, MARK_LINE_DASH[lineOf(mark)!], scope.bitmapSize.height, lineWidthOf(mark))
         }
       })
     },
