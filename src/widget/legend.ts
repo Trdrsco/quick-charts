@@ -56,6 +56,8 @@ export interface LegendPlane {
   setHeader(symbol: string, tf: string): void
   setDot(state: SessionState | null): void
   setHostRows(rows: readonly ChartLegendRow[]): void
+  /** The rows extensions place in the legend, in their order, under the symbol's reading. */
+  setSlotRows(elements: readonly HTMLElement[]): void
   destroy(): void
 }
 
@@ -184,6 +186,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       setHeader: () => undefined,
       setDot: () => undefined,
       setHostRows: () => undefined,
+      setSlotRows: () => undefined,
       destroy: () => undefined,
     }
   }
@@ -442,6 +445,10 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     },
     push() {
       paint()
+    },
+    setSlotRows(elements) {
+      if (destroyed) return
+      legend?.setSlotRows(elements)
     },
     setHeader(symbol, tf) {
       if (symbol !== named || (deps.replayPhase() !== 'off')) { status?.close(); status = null }

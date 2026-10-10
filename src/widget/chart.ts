@@ -1254,8 +1254,12 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     hideState: () => drawings.verbs?.hide() ?? { mode: 'drawings', on: false },
     setHide: (state) => drawings.verbs?.setHide(state),
     hideLayersChanged: () => drawings.syncHideLayers(),
+    // A contributed legend row stands in the legend under the symbol's reading.
+    legendRowsChanged: () => legend.setSlotRows(extensionsHost?.legendRows().map((row) => row.element) ?? []),
   })
   extensionsHost = extensions.host
+  // The rows the extensions placed while they attached, before the host was there to read.
+  legend.setSlotRows(extensions.host.legendRows().map((row) => row.element))
 
   const menu = deps.ui.contextMenu
     ? attachMenuPlane({

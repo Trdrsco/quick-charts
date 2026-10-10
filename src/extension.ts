@@ -178,6 +178,18 @@ export interface ChartExtensionHideLayerHandle {
   remove(): void
 }
 
+/** A row of an extension's own in the pane's legend: an element the extension builds and keeps,
+ *  which the chart places under the symbol's reading and above the indicator rows. The row wears the
+ *  status line's backdrop like the legend's own parts, and takes the pointer, so its controls are
+ *  pressed rather than the chart under them. Whether it shows, and what it holds, is the
+ *  extension's own state: it hides or fills the element as it likes. */
+export interface ChartExtensionLegendRow {
+  element: HTMLElement
+  /** Where the row stands among contributed rows: a lower rank first, then the rows of one rank
+   *  as they were contributed. Absent reads as 0. */
+  rank?: number
+}
+
 /** Builds an extension's context menu rows. The chart calls it on every raise with that moment's
  *  context, so the rows can depend on the level that was pressed. An empty list contributes nothing
  *  and costs nothing. */
@@ -245,6 +257,9 @@ export interface ChartExtensionContext {
    *  pages. The dialog lists what the active chart's extensions contribute when it opens; the
    *  returned function withdraws the contribution, and detach withdraws it either way. */
   contributeSettings(contribution: ChartSettingsContribution): () => void
+  /** Place a row of the extension's own in the pane's legend. The returned function takes it out,
+   *  and detach takes it out either way; the element is the extension's to keep. */
+  contributeLegendRow(row: ChartExtensionLegendRow): () => void
 }
 
 /** What an extension gives back at attach. `detach` is required; the two state methods are the
@@ -303,6 +318,8 @@ export interface ChartExtensionHostDeps {
   setHide(state: HideState): void
   /** The set of contributed layers changed: the eye re-lists them and re-applies its state. */
   hideLayersChanged(): void
+  /** The set of contributed legend rows changed: the legend places them again. */
+  legendRowsChanged?(): void
 }
 
 /** The widget's half of the seam: attach the configured extensions, push the chart's changes at
@@ -321,6 +338,9 @@ export interface ChartExtensionHost {
   hideLayers(): readonly ChartExtensionHideLayer[]
   /** What every attached extension adds to the settings dialog, in contribution order. */
   settingsContributions(): readonly ChartSettingsContribution[]
+  /** The legend rows every attached extension contributes, by rank and then as they were
+   *  contributed. */
+  legendRows(): readonly ChartExtensionLegendRow[]
   /** Viewer state by extension id — the widget nests this under one key of its save blob. */
   serialize(): Record<string, unknown>
   /** Apply opaque state as usual, and report whether all registered saved state round-tripped.
@@ -356,6 +376,8 @@ interface Attached {
   hideLayers: Map<string, ChartExtensionHideLayer>
   /** What this extension added to the settings dialog. */
   settings: Set<ChartSettingsContribution>
+  /** The rows this extension placed in the legend. */
+  legendRows: Set<ChartExtensionLegendRow>
   /** The unregister the chart's command registry answered for each command this extension
    *  contributed, so a detach takes its verbs out of the one registry with it. */
   commands: Map<string, () => void>
@@ -454,6 +476,10 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     clearLanes(record.lanes)
     record.menuBuilders.clear()
     record.settings.clear()
+    if (record.legendRows.size) {
+      record.legendRows.clear()
+      notifyLegendRows()
+    }
     if (record.hideLayers.size) {
       record.hideLayers.clear()
       notifyHideLayers()
@@ -473,6 +499,17 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     }
   }
 
+  /** The legend places its contributed rows again. A chart mid-teardown hears nothing. */
+  let contributedRows = 0
+  const notifyLegendRows = (): void => {
+    if (!hostLive) return
+    try {
+      deps.legendRowsChanged?.()
+    } catch {
+      /* the legend's own failure is its own */
+    }
+  }
+
   const attachOne = (extension: ChartExtension, at?: number): void => {
     if (!hostLive) return
     // One id, one attachment: a duplicate would share the save-blob key with the original and
@@ -486,6 +523,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       menuBuilders: new Set(),
       hideLayers: new Map(),
       settings: new Set(),
+      legendRows: new Set(),
       commands: new Map(),
       priceLines: new Set(),
       primitives: new Set(),
@@ -584,6 +622,19 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
         record.settings.add(contribution)
         return () => {
           record.settings.delete(contribution)
+        }
+      },
+      contributeLegendRow(row) {
+        if (!record.live || !row?.element) return () => {}
+        // A copy, so the rank the row was placed at is the one it keeps; the contribution count
+        // breaks a tie between rows of one rank.
+        const rank = typeof row.rank === 'number' && Number.isFinite(row.rank) ? row.rank : 0
+        const held: ChartExtensionLegendRow & { seq: number } = { element: row.element, rank, seq: contributedRows++ }
+        record.legendRows.add(held)
+        notifyLegendRows()
+        return () => {
+          if (!record.legendRows.delete(held)) return
+          notifyLegendRows()
         }
       },
       contributeCommands(commands) {
@@ -706,6 +757,11 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     settingsContributions() {
       if (!hostLive) return []
       return liveRecords().flatMap((record) => [...record.settings])
+    },
+    legendRows() {
+      if (!hostLive) return []
+      const rows = liveRecords().flatMap((record) => [...record.legendRows] as (ChartExtensionLegendRow & { seq: number })[])
+      return rows.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || a.seq - b.seq).map((row) => ({ element: row.element, rank: row.rank ?? 0 }))
     },
     serialize() {
       const out: Record<string, unknown> = {}

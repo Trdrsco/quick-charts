@@ -785,6 +785,22 @@
   color: var(--qc-status-negative);
 }
 
+/* The rows extensions place in the legend, under the reading and above the indicator rows, at the
+ * header's own inset. The element in each is the extension's and takes the pointer; the slot
+ * wears the status line's backdrop, as the legend's own parts do. */
+[data-qc-theme] .qc-legend-slots {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-inline-start: 9px;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-legend-slot {
+  pointer-events: auto;
+  background-color: var(--qcd-legend-backdrop);
+}
+
 /* The change since the previous session's close, last in the reading, in its own direction's ink
  * rather than the read bar's. */
 [data-qc-theme] .qc-legend-day-change {

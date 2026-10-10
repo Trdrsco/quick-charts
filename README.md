@@ -3399,6 +3399,13 @@ What to know:
   chart's in every measure. The dialog calls `open()` as it opens, `cancel(state)` with what `open`
   answered when the viewer cancels, `commit()` on Ok and `applyDefaults()` from the Template menu.
   The returned function withdraws the contribution, and detach withdraws it either way.
+- **A row of your own can stand in the legend.** `ctx.contributeLegendRow({ element, rank })`
+  places your element in the pane's legend, under the symbol's reading and above the indicator
+  rows, rows of a lower `rank` first and then as they were contributed. The row wears
+  the status line's backdrop like the legend's own parts and takes the pointer, so a press on its
+  controls reaches them rather than the chart, and collapsing the indicator rows leaves it standing.
+  What it holds and whether it shows are yours: fill or hide the element as you like. The returned
+  function takes it out, detach takes it out either way, and the element is given back unchanged.
 - **A printed chord is a real binding.** `ChartExtensionMenuItem.shortcut` prints on the row and
   answers to the key. The chart's dispatcher offers a press no built-in verb claims to the rows your
   `contributeContextMenu` callback returns for the level under the pointer and runs that row's own

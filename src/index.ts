@@ -112,6 +112,7 @@ export type {
   ChartExtensionHandle,
   ChartExtensionIcon,
   ChartExtensionIconPath,
+  ChartExtensionLegendRow,
   ChartExtensionMenuContext,
   ChartExtensionMenuItem,
   ChartExtensionMenuBuilder,

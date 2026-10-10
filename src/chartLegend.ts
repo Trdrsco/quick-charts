@@ -207,6 +207,10 @@ export interface ChartLegend {
   setReplayGuide(point: { x: number; y: number } | null, axisHeight?: number): void
   setChips(chips: readonly LegendChip[]): void
   setPaneTops(tops: Readonly<Record<number, number>>): void
+  /** The rows extensions place under the reading and above the indicator rows, in order. Each is
+   *  the extension's own element: the legend holds it in a slot that wears the backdrop and takes
+   *  the pointer, and gives it back when it leaves. */
+  setSlotRows(elements: readonly HTMLElement[]): void
   destroy(): void
 }
 
@@ -374,9 +378,16 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     listToggle.replaceChildren(controls.icons.glyph(ICONS.legendChevron, { size: 15 }))
   }
   listToggle.addEventListener('click', () => { rowsCollapsed = !rowsCollapsed; paintToggle() })
+  // The rows extensions place, between the reading and the indicator rows. The indicator rows'
+  // collapse leaves them standing: they are not indicator rows.
+  const slots = document.createElement('div')
+  slots.className = 'qc-legend-slots'
+  slots.dataset.role = 'legend-slots'
+  slots.hidden = true
+  const slotOf = new Map<HTMLElement, HTMLElement>()
   // Main rows and their list toggle stay in flow after the wrapping header. Locale, metadata and
   // width changes therefore move them by measured layout instead of a fixed top guess.
-  root.append(header, chipRows, listToggle)
+  root.append(header, slots, chipRows, listToggle)
   paintToggle()
   container.appendChild(root)
 
@@ -767,7 +778,34 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     setPaneTops(tops) {
       for (const [pane, group] of groups) if (pane > 0) group.style.top = `${tops[pane] ?? 0}px`
     },
+    setSlotRows(elements) {
+      const keep = new Set(elements)
+      for (const [element, slot] of slotOf) {
+        if (keep.has(element)) continue
+        slot.remove()
+        if (element.parentElement === slot) element.remove()
+        slotOf.delete(element)
+      }
+      // Each slot is put in place in turn, so the slots read in the order given.
+      let cursor: ChildNode | null = slots.firstChild
+      for (const element of elements) {
+        let slot = slotOf.get(element)
+        if (!slot) {
+          slot = document.createElement('div')
+          slot.className = 'qc-legend-slot'
+          slotOf.set(element, slot)
+        }
+        if (element.parentElement !== slot) slot.appendChild(element)
+        if (slot !== cursor) slots.insertBefore(slot, cursor)
+        cursor = slot.nextSibling
+      }
+      slots.hidden = elements.length === 0
+    },
     destroy() {
+      for (const [element, slot] of slotOf) {
+        if (element.parentElement === slot) element.remove()
+      }
+      slotOf.clear()
       dropBadge?.()
       dropBadge = null
       fitObserver?.disconnect()

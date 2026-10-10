@@ -69,6 +69,8 @@ export interface ExtensionsDeps {
   hideState(): HideState
   setHide(state: HideState): void
   hideLayersChanged(): void
+  /** The set of contributed legend rows changed. */
+  legendRowsChanged?(): void
 }
 
 export function attachExtensionsPlane(deps: ExtensionsDeps): ExtensionsPlane {
@@ -173,6 +175,7 @@ export function attachExtensionsPlane(deps: ExtensionsDeps): ExtensionsPlane {
       hideState: deps.hideState,
       setHide: deps.setHide,
       hideLayersChanged: deps.hideLayersChanged,
+      ...(deps.legendRowsChanged ? { legendRowsChanged: deps.legendRowsChanged } : {}),
     },
     deps.extensions,
   )
