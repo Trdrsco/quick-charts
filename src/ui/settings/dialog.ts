@@ -188,6 +188,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       intraday: isIntradayTimeframe(chart.timeframe()),
       extendedHours: chart.hasExtendedHours(),
       indicators: chart.indicators.get().length > 0,
+      prices: deps.widget.capabilities().prices,
       accent: deps.widget.theme.get()['state.accent'],
     }
   }

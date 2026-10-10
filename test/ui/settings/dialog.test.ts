@@ -18,9 +18,13 @@ afterEach(() => {
 
 /** A widget over the fake chart, whose registry carries the settings commands the dialog writes
  *  through, and a dialog of its own over it. The chart's `viewer` state is the viewer's settings. */
-function setup(options: { chart?: FakeChartOptions; templates?: boolean; access?: (id: string) => boolean } = {}) {
+function setup(options: { chart?: FakeChartOptions; templates?: boolean; access?: (id: string) => boolean; prices?: boolean } = {}) {
   const chart = fakeChart(options.chart)
-  const w = fakeWidget({ chart, ...(options.access ? { access: { command: options.access } } : {}) })
+  const w = fakeWidget({
+    chart,
+    ...(options.access ? { access: { command: options.access } } : {}),
+    ...(options.prices ? { capabilities: { prices: true } } : {}),
+  })
   const templates = options.templates ? new ChartTemplates(memorySaveLoadAdapter().templates('chart')) : null
   const dialog = createChartSettingsDialog({ ...w.ctx, templates })
   cleanup.push(() => {
@@ -277,6 +281,17 @@ describe('the chart\'s pages', () => {
     slider.value = '80'
     slider.dispatchEvent(new Event('input'))
     expect(s.chart.state.viewer).toEqual({ statusLine: { backgroundOpacity: 80 } })
+  })
+
+  it('offers the Bid and ask row only when the datafeed serves the symbol\'s prices', () => {
+    const without = setup()
+    without.dialog.open('scales')
+    expect(without.rowIds()).toContain('highLow')
+    expect(without.rowIds()).not.toContain('bidAsk')
+    const withPrices = setup({ prices: true })
+    withPrices.dialog.open('scales')
+    expect(withPrices.rowIds()).toContain('bidAsk')
+    expect(withPrices.rowIds().indexOf('bidAsk')).toBe(withPrices.rowIds().indexOf('highLow') + 1)
   })
 
   it('builds the Canvas page with its watermark parts and margins', () => {

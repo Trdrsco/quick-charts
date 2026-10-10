@@ -43,6 +43,8 @@ export interface ChartPageContext {
   intraday: boolean
   extendedHours: boolean
   indicators: boolean
+  /** The datafeed serves the charted symbol's live prices, without which bid and ask draw nothing. */
+  prices: boolean
   /** The tint an opacity slider fades into where the setting has no color of its own. */
   accent: string
 }
@@ -507,22 +509,25 @@ function scalesPage(form: ChartSettingsForm, ctx: ChartPageContext): void {
       })
     },
   })
-  form.field({
-    id: 'bidAsk',
-    label: t('settings.bidAndAsk'),
-    controls: (c) => {
-      const hidden = !labels.bidAskValue && !labels.bidAskLine
-      c.multiSelect({
-        values: chosen([['value', labels.bidAskValue], ['line', labels.bidAskLine]] as const),
-        options: valueLine(),
-        width: 180,
-        none: t('settings.hidden'),
-        onChange: (values) => setLabels({ bidAskValue: values.includes('value'), bidAskLine: values.includes('line') }),
-      })
-      c.color({ color: labels.bidColor, onColor: (bidColor) => setLabels({ bidColor }), opacity: true, label: t('settings.bid'), disabled: hidden })
-      c.color({ color: labels.askColor, onColor: (askColor) => setLabels({ askColor }), opacity: true, label: t('settings.ask'), disabled: hidden })
-    },
-  })
+  // Bid and ask come only from the datafeed's prices, so a feed without them has no row to offer.
+  if (ctx.prices) {
+    form.field({
+      id: 'bidAsk',
+      label: t('settings.bidAndAsk'),
+      controls: (c) => {
+        const hidden = !labels.bidAskValue && !labels.bidAskLine
+        c.multiSelect({
+          values: chosen([['value', labels.bidAskValue], ['line', labels.bidAskLine]] as const),
+          options: valueLine(),
+          width: 180,
+          none: t('settings.hidden'),
+          onChange: (values) => setLabels({ bidAskValue: values.includes('value'), bidAskLine: values.includes('line') }),
+        })
+        c.color({ color: labels.bidColor, onColor: (bidColor) => setLabels({ bidColor }), opacity: true, label: t('settings.bid'), disabled: hidden })
+        c.color({ color: labels.askColor, onColor: (askColor) => setLabels({ askColor }), opacity: true, label: t('settings.ask'), disabled: hidden })
+      },
+    })
+  }
 
   form.heading(t('settings.headingTimeScale'))
   form.check({ id: 'dayOfWeek', label: t('settings.dayOfWeek'), checked: time.dayOfWeek, onChange: (dayOfWeek) => setTime({ dayOfWeek }) })
