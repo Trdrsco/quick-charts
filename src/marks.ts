@@ -56,7 +56,10 @@ export type MarkIconId = 'mark.bolt' | 'mark.flag' | 'mark.star' | 'mark.clock' 
 /** One mark under the time scale. */
 export interface TimescaleMark {
   id: string
-  /** Epoch SECONDS. */
+  /** Epoch SECONDS. The mark stands on the bar whose bucket holds this time, on the next bar when
+   *  it falls between bars (a session gap, a weekend), and after the last bar at the slot it falls
+   *  in, counting the timeframe's bar interval on from the last bar. Bar replay draws none after
+   *  the last bar it shows. */
   time: number
   color: MarkColor
   label?: string

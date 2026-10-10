@@ -1120,6 +1120,14 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         mode: () => deps.theme.mode(),
         // The background at the pane's foot, where a glyph mark stands: a gradient's bottom color.
         background: () => (eff.canvas.backgroundType === 'gradient' ? eff.canvas.backgroundBottom : eff.canvas.background),
+        // A time-scale mark stands on the bars the viewer sees, and past the last one by the bar
+        // interval, except while replay hides what comes after its cursor.
+        painted: () => shownBars(),
+        interval: () => {
+          const parsed = parseTimeframe(tf)
+          return parsed && parsed.unit !== 't' ? timeframeSeconds(parsed) : null
+        },
+        replaying: () => replay.active(),
         icons: deps.icons,
         gestures,
         overlay: chrome,

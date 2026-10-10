@@ -1,8 +1,9 @@
 // Drawing the neutral marks: the bar markers the renderer already understands, and a primitive that
 // draws the time-scale marks along the foot of the pane, each a glyph in a ring or a small dot. The
 // data contract they draw is `src/marks.ts`; nothing here interprets a mark, it only paints one.
-import type { IChartApi, ISeriesApi, SeriesMarker, SeriesType, Time, UTCTimestamp } from 'lightweight-charts'
+import type { IChartApi, ISeriesApi, Logical, LogicalRange, SeriesMarker, SeriesType, Time, UTCTimestamp } from 'lightweight-charts'
 import { createSeriesMarkers, type ISeriesMarkersPluginApi } from 'lightweight-charts'
+import type { FeedBar } from '../datafeed'
 import type { SemanticTheme, ThemeMode } from '../theme/schema'
 import { paintableColor } from '../settings/color'
 import { MARK_ICONS } from '../ui/controls/icons'
@@ -109,6 +110,9 @@ export type MarkArt = (id: MarkIconId, color: string, size: number) => CanvasIma
 export interface TimescaleMarksDeps {
   chart: IChartApi
   marks(): readonly TimescaleMark[]
+  /** Where a mark's time stands on the time scale, as a logical index (`markSlot`), or null where
+   *  it stands on nothing. */
+  slotOf(time: number): number | null
   theme(): SemanticTheme
   mode(): ThemeMode
   /** The chart's background at the foot of the pane, which a ring's inside shows. */
@@ -152,8 +156,36 @@ function glyphPath(id: MarkIconId): Path2D {
   return path
 }
 
+/** Where a time-scale mark's time stands on the time scale, as a logical index: on the bar whose
+ *  bucket holds it, which runs from the bar's open for one bar interval and never past the next
+ *  bar; on the next bar when it falls between bars (a session gap, a weekend); and past the last
+ *  bar, while `future` allows it, at the slot it falls in, counted in bar intervals from the last
+ *  bar. Null where it stands on nothing: before the first bar, or past the last one without an
+ *  interval or with the future closed. Without an interval a bar's bucket is its open alone.
+ *  `bars` ascend, and `indexOf` answers a bar's own logical index. */
+export function markSlot(time: number, bars: readonly { t: number }[], interval: number | null, indexOf: (time: number) => number | null, future: boolean): number | null {
+  const count = bars.length
+  if (count === 0 || !Number.isFinite(time) || time < bars[0]!.t) return null
+  // The last bar that opens at or before the time.
+  let low = 0
+  let high = count - 1
+  while (low < high) {
+    const middle = (low + high + 1) >> 1
+    if (bars[middle]!.t <= time) low = middle
+    else high = middle - 1
+  }
+  const bar = bars[low]!
+  const next = bars[low + 1]
+  const ends = interval === null ? bar.t + 1 : Math.min(bar.t + interval, next?.t ?? Infinity)
+  if (time < ends) return indexOf(bar.t)
+  if (next) return indexOf(next.t)
+  if (!future || interval === null || !(interval > 0)) return null
+  const last = indexOf(bar.t)
+  return last === null ? null : last + Math.floor((time - bar.t) / interval)
+}
+
 /** Whether a mark names a glyph the chart draws. */
-const glyphOf = (mark: TimescaleMark): MarkIconId | null => (typeof mark.icon === 'string' && Object.hasOwn(MARK_ICONS, mark.icon) ? mark.icon : null)
+const glyphOf =(mark: TimescaleMark): MarkIconId | null => (typeof mark.icon === 'string' && Object.hasOwn(MARK_ICONS, mark.icon) ? mark.icon : null)
 
 /** The mark under a point: the last drawn, which stands on top, whose box holds it. */
 function markAt(placed: readonly Placed[], at: PanePoint): Placed | null {
@@ -187,7 +219,9 @@ export function createTimescaleMarks(deps: TimescaleMarksDeps): TimescaleMarksPr
     const mode = deps.mode()
     const out: Placed[] = []
     for (const mark of list) {
-      const x = ts.timeToCoordinate(mark.time as Time)
+      const slot = deps.slotOf(mark.time)
+      const x = slot === null ? null : ts.logicalToCoordinate(slot as Logical)
+      // A mark past the view on either side is not drawn.
       if (x == null || x < -MARK_RING_SIZE || x > width + MARK_RING_SIZE) continue
       const color = markColor(mark.color, palette, mode)
       const glyph = glyphOf(mark)
@@ -361,7 +395,9 @@ export function hostMarkArt(icons: IconResolver, loaded: () => void): MarkArt {
 
 /** The marks plane over one chart. */
 export interface MarksLayer {
-  /** Fetch and draw both families for a window. A feed that serves neither draws neither. */
+  /** Fetch and draw both families over the loaded bars' window. The time-scale marks are asked for
+   *  past it too, as far as the view reaches into the empty space after the last bar. A feed that
+   *  serves neither draws neither. */
   refresh(window: { from: number; to: number } | null): void
   /** Re-color what is drawn for a new theme or mode, without re-fetching. */
   repaint(): void
@@ -381,6 +417,12 @@ export interface MarksDeps {
   mode(): ThemeMode
   /** The chart's background at the foot of the pane, which a glyph mark's ring shows inside. */
   background(): string
+  /** The bars the chart paints, ascending: the time-scale marks stand on these. */
+  painted(): readonly FeedBar[]
+  /** The timeframe's bar interval in seconds, or null for a timeframe with no fixed one. */
+  interval(): number | null
+  /** Whether bar replay holds the chart: no mark stands past the last bar it paints. */
+  replaying(): boolean
   /** Draws the host's artwork for a mark glyph where the host gave one. */
   icons?: IconResolver
   /** The box the chart's canvases fill, whose pointer hovers a time-scale mark and whose press holds
@@ -397,12 +439,51 @@ export interface MarksDeps {
   disposed(): boolean
 }
 
+/** How long the view rests before a move that reaches past the time-scale marks already asked for
+ *  asks for more, so a drag asks once rather than on every frame. */
+const VIEW_SETTLE_MS = 200
+
 export function attachMarks(deps: MarksDeps): MarksLayer {
+  const ts = deps.chart.timeScale()
   let plugin: ISeriesMarkersPluginApi<Time> | null = null
   let bars: readonly BarMark[] = []
   let axis: readonly TimescaleMark[] = []
-  /** Increments on every clear and every refresh, so a page that lands late paints nothing. */
-  let generation = 0
+  /** The loaded bars' window the last refresh named, and the end of the window the time-scale marks
+   *  were last asked for. */
+  let loaded: { from: number; to: number } | null = null
+  let asked = -Infinity
+  /** Each family increments on every clear and every ask of its own, so an answer that lands late
+   *  paints nothing. */
+  let barAsk = 0
+  let axisAsk = 0
+  let settle: ReturnType<typeof setTimeout> | null = null
+
+  /** Where a time stands on the time scale, by the bars the chart paints. */
+  const slotOf = (time: number): number | null =>
+    markSlot(
+      time,
+      deps.painted(),
+      deps.interval(),
+      (barTime) => {
+        const index = ts.timeToIndex(barTime as Time, false)
+        return index === null ? null : (index as number)
+      },
+      !deps.replaying(),
+    )
+
+  /** How far the view reaches past the last painted bar, as the end of the last slot in view, with
+   *  `ahead` more slots after it. Null when the view stops at or before the last bar, or no slot
+   *  past it can be named. */
+  const reach = (ahead: number): number | null => {
+    const painted = deps.painted()
+    const last = painted[painted.length - 1]
+    const interval = deps.interval()
+    const view: LogicalRange | null = ts.getVisibleLogicalRange()
+    if (!last || !view || interval === null || !(interval > 0) || deps.replaying()) return null
+    const index = ts.timeToIndex(last.t as Time, false)
+    if (index === null || view.to <= (index as number)) return null
+    return last.t + (Math.ceil(view.to - (index as number)) + 1 + ahead) * interval - 1
+  }
 
   const paneLeft = (): number => deps.paneLeft?.() ?? 0
   // A hovered mark's words, on the tooltip fill above it, made the first time a mark with words is
@@ -436,6 +517,7 @@ export function attachMarks(deps: MarksDeps): MarksLayer {
   const axisPrimitive: TimescaleMarksPrimitive = createTimescaleMarks({
     chart: deps.chart,
     marks: () => axis,
+    slotOf,
     theme: deps.theme,
     mode: deps.mode,
     background: deps.background,
@@ -470,49 +552,84 @@ export function attachMarks(deps: MarksDeps): MarksLayer {
     else plugin.setMarkers(markers)
   }
 
+  const stopSettle = (): void => {
+    if (settle !== null) clearTimeout(settle)
+    settle = null
+  }
+
+  /** Ask for the time-scale marks over the loaded window, on past the last bar as far as the view
+   *  reaches and as many slots again as the view spans, so a live bar or a short scroll asks
+   *  nothing new. */
+  const askAxis = (): void => {
+    stopSettle()
+    if (!deps.fetchTimescaleMarks || !loaded) return
+    const mine = ++axisAsk
+    const view = ts.getVisibleLogicalRange()
+    const span = view ? Math.max(1, Math.ceil(view.to - view.from)) : 0
+    const to = Math.max(loaded.to, reach(span) ?? -Infinity)
+    asked = to
+    void deps
+      .fetchTimescaleMarks(deps.symbol(), loaded.from, to, deps.timeframe())
+      .then((marks) => {
+        if (deps.disposed() || mine !== axisAsk) return
+        axis = marks
+        axisPrimitive.refresh()
+      })
+      .catch(() => {
+        /* marks are an enhancement; a refusal leaves the bars alone */
+      })
+  }
+
+  // A view that reaches past what was asked for asks again once it rests.
+  const onView = (): void => {
+    if (!loaded || !deps.fetchTimescaleMarks || settle !== null || deps.disposed()) return
+    const edge = reach(0)
+    if (edge === null || edge <= asked) return
+    settle = setTimeout(() => {
+      settle = null
+      if (!deps.disposed()) askAxis()
+    }, VIEW_SETTLE_MS)
+  }
+  ts.subscribeVisibleLogicalRangeChange(onView)
+
   return {
     refresh(window) {
-      const mine = ++generation
+      loaded = window
+      const mine = ++barAsk
       if (!window) {
+        axisAsk++
+        stopSettle()
+        asked = -Infinity
         bars = []
         axis = []
         applyBars()
         axisPrimitive.refresh()
         return
       }
-      const symbol = deps.symbol()
-      const resolution = deps.timeframe()
       if (deps.fetchBarMarks) {
         void deps
-          .fetchBarMarks(symbol, window.from, window.to, resolution)
+          .fetchBarMarks(deps.symbol(), window.from, window.to, deps.timeframe())
           .then((marks) => {
-            if (deps.disposed() || mine !== generation) return
+            if (deps.disposed() || mine !== barAsk) return
             bars = marks
             applyBars()
-          })
-          .catch(() => {
-            /* marks are an enhancement; a refusal leaves the bars alone */
-          })
-      }
-      if (deps.fetchTimescaleMarks) {
-        void deps
-          .fetchTimescaleMarks(symbol, window.from, window.to, resolution)
-          .then((marks) => {
-            if (deps.disposed() || mine !== generation) return
-            axis = marks
-            axisPrimitive.refresh()
           })
           .catch(() => {
             /* likewise */
           })
       }
+      askAxis()
     },
     repaint() {
       applyBars()
       axisPrimitive.refresh()
     },
     clear() {
-      generation++
+      barAsk++
+      axisAsk++
+      stopSettle()
+      loaded = null
+      asked = -Infinity
       bars = []
       axis = []
       applyBars()
@@ -520,9 +637,17 @@ export function attachMarks(deps: MarksDeps): MarksLayer {
       axisPrimitive.refresh()
     },
     destroy() {
-      generation++
+      barAsk++
+      axisAsk++
+      stopSettle()
+      loaded = null
       bars = []
       axis = []
+      try {
+        ts.unsubscribeVisibleLogicalRangeChange(onView)
+      } catch {
+        /* the renderer went down first */
+      }
       deps.gestures?.removeEventListener('pointermove', onMove)
       deps.gestures?.removeEventListener('pointerleave', onLeave)
       deps.gestures?.removeEventListener('pointerdown', onDown)
@@ -530,7 +655,7 @@ export function attachMarks(deps: MarksDeps): MarksLayer {
       try {
         plugin?.setMarkers([])
       } catch {
-        /* the series went down first */
+        /* likewise */
       }
       plugin = null
       try {

@@ -187,11 +187,15 @@ export interface ChartDatafeed {
    *  no five-year range); the chart never probes for it. Omit it entirely when the feed cannot
    *  say, and every preset is offered. */
   earliestBar?(symbol: string): Promise<number | null>
-  /** OPTIONAL neutral bar marks over a window (epoch seconds, inclusive of both ends). A mark is a
-   *  note about a moment: its color is a theme role, its words are the host's, and the chart
-   *  draws it as given. Omit it entirely when the feed serves none. */
+  /** OPTIONAL neutral bar marks over the loaded bars' window (epoch seconds, inclusive of both
+   *  ends). A mark is a note about a moment: its color is a theme role or a pair with one color for
+   *  each mode, its words are the host's, and the chart draws it as given. Omit it entirely when the
+   *  feed serves none. */
   marks?(symbol: string, from: number, to: number, resolution: string): Promise<readonly BarMark[]>
-  /** OPTIONAL neutral time-scale marks over the same window. */
+  /** OPTIONAL neutral time-scale marks over the same window, run on past the last bar while the
+   *  view shows the empty space after it: to the end of the view and as many bar intervals again
+   *  as the view spans, so a mark at a time to come stands in that space. The chart asks again when
+   *  the view moves past what it asked for. */
   timescaleMarks?(symbol: string, from: number, to: number, resolution: string): Promise<readonly TimescaleMark[]>
   /** OPTIONAL live prices for one symbol: its bid, ask, last and the previous session's close, as
    *  {@link SymbolPrices} states them. Returns the unsubscribe. The chart subscribes only while a

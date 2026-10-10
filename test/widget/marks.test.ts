@@ -4,9 +4,10 @@
 import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { DARK_THEME, LIGHT_THEME } from '../../src/theme/palettes'
 import { MARK_ICONS } from '../../src/ui/controls/icons'
-import { createTimescaleMarks, markColor, markersOf, type MarkArt } from '../../src/widget/marks'
+import { attachMarks, createTimescaleMarks, markColor, markersOf, markSlot, type MarkArt } from '../../src/widget/marks'
 import type { BarMark, MarkColor, TimescaleMark } from '../../src/marks'
 import type { ThemeMode } from '../../src/theme/schema'
+import type { FeedBar } from '../../src/datafeed'
 
 beforeAll(() => {
   // The canvas path the glyphs fill; happy-dom has none, so the stand-in keeps the path data.
@@ -97,13 +98,15 @@ interface Rig {
   art?: MarkArt
 }
 
-/** The time-scale marks over a stand-in time scale that puts each listed time at its x. */
+/** The time-scale marks over a stand-in time scale that puts each listed time at its x: a listed
+ *  time is its own slot, and the slot's x is the time's. */
 function rig(setup: Partial<Rig> = {}) {
   const state: Rig = { marks: [], mode: 'dark', x: new Map(), ...setup }
-  const chart = { timeScale: () => ({ timeToCoordinate: (time: number) => state.x.get(time) ?? null }) }
+  const chart = { timeScale: () => ({ logicalToCoordinate: (slot: number) => state.x.get(slot) ?? null }) }
   const primitive = createTimescaleMarks({
     chart: chart as never,
     marks: () => state.marks,
+    slotOf: (time) => (state.x.has(time) ? time : null),
     theme: () => (state.mode === 'dark' ? DARK_THEME : LIGHT_THEME),
     mode: () => state.mode,
     background: () => '#0f0f0f',
@@ -233,51 +236,89 @@ describe('hovering a time-scale mark', () => {
   })
 })
 
-describe('a hovered mark’s words', () => {
-  /** The marks plane over stand-ins: a time scale, a series that holds the primitive, the gesture
-   *  box and the chrome layer. */
-  async function plane(marks: TimescaleMark[]) {
-    const gestures = document.createElement('div')
-    const overlay = document.createElement('div')
-    document.body.append(gestures, overlay)
-    let primitive: { paneViews(): { renderer(): { draw(target: unknown): void } }[] } | null = null
-    const chart = { timeScale: () => ({ timeToCoordinate: (time: number) => (time === 60 ? 100 : null) }) }
-    const series = {
-      attachPrimitive: (p: never) => {
-        primitive = p
-        ;(p as { attached(param: unknown): void }).attached({ requestUpdate: () => undefined })
-      },
-      detachPrimitive: () => undefined,
-    }
-    const { attachMarks } = await import('../../src/widget/marks')
-    const layer = attachMarks({
-      chart: chart as never,
-      series: () => series as never,
-      symbol: () => 'ES',
-      timeframe: () => '1m',
-      theme: () => DARK_THEME,
-      mode: () => 'dark',
-      background: () => '#0f0f0f',
-      gestures,
-      overlay,
-      fetchBarMarks: null,
-      fetchTimescaleMarks: async () => marks,
-      disposed: () => false,
-    })
-    layer.refresh({ from: 0, to: 600 })
-    await new Promise((resolve) => setTimeout(resolve, 0))
-    const paint = (): void => {
-      const { context } = recordingContext()
-      for (const view of primitive!.paneViews()) view.renderer().draw({ useBitmapCoordinateSpace: (fn: (scope: unknown) => void) => fn({ context, bitmapSize: { ...PANE }, horizontalPixelRatio: 1, verticalPixelRatio: 1 }) })
-    }
-    const pointer = (type: string, x: number, y: number, pointerType = 'mouse'): void => {
-      gestures.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerType, bubbles: true }))
-    }
-    return { layer, gestures, overlay, paint, pointer }
-  }
 
+/** Ten bars a minute apart, opening at 60 to 600, which stand on slots 0 to 9. */
+const BARS: FeedBar[] = Array.from({ length: 10 }, (_, index) => ({ t: 60 * (index + 1), o: 1, h: 1, l: 1, c: 1, v: 1 }))
+
+/** Let the feed's answers land. */
+const flush = async (): Promise<void> => {
+  for (let i = 0; i < 5; i++) await Promise.resolve()
+}
+
+interface PlaneSetup {
+  marks: TimescaleMark[]
+  view: { from: number; to: number }
+  replaying: boolean
+}
+
+/** The marks plane over stand-ins: a time scale that stands slot 0 at x 100 and each slot 10px on,
+ *  a series that holds the primitive, the gesture box and the chrome layer. Every window the feed
+ *  is asked for is kept. */
+async function plane(setup: Partial<PlaneSetup> = {}) {
+  const state: PlaneSetup = { marks: [], view: { from: -5, to: 12 }, replaying: false, ...setup }
+  const gestures = document.createElement('div')
+  const overlay = document.createElement('div')
+  document.body.append(gestures, overlay)
+  let primitive: { paneViews(): { renderer(): { draw(target: unknown): void } }[] } | null = null
+  const viewSubs = new Set<() => void>()
+  const timeScale = {
+    logicalToCoordinate: (slot: number) => 100 + slot * 10,
+    timeToIndex: (time: number) => {
+      const index = BARS.findIndex((bar) => bar.t === time)
+      return index < 0 ? null : index
+    },
+    getVisibleLogicalRange: () => state.view,
+    subscribeVisibleLogicalRangeChange: (cb: () => void) => void viewSubs.add(cb),
+    unsubscribeVisibleLogicalRangeChange: (cb: () => void) => void viewSubs.delete(cb),
+  }
+  const series = {
+    attachPrimitive: (p: never) => {
+      primitive = p
+      ;(p as { attached(param: unknown): void }).attached({ requestUpdate: () => undefined })
+    },
+    detachPrimitive: () => undefined,
+  }
+  const asked: { from: number; to: number }[] = []
+  const layer = attachMarks({
+    chart: { timeScale: () => timeScale } as never,
+    series: () => series as never,
+    symbol: () => 'ES',
+    timeframe: () => '1m',
+    theme: () => DARK_THEME,
+    mode: () => 'dark',
+    background: () => '#0f0f0f',
+    painted: () => BARS,
+    interval: () => 60,
+    replaying: () => state.replaying,
+    gestures,
+    overlay,
+    fetchBarMarks: null,
+    fetchTimescaleMarks: async (_symbol, from, to) => {
+      asked.push({ from, to })
+      return state.marks
+    },
+    disposed: () => false,
+  })
+  layer.refresh({ from: 60, to: 600 })
+  await flush()
+  const paint = (): Call[] => {
+    const { context, calls } = recordingContext()
+    for (const view of primitive!.paneViews()) view.renderer().draw({ useBitmapCoordinateSpace: (fn: (scope: unknown) => void) => fn({ context, bitmapSize: { ...PANE }, horizontalPixelRatio: 1, verticalPixelRatio: 1 }) })
+    return calls
+  }
+  const pointer = (type: string, x: number, y: number, pointerType = 'mouse'): void => {
+    gestures.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerType, bubbles: true }))
+  }
+  const moveView = (view: { from: number; to: number }): void => {
+    state.view = view
+    for (const cb of [...viewSubs]) cb()
+  }
+  return { state, layer, overlay, paint, pointer, asked, moveView, viewSubs }
+}
+
+describe('a hovered mark’s words', () => {
   it('shows the label on the tooltip fill above the hovered mark, and hides it when the pointer leaves', async () => {
-    const { layer, overlay, paint, pointer } = await plane([{ id: 'a', time: 60, color: PURPLE, icon: 'mark.bolt', label: 'Two words' }])
+    const { layer, overlay, paint, pointer } = await plane({ marks: [{ id: 'a', time: 60, color: PURPLE, icon: 'mark.bolt', label: 'Two words' }] })
     paint()
     expect(overlay.querySelector('.qc-mark-tooltip')).toBeNull()
     pointer('pointermove', 100, 288)
@@ -296,16 +337,16 @@ describe('a hovered mark’s words', () => {
   })
 
   it('shows no tooltip for a mark without words, only its line', async () => {
-    const { layer, overlay, paint, pointer } = await plane([{ id: 'a', time: 60, color: PURPLE, icon: 'mark.bolt' }])
+    const { layer, overlay, paint, pointer } = await plane({ marks: [{ id: 'a', time: 60, color: PURPLE, icon: 'mark.bolt' }] })
     paint()
     pointer('pointermove', 100, 288)
-    paint()
+    expect(named(paint(), 'setLineDash')).toHaveLength(1)
     expect(overlay.querySelector<HTMLElement>('.qc-mark-tooltip')?.hidden ?? true).toBe(true)
     layer.destroy()
   })
 
   it('shows the label for a mark a finger presses, and not for a mouse press', async () => {
-    const { layer, overlay, paint, pointer } = await plane([{ id: 'a', time: 60, color: PURPLE, label: 'Held' }])
+    const { layer, overlay, paint, pointer } = await plane({ marks: [{ id: 'a', time: 60, color: PURPLE, label: 'Held' }] })
     paint()
     pointer('pointerdown', 100, 294, 'mouse')
     paint()
@@ -317,5 +358,111 @@ describe('a hovered mark’s words', () => {
     paint()
     expect(overlay.querySelector<HTMLElement>('.qc-mark-tooltip')!.hidden).toBe(true)
     layer.destroy()
+  })
+})
+
+describe('where a time-scale mark stands', () => {
+  const indexOf = (time: number): number | null => {
+    const index = BARS.findIndex((bar) => bar.t === time)
+    return index < 0 ? null : index
+  }
+  /** Bars with a gap: 60, 120, then 300 and 360. */
+  const GAPPED = [{ t: 60 }, { t: 120 }, { t: 300 }, { t: 360 }]
+  const gappedIndex = (time: number): number | null => {
+    const index = GAPPED.findIndex((bar) => bar.t === time)
+    return index < 0 ? null : index
+  }
+
+  it('stands on the bar whose bucket holds its time', () => {
+    expect(markSlot(60, BARS, 60, indexOf, true)).toBe(0)
+    expect(markSlot(119, BARS, 60, indexOf, true)).toBe(0)
+    expect(markSlot(120, BARS, 60, indexOf, true)).toBe(1)
+    expect(markSlot(659, BARS, 60, indexOf, true)).toBe(9)
+  })
+
+  it('stands on the next bar when its time falls between bars', () => {
+    expect(markSlot(200, GAPPED, 60, gappedIndex, true)).toBe(2)
+    expect(markSlot(180, GAPPED, 60, gappedIndex, true)).toBe(2)
+    expect(markSlot(179, GAPPED, 60, gappedIndex, true)).toBe(1)
+  })
+
+  it('stands past the last bar at the slot its time falls in, counted in bar intervals', () => {
+    expect(markSlot(660, BARS, 60, indexOf, true)).toBe(10)
+    expect(markSlot(780, BARS, 60, indexOf, true)).toBe(12)
+    expect(markSlot(839, BARS, 60, indexOf, true)).toBe(12)
+  })
+
+  it('stands nowhere before the first bar, or past the last with the future closed or no interval', () => {
+    expect(markSlot(59, BARS, 60, indexOf, true)).toBeNull()
+    expect(markSlot(780, BARS, 60, indexOf, false)).toBeNull()
+    expect(markSlot(780, BARS, null, indexOf, true)).toBeNull()
+    expect(markSlot(60, [], 60, indexOf, true)).toBeNull()
+    // Without an interval a bar holds its own open alone, and a time after it stands on the next.
+    expect(markSlot(61, BARS, null, indexOf, true)).toBe(1)
+  })
+
+  it('draws a mark past the last bar at its slot in the empty space after it', async () => {
+    const { layer, paint } = await plane({ marks: [{ id: 'a', time: 780, color: PURPLE, icon: 'mark.flag' }] })
+    // Slot 12, three slots past the last bar at slot 9.
+    expect(named(paint(), 'ellipse')[0]!.args.slice(0, 2)).toEqual([220, 287.5])
+    layer.destroy()
+  })
+
+  it('draws no mark past the last bar while replay hides what follows it', async () => {
+    const { layer, paint } = await plane({
+      marks: [
+        { id: 'a', time: 780, color: PURPLE, icon: 'mark.flag' },
+        { id: 'b', time: 600, color: PURPLE, icon: 'mark.flag' },
+      ],
+      replaying: true,
+    })
+    expect(named(paint(), 'ellipse').map((call) => call.args[0])).toEqual([190])
+    layer.destroy()
+  })
+
+  it('draws no mark past the view', async () => {
+    const { layer, paint } = await plane({ marks: [{ id: 'a', time: 60 * 60, color: PURPLE, icon: 'mark.flag' }] })
+    expect(named(paint(), 'ellipse')).toEqual([])
+    layer.destroy()
+  })
+})
+
+describe('the window the time-scale marks are asked for', () => {
+  it('runs past the last bar as far as the view reaches into the empty space, and a view span further', async () => {
+    const { layer, asked } = await plane()
+    // The view ends at slot 12, three past the last bar, and spans 17 slots, so the window ends with
+    // the 21st slot after the last bar's.
+    expect(asked).toEqual([{ from: 60, to: 600 + 21 * 60 - 1 }])
+    layer.destroy()
+  })
+
+  it('ends at the last bar for a view that stops short of it, and under replay', async () => {
+    const short = await plane({ view: { from: 0, to: 8 } })
+    expect(short.asked).toEqual([{ from: 60, to: 600 }])
+    short.layer.destroy()
+    const replaying = await plane({ replaying: true })
+    expect(replaying.asked).toEqual([{ from: 60, to: 600 }])
+    replaying.layer.destroy()
+  })
+
+  it('asks again once a view that reaches past it rests, and not for a move inside it', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      const { layer, asked, moveView, viewSubs } = await plane()
+      moveView({ from: -2, to: 15 })
+      vi.advanceTimersByTime(500)
+      expect(asked).toHaveLength(1)
+      moveView({ from: 20, to: 40 })
+      moveView({ from: 22, to: 42 })
+      expect(asked).toHaveLength(1)
+      vi.advanceTimersByTime(200)
+      expect(asked).toHaveLength(2)
+      // The view ends at slot 42, 33 past the last bar, and spans 20 slots.
+      expect(asked[1]).toEqual({ from: 60, to: 600 + (33 + 1 + 20) * 60 - 1 })
+      layer.destroy()
+      expect(viewSubs.size).toBe(0)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
