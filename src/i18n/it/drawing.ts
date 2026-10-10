@@ -99,7 +99,7 @@ export const drawing: Translation<typeof source> = {
   'drawing.modifierCommand': 'Cmd',
   'drawing.hintClone': '{modifier} + Trascina',
   'drawing.hintCopy': '{modifier} + C',
-  'drawing.hintRemove': 'Del',
+  'drawing.hintRemove': 'Canc',
   'drawing.drawingMenu': 'Menu del disegno',
   'drawing.hintPaste': '{modifier} + V',
   'drawing.deleteWithKey': 'Elimina (Del)',
