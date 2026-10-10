@@ -3,9 +3,14 @@
 // your own may leave each one out: until it carries the key, the chart reads it in English and
 // reports it to `onMissing`. The next major's baseline makes every one of them required.
 export const KEYS_ADDED_IN_MAJOR = [
+  'command.settingsApply',
+  'command.settingsReset',
   'drawing.distance',
   'drawing.drawingMenu',
   'drawing.hintRemove',
+  'history.changeSettings',
+  'legend.volume',
+  'timezone.quarter',
 ] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

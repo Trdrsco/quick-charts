@@ -119,6 +119,10 @@ export interface CountdownDeps {
   bars(): readonly FeedBar[]
   timeframe(): string
   enabled(): boolean
+  /** Whether the series' own last-value label shows while no countdown stands in for it. */
+  nativeLabel(): boolean
+  /** The label's colors, up and down by the bar's own open, and its text size. */
+  look(): { up: string; down: string; fontSize: number }
   replaying(): boolean
   dataStatus(): DataStatus | null
   session(): SessionModel | null
@@ -132,6 +136,9 @@ export interface CountdownDeps {
 
 export interface CountdownLayer {
   refresh(): void
+  /** The series' options were written again, its last-value label among them: the layer states the
+   *  label once more rather than trusting what it wrote before. */
+  restyled(): void
   seriesChanged(previous: ISeriesApi<SeriesType>): void
   destroy(): void
 }
@@ -175,7 +182,8 @@ export function createCountdownClock(clientNow: () => number, serverTime?: () =>
 
 export function attachCountdown(deps: CountdownDeps): CountdownLayer {
   let disposed = false
-  let nativeHidden = false
+  /** The last-value visibility this layer last wrote to the current series, or null when unknown. */
+  let nativeShown: boolean | null = null
   let requestUpdate: (() => void) | null = null
 
   const current = (): CountdownState | null => {
@@ -183,11 +191,13 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
     return countdownState(deps.bars(), deps.timeframe(), deps.now(), deps.session(), deps.activeSubsession())
   }
 
+  /** Show the series' own label, or hide it while the countdown draws the label in its place. */
   const setNativeHidden = (hidden: boolean, target = deps.series()): void => {
-    if (target === deps.series() && hidden === nativeHidden) return
-    if (target === deps.series()) nativeHidden = hidden
+    const shown = !hidden && deps.nativeLabel()
+    if (target === deps.series() && shown === nativeShown) return
+    if (target === deps.series()) nativeShown = shown
     try {
-      target.applyOptions({ lastValueVisible: !hidden })
+      target.applyOptions({ lastValueVisible: shown })
     } catch {
       /* a style switch or chart teardown may already have removed the series */
     }
@@ -211,12 +221,13 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
         const y = series.priceToCoordinate(state.bar.c)
         if (y === null) return
         const theme = deps.theme()
-        const size = Number.parseFloat(theme['text.fontSizeAxis']) || 12
+        const look = deps.look()
+        const size = look.fontSize
         const priceHeight = size + 8
         const countdownHeight = size + 5
         const height = priceHeight + countdownHeight
         const top = Math.max(0, Math.min(y - priceHeight / 2, mediaSize.height - height))
-        context.fillStyle = state.bar.c < state.bar.o ? theme['series.down'] : theme['series.up']
+        context.fillStyle = state.bar.c < state.bar.o ? look.down : look.up
         context.beginPath()
         context.roundRect(0, top, mediaSize.width, height, 2)
         context.fill()
@@ -251,6 +262,10 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
 
   return {
     refresh,
+    restyled() {
+      nativeShown = null
+      refresh()
+    },
     seriesChanged(previous) {
       setNativeHidden(false, previous)
       try {
@@ -258,7 +273,7 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
       } catch {
         /* the renderer already released the prior style series */
       }
-      nativeHidden = false
+      nativeShown = null
       deps.series().attachPrimitive(primitive)
       refresh()
     },

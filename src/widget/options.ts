@@ -19,7 +19,7 @@ import type { ChartDatafeed, DatafeedSearchOptions, SearchPage } from '../datafe
 import type { ChartStorage } from '../storage'
 import type { ChartSaveLoadAdapter } from '../resources'
 import type { DrawingContextKind } from '../drawings/document'
-import type { PartialOverrides } from '../overrides'
+import type { PartialChartSettings } from '../settings/schema'
 import type { IndicatorManifest, IndicatorOverrides } from '../indicatorModel'
 import type { FeedBar } from '../datafeed'
 import type { ChartI18n, ChartLocaleCode } from '../i18n'
@@ -598,10 +598,11 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   drawingPersistence?: DrawingPersistenceOptions
   /** The product theme: which built-in mode, and any custom semantic palettes. */
   theme?: ThemeOptions
-  /** Chart appearance: the typed override tree over the mode's defaults. This is the other
-   *  precedence ladder, and it wins over the palette wherever both could reach the same pixel:
-   *  runtime `applyAppearance` beats this, and this beats what the theme resolves to. */
-  appearance?: PartialOverrides
+  /** The chart settings this host opens every chart with: any leaves of any sections, over the
+   *  theme's factory values. This is the other precedence ladder, and it wins over the palette
+   *  wherever both could reach the same pixel: the viewer's own settings (`applySettings`, the
+   *  settings dialog, a saved chart) beat this, and this beats what the theme resolves to. */
+  settings?: PartialChartSettings
   /** Which chart behavior exists. */
   features?: FeatureConfig
   /** Which of the chart's own controls render. */

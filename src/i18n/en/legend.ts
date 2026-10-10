@@ -10,6 +10,8 @@ export const legend = {
   /** The move against the previous bar's close: the change on the symbol's own price grid, then
    *  its percentage. Both arrive already written, sign included. */
   'legend.change': '{change} ({percent}%)',
+  /** The mark before the bar's volume. */
+  'legend.volume': 'Vol',
   'legend.indicatorSettings': 'Indicator settings',
   'legend.showRows': 'Show indicator rows',
   'legend.hideRows': 'Hide indicator rows',

@@ -14,12 +14,10 @@
 // the crosshair all bind to it, so none of them is torn down when the look changes. The STYLE
 // series is the visible one, and switching styles replaces only that.
 import {
-  ColorType,
   CrosshairMode,
   createChart as createRenderer,
   HistogramSeries,
   LineSeries,
-  LineStyle,
   TrackingModeExitMode,
   type IChartApi,
   type ISeriesApi,
@@ -29,7 +27,16 @@ import {
 import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type DatafeedConfig, type FeedBar } from '../datafeed'
 import type { ChartStorage } from '../storage'
 import type { ChartSaveLoadAdapter } from '../resources'
-import { DEFAULT_OVERRIDES, layerOverrides, type ChartOverrides, type PartialOverrides } from '../overrides'
+import {
+  chartSettingsDefaults,
+  copyPartialChartSettings,
+  layerChartSettings,
+  mergePartialChartSettings,
+  readPartialChartSettings,
+} from '../settings/defaults'
+import { formatAtPrecision } from '../settings/precision'
+import type { ChartSettings, PartialChartSettings } from '../settings/schema'
+import { paintableColor } from '../settings/color'
 import { coerceScaleMode, PRICE_SCALE_MODE, type ScaleMode } from '../scaleMode'
 import { createPriceFormatter, type PriceFormatter } from '../priceFormatter'
 import type { PriceFormat, SymbolInfo } from '../symbology'
@@ -43,7 +50,10 @@ import { createEmitter, type ChartEvents, type SaveConflictInfo } from './events
 import type { AccessPolicy, Capabilities, ChartPreferences, IndicatorInstance } from './options'
 import type { ResolvedFeatures, ResolvedUi } from './planes'
 import type { IconResolver } from '../ui/icons/resolver'
-import { addStyleSeries, fadedStyleOptions, offeredStyle, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
+import { addStyleSeries, fadedStyleOptions, offeredStyle, previousCloseColors, styleOptions, valueShaped, type ChartStyleId, type StylePaint } from './styles'
+import { chartLookOptions, settingsCanvas } from './chartLook'
+import { createValueLine, type ValueLinePrimitive, type ValueLineStroke } from './valueLine'
+import { attachWatermark } from './watermark'
 import { startStyleMorph, type StyleMorph } from './styleMorph'
 import { createBaselineLevel } from './baselineLevel'
 import { offeredTimeframe, offersTimeframe, rangeTimeframe, type OfferedTimeframes } from './timeframes'
@@ -93,7 +103,7 @@ import {
   resolveDisplayTimezone,
 } from '../timezones'
 import { isIntradayTimeframe, parseTimeframe, timeframeSeconds } from '../timeframe'
-import { DEFAULT_SUBSESSION, type ActiveSubsession, type MarketStatus } from '../sessionModel'
+import type { ActiveSubsession, MarketStatus } from '../sessionModel'
 import {
   DEFAULT_DRAWING_PREFERENCES,
   DRAWING_PREFERENCES_KEY,
@@ -263,12 +273,17 @@ export interface ChartHandle {
   /** Stepping back and forward through this chart's own content. Each step is one reading of the
    *  content, so a step back puts the whole reading back rather than reversing one verb. */
   history: ChartHistoryApi
-  /** The EFFECTIVE appearance tree: the mode's floor, the constructor partial, then every runtime
-   *  layer. */
-  appearance(): ChartOverrides
-  /** Apply an appearance partial at RUNTIME: the top of the precedence ladder. Later calls layer
-   *  over earlier ones leaf by leaf, so two hosts' calls compose instead of clobbering. */
-  applyAppearance(partial: PartialOverrides): void
+  /** The EFFECTIVE settings tree: the theme's factory values, the host's constructor partial, then
+   *  the viewer's own leaves. */
+  settings(): ChartSettings
+  /** Apply a partial to the viewer's own leaves: the top of the precedence ladder. Later calls layer
+   *  over earlier ones leaf by leaf, so two callers compose instead of clobbering. A leaf the tree
+   *  does not have, or a value its leaf cannot hold, is ignored. The change is a content change: it
+   *  marks the chart for saving and is a step of its history. */
+  applySettings(partial: PartialChartSettings): void
+  /** Drop the viewer's own leaves and put the price scale back to normal. The theme's values and the
+   *  host's partial stand; the viewport and every other preference are untouched. */
+  resetSettings(): void
   /** The chart's one price formatter, in the chart's language and on the symbol's own grid. */
   formatter(): PriceFormatter
   saveLoad: ChartSaveLoadApi
@@ -288,8 +303,8 @@ export interface ChartInstanceDeps {
   beginHydration?: () => () => void
   /** Report a committed change to this chart's CONTENT, for a surface that changes content without
    *  writing a preference key. Every other content change reaches the widget's debounced
-   *  save-needed through the wrapped storage port; appearance has no key of its own, so it says so
-   *  here. Hydration-aware and debounced by the widget, exactly as a key write is. */
+   *  save-needed through the wrapped storage port; the settings have no key of their own, so they
+   *  say so here. Hydration-aware and debounced by the widget, exactly as a key write is. */
   contentChanged?: () => void
   id: string
   /** Whether this chart is the widget's active chart, the widget's own fact. */
@@ -324,7 +339,8 @@ export interface ChartInstanceDeps {
   /** The curated quick-add rows the compare dialog offers. */
   compareSymbols: readonly CompareSymbol[]
   access?: AccessPolicy
-  appearance?: PartialOverrides
+  /** The host's settings partial: the rung above the theme's factory values. */
+  settings?: PartialChartSettings
   indicators: readonly IndicatorInstance[]
   /** Private safe presentation copied when the layout creates a sibling. */
   compares?: readonly CompareEntry[]
@@ -489,35 +505,32 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  of step. */
   let drawingPrefs: DrawingPreferences = readDrawingPreferences()
 
-  // ── The appearance ladder. Floor: the built-in defaults, tinted by the mode's series pair, with
-  // candle borders left INVISIBLE until some layer names a border color. Above it: the host's
-  // constructor partial, then every runtime layer.
-  // The VIEWER's own leaves, and only those. It has no preference key: saved chart content is the
-  // single authority on an authored look, so a second device-wide copy here would be a second
+  // ── The settings ladder. Floor: the theme's factory values for the mode in effect. Above it: the
+  // host's constructor partial, then the viewer's own leaves.
+  // The VIEWER's own leaves, and only those. They have no preference key: saved chart content is
+  // the single authority on an authored look, so a second device-wide copy here would be a second
   // writer of the same fact and would stamp a loaded layout's look onto the device.
-  let runtimePartial: PartialOverrides = {}
+  let viewerPartial: PartialChartSettings = {}
   const canvas = (): CanvasTheme => canvasTheme(deps.theme.get())
-  const themeFloor = (): ChartOverrides => {
-    const c = canvas()
-    return layerOverrides(DEFAULT_OVERRIDES, {
-      appearance: {
-        background: c.background,
-        upColor: c.up,
-        downColor: c.down,
-        borderUpColor: c.up,
-        borderDownColor: c.down,
-        wickUpColor: c.up,
-        wickDownColor: c.down,
-      },
-    })
-  }
-  let eff: ChartOverrides = layerOverrides(themeFloor(), deps.appearance, runtimePartial)
-  /** True when a HOST-STATED layer names the leaf: the explicitness signal for a look that only
-   *  engages once someone asks, which is what candle borders are. */
-  const overrideNamed = (leaf: keyof ChartOverrides['appearance']): boolean =>
-    [deps.appearance, runtimePartial].some((p) => !!p?.appearance && leaf in p.appearance)
-  const candleBordersOn = (): boolean => overrideNamed('borderUpColor') || overrideNamed('borderDownColor')
-  const paint = (): StylePaint => ({ appearance: eff.appearance, canvas: canvas(), candleBorders: candleBordersOn() })
+  /** The host's rung. A trading-hours choice stored on this device by an earlier release, or the
+   *  host's first-run preference, seeds it once for a host that names none, so a chart keeps the
+   *  hours its viewer last chose until the viewer chooses again; nothing writes that key now. */
+  const hostPartial: PartialChartSettings = (() => {
+    const named = readPartialChartSettings(deps.settings ?? {}, paintableColor).settings
+    const stored = storage.get(SUBSESSION_KEY) ?? deps.preferences.subsession
+    if (named.symbol?.session !== undefined || (stored !== 'regular' && stored !== 'extended')) return named
+    return mergePartialChartSettings({ symbol: { session: stored } }, named)
+  })()
+  const resolveSettings = (): ChartSettings => layerChartSettings(chartSettingsDefaults(deps.theme.get()), hostPartial, viewerPartial)
+  let eff: ChartSettings = resolveSettings()
+  /** The subsession the trading-hours setting shows bars for. */
+  const activeSubsession = (): ActiveSubsession => (eff.symbol.session === 'regular' ? 'regular' : 'extended')
+  const paint = (): StylePaint => ({
+    settings: eff,
+    canvas: canvas(),
+    title: symbolNames(symbolInfo ?? symbol).mark,
+    priceScale: deps.ui.priceScale,
+  })
 
   // ── DOM. The chart owns two SIBLING boxes inside its pane; the split is load-bearing and the
   // stylesheet's own comment carries why.
@@ -531,27 +544,28 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
   deps.container.append(gestures, chrome)
 
+  /** The renderer options the settings drive, for the look in effect. */
+  const lookOptions = (): Record<string, unknown> =>
+    chartLookOptions(eff, canvas(), {
+      crosshairLabels: deps.ui.crosshairLabels,
+      crosshairHorizontal: deps.ui.crosshairHorizontal,
+      crosshairSolid: deps.ui.crosshairSolid,
+    })
+  const look = lookOptions() as {
+    layout: Record<string, unknown>
+    crosshair: Record<string, unknown>
+    rightPriceScale: Record<string, unknown>
+    timeScale: Record<string, unknown>
+  }
+  /** The right margin the time scale was last given. Writing it scrolls the view to that offset
+   *  from the newest bar, so it is written only when the setting moves. */
+  let appliedRightOffset = eff.canvas.marginRight
   const chart: IChartApi = createRenderer(gestures, {
+    ...look,
     autoSize: true,
     localization: { locale: i18n.tag() },
-    layout: {
-      background: { type: ColorType.Solid, color: eff.appearance.background },
-      textColor: canvas().axisText,
-      // From the shared type scale: canvas text is outside the stylesheet's reach and would
-      // otherwise drift alone.
-      fontSize: canvas().fontSize,
-      fontFamily: canvas().fontFamily,
-      attributionLogo: false,
-    },
-    grid: {
-      vertLines: { color: canvas().grid, visible: eff.appearance.grid },
-      horzLines: { color: canvas().grid, visible: eff.appearance.grid },
-    },
-    crosshair: {
-      mode: deps.ui.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden,
-      vertLine: { labelVisible: deps.ui.crosshairLabels, ...(deps.ui.crosshairSolid ? { style: LineStyle.Solid } : {}) },
-      horzLine: { visible: deps.ui.crosshairHorizontal, labelVisible: deps.ui.crosshairLabels, ...(deps.ui.crosshairSolid ? { style: LineStyle.Solid } : {}) },
-    },
+    layout: { ...look.layout, attributionLogo: false },
+    crosshair: { ...look.crosshair, mode: deps.ui.crosshair ? CrosshairMode.Normal : CrosshairMode.Hidden },
     // A finger held on the plot scrubs the crosshair for as long as it stays down, and lifting it
     // takes the crosshair away, so the next one-finger drag pans: the way a native chart reads.
     trackingMode: { exitMode: TrackingModeExitMode.OnTouchEnd },
@@ -561,8 +575,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // A chart that holds its view takes no drag, wheel, pinch or scale gesture from the renderer.
     handleScroll: deps.features.navigation,
     handleScale: deps.features.navigation,
-    rightPriceScale: { visible: deps.ui.priceScale, borderVisible: false, scaleMargins: { top: 0.08, bottom: 0.08 } },
-    timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false, rightOffset: 4, barSpacing: 8, minBarSpacing: 0.5 },
+    rightPriceScale: { ...look.rightPriceScale, visible: deps.ui.priceScale },
+    timeScale: { ...look.timeScale, timeVisible: true, secondsVisible: false, rightOffset: appliedRightOffset, barSpacing: 8, minBarSpacing: 0.5 },
   })
 
   /** The anchor: an invisible line of closes on the main price scale. It exists so that everything
@@ -573,11 +587,44 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     priceLineVisible: false,
     crosshairMarkerVisible: false,
   })
-  /** The main series for a style. With no price scale, nothing points at one, so the last price
-   *  draws no line across the plot and no label. */
+  /** The value lines drawn over a style series, by series: a line or step line in a gradient, and a
+   *  baseline whose lower half is a different width from its upper half. `alpha` is the strength a
+   *  morph between styles fades the line to. */
+  const valueLines = new Map<ISeriesApi<SeriesType>, { primitive: ValueLinePrimitive; alpha: number }>()
+  /** What a style's value line strokes under the settings in effect, or null when the series draws
+   *  its own line. */
+  const valueLineStroke = (id: ChartStyleId, alpha: number): ValueLineStroke | null => {
+    if (id === 'line' || id === 'stepline') {
+      const line = id === 'line' ? eff.line : eff.stepLine
+      if (line.colorType !== 'gradient') return null
+      return {
+        color: { top: line.gradientTopColor, bottom: line.gradientBottomColor },
+        width: line.lineWidth,
+        style: line.lineStyle,
+        steps: id === 'stepline',
+        alpha,
+      }
+    }
+    if (id === 'baseline') {
+      const b = eff.baseline
+      if (b.topLineWidth === b.bottomLineWidth) return null
+      return { color: b.bottomLineColor, width: b.bottomLineWidth, style: 'solid', steps: false, belowBase: true, alpha }
+    }
+    return null
+  }
+  /** The main series for a style, with its value line where the style needs one. With no price
+   *  scale, nothing points at the series, so the last price draws no line across the plot and no
+   *  label. */
   const addMainSeries = (id: ChartStyleId): ISeriesApi<SeriesType> => {
     const added = addStyleSeries(chart, id, paint())
-    if (!deps.ui.priceScale) added.applyOptions({ priceLineVisible: false, lastValueVisible: false })
+    if (id === 'line' || id === 'stepline' || id === 'baseline') {
+      const entry: { primitive: ValueLinePrimitive; alpha: number } = {
+        alpha: 1,
+        primitive: createValueLine(chart, () => valueLineStroke(id, entry.alpha)),
+      }
+      added.attachPrimitive(entry.primitive as never)
+      valueLines.set(added, entry)
+    }
     return added
   }
   let series: ISeriesApi<SeriesType> = addMainSeries(style)
@@ -585,7 +632,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let morph: { run: StyleMorph; bars: ISeriesApi<SeriesType> } | null = null
   // The Baseline style's base is a screen level, not a price, so it is re-derived while that style
   // is the one on screen and never written into saved content.
-  const baselineLevel = createBaselineLevel({ paneHeight: () => chart.paneSize().height })
+  const baselineLevel = createBaselineLevel({ paneHeight: () => chart.paneSize().height, percent: () => eff.baseline.baseLevelPercentage })
   if (style === 'baseline') baselineLevel.follow(series)
   // THE VOLUME HISTOGRAM IS THE `volume` INDICATOR'S BODY, not chart furniture. The catalog carries
   // the indicator (its MA plots pin to this same band's scale); the bars themselves are drawn here,
@@ -607,8 +654,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const volumeColors = (bars: readonly FeedBar[]): string[] => {
     const inst = volumeInstance()
     const prevClose = (inst?.inputs?.colorPrevClose ?? inst?.definition.manifest.inputs?.colorPrevClose?.default ?? 0) === 1
-    const up = eff.appearance.upColor
-    const down = eff.appearance.downColor
+    const up = eff.candles.upColor
+    const down = eff.candles.downColor
     return bars.map((b, i) => {
       const ref = prevClose ? bars[i - 1]?.c : b.o
       return ref == null || b.c >= ref ? up : down
@@ -691,14 +738,16 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   /** The style series' price format IS the symbol formatter: the price scale, the crosshair label
    *  and the last-price label all write through it, on the symbol's own grid. */
   const applyPriceFormat = (): void => {
-    const format = symbolFormat ?? UNRESOLVED_PRICE_FORMAT
-    const priceFormat = { type: 'custom' as const, formatter: (price: number) => symbolFormatter.format(price), minMove: minMoveOf(format) }
+    const priceFormat = { type: 'custom' as const, formatter: (price: number) => symbolFormatter.format(price), minMove: minMove() }
     series.applyOptions({ priceFormat })
     anchor.applyOptions({ priceFormat })
   }
 
-  const formatKey = (): string => `${JSON.stringify(symbolFormat ?? UNRESOLVED_PRICE_FORMAT)}@${i18n.tag()}`
-  const minMove = (): number => minMoveOf(symbolFormat ?? UNRESOLVED_PRICE_FORMAT)
+  /** The format prices are written in: the symbol's own, or the one the precision setting names in
+   *  its place. */
+  const writtenFormat = (): PriceFormat => formatAtPrecision(symbolFormat ?? UNRESOLVED_PRICE_FORMAT, eff.symbol.precision)
+  const formatKey = (): string => `${JSON.stringify(writtenFormat())}@${i18n.tag()}`
+  const minMove = (): number => minMoveOf(writtenFormat())
 
   // ── The sync bus. Maintenance writes are muted for their immediate renderer reports. A layout
   // mirror additionally owns its next accepted time report, because a renderer may publish that
@@ -796,16 +845,26 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let unregisterRangeMirror = (): void => undefined
 
   /** Resolve the viewer's timezone CHOICE against the symbol on screen and re-label the axis and
-   *  the crosshair through it. Both formatters carry the widget's locale tag, so the month a tick
-   *  writes and the language a menu reads are never two different answers. */
+   *  the crosshair through it, in the date format, weekday and clock the time-scale settings name.
+   *  Both formatters carry the widget's locale tag, so the month a tick writes and the language a
+   *  menu reads are never two different answers. */
   function applyTimezone(): void {
     if (disposed) return
     const zone = resolveDisplayTimezone(timezoneChoice, symbolInfo) ?? DEFAULT_TIMEZONE
     const changed = zone !== displayZone
     displayZone = zone
+    const time = eff.timeScale
     chart.applyOptions({
-      localization: { locale: i18n.tag(), timeFormatter: makeCrosshairTimeFormatter(i18n.tag(), zone, isIntradayTimeframe(tf)) },
-      timeScale: { tickMarkFormatter: makeTickMarkFormatter(i18n.tag(), zone) },
+      localization: {
+        locale: i18n.tag(),
+        timeFormatter: makeCrosshairTimeFormatter(i18n.tag(), zone, isIntradayTimeframe(tf), {
+          dateFormat: time.dateFormat,
+          dayOfWeek: time.dayOfWeek,
+          hoursFormat: time.hoursFormat,
+          quarter: (quarter) => i18n.t('timezone.quarter', { quarter }),
+        }),
+      },
+      timeScale: { tickMarkFormatter: makeTickMarkFormatter(i18n.tag(), zone, time.hoursFormat) },
     })
     if (changed) events.emit('timezone', timezoneChoice)
   }
@@ -854,17 +913,24 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   const session = attachSession({
     chart,
     series: () => anchor,
-    enabled: () => deps.features.sessions && eff.appearance.sessions,
+    // The stretches outside regular hours are shaded while the chart shows them.
+    enabled: () => deps.features.sessions && eff.symbol.session !== 'regular',
+    look: () => ({
+      pre: eff.symbol.preMarketColor,
+      after: eff.symbol.postMarketColor,
+      // The overnight stretch is its own color under every trading hour and left clear otherwise.
+      extended: eff.symbol.session === 'allHours' ? eff.symbol.nightColor : null,
+      breaks: eff.events.sessionBreaks
+        ? { color: eff.events.sessionBreaksColor, width: eff.events.sessionBreaksWidth, style: eff.events.sessionBreaksStyle }
+        : null,
+    }),
     timeframe: () => tf,
     theme: () => deps.theme.get(),
     dataStatus: () => symbolInfo?.dataStatus ?? null,
-    initialSubsession: readSubsession(),
-    onSubsession: (active) => {
-      storage.set(SUBSESSION_KEY, active)
-      // The filter decides which intraday bars are shown, so the painted model changes with it.
-      paintAll()
-      events.emit('subsession', active)
-    },
+    subsession: activeSubsession,
+    // The trading-hours setting is the one writer of the subsession, so a choice made anywhere is
+    // the viewer's setting, saved with the chart and undone with its history.
+    setSubsession: (active) => handle.applySettings({ symbol: { session: active } }),
   })
 
   const compare = deps.features.compare
@@ -914,6 +980,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     status: (nowSecs) => session.status(nowSecs),
     openIndicatorSettings: (id) => deps.doors.openIndicatorSettings(handle, id),
     legendValues: deps.ui.legendValues,
+    settings: () => eff,
     painters: deps.painters,
   })
 
@@ -1037,7 +1104,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     series: () => series,
     bars: () => shownBars(),
     timeframe: () => tf,
-    enabled: () => eff.appearance.countdown,
+    // The countdown is the second line of the symbol's last-value label, so it stands only where
+    // that label does.
+    enabled: () => eff.priceLabels.countdown && eff.priceLabels.symbolValue && deps.ui.priceScale,
+    nativeLabel: () => eff.priceLabels.symbolValue && deps.ui.priceScale,
+    look: () => ({ up: eff.candles.upColor, down: eff.candles.downColor, fontSize: eff.canvas.scaleTextSize }),
     replaying: () => replay.active(),
     dataStatus: () => (feedStatus === 'live' ? deps.capabilities().dataStatus : null),
     session: () => session.model(),
@@ -1070,7 +1141,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       return { active: state.on, cursor: state.cursor, total: state.total }
     },
     feedStatus: () => feedStatus,
-    theme: canvas,
+    // What the chart is painted with: the mode's theme under the settings in effect.
+    theme: () => settingsCanvas(canvas(), eff),
     formatter: () => ({ format: (price) => symbolFormatter.format(price), precision: () => symbolFormatter.precision() }),
     active: deps.active,
     commands: deps.commands,
@@ -1138,7 +1210,30 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   // The on-chart navigation cluster: zoom, scroll and reset over the chart's own view commands.
-  const nav = deps.ui.navigation ? mountNavControls({ chrome, gestures, commands: deps.commands, i18n, icons: deps.icons, maximized: () => deps.layoutMaximized(), shown: (id) => commandShown(deps.access, id) }) : null
+  // The host decides whether the cluster exists; the viewer's setting decides when it shows.
+  const nav = deps.ui.navigation
+    ? mountNavControls({
+        chrome,
+        gestures,
+        commands: deps.commands,
+        i18n,
+        icons: deps.icons,
+        maximized: () => deps.layoutMaximized(),
+        shown: (id) => commandShown(deps.access, id),
+        visibility: () => eff.canvas.navigationButtons,
+      })
+    : null
+
+  // The watermark: the symbol written large behind the bars, in the parts the settings name.
+  const watermark = attachWatermark({
+    chart,
+    settings: () => eff,
+    facts: () => {
+      const names = symbolNames(symbolInfo ?? symbol)
+      return { ticker: names.mark, interval: tf, description: names.description }
+    },
+    fontFamily: () => canvas().fontFamily,
+  })
 
   // ── Painting ─────────────────────────────────────────────────────────────────────────────────
   /** The bars actually PAINTED: the loaded model, filtered to the active subsession on an intraday
@@ -1208,16 +1303,27 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     })
   }
 
+  /** One painted bar as the style series takes it: a close for a close style, the whole bar for a
+   *  bar style, with its own colors when the style colors by the previous bar's close. */
+  function seriesRow(b: FeedBar, previous: FeedBar | undefined, colors: ReturnType<typeof previousCloseColors>): Record<string, unknown> {
+    if (valueShaped(style)) return { time: b.t as UTCTimestamp, value: b.c }
+    return { time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c, ...(colors ? colors(b, previous) : {}) }
+  }
+  /** What the per-bar colors were last painted from, so a look change repaints the bars only when
+   *  their colors moved. */
+  let barColorsKey = ''
+  const currentBarColorsKey = (): string =>
+    previousCloseColors(style, eff) ? JSON.stringify([style, style === 'bars' ? eff.bars : eff.candles]) : ''
+
   function paintAll(): void {
-    const shaped = valueShaped(style)
     const painted = shownBars()
     const values = painted.map((b) => ({ time: b.t as UTCTimestamp, value: b.c }))
     anchor.setData(values)
     // A morph that brings bars back draws them itself, folded, until it ends.
     if (morph?.bars !== series) {
-      series.setData(
-        (shaped ? values : painted.map((b) => ({ time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }))) as never,
-      )
+      const colors = previousCloseColors(style, eff)
+      series.setData(painted.map((b, i) => seriesRow(b, painted[i - 1], colors)) as never)
+      barColorsKey = currentBarColorsKey()
     }
     if (volumeInstance()) paintVolume()
     indicators.recompute()
@@ -1239,7 +1345,18 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     if (filter && !filter(b.t)) return
     const value = { time: b.t as UTCTimestamp, value: b.c }
     anchor.update(value)
-    series.update((valueShaped(style) ? value : { time: b.t as UTCTimestamp, open: b.o, high: b.h, low: b.l, close: b.c }) as never)
+    const colors = previousCloseColors(style, eff)
+    let previous: FeedBar | undefined
+    if (colors) {
+      const painted = shownBars()
+      for (let i = painted.length - 1; i >= 0; i--) {
+        if (painted[i]!.t < b.t) {
+          previous = painted[i]
+          break
+        }
+      }
+    }
+    series.update(seriesRow(b, previous, colors) as never)
     if (volumeInstance()) paintVolume()
     indicators.recomputeThrottled()
     extensions.host.barsChanged(shownBars())
@@ -1248,53 +1365,81 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   /** Rebuild the formatter (a resolve, a symbol switch, a language switch) and push it to every
    *  surface that holds a reference rather than reading it live. */
+  /** Name the market on the surfaces that write it outside the legend: the name label beside the
+   *  last value, and the watermark. Both follow the resolved symbol, and the timeframe. */
+  function nameSymbol(): void {
+    try {
+      series.applyOptions({ title: eff.priceLabels.symbolName ? paint().title : '' })
+    } catch {
+      /* the series is being replaced */
+    }
+    watermark.refresh()
+  }
+
+  /** The written format the formatter was last built from, so a look change rebuilds it only when
+   *  the precision setting moved it. */
+  let builtFormatKey = ''
   const setSymbolFormat = (format: PriceFormat | null): void => {
     symbolFormat = format
-    symbolFormatter = createPriceFormatter(format ?? UNRESOLVED_PRICE_FORMAT, { locale: i18n.tag() })
+    const written = writtenFormat()
+    builtFormatKey = formatKey()
+    symbolFormatter = createPriceFormatter(written, { locale: i18n.tag() })
     applyPriceFormat()
-    drawings.setPricing(format ? minMoveOf(format) : null, (price) => symbolFormatter.format(price))
+    drawings.setPricing(format ? minMoveOf(written) : null, (price) => symbolFormatter.format(price))
     countdown?.refresh()
   }
 
   /** Re-resolve the ladder and restyle every surface that reads it: the runtime half of the
    *  precedence contract. Everything here is a repaint, never a rebuild. The getter-driven surfaces
-   *  (session bands, marks, extensions reading the theme lane) pick the new values up on their next
-   *  draw. */
+   *  (session bands, the value lines, marks, extensions reading the theme lane) pick the new values
+   *  up on their next draw. */
   function applyLook(): void {
-    eff = layerOverrides(themeFloor(), deps.appearance, runtimePartial)
+    const before = { subsession: activeSubsession(), rightOffset: appliedRightOffset }
+    eff = resolveSettings()
     const c = canvas()
-    chart.applyOptions({
-      layout: {
-        background: { type: ColorType.Solid, color: eff.appearance.background },
-        textColor: c.axisText,
-        fontSize: c.fontSize,
-        fontFamily: c.fontFamily,
-      },
-      grid: {
-        vertLines: { color: c.grid, visible: eff.appearance.grid },
-        horzLines: { color: c.grid, visible: eff.appearance.grid },
-      },
-    })
+    chart.applyOptions(lookOptions())
+    // The right margin is the time scale's right offset, and writing it scrolls the view to it, so
+    // it is written only when the setting moved.
+    if (eff.canvas.marginRight !== before.rightOffset) {
+      appliedRightOffset = eff.canvas.marginRight
+      chart.timeScale().applyOptions({ rightOffset: appliedRightOffset })
+    }
     series.applyOptions(styleOptions(style, paint()) as never)
+    if (formatKey() !== builtFormatKey) {
+      setSymbolFormat(symbolFormat)
+      indicators.recompute()
+    }
+    // The trading hours decide which intraday bars are shown, so a change repaints the model; a
+    // change of the bar colors alone repaints the bars.
+    if (activeSubsession() !== before.subsession) {
+      paintAll()
+      events.emit('subsession', activeSubsession())
+    } else if (currentBarColorsKey() !== barColorsKey) paintAll()
+    for (const entry of valueLines.values()) entry.primitive.refresh()
+    if (style === 'baseline') baselineLevel.sync()
+    applyTimezone()
     session.refresh()
     marks?.repaint()
-    extensions.host.themeChanged(c)
-    countdown?.refresh()
+    watermark.refresh()
+    nav?.sync()
+    legend.push()
+    extensions.host.themeChanged(settingsCanvas(c, eff))
+    countdown?.restyled()
   }
 
-  /** Reset defaults: drop the viewer's OWN appearance layer and put the price scale back to normal.
+  /** Apply defaults: drop the viewer's OWN settings and put the price scale back to normal.
    *
-   *  Precisely the runtime layer and nothing else. The theme floor and the host's constructor
-   *  partial are not the viewer's to reset, so a branded chart resets to its BRAND, not to the
-   *  package's stock canvas. The viewport is a separate verb (`chart.view.reset`), and no other
-   *  preference is touched.
+   *  Precisely the viewer's leaves and nothing else. The theme's factory values and the host's
+   *  constructor partial are not the viewer's to reset, so a branded chart resets to its BRAND, not
+   *  to the package's stock canvas. The viewport is a separate verb (`chart.view.reset`), and no
+   *  other preference is touched.
    *
    *  It reports as a content change like any other, so an autosaving host writes the reset into the
    *  saved chart and reopening it does not undo the reset. Saved content is the only place an
    *  authored look persists. */
-  function resetAppearance(): void {
+  function resetSettings(): void {
     if (disposed) return
-    runtimePartial = {}
+    viewerPartial = {}
     applyScaleMode('normal')
     applyLook()
     deps.contentChanged?.()
@@ -1477,6 +1622,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     replaySlice = null // and its cursor slice with it: the new symbol paints from its own model
     legend.setHeader(symbol, tf)
     legend.setDot(null)
+    nameSymbol()
     paintAll()
     if (!symbol) return
     countdownClock.reset()
@@ -1493,6 +1639,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         session.adopt(info)
         legend.setHeader(symbol, tf)
         legend.setDot(session.state())
+        nameSymbol()
         // The choice is the viewer's; what it RESOLVES to follows the symbol, so a chart set to
         // `exchange` re-labels its axis on every symbol switch without the choice moving.
         applyTimezone()
@@ -1684,6 +1831,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     extensions.visibleSeriesReplaced()
     applyPriceFormat()
     const remove = (leaving: ISeriesApi<SeriesType>): void => {
+      valueLines.delete(leaving)
       try {
         chart.removeSeries(leaving)
       } catch {
@@ -1707,13 +1855,28 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         bars,
         run: startStyleMorph({
           bars,
-          fadeLine: (alpha) => line.applyOptions(fadedStyleOptions(lineStyle, paint(), alpha)),
+          fadeLine: (alpha) => {
+            line.applyOptions(fadedStyleOptions(lineStyle, paint(), alpha))
+            const drawn = valueLines.get(line)
+            if (drawn) {
+              drawn.alpha = alpha
+              drawn.primitive.refresh()
+            }
+          },
           shown: shownBars,
           direction: folding ? 'fold' : 'unfold',
           done: () => {
             if (morph === entry) morph = null
             remove(previous)
-            if (folding) line.applyOptions(styleOptions(lineStyle, paint()))
+            if (folding) {
+              line.applyOptions(styleOptions(lineStyle, paint()))
+              const drawn = valueLines.get(line)
+              if (drawn) {
+                drawn.alpha = 1
+                drawn.primitive.refresh()
+              }
+              countdown?.restyled()
+            }
           },
         }),
       }
@@ -1733,10 +1896,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       scale: scaleMode,
       priceAxis: priceAxisPolicy(),
       indicators: indicators.list().map(serializeIndicatorInstance).filter((saved): saved is SavedIndicator => saved !== null),
-      // The AUTHORED layer, never the resolved tree: writing `eff` down would save the theme's
-      // derived colors and the host's brand as though a viewer had chosen every one of them, and a
+      // The AUTHORED leaves, never the resolved tree: writing `eff` down would save the theme's
+      // factory colors and the host's brand as though a viewer had chosen every one of them, and a
       // reopen under another theme or another brand would then be stuck with the old ones.
-      appearance: { ...runtimePartial.appearance },
+      settings: copyPartialChartSettings(viewerPartial),
       compares: compare?.serialize() ?? [],
       // The drawings ride the blob in combined mode only. They are the symbol's own: a saved chart
       // is one symbol, and the drawings it carries are the ones drawn on it.
@@ -1759,9 +1922,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     const { dropped } = indicators.restore(parsed.indicators)
     writeHidden()
     if (dropped > 0) deps.doors.notify('info', i18n.t('toast.indicatorsNotCarried', { count: dropped }))
-    // The saved appearance applies as a RUNTIME layer: a viewer's saved look beats the host's
+    // The saved settings apply as the viewer's leaves: a viewer's saved look beats the host's
     // constructor values, exactly the precedence the option contract states.
-    if (parsed.appearance) handle.applyAppearance({ appearance: parsed.appearance })
+    if (parsed.settings) handle.applySettings(parsed.settings)
     // Comparisons restore AFTER the scale: the blob's own scale is the truth of how it was saved,
     // so the policy only re-arms the flip-back for comparisons the restore brings in.
     compare?.restore(parsed.compares)
@@ -1776,13 +1939,13 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   /** Put one reading of this chart's content back, for the history.
    *
-   *  Two things separate it from loading a saved chart. The viewer's appearance layer is REPLACED
-   *  rather than layered over, because a step back has to take a leaf off again and a layering call
-   *  can only ever add one. And extension state is left alone: a reading does not carry it, so an
+   *  Two things separate it from loading a saved chart. The viewer's settings are REPLACED rather
+   *  than layered over, because a step back has to take a leaf off again and a layering call can
+   *  only ever add one. And extension state is left alone: a reading does not carry it, so an
    *  extension keeps whatever it holds rather than being handed an empty namespace. */
   function applyHistoryContent(next: ChartContent): void {
     if (disposed) return
-    runtimePartial = { appearance: { ...next.appearance } }
+    viewerPartial = copyPartialChartSettings(next.settings)
     // Ahead of the rest, so a style series built during the apply is painted with the look that is
     // going back rather than with the one being left behind.
     applyLook()
@@ -1797,7 +1960,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       ...(next.drawings ? { drawings: [...next.drawings] } : {}),
     })
     // A step back is a content change like any other. The fields that write a preference key have
-    // already said so; an appearance-only step writes none, so it says so here.
+    // already said so; a settings-only step writes none, so it says so here.
     deps.contentChanged?.()
   }
 
@@ -1969,20 +2132,24 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
     replay: replay.api,
     history: history.api,
-    appearance: () => eff,
-    applyAppearance(partial) {
+    settings: () => eff,
+    applySettings(partial) {
       if (disposed) return
-      // Runtime layers ACCUMULATE leaf by leaf: a later call restyles what it names and leaves the
-      // rest of the runtime layer standing, so two hosts' calls compose instead of clobbering.
-      runtimePartial = { appearance: { ...runtimePartial.appearance, ...(partial.appearance ?? {}) } }
+      // Only leaves the tree has, holding values their leaf can hold, are taken: a color the chart
+      // cannot paint is refused here rather than handed to the renderer.
+      const read = readPartialChartSettings(partial, paintableColor).settings
+      // The viewer's leaves ACCUMULATE: a later call restyles what it names and leaves the rest
+      // standing, so two callers compose instead of clobbering.
+      viewerPartial = mergePartialChartSettings(viewerPartial, read)
       applyLook()
-      // An appearance-only edit changes CONTENT, so it marks the chart dirty like a style or a
-      // timeframe does. During a restore the widget is hydrating and this reports nothing.
+      // A settings edit changes CONTENT, so it marks the chart dirty like a style or a timeframe
+      // does. During a restore the widget is hydrating and this reports nothing.
       deps.contentChanged?.()
-      // The appearance ladder has no event lane of its own, so the history is told here rather than
+      // The settings have no event lane of their own, so the history is told here rather than
       // through a subscription it could take out on its own.
       history.changed()
     },
+    resetSettings,
     formatter: () => symbolFormatter,
     saveLoad,
     sync: {
@@ -2038,7 +2205,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   // The lanes the history reads a change from. Everything else content is made of either travels on
   // one of these or is caught by the plane's own pointer sweep: the price-axis policy and the
-  // appearance ladder have no lane, and the appearance ladder says so where it moves. Subscribing on
+  // settings have no lane, and the settings say so where they move. Subscribing on
   // the chart's own emitter rather than through the handle means a host cannot unsubscribe it.
   for (const lane of ['symbol', 'timeframe', 'style', 'scaleMode', 'indicator', 'compare', 'drawing'] as const) {
     events.on(lane, () => history.changed())
@@ -2055,7 +2222,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     features: deps.features,
     ui: deps.ui,
     capabilities: deps.capabilities,
-    resetAppearance,
+    resetSettings,
     t: () => i18n.t,
     // What is PAINTED, which is the replay slice while replay is on: the data export writes what
     // the viewer can see and never a bar the cursor has not revealed.
@@ -2145,11 +2312,6 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     return offeredTimezone(storage.get(TIMEZONE_KEY) ?? deps.preferences.timezone, deps.timezones ?? null)
   }
 
-  function readSubsession(): ActiveSubsession {
-    const stored = storage.get(SUBSESSION_KEY) ?? deps.preferences.subsession
-    return stored === 'extended' ? 'extended' : DEFAULT_SUBSESSION
-  }
-
   /** The standing drawing choices. The record's own parser owns every fallback, so a stored value
    *  this build does not recognize degrades to the shipped default rather than to nothing. */
   function readDrawingPreferences(): DrawingPreferences {
@@ -2222,6 +2384,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       unregisterCommands()
       baselineLevel.destroy()
       nav?.destroy()
+      watermark.destroy()
+      valueLines.clear()
       replay.destroy()
       countdown?.destroy()
       countdown = null

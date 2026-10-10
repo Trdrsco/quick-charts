@@ -59,6 +59,29 @@ export type ChartDateFormat =
   | 'MM/dd/yy'
   | 'MM/dd/yyyy'
 
+/** The date formats the time label writes, in the order a picker offers them. */
+export const CHART_DATE_FORMATS: readonly ChartDateFormat[] = [
+  "qq 'yy",
+  'qq yyyy',
+  "dd MMM 'yy",
+  "MMM 'yy",
+  'MMM dd, yyyy',
+  'MMM d, yyyy',
+  'MMM yyyy',
+  'MMM dd',
+  'dd MMM',
+  'yyyy-MM-dd',
+  'yy-MM-dd',
+  'yy/MM/dd',
+  'yyyy/MM/dd',
+  'dd-MM-yyyy',
+  'dd-MM-yy',
+  'dd/MM/yy',
+  'dd/MM/yyyy',
+  'MM/dd/yy',
+  'MM/dd/yyyy',
+]
+
 /** A clock of 24 hours or of 12 with a day half. */
 export type ChartHoursFormat = '24' | '12'
 

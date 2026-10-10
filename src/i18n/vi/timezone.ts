@@ -4,4 +4,5 @@ import type { timezone as source } from '../en/timezone'
 export const timezone: Translation<typeof source> = {
   'timezone.title': 'Múi giờ biểu đồ',
   'timezone.exchange': 'Sàn',
+  'timezone.quarter': 'Q{quarter}',
 }

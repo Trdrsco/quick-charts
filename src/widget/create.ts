@@ -383,7 +383,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           icons,
           compareSymbols: options.features?.compareSymbols ?? [],
           access: options.access,
-          appearance: options.appearance,
+          settings: options.settings,
           indicators: init?.indicators ?? options.indicators ?? [],
           indicatorCatalog,
           extensions: options.extensions ?? [],

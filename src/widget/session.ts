@@ -1,13 +1,13 @@
-// The session plane: the shading under the bars, the market status the legend's dot shows, and the
-// active subsession the chart filters intraday bars by.
+// The session plane: the shading under the bars and the line at each session's start, the market
+// status the legend's dot shows, and the subsession the chart's trading-hours setting filters
+// intraday bars by.
 //
 // All three read ONE model, built from the symbol's own session facts rather than guessed from its
 // type. An unresolved symbol shades nothing and shows no status: an unknown market is not a 24/7
 // claim any more than it is an exchange-hours one.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
-import { createSessionBands, type SessionBandsPrimitive } from '../sessions'
+import { createSessionBands, type SessionBandsPrimitive, type SessionLook } from '../sessions'
 import {
-  DEFAULT_SUBSESSION,
   hasExtendedHours,
   marketStatus,
   parseSessionModel,
@@ -53,21 +53,23 @@ export interface SessionLayer {
 export interface SessionDeps {
   chart: IChartApi
   series(): ISeriesApi<SeriesType>
-  /** Whether the shading is on: the feature flag and the appearance leaf, read live. */
+  /** Whether the shading is on: the feature flag and the trading-hours setting, read live. */
   enabled(): boolean
+  /** The colors and session breaks the chart settings ask for, read at draw time. */
+  look(): SessionLook
   timeframe(): string
   theme(): SemanticTheme
   /** How live the feed says the symbol's data is; the status carries it. */
   dataStatus(): DataStatus | null
-  /** The subsession the viewer last chose, from the preference plane. */
-  initialSubsession: ActiveSubsession
-  /** The viewer changed the subsession, so the chart can persist it and repaint. */
-  onSubsession(active: ActiveSubsession): void
+  /** The subsession the trading-hours setting shows bars for, read live. */
+  subsession(): ActiveSubsession
+  /** The viewer chose a subsession: the chart writes it into its trading-hours setting, which
+   *  repaints the bars and the bands. */
+  setSubsession(active: ActiveSubsession): void
 }
 
 export function attachSession(deps: SessionDeps): SessionLayer {
   let model: SessionModel | null = null
-  let active: ActiveSubsession = deps.initialSubsession
   let bands: SessionBandsPrimitive | null = null
   const series = deps.series()
 
@@ -78,6 +80,7 @@ export function attachSession(deps: SessionDeps): SessionLayer {
     () => model,
     () => isIntradayTimeframe(deps.timeframe()),
     deps.theme,
+    deps.look,
   )
   series.attachPrimitive(bands as never)
 
@@ -90,24 +93,22 @@ export function attachSession(deps: SessionDeps): SessionLayer {
       return marketStatus(model, status, nowSecs ?? Math.floor(Date.now() / 1000))
     },
     extended: () => (model ? hasExtendedHours(model) : false),
-    subsession: () => active,
+    subsession: () => deps.subsession(),
     setSubsession(next) {
       // A symbol with no extended hours has ONE subsession, so a choice against it would be a
       // setting the chart cannot honor.
-      if (next === active || (next === 'extended' && !layer.extended())) return
-      active = next
-      deps.onSubsession(next)
+      if (next === deps.subsession() || (next === 'extended' && !layer.extended())) return
+      deps.setSubsession(next)
       bands?.refresh()
     },
     barFilter(timeframe) {
       if (!model || !isIntradayTimeframe(timeframe)) return null
-      return subsessionBarFilter(model, active)
+      // A symbol that never trades outside regular hours shows every bar whatever the setting says.
+      return subsessionBarFilter(model, deps.subsession())
     },
     adopt(info) {
       if (!info) return
       model = parseSessionModel(info)
-      // A symbol that never trades outside regular hours cannot hold an extended choice.
-      if (active === 'extended' && !layer.extended()) active = DEFAULT_SUBSESSION
       bands?.refresh()
     },
     reset() {

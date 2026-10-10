@@ -207,8 +207,8 @@ export interface ChartExtensionContext {
    *  over every pane and over whatever the page stacks around the widget mounts HERE, at viewport
    *  coordinates; the context menu does the same. */
   layer: HTMLElement
-  /** The chart's effective canvas palette: the mode's resolved theme with any applied appearance
-   *  overrides on top, projected onto the values a canvas draws with. */
+  /** The chart's effective canvas palette: the mode's resolved theme under the chart settings
+   *  in effect, projected onto the values a canvas draws with. */
   theme(): CanvasTheme
   formatter(): ChartPriceFormatter
   /** The name symbology gives the charted market, for a surface that prints it; `chart.symbol()`

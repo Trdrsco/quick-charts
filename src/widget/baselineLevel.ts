@@ -1,6 +1,6 @@
 // The Baseline style splits into a positive and a negative half around its base, and that base is a
-// SCREEN position rather than a price: half the pane's height, the line the eye reads as "the middle
-// of what is on screen". The library only understands a base priced in the series' own units, and its
+// SCREEN position rather than a price: a percentage of the pane's height from its foot, half of it
+// by default, the line the eye reads as "the middle of what is on screen". The library only understands a base priced in the series' own units, and its
 // default is price 0, so an unattended baseline paints an entire window in one color, which is the one
 // thing the style exists not to do. Deriving the level from the data instead (the window's first close,
 // say) has the same fault under a trend.
@@ -12,18 +12,20 @@
 // construction inside the visible range, so feeding it back through autoscale cannot widen it.
 import type { ISeriesApi, SeriesType } from 'lightweight-charts'
 
-/** The screen split, as a percentage of pane height measured from the lower border. */
+/** The default screen split, as a percentage of pane height measured from the lower border. */
 export const BASELINE_SCREEN_PERCENT = 50
 
 /** Below half a pixel of drift the held level is already on its line, and rewriting it would be a
  *  write per frame forever. */
 export const BASELINE_DRIFT_PX = 0.5
 
-/** The y coordinate the split sits on in a pane of this height, or null for a pane with no height
- *  yet (a chart mounted into a container the layout has not measured). */
-export function baselineSplitCoordinate(height: number): number | null {
+/** The y coordinate the split sits on in a pane of this height, at a percentage of it from the
+ *  foot (clamped to the pane), or null for a pane with no height yet (a chart mounted into a
+ *  container the layout has not measured). */
+export function baselineSplitCoordinate(height: number, percent: number = BASELINE_SCREEN_PERCENT): number | null {
   if (!Number.isFinite(height) || height <= 0) return null
-  return height * (1 - BASELINE_SCREEN_PERCENT / 100)
+  const share = Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : BASELINE_SCREEN_PERCENT
+  return height * (1 - share / 100)
 }
 
 /** One frame's reading of the pane: its height, where the level the series currently holds sits on
@@ -31,13 +33,15 @@ export function baselineSplitCoordinate(height: number): number | null {
  *  coordinate-to-price conversion. */
 export interface BaselineReading {
   height: number
+  /** Where the split stands, as a percentage of the height from the foot. Half when absent. */
+  percent?: number
   heldCoordinate: number | null
   priceAt: (coordinate: number) => number | null
 }
 
 /** The whole decision, kept pure: the price to write, or null to leave the series alone. */
 export function baselinePriceToWrite(reading: BaselineReading): number | null {
-  const target = baselineSplitCoordinate(reading.height)
+  const target = baselineSplitCoordinate(reading.height, reading.percent)
   if (target === null) return null
   const held = reading.heldCoordinate
   if (held !== null && Number.isFinite(held) && Math.abs(held - target) < BASELINE_DRIFT_PX) return null
@@ -48,6 +52,8 @@ export function baselinePriceToWrite(reading: BaselineReading): number | null {
 /** What the follower needs of the chart: the main pane's height, and the frame clock it rides. */
 export interface BaselineLevelDeps {
   paneHeight: () => number
+  /** The base level setting: a percentage of the pane's height from its foot. Half when absent. */
+  percent?: () => number
   frame?: (tick: () => void) => number
   cancel?: (handle: number) => void
 }
@@ -91,6 +97,7 @@ export function createBaselineLevel(deps: BaselineLevelDeps): BaselineLevelApi {
       const heldCoordinate = held && held.type === 'price' ? series.priceToCoordinate(held.price) : null
       const price = baselinePriceToWrite({
         height,
+        percent: deps.percent?.(),
         heldCoordinate: heldCoordinate ?? null,
         priceAt: (coordinate) => series.coordinateToPrice(coordinate),
       })

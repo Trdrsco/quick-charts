@@ -12,8 +12,11 @@
 // and the legend can never name a bar the viewer cannot see. Prices come out of the chart's one
 // symbol formatter, so a level in the legend is the level on the axis.
 import type { IChartApi, MouseEventParams } from 'lightweight-charts'
-import { mountChartLegend, type ChartLegend, type LegendQuote } from '../chartLegend'
+import { mountChartLegend, type ChartLegend, type LegendIdentity, type LegendLook, type LegendQuote } from '../chartLegend'
 import type { FeedBar } from '../datafeed'
+import { volumeText } from '../internal/drawings/core/bars'
+import { colorWithAlpha } from '../settings/defaults'
+import type { ChartSettings } from '../settings/schema'
 import type { ChartI18n } from '../i18n'
 import { mountInputsEditor } from '../inputsEditor'
 import { manifestInputDefaults } from '../indicatorModel'
@@ -96,6 +99,8 @@ export interface LegendDeps {
    *  identity row standing alone, which is what a touch surface with no pointer to hover with
    *  wants. */
   legendValues: boolean
+  /** The chart settings in effect: the status line's parts, its backdrop and the replay mark. */
+  settings(): ChartSettings
   /** The host's mark painters. The badge wears the market's; with none lent it wears the package's
    *  own neutral monogram. */
   painters: MarkPainters
@@ -120,6 +125,36 @@ export function barIndexAt(bars: readonly FeedBar[], time: number | null): numbe
     else hi = mid - 1
   }
   return lo
+}
+
+/** The legend's look under the chart settings: the status line's parts, its backdrop (the chart's
+ *  background at the setting's opacity), and the replay part of the watermark. Exported for tests. */
+export function legendLook(settings: ChartSettings): LegendLook {
+  const line = settings.statusLine
+  return {
+    logo: line.logo,
+    title: line.title,
+    chartValues: line.chartValues,
+    barChange: line.barChange,
+    volume: line.volume,
+    indicatorTitles: line.indicatorTitles,
+    indicatorInputs: line.indicatorInputs,
+    indicatorValues: line.indicatorValues,
+    backdrop: line.background && line.backgroundOpacity > 0 ? colorWithAlpha(settings.canvas.background, line.backgroundOpacity / 100) : null,
+    replayMark: settings.canvas.watermarkReplay,
+    replayMarkColor: settings.canvas.watermarkColor,
+  }
+}
+
+/** How the header names the market, by the title setting: its name (the feed's description), its
+ *  symbol, or the symbol with the name after it. Before the feed resolves the symbol there is
+ *  nothing to name it with but the symbol itself, minus its venue prefix. Exported for tests. */
+export function legendIdentity(symbol: string, info: SymbolInfo | null, timeframe: string, source: ChartSettings['statusLine']['titleSource']): LegendIdentity {
+  const names = symbolNames(info ?? symbol)
+  const base = { symbol, timeframe, exchange: info?.exchange ?? '' }
+  if (source === 'symbol') return { ...base, name: names.mark }
+  if (source === 'symbolAndName') return names.description === names.mark ? { ...base, name: names.mark } : { ...base, name: names.mark, detail: names.description }
+  return { ...base, name: names.description }
 }
 
 /** Percentage writers, one per language tag. The move as a percentage of the previous close, to
@@ -170,6 +205,17 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
   /** The market the header last named, so a switch drops a crosshair that belonged to the old one. */
   let named: string | null = null
   let namedTimeframe: string | null = null
+  /** The identity the header was last given, so a repaint writes it only when it moved. */
+  let written = ''
+  /** Name the market the header is on, in the words the title setting asks for. */
+  const writeIdentity = (): void => {
+    if (named === null || namedTimeframe === null) return
+    const identity = legendIdentity(named, deps.symbolInfo(), namedTimeframe, deps.settings().statusLine.titleSource)
+    const key = JSON.stringify(identity)
+    if (key === written) return
+    written = key
+    legend?.setIdentity(identity)
+  }
 
   legend = mountChartLegend(deps.chrome, deps.i18n, {
     // Every row control is a COMMAND. The legend states an intent by id and the registry decides
@@ -279,6 +325,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       change: change === null ? null : `${change > 0 ? '+' : ''}${format.format(change)}`,
       percent: fraction === null ? null : percentText(fraction, deps.i18n.tag()),
       direction: change === null || change === 0 ? 'flat' : change > 0 ? 'up' : 'down',
+      volume: typeof bar.v === 'number' && Number.isFinite(bar.v) ? volumeText(bar.v) : null,
     }
   }
 
@@ -286,6 +333,8 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     if (destroyed) return
     const alive = new Set(Object.values(paneKeys()))
     for (const key of paneRemembered.keys()) if (!alive.has(key)) paneRemembered.delete(key)
+    legend?.setLook(legendLook(deps.settings()))
+    writeIdentity()
     legend?.setValueShaped(deps.valueShaped())
     legend?.setQuote(deps.legendValues ? reading() : null)
     const paneOf = deps.indicators.renderer.paneOf()
@@ -298,6 +347,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
         const remembered = paneRemembered.get(`indicator:${row.id}`)
         return {
           ...row,
+          indicator: true,
           paneIndex,
           maximized: remembered !== undefined && !row.collapsed && (deps.chart.panes()[paneIndex]?.getHeight() ?? 0) > remembered,
           ...(shown(row.hidden ? 'chart.indicators.show' : 'chart.indicators.hide') ? {} : { hideable: false }),
@@ -384,11 +434,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
         namedTimeframe = tf
         hovered = null
       }
-      const info = deps.symbolInfo()
-      // Before the feed resolves the symbol there is nothing to label it with but the symbol
-      // itself, minus its venue prefix, which is the same shape the resolved answer takes.
-      const label = symbolNames(info ?? symbol).title
-      legend?.setIdentity({ name: label, symbol, timeframe: tf, exchange: info?.exchange ?? '' })
+      writeIdentity()
     },
     setDot(state) {
       const current = deps.status(Math.floor(Date.now() / 1000))

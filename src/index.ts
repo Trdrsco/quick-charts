@@ -152,7 +152,7 @@ export { chartContextMenu, type ChartMenuAction, type ChartMenuContext, type Cha
 export { mountContextMenu, type ContextMenuHandle } from './contextMenuUi'
 export { coerceScaleMode, PRICE_SCALE_MODE, SCALE_MODES, SCALE_MODE_OPTIONS, type ScaleMode } from './scaleMode'
 export { attachCompare, clipToWindow, COMPARE_COLORS, pickCompareColor, seriesTargetOf, type CompareDeps, type CompareEntry, type CompareHandle, type ComparePlacement, type CompareSnapshot, type CompareSymbol } from './compare'
-export { createSessionBands, SESSION_DOT, SESSION_LABEL, type SessionBandsPrimitive } from './sessions'
+export { createSessionBands, sessionBreakTimes, SESSION_DOT, SESSION_LABEL, type SessionBandsPrimitive, type SessionLook } from './sessions'
 
 export type { OpenResource, ResourceLoadOutcome, ResourceRemoveOutcome, ResourceSaveOutcome } from './openResource'
 export { ARRANGEMENTS, LAYOUT_MENU_ROWS, arrangementOf, type Arrangement, type PaneRect } from './layoutGrid'
@@ -182,7 +182,38 @@ export {
   type TextEditSession,
   type TextInlineEdit,
 } from './drawings'
-export { BRAND_DOWN, BRAND_UP, DEFAULT_OVERRIDES, layerOverrides, mergeOverrides, type ChartOverrides, type PartialOverrides } from './overrides'
+// ── The chart settings ───────────────────────────────────────────────────────────────────────────
+// Every viewer-tunable property of a chart, in one typed tree of sections and leaves. A chart
+// resolves it as a ladder: the theme's factory values, the host's `settings` option, then the
+// viewer's own leaves, which are what a saved chart carries.
+export type {
+  CandleStyleSettings,
+  ChartBackgroundType,
+  ChartControlVisibility,
+  ChartDateFormat,
+  ChartHoursFormat,
+  ChartLastValueMode,
+  ChartLineColorType,
+  ChartPricePrecision,
+  ChartPriceSource,
+  ChartScalePlacement,
+  ChartSessionHours,
+  ChartSettings,
+  ChartSettingsSection,
+  ChartStrokeStyle,
+  ChartTitleSource,
+  LineStyleSettings,
+  PartialChartSettings,
+} from './settings/schema'
+export { CHART_DATE_FORMATS } from './settings/schema'
+export {
+  CHART_SETTINGS_SECTIONS,
+  chartSettingsDefaults,
+  layerChartSettings,
+  readPartialChartSettings,
+  type ReadChartSettings,
+} from './settings/defaults'
+export { BRAND_DOWN, BRAND_UP, CHART_FACTORY_COLORS, type ChartFactoryColors } from './theme/palettes'
 export {
   BUILT_IN_LOCALES,
   arrangementName,
@@ -267,8 +298,8 @@ export {
 // The stylesheet is a separate asset: import `@trdrs/quickcharts/styles.css` once. The chart injects no
 // styles from JavaScript, and its custom-property names and component selectors are private.
 //
-// Chart appearance is the other ladder: `ChartOverrides.appearance` names specific series, grid and
-// indicator visuals and wins over the broad palette wherever both could reach the same pixel.
+// The chart settings are the other ladder: `ChartSettings` names specific series, grid, scale and
+// legend visuals and wins over the broad palette wherever both could reach the same pixel.
 export { createThemeController } from './theme/controller'
 export { THEME_ROLES } from './theme/schema'
 // The canvas projection: what an extension's `ctx.theme()` answers, and the one mapping from a
@@ -326,10 +357,12 @@ export {
   TIMEFRAME_UNIT_SECONDS,
   TIMEFRAME_UNITS,
 } from './timeframe'
-export type { ChartTimezone, TimezoneRow, ZoneClock } from './timezones'
+export type { ChartTimezone, TimeLabelFormat, TimezoneRow, ZoneClock } from './timezones'
 export {
+  chartDateSample,
   DEFAULT_TIMEZONE,
   EXCHANGE_TIMEZONE,
+  formatChartDate,
   formatClock,
   isTimezoneChoice,
   makeCrosshairTimeFormatter,

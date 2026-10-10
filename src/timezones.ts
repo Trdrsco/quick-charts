@@ -9,6 +9,7 @@
 // Gregorian calendar explicitly rather than for any particular language.
 import { TickMarkType, type Time } from 'lightweight-charts'
 import type { ChartTranslate } from './i18n'
+import type { ChartDateFormat, ChartHoursFormat } from './settings/schema'
 import type { SymbolInfo } from './symbology'
 
 export interface ChartTimezone {
@@ -190,14 +191,18 @@ export function formatClock(tag: string, zone: string, at: Date = new Date()): s
   return formatter(tag, zone, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(at)
 }
 
+/** The Intl hour cycle a clock of 24 or 12 hours writes. */
+const hourCycle = (hours: ChartHoursFormat): 'h23' | 'h12' => (hours === '12' ? 'h12' : 'h23')
+
 /** The time-axis tick-mark formatter for lightweight-charts: each mark granularity written in the
- *  zone and the language. Assign it to `timeScale.tickMarkFormatter`. */
-export function makeTickMarkFormatter(tag: string, zone: string): (time: Time, tickMarkType: TickMarkType) => string {
+ *  zone and the language, the times on a clock of 24 hours or of 12. Assign it to
+ *  `timeScale.tickMarkFormatter`. */
+export function makeTickMarkFormatter(tag: string, zone: string, hours: ChartHoursFormat = '24'): (time: Time, tickMarkType: TickMarkType) => string {
   const year = formatter(tag, zone, { year: 'numeric' })
   const month = formatter(tag, zone, { month: 'short' })
   const day = formatter(tag, zone, { day: 'numeric' })
-  const time = formatter(tag, zone, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
-  const timeS = formatter(tag, zone, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' })
+  const time = formatter(tag, zone, { hour: '2-digit', minute: '2-digit', hourCycle: hourCycle(hours) })
+  const timeS = formatter(tag, zone, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: hourCycle(hours) })
   return (t, tickMarkType) => {
     const d = new Date((t as number) * 1000)
     switch (tickMarkType) {
@@ -215,10 +220,78 @@ export function makeTickMarkFormatter(tag: string, zone: string): (time: Time, t
   }
 }
 
+/** How the crosshair's time label writes a moment: the date's pattern, whether the weekday leads it,
+ *  the clock, and the words the quarter of a year is written with. */
+export interface TimeLabelFormat {
+  dateFormat: ChartDateFormat
+  dayOfWeek: boolean
+  hoursFormat: ChartHoursFormat
+  /** The quarter, 1 to 4, as the reader's language writes it (Q3). */
+  quarter(quarter: number): string
+}
+
+/** A date written by a pattern, in the zone and the language: the month's name from the language,
+ *  every number in Latin digits. */
+export function formatChartDate(at: Date, zone: string, tag: string, pattern: ChartDateFormat, quarter: (quarter: number) => string): string {
+  const clock = zoneClock(zone, at)
+  const two = (n: number): string => String(n % 100).padStart(2, '0')
+  return pattern.replace(/qq|yyyy|'yy|yy|MMM|MM|dd|d/g, (token) => {
+    switch (token) {
+      case 'qq':
+        return quarter(Math.floor((clock.month - 1) / 3) + 1)
+      case 'yyyy':
+        return String(clock.year)
+      case "'yy":
+        return `'${two(clock.year)}`
+      case 'yy':
+        return two(clock.year)
+      case 'MMM':
+        return formatter(tag, zone, { month: 'short' }).format(at)
+      case 'MM':
+        return two(clock.month)
+      case 'dd':
+        return two(clock.day)
+      default:
+        return String(clock.day)
+    }
+  })
+}
+
+/** A moment's date as the crosshair writes it: the weekday first when the format asks for it, then
+ *  the date by its pattern. */
+export function formatChartDay(at: Date, zone: string, tag: string, format: Pick<TimeLabelFormat, 'dateFormat' | 'dayOfWeek' | 'quarter'>): string {
+  const date = formatChartDate(at, zone, tag, format.dateFormat, format.quarter)
+  return format.dayOfWeek ? `${formatter(tag, zone, { weekday: 'short' }).format(at)} ${date}` : date
+}
+
+/** The date a date-format picker shows each pattern on: Monday 29 September 1997, which tells a day
+ *  from a month and a two-digit year from a whole one at a glance. */
+const SAMPLE_DATE = new Date(Date.UTC(1997, 8, 29, 12))
+
+/** A pattern written on the sample date, in the reader's language, with or without the weekday:
+ *  what a date-format picker shows for each choice ("Mon 29 Sep '97"). */
+export function chartDateSample(format: ChartDateFormat, options: { locale: string; dayOfWeek: boolean; t: ChartTranslate }): string {
+  return formatChartDay(SAMPLE_DATE, DEFAULT_TIMEZONE, options.locale, {
+    dateFormat: format,
+    dayOfWeek: options.dayOfWeek,
+    quarter: (quarter) => options.t('timezone.quarter', { quarter }),
+  })
+}
+
 /** The crosshair time label for lightweight-charts: the date always, the wall time only when
  *  `withTime` (an intraday chart). A daily or larger bar's timestamp is a session date, and a
- *  shifted midnight would misread as a fill time. Assign it to `localization.timeFormatter`. */
-export function makeCrosshairTimeFormatter(tag: string, zone: string, withTime: boolean): (time: Time) => string {
+ *  shifted midnight would misread as a fill time. With a `format` the date follows its pattern,
+ *  weekday and clock; without one it is the language's own short date with its weekday, on a clock
+ *  of 24 hours. Assign it to `localization.timeFormatter`. */
+export function makeCrosshairTimeFormatter(tag: string, zone: string, withTime: boolean, format?: TimeLabelFormat): (time: Time) => string {
+  if (format) {
+    const time = formatter(tag, zone, { hour: '2-digit', minute: '2-digit', hourCycle: hourCycle(format.hoursFormat) })
+    return (t) => {
+      const d = new Date((t as number) * 1000)
+      const day = formatChartDay(d, zone, tag, format)
+      return withTime ? `${day} ${time.format(d)}` : day
+    }
+  }
   const date = formatter(tag, zone, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
   const time = formatter(tag, zone, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
   return (t) => {

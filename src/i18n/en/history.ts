@@ -15,7 +15,7 @@ export const history = {
   'history.changeChartStyle': 'chart style change',
   /** How the price axis is read and whether it frames itself: one word for both. */
   'history.changePriceScale': 'price scale change',
-  'history.changeAppearance': 'appearance change',
+  'history.changeSettings': 'settings change',
   'history.changeAddCompare': 'add comparison',
   'history.changeRemoveCompare': 'remove comparison',
   'history.changeCompare': 'comparison change',

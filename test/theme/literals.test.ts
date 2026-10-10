@@ -36,7 +36,6 @@ const DRAWING_DEFAULTS = '/src/internal/drawings/'
 
 const SERIES_DEFAULTS = [
   '/src/compare.ts',
-  '/src/overrides.ts',
   '/src/builtInIndicators.ts',
   '/src/indicatorModel.ts',
   // The built-in indicators' named plot palette: the same kind of exported series default, in the

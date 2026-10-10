@@ -52,6 +52,8 @@ export interface FakeRenderer {
   fireLogicalRange(): void
   fireTimeRange(): void
   paneHeights: Record<number, number>
+  /** The primitives attached to each pane, such as a text watermark. */
+  panePrimitives: Record<number, unknown[]>
   /** A crosshair report. Pass `x` when the surface under test reads the POINTER position rather
    *  than the bar the renderer snapped to. */
   fireCrosshair(time: number | null, x?: number): void
@@ -100,6 +102,7 @@ export function fakeRenderer(): FakeRenderer {
     },
     removed: false,
     paneHeights: {},
+    panePrimitives: {},
     fireCrosshair: (time, x) => {
       const point = x === undefined ? {} : { point: { x, y: 0 } }
       for (const cb of crosshairSubs) cb(time === null ? { ...point } : { time, ...point })
@@ -120,6 +123,10 @@ export function fakeRenderer(): FakeRenderer {
       return paneElements.get(index)!
     },
     getSeries: () => series.filter((s) => s.paneIndex === index).map((s) => apiOf.get(s)),
+    attachPrimitive: (primitive: unknown) => void (state.panePrimitives[index] ??= []).push(primitive),
+    detachPrimitive: (primitive: unknown) => {
+      state.panePrimitives[index] = (state.panePrimitives[index] ?? []).filter((p) => p !== primitive)
+    },
   })
   // One object per scale id, held for the renderer's lifetime: the real renderer answers the same
   // scale each time, so a test may replace a method on it and the chart sees the replacement.

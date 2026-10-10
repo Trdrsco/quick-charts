@@ -54,6 +54,9 @@ export interface LegendChip {
   hasInputs?: boolean
   /** Pane-placed instance: the row carries the pane controls. */
   pane?: boolean
+  /** The row is an indicator's: the legend look's indicator parts decide which of its title, inputs
+   *  and value show. */
+  indicator?: boolean
   /** Live renderer pane, recalculated after removal and reordering. */
   paneIndex?: number
   /** The instance's pane currently reads as collapsed (drives which control shows). */
@@ -83,6 +86,9 @@ export interface LegendChip {
  *  empty, because an unresolved symbol has no venue to attribute. */
 export interface LegendIdentity {
   name: string
+  /** A second name after the first, set apart as the other facts are: the description beside a
+   *  symbol, when the header names both. */
+  detail?: string
   /** The charted symbol itself, behind the display name. */
   symbol: string
   /** The timeframe, already worded (a running replay says so). */
@@ -102,6 +108,46 @@ export interface LegendQuote {
   change: string | null
   percent: string | null
   direction: 'up' | 'down' | 'flat'
+  /** The bar's volume, written compactly, or null when the feed states none. */
+  volume: string | null
+}
+
+/** Which parts of the legend show, and how it stands over the bars: the status line settings. */
+export interface LegendLook {
+  /** The market's mark before its name. */
+  logo: boolean
+  /** The market's name and its facts. */
+  title: boolean
+  /** The bar's open, high, low and close. */
+  chartValues: boolean
+  /** The bar's change and percentage change. */
+  barChange: boolean
+  volume: boolean
+  indicatorTitles: boolean
+  indicatorInputs: boolean
+  indicatorValues: boolean
+  /** The fill behind each part of the legend, so the bars under it stand back, or null for none. */
+  backdrop: string | null
+  /** The replay mark, which names bar replay on the plot while it runs. */
+  replayMark: boolean
+  /** The replay mark's ink. */
+  replayMarkColor: string
+}
+
+/** The look a legend opens with: every part shown, no backdrop, the replay mark in the stylesheet's
+ *  own ink. */
+export const OPEN_LEGEND_LOOK: LegendLook = {
+  logo: true,
+  title: true,
+  chartValues: true,
+  barChange: true,
+  volume: false,
+  indicatorTitles: true,
+  indicatorInputs: true,
+  indicatorValues: true,
+  backdrop: null,
+  replayMark: true,
+  replayMarkColor: '',
 }
 
 export interface LegendControls {
@@ -133,6 +179,8 @@ export interface ChartLegend {
   setIdentity(identity: LegendIdentity): void
   /** The bar being read, or null while the chart is painting none. */
   setQuote(quote: LegendQuote | null): void
+  /** Which parts show, and the backdrop behind them. */
+  setLook(look: LegendLook): void
   /** Price-scale widths and the time axis's height (px), keeping the legend and the corner slot
    *  inside the PLOT and clear of every axis. */
   setScaleInsets(left: number, right: number, axisHeight: number): void
@@ -197,6 +245,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     text.dataset.role = role
     return { sep, text }
   }
+  const detail = fact('legend-detail')
   const timeframe = fact('legend-timeframe')
   const venue = fact('legend-exchange')
   const badge = createSymbolBadge('')
@@ -204,7 +253,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   // shades the identity alone. The header wraps the two bands; this one never wraps inside itself.
   const identityBand = document.createElement('span')
   identityBand.className = 'qc-legend-identity'
-  identityBand.append(badge.element, name, timeframe.sep, timeframe.text, venue.sep, venue.text)
+  identityBand.append(badge.element, name, detail.sep, detail.text, timeframe.sep, timeframe.text, venue.sep, venue.text)
 
   const dot = controls.icons.glyph(ICONS.marketStatus, { size: 18, className: 'qc-legend-dot' })
   // With a status surface behind it the dot rides a button: the market-status control, named for
@@ -281,6 +330,15 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   change.className = 'qc-legend-change'
   change.dataset.role = 'legend-change'
   quote.appendChild(change)
+  // The bar's volume: a quiet mark, then the number in the direction's ink.
+  const volume = document.createElement('span')
+  volume.className = 'qc-legend-volume'
+  volume.dataset.role = 'legend-volume'
+  const volumeMark = document.createElement('span')
+  volumeMark.className = 'qc-legend-mark'
+  const volumeValue = document.createElement('span')
+  volume.append(volumeMark, volumeValue)
+  quote.appendChild(volume)
   header.appendChild(quote)
 
   const chipRows = document.createElement('div')
@@ -343,6 +401,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     }
     return group
   }
+  let look: LegendLook = OPEN_LEGEND_LOOK
   const makeRow = (initial: LegendChip) => {
     let chip = initial
     const row = document.createElement('div')
@@ -419,10 +478,14 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         venueText.hidden = !chip.venue
         venueText.textContent = chip.venue ?? ''
         const clickable = !!chip.titleButton && !!controls.onTitle
-        label.hidden = clickable
         title.hidden = !clickable
-        labelName.textContent = clickable ? '' : chip.title
-        labelInputs.textContent = !clickable && chip.inputs ? ` ${chip.inputs}` : ''
+        // An indicator row shows the parts the look asks for; a market row is always named.
+        const showTitle = !chip.indicator || look.indicatorTitles
+        const showInputs = !chip.indicator || look.indicatorInputs
+        labelName.textContent = clickable || !showTitle ? '' : chip.title
+        labelInputs.textContent = !clickable && showInputs && chip.inputs ? ` ${chip.inputs}` : ''
+        label.hidden = clickable || (!labelName.textContent && !labelInputs.textContent)
+        value.hidden = !!chip.indicator && !look.indicatorValues
         title.textContent = clickable ? chip.title : ''
         nameButton(title, strings.t('legend.changeSymbol'))
         value.textContent = chip.note ?? (chip.hidden ? '' : chip.value ?? '')
@@ -530,25 +593,47 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   }
   const paintIdentity = (): void => {
     paintBadge()
+    // With the title off the market's name and its facts stand down together, and the mark with
+    // them; the mark alone answers to the logo.
+    badge.element.hidden = !look.title || !look.logo
+    name.hidden = !look.title
     name.textContent = identity?.name ?? ''
     name.title = identity?.symbol ?? ''
-    timeframe.text.textContent = identity?.timeframe ?? ''
-    timeframe.text.hidden = !identity?.timeframe
-    timeframe.sep.hidden = !identity?.timeframe
-    venue.text.textContent = identity?.exchange ?? ''
-    venue.text.hidden = !identity?.exchange
-    venue.sep.hidden = !identity?.exchange
+    const facts = [
+      [detail, identity?.detail ?? ''],
+      [timeframe, identity?.timeframe ?? ''],
+      [venue, identity?.exchange ?? ''],
+    ] as const
+    for (const [part, text] of facts) {
+      part.text.textContent = text
+      part.text.hidden = !look.title || !text
+      part.sep.hidden = !look.title || !text
+    }
   }
   const paintQuote = (): void => {
-    quote.hidden = reading === null
+    const shown = reading !== null && (look.chartValues || look.barChange || (look.volume && reading.volume !== null))
+    quote.hidden = !shown
     if (!reading) return
     for (const entry of OHLC) {
       marks.get(entry.field)!.textContent = strings.t(entry.key)
       prices.get(entry.field)!.textContent = reading[entry.field]
+      marks.get(entry.field)!.parentElement!.hidden = !look.chartValues
     }
     quote.dataset.qcDirection = reading.direction
     change.textContent =
       reading.change === null || reading.percent === null ? '' : strings.t('legend.change', { change: reading.change, percent: reading.percent })
+    change.hidden = !look.barChange
+    volumeMark.textContent = strings.t('legend.volume')
+    volumeValue.textContent = reading.volume ?? ''
+    volume.hidden = !look.volume || reading.volume === null
+  }
+  /** The replay mark shows while replay has the chart and the look asks for it. */
+  let replayOn = false
+  const paintReplayMark = (): void => {
+    replayWatermark.hidden = !replayOn || !look.replayMark
+    replayWatermark.style.color = look.replayMarkColor
+    // A mark in a color of its own is drawn at that color's own strength.
+    replayWatermark.style.opacity = look.replayMarkColor ? '1' : ''
   }
 
   const unsubscribe = strings.onChange(() => {
@@ -576,6 +661,19 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     setQuote(next) {
       reading = next
       paintQuote()
+      measure()
+    },
+    setLook(next) {
+      if (JSON.stringify(next) === JSON.stringify(look)) return
+      look = next
+      // The backdrop is the chart's own background at the setting's opacity, which is only known at
+      // run time, so it is written as a property the stylesheet's recipes read.
+      if (look.backdrop) root.style.setProperty('--qcd-legend-backdrop', look.backdrop)
+      else root.style.removeProperty('--qcd-legend-backdrop')
+      paintIdentity()
+      paintQuote()
+      paintReplayMark()
+      render(lastChips)
       measure()
     },
     setScaleInsets(left, right, axisHeight) {
@@ -614,7 +712,8 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       replayPill.dataset.qcPhase = phase
       // replayWatermark names WHICH chart replay has taken over, and arming has already taken it
       // over: the plot is answering a click with a starting point instead of its usual gestures.
-      replayWatermark.hidden = !on
+      replayOn = on
+      paintReplayMark()
       // While the question is open the plot draws NO pointer of its own: the shears on the rule are
       // the pointer, and a crosshair beside them would be a second answer to where the click lands.
       // The mark goes on the pane, because the surface the pointer is over is the renderer's canvas

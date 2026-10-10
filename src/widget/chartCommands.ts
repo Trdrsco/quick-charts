@@ -10,6 +10,7 @@
 //
 // Availability is a live read, never a stored flag: a command asks the chart what is true now.
 import type { ChartMessageKey, ChartTranslate } from '../i18n'
+import type { PartialChartSettings } from '../settings/schema'
 import { SCALE_MODES, type ScaleMode } from '../scaleMode'
 import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry, CommandSpec } from './commands'
@@ -70,9 +71,9 @@ export interface ChartCommandDeps {
   features: ResolvedFeatures
   ui: ResolvedUi
   capabilities(): Capabilities
-  /** Drop the viewer's OWN appearance layer and return the price scale to normal, leaving the theme
-   *  floor, the host's constructor partial, the viewport and every other preference alone. */
-  resetAppearance(): void
+  /** Drop the viewer's OWN settings and return the price scale to normal, leaving the theme's
+   *  values, the host's constructor partial, the viewport and every other preference alone. */
+  resetSettings(): void
   /** The chart's language, for the preset labels a picker renders. */
   t(): ChartTranslate
   /** The bars the chart is PAINTING: already the replay slice while replay is on, so the data
@@ -182,30 +183,30 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     })
   }
 
-  // ── Appearance. One command taking an appearance partial: the settings menu, a host control and
-  // an automation adapter all restyle the chart through the same runtime layer.
+  // ── Settings. One command taking a settings partial: the settings dialog, a host control and an
+  // automation adapter all restyle the chart through the viewer's own leaves.
   add({
-    id: 'chart.appearance.apply',
+    id: 'chart.settings.apply',
     scope: 'chart',
-    label: 'command.appearanceApply',
+    label: 'command.settingsApply',
     available: always,
     execute: (arg) => {
-      const partial = arg as { appearance?: unknown } | null
-      if (partial && typeof partial === 'object' && partial.appearance && typeof partial.appearance === 'object') {
-        handle.applyAppearance({ appearance: partial.appearance as Partial<ReturnType<ChartHandle['appearance']>['appearance']> })
+      const partial = arg as { settings?: unknown } | null
+      if (partial && typeof partial === 'object' && partial.settings && typeof partial.settings === 'object') {
+        handle.applySettings(partial.settings as PartialChartSettings)
       }
     },
   })
 
-  // Reset defaults: the same door for the gear menu's row, a host control and an automation
-  // adapter. It is the appearance twin of `chart.view.reset` and shares nothing with it — one puts
-  // back the look, the other puts back the window.
+  // Apply defaults: the same door for the dialog's template menu, a host control and an automation
+  // adapter. It is the settings twin of `chart.view.reset` and shares nothing with it: one puts back
+  // the look, the other puts back the window.
   add({
-    id: 'chart.appearance.reset',
+    id: 'chart.settings.reset',
     scope: 'chart',
-    label: 'command.appearanceReset',
+    label: 'command.settingsReset',
     available: always,
-    execute: () => deps.resetAppearance(),
+    execute: () => deps.resetSettings(),
   })
 
   // ── Scale modes ─────────────────────────────────────────────────────────────────────────────

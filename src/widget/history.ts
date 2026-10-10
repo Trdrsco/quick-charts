@@ -37,7 +37,7 @@ export type HistoryChange =
   | 'timeframe'
   | 'style'
   | 'priceScale'
-  | 'appearance'
+  | 'settings'
   | 'compareAdd'
   | 'compareRemove'
   | 'compareChange'
@@ -54,7 +54,7 @@ export const HISTORY_CHANGE_LABELS: Readonly<Record<HistoryChange, ChartMessageK
   timeframe: 'history.changeTimeframe',
   style: 'history.changeChartStyle',
   priceScale: 'history.changePriceScale',
-  appearance: 'history.changeAppearance',
+  settings: 'history.changeSettings',
   compareAdd: 'history.changeAddCompare',
   compareRemove: 'history.changeRemoveCompare',
   compareChange: 'history.changeCompare',
@@ -169,7 +169,7 @@ export function diffLabel(previous: HistoryState, next: HistoryState): HistoryCh
   if (a.timeframe !== b.timeframe) return 'timeframe'
   if (a.style !== b.style) return 'style'
   if (a.scale !== b.scale || a.priceAxis !== b.priceAxis) return 'priceScale'
-  if (!sameValue(a.appearance, b.appearance)) return 'appearance'
+  if (!sameValue(a.settings, b.settings)) return 'settings'
   const compares = { before: listOf(a.compares), after: listOf(b.compares) }
   if (compares.after.length > compares.before.length) return 'compareAdd'
   if (compares.after.length < compares.before.length) return 'compareRemove'

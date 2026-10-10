@@ -7,6 +7,7 @@ export const legend: Translation<typeof source> = {
   'legend.low': 'L',
   'legend.close': 'C',
   'legend.change': '{change} ({percent}%)',
+  'legend.volume': 'Vol',
   'legend.indicatorSettings': 'การตั้งค่าอินดิเคเตอร์',
   'legend.showRows': 'แสดงแถวอินดิเคเตอร์',
   'legend.hideRows': 'ซ่อนแถวอินดิเคเตอร์',

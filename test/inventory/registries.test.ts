@@ -56,7 +56,7 @@ const COUNTS: Record<Registry, number> = {
   timeframes: 26,
   timezones: 60,
   locales: 21,
-  themeRoles: 101,
+  themeRoles: 106,
   commands: 207,
 }
 

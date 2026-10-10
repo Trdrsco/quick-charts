@@ -305,6 +305,7 @@
     "themeRoles": [
       "canvas.background",
       "canvas.paneBorder",
+      "canvas.watermark",
       "chrome.border",
       "chrome.borderStrong",
       "chrome.caret",
@@ -333,6 +334,8 @@
       "control.onPressed",
       "control.outline",
       "control.selectEdgeHover",
+      "control.tipMark",
+      "control.tipMarkHover",
       "drawing.fill",
       "drawing.handle",
       "drawing.line",
@@ -357,6 +360,8 @@
       "overlay.separator",
       "overlay.shadow",
       "overlay.surface",
+      "overlay.tooltip",
+      "overlay.tooltipInk",
       "scale.background",
       "scale.border",
       "scale.crosshair",
@@ -406,8 +411,6 @@
       "text.secondary"
     ],
     "commands": [
-      "chart.appearance.apply",
-      "chart.appearance.reset",
       "chart.compare.add",
       "chart.compare.changeSymbol",
       "chart.compare.open",
@@ -483,6 +486,8 @@
       "chart.scale.log",
       "chart.scale.normal",
       "chart.scale.percent",
+      "chart.settings.apply",
+      "chart.settings.reset",
       "chart.style.area",
       "chart.style.bars",
       "chart.style.baseline",

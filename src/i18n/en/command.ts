@@ -34,10 +34,10 @@ export const command = {
   'command.styleBaseline': 'Baseline',
   'command.styleStepline': 'Step line',
 
-  /** Restyle the chart through its runtime appearance layer. The partial is the argument. */
-  'command.appearanceApply': 'Chart appearance',
-  /** Drop the viewer's own appearance choices back to the theme and host baseline. */
-  'command.appearanceReset': 'Reset defaults',
+  /** Apply a partial of the chart settings as the viewer's own. The partial is the argument. */
+  'command.settingsApply': 'Apply chart settings',
+  /** Drop the viewer's own chart settings back to the theme and host values. */
+  'command.settingsReset': 'Apply defaults',
 
   // The four price-scale modes.
   'command.scaleNormal': 'Regular price scale',

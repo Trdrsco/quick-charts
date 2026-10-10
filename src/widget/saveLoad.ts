@@ -10,8 +10,9 @@ import { ResourceAbortError, type ChartBody, type ChartMeta, type ChartSaveLoadA
 import { openResourceController, ResourceRollbackError, type OpenResource, type ResourceLoadOutcome, type ResourceRemoveOutcome, type ResourceSaveOutcome } from '../openResource'
 import type { ChartI18n } from '../i18n'
 import type { IndicatorOverrides } from '../indicatorModel'
-import { DEFAULT_OVERRIDES, type ChartOverrides } from '../overrides'
-import { parseCssColor } from '../theme/color'
+import { paintableColor } from '../settings/color'
+import { readPartialChartSettings, settingsFromAppearance } from '../settings/defaults'
+import type { PartialChartSettings } from '../settings/schema'
 import type { ScaleMode } from '../scaleMode'
 import type { IndicatorDefinition, IndicatorInstance } from './options'
 import type { ChartStyleId } from './styles'
@@ -50,10 +51,14 @@ export interface ChartSaveLoadApi {
 }
 
 /** The chart's saved-content format. Bumping this is the only reason a reader below ever branches. */
-export const CHART_CONTENT_VERSION = 4
+export const CHART_CONTENT_VERSION = 5
+
+/** The format that carried the viewer's look as an `appearance` partial of ten leaves. A reader
+ *  upgrades it into the settings sections those leaves now live in. */
+const APPEARANCE_VERSION = 4
 
 /** The format whose `appearance` was the RESOLVED tree rather than the viewer's own choices. A
- *  reader still accepts it, and drops that one field; see the note on ChartContent.appearance. */
+ *  reader still accepts it, and drops that one field; see the note on ChartContent.settings. */
 const RESOLVED_APPEARANCE_VERSION = 3
 
 /** One indicator instance as the opaque blob carries it. The definition is named rather than
@@ -88,13 +93,13 @@ export interface ChartContent {
   priceAxis: PriceAxisPolicy
   /** Indicator instances in legend order. An empty list clears the chart's mount-time seed. */
   indicators: readonly SavedIndicator[]
-  /** The leaves the VIEWER authored, and only those: the runtime layer of the appearance ladder.
-   *  The theme floor and the host's constructor partial resolve fresh on whichever chart the
+  /** The settings the VIEWER authored, and only those: the top rung of the settings ladder. The
+   *  theme's factory values and the host's constructor partial resolve fresh on whichever chart the
    *  content lands on, so a chart saved in dark mode and reopened in light takes the light theme's
    *  colors for every leaf nobody named, and a host that rebrands sees its new brand rather than
    *  the old one written down as though a viewer had chosen it. An empty record is the honest
    *  statement that nothing was authored, not a missing field. */
-  appearance: Partial<ChartOverrides['appearance']>
+  settings: PartialChartSettings
   compares: unknown
   /** The drawings on the chart, in COMBINED mode only. In separate mode this is absent and the
    *  drawings family is their only path: one drawing is stored in one place, whichever mode the
@@ -116,7 +121,7 @@ export function serializeChartContent(content: ChartContent): string {
     scale: content.scale,
     axis: content.priceAxis,
     indicators: content.indicators.map(savedIndicatorFields),
-    appearance: content.appearance,
+    settings: content.settings,
     compares: content.compares,
     ...(content.drawings ? { drawings: content.drawings } : {}),
     ext: content.ext,
@@ -133,7 +138,12 @@ export interface ParsedChartContent {
   priceAxis?: string
   /** Required in v4. Missing or malformed instance state refuses the blob before anything moves. */
   indicators: SavedIndicator[]
-  appearance?: Partial<ChartOverrides['appearance']>
+  /** The viewer's settings, with every leaf the blob stated that this build can hold. Absent when
+   *  the blob states none. */
+  settings?: PartialChartSettings
+  /** The `section.leaf` paths the blob stated with a value their leaf cannot hold. A chart that
+   *  dropped one is not the chart that was saved. */
+  settingsRejected?: readonly string[]
   compares?: unknown
   drawings?: SerializedDrawing[]
   ext?: unknown
@@ -143,14 +153,24 @@ export interface ParsedChartContent {
  *  the blob is opaque to the backend, so refusing loudly is the only safe answer. */
 export function parseChartContent(content: string): ParsedChartContent {
   const raw = JSON.parse(content) as Record<string, unknown>
-  if (raw.v !== CHART_CONTENT_VERSION && raw.v !== RESOLVED_APPEARANCE_VERSION) {
+  if (raw.v !== CHART_CONTENT_VERSION && raw.v !== APPEARANCE_VERSION && raw.v !== RESOLVED_APPEARANCE_VERSION) {
     throw new Error(`unsupported chart content version ${String(raw.v)}`)
   }
   // A blob from the resolved-tree format states every appearance leaf whether or not anyone chose
   // it, so nothing in it tells a chosen color from an inherited one. Reading it as choices would
   // pin that chart's first render forever, which is the whole reason the format moved on; the rest
-  // of the blob still restores.
-  const appearance = raw.v === RESOLVED_APPEARANCE_VERSION ? undefined : raw.appearance
+  // of the blob still restores. A blob of the appearance format is upgraded into the settings
+  // sections; the current format is read leaf by leaf.
+  const read =
+    raw.v === RESOLVED_APPEARANCE_VERSION
+      ? undefined
+      : raw.v === APPEARANCE_VERSION
+        ? raw.appearance && typeof raw.appearance === 'object'
+          ? settingsFromAppearance(raw.appearance, paintableColor)
+          : undefined
+        : raw.settings && typeof raw.settings === 'object' && !Array.isArray(raw.settings)
+          ? readPartialChartSettings(raw.settings, paintableColor)
+          : undefined
   return {
     symbol: typeof raw.symbol === 'string' && raw.symbol ? raw.symbol : undefined,
     timeframe: typeof raw.tf === 'string' && raw.tf ? raw.tf : undefined,
@@ -158,7 +178,8 @@ export function parseChartContent(content: string): ParsedChartContent {
     scale: typeof raw.scale === 'string' ? raw.scale : undefined,
     priceAxis: typeof raw.axis === 'string' ? raw.axis : undefined,
     indicators: raw.v === RESOLVED_APPEARANCE_VERSION ? [] : parseSavedIndicators(raw.indicators),
-    appearance: appearance && typeof appearance === 'object' ? (appearance as Partial<ChartOverrides['appearance']>) : undefined,
+    settings: read?.settings,
+    settingsRejected: read?.rejected,
     drawings: Array.isArray(raw.drawings) ? (raw.drawings as SerializedDrawing[]) : undefined,
     compares: raw.compares,
     ext: raw.ext,
@@ -178,7 +199,7 @@ function finite(value: unknown, label: string): number {
 }
 
 function color(value: unknown, label: string): string {
-  if (typeof value !== 'string' || !recoveryColor(value)) throw new Error(`chart content indicator ${label} is not a color`)
+  if (typeof value !== 'string' || !paintableColor(value)) throw new Error(`chart content indicator ${label} is not a color`)
   return value
 }
 
@@ -377,18 +398,6 @@ export interface SaveLoadDeps {
 const recoveryReceipts = new WeakMap<ChartSaveLoadApi, () => (() => void) | undefined>()
 export const chartRecoveryReceipt = (api: ChartSaveLoadApi): (() => void) | undefined => recoveryReceipts.get(api)?.()
 
-/** Appearance accepts browser color syntax beyond the theme's measurable hex/rgb palette. Use
- *  the same CSS assignment the renderer consumes, without inserting a node or inheriting a
- *  fallback color when a malformed value was ignored. Context-dependent values cannot prove a
- *  complete saved look. Without a browser, only the portable parser can establish validity. */
-function recoveryColor(value: string): boolean {
-  if (typeof document === 'undefined') return parseCssColor(value) !== null
-  if (/\b(?:var|env)\s*\(|\b(?:currentcolor|inherit|initial|unset|revert(?:-layer)?)\b/i.test(value)) return false
-  const style = document.createElement('span').style
-  style.color = value
-  return style.color !== ''
-}
-
 export function createSaveLoadApi(deps: SaveLoadDeps): ChartSaveLoadApi {
   let generation = 0
   let complete = false
@@ -431,19 +440,13 @@ export function createSaveLoadApi(deps: SaveLoadDeps): ChartSaveLoadApi {
           parsed.style !== undefined &&
           parsed.scale !== undefined &&
           parsed.indicators !== undefined &&
-          // Appearance in content is the AUTHORED layer, so an absent leaf is a leaf nobody chose
+          // Settings in content are the AUTHORED leaves, so an absent leaf is a leaf nobody chose
           // and the theme and host resolve it: absence proves recovery as surely as a value does,
           // and an empty record is a complete statement. What cannot certify recovery is a leaf
           // that is PRESENT and unusable, because the chart would silently keep the old value in
-          // its place. Keys and types come from the canonical override owner, not a second schema.
-          parsed.appearance !== undefined &&
-          Object.entries(DEFAULT_OVERRIDES.appearance).every(([key, sample]) => {
-            const value = (parsed.appearance as Record<string, unknown>)[key]
-            if (value === undefined) return true
-            return typeof sample === 'boolean'
-              ? typeof value === 'boolean'
-              : typeof value === 'string' && recoveryColor(value)
-          }) &&
+          // its place. The reading that judged each leaf is the settings tree's own.
+          parsed.settings !== undefined &&
+          (parsed.settingsRejected?.length ?? 0) === 0 &&
           // The content owner includes this field precisely in combined mode, even for an empty
           // drawing layer. Separate mode holds its drawings outside this blob and requires none.
           (heldContent.drawings === undefined || parsed.drawings !== undefined) &&
