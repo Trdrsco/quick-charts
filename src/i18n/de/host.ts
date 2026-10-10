@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'Kein Volumen von diesem Feed',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'Seit dem Öffnen wurde anderswo gespeichert. Vor dem Speichern die neuere Version laden.',
+  'host.saveNotFound': 'Dies wurde anderswo gelöscht. Erneut als neu speichern.',
+  'host.loadInvalid': 'Dies konnte nicht geöffnet werden. Auf dem Bildschirm hat sich nichts geändert.',
+  'host.loadUnavailable': 'Die gespeicherte Arbeit war nicht erreichbar. Auf dem Bildschirm hat sich nichts geändert.',
+  'host.loadNotRestored': 'Dies konnte nicht geöffnet werden, und der vorherige Bildschirminhalt ließ sich nicht wiederherstellen. Der Chart speichert erst wieder, wenn ein gespeicherter Chart oder ein gespeichertes Layout geöffnet wird. Zuerst eine Kopie speichern, um den Bildschirminhalt zu behalten.',
+  'host.notSaving': 'Der Chart speichert nicht. Einen gespeicherten Chart oder ein gespeichertes Layout öffnen, um von einem bekannten Stand aus zu beginnen. Eine Kopie zu speichern behält den Bildschirminhalt, aber der Chart speichert weiterhin nicht.',
 }

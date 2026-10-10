@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'Nguồn dữ liệu này không có khối lượng',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'Đã được lưu ở nơi khác kể từ khi bạn mở. Hãy tải phiên bản mới hơn trước khi lưu.',
+  'host.saveNotFound': 'Mục này đã bị xóa ở nơi khác. Hãy lưu lại dưới dạng mục mới.',
+  'host.loadInvalid': 'Không thể mở mục này. Không có gì trên màn hình thay đổi.',
+  'host.loadUnavailable': 'Không thể truy cập công việc đã lưu của bạn. Không có gì trên màn hình thay đổi.',
+  'host.loadNotRestored': 'Không thể mở mục này, và cũng không thể khôi phục nội dung trước đó trên màn hình. Biểu đồ sẽ không lưu cho đến khi bạn mở một biểu đồ hoặc bố cục đã lưu. Hãy lưu một bản sao trước để giữ nội dung trên màn hình.',
+  'host.notSaving': 'Biểu đồ không lưu. Hãy mở một biểu đồ hoặc bố cục đã lưu để bắt đầu từ một trạng thái đã biết. Lưu một bản sao sẽ giữ nội dung trên màn hình, nhưng biểu đồ vẫn sẽ không lưu.',
 }

@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'Aquest feed no proporciona volum',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'S’ha desat en un altre lloc després d’obrir-lo. Carrega la versió més nova abans de desar.',
+  'host.saveNotFound': 'S’ha suprimit en un altre lloc. Torna a desar-lo com a nou.',
+  'host.loadInvalid': 'No s’ha pogut obrir. No ha canviat res a la pantalla.',
+  'host.loadUnavailable': 'No s’ha pogut accedir a la feina desada. No ha canviat res a la pantalla.',
+  'host.loadNotRestored': 'No s’ha pogut obrir, i tampoc no s’ha pogut restablir el que hi havia a la pantalla. El gràfic no desarà fins que obris un gràfic o un disseny desat. Desa primer una còpia per conservar el que hi ha a la pantalla.',
+  'host.notSaving': 'El gràfic no està desant. Obre un gràfic o un disseny desat per començar des d’un estat conegut. Desar una còpia conserva el que hi ha a la pantalla, però el gràfic continuarà sense desar.',
 }

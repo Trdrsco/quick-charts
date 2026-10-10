@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'ฟีดนี้ไม่มีข้อมูลปริมาณ',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'มีการบันทึกจากที่อื่นหลังจากคุณเปิดรายการนี้ โปรดโหลดเวอร์ชันที่ใหม่กว่าก่อนบันทึก',
+  'host.saveNotFound': 'รายการนี้ถูกลบจากที่อื่นแล้ว โปรดบันทึกใหม่เป็นรายการใหม่',
+  'host.loadInvalid': 'เปิดรายการนี้ไม่ได้ ไม่มีสิ่งใดบนหน้าจอเปลี่ยนแปลง',
+  'host.loadUnavailable': 'เข้าถึงงานที่บันทึกไว้ไม่ได้ ไม่มีสิ่งใดบนหน้าจอเปลี่ยนแปลง',
+  'host.loadNotRestored': 'เปิดรายการนี้ไม่ได้ และกู้คืนสิ่งที่อยู่บนหน้าจอเดิมไม่ได้ กราฟจะไม่บันทึกจนกว่าคุณจะเปิดกราฟหรือเลย์เอาต์ที่บันทึกไว้ โปรดบันทึกสำเนาก่อนเพื่อเก็บสิ่งที่อยู่บนหน้าจอไว้',
+  'host.notSaving': 'กราฟไม่ได้บันทึก โปรดเปิดกราฟหรือเลย์เอาต์ที่บันทึกไว้เพื่อเริ่มจากสถานะที่ทราบ การบันทึกสำเนาจะเก็บสิ่งที่อยู่บนหน้าจอไว้ แต่กราฟจะยังคงไม่บันทึก',
 }
