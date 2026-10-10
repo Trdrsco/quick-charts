@@ -556,7 +556,8 @@ describe('the plus button', () => {
     // the plot's edge, and the button stands on what it drew.
     expect(paint(renderer)).toEqual(['rgb(61, 61, 61)'])
     expect(plus.hidden).toBe(false)
-    expect([plus.style.left, plus.style.top, plus.style.width, plus.style.height]).toEqual(['519px', '110px', '21px', '21px'])
+    // 20px wide and the label's 21px tall, its right edge one pixel short of the scale at 540px.
+    expect([plus.style.left, plus.style.top, plus.style.width, plus.style.height]).toEqual(['519px', '110px', '20px', '21px'])
     expect(plus.getAttribute('aria-label')).toBe('Price actions')
     renderer.fireCrosshair(BARS[5]!.t, 300, 200)
     paint(renderer)

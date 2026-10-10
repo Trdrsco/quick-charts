@@ -95,12 +95,12 @@ function setup(options: { side?: 'left' | 'right'; enabled?: boolean; look?: Rec
 
 describe('the plus beside the crosshair label', () => {
   it('sits on the label rows the renderer gives a crosshair at a height, square and flush against the plot edge', () => {
-    // The reference's 12px label at a pointer 398px down: rows 388 to 408, the plus 21px across.
+    // The reference's 12px label at a pointer 398px down: rows 388 to 408, the plus 20px across.
     expect(crosshairLabelHeight(12)).toBe(21)
-    expect(scalePlusBitmapBox(398, { width: 1122 }, 'right', 12, { horizontal: 1, vertical: 1 })).toEqual({ left: 1101, top: 388, width: 21, height: 21 })
-    expect(scalePlusBitmapBox(398, { width: 1122 }, 'left', 12, { horizontal: 1, vertical: 1 })).toEqual({ left: 0, top: 388, width: 21, height: 21 })
+    expect(scalePlusBitmapBox(398, { width: 1122 }, 'right', 12, { horizontal: 1, vertical: 1 })).toEqual({ left: 1101, top: 388, width: 20, height: 21 })
+    expect(scalePlusBitmapBox(398, { width: 1122 }, 'left', 12, { horizontal: 1, vertical: 1 })).toEqual({ left: 1, top: 388, width: 20, height: 21 })
     // At twice the pixels the rows double and keep the crosshair line's parity.
-    expect(scalePlusBitmapBox(398, { width: 2244 }, 'right', 12, { horizontal: 2, vertical: 2 })).toEqual({ left: 2202, top: 775, width: 42, height: 42 })
+    expect(scalePlusBitmapBox(398, { width: 2244 }, 'right', 12, { horizontal: 2, vertical: 2 })).toEqual({ left: 2202, top: 775, width: 40, height: 42 })
   })
 
   it('is exactly as tall as the crosshair label, on the same rows, at every text size and pixel ratio', () => {
@@ -125,6 +125,26 @@ describe('the plus beside the crosshair label', () => {
     }
   })
 
+  it('reads as one pill split by a hairline: 20px, then 1px of chart, then the label flush at the scale', () => {
+    // The renderer stands the crosshair's price label flush against the plot's edge, square on that
+    // side and rounded at its far end. The plus ends one pixel of plot short of that edge, square on
+    // the side facing the label and rounded at its outer corners.
+    const right = scalePlusBitmapBox(398, { width: 1122 }, 'right', 12, { horizontal: 1, vertical: 1 })
+    expect(right.width).toBe(20)
+    expect(1122 - (right.left + right.width)).toBe(1)
+    // At twice the pixels the hairline is still one pixel of the page.
+    const sharp = scalePlusBitmapBox(398, { width: 2244 }, 'right', 12, { horizontal: 2, vertical: 2 })
+    expect(2244 - (sharp.left + sharp.width)).toBe(2)
+    // Beside a left scale the order and the rounding mirror: the hairline, then the plus.
+    const left = scalePlusBitmapBox(398, { width: 1122 }, 'left', 12, { horizontal: 1, vertical: 1 })
+    expect([left.left, left.width]).toEqual([1, 20])
+    const { layer, paint } = setup({ side: 'left' })
+    layer.setPointer({ x: 300, y: 398 })
+    const calls = paint()
+    expect(calls.find((call) => call.op === 'roundRect')!.args).toEqual([1, 388, 20, 21, [0, 2, 2, 0]])
+    expect(calls.find((call) => call.op === 'arc')!.args.slice(0, 2)).toEqual([10.5, 398.5])
+  })
+
   it('rounds its outer corners by the radius the renderer rounds the label by, square where it joins it', () => {
     // The renderer rounds its labels by 2px of the pane's pixels; the reference's label and plus both
     // measure 2px at their outer corners and square where they meet.
@@ -142,15 +162,15 @@ describe('the plus beside the crosshair label', () => {
     layer.setPointer({ x: 822, y: 398 })
     const calls = paint()
     const box = calls.find((call) => call.op === 'roundRect')!
-    expect(box.args).toEqual([1101, 388, 21, 21, [2, 0, 0, 2]])
+    expect(box.args).toEqual([1101, 388, 20, 21, [2, 0, 0, 2]])
     // The same paint reports the box it drew, which the hit target stands on.
-    expect(placed.at(-1)).toEqual({ left: 1101, top: 388, width: 21, height: 21, y: 398 })
+    expect(placed.at(-1)).toEqual({ left: 1101, top: 388, width: 20, height: 21, y: 398, paneWidth: 1122 })
     expect(layer.box()).toEqual(placed.at(-1))
     // The next crosshair move is drawn by the next paint, and only by it.
     layer.setPointer({ x: 822, y: 421 })
     expect(placed.at(-1)!.y).toBe(398)
     paint()
-    expect(placed.at(-1)).toEqual({ left: 1101, top: 411, width: 21, height: 21, y: 421 })
+    expect(placed.at(-1)).toEqual({ left: 1101, top: 411, width: 20, height: 21, y: 421, paneWidth: 1122 })
   })
 
   it('wears the label fill and draws a ringed plus in the label ink through its middle', () => {
@@ -182,7 +202,7 @@ describe('the plus beside the crosshair label', () => {
   it('mirrors beside a left scale', () => {
     const { layer, paint } = setup({ side: 'left' })
     layer.setPointer({ x: 300, y: 398 })
-    expect(paint().find((call) => call.op === 'roundRect')!.args).toEqual([0, 388, 21, 21, [0, 2, 2, 0]])
+    expect(paint().find((call) => call.op === 'roundRect')!.args).toEqual([1, 388, 20, 21, [0, 2, 2, 0]])
   })
 
   it('paints nothing while the setting is off, the crosshair is off the plot, or the renderer draws no label', () => {

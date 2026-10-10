@@ -64,13 +64,14 @@ export interface PriceMenuAnchor {
 }
 
 /** The box the renderer painted the plus in, in the main pane's own pixels, with the crosshair's
- *  height through it. */
+ *  height through it and the pane's width. */
 export interface PlusBox {
   left: number
   top: number
   width: number
   height: number
   y: number
+  paneWidth: number
 }
 
 export interface ScaleControls {
@@ -171,8 +172,9 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
       plus.hidden = true
       return
     }
-    // The plot's edge is the scale's edge: the plus stands against it on the plot side.
-    const left = scale.side === 'right' ? scale.left - box.width : scale.left + scale.width
+    // The main pane's plot ends where the scale starts on its side, and the box stands in the plot.
+    const plotLeft = scale.side === 'right' ? scale.left - box.paneWidth : scale.left + scale.width
+    const left = plotLeft + box.left
     const was = placed
     placed = { left, top: scale.top + box.top, width: box.width, height: box.height, y: scale.top + box.y, side: scale.side }
     if (was && !plus.hidden && was.left === placed.left && was.top === placed.top && was.width === placed.width && was.height === placed.height) return

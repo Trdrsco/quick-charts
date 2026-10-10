@@ -2,8 +2,10 @@
 // the pass that paints the label it is joined to.
 //
 // A primitive on the main series draws it on the plot side of the scale's edge, at the crosshair's
-// height: a square as tall as the label, flush against the plot's edge so only the scale's border
-// stands between the two, in the label's own fill with the label's ink for its ringed plus. The
+// height: a box as tall as the label, in the label's own fill with the label's ink for its ringed
+// plus. The renderer stands its crosshair label flush against the plot's edge, so the plus stands
+// one pixel of plot short of that edge: two boxes side by side with a hairline of the chart between,
+// each square where they face and rounded at its outer corners, as one pill split in two. The
 // renderer paints the crosshair, its label and this primitive's top layer from the one crosshair it
 // holds, in one frame, so the plus and the label can never stand apart.
 //
@@ -24,6 +26,8 @@ export interface ScalePlusBox {
   height: number
   /** The crosshair's height on the pane: the label's middle. */
   y: number
+  /** The pane's width, which places the box against either edge. */
+  paneWidth: number
 }
 
 /** The renderer's options the plus reads: the crosshair's mode and price label, and the scale's
@@ -63,8 +67,15 @@ export interface ScalePlusLayer {
  *  it, 21px at 12px. */
 export const crosshairLabelHeight = (fontSize: number): number => fontSize + ((2 * 2.5) / 12) * fontSize + ((2 * 2) / 12) * fontSize
 
+/** The plus's width at a text size: 20px at 12px, beside a 21px label. */
+export const plusWidth = (fontSize: number): number => (20 / 12) * fontSize
+
+/** The plot between the plus and the label, which the renderer stands flush against the plot's
+ *  edge: one pixel. */
+const GAP = 1
+
 /** The plus's box in bitmap pixels, on the rows the renderer gives the crosshair's label at a height
- *  `y`, square at the label's height and flush against the plot's edge on the scale's side. */
+ *  `y`, one pixel of plot short of the plot's edge on the scale's side. */
 export function scalePlusBitmapBox(
   y: number,
   pane: { width: number },
@@ -80,14 +91,15 @@ export function scalePlusBitmapBox(
   if (height % 2 !== tick % 2) height += 1
   const middle = Math.round(y * ratio.vertical) - Math.floor(ratio.vertical * 0.5)
   const top = Math.floor(middle + tick / 2 - height / 2)
-  const width = Math.round(label * ratio.horizontal)
-  return { left: side === 'right' ? pane.width - width : 0, top, width, height }
+  const width = Math.round(plusWidth(fontSize) * ratio.horizontal)
+  const gap = Math.max(1, Math.floor(GAP * ratio.horizontal))
+  return { left: side === 'right' ? pane.width - gap - width : gap, top, width, height }
 }
 
-/** The glyph inside the box, measured on the 21px square a 12px label makes and scaled with it: a
+/** The glyph inside the box, measured beside the 21px label a 12px text makes and scaled with it: a
  *  ring 1px wide at a radius of 7.5 and a plus 7px across, both through the box's middle. */
 const GLYPH = { box: 21, ring: 7.5, arm: 3.5, stroke: 1 }
-/** The corner radius on the plot side, the radius the renderer rounds its own labels by. */
+/** The radius of the outer corners, the one the renderer rounds its own labels' outer corners by. */
 const RADIUS = 2
 /** How far the hover fill moves from the label's fill toward its ink. */
 const HOVER = 0.2
@@ -138,22 +150,24 @@ export function attachScalePlus(deps: ScalePlusDeps): ScalePlusLayer {
     const side = deps.side()
     const fontSize = look.layout?.fontSize ?? 12
     const bitmap = scalePlusBitmapBox(pointer.y, { width: scope.bitmapSize.width }, side, fontSize, { horizontal: h, vertical: v })
-    const box: ScalePlusBox = { left: bitmap.left / h, top: bitmap.top / v, width: bitmap.width / h, height: bitmap.height / v, y: pointer.y }
+    const box: ScalePlusBox = { left: bitmap.left / h, top: bitmap.top / v, width: bitmap.width / h, height: bitmap.height / v, y: pointer.y, paneWidth: scope.bitmapSize.width / h }
     // The plus stands on the pointer's own row, so the pointer is on it wherever it is in its column.
     const hovered = pointer.x >= box.left && pointer.x < box.left + box.width
     const color = label.labelBackgroundColor
     ctx.save()
-    // Rounded on the plot side, square where it meets the label.
+    // Rounded at its outer corners and square on the side facing the label, which is square there too.
     const r = RADIUS * h
     ctx.fillStyle = hovered ? hoverFill(color) : labelFill(color)
     ctx.beginPath()
     ctx.roundRect(bitmap.left, bitmap.top, bitmap.width, bitmap.height, side === 'right' ? [r, 0, 0, r] : [0, r, r, 0])
     ctx.fill()
-    // The ringed plus, centred, in the label's ink.
+    // The ringed plus in the label's ink, its middle on the pixel grid so its strokes stay crisp: the
+    // box's middle, or for an even width the pixel just past it, away from the outer edge.
     const scale = bitmap.height / GLYPH.box
-    const cx = bitmap.left + bitmap.width / 2
-    const cy = bitmap.top + bitmap.height / 2
     const stroke = Math.max(1, Math.round(GLYPH.stroke * h))
+    const half = Math.floor(bitmap.width / 2) + (stroke % 2) / 2
+    const cx = side === 'right' ? bitmap.left + half : bitmap.left + bitmap.width - half
+    const cy = bitmap.top + Math.floor(bitmap.height / 2) + (stroke % 2) / 2
     const arm = GLYPH.arm * scale
     const ink = labelInk(color)
     ctx.strokeStyle = ink

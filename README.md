@@ -2358,8 +2358,8 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   intraday chart of regular hours, a newest bar in a pre-market, post-market or overnight stretch
   is left off the chart and its close is marked instead, in that stretch's label color. The plus
   button (`plusButton`) is joined to the crosshair's price label while the crosshair is on the
-  main pane's plot: the renderer paints it with the label, a square as tall as the label on the
-  plot side of the scale's edge, in the label's fill with a ringed plus in the label's ink. Its
+  main pane's plot: the renderer paints it with the label, a box as tall as the label one pixel of
+  the chart short of the scale's edge, in the label's fill with a ringed plus in the label's ink. Its
   press opens the price menu under it, which holds the actions on that price alone: every `level`
   row an extension contributes, each extension's rows together in the order the extensions
   attach, and then "Draw horizontal line at" the price, which runs
