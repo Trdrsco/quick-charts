@@ -106,10 +106,12 @@ export interface DrawingsMeta extends ResourceRef {
   updatedAt: number
 }
 
-export type TemplateKind = 'indicator' | 'drawing' | 'palette'
+/** A template family: an indicator's settings, a drawing tool's look, a palette, or the chart
+ *  settings dialog's settings of a whole chart. */
+export type TemplateKind = 'indicator' | 'drawing' | 'palette' | 'chart'
 
 /** A named template's listing row. `tool` scopes DRAWING templates to their tool (a trend-line
- *  template is meaningless on a rectangle); indicator and palette templates carry no tool. */
+ *  template is meaningless on a rectangle); indicator, palette and chart templates carry no tool. */
 export interface TemplateMeta extends ResourceRef {
   name: string
   tool?: string
