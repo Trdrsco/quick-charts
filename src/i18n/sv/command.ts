@@ -60,7 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'Ritningsinställningar',
   'command.drawingCommitEdit': 'Använd ritningsinställningar',
   'command.drawingPlaceImage': 'Placera bild',
-  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
+  'command.drawingPlaceHorizontalLine': 'Placera horisontell linje',
   'command.drawingTemplateApply': 'Använd ritmall',
   'command.drawingTemplateSave': 'Spara ritmall',
   'command.drawingTemplateRemove': 'Ta bort ritmall',

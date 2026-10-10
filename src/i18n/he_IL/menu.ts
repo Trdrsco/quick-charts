@@ -8,5 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { one: 'הסרת {count} אינדיקטור', two: 'הסרת {count} אינדיקטורים', other: 'הסרת {count} אינדיקטורים' },
   'menu.removeDrawings': { one: 'הסרת {count} ציור', two: 'הסרת {count} ציורים', other: 'הסרת {count} ציורים' },
   'menu.settings': 'הגדרות…',
-  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
+  'menu.drawHorizontalLine': 'ציור קו אופקי במחיר {price}',
 }

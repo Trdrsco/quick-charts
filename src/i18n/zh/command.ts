@@ -60,7 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': '绘图设置',
   'command.drawingCommitEdit': '应用绘图设置',
   'command.drawingPlaceImage': '放置图片',
-  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
+  'command.drawingPlaceHorizontalLine': '放置水平线',
   'command.drawingTemplateApply': '应用绘图模板',
   'command.drawingTemplateSave': '保存绘图模板',
   'command.drawingTemplateRemove': '移除绘图模板',

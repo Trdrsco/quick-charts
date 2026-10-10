@@ -60,7 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'Настройки рисунка',
   'command.drawingCommitEdit': 'Применить настройки рисунка',
   'command.drawingPlaceImage': 'Разместить изображение',
-  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
+  'command.drawingPlaceHorizontalLine': 'Разместить горизонтальную линию',
   'command.drawingTemplateApply': 'Применить шаблон рисунка',
   'command.drawingTemplateSave': 'Сохранить шаблон рисунка',
   'command.drawingTemplateRemove': 'Удалить шаблон рисунка',

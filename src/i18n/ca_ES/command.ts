@@ -60,7 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'Configuració del dibuix',
   'command.drawingCommitEdit': 'Aplica la configuració del dibuix',
   'command.drawingPlaceImage': 'Col·loca una imatge',
-  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
+  'command.drawingPlaceHorizontalLine': 'Col·loca una línia horitzontal',
   'command.drawingTemplateApply': 'Aplica una plantilla de dibuix',
   'command.drawingTemplateSave': 'Desa la plantilla de dibuix',
   'command.drawingTemplateRemove': 'Elimina la plantilla de dibuix',

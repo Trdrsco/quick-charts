@@ -60,7 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'Impostazioni del disegno',
   'command.drawingCommitEdit': 'Applica le impostazioni del disegno',
   'command.drawingPlaceImage': 'Posiziona immagine',
-  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
+  'command.drawingPlaceHorizontalLine': 'Posiziona linea orizzontale',
   'command.drawingTemplateApply': 'Applica modello di disegno',
   'command.drawingTemplateSave': 'Salva modello di disegno',
   'command.drawingTemplateRemove': 'Rimuovi modello di disegno',

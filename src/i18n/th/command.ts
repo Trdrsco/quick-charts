@@ -60,7 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'การตั้งค่าการวาด',
   'command.drawingCommitEdit': 'ใช้การตั้งค่าการวาด',
   'command.drawingPlaceImage': 'วางรูปภาพ',
-  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
+  'command.drawingPlaceHorizontalLine': 'วางเส้นแนวนอน',
   'command.drawingTemplateApply': 'ใช้เทมเพลตการวาด',
   'command.drawingTemplateSave': 'บันทึกเทมเพลตการวาด',
   'command.drawingTemplateRemove': 'นำเทมเพลตการวาดออก',
