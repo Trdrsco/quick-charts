@@ -107,7 +107,7 @@ import { closeOverlays } from '../ui/controls/overlays'
 import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
 import { attachCountdown, createCountdownClock, type CountdownLayer } from './countdown'
-import { attachPrices, previousCloseFromBars, statedPreviousClose } from './prices'
+import { attachPrices, previousCloseFromBars, signedPercentText, statedPreviousClose } from './prices'
 import { attachPriceLevels, visibleRange, type PriceLevelFacts, type PriceLevelsLayer } from './priceLevels'
 import {
   DEFAULT_TIMEZONE,
@@ -1156,6 +1156,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // that label does.
     enabled: () => eff.priceLabels.countdown && eff.priceLabels.symbolValue && deps.ui.priceScale,
     nativeLabel: () => eff.priceLabels.symbolValue && deps.ui.priceScale,
+    // Under "price and percentage", the last value's change since the previous session's close is
+    // the label's second line.
+    percent: () => {
+      if (eff.priceLabels.symbolValueMode !== 'priceAndPercent') return null
+      const bar = shownBars().at(-1)
+      const base = previousClose()
+      if (!bar || base === null || base === 0) return null
+      return signedPercentText((drawnValue(bar) - base) / base, i18n.tag())
+    },
     look: () => ({ up: eff.candles.upColor, down: eff.candles.downColor, fontSize: eff.canvas.scaleTextSize }),
     replaying: () => replay.active(),
     dataStatus: () => (feedStatus === 'live' ? deps.capabilities().dataStatus : null),

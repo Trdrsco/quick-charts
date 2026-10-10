@@ -28,6 +28,8 @@ The status line's `lastDayChange` writes the latest price's change since the pre
 
 The price labels mark the previous session's close on an intraday chart, the high and low of the bars in view, and the bid and ask from the feed's prices: each a value box on the price scale in its own color with white text, a tag on the plot side ("High", "Low", "Bid", "Ask"), and a 1px dotted line across the plot, the value and the line each on their own switch, stacked with the last value's label while labels are kept apart. The high and low wear `#808080` lines and `#142e61` labels while `highLowColor` is null, and `CHART_FACTORY_COLORS` gains `highLowLine`, `highLowLabel` and `scaleLabelText`. The catalog gains `chrome.scaleHigh`, `chrome.scaleLow`, `chrome.scaleBid` and `chrome.scaleAsk`.
 
+The last value's "price and percentage" mode (`symbolValueMode: 'priceAndPercent'`) writes the change since the previous session's close under the price, to two decimals with its sign, and the countdown under that. The label is drawn as the renderer draws its own, one pixel inside the scale, square on the plot side and rounded on the other, 17px tall at 12px with 14px more for each line, in white with the countdown at 75%.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:

@@ -11,6 +11,7 @@ import {
   countdownState,
   countdownText,
   createCountdownClock,
+  labelBox,
 } from '../../src/widget/countdown'
 
 const utc = (year: number, month: number, day: number, hour = 0, minute = 0): number =>
@@ -283,7 +284,63 @@ describe('the price-axis lifecycle', () => {
       },
     })
     expect(text).toEqual(['exact:101.00000', '00:30'])
-    expect(fills).toEqual(['#00aa88', '#ffffff'])
+    // The price in the label text, the countdown under it at three quarters of its strength.
+    expect(fills).toEqual(['#00aa88', '#ffffff', 'rgba(255, 255, 255, 0.75)'])
+  })
+
+  it('lays the label out as the renderer lays its own, one line pitch per line', () => {
+    expect([1, 2, 3].map((lines) => labelBox(12, lines).height)).toEqual([17, 31, 45])
+    expect(labelBox(12, 1)).toMatchObject({ left: 1, inset: 10, radius: 2 })
+    expect(labelBox(24, 2).height).toBe(62)
+  })
+
+  it('writes the percentage under the price, with or without the countdown', () => {
+    const percent = { text: null as string | null }
+    const options: Record<string, unknown>[] = []
+    const primitives: { priceAxisPaneViews(): readonly { renderer(): { draw(target: unknown): void } }[] }[] = []
+    let countdown = false
+    attachCountdown({
+      series: () => ({ applyOptions: (next: Record<string, unknown>) => options.push(next), priceToCoordinate: () => 50, attachPrimitive: (p: never) => primitives.push(p) }) as never,
+      bars: () => [bar(60)],
+      timeframe: () => '1m',
+      enabled: () => countdown,
+      nativeLabel: () => true,
+      percent: () => percent.text,
+      look: () => ({ up: '#00aa88', down: '#cc3300', fontSize: 12 }),
+      replaying: () => false,
+      dataStatus: () => 'streaming',
+      session: () => null,
+      activeSubsession: () => 'extended',
+      formatter: () => ({ format: (price: number) => price.toFixed(2) }) as PriceFormatter,
+      theme: () => theme,
+      now: () => 90,
+      setInterval: () => 1,
+      clearInterval: () => undefined,
+    })
+    const draw = (): string[] => {
+      const text: string[] = []
+      const context = {
+        set fillStyle(_value: string) {},
+        set font(_value: string) {},
+        set textAlign(_value: CanvasTextAlign) {},
+        set textBaseline(_value: CanvasTextBaseline) {},
+        beginPath() {},
+        roundRect() {},
+        fill() {},
+        measureText: (value: string) => ({ width: value.length * 7 }),
+        fillText(value: string) { text.push(value) },
+      }
+      primitives[0]!.priceAxisPaneViews()[0]!.renderer().draw({ useMediaCoordinateSpace: (callback: (scope: unknown) => void) => callback({ context, mediaSize: { width: 80, height: 100 } }) })
+      return text
+    }
+    // Nothing beyond the price: the native label stands.
+    expect(options.at(-1)).toEqual({ lastValueVisible: true })
+    expect(draw()).toEqual([])
+    percent.text = '+0.08%'
+    countdown = true
+    expect(draw()).toEqual(['101.00', '+0.08%', '00:30'])
+    countdown = false
+    expect(draw()).toEqual(['101.00', '+0.08%'])
   })
 
   it('does not schedule another renderer update from updateAllViews', () => {

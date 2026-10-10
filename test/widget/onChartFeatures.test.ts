@@ -11,6 +11,7 @@ import { DARK_THEME } from '../../src/theme/palettes'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import type { UiConfig } from '../../src/widget/options'
 import { priceLevels, visibleRange } from '../../src/widget/priceLevels'
+import { signedPercentText } from '../../src/widget/prices'
 import { barValue } from '../../src/widget/styles'
 import { lastRenderer, type FakeRenderer, type FakeSeries } from './rendererFake'
 
@@ -220,6 +221,28 @@ describe('the price levels', () => {
     chart.setStyle('line')
     expect(before.priceLines).toEqual([])
     expect(lines(renderer)).toHaveLength(2)
+  })
+})
+
+describe('the price and percentage label', () => {
+  it('writes a change to two decimals with its sign', () => {
+    expect(signedPercentText(0.0008, 'en')).toBe('+0.08%')
+    expect(signedPercentText(-0.0123456, 'en')).toBe('-1.23%')
+    expect(signedPercentText(0, 'en')).toBe('0.00%')
+    expect(signedPercentText(0.5, 'de')).toBe('+50,00%')
+  })
+
+  it('stands in for the native label while the previous close is known', async () => {
+    const { datafeed, push } = pricedFeed()
+    const { chart, renderer } = await mount({ datafeed })
+    expect(main(renderer).options.lastValueVisible).toBe(true)
+    chart.applySettings({ priceLabels: { symbolValueMode: 'priceAndPercent' } })
+    // No previous close yet: the price alone, in the native label.
+    expect(main(renderer).options.lastValueVisible).toBe(true)
+    push({ previousClose: 4500 })
+    expect(main(renderer).options.lastValueVisible).toBe(false)
+    chart.applySettings({ priceLabels: { symbolValueMode: 'scale' } })
+    expect(main(renderer).options.lastValueVisible).toBe(true)
   })
 })
 

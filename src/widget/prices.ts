@@ -111,6 +111,20 @@ export function attachPrices(deps: PricesDeps): PricesPlane {
   }
 }
 
+const percentWriters = new Map<string, Intl.NumberFormat>()
+
+/** A change as a percentage of what it is measured from, to two decimals with its sign and the
+ *  percent sign, in the reader's own digits: "+0.08%". Exported for tests. */
+export function signedPercentText(fraction: number, tag: string): string {
+  let writer = percentWriters.get(tag)
+  if (!writer) {
+    writer = new Intl.NumberFormat(tag, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    percentWriters.set(tag, writer)
+  }
+  const points = Math.round(fraction * 10_000) / 100
+  return `${points > 0 ? '+' : ''}${writer.format(points === 0 ? 0 : points)}%`
+}
+
 /** The previous session's close the feed states: its own close, or its last less the change it
  *  states. Null when it states neither. */
 export function statedPreviousClose(prices: SymbolPrices | null): number | null {

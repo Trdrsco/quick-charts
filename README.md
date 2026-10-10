@@ -69,7 +69,9 @@ replaces the native last-value label with one price-and-time label. The price us
 delayed or end-of-day data, tick bars, closed declared sessions and missing bars retain the native
 price label. `serverTime` corrects clock skew when available; absence or failure uses the client
 clock. Bar opens define fixed and calendar alignment, and declared session facts shorten only a
-bar they actually close.
+bar they actually close. Under `priceLabels.symbolValueMode: 'priceAndPercent'` the same label
+writes the change since the previous session's close under the price, two decimals and its sign,
+with the countdown beneath that; each line is 14px below the one before at the 12px text size.
 
 `resolve` answers with `SymbolInfo`, the symbology contract ([Symbology](#symbology)): the
 symbol's identity (`ticker`, `name`, `description`), venue and type (`exchange`,
