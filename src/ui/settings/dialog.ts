@@ -424,7 +424,8 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
     })
   }
 
-  /** The Template menu: Apply defaults and Save as, then the saved templates, each with its delete. */
+  /** The Template menu: Apply defaults and Save as, then the saved templates, each with its delete.
+   *  It drops below its button and turns over above it only where the viewport has no room below. */
   const openTemplateMenu = (s: Session): void => {
     if (s.closeMenu) {
       s.closeMenu()
@@ -469,7 +470,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       s.dialog.layer,
       s.template,
       menu,
-      'above',
+      'below',
       () => {
         unkeys()
         s.closeMenu = null

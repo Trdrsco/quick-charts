@@ -397,6 +397,20 @@ describe('what a host contributes', () => {
     expect(one.cancel).toHaveBeenCalledTimes(1)
   })
 
+  it('drops the Template menu below its button', () => {
+    const s = setup()
+    s.dialog.open()
+    // The menu stands on the dialog's layer, whose box it is placed and kept within.
+    const layer = s.box().parentElement!
+    layer.getBoundingClientRect = () => ({ left: 0, top: 0, right: 1280, bottom: 800, width: 1280, height: 800, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect
+    const button = s.box().querySelector<HTMLButtonElement>('.qc-drawing-template-button')!
+    button.getBoundingClientRect = () => ({ left: 40, top: 100, right: 140, bottom: 134, width: 100, height: 34, x: 40, y: 100, toJSON: () => ({}) }) as DOMRect
+    button.click()
+    const menu = document.querySelector<HTMLElement>('.qc-chart-settings-template-menu')!
+    const popover = (menu.closest<HTMLElement>('.qc-drawing-popover') ?? menu)
+    expect(popover.style.top).toBe('134px')
+  })
+
   it('applies the chart\'s defaults and every contribution\'s from the Template menu', () => {
     const applyDefaults = vi.fn()
     const s = setup()
