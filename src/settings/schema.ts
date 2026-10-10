@@ -34,14 +34,17 @@ export type ChartLastValueMode = 'scale' | 'priceAndPercent'
  *  series' scale belongs. */
 export type ChartScalePlacement = 'left' | 'right' | 'auto'
 
-/** How the time scale writes a date. `ddd` is the weekday, which `timeScale.dayOfWeek` adds or
- *  removes; the rest are the date's own order and separators. */
+/** How the crosshair's time label writes a date, in the date's own order and separators. `qq` is the
+ *  quarter (Q3), `MMM` the month's short name, `MM` and `dd` two-digit numbers, `d` the day without a
+ *  leading zero, `yyyy` the whole year and `'yy` an apostrophe before its last two digits. The
+ *  weekday is not a part of any pattern: `timeScale.dayOfWeek` writes it before the date. */
 export type ChartDateFormat =
-  | 'MMM Q yy'
-  | 'MMM Q yyyy'
-  | 'dd MMM yy'
-  | 'MMM yy'
+  | "qq 'yy"
+  | 'qq yyyy'
+  | "dd MMM 'yy"
+  | "MMM 'yy"
   | 'MMM dd, yyyy'
+  | 'MMM d, yyyy'
   | 'MMM yyyy'
   | 'MMM dd'
   | 'dd MMM'
