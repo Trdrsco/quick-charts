@@ -46,5 +46,16 @@
     "screenReaderSupportMeasured": false,
     "safariDeviceSupportMeasured": false,
     "npmPublishApproval": "delegated by Joey to his coordinating session, which approves the npm-publish environment once the validation job passes. Asked \"The npm-publish step needs the owner's approval in GitHub. Approve it yourself, or have me approve it for you?\", he chose \"Approve it for me (Recommended)\"."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/38004949977",
+    "npmPublishApproval": "approved for Joey by his coordinating session, on his instruction, after the validation job passed",
+    "registryIntegrity": "sha512-IkpowP2eZeLzi06Bw61PvmTfi3S59G4/vwp+a6uyzbBUqRg7uTq5QDkD1RcHpT0GJV9DfVPmC1HOQITuetW39g==",
+    "registryTarballSha256": "46d3403f13603a3c3b6a2524345e7e3cb4cb0a3708e84d7d059fa64f22f98174",
+    "provenanceLogIndex": 3174253701,
+    "distTagLatest": "4.1.0",
+    "provenance": "SLSA v1 provenance names refs/tags/v4.1.0, .github/workflows/release.yml and commit 9b376e52fb05f88f059c5983eb4d9f8624f825c9, with the registry tarball's sha512 as its subject",
+    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": "pass: a fresh project installed 4.1.0 from the registry and passed the browser conformance suite, 42 of 42 checks, in Chromium 149.0.7827.55, Firefox 151.0 and WebKit 26.5"
   }
 }
