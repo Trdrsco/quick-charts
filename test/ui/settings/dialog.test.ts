@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createExtensionHost, type ChartExtension, type ChartExtensionHostDeps } from '../../../src/extension'
 import { memorySaveLoadAdapter } from '../../../src/resources'
 import type { ChartSettingsContribution } from '../../../src/settings/contribution'
-import type { PartialChartSettings } from '../../../src/settings/schema'
 import { createChartSettingsDialog } from '../../../src/ui/settings/dialog'
 import { ChartTemplates } from '../../../src/ui/settings/templates'
 import { fakeChart, fakeWidget, type FakeChartOptions } from '../../chrome/harness'
@@ -17,19 +16,11 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-/** A widget over the fake chart with the settings commands the dialog writes through. */
+/** A widget over the fake chart, whose registry carries the settings commands the dialog writes
+ *  through, and a dialog of its own over it. The chart's `viewer` state is the viewer's settings. */
 function setup(options: { chart?: FakeChartOptions; templates?: boolean; access?: (id: string) => boolean } = {}) {
   const chart = fakeChart(options.chart)
   const w = fakeWidget({ chart, ...(options.access ? { access: { command: options.access } } : {}) })
-  const register = (id: string, execute: (arg: unknown) => void): void => {
-    if (w.commands.list().some((spec) => spec.id === id)) return
-    cleanup.push(w.commands.register({ id, scope: 'chart', label: 'command.settingsOpen', available: () => true, execute }))
-  }
-  register('chart.settings.apply', (arg) => chart.handle.applySettings((arg as { settings: PartialChartSettings }).settings))
-  register('chart.settings.reset', () => {
-    chart.handle.resetSettings()
-    chart.handle.setScaleMode('normal')
-  })
   const templates = options.templates ? new ChartTemplates(memorySaveLoadAdapter().templates('chart')) : null
   const dialog = createChartSettingsDialog({ ...w.ctx, templates })
   cleanup.push(() => {
@@ -152,7 +143,7 @@ describe('the form', () => {
     expect(swatch().disabled).toBe(true)
     s.check('sessionBreaks').focus()
     s.check('sessionBreaks').click()
-    expect(s.chart.state.settings).toEqual({ events: { sessionBreaks: true } })
+    expect(s.chart.state.viewer).toEqual({ events: { sessionBreaks: true } })
     expect(swatch().disabled).toBe(false)
     expect((document.activeElement as HTMLElement).dataset.qcKey).toBe('sessionBreaks:check')
   })
@@ -187,7 +178,7 @@ describe('the chart\'s pages', () => {
     bars.dialog.open()
     expect(bars.rowIds().slice(0, 6)).toEqual(['', 'colorOnPreviousClose', 'hlcBars', 'upColor', 'downColor', 'thinBars'])
     bars.check('hlcBars').click()
-    expect(bars.chart.state.settings).toEqual({ bars: { hlcBars: true } })
+    expect(bars.chart.state.viewer).toEqual({ bars: { hlcBars: true } })
 
     const line = setup({ chart: { style: 'line' } })
     line.dialog.open()
@@ -234,7 +225,7 @@ describe('the chart\'s pages', () => {
     expect(slider.value).toBe('50')
     slider.value = '80'
     slider.dispatchEvent(new Event('input'))
-    expect(s.chart.state.settings).toEqual({ statusLine: { backgroundOpacity: 80 } })
+    expect(s.chart.state.viewer).toEqual({ statusLine: { backgroundOpacity: 80 } })
   })
 
   it('builds the Canvas page with its watermark parts and margins', () => {
@@ -330,7 +321,7 @@ describe('what a host contributes', () => {
     const rows = [...document.querySelectorAll<HTMLButtonElement>('.qc-chart-settings-template-menu [role="menuitem"]')]
     expect(rows.map((r) => r.textContent)).toEqual(['Apply defaults'])
     rows[0]!.click()
-    expect(s.chart.state.settings).toEqual({})
+    expect(s.chart.state.viewer).toEqual({})
     expect(s.chart.state.scale).toBe('normal')
     expect(applyDefaults).toHaveBeenCalledTimes(1)
   })
@@ -365,9 +356,9 @@ describe('the edit session', () => {
     s.check('sessionBreaks').click()
     s.chart.handle.setScaleMode('log')
     s.chart.handle.setTimezone('America/New_York')
-    expect(s.chart.state.settings).toEqual({ canvas: { marginTop: 12 }, events: { sessionBreaks: true } })
+    expect(s.chart.state.viewer).toEqual({ canvas: { marginTop: 12 }, events: { sessionBreaks: true } })
     s.box().querySelector<HTMLButtonElement>('.qc-chart-settings-cancel')!.click()
-    expect(s.chart.state.settings).toEqual({ canvas: { marginTop: 12 } })
+    expect(s.chart.state.viewer).toEqual({ canvas: { marginTop: 12 } })
     expect(s.chart.state.scale).toBe('normal')
     expect(s.chart.state.timezone).toBe('Etc/UTC')
   })
@@ -377,15 +368,15 @@ describe('the edit session', () => {
     s.dialog.open('events')
     s.check('sessionBreaks').click()
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-    expect(s.chart.state.settings).toEqual({})
+    expect(s.chart.state.viewer).toEqual({})
     s.dialog.open('events')
     s.check('sessionBreaks').click()
     s.box().querySelector<HTMLButtonElement>('.qc-dialog-close')!.click()
-    expect(s.chart.state.settings).toEqual({})
+    expect(s.chart.state.viewer).toEqual({})
     s.dialog.open('events')
     s.check('sessionBreaks').click()
     s.box().querySelector<HTMLButtonElement>('.qc-chart-settings-ok')!.click()
-    expect(s.chart.state.settings).toEqual({ events: { sessionBreaks: true } })
+    expect(s.chart.state.viewer).toEqual({ events: { sessionBreaks: true } })
   })
 
   it('an untouched session restores nothing', () => {
@@ -417,7 +408,7 @@ describe('the chart templates', () => {
     })
     expect(document.querySelector('.qc-chart-settings-template-menu [aria-label="Remove template Wide"]')).not.toBeNull()
     ;[...document.querySelectorAll<HTMLButtonElement>('.qc-chart-settings-template-menu [role="menuitem"]')].find((r) => r.textContent === 'Wide')!.click()
-    await vi.waitFor(() => expect(s.chart.state.settings).toEqual({ canvas: { marginTop: 30 } }))
+    await vi.waitFor(() => expect(s.chart.state.viewer).toEqual({ canvas: { marginTop: 30 } }))
     // The scale mode the viewer chose stands through a template.
     expect(s.chart.state.scale).toBe('log')
   })

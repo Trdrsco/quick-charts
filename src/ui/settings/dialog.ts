@@ -16,6 +16,7 @@
 import type { ChartMessageKey } from '../../i18n'
 import { settingsContributionsOf } from '../../extension'
 import type { ChartSettingsContribution, ChartSettingsPageId } from '../../settings/contribution'
+import { readPartialChartSettings } from '../../settings/defaults'
 import type { PartialChartSettings } from '../../settings/schema'
 import type { ScaleMode } from '../../scaleMode'
 import { isIntradayTimeframe } from '../../timeframe'
@@ -31,7 +32,6 @@ import { selectChevron } from '../controls/select'
 import { openDialog, type DialogHandle } from '../drawings/dialog'
 import { button, el, focusFirst, menuKeys } from '../drawings/dom'
 import { openPopover, reopenPopover } from '../drawings/fields'
-import type {} from './chartHandleSettings'
 import { createSettingsForm, type SettingsFormDeps } from './form'
 import { buildChartPage, CHART_PAGES, type ChartPageContext } from './pages'
 import type { ChartTemplateRow, ChartTemplates } from './templates'
@@ -84,11 +84,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> => !!value &
 function viewerSettings(chart: ChartHandle): PartialChartSettings {
   try {
     const content: unknown = JSON.parse(chart.saveLoad.serialize().content)
-    const settings = isRecord(content) ? content.settings : undefined
-    if (!isRecord(settings)) return {}
-    const out: Record<string, unknown> = {}
-    for (const [section, leaves] of Object.entries(settings)) if (isRecord(leaves)) out[section] = { ...leaves }
-    return out as PartialChartSettings
+    return readPartialChartSettings(isRecord(content) ? content.settings : undefined).settings
   } catch {
     return {}
   }
@@ -438,7 +434,7 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       })
       return row
     }
-    const defaults = rowOf(t()('drawing.applyDefaults'), deps.commands.available('chart.settings.reset'), () => applyDefaults(s))
+    const defaults = rowOf(t()('command.settingsReset'), deps.commands.available('chart.settings.reset'), () => applyDefaults(s))
     defaults.hidden = !shows(deps, 'chart.settings.reset')
     menu.appendChild(defaults)
     if (deps.templates) menu.appendChild(rowOf(t()('drawing.saveAs'), true, () => saveTemplate(s)))

@@ -6,6 +6,7 @@
 // A template holds the viewer's own settings, the partial the viewer chose over the theme and the
 // host, not the settings the chart shows: applied on a chart in the other mode, the leaves the
 // viewer never named still follow that mode.
+import { readPartialChartSettings } from '../../settings/defaults'
 import type { PartialChartSettings } from '../../settings/schema'
 import type { ResourceRef, ResourceStore, TemplateBody, TemplateMeta, WriteOutcome } from '../../resources'
 
@@ -17,19 +18,13 @@ export interface ChartTemplateRow {
 
 const encode = (settings: PartialChartSettings): string => JSON.stringify({ settings })
 
-/** Total: a body that will not parse, or that holds no settings object, reads as no settings, so one
- *  corrupt row never takes the menu down with it. */
+/** Total: a body that will not parse reads as no settings, and a leaf the tree does not have or
+ *  cannot hold is left out, so one corrupt row never takes the menu down with it. */
 export function decodeChartTemplate(content: string): PartialChartSettings {
   try {
     const parsed: unknown = JSON.parse(content)
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    const settings = (parsed as { settings?: unknown }).settings
-    if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return {}
-    const out: Record<string, unknown> = {}
-    for (const [section, leaves] of Object.entries(settings)) {
-      if (leaves && typeof leaves === 'object' && !Array.isArray(leaves)) out[section] = { ...leaves }
-    }
-    return out as PartialChartSettings
+    const settings = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as { settings?: unknown }).settings : undefined
+    return readPartialChartSettings(settings).settings
   } catch {
     return {}
   }

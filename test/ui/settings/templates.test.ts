@@ -29,6 +29,6 @@ describe('the chart templates', () => {
     expect(decodeChartTemplate('not json')).toEqual({})
     expect(decodeChartTemplate('[]')).toEqual({})
     expect(decodeChartTemplate('{"settings":[1]}')).toEqual({})
-    expect(decodeChartTemplate('{"settings":{"canvas":{"marginTop":3},"bad":7}}')).toEqual({ canvas: { marginTop: 3 } })
+    expect(decodeChartTemplate('{"settings":{"canvas":{"marginTop":3,"marginBottom":"wide"},"bad":7}}')).toEqual({ canvas: { marginTop: 3 } })
   })
 })

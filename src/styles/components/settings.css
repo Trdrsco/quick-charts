@@ -230,7 +230,7 @@
   height: 18px;
   margin-block: 8px;
   padding: 0;
-  color: var(--qc-control-tipMark, var(--qc-text-disabled));
+  color: var(--qc-control-tipMark);
   background: none;
   border: 0;
   border-radius: 50%;
@@ -240,7 +240,7 @@
 
 [data-qc-theme] .qc-settings-tip:hover,
 [data-qc-theme] .qc-settings-tip[aria-expanded='true'] {
-  color: var(--qc-control-tipMarkHover, var(--qc-chrome-caret));
+  color: var(--qc-control-tipMarkHover);
 }
 
 /* A tip's line: 13 on 18 on the tooltip fill, 4px above its mark, never taking the pointer. */
@@ -250,10 +250,10 @@
   box-sizing: border-box;
   max-width: 310px;
   padding: 3px 8px;
-  color: var(--qc-overlay-tooltipInk, var(--qc-control-on));
+  color: var(--qc-overlay-tooltipInk);
   font-size: 13px;
   line-height: 18px;
-  background: var(--qc-overlay-tooltip, var(--qc-state-pressed));
+  background: var(--qc-overlay-tooltip);
   border-radius: 2px;
   pointer-events: none;
 }
