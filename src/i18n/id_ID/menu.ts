@@ -8,4 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { other: 'Hapus {count} indikator' },
   'menu.removeDrawings': { other: 'Hapus {count} gambar' },
   'menu.settings': 'Pengaturan…',
+  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
 }

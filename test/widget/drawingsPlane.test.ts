@@ -369,6 +369,25 @@ describe('the plane through the registry', () => {
     expect(able.plane.api!.count()).toBe(1)
   })
 
+  it('places a horizontal line at a price through its command, as arming the tool permits', () => {
+    const refused = make({ refuseTool: 'horizontal_line' })
+    expect(refused.run('chart.drawings.placeHorizontalLine', 4510.25)).toBe('unavailable')
+    expect(refused.plane.api!.count()).toBe(0)
+    const able = make()
+    expect(able.run('chart.drawings.placeHorizontalLine', 'high')).toBe('unavailable')
+    expect(able.run('chart.drawings.placeHorizontalLine', 4510.25)).toBe('ok')
+    const [line] = able.plane.api!.export()
+    expect(line?.type).toBe('horizontal_line')
+    expect(line?.anchors[0]?.price).toBe(4510.25)
+    expect(able.plane.api!.hasSelection()).toBe(true)
+    // Lock all holds every new drawing back, this one too.
+    expect(able.run('chart.drawings.lockAll', true)).toBe('ok')
+    expect(able.run('chart.drawings.placeHorizontalLine', 4500)).toBe('unavailable')
+    expect(able.plane.api!.count()).toBe(1)
+    // The command is the door: the public drawings surface carries no placement of its own.
+    expect('placeHorizontalLine' in able.plane.api!).toBe(false)
+  })
+
   it('carries the snapshot, not the preview, in every document write while the settings dialog is open', () => {
     const { chrome, gestures, run, plane } = make()
     run('chart.drawings.arm', 'trend_line')

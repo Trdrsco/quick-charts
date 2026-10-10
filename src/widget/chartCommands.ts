@@ -433,6 +433,19 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       if (isPlacedImage(arg)) verbs()?.placeImage(arg)
     },
   })
+  // A horizontal line placed whole at the price the argument names, as the price menu places one: a
+  // new drawing of the horizontal line tool, so it asks what arming that tool asks, and none is
+  // placed while every drawing is locked.
+  const isPrice = (arg: unknown): arg is number => typeof arg === 'number' && Number.isFinite(arg)
+  add({
+    id: 'chart.drawings.placeHorizontalLine',
+    scope: 'chart',
+    label: 'command.drawingPlaceHorizontalLine',
+    available: (arg) => on() && !drawings()!.allLocked() && (verbs()?.toolPermitted('horizontal_line') ?? false) && (arg === undefined || isPrice(arg)),
+    execute: (arg) => {
+      if (isPrice(arg)) verbs()?.placeHorizontalLine(arg)
+    },
+  })
   add({
     id: 'chart.drawings.cursor',
     scope: 'chart',

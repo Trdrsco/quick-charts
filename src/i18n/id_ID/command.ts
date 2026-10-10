@@ -60,6 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'Pengaturan gambar',
   'command.drawingCommitEdit': 'Terapkan pengaturan gambar',
   'command.drawingPlaceImage': 'Tempatkan gambar',
+  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
   'command.drawingTemplateApply': 'Terapkan templat gambar',
   'command.drawingTemplateSave': 'Simpan templat gambar',
   'command.drawingTemplateRemove': 'Hapus templat gambar',

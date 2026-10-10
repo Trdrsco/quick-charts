@@ -146,9 +146,10 @@ export interface ChartExtensionMenuItem {
   checked?: boolean
   /** The row's glyph. Omitted leaves the gutter empty and the label still aligned. */
   icon?: ChartExtensionIcon
-  /** Where the row sits. `level` (the default) is an action on the price the pointer landed on and
-   *  joins the group under Copy price and Paste; `view` is a switch over what the chart shows and
-   *  joins the group under the remove rows. */
+  /** Where the row sits. `level` (the default) is an action on the price the pointer landed on: it
+   *  joins the group under Copy price and Paste, and the price menu the price scale's plus opens,
+   *  where each extension's rows stand together; `view` is a switch over what the chart shows and
+   *  joins the group under the remove rows, and the price menu leaves it out. */
   group?: 'level' | 'view'
   run(): void
 }
@@ -371,6 +372,9 @@ export interface ChartExtensionHost {
   activeChanged(active: boolean): void
   /** Rows every attached extension offers for this level, in registration order. */
   menuItems(context: ChartExtensionMenuContext): readonly ChartExtensionMenuItem[]
+  /** The same rows, one group for each extension that offers any, in the order the extensions
+   *  attach. */
+  menuGroups(context: ChartExtensionMenuContext): readonly (readonly ChartExtensionMenuItem[])[]
   /** The layers every attached extension offers the eye, in contribution order. */
   hideLayers(): readonly ChartExtensionHideLayer[]
   /** What every attached extension adds to the settings dialog, in contribution order. */
@@ -753,6 +757,25 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
 
   const liveRecords = (): Attached[] => attached.filter((record) => record.live)
 
+  /** Each live extension's rows for a level, its builders in the order it contributed them; an
+   *  extension that offers none leaves no group. */
+  const menuGroups = (context: ChartExtensionMenuContext): ChartExtensionMenuItem[][] => {
+    if (!hostLive) return []
+    const groups: ChartExtensionMenuItem[][] = []
+    for (const record of liveRecords()) {
+      const rows: ChartExtensionMenuItem[] = []
+      for (const build of [...record.menuBuilders]) {
+        try {
+          rows.push(...build(context))
+        } catch {
+          /* a builder that throws contributes nothing, and the menu still opens */
+        }
+      }
+      if (rows.length > 0) groups.push(rows)
+    }
+    return groups
+  }
+
   for (const extension of extensions) attachOne(extension)
 
   const host: ChartExtensionHost = {
@@ -798,20 +821,8 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       if (!hostLive) return
       for (const record of liveRecords()) fanOut(record.lanes.active, active)
     },
-    menuItems(context) {
-      if (!hostLive) return []
-      const rows: ChartExtensionMenuItem[] = []
-      for (const record of liveRecords()) {
-        for (const build of [...record.menuBuilders]) {
-          try {
-            rows.push(...build(context))
-          } catch {
-            /* a builder that throws contributes nothing, and the menu still opens */
-          }
-        }
-      }
-      return rows
-    },
+    menuItems: (context) => menuGroups(context).flat(),
+    menuGroups,
     hideLayers() {
       if (!hostLive) return []
       return liveRecords().flatMap((record) => [...record.hideLayers.values()])

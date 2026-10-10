@@ -8,4 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { one: '{count} Indikator entfernen', other: '{count} Indikatoren entfernen' },
   'menu.removeDrawings': { one: '{count} Zeichnung entfernen', other: '{count} Zeichnungen entfernen' },
   'menu.settings': 'Einstellungen…',
+  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
 }

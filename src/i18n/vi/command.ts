@@ -60,6 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'Cài đặt hình vẽ',
   'command.drawingCommitEdit': 'Áp dụng cài đặt hình vẽ',
   'command.drawingPlaceImage': 'Đặt hình ảnh',
+  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
   'command.drawingTemplateApply': 'Áp dụng mẫu hình vẽ',
   'command.drawingTemplateSave': 'Lưu mẫu hình vẽ',
   'command.drawingTemplateRemove': 'Xóa mẫu hình vẽ',

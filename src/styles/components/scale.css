@@ -65,29 +65,19 @@
   pointer-events: none;
 }
 
-/* The plus beside the crosshair's price label: a 24px rounded square in the raised surface, a ringed
- * plus in it, against the scale's edge at the crosshair's height. It takes the pointer, so the
- * press opens the price's menu rather than reaching the plot. */
+/* The plus beside the crosshair's price label is painted by the renderer with the label. Its button
+ * stands over the painted box, at the size the chart writes: transparent, and taking no pointer, so
+ * a pointer resting on the plus stays on the plot and keeps the crosshair. It carries the plus's
+ * name and takes the keyboard. */
 [data-qc-theme] .qc-scale-plus {
   position: absolute;
   z-index: 4;
   box-sizing: border-box;
-  display: inline-flex;
-  width: 24px;
-  height: 24px;
-  align-items: center;
-  justify-content: center;
   padding: 0;
-  color: var(--qc-text-primary);
-  background: var(--qc-chrome-surfaceRaised);
+  background: none;
   border: 0;
-  border-radius: 4px;
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-[data-qc-theme] .qc-scale-plus:hover {
-  background: var(--qc-state-pressed);
+  border-radius: 2px;
+  pointer-events: none;
 }
 
 /* The buttons at the top right of each pane, 4px below its top and 4px in from the plot's edge: 24px

@@ -8,4 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { other: 'Buang {count} penunjuk' },
   'menu.removeDrawings': { other: 'Buang {count} lukisan' },
   'menu.settings': 'Tetapan…',
+  'menu.drawHorizontalLine': 'Draw horizontal line at {price}',
 }

@@ -60,6 +60,7 @@ export const command: Translation<typeof source> = {
   'command.drawingSettings': 'Ustawienia rysunku',
   'command.drawingCommitEdit': 'Zastosuj ustawienia rysunku',
   'command.drawingPlaceImage': 'Umieść obraz',
+  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
   'command.drawingTemplateApply': 'Zastosuj szablon rysunku',
   'command.drawingTemplateSave': 'Zapisz szablon rysunku',
   'command.drawingTemplateRemove': 'Usuń szablon rysunku',

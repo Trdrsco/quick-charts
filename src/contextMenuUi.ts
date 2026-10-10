@@ -1,12 +1,14 @@
-// The context menu the chart raises on right-click — the rows come from `chartContextMenu`, this is
-// the painter. Same chrome discipline as the drawing toolbar, the legend and the chrome surfaces: package-owned vanilla DOM
-// mounted into the chrome subtree, opting back into pointer events so the drag layers cannot steal
-// its presses, and painted entirely through `.qc-*` recipes. The only inline writes are the
-// clamped position, which is calculated at the moment the menu opens.
+// The context menu the chart raises on right-click (the rows come from `chartContextMenu`; this is
+// the painter), and the price menu the price scale's plus opens, which holds the rows for the price
+// alone. Same chrome discipline as the drawing toolbar, the legend and the chrome surfaces:
+// package-owned vanilla DOM mounted into the chrome subtree, opting back into pointer events so the
+// drag layers cannot steal its presses, and painted entirely through `.qc-*` recipes. The only
+// inline writes are the clamped position, which is calculated at the moment the menu opens.
 //
 // The geometry: a 327px box of 32px rows, the glyph 8px in at its own 28 grid with the label at 40,
-// and 1px separators between groups. Those numbers live in the `.qc-menu*` recipes; the one below is
-// the width the viewport clamp needs as a number, because a clamp is arithmetic rather than a rule.
+// and 1px separators between groups. The price menu is the same box as wide as its widest row. Those
+// numbers live in the `.qc-menu*` recipes; the one below is the width the viewport clamp needs as a
+// number, because a clamp is arithmetic rather than a rule.
 import { chartContextMenuGroups, flattenMenuGroups, type ChartMenuAction, type ChartMenuContext, type ChartMenuIcon, type ChartMenuRow } from './contextMenu'
 import type { ChartExtensionIcon } from './extension'
 import { createChartI18n, readingDirection, type ChartI18n } from './i18n'
@@ -36,6 +38,32 @@ export interface ContextMenuHandle {
   open(at: { clientX: number; clientY: number }, ctx: ChartMenuContext, extra?: readonly ContextMenuExtraRow[]): void
   close(): void
   destroy(): void
+}
+
+/** A row of the price menu the scale's plus opens: a contributed row, or one of the chart's own,
+ *  which brings its glyph already drawn. */
+export interface PriceMenuRow extends ContextMenuExtraRow {
+  glyph?: Element | null
+}
+
+/** The plus the price menu opens under, in viewport pixels, and the side of the plot its scale
+ *  stands on: the menu's end meets the plus's end on that side. */
+export interface PriceMenuPlacement {
+  left: number
+  top: number
+  right: number
+  bottom: number
+  side: 'left' | 'right'
+}
+
+/** The menu over the widget's own resolver, with the price menu beside the right-click one. */
+export interface WidgetMenuHandle extends ContextMenuHandle {
+  /** Rebuild an open menu's rows where they stand. */
+  refresh(): void
+  /** Raise the price menu under the plus: the groups `rows` builds, a rule between each, and nothing
+   *  of the right-click menu's own. `rows` is asked again when the language changes under the open
+   *  menu. `focus` puts the keyboard on the first row. */
+  openPrice(at: PriceMenuPlacement, rows: () => readonly (readonly PriceMenuRow[])[], focus: boolean): void
 }
 
 /** The measured box width, which the viewport clamp needs as a number. */
@@ -92,7 +120,7 @@ export function mountContextMenu(
  *  emptied group draws no rule. `refresh` rebuilds an open menu's rows where they stand, asking
  *  `shown` again, for a change the menu cannot observe on its own (the host's access policy
  *  answering differently); a closed menu stays closed. */
-export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => void, strings: ChartI18n, icons: IconResolver, shown: (id: ChartMenuAction) => boolean = () => true): ContextMenuHandle & { refresh(): void } {
+export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => void, strings: ChartI18n, icons: IconResolver, shown: (id: ChartMenuAction) => boolean = () => true): WidgetMenuHandle {
   // A full-viewport backdrop closes the menu on any press elsewhere, and swallows the browser's own
   // menu so a second right-click re-aims ours rather than stacking the native one on top.
   const backdrop = document.createElement('div')
@@ -110,13 +138,17 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
   let openCtx: ChartMenuContext | null = null
   /** The contributed rows this raise was given, kept for the same rebuild. */
   let openExtra: readonly ContextMenuExtraRow[] = []
+  /** The open price menu's rows, asked again for a rebuild; null while the price menu is shut. */
+  let openPriceRows: (() => readonly (readonly PriceMenuRow[])[]) | null = null
 
   const close = (): void => {
     box.hidden = true
     backdrop.hidden = true
     box.replaceChildren()
+    box.classList.remove('qc-price-menu')
     openCtx = null
     openExtra = []
+    openPriceRows = null
   }
   backdrop.addEventListener('pointerdown', close)
   const onKey = (e: KeyboardEvent): void => {
@@ -132,9 +164,9 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
     return sep
   }
 
-  /** One row, built the same way whichever list it came from — so a contributed row is
+  /** One row, built the same way whichever list it came from, so a contributed row is
    *  indistinguishable from a built-in one at the glass. */
-  const rowButton = (row: { label: string; shortcut?: string; checked?: boolean; icon?: ChartMenuIcon | ChartExtensionIcon }, act: () => void): HTMLButtonElement => {
+  const rowButton = (row: { label: string; shortcut?: string; checked?: boolean; icon?: ChartMenuIcon | ChartExtensionIcon; glyph?: Element | null }, act: () => void): HTMLButtonElement => {
     const b = document.createElement('button')
     b.type = 'button'
     b.className = 'qc-menu-row'
@@ -143,12 +175,13 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
     const cell = document.createElement('span')
     cell.className = 'qc-menu-icon'
     // The CHECKED state owns the cell wherever it applies, so a switch reads the same whoever
-    // contributed it. Otherwise a built-in row names one of the chart's own glyphs, which wears the
-    // host's drawing for its icon when there is one, and a contributed row brings its own drawing;
-    // both reach the glass as elements, never markup. A name the map does not know and a drawing
-    // the builder refuses both leave the cell empty, which is what a row with no glyph looks like.
+    // contributed it. Otherwise a built-in row names one of the chart's own glyphs, or brings one
+    // already drawn, either wearing the host's drawing for its icon when there is one, and a
+    // contributed row brings its own drawing; all reach the glass as elements, never markup. A name
+    // the map does not know and a drawing the builder refuses both leave the cell empty, which is
+    // what a row with no glyph looks like.
     const own = row.checked ? 'check' : typeof row.icon === 'string' ? row.icon : null
-    const drawn = own ? (icons.host(MENU_ICON_IDS[own], { width: 28, height: 28 }) ?? buildGlyph(ICONS[own])) : buildGlyph(row.icon as ChartExtensionIcon | undefined)
+    const drawn = own ? (icons.host(MENU_ICON_IDS[own], { width: 28, height: 28 }) ?? buildGlyph(ICONS[own])) : (row.glyph ?? buildGlyph(row.icon as ChartExtensionIcon | undefined))
     if (drawn) cell.append(drawn)
 
     const label = document.createElement('span')
@@ -199,14 +232,50 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
     }
   }
 
+  /** The price menu's rows: each group in its order, a rule between groups, an empty group none. */
+  const fillPrice = (groups: readonly (readonly PriceMenuRow[])[]): void => {
+    box.replaceChildren()
+    for (const group of groups.filter((rows) => rows.length > 0)) {
+      if (box.childElementCount > 0) box.append(separator())
+      for (const row of group) box.append(rowButton(row, () => row.run()))
+    }
+  }
+
   // A language switch under an OPEN menu rebuilds its rows where they stand: the labels were
   // resolved when it was raised, so nothing else would replace them until the next right-click.
-  const unsubscribe = strings.onChange(() => {
+  const rebuild = (): void => {
     if (openCtx) fill(openCtx, openExtra)
-  })
+    else if (openPriceRows) fillPrice(openPriceRows())
+  }
+  const unsubscribe = strings.onChange(rebuild)
 
   return {
+    openPrice(at, rows, focus) {
+      openCtx = null
+      openExtra = []
+      openPriceRows = rows
+      box.classList.add('qc-price-menu')
+      fillPrice(rows())
+      backdrop.hidden = false
+      box.hidden = false
+      box.style.left = '0px'
+      box.style.top = '0px'
+      // As wide as its widest row, its end on the plus's end on the scale's side and its top on the
+      // plus's foot; above the plus where the room below cannot hold it, and inside the viewport.
+      const { width, height } = box.getBoundingClientRect()
+      const margin = 8
+      let left = at.side === 'right' ? at.right - width : at.left
+      let top = at.bottom
+      if (top + height > window.innerHeight - margin && at.top - height >= margin) top = at.top - height
+      left = Math.max(margin, Math.min(left, window.innerWidth - width - margin))
+      top = Math.max(margin, Math.min(top, window.innerHeight - height - margin))
+      box.style.left = `${left}px`
+      box.style.top = `${top}px`
+      if (focus) box.querySelector<HTMLButtonElement>('.qc-menu-row')?.focus()
+    },
     open(at, ctx, extra = []) {
+      openPriceRows = null
+      box.classList.remove('qc-price-menu')
       openCtx = ctx
       openExtra = extra
       fill(ctx, extra)
@@ -222,9 +291,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
       box.style.top = `${Math.max(8, Math.min(at.clientY, window.innerHeight - h - 8))}px`
     },
     close,
-    refresh() {
-      if (openCtx) fill(openCtx, openExtra)
-    },
+    refresh: rebuild,
     destroy() {
       unsubscribe()
       window.removeEventListener('keydown', onKey)

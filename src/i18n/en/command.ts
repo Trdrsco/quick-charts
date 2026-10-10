@@ -89,6 +89,8 @@ export const command = {
   'command.drawingSettings': 'Drawing settings',
   'command.drawingCommitEdit': 'Apply drawing settings',
   'command.drawingPlaceImage': 'Place image',
+  /** Place a horizontal line at the price the argument names. */
+  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
   'command.drawingTemplateApply': 'Apply drawing template',
   'command.drawingTemplateSave': 'Save drawing template',
   'command.drawingTemplateRemove': 'Remove drawing template',

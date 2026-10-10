@@ -100,7 +100,7 @@ const drawingToolOf = (arg: unknown): string | null | undefined =>
  *  presets). The public surface grows on demand, not by exposure. */
 export type ChartDrawingsApi = Omit<
   DrawingsHandle,
-  'setSymbol' | 'setTimeframe' | 'setTick' | 'setCurrency' | 'setPriceFormatter' | 'destroy' | 'selectedDrawing' | 'commitEdit' | 'beginPreview' | 'endPreview' | 'textEdit' | 'commitText' | 'cancelText' | 'presets'
+  'setSymbol' | 'setTimeframe' | 'setTick' | 'setCurrency' | 'setPriceFormatter' | 'destroy' | 'selectedDrawing' | 'commitEdit' | 'beginPreview' | 'endPreview' | 'textEdit' | 'commitText' | 'cancelText' | 'presets' | 'placeHorizontalLine'
 >
 
 /** The verbs the `chart.drawings.*` commands run that live above the layer: the standing
@@ -148,6 +148,9 @@ export interface DrawingVerbs {
   /** Whether an image can be placed: an asset port is configured and the image tool permitted. */
   canPlaceImage(): boolean
   placeImage(image: PlacedImage): void
+  /** Place a horizontal line at a price, where the host offers the tool and the access policy
+   *  permits it. */
+  placeHorizontalLine(price: number): void
 }
 
 export interface DrawingsLayer {
@@ -689,6 +692,9 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     commitEdit: () => handle.commitEdit(),
     canPlaceImage: () => !!deps.assets && permitted('image'),
     placeImage: (image) => handle.placeImage(image),
+    placeHorizontalLine: (price) => {
+      if (permitted('horizontal_line')) handle.placeHorizontalLine(price)
+    },
   }
 
   // The public surface is the handle minus the five chart-owned verbs, with arming routed through
@@ -710,6 +716,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
     commitText: _ct,
     cancelText: _cx,
     presets: _pr,
+    placeHorizontalLine: _ph,
     ...rest
   } = handle
   return {
