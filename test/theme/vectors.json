@@ -11,6 +11,10 @@
         "value": "#ebebeb"
       },
       {
+        "property": "--qc-canvas-watermark",
+        "value": "rgba(80, 83, 94, 0.2)"
+      },
+      {
         "property": "--qc-chrome-border",
         "value": "#ebebeb"
       },
@@ -123,6 +127,14 @@
         "value": "#a8a8a8"
       },
       {
+        "property": "--qc-control-tipMark",
+        "value": "#a8a8a8"
+      },
+      {
+        "property": "--qc-control-tipMarkHover",
+        "value": "#707070"
+      },
+      {
         "property": "--qc-drawing-fill",
         "value": "rgba(41, 98, 255, 0.15)"
       },
@@ -219,16 +231,24 @@
         "value": "#ffffff"
       },
       {
+        "property": "--qc-overlay-tooltip",
+        "value": "#3d3d3d"
+      },
+      {
+        "property": "--qc-overlay-tooltipInk",
+        "value": "#f2f2f2"
+      },
+      {
         "property": "--qc-scale-background",
         "value": "#ffffff"
       },
       {
         "property": "--qc-scale-border",
-        "value": "#e0e3eb"
+        "value": "rgba(46, 46, 46, 0)"
       },
       {
         "property": "--qc-scale-crosshair",
-        "value": "#9598a1"
+        "value": "#9c9c9c"
       },
       {
         "property": "--qc-scale-crosshairLabelBackground",
@@ -240,11 +260,11 @@
       },
       {
         "property": "--qc-scale-grid",
-        "value": "rgba(0, 0, 0, 0.06)"
+        "value": "rgba(46, 46, 46, 0.2)"
       },
       {
         "property": "--qc-scale-sessionAfterHours",
-        "value": "rgba(245, 166, 35, 0.06)"
+        "value": "rgba(41, 98, 255, 0.08)"
       },
       {
         "property": "--qc-scale-sessionClosed",
@@ -252,15 +272,15 @@
       },
       {
         "property": "--qc-scale-sessionExtended",
-        "value": "rgba(76, 152, 251, 0.06)"
+        "value": "rgba(213, 0, 249, 0.08)"
       },
       {
         "property": "--qc-scale-sessionPreMarket",
-        "value": "rgba(76, 152, 251, 0.06)"
+        "value": "rgba(255, 152, 0, 0.08)"
       },
       {
         "property": "--qc-scale-text",
-        "value": "#5b616e"
+        "value": "#0f0f0f"
       },
       {
         "property": "--qc-series-down",
@@ -417,6 +437,10 @@
         "value": "#2e2e2e"
       },
       {
+        "property": "--qc-canvas-watermark",
+        "value": "rgba(80, 83, 94, 0.3)"
+      },
+      {
         "property": "--qc-chrome-border",
         "value": "#2e2e2e"
       },
@@ -529,6 +553,14 @@
         "value": "#808080"
       },
       {
+        "property": "--qc-control-tipMark",
+        "value": "#575757"
+      },
+      {
+        "property": "--qc-control-tipMarkHover",
+        "value": "#8c8c8c"
+      },
+      {
         "property": "--qc-drawing-fill",
         "value": "rgba(41, 98, 255, 0.15)"
       },
@@ -625,16 +657,24 @@
         "value": "#1f1f1f"
       },
       {
+        "property": "--qc-overlay-tooltip",
+        "value": "#3d3d3d"
+      },
+      {
+        "property": "--qc-overlay-tooltipInk",
+        "value": "#f2f2f2"
+      },
+      {
         "property": "--qc-scale-background",
         "value": "#0f0f0f"
       },
       {
         "property": "--qc-scale-border",
-        "value": "#2a2e39"
+        "value": "rgba(242, 242, 242, 0)"
       },
       {
         "property": "--qc-scale-crosshair",
-        "value": "#758696"
+        "value": "#9c9c9c"
       },
       {
         "property": "--qc-scale-crosshairLabelBackground",
@@ -646,11 +686,11 @@
       },
       {
         "property": "--qc-scale-grid",
-        "value": "rgba(255, 255, 255, 0.035)"
+        "value": "rgba(242, 242, 242, 0.2)"
       },
       {
         "property": "--qc-scale-sessionAfterHours",
-        "value": "rgba(245, 166, 35, 0.045)"
+        "value": "rgba(41, 98, 255, 0.08)"
       },
       {
         "property": "--qc-scale-sessionClosed",
@@ -658,15 +698,15 @@
       },
       {
         "property": "--qc-scale-sessionExtended",
-        "value": "rgba(76, 152, 251, 0.05)"
+        "value": "rgba(213, 0, 249, 0.08)"
       },
       {
         "property": "--qc-scale-sessionPreMarket",
-        "value": "rgba(76, 152, 251, 0.05)"
+        "value": "rgba(255, 152, 0, 0.08)"
       },
       {
         "property": "--qc-scale-text",
-        "value": "#9aa0aa"
+        "value": "#b8b8b8"
       },
       {
         "property": "--qc-series-down",

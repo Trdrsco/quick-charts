@@ -32,9 +32,15 @@
 // control, so it does not have to sit on the ramp the controls share.
 //
 // The series pair is the market's own, green up and red down in both modes, and it is the floor the
-// chart's appearance ladder paints default candle bodies, borders and wicks from until a host or a
-// viewer names their own. The brand pair in `overrides.ts` stays with what a host draws on top. A
+// chart settings paint default candle bodies, borders, wicks, bars and baseline lines from until a
+// host or a viewer names their own. The brand pair below stays with what a host draws on top. A
 // positive TEXT role and a rising SERIES are different jobs, so one does not displace the other.
+//
+// The chart settings' factory look reads its mode-dependent colors from these roles: the canvas
+// background, the grid, the scale text and lines, the crosshair, the watermark and the shading of
+// each trading-hours stretch. Its grid is a 20% ink, and its scale lines are an ink at no opacity,
+// so a viewer who raises the opacity gets a line in the mode's own ink. Every other factory color
+// is the same in both modes and stands in `CHART_FACTORY_COLORS`.
 //
 // The motion roles are the same in both modes, because a mode changes how the chart looks, not how
 // it moves, and this file is where every duration, timing function and motion scale the chart runs
@@ -49,21 +55,22 @@ import type { SemanticTheme, ThemeMode } from './schema'
 export const LIGHT_THEME: SemanticTheme = {
   'canvas.background': '#ffffff',
   'canvas.paneBorder': '#ebebeb',
+  'canvas.watermark': 'rgba(80, 83, 94, 0.2)',
 
   'series.up': '#089981',
   'series.down': '#f23645',
   'series.neutral': '#787b86',
 
-  'scale.grid': 'rgba(0, 0, 0, 0.06)',
+  'scale.grid': 'rgba(46, 46, 46, 0.2)',
   'scale.background': '#ffffff',
-  'scale.border': '#e0e3eb',
-  'scale.text': '#5b616e',
-  'scale.crosshair': '#9598a1',
+  'scale.border': 'rgba(46, 46, 46, 0)',
+  'scale.text': '#0f0f0f',
+  'scale.crosshair': '#9c9c9c',
   'scale.crosshairLabelBackground': '#131722',
   'scale.crosshairLabelText': '#ffffff',
-  'scale.sessionPreMarket': 'rgba(76, 152, 251, 0.06)',
-  'scale.sessionExtended': 'rgba(76, 152, 251, 0.06)',
-  'scale.sessionAfterHours': 'rgba(245, 166, 35, 0.06)',
+  'scale.sessionPreMarket': 'rgba(255, 152, 0, 0.08)',
+  'scale.sessionExtended': 'rgba(213, 0, 249, 0.08)',
+  'scale.sessionAfterHours': 'rgba(41, 98, 255, 0.08)',
   'scale.sessionClosed': 'rgba(0, 0, 0, 0.05)',
 
   'text.primary': '#0f0f0f',
@@ -96,6 +103,8 @@ export const LIGHT_THEME: SemanticTheme = {
   'overlay.separator': '#ebebeb',
   'overlay.shadow': '0 2px 4px rgba(0, 0, 0, 0.2)',
   'overlay.scrim': 'rgba(156, 156, 156, 0.5)',
+  'overlay.tooltip': '#3d3d3d',
+  'overlay.tooltipInk': '#f2f2f2',
 
   'state.accent': '#2962ff',
   'state.hover': '#f2f2f2',
@@ -125,6 +134,8 @@ export const LIGHT_THEME: SemanticTheme = {
   'control.selectEdgeHover': '#a8a8a8',
   'control.fieldInvalid': '#f23645',
   'control.fieldFill': '#f2f2f2',
+  'control.tipMark': '#a8a8a8',
+  'control.tipMarkHover': '#707070',
 
   'status.positive': '#078671',
   'status.negative': '#df323f',
@@ -165,21 +176,22 @@ export const LIGHT_THEME: SemanticTheme = {
 export const DARK_THEME: SemanticTheme = {
   'canvas.background': '#0f0f0f',
   'canvas.paneBorder': '#2e2e2e',
+  'canvas.watermark': 'rgba(80, 83, 94, 0.3)',
 
   'series.up': '#089981',
   'series.down': '#f23645',
   'series.neutral': '#787b86',
 
-  'scale.grid': 'rgba(255, 255, 255, 0.035)',
+  'scale.grid': 'rgba(242, 242, 242, 0.2)',
   'scale.background': '#0f0f0f',
-  'scale.border': '#2a2e39',
-  'scale.text': '#9aa0aa',
-  'scale.crosshair': '#758696',
+  'scale.border': 'rgba(242, 242, 242, 0)',
+  'scale.text': '#b8b8b8',
+  'scale.crosshair': '#9c9c9c',
   'scale.crosshairLabelBackground': '#dbdbdb',
   'scale.crosshairLabelText': '#0f0f0f',
-  'scale.sessionPreMarket': 'rgba(76, 152, 251, 0.05)',
-  'scale.sessionExtended': 'rgba(76, 152, 251, 0.05)',
-  'scale.sessionAfterHours': 'rgba(245, 166, 35, 0.045)',
+  'scale.sessionPreMarket': 'rgba(255, 152, 0, 0.08)',
+  'scale.sessionExtended': 'rgba(213, 0, 249, 0.08)',
+  'scale.sessionAfterHours': 'rgba(41, 98, 255, 0.08)',
   'scale.sessionClosed': 'rgba(0, 0, 0, 0.22)',
 
   'text.primary': '#dbdbdb',
@@ -212,6 +224,8 @@ export const DARK_THEME: SemanticTheme = {
   'overlay.separator': '#4a4a4a',
   'overlay.shadow': '0 2px 4px rgba(0, 0, 0, 0.4)',
   'overlay.scrim': 'rgba(0, 0, 0, 0.5)',
+  'overlay.tooltip': '#3d3d3d',
+  'overlay.tooltipInk': '#f2f2f2',
 
   'state.accent': '#2962ff',
   'state.hover': '#2e2e2e',
@@ -241,6 +255,8 @@ export const DARK_THEME: SemanticTheme = {
   'control.selectEdgeHover': '#808080',
   'control.fieldInvalid': '#f23645',
   'control.fieldFill': '#2e2e2e',
+  'control.tipMark': '#575757',
+  'control.tipMarkHover': '#8c8c8c',
 
   'status.positive': '#089981',
   'status.negative': '#f34452',
@@ -282,3 +298,48 @@ export const BUILT_IN_THEMES: Readonly<Record<ThemeMode, SemanticTheme>> = Objec
   light: LIGHT_THEME,
   dark: DARK_THEME,
 })
+
+/** The chart settings' factory colors that are the same in both modes. */
+export interface ChartFactoryColors {
+  /** A single-value line drawn in one color, and the area style's line. */
+  line: string
+  /** A single-value line drawn as a gradient: its color at the highest price on screen. */
+  lineGradientTop: string
+  /** Its color at the lowest price on screen. */
+  lineGradientBottom: string
+  /** The area style's fill at its line, fading to the second at the pane's foot. */
+  areaTop: string
+  areaBottom: string
+  /** The vertical line at each session's start. */
+  sessionBreaks: string
+  /** The previous session's close on the price scale. */
+  previousClose: string
+  bid: string
+  ask: string
+  /** The last values of the pre-market, post-market and overnight stretches on the price scale. */
+  preMarketLabel: string
+  postMarketLabel: string
+  nightLabel: string
+}
+
+/** The factory colors of the chart settings that do not change with the mode. */
+export const CHART_FACTORY_COLORS: Readonly<ChartFactoryColors> = Object.freeze({
+  line: '#2962ff',
+  lineGradientTop: '#d500f9',
+  lineGradientBottom: '#00bce5',
+  areaTop: 'rgba(41, 98, 255, 0.28)',
+  areaBottom: 'rgba(41, 98, 255, 0)',
+  sessionBreaks: '#4985e7',
+  previousClose: '#555555',
+  bid: '#2962ff',
+  ask: '#f7525f',
+  preMarketLabel: '#fb8c00',
+  postMarketLabel: '#2962ff',
+  nightLabel: '#8e24aa',
+})
+
+/** The brand pair: what a host's own surfaces on the chart read, an extension's lines among them,
+ *  so a rebrand edits two strings. The candles keep the series pair, because candles are the market
+ *  and the brand pair marks what a host draws on top of it. */
+export const BRAND_UP = '#4c98fb'
+export const BRAND_DOWN = '#f23645'

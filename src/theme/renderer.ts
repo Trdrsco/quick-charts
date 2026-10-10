@@ -27,12 +27,14 @@ export function themeRootStyle(mode: ThemeMode, theme: SemanticTheme): ThemeRoot
   return { attribute: { name: THEME_ROOT_ATTRIBUTE, value: mode }, declarations: themeDeclarations(theme) }
 }
 
-/** The theme values the canvas renderer draws with. The chart appearance ladder sits above these:
- *  a host override of a series color wins over `up` and `down` here, which are the mode's defaults
- *  for anything the appearance tree does not name. */
+/** The theme values the canvas renderer draws with. The chart settings sit above these: a host or a
+ *  viewer setting of a series color wins over `up` and `down` here, which are the mode's defaults
+ *  for anything the settings do not name. */
 export interface CanvasTheme {
   background: string
   paneBorder: string
+  /** The ink a watermark writes behind the bars. */
+  watermark: string
   grid: string
   axisText: string
   axisBackground: string
@@ -64,6 +66,7 @@ export function canvasTheme(theme: SemanticTheme): CanvasTheme {
   return {
     background: theme['canvas.background'],
     paneBorder: theme['canvas.paneBorder'],
+    watermark: theme['canvas.watermark'],
     grid: theme['scale.grid'],
     axisText: theme['scale.text'],
     axisBackground: theme['scale.background'],
