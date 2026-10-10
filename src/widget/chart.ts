@@ -1121,6 +1121,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         // The background at the pane's foot, where a glyph mark stands: a gradient's bottom color.
         background: () => (eff.canvas.backgroundType === 'gradient' ? eff.canvas.backgroundBottom : eff.canvas.background),
         icons: deps.icons,
+        gestures,
+        overlay: chrome,
+        paneLeft: () => chart.priceScale('left').width(),
         fetchBarMarks: datafeed.marks ? (s, from, to, resolution) => datafeed.marks!(s, from, to, resolution) : null,
         fetchTimescaleMarks: datafeed.timescaleMarks ? (s, from, to, resolution) => datafeed.timescaleMarks!(s, from, to, resolution) : null,
         disposed: disposedFn,

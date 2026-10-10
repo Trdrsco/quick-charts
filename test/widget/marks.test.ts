@@ -190,3 +190,132 @@ describe('a time-scale mark', () => {
     expect(named(paint(), 'ellipse')).toEqual([])
   })
 })
+
+describe('hovering a time-scale mark', () => {
+  const bolt: TimescaleMark = { id: 'a', time: 60, color: PURPLE, icon: 'mark.bolt' }
+
+  it('runs a dashed line in its color from the top of the pane down to its ring, and tints the ring', () => {
+    const { primitive, paint } = rig({ marks: [bolt], x: new Map([[60, 100]]) })
+    expect(named(paint(), 'setLineDash')).toEqual([])
+    primitive.point({ x: 104, y: 290 })
+    const calls = paint()
+    const [line] = named(calls, 'stroke')
+    expect(line).toMatchObject({ strokeStyle: '#ab47bc', lineWidth: 1, dash: [5, 6] })
+    expect([named(calls, 'moveTo')[0]!.args, named(calls, 'lineTo')[0]!.args]).toEqual([
+      [100.5, 0],
+      [100.5, 277],
+    ])
+    // The inside takes the mark's color at 15% over the background.
+    expect(named(calls, 'fill').map((call) => [call.fillStyle, call.globalAlpha])).toEqual([
+      ['#0f0f0f', 1],
+      ['#ab47bc', 0.15],
+      ['#ab47bc', 1],
+    ])
+  })
+
+  it('draws no line for a pointer off every mark, and lets go when the pointer leaves', () => {
+    const { primitive, paint } = rig({ marks: [bolt], x: new Map([[60, 100]]) })
+    primitive.point({ x: 140, y: 290 })
+    expect(named(paint(), 'setLineDash')).toEqual([])
+    primitive.point({ x: 100, y: 280 })
+    expect(named(paint(), 'setLineDash')).toHaveLength(1)
+    primitive.point(null)
+    expect(named(paint(), 'setLineDash')).toEqual([])
+  })
+
+  it('holds a mark a finger presses, as a pointer hovers it, until a press lands anywhere else', () => {
+    const { primitive, paint } = rig({ marks: [bolt], x: new Map([[60, 100]]) })
+    paint()
+    expect(primitive.press({ x: 96, y: 284 })).toBe(true)
+    expect(named(paint(), 'setLineDash')).toHaveLength(1)
+    expect(primitive.press({ x: 200, y: 100 })).toBe(false)
+    expect(named(paint(), 'setLineDash')).toEqual([])
+  })
+})
+
+describe('a hovered mark’s words', () => {
+  /** The marks plane over stand-ins: a time scale, a series that holds the primitive, the gesture
+   *  box and the chrome layer. */
+  async function plane(marks: TimescaleMark[]) {
+    const gestures = document.createElement('div')
+    const overlay = document.createElement('div')
+    document.body.append(gestures, overlay)
+    let primitive: { paneViews(): { renderer(): { draw(target: unknown): void } }[] } | null = null
+    const chart = { timeScale: () => ({ timeToCoordinate: (time: number) => (time === 60 ? 100 : null) }) }
+    const series = {
+      attachPrimitive: (p: never) => {
+        primitive = p
+        ;(p as { attached(param: unknown): void }).attached({ requestUpdate: () => undefined })
+      },
+      detachPrimitive: () => undefined,
+    }
+    const { attachMarks } = await import('../../src/widget/marks')
+    const layer = attachMarks({
+      chart: chart as never,
+      series: () => series as never,
+      symbol: () => 'ES',
+      timeframe: () => '1m',
+      theme: () => DARK_THEME,
+      mode: () => 'dark',
+      background: () => '#0f0f0f',
+      gestures,
+      overlay,
+      fetchBarMarks: null,
+      fetchTimescaleMarks: async () => marks,
+      disposed: () => false,
+    })
+    layer.refresh({ from: 0, to: 600 })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    const paint = (): void => {
+      const { context } = recordingContext()
+      for (const view of primitive!.paneViews()) view.renderer().draw({ useBitmapCoordinateSpace: (fn: (scope: unknown) => void) => fn({ context, bitmapSize: { ...PANE }, horizontalPixelRatio: 1, verticalPixelRatio: 1 }) })
+    }
+    const pointer = (type: string, x: number, y: number, pointerType = 'mouse'): void => {
+      gestures.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerType, bubbles: true }))
+    }
+    return { layer, gestures, overlay, paint, pointer }
+  }
+
+  it('shows the label on the tooltip fill above the hovered mark, and hides it when the pointer leaves', async () => {
+    const { layer, overlay, paint, pointer } = await plane([{ id: 'a', time: 60, color: PURPLE, icon: 'mark.bolt', label: 'Two words' }])
+    paint()
+    expect(overlay.querySelector('.qc-mark-tooltip')).toBeNull()
+    pointer('pointermove', 100, 288)
+    paint()
+    const tip = overlay.querySelector<HTMLElement>('.qc-mark-tooltip')!
+    expect(tip.hidden).toBe(false)
+    expect(tip.getAttribute('role')).toBe('tooltip')
+    expect(tip.textContent).toBe('Two words')
+    // Its foot 4px above the ring's top at 277.
+    expect(tip.style.top).toBe('273px')
+    pointer('pointerleave', 0, 0)
+    paint()
+    expect(tip.hidden).toBe(true)
+    layer.destroy()
+    expect(overlay.querySelector('.qc-mark-tooltip')).toBeNull()
+  })
+
+  it('shows no tooltip for a mark without words, only its line', async () => {
+    const { layer, overlay, paint, pointer } = await plane([{ id: 'a', time: 60, color: PURPLE, icon: 'mark.bolt' }])
+    paint()
+    pointer('pointermove', 100, 288)
+    paint()
+    expect(overlay.querySelector<HTMLElement>('.qc-mark-tooltip')?.hidden ?? true).toBe(true)
+    layer.destroy()
+  })
+
+  it('shows the label for a mark a finger presses, and not for a mouse press', async () => {
+    const { layer, overlay, paint, pointer } = await plane([{ id: 'a', time: 60, color: PURPLE, label: 'Held' }])
+    paint()
+    pointer('pointerdown', 100, 294, 'mouse')
+    paint()
+    expect(overlay.querySelector('.qc-mark-tooltip')).toBeNull()
+    pointer('pointerdown', 100, 294, 'touch')
+    paint()
+    expect(overlay.querySelector<HTMLElement>('.qc-mark-tooltip')!.hidden).toBe(false)
+    pointer('pointerdown', 300, 40, 'touch')
+    paint()
+    expect(overlay.querySelector<HTMLElement>('.qc-mark-tooltip')!.hidden).toBe(true)
+    layer.destroy()
+  })
+})
