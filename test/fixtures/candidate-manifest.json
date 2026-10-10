@@ -1,5 +1,5 @@
 {
-  "tarSha256": "16397a16c24d6b63331e47519f31a01eb3a194c438b59a96f64d910f1ff7c1f8",
+  "tarSha256": "55e7368ca4adf5255714e2ab8c79aa61106c9ddb30b3cfbd37356064569470d0",
   "files": {
     "CHANGELOG.md": "da59bbb8f6084bc1b96149d64130d1068f82a21cc4e4070a86f9d7758ed35214",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -49,8 +49,8 @@
     "dist/id_ID-DZAJ6ZGU.js": "5192ff99877782742b447b7ff0531d95467726aeba1bf019ecfa91347d00ec69",
     "dist/id_ID-DZAJ6ZGU.js.map": "fd4e16cb0e8cffb85d05b458b32c861ac57e2a99b3a4f4cb334a3aac7e15200c",
     "dist/index.d.ts": "250e439f3a8eb80ab1daa0b6383f3784b18a5b5dda28566aad6ff65ac89e164c",
-    "dist/index.js": "3d605238d8d1f32da7a8c28bbebeb17eaf3a5ac35db2d705dead629f96878779",
-    "dist/index.js.map": "907d8aa53aef0ef49dd040805a54bf034083f204b36dd90b451bab988e0762ac",
+    "dist/index.js": "1d9115c6144da6b25b39c16ef5bc7150e6db59001e1e45137c78d538176008f9",
+    "dist/index.js.map": "430cc3fe9f1c30ac8f251ac64b7f4cb3927382c86632276179445b7b3b2e3974",
     "dist/it-4LYMFBNL.js": "39cb0c12b9628799efc6eefa62bf3913cdfc625d8a0317d5d0007f2ea08732bc",
     "dist/it-4LYMFBNL.js.map": "e1fb3a2cca79a433498dcab043607b354fd1ef016f88a2c401c6cf7724095bce",
     "dist/ja-NCP2YMKP.js": "fcc4307c5d8d4a46ffae39d6c51d8dedb4d5607dadc31932f9cc81bbe6717177",
