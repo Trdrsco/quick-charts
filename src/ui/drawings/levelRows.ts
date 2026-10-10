@@ -30,7 +30,7 @@ const label = (t: ChartTranslate, table: Record<string, ChartMessageKey>) => (va
 /** A list button whose face is a mark rather than words: a level line's thickness, a 76px field
  *  holding a 50px bar of the chosen width, or its style, a 34px field holding the style's 28px mark.
  *  Its list opens under it, each choice drawn by its mark, the chosen one inverted. */
-function markSelect<T extends string | number>(
+export function markSelect<T extends string | number>(
   box: HTMLElement,
   props: { label: string; kind: 'thickness' | 'style'; options: readonly T[]; value: T; mark(v: T): Element; name(v: T): string; named: boolean; onChange(v: T): void },
 ): HTMLButtonElement {
