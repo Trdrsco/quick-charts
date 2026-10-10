@@ -190,6 +190,33 @@ export interface ChartExtensionLegendRow {
   rank?: number
 }
 
+/** The frame a contribution paints an image of the chart in. */
+export interface ChartExtensionCaptureFrame {
+  /** The chart element's width in CSS pixels. */
+  width: number
+  /** The chart element's height in CSS pixels. */
+  height: number
+  /** Image pixels per CSS pixel. */
+  pixelRatio: number
+}
+
+/** An extension's part in an image of the chart. Every image the chart produces of itself (a
+ *  download, a copy, `image.capture()`) is taken through the contributions of the extensions
+ *  attached to it: each `before` runs, the renderer draws the image, each `paint` paints over it,
+ *  and each restore runs, the last answered first. A contribution that throws is contained: the
+ *  image is still produced and every restore still runs. */
+export interface ChartExtensionCapture {
+  /** Runs synchronously before the chart draws into the image; answer the restore, run after it is
+   *  taken. The renderer draws every pending change before it takes the image, so what a `before`
+   *  changed through the chart's capabilities (a price line it updated, a primitive it asked to
+   *  redraw) is drawn as it now stands. */
+  before?(): (() => void) | void
+  /** Runs after the bitmap is taken: paint over it. The origin is the chart element's top left,
+   *  which is the top left of the context's `container`; pixelRatio is image pixels per CSS pixel.
+   *  The context arrives untransformed, and the chart puts back its state after each paint. */
+  paint?(target: CanvasRenderingContext2D, frame: ChartExtensionCaptureFrame): void
+}
+
 /** Builds an extension's context menu rows. The chart calls it on every raise with that moment's
  *  context, so the rows can depend on the level that was pressed. An empty list contributes nothing
  *  and costs nothing. */
@@ -260,6 +287,10 @@ export interface ChartExtensionContext {
   /** Place a row of the extension's own in the pane's legend. The returned function takes it out,
    *  and detach takes it out either way; the element is the extension's to keep. */
   contributeLegendRow(row: ChartExtensionLegendRow): () => void
+  /** Take part in every image of the chart: hold out what the extension draws while the image is
+   *  taken, or paint over the image what the chart's canvases do not carry. The returned function
+   *  withdraws the contribution, and detach withdraws it either way. */
+  contributeCapture(capture: ChartExtensionCapture): () => void
 }
 
 /** What an extension gives back at attach. `detach` is required; the two state methods are the
@@ -341,6 +372,12 @@ export interface ChartExtensionHost {
   /** The legend rows every attached extension contributes, by rank and then as they were
    *  contributed. */
   legendRows(): readonly ChartExtensionLegendRow[]
+  /** The chart's image, taken through every attached extension's capture contributions, in
+   *  attachment and then contribution order: each `before`, then `take` for the bitmap, then each
+   *  `paint` over it in a frame of the chart element's CSS `size`, then the restores, the last
+   *  answered first, whatever threw. A contribution's throw is contained; a throw from `take` is the
+   *  chart's own and reaches the caller after the restores. */
+  capture(take: () => HTMLCanvasElement, size: () => { width: number; height: number }): HTMLCanvasElement
   /** Viewer state by extension id — the widget nests this under one key of its save blob. */
   serialize(): Record<string, unknown>
   /** Apply opaque state as usual, and report whether all registered saved state round-tripped.
@@ -378,6 +415,8 @@ interface Attached {
   settings: Set<ChartSettingsContribution>
   /** The rows this extension placed in the legend. */
   legendRows: Set<ChartExtensionLegendRow>
+  /** What this extension does around an image of the chart. */
+  captures: Set<ChartExtensionCapture>
   /** The unregister the chart's command registry answered for each command this extension
    *  contributed, so a detach takes its verbs out of the one registry with it. */
   commands: Map<string, () => void>
@@ -476,6 +515,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     clearLanes(record.lanes)
     record.menuBuilders.clear()
     record.settings.clear()
+    record.captures.clear()
     if (record.legendRows.size) {
       record.legendRows.clear()
       notifyLegendRows()
@@ -524,6 +564,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       hideLayers: new Map(),
       settings: new Set(),
       legendRows: new Set(),
+      captures: new Set(),
       commands: new Map(),
       priceLines: new Set(),
       primitives: new Set(),
@@ -635,6 +676,13 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
         return () => {
           if (!record.legendRows.delete(held)) return
           notifyLegendRows()
+        }
+      },
+      contributeCapture(capture) {
+        if (!record.live || !capture) return () => {}
+        record.captures.add(capture)
+        return () => {
+          record.captures.delete(capture)
         }
       },
       contributeCommands(commands) {
@@ -762,6 +810,49 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       if (!hostLive) return []
       const rows = liveRecords().flatMap((record) => [...record.legendRows] as (ChartExtensionLegendRow & { seq: number })[])
       return rows.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || a.seq - b.seq).map((row) => ({ element: row.element, rank: row.rank ?? 0 }))
+    },
+    capture(take, size) {
+      // The set is read once, so a contribution withdrawn while the image is taken still gets back
+      // what its own `before` held out.
+      const captures = hostLive ? liveRecords().flatMap((record) => [...record.captures]) : []
+      const restores: (() => void)[] = []
+      for (const capture of captures) {
+        try {
+          const restore = capture.before?.()
+          if (typeof restore === 'function') restores.push(restore)
+        } catch {
+          /* an extension's own failure is its own: the image is taken all the same */
+        }
+      }
+      try {
+        const bitmap = take()
+        const painters = captures.filter((capture) => typeof capture.paint === 'function')
+        const target = painters.length ? bitmap.getContext('2d') : null
+        if (target) {
+          const css = size()
+          const pixelRatio = css.width > 0 && bitmap.width > 0 ? bitmap.width / css.width : css.height > 0 && bitmap.height > 0 ? bitmap.height / css.height : 1
+          for (const capture of painters) {
+            // Each painter meets the context as the bitmap left it, whatever the one before it set.
+            target.save()
+            try {
+              capture.paint?.(target, { width: css.width, height: css.height, pixelRatio })
+            } catch {
+              /* a failed paint leaves the image as it stood */
+            } finally {
+              target.restore()
+            }
+          }
+        }
+        return bitmap
+      } finally {
+        for (const restore of restores.reverse()) {
+          try {
+            restore()
+          } catch {
+            /* the other restores still run */
+          }
+        }
+      }
     },
     serialize() {
       const out: Record<string, unknown> = {}

@@ -1577,7 +1577,8 @@ async function shareable(widget: ChartWidget): Promise<void> {
 
 `capture()` composes the chart, or every chart of a layout, into one PNG under a header carrying the
 identity and the attribution you configured through `image`. Nothing is uploaded, shared or stored:
-you receive a blob and decide.
+you receive a blob and decide. `copy()` and `download()` take the same image, and an extension takes
+part in each through `contributeCapture` (see Extensions).
 
 ### Indicator picker content
 
@@ -3424,6 +3425,21 @@ What to know:
   controls reaches them rather than the chart, and collapsing the indicator rows leaves it standing.
   What it holds and whether it shows are yours: fill or hide the element as you like. The returned
   function takes it out, detach takes it out either way, and the element is given back unchanged.
+- **What you draw can take part in the chart's image.** `ctx.contributeCapture({ before, paint })`
+  is called around every image the chart produces of itself, by `widget.image.capture()`, `copy()`
+  and `download()` alike. `before()` runs synchronously before the renderer draws the image and may
+  answer a restore, which runs once the image is taken: hold out what you draw, and put it back.
+  The renderer draws every pending change before it takes the image, so a price line you updated
+  or a primitive you asked to redraw shows as it now stands. `paint(target, frame)` runs on the bitmap's
+  2D context once it is drawn, to paint what the chart's canvases do not carry, such as labels on
+  an overlay of your own. The origin is the chart element's top left, which is the top left of
+  `ctx.container`; `frame.width` and `frame.height` are the element's size in CSS pixels, and
+  `frame.pixelRatio` is the image's pixels per CSS pixel. The context arrives untransformed, and
+  the chart puts back its state after each paint. Contributions run in the order their extensions
+  attach and then as they were contributed, restores run the last answered first, and a throw in a
+  `before`, a `paint` or a restore
+  is contained: the image is still produced and every restore still runs. The returned function
+  withdraws the contribution, and detach withdraws it either way.
 - **A printed chord is a real binding.** `ChartExtensionMenuItem.shortcut` prints on the row and
   answers to the key. The chart's dispatcher offers a press no built-in verb claims to the rows your
   `contributeContextMenu` callback returns for the level under the pointer and runs that row's own
@@ -3453,8 +3469,8 @@ What to know:
   re-attaches it on every switch, so a market-scoped overlay cannot carry one market's drawing onto
   another's bars.
 - **A failing extension is its own problem.** A throw in `attach` drops that extension and the
-  chart still mounts; a throw in a subscriber, a menu builder, a command or a teardown is
-  contained.
+  chart still mounts; a throw in a subscriber, a menu builder, a command, a capture or a teardown
+  is contained.
 - **Layouts attach per chart.** A widget hands its shared options to every chart it tiles, so each
   chart gets its own attachment, its own context and its own state slot.
 

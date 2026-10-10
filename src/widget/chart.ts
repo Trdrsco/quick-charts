@@ -417,7 +417,8 @@ export interface ChartInstance {
   handle: ChartHandle
   /** The whole chart as one bitmap: the plot area with its axes, crosshair and every indicator
    *  pane. The renderer composes it; tiling a single series canvas would ship a picture missing
-   *  the scales that make it readable. */
+   *  the scales that make it readable. It is the one path to an image of the chart, and it takes
+   *  the image through the capture contributions of the extensions attached to the chart. */
   screenshot(): HTMLCanvasElement
   /** Push a theme change through every surface that reads it. */
   repaintTheme(): void
@@ -2736,7 +2737,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   return {
     handle,
     setLegendRows: (rows) => legend.setHostRows(rows),
-    screenshot: () => chart.takeScreenshot(),
+    screenshot: () => extensions.host.capture(() => chart.takeScreenshot(), () => ({ width: chart.chartElement().clientWidth, height: chart.chartElement().clientHeight })),
     repaintTheme() {
       applyLook()
       legend.setDot(session.state())
