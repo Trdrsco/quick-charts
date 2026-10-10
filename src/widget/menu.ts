@@ -18,7 +18,8 @@ import type { ChartI18n } from '../i18n'
 import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry } from './commands'
 import type { IconResolver } from '../ui/icons/resolver'
-import { normalizeShortcut } from './shortcuts'
+import { isApplePlatform } from '../platform'
+import { normalizeShortcut, printedShortcut } from './shortcuts'
 
 /** The command each built-in menu row runs. Named here so the menu and the registry cannot drift
  *  into two vocabularies for the same verb. The settings row is the one the chart's own menu never
@@ -36,8 +37,17 @@ export const MENU_COMMAND: Partial<Record<ChartMenuAction, string>> = {
   'remove-drawings': 'chart.drawings.removeAll',
 }
 
-/** The command the price menu's horizontal line row runs, with the row's price. */
+/** The command the price menu's horizontal line row runs, with the row's price. The row prints the
+ *  command's shortcut, which runs it at the crosshair's price. */
 export const PLACE_HORIZONTAL_LINE = 'chart.drawings.placeHorizontalLine'
+
+/** The level at a height on the main pane, snapped to the symbol's own grid: the price a row names
+ *  is one the market can actually hold. Null where the height holds no readable level. */
+export function levelAt(series: Pick<ISeriesApi<SeriesType>, 'coordinateToPrice'>, y: number, step: number): number | null {
+  const price = series.coordinateToPrice(y)
+  if (price == null || !(price > 0)) return null
+  return Math.round(price / step) * step
+}
 
 export interface MenuPlane {
   /** Raise the menu at a viewport point. False when the point holds no readable level. */
@@ -120,14 +130,17 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     },
   )
 
-  /** The level under a viewport point, snapped to the symbol's own grid: the price a row names is
-   *  one the market can actually hold. */
+  /** The level under a viewport point. */
   const priceAt = (clientY: number): number | null => {
     const box = deps.gestures.getBoundingClientRect()
-    const price = deps.series().coordinateToPrice(clientY - box.top - (deps.paneTop?.() ?? 0))
-    if (price == null || !(price > 0)) return null
-    const step = deps.minMove()
-    return Math.round(price / step) * step
+    return levelAt(deps.series(), clientY - box.top - (deps.paneTop?.() ?? 0), deps.minMove())
+  }
+
+  /** The horizontal line command's shortcut as the row prints it, or null while it has none. */
+  const lineShortcut = (): string | null => {
+    const shortcut = deps.commands.list().find((spec) => spec.id === PLACE_HORIZONTAL_LINE)?.shortcut
+    const t = deps.i18n.t
+    return shortcut ? printedShortcut(shortcut, { ctrl: t(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl'), meta: t('drawing.modifierCommand') }) : null
   }
 
   const raiseAt = (clientX: number, clientY: number): boolean => {
@@ -195,8 +208,10 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
       .filter((rows) => rows.length > 0)
     const own: PriceMenuRow[] = []
     if (deps.commands.available(PLACE_HORIZONTAL_LINE, price) && (deps.shown?.(PLACE_HORIZONTAL_LINE) ?? true)) {
+      const shortcut = lineShortcut()
       own.push({
         label: deps.i18n.t('menu.drawHorizontalLine', { price: priceText }),
+        ...(shortcut ? { shortcut } : {}),
         glyph: deps.icons.tool('horizontal_line', 28),
         run: () => void deps.commands.execute(PLACE_HORIZONTAL_LINE, price),
       })

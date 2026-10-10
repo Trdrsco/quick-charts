@@ -4,7 +4,7 @@
 // and that a shortcut means the same physical key however a host wrote it.
 import { describe, expect, it } from 'vitest'
 import { createCommandRegistry } from '../../src/widget/commands'
-import { attachShortcuts, eventShortcut, normalizeShortcut, pressedTokens } from '../../src/widget/shortcuts'
+import { attachShortcuts, eventShortcut, normalizeShortcut, pressedTokens, printedShortcut } from '../../src/widget/shortcuts'
 
 /** A stand-in root that records its listener, so a press can be delivered without a DOM. */
 function fakeRoot() {
@@ -60,6 +60,16 @@ describe('a shortcut names one physical key', () => {
   it('reads a press in the same terms', () => {
     expect(eventShortcut({ code: 'KeyR', altKey: true } as KeyboardEvent)).toBe('Alt+KeyR')
     expect(eventShortcut({ code: 'Escape' } as KeyboardEvent)).toBe('Escape')
+  })
+
+  it('prints a chord the way a menu row writes it, Ctrl and Meta in the words it is given', () => {
+    const words = { ctrl: 'Cmd', meta: 'Cmd' }
+    expect(printedShortcut('Alt+KeyH', words)).toBe('Alt + H')
+    expect(printedShortcut('Shift+Alt+Digit2', words)).toBe('Alt + Shift + 2')
+    expect(printedShortcut('Ctrl+KeyS', { ctrl: 'Ctrl', meta: 'Cmd' })).toBe('Ctrl + S')
+    expect(printedShortcut('Ctrl+KeyS', words)).toBe('Cmd + S')
+    expect(printedShortcut('Delete', words)).toBe('Delete')
+    expect(printedShortcut('Hyper+KeyR', words)).toBeNull()
   })
 })
 

@@ -94,6 +94,9 @@ export interface ChartCommandDeps {
   scroll(direction: 'left' | 'right'): void
   /** The level the open menu was raised at, which copy-price acts on. */
   level(): number | null
+  /** The price at the crosshair's height on the symbol's own grid, while the viewer's crosshair
+   *  stands on the main pane's plot; null anywhere else. Absent, there is none. */
+  crosshairLevel?(): number | null
   formatter(): PriceFormatter
   compareOpen(mode: 'compare' | 'change-symbol', changeFrom?: string): void
   indicatorsOpen(collection?: string): void
@@ -433,17 +436,22 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       if (isPlacedImage(arg)) verbs()?.placeImage(arg)
     },
   })
-  // A horizontal line placed whole at the price the argument names, as the price menu places one: a
-  // new drawing of the horizontal line tool, so it asks what arming that tool asks, and none is
-  // placed while every drawing is locked.
+  // A horizontal line placed whole at the price the argument names, as the price menu places one, or
+  // with no argument at the crosshair's price while the crosshair stands on the main pane's plot,
+  // which is what its shortcut runs: a new drawing of the horizontal line tool, so it asks what
+  // arming that tool asks, and none is placed while every drawing is locked. Off the plot, a run
+  // with no argument is unavailable, and its shortcut leaves the key to the page.
   const isPrice = (arg: unknown): arg is number => typeof arg === 'number' && Number.isFinite(arg)
+  const lineAt = (arg: unknown): number | null => (arg === undefined ? (deps.crosshairLevel?.() ?? null) : isPrice(arg) ? arg : null)
   add({
     id: 'chart.drawings.placeHorizontalLine',
     scope: 'chart',
     label: 'command.drawingPlaceHorizontalLine',
-    available: (arg) => on() && !drawings()!.allLocked() && (verbs()?.toolPermitted('horizontal_line') ?? false) && (arg === undefined || isPrice(arg)),
+    shortcut: 'Alt+KeyH',
+    available: (arg) => on() && !drawings()!.allLocked() && (verbs()?.toolPermitted('horizontal_line') ?? false) && lineAt(arg) !== null,
     execute: (arg) => {
-      if (isPrice(arg)) verbs()?.placeHorizontalLine(arg)
+      const price = lineAt(arg)
+      if (price !== null) verbs()?.placeHorizontalLine(price)
     },
   })
   add({

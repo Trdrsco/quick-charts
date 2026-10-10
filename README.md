@@ -1369,7 +1369,10 @@ argument your access policy turns away answers `denied` before availability is a
 `chart.drawings.arm` refuses a tool. `available(arg)` answers for the subject an argument names, and
 `commands.available(id, arg)` asks it: `chart.panes.moveUp` and `chart.panes.moveDown` take a pane's
 index, the top pane 0, so `commands.available('chart.panes.moveUp', 0)` is false, as is a move down
-for the bottom pane, and asked with no argument either says whether any pane could move. A refused
+for the bottom pane, and asked with no argument either says whether any pane could move.
+`chart.drawings.placeHorizontalLine` run with no argument places its line at the crosshair's price,
+so asked with none it answers for that price, and is false while the crosshair is off the main
+pane's plot. A refused
 argument is unavailable to ask about. `onChange` fires when the registered set or a shortcut changes,
 and when `widget.refreshAccess()` says your policy may answer differently. A refusal is a value,
 never a throw: `ok`, `unavailable`,
@@ -2363,7 +2366,8 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   press opens the price menu under it, which holds the actions on that price alone: every `level`
   row an extension contributes, each extension's rows together in the order the extensions
   attach, and then "Draw horizontal line at" the price, which runs
-  `chart.drawings.placeHorizontalLine`. A chart without its context menu shows no plus.
+  `chart.drawings.placeHorizontalLine` and prints that command's shortcut ("Alt + H" unless you
+  remap it). A chart without its context menu shows no plus.
 - `priceScale`: where the scales stand (`placement`): `left` stands the main series' scale on
   the left, with its mode, its framing and every series of the main pane that shares it, and a
   comparison on a scale of its own on the right; `right` and `auto` keep it on the right, with
@@ -3047,6 +3051,9 @@ toolbar as from anywhere else, including `chart.drawings.arm` for a refused tool
 placed through `chart.drawings.placeImage`, from the picker or a system-clipboard paste over the
 chart, and a horizontal line at a price through `chart.drawings.placeHorizontalLine` with that
 price, which asks what arming the horizontal line asks and places nothing while lock all holds.
+Run with no price, as its shortcut `Alt+KeyH` runs it, the command places the line at the
+crosshair's price while the crosshair stands on the main pane's plot, on the symbol's own price
+grid, and is unavailable anywhere else, so the key is left to your page there.
 Every flyout, palette and dialog a surface opens sits inside the chart root and closes with it, and
 the eye and lock all announce their state through a live region. Lock all also makes Paste
 unavailable, so a control never reports success for a drawing the layer refused.
@@ -3369,10 +3376,11 @@ What to know:
   table saved at `v: 2` paint as they were saved (`savedLook`) until their settings change. A host
   that writes drawings itself writes `v: 3`.
 - **Keys run through the registry.** Delete and Backspace remove the selection, Escape cancels a
-  placement, disarms, or closes the inline editor, and Ctrl (or Cmd) with C and V copy and paste a
-  drawing. Each resolves to a `chart.drawings.*` command, so your access policy gates the keyboard
-  as it gates the toolbar; the keys bind to the chart element and never the page, so an embedded
-  chart cannot swallow the host page's keys.
+  placement, disarms, or closes the inline editor, Ctrl (or Cmd) with C and V copy and paste a
+  drawing, and Alt with H places a horizontal line at the crosshair's price while the crosshair
+  stands on the main pane's plot. Each resolves to a `chart.drawings.*` command, so your access
+  policy gates the keyboard as it gates the toolbar; the keys bind to the chart element and never
+  the page, so an embedded chart cannot swallow the host page's keys.
 - **Gestures follow the standard grammar.** Drag a drawing to move it (rigid whole-bar translation,
   so anchors never drift apart); grab an anchor handle to reshape; hold Shift to constrain a
   two-point placement or an anchor drag to 45 degree rays; Ctrl-drag duplicates; the magnet pulls

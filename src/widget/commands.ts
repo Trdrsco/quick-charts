@@ -30,7 +30,9 @@ export interface CommandSpec {
   shortcut?: string
   /** Whether the command can run right now, from capability and chart state. A command whose one id
    *  spans many subjects reads the argument it would run with, and answers for that subject: the
-   *  top pane cannot move up. Asked with none, it answers whether any subject could. */
+   *  top pane cannot move up. Asked with none, it answers whether any subject could, unless a run
+   *  with none acts on a subject of its own, as the horizontal line at the crosshair's price does,
+   *  and then for that subject. */
   available(arg?: unknown): boolean
   /** Whether the access policy refuses this argument, for a command whose one id spans many
    *  subjects (the tool to arm). A refused argument answers `denied`, as a refused id does. */

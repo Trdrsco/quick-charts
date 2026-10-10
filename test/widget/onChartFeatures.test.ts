@@ -495,7 +495,7 @@ describe('the plus button', () => {
     return fills
   }
 
-  async function mountWithMenus(options: { drawings?: boolean } = {}) {
+  async function mountWithMenus(options: { drawings?: boolean; drawingTools?: readonly string[]; refuse?: string } = {}) {
     const run = { mark: vi.fn(), order: vi.fn(), view: vi.fn() }
     const container = document.createElement('div')
     document.body.appendChild(container)
@@ -505,6 +505,8 @@ describe('the plus button', () => {
       symbol: 'ES',
       timeframe: '1m',
       theme: { mode: 'dark' },
+      ...(options.drawingTools ? { drawingTools: options.drawingTools } : {}),
+      ...(options.refuse ? { access: { command: (id: string) => id !== options.refuse } } : {}),
       features: { drawings: options.drawings ?? true, replay: false, compare: false },
       ui: { contextMenu: true, topBar: false, bottomBar: false, toasts: false },
       extensions: [
@@ -605,7 +607,7 @@ describe('the plus button', () => {
     expect(plot).not.toHaveBeenCalled()
     expect(priceMenu()).toEqual([])
     press(gestures, 'pointerup', 530, 120)
-    expect(priceMenu()).toEqual(['Mark 4510.25Alt + M', '|', 'Order 4510.25', '|', 'Draw horizontal line at 4510.25'])
+    expect(priceMenu()).toEqual(['Mark 4510.25Alt + M', '|', 'Order 4510.25', '|', 'Draw horizontal line at 4510.25Alt + H'])
     // Its end meets the plus's end and its top the plus's foot.
     const menu = document.querySelector<HTMLElement>('.qc-menu.qc-price-menu')!
     expect(menu.style.top).toBe('131px')
@@ -638,6 +640,65 @@ describe('the plus button', () => {
     expect(drawn).toHaveLength(1)
     expect(drawn[0]!.type).toBe('horizontal_line')
     expect(drawn[0]!.anchors[0]!.price).toBeCloseTo(4510.25)
+  })
+
+  /** A press of Alt + H on the chart, as the keyboard delivers it. */
+  const altH = (target: HTMLElement): KeyboardEvent => {
+    const event = new KeyboardEvent('keydown', { code: 'KeyH', key: 'h', altKey: true, bubbles: true, cancelable: true })
+    target.dispatchEvent(event)
+    return event
+  }
+
+  it('prints the horizontal line command\'s shortcut on its row, as the command is bound', async () => {
+    const { widget, renderer, gestures } = await mountWithMenus()
+    const row = (): string | undefined => {
+      renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+      paint(renderer)
+      press(gestures, 'pointerdown', 530, 120)
+      press(gestures, 'pointerup', 530, 120)
+      const text = priceMenu().at(-1)
+      document.querySelector<HTMLElement>('.qc-menu-backdrop')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      return text
+    }
+    expect(widget.commands.list().find((spec) => spec.id === 'chart.drawings.placeHorizontalLine')?.shortcut).toBe('Alt+KeyH')
+    expect(row()).toBe('Draw horizontal line at 4510.25Alt + H')
+    widget.commands.setShortcut('chart.drawings.placeHorizontalLine', 'Alt+Shift+KeyL')
+    expect(row()).toBe('Draw horizontal line at 4510.25Alt + Shift + L')
+    widget.commands.setShortcut('chart.drawings.placeHorizontalLine', null)
+    expect(row()).toBe('Draw horizontal line at 4510.25')
+  })
+
+  it('places a horizontal line at the crosshair\'s price on Alt + H, and leaves the key alone off the plot', async () => {
+    const { widget, renderer, gestures } = await mountWithMenus()
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(altH(gestures).defaultPrevented).toBe(true)
+    const drawn = widget.activeChart().drawings!.export()
+    expect(drawn).toHaveLength(1)
+    expect(drawn[0]!.type).toBe('horizontal_line')
+    expect(drawn[0]!.anchors[0]!.price).toBeCloseTo(4510.25)
+    // Off the plot there is no price under the crosshair: nothing is placed and the key is the page's.
+    renderer.fireCrosshair(null)
+    expect(widget.commands.available('chart.drawings.placeHorizontalLine')).toBe(false)
+    expect(altH(gestures).defaultPrevented).toBe(false)
+    expect(widget.activeChart().drawings!.export()).toHaveLength(1)
+  })
+
+  it('refuses Alt + H as the command refuses: a tool left out, a refused command, lock all', async () => {
+    const offered = await mountWithMenus({ drawingTools: ['trend_line'] })
+    offered.renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(altH(offered.gestures).defaultPrevented).toBe(false)
+    expect(offered.widget.activeChart().drawings!.export()).toHaveLength(0)
+
+    const refused = await mountWithMenus({ refuse: 'chart.drawings.placeHorizontalLine' })
+    refused.renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(altH(refused.gestures).defaultPrevented).toBe(false)
+    expect(refused.widget.activeChart().drawings!.export()).toHaveLength(0)
+
+    const locked = await mountWithMenus()
+    expect(locked.widget.commands.execute('chart.drawings.lockAll', true).kind).toBe('ok')
+    locked.renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(altH(locked.gestures).defaultPrevented).toBe(false)
+    expect(locked.widget.activeChart().drawings!.export()).toHaveLength(0)
   })
 
   it('leaves the horizontal line out where the chart draws nothing', async () => {
