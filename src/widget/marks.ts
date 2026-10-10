@@ -103,6 +103,8 @@ const MARK_DOT_REACH = 6
  *  clear, and a dot 1px drawn and 4px clear. A hovered mark's line is dashed. */
 const MARK_LINE_DASH: Readonly<Record<MarkLineStyle, readonly number[]>> = { solid: [], dashed: [5, 6], dotted: [1, 4] }
 const MARK_HOVER_DASH = MARK_LINE_DASH.dashed
+/** How strongly a hovered ring's inside takes the mark's color over the background. */
+const MARK_HOVER_TINT = 0.15
 
 /** The line style a mark names, or null where it names none the chart draws. */
 const lineOf = (mark: TimescaleMark): MarkLineStyle | null => {
@@ -110,7 +112,8 @@ const lineOf = (mark: TimescaleMark): MarkLineStyle | null => {
   return typeof style === 'string' && Object.hasOwn(MARK_LINE_DASH, style) ? style : null
 }
 
-/** One vertical line, `width` device pixels wide, down the whole of a bitmap at a CSS x. */
+/** One vertical line in a color and a dash, a CSS pixel wide, at a CSS x from the top of a bitmap
+ *  down to `bottom` in its device pixels. */
 function strokeDown(scope: BitmapScope, x: number, color: string, dash: readonly number[], bottom: number): void {
   const ctx = scope.context
   const width = Math.max(1, Math.round(scope.horizontalPixelRatio))
@@ -126,8 +129,6 @@ function strokeDown(scope: BitmapScope, x: number, color: string, dash: readonly
   ctx.stroke()
   ctx.restore()
 }
-/** How strongly a hovered ring's inside takes the mark's color over the background. */
-const MARK_HOVER_TINT = 0.15
 
 /** The host's drawing of a mark glyph as a bitmap of `size` device pixels in one color: undefined
  *  where the host draws none, so the chart's own glyph stands, and null while it is loading. */
