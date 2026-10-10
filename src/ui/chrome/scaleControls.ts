@@ -45,8 +45,6 @@ export interface ScaleControlsDeps {
   toggleLogScale(): void
   /** Whether the plus beside the crosshair's price shows: the setting, and a menu to open. */
   plusButton(): boolean
-  /** The price at a height of the main pane, as the scale writes it, or null where none reads. */
-  priceText(y: number): string | null
   /** Open the price level's menu at a viewport point, the price read off its height. */
   openPriceMenu(clientX: number, clientY: number): void
 }
@@ -109,8 +107,6 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     const left = box.side === 'right' ? box.left - PLUS.size - PLUS.gap : box.left + box.width + PLUS.gap
     plus.style.left = `${Math.round(left)}px`
     plus.style.top = `${Math.round(y - PLUS.size / 2)}px`
-    const price = deps.priceText(y)
-    name(plus, t('chrome.priceLevelMenu', { price: price ?? '' }))
   }
   auto.addEventListener('click', () => {
     deps.toggleAutoScale()
@@ -132,6 +128,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     name(auto, t('chrome.autoScale'))
     log.textContent = t('chrome.logScaleMark')
     name(log, t('chrome.logScale'))
+    name(plus, t('chrome.priceLevelMenu'))
   }
 
   const sync = (): void => {

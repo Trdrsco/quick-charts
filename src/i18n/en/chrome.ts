@@ -39,9 +39,8 @@ export const chrome = {
   /** The box at the top of the price scale naming what its prices are in, when the symbol states
    *  both a currency and a unit; either alone is written as the feed states it. */
   'chrome.currencyAndUnit': '{currency} · {unit}',
-  /** The plus beside the crosshair's price label, which opens that price's menu; `{price}` is the
-   *  price as the scale writes it. */
-  'chrome.priceLevelMenu': 'Actions at {price}',
+  /** The plus beside the crosshair's price label, which opens that price's menu. */
+  'chrome.priceLevelMenu': 'Price actions',
   /** The buttons at the top right of each pane: their group, and the one that deletes the pane and
    *  everything in it. Collapse, restore and maximize read the legend's own words. */
   'chrome.paneButtons': 'Pane',

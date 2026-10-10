@@ -488,7 +488,7 @@ describe('the plus button', () => {
     renderer.fireCrosshair(BARS[5]!.t, 300, 120)
     expect(plus.hidden).toBe(false)
     expect([plus.style.left, plus.style.top]).toEqual(['515px', '108px'])
-    expect(plus.getAttribute('aria-label')).toBe('Actions at 4510.25')
+    expect(plus.getAttribute('aria-label')).toBe('Price actions')
     plus.click()
     const rows = [...document.querySelectorAll<HTMLElement>('.qc-menu-row')].map((row) => row.textContent)
     expect(rows.some((text) => text?.includes('Mark 4510.25'))).toBe(true)

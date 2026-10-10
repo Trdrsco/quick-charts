@@ -1405,12 +1405,6 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         // The plus opens the menu a right-click raises, so the rows a host contributes for a level
         // are there too; without that menu, or a crosshair, there is nothing for it to open.
         plusButton: () => eff.priceLabels.plusButton && menu !== null && deps.ui.crosshair,
-        priceText: (y) => {
-          const price = series.coordinateToPrice(y)
-          if (price == null || !Number.isFinite(price)) return null
-          const step = minMove()
-          return symbolFormatter.format(Math.round(price / step) * step)
-        },
         openPriceMenu: (clientX, clientY) => {
           menu?.raiseAt(clientX, clientY)
         },
