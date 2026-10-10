@@ -22,6 +22,9 @@ export const command = {
   /** The level the right-click menu was raised at, copied in the symbol's own price format. */
   'command.priceCopy': 'Copy price',
 
+  /** Ask the datafeed for the chart's marks again, at once. */
+  'command.marksRefresh': 'Refresh marks',
+
   /** Change the chart's symbol. The symbol is the argument. */
   'command.symbolSet': 'Change symbol',
 

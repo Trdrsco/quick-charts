@@ -260,6 +260,10 @@ export interface ChartExtensionContext {
   /** Place a row of the extension's own in the pane's legend. The returned function takes it out,
    *  and detach takes it out either way; the element is the extension's to keep. */
   contributeLegendRow(row: ChartExtensionLegendRow): () => void
+  /** Ask the datafeed for the chart's bar marks and time-scale marks again, now, and draw what it
+   *  answers: for an extension whose own setting changes what the feed serves, such as a row it
+   *  contributes to the settings dialog, so the change shows while the dialog is open. */
+  refreshMarks(): void
 }
 
 /** What an extension gives back at attach. `detach` is required; the two state methods are the
@@ -320,6 +324,8 @@ export interface ChartExtensionHostDeps {
   hideLayersChanged(): void
   /** The set of contributed legend rows changed: the legend places them again. */
   legendRowsChanged?(): void
+  /** Ask the datafeed for the chart's marks again. Absent, an extension's ask does nothing. */
+  refreshMarks?(): void
 }
 
 /** The widget's half of the seam: attach the configured extensions, push the chart's changes at
@@ -650,6 +656,14 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
             record.commands.get(id)?.()
             record.commands.delete(id)
           }
+        }
+      },
+      refreshMarks() {
+        if (!record.live || !hostLive) return
+        try {
+          deps.refreshMarks?.()
+        } catch {
+          /* the chart's own failure stays the chart's */
         }
       },
       contributeHideLayer(layer) {

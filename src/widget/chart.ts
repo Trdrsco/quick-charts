@@ -303,6 +303,11 @@ export interface ChartHandle {
   resetSettings(): void
   /** The chart's one price formatter, in the chart's language and on the symbol's own grid. */
   formatter(): PriceFormatter
+  /** Ask the datafeed for this chart's bar marks and time-scale marks again, now, over the window
+   *  the chart holds, and draw what it answers in place of what is drawn. A host calls it when a
+   *  change of its own changes what its feed serves, so the change shows at once. A chart that draws
+   *  no marks, or holds no bars yet, asks nothing. */
+  refreshMarks(): void
   saveLoad: ChartSaveLoadApi
   /** Pane-composition sync primitives, which a layout drives. */
   sync: ChartPaneSyncApi
@@ -1315,6 +1320,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     hideLayersChanged: () => drawings.syncHideLayers(),
     // A contributed legend row stands in the legend under the symbol's reading.
     legendRowsChanged: () => legend.setSlotRows(extensionsHost?.legendRows().map((row) => row.element) ?? []),
+    refreshMarks: () => refreshMarks(),
   })
   extensionsHost = extensions.host
   // The rows the extensions placed while they attached, before the host was there to read.
@@ -1815,8 +1821,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     return { olderBars: hop.bars, end: olderPageVerdict(hop, verdict.to, true).kind === 'end' }
   }
 
-  const refreshMarks = (): void => {
-    if (!marks || bars.length === 0) return
+  /** Ask for the marks over the loaded bars, and the time-scale marks on past them as far as the
+   *  view reaches. A declaration, so an extension may ask while it attaches. */
+  function refreshMarks(): void {
+    if (disposed || !marks || bars.length === 0) return
     marks.refresh({ from: bars[0]!.t, to: bars[bars.length - 1]!.t })
   }
 
@@ -2564,6 +2572,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
     resetSettings,
     formatter: () => symbolFormatter,
+    refreshMarks,
     saveLoad,
     sync: {
       onCrosshair(cb) {
@@ -2635,6 +2644,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     features: deps.features,
     ui: deps.ui,
     capabilities: deps.capabilities,
+    marks: deps.marks,
     resetSettings,
     t: () => i18n.t,
     // What is PAINTED, which is the replay slice while replay is on: the data export writes what

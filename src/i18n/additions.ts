@@ -16,6 +16,7 @@ export const KEYS_ADDED_IN_MAJOR = [
   'chrome.scaleHigh',
   'chrome.scaleLow',
   'chrome.scaleModes',
+  'command.marksRefresh',
 ] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

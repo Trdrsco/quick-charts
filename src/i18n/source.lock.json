@@ -96,6 +96,7 @@
     "command.layoutSave": "38314633b1",
     "command.layoutSync": "b9303b8361",
     "command.localeSet": "7936076a3f",
+    "command.marksRefresh": "412b1ec728",
     "command.priceCopy": "d2167137c0",
     "command.rangeSet": "d66582c011",
     "command.replayExit": "b4053ab4f5",

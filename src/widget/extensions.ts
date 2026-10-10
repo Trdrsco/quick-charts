@@ -71,6 +71,8 @@ export interface ExtensionsDeps {
   hideLayersChanged(): void
   /** The set of contributed legend rows changed. */
   legendRowsChanged?(): void
+  /** Ask the datafeed for the chart's marks again. */
+  refreshMarks?(): void
 }
 
 export function attachExtensionsPlane(deps: ExtensionsDeps): ExtensionsPlane {
@@ -176,6 +178,7 @@ export function attachExtensionsPlane(deps: ExtensionsDeps): ExtensionsPlane {
       setHide: deps.setHide,
       hideLayersChanged: deps.hideLayersChanged,
       ...(deps.legendRowsChanged ? { legendRowsChanged: deps.legendRowsChanged } : {}),
+      ...(deps.refreshMarks ? { refreshMarks: deps.refreshMarks } : {}),
     },
     deps.extensions,
   )

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // The neutral marks as the chart draws them: the color a mark wears in each mode, and the time-scale
 // marks on a recording canvas, each a glyph in a 21px ring or a small dot.
-import { beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { DARK_THEME, LIGHT_THEME } from '../../src/theme/palettes'
 import { MARK_ICONS } from '../../src/ui/controls/icons'
 import { attachMarks, createTimescaleMarks, markColor, markersOf, markSlot, type MarkArt } from '../../src/widget/marks'
@@ -17,6 +17,12 @@ beforeAll(() => {
       constructor(readonly d?: string) {}
     },
   )
+})
+afterAll(() => {
+  vi.unstubAllGlobals()
+})
+afterEach(() => {
+  document.body.replaceChildren()
 })
 
 describe('a mark’s color', () => {

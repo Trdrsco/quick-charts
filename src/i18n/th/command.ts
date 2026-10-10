@@ -10,6 +10,7 @@ export const command: Translation<typeof source> = {
   'command.viewScrollLeft': 'เลื่อนย้อนหลัง',
   'command.viewScrollRight': 'เลื่อนไปข้างหน้า',
   'command.priceCopy': 'คัดลอกราคา',
+  'command.marksRefresh': 'Refresh marks',
   'command.symbolSet': 'เปลี่ยนสัญลักษณ์',
   'command.styleCandles': 'แท่งเทียน',
   'command.styleHollow': 'แท่งเทียนกลวง',

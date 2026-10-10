@@ -587,7 +587,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
         equal(typeof widget[member], 'function', `widget.${member}`)
       }
       for (const member of ['layout', 'theme', 'commands', 'recents', 'image', 'fullscreen', 'chrome'] as const) assert(widget[member], `widget.${member}`)
-      for (const member of ['symbol', 'setSymbol', 'symbolInfo', 'timeframe', 'setTimeframe', 'style', 'setStyle', 'visibleRange', 'rangePreset', 'setVisibleRange', 'logicalRange', 'setLogicalRange', 'scroll', 'zoom', 'reset', 'goLive', 'scaleMode', 'setScaleMode', 'timezone', 'setTimezone', 'displayTimezone', 'marketStatus', 'subsession', 'setSubsession', 'hasExtendedHours', 'drawingPreferences', 'setDrawingPreferences', 'settings', 'applySettings', 'resetSettings', 'formatter', 'on'] as const) {
+      for (const member of ['symbol', 'setSymbol', 'symbolInfo', 'timeframe', 'setTimeframe', 'style', 'setStyle', 'visibleRange', 'rangePreset', 'setVisibleRange', 'logicalRange', 'setLogicalRange', 'scroll', 'zoom', 'reset', 'goLive', 'scaleMode', 'setScaleMode', 'timezone', 'setTimezone', 'displayTimezone', 'marketStatus', 'subsession', 'setSubsession', 'hasExtendedHours', 'drawingPreferences', 'setDrawingPreferences', 'settings', 'applySettings', 'resetSettings', 'formatter', 'refreshMarks', 'on'] as const) {
         equal(typeof chart[member], 'function', `chart.${member}`)
       }
       for (const member of ['indicators', 'compare', 'replay', 'history', 'saveLoad', 'sync'] as const) assert(chart[member], `chart.${member}`)

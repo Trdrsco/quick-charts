@@ -10,6 +10,7 @@ export const command: Translation<typeof source> = {
   'command.viewScrollLeft': 'Desplazar hacia atrás',
   'command.viewScrollRight': 'Desplazar hacia delante',
   'command.priceCopy': 'Copiar precio',
+  'command.marksRefresh': 'Refresh marks',
   'command.symbolSet': 'Cambiar símbolo',
   'command.styleCandles': 'Velas',
   'command.styleHollow': 'Velas huecas',

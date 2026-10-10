@@ -71,6 +71,8 @@ export interface ChartCommandDeps {
   features: ResolvedFeatures
   ui: ResolvedUi
   capabilities(): Capabilities
+  /** Whether the chart draws the feed's marks. Absent reads as false. */
+  marks?: boolean
   /** Drop the viewer's OWN settings and return the price scale to normal, leaving the theme's
    *  values, the host's constructor partial, the viewport and every other preference alone. */
   resetSettings(): void
@@ -144,6 +146,17 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   add({ id: 'chart.view.zoomOut', scope: 'chart', label: 'command.viewZoomOut', shortcut: 'Minus', available: navigable, execute: () => deps.zoom('out') })
   add({ id: 'chart.view.scrollLeft', scope: 'chart', label: 'command.viewScrollLeft', shortcut: 'ArrowLeft', available: navigable, execute: () => deps.scroll('left') })
   add({ id: 'chart.view.scrollRight', scope: 'chart', label: 'command.viewScrollRight', shortcut: 'ArrowRight', available: navigable, execute: () => deps.scroll('right') })
+
+  // ── Marks. Asking the feed for them again is a host's answer to a change of its own in what the
+  // feed serves, so a control of the host's and an automation adapter both reach it. It is
+  // available while the chart draws marks and the feed serves either family.
+  add({
+    id: 'chart.marks.refresh',
+    scope: 'chart',
+    label: 'command.marksRefresh',
+    available: () => deps.marks === true && (deps.capabilities().marks || deps.capabilities().timescaleMarks),
+    execute: () => handle.refreshMarks(),
+  })
 
   // ── The loaded bars, as a file. A local write of what is already on screen: no history request
   // and no server export. An empty chart has nothing to write and the command is unavailable, which

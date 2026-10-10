@@ -317,6 +317,9 @@ export function fakeChart(options: FakeChartOptions = {}) {
       calls.push('settings:reset')
     },
     formatter: () => createPriceFormatter({ pricescale: 100, minmov: 1 }),
+    refreshMarks() {
+      calls.push('marks:refresh')
+    },
     // The content holds the viewer's settings, as the chart saves them.
     saveLoad: { serialize: () => ({ content: JSON.stringify({ settings: state.viewer }) }) } as never,
     sync: {

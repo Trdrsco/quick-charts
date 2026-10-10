@@ -462,6 +462,7 @@
       "chart.indicators.removeAll",
       "chart.indicators.show",
       "chart.indicators.update",
+      "chart.marks.refresh",
       "chart.price.copy",
       "chart.range.1D",
       "chart.range.1M",
