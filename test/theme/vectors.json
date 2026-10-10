@@ -252,7 +252,7 @@
       },
       {
         "property": "--qc-scale-crosshairLabelBackground",
-        "value": "#131722"
+        "value": "#0f0f0f"
       },
       {
         "property": "--qc-scale-crosshairLabelText",
@@ -682,11 +682,11 @@
       },
       {
         "property": "--qc-scale-crosshairLabelBackground",
-        "value": "#dbdbdb"
+        "value": "#3d3d3d"
       },
       {
         "property": "--qc-scale-crosshairLabelText",
-        "value": "#0f0f0f"
+        "value": "#ffffff"
       },
       {
         "property": "--qc-scale-grid",

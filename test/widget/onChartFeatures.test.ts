@@ -9,13 +9,14 @@ import { BUILT_IN_INDICATORS } from '../../src/index'
 import { chartSettingsDefaults } from '../../src/settings/defaults'
 import type { PartialChartSettings } from '../../src/settings/schema'
 import type { PriceFormat, SymbolInfo } from '../../src/symbology'
-import { DARK_THEME } from '../../src/theme/palettes'
+import { DARK_THEME, LIGHT_THEME } from '../../src/theme/palettes'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import type { UiConfig } from '../../src/widget/options'
 import { priceLevels, visibleRange } from '../../src/widget/priceLevels'
 import { signedPercentText } from '../../src/widget/prices'
 import { barValue } from '../../src/widget/styles'
 import { paneActions, type PaneFacts } from '../../src/ui/chrome/paneButtons'
+import { labelFill } from '../../src/widget/scalePlus'
 import { fakePriceAt, lastRenderer, type FakeRenderer, type FakeSeries } from './rendererFake'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
@@ -553,13 +554,28 @@ describe('the plus button', () => {
     expect(plus.hidden).toBe(true)
     // The renderer's paint draws the plus in the label's own fill, on the label's rows, flush against
     // the plot's edge, and the button stands on what it drew.
-    expect(paint(renderer)).toEqual(['rgb(219, 219, 219)'])
+    expect(paint(renderer)).toEqual(['rgb(61, 61, 61)'])
     expect(plus.hidden).toBe(false)
     expect([plus.style.left, plus.style.top, plus.style.width, plus.style.height]).toEqual(['519px', '110px', '21px', '21px'])
     expect(plus.getAttribute('aria-label')).toBe('Price actions')
     renderer.fireCrosshair(BARS[5]!.t, 300, 200)
     paint(renderer)
     expect(plus.style.top).toBe('190px')
+  })
+
+  it('wears the one fill the renderer paints the crosshair labels in: the measured grey, on the price and the time label alike', async () => {
+    const { renderer } = await mountWithMenus()
+    const crosshair = (renderer.chart.options() as { crosshair: { horzLine: { labelBackgroundColor: string }; vertLine: { labelBackgroundColor: string } } }).crosshair
+    // Each theme's label is the reference's, written in white: a grey in dark and a near black in
+    // light, on the price scale and the time scale alike.
+    expect([DARK_THEME['scale.crosshairLabelBackground'], DARK_THEME['scale.crosshairLabelText']]).toEqual(['#3d3d3d', '#ffffff'])
+    expect([LIGHT_THEME['scale.crosshairLabelBackground'], LIGHT_THEME['scale.crosshairLabelText']]).toEqual(['#0f0f0f', '#ffffff'])
+    expect(crosshair.horzLine.labelBackgroundColor).toBe('#3d3d3d')
+    expect(crosshair.vertLine.labelBackgroundColor).toBe('#3d3d3d')
+    // The plus reads that same option, as the renderer paints it (without an alpha).
+    renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+    expect(paint(renderer)).toEqual([labelFill(crosshair.horzLine.labelBackgroundColor)])
+    expect(labelFill('#3d3d3d')).toBe('rgb(61, 61, 61)')
   })
 
   it('puts the plus away while the crosshair is off the plot or the setting is off', async () => {

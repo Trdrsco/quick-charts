@@ -103,6 +103,39 @@ describe('the plus beside the crosshair label', () => {
     expect(scalePlusBitmapBox(398, { width: 2244 }, 'right', 12, { horizontal: 2, vertical: 2 })).toEqual({ left: 2202, top: 775, width: 42, height: 42 })
   })
 
+  it('is exactly as tall as the crosshair label, on the same rows, at every text size and pixel ratio', () => {
+    // The renderer's own rule for the crosshair's price label, restated from its source: the text
+    // with 2.5/12 of it above and below, the crosshair label's extra 2/12 above and below, matched to
+    // the parity of the crosshair line's thickness and centred on the crosshair's pixel row.
+    const label = (y: number, fontSize: number, ratio: number) => {
+      const tick = Math.max(1, Math.floor(ratio))
+      let height = Math.round((fontSize + (fontSize * 2.5 * 2) / 12 + (fontSize * 2 * 2) / 12) * ratio)
+      if (height % 2 !== tick % 2) height += 1
+      const middle = Math.round(y * ratio) - Math.floor(ratio * 0.5)
+      const top = Math.floor(middle + tick / 2 - height / 2)
+      return { top, bottom: top + height }
+    }
+    for (const fontSize of [10, 11, 12, 13, 14, 16]) {
+      for (const ratio of [1, 1.25, 1.5, 2, 3]) {
+        for (const y of [0.5, 37, 120.25, 398, 640.75]) {
+          const plus = scalePlusBitmapBox(y, { width: 1000 }, 'right', fontSize, { horizontal: ratio, vertical: ratio })
+          expect({ top: plus.top, bottom: plus.top + plus.height }).toEqual(label(y, fontSize, ratio))
+        }
+      }
+    }
+  })
+
+  it('rounds its outer corners by the radius the renderer rounds the label by, square where it joins it', () => {
+    // The renderer rounds its labels by 2px of the pane's pixels; the reference's label and plus both
+    // measure 2px at their outer corners and square where they meet.
+    for (const ratio of [1, 2]) {
+      const { layer, paint } = setup()
+      layer.setPointer({ x: 300, y: 398 })
+      const radii = paint({ width: 1122, height: 891 }, ratio).find((call) => call.op === 'roundRect')!.args[4]
+      expect(radii).toEqual([2 * ratio, 0, 0, 2 * ratio])
+    }
+  })
+
   it('paints in the top layer, the one the renderer paints the crosshair and its label in, at the crosshair height', () => {
     const { layer, series, paint, placed } = setup()
     expect(series.primitives[0]!.paneViews()[0]!.zOrder()).toBe('top')
