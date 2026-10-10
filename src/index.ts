@@ -106,6 +106,8 @@ export type { ChartSaveLoadApi } from './widget/saveLoad'
 // lets it take back everything an extension drew.
 export type {
   ChartExtension,
+  ChartExtensionCapture,
+  ChartExtensionCaptureFrame,
   ChartExtensionChart,
   ChartExtensionCommand,
   ChartExtensionContext,

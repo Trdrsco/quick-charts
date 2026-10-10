@@ -1577,7 +1577,8 @@ async function shareable(widget: ChartWidget): Promise<void> {
 
 `capture()` composes the chart, or every chart of a layout, into one PNG under a header carrying the
 identity and the attribution you configured through `image`. Nothing is uploaded, shared or stored:
-you receive a blob and decide.
+you receive a blob and decide. `copy()` and `download()` take the same image, and an extension takes
+part in each through `contributeCapture` (see Extensions).
 
 ### Indicator picker content
 
@@ -3456,8 +3457,12 @@ What to know:
 - **Your settings join the chart settings dialog.** `ctx.contributeSettings(contribution)` adds a
   page of your own, placed after the chart page `place.page.after` names (or last), or rows inside
   one of the chart's pages, placed before the first of the rows `place.before` names (or at its
-  end). The chart's rows are named by the leaf they edit, such as `background` on the Status line
-  page, and the sections it shows only in some contexts by their own names, such as `indicators`.
+  end). Pages that name the same chart page stand after it in the order their extensions attach,
+  which is the order of `extensions` (an extension attached again on a symbol switch keeps its
+  place), and one extension's pages in the order it contributes them; pages that name none stand
+  last in the same order. The chart's rows are named by the leaf they edit, such as `background` on
+  the Status line page, and the sections it shows only in some contexts by their own names, such as
+  `indicators`.
   `build(form)` builds your rows with the form the chart builds its own with: headings, checkbox
   rows with a hint or a tip, sub-rows, and colors, lists, numbers and sliders, so your rows are the
   chart's in every measure. The dialog calls `open()` as it opens, `cancel(state)` with what `open`
@@ -3473,6 +3478,21 @@ What to know:
 - **A setting of yours can redraw the marks at once.** `ctx.refreshMarks()` asks the datafeed for
   the chart's bar marks and time-scale marks again and draws the answer, so a row you contribute to
   the settings dialog previews its change while the dialog is open. A detached context asks nothing.
+- **What you draw can take part in the chart's image.** `ctx.contributeCapture({ before, paint })`
+  is called around every image the chart produces of itself, by `widget.image.capture()`, `copy()`
+  and `download()` alike. `before()` runs synchronously before the renderer draws the image and may
+  answer a restore, which runs once the image is taken: hold out what you draw, and put it back.
+  The renderer draws every pending change before it takes the image, so a price line you updated
+  or a primitive you asked to redraw shows as it now stands. `paint(target, frame)` runs on the bitmap's
+  2D context once it is drawn, to paint what the chart's canvases do not carry, such as labels on
+  an overlay of your own. The origin is the chart element's top left, which is the top left of
+  `ctx.container`; `frame.width` and `frame.height` are the element's size in CSS pixels, and
+  `frame.pixelRatio` is the image's pixels per CSS pixel. The context arrives untransformed, and
+  the chart puts back its state after each paint. Contributions run in the order their extensions
+  attach and then as they were contributed, restores run the last answered first, and a throw in a
+  `before`, a `paint` or a restore
+  is contained: the image is still produced and every restore still runs. The returned function
+  withdraws the contribution, and detach withdraws it either way.
 - **A printed chord is a real binding.** `ChartExtensionMenuItem.shortcut` prints on the row and
   answers to the key. The chart's dispatcher offers a press no built-in verb claims to the rows your
   `contributeContextMenu` callback returns for the level under the pointer and runs that row's own
@@ -3502,8 +3522,8 @@ What to know:
   re-attaches it on every switch, so a market-scoped overlay cannot carry one market's drawing onto
   another's bars.
 - **A failing extension is its own problem.** A throw in `attach` drops that extension and the
-  chart still mounts; a throw in a subscriber, a menu builder, a command or a teardown is
-  contained.
+  chart still mounts; a throw in a subscriber, a menu builder, a command, a capture or a teardown
+  is contained.
 - **Layouts attach per chart.** A widget hands its shared options to every chart it tiles, so each
   chart gets its own attachment, its own context and its own state slot.
 

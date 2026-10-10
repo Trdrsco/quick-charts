@@ -133,7 +133,7 @@ describe('the wiring that makes those the same formatter', () => {
   })
 
   it('the exported image is the renderer screenshot, so its axis text is the axis text', () => {
-    expect(chartSrc).toContain('screenshot: () => chart.takeScreenshot()')
+    expect(chartSrc).toContain('screenshot: () => extensions.host.capture(() => chart.takeScreenshot(),')
     expect(createSrc).toContain('const canvas = instances.get(slot.handle.id)?.screenshot()')
   })
 
