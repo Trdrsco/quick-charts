@@ -43,6 +43,8 @@ export interface WidgetCommandDeps {
   nameLayout(): boolean
   /** Raise the chrome's Layouts dialog. False when no chrome took it. */
   openLayouts(): boolean
+  /** Open the chrome's chart settings dialog on a page, or on its first. False when no chrome took it. */
+  openSettings(page?: string): boolean
   /** The layout owner's conditional removal, also used for a browser row that is not open. */
   removeLayout(ref: ResourceRef): Promise<ResourceRemoveOutcome>
   autosave: AutosavePreference
@@ -85,6 +87,20 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
     available: always,
     execute: (arg) => {
       if ((THEME_MODES as readonly string[]).includes(String(arg))) theme.setMode(arg as ThemeMode)
+    },
+  })
+
+  // ── Chart settings. The dialog edits the active chart; the argument names the page it opens on,
+  // one of the chart's (`symbol`, `statusLine`, `scales`, `canvas`, `events`) or one a host's
+  // extension contributes. An open dialog turns to the page.
+  add({
+    id: 'chart.settings.open',
+    scope: 'widget',
+    label: 'command.settingsOpen',
+    available: always,
+    execute: (arg) => {
+      const page = (arg as { page?: unknown } | null | undefined)?.page
+      deps.openSettings(typeof page === 'string' && page ? page : undefined)
     },
   })
 

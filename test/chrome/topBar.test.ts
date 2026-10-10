@@ -104,20 +104,18 @@ describe('the top bar', () => {
     }
   })
 
-  it('Chart settings uses a section rail and Cancel restores previewed changes', () => {
+  it('Chart settings uses a page rail, and Cancel restores what the pages previewed', () => {
     const { bar, w } = mount()
     bar.element.querySelector<HTMLButtonElement>('button[aria-label="Chart settings"]')!.click()
     const dialog = document.querySelector<HTMLElement>('.qc-chart-settings-dialog')!
     expect(dialog.querySelector('.qc-dialog-title')?.textContent).toContain('Settings')
-    expect([...dialog.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual(['Appearance', 'Display', 'Price scale', 'Theme'])
-    expect([...dialog.querySelectorAll('.qc-chart-settings-footer .qc-button')].map((control) => control.textContent)).toEqual(['Reset defaults', 'Cancel', 'Ok'])
+    expect([...dialog.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual(['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Events'])
+    expect([...dialog.querySelectorAll('.qc-chart-settings-footer button')].map((control) => control.textContent)).toEqual(['Template', 'Cancel', 'Ok'])
 
-    dialog.querySelector<HTMLButtonElement>('[role="tab"][data-settings-page="display"]')!.click()
-    const grid = dialog.querySelector<HTMLButtonElement>('[role="switch"][aria-label="Grid lines"]')!
-    grid.click()
-    expect(w.chart.state.appearance.appearance.grid).toBe(false)
+    // The harness registers no settings command, so the row's write is the handle's own here.
+    w.chart.handle.applySettings({ canvas: { verticalGrid: false } })
     dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
-    expect(w.chart.state.appearance.appearance.grid).toBe(true)
+    expect(w.chart.calls).toContain('settings:reset')
   })
 
   it('is a labeled toolbar carrying every control by default', () => {

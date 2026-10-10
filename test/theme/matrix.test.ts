@@ -60,7 +60,7 @@ const SURFACES: readonly Surface[] = [
     classes: ['qc-field', 'qc-select', 'qc-select-chevron', 'qc-name-box', 'qc-field-row', 'qc-drawing-input', 'qc-drawing-select', 'qc-drawing-hex-wrap', 'qc-drawing-opacity-readout', 'qc-search-input', 'qc-tf-composer'],
     states: [STATE.placeholder, ':focus', ':focus-within', STATE.hover, ':disabled', '[readonly]', "[aria-invalid='true']", STATE.expanded],
   },
-  { name: 'settings menu', files: ['settings.css'], classes: ['qc-settings-menu', 'qc-settings-row'], states: [] },
+  { name: 'chart settings', files: ['settings.css'], classes: ['qc-chart-settings-dialog', 'qc-chart-settings-nav-item', 'qc-settings-check', 'qc-settings-tip'], states: [STATE.hover, STATE.selected, STATE.expanded] },
   { name: 'legend', files: ['quickcharts.css'], classes: ['qc-legend', 'qc-legend-row', 'qc-legend-action', 'qc-session-dot'], states: ["[data-qc-hidden='true']", "[data-qc-session='open']", "[data-qc-session='closed']"] },
   { name: 'panes and scales', files: ['quickcharts.css'], classes: ['qc-pane', 'qc-panes', 'qc-gestures'], states: [STATE.on] },
   { name: 'drawing settings and editors', files: ['drawings-settings.css', 'drawings-editors.css'], classes: ['qc-drawing-settings-bar', 'qc-drawing-dialog', 'qc-drawing-text-editor', 'qc-drawing-glyphs'], states: [STATE.hover, STATE.focus, STATE.expanded, STATE.pressed, STATE.selected, STATE.on, STATE.placeholder] },

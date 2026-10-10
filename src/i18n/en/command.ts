@@ -126,6 +126,9 @@ export const command = {
   'command.themeToggle': 'Switch theme',
   'command.themeSet': 'Set theme',
 
+  /** Open the chart settings dialog, on the page the argument names or on its first. */
+  'command.settingsOpen': 'Chart settings',
+
   'command.localeSet': 'Language',
 
   'command.fullscreenEnter': 'Fullscreen',

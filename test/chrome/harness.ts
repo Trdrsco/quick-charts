@@ -46,6 +46,7 @@ import type { OpenResource } from '../../src/openResource'
 import type { FeedBar } from '../../src/datafeed'
 import type { SymbolInfo } from '../../src/symbology'
 import type { ChromeContext } from '../../src/ui/chrome/context'
+import { createChartSettingsDialog } from '../../src/ui/settings/dialog'
 
 export interface FakeChartOptions {
   symbol?: string
@@ -317,7 +318,8 @@ export function fakeChart(options: FakeChartOptions = {}) {
       calls.push('settings:reset')
     },
     formatter: () => createPriceFormatter({ pricescale: 100, minmov: 1 }),
-    saveLoad: {} as never,
+    // The content holds the viewer's settings, as the chart saves them.
+    saveLoad: { serialize: () => ({ content: JSON.stringify({ settings: state.viewer }) }) } as never,
     sync: {
       onCrosshair: () => () => undefined,
       setCrosshair: () => undefined,
@@ -416,6 +418,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   let nameLayoutDoor: () => boolean = () => false
   /** The chrome's Open-layout door, filled the same way. */
   let openLayoutsDoor: () => boolean = () => false
+  let openSettingsDoor: (page?: string) => boolean = () => false
   const widget: ChartWidget = {
     ready: () => Promise.resolve(),
     activeChart: () => chart.handle,
@@ -570,6 +573,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     canSaveLayout: () => true,
     nameLayout: () => nameLayoutDoor(),
     openLayouts: () => openLayoutsDoor(),
+    openSettings: (page) => openSettingsDoor(page),
     layoutChanges,
     removeLayout: async (ref) => {
       const outcome = await options.layoutStore?.remove(ref)
@@ -595,7 +599,10 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   const layoutListing = createLayoutListStore(storage)
   const layoutCatalog = options.layoutStore ? createLayoutCatalog({ store: options.layoutStore, widget }) : null
   const layoutDialogs = mountLayoutDialogs({ ...ctx, catalog: layoutCatalog, listing: layoutListing, notify: () => undefined })
-  const topBarParts = { layoutDialogs, layoutCatalog, layoutListing, layoutChanges }
+  // The chrome's chart settings dialog, which the bar's gear and the open command both reach.
+  const settingsDialog = createChartSettingsDialog({ ...ctx, templates: null })
+  openSettingsDoor = (page) => settingsDialog.open(page)
+  const topBarParts = { layoutDialogs, layoutCatalog, layoutListing, layoutChanges, settingsDialog }
   return {
     widget,
     chart,

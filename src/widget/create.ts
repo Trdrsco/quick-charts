@@ -686,7 +686,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
   // behavior, kept here so it runs whatever controls the chrome draws. It subscribes before the chrome
   // does, so the saved-layouts menu reads an answer that already heard the same event.
   const layoutChanges = trackLayoutChanges({ widget, commands, autosave, events })
-  const unregisterCommands = registerWidgetCommands({ commands, widget, theme, i18n, capabilities, canSaveLayout: layout.canSave, toggleMaximize: layout.toggleMaximize, layouts, startLayout: layout.startNew,nameLayout: () => doors.nameLayout(), openLayouts: () => doors.openLayouts(), removeLayout: layout.removeResource, autosave, layoutChanges, events })
+  const unregisterCommands = registerWidgetCommands({ commands, widget, theme, i18n, capabilities, canSaveLayout: layout.canSave, toggleMaximize: layout.toggleMaximize, layouts, startLayout: layout.startNew,nameLayout: () => doors.nameLayout(), openLayouts: () => doors.openLayouts(), openSettings: (page) => doors.openSettings(page), removeLayout: layout.removeResource, autosave, layoutChanges, events })
 
   // ── The default chrome: the top bar, the bottom bar, the dialogs and the notices, driven only by
   // the registry, the planes and the event maps. It fills the doors the charts already hold.

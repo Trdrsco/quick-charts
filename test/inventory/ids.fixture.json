@@ -487,6 +487,7 @@
       "chart.scale.normal",
       "chart.scale.percent",
       "chart.settings.apply",
+      "chart.settings.open",
       "chart.settings.reset",
       "chart.style.area",
       "chart.style.bars",
