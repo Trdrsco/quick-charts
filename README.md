@@ -1905,8 +1905,10 @@ void withMarks
 - **The price scale** (shown by default; `ui: { priceScale: false }` hides it). Without it the bars
   span the chart's whole width, and the last price draws no line across the plot and no label, since
   nothing on screen points at one.
-- **Session bands** (on by default; `features.sessions: false` opts out). Every stretch outside
-  regular hours shades under the bars, driven by the session model built from the symbol's own
+- **Session bands** (`features.sessions: false` opts out). While the chart's trading hours show
+  the stretches outside regular hours (`symbol.session` of `extended` or `allHours`), each shades
+  under the bars in the color the settings give it, and the `events.sessionBreaks` setting draws a
+  line at each trading day's start, driven by the session model built from the symbol's own
   `session`, `sessionHolidays`, `corrections` and `subsessions` in `resolve()`'s answer (see
   Timezones and sessions). A continuous market never bands; intraday only; an UNRESOLVED symbol
   never bands, which is the honest default rather than a coerced one, and it is enforced: the
@@ -1914,7 +1916,10 @@ void withMarks
   outside a `resolve()`, or supplies its own, calls the primitive's `refresh()` when it does; the
   chart does not invalidate the pane on a getter's value changing.
 - **A legend** (on by default; `ui: { legend: false }` removes it). The header shows the resolved
-  display name, venue, timeframe, OHLC and change against the previous painted close. Prices use
+  name (the feed's description, its symbol, or both, as `statusLine.titleSource` says), venue,
+  timeframe, OHLC, change against the previous painted close and, when `statusLine.volume` asks,
+  the bar's volume; the `statusLine` settings show or hide each part over a backdrop of the
+  chart's background. Prices use
   the symbol's formatter. Hover selects a bar; leaving restores the latest painted reading. Replay
   does not expose bars beyond its cursor. Missing metadata leaves the supplied symbol unchanged.
   Legend and search rows wear your `symbolMark`, or a decorative monogram without one.
