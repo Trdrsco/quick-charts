@@ -3,10 +3,15 @@
 // your own may leave each one out: until it carries the key, the chart reads it in English and
 // reports it to `onMissing`. The next major's baseline makes every one of them required.
 export const KEYS_ADDED_IN_MAJOR = [
+  'chrome.autoScale',
+  'chrome.autoScaleMark',
+  'chrome.logScale',
+  'chrome.logScaleMark',
   'chrome.scaleAsk',
   'chrome.scaleBid',
   'chrome.scaleHigh',
   'chrome.scaleLow',
+  'chrome.scaleModes',
 ] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

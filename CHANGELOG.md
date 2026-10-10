@@ -36,6 +36,8 @@ On an intraday chart of regular hours, a symbol whose newest bar stands in a pre
 
 The scales placement (`priceScale.placement`) stands the main series' price scale on the left under `left`, carrying its mode, its framing and every series of the main pane that shares it, and a comparison on a scale of its own moves to the right; `right` and `auto` keep the main scale on the right and such a comparison on the left. A series added without naming a scale takes the main side, and the last value's drawn label mirrors on a left scale.
 
+The scale mode buttons (`priceScale.scaleModeButtons`) stand at the foot of the main price scale while the pointer is over it, always, or never: two 20x22 buttons 4px apart, "A" switching the scale between framing itself and holding where it was dragged and "L" between a regular and a logarithmic scale, filled while on and outlined while off. The catalog gains `chrome.scaleModes`, `chrome.autoScale`, `chrome.autoScaleMark`, `chrome.logScale` and `chrome.logScaleMark`.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:

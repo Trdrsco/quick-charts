@@ -19,4 +19,9 @@ export const chrome: Translation<typeof source> = {
   'chrome.scaleLow': 'Low',
   'chrome.scaleBid': 'Bid',
   'chrome.scaleAsk': 'Ask',
+  'chrome.scaleModes': 'Scale modes',
+  'chrome.autoScale': 'Auto scale',
+  'chrome.autoScaleMark': 'A',
+  'chrome.logScale': 'Logarithmic scale',
+  'chrome.logScaleMark': 'L',
 }

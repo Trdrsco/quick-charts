@@ -104,6 +104,7 @@ import { attachPointerPlane } from './pointer'
 import { attachMarks } from './marks'
 import type { ChromeDoors } from '../ui/chrome/doors'
 import { mountNavControls } from '../ui/chrome/navControls'
+import { mountScaleControls, type PriceScaleBox, type ScaleControls } from '../ui/chrome/scaleControls'
 import { closeOverlays } from '../ui/controls/overlays'
 import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
@@ -723,6 +724,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     heldPolicy = next
     storage.set(PRICE_AXIS_KEY, next)
     if (historyPainted && bars.length > 0) mainScale().applyOptions({ autoScale: next === 'auto' })
+    scaleControls?.sync()
   }
 
   /** The first paint of a history frames the market, and only then is a held manual policy handed
@@ -907,6 +909,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     mainScale().applyOptions({ mode: PRICE_SCALE_MODE[next] })
     if (held === 'manual') mainScale().applyOptions({ autoScale: false })
     storage.set(SCALE_KEY, next)
+    scaleControls?.sync()
     events.emit('scaleMode', next)
   }
 
@@ -1107,6 +1110,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   let countdown: CountdownLayer | null = null
   let levels: PriceLevelsLayer | null = null
+  /** The controls on the price scale, once mounted. */
+  let scaleControls: ScaleControls | null = null
   const replay = attachReplayPlane({
     chart,
     datafeed,
@@ -1230,7 +1235,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     tags: () => ({ high: i18n.t('chrome.scaleHigh'), low: i18n.t('chrome.scaleLow'), bid: i18n.t('chrome.scaleBid'), ask: i18n.t('chrome.scaleAsk') }),
   })
   // The high and low are the bars in view, so a move of the view moves them.
-  chart.timeScale().subscribeVisibleLogicalRangeChange(() => levels?.refresh())
+  chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+    levels?.refresh()
+    scaleControls?.sync()
+  })
 
   const extensions = attachExtensionsPlane({
     chartId: deps.id,
@@ -1337,6 +1345,37 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         maximized: () => deps.layoutMaximized(),
         shown: (id) => commandShown(deps.access, id),
         visibility: () => eff.canvas.navigationButtons,
+      })
+    : null
+
+  /** The main price scale's box in the chrome's pixels: the main pane's height, on the side the
+   *  scale stands. Null while the chart shows no price scale or has not laid one out. */
+  const priceScaleBox = (): PriceScaleBox | null => {
+    if (!deps.ui.priceScale) return null
+    const width = mainScale().width()
+    const height = chart.panes()[0]?.getHeight() ?? 0
+    if (!(width > 0) || !(height > 0)) return null
+    return { left: scaleSide === 'left' ? 0 : gestures.clientWidth - width, top: 0, width, height, side: scaleSide }
+  }
+
+  // The controls on the price scale: the auto-scale and logarithmic buttons at its foot, each a press
+  // of the chart's own verb.
+  scaleControls = deps.ui.priceScale
+    ? mountScaleControls({
+        chrome,
+        gestures,
+        i18n,
+        box: priceScaleBox,
+        modeButtons: () => eff.priceScale.scaleModeButtons,
+        autoScale: () => priceAxisPolicy() === 'auto',
+        logScale: () => scaleMode === 'log',
+        toggleAutoScale: () => {
+          applyPriceAxisPolicy(priceAxisPolicy() === 'auto' ? 'manual' : 'auto')
+          history.changed()
+        },
+        toggleLogScale: () => {
+          deps.commands.execute(scaleMode === 'log' ? 'chart.scale.normal' : 'chart.scale.log')
+        },
       })
     : null
 
@@ -1558,6 +1597,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     marks?.repaint()
     watermark.refresh()
     nav?.sync()
+    // The chrome's controls stand on the chart's own background.
+    chrome.style.setProperty('--qcd-chart-background', eff.canvas.background)
+    scaleControls?.sync()
     legend.push()
     extensions.host.themeChanged(settingsCanvas(c, eff))
     countdown?.restyled()
@@ -2563,6 +2605,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       unregisterCommands()
       baselineLevel.destroy()
       nav?.destroy()
+      scaleControls?.destroy()
       watermark.destroy()
       valueLines.clear()
       replay.destroy()

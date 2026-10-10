@@ -1,0 +1,144 @@
+// The controls that stand on the main price scale: the auto-scale and logarithmic buttons at its
+// foot. They show while the pointer is over the scale, always, or never, as the chart settings say,
+// and each press is the chart's own verb, so the buttons and every other door to the same state
+// read alike.
+//
+// The scale is drawn by the renderer, so these are DOM in the chart's chrome layer, placed over the
+// scale's box as the chart measures it. The chrome takes no pointer, so the pointer is watched on
+// the gesture box beneath it; the buttons take it back while it is over them.
+import type { ChartI18n } from '../../i18n'
+import type { ChartControlVisibility } from '../../settings/schema'
+import { h, name, stopPointer } from './dom'
+
+/** The main price scale's box in the chrome's own pixels, and the side it stands on. */
+export interface PriceScaleBox {
+  left: number
+  top: number
+  width: number
+  height: number
+  side: 'left' | 'right'
+}
+
+export interface ScaleControlsDeps {
+  /** The chart's chrome subtree: where the controls mount. */
+  chrome: HTMLElement
+  /** The gesture box under the chrome, which hears the pointer. */
+  gestures: HTMLElement
+  i18n: ChartI18n
+  /** The main price scale's box, or null while the chart shows none. */
+  box(): PriceScaleBox | null
+  /** When the auto-scale and logarithmic buttons show. */
+  modeButtons(): ChartControlVisibility
+  /** Whether the scale frames itself, and whether it is logarithmic. */
+  autoScale(): boolean
+  logScale(): boolean
+  toggleAutoScale(): void
+  toggleLogScale(): void
+}
+
+export interface ScaleControls {
+  /** Read the settings, the scale's state and its box again. */
+  sync(): void
+  destroy(): void
+}
+
+/** The buttons' size and the space between them and below them. */
+const BUTTON = { width: 20, height: 22, gap: 4, foot: 4 }
+
+export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
+  const t = deps.i18n.t
+  const modes = h('div', { class: 'qc-scale-modes', role: 'group' })
+  const auto = h('button', { type: 'button', class: 'qc-scale-mode', 'data-role': 'scale-auto' })
+  const log = h('button', { type: 'button', class: 'qc-scale-mode', 'data-role': 'scale-log' })
+  modes.append(auto, log)
+  stopPointer(modes)
+  auto.addEventListener('click', () => {
+    deps.toggleAutoScale()
+    sync()
+  })
+  log.addEventListener('click', () => {
+    deps.toggleLogScale()
+    sync()
+  })
+  deps.chrome.appendChild(modes)
+
+  /** Whether the pointer is over the scale, or over the controls standing on it. */
+  let overScale = false
+  let overControls = false
+
+  const label = (): void => {
+    modes.setAttribute('aria-label', t('chrome.scaleModes'))
+    auto.textContent = t('chrome.autoScaleMark')
+    name(auto, t('chrome.autoScale'))
+    log.textContent = t('chrome.logScaleMark')
+    name(log, t('chrome.logScale'))
+  }
+
+  const sync = (): void => {
+    const box = deps.box()
+    const visibility = deps.modeButtons()
+    modes.dataset.qcVisibility = visibility
+    const shown = box !== null && visibility !== 'never' && (visibility === 'always' || overScale || overControls)
+    modes.hidden = !shown
+    if (!box) return
+    const width = BUTTON.width * 2 + BUTTON.gap
+    modes.style.left = `${Math.round(box.left + (box.width - width) / 2)}px`
+    modes.style.top = `${Math.round(box.top + box.height - BUTTON.height - BUTTON.foot)}px`
+    auto.setAttribute('aria-pressed', String(deps.autoScale()))
+    log.setAttribute('aria-pressed', String(deps.logScale()))
+  }
+
+  const within = (event: PointerEvent): boolean => {
+    const box = deps.box()
+    if (!box) return false
+    const rect = deps.gestures.getBoundingClientRect()
+    const x = event.clientX - rect.left
+    const y = event.clientY - rect.top
+    return x >= box.left && x <= box.left + box.width && y >= box.top && y <= box.top + box.height
+  }
+  const onMove = (event: PointerEvent): void => {
+    // A finger does not hover: on touch the buttons show only when the settings keep them shown.
+    if (event.pointerType === 'touch') return
+    const next = within(event)
+    if (next === overScale) {
+      // A drag on the scale releases its framing without a word to anyone, so the state is read
+      // again while the pointer is there.
+      if (next) sync()
+      return
+    }
+    overScale = next
+    sync()
+  }
+  const onLeave = (): void => {
+    if (!overScale) return
+    overScale = false
+    sync()
+  }
+  const onControlsEnter = (): void => {
+    overControls = true
+    sync()
+  }
+  const onControlsLeave = (): void => {
+    overControls = false
+    sync()
+  }
+  deps.gestures.addEventListener('pointermove', onMove)
+  deps.gestures.addEventListener('pointerup', onMove)
+  deps.gestures.addEventListener('pointerleave', onLeave)
+  modes.addEventListener('pointerenter', onControlsEnter)
+  modes.addEventListener('pointerleave', onControlsLeave)
+  const offStrings = deps.i18n.onChange(label)
+  label()
+  sync()
+
+  return {
+    sync,
+    destroy() {
+      offStrings()
+      deps.gestures.removeEventListener('pointermove', onMove)
+      deps.gestures.removeEventListener('pointerup', onMove)
+      deps.gestures.removeEventListener('pointerleave', onLeave)
+      modes.remove()
+    },
+  }
+}

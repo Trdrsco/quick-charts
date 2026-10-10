@@ -291,6 +291,53 @@ describe('the scales placement', () => {
   })
 })
 
+describe('the scale mode buttons', () => {
+  const layOut = (renderer: FakeRenderer): void => {
+    renderer.scaleWidths.right = 60
+    renderer.paneHeights[0] = 300
+  }
+  const pointer = (target: HTMLElement, type: string, x: number, y: number): void => {
+    const event = new MouseEvent(type, { bubbles: true, clientX: x, clientY: y }) as MouseEvent & { pointerType?: string }
+    Object.defineProperty(event, 'pointerType', { value: 'mouse' })
+    target.dispatchEvent(event)
+  }
+
+  it('show over the price scale, always, or never, and press the chart own verbs', async () => {
+    const { chart, renderer, container } = await mount()
+    layOut(renderer)
+    const gestures = container.querySelector<HTMLElement>('.qc-gestures')!
+    Object.defineProperty(gestures, 'clientWidth', { value: 600, configurable: true })
+    chart.applySettings({ canvas: { marginTop: 11 } })
+    const modes = container.querySelector<HTMLElement>('.qc-scale-modes')!
+    const auto = modes.querySelector<HTMLButtonElement>('[data-role="scale-auto"]')!
+    const log = modes.querySelector<HTMLButtonElement>('[data-role="scale-log"]')!
+    expect(modes.hidden).toBe(true)
+    // Over the scale, which stands at the right 60px of the 600px pane.
+    pointer(gestures, 'pointermove', 570, 100)
+    expect(modes.hidden).toBe(false)
+    expect(modes.style.left).toBe('548px')
+    expect(modes.style.top).toBe('274px')
+    expect([auto.textContent, log.textContent, auto.getAttribute('aria-label')]).toEqual(['A', 'L', 'Auto scale'])
+    pointer(gestures, 'pointermove', 100, 100)
+    expect(modes.hidden).toBe(true)
+    chart.applySettings({ priceScale: { scaleModeButtons: 'always' } })
+    expect(modes.hidden).toBe(false)
+    expect(auto.getAttribute('aria-pressed')).toBe('true')
+    expect(log.getAttribute('aria-pressed')).toBe('false')
+    log.click()
+    expect(chart.scaleMode()).toBe('log')
+    expect(log.getAttribute('aria-pressed')).toBe('true')
+    auto.click()
+    expect(renderer.priceScaleOptions.right).toMatchObject({ autoScale: false })
+    expect(auto.getAttribute('aria-pressed')).toBe('false')
+    auto.click()
+    expect(renderer.priceScaleOptions.right).toMatchObject({ autoScale: true })
+    chart.applySettings({ priceScale: { scaleModeButtons: 'never' } })
+    pointer(gestures, 'pointermove', 570, 100)
+    expect(modes.hidden).toBe(true)
+  })
+})
+
 describe('the price and percentage label', () => {
   it('writes a change to two decimals with its sign', () => {
     expect(signedPercentText(0.0008, 'en')).toBe('+0.08%')

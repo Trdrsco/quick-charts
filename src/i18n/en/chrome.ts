@@ -29,4 +29,11 @@ export const chrome = {
   'chrome.scaleLow': 'Low',
   'chrome.scaleBid': 'Bid',
   'chrome.scaleAsk': 'Ask',
+  /** The buttons at the foot of the price scale: their group, and each one's letter and name. The
+   *  letter is the button's whole face, so it is the mark the scale wears in the reader's language. */
+  'chrome.scaleModes': 'Scale modes',
+  'chrome.autoScale': 'Auto scale',
+  'chrome.autoScaleMark': 'A',
+  'chrome.logScale': 'Logarithmic scale',
+  'chrome.logScaleMark': 'L',
 } as const

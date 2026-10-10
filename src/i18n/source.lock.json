@@ -1,11 +1,15 @@
 {
   "keys": {
     "chrome.activeChart": "4702f3476e",
+    "chrome.autoScale": "c3d375676e",
+    "chrome.autoScaleMark": "094ab35edf",
     "chrome.bottomBar": "6edd8a15ed",
     "chrome.chartStyle": "12f1a90d1e",
     "chrome.compare": "6fbe7105c5",
     "chrome.image": "253995ee28",
     "chrome.indicators": "7f411f1d55",
+    "chrome.logScale": "3d6f0e82ae",
+    "chrome.logScaleMark": "bb24032db3",
     "chrome.navigation": "c77c511cd3",
     "chrome.replay": "6aff4be470",
     "chrome.replayChip": "46a513568f",
@@ -13,6 +17,7 @@
     "chrome.scaleBid": "240269531d",
     "chrome.scaleHigh": "de4c862ad5",
     "chrome.scaleLow": "adc43fbcac",
+    "chrome.scaleModes": "d693c4688e",
     "chrome.session": "2538153e0b",
     "chrome.sessionsHeading": "36373d546d",
     "chrome.symbolSearch": "8ee8d154ad",
