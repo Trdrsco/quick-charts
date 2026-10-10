@@ -65,6 +65,34 @@ export function scanFiles(files: Record<string, string>, pattern: RegExp): Offen
 
 export const offenderText = (o: Offender): string => `${o.file}:${o.line}: ${o.text}`
 
+/** The bar replay's own indicator, named in the legend. */
+const REPLAY_INDICATOR_TOKEN = /\breplayWatermark(?:Text)?\b|replay\.watermark|qc-replay-watermark/gi
+
+/** The files that may name a watermark: the symbol watermark a viewer turns on in the chart settings
+ *  (the module that draws it, and the settings, theme, wiring and dialog files that name its parts,
+ *  its ink and its row), and the legend's replay indicator. A watermark carries the charted symbol's
+ *  ticker, interval and description and nothing a host supplies, so a branding watermark, a
+ *  screenshot stamp or an export overlay has no file to live in. */
+export const WATERMARK_FILES: ReadonlySet<string> = new Set([
+  '/src/widget/watermark.ts',
+  '/src/widget/chart.ts',
+  '/src/widget/chartLook.ts',
+  '/src/widget/legend.ts',
+  '/src/settings/schema.ts',
+  '/src/settings/defaults.ts',
+  '/src/theme/palettes.ts',
+  '/src/theme/renderer.ts',
+  '/src/theme/schema.ts',
+  '/src/ui/settings/pages.ts',
+])
+
+/** Every line naming a watermark outside the files that may: in the legend, anything but the replay
+ *  indicator; elsewhere, any mention at all. */
+export const watermarkViolations = (files: Record<string, string>): string[] => scanFiles(files, /watermark/i)
+  .filter((o) => !WATERMARK_FILES.has(o.file))
+  .filter((o) => o.file !== '/src/chartLegend.ts' || /watermark/i.test(o.text.replace(REPLAY_INDICATOR_TOKEN, '')))
+  .map(offenderText)
+
 // ── The packed file list ────────────────────────────────────────────────────────────────────────
 
 /** The paths `npm pack` would put in the tarball, read from npm itself, sorted. */

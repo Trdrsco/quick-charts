@@ -5,7 +5,7 @@
 // excluded chrome. Each word group follows with the reason it is forbidden, judged in one block so
 // the log names every offending line.
 import { describe, expect, it } from 'vitest'
-import { CHART_SOURCES, offenderText, scanFiles } from './scan'
+import { CHART_SOURCES, offenderText, scanFiles, watermarkViolations } from './scan'
 
 /** Package sources without the locale catalogs: a translated string is a message, not a contract,
  *  and the catalogs are held to their own contract in i18n.test.ts. */
@@ -13,25 +13,6 @@ const CODE = Object.fromEntries(Object.entries(CHART_SOURCES).filter(([file]) =>
 
 const lines = (files: Record<string, string>, pattern: RegExp): string[] => scanFiles(files, pattern).map(offenderText)
 
-const REPLAY_INDICATOR_TOKEN = /\breplayWatermark(?:Text)?\b|replay\.watermark|qc-replay-watermark/gi
-/** The symbol watermark the chart settings name: the one module that draws it, and the settings,
- *  theme and wiring files that name its parts, its ink and its layer. Nothing else may mention a
- *  watermark. */
-const SETTINGS_WATERMARK_FILES = new Set([
-  '/src/widget/watermark.ts',
-  '/src/widget/chart.ts',
-  '/src/widget/chartLook.ts',
-  '/src/widget/legend.ts',
-  '/src/settings/schema.ts',
-  '/src/settings/defaults.ts',
-  '/src/theme/palettes.ts',
-  '/src/theme/renderer.ts',
-  '/src/theme/schema.ts',
-])
-const watermarkViolations = (files: Record<string, string>): string[] => scanFiles(files, /watermark/i)
-  .filter((o) => !SETTINGS_WATERMARK_FILES.has(o.file))
-  .filter((o) => o.file !== '/src/chartLegend.ts' || /watermark/i.test(o.text.replace(REPLAY_INDICATOR_TOKEN, '')))
-  .map(offenderText)
 
 interface Term {
   term: string
@@ -100,7 +81,7 @@ describe('the import boundary and the excluded chrome', () => {
     expect(lines(CHART_SOURCES, /from\s+['"](@trdrs\/(?!quickcharts(?:\/|['"]))|tailwind)/)).toEqual([])
   })
 
-  it('keeps the excluded chrome absent while allowing only the fixed replay state indicator', () => {
+  it('keeps the excluded chrome absent while allowing only the symbol watermark and the replay indicator', () => {
     expect(lines(CODE, /:root\b/)).toEqual([])
     expect(lines(CODE, /Object Tree|objectTree/)).toEqual([])
     // Every one of these is the replay session's own mark on the plot, built and named in the
@@ -108,7 +89,7 @@ describe('the import boundary and the excluded chrome', () => {
     // watermark, a screenshot stamp or an export overlay would have to move this number, which is
     // the conscious event the guard is here to force.
     const watermark = lines(CODE, /watermark/i)
-    expect(watermark).toHaveLength(74)
+    expect(watermark).toHaveLength(83)
     expect(watermarkViolations(CODE)).toEqual([])
     // The renderer's text watermark is drawn by the settings' own module and nowhere else.
     expect(lines(CODE, /createTextWatermark/).every((line) => line.startsWith('/src/widget/watermark.ts'))).toBe(true)
