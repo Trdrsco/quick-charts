@@ -38,6 +38,9 @@ export interface WatermarkDeps {
   settings(): ChartSettings
   facts(): WatermarkFacts
   fontFamily(): string
+  /** The index of the pane the main series stands in, the one this is drawn on; the first when
+   *  absent. Once drawn, it moves with that pane. */
+  mainPane?(): number
   /** The renderer's text watermark, for a test to stand in for. */
   create?: (pane: ReturnType<IChartApi['panes']>[number], options: Parameters<typeof createTextWatermark<Time>>[1]) => Pick<ITextWatermarkPluginApi<Time>, 'applyOptions' | 'detach'>
 }
@@ -67,7 +70,7 @@ export function attachWatermark(deps: WatermarkDeps): WatermarkLayer {
     try {
       if (plugin) plugin.applyOptions(options)
       else {
-        const pane = deps.chart.panes()[0]
+        const pane = deps.chart.panes()[deps.mainPane?.() ?? 0]
         if (pane) plugin = create(pane, options)
       }
     } catch {

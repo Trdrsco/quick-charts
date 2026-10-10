@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': 'Återställ ruta',
   'legend.collapsePane': 'Fäll in ruta',
   'legend.maximizePane': 'Maximera ruta',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'Visa indikator',
   'legend.hideIndicator': 'Dölj indikator',
   'legend.scaleNormal': 'Norm',

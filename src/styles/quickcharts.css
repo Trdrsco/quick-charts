@@ -587,9 +587,11 @@
 
 /* Legend --------------------------------------------------------------------------------------- */
 
+/* The legend stands 4px into the main pane, which the chart writes the top of as
+ * `--qcd-legend-top` once a viewer has moved it below another pane. */
 [data-qc-theme] .qc-legend {
   position: absolute;
-  top: 4px;
+  top: calc(4px + var(--qcd-legend-top, 0px));
   inset-inline-end: 64px;
   z-index: 3;
   display: flex;

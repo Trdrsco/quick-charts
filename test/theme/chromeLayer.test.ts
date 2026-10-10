@@ -82,7 +82,8 @@ describe('every control in the chrome layer takes its own pointer events back', 
 
 describe('the legend keeps the measured responsive bands', () => {
   it('uses the measured header, row, action and list-toggle geometry', () => {
-    expect(lastRule('[data-qc-theme] .qc-legend')).toContain('top: 4px')
+    // 4px into the main pane, which the chart moves down when a viewer moves that pane below another.
+    expect(lastRule('[data-qc-theme] .qc-legend')).toContain('top: calc(4px + var(--qcd-legend-top, 0px))')
     const header = rule('[data-qc-theme] .qc-legend-header')
     expect(header).toContain('flex-wrap: wrap')
     // No row gap: a reading that wraps sits directly under the identity band, as a two-line legend.

@@ -85,12 +85,17 @@ export function attachIndicators(
      *  live, so a theme switch repaints the levels with everything else; the built-in dark palette's
      *  neutral stands in for a host that supplies none. */
     neutral?: () => string
+    /** The index of the pane the main series stands in, where overlays are drawn and which is never
+     *  swept. A viewer may move it below another pane; the first pane when absent. */
+    mainPane?: () => number
   },
 ): IndicatorsRenderer {
   const entries = new Map<string, Entry>()
   const candlesOf = options?.candles ?? (() => null)
   const symbolPriceFormat = options?.symbolPriceFormat ?? null
   const neutralOf = options?.neutral ?? (() => DARK_THEME['series.neutral'])
+  const mainOf = options?.mainPane ?? (() => 0)
+  const sweep = (): void => sweepEmptyPanes(chart, mainOf())
 
   const removeEntry = (id: string): void => {
     const entry = entries.get(id)
@@ -106,7 +111,7 @@ export function attachIndicators(
       if (built.unavailable) {
         if (entries.has(id)) {
           removeEntry(id)
-          sweepEmptyPanes(chart)
+          sweep()
         }
         return
       }
@@ -116,11 +121,11 @@ export function attachIndicators(
       // silently drop the new plots or style the wrong ones.
       if (entry && entry.shapeKey !== shapeKeyOf(built)) {
         removeEntry(id)
-        sweepEmptyPanes(chart)
+        sweep()
         entry = undefined
       }
       if (!entry) {
-        entry = makeEntry(chart, built, neutralOf())
+        entry = makeEntry(chart, built, neutralOf(), mainOf())
         entries.set(id, entry)
       }
       built.plots.forEach((plot, i) => {
@@ -132,11 +137,11 @@ export function attachIndicators(
     },
     remove(id) {
       removeEntry(id)
-      sweepEmptyPanes(chart)
+      sweep()
     },
     prune(keep) {
       for (const id of [...entries.keys()]) if (!keep.has(id)) removeEntry(id)
-      sweepEmptyPanes(chart)
+      sweep()
     },
     has: (id) => entries.has(id),
     paneOf() {
@@ -146,7 +151,7 @@ export function attachIndicators(
         const first = entry.series[0]
         if (!first) continue
         const idx = panes.findIndex((pane) => pane.getSeries().includes(first))
-        out[id] = idx >= 0 ? idx : 0 // unresolved → the main pane
+        out[id] = idx >= 0 ? idx : mainOf() // unresolved → the main pane
       }
       return out
     },
@@ -195,10 +200,10 @@ function shapeKeyOf(built: IndicatorPlots): string {
 }
 
 /** Create one series per plot (plus marker plugins), attach the group's static levels to its first
- *  series, and wire the fill/shade painters. Overlays use the main pane (0); a pane-placed group
- *  gets a fresh pane appended at the bottom (every plot in the group shares it). */
-function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): Entry {
-  const paneIndex = built.placement === 'pane' ? indicatorPaneIndex(chart) : 0
+ *  series, and wire the fill/shade painters. Overlays use the main pane, wherever it stands; a
+ *  pane-placed group gets a fresh pane appended at the bottom (every plot in the group shares it). */
+function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string, main: number): Entry {
+  const paneIndex = built.placement === 'pane' ? indicatorPaneIndex(chart, main) : main
   // "Labels on price scale" (the standard output toggle, default ON): each visible value-carrying
   // plot shows its last value on the scale. Marker anchors never label.
   const labels = built.display?.labelsOnPriceScale !== false
@@ -445,17 +450,17 @@ function safeRemove(chart: IChartApi, series: Series): void {
  *
  *  Sweeping first makes the count mean what it is read as. It costs one pass over the panes and it
  *  is the only place the index is decided, so no caller has to remember to do it. */
-function indicatorPaneIndex(chart: IChartApi): number {
-  sweepEmptyPanes(chart)
+function indicatorPaneIndex(chart: IChartApi, main: number): number {
+  sweepEmptyPanes(chart, main)
   return chart.panes().length
 }
 
-/** Drop any non-main pane left with no series after a removal (descending so indices stay valid as
- *  panes below shift up). */
-function sweepEmptyPanes(chart: IChartApi): void {
+/** Drop any pane but the main one left with no series after a removal (descending so indices stay
+ *  valid as panes below shift up). */
+function sweepEmptyPanes(chart: IChartApi, main: number): void {
   const empties: number[] = []
   chart.panes().forEach((pane, i) => {
-    if (i > 0 && pane.getSeries().length === 0) empties.push(i)
+    if (i !== main && pane.getSeries().length === 0) empties.push(i)
   })
   for (let k = empties.length - 1; k >= 0; k--) chart.removePane(empties[k]!)
 }

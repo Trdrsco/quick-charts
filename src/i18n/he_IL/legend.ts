@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': 'שחזור חלונית',
   'legend.collapsePane': 'כיווץ חלונית',
   'legend.maximizePane': 'הגדלת חלונית',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'הצגת אינדיקטור',
   'legend.hideIndicator': 'הסתרת אינדיקטור',
   'legend.scaleNormal': 'רגיל',

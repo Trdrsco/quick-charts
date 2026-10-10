@@ -1366,7 +1366,11 @@ function toolbar(widget: ChartWidget): void {
 
 A command whose one id spans many subjects declares `refuses(arg)` beside `available()`: an
 argument your access policy turns away answers `denied` before availability is asked, which is how
-`chart.drawings.arm` refuses a tool. `onChange` fires when the registered set or a shortcut changes,
+`chart.drawings.arm` refuses a tool. `available(arg)` answers for the subject an argument names, and
+`commands.available(id, arg)` asks it: `chart.panes.moveUp` and `chart.panes.moveDown` take a pane's
+index, the top pane 0, so `commands.available('chart.panes.moveUp', 0)` is false, as is a move down
+for the bottom pane, and asked with no argument either says whether any pane could move. A refused
+argument is unavailable to ask about. `onChange` fires when the registered set or a shortcut changes,
 and when `widget.refreshAccess()` says your policy may answer differently. A refusal is a value,
 never a throw: `ok`, `unavailable`,
 `denied`, `unknown`, or `failed` with the
@@ -1690,7 +1694,7 @@ chrome is painted from it and renders nothing without it.
 
 Undo and redo step through the chart's own content: the symbol, the timeframe, the style, the price
 scale and whether it frames itself, the chart settings a viewer authored, the comparisons, the
-indicators and the drawings. A step is one reading of that content, so a step back puts the whole
+indicators, the order of the panes and the drawings. A step is one reading of that content, so a step back puts the whole
 reading back rather than reversing a single verb, and the two controls name the change they would
 move. Each chart keeps its own last 100 steps for as long as it is mounted. `chart.history.undo`
 and `chart.history.redo` are the verbs, `chart.history` on the handle reads the two stacks, the
@@ -2376,9 +2380,10 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
 - `canvas`: the background, solid or a vertical gradient; each grid's switch, color and stroke; the
   crosshair's color, stroke and width; the watermark's parts and ink; the scales' text and lines;
   when the navigation buttons show; when each pane's own buttons show (`paneButtons`): at a pane's
-  top right, delete it, collapse or open it, and maximize or restore it, through the same pane
-  operations the legend's rows run, the main pane carrying maximize alone while another pane
-  stands; and the margins, the right one in bars.
+  top right, move it up or down past its neighbour, delete it, collapse or open it, and maximize or
+  restore it, through the same pane operations and move verbs the legend's rows run, the main pane
+  moving too and otherwise carrying maximize alone while another pane stands; and the margins, the
+  right one in bars. The order the panes stand in is saved with the chart.
 - `events`: a line at each trading day's start, in its own stroke.
 
 ## Compare

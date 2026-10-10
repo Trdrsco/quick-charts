@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': '還原窗格',
   'legend.collapsePane': '收合窗格',
   'legend.maximizePane': '最大化窗格',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': '顯示指標',
   'legend.hideIndicator': '隱藏指標',
   'legend.scaleNormal': '一般',

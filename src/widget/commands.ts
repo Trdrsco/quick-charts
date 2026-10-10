@@ -28,8 +28,10 @@ export interface CommandSpec {
   labelText?: string
   /** The default shortcut, in `KeyboardEvent` terms (e.g. `Alt+KeyR`). */
   shortcut?: string
-  /** Whether the command can run right now, from capability and chart state. */
-  available(): boolean
+  /** Whether the command can run right now, from capability and chart state. A command whose one id
+   *  spans many subjects reads the argument it would run with, and answers for that subject: the
+   *  top pane cannot move up. Asked with none, it answers whether any subject could. */
+  available(arg?: unknown): boolean
   /** Whether the access policy refuses this argument, for a command whose one id spans many
    *  subjects (the tool to arm). A refused argument answers `denied`, as a refused id does. */
   refuses?(arg: unknown): boolean
@@ -54,8 +56,8 @@ export interface CommandRegistry {
   /** Every registered command, in registration order. Unavailable and denied commands are listed:
    *  a menu decides whether to draw a disabled row, and hiding one would leave the host guessing. */
   list(): readonly CommandSpec[]
-  /** Whether `execute` would run this command right now. */
-  available(id: string): boolean
+  /** Whether `execute` would run this command right now, with this argument where it takes one. */
+  available(id: string, arg?: unknown): boolean
   execute(id: string, arg?: unknown): CommandResult
   /** Remap a shortcut, or clear it with null. */
   setShortcut(id: string, shortcut: string | null): void
@@ -115,9 +117,9 @@ export function createChartCommandScope(shared: CommandRegistry, options?: Comma
     },
   }
   const target: CommandExecutor = {
-    available(id) {
+    available(id, arg) {
       const spec = entries.get(id)?.spec
-      return spec ? commandAvailable(spec, options?.access) : false
+      return spec ? commandAvailable(spec, options?.access, arg) : false
     },
     execute(id, arg) {
       const spec = entries.get(id)?.spec
@@ -168,9 +170,9 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
       }
     },
     list: () => [...specs.values()],
-    available(id) {
+    available(id, arg) {
       const spec = specs.get(id)
-      return spec ? commandAvailable(spec, access) : false
+      return spec ? commandAvailable(spec, access, arg) : false
     },
     execute(id, arg) {
       const spec = specs.get(id)
@@ -207,11 +209,13 @@ export function createCommandRegistry(options?: CommandRegistryOptions): Command
   }
 }
 
-// A command the policy refuses is denied wherever it is reached from.
-function commandAvailable(spec: CommandSpec, access: AccessPolicy | undefined): boolean {
+// A command the policy refuses is denied wherever it is reached from, and an argument it refuses is
+// unavailable to ask about.
+function commandAvailable(spec: CommandSpec, access: AccessPolicy | undefined, arg?: unknown): boolean {
   if (!commandPermitted(access, spec.id)) return false
   try {
-    return spec.available()
+    if (arg !== undefined && spec.refuses?.(arg)) return false
+    return spec.available(arg)
   } catch {
     return false
   }
@@ -226,7 +230,7 @@ function executeCommand(spec: CommandSpec, access: AccessPolicy | undefined, arg
   }
   let ready: boolean
   try {
-    ready = spec.available()
+    ready = spec.available(arg)
   } catch (error) {
     return { kind: 'failed', error }
   }

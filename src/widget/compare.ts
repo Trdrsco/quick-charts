@@ -79,6 +79,8 @@ export interface CompareDeps {
   maintainTimeline?(write: () => void): void
   /** The side the main series' price scale stands on; the right when absent. */
   mainScale?(): 'left' | 'right'
+  /** The index of the pane the main series stands in; the first when absent. */
+  mainPane?(): number
 }
 
 /** How long a burst of comparison ticks is collected before the rows are rebuilt. Every
@@ -93,6 +95,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     tf: deps.timeframe,
     mainWindow: deps.mainWindow,
     ...(deps.mainScale ? { mainScale: deps.mainScale } : {}),
+    ...(deps.mainPane ? { mainPane: deps.mainPane } : {}),
     onChange: () => {
       if (chipTimer !== null) return
       chipTimer = setTimeout(() => {

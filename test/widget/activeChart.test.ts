@@ -70,6 +70,7 @@ const BLANK_CONTENT = {
   indicators: [],
   settings: {},
   compares: null,
+  panes: ['main'],
   ext: {},
 } as const satisfies ChartContent
 

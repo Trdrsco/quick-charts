@@ -165,25 +165,25 @@ export interface StylePaint {
   priceScale: boolean
 }
 
-/** Add the main series for a style, with the paint the ladder resolves to. The series options are
- *  re-applied on every look change through {@link styleOptions}, so the two must name the same
- *  leaves. */
-export function addStyleSeries(chart: IChartApi, style: ChartStyleId, paint: StylePaint): ISeriesApi<SeriesType> {
+/** Add the main series for a style, with the paint the ladder resolves to, in the main pane: the
+ *  first unless a viewer moved it. The series options are re-applied on every look change through
+ *  {@link styleOptions}, so the two must name the same leaves. */
+export function addStyleSeries(chart: IChartApi, style: ChartStyleId, paint: StylePaint, paneIndex = 0): ISeriesApi<SeriesType> {
   const options = styleOptions(style, paint)
   switch (style) {
     case 'line':
     case 'stepline':
-      return chart.addSeries(LineSeries, options)
+      return chart.addSeries(LineSeries, options, paneIndex)
     case 'area':
-      return chart.addSeries(AreaSeries, options)
+      return chart.addSeries(AreaSeries, options, paneIndex)
     case 'baseline':
-      return chart.addSeries(BaselineSeries, options)
+      return chart.addSeries(BaselineSeries, options, paneIndex)
     case 'bars':
-      return chart.addSeries(BarSeries, options)
+      return chart.addSeries(BarSeries, options, paneIndex)
     case 'hollow':
     case 'candles':
     default:
-      return chart.addSeries(CandlestickSeries, options)
+      return chart.addSeries(CandlestickSeries, options, paneIndex)
   }
 }
 

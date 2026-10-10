@@ -105,6 +105,7 @@ export function collapsedReadings(
   heights: readonly number[],
   commanded: ReadonlySet<number>,
   streaks: Readonly<Record<string, number>> = {},
+  main = 0,
 ): { collapsed: Record<string, boolean>; measured: boolean; streaks: Record<string, number> } {
   const collapsed: Record<string, boolean> = {}
   const nextStreaks: Record<string, number> = {}
@@ -114,7 +115,7 @@ export function collapsedReadings(
     const index = paneOf[row.id]
     // No pane index, or the main pane: the row is not pane-placed after all and never reads
     // collapsed. That is a settled answer, not a missing one.
-    if (index === undefined || index <= 0) {
+    if (index === undefined || index < 0 || index === main) {
       collapsed[row.id] = false
       continue
     }
@@ -233,6 +234,9 @@ export interface IndicatorsDeps {
   onEvent(event: IndicatorEvent): void
   /** The definition catalog shared by every chart in this widget. */
   catalog: IndicatorCatalog
+  /** The index of the pane the main series stands in, where overlays are drawn; the first when
+   *  absent. A viewer may move it below an indicator's pane. */
+  mainPane?(): number
 }
 
 /** Definitions that a saved record may resolve against. Built-ins are always available; host
@@ -287,8 +291,10 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     return { ...instance, color: INDICATOR_PALETTE[paletteCursor++ % INDICATOR_PALETTE.length]! }
   }
 
+  const mainPane = (): number => deps.mainPane?.() ?? 0
   const renderer = attachIndicators(deps.chart, {
     candles: deps.candleSeries,
+    mainPane,
     // An indicator that declares no precision writes its scale through the symbol formatter, so a
     // moving average on a Treasury reads in thirty-seconds like the bars beside it.
     symbolPriceFormat: () => ({ key: deps.formatKey(), formatter: (price) => deps.formatter().format(price), minMove: deps.minMove() }),
@@ -301,7 +307,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     const heights = deps.chart.panes().map((p) => p.getHeight())
     const paneOf = renderer.paneOf()
     const commandedPanes = new Set([...commandedIds].map(id => paneOf[id]).filter((pane): pane is number => pane !== undefined))
-    const { collapsed, measured, streaks } = collapsedReadings(rows, paneOf, heights, commandedPanes, floorStreaks)
+    const { collapsed, measured, streaks } = collapsedReadings(rows, paneOf, heights, commandedPanes, floorStreaks, mainPane())
     floorStreaks = streaks
     let changed = false
     for (const row of rows) {
@@ -387,6 +393,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     // previous window's lines paint stale marks over the empty chart.
     if (bars.length === 0 && instances.length > 0) renderer.blank()
     const paneOfMap = renderer.paneOf()
+    const main = mainPane()
     const formatter = deps.formatter()
     for (const inst of instances) {
       const def = inst.definition
@@ -407,7 +414,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
         // What the widget was told, not what the layout momentarily looks like. A pane is born at
         // the floor height and rebalanced a frame or two later, so geometry cannot be trusted here;
         // the settle loop below corroborates it afterwards.
-        collapsed: paneIdx !== undefined && paneIdx > 0 && commandedIds.has(inst.id),
+        collapsed: paneIdx !== undefined && paneIdx !== main && commandedIds.has(inst.id),
       }
       if (allHidden || indicatorHidden(inst.overrides)) {
         commandedIds.delete(inst.id)
@@ -520,7 +527,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     },
     restoreHeld: (held) => replace(held, 'changed'),
     setPaneCollapsed(paneIndex, collapsed) {
-      if (paneIndex <= 0) return // the price pane never collapses
+      if (paneIndex < 0 || paneIndex === mainPane()) return // the price pane never collapses
       for (const [id, pane] of Object.entries(renderer.paneOf())) if (pane === paneIndex) {
         if (collapsed) commandedIds.add(id)
         else commandedIds.delete(id)

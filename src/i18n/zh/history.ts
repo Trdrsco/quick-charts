@@ -15,6 +15,7 @@ export const history: Translation<typeof source> = {
   'history.changeAddIndicator': '添加指标',
   'history.changeRemoveIndicator': '移除指标',
   'history.changeIndicator': '更改指标',
+  'history.changeMovePane': 'move pane',
   'history.changeAddDrawing': '添加绘图',
   'history.changeRemoveDrawing': '移除绘图',
   'history.changeDrawing': '更改绘图',

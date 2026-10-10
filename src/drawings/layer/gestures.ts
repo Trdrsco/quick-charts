@@ -24,6 +24,7 @@ import { inlineTextRules, settingsOnDoubleClick } from './inlineText'
 import { constrain45, instantPositionAnchors, barsShifted, type Px } from './geometry'
 import type { DrawingsWorkflow } from './types'
 import { presetPropsFor, type PresetCache } from './presets'
+import { seriesPaneTop } from '../../paneGeometry'
 
 /** Pixels of pointer travel that turn the opening press into a drag (vs a click then click). */
 const PLACE_DRAG_PX = 6
@@ -150,9 +151,11 @@ export function bindGestures(ctx: GestureContext): () => void {
 
   const viewport = (): Viewport | null => viewportOf(chart, series)
 
+  /** A pointer's point in the pane the series stands in, which a viewer may have moved below
+   *  another pane. */
   const localXY = (e: { clientX: number; clientY: number }): Px => {
     const rect = container.getBoundingClientRect()
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top - seriesPaneTop(chart, series, container) }
   }
 
   /** The cursor this layer last wrote on the box. Another surface on the same box (a trade line's

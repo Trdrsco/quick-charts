@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': 'คืนขนาดแผงกราฟ',
   'legend.collapsePane': 'ย่อแผงกราฟ',
   'legend.maximizePane': 'ขยายแผงกราฟเต็มพื้นที่',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'แสดงอินดิเคเตอร์',
   'legend.hideIndicator': 'ซ่อนอินดิเคเตอร์',
   'legend.scaleNormal': 'ปกติ',

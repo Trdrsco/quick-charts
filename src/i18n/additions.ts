@@ -17,6 +17,9 @@ export const KEYS_ADDED_IN_MAJOR = [
   'chrome.scaleLow',
   'chrome.scaleModes',
   'command.marksRefresh',
+  'history.changeMovePane',
+  'legend.movePaneDown',
+  'legend.movePaneUp',
 ] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

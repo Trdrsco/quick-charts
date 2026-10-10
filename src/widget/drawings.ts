@@ -61,6 +61,7 @@ import { drawingCancelAvailable, menuDrawing } from '../drawings/layer/attach'
 import type { ContextMenuExtraRow } from '../contextMenuUi'
 import { RECENT_COLOR_LIMIT, type ColorMemory } from '../ui/controls/color'
 import type { IconResolver } from '../ui/icons/resolver'
+import { seriesPaneTop } from '../paneGeometry'
 
 /** A tool's default look: the style and props the tool itself opens with, less its content, so the
  *  words, the cells and the picture a drawing carries stay as they are. It is NOT the look the layer
@@ -476,6 +477,7 @@ export function attachDrawingsPlane(deps: DrawingsDeps): DrawingsLayer {
       gestures: deps.container,
       t: t(),
       fontFamily: deps.theme()['text.fontFamily'],
+      paneTop: () => seriesPaneTop(deps.chart, deps.series, deps.container),
       onCommit: (value) => {
         textEditor = null
         handle.commitText(value)

@@ -120,8 +120,31 @@ export function fakeRenderer(): FakeRenderer {
   const seriesApis = new Map<object, FakeSeries>()
   const apiOf = new Map<FakeSeries, object>()
   const paneElements = new Map<number, HTMLElement>()
+  /** Stand every pane at a new index, as the renderer's own reordering does: a pane takes its
+   *  series, its height, its element and its primitives with it. `to` maps each old index to its new
+   *  one. */
+  const reorder = (to: (index: number) => number): void => {
+    for (const item of series) item.paneIndex = to(item.paneIndex)
+    const heights = Object.entries(state.paneHeights).map(([index, height]) => [to(Number(index)), height] as const)
+    state.paneHeights = Object.fromEntries(heights)
+    const elements = [...paneElements].map(([index, element]) => [to(index), element] as const)
+    paneElements.clear()
+    for (const [index, element] of elements) paneElements.set(index, element)
+    const primitives = Object.entries(state.panePrimitives).map(([index, list]) => [to(Number(index)), list] as const)
+    state.panePrimitives = Object.fromEntries(primitives)
+  }
+  const paneCount = (): number => Math.max(1, ...series.map((s) => s.paneIndex + 1))
   const makePane = (index: number) => ({
     paneIndex: () => index,
+    moveTo: (target: number) => {
+      if (target === index || target < 0 || target >= paneCount()) return
+      reorder((at) => {
+        if (at === index) return target
+        if (index < target && at > index && at <= target) return at - 1
+        if (target < index && at >= target && at < index) return at + 1
+        return at
+      })
+    },
     getHeight: () => state.paneHeights[index] ?? 300,
     setHeight: (height: number) => { state.paneHeights[index] = height },
     getHTMLElement: () => {
@@ -293,6 +316,9 @@ export function fakeRenderer(): FakeRenderer {
       }
     },
     addPane: () => makePane(1),
+    swapPanes: (first: number, second: number) => {
+      reorder((at) => (at === first ? second : at === second ? first : at))
+    },
     subscribeCrosshairMove: (cb: (param: unknown) => void) => void crosshairSubs.add(cb),
     unsubscribeCrosshairMove: (cb: (param: unknown) => void) => void crosshairSubs.delete(cb),
     subscribeClick: (cb: (param: unknown) => void) => void clickSubs.add(cb),

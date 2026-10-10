@@ -15,6 +15,7 @@ import { readPartialChartSettings, settingsFromAppearance } from '../settings/de
 import type { PartialChartSettings } from '../settings/schema'
 import type { ScaleMode } from '../scaleMode'
 import type { IndicatorDefinition, IndicatorInstance } from './options'
+import { comparePaneKey, indicatorPaneKey, MAIN_PANE_KEY } from './paneOps'
 import type { ChartStyleId } from './styles'
 
 /** The save/load surface a host drives. */
@@ -101,6 +102,10 @@ export interface ChartContent {
    *  statement that nothing was authored, not a missing field. */
   settings: PartialChartSettings
   compares: unknown
+  /** The panes top to bottom, each named by what stands in it: `main` for the main series,
+   *  `indicator:<id>` for a pane-placed indicator and `compare:<symbol>` for a comparison on a pane
+   *  of its own. A pane not drawn right now, a hidden indicator's, keeps its place in the list. */
+  panes: readonly string[]
   /** The drawings on the chart, in COMBINED mode only. In separate mode this is absent and the
    *  drawings family is their only path: one drawing is stored in one place, whichever mode the
    *  host chose, so nothing here ever has to decide which copy is the newer one. */
@@ -123,6 +128,7 @@ export function serializeChartContent(content: ChartContent): string {
     indicators: content.indicators.map(savedIndicatorFields),
     settings: content.settings,
     compares: content.compares,
+    panes: content.panes,
     ...(content.drawings ? { drawings: content.drawings } : {}),
     ext: content.ext,
   })
@@ -145,6 +151,10 @@ export interface ParsedChartContent {
    *  dropped one is not the chart that was saved. */
   settingsRejected?: readonly string[]
   compares?: unknown
+  /** The panes top to bottom by what stands in each. A blob that states none keeps the order it
+   *  stores them in: the main pane, then the indicators' panes in the order of its indicators, then
+   *  the comparisons' panes in the order of its comparisons. */
+  panes: string[]
   drawings?: SerializedDrawing[]
   ext?: unknown
 }
@@ -171,19 +181,41 @@ export function parseChartContent(content: string): ParsedChartContent {
         : raw.settings && typeof raw.settings === 'object' && !Array.isArray(raw.settings)
           ? readPartialChartSettings(raw.settings, paintableColor)
           : undefined
+  const indicators = raw.v === RESOLVED_APPEARANCE_VERSION ? [] : parseSavedIndicators(raw.indicators)
   return {
     symbol: typeof raw.symbol === 'string' && raw.symbol ? raw.symbol : undefined,
     timeframe: typeof raw.tf === 'string' && raw.tf ? raw.tf : undefined,
     style: typeof raw.style === 'string' ? raw.style : undefined,
     scale: typeof raw.scale === 'string' ? raw.scale : undefined,
     priceAxis: typeof raw.axis === 'string' ? raw.axis : undefined,
-    indicators: raw.v === RESOLVED_APPEARANCE_VERSION ? [] : parseSavedIndicators(raw.indicators),
+    indicators,
     settings: read?.settings,
     settingsRejected: read?.rejected,
     drawings: Array.isArray(raw.drawings) ? (raw.drawings as SerializedDrawing[]) : undefined,
     compares: raw.compares,
+    // An earlier blob carries no order of its own, and its panes stand in the order it stores what
+    // takes them, which is the order a chart restoring it adds them in.
+    panes: raw.panes === undefined ? storedPaneOrder(indicators, raw.compares) : parsePaneOrder(raw.panes),
     ext: raw.ext,
   }
+}
+
+/** The order of the panes a blob stores what takes them in: the main pane, every indicator by its
+ *  id in the list's order, and every comparison by its symbol in the list's order. A key naming
+ *  something drawn over the main pane rather than in a pane of its own is passed over when the
+ *  panes are stood in the order. */
+function storedPaneOrder(indicators: readonly SavedIndicator[], compares: unknown): string[] {
+  const symbols = Array.isArray(compares)
+    ? compares.flatMap((entry) => (record(entry) && typeof entry.symbol === 'string' && entry.symbol ? [entry.symbol] : []))
+    : []
+  return [MAIN_PANE_KEY, ...indicators.map((indicator) => indicatorPaneKey(indicator.id)), ...symbols.map(comparePaneKey)]
+}
+
+/** A stated order: a list of names, each once. Anything else refuses the blob before anything moves. */
+function parsePaneOrder(value: unknown): string[] {
+  if (!Array.isArray(value) || value.some((key) => typeof key !== 'string' || !key)) throw new Error('chart content panes are not a list of names')
+  if (new Set(value).size !== value.length) throw new Error('chart content panes name a pane twice')
+  return [...(value as string[])]
 }
 
 const record = (value: unknown): value is Record<string, unknown> => value !== null && typeof value === 'object' && !Array.isArray(value)

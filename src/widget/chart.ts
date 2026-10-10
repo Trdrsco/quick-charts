@@ -106,7 +106,8 @@ import type { ChromeDoors } from '../ui/chrome/doors'
 import { mountNavControls } from '../ui/chrome/navControls'
 import { mountScaleControls, type PriceScaleBox, type ScaleControls } from '../ui/chrome/scaleControls'
 import { mountPaneButtons, type PaneButtons } from '../ui/chrome/paneButtons'
-import { attachPaneOps } from './paneOps'
+import { attachPaneOps, PANE_MOVE_COMMAND, type PaneMove } from './paneOps'
+import { paneIndexOf, paneTopIn } from '../paneGeometry'
 import { closeOverlays } from '../ui/controls/overlays'
 import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
@@ -625,6 +626,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     priceLineVisible: false,
     crosshairMarkerVisible: false,
   })
+  /** The index of the main pane, the one the main series stands in. A viewer may move it below an
+   *  indicator's pane, so it is read off the anchor rather than taken to be the first. */
+  const mainPane = (): number => paneIndexOf(anchor)
+  /** How far the main pane stands below the top of the chart, in the chrome's pixels. */
+  const mainPaneTop = (): number => paneTopIn(chart, mainPane(), gestures)
   /** The value lines drawn over a style series, by series: a line or step line in a gradient, and a
    *  baseline whose lower half is a different width from its upper half. `alpha` is the strength a
    *  morph between styles fades the line to. */
@@ -654,7 +660,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  scale, nothing points at the series, so the last price draws no line across the plot and no
    *  label. */
   const addMainSeries = (id: ChartStyleId): ISeriesApi<SeriesType> => {
-    const added = addStyleSeries(chart, id, paint())
+    const added = addStyleSeries(chart, id, paint(), mainPane())
     if (id === 'line' || id === 'stepline' || id === 'baseline') {
       const entry: { primitive: ValueLinePrimitive; alpha: number } = {
         alpha: 1,
@@ -670,7 +676,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   let morph: { run: StyleMorph; bars: ISeriesApi<SeriesType> } | null = null
   // The Baseline style's base is a screen level, not a price, so it is re-derived while that style
   // is the one on screen and never written into saved content.
-  const baselineLevel = createBaselineLevel({ paneHeight: () => chart.paneSize().height, percent: () => eff.baseline.baseLevelPercentage })
+  const baselineLevel = createBaselineLevel({ paneHeight: () => chart.paneSize(mainPane()).height, percent: () => eff.baseline.baseLevelPercentage })
   if (style === 'baseline') baselineLevel.follow(series)
   // THE VOLUME HISTOGRAM IS THE `volume` INDICATOR'S BODY, not chart furniture. The catalog carries
   // the indicator (its MA plots pin to this same band's scale); the bars themselves are drawn here,
@@ -944,12 +950,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     offered: deps.builtInIndicators ?? null,
     disposed: disposedFn,
     onChips: () => {
+      // A pane that came or went may have landed out of the viewer's order.
+      paneOps.settle()
       syncVolume()
       legend.push()
       paneButtons?.sync()
     },
     onEvent: (event) => events.emit('indicator', event),
     catalog: deps.indicatorCatalog,
+    mainPane,
   })
 
   const session = attachSession({
@@ -1021,7 +1030,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         disposed: disposedFn,
         maintainTimeline,
         mainScale: () => scaleSide,
+        mainPane,
         onChips: () => {
+          paneOps.settle()
           legend.push()
           paneButtons?.sync()
         },
@@ -1029,9 +1040,31 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       })
     : null
 
-  // Collapse, maximize and restore over the panes: one memory for the legend's row controls and the
-  // panes' own buttons.
-  const paneOps = attachPaneOps({ chart, indicators, compare })
+  // Collapse, maximize, restore and move over the panes: one memory for the legend's row controls and
+  // the panes' own buttons, and the order the panes stand in.
+  const paneOps = attachPaneOps({
+    chart,
+    indicators,
+    compare,
+    mainPane,
+    // The plot and the price scale's controls stand where the main pane does, and each pane's
+    // buttons and legend rows where their pane does.
+    moved: () => {
+      plotArea.refresh()
+      scaleControls?.sync()
+      paneButtons?.sync()
+      legend.push()
+    },
+  })
+
+  /** Move the pane at an index one place up or down: a step of the history and a change of the
+   *  chart's content, like any other edit. */
+  function movePane(pane: number, direction: PaneMove): void {
+    if (disposed || !paneOps.move(pane, direction)) return
+    indicators.recompute()
+    deps.contentChanged?.()
+    history.changed()
+  }
 
   const legend = attachLegendPlane({
     commands: deps.commands,
@@ -1138,6 +1171,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         gestures,
         overlay: chrome,
         paneLeft: () => chart.priceScale('left').width(),
+        paneTop: mainPaneTop,
         fetchBarMarks: datafeed.marks ? (s, from, to, resolution) => datafeed.marks!(s, from, to, resolution) : null,
         fetchTimescaleMarks: datafeed.timescaleMarks ? (s, from, to, resolution) => datafeed.timescaleMarks!(s, from, to, resolution) : null,
         disposed: disposedFn,
@@ -1332,6 +1366,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         chart,
         series: () => anchor,
         gestures,
+        paneTop: mainPaneTop,
         host: deps.layer,
         i18n,
         icons: deps.icons,
@@ -1392,14 +1427,14 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       })
     : null
 
-  /** The main price scale's box in the chrome's pixels: the main pane's height, on the side the
-   *  scale stands. Null while the chart shows no price scale or has not laid one out. */
+  /** The main price scale's box in the chrome's pixels: the main pane's top and height, on the side
+   *  the scale stands. Null while the chart shows no price scale or has not laid one out. */
   const priceScaleBox = (): PriceScaleBox | null => {
     if (!deps.ui.priceScale) return null
     const width = mainScale().width()
-    const height = chart.panes()[0]?.getHeight() ?? 0
+    const height = chart.panes()[mainPane()]?.getHeight() ?? 0
     if (!(width > 0) || !(height > 0)) return null
-    return { left: scaleSide === 'left' ? 0 : gestures.clientWidth - width, top: 0, width, height, side: scaleSide }
+    return { left: scaleSide === 'left' ? 0 : gestures.clientWidth - width, top: mainPaneTop(), width, height, side: scaleSide }
   }
 
   // The controls on the price scale: the currency and unit box at its top, the auto-scale and
@@ -1438,8 +1473,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     compares: (compare?.api.list() ?? []).map((entry) => entry.symbol).filter((symbol) => compare?.handle.paneIndexOf(symbol) === index),
   })
 
-  // The buttons at the top right of each pane: delete it, collapse or open it, maximize or restore
-  // it, through the pane operations the legend's rows run and the chart's own remove verbs.
+  // The buttons at the top right of each pane: move it up or down, delete it, collapse or open it,
+  // maximize or restore it, through the pane operations the legend's rows run and the chart's own
+  // move and remove verbs.
   paneButtons = mountPaneButtons({
     chrome,
     gestures,
@@ -1447,16 +1483,16 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     icons: deps.icons,
     visibility: () => eff.canvas.paneButtons,
     panes: () => {
-      const origin = gestures.getBoundingClientRect()
-      let top = 0
-      return chart.panes().map((pane, index) => {
-        const height = pane.getHeight()
-        const rect = pane.getHTMLElement()?.getBoundingClientRect()
+      const main = mainPane()
+      return chart.panes().map((pane, index) => ({
+        index,
+        main: index === main,
         // The pane's own box once it is laid out; until then its place by the heights above it.
-        const at = rect && rect.height > 0 ? rect.top - origin.top : top
-        top += height
-        return { index, top: at, height, collapsed: paneOps.collapsed(index), maximized: paneOps.maximized(index) }
-      })
+        top: paneTopIn(chart, index, gestures),
+        height: pane.getHeight(),
+        collapsed: paneOps.collapsed(index),
+        maximized: paneOps.maximized(index),
+      }))
     },
     insetEnd: () => chart.priceScale('right').width(),
     removable: (index) => {
@@ -1464,6 +1500,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       if (contents.indicators.length === 0 && contents.compares.length === 0) return false
       return (contents.indicators.length === 0 || commandShown(deps.access, 'chart.indicators.remove')) && (contents.compares.length === 0 || commandShown(deps.access, 'chart.compare.remove'))
     },
+    movable: (direction) => commandShown(deps.access, PANE_MOVE_COMMAND[direction]),
     run: (index, action) => {
       if (action === 'delete') {
         const contents = paneContents(index)
@@ -1471,13 +1508,17 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         for (const symbol of contents.compares) deps.commands.execute('chart.compare.remove', symbol)
         return
       }
+      if (action === 'moveUp' || action === 'moveDown') {
+        deps.commands.execute(PANE_MOVE_COMMAND[action === 'moveUp' ? 'up' : 'down'], index)
+        return
+      }
       paneOps.run(index, action === 'expand' ? 'restore' : action)
     },
   })
 
-  // The plus follows the crosshair on the main pane.
+  // The plus follows the crosshair on the main pane, wherever that pane stands.
   chart.subscribeCrosshairMove((param) => {
-    scaleControls?.setCrosshair(param.point && (param.paneIndex ?? 0) === 0 ? param.point.y : null)
+    scaleControls?.setCrosshair(param.point && (param.paneIndex ?? 0) === mainPane() ? mainPaneTop() + param.point.y : null)
   })
 
   // The watermark: the symbol written large behind the bars, in the parts the settings name.
@@ -1489,6 +1530,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       return { ticker: names.mark, interval: tf, description: names.description }
     },
     fontFamily: () => canvas().fontFamily,
+    mainPane,
   })
 
   // ── Painting ─────────────────────────────────────────────────────────────────────────────────
@@ -1729,7 +1771,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   function liveRatio(): number | null {
     if (scaleMode !== 'normal') return null
     const range = mainScale().getVisibleRange()
-    const height = chart.panes()[0]?.getHeight() ?? 0
+    const height = chart.panes()[mainPane()]?.getHeight() ?? 0
     const spacing = chart.timeScale().options().barSpacing
     if (!range || !(height > 0) || !(spacing > 0)) return null
     const ratio = ((range.to - range.from) / height) * spacing
@@ -1749,7 +1791,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     const spacing = chart.timeScale().options().barSpacing
     if (!force && spacing === ratioSpacing) return
     const range = mainScale().getVisibleRange()
-    const height = chart.panes()[0]?.getHeight() ?? 0
+    const height = chart.panes()[mainPane()]?.getHeight() ?? 0
     if (!range || !(height > 0) || !(spacing > 0)) return
     ratioSpacing = spacing
     const span = (ratio / spacing) * height
@@ -1784,7 +1826,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     mainScale().applyOptions({ mode: held.mode })
     if (!held.autoScale) mainScale().applyOptions({ autoScale: false })
     chart.priceScale(previous).applyOptions({ mode: PriceScaleMode.Normal, autoScale: true })
-    for (const each of chart.panes()[0]?.getSeries() ?? []) {
+    for (const each of chart.panes()[mainPane()]?.getSeries() ?? []) {
       const id = each.options().priceScaleId
       if (id === undefined || id === previous) each.applyOptions({ priceScaleId: next })
     }
@@ -2171,7 +2213,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     if (replay.active()) ranges.stopGlide()
     followLiveEdge()
   })
-  const plotArea = watchPlotArea({ chart, host: deps.hostContainer, changed: (area: PlotArea) => events.emit('plotArea', area) })
+  const plotArea = watchPlotArea({ chart, host: deps.hostContainer, mainPane, changed: (area: PlotArea) => events.emit('plotArea', area) })
 
   chart.timeScale().subscribeVisibleLogicalRangeChange((reported) => {
     // Every move of the view, the muted and maintained ones included, can carry it across the edge.
@@ -2319,6 +2361,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       // reopen under another theme or another brand would then be stuck with the old ones.
       settings: copyPartialChartSettings(viewerPartial),
       compares: compare?.serialize() ?? [],
+      // The order the panes stand in, top to bottom, those waiting to be drawn included.
+      panes: paneOps.order(),
       // The drawings ride the blob in combined mode only. They are the symbol's own: a saved chart
       // is one symbol, and the drawings it carries are the ones drawn on it.
       ...(deps.drawings.mode === 'combined' ? { drawings: drawings.handle?.export() ?? [] } : {}),
@@ -2346,6 +2390,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // Comparisons restore AFTER the scale: the blob's own scale is the truth of how it was saved,
     // so the policy only re-arms the flip-back for comparisons the restore brings in.
     compare?.restore(parsed.compares)
+    // The panes stand in the blob's order once everything that takes one is back: the indicators'
+    // panes and the comparisons' come back at the bottom, in the order they are restored.
+    paneOps.arrange(parsed.panes)
     // In COMBINED mode the blob carries the drawings that were on the chart, so restoring it puts
     // them back; in separate mode it carries none and the drawings family is their only path.
     if (deps.drawings.mode === 'combined' && parsed.drawings) drawings.handle?.restore(parsed.drawings)
@@ -2375,6 +2422,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       priceAxis: next.priceAxis,
       indicators: [...next.indicators],
       compares: next.compares,
+      panes: [...next.panes],
       ...(next.drawings ? { drawings: [...next.drawings] } : {}),
     })
     // A step back is a content change like any other. The fields that write a preference key have
@@ -2647,6 +2695,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     capabilities: deps.capabilities,
     marks: deps.marks,
     resetSettings,
+    panes: { count: () => chart.panes().length, canMove: (pane, direction) => paneOps.canMove(pane, direction), move: movePane },
     t: () => i18n.t,
     // What is PAINTED, which is the replay slice while replay is on: the data export writes what
     // the viewer can see and never a bar the cursor has not revealed.

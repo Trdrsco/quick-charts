@@ -34,6 +34,7 @@ const contentOf = (symbol: string, timeframe: string): ChartContent => ({
   indicators: [],
   settings: {},
   compares: null,
+  panes: ['main'],
   ext: {},
 })
 

@@ -43,6 +43,8 @@ const CONTROL_ICONS = byMeaning({
   paneCollapse: [ICONS.paneCollapse, ICONS.paneCollapse15],
   paneRestore: [ICONS.paneRestore, ICONS.paneExpand15],
   paneMaximize: [ICONS.paneMaximize, ICONS.paneMaximize15],
+  paneMoveUp: [ICONS.paneUp, ICONS.paneUp15],
+  paneMoveDown: [ICONS.paneDown, ICONS.paneDown15],
   marketStatus: [ICONS.marketStatus],
   replayStatus: [ICONS.replayStatus],
   replayMark: [ICONS.replayMark],

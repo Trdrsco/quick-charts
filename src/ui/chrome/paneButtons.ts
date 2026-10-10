@@ -1,7 +1,9 @@
-// The buttons at the top right of each pane: delete the pane, collapse it or open it again, and
-// maximize it or restore it. The main pane carries maximize alone, and only while there is another
-// pane to give way to it. Each press runs the pane operation the legend's row controls run, or the
-// chart's own remove verb, so a pane's buttons and its legend row can never disagree.
+// The buttons at the top right of each pane: move the pane one place up or down, delete it, collapse
+// it or open it again, and maximize it or restore it. A pane that is not the top one moves up, and
+// one that is not the bottom one moves down; the main pane moves too, and otherwise carries maximize
+// alone, only while there is another pane to give way to it. Each press runs the pane operation the
+// legend's row controls run, or the chart's own move and remove verbs, so a pane's buttons and its
+// legend row can never disagree.
 //
 // The buttons show for the pane under the pointer, for every pane always, or never, as the chart
 // settings say. They are DOM in the chart's chrome layer, placed over each pane as the chart
@@ -15,6 +17,8 @@ import { h, name, stopPointer } from './dom'
 /** One pane as its buttons read it. */
 export interface PaneFacts {
   index: number
+  /** Whether the main series stands in the pane. */
+  main: boolean
   /** The pane's top and height in the chrome's pixels. */
   top: number
   height: number
@@ -23,7 +27,7 @@ export interface PaneFacts {
 }
 
 /** What a pane button does. */
-export type PaneAction = 'delete' | 'collapse' | 'expand' | 'maximize' | 'restore'
+export type PaneAction = 'moveUp' | 'moveDown' | 'delete' | 'collapse' | 'expand' | 'maximize' | 'restore'
 
 export interface PaneButtonsDeps {
   chrome: HTMLElement
@@ -37,6 +41,8 @@ export interface PaneButtonsDeps {
   insetEnd(): number
   /** Whether a pane's contents may be removed: the access policy's say over the remove verbs. */
   removable(pane: number): boolean
+  /** Whether panes may move that way: the access policy's say over the move verbs. */
+  movable(direction: 'up' | 'down'): boolean
   run(pane: number, action: PaneAction): void
 }
 
@@ -50,6 +56,8 @@ export interface PaneButtons {
 const INSET = 4
 
 const BUTTONS: readonly { action: PaneAction; icon: Glyph; label: ChartMessageKey }[] = [
+  { action: 'moveUp', icon: ICONS.paneUp15, label: 'legend.movePaneUp' },
+  { action: 'moveDown', icon: ICONS.paneDown15, label: 'legend.movePaneDown' },
   { action: 'delete', icon: ICONS.trash, label: 'chrome.deletePane' },
   { action: 'collapse', icon: ICONS.paneCollapse15, label: 'legend.collapsePane' },
   { action: 'expand', icon: ICONS.paneExpand15, label: 'legend.restorePane' },
@@ -57,11 +65,24 @@ const BUTTONS: readonly { action: PaneAction; icon: Glyph; label: ChartMessageKe
   { action: 'restore', icon: ICONS.paneMaximize15, label: 'legend.restorePane' },
 ]
 
-/** The buttons a pane carries in its state, in their order. */
-export function paneActions(pane: PaneFacts, count: number, removable: boolean): PaneAction[] {
-  if (pane.index === 0) return count > 1 ? [pane.maximized ? 'restore' : 'maximize'] : []
+/** What the policy lets a pane's buttons do beyond collapse, maximize and restore. */
+export interface PanePermits {
+  remove: boolean
+  up: boolean
+  down: boolean
+}
+
+/** The buttons a pane carries in its state, in their order: the moves first, then delete, collapse
+ *  and maximize. */
+export function paneActions(pane: PaneFacts, count: number, permits: PanePermits): PaneAction[] {
   const out: PaneAction[] = []
-  if (removable) out.push('delete')
+  if (permits.up && pane.index > 0) out.push('moveUp')
+  if (permits.down && pane.index < count - 1) out.push('moveDown')
+  if (pane.main) {
+    if (count > 1) out.push(pane.maximized ? 'restore' : 'maximize')
+    return out
+  }
+  if (permits.remove) out.push('delete')
   out.push(pane.collapsed ? 'expand' : 'collapse')
   if (!pane.collapsed) out.push(pane.maximized ? 'restore' : 'maximize')
   return out
@@ -95,8 +116,10 @@ export function mountPaneButtons(deps: PaneButtonsDeps): PaneButtons {
     const visibility = deps.visibility()
     const panes = deps.panes()
     const seen = new Set<number>()
+    const up = deps.movable('up')
+    const down = deps.movable('down')
     for (const pane of panes) {
-      const actions = paneActions(pane, panes.length, deps.removable(pane.index))
+      const actions = paneActions(pane, panes.length, { remove: deps.removable(pane.index), up, down })
       if (actions.length === 0) continue
       seen.add(pane.index)
       const group = groupFor(pane.index)

@@ -116,4 +116,33 @@ describe('the door, in order', () => {
     expect(registry.execute('chart.test.arm', 'anything')).toEqual({ kind: 'ok' })
     expect(calls).toEqual(['available', 'execute'])
   })
+
+  it('availability asked with an argument answers for that subject, as execute judges it', () => {
+    const asked: unknown[] = []
+    const ran: unknown[] = []
+    const handle = createCommandRegistry()
+    const scope = createChartCommandScope(handle.registry)
+    scope.registry.register({
+      id: 'chart.test.move',
+      scope: 'chart',
+      label: 'legend.movePaneUp',
+      // The top subject has nowhere higher to go; asked with none, any subject could.
+      available: (arg) => {
+        asked.push(arg)
+        return arg === undefined || (typeof arg === 'number' && arg > 0)
+      },
+      refuses: (arg) => arg === 9,
+      execute: (arg) => void ran.push(arg),
+    })
+    scope.activate()
+    const registry = handle.registry
+    expect([registry.available('chart.test.move'), registry.available('chart.test.move', 0), registry.available('chart.test.move', 2)]).toEqual([true, false, true])
+    expect([scope.target.available('chart.test.move', 0), scope.target.available('chart.test.move', 2)]).toEqual([false, true])
+    // A refused subject is unavailable to ask about, and its availability is never read.
+    expect(registry.available('chart.test.move', 9)).toBe(false)
+    expect(asked).toEqual([undefined, 0, 2, 0, 2])
+    expect(registry.execute('chart.test.move', 0)).toEqual({ kind: 'unavailable' })
+    expect(registry.execute('chart.test.move', 2)).toEqual({ kind: 'ok' })
+    expect(ran).toEqual([2])
+  })
 })
