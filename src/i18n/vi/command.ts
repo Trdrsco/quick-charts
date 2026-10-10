@@ -10,7 +10,7 @@ export const command: Translation<typeof source> = {
   'command.viewScrollLeft': 'Cuộn lùi',
   'command.viewScrollRight': 'Cuộn tới',
   'command.priceCopy': 'Sao chép giá',
-  'command.marksRefresh': 'Refresh marks',
+  'command.marksRefresh': 'Làm mới dấu',
   'command.symbolSet': 'Thay đổi mã',
   'command.styleCandles': 'Nến',
   'command.styleHollow': 'Nến rỗng',

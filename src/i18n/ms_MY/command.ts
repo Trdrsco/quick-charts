@@ -10,7 +10,7 @@ export const command: Translation<typeof source> = {
   'command.viewScrollLeft': 'Tatal ke belakang',
   'command.viewScrollRight': 'Tatal ke hadapan',
   'command.priceCopy': 'Salin harga',
-  'command.marksRefresh': 'Refresh marks',
+  'command.marksRefresh': 'Muat semula penanda',
   'command.symbolSet': 'Tukar simbol',
   'command.styleCandles': 'Lilin',
   'command.styleHollow': 'Lilin berongga',

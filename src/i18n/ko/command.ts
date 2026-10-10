@@ -10,7 +10,7 @@ export const command: Translation<typeof source> = {
   'command.viewScrollLeft': '과거로 스크롤',
   'command.viewScrollRight': '최근으로 스크롤',
   'command.priceCopy': '가격 복사',
-  'command.marksRefresh': 'Refresh marks',
+  'command.marksRefresh': '마크 새로고침',
   'command.symbolSet': '심볼 변경',
   'command.styleCandles': '캔들',
   'command.styleHollow': '속 빈 캔들',

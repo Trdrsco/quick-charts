@@ -10,7 +10,7 @@ export const command: Translation<typeof source> = {
   'command.viewScrollLeft': '向左滚动',
   'command.viewScrollRight': '向右滚动',
   'command.priceCopy': '复制价格',
-  'command.marksRefresh': 'Refresh marks',
+  'command.marksRefresh': '刷新标记',
   'command.symbolSet': '更改代码',
   'command.styleCandles': 'K线',
   'command.styleHollow': '空心K线',

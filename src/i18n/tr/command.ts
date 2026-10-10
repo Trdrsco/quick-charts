@@ -10,7 +10,7 @@ export const command: Translation<typeof source> = {
   'command.viewScrollLeft': 'Geriye kaydır',
   'command.viewScrollRight': 'İleriye kaydır',
   'command.priceCopy': 'Fiyatı kopyala',
-  'command.marksRefresh': 'Refresh marks',
+  'command.marksRefresh': 'İşaretleri yenile',
   'command.symbolSet': 'Sembolü değiştir',
   'command.styleCandles': 'Mumlar',
   'command.styleHollow': 'İçi boş mumlar',

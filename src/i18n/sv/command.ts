@@ -10,7 +10,7 @@ export const command: Translation<typeof source> = {
   'command.viewScrollLeft': 'Rulla bakåt',
   'command.viewScrollRight': 'Rulla framåt',
   'command.priceCopy': 'Kopiera pris',
-  'command.marksRefresh': 'Refresh marks',
+  'command.marksRefresh': 'Uppdatera markeringar',
   'command.symbolSet': 'Byt symbol',
   'command.styleCandles': 'Ljus',
   'command.styleHollow': 'Ihåliga ljus',

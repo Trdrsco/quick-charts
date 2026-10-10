@@ -10,7 +10,7 @@ export const command: Translation<typeof source> = {
   'command.viewScrollLeft': '過去へスクロール',
   'command.viewScrollRight': '最新側へスクロール',
   'command.priceCopy': '価格をコピー',
-  'command.marksRefresh': 'Refresh marks',
+  'command.marksRefresh': 'マークを更新',
   'command.symbolSet': '銘柄の変更',
   'command.styleCandles': 'ローソク足',
   'command.styleHollow': '中抜きローソク足',
