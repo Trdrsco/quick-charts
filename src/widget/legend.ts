@@ -151,7 +151,7 @@ export function legendLook(settings: ChartSettings): LegendLook {
  *  nothing to name it with but the symbol itself, minus its venue prefix. Exported for tests. */
 export function legendIdentity(symbol: string, info: SymbolInfo | null, timeframe: string, source: ChartSettings['statusLine']['titleSource']): LegendIdentity {
   const names = symbolNames(info ?? symbol)
-  const base = { symbol, timeframe, exchange: info?.exchange ?? '' }
+  const base = { symbol, mark: names.mark, timeframe, exchange: info?.exchange ?? '' }
   if (source === 'symbol') return { ...base, name: names.mark }
   if (source === 'symbolAndName') return names.description === names.mark ? { ...base, name: names.mark } : { ...base, name: names.mark, detail: names.description }
   return { ...base, name: names.description }

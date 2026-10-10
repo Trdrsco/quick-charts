@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
 import { createChartI18n } from '../../src/i18n'
-import { DEFAULT_OVERRIDES } from '../../src/overrides'
 import { createPriceFormatter } from '../../src/priceFormatter'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { memoryChartStorage, type ChartStorage } from '../../src/storage'
@@ -37,14 +36,14 @@ const body = (indicators: unknown): string =>
     scale: 'normal',
     priceAxis: 'auto',
     indicators,
-    appearance: {},
+    settings: {},
     compares: [],
     ext: {},
   })
 
 describe('the saved indicator schema', () => {
-  it('requires the v4 instance list and preserves valid instance state', () => {
-    expect(CHART_CONTENT_VERSION).toBe(4)
+  it('requires the instance list and preserves valid instance state', () => {
+    expect(CHART_CONTENT_VERSION).toBe(5)
     expect(
       parseChartContent(
         body([
@@ -120,11 +119,11 @@ describe('the saved indicator schema', () => {
   it('runs no compatibility reader below the one format that has stored charts in the wild', () => {
     expect(() => parseChartContent(JSON.stringify({ v: 2, symbol: 'ES', tf: '5m', hidden: [] }))).toThrow(/unsupported chart content version 2/)
     // The one exception is the format whose appearance was the RESOLVED tree: those charts exist in
-    // stores, and they read back with no indicators and no appearance rather than freezing at the
+    // stores, and they read back with no indicators and no settings rather than freezing at the
     // look they were drawn in.
     const old = parseChartContent(JSON.stringify({ v: 3, symbol: 'ES', tf: '5m', hidden: [], appearance: { upColor: '#26a69a' } }))
     expect(old.indicators).toEqual([])
-    expect(old.appearance).toBeUndefined()
+    expect(old.settings).toBeUndefined()
     expect(old.symbol).toBe('ES')
   })
 })
@@ -137,7 +136,7 @@ const contentOf = (indicators: readonly SavedIndicator[], symbol = 'ES', timefra
   scale: 'normal',
   priceAxis: 'auto',
   indicators,
-  appearance: DEFAULT_OVERRIDES.appearance,
+  settings: {},
   compares: [],
   drawings: [],
   ext: {},

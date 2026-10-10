@@ -103,7 +103,7 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     ui: resolveUi(undefined, resolveFeatures()),
     capabilities: () => ({}) as never,
     bars: () => [],
-    resetAppearance: () => undefined,
+    resetSettings: () => undefined,
     t: () => i18n.t,
     earliestBar: () => null,
     replayFromFirst: async () => undefined,

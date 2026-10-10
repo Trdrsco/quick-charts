@@ -20,7 +20,6 @@ import { describe, expect, it } from 'vitest'
 import type { ChartBody, ChartMeta, ChartSaveLoadAdapter, ResourceLoadOutcome, ResourceRemoveOutcome, ResourceSaveOutcome, ResourceStore } from '../src/index'
 import { memorySaveLoadAdapter } from '../src/index'
 import { createChartI18n } from '../src/i18n'
-import { DEFAULT_OVERRIDES } from '../src/overrides'
 import { createSaveLoadApi, serializeChartContent, type ChartContent } from '../src/widget/saveLoad'
 
 const i18n = createChartI18n()
@@ -33,7 +32,7 @@ const contentOf = (symbol: string, timeframe: string): ChartContent => ({
   scale: 'normal',
   priceAxis: 'auto',
   indicators: [],
-  appearance: DEFAULT_OVERRIDES.appearance,
+  settings: {},
   compares: null,
   ext: {},
 })

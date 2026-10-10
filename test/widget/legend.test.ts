@@ -283,7 +283,9 @@ describe('the legend names the symbol the datafeed resolved', () => {
   it('writes the resolved identity and its venue, not the ticker the chart was mounted with', async () => {
     const { container } = mountChart(scriptedFeed())
     await settle()
-    expect(partText(container, 'legend-symbol')).toBe('ESZ2026')
+    // The title names the market by its name, the feed's description, until the settings ask for
+    // its symbol.
+    expect(partText(container, 'legend-symbol')).toBe('E-mini S&P 500 Dec 2026')
     expect(partText(container, 'legend-exchange')).toBe('CME')
     expect(partText(container, 'legend-timeframe')).toBe('1m')
   })
@@ -306,7 +308,7 @@ describe('the legend names the symbol the datafeed resolved', () => {
     const { container } = mountChart(scriptedFeed(), { ui: { symbolSearch: false } })
     await settle()
     expect(legendOf(container).querySelector('button[data-role="legend-symbol"]')).toBeNull()
-    expect(partText(container, 'legend-symbol')).toBe('ESZ2026')
+    expect(partText(container, 'legend-symbol')).toBe('E-mini S&P 500 Dec 2026')
   })
 })
 
@@ -397,13 +399,13 @@ describe('the reading follows the crosshair, and each chart keeps its own', () =
   it('keeps every pane’s reading its own: a crosshair on one chart never moves another’s', async () => {
     const bars = series(6)
     const first = mountChart(scriptedFeed({ bars }))
-    const second = mountChart(scriptedFeed({ bars, symbol: info({ name: 'NQZ2026', exchange: 'CME' }) }), { symbol: 'NQ' })
+    const second = mountChart(scriptedFeed({ bars, symbol: info({ ticker: 'CME_MINI:NQ1!', name: 'NQZ2026', description: 'E-mini Nasdaq-100 Dec 2026', exchange: 'CME' }) }), { symbol: 'NQ' })
     await settle()
     const fmt = createPriceFormatter(DECIMAL, { locale: 'en' })
     first.renderer.fireCrosshair(bars[1]!.t)
     expect(quote(first.container)).toContain(fmt.format(bars[1]!.c))
     expect(quote(second.container)).toContain(fmt.format(bars[5]!.c))
-    expect(partText(second.container, 'legend-symbol')).toBe('NQZ2026')
+    expect(partText(second.container, 'legend-symbol')).toBe('E-mini Nasdaq-100 Dec 2026')
     // Activating the other chart is a host's pointer, not a legend event: neither reading moves.
     second.renderer.fireCrosshair(bars[3]!.t)
     expect(quote(first.container)).toContain(fmt.format(bars[1]!.c))

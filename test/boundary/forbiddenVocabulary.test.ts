@@ -14,7 +14,22 @@ const CODE = Object.fromEntries(Object.entries(CHART_SOURCES).filter(([file]) =>
 const lines = (files: Record<string, string>, pattern: RegExp): string[] => scanFiles(files, pattern).map(offenderText)
 
 const REPLAY_INDICATOR_TOKEN = /\breplayWatermark(?:Text)?\b|replay\.watermark|qc-replay-watermark/gi
+/** The symbol watermark the chart settings name: the one module that draws it, and the settings,
+ *  theme and wiring files that name its parts, its ink and its layer. Nothing else may mention a
+ *  watermark. */
+const SETTINGS_WATERMARK_FILES = new Set([
+  '/src/widget/watermark.ts',
+  '/src/widget/chart.ts',
+  '/src/widget/chartLook.ts',
+  '/src/widget/legend.ts',
+  '/src/settings/schema.ts',
+  '/src/settings/defaults.ts',
+  '/src/theme/palettes.ts',
+  '/src/theme/renderer.ts',
+  '/src/theme/schema.ts',
+])
 const watermarkViolations = (files: Record<string, string>): string[] => scanFiles(files, /watermark/i)
+  .filter((o) => !SETTINGS_WATERMARK_FILES.has(o.file))
   .filter((o) => o.file !== '/src/chartLegend.ts' || /watermark/i.test(o.text.replace(REPLAY_INDICATOR_TOKEN, '')))
   .map(offenderText)
 
@@ -89,11 +104,14 @@ describe('the import boundary and the excluded chrome', () => {
     expect(lines(CODE, /:root\b/)).toEqual([])
     expect(lines(CODE, /Object Tree|objectTree/)).toEqual([])
     // Every one of these is the replay session's own mark on the plot, built and named in the
-    // legend. The count is the canary: a brand watermark, a screenshot stamp or an export overlay
-    // would have to move this number, which is the conscious event the guard is here to force.
+    // legend, or the symbol watermark the chart settings name. The count is the canary: a brand
+    // watermark, a screenshot stamp or an export overlay would have to move this number, which is
+    // the conscious event the guard is here to force.
     const watermark = lines(CODE, /watermark/i)
-    expect(watermark).toHaveLength(16)
+    expect(watermark).toHaveLength(74)
     expect(watermarkViolations(CODE)).toEqual([])
+    // The renderer's text watermark is drawn by the settings' own module and nowhere else.
+    expect(lines(CODE, /createTextWatermark/).every((line) => line.startsWith('/src/widget/watermark.ts'))).toBe(true)
     expect(watermarkViolations({
       '/src/chartLegend.ts': "replayWatermark.className = 'qc-replay-watermark'\nconst watermarkOptions = {}",
       '/src/widget/create.ts': 'const brandWatermark = true',

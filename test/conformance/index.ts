@@ -1671,9 +1671,10 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       await ctx.settle()
       equal(gamma.chart.hasExtendedHours(), true, 'subsessions give the choice')
       equal(gamma.chart.marketStatus(Date.UTC(2023, 10, 15, 12, 0, 0) / 1000)?.state, 'pre', 'pre-market before the open')
-      equal(gamma.chart.subsession(), 'extended', 'every bar shows by default')
-      equal(gamma.widget.commands.execute('chart.subsession.regular').kind, 'ok', 'the regular choice runs')
-      equal(gamma.chart.subsession(), 'regular', 'and lands')
+      equal(gamma.chart.subsession(), 'regular', 'regular hours show by default')
+      equal(gamma.widget.commands.execute('chart.subsession.extended').kind, 'ok', 'the extended choice runs')
+      equal(gamma.chart.subsession(), 'extended', 'and lands')
+      equal(gamma.chart.settings().symbol.session, 'extended', 'as the trading-hours setting')
     },
   },
   {

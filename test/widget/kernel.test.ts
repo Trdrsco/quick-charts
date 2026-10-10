@@ -92,11 +92,11 @@ describe('one formatter everywhere', () => {
   })
 
   it('the series, the context menu, copy-price, the legend rows and the extension seam all write through it', () => {
-    expect(chartSrc).toContain("const priceFormat = { type: 'custom' as const, formatter: (price: number) => symbolFormatter.format(price), minMove: minMoveOf(format) }")
+    expect(chartSrc).toContain("const priceFormat = { type: 'custom' as const, formatter: (price: number) => symbolFormatter.format(price), minMove: minMove() }")
     expect(menuSrc).toContain('const priceText = deps.formatter().format(price)')
     expect(chartCommandsSrc).toContain('writeText(deps.formatter().format(level))')
     expect(indicatorsSrc).toContain('formatter.format(value)')
-    expect(chartSrc).toContain('drawings.setPricing(format ? minMoveOf(format) : null, (price) => symbolFormatter.format(price))')
+    expect(chartSrc).toContain('drawings.setPricing(format ? minMoveOf(written) : null, (price) => symbolFormatter.format(price))')
     expect(chartSrc).toContain('formatter: () => ({ format: (price) => symbolFormatter.format(price)')
   })
 
@@ -108,8 +108,10 @@ describe('one formatter everywhere', () => {
     }
   })
 
-  it('drawings snap to the symbol grid: the smallest move the format declares', () => {
-    expect(chartSrc).toContain('drawings.setPricing(format ? minMoveOf(format) : null')
+  it('drawings snap to the symbol grid: the smallest move the written format declares', () => {
+    // The written format is the symbol's own unless the precision setting names another.
+    expect(chartSrc).toContain('const minMove = (): number => minMoveOf(writtenFormat())')
+    expect(chartSrc).toContain('drawings.setPricing(format ? minMoveOf(written) : null')
     expect(chartSrc).toContain('export const minMoveOf = (format: PriceFormat): number => format.minmov / format.pricescale')
   })
 })

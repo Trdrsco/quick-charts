@@ -29,7 +29,7 @@ const BASE: ChartContent = {
   scale: 'normal',
   priceAxis: 'auto',
   indicators: [],
-  appearance: {},
+  settings: {},
   compares: [],
   drawings: [],
   ext: {},
@@ -110,19 +110,19 @@ describe('what a step is called', () => {
     // Extension state is not a rung: nothing announces it and a reading does not put it back.
     expect(diffLabel(state({ ext: { a: 1 } }), state({ ext: { b: 2 } }))).toBeNull()
     // Key order is not a change either.
-    expect(diffLabel(state({ appearance: { background: '#111', grid: true } }), state({ appearance: { grid: true, background: '#111' } }))).toBeNull()
+    expect(diffLabel(state({ settings: { canvas: { background: '#111', verticalGrid: true } } }), state({ settings: { canvas: { verticalGrid: true, background: '#111' } } }))).toBeNull()
   })
 
   it('names the change by the first rung it reaches, so two at once read as the higher one', () => {
     const table: { from: Partial<ChartContent>; to: Partial<ChartContent>; label: HistoryChange }[] = [
       // Everything below the symbol moves with it, and the step is still a symbol change.
-      { from: {}, to: { symbol: 'NQ', timeframe: '5m', style: 'line', scale: 'log', appearance: { grid: false } }, label: 'symbol' },
+      { from: {}, to: { symbol: 'NQ', timeframe: '5m', style: 'line', scale: 'log', settings: { canvas: { verticalGrid: false } } }, label: 'symbol' },
       { from: {}, to: { timeframe: '5m', style: 'line', priceAxis: 'manual' }, label: 'timeframe' },
       { from: {}, to: { style: 'bars', scale: 'log' }, label: 'style' },
       { from: {}, to: { scale: 'log' }, label: 'priceScale' },
       // The scale mode and the framing policy are one word: both are how the price axis is read.
-      { from: {}, to: { priceAxis: 'manual', appearance: { grid: false } }, label: 'priceScale' },
-      { from: {}, to: { appearance: { grid: false } }, label: 'appearance' },
+      { from: {}, to: { priceAxis: 'manual', settings: { canvas: { verticalGrid: false } } }, label: 'priceScale' },
+      { from: {}, to: { settings: { canvas: { verticalGrid: false } } }, label: 'settings' },
       { from: {}, to: { compares: [{ symbol: 'NQ' }] }, label: 'compareAdd' },
       { from: { compares: [{ symbol: 'NQ' }] }, to: { compares: [] }, label: 'compareRemove' },
       { from: { compares: [{ symbol: 'NQ', visible: true }] }, to: { compares: [{ symbol: 'NQ', visible: false }] }, label: 'compareChange' },

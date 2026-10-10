@@ -91,6 +91,9 @@ export interface LegendIdentity {
   detail?: string
   /** The charted symbol itself, behind the display name. */
   symbol: string
+  /** The market's compact mark, which the package's monogram is cut from whatever the header's
+   *  name reads. The name when absent. */
+  mark?: string
   /** The timeframe, already worded (a running replay says so). */
   timeframe: string
   exchange: string
@@ -579,7 +582,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   let dropBadge: (() => void) | null = null
   const paintBadge = (): void => {
     if (!controls.painters.symbol) {
-      badge.set(identity?.name ?? '')
+      badge.set(identity?.mark ?? identity?.name ?? '')
       return
     }
     const symbol = identity?.symbol ?? ''

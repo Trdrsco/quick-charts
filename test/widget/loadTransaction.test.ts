@@ -14,7 +14,6 @@ import { describe, expect, it } from 'vitest'
 import { CHART_CONTENT_VERSION, chartRecoveryReceipt, createSaveLoadApi, serializeChartContent, type ChartContent, type ParsedChartContent } from '../../src/widget/saveLoad'
 import { createLayoutPlane, type LayoutModelState } from '../../src/widget/layout'
 import { createChartI18n } from '../../src/i18n'
-import { DEFAULT_OVERRIDES } from '../../src/overrides'
 import { memorySaveLoadAdapter, type ChartSaveLoadAdapter, type ResourceStore, type ChartBody, type ChartMeta } from '../../src/resources'
 import type { SerializedDrawing } from '../../src/internal/drawings/index'
 import type { ChartHandle } from '../../src/widget/chart'
@@ -30,7 +29,7 @@ const contentOf = (symbol: string, timeframe: string): ChartContent => ({
   scale: 'normal',
   priceAxis: 'auto',
   indicators: [],
-  appearance: DEFAULT_OVERRIDES.appearance,
+  settings: {},
   compares: null,
   ext: {},
 })
