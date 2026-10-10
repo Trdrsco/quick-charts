@@ -1,5 +1,5 @@
 {
-  "tarSha256": "0c4869c9460d7f233e68b2c7699a5a127e5dc45a18d3c64fb16dcf2e1fe8a493",
+  "tarSha256": "6ee59919d664e628092420c31b97caa9a89f7f12db233ac4739a01b552ecdfff",
   "files": {
     "CHANGELOG.md": "5b430747b7924aae4b12b153ccc998e3a7a4cbfb0788bc398dc07ae75abc1706",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -63,7 +63,7 @@
     "dist/pl-BW5YIUIU.js.map": "2f39afb788a96078eafdab97dcf1f2722a5c009caab242382b7ac26ffda7a3c4",
     "dist/pt-WKQ5YC5A.js": "8365bd785d24c77f29a5e20dc132134b1732a87e537471e5e6992a5218a4a851",
     "dist/pt-WKQ5YC5A.js.map": "03ea78a91813d01c16455ed9defea9208323ef01c29ecf3aad525aa86086f7bb",
-    "dist/quickcharts.css": "4d10861269c09da944247b864ea5e6acc1cb025941fae5ba28a83d251fc2646f",
+    "dist/quickcharts.css": "2c4cea0b696e0b5f1eb05727c3ba9db3de788a2e7bf1d29f66bcf79a5b92d7e6",
     "dist/resources-XglhzzW0.d.ts": "f6baa23bdefc1f381614de02b88e875edda0e7ab65127a4a8eb4a73dd569d974",
     "dist/rest-openapi.json": "5b8ede82a142774afc15b6506b497113fd11a10cc9990068de1aac3c56ec684f",
     "dist/ru-ZQRRKWMN.js": "5d00f621fcad47105fdab7922d366b1bd9eb2fbe2aff59b97f1a8db802a40f94",
