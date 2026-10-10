@@ -95,17 +95,22 @@ export interface ChartSettingsControls {
 
 /** A host's contribution to the settings dialog. */
 export interface ChartSettingsContribution {
-  /** Either a page of the host's own, placed after a chart page (or last), or rows appended to one
+  /** Either a page of the host's own, placed after another page (or last), or rows appended to one
    *  of the chart's pages, before one of its rows (or at its end). `before` may name several rows or
    *  sections: the rows land before the first of them the page holds, so a placement survives a
    *  section the page shows only in some contexts (the Status line page's `indicators`).
    *
-   *  Pages that name the same chart page in `after` stand after it in the order their extensions
-   *  attach, which is the order of the widget's `extensions` (an extension attached again on a
-   *  symbol switch keeps its place), and one extension's pages in the order it contributes them.
-   *  Pages that name none stand last in the same order. */
+   *  `after` names the page to follow: one of the chart's (a `ChartSettingsPageId`) or another
+   *  contributed page's id. A list names several, and the first of them the dialog holds wins, so
+   *  `after: ['trading', 'canvas']` follows a contributed `trading` page where there is one and the
+   *  Canvas page otherwise. The order is read once every contribution is known, so a page stands
+   *  after the contributed page it names whichever attached first. Pages that name the same
+   *  page stand after it in the order their extensions attach, each followed by the pages that name
+   *  it: the order of the widget's `extensions` (an extension attached again on a symbol switch
+   *  keeps its place), and one extension's pages in the order it contributes them. A page whose
+   *  `after` names no page the dialog holds, or is absent, stands last in the same order. */
   place:
-    | { page: { id: string; label: string; icon: ChartSettingsIconPainter; after?: ChartSettingsPageId } }
+    | { page: { id: string; label: string; icon: ChartSettingsIconPainter; after?: string | readonly string[] } }
     | { into: ChartSettingsPageId; before?: string | readonly string[] }
   /** Build the rows. The dialog calls it whenever the page is drawn, including after every change
    *  a row reports, so it reads the host's current state each time. */

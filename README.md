@@ -3467,14 +3467,18 @@ What to know:
   change. The handle reads `hidden()`, flips `setHidden()` through the same eye the drawing toolbar
   drives, and `remove()` withdraws the layer.
 - **Your settings join the chart settings dialog.** `ctx.contributeSettings(contribution)` adds a
-  page of your own, placed after the chart page `place.page.after` names (or last), or rows inside
-  one of the chart's pages, placed before the first of the rows `place.before` names (or at its
-  end). Pages that name the same chart page stand after it in the order their extensions attach,
-  which is the order of `extensions` (an extension attached again on a symbol switch keeps its
-  place), and one extension's pages in the order it contributes them; pages that name none stand
-  last in the same order. The chart's rows are named by the leaf they edit, such as `background` on
-  the Status line page, and the sections it shows only in some contexts by their own names, such as
-  `indicators`.
+  page of your own, placed after the page `place.page.after` names (or last), or rows inside one of
+  the chart's pages, placed before the first of the rows `place.before` names (or at its end).
+  `after` names one of the chart's pages or another contributed page, and a list names several, of
+  which the first the dialog holds wins: `after: ['trading', 'canvas']` follows a contributed
+  `trading` page where there is one and the Canvas page otherwise. The order is read once every
+  contribution is known, so a page follows the contributed page it names whichever attached first.
+  Pages that name the same page stand after it in the order their extensions attach, each followed
+  by the pages that name it: the order of `extensions` (an extension attached again on a symbol
+  switch keeps its place), and one extension's pages in the order it contributes them. A page that
+  names no page the dialog holds stands last in the same order. The chart's rows are named by the
+  leaf they edit, such as `background` on the Status line page, and the sections it shows only in
+  some contexts by their own names, such as `indicators`.
   `build(form)` builds your rows with the form the chart builds its own with: headings, checkbox
   rows with a hint or a tip, sub-rows, and colors, lists, numbers and sliders, so your rows are the
   chart's in every measure. The dialog calls `open()` as it opens, `cancel(state)` with what `open`

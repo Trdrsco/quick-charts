@@ -380,6 +380,46 @@ describe('what a host contributes', () => {
     expect(pageLabels(s)).toEqual(placed)
   })
 
+  it('places a page after the contributed page it names whichever attached first, and after the first page of its list the dialog holds', () => {
+    const page = (id: string, label: string, after?: string | readonly string[]): ChartSettingsContribution => ({
+      place: { page: { id, label, icon: () => () => undefined, ...(after === undefined ? {} : { after }) } },
+      build: () => undefined,
+    })
+    const extension = (id: string, ...pages: ChartSettingsContribution[]): ChartExtension => ({
+      id,
+      attach: (context) => {
+        for (const contributed of pages) context.contributeSettings(contributed)
+        return { detach: () => undefined }
+      },
+    })
+    const s = setup()
+    const rail = (extensions: ChartExtension[]): string[] => {
+      const host = createExtensionHost({ chartId: 'chart-1' } as unknown as ChartExtensionHostDeps, extensions)
+      try {
+        s.dialog.open()
+        return pageLabels(s)
+      } finally {
+        s.dialog.toggle()
+        host.detach()
+      }
+    }
+    // Attached first, the alerts page names the trading page attached after it, then the Canvas page.
+    const alerts = extension('alerts', page('alertsX', 'Alerts', ['tradingX', 'canvas']))
+    const trading = extension('trading', page('tradingX', 'Trading', 'canvas'))
+    expect(rail([alerts, trading])).toEqual(['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Trading', 'Alerts', 'Events'])
+    // With no trading page, the next id of the list the dialog holds.
+    expect(rail([alerts])).toEqual(['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Alerts', 'Events'])
+    // The single id, as before: the trading page after the Canvas page, then a page it follows.
+    const journal = extension('journal', page('journal', 'Journal', 'tradingX'))
+    expect(rail([journal, trading])).toEqual(['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Trading', 'Journal', 'Events'])
+    // A page that names no page the dialog holds stands last, as one that names none does.
+    const stray = extension('stray', page('stray', 'Stray', ['nowhere']), page('plain', 'Plain'))
+    expect(rail([stray, trading])).toEqual(['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Trading', 'Events', 'Stray', 'Plain'])
+    // Pages that name only one another stand last, in the order they attach.
+    const ring = extension('ring', page('one', 'One', 'two'), page('two', 'Two', 'one'))
+    expect(rail([ring])).toEqual(['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Events', 'One', 'Two'])
+  })
+
   it('cancels each contribution with what its open answered, and commits each on Ok', () => {
     const one = { open: vi.fn(() => ({ was: 1 })), cancel: vi.fn(), commit: vi.fn(), applyDefaults: vi.fn() }
     const first = setup()
