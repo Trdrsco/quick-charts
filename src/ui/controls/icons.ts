@@ -1,5 +1,5 @@
 // Every glyph the chart's own surfaces wear: the top bar, the legend, the dialogs, the drawing
-// toolbar and its bars. Inline SVG markup in `currentColor`, so a recipe's ink is the glyph's ink
+// toolbar and its bars, and the rings of the time-scale marks. Inline SVG markup in `currentColor`, so a recipe's ink is the glyph's ink
 // and the package ships no asset and fetches nothing. The drawings are built from lines, arcs,
 // circles and walled outlines on their grids (`glyphGeometry`), once, when the module loads. Each
 // glyph carries the grid it was drawn on, so a surface names the glyph and its size and never a
@@ -9,6 +9,7 @@
 // `arrangementGlyphs`.
 
 import { arc, bend, box, disc, frame, inset, line, onCircle, polygon, polyline, ring, roundedBox, roundedPolygon, solid, wall, type Point } from './glyphGeometry'
+import type { MarkIconId } from '../../marks'
 
 /** One glyph: its own grid and the inner markup drawn on it. */
 export interface Glyph {
@@ -652,3 +653,29 @@ export const OPERATOR_GLYPHS = {
   // A one with its flag and its foot, and a slash leaning after it.
   reciprocal: { viewBox: '0 0 13 13', body: operator('M1 5 3.5 2.5V10M1.5 10.5H5.5') + '<path fill="none" stroke="currentColor" d="M8 12 11 1"/>' },
 } as const satisfies Record<string, Glyph>
+
+/** A mark glyph's one filled outline, kept as path data beside its markup so the canvas fills the
+ *  same outline a host reads as artwork. */
+export interface MarkGlyphPath {
+  d: string
+  rule?: 'evenodd'
+}
+
+/** A mark glyph on the 21 grid of a time-scale mark's ring box, its outline held inside the ring. */
+const markGlyph = (path: MarkGlyphPath): Glyph & { path: MarkGlyphPath } => ({ viewBox: '0 0 21 21', size: 21, body: solid(path.d, path.rule), path })
+
+/** The glyphs a time-scale mark wears inside its ring, by icon id, each named for its shape: what one
+ *  means on a chart is the host's to say. */
+export const MARK_ICONS = {
+  // A lightning bolt: a wedge from its top point down to a step at the middle, and a second wedge
+  // from the step down to its foot point.
+  'mark.bolt': markGlyph({ d: polygon([[12.5, 4.5], [6.5, 11.5], [10, 11.5], [8.5, 16.5], [14.5, 9.5], [11, 9.5]]) }),
+  // A flag: a pole a unit wide, and a banner flying from its top with a notch cut into its far edge.
+  'mark.flag': markGlyph({ d: box(6.5, 4.5, 7.5, 16.5) + polygon([[7.5, 5], [14.5, 5], [12.5, 8], [14.5, 11], [7.5, 11]]) }),
+  // A five-pointed star, its points 5.5 from its centre, standing level in the ring.
+  'mark.star': markGlyph({ d: polygon(starPoints(10.5, 11, 5.5, 2.4)) }),
+  // A clock: a ring and two hands, one up to twelve and one across to three.
+  'mark.clock': markGlyph({ d: ring(10.5, 10.5, 5.5, 1.2) + box(9.9, 7, 11.1, 11.1) + box(9.9, 9.9, 13.5, 11.1) }),
+  // An exclamation mark: a rounded stroke and the dot under it.
+  'mark.exclamation': markGlyph({ d: roundedBox(9.75, 5, 11.25, 12.5, 0.75) + disc(10.5, 15, 1) }),
+} as const satisfies Record<MarkIconId, Glyph & { path: MarkGlyphPath }>

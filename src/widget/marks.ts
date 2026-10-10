@@ -1,11 +1,13 @@
-// Drawing the neutral marks: the bar markers the renderer already understands, and a small
-// primitive that ticks the time scale. The data contract they draw is `src/marks.ts`; nothing here
-// interprets a mark, it only paints one.
+// Drawing the neutral marks: the bar markers the renderer already understands, and a primitive that
+// draws the time-scale marks along the foot of the pane, each a glyph in a ring or a small dot. The
+// data contract they draw is `src/marks.ts`; nothing here interprets a mark, it only paints one.
 import type { IChartApi, ISeriesApi, SeriesMarker, SeriesType, Time, UTCTimestamp } from 'lightweight-charts'
 import { createSeriesMarkers, type ISeriesMarkersPluginApi } from 'lightweight-charts'
 import type { SemanticTheme, ThemeMode } from '../theme/schema'
 import { paintableColor } from '../settings/color'
-import type { BarMark, MarkColor, MarkColorRole, TimescaleMark } from '../marks'
+import { MARK_ICONS } from '../ui/controls/icons'
+import type { IconResolver } from '../ui/icons/resolver'
+import type { BarMark, MarkColor, MarkColorRole, MarkIconId, TimescaleMark } from '../marks'
 
 /** The color each theme role resolves through. */
 const ROLE_COLOR: Readonly<Record<MarkColorRole, (theme: SemanticTheme) => string>> = {
@@ -64,42 +66,110 @@ export interface TimescaleMarksPrimitive {
   refresh(): void
 }
 
-/** The tick's radius in CSS pixels, and how far above the pane's bottom edge it sits. */
-const TIMESCALE_MARK_R = 3
-const TIMESCALE_MARK_INSET = 6
+/** A glyph mark's ring box in CSS pixels, and how far its foot stands above the pane's bottom edge,
+ *  just clear of the time scale. */
+export const MARK_RING_SIZE = 21
+const MARK_RING_FOOT = 2
+/** The ring's line width. */
+const MARK_RING_WIDTH = 1.5
+/** A mark without a glyph: a dot of this radius, this far above the pane's bottom edge. */
+const MARK_DOT_R = 3
+const MARK_DOT_INSET = 6
 
-export function createTimescaleMarks(
-  chart: IChartApi,
-  marks: () => readonly TimescaleMark[],
-  theme: () => SemanticTheme,
-  mode: () => ThemeMode,
-): TimescaleMarksPrimitive {
+/** The host's drawing of a mark glyph as a bitmap of `size` device pixels in one color: undefined
+ *  where the host draws none, so the chart's own glyph stands, and null while it is loading. */
+export type MarkArt = (id: MarkIconId, color: string, size: number) => CanvasImageSource | null | undefined
+
+/** What the time-scale marks draw from. */
+export interface TimescaleMarksDeps {
+  chart: IChartApi
+  marks(): readonly TimescaleMark[]
+  theme(): SemanticTheme
+  mode(): ThemeMode
+  /** The chart's background at the foot of the pane, which a ring's inside shows. */
+  background(): string
+  /** The host's drawings of the mark glyphs; absent, the chart draws its own. */
+  art?: MarkArt
+}
+
+/** The bitmap space a pane renderer draws in. */
+interface BitmapScope {
+  context: CanvasRenderingContext2D
+  bitmapSize: { width: number; height: number }
+  horizontalPixelRatio: number
+  verticalPixelRatio: number
+}
+
+/** Each mark glyph's outline as a canvas path, made the first time it is drawn. */
+const glyphPaths = new Map<MarkIconId, Path2D>()
+function glyphPath(id: MarkIconId): Path2D {
+  let path = glyphPaths.get(id)
+  if (!path) {
+    path = new Path2D(MARK_ICONS[id].path.d)
+    glyphPaths.set(id, path)
+  }
+  return path
+}
+
+/** Whether a mark names a glyph the chart draws. */
+const glyphOf = (mark: TimescaleMark): MarkIconId | null => (typeof mark.icon === 'string' && Object.hasOwn(MARK_ICONS, mark.icon) ? mark.icon : null)
+
+export function createTimescaleMarks(deps: TimescaleMarksDeps): TimescaleMarksPrimitive {
+  const { chart } = deps
+
+  /** One glyph mark: the ring in the mark's color around the chart's background, and the glyph,
+   *  the host's drawing where it gave one and the chart's own otherwise. */
+  const drawRing = (scope: BitmapScope, x: number, color: string, id: MarkIconId): void => {
+    const ctx = scope.context
+    const h = scope.horizontalPixelRatio
+    const v = scope.verticalPixelRatio
+    const top = scope.bitmapSize.height / v - MARK_RING_FOOT - MARK_RING_SIZE
+    const left = x - MARK_RING_SIZE / 2
+    ctx.save()
+    ctx.beginPath()
+    ctx.ellipse(x * h, (top + MARK_RING_SIZE / 2) * v, ((MARK_RING_SIZE - MARK_RING_WIDTH) / 2) * h, ((MARK_RING_SIZE - MARK_RING_WIDTH) / 2) * v, 0, 0, Math.PI * 2)
+    ctx.fillStyle = deps.background()
+    ctx.fill()
+    ctx.lineWidth = MARK_RING_WIDTH * h
+    ctx.strokeStyle = color
+    ctx.stroke()
+    const art = deps.art?.(id, color, Math.round(MARK_RING_SIZE * h))
+    if (art === undefined) {
+      ctx.translate(left * h, top * v)
+      ctx.scale(h, v)
+      ctx.fillStyle = color
+      ctx.fill(glyphPath(id), MARK_ICONS[id].path.rule ?? 'nonzero')
+    } else if (art !== null) {
+      ctx.drawImage(art, left * h, top * v, MARK_RING_SIZE * h, MARK_RING_SIZE * v)
+    }
+    ctx.restore()
+  }
+
+  /** One mark without a glyph: the small dot near the foot of the pane. */
+  const drawDot = (scope: BitmapScope, x: number, color: string): void => {
+    const ctx = scope.context
+    ctx.beginPath()
+    ctx.arc(x * scope.horizontalPixelRatio, scope.bitmapSize.height - MARK_DOT_INSET * scope.verticalPixelRatio, MARK_DOT_R * scope.horizontalPixelRatio, 0, Math.PI * 2)
+    ctx.fillStyle = color
+    ctx.fill()
+  }
+
   const renderer = {
     draw(target: unknown) {
-      const list = marks()
+      const list = deps.marks()
       if (list.length === 0) return
-      const t = target as {
-        useBitmapCoordinateSpace: (
-          fn: (scope: {
-            context: CanvasRenderingContext2D
-            bitmapSize: { width: number; height: number }
-            horizontalPixelRatio: number
-            verticalPixelRatio: number
-          }) => void,
-        ) => void
-      }
-      t.useBitmapCoordinateSpace((scope) => {
+      ;(target as { useBitmapCoordinateSpace(fn: (scope: BitmapScope) => void): void }).useBitmapCoordinateSpace((scope) => {
         const ts = chart.timeScale()
-        const palette = theme()
-        const y = scope.bitmapSize.height - TIMESCALE_MARK_INSET * scope.verticalPixelRatio
-        const r = TIMESCALE_MARK_R * scope.horizontalPixelRatio
+        const palette = deps.theme()
+        const mode = deps.mode()
+        const width = scope.bitmapSize.width / scope.horizontalPixelRatio
         for (const mark of list) {
           const x = ts.timeToCoordinate(mark.time as Time)
-          if (x == null) continue
-          scope.context.beginPath()
-          scope.context.arc(x * scope.horizontalPixelRatio, y, r, 0, Math.PI * 2)
-          scope.context.fillStyle = markColor(mark.color, palette, mode())
-          scope.context.fill()
+          if (x == null || x < -MARK_RING_SIZE || x > width + MARK_RING_SIZE) continue
+          const color = markColor(mark.color, palette, mode)
+          const id = glyphOf(mark)
+          if (id) drawRing(scope, x, color, id)
+          else drawDot(scope, x, color)
         }
       })
     },
@@ -119,6 +189,39 @@ export function createTimescaleMarks(
     refresh() {
       requestUpdate?.()
     },
+  }
+}
+
+/** The host's drawings of the mark glyphs, as bitmaps the canvas draws: each drawn through the icon
+ *  resolver once for a color and a size, in that color as its ink, and handed out once it has
+ *  loaded. A glyph the host draws none for, or whose drawing failed, answers undefined, so the
+ *  chart's own stands. */
+export function hostMarkArt(icons: IconResolver, loaded: () => void): MarkArt {
+  const held = new Map<string, { image: HTMLImageElement | null; ready: boolean }>()
+  return (id, color, size) => {
+    const key = `${id} ${color} ${size}`
+    let entry = held.get(key)
+    if (!entry) {
+      if (held.size >= 64) held.clear()
+      const drawing = icons.host(id, { width: MARK_RING_SIZE, height: MARK_RING_SIZE })
+      const record: { image: HTMLImageElement | null; ready: boolean } = { image: null, ready: false }
+      entry = record
+      held.set(key, record)
+      if (drawing) {
+        drawing.setAttribute('width', String(size))
+        drawing.setAttribute('height', String(size))
+        drawing.setAttribute('color', color)
+        const image = new Image()
+        image.onload = () => {
+          record.ready = true
+          loaded()
+        }
+        image.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(drawing))}`
+        record.image = image
+      }
+    }
+    if (!entry.image) return undefined
+    return entry.ready ? entry.image : null
   }
 }
 
@@ -142,6 +245,10 @@ export interface MarksDeps {
   theme(): SemanticTheme
   /** The mode in effect, which picks a color pair's side. */
   mode(): ThemeMode
+  /** The chart's background at the foot of the pane, which a glyph mark's ring shows inside. */
+  background(): string
+  /** Draws the host's artwork for a mark glyph where the host gave one. */
+  icons?: IconResolver
   /** The feed's bar-mark reader, or null when it serves none. */
   fetchBarMarks: ((symbol: string, from: number, to: number, resolution: string) => Promise<readonly BarMark[]>) | null
   /** The feed's time-scale-mark reader, or null when it serves none. */
@@ -157,7 +264,14 @@ export function attachMarks(deps: MarksDeps): MarksLayer {
   /** Increments on every clear and every refresh, so a page that lands late paints nothing. */
   let generation = 0
 
-  const axisPrimitive = createTimescaleMarks(deps.chart, () => axis, deps.theme, deps.mode)
+  const axisPrimitive: TimescaleMarksPrimitive = createTimescaleMarks({
+    chart: deps.chart,
+    marks: () => axis,
+    theme: deps.theme,
+    mode: deps.mode,
+    background: deps.background,
+    ...(deps.icons ? { art: hostMarkArt(deps.icons, () => axisPrimitive.refresh()) } : {}),
+  })
   deps.series().attachPrimitive(axisPrimitive as never)
 
   const applyBars = (): void => {

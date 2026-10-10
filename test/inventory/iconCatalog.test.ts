@@ -8,7 +8,7 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { CHART_STYLES } from '../../src/widget/styles'
-import { COMPARE_EMPTY_MARK, ICONS, OPERATOR_GLYPHS, SEARCH_EMPTY_MARK, STYLE_ICONS, type Glyph } from '../../src/ui/controls/icons'
+import { COMPARE_EMPTY_MARK, ICONS, MARK_ICONS, OPERATOR_GLYPHS, SEARCH_EMPTY_MARK, STYLE_ICONS, type Glyph } from '../../src/ui/controls/icons'
 import { TOOL_ICONS } from '../../src/ui/drawings/toolIcons'
 import { ARRANGEMENT_ICONS } from '../../src/ui/chrome/arrangementGlyphs'
 import { CHART_ICON_IDS, MIRRORED_ICONS, arrangementGlyphOf, checkIcons, iconOf, toolGlyph, type ChartIconId, type ChartIcons } from '../../src/ui/icons/catalog'
@@ -18,6 +18,7 @@ const TABLES: readonly [string, Glyph][] = [
   ...Object.entries(ICONS).map(([name, mark]): [string, Glyph] => [`ICONS.${name}`, mark]),
   ...Object.entries(STYLE_ICONS).map(([name, mark]): [string, Glyph] => [`STYLE_ICONS.${name}`, mark]),
   ...Object.entries(OPERATOR_GLYPHS).map(([name, mark]): [string, Glyph] => [`OPERATOR_GLYPHS.${name}`, mark]),
+  ...Object.entries(MARK_ICONS).map(([name, mark]): [string, Glyph] => [`MARK_ICONS.${name}`, mark]),
   ['COMPARE_EMPTY_MARK', COMPARE_EMPTY_MARK],
   ['SEARCH_EMPTY_MARK', SEARCH_EMPTY_MARK],
 ]
@@ -31,6 +32,15 @@ describe('the published inventory', () => {
     for (const type of Object.keys(TOOL_ICONS)) expect(iconOf(toolGlyph(type)!), type).toBe(`tool.${type}`)
     for (const code of Object.keys(ARRANGEMENT_ICONS)) expect(iconOf(arrangementGlyphOf(code)!), code).toBe(`layout.${code}`)
     for (const style of CHART_STYLES) expect(iconOf(STYLE_ICONS[style]), style).toBe(`style.${style}`)
+  })
+
+  it('names each mark glyph for its shape under `mark.`, on the 21 grid of the ring it stands in', () => {
+    expect(CHART_ICON_IDS.filter((id) => id.startsWith('mark.'))).toEqual(['mark.bolt', 'mark.flag', 'mark.star', 'mark.clock', 'mark.exclamation'])
+    for (const [id, mark] of Object.entries(MARK_ICONS)) {
+      expect(iconOf(mark), id).toBe(id)
+      expect(mark.viewBox, id).toBe('0 0 21 21')
+      expect(mark.body, id).toContain(mark.path.d)
+    }
   })
 
   it('lists each id once, and every id stands for a glyph the chart draws', () => {

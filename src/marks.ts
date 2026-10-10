@@ -49,6 +49,10 @@ export interface BarMark {
   placement?: MarkPlacement
 }
 
+/** The glyphs a time-scale mark may wear, by their ids in the icon catalog. Each is named for its
+ *  shape, and what it means on a chart is the host's to say. */
+export type MarkIconId = 'mark.bolt' | 'mark.flag' | 'mark.star' | 'mark.clock' | 'mark.exclamation'
+
 /** One mark under the time scale. */
 export interface TimescaleMark {
   id: string
@@ -56,4 +60,8 @@ export interface TimescaleMark {
   time: number
   color: MarkColor
   label?: string
+  /** The glyph the mark wears: drawn inside a 21px ring in the mark's color, the ring's foot just
+   *  above the time scale and its inside the chart's background. Without one, or with an id the
+   *  chart does not draw, the mark is a small dot near the foot of the pane. */
+  icon?: MarkIconId
 }
