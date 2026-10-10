@@ -24,7 +24,7 @@ import {
   type SeriesType,
   type UTCTimestamp,
 } from 'lightweight-charts'
-import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type DatafeedConfig, type FeedBar } from '../datafeed'
+import { FeedUnavailableError, olderPageVerdict, type ChartDatafeed, type DatafeedConfig, type FeedBar, type SymbolPrices } from '../datafeed'
 import type { ChartStorage } from '../storage'
 import type { ChartSaveLoadAdapter } from '../resources'
 import {
@@ -107,7 +107,7 @@ import { closeOverlays } from '../ui/controls/overlays'
 import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
 import { attachCountdown, createCountdownClock, type CountdownLayer } from './countdown'
-import { attachPrices } from './prices'
+import { attachPrices, previousCloseFromBars, statedPreviousClose } from './prices'
 import {
   DEFAULT_TIMEZONE,
   makeCrosshairTimeFormatter,
@@ -963,6 +963,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
     changed: () => pricesChanged(),
   })
+  /** The prices to draw: the feed's live ones, except during bar replay, whose picture is the past
+   *  the cursor reveals and has no live prices. */
+  const livePrices = (): SymbolPrices | null => (replay.active() ? null : prices.current())
+  /** The previous session's close the chart measures a day's change from: the feed's own when it
+   *  states one, else read off the bars on screen. */
+  const previousClose = (): number | null =>
+    statedPreviousClose(livePrices()) ?? previousCloseFromBars(shownBars(), isIntradayTimeframe(tf), session.model())
+  /** The latest price: the feed's last trade, else the newest bar's close. */
+  const latestPrice = (): number | null => livePrices()?.last ?? shownBars().at(-1)?.c ?? null
 
   const compare = deps.features.compare
     ? attachComparePlane({
@@ -1012,6 +1021,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     openIndicatorSettings: (id) => deps.doors.openIndicatorSettings(handle, id),
     legendValues: deps.ui.legendValues,
     settings: () => eff,
+    dayChange: () => {
+      const price = latestPrice()
+      const base = previousClose()
+      return price === null || base === null ? null : { price, previousClose: base }
+    },
     painters: deps.painters,
   })
 

@@ -3,7 +3,7 @@
 // comes from, and what it leaves alone while it is off.
 import { afterEach, describe, expect, it } from 'vitest'
 import { vi } from 'vitest'
-import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
+import type { ChartDatafeed, FeedBar, SymbolPrices } from '../../src/datafeed'
 import type { PartialChartSettings } from '../../src/settings/schema'
 import type { PriceFormat, SymbolInfo } from '../../src/symbology'
 import { createChart, type ChartWidget } from '../../src/widget/create'
@@ -82,6 +82,62 @@ async function mount(options: { settings?: PartialChartSettings; ui?: UiConfig; 
 /** The style series on screen: the last visible series on the price scale. */
 const main = (renderer: FakeRenderer): FakeSeries =>
   renderer.series.filter((s) => s.options.visible !== false && s.options.priceScaleId !== 'volume' && s.paneIndex === 0).at(-1)!
+
+/** A feed whose prices port the test pushes through. */
+function pricedFeed(overrides: Partial<ChartDatafeed> = {}) {
+  let push: ((prices: SymbolPrices) => void) | null = null
+  const datafeed = feed({
+    subscribePrices: (_symbol, handlers) => {
+      push = handlers.onPrices
+      return () => {
+        push = null
+      }
+    },
+    ...overrides,
+  })
+  return { datafeed, push: (prices: SymbolPrices) => push?.(prices) }
+}
+
+const dayChange = (container: HTMLElement): HTMLElement => container.querySelector<HTMLElement>('[data-role="legend-day-change"]')!
+
+describe('the last day change', () => {
+  it('reads the feed prices: the change since the previous close, in its direction', async () => {
+    const { datafeed, push } = pricedFeed()
+    const { chart, container } = await mount({ datafeed })
+    expect(dayChange(container).hidden).toBe(true)
+    chart.applySettings({ statusLine: { lastDayChange: true } })
+    push({ last: 4529, previousClose: 4400 })
+    expect(dayChange(container).hidden).toBe(false)
+    expect(dayChange(container).textContent).toBe('+129.00 (+2.93%)')
+    expect(dayChange(container).dataset.qcTone).toBe('up')
+    push({ last: 4390 })
+    expect(dayChange(container).textContent).toBe('-10.00 (-0.23%)')
+    expect(dayChange(container).dataset.qcTone).toBe('down')
+    chart.applySettings({ statusLine: { lastDayChange: false } })
+    expect(dayChange(container).hidden).toBe(true)
+  })
+
+  it('reads the previous close off the bars when the feed states no prices', async () => {
+    // Two trading days of a continuous market: the newest day's change runs from the last close of
+    // the day before.
+    const midnight = Date.UTC(2026, 9, 6) / 1000
+    const bars: FeedBar[] = [
+      { t: midnight - 120, o: 99, h: 100, l: 98, c: 100, v: 1 },
+      { t: midnight - 60, o: 100, h: 101, l: 99, c: 101, v: 1 },
+      { t: midnight, o: 101, h: 103, l: 100, c: 102, v: 1 },
+      { t: midnight + 60, o: 102, h: 104, l: 101, c: 103.02, v: 1 },
+    ]
+    const { chart, container } = await mount({ datafeed: feed({ history: async () => ({ bars, noData: false }) }) })
+    chart.applySettings({ statusLine: { lastDayChange: true } })
+    expect(dayChange(container).textContent).toBe('+2.02 (+2%)')
+  })
+
+  it('draws nothing without a previous close', async () => {
+    const { chart, container } = await mount()
+    chart.applySettings({ statusLine: { lastDayChange: true } })
+    expect(dayChange(container).hidden).toBe(true)
+  })
+})
 
 describe('the price source', () => {
   it('reads each source off a bar', () => {

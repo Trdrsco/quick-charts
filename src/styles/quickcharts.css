@@ -785,6 +785,20 @@
   color: var(--qc-status-negative);
 }
 
+/* The change since the previous session's close, last in the reading, in its own direction's ink
+ * rather than the read bar's. */
+[data-qc-theme] .qc-legend-day-change {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-legend-day-change[data-qc-tone='up'] {
+  color: var(--qc-status-positive);
+}
+
+[data-qc-theme] .qc-legend-day-change[data-qc-tone='down'] {
+  color: var(--qc-status-negative);
+}
+
 [data-qc-theme] .qc-legend-rows {
   /* Rows hug their own content: the chip a hovered row takes must be the width of the row, not
    * of the chart. They start at the same 9px inset the header does. */

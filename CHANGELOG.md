@@ -24,6 +24,8 @@ The line, step line, area and baseline draw each bar from their own `priceSource
 
 `ChartDatafeed.subscribePrices(symbol, { onPrices })` is an optional port for the prices one symbol stands at, `SymbolPrices`: its `bid`, `ask`, `last`, and `previousClose` or the `change` since it, any of which a delivery may leave out to keep its last value. The chart subscribes only while a setting draws them, and `Capabilities.prices` says whether the feed serves them.
 
+The status line's `lastDayChange` writes the latest price's change since the previous session's close and its percentage after the bar's volume, in green or red by its direction. The previous close is the feed's when its prices state one, and otherwise the last regular-hours close of the trading day before the newest bar's (on a daily or longer chart, the bar before the newest).
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:

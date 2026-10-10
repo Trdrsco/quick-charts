@@ -2292,8 +2292,9 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   chart's subsession, with the shading of the pre-market, post-market and overnight stretches; and
   the precision every price is written at, through the chart's one formatter.
 - `statusLine`: the legend's mark, its title and whether the title is the name, the symbol or both,
-  the bar's values, its change and its volume, the indicator rows' titles, inputs and values, and a
-  backdrop of the chart's background at an opacity.
+  the bar's values, its change and its volume, the latest price's change since the previous
+  session's close (`lastDayChange`) in its direction's color, the indicator rows' titles, inputs
+  and values, and a backdrop of the chart's background at an opacity.
 - `priceLabels`: the countdown, labels kept apart, the symbol's last value, its dotted line (its
   color, null to follow the last bar, and width) and its name, and each indicator's value and name.
 - `timeScale`: the crosshair label's date format (`CHART_DATE_FORMATS`), the weekday before it, and
@@ -2305,8 +2306,8 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
 
 The leaves for the currency and unit box, the scale mode buttons, the price-to-bar ratio lock, the
 scale placement, the plus button, the previous close, the high and low and the bid and ask lines,
-the last day change, the extended-hours price labels, keeping the left edge across a timeframe
-change and the pane buttons are stored and saved, and draw nothing yet.
+the extended-hours price labels, keeping the left edge across a timeframe change and the pane
+buttons are stored and saved, and draw nothing yet.
 
 ## Compare
 

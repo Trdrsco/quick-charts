@@ -113,6 +113,9 @@ export interface LegendQuote {
   direction: 'up' | 'down' | 'flat'
   /** The bar's volume, written compactly, or null when the feed states none. */
   volume: string | null
+  /** The latest price's change since the previous session's close and its percentage, written with
+   *  their signs, whichever bar is being read; null when the previous close is not known. */
+  dayChange?: { change: string; percent: string; direction: 'up' | 'down' | 'flat' } | null
 }
 
 /** Which parts of the legend show, and how it stands over the bars: the status line settings. */
@@ -126,6 +129,8 @@ export interface LegendLook {
   /** The bar's change and percentage change. */
   barChange: boolean
   volume: boolean
+  /** The change since the previous session's close, after the volume. */
+  lastDayChange: boolean
   indicatorTitles: boolean
   indicatorInputs: boolean
   indicatorValues: boolean
@@ -145,6 +150,7 @@ export const OPEN_LEGEND_LOOK: LegendLook = {
   chartValues: true,
   barChange: true,
   volume: false,
+  lastDayChange: false,
   indicatorTitles: true,
   indicatorInputs: true,
   indicatorValues: true,
@@ -342,6 +348,13 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   const volumeValue = document.createElement('span')
   volume.append(volumeMark, volumeValue)
   quote.appendChild(volume)
+  // The change since the previous session's close: the latest price's, in its own direction's ink,
+  // whichever bar the reading before it names.
+  const dayChange = document.createElement('span')
+  dayChange.className = 'qc-legend-day-change'
+  dayChange.dataset.role = 'legend-day-change'
+  dayChange.hidden = true
+  quote.appendChild(dayChange)
   header.appendChild(quote)
 
   const chipRows = document.createElement('div')
@@ -614,8 +627,13 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     }
   }
   const paintQuote = (): void => {
-    const shown = reading !== null && (look.chartValues || look.barChange || (look.volume && reading.volume !== null))
+    const day = look.lastDayChange ? reading?.dayChange ?? null : null
+    const shown = reading !== null && (look.chartValues || look.barChange || (look.volume && reading.volume !== null) || day !== null)
     quote.hidden = !shown
+    dayChange.hidden = day === null
+    dayChange.textContent = day ? strings.t('legend.change', { change: day.change, percent: day.percent }) : ''
+    if (day) dayChange.dataset.qcTone = day.direction
+    else delete dayChange.dataset.qcTone
     if (!reading) return
     for (const entry of OHLC) {
       marks.get(entry.field)!.textContent = strings.t(entry.key)

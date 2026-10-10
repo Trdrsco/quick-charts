@@ -101,6 +101,9 @@ export interface LegendDeps {
   legendValues: boolean
   /** The chart settings in effect: the status line's parts, its backdrop and the replay mark. */
   settings(): ChartSettings
+  /** The latest price and the previous session's close it is measured from, or null when either is
+   *  unknown: what the change since the previous close reads. */
+  dayChange?(): { price: number; previousClose: number } | null
   /** The host's mark painters. The badge wears the market's; with none lent it wears the package's
    *  own neutral monogram. */
   painters: MarkPainters
@@ -137,6 +140,7 @@ export function legendLook(settings: ChartSettings): LegendLook {
     chartValues: line.chartValues,
     barChange: line.barChange,
     volume: line.volume,
+    lastDayChange: line.lastDayChange,
     indicatorTitles: line.indicatorTitles,
     indicatorInputs: line.indicatorInputs,
     indicatorValues: line.indicatorValues,
@@ -326,6 +330,21 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       percent: fraction === null ? null : percentText(fraction, deps.i18n.tag()),
       direction: change === null || change === 0 ? 'flat' : change > 0 ? 'up' : 'down',
       volume: typeof bar.v === 'number' && Number.isFinite(bar.v) ? volumeText(bar.v) : null,
+      dayChange: deps.settings().statusLine.lastDayChange ? dayChange(format) : null,
+    }
+  }
+
+  /** The latest price's change since the previous session's close, written as the bar's change is. */
+  function dayChange(format: PriceFormatter): LegendQuote['dayChange'] {
+    const day = deps.dayChange?.() ?? null
+    if (!day) return null
+    const change = day.price - day.previousClose
+    const fraction = day.previousClose !== 0 ? change / day.previousClose : null
+    if (fraction === null) return null
+    return {
+      change: `${change > 0 ? '+' : ''}${format.format(change)}`,
+      percent: percentText(fraction, deps.i18n.tag()),
+      direction: change === 0 ? 'flat' : change > 0 ? 'up' : 'down',
     }
   }
 
