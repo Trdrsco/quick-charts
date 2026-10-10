@@ -1828,7 +1828,9 @@ as a `TypeError` when the widget is created.
 An id names what a glyph means, not one control. `settings` is the top bar's settings button, a
 indicator's gear in the legend and the drawing settings bar's gear, so one drawing stands in all
 three. Drawing tools take `tool.<type>`, chart styles `style.<style>` and layout arrangements
-`layout.<code>`, from the registries the rest of the API uses.
+`layout.<code>`, from the registries the rest of the API uses. The glyphs a time-scale mark wears in
+its ring take `mark.<shape>`, named for their shapes, since what a mark means is yours (see Neutral
+marks).
 
 ```ts
 import { CHART_ICON_IDS, createChart, createUdfDatafeed, type ChartIconFactory, type ChartIcons } from '@trdrs/quickcharts'
@@ -1890,7 +1892,8 @@ something other than an `<svg>` element, or answers an element already in the do
 before costs that one glyph its artwork. The control draws the chart's own glyph, and
 `widget.chrome.iconDiagnostics()` records the icon's first failure.
 
-`icons` covers the chart's own controls. The emoji, sticker and icon glyphs a drawing places come
+`icons` covers the chart's own controls and the glyphs of the time-scale marks, whose ring the chart
+draws around your drawing in the mark's color. The emoji, sticker and icon glyphs a drawing places come
 through the asset port, and a chart extension draws its rows and layers from the
 `ChartExtensionIcon` descriptors it contributes. The product's mark in the plot's corner is the
 chart's own artwork, outside `icons`. `mountContextMenu`, `openSymbolSearch`, `mountSymbolSearch`,
@@ -1900,13 +1903,42 @@ you mount without a widget.
 ### Neutral marks
 
 Serve `marks` and `timescaleMarks` from your datafeed and the chart draws them. A mark is a note
-about a moment: its color is a semantic theme role rather than a literal, its words are yours, and
-the chart draws it as given.
+about a moment: its words are yours, and the chart draws it as given. Its color stays readable in
+both modes: a semantic theme role (`neutral`, `up`, `down`, `info`, `warning`, `positive` or
+`negative`) that the mode resolves, or a `MarkColorPair`, `{ light, dark }`, one CSS color for each
+mode, of which the chart wears the one for the mode in effect. A single color for both modes is not
+a mark color, since a color chosen for one background can vanish on the other, and a pair with a
+side the chart cannot paint draws in the `neutral` role.
+
+A bar mark (`BarMark`) sits on its bar, above or below it, with a letter or two. A time-scale mark
+(`TimescaleMark`) stands at the foot of the pane:
+
+- **Its look.** Without `icon` it is a small dot. With one it is a 21px ring in its color, its foot
+  just above the time scale and the chart's background inside, around a glyph of the icon catalog:
+  `mark.bolt`, `mark.flag`, `mark.star`, `mark.clock` or `mark.exclamation`. Your `icons` drawing for
+  one of those ids stands in the ring in place of the chart's own.
+- **Its line.** `line: { style }` draws a 1px line in its color through the whole pane at its time,
+  always and under the bars: `solid`, `dashed` (5px drawn, 6px clear) or `dotted` (1px drawn, 4px
+  clear).
+- **Hovering it.** The pointer over a mark, or a finger or a pen pressing it, runs a dashed line in
+  its color from the top of the pane down to it and tints its ring. A mark with a `label` shows it
+  in a tooltip above the mark, and a mark without one shows the line alone. A press anywhere else
+  lets go of a pressed mark.
+- **Its time.** A mark stands on the bar whose bucket holds its time, on the next bar when the time
+  falls between bars (a session gap, a weekend), and after the last bar at the slot the time falls
+  in, counting the timeframe's bar interval on from the last bar. Bar replay draws none after the
+  last bar it shows, and a mark outside the view draws nothing.
+
+The chart asks `marks` for the loaded bars' window (epoch seconds, inclusive of both ends) and
+`timescaleMarks` for the same window run on past the last bar while the view shows the empty space
+after it: to the end of the view, and as many bar intervals again as the view spans. It asks again
+on each page of history, and once the view comes to rest past what it asked for. A mark at a time
+to come therefore stands in that space as soon as the view reaches it.
 
 ```ts
-import { type BarMark, type ChartDatafeed } from '@trdrs/quickcharts'
+import { type BarMark, type ChartDatafeed, type TimescaleMark } from '@trdrs/quickcharts'
 
-const withMarks: Pick<ChartDatafeed, 'marks'> = {
+const withMarks: Pick<ChartDatafeed, 'marks' | 'timescaleMarks'> = {
   async marks(symbol, from, to): Promise<readonly BarMark[]> {
     const rows = await myBackend.events(symbol, from, to)
     return rows.map((row: { id: string; at: number; headline: string }) => ({
@@ -1917,11 +1949,25 @@ const withMarks: Pick<ChartDatafeed, 'marks'> = {
       label: row.headline,
     }))
   },
+  async timescaleMarks(symbol, from, to): Promise<readonly TimescaleMark[]> {
+    const rows = await myBackend.moments(symbol, from, to)
+    return rows.map((row: { id: string; at: number; headline: string }) => ({
+      id: row.id,
+      time: row.at,
+      color: { light: '#7b1fa2', dark: '#ab47bc' },
+      icon: 'mark.bolt',
+      label: row.headline,
+    }))
+  },
 }
 void withMarks
 ```
 
-`marks: false` draws none, even from a feed that serves them.
+When a setting of your own changes what your feed serves, `chart.refreshMarks()` asks for both
+families again at once and draws the answer, so the change shows while your control is still open.
+The `chart.marks.refresh` command does the same from a menu, a shortcut or an automation adapter,
+and an extension calls `ctx.refreshMarks()`. `marks: false` draws none, even from a feed that serves
+them, and asks for none.
 
 ### The rest of the widget
 
@@ -3424,6 +3470,9 @@ What to know:
   controls reaches them rather than the chart, and collapsing the indicator rows leaves it standing.
   What it holds and whether it shows are yours: fill or hide the element as you like. The returned
   function takes it out, detach takes it out either way, and the element is given back unchanged.
+- **A setting of yours can redraw the marks at once.** `ctx.refreshMarks()` asks the datafeed for
+  the chart's bar marks and time-scale marks again and draws the answer, so a row you contribute to
+  the settings dialog previews its change while the dialog is open. A detached context asks nothing.
 - **A printed chord is a real binding.** `ChartExtensionMenuItem.shortcut` prints on the row and
   answers to the key. The chart's dispatcher offers a press no built-in verb claims to the rows your
   `contributeContextMenu` callback returns for the level under the pointer and runs that row's own

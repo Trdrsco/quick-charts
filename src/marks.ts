@@ -7,8 +7,12 @@
 // draws marks of its own through the extension seam.
 //
 // The two families answer different questions. A BAR mark sits on a bar, above or below it, and
-// carries a letter or a short label. A TIME-SCALE mark sits under the axis and marks a session, an
-// event or a boundary.
+// carries a letter or a short label. A TIME-SCALE mark stands at the foot of the pane and marks a
+// session, an event or a boundary: a small dot, or a glyph from the icon catalog in a ring of its
+// color, with a line through the pane when it names one. Hovered, or pressed with a finger or a pen,
+// it runs a dashed line up the pane and shows its label in a tooltip. It may stand at a time after
+// the last bar, in the empty space the view shows there, which is how a moment still to come is
+// drawn; the chart asks for the time-scale marks over that space too.
 //
 // This module is self-contained by the same rule as `datafeed.ts`: the contract must never drag a
 // renderer or a backend into the chart's dependency surface.
@@ -71,6 +75,8 @@ export interface TimescaleMark {
    *  the last bar it shows. */
   time: number
   color: MarkColor
+  /** The words the mark's tooltip shows while it is hovered or pressed. Without them, a hovered
+   *  mark shows its line alone. */
   label?: string
   /** The glyph the mark wears: drawn inside a 21px ring in the mark's color, the ring's foot just
    *  above the time scale and its inside the chart's background. Without one, or with an id the

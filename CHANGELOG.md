@@ -48,6 +48,16 @@ The plus button (`priceLabels.plusButton`) stands beside the crosshair's price l
 
 The pane buttons (`canvas.paneButtons`) stand at each pane's top right, 4px below its top and 4px in from the plot's edge, for the pane under the pointer, for every pane always, or never: 24px rounded squares 4px apart that delete the pane and what is in it, collapse it or open it, and maximize or restore it. They run the pane operations the legend's rows run, through one memory, and the remove verbs, so the policy that refuses a remove leaves its button out; the main pane carries maximize alone while another pane stands, collapsing every other open pane and giving back exactly those. The icons `paneCollapse`, `paneRestore` and `paneMaximize` gain the buttons' 15px drawings, and the catalog gains `chrome.paneButtons` and `chrome.deletePane`.
 
+A mark's color is a theme role or a `MarkColorPair`, `{ light, dark }`, one CSS color for each mode, of which the chart wears the one for the mode in effect. A single color for both modes is not a `MarkColor`, and a pair with a side the chart cannot paint draws in the `neutral` role.
+
+A time-scale mark that names an `icon` draws as a 21px ring in its color, its foot just above the time scale and the chart's background inside, around that glyph, and a mark without one stays a small dot. The icon catalog gains the glyphs a mark may name, each named for its shape: `mark.bolt`, `mark.flag`, `mark.star`, `mark.clock` and `mark.exclamation`, and a host's `icons` drawing for one stands in the ring. `line: { style }` draws a 1px `solid`, `dashed` (5px drawn, 6px clear) or `dotted` line in the mark's color through the whole pane at its time, under the bars. `MarkIconId`, `MarkLine` and `MarkLineStyle` are exported.
+
+Hovering a time-scale mark, or pressing it with a finger or a pen, runs a dashed line in its color from the top of the pane down to it and tints its ring, and a mark with a `label` shows it in a tooltip above it on the theme's `overlay.tooltip` fill in `overlay.tooltipInk`. A mark without a label shows the line alone.
+
+A time-scale mark at a time after the last bar stands in the empty space after it, at the slot its time falls in, counted in the timeframe's bar interval on from the last bar, and a mark whose time falls between bars stands on the next bar. The chart asks `timescaleMarks` for the loaded window run on to the end of the view and as many bar intervals again as the view spans, and asks again once the view rests past what it asked for. Bar replay draws none after the last bar it shows.
+
+`chart.refreshMarks()`, `ChartExtensionContext.refreshMarks()` and the `chart.marks.refresh` command ask the datafeed for both mark families again at once and draw the answer, so a host's own setting shows its change while its control is still open. The catalog gains `command.marksRefresh`.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:
