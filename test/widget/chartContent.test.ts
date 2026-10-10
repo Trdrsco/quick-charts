@@ -15,6 +15,7 @@ const base: ChartContent = {
   indicators: [],
   settings: {},
   compares: [],
+  panes: ['main'],
   ext: {},
 }
 
@@ -77,6 +78,47 @@ describe('saved chart content: settings', () => {
   it('refuses a version this build does not know', () => {
     expect(() => parseChartContent(JSON.stringify({ v: CHART_CONTENT_VERSION + 1 }))).toThrow(/unsupported chart content version/)
     expect(() => parseChartContent(JSON.stringify({ v: 2 }))).toThrow(/unsupported chart content version/)
+  })
+})
+
+describe('saved chart content: the order of the panes', () => {
+  const indicators = [
+    { id: 'sma-1', definition: 'sma' },
+    { id: 'rsi-1', definition: 'rsi' },
+    { id: 'macd-1', definition: 'macd' },
+  ]
+
+  it('round-trips the panes top to bottom, the main pane anywhere among them', () => {
+    const panes = ['indicator:rsi-1', 'main', 'compare:NQ', 'indicator:macd-1']
+    const blob = serializeChartContent({ ...base, indicators, compares: [{ symbol: 'NQ', placement: 'new-pane' }], panes })
+    expect(JSON.parse(blob).panes).toEqual(panes)
+    expect(parseChartContent(blob).panes).toEqual(panes)
+  })
+
+  it('reads a blob that states no order in the order it stores what takes the panes', () => {
+    // A blob written before the order was saved: the main pane, its indicators in its list's order,
+    // then its comparisons in theirs. A name that takes no pane of its own is passed over when the
+    // panes are stood in the order.
+    const current = JSON.parse(serializeChartContent({ ...base, indicators, compares: [{ symbol: 'NQ', placement: 'new-pane' }, { symbol: 'YM', placement: 'same-percent' }, { placement: 'new-pane' }] }))
+    delete current.panes
+    expect(parseChartContent(JSON.stringify(current)).panes).toEqual(['main', 'indicator:sma-1', 'indicator:rsi-1', 'indicator:macd-1', 'compare:NQ', 'compare:YM'])
+    const appearance = JSON.parse(appearanceBlob({}))
+    expect(parseChartContent(JSON.stringify({ ...appearance, indicators, compares: [{ symbol: 'NQ', placement: 'new-pane' }] })).panes).toEqual([
+      'main',
+      'indicator:sma-1',
+      'indicator:rsi-1',
+      'indicator:macd-1',
+      'compare:NQ',
+    ])
+    expect(parseChartContent(JSON.stringify({ ...appearance, compares: null })).panes).toEqual(['main'])
+  })
+
+  it('refuses an order that is not a list of names, or that names a pane twice', () => {
+    const blob = (panes: unknown): string => JSON.stringify({ ...JSON.parse(serializeChartContent(base)), panes })
+    expect(() => parseChartContent(blob('main'))).toThrow(/panes are not a list of names/)
+    expect(() => parseChartContent(blob(['main', 3]))).toThrow(/panes are not a list of names/)
+    expect(() => parseChartContent(blob(['main', '']))).toThrow(/panes are not a list of names/)
+    expect(() => parseChartContent(blob(['main', 'main']))).toThrow(/name a pane twice/)
   })
 })
 

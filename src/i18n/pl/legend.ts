@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': 'Przywróć panel wykresu',
   'legend.collapsePane': 'Zwiń panel wykresu',
   'legend.maximizePane': 'Maksymalizuj panel wykresu',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'Pokaż wskaźnik',
   'legend.hideIndicator': 'Ukryj wskaźnik',
   'legend.scaleNormal': 'Zwy',

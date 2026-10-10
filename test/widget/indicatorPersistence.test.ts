@@ -138,6 +138,7 @@ const contentOf = (indicators: readonly SavedIndicator[], symbol = 'ES', timefra
   indicators,
   settings: {},
   compares: [],
+  panes: ['main'],
   drawings: [],
   ext: {},
 })

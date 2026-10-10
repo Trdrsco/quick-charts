@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': 'Khôi phục khung',
   'legend.collapsePane': 'Thu gọn khung',
   'legend.maximizePane': 'Mở rộng khung',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'Hiện chỉ báo',
   'legend.hideIndicator': 'Ẩn chỉ báo',
   'legend.scaleNormal': 'Thường',

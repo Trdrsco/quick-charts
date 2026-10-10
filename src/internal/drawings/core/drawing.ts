@@ -34,6 +34,7 @@ import { DrawingPaneView } from '../render/pane-view'
 import { AxisBandView } from '../render/axis-view'
 import { withAlpha, type HandleShape } from '../render/canvas'
 import { drawing as englishWords } from '../../../i18n/en/drawing'
+import { paneIndexOf } from '../../../paneGeometry'
 
 function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
   return { ...DEFAULT_OPTIONS, ...patch, visibility: normalizeVisibility(patch.visibility) }
@@ -43,13 +44,14 @@ function normalizeOptions(patch: Partial<DrawingOptions>): DrawingOptions {
 export type AnyDrawing = Drawing<Record<string, unknown>>
 
 
-/** Build a Viewport over a chart + series pair. Null while either is unusable (torn down). */
+/** Build a Viewport over a chart + series pair, in the pane the series stands in. Null while either
+ *  is unusable (torn down). */
 export function viewportOf(chart: IChartApi, series: ISeriesApi<SeriesType>): Viewport | null {
   let width: number
   let height: number
   try {
     width = chart.timeScale().width()
-    height = chart.paneSize().height
+    height = chart.paneSize(paneIndexOf(series)).height
   } catch {
     return null
   }

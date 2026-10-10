@@ -75,11 +75,12 @@ export function clipToWindow(bars: readonly FeedBar[], window: { from: number; t
 
 /** Placement → where the series goes. Pane index for 'new-pane' is resolved at add time (the
  *  chart's CURRENT pane count), matching the indicator renderer's rule. A 'new-scale' series takes
- *  the side the main series does not stand on, the left unless named. */
-export function seriesTargetOf(placement: ComparePlacement, paneCount: number, secondScale: 'left' | 'right' = 'left'): { paneIndex: number; priceScaleId?: string } {
+ *  the side the main series does not stand on, the left unless named. The other two stand in the
+ *  main pane, the first unless a viewer moved it. */
+export function seriesTargetOf(placement: ComparePlacement, paneCount: number, secondScale: 'left' | 'right' = 'left', mainPane = 0): { paneIndex: number; priceScaleId?: string } {
   if (placement === 'new-pane') return { paneIndex: paneCount }
-  if (placement === 'new-scale') return { paneIndex: 0, priceScaleId: secondScale }
-  return { paneIndex: 0 } // same-percent: the main pane's default scale, the main series' own
+  if (placement === 'new-scale') return { paneIndex: mainPane, priceScaleId: secondScale }
+  return { paneIndex: mainPane } // same-percent: the main pane's default scale, the main series' own
 }
 
 export interface CompareDeps {
@@ -94,6 +95,9 @@ export interface CompareDeps {
   /** The side the main series' price scale stands on; the right when absent. A 'new-scale'
    *  comparison takes the other side. */
   mainScale?(): 'left' | 'right'
+  /** The index of the pane the main series stands in, which a 'same-percent' or 'new-scale'
+   *  comparison shares; the first pane when absent. */
+  mainPane?(): number
   /** Entries changed (add/remove/visibility/color) or a comparison's latest value moved — hosts
    *  re-render their legend from `list()` / `latest()`. */
   onChange?(): void
@@ -115,9 +119,9 @@ export interface CompareHandle {
   list(): CompareEntry[]
   /** The latest clipped close for one comparison, or null (no bars in window / unknown symbol). */
   latest(symbol: string): number | null
-  /** The pane the comparison's series currently lives on (0 = the main pane), or null for an
-   *  unknown symbol — how a host places the comparison's legend row in the right pane's group. Read
-   *  live from the series, because 'new-pane' indices shift as other panes come and go. */
+  /** The pane the comparison's series currently lives on, or null for an unknown symbol: how a host
+   *  places the comparison's legend row in the right pane's group. Read live from the series,
+   *  because pane indices shift as other panes come, go and move. */
   paneIndexOf(symbol: string): number | null
   /** Percent change across the clipped window (last close vs the window's FIRST in-window close —
    *  the loaded-window approximation of the percent scale's first-visible-bar base), or null with
@@ -297,7 +301,7 @@ export function attachCompare(chart: IChartApi, deps: CompareDeps): CompareHandl
   }
 
   const makeSeries = (entry: CompareEntry): ISeriesApi<'Line'> => {
-    const target = seriesTargetOf(entry.placement, chart.panes().length, secondSide())
+    const target = seriesTargetOf(entry.placement, chart.panes().length, secondSide(), deps.mainPane?.() ?? 0)
     return chart.addSeries(
       LineSeries,
       {

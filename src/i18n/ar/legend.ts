@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': 'استعادة اللوحة',
   'legend.collapsePane': 'طي اللوحة',
   'legend.maximizePane': 'تكبير اللوحة',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'إظهار المؤشر',
   'legend.hideIndicator': 'إخفاء المؤشر',
   'legend.scaleNormal': 'عادي',

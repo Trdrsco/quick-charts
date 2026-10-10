@@ -15,6 +15,7 @@ import type { UiConfig } from '../../src/widget/options'
 import { priceLevels, visibleRange } from '../../src/widget/priceLevels'
 import { signedPercentText } from '../../src/widget/prices'
 import { barValue } from '../../src/widget/styles'
+import { paneActions, type PaneFacts } from '../../src/ui/chrome/paneButtons'
 import { fakePriceAt, lastRenderer, type FakeRenderer, type FakeSeries } from './rendererFake'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
@@ -289,6 +290,11 @@ describe('the scales placement', () => {
     expect(seriesTargetOf('new-scale', 1)).toEqual({ paneIndex: 0, priceScaleId: 'left' })
     expect(seriesTargetOf('new-scale', 1, 'right')).toEqual({ paneIndex: 0, priceScaleId: 'right' })
     expect(seriesTargetOf('same-percent', 1, 'right')).toEqual({ paneIndex: 0 })
+    // A main pane a viewer moved down is where the two that share it go; a pane of its own is still
+    // added at the bottom.
+    expect(seriesTargetOf('new-scale', 3, 'left', 2)).toEqual({ paneIndex: 2, priceScaleId: 'left' })
+    expect(seriesTargetOf('same-percent', 3, 'left', 2)).toEqual({ paneIndex: 2 })
+    expect(seriesTargetOf('new-pane', 3, 'left', 2)).toEqual({ paneIndex: 3 })
   })
 })
 
@@ -520,22 +526,26 @@ describe('the pane buttons', () => {
     const group = (pane: number): HTMLElement | null => container.querySelector<HTMLElement>(`.qc-pane-buttons[data-pane="${pane}"]`)
     const actions = (pane: number): string[] => [...group(pane)!.querySelectorAll<HTMLElement>('.qc-pane-button')].map((b) => b.dataset.action!)
     const press = (pane: number, action: string): void => group(pane)!.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)!.click()
-    expect(actions(0)).toEqual(['maximize'])
-    expect(actions(1)).toEqual(['delete', 'collapse', 'maximize'])
+    // The top (main) pane moves down and maximizes; the lower pane moves up, deletes, collapses and
+    // maximizes, in that order.
+    expect(actions(0)).toEqual(['moveDown', 'maximize'])
+    expect(actions(1)).toEqual(['moveUp', 'delete', 'collapse', 'maximize'])
     expect([group(1)!.style.top, group(1)!.style.right]).toEqual(['404px', '64px'])
     expect(group(1)!.querySelector('[data-action="delete"]')!.getAttribute('aria-label')).toBe('Delete pane')
+    expect(group(0)!.querySelector('[data-action="moveDown"]')!.getAttribute('aria-label')).toBe('Move pane down')
+    expect(group(1)!.querySelector('[data-action="moveUp"]')!.getAttribute('aria-label')).toBe('Move pane up')
     press(1, 'collapse')
     expect(renderer.paneHeights[1]).toBe(30)
-    expect(actions(1)).toEqual(['delete', 'expand'])
+    expect(actions(1)).toEqual(['moveUp', 'delete', 'expand'])
     press(1, 'expand')
     expect(renderer.paneHeights[1]).toBe(200)
     // The main pane maximizes by collapsing the others, and gives back exactly what it took.
     press(0, 'maximize')
     expect(renderer.paneHeights[1]).toBe(30)
-    expect(actions(0)).toEqual(['restore'])
+    expect(actions(0)).toEqual(['moveDown', 'restore'])
     press(0, 'restore')
     expect(renderer.paneHeights[1]).toBe(200)
-    expect(actions(0)).toEqual(['maximize'])
+    expect(actions(0)).toEqual(['moveDown', 'maximize'])
     press(1, 'delete')
     expect(chart.indicators.get().map((i) => i.id)).not.toContain('rsi-1')
     await settle()
@@ -564,6 +574,191 @@ describe('the pane buttons', () => {
     expect([group(0).hidden, group(1).hidden]).toEqual([false, true])
     chart.applySettings({ canvas: { paneButtons: 'never' } })
     expect([group(0).hidden, group(1).hidden]).toEqual([true, true])
+  })
+})
+
+describe('moving a pane', () => {
+  const RSI = BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')!
+  const MACD = BUILT_IN_INDICATORS.find((d) => d.id === 'macd')!
+  const SMA = BUILT_IN_INDICATORS.find((d) => d.id === 'sma')!
+
+  /** A chart with the main pane on top, an RSI pane under it and a MACD pane at the bottom. `where`
+   *  reads the pane each one stands in, as the renderer holds them: the anchor stands in the main
+   *  pane, and each indicator's first series in its own. */
+  async function threePanes(options: Parameters<typeof mount>[0] = {}) {
+    const mounted = await mount(options)
+    const { chart, renderer } = mounted
+    const anchor = renderer.series[0]!
+    let at = renderer.series.length
+    chart.indicators.add({ id: 'rsi-1', definition: RSI })
+    await settle()
+    const rsi = renderer.series[at]!
+    at = renderer.series.length
+    chart.indicators.add({ id: 'macd-1', definition: MACD })
+    await settle()
+    const macd = renderer.series[at]!
+    const where = (): number[] => [anchor.paneIndex, rsi.paneIndex, macd.paneIndex]
+    const panes = (): string[] => JSON.parse(chart.saveLoad.serialize().content).panes
+    return { ...mounted, anchor, where, panes }
+  }
+
+  const buttons = (container: HTMLElement) => {
+    const group = (pane: number): HTMLElement => container.querySelector<HTMLElement>(`.qc-pane-buttons[data-pane="${pane}"]`)!
+    return {
+      actions: (pane: number): string[] => [...group(pane).querySelectorAll<HTMLElement>('.qc-pane-button')].map((b) => b.dataset.action!),
+      press: (pane: number, action: string): void => group(pane).querySelector<HTMLButtonElement>(`[data-action="${action}"]`)!.click(),
+    }
+  }
+
+  it('swaps a pane with its neighbour, the main pane included, and the panes take their heights with them', async () => {
+    const { chart, renderer, container, where, panes } = await threePanes()
+    renderer.paneHeights[0] = 400
+    renderer.paneHeights[1] = 200
+    renderer.paneHeights[2] = 100
+    chart.applySettings({ canvas: { paneButtons: 'always' } })
+    const { actions, press } = buttons(container)
+    expect(where()).toEqual([0, 1, 2])
+    expect(panes()).toEqual(['main', 'indicator:rsi-1', 'indicator:macd-1'])
+    // The top pane moves down only, the bottom one up only, and the one between both ways.
+    expect(actions(0)).toEqual(['moveDown', 'maximize'])
+    expect(actions(1)).toEqual(['moveUp', 'moveDown', 'delete', 'collapse', 'maximize'])
+    expect(actions(2)).toEqual(['moveUp', 'delete', 'collapse', 'maximize'])
+
+    // The main pane moves down below the RSI's.
+    press(0, 'moveDown')
+    expect(where()).toEqual([1, 0, 2])
+    expect(panes()).toEqual(['indicator:rsi-1', 'main', 'indicator:macd-1'])
+    expect([renderer.paneHeights[0], renderer.paneHeights[1], renderer.paneHeights[2]]).toEqual([200, 400, 100])
+    expect(actions(0)).toEqual(['moveDown', 'delete', 'collapse', 'maximize'])
+    expect(actions(1)).toEqual(['moveUp', 'moveDown', 'maximize'])
+
+    // The MACD's pane moves up above the main pane, and then the RSI's down below it.
+    press(2, 'moveUp')
+    expect(where()).toEqual([2, 0, 1])
+    expect(actions(2)).toEqual(['moveUp', 'maximize'])
+    press(0, 'moveDown')
+    expect(where()).toEqual([2, 1, 0])
+    expect(panes()).toEqual(['indicator:macd-1', 'indicator:rsi-1', 'main'])
+
+    // What joins the main pane follows it there: an overlay, and a new style's series.
+    let at = renderer.series.length
+    chart.indicators.add({ id: 'sma-1', definition: SMA })
+    expect(renderer.series[at]!.paneIndex).toBe(2)
+    chart.setStyle('line')
+    expect(renderer.series.some((s) => s.kind === 'Candlestick')).toBe(false)
+    expect(renderer.series.at(-1)).toMatchObject({ kind: 'Line', paneIndex: 2 })
+
+    // And back up to the top, one place at a time.
+    press(2, 'moveUp')
+    press(1, 'moveUp')
+    expect(where()).toEqual([0, 2, 1])
+    expect(panes()).toEqual(['main', 'indicator:macd-1', 'indicator:rsi-1'])
+  })
+
+  it('leaves a move out where the policy refuses it, and the main pane carries no delete or collapse', () => {
+    const pane = (index: number, main = false): PaneFacts => ({ index, main, top: 0, height: 100, collapsed: false, maximized: false })
+    const all = { remove: true, up: true, down: true }
+    expect(paneActions(pane(0, true), 1, all)).toEqual([])
+    expect(paneActions(pane(1, true), 3, all)).toEqual(['moveUp', 'moveDown', 'maximize'])
+    expect(paneActions(pane(1), 3, { remove: true, up: false, down: true })).toEqual(['moveDown', 'delete', 'collapse', 'maximize'])
+    expect(paneActions(pane(2), 3, { remove: false, up: false, down: false })).toEqual(['collapse', 'maximize'])
+    expect(paneActions({ ...pane(2), collapsed: true }, 3, all)).toEqual(['moveUp', 'delete', 'expand'])
+  })
+
+  it('answers the move commands unavailable at the ends and for a pane the chart does not hold', async () => {
+    const { widget, chart, where } = await threePanes()
+    const { commands } = widget
+    // Asked with no pane, a move is available while there is more than one pane.
+    expect(commands.available('chart.panes.moveUp')).toBe(true)
+    expect(commands.available('chart.panes.moveDown')).toBe(true)
+    expect(commands.available('chart.panes.moveUp', 0)).toBe(false)
+    expect(commands.available('chart.panes.moveDown', 2)).toBe(false)
+    expect(commands.available('chart.panes.moveUp', 2)).toBe(true)
+    expect(commands.available('chart.panes.moveDown', 0)).toBe(true)
+    expect(commands.available('chart.panes.moveDown', 3)).toBe(false)
+    expect(commands.available('chart.panes.moveUp', 'rsi-1')).toBe(false)
+    expect(commands.execute('chart.panes.moveUp', 0)).toEqual({ kind: 'unavailable' })
+    expect(commands.execute('chart.panes.moveDown', 2)).toEqual({ kind: 'unavailable' })
+    expect(where()).toEqual([0, 1, 2])
+    expect(commands.execute('chart.panes.moveUp', 2)).toEqual({ kind: 'ok' })
+    expect(where()).toEqual([0, 2, 1])
+    expect(commands.execute('chart.panes.moveDown', 0)).toEqual({ kind: 'ok' })
+    expect(where()).toEqual([1, 2, 0])
+    // One pane has nowhere to go.
+    chart.indicators.set([])
+    expect(commands.available('chart.panes.moveUp')).toBe(false)
+    expect(commands.available('chart.panes.moveDown')).toBe(false)
+  })
+
+  it('keeps the order in saved content, through a load once the bars stand and one before they arrive', async () => {
+    const first = await threePanes()
+    first.widget.commands.execute('chart.panes.moveDown', 0)
+    first.widget.commands.execute('chart.panes.moveUp', 2)
+    expect(first.where()).toEqual([2, 0, 1])
+    const content = first.chart.saveLoad.serialize().content
+    expect(JSON.parse(content).panes).toEqual(['indicator:rsi-1', 'indicator:macd-1', 'main'])
+
+    // A chart whose bars stand: the panes come back in the saved order at once.
+    const loaded = await mount()
+    loaded.chart.saveLoad.restore(content)
+    await settle()
+    const legendPane = (container: HTMLElement, id: string): string | undefined =>
+      container.querySelector<HTMLElement>(`[data-legend-row="${id}"]`)?.closest<HTMLElement>('[data-legend-pane]')?.dataset.legendPane
+    expect(loaded.renderer.series[0]!.paneIndex).toBe(2)
+    expect([legendPane(loaded.container, 'rsi-1'), legendPane(loaded.container, 'macd-1')]).toEqual(['0', '1'])
+    expect(JSON.parse(loaded.chart.saveLoad.serialize().content).panes).toEqual(['indicator:rsi-1', 'indicator:macd-1', 'main'])
+
+    // A chart whose first bars are still on their way: the indicators' panes wait for them, and take
+    // their saved places as they arrive.
+    const waiting: (() => void)[] = []
+    const slow = feed({ history: () => new Promise((resolve) => waiting.push(() => resolve({ bars: BARS, noData: false }))) })
+    const early = await mount({ datafeed: slow })
+    early.chart.saveLoad.restore(content)
+    await settle()
+    expect(JSON.parse(early.chart.saveLoad.serialize().content).panes).toEqual(['indicator:rsi-1', 'indicator:macd-1', 'main'])
+    for (const release of waiting.splice(0)) release()
+    await settle()
+    expect(early.renderer.series[0]!.paneIndex).toBe(2)
+    expect([legendPane(early.container, 'rsi-1'), legendPane(early.container, 'macd-1')]).toEqual(['0', '1'])
+  })
+
+  it('keeps a hidden pane its place, and gives it back there when it shows again', async () => {
+    const { chart, renderer, container, anchor, where, panes } = await threePanes()
+    chart.applySettings({ canvas: { paneButtons: 'always' } })
+    buttons(container).press(2, 'moveUp')
+    expect(where()).toEqual([0, 2, 1])
+    chart.indicators.hide('rsi-1')
+    expect(panes()).toEqual(['main', 'indicator:macd-1', 'indicator:rsi-1'])
+    chart.indicators.hide('macd-1')
+    expect(chart.indicators.hidden()).toEqual(['rsi-1', 'macd-1'])
+    // Each pane is made again at the bottom as its indicator shows, and stood back in its place.
+    let at = renderer.series.length
+    chart.indicators.show('rsi-1')
+    const rsi = renderer.series[at]!
+    at = renderer.series.length
+    chart.indicators.show('macd-1')
+    const macd = renderer.series[at]!
+    expect([anchor.paneIndex, macd.paneIndex, rsi.paneIndex]).toEqual([0, 1, 2])
+    expect(panes()).toEqual(['main', 'indicator:macd-1', 'indicator:rsi-1'])
+  })
+
+  it('files each move as a step of the history, and takes it back and puts it back', async () => {
+    const { widget, chart, where } = await threePanes()
+    await settle()
+    expect(chart.history.undoChange()).toBe('indicatorAdd')
+    widget.commands.execute('chart.panes.moveDown', 0)
+    await settle()
+    expect(chart.history.undoChange()).toBe('paneMove')
+    expect(where()).toEqual([1, 0, 2])
+    chart.history.undo()
+    await settle()
+    expect(where()).toEqual([0, 1, 2])
+    expect(chart.history.undoChange()).toBe('indicatorAdd')
+    expect(chart.history.redoChange()).toBe('paneMove')
+    chart.history.redo()
+    await settle()
+    expect(where()).toEqual([1, 0, 2])
+    expect(chart.history.undoChange()).toBe('paneMove')
   })
 })
 

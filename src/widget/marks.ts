@@ -473,6 +473,8 @@ export interface MarksDeps {
   overlay?: HTMLElement
   /** How far the main pane stands in from the gesture box's left edge: the left price scale's width. */
   paneLeft?(): number
+  /** How far the main pane stands down from the gesture box's top: 0 while it is the first pane. */
+  paneTop?(): number
   /** The feed's bar-mark reader, or null when it serves none. */
   fetchBarMarks: ((symbol: string, from: number, to: number, resolution: string) => Promise<readonly BarMark[]>) | null
   /** The feed's time-scale-mark reader, or null when it serves none. */
@@ -528,6 +530,7 @@ export function attachMarks(deps: MarksDeps): MarksLayer {
   }
 
   const paneLeft = (): number => deps.paneLeft?.() ?? 0
+  const paneTop = (): number => deps.paneTop?.() ?? 0
   // A hovered mark's words, on the tooltip fill above it, made the first time a mark with words is
   // hovered. A mark without words shows its line alone.
   let tip: HTMLElement | null = null
@@ -553,7 +556,7 @@ export function attachMarks(deps: MarksDeps): MarksLayer {
     const centre = paneLeft() + hovered.x
     const left = room > 0 ? Math.max(4, Math.min(centre - width / 2, room - width - 4)) : centre - width / 2
     tip.style.left = `${Math.round(left)}px`
-    tip.style.top = `${Math.round(hovered.top - 4)}px`
+    tip.style.top = `${Math.round(paneTop() + hovered.top - 4)}px`
   }
 
   const axisPrimitive: TimescaleMarksPrimitive = createTimescaleMarks({
@@ -571,7 +574,7 @@ export function attachMarks(deps: MarksDeps): MarksLayer {
   // The pointer hovers a mark, and a finger or a pen holds one with a press, as a pointer hovers it.
   const local = (event: PointerEvent): PanePoint => {
     const box = deps.gestures!.getBoundingClientRect()
-    return { x: event.clientX - box.left - paneLeft(), y: event.clientY - box.top }
+    return { x: event.clientX - box.left - paneLeft(), y: event.clientY - box.top - paneTop() }
   }
   const onMove = (event: PointerEvent): void => {
     if (event.pointerType !== 'mouse') return

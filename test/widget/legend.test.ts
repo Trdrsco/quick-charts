@@ -463,6 +463,41 @@ describe('indicator rows', () => {
     expect(rows(container)[1]!.closest('[data-legend-pane]')?.getAttribute('data-legend-pane')).toBe('1')
   })
 
+  it('moves a pane row up and down as the pane buttons do, and stands the header at the main pane', async () => {
+    const { container, handle } = mountChart(scriptedFeed({ bars: series(40) }))
+    await settle()
+    handle.indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'sma')! })
+    handle.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
+    handle.indicators.add({ id: 'macd-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'macd')! })
+    await settle()
+    expect(handle.history.undoChange()).toBe('indicatorAdd')
+    const row = (id: string): HTMLElement => legendOf(container).querySelector<HTMLElement>(`[data-legend-row="${id}"]`)!
+    const paneOf = (id: string): string | undefined => row(id).closest<HTMLElement>('[data-legend-pane]')?.dataset.legendPane
+    const control = (id: string, title: string): HTMLButtonElement => row(id).querySelector<HTMLButtonElement>(`button[title="${title}"]`)!
+    // A pane row moves its pane wherever there is a place to go; an overlay's row has no pane to move.
+    expect([control('rsi-1', 'Move pane up').hidden, control('rsi-1', 'Move pane down').hidden]).toEqual([false, false])
+    expect([control('macd-1', 'Move pane up').hidden, control('macd-1', 'Move pane down').hidden]).toEqual([false, true])
+    expect([control('sma-1', 'Move pane up').hidden, control('sma-1', 'Move pane down').hidden]).toEqual([true, true])
+    expect([paneOf('sma-1'), paneOf('rsi-1'), paneOf('macd-1')]).toEqual(['0', '1', '2'])
+
+    // The RSI's pane moves above the main one: the header and the overlay's row go with the main
+    // pane, 300px down, and the RSI's row stands above them at the chart's top.
+    control('rsi-1', 'Move pane up').click()
+    expect([paneOf('sma-1'), paneOf('rsi-1'), paneOf('macd-1')]).toEqual(['1', '0', '2'])
+    expect(row('sma-1').closest('.qc-legend-pane')).toBeNull()
+    expect(legendOf(container).style.getPropertyValue('--qcd-legend-top')).toBe('300px')
+    expect(row('rsi-1').closest<HTMLElement>('.qc-legend-pane')!.style.top).toBe('-300px')
+    expect(row('macd-1').closest<HTMLElement>('.qc-legend-pane')!.style.top).toBe('300px')
+    expect([control('rsi-1', 'Move pane up').hidden, control('rsi-1', 'Move pane down').hidden]).toEqual([true, false])
+    await settle()
+    expect(handle.history.undoChange()).toBe('paneMove')
+
+    // And back down below it.
+    control('rsi-1', 'Move pane down').click()
+    expect([paneOf('sma-1'), paneOf('rsi-1'), paneOf('macd-1')]).toEqual(['0', '1', '2'])
+    expect(legendOf(container).style.getPropertyValue('--qcd-legend-top')).toBe('')
+  })
+
   it('reads explicit Volume units, not the symbol price grid', async () => {
     const { container, handle, renderer } = mountChart(scriptedFeed({ bars: series(30), symbol: info({ format: THIRTY_SECONDS }) }))
     await settle()
@@ -481,7 +516,11 @@ describe('indicator rows', () => {
     expect(titled(container, 'Hide indicator')).toHaveLength(1)
     expect(titled(container, 'Indicator settings')).toHaveLength(1)
     expect(titled(container, 'Remove indicator')).toHaveLength(1)
-    expect(rows(container)[0]!.querySelector('.qc-legend-actions')?.children).toHaveLength(5)
+    // The eye, the gear, the two moves, collapse, maximize and remove; an overlay's row shows no
+    // pane controls.
+    expect(rows(container)[0]!.querySelector('.qc-legend-actions')?.children).toHaveLength(7)
+    expect(titled(container, 'Move pane up').filter((button) => !button.hidden)).toHaveLength(0)
+    expect(titled(container, 'Move pane down').filter((button) => !button.hidden)).toHaveLength(0)
     expect(rows(container)[0]!.querySelector('.qc-legend-label')).not.toBeNull()
     expect(rows(container)[0]!.querySelector('.qc-legend-value')).not.toBeNull()
     titled(container, 'Hide indicator')[0]!.click()

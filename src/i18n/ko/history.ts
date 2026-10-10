@@ -15,6 +15,7 @@ export const history: Translation<typeof source> = {
   'history.changeAddIndicator': '지표 추가',
   'history.changeRemoveIndicator': '지표 제거',
   'history.changeIndicator': '지표 변경',
+  'history.changeMovePane': 'move pane',
   'history.changeAddDrawing': '그리기 추가',
   'history.changeRemoveDrawing': '그리기 제거',
   'history.changeDrawing': '그리기 변경',

@@ -53,6 +53,8 @@ export interface MenuDeps {
   series(): ISeriesApi<SeriesType>
   /** The gesture box, and the element the menu mounts into: the widget's layer on the body. */
   gestures: HTMLElement
+  /** How far the main pane stands down from the gesture box's top: 0 while it is the first pane. */
+  paneTop?(): number
   host: HTMLElement
   i18n: ChartI18n
   /** Draws the menu's own glyphs: the host's drawing for each icon, or the chart's own. */
@@ -110,7 +112,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
    *  one the market can actually hold. */
   const priceAt = (clientY: number): number | null => {
     const box = deps.gestures.getBoundingClientRect()
-    const price = deps.series().coordinateToPrice(clientY - box.top)
+    const price = deps.series().coordinateToPrice(clientY - box.top - (deps.paneTop?.() ?? 0))
     if (price == null || !(price > 0)) return null
     const step = deps.minMove()
     return Math.round(price / step) * step

@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': 'Pulihkan anak tetingkap',
   'legend.collapsePane': 'Kuncupkan anak tetingkap',
   'legend.maximizePane': 'Besarkan anak tetingkap',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'Tunjukkan penunjuk',
   'legend.hideIndicator': 'Sembunyikan penunjuk',
   'legend.scaleNormal': 'Biasa',

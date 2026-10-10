@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': 'Bölmeyi geri yükle',
   'legend.collapsePane': 'Bölmeyi daralt',
   'legend.maximizePane': 'Bölmeyi büyüt',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'Göstergeyi göster',
   'legend.hideIndicator': 'Göstergeyi gizle',
   'legend.scaleNormal': 'Nor',

@@ -44,6 +44,7 @@ export type HistoryChange =
   | 'indicatorAdd'
   | 'indicatorRemove'
   | 'indicatorChange'
+  | 'paneMove'
   | 'drawingAdd'
   | 'drawingRemove'
   | 'drawingChange'
@@ -61,6 +62,7 @@ export const HISTORY_CHANGE_LABELS: Readonly<Record<HistoryChange, ChartMessageK
   indicatorAdd: 'history.changeAddIndicator',
   indicatorRemove: 'history.changeRemoveIndicator',
   indicatorChange: 'history.changeIndicator',
+  paneMove: 'history.changeMovePane',
   drawingAdd: 'history.changeAddDrawing',
   drawingRemove: 'history.changeRemoveDrawing',
   drawingChange: 'history.changeDrawing',
@@ -177,6 +179,9 @@ export function diffLabel(previous: HistoryState, next: HistoryState): HistoryCh
   if (b.indicators.length > a.indicators.length) return 'indicatorAdd'
   if (b.indicators.length < a.indicators.length) return 'indicatorRemove'
   if (!sameValue(a.indicators, b.indicators)) return 'indicatorChange'
+  // The order of the panes moves only when a viewer moves one: a pane that comes or goes with what
+  // stands in it has already been named by the rung for that.
+  if (!sameValue(a.panes, b.panes)) return 'paneMove'
   const drawings = { before: drawingsOf(previous), after: drawingsOf(next) }
   if (drawings.after.length > drawings.before.length) return 'drawingAdd'
   if (drawings.after.length < drawings.before.length) return 'drawingRemove'

@@ -18,6 +18,9 @@ export const legend = {
   'legend.restorePane': 'Restore pane',
   'legend.collapsePane': 'Collapse pane',
   'legend.maximizePane': 'Maximize pane',
+  /** A pane trading places with the one above it, or below it. */
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'Show indicator',
   'legend.hideIndicator': 'Hide indicator',
   /** The scale-mode labels, in SCALE_MODE_OPTIONS order. The percentage and indexed labels are

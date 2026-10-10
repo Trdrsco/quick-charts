@@ -22,6 +22,8 @@ export const history = {
   'history.changeAddIndicator': 'add indicator',
   'history.changeRemoveIndicator': 'remove indicator',
   'history.changeIndicator': 'indicator change',
+  /** A pane moved up or down among the others. */
+  'history.changeMovePane': 'move pane',
   'history.changeAddDrawing': 'add drawing',
   'history.changeRemoveDrawing': 'remove drawing',
   'history.changeDrawing': 'drawing change',

@@ -31,6 +31,7 @@ import { allowedTimeframes, TIMEFRAME_PRESETS, timeframeLabel } from '../timefra
 import { rangeAvailable, RANGE_PRESETS, type RangePreset } from '../ranges'
 import { TIMEZONES, EXCHANGE_TIMEZONE } from '../timezones'
 import { offersTimezone, type OfferedTimezones } from './offeredTimezones'
+import { PANE_MOVE_COMMAND, type PaneMove } from './paneOps'
 
 /** The catalog key each chart style's command wears. */
 const STYLE_LABEL: Record<ChartStyleId, ChartMessageKey> = {
@@ -101,6 +102,14 @@ export interface ChartCommandDeps {
   /** The drawing verbs above the layer (preferences, the eye, favorites, templates, the dialogs);
    *  null with the drawings feature off. */
   drawingVerbs(): DrawingVerbs | null
+  /** The chart's panes, which move one place up or down by index. Absent, no pane moves. */
+  panes?: {
+    count(): number
+    /** Whether the pane at an index can move that way: the top pane cannot move up, nor the bottom
+     *  one down. */
+    canMove(pane: number, direction: PaneMove): boolean
+    move(pane: number, direction: PaneMove): void
+  }
 }
 
 /** Register every chart-scoped built-in. Returns one unregister for all of them, which the chart
@@ -322,6 +331,31 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       if (typeof arg === 'string') handle.indicators.show(arg)
     },
   })
+
+  // ── Panes ───────────────────────────────────────────────────────────────────────────────────
+  // A pane moves one place up or down, trading places with its neighbour, the main pane among them.
+  // The argument is the pane's index, the top pane 0. Asked with an index, availability answers for
+  // that pane, so the top pane cannot move up and the bottom one cannot move down; asked with none,
+  // it answers whether any pane could, which is while the chart has more than one.
+  const paneIndex = (arg: unknown): number | null => (typeof arg === 'number' && Number.isInteger(arg) ? arg : null)
+  for (const [direction, label] of [['up', 'legend.movePaneUp'], ['down', 'legend.movePaneDown']] as const) {
+    add({
+      id: PANE_MOVE_COMMAND[direction],
+      scope: 'chart',
+      label,
+      available: (arg) => {
+        const panes = deps.panes
+        if (!panes) return false
+        if (arg === undefined) return panes.count() > 1
+        const pane = paneIndex(arg)
+        return pane !== null && panes.canMove(pane, direction)
+      },
+      execute: (arg) => {
+        const pane = paneIndex(arg)
+        if (pane !== null) deps.panes?.move(pane, direction)
+      },
+    })
+  }
 
   // ── Drawings ────────────────────────────────────────────────────────────────────────────────
   // Every verb the drawing toolbar, the settings bar and the settings dialog run. The layer's own

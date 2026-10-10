@@ -61,6 +61,8 @@ export interface TextEditorDeps {
   /** The family the box editor types in: the theme's `text.fontFamily`. An inline field types in
    *  the font its drawing paints with. */
   fontFamily: string
+  /** How far the pane the words stand in sits below the container's top: 0 for the first pane. */
+  paneTop?(): number
   onCommit(value: string): void
   onCancel(): void
 }
@@ -109,7 +111,7 @@ function mountInlineEditor(session: TextEditSession, inline: TextInlineEdit, dep
     const f = frame
     if (!f) {
       area.style.left = `${session.x}px`
-      area.style.top = `${session.y}px`
+      area.style.top = `${session.y + (deps.paneTop?.() ?? 0)}px`
       return
     }
     const wraps = f.wrapWidth !== null
@@ -125,7 +127,7 @@ function mountInlineEditor(session: TextEditSession, inline: TextInlineEdit, dep
     area.style.whiteSpace = wraps ? 'pre-wrap' : 'pre'
     area.wrap = wraps ? 'soft' : 'off'
     area.style.left = `${f.x - FIELD_PAD - before}px`
-    area.style.top = `${f.y - FIELD_PAD}px`
+    area.style.top = `${f.y - FIELD_PAD + (deps.paneTop?.() ?? 0)}px`
     area.style.width = `${content + room + FIELD_PAD * 2}px`
     area.style.height = `${typed * f.lineHeight + FIELD_PAD * 2}px`
     area.style.transform = f.angle ? `rotate(${f.angle}rad)` : ''
@@ -277,7 +279,7 @@ function mountBoxEditor(session: TextEditSession, deps: TextEditorDeps): TextEdi
   const area = el('textarea', { class: 'qc-drawing-text-editor', 'data-qc-editor': 'box', 'aria-label': deps.t('drawing.textEditor'), rows: '1', spellcheck: 'false', wrap: 'off', placeholder }) as HTMLTextAreaElement
   area.value = session.value
   area.style.left = `${session.x}px`
-  area.style.top = `${session.y}px`
+  area.style.top = `${session.y + (deps.paneTop?.() ?? 0)}px`
   area.style.transform = `translate(-50%, -50%) rotate(${session.angle}rad)`
   area.style.font = font
   area.style.lineHeight = `${Math.round(session.fontSize * LINE_HEIGHT)}px`

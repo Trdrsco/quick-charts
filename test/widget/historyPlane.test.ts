@@ -31,6 +31,7 @@ const BASE: ChartContent = {
   indicators: [],
   settings: {},
   compares: [],
+  panes: ['main'],
   drawings: [],
   ext: {},
 }
@@ -129,6 +130,9 @@ describe('what a step is called', () => {
       { from: {}, to: { indicators: [{ id: 'a', definition: 'sma' }] }, label: 'indicatorAdd' },
       { from: { indicators: [{ id: 'a', definition: 'sma' }] }, to: { indicators: [] }, label: 'indicatorRemove' },
       { from: { indicators: [{ id: 'a', definition: 'sma', inputs: { length: 9 } }] }, to: { indicators: [{ id: 'a', definition: 'sma', inputs: { length: 21 } }] }, label: 'indicatorChange' },
+      // A pane that comes with its indicator is the indicator's step; one that moves is its own.
+      { from: { panes: ['main'] }, to: { indicators: [{ id: 'r', definition: 'rsi' }], panes: ['main', 'indicator:r'] }, label: 'indicatorAdd' },
+      { from: { indicators: [{ id: 'r', definition: 'rsi' }], panes: ['main', 'indicator:r'] }, to: { indicators: [{ id: 'r', definition: 'rsi' }], panes: ['indicator:r', 'main'], drawings: [drawing('d1')] }, label: 'paneMove' },
       { from: {}, to: { drawings: [drawing('d1')] }, label: 'drawingAdd' },
       { from: { drawings: [drawing('d1')] }, to: { drawings: [] }, label: 'drawingRemove' },
       { from: { drawings: [drawing('d1')] }, to: { drawings: [drawing('d1', 9)] }, label: 'drawingChange' },

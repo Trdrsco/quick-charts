@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': '패널 복원',
   'legend.collapsePane': '패널 접기',
   'legend.maximizePane': '패널 최대화',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': '지표 표시',
   'legend.hideIndicator': '지표 숨기기',
   'legend.scaleNormal': '기본',

@@ -14,6 +14,8 @@ export const legend: Translation<typeof source> = {
   'legend.restorePane': 'Bereich wiederherstellen',
   'legend.collapsePane': 'Bereich einklappen',
   'legend.maximizePane': 'Bereich maximieren',
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'Indikator anzeigen',
   'legend.hideIndicator': 'Indikator ausblenden',
   'legend.scaleNormal': 'Norm',

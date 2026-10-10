@@ -329,6 +329,10 @@ export const ICONS = {
   paneCollapse: { viewBox: '0 0 18 18', body: "<path stroke=\"currentColor\" d=\"M3 4.5h12M3 13.5h12M9 6.5v-2M7.5 6l1.5 1.5L10.5 6M9 11.5v2M7.5 12l1.5-1.5L10.5 12\" />" },
   paneRestore: { viewBox: '0 0 18 18', body: "<path stroke=\"currentColor\" d=\"M3 4.5h12M3 13.5h12M9 5v3M7.5 7.5L9 9l1.5-1.5M9 13v-3M7.5 10.5L9 9l1.5 1.5\" />" },
   paneMaximize: { viewBox: '0 0 18 18', body: "<path stroke=\"currentColor\" d=\"M3.5 4.5h11v9h-11z\" /> <path stroke=\"currentColor\" d=\"M6 9h6M9 6.5v5M7.5 8L9 6.5 10.5 8M7.5 10L9 11.5 10.5 10\" />" },
+  // Move a pane: an arrow up the middle of the grid, its head opening four units each way, and the
+  // same arrow pointing down.
+  paneUp: { viewBox: '0 0 18 18', body: '<path stroke="currentColor" d="M9 14.5v-11M5 7.5l4-4 4 4" />' },
+  paneDown: { viewBox: '0 0 18 18', body: '<path stroke="currentColor" d="M9 3.5v11M5 10.5l4 4 4-4" />' },
   /** The product's own mark, on its native 120 grid. Every chart carries it in the plot's corner. */
   productMark: { viewBox: '0 0 120 120', body:
     '<path fill="currentColor" d="M113 2.5A7 7 0 0 1 120 9.5L120 71.5A6 6 0 0 1 114 77.5L83 77.5A3 3 0 0 1 80 74.5L80 42.5A4 4 0 0 1 84 38.5L110 38.5A4 4 0 0 0 114 34.5L114 12.5A4 4 0 0 0 110 8.5L10 8.5A4 4 0 0 0 6 12.5L6 34.5A4 4 0 0 0 10 38.5L36 38.5A4 4 0 0 1 40 42.5L40 74.5A3 3 0 0 1 37 77.5L6 77.5A6 6 0 0 1 0 71.5L0 9.5A7 7 0 0 1 7 2.5Z"/>' +
@@ -570,6 +574,10 @@ export const ICONS = {
   // other across the middle. Expand: the same two pointing apart.
   paneCollapse15: { viewBox: '0 0 15 15', body: solid(polyline([[3.5, 3], [7.5, 6.5], [11.5, 3]]) + polyline([[3.5, 12], [7.5, 8.5], [11.5, 12]])) },
   paneExpand15: { viewBox: '0 0 15 15', body: solid(polyline([[3.5, 6.5], [7.5, 3], [11.5, 6.5]]) + polyline([[3.5, 8.5], [7.5, 12], [11.5, 8.5]])) },
+  // Move up: a stem up the middle under a head opening four units each way. Move down: the same
+  // arrow pointing down.
+  paneUp15: { viewBox: '0 0 15 15', body: solid(line([7.5, 12.5], [7.5, 3.5]) + polyline([[3.5, 7.5], [7.5, 3.5], [11.5, 7.5]])) },
+  paneDown15: { viewBox: '0 0 15 15', body: solid(line([7.5, 2.5], [7.5, 11.5]) + polyline([[3.5, 7.5], [7.5, 11.5], [11.5, 7.5]])) },
   // Maximize: a frame's four corners, each bent round, the middle of every side left open.
   paneMaximize15: {
     viewBox: '0 0 15 15',

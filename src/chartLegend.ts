@@ -62,6 +62,10 @@ export interface LegendChip {
   /** The instance's pane currently reads as collapsed (drives which control shows). */
   collapsed?: boolean
   maximized?: boolean
+  /** The row's pane can move one place up, or one place down: it is not the top pane, or not the
+   *  bottom one, and the move verb is the row's to show. */
+  canMoveUp?: boolean
+  canMoveDown?: boolean
   /** The TITLE is a button (a compare row's change-symbol door) — needs `onTitle`. */
   titleButton?: boolean
   /** The market this row charts, when the row IS a market: the head of the row wears its mark, the
@@ -165,6 +169,8 @@ export interface LegendControls {
   onSettings?(id: string, rect: { x: number; y: number; w: number; h: number }): void
   /** A pane row's collapse/maximize/restore control. */
   onPaneOp?(id: string, op: 'collapse' | 'maximize' | 'restore'): void
+  /** A pane row's move up or move down control. */
+  onPaneMove?(id: string, direction: 'up' | 'down'): void
   /** A `titleButton` row's title was tapped (a comparison's change-symbol). */
   onTitle?(id: string): void
   /** A `removable` row's remove control was tapped. */
@@ -205,7 +211,11 @@ export interface ChartLegend {
    *  the pointer is off the plot. The axis height keeps the rule off its own labels; the pointer's
    *  y carries the shears, which stand in for the cursor the plot stops drawing. */
   setReplayGuide(point: { x: number; y: number } | null, axisHeight?: number): void
+  /** The index of the pane the main series stands in: the header and the rows of that pane stand at
+   *  its top, wherever a viewer moved it. Set before the rows that read it. */
+  setMainPane(index: number): void
   setChips(chips: readonly LegendChip[]): void
+  /** Each pane's top below the first pane's, by index. */
   setPaneTops(tops: Readonly<Record<number, number>>): void
   /** The rows extensions place under the reading and above the indicator rows, in order. Each is
    *  the extension's own element: the legend holds it in a slot that wears the backdrop and takes
@@ -414,10 +424,16 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   }
 
   let lastChips: readonly LegendChip[] = []
-  const groups = new Map<number, HTMLElement>([[0, chipRows]])
+  /** The pane the main series stands in, whose rows are the header's own group. */
+  let mainPane = 0
+  /** Every other pane's group of rows, by pane index. */
+  const groups = new Map<number, HTMLElement>()
   chipRows.dataset.legendPane = '0'
+  /** The tops last written, so a move of the main pane can stand every group again. */
+  let paneTops: Readonly<Record<number, number>> = {}
   const rows = new Map<string, { root: HTMLElement; update(chip: LegendChip): void; release(): void }>()
   const groupFor = (pane: number): HTMLElement => {
+    if (pane === mainPane) return chipRows
     let group = groups.get(pane)
     if (!group) {
       group = document.createElement('div')
@@ -458,6 +474,8 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       const r = gear.getBoundingClientRect()
       controls.onSettings?.(chip.id, { x: r.x, y: r.y, w: r.width, h: r.height })
     })
+    const moveUp = chipButton(controls.icons.glyph(ICONS.paneUp, { size: 18 }), '', () => controls.onPaneMove?.(chip.id, 'up'))
+    const moveDown = chipButton(controls.icons.glyph(ICONS.paneDown, { size: 18 }), '', () => controls.onPaneMove?.(chip.id, 'down'))
     const collapse = chipButton('', '', () => controls.onPaneOp?.(chip.id, chip.collapsed ? 'restore' : 'collapse'))
     const maximize = chipButton(controls.icons.glyph(ICONS.paneMaximize, { size: 18 }), '', () => controls.onPaneOp?.(chip.id, chip.maximized ? 'restore' : 'maximize'))
     const eye = chipButton('', '', () => controls.onToggleEye(chip.id))
@@ -465,7 +483,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     const remove = chipButton(controls.icons.glyph(ICONS.trash, { size: 18 }), '', () => controls.onRemove?.(chip.id))
     const actions = document.createElement('span')
     actions.className = 'qc-legend-actions'
-    actions.append(eye, gear, collapse, maximize, remove)
+    actions.append(eye, gear, moveUp, moveDown, collapse, maximize, remove)
     const nameButton = (button: HTMLButtonElement, text: string): void => {
       button.title = text
       button.setAttribute('aria-label', text)
@@ -523,6 +541,11 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         else delete value.dataset.qcTone
         gear.hidden = !chip.hasInputs || !controls.onSettings
         nameButton(gear, chip.settingsLabel ?? strings.t('legend.indicatorSettings'))
+        // A pane row moves its pane while the pane stands, as the pane's own buttons move it.
+        moveUp.hidden = !chip.pane || !controls.onPaneMove || chip.hidden || !chip.canMoveUp
+        moveDown.hidden = !chip.pane || !controls.onPaneMove || chip.hidden || !chip.canMoveDown
+        nameButton(moveUp, strings.t('legend.movePaneUp'))
+        nameButton(moveDown, strings.t('legend.movePaneDown'))
         collapse.hidden = !chip.pane || !controls.onPaneOp || chip.hidden
         collapse.replaceChildren(controls.icons.glyph(chip.collapsed ? ICONS.paneRestore : ICONS.paneCollapse, { size: 18 }))
         nameButton(collapse, strings.t(chip.collapsed ? 'legend.restorePane' : 'legend.collapsePane'))
@@ -558,7 +581,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       let row = rows.get(chip.id)
       if (!row) { row = makeRow(chip); rows.set(chip.id, row) }
       row.update(chip)
-      const pane = chip.paneIndex ?? 0
+      const pane = chip.paneIndex ?? mainPane
       const group = groupFor(pane)
       const before = previous.get(pane)?.nextSibling ?? (previous.has(pane) ? null : group.firstChild)
       if (row.root.parentElement !== group || before !== row.root) {
@@ -568,7 +591,15 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       }
       previous.set(pane, row.root)
     }
-    for (const [pane, group] of groups) if (pane > 0 && !previous.has(pane)) { group.remove(); groups.delete(pane) }
+    for (const [pane, group] of groups) if (!previous.has(pane)) { group.remove(); groups.delete(pane) }
+  }
+  /** Stand the header and its rows at the main pane's top, and every other pane's rows at their
+   *  pane's top, measured from the main pane's. */
+  const placeGroups = (): void => {
+    const origin = paneTops[mainPane] ?? 0
+    if (origin > 0) root.style.setProperty('--qcd-legend-top', `${origin}px`)
+    else root.style.removeProperty('--qcd-legend-top')
+    for (const [pane, group] of groups) group.style.top = `${(paneTops[pane] ?? 0) - origin}px`
   }
   // ── How much of the legend fits. The decision is `legendFit`'s; what happens here is the
   // measuring and the writing. Widths come off the live DOM, so under a layout-free test
@@ -771,12 +802,28 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       // height: the plot draws no pointer of its own while the question is open.
       replayCut.style.insetBlockStart = `${point.y}px`
     },
+    setMainPane(index) {
+      if (index === mainPane) return
+      mainPane = index
+      chipRows.dataset.legendPane = String(index)
+      // The group that stood at the main pane's new index gives its rows back; the next rows put
+      // each one where its pane now stands.
+      const displaced = groups.get(index)
+      if (displaced) {
+        for (const row of [...displaced.children]) chipRows.appendChild(row)
+        displaced.remove()
+        groups.delete(index)
+      }
+      placeGroups()
+    },
     setChips(chips) {
       lastChips = chips
       render(chips)
+      placeGroups()
     },
     setPaneTops(tops) {
-      for (const [pane, group] of groups) if (pane > 0) group.style.top = `${tops[pane] ?? 0}px`
+      paneTops = tops
+      placeGroups()
     },
     setSlotRows(elements) {
       const keep = new Set(elements)

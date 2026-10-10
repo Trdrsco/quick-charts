@@ -29,7 +29,7 @@ import type { MenuHandle } from '../ui/chrome/menu'
 import type { IndicatorsPlane } from './indicators'
 import type { ComparePlane } from './compare'
 import type { CommandRegistry } from './commands'
-import type { PaneOps } from './paneOps'
+import { indicatorPaneKey, PANE_MOVE_COMMAND, type PaneOps } from './paneOps'
 import type { MarkPainters } from '../markPainters'
 import type { IconResolver } from '../ui/icons/resolver'
 
@@ -103,7 +103,7 @@ export interface LegendDeps {
   legendValues: boolean
   /** The chart settings in effect: the status line's parts, its backdrop and the replay mark. */
   settings(): ChartSettings
-  /** The panes' collapse, maximize and restore, which a pane row's controls run. */
+  /** The panes' collapse, maximize, restore and order, which a pane row's controls run. */
   paneOps: PaneOps
   /** The latest price and the previous session's close it is measured from, or null when either is
    *  unknown: what the change since the previous close reads. */
@@ -273,8 +273,15 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     },
     onPaneOp: (id, op) => {
       const paneIdx = deps.indicators.renderer.paneOf()[id]
-      if (paneIdx === undefined || paneIdx === 0) return
+      if (paneIdx === undefined || paneIdx === deps.paneOps.main()) return
       deps.paneOps.run(paneIdx, op)
+    },
+    // A move is a command, as the pane's own buttons run it, so the policy that refuses it refuses
+    // it here too.
+    onPaneMove: (id, direction) => {
+      const paneIdx = deps.indicators.renderer.paneOf()[id]
+      if (paneIdx === undefined || paneIdx === deps.paneOps.main()) return
+      deps.commands.execute(PANE_MOVE_COMMAND[direction], paneIdx)
     },
   })
 
@@ -325,32 +332,39 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     legend?.setValueShaped(deps.valueShaped())
     legend?.setQuote(deps.legendValues ? reading() : null)
     const paneOf = deps.indicators.renderer.paneOf()
-    // A row's eye and its remove are commands: a host that hides what its policy refuses leaves out
-    // the ones it refuses, and the row itself stays, since it names what the chart shows.
+    // The header and the main series' rows stand at the main pane, wherever a viewer moved it.
+    const main = deps.paneOps.main()
+    legend?.setMainPane(main)
+    // A row's eye, its remove and its moves are commands: a host that hides what its policy refuses
+    // leaves out the ones it refuses, and the row itself stays, since it names what the chart shows.
     const shown = (command: string): boolean => deps.shown?.(command) ?? true
+    const moves = { up: shown(PANE_MOVE_COMMAND.up), down: shown(PANE_MOVE_COMMAND.down) }
     legend?.setChips([
       ...deps.indicators.chipsAt(hovered).map(row => {
-        const paneIndex = paneOf[row.id] ?? 0
-        const remembered = deps.paneOps.remembered(`indicator:${row.id}`)
+        const paneIndex = paneOf[row.id] ?? main
+        const remembered = deps.paneOps.remembered(indicatorPaneKey(row.id))
+        const own = row.pane === true && paneIndex !== main
         return {
           ...row,
           indicator: true,
           paneIndex,
           maximized: remembered !== undefined && !row.collapsed && (deps.chart.panes()[paneIndex]?.getHeight() ?? 0) > remembered,
+          canMoveUp: own && moves.up && deps.paneOps.canMove(paneIndex, 'up'),
+          canMoveDown: own && moves.down && deps.paneOps.canMove(paneIndex, 'down'),
           ...(shown(row.hidden ? 'chart.indicators.show' : 'chart.indicators.hide') ? {} : { hideable: false }),
           ...(shown('chart.indicators.remove') ? {} : { removable: false }),
         }
       }),
       ...(deps.compare?.chips(hovered) ?? []).map(row => ({
         ...row,
-        paneIndex: deps.compare!.handle.paneIndexOf(row.id.slice(COMPARE_ROW_PREFIX.length)) ?? 0,
+        paneIndex: deps.compare!.handle.paneIndexOf(row.id.slice(COMPARE_ROW_PREFIX.length)) ?? main,
         ...(shown('chart.compare.setVisible') ? {} : { hideable: false }),
         ...(shown('chart.compare.remove') ? {} : { removable: false }),
       })),
       ...[...hostRows].map(([id, row]) => ({
         id, title: row.title, inputs: row.inputs, value: null, note: row.status,
         description: row.description, settingsLabel: row.settingsLabel,
-        hidden: false, hideable: false, removable: false, hasInputs: !!row.onSettings, paneIndex: 0,
+        hidden: false, hideable: false, removable: false, hasInputs: !!row.onSettings, paneIndex: main,
       })),
     ])
     const tops: Record<number, number> = {}

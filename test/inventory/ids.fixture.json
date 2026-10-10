@@ -463,6 +463,8 @@
       "chart.indicators.show",
       "chart.indicators.update",
       "chart.marks.refresh",
+      "chart.panes.moveDown",
+      "chart.panes.moveUp",
       "chart.price.copy",
       "chart.range.1D",
       "chart.range.1M",
