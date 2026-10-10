@@ -24,4 +24,5 @@ export const chrome: Translation<typeof source> = {
   'chrome.autoScaleMark': 'A',
   'chrome.logScale': 'Logarithmic scale',
   'chrome.logScaleMark': 'L',
+  'chrome.currencyAndUnit': '{currency} · {unit}',
 }

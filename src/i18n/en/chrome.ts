@@ -36,4 +36,7 @@ export const chrome = {
   'chrome.autoScaleMark': 'A',
   'chrome.logScale': 'Logarithmic scale',
   'chrome.logScaleMark': 'L',
+  /** The box at the top of the price scale naming what its prices are in, when the symbol states
+   *  both a currency and a unit; either alone is written as the feed states it. */
+  'chrome.currencyAndUnit': '{currency} · {unit}',
 } as const

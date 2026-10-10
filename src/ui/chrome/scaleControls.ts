@@ -1,7 +1,7 @@
-// The controls that stand on the main price scale: the auto-scale and logarithmic buttons at its
-// foot. They show while the pointer is over the scale, always, or never, as the chart settings say,
-// and each press is the chart's own verb, so the buttons and every other door to the same state
-// read alike.
+// The controls that stand on the main price scale: the box at its top that names what prices are
+// in (the symbol's currency and unit), and the auto-scale and logarithmic buttons at its foot. Each
+// shows while the pointer is over the scale, always, or never, as the chart settings say, and each
+// press is the chart's own verb, so the buttons and every other door to the same state read alike.
 //
 // The scale is drawn by the renderer, so these are DOM in the chart's chrome layer, placed over the
 // scale's box as the chart measures it. The chrome takes no pointer, so the pointer is watched on
@@ -29,6 +29,10 @@ export interface ScaleControlsDeps {
   box(): PriceScaleBox | null
   /** When the auto-scale and logarithmic buttons show. */
   modeButtons(): ChartControlVisibility
+  /** When the currency and unit box shows, and what it names: the symbol's currency and unit,
+   *  either of which it may not state. */
+  unitBox(): ChartControlVisibility
+  currencyAndUnit(): { currency?: string; unit?: string } | null
   /** Whether the scale frames itself, and whether it is logarithmic. */
   autoScale(): boolean
   logScale(): boolean
@@ -44,6 +48,8 @@ export interface ScaleControls {
 
 /** The buttons' size and the space between them and below them. */
 const BUTTON = { width: 20, height: 22, gap: 4, foot: 4 }
+/** The currency and unit box's inset from the scale's top and from its side away from the plot. */
+const UNIT_BOX = { inset: 4 }
 
 export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
   const t = deps.i18n.t
@@ -52,6 +58,9 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
   const log = h('button', { type: 'button', class: 'qc-scale-mode', 'data-role': 'scale-log' })
   modes.append(auto, log)
   stopPointer(modes)
+  // The box names; it takes no pointer, so a drag that starts on it is a drag of the scale.
+  const unit = h('div', { class: 'qc-scale-unit', 'data-role': 'scale-unit' })
+  deps.chrome.appendChild(unit)
   auto.addEventListener('click', () => {
     deps.toggleAutoScale()
     sync()
@@ -80,12 +89,31 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     modes.dataset.qcVisibility = visibility
     const shown = box !== null && visibility !== 'never' && (visibility === 'always' || overScale || overControls)
     modes.hidden = !shown
-    if (!box) return
+    if (!box) {
+      unit.hidden = true
+      return
+    }
     const width = BUTTON.width * 2 + BUTTON.gap
     modes.style.left = `${Math.round(box.left + (box.width - width) / 2)}px`
     modes.style.top = `${Math.round(box.top + box.height - BUTTON.height - BUTTON.foot)}px`
     auto.setAttribute('aria-pressed', String(deps.autoScale()))
     log.setAttribute('aria-pressed', String(deps.logScale()))
+    syncUnit(box)
+  }
+
+  const syncUnit = (box: PriceScaleBox): void => {
+    const visibility = deps.unitBox()
+    const named = deps.currencyAndUnit()
+    const currency = named?.currency?.trim() ?? ''
+    const unitId = named?.unit?.trim() ?? ''
+    const text = currency && unitId ? t('chrome.currencyAndUnit', { currency, unit: unitId }) : currency || unitId
+    unit.textContent = text
+    unit.dataset.qcVisibility = visibility
+    unit.hidden = text === '' || visibility === 'never' || (visibility === 'hover' && !overScale && !overControls)
+    // At the scale's top, four pixels in from the corner away from the plot.
+    unit.style.top = `${Math.round(box.top + UNIT_BOX.inset)}px`
+    unit.style.left = box.side === 'right' ? `${Math.round(box.left + UNIT_BOX.inset)}px` : ''
+    unit.style.right = box.side === 'left' ? `${Math.round(deps.gestures.clientWidth - box.left - box.width + UNIT_BOX.inset)}px` : ''
   }
 
   const within = (event: PointerEvent): boolean => {
@@ -139,6 +167,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
       deps.gestures.removeEventListener('pointerup', onMove)
       deps.gestures.removeEventListener('pointerleave', onLeave)
       modes.remove()
+      unit.remove()
     },
   }
 }

@@ -5,6 +5,7 @@
 export const KEYS_ADDED_IN_MAJOR = [
   'chrome.autoScale',
   'chrome.autoScaleMark',
+  'chrome.currencyAndUnit',
   'chrome.logScale',
   'chrome.logScaleMark',
   'chrome.scaleAsk',

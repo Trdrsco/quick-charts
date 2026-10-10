@@ -338,6 +338,38 @@ describe('the scale mode buttons', () => {
   })
 })
 
+describe('the currency and unit box', () => {
+  it('names the symbol currency and unit at the top of the scale, as the setting says', async () => {
+    const { chart, renderer, container } = await mount({ datafeed: feed({ resolve: async () => ({ ...info, unitId: 'point' }) }) })
+    renderer.scaleWidths.right = 72
+    renderer.paneHeights[0] = 300
+    const gestures = container.querySelector<HTMLElement>('.qc-gestures')!
+    Object.defineProperty(gestures, 'clientWidth', { value: 600, configurable: true })
+    chart.applySettings({ priceScale: { currencyAndUnit: 'always' } })
+    const box = container.querySelector<HTMLElement>('.qc-scale-unit')!
+    expect(box.hidden).toBe(false)
+    expect(box.textContent).toBe('USD · point')
+    expect([box.style.left, box.style.top]).toEqual(['532px', '4px'])
+    chart.applySettings({ priceScale: { currencyAndUnit: 'hover' } })
+    expect(box.hidden).toBe(true)
+    chart.applySettings({ priceScale: { currencyAndUnit: 'never' } })
+    expect(box.hidden).toBe(true)
+    // On a left scale the box keeps four pixels from the scale's outer side.
+    chart.applySettings({ priceScale: { currencyAndUnit: 'always', placement: 'left' } })
+    renderer.scaleWidths.left = 72
+    chart.applySettings({ canvas: { marginTop: 12 } })
+    expect([box.style.left, box.style.right]).toEqual(['', '532px'])
+  })
+
+  it('shows nothing for a symbol that names neither', async () => {
+    const { chart, renderer, container } = await mount({ datafeed: feed({ resolve: async () => ({ ...info, currencyCode: undefined }) }) })
+    renderer.scaleWidths.right = 72
+    renderer.paneHeights[0] = 300
+    chart.applySettings({ priceScale: { currencyAndUnit: 'always' } })
+    expect(container.querySelector<HTMLElement>('.qc-scale-unit')!.hidden).toBe(true)
+  })
+})
+
 describe('the price and percentage label', () => {
   it('writes a change to two decimals with its sign', () => {
     expect(signedPercentText(0.0008, 'en')).toBe('+0.08%')

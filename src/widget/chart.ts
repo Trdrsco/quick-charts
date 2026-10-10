@@ -1367,6 +1367,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         i18n,
         box: priceScaleBox,
         modeButtons: () => eff.priceScale.scaleModeButtons,
+        unitBox: () => eff.priceScale.currencyAndUnit,
+        currencyAndUnit: () => (symbolInfo ? { currency: symbolInfo.currencyCode, unit: symbolInfo.unitId } : null),
         autoScale: () => priceAxisPolicy() === 'auto',
         logScale: () => scaleMode === 'log',
         toggleAutoScale: () => {
@@ -1828,6 +1830,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     feedStatus = null // the new subscription reports its own status; a stale one must not carry over
     symbolInfo = null
     drawings.setCurrency(null)
+    scaleControls?.sync()
     earliestBarSecs = null
     session.reset() // the next resolve states the new symbol's model, and unresolved never bands
     marks?.clear()
@@ -1852,6 +1855,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         symbolInfo = info
         setSymbolFormat(info.format)
         drawings.setCurrency(info.currencyCode ?? null)
+        scaleControls?.sync() // the scale's box names the new symbol's currency and unit
         indicators.recompute() // indicator scales and rows re-read the formatter
         session.adopt(info)
         legend.setHeader(symbol, tf)

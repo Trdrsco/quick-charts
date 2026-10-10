@@ -38,6 +38,8 @@ The scales placement (`priceScale.placement`) stands the main series' price scal
 
 The scale mode buttons (`priceScale.scaleModeButtons`) stand at the foot of the main price scale while the pointer is over it, always, or never: two 20x22 buttons 4px apart, "A" switching the scale between framing itself and holding where it was dragged and "L" between a regular and a logarithmic scale, filled while on and outlined while off. The catalog gains `chrome.scaleModes`, `chrome.autoScale`, `chrome.autoScaleMark`, `chrome.logScale` and `chrome.logScaleMark`.
 
+The currency and unit box (`priceScale.currencyAndUnit`) names what the symbol's prices are in, its `currencyCode` and `unitId`, in a box at least 64x26 four pixels inside the top of the main price scale, on the chart's background in a 1px border with a radius of 4, while the pointer is over the scale, always, or never; a symbol that states neither shows none. The catalog gains `chrome.currencyAndUnit`.
+
 ### Upgrading to 5.0
 
 5.0 replaces the appearance overrides with the chart settings. Change each where your code names it:
