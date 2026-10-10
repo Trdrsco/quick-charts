@@ -110,14 +110,14 @@ describe('the top bar', () => {
     const dialog = document.querySelector<HTMLElement>('.qc-chart-settings-dialog')!
     expect(dialog.querySelector('.qc-dialog-title')?.textContent).toContain('Settings')
     expect([...dialog.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual(['Appearance', 'Display', 'Price scale', 'Theme'])
-    expect([...dialog.querySelectorAll('.qc-chart-settings-footer .qc-button')].map((control) => control.textContent)).toEqual(['Reset defaults', 'Cancel', 'Ok'])
+    expect([...dialog.querySelectorAll('.qc-chart-settings-footer .qc-button')].map((control) => control.textContent)).toEqual(['Apply defaults', 'Cancel', 'Ok'])
 
     dialog.querySelector<HTMLButtonElement>('[role="tab"][data-settings-page="display"]')!.click()
     const grid = dialog.querySelector<HTMLButtonElement>('[role="switch"][aria-label="Grid lines"]')!
     grid.click()
-    expect(w.chart.state.appearance.appearance.grid).toBe(false)
+    expect(w.chart.state.settings.canvas.verticalGrid).toBe(false)
     dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
-    expect(w.chart.state.appearance.appearance.grid).toBe(true)
+    expect(w.chart.state.settings.canvas.verticalGrid).toBe(true)
   })
 
   it('is a labeled toolbar carrying every control by default', () => {

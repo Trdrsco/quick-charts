@@ -323,7 +323,7 @@ export function registerWidgetCommands(deps: WidgetCommandDeps): () => void {
    *  layout falls back to, its other panes cloning the new chart. */
   const create = async (name: string): Promise<void> => {
     const content = JSON.parse(widget.activeChart().saveLoad.serialize().content) as Record<string, unknown>
-    const fresh = JSON.stringify({ ...content, indicators: [], compares: [], appearance: {}, ext: {}, ...('drawings' in content ? { drawings: [] } : {}) })
+    const fresh = JSON.stringify({ ...content, indicators: [], compares: [], settings: {}, ext: {}, ...('drawings' in content ? { drawings: [] } : {}) })
     widget.layout.saveLoad.detach()
     deps.startLayout(fresh)
     await save(name, true)

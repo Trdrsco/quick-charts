@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-// The settings menu (appearance through the appearance command, scale and theme through theirs)
+// The settings menu (the chart settings through the settings command, scale and theme through theirs)
 // and the notices (a live region, dismissible, self-retiring).
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mountSettingsMenu } from '../../src/ui/chrome/settingsMenu'
@@ -13,7 +13,7 @@ afterEach(() => {
 })
 
 describe('the settings menu', () => {
-  it('edits appearance through the appearance command, and scale and theme through theirs', () => {
+  it('edits the chart settings through the settings command, and scale and theme through theirs', () => {
     const w = fakeWidget()
     const menu = mountSettingsMenu({ ...w.ctx, ui: w.ui })
     document.body.appendChild(menu.element)
@@ -29,14 +29,14 @@ describe('the settings menu', () => {
     const palette = panel.querySelector<HTMLElement>('.qc-inline-panel .qc-drawing-palette')!
     expect(palette.querySelectorAll('.qc-drawing-swatch:not(.qc-drawing-swatch-plus)')).toHaveLength(80)
     palette.querySelector<HTMLButtonElement>('[aria-label="Color #2962ff"]')!.click()
-    expect(w.chart.calls).toContain('appearance:upColor')
-    expect(w.chart.state.appearance.appearance.upColor).toBe('#2962ff')
+    expect(w.chart.calls).toContain('settings:candles.upColor')
+    expect(w.chart.state.settings.candles.upColor).toBe('#2962ff')
     expect(panel.querySelector('.qc-inline-panel')).toBeNull() // the pick closes what it opened
     panel.querySelector<HTMLButtonElement>('[data-settings-page="display"]')!.click()
     const switches = [...panel.querySelectorAll<HTMLButtonElement>('[role="switch"]')]
     expect(switches.map((s) => s.getAttribute('aria-label'))).toEqual(['Grid lines', 'Session shading'])
     switches[0]!.click()
-    expect(w.chart.state.appearance.appearance.grid).toBe(false)
+    expect(w.chart.state.settings.canvas.verticalGrid).toBe(false)
     panel.querySelector<HTMLButtonElement>('[data-settings-page="scale"]')!.click()
     const radios = [...panel.querySelectorAll<HTMLButtonElement>('[role="radio"]')]
     expect(radios.map((r) => r.textContent)).toEqual(['Regular price scale', 'Logarithmic price scale', 'Percentage price scale', 'Indexed price scale'])
@@ -51,7 +51,7 @@ describe('the settings menu', () => {
     expect(w.widget.theme.mode()).toBe('light')
   })
 
-  it('offers Reset defaults in the fixed footer and runs it through the registry', () => {
+  it('offers Apply defaults in the fixed footer and runs it through the registry', () => {
     const w = fakeWidget()
     const menu = mountSettingsMenu({ ...w.ctx, ui: w.ui })
     document.body.appendChild(menu.element)
@@ -59,33 +59,33 @@ describe('the settings menu', () => {
     menu.element.click()
     const panel = w.overlays.querySelector<HTMLElement>('[role="dialog"]')!
     const rows = [...panel.querySelectorAll<HTMLButtonElement>('.qc-chart-settings-footer .qc-chart-settings-reset')]
-    expect(rows.map((r) => r.textContent)).toEqual(['Reset defaults'])
+    expect(rows.map((r) => r.textContent)).toEqual(['Apply defaults'])
     panel.querySelector<HTMLButtonElement>('[data-settings-page="scale"]')!.click()
     expect(panel.querySelectorAll('[role="radio"]')).toHaveLength(4)
     expect(panel.querySelector('.qc-chart-settings-footer')!.contains(rows[0]!)).toBe(true)
     w.chart.handle.setScaleMode('log')
-    w.chart.handle.applyAppearance({ appearance: { upColor: '#112233' } })
+    w.chart.handle.applySettings({ candles: { upColor: '#112233' } })
     rows[0]!.click()
-    expect(w.chart.calls).toContain('appearance:reset')
-    expect(w.chart.state.appearance.appearance.upColor).not.toBe('#112233')
+    expect(w.chart.calls).toContain('settings:reset')
+    expect(w.chart.state.settings.candles.upColor).not.toBe('#112233')
     expect(w.chart.state.scale).toBe('normal')
   })
 
   it('a denied reset leaves its row disabled and the chart untouched', () => {
-    const w = fakeWidget({ access: { command: (id) => id !== 'chart.appearance.reset' } })
+    const w = fakeWidget({ access: { command: (id) => id !== 'chart.settings.reset' } })
     const menu = mountSettingsMenu({ ...w.ctx, ui: w.ui })
     document.body.appendChild(menu.element)
     cleanup.push(() => (menu.destroy(), w.dispose()))
     menu.element.click()
     const row = w.overlays.querySelector<HTMLButtonElement>('.qc-chart-settings-reset')!
-    expect(row.textContent).toBe('Reset defaults')
+    expect(row.textContent).toBe('Apply defaults')
     expect(row.disabled).toBe(true)
     row.click()
     expect(w.chart.calls).toEqual([])
   })
 
-  it('a denied appearance command leaves the fields disabled and the chart untouched', () => {
-    const w = fakeWidget({ access: { command: (id) => id !== 'chart.appearance.apply' } })
+  it('a denied settings command leaves the fields disabled and the chart untouched', () => {
+    const w = fakeWidget({ access: { command: (id) => id !== 'chart.settings.apply' } })
     const menu = mountSettingsMenu({ ...w.ctx, ui: w.ui })
     document.body.appendChild(menu.element)
     cleanup.push(() => (menu.destroy(), w.dispose()))
@@ -126,7 +126,7 @@ describe('the settings menu', () => {
       'Percentage price scale',
       'Indexed price scale',
     ])
-    expect(hidden.querySelector('.qc-chart-settings-footer .qc-chart-settings-reset')!.textContent).toBe('Reset defaults')
+    expect(hidden.querySelector('.qc-chart-settings-footer .qc-chart-settings-reset')!.textContent).toBe('Apply defaults')
     // The theme itself is still the widget's to set.
     expect(off.commands.available('widget.theme.light')).toBe(true)
   })

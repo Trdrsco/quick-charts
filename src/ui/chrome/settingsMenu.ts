@@ -2,7 +2,7 @@
 // page and a fixed action row. Changes preview on the chart while the dialog is open; Cancel, the
 // close button, Escape and the backdrop all restore the state the viewer opened it with.
 import type { ChartMessageKey } from '../../i18n'
-import type { ChartOverrides } from '../../overrides'
+import type { ChartSettings, PartialChartSettings } from '../../settings/schema'
 import { SCALE_MODE_OPTIONS, type ScaleMode } from '../../scaleMode'
 import { THEME_MODES, type ThemeMode } from '../../theme/schema'
 import { activeChart, commandLabel, shows, type ChromeContext } from './context'
@@ -14,24 +14,37 @@ import { createColorControl, readColor, type ColorControlHandle } from '../contr
 import { openInlinePanel } from '../controls/inlinePanel'
 import { menuHeading } from './menu'
 
-type ColorLeaf = 'background' | 'upColor' | 'downColor' | 'borderUpColor' | 'borderDownColor' | 'wickUpColor' | 'wickDownColor'
 type SettingsPage = 'appearance' | 'display' | 'scale' | 'theme'
 
-/** The appearance colors the menu edits, in row order. */
-const COLOR_ROWS: readonly { leaf: ColorLeaf; label: ChartMessageKey }[] = [
-  { leaf: 'background', label: 'settings.background' },
-  { leaf: 'upColor', label: 'settings.upCandles' },
-  { leaf: 'downColor', label: 'settings.downCandles' },
-  { leaf: 'borderUpColor', label: 'settings.upBorders' },
-  { leaf: 'borderDownColor', label: 'settings.downBorders' },
-  { leaf: 'wickUpColor', label: 'settings.upWicks' },
-  { leaf: 'wickDownColor', label: 'settings.downWicks' },
+/** The colors the menu edits, in row order, and where each lives in the settings tree. */
+const COLOR_ROWS: readonly { read: (s: ChartSettings) => string; write: (color: string) => PartialChartSettings; label: ChartMessageKey }[] = [
+  { read: (s) => s.canvas.background, write: (color) => ({ canvas: { background: color } }), label: 'settings.background' },
+  { read: (s) => s.candles.upColor, write: (color) => ({ candles: { upColor: color } }), label: 'settings.upCandles' },
+  { read: (s) => s.candles.downColor, write: (color) => ({ candles: { downColor: color } }), label: 'settings.downCandles' },
+  { read: (s) => s.candles.borderUpColor, write: (color) => ({ candles: { borderUpColor: color } }), label: 'settings.upBorders' },
+  { read: (s) => s.candles.borderDownColor, write: (color) => ({ candles: { borderDownColor: color } }), label: 'settings.downBorders' },
+  { read: (s) => s.candles.wickUpColor, write: (color) => ({ candles: { wickUpColor: color } }), label: 'settings.upWicks' },
+  { read: (s) => s.candles.wickDownColor, write: (color) => ({ candles: { wickDownColor: color } }), label: 'settings.downWicks' },
 ]
 
-const TOGGLE_ROWS: readonly { leaf: 'grid' | 'sessions'; label: ChartMessageKey }[] = [
-  { leaf: 'grid', label: 'settings.gridLines' },
-  { leaf: 'sessions', label: 'settings.sessionShading' },
+const TOGGLE_ROWS: readonly { read: (s: ChartSettings) => boolean; write: (on: boolean) => PartialChartSettings; label: ChartMessageKey }[] = [
+  { read: (s) => s.canvas.verticalGrid, write: (on) => ({ canvas: { verticalGrid: on, horizontalGrid: on } }), label: 'settings.gridLines' },
+  { read: (s) => s.symbol.session !== 'regular', write: (on) => ({ symbol: { session: on ? 'extended' : 'regular' } }), label: 'settings.sessionShading' },
 ]
+
+/** The leaves this menu edits, as they stood when it opened: what Cancel puts back. */
+const editedLeaves = (s: ChartSettings): PartialChartSettings => ({
+  canvas: { background: s.canvas.background, verticalGrid: s.canvas.verticalGrid, horizontalGrid: s.canvas.horizontalGrid },
+  candles: {
+    upColor: s.candles.upColor,
+    downColor: s.candles.downColor,
+    borderUpColor: s.candles.borderUpColor,
+    borderDownColor: s.candles.borderDownColor,
+    wickUpColor: s.candles.wickUpColor,
+    wickDownColor: s.candles.wickDownColor,
+  },
+  symbol: { session: s.symbol.session },
+})
 
 let nextSettingsId = 0
 
@@ -55,7 +68,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
   let reset: HTMLButtonElement | null = null
   let activePage: SettingsPage = 'appearance'
   let committed = false
-  let initial: { appearance: ChartOverrides['appearance']; scale: ScaleMode; theme: ThemeMode } | null = null
+  let initial: { settings: PartialChartSettings; scale: ScaleMode; theme: ThemeMode } | null = null
 
   const controls: ColorControlHandle[] = []
   const retireControls = (): void => {
@@ -78,15 +91,15 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
   trigger.setAttribute('aria-haspopup', 'dialog')
   trigger.setAttribute('aria-expanded', 'false')
 
-  const apply = (partial: Partial<ChartOverrides['appearance']>): void => {
-    deps.commands.execute('chart.appearance.apply', { appearance: partial })
+  const apply = (partial: PartialChartSettings): void => {
+    deps.commands.execute('chart.settings.apply', { settings: partial })
   }
 
   const refresh = (): void => {
     if (!dialog?.open() || !content) return
     if (reset) {
-      reset.hidden = !shows(deps, 'chart.appearance.reset')
-      setDisabled(reset, !deps.commands.available('chart.appearance.reset'))
+      reset.hidden = !shows(deps, 'chart.settings.reset')
+      setDisabled(reset, !deps.commands.available('chart.settings.reset'))
     }
     retireControls()
     content.replaceChildren()
@@ -96,7 +109,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
   // The appearance and display pages edit through one command; a host that hides what its policy
   // refuses leaves both pages out when it refuses that command.
   const pageDefinitions = (): readonly { id: SettingsPage; label: string; icon: Glyph }[] => [
-    ...(shows(deps, 'chart.appearance.apply')
+    ...(shows(deps, 'chart.settings.apply')
       ? [
           { id: 'appearance' as const, label: t()('settings.sectionAppearance'), icon: STYLE_ICONS.candles },
           { id: 'display' as const, label: t()('settings.sectionDisplay'), icon: ICONS.template },
@@ -113,12 +126,12 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
   }
 
   const buildAppearancePage = (panel: HTMLElement): void => {
-    const appearance = activeChart(deps).appearance().appearance
-    const canApply = deps.commands.available('chart.appearance.apply')
+    const settings = activeChart(deps).settings()
+    const canApply = deps.commands.available('chart.settings.apply')
     panel.appendChild(menuHeading(t()('settings.sectionAppearance')))
     for (const row of COLOR_ROWS) {
       const label = t()(row.label)
-      const value = appearance[row.leaf]
+      const value = row.read(settings)
       const control: ColorControlHandle = createColorControl(t(), {
         label,
         value,
@@ -127,7 +140,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
         closeOnPick: true,
         onPick: (color) => {
           control.update(color)
-          apply({ [row.leaf]: color })
+          apply(row.write(color))
         },
         openPanel: (anchor, palette, onClosed) => openInlinePanel(anchor, palette, anchor.closest('.qc-settings-row') ?? anchor, onClosed),
       })
@@ -137,11 +150,11 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
   }
 
   const buildDisplayPage = (panel: HTMLElement): void => {
-    const appearance = activeChart(deps).appearance().appearance
-    const canApply = deps.commands.available('chart.appearance.apply')
+    const settings = activeChart(deps).settings()
+    const canApply = deps.commands.available('chart.settings.apply')
     panel.appendChild(menuHeading(t()('settings.sectionDisplay')))
     for (const row of TOGGLE_ROWS) {
-      panel.appendChild(switchRow({ label: t()(row.label), checked: appearance[row.leaf], disabled: !canApply, onChange: (on) => apply({ [row.leaf]: on }) }))
+      panel.appendChild(switchRow({ label: t()(row.label), checked: row.read(settings), disabled: !canApply, onChange: (on) => apply(row.write(on)) }))
     }
   }
 
@@ -232,7 +245,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
   const restoreInitialState = (): void => {
     if (!initial) return
     const chart = activeChart(deps)
-    deps.commands.execute('chart.appearance.apply', { appearance: initial.appearance })
+    deps.commands.execute('chart.settings.apply', { settings: initial.settings })
     if (chart.scaleMode() !== initial.scale) deps.commands.execute(`chart.scale.${initial.scale}`)
     if (deps.ui.settingsTheme && deps.widget.theme.mode() !== initial.theme) deps.commands.execute(`widget.theme.${initial.theme}`)
   }
@@ -242,7 +255,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
     activePage = pageDefinitions()[0]!.id
     committed = false
     initial = {
-      appearance: { ...chart.appearance().appearance },
+      settings: editedLeaves(chart.settings()),
       scale: chart.scaleMode(),
       theme: deps.widget.theme.mode(),
     }
@@ -255,12 +268,12 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
         content = h('div', { class: 'qc-dialog-body qc-chart-settings-body' })
         const footer = h('div', { class: 'qc-chart-settings-footer' })
         reset = button({
-          label: commandLabel(deps, 'chart.appearance.reset'),
-          text: commandLabel(deps, 'chart.appearance.reset'),
+          label: commandLabel(deps, 'chart.settings.reset'),
+          text: commandLabel(deps, 'chart.settings.reset'),
           className: 'qc-chart-settings-reset',
-          disabled: !deps.commands.available('chart.appearance.reset'),
+          disabled: !deps.commands.available('chart.settings.reset'),
           onClick: () => {
-            deps.commands.execute('chart.appearance.reset')
+            deps.commands.execute('chart.settings.reset')
             refresh()
           },
         })
@@ -277,7 +290,7 @@ export function mountSettingsMenu(deps: SettingsMenuDeps): SettingsMenuHandle {
             },
           }),
         )
-        reset.hidden = !shows(deps, 'chart.appearance.reset')
+        reset.hidden = !shows(deps, 'chart.settings.reset')
         footer.append(reset, actions)
         box.append(dialogTitle(t()('drawing.settings'), t()('layouts.close'), () => handle.close(), deps.icons), content, footer)
         buildContent(content)
