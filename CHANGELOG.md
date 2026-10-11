@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.0.0
+
+The chart settings, one typed tree saved with the chart in place of the appearance overrides, with a dialog of five pages a host can add its own to, the price labels and scale controls they drive, the plus beside the crosshair's price and its price menu, panes that move and maximize, time-scale marks with icons and lines, the optional prices port, and extension seams for legend rows, captures and settings pages.
+
 The chart settings: one typed tree, `ChartSettings`, of every property a viewer tunes on a chart, resolved as the theme's factory values, the host's `settings` option and the viewer's own leaves, and saved with the chart as the viewer's leaves alone. 5.0 replaces the appearance overrides with it, so a host upgrades as the guide below says.
 
 `chart.settings()` answers the effective tree, `chart.applySettings(partial)` layers a partial over the viewer's leaves and `chart.resetSettings()` drops them and returns the price scale to normal; the commands are `chart.settings.apply` with `{ settings }` and `chart.settings.reset`. A leaf the tree does not have, or a value its leaf cannot hold, is ignored. `chartSettingsDefaults(theme)`, `layerChartSettings`, `readPartialChartSettings`, `CHART_SETTINGS_SECTIONS`, `CHART_DATE_FORMATS` and `CHART_FACTORY_COLORS` export the factory values, the ladder and the reading every stored partial goes through.
