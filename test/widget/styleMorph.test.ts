@@ -8,7 +8,7 @@
 // while the morph runs, and lets no repaint unfold bars the morph is still folding.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ISeriesApi, SeriesType } from 'lightweight-charts'
-import { canvasTheme, DEFAULT_OVERRIDES, type ChartStyleId } from '../../src/index'
+import { canvasTheme, chartSettingsDefaults, type ChartStyleId } from '../../src/index'
 import { BUILT_IN_THEMES } from '../../src/theme/palettes'
 import { fadedStyleOptions, styleOptions, type StylePaint } from '../../src/widget/styles'
 import { foldBar, morphEase, startStyleMorph, STYLE_MORPH_MS } from '../../src/widget/styleMorph'
@@ -164,7 +164,7 @@ describe('a morph', () => {
 })
 
 describe('the close style as it comes in or goes', () => {
-  const paint: StylePaint = { appearance: DEFAULT_OVERRIDES.appearance, canvas: canvasTheme(BUILT_IN_THEMES.dark), candleBorders: false }
+  const paint: StylePaint = { settings: chartSettingsDefaults(BUILT_IN_THEMES.dark), canvas: canvasTheme(BUILT_IN_THEMES.dark), title: '', priceScale: true }
 
   it('fades a line and its fills together', () => {
     expect(fadedStyleOptions('line', paint, 0.5)).toEqual({ color: expect.stringMatching(/^rgba\(\d+, \d+, \d+, 0\.5\)$/) })
@@ -173,7 +173,7 @@ describe('the close style as it comes in or goes', () => {
     expect([area.lineColor, area.topColor, area.bottomColor]).toEqual([
       expect.stringMatching(/, 0\.5\)$/),
       expect.stringMatching(/, 0\.14\)$/),
-      expect.stringMatching(/, 0\.02\)$/),
+      expect.stringMatching(/, 0\)$/),
     ])
     const baseline = fadedStyleOptions('baseline', paint, 0)
     for (const [leaf, value] of Object.entries(baseline)) expect(value, leaf).toMatch(/, 0\)$/)

@@ -22,6 +22,9 @@ export const command = {
   /** The level the right-click menu was raised at, copied in the symbol's own price format. */
   'command.priceCopy': 'Copy price',
 
+  /** Ask the datafeed for the chart's marks again, at once. */
+  'command.marksRefresh': 'Refresh marks',
+
   /** Change the chart's symbol. The symbol is the argument. */
   'command.symbolSet': 'Change symbol',
 
@@ -34,10 +37,10 @@ export const command = {
   'command.styleBaseline': 'Baseline',
   'command.styleStepline': 'Step line',
 
-  /** Restyle the chart through its runtime appearance layer. The partial is the argument. */
-  'command.appearanceApply': 'Chart appearance',
-  /** Drop the viewer's own appearance choices back to the theme and host baseline. */
-  'command.appearanceReset': 'Reset defaults',
+  /** Apply a partial of the chart settings as the viewer's own. The partial is the argument. */
+  'command.settingsApply': 'Apply chart settings',
+  /** Drop the viewer's own chart settings back to the theme and host values. */
+  'command.settingsReset': 'Apply defaults',
 
   // The four price-scale modes.
   'command.scaleNormal': 'Regular price scale',
@@ -86,6 +89,8 @@ export const command = {
   'command.drawingSettings': 'Drawing settings',
   'command.drawingCommitEdit': 'Apply drawing settings',
   'command.drawingPlaceImage': 'Place image',
+  /** Place a horizontal line at the price the argument names. */
+  'command.drawingPlaceHorizontalLine': 'Place horizontal line',
   'command.drawingTemplateApply': 'Apply drawing template',
   'command.drawingTemplateSave': 'Save drawing template',
   'command.drawingTemplateRemove': 'Remove drawing template',
@@ -125,6 +130,9 @@ export const command = {
   'command.themeDark': 'Dark theme',
   'command.themeToggle': 'Switch theme',
   'command.themeSet': 'Set theme',
+
+  /** Open the chart settings dialog, on the page the argument names or on its first. */
+  'command.settingsOpen': 'Chart settings',
 
   'command.localeSet': 'Language',
 

@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'אין מחזור בפיד הזה',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'נשמר במקום אחר מאז שנפתח. יש לטעון את הגרסה החדשה יותר לפני השמירה.',
+  'host.saveNotFound': 'הפריט נמחק במקום אחר. יש לשמור אותו שוב כחדש.',
+  'host.loadInvalid': 'לא ניתן היה לפתוח. שום דבר במסך לא השתנה.',
+  'host.loadUnavailable': 'לא ניתן היה לגשת לעבודה השמורה. שום דבר במסך לא השתנה.',
+  'host.loadNotRestored': 'לא ניתן היה לפתוח, וגם לא ניתן היה להחזיר את מה שהיה במסך. הגרף לא נשמר עד שתיפתח פריסה או גרף שמורים. כדי לשמור את מה שבמסך, יש לשמור קודם עותק.',
+  'host.notSaving': 'הגרף לא נשמר. כדי להתחיל ממצב ידוע, יש לפתוח גרף או פריסה שמורים. שמירת עותק משמרת את מה שבמסך, אבל הגרף עדיין לא יישמר.',
 }

@@ -17,6 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': 'Scorri a sinistra',
   'range.scrollRight': 'Scorri a destra',
   'range.reset': 'Ripristina la vista del grafico',
-  'range.maximizeChart': 'Maximize chart',
-  'range.restoreChart': 'Restore chart',
+  'range.maximizeChart': 'Ingrandisci il grafico',
+  'range.restoreChart': 'Ripristina il grafico',
 }

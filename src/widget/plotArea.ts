@@ -1,5 +1,5 @@
-// The main pane's plot: where the bars are drawn, between the price scales and above the time scale
-// and any panes below, measured in the pixels of the element the host handed the widget. A host
+// The main pane's plot: where the bars are drawn, between the price scales and between any panes
+// above and below it, measured in the pixels of the element the host handed the widget. A host
 // control floating over the bars, at the plot's bottom right beside the price scale say, places
 // itself with it, and the plot moves whenever the price scale widens, a pane joins or the widget
 // resizes, so the chart reports each move rather than leaving the host to guess at its axes.
@@ -18,11 +18,12 @@ export interface PlotArea {
   height: number
 }
 
-/** Measure once. Null while the renderer has no main pane laid out. */
-export function measurePlotArea(chart: IChartApi, host: HTMLElement): PlotArea | null {
-  const row = chart.panes()[0]?.getHTMLElement()
+/** Measure once. Null while the renderer has no main pane laid out. The main pane is the first
+ *  unless a viewer moved it, and its index says where it stands. */
+export function measurePlotArea(chart: IChartApi, host: HTMLElement, main = 0): PlotArea | null {
+  const row = chart.panes()[main]?.getHTMLElement()
   if (!row) return null
-  const size = chart.paneSize(0)
+  const size = chart.paneSize(main)
   if (!(size.width > 0) || !(size.height > 0)) return null
   const outer = host.getBoundingClientRect()
   // The pane's row spans the price scales too, so its top is the plot's top; the plot's left edge
@@ -47,19 +48,25 @@ export interface PlotAreaDeps {
   chart: IChartApi
   /** The element the host handed the widget: the box every distance is measured from. */
   host: HTMLElement
+  /** The index of the pane the main series stands in; the first when absent. */
+  mainPane?(): number
   /** Hears each new area, once per change. */
   changed(area: PlotArea): void
 }
 
 export interface PlotAreaWatch {
   current(): PlotArea | null
+  /** Measure again on the next frame: the panes moved, which moves the plot without resizing
+   *  anything the watch observes. */
+  refresh(): void
   destroy(): void
 }
 
-/** Follow the plot as it moves. Three things move it: the time scale changing size, which is what a
+/** Follow the plot as it moves. Four things move it: the time scale changing size, which is what a
  *  price scale growing a digit or the widget resizing does to it; the host's element or the chart
- *  resizing; and the main pane's row changing height as panes join or leave beneath it. A burst of
- *  any of them is measured once, on the next frame. */
+ *  resizing; the main pane's row changing height as panes join or leave; and the panes moving, which
+ *  the chart reports through `refresh`. A burst of any of them is measured once, on the next
+ *  frame. */
 export function watchPlotArea(deps: PlotAreaDeps): PlotAreaWatch {
   let area: PlotArea | null = null
   let frame: number | null = null
@@ -70,13 +77,14 @@ export function watchPlotArea(deps: PlotAreaDeps): PlotAreaWatch {
   const measure = (): void => {
     frame = null
     if (destroyed) return
-    const nextRow = deps.chart.panes()[0]?.getHTMLElement() ?? null
+    const main = deps.mainPane?.() ?? 0
+    const nextRow = deps.chart.panes()[main]?.getHTMLElement() ?? null
     if (nextRow !== row) {
       if (row) resize?.unobserve(row)
       if (nextRow) resize?.observe(nextRow)
       row = nextRow
     }
-    const next = measurePlotArea(deps.chart, deps.host)
+    const next = measurePlotArea(deps.chart, deps.host, main)
     if (next === null || sameArea(next, area)) return
     area = next
     deps.changed(next)
@@ -98,8 +106,9 @@ export function watchPlotArea(deps: PlotAreaDeps): PlotAreaWatch {
   return {
     current() {
       if (destroyed) return null
-      return area ?? measurePlotArea(deps.chart, deps.host)
+      return area ?? measurePlotArea(deps.chart, deps.host, deps.mainPane?.() ?? 0)
     },
+    refresh: schedule,
     destroy() {
       if (destroyed) return
       destroyed = true

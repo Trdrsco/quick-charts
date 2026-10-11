@@ -17,6 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': '向左捲動',
   'range.scrollRight': '向右捲動',
   'range.reset': '重設圖表檢視',
-  'range.maximizeChart': 'Maximize chart',
-  'range.restoreChart': 'Restore chart',
+  'range.maximizeChart': '最大化圖表',
+  'range.restoreChart': '還原圖表',
 }

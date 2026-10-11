@@ -69,6 +69,21 @@ describe('the scoped stylesheet', () => {
     expect(structural).toMatch(/\.qc-menu-row\[aria-selected='true'\] \{[^}]*control-on/s)
   })
 
+  it('fills a held scale mode in the emphasis fill a checked box wears, its letter in the inverse ink', () => {
+    const held = structural.match(/\[data-qc-theme\] \.qc-scale-mode\[aria-pressed='true'\] \{[^}]+\}/s)?.[0]
+    expect(held).toContain('background: var(--qc-control-on)')
+    expect(held).toContain('border-color: var(--qc-control-on)')
+    expect(held).toContain('color: var(--qc-text-inverse)')
+    expect(held).not.toContain('text-primary')
+    expect(structural).toMatch(/\.qc-checkbox:checked \{[^}]*background: var\(--qc-control-on\)/s)
+    // A near-white fill with a dark letter in the dark theme, and the same pair the other way round
+    // in the light theme.
+    expect(BUILT_IN_THEMES.dark['control.on']).toBe('#f2f2f2')
+    expect(BUILT_IN_THEMES.dark['text.inverse']).toBe('#0f0f0f')
+    expect(BUILT_IN_THEMES.light['control.on']).toBe('#2e2e2e')
+    expect(BUILT_IN_THEMES.light['text.inverse']).toBe('#ffffff')
+  })
+
   it('keeps the saved-layouts menu on the package list rhythm, restating none of it', () => {
     // The panel, rows, marks and rules are the menu primitive's own; this menu adds only what is
     // its own: the shortcut's clearance, the two-line recent row and the switch row's corners.

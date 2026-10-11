@@ -337,6 +337,8 @@ export interface DrawingsHandle {
   setVisibilityPreset(preset: VisibilityPreset): void
   /** Drop a ready picture onto the chart, centred in view, selected. */
   placeImage(image: PlacedImage): void
+  /** Place a horizontal line at a price in the tool's default look, selected. */
+  placeHorizontalLine(price: number): void
   /** Blank every drawing (the eye), without touching any drawing's own switch. */
   setAllHidden(hidden: boolean): void
   allHidden(): boolean

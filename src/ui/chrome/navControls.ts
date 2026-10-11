@@ -9,12 +9,14 @@
 // pointer crosses the plot. So the chrome watches the pointer and shows the cluster once it is
 // within reach of where the cluster actually is. It cannot be a hover zone in CSS: an element wide
 // enough to catch the approach would also swallow the drags, scrolls and clicks the chart owns
-// underneath it, and one with `pointer-events: none` never hovers at all.
+// underneath it, and one with `pointer-events: none` never hovers at all. The chart's navigation
+// buttons setting can instead keep the cluster always shown, or never.
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import type { CommandRegistry } from '../../widget/commands'
 import { button, h, name, setDisabled, stopPointer } from './dom'
 import { ICONS, type Glyph } from '../controls/icons'
 import type { IconResolver } from '../icons/resolver'
+import type { ChartControlVisibility } from '../../settings/schema'
 
 export interface NavControlsDeps {
   /** The chart's chrome subtree — where the cluster mounts. */
@@ -32,6 +34,9 @@ export interface NavControlsDeps {
   /** Whether a control is drawn: false for a command the policy refuses when the host hides what it
    *  refuses. Every control is drawn without it. */
   shown?(id: string): boolean
+  /** When the cluster shows: while the pointer is near it (the default), always, or never. Read on
+   *  every `sync`. */
+  visibility?(): ChartControlVisibility
 }
 
 /** The five verbs, in the three groups they read in: what the view is worth seeing at, then which
@@ -86,6 +91,9 @@ export function mountNavControls(deps: NavControlsDeps): { sync(): void; destroy
   }
 
   const sync = (): void => {
+    const visibility = deps.visibility?.() ?? 'hover'
+    group.dataset.qcVisibility = visibility
+    group.hidden = visibility === 'never'
     for (const [id, b] of buttons) {
       b.hidden = !shown(id)
       setDisabled(b, !deps.commands.available(id))

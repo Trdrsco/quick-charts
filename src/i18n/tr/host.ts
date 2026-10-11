@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'Bu veri akışında hacim yok',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'Açtığınızdan beri başka bir yerde kaydedildi. Kaydetmeden önce daha yeni sürümü yükleyin.',
+  'host.saveNotFound': 'Bu, başka bir yerde silindi. Yeni olarak yeniden kaydedin.',
+  'host.loadInvalid': 'Bu açılamadı. Ekranda hiçbir şey değişmedi.',
+  'host.loadUnavailable': 'Kaydedilmiş çalışmanıza ulaşılamadı. Ekranda hiçbir şey değişmedi.',
+  'host.loadNotRestored': 'Bu açılamadı ve ekrandaki içerik geri getirilemedi. Kaydedilmiş bir grafik veya yerleşim açana kadar grafik kaydetmiyor. Ekrandakini korumak için önce bir kopya kaydedin.',
+  'host.notSaving': 'Grafik kaydetmiyor. Bilinen bir durumdan başlamak için kaydedilmiş bir grafik veya yerleşim açın. Bir kopya kaydetmek ekrandakini korur, ancak grafik yine de kaydetmez.',
 }

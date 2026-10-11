@@ -1,6 +1,6 @@
 // Plain-JS ESM consumer: the tarball must RESOLVE and EXECUTE (not just typecheck) in a project
 // with no TypeScript at all. Pure exports run for real; DOM-needing exports only need to exist.
-import { BUILT_IN_INDICATORS, attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTimeframe, mergeOverrides, olderPageVerdict, parseSessionModel, planPaneOp, sessionStateAt, tfToUdfResolution } from '@trdrs/quickcharts'
+import { BUILT_IN_INDICATORS, attachDrawings, attachIndicators, buildManifestPlots, coerceScaleMode, createChart, createUdfDatafeed, isIntradayTimeframe, olderPageVerdict, readPartialChartSettings, parseSessionModel, planPaneOp, sessionStateAt, tfToUdfResolution } from '@trdrs/quickcharts'
 import { parseDrawingsStore, serializeDrawingsStore, drawingTools } from '@trdrs/quickcharts/drawings'
 
 const fail = (msg) => {
@@ -13,7 +13,7 @@ if (typeof createUdfDatafeed !== 'function') fail('createUdfDatafeed missing')
 if (typeof attachDrawings !== 'function') fail('attachDrawings missing')
 if (olderPageVerdict({ bars: [], noData: true }, 100, false).kind !== 'end') fail('olderPageVerdict wrong')
 if (tfToUdfResolution('1d') !== '1D') fail('tfToUdfResolution wrong')
-if (typeof mergeOverrides(null).appearance.background !== 'string') fail('mergeOverrides defaults wrong')
+if (readPartialChartSettings({ candles: { upColor: '#123456' } }).settings.candles?.upColor !== '#123456') fail('readPartialChartSettings read wrong')
 if (drawingTools.all().length < 80) fail(`drawingTools too small: ${drawingTools.all().length}`)
 
 // Draw → persist → reload, through the SHIPPED persistence codec: a drawing created via the

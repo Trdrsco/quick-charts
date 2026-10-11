@@ -4,7 +4,7 @@ import type { session as source } from '../en/session'
 export const session: Translation<typeof source> = {
   'session.pre': '盤前',
   'session.open': '盤中',
-  'session.extended': 'Extended hours',
+  'session.extended': '延長交易時段',
   'session.after': '盤後',
   'session.closed': '休市',
 }

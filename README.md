@@ -43,15 +43,35 @@ await widget.ready()
 Implement `ChartDatafeed` (see `datafeed.ts`). Required methods: `search`, `resolve`, `history`,
 `subscribeBars`. Optional: `serverTime` (countdown skew correction) and `config` (a feed-level
 capability declaration, described [below](#capability-declaration-config-optional)). The datafeed serves
-symbol metadata, bars and bar updates; your host serves quotes (last, change, volume, the top of
-book) to its own consumers from its own source.
+symbol metadata, bars and bar updates.
 
-When `appearance.countdown` is enabled, a live streaming time bar replaces the native last-value
-label with one price-and-time label. The price uses the resolved symbol formatter. Replay, stale,
+`subscribePrices(symbol, { onPrices })`, also optional, serves the prices one symbol stands at
+(`SymbolPrices`: `bid`, `ask`, `last`, and `previousClose` or the `change` since it) and returns the
+unsubscribe. A delivery may carry only what moved; a field it leaves out keeps its last value. The
+chart subscribes only while a setting draws the prices: the bid and ask labels and lines, the
+legend's change since the previous close, the previous close's label and line, and the percentage
+under the last value. Without the port the bid and ask draw nothing, and the previous close is the
+last regular-hours close of the trading day before the newest bar's, read off the bars.
+
+```ts
+import type { ChartDatafeed, SymbolPrices } from '@trdrs/quickcharts'
+declare const feed: ChartDatafeed
+declare function onBook(symbol: string, push: (prices: SymbolPrices) => void): () => void
+
+const withPrices: ChartDatafeed = {
+  ...feed,
+  subscribePrices: (symbol, { onPrices }) => onBook(symbol, onPrices),
+}
+```
+
+While the `priceLabels.countdown` setting is on, as it is by default, a live streaming time bar
+replaces the native last-value label with one price-and-time label. The price uses the resolved symbol formatter. Replay, stale,
 delayed or end-of-day data, tick bars, closed declared sessions and missing bars retain the native
 price label. `serverTime` corrects clock skew when available; absence or failure uses the client
 clock. Bar opens define fixed and calendar alignment, and declared session facts shorten only a
-bar they actually close.
+bar they actually close. Under `priceLabels.symbolValueMode: 'priceAndPercent'` the same label
+writes the change since the previous session's close under the price, two decimals and its sign,
+with the countdown beneath that; each line is 14px below the one before at the 12px text size.
 
 `resolve` answers with `SymbolInfo`, the symbology contract ([Symbology](#symbology)): the
 symbol's identity (`ticker`, `name`, `description`), venue and type (`exchange`,
@@ -631,8 +651,8 @@ A layout also refuses writes while any child chart is not saving. A complete lay
 its children only after the whole content and layout binding commit, and detaches their previous
 standalone chart bindings. Partial content and copy saves do not establish recovery.
 
-A saved chart carries its symbol, timeframe, style, scale, appearance, comparisons, extension
-state, combined-mode drawings, and every indicator instance. Indicator definitions remain code in
+A saved chart carries its symbol, timeframe, style, scale, the chart settings a viewer chose,
+comparisons, extension state, combined-mode drawings, and every indicator instance. Indicator definitions remain code in
 your widget. The blob names each definition by `manifest.id` and carries the instance id, explicit
 inputs, color, title, overrides and hidden state. Loading replaces the full instance list, so the
 constructor's `indicators` are seeds only for a chart with no saved content. Definitions resolve
@@ -640,12 +660,14 @@ against the widget's built-ins and the host definitions that widget has carried.
 access-denied definition is left out with one counted notice while the remaining content lands. A
 definition of your own survives a save only when its manifest declares an `id`.
 
-The opaque version-4 reader validates the whole indicator list before changing a chart or layout.
+The opaque version-5 reader validates the whole indicator list before changing a chart or layout.
 Missing lists, duplicate instance ids and malformed inputs, titles, colors or overrides refuse the
 body as `invalid`; values are not silently filtered or normalized. A load that omits a definition
 because it is unavailable is partial and cannot clear an earlier `notSaving()` state.
-Complete recovery requires every typed appearance leaf with a valid concrete color value and,
-in combined mode, a drawings array. Separate-mode chart content does not need that array.
+Complete recovery requires a `settings` record whose every leaf holds a value its leaf can hold,
+every color a concrete one the renderer paints, and, in combined mode, a drawings array.
+Separate-mode chart content does not need that array. A version-4 blob reads its `appearance`
+record into the settings sections its leaves now live in.
 
 Hydration and rollback do not emit `saveNeeded` for their own storage writes. An event already
 queued by a viewer's edit is preserved. A late save result does not replace a newer load's binding;
@@ -702,7 +724,8 @@ tile.
 ### Templates
 
 `adapter.templates(kind)` is a store per kind: `'indicator'` for indicator settings, `'drawing'` for
-a drawing tool's look, and `'palette'` for chart appearance. A drawing template carries the `tool`
+a drawing tool's look, `'chart'` for the chart settings a viewer saves from the settings dialog's
+Template menu, and `'palette'`, which the chart itself does not write. A drawing template carries the `tool`
 it belongs to, because a trend-line template means nothing on a rectangle. Their content is opaque,
 like a chart's.
 
@@ -1343,7 +1366,14 @@ function toolbar(widget: ChartWidget): void {
 
 A command whose one id spans many subjects declares `refuses(arg)` beside `available()`: an
 argument your access policy turns away answers `denied` before availability is asked, which is how
-`chart.drawings.arm` refuses a tool. `onChange` fires when the registered set or a shortcut changes,
+`chart.drawings.arm` refuses a tool. `available(arg)` answers for the subject an argument names, and
+`commands.available(id, arg)` asks it: `chart.panes.moveUp` and `chart.panes.moveDown` take a pane's
+index, the top pane 0, so `commands.available('chart.panes.moveUp', 0)` is false, as is a move down
+for the bottom pane, and asked with no argument either says whether any pane could move.
+`chart.drawings.placeHorizontalLine` run with no argument places its line at the crosshair's price,
+so asked with none it answers for that price, and is false while the crosshair is off the main
+pane's plot. A refused
+argument is unavailable to ask about. `onChange` fires when the registered set or a shortcut changes,
 and when `widget.refreshAccess()` says your policy may answer differently. A refusal is a value,
 never a throw: `ok`, `unavailable`,
 `denied`, `unknown`, or `failed` with the
@@ -1525,8 +1555,8 @@ container.before(undo, search)
 ```
 
 The chart's own dialogs still open from their commands while its bars are hidden.
-`chart.symbol.search`, `chart.indicators.open`, `chart.compare.open` and `widget.layout.open` raise
-them in the widget's layer on the document, and `widget.layout.save` asks a layout that was never
+`chart.symbol.search`, `chart.indicators.open`, `chart.compare.open`, `chart.settings.open` and
+`widget.layout.open` raise them in the widget's layer on the document, and `widget.layout.save` asks a layout that was never
 saved for its name. Hide a dialog in `ui` when your interface provides its own.
 
 The library draws its own controls over its own renderer and keeps its internal components to
@@ -1554,7 +1584,8 @@ async function shareable(widget: ChartWidget): Promise<void> {
 
 `capture()` composes the chart, or every chart of a layout, into one PNG under a header carrying the
 identity and the attribution you configured through `image`. Nothing is uploaded, shared or stored:
-you receive a blob and decide.
+you receive a blob and decide. `copy()` and `download()` take the same image, and an extension takes
+part in each through `contributeCapture` (see Extensions).
 
 ### Indicator picker content
 
@@ -1639,12 +1670,15 @@ chrome is painted from it and renders nothing without it.
   the 55 arrangements and the five sync switches); the saved-layouts menu, shown with a layouts
   store, saves, copies, renames, opens and deletes layouts through `saveLoad.layouts` and marks
   unsaved changes, with an autosave switch and Download chart data.
-  Chart settings edits appearance, grid and session shading, the price-scale mode and the theme
-  mode, and its Reset defaults row runs `chart.appearance.reset`, which drops the viewer's own
-  appearance edits and returns the price scale to normal so the chart reads as the theme and your
-  constructor options paint it. `ui: { topBar: { settings: { theme: false } } }` removes its Theme
-  section and leaves the rest of the menu, for a host that offers the theme choice in its own
-  settings; the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, Copy image where the browser can, and
+  Chart settings opens the chart settings dialog: the Symbol, Status line, Scales and lines,
+  Canvas and Events pages of the active chart's settings, and any page an extension adds. Every
+  change previews on the chart; Cancel, the close and Escape put back the viewer's settings, the
+  price-scale mode and the timezone as they were, and Ok keeps them. Its Template menu applies the
+  defaults (`chart.settings.reset`), saves the viewer's settings under a name in
+  `saveLoad.templates('chart')`, and lists the saved ones. `chart.settings.open` opens the same
+  dialog, on the page `{ page }` names, whether or not the bar shows the gear. The theme mode is not
+  among its pages: `ui: { topBar: { settings: { theme: false } } }` stays accepted and changes
+  nothing, and the widget's theme API and theme commands are untouched. Fullscreen and the image menu (Download image, Copy image where the browser can, and
   Download chart data when there is no layouts store) close the bar.
 - **The bottom bar.** The range presets the chart offers, the clock in the display zone with the
   list of the timezones it offers (UTC and the exchange choice first), and the session view for a
@@ -1662,8 +1696,8 @@ chrome is painted from it and renders nothing without it.
   image that could not be copied, or a save the store refused.
 
 Undo and redo step through the chart's own content: the symbol, the timeframe, the style, the price
-scale and whether it frames itself, the appearance a viewer authored, the comparisons, the
-indicators and the drawings. A step is one reading of that content, so a step back puts the whole
+scale and whether it frames itself, the chart settings a viewer authored, the comparisons, the
+indicators, the order of the panes and the drawings. A step is one reading of that content, so a step back puts the whole
 reading back rather than reversing a single verb, and the two controls name the change they would
 move. Each chart keeps its own last 100 steps for as long as it is mounted. `chart.history.undo`
 and `chart.history.redo` are the verbs, `chart.history` on the handle reads the two stacks, the
@@ -1802,7 +1836,9 @@ as a `TypeError` when the widget is created.
 An id names what a glyph means, not one control. `settings` is the top bar's settings button, a
 indicator's gear in the legend and the drawing settings bar's gear, so one drawing stands in all
 three. Drawing tools take `tool.<type>`, chart styles `style.<style>` and layout arrangements
-`layout.<code>`, from the registries the rest of the API uses.
+`layout.<code>`, from the registries the rest of the API uses. The glyphs a time-scale mark wears in
+its ring take `mark.<shape>`, named for their shapes, since what a mark means is yours (see Neutral
+marks).
 
 ```ts
 import { CHART_ICON_IDS, createChart, createUdfDatafeed, type ChartIconFactory, type ChartIcons } from '@trdrs/quickcharts'
@@ -1864,7 +1900,8 @@ something other than an `<svg>` element, or answers an element already in the do
 before costs that one glyph its artwork. The control draws the chart's own glyph, and
 `widget.chrome.iconDiagnostics()` records the icon's first failure.
 
-`icons` covers the chart's own controls. The emoji, sticker and icon glyphs a drawing places come
+`icons` covers the chart's own controls and the glyphs of the time-scale marks, whose ring the chart
+draws around your drawing in the mark's color. The emoji, sticker and icon glyphs a drawing places come
 through the asset port, and a chart extension draws its rows and layers from the
 `ChartExtensionIcon` descriptors it contributes. The product's mark in the plot's corner is the
 chart's own artwork, outside `icons`. `mountContextMenu`, `openSymbolSearch`, `mountSymbolSearch`,
@@ -1874,13 +1911,43 @@ you mount without a widget.
 ### Neutral marks
 
 Serve `marks` and `timescaleMarks` from your datafeed and the chart draws them. A mark is a note
-about a moment: its color is a semantic theme role rather than a literal, its words are yours, and
-the chart draws it as given.
+about a moment: its words are yours, and the chart draws it as given. Its color stays readable in
+both modes: a semantic theme role (`neutral`, `up`, `down`, `info`, `warning`, `positive` or
+`negative`) that the mode resolves, or a `MarkColorPair`, `{ light, dark }`, one CSS color for each
+mode, of which the chart wears the one for the mode in effect. A single color for both modes is not
+a mark color, since a color chosen for one background can vanish on the other, and a pair with a
+side the chart cannot paint draws in the `neutral` role.
+
+A bar mark (`BarMark`) sits on its bar, above or below it, with a letter or two. A time-scale mark
+(`TimescaleMark`) stands at the foot of the pane:
+
+- **Its look.** Without `icon` it is a small dot. With one it is a 21px ring in its color, its foot
+  just above the time scale and the chart's background inside, around a glyph of the icon catalog:
+  `mark.bolt`, `mark.flag`, `mark.star`, `mark.clock` or `mark.exclamation`. Your `icons` drawing for
+  one of those ids stands in the ring in place of the chart's own.
+- **Its line.** `line: { style, color, width }` draws a line through the whole pane at its time,
+  always and under the bars: `solid`, `dashed` (5px drawn, 6px clear) or `dotted` (1px drawn, 4px
+  clear). `color` takes a theme role or a light and dark pair, as a mark's does, and a line without
+  one wears its mark's color; `width` is 1 to 4 CSS pixels, and 1 without it.
+- **Hovering it.** The pointer over a mark, or a finger or a pen pressing it, runs a dashed line in
+  its color from the top of the pane down to it and tints its ring. A mark with a `label` shows it
+  in a tooltip above the mark, and a mark without one shows the line alone. A press anywhere else
+  lets go of a pressed mark.
+- **Its time.** A mark stands on the bar whose bucket holds its time, on the next bar when the time
+  falls between bars (a session gap, a weekend), and after the last bar at the slot the time falls
+  in, counting the timeframe's bar interval on from the last bar. Bar replay draws none after the
+  last bar it shows, and a mark outside the view draws nothing.
+
+The chart asks `marks` for the loaded bars' window (epoch seconds, inclusive of both ends) and
+`timescaleMarks` for the same window run on past the last bar while the view shows the empty space
+after it: to the end of the view, and as many bar intervals again as the view spans. It asks again
+on each page of history, and once the view comes to rest past what it asked for. A mark at a time
+to come therefore stands in that space as soon as the view reaches it.
 
 ```ts
-import { type BarMark, type ChartDatafeed } from '@trdrs/quickcharts'
+import { type BarMark, type ChartDatafeed, type TimescaleMark } from '@trdrs/quickcharts'
 
-const withMarks: Pick<ChartDatafeed, 'marks'> = {
+const withMarks: Pick<ChartDatafeed, 'marks' | 'timescaleMarks'> = {
   async marks(symbol, from, to): Promise<readonly BarMark[]> {
     const rows = await myBackend.events(symbol, from, to)
     return rows.map((row: { id: string; at: number; headline: string }) => ({
@@ -1891,11 +1958,25 @@ const withMarks: Pick<ChartDatafeed, 'marks'> = {
       label: row.headline,
     }))
   },
+  async timescaleMarks(symbol, from, to): Promise<readonly TimescaleMark[]> {
+    const rows = await myBackend.moments(symbol, from, to)
+    return rows.map((row: { id: string; at: number; headline: string }) => ({
+      id: row.id,
+      time: row.at,
+      color: { light: '#7b1fa2', dark: '#ab47bc' },
+      icon: 'mark.bolt',
+      label: row.headline,
+    }))
+  },
 }
 void withMarks
 ```
 
-`marks: false` draws none, even from a feed that serves them.
+When a setting of your own changes what your feed serves, `chart.refreshMarks()` asks for both
+families again at once and draws the answer, so the change shows while your control is still open.
+The `chart.marks.refresh` command does the same from a menu, a shortcut or an automation adapter,
+and an extension calls `ctx.refreshMarks()`. `marks: false` draws none, even from a feed that serves
+them, and asks for none.
 
 ### The rest of the widget
 
@@ -1904,8 +1985,10 @@ void withMarks
 - **The price scale** (shown by default; `ui: { priceScale: false }` hides it). Without it the bars
   span the chart's whole width, and the last price draws no line across the plot and no label, since
   nothing on screen points at one.
-- **Session bands** (on by default; `features.sessions: false` opts out). Every stretch outside
-  regular hours shades under the bars, driven by the session model built from the symbol's own
+- **Session bands** (`features.sessions: false` opts out). While the chart's trading hours show
+  the stretches outside regular hours (`symbol.session` of `extended` or `allHours`), each shades
+  under the bars in the color the settings give it, and the `events.sessionBreaks` setting draws a
+  line at each trading day's start, driven by the session model built from the symbol's own
   `session`, `sessionHolidays`, `corrections` and `subsessions` in `resolve()`'s answer (see
   Timezones and sessions). A continuous market never bands; intraday only; an UNRESOLVED symbol
   never bands, which is the honest default rather than a coerced one, and it is enforced: the
@@ -1913,7 +1996,10 @@ void withMarks
   outside a `resolve()`, or supplies its own, calls the primitive's `refresh()` when it does; the
   chart does not invalidate the pane on a getter's value changing.
 - **A legend** (on by default; `ui: { legend: false }` removes it). The header shows the resolved
-  display name, venue, timeframe, OHLC and change against the previous painted close. Prices use
+  name (the feed's description, its symbol, or both, as `statusLine.titleSource` says), venue,
+  timeframe, OHLC, change against the previous painted close and, when `statusLine.volume` asks,
+  the bar's volume; the `statusLine` settings show or hide each part over a backdrop of the
+  chart's background. Prices use
   the symbol's formatter. Hover selects a bar; leaving restores the latest painted reading. Replay
   does not expose bars beyond its cursor. Missing metadata leaves the supplied symbol unchanged.
   Legend and search rows wear your `symbolMark`, or a decorative monogram without one.
@@ -2203,30 +2289,111 @@ If a value you supply is not valid for the role it is written for, the chart kee
 value and reports it. Read `theme.diagnostics()` for the role, the code and a sentence naming the
 problem. Configuration errors never reach a render.
 
-### Theme and appearance are two ladders
+### Theme and chart settings are two ladders
 
-The theme palette is the broad brand surface. Chart appearance is the specific one: series colors,
-candle anatomy, grid visibility and indicator visuals in `ChartOverrides.appearance`. Where both
-could affect the same pixel, appearance wins.
+The theme palette is the broad brand surface. The chart settings are the specific one: one typed
+tree, `ChartSettings`, of every property a viewer tunes on a chart, from the candle anatomy and the
+line styles to the status line, the price labels, the time scale and the canvas. Where both could
+affect the same pixel, the settings win.
 
 Theme palette precedence, lowest first:
 
 1. the built-in palette for the selected mode;
 2. your custom palette for that mode.
 
-Chart appearance precedence, lowest first:
+Chart settings precedence, lowest first:
 
-1. the built-in appearance for the selected mode;
-2. the constructor's `appearance` partial;
-3. restored viewer appearance;
-4. runtime `chart.applyAppearance` patches.
+1. the theme's factory values for the mode in effect, `chartSettingsDefaults(theme)`;
+2. the constructor's `settings` partial;
+3. the viewer's own leaves: a restored chart, the settings dialog, and `chart.applySettings`.
 
-Resetting custom palettes returns the chart to the built-in mode and leaves saved chart appearance
+Resetting custom palettes returns the chart to the built-in mode and leaves saved chart settings
 alone.
 
-A saved chart carries the appearance leaves a viewer chose and no others, so a chart nobody restyled
-follows whatever theme the host gives it on the next load, and one whose owner picked candle colors
-opens in those colors on any theme.
+A saved chart carries the settings a viewer chose and no others, so a chart nobody restyled follows
+whatever theme the host gives it on the next load, and one whose owner picked candle colors opens in
+those colors on any theme.
+
+## Chart settings
+
+`chart.settings()` answers the effective tree; `chart.applySettings(partial)` layers a partial over
+the viewer's own leaves, ignoring a leaf the tree does not have or a value its leaf cannot hold; and
+`chart.resetSettings()` drops the viewer's leaves and returns the price scale to normal. The
+commands are `chart.settings.apply` with `{ settings }` and `chart.settings.reset`. A change is a
+content change: it marks the chart for saving and is a step of its history.
+
+```ts
+import type { ChartWidget } from '@trdrs/quickcharts'
+declare const widget: ChartWidget
+
+const chart = widget.activeChart()
+chart.applySettings({ candles: { upColor: '#26a69a' }, canvas: { marginRight: 20 } })
+chart.settings().candles.upColor // '#26a69a'
+widget.commands.execute('chart.settings.apply', { settings: { statusLine: { volume: true } } })
+chart.resetSettings()
+```
+
+The factory values change with the mode in six canvas colors only: the background, both grids,
+the watermark, and the scale text and lines, each read from its theme role. Every other color is
+the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands behind them:
+
+- `candles`, `hollowCandles` and `bars`: the body, borders and wick, each on its own switch and in
+  its own pair; coloring by the previous bar's close, written as each bar's own colors; thin bars
+  and the open tick (`hlcBars`).
+- `line`, `stepLine`, `area` and `baseline`: the price source each bar is drawn from (its open,
+  high or low, its close, or one of their averages), the line's color, style and width, the fills,
+  and the baseline's level as a percentage of the pane. A line or step line in a gradient (the factory
+  look) is stroked from its top color at the highest price on screen to its bottom color at the
+  lowest, and a baseline whose halves differ in width strokes each at its own.
+- `symbol`: the trading hours (`session`: `regular`, `extended` or `allHours`), which are the
+  chart's subsession, with the shading of the pre-market, post-market and overnight stretches; and
+  the precision every price is written at, through the chart's one formatter.
+- `statusLine`: the legend's mark, its title and whether the title is the name, the symbol or both,
+  the bar's values, its change and its volume, the latest price's change since the previous
+  session's close (`lastDayChange`) in its direction's color, the indicator rows' titles, inputs
+  and values, and a backdrop of the chart's background at an opacity.
+- `priceLabels`: the countdown, labels kept apart, the symbol's last value, its dotted line (its
+  color, null to follow the last bar, and width) and its name, and each indicator's value and name.
+  The previous session's close (on an intraday chart), the high and low of the bars in view, and
+  the bid and ask from the feed's prices each take a value box on the scale in their color, a tag
+  beside it ("High", "Low", "Bid", "Ask"), and a dotted line across the plot, each part on its own
+  switch. The high and low wear grey lines and navy labels while their color is null. On an
+  intraday chart of regular hours, a newest bar in a pre-market, post-market or overnight stretch
+  is left off the chart and its close is marked instead, in that stretch's label color. The plus
+  button (`plusButton`) is joined to the crosshair's price label while the crosshair is on the
+  main pane's plot: the renderer paints it with the label, a box as tall as the label one pixel of
+  the chart short of the scale's edge, in the label's fill with a ringed plus in the label's ink. Its
+  press opens the price menu under it, which holds the actions on that price alone: every `level`
+  row an extension contributes, each extension's rows together in the order the extensions
+  attach, and then "Draw horizontal line at" the price, which runs
+  `chart.drawings.placeHorizontalLine` and prints that command's shortcut ("Alt + H" unless you
+  remap it). A chart without its context menu shows no plus.
+- `priceScale`: where the scales stand (`placement`): `left` stands the main series' scale on
+  the left, with its mode, its framing and every series of the main pane that shares it, and a
+  comparison on a scale of its own on the right; `right` and `auto` keep it on the right, with
+  such a comparison on the left. The auto-scale and logarithmic buttons (`scaleModeButtons`) stand
+  at the foot of the main scale while the pointer is over it, always, or never: "A" switches the
+  scale between framing itself and holding where it was dragged, and "L" between a regular and a
+  logarithmic scale, each the chart's own verb. The currency and unit box (`currencyAndUnit`)
+  names what the symbol's prices are in (its `currencyCode` and `unitId`) at the top of the main
+  scale on the same terms, and shows nothing for a symbol that states neither. The price-to-bar
+  ratio lock (`lockPriceToBarRatio`) holds the price one bar's width spans: engaging it with no
+  `priceToBarRatio` of its own takes the ratio on screen into that leaf, the scale stops framing
+  itself, and every zoom of the time scale rescales the price axis by the same factor about its
+  middle. A scale that is not regular holds no ratio.
+- `timeScale`: the crosshair label's date format (`CHART_DATE_FORMATS`), the weekday before it, and
+  a clock of 24 hours or of 12, which the axis times follow too. With `keepLeftEdge`, a timeframe
+  change stands the new bars from the moment the view's left edge stood at, showing as many bar
+  slots, asking the feed once for older bars when that moment lies before the first page, in place
+  of fitting the loaded history.
+- `canvas`: the background, solid or a vertical gradient; each grid's switch, color and stroke; the
+  crosshair's color, stroke and width; the watermark's parts and ink; the scales' text and lines;
+  when the navigation buttons show; when each pane's own buttons show (`paneButtons`): at a pane's
+  top right, move it up or down past its neighbour, delete it, collapse or open it, and maximize or
+  restore it, through the same pane operations and move verbs the legend's rows run, the main pane
+  moving too and otherwise carrying maximize alone while another pane stands; and the margins, the
+  right one in bars. The order the panes stand in is saved with the chart.
+- `events`: a line at each trading day's start, in its own stroke.
 
 ## Compare
 
@@ -2351,8 +2518,9 @@ if (model) {
 parseSessionModel({ timezone: 'Etc/UTC', session: 'later' }) // null: the chart claims no session it cannot read
 ```
 
-Which named session a chart displays is its subsession, a per-chart preference
-with `regular` as the default. On a symbol with extended hours, `regular` filters intraday bars to
+Which named session a chart displays is its subsession, the chart's `symbol.session` setting, with
+`regular` as the factory value: `chart.subsession()` reads it and `chart.setSubsession()` writes it
+as the viewer's own. On a symbol with extended hours, `regular` filters intraday bars to
 regular hours and `extended` shows every bar; a symbol with one continuous session has nothing to
 filter.
 
@@ -2881,8 +3049,13 @@ out instead (see Refused controls), and a command the policy refuses answers `de
 toolbar as from anywhere else, including `chart.drawings.arm` for a refused tool. A tool your
 `drawingTools` list leaves out is not on the toolbar at all (see Offered drawing tools). An image is
 placed through `chart.drawings.placeImage`, from the picker or a system-clipboard paste over the
-chart. Every flyout, palette and dialog a surface opens sits inside the chart root and closes with
-it, and the eye and lock all announce their state through a live region. Lock all also makes Paste
+chart, and a horizontal line at a price through `chart.drawings.placeHorizontalLine` with that
+price, which asks what arming the horizontal line asks and places nothing while lock all holds.
+Run with no price, as its shortcut `Alt+KeyH` runs it, the command places the line at the
+crosshair's price while the crosshair stands on the main pane's plot, on the symbol's own price
+grid, and is unavailable anywhere else, so the key is left to your page there.
+Every flyout, palette and dialog a surface opens sits inside the chart root and closes with it, and
+the eye and lock all announce their state through a live region. Lock all also makes Paste
 unavailable, so a control never reports success for a drawing the layer refused.
 
 Arm the transient tools by name: `measure` draws a readout the next gesture clears, `zoom` sets
@@ -3203,10 +3376,11 @@ What to know:
   table saved at `v: 2` paint as they were saved (`savedLook`) until their settings change. A host
   that writes drawings itself writes `v: 3`.
 - **Keys run through the registry.** Delete and Backspace remove the selection, Escape cancels a
-  placement, disarms, or closes the inline editor, and Ctrl (or Cmd) with C and V copy and paste a
-  drawing. Each resolves to a `chart.drawings.*` command, so your access policy gates the keyboard
-  as it gates the toolbar; the keys bind to the chart element and never the page, so an embedded
-  chart cannot swallow the host page's keys.
+  placement, disarms, or closes the inline editor, Ctrl (or Cmd) with C and V copy and paste a
+  drawing, and Alt with H places a horizontal line at the crosshair's price while the crosshair
+  stands on the main pane's plot. Each resolves to a `chart.drawings.*` command, so your access
+  policy gates the keyboard as it gates the toolbar; the keys bind to the chart element and never
+  the page, so an embedded chart cannot swallow the host page's keys.
 - **Gestures follow the standard grammar.** Drag a drawing to move it (rigid whole-bar translation,
   so anchors never drift apart); grab an anchor handle to reshape; hold Shift to constrain a
   two-point placement or an anchor drag to 45 degree rays; Ctrl-drag duplicates; the magnet pulls
@@ -3300,6 +3474,49 @@ What to know:
   its subject, and `apply(hidden)` is called with the current state at contribution and on every
   change. The handle reads `hidden()`, flips `setHidden()` through the same eye the drawing toolbar
   drives, and `remove()` withdraws the layer.
+- **Your settings join the chart settings dialog.** `ctx.contributeSettings(contribution)` adds a
+  page of your own, placed after the page `place.page.after` names (or last), or rows inside one of
+  the chart's pages, placed before the first of the rows `place.before` names (or at its end).
+  `after` names one of the chart's pages or another contributed page, and a list names several, of
+  which the first the dialog holds wins: `after: ['trading', 'canvas']` follows a contributed
+  `trading` page where there is one and the Canvas page otherwise. The order is read once every
+  contribution is known, so a page follows the contributed page it names whichever attached first.
+  Pages that name the same page stand after it in the order their extensions attach, each followed
+  by the pages that name it: the order of `extensions` (an extension attached again on a symbol
+  switch keeps its place), and one extension's pages in the order it contributes them. A page that
+  names no page the dialog holds stands last in the same order. The chart's rows are named by the
+  leaf they edit, such as `background` on the Status line page, and the sections it shows only in
+  some contexts by their own names, such as `indicators`.
+  `build(form)` builds your rows with the form the chart builds its own with: headings, checkbox
+  rows with a hint or a tip, sub-rows, and colors, lists, numbers and sliders, so your rows are the
+  chart's in every measure. The dialog calls `open()` as it opens, `cancel(state)` with what `open`
+  answered when the viewer cancels, `commit()` on Ok and `applyDefaults()` from the Template menu.
+  The returned function withdraws the contribution, and detach withdraws it either way.
+- **A row of your own can stand in the legend.** `ctx.contributeLegendRow({ element, rank })`
+  places your element in the pane's legend, under the symbol's reading and above the indicator
+  rows, rows of a lower `rank` first and then as they were contributed. The row wears
+  the status line's backdrop like the legend's own parts and takes the pointer, so a press on its
+  controls reaches them rather than the chart, and collapsing the indicator rows leaves it standing.
+  What it holds and whether it shows are yours: fill or hide the element as you like. The returned
+  function takes it out, detach takes it out either way, and the element is given back unchanged.
+- **A setting of yours can redraw the marks at once.** `ctx.refreshMarks()` asks the datafeed for
+  the chart's bar marks and time-scale marks again and draws the answer, so a row you contribute to
+  the settings dialog previews its change while the dialog is open. A detached context asks nothing.
+- **What you draw can take part in the chart's image.** `ctx.contributeCapture({ before, paint })`
+  is called around every image the chart produces of itself, by `widget.image.capture()`, `copy()`
+  and `download()` alike. `before()` runs synchronously before the renderer draws the image and may
+  answer a restore, which runs once the image is taken: hold out what you draw, and put it back.
+  The renderer draws every pending change before it takes the image, so a price line you updated
+  or a primitive you asked to redraw shows as it now stands. `paint(target, frame)` runs on the bitmap's
+  2D context once it is drawn, to paint what the chart's canvases do not carry, such as labels on
+  an overlay of your own. The origin is the chart element's top left, which is the top left of
+  `ctx.container`; `frame.width` and `frame.height` are the element's size in CSS pixels, and
+  `frame.pixelRatio` is the image's pixels per CSS pixel. The context arrives untransformed, and
+  the chart puts back its state after each paint. Contributions run in the order their extensions
+  attach and then as they were contributed, restores run the last answered first, and a throw in a
+  `before`, a `paint` or a restore
+  is contained: the image is still produced and every restore still runs. The returned function
+  withdraws the contribution, and detach withdraws it either way.
 - **A printed chord is a real binding.** `ChartExtensionMenuItem.shortcut` prints on the row and
   answers to the key. The chart's dispatcher offers a press no built-in verb claims to the rows your
   `contributeContextMenu` callback returns for the level under the pointer and runs that row's own
@@ -3329,8 +3546,8 @@ What to know:
   re-attaches it on every switch, so a market-scoped overlay cannot carry one market's drawing onto
   another's bars.
 - **A failing extension is its own problem.** A throw in `attach` drops that extension and the
-  chart still mounts; a throw in a subscriber, a menu builder, a command or a teardown is
-  contained.
+  chart still mounts; a throw in a subscriber, a menu builder, a command, a capture or a teardown
+  is contained.
 - **Layouts attach per chart.** A widget hands its shared options to every chart it tiles, so each
   chart gets its own attachment, its own context and its own state slot.
 

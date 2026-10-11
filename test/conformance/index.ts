@@ -587,7 +587,7 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
         equal(typeof widget[member], 'function', `widget.${member}`)
       }
       for (const member of ['layout', 'theme', 'commands', 'recents', 'image', 'fullscreen', 'chrome'] as const) assert(widget[member], `widget.${member}`)
-      for (const member of ['symbol', 'setSymbol', 'symbolInfo', 'timeframe', 'setTimeframe', 'style', 'setStyle', 'visibleRange', 'rangePreset', 'setVisibleRange', 'logicalRange', 'setLogicalRange', 'scroll', 'zoom', 'reset', 'goLive', 'scaleMode', 'setScaleMode', 'timezone', 'setTimezone', 'displayTimezone', 'marketStatus', 'subsession', 'setSubsession', 'hasExtendedHours', 'drawingPreferences', 'setDrawingPreferences', 'appearance', 'applyAppearance', 'formatter', 'on'] as const) {
+      for (const member of ['symbol', 'setSymbol', 'symbolInfo', 'timeframe', 'setTimeframe', 'style', 'setStyle', 'visibleRange', 'rangePreset', 'setVisibleRange', 'logicalRange', 'setLogicalRange', 'scroll', 'zoom', 'reset', 'goLive', 'scaleMode', 'setScaleMode', 'timezone', 'setTimezone', 'displayTimezone', 'marketStatus', 'subsession', 'setSubsession', 'hasExtendedHours', 'drawingPreferences', 'setDrawingPreferences', 'settings', 'applySettings', 'resetSettings', 'formatter', 'refreshMarks', 'on'] as const) {
         equal(typeof chart[member], 'function', `chart.${member}`)
       }
       for (const member of ['indicators', 'compare', 'replay', 'history', 'saveLoad', 'sync'] as const) assert(chart[member], `chart.${member}`)
@@ -1671,9 +1671,10 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
       await ctx.settle()
       equal(gamma.chart.hasExtendedHours(), true, 'subsessions give the choice')
       equal(gamma.chart.marketStatus(Date.UTC(2023, 10, 15, 12, 0, 0) / 1000)?.state, 'pre', 'pre-market before the open')
-      equal(gamma.chart.subsession(), 'extended', 'every bar shows by default')
-      equal(gamma.widget.commands.execute('chart.subsession.regular').kind, 'ok', 'the regular choice runs')
-      equal(gamma.chart.subsession(), 'regular', 'and lands')
+      equal(gamma.chart.subsession(), 'regular', 'regular hours show by default')
+      equal(gamma.widget.commands.execute('chart.subsession.extended').kind, 'ok', 'the extended choice runs')
+      equal(gamma.chart.subsession(), 'extended', 'and lands')
+      equal(gamma.chart.settings().symbol.session, 'extended', 'as the trading-hours setting')
     },
   },
   {

@@ -48,6 +48,8 @@ export interface ChromeDoors {
   nameLayout(): boolean
   /** Raise the saved-layout menu's Open-layout dialog. False when no surface took it. */
   openLayouts(): boolean
+  /** Open the chart settings dialog on a page, or on its first. False when no surface took it. */
+  openSettings(page?: string): boolean
   /** Publish one chart's replay transition to the single widget-owned presentation row. The row
    *  reads the chart's own phase, so a transition carries the chart rather than a state copy. */
   replayChanged(target: ReplayTransportTarget): void
@@ -64,6 +66,7 @@ export function emptyDoors(): ChromeDoors {
     notify: () => undefined,
     nameLayout: () => false,
     openLayouts: () => false,
+    openSettings: () => false,
     replayChanged: () => undefined,
     layoutChanged: () => undefined,
   }

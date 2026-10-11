@@ -75,7 +75,7 @@ const kindParameter: Json = {
   in: 'path',
   required: true,
   schema: { type: 'string', enum: [...REST_TEMPLATE_KINDS] },
-  description: 'Which template collection: appearance palettes, indicator settings, or drawings.',
+  description: 'Which template collection: palettes, indicator settings, drawings, or chart settings.',
 }
 
 const drawingsQueryParameters: Json[] = [

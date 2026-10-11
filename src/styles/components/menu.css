@@ -139,6 +139,16 @@
   background: transparent;
 }
 
+/* A dialog the chart stays live behind lets the pointer through its backdrop: only the box and what
+ * it raises over the backdrop (its lists, popovers and tips) take the pointer. */
+[data-qc-theme] .qc-dialog-scrim[data-qc-pass='true'] {
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-dialog-scrim[data-qc-pass='true'] > * {
+  pointer-events: auto;
+}
+
 [data-qc-theme] .qc-dialog {
   display: flex;
   flex-direction: column;

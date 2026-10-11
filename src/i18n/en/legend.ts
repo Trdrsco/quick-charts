@@ -10,12 +10,17 @@ export const legend = {
   /** The move against the previous bar's close: the change on the symbol's own price grid, then
    *  its percentage. Both arrive already written, sign included. */
   'legend.change': '{change} ({percent}%)',
+  /** The mark before the bar's volume. */
+  'legend.volume': 'Vol',
   'legend.indicatorSettings': 'Indicator settings',
   'legend.showRows': 'Show indicator rows',
   'legend.hideRows': 'Hide indicator rows',
   'legend.restorePane': 'Restore pane',
   'legend.collapsePane': 'Collapse pane',
   'legend.maximizePane': 'Maximize pane',
+  /** A pane trading places with the one above it, or below it. */
+  'legend.movePaneUp': 'Move pane up',
+  'legend.movePaneDown': 'Move pane down',
   'legend.showIndicator': 'Show indicator',
   'legend.hideIndicator': 'Hide indicator',
   /** The scale-mode labels, in SCALE_MODE_OPTIONS order. The percentage and indexed labels are

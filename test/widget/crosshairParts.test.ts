@@ -88,15 +88,16 @@ describe('a mounted chart', () => {
   it('creates the renderer with both lines labelled and dashed by default', async () => {
     const crosshair = createdCrosshair((await mount()).renderer)
     expect(crosshair.mode).toBe(CrosshairMode.Normal)
-    expect(crosshair.vertLine).toEqual({ labelVisible: true })
-    expect(crosshair.horzLine).toEqual({ visible: true, labelVisible: true })
+    // The settings' crosshair: the factory's grey, one pixel, dashed.
+    expect(crosshair.vertLine).toMatchObject({ labelVisible: true, color: '#9c9c9c', width: 1, style: LineStyle.LargeDashed })
+    expect(crosshair.horzLine).toMatchObject({ visible: true, labelVisible: true, color: '#9c9c9c', width: 1, style: LineStyle.LargeDashed })
   })
 
   it('draws one vertical line, unlabelled and solid, when the host names those parts', async () => {
     const crosshair = createdCrosshair((await mount({ ui: { crosshair: { horizontal: false, labels: false, solid: true } } })).renderer)
     expect(crosshair.mode).toBe(CrosshairMode.Normal)
-    expect(crosshair.vertLine).toEqual({ labelVisible: false, style: LineStyle.Solid })
-    expect(crosshair.horzLine).toEqual({ visible: false, labelVisible: false, style: LineStyle.Solid })
+    expect(crosshair.vertLine).toMatchObject({ labelVisible: false, style: LineStyle.Solid })
+    expect(crosshair.horzLine).toMatchObject({ visible: false, labelVisible: false, style: LineStyle.Solid })
   })
 
   it('draws no crosshair when the host hides it', async () => {

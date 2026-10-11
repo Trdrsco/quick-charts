@@ -74,3 +74,25 @@ describe('planPaneOp — guards', () => {
     expect(isCollapsed(undefined)).toBe(false)
   })
 })
+
+describe('planPaneOp: a main pane a viewer moved', () => {
+  // The main pane stands second: an indicator's pane above it and another below.
+  const moved = (): PaneState => ({ heights: { 0: 100, 1: 300, 2: 80 }, remembered: {}, main: 1 })
+
+  it('gives a collapsed pane space to the main pane wherever it stands, and takes it back on restore', () => {
+    const state = moved()
+    const plan = planPaneOp(state, { kind: 'collapse', pane: 0 })
+    expect(plan.apply).toEqual({ 0: COLLAPSED_H, 1: 300 + 100 - COLLAPSED_H })
+    const after: PaneState = { heights: applied(state, plan.apply), remembered: plan.remembered, main: 1 }
+    expect(planPaneOp(after, { kind: 'restore', pane: 0 }).apply).toEqual({ 0: 100, 1: 300 })
+  })
+
+  it('keeps the main pane at its floor under a maximize, and gives the main pane no operations', () => {
+    const state = moved()
+    const after = applied(state, planPaneOp(state, { kind: 'maximize', pane: 2 }).apply)
+    expect([after[0], after[1]]).toEqual([COLLAPSED_H, MAIN_MIN_H])
+    expect(sum(after)).toBe(480)
+    expect(planPaneOp(state, { kind: 'collapse', pane: 1 }).apply).toEqual({})
+    expect(planPaneOp(state, { kind: 'collapse', pane: 0 }).apply[1]).toBeGreaterThan(300)
+  })
+})

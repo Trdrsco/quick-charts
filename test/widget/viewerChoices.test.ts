@@ -57,7 +57,7 @@ describe('the viewer choosing whether to autosave', () => {
     await vi.advanceTimersByTimeAsync(2000)
     expect(storage.get('quickcharts.layoutAutosave.v1')).toBe('false')
     expect(needed).not.toHaveBeenCalled()
-    widget.activeChart().applyAppearance({ appearance: { upColor: '#ffffff' } })
+    widget.activeChart().applySettings({ candles: { upColor: '#ffffff' } })
     await vi.advanceTimersByTimeAsync(2000)
     expect(needed).toHaveBeenCalledTimes(1)
   })

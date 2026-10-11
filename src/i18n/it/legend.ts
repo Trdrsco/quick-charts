@@ -2,17 +2,20 @@ import type { Translation } from '../runtime'
 import type { legend as source } from '../en/legend'
 
 export const legend: Translation<typeof source> = {
-  'legend.open': 'O',
-  'legend.high': 'H',
-  'legend.low': 'L',
+  'legend.open': 'A',
+  'legend.high': 'Max',
+  'legend.low': 'Min',
   'legend.close': 'C',
   'legend.change': '{change} ({percent}%)',
+  'legend.volume': 'Vol',
   'legend.indicatorSettings': 'Impostazioni dell\'indicatore',
   'legend.showRows': 'Mostra le righe degli indicatori',
   'legend.hideRows': 'Nascondi le righe degli indicatori',
   'legend.restorePane': 'Ripristina il riquadro',
   'legend.collapsePane': 'Comprimi il riquadro',
   'legend.maximizePane': 'Ingrandisci il riquadro',
+  'legend.movePaneUp': 'Sposta il riquadro in alto',
+  'legend.movePaneDown': 'Sposta il riquadro in basso',
   'legend.showIndicator': 'Mostra l\'indicatore',
   'legend.hideIndicator': 'Nascondi l\'indicatore',
   'legend.scaleNormal': 'Norm',
@@ -21,5 +24,5 @@ export const legend: Translation<typeof source> = {
   'legend.scaleIndexed': '100',
   'legend.changeSymbol': 'Cambia simbolo',
   'legend.removeCompare': 'Rimuovi confronto',
-  'legend.removeIndicator': 'Remove indicator',
+  'legend.removeIndicator': 'Rimuovi indicatore',
 }

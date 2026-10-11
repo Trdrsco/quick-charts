@@ -26,7 +26,8 @@ import { mountLayoutDialogs } from '../../src/ui/chrome/layoutDialogs'
 import { createToolbarButton } from '../../src/ui/chrome/hostControls'
 import { createIconDiagnostics } from '../../src/ui/icons/draw'
 import type { LayoutBody, LayoutMeta, ResourceRef, ResourceStore } from '../../src/resources'
-import { DEFAULT_OVERRIDES, type ChartOverrides } from '../../src/overrides'
+import { chartSettingsDefaults, layerChartSettings, mergePartialChartSettings } from '../../src/settings/defaults'
+import type { ChartSettings, PartialChartSettings } from '../../src/settings/schema'
 import type { ChartHandle } from '../../src/widget/chart'
 import type { ChartWidget } from '../../src/widget/create'
 import type { AccessPolicy, Capabilities, FeatureConfig, IndicatorInstance, UiConfig } from '../../src/widget/options'
@@ -44,6 +45,7 @@ import type { OpenResource } from '../../src/openResource'
 import type { FeedBar } from '../../src/datafeed'
 import type { SymbolInfo } from '../../src/symbology'
 import type { ChromeContext } from '../../src/ui/chrome/context'
+import { createChartSettingsDialog } from '../../src/ui/settings/dialog'
 
 export interface FakeChartOptions {
   symbol?: string
@@ -77,7 +79,8 @@ export function fakeChart(options: FakeChartOptions = {}) {
     /** The picker is live: a click on the plot would name the bar replay starts from. */
     arming: false,
     replayTimeframe: 'auto',
-    appearance: { appearance: { ...DEFAULT_OVERRIDES.appearance } } as ChartOverrides,
+    settings: chartSettingsDefaults(DARK_THEME) as ChartSettings,
+    viewer: {} as PartialChartSettings,
     visible: { from: 0, to: 100 },
     rangePreset: null as string | null,
     /** Two depths and the word on top of each: enough for a control to read both states without a
@@ -301,13 +304,24 @@ export function fakeChart(options: FakeChartOptions = {}) {
         events.emit('history', historyState())
       },
     },
-    appearance: () => state.appearance,
-    applyAppearance(partial) {
-      state.appearance = { appearance: { ...state.appearance.appearance, ...(partial.appearance ?? {}) } }
-      calls.push(`appearance:${Object.keys(partial.appearance ?? {}).join(',')}`)
+    settings: () => state.settings,
+    applySettings(partial) {
+      state.viewer = mergePartialChartSettings(state.viewer, partial)
+      state.settings = layerChartSettings(chartSettingsDefaults(DARK_THEME), state.viewer)
+      calls.push(`settings:${Object.entries(partial).flatMap(([section, leaves]) => Object.keys(leaves ?? {}).map((leaf) => `${section}.${leaf}`)).join(',')}`)
+    },
+    resetSettings() {
+      state.viewer = {}
+      state.settings = chartSettingsDefaults(DARK_THEME)
+      handle.setScaleMode('normal')
+      calls.push('settings:reset')
     },
     formatter: () => createPriceFormatter({ pricescale: 100, minmov: 1 }),
-    saveLoad: {} as never,
+    refreshMarks() {
+      calls.push('marks:refresh')
+    },
+    // The content holds the viewer's settings, as the chart saves them.
+    saveLoad: { serialize: () => ({ content: JSON.stringify({ settings: state.viewer }) }) } as never,
     sync: {
       onCrosshair: () => () => undefined,
       setCrosshair: () => undefined,
@@ -389,6 +403,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     serverTime: false,
     marks: false,
     timescaleMarks: false,
+    prices: false,
     dataStatus: 'streaming',
     saveLoad: { charts: false, layouts: true, drawings: false, templates: false },
     imageCopy: true,
@@ -406,6 +421,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   let nameLayoutDoor: () => boolean = () => false
   /** The chrome's Open-layout door, filled the same way. */
   let openLayoutsDoor: () => boolean = () => false
+  let openSettingsDoor: (page?: string) => boolean = () => false
   const widget: ChartWidget = {
     ready: () => Promise.resolve(),
     activeChart: () => chart.handle,
@@ -499,10 +515,11 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     capabilities: () => caps,
     // The fake's Reset defaults: the viewer's layer drops back to the package defaults and the
     // scale returns to normal, which is what the real chart's reset leaves behind.
-    resetAppearance: () => {
-      chart.state.appearance = { appearance: { ...DEFAULT_OVERRIDES.appearance } }
+    resetSettings: () => {
+      chart.state.viewer = {}
+      chart.state.settings = chartSettingsDefaults(DARK_THEME)
       chart.handle.setScaleMode('normal')
-      chart.calls.push('appearance:reset')
+      chart.calls.push('settings:reset')
     },
     t: () => i18n.t,
     bars: () => chart.bars,
@@ -559,6 +576,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     canSaveLayout: () => true,
     nameLayout: () => nameLayoutDoor(),
     openLayouts: () => openLayoutsDoor(),
+    openSettings: (page) => openSettingsDoor(page),
     layoutChanges,
     removeLayout: async (ref) => {
       const outcome = await options.layoutStore?.remove(ref)
@@ -584,7 +602,10 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
   const layoutListing = createLayoutListStore(storage)
   const layoutCatalog = options.layoutStore ? createLayoutCatalog({ store: options.layoutStore, widget }) : null
   const layoutDialogs = mountLayoutDialogs({ ...ctx, catalog: layoutCatalog, listing: layoutListing, notify: () => undefined })
-  const topBarParts = { layoutDialogs, layoutCatalog, layoutListing, layoutChanges }
+  // The chrome's chart settings dialog, which the bar's gear and the open command both reach.
+  const settingsDialog = createChartSettingsDialog({ ...ctx, templates: null })
+  openSettingsDoor = (page) => settingsDialog.open(page)
+  const topBarParts = { layoutDialogs, layoutCatalog, layoutListing, layoutChanges, settingsDialog }
   return {
     widget,
     chart,

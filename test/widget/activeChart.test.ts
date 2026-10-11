@@ -14,7 +14,6 @@ import { memorySaveLoadAdapter } from '../../src/resources'
 import { createChartI18n } from '../../src/i18n'
 import type { ChartHandle } from '../../src/widget/chart'
 import { parseChartContent, serializeChartContent, type ChartContent } from '../../src/widget/saveLoad'
-import { DEFAULT_OVERRIDES } from '../../src/overrides'
 
 interface FakeEl {
   className: string
@@ -69,8 +68,9 @@ const BLANK_CONTENT = {
   scale: 'normal',
   priceAxis: 'auto',
   indicators: [],
-  appearance: DEFAULT_OVERRIDES.appearance,
+  settings: {},
   compares: null,
+  panes: ['main'],
   ext: {},
 } as const satisfies ChartContent
 

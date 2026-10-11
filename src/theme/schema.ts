@@ -61,6 +61,7 @@ export const THEME_ROLES = [
   // ── canvas: the chart plot area itself ──────────────────────────────────────────────────────
   { id: 'canvas.background', family: 'canvas', kind: 'color', description: 'The fill behind the plotted series.' },
   { id: 'canvas.paneBorder', family: 'canvas', kind: 'color', description: 'The divider between stacked panes and around the plot area.' },
+  { id: 'canvas.watermark', family: 'canvas', kind: 'color', description: 'The text a watermark writes large behind the bars.' },
 
   // ── series: direction, before any chart appearance override ─────────────────────────────────
   { id: 'series.up', family: 'series', kind: 'color', description: 'A rising value: up volume, a rising indicator tint, a positive series default.' },
@@ -122,6 +123,13 @@ export const THEME_ROLES = [
       { over: 'control.neutral', min: 4.5 },
     ],
   },
+  {
+    id: 'text.caption',
+    family: 'text',
+    kind: 'color',
+    description: "Ink of a dialog's section heading and of the hint line under a setting, which stand on the dialog's own surface and never under the pointer.",
+    contrast: [{ over: 'overlay.surface', min: 4.5 }],
+  },
   { id: 'text.disabled', family: 'text', kind: 'color', description: 'Ink of a control that cannot be used. WCAG exempts an inactive control from a contrast minimum.' },
   {
     id: 'text.inverse',
@@ -137,7 +145,7 @@ export const THEME_ROLES = [
   { id: 'text.highlight', family: 'text', kind: 'color', description: 'Ink of the part of a label that matches what the reader typed, such as a symbol search.', contrast: [{ over: 'overlay.surface', min: 4.5 }, { over: 'chrome.surface', min: 4.5 }] },
   { id: 'text.onCanvas', family: 'text', kind: 'color', description: 'Ink drawn directly over the plot area, such as the legend.', contrast: [{ over: 'canvas.background', min: 4.5 }] },
   { id: 'text.fontFamily', family: 'text', kind: 'font', description: 'The font stack chart chrome and canvas text share. Quick Charts never downloads a font.' },
-  { id: 'text.fontSizeAxis', family: 'text', kind: 'length', description: 'Size of scale and crosshair labels drawn into the canvas.' },
+  { id: 'text.fontSizeAxis', family: 'text', kind: 'length', description: "Size of the legend's reading of the bar. The price and time scales take their text size from the chart settings." },
   { id: 'text.fontSizeTitle', family: 'text', kind: 'length', description: 'Size of a dialog or panel title.' },
   { id: 'text.fontSizeBase', family: 'text', kind: 'length', description: 'Size of ordinary control and menu text.' },
   { id: 'text.fontSizeSmall', family: 'text', kind: 'length', description: 'Size of dense control text, such as a legend row.' },
@@ -163,6 +171,8 @@ export const THEME_ROLES = [
   { id: 'overlay.separator', family: 'overlay', kind: 'color', description: 'The rule between groups inside a menu or panel.' },
   { id: 'overlay.shadow', family: 'overlay', kind: 'shadow', description: 'The elevation shadow of a floating surface.' },
   { id: 'overlay.scrim', family: 'overlay', kind: 'color', description: 'The backdrop that dims the chart behind a modal dialog.' },
+  { id: 'overlay.tooltip', family: 'overlay', kind: 'color', description: 'The fill of a short tooltip line.' },
+  { id: 'overlay.tooltipInk', family: 'overlay', kind: 'color', description: 'The ink of a tooltip line.', contrast: [{ over: 'overlay.tooltip', min: 4.5 }] },
 
   // ── state: hover, pressed, selected, focus, and selection ───────────────────────────────────
   // The accent is a mark or a fill, never words: a selected tab's underline, an armed favorite's
@@ -284,6 +294,8 @@ export const THEME_ROLES = [
     ],
   },
   { id: 'control.fieldFill', family: 'control', kind: 'color', description: 'The fill of a field that is read-only or disabled.' },
+  { id: 'control.tipMark', family: 'control', kind: 'color', description: "The mark of a tip beside a setting's label, such as a question mark, at rest." },
+  { id: 'control.tipMarkHover', family: 'control', kind: 'color', description: 'The mark of a tip under the pointer.', contrast: [{ over: 'overlay.surface', min: 3 }] },
 
   // ── status: feedback, including market session status ───────────────────────────────────────
   { id: 'status.positive', family: 'status', kind: 'color', description: 'A positive value or a successful outcome in chart chrome.', contrast: [{ over: 'chrome.surface', min: 4.5 }] },

@@ -125,6 +125,7 @@ function mountChart(feed: ChartDatafeed, options: { features?: FeatureConfig; ui
       serverTime: false,
       marks: false,
       timescaleMarks: false,
+      prices: false,
       dataStatus: 'streaming',
       saveLoad: { charts: false, layouts: false, drawings: false, templates: false },
       imageCopy: false,
@@ -773,7 +774,7 @@ describe('a style switch', () => {
     let visible = renderer.series.find((item) => item.options.visible !== false && item.options.priceScaleId !== 'volume')
     expect(visible?.options.lastValueVisible).toBe(true)
     feed.open()[0]!.handlers.onStatus?.('live')
-    handle.applyAppearance({ appearance: { countdown: false } })
+    handle.applySettings({ priceLabels: { countdown: false } })
     visible = renderer.series.find((item) => item.options.visible !== false && item.options.priceScaleId !== 'volume')
     expect(visible?.options.lastValueVisible).toBe(true)
   })

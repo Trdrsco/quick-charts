@@ -12,12 +12,14 @@
 // and the legend can never name a bar the viewer cannot see. Prices come out of the chart's one
 // symbol formatter, so a level in the legend is the level on the axis.
 import type { IChartApi, MouseEventParams } from 'lightweight-charts'
-import { mountChartLegend, type ChartLegend, type LegendQuote } from '../chartLegend'
+import { mountChartLegend, type ChartLegend, type LegendIdentity, type LegendLook, type LegendQuote } from '../chartLegend'
 import type { FeedBar } from '../datafeed'
+import { volumeText } from '../internal/drawings/core/bars'
+import { colorWithAlpha } from '../settings/defaults'
+import type { ChartSettings } from '../settings/schema'
 import type { ChartI18n } from '../i18n'
 import { mountInputsEditor } from '../inputsEditor'
 import { manifestInputDefaults } from '../indicatorModel'
-import { COLLAPSED_H, planPaneOp } from '../panePlan'
 import type { PriceFormatter } from '../priceFormatter'
 import { marketStatusTitle, type MarketStatus, type SessionModel, type SessionState } from '../sessionModel'
 import type { SymbolInfo } from '../symbology'
@@ -27,6 +29,7 @@ import type { MenuHandle } from '../ui/chrome/menu'
 import type { IndicatorsPlane } from './indicators'
 import type { ComparePlane } from './compare'
 import type { CommandRegistry } from './commands'
+import { indicatorPaneKey, PANE_MOVE_COMMAND, type PaneOps } from './paneOps'
 import type { MarkPainters } from '../markPainters'
 import type { IconResolver } from '../ui/icons/resolver'
 
@@ -53,6 +56,8 @@ export interface LegendPlane {
   setHeader(symbol: string, tf: string): void
   setDot(state: SessionState | null): void
   setHostRows(rows: readonly ChartLegendRow[]): void
+  /** The rows extensions place in the legend, in their order, under the symbol's reading. */
+  setSlotRows(elements: readonly HTMLElement[]): void
   destroy(): void
 }
 
@@ -96,6 +101,13 @@ export interface LegendDeps {
    *  identity row standing alone, which is what a touch surface with no pointer to hover with
    *  wants. */
   legendValues: boolean
+  /** The chart settings in effect: the status line's parts, its backdrop and the replay mark. */
+  settings(): ChartSettings
+  /** The panes' collapse, maximize, restore and order, which a pane row's controls run. */
+  paneOps: PaneOps
+  /** The latest price and the previous session's close it is measured from, or null when either is
+   *  unknown: what the change since the previous close reads. */
+  dayChange?(): { price: number; previousClose: number } | null
   /** The host's mark painters. The badge wears the market's; with none lent it wears the package's
    *  own neutral monogram. */
   painters: MarkPainters
@@ -122,6 +134,37 @@ export function barIndexAt(bars: readonly FeedBar[], time: number | null): numbe
   return lo
 }
 
+/** The legend's look under the chart settings: the status line's parts, its backdrop (the chart's
+ *  background at the setting's opacity), and the replay part of the watermark. Exported for tests. */
+export function legendLook(settings: ChartSettings): LegendLook {
+  const line = settings.statusLine
+  return {
+    logo: line.logo,
+    title: line.title,
+    chartValues: line.chartValues,
+    barChange: line.barChange,
+    volume: line.volume,
+    lastDayChange: line.lastDayChange,
+    indicatorTitles: line.indicatorTitles,
+    indicatorInputs: line.indicatorInputs,
+    indicatorValues: line.indicatorValues,
+    backdrop: line.background && line.backgroundOpacity > 0 ? colorWithAlpha(settings.canvas.background, line.backgroundOpacity / 100) : null,
+    replayMark: settings.canvas.watermarkReplay,
+    replayMarkColor: settings.canvas.watermarkColor,
+  }
+}
+
+/** How the header names the market, by the title setting: its name (the feed's description), its
+ *  symbol, or the symbol with the name after it. Before the feed resolves the symbol there is
+ *  nothing to name it with but the symbol itself, minus its venue prefix. Exported for tests. */
+export function legendIdentity(symbol: string, info: SymbolInfo | null, timeframe: string, source: ChartSettings['statusLine']['titleSource']): LegendIdentity {
+  const names = symbolNames(info ?? symbol)
+  const base = { symbol, mark: names.mark, timeframe, exchange: info?.exchange ?? '' }
+  if (source === 'symbol') return { ...base, name: names.mark }
+  if (source === 'symbolAndName') return names.description === names.mark ? { ...base, name: names.mark } : { ...base, name: names.mark, detail: names.description }
+  return { ...base, name: names.description }
+}
+
 /** Percentage writers, one per language tag. The move as a percentage of the previous close, to
  *  two decimal places and carrying its sign, in the reader's own digits and grouping. The rounding
  *  is arithmetic rather than a fraction-digit option because the package has exactly one writer
@@ -145,23 +188,13 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       setHeader: () => undefined,
       setDot: () => undefined,
       setHostRows: () => undefined,
+      setSlotRows: () => undefined,
       destroy: () => undefined,
     }
   }
 
-  /** Remembered pane heights for collapse, maximize and restore. */
   let destroyed = false
   const hostRows = new Map<string, ChartLegendRow>()
-  const paneRemembered = new Map<string, number>()
-  const paneKeys = (): Record<number, string> => {
-    const keys: Record<number, string> = { 0: 'main' }
-    for (const [id, pane] of Object.entries(deps.indicators.renderer.paneOf())) if (pane > 0) keys[pane] = `indicator:${id}`
-    for (const entry of deps.compare?.api.list() ?? []) {
-      const pane = deps.compare!.handle.paneIndexOf(entry.symbol)
-      if (pane !== null && pane > 0) keys[pane] = `compare:${entry.symbol}`
-    }
-    return keys
-  }
   let legend: ChartLegend | null = null
   /** The market-status popup while it is open, so teardown closes it. */
   let status: MenuHandle | null = null
@@ -170,6 +203,17 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
   /** The market the header last named, so a switch drops a crosshair that belonged to the old one. */
   let named: string | null = null
   let namedTimeframe: string | null = null
+  /** The identity the header was last given, so a repaint writes it only when it moved. */
+  let written = ''
+  /** Name the market the header is on, in the words the title setting asks for. */
+  const writeIdentity = (): void => {
+    if (named === null || namedTimeframe === null) return
+    const identity = legendIdentity(named, deps.symbolInfo(), namedTimeframe, deps.settings().statusLine.titleSource)
+    const key = JSON.stringify(identity)
+    if (key === written) return
+    written = key
+    legend?.setIdentity(identity)
+  }
 
   legend = mountChartLegend(deps.chrome, deps.i18n, {
     // Every row control is a COMMAND. The legend states an intent by id and the registry decides
@@ -229,33 +273,15 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     },
     onPaneOp: (id, op) => {
       const paneIdx = deps.indicators.renderer.paneOf()[id]
-      if (paneIdx === undefined || paneIdx === 0) return
-      const panes = deps.chart.panes()
-      const heights: Record<number, number> = {}
-      panes.forEach((p, i) => (heights[i] = p.getHeight()))
-      const keys = paneKeys()
-      const remembered: Record<number, number> = {}
-      for (const [index, key] of Object.entries(keys)) {
-        const height = paneRemembered.get(key)
-        if (height !== undefined) remembered[Number(index)] = height
-      }
-      const plan = planPaneOp({ heights, remembered }, { kind: op, pane: paneIdx })
-      paneRemembered.clear()
-      for (const [index, height] of Object.entries(plan.remembered)) {
-        const key = keys[Number(index)]
-        if (key) paneRemembered.set(key, height)
-      }
-      for (const [i, h] of Object.entries(plan.apply)) {
-        const index = Number(i)
-        panes[index]?.setHeight(h)
-        // The plan is the record of what the viewer asked for, so it is what the row reports. A
-        // maximize collapses every OTHER pane, which is why this reads the whole plan rather than
-        // just the pane the command named. Reading the heights back instead would be guesswork:
-        // a pane is born at the floor and rebalanced later, so short and collapsed look identical
-        // for the first frames of a pane's life.
-        if (index > 0) deps.indicators.setPaneCollapsed(index, h <= COLLAPSED_H)
-      }
-      deps.indicators.recompute()
+      if (paneIdx === undefined || paneIdx === deps.paneOps.main()) return
+      deps.paneOps.run(paneIdx, op)
+    },
+    // A move is a command, as the pane's own buttons run it, so the policy that refuses it refuses
+    // it here too.
+    onPaneMove: (id, direction) => {
+      const paneIdx = deps.indicators.renderer.paneOf()[id]
+      if (paneIdx === undefined || paneIdx === deps.paneOps.main()) return
+      deps.commands.execute(PANE_MOVE_COMMAND[direction], paneIdx)
     },
   })
 
@@ -279,41 +305,66 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
       change: change === null ? null : `${change > 0 ? '+' : ''}${format.format(change)}`,
       percent: fraction === null ? null : percentText(fraction, deps.i18n.tag()),
       direction: change === null || change === 0 ? 'flat' : change > 0 ? 'up' : 'down',
+      volume: typeof bar.v === 'number' && Number.isFinite(bar.v) ? volumeText(bar.v) : null,
+      dayChange: deps.settings().statusLine.lastDayChange ? dayChange(format) : null,
+    }
+  }
+
+  /** The latest price's change since the previous session's close, written as the bar's change is. */
+  function dayChange(format: PriceFormatter): LegendQuote['dayChange'] {
+    const day = deps.dayChange?.() ?? null
+    if (!day) return null
+    const change = day.price - day.previousClose
+    const fraction = day.previousClose !== 0 ? change / day.previousClose : null
+    if (fraction === null) return null
+    return {
+      change: `${change > 0 ? '+' : ''}${format.format(change)}`,
+      percent: percentText(fraction, deps.i18n.tag()),
+      direction: change === 0 ? 'flat' : change > 0 ? 'up' : 'down',
     }
   }
 
   const paint = (): void => {
     if (destroyed) return
-    const alive = new Set(Object.values(paneKeys()))
-    for (const key of paneRemembered.keys()) if (!alive.has(key)) paneRemembered.delete(key)
+    deps.paneOps.prune()
+    legend?.setLook(legendLook(deps.settings()))
+    writeIdentity()
     legend?.setValueShaped(deps.valueShaped())
     legend?.setQuote(deps.legendValues ? reading() : null)
     const paneOf = deps.indicators.renderer.paneOf()
-    // A row's eye and its remove are commands: a host that hides what its policy refuses leaves out
-    // the ones it refuses, and the row itself stays, since it names what the chart shows.
+    // The header and the main series' rows stand at the main pane, wherever a viewer moved it.
+    const main = deps.paneOps.main()
+    legend?.setMainPane(main)
+    // A row's eye, its remove and its moves are commands: a host that hides what its policy refuses
+    // leaves out the ones it refuses, and the row itself stays, since it names what the chart shows.
     const shown = (command: string): boolean => deps.shown?.(command) ?? true
+    const moves = { up: shown(PANE_MOVE_COMMAND.up), down: shown(PANE_MOVE_COMMAND.down) }
     legend?.setChips([
       ...deps.indicators.chipsAt(hovered).map(row => {
-        const paneIndex = paneOf[row.id] ?? 0
-        const remembered = paneRemembered.get(`indicator:${row.id}`)
+        const paneIndex = paneOf[row.id] ?? main
+        const remembered = deps.paneOps.remembered(indicatorPaneKey(row.id))
+        const own = row.pane === true && paneIndex !== main
         return {
           ...row,
+          indicator: true,
           paneIndex,
           maximized: remembered !== undefined && !row.collapsed && (deps.chart.panes()[paneIndex]?.getHeight() ?? 0) > remembered,
+          canMoveUp: own && moves.up && deps.paneOps.canMove(paneIndex, 'up'),
+          canMoveDown: own && moves.down && deps.paneOps.canMove(paneIndex, 'down'),
           ...(shown(row.hidden ? 'chart.indicators.show' : 'chart.indicators.hide') ? {} : { hideable: false }),
           ...(shown('chart.indicators.remove') ? {} : { removable: false }),
         }
       }),
       ...(deps.compare?.chips(hovered) ?? []).map(row => ({
         ...row,
-        paneIndex: deps.compare!.handle.paneIndexOf(row.id.slice(COMPARE_ROW_PREFIX.length)) ?? 0,
+        paneIndex: deps.compare!.handle.paneIndexOf(row.id.slice(COMPARE_ROW_PREFIX.length)) ?? main,
         ...(shown('chart.compare.setVisible') ? {} : { hideable: false }),
         ...(shown('chart.compare.remove') ? {} : { removable: false }),
       })),
       ...[...hostRows].map(([id, row]) => ({
         id, title: row.title, inputs: row.inputs, value: null, note: row.status,
         description: row.description, settingsLabel: row.settingsLabel,
-        hidden: false, hideable: false, removable: false, hasInputs: !!row.onSettings, paneIndex: 0,
+        hidden: false, hideable: false, removable: false, hasInputs: !!row.onSettings, paneIndex: main,
       })),
     ])
     const tops: Record<number, number> = {}
@@ -374,6 +425,10 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     push() {
       paint()
     },
+    setSlotRows(elements) {
+      if (destroyed) return
+      legend?.setSlotRows(elements)
+    },
     setHeader(symbol, tf) {
       if (symbol !== named || (deps.replayPhase() !== 'off')) { status?.close(); status = null }
       legend?.setReplay(deps.replayPhase())
@@ -384,11 +439,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
         namedTimeframe = tf
         hovered = null
       }
-      const info = deps.symbolInfo()
-      // Before the feed resolves the symbol there is nothing to label it with but the symbol
-      // itself, minus its venue prefix, which is the same shape the resolved answer takes.
-      const label = symbolNames(info ?? symbol).title
-      legend?.setIdentity({ name: label, symbol, timeframe: tf, exchange: info?.exchange ?? '' })
+      writeIdentity()
     },
     setDot(state) {
       const current = deps.status(Math.floor(Date.now() / 1000))

@@ -36,6 +36,19 @@ export function normalizeShortcut(shortcut: string): string | null {
   return [...prefix, physical].join('+')
 }
 
+/** A shortcut as a menu row prints it for a reader: its modifiers and its key joined by " + ", the
+ *  way the chart's own rows write a chord ("Alt + H"). A letter or a digit prints as itself and any
+ *  other key as its code; Ctrl and Meta print in the words `modifiers` gives, since a Ctrl chord
+ *  answers to Command on an Apple keyboard. Null for a shortcut the dispatcher cannot honor. */
+export function printedShortcut(shortcut: string, modifiers: { ctrl: string; meta: string }): string | null {
+  const token = normalizeShortcut(shortcut)
+  if (token === null) return null
+  return token
+    .split('+')
+    .map((part) => (part === 'Ctrl' ? modifiers.ctrl : part === 'Meta' ? modifiers.meta : part.replace(/^(?:Key|Digit)(?=[A-Z0-9]$)/, '')))
+    .join(' + ')
+}
+
 /** The token one key press resolves to. */
 export function eventShortcut(event: KeyboardEvent): string {
   const prefix: string[] = []

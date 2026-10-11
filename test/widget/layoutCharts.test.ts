@@ -463,7 +463,7 @@ describe('the drawing toolbar in a layout, mounted through createChart', () => {
     first.setSymbol('NQ')
     first.setTimeframe('5m')
     first.setStyle('line')
-    first.setSubsession('regular')
+    first.applySettings({ symbol: { session: 'extended' } })
     first.indicators.add({
       id: 'sma-copy', definition: BUILT_IN_INDICATORS.find((definition) => definition.id === 'sma')!,
       inputs: { length: 34 }, overrides: { plots: { sma: { lineWidth: 3 } } },

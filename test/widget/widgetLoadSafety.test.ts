@@ -4,7 +4,8 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { createChart, type ChartWidget } from '../../src/widget/create'
 import { memorySaveLoadAdapter } from '../../src/resources'
 import { memoryChartStorage, type ChartStorage } from '../../src/storage'
-import { DEFAULT_OVERRIDES } from '../../src/overrides'
+import { chartSettingsDefaults, CHART_SETTINGS_SECTIONS } from '../../src/settings/defaults'
+import { DARK_THEME } from '../../src/theme/palettes'
 import type { ChartWidgetOptions } from '../../src/widget/options'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
@@ -267,7 +268,7 @@ it('direct refusal refreshes blocked chrome and copy or partial load cannot mark
   const child = JSON.parse(partial.charts[0].content)
   // A leaf that is PRESENT and unusable is what leaves old state standing. An omitted leaf is one
   // nobody authored, which the theme and the host resolve, so omission is not partiality.
-  child.appearance.background = 'not-a-color'
+  child.settings = { canvas: { background: 'not-a-color' } }
   partial.charts[0].content = JSON.stringify(child)
   const row = await adapter.layouts.create({ name: 'Partial', content: JSON.stringify(partial) })
   if (row.kind !== 'ok') throw new Error('unreachable')
@@ -550,26 +551,33 @@ it.each([false, true])('real failed child apply and rollback protect parent auto
 const incompleteBodies: { name: string; change: (body: Record<string, unknown>) => void }[] = [
   { name: 'missing indicators', change: (body) => { delete body.indicators } },
   { name: 'missing combined drawings', change: (body) => { delete body.drawings } },
-  // Appearance in content is the AUTHORED layer, so an omitted leaf is one nobody chose and the
+  // Settings in content are the AUTHORED leaves, so an omitted leaf is one nobody chose and the
   // theme and the host resolve it: only a leaf that is present and unusable can leave old state
-  // standing, and only that refuses to certify recovery. `appearance: undefined` is still a missing
+  // standing, and only that refuses to certify recovery. `settings: undefined` is still a missing
   // field rather than an empty authored record.
-  { name: 'missing appearance', change: (body) => { delete body.appearance } },
-  { name: 'malformed color', change: (body) => { (body.appearance as Record<string, unknown>).background = 'not-a-color' } },
-  { name: 'unresolved color variable', change: (body) => { (body.appearance as Record<string, unknown>).background = 'var(--missing)' } },
-  ...Object.entries(DEFAULT_OVERRIDES.appearance).map(([key, value]) => (
-    { name: `wrong type for ${key}`, change: (body: Record<string, unknown>) => { (body.appearance as Record<string, unknown>)[key] = typeof value === 'boolean' ? 'false' : null } }
+  { name: 'missing settings', change: (body) => { delete body.settings } },
+  { name: 'malformed color', change: (body) => { body.settings = { canvas: { background: 'not-a-color' } } } },
+  { name: 'unresolved color variable', change: (body) => { body.settings = { canvas: { background: 'var(--missing)' } } } },
+  ...[
+    ['canvas', 'verticalGrid', 'false'],
+    ['priceLabels', 'countdown', null],
+    ['canvas', 'marginTop', '10'],
+    ['symbol', 'session', 'overnight'],
+    ['timeScale', 'dateFormat', 'yyyy.MM.dd'],
+    ['priceLabels', 'symbolLineColor', 12],
+  ].map(([section, leaf, value]) => (
+    { name: `wrong type for ${section}.${leaf}`, change: (body: Record<string, unknown>) => { body.settings = { [section as string]: { [leaf as string]: value } } } }
   )),
 ]
 
-/** Bodies whose appearance names fewer leaves than the tree has. Each is a complete statement of an
- *  authored layer, so each certifies recovery: what a viewer never chose is not missing. */
+/** Bodies whose settings name fewer leaves than the tree has. Each is a complete statement of the
+ *  authored leaves, so each certifies recovery: what a viewer never chose is not missing. */
 const authoredAppearances: { name: string; change: (body: Record<string, unknown>) => void }[] = [
-  { name: 'an empty authored record', change: (body) => { body.appearance = {} } },
-  { name: 'one authored leaf', change: (body) => { body.appearance = { background: '#123456' } } },
-  ...Object.keys(DEFAULT_OVERRIDES.appearance).map((key) => (
-    { name: `every leaf but ${key}`, change: (body: Record<string, unknown>) => {
-      body.appearance = Object.fromEntries(Object.entries(DEFAULT_OVERRIDES.appearance).filter(([leaf]) => leaf !== key))
+  { name: 'an empty authored record', change: (body) => { body.settings = {} } },
+  { name: 'one authored leaf', change: (body) => { body.settings = { canvas: { background: '#123456' } } } },
+  ...CHART_SETTINGS_SECTIONS.map((section) => (
+    { name: `every section but ${section}`, change: (body: Record<string, unknown>) => {
+      body.settings = Object.fromEntries(Object.entries(chartSettingsDefaults(DARK_THEME)).filter(([name]) => name !== section))
     } }
   )),
 ]
@@ -580,7 +588,7 @@ for (const family of ['chart', 'layout'] as const) {
     const backing = memoryChartStorage()
     let fail = false
     const w = mount(adapter, { ...backing, set: (key, value) => { backing.set(key, value); if (fail) throw new Error('storage refused') } })
-    w.activeChart().applyAppearance({ appearance: { upColor: color } })
+    w.activeChart().applySettings({ candles: { upColor: color } })
     const child = w.activeChart().saveLoad
     const goodChart = child.serialize()
     const goodLayout = w.layout.serialize().content
@@ -594,7 +602,7 @@ for (const family of ['chart', 'layout'] as const) {
     if (saved.kind !== 'ok') throw new Error('unreachable')
     expect((await destination.load(saved.ref.id)).kind).toBe('ok')
     expect(child.notSaving()).toBe(false)
-    expect(w.activeChart().appearance().appearance.upColor).toBe(color)
+    expect(w.activeChart().settings().candles.upColor).toBe(color)
   })
 
   it(`${family} recovery accepts a complete separate-mode body without combined drawings`, async () => {

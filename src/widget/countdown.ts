@@ -1,7 +1,13 @@
-// The price-axis bar countdown. It replaces the renderer's native last-value label only while it
-// can state a truthful close boundary, and gives that label back for every unsupported or stale
-// state. Bar timestamps are the authority for alignment. The chart never guesses an exchange
-// bucket from the wall clock.
+// The symbol's last-value label when it holds more than the price: the percentage change since the
+// previous session's close under the price, and the countdown to the bar's close under both. It
+// replaces the renderer's native last-value label only while it has a second line to write, and
+// gives that label back otherwise. The countdown stands only while it can state a truthful close
+// boundary, and gives way for every unsupported or stale state. Bar timestamps are the authority
+// for alignment. The chart never guesses an exchange bucket from the wall clock.
+//
+// The label is drawn as the renderer draws its own: from one pixel inside the scale, square on the
+// plot side and rounded on the other, its text a tick and a padding in, each line one line pitch
+// below the one before, so it reads as the native label grown taller.
 import type {
   IPrimitivePaneRenderer,
   IPrimitivePaneView,
@@ -13,7 +19,9 @@ import type {
 import type { FeedBar } from '../datafeed'
 import { nextSessionChange, sessionStateAt, type ActiveSubsession, type SessionModel } from '../sessionModel'
 import type { PriceFormatter } from '../priceFormatter'
+import { colorWithAlpha } from '../settings/defaults'
 import type { DataStatus } from '../symbology'
+import { CHART_FACTORY_COLORS } from '../theme/palettes'
 import type { SemanticTheme } from '../theme/schema'
 import { parseTimeframe } from '../timeframe'
 
@@ -114,11 +122,45 @@ export function countdownText(seconds: number): string {
   return `${pad(minutes)}:${pad(remainder)}`
 }
 
+/** The drawn label's geometry at a text size, for a label of `lines` lines, laid out as the renderer
+ *  lays out its own: one pixel inside the scale, the 5px tick and a padding before the text, a
+ *  padding and the border after it, 2.5px above and below the first line at 12px, a 2px rounding,
+ *  and 14px between lines, the paddings and the pitch scaled to the text size. A 12px label is 17px
+ *  tall with one line, 31px with two and 45px with three. Exported for tests. */
+export function labelBox(fontSize: number, lines: number): {
+  left: number
+  inset: number
+  outer: number
+  radius: number
+  lineHeight: number
+  pitch: number
+  height: number
+} {
+  const k = fontSize / 12
+  const lineHeight = fontSize + 5 * k
+  const pitch = 14 * k
+  return { left: 1, inset: 5 + 5 * k, outer: 5 * k + 1, radius: 2, lineHeight, pitch, height: lineHeight + pitch * Math.max(0, lines - 1) }
+}
+
 export interface CountdownDeps {
   series(): ISeriesApi<SeriesType>
   bars(): readonly FeedBar[]
+  /** The value the series draws for a bar, which the label states and stands at: the close when
+   *  absent. */
+  value?(bar: FeedBar): number
   timeframe(): string
+  /** Whether the countdown is asked for. */
   enabled(): boolean
+  /** Whether the series' own last-value label shows while no countdown stands in for it. */
+  nativeLabel(): boolean
+  /** The percentage line under the price, already written, or null for none: the change of the
+   *  last value since the previous session's close, while the label is asked to state it. */
+  percent?(): string | null
+  /** The label's colors, up and down by the bar's own open, and its text size. */
+  look(): { up: string; down: string; fontSize: number }
+  /** The side the series' price scale stands on: the label is square on the plot's side and
+   *  rounded on the other. The right when absent. */
+  side?(): 'left' | 'right'
   replaying(): boolean
   dataStatus(): DataStatus | null
   session(): SessionModel | null
@@ -132,6 +174,9 @@ export interface CountdownDeps {
 
 export interface CountdownLayer {
   refresh(): void
+  /** The series' options were written again, its last-value label among them: the layer states the
+   *  label once more rather than trusting what it wrote before. */
+  restyled(): void
   seriesChanged(previous: ISeriesApi<SeriesType>): void
   destroy(): void
 }
@@ -175,7 +220,8 @@ export function createCountdownClock(clientNow: () => number, serverTime?: () =>
 
 export function attachCountdown(deps: CountdownDeps): CountdownLayer {
   let disposed = false
-  let nativeHidden = false
+  /** The last-value visibility this layer last wrote to the current series, or null when unknown. */
+  let nativeShown: boolean | null = null
   let requestUpdate: (() => void) | null = null
 
   const current = (): CountdownState | null => {
@@ -183,18 +229,31 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
     return countdownState(deps.bars(), deps.timeframe(), deps.now(), deps.session(), deps.activeSubsession())
   }
 
+  /** What the drawn label holds now, or null while the native label says everything: the newest
+   *  bar, then the percentage and the countdown, either of which may be absent but not both. */
+  const label = (): { bar: FeedBar; percent: string | null; countdown: CountdownState | null } | null => {
+    if (disposed || !deps.nativeLabel()) return null
+    const countdown = current()
+    const percent = deps.percent?.() ?? null
+    if (!countdown && percent === null) return null
+    const bar = countdown?.bar ?? deps.bars()[deps.bars().length - 1]
+    return bar ? { bar, percent, countdown } : null
+  }
+
+  /** Show the series' own label, or hide it while the countdown draws the label in its place. */
   const setNativeHidden = (hidden: boolean, target = deps.series()): void => {
-    if (target === deps.series() && hidden === nativeHidden) return
-    if (target === deps.series()) nativeHidden = hidden
+    const shown = !hidden && deps.nativeLabel()
+    if (target === deps.series() && shown === nativeShown) return
+    if (target === deps.series()) nativeShown = shown
     try {
-      target.applyOptions({ lastValueVisible: !hidden })
+      target.applyOptions({ lastValueVisible: shown })
     } catch {
       /* a style switch or chart teardown may already have removed the series */
     }
   }
 
   const updateViews = (): void => {
-    setNativeHidden(current() !== null)
+    setNativeHidden(label() !== null)
   }
 
   const refresh = (): void => {
@@ -205,27 +264,37 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
   const renderer: IPrimitivePaneRenderer = {
     draw(target) {
       target.useMediaCoordinateSpace(({ context, mediaSize }) => {
-        const state = current()
+        const state = label()
         if (!state) return
         const series = deps.series()
-        const y = series.priceToCoordinate(state.bar.c)
+        const value = deps.value?.(state.bar) ?? state.bar.c
+        const y = series.priceToCoordinate(value)
         if (y === null) return
         const theme = deps.theme()
-        const size = Number.parseFloat(theme['text.fontSizeAxis']) || 12
-        const priceHeight = size + 8
-        const countdownHeight = size + 5
-        const height = priceHeight + countdownHeight
-        const top = Math.max(0, Math.min(y - priceHeight / 2, mediaSize.height - height))
-        context.fillStyle = state.bar.c < state.bar.o ? theme['series.down'] : theme['series.up']
+        const look = deps.look()
+        const text = CHART_FACTORY_COLORS.scaleLabelText
+        const lines: { text: string; color: string }[] = [{ text: deps.formatter().format(value), color: text }]
+        if (state.percent !== null) lines.push({ text: state.percent, color: text })
+        if (state.countdown) lines.push({ text: countdownText(state.countdown.remaining), color: colorWithAlpha(text, 0.75) })
+        const box = labelBox(look.fontSize, lines.length)
+        context.font = `${look.fontSize}px ${theme['text.fontFamily']}`
+        const textWidth = Math.ceil(Math.max(...lines.map((line) => context.measureText?.(line.text).width ?? 0)))
+        const width = Math.min(mediaSize.width - box.left, box.inset + textWidth + box.outer)
+        const top = Math.max(0, Math.min(y - box.lineHeight / 2, mediaSize.height - box.height))
+        // On a left scale the plot is on the right, so the label mirrors.
+        const left = (deps.side?.() ?? 'right') === 'left'
+        context.fillStyle = state.bar.c < state.bar.o ? look.down : look.up
         context.beginPath()
-        context.roundRect(0, top, mediaSize.width, height, 2)
+        if (left) context.roundRect(mediaSize.width - box.left - width, top, width, box.height, [box.radius, 0, 0, box.radius])
+        else context.roundRect(box.left, top, width, box.height, [0, box.radius, box.radius, 0])
         context.fill()
-        context.fillStyle = theme['text.inverse']
-        context.font = `${size}px ${theme['text.fontFamily']}`
-        context.textAlign = 'center'
+        context.textAlign = left ? 'right' : 'left'
         context.textBaseline = 'middle'
-        context.fillText(deps.formatter().format(state.bar.c), mediaSize.width / 2, top + priceHeight / 2)
-        context.fillText(countdownText(state.remaining), mediaSize.width / 2, top + priceHeight + countdownHeight / 2)
+        const x = left ? mediaSize.width - box.left - box.inset : box.left + box.inset
+        lines.forEach((line, i) => {
+          context.fillStyle = line.color
+          context.fillText(line.text, x, top + box.lineHeight / 2 + i * box.pitch)
+        })
       })
     },
   }
@@ -251,6 +320,10 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
 
   return {
     refresh,
+    restyled() {
+      nativeShown = null
+      refresh()
+    },
     seriesChanged(previous) {
       setNativeHidden(false, previous)
       try {
@@ -258,7 +331,7 @@ export function attachCountdown(deps: CountdownDeps): CountdownLayer {
       } catch {
         /* the renderer already released the prior style series */
       }
-      nativeHidden = false
+      nativeShown = null
       deps.series().attachPrimitive(primitive)
       refresh()
     },

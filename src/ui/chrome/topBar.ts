@@ -23,6 +23,7 @@ import type { LayoutChanges } from '../../widget/layoutChanges'
 import { menuItem, openMenu, toggleMenu, type MenuHandle } from './menu'
 import { createTimeframeStore, type LayoutListStore } from './preferences'
 import { mountSettingsMenu, type SettingsMenuHandle } from './settingsMenu'
+import type { ChartSettingsDialog } from '../settings/dialog'
 import { mountStylePicker, type StylePickerHandle } from './stylePicker'
 import { mountTimeframePicker, type TimeframePickerHandle } from './timeframePicker'
 
@@ -44,6 +45,8 @@ export interface TopBarDeps extends ChromeContext {
   /** Open the search dialog in search mode for the active chart. */
   openSearch(): void
   notify(kind: 'info' | 'error', text: string): void
+  /** The chrome's chart settings dialog, which the bar's gear opens. */
+  settingsDialog: ChartSettingsDialog
 }
 
 /** The places a host may stand a control of its own in the top bar, in reading order. A name says

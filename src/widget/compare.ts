@@ -42,6 +42,8 @@ export interface ComparePlane {
   openDialog(mode: 'compare' | 'change-symbol', changeFrom?: string): void
   /** Follow a timeframe switch. */
   setTimeframe(): void
+  /** The main series' price scale moved to the other side. */
+  scaleMoved(): void
   /** Re-clip to the main window after a repaint. */
   sync(): void
   serialize(): unknown
@@ -75,6 +77,10 @@ export interface CompareDeps {
   onEvent(entries: readonly CompareEntry[]): void
   /** Hold the chart's shared viewport across older compare history painting. */
   maintainTimeline?(write: () => void): void
+  /** The side the main series' price scale stands on; the right when absent. */
+  mainScale?(): 'left' | 'right'
+  /** The index of the pane the main series stands in; the first when absent. */
+  mainPane?(): number
 }
 
 /** How long a burst of comparison ticks is collected before the rows are rebuilt. Every
@@ -88,6 +94,8 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
     datafeed: deps.datafeed,
     tf: deps.timeframe,
     mainWindow: deps.mainWindow,
+    ...(deps.mainScale ? { mainScale: deps.mainScale } : {}),
+    ...(deps.mainPane ? { mainPane: deps.mainPane } : {}),
     onChange: () => {
       if (chipTimer !== null) return
       chipTimer = setTimeout(() => {
@@ -208,6 +216,7 @@ export function attachComparePlane(deps: CompareDeps): ComparePlane {
       })
     },
     setTimeframe: () => handle.setTimeframe(),
+    scaleMoved: () => handle.scaleMoved(),
     sync: () => handle.sync(),
     serialize: () => handle.serialize(),
     restore(state) {

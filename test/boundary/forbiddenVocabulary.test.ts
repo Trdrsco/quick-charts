@@ -5,7 +5,7 @@
 // excluded chrome. Each word group follows with the reason it is forbidden, judged in one block so
 // the log names every offending line.
 import { describe, expect, it } from 'vitest'
-import { CHART_SOURCES, offenderText, scanFiles } from './scan'
+import { CHART_SOURCES, offenderText, scanFiles, watermarkViolations } from './scan'
 
 /** Package sources without the locale catalogs: a translated string is a message, not a contract,
  *  and the catalogs are held to their own contract in i18n.test.ts. */
@@ -13,10 +13,6 @@ const CODE = Object.fromEntries(Object.entries(CHART_SOURCES).filter(([file]) =>
 
 const lines = (files: Record<string, string>, pattern: RegExp): string[] => scanFiles(files, pattern).map(offenderText)
 
-const REPLAY_INDICATOR_TOKEN = /\breplayWatermark(?:Text)?\b|replay\.watermark|qc-replay-watermark/gi
-const watermarkViolations = (files: Record<string, string>): string[] => scanFiles(files, /watermark/i)
-  .filter((o) => o.file !== '/src/chartLegend.ts' || /watermark/i.test(o.text.replace(REPLAY_INDICATOR_TOKEN, '')))
-  .map(offenderText)
 
 interface Term {
   term: string
@@ -26,10 +22,11 @@ interface Term {
 /** The forbidden vocabulary, grouped by the reason it is forbidden. Every pattern is judged against
  *  package code, never the catalogs. */
 const TARGET: Record<'trading' | 'symbology' | 'theme', { reason: string; terms: Term[] }> = {
-  // Symbology: SymbolInfo owns the price-format facts, and the datafeed serves bars, so a quote
-  // board and a quote callback stay out of it.
+  // Symbology: SymbolInfo owns the price-format facts, and the datafeed serves bars plus, at most,
+  // the charted symbol's own prices for the lines a chart draws from them (bid and ask, the previous
+  // close). A quote board, many symbols' quotes behind one call or callback, stays out of it.
   symbology: {
-    reason: 'SymbolInfo owns price-format facts; no L1 or quote-board API in Quick Charts',
+    reason: 'SymbolInfo owns price-format facts; no quote-board API in Quick Charts, only the charted symbol\'s own prices',
     terms: [
       { term: 'pricePrecision', pattern: /\bpricePrecision\b/ },
       { term: 'tick: on the symbol type', pattern: /^\s*tick\??:\s*number/ },
@@ -85,15 +82,18 @@ describe('the import boundary and the excluded chrome', () => {
     expect(lines(CHART_SOURCES, /from\s+['"](@trdrs\/(?!quickcharts(?:\/|['"]))|tailwind)/)).toEqual([])
   })
 
-  it('keeps the excluded chrome absent while allowing only the fixed replay state indicator', () => {
+  it('keeps the excluded chrome absent while allowing only the symbol watermark and the replay indicator', () => {
     expect(lines(CODE, /:root\b/)).toEqual([])
     expect(lines(CODE, /Object Tree|objectTree/)).toEqual([])
     // Every one of these is the replay session's own mark on the plot, built and named in the
-    // legend. The count is the canary: a brand watermark, a screenshot stamp or an export overlay
-    // would have to move this number, which is the conscious event the guard is here to force.
+    // legend, or the symbol watermark the chart settings name. The count is the canary: a brand
+    // watermark, a screenshot stamp or an export overlay would have to move this number, which is
+    // the conscious event the guard is here to force.
     const watermark = lines(CODE, /watermark/i)
-    expect(watermark).toHaveLength(16)
+    expect(watermark).toHaveLength(83)
     expect(watermarkViolations(CODE)).toEqual([])
+    // The renderer's text watermark is drawn by the settings' own module and nowhere else.
+    expect(lines(CODE, /createTextWatermark/).every((line) => line.startsWith('/src/widget/watermark.ts'))).toBe(true)
     expect(watermarkViolations({
       '/src/chartLegend.ts': "replayWatermark.className = 'qc-replay-watermark'\nconst watermarkOptions = {}",
       '/src/widget/create.ts': 'const brandWatermark = true',
@@ -106,6 +106,14 @@ describe('the import boundary and the excluded chrome', () => {
       .filter((t) => lines(sourcesFor(), t.pattern).length > 0)
       .map((t) => t.term)
     expect(present).toEqual([])
+  })
+
+  it('lets the datafeed deliver one symbol\'s prices and never a board of them', () => {
+    // The one prices port takes the charted symbol alone; a list of symbols, or a second port,
+    // would make it the quote board the symbology group keeps out.
+    const ports = lines(CODE, /\bsubscribePrices\??\(/).filter((line) => line.startsWith('/src/datafeed.ts'))
+    expect(ports).toHaveLength(1)
+    expect(ports[0]).toMatch(/subscribePrices\?\(symbol: string, /)
   })
 })
 

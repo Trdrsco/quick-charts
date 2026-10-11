@@ -112,8 +112,10 @@ describe('for every fixture symbol', () => {
 
 describe('the wiring that makes those the same formatter', () => {
   it('the chart builds one symbol formatter per resolve and hands it to every surface', () => {
-    expect(chartSrc).toContain("const priceFormat = { type: 'custom' as const, formatter: (price: number) => symbolFormatter.format(price), minMove: minMoveOf(format) }")
-    expect(chartSrc).toContain('drawings.setPricing(format ? minMoveOf(format) : null, (price) => symbolFormatter.format(price))')
+    // The format is the one the precision setting writes in: the symbol's own unless it names another.
+    expect(chartSrc).toContain("const writtenFormat = (): PriceFormat => formatAtPrecision(symbolFormat ?? UNRESOLVED_PRICE_FORMAT, eff.symbol.precision)")
+    expect(chartSrc).toContain("const priceFormat = { type: 'custom' as const, formatter: (price: number) => symbolFormatter.format(price), minMove: minMove() }")
+    expect(chartSrc).toContain('drawings.setPricing(format ? minMoveOf(written) : null, (price) => symbolFormatter.format(price))')
     expect(chartSrc).toContain('formatter: () => ({ format: (price) => symbolFormatter.format(price)')
     // The indicators plane is handed the live formatter and its key, and builds the indicator
     // scale's fallback format from them.
@@ -131,7 +133,7 @@ describe('the wiring that makes those the same formatter', () => {
   })
 
   it('the exported image is the renderer screenshot, so its axis text is the axis text', () => {
-    expect(chartSrc).toContain('screenshot: () => chart.takeScreenshot()')
+    expect(chartSrc).toContain('screenshot: () => extensions.host.capture(() => chart.takeScreenshot(),')
     expect(createSrc).toContain('const canvas = instances.get(slot.handle.id)?.screenshot()')
   })
 

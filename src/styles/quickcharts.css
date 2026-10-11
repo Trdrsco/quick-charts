@@ -587,9 +587,11 @@
 
 /* Legend --------------------------------------------------------------------------------------- */
 
+/* The legend stands 4px into the main pane, which the chart writes the top of as
+ * `--qcd-legend-top` once a viewer has moved it below another pane. */
 [data-qc-theme] .qc-legend {
   position: absolute;
-  top: 4px;
+  top: calc(4px + var(--qcd-legend-top, 0px));
   inset-inline-end: 64px;
   z-index: 3;
   display: flex;
@@ -626,6 +628,10 @@
   padding-inline: 4px;
   border-radius: 4px;
   pointer-events: auto;
+  /* The status line's backdrop: a plain fill of the chart's background at the setting's opacity,
+   * which the chart writes on the legend, so the bars under each part stand back. Unwritten, the
+   * legend stands on the bars. The reading and the indicator rows take the same fill. */
+  background-color: var(--qcd-legend-backdrop);
 }
 
 /* A band under the pointer reads as one solid chip over the candles: the canvas' own fill, so the
@@ -713,6 +719,7 @@
   font-size: var(--qc-text-fontSizeAxis);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
+  background-color: var(--qcd-legend-backdrop);
 }
 
 [data-qc-theme] .qc-legend-ohlc {
@@ -759,6 +766,55 @@
 
 [data-qc-theme] .qc-legend-change {
   color: var(--qc-text-primary);
+}
+
+/* The bar's volume after its change: the quiet mark, then the number in the direction's ink. */
+[data-qc-theme] .qc-legend-volume {
+  display: inline-flex;
+  align-items: center;
+}
+
+[data-qc-theme] .qc-legend-volume > .qc-legend-mark {
+  color: var(--qc-text-muted);
+  margin-inline-end: 4px;
+}
+
+[data-qc-theme] .qc-legend-quote[data-qc-direction='up'] .qc-legend-volume > :last-child {
+  color: var(--qc-status-positive);
+}
+
+[data-qc-theme] .qc-legend-quote[data-qc-direction='down'] .qc-legend-volume > :last-child {
+  color: var(--qc-status-negative);
+}
+
+/* The rows extensions place in the legend, under the reading and above the indicator rows, at the
+ * header's own inset. The element in each is the extension's and takes the pointer; the slot
+ * wears the status line's backdrop, as the legend's own parts do. */
+[data-qc-theme] .qc-legend-slots {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-inline-start: 9px;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-legend-slot {
+  pointer-events: auto;
+  background-color: var(--qcd-legend-backdrop);
+}
+
+/* The change since the previous session's close, last in the reading, in its own direction's ink
+ * rather than the read bar's. */
+[data-qc-theme] .qc-legend-day-change {
+  color: var(--qc-text-primary);
+}
+
+[data-qc-theme] .qc-legend-day-change[data-qc-tone='up'] {
+  color: var(--qc-status-positive);
+}
+
+[data-qc-theme] .qc-legend-day-change[data-qc-tone='down'] {
+  color: var(--qc-status-negative);
 }
 
 [data-qc-theme] .qc-legend-rows {
@@ -842,6 +898,7 @@
   font-weight: 400;
   border-radius: 4px;
   pointer-events: auto;
+  background-color: var(--qcd-legend-backdrop);
 }
 
 /* The same chip the identity band takes, on the same terms. */
@@ -1052,6 +1109,19 @@
 
 [data-qc-theme] .qc-menu .qc-separator {
   margin: 6px 0;
+}
+
+/* The price menu the scale's plus opens: the context menu's box as wide as its widest row, so a
+ * label shows whole and ellipsizes only where the viewport cannot hold its row. A shortcut stands
+ * 10px after its label, in 12px. */
+[data-qc-theme] .qc-menu.qc-price-menu {
+  width: max-content;
+  max-width: calc(100vw - 16px);
+}
+
+[data-qc-theme] .qc-menu.qc-price-menu .qc-menu-hint {
+  padding-inline: 4px 0;
+  font-size: 12px;
 }
 
 /* Indicator inputs ----------------------------------------------------------------------------- */

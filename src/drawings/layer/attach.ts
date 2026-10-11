@@ -855,6 +855,23 @@ export function attachDrawings(options: AttachDrawingsOptions): DrawingsHandle {
       persist()
       changed()
     },
+    placeHorizontalLine(price) {
+      if (locked() || !Number.isFinite(price)) return
+      // A horizontal line spans the pane whatever its time, so its point stands at the middle of
+      // the view, or at the newest bar where the view names no time.
+      const vp = viewportOf(chart, series)
+      const time = vp?.timeAt(vp.width / 2) ?? series.data().at(-1)?.time ?? null
+      if (time === null) return
+      const preset = presets.defaultFor('horizontal_line')
+      const drawing = drawingTools.create('horizontal_line', nextId(), [{ time, price }], preset.style)
+      if (!drawing) return
+      if (preset.props) drawing.applyProps(presetPropsFor(drawing, preset.props))
+      stampNewScope(drawing, chartId, workflow().syncAcrossPanes)
+      manager.add(drawing)
+      manager.select(drawing.id)
+      persist()
+      changed()
+    },
     setAllHidden(hidden) {
       manager.setAllHidden(hidden)
       if (hidden) manager.deselect()

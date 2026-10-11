@@ -5,10 +5,13 @@
 // A meaning the chart draws at more than one optical size is one icon: `delete` is the row's
 // eighteen-pixel trash and the drawing toolbar's twenty-eight-pixel one, so a host's drawing for it
 // stands in both, sized to each box. The chart styles, the drawing tools and the layout
-// arrangements take their ids from their own registries. The product's own mark in the plot's
-// corner is not in the inventory: it is the chart's signature, not a control's glyph.
+// arrangements take their ids from their own registries. The glyphs a time-scale mark wears inside
+// its ring are named for their shapes, `mark.<shape>`, since what a mark means is its host's. The
+// product's own mark in the plot's corner is not in the inventory: it is the chart's signature, not
+// a control's glyph.
 import { CHART_STYLES, type ChartStyleId } from '../../widget/styles'
-import { COMPARE_EMPTY_MARK, ICONS, OPERATOR_GLYPHS, SEARCH_EMPTY_MARK, STYLE_ICONS, type Glyph } from '../controls/icons'
+import type { MarkIconId } from '../../marks'
+import { COMPARE_EMPTY_MARK, ICONS, MARK_ICONS, OPERATOR_GLYPHS, SEARCH_EMPTY_MARK, STYLE_ICONS, type Glyph } from '../controls/icons'
 import { TOOL_ICONS, type MiniatureTool } from '../drawings/toolIcons'
 import { ARRANGEMENT_ICONS, type ArrangementGlyphCode } from '../chrome/arrangementGlyphs'
 import type { ChartIconFactory } from './contract'
@@ -37,9 +40,11 @@ const CONTROL_ICONS = byMeaning({
   visible: [ICONS.legendEye],
   hidden: [ICONS.legendEyeOff],
   collapse: [ICONS.legendChevron],
-  paneCollapse: [ICONS.paneCollapse],
-  paneRestore: [ICONS.paneRestore],
-  paneMaximize: [ICONS.paneMaximize],
+  paneCollapse: [ICONS.paneCollapse, ICONS.paneCollapse15],
+  paneRestore: [ICONS.paneRestore, ICONS.paneExpand15],
+  paneMaximize: [ICONS.paneMaximize, ICONS.paneMaximize15],
+  paneMoveUp: [ICONS.paneUp, ICONS.paneUp15],
+  paneMoveDown: [ICONS.paneDown, ICONS.paneDown15],
   marketStatus: [ICONS.marketStatus],
   replayStatus: [ICONS.replayStatus],
   replayMark: [ICONS.replayMark],
@@ -141,15 +146,25 @@ const CONTROL_ICONS = byMeaning({
   // Drawn for a line's left end; the right end wears the same drawing mirrored.
   lineEndNormal: [ICONS.lineEndNormal],
   lineEndArrow: [ICONS.lineEndArrow],
+  // The chart settings: its pages on the rail, and the marks its rows wear.
+  settingsSymbol: [ICONS.settingsSymbol],
+  settingsStatusLine: [ICONS.settingsStatusLine],
+  settingsScales: [ICONS.settingsScales],
+  settingsCanvas: [ICONS.settingsCanvas],
+  settingsEvents: [ICONS.settingsEvents],
+  tip: [ICONS.question],
+  volume: [ICONS.speaker],
+  volumeMuted: [ICONS.speakerMuted],
 })
 
 /** An icon of one of the chart's own controls. */
 export type ControlIconId = keyof typeof CONTROL_ICONS
 
 /** Every icon a host may draw: a control's glyph by its meaning, a chart style by its id, a drawing
- *  tool by its registry type, and a layout arrangement by its code. Exactly the ids in
- *  `CHART_ICON_IDS`, so an id the chart does not draw is a type error before it is a refusal. */
-export type ChartIconId = ControlIconId | `style.${ChartStyleId}` | `tool.${MiniatureTool}` | `layout.${ArrangementGlyphCode}`
+ *  tool by its registry type, a layout arrangement by its code, and a time-scale mark's glyph by its
+ *  shape. Exactly the ids in `CHART_ICON_IDS`, so an id the chart does not draw is a type error
+ *  before it is a refusal. */
+export type ChartIconId = ControlIconId | `style.${ChartStyleId}` | `tool.${MiniatureTool}` | `layout.${ArrangementGlyphCode}` | MarkIconId
 
 /** A host's drawings for the chart's icons, by id. An icon left out keeps the chart's own. */
 export type ChartIcons = { readonly [K in ChartIconId]?: ChartIconFactory }
@@ -158,9 +173,11 @@ export type ChartIcons = { readonly [K in ChartIconId]?: ChartIconFactory }
  *  draws the left-to-right form of these. */
 export const MIRRORED_ICONS: ReadonlySet<ChartIconId> = new Set<ChartIconId>(['flyout'])
 
-/** The tools and arrangements that wear a glyph, in their registries' orders. */
+/** The tools and arrangements that wear a glyph, in their registries' orders, and the mark glyphs
+ *  in their table's. */
 const MINIATURE_TOOLS = Object.keys(TOOL_ICONS) as MiniatureTool[]
 const ARRANGEMENT_CODES = Object.keys(ARRANGEMENT_ICONS) as ArrangementGlyphCode[]
+const MARK_ICON_IDS = Object.keys(MARK_ICONS) as MarkIconId[]
 
 /** The miniature of each drawing tool and each layout arrangement, as a glyph, made once. */
 const toolGlyphs = new Map<string, Glyph>(MINIATURE_TOOLS.map((type) => [type, { viewBox: '0 0 28 28', body: TOOL_ICONS[type] }]))
@@ -172,12 +189,13 @@ export const toolGlyph = (type: string): Glyph | undefined => toolGlyphs.get(typ
 export const arrangementGlyphOf = (code: string): Glyph | undefined => arrangementGlyphs.get(code)
 
 /** Every published icon id, in catalog order: the controls, then the styles, the tools and the
- *  layouts in their registries' orders. */
+ *  layouts in their registries' orders, then the mark glyphs. */
 export const CHART_ICON_IDS: readonly ChartIconId[] = [
   ...(Object.keys(CONTROL_ICONS) as ControlIconId[]),
   ...CHART_STYLES.map((style) => `style.${style}` as const),
   ...MINIATURE_TOOLS.map((type) => `tool.${type}` as const),
   ...ARRANGEMENT_CODES.map((code) => `layout.${code}` as const),
+  ...MARK_ICON_IDS,
 ]
 
 const PUBLISHED = new Set<string>(CHART_ICON_IDS)
@@ -188,6 +206,7 @@ for (const [id, glyphs] of Object.entries(CONTROL_ICONS)) for (const mark of gly
 for (const style of CHART_STYLES) ICON_OF.set(STYLE_ICONS[style], `style.${style}`)
 for (const type of MINIATURE_TOOLS) ICON_OF.set(toolGlyphs.get(type)!, `tool.${type}`)
 for (const code of ARRANGEMENT_CODES) ICON_OF.set(arrangementGlyphs.get(code)!, `layout.${code}`)
+for (const id of MARK_ICON_IDS) ICON_OF.set(MARK_ICONS[id], id)
 
 /** The icon a glyph draws, when a host may draw it instead. */
 export const iconOf = (mark: Glyph): ChartIconId | undefined => ICON_OF.get(mark)
@@ -210,6 +229,7 @@ const GLYPHS_OF = new Map<string, readonly Glyph[]>([
   ...CHART_STYLES.map((style): [string, readonly Glyph[]] => [`style.${style}`, [STYLE_ICONS[style]]]),
   ...MINIATURE_TOOLS.map((type): [string, readonly Glyph[]] => [`tool.${type}`, [toolGlyphs.get(type)!]]),
   ...ARRANGEMENT_CODES.map((code): [string, readonly Glyph[]] => [`layout.${code}`, [arrangementGlyphs.get(code)!]]),
+  ...MARK_ICON_IDS.map((id): [string, readonly Glyph[]] => [id, [MARK_ICONS[id]]]),
 ])
 
 /** A drawing that stands on its own: its inks are `currentColor` or its own, never a role of the

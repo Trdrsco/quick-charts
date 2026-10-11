@@ -1,19 +1,25 @@
-// The context menu on the chart's own right-click, and the rules for raising it.
+// The context menu on the chart's own right-click, the price menu the price scale's plus opens, and
+// the rules for raising them.
 //
-// Its rows come from `chartContextMenu`, so an embedder's chart offers what a richer host's does
-// minus what this chart cannot serve. Every built-in row runs through the command registry rather
-// than a switch of its own, which is what makes a feature-hidden or access-denied verb refuse from
-// the menu exactly as it refuses from the keyboard. Contributed rows carry their own action and
-// ride below the built-ins, so a host cannot displace the chart's own order.
+// The right-click menu's rows come from `chartContextMenu`, so an embedder's chart offers what a
+// richer host's does minus what this chart cannot serve. Every built-in row runs through the
+// command registry rather than a switch of its own, which is what makes a feature-hidden or
+// access-denied verb refuse from the menu exactly as it refuses from the keyboard. Contributed rows
+// carry their own action and ride below the built-ins, so a host cannot displace the chart's own
+// order.
+//
+// The price menu holds the actions on one price and nothing else: every `level` row the extensions
+// contribute for it, each extension's rows together, and then the chart's own horizontal line at it.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
-import { mountMenu, type ContextMenuExtraRow } from '../contextMenuUi'
+import { mountMenu, type ContextMenuExtraRow, type PriceMenuPlacement, type PriceMenuRow } from '../contextMenuUi'
 import type { ChartMenuAction } from '../contextMenu'
 import type { ChartExtensionHost, ChartExtensionMenuItem } from '../extension'
 import type { ChartI18n } from '../i18n'
 import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry } from './commands'
 import type { IconResolver } from '../ui/icons/resolver'
-import { normalizeShortcut } from './shortcuts'
+import { isApplePlatform } from '../platform'
+import { normalizeShortcut, printedShortcut } from './shortcuts'
 
 /** The command each built-in menu row runs. Named here so the menu and the registry cannot drift
  *  into two vocabularies for the same verb. The settings row is the one the chart's own menu never
@@ -31,9 +37,25 @@ export const MENU_COMMAND: Partial<Record<ChartMenuAction, string>> = {
   'remove-drawings': 'chart.drawings.removeAll',
 }
 
+/** The command the price menu's horizontal line row runs, with the row's price. The row prints the
+ *  command's shortcut, which runs it at the crosshair's price. */
+export const PLACE_HORIZONTAL_LINE = 'chart.drawings.placeHorizontalLine'
+
+/** The level at a height on the main pane, snapped to the symbol's own grid: the price a row names
+ *  is one the market can actually hold. Null where the height holds no readable level. */
+export function levelAt(series: Pick<ISeriesApi<SeriesType>, 'coordinateToPrice'>, y: number, step: number): number | null {
+  const price = series.coordinateToPrice(y)
+  if (price == null || !(price > 0)) return null
+  return Math.round(price / step) * step
+}
+
 export interface MenuPlane {
   /** Raise the menu at a viewport point. False when the point holds no readable level. */
   raiseAt(clientX: number, clientY: number): boolean
+  /** Raise the price menu under the scale's plus, for the price at the crosshair's height `at.y`.
+   *  `keyboard` puts the focus on its first row. False when that height holds no readable level or
+   *  nothing offers a row for it. */
+  raisePriceMenu(at: PriceMenuPlacement & { y: number }, keyboard: boolean): boolean
   /** The rows the host contributes for the level under a viewport point, the table there named
    *  where the press landed on one: what a drawing's own menu carries for the host. Empty where the
    *  point holds no readable level or no host contributes. */
@@ -53,6 +75,8 @@ export interface MenuDeps {
   series(): ISeriesApi<SeriesType>
   /** The gesture box, and the element the menu mounts into: the widget's layer on the body. */
   gestures: HTMLElement
+  /** How far the main pane stands down from the gesture box's top: 0 while it is the first pane. */
+  paneTop?(): number
   host: HTMLElement
   i18n: ChartI18n
   /** Draws the menu's own glyphs: the host's drawing for each icon, or the chart's own. */
@@ -106,14 +130,17 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     },
   )
 
-  /** The level under a viewport point, snapped to the symbol's own grid: the price a row names is
-   *  one the market can actually hold. */
+  /** The level under a viewport point. */
   const priceAt = (clientY: number): number | null => {
     const box = deps.gestures.getBoundingClientRect()
-    const price = deps.series().coordinateToPrice(clientY - box.top)
-    if (price == null || !(price > 0)) return null
-    const step = deps.minMove()
-    return Math.round(price / step) * step
+    return levelAt(deps.series(), clientY - box.top - (deps.paneTop?.() ?? 0), deps.minMove())
+  }
+
+  /** The horizontal line command's shortcut as the row prints it, or null while it has none. */
+  const lineShortcut = (): string | null => {
+    const shortcut = deps.commands.list().find((spec) => spec.id === PLACE_HORIZONTAL_LINE)?.shortcut
+    const t = deps.i18n.t
+    return shortcut ? printedShortcut(shortcut, { ctrl: t(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl'), meta: t('drawing.modifierCommand') }) : null
   }
 
   const raiseAt = (clientX: number, clientY: number): boolean => {
@@ -172,6 +199,45 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     return true
   }
 
+  /** The price menu's groups for a level: each extension's `level` rows, then the chart's own. Built
+   *  at every raise and rebuild, so the rows read the level and the language of that moment. */
+  const priceGroups = (price: number, clientX: number, clientY: number): PriceMenuRow[][] => {
+    const priceText = deps.formatter().format(price)
+    const contributed = (deps.extensions()?.menuGroups({ price, priceText, symbol: deps.symbol(), name: deps.symbolName(), timeframe: deps.timeframe(), clientX, clientY }) ?? [])
+      .map((rows) => rows.filter((row) => row.group !== 'view'))
+      .filter((rows) => rows.length > 0)
+    const own: PriceMenuRow[] = []
+    if (deps.commands.available(PLACE_HORIZONTAL_LINE, price) && (deps.shown?.(PLACE_HORIZONTAL_LINE) ?? true)) {
+      const shortcut = lineShortcut()
+      own.push({
+        label: deps.i18n.t('menu.drawHorizontalLine', { price: priceText }),
+        ...(shortcut ? { shortcut } : {}),
+        glyph: deps.icons.tool('horizontal_line', 28),
+        run: () => void deps.commands.execute(PLACE_HORIZONTAL_LINE, price),
+      })
+    }
+    return own.length > 0 ? [...contributed, own] : contributed
+  }
+
+  const raisePriceMenu = (at: PriceMenuPlacement & { y: number }, keyboard: boolean): boolean => {
+    const price = priceAt(at.y)
+    if (price == null) return false
+    const clientX = at.side === 'right' ? at.right : at.left
+    let first: PriceMenuRow[][] | null = priceGroups(price, clientX, at.y)
+    if (first.length === 0) return false
+    deps.setLevel(price)
+    menu.openPrice(
+      at,
+      () => {
+        const groups = first ?? priceGroups(price, clientX, at.y)
+        first = null
+        return groups
+      },
+      keyboard,
+    )
+    return true
+  }
+
   const itemsAt = (clientX: number, clientY: number, table: { cell: boolean } | null): readonly ChartExtensionMenuItem[] => {
     const host = deps.extensions()
     if (!host) return []
@@ -183,6 +249,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
 
   return {
     raiseAt,
+    raisePriceMenu,
     itemsAt,
     runShortcutAt,
     close: () => menu.close(),

@@ -8,4 +8,5 @@ export const menu: Translation<typeof source> = {
   'menu.removeIndicators': { other: 'Xóa {count} chỉ báo' },
   'menu.removeDrawings': { other: 'Xóa {count} hình vẽ' },
   'menu.settings': 'Cài đặt…',
+  'menu.drawHorizontalLine': 'Vẽ đường ngang tại {price}',
 }

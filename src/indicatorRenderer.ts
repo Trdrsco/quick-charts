@@ -85,12 +85,17 @@ export function attachIndicators(
      *  live, so a theme switch repaints the levels with everything else; the built-in dark palette's
      *  neutral stands in for a host that supplies none. */
     neutral?: () => string
+    /** The index of the pane the main series stands in, where overlays are drawn and which is never
+     *  swept. A viewer may move it below another pane; the first pane when absent. */
+    mainPane?: () => number
   },
 ): IndicatorsRenderer {
   const entries = new Map<string, Entry>()
   const candlesOf = options?.candles ?? (() => null)
   const symbolPriceFormat = options?.symbolPriceFormat ?? null
   const neutralOf = options?.neutral ?? (() => DARK_THEME['series.neutral'])
+  const mainOf = options?.mainPane ?? (() => 0)
+  const sweep = (): void => sweepEmptyPanes(chart, mainOf())
 
   const removeEntry = (id: string): void => {
     const entry = entries.get(id)
@@ -106,7 +111,7 @@ export function attachIndicators(
       if (built.unavailable) {
         if (entries.has(id)) {
           removeEntry(id)
-          sweepEmptyPanes(chart)
+          sweep()
         }
         return
       }
@@ -116,11 +121,11 @@ export function attachIndicators(
       // silently drop the new plots or style the wrong ones.
       if (entry && entry.shapeKey !== shapeKeyOf(built)) {
         removeEntry(id)
-        sweepEmptyPanes(chart)
+        sweep()
         entry = undefined
       }
       if (!entry) {
-        entry = makeEntry(chart, built, neutralOf())
+        entry = makeEntry(chart, built, neutralOf(), mainOf())
         entries.set(id, entry)
       }
       built.plots.forEach((plot, i) => {
@@ -132,11 +137,11 @@ export function attachIndicators(
     },
     remove(id) {
       removeEntry(id)
-      sweepEmptyPanes(chart)
+      sweep()
     },
     prune(keep) {
       for (const id of [...entries.keys()]) if (!keep.has(id)) removeEntry(id)
-      sweepEmptyPanes(chart)
+      sweep()
     },
     has: (id) => entries.has(id),
     paneOf() {
@@ -146,7 +151,7 @@ export function attachIndicators(
         const first = entry.series[0]
         if (!first) continue
         const idx = panes.findIndex((pane) => pane.getSeries().includes(first))
-        out[id] = idx >= 0 ? idx : 0 // unresolved → the main pane
+        out[id] = idx >= 0 ? idx : mainOf() // unresolved → the main pane
       }
       return out
     },
@@ -195,10 +200,10 @@ function shapeKeyOf(built: IndicatorPlots): string {
 }
 
 /** Create one series per plot (plus marker plugins), attach the group's static levels to its first
- *  series, and wire the fill/shade painters. Overlays use the main pane (0); a pane-placed group
- *  gets a fresh pane appended at the bottom (every plot in the group shares it). */
-function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): Entry {
-  const paneIndex = built.placement === 'pane' ? indicatorPaneIndex(chart) : 0
+ *  series, and wire the fill/shade painters. Overlays use the main pane, wherever it stands; a
+ *  pane-placed group gets a fresh pane appended at the bottom (every plot in the group shares it). */
+function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string, main: number): Entry {
+  const paneIndex = built.placement === 'pane' ? indicatorPaneIndex(chart, main) : main
   // "Labels on price scale" (the standard output toggle, default ON): each visible value-carrying
   // plot shows its last value on the scale. Marker anchors never label.
   const labels = built.display?.labelsOnPriceScale !== false
@@ -207,7 +212,7 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): En
   for (const plot of built.plots) {
     const labeled = labels && plot.visible !== false
     if (plot.type === 'histogram') {
-      series.push(chart.addSeries(HistogramSeries, { color: plot.color, priceLineVisible: false, lastValueVisible: labeled, visible: plot.visible !== false }, paneIndex))
+      series.push(chart.addSeries(HistogramSeries, { color: plot.color, priceLineVisible: false, lastValueVisible: labeled, title: built.scaleTitle ?? '', visible: plot.visible !== false }, paneIndex))
       markers.push(null)
       continue
     }
@@ -222,6 +227,7 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): En
             lineWidth: (plot.lineWidth ?? 2) as LineWidth,
             priceLineVisible: false,
             lastValueVisible: labeled,
+            title: built.scaleTitle ?? '',
             visible: plot.visible !== false,
           },
           paneIndex,
@@ -256,6 +262,7 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): En
           crosshairMarkerVisible: !asDots,
           priceLineVisible: false,
           lastValueVisible: plot.type === 'marker' ? false : labeled,
+          title: built.scaleTitle ?? '',
           visible: plot.visible !== false,
           // A volume-scale plot rides the chart's own volume band, not the price axis.
           ...(plot.scale === 'volume' ? { priceScaleId: 'volume', lastValueVisible: false } : {}),
@@ -289,7 +296,7 @@ function makeEntry(chart: IChartApi, built: IndicatorPlots, neutral: string): En
     shade,
     paintedTimes: new Set(),
     // Fingerprints start at the CREATED state so the first applyEntryStyles pass is a no-op.
-    styleKeys: built.plots.map((p) => styleKeyOf(p, labels)),
+    styleKeys: built.plots.map((p) => styleKeyOf(p, labels, built.scaleTitle)),
     levelsKey: JSON.stringify(built.levels ?? []),
     priceLines,
     precisionKey: null,
@@ -313,8 +320,8 @@ function createLevels(host: Series, levels: NonNullable<IndicatorPlots['levels']
 }
 
 /** A plot's visual fingerprint — the settings an instance can change on a live series. */
-function styleKeyOf(plot: IndicatorPlot, labels: boolean): string {
-  return JSON.stringify([plot.color, plot.lineWidth, plot.lineStyle, plot.visible !== false, plot.base, labels])
+function styleKeyOf(plot: IndicatorPlot, labels: boolean, title: string | undefined): string {
+  return JSON.stringify([plot.color, plot.lineWidth, plot.lineStyle, plot.visible !== false, plot.base, labels, title ?? ''])
 }
 
 /** Re-apply per-plot styling, levels, and precision when (and only when) their fingerprints moved —
@@ -323,7 +330,7 @@ function styleKeyOf(plot: IndicatorPlot, labels: boolean): string {
 function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: SymbolPriceFormat | null, neutral: string): void {
   const labels = built.display?.labelsOnPriceScale !== false
   built.plots.forEach((plot, i) => {
-    const key = styleKeyOf(plot, labels)
+    const key = styleKeyOf(plot, labels, built.scaleTitle)
     if (entry.styleKeys[i] === key) return
     entry.styleKeys[i] = key
     const s = entry.series[i]
@@ -331,11 +338,11 @@ function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: Sym
     const visible = plot.visible !== false
     const labeled = labels && visible && plot.type !== 'marker'
     if (plot.type === 'histogram') {
-      s.applyOptions({ color: plot.color, visible, lastValueVisible: labeled })
+      s.applyOptions({ color: plot.color, visible, lastValueVisible: labeled, title: built.scaleTitle ?? '' })
       return
     }
     if (plot.type === 'area') {
-      s.applyOptions({ topLineColor: plot.color, bottomLineColor: plot.color, lineWidth: (plot.lineWidth ?? 2) as LineWidth, visible, lastValueVisible: labeled } as never)
+      s.applyOptions({ topLineColor: plot.color, bottomLineColor: plot.color, lineWidth: (plot.lineWidth ?? 2) as LineWidth, visible, lastValueVisible: labeled, title: built.scaleTitle ?? '' } as never)
       return
     }
     // Lines, dot-lines, and marker anchors (marker glyph color travels with the marker data).
@@ -345,6 +352,7 @@ function applyEntryStyles(entry: Entry, built: IndicatorPlots, symbolFormat: Sym
       lineStyle: LEVEL_STYLE[plot.lineStyle ?? 'solid'] ?? LineStyle.Solid,
       visible,
       lastValueVisible: labeled,
+      title: built.scaleTitle ?? '',
     } as never)
   })
   const levelsKey = JSON.stringify(built.levels ?? [])
@@ -442,17 +450,17 @@ function safeRemove(chart: IChartApi, series: Series): void {
  *
  *  Sweeping first makes the count mean what it is read as. It costs one pass over the panes and it
  *  is the only place the index is decided, so no caller has to remember to do it. */
-function indicatorPaneIndex(chart: IChartApi): number {
-  sweepEmptyPanes(chart)
+function indicatorPaneIndex(chart: IChartApi, main: number): number {
+  sweepEmptyPanes(chart, main)
   return chart.panes().length
 }
 
-/** Drop any non-main pane left with no series after a removal (descending so indices stay valid as
- *  panes below shift up). */
-function sweepEmptyPanes(chart: IChartApi): void {
+/** Drop any pane but the main one left with no series after a removal (descending so indices stay
+ *  valid as panes below shift up). */
+function sweepEmptyPanes(chart: IChartApi, main: number): void {
   const empties: number[] = []
   chart.panes().forEach((pane, i) => {
-    if (i > 0 && pane.getSeries().length === 0) empties.push(i)
+    if (i !== main && pane.getSeries().length === 0) empties.push(i)
   })
   for (let k = empties.length - 1; k >= 0; k--) chart.removePane(empties[k]!)
 }

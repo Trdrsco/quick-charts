@@ -1,5 +1,5 @@
 // Every glyph the chart's own surfaces wear: the top bar, the legend, the dialogs, the drawing
-// toolbar and its bars. Inline SVG markup in `currentColor`, so a recipe's ink is the glyph's ink
+// toolbar and its bars, and the rings of the time-scale marks. Inline SVG markup in `currentColor`, so a recipe's ink is the glyph's ink
 // and the package ships no asset and fetches nothing. The drawings are built from lines, arcs,
 // circles and walled outlines on their grids (`glyphGeometry`), once, when the module loads. Each
 // glyph carries the grid it was drawn on, so a surface names the glyph and its size and never a
@@ -9,6 +9,7 @@
 // `arrangementGlyphs`.
 
 import { arc, bend, box, disc, frame, inset, line, onCircle, polygon, polyline, ring, roundedBox, roundedPolygon, solid, wall, type Point } from './glyphGeometry'
+import type { MarkIconId } from '../../marks'
 
 /** One glyph: its own grid and the inner markup drawn on it. */
 export interface Glyph {
@@ -297,6 +298,10 @@ const BACK_SHEET = 'M18.5 20V21.5A1 1 0 0 1 17.5 22.5H6.5A1 1 0 0 1 5.5 21.5V10.
  *  rounded bar walled one unit thick with ticks hanging from its top edge, every other one longer. */
 const RULER = frame(0.5, 9.75, 27.5, 18.25, 1.5) + [5, 13.5, 22].map((x) => box(x, 10.75, x + 1, 13.25)).join('') + [9.25, 17.75].map((x) => box(x, 10.75, x + 1, 14.65)).join('')
 
+/** A speaker on the 18 grid: a small box and the cone flaring out of it to the right, walled one
+ *  unit thick. */
+const SPEAKER = wall([[3, 6.5], [6, 6.5], [10, 3], [10, 15], [6, 11.5], [3, 11.5]], 0.5, 0)
+
 /** The visual order mark's top layer: a square seen corner on, flattened to a diamond. */
 const LAYER: Point[] = [[14, 6], [24, 11.7], [14, 17.3], [4, 11.7]]
 
@@ -324,6 +329,10 @@ export const ICONS = {
   paneCollapse: { viewBox: '0 0 18 18', body: "<path stroke=\"currentColor\" d=\"M3 4.5h12M3 13.5h12M9 6.5v-2M7.5 6l1.5 1.5L10.5 6M9 11.5v2M7.5 12l1.5-1.5L10.5 12\" />" },
   paneRestore: { viewBox: '0 0 18 18', body: "<path stroke=\"currentColor\" d=\"M3 4.5h12M3 13.5h12M9 5v3M7.5 7.5L9 9l1.5-1.5M9 13v-3M7.5 10.5L9 9l1.5 1.5\" />" },
   paneMaximize: { viewBox: '0 0 18 18', body: "<path stroke=\"currentColor\" d=\"M3.5 4.5h11v9h-11z\" /> <path stroke=\"currentColor\" d=\"M6 9h6M9 6.5v5M7.5 8L9 6.5 10.5 8M7.5 10L9 11.5 10.5 10\" />" },
+  // Move a pane: an arrow up the middle of the grid, its head opening four units each way, and the
+  // same arrow pointing down.
+  paneUp: { viewBox: '0 0 18 18', body: '<path stroke="currentColor" d="M9 14.5v-11M5 7.5l4-4 4 4" />' },
+  paneDown: { viewBox: '0 0 18 18', body: '<path stroke="currentColor" d="M9 3.5v11M5 10.5l4 4 4-4" />' },
   /** The product's own mark, on its native 120 grid. Every chart carries it in the plot's corner. */
   productMark: { viewBox: '0 0 120 120', body:
     '<path fill="currentColor" d="M113 2.5A7 7 0 0 1 120 9.5L120 71.5A6 6 0 0 1 114 77.5L83 77.5A3 3 0 0 1 80 74.5L80 42.5A4 4 0 0 1 84 38.5L110 38.5A4 4 0 0 0 114 34.5L114 12.5A4 4 0 0 0 110 8.5L10 8.5A4 4 0 0 0 6 12.5L6 34.5A4 4 0 0 0 10 38.5L36 38.5A4 4 0 0 1 40 42.5L40 74.5A3 3 0 0 1 37 77.5L6 77.5A6 6 0 0 1 0 71.5L0 9.5A7 7 0 0 1 7 2.5Z"/>' +
@@ -538,6 +547,45 @@ export const ICONS = {
   search24: { viewBox: '0 0 24 24', body: '<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' },
   // The note beside a switch that needs a sentence.
   info: { viewBox: '0 0 18 18', body: solid(disc(9, 9, 8) + disc(9, 5, 1, true) + polygon([[7, 8], [10, 8], [10, 14], [8.5, 14], [8.5, 9.5], [7, 9.5]], true)) },
+  // The short tip beside a setting's label: a disc with a question mark cut through it, its hook
+  // turning over the top and down into the stem, and the dot under the stem.
+  question: { viewBox: '0 0 18 18', body: solid(disc(9, 9, 8) + arc(9, 6.75, 2.25, 180, 450, 1.5) + box(8.25, 9.75, 9.75, 11.25) + disc(9, 13.1, 1), 'evenodd') },
+  // A level's speaker: a box and the cone flaring out of it, walled one unit thick, and one wave
+  // standing off the cone's mouth. The muted speaker has no wave and a stroke across it.
+  speaker: { viewBox: '0 0 18 18', body: solid(SPEAKER + arc(10.5, 9, 2.9, -60, 60)) },
+  speakerMuted: { viewBox: '0 0 18 18', body: solid(SPEAKER + line([2.5, 14.5], [14, 3])) },
+  // The chart settings pages, on the rail's 28 grid. Symbol: two candles, the left one taller.
+  settingsSymbol: { viewBox: '0 0 28 28', body: candle(16, 7, 10, 18, 21, 5) + candle(8, 4, 7, 21, 24, 5) },
+  // Status line: the legend's rounded band over three lines of values, the lower two shorter.
+  settingsStatusLine: { viewBox: '0 0 28 28', body: solid(frame(5, 6, 23, 10.5, 2) + box(5, 14, 22, 15) + box(5, 18, 20, 19) + box(5, 22, 20, 23)) },
+  // Scales and lines: two axes leaving a small ring at their corner, the price axis up and the time
+  // axis right, each ending in an arrowhead.
+  settingsScales: {
+    viewBox: '0 0 28 28',
+    body: solid(ring(7.5, 21.5, 2) + line([7.5, 19.5], [7.5, 5.2]) + polyline([[4.5, 8.2], [7.5, 5.2], [10.5, 8.2]]) + line([9.5, 21.5], [23.8, 21.5]) + polyline([[20.8, 18.5], [23.8, 21.5], [20.8, 24.5]])),
+  },
+  // Canvas: a pencil lying corner to corner, its point at the lower left.
+  settingsCanvas: { viewBox: '0 0 28 28', body: solid(pencil([6, 22], 18.5, 2.8, 2)) },
+  // Events: a calendar page, its band under the top edge and its two rings standing up through it.
+  settingsEvents: { viewBox: '0 0 28 28', body: solid(frame(5, 6, 23, 22, 2.5) + box(6, 10, 22, 11) + box(9, 4, 10, 8) + box(18, 4, 19, 8)) },
+  // A pane's own buttons, on a 15 grid, one unit strokes. Collapse: two chevrons pointing at each
+  // other across the middle. Expand: the same two pointing apart.
+  paneCollapse15: { viewBox: '0 0 15 15', body: solid(polyline([[3.5, 3], [7.5, 6.5], [11.5, 3]]) + polyline([[3.5, 12], [7.5, 8.5], [11.5, 12]])) },
+  paneExpand15: { viewBox: '0 0 15 15', body: solid(polyline([[3.5, 6.5], [7.5, 3], [11.5, 6.5]]) + polyline([[3.5, 8.5], [7.5, 12], [11.5, 8.5]])) },
+  // Move up: a stem up the middle under a head opening four units each way. Move down: the same
+  // arrow pointing down.
+  paneUp15: { viewBox: '0 0 15 15', body: solid(line([7.5, 12.5], [7.5, 3.5]) + polyline([[3.5, 7.5], [7.5, 3.5], [11.5, 7.5]])) },
+  paneDown15: { viewBox: '0 0 15 15', body: solid(line([7.5, 2.5], [7.5, 11.5]) + polyline([[3.5, 7.5], [7.5, 11.5], [11.5, 7.5]])) },
+  // Maximize: a frame's four corners, each bent round, the middle of every side left open.
+  paneMaximize15: {
+    viewBox: '0 0 15 15',
+    body: solid(
+      bend([[2.5, 6], [2.5, 2.5], [6, 2.5]], 1.5) +
+        bend([[9, 2.5], [12.5, 2.5], [12.5, 6]], 1.5) +
+        bend([[12.5, 9], [12.5, 12.5], [9, 12.5]], 1.5) +
+        bend([[6, 12.5], [2.5, 12.5], [2.5, 9]], 1.5),
+    ),
+  },
 } as const satisfies Record<string, Glyph>
 
 export type IconName = keyof typeof ICONS
@@ -611,3 +659,29 @@ export const OPERATOR_GLYPHS = {
   // A one with its flag and its foot, and a slash leaning after it.
   reciprocal: { viewBox: '0 0 13 13', body: operator('M1 5 3.5 2.5V10M1.5 10.5H5.5') + '<path fill="none" stroke="currentColor" d="M8 12 11 1"/>' },
 } as const satisfies Record<string, Glyph>
+
+/** A mark glyph's one filled outline, kept as path data beside its markup so the canvas fills the
+ *  same outline a host reads as artwork. */
+export interface MarkGlyphPath {
+  d: string
+  rule?: 'evenodd'
+}
+
+/** A mark glyph on the 21 grid of a time-scale mark's ring box, its outline held inside the ring. */
+const markGlyph = (path: MarkGlyphPath): Glyph & { path: MarkGlyphPath } => ({ viewBox: '0 0 21 21', size: 21, body: solid(path.d, path.rule), path })
+
+/** The glyphs a time-scale mark wears inside its ring, by icon id, each named for its shape: what one
+ *  means on a chart is the host's to say. */
+export const MARK_ICONS = {
+  // A lightning bolt: a wedge from its top point down to a step at the middle, and a second wedge
+  // from the step down to its foot point.
+  'mark.bolt': markGlyph({ d: polygon([[12.5, 4.5], [6.5, 11.5], [10, 11.5], [8.5, 16.5], [14.5, 9.5], [11, 9.5]]) }),
+  // A flag: a pole a unit wide, and a banner flying from its top with a notch cut into its far edge.
+  'mark.flag': markGlyph({ d: box(6.5, 4.5, 7.5, 16.5) + polygon([[7.5, 5], [14.5, 5], [12.5, 8], [14.5, 11], [7.5, 11]]) }),
+  // A five-pointed star, its points 5.5 from its centre, standing level in the ring.
+  'mark.star': markGlyph({ d: polygon(starPoints(10.5, 11, 5.5, 2.4)) }),
+  // A clock: a ring and two hands, one up to twelve and one across to three.
+  'mark.clock': markGlyph({ d: ring(10.5, 10.5, 5.5, 1.2) + box(9.9, 7, 11.1, 11.1) + box(9.9, 9.9, 13.5, 11.1) }),
+  // An exclamation mark: a rounded stroke and the dot under it.
+  'mark.exclamation': markGlyph({ d: roundedBox(9.75, 5, 11.25, 12.5, 0.75) + disc(10.5, 15, 1) }),
+} as const satisfies Record<MarkIconId, Glyph & { path: MarkGlyphPath }>

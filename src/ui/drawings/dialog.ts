@@ -26,6 +26,9 @@ export interface DialogOptions {
    *  closes on the modal motion. Both on unless the surface turns them off. */
   veil?: boolean
   motion?: boolean
+  /** Whether the pointer passes the backdrop to the chart behind the dialog. Off unless the surface
+   *  turns it on. */
+  passThrough?: boolean
   /** The dialog has begun closing and takes no more input, before its exit motion finishes. */
   onClosing?(): void
   /** The dialog has left the page. */
@@ -100,6 +103,7 @@ export function openDialog(options: DialogOptions): DialogHandle {
     ...(options.width === undefined ? {} : { width: options.width }),
     ...(options.veil === undefined ? {} : { veil: options.veil }),
     ...(options.motion === undefined ? {} : { motion: options.motion }),
+    ...(options.passThrough === undefined ? {} : { passThrough: options.passThrough }),
     build(element, dialog) {
       box = element
       closeBox = () => dialog.close()

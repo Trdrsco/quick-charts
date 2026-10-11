@@ -2,6 +2,7 @@
 // The top bar: what it renders from the active chart, which controls each presentation flag removes,
 // and that every press is a command: a denied command renders disabled and does nothing.
 import { afterEach, describe, expect, it } from 'vitest'
+import { chrome as de } from '../../src/i18n/de/chrome'
 import { mountTopBar, type TopBarHandle } from '../../src/ui/chrome/topBar'
 import { FLYOUT_WIDTH } from '../../src/ui/chrome/flyoutGeometry'
 import { symbolLabel } from '../../src/symbolLabel'
@@ -104,20 +105,18 @@ describe('the top bar', () => {
     }
   })
 
-  it('Chart settings uses a section rail and Cancel restores previewed changes', () => {
+  it('Chart settings uses a page rail, and Cancel restores what the pages previewed', () => {
     const { bar, w } = mount()
     bar.element.querySelector<HTMLButtonElement>('button[aria-label="Chart settings"]')!.click()
     const dialog = document.querySelector<HTMLElement>('.qc-chart-settings-dialog')!
     expect(dialog.querySelector('.qc-dialog-title')?.textContent).toContain('Settings')
-    expect([...dialog.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual(['Appearance', 'Display', 'Price scale', 'Theme'])
-    expect([...dialog.querySelectorAll('.qc-chart-settings-footer .qc-button')].map((control) => control.textContent)).toEqual(['Reset defaults', 'Cancel', 'Ok'])
+    expect([...dialog.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent)).toEqual(['Symbol', 'Status line', 'Scales and lines', 'Canvas', 'Events'])
+    expect([...dialog.querySelectorAll('.qc-chart-settings-footer button')].map((control) => control.textContent)).toEqual(['Template', 'Cancel', 'Ok'])
 
-    dialog.querySelector<HTMLButtonElement>('[role="tab"][data-settings-page="display"]')!.click()
-    const grid = dialog.querySelector<HTMLButtonElement>('[role="switch"][aria-label="Grid lines"]')!
-    grid.click()
-    expect(w.chart.state.appearance.appearance.grid).toBe(false)
+    // The harness registers no settings command, so the row's write is the handle's own here.
+    w.chart.handle.applySettings({ canvas: { verticalGrid: false } })
     dialog.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
-    expect(w.chart.state.appearance.appearance.grid).toBe(true)
+    expect(w.chart.calls).toContain('settings:reset')
   })
 
   it('is a labeled toolbar carrying every control by default', () => {
@@ -333,10 +332,9 @@ describe('the top bar', () => {
     it('rewrites the chips from the catalog on a language change rather than emptying them', async () => {
       const { bar, w } = mount()
       await w.i18n.setLocale('de')
-      // German has yet to be written for these two, so the words are still the English ones; what
-      // this holds is that the sync REWRITES them from the catalog instead of clearing the nodes.
-      expect(chip(bar, indicators)).toBe('Indicators')
-      expect(chip(bar, replay)).toBe('Replay')
+      // The sync REWRITES the chips from the German catalog instead of clearing the nodes.
+      expect(chip(bar, indicators)).toBe(de['chrome.indicators'])
+      expect(chip(bar, replay)).toBe(de['chrome.replayChip'])
       expect(bar.element.dataset.qcLabels).toBe('all')
     })
 

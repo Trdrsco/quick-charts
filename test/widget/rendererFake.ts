@@ -49,12 +49,18 @@ export interface FakeRenderer {
   scaleWidths: { left: number; right: number }
   /** The options each price scale holds, as the chart wrote them; `autoScale` is whether it frames. */
   priceScaleOptions: Record<string, Record<string, unknown>>
+  /** The price range each scale was set to by hand, which it then answers as its visible range. */
+  priceRanges: Record<string, { from: number; to: number }>
   fireLogicalRange(): void
   fireTimeRange(): void
   paneHeights: Record<number, number>
+  /** The primitives attached to each pane, such as a text watermark. */
+  panePrimitives: Record<number, unknown[]>
+  /** Every options object the time scale was handed after the chart was created, in order. */
+  timeScaleOptions: Record<string, unknown>[]
   /** A crosshair report. Pass `x` when the surface under test reads the POINTER position rather
-   *  than the bar the renderer snapped to. */
-  fireCrosshair(time: number | null, x?: number): void
+   *  than the bar the renderer snapped to, and `y` for its height (0 when absent). */
+  fireCrosshair(time: number | null, x?: number, y?: number): void
   fireClick(time: number | null): void
   removed: boolean
 }
@@ -92,6 +98,7 @@ export function fakeRenderer(): FakeRenderer {
     },
     scaleWidths: { left: 0, right: 0 },
     priceScaleOptions: {},
+    priceRanges: {},
     fireLogicalRange: () => {
       for (const cb of logicalSubs) cb(state.logicalRange)
     },
@@ -100,8 +107,10 @@ export function fakeRenderer(): FakeRenderer {
     },
     removed: false,
     paneHeights: {},
-    fireCrosshair: (time, x) => {
-      const point = x === undefined ? {} : { point: { x, y: 0 } }
+    panePrimitives: {},
+    timeScaleOptions: [],
+    fireCrosshair: (time, x, y) => {
+      const point = x === undefined ? {} : { point: { x, y: y ?? 0 } }
       for (const cb of crosshairSubs) cb(time === null ? { ...point } : { time, ...point })
     },
     fireClick: (time) => {
@@ -111,8 +120,31 @@ export function fakeRenderer(): FakeRenderer {
   const seriesApis = new Map<object, FakeSeries>()
   const apiOf = new Map<FakeSeries, object>()
   const paneElements = new Map<number, HTMLElement>()
+  /** Stand every pane at a new index, as the renderer's own reordering does: a pane takes its
+   *  series, its height, its element and its primitives with it. `to` maps each old index to its new
+   *  one. */
+  const reorder = (to: (index: number) => number): void => {
+    for (const item of series) item.paneIndex = to(item.paneIndex)
+    const heights = Object.entries(state.paneHeights).map(([index, height]) => [to(Number(index)), height] as const)
+    state.paneHeights = Object.fromEntries(heights)
+    const elements = [...paneElements].map(([index, element]) => [to(index), element] as const)
+    paneElements.clear()
+    for (const [index, element] of elements) paneElements.set(index, element)
+    const primitives = Object.entries(state.panePrimitives).map(([index, list]) => [to(Number(index)), list] as const)
+    state.panePrimitives = Object.fromEntries(primitives)
+  }
+  const paneCount = (): number => Math.max(1, ...series.map((s) => s.paneIndex + 1))
   const makePane = (index: number) => ({
     paneIndex: () => index,
+    moveTo: (target: number) => {
+      if (target === index || target < 0 || target >= paneCount()) return
+      reorder((at) => {
+        if (at === index) return target
+        if (index < target && at > index && at <= target) return at - 1
+        if (target < index && at >= target && at < index) return at + 1
+        return at
+      })
+    },
     getHeight: () => state.paneHeights[index] ?? 300,
     setHeight: (height: number) => { state.paneHeights[index] = height },
     getHTMLElement: () => {
@@ -120,6 +152,10 @@ export function fakeRenderer(): FakeRenderer {
       return paneElements.get(index)!
     },
     getSeries: () => series.filter((s) => s.paneIndex === index).map((s) => apiOf.get(s)),
+    attachPrimitive: (primitive: unknown) => void (state.panePrimitives[index] ??= []).push(primitive),
+    detachPrimitive: (primitive: unknown) => {
+      state.panePrimitives[index] = (state.panePrimitives[index] ?? []).filter((p) => p !== primitive)
+    },
   })
   // One object per scale id, held for the renderer's lifetime: the real renderer answers the same
   // scale each time, so a test may replace a method on it and the chart sees the replacement.
@@ -134,11 +170,21 @@ export function fakeRenderer(): FakeRenderer {
     applyOptions: (next: Record<string, unknown>) => {
       const key = id ?? 'right'
       state.priceScaleOptions[key] = { ...state.priceScaleOptions[key], ...next }
+      // A scale that frames itself again lets go of a range set by hand.
+      if (next.autoScale === true) delete state.priceRanges[key]
     },
     options: () => ({ borderVisible: false, borderColor: '#000000', autoScale: true, ...state.priceScaleOptions[id ?? 'right'] }),
     // The framed price range: null until a series on this scale holds data, then the span of that
     // data, the way the real renderer answers once it has rendered a frame.
+    // Setting a range by hand stops the scale framing itself, as the renderer does.
+    setVisibleRange: (range: { from: number; to: number }) => {
+      const key = id ?? 'right'
+      state.priceScaleOptions[key] = { ...state.priceScaleOptions[key], autoScale: false }
+      state.priceRanges[key] = { ...range }
+    },
     getVisibleRange: () => {
+      const held = state.priceRanges[id ?? 'right']
+      if (held) return { ...held }
       const rows = series.filter((s) => s.options.priceScaleId !== 'volume').flatMap((s) => s.data as { high?: number; low?: number; value?: number; close?: number }[])
       const highs = rows.map((r) => r.high ?? r.value ?? r.close).filter((v): v is number => typeof v === 'number')
       const lows = rows.map((r) => r.low ?? r.value ?? r.close).filter((v): v is number => typeof v === 'number')
@@ -172,6 +218,7 @@ export function fakeRenderer(): FakeRenderer {
     fitContent: () => undefined,
     options: () => ({ barSpacing: state.barSpacing, rightOffset: 4 }),
     applyOptions: (options: { barSpacing?: number }) => {
+      state.timeScaleOptions.push({ ...options })
       if (options.barSpacing !== undefined) state.barSpacing = options.barSpacing
     },
     scrollPosition: () => state.scroll,
@@ -217,8 +264,11 @@ export function fakeRenderer(): FakeRenderer {
       detachPrimitive: (p: unknown) => {
         record.primitives = record.primitives.filter((x) => x !== p)
       },
-      createPriceLine: (opts: unknown) => {
-        const line = { applyOptions: () => undefined, options: () => opts }
+      createPriceLine: (opts: Record<string, unknown>) => {
+        // The line's options as the renderer holds them: what it was created with and every write
+        // since, merged.
+        const held = { ...opts }
+        const line = { applyOptions: (next: Record<string, unknown>) => void Object.assign(held, next), options: () => held }
         record.priceLines.push(line)
         return line
       },
@@ -266,6 +316,9 @@ export function fakeRenderer(): FakeRenderer {
       }
     },
     addPane: () => makePane(1),
+    swapPanes: (first: number, second: number) => {
+      reorder((at) => (at === first ? second : at === second ? first : at))
+    },
     subscribeCrosshairMove: (cb: (param: unknown) => void) => void crosshairSubs.add(cb),
     unsubscribeCrosshairMove: (cb: (param: unknown) => void) => void crosshairSubs.delete(cb),
     subscribeClick: (cb: (param: unknown) => void) => void clickSubs.add(cb),

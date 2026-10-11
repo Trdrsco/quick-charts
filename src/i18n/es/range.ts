@@ -17,6 +17,6 @@ export const range: Translation<typeof source> = {
   'range.scrollLeft': 'Desplazar a la izquierda',
   'range.scrollRight': 'Desplazar a la derecha',
   'range.reset': 'Restablecer la vista del gráfico',
-  'range.maximizeChart': 'Maximize chart',
-  'range.restoreChart': 'Restore chart',
+  'range.maximizeChart': 'Maximizar el gráfico',
+  'range.restoreChart': 'Restaurar el gráfico',
 }

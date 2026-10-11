@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'Ten feed nie podaje wolumenu',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'Od otwarcia zapisano to w innym miejscu. Przed zapisaniem wczytaj nowszą wersję.',
+  'host.saveNotFound': 'To zostało usunięte w innym miejscu. Zapisz to ponownie jako nowe.',
+  'host.loadInvalid': 'Nie udało się tego otworzyć. Na ekranie nic się nie zmieniło.',
+  'host.loadUnavailable': 'Nie udało się uzyskać dostępu do zapisanej pracy. Na ekranie nic się nie zmieniło.',
+  'host.loadNotRestored': 'Nie udało się tego otworzyć ani przywrócić tego, co było na ekranie. Wykres nie będzie zapisywany, dopóki nie otworzysz zapisanego wykresu lub układu. Najpierw zapisz kopię, aby zachować to, co jest na ekranie.',
+  'host.notSaving': 'Wykres nie jest zapisywany. Otwórz zapisany wykres lub układ, aby zacząć od znanego stanu. Zapisanie kopii zachowa to, co jest na ekranie, ale wykres nadal nie będzie zapisywany.',
 }

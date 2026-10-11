@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'Este feed no aporta volumen',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'Se guardó en otro lugar después de abrirlo. Carga la versión más reciente antes de guardar.',
+  'host.saveNotFound': 'Se eliminó en otro lugar. Vuelve a guardarlo como nuevo.',
+  'host.loadInvalid': 'No se pudo abrir. No cambió nada en la pantalla.',
+  'host.loadUnavailable': 'No se pudo acceder a tu trabajo guardado. No cambió nada en la pantalla.',
+  'host.loadNotRestored': 'No se pudo abrir, y tampoco se pudo restaurar lo que había en la pantalla. El gráfico no guardará hasta que abras un gráfico o un diseño guardado. Guarda primero una copia para conservar lo que hay en la pantalla.',
+  'host.notSaving': 'El gráfico no está guardando. Abre un gráfico o un diseño guardado para empezar desde un estado conocido. Guardar una copia conserva lo que hay en la pantalla, pero el gráfico seguirá sin guardar.',
 }

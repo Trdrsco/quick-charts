@@ -39,7 +39,7 @@ const local: DrawingResourceContext = { version: 1, kind: 'chart-local', layoutI
 
 describe('the wire contract', () => {
   it('states a version, and addresses four collections relative to a base URL', () => {
-    expect(REST_WIRE_VERSION).toBe(2)
+    expect(REST_WIRE_VERSION).toBe(3)
     expect(restCollectionPath({ family: 'charts' })).toBe('/charts')
     expect(restCollectionPath({ family: 'layouts' })).toBe('/layouts')
     expect(restCollectionPath({ family: 'drawings' })).toBe('/drawings')

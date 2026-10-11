@@ -1,11 +1,15 @@
 // The display timezones: the 60-zone registry, the exchange choice, offsets in both DST regimes,
-// and the locale-keyed formatters that put a zone on the axis, the crosshair and a clock.
+// and the locale-keyed formatters that put a zone on the axis, the crosshair and a clock, in the
+// date format, weekday and clock the time-scale settings name.
 import { TickMarkType } from 'lightweight-charts'
 import { describe, expect, it } from 'vitest'
 import { createChartI18n } from '../src/i18n'
+import { CHART_DATE_FORMATS } from '../src/settings/schema'
 import {
+  chartDateSample,
   DEFAULT_TIMEZONE,
   EXCHANGE_TIMEZONE,
+  formatChartDate,
   formatClock,
   isTimezoneChoice,
   makeCrosshairTimeFormatter,
@@ -131,5 +135,56 @@ describe('the picker listing', () => {
     const rows = timezoneListing(t, { withExchange: false, at: utc(2026, 0, 12) })
     expect(rows).toHaveLength(60)
     expect(rows.some((r) => r.id === EXCHANGE_TIMEZONE)).toBe(false)
+  })
+})
+
+describe('the time-scale settings', () => {
+  const quarter = (n: number): string => t('timezone.quarter', { quarter: n })
+
+  it('write every date format on the picker sample, in the order a picker offers them', () => {
+    expect(CHART_DATE_FORMATS.map((format) => chartDateSample(format, { locale: 'en-US', dayOfWeek: true, t }))).toEqual([
+      "Mon Q3 '97",
+      'Mon Q3 1997',
+      "Mon 29 Sep '97",
+      "Mon Sep '97",
+      'Mon Sep 29, 1997',
+      'Mon Sep 29, 1997',
+      'Mon Sep 1997',
+      'Mon Sep 29',
+      'Mon 29 Sep',
+      'Mon 1997-09-29',
+      'Mon 97-09-29',
+      'Mon 97/09/29',
+      'Mon 1997/09/29',
+      'Mon 29-09-1997',
+      'Mon 29-09-97',
+      'Mon 29/09/97',
+      'Mon 29/09/1997',
+      'Mon 09/29/97',
+      'Mon 09/29/1997',
+    ])
+  })
+
+  it('leave the weekday off when the setting does, and write a day without its leading zero where asked', () => {
+    expect(chartDateSample("dd MMM 'yy", { locale: 'en-US', dayOfWeek: false, t })).toBe("29 Sep '97")
+    const ninth = utc(1997, 8, 9, 12)
+    expect(formatChartDate(ninth, 'Etc/UTC', 'en-US', 'MMM d, yyyy', quarter)).toBe('Sep 9, 1997')
+    expect(formatChartDate(ninth, 'Etc/UTC', 'en-US', 'MMM dd, yyyy', quarter)).toBe('Sep 09, 1997')
+  })
+
+  it('label the crosshair in the date format, the weekday and the clock the settings name', () => {
+    const at = Date.UTC(2026, 9, 6, 19) / 1000
+    const format = { dateFormat: "dd MMM 'yy" as const, dayOfWeek: true, hoursFormat: '24' as const, quarter }
+    expect(makeCrosshairTimeFormatter('en-US', 'America/New_York', true, format)(at as never)).toBe("Tue 06 Oct '26 15:00")
+    expect(makeCrosshairTimeFormatter('en-US', 'America/New_York', true, { ...format, dayOfWeek: false })(at as never)).toBe("06 Oct '26 15:00")
+    expect(makeCrosshairTimeFormatter('en-US', 'America/New_York', true, { ...format, dateFormat: 'yyyy-MM-dd' })(at as never)).toBe('Tue 2026-10-06 15:00')
+    expect(makeCrosshairTimeFormatter('en-US', 'America/New_York', true, { ...format, hoursFormat: '12' })(at as never)).toBe("Tue 06 Oct '26 03:00 PM")
+    expect(makeCrosshairTimeFormatter('en-US', 'America/New_York', false, format)(at as never)).toBe("Tue 06 Oct '26")
+  })
+
+  it('write the axis times on a clock of 12 hours when the setting asks for one', () => {
+    const at = Date.UTC(2026, 9, 6, 19) / 1000
+    expect(makeTickMarkFormatter('en-US', 'America/New_York')(at as never, TickMarkType.Time)).toBe('15:00')
+    expect(makeTickMarkFormatter('en-US', 'America/New_York', '12')(at as never, TickMarkType.Time)).toBe('03:00 PM')
   })
 })

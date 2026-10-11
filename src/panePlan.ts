@@ -22,6 +22,9 @@ export interface PaneState {
   heights: Readonly<Record<number, number>>
   /** Heights remembered from BEFORE the pane's current collapse/maximize, by pane index. */
   remembered: Readonly<Record<number, number>>
+  /** The index of the main pane, which a viewer may move below another pane. The first when
+   *  absent. */
+  main?: number
 }
 
 export interface PanePlan {
@@ -34,28 +37,29 @@ export interface PanePlan {
 const total = (h: Readonly<Record<number, number>>): number => Object.values(h).reduce((s, v) => s + v, 0)
 
 /** Plan one pane operation. The TOTAL height is conserved exactly — the space a pane gives up goes
- *  to the main pane (0) and vice versa, because the chart's own height is fixed by its container;
+ *  to the main pane and vice versa, because the chart's own height is fixed by its container;
  *  handing back a different sum would make the renderer redistribute unpredictably. */
 export function planPaneOp(state: PaneState, op: PaneOp): PanePlan {
   const heights = { ...state.heights }
   const remembered = { ...state.remembered }
   const target = op.pane
-  if (target === 0 || heights[target] === undefined) return { apply: {}, remembered } // main pane and unknown panes have no ops
+  const mainIndex = state.main ?? 0
+  if (target === mainIndex || heights[target] === undefined) return { apply: {}, remembered } // main pane and unknown panes have no ops
   const sum = total(heights)
-  const main = heights[0] ?? 0
+  const main = heights[mainIndex] ?? 0
 
   if (op.kind === 'collapse') {
     const cur = heights[target]!
     if (cur <= COLLAPSED_H) return { apply: {}, remembered } // already collapsed — idempotent
     remembered[target] = cur
-    return { apply: { [target]: COLLAPSED_H, 0: main + (cur - COLLAPSED_H) }, remembered }
+    return { apply: { [target]: COLLAPSED_H, [mainIndex]: main + (cur - COLLAPSED_H) }, remembered }
   }
 
   if (op.kind === 'maximize') {
     const cur = heights[target]!
     // Give the target every pixel the OTHER indicator panes are not using at their collapsed floor,
     // plus whatever the main pane can spare above its own floor.
-    const others = Object.entries(heights).filter(([i]) => Number(i) !== 0 && Number(i) !== target)
+    const others = Object.entries(heights).filter(([i]) => Number(i) !== mainIndex && Number(i) !== target)
     const apply: Record<number, number> = {}
     let freed = 0
     for (const [i, h] of others) {
@@ -66,7 +70,7 @@ export function planPaneOp(state: PaneState, op: PaneOp): PanePlan {
       }
     }
     const mainGives = Math.max(0, main - MAIN_MIN_H)
-    if (mainGives > 0) apply[0] = main - mainGives
+    if (mainGives > 0) apply[mainIndex] = main - mainGives
     const grown = cur + freed + mainGives
     if (grown === cur && Object.keys(apply).length === 0) return { apply: {}, remembered } // nothing to gain
     remembered[target] = remembered[target] ?? cur
@@ -82,7 +86,7 @@ export function planPaneOp(state: PaneState, op: PaneOp): PanePlan {
   const delta = want - cur
   const nextRemembered = { ...remembered }
   delete nextRemembered[target]
-  return { apply: { [target]: want, 0: Math.max(MAIN_MIN_H, main - delta) }, remembered: nextRemembered }
+  return { apply: { [target]: want, [mainIndex]: Math.max(MAIN_MIN_H, main - delta) }, remembered: nextRemembered }
 }
 
 /** Whether a pane currently reads as collapsed (drives which control the legend shows).

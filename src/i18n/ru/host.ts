@@ -3,10 +3,10 @@ import type { host as source } from '../en/host'
 
 export const host: Translation<typeof source> = {
   'host.noVolume': 'Этот поток не передает объем',
-  'host.saveConflict': 'Saved elsewhere since you opened it. Load the newer version before saving.',
-  'host.saveNotFound': 'This was deleted elsewhere. Save it again as new.',
-  'host.loadInvalid': 'This could not be opened. Nothing on screen changed.',
-  'host.loadUnavailable': 'Your saved work could not be reached. Nothing on screen changed.',
-  'host.loadNotRestored': 'This could not be opened, and what was on screen could not be put back. The chart is not saving until you open a saved chart or layout. Save a copy first to keep what is on screen.',
-  'host.notSaving': 'The chart is not saving. Open a saved chart or layout to start from a known state. Saving a copy keeps what is on screen, but the chart still will not save.',
+  'host.saveConflict': 'С момента открытия это сохранили в другом месте. Загрузите более новую версию перед сохранением.',
+  'host.saveNotFound': 'Это было удалено в другом месте. Сохраните заново как новое.',
+  'host.loadInvalid': 'Не удалось открыть. На экране ничего не изменилось.',
+  'host.loadUnavailable': 'Не удалось получить доступ к сохраненной работе. На экране ничего не изменилось.',
+  'host.loadNotRestored': 'Не удалось открыть, и вернуть то, что было на экране, тоже не удалось. График не сохраняется, пока вы не откроете сохраненный график или макет. Сначала сохраните копию, чтобы не потерять то, что на экране.',
+  'host.notSaving': 'График не сохраняется. Откройте сохраненный график или макет, чтобы начать с известного состояния. Сохранение копии сохранит то, что на экране, но график по-прежнему не будет сохраняться.',
 }

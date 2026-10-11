@@ -638,6 +638,35 @@ describe('contributions', () => {
     expect(ran).toEqual(['5,000.25'])
   })
 
+  it('menu rows group by extension in the order the extensions attach, an extension with none leaving no group', () => {
+    const { deps } = fakeChart()
+    const row = (id: string) => ({ id, label: id, run: () => {} })
+    const host = createExtensionHost(deps, [
+      {
+        id: 'alerts',
+        attach(ctx) {
+          ctx.contributeContextMenu(() => [row('alert')])
+          ctx.contributeContextMenu(() => [row('alert-2')])
+          return { detach: () => {} }
+        },
+      },
+      { id: 'quiet', attach: (ctx) => (ctx.contributeContextMenu(() => []), { detach: () => {} }) },
+      {
+        id: 'broken',
+        attach(ctx) {
+          ctx.contributeContextMenu(() => {
+            throw new Error('no rows')
+          })
+          return { detach: () => {} }
+        },
+      },
+      { id: 'orders', attach: (ctx) => (ctx.contributeContextMenu(() => [row('buy'), row('sell')]), { detach: () => {} }) },
+    ])
+    const at = { price: 1, priceText: '1', symbol: 'ESU6', name: 'ESU6', timeframe: '5m', clientX: 0, clientY: 0 }
+    expect(host.menuGroups(at).map((group) => group.map((r) => r.id))).toEqual([['alert', 'alert-2'], ['buy', 'sell']])
+    expect(host.menuItems(at).map((r) => r.id)).toEqual(['alert', 'alert-2', 'buy', 'sell'])
+  })
+
   it('commands list only what is available, and execute reports whether it ran', () => {
     const { deps, commands } = fakeChart()
     let armed = false

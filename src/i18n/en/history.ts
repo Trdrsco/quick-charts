@@ -15,13 +15,15 @@ export const history = {
   'history.changeChartStyle': 'chart style change',
   /** How the price axis is read and whether it frames itself: one word for both. */
   'history.changePriceScale': 'price scale change',
-  'history.changeAppearance': 'appearance change',
+  'history.changeSettings': 'settings change',
   'history.changeAddCompare': 'add comparison',
   'history.changeRemoveCompare': 'remove comparison',
   'history.changeCompare': 'comparison change',
   'history.changeAddIndicator': 'add indicator',
   'history.changeRemoveIndicator': 'remove indicator',
   'history.changeIndicator': 'indicator change',
+  /** A pane moved up or down among the others. */
+  'history.changeMovePane': 'move pane',
   'history.changeAddDrawing': 'add drawing',
   'history.changeRemoveDrawing': 'remove drawing',
   'history.changeDrawing': 'drawing change',

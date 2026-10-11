@@ -121,7 +121,7 @@ describe('extension price lines', () => {
     expect(depsBlock).toContain('visible: () => series')
     const setStyle = chartSrc.slice(chartSrc.indexOf('function setStyle('), chartSrc.indexOf("events.emit('style', next)"))
     expect(setStyle).toContain('series = addMainSeries(next)')
-    expect(chartSrc).toContain('const added = addStyleSeries(chart, id, paint())')
+    expect(chartSrc).toContain('const added = addStyleSeries(chart, id, paint(), mainPane())')
     expect(setStyle).toContain('extensions.visibleSeriesReplaced()')
     expect(setStyle.indexOf('extensions.visibleSeriesReplaced()')).toBeLessThan(setStyle.indexOf('remove(previous)'))
   })

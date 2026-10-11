@@ -1,7 +1,8 @@
 // The exclusion ledger, as a source and packed-artifact scan. Quick Charts may carry no React
 // component, Tailwind, private package import, host data client, hard-coded storage key or default
 // trdrs URL; no tick-plus-precision contract, magnitude-based price formatter, duplicate snap
-// implementation, Object Tree placeholder, configurable or branding watermark, sign-in or profile
+// implementation, Object Tree placeholder, branding watermark (a watermark writes only the charted
+// symbol's own ticker, interval and description, in one colour), sign-in or profile
 // control, or document-level fullscreen command; and neither the source nor the packed output may
 // carry a `trades` hide mode or its position/order override writes.
 //
@@ -12,7 +13,9 @@
 // and, for the `trades` hide mode, against every packed JavaScript file as well. Every pattern names
 // what it catches, so an offender reads as a finding rather than a regex.
 import { describe, expect, it } from 'vitest'
-import { CHART_SOURCES, isSourceMap, offenderText, packedFileList, packedText, scanFiles, scanLines } from './scan'
+import { chartSettingsDefaults } from '../../src/settings/defaults'
+import { DARK_THEME } from '../../src/theme/palettes'
+import { CHART_SOURCES, isSourceMap, offenderText, packedFileList, packedText, scanFiles, scanLines, WATERMARK_FILES, watermarkViolations } from './scan'
 
 /** Package sources without the locale catalogs: a translated string is a message, not a contract. */
 const CODE_FILES = Object.entries(CHART_SOURCES).filter(([file]) => !file.startsWith('/src/i18n/'))
@@ -72,12 +75,6 @@ const EXCLUDED_CHROME: readonly Shape[] = [
   { name: 'a document-level fullscreen call', pattern: /document\.(documentElement|body)\.requestFullscreen\s*\(/ },
 ]
 
-const REPLAY_INDICATOR_TOKEN = /\breplayWatermark(?:Text)?\b|replay\.watermark|qc-replay-watermark/gi
-
-const watermarkViolations = (files: Record<string, string>) => scanFiles(files, /watermark/i)
-  .filter((o) => o.file !== '/src/chartLegend.ts' || /watermark/i.test(o.text.replace(REPLAY_INDICATOR_TOKEN, '')))
-  .map(offenderText)
-
 // ── The trades hide mode and the override writes that would serve it ──────────────────────────────
 const TRADES_HIDE_MODE: readonly Shape[] = [
   { name: 'the trades hide mode', pattern: /\bhideTrades\b|\bshowTrades\b|['"]trades['"]/ },
@@ -122,11 +119,16 @@ describe('the exclusion ledger against package code', () => {
     expect(sweep(CODE, EXCLUDED_CHROME)).toEqual([])
   })
 
-  it('limits watermark vocabulary to the fixed replay-only indicator, never configuration or branding', () => {
+  it('limits watermark vocabulary to the symbol watermark and the replay indicator, never branding', () => {
     const uses = scanFiles(CODE, /watermark/i)
-    expect(new Set(uses.map((o) => o.file))).toEqual(new Set(['/src/chartLegend.ts']))
-    expect(uses).toHaveLength(14)
+    for (const file of new Set(uses.map((o) => o.file))) expect(file === '/src/chartLegend.ts' || WATERMARK_FILES.has(file), file).toBe(true)
     expect(watermarkViolations(CODE)).toEqual([])
+    // The watermark's settings are switches for the symbol's own parts and one colour: no leaf can
+    // carry text, an image or anything else a host could brand a chart with.
+    const canvas = chartSettingsDefaults(DARK_THEME).canvas as unknown as Record<string, unknown>
+    const leaves = Object.keys(canvas).filter((leaf) => /watermark/i.test(leaf)).sort()
+    expect(leaves).toEqual(['watermarkColor', 'watermarkDescription', 'watermarkInterval', 'watermarkReplay', 'watermarkTicker'])
+    for (const leaf of leaves) expect(typeof canvas[leaf], leaf).toBe(leaf === 'watermarkColor' ? 'string' : 'boolean')
     expect(watermarkViolations({
       '/src/chartLegend.ts': "replayWatermark.className = 'qc-replay-watermark'\nconst watermarkOptions = {}",
       '/src/widget/create.ts': 'const brandWatermark = true',

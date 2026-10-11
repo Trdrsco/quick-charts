@@ -10,8 +10,8 @@
  * the chart chrome layer 5, notices 6, the overlay layer 20, a menu panel 21, a dialog scrim 22.
  * The replay transport takes no rung: it is an in-flow row of the root's column, not a float.
  * The chart chrome layer is a stacking context of its own, and the drawing surfaces inside it
- * keep their own rungs: the drawing toolbar on 3, the floating bars 7, the inline text
- * editor 8, a flyout or palette 9, a drawing dialog's scrim 10.
+ * keep their own rungs: the drawing toolbar on 3, a time-scale mark's tooltip 6, the floating
+ * bars 7, the inline text editor 8, a flyout or palette 9, a drawing dialog's scrim 10.
  * A host that must stack something above the widget gives its own element a stacking context
  * above the root; nothing here reaches the top of the integer range. */
 [data-qc-theme] .qc-overlays {
@@ -383,4 +383,22 @@
  * indicator dialog open. It sits inside the surface, so one dismissal closes one thing. */
 [data-qc-theme] .qc-inline-panel {
   padding: 0 6px 6px;
+}
+
+/* A hovered time-scale mark's words: 13 on 18 on the tooltip fill, its foot 4px above the mark,
+ * never taking the pointer, on the chart chrome layer's rung 6. */
+[data-qc-theme] .qc-chrome > .qc-mark-tooltip {
+  position: absolute;
+  z-index: 6;
+  box-sizing: border-box;
+  max-width: 310px;
+  padding: 3px 8px;
+  color: var(--qc-overlay-tooltipInk);
+  font-size: 13px;
+  line-height: 18px;
+  white-space: pre-line;
+  background: var(--qc-overlay-tooltip);
+  border-radius: 2px;
+  transform: translateY(-100%);
+  pointer-events: none;
 }

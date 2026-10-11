@@ -54,11 +54,18 @@ export interface LegendChip {
   hasInputs?: boolean
   /** Pane-placed instance: the row carries the pane controls. */
   pane?: boolean
+  /** The row is an indicator's: the legend look's indicator parts decide which of its title, inputs
+   *  and value show. */
+  indicator?: boolean
   /** Live renderer pane, recalculated after removal and reordering. */
   paneIndex?: number
   /** The instance's pane currently reads as collapsed (drives which control shows). */
   collapsed?: boolean
   maximized?: boolean
+  /** The row's pane can move one place up, or one place down: it is not the top pane, or not the
+   *  bottom one, and the move verb is the row's to show. */
+  canMoveUp?: boolean
+  canMoveDown?: boolean
   /** The TITLE is a button (a compare row's change-symbol door) — needs `onTitle`. */
   titleButton?: boolean
   /** The market this row charts, when the row IS a market: the head of the row wears its mark, the
@@ -83,8 +90,14 @@ export interface LegendChip {
  *  empty, because an unresolved symbol has no venue to attribute. */
 export interface LegendIdentity {
   name: string
+  /** A second name after the first, set apart as the other facts are: the description beside a
+   *  symbol, when the header names both. */
+  detail?: string
   /** The charted symbol itself, behind the display name. */
   symbol: string
+  /** The market's compact mark, which the package's monogram is cut from whatever the header's
+   *  name reads. The name when absent. */
+  mark?: string
   /** The timeframe, already worded (a running replay says so). */
   timeframe: string
   exchange: string
@@ -102,6 +115,52 @@ export interface LegendQuote {
   change: string | null
   percent: string | null
   direction: 'up' | 'down' | 'flat'
+  /** The bar's volume, written compactly, or null when the feed states none. */
+  volume: string | null
+  /** The latest price's change since the previous session's close and its percentage, written with
+   *  their signs, whichever bar is being read; null when the previous close is not known. */
+  dayChange?: { change: string; percent: string; direction: 'up' | 'down' | 'flat' } | null
+}
+
+/** Which parts of the legend show, and how it stands over the bars: the status line settings. */
+export interface LegendLook {
+  /** The market's mark before its name. */
+  logo: boolean
+  /** The market's name and its facts. */
+  title: boolean
+  /** The bar's open, high, low and close. */
+  chartValues: boolean
+  /** The bar's change and percentage change. */
+  barChange: boolean
+  volume: boolean
+  /** The change since the previous session's close, after the volume. */
+  lastDayChange: boolean
+  indicatorTitles: boolean
+  indicatorInputs: boolean
+  indicatorValues: boolean
+  /** The fill behind each part of the legend, so the bars under it stand back, or null for none. */
+  backdrop: string | null
+  /** The replay mark, which names bar replay on the plot while it runs. */
+  replayMark: boolean
+  /** The replay mark's ink. */
+  replayMarkColor: string
+}
+
+/** The look a legend opens with: every part shown, no backdrop, the replay mark in the stylesheet's
+ *  own ink. */
+export const OPEN_LEGEND_LOOK: LegendLook = {
+  logo: true,
+  title: true,
+  chartValues: true,
+  barChange: true,
+  volume: false,
+  lastDayChange: false,
+  indicatorTitles: true,
+  indicatorInputs: true,
+  indicatorValues: true,
+  backdrop: null,
+  replayMark: true,
+  replayMarkColor: '',
 }
 
 export interface LegendControls {
@@ -110,6 +169,8 @@ export interface LegendControls {
   onSettings?(id: string, rect: { x: number; y: number; w: number; h: number }): void
   /** A pane row's collapse/maximize/restore control. */
   onPaneOp?(id: string, op: 'collapse' | 'maximize' | 'restore'): void
+  /** A pane row's move up or move down control. */
+  onPaneMove?(id: string, direction: 'up' | 'down'): void
   /** A `titleButton` row's title was tapped (a comparison's change-symbol). */
   onTitle?(id: string): void
   /** A `removable` row's remove control was tapped. */
@@ -133,6 +194,8 @@ export interface ChartLegend {
   setIdentity(identity: LegendIdentity): void
   /** The bar being read, or null while the chart is painting none. */
   setQuote(quote: LegendQuote | null): void
+  /** Which parts show, and the backdrop behind them. */
+  setLook(look: LegendLook): void
   /** Price-scale widths and the time axis's height (px), keeping the legend and the corner slot
    *  inside the PLOT and clear of every axis. */
   setScaleInsets(left: number, right: number, axisHeight: number): void
@@ -148,8 +211,16 @@ export interface ChartLegend {
    *  the pointer is off the plot. The axis height keeps the rule off its own labels; the pointer's
    *  y carries the shears, which stand in for the cursor the plot stops drawing. */
   setReplayGuide(point: { x: number; y: number } | null, axisHeight?: number): void
+  /** The index of the pane the main series stands in: the header and the rows of that pane stand at
+   *  its top, wherever a viewer moved it. Set before the rows that read it. */
+  setMainPane(index: number): void
   setChips(chips: readonly LegendChip[]): void
+  /** Each pane's top below the first pane's, by index. */
   setPaneTops(tops: Readonly<Record<number, number>>): void
+  /** The rows extensions place under the reading and above the indicator rows, in order. Each is
+   *  the extension's own element: the legend holds it in a slot that wears the backdrop and takes
+   *  the pointer, and gives it back when it leaves. */
+  setSlotRows(elements: readonly HTMLElement[]): void
   destroy(): void
 }
 
@@ -197,6 +268,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     text.dataset.role = role
     return { sep, text }
   }
+  const detail = fact('legend-detail')
   const timeframe = fact('legend-timeframe')
   const venue = fact('legend-exchange')
   const badge = createSymbolBadge('')
@@ -204,7 +276,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   // shades the identity alone. The header wraps the two bands; this one never wraps inside itself.
   const identityBand = document.createElement('span')
   identityBand.className = 'qc-legend-identity'
-  identityBand.append(badge.element, name, timeframe.sep, timeframe.text, venue.sep, venue.text)
+  identityBand.append(badge.element, name, detail.sep, detail.text, timeframe.sep, timeframe.text, venue.sep, venue.text)
 
   const dot = controls.icons.glyph(ICONS.marketStatus, { size: 18, className: 'qc-legend-dot' })
   // With a status surface behind it the dot rides a button: the market-status control, named for
@@ -281,6 +353,22 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   change.className = 'qc-legend-change'
   change.dataset.role = 'legend-change'
   quote.appendChild(change)
+  // The bar's volume: a quiet mark, then the number in the direction's ink.
+  const volume = document.createElement('span')
+  volume.className = 'qc-legend-volume'
+  volume.dataset.role = 'legend-volume'
+  const volumeMark = document.createElement('span')
+  volumeMark.className = 'qc-legend-mark'
+  const volumeValue = document.createElement('span')
+  volume.append(volumeMark, volumeValue)
+  quote.appendChild(volume)
+  // The change since the previous session's close: the latest price's, in its own direction's ink,
+  // whichever bar the reading before it names.
+  const dayChange = document.createElement('span')
+  dayChange.className = 'qc-legend-day-change'
+  dayChange.dataset.role = 'legend-day-change'
+  dayChange.hidden = true
+  quote.appendChild(dayChange)
   header.appendChild(quote)
 
   const chipRows = document.createElement('div')
@@ -300,9 +388,16 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     listToggle.replaceChildren(controls.icons.glyph(ICONS.legendChevron, { size: 15 }))
   }
   listToggle.addEventListener('click', () => { rowsCollapsed = !rowsCollapsed; paintToggle() })
+  // The rows extensions place, between the reading and the indicator rows. The indicator rows'
+  // collapse leaves them standing: they are not indicator rows.
+  const slots = document.createElement('div')
+  slots.className = 'qc-legend-slots'
+  slots.dataset.role = 'legend-slots'
+  slots.hidden = true
+  const slotOf = new Map<HTMLElement, HTMLElement>()
   // Main rows and their list toggle stay in flow after the wrapping header. Locale, metadata and
   // width changes therefore move them by measured layout instead of a fixed top guess.
-  root.append(header, chipRows, listToggle)
+  root.append(header, slots, chipRows, listToggle)
   paintToggle()
   container.appendChild(root)
 
@@ -329,10 +424,16 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   }
 
   let lastChips: readonly LegendChip[] = []
-  const groups = new Map<number, HTMLElement>([[0, chipRows]])
+  /** The pane the main series stands in, whose rows are the header's own group. */
+  let mainPane = 0
+  /** Every other pane's group of rows, by pane index. */
+  const groups = new Map<number, HTMLElement>()
   chipRows.dataset.legendPane = '0'
+  /** The tops last written, so a move of the main pane can stand every group again. */
+  let paneTops: Readonly<Record<number, number>> = {}
   const rows = new Map<string, { root: HTMLElement; update(chip: LegendChip): void; release(): void }>()
   const groupFor = (pane: number): HTMLElement => {
+    if (pane === mainPane) return chipRows
     let group = groups.get(pane)
     if (!group) {
       group = document.createElement('div')
@@ -343,6 +444,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     }
     return group
   }
+  let look: LegendLook = OPEN_LEGEND_LOOK
   const makeRow = (initial: LegendChip) => {
     let chip = initial
     const row = document.createElement('div')
@@ -372,6 +474,8 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       const r = gear.getBoundingClientRect()
       controls.onSettings?.(chip.id, { x: r.x, y: r.y, w: r.width, h: r.height })
     })
+    const moveUp = chipButton(controls.icons.glyph(ICONS.paneUp, { size: 18 }), '', () => controls.onPaneMove?.(chip.id, 'up'))
+    const moveDown = chipButton(controls.icons.glyph(ICONS.paneDown, { size: 18 }), '', () => controls.onPaneMove?.(chip.id, 'down'))
     const collapse = chipButton('', '', () => controls.onPaneOp?.(chip.id, chip.collapsed ? 'restore' : 'collapse'))
     const maximize = chipButton(controls.icons.glyph(ICONS.paneMaximize, { size: 18 }), '', () => controls.onPaneOp?.(chip.id, chip.maximized ? 'restore' : 'maximize'))
     const eye = chipButton('', '', () => controls.onToggleEye(chip.id))
@@ -379,7 +483,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     const remove = chipButton(controls.icons.glyph(ICONS.trash, { size: 18 }), '', () => controls.onRemove?.(chip.id))
     const actions = document.createElement('span')
     actions.className = 'qc-legend-actions'
-    actions.append(eye, gear, collapse, maximize, remove)
+    actions.append(eye, gear, moveUp, moveDown, collapse, maximize, remove)
     const nameButton = (button: HTMLButtonElement, text: string): void => {
       button.title = text
       button.setAttribute('aria-label', text)
@@ -419,10 +523,14 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         venueText.hidden = !chip.venue
         venueText.textContent = chip.venue ?? ''
         const clickable = !!chip.titleButton && !!controls.onTitle
-        label.hidden = clickable
         title.hidden = !clickable
-        labelName.textContent = clickable ? '' : chip.title
-        labelInputs.textContent = !clickable && chip.inputs ? ` ${chip.inputs}` : ''
+        // An indicator row shows the parts the look asks for; a market row is always named.
+        const showTitle = !chip.indicator || look.indicatorTitles
+        const showInputs = !chip.indicator || look.indicatorInputs
+        labelName.textContent = clickable || !showTitle ? '' : chip.title
+        labelInputs.textContent = !clickable && showInputs && chip.inputs ? ` ${chip.inputs}` : ''
+        label.hidden = clickable || (!labelName.textContent && !labelInputs.textContent)
+        value.hidden = !!chip.indicator && !look.indicatorValues
         title.textContent = clickable ? chip.title : ''
         nameButton(title, strings.t('legend.changeSymbol'))
         value.textContent = chip.note ?? (chip.hidden ? '' : chip.value ?? '')
@@ -433,6 +541,11 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         else delete value.dataset.qcTone
         gear.hidden = !chip.hasInputs || !controls.onSettings
         nameButton(gear, chip.settingsLabel ?? strings.t('legend.indicatorSettings'))
+        // A pane row moves its pane while the pane stands, as the pane's own buttons move it.
+        moveUp.hidden = !chip.pane || !controls.onPaneMove || chip.hidden || !chip.canMoveUp
+        moveDown.hidden = !chip.pane || !controls.onPaneMove || chip.hidden || !chip.canMoveDown
+        nameButton(moveUp, strings.t('legend.movePaneUp'))
+        nameButton(moveDown, strings.t('legend.movePaneDown'))
         collapse.hidden = !chip.pane || !controls.onPaneOp || chip.hidden
         collapse.replaceChildren(controls.icons.glyph(chip.collapsed ? ICONS.paneRestore : ICONS.paneCollapse, { size: 18 }))
         nameButton(collapse, strings.t(chip.collapsed ? 'legend.restorePane' : 'legend.collapsePane'))
@@ -468,7 +581,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       let row = rows.get(chip.id)
       if (!row) { row = makeRow(chip); rows.set(chip.id, row) }
       row.update(chip)
-      const pane = chip.paneIndex ?? 0
+      const pane = chip.paneIndex ?? mainPane
       const group = groupFor(pane)
       const before = previous.get(pane)?.nextSibling ?? (previous.has(pane) ? null : group.firstChild)
       if (row.root.parentElement !== group || before !== row.root) {
@@ -478,7 +591,15 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       }
       previous.set(pane, row.root)
     }
-    for (const [pane, group] of groups) if (pane > 0 && !previous.has(pane)) { group.remove(); groups.delete(pane) }
+    for (const [pane, group] of groups) if (!previous.has(pane)) { group.remove(); groups.delete(pane) }
+  }
+  /** Stand the header and its rows at the main pane's top, and every other pane's rows at their
+   *  pane's top, measured from the main pane's. */
+  const placeGroups = (): void => {
+    const origin = paneTops[mainPane] ?? 0
+    if (origin > 0) root.style.setProperty('--qcd-legend-top', `${origin}px`)
+    else root.style.removeProperty('--qcd-legend-top')
+    for (const [pane, group] of groups) group.style.top = `${(paneTops[pane] ?? 0) - origin}px`
   }
   // ── How much of the legend fits. The decision is `legendFit`'s; what happens here is the
   // measuring and the writing. Widths come off the live DOM, so under a layout-free test
@@ -516,7 +637,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   let dropBadge: (() => void) | null = null
   const paintBadge = (): void => {
     if (!controls.painters.symbol) {
-      badge.set(identity?.name ?? '')
+      badge.set(identity?.mark ?? identity?.name ?? '')
       return
     }
     const symbol = identity?.symbol ?? ''
@@ -530,25 +651,52 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   }
   const paintIdentity = (): void => {
     paintBadge()
+    // With the title off the market's name and its facts stand down together, and the mark with
+    // them; the mark alone answers to the logo.
+    badge.element.hidden = !look.title || !look.logo
+    name.hidden = !look.title
     name.textContent = identity?.name ?? ''
     name.title = identity?.symbol ?? ''
-    timeframe.text.textContent = identity?.timeframe ?? ''
-    timeframe.text.hidden = !identity?.timeframe
-    timeframe.sep.hidden = !identity?.timeframe
-    venue.text.textContent = identity?.exchange ?? ''
-    venue.text.hidden = !identity?.exchange
-    venue.sep.hidden = !identity?.exchange
+    const facts = [
+      [detail, identity?.detail ?? ''],
+      [timeframe, identity?.timeframe ?? ''],
+      [venue, identity?.exchange ?? ''],
+    ] as const
+    for (const [part, text] of facts) {
+      part.text.textContent = text
+      part.text.hidden = !look.title || !text
+      part.sep.hidden = !look.title || !text
+    }
   }
   const paintQuote = (): void => {
-    quote.hidden = reading === null
+    const day = look.lastDayChange ? reading?.dayChange ?? null : null
+    const shown = reading !== null && (look.chartValues || look.barChange || (look.volume && reading.volume !== null) || day !== null)
+    quote.hidden = !shown
+    dayChange.hidden = day === null
+    dayChange.textContent = day ? strings.t('legend.change', { change: day.change, percent: day.percent }) : ''
+    if (day) dayChange.dataset.qcTone = day.direction
+    else delete dayChange.dataset.qcTone
     if (!reading) return
     for (const entry of OHLC) {
       marks.get(entry.field)!.textContent = strings.t(entry.key)
       prices.get(entry.field)!.textContent = reading[entry.field]
+      marks.get(entry.field)!.parentElement!.hidden = !look.chartValues
     }
     quote.dataset.qcDirection = reading.direction
     change.textContent =
       reading.change === null || reading.percent === null ? '' : strings.t('legend.change', { change: reading.change, percent: reading.percent })
+    change.hidden = !look.barChange
+    volumeMark.textContent = strings.t('legend.volume')
+    volumeValue.textContent = reading.volume ?? ''
+    volume.hidden = !look.volume || reading.volume === null
+  }
+  /** The replay mark shows while replay has the chart and the look asks for it. */
+  let replayOn = false
+  const paintReplayMark = (): void => {
+    replayWatermark.hidden = !replayOn || !look.replayMark
+    replayWatermark.style.color = look.replayMarkColor
+    // A mark in a color of its own is drawn at that color's own strength.
+    replayWatermark.style.opacity = look.replayMarkColor ? '1' : ''
   }
 
   const unsubscribe = strings.onChange(() => {
@@ -576,6 +724,19 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     setQuote(next) {
       reading = next
       paintQuote()
+      measure()
+    },
+    setLook(next) {
+      if (JSON.stringify(next) === JSON.stringify(look)) return
+      look = next
+      // The backdrop is the chart's own background at the setting's opacity, which is only known at
+      // run time, so it is written as a property the stylesheet's recipes read.
+      if (look.backdrop) root.style.setProperty('--qcd-legend-backdrop', look.backdrop)
+      else root.style.removeProperty('--qcd-legend-backdrop')
+      paintIdentity()
+      paintQuote()
+      paintReplayMark()
+      render(lastChips)
       measure()
     },
     setScaleInsets(left, right, axisHeight) {
@@ -614,7 +775,8 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       replayPill.dataset.qcPhase = phase
       // replayWatermark names WHICH chart replay has taken over, and arming has already taken it
       // over: the plot is answering a click with a starting point instead of its usual gestures.
-      replayWatermark.hidden = !on
+      replayOn = on
+      paintReplayMark()
       // While the question is open the plot draws NO pointer of its own: the shears on the rule are
       // the pointer, and a crosshair beside them would be a second answer to where the click lands.
       // The mark goes on the pane, because the surface the pointer is over is the renderer's canvas
@@ -640,14 +802,57 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       // height: the plot draws no pointer of its own while the question is open.
       replayCut.style.insetBlockStart = `${point.y}px`
     },
+    setMainPane(index) {
+      if (index === mainPane) return
+      mainPane = index
+      chipRows.dataset.legendPane = String(index)
+      // The group that stood at the main pane's new index gives its rows back; the next rows put
+      // each one where its pane now stands.
+      const displaced = groups.get(index)
+      if (displaced) {
+        for (const row of [...displaced.children]) chipRows.appendChild(row)
+        displaced.remove()
+        groups.delete(index)
+      }
+      placeGroups()
+    },
     setChips(chips) {
       lastChips = chips
       render(chips)
+      placeGroups()
     },
     setPaneTops(tops) {
-      for (const [pane, group] of groups) if (pane > 0) group.style.top = `${tops[pane] ?? 0}px`
+      paneTops = tops
+      placeGroups()
+    },
+    setSlotRows(elements) {
+      const keep = new Set(elements)
+      for (const [element, slot] of slotOf) {
+        if (keep.has(element)) continue
+        slot.remove()
+        if (element.parentElement === slot) element.remove()
+        slotOf.delete(element)
+      }
+      // Each slot is put in place in turn, so the slots read in the order given.
+      let cursor: ChildNode | null = slots.firstChild
+      for (const element of elements) {
+        let slot = slotOf.get(element)
+        if (!slot) {
+          slot = document.createElement('div')
+          slot.className = 'qc-legend-slot'
+          slotOf.set(element, slot)
+        }
+        if (element.parentElement !== slot) slot.appendChild(element)
+        if (slot !== cursor) slots.insertBefore(slot, cursor)
+        cursor = slot.nextSibling
+      }
+      slots.hidden = elements.length === 0
     },
     destroy() {
+      for (const [element, slot] of slotOf) {
+        if (element.parentElement === slot) element.remove()
+      }
+      slotOf.clear()
       dropBadge?.()
       dropBadge = null
       fitObserver?.disconnect()

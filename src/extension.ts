@@ -20,6 +20,7 @@ import type { FeedBar } from './datafeed'
 import { blanks, type HideState } from './drawings/hideModel'
 import type { CanvasTheme } from './theme/renderer'
 import type { MarkPainters } from './markPainters'
+import type { ChartSettingsContribution } from './settings/contribution'
 
 /** Price display as an extension reads it — the chart's own formatter, so an overlay's label and the
  *  axis beside it can never disagree about what a number looks like. */
@@ -145,9 +146,10 @@ export interface ChartExtensionMenuItem {
   checked?: boolean
   /** The row's glyph. Omitted leaves the gutter empty and the label still aligned. */
   icon?: ChartExtensionIcon
-  /** Where the row sits. `level` (the default) is an action on the price the pointer landed on and
-   *  joins the group under Copy price and Paste; `view` is a switch over what the chart shows and
-   *  joins the group under the remove rows. */
+  /** Where the row sits. `level` (the default) is an action on the price the pointer landed on: it
+   *  joins the group under Copy price and Paste, and the price menu the price scale's plus opens,
+   *  where each extension's rows stand together; `view` is a switch over what the chart shows and
+   *  joins the group under the remove rows, and the price menu leaves it out. */
   group?: 'level' | 'view'
   run(): void
 }
@@ -175,6 +177,45 @@ export interface ChartExtensionHideLayerHandle {
   setHidden(hidden: boolean): void
   /** Withdraw the layer from the eye. Detach withdraws it either way. */
   remove(): void
+}
+
+/** A row of an extension's own in the pane's legend: an element the extension builds and keeps,
+ *  which the chart places under the symbol's reading and above the indicator rows. The row wears the
+ *  status line's backdrop like the legend's own parts, and takes the pointer, so its controls are
+ *  pressed rather than the chart under them. Whether it shows, and what it holds, is the
+ *  extension's own state: it hides or fills the element as it likes. */
+export interface ChartExtensionLegendRow {
+  element: HTMLElement
+  /** Where the row stands among contributed rows: a lower rank first, then the rows of one rank
+   *  as they were contributed. Absent reads as 0. */
+  rank?: number
+}
+
+/** The frame a contribution paints an image of the chart in. */
+export interface ChartExtensionCaptureFrame {
+  /** The chart element's width in CSS pixels. */
+  width: number
+  /** The chart element's height in CSS pixels. */
+  height: number
+  /** Image pixels per CSS pixel. */
+  pixelRatio: number
+}
+
+/** An extension's part in an image of the chart. Every image the chart produces of itself (a
+ *  download, a copy, `image.capture()`) is taken through the contributions of the extensions
+ *  attached to it: each `before` runs, the renderer draws the image, each `paint` paints over it,
+ *  and each restore runs, the last answered first. A contribution that throws is contained: the
+ *  image is still produced and every restore still runs. */
+export interface ChartExtensionCapture {
+  /** Runs synchronously before the chart draws into the image; answer the restore, run after it is
+   *  taken. The renderer draws every pending change before it takes the image, so what a `before`
+   *  changed through the chart's capabilities (a price line it updated, a primitive it asked to
+   *  redraw) is drawn as it now stands. */
+  before?(): (() => void) | void
+  /** Runs after the bitmap is taken: paint over it. The origin is the chart element's top left,
+   *  which is the top left of the context's `container`; pixelRatio is image pixels per CSS pixel.
+   *  The context arrives untransformed, and the chart puts back its state after each paint. */
+  paint?(target: CanvasRenderingContext2D, frame: ChartExtensionCaptureFrame): void
 }
 
 /** Builds an extension's context menu rows. The chart calls it on every raise with that moment's
@@ -207,8 +248,8 @@ export interface ChartExtensionContext {
    *  over every pane and over whatever the page stacks around the widget mounts HERE, at viewport
    *  coordinates; the context menu does the same. */
   layer: HTMLElement
-  /** The chart's effective canvas palette: the mode's resolved theme with any applied appearance
-   *  overrides on top, projected onto the values a canvas draws with. */
+  /** The chart's effective canvas palette: the mode's resolved theme under the chart settings
+   *  in effect, projected onto the values a canvas draws with. */
   theme(): CanvasTheme
   formatter(): ChartPriceFormatter
   /** The name symbology gives the charted market, for a surface that prints it; `chart.symbol()`
@@ -240,6 +281,21 @@ export interface ChartExtensionContext {
   contributeContextMenu(build: ChartExtensionMenuBuilder): () => void
   contributeCommands(commands: readonly ChartExtensionCommand[]): () => void
   contributeHideLayer(layer: ChartExtensionHideLayer): ChartExtensionHideLayerHandle
+  /** Add a page of the extension's own to the chart settings dialog, or rows to one of the chart's
+   *  pages. The dialog lists what the active chart's extensions contribute when it opens; the
+   *  returned function withdraws the contribution, and detach withdraws it either way. */
+  contributeSettings(contribution: ChartSettingsContribution): () => void
+  /** Place a row of the extension's own in the pane's legend. The returned function takes it out,
+   *  and detach takes it out either way; the element is the extension's to keep. */
+  contributeLegendRow(row: ChartExtensionLegendRow): () => void
+  /** Ask the datafeed for the chart's bar marks and time-scale marks again, now, and draw what it
+   *  answers: for an extension whose own setting changes what the feed serves, such as a row it
+   *  contributes to the settings dialog, so the change shows while the dialog is open. */
+  refreshMarks(): void
+  /** Take part in every image of the chart: hold out what the extension draws while the image is
+   *  taken, or paint over the image what the chart's canvases do not carry. The returned function
+   *  withdraws the contribution, and detach withdraws it either way. */
+  contributeCapture(capture: ChartExtensionCapture): () => void
 }
 
 /** What an extension gives back at attach. `detach` is required; the two state methods are the
@@ -298,6 +354,10 @@ export interface ChartExtensionHostDeps {
   setHide(state: HideState): void
   /** The set of contributed layers changed: the eye re-lists them and re-applies its state. */
   hideLayersChanged(): void
+  /** The set of contributed legend rows changed: the legend places them again. */
+  legendRowsChanged?(): void
+  /** Ask the datafeed for the chart's marks again. Absent, an extension's ask does nothing. */
+  refreshMarks?(): void
 }
 
 /** The widget's half of the seam: attach the configured extensions, push the chart's changes at
@@ -312,8 +372,22 @@ export interface ChartExtensionHost {
   activeChanged(active: boolean): void
   /** Rows every attached extension offers for this level, in registration order. */
   menuItems(context: ChartExtensionMenuContext): readonly ChartExtensionMenuItem[]
+  /** The same rows, one group for each extension that offers any, in the order the extensions
+   *  attach. */
+  menuGroups(context: ChartExtensionMenuContext): readonly (readonly ChartExtensionMenuItem[])[]
   /** The layers every attached extension offers the eye, in contribution order. */
   hideLayers(): readonly ChartExtensionHideLayer[]
+  /** What every attached extension adds to the settings dialog, in contribution order. */
+  settingsContributions(): readonly ChartSettingsContribution[]
+  /** The legend rows every attached extension contributes, by rank and then as they were
+   *  contributed. */
+  legendRows(): readonly ChartExtensionLegendRow[]
+  /** The chart's image, taken through every attached extension's capture contributions, in
+   *  attachment and then contribution order: each `before`, then `take` for the bitmap, then each
+   *  `paint` over it in a frame of the chart element's CSS `size`, then the restores, the last
+   *  answered first, whatever threw. A contribution's throw is contained; a throw from `take` is the
+   *  chart's own and reaches the caller after the restores. */
+  capture(take: () => HTMLCanvasElement, size: () => { width: number; height: number }): HTMLCanvasElement
   /** Viewer state by extension id — the widget nests this under one key of its save blob. */
   serialize(): Record<string, unknown>
   /** Apply opaque state as usual, and report whether all registered saved state round-tripped.
@@ -347,6 +421,12 @@ interface Attached {
   menuBuilders: Set<ChartExtensionMenuBuilder>
   /** The layers this extension offered the eye, by id. */
   hideLayers: Map<string, ChartExtensionHideLayer>
+  /** What this extension added to the settings dialog. */
+  settings: Set<ChartSettingsContribution>
+  /** The rows this extension placed in the legend. */
+  legendRows: Set<ChartExtensionLegendRow>
+  /** What this extension does around an image of the chart. */
+  captures: Set<ChartExtensionCapture>
   /** The unregister the chart's command registry answered for each command this extension
    *  contributed, so a detach takes its verbs out of the one registry with it. */
   commands: Map<string, () => void>
@@ -444,6 +524,12 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     }
     clearLanes(record.lanes)
     record.menuBuilders.clear()
+    record.settings.clear()
+    record.captures.clear()
+    if (record.legendRows.size) {
+      record.legendRows.clear()
+      notifyLegendRows()
+    }
     if (record.hideLayers.size) {
       record.hideLayers.clear()
       notifyHideLayers()
@@ -463,6 +549,17 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     }
   }
 
+  /** The legend places its contributed rows again. A chart mid-teardown hears nothing. */
+  let contributedRows = 0
+  const notifyLegendRows = (): void => {
+    if (!hostLive) return
+    try {
+      deps.legendRowsChanged?.()
+    } catch {
+      /* the legend's own failure is its own */
+    }
+  }
+
   const attachOne = (extension: ChartExtension, at?: number): void => {
     if (!hostLive) return
     // One id, one attachment: a duplicate would share the save-blob key with the original and
@@ -475,6 +572,9 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       lanes: newLanes(),
       menuBuilders: new Set(),
       hideLayers: new Map(),
+      settings: new Set(),
+      legendRows: new Set(),
+      captures: new Set(),
       commands: new Map(),
       priceLines: new Set(),
       primitives: new Set(),
@@ -568,6 +668,33 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
           record.menuBuilders.delete(build)
         }
       },
+      contributeSettings(contribution) {
+        if (!record.live) return () => {}
+        record.settings.add(contribution)
+        return () => {
+          record.settings.delete(contribution)
+        }
+      },
+      contributeLegendRow(row) {
+        if (!record.live || !row?.element) return () => {}
+        // A copy, so the rank the row was placed at is the one it keeps; the contribution count
+        // breaks a tie between rows of one rank.
+        const rank = typeof row.rank === 'number' && Number.isFinite(row.rank) ? row.rank : 0
+        const held: ChartExtensionLegendRow & { seq: number } = { element: row.element, rank, seq: contributedRows++ }
+        record.legendRows.add(held)
+        notifyLegendRows()
+        return () => {
+          if (!record.legendRows.delete(held)) return
+          notifyLegendRows()
+        }
+      },
+      contributeCapture(capture) {
+        if (!record.live || !capture) return () => {}
+        record.captures.add(capture)
+        return () => {
+          record.captures.delete(capture)
+        }
+      },
       contributeCommands(commands) {
         if (!record.live) return () => {}
         const added: string[] = []
@@ -581,6 +708,14 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
             record.commands.get(id)?.()
             record.commands.delete(id)
           }
+        }
+      },
+      refreshMarks() {
+        if (!record.live || !hostLive) return
+        try {
+          deps.refreshMarks?.()
+        } catch {
+          /* the chart's own failure stays the chart's */
         }
       },
       contributeHideLayer(layer) {
@@ -621,6 +756,25 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
   }
 
   const liveRecords = (): Attached[] => attached.filter((record) => record.live)
+
+  /** Each live extension's rows for a level, its builders in the order it contributed them; an
+   *  extension that offers none leaves no group. */
+  const menuGroups = (context: ChartExtensionMenuContext): ChartExtensionMenuItem[][] => {
+    if (!hostLive) return []
+    const groups: ChartExtensionMenuItem[][] = []
+    for (const record of liveRecords()) {
+      const rows: ChartExtensionMenuItem[] = []
+      for (const build of [...record.menuBuilders]) {
+        try {
+          rows.push(...build(context))
+        } catch {
+          /* a builder that throws contributes nothing, and the menu still opens */
+        }
+      }
+      if (rows.length > 0) groups.push(rows)
+    }
+    return groups
+  }
 
   for (const extension of extensions) attachOne(extension)
 
@@ -667,23 +821,63 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       if (!hostLive) return
       for (const record of liveRecords()) fanOut(record.lanes.active, active)
     },
-    menuItems(context) {
-      if (!hostLive) return []
-      const rows: ChartExtensionMenuItem[] = []
-      for (const record of liveRecords()) {
-        for (const build of [...record.menuBuilders]) {
-          try {
-            rows.push(...build(context))
-          } catch {
-            /* a builder that throws contributes nothing, and the menu still opens */
-          }
-        }
-      }
-      return rows
-    },
+    menuItems: (context) => menuGroups(context).flat(),
+    menuGroups,
     hideLayers() {
       if (!hostLive) return []
       return liveRecords().flatMap((record) => [...record.hideLayers.values()])
+    },
+    settingsContributions() {
+      if (!hostLive) return []
+      return liveRecords().flatMap((record) => [...record.settings])
+    },
+    legendRows() {
+      if (!hostLive) return []
+      const rows = liveRecords().flatMap((record) => [...record.legendRows] as (ChartExtensionLegendRow & { seq: number })[])
+      return rows.sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0) || a.seq - b.seq).map((row) => ({ element: row.element, rank: row.rank ?? 0 }))
+    },
+    capture(take, size) {
+      // The set is read once, so a contribution withdrawn while the image is taken still gets back
+      // what its own `before` held out.
+      const captures = hostLive ? liveRecords().flatMap((record) => [...record.captures]) : []
+      const restores: (() => void)[] = []
+      for (const capture of captures) {
+        try {
+          const restore = capture.before?.()
+          if (typeof restore === 'function') restores.push(restore)
+        } catch {
+          /* an extension's own failure is its own: the image is taken all the same */
+        }
+      }
+      try {
+        const bitmap = take()
+        const painters = captures.filter((capture) => typeof capture.paint === 'function')
+        const target = painters.length ? bitmap.getContext('2d') : null
+        if (target) {
+          const css = size()
+          const pixelRatio = css.width > 0 && bitmap.width > 0 ? bitmap.width / css.width : css.height > 0 && bitmap.height > 0 ? bitmap.height / css.height : 1
+          for (const capture of painters) {
+            // Each painter meets the context as the bitmap left it, whatever the one before it set.
+            target.save()
+            try {
+              capture.paint?.(target, { width: css.width, height: css.height, pixelRatio })
+            } catch {
+              /* a failed paint leaves the image as it stood */
+            } finally {
+              target.restore()
+            }
+          }
+        }
+        return bitmap
+      } finally {
+        for (const restore of restores.reverse()) {
+          try {
+            restore()
+          } catch {
+            /* the other restores still run */
+          }
+        }
+      }
     },
     serialize() {
       const out: Record<string, unknown> = {}
@@ -733,6 +927,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     detach() {
       if (!hostLive) return
       hostLive = false
+      if (HOSTS.get(deps.chartId) === host) HOSTS.delete(deps.chartId)
       for (const record of [...attached]) {
         if (!record.live) continue
         // Dispose fires while the context is still live: a subscriber's last read must answer.
@@ -748,5 +943,17 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       attached.length = 0
     },
   }
+  HOSTS.set(deps.chartId, host)
   return host
+}
+
+/** Every live extension host, by the id of the chart it serves. A chart's id is unique within the
+ *  process, so the chart's own surfaces reach the contributions of the chart they act on by its id
+ *  alone. */
+const HOSTS = new Map<string, ChartExtensionHost>()
+
+/** What the extensions attached to a chart add to the settings dialog, in contribution order: none
+ *  for a chart that is gone or holds no extension. */
+export function settingsContributionsOf(chartId: string): readonly ChartSettingsContribution[] {
+  return HOSTS.get(chartId)?.settingsContributions() ?? []
 }

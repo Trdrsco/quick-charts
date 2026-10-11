@@ -53,7 +53,10 @@ describe('a dictionary of your own', () => {
     expect(i18n.t('legend.hideIndicator')).toBe("Masquer l'indicateur")
     expect(missing).not.toHaveBeenCalled()
     for (const key of KEYS_ADDED_IN_MAJOR) {
-      expect(i18n.t(key)).toBe(en[key])
+      // A plural message reads its English form for the count it is given.
+      const message: unknown = en[key]
+      const read = (i18n.t as (key: string, vars?: { count: number }) => string)(key, { count: 2 })
+      expect(read).toBe(typeof message === 'string' ? message : (message as { other: string }).other.replace('{count}', '2'))
       expect(missing).toHaveBeenLastCalledWith(key, 'fr-CA')
     }
     expect(missing).toHaveBeenCalledTimes(KEYS_ADDED_IN_MAJOR.length)

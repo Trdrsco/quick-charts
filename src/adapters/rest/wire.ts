@@ -22,14 +22,14 @@ import type { DrawingResourceContext } from '../../drawings/document'
 
 /** The contract's own version, which the published OpenAPI document carries as its `info.version`.
  *  A later shape arrives as a later number rather than as a widened old one. */
-export const REST_WIRE_VERSION = 2
+export const REST_WIRE_VERSION = 3
 
-/** The three template collections. */
-export type RestTemplateKind = 'indicator' | 'drawing' | 'palette'
+/** The four template collections. */
+export type RestTemplateKind = 'indicator' | 'drawing' | 'palette' | 'chart'
 
-export const REST_TEMPLATE_KINDS: readonly RestTemplateKind[] = ['indicator', 'drawing', 'palette']
+export const REST_TEMPLATE_KINDS: readonly RestTemplateKind[] = ['indicator', 'drawing', 'palette', 'chart']
 
-/** Which collection a request addresses. Templates are three collections rather than one, so the
+/** Which collection a request addresses. Templates are four collections rather than one, so the
  *  kind is part of the address rather than a field inside it. */
 export type RestCollection = { family: 'charts' | 'layouts' | 'drawings' } | { family: 'templates'; kind: RestTemplateKind }
 

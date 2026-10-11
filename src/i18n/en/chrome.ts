@@ -23,4 +23,26 @@ export const chrome = {
   'chrome.navigation': 'Chart navigation',
   /** The active chart's identity as the toolbar reads it aloud; `{symbol}` and `{timeframe}` are data. */
   'chrome.activeChart': '{symbol}, {timeframe}',
+  /** The tags beside the price levels the price scale marks: the visible range's high and low, and
+   *  the bid and the ask. */
+  'chrome.scaleHigh': 'High',
+  'chrome.scaleLow': 'Low',
+  'chrome.scaleBid': 'Bid',
+  'chrome.scaleAsk': 'Ask',
+  /** The buttons at the foot of the price scale: their group, and each one's letter and name. The
+   *  letter is the button's whole face, so it is the mark the scale wears in the reader's language. */
+  'chrome.scaleModes': 'Scale modes',
+  'chrome.autoScale': 'Auto scale',
+  'chrome.autoScaleMark': 'A',
+  'chrome.logScale': 'Logarithmic scale',
+  'chrome.logScaleMark': 'L',
+  /** The box at the top of the price scale naming what its prices are in, when the symbol states
+   *  both a currency and a unit; either alone is written as the feed states it. */
+  'chrome.currencyAndUnit': '{currency} · {unit}',
+  /** The plus beside the crosshair's price label, which opens that price's menu. */
+  'chrome.priceLevelMenu': 'Price actions',
+  /** The buttons at the top right of each pane: their group, and the one that deletes the pane and
+   *  everything in it. Collapse, restore and maximize read the legend's own words. */
+  'chrome.paneButtons': 'Pane',
+  'chrome.deletePane': 'Delete pane',
 } as const

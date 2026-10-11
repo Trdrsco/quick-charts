@@ -10,6 +10,7 @@
 //
 // Availability is a live read, never a stored flag: a command asks the chart what is true now.
 import type { ChartMessageKey, ChartTranslate } from '../i18n'
+import type { PartialChartSettings } from '../settings/schema'
 import { SCALE_MODES, type ScaleMode } from '../scaleMode'
 import type { PriceFormatter } from '../priceFormatter'
 import type { CommandRegistry, CommandSpec } from './commands'
@@ -30,6 +31,7 @@ import { allowedTimeframes, TIMEFRAME_PRESETS, timeframeLabel } from '../timefra
 import { rangeAvailable, RANGE_PRESETS, type RangePreset } from '../ranges'
 import { TIMEZONES, EXCHANGE_TIMEZONE } from '../timezones'
 import { offersTimezone, type OfferedTimezones } from './offeredTimezones'
+import { PANE_MOVE_COMMAND, type PaneMove } from './paneOps'
 
 /** The catalog key each chart style's command wears. */
 const STYLE_LABEL: Record<ChartStyleId, ChartMessageKey> = {
@@ -70,9 +72,11 @@ export interface ChartCommandDeps {
   features: ResolvedFeatures
   ui: ResolvedUi
   capabilities(): Capabilities
-  /** Drop the viewer's OWN appearance layer and return the price scale to normal, leaving the theme
-   *  floor, the host's constructor partial, the viewport and every other preference alone. */
-  resetAppearance(): void
+  /** Whether the chart draws the feed's marks. Absent reads as false. */
+  marks?: boolean
+  /** Drop the viewer's OWN settings and return the price scale to normal, leaving the theme's
+   *  values, the host's constructor partial, the viewport and every other preference alone. */
+  resetSettings(): void
   /** The chart's language, for the preset labels a picker renders. */
   t(): ChartTranslate
   /** The bars the chart is PAINTING: already the replay slice while replay is on, so the data
@@ -90,6 +94,9 @@ export interface ChartCommandDeps {
   scroll(direction: 'left' | 'right'): void
   /** The level the open menu was raised at, which copy-price acts on. */
   level(): number | null
+  /** The price at the crosshair's height on the symbol's own grid, while the viewer's crosshair
+   *  stands on the main pane's plot; null anywhere else. Absent, there is none. */
+  crosshairLevel?(): number | null
   formatter(): PriceFormatter
   compareOpen(mode: 'compare' | 'change-symbol', changeFrom?: string): void
   indicatorsOpen(collection?: string): void
@@ -98,6 +105,14 @@ export interface ChartCommandDeps {
   /** The drawing verbs above the layer (preferences, the eye, favorites, templates, the dialogs);
    *  null with the drawings feature off. */
   drawingVerbs(): DrawingVerbs | null
+  /** The chart's panes, which move one place up or down by index. Absent, no pane moves. */
+  panes?: {
+    count(): number
+    /** Whether the pane at an index can move that way: the top pane cannot move up, nor the bottom
+     *  one down. */
+    canMove(pane: number, direction: PaneMove): boolean
+    move(pane: number, direction: PaneMove): void
+  }
 }
 
 /** Register every chart-scoped built-in. Returns one unregister for all of them, which the chart
@@ -144,6 +159,17 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   add({ id: 'chart.view.scrollLeft', scope: 'chart', label: 'command.viewScrollLeft', shortcut: 'ArrowLeft', available: navigable, execute: () => deps.scroll('left') })
   add({ id: 'chart.view.scrollRight', scope: 'chart', label: 'command.viewScrollRight', shortcut: 'ArrowRight', available: navigable, execute: () => deps.scroll('right') })
 
+  // ── Marks. Asking the feed for them again is a host's answer to a change of its own in what the
+  // feed serves, so a control of the host's and an automation adapter both reach it. It is
+  // available while the chart draws marks and the feed serves either family.
+  add({
+    id: 'chart.marks.refresh',
+    scope: 'chart',
+    label: 'command.marksRefresh',
+    available: () => deps.marks === true && (deps.capabilities().marks || deps.capabilities().timescaleMarks),
+    execute: () => handle.refreshMarks(),
+  })
+
   // ── The loaded bars, as a file. A local write of what is already on screen: no history request
   // and no server export. An empty chart has nothing to write and the command is unavailable, which
   // is how every other door hears "nothing to do" rather than receiving an empty file.
@@ -182,30 +208,30 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     })
   }
 
-  // ── Appearance. One command taking an appearance partial: the settings menu, a host control and
-  // an automation adapter all restyle the chart through the same runtime layer.
+  // ── Settings. One command taking a settings partial: the settings dialog, a host control and an
+  // automation adapter all restyle the chart through the viewer's own leaves.
   add({
-    id: 'chart.appearance.apply',
+    id: 'chart.settings.apply',
     scope: 'chart',
-    label: 'command.appearanceApply',
+    label: 'command.settingsApply',
     available: always,
     execute: (arg) => {
-      const partial = arg as { appearance?: unknown } | null
-      if (partial && typeof partial === 'object' && partial.appearance && typeof partial.appearance === 'object') {
-        handle.applyAppearance({ appearance: partial.appearance as Partial<ReturnType<ChartHandle['appearance']>['appearance']> })
+      const partial = arg as { settings?: unknown } | null
+      if (partial && typeof partial === 'object' && partial.settings && typeof partial.settings === 'object') {
+        handle.applySettings(partial.settings as PartialChartSettings)
       }
     },
   })
 
-  // Reset defaults: the same door for the gear menu's row, a host control and an automation
-  // adapter. It is the appearance twin of `chart.view.reset` and shares nothing with it — one puts
-  // back the look, the other puts back the window.
+  // Apply defaults: the same door for the dialog's template menu, a host control and an automation
+  // adapter. It is the settings twin of `chart.view.reset` and shares nothing with it: one puts back
+  // the look, the other puts back the window.
   add({
-    id: 'chart.appearance.reset',
+    id: 'chart.settings.reset',
     scope: 'chart',
-    label: 'command.appearanceReset',
+    label: 'command.settingsReset',
     available: always,
-    execute: () => deps.resetAppearance(),
+    execute: () => deps.resetSettings(),
   })
 
   // ── Scale modes ─────────────────────────────────────────────────────────────────────────────
@@ -309,6 +335,31 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     },
   })
 
+  // ── Panes ───────────────────────────────────────────────────────────────────────────────────
+  // A pane moves one place up or down, trading places with its neighbour, the main pane among them.
+  // The argument is the pane's index, the top pane 0. Asked with an index, availability answers for
+  // that pane, so the top pane cannot move up and the bottom one cannot move down; asked with none,
+  // it answers whether any pane could, which is while the chart has more than one.
+  const paneIndex = (arg: unknown): number | null => (typeof arg === 'number' && Number.isInteger(arg) ? arg : null)
+  for (const [direction, label] of [['up', 'legend.movePaneUp'], ['down', 'legend.movePaneDown']] as const) {
+    add({
+      id: PANE_MOVE_COMMAND[direction],
+      scope: 'chart',
+      label,
+      available: (arg) => {
+        const panes = deps.panes
+        if (!panes) return false
+        if (arg === undefined) return panes.count() > 1
+        const pane = paneIndex(arg)
+        return pane !== null && panes.canMove(pane, direction)
+      },
+      execute: (arg) => {
+        const pane = paneIndex(arg)
+        if (pane !== null) deps.panes?.move(pane, direction)
+      },
+    })
+  }
+
   // ── Drawings ────────────────────────────────────────────────────────────────────────────────
   // Every verb the drawing toolbar, the settings bar and the settings dialog run. The layer's own
   // verbs act on `handle.drawings`; the verbs above the layer (preferences, the eye, favorites,
@@ -383,6 +434,24 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
     available: () => on() && (verbs()?.canPlaceImage() ?? false),
     execute: (arg) => {
       if (isPlacedImage(arg)) verbs()?.placeImage(arg)
+    },
+  })
+  // A horizontal line placed whole at the price the argument names, as the price menu places one, or
+  // with no argument at the crosshair's price while the crosshair stands on the main pane's plot,
+  // which is what its shortcut runs: a new drawing of the horizontal line tool, so it asks what
+  // arming that tool asks, and none is placed while every drawing is locked. Off the plot, a run
+  // with no argument is unavailable, and its shortcut leaves the key to the page.
+  const isPrice = (arg: unknown): arg is number => typeof arg === 'number' && Number.isFinite(arg)
+  const lineAt = (arg: unknown): number | null => (arg === undefined ? (deps.crosshairLevel?.() ?? null) : isPrice(arg) ? arg : null)
+  add({
+    id: 'chart.drawings.placeHorizontalLine',
+    scope: 'chart',
+    label: 'command.drawingPlaceHorizontalLine',
+    shortcut: 'Alt+KeyH',
+    available: (arg) => on() && !drawings()!.allLocked() && (verbs()?.toolPermitted('horizontal_line') ?? false) && lineAt(arg) !== null,
+    execute: (arg) => {
+      const price = lineAt(arg)
+      if (price !== null) verbs()?.placeHorizontalLine(price)
     },
   })
   add({

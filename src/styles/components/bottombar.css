@@ -143,6 +143,7 @@
 }
 
 [data-qc-theme] .qc-nav[data-qc-near],
+[data-qc-theme] .qc-nav[data-qc-visibility='always'],
 [data-qc-theme] .qc-nav:hover,
 [data-qc-theme] .qc-nav:focus-within {
   opacity: 1;

@@ -37,13 +37,14 @@ export type HistoryChange =
   | 'timeframe'
   | 'style'
   | 'priceScale'
-  | 'appearance'
+  | 'settings'
   | 'compareAdd'
   | 'compareRemove'
   | 'compareChange'
   | 'indicatorAdd'
   | 'indicatorRemove'
   | 'indicatorChange'
+  | 'paneMove'
   | 'drawingAdd'
   | 'drawingRemove'
   | 'drawingChange'
@@ -54,13 +55,14 @@ export const HISTORY_CHANGE_LABELS: Readonly<Record<HistoryChange, ChartMessageK
   timeframe: 'history.changeTimeframe',
   style: 'history.changeChartStyle',
   priceScale: 'history.changePriceScale',
-  appearance: 'history.changeAppearance',
+  settings: 'history.changeSettings',
   compareAdd: 'history.changeAddCompare',
   compareRemove: 'history.changeRemoveCompare',
   compareChange: 'history.changeCompare',
   indicatorAdd: 'history.changeAddIndicator',
   indicatorRemove: 'history.changeRemoveIndicator',
   indicatorChange: 'history.changeIndicator',
+  paneMove: 'history.changeMovePane',
   drawingAdd: 'history.changeAddDrawing',
   drawingRemove: 'history.changeRemoveDrawing',
   drawingChange: 'history.changeDrawing',
@@ -169,7 +171,7 @@ export function diffLabel(previous: HistoryState, next: HistoryState): HistoryCh
   if (a.timeframe !== b.timeframe) return 'timeframe'
   if (a.style !== b.style) return 'style'
   if (a.scale !== b.scale || a.priceAxis !== b.priceAxis) return 'priceScale'
-  if (!sameValue(a.appearance, b.appearance)) return 'appearance'
+  if (!sameValue(a.settings, b.settings)) return 'settings'
   const compares = { before: listOf(a.compares), after: listOf(b.compares) }
   if (compares.after.length > compares.before.length) return 'compareAdd'
   if (compares.after.length < compares.before.length) return 'compareRemove'
@@ -177,6 +179,9 @@ export function diffLabel(previous: HistoryState, next: HistoryState): HistoryCh
   if (b.indicators.length > a.indicators.length) return 'indicatorAdd'
   if (b.indicators.length < a.indicators.length) return 'indicatorRemove'
   if (!sameValue(a.indicators, b.indicators)) return 'indicatorChange'
+  // The order of the panes moves only when a viewer moves one: a pane that comes or goes with what
+  // stands in it has already been named by the rung for that.
+  if (!sameValue(a.panes, b.panes)) return 'paneMove'
   const drawings = { before: drawingsOf(previous), after: drawingsOf(next) }
   if (drawings.after.length > drawings.before.length) return 'drawingAdd'
   if (drawings.after.length < drawings.before.length) return 'drawingRemove'
