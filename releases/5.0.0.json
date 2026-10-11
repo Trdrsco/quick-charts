@@ -1,0 +1,50 @@
+{
+  "date": "2026-10-11",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.0.0",
+  "releaseCommit": "111d7e6740ea38bc2259faec2a49207967d4193b",
+  "tarballSha256": "173519189af62bfc527f27c1eff2e63fc8712cc4005fe1673d04048e45ff840d",
+  "tarStreamSha256": "80878a0237aa84f592f6dea887831b88d0ae58695810e71f81ab03b304efa903",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/38149393758",
+    "candidateArtifact": "quickcharts-candidate, the tarball the run's clean room installed and its browser suite drove",
+    "unitTestsPassed": 4893,
+    "cleanRoomChecksPassed": 42,
+    "browserTestsPassed": 111,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "2b4cadb5c9679ca956591d5de572f0dbfc831afc5f660ab2b3dedb540151b74b",
+      "dossierHashesSha256": "3096d0c4a8966ef83d8893fedee63f18432503f16f0fec43fa26087c7e9422ee",
+      "installTestChecksPassed": 25,
+      "dossierRetained": true
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "6534f7627b481f333225813903805139076aa248",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/38150439917",
+    "result": "pass",
+    "workingTree": "the exact candidate tarball, committed at release-candidates/trdrs-quickcharts-5.0.0.tgz, installed through a root pnpm override"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "question": "Quick Charts 5.0.0 has had no manual screen-reader or device test. It rests on automated conformance (the unit, clean-room and browser suites, plus the app's first-host CI) and your own review of the preview. Waive the manual accessibility and advertised-browser acceptance, and authorize publishing 5.0.0 to npm?",
+    "statement": "Asked by his coordinating session whether to waive the manual accessibility and advertised-browser acceptance for Quick Charts 5.0.0 and authorize its publication, Joey chose \"Waive and authorize (Recommended)\".",
+    "recordedAt": "2026-10-11T14:35:57Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false,
+    "npmPublishApproval": "delegated by Joey to his coordinating session, which approves the npm-publish environment once the validation job passes. Asked \"Two steps need the owner's approval in GitHub: the npm-publish step, and the app's production deploy if it asks. Approve them yourself, or have me approve them for you?\", he chose \"Approve them for me (Recommended)\"."
+  }
+}
