@@ -62,7 +62,8 @@ export interface WidgetMenuHandle extends ContextMenuHandle {
   refresh(): void
   /** Raise the price menu under the plus: the groups `rows` builds, a rule between each, and nothing
    *  of the right-click menu's own. `rows` is asked again when the language changes under the open
-   *  menu. `focus` puts the keyboard on the first row. */
+   *  menu. `focus` puts the keyboard on the first row. The page under it stays live: a press off it
+   *  closes it and reaches nothing beneath. */
   openPrice(at: PriceMenuPlacement, rows: () => readonly (readonly PriceMenuRow[])[], focus: boolean): void
 }
 
@@ -121,8 +122,8 @@ export function mountContextMenu(
  *  `shown` again, for a change the menu cannot observe on its own (the host's access policy
  *  answering differently); a closed menu stays closed. */
 export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => void, strings: ChartI18n, icons: IconResolver, shown: (id: ChartMenuAction) => boolean = () => true): WidgetMenuHandle {
-  // A full-viewport backdrop closes the menu on any press elsewhere, and swallows the browser's own
-  // menu so a second right-click re-aims ours rather than stacking the native one on top.
+  // A full-viewport backdrop closes the right-click menu on any press elsewhere, and swallows the
+  // browser's own menu so a second right-click re-aims ours rather than stacking the native one on top.
   const backdrop = document.createElement('div')
   backdrop.className = 'qc-menu-backdrop'
   backdrop.hidden = true
@@ -155,6 +156,41 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
     if (e.key === 'Escape' && !box.hidden) close()
   }
   window.addEventListener('keydown', onKey)
+
+  // The price menu raises no backdrop, so the chart under it stays live: while the pointer is on the
+  // chart, its crosshair, the crosshair's price label and the plus the menu opened from stand where
+  // the pointer holds them, and they go only when it leaves for the menu. A press anywhere off the
+  // menu closes it all the same, and that press is the menu's: it, its release, and the click, the
+  // right-click or the touches the browser makes of them reach nothing beneath. Holding the press's
+  // default back also holds back the mouse events it would have raised.
+  const view = container.ownerDocument.defaultView ?? window
+  /** The pointer whose press closed the price menu, until what the browser makes of it has passed. */
+  let closing: number | null = null
+  const onPressOff = (e: PointerEvent): void => {
+    closing = null
+    if (openPriceRows === null || (e.target instanceof Node && box.contains(e.target))) return
+    close()
+    closing = e.pointerId
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  const onReleaseOff = (e: PointerEvent): void => {
+    if (closing === e.pointerId) e.stopPropagation()
+  }
+  const onAfterPressOff = (e: Event): void => {
+    // A click the keyboard raises is no pointer's: it passes.
+    if (closing === null || ((e.type === 'click' || e.type === 'auxclick') && (e as MouseEvent).detail === 0)) return
+    e.stopPropagation()
+    if (e.cancelable) e.preventDefault()
+    // The click ends a mouse's press, the lifted finger a touch's.
+    if (e.type === 'click' || e.type === 'auxclick' || e.type === 'touchend' || e.type === 'touchcancel') closing = null
+  }
+  const AFTER_PRESS = ['click', 'auxclick', 'contextmenu', 'touchstart', 'touchend', 'touchcancel'] as const
+  const capturing = { capture: true, passive: false }
+  view.addEventListener('pointerdown', onPressOff, capturing)
+  view.addEventListener('pointerup', onReleaseOff, capturing)
+  view.addEventListener('pointercancel', onReleaseOff, capturing)
+  for (const type of AFTER_PRESS) view.addEventListener(type, onAfterPressOff, capturing)
 
   container.append(backdrop, box)
 
@@ -256,7 +292,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
       openPriceRows = rows
       box.classList.add('qc-price-menu')
       fillPrice(rows())
-      backdrop.hidden = false
+      backdrop.hidden = true
       box.hidden = false
       box.style.left = '0px'
       box.style.top = '0px'
@@ -295,6 +331,10 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
     destroy() {
       unsubscribe()
       window.removeEventListener('keydown', onKey)
+      view.removeEventListener('pointerdown', onPressOff, capturing)
+      view.removeEventListener('pointerup', onReleaseOff, capturing)
+      view.removeEventListener('pointercancel', onReleaseOff, capturing)
+      for (const type of AFTER_PRESS) view.removeEventListener(type, onAfterPressOff, capturing)
       backdrop.remove()
       box.remove()
     },

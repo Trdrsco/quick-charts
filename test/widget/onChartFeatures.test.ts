@@ -630,6 +630,41 @@ describe('the plus button', () => {
     expect(plus.getAttribute('aria-label')).toBe('Price actions')
   })
 
+  it('leaves the chart live under the price menu, and closes it on a press off it that reaches nothing beneath', async () => {
+    const { renderer, gestures } = await mountWithMenus()
+    const open = (): void => {
+      renderer.fireCrosshair(BARS[5]!.t, 300, 120)
+      paint(renderer)
+      press(gestures, 'pointerdown', 530, 120)
+      press(gestures, 'pointerup', 530, 120)
+      expect(priceMenu()).not.toEqual([])
+    }
+    open()
+    // Nothing covers the chart while the price menu is open, so the pointer stays on the plot and the
+    // renderer keeps its crosshair there, and with it the crosshair's label and the plus.
+    expect(document.querySelector<HTMLElement>('.qc-menu-backdrop')!.hidden).toBe(true)
+    expect(paint(renderer)).toEqual(['rgb(61, 61, 61)'])
+    // A press off the menu closes it, and the press, its release and its click are the menu's.
+    const heard: string[] = []
+    for (const type of ['pointerdown', 'pointerup', 'click', 'contextmenu'] as const) gestures.addEventListener(type, (e) => void heard.push(e.type))
+    expect(press(gestures, 'pointerdown', 300, 200).defaultPrevented).toBe(true)
+    expect(priceMenu()).toEqual([])
+    press(gestures, 'pointerup', 300, 200)
+    gestures.dispatchEvent(new MouseEvent('click', { clientX: 300, clientY: 200, detail: 1, bubbles: true, cancelable: true }))
+    expect(heard).toEqual([])
+    // A right-click off it closes it too, and raises no right-click menu.
+    open()
+    gestures.dispatchEvent(new PointerEvent('pointerdown', { clientX: 300, clientY: 200, button: 2, pointerId: 1, bubbles: true, cancelable: true }))
+    const menu = new MouseEvent('contextmenu', { clientX: 300, clientY: 200, button: 2, bubbles: true, cancelable: true })
+    gestures.dispatchEvent(menu)
+    expect(menu.defaultPrevented).toBe(true)
+    expect(document.querySelector<HTMLElement>('.qc-menu')!.hidden).toBe(true)
+    expect(heard).toEqual([])
+    // The next press is the chart's again.
+    press(gestures, 'pointerdown', 300, 200)
+    expect(heard).toEqual(['pointerdown'])
+  })
+
   it('opens from the keyboard with the focus on its first row', async () => {
     const { renderer, plus } = await mountWithMenus()
     renderer.fireCrosshair(BARS[5]!.t, 300, 120)
@@ -673,7 +708,7 @@ describe('the plus button', () => {
       press(gestures, 'pointerdown', 530, 120)
       press(gestures, 'pointerup', 530, 120)
       const text = priceMenu().at(-1)
-      document.querySelector<HTMLElement>('.qc-menu-backdrop')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+      document.body.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 2, bubbles: true, cancelable: true }))
       return text
     }
     expect(widget.commands.list().find((spec) => spec.id === 'chart.drawings.placeHorizontalLine')?.shortcut).toBe('Alt+KeyH')
