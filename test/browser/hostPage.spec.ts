@@ -91,7 +91,7 @@ function expectWhole(reading: PaletteReading, width?: number): void {
   if (width !== undefined) expect(reading.width).toBeCloseTo(width, 0)
 }
 
-test('every color surface holds its whole palette: the dialog popovers, the settings bar panels at either edge, and the panels the chart and indicator settings expand', async ({ page }) => {
+test('every color surface holds its whole palette: the dialog popovers, the settings bar panels at either edge, the chart settings popover, and the panel the indicator settings expand', async ({ page }) => {
   await mount(page)
   // The settings dialog's popovers: a stroke's, with its Line style row, and a level's.
   await select(page, 'trend_line')
@@ -128,11 +128,11 @@ test('every color surface holds its whole palette: the dialog popovers, the sett
     }
   }
   await page.evaluate(() => (window as unknown as { widget: { activeChart(): { drawings: { restore(list: unknown[]): void } } } }).widget.activeChart().drawings.restore([]))
-  // The chart settings expand the palette in place under a color row.
+  // The chart settings open the color popover a drawing dialog opens, under a color row.
   await page.locator('button[aria-label="Chart settings"]').click()
   const settings = page.locator('.qc-dialog').last()
   await settings.locator('.qc-drawing-swatch-button').first().click()
-  expectWhole(await readPalette(page, '.qc-inline-panel'))
+  expectWhole(await readPalette(page, '.qc-drawing-popover'))
   expect(await settings.locator('.qc-chart-settings-panel').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
   await page.keyboard.press('Escape')
   await page.keyboard.press('Escape')
