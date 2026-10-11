@@ -14,8 +14,18 @@
 // centred on the crosshair's pixel row. The fill and the ink come from the renderer's own options,
 // the colour the chart hands it for the crosshair's label, so the plus wears whatever the label
 // wears. Each draw reports the box it painted, which is where the chrome stands its hit target and
-// where a press counts as a press of the plus.
-import { CrosshairMode, type IPrimitivePaneRenderer, type IPrimitivePaneView, type ISeriesApi, type ISeriesPrimitive, type SeriesType, type Time } from 'lightweight-charts'
+// where a press counts as a press of the plus. Its hit test hands the renderer the pointer cursor
+// over the plus, the way the renderer gives every primitive under the pointer its cursor.
+import {
+  CrosshairMode,
+  type IPrimitivePaneRenderer,
+  type IPrimitivePaneView,
+  type ISeriesApi,
+  type ISeriesPrimitive,
+  type PrimitiveHoveredItem,
+  type SeriesType,
+  type Time,
+} from 'lightweight-charts'
 import { parseCssColor } from '../theme/color'
 
 /** The plus's box in the main pane's own CSS pixels, and the crosshair's height it stands at. */
@@ -74,8 +84,16 @@ export const plusWidth = (fontSize: number): number => (20 / 12) * fontSize
  *  edge: one pixel. */
 const GAP = 1
 
+/** The plus's column in bitmap pixels: one pixel of plot short of the plot's edge on the scale's
+ *  side, as wide as the text size makes it. */
+function plusColumn(paneWidth: number, side: 'left' | 'right', fontSize: number, horizontal: number): { left: number; width: number } {
+  const width = Math.round(plusWidth(fontSize) * horizontal)
+  const gap = Math.max(1, Math.floor(GAP * horizontal))
+  return { left: side === 'right' ? paneWidth - gap - width : gap, width }
+}
+
 /** The plus's box in bitmap pixels, on the rows the renderer gives the crosshair's label at a height
- *  `y`, one pixel of plot short of the plot's edge on the scale's side. */
+ *  `y`, in the plus's column. */
 export function scalePlusBitmapBox(
   y: number,
   pane: { width: number },
@@ -91,9 +109,8 @@ export function scalePlusBitmapBox(
   if (height % 2 !== tick % 2) height += 1
   const middle = Math.round(y * ratio.vertical) - Math.floor(ratio.vertical * 0.5)
   const top = Math.floor(middle + tick / 2 - height / 2)
-  const width = Math.round(plusWidth(fontSize) * ratio.horizontal)
-  const gap = Math.max(1, Math.floor(GAP * ratio.horizontal))
-  return { left: side === 'right' ? pane.width - gap - width : gap, top, width, height }
+  const { left, width } = plusColumn(pane.width, side, fontSize, ratio.horizontal)
+  return { left, top, width, height }
 }
 
 /** The glyph inside the box, measured beside the 21px label a 12px text makes and scaled with it: a
@@ -137,26 +154,39 @@ interface BitmapScope {
 /** Marks the plus's primitive among a series' primitives, the chart's other painters among them. */
 export const SCALE_PLUS_PRIMITIVE: unique symbol = Symbol('quickcharts.scalePlus')
 
+/** The id the renderer reports for the plus while the pointer is on it. */
+export const SCALE_PLUS_ID = 'quickcharts.scalePlus'
+
 export function attachScalePlus(deps: ScalePlusDeps): ScalePlusLayer {
   let disposed = false
   let requestUpdate: (() => void) | null = null
   let pointer: { x: number; y: number } | null = null
   let drawn: ScalePlusBox | null = null
+  /** The plus's column in the pane's own pixels, as the last paint measured the pane, drawn or not. */
+  let column: { left: number; width: number } | null = null
+
+  /** The fill of the crosshair's price label the plus stands beside, or null where the plus stands
+   *  nowhere: the setting off, or a renderer that draws no crosshair label to stand beside. */
+  const labelColor = (look: RendererLook): string | null => {
+    const label = look.crosshair?.horzLine
+    if (disposed || !deps.enabled()) return null
+    if (look.crosshair?.mode === CrosshairMode.Hidden || label?.labelVisible === false || !label?.labelBackgroundColor) return null
+    return label.labelBackgroundColor
+  }
 
   const paint = (scope: BitmapScope): ScalePlusBox | null => {
     const look = deps.chart.options() as RendererLook
-    const label = look.crosshair?.horzLine
-    if (disposed || pointer === null || !deps.enabled()) return null
-    // Where the renderer draws no crosshair label, there is nothing to stand beside.
-    if (look.crosshair?.mode === CrosshairMode.Hidden || label?.labelVisible === false || !label?.labelBackgroundColor) return null
     const { context: ctx, horizontalPixelRatio: h, verticalPixelRatio: v } = scope
     const side = deps.side()
     const fontSize = look.layout?.fontSize ?? 12
+    const measured = plusColumn(scope.bitmapSize.width, side, fontSize, h)
+    column = { left: measured.left / h, width: measured.width / h }
+    const color = labelColor(look)
+    if (pointer === null || color === null) return null
     const bitmap = scalePlusBitmapBox(pointer.y, { width: scope.bitmapSize.width }, side, fontSize, { horizontal: h, vertical: v })
     const box: ScalePlusBox = { left: bitmap.left / h, top: bitmap.top / v, width: bitmap.width / h, height: bitmap.height / v, y: pointer.y, paneWidth: scope.bitmapSize.width / h }
     // The plus stands on the pointer's own row, so the pointer is on it wherever it is in its column.
     const hovered = pointer.x >= box.left && pointer.x < box.left + box.width
-    const color = label.labelBackgroundColor
     ctx.save()
     // Rounded at its outer corners and square on the side facing the label, which is square there too.
     const r = RADIUS * h
@@ -194,10 +224,11 @@ export function attachScalePlus(deps: ScalePlusDeps): ScalePlusLayer {
   // The top layer is the one the renderer paints with the crosshair, every time the crosshair moves.
   // One list for every paint, so the renderer keeps the views it wrapped.
   const views: readonly IPrimitivePaneView[] = [{ zOrder: () => 'top', renderer: () => renderer }]
-  // No hit test: a primitive the renderer finds under the pointer makes its series the hovered one,
-  // which the renderer paints by another path, so the plus would leave the frame it stands in each
-  // time the pointer reached it. The chrome reads the pointer against the painted box instead, and
-  // gives the box its cursor.
+  /** What the renderer finds under a pointer on the plus: the top layer's hit, which outranks every
+   *  other it finds there, wearing the pointer cursor. The renderer writes a hit's cursor on its own
+   *  element inside the gesture box, so the cursor the drawing tool or a host's layer writes on the
+   *  box stands everywhere but on the plus. */
+  const hit: PrimitiveHoveredItem = { externalId: SCALE_PLUS_ID, zOrder: 'top', cursorStyle: 'pointer', distance: 0, hitTestPriority: 2 }
   const primitive: ISeriesPrimitive<Time> & { readonly [SCALE_PLUS_PRIMITIVE]: true } = {
     [SCALE_PLUS_PRIMITIVE]: true,
     attached(param) {
@@ -207,6 +238,13 @@ export function attachScalePlus(deps: ScalePlusDeps): ScalePlusLayer {
       requestUpdate = null
     },
     paneViews: () => views,
+    // The renderer asks with the pointer's new place, before the paint that moves the plus there.
+    // The plus stands on the pointer's own row, so the pointer is on it wherever it is in the plus's
+    // column: the rule the hover fill follows.
+    hitTest(x) {
+      if (column === null || x < column.left || x >= column.left + column.width) return null
+      return labelColor(deps.chart.options() as RendererLook) === null ? null : hit
+    },
   }
   deps.series().attachPrimitive(primitive)
 

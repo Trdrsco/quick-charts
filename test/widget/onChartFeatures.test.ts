@@ -466,7 +466,7 @@ describe('the plus button', () => {
   /** The plus's primitive on the main series, by the mark it carries. */
   const plusPrimitive = (renderer: FakeRenderer) =>
     main(renderer).primitives.find((p) => (p as { [SCALE_PLUS_PRIMITIVE]?: true })[SCALE_PLUS_PRIMITIVE] === true) as
-      | { paneViews(): { renderer(): { draw(target: unknown): void } }[] }
+      | { paneViews(): { renderer(): { draw(target: unknown): void } }[]; hitTest(x: number, y: number): { cursorStyle?: string; zOrder?: string } | null }
       | undefined
 
   /** One paint of the renderer's top layer on the main pane, the paint a crosshair move asks for.
@@ -565,27 +565,21 @@ describe('the plus button', () => {
     expect(plus.style.top).toBe('190px')
   })
 
-  it('wears a pointer cursor on the plus and gives the box back its own off it', async () => {
+  it('hands the renderer the pointer cursor over the plus, and writes nothing on the gesture box', async () => {
     const { renderer, gestures } = await mountWithMenus()
     renderer.fireCrosshair(BARS[5]!.t, 300, 120)
     paint(renderer)
+    const plus = plusPrimitive(renderer)!
+    // The plus's column runs 519 to 539 across: there the renderer finds the top layer's hit, at
+    // whatever height the pointer stands, and wears its pointer cursor on its own element.
+    expect(plus.hitTest(529, 120)).toMatchObject({ cursorStyle: 'pointer', zOrder: 'top' })
+    expect(plus.hitTest(538.5, 200)).toMatchObject({ cursorStyle: 'pointer', zOrder: 'top' })
+    expect(plus.hitTest(300, 120)).toBeNull()
+    // The cursor the drawing tool or a host's layer writes on the gesture box stands, on the plus and
+    // off it: those surfaces rewrite it as the pointer moves, and the plus never contends for it.
     gestures.style.cursor = 'crosshair'
-    const move = (x: number, y: number): void => {
-      gestures.dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: y, pointerType: 'mouse', bubbles: true }))
-    }
-    // On the painted box (519 to 539 across, 110 to 131 down), the box wears the pointer.
-    move(529, 120)
-    expect(gestures.style.cursor).toBe('pointer')
-    move(530, 125)
-    expect(gestures.style.cursor).toBe('pointer')
-    // Off it, the box wears what it wore before.
-    move(300, 120)
+    for (const x of [529, 300]) gestures.dispatchEvent(new PointerEvent('pointermove', { clientX: x, clientY: 120, pointerType: 'mouse', bubbles: true }))
     expect(gestures.style.cursor).toBe('crosshair')
-    // A cursor another surface writes while the pointer is on the plus stands when it leaves.
-    move(529, 120)
-    gestures.style.cursor = 'grab'
-    move(300, 120)
-    expect(gestures.style.cursor).toBe('grab')
   })
 
   it('wears the one fill the renderer paints the crosshair labels in: the measured grey, on the price and the time label alike', async () => {

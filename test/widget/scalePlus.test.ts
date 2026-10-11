@@ -1,10 +1,10 @@
 // The plus beside the crosshair's price label: painted in the renderer's top layer, the layer it
 // paints the crosshair and its label in, at the crosshair's height, on the label's own rows, flush
-// against the plot's edge, in the label's fill and ink; and nowhere while the setting, the crosshair
-// or its label is off.
+// against the plot's edge, in the label's fill and ink, found by the renderer under the pointer with
+// the pointer cursor; and nowhere while the setting, the crosshair or its label is off.
 import { CrosshairMode, type ISeriesApi, type SeriesType } from 'lightweight-charts'
 import { describe, expect, it } from 'vitest'
-import { attachScalePlus, crosshairLabelHeight, hoverFill, labelFill, labelInk, scalePlusBitmapBox, type ScalePlusBox } from '../../src/widget/scalePlus'
+import { attachScalePlus, crosshairLabelHeight, hoverFill, labelFill, labelInk, SCALE_PLUS_ID, scalePlusBitmapBox, type ScalePlusBox } from '../../src/widget/scalePlus'
 
 interface Call {
   op: string
@@ -189,13 +189,27 @@ describe('the plus beside the crosshair label', () => {
     ])
   })
 
-  it('takes the hover fill under the pointer and claims no hover from the renderer', () => {
-    const { layer, series, paint } = setup()
+  it('takes the hover fill under the pointer, and hands the renderer the pointer cursor over its column', () => {
+    const { layer, series, paint, setEnabled, look } = setup()
+    const primitive = series.primitives[0]!
+    // Until the renderer has painted the pane once, the plus has no column to be found in.
+    expect(primitive.hitTest(1110, 398)).toBeNull()
     layer.setPointer({ x: 1110, y: 398 })
     expect(paint().find((call) => call.op === 'fill')!.fill).toBe('rgb(99, 99, 99)')
-    // A hit would make the series the renderer's hovered one, painted by another path, and the plus
-    // would leave its frame each time the pointer reached it.
-    expect('hitTest' in series.primitives[0]!).toBe(false)
+    // The renderer asks with the pointer's new place, before the paint that moves the plus there. The
+    // plus stands on the pointer's row, so anywhere in its column (1101 to 1121 across) the hit is the
+    // top layer's, which outranks every other, wearing the pointer cursor.
+    const hit = { externalId: SCALE_PLUS_ID, zOrder: 'top', cursorStyle: 'pointer', distance: 0, hitTestPriority: 2 }
+    expect(primitive.hitTest(1101, 398)).toEqual(hit)
+    expect(primitive.hitTest(1120.5, 40)).toEqual(hit)
+    // Off the column, and wherever the plus stands nowhere, the renderer finds nothing of it.
+    expect(primitive.hitTest(1100.5, 398)).toBeNull()
+    expect(primitive.hitTest(1121, 398)).toBeNull()
+    setEnabled(false)
+    expect(primitive.hitTest(1110, 398)).toBeNull()
+    setEnabled(true)
+    ;(look.crosshair as { mode: number }).mode = CrosshairMode.Hidden
+    expect(primitive.hitTest(1110, 398)).toBeNull()
   })
 
   it('mirrors beside a left scale', () => {
