@@ -6,7 +6,7 @@ is published, what the registry received.
 
 `release.yml` refuses to publish a version unless the tagged commit holds `releases/<version>.json`,
 the record passes the rules below, its version is the package version, the dispatched SHA-256 and
-the rehearsed tarball equal its `tarballSha256`, the rehearsed tar stream equals its
+the producer CI tarball equal its `tarballSha256`, the producer tar stream equals its
 `tarStreamSha256`, and the tag is its `releaseCommit` or descends from it. The record is not in the
 package `files`, so adding it changes no published byte. [RELEASING.md](../RELEASING.md) gives the
 order of the steps.

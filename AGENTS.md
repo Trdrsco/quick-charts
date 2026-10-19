@@ -39,7 +39,8 @@ pnpm gate                  # adds the clean room and the browser suite
 ```
 
 CI (`.github/workflows/ci.yml`) runs the same steps as parallel jobs, and its `gate` job passes only
-when all of them pass. `CONTRIBUTING.md` lists every command.
+when its required jobs pass. Release-record-only edits run metadata, documentation and source-history
+checks; every other change runs the complete gate. `CONTRIBUTING.md` lists every command.
 
 ## Releasing
 
@@ -54,7 +55,9 @@ Follow [RELEASING.md](RELEASING.md). The points an agent gets wrong:
   its CI passed. A tag publishes nothing, and a tag that was pushed is never moved.
 - The acceptance record, `releases/<version>.json`, merges before the tag; `release.yml` refuses a
   tag without a complete one. Dispatch it on the tag with the candidate's SHA-256, which must equal
-  the record's. The publication facts follow in their own pull request after publishing.
+  the record's. Validation reuses the accepted main CI artifact only when every product check passed
+  and only release records changed since its source commit. Publication facts follow in their own
+  pull request after publishing.
 - The owner approves the `npm-publish` environment. An agent never publishes.
 
 ## Where to look

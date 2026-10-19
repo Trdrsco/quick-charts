@@ -1,12 +1,12 @@
 // The release policy: the acceptance record every version carries in `releases/<version>.json`,
 // and the checks `release.yml` runs before anything is published.
 //
-//   node scripts/release-policy.mjs identity   before the rehearsal: the tag names the package
+//   node scripts/release-policy.mjs identity   before artifact reuse: the tag names the package
 //                                              version, the dispatched SHA-256 is well formed, and
 //                                              the tagged commit holds a complete acceptance record
 //                                              for this version that names that SHA-256 and a
 //                                              release commit the tag descends from
-//   node scripts/release-policy.mjs artifact   after the rehearsal: the same, and the rehearsed
+//   node scripts/release-policy.mjs artifact   after artifact reuse: the same, and the accepted
 //                                              tarball and tar stream equal the ones the record
 //                                              names
 //
@@ -164,7 +164,7 @@ export function checkRelease({ root, mode, env, isAncestor }) {
   if (mode === 'artifact') {
     verifyArtifact(readFileSync(join(root, '.candidate', `trdrs-quickcharts-${version}.tgz`)), digest)
     const manifest = JSON.parse(readFileSync(join(root, '.candidate', 'manifest.json'), 'utf8'))
-    if (manifest?.tarball?.tarSha256 !== record.tarStreamSha256) throw new Error(`The rehearsed tar stream differs from the one ${recordPath(version)} accepts`)
+    if (manifest?.tarball?.tarSha256 !== record.tarStreamSha256) throw new Error(`The accepted tar stream differs from the one ${recordPath(version)} accepts`)
   }
   return { version, digest, record }
 }

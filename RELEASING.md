@@ -38,15 +38,26 @@ Registry publishing access is separate from repository access. Do not grant it t
 ## Publication
 
 Dispatch `release.yml` on the exact release tag, supplying the SHA-256 of the candidate accepted
-by the first host. The validation job refuses to continue unless the tagged commit holds
+by the first host. Validation downloads the exact candidate retained by the successful main CI run
+that the acceptance record names. That run must have passed every unit shard, the repository checks,
+the clean room and the browser suite on the accepted source commit. Between that source commit and
+the tag, only versioned release records may differ. A changed source, a failed or skipped job, or an
+expired or missing artifact refuses publication; rerun the producer CI to refresh its artifact.
+Publication does not rebuild or repeat the accepted candidate's tests.
+
+The validation job refuses to continue unless the tagged commit holds
 `releases/<version>.json`, the record is complete, its version is the package version, its
 release commit is the tagged commit or an ancestor of it, and the dispatched SHA-256, the record
-and the rehearsed tarball name the same bytes. It also verifies the tag, version and main ancestry.
+and the producer CI artifact name the same bytes. It also verifies the tag, version and main ancestry.
 
 The owner reads that evidence and approves the `npm-publish` environment. Self-approval is allowed.
 The publishing job downloads the validated tarball, verifies its digest again and publishes that
 file without rebuilding it or executing package scripts. Only this protected job receives OIDC
 permission. Node 24.15.0 and npm 12.1.0 are pinned. `publishConfig.provenance` is enabled.
+
+Release-record-only pull requests and main pushes run the release-record, documentation and
+source-history supply-chain checks. Any other changed path runs the complete chart gate. The
+first-host acceptance and rehearsal dossier remain required before a tag.
 
 Configure npm trust for repository `Trdrsco/quick-charts`, workflow `release.yml` and environment
 `npm-publish` before using this path. GitHub configuration alone does not establish npm trust.
