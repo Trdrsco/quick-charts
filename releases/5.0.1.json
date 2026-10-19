@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-19",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.0.1",
+  "releaseCommit": "8cbb92c97a90bae71be278540b901c73ffbbbbe8",
+  "tarballSha256": "4a0e98543259b53708422f13f6502dabccbb63cbdd3ead934b4c4efccd044e93",
+  "tarStreamSha256": "3e7f696c404febe42b9ca7f2dcc26638709e0e26ea0744642aa7cdd24011d15c",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/39329008456",
+    "candidateArtifact": "quickcharts-candidate, identical to the tarball accepted by the first host",
+    "unitTestsPassed": 4910,
+    "cleanRoomChecksPassed": 42,
+    "browserTestsPassed": 111,
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "d845b958c6ae9093da6c80c5508dd564aac49dde8b5f007d5e6551e141bb09d7",
+      "dossierHashesSha256": "0ec821abd40757cc0f9aa949e2bfc6022c7cef7c42fbb31fa97d22f400433d23",
+      "installTestChecksPassed": 25,
+      "dossierRetained": true,
+      "retainedDossier": "Documents/quick-charts-release-dossiers/5.0.1"
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "19744209cdb146d4734c9ce90f1ba910199afaa4",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/39329284538",
+    "result": "pass",
+    "tag": "quickcharts-5.0.1-first-host",
+    "workingTree": "the exact candidate tarball, committed at release-candidates/trdrs-quickcharts-5.0.1.tgz, installed through a root pnpm override; complete release checks passed"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "question": "For Quick Charts 5.0.1, do you waive the unperformed manual accessibility and browser/device acceptance checks, relying on the automated tests, and authorize me to approve the npm-publish step for you after validation passes?",
+    "statement": "Waive manual checks and approve publication for me after validation passes.",
+    "recordedAt": "2026-10-19T21:28:52Z"
+  },
+  "ownerDecision": {
+    "publicationAuthorized": true,
+    "manualAcceptance": "waived by owner for this release",
+    "manualAcceptancePerformed": false,
+    "screenReaderSupportMeasured": false,
+    "safariDeviceSupportMeasured": false,
+    "npmPublishApproval": "Joey explicitly delegated approval of the npm-publish environment after validation passes."
+  }
+}
