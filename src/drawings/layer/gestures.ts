@@ -367,6 +367,11 @@ export function bindGestures(ctx: GestureContext): () => void {
   ctx.toolChanged = dropPreview
 
   const onDown = (e: PointerEvent): void => {
+    // A host overlay's handled press and the chart's axes cannot start a drawing gesture.
+    if (e.defaultPrevented) return
+    const press = localXY(e)
+    const plot = viewport()
+    if (!plot || press.x < 0 || press.x > plot.width || press.y < 0 || press.y > plot.height) return
     reopenMenu()
     dropPreview()
     // A right-click while a drawing is half placed takes it back and puts the tool down.
