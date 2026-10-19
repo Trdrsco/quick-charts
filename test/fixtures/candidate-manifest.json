@@ -1,7 +1,7 @@
 {
-  "tarSha256": "80878a0237aa84f592f6dea887831b88d0ae58695810e71f81ab03b304efa903",
+  "tarSha256": "2d8e02ae873e6326f958588a039bbe67ae9dd0cbe083ed18b667ed438d848154",
   "files": {
-    "CHANGELOG.md": "79fe79f7f0bc96f31e46e24ec4fe87f9d5d7a59d58ea0ab49fd9b1abca51f166",
+    "CHANGELOG.md": "2b46e04b4e9384405ce8443e0a00e135df6df8e8f31e37d59d4f2275eea9a773",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
     "NOTICE": "fdea87c69eb418e4a9e2f37b17bd70c0fa4474f6f8361b7981838fdf968f4678",
     "README.md": "5799315587e566e267da9fc22789b7e38163f9745be972283743d89cb6444513",
@@ -49,8 +49,8 @@
     "dist/id_ID-SI25N57C.js": "fb437897f1e021275052888446a2628a48fd342385e9f3f3224cf786a7acc3f3",
     "dist/id_ID-SI25N57C.js.map": "cbd512dae251cdd6d2fc5dea3e3de4fbf3ef34753696fd68818f2d59c259f1f6",
     "dist/index.d.ts": "607367244eb0d7997efaef22d231674d593a7ca505961c1be843de2a74b623cd",
-    "dist/index.js": "80e99d1ba7f08e50cc9bc879cba1f4136494921ae5cbd8ce120a4b585c786177",
-    "dist/index.js.map": "ff06527b30e142c2bba9b817f45fca9230d3ad39051939ccd5a8e3225d999ddb",
+    "dist/index.js": "d3676bb9ebb18beae889d2a31d06b42637c648ecf49882749672fa7fa31f99d2",
+    "dist/index.js.map": "21573fc60ce31abcbb687417c33b6f62f99aeed1f00405d83b8a00042068058c",
     "dist/it-PMSTWZDL.js": "3ae6bfd0b0ce75723948d8631ffbcc67824ca0faa862198e82dab4043399c0ee",
     "dist/it-PMSTWZDL.js.map": "0581a331d2a41cdae6fb59aef3b24b6f1607032e5cda38cbdd5c5b83c99ff2f2",
     "dist/ja-PABDRAXV.js": "97c7cc0cda22ad88fba0705cf7d38f676089fd0dfd060ff5cf7e43ad8d2386fc",

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+Drawing gestures respect presses handled by host overlays and leave presses outside the plot to the chart scales.
+
 ## 5.0.0
 
 The chart settings, one typed tree saved with the chart in place of the appearance overrides, with a dialog of five pages a host can add its own to, the price labels and scale controls they drive, the plus beside the crosshair's price and its price menu, panes that move and maximize, time-scale marks with icons and lines, the optional prices port, and extension seams for legend rows, captures and settings pages.
