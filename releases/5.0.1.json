@@ -48,5 +48,39 @@
     "screenReaderSupportMeasured": false,
     "safariDeviceSupportMeasured": false,
     "npmPublishApproval": "Joey explicitly delegated approval of the npm-publish environment after validation passes."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/39334123763",
+    "npmPublishApproval": "Approved for Joey by this release session, on his explicit instruction, after the validation job passed.",
+    "registryIntegrity": "sha512-TQ/zUb6xCv2XKM3FM5ygZIrfmAVgqMpjoOJuP/X6kxdTR+luC+19jE0NGZBBKZUWOW1Q9AaLul7MTH5VLfQI5w==",
+    "registryTarballSha256": "4a0e98543259b53708422f13f6502dabccbb63cbdd3ead934b4c4efccd044e93",
+    "provenanceLogIndex": 3327261403,
+    "distTagLatest": "5.0.1",
+    "provenance": "SLSA v1 provenance names refs/tags/v5.0.1, .github/workflows/release.yml and commit c1cb21aebb1581490ca08d87776dbf0632df7ac3, with the registry tarball sha512 as its subject",
+    "npmAuditSignatures": "pass: 3 verified registry signatures and 1 verified attestation for the chart package and runtime dependencies (npm audit signatures --omit=dev)",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.0.1",
+      "browsers": [
+        {
+          "browser": "chromium",
+          "version": "149.0.7827.55",
+          "passed": 42,
+          "total": 42
+        },
+        {
+          "browser": "firefox",
+          "version": "151.0",
+          "passed": 42,
+          "total": 42
+        },
+        {
+          "browser": "webkit",
+          "version": "26.5",
+          "passed": 42,
+          "total": 42
+        }
+      ]
+    }
   }
 }
