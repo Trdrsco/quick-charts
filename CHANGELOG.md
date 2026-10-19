@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 5.0.1
+
 Drawing gestures respect presses handled by host overlays and leave presses outside the plot to the chart scales.
 
 ## 5.0.0
