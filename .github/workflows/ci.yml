@@ -3,9 +3,10 @@
 # across three runners, and `browser` runs the clean room and then the browser suite over the
 # consumer the clean room installed, in the Playwright image, whose browsers and system libraries
 # are already installed, and keeps that candidate with the run as the `quickcharts-candidate`
-# artifact. The `gate` job is the one required check: it passes only when every other job passed.
+# artifact. Release-record-only edits run metadata, documentation and source-history checks. The
+# required `gate` verifies that every job its scope required passed and every other job was skipped.
 #
-# A release is proven by the release workflow, which rehearses the exact tagged candidate, so a tag
+# A release verifies the accepted artifact from successful main CI, so a tag
 # push does not run this workflow again.
 name: ci
 
@@ -23,7 +24,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    outputs:
+      full: ${{ steps.scope.outputs.full }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.15.0
+      - name: Verify release automation decisions
+        run: node --test scripts/test/ci-scope.test.mjs scripts/test/release-proof.test.mjs
+      - id: scope
+        run: node scripts/ci-scope.mjs
+
+  records:
+    needs: scope
+    if: needs.scope.outputs.full == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24.15.0
+      - name: Source and history supply-chain scan
+        run: |
+          node --input-type=module -e 'import { check } from "./scripts/check-supply-chain.mjs"; const result = check(process.cwd(), { packed: () => [] }); if (result.hits.length) { console.error(result.hits); process.exit(1) } console.log("Source and history supply-chain checks passed; package bytes are unchanged")'
+      - name: Documents
+        run: node scripts/check-docs.mjs
+      - name: Release records
+        run: node scripts/check-release-records.mjs
+
   checks:
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -57,6 +95,8 @@ jobs:
         run: node scripts/check-release-records.mjs
 
   tests:
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -82,6 +122,8 @@ jobs:
         run: pnpm run test --shard=${{ matrix.shard }}/3
 
   browser:
+    needs: scope
+    if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # The image's tag matches the pinned @playwright/test, so its browsers are the ones the suite
@@ -126,12 +168,21 @@ jobs:
 
   gate:
     if: always()
-    needs: [checks, tests, browser]
+    needs: [scope, records, checks, tests, browser]
     runs-on: ubuntu-latest
     steps:
-      - name: every job passed
+      - name: Every required job passed
         env:
-          RESULTS: ${{ join(needs.*.result, ' ') }}
+          SCOPE: ${{ needs.scope.result }}
+          FULL: ${{ needs.scope.outputs.full }}
+          RECORDS: ${{ needs.records.result }}
+          CHECKS: ${{ needs.checks.result }}
+          TESTS: ${{ needs.tests.result }}
+          BROWSER: ${{ needs.browser.result }}
         run: |
-          echo "results: $RESULTS"
-          for result in $RESULTS; do test "$result" = success; done
+          test "$SCOPE" = success
+          case "$FULL" in
+            true) test "$RECORDS" = skipped; test "$CHECKS" = success; test "$TESTS" = success; test "$BROWSER" = success ;;
+            false) test "$RECORDS" = success; test "$CHECKS" = skipped; test "$TESTS" = skipped; test "$BROWSER" = skipped ;;
+            *) exit 1 ;;
+          esac

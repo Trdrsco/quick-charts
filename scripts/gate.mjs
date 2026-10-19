@@ -16,6 +16,7 @@ const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 /** Each step is exactly one CI step, named the way CI names it. `slow` is the axis people want to
  *  skip in the inner loop: the clean room installs the tarball into three fresh projects. */
 const STEPS = [
+  { id: 'release-automation', run: ['node', '--test', 'scripts/test/ci-scope.test.mjs', 'scripts/test/release-proof.test.mjs'] },
   // The build's last step packs the candidate, so every later step reads a candidate built from
   // this checkout.
   { id: 'build', run: ['pnpm', 'run', 'build'] },
