@@ -212,6 +212,18 @@ describe('the load and the live subscription', () => {
     expect(feed.open()).toHaveLength(1)
   })
 
+  it('an empty or older backfill cannot erase the history or live bars already painted', async () => {
+    const feed = scriptedFeed({ history: async () => ({ bars: [bar(300), bar(360), bar(420, 110)], noData: false }) })
+    const { renderer } = mountChart(feed.feed)
+    await settle()
+    const reader = feed.open()[0]!.handlers
+    reader.onBars({ kind: 'snapshot', bars: [], backfill: true })
+    expect(paintedBars(renderer)).toBe(3)
+    reader.onBars({ kind: 'snapshot', bars: [bar(240), bar(300, 1), bar(360, 2)], backfill: true })
+    const painted = renderer.series.find((s) => s.options.visible !== false && s.options.priceScaleId !== 'volume')!
+    expect(painted.data).toMatchObject([{ time: 240, close: 100 }, { time: 300, close: 100 }, { time: 360, close: 100 }, { time: 420, close: 110 }])
+  })
+
   it('does not ask for older history while its initial page is still loading', async () => {
     const page = deferred<HistoryPage>()
     const feed = scriptedFeed({ history: () => page.promise })

@@ -74,8 +74,9 @@ export function olderPageVerdict(page: HistoryPage, askedTo: number, alreadyHopp
 
 /** Push events from a live bar subscription. A `snapshot` REPLACES the recent window (delivered on
  *  connect and on every transport reconnect — the feed's self-healing re-sync); a `bar` mutates the
- *  last bar or appends the next one (bucket-open time). */
-export type BarsEvent = { kind: 'snapshot'; bars: FeedBar[] } | { kind: 'bar'; bar: FeedBar }
+ *  last bar or appends the next one (bucket-open time). A snapshot with `backfill: true` adds only
+ *  missing timestamps and never replaces bars already held. */
+export type BarsEvent = { kind: 'snapshot'; bars: FeedBar[]; backfill?: boolean } | { kind: 'bar'; bar: FeedBar }
 
 export interface SubscribeHandlers {
   onBars(e: BarsEvent): void

@@ -14,7 +14,8 @@
 // Replay is a VIEW state and nothing more. An extension reads it through its context, and what it
 // does about a historical view is its own rule.
 import type { IChartApi } from 'lightweight-charts'
-import type { ChartDatafeed, FeedBar } from '../datafeed'
+import type { BarsEvent, ChartDatafeed, FeedBar } from '../datafeed'
+import { mergeBarSnapshot } from './barSnapshot'
 import { composeFormingBar, REPLAY_SPEEDS, subTimeframesFor, tfSeconds, type ReplaySpeed } from '../replay'
 
 /** The bar-replay surface a host drives. */
@@ -66,7 +67,7 @@ export interface ReplayPlane {
   master(): FeedBar[] | null
   /** Fold a live snapshot or bar into the master set, off-screen. Answers whether it was taken,
    *  which is how the chart knows not to paint it. */
-  absorb(event: { kind: 'snapshot'; bars: FeedBar[] } | { kind: 'bar'; bar: FeedBar }): boolean
+  absorb(event: BarsEvent): boolean
   /** Tear replay state down WITHOUT repainting. A load blanks and repaints on its own. */
   abandon(): void
   /** The cursor as the extension plane and the event map read it. */
@@ -465,8 +466,7 @@ export function attachReplayPlane(deps: ReplayDeps): ReplayPlane {
       if (master === null) return false
       if (event.kind === 'snapshot') {
         const fresh = event.bars.filter((b) => deps.visible(b.t))
-        const first = fresh[0]?.t
-        master = first === undefined ? fresh : [...master.filter((b) => b.t < first), ...fresh]
+        master = mergeBarSnapshot(master, fresh, event.backfill)
       } else if (deps.visible(event.bar.t)) {
         const last = master[master.length - 1]
         if (!last || event.bar.t > last.t) master = [...master, event.bar]

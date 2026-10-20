@@ -144,7 +144,8 @@ export const myFeed: ChartDatafeed = {
    connect and after every reconnect (the self-healing re-sync), then `{ kind: 'bar', bar }` per update.
    A bar's `t` is its **bucket-open** epoch-seconds time, never the update's wall-clock time.
    The chart opens the subscription alongside history. The first data frames the chart; history
-   arriving later adds older bars and retains newer stream readings.
+   arriving later adds older bars and retains newer stream readings. Mark a preliminary history
+   snapshot with `backfill: true`: it fills missing timestamps without replacing bars already held.
 5. **Bar time is epoch SECONDS.** Not milliseconds.
 6. **No feed for a symbol is terminal.** Throw `FeedUnavailableError` from `history` when no feed serves
    the symbol; the chart shows "market data unavailable" and stops. A transient fetch failure should

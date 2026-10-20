@@ -1,3 +1,4 @@
+import { mergeBarSnapshot } from './barSnapshot'
 // One chart: the composition root that holds the planes together, and the public handle a host
 // drives it through.
 //
@@ -2203,8 +2204,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         const replaying = replay.absorb(e)
         if (e.kind === 'snapshot') {
           const write = (): void => {
-            const first = e.bars[0]?.t
-            bars = first === undefined ? [...e.bars] : [...bars.filter((b) => b.t < first), ...e.bars]
+            bars = mergeBarSnapshot(bars, e.bars, e.backfill)
             if (!replaying) paintAll()
           }
           if (!replaying && historyPainted) maintainTimeline(write)
@@ -2216,7 +2216,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
             if (!replaying) paintLast(e.bar)
           }
         }
-        if (!replaying) firstPaint(e.kind === 'snapshot' && e.bars.length >= SNAPSHOT_BARS)
+        if (!replaying) firstPaint(e.kind === 'snapshot' && !e.backfill && e.bars.length >= SNAPSHOT_BARS)
       },
       onStatus: (status) => {
         if (!active || disposed || myEpoch !== epoch) return
