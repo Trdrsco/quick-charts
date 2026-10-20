@@ -34,5 +34,38 @@
     "question": "Quick Charts 5.1.0 passed its library and app CI checks. Its release policy requires manual accessibility/device acceptance or an explicit owner waiver: https://github.com/Trdrsco/quick-charts/blob/main/RELEASING.md. Do you waive those unperformed manual checks for 5.1.0 and authorize publication after the remaining release validation passes?",
     "statement": "Waive manual checks and publish after validation passes",
     "recordedAt": "2026-10-20T20:53:59Z"
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/39498246802",
+    "registryIntegrity": "sha512-aQk+F+UW+yvmwDOf9thS0MNraxqMTbjPd7qAWuvFCGnyQ2LWMyy3mXQ17W5SS4nIyrWw6yZ6Q68s7838vQgu7A==",
+    "registryTarballSha256": "b5ac188b95cc8bfb5d808e22d0b24176ecaf99ab1eca6d84425b383928ff17a6",
+    "provenanceLogIndex": 3343654056,
+    "distTagLatest": "5.1.0",
+    "npmAuditSignatures": "3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.1.0",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/39499218873",
+      "browsers": [
+        {
+          "browser": "chromium",
+          "version": "149.0.7827.55",
+          "passed": 42,
+          "total": 42
+        },
+        {
+          "browser": "firefox",
+          "version": "151.0",
+          "passed": 42,
+          "total": 42
+        },
+        {
+          "browser": "webkit",
+          "version": "26.5",
+          "passed": 42,
+          "total": 42
+        }
+      ]
+    }
   }
 }
