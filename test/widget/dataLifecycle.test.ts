@@ -156,13 +156,13 @@ describe('the load and the live subscription', () => {
     expect(paintedBars(renderer)).toBe(5)
   })
 
-  it('a symbol nothing serves is terminal: the status is reported once, no subscription opens, the chart stays honestly empty', async () => {
+  it('a symbol nothing serves closes its subscription and reports its terminal state once', async () => {
     const feed = scriptedFeed({ history: () => Promise.reject(new FeedUnavailableError('no feed', 'feed_requires_connection')) })
     const { renderer, statuses } = mountChart(feed.feed)
     await settle()
     await settle()
     expect(statuses).toEqual(['feed_unavailable'])
-    expect(feed.subscriptions).toEqual([])
+    expect(feed.open()).toEqual([])
     expect(paintedBars(renderer)).toBe(0)
   })
 
@@ -174,12 +174,12 @@ describe('the load and the live subscription', () => {
     await settle()
     await settle()
     expect(statuses).toEqual(['feed_unavailable'])
-    expect(feed.subscriptions).toEqual([])
+    expect(feed.open()).toEqual([])
     handle.setSymbol('NQ')
     await settle()
     await settle()
     expect(paintedBars(renderer)).toBe(4)
-    expect(feed.subscriptions.map((s) => `${s.symbol}@${s.tf}`)).toEqual(['NQ@1m'])
+    expect(feed.open().map((s) => `${s.symbol}@${s.tf}`)).toEqual(['NQ@1m'])
     // The new subscription's status is the one the lane reports; the old symbol's terminal state
     // does not carry over onto a symbol that is served.
     feed.open()[0]!.handlers.onStatus?.('live')
@@ -194,6 +194,48 @@ describe('the load and the live subscription', () => {
     feed.open()[0]!.handlers.onBars({ kind: 'snapshot', bars: bars(3) })
     expect(paintedBars(renderer)).toBe(3)
     expect(statuses).toEqual([])
+  })
+
+  it('opens the live stream while history is pending and keeps live prices when history arrives late', async () => {
+    const page = deferred<HistoryPage>()
+    const feed = scriptedFeed({ history: () => page.promise })
+    const { renderer } = mountChart(feed.feed)
+    await settle()
+    expect(feed.open()).toHaveLength(1)
+    feed.open()[0]!.handlers.onBars({ kind: 'snapshot', bars: [bar(360, 105)] })
+    feed.open()[0]!.handlers.onBars({ kind: 'bar', bar: bar(360, 110) })
+    expect(paintedBars(renderer)).toBeGreaterThan(0)
+    page.resolve({ bars: [bar(300, 100), bar(360, 101)], noData: false })
+    await settle()
+    const painted = renderer.series.find((s) => s.options.visible !== false && s.options.priceScaleId !== 'volume')!
+    expect(painted.data).toMatchObject([{ time: 300, close: 100 }, { time: 360, close: 110 }])
+    expect(feed.open()).toHaveLength(1)
+  })
+
+  it('keeps a viewer move while late initial history adds older timestamps', async () => {
+    const page = deferred<HistoryPage>()
+    const feed = scriptedFeed({ history: () => page.promise })
+    const { handle, renderer } = mountChart(feed.feed)
+    await settle()
+    feed.open()[0]!.handlers.onBars({ kind: 'snapshot', bars: [bar(300), bar(360), bar(420)] })
+    renderer.logicalRange = { from: -1.375, to: 2.625 }
+    handle.zoom(2)
+    const beforeX = renderer.chart.timeScale().timeToCoordinate(300 as never)
+    page.resolve({ bars: [bar(120), bar(180), bar(240), bar(300), bar(360), bar(420)], noData: false })
+    await settle()
+    expect(renderer.logicalRange).toEqual({ from: 1.625, to: 5.625 })
+    expect(renderer.chart.timeScale().timeToCoordinate(300 as never)).toBe(beforeX)
+  })
+
+  it('frames the first streamed bars even after an empty history answer', async () => {
+    const feed = scriptedFeed({ history: async () => ({ bars: [], noData: false }) })
+    const { renderer } = mountChart(feed.feed)
+    const fit = vi.spyOn(renderer.chart.timeScale(), 'fitContent')
+    await settle()
+    expect(fit).not.toHaveBeenCalled()
+    feed.open()[0]!.handlers.onBars({ kind: 'snapshot', bars: bars(3) })
+    expect(paintedBars(renderer)).toBe(3)
+    expect(fit).toHaveBeenCalledTimes(1)
   })
 
   it('a symbol switch closes the old subscription before the new load, and a stale snapshot never paints', async () => {

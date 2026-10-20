@@ -2061,11 +2061,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     handle.replay.start(bars[0]!.t)
   }
 
-  /** (Re)load the active symbol and timeframe: initial history paints first, then the live
-   *  subscription's snapshot replaces it and bar events mutate or append. A FeedUnavailableError is
-   *  terminal for this symbol: the chart stays honestly empty, no subscription opens, and the
-   *  status lane reads `feed_unavailable` alone. Any other history failure leaves the subscription
-   *  to seed the chart through its own snapshot. */
+  /** Load history and live bars together. The first data frames the market; history that arrives
+   *  later fills older bars while the stream keeps its newer readings and the viewer's framing. */
   function load(): void {
     const myEpoch = ++epoch
     const firstPage = firstPageBars
@@ -2138,15 +2135,12 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
           /* an unknown depth withholds no preset */
         })
     }
-    void datafeed
-      .history(symbol, tf, { countBack: firstPage })
-      .then((page) => {
-        if (disposed || myEpoch !== epoch) return
-        bars = [...page.bars]
-        paintAll()
+    let firstFrameSize = 0
+    let frameNavigation = -1
+    const firstPaint = (complete = false): void => {
+      const grow = complete && firstFrameSize < firstPage && bars.length > firstFrameSize && frameNavigation === navigationEpoch
+      if (bars.length > 0 && (!historyPainted || grow)) {
         historyPainted = true
-        // A preset asked while this load was away framed nothing: the series was empty. Its span is
-        // what the viewer asked to see, so it frames this first paint instead of the default fit.
         const framing = pendingFrame?.epoch === myEpoch ? pendingFrame : null
         pendingFrame = null
         const edge = pendingLeftEdge?.epoch === myEpoch ? pendingLeftEdge : null
@@ -2156,44 +2150,59 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
           fillSpan(framing.span, framing.tf)
         } else if (edge) keepLeftEdge(edge)
         else chart.timeScale().fitContent()
+        firstFrameSize = bars.length
+        frameNavigation = framing || edge ? -1 : navigationEpoch
         holdAxisAfterFrame()
         refreshMarks()
-        if (!ready) {
-          ready = true
-          deps.onReady()
+      }
+      if (!ready) {
+        ready = true
+        deps.onReady()
+      }
+    }
+    queueMicrotask(() => openSubscription(myEpoch, firstPaint))
+    void datafeed
+      .history(symbol, tf, { countBack: firstPage })
+      .then((page) => {
+        if (disposed || myEpoch !== epoch) return
+        const merged = new Map(page.bars.map((bar) => [bar.t, bar]))
+        for (const bar of bars) merged.set(bar.t, bar)
+        const write = (): void => {
+          bars = [...merged.values()].sort((a, b) => a.t - b.t)
+          paintAll()
         }
-        openSubscription(myEpoch)
+        if (historyPainted) maintainTimeline(write)
+        else write()
+        firstPaint(true)
       })
       .catch((e) => {
         if (disposed || myEpoch !== epoch) return
-        // Refused or failed: this load paints no history, so a waiting preset has nothing to frame.
-        historyPainted = true
-        pendingFrame = null
         if (e instanceof FeedUnavailableError) {
+          unsubscribe?.()
+          unsubscribe = null
+          bars = []
+          paintAll()
           feedStatus = 'feed_unavailable'
           events.emit('feedStatus', 'feed_unavailable')
-          return // terminal: no live subscription for a symbol nothing serves
         }
-        // Transient history failure: the subscription's own snapshot still seeds the chart.
-        openSubscription(myEpoch)
       })
   }
 
-  function openSubscription(myEpoch: number): void {
+  function openSubscription(myEpoch: number, firstPaint: (complete?: boolean) => void): void {
     if (disposed || myEpoch !== epoch) return
-    unsubscribe = datafeed.subscribeBars(symbol, tf, {
+    let active = true
+    const off = datafeed.subscribeBars(symbol, tf, {
       onBars: (e) => {
-        if (disposed || myEpoch !== epoch) return
-        // While replaying, the painted slice stays put and the replay master accumulates off-screen
-        // so Go live and exit can catch up. The LOADED model below takes the update either way:
-        // what the feed served is not the cursor's business, and exiting must give it all back.
+        if (!active || disposed || myEpoch !== epoch) return
         const replaying = replay.absorb(e)
         if (e.kind === 'snapshot') {
-          // The transport's self-healing re-sync: the snapshot replaces the RECENT window; bars
-          // paged in further back stay, because they are older than the snapshot's first bar.
-          const first = e.bars[0]?.t
-          bars = first === undefined ? [...e.bars] : [...bars.filter((b) => b.t < first), ...e.bars]
-          if (!replaying) paintAll()
+          const write = (): void => {
+            const first = e.bars[0]?.t
+            bars = first === undefined ? [...e.bars] : [...bars.filter((b) => b.t < first), ...e.bars]
+            if (!replaying) paintAll()
+          }
+          if (!replaying && historyPainted) maintainTimeline(write)
+          else write()
         } else {
           const next = applyBar(bars, e.bar)
           if (next) {
@@ -2201,14 +2210,19 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
             if (!replaying) paintLast(e.bar)
           }
         }
+        if (!replaying) firstPaint(e.kind === 'snapshot' && e.bars.length >= SNAPSHOT_BARS)
       },
       onStatus: (status) => {
-        if (disposed || myEpoch !== epoch) return
+        if (!active || disposed || myEpoch !== epoch) return
         feedStatus = status
         events.emit('feedStatus', status)
         countdown?.refresh()
       },
     })
+    unsubscribe = () => {
+      active = false
+      off()
+    }
   }
 
   // ── The live edge. Whether the view sits back from it is the chart's to read: the renderer's
