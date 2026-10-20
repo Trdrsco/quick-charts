@@ -212,6 +212,19 @@ describe('the load and the live subscription', () => {
     expect(feed.open()).toHaveLength(1)
   })
 
+  it('does not ask for older history while its initial page is still loading', async () => {
+    const page = deferred<HistoryPage>()
+    const feed = scriptedFeed({ history: () => page.promise })
+    const { renderer } = mountChart(feed.feed)
+    await settle()
+    feed.open()[0]!.handlers.onBars({ kind: 'snapshot', bars: [bar(300), bar(360), bar(420)] })
+    renderer.logicalRange = { from: -1, to: 3 }
+    renderer.fireLogicalRange()
+    expect(feed.asks).toHaveLength(1)
+    page.resolve({ bars: [bar(120), bar(180), bar(240), bar(300), bar(360), bar(420)], noData: false })
+    await settle()
+  })
+
   it('keeps a viewer move while late initial history adds older timestamps', async () => {
     const page = deferred<HistoryPage>()
     const feed = scriptedFeed({ history: () => page.promise })

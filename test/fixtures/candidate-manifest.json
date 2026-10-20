@@ -1,5 +1,5 @@
 {
-  "tarSha256": "999e985cc44df53052d6b17508c7ffc5b18cebfde15752de03938d82e78a6661",
+  "tarSha256": "e210a2622318d29ca1f1ccb9b92ec87457381fd1702a7360b9e61186652b4f88",
   "files": {
     "CHANGELOG.md": "6ce1cd98d1cc6ada85531c52a4fec603975ac9cf31cc8cd85b136e22b45f7998",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
@@ -49,8 +49,8 @@
     "dist/id_ID-SI25N57C.js": "fb437897f1e021275052888446a2628a48fd342385e9f3f3224cf786a7acc3f3",
     "dist/id_ID-SI25N57C.js.map": "cbd512dae251cdd6d2fc5dea3e3de4fbf3ef34753696fd68818f2d59c259f1f6",
     "dist/index.d.ts": "607367244eb0d7997efaef22d231674d593a7ca505961c1be843de2a74b623cd",
-    "dist/index.js": "28bef54ac41ef6771d09990d2b1e0df56dee446d68751a15573c5d187b18383c",
-    "dist/index.js.map": "454e6cf1313c240d1090919e15980716d55241eea8423180f52bc8715b0c6b54",
+    "dist/index.js": "a665f3527cf06368fed175f9a345cf917e5d5c395635d084fcbbb9034b48750a",
+    "dist/index.js.map": "85a5e10de28bb729efaaea57ee971632ab9cdcdd4fec7ccbc70ce6a0ad849c57",
     "dist/it-PMSTWZDL.js": "3ae6bfd0b0ce75723948d8631ffbcc67824ca0faa862198e82dab4043399c0ee",
     "dist/it-PMSTWZDL.js.map": "0581a331d2a41cdae6fb59aef3b24b6f1607032e5cda38cbdd5c5b83c99ff2f2",
     "dist/ja-PABDRAXV.js": "97c7cc0cda22ad88fba0705cf7d38f676089fd0dfd060ff5cf7e43ad8d2386fc",

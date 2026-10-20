@@ -517,6 +517,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   /** True once the load epoch on screen has painted its own history answer, or has been refused.
    *  A range preset asked before that has nothing to measure a span against. */
   let historyPainted = false
+  let initialHistoryPending = false
   /** A range preset asked while the current load epoch still has no data: the span it wants, held
    *  until that load's FIRST paint frames it, once, in place of the default fit. It is bound to the
    *  epoch it was issued under, so a newer preset, a symbol switch, a refused load or disposal
@@ -1904,7 +1905,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  already in the air. */
   function maybePageBack(runway: number = PAGE_RUNWAY): void {
     if (replay.active()) return // the replay window is fixed; paging would desync the master set
-    if (paging || noMoreHistory || bars.length === 0) return
+    if (initialHistoryPending || paging || noMoreHistory || bars.length === 0) return
     const range = chart.timeScale().getVisibleLogicalRange()
     if (!range || range.from > PAGE_TRIGGER_BARS) return
     paging = true
@@ -2073,6 +2074,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // A page still away for the previous load cannot hold this one's first page back.
     paging = false
     historyPainted = false
+    initialHistoryPending = true
     // The axis frames the market that is about to arrive; a held manual policy returns once it has.
     if (holdFrame !== null) window.cancelAnimationFrame(holdFrame)
     holdFrame = null
@@ -2138,6 +2140,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     let firstFrameSize = 0
     let frameNavigation = -1
     const firstPaint = (complete = false): void => {
+      if (complete) initialHistoryPending = false
       const grow = complete && firstFrameSize < firstPage && bars.length > firstFrameSize && frameNavigation === navigationEpoch
       if (bars.length > 0 && (!historyPainted || grow)) {
         historyPainted = true
@@ -2185,6 +2188,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
           feedStatus = 'feed_unavailable'
           events.emit('feedStatus', 'feed_unavailable')
         }
+      })
+      .finally(() => {
+        if (myEpoch === epoch) initialHistoryPending = false
       })
   }
 
