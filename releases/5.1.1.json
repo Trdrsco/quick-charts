@@ -29,6 +29,39 @@
     "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/39515411946",
     "result": "pass"
   },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/39517121466",
+    "registryIntegrity": "sha512-JvNLAdUKjjgwOqhJAFoeZ6g7PpB6qrjQ3v9kHfw8ZmSRQDykPhLWLtNVPkHu2oQu9roS0WXy/jvVUjU/nJ8ThQ==",
+    "registryTarballSha256": "464e7b151e5c9b5d74da6fcec55eec3343ee253fe0803950d999377495da3501",
+    "provenanceLogIndex": 3345813345,
+    "distTagLatest": "5.1.1",
+    "npmAuditSignatures": "3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.1.1",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/39517761105",
+      "browsers": [
+        {
+          "browser": "chromium",
+          "version": "149.0.7827.55",
+          "passed": 42,
+          "total": 42
+        },
+        {
+          "browser": "firefox",
+          "version": "151.0",
+          "passed": 42,
+          "total": 42
+        },
+        {
+          "browser": "webkit",
+          "version": "26.5",
+          "passed": 42,
+          "total": 42
+        }
+      ]
+    }
+  },
   "ownerWaiver": {
     "owner": "Joey",
     "statement": "Waive manual checks and publish after validation passes",
