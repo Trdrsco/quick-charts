@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-20",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.1.1",
+  "releaseCommit": "0ef3b08c706f3bf8b7c3992fda102f5e890f08c9",
+  "tarballSha256": "464e7b151e5c9b5d74da6fcec55eec3343ee253fe0803950d999377495da3501",
+  "tarStreamSha256": "c167c9f6f112c29a179debc7e43363c3f1a200c1881ad57b316319f4f81d5f03",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/39514781536",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "a29bedb751dbe67a371bbaf7ac0d7a6bcae373f40f172ad9b3190aec4b8a76c5",
+      "dossierHashesSha256": "ca62163cd82974e2554f22e8c164bff7bf07c0e52057bd413bc4e541936122d3",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/39514843935",
+      "artifact": "quickcharts-5.1.1-rehearsal",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "499eab85f74c1eba7438b658a529e4366bbc1299",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/39515411946",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "Waive manual checks and publish after validation passes",
+    "recordedAt": "2026-10-20T23:26:03Z",
+    "question": "For Quick Charts 5.1.1 ([range-race fix, PR 136](https://github.com/Trdrsco/quick-charts/pull/136)), do you waive the unperformed manual accessibility/device checks and authorize publication after all remaining automated validation passes? RELEASING.md requires manual acceptance or a version-specific owner waiver."
+  }
+}
