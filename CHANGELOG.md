@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.1.0
+
+Charts open live subscriptions alongside history, frame the first arriving data, and retain newer streamed prices when history arrives later. A snapshot with `backfill: true` adds missing history without replacing bars already held.
+
 ## 5.0.1
 
 Drawing gestures respect presses handled by host overlays and leave presses outside the plot to the chart scales.

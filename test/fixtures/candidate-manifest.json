@@ -1,10 +1,10 @@
 {
-  "tarSha256": "3e7f696c404febe42b9ca7f2dcc26638709e0e26ea0744642aa7cdd24011d15c",
+  "tarSha256": "343290e17d1cdf2112aa7cf9f526b8c286fac65767724ba3c28384aa05707b9f",
   "files": {
-    "CHANGELOG.md": "631919404aad97928c31fc6a4bb90c9c0c3712371a2e8057d2a088c5287bea54",
+    "CHANGELOG.md": "059f6a877f82518f4dcdfd857e7fe628a79516fab2065ad99b7d12e741293580",
     "LICENSE": "6c5972ab13e1ab7732667d9331e580ad69c3728f4dfbdf77a3b551dc4800e920",
     "NOTICE": "fdea87c69eb418e4a9e2f37b17bd70c0fa4474f6f8361b7981838fdf968f4678",
-    "README.md": "5799315587e566e267da9fc22789b7e38163f9745be972283743d89cb6444513",
+    "README.md": "d3e0b40f089b2612ce3c1ff83db59a18faeddd23848fad65dfe273c55b218084",
     "THIRD-PARTY-NOTICES.md": "2709504909408d8e36baffaa3f8b09ac3c414db87dea499a410665dce78fecc5",
     "dist/adapters/rest.d.ts": "6f8b5b0c44cc0e3f8bfa61b51a5c625e2de0c283893ab2a6479272e9948d7419",
     "dist/adapters/rest.js": "fcbd177f8009d72b3db314a2a11c604910d5a1e092f031264148fe73149c9eae",
@@ -35,7 +35,7 @@
     "dist/emojiArtwork-W7OS62EV.js.map": "588b22673d7ad9d2596a8e68b133944dd3c23a06ef71e989850b91b5c180566a",
     "dist/es-FOBXUK2X.js": "424ba3413d7106cd7c47b3c3ad98dbde6fb4cd6f1119469ecab80aa5bb6c7e79",
     "dist/es-FOBXUK2X.js.map": "093fdcf584176f1cc969e7684244745e8c48108a00f53a985235a797f21a17be",
-    "dist/feature-manifest.json": "66d2b8c2b8d37a7e39505b37dbb4a59cf19e32cf29c0c9b1a379ff5346cad855",
+    "dist/feature-manifest.json": "1862023dd13f0ccbe13053f4016f1539ae3e9f7c520af7020c90fe26e0d7510b",
     "dist/format.d.ts": "170f1cb2c2ab11a66a93d3ec82effc26935a979ca18bd7538e8171446eca162b",
     "dist/format.js": "bab66e243eed1d946b7a24b1a87aed96905d8fcf9c315da450d18ed9704971ca",
     "dist/format.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
@@ -48,9 +48,9 @@
     "dist/he_IL-2T6XBA6D.js.map": "a57c56983bf9f04b9d26f5def0b98e517e25214b050ca5be0abc7c0504275f07",
     "dist/id_ID-SI25N57C.js": "fb437897f1e021275052888446a2628a48fd342385e9f3f3224cf786a7acc3f3",
     "dist/id_ID-SI25N57C.js.map": "cbd512dae251cdd6d2fc5dea3e3de4fbf3ef34753696fd68818f2d59c259f1f6",
-    "dist/index.d.ts": "607367244eb0d7997efaef22d231674d593a7ca505961c1be843de2a74b623cd",
-    "dist/index.js": "d3676bb9ebb18beae889d2a31d06b42637c648ecf49882749672fa7fa31f99d2",
-    "dist/index.js.map": "21573fc60ce31abcbb687417c33b6f62f99aeed1f00405d83b8a00042068058c",
+    "dist/index.d.ts": "18a77e2a7eba26c0dd02c843a8a247befc69c05cf64d1efa0c33aef3a312a8d3",
+    "dist/index.js": "0b05249366806e35d186ce262f357b85256710154c081de1744dead30826e6a1",
+    "dist/index.js.map": "4f304730fb4392a45e9563e229484504cbc7385196ef71c31bd4d985f837fe78",
     "dist/it-PMSTWZDL.js": "3ae6bfd0b0ce75723948d8631ffbcc67824ca0faa862198e82dab4043399c0ee",
     "dist/it-PMSTWZDL.js.map": "0581a331d2a41cdae6fb59aef3b24b6f1607032e5cda38cbdd5c5b83c99ff2f2",
     "dist/ja-PABDRAXV.js": "97c7cc0cda22ad88fba0705cf7d38f676089fd0dfd060ff5cf7e43ad8d2386fc",
@@ -71,8 +71,8 @@
     "dist/sv-4XVUXYK6.js": "2b0b3f2e424cfbf986f73891f6d0f48efaa29070fe11c1bd249161331ad331eb",
     "dist/sv-4XVUXYK6.js.map": "6b470249b651e9446c79818bc872f6247852e0c88a99af5090b5b73bbffaa120",
     "dist/symbology-D3SLclrU.d.ts": "d90e8f76d9e5ae389146d63326d31b88c5c75a9ebd3e0a9d389b640f0b076e92",
-    "dist/symbols-DdHLHQFC.d.ts": "a2a544a3072acfd71a5d003c410366dd696c9edfc48496d2bef8de1b4962baba",
-    "dist/symbols.d.ts": "7a4d49151f35f35eaff72d2beb6809fea391954b1cc6b824a041243fa510006b",
+    "dist/symbols-CHJGWrf-.d.ts": "cbaf79f920b726d3a68082abdee974b35cd9a2eb75ba3c4d8908e6869c237587",
+    "dist/symbols.d.ts": "e483b4488a524ba91d8d8f6c3e1826442e77e034f79401286bb8dee0a32d31b8",
     "dist/symbols.js": "3851d4199d1a5928f1c8b4da3010db28871d9442228c683e9b3a5c2eb901b4e9",
     "dist/symbols.js.map": "cba81f7ad4d5b1b629bf43823f1082e73a10d0c3114c937515e7f8c1047629b3",
     "dist/th-WM2PVA24.js": "06e2d9075beeb37a3215e50b81df5a82d7fe23e8e2dc26f661eaab8cad56e1d9",
@@ -86,6 +86,6 @@
     "dist/zh-ZGU2RI7K.js.map": "e67c71c34b2e8caa473aaa32b24b6d5bf56eeb35228d1062ef8a04fc79791bfe",
     "dist/zh_TW-PNINSQ6F.js": "67ad1a9340285398403ca57b41ad4af62943d3af0529bc98aacc6b8d92022e10",
     "dist/zh_TW-PNINSQ6F.js.map": "f3dbefc288a12a35d19a5bf4fbbc15326ed12181267f8f117f169208ab78dbd6",
-    "package.json": "5d3734bfe8303cd5f44331e71582e482dddda26ce83d98c0405ec12fa0799849"
+    "package.json": "589d5e53b3ee15c0d8989d765aaba9885cf6793d2973d78d857bd89013ec4b30"
   }
 }

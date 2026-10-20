@@ -1584,13 +1584,13 @@ export const CONFORMANCE_CHECKS: readonly ConformanceCheck[] = [
     },
   },
   {
-    id: 'feed.unavailable.no-subscription',
-    title: 'a symbol nothing serves opens no live subscription',
+    id: 'feed.unavailable.closed',
+    title: 'a symbol nothing serves releases its live subscription',
     async run(ctx) {
       const feed = scriptedFeed()
       await ctx.mount({ symbol: 'NONE', feed, ready: false })
       await ctx.settle()
-      equal(feed.subscribeCount, 0, 'no live subscription for an unserved symbol')
+      equal(feed.subscribeCount, feed.unsubscribeCount, 'no live subscription remains for an unserved symbol')
     },
   },
   {
