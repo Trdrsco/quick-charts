@@ -3,7 +3,7 @@
 // pending intent that frames the load's first paint instead of measuring an empty series.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createChart } from '../../src/widget/create'
-import { FeedUnavailableError, type ChartDatafeed, type FeedBar, type HistoryPage } from '../../src/datafeed'
+import { FeedUnavailableError, type ChartDatafeed, type FeedBar, type HistoryPage, type SubscribeHandlers } from '../../src/datafeed'
 import { lastRenderer, renderers } from './rendererFake'
 
 vi.mock('lightweight-charts', async (importOriginal) => {
@@ -171,4 +171,58 @@ describe('a range preset and the load it may trigger', () => {
     expect(chart.replay.state().on).toBe(false)
     expect(renderer.logicalWrites).toEqual([{ from: 560, to: 2_003 }])
   })
+  it('reconciles an older page with cached history that arrived after the first live bar', async () => {
+    const initial = deferred<HistoryPage>()
+    const older = deferred<HistoryPage>()
+    const daily = series(500, 86_400)
+    let dayStream: SubscribeHandlers | null = null
+    const feed: ChartDatafeed = {
+      search: async () => ({ hits: [], hasMore: false }),
+      resolve: async () => null,
+      history: (_symbol, tf, range = {}) => tf !== '1d'
+        ? Promise.resolve({ bars: series(120, 1_800), noData: false })
+        : range.to === undefined ? initial.promise : older.promise,
+      subscribeBars: (_symbol, tf, handlers) => {
+        if (tf === '1d') dayStream = handlers
+        return () => undefined
+      },
+    }
+    const { widget, renderer } = mount(feed, '30m')
+    await settle()
+    widget.commands.execute('chart.range.1Y')
+    await settle()
+    const handlers = dayStream as unknown as SubscribeHandlers
+    handlers.onBars({ kind: 'bar', bar: daily[daily.length - 1]! })
+    handlers.onBars({ kind: 'snapshot', bars: daily, backfill: true })
+    older.resolve({ bars: daily.slice(-445, -1), noData: false })
+    await settle()
+
+    const painted = renderer.series.find((item) => item.options.visible !== false && item.options.priceScaleId !== 'volume')!.data as { time: number }[]
+    expect(painted).toHaveLength(daily.length)
+    expect(painted.map((item) => item.time)).toEqual(daily.map((item) => item.t))
+    expect(renderer.logicalWrites.at(-1)).toEqual({ from: 135, to: 503 })
+    initial.resolve({ bars: daily.slice(-445), noData: false })
+    await settle()
+    expect(renderer.logicalRange).toEqual({ from: 135, to: 503 })
+  })
+
+  it('keeps newer same-timeframe navigation when a preset page arrives', async () => {
+    const older = deferred<HistoryPage>()
+    const daily = series(445, 86_400)
+    const feed: ChartDatafeed = {
+      search: async () => ({ hits: [], hasMore: false }), resolve: async () => null,
+      history: (_symbol, _tf, range = {}) => range.to === undefined
+        ? Promise.resolve({ bars: daily.slice(-300), noData: false }) : older.promise,
+      subscribeBars: () => () => undefined,
+    }
+    const { widget, renderer } = mount(feed, '1d')
+    await settle()
+    widget.commands.execute('chart.range.1Y')
+    widget.activeChart().setLogicalRange({ from: 160, to: 260 })
+    older.resolve({ bars: daily.slice(0, 145), noData: false })
+    await settle()
+    expect(renderer.logicalRange).toEqual({ from: 305, to: 405 })
+    expect(widget.activeChart().rangePreset()).toBeNull()
+  })
+
 })

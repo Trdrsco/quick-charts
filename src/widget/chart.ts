@@ -1961,20 +1961,26 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     if (short <= 0) return
     paging = true
     const myEpoch = epoch
+    const myNavigation = navigationEpoch
     const oldest = bars[0]!.t
     void fetchOlder(oldest - 1, short)
       .then(({ olderBars, end }) => {
         if (disposed || myEpoch !== epoch) return
         if (end) noMoreHistory = true
-        const older = olderBars.filter((bar) => bar.t < oldest)
-        if (older.length === 0) return
-        bars = [...older, ...bars]
-        paintAll()
-        refreshMarks()
-        frameRange(chart, anchor, span, spanTf)
+        const merged = mergeBarSnapshot(bars, olderBars.filter((bar) => bar.t < oldest), true)
+        if (merged.length > bars.length) {
+          maintainTimeline(() => {
+            bars = merged
+            paintAll()
+          })
+          refreshMarks()
+        }
+        // History can arrive from the stream while this page is away. Frame the current bars,
+        // even when the page adds none, unless a newer navigation has replaced this intent.
+        if (myNavigation === navigationEpoch) frameRange(chart, anchor, span, spanTf)
       })
       .catch(() => {
-        /* transient; the span frames what the chart holds */
+        if (!disposed && myEpoch === epoch && myNavigation === navigationEpoch) frameRange(chart, anchor, span, spanTf)
       })
       .finally(() => {
         if (myEpoch === epoch) paging = false

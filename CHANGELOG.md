@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.1.1
+
+Range presets reconcile overlapping history pages with streamed bars and preserve a newer navigation while a page is pending.
+
 ## 5.1.0
 
 Charts open live subscriptions alongside history, frame the first arriving data, and retain newer streamed prices when history arrives later. A snapshot with `backfill: true` adds missing history without replacing bars already held.
