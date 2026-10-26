@@ -2328,6 +2328,11 @@ A saved chart carries the settings a viewer chose and no others, so a chart nobo
 whatever theme the host gives it on the next load, and one whose owner picked candle colors opens in
 those colors on any theme.
 
+The colors whose factory value differs between light and dark (the canvas background, the grid, the
+watermark and the scale text and lines) follow the mode. A switch of mode hands the viewer's choices
+of them back to the new mode's look, and keeps every other leaf. A saved chart states the mode they
+were chosen in (`settingsMode`), so a chart opened in the other mode takes that mode's look for them.
+
 ## Chart settings
 
 `chart.settings()` answers the effective tree; `chart.applySettings(partial)` layers a partial over

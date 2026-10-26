@@ -8,6 +8,8 @@ Every dialog rounds its corners on the new `chrome.radiusDialog` role, `12px` in
 
 A press outside the chart settings dialog closes it as Cancel does, putting back what the session previewed; the dialog still stands over the chart without dimming it.
 
+A switch of theme mode hands the colors a viewer chose that follow the mode (the canvas background, the grid, the watermark and the scale text and lines) back to the new mode's look, and keeps every other leaf the viewer chose. Saved chart content states the mode those colors were chosen in as `settingsMode`, so a chart opened in the other mode takes that mode's look for them; content without it keeps its colors in either mode.
+
 ## 5.2.0
 
 The chart's right-click menu ends on Settings…, which opens the chart settings dialog, wherever the chart draws its settings door in the top bar.

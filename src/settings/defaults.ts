@@ -10,7 +10,7 @@
 // section and name are the tree's and its value has the leaf's type, so a saved chart can never hand
 // the renderer a value it cannot draw.
 import { parseCssColor } from '../theme/color'
-import { CHART_FACTORY_COLORS, DARK_THEME } from '../theme/palettes'
+import { CHART_FACTORY_COLORS, DARK_THEME, LIGHT_THEME } from '../theme/palettes'
 import type { SemanticTheme } from '../theme/schema'
 import { CHART_DATE_FORMATS, type ChartSettings, type ChartSettingsSection, type PartialChartSettings } from './schema'
 
@@ -289,6 +289,36 @@ export function mergePartialChartSettings(first: PartialChartSettings, second: P
 /** A deep copy of a partial: what a chart holds, so a caller's object never aliases the chart's. */
 export function copyPartialChartSettings(partial: PartialChartSettings): PartialChartSettings {
   return mergePartialChartSettings({}, partial)
+}
+
+/** The `section.leaf` paths whose factory value follows the theme mode: the leaves the built-in light
+ *  and dark palettes resolve differently, such as the canvas background, the grid, the watermark and
+ *  the scale text. */
+const MODE_LEAVES: ReadonlySet<string> = (() => {
+  const light = chartSettingsDefaults(LIGHT_THEME) as unknown as Record<string, Record<string, unknown>>
+  const dark = SHAPE as unknown as Record<string, Record<string, unknown>>
+  const paths = new Set<string>()
+  for (const [section, leaves] of Object.entries(dark)) {
+    for (const [leaf, value] of Object.entries(leaves)) if (light[section]?.[leaf] !== value) paths.add(`${section}.${leaf}`)
+  }
+  return paths
+})()
+
+/** Whether a partial names a leaf whose factory value follows the theme mode. */
+export function hasModeLeaves(partial: PartialChartSettings): boolean {
+  return Object.entries(partial).some(([section, leaves]) => Object.keys(leaves ?? {}).some((leaf) => MODE_LEAVES.has(`${section}.${leaf}`)))
+}
+
+/** A partial without the leaves whose factory value follows the theme mode, so the mode in effect
+ *  paints them: what a viewer's look keeps when it moves to the other mode. */
+export function withoutModeLeaves(partial: PartialChartSettings): PartialChartSettings {
+  const out: Record<string, Record<string, unknown>> = {}
+  for (const [section, leaves] of Object.entries(partial)) {
+    for (const [leaf, value] of Object.entries((leaves ?? {}) as Record<string, unknown>)) {
+      if (!MODE_LEAVES.has(`${section}.${leaf}`)) (out[section] ??= {})[leaf] = value
+    }
+  }
+  return out as PartialChartSettings
 }
 
 /** The settings a chart content blob of the previous format carried as its `appearance` partial,
