@@ -113,7 +113,7 @@ describe('a contributed legend row', () => {
     const element = document.createElement('div')
     const { widget, container } = mount([{ id: 'row', attach: (ctx) => (ctx.contributeLegendRow({ element }), { detach: () => undefined }) }])
     const legend = container.querySelector<HTMLElement>('.qc-legend')!
-    expect(legend.style.getPropertyValue('--qcd-legend-backdrop')).toBe('rgba(15, 15, 15, 0.5)')
+    expect(legend.style.getPropertyValue('--qcd-legend-backdrop')).toBe('rgba(0, 0, 0, 0.5)')
     expect(slotted(container)).toEqual([element])
     widget.dispose()
     mounted.length = 0

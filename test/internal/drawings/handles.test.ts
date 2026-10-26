@@ -35,7 +35,7 @@ function recorder(): { ctx: CanvasRenderingContext2D; calls: Call[] } {
   return { ctx, calls }
 }
 
-const INKS = { ring: '#1e53e5', center: '#0f0f0f' }
+const INKS = { ring: '#1e53e5', center: '#000000' }
 
 describe('selection handles', () => {
   it('rings a point’s pixel at a radius of 5.5, 2px wide, filled with the chart’s ground', () => {
@@ -45,7 +45,7 @@ describe('selection handles', () => {
       [615.5, 692.5, 5.5],
       [615.5, 692.5, 5.5],
     ])
-    expect(calls.filter((c) => c.name === 'fill').map((c) => c.fillStyle)).toEqual(['#0f0f0f', '#0f0f0f'])
+    expect(calls.filter((c) => c.name === 'fill').map((c) => c.fillStyle)).toEqual(['#000000', '#000000'])
     expect(calls.filter((c) => c.name === 'stroke').map((c) => [c.strokeStyle, c.lineWidth])).toEqual([
       ['#1e53e5', 2],
       ['#1e53e5', 2],
@@ -117,7 +117,7 @@ describe('selection handles', () => {
   })
 
   it('takes its inks from the chart’s theme: the dark ring is #1e53e5 around the dark ground', () => {
-    expect(drawingInksOf(BUILT_IN_THEMES.dark)).toMatchObject({ handleRing: '#1e53e5', handleCenter: '#0f0f0f', accent: '#2962ff' })
+    expect(drawingInksOf(BUILT_IN_THEMES.dark)).toMatchObject({ handleRing: '#1e53e5', handleCenter: '#000000', accent: '#2962ff' })
     expect(drawingInksOf(BUILT_IN_THEMES.light)).toMatchObject({ handleRing: '#2962ff', handleCenter: '#ffffff', accent: '#2962ff' })
     const d = drawingTools.create('trend_line', 't', [])! as unknown as { inks(): unknown; setInks(s: () => unknown): void }
     expect(d.inks()).toEqual(DEFAULT_INKS)

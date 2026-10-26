@@ -167,7 +167,7 @@ describe('a signpost', () => {
     const d = post()
     d.updateAnchor(0, at(150, 250))
     expect(named(painted(d), 'fill')).toEqual([])
-    expect(named(painted(d), 'fillText').map((c) => [c.args[0], c.fillStyle])).toEqual([['Hi', '#0f0f0f']])
+    expect(named(painted(d), 'fillText').map((c) => [c.args[0], c.fillStyle])).toEqual([['Hi', '#000000']])
     d.applyProps({ showImage: true })
     expect(named(painted(d), 'fill').map((c) => c.fillStyle)).toEqual(['#2962ff'])
     expect(named(painted(d), 'fillText').at(-1)!.fillStyle).toBe('#ffffff')

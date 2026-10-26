@@ -555,7 +555,7 @@ describe('the plus button', () => {
     expect(plus.hidden).toBe(true)
     // The renderer's paint draws the plus in the label's own fill, on the label's rows, flush against
     // the plot's edge, and the button stands on what it drew.
-    expect(paint(renderer)).toEqual(['rgb(61, 61, 61)'])
+    expect(paint(renderer)).toEqual(['rgb(43, 43, 43)'])
     expect(plus.hidden).toBe(false)
     // 20px wide and the label's 21px tall, its right edge one pixel short of the scale at 540px.
     expect([plus.style.left, plus.style.top, plus.style.width, plus.style.height]).toEqual(['519px', '110px', '20px', '21px'])
@@ -587,14 +587,14 @@ describe('the plus button', () => {
     const crosshair = (renderer.chart.options() as { crosshair: { horzLine: { labelBackgroundColor: string }; vertLine: { labelBackgroundColor: string } } }).crosshair
     // Each theme's label is the reference's, written in white: a grey in dark and a near black in
     // light, on the price scale and the time scale alike.
-    expect([DARK_THEME['scale.crosshairLabelBackground'], DARK_THEME['scale.crosshairLabelText']]).toEqual(['#3d3d3d', '#ffffff'])
-    expect([LIGHT_THEME['scale.crosshairLabelBackground'], LIGHT_THEME['scale.crosshairLabelText']]).toEqual(['#0f0f0f', '#ffffff'])
-    expect(crosshair.horzLine.labelBackgroundColor).toBe('#3d3d3d')
-    expect(crosshair.vertLine.labelBackgroundColor).toBe('#3d3d3d')
+    expect([DARK_THEME['scale.crosshairLabelBackground'], DARK_THEME['scale.crosshairLabelText']]).toEqual(['#2b2b2b', '#ffffff'])
+    expect([LIGHT_THEME['scale.crosshairLabelBackground'], LIGHT_THEME['scale.crosshairLabelText']]).toEqual(['#000000', '#ffffff'])
+    expect(crosshair.horzLine.labelBackgroundColor).toBe('#2b2b2b')
+    expect(crosshair.vertLine.labelBackgroundColor).toBe('#2b2b2b')
     // The plus reads that same option, as the renderer paints it (without an alpha).
     renderer.fireCrosshair(BARS[5]!.t, 300, 120)
     expect(paint(renderer)).toEqual([labelFill(crosshair.horzLine.labelBackgroundColor)])
-    expect(labelFill('#3d3d3d')).toBe('rgb(61, 61, 61)')
+    expect(labelFill('#2b2b2b')).toBe('rgb(43, 43, 43)')
   })
 
   it('puts the plus away while the crosshair is off the plot or the setting is off', async () => {
@@ -643,7 +643,7 @@ describe('the plus button', () => {
     // Nothing covers the chart while the price menu is open, so the pointer stays on the plot and the
     // renderer keeps its crosshair there, and with it the crosshair's label and the plus.
     expect(document.querySelector<HTMLElement>('.qc-menu-backdrop')!.hidden).toBe(true)
-    expect(paint(renderer)).toEqual(['rgb(61, 61, 61)'])
+    expect(paint(renderer)).toEqual(['rgb(43, 43, 43)'])
     // A press off the menu closes it, and the press, its release and its click are the menu's.
     const heard: string[] = []
     for (const type of ['pointerdown', 'pointerup', 'click', 'contextmenu'] as const) gestures.addEventListener(type, (e) => void heard.push(e.type))

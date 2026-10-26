@@ -79,8 +79,8 @@ describe('the scoped stylesheet', () => {
     // A near-white fill with a dark letter in the dark theme, and the same pair the other way round
     // in the light theme.
     expect(BUILT_IN_THEMES.dark['control.on']).toBe('#f2f2f2')
-    expect(BUILT_IN_THEMES.dark['text.inverse']).toBe('#0f0f0f')
-    expect(BUILT_IN_THEMES.light['control.on']).toBe('#2e2e2e')
+    expect(BUILT_IN_THEMES.dark['text.inverse']).toBe('#000000')
+    expect(BUILT_IN_THEMES.light['control.on']).toBe('#1a1a1a')
     expect(BUILT_IN_THEMES.light['text.inverse']).toBe('#ffffff')
   })
 

@@ -104,11 +104,11 @@
       },
       {
         "property": "--qc-control-on",
-        "value": "#2e2e2e"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-control-onHover",
-        "value": "#4a4a4a"
+        "value": "#464646"
       },
       {
         "property": "--qc-control-onInk",
@@ -120,7 +120,7 @@
       },
       {
         "property": "--qc-control-outline",
-        "value": "#2e2e2e"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-control-selectEdgeHover",
@@ -152,7 +152,7 @@
       },
       {
         "property": "--qc-drawing-text",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-illustration-accent",
@@ -232,7 +232,7 @@
       },
       {
         "property": "--qc-overlay-tooltip",
-        "value": "#3d3d3d"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-overlay-tooltipInk",
@@ -244,7 +244,7 @@
       },
       {
         "property": "--qc-scale-border",
-        "value": "rgba(46, 46, 46, 0)"
+        "value": "rgba(26, 26, 26, 0)"
       },
       {
         "property": "--qc-scale-crosshair",
@@ -252,7 +252,7 @@
       },
       {
         "property": "--qc-scale-crosshairLabelBackground",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-scale-crosshairLabelText",
@@ -260,7 +260,7 @@
       },
       {
         "property": "--qc-scale-grid",
-        "value": "rgba(46, 46, 46, 0.2)"
+        "value": "rgba(26, 26, 26, 0.2)"
       },
       {
         "property": "--qc-scale-sessionAfterHours",
@@ -280,7 +280,7 @@
       },
       {
         "property": "--qc-scale-text",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-series-down",
@@ -308,7 +308,7 @@
       },
       {
         "property": "--qc-state-hoverInk",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-state-markInk",
@@ -420,25 +420,25 @@
       },
       {
         "property": "--qc-text-onCanvas",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-text-primary",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-text-secondary",
-        "value": "#4a4a4a"
+        "value": "#000000"
       }
     ],
     "dark": [
       {
         "property": "--qc-canvas-background",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-canvas-paneBorder",
-        "value": "#2e2e2e"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-canvas-watermark",
@@ -446,7 +446,7 @@
       },
       {
         "property": "--qc-chrome-border",
-        "value": "#2e2e2e"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-chrome-borderStrong",
@@ -462,7 +462,7 @@
       },
       {
         "property": "--qc-chrome-grip",
-        "value": "#575757"
+        "value": "#555555"
       },
       {
         "property": "--qc-chrome-radius",
@@ -474,19 +474,19 @@
       },
       {
         "property": "--qc-chrome-scrollThumb",
-        "value": "#3d3d3d"
+        "value": "#2b2b2b"
       },
       {
         "property": "--qc-chrome-surface",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-chrome-surfaceRaised",
-        "value": "#2e2e2e"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-control-fieldEdge",
-        "value": "#575757"
+        "value": "#555555"
       },
       {
         "property": "--qc-control-fieldEdgeHover",
@@ -494,7 +494,7 @@
       },
       {
         "property": "--qc-control-fieldFill",
-        "value": "#2e2e2e"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-control-fieldInvalid",
@@ -502,15 +502,15 @@
       },
       {
         "property": "--qc-control-mark",
-        "value": "#2e2e2e"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-control-neutral",
-        "value": "#2e2e2e"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-control-neutralHover",
-        "value": "#3d3d3d"
+        "value": "#2b2b2b"
       },
       {
         "property": "--qc-control-neutralInk",
@@ -518,7 +518,7 @@
       },
       {
         "property": "--qc-control-neutralPressed",
-        "value": "#4a4a4a"
+        "value": "#464646"
       },
       {
         "property": "--qc-control-off",
@@ -558,7 +558,7 @@
       },
       {
         "property": "--qc-control-tipMark",
-        "value": "#575757"
+        "value": "#555555"
       },
       {
         "property": "--qc-control-tipMarkHover",
@@ -570,7 +570,7 @@
       },
       {
         "property": "--qc-drawing-handle",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-drawing-line",
@@ -650,7 +650,7 @@
       },
       {
         "property": "--qc-overlay-separator",
-        "value": "#4a4a4a"
+        "value": "#464646"
       },
       {
         "property": "--qc-overlay-shadow",
@@ -658,11 +658,11 @@
       },
       {
         "property": "--qc-overlay-surface",
-        "value": "#1f1f1f"
+        "value": "#131313"
       },
       {
         "property": "--qc-overlay-tooltip",
-        "value": "#3d3d3d"
+        "value": "#2b2b2b"
       },
       {
         "property": "--qc-overlay-tooltipInk",
@@ -670,7 +670,7 @@
       },
       {
         "property": "--qc-scale-background",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-scale-border",
@@ -682,7 +682,7 @@
       },
       {
         "property": "--qc-scale-crosshairLabelBackground",
-        "value": "#3d3d3d"
+        "value": "#2b2b2b"
       },
       {
         "property": "--qc-scale-crosshairLabelText",
@@ -734,7 +734,7 @@
       },
       {
         "property": "--qc-state-hover",
-        "value": "#2e2e2e"
+        "value": "#1a1a1a"
       },
       {
         "property": "--qc-state-hoverInk",
@@ -746,11 +746,11 @@
       },
       {
         "property": "--qc-state-pressed",
-        "value": "#3d3d3d"
+        "value": "#2b2b2b"
       },
       {
         "property": "--qc-state-pressedHover",
-        "value": "#4a4a4a"
+        "value": "#464646"
       },
       {
         "property": "--qc-state-selected",
@@ -806,7 +806,7 @@
       },
       {
         "property": "--qc-text-disabled",
-        "value": "#575757"
+        "value": "#555555"
       },
       {
         "property": "--qc-text-fontFamily",
@@ -838,7 +838,7 @@
       },
       {
         "property": "--qc-text-inverse",
-        "value": "#0f0f0f"
+        "value": "#000000"
       },
       {
         "property": "--qc-text-link",
