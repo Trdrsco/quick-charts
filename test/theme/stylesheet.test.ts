@@ -84,6 +84,22 @@ describe('the scoped stylesheet', () => {
     expect(BUILT_IN_THEMES.light['text.inverse']).toBe('#ffffff')
   })
 
+  it('writes a scale mode as a 14px letter on an 18px line, the pair 15px apart, lit under the pointer held or not', () => {
+    const button = structural.match(/\n\[data-qc-theme\] \.qc-scale-mode \{[^}]+\}/s)?.[0]
+    expect(button).toContain('font-size: var(--qc-text-fontSizeBase)')
+    expect(button).toContain('font-weight: 400')
+    expect(button).toContain('line-height: 18px')
+    expect(button).toContain('padding: 1px 0')
+    expect(structural).toMatch(/\.qc-scale-modes \{[^}]*gap: 15px/s)
+    expect(structural).toMatch(/\.qc-scale-mode:hover \{[^}]*background: var\(--qc-state-hover\)/s)
+    const heldHover = structural.match(/\[data-qc-theme\] \.qc-scale-mode\[aria-pressed='true'\]:hover \{[^}]+\}/s)?.[0]
+    expect(heldHover).toContain('background: var(--qc-control-onHover)')
+    expect(heldHover).toContain('border-color: var(--qc-control-onHover)')
+    expect(BUILT_IN_THEMES.dark['control.onHover']).toBe('#dbdbdb')
+    expect(BUILT_IN_THEMES.dark['state.hover']).toBe('#1a1a1a')
+    expect(BUILT_IN_THEMES.dark['overlay.separator']).toBe('#464646')
+  })
+
   it('keeps the saved-layouts menu on the package list rhythm, restating none of it', () => {
     // The panel, rows, marks and rules are the menu primitive's own; this menu adds only what is
     // its own: the shortcut's clearance, the two-line recent row and the switch row's corners.
