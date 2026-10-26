@@ -428,7 +428,7 @@
       },
       {
         "property": "--qc-text-secondary",
-        "value": "#464646"
+        "value": "#000000"
       }
     ],
     "dark": [

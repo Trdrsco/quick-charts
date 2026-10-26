@@ -74,7 +74,7 @@ export const LIGHT_THEME: SemanticTheme = {
   'scale.sessionClosed': 'rgba(0, 0, 0, 0.05)',
 
   'text.primary': '#000000',
-  'text.secondary': '#464646',
+  'text.secondary': '#000000',
   'text.muted': '#6a6a6a',
   'text.caption': '#707070',
   'text.disabled': '#b8b8b8',
