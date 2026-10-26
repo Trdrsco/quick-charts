@@ -342,6 +342,8 @@ give the row the `ticker` a viewer reads it by, as `SymbolInfo.ticker` states it
 symbol; the row keeps its `symbol` as the market's identity:
 
 ```ts
+import { symbolNames } from '@trdrs/quickcharts'
+
 symbolNames({ symbol: 'EXCH:BOOK:NVDA', ticker: 'NVDA', name: 'NVIDIA Corp', exchange: 'EXCH', type: 'stock' }).mark // 'NVDA'
 ```
 
