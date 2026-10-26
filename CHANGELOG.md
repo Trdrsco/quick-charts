@@ -6,6 +6,8 @@ What is drawn over the canvas reads its ink from the canvas's lightness. Over a 
 
 The rows of a settings page, in the chart settings, a host's pages and the drawing settings dialogs, are each as tall as what they hold while the page scrolls, so a row whose controls wrap onto a second line keeps that line clear of the next row in a short window.
 
+The price scale's auto-scale and logarithmic buttons write their letters at 14px on an 18px line, stand 15px apart, each centred in a 35x30 cell, and a held button steps lighter under the pointer.
+
 ## 5.3.0
 
 The built-in palettes carry a deeper dark end of the grey ramp: the dark chrome and canvas are `#000000`, dialogs and menus `#131313`, the hover fill `#1a1a1a`, the pressed fill `#2b2b2b`, menu rules `#464646` and the quiet edges `#555555`, and the light inks that stood at `#0f0f0f` are `#000000`. The light secondary ink, the ink of search rows, lists and toolbar labels, is `#000000`, and the light tooltip is `#1a1a1a`.

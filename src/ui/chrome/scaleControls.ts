@@ -84,7 +84,7 @@ export interface ScaleControls {
 }
 
 /** The buttons' size and the space between them and below them. */
-const BUTTON = { width: 20, height: 22, gap: 4, foot: 4 }
+const BUTTON = { width: 20, height: 22, gap: 15, foot: 4 }
 /** The currency and unit box's inset from the scale's top and from its side away from the plot. */
 const UNIT_BOX = { inset: 4 }
 

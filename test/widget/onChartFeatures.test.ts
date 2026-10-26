@@ -323,7 +323,7 @@ describe('the scale mode buttons', () => {
     // Over the scale, which stands at the right 60px of the 600px pane.
     pointer(gestures, 'pointermove', 570, 100)
     expect(modes.hidden).toBe(false)
-    expect(modes.style.left).toBe('548px')
+    expect(modes.style.left).toBe('543px')
     expect(modes.style.top).toBe('274px')
     expect([auto.textContent, log.textContent, auto.getAttribute('aria-label')]).toEqual(['A', 'L', 'Auto scale'])
     pointer(gestures, 'pointermove', 100, 100)
