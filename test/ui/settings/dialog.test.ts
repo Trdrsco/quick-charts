@@ -86,10 +86,11 @@ describe('the page structure a host hooks', () => {
     expect(s.panel().getAttribute('aria-labelledby')).toBe(id)
   })
 
-  it('lets the pointer through to the chart behind it, and opens on the first page by default', () => {
+  it('stands over the chart without dimming it, and opens on the first page by default', () => {
     const s = setup()
     s.dialog.open()
-    expect((s.box().parentElement as HTMLElement).dataset.qcPass).toBe('true')
+    const scrim = s.box().parentElement as HTMLElement
+    expect(scrim.dataset.qcVeil).toBe('none')
     expect(s.tab('symbol').getAttribute('aria-selected')).toBe('true')
     expect(document.activeElement).toBe(s.tab('symbol'))
   })
@@ -504,7 +505,7 @@ describe('the edit session', () => {
     expect(s.chart.state.timezone).toBe('Etc/UTC')
   })
 
-  it('Escape and the close cancel as Cancel does, and Ok keeps the changes', () => {
+  it('Escape, the close and a press outside the dialog cancel as Cancel does, and Ok keeps the changes', () => {
     const s = setup({ chart: { timeframe: '5m' } })
     s.dialog.open('events')
     s.check('sessionBreaks').click()
@@ -514,6 +515,12 @@ describe('the edit session', () => {
     s.check('sessionBreaks').click()
     s.box().querySelector<HTMLButtonElement>('.qc-dialog-close')!.click()
     expect(s.chart.state.viewer).toEqual({})
+    s.dialog.open('events')
+    s.check('sessionBreaks').click()
+    const scrim = s.box().parentElement as HTMLElement
+    scrim.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+    expect(s.chart.state.viewer).toEqual({})
+    expect(s.w.overlays.querySelector('.qc-chart-settings-dialog:not([aria-hidden="true"])')).toBeNull()
     s.dialog.open('events')
     s.check('sessionBreaks').click()
     s.box().querySelector<HTMLButtonElement>('.qc-chart-settings-footer .qc-button--primary')!.click()
