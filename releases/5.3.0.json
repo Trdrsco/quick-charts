@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-26",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.3.0",
+  "releaseCommit": "92e15bf203d8952f680312cf062b277581bab647",
+  "tarballSha256": "7bf5907cfcf383e724743c43625938d75d5eec99ed844a264c65ba54c985afbf",
+  "tarStreamSha256": "a3b0bde55dd15149e9df4ab172a38bff36b5dfccf1a7283a9b4f11457ff1fe18",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40396359723",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "68a1bf8552d8c36ee9d7c99ace3193655f6a12394c1b111fc63bdbed1871117f",
+      "dossierHashesSha256": "00bad401da40ff093aa5fc680aa7a7b338106cf14409d993bebf92adb6fde895",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40396469758",
+      "artifact": "quickcharts-5.3.0-rehearsal",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "a4c8160846dee609781b993f54673cc8582cddd1",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/40398145644",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "For Quick Charts 5.3.0 I waive the unperformed manual accessibility and device checks and authorize publication after all remaining automated validation passes.",
+    "recordedAt": "2026-10-26T21:51:47Z",
+    "question": "Do you waive the manual accessibility and device checks for 5.3.0? (Quick Charts 5.3.0: the deeper dark grey ramp, PR 143, the 12px dialog radius role, PR 145, the chart settings dialog closing on a press outside it, PR 144, mode-following chart colors on a theme switch, PR 147, and the indicator picker layout with host kind filters, PR 146. RELEASING.md requires manual acceptance or a version-specific owner waiver.)"
+  }
+}
