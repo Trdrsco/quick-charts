@@ -6,6 +6,8 @@ The built-in palettes carry a deeper dark end of the grey ramp: the dark chrome 
 
 Every dialog rounds its corners on the new `chrome.radiusDialog` role, `12px` in both built-in palettes, the symbol search and the chart settings among them. Menus and panels keep `chrome.radiusLarge`.
 
+A press outside the chart settings dialog closes it as Cancel does, putting back what the session previewed; the dialog still stands over the chart without dimming it.
+
 ## 5.2.0
 
 The chart's right-click menu ends on Settings…, which opens the chart settings dialog, wherever the chart draws its settings door in the top bar.

@@ -4,15 +4,16 @@
 // contribute, a page of their own or rows inside one of the chart's.
 //
 // Every change previews on the chart at once. The dialog is an edit session over what it captured
-// on opening: Cancel, the close and Escape put back the viewer's settings, the price-scale mode and
-// the timezone as they were, and hand every contribution back the state its `open` answered; Ok
-// keeps what the session made and tells every contribution so. The Template menu applies the chart's
-// defaults, saves the viewer's settings under a name, and lists the saved ones to apply or delete.
+// on opening: Cancel, the close, Escape and a press outside the dialog put back the viewer's
+// settings, the price-scale mode and the timezone as they were, and hand every contribution back the
+// state its `open` answered; Ok keeps what the session made and tells every contribution so. The
+// Template menu applies the chart's defaults, saves the viewer's settings under a name, and lists
+// the saved ones to apply or delete.
 //
-// The dialog stands over a chart that stays live under the pointer, so the bars it restyles can be
-// watched and hovered while it is up. It opens centred for the page it opens on, keeps its top edge
-// while pages of other heights are shown, and rises only as far as a taller page needs to stay on
-// screen. The header carries it anywhere for as long as it is open.
+// The dialog stands over the chart without dimming it, so the bars it restyles stay in view while it
+// is up. It opens centred for the page it opens on, keeps its top edge while pages of other heights
+// are shown, and rises only as far as a taller page needs to stay on screen. The header carries it
+// anywhere for as long as it is open.
 import type { ChartMessageKey } from '../../i18n'
 import { settingsContributionsOf } from '../../extension'
 import type { ChartSettingsContribution, ChartSettingsPageId } from '../../settings/contribution'
@@ -520,8 +521,8 @@ export function createChartSettingsDialog(deps: ChartSettingsDialogDeps): ChartS
       role: 'chart-settings',
       width: 750,
       veil: false,
-      passThrough: true,
-      // Escape, the close and the host's teardown end the session as the dialog begins to close.
+      // Escape, the close, a press outside the dialog and the host's teardown end the session as
+      // the dialog begins to close.
       onClosing: () => {
         if (s && !s.settled) cancel(s)
       },
