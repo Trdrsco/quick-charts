@@ -1,7 +1,10 @@
 // Snapshot and validate the small data contract at the UI boundary. Never retain host-owned rows:
 // a later mutation must not change the action attached to an already rendered button.
 import { BUILT_IN_INDICATORS } from '../../builtInIndicators'
-import type { IndicatorPickerAction, IndicatorPickerBuiltInState, IndicatorPickerCollection, IndicatorPickerItem } from '../../widget/indicatorPicker'
+import type { IndicatorPickerAction, IndicatorPickerBuiltInState, IndicatorPickerCollection, IndicatorPickerItem, IndicatorPickerKind } from '../../widget/indicatorPicker'
+
+/** The chart's own kind: every built-in, and every item that names none. */
+export const INDICATOR_KIND = 'indicator'
 
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
 const text = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0
@@ -34,19 +37,36 @@ export function pickerCollections(value: unknown): IndicatorPickerCollection[] |
   } catch { return null }
 }
 
+/** The source's declared kinds, or none when it declares none. */
+export function pickerKinds(value: unknown): IndicatorPickerKind[] | null {
+  try {
+    if (value === undefined) return []
+    if (!Array.isArray(value)) return null
+    const result: IndicatorPickerKind[] = []
+    for (const row of value) {
+      if (!record(row) || !text(row.id) || row.id === INDICATOR_KIND || !text(row.label)) return null
+      result.push({ id: row.id, label: row.label })
+    }
+    return unique(result.map((row) => row.id)) ? result : null
+  } catch { return null }
+}
+
 export interface PickerRows { items: IndicatorPickerItem[]; builtIns: IndicatorPickerBuiltInState[] }
-export function pickerRows(value: unknown): PickerRows | null {
+/** An item's kind is the chart's own or one of `kinds`, the ids the source declared. */
+export function pickerRows(value: unknown, kinds: readonly string[] = []): PickerRows | null {
   try {
     if (!record(value) || value.kind !== 'ok' || !Array.isArray(value.items) || (value.builtIns !== undefined && !Array.isArray(value.builtIns))) return null
     const items: IndicatorPickerItem[] = []
     for (const row of value.items) {
       if (!record(row) || !text(row.id) || builtinIds.has(row.id) || ['builtin', 'favorites', 'add', 'favorite'].includes(row.id) || !text(row.title)
         || !optionalText(row.description) || !optionalText(row.author) || !count(row.favoriteCount)
-        || (row.favorite !== undefined && typeof row.favorite !== 'boolean')) return null
+        || (row.favorite !== undefined && typeof row.favorite !== 'boolean')
+        || (row.kind !== undefined && (typeof row.kind !== 'string' || (row.kind !== INDICATOR_KIND && !kinds.includes(row.kind))))) return null
       const verbs = actions(row.actions)
       if (!verbs || !text(row.primaryAction) || !verbs.some((a) => a.id === row.primaryAction)) return null
       items.push({ id: row.id, title: row.title, primaryAction: row.primaryAction, actions: verbs,
         ...(row.description !== undefined ? { description: row.description as string } : {}), ...(row.author !== undefined ? { author: row.author as string } : {}),
+        ...(row.kind !== undefined ? { kind: row.kind as string } : {}),
         ...(row.favorite !== undefined ? { favorite: row.favorite } : {}), ...(row.favoriteCount !== undefined ? { favoriteCount: row.favoriteCount as number } : {}) })
     }
     const builtIns: IndicatorPickerBuiltInState[] = []

@@ -22,6 +22,10 @@ export const KEYS_ADDED_IN_MAJOR = [
   'legend.movePaneDown',
   'legend.movePaneUp',
   'menu.drawHorizontalLine',
+  'picker.allKinds',
+  'picker.indicators',
+  'picker.kindFilter',
+  'picker.technicals',
 ] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

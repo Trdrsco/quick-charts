@@ -1,85 +1,97 @@
-/* The indicator picker, drawn with the chart's own tokens. */
+/* The indicator picker: the search field every search dialog opens on, the kind filters under it
+ * when the host declares kinds, and below them a rail of collections beside the list, drawn with the
+ * chart's own tokens. */
 [data-qc-theme] .qc-picker-dialog {
   height: 638px;
   max-height: min(85vh, calc(100% - 32px));
 }
-[data-qc-theme] .qc-picker-header {
-  display: flex;
-  flex: 0 0 48px;
-  align-items: center;
-  justify-content: space-between;
-  padding-inline: 16px;
-  border-bottom: 1px solid var(--qc-chrome-border);
-}
-[data-qc-theme] .qc-picker-header .qc-title {
-  font-size: calc(var(--qc-text-fontSizeBase) + 2px);
-  font-weight: 500;
-  line-height: 22px;
-}
-[data-qc-theme] .qc-picker-searchbar {
-  display: flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--qc-chrome-border);
-}
+
+/* A name is read in the case it is typed: only a ticker field raises its value. */
 [data-qc-theme] .qc-picker-search {
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  color: var(--qc-text-primary);
-  font: inherit;
-  background: none;
-  border: 0;
-  outline: none;
+  text-transform: none;
 }
+
 [data-qc-theme] .qc-picker-body {
   display: flex;
   flex: 1 1 auto;
   min-height: 0;
 }
+
+/* The rail: 200px of sections 8px apart on the box's 20px inset, 10px before the list, 8px under
+ * what stands above it and 16px clear of the box's foot. It scrolls on its own. */
 [data-qc-theme] .qc-picker-nav {
-  flex: 0 0 200px;
-  width: 200px;
-  padding: 8px 8px 16px 12px;
-  padding-inline: 12px 8px;
-  overflow-y: auto;
-  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 230px;
+  flex-direction: column;
+  gap: 8px;
+  width: 230px;
+  padding: 8px 10px 16px 20px;
+  overflow: hidden auto;
 }
+
+[data-qc-theme] .qc-picker-section {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A section's heading: 11px capitals in the caption ink on a 12px indent, 30px tall. */
 [data-qc-theme] .qc-picker-group {
-  padding: 7px 12px;
-  color: var(--qc-text-muted);
-  font-size: var(--qc-text-fontSizeMicro);
+  padding: 7px 0 7px 12px;
+  color: var(--qc-text-caption);
+  font-size: var(--qc-text-fontSizeSmall);
+  line-height: 16px;
   letter-spacing: 0.4px;
   text-transform: uppercase;
 }
+
+/* A collection: a 40px row rounded 8px, its 28px mark 8px before its name at 14px on 18. The pointer
+ * lays the hover fill under it; the chosen one wears the pressed fill, under the pointer as at rest,
+ * and its name steps up to 600. */
 [data-qc-theme] .qc-picker-collection {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
-  gap: 8px;
   width: 100%;
-  height: 38px;
-  margin-block: 1px;
-  padding-inline: 8px;
+  height: 40px;
+  padding: 0 8px;
   color: var(--qc-text-secondary);
   font: inherit;
+  font-size: var(--qc-text-fontSizeBase);
+  line-height: 18px;
   text-align: start;
   background: none;
   border: 0;
-  border-radius: var(--qc-chrome-radius);
-  cursor: pointer;
+  border-radius: 8px;
+  cursor: default;
 }
-/* The chosen collection wears the selection fill itself, a step past the hover the others take. */
-[data-qc-theme] .qc-picker-collection[aria-pressed='true'] {
-  color: var(--qc-text-primary);
-  background: var(--qc-state-selected);
-}
-[data-qc-theme] .qc-picker-collection:not([aria-pressed='true']):hover,
-[data-qc-theme] .qc-picker-collection:not([aria-pressed='true']):focus-visible {
-  color: var(--qc-text-primary);
+
+[data-qc-theme] .qc-picker-collection:hover {
   background: var(--qc-state-hover);
 }
+
+[data-qc-theme] .qc-picker-collection[aria-pressed='true'] {
+  background: var(--qc-state-pressed);
+}
+
+[data-qc-theme] .qc-picker-collection-icon {
+  display: inline-flex;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  margin-inline-end: 8px;
+}
+
+[data-qc-theme] .qc-picker-collection-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+[data-qc-theme] .qc-picker-collection[aria-pressed='true'] .qc-picker-collection-label {
+  font-weight: 600;
+}
+
 [data-qc-theme] .qc-picker-content {
   display: flex;
   flex: 1 1 auto;
@@ -87,140 +99,229 @@
   min-width: 0;
   min-height: 0;
 }
-[data-qc-theme] .qc-picker-tabs {
-  display: flex;
-  gap: 6px;
-  padding: 10px 16px;
-}
-[data-qc-theme] .qc-picker-tab {
-  padding: 4px 12px;
-  background: var(--qc-state-pressed);
-  border-radius: 999px;
-}
+
+/* The list keeps room for its 5px bar, so the rows never shift as it comes and goes. Its column
+ * headings scroll away with the rows. */
 [data-qc-theme] .qc-picker-list {
   flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
 }
+
+/* The headings and every row share one anatomy: 10px in from the rail and 15px before the bar, a
+ * 4px lead and a 16px tail, the star's 22px cell, the name 4px after it taking the rest, then the
+ * author's 100px, the count's 50px and the actions' 44px, each 24px past the cell before it. */
 [data-qc-theme] .qc-picker-row,
 [data-qc-theme] .qc-picker-headings {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 100px 50px 44px;
-  gap: 24px;
+  display: flex;
   align-items: center;
-  min-height: 32px;
-  margin-block: 1px;
+  margin-inline: 10px 15px;
   padding-inline: 4px 16px;
 }
+
+/* The headings: 11px capitals in the caption ink, 16px under what stands above and 8px over the
+ * first row. */
 [data-qc-theme] .qc-picker-headings {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  color: var(--qc-text-muted);
-  font-size: var(--qc-text-fontSizeMicro);
+  padding-block: 16px 8px;
+  color: var(--qc-text-caption);
+  font-size: var(--qc-text-fontSizeSmall);
+  line-height: 16px;
   letter-spacing: 0.4px;
   text-transform: uppercase;
-  background: var(--qc-overlay-surface);
+  white-space: nowrap;
 }
+
+/* A row stands 32px, rounded 8px, and the pointer or the keyboard lays the hover fill under it. */
+[data-qc-theme] .qc-picker-row {
+  height: 32px;
+  border-radius: 8px;
+  cursor: default;
+}
+
 [data-qc-theme] .qc-picker-row:hover,
 [data-qc-theme] .qc-picker-row:focus-within {
   background: var(--qc-state-hover);
 }
+
+[data-qc-theme] .qc-picker-star-cell,
+[data-qc-theme] .qc-picker-headings > :nth-child(1) {
+  display: flex;
+  flex: 0 0 22px;
+  min-width: 22px;
+}
+
 [data-qc-theme] .qc-picker-name-cell,
 [data-qc-theme] .qc-picker-headings > :nth-child(2) {
+  flex: 1 1 auto;
   min-width: 0;
-  margin-inline-start: -20px;
+  margin-inline-start: 4px;
 }
+
+[data-qc-theme] .qc-picker-author,
+[data-qc-theme] .qc-picker-headings > :nth-child(3) {
+  flex: 0 1 100px;
+  min-width: 100px;
+  margin-inline-start: 24px;
+}
+
+[data-qc-theme] .qc-picker-count,
+[data-qc-theme] .qc-picker-headings > :nth-child(4) {
+  flex: 0 1 50px;
+  min-width: 50px;
+  margin-inline-start: 24px;
+}
+
+[data-qc-theme] .qc-picker-actions,
+[data-qc-theme] .qc-picker-headings > :nth-child(5) {
+  flex: 0 0 44px;
+  min-width: 44px;
+  margin-inline-start: 24px;
+}
+
+/* The name at 14px in the row's ink, cut short with an ellipsis. */
 [data-qc-theme] .qc-picker-name {
   display: block;
   width: 100%;
   overflow: hidden;
   padding: 0;
-  color: var(--qc-text-primary);
+  color: var(--qc-text-secondary);
   font: inherit;
+  font-size: var(--qc-text-fontSizeBase);
   text-align: start;
   text-overflow: ellipsis;
   white-space: nowrap;
   background: none;
   border: 0;
-  cursor: pointer;
+  cursor: default;
 }
-[data-qc-theme] .qc-picker-author {
+
+/* The author in the link ink, and the count in the row's. */
+[data-qc-theme] .qc-picker-author,
+[data-qc-theme] .qc-picker-count {
   overflow: hidden;
-  color: var(--qc-text-secondary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+[data-qc-theme] .qc-picker-author {
+  color: var(--qc-text-link);
+}
+
 [data-qc-theme] .qc-picker-count {
   color: var(--qc-text-secondary);
-  font-variant-numeric: tabular-nums;
 }
+
+/* The row's actions stand at its end, 4px apart, and show while the row is under the pointer or holds
+ * the keyboard. */
 [data-qc-theme] .qc-picker-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 4px;
   opacity: 0;
 }
+
 [data-qc-theme] .qc-picker-row:hover .qc-picker-actions,
 [data-qc-theme] .qc-picker-row:focus-within .qc-picker-actions {
   opacity: 1;
 }
+
+/* The star and every action are a 22px cell rounded 4px around an 18px mark, in the muted ink until
+ * the pointer lifts it onto the pressed hover fill. */
+[data-qc-theme] .qc-picker-star,
 [data-qc-theme] .qc-picker-action {
   display: inline-flex;
-  flex: 0 0 22px;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
   min-width: 22px;
-  height: 24px;
+  height: 22px;
   padding: 0;
-  color: var(--qc-text-secondary);
+  color: var(--qc-text-muted);
   font: inherit;
   background: none;
   border: 0;
-  border-radius: 3px;
-  cursor: pointer;
+  border-radius: 4px;
+  cursor: default;
 }
+
+[data-qc-theme] .qc-picker-star:hover,
 [data-qc-theme] .qc-picker-action:hover {
   color: var(--qc-text-primary);
-  background: var(--qc-state-hover);
+  background: var(--qc-state-pressedHover);
 }
+
+/* An unstarred row shows its star only under the pointer or the keyboard. A starred one always
+ * shows it, filled in the control ink, and keeps that ink under the pointer. */
+[data-qc-theme] .qc-picker-star {
+  opacity: 0;
+}
+
+[data-qc-theme] .qc-picker-row:hover .qc-picker-star,
+[data-qc-theme] .qc-picker-row:focus-within .qc-picker-star,
+[data-qc-theme] .qc-picker-star[aria-pressed='true'] {
+  opacity: 1;
+}
+
+[data-qc-theme] .qc-picker-star[aria-pressed='true'],
+[data-qc-theme] .qc-picker-star[aria-pressed='true']:hover {
+  color: var(--qc-control-on);
+}
+
 [data-qc-theme] .qc-picker-action > span:not(.qc-picker-host-icon) {
   max-width: 22px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 [data-qc-theme] .qc-picker-action[disabled],
+[data-qc-theme] .qc-picker-star[disabled],
 [data-qc-theme] .qc-picker-name[disabled] {
   color: var(--qc-text-disabled);
-  cursor: default;
 }
+
+[data-qc-theme] .qc-picker-action[disabled]:hover,
+[data-qc-theme] .qc-picker-star[disabled]:hover {
+  background: none;
+}
+
+/* A host's mark: 18px in a row's action, 28px in the rail. */
 [data-qc-theme] .qc-picker-host-icon,
 [data-qc-theme] .qc-picker-host-icon svg {
   display: inline-flex;
   width: 18px;
   height: 18px;
 }
-[data-qc-theme] .qc-picker-list--personal .qc-picker-row,
-[data-qc-theme] .qc-picker-list--personal .qc-picker-headings {
-  grid-template-columns: minmax(0, 1fr) 22px;
-  padding-inline-start: 16px;
+
+[data-qc-theme] .qc-picker-collection-icon .qc-picker-host-icon,
+[data-qc-theme] .qc-picker-collection-icon .qc-picker-host-icon svg {
+  width: 28px;
+  height: 28px;
 }
-[data-qc-theme] .qc-picker-list--personal .qc-picker-row > :nth-child(1),
-[data-qc-theme] .qc-picker-list--personal .qc-picker-row > :nth-child(3),
-[data-qc-theme] .qc-picker-list--personal .qc-picker-row > :nth-child(4),
-[data-qc-theme] .qc-picker-list--personal .qc-picker-headings > :nth-child(1),
+
+/* The shipped catalog has no author and no count: a row is its star, its name and its actions. */
+[data-qc-theme] .qc-picker-list--catalog .qc-picker-author,
+[data-qc-theme] .qc-picker-list--catalog .qc-picker-count,
+[data-qc-theme] .qc-picker-list--catalog .qc-picker-headings > :nth-child(3),
+[data-qc-theme] .qc-picker-list--catalog .qc-picker-headings > :nth-child(4) {
+  display: none;
+}
+
+/* A personal list is a name and its secondary actions, the name standing where a table's does. */
+[data-qc-theme] .qc-picker-list--personal .qc-picker-star,
+[data-qc-theme] .qc-picker-list--personal .qc-picker-author,
+[data-qc-theme] .qc-picker-list--personal .qc-picker-count,
 [data-qc-theme] .qc-picker-list--personal .qc-picker-headings > :nth-child(3),
 [data-qc-theme] .qc-picker-list--personal .qc-picker-headings > :nth-child(4) {
   display: none;
 }
-[data-qc-theme] .qc-picker-list--personal .qc-picker-name-cell,
-[data-qc-theme] .qc-picker-list--personal .qc-picker-headings > :nth-child(2) {
-  margin-inline-start: 0;
-}
+
 [data-qc-theme] .qc-picker-status {
   flex: 0 0 auto;
-  padding: 0 16px;
+  padding: 0 20px;
 }
+
 [data-qc-theme] .qc-picker-status:not(:empty) {
   padding-block: 8px;
 }
@@ -255,29 +356,27 @@
   min-height: 42px;
 }
 
-/* THE PICKER ON A NARROW SCREEN. The dialog is a two-column reading room — a 200px rail of
-   collections beside a table of five columns — and at 393px there is not enough of either. The rail
-   took half the width and the row's fixed columns (the star, the author, the count, the actions)
-   claimed 312px of the rest between them, so the NAME, the one cell anybody reads, collapsed to a
-   single letter with an ellipsis: "S…" beside an author cell wider than the thing it described.
-   
-   So the rail lies DOWN. It becomes a row of chips above the list, scrolling sideways the way every
-   other run of choices on a phone does, and the table sheds the columns a phone has no room to
-   spend: the author and the count go, the star and the actions stay, and the name takes what is
-   left. The GROUP headings go with the rail's column — "Saved" over "Shared" reads as
-   structure in a list and as noise in a row, and the chips say what they are. */
+/* THE PICKER ON A NARROW SCREEN. A 230px rail beside a table of five columns leaves the name, the one
+ * cell anybody reads, a single letter at 393px. So the rail lies down as a row of chips above the
+ * list, scrolling sideways the way every other run of choices on a phone does, its headings gone
+ * with its column, and the table sheds the author, the count and its headings: the star, the name
+ * and the actions remain, and the name takes what is left. */
 @media (max-width: 560px) {
   [data-qc-theme] .qc-picker-body {
     flex-direction: column;
   }
 
+  [data-qc-theme] .qc-picker-nav,
+  [data-qc-theme] .qc-picker-section {
+    flex-direction: row;
+    gap: 4px;
+  }
+
   [data-qc-theme] .qc-picker-nav {
-    display: flex;
     flex: 0 0 auto;
-    gap: 6px;
     align-items: center;
     width: auto;
-    padding: 8px 12px;
+    padding: 8px 20px;
     overflow-x: auto;
     overflow-y: hidden;
     overscroll-behavior-x: contain;
@@ -288,52 +387,38 @@
     display: none;
   }
 
-  [data-qc-theme] .qc-picker-group {
+  [data-qc-theme] .qc-picker-group,
+  [data-qc-theme] .qc-picker-collection-icon {
     display: none;
   }
 
+  /* Each collection is a chip of the class strip's recipe: the neutral fill at rest, deeper under the
+   * pointer, and inverted while it is the one chosen. */
   [data-qc-theme] .qc-picker-collection {
-    flex: 0 0 auto;
     width: auto;
-    height: 34px;
-    margin-block: 0;
-    padding-inline: 12px;
+    height: 28px;
+    padding: 0 11px;
     white-space: nowrap;
+    background: var(--qc-state-hover);
+    border-radius: 14px;
+  }
+
+  [data-qc-theme] .qc-picker-collection:hover {
     background: var(--qc-state-pressed);
-    border-radius: 999px;
   }
 
-  /* TWO ROWS OF CHROME GO, and both were saying nothing.
-     The tab strip holds exactly one tab, and the word on it is the word in the dialog's own header
-     two rows above — a strip of one is not a choice, it is a label repeated.
-     The column headings name five columns of which this width shows one, and NAME over a column of
-     names is the definition of a header that has stopped carrying information. It was also the
-     only thing on this surface still painting a filled band across the glass. */
-  [data-qc-theme] .qc-picker-tabs,
-  [data-qc-theme] .qc-picker-headings {
+  [data-qc-theme] .qc-picker-collection[aria-pressed='true'] {
+    color: var(--qc-text-inverse);
+    background: var(--qc-control-on);
+  }
+
+  [data-qc-theme] .qc-picker-collection[aria-pressed='true'] .qc-picker-collection-label {
+    font-weight: 400;
+  }
+
+  [data-qc-theme] .qc-picker-headings,
+  [data-qc-theme] .qc-picker-author,
+  [data-qc-theme] .qc-picker-count {
     display: none;
-  }
-
-  /* Three columns: the star, the name, the actions. The gap comes down with them — 24px between
-     five columns is most of a phone's width spent on nothing. */
-  [data-qc-theme] .qc-picker-row {
-    grid-template-columns: 22px minmax(0, 1fr) 44px;
-    gap: 10px;
-  }
-
-  [data-qc-theme] .qc-picker-row > :nth-child(3),
-  [data-qc-theme] .qc-picker-row > :nth-child(4) {
-    display: none;
-  }
-
-  /* The name's -20px pull is measured against the wide gap it sits in; at 10px it drags the name
-     back UNDER the star, which is what put the glyph through the first letter of every row. */
-  [data-qc-theme] .qc-picker-name-cell {
-    margin-inline-start: 0;
-  }
-
-  /* The personal lists already run two columns; they only need the tighter gap. */
-  [data-qc-theme] .qc-picker-list--personal .qc-picker-row {
-    grid-template-columns: minmax(0, 1fr) 22px;
   }
 }

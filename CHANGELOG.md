@@ -10,6 +10,8 @@ A press outside the chart settings dialog closes it as Cancel does, putting back
 
 A switch of theme mode hands the colors a viewer chose that follow the mode (the canvas background, the grid, the watermark and the scale text and lines) back to the new mode's look, and keeps every other leaf the viewer chose. Saved chart content states the mode those colors were chosen in as `settingsMode`, so a chart opened in the other mode takes that mode's look for them; content without it keeps its colors in either mode.
 
+The indicator picker opens on the symbol search's field with no title band. Under the field, a host that declares `IndicatorPickerSource.kinds` gets a row of filters (All, Indicators, then its kinds), and `IndicatorPickerItem.kind` places a row in one. The rail is a 230px column of sections, Favorites under Personal and the shipped definitions as Technicals under Built-in, each collection a 40px row with a 28px mark. The list's headings scroll with its 32px rows of star, name, author, count and actions; the shipped catalog shows the star, the name and the actions, a row adds without a plus of its own, and an unstarred row shows its star under the pointer. The catalog gains `picker.technicals`, `picker.kindFilter`, `picker.allKinds` and `picker.indicators` in every built-in language.
+
 ## 5.2.0
 
 The chart's right-click menu ends on Settings…, which opens the chart settings dialog, wherever the chart draws its settings door in the top bar.

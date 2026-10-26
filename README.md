@@ -1605,13 +1605,18 @@ part in each through `contributeCapture` (see Extensions).
 The Indicators button and `commands.execute('chart.indicators.open')` open the same picker.
 Pass `{ collection: 'saved' }` as the command argument to open a declared host collection directly.
 An unknown collection falls back to the shipped catalog. Reopening an already open picker keeps its current selection and query.
-It lists the 23 shipped definitions, with search and Favorites. Add creates a new instance on the
-currently active chart and keeps the picker open. Favorites use your `ChartStorage` port.
+The picker opens on the same search field as the symbol search. Beside its list stands a rail of
+collections: Favorites under Personal, and the 23 shipped definitions as Technicals under Built-in.
+Pressing a definition's row adds a new instance to the currently active chart and keeps the picker
+open. Favorites use your `ChartStorage` port. The list reads as a table of each row's star, name,
+author, favorite count and actions; the shipped catalog shows the star, the name and the actions.
+Escape and a press outside the box close the picker.
 
 Supply `ChartWidgetOptions.indicatorPicker` to include additional localized collections and rows
 in that picker. You supply data and opaque actions, not DOM, indicator definitions, or a renderer.
 Built-in annotations can add favorite state, counts and actions; they cannot replace a definition,
-its name, or Add. Without a source, the picker has only shipped built-ins and Favorites.
+its name, or Add, and their counts show wherever the list is a table (Favorites, and your table
+collections). Without a source, the picker has only shipped built-ins and Favorites.
 
 ```ts
 import type { IndicatorPickerSource } from '@trdrs/quickcharts'
@@ -1643,9 +1648,36 @@ service limits; the picker lists what it answers.
 Collection ids `builtin` and `favorites`, and action ids `add` and `favorite`, are reserved.
 Item ids cannot collide with shipped definition ids or these reserved ids. Duplicate ids,
 malformed rows and missing primary actions refuse the response; the shipped catalog remains usable.
-An item has up to two actions; a built-in annotation has at most one beside Add. Collections can
-name a localized navigation group and use `layout: 'list'` for name/secondary-action rows.
-An absent count stays blank. Omit `favorite` to omit that action on a contributed item.
+An item has up to two actions; a built-in annotation has at most one. Collections can name a
+localized navigation group and use `layout: 'list'` for name/secondary-action rows. The rail lists
+your collections after Favorites, in your order: each run of one group stands under that group's
+heading, a collection without a group stays in the section above it, and a group labelled as the
+chart's own Personal joins Favorites in its section. An absent count stays blank. Omit `favorite`
+to omit that action on a contributed item.
+
+Declare `kinds` when your rows come in kinds beside indicators. The picker then shows a row of
+filters under its field: All, the chart's own Indicators, and each of your kinds in order. An item
+names its kind with `kind`; an item that names none, and every shipped definition, is an
+indicator. The kind id `indicator` is reserved, and an item of a kind you did not declare refuses
+the response.
+
+```ts
+import type { IndicatorPickerSource } from '@trdrs/quickcharts'
+
+const withTemplates: IndicatorPickerSource = {
+  collections: [{ id: 'saved', label: 'Saved', group: 'Personal', layout: 'list' }],
+  kinds: [{ id: 'template', label: 'Templates' }],
+  async list({ collection }) {
+    return {
+      kind: 'ok',
+      items: collection === 'saved'
+        ? [{ id: 'ribbon', title: 'Ribbon', kind: 'template', primaryAction: 'apply', actions: [{ id: 'apply', label: 'Apply' }] }]
+        : [],
+    }
+  },
+  async act() { return { kind: 'ok', close: true } },
+}
+```
 
 A favorite action receives the requested next boolean. Successful actions refresh the current
 collection unless they return `close: true`. Refusals and exceptions keep the picker open with

@@ -540,11 +540,13 @@ export const ICONS = {
   textItalic: { viewBox: '0 0 28 28', body: '<path fill="none" stroke="currentColor" d="M12 6.5h7M9 21.5h7M15.5 6.5l-3 15"/>' },
   close18: { viewBox: '0 0 18 18', body: '<path d="M4.5 4.5l9 9M13.5 4.5l-9 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' },
   chevronDown18: { viewBox: '0 0 18 18', body: solid(polyline([[4.4, 7.25], [9, 11.3], [13.6, 7.25]], 1.5)) },
-  // The indicator picker's marks, on the grids its rows were drawn for.
-  pickerStar: { viewBox: '0 0 18 18', body: '<path fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M9 2.13L11.057 6.168L15.534 6.877L12.329 10.082L13.038 14.558L9 12.5L4.962 14.558L5.671 10.082L2.466 6.877L6.943 6.168z"/>' },
-  pickerStarFilled: { viewBox: '0 0 18 18', body: '<path fill="currentColor" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" d="M9 2.13L11.057 6.168L15.534 6.877L12.329 10.082L13.038 14.558L9 12.5L4.962 14.558L5.671 10.082L2.466 6.877L6.943 6.168z"/>' },
-  plus24: { viewBox: '0 0 24 24', body: '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' },
-  search24: { viewBox: '0 0 24 24', body: '<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.8"/><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>' },
+  // The indicator picker's marks. A row's star on the 18 grid, a one-unit outline or the filled
+  // shape; the rail's Favorites, an outlined star on the 28 grid; and the rail's built-in indicators,
+  // a trend line over a run of columns.
+  pickerStar: { viewBox: '0 0 18 18', body: '<path stroke="currentColor" d="M9 2.13l1.903 3.855.116.236.26.038 4.255.618-3.079 3.001-.188.184.044.259.727 4.237-3.805-2L9 12.434l-.233.122-3.805 2.001.727-4.237.044-.26-.188-.183-3.079-3.001 4.255-.618.26-.038.116-.236L9 2.13z"/>' },
+  pickerStarFilled: { viewBox: '0 0 18 18', body: '<path fill="currentColor" d="M9 1l2.35 4.76 5.26.77-3.8 3.7.9 5.24L9 13l-4.7 2.47.9-5.23-3.8-3.71 5.25-.77L9 1z"/>' },
+  pickerFavorites: { viewBox: '0 0 28 28', body: '<path fill="currentColor" fill-rule="evenodd" d="m17.13 9.74 7.37.9-5.44 5.06L20.4 23 14 19.38 7.6 23l1.34-7.3-5.44-5.06 7.37-.9L14 3l3.13 6.74Zm3.99 2-3.68 3.42.9 4.96L14 17.66l-4.34 2.46.9-4.96-3.68-3.42 5-.6L14 6.56l2.12 4.56 5 .61Z"/>' },
+  pickerTechnicals: { viewBox: '0 0 28 28', body: '<path fill="currentColor" d="m22.85 7.85-4.58 4.59a2.5 2.5 0 0 1-3.54 0l-3.17-3.17a1.5 1.5 0 0 0-2.12 0l-4.59 4.58-.7-.7 4.58-4.59a2.5 2.5 0 0 1 3.54 0l3.17 3.17a1.5 1.5 0 0 0 2.12 0l4.59-4.58.7.7ZM11 22h-1v-8h1v8Zm12 0h-1v-8h1v8ZM8 22H7v-6h1v6Zm6 0h-1v-6h1v6Zm6 0h-1v-6h1v6Zm-3 0h-1v-4h1v4ZM5 22H4v-3h1v3Z"/>' },
   // The note beside a switch that needs a sentence.
   info: { viewBox: '0 0 18 18', body: solid(disc(9, 9, 8) + disc(9, 5, 1, true) + polygon([[7, 8], [10, 8], [10, 14], [8.5, 14], [8.5, 9.5], [7, 9.5]], true)) },
   // The short tip beside a setting's label: a disc with a question mark cut through it, its hook

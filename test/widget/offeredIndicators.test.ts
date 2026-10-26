@@ -56,7 +56,7 @@ function browser(widget: ChartWidget, collection?: string): { listed: string[]; 
   const rows = [...document.querySelectorAll<HTMLButtonElement>('.qc-picker-dialog [data-indicator]')]
   return { listed: rows.map((row) => row.dataset.indicator!), disabled: rows.filter((row) => row.disabled).map((row) => row.dataset.indicator!) }
 }
-const closeBrowser = (): void => document.querySelector<HTMLButtonElement>('.qc-picker-dialog .qc-dialog-close')?.click()
+const closeBrowser = (): void => void document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
 const search = async (text: string): Promise<string[]> => {
   const input = document.querySelector<HTMLInputElement>('.qc-picker-dialog .qc-picker-search')!
   input.value = text
