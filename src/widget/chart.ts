@@ -31,6 +31,7 @@ import type { ChartStorage } from '../storage'
 import type { ChartSaveLoadAdapter } from '../resources'
 import {
   chartSettingsDefaults,
+  chartSettingsDefaultsOn,
   copyPartialChartSettings,
   hasModeLeaves,
   layerChartSettings,
@@ -47,7 +48,9 @@ import type { PriceFormat, SymbolInfo } from '../symbology'
 import type { ChartI18n } from '../i18n'
 import type { ChartExtension, ChartExtensionHost } from '../extension'
 import type { CompareEntry, CompareSymbol } from '../compare'
+import { canvasInk } from '../theme/canvasInk'
 import type { ThemeController } from '../theme/controller'
+import { CANVAS_INK_ATTRIBUTE } from '../theme/css-contract'
 import { canvasTheme, type CanvasTheme } from '../theme/renderer'
 import type { ThemeMode } from '../theme/schema'
 import type { CommandExecutor, CommandRegistry } from './commands'
@@ -559,7 +562,17 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     if (named.symbol?.session !== undefined || (stored !== 'regular' && stored !== 'extended')) return named
     return mergePartialChartSettings({ symbol: { session: stored } }, named)
   })()
-  const resolveSettings = (): ChartSettings => layerChartSettings(chartSettingsDefaults(deps.theme.get()), hostPartial, viewerPartial)
+  /** The tree in effect. It resolves against the canvas it paints: where the canvas the ladder lands
+   *  on has the other mode's lightness, the factory values drawn over it (the scale text and lines,
+   *  the grid, the symbol written behind the bars) are that mode's, so the scales stay legible on a
+   *  white canvas in dark mode and a black one in light mode. A value the host or the viewer named
+   *  still wins. */
+  const resolveSettings = (): ChartSettings => {
+    const theme = deps.theme.get()
+    const laid = layerChartSettings(chartSettingsDefaults(theme), hostPartial, viewerPartial)
+    const ink = canvasInk(laid.canvas.background, deps.theme.mode())
+    return ink ? layerChartSettings(chartSettingsDefaultsOn(theme, ink), hostPartial, viewerPartial) : laid
+  }
   let eff: ChartSettings = resolveSettings()
   /** The side the main series' price scale stands on: the left when the scales are stacked on the
    *  left, the right otherwise. A comparison on a scale of its own takes the other side. */
@@ -585,6 +598,16 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     chrome.dataset.qcDrawingToolbar = 'true'
   }
   deps.container.append(gestures, chrome)
+  /** Stand the chrome on the chart's own background: its controls are drawn on that color, and over
+   *  a canvas of the other mode's lightness everything drawn over the plot (the legend, the scale's
+   *  boxes, the pane and navigation buttons, the corner mark) wears that mode's colors. */
+  const paintChromeCanvas = (): void => {
+    chrome.style.setProperty('--qcd-chart-background', eff.canvas.background)
+    const ink = canvasInk(eff.canvas.background, deps.theme.mode())
+    if (ink) chrome.setAttribute(CANVAS_INK_ATTRIBUTE, ink)
+    else chrome.removeAttribute(CANVAS_INK_ATTRIBUTE)
+  }
+  paintChromeCanvas()
 
   /** The renderer options the settings drive, for the look in effect. */
   const lookOptions = (): Record<string, unknown> =>
@@ -1783,8 +1806,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     marks?.repaint()
     watermark.refresh()
     nav?.sync()
-    // The chrome's controls stand on the chart's own background.
-    chrome.style.setProperty('--qcd-chart-background', eff.canvas.background)
+    paintChromeCanvas()
     scaleControls?.sync()
     scalePlus?.refresh()
     paneButtons?.sync()

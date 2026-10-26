@@ -2365,6 +2365,14 @@ watermark and the scale text and lines) follow the mode. A switch of mode hands 
 of them back to the new mode's look, and keeps every other leaf. A saved chart states the mode they
 were chosen in (`settingsMode`), so a chart opened in the other mode takes that mode's look for them.
 
+What is drawn over the canvas reads its ink from the canvas's lightness. Where the canvas a chart's
+settings land on has the other mode's lightness, such as a white canvas in dark mode or a black one in
+light mode, everything over the plot (the legend, the price and time scales' boxes and buttons, the
+pane and navigation buttons and the corner mark) wears that mode's built-in colors, and the factory
+scale text and lines, grid and watermark are that mode's, so they read dark on a light canvas and
+light on a dark one. A color the host or the viewer named stays theirs. A gradient canvas is weighed
+by its top color, the one the legend stands on.
+
 ## Chart settings
 
 `chart.settings()` answers the effective tree; `chart.applySettings(partial)` layers a partial over

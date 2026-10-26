@@ -11,7 +11,7 @@
 // the renderer a value it cannot draw.
 import { parseCssColor } from '../theme/color'
 import { CHART_FACTORY_COLORS, DARK_THEME, LIGHT_THEME } from '../theme/palettes'
-import type { SemanticTheme } from '../theme/schema'
+import type { SemanticTheme, ThemeMode } from '../theme/schema'
 import { CHART_DATE_FORMATS, type ChartSettings, type ChartSettingsSection, type PartialChartSettings } from './schema'
 
 /** A CSS color at a given opacity. Hex and rgb inputs are understood; anything else comes back as it
@@ -319,6 +319,27 @@ export function withoutModeLeaves(partial: PartialChartSettings): PartialChartSe
     }
   }
   return out as PartialChartSettings
+}
+
+/** The canvas's own colors, which the mode-following leaves drawn over it are read against. */
+const CANVAS_GROUND: ReadonlySet<string> = new Set(['canvas.background', 'canvas.backgroundBottom'])
+
+/** The factory values under `theme` for a canvas of `ink`'s lightness: every leaf that follows the
+ *  mode and is drawn over the canvas (the scale text and lines, the grid, the symbol written behind
+ *  the bars) takes the built-in value `ink` gives it, so it reads on that canvas, while the canvas
+ *  colors themselves and every other leaf stay the theme's. With no `ink` these are
+ *  `chartSettingsDefaults(theme)`. */
+export function chartSettingsDefaultsOn(theme: SemanticTheme, ink: ThemeMode | null): ChartSettings {
+  const floor = chartSettingsDefaults(theme)
+  if (!ink) return floor
+  const inked = chartSettingsDefaults(ink === 'light' ? LIGHT_THEME : DARK_THEME) as unknown as Record<string, Record<string, unknown>>
+  const out = floor as unknown as Record<string, Record<string, unknown>>
+  for (const path of MODE_LEAVES) {
+    if (CANVAS_GROUND.has(path)) continue
+    const [section, leaf] = path.split('.') as [string, string]
+    out[section]![leaf] = inked[section]![leaf]
+  }
+  return floor
 }
 
 /** The settings a chart content blob of the previous format carried as its `appearance` partial,
