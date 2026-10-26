@@ -52,6 +52,14 @@ describe('the chart settings measures', () => {
     expect(rule(drawing, '[data-qc-theme] .qc-drawing-footer-button + .qc-drawing-footer-button')['margin-inline-start']).toBe('12px')
   })
 
+  it('sizes every page row to what it holds, so a row whose controls wrap keeps its second line while the page scrolls', () => {
+    // An auto row with no room to spare stays at its items' 50px floor and lets a second line of
+    // controls spill onto the next row; a max-content row is as tall as its tallest line.
+    const page = rule(drawing, '[data-qc-theme] .qc-drawing-page')
+    expect(page['grid-auto-rows']).toBe('max-content')
+    expect(rule(fields, '[data-qc-theme] .qc-drawing-page .qc-drawing-row-controls')['min-height']).toBe('50px')
+  })
+
   it('rounds the close\'s hover fill 8px at the corners', () => {
     expect(rule(settings, '[data-qc-theme] .qc-chart-settings-dialog .qc-dialog-close')['border-radius']).toBe('8px')
   })

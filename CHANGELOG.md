@@ -4,6 +4,8 @@
 
 What is drawn over the canvas reads its ink from the canvas's lightness. Over a canvas of the other mode's lightness, such as a white canvas in dark mode, the legend, the scales' boxes and buttons, the pane and navigation buttons and the corner mark wear that mode's built-in colors, and the factory scale text and lines, grid and watermark are that mode's, so they read dark on a light canvas and light on a dark one. A color the host or the viewer named stays theirs.
 
+The rows of a settings page, in the chart settings, a host's pages and the drawing settings dialogs, are each as tall as what they hold while the page scrolls, so a row whose controls wrap onto a second line keeps that line clear of the next row in a short window.
+
 ## 5.3.0
 
 The built-in palettes carry a deeper dark end of the grey ramp: the dark chrome and canvas are `#000000`, dialogs and menus `#131313`, the hover fill `#1a1a1a`, the pressed fill `#2b2b2b`, menu rules `#464646` and the quiet edges `#555555`, and the light inks that stood at `#0f0f0f` are `#000000`. The light secondary ink, the ink of search rows, lists and toolbar labels, is `#000000`, and the light tooltip is `#1a1a1a`.
