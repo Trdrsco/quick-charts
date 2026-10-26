@@ -69,7 +69,7 @@ function factsOf(symbol: SymbolInfo | SymbolRow | string): Facts {
   if (typeof symbol === 'string') return { ticker: symbol, type: '', shortName: '', longName: '', currencyCode: undefined }
   // A search row states one name, the long one; a resolved symbol states a short name beside its
   // description, and a short name that merely repeats the description has not been given.
-  if ('symbol' in symbol) return { ticker: symbol.symbol, type: symbol.type, shortName: '', longName: symbol.name.trim(), currencyCode: symbol.currencyCode }
+  if ('symbol' in symbol) return { ticker: symbol.ticker?.trim() || symbol.symbol, type: symbol.type, shortName: '', longName: symbol.name.trim(), currencyCode: symbol.currencyCode }
   const name = symbol.name.trim()
   const description = symbol.description.trim()
   return { ticker: symbol.ticker, type: symbol.type, shortName: name !== description ? name : '', longName: description, currencyCode: symbol.currencyCode }

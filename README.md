@@ -337,6 +337,16 @@ symbolNames({ symbol: 'NASDAQ:AAPL', name: 'Apple Inc', exchange: 'NASDAQ', type
 symbolNames('HYPERLIQUID:ETH').mark // 'ETH', before the symbol resolves
 ```
 
+One exchange prefix comes off a symbol on its own. Where your feed writes a symbol that says more,
+give the row the `ticker` a viewer reads it by, as `SymbolInfo.ticker` states it for the charted
+symbol; the row keeps its `symbol` as the market's identity:
+
+```ts
+import { symbolNames } from '@trdrs/quickcharts'
+
+symbolNames({ symbol: 'EXCH:BOOK:NVDA', ticker: 'NVDA', name: 'NVIDIA Corp', exchange: 'EXCH', type: 'stock' }).mark // 'NVDA'
+```
+
 `@trdrs/quickcharts/symbols` carries the same rule on its own, `symbolNames` and `bareTicker`, with
 nothing that names a window, a document or a DOM type, so a view of your own with no DOM, a native
 search list among them, names a market exactly as the chart does. `bareTicker` is the ticker inside

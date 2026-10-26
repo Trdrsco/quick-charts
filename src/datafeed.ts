@@ -23,13 +23,17 @@ export interface FeedBar {
 
 /** A symbol-search result row. `exchange` names the venue the market lists on. `dataSource` names
  *  where the market's data comes from, and a row names one only when that source publishes the
- *  symbol's data. The row's source cell shows the venue, or the data source for a row with none. */
+ *  symbol's data. The row's source mark shows the venue, or the data source for a row with none. */
 export interface SymbolRow {
   symbol: string
   name: string
   exchange: string
   type: string
   dataSource?: string | null
+  /** The ticker a viewer reads the market by, where the feed writes one apart from its symbol:
+   *  `NVDA` for a symbol written `EXCH:BOOK:NVDA`. A row without it reads the symbol's own ticker,
+   *  its exchange prefix dropped. `SymbolInfo.ticker` states the same for the charted symbol. */
+  ticker?: string
   /** What the market is priced in, when the feed knows it here. A PAIR market writes itself as
    *  `BASE / QUOTE` wherever it is named, and a ticker alone cannot say what the quote is; a row
    *  without it keeps the name the feed sent instead. `resolve()` states the same fact for the

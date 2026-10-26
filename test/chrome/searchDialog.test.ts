@@ -107,6 +107,13 @@ describe('how a row is written', () => {
     expect(rowLabels({ symbol: 'ES-NQ', name: 'ES-NQ', exchange: '', type: 'spread' })).toEqual({ ticker: 'ES-NQ', description: 'ES-NQ', source: '' })
   })
 
+  it('writes the ticker a row states, where the feed writes one apart from its symbol', () => {
+    // One exchange prefix comes off a symbol on its own; a symbol that says more names its market
+    // through the row's ticker, and the symbol stays what a pick hands back.
+    expect(rowLabels({ symbol: 'EXCH:BOOK:NVDA', ticker: 'NVDA', name: 'NVIDIA Corp', exchange: 'EXCH', type: 'stock' })).toEqual({ ticker: 'NVDA', description: 'NVIDIA Corp', source: 'EXCH' })
+    expect(rowLabels({ symbol: 'EXCH:BOOK:NVDA', name: 'NVIDIA Corp', exchange: 'EXCH', type: 'stock' }).ticker).toBe('EXCH:BOOK:NVDA')
+  })
+
   it('names the venue as the source, and the publisher only where there is no venue', () => {
     expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: 'CME', type: 'future', dataSource: 'feed' }).source).toBe('CME')
     expect(rowLabels({ symbol: 'ES', name: 'E-mini', exchange: '', type: 'future', dataSource: 'feed' }).source).toBe('feed')
@@ -139,6 +146,20 @@ describe('search mode', () => {
     expect(document.activeElement).toBe(input)
     await settle()
     expect(dialog.element.querySelector('[role="listbox"]')).not.toBeNull()
+  })
+
+  it('opens on its field with no title band, and writes each row as its ticker over its description and kind', async () => {
+    const { dialog, input, rows } = open('search')
+    expect(dialog.element.querySelector('.qc-dialog-title')).toBeNull()
+    expect(dialog.element.firstElementChild?.classList.contains('qc-search-field')).toBe(true)
+    input.value = 'ES'
+    input.dispatchEvent(new Event('input'))
+    await settle()
+    const row = rows()[0]!
+    expect(row.querySelector('.qc-search-text > .qc-search-symbol')?.textContent).toBe('ES')
+    expect(row.querySelector('.qc-search-line > .qc-search-name')?.textContent).toBe('E-mini S&P 500')
+    expect(row.querySelector('.qc-search-line > .qc-search-kind')?.textContent).toBe('future')
+    expect(row.querySelector('.qc-search-source .qc-search-mark')?.getAttribute('title')).toBe('CME')
   })
 
   it('types, highlights with the arrows, and Enter sets the symbol through its command', async () => {
@@ -556,7 +577,10 @@ describe('compare and change-symbol modes', () => {
     expect(es.dataset.qcHost).toBe('true')
     expect(es.querySelector('img')).not.toBeNull()
     expect(es.textContent).toBe('')
-    expect(painted).toEqual(expect.arrayContaining(['dataSource:feed:18', 'venue:CME:18']))
+    expect(painted).toEqual(expect.arrayContaining(['dataSource:feed:24', 'venue:CME:24']))
+    // The mark names its source, for the pointer and for a reader alike.
+    expect(es.title).toBe('CME')
+    expect(es.getAttribute('aria-label')).toBe('CME')
     // Each rebuild releases every box the last one painted.
     expect(dropped).toContain('feed')
   })

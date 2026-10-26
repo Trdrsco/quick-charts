@@ -177,8 +177,8 @@ export function mountSymbolSearch(options: SymbolSearchOptions & { container: HT
       },
     },
     element,
-    // A card wears no title row: the page's own box is the heading. Its done is the page's close.
-    { title: null, done: () => options.onClose?.() },
+    // A card's done is the page's close.
+    { done: () => options.onClose?.() },
   )
 
   return {
