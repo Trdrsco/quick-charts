@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 5.2.0
+
 The chart's right-click menu ends on Settings…, which opens the chart settings dialog, wherever the chart draws its settings door in the top bar.
 
 The symbol search and compare dialogs open on their field with no title band, in a box rounded 20px. Every row is one 56px layout in each mode: a 36px mark, the ticker at 16px over its description at 12px with the market's kind as a small tag after it, and the source as a 24px mark at the row's end that names it in its tooltip. The pointer and the keyboard's row wear one rounded plate.
