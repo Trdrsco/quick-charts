@@ -53,6 +53,28 @@ export function themeBlock(mode: string, theme: Readonly<Record<string, string |
   return `${themeRootSelector(mode)} {\n${body}\n}`
 }
 
+/** The attribute a part drawn over the plot carries while the canvas under it has the lightness of
+ *  the mode the attribute names, where that is not the mode in effect. The part then wears that
+ *  mode's colors. */
+export const CANVAS_INK_ATTRIBUTE = 'data-qc-canvas'
+
+/** The selector for the parts of a widget that wear one mode's colors over the plot. */
+export function canvasInkSelector(mode: string): string {
+  return `${THEME_ROOT_SELECTOR} [${CANVAS_INK_ATTRIBUTE}="${mode}"]`
+}
+
+/** One mode's colors for the parts drawn over a canvas of that mode's lightness: the selector, then
+ *  one declaration per color role. Only the colors move, so the type, the sizes and the motion stay
+ *  as the widget resolved them. */
+export function canvasInkBlock(mode: string, theme: Readonly<Record<string, string | number>>, colorRoles: readonly string[]): string {
+  const colors = new Set(colorRoles.map(cssVarName))
+  const body = themeDeclarations(theme)
+    .filter((d) => colors.has(d.property))
+    .map((d) => `  ${d.property}: ${d.value};`)
+    .join('\n')
+  return `${canvasInkSelector(mode)} {\n${body}\n}`
+}
+
 /** The cascade layers the stylesheet declares. The built-in mode blocks sit in the tokens layer
  *  and every recipe in the chart layer, so a host decides where its own CSS stands by declaring
  *  the order once, before any product stylesheet loads. The names and their relative order are
@@ -91,14 +113,17 @@ export interface StylesheetInput {
   blocks: { mode: string; theme: Readonly<Record<string, string | number>> }[]
   /** The duration role ids the reduced-motion block resolves to zero. */
   durationRoles: readonly string[]
+  /** The color role ids each mode's canvas-ink block declares. Without them the stylesheet carries
+   *  no canvas-ink block. */
+  colorRoles?: readonly string[]
   /** The authored structural and component CSS, already scoped to the root selector. */
   structural: string
 }
 
-/** Compose the distributable stylesheet: a short banner, the layer order, the built-in mode blocks
- *  and the reduced-motion block in the tokens layer, then the authored component CSS in the chart
- *  layer. The output is deterministic for a given input, which is what lets the drift gate compare a
- *  rebuild against the committed vectors. */
+/** Compose the distributable stylesheet: a short banner, the layer order, the built-in mode blocks,
+ *  each mode's canvas-ink block and the reduced-motion block in the tokens layer, then the authored
+ *  component CSS in the chart layer. The output is deterministic for a given input, which is what
+ *  lets the drift gate compare a rebuild against the committed vectors. */
 export function composeStylesheet(input: StylesheetInput): string {
   const banner = [
     '/* Quick Charts stylesheet.',
@@ -109,7 +134,12 @@ export function composeStylesheet(input: StylesheetInput): string {
     ' * names are listed in the theme manifest under hooks; every other class is private.',
     ' */',
   ].join('\n')
-  const blocks = [...input.blocks.map((b) => themeBlock(b.mode, b.theme)), reducedMotionBlock(input.durationRoles)].join('\n\n')
+  const colorRoles = input.colorRoles
+  const blocks = [
+    ...input.blocks.map((b) => themeBlock(b.mode, b.theme)),
+    ...(colorRoles ? input.blocks.map((b) => canvasInkBlock(b.mode, b.theme, colorRoles)) : []),
+    reducedMotionBlock(input.durationRoles),
+  ].join('\n\n')
   return [
     banner,
     '',

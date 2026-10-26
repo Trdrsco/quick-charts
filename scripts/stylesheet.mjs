@@ -1,7 +1,7 @@
-// The stylesheet composition the generators share: the built-in mode blocks followed by the authored
-// structural rules and every component recipe under src/styles/components, in name order. One
-// function, so the packed stylesheet and the guest's copy can never come from two readings of the
-// theme source.
+// The stylesheet composition the generators share: the built-in mode blocks and each mode's
+// canvas-ink block, followed by the authored structural rules and every component recipe under
+// src/styles/components, in name order. One function, so the packed stylesheet and the guest's copy
+// can never come from two readings of the theme source.
 //
 // It imports the theme source directly. Node strips the type annotations, which is why `schema.ts`,
 // `palettes.ts` and `css-contract.ts` carry no runtime import of their own: Node resolves no
@@ -34,5 +34,6 @@ export function composeDistributableStylesheet() {
     .join('\n\n')
   const blocks = THEME_MODES.map((mode) => ({ mode, theme: BUILT_IN_THEMES[mode] }))
   const durationRoles = THEME_ROLES.filter((role) => role.kind === 'duration').map((role) => role.id)
-  return composeStylesheet({ blocks, durationRoles, structural })
+  const colorRoles = THEME_ROLES.filter((role) => role.kind === 'color').map((role) => role.id)
+  return composeStylesheet({ blocks, durationRoles, colorRoles, structural })
 }
