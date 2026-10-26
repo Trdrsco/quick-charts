@@ -412,10 +412,13 @@
 
 /* The page: a two-column grid inside 16px by 20px, the labels' column as wide as the widest label
  * and its 20px gap, the controls' column the rest. Everything on the page that is not a labelled
- * row stands across both columns. */
+ * row stands across both columns. Every row is as tall as what it holds, whether or not the page
+ * has room to spare: a row whose controls wrap onto a second line keeps that line, and the 50px
+ * floor the controls carry still holds, so the rows never overlap while the page scrolls. */
 [data-qc-theme] .qc-drawing-page {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
+  grid-auto-rows: max-content;
   padding: 16px 20px;
 }
 
