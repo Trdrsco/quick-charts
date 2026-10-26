@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-26",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.2.0",
+  "releaseCommit": "a35a56e2d808eac475451acbb32f0689d229210b",
+  "tarballSha256": "5a757d04e012d7ce1b82598c0dc23471283ec0069e4a7530355c5b7bee1dbd00",
+  "tarStreamSha256": "810bbb8348c4e2a68fbc47ae7c0f0900df308d05a8a5b91765d939827f11e6f5",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40345959766",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "ed261d72caeeba2598649228994c50318d4c74ee18dde9f467b8aafbc929692a",
+      "dossierHashesSha256": "058ccb992ad5e0db918c897fea954a770de07f19b792984499cdec8fba368879",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40346047857",
+      "artifact": "quickcharts-5.2.0-rehearsal",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "364e894b1a732c37dbce143a61e1d4cbce6010fc",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/40348640652",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "For Quick Charts 5.2.0 I waive the unperformed manual accessibility and device checks and authorize publication after all remaining automated validation passes.",
+    "recordedAt": "2026-10-26T15:04:20Z",
+    "question": "Do you waive the manual accessibility and device checks for 5.2.0? (Quick Charts 5.2.0: the Settings… row in the chart's right-click menu, PR 139, and the symbol search and compare redesign with SymbolRow.ticker, PR 140. RELEASING.md requires manual acceptance or a version-specific owner waiver.)"
+  }
+}
