@@ -164,7 +164,8 @@ export const THEME_ROLES = [
   // rows it runs beside.
   { id: 'chrome.scrollThumb', family: 'chrome', kind: 'color', description: 'The thumb of the thin bar beside a list the viewer scrolls, such as the search results or the indicator list.' },
   { id: 'chrome.radius', family: 'chrome', kind: 'length', description: 'Corner radius of a control.' },
-  { id: 'chrome.radiusLarge', family: 'chrome', kind: 'length', description: 'Corner radius of a panel, dialog, or menu.' },
+  { id: 'chrome.radiusLarge', family: 'chrome', kind: 'length', description: 'Corner radius of a panel or menu.' },
+  { id: 'chrome.radiusDialog', family: 'chrome', kind: 'length', description: 'Corner radius of a dialog.' },
 
   // ── overlay: menus, dialogs, popovers, and what sits behind them ────────────────────────────
   { id: 'overlay.surface', family: 'overlay', kind: 'color', description: 'The fill of a floating menu, dialog, or popover.' },

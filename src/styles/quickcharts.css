@@ -81,6 +81,11 @@
   box-shadow: var(--qc-overlay-shadow);
 }
 
+/* A dialog rounds wider than a menu or a panel. */
+[data-qc-theme] .qc-dialog {
+  border-radius: var(--qc-chrome-radiusDialog);
+}
+
 [data-qc-theme] .qc-scrim {
   background: var(--qc-overlay-scrim);
 }
