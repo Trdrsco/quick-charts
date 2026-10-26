@@ -4,6 +4,10 @@
 
 The chart's right-click menu ends on Settings…, which opens the chart settings dialog, wherever the chart draws its settings door in the top bar.
 
+The symbol search and compare dialogs open on their field with no title band, in a box rounded 20px. Every row is one 56px layout in each mode: a 36px mark, the ticker at 16px over its description at 12px with the market's kind as a small tag after it, and the source as a 24px mark at the row's end that names it in its tooltip. The pointer and the keyboard's row wear one rounded plate.
+
+`SymbolRow.ticker` is the ticker a viewer reads a row's market by, where the feed writes one apart from its symbol; `symbolNames` and the search rows read it, and a row without it reads the symbol's own ticker.
+
 ## 5.1.1
 
 Range presets reconcile overlapping history pages with streamed bars and preserve a newer navigation while a page is pending.

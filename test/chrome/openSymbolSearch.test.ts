@@ -144,11 +144,13 @@ describe('the same search in a box the page owns', () => {
     expect(container.querySelector('.qc-search-input')).not.toBeNull()
   })
 
-  it('lists the same markets as a table and hands the pick back', async () => {
+  it('lists the same markets in the same rows and hands the pick back', async () => {
     const { picked, closed } = mount({ query: 'NQ' })
     await settle()
-    expect(document.querySelector('.qc-search-card')!.classList.contains('qc-search-table')).toBe(true)
-    rows()[0]!.click()
+    const row = rows()[0]!
+    expect(row.querySelector('.qc-search-text > .qc-search-symbol')).not.toBeNull()
+    expect(row.querySelector('.qc-search-text > .qc-search-line > .qc-search-name')).not.toBeNull()
+    row.click()
     expect(picked).toEqual(['NQ'])
     expect(closed).toEqual([true])
   })

@@ -20,7 +20,7 @@ import { isSymbolPair, looksLikeSpread, matchSegments, SPREAD_OPERATORS, spreadE
 import type { CommandRegistry } from '../../widget/commands'
 import type { SearchDisplayOptions, SearchScope } from '../../widget/options'
 import type { SearchRequest } from './doors'
-import { dialogTitle, emptyState, openDialog, type DialogHandle } from './dialog'
+import { emptyState, openDialog, type DialogHandle } from './dialog'
 import { classAdmits, classBranches, classSelection } from './searchClasses'
 import { append, button, h, name, reglyph, replace, setDisabled } from './dom'
 import { COMPARE_EMPTY_MARK, ICONS, OPERATOR_GLYPHS } from '../controls/icons'
@@ -155,9 +155,11 @@ export function dialogRows(input: {
 
 /** The box a row's mark stands in, paired with the width the stylesheet gives it. The package owns
  *  the geometry and tells the host, rather than the host guessing and being boxed inside it. */
-const ROW_MARK_SIZE = 24
-/** The source cell's mark: an 18px disc in a 20px cell. */
-const SOURCE_MARK_SIZE = 18
+const ROW_MARK_SIZE = 36
+/** The row's source mark: a 24px disc at the row's end. */
+const SOURCE_MARK_SIZE = 24
+/** The scope chip's mark, inside the 28px chip. */
+const SCOPE_MARK_SIZE = 18
 
 /** How many picks have opened without a chart in this document, so their row ids never collide. */
 let picks = 0
@@ -168,10 +170,9 @@ const PREFETCH_MARGIN = 8
 /** What the list has to say: its rows, that a settled question found nothing, or that the feed failed. */
 type StatusKind = 'rows' | 'none' | 'failed'
 
-/** What a frame hands the surface: the title it wears, if any, and what closing it means. A dialog
- *  writes its own title and closes itself; the phone's card is the picker itself and wears none. */
+/** What a frame hands the surface: what closing it means. A dialog closes itself; a card a page
+ *  holds is the picker itself and answers its host. */
 export interface SearchFrame {
-  title: string | null
   done(): void
 }
 
@@ -205,8 +206,6 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   /** The session in force: the only one asked and drawn. */
   const session = (): SearchSession => (scoped && scopeSession ? scopeSession : feedSession)
   const search = (): SearchController => session().controller
-  // Search and pick list their markets as a table; the compare family lists them as cards.
-  if (mode === 'search' || mode === 'pick') box.classList.add('qc-search-table')
   let query = request.changeFrom ?? ''
   const display = deps.display ?? {}
   // Spreads off, a query is only a catalog question: no operator, no expression row, and the feed
@@ -339,7 +338,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
         // A toggle chip wearing the host's mark and name. Its accessible name says what a press
         // does; whether the limit stands is its pressed state.
         const mark = h('span', { class: 'qc-search-scope-mark', 'aria-hidden': 'true' })
-        const drop = searchScope.mark?.({ host: mark, size: SOURCE_MARK_SIZE })
+        const drop = searchScope.mark?.({ host: mark, size: SCOPE_MARK_SIZE })
         if (typeof drop === 'function') {
           mark.dataset.qcHost = 'true'
           scopeMarkDisposer = drop
@@ -355,7 +354,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     const status = h('div', { class: 'qc-search-status', role: 'status', 'aria-live': 'polite' })
     const sentinel = h('div', { class: 'qc-search-sentinel qc-muted' }, t('search.loadingMore'))
     sentinel.hidden = true
-    append(box, frame.title === null ? null : dialogTitle(frame.title, t('search.close'), frame.done, deps.icons), field, strip, ...narrower.map((n) => n.row), list, status)
+    append(box, field, strip, ...narrower.map((n) => n.row), list, status)
 
     const serverQuery = (): string => (spreads && looksLikeSpread(query) && !isSymbolPair(query) ? spreadSearchQuery(query) : query)
     const setQuery = (next: string): void => {
@@ -436,24 +435,29 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           markDisposers.push(dropMark)
         } else mark.set(label.ticker)
         option.appendChild(mark.element)
-        // The ticker over its description in compare, side by side in search: the compare row
-        // stands taller and gives the mark a line of its own, where a search row is a list to
-        // scan across.
-        option.appendChild(h('span', { class: 'qc-search-text' }, marked(label.ticker), h('span', { class: 'qc-search-name' }, label.description)))
+        // The ticker over a line of its description, the market's kind a small tag after the words.
+        option.appendChild(
+          h(
+            'span',
+            { class: 'qc-search-text' },
+            marked(label.ticker),
+            h('span', { class: 'qc-search-line' }, h('span', { class: 'qc-search-name' }, label.description), r.type ? h('span', { class: 'qc-search-kind' }, r.type) : null),
+          ),
+        )
         if (compare && entry.added) {
           const mark = h('span', { class: 'qc-search-added', title: t('search.addedMark', { symbol: label.ticker }) })
           mark.appendChild(deps.icons.glyph(ICONS.check, { size: 18 }))
           option.appendChild(mark)
         } else {
-          // The source cell: where this row's data comes from, over what kind of market it is.
-          // In compare it steps aside under the pointer for the three placement verbs, because a
-          // row a viewer is reaching for should offer what to DO rather than restate what it is.
+          // The source at the row's end: where this row's data comes from, as a mark that names it
+          // in its tooltip. In compare it steps aside under the pointer for the three placement
+          // verbs, because a row a viewer is reaching for should offer what to DO rather than
+          // restate what it is.
           const source = h('span', { class: 'qc-search-source' })
-          source.appendChild(h('span', { class: 'qc-search-source-text' }, label.source ? h('span', { class: 'qc-search-source-name' }, label.source) : null, h('span', { class: 'qc-search-kind' }, r.type)))
           if (label.source) {
             // The source's mark: the venue's, or the data source's where the row names no venue,
             // through the host's hook. A host mark owns the box; without one the initial stands.
-            const sourceMark = h('span', { class: 'qc-search-mark', 'aria-hidden': 'true' })
+            const sourceMark = h('span', { class: 'qc-search-mark', role: 'img', 'aria-label': label.source, title: label.source })
             const dropSource = r.exchange
               ? deps.painters.venue?.({ exchange: r.exchange, host: sourceMark, size: SOURCE_MARK_SIZE })
               : r.dataSource
@@ -596,7 +600,7 @@ export function openSearchDialog(deps: SearchDialogDeps): DialogHandle {
       deps.onClose?.(dialog)
     },
     build(box, handle) {
-      surface = buildSearchSurface(deps, box, { title, done: () => handle.close() })
+      surface = buildSearchSurface(deps, box, { done: () => handle.close() })
     },
     initialFocus: (box) => box.querySelector<HTMLElement>('.qc-search-input'),
   })
