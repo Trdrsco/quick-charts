@@ -292,8 +292,8 @@ export function copyPartialChartSettings(partial: PartialChartSettings): Partial
 }
 
 /** The `section.leaf` paths whose factory value follows the theme mode: the leaves the built-in light
- *  and dark palettes resolve differently, such as the canvas background, the grid, the watermark and
- *  the scale text. */
+ *  and dark palettes resolve differently, such as the canvas background, the grid and the scale
+ *  text. */
 const MODE_LEAVES: ReadonlySet<string> = (() => {
   const light = chartSettingsDefaults(LIGHT_THEME) as unknown as Record<string, Record<string, unknown>>
   const dark = SHAPE as unknown as Record<string, Record<string, unknown>>

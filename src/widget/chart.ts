@@ -546,7 +546,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // writer of the same fact and would stamp a loaded layout's look onto the device.
   let viewerPartial: PartialChartSettings = {}
   /** The theme mode the viewer's leaves stand in. A switch of mode hands the leaves that follow the
-   *  mode (the canvas background, the grid, the watermark, the scale text) back to the new mode's
+   *  mode (the canvas background, the grid, the scale text and lines) back to the new mode's
    *  factory look, as switching the theme restyles a canvas colored for the other one. */
   let leavesMode = deps.theme.mode()
   const canvas = (): CanvasTheme => canvasTheme(deps.theme.get())
