@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 5.3.0
+
 The built-in palettes carry a deeper dark end of the grey ramp: the dark chrome and canvas are `#000000`, dialogs and menus `#131313`, the hover fill `#1a1a1a`, the pressed fill `#2b2b2b`, menu rules `#464646` and the quiet edges `#555555`, and the light inks that stood at `#0f0f0f` are `#000000`. The light secondary ink, the ink of search rows, lists and toolbar labels, is `#000000`, and the light tooltip is `#1a1a1a`.
 
 Every dialog rounds its corners on the new `chrome.radiusDialog` role, `12px` in both built-in palettes, the symbol search and the chart settings among them. Menus and panels keep `chrome.radiusLarge`.
