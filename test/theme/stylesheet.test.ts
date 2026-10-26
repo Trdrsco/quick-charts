@@ -213,6 +213,17 @@ describe('the scoped stylesheet', () => {
     expect(structural).not.toMatch(/transition-(duration|timing-function)/)
   })
 
+  it('rounds every dialog on the dialog radius and every menu and panel on the large radius', () => {
+    expect(structural).toMatch(/\n\[data-qc-theme\] \.qc-dialog \{[^}]*border-radius: var\(--qc-chrome-radiusDialog\)/s)
+    expect(structural).toMatch(/\n\[data-qc-theme\] \.qc-overlay \{[^}]*border-radius: var\(--qc-chrome-radiusLarge\)/s)
+    // No dialog restates a corner of its own.
+    for (const [selector, body] of structural.matchAll(/\n([^{}\n]*\.qc-dialog\.[^{}\n]*) \{([^}]*)\}/g)) {
+      expect(body, selector).not.toMatch(/(^|\n)\s*border-radius:/)
+    }
+    expect(BUILT_IN_THEMES.light['chrome.radiusDialog']).toBe('12px')
+    expect(BUILT_IN_THEMES.dark['chrome.radiusDialog']).toBe('12px')
+  })
+
   it('rings a field on its own box, never beside it, and keeps the refused state a rule of its own', () => {
     const rules = [...structural.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, head, body]) => ({ selectors: head!.split(',').map((s) => s.trim()), body: body! }))
     // The outline every focused control wears would draw a second ring outside a field's own, so

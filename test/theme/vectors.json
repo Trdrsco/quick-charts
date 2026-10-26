@@ -39,6 +39,10 @@
         "value": "6px"
       },
       {
+        "property": "--qc-chrome-radiusDialog",
+        "value": "12px"
+      },
+      {
         "property": "--qc-chrome-radiusLarge",
         "value": "6px"
       },
@@ -467,6 +471,10 @@
       {
         "property": "--qc-chrome-radius",
         "value": "6px"
+      },
+      {
+        "property": "--qc-chrome-radiusDialog",
+        "value": "12px"
       },
       {
         "property": "--qc-chrome-radiusLarge",

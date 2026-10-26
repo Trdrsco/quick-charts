@@ -32,12 +32,12 @@ function rule(css: string, selector: string): Record<string, string> {
 }
 
 describe('the chart settings measures', () => {
-  it('stands the card at most 750 wide and as tall as the viewport less 40, on a 6px corner', () => {
+  it('stands the card at most 750 wide and as tall as the viewport less 40, on the dialog corner', () => {
     const card = rule(settings, '[data-qc-theme] .qc-dialog.qc-chart-settings-dialog')
     expect(card['max-width']).toBe('min(750px, calc(100% - 16px))')
     expect(card['min-width']).toBe('min(610px, calc(100% - 16px))')
     expect(card['max-height']).toBe('calc(100% - 40px)')
-    expect(card['border-radius']).toBe('6px')
+    expect(card['border-radius']).toBeUndefined()
     expect(card['background']).toBe('var(--qc-overlay-surface)')
   })
 

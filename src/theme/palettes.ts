@@ -5,10 +5,11 @@
 // a light ink of `rgb(0, 0, 0)` and a dark ink of `rgb(219, 219, 219)`, a dialog and menu ground
 // of white and of `rgb(19, 19, 19)`, a header rule of `#ebebeb` and `#464646`, a hover fill of
 // `#f2f2f2` and `#1a1a1a`, a pressed fill of `#ebebeb` and `#2b2b2b`, the arrow that opens a menu in
-// `#707070` and `#8c8c8c`, a link of `#2962ff` and `#5b9cf6`, a 6px panel radius, floating-surface
-// shadows of `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and `rgba(0, 0, 0, 0.4)` in dark, and a modal
-// veil of `rgba(156, 156, 156, 0.5)` in light and `rgba(0, 0, 0, 0.5)` in dark. The drawing stroke
-// and selection roles are `#2962ff` in both modes. This file is where they live.
+// `#707070` and `#8c8c8c`, a link of `#2962ff` and `#5b9cf6`, a 6px panel and menu radius and a
+// 12px dialog radius, floating-surface shadows of `rgba(0, 0, 0, 0.2) 0 2px 4px` in light and
+// `rgba(0, 0, 0, 0.4)` in dark, and a modal veil of `rgba(156, 156, 156, 0.5)` in light and
+// `rgba(0, 0, 0, 0.5)` in dark. The drawing stroke and selection roles are `#2962ff` in both modes.
+// This file is where they live.
 //
 // Readability is a gate, not a preference. Where a value cannot reach the WCAG 2.2 AA ratio the
 // role's `contrast` rules require, on every ground the recipes draw it over, what stands here is
@@ -99,6 +100,7 @@ export const LIGHT_THEME: SemanticTheme = {
   'chrome.scrollThumb': '#9c9c9c',
   'chrome.radius': '6px',
   'chrome.radiusLarge': '6px',
+  'chrome.radiusDialog': '12px',
 
   'overlay.surface': '#ffffff',
   'overlay.separator': '#ebebeb',
@@ -221,6 +223,7 @@ export const DARK_THEME: SemanticTheme = {
   'chrome.scrollThumb': '#2b2b2b',
   'chrome.radius': '6px',
   'chrome.radiusLarge': '6px',
+  'chrome.radiusDialog': '12px',
 
   'overlay.surface': '#131313',
   'overlay.separator': '#464646',

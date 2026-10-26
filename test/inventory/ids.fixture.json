@@ -312,6 +312,7 @@
       "chrome.fieldBorder",
       "chrome.grip",
       "chrome.radius",
+      "chrome.radiusDialog",
       "chrome.radiusLarge",
       "chrome.scrollThumb",
       "chrome.surface",

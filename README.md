@@ -2134,6 +2134,7 @@ among the others `THEME_ROLES` lists:
 | Role | Light | Dark | What it paints |
 |---|---|---|---|
 | `overlay.surface` | `#ffffff` | `#131313` | The ground of a dialog, menu or popover. |
+| `chrome.radiusDialog` | `12px` | `12px` | The corners of a dialog. A menu or panel rounds on `chrome.radiusLarge`, `6px`. |
 | `overlay.separator` | `#ebebeb` | `#464646` | The rule under a dialog header and over its footer, and between menu groups. |
 | `overlay.scrim` | `rgba(156, 156, 156, 0.5)` | `rgba(0, 0, 0, 0.5)` | The veil behind a modal dialog. |
 | `text.primary` | `#000000` | `#dbdbdb` | The ink of rows, labels and values. |

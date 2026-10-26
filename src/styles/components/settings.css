@@ -11,7 +11,6 @@
   color: var(--qc-text-primary);
   background: var(--qc-overlay-surface);
   border: 0;
-  border-radius: 6px;
   box-shadow: var(--qc-overlay-shadow);
 }
 

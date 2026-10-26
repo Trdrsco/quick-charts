@@ -1,8 +1,7 @@
 /* The symbol search dialog and its compare family: the field with its operators, the class strip,
- * and the result list, in a box rounded 20px. */
+ * and the result list. */
 [data-qc-theme] .qc-dialog.qc-search-dialog {
   height: min(85vh, 680px);
-  border-radius: 20px;
 }
 
 [data-qc-theme] .qc-dialog.qc-search-dialog--compare {
