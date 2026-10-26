@@ -10,14 +10,14 @@ import { attachMenuPlane, MENU_COMMAND } from '../../src/widget/menu'
 import { fakeChart } from '../drawings/fakeChart'
 import { ownIcons } from '../ownIcons'
 
-function rig(canPaste: boolean, table: { cell: boolean } | null = null) {
+function rig(canPaste: boolean, table: { cell: boolean } | null = null, settingsDoor?: boolean) {
   const fake = fakeChart()
   const gestures = document.createElement('div')
   const chrome = document.createElement('div')
   document.body.append(gestures, chrome)
   const ran: string[] = []
   const registry = createCommandRegistry()
-  for (const id of ['chart.view.reset', 'chart.price.copy', 'chart.drawings.paste', 'chart.indicators.removeAll', 'chart.drawings.removeAll', 'chart.drawings.tableAddColumn', 'chart.drawings.tableAddRow', 'chart.drawings.tableRemoveRow', 'chart.drawings.tableRemoveColumn']) {
+  for (const id of ['chart.view.reset', 'chart.price.copy', 'chart.drawings.paste', 'chart.indicators.removeAll', 'chart.drawings.removeAll', 'chart.drawings.tableAddColumn', 'chart.drawings.tableAddRow', 'chart.drawings.tableRemoveRow', 'chart.drawings.tableRemoveColumn', 'chart.settings.open']) {
     registry.registry.register({ id, scope: 'chart', label: 'command.drawingPaste', available: () => id !== 'chart.drawings.paste' || canPaste, execute: () => void ran.push(id) })
   }
   const plane = attachMenuPlane({
@@ -38,6 +38,7 @@ function rig(canPaste: boolean, table: { cell: boolean } | null = null) {
     extensions: () => null,
     setLevel: () => undefined,
     table: () => table,
+    ...(settingsDoor === undefined ? {} : { settingsDoor }),
   })
   const rows = () => [...chrome.querySelectorAll<HTMLButtonElement>('.qc-menu-row')]
   const row = (label: string) => rows().find((r) => r.querySelector('.qc-menu-label')?.textContent === label) ?? null
@@ -60,9 +61,28 @@ describe('the context menu over the registry', () => {
     expect(plain.row('Add row below')).toBeNull()
   })
 
-  it('names a command for every row it renders, including paste', () => {
+  it('names a command for every row it renders, including paste and settings', () => {
     expect(MENU_COMMAND.paste).toBe('chart.drawings.paste')
-    expect(MENU_COMMAND.settings).toBeUndefined()
+    expect(MENU_COMMAND.settings).toBe('chart.settings.open')
+  })
+
+  it('ends on Settings… with the menu’s own glyph, and picking it opens the settings dialog', () => {
+    const r = rig(true)
+    r.plane.raiseAt(20, 50)
+    const labels = r.rows().map((row) => row.querySelector('.qc-menu-label')?.textContent)
+    expect(labels[labels.length - 1]).toBe('Settings…')
+    expect(r.row('Settings…')!.querySelector('.qc-menu-icon svg')).toBeTruthy()
+    r.row('Settings…')!.click()
+    expect(r.ran).toEqual(['chart.settings.open'])
+    r.dispose()
+  })
+
+  it('offers no Settings… where the chart draws no settings door', () => {
+    const r = rig(true, null, false)
+    r.plane.raiseAt(20, 50)
+    expect(r.row('Settings…')).toBeNull()
+    expect(r.row('Remove 1 drawing')).toBeTruthy()
+    r.dispose()
   })
 
   it('offers Paste while the paste command would run, and picking it runs that command', () => {

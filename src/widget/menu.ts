@@ -22,9 +22,7 @@ import { isApplePlatform } from '../platform'
 import { normalizeShortcut, printedShortcut } from './shortcuts'
 
 /** The command each built-in menu row runs. Named here so the menu and the registry cannot drift
- *  into two vocabularies for the same verb. The settings row is the one the chart's own menu never
- *  renders (the settings dialog belongs to the selected drawing's own surfaces), so it maps to
- *  nothing and is refused as unknown rather than silently routed. */
+ *  into two vocabularies for the same verb. */
 export const MENU_COMMAND: Partial<Record<ChartMenuAction, string>> = {
   'table-add-column': 'chart.drawings.tableAddColumn',
   'table-add-row': 'chart.drawings.tableAddRow',
@@ -35,6 +33,7 @@ export const MENU_COMMAND: Partial<Record<ChartMenuAction, string>> = {
   paste: 'chart.drawings.paste',
   'remove-indicators': 'chart.indicators.removeAll',
   'remove-drawings': 'chart.drawings.removeAll',
+  settings: 'chart.settings.open',
 }
 
 /** The command the price menu's horizontal line row runs, with the row's price. The row prints the
@@ -97,6 +96,9 @@ export interface MenuDeps {
   /** The table the right-click that raised the menu landed on, and whether a cell of it is marked;
    *  null where it landed on none. */
   table?(): { cell: boolean } | null
+  /** Whether the chart draws its settings door in the top bar. The menu's Settings row stands where
+   *  that door does, so the two ways into the settings dialog are offered together. True without it. */
+  settingsDoor?: boolean
   /** Whether a built-in row's command is drawn: false for a command the policy refuses when the
    *  host hides what it refuses. Every row is drawn without it. */
   shown?(command: string): boolean
@@ -158,12 +160,11 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
       {
         priceText,
         symbol: deps.symbol(),
-        // The context menu's paste row is live exactly when the paste command would run (a copied
-        // drawing on the clipboard, the verb permitted). It offers no settings row: the settings
-        // dialog belongs to the selected drawing's own surfaces, which the drawing plane mounts
-        // and the chart.drawings.* commands drive.
+        // The paste row is live exactly when the paste command would run (a copied drawing on the
+        // clipboard, the verb permitted), and the settings row wherever the chart offers its
+        // settings door and the command would open the dialog.
         canPaste: deps.commands.available('chart.drawings.paste'),
-        canSettings: false,
+        canSettings: (deps.settingsDoor ?? true) && deps.commands.available(MENU_COMMAND.settings!),
         indicatorCount: deps.indicatorCount(),
         drawingCount: deps.drawingCount(),
         ...(table ? { table } : {}),
