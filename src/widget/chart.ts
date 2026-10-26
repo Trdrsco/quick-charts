@@ -32,9 +32,11 @@ import type { ChartSaveLoadAdapter } from '../resources'
 import {
   chartSettingsDefaults,
   copyPartialChartSettings,
+  hasModeLeaves,
   layerChartSettings,
   mergePartialChartSettings,
   readPartialChartSettings,
+  withoutModeLeaves,
 } from '../settings/defaults'
 import { formatAtPrecision } from '../settings/precision'
 import type { ChartSettings, PartialChartSettings } from '../settings/schema'
@@ -47,6 +49,7 @@ import type { ChartExtension, ChartExtensionHost } from '../extension'
 import type { CompareEntry, CompareSymbol } from '../compare'
 import type { ThemeController } from '../theme/controller'
 import { canvasTheme, type CanvasTheme } from '../theme/renderer'
+import type { ThemeMode } from '../theme/schema'
 import type { CommandExecutor, CommandRegistry } from './commands'
 import { createEmitter, type ChartEvents, type SaveConflictInfo } from './events'
 import type { AccessPolicy, Capabilities, ChartPreferences, IndicatorInstance } from './options'
@@ -542,6 +545,10 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // the single authority on an authored look, so a second device-wide copy here would be a second
   // writer of the same fact and would stamp a loaded layout's look onto the device.
   let viewerPartial: PartialChartSettings = {}
+  /** The theme mode the viewer's leaves stand in. A switch of mode hands the leaves that follow the
+   *  mode (the canvas background, the grid, the scale text and lines) back to the new mode's
+   *  factory look, as switching the theme restyles a canvas colored for the other one. */
+  let leavesMode = deps.theme.mode()
   const canvas = (): CanvasTheme => canvasTheme(deps.theme.get())
   /** The host's rung. A trading-hours choice stored on this device by an earlier release, or the
    *  host's first-run preference, seeds it once for a host that names none, so a chart keeps the
@@ -2410,6 +2417,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       // factory colors and the host's brand as though a viewer had chosen every one of them, and a
       // reopen under another theme or another brand would then be stuck with the old ones.
       settings: copyPartialChartSettings(viewerPartial),
+      // The mode a leaf that follows the mode was chosen in, so a reopen in the other mode lets the
+      // mode in effect paint it.
+      ...(hasModeLeaves(viewerPartial) ? { settingsMode: leavesMode } : {}),
       compares: compare?.serialize() ?? [],
       // The order the panes stand in, top to bottom, those waiting to be drawn included.
       panes: paneOps.order(),
@@ -2435,8 +2445,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     writeHidden()
     if (dropped > 0) deps.doors.notify('info', i18n.t('toast.indicatorsNotCarried', { count: dropped }))
     // The saved settings apply as the viewer's leaves: a viewer's saved look beats the host's
-    // constructor values, exactly the precedence the option contract states.
-    if (parsed.settings) handle.applySettings(parsed.settings)
+    // constructor values, exactly the precedence the option contract states. Leaves that follow the
+    // mode, chosen in the other mode, stay behind.
+    if (parsed.settings) handle.applySettings(inMode(parsed.settings, parsed.settingsMode))
     // Comparisons restore AFTER the scale: the blob's own scale is the truth of how it was saved,
     // so the policy only re-arms the flip-back for comparisons the restore brings in.
     compare?.restore(parsed.compares)
@@ -2452,6 +2463,12 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     return dropped === 0 && extensionsComplete
   }
 
+  /** Saved leaves as they stand in the mode in effect: all of them where they were chosen in this
+   *  mode or the content states no mode, and without the leaves that follow the mode otherwise. */
+  function inMode(settings: PartialChartSettings, mode: ThemeMode | undefined): PartialChartSettings {
+    return mode && mode !== leavesMode ? withoutModeLeaves(settings) : settings
+  }
+
   /** Put one reading of this chart's content back, for the history.
    *
    *  Two things separate it from loading a saved chart. The viewer's settings are REPLACED rather
@@ -2460,7 +2477,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  extension keeps whatever it holds rather than being handed an empty namespace. */
   function applyHistoryContent(next: ChartContent): void {
     if (disposed) return
-    viewerPartial = copyPartialChartSettings(next.settings)
+    viewerPartial = copyPartialChartSettings(inMode(next.settings, next.settingsMode))
     // Ahead of the rest, so a style series built during the apply is painted with the look that is
     // going back rather than with the one being left behind.
     applyLook()
@@ -2864,8 +2881,17 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     setLegendRows: (rows) => legend.setHostRows(rows),
     screenshot: () => extensions.host.capture(() => chart.takeScreenshot(), () => ({ width: chart.chartElement().clientWidth, height: chart.chartElement().clientHeight })),
     repaintTheme() {
+      const mode = deps.theme.mode()
+      const switched = mode !== leavesMode && hasModeLeaves(viewerPartial)
+      leavesMode = mode
+      if (switched) viewerPartial = withoutModeLeaves(viewerPartial)
       applyLook()
       legend.setDot(session.state())
+      // Leaves handed back to the mode change what the chart saves, as any settings edit does.
+      if (switched) {
+        deps.contentChanged?.()
+        history.changed()
+      }
     },
     relabel() {
       applyTimezone() // the tick and crosshair formatters carry the language, so they rebuild

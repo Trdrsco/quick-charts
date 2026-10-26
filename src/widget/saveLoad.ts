@@ -14,6 +14,7 @@ import { paintableColor } from '../settings/color'
 import { readPartialChartSettings, settingsFromAppearance } from '../settings/defaults'
 import type { PartialChartSettings } from '../settings/schema'
 import type { ScaleMode } from '../scaleMode'
+import type { ThemeMode } from '../theme/schema'
 import type { IndicatorDefinition, IndicatorInstance } from './options'
 import { comparePaneKey, indicatorPaneKey, MAIN_PANE_KEY } from './paneOps'
 import type { ChartStyleId } from './styles'
@@ -101,6 +102,11 @@ export interface ChartContent {
    *  the old one written down as though a viewer had chosen it. An empty record is the honest
    *  statement that nothing was authored, not a missing field. */
   settings: PartialChartSettings
+  /** The theme mode the viewer chose its mode-following leaves in (the colors whose factory value
+   *  differs between light and dark, such as the canvas background), stated only while `settings`
+   *  names one. Content opened in the other mode lands without those leaves, so it takes that
+   *  mode's look, as a switch of mode on the open chart does. */
+  settingsMode?: ThemeMode
   compares: unknown
   /** The panes top to bottom, each named by what stands in it: `main` for the main series,
    *  `indicator:<id>` for a pane-placed indicator and `compare:<symbol>` for a comparison on a pane
@@ -127,6 +133,7 @@ export function serializeChartContent(content: ChartContent): string {
     axis: content.priceAxis,
     indicators: content.indicators.map(savedIndicatorFields),
     settings: content.settings,
+    ...(content.settingsMode ? { settingsMode: content.settingsMode } : {}),
     compares: content.compares,
     panes: content.panes,
     ...(content.drawings ? { drawings: content.drawings } : {}),
@@ -150,6 +157,9 @@ export interface ParsedChartContent {
   /** The `section.leaf` paths the blob stated with a value their leaf cannot hold. A chart that
    *  dropped one is not the chart that was saved. */
   settingsRejected?: readonly string[]
+  /** The theme mode the blob's mode-following leaves were chosen in. Absent when the blob states
+   *  none, and then its leaves stand in either mode. */
+  settingsMode?: ThemeMode
   compares?: unknown
   /** The panes top to bottom by what stands in each. A blob that states none keeps the order it
    *  stores them in: the main pane, then the indicators' panes in the order of its indicators, then
@@ -191,6 +201,7 @@ export function parseChartContent(content: string): ParsedChartContent {
     indicators,
     settings: read?.settings,
     settingsRejected: read?.rejected,
+    settingsMode: raw.settingsMode === 'light' || raw.settingsMode === 'dark' ? raw.settingsMode : undefined,
     drawings: Array.isArray(raw.drawings) ? (raw.drawings as SerializedDrawing[]) : undefined,
     compares: raw.compares,
     // An earlier blob carries no order of its own, and its panes stand in the order it stores what

@@ -148,6 +148,61 @@ describe('the authored settings', () => {
     expect(chart.settings().canvas.background).toBe(LIGHT_THEME['canvas.background'])
     expect(chart.settings().canvas.scaleTextColor).toBe('#000000')
   })
+
+  it('hands the colors that follow the mode back to the new mode on a switch, and keeps every other leaf', () => {
+    const widget = mountWidget({ theme: 'dark' })
+    const chart = widget.activeChart()
+    chart.applySettings({ canvas: { background: '#0b0b0b', verticalGridColor: '#222222', marginTop: 14 }, candles: { upColor: '#00ff88' } })
+    const saved = (): Record<string, unknown> => JSON.parse(chart.saveLoad.serialize().content)
+    expect(saved().settingsMode).toBe('dark')
+    widget.theme.setMode('light')
+    expect(chart.settings().canvas.background).toBe(LIGHT_THEME['canvas.background'])
+    expect(chart.settings().canvas.verticalGridColor).toBe(LIGHT_THEME['scale.grid'])
+    expect(chart.settings().canvas.marginTop).toBe(14)
+    expect(chart.settings().candles.upColor).toBe('#00ff88')
+    expect(authored(widget)).toEqual({ canvas: { marginTop: 14 }, candles: { upColor: '#00ff88' } })
+    expect(saved().settingsMode).toBeUndefined()
+    // A color chosen in the new mode stands in it.
+    chart.applySettings({ canvas: { background: '#fafafa' } })
+    expect(saved().settingsMode).toBe('light')
+    expect(chart.settings().canvas.background).toBe('#fafafa')
+  })
+
+  it('marks the chart dirty when a switch hands leaves back, and not when it hands none', async () => {
+    vi.useFakeTimers()
+    const widget = mountWidget({ theme: 'dark' })
+    await vi.advanceTimersByTimeAsync(1000)
+    const needed = vi.fn()
+    widget.on('saveNeeded', needed)
+    widget.theme.setMode('light')
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(needed).not.toHaveBeenCalled()
+    widget.activeChart().applySettings({ canvas: { background: '#fafafa' } })
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(needed).toHaveBeenCalledTimes(1)
+    widget.theme.setMode('dark')
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(needed).toHaveBeenCalledTimes(2)
+    expect(widget.activeChart().settings().canvas.background).toBe(DARK_THEME['canvas.background'])
+  })
+
+  it('opens a chart saved in the other mode without the colors that follow the mode, and keeps them in the same mode', () => {
+    const source = mountWidget({ theme: 'dark' })
+    source.activeChart().applySettings({ canvas: { background: '#0b0b0b' }, candles: { upColor: '#00ff88' } })
+    const content = source.activeChart().saveLoad.serialize().content
+    const light = mountWidget({ theme: 'light' })
+    light.activeChart().saveLoad.restore(content)
+    expect(light.activeChart().settings().canvas.background).toBe(LIGHT_THEME['canvas.background'])
+    expect(light.activeChart().settings().candles.upColor).toBe('#00ff88')
+    const dark = mountWidget({ theme: 'dark' })
+    dark.activeChart().saveLoad.restore(content)
+    expect(dark.activeChart().settings().canvas.background).toBe('#0b0b0b')
+    // Content that states no mode keeps its leaves in either mode.
+    const unstated = JSON.stringify({ ...JSON.parse(content), settingsMode: undefined })
+    const either = mountWidget({ theme: 'light' })
+    either.activeChart().saveLoad.restore(unstated)
+    expect(either.activeChart().settings().canvas.background).toBe('#0b0b0b')
+  })
 })
 
 describe('apply defaults', () => {
