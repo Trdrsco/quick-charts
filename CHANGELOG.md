@@ -2,11 +2,15 @@
 
 ## Unreleased
 
+## 5.4.0
+
 What is drawn over the canvas reads its ink from the canvas's lightness. Over a canvas of the other mode's lightness, such as a white canvas in dark mode, the legend, the scales' boxes and buttons, the pane and navigation buttons and the corner mark wear that mode's built-in colors, and the factory scale text and lines, grid and watermark are that mode's, so they read dark on a light canvas and light on a dark one. A color the host or the viewer named stays theirs.
 
 The rows of a settings page, in the chart settings, a host's pages and the drawing settings dialogs, are each as tall as what they hold while the page scrolls, so a row whose controls wrap onto a second line keeps that line clear of the next row in a short window.
 
 The price scale's auto-scale and logarithmic buttons write their letters at 14px on an 18px line, stand 15px apart, each centred in a 35x30 cell, and a held button steps lighter under the pointer.
+
+The `scaleUnitMenu` option makes the currency and unit box at the top of the price scale a button that opens the host's own menu: a press hands the handler a `ScaleUnitMenuRequest` with the chart, the box's place in viewport pixels and whether the keyboard pressed it. Without the option the box is a label that takes no pointer.
 
 ## 5.3.0
 

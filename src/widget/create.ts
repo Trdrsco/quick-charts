@@ -436,6 +436,7 @@ export function createChart(options: ChartWidgetOptions): ChartWidget {
           },
           doors,
           painters,
+          ...(options.scaleUnitMenu ? { scaleUnitMenu: options.scaleUnitMenu } : {}),
         })
       } catch (error) {
         scope.dispose()

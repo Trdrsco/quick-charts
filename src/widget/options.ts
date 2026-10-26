@@ -34,6 +34,7 @@ import type { DrawingAssetPort, DrawingPreferences } from '../drawings/index'
 import type { RecentsPort, SpreadOperatorId } from '../search'
 import type { CustomThemes, ThemeMode } from '../theme/schema'
 import type { ChartStyleId } from './styles'
+import type { ChartHandle } from './chart'
 import type { LayoutSyncFlags } from './layout'
 import type { MarkPainterHooks } from '../markPainters'
 import type { ChartIcons } from '../ui/icons/catalog'
@@ -430,6 +431,16 @@ export interface TransitionOptions {
   style?: boolean
 }
 
+/** A press on a chart's currency and unit box, as `scaleUnitMenu` receives it. */
+export interface ScaleUnitMenuRequest {
+  /** The chart whose price scale wears the box. */
+  readonly chart: ChartHandle
+  /** The box in viewport pixels, for a menu to open against. */
+  readonly anchor: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number }
+  /** Whether the box was pressed from the keyboard, so the menu takes the focus. */
+  readonly keyboard: boolean
+}
+
 /** Everything needed to construct a widget. `container` and `datafeed` are the two hard
  *  requirements; every other field has a working default. */
 export interface ChartWidgetOptions extends MarkPainterHooks {
@@ -609,6 +620,12 @@ export interface ChartWidgetOptions extends MarkPainterHooks {
   features?: FeatureConfig
   /** Which of the chart's own controls render. */
   ui?: UiConfig
+  /** The currency and unit box at the top of each chart's price scale as the host's door. With it,
+   *  the box is a button, and a press calls this with the chart and the box's place on screen, so the
+   *  host opens what it offers there, such as a menu of the currencies prices can be shown in. The
+   *  box shows as the chart settings' Currency and Unit says. Without it the box names what the
+   *  prices are in and takes no pointer. */
+  scaleUnitMenu?: (request: ScaleUnitMenuRequest) => void
   /** The host's drawings for the chart's own glyphs, by icon id. An icon left out keeps the chart's
    *  own; `CHART_ICON_IDS` lists every one. Read once, at construction. */
   icons?: ChartIcons

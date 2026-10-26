@@ -72,6 +72,23 @@
   pointer-events: none;
 }
 
+/* With the host's door the box is a button that opens the host's menu: it keeps the box's size, type
+ * and outline, takes the pointer, and lights under it and while pressed as the scale's buttons do.
+ * The chrome gives every button its pointer back, so this rule names the chrome as well. */
+[data-qc-theme] .qc-chrome button.qc-scale-unit {
+  font-family: inherit;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+[data-qc-theme] .qc-chrome button.qc-scale-unit:hover {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-chrome button.qc-scale-unit:active {
+  background: var(--qc-state-pressed);
+}
+
 /* The plus beside the crosshair's price label is painted by the renderer with the label. Its button
  * stands over the painted box, at the size the chart writes: transparent, and taking no pointer, so
  * a pointer resting on the plus stays on the plot and keeps the crosshair. It carries the plus's

@@ -48,6 +48,7 @@ export type {
   Capabilities,
   ChartPreferences,
   ChartWidgetOptions,
+  ScaleUnitMenuRequest,
   CrosshairUi,
   FeatureConfig,
   SearchDisplayOptions,
