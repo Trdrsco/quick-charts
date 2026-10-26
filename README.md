@@ -2133,20 +2133,20 @@ among the others `THEME_ROLES` lists:
 
 | Role | Light | Dark | What it paints |
 |---|---|---|---|
-| `overlay.surface` | `#ffffff` | `#1f1f1f` | The ground of a dialog, menu or popover. |
-| `overlay.separator` | `#ebebeb` | `#4a4a4a` | The rule under a dialog header and over its footer, and between menu groups. |
+| `overlay.surface` | `#ffffff` | `#131313` | The ground of a dialog, menu or popover. |
+| `overlay.separator` | `#ebebeb` | `#464646` | The rule under a dialog header and over its footer, and between menu groups. |
 | `overlay.scrim` | `rgba(156, 156, 156, 0.5)` | `rgba(0, 0, 0, 0.5)` | The veil behind a modal dialog. |
-| `text.primary` | `#0f0f0f` | `#dbdbdb` | The ink of rows, labels and values. |
+| `text.primary` | `#000000` | `#dbdbdb` | The ink of rows, labels and values. |
 | `text.muted` | `#6a6a6a` | `#9b9b9b` | A section title, a hint, a placeholder. |
 | `chrome.caret` | `#707070` | `#8c8c8c` | The chevron of a select and the arrow that opens a flyout. |
 | `text.link` | `#2962ff` | `#5b9cf6` | A text link. |
-| `state.hover` | `#f2f2f2` | `#2e2e2e` | The fill under the pointer. |
-| `state.pressed` | `#ebebeb` | `#3d3d3d` | The fill while the pointer is down. |
-| `control.outline` | `#2e2e2e` | `#ffffff` | The edge and the words of an outlined button at rest, such as a dialog's Cancel. |
+| `state.hover` | `#f2f2f2` | `#1a1a1a` | The fill under the pointer. |
+| `state.pressed` | `#ebebeb` | `#2b2b2b` | The fill while the pointer is down. |
+| `control.outline` | `#1a1a1a` | `#ffffff` | The edge and the words of an outlined button at rest, such as a dialog's Cancel. |
 | `control.onInk` | `#ffffff` | `#000000` | A mark cut from the emphasis fill: a chosen thickness, line style or line end. |
-| `control.neutral` | `#f2f2f2` | `#2e2e2e` | The quiet fill: a dialog's shortcut chip, the band over a calendar's columns, a chosen month or year. |
-| `control.neutralHover` | `#ebebeb` | `#3d3d3d` | The quiet fill under the pointer. |
-| `control.neutralPressed` | `#dbdbdb` | `#4a4a4a` | The quiet fill while the pointer is down. |
+| `control.neutral` | `#f2f2f2` | `#1a1a1a` | The quiet fill: a dialog's shortcut chip, the band over a calendar's columns, a chosen month or year. |
+| `control.neutralHover` | `#ebebeb` | `#2b2b2b` | The quiet fill under the pointer. |
+| `control.neutralPressed` | `#dbdbdb` | `#464646` | The quiet fill while the pointer is down. |
 | `control.neutralInk` | `#000000` | `#ffffff` | The words on the quiet fill, and what a quiet control's words and mark brighten to under the pointer, such as a calendar's day. |
 | `status.positive` | `#078671` | `#089981` | A gain or a success. |
 | `status.negative` | `#df323f` | `#f34452` | A loss or a failure. |
@@ -2168,11 +2168,11 @@ is one box: 34px tall, a 1px edge with an 8px corner around a clear ground, and 
 
 | Role | Light | Dark | What it paints |
 |---|---|---|---|
-| `control.fieldEdge` | `#dbdbdb` | `#575757` | The edge of a field at rest. |
+| `control.fieldEdge` | `#dbdbdb` | `#555555` | The edge of a field at rest. |
 | `control.fieldEdgeHover` | `#a8a8a8` | `#707070` | The edge of a field under the pointer. |
 | `control.selectEdgeHover` | `#a8a8a8` | `#808080` | The edge of a list button under the pointer, such as a select on a drawing's settings page. |
 | `control.fieldInvalid` | `#f23645` | `#f23645` | The edge and the focus ring of a field holding a value it refuses. |
-| `control.fieldFill` | `#f2f2f2` | `#2e2e2e` | The ground of a field that is read-only or disabled. |
+| `control.fieldFill` | `#f2f2f2` | `#1a1a1a` | The ground of a field that is read-only or disabled. |
 
 Focus draws a 2px ring over the edge, the edge itself and the pixel inside it, so the ring follows
 the corner and a dialog that scrolls never clips it. Only a value the chart refuses turns the edge

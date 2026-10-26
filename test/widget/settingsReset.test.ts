@@ -146,7 +146,7 @@ describe('the authored settings', () => {
     // The named leaf is the viewer's and stands; the unnamed background follows the new theme.
     expect(chart.settings().candles.upColor).toBe('#ffffff')
     expect(chart.settings().canvas.background).toBe(LIGHT_THEME['canvas.background'])
-    expect(chart.settings().canvas.scaleTextColor).toBe('#0f0f0f')
+    expect(chart.settings().canvas.scaleTextColor).toBe('#000000')
   })
 })
 

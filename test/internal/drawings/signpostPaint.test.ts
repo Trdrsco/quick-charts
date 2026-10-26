@@ -55,7 +55,7 @@ function plate(calls: PaintCall[]): { x: number; y: number; width: number; heigh
 describe('a signpost, against measured pixels', () => {
   it('two lines at rest: a plate [518, 660, 80, 41], outlined and empty, its words centred on 15px lines', () => {
     const calls = painted(signpost('Hello world\nSecond line'), viewport)
-    expect(plate(calls)).toEqual({ x: 518, y: 660, width: 80, height: 41, radius: 6, ink: '#2e2e2e', filled: false })
+    expect(plate(calls)).toEqual({ x: 518, y: 660, width: 80, height: 41, radius: 6, ink: '#1a1a1a', filled: false })
     const words = named(calls, 'fillText').map((c) => [c.args[0], (c.args[1] as number) + advance(String(c.args[0]), 12) / 2, c.args[2], c.fillStyle, c.baseline])
     expect(words).toEqual([
       ['Hello world', 558, 674, '#dbdbdb', 'middle'],
@@ -81,7 +81,7 @@ describe('a signpost, against measured pixels', () => {
     const calls = painted(signpost('', { draft: {} }), viewport)
     expect(plate(calls)).toMatchObject({ x: 526, y: 675, width: 64, height: 26 })
     expect(named(calls, 'fillText').map((c) => [c.args[0], c.alpha, c.fillStyle])).toEqual([['Add text', 0.5, '#dbdbdb']])
-    // #dbdbdb at half over the dark chart's #0f0f0f reads #757575, as measured.
+    // #dbdbdb at half over the dark chart's #000000 reads #757575, as measured.
     expect(Math.round((0xdb + 0x0f) / 2).toString(16)).toBe('75')
   })
 

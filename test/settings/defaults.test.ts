@@ -18,12 +18,12 @@ const light = chartSettingsDefaults(LIGHT_THEME)
 
 describe('the factory values', () => {
   it('change with the mode in six canvas colors only', () => {
-    expect([dark.canvas.background, light.canvas.background]).toEqual(['#0f0f0f', '#ffffff'])
-    expect([dark.canvas.verticalGridColor, light.canvas.verticalGridColor]).toEqual(['rgba(242, 242, 242, 0.2)', 'rgba(46, 46, 46, 0.2)'])
-    expect([dark.canvas.horizontalGridColor, light.canvas.horizontalGridColor]).toEqual(['rgba(242, 242, 242, 0.2)', 'rgba(46, 46, 46, 0.2)'])
+    expect([dark.canvas.background, light.canvas.background]).toEqual(['#000000', '#ffffff'])
+    expect([dark.canvas.verticalGridColor, light.canvas.verticalGridColor]).toEqual(['rgba(242, 242, 242, 0.2)', 'rgba(26, 26, 26, 0.2)'])
+    expect([dark.canvas.horizontalGridColor, light.canvas.horizontalGridColor]).toEqual(['rgba(242, 242, 242, 0.2)', 'rgba(26, 26, 26, 0.2)'])
     expect([dark.canvas.watermarkColor, light.canvas.watermarkColor]).toEqual(['rgba(80, 83, 94, 0.3)', 'rgba(80, 83, 94, 0.2)'])
-    expect([dark.canvas.scaleTextColor, light.canvas.scaleTextColor]).toEqual(['#b8b8b8', '#0f0f0f'])
-    expect([dark.canvas.scaleLineColor, light.canvas.scaleLineColor]).toEqual(['rgba(242, 242, 242, 0)', 'rgba(46, 46, 46, 0)'])
+    expect([dark.canvas.scaleTextColor, light.canvas.scaleTextColor]).toEqual(['#b8b8b8', '#000000'])
+    expect([dark.canvas.scaleLineColor, light.canvas.scaleLineColor]).toEqual(['rgba(242, 242, 242, 0)', 'rgba(26, 26, 26, 0)'])
     const varies = new Set(['background', 'backgroundBottom', 'verticalGridColor', 'horizontalGridColor', 'watermarkColor', 'scaleTextColor', 'scaleLineColor'])
     for (const section of CHART_SETTINGS_SECTIONS) {
       for (const [leaf, value] of Object.entries(dark[section])) {

@@ -229,9 +229,9 @@ describe('the status line', () => {
 
   it('stands on the chart background at the setting opacity, or on nothing', async () => {
     const { chart, container } = await mount()
-    expect(legend(container).style.getPropertyValue('--qcd-legend-backdrop')).toBe('rgba(15, 15, 15, 0.5)')
+    expect(legend(container).style.getPropertyValue('--qcd-legend-backdrop')).toBe('rgba(0, 0, 0, 0.5)')
     chart.applySettings({ statusLine: { backgroundOpacity: 80 } })
-    expect(legend(container).style.getPropertyValue('--qcd-legend-backdrop')).toBe('rgba(15, 15, 15, 0.8)')
+    expect(legend(container).style.getPropertyValue('--qcd-legend-backdrop')).toBe('rgba(0, 0, 0, 0.8)')
     chart.applySettings({ statusLine: { background: false } })
     expect(legend(container).style.getPropertyValue('--qcd-legend-backdrop')).toBe('')
   })
@@ -250,9 +250,9 @@ describe('the time scale', () => {
 describe('the canvas', () => {
   it('fills the background solid or in a vertical gradient', async () => {
     const { chart, renderer } = await mount()
-    expect(options(renderer).layout!.background).toEqual({ type: ColorType.Solid, color: '#0f0f0f' })
-    chart.applySettings({ canvas: { backgroundType: 'gradient', background: '#1f1f1f', backgroundBottom: '#0f0f0f' } })
-    expect(options(renderer).layout!.background).toEqual({ type: ColorType.VerticalGradient, topColor: '#1f1f1f', bottomColor: '#0f0f0f' })
+    expect(options(renderer).layout!.background).toEqual({ type: ColorType.Solid, color: '#000000' })
+    chart.applySettings({ canvas: { backgroundType: 'gradient', background: '#131313', backgroundBottom: '#000000' } })
+    expect(options(renderer).layout!.background).toEqual({ type: ColorType.VerticalGradient, topColor: '#131313', bottomColor: '#000000' })
   })
 
   it('draws each grid, the crosshair and the scales in their own leaves', async () => {
