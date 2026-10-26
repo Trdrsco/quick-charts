@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+The chart's right-click menu ends on Settings…, which opens the chart settings dialog, wherever the chart draws its settings door in the top bar.
+
 ## 5.1.1
 
 Range presets reconcile overlapping history pages with streamed bars and preserve a newer navigation while a page is pending.

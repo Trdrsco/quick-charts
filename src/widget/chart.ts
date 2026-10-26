@@ -1385,6 +1385,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         drawingCount: () => drawings.handle?.count() ?? 0,
         extensions: () => extensions.host,
         shown: (id) => commandShown(deps.access, id),
+        settingsDoor: deps.ui.settingsMenu,
         setLevel: (price) => {
           menuLevel = price
         },

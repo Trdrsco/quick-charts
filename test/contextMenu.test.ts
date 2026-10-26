@@ -59,9 +59,8 @@ describe('counts and state', () => {
 
 })
 
-// A host that cannot serve a row must not show it: the widget's context menu never offers Settings
-// (the settings dialog belongs to the selected drawing's own surfaces) and offers Paste only while
-// the paste command would run.
+// A host that cannot serve a row must not show it: the widget's context menu offers Settings only
+// where the chart offers its settings dialog, and Paste only while the paste command would run.
 describe('a host that cannot serve a row does not show it', () => {
   const widget = { ...base, canPaste: false, canSettings: false }
   it('omits paste and settings', () => {
