@@ -6,8 +6,16 @@ export const picker = {
   'picker.noMatches': 'No matching indicators.',
   'picker.collections': 'Indicator collections',
   'picker.personal': 'Personal',
+  /** The rail's heading over the shipped definitions. */
   'picker.builtin': 'Built-in',
+  /** The rail's collection of shipped technical indicators, under Built-in. */
+  'picker.technicals': 'Technicals',
   'picker.favorites': 'Favorites',
+  /** The kind filters: their group's name, the filter that shows every kind, and the chart's own
+   *  kind beside the kinds a host declares. */
+  'picker.kindFilter': 'Type',
+  'picker.allKinds': 'All',
+  'picker.indicators': 'Indicators',
   'picker.thousands': ' K',
   'picker.name': 'Name',
   'picker.author': 'Author',

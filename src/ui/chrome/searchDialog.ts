@@ -23,6 +23,7 @@ import type { SearchRequest } from './doors'
 import { emptyState, openDialog, type DialogHandle } from './dialog'
 import { classAdmits, classBranches, classSelection } from './searchClasses'
 import { append, button, h, name, reglyph, replace, setDisabled } from './dom'
+import { searchClear, searchField } from './searchField'
 import { COMPARE_EMPTY_MARK, ICONS, OPERATOR_GLYPHS } from '../controls/icons'
 import { createSymbolBadge } from './symbolBadge'
 import { symbolNames } from '../../symbolLabel'
@@ -234,7 +235,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   let scopeMarkDisposer: (() => void) | null = null
 
     const input = h('input', { type: 'text', role: 'combobox', class: 'qc-search-input', 'aria-label': t('search.placeholder'), placeholder: t('search.placeholder'), autocomplete: 'off', 'aria-autocomplete': 'list', 'aria-expanded': 'true', 'aria-controls': listId, spellcheck: 'false', value: query })
-    const clear = button({ label: t('search.clear'), icon: deps.icons.glyph(ICONS.clear, { size: 18 }), className: 'qc-search-op', onClick: () => setQuery('') })
+    const clear = searchClear(deps.icons, t('search.clear'), () => setQuery(''))
     // The rule parts the clear mark from what follows it, so the two come and go together.
     const rule = offerOps ? h('span', { class: 'qc-search-rule', 'aria-hidden': 'true' }) : null
     const showClear = (shown: boolean): void => {
@@ -274,8 +275,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
     // that is there, a hairline, the operators when they are out, and the toggle that brings them.
     // The rule belongs to the strip rather than to the operator group, so it is a mark of its own
     // height rather than a border running the full depth of the field.
-    const actions = h('span', { class: 'qc-search-actions-field' }, clear, rule, offerOps ? ops : null, offerOps ? opsToggle : null)
-    const field = h('div', { class: 'qc-search-field' }, deps.icons.glyph(ICONS.search, { size: 28, className: 'qc-search-magnifier' }), input, actions)
+    const field = searchField(deps.icons, input, clear, rule, offerOps ? ops : null, offerOps ? opsToggle : null)
 
     // The asset-class strip, search family only: chips that narrow the feed's answer. A class that
     // holds narrower classes offers them in a row of their own beneath the strip while it is

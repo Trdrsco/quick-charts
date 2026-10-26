@@ -1,4 +1,11 @@
 // One package-owned indicator picker: shipped definitions and Add stay local; host rows are inert data.
+//
+// The dialog opens on the search field every search dialog shares, with the kind filters under it
+// when the host declares kinds of its own. Below them a rail of collections stands beside the list:
+// Favorites under Personal, the host's collections after it under their own headings, and the
+// shipped definitions under Built-in. The list reads as a table of the star, the name, the author,
+// the count and the row's actions, narrowed to the star, the name and the actions for the shipped
+// catalog, and to the name and its secondary actions for a host's personal list.
 import { BUILT_IN_INDICATORS, type BuiltInIndicator } from '../../builtInIndicators'
 import type { ChartExtensionIcon } from '../../extension'
 import type { ChartStorage } from '../../storage'
@@ -10,7 +17,8 @@ import { activeChart, type ChromeContext } from './context'
 import { openDialog, type DialogHandle } from './dialog'
 import { button, h, items, name, replace, roveFocus } from './dom'
 import { ICONS } from '../controls/icons'
-import { pickerCollections, pickerRows, type PickerRows } from './indicatorPickerData'
+import { INDICATOR_KIND, pickerCollections, pickerKinds, pickerRows, type PickerRows } from './indicatorPickerData'
+import { searchClear, searchField } from './searchField'
 import { buildGlyph } from './vector'
 import type { IconResolver } from '../icons/resolver'
 
@@ -22,8 +30,6 @@ export interface IndicatorPickerDeps extends ChromeContext {
 const FAVORITES_KEY = 'quickcharts.indicatorFavorites.v1'
 // The rows' own marks; a host's glyph goes through the shared inert vector builder instead.
 const star = (icons: IconResolver, filled: boolean): HTMLElement => icons.glyph(filled ? ICONS.pickerStarFilled : ICONS.pickerStar, { size: 18 })
-const plus = (icons: IconResolver): HTMLElement => icons.glyph(ICONS.plus24, { size: 18 })
-const searchGlyph = (icons: IconResolver): HTMLElement => icons.glyph(ICONS.search24, { size: 18 })
 
 export function freshInstanceId(definitionId: string, existing: readonly IndicatorInstance[]): string {
   const taken = new Set(existing.map((i) => i.id))
@@ -41,12 +47,18 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
   const offered = (definition: BuiltInIndicator): boolean => indicatorOffered(deps.builtInIndicators ?? null, definition)
   const t: ChromeContext['i18n']['t'] = (key, ...args) => deps.i18n.t(key, ...args)
   const source = deps.indicatorPicker
-  let collections: ReturnType<typeof pickerCollections> = null
+  let collections = null as ReturnType<typeof pickerCollections>
+  let kinds = [] as ReturnType<typeof pickerKinds>
   let hostValid = !source
-  try {
-    collections = source ? pickerCollections(source.collections) : []
-    hostValid = collections !== null && (!source || (typeof source.list === 'function' && typeof source.act === 'function'))
-  } catch { /* Malformed host metadata cannot break the shipped catalog. */ }
+  const readHost = (): void => {
+    try {
+      collections = source ? pickerCollections(source.collections) : []
+      kinds = source ? pickerKinds(source.kinds) : []
+      hostValid = collections !== null && kinds !== null && (!source || (typeof source.list === 'function' && typeof source.act === 'function'))
+    } catch { collections = null; kinds = null; hostValid = false }
+  }
+  // Malformed host metadata cannot break the shipped catalog.
+  readHost()
   let favorites: string[] = []
   try {
     const stored: unknown = JSON.parse(deps.storage?.get(FAVORITES_KEY) ?? '[]')
@@ -54,6 +66,8 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
   } catch { /* A preference failure does not prevent using the catalog. */ }
   let query = ''
   let collection = deps.initialCollection === 'favorites' || collections?.some(row => row.id === deps.initialCollection) ? deps.initialCollection! : 'builtin'
+  // The kind the list is narrowed to, or null for every kind.
+  let kind: string | null = null
   let generation = 0
   let controller: AbortController | null = null
   let busy = false
@@ -72,14 +86,16 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
     // The host's listing is abandoned as the dialog begins to close, not when its exit ends.
     onClosing: () => { cancel(); offLocale() },
     build(box, dialog) {
-      const input = h('input', { type: 'search', class: 'qc-picker-search', role: 'searchbox', 'aria-label': t('picker.search'), placeholder: t('picker.search'), autocomplete: 'off', spellcheck: 'false' })
+      const input = h('input', { type: 'text', class: 'qc-search-input qc-picker-search', role: 'searchbox', 'aria-label': t('picker.search'), placeholder: t('picker.search'), autocomplete: 'off', spellcheck: 'false' })
+      const clear = searchClear(deps.icons, t('search.clear'), () => { input.value = ''; setQuery(''); input.focus() })
+      clear.hidden = true
+      const strip = h('div', { class: 'qc-search-classes' })
       const nav = h('nav', { class: 'qc-picker-nav', 'aria-label': t('picker.collections') })
       const list = h('div', { class: 'qc-picker-list', role: 'table', 'aria-label': t('picker.title') })
       const status = h('div', { class: 'qc-picker-status qc-secondary', role: 'status', 'aria-live': 'polite' })
-      const close = button({ label: t('search.close'), icon: deps.icons.glyph(ICONS.dialogClose, { size: 18 }), className: 'qc-dialog-close', onClick: () => dialog.close() })
       let pendingFocus: string | null = null
-      const actionButton = (label: string, content: Node | null, run: () => void, disabled = false, focusKey?: string): HTMLButtonElement => {
-        const button = h('button', { type: 'button', class: 'qc-picker-action', 'aria-label': label, title: label, 'data-picker-focus': focusKey }, content ?? h('span', {}, label))
+      const actionButton = (label: string, content: Node | null, run: () => void, disabled = false, focusKey?: string, className = 'qc-picker-action'): HTMLButtonElement => {
+        const button = h('button', { type: 'button', class: className, 'aria-label': label, title: label, 'data-picker-focus': focusKey }, content ?? h('span', {}, label))
         button.disabled = disabled
         button.addEventListener('click', (event) => { event.stopPropagation(); if (!button.disabled) run() })
         return button
@@ -124,8 +140,12 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
       const buildRow = (options: { id: string; kind: 'builtin' | 'item'; title: string; description?: string; author?: string; favorite?: boolean; count?: number; hostedFavorite?: boolean; actions: readonly IndicatorPickerAction[]; primary: () => void; permitted: boolean; builtin?: BuiltInIndicator }): HTMLElement => {
         const row = h('div', { class: 'qc-picker-row', role: 'row' })
         const key = (action: string): string => JSON.stringify([options.kind, options.id, action])
-        const favoriteCell = h('div', { role: 'cell' })
-        if (options.favorite !== undefined) favoriteCell.append(actionButton(t(options.favorite ? 'picker.unfavorite' : 'picker.favorite', { name: options.title }), star(deps.icons, options.favorite), () => toggle(options.kind, options.id, options.favorite!, options.hostedFavorite === true), (options.hostedFavorite === true && (busy || loading)) || (!!source && !available), key('favorite')))
+        const favoriteCell = h('div', { role: 'cell', class: 'qc-picker-star-cell' })
+        if (options.favorite !== undefined) {
+          const toggleStar = actionButton(t(options.favorite ? 'picker.unfavorite' : 'picker.favorite', { name: options.title }), star(deps.icons, options.favorite), () => toggle(options.kind, options.id, options.favorite!, options.hostedFavorite === true), (options.hostedFavorite === true && (busy || loading)) || (!!source && !available), key('favorite'), 'qc-picker-star')
+          toggleStar.setAttribute('aria-pressed', String(options.favorite))
+          favoriteCell.append(toggleStar)
+        }
         const label = options.permitted ? options.title : t('picker.notPermitted', { name: options.title })
         const name = h('button', { type: 'button', class: 'qc-picker-name', 'data-qc-item': '', tabindex: '-1', ...(options.builtin ? { 'data-indicator': options.id } : { 'data-picker-item': options.id }), 'aria-label': options.builtin && options.permitted ? t('picker.add', { name: options.title }) : label, title: options.description ?? label }, options.title)
         name.disabled = !options.permitted
@@ -140,11 +160,6 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
           if (personal && rows.items.find((item) => item.id === options.id)?.primaryAction === action.id) continue
           actions.append(actionButton(action.label, hostIcon(action.icon), () => void act({ kind: options.kind, id: options.id }, action.id), busy || loading || action.disabled === true, key('action:' + action.id)))
         }
-        if (options.builtin) {
-          const button = actionButton(t('picker.add', { name: options.title }), plus(deps.icons), options.primary, !options.permitted, key('add'))
-          button.dataset.pickerAdd = options.id
-          actions.append(button)
-        }
         // Counts are not prices: compact their quantity arithmetically, then use locale digits.
         // Decimal-width policy remains exclusively in the resolved symbol price formatter.
         const total = options.count
@@ -154,16 +169,20 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         row.addEventListener('click', (event) => { if (options.permitted && !(event.target as Element).closest('button')) options.primary() })
         return row
       }
+      /** Whether a row of `rowKind` stands under the kind filter in force. */
+      const admitted = (rowKind: string): boolean => kind === null || kind === rowKind
       const render = (): void => {
         const focused = document.activeElement as HTMLElement | null
         if (focused && list.contains(focused)) pendingFocus = focused.dataset.pickerFocus ?? null
         else if (focused && focused !== document.body) pendingFocus = null
         const selected = (collections ?? []).find((row) => row.id === collection)
         list.classList.toggle('qc-picker-list--personal', selected?.layout === 'list')
+        list.classList.toggle('qc-picker-list--catalog', collection === 'builtin')
         for (const button of nav.querySelectorAll('[data-picker-collection]')) button.setAttribute('aria-pressed', String(button.getAttribute('data-picker-collection') === collection))
+        for (const chip of strip.querySelectorAll('[data-picker-kind]')) chip.setAttribute('aria-pressed', String((chip.getAttribute('data-picker-kind') || null) === kind))
         const headings = h('div', { role: 'row', class: 'qc-picker-headings' }, ...['', t('picker.name'), t('picker.author'), t('picker.favorites'), ''].map((label) => h('span', { role: 'columnheader' }, label)))
         const body = h('div', { role: 'rowgroup' })
-        if (collection === 'builtin' || collection === 'favorites') {
+        if ((collection === 'builtin' || collection === 'favorites') && admitted(INDICATOR_KIND)) {
           for (const definition of filterDefinitions(t, query)) {
             const metadata = rows.builtIns.find((row) => row.id === definition.id)
             const favorite = metadata?.favorite ?? favorites.includes(definition.id)
@@ -173,11 +192,12 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
             // when it refuses adding one. A starred one keeps its star in storage either way.
             if (!offered(definition)) continue
             if (!indicatorShown(deps.access, definition) || !commandShown(deps.access, 'chart.indicators.add')) continue
-            body.append(buildRow({ id: definition.id, kind: 'builtin', title: t(definition.nameKey), description: t(definition.descriptionKey), author: t('picker.builtin'), favorite, count: metadata?.favoriteCount, hostedFavorite: metadata?.favorite !== undefined || (!!source && loading), actions: metadata?.actions ?? [], primary: () => add(definition), permitted: indicatorPermitted(deps.access, definition) && deps.commands.available('chart.indicators.add'), builtin: definition }))
+            body.append(buildRow({ id: definition.id, kind: 'builtin', title: t(definition.nameKey), description: t(definition.descriptionKey), favorite, count: metadata?.favoriteCount, hostedFavorite: metadata?.favorite !== undefined || (!!source && loading), actions: metadata?.actions ?? [], primary: () => add(definition), permitted: indicatorPermitted(deps.access, definition) && deps.commands.available('chart.indicators.add'), builtin: definition }))
           }
         }
         if (collection !== 'builtin') for (const item of rows.items) {
           if (collection === 'favorites' && item.favorite !== true) continue
+          if (!admitted(item.kind ?? INDICATOR_KIND)) continue
           const primary = item.actions.find((action) => action.id === item.primaryAction)!
           body.append(buildRow({ id: item.id, kind: 'item', title: item.title, description: item.description, author: item.author, favorite: item.favorite, count: item.favoriteCount, hostedFavorite: true, actions: item.actions, primary: () => void act({ kind: 'item', id: item.id }, primary.id), permitted: !busy && !loading && !primary.disabled }))
         }
@@ -203,48 +223,72 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         try {
           const result = await source.list({ collection, query, builtInIds: BUILT_IN_INDICATORS.filter(offered).map((d) => d.id) }, pending.signal)
           if (!dialog.open() || revision !== generation) return
-          const parsed = pickerRows(result)
+          const parsed = pickerRows(result, (kinds ?? []).map((row) => row.id))
           if (parsed) { rows = parsed; available = true }
           else error = result?.kind === 'unavailable' && typeof result.message === 'string' && result.message.trim() ? result.message : t('picker.unavailable')
         } catch { if (dialog.open() && revision === generation) error = t('picker.unavailable') }
         finally { if (dialog.open() && revision === generation) { loading = false; render() } }
       }
+      const setQuery = (next: string): void => {
+        query = next
+        clear.hidden = next === ''
+        void refresh()
+      }
+      // The rail: Favorites under Personal, then the host's collections, each run of one group under
+      // its heading (a collection without a group stays in the section above it), then the shipped
+      // definitions under Built-in. A host group named as the chart's Personal joins its section.
       const renderNavigation = (): void => {
         replace(nav)
-        const navigation = [{ id: 'favorites', label: t('picker.favorites'), group: t('picker.personal'), icon: null }, ...(collections ?? []).map((row) => ({ ...row, icon: hostIcon(row.icon) })), { id: 'builtin', label: t('picker.builtin'), group: '', icon: deps.icons.glyph(ICONS.indicators, { size: 28 }) }]
+        const personal = t('picker.personal')
+        const navigation = [{ id: 'favorites', label: t('picker.favorites'), group: personal, icon: deps.icons.glyph(ICONS.pickerFavorites, { size: 28 }) }, ...(collections ?? []).map((row) => ({ ...row, icon: hostIcon(row.icon) })), { id: 'builtin', label: t('picker.technicals'), group: t('picker.builtin'), icon: deps.icons.glyph(ICONS.pickerTechnicals, { size: 28 }) }]
+        let section: HTMLElement | null = null
         let group: string | undefined
         for (const item of navigation) {
-          if (item.group && item.group !== group) nav.append(h('div', { class: 'qc-picker-group' }, item.group))
-          group = item.group
-          const button = h('button', { type: 'button', class: 'qc-picker-collection', 'data-picker-collection': item.id }, item.id === 'favorites' ? star(deps.icons, false) : item.icon, h('span', {}, item.label))
+          if (!section || (!!item.group && item.group !== group)) {
+            section = h('div', { class: 'qc-picker-section' }, item.group ? h('div', { class: 'qc-picker-group' }, item.group) : null)
+            nav.append(section)
+            group = item.group
+          }
+          const button = h('button', { type: 'button', class: 'qc-picker-collection', 'data-picker-collection': item.id }, h('span', { class: 'qc-picker-collection-icon' }, item.icon), h('span', { class: 'qc-picker-collection-label' }, item.label))
           button.addEventListener('click', () => { collection = item.id; void refresh() })
-          nav.append(button)
+          section.append(button)
         }
       }
-      input.addEventListener('input', () => { query = input.value; void refresh() })
+      // The kind filters, in the symbol search's class strip: All, the chart's Indicators, then the
+      // host's kinds in order. The strip stands only while the host declares a kind.
+      const renderKinds = (): void => {
+        const declared = kinds ?? []
+        if (kind !== null && kind !== INDICATOR_KIND && !declared.some((row) => row.id === kind)) kind = null
+        const group = h('div', { class: 'qc-search-class-group', role: 'group', 'aria-label': t('picker.kindFilter') })
+        for (const entry of [{ id: '', label: t('picker.allKinds') }, { id: INDICATOR_KIND, label: t('picker.indicators') }, ...declared]) {
+          const chip = button({ label: entry.label, text: entry.label, className: 'qc-chip qc-search-class', pressed: (entry.id || null) === kind, onClick: () => { kind = entry.id || null; render() } })
+          chip.dataset.pickerKind = entry.id
+          group.append(chip)
+        }
+        replace(strip, group)
+        strip.hidden = declared.length === 0
+      }
+      input.addEventListener('input', () => setQuery(input.value))
       input.addEventListener('keydown', (event) => { if (event.key === 'ArrowDown' && roveFocus(list, event)) event.preventDefault() })
       list.addEventListener('keydown', (event) => {
         if (event.key === 'ArrowUp' && items(list)[0] === document.activeElement) { event.preventDefault(); input.focus() }
         else if (roveFocus(list, event)) event.preventDefault()
       })
-      box.append(h('div', { class: 'qc-picker-header' }, h('span', { class: 'qc-title' }, t('picker.title')), close), h('div', { class: 'qc-picker-searchbar' }, searchGlyph(deps.icons), input), h('div', { class: 'qc-picker-body' }, nav, h('div', { class: 'qc-picker-content' }, h('div', { class: 'qc-picker-tabs' }, h('span', { class: 'qc-picker-tab' }, t('picker.title'))), list, status)))
+      box.append(searchField(deps.icons, input, clear), strip, h('div', { class: 'qc-picker-body' }, nav, h('div', { class: 'qc-picker-content' }, list, status)))
+      renderKinds()
       renderNavigation()
       redraw = render
-      offLocale =deps.i18n.onChange(() => {
+      offLocale = deps.i18n.onChange(() => {
         if (!dialog.open()) return
         box.setAttribute('aria-label', t('picker.title'))
-        box.querySelector('.qc-title')!.textContent = t('picker.title')
-        box.querySelector('.qc-picker-tab')!.textContent = t('picker.title')
         input.placeholder = t('picker.search')
         input.setAttribute('aria-label', t('picker.search'))
-        name(close, t('search.close'))
+        name(clear, t('search.clear'))
         nav.setAttribute('aria-label', t('picker.collections'))
         list.setAttribute('aria-label', t('picker.title'))
-        try {
-          collections = source ? pickerCollections(source.collections) : []
-          hostValid = collections !== null && (!source || (typeof source.list === 'function' && typeof source.act === 'function'))
-        } catch { collections = null; hostValid = false }
+        readHost()
         if (!['builtin', 'favorites', ...(collections ?? []).map((row) => row.id)].includes(collection)) collection = 'builtin'
+        renderKinds()
         renderNavigation()
         void refresh()
       })

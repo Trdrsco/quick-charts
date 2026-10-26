@@ -55,18 +55,42 @@ describe('the picker dialog', () => {
     const dialog = openIndicatorPicker({ ...w.ctx })
     cleanup.push(() => dialog.close())
     expect(dialog.element.style.width).toBe('840px')
-    expect([...dialog.element.querySelectorAll('[data-picker-collection]')].map((row) => row.textContent?.trim())).toEqual(['Favorites', 'Built-in'])
+    expect([...dialog.element.querySelectorAll('[data-picker-collection]')].map((row) => row.textContent?.trim())).toEqual(['Favorites', 'Technicals'])
+    expect([...dialog.element.querySelectorAll('.qc-picker-group')].map((heading) => heading.textContent)).toEqual(['Personal', 'Built-in'])
     expect([...dialog.element.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent)).toEqual(['', 'Name', 'Author', 'Favorites', ''])
     expect(dialog.element.textContent).not.toMatch(/Community|Strategies|My library/)
     expect(dialog.element.querySelector('.qc-picker-list')!.contains(dialog.element.querySelector('[role="rowgroup"]'))).toBe(true)
-    // The close is the dialogs' own cross; no dialog writes a key's name in its header.
-    const close = dialog.element.querySelector<HTMLButtonElement>('.qc-dialog-close')!
-    expect(close.getAttribute('aria-label')).toBe('Close')
-    expect(close.querySelector('svg')).not.toBeNull()
-    expect(dialog.element.textContent).not.toContain('Esc')
+    // The dialog opens on the field every search dialog shares, with no title band and no close:
+    // Escape and a press outside the box close it.
+    expect(dialog.element.firstElementChild?.classList.contains('qc-search-field')).toBe(true)
+    expect(dialog.element.querySelector('.qc-search-field .qc-picker-search')).toBe(document.activeElement)
+    expect(dialog.element.querySelector('.qc-dialog-close')).toBeNull()
+    expect(dialog.element.querySelector('.qc-title')).toBeNull()
+    // Built-in rows carry no add control of their own: the row and its name add.
+    expect(dialog.element.querySelector('[data-picker-add]')).toBeNull()
+    expect(dialog.element.querySelector('.qc-picker-author')?.textContent).toBe('')
   })
 
-  it('keeps the modal and query open while adding repeated instances through row and Plus', () => {
+  it('clears the query from the field\'s own clear mark, which shows only while there is a query', () => {
+    const w = fakeWidget()
+    cleanup.push(() => w.dispose())
+    const dialog = openIndicatorPicker({ ...w.ctx })
+    cleanup.push(() => dialog.close())
+    const search = dialog.element.querySelector<HTMLInputElement>('.qc-picker-search')!
+    const clear = dialog.element.querySelector<HTMLButtonElement>('.qc-search-field .qc-search-op')!
+    expect(clear.hidden).toBe(true)
+    search.value = 'macd'
+    search.dispatchEvent(new Event('input'))
+    expect(clear.hidden).toBe(false)
+    expect(dialog.element.querySelectorAll('[data-indicator]')).toHaveLength(1)
+    clear.click()
+    expect(search.value).toBe('')
+    expect(clear.hidden).toBe(true)
+    expect(document.activeElement).toBe(search)
+    expect(dialog.element.querySelectorAll('[data-indicator]')).toHaveLength(23)
+  })
+
+  it('keeps the modal and query open while adding repeated instances through the row and its name', () => {
     const w = fakeWidget()
     cleanup.push(() => w.dispose())
     const dialog = openIndicatorPicker({ ...w.ctx })
@@ -76,7 +100,7 @@ describe('the picker dialog', () => {
     search.dispatchEvent(new Event('input'))
     dialog.element.querySelector<HTMLElement>('[data-indicator="macd"]')!.click()
     expect(dialog.open()).toBe(true)
-    dialog.element.querySelector<HTMLButtonElement>('[data-picker-add="macd"]')!.click()
+    dialog.element.querySelector<HTMLElement>('.qc-picker-row .qc-picker-author')!.click()
     expect(w.chart.state.indicators.map((instance) => instance.id)).toEqual(['macd-1', 'macd-2'])
     expect(search.value).toBe('macd')
   })

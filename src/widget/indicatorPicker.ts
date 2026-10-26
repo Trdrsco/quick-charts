@@ -11,6 +11,16 @@ export interface IndicatorPickerCollection {
   layout?: 'table' | 'list'
 }
 
+/** A kind of row a host lists beside the chart's indicators. The picker offers each declared kind as
+ *  a filter under its search field, after All and the chart's own Indicators. */
+export interface IndicatorPickerKind {
+  /** Stable opaque id. `indicator` belongs to the chart: every built-in is one, and so is an item
+   *  that names no kind. */
+  id: string
+  /** The filter's localized label, a plural noun. */
+  label: string
+}
+
 /** A host action is an opaque verb: the source's `act` runs it, and the chart only names it. */
 export interface IndicatorPickerAction {
   /** Unique within its row. `add` and `favorite` belong to the chart. */
@@ -25,6 +35,8 @@ export interface IndicatorPickerItem {
   title: string
   description?: string
   author?: string
+  /** One of the source's declared `kinds`. Omitted, the item is an indicator. */
+  kind?: string
   /** Omitted means this item offers no favorite action. */
   favorite?: boolean
   /** Omitted counts remain blank. */
@@ -45,6 +57,9 @@ export interface IndicatorPickerBuiltInState {
 
 export interface IndicatorPickerSource {
   collections: readonly IndicatorPickerCollection[]
+  /** The kinds the source's items come in beside indicators. With at least one, the picker shows a
+   *  row of filters (All, Indicators, then these in order) under its search field. */
+  kinds?: readonly IndicatorPickerKind[]
   /** The host supplies localized text. A new query or collection aborts the previous read.
    *  `builtInIds` are the built-ins the picker lists: every one, or those `builtInIndicators`
    *  offers. */

@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { openIndicatorPicker } from '../../src/ui/chrome/indicatorPicker'
-import { pickerCollections, pickerRows } from '../../src/ui/chrome/indicatorPickerData'
+import { pickerCollections, pickerKinds, pickerRows } from '../../src/ui/chrome/indicatorPickerData'
 import type { IndicatorPickerSource } from '../../src/widget/indicatorPicker'
 import { fakeWidget, press } from './harness'
 
@@ -46,7 +46,7 @@ describe('host content contract', () => {
     const act = vi.fn(async () => ({ kind: 'ok' as const }))
     const { w, dialog } = open(source({ act, list: async () => ({ kind: 'ok', items: [], builtIns: [{ id: 'sma', favorite: true, favoriteCount: 12, actions: [{ id: 'source', label: 'Source' }] }] }) }))
     await settle()
-    const add = dialog.element.querySelector<HTMLButtonElement>('[data-picker-add="sma"]')!
+    const add = dialog.element.querySelector<HTMLButtonElement>('[data-indicator="sma"]')!
     add.click(); add.click()
     expect(w.ctx.widget.activeChart().indicators.get().map((row) => row.id)).toEqual(['sma-1', 'sma-2'])
     expect(act).not.toHaveBeenCalled()
@@ -65,10 +65,61 @@ describe('host content contract', () => {
     expect(dialog.element.querySelectorAll('.qc-picker-actions button')).toHaveLength(1)
     expect(dialog.element.querySelector('.qc-picker-actions button')?.getAttribute('aria-label')).toBe('Delete')
   })
+  it('declares kinds beside the chart\'s own, and refuses an item of a kind the source never declared', () => {
+    expect(pickerKinds(undefined)).toEqual([])
+    expect(pickerKinds([{ id: 'study', label: 'Studies' }])).toEqual([{ id: 'study', label: 'Studies' }])
+    for (const kinds of [[{ id: 'indicator', label: 'Indicators' }], [{ id: 'study', label: 'Studies' }, { id: 'study', label: 'Again' }], [{ id: 'study', label: '' }], 'study']) expect(pickerKinds(kinds)).toBeNull()
+    expect(pickerRows({ kind: 'ok', items: [{ ...item, kind: 'study' }] })).toBeNull()
+    expect(pickerRows({ kind: 'ok', items: [{ ...item, kind: 'study' }] }, ['study'])!.items[0]!.kind).toBe('study')
+    expect(pickerRows({ kind: 'ok', items: [{ ...item, kind: 'indicator' }] })!.items[0]!.kind).toBe('indicator')
+    expect(pickerRows({ kind: 'ok', items: [{ ...item, kind: 7 }] }, ['study'])).toBeNull()
+  })
   it.each([[999, '999'], [1234, '1.2 K'], [12567, '13 K']] as const)('formats favorite count %i without using price precision', async (favoriteCount, expected) => {
     const { dialog } = open(source({ list: async () => ({ kind: 'ok', items: [], builtIns: [{ id: 'sma', favoriteCount }] }) }))
     await settle()
     expect(dialog.element.querySelector('.qc-picker-count')?.textContent).toBe(expected)
+  })
+})
+
+describe('kind filters and the rail', () => {
+  const study = { ...item, id: 'band-study', title: 'Band study', kind: 'study' }
+  const kinds = [{ id: 'study', label: 'Studies' }]
+  const chips = (dialog: { element: HTMLElement }) => [...dialog.element.querySelectorAll<HTMLButtonElement>('.qc-search-class')]
+  it('shows no filters while the source declares no kind', async () => {
+    const { dialog } = open(source())
+    await settle()
+    expect(dialog.element.querySelector<HTMLElement>('.qc-search-classes')!.hidden).toBe(true)
+  })
+  it('offers All, the chart\'s Indicators and each declared kind, and narrows every collection to the one pressed', async () => {
+    const { dialog, pick } = open(source({ kinds, collections: [{ id: 'host', label: 'Host', group: 'Personal' }], list: async () => ({ kind: 'ok', items: [item, study] }) }))
+    await settle()
+    const strip = dialog.element.querySelector<HTMLElement>('.qc-search-classes')!
+    expect(strip.hidden).toBe(false)
+    expect(strip.previousElementSibling?.classList.contains('qc-search-field')).toBe(true)
+    expect(chips(dialog).map((chip) => [chip.textContent, chip.getAttribute('aria-pressed')])).toEqual([['All', 'true'], ['Indicators', 'false'], ['Studies', 'false']])
+    pick('host'); await settle()
+    const titles = () => [...dialog.element.querySelectorAll('.qc-picker-name')].map((name) => name.textContent)
+    expect(titles()).toEqual(['Example', 'Band study'])
+    chips(dialog)[2]!.click()
+    expect(titles()).toEqual(['Band study'])
+    expect(chips(dialog).map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true'])
+    chips(dialog)[1]!.click()
+    expect(titles()).toEqual(['Example'])
+    // The shipped catalog is indicators alone: a declared kind leaves it empty, and says so.
+    pick('builtin'); await settle()
+    expect(dialog.element.querySelectorAll('[data-indicator]')).toHaveLength(23)
+    chips(dialog)[2]!.click()
+    expect(dialog.element.querySelectorAll('[data-indicator]')).toHaveLength(0)
+    expect(dialog.element.querySelector('[role="status"]')?.textContent).toBe('No matching indicators.')
+    chips(dialog)[0]!.click()
+    expect(dialog.element.querySelectorAll('[data-indicator]')).toHaveLength(23)
+  })
+  it('lays the rail out as sections: Favorites under Personal with the host\'s own, the host\'s other groups, then Technicals under Built-in', () => {
+    const { dialog } = open(source({ collections: [{ id: 'mine', label: 'Mine', group: 'Personal' }, { id: 'shared', label: 'Shared' }, { id: 'picks', label: 'Picks', group: 'Curated' }] }))
+    const sections = [...dialog.element.querySelectorAll('.qc-picker-section')].map((section) => [section.querySelector('.qc-picker-group')?.textContent, [...section.querySelectorAll('[data-picker-collection]')].map((row) => row.textContent)])
+    expect(sections).toEqual([['Personal', ['Favorites', 'Mine', 'Shared']], ['Curated', ['Picks']], ['Built-in', ['Technicals']]])
+    expect(dialog.element.querySelector('[data-picker-collection="builtin"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(dialog.element.querySelector('.qc-picker-list--catalog')).not.toBeNull()
   })
 })
 

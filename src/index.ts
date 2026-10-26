@@ -429,4 +429,4 @@ export { mountTimeframePicker, openTimeframePicker } from './ui/chrome/openTimef
 // preference record through the storage port it was given. Both are types; their models, defaults
 // and codecs stay on the subpath.
 export type { DrawingAssetPort, DrawingPreferences } from './drawings/index'
-export type { IndicatorPickerSource, IndicatorPickerCollection, IndicatorPickerAction, IndicatorPickerItem, IndicatorPickerBuiltInState } from './widget/indicatorPicker'
+export type { IndicatorPickerSource, IndicatorPickerCollection, IndicatorPickerKind, IndicatorPickerAction, IndicatorPickerItem, IndicatorPickerBuiltInState } from './widget/indicatorPicker'

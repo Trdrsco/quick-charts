@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 5.3.0
+
 The built-in palettes carry a deeper dark end of the grey ramp: the dark chrome and canvas are `#000000`, dialogs and menus `#131313`, the hover fill `#1a1a1a`, the pressed fill `#2b2b2b`, menu rules `#464646` and the quiet edges `#555555`, and the light inks that stood at `#0f0f0f` are `#000000`. The light secondary ink, the ink of search rows, lists and toolbar labels, is `#000000`, and the light tooltip is `#1a1a1a`.
 
 Every dialog rounds its corners on the new `chrome.radiusDialog` role, `12px` in both built-in palettes, the symbol search and the chart settings among them. Menus and panels keep `chrome.radiusLarge`.
@@ -9,6 +11,8 @@ Every dialog rounds its corners on the new `chrome.radiusDialog` role, `12px` in
 A press outside the chart settings dialog closes it as Cancel does, putting back what the session previewed; the dialog still stands over the chart without dimming it.
 
 A switch of theme mode hands the colors a viewer chose that follow the mode (the canvas background, the grid, the watermark and the scale text and lines) back to the new mode's look, and keeps every other leaf the viewer chose. Saved chart content states the mode those colors were chosen in as `settingsMode`, so a chart opened in the other mode takes that mode's look for them; content without it keeps its colors in either mode.
+
+The indicator picker opens on the symbol search's field with no title band. Under the field, a host that declares `IndicatorPickerSource.kinds` gets a row of filters (All, Indicators, then its kinds), and `IndicatorPickerItem.kind` places a row in one. The rail is a 230px column of sections, Favorites under Personal and the shipped definitions as Technicals under Built-in, each collection a 40px row with a 28px mark. The list's headings scroll with its 32px rows of star, name, author, count and actions; the shipped catalog shows the star, the name and the actions, a row adds without a plus of its own, and an unstarred row shows its star under the pointer. The catalog gains `picker.technicals`, `picker.kindFilter`, `picker.allKinds` and `picker.indicators` in every built-in language.
 
 ## 5.2.0
 

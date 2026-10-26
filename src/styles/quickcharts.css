@@ -303,7 +303,6 @@
  * from a later cascade layer too: an important declaration in an earlier layer outranks a normal one
  * in a later layer. */
 [data-qc-theme] .qc-search-input:focus-visible,
-[data-qc-theme] .qc-picker-search:focus-visible,
 [data-qc-theme] .qc-layouts-search-input:focus-visible,
 [data-qc-theme] .qc-field:focus-visible,
 [data-qc-theme] .qc-name-input:focus-visible,

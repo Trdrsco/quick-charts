@@ -218,7 +218,7 @@ const DIALOGS: readonly [string, (host: HTMLElement) => Opened][] = [
   ['the indicator browser', (host) => {
     const w = widgetFor()
     const dialog = openIndicatorPicker({ ...w.ctx, overlays: host })
-    return { box: dialog.element, close: () => dialog.element.querySelector<HTMLButtonElement>('.qc-dialog-close')!.click() }
+    return { box: dialog.element, close: escape }
   }],
   ['the indicator settings', (host) => {
     const w = widgetFor()
