@@ -1,9 +1,9 @@
 // The controls that stand on the main price scale: the box at its top that names what prices are
-// in (the symbol's currency and unit), the auto-scale and logarithmic buttons at its foot, and the
-// door to the plus beside the crosshair's price label, which opens that price's menu. The box and
-// the buttons show while the pointer is over the scale, always, or never, as the chart settings say.
-// Each press is the chart's own verb, so the controls and every other door to the same state read
-// alike.
+// in (the symbol's currency and unit) and, where the host lends a door, opens the host's own menu;
+// the auto-scale and logarithmic buttons at its foot; and the door to the plus beside the crosshair's
+// price label, which opens that price's menu. The box and the buttons show while the pointer is over
+// the scale, always, or never, as the chart settings say. Each button's press is the chart's own
+// verb, so the controls and every other door to the same state read alike.
 //
 // The scale is drawn by the renderer, so these are DOM in the chart's chrome layer, placed over the
 // scale's box as the chart measures it. The chrome takes no pointer, so the pointer is watched on
@@ -49,6 +49,10 @@ export interface ScaleControlsDeps {
   /** Open the price menu under the plus, for the price at the crosshair's height. `keyboard` says the
    *  plus's button was pressed from the keyboard, so the menu takes the focus. */
   openPriceMenu(anchor: PriceMenuAnchor, keyboard: boolean): void
+  /** Open the host's menu for the currency and unit box, against the box's place in viewport pixels.
+   *  With it the box is a button; without it the box only names. `keyboard` says the box was pressed
+   *  from the keyboard. */
+  openUnitMenu?(anchor: { left: number; top: number; right: number; bottom: number }, keyboard: boolean): void
 }
 
 /** The plus as the menu anchors to it, in viewport pixels: its box, the crosshair's height through
@@ -95,8 +99,19 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
   const log = h('button', { type: 'button', class: 'qc-scale-mode', 'data-role': 'scale-log' })
   modes.append(auto, log)
   stopPointer(modes)
-  // The box names; it takes no pointer, so a drag that starts on it is a drag of the scale.
-  const unit = h('div', { class: 'qc-scale-unit', 'data-role': 'scale-unit' })
+  // The box names. With the host's door it is a button that opens the host's menu; without one it
+  // takes no pointer, so a drag that starts on it is a drag of the scale.
+  const door = deps.openUnitMenu
+  const unit = door
+    ? h('button', { type: 'button', class: 'qc-scale-unit', 'data-role': 'scale-unit' })
+    : h('div', { class: 'qc-scale-unit', 'data-role': 'scale-unit' })
+  if (door) {
+    stopPointer(unit)
+    unit.addEventListener('click', (event) => {
+      const box = unit.getBoundingClientRect()
+      door({ left: box.left, top: box.top, right: box.right, bottom: box.bottom }, (event as MouseEvent).detail === 0)
+    })
+  }
   deps.chrome.appendChild(unit)
   // The plus's button: no fill and no glyph of its own, since the renderer paints both.
   const plus = h('button', { type: 'button', class: 'qc-scale-plus', 'data-role': 'scale-plus' })
@@ -205,6 +220,8 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     log.textContent = t('chrome.logScaleMark')
     name(log, t('chrome.logScale'))
     name(plus, t('chrome.priceLevelMenu'))
+    // The door's words are what it names; its title says what it opens.
+    if (door) unit.title = t('settings.currencyAndUnit')
   }
 
   const sync = (): void => {
@@ -279,6 +296,10 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
   deps.gestures.addEventListener('pointerleave', onLeave)
   modes.addEventListener('pointerenter', onControlsEnter)
   modes.addEventListener('pointerleave', onControlsLeave)
+  if (door) {
+    unit.addEventListener('pointerenter', onControlsEnter)
+    unit.addEventListener('pointerleave', onControlsLeave)
+  }
   const offStrings = deps.i18n.onChange(label)
   label()
   sync()

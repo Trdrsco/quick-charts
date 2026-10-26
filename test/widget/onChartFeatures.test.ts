@@ -11,7 +11,7 @@ import type { PartialChartSettings } from '../../src/settings/schema'
 import type { PriceFormat, SymbolInfo } from '../../src/symbology'
 import { DARK_THEME, LIGHT_THEME } from '../../src/theme/palettes'
 import { createChart, type ChartWidget } from '../../src/widget/create'
-import type { UiConfig } from '../../src/widget/options'
+import type { ScaleUnitMenuRequest, UiConfig } from '../../src/widget/options'
 import { priceLevels, visibleRange } from '../../src/widget/priceLevels'
 import { signedPercentText } from '../../src/widget/prices'
 import { barValue } from '../../src/widget/styles'
@@ -68,7 +68,15 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-async function mount(options: { settings?: PartialChartSettings; ui?: UiConfig; datafeed?: ChartDatafeed; timeframe?: string } = {}) {
+async function mount(
+  options: {
+    settings?: PartialChartSettings
+    ui?: UiConfig
+    datafeed?: ChartDatafeed
+    timeframe?: string
+    scaleUnitMenu?: (request: ScaleUnitMenuRequest) => void
+  } = {},
+) {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const widget = createChart({
@@ -80,6 +88,7 @@ async function mount(options: { settings?: PartialChartSettings; ui?: UiConfig; 
     features: { drawings: false, replay: false, compare: false },
     ui: options.ui ?? { contextMenu: false, topBar: false, bottomBar: false, toasts: false },
     ...(options.settings ? { settings: options.settings } : {}),
+    ...(options.scaleUnitMenu ? { scaleUnitMenu: options.scaleUnitMenu } : {}),
   })
   mounted.push(widget)
   const renderer = lastRenderer()
@@ -375,6 +384,58 @@ describe('the currency and unit box', () => {
     renderer.paneHeights[0] = 300
     chart.applySettings({ priceScale: { currencyAndUnit: 'always' } })
     expect(container.querySelector<HTMLElement>('.qc-scale-unit')!.hidden).toBe(true)
+  })
+
+  it('is a plain box that takes no pointer while the host lends no menu', async () => {
+    const { chart, renderer, container } = await mount()
+    renderer.scaleWidths.right = 72
+    renderer.paneHeights[0] = 300
+    chart.applySettings({ priceScale: { currencyAndUnit: 'always' } })
+    const box = container.querySelector<HTMLElement>('.qc-scale-unit')!
+    expect(box.tagName).toBe('DIV')
+    expect(box.title).toBe('')
+  })
+
+  it("opens the host's menu with the chart, the box's place and how it was pressed", async () => {
+    const requests: ScaleUnitMenuRequest[] = []
+    const { chart, renderer, container } = await mount({ scaleUnitMenu: (request) => requests.push(request) })
+    renderer.scaleWidths.right = 72
+    renderer.paneHeights[0] = 300
+    chart.applySettings({ priceScale: { currencyAndUnit: 'always' } })
+    const box = container.querySelector<HTMLButtonElement>('.qc-scale-unit')!
+    expect(box.tagName).toBe('BUTTON')
+    expect(box.type).toBe('button')
+    expect(box.title).toBe('Currency and Unit')
+    expect(box.textContent).toBe('USD')
+    box.getBoundingClientRect = () => ({ left: 532, top: 4, right: 596, bottom: 30, width: 64, height: 26, x: 532, y: 4, toJSON: () => ({}) })
+    box.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+    box.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }))
+    expect(requests.map((request) => [request.chart, request.anchor, request.keyboard])).toEqual([
+      [chart, { left: 532, top: 4, right: 596, bottom: 30 }, false],
+      [chart, { left: 532, top: 4, right: 596, bottom: 30 }, true],
+    ])
+  })
+
+  it('stays while the pointer rests on it when it shows over the scale', async () => {
+    const { chart, renderer, container } = await mount({ scaleUnitMenu: () => undefined })
+    renderer.scaleWidths.right = 72
+    renderer.paneHeights[0] = 300
+    const gestures = container.querySelector<HTMLElement>('.qc-gestures')!
+    Object.defineProperty(gestures, 'clientWidth', { value: 600, configurable: true })
+    chart.applySettings({ priceScale: { currencyAndUnit: 'hover' } })
+    const box = container.querySelector<HTMLElement>('.qc-scale-unit')!
+    const over = (target: HTMLElement, type: string, x: number, y: number): void => {
+      const event = new MouseEvent(type, { bubbles: true, clientX: x, clientY: y }) as MouseEvent & { pointerType?: string }
+      Object.defineProperty(event, 'pointerType', { value: 'mouse' })
+      target.dispatchEvent(event)
+    }
+    over(gestures, 'pointermove', 570, 100)
+    expect(box.hidden).toBe(false)
+    box.dispatchEvent(new MouseEvent('pointerenter'))
+    over(gestures, 'pointerleave', 570, 10)
+    expect(box.hidden).toBe(false)
+    box.dispatchEvent(new MouseEvent('pointerleave'))
+    expect(box.hidden).toBe(true)
   })
 })
 

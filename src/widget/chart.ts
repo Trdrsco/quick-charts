@@ -55,7 +55,7 @@ import { canvasTheme, type CanvasTheme } from '../theme/renderer'
 import type { ThemeMode } from '../theme/schema'
 import type { CommandExecutor, CommandRegistry } from './commands'
 import { createEmitter, type ChartEvents, type SaveConflictInfo } from './events'
-import type { AccessPolicy, Capabilities, ChartPreferences, IndicatorInstance } from './options'
+import type { AccessPolicy, Capabilities, ChartPreferences, IndicatorInstance, ScaleUnitMenuRequest } from './options'
 import type { ResolvedFeatures, ResolvedUi } from './planes'
 import type { IconResolver } from '../ui/icons/resolver'
 import {
@@ -416,6 +416,8 @@ export interface ChartInstanceDeps {
    *  market's, and an extension reads the same value, so a split carries a badge on each chart
    *  rather than one over the grid, and a notice wears what the legend wears. */
   painters: MarkPainters
+  /** The host's door behind the price scale's currency and unit box, when it lends one. */
+  scaleUnitMenu?: (request: ScaleUnitMenuRequest) => void
   /** Whether a tile fills the layout now, so the on-chart control wears the mark for what it would
    *  do next. */
   layoutMaximized(): boolean
@@ -1497,6 +1499,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         openPriceMenu: (anchor, keyboard) => {
           menu?.raisePriceMenu(anchor, keyboard)
         },
+        ...(deps.scaleUnitMenu
+          ? { openUnitMenu: (anchor: ScaleUnitMenuRequest['anchor'], keyboard: boolean) => deps.scaleUnitMenu?.({ chart: handle, anchor, keyboard }) }
+          : {}),
       })
     : null
   // The plus beside the crosshair's price label, painted by the renderer with the label. It opens
