@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-27",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.6.0",
+  "releaseCommit": "58862ea3dc0bd21c21546b20d2b047a50c92b2fa",
+  "tarballSha256": "b11f6ca4e55a953b54a7bc7a27cc081a0cec30fa5870928198b3de4d5f7496eb",
+  "tarStreamSha256": "8659c8b508234356d7cf2afc6f09550799b3e9e9d41d7cc10544f929c2e54dda",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40451106254",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "7f0d0825c7c779119e171431308c37ed79f18ce08ef180a849379ab59769bbfa",
+      "dossierHashesSha256": "5e46ed79bd90df1f34cf508ac1d6c47183b21041bfa982b94f459c3b3ba0f2ff",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40451611620",
+      "artifact": "quickcharts-5.6.0-rehearsal",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "328b8b148a3f3ffe6902bfe31575b2b5082406c5",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/40451689304",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "For Quick Charts 5.6.0 I waive the unperformed manual accessibility and device checks and authorize publication after all remaining automated validation passes.",
+    "recordedAt": "2026-10-27T05:00:13Z",
+    "question": "Do you waive the manual checks and approve npm-publish for Quick Charts 5.6.0? (Quick Charts 5.6.0, PR 163: the currency and unit box holds its words in a 24px row with a 7 by 5 caret that turns over while the host says its menu is open, ScaleUnitMenuRequest.expanded, and the auto-scale and logarithmic buttons stand 4px apart. RELEASING.md requires manual acceptance or a version-specific owner waiver.)"
+  }
+}
