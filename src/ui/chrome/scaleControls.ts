@@ -110,7 +110,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
   const unit = door
     ? h('button', { type: 'button', class: 'qc-scale-unit', 'data-role': 'scale-unit', 'aria-haspopup': 'menu', 'aria-expanded': 'false' })
     : h('div', { class: 'qc-scale-unit', 'data-role': 'scale-unit' })
-  const unitText = h('span', { class: 'qc-scale-unit-text' })
+  const unitText = h('span', {})
   unit.append(h('span', { class: 'qc-scale-unit-row' }, unitText, door ? deps.icons.glyph(ICONS.scaleUnitArrow, { size: 7, height: 5, className: 'qc-scale-unit-arrow' }) : null))
   if (door) {
     stopPointer(unit)
