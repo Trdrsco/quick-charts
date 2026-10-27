@@ -2462,7 +2462,9 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   `scaleUnitMenu` option the box is a button titled with the setting's name: a press hands your
   handler a `ScaleUnitMenuRequest` (the chart, the box's place in viewport pixels, and whether the
   keyboard pressed it) so your own currency and unit menu opens against it, and the box stays
-  while the pointer rests on it. Without the option the box is a label that takes no pointer, so
+  while the pointer rests on it. Call the request's `expanded(true)` as your menu opens and
+  `expanded(false)` as it closes: while it stands open the box stays lit and the caret at the end
+  of its row points up. Without the option the box is a label that takes no pointer, so
   the scale under it still drags. The price-to-bar
   ratio lock (`lockPriceToBarRatio`) holds the price one bar's width spans: engaging it with no
   `priceToBarRatio` of its own takes the ratio on screen into that leaf, the scale stops framing

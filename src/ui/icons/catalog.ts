@@ -34,7 +34,7 @@ const CONTROL_ICONS = byMeaning({
   image: [ICONS.camera],
   download: [ICONS.download],
   copy: [ICONS.copy],
-  caret: [ICONS.menuArrowWide],
+  caret: [ICONS.menuArrowWide, ICONS.scaleUnitArrow],
   info: [ICONS.info],
   // The legend.
   visible: [ICONS.legendEye],

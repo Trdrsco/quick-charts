@@ -332,7 +332,8 @@ describe('the scale mode buttons', () => {
     // Over the scale, which stands at the right 60px of the 600px pane.
     pointer(gestures, 'pointermove', 570, 100)
     expect(modes.hidden).toBe(false)
-    expect(modes.style.left).toBe('543px')
+    // The pair stands centred on the scale's 60px, its buttons 4px apart.
+    expect(modes.style.left).toBe('548px')
     expect(modes.style.top).toBe('274px')
     expect([auto.textContent, log.textContent, auto.getAttribute('aria-label')]).toEqual(['A', 'L', 'Auto scale'])
     pointer(gestures, 'pointermove', 100, 100)
@@ -394,6 +395,8 @@ describe('the currency and unit box', () => {
     const box = container.querySelector<HTMLElement>('.qc-scale-unit')!
     expect(box.tagName).toBe('DIV')
     expect(box.title).toBe('')
+    expect(box.querySelector('.qc-scale-unit-arrow')).toBeNull()
+    expect(box.hasAttribute('aria-expanded')).toBe(false)
   })
 
   it("opens the host's menu with the chart, the box's place and how it was pressed", async () => {
@@ -407,6 +410,9 @@ describe('the currency and unit box', () => {
     expect(box.type).toBe('button')
     expect(box.title).toBe('Currency and Unit')
     expect(box.textContent).toBe('USD')
+    // Its row ends in the caret, and the box says its menu is closed until the host says otherwise.
+    expect(box.querySelector('.qc-scale-unit-row .qc-scale-unit-arrow svg')).not.toBeNull()
+    expect([box.getAttribute('aria-haspopup'), box.getAttribute('aria-expanded')]).toEqual(['menu', 'false'])
     box.getBoundingClientRect = () => ({ left: 532, top: 4, right: 596, bottom: 30, width: 64, height: 26, x: 532, y: 4, toJSON: () => ({}) })
     box.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
     box.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 0 }))
@@ -414,6 +420,10 @@ describe('the currency and unit box', () => {
       [chart, { left: 532, top: 4, right: 596, bottom: 30 }, false],
       [chart, { left: 532, top: 4, right: 596, bottom: 30 }, true],
     ])
+    requests[0]!.expanded(true)
+    expect(box.getAttribute('aria-expanded')).toBe('true')
+    requests[0]!.expanded(false)
+    expect(box.getAttribute('aria-expanded')).toBe('false')
   })
 
   it('stays while the pointer rests on it when it shows over the scale', async () => {

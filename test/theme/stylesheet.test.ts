@@ -90,7 +90,7 @@ describe('the scoped stylesheet', () => {
     expect(button).toContain('font-weight: 400')
     expect(button).toContain('line-height: 18px')
     expect(button).toContain('padding: 1px 0')
-    expect(structural).toMatch(/\.qc-scale-modes \{[^}]*gap: 15px/s)
+    expect(structural).toMatch(/\.qc-scale-modes \{[^}]*gap: 4px/s)
     expect(structural).toMatch(/\.qc-scale-mode:hover \{[^}]*background: var\(--qc-state-hover\)/s)
     const heldHover = structural.match(/\[data-qc-theme\] \.qc-scale-mode\[aria-pressed='true'\]:hover \{[^}]+\}/s)?.[0]
     expect(heldHover).toContain('background: var(--qc-control-onHover)')

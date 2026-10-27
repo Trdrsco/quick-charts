@@ -1483,6 +1483,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         chrome,
         gestures,
         i18n,
+        icons: deps.icons,
         box: priceScaleBox,
         modeButtons: () => eff.priceScale.scaleModeButtons,
         unitBox: () => eff.priceScale.currencyAndUnit,
@@ -1500,7 +1501,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
           menu?.raisePriceMenu(anchor, keyboard)
         },
         ...(deps.scaleUnitMenu
-          ? { openUnitMenu: (anchor: ScaleUnitMenuRequest['anchor'], keyboard: boolean) => deps.scaleUnitMenu?.({ chart: handle, anchor, keyboard }) }
+          ? { openUnitMenu: (anchor: ScaleUnitMenuRequest['anchor'], keyboard: boolean, expanded: (open: boolean) => void) => deps.scaleUnitMenu?.({ chart: handle, anchor, keyboard, expanded }) }
           : {}),
       })
     : null

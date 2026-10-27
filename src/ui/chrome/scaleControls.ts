@@ -16,6 +16,8 @@
 // gesture box before the plot hears it, and its release opens the menu.
 import type { ChartI18n } from '../../i18n'
 import type { ChartControlVisibility } from '../../settings/schema'
+import { ICONS } from '../controls/icons'
+import type { IconResolver } from '../icons/resolver'
 import { h, name, stopPointer } from './dom'
 
 /** The main price scale's box in the chrome's own pixels, and the side it stands on. */
@@ -33,6 +35,8 @@ export interface ScaleControlsDeps {
   /** The gesture box under the chrome, which hears the pointer. */
   gestures: HTMLElement
   i18n: ChartI18n
+  /** The glyphs, with the host's drawings in place of the chart's own. */
+  icons: IconResolver
   /** The main price scale's box, or null while the chart shows none. */
   box(): PriceScaleBox | null
   /** When the auto-scale and logarithmic buttons show. */
@@ -51,8 +55,8 @@ export interface ScaleControlsDeps {
   openPriceMenu(anchor: PriceMenuAnchor, keyboard: boolean): void
   /** Open the host's menu for the currency and unit box, against the box's place in viewport pixels.
    *  With it the box is a button; without it the box only names. `keyboard` says the box was pressed
-   *  from the keyboard. */
-  openUnitMenu?(anchor: { left: number; top: number; right: number; bottom: number }, keyboard: boolean): void
+   *  from the keyboard, and `expanded` is how the host says its menu stands open or closed. */
+  openUnitMenu?(anchor: { left: number; top: number; right: number; bottom: number }, keyboard: boolean, expanded: (open: boolean) => void): void
 }
 
 /** The plus as the menu anchors to it, in viewport pixels: its box, the crosshair's height through
@@ -88,7 +92,7 @@ export interface ScaleControls {
 }
 
 /** The buttons' size and the space between them and below them. */
-const BUTTON = { width: 20, height: 22, gap: 15, foot: 4 }
+const BUTTON = { width: 20, height: 22, gap: 4, foot: 4 }
 /** The currency and unit box's inset from the scale's top and from its side away from the plot. */
 const UNIT_BOX = { inset: 4 }
 
@@ -99,17 +103,21 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
   const log = h('button', { type: 'button', class: 'qc-scale-mode', 'data-role': 'scale-log' })
   modes.append(auto, log)
   stopPointer(modes)
-  // The box names. With the host's door it is a button that opens the host's menu; without one it
-  // takes no pointer, so a drag that starts on it is a drag of the scale.
+  // The box names, in a row inside its outline. With the host's door it is a button that opens the
+  // host's menu, its row ending in the caret that turns over while the menu stands open; without
+  // one it takes no pointer, so a drag that starts on it is a drag of the scale.
   const door = deps.openUnitMenu
   const unit = door
-    ? h('button', { type: 'button', class: 'qc-scale-unit', 'data-role': 'scale-unit' })
+    ? h('button', { type: 'button', class: 'qc-scale-unit', 'data-role': 'scale-unit', 'aria-haspopup': 'menu', 'aria-expanded': 'false' })
     : h('div', { class: 'qc-scale-unit', 'data-role': 'scale-unit' })
+  const unitText = h('span', {})
+  unit.append(h('span', { class: 'qc-scale-unit-row' }, unitText, door ? deps.icons.glyph(ICONS.scaleUnitArrow, { size: 7, height: 5, className: 'qc-scale-unit-arrow' }) : null))
   if (door) {
     stopPointer(unit)
+    const expanded = (open: boolean): void => unit.setAttribute('aria-expanded', String(open === true))
     unit.addEventListener('click', (event) => {
       const box = unit.getBoundingClientRect()
-      door({ left: box.left, top: box.top, right: box.right, bottom: box.bottom }, (event as MouseEvent).detail === 0)
+      door({ left: box.left, top: box.top, right: box.right, bottom: box.bottom }, (event as MouseEvent).detail === 0, expanded)
     })
   }
   deps.chrome.appendChild(unit)
@@ -248,7 +256,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     const currency = named?.currency?.trim() ?? ''
     const unitId = named?.unit?.trim() ?? ''
     const text = currency && unitId ? t('chrome.currencyAndUnit', { currency, unit: unitId }) : currency || unitId
-    unit.textContent = text
+    unitText.textContent = text
     unit.dataset.qcVisibility = visibility
     unit.hidden = text === '' || visibility === 'never' || (visibility === 'hover' && !overScale && !overControls)
     // At the scale's top, four pixels in from the corner away from the plot.

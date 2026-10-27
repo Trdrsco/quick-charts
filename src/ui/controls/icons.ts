@@ -402,6 +402,9 @@ export const ICONS = {
   /** The pickers' wide caret, on its native 16 by 8 grid: the trigger arrow, which
    *  renders half size beside a picker's text. */
   menuArrowWide: { viewBox: '0 0 16 8', body: solid(polyline([[0.6, 0.7], [8, 7], [15.4, 0.7]], 1.8)) },
+  /** The currency and unit box's caret, on its native 7 by 5 grid: a 1.2 stroke bent down at its
+   *  middle, drawn at its own size after the box's words. */
+  scaleUnitArrow: { viewBox: '0 0 7 5', body: '<path d="M1 1.5l2.5 2 2.5-2" stroke="currentColor" stroke-width="1.2"/>' },
   // Hairline weight: these two sit beside a label rather than alone in a 38px cell. A tray taking an
   // arrow, and two sheets, the back one broken where the front lies over it.
   download: { viewBox: '0 0 28 28', body: solid(bend([[6.5, 17], [6.5, 22.5], [22.5, 22.5], [22.5, 17]], 1) + line([14.5, 6], [14.5, 18]) + polyline([[10.5, 14.5], [14.5, 18.5], [18.5, 14.5]])) },

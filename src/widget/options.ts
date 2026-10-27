@@ -439,6 +439,9 @@ export interface ScaleUnitMenuRequest {
   readonly anchor: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number }
   /** Whether the box was pressed from the keyboard, so the menu takes the focus. */
   readonly keyboard: boolean
+  /** Say whether the menu stands open: `true` as it opens and `false` as it closes. While it is open
+   *  the box stays lit and its caret points up. */
+  expanded(open: boolean): void
 }
 
 /** Everything needed to construct a widget. `container` and `datafeed` are the two hard
