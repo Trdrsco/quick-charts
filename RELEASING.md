@@ -35,7 +35,13 @@ other pull requests leave it alone. The rehearsal holds the release commit's can
    digest and passing integration results. Record manual accessibility and advertised browser
    acceptance, or an explicit owner waiver. A waiver does not establish screen-reader or device
    support; automated conformance alone does not prove those results.
-4. Run `pnpm rehearsal` from a clean checkout. Keep the complete dossier and its artifact hashes.
+4. Run `pnpm rehearsal --ci-run=<url>` from a clean checkout of the release commit, naming the main
+   CI run of step 1. The rehearsal holds that run to what publication holds it to, downloads its
+   candidate, builds once to find the same bytes and the pin, and runs the supply-chain, notices,
+   `npm pack` and install checks over that candidate; the gate and the clean room are the run's. It
+   reads the run with `gh`: in Actions, give the job `GH_TOKEN: ${{ github.token }}` and
+   `actions: read`, and no browser is needed. Without `--ci-run` it runs the whole gate itself.
+   Keep the complete dossier and its artifact hashes.
 5. Write the acceptance record, `releases/<version>.json`, with every field
    [releases/README.md](releases/README.md) requires, and merge it through a pull request. The
    record is not packed, so the candidate bytes do not change.
