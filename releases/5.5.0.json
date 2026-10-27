@@ -29,6 +29,39 @@
     "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/40442002714",
     "result": "pass"
   },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40443758688",
+    "registryIntegrity": "sha512-gP/ttrmk18BsOOneZkuQKzYsMkrPuPoMoBKPCzmqxg1lgMBfARAHISwg9Pw7sDPC8/GtzqCpLI8SC+meVuFEpw==",
+    "registryTarballSha256": "76a80b565d542a0a653d999bba99ef26e75765fba1bce7b1151f3ffe2afbea30",
+    "provenanceLogIndex": 3503580700,
+    "distTagLatest": "5.5.0",
+    "npmAuditSignatures": "3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.5.0",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40444303235",
+      "browsers": [
+        {
+          "browser": "chromium",
+          "version": "149.0.7827.55",
+          "passed": 42,
+          "total": 42
+        },
+        {
+          "browser": "firefox",
+          "version": "151.0",
+          "passed": 42,
+          "total": 42
+        },
+        {
+          "browser": "webkit",
+          "version": "26.5",
+          "passed": 42,
+          "total": 42
+        }
+      ]
+    }
+  },
   "ownerWaiver": {
     "owner": "Joey",
     "statement": "For Quick Charts 5.5.0 I waive the unperformed manual accessibility and device checks and authorize publication after all remaining automated validation passes.",
