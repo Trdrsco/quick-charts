@@ -2,15 +2,15 @@
  * places each over the scale's box as it measures it and writes `--qcd-chart-background`, the
  * chart's own background, which each control stands on. */
 
-/* The auto-scale and logarithmic buttons at the foot of the scale: two 20x22 buttons 15px apart, each
- * centred in a 35x30 cell, a 14px letter each on an 18px line. Off, a button is a 1px outline on the
+/* The auto-scale and logarithmic buttons at the foot of the scale: two 20x22 buttons 4px apart, the
+ * pair centred on the scale, a 14px letter each on an 18px line. Off, a button is a 1px outline on the
  * chart's background, lit under the pointer; on, it is a held mode, filled in the emphasis fill a
  * checked box wears with its letter in the inverse ink, a step lighter under the pointer. */
 [data-qc-theme] .qc-scale-modes {
   position: absolute;
   z-index: 4;
   display: flex;
-  gap: 15px;
+  gap: 4px;
   pointer-events: auto;
 }
 
@@ -50,7 +50,8 @@
 
 /* The box at the top of the scale naming what its prices are in: at least 64x26, four pixels in from
  * the scale's top and its side away from the plot, on the chart's background inside a 1px border
- * with a radius of 4, in 12px text. It takes no pointer, so the scale under it still drags. */
+ * with a radius of 4. Its words stand at the start of a 24px row inside the border, 3px in from
+ * each end on a radius of 3, in 12px text. It takes no pointer, so the scale under it still drags. */
 [data-qc-theme] .qc-scale-unit {
   position: absolute;
   z-index: 4;
@@ -58,9 +59,7 @@
   display: flex;
   min-width: 64px;
   height: 26px;
-  align-items: center;
-  justify-content: center;
-  padding: 0 6px;
+  padding: 0;
   font-size: 12px;
   font-weight: 400;
   line-height: 12px;
@@ -72,21 +71,43 @@
   pointer-events: none;
 }
 
+[data-qc-theme] .qc-scale-unit-row {
+  display: flex;
+  flex: 1 1 auto;
+  height: 24px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px;
+  padding: 0 3px;
+  border-radius: 3px;
+}
+
 /* With the host's door the box is a button that opens the host's menu: it keeps the box's size, type
- * and outline, takes the pointer, and lights under it and while pressed as the scale's buttons do.
- * The chrome gives every button its pointer back, so this rule names the chrome as well. */
+ * and outline, takes the pointer, and ends its row in a 7x5 caret. The row lights under the pointer,
+ * while pressed and while the menu stands open, and the caret turns over while it is open. The chrome
+ * gives every button its pointer back, so these rules name the chrome as well. */
 [data-qc-theme] .qc-chrome button.qc-scale-unit {
   font-family: inherit;
   cursor: pointer;
   pointer-events: auto;
 }
 
-[data-qc-theme] .qc-chrome button.qc-scale-unit:hover {
+[data-qc-theme] .qc-chrome button.qc-scale-unit:hover .qc-scale-unit-row,
+[data-qc-theme] .qc-chrome button.qc-scale-unit[aria-expanded='true'] .qc-scale-unit-row {
   background: var(--qc-state-hover);
 }
 
-[data-qc-theme] .qc-chrome button.qc-scale-unit:active {
+[data-qc-theme] .qc-chrome button.qc-scale-unit:active .qc-scale-unit-row {
   background: var(--qc-state-pressed);
+}
+
+[data-qc-theme] .qc-scale-unit-arrow {
+  display: flex;
+  flex: 0 0 7px;
+}
+
+[data-qc-theme] .qc-chrome button.qc-scale-unit[aria-expanded='true'] .qc-scale-unit-arrow {
+  transform: rotate(180deg);
 }
 
 /* The plus beside the crosshair's price label is painted by the renderer with the label. Its button

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+The currency and unit box holds its words in a 24px row inside its outline, at the row's start, 3px in from each end on a radius of 3. With `scaleUnitMenu` the row ends in a 7 by 5 caret and lights under the pointer, and `ScaleUnitMenuRequest.expanded(open)` lets the host say its menu stands open, which keeps the row lit and turns the caret up. The auto-scale and logarithmic buttons stand 4px apart, the pair centred on the scale.
+
 ## 5.5.0
 
 The indicator picker's rail offers Favorites only while something is starred, and keeps it while it is open. The author and count columns stand only while a listed row fills them, so a list of starred built-ins reads as stars and names. Items a host answers for the `builtin` collection list in Technicals after the shipped definitions, under the host's own kinds. `IndicatorPickerCollection.empty` gives a collection an empty state: a title, text, a mark drawn 120px square from the 28-unit glyph grid, and one action that reaches `act` with a `collection` target. `IndicatorPickerEmpty` is exported. `chart.indicators.open` takes a `kind` beside `collection` and opens with that kind's filter pressed.
