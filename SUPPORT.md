@@ -32,7 +32,7 @@ The required `lightweight-charts` 5 peer is installed automatically with default
 resolution. The primary command is `npm install @trdrs/quickcharts`.
 
 The packed production bundle passes the automated public conformance suite in Chromium, Firefox
-and WebKit through Playwright 1.61.0. These checks cover chart behavior, controls, themes,
+and WebKit through Playwright 1.64.1. These checks cover chart behavior, controls, themes,
 persistence, accessible names and lifecycle. Playwright WebKit is not a claim of measured Safari
 or iOS support. Manual screen-reader acceptance and actual Safari/device measurements remain
 release evidence to complete before advertising those environments.
