@@ -1,10 +1,12 @@
 # The gate, as CI runs it: the steps `node scripts/gate.mjs` runs locally, split into jobs that run
 # side by side. `checks` holds the build and the repository checks, `tests` splits the unit suite
-# across three runners, and `browser` runs the clean room and then the browser suite over the
-# consumer the clean room installed, in the Playwright image, whose browsers and system libraries
-# are already installed, and keeps that candidate with the run as the `quickcharts-candidate`
-# artifact. Release-record-only edits run metadata, documentation and source-history checks. The
-# required `gate` verifies that every job its scope required passed and every other job was skipped.
+# across three runners, and `browser` runs the browser suite one browser to a runner, in the
+# Playwright image, whose browsers and system libraries are already installed. Each browser runner
+# drives the consumer the clean room installs; the Chromium runner runs the whole clean room and
+# keeps that candidate with the run as the `quickcharts-candidate` artifact, and the gate holds
+# every browser runner's candidate to its SHA-256. Release-record-only edits run metadata,
+# documentation and source-history checks. The required `gate` verifies that every job its scope
+# required passed and every other job was skipped.
 #
 # A release verifies the accepted artifact from successful main CI, so a tag
 # push does not run this workflow again.
@@ -126,11 +128,20 @@ jobs:
     if: needs.scope.outputs.full == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     # The image's tag matches the pinned @playwright/test, so its browsers are the ones the suite
     # expects. The runner's own user id keeps Firefox from refusing a home directory it does not own.
     container:
       image: mcr.microsoft.com/playwright:v1.61.0-noble@sha256:57b65fdc9ceabe0ef613124c7bbe2babcf9362c4d85e382fe3b03604e84b428a
       options: --user 1001
+    # Each runner reports its candidate's SHA-256 under its own browser's name, for the gate to compare.
+    outputs:
+      chromium: ${{ steps.candidate.outputs.chromium }}
+      firefox: ${{ steps.candidate.outputs.firefox }}
+      webkit: ${{ steps.candidate.outputs.webkit }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
@@ -144,19 +155,30 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: build (its last step packs the candidate)
         run: pnpm run build
+      # The whole clean room runs once, on the Chromium runner; the others install the same candidate
+      # into the browser consumer alone.
       - name: clean room
+        if: matrix.browser == 'chromium'
         run: node clean-room/run.mjs
-      - name: browser conformance
-        run: pnpm run test:browser
+      - name: browser consumer
+        if: matrix.browser != 'chromium'
+        run: node clean-room/run.mjs --browser
+      - name: browser conformance in ${{ matrix.browser }}
+        run: pnpm run test:browser --project=${{ matrix.browser }}
       # The tarball the clean room installed and the browser suite drove, kept with its manifest, so
       # a release candidate is the tested file itself rather than a build of its own.
       - name: candidate the clean room installed
+        id: candidate
+        env:
+          BROWSER: ${{ matrix.browser }}
         run: |
           tested=$(sha256sum clean-room/.artifacts/quickcharts.tgz | cut -d ' ' -f 1)
           packed=$(sha256sum .candidate/trdrs-quickcharts-*.tgz | cut -d ' ' -f 1)
           echo "candidate sha256 $packed"
           test "$tested" = "$packed"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+          echo "$BROWSER=$packed" >> "$GITHUB_OUTPUT"
+      - if: matrix.browser == 'chromium'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: quickcharts-candidate
           path: |
@@ -179,10 +201,17 @@ jobs:
           CHECKS: ${{ needs.checks.result }}
           TESTS: ${{ needs.tests.result }}
           BROWSER: ${{ needs.browser.result }}
+          CHROMIUM: ${{ needs.browser.outputs.chromium }}
+          FIREFOX: ${{ needs.browser.outputs.firefox }}
+          WEBKIT: ${{ needs.browser.outputs.webkit }}
         run: |
           test "$SCOPE" = success
           case "$FULL" in
-            true) test "$RECORDS" = skipped; test "$CHECKS" = success; test "$TESTS" = success; test "$BROWSER" = success ;;
+            true)
+              test "$RECORDS" = skipped; test "$CHECKS" = success; test "$TESTS" = success; test "$BROWSER" = success
+              # Every browser drove the candidate the Chromium runner keeps.
+              echo "candidate sha256 chromium $CHROMIUM, firefox $FIREFOX, webkit $WEBKIT"
+              test -n "$CHROMIUM"; test "$FIREFOX" = "$CHROMIUM"; test "$WEBKIT" = "$CHROMIUM" ;;
             false) test "$RECORDS" = success; test "$CHECKS" = skipped; test "$TESTS" = skipped; test "$BROWSER" = skipped ;;
             *) exit 1 ;;
           esac

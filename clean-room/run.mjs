@@ -2,7 +2,9 @@
 // packed tarball and use it, with no access to this repository's source. A tarball a stranger's
 // project cannot import is the failure this script exists to catch before a reader does.
 //
-//   node clean-room/run.mjs
+//   node clean-room/run.mjs             every consumer and every gate
+//   node clean-room/run.mjs --browser   the build and the browser consumer's install alone, for a
+//                                       browser runner whose clean room runs on another runner
 //
 // Steps: build (whose last step packs the candidate) -> copy that one tarball to .artifacts/ ->
 // npm-install each consumer (npm, not pnpm: a reader has no workspace, and npm exercises the packed
@@ -23,6 +25,7 @@ const artifacts = join(here, '.artifacts')
 const version = JSON.parse(readFileSync(join(repo, 'package.json'), 'utf8')).version
 const PACKED = `trdrs-quickcharts-${version}.tgz`
 const TARBALL = 'quickcharts.tgz'
+const browserOnly = process.argv.includes('--browser')
 
 const run = (cmd, cwd) => {
   console.log(`\n$ ${cmd}  (${cwd.replace(repo, '.')})`)
@@ -39,7 +42,7 @@ copyFileSync(join(repo, '.candidate', PACKED), join(artifacts, TARBALL))
 
 // 2. Fresh installs. --install-links copies file: deps instead of symlinking (closer to a real
 //    registry install); lockfiles are disposable here, because the point is a cold resolve.
-for (const consumer of ['ts-consumer', 'js-consumer', 'vite-consumer', 'browser-consumer']) {
+for (const consumer of browserOnly ? ['browser-consumer'] : ['ts-consumer', 'js-consumer', 'vite-consumer', 'browser-consumer']) {
   const dir = join(here, consumer)
   rmSync(join(dir, 'node_modules'), { recursive: true, force: true })
   rmSync(join(dir, 'package-lock.json'), { force: true })
@@ -60,6 +63,11 @@ copyFileSync(join(repo, 'scripts', 'browserShim.ts'), join(conformanceCopy, 'bro
 const browserCopy = join(here, 'browser-consumer', 'conformance')
 mkdirSync(browserCopy, { recursive: true })
 copyFileSync(join(conformanceSource, 'index.ts'), join(browserCopy, 'index.ts'))
+
+if (browserOnly) {
+  console.log('\nclean-room: the browser consumer installed the candidate; the other gates run on the runner that runs them all')
+  process.exit(0)
+}
 
 // 3. The TypeScript gate: this repository's own tsc binary, the consumer's own node_modules for
 //    types. The conformance copy is in the include list, so it compiles against the packed
