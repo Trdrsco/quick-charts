@@ -6,6 +6,17 @@
 //   node scripts/release-rehearsal.mjs --fast    the same with `pnpm gate --fast`, which leaves out
 //                                                the clean room; the dossier reads PARTIAL, never PASS
 //   node scripts/release-rehearsal.mjs --only=a,b   just these stages, for repairing one; PARTIAL
+//   node scripts/release-rehearsal.mjs --ci-run=<url>   the whole rehearsal, with the gate and the
+//                                                clean room proven by that main CI run
+//
+// With `--ci-run`, the gate is the main CI run that already ran it on this commit, the run a
+// release's acceptance record names as its producer. The `gate` stage holds that run to what
+// `release.yml` holds a producer to, a successful main push of this commit in which every job
+// passed, and downloads the candidate it keeps into the dossier. The `pack` stage builds once and
+// compares that build with the downloaded candidate and the committed pin, file for file and by tar
+// stream hash, so the bytes are this commit's; the clean room is the run's own, and the later stages
+// run over the downloaded candidate. It reads the run with `gh`, which needs a token that can read
+// the repository's Actions.
 //
 // Stages, in order, stopping at the first failure:
 //
@@ -35,13 +46,15 @@
 // registry credential, because a rehearsal that could publish is not a rehearsal. It runs no
 // `npm publish`, no `git push`, and no registry write; the registry traffic is the reads that
 // install the clean-room consumers' and the scratch project's dependencies.
-import { spawn } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join, posix, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
+import { gunzipSync } from 'node:zlib'
+import { candidateArtifact, producerRunId, verifyProducer } from './release-proof.mjs'
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const chartDir = repo
@@ -49,6 +62,9 @@ const chartDir = repo
 /** The public subpaths of the artifact. The install test holds the installed manifest to exactly
  *  these keys. */
 export const PUBLIC_ENTRIES = ['.', './drawings', './adapters/rest', './format', './glyphs', './symbols', './styles.css']
+
+/** The result of a stage the main CI run named by `--ci-run` ran on this commit. */
+export const PROVEN = 'proven by main CI'
 
 /** The gates only the owner closes. The summary lists each one as `owner`, never as a pass. */
 export const OWNER_GATES = [
@@ -112,16 +128,29 @@ export function comparePin(candidate, pin) {
   return drift
 }
 
+/** A candidate manifest in the pin's shape: its tar stream hash and the hash of every file. */
+export function pinOf(manifest) {
+  return { tarSha256: manifest.tarball.tarSha256, files: Object.fromEntries(Object.entries(manifest.files).map(([path, file]) => [path, file.sha256])) }
+}
+
+/** A downloaded candidate holds what its manifest names: the tarball's SHA-256, and the tar stream
+ *  that tarball unpacks to. */
+export function verifyDownloaded({ bytes, manifest }) {
+  if (sha256(bytes) !== manifest.tarball?.sha256) throw new Error('the downloaded tarball differs from the SHA-256 its manifest names')
+  if (sha256(gunzipSync(bytes)) !== manifest.tarball.tarSha256) throw new Error('the downloaded tarball does not hold the tar stream its manifest names')
+}
+
 // ── the summary ──────────────────────────────────────────────────────────────────────────────────
 
 /** The one page a person reads: verdict, candidate, gates, artifact hashes, owner gates. Paths are
  *  relative to the dossier folder so the page names no machine. */
-export function renderSummary({ result, version, commit, branch, date, fast, stages, artifact, ownerGates }) {
+export function renderSummary({ result, version, commit, branch, date, fast, stages, artifact, ownerGates, producer = null }) {
   const lines = []
   lines.push('# Quick Charts release rehearsal', '')
   lines.push(`Result: **${result}**`, '')
   if (result === 'PARTIAL') lines.push(`${fast ? 'The gate ran without the clean room (`--fast`)' : 'Only some stages ran (`--only`)'}. A partial rehearsal is not a release rehearsal.`, '')
   lines.push(`Candidate: \`@trdrs/quickcharts\` ${version}, commit \`${commit}\` on \`${branch}\`, ${date}.`, '')
+  if (producer) lines.push(`Gate: proven by main CI run ${producer}, a successful push of this commit to main in which every job passed. This rehearsal rebuilt the candidate, found the bytes that run keeps, and ran the later stages over that run's candidate.`, '')
   lines.push('Published: nothing. This rehearsal ran no publish, no registry write and no push.', '')
   lines.push('## Gates', '', '| Gate | Result | Duration | Log |', '|---|---|---|---|')
   for (const s of stages) {
@@ -378,8 +407,9 @@ async function main() {
   const argv = process.argv.slice(2)
   const fast = argv.includes('--fast')
   const only = argv.find((a) => a.startsWith('--only='))?.slice('--only='.length).split(',')
+  const ciRun = argv.find((a) => a.startsWith('--ci-run='))?.slice('--ci-run='.length) ?? null
   if (argv.includes('--help') || argv.includes('-h')) {
-    console.log('\n  node scripts/release-rehearsal.mjs             the whole rehearsal\n  node scripts/release-rehearsal.mjs --fast      the gate without the browser suite; the dossier reads PARTIAL\n  node scripts/release-rehearsal.mjs --only=a,b  just these stages; the dossier reads PARTIAL\n')
+    console.log('\n  node scripts/release-rehearsal.mjs                the whole rehearsal\n  node scripts/release-rehearsal.mjs --fast         the gate without the browser suite; the dossier reads PARTIAL\n  node scripts/release-rehearsal.mjs --only=a,b     just these stages; the dossier reads PARTIAL\n  node scripts/release-rehearsal.mjs --ci-run=<url> the whole rehearsal, the gate proven by that main CI run of this commit\n')
     return 0
   }
 
@@ -404,8 +434,9 @@ async function main() {
   let commit = 'unknown'
   let branch = 'unknown'
 
-  /** Run one stage: its body answers null on success or a one-line reason. */
-  const stage = async (id, body) => {
+  /** Run one stage: its body answers null on success or a one-line reason. A stage `proven` by the
+   *  main CI run reads `proven by main CI` once its body has checked that run's evidence. */
+  const stage = async (id, body, { proven = false } = {}) => {
     const index = String(stages.length + 1).padStart(2, '0')
     const logName = `logs/${index}-${id}.log`
     const log = join(dossier, ...logName.split('/'))
@@ -423,7 +454,7 @@ async function main() {
     }
     if (!existsSync(log)) writeFileSync(log, reason ? `${reason}\n` : 'ok\n')
     const secs = Math.round((Date.now() - started) / 1000)
-    stages.push({ id, result: reason ? `FAIL: ${reason}` : 'pass', secs, log: logName })
+    stages.push({ id, result: reason ? `FAIL: ${reason}` : proven ? PROVEN : 'pass', secs, log: logName })
     if (reason) {
       failed = true
       process.stdout.write(`\x1b[31m✗ ${id}\x1b[0m ${reason}\n`)
@@ -455,27 +486,69 @@ async function main() {
 
   await stage('install', (log) => exec(['pnpm', 'install', '--frozen-lockfile'], log))
 
-  await stage('gate', (log) => exec(['node', 'scripts/gate.mjs', ...(fast ? ['--fast'] : [])], log))
+  // Proven by the main CI run, the gate holds that run to what release.yml holds a producer to and
+  // downloads its candidate, the tarball and the manifest, into the dossier.
+  let producer = null
+  await stage(
+    'gate',
+    async (log) => {
+      if (!ciRun) return exec(['node', 'scripts/gate.mjs', ...(fast ? ['--fast'] : [])], log)
+      const gh = (...args) => execFileSync('gh', args, { cwd: repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+      const repository = process.env.GITHUB_REPOSITORY || gh('repo', 'view', '--json', 'nameWithOwner', '-q', '.nameWithOwner').trim()
+      const runId = producerRunId(ciRun, repository)
+      const api = (path) => JSON.parse(gh('api', `repos/${repository}/${path}`))
+      const run = api(`actions/runs/${runId}`)
+      const jobs = api(`actions/runs/${runId}/jobs?filter=latest&per_page=100`).jobs
+      verifyProducer({ run, workflow: api('actions/workflows/ci.yml'), jobs, record: { releaseCommit: commit }, repository, paths: [] })
+      const kept = candidateArtifact(api(`actions/runs/${runId}/artifacts?per_page=100`).artifacts, runId, commit)
+      gh('run', 'download', runId, '--repo', repository, '--name', kept.name, '--dir', join(dossier, 'artifact'))
+      const manifest = JSON.parse(readFileSync(join(dossier, 'artifact', 'manifest.json'), 'utf8'))
+      verifyDownloaded({ bytes: readFileSync(join(dossier, 'artifact', manifest.tarball.name)), manifest })
+      producer = ciRun
+      const lines = [`main CI run ${ciRun}`, `commit ${run.head_sha}, ${run.event} to ${run.head_branch}, ${run.conclusion}`, ...jobs.map((job) => `job ${job.name}: ${job.conclusion}`), `artifact ${kept.name} (${kept.id}): ${manifest.tarball.name}, SHA-256 ${manifest.tarball.sha256}, tar stream ${manifest.tarball.tarSha256}`]
+      writeFileSync(log, `${lines.join('\n')}\n`)
+      return null
+    },
+    { proven: Boolean(ciRun) },
+  )
 
   await stage('pack', async (log) => {
-    const reason = await exec(['node', 'scripts/pack-candidate.mjs'], log)
+    // Proven by the main CI run, the candidate is built once here, compared with the one that run
+    // keeps, and the dossier keeps that run's tarball, the bytes a release publishes.
+    const reason = await exec(producer ? ['pnpm', 'run', 'build'] : ['node', 'scripts/pack-candidate.mjs'], log)
     if (reason) return reason
     const candidate = JSON.parse(readFileSync(join(chartDir, '.candidate', 'manifest.json'), 'utf8'))
+    if (producer) {
+      const kept = JSON.parse(readFileSync(join(dossier, 'artifact', 'manifest.json'), 'utf8'))
+      const differs = comparePin(candidate, pinOf(kept))
+      if (differs.length) return `the build differs from the candidate main CI kept: ${differs.slice(0, 5).join(', ')}${differs.length > 5 ? ` and ${differs.length - 5} more` : ''}`
+    }
     const pin = JSON.parse(readFileSync(join(chartDir, 'test', 'fixtures', 'candidate-manifest.json'), 'utf8'))
     const drift = comparePin(candidate, pin)
-    artifact.name = candidate.tarball.name
-    artifact.bytes = candidate.tarball.bytes
-    artifact.sha256 = candidate.tarball.sha256
-    artifact.tarSha256 = candidate.tarball.tarSha256
-    artifact.files = Object.keys(candidate.files).length
+    if (!producer) {
+      copyFileSync(join(chartDir, '.candidate', candidate.tarball.name), join(dossier, 'artifact', candidate.tarball.name))
+      copyFileSync(join(chartDir, '.candidate', 'manifest.json'), join(dossier, 'artifact', 'manifest.json'))
+    }
+    const kept = JSON.parse(readFileSync(join(dossier, 'artifact', 'manifest.json'), 'utf8'))
+    artifact.name = kept.tarball.name
+    artifact.bytes = kept.tarball.bytes
+    artifact.sha256 = kept.tarball.sha256
+    artifact.tarSha256 = kept.tarball.tarSha256
+    artifact.files = Object.keys(kept.files).length
     artifact.pinMatches = drift.length === 0
-    copyFileSync(join(chartDir, '.candidate', candidate.tarball.name), join(dossier, 'artifact', candidate.tarball.name))
-    copyFileSync(join(chartDir, '.candidate', 'manifest.json'), join(dossier, 'artifact', 'manifest.json'))
     if (drift.length) return `the candidate drifted from the pin: ${drift.slice(0, 5).join(', ')}${drift.length > 5 ? ` and ${drift.length - 5} more` : ''}`
     return null
   })
 
-  await stage('clean-room', (log) => exec(['node', 'clean-room/run.mjs'], log))
+  await stage(
+    'clean-room',
+    async (log) => {
+      if (!producer) return exec(['node', 'clean-room/run.mjs'], log)
+      writeFileSync(log, `the clean room installed and drove this candidate in main CI run ${producer}, whose every job passed\n`)
+      return null
+    },
+    { proven: Boolean(producer) },
+  )
   await stage('supply-chain', (log) => exec(['pnpm', 'check:supply-chain'], log))
   await stage('notices', (log) => exec(['node', 'scripts/build-third-party-notices.mjs', '--check'], log, chartDir))
 
@@ -506,14 +579,14 @@ async function main() {
 
   const result = failed ? 'FAIL' : fast || only ? 'PARTIAL' : 'PASS'
   const date = new Date().toISOString()
-  writeFileSync(join(dossier, 'environment.json'), `${JSON.stringify({ date, commit, branch, version, fast, platform: process.platform, node: process.version, arch: process.arch }, null, 2)}\n`)
-  writeFileSync(join(dossier, 'SUMMARY.md'), renderSummary({ result, version, commit, branch, date, fast, stages, artifact: artifact.name ? artifact : null, ownerGates: OWNER_GATES }))
+  writeFileSync(join(dossier, 'environment.json'), `${JSON.stringify({ date, commit, branch, version, fast, producer, platform: process.platform, node: process.version, arch: process.arch }, null, 2)}\n`)
+  writeFileSync(join(dossier, 'SUMMARY.md'), renderSummary({ result, version, commit, branch, date, fast, stages, artifact: artifact.name ? artifact : null, ownerGates: OWNER_GATES, producer }))
   const hashes = {}
   for (const file of walkFiles(dossier)) if (file !== 'hashes.json') hashes[file] = sha256(readFileSync(join(dossier, ...file.split('/'))))
   writeFileSync(join(dossier, 'hashes.json'), `${JSON.stringify(hashes, null, 2)}\n`)
 
   console.log(`\n\x1b[1m── release rehearsal ──\x1b[0m`)
-  for (const s of stages) console.log(`  ${s.result === 'pass' ? '\x1b[32m✓\x1b[0m' : s.result === 'not run' || s.result === 'skipped' ? '\x1b[2m·\x1b[0m' : '\x1b[31m✗\x1b[0m'} ${s.id.padEnd(13)} ${s.secs === null ? s.result : `${s.secs}s`}`)
+  for (const s of stages) console.log(`  ${s.result === 'pass' || s.result === PROVEN ? '\x1b[32m✓\x1b[0m' : s.result === 'not run' || s.result === 'skipped' ? '\x1b[2m·\x1b[0m' : '\x1b[31m✗\x1b[0m'} ${s.id.padEnd(13)} ${s.secs === null ? s.result : `${s.secs}s`}`)
   console.log(`\n${result === 'PASS' ? '\x1b[32m' : result === 'PARTIAL' ? '\x1b[33m' : '\x1b[31m'}${result}\x1b[0m: dossier at ${posix.join('.release', version)}/SUMMARY.md. Nothing was published.`)
   return failed ? 1 : 0
 }

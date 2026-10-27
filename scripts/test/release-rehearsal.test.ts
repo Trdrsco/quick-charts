@@ -1,10 +1,15 @@
 // The release rehearsal's own proof, over its pure parts: the credential refusal names every shape
 // of registry credential and nothing else, the file-list and pin comparisons report exactly the
-// drift, and the summary states pass or fail per gate, lists the owner gates as `owner` and never
-// as passed, and names no machine. The stages themselves run real commands and are exercised by
-// running the script; they are not re-run here.
+// drift, a candidate downloaded from main CI must hold what its manifest names, and the summary
+// states pass or fail per gate, names the main CI run that proved the gate, lists the owner gates
+// as `owner` and never as passed, and names no machine. The stages themselves run real commands and
+// are exercised by running the script; they are not re-run here.
+import { createHash } from 'node:crypto'
+import { gzipSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
-import { OWNER_GATES, PUBLIC_ENTRIES, compareFileLists, comparePin, credentialFindings, renderSummary } from '../release-rehearsal.mjs'
+import { OWNER_GATES, PROVEN, PUBLIC_ENTRIES, compareFileLists, comparePin, credentialFindings, pinOf, renderSummary, verifyDownloaded } from '../release-rehearsal.mjs'
+
+const sha256 = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex')
 
 describe('the credential refusal', () => {
   it('names a bare token, a scoped npm config token, and an npmrc auth line', () => {
@@ -93,6 +98,44 @@ describe('the summary', () => {
   it('names no machine and carries no em dash', () => {
     expect(page).not.toMatch(/[A-Za-z]:\\|\/Users\/|\/home\//)
     expect(page).not.toContain('—')
+  })
+})
+
+describe('a gate proven by main CI', () => {
+  const tar = Buffer.from('the tar stream')
+  const tgz = gzipSync(tar)
+  const manifest = { tarball: { name: 'trdrs-quickcharts-5.4.0.tgz', sha256: sha256(tgz), tarSha256: sha256(tar) }, files: { 'dist/index.js': { sha256: 'aa', bytes: 1 }, LICENSE: { sha256: 'bb', bytes: 1 } } }
+
+  it('compares a build with the kept candidate the way it compares a candidate with the pin', () => {
+    expect(pinOf(manifest)).toEqual({ tarSha256: sha256(tar), files: { 'dist/index.js': 'aa', LICENSE: 'bb' } })
+    expect(comparePin(manifest, pinOf(manifest))).toEqual([])
+    expect(comparePin({ ...manifest, files: { ...manifest.files, LICENSE: { sha256: 'bc', bytes: 1 } } }, pinOf(manifest))).toEqual(['changed LICENSE'])
+  })
+
+  it('holds the downloaded tarball to its manifest, by its own hash and by the tar stream inside it', () => {
+    expect(() => verifyDownloaded({ bytes: tgz, manifest })).not.toThrow()
+    expect(() => verifyDownloaded({ bytes: gzipSync(Buffer.from('other')), manifest })).toThrow(/differs from the SHA-256/)
+    const other = gzipSync(Buffer.from('another tar stream'))
+    expect(() => verifyDownloaded({ bytes: other, manifest: { ...manifest, tarball: { ...manifest.tarball, sha256: sha256(other) } } })).toThrow(/tar stream/)
+  })
+
+  it('names the run in the summary and reads the stages it proved as proven, in a passing rehearsal', () => {
+    const run = 'https://github.com/example/charts/actions/runs/123'
+    const stages = [
+      { id: 'gate', result: PROVEN, secs: 4, log: 'logs/03-gate.log' },
+      { id: 'clean-room', result: PROVEN, secs: 0, log: 'logs/05-clean-room.log' },
+    ]
+    const page = renderSummary({ result: 'PASS', version: '5.4.0', commit: 'abc123', branch: 'main', date: 'd', fast: false, stages, artifact: null, ownerGates: OWNER_GATES, producer: run })
+    expect(page).toContain('Result: **PASS**')
+    expect(page).toContain(`Gate: proven by main CI run ${run}, a successful push of this commit to main in which every job passed.`)
+    expect(page).toContain('| gate | proven by main CI | 4s | `logs/03-gate.log` |')
+    expect(page).toContain('| clean-room | proven by main CI | 0s | `logs/05-clean-room.log` |')
+    expect(page).not.toContain('—')
+  })
+
+  it('names no run when the rehearsal ran the gate itself', () => {
+    const page = renderSummary({ result: 'PASS', version: 'v', commit: 'c', branch: 'b', date: 'd', fast: false, stages: [], artifact: null, ownerGates: OWNER_GATES })
+    expect(page).not.toContain('proven by main CI')
   })
 })
 
