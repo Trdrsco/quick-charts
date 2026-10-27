@@ -93,7 +93,7 @@ export interface ScaleControls {
 
 /** The buttons' size and the space between them and below them. */
 const BUTTON = { width: 20, height: 22, gap: 4, foot: 4 }
-/** The currency and unit box's inset from the scale's top and from its side away from the plot. */
+/** The currency and unit box's inset from the scale's top and from each of its sides. */
 const UNIT_BOX = { inset: 4 }
 
 export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
@@ -110,7 +110,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
   const unit = door
     ? h('button', { type: 'button', class: 'qc-scale-unit', 'data-role': 'scale-unit', 'aria-haspopup': 'menu', 'aria-expanded': 'false' })
     : h('div', { class: 'qc-scale-unit', 'data-role': 'scale-unit' })
-  const unitText = h('span', {})
+  const unitText = h('span', { class: 'qc-scale-unit-text' })
   unit.append(h('span', { class: 'qc-scale-unit-row' }, unitText, door ? deps.icons.glyph(ICONS.scaleUnitArrow, { size: 7, height: 5, className: 'qc-scale-unit-arrow' }) : null))
   if (door) {
     stopPointer(unit)
@@ -259,10 +259,11 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     unitText.textContent = text
     unit.dataset.qcVisibility = visibility
     unit.hidden = text === '' || visibility === 'never' || (visibility === 'hover' && !overScale && !overControls)
-    // At the scale's top, four pixels in from the corner away from the plot.
+    // Across the scale's top, four pixels in from its top and from each side, so it stands inside the
+    // scale at every width the scale takes.
     unit.style.top = `${Math.round(box.top + UNIT_BOX.inset)}px`
-    unit.style.left = box.side === 'right' ? `${Math.round(box.left + UNIT_BOX.inset)}px` : ''
-    unit.style.right = box.side === 'left' ? `${Math.round(deps.gestures.clientWidth - box.left - box.width + UNIT_BOX.inset)}px` : ''
+    unit.style.left = `${Math.round(box.left + UNIT_BOX.inset)}px`
+    unit.style.width = `${Math.max(0, Math.round(box.width - UNIT_BOX.inset * 2))}px`
   }
 
   const within = (event: PointerEvent): boolean => {

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.6.1
+
+The currency and unit box spans its price scale, as wide as the scale less four pixels on each side, so it stays inside a scale of any width, and words too long for it end in an ellipsis.
+
 ## 5.6.0
 
 The currency and unit box holds its words in a 24px row inside its outline, at the row's start, 3px in from each end on a radius of 3. With `scaleUnitMenu` the row ends in a 7 by 5 caret and lights under the pointer, and `ScaleUnitMenuRequest.expanded(open)` lets the host say its menu stands open, which keeps the row lit and turns the caret up. The auto-scale and logarithmic buttons stand 4px apart, the pair centred on the scale.

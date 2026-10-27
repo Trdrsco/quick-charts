@@ -48,16 +48,16 @@
   border-color: var(--qc-control-onHover);
 }
 
-/* The box at the top of the scale naming what its prices are in: at least 64x26, four pixels in from
- * the scale's top and its side away from the plot, on the chart's background inside a 1px border
- * with a radius of 4. Its words stand at the start of a 24px row inside the border, 3px in from
- * each end on a radius of 3, in 12px text. It takes no pointer, so the scale under it still drags. */
+/* The box at the top of the scale naming what its prices are in: 26px tall and as wide as the scale
+ * less four pixels on each side, four pixels below the scale's top, on the chart's background inside
+ * a 1px border with a radius of 4. Its words stand at the start of a 24px row inside the border, 3px
+ * in from each end on a radius of 3, in 12px text, and words too long for the scale end in an
+ * ellipsis. It takes no pointer, so the scale under it still drags. */
 [data-qc-theme] .qc-scale-unit {
   position: absolute;
   z-index: 4;
   box-sizing: border-box;
   display: flex;
-  min-width: 64px;
   height: 26px;
   padding: 0;
   font-size: 12px;
@@ -74,12 +74,19 @@
 [data-qc-theme] .qc-scale-unit-row {
   display: flex;
   flex: 1 1 auto;
+  min-width: 0;
   height: 24px;
   align-items: center;
   justify-content: space-between;
   gap: 2px;
   padding: 0 3px;
   border-radius: 3px;
+}
+
+[data-qc-theme] .qc-scale-unit-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* With the host's door the box is a button that opens the host's menu: it keeps the box's size, type
