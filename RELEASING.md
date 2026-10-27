@@ -16,6 +16,11 @@ Registry publishing access is separate from repository access. Do not grant it t
 
 ## Candidate acceptance
 
+The pull request that sets the release's version re-pins the candidate last, after rebasing onto
+`main`: `node scripts/pack-candidate.mjs --pin` writes `test/fixtures/candidate-manifest.json`. CI
+holds a change that sets the version or writes the pin, and the main push it makes, to the pin;
+other pull requests leave it alone. The rehearsal holds the release commit's candidate to the pin.
+
 1. Run the gate from the exact release commit: CI's run of that commit on `main` runs every step of
    `pnpm gate`, including source and contract tests, clean consumers and browser conformance over
    the packed artifact. Its `browser` job keeps the tarball the clean room installed, with its

@@ -23,8 +23,11 @@ draws over the datafeed and storage a host supplies, and everything around the c
   `pnpm check:docs` holds the documents to the documentation style.
 - **One change per pull request.** A behavior change carries its test; a change to the public
   surface updates its documents and adds a `CHANGELOG.md` line in the same pull request.
-- **Generated files are committed** and regenerated in the same commit as their source. When the
-  packed bytes change on purpose, re-pin with `node scripts/pack-candidate.mjs --pin`.
+- **Generated files are committed** and regenerated in the same commit as their source.
+- **The release pull request re-pins the candidate.** The pull request that sets a new version
+  runs `node scripts/pack-candidate.mjs --pin` last, after rebasing onto `main`. CI holds a change
+  that sets the version or writes the pin to its candidate's bytes; other pull requests leave the
+  pin alone.
 - **Every string the chart shows** comes from its catalog under `src/i18n`.
 
 ## Branches and merging
