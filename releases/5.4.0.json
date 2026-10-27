@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-26",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.4.0",
+  "releaseCommit": "ba9579fb585732c987c42b3e652b15d12cca07e1",
+  "tarballSha256": "ae53817a696931c17c0a5ecfec589332bc39d86c0a46fe2286c2f854d49b613e",
+  "tarStreamSha256": "720e9eed7af2be1636ec5b4722c2f571dea9a8fc318e48595a6092d58ddbbcff",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40420381769",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "4b17c3c4284fa4b9230b179e85bdc2faafaac2ccb23f8aef53cb19838d24a236",
+      "dossierHashesSha256": "271f39c1c535cbde93633f8d93f0ce6e7eabd0a41007d937f40bc3d5822a1889",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/40420408827",
+      "artifact": "quickcharts-5.4.0-rehearsal",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "c0e5081b4813612cf26cadcda8f1ce9c1d4f5d63",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/40421667432",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "For Quick Charts 5.4.0 I waive the unperformed manual accessibility and device checks and authorize publication after all remaining automated validation passes.",
+    "recordedAt": "2026-10-27T00:20:22Z",
+    "question": "Do you waive the manual accessibility and device checks for 5.4.0? (Quick Charts 5.4.0: chart chrome inked by the canvas's lightness, PR 150, settings page rows sized to their content while the page scrolls, PR 151, the scale mode buttons at the measured size, spacing and held hover, PR 152, and the currency and unit box as a host door with scaleUnitMenu, PR 153. RELEASING.md requires manual acceptance or a version-specific owner waiver.)"
+  }
+}
