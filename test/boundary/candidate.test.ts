@@ -2,7 +2,8 @@
 // rehearsal publishes, read back the way each of them meets it. scripts/pack-candidate.mjs writes
 // `.candidate` as the last step of every build; this fixture opens the tarball with its own reader,
 // so the archive is judged by what a consumer's extractor sees rather than by what the packer meant
-// to write, and holds it to the committed pin in test/fixtures/candidate-manifest.json.
+// to write. The committed pin in test/fixtures/candidate-manifest.json names a release's bytes, and
+// scripts/check-candidate-pin.mjs holds the candidate to it where a release is cut.
 //
 // The candidate blocks are vacuous until a build has run, the shape the other dist fixtures use;
 // `pnpm check:packages` is the gate that fails when the candidate is absent. The determinism block
@@ -16,7 +17,6 @@ import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { describe, expect, it } from 'vitest'
 import manifest from '../../package.json'
-import pin from '../fixtures/candidate-manifest.json'
 import { CHART_DIR, packedFileList } from './scan'
 
 const candidateDir = `${CHART_DIR}/.candidate`
@@ -185,16 +185,6 @@ describe('the packed files carry nothing of the machine that built them', () => 
       for (const source of map.sources) expect(source, `${path}: ${source}`).toMatch(/^\.\.\//)
       for (const source of map.sourcesContent ?? []) expect(source.includes('\r'), `${path} embeds a carriage return`).toBe(false)
     }
-  })
-})
-
-describe('the candidate matches the committed pin', () => {
-  it('carries the pinned file list, the pinned hash of every file, and the pinned tar stream', () => {
-    if (!built) return
-    const record = readManifest()
-    const files = Object.fromEntries(Object.entries(record.files).map(([path, { sha256: hash }]) => [path, hash]))
-    expect(files).toEqual(pin.files)
-    expect(record.tarball.tarSha256).toBe(pin.tarSha256)
   })
 })
 

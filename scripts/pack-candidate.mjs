@@ -37,8 +37,8 @@
 //
 //   --out=<dir>   write everywhere but the package's own .candidate directory (the fixture builds
 //                 twice into scratch directories and compares)
-//   --pin         also write test/fixtures/candidate-manifest.json, the committed pin the package
-//                 gate compares every later candidate against
+//   --pin         also write test/fixtures/candidate-manifest.json, the committed pin of the
+//                 release the package version names, which a release's candidate must match
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, join, posix, resolve } from 'node:path'
@@ -51,7 +51,7 @@ const outArg = process.argv.find((a) => a.startsWith('--out='))
 const out = outArg ? resolve(outArg.slice('--out='.length)) : join(pkgRoot, '.candidate')
 const pin = process.argv.includes('--pin')
 
-/** The pinned fixture the package gate reads. */
+/** The pinned fixture the candidate pin check and the release rehearsal read. */
 const PIN_PATH = 'test/fixtures/candidate-manifest.json'
 
 /** Every entry's modification time: 1985-10-26T08:15:00Z, the constant npm's pack writes. */
