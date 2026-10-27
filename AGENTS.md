@@ -32,8 +32,11 @@ draws over the datafeed and storage a host supplies, and everything around the c
 
 ## Branches and merging
 
-Branch from `main`, push, and open a pull request against `main`. The `gate` check is required;
-merge with a squash once it passes. Delete the branch after the merge.
+Branch from `main`, push, and open a pull request against `main`. The `gate` check is required on
+the pull request's head; merge with a squash once it passes there, as the branch stands against
+`main`. CI then runs on the merged commit. The release pull request is the one that rebases onto
+`main` before it merges, since main CI holds its merge to the pin. Delete the branch after the
+merge.
 
 ```sh
 pnpm install

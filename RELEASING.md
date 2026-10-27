@@ -8,8 +8,9 @@ release candidate before it is published and records its acceptance.
 
 Only the existing project maintainers have repository write access. Contributors can propose
 changes but cannot merge, create official releases or upgrade a consuming application. Main
-requires the `gate` check and a pull request with resolved conversations. No approving review is
-mandatory. Normal administrator operations follow these controls.
+requires a pull request with resolved conversations and the `gate` check on its head. A pull
+request whose head passes merges as the branch stands against `main`, and CI runs on the merged
+commit. No approving review is mandatory. Normal administrator operations follow these controls.
 
 The npm owner secures the account with two-factor authentication and retains recovery access.
 Registry publishing access is separate from repository access. Do not grant it to contributors.
