@@ -99,7 +99,7 @@ export interface ChartCommandDeps {
   crosshairLevel?(): number | null
   formatter(): PriceFormatter
   compareOpen(mode: 'compare' | 'change-symbol', changeFrom?: string): void
-  indicatorsOpen(collection?: string): void
+  indicatorsOpen(collection?: string, kind?: string): void
   /** Raise the chart's own symbol search dialog on this chart. */
   symbolSearchOpen(): void
   /** The drawing verbs above the layer (preferences, the eye, favorites, templates, the dialogs);
@@ -274,7 +274,14 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
   // the settings dialog hands back the instance with its inputs and overrides changed. The access
   // policy's indicator predicate is asked inside the plane, so a refused id is refused here too.
   add({ id: 'chart.indicators.open', scope: 'chart', label: 'chrome.indicators', available: () => ui.indicatorPicker,
-    execute: (arg) => deps.indicatorsOpen(arg && typeof arg === 'object' && 'collection' in arg && typeof arg.collection === 'string' ? arg.collection : undefined) })
+    execute: (arg) => {
+      // The collection to open on and the kind filter to press, each read only when it is text.
+      const field = (key: 'collection' | 'kind'): string | undefined => {
+        const value = arg && typeof arg === 'object' ? (arg as Record<string, unknown>)[key] : undefined
+        return typeof value === 'string' ? value : undefined
+      }
+      return deps.indicatorsOpen(field('collection'), field('kind'))
+    } })
   const isInstance = (arg: unknown): arg is IndicatorInstance =>
     !!arg && typeof arg === 'object' && typeof (arg as IndicatorInstance).id === 'string' && typeof (arg as IndicatorInstance).definition === 'object'
   add({

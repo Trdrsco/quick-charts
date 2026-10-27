@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-The indicator picker's rail offers Favorites only while something is starred, and keeps it while it is open. The author and count columns stand only while a listed row fills them, so a list of starred built-ins reads as stars and names. Items a host answers for the `builtin` collection list in Technicals after the shipped definitions, under the host's own kinds. `IndicatorPickerCollection.empty` gives a collection an empty state: a title, text, a mark drawn 120px square from the 28-unit glyph grid, and one action that reaches `act` with a `collection` target. `IndicatorPickerEmpty` is exported.
+The indicator picker's rail offers Favorites only while something is starred, and keeps it while it is open. The author and count columns stand only while a listed row fills them, so a list of starred built-ins reads as stars and names. Items a host answers for the `builtin` collection list in Technicals after the shipped definitions, under the host's own kinds. `IndicatorPickerCollection.empty` gives a collection an empty state: a title, text, a mark drawn 120px square from the 28-unit glyph grid, and one action that reaches `act` with a `collection` target. `IndicatorPickerEmpty` is exported. `chart.indicators.open` takes a `kind` beside `collection` and opens with that kind's filter pressed.
 
 ## 5.4.0
 

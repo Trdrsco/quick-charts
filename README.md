@@ -1603,7 +1603,9 @@ part in each through `contributeCapture` (see Extensions).
 ### Indicator picker content
 
 The Indicators button and `commands.execute('chart.indicators.open')` open the same picker.
-Pass `{ collection: 'saved' }` as the command argument to open a declared host collection directly.
+Pass `{ collection: 'saved' }` as the command argument to open a declared host collection directly,
+and `kind` beside it (`{ collection: 'builtin', kind: 'template' }`) to open with that kind's filter
+pressed; a kind neither the chart's `indicator` nor one your source declares leaves every kind listed.
 An unknown collection falls back to the shipped catalog. Reopening an already open picker keeps its current selection and query.
 The picker opens on the same search field as the symbol search. Beside its list stands a rail of
 collections: Favorites under Personal while anything is starred, and the 23 shipped definitions as

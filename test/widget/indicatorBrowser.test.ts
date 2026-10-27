@@ -36,6 +36,16 @@ describe('the real widget owns one indicator picker', () => {
     expect(open).toHaveLength(1)
     expect(open[0]!.querySelector('.qc-picker-collection[aria-pressed="true"]')?.textContent).not.toContain('Saved indicators')
   })
+  it('opens with a declared kind\'s filter pressed, and with every kind listed for an unknown one', async () => {
+    const list = vi.fn(async (_request: { collection: string }) => ({ kind: 'ok' as const, items: [] }))
+    const { widget } = mount({ indicatorPicker: { collections: [], kinds: [{ id: 'template', label: 'Templates' }], list, act: async () => ({ kind: 'ok' }) } })
+    const pressed = () => document.querySelector('.qc-dialog-scrim[data-state="open"] .qc-search-class[aria-pressed="true"]')?.textContent
+    widget.commands.execute('chart.indicators.open', { collection: 'builtin', kind: 'template' })
+    expect(pressed()).toBe('Templates')
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    widget.commands.execute('chart.indicators.open', { kind: 'missing' })
+    expect(pressed()).toBe('All')
+  })
   it('shares the toolbar and command modal, rereads the active pane on each Add, and keeps replay bounded', async () => {
     const { widget, container } = mount()
     await widget.ready()

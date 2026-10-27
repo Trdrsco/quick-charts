@@ -2836,7 +2836,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     crosshairLevel,
     formatter: () => symbolFormatter,
     compareOpen: (mode, changeFrom) => compare?.openDialog(mode, changeFrom),
-    indicatorsOpen: (collection) => deps.doors.showIndicatorPicker(collection),
+    indicatorsOpen: (collection, kind) => deps.doors.showIndicatorPicker(collection, kind),
     symbolSearchOpen: () => deps.doors.openSearch({ mode: 'search', chart: handle }),
     drawingVerbs: () => drawings.verbs,
   })

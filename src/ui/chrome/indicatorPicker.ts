@@ -28,6 +28,9 @@ export interface IndicatorPickerDeps extends ChromeContext {
   storage?: ChartStorage
   indicatorPicker?: IndicatorPickerSource
   initialCollection?: string
+  /** The kind filter pressed as the picker opens: the chart's `indicator` or a kind the source
+   *  declares. Any other value leaves every kind listed. */
+  initialKind?: string
 }
 const FAVORITES_KEY = 'quickcharts.indicatorFavorites.v1'
 // The rows' own marks; a host's glyph goes through the shared inert vector builder instead.
@@ -74,7 +77,7 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
   const starred = (): boolean => favorites.length > 0 || hostStarred
   let collection = (deps.initialCollection === 'favorites' && starred()) || collections?.some(row => row.id === deps.initialCollection) ? deps.initialCollection! : 'builtin'
   // The kind the list is narrowed to, or null for every kind.
-  let kind: string | null = null
+  let kind: string | null = deps.initialKind ?? null
   let generation = 0
   let controller: AbortController | null = null
   let busy = false
