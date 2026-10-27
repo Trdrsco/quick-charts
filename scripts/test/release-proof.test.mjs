@@ -5,7 +5,7 @@ import { producerRunId, verifyProducer, candidateArtifact, verifyCandidate } fro
 
 const repository = 'example/charts'
 const record = { releaseCommit: 'a'.repeat(40) }
-const base = () => ({ repository, record, paths: ['releases/5.0.1.json'], workflow: { id: 1, path: '.github/workflows/ci.yml' }, run: { status: 'completed', conclusion: 'success', event: 'push', head_branch: 'main', head_sha: record.releaseCommit, head_repository: { full_name: repository }, workflow_id: 1 }, jobs: ['checks','tests (1)','tests (2)','tests (3)','browser','gate'].map(name => ({ name, status: 'completed', conclusion: 'success' })) })
+const base = () => ({ repository, record, paths: ['releases/5.0.1.json'], workflow: { id: 1, path: '.github/workflows/ci.yml' }, run: { status: 'completed', conclusion: 'success', event: 'push', head_branch: 'main', head_sha: record.releaseCommit, head_repository: { full_name: repository }, workflow_id: 1 }, jobs: ['checks','tests (1)','tests (2)','tests (3)','browser (chromium)','browser (firefox)','browser (webkit)','gate'].map(name => ({ name, status: 'completed', conclusion: 'success' })) })
 
 test('producer identity refuses foreign runs and malformed URLs', () => {
   assert.equal(producerRunId('https://github.com/example/charts/actions/runs/123', repository), '123')
