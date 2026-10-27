@@ -23,9 +23,10 @@ other pull requests leave it alone. The rehearsal holds the release commit's can
 
 1. Run the gate from the exact release commit: CI's run of that commit on `main` runs every step of
    `pnpm gate`, including source and contract tests, clean consumers and browser conformance over
-   the packed artifact. Its `browser` job keeps the tarball the clean room installed, with its
-   manifest, as the `quickcharts-candidate` artifact (`gh run download <run> -n
-   quickcharts-candidate`). That tarball is the candidate, and its manifest names its SHA-256 and the
+   the packed artifact, one browser to a runner. Its `browser (chromium)` job keeps the tarball the
+   clean room installed, with its manifest, as the `quickcharts-candidate` artifact (`gh run
+   download <run> -n quickcharts-candidate`), and its `gate` job holds every browser runner's
+   tarball to that SHA-256. That tarball is the candidate, and its manifest names its SHA-256 and the
    SHA-256 of its tar stream.
 2. Inspect the export map, declaration files, stylesheet, LICENSE, NOTICE and
    THIRD-PARTY-NOTICES.md. Check the generated dist/feature-manifest.json,

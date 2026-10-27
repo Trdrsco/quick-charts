@@ -15,7 +15,7 @@ export function producerRunId(url, repository) {
 export function verifyProducer({ run, workflow, jobs, record, repository, paths }) {
   if (run.status !== 'completed' || run.conclusion !== 'success' || run.event !== 'push' || run.head_branch !== 'main' || run.head_sha !== record.releaseCommit || run.head_repository?.full_name !== repository || run.workflow_id !== workflow.id || workflow.path !== '.github/workflows/ci.yml') throw new Error('Producer must be successful main CI on the accepted source commit')
   if (!Array.isArray(paths) || paths.some(path => !releaseRecordPath(path))) throw new Error('Source changed after producer CI; accept a new candidate')
-  for (const name of ['checks', 'tests (1)', 'tests (2)', 'tests (3)', 'browser', 'gate']) {
+  for (const name of ['checks', 'tests (1)', 'tests (2)', 'tests (3)', 'browser (chromium)', 'browser (firefox)', 'browser (webkit)', 'gate']) {
     const matches = jobs.filter(job => job.name === name)
     if (matches.length !== 1 || matches[0].status !== 'completed' || matches[0].conclusion !== 'success') throw new Error(`Producer CI did not pass ${name}`)
   }
