@@ -55,8 +55,9 @@ describe('the picker dialog', () => {
     const dialog = openIndicatorPicker({ ...w.ctx })
     cleanup.push(() => dialog.close())
     expect(dialog.element.style.width).toBe('840px')
-    expect([...dialog.element.querySelectorAll('[data-picker-collection]')].map((row) => row.textContent?.trim())).toEqual(['Favorites', 'Technicals'])
-    expect([...dialog.element.querySelectorAll('.qc-picker-group')].map((heading) => heading.textContent)).toEqual(['Personal', 'Built-in'])
+    // Nothing is starred, so the rail offers no Favorites.
+    expect([...dialog.element.querySelectorAll('[data-picker-collection]')].map((row) => row.textContent?.trim())).toEqual(['Technicals'])
+    expect([...dialog.element.querySelectorAll('.qc-picker-group')].map((heading) => heading.textContent)).toEqual(['Built-in'])
     expect([...dialog.element.querySelectorAll('[role="columnheader"]')].map((cell) => cell.textContent)).toEqual(['', 'Name', 'Author', 'Favorites', ''])
     expect(dialog.element.textContent).not.toMatch(/Community|Strategies|My library/)
     expect(dialog.element.querySelector('.qc-picker-list')!.contains(dialog.element.querySelector('[role="rowgroup"]'))).toBe(true)
@@ -69,6 +70,38 @@ describe('the picker dialog', () => {
     // Built-in rows carry no add control of their own: the row and its name add.
     expect(dialog.element.querySelector('[data-picker-add]')).toBeNull()
     expect(dialog.element.querySelector('.qc-picker-author')?.textContent).toBe('')
+    // No built-in has an author or a count, so neither column stands.
+    const list = dialog.element.querySelector('.qc-picker-list')!
+    expect(list.classList.contains('qc-picker-list--authors')).toBe(false)
+    expect(list.classList.contains('qc-picker-list--counts')).toBe(false)
+  })
+
+  it('offers Favorites in the rail while anything is starred, and keeps it while it is open', () => {
+    const w = fakeWidget()
+    cleanup.push(() => w.dispose())
+    const dialog = openIndicatorPicker({ ...w.ctx, storage: w.storage })
+    cleanup.push(() => dialog.close())
+    const rail = () => [...dialog.element.querySelectorAll('[data-picker-collection]')].map((row) => row.getAttribute('data-picker-collection'))
+    expect(rail()).toEqual(['builtin'])
+    dialog.element.querySelector<HTMLButtonElement>('button[aria-label="Favorite Simple Moving Average"]')!.click()
+    expect(rail()).toEqual(['favorites', 'builtin'])
+    expect([...dialog.element.querySelectorAll('.qc-picker-group')].map((heading) => heading.textContent)).toEqual(['Personal', 'Built-in'])
+    dialog.element.querySelector<HTMLButtonElement>('[data-picker-collection="favorites"]')!.click()
+    dialog.element.querySelector<HTMLButtonElement>('button[aria-label="Unfavorite Simple Moving Average"]')!.click()
+    // Unstarring the last one leaves the open collection where it is, empty, until the trader leaves.
+    expect(rail()).toEqual(['favorites', 'builtin'])
+    expect(dialog.element.querySelectorAll('[data-indicator]')).toHaveLength(0)
+    dialog.element.querySelector<HTMLButtonElement>('[data-picker-collection="builtin"]')!.click()
+    expect(rail()).toEqual(['builtin'])
+  })
+
+  it('opens on Technicals when asked for Favorites with nothing starred', () => {
+    const w = fakeWidget()
+    cleanup.push(() => w.dispose())
+    const dialog = openIndicatorPicker({ ...w.ctx, storage: w.storage, initialCollection: 'favorites' })
+    cleanup.push(() => dialog.close())
+    expect(dialog.element.querySelector('[data-picker-collection="builtin"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(dialog.element.querySelector('[data-picker-collection="favorites"]')).toBeNull()
   })
 
   it('clears the query from the field\'s own clear mark, which shows only while there is a query', () => {

@@ -2,10 +2,12 @@
 //
 // The dialog opens on the search field every search dialog shares, with the kind filters under it
 // when the host declares kinds of its own. Below them a rail of collections stands beside the list:
-// Favorites under Personal, the host's collections after it under their own headings, and the
-// shipped definitions under Built-in. The list reads as a table of the star, the name, the author,
-// the count and the row's actions, narrowed to the star, the name and the actions for the shipped
-// catalog, and to the name and its secondary actions for a host's personal list.
+// Favorites under Personal while anything is starred, the host's collections after it under their
+// own headings, and the shipped definitions under Built-in, which a host's rows can join. The list
+// reads as a table of the star, the name, the author, the count and the row's actions, where the
+// author and count columns stand only while a listed row fills them, narrowed to the name and its
+// secondary actions for a host's personal list. A host collection that lists nothing can show its
+// own empty state: a mark, a title, a line of text and one action.
 import { BUILT_IN_INDICATORS, type BuiltInIndicator } from '../../builtInIndicators'
 import type { ChartExtensionIcon } from '../../extension'
 import type { ChartStorage } from '../../storage'
@@ -65,7 +67,12 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
     if (Array.isArray(stored)) favorites = [...new Set(stored.filter((id): id is string => typeof id === 'string' && BUILT_IN_INDICATORS.some((d) => d.id === id)))]
   } catch { /* A preference failure does not prevent using the catalog. */ }
   let query = ''
-  let collection = deps.initialCollection === 'favorites' || collections?.some(row => row.id === deps.initialCollection) ? deps.initialCollection! : 'builtin'
+  // Whether the host's last listing carried a starred row: a host that keeps favorites of its own
+  // marks them there, and the rail keeps Favorites while it does.
+  let hostStarred = false
+  /** Whether anything is starred: the rail offers Favorites only then, or while it is open. */
+  const starred = (): boolean => favorites.length > 0 || hostStarred
+  let collection = (deps.initialCollection === 'favorites' && starred()) || collections?.some(row => row.id === deps.initialCollection) ? deps.initialCollection! : 'builtin'
   // The kind the list is narrowed to, or null for every kind.
   let kind: string | null = null
   let generation = 0
@@ -92,6 +99,11 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
       const strip = h('div', { class: 'qc-search-classes' })
       const nav = h('nav', { class: 'qc-picker-nav', 'aria-label': t('picker.collections') })
       const list = h('div', { class: 'qc-picker-list', role: 'table', 'aria-label': t('picker.title') })
+      // A host collection's empty state stands in the list's place while it lists nothing.
+      const vacant = h('div', { class: 'qc-picker-empty' })
+      vacant.hidden = true
+      // Whether the rail as last built offers Favorites.
+      let railFavorites = false
       const status = h('div', { class: 'qc-picker-status qc-secondary', role: 'status', 'aria-live': 'polite' })
       let pendingFocus: string | null = null
       const actionButton = (label: string, content: Node | null, run: () => void, disabled = false, focusKey?: string, className = 'qc-picker-action'): HTMLButtonElement => {
@@ -104,7 +116,7 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         const svg = buildGlyph(icon)
         return svg ? h('span', { class: 'qc-picker-host-icon', 'aria-hidden': 'true' }, svg) : null
       }
-      const act = async (target: { kind: 'builtin' | 'item'; id: string }, action: string, favorite?: boolean): Promise<void> => {
+      const act = async (target: { kind: 'builtin' | 'item' | 'collection'; id: string }, action: string, favorite?: boolean): Promise<void> => {
         if (!source || !hostValid || busy || loading || !dialog.open()) return
         cancel()
         const revision = generation
@@ -177,7 +189,7 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         else if (focused && focused !== document.body) pendingFocus = null
         const selected = (collections ?? []).find((row) => row.id === collection)
         list.classList.toggle('qc-picker-list--personal', selected?.layout === 'list')
-        list.classList.toggle('qc-picker-list--catalog', collection === 'builtin')
+        if (railFavorites !== (starred() || collection === 'favorites')) renderNavigation()
         for (const button of nav.querySelectorAll('[data-picker-collection]')) button.setAttribute('aria-pressed', String(button.getAttribute('data-picker-collection') === collection))
         for (const chip of strip.querySelectorAll('[data-picker-kind]')) chip.setAttribute('aria-pressed', String((chip.getAttribute('data-picker-kind') || null) === kind))
         const headings = h('div', { role: 'row', class: 'qc-picker-headings' }, ...['', t('picker.name'), t('picker.author'), t('picker.favorites'), ''].map((label) => h('span', { role: 'columnheader' }, label)))
@@ -195,19 +207,37 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
             body.append(buildRow({ id: definition.id, kind: 'builtin', title: t(definition.nameKey), description: t(definition.descriptionKey), favorite, count: metadata?.favoriteCount, hostedFavorite: metadata?.favorite !== undefined || (!!source && loading), actions: metadata?.actions ?? [], primary: () => add(definition), permitted: indicatorPermitted(deps.access, definition) && deps.commands.available('chart.indicators.add'), builtin: definition }))
           }
         }
-        if (collection !== 'builtin') for (const item of rows.items) {
+        for (const item of rows.items) {
           if (collection === 'favorites' && item.favorite !== true) continue
           if (!admitted(item.kind ?? INDICATOR_KIND)) continue
           const primary = item.actions.find((action) => action.id === item.primaryAction)!
           body.append(buildRow({ id: item.id, kind: 'item', title: item.title, description: item.description, author: item.author, favorite: item.favorite, count: item.favoriteCount, hostedFavorite: true, actions: item.actions, primary: () => void act({ kind: 'item', id: item.id }, primary.id), permitted: !busy && !loading && !primary.disabled }))
         }
         replace(list, headings, body)
+        // The author and count columns stand only while a listed row fills them.
+        const filled = (cell: string): boolean => [...body.querySelectorAll(cell)].some((node) => node.textContent !== '')
+        list.classList.toggle('qc-picker-list--authors', filled('.qc-picker-author'))
+        list.classList.toggle('qc-picker-list--counts', filled('.qc-picker-count'))
+        const empty = selected?.empty && !loading && available && query.trim() === '' && rows.items.length === 0 ? selected.empty : null
+        list.hidden = !!empty
+        vacant.hidden = !empty
+        // An empty collection has nothing to filter.
+        strip.hidden = (kinds ?? []).length === 0 || !!empty
+        if (empty) {
+          const action = empty.action
+          const mark = buildGlyph(empty.icon, 120)
+          replace(vacant,
+            mark ? h('span', { class: 'qc-picker-empty-mark', 'aria-hidden': 'true' }, mark) : null,
+            h('strong', { class: 'qc-picker-empty-title' }, empty.title),
+            empty.text ? h('p', { class: 'qc-picker-empty-text' }, empty.text) : null,
+            action ? button({ label: action.label, text: action.label, className: 'qc-button--primary qc-drawing-footer-button qc-picker-empty-action', disabled: busy || action.disabled === true, onClick: () => void act({ kind: 'collection', id: collection }, action.id) }) : null)
+        } else replace(vacant)
         if (pendingFocus) {
           const target = [...list.querySelectorAll<HTMLButtonElement>('[data-picker-focus]')].find((button) => button.dataset.pickerFocus === pendingFocus)
           if (target && !target.disabled) target.focus()
           else if (!target && !loading && !busy) { pendingFocus = null; input.focus() }
         }
-        status.textContent = error || (loading ? t('picker.loading') : body.childElementCount === 0 ? t('picker.noMatches') : '')
+        status.textContent = error || (loading ? t('picker.loading') : body.childElementCount === 0 && !empty ? t('picker.noMatches') : '')
         list.setAttribute('aria-busy', String(loading || busy))
       }
       const refresh = async (): Promise<void> => {
@@ -224,7 +254,11 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
           const result = await source.list({ collection, query, builtInIds: BUILT_IN_INDICATORS.filter(offered).map((d) => d.id) }, pending.signal)
           if (!dialog.open() || revision !== generation) return
           const parsed = pickerRows(result, (kinds ?? []).map((row) => row.id))
-          if (parsed) { rows = parsed; available = true }
+          if (parsed) {
+            rows = parsed
+            available = true
+            hostStarred = parsed.builtIns.some((row) => row.favorite === true) || parsed.items.some((item) => item.favorite === true)
+          }
           else error = result?.kind === 'unavailable' && typeof result.message === 'string' && result.message.trim() ? result.message : t('picker.unavailable')
         } catch { if (dialog.open() && revision === generation) error = t('picker.unavailable') }
         finally { if (dialog.open() && revision === generation) { loading = false; render() } }
@@ -234,13 +268,15 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         clear.hidden = next === ''
         void refresh()
       }
-      // The rail: Favorites under Personal, then the host's collections, each run of one group under
-      // its heading (a collection without a group stays in the section above it), then the shipped
-      // definitions under Built-in. A host group named as the chart's Personal joins its section.
+      // The rail: Favorites under Personal while anything is starred or while it is open, then the
+      // host's collections, each run of one group under its heading (a collection without a group
+      // stays in the section above it), then the shipped definitions under Built-in. A host group
+      // named as the chart's Personal joins its section.
       const renderNavigation = (): void => {
         replace(nav)
+        railFavorites = starred() || collection === 'favorites'
         const personal = t('picker.personal')
-        const navigation = [{ id: 'favorites', label: t('picker.favorites'), group: personal, icon: deps.icons.glyph(ICONS.pickerFavorites, { size: 28 }) }, ...(collections ?? []).map((row) => ({ ...row, icon: hostIcon(row.icon) })), { id: 'builtin', label: t('picker.technicals'), group: t('picker.builtin'), icon: deps.icons.glyph(ICONS.pickerTechnicals, { size: 28 }) }]
+        const navigation = [...(railFavorites ? [{ id: 'favorites', label: t('picker.favorites'), group: personal, icon: deps.icons.glyph(ICONS.pickerFavorites, { size: 28 }) }] : []), ...(collections ?? []).map((row) => ({ ...row, icon: hostIcon(row.icon) })), { id: 'builtin', label: t('picker.technicals'), group: t('picker.builtin'), icon: deps.icons.glyph(ICONS.pickerTechnicals, { size: 28 }) }]
         let section: HTMLElement | null = null
         let group: string | undefined
         for (const item of navigation) {
@@ -274,7 +310,7 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         if (event.key === 'ArrowUp' && items(list)[0] === document.activeElement) { event.preventDefault(); input.focus() }
         else if (roveFocus(list, event)) event.preventDefault()
       })
-      box.append(searchField(deps.icons, input, clear), strip, h('div', { class: 'qc-picker-body' }, nav, h('div', { class: 'qc-picker-content' }, list, status)))
+      box.append(searchField(deps.icons, input, clear), strip, h('div', { class: 'qc-picker-body' }, nav, h('div', { class: 'qc-picker-content' }, list, vacant, status)))
       renderKinds()
       renderNavigation()
       redraw = render

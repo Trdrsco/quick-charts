@@ -91,7 +91,7 @@ describe('kind filters and the rail', () => {
     expect(dialog.element.querySelector<HTMLElement>('.qc-search-classes')!.hidden).toBe(true)
   })
   it('offers All, the chart\'s Indicators and each declared kind, and narrows every collection to the one pressed', async () => {
-    const { dialog, pick } = open(source({ kinds, collections: [{ id: 'host', label: 'Host', group: 'Personal' }], list: async () => ({ kind: 'ok', items: [item, study] }) }))
+    const { dialog, pick } = open(source({ kinds, collections: [{ id: 'host', label: 'Host', group: 'Personal' }], list: async (request) => ({ kind: 'ok', items: request.collection === 'host' ? [item, study] : [] }) }))
     await settle()
     const strip = dialog.element.querySelector<HTMLElement>('.qc-search-classes')!
     expect(strip.hidden).toBe(false)
@@ -105,7 +105,8 @@ describe('kind filters and the rail', () => {
     expect(chips(dialog).map((chip) => chip.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true'])
     chips(dialog)[1]!.click()
     expect(titles()).toEqual(['Example'])
-    // The shipped catalog is indicators alone: a declared kind leaves it empty, and says so.
+    // With no host rows of its own, the shipped catalog is indicators alone: a declared kind leaves
+    // it empty, and says so.
     pick('builtin'); await settle()
     expect(dialog.element.querySelectorAll('[data-indicator]')).toHaveLength(23)
     chips(dialog)[2]!.click()
@@ -114,12 +115,78 @@ describe('kind filters and the rail', () => {
     chips(dialog)[0]!.click()
     expect(dialog.element.querySelectorAll('[data-indicator]')).toHaveLength(23)
   })
-  it('lays the rail out as sections: Favorites under Personal with the host\'s own, the host\'s other groups, then Technicals under Built-in', () => {
+  it('lays the rail out as sections: the host\'s Personal ones, the host\'s other groups, then Technicals under Built-in', async () => {
     const { dialog } = open(source({ collections: [{ id: 'mine', label: 'Mine', group: 'Personal' }, { id: 'shared', label: 'Shared' }, { id: 'picks', label: 'Picks', group: 'Curated' }] }))
-    const sections = [...dialog.element.querySelectorAll('.qc-picker-section')].map((section) => [section.querySelector('.qc-picker-group')?.textContent, [...section.querySelectorAll('[data-picker-collection]')].map((row) => row.textContent)])
-    expect(sections).toEqual([['Personal', ['Favorites', 'Mine', 'Shared']], ['Curated', ['Picks']], ['Built-in', ['Technicals']]])
+    const sections = () => [...dialog.element.querySelectorAll('.qc-picker-section')].map((section) => [section.querySelector('.qc-picker-group')?.textContent, [...section.querySelectorAll('[data-picker-collection]')].map((row) => row.textContent)])
+    expect(sections()).toEqual([['Personal', ['Mine', 'Shared']], ['Curated', ['Picks']], ['Built-in', ['Technicals']]])
     expect(dialog.element.querySelector('[data-picker-collection="builtin"]')!.getAttribute('aria-pressed')).toBe('true')
-    expect(dialog.element.querySelector('.qc-picker-list--catalog')).not.toBeNull()
+    // A star puts Favorites at the head of Personal.
+    await settle()
+    dialog.element.querySelector<HTMLButtonElement>('button[aria-label="Favorite Simple Moving Average"]')!.click()
+    expect(sections()[0]).toEqual(['Personal', ['Favorites', 'Mine', 'Shared']])
+  })
+  it('offers Favorites while the host\'s listing carries a starred row', async () => {
+    const { dialog } = open(source({ list: async () => ({ kind: 'ok', items: [{ ...item, favorite: true }] }) }))
+    expect(dialog.element.querySelector('[data-picker-collection="favorites"]')).toBeNull()
+    await settle()
+    expect(dialog.element.querySelector('[data-picker-collection="favorites"]')).not.toBeNull()
+  })
+  it('lists the rows a host answers for Technicals after the shipped definitions, under their kind', async () => {
+    const study = { ...item, id: 'band-study', title: 'Band study', kind: 'study' }
+    const list = vi.fn(async (request: { collection: string }) => ({ kind: 'ok' as const, items: request.collection === 'builtin' ? [study] : [] }))
+    const { dialog } = open(source({ kinds: [{ id: 'study', label: 'Studies' }], list }))
+    await settle()
+    expect(list.mock.calls[0]?.[0]).toMatchObject({ collection: 'builtin' })
+    const titles = () => [...dialog.element.querySelectorAll('.qc-picker-name')].map((name) => name.textContent)
+    expect(titles()).toHaveLength(24)
+    expect(titles().at(-1)).toBe('Band study')
+    dialog.element.querySelectorAll<HTMLButtonElement>('.qc-search-class')[2]!.click()
+    expect(titles()).toEqual(['Band study'])
+  })
+  it('stands the author and count columns only while a listed row fills them', async () => {
+    const { dialog, pick } = open(source({ list: async () => ({ kind: 'ok', items: [{ ...item, author: 'Ada', favoriteCount: 3 }] }) }))
+    await settle()
+    const list = dialog.element.querySelector('.qc-picker-list')!
+    expect(list.classList.contains('qc-picker-list--authors')).toBe(true)
+    expect(list.classList.contains('qc-picker-list--counts')).toBe(true)
+    pick('host'); await settle()
+    expect(list.classList.contains('qc-picker-list--authors')).toBe(true)
+    expect(dialog.element.querySelector('.qc-picker-author')?.textContent).toBe('Ada')
+  })
+})
+
+describe('a collection\'s empty state', () => {
+  const empty = { title: 'No scripts yet', text: 'Write one to see it here.', icon: { paths: [{ d: 'M4 4H24V24H4Z' }] }, action: { id: 'create', label: 'Create script' } }
+  it('refuses a malformed empty state and keeps a valid one', () => {
+    expect(pickerCollections([{ id: 'host', label: 'Host', empty }])![0]!.empty).toEqual(empty)
+    for (const bad of [{ text: 'No title' }, { title: '' }, { title: 'T', text: 7 }, { title: 'T', action: { id: 'add', label: 'Add' } }, { title: 'T', action: { id: 'go' } }, 'empty']) expect(pickerCollections([{ id: 'host', label: 'Host', empty: bad }])).toBeNull()
+  })
+  it('stands in the list\'s place while the collection lists nothing, and runs its action on the collection', async () => {
+    const act = vi.fn(async () => ({ kind: 'ok' as const, close: true }))
+    const { dialog, pick } = open(source({ act, kinds: [{ id: 'study', label: 'Studies' }], collections: [{ id: 'host', label: 'Host', layout: 'list', empty }], list: async () => ({ kind: 'ok', items: [] }) }))
+    pick('host'); await settle()
+    const vacant = dialog.element.querySelector<HTMLElement>('.qc-picker-empty')!
+    expect(vacant.hidden).toBe(false)
+    expect(dialog.element.querySelector<HTMLElement>('.qc-picker-list')!.hidden).toBe(true)
+    expect(dialog.element.querySelector<HTMLElement>('.qc-search-classes')!.hidden).toBe(true)
+    expect(vacant.querySelector('.qc-picker-empty-title')?.textContent).toBe('No scripts yet')
+    expect(vacant.querySelector('.qc-picker-empty-text')?.textContent).toBe('Write one to see it here.')
+    expect(vacant.querySelector('.qc-picker-empty-mark svg')?.getAttribute('width')).toBe('120')
+    expect(vacant.querySelector('.qc-picker-empty-mark svg')?.getAttribute('viewBox')).toBe('0 0 28 28')
+    expect(dialog.element.querySelector('[role="status"]')?.textContent).toBe('')
+    vacant.querySelector<HTMLButtonElement>('.qc-picker-empty-action')!.click()
+    await settle()
+    expect(act).toHaveBeenCalledWith({ target: { kind: 'collection', id: 'host' }, action: 'create' }, expect.any(AbortSignal))
+    expect(dialog.open()).toBe(false)
+  })
+  it('gives way to the list and its no-matches line while a search is typed', async () => {
+    const { dialog, pick } = open(source({ collections: [{ id: 'host', label: 'Host', empty }], list: async () => ({ kind: 'ok', items: [] }) }))
+    pick('host'); await settle()
+    const input = dialog.element.querySelector<HTMLInputElement>('.qc-picker-search')!
+    input.value = 'zz'; input.dispatchEvent(new Event('input')); await settle()
+    expect(dialog.element.querySelector<HTMLElement>('.qc-picker-empty')!.hidden).toBe(true)
+    expect(dialog.element.querySelector<HTMLElement>('.qc-picker-list')!.hidden).toBe(false)
+    expect(dialog.element.querySelector('[role="status"]')?.textContent).toBe('No matching indicators.')
   })
 })
 

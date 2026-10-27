@@ -1606,17 +1606,21 @@ The Indicators button and `commands.execute('chart.indicators.open')` open the s
 Pass `{ collection: 'saved' }` as the command argument to open a declared host collection directly.
 An unknown collection falls back to the shipped catalog. Reopening an already open picker keeps its current selection and query.
 The picker opens on the same search field as the symbol search. Beside its list stands a rail of
-collections: Favorites under Personal, and the 23 shipped definitions as Technicals under Built-in.
-Pressing a definition's row adds a new instance to the currently active chart and keeps the picker
-open. Favorites use your `ChartStorage` port. The list reads as a table of each row's star, name,
-author, favorite count and actions; the shipped catalog shows the star, the name and the actions.
-Escape and a press outside the box close the picker.
+collections: Favorites under Personal while anything is starred, and the 23 shipped definitions as
+Technicals under Built-in. Favorites stays in the rail while it is open, so unstarring the last row
+there leaves the trader where they are. Pressing a definition's row adds a new instance to the
+currently active chart and keeps the picker open. Favorites use your `ChartStorage` port. The list
+reads as a table of each row's star, name, author, favorite count and actions; the author and count
+columns stand only while a listed row fills them, so the shipped catalog shows the star, the name
+and the actions. Escape and a press outside the box close the picker.
 
 Supply `ChartWidgetOptions.indicatorPicker` to include additional localized collections and rows
 in that picker. You supply data and opaque actions, not DOM, indicator definitions, or a renderer.
 Built-in annotations can add favorite state, counts and actions; they cannot replace a definition,
-its name, or Add, and their counts show wherever the list is a table (Favorites, and your table
-collections). Without a source, the picker has only shipped built-ins and Favorites.
+its name, or Add, and their counts show wherever the list is a table. Items you answer for the
+`builtin` collection list in Technicals after the shipped definitions, so a kind of your own (see
+`kinds` below) can stand beside the chart's indicators there. Without a source, the picker has only
+shipped built-ins and Favorites.
 
 ```ts
 import type { IndicatorPickerSource } from '@trdrs/quickcharts'
@@ -1676,6 +1680,23 @@ const withTemplates: IndicatorPickerSource = {
     }
   },
   async act() { return { kind: 'ok', close: true } },
+}
+```
+
+A collection can carry an `empty` state for the list to show while it lists nothing and no search
+is typed: a `title`, optional `text`, an optional `icon` drawn 120px square from the same 28-unit
+grid as every contributed glyph, and an optional `action`, a button whose press reaches `act` with
+the target `{ kind: 'collection', id }`. The kind filters step aside while it shows. Without one, an
+empty collection reads the chart's own no-matches line.
+
+```ts
+import type { IndicatorPickerCollection } from '@trdrs/quickcharts'
+
+const scripts: IndicatorPickerCollection = {
+  id: 'scripts',
+  label: 'My scripts',
+  layout: 'list',
+  empty: { title: 'No scripts yet', text: 'Write one and it lists here.', action: { id: 'create', label: 'Create script' } },
 }
 ```
 
