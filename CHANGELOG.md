@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 5.5.0
+
+The indicator picker's rail offers Favorites only while something is starred, and keeps it while it is open. The author and count columns stand only while a listed row fills them, so a list of starred built-ins reads as stars and names. Items a host answers for the `builtin` collection list in Technicals after the shipped definitions, under the host's own kinds. `IndicatorPickerCollection.empty` gives a collection an empty state: a title, text, a mark drawn 120px square from the 28-unit glyph grid, and one action that reaches `act` with a `collection` target. `IndicatorPickerEmpty` is exported. `chart.indicators.open` takes a `kind` beside `collection` and opens with that kind's filter pressed.
+
 ## 5.4.0
 
 What is drawn over the canvas reads its ink from the canvas's lightness. Over a canvas of the other mode's lightness, such as a white canvas in dark mode, the legend, the scales' boxes and buttons, the pane and navigation buttons and the corner mark wear that mode's built-in colors, and the factory scale text and lines, grid and watermark are that mode's, so they read dark on a light canvas and light on a dark one. A color the host or the viewer named stays theirs.

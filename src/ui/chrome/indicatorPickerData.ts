@@ -1,7 +1,7 @@
 // Snapshot and validate the small data contract at the UI boundary. Never retain host-owned rows:
 // a later mutation must not change the action attached to an already rendered button.
 import { BUILT_IN_INDICATORS } from '../../builtInIndicators'
-import type { IndicatorPickerAction, IndicatorPickerBuiltInState, IndicatorPickerCollection, IndicatorPickerItem, IndicatorPickerKind } from '../../widget/indicatorPicker'
+import type { IndicatorPickerAction, IndicatorPickerBuiltInState, IndicatorPickerCollection, IndicatorPickerEmpty, IndicatorPickerItem, IndicatorPickerKind } from '../../widget/indicatorPicker'
 
 /** The chart's own kind: every built-in, and every item that names none. */
 export const INDICATOR_KIND = 'indicator'
@@ -24,6 +24,14 @@ function actions(value: unknown): IndicatorPickerAction[] | null {
   return unique(result.map((a) => a.id)) ? result : null
 }
 
+/** A collection's empty state: a title, optional text and mark, and at most one action. */
+function emptyState(value: unknown): IndicatorPickerEmpty | null {
+  if (!record(value) || !text(value.title) || !optionalText(value.text)) return null
+  const action = value.action === undefined ? [] : actions([value.action])
+  if (!action) return null
+  return { title: value.title, ...(value.text !== undefined ? { text: value.text as string } : {}), ...(value.icon !== undefined ? { icon: value.icon as IndicatorPickerEmpty['icon'] } : {}), ...(action[0] ? { action: action[0] } : {}) }
+}
+
 export function pickerCollections(value: unknown): IndicatorPickerCollection[] | null {
   try {
     if (!Array.isArray(value)) return null
@@ -31,7 +39,9 @@ export function pickerCollections(value: unknown): IndicatorPickerCollection[] |
     for (const row of value) {
       if (!record(row) || !text(row.id) || ['builtin', 'favorites'].includes(row.id) || !text(row.label) || !optionalText(row.group)
         || (row.layout !== undefined && row.layout !== 'list' && row.layout !== 'table')) return null
-      result.push({ id: row.id, label: row.label, ...(row.icon !== undefined ? { icon: row.icon as IndicatorPickerCollection['icon'] } : {}), ...(row.group !== undefined ? { group: row.group as string } : {}), ...(row.layout !== undefined ? { layout: row.layout } : {}) })
+      const empty = row.empty === undefined ? undefined : emptyState(row.empty)
+      if (empty === null) return null
+      result.push({ id: row.id, label: row.label, ...(row.icon !== undefined ? { icon: row.icon as IndicatorPickerCollection['icon'] } : {}), ...(row.group !== undefined ? { group: row.group as string } : {}), ...(row.layout !== undefined ? { layout: row.layout } : {}), ...(empty ? { empty } : {}) })
     }
     return unique(result.map((row) => row.id)) ? result : null
   } catch { return null }

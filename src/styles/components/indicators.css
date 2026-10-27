@@ -300,11 +300,12 @@
   height: 28px;
 }
 
-/* The shipped catalog has no author and no count: a row is its star, its name and its actions. */
-[data-qc-theme] .qc-picker-list--catalog .qc-picker-author,
-[data-qc-theme] .qc-picker-list--catalog .qc-picker-count,
-[data-qc-theme] .qc-picker-list--catalog .qc-picker-headings > :nth-child(3),
-[data-qc-theme] .qc-picker-list--catalog .qc-picker-headings > :nth-child(4) {
+/* The author and count columns stand only while a listed row fills them, so the shipped catalog is
+ * a row of its star, its name and its actions. */
+[data-qc-theme] .qc-picker-list:not(.qc-picker-list--authors) .qc-picker-author,
+[data-qc-theme] .qc-picker-list:not(.qc-picker-list--authors) .qc-picker-headings > :nth-child(3),
+[data-qc-theme] .qc-picker-list:not(.qc-picker-list--counts) .qc-picker-count,
+[data-qc-theme] .qc-picker-list:not(.qc-picker-list--counts) .qc-picker-headings > :nth-child(4) {
   display: none;
 }
 
@@ -315,6 +316,49 @@
 [data-qc-theme] .qc-picker-list--personal .qc-picker-headings > :nth-child(3),
 [data-qc-theme] .qc-picker-list--personal .qc-picker-headings > :nth-child(4) {
   display: none;
+}
+
+/* A collection's empty state fills the list's place, centred in the row ink: a 120px mark 12px over
+ * an 18px title, 12px over 16px text, and its action 20px under that, a dialog footer's primary
+ * button. */
+[data-qc-theme] .qc-picker-empty {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  padding: 0 34px 0 30px;
+  color: var(--qc-text-secondary);
+  text-align: center;
+}
+
+[data-qc-theme] .qc-picker-empty-mark,
+[data-qc-theme] .qc-picker-empty-mark svg {
+  display: flex;
+  width: 120px;
+  height: 120px;
+}
+
+[data-qc-theme] .qc-picker-empty-mark {
+  margin-bottom: 12px;
+}
+
+[data-qc-theme] .qc-picker-empty-title {
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+[data-qc-theme] .qc-picker-empty-text {
+  margin: 0 0 -4px;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+[data-qc-theme] .qc-picker-empty-action {
+  margin-top: 20px;
 }
 
 [data-qc-theme] .qc-picker-status {

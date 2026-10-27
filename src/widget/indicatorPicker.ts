@@ -9,6 +9,20 @@ export interface IndicatorPickerCollection {
   group?: string
   /** Catalog columns by default; a personal list can omit author and favorite columns. */
   layout?: 'table' | 'list'
+  /** What the list shows while the collection lists no row and no search is typed. Omitted, it
+   *  reads the chart's own no-matches line. */
+  empty?: IndicatorPickerEmpty
+}
+
+/** A collection's empty state, centred where its list stands: a mark, a title, a line of text and
+ *  one action, which the source's `act` runs with a `collection` target. */
+export interface IndicatorPickerEmpty {
+  title: string
+  text?: string
+  /** Drawn 120px square from the same 28-unit grid as every contributed glyph. */
+  icon?: ChartExtensionIcon
+  /** The empty state's one button. `add` and `favorite` belong to the chart. */
+  action?: IndicatorPickerAction
 }
 
 /** A kind of row a host lists beside the chart's indicators. The picker offers each declared kind as
@@ -62,14 +76,16 @@ export interface IndicatorPickerSource {
   kinds?: readonly IndicatorPickerKind[]
   /** The host supplies localized text. A new query or collection aborts the previous read.
    *  `builtInIds` are the built-ins the picker lists: every one, or those `builtInIndicators`
-   *  offers. */
+   *  offers. Items answered for `builtin` list after the shipped definitions, and items answered
+   *  for `favorites` list there when starred. */
   list(request: { collection: string; query: string; builtInIds: readonly string[] }, signal: AbortSignal): Promise<
     | { kind: 'ok'; items: readonly IndicatorPickerItem[]; builtIns?: readonly IndicatorPickerBuiltInState[] }
     | { kind: 'unavailable'; message: string }
   >
-  /** `favorite` carries the requested next value. Closing aborts pending work; hosts must also
-   *  check the signal before performing late UI effects. Add is never routed here. */
-  act(request: { target: { kind: 'builtin' | 'item'; id: string }; action: string; favorite?: boolean }, signal: AbortSignal): Promise<
+  /** `favorite` carries the requested next value. A `collection` target is the empty state's action
+   *  in the collection of that id. Closing aborts pending work; hosts must also check the signal
+   *  before performing late UI effects. Add is never routed here. */
+  act(request: { target: { kind: 'builtin' | 'item' | 'collection'; id: string }; action: string; favorite?: boolean }, signal: AbortSignal): Promise<
     | { kind: 'ok'; close?: boolean }
     | { kind: 'refused'; message: string }
   >

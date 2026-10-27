@@ -14,7 +14,7 @@
 // a string of markup.
 import type { ChartExtensionIcon, ChartExtensionIconPath } from '../../extension'
 
-/** The grid a descriptor is drawn on, and the box the menu gives it. */
+/** The grid a descriptor is drawn on, and the box the menu gives it. A larger box scales the grid. */
 const GRID = 28
 
 /** What a glyph may be. The longest shape the chart draws is 440 characters of path data and its
@@ -69,8 +69,8 @@ const drawable = (shape: ChartExtensionIconPath | undefined): boolean => {
 
 /** The glyph a descriptor asks for, or null where there is nothing to draw. Null is the whole
  *  failure mode: the caller leaves its glyph cell empty, which is what a row with no icon at all
- *  already looks like. */
-export function buildGlyph(icon: ChartExtensionIcon | undefined): SVGSVGElement | null {
+ *  already looks like. `size` is the square box it is drawn in, the grid's own 28px by default. */
+export function buildGlyph(icon: ChartExtensionIcon | undefined, size: number = GRID): SVGSVGElement | null {
   try {
     const paths = icon && Array.isArray(icon.paths) ? icon.paths : []
     // Refused before a single shape is read: more shapes than a glyph can hold is not a drawing,
@@ -80,8 +80,8 @@ export function buildGlyph(icon: ChartExtensionIcon | undefined): SVGSVGElement 
     if (shapes.length === 0) return null
 
     const root = document.createElementNS(SVG_NS, 'svg')
-    set(root, GLYPH_ATTRIBUTES.svg, 'width', String(GRID))
-    set(root, GLYPH_ATTRIBUTES.svg, 'height', String(GRID))
+    set(root, GLYPH_ATTRIBUTES.svg, 'width', String(size))
+    set(root, GLYPH_ATTRIBUTES.svg, 'height', String(size))
     set(root, GLYPH_ATTRIBUTES.svg, 'viewBox', `0 0 ${GRID} ${GRID}`)
     set(root, GLYPH_ATTRIBUTES.svg, 'fill', 'none')
     // The glyph is decoration: the control it sits in carries the accessible name, and a screen

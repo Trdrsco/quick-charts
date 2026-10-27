@@ -192,9 +192,9 @@ export function mountChrome(deps: ChromeDeps): ChromeHandle {
   })
   deps.doors.notify = notify
   let indicatorDialog: DialogHandle | null = null
-  deps.doors.showIndicatorPicker = (initialCollection) => {
+  deps.doors.showIndicatorPicker = (initialCollection, initialKind) => {
     if (!ui.indicatorPicker || indicatorDialog?.open()) return
-    indicatorDialog = openIndicatorPicker({ ...ctx, storage: deps.storage, indicatorPicker: deps.indicatorPicker, initialCollection })
+    indicatorDialog = openIndicatorPicker({ ...ctx, storage: deps.storage, indicatorPicker: deps.indicatorPicker, initialCollection, initialKind })
   }
   disposers.push(() => { indicatorDialog?.close({ animate: false }); deps.doors.showIndicatorPicker = () => undefined })
 
