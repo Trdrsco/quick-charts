@@ -367,16 +367,21 @@ describe('the currency and unit box', () => {
     const box = container.querySelector<HTMLElement>('.qc-scale-unit')!
     expect(box.hidden).toBe(false)
     expect(box.textContent).toBe('USD · point')
-    expect([box.style.left, box.style.top]).toEqual(['532px', '4px'])
+    // Across the 72px scale, four pixels in from its top and each side.
+    expect([box.style.left, box.style.top, box.style.width]).toEqual(['532px', '4px', '64px'])
     chart.applySettings({ priceScale: { currencyAndUnit: 'hover' } })
     expect(box.hidden).toBe(true)
     chart.applySettings({ priceScale: { currencyAndUnit: 'never' } })
     expect(box.hidden).toBe(true)
-    // On a left scale the box keeps four pixels from the scale's outer side.
+    // On a left scale the box spans it the same way.
     chart.applySettings({ priceScale: { currencyAndUnit: 'always', placement: 'left' } })
     renderer.scaleWidths.left = 72
     chart.applySettings({ canvas: { marginTop: 12 } })
-    expect([box.style.left, box.style.right]).toEqual(['', '532px'])
+    expect([box.style.left, box.style.width]).toEqual(['4px', '64px'])
+    // A narrower scale narrows the box, so it never runs past the scale's edge.
+    renderer.scaleWidths.left = 60
+    chart.applySettings({ canvas: { marginTop: 13 } })
+    expect([box.style.left, box.style.width]).toEqual(['4px', '52px'])
   })
 
   it('shows nothing for a symbol that names neither', async () => {
