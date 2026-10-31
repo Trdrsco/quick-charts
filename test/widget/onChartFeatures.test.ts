@@ -75,6 +75,7 @@ async function mount(
     datafeed?: ChartDatafeed
     timeframe?: string
     scaleUnitMenu?: (request: ScaleUnitMenuRequest) => void
+    compare?: boolean
   } = {},
 ) {
   const container = document.createElement('div')
@@ -85,7 +86,7 @@ async function mount(
     symbol: 'ES',
     timeframe: options.timeframe ?? '1m',
     theme: { mode: 'dark' },
-    features: { drawings: false, replay: false, compare: false },
+    features: { drawings: false, replay: false, compare: options.compare ?? false },
     ui: options.ui ?? { contextMenu: false, topBar: false, bottomBar: false, toasts: false },
     ...(options.settings ? { settings: options.settings } : {}),
     ...(options.scaleUnitMenu ? { scaleUnitMenu: options.scaleUnitMenu } : {}),
@@ -1205,6 +1206,65 @@ describe('the corner of the price scale', () => {
     row('Reset price scale').click()
     expect(reset).toHaveBeenCalledOnce()
     expect(renderer.priceScaleOptions.right).toMatchObject({ autoScale: true })
+  })
+
+  it('hands the focus back to the button when a menu raised from the keyboard closes', async () => {
+    const { renderer, container } = await mount(withMenus)
+    laidOut(renderer, container)
+    const corner = container.querySelector<HTMLElement>('[data-role="scale-corner"]')!
+    corner.click()
+    row('Invert scale').click()
+    expect(document.activeElement).toBe(corner)
+  })
+
+  it('follows a change of the chart height, which leaves the time scale alone', async () => {
+    const watching: (() => void)[] = []
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        constructor(private readonly fire: () => void) {}
+        observe(target: Element): void {
+          if (target.classList.contains('qc-gestures')) watching.push(this.fire)
+        }
+        unobserve(): void {}
+        disconnect(): void {}
+      },
+    )
+    try {
+      const { chart, renderer, container } = await mount(withMenus)
+      laidOut(renderer, container)
+      chart.applySettings({ canvas: { marginTop: 11 } })
+      const corner = container.querySelector<HTMLElement>('[data-role="scale-corner"]')!
+      const before = corner.style.top
+      renderer.paneHeights[0] = 420
+      for (const fire of watching) fire()
+      await nextFrame()
+      expect(corner.style.top).not.toBe(before)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('keeps the inverted scale to the main pane, wherever it stands', async () => {
+    const { chart, renderer } = await mount(withMenus)
+    chart.applySettings({ priceScale: { invertScale: true } })
+    chart.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
+    await settle()
+    expect(renderer.chart.priceScale('right', 1).options().invertScale).toBe(false)
+    expect(renderer.priceScaleOptions.right).toMatchObject({ invertScale: true })
+    chart.applySettings({ priceScale: { invertScale: false } })
+    renderer.chart.panes()[1]!.moveTo(0)
+    chart.applySettings({ priceScale: { invertScale: true } })
+    expect(renderer.priceScaleOptions['right:1']).toMatchObject({ invertScale: true })
+    expect(renderer.priceScaleOptions.right).toMatchObject({ invertScale: false })
+  })
+
+  it('frames the scale on the main series alone when a comparison joins it', async () => {
+    const { chart, renderer } = await mount({ ...withMenus, compare: true })
+    chart.applySettings({ priceScale: { scalePriceChartOnly: true } })
+    const held = renderer.series.length
+    chart.compare.add('NQ', { placement: 'same-percent' })
+    await vi.waitFor(() => expect((renderer.series[held]?.options.autoscaleInfoProvider as ((own: () => unknown) => unknown) | undefined)?.(() => 'own')).toBeNull(), { timeout: 3000 })
   })
 
   it('stands no button on a chart without its menus', async () => {

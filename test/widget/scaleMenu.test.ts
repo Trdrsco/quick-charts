@@ -26,6 +26,9 @@ function groups(over: Partial<ScaleMenuDeps> & { edit?: (settings: ChartSettings
     ratio: () => 1.25054,
     extendedHours: () => true,
     shortcut: (command) => ({ 'chart.view.reset': 'Alt + R', 'chart.scale.toggleInvert': 'Alt + I', 'chart.scale.togglePercent': 'Alt + P', 'chart.scale.toggleLog': 'Alt + L' })[command] ?? null,
+    shown: () => true,
+    permitted: () => true,
+    settingsDoor: true,
     ...over,
   })
   const row = (label: string): ScaleMenuRow => {
@@ -105,6 +108,37 @@ describe('the scale menu rows', () => {
     expect(row('Reset price scale').shortcut).toBe('Alt + R')
     row('Reset price scale').run?.()
     expect(execute).toHaveBeenLastCalledWith('chart.view.reset', undefined)
+  })
+
+  it('holds the ratio its row prints, and lets go of a lock as it stands', () => {
+    const open = groups()
+    open.row('Lock price to bar ratio').run?.()
+    expect(open.execute).toHaveBeenLastCalledWith('chart.settings.apply', { settings: { priceScale: { lockPriceToBarRatio: true, priceToBarRatio: 1.25054 } } })
+    const held = groups({
+      edit: (settings) => {
+        settings.priceScale.lockPriceToBarRatio = true
+      },
+    })
+    held.row('Lock price to bar ratio').run?.()
+    expect(held.execute).toHaveBeenLastCalledWith('chart.settings.apply', { settings: { priceScale: { lockPriceToBarRatio: false } } })
+  })
+
+  it('draws what the policy refuses disabled, and leaves it out where the host hides it', () => {
+    const refused = groups({ permitted: (command) => command !== 'chart.settings.apply' })
+    expect(refused.row('Invert scale').disabled).toBeUndefined()
+    expect(refused.row('Plus button').disabled).toBe(true)
+    const hidden = groups({ shown: (command) => command !== 'chart.settings.apply' })
+    expect(hidden.rows.map((group) => group.map((row) => row.label))).toEqual([
+      ['Reset price scale'],
+      ['Auto (fits data to screen)', 'Invert scale'],
+      ['Regular', 'Percent', 'Indexed to 100', 'Logarithmic'],
+      ['More settings…'],
+    ])
+  })
+
+  it('leaves out the settings door on a chart that offers none', () => {
+    const { rows } = groups({ settingsDoor: false })
+    expect(rows.at(-1)!.map((row) => row.label)).toEqual(['Labels', 'Lines', 'Plus button'])
   })
 
   it('opens the settings on their Scales page', () => {

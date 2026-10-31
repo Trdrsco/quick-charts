@@ -106,7 +106,7 @@ import { attachPinch } from './pinch'
 import { attachFreePan } from './freePan'
 import { watchPlotArea, type PlotArea } from './plotArea'
 import { attachMenuPlane, levelAt, raiseMenuAt } from './menu'
-import { commandShown } from './access'
+import { commandPermitted, commandShown } from './access'
 import { symbolNames } from '../symbolLabel'
 import { attachPointerPlane } from './pointer'
 import { attachMarks } from './marks'
@@ -652,8 +652,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     timeScale: { ...look.timeScale, timeVisible: true, secondsVisible: false, rightOffset: appliedRightOffset, barSpacing: 8, minBarSpacing: 0.5 },
   })
 
-  /** The main series' price scale, on whichever side it stands. */
-  const mainScale = (): ReturnType<IChartApi['priceScale']> => chart.priceScale(scaleSide)
+  /** The main series' price scale, on whichever side and in whichever pane it stands. */
+  const mainScale = (): ReturnType<IChartApi['priceScale']> => chart.priceScale(scaleSide, mainPane())
   /** A price scale's width, and 0 for a side the renderer has not built yet: a scale moved to a side
    *  it never stood on takes its place in the next paint, and the renderer throws until it has. */
   const scaleWidth = (side: 'left' | 'right'): number => {
@@ -1082,6 +1082,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
           paneOps.settle()
           legend.push()
           paneButtons?.sync()
+          syncScaleSources()
         },
         onEvent: (entries) => events.emit('compare', entries),
       })
@@ -1359,6 +1360,17 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   })
   // The time scale narrows as the price scale widens to hold its labels, and the corner goes with it.
   chart.timeScale().subscribeSizeChange(() => scaleControls?.sync())
+  // The corner stands at the foot of the panes, which the chart's height moves and the time scale's
+  // size does not show. The renderer lays out for a new height in its next frame.
+  const heightWatch =
+    typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(() => {
+          requestAnimationFrame(() => {
+            if (!disposed) scaleControls?.sync()
+          })
+        })
+  heightWatch?.observe(gestures)
   // The high and low are the bars in view, so a move of the view moves them.
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
     levels?.refresh()
@@ -1429,6 +1441,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
             ratio: () => (eff.priceScale.lockPriceToBarRatio ? eff.priceScale.priceToBarRatio : liveRatio()),
             extendedHours: () => session.extended(),
             shortcut,
+            shown: (id) => commandShown(deps.access, id),
+            permitted: (id) => commandPermitted(deps.access, id),
+            settingsDoor: deps.ui.settingsMenu,
           }),
         host: deps.layer,
         i18n,
@@ -1916,6 +1931,20 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       const id = each.options().priceScaleId
       if (each !== series && (id === undefined || id === scaleSide)) each.applyOptions({ autoscaleInfoProvider: framing })
     }
+    uprightOtherPanes()
+  }
+
+  /** The inverted scale is the main pane's alone. The renderer opens a pane from the options a
+   *  default scale took last, so a pane that opens upside down is turned back. */
+  function uprightOtherPanes(): void {
+    const main = mainPane()
+    chart.panes().forEach((_, pane) => {
+      if (pane === main) return
+      for (const side of ['left', 'right'] as const) {
+        const scale = chart.priceScale(side, pane)
+        if (scale.options().invertScale) scale.applyOptions({ invertScale: false })
+      }
+    })
   }
 
   /** New prices arrived for the symbol on screen: every surface that draws them repaints. */
@@ -1943,7 +1972,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // after the mode, in a second call.
     mainScale().applyOptions({ mode: held.mode })
     if (!held.autoScale) mainScale().applyOptions({ autoScale: false })
-    chart.priceScale(previous).applyOptions({ mode: PriceScaleMode.Normal, autoScale: true, invertScale: false })
+    chart.priceScale(previous, mainPane()).applyOptions({ mode: PriceScaleMode.Normal, autoScale: true, invertScale: false })
     for (const each of chart.panes()[mainPane()]?.getSeries() ?? []) {
       const id = each.options().priceScaleId
       if (id === undefined || id === previous) each.applyOptions({ priceScaleId: next })
@@ -3027,6 +3056,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       unsubscribe?.()
       unsubscribe = null
       prices.destroy()
+      heightWatch?.disconnect()
       unregisterCommands()
       baselineLevel.destroy()
       nav?.destroy()

@@ -148,7 +148,13 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     const expanded = (open: boolean): void => corner.setAttribute('aria-expanded', String(open === true))
     corner.addEventListener('click', (event) => {
       const place = corner.getBoundingClientRect()
-      scaleDoor({ left: place.left, top: place.top, right: place.right, bottom: place.bottom, side: deps.box()?.side ?? 'right' }, event.detail === 0, expanded)
+      const keyboard = event.detail === 0
+      scaleDoor({ left: place.left, top: place.top, right: place.right, bottom: place.bottom, side: deps.box()?.side ?? 'right' }, keyboard, (open) => {
+        expanded(open)
+        // A menu raised from the keyboard hands the focus back as it closes, so the chart's keys
+        // reach the chart again.
+        if (!open && keyboard) corner.focus()
+      })
     })
     deps.chrome.appendChild(corner)
   }
