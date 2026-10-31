@@ -2843,10 +2843,6 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   const unregisterCommands = registerChartCommands({
-    resetPriceScale: () => {
-      applyPriceAxisPolicy('auto')
-      history.changed()
-    },
     toggleAutoScale,
     commands: deps.commands,
     handle,

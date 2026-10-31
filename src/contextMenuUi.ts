@@ -168,9 +168,9 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
   /** The row whose flyout stands open. */
   let flyoutRow: HTMLButtonElement | null = null
 
+  /** The box a row's flyout opens in, in the document only while it stands. */
   const flyout = document.createElement('div')
-  flyout.className = 'qc-overlay qc-menu qc-price-menu qc-scale-menu'
-  flyout.hidden = true
+  flyout.className = 'qc-overlay qc-menu qc-price-menu'
   flyout.addEventListener('contextmenu', (e) => e.preventDefault())
   for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) flyout.addEventListener(type, (e) => e.stopPropagation())
 
@@ -181,7 +181,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
   }
 
   const closeFlyout = (): void => {
-    flyout.hidden = true
+    flyout.remove()
     flyout.replaceChildren()
     if (flyoutRow) markFlyout(flyoutRow, false)
     flyoutRow = null
@@ -189,7 +189,6 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
 
   const closeScale = (): void => {
     closeFlyout()
-    box.classList.remove('qc-scale-menu')
     openScaleRows = null
     scaleExpanded?.(false)
     scaleExpanded = null
@@ -272,7 +271,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
   view.addEventListener('pointercancel', onReleaseOff, capturing)
   for (const type of AFTER_PRESS) view.addEventListener(type, onAfterPressOff, capturing)
 
-  container.append(backdrop, box, flyout)
+  container.append(backdrop, box)
 
   const separator = (): HTMLDivElement => {
     const sep = document.createElement('div')
@@ -366,7 +365,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
       flyoutRow = row
       markFlyout(row, true)
       fillScale(flyout, groups)
-      flyout.hidden = false
+      box.after(flyout)
       flyout.style.left = '0px'
       flyout.style.top = '0px'
       const { width, height } = flyout.getBoundingClientRect()
@@ -449,7 +448,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
       openScaleRows = rows
       scaleExpanded = expanded
       scaleSide = at.side
-      box.classList.add('qc-price-menu', 'qc-scale-menu')
+      box.classList.add('qc-price-menu')
       fillScale(box, rows())
       box.hidden = false
       box.style.left = '0px'

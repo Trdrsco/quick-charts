@@ -115,7 +115,6 @@ describe('the chart.data.download command', () => {
       earliestBar: () => null,
       replayFromFirst: async () => undefined,
       resetSettings: () => undefined,
-      resetPriceScale: () => undefined,
       toggleAutoScale: () => undefined,
       frame: () => undefined,
       zoom: () => undefined,

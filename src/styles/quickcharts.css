@@ -318,8 +318,9 @@
 /* Menus --------------------------------------------------------------------------------------- */
 
 /* A row is its own rounded slot inside the panel's padding, so a highlight reads as a chip rather
- * than as a band cut off by the panel edge. It rests in the primary ink; the pointer lays the hover
- * fill under it and a press the pressed fill, and the chosen row inverts. */
+ * than as a band cut off by the panel edge. It rests in the ink its menu names, the primary one
+ * unless the menu names another; the pointer lays the hover fill under it and a press the pressed
+ * fill, and the chosen row inverts. */
 [data-qc-theme] .qc-menu-row {
   display: flex;
   /* A row is a flex item of the scrolling column, where `height` alone is not a floor: a list long
@@ -332,7 +333,7 @@
   height: 32px;
   margin: 0;
   padding: 0 8px;
-  color: var(--qc-text-primary);
+  color: var(--qcd-menu-row-ink, var(--qc-text-primary));
   font: inherit;
   text-align: left;
   background: none;
@@ -1071,6 +1072,7 @@
 /* overflow:hidden is load-bearing: a row highlight fills its slot squarely, so the surface is what
  * rounds it off. Without the clip it paints over the rounded corners. */
 [data-qc-theme] .qc-menu {
+  --qcd-menu-row-ink: var(--qc-text-secondary);
   position: fixed;
   z-index: 2147483001;
   width: 327px;
@@ -1088,7 +1090,6 @@
   height: 32px;
   margin: 0;
   padding: 0 20px 0 0;
-  color: var(--qc-text-secondary);
   border-radius: 0;
 }
 

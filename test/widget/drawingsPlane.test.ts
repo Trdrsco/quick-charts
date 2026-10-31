@@ -104,7 +104,6 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     capabilities: () => ({}) as never,
     bars: () => [],
     resetSettings: () => undefined,
-    resetPriceScale: () => undefined,
     toggleAutoScale: () => undefined,
     t: () => i18n.t,
     earliestBar: () => null,

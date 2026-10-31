@@ -258,9 +258,10 @@ describe('the row is unchanged by the glyph it wears', () => {
     expect(paint).toEqual(['currentColor', 'none', 'currentColor'])
     expect(svg.outerHTML).not.toMatch(/#[0-9a-f]{3}|rgb\(|hsl\(|var\(/i)
     // The ink itself is the menu row's semantic foreground, so the glyph reads correctly in every
-    // theme without knowing which one is on. A row rests in the primary ink and keeps it under the
-    // pointer; the glyph follows because it names no colour of its own.
-    expect(authoredStylesheet()).toMatch(/\.qc-menu-row \{[^}]*color: var\(--qc-text-primary\)/)
+    // theme without knowing which one is on. A row rests in the ink its menu names, the primary one
+    // unless the menu names another, and takes the primary one under the pointer; the glyph follows
+    // because it names no colour of its own.
+    expect(authoredStylesheet()).toMatch(/\.qc-menu-row \{[^}]*color: var\(--qcd-menu-row-ink, var\(--qc-text-primary\)\)/)
     expect(authoredStylesheet()).toMatch(/\.qc-menu-row:hover \{[^}]*color: var\(--qc-text-primary\)/)
   })
 

@@ -1177,7 +1177,7 @@ describe('the corner of the price scale', () => {
   }
   const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()))
   const row = (text: string): HTMLButtonElement =>
-    Array.from(document.querySelectorAll<HTMLButtonElement>('.qc-scale-menu:not([hidden]) .qc-menu-row')).find((each) => each.textContent?.includes(text))!
+    Array.from(document.querySelectorAll<HTMLButtonElement>('.qc-price-menu:not([hidden]) .qc-menu-row')).find((each) => each.textContent?.includes(text))!
 
   it('holds a button where the scale meets the time scale, which opens the scale menu', async () => {
     const { chart, renderer, container } = await mount(withMenus)
@@ -1193,6 +1193,18 @@ describe('the corner of the price scale', () => {
     expect(corner.getAttribute('aria-expanded')).toBe('false')
     expect(renderer.priceScaleOptions.right).toMatchObject({ invertScale: true })
     expect(chart.settings().priceScale.invertScale).toBe(true)
+  })
+
+  it('puts both axes back from the menu, through the chart reset', async () => {
+    const { widget, chart, renderer, container } = await mount(withMenus)
+    laidOut(renderer, container)
+    widget.commands.execute('chart.scale.toggleAuto')
+    expect(renderer.priceScaleOptions.right).toMatchObject({ autoScale: false })
+    const reset = vi.spyOn(chart, 'reset')
+    container.querySelector<HTMLElement>('[data-role="scale-corner"]')!.click()
+    row('Reset price scale').click()
+    expect(reset).toHaveBeenCalledOnce()
+    expect(renderer.priceScaleOptions.right).toMatchObject({ autoScale: true })
   })
 
   it('stands no button on a chart without its menus', async () => {

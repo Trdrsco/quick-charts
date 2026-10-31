@@ -100,6 +100,13 @@ describe('the scale menu rows', () => {
     expect(row('Pre/post/night market price line').disabled).toBe(true)
   })
 
+  it('resets through the chart reset, whose key it prints', () => {
+    const { row, execute } = groups()
+    expect(row('Reset price scale').shortcut).toBe('Alt + R')
+    row('Reset price scale').run?.()
+    expect(execute).toHaveBeenLastCalledWith('chart.view.reset', undefined)
+  })
+
   it('opens the settings on their Scales page', () => {
     const { row, execute } = groups()
     row('More settings…').run?.()
@@ -121,7 +128,7 @@ describe('the scale menu on the page', () => {
     menu = mountMenu(host, () => undefined, createChartI18n(), ownIcons())
     const expanded = vi.fn()
     menu.openScale({ left: 900, top: 500, right: 960, bottom: 528, side: 'right' }, () => rows, focus, expanded)
-    const boxes = (): HTMLElement[] => Array.from(host.querySelectorAll<HTMLElement>('.qc-scale-menu')).filter((box) => !box.hidden)
+    const boxes = (): HTMLElement[] => Array.from(host.querySelectorAll<HTMLElement>('.qc-price-menu')).filter((box) => !box.hidden)
     const button = (text: string): HTMLButtonElement => Array.from(host.querySelectorAll<HTMLButtonElement>('.qc-menu-row')).find((each) => each.textContent?.includes(text))!
     return { boxes, button, expanded }
   }

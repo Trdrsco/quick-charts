@@ -492,7 +492,6 @@
       "chart.scale.log",
       "chart.scale.normal",
       "chart.scale.percent",
-      "chart.scale.reset",
       "chart.scale.toggleAuto",
       "chart.scale.toggleInvert",
       "chart.scale.toggleLog",

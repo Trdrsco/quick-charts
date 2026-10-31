@@ -253,7 +253,7 @@ describe('what a factory is handed and what the chart keeps', () => {
     const [first] = asked
     expect(first!.document).toBe(document)
     expect(first!.direction).toBe('ltr')
-    const svg = document.querySelector('button[aria-label="Chart settings"] svg')!
+    const svg = document.querySelector('button[aria-label="Scale settings"] svg')!
     // The chart sizes the answer to the box it named.
     expect(svg.getAttribute('width')).toBe(String(first!.width))
     expect(svg.getAttribute('height')).toBe(String(first!.height))
@@ -311,12 +311,12 @@ describe('a factory that fails costs one glyph its artwork', () => {
   it('refuses an element answered twice, and leaves the first control holding it', async () => {
     const shared = hostIcon('settings')({ document, width: 28, height: 28, direction: 'ltr' })
     const { widget } = await mount({ icons: { settings: () => shared } })
-    expect(shared.closest('button')?.getAttribute('aria-label')).toBe('Chart settings')
-    // An indicator's gear asks for the same icon and is handed the element the top bar holds.
+    expect(shared.closest('button')?.getAttribute('aria-label')).toBe('Scale settings')
+    // An indicator's gear asks for the same icon and is handed the element the scale's corner holds.
     widget.activeChart().indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'sma')! })
     await settle()
     expect(document.querySelector('button[aria-label="Indicator settings"] svg')).not.toBeNull()
-    expect(shared.closest('button')?.getAttribute('aria-label')).toBe('Chart settings')
+    expect(shared.closest('button')?.getAttribute('aria-label')).toBe('Scale settings')
     expect(widget.chrome.iconDiagnostics().map((d) => [d.icon, d.code])).toEqual([['settings', 'in-use']])
   })
 

@@ -58,7 +58,7 @@ export function scaleMenuGroups(deps: ScaleMenuDeps): ScaleMenuRow[][] {
   const extended = deps.extendedHours()
 
   return [
-    [{ label: t('menu.resetPriceScale'), icon: 'reset', ...hint('chart.view.reset'), run: run('chart.scale.reset') }],
+    [{ label: t('menu.resetPriceScale'), icon: 'reset', ...hint('chart.view.reset'), run: run('chart.view.reset') }],
     [
       { label: t('menu.autoFitScale'), checked: deps.autoScale(), run: run('chart.scale.toggleAuto') },
       {
