@@ -1,6 +1,7 @@
 // The context menu the chart raises on right-click (the rows come from `chartContextMenu`; this is
-// the painter), and the price menu the price scale's plus opens, which holds the rows for the price
-// alone. Same chrome discipline as the drawing toolbar, the legend and the chrome surfaces:
+// the painter), the price menu the price scale's plus opens, which holds the rows for the price
+// alone, and the scale's menu its corner button opens, whose rows may each open a flyout of rows
+// beside it. Same chrome discipline as the drawing toolbar, the legend and the chrome surfaces:
 // package-owned vanilla DOM mounted into the chrome subtree, opting back into pointer events so the
 // drag layers cannot steal its presses, and painted entirely through `.qc-*` recipes. The only
 // inline writes are the clamped position, which is calculated at the moment the menu opens.
@@ -46,6 +47,19 @@ export interface PriceMenuRow extends ContextMenuExtraRow {
   glyph?: Element | null
 }
 
+/** A row of the scale's menu. A press runs it, or, on a row holding `rows`, opens them in a flyout
+ *  beside the menu. A `disabled` row stands dimmed and takes no press. */
+export interface ScaleMenuRow {
+  label: string
+  shortcut?: string
+  checked?: boolean
+  icon?: ChartMenuIcon
+  disabled?: boolean
+  run?(): void
+  /** The flyout's groups, a rule between each. */
+  rows?: readonly (readonly ScaleMenuRow[])[]
+}
+
 /** The plus the price menu opens under, in viewport pixels, and the side of the plot its scale
  *  stands on: the menu's end meets the plus's end on that side. */
 export interface PriceMenuPlacement {
@@ -65,6 +79,10 @@ export interface WidgetMenuHandle extends ContextMenuHandle {
    *  menu. `focus` puts the keyboard on the first row. The page under it stays live: a press off it
    *  closes it and reaches nothing beneath. */
   openPrice(at: PriceMenuPlacement, rows: () => readonly (readonly PriceMenuRow[])[], focus: boolean): void
+  /** Raise the scale's menu flush above its corner button, its end on the button's end on the
+   *  scale's side, and inside the viewport. It stands as the price menu stands: a press off it closes
+   *  it and reaches nothing beneath. `expanded` hears it open and close. */
+  openScale(at: PriceMenuPlacement, rows: () => readonly (readonly ScaleMenuRow[])[], focus: boolean, expanded: (open: boolean) => void): void
 }
 
 /** The measured box width, which the viewport clamp needs as a number. */
@@ -141,6 +159,41 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
   let openExtra: readonly ContextMenuExtraRow[] = []
   /** The open price menu's rows, asked again for a rebuild; null while the price menu is shut. */
   let openPriceRows: (() => readonly (readonly PriceMenuRow[])[]) | null = null
+  /** The open scale menu's rows, asked again for a rebuild; null while it is shut. */
+  let openScaleRows: (() => readonly (readonly ScaleMenuRow[])[]) | null = null
+  /** How the button that raised the scale menu hears it close. */
+  let scaleExpanded: ((open: boolean) => void) | null = null
+  /** The side the scale stands on, which the flyouts open away from. */
+  let scaleSide: 'left' | 'right' = 'right'
+  /** The row whose flyout stands open. */
+  let flyoutRow: HTMLButtonElement | null = null
+
+  const flyout = document.createElement('div')
+  flyout.className = 'qc-overlay qc-menu qc-price-menu qc-scale-menu'
+  flyout.hidden = true
+  flyout.addEventListener('contextmenu', (e) => e.preventDefault())
+  for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) flyout.addEventListener(type, (e) => e.stopPropagation())
+
+  /** Say on a row whether its flyout stands open. */
+  const markFlyout = (row: HTMLButtonElement, open: boolean): void => {
+    row.ariaExpanded = String(open)
+    row.dataset.qcFlyout = open ? 'open' : 'shut'
+  }
+
+  const closeFlyout = (): void => {
+    flyout.hidden = true
+    flyout.replaceChildren()
+    if (flyoutRow) markFlyout(flyoutRow, false)
+    flyoutRow = null
+  }
+
+  const closeScale = (): void => {
+    closeFlyout()
+    box.classList.remove('qc-scale-menu')
+    openScaleRows = null
+    scaleExpanded?.(false)
+    scaleExpanded = null
+  }
 
   const close = (): void => {
     box.hidden = true
@@ -150,10 +203,36 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
     openCtx = null
     openExtra = []
     openPriceRows = null
+    closeScale()
   }
   backdrop.addEventListener('pointerdown', close)
   const onKey = (e: KeyboardEvent): void => {
-    if (e.key === 'Escape' && !box.hidden) close()
+    if (box.hidden) return
+    const active = box.ownerDocument.activeElement
+    const inFlyout = active instanceof Node && flyout.contains(active)
+    if (e.key === 'Escape') {
+      if (!inFlyout) return close()
+      const row = flyoutRow
+      closeFlyout()
+      row?.focus()
+      return
+    }
+    if (openScaleRows === null || !(active instanceof HTMLElement)) return
+    const rows = Array.from((inFlyout ? flyout : box).querySelectorAll<HTMLButtonElement>('.qc-menu-row:not([disabled])'))
+    const at = rows.indexOf(active as HTMLButtonElement)
+    if (at < 0) return
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault()
+      rows[(at + (e.key === 'ArrowDown' ? 1 : rows.length - 1)) % rows.length]?.focus()
+    } else if (e.key === 'ArrowRight' && active.dataset.qcFlyout !== undefined) {
+      e.preventDefault()
+      active.click()
+    } else if (e.key === 'ArrowLeft' && inFlyout) {
+      e.preventDefault()
+      const row = flyoutRow
+      closeFlyout()
+      row?.focus()
+    }
   }
   window.addEventListener('keydown', onKey)
 
@@ -168,7 +247,8 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
   let closing: number | null = null
   const onPressOff = (e: PointerEvent): void => {
     closing = null
-    if (openPriceRows === null || (e.target instanceof Node && box.contains(e.target))) return
+    if (openPriceRows === null && openScaleRows === null) return
+    if (e.target instanceof Node && (box.contains(e.target) || flyout.contains(e.target))) return
     close()
     closing = e.pointerId
     e.preventDefault()
@@ -192,7 +272,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
   view.addEventListener('pointercancel', onReleaseOff, capturing)
   for (const type of AFTER_PRESS) view.addEventListener(type, onAfterPressOff, capturing)
 
-  container.append(backdrop, box)
+  container.append(backdrop, box, flyout)
 
   const separator = (): HTMLDivElement => {
     const sep = document.createElement('div')
@@ -202,7 +282,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
 
   /** One row, built the same way whichever list it came from, so a contributed row is
    *  indistinguishable from a built-in one at the glass. */
-  const rowButton = (row: { label: string; shortcut?: string; checked?: boolean; icon?: ChartMenuIcon | ChartExtensionIcon; glyph?: Element | null }, act: () => void): HTMLButtonElement => {
+  const rowButton = (row: { label: string; shortcut?: string; checked?: boolean; icon?: ChartMenuIcon | ChartExtensionIcon; glyph?: Element | null; disabled?: boolean }, act: (event: MouseEvent) => void, closes = true): HTMLButtonElement => {
     const b = document.createElement('button')
     b.type = 'button'
     b.className = 'qc-menu-row'
@@ -231,9 +311,10 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
       sc.textContent = row.shortcut
       b.append(sc)
     }
-    b.addEventListener('click', () => {
-      close()
-      act()
+    b.disabled = row.disabled === true
+    b.addEventListener('click', (event) => {
+      if (closes) close()
+      act(event)
     })
     return b
   }
@@ -277,16 +358,70 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
     }
   }
 
+  /** Stand a flyout beside the scale menu, away from the scale, its top on the row's and inside the
+   *  viewport, on the other side of the menu where the room runs out. */
+  const openFlyout = (row: HTMLButtonElement, groups: readonly (readonly ScaleMenuRow[])[], focus: boolean): void => {
+    if (flyoutRow !== row) {
+      closeFlyout()
+      flyoutRow = row
+      markFlyout(row, true)
+      fillScale(flyout, groups)
+      flyout.hidden = false
+      flyout.style.left = '0px'
+      flyout.style.top = '0px'
+      const { width, height } = flyout.getBoundingClientRect()
+      const menuBox = box.getBoundingClientRect()
+      const before = menuBox.left - width
+      const after = menuBox.right
+      const left = scaleSide === 'right' ? (before >= 0 ? before : after) : after + width <= window.innerWidth ? after : before
+      flyout.style.left = `${left}px`
+      flyout.style.top = `${Math.max(0, Math.min(row.getBoundingClientRect().top, window.innerHeight - height))}px`
+    }
+    if (focus) flyout.querySelector<HTMLButtonElement>('.qc-menu-row:not([disabled])')?.focus()
+  }
+
+  /** The scale menu's rows in a box: each group in its order and a rule between groups. On the menu
+   *  itself the pointer opens a row's flyout by resting on it and closes it by leaving for another
+   *  row; a finger opens it with a press. */
+  const fillScale = (into: HTMLElement, groups: readonly (readonly ScaleMenuRow[])[]): void => {
+    into.replaceChildren()
+    for (const group of groups.filter((rows) => rows.length > 0)) {
+      if (into.childElementCount > 0) into.append(separator())
+      for (const row of group) {
+        const held = row.rows
+        const button: HTMLButtonElement = rowButton(row, (event) => (held ? openFlyout(button, held, event.detail === 0) : row.run?.()), held === undefined)
+        if (held) {
+          button.ariaHasPopup = 'menu'
+          markFlyout(button, false)
+          button.append(icons.glyph(GLYPHS.menuFlyoutArrow, { size: 10, height: 10, className: 'qc-menu-flyout-arrow' }))
+        }
+        if (into === box) {
+          button.addEventListener('pointerenter', (event) => {
+            if (event.pointerType === 'touch') return
+            if (held) openFlyout(button, held, false)
+            else closeFlyout()
+          })
+        }
+        into.append(button)
+      }
+    }
+  }
+
   // A language switch under an OPEN menu rebuilds its rows where they stand: the labels were
   // resolved when it was raised, so nothing else would replace them until the next right-click.
   const rebuild = (): void => {
     if (openCtx) fill(openCtx, openExtra)
     else if (openPriceRows) fillPrice(openPriceRows())
+    else if (openScaleRows) {
+      closeFlyout()
+      fillScale(box, openScaleRows())
+    }
   }
   const unsubscribe = strings.onChange(rebuild)
 
   return {
     openPrice(at, rows, focus) {
+      closeScale()
       openCtx = null
       openExtra = []
       openPriceRows = rows
@@ -309,7 +444,26 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
       box.style.top = `${top}px`
       if (focus) box.querySelector<HTMLButtonElement>('.qc-menu-row')?.focus()
     },
+    openScale(at, rows, focus, expanded) {
+      close()
+      openScaleRows = rows
+      scaleExpanded = expanded
+      scaleSide = at.side
+      box.classList.add('qc-price-menu', 'qc-scale-menu')
+      fillScale(box, rows())
+      box.hidden = false
+      box.style.left = '0px'
+      box.style.top = '0px'
+      const { width, height } = box.getBoundingClientRect()
+      const margin = 8
+      const left = at.side === 'right' ? at.right - width : at.left
+      box.style.left = `${Math.max(margin, Math.min(left, window.innerWidth - width))}px`
+      box.style.top = `${Math.max(margin, at.top - height)}px`
+      expanded(true)
+      if (focus) box.querySelector<HTMLButtonElement>('.qc-menu-row:not([disabled])')?.focus()
+    },
     open(at, ctx, extra = []) {
+      closeScale()
       openPriceRows = null
       box.classList.remove('qc-price-menu')
       openCtx = ctx
@@ -337,6 +491,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
       for (const type of AFTER_PRESS) view.removeEventListener(type, onAfterPressOff, capturing)
       backdrop.remove()
       box.remove()
+      flyout.remove()
     },
   }
 }

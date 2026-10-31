@@ -21,6 +21,7 @@ export const chrome: Translation<typeof source> = {
   'chrome.scaleAsk': 'היצע',
   'chrome.scaleModes': 'מצבי סולם',
   'chrome.autoScale': 'סולם אוטומטי',
+  'chrome.scaleMenu': 'הגדרות סולם',
   'chrome.autoScaleMark': 'A',
   'chrome.logScale': 'סולם לוגריתמי',
   'chrome.logScaleMark': 'L',

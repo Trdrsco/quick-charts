@@ -165,6 +165,7 @@ describe('a contributed row runs from the keyboard exactly as it runs from the m
       drawingCount: () => 0,
       extensions: () => host,
       setLevel: () => undefined,
+      scaleRows: () => [],
     })
     return {
       plane,

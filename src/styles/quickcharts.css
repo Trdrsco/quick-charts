@@ -1084,14 +1084,35 @@
  * edge of the box (the surface's clip rounds them off), the glyph 6px from the label and 20px of
  * room at the end for a chord. */
 [data-qc-theme] .qc-menu .qc-menu-row {
-  gap: 6px;
+  gap: 4px;
   height: 32px;
   margin: 0;
   padding: 0 20px 0 0;
+  color: var(--qc-text-secondary);
   border-radius: 0;
 }
 
+/* A row's ink steps halfway to the primary under the pointer, and while its flyout stands. */
+[data-qc-theme] .qc-menu .qc-menu-row:hover:not([disabled]),
+[data-qc-theme] .qc-menu .qc-menu-row[data-qc-flyout='open'] {
+  color: color-mix(in srgb, var(--qc-text-secondary) 51%, var(--qc-text-primary));
+}
+
+[data-qc-theme] .qc-menu .qc-menu-row[data-qc-flyout='open'] {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-menu .qc-menu-row[disabled] {
+  color: var(--qc-text-disabled);
+}
+
+[data-qc-theme] .qc-menu .qc-menu-icon {
+  justify-content: flex-end;
+}
+
+/* A shortcut reads a step above disabled. */
 [data-qc-theme] .qc-menu .qc-menu-hint {
+  color: color-mix(in srgb, var(--qc-text-muted) 20%, var(--qc-text-disabled));
   font-size: var(--qc-text-fontSizeMicro);
 }
 
@@ -1124,8 +1145,18 @@
 }
 
 [data-qc-theme] .qc-menu.qc-price-menu .qc-menu-hint {
-  padding-inline: 4px 0;
+  padding-inline: 6px 0;
   font-size: 12px;
+}
+
+[data-qc-theme] .qc-menu.qc-price-menu .qc-menu-label {
+  padding-inline-end: 2px;
+}
+
+/* A row of the scale's menu that opens a flyout ends in the flyout's arrow, a 10x10 glyph. */
+[data-qc-theme] .qc-menu-flyout-arrow {
+  display: flex;
+  flex: 0 0 10px;
 }
 
 /* Indicator inputs ----------------------------------------------------------------------------- */

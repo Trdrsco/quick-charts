@@ -21,6 +21,7 @@ export const chrome: Translation<typeof source> = {
   'chrome.scaleAsk': 'Giá bán',
   'chrome.scaleModes': 'Chế độ thang',
   'chrome.autoScale': 'Thang tự động',
+  'chrome.scaleMenu': 'Cài đặt thang',
   'chrome.autoScaleMark': 'A',
   'chrome.logScale': 'Thang logarit',
   'chrome.logScaleMark': 'L',

@@ -985,8 +985,8 @@ function drive(widget: ChartWidget): void {
 `goLive()` glides the view back to the live edge on an easing curve, moving it sideways only: the
 zoom and the price scale stay as they are. From far back it steps in to a width and a half first, so
 the return reads the same from any distance, and a touch, a drag, a wheel or any other navigation
-stops it where it stands. Under a reduced-motion preference it goes in one step. `Alt+L` and the
-`chart.view.goLive` command run the same glide.
+stops it where it stands. Under a reduced-motion preference it goes in one step. `Alt+Shift+Right`
+and the `chart.view.goLive` command run the same glide.
 
 `awayFromLiveEdge()` says whether the view sits back from the live edge, and the `liveEdge` event
 reports each change, so a control offering the way back shows exactly while there is somewhere to go
@@ -2469,7 +2469,14 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   ratio lock (`lockPriceToBarRatio`) holds the price one bar's width spans: engaging it with no
   `priceToBarRatio` of its own takes the ratio on screen into that leaf, the scale stops framing
   itself, and every zoom of the time scale rescales the price axis by the same factor about its
-  middle. A scale that is not regular holds no ratio.
+  middle. A scale that is not regular holds no ratio. With `scalePriceChartOnly` the scale frames
+  itself on the main series alone, so an indicator or comparison in the pane never stretches it,
+  and `invertScale` stands it upside down, higher prices lower on the pane. A button in the corner
+  where the main scale meets the time scale opens the scale's menu, above the corner on the scale's
+  side: reset the scale, its framing, the ratio lock, `scalePriceChartOnly`, `invertScale`, the four
+  modes, the other side, flyouts for its labels and lines, the plus, and the Scales page of the
+  settings. A chart without its context menu shows no button. `Alt+P` and `Alt+L` turn the percent
+  and logarithmic modes on and off, and `Alt+I` inverts the scale.
 - `timeScale`: the crosshair label's date format (`CHART_DATE_FORMATS`), the weekday before it, and
   a clock of 24 hours or of 12, which the axis times follow too. With `keepLeftEdge`, a timeframe
   change stands the new bars from the moment the view's left edge stood at, showing as many bar

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+A button in the corner where the price scale meets the time scale opens the scale's menu: reset the scale, its framing, the price-to-bar ratio lock, the four modes, the other side, flyouts for its labels and lines, the plus, and the Scales page of the settings. `priceScale.scalePriceChartOnly` frames the scale on the main series alone and `priceScale.invertScale` stands it upside down. `Alt+P`, `Alt+L` and `Alt+I` turn the percent mode, the logarithmic mode and the inverted scale on and off, and `chart.scale.reset`, `chart.scale.toggleAuto`, `chart.scale.toggleInvert`, `chart.scale.togglePercent` and `chart.scale.toggleLog` are commands of their own. `chart.view.goLive` moves to `Alt+Shift+Right`, since `Alt+L` is the logarithmic scale's key now.
+
 ## 5.6.1
 
 The currency and unit box spans its price scale, as wide as the scale less four pixels on each side, so it stays inside a scale of any width, and words too long for it end in an ellipsis.

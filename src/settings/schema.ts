@@ -208,6 +208,10 @@ export interface ChartSettings {
     lockPriceToBarRatio: boolean
     /** The held ratio, or null to take the ratio the chart shows when the lock engages. */
     priceToBarRatio: number | null
+    /** Frame the scale on the charted symbol's own prices alone, whatever else the pane draws. */
+    scalePriceChartOnly: boolean
+    /** Stand the scale upside down, higher prices lower on the pane. */
+    invertScale: boolean
     placement: ChartScalePlacement
   }
   priceLabels: {

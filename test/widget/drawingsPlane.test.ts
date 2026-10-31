@@ -104,6 +104,8 @@ function rig(options: { deny?: (id: string) => boolean; refuseTool?: string; cha
     capabilities: () => ({}) as never,
     bars: () => [],
     resetSettings: () => undefined,
+    resetPriceScale: () => undefined,
+    toggleAutoScale: () => undefined,
     t: () => i18n.t,
     earliestBar: () => null,
     replayFromFirst: async () => undefined,
@@ -611,6 +613,7 @@ describe('the plane through the registry', () => {
       drawingCount: () => plane.api!.count(),
       extensions: () => host,
       setLevel: () => undefined,
+      scaleRows: () => [],
     })
     const rows = (): (string | null | undefined)[] =>
       [...(chrome.querySelector('[role="menu"][aria-label="Drawing menu"]')?.children ?? [])].map((child) => (child.getAttribute('role') === 'separator' ? '-' : child.querySelector('.qc-menu-label')?.textContent))
