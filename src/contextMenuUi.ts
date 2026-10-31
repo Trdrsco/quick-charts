@@ -373,7 +373,7 @@ export function mountMenu(container: HTMLElement, run: (id: ChartMenuAction) => 
       const before = menuBox.left - width
       const after = menuBox.right
       const left = scaleSide === 'right' ? (before >= 0 ? before : after) : after + width <= window.innerWidth ? after : before
-      flyout.style.left = `${left}px`
+      flyout.style.left = `${Math.max(0, Math.min(left, window.innerWidth - width))}px`
       flyout.style.top = `${Math.max(0, Math.min(row.getBoundingClientRect().top, window.innerHeight - height))}px`
     }
     if (focus) flyout.querySelector<HTMLButtonElement>('.qc-menu-row:not([disabled])')?.focus()

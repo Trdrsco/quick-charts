@@ -148,6 +148,20 @@ describe('the scale menu on the page', () => {
     expect(expanded).toHaveBeenLastCalledWith(false)
   })
 
+  it('stands a flyout inside a viewport too narrow for it beside the menu', () => {
+    const box = { left: 8, right: 257, top: 100, bottom: 400, width: 249, height: 300 } as DOMRect
+    const measured = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue(box)
+    vi.stubGlobal('innerWidth', 375)
+    try {
+      const { boxes, button } = raise([[{ label: 'Held', rows: [[{ label: 'Inside', run: vi.fn() }]] }]])
+      enter(button('Held'))
+      expect(boxes()[1]!.style.left).toBe('126px')
+    } finally {
+      measured.mockRestore()
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('opens a flyout under the pointer and closes it on another row', () => {
     const run = vi.fn()
     const { boxes, button } = raise([[{ label: 'Held', rows: [[{ label: 'Inside', run }]] }, { label: 'Other', run: vi.fn() }]])
