@@ -1,0 +1,37 @@
+{
+  "date": "2026-10-31",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.7.0",
+  "releaseCommit": "9c1b6889176e0dcb71b6f84ac5cc9091ed6d356a",
+  "tarballSha256": "063920a228f086e8c5756181c53e5cf7b5f9269c29abd3bf41fee697d26438e4",
+  "tarStreamSha256": "a20b90cb19733fb138bda24a409bd85473654f771e6a2bb80bf79855f74468b9",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/41252630968",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "c8ea0fc82a56658e74c6f1714417f79426d20ae8ec6fe2b53fd6a91eddb891c7",
+      "dossierHashesSha256": "ce8762d3ab5957f25bcd5a4fb4a64bed2f5e254af3f1e414b6ca6c48bbdf5034",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/41253116340",
+      "artifact": "quickcharts-5.7.0-rehearsal"
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "e10bc426eeb26f2966c510a44a0d7234c2f10308",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/41252071627",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "u do it... Stop stopping push to production and make update the release",
+    "recordedAt": "2026-10-31T23:27:00Z",
+    "question": "Publishing Quick Charts 5.7.0 needs manual acceptance or the owner’s waiver, and the npm-publish approval. Asked to run the store prune and send those words for 5.7.0 (PR 169: a corner button on the price scale opens a menu of its framing, modes, side, labels and lines, with a reset, percent, logarithmic and invert keys), the owner answered with this statement. The manual accessibility and device checks were not performed."
+  }
+}
