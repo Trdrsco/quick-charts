@@ -513,6 +513,7 @@ export function fakeWidget(options: FakeWidgetOptions = {}) {
     features,
     ui,
     capabilities: () => caps,
+    toggleAutoScale: () => undefined,
     // The fake's Reset defaults: the viewer's layer drops back to the package defaults and the
     // scale returns to normal, which is what the real chart's reset leaves behind.
     resetSettings: () => {

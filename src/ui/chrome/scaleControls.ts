@@ -1,9 +1,11 @@
 // The controls that stand on the main price scale: the box at its top that names what prices are
 // in (the symbol's currency and unit) and, where the host lends a door, opens the host's own menu;
-// the auto-scale and logarithmic buttons at its foot; and the door to the plus beside the crosshair's
-// price label, which opens that price's menu. The box and the buttons show while the pointer is over
-// the scale, always, or never, as the chart settings say. Each button's press is the chart's own
-// verb, so the controls and every other door to the same state read alike.
+// the auto-scale and logarithmic buttons at its foot; the door to the plus beside the crosshair's
+// price label, which opens that price's menu; and the button in the corner where the scale meets the
+// time scale, which opens the scale's own menu. The box and the buttons show while the pointer is
+// over the scale, always, or never, as the chart settings say; the corner button always stands. Each
+// button's press is the chart's own verb, so the controls and every other door to the same state
+// read alike.
 //
 // The scale is drawn by the renderer, so these are DOM in the chart's chrome layer, placed over the
 // scale's box as the chart measures it. The chrome takes no pointer, so the pointer is watched on
@@ -29,6 +31,14 @@ export interface PriceScaleBox {
   side: 'left' | 'right'
 }
 
+/** The corner where the main price scale meets the time scale, in the chrome's own pixels. */
+export interface ScaleCornerBox {
+  left: number
+  top: number
+  width: number
+  height: number
+}
+
 export interface ScaleControlsDeps {
   /** The chart's chrome subtree: where the controls mount. */
   chrome: HTMLElement
@@ -39,6 +49,8 @@ export interface ScaleControlsDeps {
   icons: IconResolver
   /** The main price scale's box, or null while the chart shows none. */
   box(): PriceScaleBox | null
+  /** The corner under the scale, or null while the chart shows no time scale to meet. */
+  corner(): ScaleCornerBox | null
   /** When the auto-scale and logarithmic buttons show. */
   modeButtons(): ChartControlVisibility
   /** When the currency and unit box shows, and what it names: the symbol's currency and unit,
@@ -57,6 +69,10 @@ export interface ScaleControlsDeps {
    *  With it the box is a button; without it the box only names. `keyboard` says the box was pressed
    *  from the keyboard, and `expanded` is how the host says its menu stands open or closed. */
   openUnitMenu?(anchor: { left: number; top: number; right: number; bottom: number }, keyboard: boolean, expanded: (open: boolean) => void): void
+  /** Open the scale's menu against the corner button's place in viewport pixels, on the scale's side.
+   *  Without it no button stands in the corner. `expanded` is how the menu says it stands open or
+   *  closed. */
+  openScaleMenu?(anchor: { left: number; top: number; right: number; bottom: number; side: 'left' | 'right' }, keyboard: boolean, expanded: (open: boolean) => void): void
 }
 
 /** The plus as the menu anchors to it, in viewport pixels: its box, the crosshair's height through
@@ -121,6 +137,27 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     })
   }
   deps.chrome.appendChild(unit)
+  // The corner button, which stands whatever the pointer does and takes the pointer back from the
+  // chrome. Its press is its own, so a press on it pans nothing.
+  const scaleDoor = deps.openScaleMenu
+  const corner = scaleDoor
+    ? h('button', { type: 'button', class: 'qc-scale-corner', 'data-role': 'scale-corner', 'aria-haspopup': 'menu', 'aria-expanded': 'false' }, deps.icons.glyph(ICONS.scaleCorner, { size: 15, height: 13 }))
+    : null
+  if (corner && scaleDoor) {
+    stopPointer(corner)
+    const expanded = (open: boolean): void => corner.setAttribute('aria-expanded', String(open === true))
+    corner.addEventListener('click', (event) => {
+      const place = corner.getBoundingClientRect()
+      const keyboard = event.detail === 0
+      scaleDoor({ left: place.left, top: place.top, right: place.right, bottom: place.bottom, side: deps.box()?.side ?? 'right' }, keyboard, (open) => {
+        expanded(open)
+        // A menu raised from the keyboard hands the focus back as it closes, so the chart's keys
+        // reach the chart again.
+        if (!open && keyboard) corner.focus()
+      })
+    })
+    deps.chrome.appendChild(corner)
+  }
   // The plus's button: no fill and no glyph of its own, since the renderer paints both.
   const plus = h('button', { type: 'button', class: 'qc-scale-plus', 'data-role': 'scale-plus' })
   plus.hidden = true
@@ -230,9 +267,22 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     name(plus, t('chrome.priceLevelMenu'))
     // The door's words are what it names; its title says what it opens.
     if (door) unit.title = t('settings.currencyAndUnit')
+    if (corner) name(corner, t('chrome.scaleMenu'))
+  }
+
+  const syncCorner = (): void => {
+    if (!corner) return
+    const at = deps.corner()
+    corner.hidden = at === null
+    if (!at) return
+    corner.style.left = `${at.left}px`
+    corner.style.top = `${at.top}px`
+    corner.style.width = `${at.width}px`
+    corner.style.height = `${at.height}px`
   }
 
   const sync = (): void => {
+    syncCorner()
     const box = deps.box()
     const visibility = deps.modeButtons()
     modes.dataset.qcVisibility = visibility
@@ -329,6 +379,7 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
       modes.remove()
       unit.remove()
       plus.remove()
+      corner?.remove()
     },
   }
 }

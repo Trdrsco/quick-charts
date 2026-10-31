@@ -318,8 +318,9 @@
 /* Menus --------------------------------------------------------------------------------------- */
 
 /* A row is its own rounded slot inside the panel's padding, so a highlight reads as a chip rather
- * than as a band cut off by the panel edge. It rests in the primary ink; the pointer lays the hover
- * fill under it and a press the pressed fill, and the chosen row inverts. */
+ * than as a band cut off by the panel edge. It rests in the ink its menu names, the primary one
+ * unless the menu names another; the pointer lays the hover fill under it and a press the pressed
+ * fill, and the chosen row inverts. */
 [data-qc-theme] .qc-menu-row {
   display: flex;
   /* A row is a flex item of the scrolling column, where `height` alone is not a floor: a list long
@@ -332,7 +333,7 @@
   height: 32px;
   margin: 0;
   padding: 0 8px;
-  color: var(--qc-text-primary);
+  color: var(--qcd-menu-row-ink, var(--qc-text-primary));
   font: inherit;
   text-align: left;
   background: none;
@@ -1071,6 +1072,7 @@
 /* overflow:hidden is load-bearing: a row highlight fills its slot squarely, so the surface is what
  * rounds it off. Without the clip it paints over the rounded corners. */
 [data-qc-theme] .qc-menu {
+  --qcd-menu-row-ink: var(--qc-text-secondary);
   position: fixed;
   z-index: 2147483001;
   width: 327px;
@@ -1084,14 +1086,34 @@
  * edge of the box (the surface's clip rounds them off), the glyph 6px from the label and 20px of
  * room at the end for a chord. */
 [data-qc-theme] .qc-menu .qc-menu-row {
-  gap: 6px;
+  gap: 4px;
   height: 32px;
   margin: 0;
   padding: 0 20px 0 0;
   border-radius: 0;
 }
 
+/* A row's ink steps halfway to the primary under the pointer, and while its flyout stands. */
+[data-qc-theme] .qc-menu .qc-menu-row:hover:not([disabled]),
+[data-qc-theme] .qc-menu .qc-menu-row[data-qc-flyout='open'] {
+  color: color-mix(in srgb, var(--qc-text-secondary) 51%, var(--qc-text-primary));
+}
+
+[data-qc-theme] .qc-menu .qc-menu-row[data-qc-flyout='open'] {
+  background: var(--qc-state-hover);
+}
+
+[data-qc-theme] .qc-menu .qc-menu-row[disabled] {
+  color: var(--qc-text-disabled);
+}
+
+[data-qc-theme] .qc-menu .qc-menu-icon {
+  justify-content: flex-end;
+}
+
+/* A shortcut reads a step above disabled. */
 [data-qc-theme] .qc-menu .qc-menu-hint {
+  color: color-mix(in srgb, var(--qc-text-muted) 20%, var(--qc-text-disabled));
   font-size: var(--qc-text-fontSizeMicro);
 }
 
@@ -1116,16 +1138,28 @@
 }
 
 /* The price menu the scale's plus opens: the context menu's box as wide as its widest row, so a
- * label shows whole and ellipsizes only where the viewport cannot hold its row. A shortcut stands
- * 10px after its label, in 12px. */
+ * label shows whole and ellipsizes only where the viewport cannot hold its row, and its rows scroll
+ * where the viewport cannot hold them. A shortcut stands 10px after its label, in 12px. */
 [data-qc-theme] .qc-menu.qc-price-menu {
   width: max-content;
   max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
 }
 
 [data-qc-theme] .qc-menu.qc-price-menu .qc-menu-hint {
-  padding-inline: 4px 0;
+  padding-inline: 6px 0;
   font-size: 12px;
+}
+
+[data-qc-theme] .qc-menu.qc-price-menu .qc-menu-label {
+  padding-inline-end: 2px;
+}
+
+/* A row of the scale's menu that opens a flyout ends in the flyout's arrow, a 10x10 glyph. */
+[data-qc-theme] .qc-menu-flyout-arrow {
+  display: flex;
+  flex: 0 0 10px;
 }
 
 /* Indicator inputs ----------------------------------------------------------------------------- */

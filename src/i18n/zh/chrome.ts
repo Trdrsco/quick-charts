@@ -21,6 +21,7 @@ export const chrome: Translation<typeof source> = {
   'chrome.scaleAsk': '卖价',
   'chrome.scaleModes': '刻度模式',
   'chrome.autoScale': '自动刻度',
+  'chrome.scaleMenu': '刻度设置',
   'chrome.autoScaleMark': 'A',
   'chrome.logScale': '对数刻度',
   'chrome.logScaleMark': 'L',

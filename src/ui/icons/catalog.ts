@@ -28,7 +28,7 @@ const CONTROL_ICONS = byMeaning({
   replay: [ICONS.replay],
   undo: [ICONS.undo],
   redo: [ICONS.redo],
-  settings: [ICONS.settings, ICONS.gear, ICONS.legendSettings],
+  settings: [ICONS.settings, ICONS.gear, ICONS.legendSettings, ICONS.scaleCorner],
   fullscreen: [ICONS.fullscreen],
   fullscreenExit: [ICONS.exitFullscreen],
   image: [ICONS.camera],
@@ -79,7 +79,7 @@ const CONTROL_ICONS = byMeaning({
   chevronRight: [ICONS.chevronRight],
   // The drawing toolbar's arrow, pointing where the flyout it opens will stand.
   flyout: [ICONS.chevronRight16],
-  submenu: [ICONS.submenuArrow],
+  submenu: [ICONS.submenuArrow, ICONS.menuFlyoutArrow],
   more: [ICONS.kebab],
   grip: [ICONS.grip],
   emptySearch: [SEARCH_EMPTY_MARK],

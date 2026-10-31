@@ -37,6 +37,7 @@ function rig(canPaste: boolean, table: { cell: boolean } | null = null, settings
     drawingCount: () => 1,
     extensions: () => null,
     setLevel: () => undefined,
+    scaleRows: () => [],
     table: () => table,
     ...(settingsDoor === undefined ? {} : { settingsDoor }),
   })

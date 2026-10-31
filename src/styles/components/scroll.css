@@ -20,6 +20,7 @@
 [data-qc-theme] .qc-search-list,
 [data-qc-theme] .qc-status-popup,
 [data-qc-theme] .qc-drawing-dialog-body,
+[data-qc-theme] .qc-menu.qc-price-menu,
 [data-qc-theme] .qc-drawing-popover {
   scrollbar-width: auto;
 }
@@ -32,6 +33,7 @@
 [data-qc-theme] .qc-search-list::-webkit-scrollbar,
 [data-qc-theme] .qc-status-popup::-webkit-scrollbar,
 [data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar,
+[data-qc-theme] .qc-menu.qc-price-menu::-webkit-scrollbar,
 [data-qc-theme] .qc-drawing-popover::-webkit-scrollbar {
   display: block;
   width: 5px;
@@ -46,6 +48,7 @@
 [data-qc-theme] .qc-search-list::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-status-popup::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar-thumb,
+[data-qc-theme] .qc-menu.qc-price-menu::-webkit-scrollbar-thumb,
 [data-qc-theme] .qc-drawing-popover::-webkit-scrollbar-thumb {
   border: 1px solid transparent;
   border-radius: 3px;
@@ -61,6 +64,7 @@
 [data-qc-theme] .qc-search-list::-webkit-scrollbar-track,
 [data-qc-theme] .qc-status-popup::-webkit-scrollbar-track,
 [data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar-track,
+[data-qc-theme] .qc-menu.qc-price-menu::-webkit-scrollbar-track,
 [data-qc-theme] .qc-drawing-popover::-webkit-scrollbar-track {
   border-radius: 3px;
   background-color: transparent;
@@ -74,6 +78,7 @@
 [data-qc-theme] .qc-search-list::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-status-popup::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-drawing-dialog-body::-webkit-scrollbar-corner,
+[data-qc-theme] .qc-menu.qc-price-menu::-webkit-scrollbar-corner,
 [data-qc-theme] .qc-drawing-popover::-webkit-scrollbar-corner {
   display: none;
 }

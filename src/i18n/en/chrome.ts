@@ -33,6 +33,7 @@ export const chrome = {
    *  letter is the button's whole face, so it is the mark the scale wears in the reader's language. */
   'chrome.scaleModes': 'Scale modes',
   'chrome.autoScale': 'Auto scale',
+  'chrome.scaleMenu': 'Scale settings',
   'chrome.autoScaleMark': 'A',
   'chrome.logScale': 'Logarithmic scale',
   'chrome.logScaleMark': 'L',

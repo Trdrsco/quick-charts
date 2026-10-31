@@ -21,6 +21,7 @@ export const chrome: Translation<typeof source> = {
   'chrome.scaleAsk': 'เสนอขาย',
   'chrome.scaleModes': 'โหมดสเกล',
   'chrome.autoScale': 'สเกลอัตโนมัติ',
+  'chrome.scaleMenu': 'การตั้งค่าสเกล',
   'chrome.autoScaleMark': 'A',
   'chrome.logScale': 'สเกลลอการิทึม',
   'chrome.logScaleMark': 'L',

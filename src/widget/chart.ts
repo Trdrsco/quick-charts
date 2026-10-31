@@ -21,6 +21,7 @@ import {
   HistogramSeries,
   LineSeries,
   TrackingModeExitMode,
+  type AutoscaleInfoProvider,
   type IChartApi,
   type ISeriesApi,
   type SeriesType,
@@ -105,13 +106,13 @@ import { attachPinch } from './pinch'
 import { attachFreePan } from './freePan'
 import { watchPlotArea, type PlotArea } from './plotArea'
 import { attachMenuPlane, levelAt, raiseMenuAt } from './menu'
-import { commandShown } from './access'
+import { commandPermitted, commandShown } from './access'
 import { symbolNames } from '../symbolLabel'
 import { attachPointerPlane } from './pointer'
 import { attachMarks } from './marks'
 import type { ChromeDoors } from '../ui/chrome/doors'
 import { mountNavControls } from '../ui/chrome/navControls'
-import { mountScaleControls, type PriceScaleBox, type ScaleControls } from '../ui/chrome/scaleControls'
+import { mountScaleControls, type PriceScaleBox, type ScaleControls, type ScaleCornerBox } from '../ui/chrome/scaleControls'
 import { attachScalePlus, type ScalePlusLayer } from './scalePlus'
 import { mountPaneButtons, type PaneButtons } from '../ui/chrome/paneButtons'
 import { attachPaneOps, PANE_MOVE_COMMAND, type PaneMove } from './paneOps'
@@ -119,6 +120,7 @@ import { paneIndexOf, paneTopIn } from '../paneGeometry'
 import { closeOverlays } from '../ui/controls/overlays'
 import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
+import { scaleMenuGroups } from './scaleMenu'
 import { attachCountdown, createCountdownClock, type CountdownLayer } from './countdown'
 import { attachPrices, previousCloseFromBars, signedPercentText, statedPreviousClose } from './prices'
 import { attachPriceLevels, visibleRange, type PriceLevelFacts, type PriceLevelsLayer } from './priceLevels'
@@ -643,15 +645,24 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // A chart that holds its view takes no drag, wheel, pinch or scale gesture from the renderer.
     handleScroll: deps.features.navigation,
     handleScale: deps.features.navigation,
-    rightPriceScale: { ...look.rightPriceScale, visible: deps.ui.priceScale && scaleSide === 'right' },
-    leftPriceScale: { ...look.leftPriceScale, visible: deps.ui.priceScale && scaleSide === 'left' },
+    rightPriceScale: { ...look.rightPriceScale, visible: deps.ui.priceScale && scaleSide === 'right', invertScale: scaleSide === 'right' && eff.priceScale.invertScale },
+    leftPriceScale: { ...look.leftPriceScale, visible: deps.ui.priceScale && scaleSide === 'left', invertScale: scaleSide === 'left' && eff.priceScale.invertScale },
     // A series added without naming a scale stands on the main series' side.
     defaultVisiblePriceScaleId: scaleSide,
     timeScale: { ...look.timeScale, timeVisible: true, secondsVisible: false, rightOffset: appliedRightOffset, barSpacing: 8, minBarSpacing: 0.5 },
   })
 
-  /** The main series' price scale, on whichever side it stands. */
-  const mainScale = (): ReturnType<IChartApi['priceScale']> => chart.priceScale(scaleSide)
+  /** The main series' price scale, on whichever side and in whichever pane it stands. */
+  const mainScale = (): ReturnType<IChartApi['priceScale']> => chart.priceScale(scaleSide, mainPane())
+  /** A price scale's width, and 0 for a side the renderer has not built yet: a scale moved to a side
+   *  it never stood on takes its place in the next paint, and the renderer throws until it has. */
+  const scaleWidth = (side: 'left' | 'right'): number => {
+    try {
+      return chart.priceScale(side).width()
+    } catch {
+      return 0
+    }
+  }
 
   /** The anchor: an invisible line of closes on the main price scale. It exists so that everything
    *  with a long life can bind to ONE series and survive a style switch, and it draws nothing. */
@@ -988,6 +999,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       // A pane that came or went may have landed out of the viewer's order.
       paneOps.settle()
       syncVolume()
+      syncScaleSources()
       legend.push()
       paneButtons?.sync()
     },
@@ -1070,6 +1082,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
           paneOps.settle()
           legend.push()
           paneButtons?.sync()
+          syncScaleSources()
         },
         onEvent: (entries) => events.emit('compare', entries),
       })
@@ -1205,7 +1218,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         icons: deps.icons,
         gestures,
         overlay: chrome,
-        paneLeft: () => chart.priceScale('left').width(),
+        paneLeft: () => scaleWidth('left'),
         paneTop: mainPaneTop,
         fetchBarMarks: datafeed.marks ? (s, from, to, resolution) => datafeed.marks!(s, from, to, resolution) : null,
         fetchTimescaleMarks: datafeed.timescaleMarks ? (s, from, to, resolution) => datafeed.timescaleMarks!(s, from, to, resolution) : null,
@@ -1345,6 +1358,19 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     },
     tags: () => ({ high: i18n.t('chrome.scaleHigh'), low: i18n.t('chrome.scaleLow'), bid: i18n.t('chrome.scaleBid'), ask: i18n.t('chrome.scaleAsk') }),
   })
+  // The time scale narrows as the price scale widens to hold its labels, and the corner goes with it.
+  chart.timeScale().subscribeSizeChange(() => scaleControls?.sync())
+  // The corner stands at the foot of the panes, which the chart's height moves and the time scale's
+  // size does not show. The renderer lays out for a new height in its next frame.
+  const heightWatch =
+    typeof ResizeObserver === 'undefined'
+      ? null
+      : new ResizeObserver(() => {
+          requestAnimationFrame(() => {
+            if (!disposed) scaleControls?.sync()
+          })
+        })
+  heightWatch?.observe(gestures)
   // The high and low are the bars in view, so a move of the view moves them.
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
     levels?.refresh()
@@ -1404,6 +1430,21 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         series: () => anchor,
         gestures,
         paneTop: mainPaneTop,
+        scaleRows: (shortcut) =>
+          scaleMenuGroups({
+            t: i18n.t,
+            commands: deps.commands,
+            settings: () => eff,
+            scaleMode: () => scaleMode,
+            autoScale: () => priceAxisPolicy() === 'auto',
+            side: () => scaleSide,
+            ratio: () => (eff.priceScale.lockPriceToBarRatio ? eff.priceScale.priceToBarRatio : liveRatio()),
+            extendedHours: () => session.extended(),
+            shortcut,
+            shown: (id) => commandShown(deps.access, id),
+            permitted: (id) => commandPermitted(deps.access, id),
+            settingsDoor: deps.ui.settingsMenu,
+          }),
         host: deps.layer,
         i18n,
         icons: deps.icons,
@@ -1435,7 +1476,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         // scale, so whatever lies outside it is a scale.
         plotArea: () => {
           const box = gestures.getBoundingClientRect()
-          const left = box.left + chart.priceScale('left').width()
+          const left = box.left + scaleWidth('left')
           const time = chart.timeScale()
           return { left, right: left + time.width(), bottom: box.bottom - time.height() }
         },
@@ -1469,15 +1510,34 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
    *  the scale stands. Null while the chart shows no price scale or has not laid one out. */
   const priceScaleBox = (): PriceScaleBox | null => {
     if (!deps.ui.priceScale) return null
-    const width = mainScale().width()
+    const width = scaleWidth(scaleSide)
     const height = chart.panes()[mainPane()]?.getHeight() ?? 0
     if (!(width > 0) || !(height > 0)) return null
     return { left: scaleSide === 'left' ? 0 : gestures.clientWidth - width, top: mainPaneTop(), width, height, side: scaleSide }
   }
 
+  /** The corner where the main price scale meets the time scale, in the chrome's pixels. Null while
+   *  the chart shows no scale or no time scale, or has not laid them out. */
+  const scaleCornerBox = (): ScaleCornerBox | null => {
+    if (!deps.ui.priceScale) return null
+    const width = scaleWidth(scaleSide)
+    const height = chart.timeScale().height()
+    if (!(width > 0) || !(height > 0)) return null
+    // The time scale stands at the foot of the last pane, which can fall short of the gesture box's.
+    const panes = chart.panes()
+    const last = panes.length - 1
+    const top = paneTopIn(chart, last, gestures) + (panes[last]?.getHeight() ?? 0)
+    return { left: scaleSide === 'left' ? 0 : gestures.clientWidth - width, top, width, height }
+  }
+
+  const toggleAutoScale = (): void => {
+    applyPriceAxisPolicy(priceAxisPolicy() === 'auto' ? 'manual' : 'auto')
+    history.changed()
+  }
+
   // The controls on the price scale: the currency and unit box at its top, the auto-scale and
-  // logarithmic buttons at its foot, and the door to the plus beside the crosshair's price, each a
-  // press of the chart's own verb.
+  // logarithmic buttons at its foot, the door to the plus beside the crosshair's price, and the
+  // corner button that opens the scale's menu, each a press of the chart's own verb.
   scaleControls = deps.ui.priceScale
     ? mountScaleControls({
         chrome,
@@ -1485,21 +1545,20 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         i18n,
         icons: deps.icons,
         box: priceScaleBox,
+        corner: scaleCornerBox,
         modeButtons: () => eff.priceScale.scaleModeButtons,
         unitBox: () => eff.priceScale.currencyAndUnit,
         currencyAndUnit: () => (symbolInfo ? { currency: symbolInfo.currencyCode, unit: symbolInfo.unitId } : null),
         autoScale: () => priceAxisPolicy() === 'auto',
         logScale: () => scaleMode === 'log',
-        toggleAutoScale: () => {
-          applyPriceAxisPolicy(priceAxisPolicy() === 'auto' ? 'manual' : 'auto')
-          history.changed()
-        },
+        toggleAutoScale,
         toggleLogScale: () => {
           deps.commands.execute(scaleMode === 'log' ? 'chart.scale.normal' : 'chart.scale.log')
         },
         openPriceMenu: (anchor, keyboard) => {
           menu?.raisePriceMenu(anchor, keyboard)
         },
+        ...(menu ? { openScaleMenu: (anchor: { left: number; top: number; right: number; bottom: number; side: 'left' | 'right' }, keyboard: boolean, expanded: (open: boolean) => void) => menu.raiseScaleMenu(anchor, keyboard, expanded) } : {}),
         ...(deps.scaleUnitMenu
           ? { openUnitMenu: (anchor: ScaleUnitMenuRequest['anchor'], keyboard: boolean, expanded: (open: boolean) => void) => deps.scaleUnitMenu?.({ chart: handle, anchor, keyboard, expanded }) }
           : {}),
@@ -1544,7 +1603,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         maximized: paneOps.maximized(index),
       }))
     },
-    insetEnd: () => chart.priceScale('right').width(),
+    insetEnd: () => scaleWidth('right'),
     removable: (index) => {
       const contents = paneContents(index)
       if (contents.indicators.length === 0 && contents.compares.length === 0) return false
@@ -1770,6 +1829,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     const before = {
       locked: eff.priceScale.lockPriceToBarRatio,
       ratio: eff.priceScale.priceToBarRatio,
+      inverted: eff.priceScale.invertScale,
       subsession: activeSubsession(),
       rightOffset: appliedRightOffset,
       indicatorLabels: `${eff.priceLabels.indicatorLabelName}:${eff.priceLabels.indicatorLabelValue}`,
@@ -1787,7 +1847,9 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     }
     const c = canvas()
     chart.applyOptions(lookOptions())
-    if (scaleSideOf(eff) !== scaleSide) moveScale(scaleSideOf(eff))
+    const moved = scaleSideOf(eff) !== scaleSide
+    if (moved) moveScale(scaleSideOf(eff))
+    if (moved || eff.priceScale.invertScale !== before.inverted) mainScale().applyOptions({ invertScale: eff.priceScale.invertScale })
     // The right margin is the time scale's right offset, and writing it scrolls the view to it, so
     // it is written only when the setting moved.
     if (eff.canvas.marginRight !== before.rightOffset) {
@@ -1795,6 +1857,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       chart.timeScale().applyOptions({ rightOffset: appliedRightOffset })
     }
     series.applyOptions(styleOptions(style, paint()) as never)
+    syncScaleSources()
     if (formatKey() !== builtFormatKey) {
       setSymbolFormat(symbolFormat)
       indicators.recompute()
@@ -1860,6 +1923,30 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     scaleControls?.sync()
   }
 
+  /** Whether the other series on the main scale have a say in how it frames itself: with the setting
+   *  on, each answers the renderer's question with no range, and off, with its own. */
+  function syncScaleSources(): void {
+    const framing: AutoscaleInfoProvider = eff.priceScale.scalePriceChartOnly ? () => null : (own) => own()
+    for (const each of chart.panes()[mainPane()]?.getSeries() ?? []) {
+      const id = each.options().priceScaleId
+      if (each !== series && (id === undefined || id === scaleSide)) each.applyOptions({ autoscaleInfoProvider: framing })
+    }
+    uprightOtherPanes()
+  }
+
+  /** The inverted scale is the main pane's alone. The renderer opens a pane from the options a
+   *  default scale took last, so a pane that opens upside down is turned back. */
+  function uprightOtherPanes(): void {
+    const main = mainPane()
+    chart.panes().forEach((_, pane) => {
+      if (pane === main) return
+      for (const side of ['left', 'right'] as const) {
+        const scale = chart.priceScale(side, pane)
+        if (scale.options().invertScale) scale.applyOptions({ invertScale: false })
+      }
+    })
+  }
+
   /** New prices arrived for the symbol on screen: every surface that draws them repaints. */
   function pricesChanged(): void {
     if (disposed) return
@@ -1885,13 +1972,20 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // after the mode, in a second call.
     mainScale().applyOptions({ mode: held.mode })
     if (!held.autoScale) mainScale().applyOptions({ autoScale: false })
-    chart.priceScale(previous).applyOptions({ mode: PriceScaleMode.Normal, autoScale: true })
+    chart.priceScale(previous, mainPane()).applyOptions({ mode: PriceScaleMode.Normal, autoScale: true, invertScale: false })
     for (const each of chart.panes()[mainPane()]?.getSeries() ?? []) {
       const id = each.options().priceScaleId
       if (id === undefined || id === previous) each.applyOptions({ priceScaleId: next })
     }
     compare?.scaleMoved()
     countdown?.restyled()
+    // The scale takes its width on the new side in the renderer's next paint, and what stands on the
+    // scale or past it, the legend and the product's mark among them, is placed from that width.
+    requestAnimationFrame(() => {
+      if (disposed) return
+      scaleControls?.sync()
+      legend.push()
+    })
   }
 
   /** Apply defaults: drop the viewer's OWN settings and put the price scale back to normal.
@@ -2778,6 +2872,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
 
   const unregisterCommands = registerChartCommands({
+    toggleAutoScale,
     commands: deps.commands,
     handle,
     styles: deps.styles,
@@ -2961,6 +3056,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       unsubscribe?.()
       unsubscribe = null
       prices.destroy()
+      heightWatch?.disconnect()
       unregisterCommands()
       baselineLevel.destroy()
       nav?.destroy()

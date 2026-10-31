@@ -160,30 +160,32 @@ export function fakeRenderer(): FakeRenderer {
   // One object per scale id, held for the renderer's lifetime: the real renderer answers the same
   // scale each time, so a test may replace a method on it and the chart sees the replacement.
   const priceScales = new Map<string, ReturnType<typeof makePriceScale>>()
-  const priceScale = (id?: string) => {
-    const key = id ?? 'right'
+  // A scale in a pane past the first is held under `id:pane`, and opens from what the default scale
+  // of that id took last, as a pane the renderer opens does.
+  const paneStart: Record<string, Record<string, unknown>> = {}
+  const priceScale = (id?: string, pane = 0) => {
+    const key = pane === 0 ? (id ?? 'right') : `${id ?? 'right'}:${pane}`
     let scale = priceScales.get(key)
-    if (!scale) { scale = makePriceScale(id); priceScales.set(key, scale) }
+    if (!scale) { scale = makePriceScale(id, key, pane); priceScales.set(key, scale) }
     return scale
   }
-  const makePriceScale = (id?: string) => ({
+  const makePriceScale = (id: string | undefined, key: string, pane: number) => ({
     applyOptions: (next: Record<string, unknown>) => {
-      const key = id ?? 'right'
       state.priceScaleOptions[key] = { ...state.priceScaleOptions[key], ...next }
+      paneStart[id ?? 'right'] = { ...paneStart[id ?? 'right'], ...next }
       // A scale that frames itself again lets go of a range set by hand.
       if (next.autoScale === true) delete state.priceRanges[key]
     },
-    options: () => ({ borderVisible: false, borderColor: '#000000', autoScale: true, ...state.priceScaleOptions[id ?? 'right'] }),
+    options: () => ({ borderVisible: false, borderColor: '#000000', autoScale: true, ...(pane === 0 ? {} : paneStart[id ?? 'right']), ...state.priceScaleOptions[key] }),
     // The framed price range: null until a series on this scale holds data, then the span of that
     // data, the way the real renderer answers once it has rendered a frame.
     // Setting a range by hand stops the scale framing itself, as the renderer does.
     setVisibleRange: (range: { from: number; to: number }) => {
-      const key = id ?? 'right'
       state.priceScaleOptions[key] = { ...state.priceScaleOptions[key], autoScale: false }
       state.priceRanges[key] = { ...range }
     },
     getVisibleRange: () => {
-      const held = state.priceRanges[id ?? 'right']
+      const held = state.priceRanges[key]
       if (held) return { ...held }
       const rows = series.filter((s) => s.options.priceScaleId !== 'volume').flatMap((s) => s.data as { high?: number; low?: number; value?: number; close?: number }[])
       const highs = rows.map((r) => r.high ?? r.value ?? r.close).filter((v): v is number => typeof v === 'number')

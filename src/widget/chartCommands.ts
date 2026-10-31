@@ -77,6 +77,8 @@ export interface ChartCommandDeps {
   /** Drop the viewer's OWN settings and return the price scale to normal, leaving the theme's
    *  values, the host's constructor partial, the viewport and every other preference alone. */
   resetSettings(): void
+  /** Start or stop the price scale framing itself. */
+  toggleAutoScale(): void
   /** The chart's language, for the preset labels a picker renders. */
   t(): ChartTranslate
   /** The bars the chart is PAINTING: already the replay slice while replay is on, so the data
@@ -149,7 +151,7 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
 
   // ── View and navigation ─────────────────────────────────────────────────────────────────────
   add({ id: 'chart.view.reset', scope: 'chart', label: 'command.viewReset', shortcut: 'Alt+KeyR', available: always, execute: () => handle.reset() })
-  add({ id: 'chart.view.goLive', scope: 'chart', label: 'command.viewGoLive', shortcut: 'Alt+KeyL', available: always, execute: () => handle.goLive() })
+  add({ id: 'chart.view.goLive', scope: 'chart', label: 'command.viewGoLive', shortcut: 'Alt+Shift+ArrowRight', available: always, execute: () => handle.goLive() })
   // Zoom and scroll are the chart's own step rules, so a keyboard, a button and a host call all
   // move by exactly the same amount and stop at the same floor. They are navigation, so a chart that
   // holds its view takes neither.
@@ -243,6 +245,24 @@ export function registerChartCommands(deps: ChartCommandDeps): () => void {
       available: () => handle.scaleMode() !== mode,
       execute: () => handle.setScaleMode(mode),
     })
+  }
+
+  // The scale's framing, its direction and the two modes with a key of their own. A key held for a
+  // mode goes back to the regular scale from that mode.
+  add({ id: 'chart.scale.toggleAuto', scope: 'chart', label: 'menu.autoFitScale', available: always, execute: () => deps.toggleAutoScale() })
+  add({
+    id: 'chart.scale.toggleInvert',
+    scope: 'chart',
+    label: 'menu.invertScale',
+    shortcut: 'Alt+KeyI',
+    available: always,
+    execute: () => handle.applySettings({ priceScale: { invertScale: !handle.settings().priceScale.invertScale } }),
+  })
+  for (const [id, mode, label, shortcut] of [
+    ['chart.scale.togglePercent', 'percent', 'menu.scalePercent', 'Alt+KeyP'],
+    ['chart.scale.toggleLog', 'log', 'menu.scaleLogarithmic', 'Alt+KeyL'],
+  ] as const) {
+    add({ id, scope: 'chart', label, shortcut, available: always, execute: () => handle.setScaleMode(handle.scaleMode() === mode ? 'normal' : mode) })
   }
 
   // ── History ─────────────────────────────────────────────────────────────────────────────────

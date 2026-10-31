@@ -21,6 +21,7 @@ export const chrome: Translation<typeof source> = {
   'chrome.scaleAsk': 'Аск',
   'chrome.scaleModes': 'Режимы шкалы',
   'chrome.autoScale': 'Автомасштаб',
+  'chrome.scaleMenu': 'Настройки шкалы',
   'chrome.autoScaleMark': 'A',
   'chrome.logScale': 'Логарифмическая шкала',
   'chrome.logScaleMark': 'L',

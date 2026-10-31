@@ -99,6 +99,8 @@ export function chartSettingsDefaults(theme: SemanticTheme): ChartSettings {
       currencyAndUnit: 'hover',
       scaleModeButtons: 'hover',
       lockPriceToBarRatio: false,
+      scalePriceChartOnly: false,
+      invertScale: false,
       priceToBarRatio: null,
       placement: 'auto',
     },

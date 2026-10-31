@@ -405,6 +405,11 @@ export const ICONS = {
   /** The currency and unit box's caret, on its native 7 by 5 grid: a 1.2 stroke bent down at its
    *  middle, drawn at its own size after the box's words. */
   scaleUnitArrow: { viewBox: '0 0 7 5', body: '<path d="M1 1.5l2.5 2 2.5-2" stroke="currentColor" stroke-width="1.2"/>' },
+  /** The price scale's corner button, on its native 15 by 13 grid: the settings nut and its ring in a
+   *  line one unit wide. */
+  scaleCorner: { viewBox: '0 0 15 13', body: '<path d="M3.9.5h7.2l3.4 6-3.4 6H3.9L.5 6.5z" fill="none" stroke="currentColor"/><circle cx="7.5" cy="6.5" r="2" fill="none" stroke="currentColor"/>' },
+  /** The arrow at the end of a menu row that opens a flyout, on its native 10 by 16 grid. */
+  menuFlyoutArrow: { viewBox: '0 0 10 16', body: solid('M.6 1.4l1.4-1.4 8 8-8 8-1.4-1.4 6.389-6.532-6.389-6.668z') },
   // Hairline weight: these two sit beside a label rather than alone in a 38px cell. A tray taking an
   // arrow, and two sheets, the back one broken where the front lies over it.
   download: { viewBox: '0 0 28 28', body: solid(bend([[6.5, 17], [6.5, 22.5], [22.5, 22.5], [22.5, 17]], 1) + line([14.5, 6], [14.5, 18]) + polyline([[10.5, 14.5], [14.5, 18.5], [18.5, 14.5]])) },

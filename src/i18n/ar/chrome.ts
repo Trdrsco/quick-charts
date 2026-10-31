@@ -21,6 +21,7 @@ export const chrome: Translation<typeof source> = {
   'chrome.scaleAsk': 'سعر البيع',
   'chrome.scaleModes': 'أوضاع المقياس',
   'chrome.autoScale': 'مقياس تلقائي',
+  'chrome.scaleMenu': 'إعدادات المقياس',
   'chrome.autoScaleMark': 'A',
   'chrome.logScale': 'مقياس لوغاريتمي',
   'chrome.logScaleMark': 'L',

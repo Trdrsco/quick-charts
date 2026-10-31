@@ -1,5 +1,5 @@
-// The context menu on the chart's own right-click, the price menu the price scale's plus opens, and
-// the rules for raising them.
+// The context menu on the chart's own right-click, the price menu the price scale's plus opens, the
+// scale's menu its corner button opens, and the rules for raising them.
 //
 // The right-click menu's rows come from `chartContextMenu`, so an embedder's chart offers what a
 // richer host's does minus what this chart cannot serve. Every built-in row runs through the
@@ -11,7 +11,7 @@
 // The price menu holds the actions on one price and nothing else: every `level` row the extensions
 // contribute for it, each extension's rows together, and then the chart's own horizontal line at it.
 import type { IChartApi, ISeriesApi, SeriesType } from 'lightweight-charts'
-import { mountMenu, type ContextMenuExtraRow, type PriceMenuPlacement, type PriceMenuRow } from '../contextMenuUi'
+import { mountMenu, type ContextMenuExtraRow, type PriceMenuPlacement, type PriceMenuRow, type ScaleMenuRow } from '../contextMenuUi'
 import type { ChartMenuAction } from '../contextMenu'
 import type { ChartExtensionHost, ChartExtensionMenuItem } from '../extension'
 import type { ChartI18n } from '../i18n'
@@ -55,6 +55,9 @@ export interface MenuPlane {
    *  `keyboard` puts the focus on its first row. False when that height holds no readable level or
    *  nothing offers a row for it. */
   raisePriceMenu(at: PriceMenuPlacement & { y: number }, keyboard: boolean): boolean
+  /** Raise the scale's menu above the corner button. `keyboard` puts the focus on its first row, and
+   *  `expanded` hears it open and close. */
+  raiseScaleMenu(at: PriceMenuPlacement, keyboard: boolean, expanded: (open: boolean) => void): void
   /** The rows the host contributes for the level under a viewport point, the table there named
    *  where the press landed on one: what a drawing's own menu carries for the host. Empty where the
    *  point holds no readable level or no host contributes. */
@@ -102,6 +105,9 @@ export interface MenuDeps {
   /** Whether a built-in row's command is drawn: false for a command the policy refuses when the
    *  host hides what it refuses. Every row is drawn without it. */
   shown?(command: string): boolean
+  /** The scale menu's groups, read at every raise and rebuild, each row printing a command's key
+   *  through what it is handed. */
+  scaleRows(shortcut: (command: string) => string | null): readonly (readonly ScaleMenuRow[])[]
 }
 
 /** The drawing plane's side of a right-click: the menu of the drawing the press landed on, raised
@@ -138,9 +144,9 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     return levelAt(deps.series(), clientY - box.top - (deps.paneTop?.() ?? 0), deps.minMove())
   }
 
-  /** The horizontal line command's shortcut as the row prints it, or null while it has none. */
-  const lineShortcut = (): string | null => {
-    const shortcut = deps.commands.list().find((spec) => spec.id === PLACE_HORIZONTAL_LINE)?.shortcut
+  /** A command's shortcut as a row prints it, or null while it has none. */
+  const commandShortcut = (command: string): string | null => {
+    const shortcut = deps.commands.list().find((spec) => spec.id === command)?.shortcut
     const t = deps.i18n.t
     return shortcut ? printedShortcut(shortcut, { ctrl: t(isApplePlatform() ? 'drawing.modifierCommand' : 'drawing.modifierControl'), meta: t('drawing.modifierCommand') }) : null
   }
@@ -209,7 +215,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
       .filter((rows) => rows.length > 0)
     const own: PriceMenuRow[] = []
     if (deps.commands.available(PLACE_HORIZONTAL_LINE, price) && (deps.shown?.(PLACE_HORIZONTAL_LINE) ?? true)) {
-      const shortcut = lineShortcut()
+      const shortcut = commandShortcut(PLACE_HORIZONTAL_LINE)
       own.push({
         label: deps.i18n.t('menu.drawHorizontalLine', { price: priceText }),
         ...(shortcut ? { shortcut } : {}),
@@ -239,6 +245,10 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
     return true
   }
 
+  const raiseScaleMenu = (at: PriceMenuPlacement, keyboard: boolean, expanded: (open: boolean) => void): void => {
+    menu.openScale(at, () => deps.scaleRows(commandShortcut), keyboard, expanded)
+  }
+
   const itemsAt = (clientX: number, clientY: number, table: { cell: boolean } | null): readonly ChartExtensionMenuItem[] => {
     const host = deps.extensions()
     if (!host) return []
@@ -251,6 +261,7 @@ export function attachMenuPlane(deps: MenuDeps): MenuPlane {
   return {
     raiseAt,
     raisePriceMenu,
+    raiseScaleMenu,
     itemsAt,
     runShortcutAt,
     close: () => menu.close(),
