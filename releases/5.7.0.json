@@ -32,6 +32,29 @@
     "owner": "Joey",
     "statement": "u do it... Stop stopping push to production and make update the release",
     "recordedAt": "2026-10-31T23:27:00Z",
-    "question": "Publishing Quick Charts 5.7.0 needs manual acceptance or the owner’s waiver, and the npm-publish approval. Asked to run the store prune and send those words for 5.7.0 (PR 169: a corner button on the price scale opens a menu of its framing, modes, side, labels and lines, with a reset, percent, logarithmic and invert keys), the owner answered with this statement. The manual accessibility and device checks were not performed."
+    "question": "Publishing Quick Charts 5.7.0 needs manual acceptance or the owner’s waiver, and the npm-publish approval. Asked to run the store prune and send those words for 5.7.0 (PR 169: a corner button on the price scale opens a menu of its framing, modes, side, labels and lines, with a reset, percent, logarithmic and invert keys), the owner answered with this statement. The manual accessibility and device checks were not performed.",
+    "confirmation": {
+      "statement": "For Quick Charts 5.7.0 I waive the unperformed manual accessibility and device checks, authorize publication, and approve the npm-publish environment for the 5.7.0 release run.",
+      "recordedAt": "2026-10-31T23:40:00Z",
+      "question": "Publish Quick Charts 5.7.0 to npm now (tarball 063920a228f0, release commit 9c1b688, tag v5.7.0)? Every automated check passed; the manual accessibility and device checks were not performed."
+    }
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/41253503155",
+    "registryIntegrity": "sha512-UM1sljI6tZgiuFtahiyfYehhAxwbkRSPg4pus5TRiSvi6y+L2ZyQxIEphzu8wNqBFqvdpIkTfzjNjN/FUOl09Q==",
+    "registryTarballSha256": "063920a228f086e8c5756181c53e5cf7b5f9269c29abd3bf41fee697d26438e4",
+    "provenanceLogIndex": 3616191047,
+    "distTagLatest": "5.7.0",
+    "npmAuditSignatures": "3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.7.0",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/41253962138",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ]
+    }
   }
 }
