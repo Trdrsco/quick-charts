@@ -34,5 +34,23 @@
     "statement": "For Quick Charts 5.7.1 I waive the unperformed manual accessibility and device checks, authorize publication after all remaining automated validation passes, approve the npm-publish environment for the 5.7.1 release run, and approve the production deploy.",
     "recordedAt": "2026-11-01T00:43:19Z",
     "question": "Once every automated check passes, publish Quick Charts 5.7.1 to npm (tarball aac07aea7dc6, tag v5.7.1) and deploy the app to production? It only changes focus on the scale’s corner button. The manual accessibility and device checks are not performed."
+  },
+  "publication": {
+    "releaseRun": "https://github.com/Trdrsco/quick-charts/actions/runs/41258922523",
+    "registryIntegrity": "sha512-Qg9nQxs7PJHksA3EArAkaGxswtIHR5oGtRx5gqdFnzTaa89X5xAKYOSPLMrTUZJleGRQs2mZ7hg5US3AanB1dA==",
+    "registryTarballSha256": "aac07aea7dc6bccbe355f8d227af9b890bf4cb422150769892ba03c199944284",
+    "provenanceLogIndex": 3617053201,
+    "distTagLatest": "5.7.1",
+    "npmAuditSignatures": "3 verified registry signatures and 1 verified attestation",
+    "freshConsumerBrowserCheck": {
+      "result": "pass",
+      "registryVersion": "5.7.1",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/41259327805",
+      "browsers": [
+        "chromium",
+        "firefox",
+        "webkit"
+      ]
+    }
   }
 }
