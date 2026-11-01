@@ -145,6 +145,9 @@ export function mountScaleControls(deps: ScaleControlsDeps): ScaleControls {
     : null
   if (corner && scaleDoor) {
     stopPointer(corner)
+    // A press of the pointer leaves the focus where it stands: a button holding it would wear the
+    // focus ring at the next key.
+    corner.addEventListener('mousedown', (event) => event.preventDefault())
     const expanded = (open: boolean): void => corner.setAttribute('aria-expanded', String(open === true))
     corner.addEventListener('click', (event) => {
       const place = corner.getBoundingClientRect()

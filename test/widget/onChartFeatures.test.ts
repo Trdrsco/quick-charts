@@ -1208,6 +1208,13 @@ describe('the corner of the price scale', () => {
     expect(renderer.priceScaleOptions.right).toMatchObject({ autoScale: true })
   })
 
+  it('leaves the focus where it stands on a press of the pointer', async () => {
+    const { container } = await mount(withMenus)
+    const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true })
+    container.querySelector<HTMLElement>('[data-role="scale-corner"]')!.dispatchEvent(press)
+    expect(press.defaultPrevented).toBe(true)
+  })
+
   it('hands the focus back to the button when a menu raised from the keyboard closes', async () => {
     const { renderer, container } = await mount(withMenus)
     laidOut(renderer, container)
