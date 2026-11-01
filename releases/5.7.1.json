@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-01",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.7.1",
+  "releaseCommit": "1703e0524ea05aa25aa40f6fa54d6924065e5625",
+  "tarballSha256": "aac07aea7dc6bccbe355f8d227af9b890bf4cb422150769892ba03c199944284",
+  "tarStreamSha256": "836652f4c7dc86bf9f463348b227a6b28c042aa84dd0b23b291d7ec1aa26219b",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/41258257486",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "bc277c953f969aed8a2ed3d55c6ffe4e5301bbba889194eeb12274700467230c",
+      "dossierHashesSha256": "89bac7d95d97dee1140c7acaf8af5a95fd6653c934ca87bc343e9863dd19b83a",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/41258726388",
+      "artifact": "quickcharts-5.7.1-rehearsal",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "a4d9df607e9cd7d27f6954541d129e0f34288897",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/41257838377",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "For Quick Charts 5.7.1 I waive the unperformed manual accessibility and device checks, authorize publication after all remaining automated validation passes, approve the npm-publish environment for the 5.7.1 release run, and approve the production deploy.",
+    "recordedAt": "2026-11-01T00:43:19Z",
+    "question": "Once every automated check passes, publish Quick Charts 5.7.1 to npm (tarball aac07aea7dc6, tag v5.7.1) and deploy the app to production? It only changes focus on the scale’s corner button. The manual accessibility and device checks are not performed."
+  }
+}
