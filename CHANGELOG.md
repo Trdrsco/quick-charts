@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+## 5.8.0
+
+`ChartHandle.setVisibleRange` pages in older history for a window that starts before the oldest loaded bar: it asks the datafeed with the same older-page `to` and `countBack` asks a scroll back makes, page after page until the bars reach the window's start, the feed states the end of its history or the chart holds 20,000 bars, and then frames the window. A window inside the loaded bars frames at once, as before. A page that fails frames the window over the bars already loaded, and a symbol or timeframe switch, any other navigation or a disposal while a page is away leaves the window unframed. The `chart.range.set` command with an explicit window does the same.
+
+The indicator picker's kind filters stand at the head of the list's column, over its column headings: 28px chips 4px apart, 40px in from the column's start, in line with the names, 16px under the search field and 8px over the headings. The rail runs the full height beside them. The keyboard reaches the filters right after the field, and on a narrow screen they span the picker above the rail's row of chips.
+
 ## 5.7.1
 
 A press of the pointer on the price scale's corner button leaves the keyboard focus where it stands, so a key pressed afterwards draws no focus ring on the button. The keyboard reaches it and rings it as before.
