@@ -922,7 +922,8 @@ widget.dispose() // teardown; every handle and subscription is inert afterwards
 ```
 
 The widget paints the main series and volume, applies live updates by the bar rules above, pages
-older history in as the viewer scrolls left (stopping at the feed's `noData`), persists the viewer's
+older history in as the viewer scrolls left and as a window set with `setVisibleRange` reaches back
+past the loaded bars (stopping at the feed's `noData`), persists the viewer's
 preferences through `ChartStorage`, runs configured indicator instances through the manifest
 pipeline, and mounts the drawing layer, the legend and the context menu.
 
@@ -973,12 +974,23 @@ function drive(widget: ChartWidget): void {
   chart.zoom(0.8) // show fewer bars
   chart.reset() // fit the loaded data
   chart.goLive() // back to the live edge, same span
+  chart.setVisibleRange({ from: 1_735_689_600, to: 1_738_368_000 }) // January 2025, paged in if older
   chart.indicators.set([])
   void chart.visibleRange()
   void chart.rangePreset() // selected bottom-bar range, or null after other navigation
   void chart.logicalRange()
 }
 ```
+
+`setVisibleRange({ from, to })` frames a window in the feed's unix seconds. A window inside the
+loaded bars frames at once. A window that starts before the oldest loaded bar first pages older
+history in through your feed's `history`, with the same `to` and `countBack` asks a scroll back
+makes, each sized to the bars still missing, page after page until the bars reach `from`, the feed
+answers `noData` or the chart holds 20,000 bars. It then frames the window over the bars it holds;
+the view stays where it stands while the pages are away. A page that rejects ends the paging and
+frames the window over the bars already loaded. A symbol or timeframe switch, any other navigation
+or `dispose()` while a page is away leaves the window unframed. The `chart.range.set` command with
+an explicit `{ from, to }` window does the same.
 
 ### The live edge and the plot
 

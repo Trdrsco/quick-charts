@@ -807,6 +807,118 @@ describe('the scroll-back runway', () => {
   })
 })
 
+describe('a time range set before the loaded bars', () => {
+  /** A feed whose first answer is three one-minute bars from 3,000 and whose older pages are
+   *  scripted in order, recording each older ask. */
+  function rangeFeed(pages: (() => Promise<HistoryPage>)[]) {
+    const older: { to?: number; countBack?: number }[] = []
+    const feed = scriptedFeed({
+      history: (_symbol, _tf, range) => {
+        if (range.to === undefined) return Promise.resolve({ bars: [bar(3_000), bar(3_060), bar(3_120)], noData: false })
+        older.push(range)
+        return (pages.shift() ?? (async (): Promise<HistoryPage> => ({ bars: [], noData: true })))()
+      },
+    })
+    return { feed: feed.feed, older }
+  }
+  const page = (...times: number[]) => async (): Promise<HistoryPage> => ({ bars: times.map((t) => bar(t)), noData: false })
+  const drain = async (): Promise<void> => {
+    for (let tick = 0; tick < 8; tick++) await settle()
+  }
+
+  it('frames a range inside the loaded bars at once and asks for nothing', async () => {
+    const feed = rangeFeed([])
+    const { handle, renderer } = mountChart(feed.feed)
+    await settle()
+    handle.setVisibleRange({ from: 3_000, to: 3_120 })
+    expect(renderer.timeRange).toEqual({ from: 3_000, to: 3_120 })
+    await drain()
+    expect(feed.older).toEqual([])
+  })
+
+  it('pages older history in, sized to the shortfall, until the bars reach the start, then frames the range', async () => {
+    const feed = rangeFeed([page(2_820, 2_880, 2_940), page(2_640, 2_700, 2_760), page(2_460, 2_520, 2_580)])
+    const { handle, renderer } = mountChart(feed.feed)
+    await settle()
+    handle.setVisibleRange({ from: 2_700, to: 3_100 })
+    // The view stays where it stands while the pages are away.
+    expect(renderer.timeRange).toBeNull()
+    await drain()
+    // Five bars short plus the scroll-back trigger's margin, then two short: the second page reaches
+    // 2,700, so no third is asked.
+    expect(feed.older).toEqual([{ to: 2_999, countBack: 65 }, { to: 2_819, countBack: 62 }])
+    expect(paintedBars(renderer)).toBe(9)
+    expect(renderer.timeRange).toEqual({ from: 2_700, to: 3_100 })
+  })
+
+  it('frames over the bars held when the feed runs out, and asks no more once it has', async () => {
+    const feed = rangeFeed([page(2_820, 2_880, 2_940), async () => ({ bars: [], noData: true })])
+    const { handle, renderer } = mountChart(feed.feed)
+    await settle()
+    handle.setVisibleRange({ from: 1_000, to: 3_100 })
+    await drain()
+    expect(feed.older.map((ask) => ask.to)).toEqual([2_999, 2_819])
+    expect(paintedBars(renderer)).toBe(6)
+    expect(renderer.timeRange).toEqual({ from: 1_000, to: 3_100 })
+
+    handle.setVisibleRange({ from: 500, to: 3_000 })
+    expect(renderer.timeRange).toEqual({ from: 500, to: 3_000 })
+    await drain()
+    expect(feed.older).toHaveLength(2)
+  })
+
+  it('frames over the bars held when a page fails', async () => {
+    const feed = rangeFeed([page(2_820, 2_880, 2_940), async () => Promise.reject(new Error('timeout'))])
+    const { handle, renderer } = mountChart(feed.feed)
+    await settle()
+    handle.setVisibleRange({ from: 1_000, to: 3_100 })
+    await drain()
+    expect(feed.older).toHaveLength(2)
+    expect(paintedBars(renderer)).toBe(6)
+    expect(renderer.timeRange).toEqual({ from: 1_000, to: 3_100 })
+  })
+
+  it('abandons the range on a symbol switch, a disposal or a newer navigation while a page is away', async () => {
+    const landing = deferred<HistoryPage>()
+    const feed = rangeFeed([() => landing.promise])
+    const { handle, renderer } = mountChart(feed.feed)
+    await settle()
+    handle.setVisibleRange({ from: 2_700, to: 3_100 })
+    handle.setSymbol('NQ')
+    await settle()
+    landing.resolve({ bars: [bar(2_640), bar(2_700), bar(2_760)], noData: false })
+    await drain()
+    // The old symbol's page paints nothing, frames nothing and starts no next page.
+    expect(feed.older).toHaveLength(1)
+    expect(paintedBars(renderer)).toBe(3)
+    expect(renderer.timeRange).toBeNull()
+
+    const disposedLanding = deferred<HistoryPage>()
+    const second = rangeFeed([() => disposedLanding.promise])
+    const disposed = mountChart(second.feed)
+    await settle()
+    disposed.handle.setVisibleRange({ from: 2_700, to: 3_100 })
+    disposed.instance.dispose()
+    disposedLanding.resolve({ bars: [bar(2_640), bar(2_700), bar(2_760)], noData: false })
+    await drain()
+    expect(second.older).toHaveLength(1)
+    expect(disposed.renderer.timeRange).toBeNull()
+
+    // A newer navigation keeps the page the walk asked for and ends the walk there.
+    const navigatedLanding = deferred<HistoryPage>()
+    const third = rangeFeed([() => navigatedLanding.promise, page(2_460, 2_520, 2_580)])
+    const navigated = mountChart(third.feed)
+    await settle()
+    navigated.handle.setVisibleRange({ from: 2_500, to: 3_100 })
+    navigated.handle.setVisibleRange({ from: 3_000, to: 3_120 })
+    navigatedLanding.resolve({ bars: [bar(2_820), bar(2_880), bar(2_940)], noData: false })
+    await drain()
+    expect(third.older).toHaveLength(1)
+    expect(paintedBars(navigated.renderer)).toBe(6)
+    expect(navigated.renderer.timeRange).toEqual({ from: 3_000, to: 3_120 })
+  })
+})
+
 describe('a style switch', () => {
   it('keeps one combined price/countdown label across every style and restores the native label when stale or disabled', async () => {
     const now = Math.floor(Date.now() / 1000 / 60) * 60 + 20

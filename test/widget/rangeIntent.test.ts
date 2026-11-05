@@ -16,7 +16,9 @@ const bar = (t: number): FeedBar => ({ t, o: 100, h: 101, l: 99, c: 100, v: 1 })
 const feed: ChartDatafeed = {
   search: async () => ({ hits: [], hasMore: false }),
   resolve: async (symbol) => ({ symbol, name: symbol, type: 'future', exchange: 'X', timezone: 'UTC', resolutions: ['1m'], priceFormat: { type: 'decimal', precision: 2, minMove: 0.25 } }) as never,
-  history: async () => ({ bars: Array.from({ length: 20 }, (_, i) => bar(1_700_000_000 + i * 60)), noData: false }),
+  // Twenty minutes of bars from 60, so every window these checks set lies inside the loaded bars and
+  // frames at once.
+  history: async () => ({ bars: Array.from({ length: 20 }, (_, i) => bar(60 + i * 60)), noData: false }),
   subscribeBars: () => () => undefined,
 }
 
