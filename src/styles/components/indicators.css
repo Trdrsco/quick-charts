@@ -1,6 +1,6 @@
-/* The indicator picker: the search field every search dialog opens on, the kind filters under it
- * when the host declares kinds, and below them a rail of collections beside the list, drawn with the
- * chart's own tokens. */
+/* The indicator picker: the search field every search dialog opens on, and below it a rail of
+ * collections beside the list's column, which the kind filters head when the host declares kinds,
+ * drawn with the chart's own tokens. */
 [data-qc-theme] .qc-picker-dialog {
   height: 638px;
   max-height: min(85vh, calc(100% - 32px));
@@ -11,10 +11,23 @@
   text-transform: none;
 }
 
+/* Under the field the rail runs down a 230px column of its own, and the list's column beside it
+ * holds the kind filters over the list. The filters lead the body in the document, so the keyboard
+ * reaches them before the rail; the grid stands them over the list. While they are hidden their row
+ * takes no height and the list rises to the top of its column. */
 [data-qc-theme] .qc-picker-body {
-  display: flex;
+  display: grid;
   flex: 1 1 auto;
+  grid-template: 'nav kinds' auto 'nav content' minmax(0, 1fr) / 230px minmax(0, 1fr);
   min-height: 0;
+}
+
+/* The kind filters: the class strip's 28px chips 4px apart, from the start of the list's column,
+ * 40px in so the first chip stands over the names, 16px under the field, 32px clear of the column's
+ * end and 8px over the list's headings. */
+[data-qc-theme] .qc-search-classes.qc-picker-kinds {
+  grid-area: kinds;
+  padding: 16px 32px 8px 40px;
 }
 
 /* The rail: 200px of sections 8px apart on the box's 20px inset, 10px before the list, 8px under
@@ -23,8 +36,10 @@
   display: flex;
   flex: 0 0 230px;
   flex-direction: column;
+  grid-area: nav;
   gap: 8px;
   width: 230px;
+  min-height: 0;
   padding: 8px 10px 16px 20px;
   overflow: hidden auto;
 }
@@ -96,6 +111,7 @@
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
+  grid-area: content;
   min-width: 0;
   min-height: 0;
 }
@@ -401,13 +417,19 @@
 }
 
 /* THE PICKER ON A NARROW SCREEN. A 230px rail beside a table of five columns leaves the name, the one
- * cell anybody reads, a single letter at 393px. So the rail lies down as a row of chips above the
- * list, scrolling sideways the way every other run of choices on a phone does, its headings gone
- * with its column, and the table sheds the author, the count and its headings: the star, the name
- * and the actions remain, and the name takes what is left. */
+ * cell anybody reads, a single letter at 393px. So the body stacks in its document order: the kind
+ * filters across the full width on the strip's own 20px inset, then the rail lying down as a row of
+ * chips, scrolling sideways the way every other run of choices on a phone does, its headings gone
+ * with its column, then the list. The table sheds the author, the count and its headings: the star,
+ * the name and the actions remain, and the name takes what is left. */
 @media (max-width: 560px) {
   [data-qc-theme] .qc-picker-body {
+    display: flex;
     flex-direction: column;
+  }
+
+  [data-qc-theme] .qc-search-classes.qc-picker-kinds {
+    padding: 8px 20px;
   }
 
   [data-qc-theme] .qc-picker-nav,

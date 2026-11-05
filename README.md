@@ -1674,7 +1674,10 @@ chart's own Personal joins Favorites in its section. An absent count stays blank
 to omit that action on a contributed item.
 
 Declare `kinds` when your rows come in kinds beside indicators. The picker then shows a row of
-filters under its field: All, the chart's own Indicators, and each of your kinds in order. An item
+filters at the head of the list's column, over its column headings and in line with the names: All,
+the chart's own Indicators, and each of your kinds in order. The keyboard reaches them right after
+the search field, before the rail. On a narrow screen they span the picker above the rail's row of
+chips. An item
 names its kind with `kind`; an item that names none, and every shipped definition, is an
 indicator. The kind id `indicator` is reserved, and an item of a kind you did not declare refuses
 the response.

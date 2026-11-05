@@ -95,7 +95,19 @@ describe('kind filters and the rail', () => {
     await settle()
     const strip = dialog.element.querySelector<HTMLElement>('.qc-search-classes')!
     expect(strip.hidden).toBe(false)
-    expect(strip.previousElementSibling?.classList.contains('qc-search-field')).toBe(true)
+    // The strip leads the body, before the rail and the list's column, so the keyboard meets the
+    // field, then the filters, then the collections, then the rows.
+    const body = dialog.element.querySelector('.qc-picker-body')!
+    expect(body.previousElementSibling?.classList.contains('qc-search-field')).toBe(true)
+    expect([...body.children].map((child) => child.classList[0])).toEqual(['qc-search-classes', 'qc-picker-nav', 'qc-picker-content'])
+    expect(strip.classList.contains('qc-picker-kinds')).toBe(true)
+    const stops = [...dialog.element.querySelectorAll<HTMLElement>('input, button:not([tabindex="-1"])')]
+    const at = (selector: string): number => stops.findIndex((stop) => stop.matches(selector))
+    expect(at('.qc-picker-search')).toBeLessThan(at('.qc-search-class'))
+    expect(at('.qc-search-class')).toBeLessThan(at('.qc-picker-collection'))
+    expect(at('.qc-picker-collection')).toBeLessThan(at('.qc-picker-star'))
+    const group = strip.querySelector('.qc-search-class-group')!
+    expect([group.getAttribute('role'), group.getAttribute('aria-label')]).toEqual(['group', 'Type'])
     expect(chips(dialog).map((chip) => [chip.textContent, chip.getAttribute('aria-pressed')])).toEqual([['All', 'true'], ['Indicators', 'false'], ['Studies', 'false']])
     pick('host'); await settle()
     const titles = () => [...dialog.element.querySelectorAll('.qc-picker-name')].map((name) => name.textContent)

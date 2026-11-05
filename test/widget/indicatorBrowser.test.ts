@@ -133,6 +133,15 @@ describe('the real widget owns one indicator picker', () => {
     expect(css).toMatch(/\.qc-picker-collection\s*\{[^}]*height: 40px;[^}]*border-radius: 8px/)
     expect(css).toMatch(/\.qc-picker-collection:hover\s*\{[^}]*background: var\(--qc-state-hover\)/)
     expect(css).toMatch(/\.qc-picker-collection\[aria-pressed='true'\]\s*\{[^}]*background: var\(--qc-state-pressed\)/)
+    // The kind filters head the list's column: the rail spans both rows, the filters stand over the
+    // list 40px in and 16px down, and on a narrow screen the body stacks with the strip's own inset.
+    expect(css).toMatch(/\.qc-picker-body\s*\{[^}]*display: grid;[^}]*grid-template: 'nav kinds' auto 'nav content' minmax\(0, 1fr\) \/ 230px minmax\(0, 1fr\)/)
+    expect(css).toMatch(/\.qc-search-classes\.qc-picker-kinds\s*\{[^}]*grid-area: kinds;[^}]*padding: 16px 32px 8px 40px/)
+    expect(css).toMatch(/\.qc-picker-nav\s*\{[^}]*grid-area: nav/)
+    expect(css).toMatch(/\.qc-picker-content\s*\{[^}]*grid-area: content/)
+    expect(css).toMatch(/@media \(max-width: 560px\)\s*\{\s*\[data-qc-theme\] \.qc-picker-body\s*\{\s*display: flex;\s*flex-direction: column;\s*\}\s*\[data-qc-theme\] \.qc-search-classes\.qc-picker-kinds\s*\{\s*padding: 8px 20px;/)
+    expect(css).toMatch(/\.qc-search-class,\s*\[data-qc-theme\] \.qc-search-scope\s*\{[^}]*height: 28px;[^}]*font-size: var\(--qc-text-fontSizeBase\)/)
+    expect(css).toMatch(/\.qc-search-class-group\s*\{[^}]*gap: 4px/)
     // The list: headings that scroll with 32px rows rounded 8px, cells 24px apart behind a 4px lead.
     expect(css).not.toMatch(/\.qc-picker-headings\s*\{[^}]*position: sticky/)
     expect(css).toMatch(/\.qc-picker-headings\s*\{[^}]*padding-block: 16px 8px;[^}]*color: var\(--qc-text-caption\)/)

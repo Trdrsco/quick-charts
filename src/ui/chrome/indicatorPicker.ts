@@ -1,10 +1,11 @@
 // One package-owned indicator picker: shipped definitions and Add stay local; host rows are inert data.
 //
-// The dialog opens on the search field every search dialog shares, with the kind filters under it
-// when the host declares kinds of its own. Below them a rail of collections stands beside the list:
-// Favorites under Personal while anything is starred, the host's collections after it under their
-// own headings, and the shipped definitions under Built-in, which a host's rows can join. The list
-// reads as a table of the star, the name, the author, the count and the row's actions, where the
+// The dialog opens on the search field every search dialog shares. Below it a rail of collections
+// stands beside the list's column: Favorites under Personal while anything is starred, the host's
+// collections after it under their own headings, and the shipped definitions under Built-in, which a
+// host's rows can join. When the host declares kinds of its own, the kind filters head the list's
+// column over its headings. The list reads as a table of the star, the name, the author, the count
+// and the row's actions, where the
 // author and count columns stand only while a listed row fills them, narrowed to the name and its
 // secondary actions for a host's personal list. A host collection that lists nothing can show its
 // own empty state: a mark, a title, a line of text and one action.
@@ -99,7 +100,7 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
       const input = h('input', { type: 'text', class: 'qc-search-input qc-picker-search', role: 'searchbox', 'aria-label': t('picker.search'), placeholder: t('picker.search'), autocomplete: 'off', spellcheck: 'false' })
       const clear = searchClear(deps.icons, t('search.clear'), () => { input.value = ''; setQuery(''); input.focus() })
       clear.hidden = true
-      const strip = h('div', { class: 'qc-search-classes' })
+      const strip = h('div', { class: 'qc-search-classes qc-picker-kinds' })
       const nav = h('nav', { class: 'qc-picker-nav', 'aria-label': t('picker.collections') })
       const list = h('div', { class: 'qc-picker-list', role: 'table', 'aria-label': t('picker.title') })
       // A host collection's empty state stands in the list's place while it lists nothing.
@@ -294,7 +295,8 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         }
       }
       // The kind filters, in the symbol search's class strip: All, the chart's Indicators, then the
-      // host's kinds in order. The strip stands only while the host declares a kind.
+      // host's kinds in order. The strip stands only while the host declares a kind, over the list's
+      // headings.
       const renderKinds = (): void => {
         const declared = kinds ?? []
         if (kind !== null && kind !== INDICATOR_KIND && !declared.some((row) => row.id === kind)) kind = null
@@ -313,7 +315,9 @@ export function openIndicatorPicker(deps: IndicatorPickerDeps): DialogHandle {
         if (event.key === 'ArrowUp' && items(list)[0] === document.activeElement) { event.preventDefault(); input.focus() }
         else if (roveFocus(list, event)) event.preventDefault()
       })
-      box.append(searchField(deps.icons, input, clear), strip, h('div', { class: 'qc-picker-body' }, nav, h('div', { class: 'qc-picker-content' }, list, vacant, status)))
+      // The strip leads the body in the document, right after the field it narrows, so the keyboard
+      // reaches the filters before the rail; the body's grid stands it over the list's column.
+      box.append(searchField(deps.icons, input, clear), h('div', { class: 'qc-picker-body' }, strip, nav, h('div', { class: 'qc-picker-content' }, list, vacant, status)))
       renderKinds()
       renderNavigation()
       redraw = render
