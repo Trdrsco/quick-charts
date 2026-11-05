@@ -3520,10 +3520,22 @@ const alertLines: ChartExtension = {
         id: 'add',
         label: `Add alert at ${menu.priceText}`,
         icon: { paths: [{ d: 'M14 6 L22 20 H6 Z' }] },
-        run: () => levels.push(menu.price),
+        run: () => {
+          levels.push(menu.price)
+          ctx.stateChanged()
+        },
       },
     ])
-    ctx.contributeCommands([{ id: 'acme.alerts.clear', label: 'Clear alerts', execute: () => (levels = []) }])
+    ctx.contributeCommands([
+      {
+        id: 'acme.alerts.clear',
+        label: 'Clear alerts',
+        execute: () => {
+          levels = []
+          ctx.stateChanged()
+        },
+      },
+    ])
     ctx.onSymbolChange(() => (levels = []))
     return {
       serialize: () => levels,
@@ -3652,6 +3664,13 @@ What to know:
 - **State is namespaced.** `serialize()` is stored under the extension's `id` inside the chart's
   content blob, and `restore(state)` receives only that slot, after the saved symbol, timeframe,
   scale and comparisons are on screen. One `id`, one attachment: a duplicate is refused.
+- **A change to your state is saved like a change to the chart.** Call `ctx.stateChanged()` when
+  what `serialize()` answers changes. The call joins the one debounced signal every change on the
+  chart raises: `saveNeeded` fires, the saved-layouts menu marks the open layout unsaved, and a
+  layout the viewer autosaves is written, once for a burst of calls. Without it, your state reaches
+  storage only when something else on the chart is saved. A call made while the chart restores
+  saved content, while your extension attaches or while the chart reads its state does nothing, and
+  so does a call after detach.
 - **Scope is a declaration.** By default an extension stays attached for the chart's life and hears
   symbol switches through `onSymbolChange`. Declare `scope: 'symbol'` and the chart detaches and
   re-attaches it on every switch, so a market-scoped overlay cannot carry one market's drawing onto

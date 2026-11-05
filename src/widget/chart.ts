@@ -348,8 +348,9 @@ export interface ChartInstanceDeps {
   beginHydration?: () => () => void
   /** Report a committed change to this chart's CONTENT, for a surface that changes content without
    *  writing a preference key. Every other content change reaches the widget's debounced
-   *  save-needed through the wrapped storage port; the settings have no key of their own, so they
-   *  say so here. Hydration-aware and debounced by the widget, exactly as a key write is. */
+   *  save-needed through the wrapped storage port; the settings and the extensions' state have no
+   *  key of their own, so they say so here. Hydration-aware and debounced by the widget, exactly as
+   *  a key write is. */
   contentChanged?: () => void
   id: string
   /** Whether this chart is the widget's active chart, the widget's own fact. */
@@ -1431,6 +1432,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // A contributed legend row stands in the legend under the symbol's reading.
     legendRowsChanged: () => legend.setSlotRows(extensionsHost?.legendRows().map((row) => row.element) ?? []),
     refreshMarks: () => refreshMarks(),
+    // Extension state rides the chart's content, so a change to it raises the same debounced
+    // save-needed every other content change does, quiet under hydration like the rest.
+    stateChanged: () => {
+      if (!disposed) deps.contentChanged?.()
+    },
   })
   extensionsHost = extensions.host
   // The rows the extensions placed while they attached, before the host was there to read.

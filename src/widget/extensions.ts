@@ -73,6 +73,8 @@ export interface ExtensionsDeps {
   legendRowsChanged?(): void
   /** Ask the datafeed for the chart's marks again. */
   refreshMarks?(): void
+  /** An extension's serialized state changed, so the chart's content holds unwritten changes. */
+  stateChanged?(): void
 }
 
 export function attachExtensionsPlane(deps: ExtensionsDeps): ExtensionsPlane {
@@ -179,6 +181,7 @@ export function attachExtensionsPlane(deps: ExtensionsDeps): ExtensionsPlane {
       hideLayersChanged: deps.hideLayersChanged,
       ...(deps.legendRowsChanged ? { legendRowsChanged: deps.legendRowsChanged } : {}),
       ...(deps.refreshMarks ? { refreshMarks: deps.refreshMarks } : {}),
+      ...(deps.stateChanged ? { stateChanged: deps.stateChanged } : {}),
     },
     deps.extensions,
   )

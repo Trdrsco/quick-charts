@@ -296,13 +296,20 @@ export interface ChartExtensionContext {
    *  taken, or paint over the image what the chart's canvases do not carry. The returned function
    *  withdraws the contribution, and detach withdraws it either way. */
   contributeCapture(capture: ChartExtensionCapture): () => void
+  /** Say that the state the handle's `serialize()` answers has changed, so the open layout holds
+   *  changes it has not written: it reads as unsaved, and an autosave writes it. The call joins the
+   *  one debounced save-needed signal every change on the chart raises, so a burst of calls writes
+   *  once. A call made while the chart restores saved content, while the extension attaches or
+   *  while the chart reads its state does nothing, and so does a call after detach. */
+  stateChanged(): void
 }
 
 /** What an extension gives back at attach. `detach` is required; the two state methods are the
  *  opt-in for anything the viewer would expect a saved chart to bring back. */
 export interface ChartExtensionHandle {
   /** Viewer state to store in the chart's save blob, under this extension's id. Anything
-   *  JSON-serializable. Return undefined to store nothing. */
+   *  JSON-serializable. Return undefined to store nothing. When what it answers changes, the
+   *  context's `stateChanged()` says so, and the layout writes it. */
   serialize?(): unknown
   /** Apply state a previous `serialize()` produced. Never called with another extension's state. */
   restore?(state: unknown): void
@@ -358,6 +365,9 @@ export interface ChartExtensionHostDeps {
   legendRowsChanged?(): void
   /** Ask the datafeed for the chart's marks again. Absent, an extension's ask does nothing. */
   refreshMarks?(): void
+  /** An extension's serialized state changed: the chart's content holds changes no save has
+   *  written. Absent, an extension's word does nothing. */
+  stateChanged?(): void
 }
 
 /** The widget's half of the seam: attach the configured extensions, push the chart's changes at
@@ -487,6 +497,17 @@ function sameJsonState(left: unknown, right: unknown): boolean {
 export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: readonly ChartExtension[] = []): ChartExtensionHost {
   const attached: Attached[] = []
   let hostLive = true
+  /** Above zero while the chart attaches an extension, restores saved state or reads it: what an
+   *  extension says about its state then is the chart's own doing, never a change to write. */
+  let quiet = 0
+  const quietly = <T>(run: () => T): T => {
+    quiet++
+    try {
+      return run()
+    } finally {
+      quiet--
+    }
+  }
 
   const detachOne = (record: Attached): void => {
     if (!record.live) return
@@ -718,6 +739,14 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
           /* the chart's own failure stays the chart's */
         }
       },
+      stateChanged() {
+        if (!record.live || !hostLive || quiet > 0) return
+        try {
+          deps.stateChanged?.()
+        } catch {
+          /* the chart's own failure stays the chart's */
+        }
+      },
       contributeHideLayer(layer) {
         // A dead context, a second layer under one id, or an id the chart's own layers already
         // hold, gets a handle that reads "shown" and changes nothing.
@@ -747,7 +776,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     // slot, and nothing it drew or locked before throwing stays on the chart. The chart never
     // learns why, and never fails to mount because of it.
     try {
-      record.handle = extension.attach(context)
+      record.handle = quietly(() => extension.attach(context))
     } catch {
       detachOne(record)
       return
@@ -884,7 +913,7 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
       for (const record of liveRecords()) {
         if (!record.handle.serialize) continue
         try {
-          const state = record.handle.serialize()
+          const state = quietly(() => record.handle.serialize!())
           if (state !== undefined) out[record.extension.id] = state
         } catch {
           /* an extension that cannot describe itself simply saves nothing */
@@ -895,29 +924,31 @@ export function createExtensionHost(deps: ChartExtensionHostDeps, extensions: re
     restore(state) {
       if (!hostLive || !state || typeof state !== 'object' || Array.isArray(state)) return false
       const byId = state as Record<string, unknown>
-      let complete = true
-      for (const record of liveRecords()) {
-        // Namespaced by id, so one extension can neither read nor corrupt another's slot.
-        const supplied = Object.hasOwn(byId, record.extension.id)
-        try {
-          // Snapshot before handing opaque state to a callback that could mutate its argument.
-          const expected = supplied ? JSON.stringify(byId[record.extension.id]) : undefined
-          if (record.handle.restore && supplied) record.handle.restore(byId[record.extension.id])
-          // A stateful owner must actually accept its own complete serialized namespace. A void
-          // callback alone proves nothing: it can silently ignore invalid leaves or patch only
-          // part of the old state. JSON normalization preserves toJSON/undefined semantics, while
-          // structural comparison permits reordered keys. Unknown ids remain ignored.
-          const actual = record.handle.serialize ? JSON.stringify(record.handle.serialize()) : undefined
-          if (actual !== undefined || record.handle.restore) {
-            if (!supplied || !record.handle.restore || expected === undefined || actual === undefined || !sameJsonState(JSON.parse(expected), JSON.parse(actual))) complete = false
+      return quietly(() => {
+        let complete = true
+        for (const record of liveRecords()) {
+          // Namespaced by id, so one extension can neither read nor corrupt another's slot.
+          const supplied = Object.hasOwn(byId, record.extension.id)
+          try {
+            // Snapshot before handing opaque state to a callback that could mutate its argument.
+            const expected = supplied ? JSON.stringify(byId[record.extension.id]) : undefined
+            if (record.handle.restore && supplied) record.handle.restore(byId[record.extension.id])
+            // A stateful owner must actually accept its own complete serialized namespace. A void
+            // callback alone proves nothing: it can silently ignore invalid leaves or patch only
+            // part of the old state. JSON normalization preserves toJSON/undefined semantics, while
+            // structural comparison permits reordered keys. Unknown ids remain ignored.
+            const actual = record.handle.serialize ? JSON.stringify(record.handle.serialize()) : undefined
+            if (actual !== undefined || record.handle.restore) {
+              if (!supplied || !record.handle.restore || expected === undefined || actual === undefined || !sameJsonState(JSON.parse(expected), JSON.parse(actual))) complete = false
+            }
+          } catch {
+            // Normal restore remains tolerant, but a failed callback or serializer cannot certify
+            // recovery or a rollback. Stateful extensions without both methods cannot prove it.
+            complete = false
           }
-        } catch {
-          // Normal restore remains tolerant, but a failed callback or serializer cannot certify
-          // recovery or a rollback. Stateful extensions without both methods cannot prove it.
-          complete = false
         }
-      }
-      return complete
+        return complete
+      })
     },
     subscriberCount() {
       let total = 0

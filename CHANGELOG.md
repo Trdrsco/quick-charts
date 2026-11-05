@@ -8,6 +8,8 @@
 
 The indicator picker's kind filters stand at the head of the list's column, over its column headings: 28px chips 4px apart, 40px in from the column's start, in line with the names, 16px under the search field and 8px over the headings. The rail runs the full height beside them. The keyboard reaches the filters right after the field, and on a narrow screen they span the picker above the rail's row of chips.
 
+`ChartExtensionContext.stateChanged()` says that the state an extension's `serialize()` answers has changed. It joins the one debounced save-needed signal every change on the chart raises: `saveNeeded` fires, the saved-layouts menu marks the open layout unsaved, and a layout the viewer autosaves is written, once for a burst of calls. A call made while the chart restores saved content, while the extension attaches or while the chart reads its state does nothing, and so does a call after detach.
+
 ## 5.7.1
 
 A press of the pointer on the price scale's corner button leaves the keyboard focus where it stands, so a key pressed afterwards draws no focus ring on the button. The keyboard reaches it and rings it as before.
