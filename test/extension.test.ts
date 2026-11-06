@@ -45,6 +45,8 @@ function fakeChart() {
     lockCalls: [] as boolean[],
     hide: { mode: 'drawings', on: false } as HideState,
     hideLayerChanges: 0,
+    /** Every word of an extension's state change that reached the chart. */
+    stateChanges: 0,
   }
   let lineSeq = 0
   const series: ChartExtensionSeries = {
@@ -106,6 +108,9 @@ function fakeChart() {
     },
     hideLayersChanged: () => {
       state.hideLayerChanges += 1
+    },
+    stateChanged: () => {
+      state.stateChanges += 1
     },
   }
   return { state, deps, commands }
@@ -485,6 +490,102 @@ describe('a detached context is inert, never explosive', () => {
     expect(commands.list()).toEqual([])
     expect(commands.execute('anything')).toEqual({ kind: 'unknown' })
     expect(host.serialize()).toEqual({})
+    expect(() => ctx.stateChanged()).not.toThrow()
+    expect(state.stateChanges).toBe(0)
+  })
+})
+
+describe('an extension says its saved state changed', () => {
+  /** An extension holding a list of levels, which says its state changed at each add and at the
+   *  other steps a test names. */
+  function levels(id = 'levels', speak: { attach?: boolean; restore?: boolean; serialize?: boolean; dispose?: boolean } = {}) {
+    let context: ChartExtensionContext | null = null
+    let held: number[] = []
+    const extension: ChartExtension = {
+      id,
+      attach(ctx) {
+        context = ctx
+        if (speak.attach) ctx.stateChanged()
+        if (speak.dispose) ctx.onDispose(() => ctx.stateChanged())
+        return {
+          serialize() {
+            if (speak.serialize) ctx.stateChanged()
+            return held
+          },
+          restore(state) {
+            held = Array.isArray(state) ? state.filter((price): price is number => typeof price === 'number') : []
+            if (speak.restore) ctx.stateChanged()
+          },
+          detach() {},
+        }
+      },
+    }
+    const add = (price: number): void => {
+      held = [...held, price]
+      context!.stateChanged()
+    }
+    return { extension, add, context: () => context!, held: () => held }
+  }
+
+  it('each word reaches the chart, whose save-needed gathers a burst into one', () => {
+    const { state, deps } = fakeChart()
+    const l = levels()
+    const host = createExtensionHost(deps, [l.extension])
+    l.add(1)
+    l.add(2)
+    l.add(3)
+    expect(state.stateChanges).toBe(3)
+    expect(host.serialize()).toEqual({ levels: [1, 2, 3] })
+  })
+
+  it('says nothing while the chart attaches the extension, reads its state or restores it', () => {
+    const { state, deps } = fakeChart()
+    const l = levels('levels', { attach: true, serialize: true, restore: true })
+    const host = createExtensionHost(deps, [l.extension])
+    expect(state.stateChanges).toBe(0)
+    expect(host.serialize()).toEqual({ levels: [] })
+    expect(host.restore({ levels: [5, 6] })).toBe(true)
+    expect(l.held()).toEqual([5, 6])
+    expect(state.stateChanges).toBe(0)
+    // A symbol-scoped extension is attached again on a switch, and that attach is as quiet.
+    const scoped = levels('scoped', { attach: true })
+    const second = createExtensionHost(deps, [{ ...scoped.extension, scope: 'symbol' }])
+    second.symbolChanged('NQZ6')
+    expect(state.stateChanges).toBe(0)
+    // Outside those, the word reaches the chart.
+    l.add(7)
+    expect(state.stateChanges).toBe(1)
+  })
+
+  it('says nothing once the chart is going away, or after detach', () => {
+    const { state, deps } = fakeChart()
+    const l = levels('levels', { dispose: true })
+    const scoped = levels('scoped')
+    const host = createExtensionHost(deps, [l.extension, { ...scoped.extension, scope: 'symbol' }])
+    // The context a symbol switch retired stands down while its successor speaks.
+    const retired = scoped.context()
+    host.symbolChanged('NQZ6')
+    retired.stateChanged()
+    expect(state.stateChanges).toBe(0)
+    scoped.context().stateChanged()
+    expect(state.stateChanges).toBe(1)
+    host.detach()
+    expect(state.stateChanges).toBe(1)
+    l.add(8)
+    scoped.context().stateChanged()
+    expect(state.stateChanges).toBe(1)
+  })
+
+  it('a chart that fails to hear it keeps its failure, and a chart without the seam hears nothing', () => {
+    const { deps } = fakeChart()
+    const l = levels()
+    createExtensionHost({ ...deps, stateChanged: () => { throw new Error('boom') } }, [l.extension])
+    expect(() => l.add(1)).not.toThrow()
+    const withoutSeam: ChartExtensionHostDeps = { ...deps }
+    delete withoutSeam.stateChanged
+    const quiet = levels('quiet')
+    createExtensionHost(withoutSeam, [quiet.extension])
+    expect(() => quiet.add(1)).not.toThrow()
   })
 })
 

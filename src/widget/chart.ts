@@ -167,6 +167,10 @@ const REPLAY_DEPTH = 20_000
 const REPLAY_PAGE_BARS = 2_000
 /** The most bars one ask for a range preset's span may name. */
 const SPAN_PAGE_MAX_BARS = 4_000
+/** How deep a time range set on the chart walks older history: the most bars the chart holds after
+ *  paging toward the range's start. A range reaching further back frames from the oldest bar within
+ *  this depth. */
+const RANGE_DEPTH = 20_000
 
 /** The bars a preset's span covers at its timeframe, with room past the paging trigger so framing
  *  the span does not start a page at once. Null for a span with no length, or a timeframe with no
@@ -245,6 +249,14 @@ export interface ChartHandle {
   visibleRange(): TimeRange | null
   /** The range preset currently framing this chart, or null after other navigation. */
   rangePreset(): string | null
+  /** Frame a window of the feed's unix seconds. A window inside the bars the chart holds frames at
+   *  once. A window starting before the oldest bar held first pages older history in through the
+   *  datafeed, the same older-page ask a scroll back makes, page after page until the bars reach
+   *  `from`, the feed states the end of its history or the chart holds 20,000 bars, and then frames
+   *  the window over the bars held; the view stays where it stands while the pages are away. A page
+   *  that fails ends the paging and frames the window over the bars held. A symbol or timeframe
+   *  switch, any other navigation or the chart's disposal while a page is away leaves the window
+   *  unframed. */
   setVisibleRange(range: TimeRange): void
   logicalRange(): LogicalRange | null
   setLogicalRange(range: LogicalRange): void
@@ -336,8 +348,9 @@ export interface ChartInstanceDeps {
   beginHydration?: () => () => void
   /** Report a committed change to this chart's CONTENT, for a surface that changes content without
    *  writing a preference key. Every other content change reaches the widget's debounced
-   *  save-needed through the wrapped storage port; the settings have no key of their own, so they
-   *  say so here. Hydration-aware and debounced by the widget, exactly as a key write is. */
+   *  save-needed through the wrapped storage port; the settings and the extensions' state have no
+   *  key of their own, so they say so here. Hydration-aware and debounced by the widget, exactly as
+   *  a key write is. */
   contentChanged?: () => void
   id: string
   /** Whether this chart is the widget's active chart, the widget's own fact. */
@@ -1419,6 +1432,11 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     // A contributed legend row stands in the legend under the symbol's reading.
     legendRowsChanged: () => legend.setSlotRows(extensionsHost?.legendRows().map((row) => row.element) ?? []),
     refreshMarks: () => refreshMarks(),
+    // Extension state rides the chart's content, so a change to it raises the same debounced
+    // save-needed every other content change does, quiet under hydration like the rest.
+    stateChanged: () => {
+      if (!disposed) deps.contentChanged?.()
+    },
   })
   extensionsHost = extensions.host
   // The rows the extensions placed while they attached, before the host was there to read.
@@ -2157,6 +2175,59 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       })
   }
 
+  /** Frame a time range a host or a command set. A range starting before the oldest bar held pages
+   *  older history in first: each page is the older-page ask a scroll back makes, sized to the
+   *  shortfall, and lands holding the view where it stands. The walk goes on until the bars reach
+   *  `from`, the feed states its end or its earliest bar is held, a page adds nothing, or the chart
+   *  holds RANGE_DEPTH bars, and then frames the range over the bars held. A failed page ends the
+   *  walk the same way. A symbol or timeframe switch, a disposal, a replay or a newer navigation
+   *  ends it with the range unframed, since the chart no longer stands where the range was asked. */
+  function showRange(range: TimeRange): void {
+    const parsed = parseTimeframe(tf)
+    const before = (): boolean => {
+      const oldest = bars[0]
+      return !!oldest && range.from < oldest.t && !noMoreHistory && bars.length < RANGE_DEPTH && (earliestBarSecs === null || oldest.t > earliestBarSecs)
+    }
+    if (disposed || replay.active() || !(range.to > range.from) || !before()) {
+      ranges.setVisibleRange(range)
+      return
+    }
+    paging = true
+    const myEpoch = epoch
+    const myNavigation = navigationEpoch
+    const current = (): boolean => !disposed && myEpoch === epoch && myNavigation === navigationEpoch && !replay.active()
+    void (async () => {
+      try {
+        while (before()) {
+          const oldest = bars[0]!.t
+          const count = parsed && parsed.unit !== 't' ? Math.min(SPAN_PAGE_MAX_BARS, Math.ceil((oldest - range.from) / timeframeSeconds(parsed)) + PAGE_TRIGGER_BARS) : PAGE_BARS
+          const { olderBars, end } = await fetchOlder(oldest - 1, count)
+          if (disposed || myEpoch !== epoch) return
+          if (end) noMoreHistory = true
+          // The oldest bar is read again on landing: the stream or another page may have moved it.
+          const first = bars[0]?.t
+          if (first === undefined || replay.active()) return
+          const merged = mergeBarSnapshot(bars, olderBars.filter((bar) => bar.t < first), true)
+          if (merged.length === bars.length) break
+          maintainTimeline(() => {
+            bars = merged
+            paintAll()
+          })
+          refreshMarks()
+          if (!current()) return
+        }
+      } catch {
+        // A page that failed ends the walk; the range frames over the bars already held.
+      } finally {
+        if (myEpoch === epoch) paging = false
+      }
+      if (!current()) return
+      // The frame is this navigation's own write, so no page's maintenance record owns its report.
+      maintenanceRange = null
+      ranges.setVisibleRange(range)
+    })()
+  }
+
   /** Replay's first available date: page older history back to the feed's true beginning, or to the
    *  depth it states, prepending each page while holding the view, then start at the oldest bar held.
    *  A session already open is left first, because its window is fixed and paging under it would
@@ -2702,7 +2773,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     rangePreset: () => selectedRangePreset,
     setVisibleRange: (range) => {
       beginNavigation()
-      ranges.setVisibleRange(range)
+      showRange(range)
     },
     logicalRange: () => ranges.logicalRange(),
     setLogicalRange: (range) => {

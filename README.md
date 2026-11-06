@@ -922,7 +922,8 @@ widget.dispose() // teardown; every handle and subscription is inert afterwards
 ```
 
 The widget paints the main series and volume, applies live updates by the bar rules above, pages
-older history in as the viewer scrolls left (stopping at the feed's `noData`), persists the viewer's
+older history in as the viewer scrolls left and as a window set with `setVisibleRange` reaches back
+past the loaded bars (stopping at the feed's `noData`), persists the viewer's
 preferences through `ChartStorage`, runs configured indicator instances through the manifest
 pipeline, and mounts the drawing layer, the legend and the context menu.
 
@@ -973,12 +974,23 @@ function drive(widget: ChartWidget): void {
   chart.zoom(0.8) // show fewer bars
   chart.reset() // fit the loaded data
   chart.goLive() // back to the live edge, same span
+  chart.setVisibleRange({ from: 1_735_689_600, to: 1_738_368_000 }) // January 2025, paged in if older
   chart.indicators.set([])
   void chart.visibleRange()
   void chart.rangePreset() // selected bottom-bar range, or null after other navigation
   void chart.logicalRange()
 }
 ```
+
+`setVisibleRange({ from, to })` frames a window in the feed's unix seconds. A window inside the
+loaded bars frames at once. A window that starts before the oldest loaded bar first pages older
+history in through your feed's `history`, with the same `to` and `countBack` asks a scroll back
+makes, each sized to the bars still missing, page after page until the bars reach `from`, the feed
+answers `noData` or the chart holds 20,000 bars. It then frames the window over the bars it holds;
+the view stays where it stands while the pages are away. A page that rejects ends the paging and
+frames the window over the bars already loaded. A symbol or timeframe switch, any other navigation
+or `dispose()` while a page is away leaves the window unframed. The `chart.range.set` command with
+an explicit `{ from, to }` window does the same.
 
 ### The live edge and the plot
 
@@ -1662,7 +1674,10 @@ chart's own Personal joins Favorites in its section. An absent count stays blank
 to omit that action on a contributed item.
 
 Declare `kinds` when your rows come in kinds beside indicators. The picker then shows a row of
-filters under its field: All, the chart's own Indicators, and each of your kinds in order. An item
+filters at the head of the list's column, over its column headings and in line with the names: All,
+the chart's own Indicators, and each of your kinds in order. The keyboard reaches them right after
+the search field, before the rail. On a narrow screen they span the picker above the rail's row of
+chips. An item
 names its kind with `kind`; an item that names none, and every shipped definition, is an
 indicator. The kind id `indicator` is reserved, and an item of a kind you did not declare refuses
 the response.
@@ -3505,10 +3520,22 @@ const alertLines: ChartExtension = {
         id: 'add',
         label: `Add alert at ${menu.priceText}`,
         icon: { paths: [{ d: 'M14 6 L22 20 H6 Z' }] },
-        run: () => levels.push(menu.price),
+        run: () => {
+          levels.push(menu.price)
+          ctx.stateChanged()
+        },
       },
     ])
-    ctx.contributeCommands([{ id: 'acme.alerts.clear', label: 'Clear alerts', execute: () => (levels = []) }])
+    ctx.contributeCommands([
+      {
+        id: 'acme.alerts.clear',
+        label: 'Clear alerts',
+        execute: () => {
+          levels = []
+          ctx.stateChanged()
+        },
+      },
+    ])
     ctx.onSymbolChange(() => (levels = []))
     return {
       serialize: () => levels,
@@ -3637,6 +3664,13 @@ What to know:
 - **State is namespaced.** `serialize()` is stored under the extension's `id` inside the chart's
   content blob, and `restore(state)` receives only that slot, after the saved symbol, timeframe,
   scale and comparisons are on screen. One `id`, one attachment: a duplicate is refused.
+- **A change to your state is saved like a change to the chart.** Call `ctx.stateChanged()` when
+  what `serialize()` answers changes. The call joins the one debounced signal every change on the
+  chart raises: `saveNeeded` fires, the saved-layouts menu marks the open layout unsaved, and a
+  layout the viewer autosaves is written, once for a burst of calls. Without it, your state reaches
+  storage only when something else on the chart is saved. A call made while the chart restores
+  saved content, while your extension attaches or while the chart reads its state does nothing, and
+  so does a call after detach.
 - **Scope is a declaration.** By default an extension stays attached for the chart's life and hears
   symbol switches through `onSymbolChange`. Declare `scope: 'symbol'` and the chart detaches and
   re-attaches it on every switch, so a market-scoped overlay cannot carry one market's drawing onto

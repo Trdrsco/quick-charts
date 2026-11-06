@@ -72,7 +72,8 @@ export interface IndicatorPickerBuiltInState {
 export interface IndicatorPickerSource {
   collections: readonly IndicatorPickerCollection[]
   /** The kinds the source's items come in beside indicators. With at least one, the picker shows a
-   *  row of filters (All, Indicators, then these in order) under its search field. */
+   *  row of filters (All, Indicators, then these in order) at the head of its list's column, over
+   *  the column headings. */
   kinds?: readonly IndicatorPickerKind[]
   /** The host supplies localized text. A new query or collection aborts the previous read.
    *  `builtInIds` are the built-ins the picker lists: every one, or those `builtInIndicators`
