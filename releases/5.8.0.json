@@ -1,0 +1,38 @@
+{
+  "date": "2026-11-06",
+  "packageName": "@trdrs/quickcharts",
+  "version": "5.8.0",
+  "releaseCommit": "34cfafb50bffb884b0596d5442134e3417de8af1",
+  "tarballSha256": "f1e66cdc34e8844dbaed1134485de78237e48cf4a156f57870c5a5b99037e4b6",
+  "tarStreamSha256": "1b8621ecf3d1b42d4725c24697d47d0d5b89b129194eb2bea4cb7fcb954356ba",
+  "producer": {
+    "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/42219370316",
+    "rehearsal": {
+      "result": "pass",
+      "summarySha256": "51af8bb337143ddafd44cfcfef6acab9ba6a3b6aaa3af0d2eee1d7ece59e028a",
+      "dossierHashesSha256": "ee33d94ede50e42b72313366a76a4adac24287d2f8b6ad98a589dd53c65c172f",
+      "ciRun": "https://github.com/Trdrsco/quick-charts/actions/runs/42220140540",
+      "artifact": "quickcharts-5.8.0-rehearsal",
+      "installTestChecksPassed": 25
+    }
+  },
+  "inspection": {
+    "exportMap": "inspected",
+    "declarations": "inspected",
+    "stylesheet": "inspected",
+    "licenseAndNotices": "inspected",
+    "generatedManifests": "inspected"
+  },
+  "firstHost": {
+    "repository": "Trdrsco/trdrs-app",
+    "testedCommit": "07a635f5058446613b0be8b3e9cedc81045a441e",
+    "ciRun": "https://github.com/Trdrsco/trdrs-app/actions/runs/42225879345",
+    "result": "pass"
+  },
+  "ownerWaiver": {
+    "owner": "Joey",
+    "statement": "I waive manual accessibility and advertised-browser acceptance for Quick Charts 5.8.0 (sha256 f1e66cdc...e4b6); tag v5.8.0, publish it and deploy the app to production on it.",
+    "recordedAt": "2026-11-06T12:39:00Z",
+    "question": "Release Quick Charts 5.8.0, tarball SHA-256 f1e66cdc34e8844dbaed1134485de78237e48cf4a156f57870c5a5b99037e4b6 (the bytes CI built on PR #175 and the app already runs). The acceptance record needs either manual accessibility and browser acceptance or your waiver. Do you waive manual accessibility and advertised-browser acceptance for 5.8.0, and approve tagging v5.8.0, publishing it to npm and deploying the app to production on it?"
+  }
+}
