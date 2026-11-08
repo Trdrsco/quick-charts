@@ -2891,8 +2891,8 @@ keyboard reaches a mark with Tab and presses it with Enter or Space.
 
 The dialog groups every page loaded so far, so a member that arrives on a later page joins the row
 its group already has. A group with one member reads exactly as the row without a group, and a row
-with no `group`, or an empty one, is a row of its own. Recent picks stay a row each, and a search
-hit that a recent already lists is left out of its group. The compare dialog lists a row per market,
+with no `group`, or an empty one, is a row of its own. Recent picks stay a row each, and a grouped
+row still lists every venue when a recent names one of them. The compare dialog lists a row per market,
 grouped or not.
 
 ```ts
