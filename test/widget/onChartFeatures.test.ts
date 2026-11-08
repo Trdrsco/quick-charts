@@ -862,7 +862,7 @@ describe('the plus button', () => {
 })
 
 describe('the pane buttons', () => {
-  it('give each pane its buttons and run the legend pane operations and the remove verb', async () => {
+  it('give each pane its buttons and run the pane operations and the remove verb', async () => {
     const { chart, renderer, container } = await mount()
     chart.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
     await settle()
@@ -883,7 +883,7 @@ describe('the pane buttons', () => {
     expect(group(1)!.querySelector('[data-action="moveUp"]')!.getAttribute('aria-label')).toBe('Move pane up')
     press(1, 'collapse')
     expect(renderer.paneHeights[1]).toBe(30)
-    expect(actions(1)).toEqual(['moveUp', 'delete', 'expand'])
+    expect(actions(1)).toEqual(['moveUp', 'delete', 'expand', 'maximize'])
     press(1, 'expand')
     expect(renderer.paneHeights[1]).toBe(200)
     // The main pane maximizes by collapsing the others, and gives back exactly what it took.
@@ -909,16 +909,19 @@ describe('the pane buttons', () => {
     chart.applySettings({ canvas: { marginTop: 11 } })
     const gestures = container.querySelector<HTMLElement>('.qc-gestures')!
     const group = (pane: number): HTMLElement => container.querySelector<HTMLElement>(`.qc-pane-buttons[data-pane="${pane}"]`)!
-    expect([group(0).hidden, group(1).hidden]).toEqual([true, true])
+    const shown = (): (string | undefined)[] => [group(0).dataset.qcShown, group(1).dataset.qcShown]
+    expect(shown()).toEqual(['false', 'false'])
     const move = (y: number): void => {
       const event = new MouseEvent('pointermove', { bubbles: true, clientX: 10, clientY: y })
       Object.defineProperty(event, 'pointerType', { value: 'mouse' })
       gestures.dispatchEvent(event)
     }
     move(450)
-    expect([group(0).hidden, group(1).hidden]).toEqual([true, false])
+    expect(shown()).toEqual(['false', 'true'])
     move(100)
-    expect([group(0).hidden, group(1).hidden]).toEqual([false, true])
+    expect(shown()).toEqual(['true', 'false'])
+    chart.applySettings({ canvas: { paneButtons: 'always' } })
+    expect(shown()).toEqual(['true', 'true'])
     chart.applySettings({ canvas: { paneButtons: 'never' } })
     expect([group(0).hidden, group(1).hidden]).toEqual([true, true])
   })
@@ -1009,7 +1012,59 @@ describe('moving a pane', () => {
     expect(paneActions(pane(1, true), 3, all)).toEqual(['moveUp', 'moveDown', 'maximize'])
     expect(paneActions(pane(1), 3, { remove: true, up: false, down: true })).toEqual(['moveDown', 'delete', 'collapse', 'maximize'])
     expect(paneActions(pane(2), 3, { remove: false, up: false, down: false })).toEqual(['collapse', 'maximize'])
-    expect(paneActions({ ...pane(2), collapsed: true }, 3, all)).toEqual(['moveUp', 'delete', 'expand'])
+    // A collapsed pane keeps all four; a maximized one keeps its moves and its restore.
+    expect(paneActions({ ...pane(2), collapsed: true }, 3, all)).toEqual(['moveUp', 'delete', 'expand', 'maximize'])
+    expect(paneActions({ ...pane(1), maximized: true }, 3, all)).toEqual(['moveUp', 'moveDown', 'restore'])
+  })
+
+  it('show for the pane the pointer is over, stay up while it moves onto them, and fade as it leaves the chart', async () => {
+    const { renderer, container } = await threePanes()
+    renderer.paneHeights[0] = 400
+    renderer.paneHeights[1] = 200
+    renderer.paneHeights[2] = 100
+    const gestures = container.querySelector<HTMLElement>('.qc-gestures')!
+    const root = gestures.parentElement!
+    const group = (pane: number): HTMLElement => container.querySelector<HTMLElement>(`.qc-pane-buttons[data-pane="${pane}"]`)!
+    const move = (target: HTMLElement, y: number): void => {
+      const event = new MouseEvent('pointermove', { bubbles: true, clientY: y })
+      Object.defineProperty(event, 'pointerType', { value: 'mouse' })
+      target.dispatchEvent(event)
+    }
+    move(gestures, 450)
+    expect([group(0).dataset.qcShown, group(1).dataset.qcShown, group(2).dataset.qcShown]).toEqual(['false', 'true', 'false'])
+    expect(group(0).hasAttribute('inert')).toBe(true)
+    // Onto its buttons: the gesture box is left, the chart is not, so they stay.
+    gestures.dispatchEvent(new MouseEvent('pointerleave'))
+    group(1).dispatchEvent(new MouseEvent('pointerenter'))
+    move(group(1), 405)
+    expect(group(1).dataset.qcShown).toBe('true')
+    // Off the chart altogether.
+    group(1).dispatchEvent(new MouseEvent('pointerleave'))
+    root.dispatchEvent(new MouseEvent('pointerleave'))
+    expect(group(1).dataset.qcShown).toBe('false')
+  })
+
+  it('stand a collapse and a maximize pressed while they hold, and restore a pane maximized from its strip to the strip', async () => {
+    const { chart, renderer, container } = await threePanes()
+    renderer.paneHeights[0] = 400
+    renderer.paneHeights[1] = 200
+    renderer.paneHeights[2] = 100
+    chart.applySettings({ canvas: { paneButtons: 'always' } })
+    const { actions, press } = buttons(container)
+    const pressed = (pane: number, action: string): string | null =>
+      container.querySelector<HTMLElement>(`.qc-pane-buttons[data-pane="${pane}"] [data-action="${action}"]`)!.getAttribute('aria-pressed')
+    expect(pressed(1, 'collapse')).toBe('false')
+    press(1, 'collapse')
+    expect(renderer.paneHeights[1]).toBe(30)
+    expect(actions(1)).toEqual(['moveUp', 'moveDown', 'delete', 'expand', 'maximize'])
+    expect(pressed(1, 'expand')).toBe('true')
+    press(1, 'maximize')
+    expect(actions(1)).toEqual(['moveUp', 'moveDown', 'restore'])
+    expect(pressed(1, 'restore')).toBe('true')
+    press(1, 'restore')
+    expect(renderer.paneHeights[1]).toBe(30)
+    press(1, 'expand')
+    expect(renderer.paneHeights[1]).toBe(200)
   })
 
   it('answers the move commands unavailable at the ends and for a pane the chart does not hold', async () => {

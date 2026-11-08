@@ -11,6 +11,14 @@
         "value": "#ebebeb"
       },
       {
+        "property": "--qc-canvas-paneDivider",
+        "value": "#ebebeb"
+      },
+      {
+        "property": "--qc-canvas-paneDividerHover",
+        "value": "rgba(68, 138, 255, 0.2)"
+      },
+      {
         "property": "--qc-canvas-watermark",
         "value": "rgba(80, 83, 94, 0.2)"
       },
@@ -443,6 +451,14 @@
       {
         "property": "--qc-canvas-paneBorder",
         "value": "#1a1a1a"
+      },
+      {
+        "property": "--qc-canvas-paneDivider",
+        "value": "#222222"
+      },
+      {
+        "property": "--qc-canvas-paneDividerHover",
+        "value": "rgba(68, 138, 255, 0.2)"
       },
       {
         "property": "--qc-canvas-watermark",

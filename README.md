@@ -2540,9 +2540,12 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   crosshair's color, stroke and width; the watermark's parts and ink; the scales' text and lines;
   when the navigation buttons show; when each pane's own buttons show (`paneButtons`): at a pane's
   top right, move it up or down past its neighbour, delete it, collapse or open it, and maximize or
-  restore it, through the same pane operations and move verbs the legend's rows run, the main pane
-  moving too and otherwise carrying maximize alone while another pane stands; and the margins, the
-  right one in bars. The order the panes stand in is saved with the chart.
+  restore it, the main pane moving too and otherwise carrying maximize alone while another pane
+  stands. A collapsed pane keeps all four, its collapse pressed, and a pane maximized from its
+  collapsed strip restores to it; a maximized pane keeps its moves and its restore. These buttons
+  are where a pane is moved, collapsed and maximized: a legend row carries its eye, its settings and
+  its remove. And the margins, the right one in bars. The order the panes stand in is saved with the
+  chart.
 - `events`: a line at each trading day's start, in its own stroke.
 
 ## Compare

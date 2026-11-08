@@ -52,20 +52,13 @@ export interface LegendChip {
   description?: string
   /** The instance declares inputs, so the settings gear renders. */
   hasInputs?: boolean
-  /** Pane-placed instance: the row carries the pane controls. */
+  /** Pane-placed instance: the row stands in its own pane. */
   pane?: boolean
   /** The row is an indicator's: the legend look's indicator parts decide which of its title, inputs
    *  and value show. */
   indicator?: boolean
   /** Live renderer pane, recalculated after removal and reordering. */
   paneIndex?: number
-  /** The instance's pane currently reads as collapsed (drives which control shows). */
-  collapsed?: boolean
-  maximized?: boolean
-  /** The row's pane can move one place up, or one place down: it is not the top pane, or not the
-   *  bottom one, and the move verb is the row's to show. */
-  canMoveUp?: boolean
-  canMoveDown?: boolean
   /** The TITLE is a button (a compare row's change-symbol door) — needs `onTitle`. */
   titleButton?: boolean
   /** The market this row charts, when the row IS a market: the head of the row wears its mark, the
@@ -167,10 +160,6 @@ export interface LegendControls {
   onToggleEye(id: string): void
   /** The row's settings gear was tapped — open the inputs editor at this viewport rect. */
   onSettings?(id: string, rect: { x: number; y: number; w: number; h: number }): void
-  /** A pane row's collapse/maximize/restore control. */
-  onPaneOp?(id: string, op: 'collapse' | 'maximize' | 'restore'): void
-  /** A pane row's move up or move down control. */
-  onPaneMove?(id: string, direction: 'up' | 'down'): void
   /** A `titleButton` row's title was tapped (a comparison's change-symbol). */
   onTitle?(id: string): void
   /** A `removable` row's remove control was tapped. */
@@ -474,16 +463,12 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
       const r = gear.getBoundingClientRect()
       controls.onSettings?.(chip.id, { x: r.x, y: r.y, w: r.width, h: r.height })
     })
-    const moveUp = chipButton(controls.icons.glyph(ICONS.paneUp, { size: 18 }), '', () => controls.onPaneMove?.(chip.id, 'up'))
-    const moveDown = chipButton(controls.icons.glyph(ICONS.paneDown, { size: 18 }), '', () => controls.onPaneMove?.(chip.id, 'down'))
-    const collapse = chipButton('', '', () => controls.onPaneOp?.(chip.id, chip.collapsed ? 'restore' : 'collapse'))
-    const maximize = chipButton(controls.icons.glyph(ICONS.paneMaximize, { size: 18 }), '', () => controls.onPaneOp?.(chip.id, chip.maximized ? 'restore' : 'maximize'))
     const eye = chipButton('', '', () => controls.onToggleEye(chip.id))
     eye.classList.add('qc-legend-eye')
     const remove = chipButton(controls.icons.glyph(ICONS.trash, { size: 18 }), '', () => controls.onRemove?.(chip.id))
     const actions = document.createElement('span')
     actions.className = 'qc-legend-actions'
-    actions.append(eye, gear, moveUp, moveDown, collapse, maximize, remove)
+    actions.append(eye, gear, remove)
     const nameButton = (button: HTMLButtonElement, text: string): void => {
       button.title = text
       button.setAttribute('aria-label', text)
@@ -541,17 +526,6 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
         else delete value.dataset.qcTone
         gear.hidden = !chip.hasInputs || !controls.onSettings
         nameButton(gear, chip.settingsLabel ?? strings.t('legend.indicatorSettings'))
-        // A pane row moves its pane while the pane stands, as the pane's own buttons move it.
-        moveUp.hidden = !chip.pane || !controls.onPaneMove || chip.hidden || !chip.canMoveUp
-        moveDown.hidden = !chip.pane || !controls.onPaneMove || chip.hidden || !chip.canMoveDown
-        nameButton(moveUp, strings.t('legend.movePaneUp'))
-        nameButton(moveDown, strings.t('legend.movePaneDown'))
-        collapse.hidden = !chip.pane || !controls.onPaneOp || chip.hidden
-        collapse.replaceChildren(controls.icons.glyph(chip.collapsed ? ICONS.paneRestore : ICONS.paneCollapse, { size: 18 }))
-        nameButton(collapse, strings.t(chip.collapsed ? 'legend.restorePane' : 'legend.collapsePane'))
-        maximize.hidden = collapse.hidden || !!chip.collapsed
-        nameButton(maximize, strings.t(chip.maximized ? 'legend.restorePane' : 'legend.maximizePane'))
-        maximize.setAttribute('aria-pressed', String(chip.maximized === true))
         const eyeState = String(chip.hidden)
         if (eye.dataset.hidden !== eyeState) {
           eye.replaceChildren(controls.icons.glyph(chip.hidden ? ICONS.legendEyeOff : ICONS.legendEye, { size: 18 }))

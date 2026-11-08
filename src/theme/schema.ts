@@ -61,6 +61,8 @@ export const THEME_ROLES = [
   // ── canvas: the chart plot area itself ──────────────────────────────────────────────────────
   { id: 'canvas.background', family: 'canvas', kind: 'color', description: 'The fill behind the plotted series.' },
   { id: 'canvas.paneBorder', family: 'canvas', kind: 'color', description: 'The divider between stacked panes and around the plot area.' },
+  { id: 'canvas.paneDivider', family: 'canvas', kind: 'color', description: 'The line between stacked panes.' },
+  { id: 'canvas.paneDividerHover', family: 'canvas', kind: 'color', description: 'The band over the line between stacked panes while the pointer is on it.' },
   { id: 'canvas.watermark', family: 'canvas', kind: 'color', description: 'The text a watermark writes large behind the bars.' },
 
   // ── series: direction, before any chart appearance override ─────────────────────────────────

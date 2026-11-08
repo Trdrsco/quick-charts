@@ -322,17 +322,10 @@ export const ICONS = {
   legendEye: { viewBox: '0 0 18 18', body: solid(drawEye(LEGEND_EYE)) },
   legendEyeOff: { viewBox: '0 0 18 18', body: solid(drawEye(LEGEND_EYE)) + '<path stroke="currentColor" stroke-linecap="round" d="M3.5 2.5 14.5 16.5"/>' },
   legendSettings: { viewBox: '0 0 18 18', body: solid(wall([[2, 9], [4.73, 3], [13.27, 3], [16, 9], [13.27, 15], [4.73, 15]], 0, 0) + ring(9, 9, 2.5)) },
-  // THE trash, on the 18 grid every row control that carries one uses: the legend's compare rows,
-  // the saved-layout rows and the timeframe list's custom rows.
+  // THE trash, on the 18 grid every row control that carries one uses: the legend's rows, the
+  // saved-layout rows and the timeframe list's custom rows.
   trash: { viewBox: '0 0 18 18', body: solid(bin([3, 15, 5], [6, 12, 3, 1.5], [[3.939, 5], [14.061, 5], [12.953, 15], [5.047, 15]])) },
   legendChevron: { viewBox: '0 0 15 15', body: solid(polyline([[4, 6], [7.5, 9], [11, 6]], 1.3, { cap: 'round' })) },
-  paneCollapse: { viewBox: '0 0 18 18', body: "<path stroke=\"currentColor\" d=\"M3 4.5h12M3 13.5h12M9 6.5v-2M7.5 6l1.5 1.5L10.5 6M9 11.5v2M7.5 12l1.5-1.5L10.5 12\" />" },
-  paneRestore: { viewBox: '0 0 18 18', body: "<path stroke=\"currentColor\" d=\"M3 4.5h12M3 13.5h12M9 5v3M7.5 7.5L9 9l1.5-1.5M9 13v-3M7.5 10.5L9 9l1.5 1.5\" />" },
-  paneMaximize: { viewBox: '0 0 18 18', body: "<path stroke=\"currentColor\" d=\"M3.5 4.5h11v9h-11z\" /> <path stroke=\"currentColor\" d=\"M6 9h6M9 6.5v5M7.5 8L9 6.5 10.5 8M7.5 10L9 11.5 10.5 10\" />" },
-  // Move a pane: an arrow up the middle of the grid, its head opening four units each way, and the
-  // same arrow pointing down.
-  paneUp: { viewBox: '0 0 18 18', body: '<path stroke="currentColor" d="M9 14.5v-11M5 7.5l4-4 4 4" />' },
-  paneDown: { viewBox: '0 0 18 18', body: '<path stroke="currentColor" d="M9 3.5v11M5 10.5l4 4 4-4" />' },
   /** The product's own mark, on its native 120 grid. Every chart carries it in the plot's corner. */
   productMark: { viewBox: '0 0 120 120', body:
     '<path fill="currentColor" d="M113 2.5A7 7 0 0 1 120 9.5L120 71.5A6 6 0 0 1 114 77.5L83 77.5A3 3 0 0 1 80 74.5L80 42.5A4 4 0 0 1 84 38.5L110 38.5A4 4 0 0 0 114 34.5L114 12.5A4 4 0 0 0 110 8.5L10 8.5A4 4 0 0 0 6 12.5L6 34.5A4 4 0 0 0 10 38.5L36 38.5A4 4 0 0 1 40 42.5L40 74.5A3 3 0 0 1 37 77.5L6 77.5A6 6 0 0 1 0 71.5L0 9.5A7 7 0 0 1 7 2.5Z"/>' +
@@ -578,23 +571,27 @@ export const ICONS = {
   settingsCanvas: { viewBox: '0 0 28 28', body: solid(pencil([6, 22], 18.5, 2.8, 2)) },
   // Events: a calendar page, its band under the top edge and its two rings standing up through it.
   settingsEvents: { viewBox: '0 0 28 28', body: solid(frame(5, 6, 23, 22, 2.5) + box(6, 10, 22, 11) + box(9, 4, 10, 8) + box(18, 4, 19, 8)) },
-  // A pane's own buttons, on a 15 grid, one unit strokes. Collapse: two chevrons pointing at each
-  // other across the middle. Expand: the same two pointing apart.
-  paneCollapse15: { viewBox: '0 0 15 15', body: solid(polyline([[3.5, 3], [7.5, 6.5], [11.5, 3]]) + polyline([[3.5, 12], [7.5, 8.5], [11.5, 12]])) },
-  paneExpand15: { viewBox: '0 0 15 15', body: solid(polyline([[3.5, 6.5], [7.5, 3], [11.5, 6.5]]) + polyline([[3.5, 8.5], [7.5, 12], [11.5, 8.5]])) },
-  // Move up: a stem up the middle under a head opening four units each way. Move down: the same
-  // arrow pointing down.
-  paneUp15: { viewBox: '0 0 15 15', body: solid(line([7.5, 12.5], [7.5, 3.5]) + polyline([[3.5, 7.5], [7.5, 3.5], [11.5, 7.5]])) },
-  paneDown15: { viewBox: '0 0 15 15', body: solid(line([7.5, 2.5], [7.5, 11.5]) + polyline([[3.5, 7.5], [7.5, 11.5], [11.5, 7.5]])) },
-  // Maximize: a frame's four corners, each bent round, the middle of every side left open.
+  // A pane's own buttons, on a 15 grid. Collapse: two one-unit chevrons pointing at each other
+  // across the middle. Expand: the same two pointing apart. The upper part is drawn first and the
+  // lower second, the order a button's hover moves them in.
+  paneCollapse15: { viewBox: '0 0 15 15', body: '<path stroke="currentColor" d="M11 2 7.5 5 4 2"/><path stroke="currentColor" d="M4 13l3.5-3 3.5 3"/>' },
+  paneExpand15: { viewBox: '0 0 15 15', body: '<path stroke="currentColor" d="m4 5 3.5-3L11 5"/><path stroke="currentColor" d="M11 10l-3.5 3L4 10"/>' },
+  // Move up: a one-unit stem up the middle under a head opening four units each way. Move down: the
+  // same arrow pointing down.
+  paneUp15: { viewBox: '0 0 15 15', body: '<path fill="currentColor" d="M11.83 6.12l-.66.76L8 4.1V12H7V4.1L3.83 6.88l-.66-.76L7.5 2.34l4.33 3.78z"/>' },
+  paneDown15: { viewBox: '0 0 15 15', body: '<path fill="currentColor" d="M11.83 8.88l-.66-.76L8 10.9V3H7v7.9L3.83 8.12l-.66.76 4.33 3.78 4.33-3.78z"/>' },
+  // Maximize: a rounded frame with the middle of its sides left open, its upper half drawn first and
+  // its lower half second.
   paneMaximize15: {
     viewBox: '0 0 15 15',
-    body: solid(
-      bend([[2.5, 6], [2.5, 2.5], [6, 2.5]], 1.5) +
-        bend([[9, 2.5], [12.5, 2.5], [12.5, 6]], 1.5) +
-        bend([[12.5, 9], [12.5, 12.5], [9, 12.5]], 1.5) +
-        bend([[6, 12.5], [2.5, 12.5], [2.5, 9]], 1.5),
-    ),
+    body:
+      '<path fill="currentColor" d="M4.5 3C3.67 3 3 3.67 3 4.5V6H2V4.5A2.5 2.5 0 0 1 4.5 2h6A2.5 2.5 0 0 1 13 4.5V6h-1V4.5c0-.83-.67-1.5-1.5-1.5h-6z"/>' +
+      '<path fill="currentColor" d="M4.5 12A1.5 1.5 0 0 1 3 10.5V9H2v1.5A2.5 2.5 0 0 0 4.5 13h6a2.5 2.5 0 0 0 2.5-2.5V9h-1v1.5c0 .83-.67 1.5-1.5 1.5h-6z"/>',
+  },
+  // Delete a pane: a bin on the 15 grid, its lid and handle above a body narrowing to its foot.
+  trash15: {
+    viewBox: '0 0 15 15',
+    body: '<path fill="currentColor" d="M6.5 2a.5.5 0 0 0-.5.5V3h3v-.5a.5.5 0 0 0-.5-.5h-2ZM10 3h3v1h-1.05l-.86 8.65A1.5 1.5 0 0 1 9.59 14H5.4a1.5 1.5 0 0 1-1.49-1.35L3.05 4H2V3h3v-.5C5 1.67 5.67 1 6.5 1h2c.83 0 1.5.67 1.5 1.5V3ZM4.05 4l.86 8.55a.5.5 0 0 0 .5.45H9.6a.5.5 0 0 0 .5-.45L10.94 4h-6.9Z"/>',
   },
 } as const satisfies Record<string, Glyph>
 

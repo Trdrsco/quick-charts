@@ -414,6 +414,9 @@ describe('the reading follows the crosshair, and each chart keeps its own', () =
   })
 })
 
+const paneButton = (container: HTMLElement, pane: number, action: string): HTMLButtonElement =>
+  container.querySelector<HTMLButtonElement>(`.qc-pane-buttons[data-pane="${pane}"] [data-action="${action}"]`)!
+
 describe('indicator rows', () => {
   it('keeps price-scale controls out of the legend and places list collapse after its rows', async () => {
     const { container, handle } = mountChart(scriptedFeed())
@@ -463,7 +466,7 @@ describe('indicator rows', () => {
     expect(rows(container)[1]!.closest('[data-legend-pane]')?.getAttribute('data-legend-pane')).toBe('1')
   })
 
-  it('moves a pane row up and down as the pane buttons do, and stands the header at the main pane', async () => {
+  it('moves a pane row with its pane, and stands the header at the main pane', async () => {
     const { container, handle } = mountChart(scriptedFeed({ bars: series(40) }))
     await settle()
     handle.indicators.add({ id: 'sma-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'sma')! })
@@ -473,27 +476,23 @@ describe('indicator rows', () => {
     expect(handle.history.undoChange()).toBe('indicatorAdd')
     const row = (id: string): HTMLElement => legendOf(container).querySelector<HTMLElement>(`[data-legend-row="${id}"]`)!
     const paneOf = (id: string): string | undefined => row(id).closest<HTMLElement>('[data-legend-pane]')?.dataset.legendPane
-    const control = (id: string, title: string): HTMLButtonElement => row(id).querySelector<HTMLButtonElement>(`button[title="${title}"]`)!
-    // A pane row moves its pane wherever there is a place to go; an overlay's row has no pane to move.
-    expect([control('rsi-1', 'Move pane up').hidden, control('rsi-1', 'Move pane down').hidden]).toEqual([false, false])
-    expect([control('macd-1', 'Move pane up').hidden, control('macd-1', 'Move pane down').hidden]).toEqual([false, true])
-    expect([control('sma-1', 'Move pane up').hidden, control('sma-1', 'Move pane down').hidden]).toEqual([true, true])
+    // A row carries no pane controls: the pane's own buttons move it.
+    expect(row('rsi-1').querySelector('button[title="Move pane up"]')).toBeNull()
     expect([paneOf('sma-1'), paneOf('rsi-1'), paneOf('macd-1')]).toEqual(['0', '1', '2'])
 
     // The RSI's pane moves above the main one: the header and the overlay's row go with the main
     // pane, 300px down, and the RSI's row stands above them at the chart's top.
-    control('rsi-1', 'Move pane up').click()
+    paneButton(container, 1, 'moveUp').click()
     expect([paneOf('sma-1'), paneOf('rsi-1'), paneOf('macd-1')]).toEqual(['1', '0', '2'])
     expect(row('sma-1').closest('.qc-legend-pane')).toBeNull()
     expect(legendOf(container).style.getPropertyValue('--qcd-legend-top')).toBe('300px')
     expect(row('rsi-1').closest<HTMLElement>('.qc-legend-pane')!.style.top).toBe('-300px')
     expect(row('macd-1').closest<HTMLElement>('.qc-legend-pane')!.style.top).toBe('300px')
-    expect([control('rsi-1', 'Move pane up').hidden, control('rsi-1', 'Move pane down').hidden]).toEqual([true, false])
     await settle()
     expect(handle.history.undoChange()).toBe('paneMove')
 
     // And back down below it.
-    control('rsi-1', 'Move pane down').click()
+    paneButton(container, 0, 'moveDown').click()
     expect([paneOf('sma-1'), paneOf('rsi-1'), paneOf('macd-1')]).toEqual(['0', '1', '2'])
     expect(legendOf(container).style.getPropertyValue('--qcd-legend-top')).toBe('')
   })
@@ -516,11 +515,9 @@ describe('indicator rows', () => {
     expect(titled(container, 'Hide indicator')).toHaveLength(1)
     expect(titled(container, 'Indicator settings')).toHaveLength(1)
     expect(titled(container, 'Remove indicator')).toHaveLength(1)
-    // The eye, the gear, the two moves, collapse, maximize and remove; an overlay's row shows no
-    // pane controls.
-    expect(rows(container)[0]!.querySelector('.qc-legend-actions')?.children).toHaveLength(7)
-    expect(titled(container, 'Move pane up').filter((button) => !button.hidden)).toHaveLength(0)
-    expect(titled(container, 'Move pane down').filter((button) => !button.hidden)).toHaveLength(0)
+    // The eye, the gear and the remove, and nothing a pane's own buttons carry.
+    expect(rows(container)[0]!.querySelector('.qc-legend-actions')?.children).toHaveLength(3)
+    expect(rows(container)[0]!.querySelector('button[title="Collapse pane"], button[title="Move pane up"]')).toBeNull()
     expect(rows(container)[0]!.querySelector('.qc-legend-label')).not.toBeNull()
     expect(rows(container)[0]!.querySelector('.qc-legend-value')).not.toBeNull()
     titled(container, 'Hide indicator')[0]!.click()
@@ -584,45 +581,46 @@ describe('a pane-placed indicator’s own lifecycle', () => {
   it('restores the same indicator height after an earlier indicator is removed and its index shifts', async () => {
     const { container, handle, renderer } = mountChart(scriptedFeed({ bars: series(40) }))
     await settle()
+    handle.applySettings({ canvas: { paneButtons: 'always' } })
     const definition = BUILT_IN_INDICATORS.find(d => d.id === 'rsi')!
     handle.indicators.add({ id: 'first', definition })
     handle.indicators.add({ id: 'second', definition })
     renderer.paneHeights[1] = 170
     renderer.paneHeights[2] = 230
     const second = () => container.querySelector<HTMLElement>('[data-legend-row="second"]')!
-    second().querySelector<HTMLButtonElement>('button[title="Collapse pane"]')!.click()
+    paneButton(container, 2, 'collapse').click()
     const row = second()
     handle.indicators.remove('first')
     expect(second()).toBe(row)
     expect(row.closest('[data-legend-pane]')?.getAttribute('data-legend-pane')).toBe('1')
     expect(renderer.paneHeights[1]).toBe(COLLAPSED_H)
-    row.querySelector<HTMLButtonElement>('button[title="Restore pane"]')!.click()
+    paneButton(container, 1, 'expand').click()
     expect(renderer.paneHeights[1]).toBe(230)
   })
-  it('brings a row with collapse and maximize, and takes them away with the indicator', async () => {
+  it('brings its pane its own buttons, and takes them away with the indicator', async () => {
     const { container, handle } = mountChart(scriptedFeed({ bars: series(40) }))
     await settle()
     handle.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
     await settle()
-    expect(titled(container, 'Collapse pane')).toHaveLength(1)
-    expect(titled(container, 'Maximize pane')).toHaveLength(1)
+    expect(paneButton(container, 1, 'collapse')).not.toBeNull()
+    expect(paneButton(container, 1, 'maximize')).not.toBeNull()
     handle.indicators.remove('rsi-1')
     await settle()
     expect(rows(container)).toHaveLength(0)
-    expect(titled(container, 'Collapse pane')).toHaveLength(0)
+    expect(container.querySelector('.qc-pane-buttons[data-pane="1"]')).toBeNull()
   })
 
-  it('collapses and restores the pane it names, and reports the state on the row', async () => {
+  it('collapses and opens the pane its buttons stand on, the collapse pressed while it holds', async () => {
     const { container, handle, renderer } = mountChart(scriptedFeed({ bars: series(40) }))
     await settle()
     handle.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
     await settle()
-    titled(container, 'Collapse pane')[0]!.click()
+    paneButton(container, 1, 'collapse').click()
     expect(renderer.paneHeights[1]).toBe(COLLAPSED_H)
-    expect(titled(container, 'Restore pane')).toHaveLength(1)
-    titled(container, 'Restore pane')[0]!.click()
+    expect(paneButton(container, 1, 'expand').getAttribute('aria-pressed')).toBe('true')
+    paneButton(container, 1, 'expand').click()
     expect(renderer.paneHeights[1]).toBeGreaterThan(COLLAPSED_H)
-    expect(titled(container, 'Collapse pane')).toHaveLength(1)
+    expect(paneButton(container, 1, 'collapse').getAttribute('aria-pressed')).toBe('false')
   })
 
   it('maximizes by putting every OTHER pane at the floor', async () => {
@@ -630,10 +628,10 @@ describe('a pane-placed indicator’s own lifecycle', () => {
     await settle()
     handle.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
     await settle()
-    titled(container, 'Maximize pane')[0]!.click()
+    paneButton(container, 1, 'maximize').click()
     expect(renderer.paneHeights[0]).toBe(MAIN_MIN_H)
     expect(renderer.paneHeights[1]).toBeGreaterThan(MAIN_MIN_H)
-    titled(container, 'Restore pane').find(button => !button.hidden)!.click()
+    paneButton(container, 1, 'restore').click()
     expect(renderer.paneHeights[1]).toBe(300)
     expect(renderer.paneHeights[0]).toBe(300)
   })

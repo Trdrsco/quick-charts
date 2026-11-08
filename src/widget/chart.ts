@@ -1631,6 +1631,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   paneButtons = mountPaneButtons({
     chrome,
     gestures,
+    hoverRoot: deps.container,
     i18n,
     icons: deps.icons,
     visibility: () => eff.canvas.paneButtons,

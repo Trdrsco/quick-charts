@@ -1,5 +1,5 @@
-// The renderer's chart-level options for a resolved settings tree: the canvas background, the grid,
-// the crosshair, the scales' text, lines and label alignment, and the margins. One pure function, so
+// The renderer's chart-level options for a resolved settings tree: the canvas background, the pane
+// dividers, the grid, the crosshair, the scales' text, lines and label alignment, and the margins. One pure function, so
 // the chart applies the same answer when it is created and on every look change after, and a test
 // reads the options a setting drives without a renderer.
 import { ColorType, LineStyle } from 'lightweight-charts'
@@ -41,6 +41,7 @@ export function chartLookOptions(settings: ChartSettings, canvas: CanvasTheme, u
       textColor: c.scaleTextColor,
       fontSize: c.scaleTextSize,
       fontFamily: canvas.fontFamily,
+      panes: { separatorColor: canvas.paneDivider, separatorHoverColor: canvas.paneDividerHover },
     },
     grid: {
       vertLines: { visible: c.verticalGrid, color: c.verticalGridColor, style: strokeLineStyle(c.verticalGridStyle) },

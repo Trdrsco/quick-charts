@@ -1,13 +1,15 @@
 // The buttons at the top right of each pane: move the pane one place up or down, delete it, collapse
 // it or open it again, and maximize it or restore it. A pane that is not the top one moves up, and
 // one that is not the bottom one moves down; the main pane moves too, and otherwise carries maximize
-// alone, only while there is another pane to give way to it. Each press runs the pane operation the
-// legend's row controls run, or the chart's own move and remove verbs, so a pane's buttons and its
-// legend row can never disagree.
+// alone, only while there is another pane to give way to it. A collapsed pane keeps all four and
+// shows its collapse pressed; a maximized pane keeps its moves and its restore, pressed. Each press
+// runs the pane operation, or the chart's own move and remove verbs, so the buttons and the commands
+// can never disagree.
 //
 // The buttons show for the pane under the pointer, for every pane always, or never, as the chart
-// settings say. They are DOM in the chart's chrome layer, placed over each pane as the chart
-// measures it; the chrome takes no pointer, so the pointer is watched on the gesture box beneath.
+// settings say, and fade in and out. They are DOM in the chart's chrome layer, placed over each pane
+// as the chart measures it. The pointer is watched on the element that holds both the gesture box
+// and the chrome, so moving from a pane onto its buttons never reads as leaving the pane.
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import type { ChartControlVisibility } from '../../settings/schema'
 import { ICONS, type Glyph } from '../controls/icons'
@@ -31,7 +33,10 @@ export type PaneAction = 'moveUp' | 'moveDown' | 'delete' | 'collapse' | 'expand
 
 export interface PaneButtonsDeps {
   chrome: HTMLElement
+  /** The box the panes' tops and heights are measured in. */
   gestures: HTMLElement
+  /** The element that holds the gesture box and the chrome, where the pointer is watched. */
+  hoverRoot: HTMLElement
   i18n: ChartI18n
   icons: IconResolver
   visibility(): ChartControlVisibility
@@ -58,7 +63,7 @@ const INSET = 4
 const BUTTONS: readonly { action: PaneAction; icon: Glyph; label: ChartMessageKey }[] = [
   { action: 'moveUp', icon: ICONS.paneUp15, label: 'legend.movePaneUp' },
   { action: 'moveDown', icon: ICONS.paneDown15, label: 'legend.movePaneDown' },
-  { action: 'delete', icon: ICONS.trash, label: 'chrome.deletePane' },
+  { action: 'delete', icon: ICONS.trash15, label: 'chrome.deletePane' },
   { action: 'collapse', icon: ICONS.paneCollapse15, label: 'legend.collapsePane' },
   { action: 'expand', icon: ICONS.paneExpand15, label: 'legend.restorePane' },
   { action: 'maximize', icon: ICONS.paneMaximize15, label: 'legend.maximizePane' },
@@ -73,7 +78,7 @@ export interface PanePermits {
 }
 
 /** The buttons a pane carries in its state, in their order: the moves first, then delete, collapse
- *  and maximize. */
+ *  and maximize. A maximized pane keeps only its moves and its restore. */
 export function paneActions(pane: PaneFacts, count: number, permits: PanePermits): PaneAction[] {
   const out: PaneAction[] = []
   if (permits.up && pane.index > 0) out.push('moveUp')
@@ -82,10 +87,48 @@ export function paneActions(pane: PaneFacts, count: number, permits: PanePermits
     if (count > 1) out.push(pane.maximized ? 'restore' : 'maximize')
     return out
   }
+  if (pane.maximized) {
+    out.push('restore')
+    return out
+  }
   if (permits.remove) out.push('delete')
   out.push(pane.collapsed ? 'expand' : 'collapse')
-  if (!pane.collapsed) out.push(pane.maximized ? 'restore' : 'maximize')
+  out.push('maximize')
   return out
+}
+
+/** The buttons that stand pressed: an open collapse and an open maximize. */
+const PRESSED: Partial<Record<PaneAction, boolean>> = { collapse: false, expand: true, maximize: false, restore: true }
+
+/** How far each part of a button's glyph travels under the pointer, in pixels down: a move's arrow
+ *  nudges its way, a collapse or a restore draws its upper and lower halves together, and an expand
+ *  or a maximize spreads them. */
+const STIR: Readonly<Record<PaneAction, readonly number[]>> = { moveUp: [-2], moveDown: [2], collapse: [1, -1], restore: [1, -1], expand: [-1, 1], maximize: [-1, 1], delete: [] }
+
+/** A motion role's duration in milliseconds, as the stylesheet resolves it on an element: zero under
+ *  a reduced-motion preference, which resolves every duration role to zero. */
+function durationOf(element: Element, role: string): number {
+  const value = getComputedStyle(element).getPropertyValue(role).trim()
+  const n = Number.parseFloat(value)
+  if (!Number.isFinite(n)) return 0
+  return value.endsWith('ms') ? n : value.endsWith('s') ? n * 1000 : n
+}
+
+/** Stir a button's glyph once: each part travels out and back over the slower duration role. A
+ *  glyph whose parts are not the ones its action moves, as a host's own drawing may be, stays still. */
+function stir(button: HTMLElement, action: PaneAction): void {
+  const offsets = STIR[action]
+  const svg = button.querySelector('svg')
+  if (!svg || offsets.length === 0) return
+  const parts: Element[] = offsets.length === 1 ? [svg] : [...svg.querySelectorAll('path')]
+  if (parts.length !== offsets.length) return
+  const duration = durationOf(button, '--qc-motion-durationSlower')
+  if (!(duration > 0)) return
+  const easing = getComputedStyle(button).getPropertyValue('--qc-motion-easingStandard').trim() || 'ease'
+  parts.forEach((part, index) => {
+    if (typeof part.animate !== 'function') return
+    part.animate([{ transform: 'translateY(0)' }, { transform: `translateY(${offsets[index]}px)` }, { transform: 'translateY(0)' }], { duration, easing })
+  })
 }
 
 export function mountPaneButtons(deps: PaneButtonsDeps): PaneButtons {
@@ -125,7 +168,10 @@ export function mountPaneButtons(deps: PaneButtonsDeps): PaneButtons {
       const group = groupFor(pane.index)
       group.setAttribute('aria-label', t('chrome.paneButtons'))
       group.dataset.qcVisibility = visibility
-      group.hidden = visibility === 'never' || (visibility === 'hover' && hovered !== pane.index && onGroup !== pane.index)
+      group.hidden = visibility === 'never'
+      const shown = visibility === 'always' || (visibility === 'hover' && (hovered === pane.index || onGroup === pane.index))
+      group.dataset.qcShown = String(shown)
+      group.toggleAttribute('inert', !shown)
       group.style.top = `${Math.round(pane.top + INSET)}px`
       group.style.right = `${Math.round(deps.insetEnd() + INSET)}px`
       const written = actions.join(' ')
@@ -137,10 +183,14 @@ export function mountPaneButtons(deps: PaneButtonsDeps): PaneButtons {
             const button = h('button', { type: 'button', class: 'qc-pane-button', 'data-action': action })
             button.appendChild(deps.icons.glyph(spec.icon, { size: 15 }))
             name(button, t(spec.label))
-            if (action === 'maximize' || action === 'restore') button.setAttribute('aria-pressed', String(action === 'restore'))
+            const pressed = PRESSED[action]
+            if (pressed !== undefined) button.setAttribute('aria-pressed', String(pressed))
             button.addEventListener('click', () => {
               deps.run(pane.index, action)
               sync()
+            })
+            button.addEventListener('pointerenter', (event) => {
+              if ((event as PointerEvent).pointerType !== 'touch') stir(button, action)
             })
             return button
           }),
@@ -173,8 +223,8 @@ export function mountPaneButtons(deps: PaneButtonsDeps): PaneButtons {
     hovered = null
     sync()
   }
-  deps.gestures.addEventListener('pointermove', onMove)
-  deps.gestures.addEventListener('pointerleave', onLeave)
+  deps.hoverRoot.addEventListener('pointermove', onMove)
+  deps.hoverRoot.addEventListener('pointerleave', onLeave)
   const offStrings = deps.i18n.onChange(() => {
     // The names are written as the buttons are made, so a new language makes them again.
     for (const group of groups.values()) delete group.dataset.actions
@@ -186,8 +236,8 @@ export function mountPaneButtons(deps: PaneButtonsDeps): PaneButtons {
     sync,
     destroy() {
       offStrings()
-      deps.gestures.removeEventListener('pointermove', onMove)
-      deps.gestures.removeEventListener('pointerleave', onLeave)
+      deps.hoverRoot.removeEventListener('pointermove', onMove)
+      deps.hoverRoot.removeEventListener('pointerleave', onLeave)
       for (const group of groups.values()) group.remove()
       groups.clear()
     },

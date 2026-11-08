@@ -24,9 +24,9 @@ describe('the chart’s icon artwork', () => {
     }
   })
 
-  it('answers every drawing-toolbar control, and an icon drawn at two sizes with both on their own grids', () => {
+  it('answers every drawing-toolbar control, and an icon drawn at several sizes with each on its own grid', () => {
     for (const id of TOOLBAR_CONTROLS) expect(chartIconArtwork(id).length, id).toBeGreaterThan(0)
-    expect(chartIconArtwork('delete').map((art) => art.viewBox)).toEqual([ICONS.trash.viewBox, ICONS.trash28.viewBox])
+    expect(chartIconArtwork('delete').map((art) => art.viewBox)).toEqual([ICONS.trash.viewBox, ICONS.trash28.viewBox, ICONS.trash15.viewBox])
     expect(chartIconArtwork('magnet')).toEqual([{ viewBox: ICONS.magnet.viewBox, body: ICONS.magnet.body, svg: expect.any(String) }])
   })
 

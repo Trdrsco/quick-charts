@@ -33,6 +33,9 @@ export function themeRootStyle(mode: ThemeMode, theme: SemanticTheme): ThemeRoot
 export interface CanvasTheme {
   background: string
   paneBorder: string
+  /** The line between stacked panes, and the band over it while the pointer is on it. */
+  paneDivider: string
+  paneDividerHover: string
   /** The ink a watermark writes behind the bars. */
   watermark: string
   grid: string
@@ -66,6 +69,8 @@ export function canvasTheme(theme: SemanticTheme): CanvasTheme {
   return {
     background: theme['canvas.background'],
     paneBorder: theme['canvas.paneBorder'],
+    paneDivider: theme['canvas.paneDivider'],
+    paneDividerHover: theme['canvas.paneDividerHover'],
     watermark: theme['canvas.watermark'],
     grid: theme['scale.grid'],
     axisText: theme['scale.text'],

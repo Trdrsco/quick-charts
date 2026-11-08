@@ -56,6 +56,8 @@ import type { SemanticTheme, ThemeMode } from './schema'
 export const LIGHT_THEME: SemanticTheme = {
   'canvas.background': '#ffffff',
   'canvas.paneBorder': '#ebebeb',
+  'canvas.paneDivider': '#ebebeb',
+  'canvas.paneDividerHover': 'rgba(68, 138, 255, 0.2)',
   'canvas.watermark': 'rgba(80, 83, 94, 0.2)',
 
   'series.up': '#089981',
@@ -179,6 +181,8 @@ export const LIGHT_THEME: SemanticTheme = {
 export const DARK_THEME: SemanticTheme = {
   'canvas.background': '#000000',
   'canvas.paneBorder': '#1a1a1a',
+  'canvas.paneDivider': '#222222',
+  'canvas.paneDividerHover': 'rgba(68, 138, 255, 0.2)',
   'canvas.watermark': 'rgba(80, 83, 94, 0.3)',
 
   'series.up': '#089981',
