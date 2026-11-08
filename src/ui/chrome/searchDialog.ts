@@ -150,6 +150,24 @@ export function offeredOperators(spreads: SearchDisplayOptions['spreads']): read
 /** No group open. */
 const NO_GROUPS: ReadonlySet<string> = new Set()
 
+/** The edges of two discs under a piled mark: arcs of the 24px disc set 2px and 4px lower, which show
+ *  below the mark it stands over. */
+function pileEdges(): SVGSVGElement {
+  const ns = 'http://www.w3.org/2000/svg'
+  const svg = document.createElementNS(ns, 'svg')
+  svg.setAttribute('class', 'qc-search-pile-edges')
+  svg.setAttribute('viewBox', '0 0 24 28')
+  svg.setAttribute('width', '24')
+  svg.setAttribute('height', '28')
+  svg.setAttribute('aria-hidden', 'true')
+  const path = document.createElementNS(ns, 'path')
+  path.setAttribute('d', 'M0.5 14A11.5 11.5 0 0 0 23.5 14M0.5 16A11.5 11.5 0 0 0 23.5 16')
+  path.setAttribute('fill', 'none')
+  path.setAttribute('stroke', 'currentColor')
+  svg.appendChild(path)
+  return svg
+}
+
 /** The flat row model for a mode, query and controller state. Pure, so the list a viewer sees
  *  and the list a test asserts are one computation.
  *
@@ -584,7 +602,14 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           if (label.source) {
             const sourceMark = h('span', { class: 'qc-search-mark', 'aria-hidden': 'true', title: label.source })
             paintSource(r, label.source, sourceMark)
-            source.appendChild(sourceMark)
+            // A group whose listings stand on more than one venue piles its mark over the edges of the
+            // discs under it, so the row says there are other venues before it is opened.
+            const venues = entry.members ? new Set(entry.members.map((m) => m.exchange).filter((x) => x !== '')) : null
+            if (venues && venues.size > 1) {
+              const pile = h('span', { class: 'qc-search-pile' })
+              pile.append(pileEdges(), sourceMark)
+              source.appendChild(pile)
+            } else source.appendChild(sourceMark)
           }
           option.appendChild(source)
           if (compare) {

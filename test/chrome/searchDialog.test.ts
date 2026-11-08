@@ -714,7 +714,9 @@ describe('a grouped row', () => {
     expect(row.dataset.symbolGroup).toBe('BTC')
     expect(row.querySelector('.qc-symbol-badge')).not.toBeNull()
     expect(row.querySelector('.qc-search-text > .qc-search-symbol')?.textContent).toBe('BTCUSDT')
-    expect([...row.querySelector('.qc-search-source')!.children].map((c) => c.className)).toEqual(['qc-search-exchange', 'qc-search-more', 'qc-search-mark'])
+    expect([...row.querySelector('.qc-search-source')!.children].map((c) => c.getAttribute('class'))).toEqual(['qc-search-exchange', 'qc-search-more', 'qc-search-pile'])
+    // Its members list on three venues, so its mark stands piled over the edges of the discs under it.
+    expect([...row.querySelector('.qc-search-pile')!.children].map((c) => c.getAttribute('class'))).toEqual(['qc-search-pile-edges', 'qc-search-mark'])
     const pill = pillOf(row)!
     expect([pill.tagName, pill.type, pill.tabIndex]).toEqual(['BUTTON', 'button', 0])
     expect(pill.querySelector('.qc-search-more-count')?.textContent).toBe('+2')
@@ -728,8 +730,24 @@ describe('a grouped row', () => {
     await type(plain.input, 'BTC')
     const bare = row.cloneNode(true) as HTMLElement
     bare.querySelector('.qc-search-more')!.remove()
+    const pile = bare.querySelector('.qc-search-pile')!
+    pile.replaceWith(pile.querySelector('.qc-search-mark')!)
     bare.removeAttribute('data-symbol-group')
     expect(html(bare)).toBe(html(plain.rows()[0]!))
+  })
+
+  it('piles its mark only when its members list on more than one venue', async () => {
+    const sameVenue: SymbolRow[] = [
+      { symbol: 'ES', name: 'E-mini S&P 500', exchange: 'CME', type: 'future', group: 'ES' },
+      { symbol: 'ES1!', name: 'E-mini S&P 500 continuous front month', exchange: 'CME', type: 'future', group: 'ES' },
+      { symbol: 'CME:ESZ2026', name: 'E-mini S&P 500 Dec 2026', exchange: 'CME', type: 'future', group: 'ES' },
+    ]
+    const { input, rows } = open('search', { catalog: sameVenue })
+    await type(input, 'ES')
+    expect(rows()).toHaveLength(1)
+    expect(pillOf(rows()[0]!)?.querySelector('.qc-search-more-count')?.textContent).toBe('+2')
+    expect(rows()[0]!.querySelector('.qc-search-pile')).toBeNull()
+    expect(rows()[0]!.querySelector('.qc-search-source > .qc-search-mark')).not.toBeNull()
   })
 
   it('opens and closes its group with the pill, its other members beneath it as rows of their own on one panel', async () => {

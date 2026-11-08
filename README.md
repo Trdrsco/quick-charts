@@ -2880,7 +2880,9 @@ Rows that share a `group` are one instrument listed on several venues, and the s
 them as one row, where the first of them stands as your feed lists them. That row reads exactly as
 the first member's own row: its mark, its ticker, its description and kind, and its source's name
 and mark. Between the source's name and its mark stands a pill: `+2` for two other venues, and a
-chevron pointing down while the group is closed and up while it is open.
+chevron pointing down while the group is closed and up while it is open. A group whose members list on
+more than one venue piles its mark over the edges of two discs under it, so the row says there are
+other venues before it is opened.
 
 Pressing the pill opens the group, and pressing it again closes it. An open group lists its other
 members right under its row, as your feed lists them, each a row of its own without a mark: its

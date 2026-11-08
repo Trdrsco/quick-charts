@@ -390,6 +390,29 @@
   background: none;
 }
 
+/* A piled mark: the 24px mark at the top of a 24 by 28 cell, over the edges of two discs drawn in the
+ * muted ink under it, for a group that lists on more than one venue. */
+[data-qc-theme] .qc-search-pile {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: flex-start;
+  width: 24px;
+  height: 28px;
+  margin-top: 4px;
+  color: var(--qc-text-muted);
+}
+
+[data-qc-theme] .qc-search-pile > .qc-search-pile-edges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+[data-qc-theme] .qc-search-pile > .qc-search-mark {
+  position: relative;
+}
+
 [data-qc-theme] .qc-search-mark[data-qc-host='true'] > * {
   width: 100%;
   height: 100%;
