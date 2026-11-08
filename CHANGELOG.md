@@ -2,7 +2,11 @@
 
 ## Unreleased
 
+## 5.9.0
+
 `SymbolRow.group`: rows that share a group are one instrument listed on several venues, and the symbol search lists them as one row, where the first of them stands as the feed lists them. The row reads by the group over its first member's description and kind, and ends in one venue mark per member, each a button painted through `venueMark` that picks its own member, named for the member's ticker and venue and showing that as its tooltip. The row, and Enter while it is highlighted, pick the first member, and the member picked is the one recorded in the recents. A member on a later page joins its group's row, a group of one reads as the row without a group, recent picks stay a row each, and the compare dialog lists a row per market. The catalog gains `search.venueMark`.
+
+A search row writes its source's name before the source's mark, in the description's ink and size, and the written name is what a screen reader hears, so the mark beside it only shows. A row's text starts 16px past its mark, where it started 8px past it.
 
 ## 5.8.0
 
