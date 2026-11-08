@@ -627,12 +627,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   }
   paintChromeCanvas()
 
+  /** Whether one pane stands maximized over the chart, which hides the dividers between panes. */
+  let paneMaximized = false
   /** The renderer options the settings drive, for the look in effect. */
   const lookOptions = (): Record<string, unknown> =>
     chartLookOptions(eff, canvas(), {
       crosshairLabels: deps.ui.crosshairLabels,
       crosshairHorizontal: deps.ui.crosshairHorizontal,
       crosshairSolid: deps.ui.crosshairSolid,
+      dividers: !paneMaximized,
     })
   const look = lookOptions() as {
     layout: Record<string, unknown>
@@ -1029,7 +1032,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
       syncVolume()
       syncScaleSources()
       legend.push()
-      paneButtons?.sync()
+      syncPanes()
     },
     onEvent: (event) => events.emit('indicator', event),
     catalog: deps.indicatorCatalog,
@@ -1111,7 +1114,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         onChips: () => {
           paneOps.settle()
           legend.push()
-          paneButtons?.sync()
+          syncPanes()
           syncScaleSources()
         },
         onEvent: (entries) => events.emit('compare', entries),
@@ -1130,10 +1133,21 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     moved: () => {
       plotArea.refresh()
       scaleControls?.sync()
-      paneButtons?.sync()
+      syncPanes()
+      legend.push()
+    },
+    maximizing: (on) => {
+      paneMaximized = on
+      chart.applyOptions({ layout: (lookOptions() as { layout: Record<string, unknown> }).layout })
       legend.push()
     },
   })
+
+  /** Paint what each pane shows for its state, and stand its buttons over it. */
+  function syncPanes(): void {
+    paneOps.conceal()
+    paneButtons?.sync()
+  }
 
   /** Move the pane at an index one place up or down: a step of the history and a change of the
    *  chart's content, like any other edit. */
@@ -1412,7 +1426,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
   // The high and low are the bars in view, so a move of the view moves them.
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
     levels?.refresh()
-    paneButtons?.sync()
+    syncPanes()
     // A zoom of the time scale under the lock rescales the price axis with it.
     holdRatio()
     scaleControls?.sync()
@@ -1645,6 +1659,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
         height: pane.getHeight(),
         collapsed: paneOps.collapsed(index),
         maximized: paneOps.maximized(index),
+        hidden: paneOps.hidden(index),
       }))
     },
     insetEnd: () => scaleWidth('right'),
@@ -1922,7 +1937,7 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     paintChromeCanvas()
     scaleControls?.sync()
     scalePlus?.refresh()
-    paneButtons?.sync()
+    syncPanes()
     legend.push()
     extensions.host.themeChanged(settingsCanvas(c, eff))
     countdown?.restyled()

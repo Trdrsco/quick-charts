@@ -13,6 +13,9 @@ export interface ChartLookUi {
   crosshairHorizontal: boolean
   /** The host draws the crosshair solid, whatever the setting's stroke. */
   crosshairSolid: boolean
+  /** The dividers between panes stand, and a viewer drags them. False while one pane stands
+   *  maximized over the chart; true when absent. */
+  dividers?: boolean
 }
 
 /** The renderer options the settings drive. The right margin is not among them: it is the time
@@ -41,7 +44,10 @@ export function chartLookOptions(settings: ChartSettings, canvas: CanvasTheme, u
       textColor: c.scaleTextColor,
       fontSize: c.scaleTextSize,
       fontFamily: canvas.fontFamily,
-      panes: { separatorColor: canvas.paneDivider, separatorHoverColor: canvas.paneDividerHover },
+      panes:
+        ui.dividers === false
+          ? { separatorColor: 'transparent', separatorHoverColor: 'transparent', enableResize: false }
+          : { separatorColor: canvas.paneDivider, separatorHoverColor: canvas.paneDividerHover, enableResize: true },
     },
     grid: {
       vertLines: { visible: c.verticalGrid, color: c.verticalGridColor, style: strokeLineStyle(c.verticalGridStyle) },

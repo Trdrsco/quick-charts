@@ -323,6 +323,7 @@ export function attachLegendPlane(deps: LegendDeps): LegendPlane {
     // The header and the main series' rows stand at the main pane, wherever a viewer moved it.
     const main = deps.paneOps.main()
     legend?.setMainPane(main)
+    legend?.setHiddenPanes(new Set(deps.chart.panes().flatMap((_, index) => (deps.paneOps.hidden(index) ? [index] : []))))
     // A row's eye and its remove are commands: a host that hides what its policy refuses leaves out
     // the ones it refuses, and the row itself stays, since it names what the chart shows.
     const shown = (command: string): boolean => deps.shown?.(command) ?? true

@@ -21,7 +21,7 @@ import { memoryChartStorage } from '../../src/storage'
 import { emptyDoors, type SearchRequest } from '../../src/ui/chrome/doors'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import { createPriceFormatter } from '../../src/priceFormatter'
-import { COLLAPSED_H, MAIN_MIN_H } from '../../src/panePlan'
+import { COLLAPSED_H } from '../../src/panePlan'
 import type { ChartDatafeed, FeedBar } from '../../src/datafeed'
 import type { PriceFormat, SymbolInfo } from '../../src/symbology'
 import type { FeatureConfig, UiConfig } from '../../src/widget/options'
@@ -623,17 +623,20 @@ describe('a pane-placed indicator’s own lifecycle', () => {
     expect(paneButton(container, 1, 'collapse').getAttribute('aria-pressed')).toBe('false')
   })
 
-  it('maximizes by putting every OTHER pane at the floor', async () => {
+  it('maximizes a pane over the whole chart, every other pane hidden, and restores their shares', async () => {
     const { container, handle, renderer } = mountChart(scriptedFeed({ bars: series(40) }))
     await settle()
     handle.indicators.add({ id: 'rsi-1', definition: BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')! })
     await settle()
     paneButton(container, 1, 'maximize').click()
-    expect(renderer.paneHeights[0]).toBe(MAIN_MIN_H)
-    expect(renderer.paneHeights[1]).toBeGreaterThan(MAIN_MIN_H)
+    expect(renderer.paneHeights[0]).toBe(2)
+    expect(renderer.paneHeights[1]).toBe(598)
+    // The main pane's header and rows stand hidden with it.
+    expect(legendOf(container).dataset.qcMainHidden).toBe('true')
     paneButton(container, 1, 'restore').click()
     expect(renderer.paneHeights[1]).toBe(300)
     expect(renderer.paneHeights[0]).toBe(300)
+    expect(legendOf(container).dataset.qcMainHidden).toBe('false')
   })
 })
 

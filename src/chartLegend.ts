@@ -206,6 +206,9 @@ export interface ChartLegend {
   setChips(chips: readonly LegendChip[]): void
   /** Each pane's top below the first pane's, by index. */
   setPaneTops(tops: Readonly<Record<number, number>>): void
+  /** The panes a maximized pane stands over, by index: their rows stand hidden, the main pane's header
+   *  with them. */
+  setHiddenPanes(panes: ReadonlySet<number>): void
   /** The rows extensions place under the reading and above the indicator rows, in order. Each is
    *  the extension's own element: the legend holds it in a slot that wears the backdrop and takes
    *  the pointer, and gives it back when it leaves. */
@@ -420,6 +423,7 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
   chipRows.dataset.legendPane = '0'
   /** The tops last written, so a move of the main pane can stand every group again. */
   let paneTops: Readonly<Record<number, number>> = {}
+  let hiddenPanes: ReadonlySet<number> = new Set()
   const rows = new Map<string, { root: HTMLElement; update(chip: LegendChip): void; release(): void }>()
   const groupFor = (pane: number): HTMLElement => {
     if (pane === mainPane) return chipRows
@@ -573,7 +577,11 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     const origin = paneTops[mainPane] ?? 0
     if (origin > 0) root.style.setProperty('--qcd-legend-top', `${origin}px`)
     else root.style.removeProperty('--qcd-legend-top')
-    for (const [pane, group] of groups) group.style.top = `${(paneTops[pane] ?? 0) - origin}px`
+    for (const [pane, group] of groups) {
+      group.style.top = `${(paneTops[pane] ?? 0) - origin}px`
+      group.hidden = hiddenPanes.has(pane)
+    }
+    root.dataset.qcMainHidden = String(hiddenPanes.has(mainPane))
   }
   // ── How much of the legend fits. The decision is `legendFit`'s; what happens here is the
   // measuring and the writing. Widths come off the live DOM, so under a layout-free test
@@ -797,6 +805,10 @@ export function mountChartLegend(container: HTMLElement, strings: ChartI18n, con
     },
     setPaneTops(tops) {
       paneTops = tops
+      placeGroups()
+    },
+    setHiddenPanes(panes) {
+      hiddenPanes = panes
       placeGroups()
     },
     setSlotRows(elements) {

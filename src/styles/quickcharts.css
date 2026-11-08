@@ -837,6 +837,11 @@
   inset-inline: 0;
 }
 
+/* While a maximized pane stands over the main one, the main pane's header and rows stand hidden with it. */
+[data-qc-theme] .qc-legend[data-qc-main-hidden='true'] > :not(.qc-legend-pane) {
+  display: none;
+}
+
 /* A host's own logo IS the badge, so the disc stands down rather than sitting as a coloured ring
  * behind a logo that does not fill it. The mark takes the whole box, round like the disc it
  * replaced: a logo boxed inside a smaller circle reads as a mark sitting ON a badge instead of

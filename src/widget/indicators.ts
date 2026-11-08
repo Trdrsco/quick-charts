@@ -4,9 +4,10 @@
 // volume-scale plots.
 //
 // Two rules shape everything here. A compute that throws is skipped for that round rather than
-// sinking the chart. And a hidden instance renders nothing (its series come down) but keeps its
-// legend row, so the eye can bring it back. Hidden is part of the instance override record, which
-// is also what the saved chart carries.
+// sinking the chart. And a hidden instance keeps its pane and its legend row, so the eye can bring it
+// back, and paints none of its plots, levels and fills; an instance kept off the timeframe on screen
+// does the same with its row reading as shown. Hidden is part of the instance override record,
+// which is also what the saved chart carries.
 import type { IChartApi, ISeriesApi, UTCTimestamp } from 'lightweight-charts'
 import type { FeedBar } from '../datafeed'
 import type { ChartI18n, ChartMessageKey, ChartTranslate } from '../i18n'
@@ -67,6 +68,19 @@ export function indicatorInputsOf(inst: IndicatorInstance): string {
 export function indicatorDrawsOn(instance: IndicatorInstance, timeframe: string): boolean {
   const visibility = instance.overrides?.visibility
   return !visibility || visibleAt(visibility, parseTimeframeContext(timeframe))
+}
+
+/** Overrides under which an instance paints nothing: every plot, level and fill switched off, and
+ *  everything else as the instance holds it. */
+function paintingNothing(manifest: IndicatorDefinition['manifest'], overrides: IndicatorOverrides | undefined): IndicatorOverrides {
+  const off = <T extends { visible?: boolean }>(keys: readonly string[], own: Readonly<Record<string, T>> | undefined): Record<string, T> =>
+    Object.fromEntries(keys.map((key) => [key, { ...own?.[key], visible: false } as T]))
+  return {
+    ...overrides,
+    plots: off(Object.keys(manifest.plots), overrides?.plots),
+    levels: off(Object.keys(manifest.levels ?? {}), overrides?.levels),
+    fills: off(Object.keys(manifest.fills ?? {}), overrides?.fills),
+  }
 }
 
 /** Where a viewer's standing choices for each definition are kept: the inputs and overrides a new
@@ -331,20 +345,12 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
         removeLabel: deps.i18n.t('legend.removeIndicator'),
         pane: placement === 'pane',
       }
-      if (allHidden || indicatorHidden(inst.overrides)) {
-        renderer.remove(inst.id)
-        next.push({ ...base, value: null, hidden: true })
-        continue
-      }
-      // An instance kept off this timeframe draws nothing and keeps its row, so its settings stay
-      // in reach.
-      if (!indicatorDrawsOn(inst, timeframe)) {
-        renderer.remove(inst.id)
-        next.push({ ...base, value: null, hidden: false })
-        continue
-      }
+      // A hidden instance, and one kept off this timeframe, keep their panes and their rows and
+      // paint nothing; the hidden one's row reads as switched off.
+      const hidden = allHidden || indicatorHidden(inst.overrides)
+      const paintsNothing = hidden || !indicatorDrawsOn(inst, timeframe)
       if (bars.length === 0) {
-        next.push({ ...base, value: null, hidden: false })
+        next.push({ ...base, value: null, hidden })
         continue
       }
       // Honest gate: a volume-based definition on a feed that carries no volume draws nothing (an
@@ -352,25 +358,33 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       if (def.manifest.needsVolume && !hasVolume) {
         const note = deps.i18n.t('host.noVolume')
         renderer.render(inst.id, { placement, title, plots: [], unavailable: note })
-        next.push({ ...base, value: null, note, hidden: false })
+        next.push({ ...base, value: null, note, hidden })
         continue
       }
       let channels: Readonly<Record<string, readonly (number | null)[]>>
       try {
         channels = def.compute(bars, { ...manifestInputDefaults(def.manifest), ...(inst.inputs ?? {}) })
       } catch {
-        next.push({ ...base, value: null, hidden: false })
+        next.push({ ...base, value: null, hidden })
         continue
       }
-      const manifest = overriddenManifest(def.manifest, inst.overrides)
-      const own = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? deps.canvas().neutral), inst.overrides)
+      const overrides = paintsNothing ? paintingNothing(def.manifest, inst.overrides) : inst.overrides
+      const manifest = overriddenManifest(def.manifest, overrides)
+      const own = applyPlotOverrides(buildManifestPlots({ manifest, plots: channels }, times, title, inst.color ?? deps.canvas().neutral), overrides)
       const scale = deps.scaleLabels?.() ?? { name: false, value: true }
+      const { barColors, shade, ...rest } = own
       const built = {
-        ...own,
+        ...rest,
+        // An instance that paints nothing recolors no bar and tints no pane either.
+        ...(paintsNothing ? {} : { ...(barColors ? { barColors } : {}), ...(shade ? { shade } : {}) }),
         display: { ...own.display, labelsOnPriceScale: own.display?.labelsOnPriceScale !== false && scale.value },
         ...(scale.name ? { scaleTitle: own.title } : {}),
       }
       renderer.render(inst.id, built)
+      if (paintsNothing) {
+        next.push({ ...base, value: null, hidden })
+        continue
+      }
       const volume = def.manifest.id === 'volume'
       const data = volume ? bars.map(bar => ({ time: bar.t, value: bar.v })) : built.plots[0]?.data ?? []
       const precision = volume ? deps.volumePrecision?.() ?? 0 : built.precision

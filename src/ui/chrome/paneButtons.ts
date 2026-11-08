@@ -26,6 +26,8 @@ export interface PaneFacts {
   height: number
   collapsed: boolean
   maximized: boolean
+  /** A maximized pane stands over this one, which carries no buttons while it does. */
+  hidden?: boolean
 }
 
 /** What a pane button does. */
@@ -81,6 +83,7 @@ export interface PanePermits {
  *  and maximize. A maximized pane keeps only its moves and its restore. */
 export function paneActions(pane: PaneFacts, count: number, permits: PanePermits): PaneAction[] {
   const out: PaneAction[] = []
+  if (pane.hidden) return out
   if (permits.up && pane.index > 0) out.push('moveUp')
   if (permits.down && pane.index < count - 1) out.push('moveDown')
   if (pane.main) {

@@ -2541,11 +2541,12 @@ the same in both modes, in `CHART_FACTORY_COLORS`. The sections and what stands 
   when the navigation buttons show; when each pane's own buttons show (`paneButtons`): at a pane's
   top right, move it up or down past its neighbour, delete it, collapse or open it, and maximize or
   restore it, the main pane moving too and otherwise carrying maximize alone while another pane
-  stands. A collapsed pane keeps all four, its collapse pressed, and a pane maximized from its
-  collapsed strip restores to it; a maximized pane keeps its moves and its restore. These buttons
-  are where a pane is moved, collapsed and maximized: a legend row carries its eye, its settings and
-  its remove. And the margins, the right one in bars. The order the panes stand in is saved with the
-  chart.
+  stands. A collapsed pane is a strip of its legend and its buttons that paints nothing else, all
+  four buttons kept and its collapse pressed. A maximized pane takes the chart's whole height, the
+  other panes and the dividers hidden, and keeps its moves and its restore, which gives every pane
+  back the share it held, a collapsed one its strip. These buttons are where a pane is moved,
+  collapsed and maximized: a legend row carries its eye, its settings and its remove. And the
+  margins, the right one in bars. The order the panes stand in is saved with the chart.
 - `events`: a line at each trading day's start, in its own stroke.
 
 ## Compare

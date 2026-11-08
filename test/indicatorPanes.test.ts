@@ -205,8 +205,8 @@ describe('the widget plane places one indicator pane and keeps it there', () => 
   })
 
   it('and when the indicator is hidden and shown again', () => {
-    // Hiding takes the series down but keeps the legend row. Showing it again must return it to
-    // its own pane, not to a new one below whatever is left.
+    // Hiding keeps the pane and the legend row and paints nothing in the pane, so showing it again
+    // paints it where it stood.
     const { chart, paneCount } = fakeChart()
     const plane = attachIndicatorsPlane(planeDeps(chart, { bars }))
     plane.set([
@@ -214,7 +214,9 @@ describe('the widget plane places one indicator pane and keeps it there', () => 
       { id: 'osc-1', definition: oscillator },
     ])
     plane.toggleHidden('osc-1')
-    expect(paneCount()).toBe(1)
+    expect(paneCount()).toBe(2)
+    expect(plane.renderer.paneOf()['osc-1']).toBe(1)
+    expect(plane.chips().find((chip) => chip.id === 'osc-1')).toMatchObject({ hidden: true, value: null })
     plane.toggleHidden('osc-1')
     expect(paneCount()).toBe(2)
     expect(plane.renderer.paneOf()['osc-1']).toBe(1)
