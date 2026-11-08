@@ -6,14 +6,23 @@
 // Compute stays OUTSIDE the model: a definition pairs a manifest with a compute, whether a
 // built-in's or a host's, and the model only walks what the compute returns.
 import type { HistogramData, LineData, UTCTimestamp, WhitespaceData } from 'lightweight-charts'
+import type { TimeframeVisibility } from './internal/drawings/core/visibility'
 
-/** A declared numeric input: `int`/`float` bound by min/max, `enum` an index into `options`. */
+/** A declared input, held as a number: `int` and `float` bound by `min` and `max` and stepped by
+ *  `step`, `enum` an index into `options`, `bool` 1 for on and 0 for off. A settings surface labels
+ *  it with `title`, else its key read as words; sets it under the heading `group` names, with the
+ *  inputs before and after it that name the same group; and lets it be edited while the input
+ *  `enabledWhen` names holds one of its `values`. */
 export interface ManifestInput {
-  readonly kind: 'int' | 'float' | 'enum'
+  readonly kind: 'int' | 'float' | 'enum' | 'bool'
   readonly default: number
   readonly min?: number
   readonly max?: number
+  readonly step?: number
   readonly options?: readonly string[]
+  readonly title?: string
+  readonly group?: string
+  readonly enabledWhen?: { readonly input: string; readonly values: readonly number[] }
 }
 
 /** A declared plot channel. `area` fills toward `base`; `marker` draws an event glyph on bars with
@@ -33,6 +42,8 @@ export interface ManifestPlot {
   readonly location?: 'above' | 'below' | 'absolute'
   readonly text?: string
   readonly scale?: 'volume'
+  /** The words a settings surface names the plot with, else its key read as words. */
+  readonly title?: string
 }
 
 /** A declared static horizontal level. */
@@ -40,6 +51,8 @@ export interface ManifestLevel {
   readonly price: number
   readonly color?: string
   readonly lineStyle?: 'solid' | 'dashed' | 'dotted'
+  /** The words a settings surface names the level with, else its key read as words. */
+  readonly title?: string
 }
 
 /** A declared band fill between two edges. Each name in `between` is a plot key, or a level key
@@ -47,6 +60,8 @@ export interface ManifestLevel {
 export interface ManifestFill {
   readonly between: readonly [string, string]
   readonly color?: string
+  /** The words a settings surface names the fill with, else its key read as words. */
+  readonly title?: string
 }
 
 /** The declarative indicator manifest: placement + declared inputs/plots/levels/fills, no code.
@@ -145,6 +160,8 @@ export interface IndicatorOverrides {
   /** Standard output toggles (all default ON). `hidden` keeps the instance (settings reachable,
    *  listings intact) but renders nothing until unhidden. */
   display?: { labelsOnPriceScale?: boolean; valuesInStatusLine?: boolean; inputsInStatusLine?: boolean; hidden?: boolean }
+  /** The timeframes the instance draws on; absent = every timeframe. */
+  visibility?: TimeframeVisibility
 }
 
 /** The one render-or-not read for the hidden toggle — every consumer asks this, so they can never
@@ -156,6 +173,32 @@ export function indicatorHidden(ov: IndicatorOverrides | undefined): boolean {
 /** The manifest's default input values ({ period: 20, source: 0, … }). */
 export function manifestInputDefaults(m: IndicatorManifest): Record<string, number> {
   return Object.fromEntries(Object.entries(m.inputs ?? {}).map(([k, spec]) => [k, spec.default]))
+}
+
+/** The words a settings surface names a manifest entry with: its own title, else its key read as
+ *  words ('smoothingLength' reads "Smoothing Length"). */
+export function manifestTitle(key: string, spec?: { readonly title?: string }): string {
+  return spec?.title ?? key.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase())
+}
+
+/** Whether an input applies under the values an instance holds: always, unless it names an input
+ *  in `enabledWhen` that holds none of the values listed there. */
+export function inputApplies(m: IndicatorManifest, key: string, values: Readonly<Record<string, number>>): boolean {
+  const rule = m.inputs?.[key]?.enabledWhen
+  if (!rule) return true
+  const value = values[rule.input] ?? m.inputs?.[rule.input]?.default
+  return value !== undefined && rule.values.includes(value)
+}
+
+/** A value held to its input's declaration: whole for an int, an enum and a bool, 0 or 1 for a
+ *  bool, an index `options` holds for an enum, and inside `min` and `max`. */
+export function declaredInputValue(spec: ManifestInput, value: number): number {
+  if (spec.kind === 'bool') return value ? 1 : 0
+  let next = spec.kind === 'float' ? value : Math.round(value)
+  if (spec.kind === 'enum') next = Math.min(Math.max(0, next), Math.max(0, (spec.options?.length ?? 1) - 1))
+  if (spec.min !== undefined) next = Math.max(spec.min, next)
+  if (spec.max !== undefined) next = Math.min(spec.max, next)
+  return next
 }
 
 /** The effective color of a plot spec under an instance: override → declared → the instance's

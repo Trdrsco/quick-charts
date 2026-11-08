@@ -1,14 +1,14 @@
-// The one color control the chart offers, wherever a color is chosen: the drawing settings bar and
-// the settings dialog's color popover, the chart settings menu, and the indicator plot, level and
-// fill editors. It replaces the native color input, which opened the operating system's own dialog:
-// a different window on every machine, unstyleable, and jarring over a dark chart.
+// The color controls the chart offers wherever a color is chosen: the palette, the opacity slider
+// and the custom editor, which the drawing settings bar and the color popover of every settings
+// dialog (a drawing's, the chart's, an indicator's) compose. They replace the native color input,
+// which opened the operating system's own dialog: a different window on every machine,
+// unstyleable, and jarring over a dark chart.
 //
-// The control owns transient interaction state only. It reports a typed edit and is updated and
+// A control owns transient interaction state only. It reports a typed edit and is updated and
 // destroyed explicitly by its consumer, which owns persistence, previews, commits and
-// cancellation: the drawing surfaces apply at once, the indicator dialog collects for Apply. A
-// value update repaints in place, so neither a new value nor a theme change remounts an open
-// panel, and a drag on the custom editor's area or strip reports nothing until the color is added,
-// so one drag is one edit rather than one per pointer move.
+// cancellation. A value update repaints in place, so neither a new value nor a theme change
+// remounts an open panel, and a drag on the custom editor's area or strip reports nothing until the
+// color is added, so one drag is one edit rather than one per pointer move.
 import { button, dragUntilRelease, el, focusFirst } from '../../drawings/dom'
 import { isRtl } from '../dom'
 import type { ChartTranslate } from '../../../i18n'
@@ -486,86 +486,6 @@ export function createColorPalette(t: ChartTranslate, options: PaletteOptions): 
     destroy() {
       closeMixer()
       opacity?.destroy()
-      element.remove()
-    },
-  }
-}
-
-/** How a consumer mounts the panel the control opens: it places `content` against `anchor`, calls
- *  `onClosed` whenever the panel goes for any reason, and returns its own close. The control never
- *  mounts an overlay itself, so overlay lifetime stays with the surface that owns it. */
-export type OpenColorPanel = (anchor: HTMLElement, content: HTMLElement, onClosed: () => void) => () => void
-
-export interface ColorControlOptions {
-  label: string
-  value: string
-  onPick(color: string): void
-  opacity?: number
-  onOpacity?(value: number): void
-  disabled?: boolean
-  /** Close the panel as soon as a swatch is picked. */
-  closeOnPick?: boolean
-  /** The colors this viewer mixed, offered beside the palette's own. */
-  recents?: ColorMemory | null
-  openPanel: OpenColorPanel
-}
-
-export interface ColorControlHandle extends ControlHandle<HTMLButtonElement> {
-  update(value: string, opacity?: number): void
-}
-
-/** The color field: a well showing the value over a checkerboard, which opens the palette. */
-export function createColorControl(t: ChartTranslate, options: ColorControlOptions): ColorControlHandle {
-  let value = options.value
-  let opacity = options.opacity
-  const fill = el('span', { class: 'qc-drawing-well-fill' })
-  const well = el('span', { class: 'qc-drawing-well' }, fill)
-  const face = (): void => {
-    fill.style.setProperty('--qcd-swatch', value)
-    fill.style.opacity = String(opacity ?? 1)
-  }
-  face()
-  const element = button({ class: 'qc-field qc-drawing-swatch-button', label: options.label, disabled: options.disabled })
-  element.setAttribute('aria-haspopup', 'dialog')
-  element.setAttribute('aria-expanded', 'false')
-  element.appendChild(well)
-
-  let palette: PaletteHandle | null = null
-  let close: (() => void) | null = null
-  element.addEventListener('click', () => {
-    if (close) {
-      close()
-      return
-    }
-    const panel = el('div', { class: 'qc-drawing-swatch-panel' })
-    palette = createColorPalette(t, {
-      value,
-      onPick: (c) => {
-        options.onPick(c)
-        if (options.closeOnPick) close?.()
-      },
-      recents: options.recents ?? null,
-      ...(opacity !== undefined && options.onOpacity ? { opacity, onOpacity: options.onOpacity } : {}),
-    })
-    panel.appendChild(palette.element)
-    close = options.openPanel(element, panel, () => {
-      palette?.destroy()
-      palette = null
-      close = null
-    })
-    focusFirst(panel)
-  })
-
-  return {
-    element,
-    update(next, nextOpacity) {
-      value = next
-      if (nextOpacity !== undefined) opacity = nextOpacity
-      face()
-      palette?.update(next, nextOpacity)
-    },
-    destroy() {
-      close?.()
       element.remove()
     },
   }

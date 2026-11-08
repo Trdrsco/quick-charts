@@ -4,10 +4,10 @@
 //
 // Conventions the definitions follow:
 // - Input keys ARE the instance's stored keys (`period` plus params), so a persisted instance feeds
-//   straight in; a missing key falls back to the manifest default. The labels a settings surface
-//   shows live in `inputTitles`.
+//   straight in; a missing key falls back to the manifest default. Each input carries the title a
+//   settings surface labels it with, and the inputs that belong together share a group.
 // - A source input is an enum over PRICE_SOURCES: the index is the stored value, the same way any
-//   manifest's source input serializes.
+//   manifest's source input serializes, and its options are the words the settings surface writes.
 // - The PRIMARY plot declares no color: it takes the instance's color. Secondary plots (signal
 //   lines, +DI/-DI, smoothed companions, flip arrows) declare their palette accents.
 // - Compute returns per-plot arrays aligned 1:1 to the bars, NaN in the warm-up (the walker maps
@@ -21,30 +21,33 @@ import { toCandles, type Candle, type IndicatorBar } from './types'
 
 type Inputs = Readonly<Record<string, number>>
 
-const int = (defval: number, min = 1, max = 5000): ManifestInput => ({ kind: 'int', default: defval, min, max })
-const float = (defval: number, min?: number, max?: number): ManifestInput => ({
-  kind: 'float',
-  default: defval,
-  ...(min !== undefined ? { min } : {}),
-  ...(max !== undefined ? { max } : {}),
-})
-const enumOf = (options: readonly string[], defval = 0): ManifestInput => ({ kind: 'enum', default: defval, options })
-const source = (defval = 0): ManifestInput => ({ kind: 'enum', default: defval, options: PRICE_SOURCES })
+/** What an input says about itself beyond its value: its title, its group, its step, and the input
+ *  it follows. */
+type Described = Pick<ManifestInput, 'title' | 'group' | 'step' | 'enabledWhen'>
+
+const int = (defval: number, min: number, max: number, about: Described): ManifestInput => ({ kind: 'int', default: defval, min, max, ...about })
+const float = (defval: number, min: number, max: number, about: Described): ManifestInput => ({ kind: 'float', default: defval, min, max, step: 0.1, ...about })
+const enumOf = (options: readonly string[], defval: number, about: Described): ManifestInput => ({ kind: 'enum', default: defval, options, ...about })
+const bool = (defval: 0 | 1, about: Described): ManifestInput => ({ kind: 'bool', default: defval, ...about })
+
+/** The words each of PRICE_SOURCES reads as, in its order. */
+const SOURCE_TITLES = ['Close', 'Open', 'High', 'Low', '(H + L)/2', '(H + L + C)/3', '(O + H + L + C)/4'] as const
+const source = (defval = 0, group?: string): ManifestInput => ({ kind: 'enum', default: defval, options: SOURCE_TITLES, title: 'Source', ...(group ? { group } : {}) })
 
 const sourceOf = (inputs: Inputs, key = 'source'): PriceSource | undefined => (inputs[key] != null ? PRICE_SOURCES[inputs[key]!] : undefined)
 
 /** One line plot taking the instance color at the given width. */
-const line = (lineWidth = 2) => ({ kind: 'line' as const, lineWidth })
+const line = (title: string, lineWidth = 2) => ({ kind: 'line' as const, lineWidth, title })
 
-/** The MA-smoothing companion input pair: 'None' leaves the companion plot empty (all-NaN reads as whitespace). */
-const SMOOTHING_TYPES = ['None', 'SMA', 'EMA', 'RMA', 'WMA'] as const
+/** The MA-smoothing companion input pair: 'None' leaves the companion plot empty (all-NaN reads as
+ *  whitespace), and the length applies under every other type. */
+const SMOOTHING_TYPES = ['None', 'SMA', 'EMA', 'SMMA (RMA)', 'WMA'] as const
 const SMOOTHING_MA: readonly (MaType | null)[] = [null, 'sma', 'ema', 'rma', 'wma']
 const smoothingInputs = (): IndicatorManifest['inputs'] => ({
-  smoothingLine: enumOf(SMOOTHING_TYPES, 0),
-  smoothingLength: int(14, 1, 5000),
+  smoothingLine: enumOf(SMOOTHING_TYPES, 0, { title: 'Type', group: 'Smoothing' }),
+  smoothingLength: int(14, 1, 5000, { title: 'Length', group: 'Smoothing', enabledWhen: { input: 'smoothingLine', values: [1, 2, 3, 4] } }),
 })
-const SMOOTHING_TITLES = { smoothingLine: 'Smoothing Line', smoothingLength: 'Smoothing Length' } as const
-const smoothedPlot = { kind: 'line' as const, lineWidth: 1, color: SMOOTHED }
+const smoothedPlot = (title: string) => ({ kind: 'line' as const, lineWidth: 1, color: SMOOTHED, title })
 
 /** Apply the selected smoothing MA over a computed series (index 0 = 'None' reads all-NaN). */
 function smoothSeries(values: readonly number[], typeIdx: number, length: number): number[] {
@@ -68,27 +71,35 @@ function manifest(
   return { id, tag, pane, category, inputs, plots, ...extra }
 }
 
-/** Reference lines (overbought, oversold, zero): quiet dashed levels. */
-const levelsOf = (entries: Record<string, number>): NonNullable<IndicatorManifest['levels']> =>
-  Object.fromEntries(Object.entries(entries).map(([k, price]) => [k, { price, color: LEVEL, lineStyle: 'dashed' as const }]))
+/** Reference lines (overbought, oversold, zero): quiet dashed levels, each with its title. */
+const levelsOf = (entries: Record<string, readonly [price: number, title: string]>): NonNullable<IndicatorManifest['levels']> =>
+  Object.fromEntries(Object.entries(entries).map(([k, [price, title]]) => [k, { price, color: LEVEL, lineStyle: 'dashed' as const, title }]))
 
 /** The oscillator band background: a fill between the upper and lower LIMIT LEVELS; the walker
  *  builds constant edges from the level prices. */
-const hlinesBackground = { background: { between: ['upper', 'lower'] as const, color: OSCILLATOR_BACKGROUND } }
+const hlinesBackground = (title = 'Background') => ({ background: { between: ['upper', 'lower'] as const, color: OSCILLATOR_BACKGROUND, title } })
 
-const BAND_TITLES = { upper: 'Upper', basis: 'Basis', lower: 'Lower', background: 'Background' } as const
-const LIMIT_TITLES = { upper: 'Upper band', lower: 'Lower band', background: 'Background' } as const
+/** A channel's three edges and the background between its outer two. */
+const channelPlots = (basisWidth: number) => ({ upper: line('Upper', 1), basis: { kind: 'line' as const, lineWidth: basisWidth, lineStyle: 'dashed' as const, title: 'Basis' }, lower: line('Lower', 1) })
+const channelFill = { fills: { background: { between: ['upper', 'lower'] as const, color: BAND_BACKGROUND, title: 'Background' } } }
 
 /** The offset input shared by the MA family and Donchian. */
-const offsetInput = (): ManifestInput => int(0, -500, 500)
+const offsetInput = (): ManifestInput => int(0, -500, 500, { title: 'Offset' })
+
+/** The manifest's titles by key, for the definitions' `inputTitles` and `plotTitles`. */
+const titlesOf = (entries: Readonly<Record<string, { readonly title?: string }>> | undefined): Record<string, string> =>
+  Object.fromEntries(Object.entries(entries ?? {}).flatMap(([key, spec]) => (spec.title ? [[key, spec.title]] : [])))
 
 /** A definition over the long-keyed candles: the one bridge from chart bars to the math. */
 function define(
-  def: Omit<BuiltInIndicator, 'compute'> & { compute: (candles: readonly Candle[], inputs: Inputs) => PlotArrays },
+  def: Omit<BuiltInIndicator, 'compute' | 'plotTitles' | 'inputTitles'> & { compute: (candles: readonly Candle[], inputs: Inputs) => PlotArrays },
 ): BuiltInIndicator {
   const { compute, ...rest } = def
+  const { inputs, plots, levels, fills } = def.manifest
   return {
     ...rest,
+    plotTitles: { ...titlesOf(plots), ...titlesOf(levels), ...titlesOf(fills) },
+    inputTitles: titlesOf(inputs),
     compute: (bars: readonly IndicatorBar[], inputs: Inputs) => compute(toCandles(bars), inputs),
   }
 }
@@ -107,15 +118,18 @@ export const volumeIndicator = define({
     'VOL',
     'overlay',
     'vol',
-    { showMa: enumOf(['No', 'Yes'], 0), maLength: int(20, 1, 5000), colorPrevClose: enumOf(['No', 'Yes'], 0), ...smoothingInputs() },
     {
-      volumeMa: { kind: 'line', lineWidth: 1, color: SMOOTHED, scale: 'volume' },
-      smoothedMa: { kind: 'line', lineWidth: 1, color: VOLUME_SMOOTHED, scale: 'volume' },
+      showMa: bool(0, { title: 'Show MA' }),
+      maLength: int(20, 1, 5000, { title: 'MA Length', enabledWhen: { input: 'showMa', values: [1] } }),
+      colorPrevClose: bool(0, { title: 'Color based on previous close' }),
+      ...smoothingInputs(),
+    },
+    {
+      volumeMa: { kind: 'line', lineWidth: 1, color: SMOOTHED, scale: 'volume', title: 'Volume MA' },
+      smoothedMa: { kind: 'line', lineWidth: 1, color: VOLUME_SMOOTHED, scale: 'volume', title: 'Smoothed MA' },
     },
     { needsVolume: true },
   ),
-  plotTitles: { volumeMa: 'Volume MA', smoothedMa: 'Smoothed MA' },
-  inputTitles: { showMa: 'Show MA', maLength: 'MA Length', colorPrevClose: 'Color Based On Previous Close', ...SMOOTHING_TITLES },
   compute: (candles, p) => {
     const volumes = volume(candles)
     const volumeMa = p.showMa === 1 ? smaArr(volumes, p.maLength) : new Array(candles.length).fill(NaN)
@@ -135,11 +149,9 @@ export const smaIndicator = define({
     'SMA',
     'overlay',
     'ma',
-    { period: int(20, 1, 5000), source: source(), offset: offsetInput(), ...smoothingInputs() },
-    { sma: line(), smoothedMa: smoothedPlot },
+    { period: int(20, 1, 5000, { title: 'Length' }), source: source(), offset: offsetInput(), ...smoothingInputs() },
+    { sma: line('MA'), smoothedMa: smoothedPlot('SMA-based MA') },
   ),
-  plotTitles: { sma: 'SMA', smoothedMa: 'Smoothed MA' },
-  inputTitles: { period: 'Length', source: 'Source', offset: 'Offset', ...SMOOTHING_TITLES },
   compute: (candles, p) => {
     const ma = shiftArr(sma(candles, p.period, sourceOf(p)), p.offset)
     return { sma: ma, smoothedMa: smoothSeries(ma, p.smoothingLine, p.smoothingLength) }
@@ -157,11 +169,9 @@ export const emaIndicator = define({
     'EMA',
     'overlay',
     'ma',
-    { period: int(14, 1, 5000), source: source(), offset: offsetInput(), ...smoothingInputs() },
-    { ema: line(), smoothedMa: smoothedPlot },
+    { period: int(14, 1, 5000, { title: 'Length' }), source: source(), offset: offsetInput(), ...smoothingInputs() },
+    { ema: line('EMA'), smoothedMa: smoothedPlot('EMA-based MA') },
   ),
-  plotTitles: { ema: 'EMA', smoothedMa: 'Smoothed MA' },
-  inputTitles: { period: 'Length', source: 'Source', offset: 'Offset', ...SMOOTHING_TITLES },
   compute: (candles, p) => {
     const ma = shiftArr(ema(candles, p.period, sourceOf(p)), p.offset)
     return { ema: ma, smoothedMa: smoothSeries(ma, p.smoothingLine, p.smoothingLength) }
@@ -174,9 +184,7 @@ export const hmaIndicator = define({
   descriptionKey: 'indicator.hmaDescription',
   tag: 'HMA',
   category: 'ma',
-  manifest: manifest('hma', 'HMA', 'overlay', 'ma', { period: int(16, 2, 5000) }, { hma: line() }),
-  plotTitles: { hma: 'HMA' },
-  inputTitles: { period: 'Length' },
+  manifest: manifest('hma', 'HMA', 'overlay', 'ma', { period: int(16, 2, 5000, { title: 'Length' }) }, { hma: line('HMA') }),
   compute: (candles, p) => ({ hma: hma(candles, p.period) }),
 })
 
@@ -186,9 +194,7 @@ export const vwmaIndicator = define({
   descriptionKey: 'indicator.vwmaDescription',
   tag: 'VWMA',
   category: 'ma',
-  manifest: manifest('vwma', 'VWMA', 'overlay', 'ma', { period: int(20, 1, 5000), source: source() }, { vwma: line() }, { needsVolume: true }),
-  plotTitles: { vwma: 'VWMA' },
-  inputTitles: { period: 'Length', source: 'Source' },
+  manifest: manifest('vwma', 'VWMA', 'overlay', 'ma', { period: int(20, 1, 5000, { title: 'Length' }), source: source() }, { vwma: line('VWMA') }, { needsVolume: true }),
   compute: (candles, p) => ({ vwma: vwma(candles, p.period, sourceOf(p)) }),
 })
 
@@ -204,12 +210,10 @@ export const bollingerIndicator = define({
     'BB',
     'overlay',
     'band',
-    { period: int(20, 1, 5000), stdDev: float(2, 0.1, 50) },
-    { upper: line(1), basis: { kind: 'line', lineWidth: 2, lineStyle: 'dashed' }, lower: line(1) },
-    { fills: { background: { between: ['upper', 'lower'], color: BAND_BACKGROUND } } },
+    { period: int(20, 1, 5000, { title: 'Length' }), stdDev: float(2, 0.1, 50, { title: 'StdDev' }) },
+    channelPlots(2),
+    channelFill,
   ),
-  plotTitles: BAND_TITLES,
-  inputTitles: { period: 'Length', stdDev: 'StdDev' },
   compute: (candles, p) => {
     const r = bollinger(candles, p.period, p.stdDev)
     return { upper: r.upper, basis: r.middle, lower: r.lower }
@@ -222,17 +226,7 @@ export const donchianIndicator = define({
   descriptionKey: 'indicator.donchianDescription',
   tag: 'DC',
   category: 'band',
-  manifest: manifest(
-    'donchian',
-    'DC',
-    'overlay',
-    'band',
-    { period: int(20, 1, 5000), offset: offsetInput() },
-    { upper: line(1), basis: { kind: 'line', lineWidth: 1, lineStyle: 'dashed' }, lower: line(1) },
-    { fills: { background: { between: ['upper', 'lower'], color: BAND_BACKGROUND } } },
-  ),
-  plotTitles: BAND_TITLES,
-  inputTitles: { period: 'Length', offset: 'Offset' },
+  manifest: manifest('donchian', 'DC', 'overlay', 'band', { period: int(20, 1, 5000, { title: 'Length' }), offset: offsetInput() }, channelPlots(1), channelFill),
   compute: (candles, p) => {
     const r = donchian(candles, p.period)
     return { upper: shiftArr(r.upper, p.offset), basis: shiftArr(r.middle, p.offset), lower: shiftArr(r.lower, p.offset) }
@@ -250,12 +244,15 @@ export const keltnerIndicator = define({
     'KC',
     'overlay',
     'band',
-    { period: int(20, 1, 5000), atrPeriod: int(10, 1, 5000), multiplier: float(2, 0.1, 50), bandsStyle: enumOf(['True Range', 'High-Low'], 0) },
-    { upper: line(1), basis: { kind: 'line', lineWidth: 1, lineStyle: 'dashed' }, lower: line(1) },
-    { fills: { background: { between: ['upper', 'lower'], color: BAND_BACKGROUND } } },
+    {
+      period: int(20, 1, 5000, { title: 'Length' }),
+      multiplier: float(2, 0.1, 50, { title: 'Multiplier' }),
+      bandsStyle: enumOf(['Average True Range', 'Range'], 0, { title: 'Bands Style' }),
+      atrPeriod: int(10, 1, 5000, { title: 'ATR Length' }),
+    },
+    channelPlots(1),
+    channelFill,
   ),
-  plotTitles: BAND_TITLES,
-  inputTitles: { period: 'Length', atrPeriod: 'ATR Length', multiplier: 'Multiplier', bandsStyle: 'Bands Style' },
   compute: (candles, p) => {
     const r = keltner(candles, p.period, p.atrPeriod, p.multiplier, p.bandsStyle === 1 ? 'high-low' : 'true-range')
     return { upper: r.upper, basis: r.middle, lower: r.lower }
@@ -273,16 +270,14 @@ export const supertrendIndicator = define({
     'ST',
     'overlay',
     'band',
-    { period: int(10, 1, 5000), multiplier: float(3, 0.1, 50) },
+    { period: int(10, 1, 5000, { title: 'ATR Length' }), multiplier: float(3, 0.1, 50, { title: 'Factor', step: 0.01 }) },
     {
-      up: { kind: 'line', lineWidth: 2, color: UP },
-      down: { kind: 'line', lineWidth: 2, color: DOWN },
-      upArrow: { kind: 'marker', shape: 'arrow-up', location: 'absolute', color: UP },
-      downArrow: { kind: 'marker', shape: 'arrow-down', location: 'absolute', color: DOWN },
+      up: { kind: 'line', lineWidth: 2, color: UP, title: 'Up Trend' },
+      down: { kind: 'line', lineWidth: 2, color: DOWN, title: 'Down Trend' },
+      upArrow: { kind: 'marker', shape: 'arrow-up', location: 'absolute', color: UP, title: 'Buy signal' },
+      downArrow: { kind: 'marker', shape: 'arrow-down', location: 'absolute', color: DOWN, title: 'Sell signal' },
     },
   ),
-  plotTitles: { up: 'Up trend', down: 'Down trend', upArrow: 'Buy signal', downArrow: 'Sell signal' },
-  inputTitles: { period: 'ATR Length', multiplier: 'Factor' },
   compute: (candles, p) => {
     const r = supertrend(candles, p.period, p.multiplier)
     // Flip markers anchor on the new trend's line value at the flip bar.
@@ -307,11 +302,13 @@ export const psarIndicator = define({
     'PSAR',
     'overlay',
     'band',
-    { start: float(0.02, 0.001, 1), step: float(0.02, 0.001, 1), max: float(0.2, 0.01, 1) },
-    { psar: { kind: 'line', dots: true } },
+    {
+      start: float(0.02, 0.001, 1, { title: 'Start', step: 0.01 }),
+      step: float(0.02, 0.001, 1, { title: 'Increment', step: 0.01 }),
+      max: float(0.2, 0.01, 1, { title: 'Max value', step: 0.01 }),
+    },
+    { psar: { kind: 'line', dots: true, title: 'PSAR' } },
   ),
-  plotTitles: { psar: 'PSAR' },
-  inputTitles: { start: 'Start', step: 'Increment', max: 'Maximum' },
   compute: (candles, p) => ({ psar: psar(candles, p.step, p.max, p.start) }),
 })
 
@@ -327,12 +324,10 @@ export const rsiIndicator = define({
     'RSI',
     'pane',
     'osc',
-    { period: int(14, 2, 5000), source: source(), ...smoothingInputs() },
-    { rsi: line(), smoothedMa: smoothedPlot },
-    { levels: levelsOf({ upper: 70, middle: 50, lower: 30 }), fills: { ...hlinesBackground } },
+    { period: int(14, 2, 5000, { title: 'RSI Length', group: 'RSI Settings' }), source: source(0, 'RSI Settings'), ...smoothingInputs() },
+    { rsi: line('RSI'), smoothedMa: smoothedPlot('RSI-based MA') },
+    { levels: levelsOf({ upper: [70, 'RSI Upper Band'], middle: [50, 'RSI Middle Band'], lower: [30, 'RSI Lower Band'] }), fills: hlinesBackground('RSI Background Fill') },
   ),
-  plotTitles: { rsi: 'RSI', smoothedMa: 'Smoothed MA', upper: 'Upper band', middle: 'Middle band', lower: 'Lower band', background: 'Background' },
-  inputTitles: { period: 'RSI Length', source: 'Source', ...SMOOTHING_TITLES },
   compute: (candles, p) => {
     const r = rsi(candles, p.period, sourceOf(p))
     return { rsi: r, smoothedMa: smoothSeries(r, p.smoothingLine, p.smoothingLength) }
@@ -351,17 +346,15 @@ export const macdIndicator = define({
     'pane',
     'osc',
     {
-      fast: int(12, 1, 5000),
-      slow: int(26, 1, 5000),
       source: source(),
-      signal: int(9, 1, 5000),
-      oscMaType: enumOf(MACD_MA_TYPES, 0),
-      signalMaType: enumOf(MACD_MA_TYPES, 0),
+      fast: int(12, 1, 5000, { title: 'Fast length' }),
+      slow: int(26, 1, 5000, { title: 'Slow length' }),
+      signal: int(9, 1, 5000, { title: 'Signal length' }),
+      oscMaType: enumOf(MACD_MA_TYPES, 0, { title: 'Oscillator MA type' }),
+      signalMaType: enumOf(MACD_MA_TYPES, 0, { title: 'Signal MA type' }),
     },
-    { histogram: { kind: 'histogram', up: UP, down: DOWN }, macd: line(), signal: { kind: 'line', lineWidth: 1, color: SIGNAL } },
+    { histogram: { kind: 'histogram', up: UP, down: DOWN, title: 'Histogram' }, macd: line('MACD'), signal: { kind: 'line', lineWidth: 1, color: SIGNAL, title: 'Signal line' } },
   ),
-  plotTitles: { histogram: 'Histogram', macd: 'MACD', signal: 'Signal' },
-  inputTitles: { fast: 'Fast Length', slow: 'Slow Length', source: 'Source', signal: 'Signal Smoothing', oscMaType: 'Oscillator MA Type', signalMaType: 'Signal Line MA Type' },
   compute: (candles, p) => {
     const r = macd(candles, {
       fast: p.fast,
@@ -386,12 +379,10 @@ export const stochasticIndicator = define({
     'STOCH',
     'pane',
     'osc',
-    { k: int(14, 1, 5000), smooth: int(3, 1, 5000), d: int(3, 1, 5000) },
-    { k: line(), d: { kind: 'line', lineWidth: 1, color: SIGNAL } },
-    { levels: levelsOf({ upper: 80, lower: 20 }), fills: { ...hlinesBackground } },
+    { k: int(14, 1, 5000, { title: '%K Length' }), smooth: int(3, 1, 5000, { title: '%K Smoothing' }), d: int(3, 1, 5000, { title: '%D Smoothing' }) },
+    { k: line('%K'), d: { kind: 'line', lineWidth: 1, color: SIGNAL, title: '%D' } },
+    { levels: levelsOf({ upper: [80, 'Upper Band'], lower: [20, 'Lower Band'] }), fills: hlinesBackground() },
   ),
-  plotTitles: { k: '%K', d: '%D', ...LIMIT_TITLES },
-  inputTitles: { k: '%K Length', smooth: '%K Smoothing', d: '%D Smoothing' },
   compute: (candles, p) => {
     const r = stochastic(candles, p.k, p.smooth, p.d)
     return { k: r.k, d: r.d }
@@ -409,12 +400,15 @@ export const stochrsiIndicator = define({
     'STOCHRSI',
     'pane',
     'osc',
-    { rsiPeriod: int(14, 2, 5000), stochPeriod: int(14, 1, 5000), k: int(3, 1, 5000), d: int(3, 1, 5000) },
-    { k: line(), d: { kind: 'line', lineWidth: 1, color: SIGNAL } },
-    { levels: levelsOf({ upper: 80, lower: 20 }), fills: { ...hlinesBackground } },
+    {
+      k: int(3, 1, 5000, { title: 'K' }),
+      d: int(3, 1, 5000, { title: 'D' }),
+      rsiPeriod: int(14, 2, 5000, { title: 'RSI Length' }),
+      stochPeriod: int(14, 1, 5000, { title: 'Stochastic Length' }),
+    },
+    { k: line('K'), d: { kind: 'line', lineWidth: 1, color: SIGNAL, title: 'D' } },
+    { levels: levelsOf({ upper: [80, 'Upper Band'], lower: [20, 'Lower Band'] }), fills: hlinesBackground() },
   ),
-  plotTitles: { k: '%K', d: '%D', ...LIMIT_TITLES },
-  inputTitles: { rsiPeriod: 'RSI Length', stochPeriod: 'Stochastic Length', k: '%K Smoothing', d: '%D Smoothing' },
   compute: (candles, p) => {
     const r = stochRsi(candles, p.rsiPeriod, p.stochPeriod, p.k, p.d)
     return { k: r.k, d: r.d }
@@ -432,11 +426,9 @@ export const adxIndicator = define({
     'ADX',
     'pane',
     'osc',
-    { period: int(14, 1, 5000), adxSmoothing: int(14, 1, 5000) },
-    { adx: line(), plusDI: { kind: 'line', lineWidth: 1, color: UP }, minusDI: { kind: 'line', lineWidth: 1, color: DOWN } },
+    { adxSmoothing: int(14, 1, 5000, { title: 'ADX Smoothing' }), period: int(14, 1, 5000, { title: 'DI Length' }) },
+    { adx: line('ADX'), plusDI: { kind: 'line', lineWidth: 1, color: UP, title: '+DI' }, minusDI: { kind: 'line', lineWidth: 1, color: DOWN, title: '-DI' } },
   ),
-  plotTitles: { adx: 'ADX', plusDI: '+DI', minusDI: '−DI' },
-  inputTitles: { period: 'DI Length', adxSmoothing: 'ADX Smoothing' },
   compute: (candles, p) => {
     const r = adx(candles, p.period, p.adxSmoothing)
     return { adx: r.adx, plusDI: r.plusDI, minusDI: r.minusDI }
@@ -449,9 +441,7 @@ export const atrIndicator = define({
   descriptionKey: 'indicator.atrDescription',
   tag: 'ATR',
   category: 'osc',
-  manifest: manifest('atr', 'ATR', 'pane', 'osc', { period: int(14, 1, 5000) }, { atr: line() }),
-  plotTitles: { atr: 'ATR' },
-  inputTitles: { period: 'Length' },
+  manifest: manifest('atr', 'ATR', 'pane', 'osc', { period: int(14, 1, 5000, { title: 'Length' }) }, { atr: line('ATR') }),
   compute: (candles, p) => ({ atr: atr(candles, p.period) }),
 })
 
@@ -466,12 +456,10 @@ export const cciIndicator = define({
     'CCI',
     'pane',
     'osc',
-    { period: int(20, 1, 5000), source: source(5), ...smoothingInputs() },
-    { cci: line(), smoothedMa: smoothedPlot },
-    { levels: levelsOf({ upper: 100, lower: -100 }), fills: { ...hlinesBackground } },
+    { period: int(20, 1, 5000, { title: 'Length' }), source: source(5), ...smoothingInputs() },
+    { cci: line('CCI'), smoothedMa: smoothedPlot('CCI-based MA') },
+    { levels: levelsOf({ upper: [100, 'Upper Band'], lower: [-100, 'Lower Band'] }), fills: hlinesBackground() },
   ),
-  plotTitles: { cci: 'CCI', smoothedMa: 'Smoothed MA', ...LIMIT_TITLES },
-  inputTitles: { period: 'Length', source: 'Source', ...SMOOTHING_TITLES },
   compute: (candles, p) => {
     const r = cci(candles, p.period, sourceOf(p))
     return { cci: r, smoothedMa: smoothSeries(r, p.smoothingLine, p.smoothingLength) }
@@ -489,12 +477,10 @@ export const williamsIndicator = define({
     '%R',
     'pane',
     'osc',
-    { period: int(14, 1, 5000) },
-    { williams: line() },
-    { levels: levelsOf({ upper: -20, lower: -80 }), fills: { ...hlinesBackground } },
+    { period: int(14, 1, 5000, { title: 'Length' }) },
+    { williams: line('%R') },
+    { levels: levelsOf({ upper: [-20, 'Upper Band'], lower: [-80, 'Lower Band'] }), fills: hlinesBackground() },
   ),
-  plotTitles: { williams: '%R', ...LIMIT_TITLES },
-  inputTitles: { period: 'Length' },
   compute: (candles, p) => ({ williams: williamsR(candles, p.period) }),
 })
 
@@ -504,9 +490,7 @@ export const rocIndicator = define({
   descriptionKey: 'indicator.rocDescription',
   tag: 'ROC',
   category: 'osc',
-  manifest: manifest('roc', 'ROC', 'pane', 'osc', { period: int(12, 1, 5000), source: source() }, { roc: line() }, { levels: levelsOf({ zero: 0 }) }),
-  plotTitles: { roc: 'ROC', zero: 'Zero line' },
-  inputTitles: { period: 'Length', source: 'Source' },
+  manifest: manifest('roc', 'ROC', 'pane', 'osc', { period: int(12, 1, 5000, { title: 'Length' }), source: source() }, { roc: line('ROC') }, { levels: levelsOf({ zero: [0, 'Zero Line'] }) }),
   compute: (candles, p) => ({ roc: roc(candles, p.period, sourceOf(p)) }),
 })
 
@@ -516,9 +500,7 @@ export const momentumIndicator = define({
   descriptionKey: 'indicator.momentumDescription',
   tag: 'MOM',
   category: 'osc',
-  manifest: manifest('momentum', 'MOM', 'pane', 'osc', { period: int(10, 1, 5000), source: source() }, { momentum: line() }, { levels: levelsOf({ zero: 0 }) }),
-  plotTitles: { momentum: 'Momentum', zero: 'Zero line' },
-  inputTitles: { period: 'Length', source: 'Source' },
+  manifest: manifest('momentum', 'MOM', 'pane', 'osc', { period: int(10, 1, 5000, { title: 'Length' }), source: source() }, { momentum: line('MOM') }, { levels: levelsOf({ zero: [0, 'Zero Line'] }) }),
   compute: (candles, p) => ({ momentum: momentum(candles, p.period, sourceOf(p)) }),
 })
 
@@ -534,12 +516,10 @@ export const vwapIndicator = define({
     'VWAP',
     'overlay',
     'vol',
-    { anchorPeriod: enumOf(['Session', 'Week', 'Month'], 0), source: source(5) },
-    { vwap: line() },
+    { anchorPeriod: enumOf(['Session', 'Week', 'Month'], 0, { title: 'Anchor Period', group: 'VWAP Settings' }), source: source(5, 'VWAP Settings') },
+    { vwap: line('VWAP') },
     { needsVolume: true },
   ),
-  plotTitles: { vwap: 'VWAP' },
-  inputTitles: { anchorPeriod: 'Anchor Period', source: 'Source' },
   compute: (candles, p) => ({ vwap: vwap(candles, VWAP_ANCHORS[p.anchorPeriod] ?? 'session', sourceOf(p) ?? 'hlc3') }),
 })
 
@@ -549,9 +529,7 @@ export const obvIndicator = define({
   descriptionKey: 'indicator.obvDescription',
   tag: 'OBV',
   category: 'vol',
-  manifest: manifest('obv', 'OBV', 'pane', 'vol', { ...smoothingInputs() }, { obv: line(), smoothedMa: smoothedPlot }, { needsVolume: true }),
-  plotTitles: { obv: 'OBV', smoothedMa: 'Smoothed MA' },
-  inputTitles: { ...SMOOTHING_TITLES },
+  manifest: manifest('obv', 'OBV', 'pane', 'vol', { ...smoothingInputs() }, { obv: line('OBV'), smoothedMa: smoothedPlot('OBV-based MA') }, { needsVolume: true }),
   compute: (candles, p) => {
     const r = obv(candles)
     return { obv: r, smoothedMa: smoothSeries(r, p.smoothingLine, p.smoothingLength) }
@@ -569,11 +547,9 @@ export const mfiIndicator = define({
     'MFI',
     'pane',
     'vol',
-    { period: int(14, 1, 5000) },
-    { mfi: line() },
-    { needsVolume: true, levels: levelsOf({ upper: 80, lower: 20 }), fills: { ...hlinesBackground } },
+    { period: int(14, 1, 5000, { title: 'Length' }) },
+    { mfi: line('MFI') },
+    { needsVolume: true, levels: levelsOf({ upper: [80, 'Overbought'], lower: [20, 'Oversold'] }), fills: hlinesBackground() },
   ),
-  plotTitles: { mfi: 'MFI', ...LIMIT_TITLES },
-  inputTitles: { period: 'Length' },
   compute: (candles, p) => ({ mfi: mfi(candles, p.period) }),
 })

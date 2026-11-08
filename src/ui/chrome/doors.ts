@@ -8,6 +8,7 @@
 // nothing, and the settings door reports that nothing took the request, so the caller can fall
 // back to the inputs-only editor.
 import type { ChartHandle } from '../../widget/chart'
+import type { IndicatorInstance } from '../../widget/options'
 import type { CommandExecutor } from '../../widget/commands'
 import type { FeedBar } from '../../datafeed'
 import type { LayoutModelState } from '../../widget/layout'
@@ -36,11 +37,21 @@ export interface ReplayTransportTarget {
   intraday(): boolean
 }
 
+/** What the chart lends the indicator settings dialog for one session over one instance. */
+export interface IndicatorEditSession {
+  /** Draw the instance as the session holds it, or as the chart holds it again with null. The
+   *  chart's content keeps the instance it holds until the session commits. */
+  preview(instance: IndicatorInstance | null): void
+  /** Keep the instance's inputs and look as the defaults its definition's next instances open with. */
+  saveDefault(instance: IndicatorInstance): void
+}
+
 export interface ChromeDoors {
   showIndicatorPicker(collection?: string, kind?: string): void
   openSearch(request: SearchRequest): void
-  /** Open the settings dialog for one indicator instance. False when no surface took it. */
-  openIndicatorSettings(chart: ChartHandle, instanceId: string): boolean
+  /** Open the settings dialog for one indicator instance, over the session the chart lends it.
+   *  False when no surface took it. */
+  openIndicatorSettings(chart: ChartHandle, instanceId: string, session: IndicatorEditSession): boolean
   /** Show a chart-owned informational or error notice when the default chrome provides toasts. */
   notify(kind: 'info' | 'error', text: string): void
   /** Ask the viewer to name a never-saved layout, through the saved-layout menu's own name prompt.

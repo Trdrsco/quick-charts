@@ -13,7 +13,8 @@ import type { ChartI18n, ChartMessageKey, ChartTranslate } from '../i18n'
 import type { LegendChip } from '../chartLegend'
 import { createPriceFormatter, type PriceFormatter } from '../priceFormatter'
 import { BUILT_IN_INDICATORS, INDICATOR_PALETTE } from '../builtInIndicators'
-import { applyPlotOverrides, buildManifestPlots, effectivePlotColor, indicatorHidden, latestPlotValue, manifestInputDefaults, overriddenManifest, plotValueAt } from '../indicatorModel'
+import { applyPlotOverrides, buildManifestPlots, effectivePlotColor, indicatorHidden, inputApplies, latestPlotValue, manifestInputDefaults, overriddenManifest, plotValueAt, type IndicatorOverrides } from '../indicatorModel'
+import { parseTimeframeContext, visibleAt } from '../internal/drawings/index'
 import { attachIndicators, type IndicatorsRenderer } from '../indicatorRenderer'
 import { isCollapsed } from '../panePlan'
 import type { CanvasTheme } from '../theme/renderer'
@@ -43,20 +44,37 @@ export function indicatorMarkOf(inst: IndicatorInstance, t: ChartTranslate): str
 }
 
 /** The compact input readout that follows the mark, e.g. "(2, Close)". An enum resolves its index to
- *  its own option, title-cased; a number prints as it stands. Empty when the indicator takes no
- *  input. */
+ *  its own option, title-cased; a number prints as it stands. A switch, and an input that does not
+ *  apply under the values the others hold, write nothing. Empty when no input writes anything. */
 export function indicatorInputsOf(inst: IndicatorInstance): string {
-  const inputs = inst.definition.manifest.inputs
+  const manifest = inst.definition.manifest
+  const inputs = manifest.inputs
   if (!inputs) return ''
-  const parts = Object.entries(inputs).map(([key, spec]) => {
-    const value = inst.inputs?.[key] ?? spec.default
+  const values = { ...manifestInputDefaults(manifest), ...inst.inputs }
+  const parts = Object.entries(inputs).flatMap(([key, spec]) => {
+    if (spec.kind === 'bool' || !inputApplies(manifest, key, values)) return []
+    const value = values[key] ?? spec.default
     if (spec.kind === 'enum' && spec.options) {
       const label = spec.options[value] ?? String(value)
-      return label.charAt(0).toUpperCase() + label.slice(1)
+      return [label.charAt(0).toUpperCase() + label.slice(1)]
     }
-    return String(value)
+    return [String(value)]
   })
   return parts.length ? `(${parts.join(', ')})` : ''
+}
+
+/** Whether an instance draws on a timeframe: on every one unless its overrides narrow them, and on
+ *  every one when the timeframe cannot be read. */
+export function indicatorDrawsOn(instance: IndicatorInstance, timeframe: string): boolean {
+  const visibility = instance.overrides?.visibility
+  return !visibility || visibleAt(visibility, parseTimeframeContext(timeframe))
+}
+
+/** Where a viewer's standing choices for each definition are kept: the inputs and overrides a new
+ *  instance of that definition opens with. */
+export interface IndicatorDefaults {
+  read(definitionId: string): { inputs?: Record<string, number>; overrides?: IndicatorOverrides } | null
+  write(definitionId: string, value: { inputs?: Record<string, number>; overrides?: IndicatorOverrides }): void
 }
 
 /** The color a saved per-type default pinned on the primary plot, if it pinned one. A pinned color
@@ -168,6 +186,9 @@ export interface IndicatorsPlane {
   remove(id: string): void
   /** Patch one instance's inputs. */
   patchInputs(id: string, patch: Record<string, number>): void
+  /** Draw an instance as an edit session holds it, in place of the one the chart holds, or as the
+   *  chart holds it again with null. The chart's content keeps the instance it holds. */
+  preview(id: string, instance: IndicatorInstance | null): void
   /** The ids whose instance records say hidden. */
   hidden(): readonly string[]
   /** Apply the stored opening eye state to the named mount-time instances. An instance already
@@ -237,6 +258,12 @@ export interface IndicatorsDeps {
   /** The index of the pane the main series stands in, where overlays are drawn; the first when
    *  absent. A viewer may move it below an indicator's pane. */
   mainPane?(): number
+  /** The chart's timeframe, which decides the instances that draw. Every instance draws when
+   *  absent. */
+  timeframe?(): string
+  /** The viewer's saved defaults per definition, which an instance added with no inputs and no
+   *  overrides of its own opens with. */
+  defaults?: IndicatorDefaults
 }
 
 /** Definitions that a saved record may resolve against. Built-ins are always available; host
@@ -261,6 +288,8 @@ export function createIndicatorCatalog(): IndicatorCatalog {
 
 export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
   let instances: IndicatorInstance[] = []
+  /** The instances an edit session draws in place of the ones the chart holds, by id. */
+  const previews = new Map<string, IndicatorInstance>()
   /** The eye's blanket over every indicator: view state, never persisted. */
   let allHidden = false
   let chips: LegendChip[] = []
@@ -289,6 +318,16 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     const held = instances.find((i) => i.id === instance.id)?.color
     if (held !== undefined) return { ...instance, color: held }
     return { ...instance, color: INDICATOR_PALETTE[paletteCursor++ % INDICATOR_PALETTE.length]! }
+  }
+
+  /** An instance that states no inputs and no overrides opens with the viewer's saved default for
+   *  its definition, where one is saved. */
+  const withSavedDefault = (instance: IndicatorInstance): IndicatorInstance => {
+    const id = instance.definition.manifest.id
+    if (instance.inputs !== undefined || instance.overrides !== undefined || !id) return instance
+    const saved = deps.defaults?.read(id)
+    if (!saved) return instance
+    return { ...instance, ...(saved.inputs ? { inputs: saved.inputs } : {}), ...(saved.overrides ? { overrides: saved.overrides } : {}) }
   }
 
   const mainPane = (): number => deps.mainPane?.() ?? 0
@@ -369,6 +408,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     // that definition resolves when it is restored.
     deps.catalog.carry(next)
     instances = [...next]
+    for (const id of [...previews.keys()]) if (!instances.some((instance) => instance.id === id)) previews.delete(id)
     renderer.prune(new Set(instances.map((instance) => instance.id)))
     recompute()
     const afterIds = new Set(instances.map((instance) => instance.id))
@@ -395,7 +435,9 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     const paneOfMap = renderer.paneOf()
     const main = mainPane()
     const formatter = deps.formatter()
-    for (const inst of instances) {
+    const timeframe = deps.timeframe?.() ?? ''
+    for (const held of instances) {
+      const inst = previews.get(held.id) ?? held
       const def = inst.definition
       const title = indicatorTitleOf(inst, deps.i18n.t)
       const placement = def.manifest.pane === 'pane' ? ('pane' as const) : ('overlay' as const)
@@ -420,6 +462,14 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
         commandedIds.delete(inst.id)
         renderer.remove(inst.id)
         next.push({ ...base, value: null, hidden: true })
+        continue
+      }
+      // An instance kept off this timeframe draws nothing and keeps its row, so its settings stay
+      // in reach.
+      if (!indicatorDrawsOn(inst, timeframe)) {
+        commandedIds.delete(inst.id)
+        renderer.remove(inst.id)
+        next.push({ ...base, value: null, hidden: false })
         continue
       }
       if (bars.length === 0) {
@@ -477,8 +527,9 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       deps.catalog.carry([instance])
       if (!offered(instance) || !permitted(instance)) return false
       // The ONE add path: the package picker, a host's `indicators.add` and an automation adapter
-      // all land here, so all three deal from the same palette in the same order.
-      const minted = withMintedColor(instance)
+      // all land here, so all three deal from the same palette in the same order, and an instance
+      // that states nothing of its own opens with the viewer's saved default for its definition.
+      const minted = withMintedColor(withSavedDefault(instance))
       instances = [...instances.filter((i) => i.id !== minted.id), minted]
       recompute()
       deps.onEvent({ kind: 'added', id: instance.id })
@@ -486,6 +537,7 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
     },
     remove(id) {
       if (!instances.some((i) => i.id === id)) return
+      previews.delete(id)
       instances = instances.filter((i) => i.id !== id)
       renderer.prune(new Set(instances.map((i) => i.id)))
       recompute()
@@ -495,6 +547,11 @@ export function attachIndicatorsPlane(deps: IndicatorsDeps): IndicatorsPlane {
       instances = instances.map((i) => (i.id === id ? { ...i, inputs: { ...i.inputs, ...patch } } : i))
       recompute()
       deps.onEvent({ kind: 'changed', id })
+    },
+    preview(id, instance) {
+      if (instance) previews.set(id, instance)
+      else if (!previews.delete(id)) return
+      recompute()
     },
     hidden: () => instances.filter((instance) => indicatorHidden(instance.overrides)).map((instance) => instance.id),
     setHidden(ids) {

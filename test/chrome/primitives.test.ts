@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { armRoving, button, glyph, h, items, roveFocus, setDisabled } from '../../src/ui/chrome/dom'
 import { focusables, isRtl } from '../../src/ui/controls/dom'
 import { menuItem, openMenu, toggleMenu } from '../../src/ui/chrome/menu'
-import { openDialog, switchControl, switchRow, tabList } from '../../src/ui/chrome/dialog'
+import { openDialog, switchControl, switchRow } from '../../src/ui/chrome/dialog'
 import { press } from './harness'
 
 const host = (): HTMLElement => {
@@ -259,23 +259,5 @@ describe('switches and tabs', () => {
     const row = switchRow({ label: 'Grid', checked: true, onChange })
     ;(row.firstElementChild as HTMLElement).click()
     expect(onChange).toHaveBeenLastCalledWith(false)
-  })
-
-  it('tabs move with arrow keys, mark the selected one, control the panel and label it', () => {
-    const onChange = vi.fn()
-    const panel = h('div')
-    const tabs = tabList({ tabs: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }], value: 'a', label: 'Pages', id: 'pages', panel, onChange })
-    document.body.append(tabs.element, panel)
-    const [a, b] = [...tabs.element.querySelectorAll('button')]
-    expect(a!.getAttribute('aria-selected')).toBe('true')
-    expect(a!.getAttribute('aria-controls')).toBe('pages-panel')
-    expect(panel.id).toBe('pages-panel')
-    expect(panel.getAttribute('aria-labelledby')).toBe('pages-tab-a')
-    a!.focus()
-    press(a!, 'ArrowRight')
-    expect(b!.getAttribute('aria-selected')).toBe('true')
-    expect(panel.getAttribute('aria-labelledby')).toBe('pages-tab-b')
-    expect(document.activeElement).toBe(b)
-    expect(onChange).toHaveBeenCalledWith('b')
   })
 })

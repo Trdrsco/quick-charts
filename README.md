@@ -835,8 +835,7 @@ const picker = BUILT_IN_INDICATORS.map((definition) => ({
 ```
 
 An instance's `inputs` override the manifest defaults by key (`{ period: 21, source: 5 }` for an
-RSI over HLC3). A built-in's `plotTitles` and `inputTitles` label its plots and inputs in a
-settings surface.
+RSI over HLC3). A built-in's `plotTitles` and `inputTitles` are its manifest's titles by key.
 
 ### Your own definitions
 
@@ -864,6 +863,46 @@ export const smaDefinition: IndicatorDefinition = {
   },
 }
 ```
+
+### How the settings dialog lays a definition out
+
+The settings dialog reads everything it shows from the manifest, so a host definition lays out by
+the same rules as a built-in:
+
+- **Inputs** lists every input in declaration order. A number is a field with steppers bounded by
+  `min`, `max` and `step`, an `enum` is a list of its `options`, and a `bool` (held as 1 or 0) is
+  a checkbox row. `title` labels it, else its key read as words (`fastLength` reads "Fast
+  Length"). Inputs that name the same `group` in a run stand under one heading. `enabledWhen`
+  names another input and the values under which this one applies, and it stands disabled under
+  the others.
+- **Style** shows every plot, then every level, then every fill, each behind the checkbox that
+  shows it, labelled by its `title`: a line with its color, thickness and style, a histogram drawn
+  `up` and `down` with a row for each color, a level with its color, style and value, and a fill
+  with its color. The precision and the values the price scale and the status line write follow.
+- **Visibility** holds the timeframes the instance draws on.
+
+```ts
+import type { IndicatorDefinition } from '@trdrs/quickcharts'
+
+const manifest = {
+  id: 'trend-filter',
+  pane: 'pane',
+  inputs: {
+    length: { kind: 'int', default: 20, min: 1, title: 'Length' },
+    smoothing: { kind: 'enum', default: 0, options: ['None', 'SMA', 'EMA'], title: 'Type', group: 'Smoothing' },
+    smoothingLength: { kind: 'int', default: 9, min: 1, title: 'Length', group: 'Smoothing', enabledWhen: { input: 'smoothing', values: [1, 2] } },
+    showZero: { kind: 'bool', default: 1, title: 'Show zero line' },
+  },
+  plots: { trend: { kind: 'line', lineWidth: 2, title: 'Trend' } },
+  levels: { zero: { price: 0, lineStyle: 'dashed', title: 'Zero Line' } },
+} satisfies IndicatorDefinition['manifest']
+```
+
+Every edit previews on the chart, and Ok commits the session as one `chart.indicators.update`. Its
+Defaults menu resets an instance to the definition's own settings, or keeps its inputs and look in
+the chart's storage as the ones the definition's next instance opens with, when that instance is
+added with no inputs and no overrides of its own. `ui.indicatorSettings: false` turns the dialog
+off, and the legend's gear then opens the inputs-only editor, the dialog's Inputs page in a popover.
 
 Wire instances through `ChartWidgetOptions.indicators`:
 

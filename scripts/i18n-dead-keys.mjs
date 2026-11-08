@@ -43,7 +43,13 @@ for (const s of surfaces) {
   for (const k of Object.keys(Object.values(mod)[0])) keys.push([s, k])
 }
 
-const dead = keys.filter(([, k]) => !CFG.dynamic.some((p) => k.startsWith(p)) && !corpus.includes(`'${k}'`) && !corpus.includes(`"${k}"`))
+// A key the major's baseline holds stays in the catalog until the next major, which a dictionary of
+// your own may still carry, so one nobody reads is listed as kept rather than refused.
+const baseline = new Set(JSON.parse(readFileSync(resolve(ROOT, 'src/i18n/baseline.json'), 'utf8')).keys)
+const unread = keys.filter(([, k]) => !CFG.dynamic.some((p) => k.startsWith(p)) && !corpus.includes(`'${k}'`) && !corpus.includes(`"${k}"`))
+const kept = unread.filter(([, k]) => baseline.has(k))
+const dead = unread.filter(([, k]) => !baseline.has(k))
+for (const [s, k] of kept) console.log(`${s}: ${k} (kept until the next major)`)
 for (const [s, k] of dead) console.log(`${s}: ${k}`)
-console.log(`\n${dead.length} of ${keys.length} keys have no literal reference in ${files.length} source files`)
+console.log(`\n${dead.length} of ${keys.length} keys have no literal reference in ${files.length} source files${kept.length ? `, and ${kept.length} more the baseline keeps until the next major` : ''}`)
 process.exit(dead.length ? 1 : 0)

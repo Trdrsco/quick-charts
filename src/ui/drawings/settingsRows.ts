@@ -22,7 +22,7 @@ import {
   type DrawingAssetPort,
 } from '../../drawings/index'
 import { button, el } from './dom'
-import { checkbox, checkRow, dropdown, fullRow, groupGap, lineEndButton, multiDropdown, numberInput, openPopover, row, sectionTitle, swatchButton, toggleRow, visibilityRangeRow } from './fields'
+import { checkbox, checkRow, dropdown, fullRow, groupGap, lineEndButton, multiDropdown, numberInput, openPopover, row, sectionTitle, swatchButton, timeframeVisibilityRows, toggleRow } from './fields'
 import { mountGlyphPicker } from './glyphPicker'
 import { bundledGlyphSource } from '../../drawings/emoji'
 import { firstImageFile, humanSize } from './imagePicker'
@@ -162,14 +162,6 @@ const ACROSS_LABEL: Record<string, ChartMessageKey> = { top: 'drawing.top', midd
 /** A box's label stands above it, inside it or below it. */
 const BOX_ACROSS_LABEL: Record<string, ChartMessageKey> = { top: 'drawing.top', middle: 'drawing.inside', bottom: 'drawing.bottom' }
 const ORIENTATION_LABEL: Record<string, ChartMessageKey> = { horizontal: 'drawing.horizontal', vertical: 'drawing.vertical' }
-const VISIBILITY_ROWS: readonly { key: keyof TimeframeVisibility; label: ChartMessageKey; max: number }[] = [
-  { key: 'seconds', label: 'drawing.unitSeconds', max: 59 },
-  { key: 'minutes', label: 'drawing.unitMinutes', max: 59 },
-  { key: 'hours', label: 'drawing.unitHours', max: 24 },
-  { key: 'days', label: 'drawing.unitDays', max: 366 },
-  { key: 'weeks', label: 'drawing.unitWeeks', max: 52 },
-  { key: 'months', label: 'drawing.unitMonths', max: 12 },
-]
 
 type FibLevel = { value: number; visible: boolean; color?: string; text?: string }
 
@@ -1468,19 +1460,8 @@ function angleRow(ctx: RowsContext): HTMLElement {
   )
 }
 
-/** The Visibility page: the ticks switch and one range row per bucket. A drawing switched off on
- *  every timeframe would be gone for good (it paints nothing and takes no hit), so the last enabled
- *  timeframe is pinned on. */
+/** The Visibility page. A drawing switched off on every timeframe would be gone for good (it paints
+ *  nothing and takes no hit), so the last enabled timeframe is pinned on. */
 export function visibilityRows(ctx: RowsContext): HTMLElement[] {
-  const { t, drawing } = ctx
-  const visibility = drawing.options.visibility ?? DEFAULT_VISIBILITY
-  const enabled = (visibility.ticks ? 1 : 0) + VISIBILITY_ROWS.reduce((n, r) => n + ((visibility[r.key] as { on: boolean }).on ? 1 : 0), 0)
-  const pinned = (on: boolean): boolean => enabled === 1 && on
-  const out: HTMLElement[] = [toggleRow(t('drawing.unitTicks'), visibility.ticks, (v) => ctx.patchVisibility({ ticks: v }), pinned(visibility.ticks))]
-  for (const { key, label: text, max } of VISIBILITY_ROWS) {
-    const range = visibility[key] as { on: boolean; from: number; to: number }
-    out.push(visibilityRangeRow(t, ctx.icons, { label: t(text), range, max, disabled: pinned(range.on), onChange: (next) => ctx.patchVisibility({ [key]: next }) }))
-  }
-  if (enabled === 1) out.push(el('span', { class: 'qc-muted qc-drawing-note', text: t('drawing.timeframePinnedNote') }))
-  return out
+  return timeframeVisibilityRows(ctx.t, ctx.icons, ctx.drawing.options.visibility ?? DEFAULT_VISIBILITY, (patch) => ctx.patchVisibility(patch), ctx.t('drawing.timeframePinnedNote'))
 }

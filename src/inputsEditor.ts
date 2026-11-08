@@ -1,93 +1,16 @@
-// The indicator inputs editor: one numeric or enum field per declared manifest input, read back as
-// a validated patch. Two surfaces build on it. `buildInputFields` is the field set alone, which the
-// chrome's indicator settings dialog renders on its Inputs tab; `openInputsEditor` is the compact
-// popover the legend gear opens when no settings dialog serves the chart, applied as a whole on
-// Enter or Apply, and the legend opens it over the widget's own resolver through
-// `mountInputsEditor`. Same chrome discipline as every chart editor: package-owned vanilla DOM in the
-// chrome subtree, self-removing, pointer events stopped, painted through `.qc-*` recipes. The
-// popover's position is its one inline write, because the gear it hangs from is wherever the
-// legend put it. Pre-render: the caller receives a validated input patch and the chart owns the
-// recompute.
+// The indicator inputs editor: the compact popover the legend gear opens when no settings dialog
+// serves the chart, holding the Inputs page of the settings dialog (the same rows, laid out by the
+// same rules from the manifest) and applied as a whole on Enter or Apply. The legend opens it over
+// the widget's own resolver through `mountInputsEditor`. Same chrome discipline as every chart
+// editor: package-owned vanilla DOM in the chrome subtree, self-removing, pointer events stopped,
+// painted through `.qc-*` recipes. The popover's position is its one inline write, because the gear
+// it hangs from is wherever the legend put it. Pre-render: the caller receives a validated input
+// patch and the chart owns the recompute.
 import { createChartI18n, readingDirection, type ChartI18n } from './i18n'
-import type { ManifestInput } from './indicatorModel'
-import { selectField } from './ui/controls/select'
+import { manifestInputDefaults, type IndicatorManifest, type ManifestInput } from './indicatorModel'
 import { createIconDiagnostics } from './ui/icons/draw'
 import { createIconResolver, type IconResolver } from './ui/icons/resolver'
-
-/** A rendered field set: the rows to mount, the validated patch they hold, and the first field. */
-export interface InputFields {
-  rows: readonly HTMLElement[]
-  /** Every field's value, clamped to its declaration. An unparseable field is left out, so it
-   *  keeps its previous value. */
-  read(): Record<string, number>
-  first(): HTMLElement | null
-}
-
-/** A field's name, from the manifest's own input key ('smoothingLength' reads "Smoothing Length")
- *  unless the caller supplies a display title. Names richer than this are a definition's own. */
-const titleOf = (key: string, titles?: Readonly<Record<string, string>>): string =>
-  titles?.[key] ?? key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, (c) => c.toUpperCase())
-
-/** One row per declared input: a number field bounded by the declaration, or a select over an
- *  enum's options with its chevron drawn through `icons`. Every field is labeled by its row, so a
- *  screen reader names it. */
-export function buildInputFields(
-  icons: IconResolver,
-  inputs: Readonly<Record<string, ManifestInput>>,
-  current: Readonly<Record<string, number>>,
-  titles?: Readonly<Record<string, string>>,
-): InputFields {
-  const fields = new Map<string, HTMLInputElement | HTMLSelectElement>()
-  const rows: HTMLElement[] = []
-  for (const [key, spec] of Object.entries(inputs)) {
-    const row = document.createElement('label')
-    row.className = 'qc-inputs-row'
-    const name = document.createElement('span')
-    name.textContent = titleOf(key, titles)
-    row.appendChild(name)
-    if (spec.kind === 'enum') {
-      const select = document.createElement('select')
-      select.className = 'qc-field qc-inputs-select'
-      ;(spec.options ?? []).forEach((label, i) => {
-        const o = document.createElement('option')
-        o.value = String(i)
-        o.textContent = label
-        select.appendChild(o)
-      })
-      select.value = String(current[key] ?? spec.default)
-      fields.set(key, select)
-      row.appendChild(selectField(select, icons))
-    } else {
-      const input = document.createElement('input')
-      input.type = 'number'
-      input.className = 'qc-field qc-inputs-field'
-      if (spec.min !== undefined) input.min = String(spec.min)
-      if (spec.max !== undefined) input.max = String(spec.max)
-      input.step = spec.kind === 'int' ? '1' : 'any'
-      input.value = String(current[key] ?? spec.default)
-      fields.set(key, input)
-      row.appendChild(input)
-    }
-    rows.push(row)
-  }
-  return {
-    rows,
-    read() {
-      const patch: Record<string, number> = {}
-      for (const [key, field] of fields) {
-        const spec = inputs[key]!
-        let value = Number(field.value)
-        if (!Number.isFinite(value)) continue
-        if (spec.kind === 'int' || spec.kind === 'enum') value = Math.round(value)
-        if (spec.min !== undefined) value = Math.max(spec.min, value)
-        if (spec.max !== undefined) value = Math.min(spec.max, value)
-        patch[key] = value
-      }
-      return patch
-    },
-    first: () => fields.values().next().value ?? null,
-  }
-}
+import { inputRows } from './ui/indicators/rows'
 
 /** The compact editor beside `rect` inside `container`, its glyphs drawn from the chart's own
  *  artwork. */
@@ -98,7 +21,7 @@ export function openInputsEditor(
   current: Readonly<Record<string, number>>,
   onApply: (patch: Record<string, number>) => void,
   /** The chart's language: the two actions re-label if it changes while the editor is open. A
-   *  field's name and an enum's options are the manifest's own vocabulary and are not translated. */
+   *  field's name and an enum's options are the manifest's own words and are not translated. */
   strings: ChartI18n = createChartI18n(),
 ): void {
   const icons = createIconResolver({ document: container.ownerDocument, direction: () => readingDirection(strings), diagnostics: createIconDiagnostics() })
@@ -125,15 +48,35 @@ export function mountInputsEditor(
   el.style.top = `${Math.max(4, rect.y - host.top + rect.h + 4)}px`
   for (const type of ['pointerdown', 'pointerup', 'pointermove'] as const) el.addEventListener(type, (e) => e.stopPropagation())
 
+  const manifest: IndicatorManifest = { pane: 'overlay', plots: {}, inputs }
+  let values: Record<string, number> = { ...manifestInputDefaults(manifest), ...current }
+  const page = document.createElement('div')
+  page.className = 'qc-drawing-page qc-inputs-page'
+  page.dataset.tab = 'inputs'
+  const render = (): void => {
+    page.replaceChildren(
+      ...inputRows({
+        t: strings.t,
+        icons,
+        box: container,
+        manifest,
+        values,
+        onInput: (key, value) => {
+          values = { ...values, [key]: value }
+          render()
+        },
+      }),
+    )
+  }
+  render()
+  el.appendChild(page)
+
   const dismiss = (): void => {
     unsubscribe()
     el.remove()
   }
-  const fields = buildInputFields(icons, inputs, current)
-  for (const row of fields.rows) el.appendChild(row)
-
   const apply = (): void => {
-    onApply(fields.read())
+    onApply(Object.fromEntries(Object.keys(inputs).map((key) => [key, values[key]!])))
     dismiss()
   }
 
@@ -160,10 +103,13 @@ export function mountInputsEditor(
 
   el.addEventListener('keydown', (e) => {
     e.stopPropagation()
-    if (e.key === 'Enter') apply()
-    else if (e.key === 'Escape') dismiss()
+    if (e.key === 'Enter') {
+      // A field takes what it holds before the whole set applies.
+      if (e.target instanceof HTMLInputElement && e.target.type !== 'checkbox') e.target.dispatchEvent(new Event('change'))
+      apply()
+    } else if (e.key === 'Escape') dismiss()
   })
 
   container.appendChild(el)
-  fields.first()?.focus?.()
+  page.querySelector<HTMLElement>('input.qc-field:not(:disabled), button:not(:disabled)')?.focus?.()
 }

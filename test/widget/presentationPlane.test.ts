@@ -214,8 +214,8 @@ describe('a hidden dialog closes its own door and nothing else', () => {
   })
 
   it.each([
-    { hidden: false, opens: '.qc-settings-dialog', not: '.qc-inputs' },
-    { hidden: true, opens: '.qc-inputs', not: '.qc-settings-dialog' },
+    { hidden: false, opens: '.qc-indicator-settings-dialog', not: '.qc-inputs' },
+    { hidden: true, opens: '.qc-inputs', not: '.qc-indicator-settings-dialog' },
   ])('opens $opens from the legend gear with the settings dialog hidden=$hidden', async ({ hidden, opens, not }) => {
     const { widget, container } = await mount(hidden ? { ui: { indicatorSettings: false } } : {})
     const sma = BUILT_IN_INDICATORS.find((d) => d.id === 'sma')!

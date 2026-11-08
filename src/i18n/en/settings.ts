@@ -181,4 +181,20 @@ export const settings = {
   'settings.labelsOnPriceScale': 'Labels on price scale',
   /** The whole instance's visibility, on the Visibility tab. */
   'settings.showIndicator': 'Show this indicator',
+  /** The two colors of a plot drawn in two: its rising bars, and its falling bars. */
+  'settings.growing': 'Growing',
+  'settings.falling': 'Falling',
+  /** The Style page's two sections: what the indicator writes on the price scale and in the status
+   *  line, and the inputs the status line writes after its name. */
+  'settings.outputValues': 'Output values',
+  'settings.inputValues': 'Input values',
+  'settings.valuesInStatusLine': 'Values in status line',
+  'settings.inputsInStatusLine': 'Inputs in status line',
+  /** The footer's menu: put back the indicator's own settings, or keep these as the settings its
+   *  next copies start from. */
+  'settings.defaults': 'Defaults',
+  'settings.resetSettings': 'Reset settings',
+  'settings.saveAsDefault': 'Save as default',
+  /** Under the Visibility page while one timeframe is left on. */
+  'settings.indicatorPinnedNote': 'An indicator stays on at least one timeframe, so it can always be reached again.',
 } as const

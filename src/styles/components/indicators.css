@@ -386,34 +386,33 @@
   padding-block: 8px;
 }
 
-[data-qc-theme] .qc-settings-dialog {
-  max-height: min(80vh, 620px);
+/* THE INDICATOR SETTINGS. The drawing dialog's frame and fields, with the measures an indicator's
+ * pages keep: a checkbox row stands 34px; the Inputs page sets its fields in a column at the page's
+ * end, as wide as the widest of them, and a group's heading keeps 9px above and below it; one color
+ * of a plot drawn in several stands in a 42px row, and its last color keeps 8px after it. */
+[data-qc-theme] .qc-indicator-settings-dialog .qc-drawing-page > .qc-drawing-toggle,
+[data-qc-theme] .qc-inputs-page > .qc-drawing-toggle {
+  min-height: 34px;
 }
 
-[data-qc-theme] .qc-settings-page {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding-top: 6px;
+[data-qc-theme] .qc-indicator-settings-dialog .qc-drawing-page[data-tab='inputs'],
+[data-qc-theme] .qc-inputs-page {
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
-[data-qc-theme] .qc-settings-page .qc-switch-row,
-[data-qc-theme] .qc-settings-page .qc-field-row {
-  padding-inline: 0;
+[data-qc-theme] .qc-indicator-settings-dialog .qc-drawing-page[data-tab='inputs'] > .qc-drawing-section,
+[data-qc-theme] .qc-inputs-page > .qc-drawing-section {
+  margin-block: 9px;
 }
 
-/* A row that holds fields stands 42px, the drawing settings' row: the chart's 34px field box with
- * room above and below it. */
-[data-qc-theme] .qc-settings-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+[data-qc-theme] .qc-drawing-page > .qc-indicator-color-row > .qc-drawing-row-label,
+[data-qc-theme] .qc-drawing-page > .qc-indicator-color-row > .qc-drawing-row-controls {
   min-height: 42px;
+  padding-block: 4px;
 }
 
-[data-qc-theme] .qc-settings-page .qc-field-row,
-[data-qc-theme] .qc-settings-page .qc-inputs-row {
-  min-height: 42px;
+[data-qc-theme] .qc-indicator-color-gap {
+  height: 8px;
 }
 
 /* THE PICKER ON A NARROW SCREEN. A 230px rail beside a table of five columns leaves the name, the one

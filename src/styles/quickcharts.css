@@ -1176,21 +1176,9 @@
   pointer-events: auto;
 }
 
-[data-qc-theme] .qc-inputs-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-/* The fields are the chart's own 34px boxes, so an input reads the same here as in the settings
- * dialog: a number at the drawing settings' middle width, and a select no narrower. */
-[data-qc-theme] .qc-inputs-field {
-  width: 84px;
-}
-
-[data-qc-theme] .qc-inputs-select {
-  min-width: 84px;
+/* The rows are the settings dialog's Inputs page, on the popover's own edges. */
+[data-qc-theme] .qc-inputs-page {
+  padding: 0 4px;
 }
 
 [data-qc-theme] .qc-inputs-actions {

@@ -13,9 +13,9 @@
 // indicator editors mount from the same modules; this file composes the drawing's color popover
 // around it: the palette, then the Thickness and Line style rows a stroke adds, hanging under the
 // swatch button that opened it.
-import type { LineStyle } from '../../internal/drawings/index'
+import type { LineStyle, TimeframeVisibility } from '../../internal/drawings/index'
 import { alphaOf, withAlpha } from '../../internal/drawings/index'
-import type { ChartTranslate } from '../../i18n'
+import type { ChartMessageKey, ChartTranslate } from '../../i18n'
 import { colorMemoryFor, createColorPalette, hexOf } from '../controls/color'
 import { focusables, isRtl } from '../controls/dom'
 import { button, dismissOnOutside, el, focusFirst, menuKeys, ownPointer, placePanel, type PanelPlacement } from './dom'
@@ -830,5 +830,31 @@ export function visibilityRangeRow(
   const out = checkRow(props.label, range.on, (v) => props.onChange({ ...range, on: v }), [from, dual, to], !!props.disabled)
   out.querySelector('input')!.setAttribute('aria-label', t('drawing.rowVisible', { name: props.label }))
   out.classList.add('qc-drawing-visibility-row')
+  return out
+}
+
+/** The timeframe units a Visibility page lists after the ticks switch, each with its word and the
+ *  end of its span. */
+const VISIBILITY_UNITS: readonly { key: Exclude<keyof TimeframeVisibility, 'ticks'>; label: ChartMessageKey; max: number }[] = [
+  { key: 'seconds', label: 'drawing.unitSeconds', max: 59 },
+  { key: 'minutes', label: 'drawing.unitMinutes', max: 59 },
+  { key: 'hours', label: 'drawing.unitHours', max: 24 },
+  { key: 'days', label: 'drawing.unitDays', max: 366 },
+  { key: 'weeks', label: 'drawing.unitWeeks', max: 52 },
+  { key: 'months', label: 'drawing.unitMonths', max: 12 },
+]
+
+/** A Visibility page: the ticks switch and one range row per unit. What is switched off on every
+ *  timeframe could never be reached again, so the last timeframe left on stands pinned on, and
+ *  `pinnedNote` says why under the rows. */
+export function timeframeVisibilityRows(t: ChartTranslate, icons: IconResolver, visibility: TimeframeVisibility, patch: (patch: Partial<TimeframeVisibility>) => void, pinnedNote: string): HTMLElement[] {
+  const enabled = (visibility.ticks ? 1 : 0) + VISIBILITY_UNITS.reduce((n, unit) => n + (visibility[unit.key].on ? 1 : 0), 0)
+  const pinned = (on: boolean): boolean => enabled === 1 && on
+  const out: HTMLElement[] = [toggleRow(t('drawing.unitTicks'), visibility.ticks, (v) => patch({ ticks: v }), pinned(visibility.ticks))]
+  for (const { key, label, max } of VISIBILITY_UNITS) {
+    const range = visibility[key]
+    out.push(visibilityRangeRow(t, icons, { label: t(label), range, max, disabled: pinned(range.on), onChange: (next) => patch({ [key]: next }) }))
+  }
+  if (enabled === 1) out.push(el('span', { class: 'qc-muted qc-drawing-note', text: pinnedNote }))
   return out
 }

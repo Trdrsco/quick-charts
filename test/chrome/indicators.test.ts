@@ -1,11 +1,11 @@
 // @vitest-environment happy-dom
 // The indicator picker and the indicator settings dialog: the 23 built-ins grouped and searchable,
 // an add composed into an instance and run as a command, a refused definition disabled and named
-// as such, and the settings dialog's three tabs applied as one update.
+// as such, and the settings dialog laid out from the manifest, previewed live and committed once.
 import { afterEach, describe, expect, it } from 'vitest'
 import { filterDefinitions, freshInstanceId, openIndicatorPicker } from '../../src/ui/chrome/indicatorPicker'
-import { openIndicatorSettings } from '../../src/ui/chrome/indicatorSettings'
-import { readColor } from '../../src/ui/controls/color'
+import { openIndicatorSettings } from '../../src/ui/indicators/settingsDialog'
+import type { IndicatorDefinition, IndicatorInstance } from '../../src/widget/options'
 import { indicatorPermitted } from '../../src/widget/access'
 import { BUILT_IN_INDICATORS } from '../../src/builtInIndicators'
 import { fakeWidget, press } from './harness'
@@ -186,75 +186,154 @@ describe('the picker dialog', () => {
 
 describe('the settings dialog', () => {
   const bollinger = BUILT_IN_INDICATORS.find((d) => d.id === 'bollinger')!
+  const rsi = BUILT_IN_INDICATORS.find((d) => d.id === 'rsi')!
+  const macd = BUILT_IN_INDICATORS.find((d) => d.id === 'macd')!
+  const volume = BUILT_IN_INDICATORS.find((d) => d.id === 'volume')!
 
-  it('opens on Inputs with the manifest fields, and Apply runs one update with the inputs and overrides', () => {
+  /** A widget holding one instance, its dialog open over a session that records what it was lent. */
+  const open = (instance: IndicatorInstance) => {
     const w = fakeWidget()
     cleanup.push(() => w.dispose())
-    w.chart.handle.indicators.add({ id: 'bollinger-1', definition: bollinger, inputs: { period: 20 } })
-    const dialog = openIndicatorSettings({ ...w.ctx, chart: w.chart.handle, instance: w.chart.state.indicators[0]! })
-    expect(dialog.element.getAttribute('aria-label')).toBe('Bollinger Bands settings')
-    const tabs = [...dialog.element.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
-    expect(tabs.map((t) => t.textContent)).toEqual(['Inputs', 'Style', 'Visibility'])
-    const period = dialog.element.querySelector<HTMLInputElement>('input[type="number"]')!
-    period.value = '50'
-    tabs[1]!.click()
-    // Every color here is the package's own control: no surface falls back to the OS dialog.
-    expect(dialog.element.querySelector('input[type="color"]')).toBeNull()
-    expect(dialog.element.querySelectorAll('.qc-drawing-swatch-button').length).toBeGreaterThan(0)
-    const width = dialog.element.querySelector<HTMLSelectElement>('select[aria-label$="line width"]')!
-    width.value = '3'
-    width.dispatchEvent(new Event('change'))
-    tabs[2]!.click()
-    const switches = [...dialog.element.querySelectorAll<HTMLButtonElement>('[role="switch"]')]
-    expect(switches[0]!.getAttribute('aria-label')).toBe('Show this indicator')
-    switches[1]!.click() // hide the first plot
-    dialog.element.querySelector<HTMLButtonElement>('button[aria-label="Apply"]')!.click()
-    expect(w.chart.calls.some((c) => c.startsWith('indicators:set:'))).toBe(true)
-    const updated = w.chart.state.indicators[0]!
-    expect(updated.inputs?.period).toBe(50)
-    const firstPlot = Object.keys(bollinger.manifest.plots)[0]!
-    expect(updated.overrides?.plots?.[firstPlot]).toMatchObject({ lineWidth: 3, visible: false })
-    expect(dialog.open()).toBe(false)
+    w.chart.handle.indicators.add(instance)
+    const previews: (IndicatorInstance | null)[] = []
+    const saved: IndicatorInstance[] = []
+    const session = { preview: (next: IndicatorInstance | null) => previews.push(next), saveDefault: (next: IndicatorInstance) => saved.push(next) }
+    const dialog = openIndicatorSettings({ ...w.ctx, chart: w.chart.handle, instance: w.chart.state.indicators[0]!, session })
+    const box = dialog.element
+    const tab = (name: string) => [...box.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((b) => b.textContent === name)!.click()
+    const rowOf = (label: string) => [...box.querySelectorAll<HTMLElement>('.qc-drawing-row, .qc-drawing-toggle')].find((r) => r.querySelector('.qc-drawing-row-label, span')?.textContent === label)
+    const footer = (label: string) => box.querySelector<HTMLButtonElement>(`.qc-drawing-dialog-footer button[aria-label="${label}"]`)!
+    const sets = () => w.chart.calls.filter((c) => c.startsWith('indicators:set'))
+    return { w, dialog, box, previews, saved, tab, rowOf, footer, sets }
+  }
+
+  /** Type a value into a number field and let it go, as a viewer does. */
+  const type = (field: HTMLInputElement, value: string): void => {
+    field.value = value
+    field.dispatchEvent(new Event('change'))
+  }
+
+  it('names the instance, opens on Inputs, previews every edit and commits once on Ok', () => {
+    const { box, previews, tab, footer, sets, w } = open({ id: 'bollinger-1', definition: bollinger, inputs: { period: 20 } })
+    expect(box.getAttribute('aria-label')).toBe('Bollinger Bands settings')
+    expect(box.querySelector('.qc-drawing-dialog-title')!.textContent).toBe('BB')
+    expect([...box.querySelectorAll('[role="tab"]')].map((t) => t.textContent)).toEqual(['Inputs', 'Style', 'Visibility'])
+    expect([...box.querySelectorAll('.qc-drawing-page .qc-drawing-row-label')].map((l) => l.textContent)).toEqual(['Length', 'StdDev'])
+    type(box.querySelector<HTMLInputElement>('input[aria-label="Length"]')!, '50')
+    expect(previews.at(-1)?.inputs?.period).toBe(50)
+    // An edit previews; the chart's content keeps the instance until Ok.
+    expect(sets()).toEqual([])
+    tab('Style')
+    expect(box.querySelector('input[type="color"]')).toBeNull()
+    expect(box.querySelectorAll('.qc-drawing-swatch-button').length).toBe(4)
+    box.querySelector<HTMLInputElement>('input[aria-label="Upper"]')!.click()
+    expect(previews.at(-1)?.overrides?.plots?.upper?.visible).toBe(false)
+    footer('Ok').click()
+    expect(previews.at(-1)).toBeNull()
+    expect(sets()).toHaveLength(1)
+    expect(w.chart.state.indicators[0]!.inputs?.period).toBe(50)
+    expect(w.chart.state.indicators[0]!.overrides?.plots?.upper).toEqual({ visible: false })
   })
 
-  it('Cancel leaves the instance as it was, and the visibility switch hides through its command', () => {
-    const w = fakeWidget()
-    cleanup.push(() => w.dispose())
-    w.chart.handle.indicators.add({ id: 'bollinger-1', definition: bollinger })
-    const dialog = openIndicatorSettings({ ...w.ctx, chart: w.chart.handle, instance: w.chart.state.indicators[0]! })
-    dialog.element.querySelector<HTMLInputElement>('input[type="number"]')!.value = '9'
-    dialog.element.querySelector<HTMLButtonElement>('button[aria-label="Cancel"]')!.click()
-    expect(w.chart.calls.filter((c) => c.startsWith('indicators:set'))).toEqual([])
-    const again = openIndicatorSettings({ ...w.ctx, chart: w.chart.handle, instance: w.chart.state.indicators[0]! })
-    ;[...again.element.querySelectorAll<HTMLButtonElement>('[role="tab"]')][2]!.click()
-    again.element.querySelector<HTMLButtonElement>('[role="switch"]')!.click()
-    again.element.querySelector<HTMLButtonElement>('button[aria-label="Apply"]')!.click()
-    expect(w.chart.calls).toContain('indicators:hide:bollinger-1')
+  it('Cancel ends the preview and leaves the instance as it was', () => {
+    const { box, previews, footer, sets } = open({ id: 'bollinger-1', definition: bollinger })
+    type(box.querySelector<HTMLInputElement>('input[aria-label="Length"]')!, '9')
+    footer('Cancel').click()
+    expect(previews.at(-1)).toBeNull()
+    expect(sets()).toEqual([])
   })
 
-  it('reads a color and its alpha, and leaves a value it cannot read intact', () => {
-    expect(readColor('#4c98fb')).toEqual({ hex: '#4c98fb', alpha: 1 })
-    expect(readColor('rgb(76, 152, 251)')).toEqual({ hex: '#4c98fb', alpha: 1 })
-    expect(readColor('rgba(76, 152, 251, 0.5)')).toEqual({ hex: '#4c98fb', alpha: 0.5 })
-    expect(readColor('currentColor')).toBeNull()
-    expect(readColor(undefined)).toBeNull()
+  it('sets grouped inputs under their headings and stands an input that does not apply disabled', () => {
+    const { box, rowOf } = open({ id: 'rsi-1', definition: rsi })
+    expect([...box.querySelectorAll('.qc-drawing-page > .qc-drawing-section')].map((h) => h.textContent)).toEqual(['RSI Settings', 'Smoothing'])
+    const length = () => rowOf('Length')!.querySelector<HTMLInputElement>('input')!
+    expect(length().disabled).toBe(true)
+    rowOf('Type')!.querySelector<HTMLButtonElement>('button')!.click()
+    ;[...document.querySelectorAll<HTMLButtonElement>('[role="option"]')].find((o) => o.textContent === 'SMA')!.click()
+    expect(length().disabled).toBe(false)
   })
 
-  it('edits a plot color through the shared palette, and holds the pick for Apply', () => {
-    const w = fakeWidget()
-    cleanup.push(() => w.dispose())
-    w.chart.handle.indicators.add({ id: 'bollinger-1', definition: bollinger })
-    const dialog = openIndicatorSettings({ ...w.ctx, chart: w.chart.handle, instance: w.chart.state.indicators[0]! })
-    ;[...dialog.element.querySelectorAll<HTMLButtonElement>('[role="tab"]')][1]!.click()
-    const control = dialog.element.querySelector<HTMLButtonElement>('.qc-drawing-swatch-button')!
-    control.click()
-    const palette = dialog.element.querySelector<HTMLElement>('.qc-inline-panel .qc-drawing-palette')!
+  it('draws a switch input as a checkbox row, and the input it governs follows it', () => {
+    const { box, previews, rowOf } = open({ id: 'volume-1', definition: volume })
+    const show = box.querySelector<HTMLInputElement>('input[aria-label="Show MA"]')!
+    expect(show.type).toBe('checkbox')
+    expect(rowOf('MA Length')!.querySelector<HTMLInputElement>('input')!.disabled).toBe(true)
+    show.click()
+    expect(previews.at(-1)?.inputs?.showMa).toBe(1)
+    expect(rowOf('MA Length')!.querySelector<HTMLInputElement>('input')!.disabled).toBe(false)
+  })
+
+  it('gives a level its value, a two-color plot its own rows, and closes the page on the output values', () => {
+    const levels = open({ id: 'rsi-1', definition: rsi })
+    levels.tab('Style')
+    const upper = levels.rowOf('RSI Upper Band')!
+    expect(upper.querySelectorAll('.qc-drawing-swatch-button')).toHaveLength(1)
+    type(upper.querySelector<HTMLInputElement>('input[type="number"]')!, '75')
+    expect(levels.previews.at(-1)?.overrides?.levels?.upper?.price).toBe(75)
+    expect([...levels.box.querySelectorAll('.qc-drawing-page > .qc-drawing-section')].map((h) => h.textContent)).toEqual(['Output values', 'Input values'])
+    expect(levels.box.querySelector('input[aria-label="Values in status line"]')).not.toBeNull()
+    expect(levels.box.querySelector('input[aria-label="Inputs in status line"]')).not.toBeNull()
+
+    const histogram = open({ id: 'macd-1', definition: macd })
+    histogram.tab('Style')
+    expect(histogram.box.querySelectorAll('.qc-indicator-color-row')).toHaveLength(2)
+    expect([...histogram.box.querySelectorAll('.qc-indicator-color-row .qc-drawing-row-label')].map((l) => l.textContent)).toEqual(['Growing', 'Falling'])
+  })
+
+  it('edits a plot color through the shared palette', () => {
+    const { box, previews, tab, footer, w } = open({ id: 'bollinger-1', definition: bollinger })
+    tab('Style')
+    box.querySelector<HTMLButtonElement>('.qc-drawing-swatch-button')!.click()
+    const palette = document.querySelector<HTMLElement>('.qc-drawing-palette')!
     expect(palette.querySelectorAll('.qc-drawing-swatch:not(.qc-drawing-swatch-plus)')).toHaveLength(80)
     palette.querySelector<HTMLButtonElement>('[aria-label="Color #f23645"]')!.click()
-    // The pick is a draft: the dialog reaches the chart only on Apply.
-    expect(w.chart.calls.filter((c) => c.startsWith('indicators:set'))).toEqual([])
-    dialog.element.querySelector<HTMLButtonElement>('button[aria-label="Apply"]')!.click()
-    const firstPlot = Object.keys(bollinger.manifest.plots)[0]!
-    expect(w.chart.state.indicators[0]!.overrides?.plots?.[firstPlot]?.color).toBe('#f23645')
+    expect(previews.at(-1)?.overrides?.plots?.upper?.color).toBe('#f23645')
+    footer('Ok').click()
+    expect(w.chart.state.indicators[0]!.overrides?.plots?.upper?.color).toBe('#f23645')
+  })
+
+  it('keeps an instance off the timeframes its Visibility page turns off', () => {
+    const { box, previews, tab } = open({ id: 'bollinger-1', definition: bollinger })
+    tab('Visibility')
+    expect(box.querySelectorAll('.qc-drawing-visibility-row')).toHaveLength(6)
+    box.querySelector<HTMLInputElement>('input[aria-label="Hours visible"]')!.click()
+    expect(previews.at(-1)?.overrides?.visibility?.hours.on).toBe(false)
+  })
+
+  it('resets to the definition\'s own settings and saves the draft as the default', () => {
+    const { box, previews, saved } = open({ id: 'bollinger-1', definition: bollinger, inputs: { period: 40 }, overrides: { precision: 2 } })
+    const menu = () => {
+      box.querySelector<HTMLButtonElement>('.qc-drawing-template-button')!.click()
+      return [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+    }
+    expect(menu().map((item) => item.textContent)).toEqual(['Reset settings', 'Save as default'])
+    menu()
+    menu()[1]!.click()
+    expect(saved.at(-1)?.inputs?.period).toBe(40)
+    menu()[0]!.click()
+    expect(previews.at(-1)?.inputs).toBeUndefined()
+    expect(previews.at(-1)?.overrides).toBeUndefined()
+  })
+
+  it('lays out a host definition by the same rules, its keys read as words where it gives no title', () => {
+    const definition: IndicatorDefinition = {
+      manifest: {
+        id: 'host-trend',
+        pane: 'pane',
+        inputs: {
+          fastLength: { kind: 'int', default: 9, min: 1 },
+          mode: { kind: 'enum', default: 0, options: ['Fast', 'Slow'] },
+          useLog: { kind: 'bool', default: 0, group: 'Calculation' },
+        },
+        plots: { trend: { kind: 'line' } },
+      },
+      compute: (bars) => ({ trend: bars.map((b) => b.c) }),
+    }
+    const { box, tab } = open({ id: 'host-1', definition })
+    expect([...box.querySelectorAll('.qc-drawing-page .qc-drawing-row-label')].map((l) => l.textContent)).toEqual(['Fast Length', 'Mode'])
+    expect(box.querySelector('.qc-drawing-page > .qc-drawing-section')!.textContent).toBe('Calculation')
+    expect(box.querySelector<HTMLInputElement>('input[aria-label="Use Log"]')!.type).toBe('checkbox')
+    tab('Style')
+    expect(box.querySelector<HTMLInputElement>('input[aria-label="Trend"]')).not.toBeNull()
   })
 })

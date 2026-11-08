@@ -134,7 +134,7 @@ describe('the chrome composition', () => {
     const { w, doors, root } = mount()
     doors.openSearch({ mode: 'search', chart: w.chart.handle })
     expect(root.querySelector('[role="dialog"][aria-label="Symbol search"]')).not.toBeNull()
-    expect(doors.openIndicatorSettings(w.chart.handle, 'missing')).toBe(false)
+    expect(doors.openIndicatorSettings(w.chart.handle, 'missing', { preview: () => undefined, saveDefault: () => undefined })).toBe(false)
   })
 
   it('routes committed layout state to only its own chrome and releases that private door', () => {

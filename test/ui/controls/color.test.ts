@@ -1,14 +1,13 @@
 // @vitest-environment happy-dom
-// The one color control, and the palette it paints. The values are pinned: ten greys, ten hues and
+// The color controls, and the palette they paint. The values are pinned: ten greys, ten hues and
 // six stated ramps over them, then the colors this viewer mixed and the plus, and a custom editor
-// with a hex field, a saturation and brightness area and a hue strip. The control reports typed
+// with a hex field, a saturation and brightness area and a hue strip. A control reports typed
 // edits and is updated and destroyed explicitly; it never opens the operating system's own color
 // dialog, and no consumer keeps a second implementation.
 import { afterEach, describe, expect, it } from 'vitest'
 import { createChartI18n } from '../../../src/i18n'
 import {
   colorMemoryFor,
-  createColorControl,
   createColorPalette,
   createCustomColorPicker,
   createOpacitySlider,
@@ -24,7 +23,6 @@ import {
   type ColorMemory,
 } from '../../../src/ui/controls/color'
 import { ownPointer } from '../../../src/ui/drawings/dom'
-import { openInlinePanel } from '../../../src/ui/controls/inlinePanel'
 
 const t = createChartI18n().t
 const host = (): HTMLElement => {
@@ -32,9 +30,6 @@ const host = (): HTMLElement => {
   document.body.appendChild(box)
   return box
 }
-/** A consumer's panel: the control never mounts an overlay itself. */
-const inline = (anchor: HTMLElement, content: HTMLElement, onClosed: () => void): (() => void) => openInlinePanel(anchor, content, anchor, onClosed)
-
 const key = (target: Element, key: string, init: KeyboardEventInit = {}): void => void target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }))
 
 /** A memory the test holds, newest first. */
@@ -391,58 +386,5 @@ describe('the custom editor', () => {
     expect(added).toEqual([])
     editor.element.querySelector<HTMLButtonElement>('.qc-drawing-add')!.click()
     expect(added).toEqual(['#408040'])
-  })
-})
-
-describe('the color control', () => {
-  it('opens one panel, updates its face in place, and destroys what it opened', () => {
-    const box = host()
-    const picks: string[] = []
-    const control = createColorControl(t, { label: 'Up candles', value: '#089981', onPick: (c) => picks.push(c), closeOnPick: true, openPanel: inline })
-    box.appendChild(control.element)
-    expect(control.element.querySelector('input[type="color"]')).toBeNull()
-    expect(control.element.getAttribute('aria-label')).toBe('Up candles')
-    control.element.click()
-    expect(control.element.getAttribute('aria-expanded')).toBe('true')
-    expect(box.querySelectorAll('.qc-inline-panel')).toHaveLength(1)
-    box.querySelector<HTMLButtonElement>('[aria-label="Color #f23645"]')!.click()
-    expect(picks).toEqual(['#f23645'])
-    expect(box.querySelector('.qc-inline-panel')).toBeNull()
-    control.update('#f23645')
-    expect(control.element.querySelector<HTMLElement>('.qc-drawing-well-fill')!.style.getPropertyValue('--qcd-swatch')).toBe('#f23645')
-    control.element.click()
-    control.destroy()
-    expect(box.querySelector('.qc-inline-panel')).toBeNull()
-    expect(control.element.isConnected).toBe(false)
-  })
-
-  it('two controls on one surface stay independent, and Escape closes only the panel', () => {
-    const box = host()
-    const first = createColorControl(t, { label: 'Up', value: '#089981', onPick: () => undefined, openPanel: inline })
-    const second = createColorControl(t, { label: 'Down', value: '#f23645', onPick: () => undefined, openPanel: inline })
-    box.append(first.element, second.element)
-    first.element.click()
-    second.element.click()
-    expect(box.querySelectorAll('.qc-inline-panel')).toHaveLength(2)
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-    // The innermost surface open takes the press; the other panel is untouched.
-    expect(box.querySelectorAll('.qc-inline-panel')).toHaveLength(1)
-    expect(document.activeElement).toBe(second.element)
-    first.destroy()
-    second.destroy()
-  })
-
-  it('keeps an unsupported declaration until a valid pick replaces it', () => {
-    const box = host()
-    const picks: string[] = []
-    const control = createColorControl(t, { label: 'Border', value: 'currentColor', onPick: (c) => picks.push(c), openPanel: inline })
-    box.appendChild(control.element)
-    expect(control.element.querySelector<HTMLElement>('.qc-drawing-well-fill')!.style.getPropertyValue('--qcd-swatch')).toBe('currentColor')
-    control.element.click()
-    // No swatch reads as the current one, because the value is not one the palette holds.
-    expect(box.querySelectorAll('[data-qc-active="true"]')).toHaveLength(0)
-    box.querySelector<HTMLButtonElement>('[aria-label="Color #000000"]')!.click()
-    expect(picks).toEqual(['#000000'])
-    control.destroy()
   })
 })

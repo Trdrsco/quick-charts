@@ -95,7 +95,7 @@ import type { OfferedRanges } from './offeredRanges'
 import { offeredTimezone, offersTimezone, type OfferedTimezones } from './offeredTimezones'
 import type { DrawingDocumentApi } from '../drawings/layer/types'
 import type { DrawingDocumentPort } from '../drawings/layer/documents'
-import { attachIndicatorsPlane, type IndicatorCatalog, type IndicatorsPlane } from './indicators'
+import { attachIndicatorsPlane, withHidden, type IndicatorCatalog, type IndicatorDefaults, type IndicatorsPlane } from './indicators'
 import { attachHistoryPlane, type ChartHistoryApi } from './history'
 import { attachComparePlane, type ChartCompareApi } from './compare'
 import { attachReplayPlane, coerceReplaySpeed, type ChartReplayApi } from './replay'
@@ -118,7 +118,7 @@ import { mountPaneButtons, type PaneButtons } from '../ui/chrome/paneButtons'
 import { attachPaneOps, PANE_MOVE_COMMAND, type PaneMove } from './paneOps'
 import { paneIndexOf, paneTopIn } from '../paneGeometry'
 import { closeOverlays } from '../ui/controls/overlays'
-import { coercePriceAxisPolicy, createSaveLoadApi, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
+import { coercePriceAxisPolicy, createSaveLoadApi, parseIndicatorDefault, serializeIndicatorInstance, type ChartContent, type ChartSaveLoadApi, type ParsedChartContent, type PriceAxisPolicy, type SavedIndicator } from './saveLoad'
 import { registerChartCommands } from './chartCommands'
 import { scaleMenuGroups } from './scaleMenu'
 import { attachCountdown, createCountdownClock, type CountdownLayer } from './countdown'
@@ -481,6 +481,7 @@ const STYLE_KEY = 'quickcharts.style.v1'
 const SCALE_KEY = 'quickcharts.scale.v1'
 const PRICE_AXIS_KEY = 'quickcharts.priceAxis.v1'
 const HIDDEN_KEY = 'quickcharts.indHidden.v1'
+const INDICATOR_DEFAULTS_KEY = 'quickcharts.indicatorDefaults.v1'
 const REPLAY_SPEED_KEY = 'quickcharts.replaySpeed.v1'
 const REPLAY_TIMEFRAME_KEY = 'quickcharts.replayTf.v1'
 const TIMEZONE_KEY = 'quickcharts.timezone.v1'
@@ -992,6 +993,20 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
 
   // ── Planes. Declared in dependency order; every cross-reference is a getter or a callback, so a
   // plane created earlier can still reach one created later by the time it is called.
+  /** The viewer's saved defaults per definition, one record in the chart's storage. */
+  const storedDefaults = (): Record<string, unknown> => {
+    try {
+      const parsed: unknown = JSON.parse(storage.get(INDICATOR_DEFAULTS_KEY) ?? '{}')
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {}
+    } catch {
+      return {}
+    }
+  }
+  const indicatorDefaults: IndicatorDefaults = {
+    read: (definitionId) => parseIndicatorDefault(storedDefaults()[definitionId]),
+    write: (definitionId, value) => storage.set(INDICATOR_DEFAULTS_KEY, JSON.stringify({ ...storedDefaults(), [definitionId]: value })),
+  }
+
   const indicators: IndicatorsPlane = attachIndicatorsPlane({
     chart,
     candleSeries,
@@ -1019,6 +1034,8 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     onEvent: (event) => events.emit('indicator', event),
     catalog: deps.indicatorCatalog,
     mainPane,
+    timeframe: () => tf,
+    defaults: indicatorDefaults,
   })
 
   const session = attachSession({
@@ -1149,7 +1166,15 @@ export function createChartInstance(deps: ChartInstanceDeps): ChartInstance {
     valueShaped: () => valueShaped(style),
     sessionModel: () => session.model(),
     status: (nowSecs) => session.status(nowSecs),
-    openIndicatorSettings: (id) => deps.doors.openIndicatorSettings(handle, id),
+    openIndicatorSettings: (id) =>
+      deps.doors.openIndicatorSettings(handle, id, {
+        preview: (instance) => indicators.preview(id, instance),
+        saveDefault: (instance) => {
+          const definitionId = instance.definition.manifest.id
+          if (!definitionId) return
+          indicatorDefaults.write(definitionId, { ...(instance.inputs ? { inputs: instance.inputs } : {}), ...(instance.overrides ? { overrides: withHidden(instance, false).overrides ?? {} } : {}) })
+        },
+      }),
     legendValues: deps.ui.legendValues,
     paneOps,
     settings: () => eff,
