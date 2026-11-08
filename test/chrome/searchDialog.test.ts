@@ -633,9 +633,11 @@ describe('compare and change-symbol modes', () => {
     expect(es.querySelector('img')).not.toBeNull()
     expect(es.textContent).toBe('')
     expect(painted).toEqual(expect.arrayContaining(['dataSource:feed:24', 'venue:CME:24']))
-    // The mark names its source, for the pointer and for a reader alike.
+    // The source is written before its mark, which names it for the pointer and only shows to a reader.
+    expect(es.previousElementSibling?.classList.contains('qc-search-exchange')).toBe(true)
+    expect(es.previousElementSibling?.textContent).toBe('CME')
     expect(es.title).toBe('CME')
-    expect(es.getAttribute('aria-label')).toBe('CME')
+    expect(es.getAttribute('aria-hidden')).toBe('true')
     // Each rebuild releases every box the last one painted.
     expect(dropped).toContain('feed')
   })
@@ -686,8 +688,9 @@ describe('a grouped row', () => {
     expect(row.querySelector('.qc-search-hit')?.textContent).toBe('BTC')
     expect(row.querySelector('.qc-search-line > .qc-search-name')?.textContent).toBe(rowLabels(LISTED[1]!).description)
     expect(row.querySelector('.qc-search-line > .qc-search-kind')?.textContent).toBe('crypto')
-    // The marks stand where a single row's source does, and that single source mark is gone.
-    expect(row.querySelector('.qc-search-mark[role="img"]')).toBeNull()
+    // The marks stand where a single row's source does, and that row's written source and mark are gone.
+    expect(row.querySelector('.qc-search-exchange')).toBeNull()
+    expect(row.querySelector('.qc-search-mark:not(.qc-search-venue)')).toBeNull()
     const marks = venues(row)
     const names = ['BTCUSDT on Alpha', 'BTCUSD on Beta', 'BTCUSDC on Gamma']
     expect(marks.map((m) => m.getAttribute('aria-label'))).toEqual(names)
@@ -799,7 +802,8 @@ describe('a grouped row', () => {
     for (const row of rows()) {
       expect(row.dataset.symbolGroup).toBeUndefined()
       expect(row.querySelector('.qc-search-venue')).toBeNull()
-      expect(row.querySelector('.qc-search-source > .qc-search-mark[role="img"]')).not.toBeNull()
+      expect(row.querySelector('.qc-search-source > .qc-search-exchange')?.textContent).toBeTruthy()
+      expect(row.querySelector('.qc-search-source > .qc-search-mark')).not.toBeNull()
       expect(row.querySelectorAll('.qc-search-actions button')).toHaveLength(3)
     }
   })

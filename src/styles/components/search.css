@@ -245,12 +245,12 @@
   background: var(--qc-state-hover);
 }
 
-/* A row's own mark: 36px, 8px before the ticker, its monogram at 16px. */
+/* A row's own mark: 36px, 16px before the ticker, its monogram at 16px. */
 [data-qc-theme] .qc-search-row .qc-symbol-badge {
   flex: 0 0 36px;
   width: 36px;
   height: 36px;
-  margin-inline-end: 8px;
+  margin-inline-end: 16px;
   font-size: calc(var(--qc-text-fontSizeBase) + 2px);
   font-weight: 700;
 }
@@ -314,13 +314,24 @@
   border-radius: 3px;
 }
 
-/* The source at the row's end, 24px past the text: its mark. */
+/* The source at the row's end, 24px past the text: its name, then its mark 8px after it. */
 [data-qc-theme] .qc-search-source {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   gap: 8px;
   padding-inline-start: 24px;
+}
+
+/* The source's name, written as the description is and cut short with an ellipsis past 160px. */
+[data-qc-theme] .qc-search-exchange {
+  max-width: 160px;
+  overflow: hidden;
+  color: var(--qc-text-secondary);
+  font-size: calc(var(--qc-text-fontSizeBase) - 2px);
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* The source's mark: a 24px disc that names the source in its tooltip. The package ships no brand

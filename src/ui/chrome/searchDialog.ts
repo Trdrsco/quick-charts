@@ -520,13 +520,14 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           mark.appendChild(deps.icons.glyph(ICONS.check, { size: 18 }))
           option.appendChild(mark)
         } else {
-          // The source at the row's end: where this row's data comes from, as a mark that names it
-          // in its tooltip. In compare it steps aside under the pointer for the three placement
-          // verbs, because a row a viewer is reaching for should offer what to DO rather than
-          // restate what it is.
+          // The source at the row's end: where this row's data comes from, its name and then its
+          // mark. The written name is what a reader hears, so the mark beside it only shows. In compare
+          // it steps aside under the pointer for the three placement verbs, because a row a viewer is
+          // reaching for should offer what to DO rather than restate what it is.
           const source = h('span', { class: 'qc-search-source' })
           if (label.source) {
-            const sourceMark = h('span', { class: 'qc-search-mark', role: 'img', 'aria-label': label.source, title: label.source })
+            source.appendChild(h('span', { class: 'qc-search-exchange' }, label.source))
+            const sourceMark = h('span', { class: 'qc-search-mark', 'aria-hidden': 'true', title: label.source })
             paintSource(r, label.source, sourceMark)
             source.appendChild(sourceMark)
           }
