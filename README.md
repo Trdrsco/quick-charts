@@ -2877,30 +2877,36 @@ void scoped
 ### One instrument on several venues
 
 Rows that share a `group` are one instrument listed on several venues, and the symbol search lists
-them as one row, where the first of them stands as your feed lists them. The row reads by the group's
-text, with the query's match marked as in any row, over the description and kind of that first
-member, and ends in one venue mark per member, as your feed lists them, where a single row shows its
-source. Each mark is painted through `venueMark` at the source mark's size, or through
-`dataSourceMark` for a member that names no venue, and wears the initial without either.
+them as one row, where the first of them stands as your feed lists them. That row reads exactly as
+the first member's own row: its mark, its ticker, its description and kind, and its source's name
+and mark. Between the source's name and its mark stands a pill: `+2` for two other venues, and a
+chevron pointing down while the group is closed and up while it is open.
 
-Pressing the row, or Enter while it is highlighted, picks the first member. Pressing a mark picks
-that member. The member picked is the one recorded in the recents. Each mark is a button named for
-the member's ticker and its venue, "BTCUSDT on Alpha" in the viewer's language, which is its
-tooltip too. The arrow keys move between rows and leave Left and Right to the field's caret, so the
-keyboard reaches a mark with Tab and presses it with Enter or Space.
+Pressing the pill opens the group, and pressing it again closes it. An open group lists its other
+members right under its row, as your feed lists them, each a row of its own without a mark: its
+ticker, its description and kind, and its source's name and mark, its text starting where every
+row's text starts. The group's row and its members stand on one shared panel. Pressing a row, or
+Enter while it is highlighted, picks the market that row names: the first member from the group's
+row, and that member from a member's row. The member picked is the one recorded in the recents.
+
+The pill is a button the keyboard reaches with Tab and presses with Enter or Space, and its
+accessible name says how many other venues it opens, "2 more listings" in the viewer's language,
+with `aria-expanded` saying whether they are showing. The arrow keys move through every row,
+members included, and leave Left and Right to the field's caret. A group stays open while the
+dialog is, and a new query, class or scope closes every group.
 
 The dialog groups every page loaded so far, so a member that arrives on a later page joins the row
 its group already has. A group with one member reads exactly as the row without a group, and a row
 with no `group`, or an empty one, is a row of its own. Recent picks stay a row each, and a grouped
-row still lists every venue when a recent names one of them. The compare dialog lists a row per market,
-grouped or not.
+row still lists every venue when a recent names one of them. The compare dialog lists a row per
+market, grouped or not.
 
 ```ts
 import type { ChartDatafeed, SymbolRow } from '@trdrs/quickcharts'
 
 declare const venuesFeed: ChartDatafeed
 
-// One row in the symbol search, reading BTC, with a mark for Alpha, Beta and Gamma.
+// One row in the symbol search, reading BTCUSDT on Alpha with a +2 pill that opens Beta and Gamma.
 const bitcoin: SymbolRow[] = [
   { symbol: 'ALPHA:BTCUSDT', ticker: 'BTCUSDT', name: 'Bitcoin', exchange: 'Alpha', type: 'crypto', group: 'BTC' },
   { symbol: 'BETA:BTCUSD', ticker: 'BTCUSD', name: 'Bitcoin', exchange: 'Beta', type: 'crypto', group: 'BTC' },
@@ -3033,9 +3039,7 @@ so without this every mark is the neutral monogram it draws itself.
 `venueMark` and `dataSourceMark` paint the source at the end of every symbol search and compare
 row the same way: the venue a market lists on, or the data source where a row names no venue. Each
 receives the name the row writes (`exchange` or `dataSource`), the element and the size, and
-returns a disposer. Without them a source wears its initial on a neutral disc. A search row that
-lists one instrument on several venues (see "One instrument on several venues" under Search) wears
-one such mark for each of its members.
+returns a disposer. Without them a source wears its initial on a neutral disc.
 
 ```ts
 import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'

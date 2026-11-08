@@ -53,7 +53,7 @@ export const KEYS_ADDED_IN_MAJOR = [
   'picker.indicators',
   'picker.kindFilter',
   'picker.technicals',
-  'search.venueMark',
+  'search.moreListings',
 ] as const
 
 export type KeyAddedInMajor = (typeof KEYS_ADDED_IN_MAJOR)[number]

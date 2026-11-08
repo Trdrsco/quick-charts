@@ -12,9 +12,10 @@
 // next page as the highlight nears the end); Enter acts on it, or on the top row before an arrow
 // has moved; Escape closes. The list is a listbox the field controls through
 // `aria-activedescendant`, so a screen reader hears the row under the highlight without focus
-// leaving the field. The pointer only hovers: it never moves the keyboard's row. On a row that lists
-// one instrument on several venues, Enter picks the first member; ArrowLeft and ArrowRight stay the
-// field's caret keys, so each venue mark is a button Tab reaches, pressed with Enter or Space.
+// leaving the field. The pointer only hovers: it never moves the keyboard's row. A row that lists
+// one instrument on several venues picks its first member, and its pill opens the group: the pill is
+// a button Tab reaches, pressed with Enter or Space, since ArrowLeft and ArrowRight stay the field's
+// caret keys. An open group's other members are rows of the list like any other.
 import type { SearchClassNode, SymbolRow } from '../../datafeed'
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import type { CompareEntry, ComparePlacement, CompareSymbol } from '../../compare'
@@ -52,9 +53,9 @@ export interface SearchDialogDeps {
    *  of the class strip. Read once as the surface is built; the compare family offers none. */
   scope?: () => SearchScope | null
   /** The host's mark painters: the same value the legend paints its badge with. A row wears the
-   *  market's, and its source cell the venue's, or the data source's where it names no venue; a
-   *  grouped row wears one such mark for each member. Where the host lent none, a row wears the
-   *  neutral monogram and the source its initial on the package's own disc. */
+   *  market's, and its source cell the venue's, or the data source's where it names no venue.
+   *  Where the host lent none, a row wears the neutral monogram and the source its initial on the
+   *  package's own disc. */
   painters: MarkPainters
   /** Curated quick-add rows for compare mode, above the recents. */
   curated?: readonly CompareSymbol[]
@@ -69,36 +70,50 @@ const PLACEMENTS: readonly { placement: ComparePlacement; label: ChartMessageKey
   { placement: 'new-pane', label: 'search.newPane' },
 ]
 
-/** One row the list can render: a search hit, a recent, a curated pick, or an added comparison
- *  surfaced for removal. */
+/** One row the list can render: a search hit, a recent, a curated pick, an added comparison
+ *  surfaced for removal, or a member listed beneath its open group's row. */
 export interface DialogRow {
-  /** The market the row picks. On a grouped row it is the first member. */
+  /** The market the row picks. A grouped row reads and picks as its first member. */
   row: SymbolRow
   added: boolean
   /** On a row that stands for one instrument listed on several venues: every search hit sharing
    *  `row.group`, as the feed lists them, `row` first. Absent on a row that stands for one market,
    *  which a group with a single member is too. */
   members?: readonly SymbolRow[]
+  /** On a grouped row: whether its group stands open, its other members listed beneath it. */
+  open?: boolean
+  /** On a member listed beneath its open group's row. */
+  nested?: boolean
+  /** Where the row stands on the panel an open group shares: its grouped row first, its last member
+   *  last, every member between them in the middle. */
+  panel?: 'first' | 'middle' | 'last'
 }
 
 /** Search hits as the list holds them: hits that share a non-empty `group` become one row, at the
- *  place the first of them stands, holding every member as the feed lists them. The hits are every page
- *  loaded so far, so a member that arrives on a later page joins the row its group already has. */
-function groupedHits(hits: readonly SymbolRow[], added: ReadonlySet<string>): DialogRow[] {
-  const out: DialogRow[] = []
-  const groups = new Map<string, { entry: DialogRow; members: SymbolRow[] }>()
+ *  place the first of them stands, holding every member as the feed lists them. The hits are every
+ *  page loaded so far, so a member that arrives on a later page joins the row its group already has.
+ *  A group the viewer opened lists its other members beneath its row, each a row of its own. */
+function groupedHits(hits: readonly SymbolRow[], added: ReadonlySet<string>, open: ReadonlySet<string>): DialogRow[] {
+  const heads: DialogRow[] = []
+  const groups = new Map<string, { head: DialogRow; members: SymbolRow[] }>()
   for (const row of hits) {
-    const held = row.group ? groups.get(row.group) : undefined
-    if (held) {
+    const key = row.group
+    const held = key ? groups.get(key) : undefined
+    if (key && held) {
       held.members.push(row)
-      held.entry.members = held.members
+      held.head.members = held.members
+      held.head.open = open.has(key)
       continue
     }
-    const entry: DialogRow = { row, added: added.has(row.symbol) }
-    if (row.group) groups.set(row.group, { entry, members: [row] })
-    out.push(entry)
+    const head: DialogRow = { row, added: added.has(row.symbol) }
+    if (key) groups.set(key, { head, members: [row] })
+    heads.push(head)
   }
-  return out
+  return heads.flatMap((head): DialogRow[] => {
+    if (!head.open || !head.members) return [head]
+    const rest = head.members.slice(1)
+    return [{ ...head, panel: 'first' }, ...rest.map((row, i): DialogRow => ({ row, added: added.has(row.symbol), nested: true, panel: i === rest.length - 1 ? 'last' : 'middle' }))]
+  })
 }
 
 /** How one row is WRITTEN: the market's mark in the ticker cell, its description beside it, and
@@ -132,13 +147,17 @@ export function offeredOperators(spreads: SearchDisplayOptions['spreads']): read
   return out
 }
 
+/** No group open. */
+const NO_GROUPS: ReadonlySet<string> = new Set()
+
 /** The flat row model for a mode, query and controller state. Pure, so the list a viewer sees
  *  and the list a test asserts are one computation.
  *
  *  Search hits that share a group collapse into one row (`groupedHits`) in every mode but compare,
- *  whose rows each add one market at a placement. Recents stay a row each, since each is one pick a
- *  viewer made. A hit a recent already lists is left out of the list below it, unless it is one of a
- *  group: a grouped row keeps every venue the instrument lists on. */
+ *  whose rows each add one market at a placement, and a group named in `open` lists its other
+ *  members beneath that row. Recents stay a row each, since each is one pick a viewer made. A hit a
+ *  recent already lists is left out of the list below it, unless it is one of a group: a grouped row
+ *  keeps every venue the instrument lists on. */
 export function dialogRows(input: {
   mode: SearchRequest['mode']
   query: string
@@ -149,6 +168,8 @@ export function dialogRows(input: {
   added: readonly CompareEntry[]
   /** Whether a query may read as a spread expression. Default true. */
   spreads?: boolean
+  /** The groups the viewer opened, by their `group`. Default none. */
+  open?: ReadonlySet<string>
 }): DialogRow[] {
   const q = input.query.trim()
   const addedSet = new Set(input.added.map((e) => e.symbol))
@@ -165,7 +186,7 @@ export function dialogRows(input: {
     const recent: DialogRow[] = input.recents.filter((r) => !seen.has(r.symbol)).map((row) => ({ row, added: false }))
     return [...added, ...curated, ...recent]
   }
-  const listed = (hits: readonly SymbolRow[]): DialogRow[] => (compare ? hits.map((row) => ({ row, added: addedSet.has(row.symbol) })) : groupedHits(hits, addedSet))
+  const listed = (hits: readonly SymbolRow[]): DialogRow[] => (compare ? hits.map((row) => ({ row, added: addedSet.has(row.symbol) })) : groupedHits(hits, addedSet, input.open ?? NO_GROUPS))
   if (!compare && q === '') {
     const seen = new Set(input.recents.map((r) => r.symbol))
     return [...input.recents.map((row) => ({ row, added: addedSet.has(row.symbol) })), ...listed(input.hits.filter((r) => r.group || !seen.has(r.symbol)))]
@@ -190,7 +211,7 @@ export function dialogRows(input: {
 /** The box a row's mark stands in, paired with the width the stylesheet gives it. The package owns
  *  the geometry and tells the host, rather than the host guessing and being boxed inside it. */
 const ROW_MARK_SIZE = 36
-/** The row's source mark, and each venue mark of a grouped row: a 24px disc at the row's end. */
+/** The row's source mark: a 24px disc at the row's end. */
 const SOURCE_MARK_SIZE = 24
 /** The scope chip's mark, inside the 28px chip. */
 const SCOPE_MARK_SIZE = 18
@@ -251,6 +272,9 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
   // claimed. A prefilled query stands on its first answer, because the viewer arrived holding it.
   let active = request.changeFrom ? 0 : -1
   let rows: DialogRow[] = []
+  // The groups the viewer opened, by their `group`. A new question, by its query, its classes or
+  // its source, closes them all.
+  const openGroups = new Set<string>()
   // The operators open on request: most searches are a ticker, and arithmetic is a second step.
   let opsOpen = false
 
@@ -329,6 +353,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       for (const { row, top } of narrower) row.hidden = !selection.has(top)
       cls = selection.filter()
       active = -1
+      openGroups.clear()
       search().search(serverQuery(), cls)
       render()
     }
@@ -346,6 +371,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       scoped = on
       scopeChip?.setAttribute('aria-pressed', String(on))
       active = -1
+      openGroups.clear()
       search().search(serverQuery(), cls)
       render()
     }
@@ -395,6 +421,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       input.value = next
       showClear(next !== '')
       active = -1
+      openGroups.clear()
       if (compare && next.trim() === '') session().cancelPending()
       else search().search(serverQuery(), cls)
       render()
@@ -455,15 +482,49 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       } else cell.textContent = fallback.charAt(0).toUpperCase()
     }
 
+    // A grouped row's pill: how many other venues the instrument lists on, and a chevron pointing the
+    // way the group will move. A press opens or closes the group and never picks the row, and a
+    // pointer press leaves the keyboard focus in the field.
+    const groupPill = (key: string, others: number, open: boolean): HTMLButtonElement => {
+      const pill = h(
+        'button',
+        { type: 'button', class: 'qc-search-more', 'aria-expanded': String(open), 'data-symbol-group': key },
+        h('span', { class: 'qc-search-more-count' }, '+' + new Intl.NumberFormat(deps.i18n.tag()).format(others)),
+        h('span', { class: 'qc-search-more-chevron', 'aria-hidden': 'true' }, deps.icons.glyph(open ? ICONS.chevronUp : ICONS.chevronDown, { size: 16 })),
+      )
+      name(pill, t('search.moreListings', { count: others }))
+      pill.addEventListener('mousedown', (e) => e.preventDefault())
+      pill.addEventListener('click', (e) => {
+        e.stopPropagation()
+        toggleGroup(key)
+      })
+      return pill
+    }
+    // Whether a row is a member beneath its open group, a group's own row, or a row of its own: with
+    // the market it picks, what names the row across a group opening or closing.
+    const rowKind = (entry: DialogRow): string => (entry.nested ? 'nested' : entry.members ? 'group' : 'row')
+    // Opening or closing a group keeps the keyboard's row: the same row while it is still listed,
+    // and the group's own row when it was a member the group folded away.
+    const toggleGroup = (key: string): void => {
+      const held = active >= 0 ? rows[active] : undefined
+      if (!openGroups.delete(key)) openGroups.add(key)
+      render()
+      if (!held) return
+      const same = rows.findIndex((r) => r.row === held.row && rowKind(r) === rowKind(held))
+      const at = same >= 0 ? same : rows.findIndex((r) => r.members !== undefined && r.row.group === key)
+      if (at >= 0) setActive(at)
+    }
+
     const render = (): void => {
-      // A venue mark holding the keyboard is rebuilt with its row, a page landing included, so the
-      // focus moves on to the mark that replaces it rather than falling out of the dialog.
+      // A group's pill holding the keyboard is rebuilt with its row, by its own press or by a page
+      // landing, so the focus moves on to the pill that replaces it rather than falling out of the
+      // dialog.
       const held = document.activeElement
-      const heldVenue = held instanceof HTMLElement && held.classList.contains('qc-search-venue') && list.contains(held) ? held.dataset.symbolRow : undefined
+      const heldPill = held instanceof HTMLElement && held.classList.contains('qc-search-more') && list.contains(held) ? held.dataset.symbolGroup : undefined
       releaseMarks()
       const state = search().state()
       const settled = state.query.trim() === serverQuery().trim()
-      rows = dialogRows({ mode, query, hits: settled ? state.hits : [], loading: state.loading || !settled, recents: recentRows(), curated: deps.curated ?? [], added: chart?.compare.list() ?? [], spreads })
+      rows = dialogRows({ mode, query, hits: settled ? state.hits : [], loading: state.loading || !settled, recents: recentRows(), curated: deps.curated ?? [], added: chart?.compare.list() ?? [], spreads, open: openGroups })
       active = Math.min(active, rows.length - 1)
       const emptyStack = compare && query.trim() === ''
       const addedCount = emptyStack ? (chart?.compare.list().length ?? 0) : 0
@@ -473,60 +534,54 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
         if (emptyStack && i === addedCount && rows.length > addedCount) children.push(h('div', { class: 'qc-dialog-heading', role: 'presentation' }, t('search.recent')))
         const r = entry.row
         const label = rowLabels(r)
-        const members = entry.members
-        // A grouped row reads by its group, over its first member's description and kind.
-        const heading = members && r.group ? r.group : label.ticker
-        const option = h('div', { class: 'qc-search-row', role: 'option', id: rowId(i), 'aria-selected': String(i === active), 'data-symbol-row': r.symbol, 'data-symbol-group': members ? r.group : undefined, tabindex: '-1' })
+        const option = h('div', {
+          class: entry.nested ? 'qc-search-row qc-search-row--nested' : 'qc-search-row',
+          role: 'option',
+          id: rowId(i),
+          'aria-selected': String(i === active),
+          'data-symbol-row': r.symbol,
+          'data-symbol-group': entry.members ? r.group : undefined,
+          'data-qc-panel': entry.panel,
+          tabindex: '-1',
+        })
         // The row's mark, through the host hook the legend uses, so a market wears one face across
         // the product. The list is rebuilt per render, so each mark is painted once into the row it
-        // belongs to and released with it below.
-        const mark = createSymbolBadge(heading)
-        mark.element.replaceChildren()
-        const dropMark = deps.painters.symbol?.({ symbol: r.symbol, host: mark.element, size: ROW_MARK_SIZE })
-        // A host mark OWNS the box: the package's disc and monogram stand down under it.
-        if (typeof dropMark === 'function') {
-          mark.element.dataset.qcHost = 'true'
-          markDisposers.push(dropMark)
-        } else mark.set(heading)
-        option.appendChild(mark.element)
+        // belongs to and released with it below. A member beneath its open group wears none: the
+        // group's row above it wears the instrument's face.
+        if (!entry.nested) {
+          const mark = createSymbolBadge(label.ticker)
+          mark.element.replaceChildren()
+          const dropMark = deps.painters.symbol?.({ symbol: r.symbol, host: mark.element, size: ROW_MARK_SIZE })
+          // A host mark OWNS the box: the package's disc and monogram stand down under it.
+          if (typeof dropMark === 'function') {
+            mark.element.dataset.qcHost = 'true'
+            markDisposers.push(dropMark)
+          } else mark.set(label.ticker)
+          option.appendChild(mark.element)
+        }
         // The ticker over a line of its description, the market's kind a small tag after the words.
         option.appendChild(
           h(
             'span',
             { class: 'qc-search-text' },
-            marked(heading),
+            marked(label.ticker),
             h('span', { class: 'qc-search-line' }, h('span', { class: 'qc-search-name' }, label.description), r.type ? h('span', { class: 'qc-search-kind' }, r.type) : null),
           ),
         )
-        if (members) {
-          // One mark per venue the instrument lists on, as the feed lists them, where a single row
-          // shows its source. Each is a button of its own that picks its member, named for the
-          // venue and the member's ticker, while a press on the rest of the row picks the first.
-          const venues = h('span', { class: 'qc-search-source qc-search-venues' })
-          for (const member of members) {
-            const names = rowLabels(member)
-            const venue = h('button', { type: 'button', class: 'qc-search-mark qc-search-venue', 'data-symbol-row': member.symbol })
-            name(venue, names.source ? t('search.venueMark', { symbol: names.ticker, venue: names.source }) : names.ticker)
-            paintSource(member, names.source || names.ticker, venue)
-            venue.addEventListener('click', (e) => {
-              e.stopPropagation()
-              act({ row: member, added: false })
-            })
-            venues.appendChild(venue)
-          }
-          option.appendChild(venues)
-        } else if (compare && entry.added) {
+        if (compare && entry.added) {
           const mark = h('span', { class: 'qc-search-added', title: t('search.addedMark', { symbol: label.ticker }) })
           mark.appendChild(deps.icons.glyph(ICONS.check, { size: 18 }))
           option.appendChild(mark)
         } else {
           // The source at the row's end: where this row's data comes from, its name and then its
-          // mark. The written name is what a reader hears, so the mark beside it only shows. In compare
-          // it steps aside under the pointer for the three placement verbs, because a row a viewer is
-          // reaching for should offer what to DO rather than restate what it is.
+          // mark, with a grouped row's pill between the two. The written name is what a reader hears,
+          // so the mark beside it only shows. In compare it steps aside under the pointer for the three
+          // placement verbs, because a row a viewer is reaching for should offer what to DO rather than
+          // restate what it is.
           const source = h('span', { class: 'qc-search-source' })
+          if (label.source) source.appendChild(h('span', { class: 'qc-search-exchange' }, label.source))
+          if (entry.members && r.group) source.appendChild(groupPill(r.group, entry.members.length - 1, entry.open === true))
           if (label.source) {
-            source.appendChild(h('span', { class: 'qc-search-exchange' }, label.source))
             const sourceMark = h('span', { class: 'qc-search-mark', 'aria-hidden': 'true', title: label.source })
             paintSource(r, label.source, sourceMark)
             source.appendChild(sourceMark)
@@ -563,7 +618,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
         children.push(empty)
       }
       replace(list, ...children)
-      if (heldVenue !== undefined) [...list.querySelectorAll<HTMLElement>('.qc-search-venue')].find((v) => v.dataset.symbolRow === heldVenue)?.focus({ preventScroll: true })
+      if (heldPill !== undefined) [...list.querySelectorAll<HTMLElement>('.qc-search-more')].find((p) => p.dataset.symbolGroup === heldPill)?.focus({ preventScroll: true })
       if (!emptyStack && settled && !state.loading && !state.failed && state.hasMore && rows.length > 0) {
         sentinel.hidden = false
         list.appendChild(sentinel)

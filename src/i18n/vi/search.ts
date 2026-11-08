@@ -19,7 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'Mã gần đây',
   'search.addedMark': '{symbol} đang trên biểu đồ. Nhấp để xóa.',
   'search.compareEmpty': 'Chưa có mã nào ở đây. Sao không thêm vài mã?',
-  'search.venueMark': '{symbol} trên {venue}',
+  'search.moreListings': { other: 'thêm {count} thị trường' },
   'search.allClasses': 'Tất cả',
   'search.classFilter': 'Loại tài sản',
   'search.limitToScope': 'Giới hạn tìm kiếm trong {scope}',

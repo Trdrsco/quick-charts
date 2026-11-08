@@ -24,10 +24,10 @@ export const search = {
   /** The checkmark on a row already on the chart. */
   'search.addedMark': '{symbol} is on the chart. Click to remove.',
   'search.compareEmpty': 'No symbols here yet. Why not add some?',
-  /** A venue mark on a row that lists one instrument on several venues: its accessible name and
-   *  tooltip. `{symbol}` is the ticker of the member it picks, `{venue}` the venue that member
-   *  lists on. */
-  'search.venueMark': '{symbol} on {venue}',
+  /** The pill on a row that lists one instrument on several venues: its accessible name and tooltip.
+   *  `{count}` is how many other venues the instrument lists on, which the pill opens beneath the
+   *  row; whether they are showing is the pill's expanded state. */
+  'search.moreListings': { one: '{count} more listing', other: '{count} more listings' },
   // The asset-class filter strip: the chip for every class, and the strip's own name.
   'search.allClasses': 'All',
   'search.classFilter': 'Asset class',

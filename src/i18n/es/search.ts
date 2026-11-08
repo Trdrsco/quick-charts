@@ -19,7 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'Símbolos recientes',
   'search.addedMark': '{symbol} está en el gráfico. Haz clic para quitarlo.',
   'search.compareEmpty': 'Aún no hay símbolos. ¿Por qué no añades algunos?',
-  'search.venueMark': '{symbol} en {venue}',
+  'search.moreListings': { one: '{count} mercado más', many: '{count} mercados más', other: '{count} mercados más' },
   'search.allClasses': 'Todos',
   'search.classFilter': 'Clase de activo',
   'search.limitToScope': 'Limitar la búsqueda a {scope}',

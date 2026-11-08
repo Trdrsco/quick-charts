@@ -40,8 +40,7 @@ export interface MarkPainterHooks {
    *  is the neutral monogram the package draws itself. */
   symbolMark?: SymbolMarkPainter
   /** The host's mark for the venue a market lists on, painted beside the venue's name in every row
-   *  of the symbol search and compare dialogs, and once for each member of a search row that lists
-   *  one instrument on several venues. Like `symbolMark`, it receives the element to paint
+   *  of the symbol search and compare dialogs. Like `symbolMark`, it receives the element to paint
    *  into and the size of the box, and returns a disposer; absent, a venue wears its initial on the
    *  neutral disc the package draws itself. */
   venueMark?: VenueMarkPainter

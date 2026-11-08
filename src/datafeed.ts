@@ -40,9 +40,9 @@ export interface SymbolRow {
    *  charted symbol, so a row and the legend that follows it agree. */
   currencyCode?: string
   /** Rows that share a group are one instrument listed on several venues. The symbol search lists
-   *  them as one row that reads by this text, with one venue mark for each row in the group: the
-   *  row picks the first of the group's rows the feed lists, and each mark picks its own. A row with
-   *  no group, or an empty one, is a row of its own. */
+   *  them as one row, the first of them the feed lists, whose pill opens the others beneath it as
+   *  rows of their own. Each row picks its own market. A row with no group, or an empty one, is a
+   *  row of its own. */
   group?: string
 }
 
