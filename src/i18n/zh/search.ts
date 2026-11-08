@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': '最近代码',
   'search.addedMark': '{symbol}已在图表上。点击移除。',
   'search.compareEmpty': '这里还没有代码。添加几个吧。',
+  'search.venueMark': '{venue}上的{symbol}',
   'search.allClasses': '全部',
   'search.classFilter': '资产类别',
   'search.limitToScope': '仅在{scope}中搜索',

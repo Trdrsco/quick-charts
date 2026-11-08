@@ -12,7 +12,9 @@
 // next page as the highlight nears the end); Enter acts on it, or on the top row before an arrow
 // has moved; Escape closes. The list is a listbox the field controls through
 // `aria-activedescendant`, so a screen reader hears the row under the highlight without focus
-// leaving the field. The pointer only hovers: it never moves the keyboard's row.
+// leaving the field. The pointer only hovers: it never moves the keyboard's row. On a row that lists
+// one instrument on several venues, Enter picks the first member; ArrowLeft and ArrowRight stay the
+// field's caret keys, so each venue mark is a button Tab reaches, pressed with Enter or Space.
 import type { SearchClassNode, SymbolRow } from '../../datafeed'
 import type { ChartI18n, ChartMessageKey } from '../../i18n'
 import type { CompareEntry, ComparePlacement, CompareSymbol } from '../../compare'
@@ -50,9 +52,9 @@ export interface SearchDialogDeps {
    *  of the class strip. Read once as the surface is built; the compare family offers none. */
   scope?: () => SearchScope | null
   /** The host's mark painters: the same value the legend paints its badge with. A row wears the
-   *  market's, and its source cell the venue's, or the data source's where it names no venue.
-   *  Where the host lent none, a row wears the neutral monogram and the source its initial on the
-   *  package's own disc. */
+   *  market's, and its source cell the venue's, or the data source's where it names no venue; a
+   *  grouped row wears one such mark for each member. Where the host lent none, a row wears the
+   *  neutral monogram and the source its initial on the package's own disc. */
   painters: MarkPainters
   /** Curated quick-add rows for compare mode, above the recents. */
   curated?: readonly CompareSymbol[]
@@ -70,8 +72,33 @@ const PLACEMENTS: readonly { placement: ComparePlacement; label: ChartMessageKey
 /** One row the list can render: a search hit, a recent, a curated pick, or an added comparison
  *  surfaced for removal. */
 export interface DialogRow {
+  /** The market the row picks. On a grouped row it is the first member. */
   row: SymbolRow
   added: boolean
+  /** On a row that stands for one instrument listed on several venues: every search hit sharing
+   *  `row.group`, as the feed lists them, `row` first. Absent on a row that stands for one market,
+   *  which a group with a single member is too. */
+  members?: readonly SymbolRow[]
+}
+
+/** Search hits as the list holds them: hits that share a non-empty `group` become one row, at the
+ *  place the first of them stands, holding every member as the feed lists them. The hits are every page
+ *  loaded so far, so a member that arrives on a later page joins the row its group already has. */
+function groupedHits(hits: readonly SymbolRow[], added: ReadonlySet<string>): DialogRow[] {
+  const out: DialogRow[] = []
+  const groups = new Map<string, { entry: DialogRow; members: SymbolRow[] }>()
+  for (const row of hits) {
+    const held = row.group ? groups.get(row.group) : undefined
+    if (held) {
+      held.members.push(row)
+      held.entry.members = held.members
+      continue
+    }
+    const entry: DialogRow = { row, added: added.has(row.symbol) }
+    if (row.group) groups.set(row.group, { entry, members: [row] })
+    out.push(entry)
+  }
+  return out
 }
 
 /** How one row is WRITTEN: the market's mark in the ticker cell, its description beside it, and
@@ -106,7 +133,11 @@ export function offeredOperators(spreads: SearchDisplayOptions['spreads']): read
 }
 
 /** The flat row model for a mode, query and controller state. Pure, so the list a viewer sees
- *  and the list a test asserts are one computation. */
+ *  and the list a test asserts are one computation.
+ *
+ *  Search hits that share a group collapse into one row (`groupedHits`) in every mode but compare,
+ *  whose rows each add one market at a placement. Recents stay a row each, since each is one pick a
+ *  viewer made, and a hit already listed as a recent is left out before its group is formed. */
 export function dialogRows(input: {
   mode: SearchRequest['mode']
   query: string
@@ -133,11 +164,12 @@ export function dialogRows(input: {
     const recent: DialogRow[] = input.recents.filter((r) => !seen.has(r.symbol)).map((row) => ({ row, added: false }))
     return [...added, ...curated, ...recent]
   }
-  const base: DialogRow[] = input.hits.map((row) => ({ row, added: addedSet.has(row.symbol) }))
+  const listed = (hits: readonly SymbolRow[]): DialogRow[] => (compare ? hits.map((row) => ({ row, added: addedSet.has(row.symbol) })) : groupedHits(hits, addedSet))
   if (!compare && q === '') {
     const seen = new Set(input.recents.map((r) => r.symbol))
-    return [...input.recents.map((row) => ({ row, added: addedSet.has(row.symbol) })), ...base.filter((r) => !seen.has(r.row.symbol))]
+    return [...input.recents.map((row) => ({ row, added: addedSet.has(row.symbol) })), ...listed(input.hits.filter((r) => !seen.has(r.symbol)))]
   }
+  const base = listed(input.hits)
   // A query reading as a spread EXPRESSION leads with the exact expression; catalog matches on its
   // stripped ticker follow. A plain slash pair is catalog identity and offers a spread row only
   // once the search settled with no hits, because a listed market outranks arithmetic. With spreads
@@ -146,7 +178,7 @@ export function dialogRows(input: {
   const expression = looksLikeSpread(q) && !isSymbolPair(q)
   if (expression) {
     const expr = spreadExpression(q)
-    if (!base.some((r) => r.row.symbol.toUpperCase() === expr)) base.unshift({ row: { symbol: expr, name: expr, exchange: '', type: 'spread' }, added: addedSet.has(expr) })
+    if (!input.hits.some((r) => r.symbol.toUpperCase() === expr)) base.unshift({ row: { symbol: expr, name: expr, exchange: '', type: 'spread' }, added: addedSet.has(expr) })
   } else if (looksLikeSpread(q) && !input.loading && base.length === 0) {
     const expr = spreadExpression(q)
     base.push({ row: { symbol: expr, name: expr, exchange: '', type: 'spread' }, added: addedSet.has(expr) })
@@ -157,7 +189,7 @@ export function dialogRows(input: {
 /** The box a row's mark stands in, paired with the width the stylesheet gives it. The package owns
  *  the geometry and tells the host, rather than the host guessing and being boxed inside it. */
 const ROW_MARK_SIZE = 36
-/** The row's source mark: a 24px disc at the row's end. */
+/** The row's source mark, and each venue mark of a grouped row: a 24px disc at the row's end. */
 const SOURCE_MARK_SIZE = 24
 /** The scope chip's mark, inside the 28px chip. */
 const SCOPE_MARK_SIZE = 18
@@ -407,8 +439,26 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
       for (const seg of matchSegments(text, serverQuery())) span.appendChild(h('span', { class: seg.hit ? 'qc-search-hit' : undefined }, seg.text))
       return span
     }
+    // A source's mark: the venue's, or the data source's where the row names no venue, through the
+    // host's hook. A host mark owns the cell and is released with the render that painted it;
+    // without one, the initial of `fallback` stands on the package's disc.
+    const paintSource = (row: SymbolRow, fallback: string, cell: HTMLElement): void => {
+      const drop = row.exchange
+        ? deps.painters.venue?.({ exchange: row.exchange, host: cell, size: SOURCE_MARK_SIZE })
+        : row.dataSource
+          ? deps.painters.dataSource?.({ dataSource: row.dataSource, host: cell, size: SOURCE_MARK_SIZE })
+          : undefined
+      if (typeof drop === 'function') {
+        cell.dataset.qcHost = 'true'
+        markDisposers.push(drop)
+      } else cell.textContent = fallback.charAt(0).toUpperCase()
+    }
 
     const render = (): void => {
+      // A venue mark holding the keyboard is rebuilt with its row, a page landing included, so the
+      // focus moves on to the mark that replaces it rather than falling out of the dialog.
+      const held = document.activeElement
+      const heldVenue = held instanceof HTMLElement && held.classList.contains('qc-search-venue') && list.contains(held) ? held.dataset.symbolRow : undefined
       releaseMarks()
       const state = search().state()
       const settled = state.query.trim() === serverQuery().trim()
@@ -422,29 +472,49 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
         if (emptyStack && i === addedCount && rows.length > addedCount) children.push(h('div', { class: 'qc-dialog-heading', role: 'presentation' }, t('search.recent')))
         const r = entry.row
         const label = rowLabels(r)
-        const option = h('div', { class: 'qc-search-row', role: 'option', id: rowId(i), 'aria-selected': String(i === active), 'data-symbol-row': r.symbol, tabindex: '-1' })
+        const members = entry.members
+        // A grouped row reads by its group, over its first member's description and kind.
+        const heading = members && r.group ? r.group : label.ticker
+        const option = h('div', { class: 'qc-search-row', role: 'option', id: rowId(i), 'aria-selected': String(i === active), 'data-symbol-row': r.symbol, 'data-symbol-group': members ? r.group : undefined, tabindex: '-1' })
         // The row's mark, through the host hook the legend uses, so a market wears one face across
         // the product. The list is rebuilt per render, so each mark is painted once into the row it
         // belongs to and released with it below.
-        const mark = createSymbolBadge(label.ticker)
+        const mark = createSymbolBadge(heading)
         mark.element.replaceChildren()
         const dropMark = deps.painters.symbol?.({ symbol: r.symbol, host: mark.element, size: ROW_MARK_SIZE })
         // A host mark OWNS the box: the package's disc and monogram stand down under it.
         if (typeof dropMark === 'function') {
           mark.element.dataset.qcHost = 'true'
           markDisposers.push(dropMark)
-        } else mark.set(label.ticker)
+        } else mark.set(heading)
         option.appendChild(mark.element)
         // The ticker over a line of its description, the market's kind a small tag after the words.
         option.appendChild(
           h(
             'span',
             { class: 'qc-search-text' },
-            marked(label.ticker),
+            marked(heading),
             h('span', { class: 'qc-search-line' }, h('span', { class: 'qc-search-name' }, label.description), r.type ? h('span', { class: 'qc-search-kind' }, r.type) : null),
           ),
         )
-        if (compare && entry.added) {
+        if (members) {
+          // One mark per venue the instrument lists on, as the feed lists them, where a single row
+          // shows its source. Each is a button of its own that picks its member, named for the
+          // venue and the member's ticker, while a press on the rest of the row picks the first.
+          const venues = h('span', { class: 'qc-search-source qc-search-venues' })
+          for (const member of members) {
+            const names = rowLabels(member)
+            const venue = h('button', { type: 'button', class: 'qc-search-mark qc-search-venue', 'data-symbol-row': member.symbol })
+            name(venue, names.source ? t('search.venueMark', { symbol: names.ticker, venue: names.source }) : names.ticker)
+            paintSource(member, names.source || names.ticker, venue)
+            venue.addEventListener('click', (e) => {
+              e.stopPropagation()
+              act({ row: member, added: false })
+            })
+            venues.appendChild(venue)
+          }
+          option.appendChild(venues)
+        } else if (compare && entry.added) {
           const mark = h('span', { class: 'qc-search-added', title: t('search.addedMark', { symbol: label.ticker }) })
           mark.appendChild(deps.icons.glyph(ICONS.check, { size: 18 }))
           option.appendChild(mark)
@@ -455,18 +525,8 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
           // restate what it is.
           const source = h('span', { class: 'qc-search-source' })
           if (label.source) {
-            // The source's mark: the venue's, or the data source's where the row names no venue,
-            // through the host's hook. A host mark owns the box; without one the initial stands.
             const sourceMark = h('span', { class: 'qc-search-mark', role: 'img', 'aria-label': label.source, title: label.source })
-            const dropSource = r.exchange
-              ? deps.painters.venue?.({ exchange: r.exchange, host: sourceMark, size: SOURCE_MARK_SIZE })
-              : r.dataSource
-                ? deps.painters.dataSource?.({ dataSource: r.dataSource, host: sourceMark, size: SOURCE_MARK_SIZE })
-                : undefined
-            if (typeof dropSource === 'function') {
-              sourceMark.dataset.qcHost = 'true'
-              markDisposers.push(dropSource)
-            } else sourceMark.textContent = label.source.charAt(0).toUpperCase()
+            paintSource(r, label.source, sourceMark)
             source.appendChild(sourceMark)
           }
           option.appendChild(source)
@@ -501,6 +561,7 @@ export function buildSearchSurface(deps: SearchDialogDeps, box: HTMLElement, fra
         children.push(empty)
       }
       replace(list, ...children)
+      if (heldVenue !== undefined) [...list.querySelectorAll<HTMLElement>('.qc-search-venue')].find((v) => v.dataset.symbolRow === heldVenue)?.focus({ preventScroll: true })
       if (!emptyStack && settled && !state.loading && !state.failed && state.hasMore && rows.length > 0) {
         sentinel.hidden = false
         list.appendChild(sentinel)

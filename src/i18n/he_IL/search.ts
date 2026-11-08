@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'סימבולים אחרונים',
   'search.addedMark': '{symbol} נמצא בגרף. לחצו להסרה.',
   'search.compareEmpty': 'אין כאן סימבולים עדיין. אולי כדאי להוסיף כמה?',
+  'search.venueMark': '{symbol} ב-{venue}',
   'search.allClasses': 'הכול',
   'search.classFilter': 'סוג נכס',
   'search.limitToScope': 'הגבלת החיפוש ל-{scope}',

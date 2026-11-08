@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'Недавние инструменты',
   'search.addedMark': '{symbol} уже на графике. Нажмите, чтобы удалить.',
   'search.compareEmpty': 'Здесь пока нет инструментов. Добавьте несколько.',
+  'search.venueMark': '{symbol} на {venue}',
   'search.allClasses': 'Все',
   'search.classFilter': 'Класс активов',
   'search.limitToScope': 'Искать только в {scope}',

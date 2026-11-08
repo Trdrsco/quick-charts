@@ -39,6 +39,11 @@ export interface SymbolRow {
    *  without it keeps the name the feed sent instead. `resolve()` states the same fact for the
    *  charted symbol, so a row and the legend that follows it agree. */
   currencyCode?: string
+  /** Rows that share a group are one instrument listed on several venues. The symbol search lists
+   *  them as one row that reads by this text, with one venue mark for each row in the group: the
+   *  row picks the first of the group's rows the feed lists, and each mark picks its own. A row with
+   *  no group, or an empty one, is a row of its own. */
+  group?: string
 }
 
 export interface SearchPage {

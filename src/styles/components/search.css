@@ -354,6 +354,28 @@
   object-fit: contain;
 }
 
+/* A row that lists one instrument on several venues ends in one source mark per venue, 4px apart. */
+[data-qc-theme] .qc-search-venues {
+  gap: 4px;
+}
+
+/* Each venue mark is a button of its own on the row's plate: the pointer rings it in the deeper step
+ * a class chip takes under the pointer, a step deeper again while pressed, and the keyboard rings it
+ * as it rings every control. */
+[data-qc-theme] .qc-search-venue {
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+[data-qc-theme] .qc-search-venue:hover {
+  box-shadow: 0 0 0 2px var(--qc-state-pressed);
+}
+
+[data-qc-theme] .qc-search-venue:active {
+  box-shadow: 0 0 0 2px var(--qc-state-pressedHover);
+}
+
 /* A row already on the chart carries a check where its source would stand. */
 [data-qc-theme] .qc-search-added {
   display: inline-flex;

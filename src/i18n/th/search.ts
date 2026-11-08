@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'สัญลักษณ์ล่าสุด',
   'search.addedMark': '{symbol} อยู่บนกราฟแล้ว คลิกเพื่อนำออก',
   'search.compareEmpty': 'ยังไม่มีสัญลักษณ์ที่นี่ ลองเพิ่มสักสองสามรายการ',
+  'search.venueMark': '{symbol} บน {venue}',
   'search.allClasses': 'ทั้งหมด',
   'search.classFilter': 'ประเภทสินทรัพย์',
   'search.limitToScope': 'จำกัดการค้นหาเฉพาะ {scope}',

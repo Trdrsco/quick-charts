@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+`SymbolRow.group`: rows that share a group are one instrument listed on several venues, and the symbol search lists them as one row, where the first of them stands as the feed lists them. The row reads by the group over its first member's description and kind, and ends in one venue mark per member, each a button painted through `venueMark` that picks its own member, named for the member's ticker and venue and showing that as its tooltip. The row, and Enter while it is highlighted, pick the first member, and the member picked is the one recorded in the recents. A member on a later page joins its group's row, a group of one reads as the row without a group, recent picks stay a row each, and the compare dialog lists a row per market. The catalog gains `search.venueMark`.
+
 ## 5.8.0
 
 `ChartHandle.setVisibleRange` pages in older history for a window that starts before the oldest loaded bar: it asks the datafeed with the same older-page `to` and `countBack` asks a scroll back makes, page after page until the bars reach the window's start, the feed states the end of its history or the chart holds 20,000 bars, and then frames the window. A window inside the loaded bars frames at once, as before. A page that fails frames the window over the bars already loaded, and a symbol or timeframe switch, any other navigation or a disposal while a page is away leaves the window unframed. The `chart.range.set` command with an explicit window does the same.

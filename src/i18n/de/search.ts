@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'Zuletzt verwendete Symbole',
   'search.addedMark': '{symbol} ist im Chart. Zum Entfernen klicken.',
   'search.compareEmpty': 'Noch keine Symbole. Jetzt welche hinzufügen.',
+  'search.venueMark': '{symbol} auf {venue}',
   'search.allClasses': 'Alle',
   'search.classFilter': 'Anlageklasse',
   'search.limitToScope': 'Suche auf {scope} beschränken',

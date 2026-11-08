@@ -19,6 +19,7 @@ export const search: Translation<typeof source> = {
   'search.recent': 'Son semboller',
   'search.addedMark': '{symbol} grafikte. Kaldırmak için tıklayın.',
   'search.compareEmpty': 'Burada henüz sembol yok. Biraz eklemeye ne dersiniz?',
+  'search.venueMark': '{venue} üzerinde {symbol}',
   'search.allClasses': 'Tümü',
   'search.classFilter': 'Varlık sınıfı',
   'search.limitToScope': 'Aramayı {scope} ile sınırla',

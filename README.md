@@ -2874,6 +2874,51 @@ const scoped = createChart({
 void scoped
 ```
 
+### One instrument on several venues
+
+Rows that share a `group` are one instrument listed on several venues, and the symbol search lists
+them as one row, where the first of them stands as your feed lists them. The row reads by the group's
+text, with the query's match marked as in any row, over the description and kind of that first
+member, and ends in one venue mark per member, as your feed lists them, where a single row shows its
+source. Each mark is painted through `venueMark` at the source mark's size, or through
+`dataSourceMark` for a member that names no venue, and wears the initial without either.
+
+Pressing the row, or Enter while it is highlighted, picks the first member. Pressing a mark picks
+that member. The member picked is the one recorded in the recents. Each mark is a button named for
+the member's ticker and its venue, "BTCUSDT on Alpha" in the viewer's language, which is its
+tooltip too. The arrow keys move between rows and leave Left and Right to the field's caret, so the
+keyboard reaches a mark with Tab and presses it with Enter or Space.
+
+The dialog groups every page loaded so far, so a member that arrives on a later page joins the row
+its group already has. A group with one member reads exactly as the row without a group, and a row
+with no `group`, or an empty one, is a row of its own. Recent picks stay a row each, and a search
+hit that a recent already lists is left out of its group. The compare dialog lists a row per market,
+grouped or not.
+
+```ts
+import type { ChartDatafeed, SymbolRow } from '@trdrs/quickcharts'
+
+declare const venuesFeed: ChartDatafeed
+
+// One row in the symbol search, reading BTC, with a mark for Alpha, Beta and Gamma.
+const bitcoin: SymbolRow[] = [
+  { symbol: 'ALPHA:BTCUSDT', ticker: 'BTCUSDT', name: 'Bitcoin', exchange: 'Alpha', type: 'crypto', group: 'BTC' },
+  { symbol: 'BETA:BTCUSD', ticker: 'BTCUSD', name: 'Bitcoin', exchange: 'Beta', type: 'crypto', group: 'BTC' },
+  { symbol: 'GAMMA:BTCUSDC', ticker: 'BTCUSDC', name: 'Bitcoin', exchange: 'Gamma', type: 'crypto', group: 'BTC' },
+]
+
+const groupedFeed: ChartDatafeed = {
+  ...venuesFeed,
+  async search(query, options) {
+    const page = await venuesFeed.search(query, options)
+    // Name each row's instrument, so its venues share one row.
+    return { ...page, hits: page.hits.map((row) => ({ ...row, group: myBackend.instrumentOf(row.symbol) })) }
+  },
+}
+void bitcoin
+void groupedFeed
+```
+
 ### The picker, away from a chart
 
 A page that picks a market where no chart is mounted opens the same dialog the chart's symbol pill
@@ -2988,7 +3033,9 @@ so without this every mark is the neutral monogram it draws itself.
 `venueMark` and `dataSourceMark` paint the source at the end of every symbol search and compare
 row the same way: the venue a market lists on, or the data source where a row names no venue. Each
 receives the name the row writes (`exchange` or `dataSource`), the element and the size, and
-returns a disposer. Without them a source wears its initial on a neutral disc.
+returns a disposer. Without them a source wears its initial on a neutral disc. A search row that
+lists one instrument on several venues (see "One instrument on several venues" under Search) wears
+one such mark for each of its members.
 
 ```ts
 import { createChart, createUdfDatafeed } from '@trdrs/quickcharts'

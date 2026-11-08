@@ -1,10 +1,10 @@
 // @vitest-environment happy-dom
 // The symbol search dialog: the row model in each mode, the keyboard (arrows move the highlight,
-// Enter acts, Escape closes), the class strip, the scope chip, the spread operators, and the verbs,
-// every one a command: a pick sets the symbol, a compare pick adds at a placement, an added row
-// removes.
+// Enter acts, Escape closes), the class strip, the scope chip, the spread operators, the row that
+// lists one instrument on several venues, and the verbs, every one a command: a pick sets the
+// symbol, a venue mark picks its member, a compare pick adds at a placement, an added row removes.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { dialogRows, openSearchDialog, rowLabels } from '../../src/ui/chrome/searchDialog'
+import { dialogRows, openSearchDialog, rowLabels, type DialogRow } from '../../src/ui/chrome/searchDialog'
 import type { ChartDatafeed, DatafeedSearchOptions, SearchPage, SymbolRow } from '../../src/datafeed'
 import type { SearchScope } from '../../src/widget/options'
 import { fakeWidget, press } from './harness'
@@ -134,6 +134,61 @@ describe('the row model', () => {
   it('stacks added, curated and recent rows for an empty compare query', () => {
     const rows = dialogRows({ mode: 'compare', query: '', hits: CATALOG, loading: false, recents: [CATALOG[0]!, CATALOG[1]!], curated: [{ symbol: 'NQ', title: 'Nasdaq' }], added: [{ symbol: 'ZB', placement: 'same-percent', color: 'x', visible: true }] })
     expect(rows.map((r) => `${r.row.symbol}:${r.added}`)).toEqual(['ZB:true', 'NQ:false', 'ES:false'])
+  })
+})
+
+/** One instrument listed on three venues, interleaved with markets of their own, as the feed lists them. */
+const LISTED: SymbolRow[] = [
+  { symbol: 'ETH', name: 'Ether', exchange: 'Alpha', type: 'crypto' },
+  { symbol: 'ALPHA:BTCUSDT', ticker: 'BTCUSDT', name: 'Bitcoin', exchange: 'Alpha', type: 'crypto', group: 'BTC' },
+  { symbol: 'SOL', name: 'Solana', exchange: 'Beta', type: 'crypto' },
+  { symbol: 'BETA:BTCUSD', ticker: 'BTCUSD', name: 'Bitcoin', exchange: 'Beta', type: 'crypto', group: 'BTC' },
+  { symbol: 'GAMMA:BTCUSDC', ticker: 'BTCUSDC', name: 'Bitcoin', exchange: 'Gamma', type: 'crypto', group: 'BTC' },
+]
+
+/** Each row of a model as its symbol, with its members' symbols after a slash on a grouped row. */
+const shape = (rows: readonly DialogRow[]): string[] => rows.map((r) => (r.members ? `${r.row.symbol}/${r.members.map((m) => m.symbol).join(',')}` : r.row.symbol))
+
+const rowsFor = (mode: 'search' | 'compare' | 'change-symbol', query: string, hits: readonly SymbolRow[], recents: readonly SymbolRow[] = []): DialogRow[] =>
+  dialogRows({ mode, query, hits, loading: false, recents, curated: [], added: [] })
+
+describe('rows that share a group', () => {
+  it('collapse into one row where the first of them stands, its members as the feed lists them and the first its primary', () => {
+    const rows = rowsFor('search', 'b', LISTED)
+    expect(shape(rows)).toEqual(['ETH', 'ALPHA:BTCUSDT/ALPHA:BTCUSDT,BETA:BTCUSD,GAMMA:BTCUSDC', 'SOL'])
+    expect(rows[1]!.row).toBe(LISTED[1])
+    expect(rows[1]!.members).toEqual([LISTED[1], LISTED[3], LISTED[4]])
+    // Every search that picks one market groups: a change of symbol too.
+    expect(shape(rowsFor('change-symbol', 'b', LISTED))).toEqual(shape(rows))
+  })
+
+  it('join the row their group already has when they arrive on a later page', () => {
+    const first = rowsFor('search', 'b', LISTED.slice(0, 3))
+    expect(shape(first)).toEqual(['ETH', 'ALPHA:BTCUSDT', 'SOL'])
+    const both = rowsFor('search', 'b', LISTED)
+    expect(both).toHaveLength(3)
+    expect(shape(both)[1]).toBe('ALPHA:BTCUSDT/ALPHA:BTCUSDT,BETA:BTCUSD,GAMMA:BTCUSDC')
+  })
+
+  it('make a plain row of a group with one member, and never group an empty group', () => {
+    const lone: SymbolRow = { ...LISTED[0]!, group: 'ETH' }
+    expect(rowsFor('search', 'e', [lone])).toEqual([{ row: lone, added: false }])
+    const unnamed: SymbolRow[] = [
+      { ...LISTED[0]!, group: '' },
+      { ...LISTED[2]!, group: '' },
+    ]
+    expect(shape(rowsFor('search', 's', unnamed))).toEqual(['ETH', 'SOL'])
+  })
+
+  it('leave the recents a row each, and form a group from the hits no recent already lists', () => {
+    const recents = [LISTED[3]!, LISTED[4]!]
+    const rows = rowsFor('search', '', LISTED, recents)
+    expect(shape(rows)).toEqual(['BETA:BTCUSD', 'GAMMA:BTCUSDC', 'ETH', 'ALPHA:BTCUSDT', 'SOL'])
+    expect(rows.slice(0, 2).every((r) => r.members === undefined)).toBe(true)
+  })
+
+  it('leave compare rows as they are, one market a row', () => {
+    expect(rowsFor('compare', 'b', LISTED)).toEqual(LISTED.map((row) => ({ row, added: false })))
   })
 })
 
@@ -602,5 +657,150 @@ describe('compare and change-symbol modes', () => {
     await settle()
     rows()[0]!.click()
     expect(picks).toEqual(['ES'])
+  })
+})
+
+describe('a grouped row', () => {
+  const type = async (input: HTMLInputElement, query: string): Promise<void> => {
+    input.value = query
+    input.dispatchEvent(new Event('input'))
+    await settle()
+  }
+  const venues = (row: HTMLElement): HTMLButtonElement[] => [...row.querySelectorAll<HTMLButtonElement>('.qc-search-venues > .qc-search-venue')]
+
+  it('reads by its group over its first member, and ends in a venue mark for each member, each a named button Tab reaches', async () => {
+    const painted: string[] = []
+    const dropped: string[] = []
+    const venueMark: MarkHook<'exchange'> = ({ exchange, host, size }) => {
+      painted.push(`${exchange}:${size}`)
+      host.appendChild(document.createElement('img'))
+      return () => dropped.push(exchange)
+    }
+    const { dialog, input, rows } = open('search', { catalog: LISTED, venueMark })
+    await type(input, 'BTC')
+    expect(rows()).toHaveLength(1)
+    const row = rows()[0]!
+    expect(row.dataset.symbolRow).toBe('ALPHA:BTCUSDT')
+    expect(row.dataset.symbolGroup).toBe('BTC')
+    expect(row.querySelector('.qc-search-text > .qc-search-symbol')?.textContent).toBe('BTC')
+    expect(row.querySelector('.qc-search-hit')?.textContent).toBe('BTC')
+    expect(row.querySelector('.qc-search-line > .qc-search-name')?.textContent).toBe(rowLabels(LISTED[1]!).description)
+    expect(row.querySelector('.qc-search-line > .qc-search-kind')?.textContent).toBe('crypto')
+    // The marks stand where a single row's source does, and that single source mark is gone.
+    expect(row.querySelector('.qc-search-mark[role="img"]')).toBeNull()
+    const marks = venues(row)
+    const names = ['BTCUSDT on Alpha', 'BTCUSD on Beta', 'BTCUSDC on Gamma']
+    expect(marks.map((m) => m.getAttribute('aria-label'))).toEqual(names)
+    expect(marks.map((m) => m.title)).toEqual(names)
+    expect(marks.map((m) => [m.tagName, m.type, m.tabIndex])).toEqual(Array(3).fill(['BUTTON', 'button', 0]))
+    expect(focusables(dialog.element)).toEqual(expect.arrayContaining(marks))
+    // Each is painted through the venue hook at the source mark's size, and the host's mark owns it.
+    expect(painted.slice(-3)).toEqual(['Alpha:24', 'Beta:24', 'Gamma:24'])
+    expect(marks.every((m) => m.dataset.qcHost === 'true' && m.querySelector('img') !== null && m.textContent === '')).toBe(true)
+    // A rebuild releases every mark the last one painted.
+    dropped.length = 0
+    await type(input, 'BTCU')
+    expect(dropped).toEqual(expect.arrayContaining(['Alpha', 'Beta', 'Gamma']))
+  })
+
+  it('picks the member a mark names, and records that member in the recents', async () => {
+    const { w, dialog, input, rows } = open('search', { catalog: LISTED })
+    await type(input, 'BTC')
+    const marks = venues(rows()[0]!)
+    // Without a venue hook, each mark wears its venue's initial.
+    expect(marks.map((m) => m.textContent)).toEqual(['A', 'B', 'G'])
+    marks[2]!.click()
+    expect(w.chart.calls).toContain('symbol:GAMMA:BTCUSDC')
+    expect(w.chart.calls).not.toContain('symbol:ALPHA:BTCUSDT')
+    expect(w.widget.recents.list()[0]?.symbol).toBe('GAMMA:BTCUSDC')
+    expect(dialog.open()).toBe(false)
+  })
+
+  it('picks its first member from the row, by the pointer or by Enter, and leaves Left and Right to the field', async () => {
+    const pointer = open('search', { catalog: LISTED })
+    await type(pointer.input, 'BTC')
+    pointer.rows()[0]!.querySelector<HTMLElement>('.qc-search-text')!.click()
+    expect(pointer.w.chart.calls).toContain('symbol:ALPHA:BTCUSDT')
+    expect(pointer.w.widget.recents.list()[0]?.symbol).toBe('ALPHA:BTCUSDT')
+    const keyboard = open('search', { catalog: LISTED })
+    await type(keyboard.input, 'BTC')
+    press(keyboard.input, 'ArrowDown')
+    expect(keyboard.rows()[0]!.getAttribute('aria-selected')).toBe('true')
+    expect(press(keyboard.input, 'ArrowRight').defaultPrevented).toBe(false)
+    expect(press(keyboard.input, 'ArrowLeft').defaultPrevented).toBe(false)
+    expect(keyboard.input.getAttribute('aria-activedescendant')).toBe(keyboard.rows()[0]!.id)
+    press(keyboard.input, 'Enter')
+    expect(keyboard.w.chart.calls).toContain('symbol:ALPHA:BTCUSDT')
+    expect(keyboard.w.widget.recents.list()[0]?.symbol).toBe('ALPHA:BTCUSDT')
+  })
+
+  it('renders a group of one exactly as the same row without a group', async () => {
+    const plain = open('search', { catalog: [LISTED[1]!].map(({ group: _, ...row }) => row) })
+    const lone = open('search', { catalog: [LISTED[1]!] })
+    await type(plain.input, 'BTC')
+    await type(lone.input, 'BTC')
+    const html = (row: HTMLElement): string => row.outerHTML.replace(/ id="[^"]*"/g, '')
+    expect(lone.rows()).toHaveLength(1)
+    expect(html(lone.rows()[0]!)).toBe(html(plain.rows()[0]!))
+    expect(lone.rows()[0]!.querySelector('.qc-search-symbol')?.textContent).toBe('BTCUSDT')
+  })
+
+  it('keeps one row for a group whose members arrive on different pages', async () => {
+    const wide: SymbolRow[] = [
+      LISTED[1]!,
+      ...Array.from({ length: 49 }, (_, i) => ({ symbol: `W${i}`, name: `W${i}`, exchange: 'X', type: 'future' })),
+      LISTED[3]!,
+      { symbol: 'W49', name: 'W49', exchange: 'X', type: 'future' },
+    ]
+    const feedSearch = async (_q: string, opts?: DatafeedSearchOptions): Promise<SearchPage> => {
+      const offset = opts?.offset ?? 0
+      return { hits: wide.slice(offset, offset + 50), hasMore: offset + 50 < wide.length }
+    }
+    const { input, rows } = open('search', { feedSearch })
+    await settle()
+    expect(rows()).toHaveLength(50)
+    expect(venues(rows()[0]!)).toEqual([])
+    for (let i = 0; i < 45; i++) press(input, 'ArrowDown')
+    await settle()
+    expect(rows()).toHaveLength(51)
+    expect(rows().filter((r) => r.dataset.symbolGroup === 'BTC')).toEqual([rows()[0]])
+    expect(venues(rows()[0]!).map((m) => m.dataset.symbolRow)).toEqual(['ALPHA:BTCUSDT', 'BETA:BTCUSD'])
+  })
+
+  it('keeps the keyboard on the venue mark it stands on while a page lands and rebuilds the row', async () => {
+    const wide: SymbolRow[] = [
+      LISTED[1]!,
+      LISTED[3]!,
+      ...Array.from({ length: 48 }, (_, i) => ({ symbol: `W${i}`, name: `W${i}`, exchange: 'X', type: 'future' })),
+      LISTED[4]!,
+      { symbol: 'W48', name: 'W48', exchange: 'X', type: 'future' },
+    ]
+    const feedSearch = async (_q: string, opts?: DatafeedSearchOptions): Promise<SearchPage> => {
+      const offset = opts?.offset ?? 0
+      return { hits: wide.slice(offset, offset + 50), hasMore: offset + 50 < wide.length }
+    }
+    const { input, rows } = open('search', { feedSearch })
+    await settle()
+    const before = venues(rows()[0]!)
+    expect(before).toHaveLength(2)
+    before[1]!.focus()
+    for (let i = 0; i < 45; i++) press(input, 'ArrowDown')
+    await settle()
+    const after = venues(rows()[0]!)
+    expect(after.map((m) => m.dataset.symbolRow)).toEqual(['ALPHA:BTCUSDT', 'BETA:BTCUSD', 'GAMMA:BTCUSDC'])
+    expect(after[1]).not.toBe(before[1])
+    expect(document.activeElement).toBe(after[1])
+  })
+
+  it('stays a row a market in compare, each with its own source and placements', async () => {
+    const { input, rows } = open('compare', { catalog: LISTED })
+    await type(input, 'BTC')
+    expect(rows().map((r) => r.dataset.symbolRow)).toEqual(['ALPHA:BTCUSDT', 'BETA:BTCUSD', 'GAMMA:BTCUSDC'])
+    for (const row of rows()) {
+      expect(row.dataset.symbolGroup).toBeUndefined()
+      expect(row.querySelector('.qc-search-venue')).toBeNull()
+      expect(row.querySelector('.qc-search-source > .qc-search-mark[role="img"]')).not.toBeNull()
+      expect(row.querySelectorAll('.qc-search-actions button')).toHaveLength(3)
+    }
   })
 })
