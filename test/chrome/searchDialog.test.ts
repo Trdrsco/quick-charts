@@ -180,11 +180,11 @@ describe('rows that share a group', () => {
     expect(shape(rowsFor('search', 's', unnamed))).toEqual(['ETH', 'SOL'])
   })
 
-  it('leave the recents a row each, and form a group from the hits no recent already lists', () => {
-    const recents = [LISTED[3]!, LISTED[4]!]
+  it('leave the recents a row each, keep a grouped row whole, and leave out an ungrouped hit a recent lists', () => {
+    const recents = [LISTED[3]!, LISTED[4]!, LISTED[2]!]
     const rows = rowsFor('search', '', LISTED, recents)
-    expect(shape(rows)).toEqual(['BETA:BTCUSD', 'GAMMA:BTCUSDC', 'ETH', 'ALPHA:BTCUSDT', 'SOL'])
-    expect(rows.slice(0, 2).every((r) => r.members === undefined)).toBe(true)
+    expect(shape(rows)).toEqual(['BETA:BTCUSD', 'GAMMA:BTCUSDC', 'SOL', 'ETH', 'ALPHA:BTCUSDT/ALPHA:BTCUSDT,BETA:BTCUSD,GAMMA:BTCUSDC'])
+    expect(rows.slice(0, 3).every((r) => r.members === undefined)).toBe(true)
   })
 
   it('leave compare rows as they are, one market a row', () => {

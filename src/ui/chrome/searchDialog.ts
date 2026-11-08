@@ -137,7 +137,8 @@ export function offeredOperators(spreads: SearchDisplayOptions['spreads']): read
  *
  *  Search hits that share a group collapse into one row (`groupedHits`) in every mode but compare,
  *  whose rows each add one market at a placement. Recents stay a row each, since each is one pick a
- *  viewer made, and a hit already listed as a recent is left out before its group is formed. */
+ *  viewer made. A hit a recent already lists is left out of the list below it, unless it is one of a
+ *  group: a grouped row keeps every venue the instrument lists on. */
 export function dialogRows(input: {
   mode: SearchRequest['mode']
   query: string
@@ -167,7 +168,7 @@ export function dialogRows(input: {
   const listed = (hits: readonly SymbolRow[]): DialogRow[] => (compare ? hits.map((row) => ({ row, added: addedSet.has(row.symbol) })) : groupedHits(hits, addedSet))
   if (!compare && q === '') {
     const seen = new Set(input.recents.map((r) => r.symbol))
-    return [...input.recents.map((row) => ({ row, added: addedSet.has(row.symbol) })), ...listed(input.hits.filter((r) => !seen.has(r.symbol)))]
+    return [...input.recents.map((row) => ({ row, added: addedSet.has(row.symbol) })), ...listed(input.hits.filter((r) => r.group || !seen.has(r.symbol)))]
   }
   const base = listed(input.hits)
   // A query reading as a spread EXPRESSION leads with the exact expression; catalog matches on its
